@@ -1293,8 +1293,14 @@ thread_local! {
     static SESSION: RefCell<Session> = RefCell::new(Session::default());
 }
 
+/// Every step of the session tells the frame layer whether a flush samples ([[C23]] calcModes).
 pub(crate) fn session<T>(f: impl FnOnce(&mut Session) -> T) -> T {
-    SESSION.with(|s| f(&mut s.borrow_mut()))
+    SESSION.with(|s| {
+        let mut s = s.borrow_mut();
+        let out = f(&mut s);
+        solenoid_core::frame_ref::set_sketch(s.sketch_active());
+        out
+    })
 }
 
 /// The recalc generation the volatile cards' draws hold for.

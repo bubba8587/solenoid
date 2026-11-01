@@ -1,21 +1,24 @@
 // [[C130]] rustCore, [[C24]] arraySemantics, [[C23]] calcModes
-// The node-facing verb runners (runFrameUnary/Join/Append) + collect, on the core in
-// wasm. Each runner must produce EXACTLY what
-// the pure verb produces — that's what guarantees the migrated frame nodes behave
-// identically to the old direct-verb path. A structural failure comes back as a
-// tagged SolError VALUE, never a throw.
+// A lazy frame's plan, a join and a stack, read back whole, on the core in wasm: each must produce EXACTLY what the
+// pure verb produces. A structural failure reads back as a tagged SolError VALUE, never a throw.
 import { describe, it, expect, beforeEach } from "vitest";
-import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, useWasmBackend, SKETCH_SAMPLE_ROWS } from "../../src/graph/frameBackend";
+import { readFrame, collectPreview } from "../../src/graph/frameBackend";
+import { planned, SKETCH_SAMPLE_ROWS } from "./frameRefKit";
+import { JoinNode, AppendNode } from "../../src/graph/nodes/frame";
 import { calcModeStore } from "../../src/graph/calcModeStore";
 import { ReplaceValuesNode } from "../../src/graph/nodes/frame";
 import { takesAutoLiteral, takesTextLiteral } from "../../src/graph/components/inlineInput";
 import { type FrameOp, type JoinOpts } from "../../src/graph/frameOps";
 import { selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows, groupByFrame, pivotFrame, unpivotFrame, joinFrames, appendFrames } from "./coreVerbs";
 
-// The runners now return a LAZY ref (the result stays in the backend); collect it
-// back to compare against the pure verb. (An op that fails returns a SolError VALUE
-// directly — not a ref — so the error case below reads runFrameUnary without collect.)
-const u = async (op: FrameOp) => readFrame(await runFrameUnary(sample, op));
+// A plan reads back whole to compare against the pure verb; one that fails reads back as its error.
+const u = async (op: FrameOp) => readFrame(planned(sample, op));
+const runFrameJoin = (left: FrameValue, right: FrameValue, opts: JoinOpts) => {
+  const n = new JoinNode({ how: opts.how });
+  Object.assign(n.stringLiterals, { leftKey: opts.leftKey, rightKey: opts.rightKey });
+  return n.data({ left: [left], right: [right] }).frame;
+};
+const runFrameAppend = (frames: FrameValue[]) => new AppendNode().data({ f0: [frames[0]], f1: [frames[1]] }).frame;
 import { isSolError } from "../../src/graph/errorValue";
 import type { FrameValue } from "../../src/graph/frame";
 
@@ -28,7 +31,7 @@ const sample: FrameValue = {
   ],
 };
 
-describe("runFrameUnary — parity with each pure verb", () => {
+describe("a plan — parity with each pure verb", () => {
   it("select", async () => {
     expect(await u({ kind: "select", columns: ["qty", "region"] }))
       .toEqual(selectColumns(sample, ["qty", "region"]));
@@ -75,7 +78,7 @@ describe("runFrameUnary — parity with each pure verb", () => {
   });
 });
 
-describe("runFrameJoin / runFrameAppend — parity", () => {
+describe("Join / Append — parity", () => {
   const left: FrameValue = { __frame: true, columns: [{ name: "id", type: "number", values: [1, 2] }] };
   const right: FrameValue = {
     __frame: true,
@@ -114,13 +117,12 @@ describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates
   };
 
   beforeEach(() => {
-    useWasmBackend();
     calcModeStore.setMode("auto"); // also clears dirty; leaves sketch off
   });
 
   it("auto mode (sketch off) computes the exact sum over every row", async () => {
     const aggs = [{ column: "qty", op: "sum" as const, as: "total" }];
-    const out = await readFrame(await runFrameUnary(big, { kind: "groupBy", keys: ["region"], aggs }));
+    const out = await readFrame(planned(big, { kind: "groupBy", keys: ["region"], aggs }));
     if (isSolError(out) || out == null) throw new Error("expected a frame");
     expect(out.__approx).toBeUndefined();
     const total = out.columns.find((c) => c.name === "total")!.values.reduce((a, b) => (a as number) + (b as number), 0);
@@ -134,7 +136,7 @@ describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates
       { column: "qty", op: "count" as const, as: "n" },
       { column: "qty", op: "avg" as const, as: "avg" },
     ];
-    const out = await readFrame(await runFrameUnary(big, { kind: "groupBy", keys: ["region"], aggs }));
+    const out = await readFrame(planned(big, { kind: "groupBy", keys: ["region"], aggs }));
     if (isSolError(out) || out == null) throw new Error("expected a frame");
     expect(out.__approx!.factor).toBeCloseTo(2, 5); // 2×SKETCH_SAMPLE_ROWS rows sampled to SKETCH_SAMPLE_ROWS
     // sum/count are EXTRAPOLATED (scaled by the factor) — never the sample's raw total
@@ -152,7 +154,7 @@ describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates
       { name: "id", type: "number", values: Array.from({ length: rows }, (_, i) => i) },
       { name: "qty", type: "number", values: Array.from({ length: rows }, () => 1) },
     ] };
-    const ref = await runFrameUnary(wide, { kind: "groupBy", keys: ["id"], aggs: [{ column: "qty", op: "sum", as: "total" }] });
+    const ref = planned(wide, { kind: "groupBy", keys: ["id"], aggs: [{ column: "qty", op: "sum", as: "total" }] });
     const prev = await collectPreview(ref);
     if (isSolError(prev) || prev == null) throw new Error("expected a frame");
     expect(prev.__totalRows).toBeDefined(); // the preview really is truncated
@@ -166,7 +168,7 @@ describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates
     calcModeStore.beginForceExact();
     try {
       const aggs = [{ column: "qty", op: "sum" as const, as: "total" }];
-      const out = await readFrame(await runFrameUnary(big, { kind: "groupBy", keys: ["region"], aggs }));
+      const out = await readFrame(planned(big, { kind: "groupBy", keys: ["region"], aggs }));
       if (isSolError(out) || out == null) throw new Error("expected a frame");
       expect(out.__approx).toBeUndefined(); // exact — no sampling happened this pass
     } finally {
@@ -185,7 +187,7 @@ describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates
       ],
     };
     const aggs = [{ column: "qty", op: "sum" as const, as: "total" }];
-    const out = await readFrame(await runFrameUnary(small, { kind: "groupBy", keys: ["region"], aggs }));
+    const out = await readFrame(planned(small, { kind: "groupBy", keys: ["region"], aggs }));
     if (isSolError(out) || out == null) throw new Error("expected a frame");
     expect(out.__approx).toBeUndefined();
     calcModeStore.setMode("auto");
@@ -194,9 +196,9 @@ describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates
   it("the approx marking propagates through a non-aggregating verb chained after groupBy", async () => {
     calcModeStore.setMode("sketch");
     const aggs = [{ column: "qty", op: "sum" as const, as: "total" }];
-    const grouped = await runFrameUnary(big, { kind: "groupBy", keys: ["region"], aggs });
+    const grouped = planned(big, { kind: "groupBy", keys: ["region"], aggs });
     if (isSolError(grouped)) throw new Error("expected a ref");
-    const sorted = await readFrame(await runFrameUnary(grouped, { kind: "sort", by: "total", dir: "desc" }));
+    const sorted = await readFrame(planned(grouped, { kind: "sort", by: "total", dir: "desc" }));
     if (isSolError(sorted) || sorted == null) throw new Error("expected a frame");
     expect(sorted.__approx).toBeDefined();
     calcModeStore.setMode("auto");
@@ -210,7 +212,6 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
     readFrame((await n.data(inputs)).frame);
 
   it("a wired NUMBER matches a number column (was impossible on a strIn socket)", async () => {
-    useWasmBackend();
     const f: FrameValue = { __frame: true, columns: [{ name: "qty", type: "number", values: [10, 20, 30] }] };
     const n = new ReplaceValuesNode({ mode: "cell" });
     n.stringLiterals.column = "qty";
@@ -220,7 +221,6 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
   });
 
   it("a wired BOOLEAN matches a logical column", async () => {
-    useWasmBackend();
     const f: FrameValue = { __frame: true, columns: [{ name: "flag", type: "logical", values: [true, false, true] }] };
     const n = new ReplaceValuesNode({ mode: "cell" });
     n.stringLiterals.column = "flag";
@@ -230,7 +230,6 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
   });
 
   it("a wired-blank Find is unknown → the whole result is null", async () => {
-    useWasmBackend();
     const f: FrameValue = { __frame: true, columns: [{ name: "qty", type: "number", values: [1, 2] }] };
     const n = new ReplaceValuesNode({ mode: "cell" });
     n.stringLiterals.column = "qty";
@@ -238,7 +237,6 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
   });
 
   it("the card's typed Find and Replace are text kept exactly as typed", async () => {
-    useWasmBackend();
     const n = new ReplaceValuesNode({ mode: "substring" });
     expect(takesAutoLiteral(n, "any")).toBe(false);
     expect(takesTextLiteral(n, "any")).toBe(true);
@@ -256,8 +254,7 @@ describe("the aggregate guard on a collected groupBy", () => {
   const big = (values: number[]): FrameValue => ({ __frame: true, columns: [
     { name: "s", type: "string", values: values.map(() => "a") }, { name: "n", type: "number", values }] });
   const sum = async (values: number[]) => {
-    useWasmBackend();
-    const out = await readFrame(await runFrameUnary(big(values), { kind: "groupBy", keys: ["s"], aggs: [{ column: "n", op: "sum", as: "total" }] }));
+    const out = await readFrame(planned(big(values), { kind: "groupBy", keys: ["s"], aggs: [{ column: "n", op: "sum", as: "total" }] }));
     if (isSolError(out) || out == null) throw new Error("expected a frame");
     return out.columns[1].values[0];
   };

@@ -1,11 +1,12 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-// The lazy frame verbs through data(): a frame value is uploaded for a ref and the body plans over it, a ref is
-// extended, a pass-through hands back what came in, and a Cube runs its verb on its cells. The sweep drives each
-// card over its ops and settings, so the recorder freezes each body on the inputs that matter.
-import { describe, it, expect, beforeEach } from "vitest";
+// The lazy frame verbs through data(): the body plans over a frame value or extends a ref's plan, a pass-through hands
+// back what came in, and a Cube runs its verb on its cells. The sweep drives each card over its ops and settings, so
+// the recorder freezes each body on the inputs that matter.
+import { describe, it, expect } from "vitest";
 import { GraphNode } from "../../src/graph/graphModel";
 import { throughBoundary } from "./boundaryKit";
-import { useWasmBackend, readFrame, uploadFrame, runFrameUnary, isFrameRef, type FrameRef } from "../../src/graph/frameBackend";
+import { readFrame, isFrameRef, type FrameRef } from "../../src/graph/frameBackend";
+import { planned, lazy, planOf } from "./frameRefKit";
 import { frameToCube, frameFromRows, cubeFromColumns, isCubeValue, type FrameValue, type CubeValue } from "../../src/graph/frame";
 import { solError } from "../../src/graph/errorValue";
 import { applyFcUnit } from "../../src/graph/unitBridge";
@@ -75,8 +76,6 @@ function card<T extends GraphNode>(n: T): T & Card {
   return n as T & Card;
 }
 
-beforeEach(() => useWasmBackend());
-
 describe("a lazy verb plans over refs", () => {
   it("passes a frame value through as itself", async () => {
     const n = card(new SortFrameNode());
@@ -86,21 +85,19 @@ describe("a lazy verb plans over refs", () => {
   });
 
   it("passes a ref through as a new ref planning nothing more", async () => {
-    const ref = await uploadFrame(sales) as FrameRef;
+    const ref = planned(sales, { kind: "distinct" });
     const out = await card(new SortFrameNode()).data({ frame: [ref] });
     expect(isFrameRef(out.frame)).toBe(true);
     expect(out.frame).not.toBe(ref);
-    expect((out.frame as FrameRef).__plan).toEqual([{ kind: "drop", columns: [] }]);
+    expect(planOf(out.frame)).toEqual(["distinct", "drop"]);
   });
 
-  it("extends a ref's plan, its earlier ops the same objects", async () => {
+  it("extends a ref's plan", async () => {
     const first = (await card(new DistinctNode()).data({ frame: [sales] })).frame as FrameRef;
     const n = card(new HeadNode());
     n.literals.rows = 2;
     const out = (await n.data({ frame: [first] })).frame as FrameRef;
-    expect(out.__frameRef).toBe(first.__frameRef);
-    expect(out.__plan[0]).toBe(first.__plan[0]);
-    expect(out.__plan[1]).toEqual({ kind: "head", n: 2 });
+    expect(planOf(out)).toEqual(["distinct", "head"]);
     const rows = await readFrame(out);
     expect((rows as FrameValue).columns[0].values).toEqual(["Ada", "Bo"]);
   });
@@ -164,12 +161,12 @@ const SPECS: Record<string, Spec> = {
   DropBlankRows: { make: () => new DropBlankRowsNode(), fields: { mode: Object.keys(BLANK_ROW_OP_META) } },
   GetColumn: {
     make: () => new GetColumnNode(), cubes: true, fields: { readAs: ["number", "text", "date", "logical"] }, strs: ["name"],
-    frames: async () => [metered, metered, await uploadFrame(metered), 7, [1, 2], [[1, "a"], [2, "b"]]],
+    frames: async () => [metered, metered, lazy(metered), 7, [1, 2], [[1, "a"], [2, "b"]]],
   },
   SumIfs: {
     make: () => new SumIfsNode(), cubes: true, fields: { op: ["sumifs", "countifs", "averageifs", "minifs", "maxifs"], match: ["all", "any"] },
     strs: ["values"], pairs: true,
-    frames: async () => [metered, metered, await uploadFrame(metered), await runFrameUnary(metered, { kind: "distinct" })],
+    frames: async () => [metered, metered, lazy(metered), planned(metered, { kind: "distinct" })],
   },
   Window: { make: () => new WindowNode(), cubes: true, fields: { agg: Object.keys(WINDOW_FN_META) }, lists: ["keys"], strs: ["orderBy", "column", "name"], nums: ["n"] },
 };
@@ -185,9 +182,7 @@ describe("every lazy verb over its ops and settings", () => {
       const r = rng(name.length * 7919);
       const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(r() * xs.length)];
       const names = () => NAMES.filter(() => r() < 0.3);
-      const ref = await uploadFrame(sales) as FrameRef;
-      const planned = await runFrameUnary(sales, { kind: "distinct" });
-      const sources: unknown[] = [sales, ref, planned, null, ...(spec.cubes ? [cube, cube, odd, odd, odd, dupes] : []), ...(await spec.frames?.() ?? [])];
+      const sources: unknown[] = [sales, lazy(sales), planned(sales, { kind: "distinct" }), null, ...(spec.cubes ? [cube, cube, odd, odd, odd, dupes] : []), ...(await spec.frames?.() ?? [])];
       for (let i = 0; i < (spec.cubes ? 160 : 80); i++) {
         const n = spec.make() as Card & Record<string, unknown>;
         for (const [k, vs] of Object.entries(spec.fields ?? {})) n[k] = pick(vs);

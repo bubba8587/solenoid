@@ -2,7 +2,7 @@
 // text holding a lone surrogate reads with U+FFFD for it as it crosses into the core.
 import { it, expect } from "vitest";
 import { evaluateOnCore } from "../../src/graph/coreValues";
-import { frameBackend, useWasmBackend } from "../../src/graph/frameBackend";
+import { coreStore } from "./coreStore";
 import { wasmInvokeSync } from "../../src/graph/engineWasm";
 import type { FrameValue } from "../../src/graph/frame";
 import type { FrameOp } from "../../src/graph/frameOps";
@@ -17,8 +17,7 @@ it("a slice that halves an emoji answers U+FFFD for the half, and whole slices k
 it("a lone surrogate reads as U+FFFD, in a formula's text, its values and a frame's cells", async () => {
   expect(evaluateOnCore("t & \"\uD83D\"", { t: "a\uDE00" })).toBe("a��");
   const f: FrameValue = { __frame: true, columns: [{ name: "s", type: "string", values: ["\uD83D", "b", "\uDE00", "\uD83D"] }] };
-  useWasmBackend();
-  const be = frameBackend();
+  const be = coreStore();
   try {
     const got = await be.collect(await be.apply(await be.source(f), { kind: "distinct" } as FrameOp));
     expect(got.columns[0].values).toEqual(["�", "b"]);

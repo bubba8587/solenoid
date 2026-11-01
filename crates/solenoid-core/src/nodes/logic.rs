@@ -494,6 +494,8 @@ fn replace_caught(value: &Cv, fallback: &Cv, caught: &dyn Fn(&V) -> bool, ty: Op
                         .collect(),
                     total_rows: None,
                     approx: None,
+                    source: None,
+                    layout: None,
                 })),
                 Cv::Cube(q) => Cv::Cube(Rc::new(Cube {
                     columns: q
@@ -511,7 +513,7 @@ fn replace_caught(value: &Cv, fallback: &Cv, caught: &dyn Fn(&V) -> bool, ty: Op
         Cv::V(v) if !caught(v) => value.clone(),
         Cv::V(_) if fallback.v().is_none_or(|f| fits_column(f, ty)) => fallback.clone(),
         Cv::V(_) => misfit("this column".into()),
-        Cv::Json(_) => value.clone(),
+        Cv::Json(_) | Cv::Ref(_) => value.clone(),
     }
 }
 

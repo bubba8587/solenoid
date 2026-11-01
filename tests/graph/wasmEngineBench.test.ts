@@ -4,7 +4,7 @@
 import { describe, it, beforeAll } from "vitest";
 import type { FrameOp } from "../../src/graph/frameOps";
 import type { FrameValue } from "../../src/graph/frame";
-import { frameBackend, useWasmBackend, type FrameHandle } from "../../src/graph/frameBackend";
+import { coreStore } from "./coreStore";
 import { wasmInvokeSync } from "../../src/graph/engineWasm";
 import { computeColumnOnEngine } from "../../src/graph/frameBackend";
 
@@ -74,12 +74,12 @@ async function timeAsync(run: () => Promise<unknown>, reps = 3): Promise<number>
 
 describe.skipIf(!process.env.BENCH)("frame engine timing", () => {
   beforeAll(() => {
-    useWasmBackend();
+    
   });
 
   it(`${ROWS} rows`, { timeout: 600_000 }, async () => {
     const f = bigFrame(ROWS);
-    const be = frameBackend();
+    const be = coreStore();
     const rows: string[][] = [];
     const sourceMs = await timeAsync(async () => be.drop(await be.source(f)));
     const h = await be.source(f);
@@ -107,6 +107,5 @@ describe.skipIf(!process.env.BENCH)("frame engine timing", () => {
     ];
     process.stderr.write(`${lines.join("\n")}\n`);
     wasmInvokeSync("engine_clear");
-    void (h as FrameHandle);
   });
 });

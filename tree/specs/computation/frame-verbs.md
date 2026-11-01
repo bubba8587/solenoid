@@ -188,107 +188,62 @@ On a Cube parent, `relate_cube(parent, child, key, nested_name)` deepens a chain
 
 ### FrameRef
 
-A Frame on a cable between verb cards is usually a `FrameRef`: `{ __frameRef: FrameHandle, __plan: FrameOp[] }`. The handle names a frame stored in the backend; the plan is a queue of unary ops not yet run. `isFrameRef` tests for the `__frameRef` key. A consumer never reads a handle's data except through the boundaries below.
+A Frame on a cable between verb cards is usually a lazy frame: a core value (`Cv::Ref`, `crates/solenoid-core/src/frame_ref.rs`) holding a base frame, a plan of ops not yet run, and the ref it extends by one op. The verb cards are direct ([[graph-core]] § Direct calls), so a ref passes between them inside the core and a verb's body only plans: it extends the ref it got, or starts one on a FrameValue it takes in (`refs::planned`, once per value by identity). JavaScript sees a ref as `{ __frameRef: id }` (`isFrameRef`), the id the core keeps it under (`heldValues.ts`); after a trap that id reads `#REF!` ("The frame isn't held any more").
 
 ```mermaid
 flowchart LR
-    src["a FrameValue"] -->|"runFrameUnary uploads it<br>(once per object)"| r1["a ref:<br>handle, plan: op 1"]
-    r1 -->|"the next verb appends,<br>no backend call"| r2["a ref:<br>handle, plan: op 1, op 2"]
-    r2 --> mb{"a materialization<br>boundary"}
-    mb -->|"flush: applyMany,<br>rebased on the longest<br>plan already flushed"| h["a real handle"]
-    h --> full["readFrame:<br>the whole frame"]
-    h --> prev["collectPreview:<br>the first 100 rows"]
-    h --> one["readRefColumn:<br>one column"]
+    src["a FrameValue"] -->|"taken in once<br>(by identity)"| r1["a ref:<br>base, plan: op 1"]
+    r1 -->|"the next verb extends it,<br>nothing run"| r2["a ref:<br>op 2 on ref 1"]
+    r2 --> mb{"a reader"}
+    mb -->|"flush: runs op 2 on<br>ref 1's flush, once"| f["its frame"]
+    f --> full["collect:<br>the whole frame"]
+    f --> prev["preview:<br>the first 100 rows"]
+    f --> one["column / schema"]
 ```
 
-| Runner | Input | Result |
-|---|---|---|
-| `runFrameUnary(input, op)` | a FrameRef | A new ref with the same handle and `op` appended. No backend call. |
-| | a FrameValue | The value is uploaded (`source`) and the result is `{ handle, plan: [op] }`. |
-| `runFrameJoin`, `runFrameAppend`, `runFrameBindColumns` | any mix | Each input is resolved to a handle (flushing a ref, uploading a value), the backend runs the verb now, and the result is a ref with an empty plan. |
-
-Uploads are cached by FrameValue identity (a `WeakMap`), so a source node that re-emits the same object each pass is uploaded once; Frame Input keeps its emitted object stable for this reason. A `FinalizationRegistry` drops the backend copy when the FrameValue is collected. A rejected upload is evicted so the next pass retries.
-
-Every runner catches a throw and returns it as a `SolError` value (`asErrorValue`: a SolError passes through, anything else becomes `#ERROR!` with the message).
+Join, Append and Bind Columns run their verb on their inputs' flushed frames and answer a ref with nothing planned.
 
 ### Flushing
 
-`flushRef(ref)` turns a ref into a real handle with one `applyMany(handle, plan)` call. An empty plan returns the handle as is. Results are memoized per ref object, never per handle, because two refs may share a handle with different plans. Within one compute pass, a flush looks for the longest plan already flushed on the same base handle that is a strict prefix of this plan (ops compared by object identity) and applies only the remaining tail to that result, so a chain of N previewing cards costs one op per card. The rebase is skipped when the tail contains a `groupBy`, because the aggregate guard needs the plan's base handle.
+A ref's flush runs once per sketch mode and is kept with the ref, so every reader of it shares one run. It runs its own op on its parent's flush, so a chain of N previewing cards costs one op per card; a ref whose ops include a GROUPBY runs its plan from the base instead, since the aggregate guard reads the plan's own input. Op JSON is normalized as JavaScript passed it on (`as_js`).
 
-### Materialization boundaries
+### Readers
 
-| Boundary | Call | Result |
+| Reader | Call | Result |
 |---|---|---|
-| Full collect | `readFrame(v)` | A FrameValue. Memoized per ref per pass, so a ref fanned out to several consumers collects once. A FrameValue, `null` or SolError passes through. |
-| Card preview | `collectPreview(out, n = 100)` | If the frame has at most `n` rows, the full frame (through `readFrame`). Otherwise a FrameValue of the first `n` rows with `__totalRows` set to the true count and `__ref` set to `out`. |
-| Schema | `collectPreview(ref, 0)` | Column names and types with no rows. Pivot uses it. |
-| One column | `readRefColumn(ref, name)` | One `FrameColumn` or `null`, read with `backend.column` on the flushed handle. Get Column, SUMIFS, Pivot and Slicer use it; the aggregate guard reads its source column with `backend.column` directly. |
+| Whole frame | `refs::collect` (JS: `readFrame`, `frameRefRead`) | The frame, kept with the ref, so a ref fanned out to several readers collects once. |
+| Card preview | `refs::preview(r, 100)` (JS: `collectPreview`, `frameRefPreview`) | A frame of at most 100 rows is the whole one; a longer one is its first 100 rows with `total_rows` the true count and `source` (JS: `__ref`) the ref. |
+| Schema | `refs::schema` | Column names and types with no rows, and the row count (Table Size, Pivot). |
+| One column | `refs::column` | One column by `getColumn` rules (Get Column, SUMIFS, Pivot, Slicer). |
 
-Every boundary applies sketch scaling and then the aggregate guard (below) before returning, both keyed by the flushed handle. A consumer that awaits a boundary wraps it in `materialize(p)`, which returns a throw as a SolError instead of letting it escape `data()` (where the error guard would flatten it to `#ERROR!`).
+Every reader applies sketch scaling and then the aggregate guard (below) to what it reads (`Flushed::finish`). `frame_ref::take_stats` (`engine_frame_stats`) counts runs, ops, frames taken in and whole collects, which `lazyChain.test.ts` holds to.
 
 ### Who receives a ref
 
-```mermaid
-flowchart LR
-    ref["a FrameRef<br>on a cable"] --> lazy{"the class in<br>LAZY_FRAME_NODES?"}
-    lazy -->|yes| as["its data() gets the ref:<br>it extends the plan or<br>reads through a primitive"]
-    lazy -->|no| col["the boundary collects it<br>(readFrame) first;<br>data() gets a FrameValue"]
-```
+`LAZY_FRAME_NODES` (`crates/solenoid-graph/src/boundary.rs`) lists the classes that receive a ref as is: the verb cards, Get Column, SUMIFS, Table Size, Write File, PIVOTBY, Slicer and Computed Column, which read through the readers above instead of a whole collect. Every other card, direct or JavaScript, gets the whole frame: the engine collects the ref in the core first (`value::collected`), shared by every reader of it. `lazyChain.test.ts` requires every class whose body plans over a ref to be in the set.
 
-
-`LAZY_FRAME_NODES` (`crates/solenoid-graph/src/boundary.rs`) lists the classes whose `data()` receives a FrameRef as is: `DistinctNode`, `HeadNode`, `SortFrameNode`, `FilterFrameNode`, `JoinNode`, `ColumnsNode`, `GroupByFrameNode`, `UnpivotNode`, `AppendNode`, `BindColumnsNode`, `RenameNode`, `FillBlanksNode`, `ReplaceValuesNode`, `WindowNode` (the verb cards), plus `GetColumnNode`, `SumIfsNode`, `TableInfoNode`, `WriteFileNode`, `PivotNode` and `SlicerNode`, which read through the column, preview or read-at-Run primitives instead of a full collect. A node ported to Rust never reads a ref itself: its TypeScript shell reads what the Rust side names (Table Size's zero-row preview, Slicer's and PIVOTBY's schema and then the columns they ask for) and calls it again with them, and runs the join or stack a Join, Append or Bind Columns node asks for ([[node-bodies]]). For every other node, the input boundary sees a ref among the inputs and collects it with `readFrame` before calling `data()`. `lazyChain.test.ts` requires every class that emits a ref to be in the set.
-
-### Verb card lifecycle
-
-A verb card's `data()` calls `beginPass(this)` before its first await, runs its runner, and hands the result to `emitFrame(node, gen, out)`. `emitFrame` collects the card preview into `cachedResult`, keeps the output ref in `node._ref`, drops the card's previous ref if it differs, and returns `{ frame: out }`. If a newer pass started while this one awaited (`gen !== node._gen`), the result is discarded, its ref dropped unless it is the live one, and `{ frame: null }` returned. A card with nothing to do forwards a ref through `passFrame`, which appends an empty `drop` so the forwarded ref has a non-empty plan and so does not own the upstream handle.
-
-Ownership: only a ref with an empty plan owns its handle (`dropFrameRef` drops nothing else), which in practice means a binary verb's output. Handles created by flushing are owned by the per-pass memo: `clearCollectMemo()`, called at the start of every `processGraph` pass and every `computeAll`, drops every handle the previous pass flushed and clears all memos. A preview's `__ref` still works after that, because its plan re-flushes from the base handle.
+A ref lives while something holds it: the cell on a cable, a kept answer (`nodes::KEEPS_ANSWER`, which the verb cards are in, so a pass whose inputs stand runs nothing again), a JavaScript object (`heldValues.ts`). Its flush and readers' values live and die with it.
 
 ### Sketch mode and the aggregate guard
 
 ```mermaid
 flowchart LR
-    flush["a flush in sketch mode"] --> samp["sample the base handle:<br>10,000 evenly strided rows"]
+    flush["a flush in sketch mode"] --> samp["sample its input:<br>10,000 evenly strided rows"]
     samp --> run["run the plan on the sample"]
     run --> g{"a groupBy<br>in the plan?"}
     g -->|yes| scale["at read time: the last groupBy's<br>sum and count × total/sampled,<br>the value marked approx"]
     g -->|no| plain["the sampled rows as they are"]
 ```
 
+In the sketch calculation mode (`frame_ref::set_sketch`, kept current by every step of the session), a flush first takes a deterministic sample of its input (`SKETCH_SAMPLE_ROWS = 10,000`; evenly strided rows `floor(i × total / n)`, order kept, never random); a flush on a parent already sampled doesn't sample again. The factor is `total / sampled`. When the plan contains a `groupBy`, the output columns of the last `groupBy`'s `sum` and `count` aggregates are multiplied by the factor at read time, and the read value carries `approx`. A flush and its readers' values are kept per sketch mode, so leaving sketch reads the exact frame.
 
-In the sketch calculation mode, a flush first asks the backend for a deterministic sample of the plan's base handle (`SKETCH_SAMPLE_ROWS = 10,000`; evenly strided rows `floor(i × total / n)`, order kept, never random). The factor is `total / sampled`. When the plan contains a `groupBy`, the output columns of the last `groupBy`'s `sum` and `count` aggregates are multiplied by the factor at read time, and the collected value carries `__approx`. Scaling is never written into backend data, because a re-upload carries only plain columns and would lose the `__approx` mark. The sampled handle is temporary and dropped once the plan has run.
+The aggregate guard classifies non-finite aggregate results at read time ([[C24]] arraySemantics): for a frame produced by a plan with a `groupBy`, any aggregate output column holding a non-finite number goes through `guard_finite`, with an infinite input assumed when the source column of the plan's input holds `±Infinity`. A ref extending one past a GROUPBY inherits its guard and scaling, so a card downstream of GROUPBY classifies and scales as the GROUPBY card does.
 
-The aggregate guard classifies non-finite aggregate results at read time ([[C24]] arraySemantics). For a handle produced by a plan with a `groupBy`, any aggregate output column holding a non-finite number is passed through `guardFinite`, with an infinite input assumed when the source column on the base handle contains `±Infinity`. The guard's record is keyed to the unsampled base handle, so the source scan survives the sample's drop. A tail rebased onto a flushed prefix that held the `groupBy` inherits the prefix's guard and sketch records, so a card downstream of GROUPBY classifies and scales exactly as the GROUPBY card does. On the core the aggregates come back classified, so the guard is a no-op there. `clearCollectMemo` and `dropFrameRef` drop these records with their handles.
+## The frame store
 
-## The FrameBackend seam
+The core also stores eager frames by handle (`rs:<n>`, numbered past a trapped instance's, `engine_handle_base`), for the eager Frame tools that run a verb over values outside a pass (`onCoreFrames`, `bindSchema`, `pivotOnEngine`, `frameFnOnCore`, CSV) and for the corpus: `engine_source`, `engine_apply`, `engine_apply_many`, `engine_join`, `engine_append`, `engine_bind_columns`, `engine_preview`, `engine_collect`, `engine_column`, `engine_drop`, `engine_sample`. A missing handle is `#REF!` (`frame handle <h> not found (dropped or never created)`). Frames cross as columnar buffers (`wasmSourceBin`, `wasmReadBin`, `crates/solenoid-core/src/binary.rs`). An op's own cells (a filter's value) and a pivot layout's cells cross as JSON (`encodeWireCell`, `decodeWireCell`, the core's `wire.rs`): a non-finite number as `{"__nf": "inf" | "-inf" | "nan"}`, a SolError as `{"__err": code, "msg", "ref"}`, where `ref` names the original error in a registry of weak references (`errorRef`), so the cell reads back as that same SolError, message and origin included, while the original is alive.
 
-### Interface
-
-All methods are async except `drop`.
-
-| Method | Contract |
-|---|---|
-| `source(frame)` | Store an eager frame, return a new handle. |
-| `apply(handle, op)` | Run one op, return a new handle; the input handle stays valid. |
-| `applyMany(handle, ops)` | Run a whole plan in one round trip (the fusion primitive). |
-| `join(left, right, opts)` | The Join verb. |
-| `append(handles)` | Stack by column name. |
-| `bindColumns(handles)` | Side by side by position. |
-| `preview(handle, n)` | `{ schema: [{name, type}], rows (row-major, first n), rowCount, truncated }`; `truncated` is `rowCount > n`. |
-| `collect(handle)` | The whole frame. |
-| `column(handle, name)` | One column by `getColumn` rules, or `null`. |
-| `drop(handle)` | Free the handle; a no-op on an unknown handle. |
-| `sample(handle, n)` | `{ handle, factor }` as in sketch mode; `factor` 1 and the same handle when nothing was sampled. |
-
-A missing handle is `#REF!` (`frame handle <h> not found (dropped or never created)`).
-
-### The backend
-
-`frameBackend()` is the core in wasm on every platform, desktop included ([[C130]] rustCore). At startup `initFrameBackend()` loads it and clears its store, since a webview reload would otherwise orphan every stored frame. A swap (`setFrameBackend`, `useWasmBackend`, a test's stub) clears every handle-keyed cache, because handle strings are unique only within one backend instance.
-
-Handles are `rs:<n>`, numbered past a trapped instance's (`engine_handle_base`). Frames cross as columnar buffers (`wasmSourceBin`, `wasmReadBin`, `crates/solenoid-core/src/binary.rs`), and `preview` reads the first rows the same way (a row reads `null` past a short column's end). An op's own cells (a filter's value) and a pivot layout's cells cross as JSON (`encodeWireCell`, `decodeWireCell`, the core's `wire.rs`): a non-finite number as `{"__nf": "inf" | "-inf" | "nan"}`, a SolError as `{"__err": code, "msg", "ref"}`, where `ref` names the original error in a registry of weak references (`errorRef`), so the cell reads back as that same SolError, message and origin included, while the original is alive.
-
-A column crosses with its name, type, cells, `unit` and `format` (the columnar schema entry carries the last two); `raw` stays behind and is not restored. The core's `FrameColumn` holds the unit as a `ColumnUnit` (dimension and display) and the format as the annotation it never reads, and each verb decides what its output columns carry, as listed under each verb ([[C25]] firstClassUnits, [[C118]] formatTravelsWithValue): a column that keeps its cells keeps both. The verbs that read a unit read it there: an aggregate or window over readings on an offset scale, a variance over a scaled linear unit, and a join's keys. The eager Frame tools (`frameFnOnCore`) and computed columns send cells only, since a formula reads its units its own way ([[computed-columns]]).
+A column carries its name, type, cells, `unit` and `format`; `raw` stays behind. The core's `FrameColumn` holds the unit as a `ColumnUnit` (dimension and display) and the format as the annotation it never reads, and each verb decides what its output columns carry, as listed under each verb ([[C25]] firstClassUnits, [[C118]] formatTravelsWithValue): a column that keeps its cells keeps both. The verbs that read a unit read it there: an aggregate or window over readings on an offset scale, a variance over a scaled linear unit, and a join's keys. The eager Frame tools and computed columns send cells only, since a formula reads its units its own way ([[computed-columns]]).
 
 ### The corpus
 
@@ -298,7 +253,7 @@ Every verb in `FRAME_OP_KINDS` and the binary verbs `join`, `append`, `bindColum
 
 ## Rules shared by every verb
 
-- **Structural failures throw.** A verb throws a tagged SolError (missing column `#REF!`, type conflict `#TYPE!`, bad configuration `#VALUE!`, unknown aggregate `#NAME?`); the calling card turns the throw into its output value (`runVerb`, `materialize`, the runners).
+- **Structural failures throw.** A verb throws a tagged SolError (missing column `#REF!`, type conflict `#TYPE!`, bad configuration `#VALUE!`, unknown aggregate `#NAME?`); the calling card turns the throw into its output value (a flush answers it as the ref's error, `frame_ref.rs`).
 - **Row verbs select indices.** Sort, distinct, head and filter compute a list of row indices and rebuild every column from it (`reorder_rows`), so a column's type, unit and format ride along.
 - **Identity keys.** Distinct, GROUPBY, Window partitions, Pivot's axes and Join keys read each cell through `cell_key` (`frame_verbs.rs`), its equality class: blank, a logical, a number, a string, or an error by its code. So `1` and `"1"` differ, `null` differs from `0` and `""`, two nulls are equal, `0` and `-0` are one key, every `NaN` is one key and each infinity is its own, and an error keys by its code. Keys compare case-sensitively ([[C45]] excelComparisons).
 - **Comparisons fold case; keys do not.** String `eq`/`neq` and the text predicates in Filter lowercase both sides with the plain Unicode lowercase (`toLowerCase` / Rust `to_lowercase`) unless `matchCase` is set. String ordering (`lt`, `gt`, sort) never folds.
@@ -338,7 +293,7 @@ Every verb in `FRAME_OP_KINDS` and the binary verbs `join`, `append`, `bindColum
 
 ### drop
 
-`{ kind: "drop", columns }`. Removes the named columns; a name not present is ignored. The remaining columns keep their order and everything they carry. Dropping every column leaves a frame with no columns. `drop` with an empty list is the no-op `passFrame` uses.
+`{ kind: "drop", columns }`. Removes the named columns; a name not present is ignored. The remaining columns keep their order and everything they carry. Dropping every column leaves a frame with no columns. `drop` with an empty list is the no-op a verb with nothing to do plans, so it forwards a ref of its own.
 
 ### rename
 
@@ -388,7 +343,7 @@ A row passes `filter_rows(f, column, op, value, match_case)` (`frame_verbs.rs`) 
 7. On a number or date column, the cell is compared numerically with the value read by `decimal_from_text` (`value_kinds.rs`), the reading "Reads as a number" names; a value that does not parse to a finite number matches no rows (under `or`, other conditions still can). A blank value never gets here, because the node leaves a condition with a blank value out. A date column compares against a serial; date text is not parsed.
 8. On a logical column, the cell is 1 or 0 and the value goes through `logical_or_type_error` (`value_kinds.rs`: `TRUE`/`FALSE` in any case, or any number `decimal_from_text` reads, non-zero being true; other text is `#TYPE!` naming it), so `eq 12` matches TRUE rows.
 
-The Frame Filter node: each condition row is a column, an op and a value (`filter_value` in `nodes/verbs.rs` reads a wired scalar as text, and an error value as its code). A filter starts from the whole object and keeps what passes the conditions that are applied. A condition with a blank column, or a blank value for an op that takes one, isn't applied, whether the blank was typed or wired ([[D86]] blankRoles). With no conditions applied, Kept is the input object unchanged and Dropped is blank. Kept and Dropped are both permanent outputs: `filterMulti` and the same op with `complement: true`. Dropped follows the same stale-pass and previous-ref lifecycle as `emitFrame` (its own `_refDropped`) but collects no preview, so it stays a lazy ref until a consumer collects it. A list-cell op on a frame input is `#SHAPE!`, telling the user to connect a Cube. A Cube input runs `filter_cube` (see Eager verbs).
+The Frame Filter node: each condition row is a column, an op and a value (`filter_value` in `nodes/verbs.rs` reads a wired scalar as text, and an error value as its code). A filter starts from the whole object and keeps what passes the conditions that are applied. A condition with a blank column, or a blank value for an op that takes one, isn't applied, whether the blank was typed or wired ([[D86]] blankRoles). With no conditions applied, Kept is the input object unchanged and Dropped is blank. Kept and Dropped are both permanent outputs: `filterMulti` and the same op with `complement: true`. Dropped is a ref too, with no preview of its own, so it stays lazy until a consumer reads it. A list-cell op on a frame input is `#SHAPE!`, telling the user to connect a Cube. A Cube input runs `filter_cube` (see Eager verbs).
 
 The card's op list is `FILTER_OP_OPTIONS_WITH_ERROR` (the base `FILTER_OP_OPTIONS` plus `noterror` and `iserror`), and `FILTER_OP_OPTIONS_WITH_LIST` adds the four list-cell ops for a Cube input. The error ops stay off the base list so SUMIFS, which shares it, never offers them. The value-free ops (`VALUELESS_FILTER_OPS`: the blank and error ops and `listEmpty`) hide the Value field and ignore a wired value. The case toggle (Aa) shows only for the ops where case matters (`TEXT_MATCH_OPS`: `eq`, `neq`, `contains`, `startsWith`, `endsWith`); numeric, date and logical comparisons ignore it.
 
@@ -439,7 +394,7 @@ The GROUPBY card sends one aggregate over its Aggregate column with `as` equal t
 
 **Output.** One key column per row field (names through `makeHeaders`), then one body column per column slot and value. Key cells: a leaf shows its tuple; a subtotal shows its prefix, `Total` in the next field, and blanks after; the grand row shows `Grand Total` in the first key column. A key column that receives a `Total` or `Grand Total` marker becomes a string column, its other cells formatted as display text (`formatFrameCell`: dates as `DD-MMM-YYYY`, logicals as `TRUE`/`FALSE`). A body header is the column tuple's values joined with ` | `, each converted with `String()`, so a date shows its serial and a blank shows `null`. The grand total's column is headed `Grand Total`, and a subtotal's is its prefix plus `Total`. With more than one value, ` | <value name>` follows. With no column fields and one value, the header is just the value's name. Body headers go through `makeHeaders`. Body columns are number typed, except a `min` or `max` over a text value column, which is a string column ([[C24]] arraySemantics). Each carries the unit its value field's aggregate takes (as groupBy's, above) and no format; the key columns carry neither. The layout's Details columns take their source columns' formats ([[C127]] pivotView).
 
-The PIVOTBY card forwards its input unchanged when it has no value fields, and drops field references to columns the input no longer has: the body answers the frame's column names (`fieldNames`) and the shell prunes the saved fields to them, and keeps the layout the body shows (`pivotWire`) beside the frame. Its Rows, Columns and Values are list literals written by `listLiteralText` beside the list-literal reader (`listLiterals.ts`) and read by `csvList`, so a field name holding a comma or a quote survives; Configure Fields signals the graph changed on every edit (`notifyGraphChanged`), saving it whether or not a pass runs. Its per-field value exclusions (keys formed by `pivot_cell_key` in `nodes/backend_verbs.rs`: blank as `""`, an error as its code, a logical as `TRUE`/`FALSE`, anything else `String()`) are combined with the wired logical mask into `filter`. With a lazy input it reads the schema through a zero-row preview and fetches only the columns the pivot and the filter editor use. That read is a pass as a verb card's is (`beginPass`): if a newer pass started while it awaited, it writes nothing and returns `null`. Its Details columns (`detailFields`) are pruned with the fields, and a lazy input fetches them too. Each compute stashes `sourceColumns` (every column's name, type and up to 200 first-seen distinct keys), so the editor popup lists fields without fetching; with a lazy input only the fetched columns get distinct keys, and the rest keep an empty key list.
+The PIVOTBY card forwards its input unchanged when it has no value fields, and drops field references to columns the input no longer has: the body answers the frame's column names (`fieldNames`) and the class prunes the saved fields to them, and the layout rides on the frame it answers (the Pivot view reads it). Its Rows, Columns and Values are list literals written by `listLiteralText` beside the list-literal reader (`listLiterals.ts`) and read by `csvList`, so a field name holding a comma or a quote survives; Configure Fields signals the graph changed on every edit (`notifyGraphChanged`), saving it whether or not a pass runs. Its per-field value exclusions (keys formed by `pivot_cell_key` in `nodes/backend_verbs.rs`: blank as `""`, an error as its code, a logical as `TRUE`/`FALSE`, anything else `String()`) are combined with the wired logical mask into `filter`. With a lazy input it reads the schema through a zero-row preview and fetches only the columns the pivot and the filter editor use. That read is a pass as a verb card's is (`beginPass`): if a newer pass started while it awaited, it writes nothing and returns `null`. Its Details columns (`detailFields`) are pruned with the fields, and a lazy input fetches them too. Each compute stashes `sourceColumns` (every column's name, type and up to 200 first-seen distinct keys), so the editor popup lists fields without fetching; with a lazy input only the fetched columns get distinct keys, and the rest keep an empty key list.
 
 ### window
 

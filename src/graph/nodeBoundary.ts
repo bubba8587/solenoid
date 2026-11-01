@@ -7,7 +7,7 @@ import { setBoundaryHost } from "./engineWasm/solenoid_graph.js";
 import { flushPortEdits } from "./graphEditor";
 import { whenWasmEngineLoads } from "./engineWasm";
 import { frameFromRows, toCube, isFrameValue, type FrameValue } from "./frame";
-import { isFrameRef, readFrame, refWithFormats, type FrameRef } from "./frameBackend";
+import { isFrameRef, refWithFormats, type FrameRef } from "./frameBackend";
 import { displayMagnitudeOf } from "./unitBridge";
 import { carryMatrixUnit, withMatrixUnit, type ColumnUnit, type UnitCell } from "./unitValue";
 import { coreHeader, coreFieldsOf } from "./nodeOnCore";
@@ -100,7 +100,6 @@ function cellKinds(a: readonly unknown[]): Uint8Array {
 }
 
 whenWasmEngineLoads(() => setBoundaryHost({
-  collect: (ref: FrameRef) => readFrame(ref),
   frameFromRows: (rows: unknown[][]) => frameFromRows(rows),
   toCube: (v: unknown) => toCube(v),
   displayMagnitude: (cell: UnitCell) => displayMagnitudeOf(cell),

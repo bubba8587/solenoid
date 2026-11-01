@@ -1276,7 +1276,7 @@ pub(crate) fn infer_cells(name: &str, cells: &[V]) -> (Column, Vec<Rc<str>>) {
 }
 
 fn frame_of(columns: Vec<Column>) -> Cv {
-    Cv::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None }))
+    Cv::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None, source: None, layout: None }))
 }
 
 fn number_column(name: &str, values: Vec<V>) -> Column {
@@ -1424,7 +1424,8 @@ fn find_peaks(c: &mut Call) -> Answer {
         })
         .collect();
     let columns = vec![number_column("Position", positions.as_ref().clone()), number_column("Height", height)];
-    let frame = Cv::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None }));
+    let frame =
+        Cv::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None, source: None, layout: None }));
     shown(c, "cachedResult", "result", frame)
 }
 
@@ -1617,7 +1618,13 @@ fn index_container(v: &Cv, row: &V, col: &V, unit: Option<&serde_json::Value>) -
                 ..col.clone()
             })
             .collect();
-        return Cv::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None }));
+        return Cv::Frame(std::rc::Rc::new(Frame {
+            columns,
+            total_rows: None,
+            approx: None,
+            source: None,
+            layout: None,
+        }));
     }
     let col = &frame.columns[ci as usize];
     let cell = or_null(at_pos(&col.values, r));

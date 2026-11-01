@@ -61,6 +61,7 @@ fn same(a: &Cv, b: &Cv) -> bool {
     match (a, b) {
         (Cv::V(x), Cv::V(y)) => same_v(x, y),
         (Cv::Json(x), Cv::Json(y)) => x == y,
+        (Cv::Ref(x), Cv::Ref(y)) => solenoid_core::nodes::refs::wire(x) == solenoid_core::nodes::refs::wire(y),
         (Cv::Cells(x), Cv::Cells(y)) => x.len() == y.len() && x.iter().zip(y.iter()).all(|(p, q)| same(p, q)),
         (Cv::Frame(x), Cv::Frame(y)) => {
             x.total_rows == y.total_rows
@@ -110,6 +111,7 @@ fn show(v: &Cv) -> String {
     match v {
         Cv::V(v) => show_v(v),
         Cv::Json(j) => j.to_string(),
+        Cv::Ref(r) => solenoid_core::nodes::refs::wire(r).to_string(),
         Cv::Cells(l) => format!("[{}]", l.iter().map(show).collect::<Vec<_>>().join(", ")),
         Cv::Frame(f) => format!(
             "frame[{}]",

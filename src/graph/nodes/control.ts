@@ -7,8 +7,7 @@ import type { PassthroughSpec } from "./passthrough";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { FrameShapeContext } from "./frameShapeHook";
 import type { FrameValue, FrameColType } from "../frame";
-import { collectPreview, isFrameRef, materialize, readRefColumn, type FrameRef } from "../frameBackend";
-import { beginPass, emitFrame, relinked } from "./frame";
+import type { FrameRef } from "../frameBackend";
 import { jsDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
 import { isRelativeDateText } from "./dateSerial";
 import { settingsStore } from "../settingsStore";
@@ -377,8 +376,6 @@ export class SlicerNode extends GraphNode {
   cachedColumns: string[] = [];
   cachedColumnType: FrameColType = "number";
   cachedUniqueValues: SlicerCell[] = [];
-  _ref?: FrameRef | null;
-  _gen?: number;
   cachedResult: FrameValue | SolError | null = null;
   width  = 240;
   height = 240;
@@ -397,32 +394,8 @@ export class SlicerNode extends GraphNode {
     return ctx.inputShape("frame");
   }
 
-  private async emitResult(gen: number, out: FrameRef | FrameValue | SolError | null): Promise<{ result: FrameRef | FrameValue | SolError | null }> {
-    const { frame } = await emitFrame(this, gen, out);
-    return { result: frame };
-  }
-
-  /** A ref's schema is read first; the body names the column it reads, which is read next, and then it answers. A
-   *  stale pass writes nothing, or a stale one flickers the buttons. */
-  async data(inputs: Record<string, unknown[] | undefined>): Promise<{ result: FrameRef | FrameValue | SolError | null }> {
-    const raw = inputs.frame?.[0] ?? null;
-    const gen = beginPass(this);
-    if (!isFrameRef(raw)) return this.emitResult(gen, this.body(inputs).result ?? null);
-    const schema = await materialize(collectPreview(raw, 0));
-    if (gen !== this._gen) return { result: null };
-    let out = this.body({ ...inputs, schema: [schema] });
-    if (out.read !== undefined) {
-      const col = await materialize(readRefColumn(raw, out.read));
-      if (gen !== this._gen) return { result: null };
-      out = this.body({ ...inputs, schema: [schema], column: [col && !isSolError(col) ? { __frame: true, columns: [col] } : col] });
-    }
-    const result = out.result ?? null;
-    return this.emitResult(gen, isFrameRef(result) ? relinked(result, [raw]) : result);
-  }
-
-  /** Over a ref: the column to read (`read`), or, given it (`column`), the answer. Over a value: the answer. */
-  body(inputs: Record<string, unknown[] | undefined>): { result?: FrameRef | FrameValue | SolError | null; read?: string } {
-    return nodeOnCore(this, inputs) as { result?: FrameRef | FrameValue | SolError | null; read?: string };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: FrameRef | FrameValue | SolError | null };
   }
 }
 

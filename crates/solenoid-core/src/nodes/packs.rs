@@ -959,6 +959,8 @@ fn hr_zones_frame(max_hr: f64, resting: Option<f64>) -> Cv {
         ],
         total_rows: None,
         approx: None,
+        source: None,
+        layout: None,
     }))
 }
 

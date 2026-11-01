@@ -12,6 +12,21 @@ import { matrixUnitOf, withMatrixUnit, type ColumnUnit } from "./unitValue";
 import { isFrameValue, isCubeValue, makeCube, type FrameValue, type CubeValue, type CubeColumn, type FrameColumn, type FrameCell } from "./frame";
 import { compilePositional } from "./excelFormula";
 import type { LambdaValue } from "./lambdaValue";
+import { attachPivotLayout, type FrameRef } from "./frameBackend";
+
+/** A lazy frame the core keeps under `id`, as JavaScript holds it while this object lives (`frame_ref.rs`). */
+function frameRefOf(id: number): FrameRef {
+  const ref = { __frameRef: id };
+  holdAs(ref, id);
+  return ref;
+}
+
+/** What rides beside a frame's cells: the ref a preview's rows come from (`__ref`), a pivot's layout. */
+function withSidecars(f: FrameValue, s: { frameRef?: number; layout?: unknown }): FrameValue {
+  if (typeof s.frameRef === "number") f.__ref = frameRefOf(s.frameRef);
+  if (s.layout) attachPivotLayout(f, s.layout);
+  return f;
+}
 
 /** The plain-data kinds a card makes whole, by their marker field. */
 const DATA_MARKERS = ["__chart", "__document", "__image", "__svg", "__mermaid"] as const;
@@ -124,8 +139,9 @@ export function nodeWire(v: unknown): unknown {
     }
     return { __cube: { columns } };
   }
-  // A frame ref is a backend handle and a plan of ops, plain data a card extends; the backend runs the plan later.
-  if (v && typeof v === "object" && (isPlainData(v) || "__frameRef" in v)) return { __json: jsonEnc(v) };
+  // A lazy frame crosses only as the id the core keeps it under (`nodeCallWire`, `toCore`).
+  if (v && typeof v === "object" && "__frameRef" in v) return undefined;
+  if (v && typeof v === "object" && isPlainData(v)) return { __json: jsonEnc(v) };
   return coreValue(v, true);
 }
 
@@ -162,7 +178,7 @@ export function wireBinary(v: unknown): unknown[] | undefined {
 /** `wireBinary`'s inverse, for what a card body answers: the frame or list the buffers carry. */
 export function readBinary(kind: string, schema: string | undefined, tags: Uint8Array, nums: Float64Array, strs: string, lens: Uint32Array): unknown {
   if (kind === "list") return decodeBinary({ schema: [{ name: "", type: "string", len: tags.length }], tags, nums, strs, lens })[0].values;
-  const s = JSON.parse(schema!) as { columns: Record<string, unknown>[]; totalRows?: number; approx?: unknown };
+  const s = JSON.parse(schema!) as { columns: Record<string, unknown>[]; totalRows?: number; approx?: unknown; frameRef?: number; layout?: unknown };
   const cols = decodeBinary({ schema: s.columns.map((e) => ({ name: (e.name as string) ?? "", type: (e.type as string) ?? "string", len: e.len as number })), tags, nums, strs, lens });
   const columns: FrameColumn[] = [];
   s.columns.forEach((e, j) => {
@@ -173,12 +189,12 @@ export function readBinary(kind: string, schema: string | undefined, tags: Uint8
   const f: FrameValue = { __frame: true, columns };
   if (s.totalRows !== undefined) f.__totalRows = s.totalRows;
   if (s.approx) f.__approx = jsonDec(s.approx) as FrameValue["__approx"];
-  return f;
+  return withSidecars(f, s);
 }
 
 type LambdaWire = { params: string[]; expr: string; captured: string[]; capturedValues: unknown[]; readValues: unknown[]; descriptions?: Record<string, string> };
-type Wire = { frame?: { columns: Record<string, unknown>[]; totalRows?: number; approx?: unknown }; cube?: { columns: Record<string, unknown>[] }; json?: unknown; list?: unknown[];
-  lambda?: true | LambdaWire };
+type Wire = { frame?: { columns: Record<string, unknown>[]; totalRows?: number; approx?: unknown; frameRef?: number; layout?: unknown }; cube?: { columns: Record<string, unknown>[] }; json?: unknown; list?: unknown[];
+  lambda?: true | LambdaWire; frameRef?: number };
 
 /** A LAMBDA from its body's text: `fn` runs the body on the core over the parameters, then the captures. `fn` and
  *  `withCaptures` are not enumerable: a reader that lists or compares a LAMBDA's parts sees its text and values. */
@@ -235,6 +251,7 @@ export function readNodeReply(r: unknown): { value: unknown } | null {
     return { value };
   }
   if ("json" in o) return { value: jsonDec(o.json) };
+  if (typeof o.frameRef === "number") return { value: frameRefOf(o.frameRef) };
   if (o.frame) {
     const columns: FrameColumn[] = [];
     for (const c of o.frame.columns) {
@@ -247,7 +264,7 @@ export function readNodeReply(r: unknown): { value: unknown } | null {
     const f: FrameValue = { __frame: true, columns };
     if (o.frame.totalRows !== undefined) f.__totalRows = o.frame.totalRows;
     if (o.frame.approx) f.__approx = jsonDec(o.frame.approx) as FrameValue["__approx"];
-    return { value: f };
+    return { value: withSidecars(f, o.frame) };
   }
   if (o.cube) {
     const columns: CubeColumn[] = [];

@@ -219,10 +219,10 @@ mindmap
 | `frameHint.ts` (+`components/FrameHintLayer.tsx`) | Per-frame-input EXAMPLE hints: a node class declares a tiny sample frame; hovering the socket floats it as a mini-table |
 | `locale.ts` | The single shared locale for every `toLocaleString` call |
 
-### Relational engine (WS2/WS3 — the FrameBackend seam + verbs)
+### Relational engine (lazy frames + verbs)
 | Module | Role |
 |---|---|
-| `frameBackend.ts` (+`.test.ts`) | The `FrameBackend` seam (the core in wasm, web and desktop alike), the Parquet read, the lazy `FrameRef` runners and the materialization boundary. Mechanics: `../tree/specs/computation/frame-verbs.md` |
+| `frameBackend.ts` | The thin JS readers of a lazy frame (`readFrame`, `collectPreview`, `refWithFormats`), the eager Frame tools over the core's frame store (CSV, `frameFnOnCore`, `pivotOnEngine`) and the desktop's Parquet read. The lazy frames themselves are the core's (`frame_ref.rs`, `nodes/refs.rs`). Mechanics: `../tree/specs/computation/frame-verbs.md` |
 | `binaryCells.ts` | The columnar hand-off's TypeScript side: a frame's cells to the core's buffers and back (`binary.rs`). |
 | `frameOps.ts` | The verbs' vocabulary: `FrameOp` and its settings (the verbs are the core's, `frame_verbs.rs`). Contracts: `../tree/specs/computation/frame-verbs.md` |
 | `ipcBridge.ts` (+`.test.ts`) | Web→Rust door: `ipcInvoke` (guarded by `isDesktop()`), `toSolError` maps a rejected `invoke` to a tagged `SolError`. Lazy `@tauri-apps/api/core` import → node/web-safe |

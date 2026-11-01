@@ -3,6 +3,7 @@
 
 use crate::excel_functions::V;
 use crate::frame::FrameColType;
+use crate::frame_ref::FrameRef;
 use serde_json::Value as Json;
 use std::rc::Rc;
 
@@ -23,6 +24,10 @@ pub struct Frame {
     pub columns: Vec<Column>,
     pub total_rows: Option<f64>,
     pub approx: Option<Json>,
+    /// A preview's whole frame: the first rows of this ref (`__ref`).
+    pub source: Option<Rc<FrameRef>>,
+    /// The layout a pivot laid this frame out with, which the Pivot view reads (`setPivotLayout`).
+    pub layout: Option<Rc<Json>>,
 }
 
 /// A value on a card's wire: a formula's value, or what only cards hand each other, which never enters a formula
@@ -36,6 +41,8 @@ pub enum Cv {
     Json(Rc<Json>),
     /// A Cube cell's list with a Frame or a Cube among its items; a list of values is a `V::List`.
     Cells(Rc<Vec<Cv>>),
+    /// A lazy frame: a frame and the verbs planned on it (`frame_ref.rs`).
+    Ref(Rc<FrameRef>),
 }
 
 impl From<V> for Cv {
@@ -108,6 +115,7 @@ impl Cv {
             (Cv::Cube(a), Cv::Cube(b)) => Rc::ptr_eq(a, b),
             (Cv::Json(a), Cv::Json(b)) => Rc::ptr_eq(a, b),
             (Cv::Cells(a), Cv::Cells(b)) => Rc::ptr_eq(a, b),
+            (Cv::Ref(a), Cv::Ref(b)) => Rc::ptr_eq(a, b),
             _ => false,
         }
     }
@@ -156,6 +164,8 @@ pub fn decode_card(j: &Json) -> Cv {
                 columns,
                 total_rows: f.get("totalRows").and_then(Json::as_f64),
                 approx: f.get("approx").cloned(),
+                source: None,
+                layout: None,
             }))
         }
         Json::Object(o) if o.contains_key("__cube") => {
@@ -180,6 +190,7 @@ pub fn decode_card(j: &Json) -> Cv {
             Cv::Cube(Rc::new(Cube { columns }))
         }
         Json::Object(o) if o.contains_key("__json") => Cv::Json(Rc::new(o["__json"].clone())),
+        Json::Object(o) if o.contains_key("__lazy") => super::refs::unwire(&o["__lazy"]).map_or(Cv::NULL, Cv::Ref),
         // A table with its unit: the unit is the call's (`Call::matrix_unit`), the cells the value.
         Json::Object(o) if o.contains_key("__munit") => decode_card(o.get("m").unwrap_or(&Json::Null)),
         _ => Cv::V(crate::eval::decode_value(j)),
@@ -285,6 +296,12 @@ impl serde::Serialize for CvCell<'_> {
                 m.serialize_entry("list", &Items(items))?;
                 m.end()
             }
+            // A ref crosses as the id the core keeps it under, for as long as its JavaScript object lives.
+            Cv::Ref(_) => {
+                let mut m = s.serialize_map(Some(1))?;
+                m.serialize_entry("frameRef", &super::columnar::keep(self.0.clone()))?;
+                m.end()
+            }
         }
     }
 }
@@ -344,6 +361,13 @@ pub fn serialize_frame<S: serde::Serializer>(f: &Frame, s: S) -> Result<S::Ok, S
             }
             if let Some(a) = &self.0.approx {
                 m.serialize_entry("approx", a)?;
+            }
+            // A preview's whole frame, as the id the core keeps its ref under; a pivot's layout.
+            if let Some(r) = &self.0.source {
+                m.serialize_entry("frameRef", &super::columnar::keep(Cv::Ref(r.clone())))?;
+            }
+            if let Some(l) = &self.0.layout {
+                m.serialize_entry("layout", l.as_ref())?;
             }
             m.end()
         }

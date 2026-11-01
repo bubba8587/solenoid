@@ -10,11 +10,12 @@ use std::rc::Rc;
 use js_sys::Array;
 use serde_json::Value as Json;
 use solenoid_core::excel_functions::V;
+use solenoid_core::frame_ref::FrameRef;
 use solenoid_core::nodes::Cv;
 use wasm_bindgen::prelude::*;
 
 use crate::boundary::{self, host};
-use crate::boundary_core::{is_frame_ref, Arrived};
+use crate::boundary_core::Arrived;
 
 struct Inner {
     js: OnceCell<JsValue>,
@@ -166,11 +167,11 @@ impl Val {
         }
     }
 
-    pub(crate) fn is_frame_ref(&self) -> bool {
-        match (self.core_now(), self.0.js.get()) {
-            (Some(v), _) => is_frame_ref(v),
-            (None, Some(js)) => boundary::is_frame_ref(js),
-            _ => false,
+    /// The lazy frame this value is, where it is one.
+    pub(crate) fn frame_ref(&self) -> Option<Rc<FrameRef>> {
+        match self.core().map(|a| &a.v) {
+            Some(Cv::Ref(r)) => Some(r.clone()),
+            _ => None,
         }
     }
 
@@ -345,4 +346,69 @@ fn from_js(v: &JsValue) -> Option<Arrived> {
         v: solenoid_core::nodes::decode_card(&json),
         munit,
     })
+}
+
+/// A ref's whole frame as a value on a cable, read once a ref and kept with it in both forms, so a direct card and
+/// a JavaScript one read the same frame (`refs::collect`).
+pub(crate) fn collected(r: &Rc<FrameRef>) -> Val {
+    r.kept("value", || {
+        Rc::new(Val::bare(solenoid_core::nodes::refs::collect(r)))
+    })
+    .as_ref()
+    .clone()
+}
+
+/// The lazy frame a JavaScript value is, where it is one the core holds.
+fn ref_of(v: &JsValue) -> Option<Rc<FrameRef>> {
+    match from_js(v)?.v {
+        Cv::Ref(r) => Some(r),
+        _ => None,
+    }
+}
+
+fn no_ref() -> JsValue {
+    boundary::sol_error(
+        "#REF!",
+        "The frame isn't held any more; recalculate to make it again",
+    )
+}
+
+/// A lazy frame's whole frame for JavaScript (`readFrame`): the frame, or the error its plan answers.
+#[wasm_bindgen(js_name = frameRefRead)]
+pub fn frame_ref_read(v: JsValue) -> JsValue {
+    match ref_of(&v) {
+        Some(r) => collected(&r).js(),
+        None => no_ref(),
+    }
+}
+
+/// A lazy frame's first `rows` rows with its row count and itself as their source (`collectPreview`); it throws the
+/// error its plan answers.
+#[wasm_bindgen(js_name = frameRefPreview)]
+pub fn frame_ref_preview(v: JsValue, rows: u32) -> Result<JsValue, JsValue> {
+    let r = ref_of(&v).ok_or_else(no_ref)?;
+    match solenoid_core::nodes::refs::preview(&r, rows as usize) {
+        // A frame no longer than the preview is the whole one, read as every reader of it reads it; a cut one names
+        // its source, and reading the whole to ask would be the read the preview saves.
+        Ok(Cv::Frame(f)) if f.source.is_none() => Ok(collected(&r).js()),
+        Ok(p) => Ok(Val::bare(p).js()),
+        Err(e) => Err(Val::bare(e).js()),
+    }
+}
+
+/// A frame (a lazy one, or a value) with one more op planned on it, the op as the verbs read it (a frame's format
+/// picks).
+#[wasm_bindgen(js_name = frameRefThen)]
+pub fn frame_ref_then(v: JsValue, op: &str) -> JsValue {
+    let planned = from_js(&v).and_then(|a| solenoid_core::nodes::refs::planned(&a.v));
+    match (planned, serde_json::from_str::<Json>(op)) {
+        (Some(r), Ok(op)) => Val::bare(Cv::Ref(r.then(op))).js(),
+        _ => no_ref(),
+    }
+}
+
+/// A lazy frame as a frozen case holds it (`refs::wire`), as JSON text; none where it isn't one the core holds.
+#[wasm_bindgen(js_name = frameRefWire)]
+pub fn frame_ref_wire(v: JsValue) -> Option<String> {
+    ref_of(&v).map(|r| solenoid_core::nodes::refs::wire(&r).to_string())
 }

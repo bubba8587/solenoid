@@ -21,16 +21,23 @@ const app = process.env.FREEZE_NODES ? {
   ...(await import("../../src/graph/process")),
   ...(await import("../../src/graph/settingsStore")),
   ...(await import("../../src/graph/errorValue")),
+  ...(await import("../../src/graph/frameBackend")),
+  ...(await import("../../src/graph/engineWasm/solenoid_graph.js")),
 } : null;
-const { GraphNode: BaseNode, ctorRegistry, coreInit, adopted, declaredTypeOf, nodeWire, jsonEnc, engineClock, getRecalcGen, settingsStore, DEFAULT_SETTINGS, isSolError } = app ?? ({} as NonNullable<typeof app>);
+const { GraphNode: BaseNode, ctorRegistry, coreInit, adopted, declaredTypeOf, nodeWire, jsonEnc, engineClock, getRecalcGen, settingsStore, DEFAULT_SETTINGS, isSolError, isFrameRef, frameRefWire } = app ?? ({} as NonNullable<typeof app>);
 
 const DIR = path.resolve(__dirname, "../../.dev/node-calls");
 const ONLY = process.env.FREEZE_NODES === "1" ? null : new Set((process.env.FREEZE_NODES ?? "").split(","));
 const PATCHED = Symbol.for("solenoid.nodeRecorder");
 const g = globalThis as { [PATCHED]?: { lines: string[] } };
 
-/** The core's wire form with the run-time error references dropped; undefined where a value can't cross. */
+/** The core's wire form with the run-time error references dropped; undefined where a value can't cross. A lazy
+ *  frame freezes as its frame's cells and its plan (`refs::wire`). */
 function wire(v: unknown): unknown {
+  if (isFrameRef(v)) {
+    const text = frameRefWire(v);
+    return text === undefined ? undefined : JSON.parse(text);
+  }
   const w = nodeWire(v);
   return w === undefined ? undefined : JSON.parse(JSON.stringify(w, (k, x) => (k === "ref" ? undefined : x)));
 }
@@ -40,7 +47,7 @@ function kindOf(v: unknown): string {
   if (v && typeof v === "object") {
     const o = v as Record<string, unknown>;
     if (o.__frame) return "frame";
-    if (o.__frameRef || o.handle) return "frameRef";
+    if (o.__frameRef !== undefined) return "frameRef";
     if (o.__cube) return "cube";
     return `object:${Object.keys(o).slice(0, 3).join(",")}`;
   }

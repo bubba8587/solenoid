@@ -158,6 +158,12 @@ pub fn frame_out(f: &Frame) -> Option<(String, Columnar)> {
     if let Some(a) = &f.approx {
         schema["approx"] = a.clone();
     }
+    if let Some(r) = &f.source {
+        schema["frameRef"] = json!(keep(Cv::Ref(r.clone())));
+    }
+    if let Some(l) = &f.layout {
+        schema["layout"] = l.as_ref().clone();
+    }
     Some((schema.to_string(), out))
 }
 
@@ -202,6 +208,8 @@ pub fn frame_in(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &[u32
         columns,
         total_rows: schema.get("totalRows").and_then(Json::as_f64),
         approx: schema.get("approx").cloned(),
+        source: None,
+        layout: None,
     })))
 }
 
@@ -245,6 +253,7 @@ mod tests {
             }],
             total_rows: Some(240.0),
             approx: Some(json!({ "factor": 3 })),
+            ..Frame::default()
         };
         let (schema, c) = frame_out(&f).unwrap();
         let Cv::Frame(back) = frame_in(&schema, &c.tags, &c.nums, &c.strs, &c.lens).unwrap() else { panic!() };

@@ -30,7 +30,7 @@ export interface FrameValue {
   columns: FrameColumn[];
   __totalRows?: number;
   /** Structurally typed, not `FrameRef`, to avoid a frame ↔ frameBackend import cycle. */
-  __ref?: { readonly __frameRef: string };
+  __ref?: { readonly __frameRef: number };
   __approx?: { readonly factor: number };
 }
 

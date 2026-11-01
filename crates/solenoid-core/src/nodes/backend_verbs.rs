@@ -1,20 +1,24 @@
-//! [[B17]] typedValueModel, [[C48]] appendLadder. The frame cards whose verb is a backend call of its own or a read
-//! of a ref: Join, Append, Bind Columns, PIVOTBY, Table Size and Slicer. A body never calls the backend: Join,
-//! Append and Bind Columns answer the call for the shell to
-//! make (the keys and how, or the inputs to stack, in order), or one frame passed on. Table Size counts a zero-row
-//! preview the shell reads or takes. Slicer and PIVOTBY over a ref are called on its schema, answer the columns they
-//! read (`read`), and are called again with them; over a value they answer at once. PIVOTBY runs on the core's pivot
-//! and shows its layout (`pivotWire`) for the shell to keep beside the frame.
+//! [[B17]] typedValueModel, [[C48]] appendLadder. The frame cards whose verb reads whole frames at once or reads a
+//! ref's columns: Join, Append and Bind Columns run their verb on their inputs' frames (a ref's plan run first) and
+//! answer a ref planning nothing yet, or one frame passed on. Table Size counts a ref's rows without reading them.
+//! Slicer and PIVOTBY over a ref read its schema, then the columns they need. PIVOTBY runs on the core's pivot and
+//! keeps its layout beside the frame; it shows the frame's column names (`fieldNames`), to which the card prunes its
+//! saved fields.
 
 use super::frames::{card as first, core_cell, from_core, json_num, str_input, to_core, trimmed};
 use super::list::literal_items;
+use super::refs;
 use super::stats::first_raw;
-use super::verbs::{column_list, flat_column, nullish, plan, uploaded};
+use super::verbs::{column_list, drop_nothing, flat_column, nullish, pass, plan, shown};
 use super::Cv;
 use super::{kit, list, Answer, Call, Column, Cube, Frame};
+use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{js_string_of, V};
-use crate::frame::FrameCell;
-use crate::frame_verbs::{compile_filter, pivot_frame, FilterOp, PivotSpec};
+use crate::frame::{FrameCell, FrameValue};
+use crate::frame_ref::FrameRef;
+use crate::frame_verbs::{
+    append_frames, bind_columns, compile_filter, join_frames, pivot_frame, FilterOp, JoinOpts, PivotSpec,
+};
 use crate::jsnum::number_to_string;
 use crate::string_order::compare_strings;
 use serde_json::{json, Map, Value as Json};
@@ -22,34 +26,46 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
-    Some(match kind {
+    let answer = match kind {
         "JoinNode" => join(c),
-        "AppendNode" | "BindColumnsNode" => stack(c),
-        "TableInfoNode" => table_info(c),
+        "AppendNode" | "BindColumnsNode" => stack(c, kind == "AppendNode"),
+        "TableInfoNode" => return Some(table_info(c)),
         "SlicerNode" => slicer(c),
         "PivotNode" => pivot(c),
         _ => return None,
-    })
+    };
+    Some(answer.and_then(|outs| shown(c, outs)))
 }
 
 fn one(key: &str, v: impl Into<Cv>) -> Answer {
     Ok(vec![(key.into(), v.into())])
 }
 
-fn is_ref(v: &Cv) -> bool {
-    matches!(v, Cv::Json(j) if j.get("__frameRef").is_some())
-}
-
 fn texts(names: &[String]) -> V {
     list(names.iter().map(|s| V::str(s)).collect())
 }
 
-fn drop_nothing() -> Json {
-    json!({ "kind": "drop", "columns": [] })
-}
-
 fn row_count(f: &Frame) -> usize {
     f.columns.iter().map(|c| c.values.len()).max().unwrap_or(0)
+}
+
+/// An input's frame as a verb reads it whole: a ref's plan run, a value taken once.
+fn whole(v: &Cv) -> Result<Rc<FrameValue>, V> {
+    match v {
+        Cv::Ref(r) => r.flush().map(|f| f.frame.clone()).map_err(V::err),
+        v => match refs::planned(v) {
+            Some(r) => Ok(r.base().clone()),
+            None => Err(super::frames::thrown("the input isn't a frame")),
+        },
+    }
+}
+
+/// A verb's frame as a ref planning nothing yet; its error as the answer.
+fn answered(r: Result<FrameValue, crate::error_value::SolError>) -> Cv {
+    match r {
+        Ok(f) => Cv::Ref(FrameRef::source(Rc::new(f))),
+        Err(e) => Cv::V(V::err(e)),
+    }
 }
 
 // ─── Join, Append, Bind Columns ─────────────────────────────────────────────────
@@ -72,42 +88,60 @@ fn join(c: &mut Call) -> Answer {
         return one("frame", V::Null);
     }
     let direction = c.field_str("asofDirection", "backward").to_string();
-    Ok(vec![
-        ("leftKey".into(), Cv::from(V::str(&lk))),
-        ("rightKey".into(), Cv::from(V::str(&rk))),
-        ("how".into(), Cv::from(V::str(&how))),
-        ("asofDirection".into(), Cv::from(V::str(&direction))),
-        ("asofTolerance".into(), Cv::from(tolerance)),
-    ])
+    let mut opts = json!({ "leftKey": lk, "rightKey": rk, "how": how, "asofDirection": direction });
+    match &tolerance {
+        V::Num(n) if n.is_finite() => opts["asofTolerance"] = json_num(*n),
+        V::Num(_) | V::Undef => {}
+        v => opts["asofTolerance"] = super::frames::to_json(v),
+    }
+    let out = (|| {
+        let (l, r) = (whole(&left)?, whole(&right)?);
+        let opts: JoinOpts = serde_json::from_value(opts)
+            .map_err(|e| V::err(sol_error(ErrorCode::Error, format!("bad argument \"opts\": {e}"))))?;
+        Ok(answered(join_frames(&l, &r, &opts)))
+    })();
+    one("frame", out.unwrap_or_else(Cv::V))
 }
 
-/// Append and Bind Columns: the wired frames in socket order; one passes on, more go to the backend to combine.
-fn stack(c: &mut Call) -> Answer {
-    let keys: Vec<String> =
-        c.sockets.iter().map(|s| s.key.clone()).filter(|k| k.starts_with('f') && !first(c, k).is_nullish()).collect();
-    match keys.as_slice() {
+/// Append and Bind Columns: the wired frames in socket order; one passes on, more combine.
+fn stack(c: &mut Call, append: bool) -> Answer {
+    let frames: Vec<Cv> = c
+        .sockets
+        .iter()
+        .filter(|s| s.key.starts_with('f'))
+        .map(|s| first(c, &s.key))
+        .filter(|f| !f.is_nullish())
+        .collect();
+    match frames.as_slice() {
         [] => one("frame", V::Null),
-        [k] => {
-            let f = first(c, k);
-            one("frame", if uploaded(c, k) { f } else { plan(&f, drop_nothing()) })
+        [f] => one("frame", pass(f)),
+        _ => {
+            let out = (|| {
+                let whole = frames.iter().map(whole).collect::<Result<Vec<_>, V>>()?;
+                let refs: Vec<&FrameValue> = whole.iter().map(Rc::as_ref).collect();
+                Ok(answered(if append { append_frames(&refs) } else { Ok(bind_columns(&refs)) }))
+            })();
+            one("frame", out.unwrap_or_else(Cv::V))
         }
-        _ => one("stack", texts(&keys)),
     }
 }
 
 // ─── Table Size ─────────────────────────────────────────────────────────────────
 
 fn table_info(c: &mut Call) -> Answer {
-    let (rows, cols) = match c.wired_card("preview") {
-        Some(p) => match p.first().cloned().unwrap_or(Cv::UNDEF) {
-            Cv::Frame(f) => (V::Num(f.total_rows.unwrap_or(row_count(&f) as f64)), V::Num(f.columns.len() as f64)),
-            p => {
+    // A frame is counted by its columns and its row count; a ref's rows are never read.
+    let counted = |f: &Frame| (V::Num(f.total_rows.unwrap_or(row_count(f) as f64)), V::Num(f.columns.len() as f64));
+    let (rows, cols) = match first(c, "matrix") {
+        Cv::Frame(f) => counted(&f),
+        Cv::Ref(r) => match refs::schema(&r) {
+            Ok(f) => counted(&f),
+            Err(e) => {
                 c.show("cachedRows", V::Null);
                 c.show("cachedCols", V::Null);
-                return Ok(vec![("rows".into(), p.clone()), ("cols".into(), p)]);
+                return Ok(vec![("rows".into(), Cv::V(e.clone())), ("cols".into(), Cv::V(e))]);
             }
         },
-        None => {
+        _ => {
             let input = first_raw(c, "matrix");
             (kit::core_call("ROWS", std::slice::from_ref(&input)), kit::core_call("COLUMNS", &[input]))
         }
@@ -185,19 +219,19 @@ fn slicer(c: &mut Call) -> Answer {
         .map(|a| a.iter().map(super::decode).collect())
         .unwrap_or_default();
     let selected = c.field_str("selectedColumn", "").to_string();
-    if is_ref(&raw) {
-        let names: Vec<String> = match first(c, "schema") {
-            Cv::Frame(f) => f.columns.iter().map(|k| k.name.clone()).collect(),
-            _ => Vec::new(),
+    if let Cv::Ref(r) = &raw {
+        let names: Vec<String> = match refs::schema(r) {
+            Ok(f) => f.columns.iter().map(|k| k.name.clone()).collect(),
+            Err(_) => Vec::new(),
         };
         let name = if names.contains(&selected) { selected } else { names.first().cloned().unwrap_or_default() };
-        if !name.is_empty() && c.wired("column").is_none() {
-            return one("read", V::str(&name));
-        }
-        let col = match first(c, "column") {
-            Cv::Frame(f) => f.columns.first().cloned().map(Ok),
-            Cv::V(V::Err(e)) => Some(Err(V::Err(e))),
-            _ => None,
+        let col = if name.is_empty() {
+            None
+        } else {
+            match refs::column(r, &name) {
+                Ok(k) => k.map(Ok),
+                Err(e) => Some(Err(e)),
+            }
         };
         c.show("cachedColumns", texts(&names));
         match &col {
@@ -276,7 +310,7 @@ fn slicer(c: &mut Call) -> Answer {
             ..k.clone()
         })
         .collect();
-    one("result", Cv::Frame(Rc::new(Frame { columns, total_rows: None, approx: None })))
+    one("result", Cv::Frame(Rc::new(Frame { columns, total_rows: None, approx: None, source: None, layout: None })))
 }
 
 // ─── PIVOTBY ────────────────────────────────────────────────────────────────────
@@ -385,16 +419,6 @@ fn combine_filter(f: &Frame, exclude: &Map<String, Json>, wired: &V) -> Option<V
     )
 }
 
-/// The layout's numbers as JS reads them back: an integer as an integer, -0 tagged.
-fn js_numbers(j: Json) -> Json {
-    match j {
-        Json::Number(n) => n.as_f64().map_or(Json::Number(n), json_num),
-        Json::Array(a) => Json::Array(a.into_iter().map(js_numbers).collect()),
-        Json::Object(o) => Json::Object(o.into_iter().map(|(k, v)| (k, js_numbers(v))).collect()),
-        j => j,
-    }
-}
-
 /// The cube's flat columns, cells in one unit read in it.
 fn flat_cube(k: &Cube) -> Frame {
     let nested =
@@ -408,21 +432,21 @@ fn flat_cube(k: &Cube) -> Frame {
             Column { unit, format: col.format.clone(), ..super::frames::core_column(&fc) }
         })
         .collect();
-    Frame { columns, total_rows: None, approx: None }
+    Frame { columns, total_rows: None, approx: None, source: None, layout: None }
 }
 
 fn pivot(c: &mut Call) -> Answer {
     let raw = first(c, "frame");
-    if is_ref(&raw) {
-        let schema = match first(c, "schema") {
-            Cv::Frame(s) => s,
-            other => {
-                c.show("cachedResult", other.clone());
+    if let Cv::Ref(r) = &raw {
+        let schema = match refs::schema(r) {
+            Ok(s) => s,
+            Err(e) => {
+                c.show("cachedResult", e.clone());
                 show_sources(c, Vec::new());
-                return one("frame", other);
+                return one("frame", e);
             }
         };
-        if c.wired("columns").is_none() {
+        let wanted = {
             let have: HashSet<&str> = schema.columns.iter().map(|k| k.name.as_str()).collect();
             let mut wanted: Vec<String> = Vec::new();
             let mut want = |n: String| {
@@ -451,15 +475,20 @@ fn pivot(c: &mut Call) -> Answer {
             for n in names_of(c.field("detailFields")) {
                 want(n);
             }
-            return one("read", texts(&wanted));
-        }
-        let read = match first(c, "columns") {
-            Cv::Frame(f) => f,
-            other => {
-                c.show("cachedResult", other.clone());
-                return one("frame", other);
-            }
+            wanted
         };
+        let mut columns = Vec::new();
+        for n in &wanted {
+            match refs::column(r, n) {
+                Ok(Some(k)) => columns.push(k),
+                Ok(None) => {}
+                Err(e) => {
+                    c.show("cachedResult", e.clone());
+                    return one("frame", e);
+                }
+            }
+        }
+        let read = Frame { columns, ..Frame::default() };
         let by_name = |name: &str| read.columns.iter().rev().find(|k| k.name == name);
         let sources = schema
             .columns
@@ -481,7 +510,7 @@ fn pivot(c: &mut Call) -> Answer {
                 })
             })
             .collect();
-        let slice = Rc::new(Frame { columns, total_rows: None, approx: None });
+        let slice = Rc::new(Frame { columns, ..Frame::default() });
         return pivot_over(c, Cv::Frame(slice), Some(&raw));
     }
     let f = match &raw {
@@ -510,8 +539,8 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
     }
     let valid: HashSet<String> = names.iter().cloned().collect();
     let fields = kept(c, &valid);
-    let answer =
-        |frame: Cv| -> Answer { Ok(vec![("frame".into(), frame), ("fieldNames".into(), Cv::V(texts(&names)))]) };
+    c.show("fieldNames", texts(&names));
+    let answer = |frame: Cv| -> Answer { Ok(vec![("frame".into(), frame)]) };
     let mut lists = Vec::new();
     for key in AXES {
         match column_list(c, key)? {
@@ -560,7 +589,7 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
     for (k, core) in frame.columns.iter_mut().zip(&out.columns) {
         k.unit = core.unit.as_ref().map(|u| u.to_json());
     }
-    c.show("pivotWire", Cv::Json(Rc::new(js_numbers(layout))));
+    frame.layout = Some(Rc::new(layout));
     let frame = Cv::Frame(Rc::new(frame));
     c.show("cachedResult", frame.clone());
     answer(frame)

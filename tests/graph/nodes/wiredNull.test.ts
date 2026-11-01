@@ -521,7 +521,7 @@ describe("a column-LIST reference — same rule as the scalar column", () => {
   });
 
   it("Columns (Keep): a name the frame lacks is a #REF! error", async () => {
-    await expect(new ColumnsNode().data({ frame: [f], columns: [["nope"]] })).rejects.toMatchObject({ code: "#REF!" });
+    await expect(Promise.resolve().then(() => new ColumnsNode().data({ frame: [f], columns: [["nope"]] }))).rejects.toMatchObject({ code: "#REF!" });
   });
 
   it("Columns: op round-trips through extractInit", () => {

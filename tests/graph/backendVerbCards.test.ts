@@ -1,8 +1,9 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-// The cards whose verb is a backend call of its own (Join, Append, Bind Columns) or a read of a ref's schema and
-// columns (Table Size, Slicer, PIVOTBY), driven through data() over values and refs alike.
-import { describe, it, expect, beforeEach } from "vitest";
-import { runFrameUnary, useWasmBackend, clearCollectMemo, readFrame, isFrameRef, type FrameRef } from "../../src/graph/frameBackend";
+// The cards whose verb reads whole frames at once (Join, Append, Bind Columns) or a ref's schema and columns (Table
+// Size, Slicer, PIVOTBY), driven through data() over values and refs alike.
+import { describe, it, expect } from "vitest";
+import { readFrame, isFrameRef, type FrameRef } from "../../src/graph/frameBackend";
+import { planned, planOf } from "./frameRefKit";
 import { JoinNode, AppendNode, BindColumnsNode, PivotNode } from "../../src/graph/nodes/frame";
 import { TableInfoNode } from "../../src/graph/nodes/matrix";
 import { SlicerNode } from "../../src/graph/nodes/control";
@@ -36,11 +37,9 @@ const mixed: FrameValue = {
   ],
 };
 
-const lazy = async (f: FrameValue) => (await runFrameUnary(f, { kind: "distinct" })) as FrameRef;
+const lazy = async (f: FrameValue): Promise<FrameRef> => planned(f, { kind: "distinct" });
 const shown = async (v: unknown) => (isFrameRef(v) ? readFrame(v) : v) as Promise<FrameValue | null>;
 const cols = (f: FrameValue | null) => f && Object.fromEntries(f.columns.map((c) => [c.name, c.values]));
-
-beforeEach(() => { useWasmBackend(); clearCollectMemo(); });
 
 describe("Join", () => {
   const join = async (init: ConstructorParameters<typeof JoinNode>[0], keys: Record<string, string>, inputs: Record<string, unknown[]>) => {
@@ -107,7 +106,7 @@ describe.each([["Append", AppendNode], ["Bind Columns", BindColumnsNode]] as con
     expect(await run({ f1: [sales] })).toBe(sales);
     const ref = await lazy(reps);
     const out = await run({ f0: [ref] });
-    expect(isFrameRef(out) && out.__frameRef).toBe(ref.__frameRef);
+    expect(planOf(out)).toEqual(["distinct", "drop"]);
     expect(cols(await shown(out))).toEqual(cols(reps));
   });
 
@@ -149,10 +148,10 @@ describe("Table Size", () => {
   });
 
   it("a ref whose plan fails answers its error", async () => {
-    const bad = (await runFrameUnary(sales, { kind: "select", columns: ["Nope"] })) as FrameRef;
+    const bad = planned(sales, { kind: "select", columns: ["Nope"] });
     const [rows, colsOut, cr, cc] = await size(bad);
     expect((rows as { code?: string }).code).toBe("#REF!");
-    expect(colsOut).toBe(rows);
+    expect(colsOut).toEqual(rows);
     expect([cr, cc]).toEqual([null, null]);
   });
 });
@@ -203,7 +202,7 @@ describe("Slicer", () => {
   });
 
   it("a ref whose schema can't be read passes on, and its preview fails the card", async () => {
-    const bad = (await runFrameUnary(mixed, { kind: "select", columns: ["Nope"] })) as FrameRef;
+    const bad = planned(mixed, { kind: "select", columns: ["Nope"] });
     await expect(slice(bad, { selectedValues: ["a"] })).rejects.toThrow();
   });
 
@@ -244,12 +243,12 @@ describe("PIVOTBY beyond the field filter", () => {
     const ref = await lazy(sales);
     const n = pivot();
     const out = await n.data({ frame: [ref], rowFields: [["Rep"]] });
-    expect(isFrameRef(out.frame) && out.frame.__frameRef).toBe(ref.__frameRef);
+    expect(isFrameRef(out.frame) && planOf(out.frame)).toEqual(["distinct", "drop"]);
     expect(n.sourceColumns.map((c) => c.distinct)).toEqual([["Ada", "Bo", "Cy"], [], []]);
   });
 
   it("a ref that can't be read answers its error", async () => {
-    const bad = (await runFrameUnary(sales, { kind: "select", columns: ["Nope"] })) as FrameRef;
+    const bad = planned(sales, { kind: "select", columns: ["Nope"] });
     const n = pivot();
     const out = await n.data({ frame: [bad], rowFields: [["Rep"]], values: [["Amount"]] });
     expect((out.frame as { code?: string }).code).toBe("#REF!");

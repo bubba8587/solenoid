@@ -1,31 +1,32 @@
 //! [[B17]] typedValueModel, [[C48]] appendLadder, [[C49]] filterOneJob. The lazy frame verbs
-//! and SUMIFS. A verb never runs on a frame: it reads its settings and extends the input ref's plan
-//! (`{__frameRef, __plan}`) by one op, in the shape the backend reads, which runs the plan later. The card's shell
-//! uploads a frame value for its ref first and names it in `uploaded`, so a verb passing that frame through answers
-//! the ref it was given. A Cube runs its verb on its cells here, the scalar columns through the core's frame verbs.
-//! Get Column and SUMIFS read cells: the shell reads a ref's columns from the backend and hands them in.
+//! and SUMIFS. A verb never runs on a frame: it reads its settings and extends its input's plan by one op
+//! (`frame_ref.rs`), in the shape the verbs read, which runs when something reads the frame; the card shows the
+//! answer's first rows (`refs::preview`). A Cube runs its verb on its cells here, the scalar columns through the core's
+//! frame verbs. Get Column and SUMIFS read cells: a ref's columns are read from its plan's answer.
 
 use super::frames::{
-    affine_display, card as first, card_cell, core_cell, cube_from_columns, cube_row_count, cube_values,
-    matrix_cells_from_list, select_cube_rows, str_input, tag_cell_unit, thrown, to_json, trimmed, widen_to_frame,
-    UnitTag,
+    affine_display, card as first, card_cell, core_cell, cube_from_columns, cube_row_count, cube_values, from_core,
+    matrix_cells_from_list, select_cube_rows, str_input, tag_cell_unit, thrown, to_core, to_json, trimmed,
+    widen_to_frame, UnitTag,
 };
 use super::list::{frame_cell_of, infer_column, truthy};
+use super::refs;
 use super::scalar::{read_role, Role};
 use super::Cv;
-use super::{err, list, Answer, Call, Column, Cube, CubeColumn};
+use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::excel_functions::{js_string_of, V};
-use crate::frame::{FrameCell, FrameColumn, FrameValue};
+use crate::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::{
-    apply_verb, compile_filter, format_frame_cell, require_text_column, slice_bounds, FilterOp, SliceMode, TaggedOp,
+    apply_verb, compile_filter, format_frame_cell, pivot_frame, require_text_column, slice_bounds, FilterOp, PivotSpec,
+    SliceMode, TaggedOp,
 };
 use crate::jsnum::{js_lower, js_trim};
 use serde_json::{json, Map, Value as Json};
 use std::rc::Rc;
 
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
-    Some(match kind {
+    let answer = match kind {
         "DistinctNode" => distinct(c),
         "HeadNode" => head(c),
         "SortFrameNode" => sort(c),
@@ -41,13 +42,28 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "MergeColumnsNode" => merge_columns(c),
         "DropBlankRowsNode" => drop_blank_rows(c),
         "WindowNode" => window(c),
-        "GetColumnNode" => get_column(c),
-        "SumIfsNode" => sum_ifs(c),
+        "GetColumnNode" => return Some(get_column(c)),
+        "SumIfsNode" => return Some(sum_ifs(c)),
         _ => return None,
-    })
+    };
+    Some(answer.and_then(|outs| shown(c, outs)))
 }
 
 // ─── Plans ──────────────────────────────────────────────────────────────────────
+
+/// The card shows its frame's first rows, unless the body showed its answer (a Cube's).
+pub(crate) fn shown(c: &mut Call, outs: Vec<(String, Cv)>) -> Answer {
+    if c.display.iter().any(|(k, _)| k == "cachedResult") {
+        return Ok(outs);
+    }
+    let out = outs.iter().find(|(k, _)| k == "frame" || k == "result").map(|(_, v)| v.clone()).unwrap_or(Cv::NULL);
+    let p = match &out {
+        Cv::Ref(r) => refs::preview(r, refs::PREVIEW_ROWS)?,
+        v => v.clone(),
+    };
+    c.show("cachedResult", p);
+    Ok(outs)
+}
 
 fn one(v: impl Into<Cv>) -> Answer {
     Ok(vec![("frame".into(), v.into())])
@@ -57,26 +73,24 @@ pub(crate) fn nullish(v: &V) -> bool {
     matches!(v, V::Null | V::Undef)
 }
 
-/// The ref with `op` planned after its own: `{__frameRef, __plan: [...plan, op]}`.
+/// The frame with `op` planned after its own: a value's plan starts with it.
 pub(crate) fn plan(f: &Cv, op: Json) -> Cv {
-    let Cv::Json(r) = f else { return Cv::V(thrown("r.__plan is not iterable")) };
-    let mut ops = r.get("__plan").and_then(Json::as_array).cloned().unwrap_or_default();
-    ops.push(op);
-    Cv::Json(Rc::new(json!({ "__frameRef": r.get("__frameRef").cloned().unwrap_or(Json::Null), "__plan": ops })))
+    match refs::planned(f) {
+        Some(r) => Cv::Ref(r.then(op)),
+        None => Cv::V(thrown("r.__plan is not iterable")),
+    }
 }
 
-/// Whether the shell uploaded `key`'s frame for the ref this call holds.
-pub(crate) fn uploaded(c: &Call, key: &str) -> bool {
-    c.wired("uploaded").is_some_and(|u| u.iter().any(|v| matches!(v, V::Str(s) if &**s == key)))
+pub(crate) fn drop_nothing() -> Json {
+    json!({ "kind": "drop", "columns": [] })
 }
 
-/// A frame the shell uploaded passes as the ref it was given, which the shell hands back as the frame;
-/// a ref passes as a new ref planning nothing more, so the card never drops the handle its input holds.
-fn pass(c: &Call, f: &Cv) -> Cv {
-    if uploaded(c, "frame") {
-        f.clone()
-    } else {
-        plan(f, json!({ "kind": "drop", "columns": [] }))
+/// A frame passed on: a value as itself (a list widened to a frame), a ref as a new ref planning nothing more.
+pub(crate) fn pass(f: &Cv) -> Cv {
+    match f {
+        Cv::Ref(_) => plan(f, drop_nothing()),
+        Cv::V(v) if !nullish(v) => Cv::Frame(Rc::new(widen_to_frame(v))),
+        _ => f.clone(),
     }
 }
 
@@ -178,7 +192,7 @@ fn sort(c: &mut Call) -> Answer {
         let r = if col.is_empty() { Ok(f.clone()) } else { sort_cube(k, &col, &dir) };
         return cube_answer(c, r);
     }
-    one(if col.is_empty() { pass(c, &f) } else { plan(&f, json!({ "kind": "sort", "by": col, "dir": dir })) })
+    one(if col.is_empty() { pass(&f) } else { plan(&f, json!({ "kind": "sort", "by": col, "dir": dir })) })
 }
 
 const VALUELESS: [&str; 5] = ["isblank", "notblank", "iserror", "noterror", "listEmpty"];
@@ -237,7 +251,7 @@ fn filter(c: &mut Call) -> Answer {
         return Ok(vec![("frame".into(), Cv::from(e.clone())), ("dropped".into(), Cv::from(e))]);
     }
     if conds.is_empty() {
-        return Ok(vec![("frame".into(), pass(c, &f)), ("dropped".into(), Cv::from(V::Null))]);
+        return Ok(vec![("frame".into(), pass(&f)), ("dropped".into(), Cv::from(V::Null))]);
     }
     let list: Vec<Json> = conds.iter().map(Cond::to_json).collect();
     let kept = plan(&f, json!({ "kind": "filterMulti", "combine": combine, "conditions": list }));
@@ -259,20 +273,112 @@ fn columns(c: &mut Call) -> Answer {
     if op == "drop" {
         return one(plan(&f, json!({ "kind": "drop", "columns": texts(&cols) })));
     }
-    one(if cols.is_empty() { pass(c, &f) } else { plan(&f, json!({ "kind": "select", "columns": texts(&cols) })) })
+    one(if cols.is_empty() { pass(&f) } else { plan(&f, json!({ "kind": "select", "columns": texts(&cols) })) })
 }
 
 fn group_by(c: &mut Call) -> Answer {
-    let f = first(c, "frame");
+    let raw = first(c, "frame");
     let keys = column_list(c, "keys")?;
     let col = str_input(c, "column", "");
-    let Some(keys) = keys.filter(|_| !f.is_nullish() && !matches!(col, V::Null)) else { return one(V::Null) };
+    let Some(keys) = keys.filter(|_| !raw.is_nullish() && !matches!(col, V::Null)) else { return one(V::Null) };
     let col = trimmed(&col, "colRaw")?;
-    if keys.is_empty() || col.is_empty() {
-        return one(pass(c, &f));
+    let grouped = !keys.is_empty() && !col.is_empty();
+    // A Cube groups its flat columns.
+    let f = match &raw {
+        Cv::Cube(k) => {
+            let only: Option<Vec<String>> = grouped.then(|| keys.iter().chain([&col]).cloned().collect());
+            match flat_cube_frame(k, only.as_deref()) {
+                Ok(f) => Cv::Frame(Rc::new(f)),
+                Err(e) => return one(e),
+            }
+        }
+        f => f.clone(),
+    };
+    if !grouped {
+        return one(pass(&f));
     }
     let agg = c.field_str("agg", "sum").to_string();
+    let depth = c.field("totalDepth").and_then(Json::as_f64).unwrap_or(0.0);
+    if depth != 0.0 {
+        return one(group_totals(&f, &keys, &col, &agg, depth));
+    }
     one(plan(&f, json!({ "kind": "groupBy", "keys": texts(&keys), "aggs": [{ "column": col, "op": agg, "as": col }] })))
+}
+
+/// GROUPBY with totals: the core's pivot over the whole frame, its layout kept beside the answer. A min or max of
+/// dates stays a date, as the plain GROUPBY's does.
+fn group_totals(f: &Cv, keys: &[String], col: &str, agg: &str, depth: f64) -> Cv {
+    let whole = match f {
+        Cv::Ref(r) => refs::collect(r),
+        f => f.clone(),
+    };
+    let frame = match &whole {
+        Cv::Frame(fr) => fr.clone(),
+        Cv::V(V::Null | V::Undef) => return Cv::NULL,
+        Cv::V(e @ V::Err(_)) => return Cv::V(e.clone()),
+        Cv::V(v) => Rc::new(widen_to_frame(v)),
+        _ => return Cv::NULL,
+    };
+    let spec = json!({
+        "rowFields": keys, "colFields": [], "values": [col], "funcs": [agg], "rowTotalDepth": depth,
+    });
+    let spec: PivotSpec = match serde_json::from_value(spec) {
+        Ok(s) => s,
+        Err(e) => return Cv::V(err(ErrorCode::Error, e.to_string())),
+    };
+    let core = to_core(&frame);
+    let (out, layout) = match pivot_frame(&core, &spec) {
+        Ok(r) => r,
+        Err(e) => return Cv::V(V::err(e)),
+    };
+    let mut answer = from_core(&out);
+    for (k, c) in answer.columns.iter_mut().zip(&out.columns) {
+        k.unit = c.unit.as_ref().map(|u| u.to_json());
+        k.format = c.format.as_ref().map(|j| (**j).clone());
+    }
+    let dated = crate::frame::get_column(&core, col).is_some_and(|k| k.ty == FrameColType::Date);
+    if (agg == "min" || agg == "max")
+        && dated
+        && let Some(last) = answer.columns.last_mut()
+    {
+        last.ty = FrameColType::Date;
+    }
+    answer.layout = Some(Rc::new(layout));
+    Cv::Frame(Rc::new(answer))
+}
+
+/// A Cube's columns as a frame's (`flatCubeToFrame`): the named ones, or with none named its scalar ones; a nested
+/// one named is `#SHAPE!`.
+pub(crate) fn flat_cube_frame(k: &Cube, only: Option<&[String]>) -> Result<Frame, V> {
+    let nested = |col: &CubeColumn| {
+        col.cells.iter().any(|v| matches!(v, Cv::V(V::List(_)) | Cv::Frame(_) | Cv::Cube(_) | Cv::Cells(_)))
+    };
+    let cols: Vec<&CubeColumn> = match only {
+        None => k.columns.iter().filter(|col| !nested(col)).collect(),
+        Some(names) => {
+            let mut cols: Vec<&CubeColumn> = Vec::new();
+            for name in names {
+                let Some(col) = k.columns.iter().find(|cc| &cc.name == name) else {
+                    return Err(err(ErrorCode::Ref, format!("column \"{name}\" not found")));
+                };
+                if !cols.iter().any(|x| std::ptr::eq(*x, col)) {
+                    cols.push(col);
+                }
+            }
+            cols
+        }
+    };
+    if let Some(col) = cols.iter().find(|col| nested(col)) {
+        return Err(err(ErrorCode::Shape, format!("Column \"{}\" holds nested cells; this reads flat rows", col.name)));
+    }
+    let columns = cols
+        .into_iter()
+        .map(|col| {
+            let (fc, unit) = flat_column(k, col);
+            Column { unit, format: col.format.clone(), ..super::frames::core_column(&fc) }
+        })
+        .collect();
+    Ok(Frame { columns, ..Frame::default() })
 }
 
 fn unpivot(c: &mut Call) -> Answer {
@@ -284,7 +390,7 @@ fn unpivot(c: &mut Call) -> Answer {
         return one(V::Null);
     }
     one(if vals.is_empty() {
-        pass(c, &f)
+        pass(&f)
     } else {
         plan(&f, json!({ "kind": "unpivot", "idColumns": texts(&ids), "valueColumns": texts(&vals) }))
     })
@@ -314,7 +420,7 @@ fn rename(c: &mut Call) -> Answer {
             map.insert(js_string_of(a), to_json(b));
         }
     }
-    one(if map.is_empty() { pass(c, &f) } else { plan(&f, json!({ "kind": "rename", "map": map })) })
+    one(if map.is_empty() { pass(&f) } else { plan(&f, json!({ "kind": "rename", "map": map })) })
 }
 
 fn split_column(c: &mut Call) -> Answer {
@@ -328,7 +434,7 @@ fn split_column(c: &mut Call) -> Answer {
     };
     let column = trimmed(&column, "columnRaw")?;
     one(if column.is_empty() {
-        pass(c, &f)
+        pass(&f)
     } else {
         plan(
             &f,
@@ -384,7 +490,7 @@ fn merge_columns(c: &mut Call) -> Answer {
     };
     let cols = trimmed_names(cols);
     one(if cols.len() < 2 {
-        pass(c, &f)
+        pass(&f)
     } else {
         plan(
             &f,
@@ -497,7 +603,7 @@ fn window(c: &mut Call) -> Answer {
         if matches!(f, Cv::Cube(_)) {
             return cube_answer(c, Ok(f.clone()));
         }
-        return one(pass(c, &f));
+        return one(pass(&f));
     }
     let V::Str(name) = &name else { return Err(thrown("name.trim is not a function")) };
     let out_name = window_column_name(&agg, name, &column)?;
@@ -612,12 +718,12 @@ fn get_column(c: &mut Call) -> Answer {
             }
             read_column(c, &infer_column(&name, &cube_values(&cc.cells)))
         }
-        // A ref's column, which the shell read from the backend.
-        Cv::Json(_) => match first(c, "column") {
-            Cv::Frame(col) if !col.columns.is_empty() => read_column(c, &col.columns[0]),
-            Cv::V(e @ V::Err(_)) => values_answer(c, V::Null, e),
-            _ => values_answer(c, V::Null, V::Null),
+        Cv::Ref(r) => match refs::column(r, &name) {
+            Ok(Some(col)) => read_column(c, &col),
+            Ok(None) => values_answer(c, V::Null, V::Null),
+            Err(e) => values_answer(c, V::Null, e),
         },
+        Cv::Json(_) => values_answer(c, V::Null, V::Null),
         Cv::Frame(fr) => match column_named(&fr.columns, &name) {
             Some(col) => read_column(c, &col.clone()),
             None => values_answer(c, V::Null, V::Null),
@@ -681,11 +787,31 @@ fn sum_ifs(c: &mut Call) -> Answer {
                 .collect(),
             by_position: true,
         }),
-        Cv::Json(_) => match first(c, "read") {
-            Cv::Frame(f) => Some(Source { columns: f.columns.clone(), by_position: false }),
-            Cv::V(e @ V::Err(_)) => return sum_ifs_answer(c, e),
-            _ => None,
-        },
+        // A ref's columns the criteria and the values name, each by the name it was asked by.
+        Cv::Ref(r) => {
+            let mut names: Vec<String> = Vec::new();
+            let mut want = |n: &str| {
+                if !n.is_empty() && !names.iter().any(|x| x == n) {
+                    names.push(n.to_string());
+                }
+            };
+            for s in c.sockets.iter().filter(|s| s.key.starts_with("column")) {
+                want(js_trim(&filter_value(c, &s.key).unwrap_or_default()));
+            }
+            let vn = str_input(c, "values", "");
+            if !matches!(vn, V::Null | V::Undef) {
+                want(js_trim(&js_string_of(&vn)));
+            }
+            let mut columns = Vec::new();
+            for n in &names {
+                match refs::column(&r, n) {
+                    Ok(Some(col)) => columns.push(Column { name: n.clone(), ..col }),
+                    Ok(None) => {}
+                    Err(e) => return sum_ifs_answer(c, e),
+                }
+            }
+            Some(Source { columns, by_position: false })
+        }
         Cv::Frame(f) => Some(Source { columns: f.columns.clone(), by_position: true }),
         _ => None,
     };
@@ -884,6 +1010,9 @@ fn cell_key(v: &Cv, out: &mut String) {
         Cv::Json(j) => {
             let _ = write!(out, "o{j:?}");
         }
+        Cv::Ref(r) => {
+            let _ = write!(out, "r{:p}", Rc::as_ptr(r));
+        }
         Cv::Cube(k) => {
             out.push_str("[c");
             for col in &k.columns {
@@ -1009,7 +1138,7 @@ impl<'a> ListCond<'a> {
                 let t = match it {
                     Cv::V(V::List(_) | V::Null | V::Undef) | Cv::Frame(_) | Cv::Cube(_) | Cv::Cells(_) => return None,
                     Cv::V(v) => js_string_of(v),
-                    Cv::Json(_) => "[object Object]".to_string(),
+                    Cv::Json(_) | Cv::Ref(_) => "[object Object]".to_string(),
                 };
                 Some(if self.match_case { t } else { js_lower(&t).into_owned() })
             })

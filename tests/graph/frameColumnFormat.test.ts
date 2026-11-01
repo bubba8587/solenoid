@@ -15,7 +15,7 @@ import {
 } from "../../src/graph/frame";
 import { readFrame } from "../../src/graph/frameBackend";
 import { describeTilesOf } from "../../src/graph/describeProfile";
-import { useWasmBackend, clearCollectMemo } from "../../src/graph/frameBackend";
+
 import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";
 import seed from "../../src/graph/seedGraphs/allocator.json";
 
@@ -48,7 +48,7 @@ async function collected(out: Record<string, unknown>): Promise<FrameValue> {
   return f;
 }
 
-beforeEach(() => { frameFormatStore.clear(); useWasmBackend(); clearCollectMemo(); });
+beforeEach(() => { frameFormatStore.clear(); });
 afterEach(() => { frameFormatStore.clear(); });
 
 // [[C118]] formatTravelsWithValue: a frame column's DISPLAY format rides the value like its

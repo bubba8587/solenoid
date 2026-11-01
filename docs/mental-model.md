@@ -99,8 +99,8 @@ never saved; they're worked out again on load. A node that retypes a socket in p
 A value on a cable is one shared cell in the core, holding the form its producer made (a core
 value or a JavaScript object) and the other form once a reader of that kind asks
 (`../tree/specs/computation/graph-core.md` § Direct calls). A Frame on a cable is usually a
-lazy `FrameRef`, a handle to a verb chain living in the engine behind the `FrameBackend`
-seam: the Rust core in wasm, on the web and desktop alike. Data materializes only
+lazy frame, a verb chain held in the core and passed between the direct verb cards
+without crossing to JavaScript, on the web and desktop alike. Data materializes only
 at the boundary: `preview` (cards show the first N rows), `column` (the bridge to scalars and
 lists) and `collect`. A fixture corpus, run from both vitest and cargo, pins every verb's answers. There is one
 definition per verb, the core's (`frame_verbs.rs`); node code never re-implements one ([[C130]] rustCore).

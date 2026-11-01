@@ -9,7 +9,8 @@ import { frameRowCount, type FrameValue } from "../../src/graph/frame";
 import type { FrameOp, JoinOpts } from "../../src/graph/frameOps";
 import { isUnitCell } from "../../src/graph/unitValue";
 import { coreValue, readReply } from "../../src/graph/coreValues";
-import { frameBackend, useWasmBackend, computeColumnOnEngine, engineClock, frameFnOnCore } from "../../src/graph/frameBackend";
+import { computeColumnOnEngine, engineClock, frameFnOnCore } from "../../src/graph/frameBackend";
+import { coreStore } from "./coreStore";
 import { ReduceLambdaNode, ByAxisNode } from "../../src/graph/nodes/tableLambda";
 import { isLambdaValue, type LambdaValue } from "../../src/graph/lambdaValue";
 import { wasmInvokeSync } from "../../src/graph/engineWasm";
@@ -20,7 +21,6 @@ process.env.TZ = "UTC";
 vi.useFakeTimers({ toFake: ["Date"], now: Date.UTC(2026, 5, 15, 13, 45, 30, 250) });
 
 beforeAll(() => {
-  useWasmBackend();
 });
 
 function mulberry32(seed: number): () => number {
@@ -167,7 +167,7 @@ function view(f: FrameValue): unknown {
 describe("table verbs answer as frozen", () => {
   const verbs = readFrozen<VerbCase>("verbs");
   it(`${verbs.length} pipelines, joins, appends and binds`, { timeout: 600_000 }, async () => {
-    const be = frameBackend();
+    const be = coreStore();
     const bad: unknown[] = [];
     for (const c of verbs) {
       let got: Outcome;

@@ -1,8 +1,9 @@
 //! The computed columns: Computed Column ([[B17]] typedValueModel, [[C48]]) and Cube Input's formula columns
 //! ([[C10]] socketLattice, [[C28]] literalsIffEditable), with what they share with Frame Input: the unit plan
 //! ([[C25]] firstClassUnits), a Cube as a row formula reads it ([[C22]]
-//! rowFormulaRefs) and a column's type. A frame ref's column is computed and assembled in the engine by the card's
-//! TS around the body, and a Cube Input's records are read there too: the text's key order is JS's.
+//! rowFormulaRefs) and a column's type. Over a frame ref the formula runs on the plan's answer and only the new column
+//! is made, the rest of the frame shared (`on_ref`). A Cube Input's records are read by the card's TS: the text's key
+//! order is JS's.
 
 use super::docs::{column_unit_parts, unit_err, UnitParts};
 use super::frames::{
@@ -960,8 +961,18 @@ fn cube_with_column(
 }
 
 fn computed_column(c: &mut Call) -> Answer {
-    if c.wired("cells").is_some() {
-        return place_on_ref(c);
+    if let Cv::Ref(r) = card(c, "frame") {
+        if let Some(answer) = on_ref(c, &r)? {
+            return super::verbs::shown(c, answer);
+        }
+        // What the ref path doesn't carry reads the whole frame and runs as a value; a plan's error is the answer.
+        let whole = super::refs::collect(&r);
+        if let Cv::V(e @ V::Err(_)) = whole {
+            return Err(e);
+        }
+        if let Some((_, vs)) = c.inputs.iter_mut().find(|(k, _)| k == "frame") {
+            *vs = vec![whole];
+        }
     }
     let raw = card(c, "frame");
     let (cube, frame): (Option<Rc<Cube>>, Option<Rc<Frame>>) = match &raw {
@@ -1139,40 +1150,92 @@ fn computed_column(c: &mut Call) -> Answer {
     Ok(vec![("frame".into(), out)])
 }
 
-/// A frame ref's column, computed in the engine over `frame` (its schema), typed, united and placed: the columns
-/// the card's TS assembles there, `fresh` the computed one's place, or `asValue` where the ref must be read and run
-/// as a value (a plan that rescales).
-fn place_on_ref(c: &mut Call) -> Answer {
-    let as_value = || Ok(vec![("frame".into(), Cv::from(V::Null)), ("asValue".into(), Cv::from(V::Bool(true)))]);
-    let schema = match card(c, "frame") {
-        Cv::Frame(f) => f,
-        _ => return as_value(),
-    };
-    let cells: Vec<V> = match c.wired("cells") {
-        Some([V::List(items), ..]) => items.to_vec(),
-        _ => Vec::new(),
-    };
-    let Some((name, after)) = name_and_after(c)? else { return as_value() };
+/// A frame ref's column, computed on its plan's answer, typed, united and placed, the other columns that answer's own:
+/// a ref planning nothing yet. `None` where the ref must be read and run as a value: a wired LAMBDA, a binding, a side
+/// value with a unit, a plan that rescales, or a formula the column runner refuses.
+fn on_ref(c: &mut Call, r: &Rc<crate::frame_ref::FrameRef>) -> Result<Option<Vec<(String, Cv)>>, V> {
     let expr = c.field_str("expr", "").to_string();
-    let ast = crate::excel_formula::parse_formula(&expr);
-    let def = ast.clone().map(|a| Definition { ast: a, fns: Default::default() });
+    if matches!(first(c, "fn"), V::Lambda(_)) || !bindings(c).is_empty() || js_trim(&expr).is_empty() {
+        return Ok(None);
+    }
+    let Some((name, after)) = name_and_after(c)? else { return Ok(None) };
+    let schema = super::refs::schema(r)?;
+    let flushed = r.flush().map_err(V::err)?;
+    let Some(ast) = crate::excel_formula::parse_formula(&expr) else { return Ok(None) };
+    let columns: Vec<&str> = schema.columns.iter().map(|k| k.name.as_str()).collect();
+    let free = |p: &str| !columns.contains(&p) && !RESERVED.contains(&p);
+    let mut united = false;
+    let mut side = |p: &str| {
+        let v = c.read_num(p, 0.0);
+        if crate::unit_dims::holds_unit(&v) {
+            united = true;
+        }
+        v
+    };
+    let mut sides = rustc_hash::FxHashMap::default();
+    for p in crate::eval::variables(&ast).iter().filter(|p| free(p)) {
+        sides.entry(p.clone()).or_insert_with(|| side(p));
+    }
+    let mut row_sides = rustc_hash::FxHashMap::default();
+    for p in crate::eval::row_refs(&ast).iter().filter(|p| free(p)) {
+        row_sides.entry(p.clone()).or_insert_with(|| side(p));
+    }
+    let inputs = crate::eval::ColumnInputs {
+        table: crate::eval::Table::Frame(&flushed.frame),
+        sides,
+        row_sides,
+        reserved: RESERVED.iter().map(|r| r.to_string()).collect(),
+        alias: Default::default(),
+        rows: crate::frame::frame_row_count(&flushed.frame),
+    };
+    let Ok(outcome) = crate::eval::column(crate::eval::ColumnSpec::Expr { ast: &ast, lambdas: &[] }, inputs) else {
+        return Ok(None);
+    };
+    if united {
+        return Ok(None);
+    }
+    let cells: Vec<V> = outcome.cells.iter().map(super::frames::card_cell).collect();
+    let def = Some(Definition { ast: ast.clone(), fns: Default::default() });
     let table = frame_table(&schema.columns);
     let side = |p: &str| c.read_num(p, 0.0);
     let plan = match plan_column_units(def.as_ref(), &table, &[], &side, parse_column_unit_from_header(&name).1) {
         Ok(p) if p.shown && !p.rescales() => p,
-        _ => return as_value(),
+        _ => return Ok(None),
     };
     let (_, unit) = plan.finish(Vec::new());
     c.show("sourceColumns", names_list(&schema.columns.iter().map(|c| c.name.clone()).collect::<Vec<_>>()));
-    c.show("defVars", names_list(&ast.as_ref().map(crate::eval::variables).unwrap_or_default()));
-    let ty = pinned_type(c).unwrap_or_else(|| computed_column_type(&name, &cells, &table, ast.as_ref(), &bindings(c)));
+    c.show("defVars", names_list(&crate::eval::variables(&ast)));
+    c.show("sideVars", names_list(&outcome.side_vars));
+    let ty = pinned_type(c).unwrap_or_else(|| computed_column_type(&name, &cells, &table, Some(&ast), &bindings(c)));
     let shape: Vec<Column> = schema.columns.iter().map(|col| Column { values: Vec::new(), ..col.clone() }).collect();
     let (cols, at, replaced) = add_column(&shape, &name, Vec::new(), ty, unit);
     let (cols, fresh) = match placed(cols, replaced, &after, |c| &c.name) {
         Ok((cols, fresh)) => (cols, if replaced { at } else { fresh }),
-        Err(e) => return Ok(vec![("frame".into(), Cv::from(e))]),
+        Err(e) => return Ok(Some(vec![("frame".into(), Cv::from(e))])),
     };
-    Ok(vec![("frame".into(), super::frames::frame_v(cols)), ("fresh".into(), Cv::from(V::Num(fresh as f64)))])
+    let fresh_cells = Rc::new(outcome.cells);
+    let mut out = Vec::with_capacity(cols.len());
+    for (i, k) in cols.iter().enumerate() {
+        let values = if i == fresh {
+            fresh_cells.clone()
+        } else {
+            match flushed.frame.columns.iter().find(|b| b.name == k.name) {
+                Some(b) => b.values.clone(),
+                None => {
+                    return Err(err(ErrorCode::Ref, format!("column \"{}\" not found", k.name)));
+                }
+            }
+        };
+        out.push(crate::frame::FrameColumn {
+            name: k.name.clone(),
+            ty: k.ty,
+            values,
+            unit: k.unit.as_ref().and_then(crate::frame::ColumnUnit::from_json).map(Rc::new),
+            format: k.format.clone().filter(|j| !j.is_null()).map(Rc::new),
+        });
+    }
+    let made = crate::frame_ref::FrameRef::source(Rc::new(crate::frame::FrameValue { columns: out }));
+    Ok(Some(vec![("frame".into(), Cv::Ref(made))]))
 }
 
 // ─── Cube Input ────────────────────────────────────────────────────────────────

@@ -293,7 +293,7 @@ fn scalar_cells(v: &Cv, out: &mut Vec<V>) {
         Cv::Frame(f) => f.columns.iter().flat_map(|c| c.values.iter()).for_each(|x| scalar_values(x, out)),
         Cv::Cube(cube) => cube.columns.iter().flat_map(|c| c.cells.iter()).for_each(|x| scalar_cells(x, out)),
         Cv::Cells(items) => items.iter().for_each(|x| scalar_cells(x, out)),
-        Cv::Json(_) => {}
+        Cv::Json(_) | Cv::Ref(_) => {}
     }
 }
 
@@ -336,6 +336,7 @@ fn card_json(v: &Cv) -> String {
             format!("{{\"__cube\":[{}]}}", cube.columns.iter().map(|c| cells(&c.cells)).collect::<Vec<_>>().join(","))
         }
         Cv::Cells(items) => cells(items),
+        Cv::Ref(_) => "{}".into(),
     }
 }
 

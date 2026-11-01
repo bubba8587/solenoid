@@ -158,7 +158,7 @@ describe("the [[C49]] filterOneJob table-filter route: a MATRIX widens into the 
     n.stringLiterals.column0 = "Col2";
     n.stringLiterals.value0 = "10";
     throughBoundary(n as never);
-    const out = await (n.data as (i: unknown) => Promise<{ frame: unknown }>)({
+    const out = await (n.data as unknown as (i: unknown) => Promise<{ frame: unknown }>)({
       frame: [[[1, 5], [2, 20], [3, 30]]],
     });
     const f = (await readFrame(out.frame as never)) as FrameValue;

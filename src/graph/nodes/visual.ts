@@ -9,7 +9,6 @@ import type {
 } from "../chartValue";
 import type { SolError } from "../errorValue";
 import type { MermaidValue } from "../mermaidValue";
-import { readFrame, type FrameInput } from "../frameBackend";
 import type { FrameValue } from "../frame";
 import type { Shape } from "../frameShape";
 import type { FrameShapeContext } from "./frameShapeHook";
@@ -838,10 +837,9 @@ export class RecordNode extends GraphNode {
     return { decimals: displayDecimals(), sciAbove: String(settingsStore.get("sciAbove")) };
   }
 
-  /** Reads a frame ref through the backend first; Detail's pager keeps the page it lands on. */
-  async data(inputs: RecordInputs): Promise<{ chart: ChartValue }> {
-    const fv = await readFrame((inputs.frame?.[0] ?? null) as FrameInput | null);
-    const out = nodeOnCore(this, inputs.frame ? { ...inputs, frame: [fv] } : inputs) as { chart: ChartValue };
+  /** Detail's pager keeps the page it lands on. */
+  data(inputs: RecordInputs): { chart: ChartValue } {
+    const out = nodeOnCore(this, inputs) as { chart: ChartValue };
     const p = out.chart.payload as RecordPayload;
     if (this.op === "detail" && p.total > 0) this.literals.page = p.index;
     return out;

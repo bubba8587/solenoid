@@ -1,19 +1,11 @@
 // [[C28]]
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { parseListLiteral } from "../../src/graph/listLiterals";
 import { throughBoundary } from "./boundaryKit";
 import { isSolError } from "../../src/graph/errorValue";
 
-// The FrameRef bridge in the input boundary reads readFrame from frameBackend. Stub it to a
-// sentinel so the tests observe the collect-vs-forward DISPATCH, not the backend; every
-// other export (isFrameRef, the runners) stays real. vi.hoisted supplies the sentinel to
-// the hoisted factory.
-const { COLLECTED } = vi.hoisted(() => ({ COLLECTED: { __frame: true, __collected: true } }));
-vi.mock("../../src/graph/frameBackend", async (orig) => {
-  const actual = await orig<typeof import("../../src/graph/frameBackend")>();
-  return { ...actual, readFrame: vi.fn(async () => COLLECTED) };
-});
 import { readFrame } from "../../src/graph/frameBackend";
+import { planned, frameStats } from "./frameRefKit";
 import { SolenoidSocket, AdoptiveSocket } from "../../src/graph/sockets";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -343,41 +335,40 @@ describe("throughBoundary's FrameRef bridge (lazy forwards the ref, everyone els
       received: () => received,
     };
   }
-  const fakeRef = { __frameRef: "h1", __plan: [] as never[] };
+  const sample = { __frame: true as const, columns: [{ name: "a", type: "number" as const, values: [3, 1, 2] }] };
+  const ref = planned(sample, { kind: "sort", by: "a", dir: "asc" });
 
-  beforeEach(() => (readFrame as unknown as { mockClear: () => void }).mockClear());
+  beforeEach(() => { frameStats(); });
 
   it("a LAZY class receives the raw FrameRef, uncollected (a)", () => {
     const p = bridgeProbe("DistinctNode");
-    const out = p.data({ frame: [fakeRef] });
-    expect(p.received()!.frame[0]).toBe(fakeRef);      // the same object, not a value
-    expect(readFrame).not.toHaveBeenCalled();
+    const out = p.data({ frame: [ref] });
+    expect(p.received()!.frame[0]).toBe(ref);      // the same object, not a value
+    expect(frameStats().collects).toBe(0);
     expect((out as { out: unknown }).out).toBe(p.received()); // synchronous passthrough, no Promise
   });
 
-  it("a NON-lazy class receives a collected value, never the ref (b)", async () => {
+  it("a NON-lazy class receives the collected value, never the ref (b)", async () => {
     const p = bridgeProbe("DisplayNode");
-    await p.data({ frame: [fakeRef] });                // a ref present -> async collect path
-    expect(readFrame).toHaveBeenCalledTimes(1);
-    expect(p.received()!.frame[0]).toBe(COLLECTED);
+    await p.data({ frame: [ref] });
+    expect(p.received()!.frame[0]).toBe(await readFrame(ref));
+    expect((p.received()!.frame[0] as typeof sample).columns[0].values).toEqual([1, 2, 3]);
   });
 
   it("collects only the ref sitting among plain values in an input array (c)", async () => {
     const p = bridgeProbe("DisplayNode");
-    await p.data({ frame: ["scalar", fakeRef] });
-    expect(readFrame).toHaveBeenCalledTimes(1);        // the plain value is not read
-    expect(p.received()!.frame).toEqual(["scalar", COLLECTED]);
+    await p.data({ frame: ["scalar", ref] });
+    expect(p.received()!.frame).toEqual(["scalar", await readFrame(ref)]);
   });
 
   it("a frame that fails to collect is the guard's answer; a node that sees errors gets it as a value ([[C24]] arraySemantics)", async () => {
-    const failed = { __solError: true, code: "#REF!", message: "gone" };
-    const rf = readFrame as unknown as { mockResolvedValueOnce: (v: unknown) => void };
-    rf.mockResolvedValueOnce(failed);
-    const answered = await bridgeProbe("ListLengthNode").data({ frame: [fakeRef] }) as { out: { code: string; message: string } };
-    expect([answered.out.code, answered.out.message]).toEqual(["#REF!", "gone"]);
-    rf.mockResolvedValueOnce(failed);
+    const bad = planned(sample, { kind: "select", columns: ["nope"] });
+    const failed = await readFrame(bad) as { code: string; message: string };
+    expect(failed.code).toBe("#REF!");
+    const answered = await bridgeProbe("ListLengthNode").data({ frame: [bad] }) as { out: { code: string; message: string } };
+    expect([answered.out.code, answered.out.message]).toEqual([failed.code, failed.message]);
     const d = bridgeProbe("DisplayNode");
-    await d.data({ frame: [fakeRef] });
+    await d.data({ frame: [bad] });
     expect(d.received()!.frame[0]).toBe(failed);
   });
 
@@ -385,7 +376,7 @@ describe("throughBoundary's FrameRef bridge (lazy forwards the ref, everyone els
     const p = bridgeProbe("DisplayNode");
     const out = p.data({ frame: [42] });
     expect(out).not.toBeInstanceOf(Promise);
-    expect(readFrame).not.toHaveBeenCalled();
+    expect(frameStats().collects).toBe(0);
     expect(p.received()!.frame).toEqual([42]);
   });
 });

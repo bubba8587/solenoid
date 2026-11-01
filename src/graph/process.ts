@@ -10,7 +10,6 @@ import { beginCompute, endCompute } from "./computeOverlayStore";
 import { calcModeStore } from "./calcModeStore";
 import { session, nextGeneration, rebuild, openRebuildScope, closeRebuildScope, markTopoDirty, enterPass, exitPass } from "./passSession";
 import { compositePassStore } from "./compositeEditorStore";
-import { clearCollectMemo } from "./frameBackend";
 import { resolveTrigModes } from "./trigMode";
 import type { Schemes } from "./schemes";
 
@@ -170,7 +169,6 @@ export async function processGraph(changedNodeId?: string, renderOnly?: Set<stri
 
 async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, topologyChanged = false) {
   if (!_editor || !_engine || !_view) return;
-  clearCollectMemo();
   // Before the engine pull: MathFn.data() reads the resolved angle mode.
   resolveTrigModes(_editor);
   const perf = perfEnabled();

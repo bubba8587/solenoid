@@ -18,7 +18,7 @@ const colCells = (c: CubeValue, name: string) => c.columns.find((k) => k.name ==
 const colVals = (f: FrameValue, name: string) => f.columns.find((k) => k.name === name)!.values;
 const codeOf = (v: unknown): string | null => (isSolError(v) ? v.code : null);
 
-type Verb = { data(inputs: Record<string, unknown[]>): Promise<{ frame: unknown; dropped?: unknown }> };
+type Verb = { data(inputs: Record<string, unknown[]>): { frame: unknown; dropped?: unknown } | Promise<{ frame: unknown; dropped?: unknown }> };
 async function run(n: Verb, cube: CubeValue): Promise<CubeValue> {
   return (await n.data({ frame: [cube] })).frame as CubeValue;
 }

@@ -1371,6 +1371,75 @@ export function formatDim(dim) {
 }
 
 /**
+ * A lazy frame's first `rows` rows with its row count and itself as their source (`collectPreview`); it throws the
+ * error its plan answers.
+ * @param {any} v
+ * @param {number} rows
+ * @returns {any}
+ */
+export function frameRefPreview(v, rows) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
+        wasm.frameRefPreview(retptr, v, rows);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+        if (r2) {
+            throw takeFromExternrefTable0(r1);
+        }
+        return takeFromExternrefTable0(r0);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
+ * A lazy frame's whole frame for JavaScript (`readFrame`): the frame, or the error its plan answers.
+ * @param {any} v
+ * @returns {any}
+ */
+export function frameRefRead(v) {
+    const ret = wasm.frameRefRead(v);
+    return ret;
+}
+
+/**
+ * A frame (a lazy one, or a value) with one more op planned on it, the op as the verbs read it (a frame's format
+ * picks).
+ * @param {any} v
+ * @param {string} op
+ * @returns {any}
+ */
+export function frameRefThen(v, op) {
+    const ptr0 = passStringToWasm0(op, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.frameRefThen(v, ptr0, len0);
+    return ret;
+}
+
+/**
+ * A lazy frame as a frozen case holds it (`refs::wire`), as JSON text; none where it isn't one the core holds.
+ * @param {any} v
+ * @returns {string | undefined}
+ */
+export function frameRefWire(v) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
+        wasm.frameRefWire(retptr, v);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        let v1;
+        if (r0 !== 0) {
+            v1 = getStringFromWasm0(r0, r1);
+            wasm.__wbindgen_export3(r0, r1 * 1, 1);
+        }
+        return v1;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
  * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
  */
 export function graphTrap() {
@@ -1990,10 +2059,6 @@ function __wbg_get_imports() {
         __wbg__wbg_cb_unref_09736879a3f67559: function(arg0) {
             arg0._wbg_cb_unref();
         },
-        __wbg_all_79a70a4b6aca6f9e: function(arg0) {
-            const ret = Promise.all(arg0);
-            return ret;
-        },
         __wbg_apply_bfe2b07b146427e2: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = arg0.apply(arg1, arg2);
             return ret;
@@ -2243,7 +2308,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_8130(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_8127(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -2298,10 +2363,6 @@ function __wbg_get_imports() {
             const ret = Math.random();
             return ret;
         },
-        __wbg_reject_334b730b3c00849b: function(arg0) {
-            const ret = Promise.reject(arg0);
-            return ret;
-        },
         __wbg_resolve_dbf78ab4942478b0: function(arg0) {
             const ret = Promise.resolve(arg0);
             return ret;
@@ -2353,8 +2414,8 @@ function __wbg_get_imports() {
             return ret;
         },
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 891, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_8128);
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 894, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_8125);
             return ret;
         },
         __wbindgen_generic_0000000000000002: function(arg0) {
@@ -2382,14 +2443,14 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_8130(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_8130(arg0, arg1, arg2, arg3);
+function __wasm_bindgen_func_elem_8127(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_8127(arg0, arg1, arg2, arg3);
 }
 
-function __wasm_bindgen_func_elem_8128(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_8125(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
-        wasm.__wasm_bindgen_func_elem_8128(retptr, arg0, arg1, arg2);
+        wasm.__wasm_bindgen_func_elem_8125(retptr, arg0, arg1, arg2);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {

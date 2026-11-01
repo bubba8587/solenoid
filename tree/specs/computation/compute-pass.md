@@ -40,7 +40,7 @@ The model is a `GraphEditor` (`graphEditor.ts`), a handle over the graph core's 
 | `engine.invalidate(changedId, keepCaches)` | No `changedId`: `engine.reset()` (skipped under `keepCaches`, for an additive pass), returns `null`. With one: computes the cone and deletes each member's cache entry by hand, returns the cone. |
 | `engine.seedLoops(message?)` | Computes the loop members and, for each: builds one `#CIRC!` `SolError` (the default message is "This node is part of a circular dependency: the calculation feeds back into itself"), sets every output key to it, sets the node's `cachedResult`, `cachedValue`, `cachedList` and `cachedChart` to it and `cachedPayload` to `null` where those properties exist, and seeds the outputs. The member's `data()` never runs. The app's pass seeds the same way from its loop set. |
 | `engine.fetchAll(onNode?, stopOnCancel)` | Fetches every node in `editor.getNodes()` order, skipping a node removed while an earlier fetch awaited, calls `onNode` with each result, and collects a map of id to outputs. A fetch that rejects with `Cancelled` records `null`, or under `stopOnCancel` ends the pass and answers `null`; any other rejection propagates. |
-| `computeAll(editor, engine, changedId?)` | `clearCollectMemo`, `resolveTrigModes`, then the engine's `computeAll`: `invalidate`, `seedLoops`, `fetchAll`. |
+| `computeAll(editor, engine, changedId?)` | `resolveTrigModes`, then the engine's `computeAll`: `invalidate`, `seedLoops`, `fetchAll`. |
 
 Seeding must happen after invalidation and before any fetch: the engine resolves inputs before calling `data()`, so fetching into a cycle would recurse forever. Because a member's cache entry is already resolved, every node downstream of a loop computes normally and shows the propagated `#CIRC!` through the error guard. Seeding only the members, never their descendants, is what makes a full and a targeted pass agree about cycles ([[#The targeted pass equals the full pass]]). A cable added while the app's pass waits on an async card can close a loop the seeding never saw, so before each top-level fetch the pass re-seeds from a fresh loop set when a cable was added since it seeded; a node's fetch starts its whole upstream at once, so no fetch begins on an unseeded loop (`GraphCore::pass`, `circularReset.test.ts`).
 
@@ -99,7 +99,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    ts["TS: clearCollectMemo, resolveTrigModes"] --> retarget["changed node inside a composite?<br>mark the chain, retarget to the outermost card"]
+    ts["TS: resolveTrigModes"] --> retarget["changed node inside a composite?<br>mark the chain, retarget to the outermost card"]
     retarget --> inv{"which pass?"}
     inv -->|full| reset["engine.reset()"]
     inv -->|targeted| cone["drop the cone's cache entries"]
@@ -115,8 +115,8 @@ flowchart TD
 
 
 1. Returns immediately if the editor, engine or view refs are unset.
-2. `clearCollectMemo()` (see Lazy Frames), in TypeScript before the core's steps.
-3. `resolveTrigModes(editor)`, likewise.
+2. `resolveTrigModes(editor)`, in TypeScript before the core's steps.
+3. (Lazy frames need no step: a ref's flush lives and dies with the ref, Lazy Frames below.)
 4. **Retarget into composites** (the core, as are 5 to 7 and the render set of 9). If `changedNodeId` is not a node of the main editor, the pass searches every composite's editor (recursively, through nested composites) for it; an editor knows each composite node's own editor core, registered (`nest`) when the node joins it. On a hit, every composite on the nesting chain gets `markInternalEdit()` (an internal value edit fires no editor event, so this is how a composite holding a heavy result learns its subgraph changed), and `changedNodeId` becomes the outermost owning composite card, whose cache entry is the one that must go.
 5. **Invalidate.** Targeted: compute the cone and delete each member's cache entry by hand, never `engine.reset(id)`. Full: `engine.reset()`. Additive: nothing.
 6. **Loop set.** A targeted pass without `topology` reuses the editor's cached loop set (computing it once if absent); every other pass recomputes and caches it. An additive pass follows a paste, and pasted nodes can carry a loop of their own, so it never reuses the set: an unseeded loop would leave the pass waiting on itself forever. Then seeding over that set (as `seedLoops` does).
@@ -367,9 +367,7 @@ The text is parsed as one CSV line (a quoted field keeps an embedded comma), eac
 
 ## Lazy Frames and when they are collected
 
-A Frame on a cable is usually a `FrameRef`: a handle to a verb chain held by the frame backend ([[C130]] rustCore). The classes in `LAZY_FRAME_NODES` (matched by constructor name) receive refs uncollected: the relational verbs (Distinct, Head, Sort, Filter, Join, Columns, GROUPBY, Unpivot, Append, Bind Columns, Rename, Fill Blanks, Replace Values, Window, Drop Blank Rows, Add Index, Split Column, Merge Columns, Computed Column) and the nodes that read through the cheap primitives (Get Column, SUMIFS, Table Info, Write File, Pivot, Slicer). `lazyChain.test.ts` pins the set. Every other node's inputs are collected to an eager `FrameValue` at arrival.
-
-`readFrame(ref)` flushes the ref's pending plan to a handle (one backend round trip, rebased on the longest prefix already flushed this pass), collects it, applies the sketch scaling and the aggregate guard, and memoizes the resulting promise by the ref object. `clearCollectMemo()` at the start of each pass (the app's and `computeAll`) empties the flush and collect memos and drops the flushed handles, so a ref fanned out to several consumers materializes once per pass and never across passes. A collect failure resolves to a `SolError` value (`materialize`) rather than throwing. The boundary then sends it out every output without running the node; a class in `SEES_ERRORS` receives it as a value instead ([[C24]] arraySemantics).
+A Frame on a cable is usually a lazy frame: a ref to a verb chain held in the core ([[frame-verbs]] § Lazy frames, [[C130]] rustCore). The classes in `LAZY_FRAME_NODES` (matched by constructor name) receive refs uncollected: the relational verbs (Distinct, Head, Sort, Filter, Join, Columns, GROUPBY, Unpivot, Append, Bind Columns, Rename, Fill Blanks, Replace Values, Window, Drop Blank Rows, Add Index, Split Column, Merge Columns, Computed Column) and the nodes that read through a ref's schema, columns or preview (Get Column, SUMIFS, Table Info, Write File, Pivot, Slicer). `lazyChain.test.ts` pins the set. Every other node's inputs are collected to a whole frame at arrival, in the core, once per ref (`value::collected`): a ref fanned out to several consumers is read once, and a pass whose inputs stand reads nothing again, since the verb cards keep their answers (`nodes::KEEPS_ANSWER`). A collect failure is the ref's error value; the boundary sends it out every output without running the node, and a class in `SEES_ERRORS` receives it as a value instead ([[C24]] arraySemantics).
 
 ## Composites
 

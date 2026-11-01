@@ -3,35 +3,30 @@ import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { chartOut } from "./shared";
 import type { ChartValue } from "../chartValue";
-import { readInput, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { setting, required, LEFT_OUT } from "../inputRoles";
-import { flatCubeToFrame } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
-import { isLambdaValue } from "../lambdaValue";
-import { volatileStamp } from "../volatileDates";
-import { stripUnitCells } from "../unitBridge";
 import { dropInputCables } from "../components/cablePrune";
 import { getOwningView } from "../activeGraph";
 import type { FrameHint } from "../frameHint";
 import { SolenoidSocket } from "../sockets";
-import { isSolError, solError, type SolError } from "../errorValue";
+import { solError, type SolError } from "../errorValue";
 import {
   colTypeForSocket,
-  getColumn, addColumn, makeHeaders,
+  addColumn, makeHeaders,
   frameFromInputText, parseFrameSource, frameSourceToText,
-  isCubeValue, isFrameValue,
-  frameFromRows,
-  type FrameValue, type FrameColumn, type FrameColType,
+  isFrameValue,
+  type FrameValue, type FrameColType,
 } from "../frame";
 import type { FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
 import { pairIdsFromKeys } from "./logic";
-import type { PivotSpec, FilterCondConfig } from "../frameOps";
+import type { FilterCondConfig } from "../frameOps";
 import type { AllocateMode } from "./allocateOps";
 import { WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameOps";
 export type { WindowFn } from "../frameOps";
 export type { CorrMethod } from "../frameOps";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, uploadFrame, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, attachPivotLayout, computeColumnOnRef, assembleOnEngine, frameBackend, frameFnOnCore, bindSchema, type FrameInput, type FrameRef } from "../frameBackend";
-import { TRAPPED_MESSAGE } from "../coreValues";
+import { frameFnOnCore, bindSchema, type FrameRef } from "../frameBackend";
+import { getRecalcGen } from "../process";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
   emptyFrameOf, totalLabelledKeys, sampleShapeOnCore, type Shape, type ShapeColumn,
@@ -54,109 +49,10 @@ function shapeOnCore(name: string, inputs: readonly Shape[], args: unknown[] = [
   return r && "frame" in r ? shapeOfFrameValue(r.frame) : null;
 }
 
-function runVerb<T>(fn: () => T): T | SolError {
-  try {
-    return fn();
-  } catch (e) {
-    return isSolError(e) ? e : solError("#ERROR!", e instanceof Error ? e.message : String(e));
-  }
-}
-
-// ─── Lazy verb-node output ──────────────────────────────────────────────────────
-export interface FrameVerbNode { _ref?: FrameRef | null; _gen?: number; cachedResult: FrameValue | CubeValue | SolError | null }
-
-// widenToFrame repeats the input boundary's frame-rung widening (crates/solenoid-graph/src/boundary.rs), which the cube-adoptive port skips; keep the two identical.
-function widenToFrame(v: unknown): FrameValue {
-  if (Array.isArray(v)) return Array.isArray((v as unknown[])[0]) ? frameFromRows(v as unknown[][]) : frameFromRows([v as unknown[]]);
-  return frameFromRows([[v]]);
-}
-
-function rowVerbInput(v: unknown): FrameInput | CubeValue | null {
-  if (v == null) return null;
-  if (isCubeValue(v) || isFrameValue(v) || isFrameRef(v)) return v;
-  return widenToFrame(v);
-}
-
-/** Call before the verb's await; `emitFrame(this, beginPass(this), await …)` gets this from argument order. */
-export function beginPass(node: FrameVerbNode): number {
-  node._gen = (node._gen ?? 0) + 1;
-  return node._gen;
-}
-
-async function passFrame(f: FrameInput): Promise<FrameRef | FrameValue | SolError> {
-  return isFrameRef(f) ? runFrameUnary(f, { kind: "drop", columns: [] }) : f;
-}
-
-export async function emitFrame(node: FrameVerbNode, gen: number, out: FrameRef | FrameValue | SolError | null): Promise<{ frame: FrameRef | FrameValue | SolError | null }> {
-  const stale = () => {
-    if (isFrameRef(out) && out !== node._ref) dropFrameRef(out);
-    return { frame: null };
-  };
-  if (gen !== node._gen) return stale();
-  const preview = await collectPreview(out);
-  if (gen !== node._gen) return stale();
-  if (node._ref && node._ref !== out) dropFrameRef(node._ref);
-  node._ref = isFrameRef(out) ? out : null;
-  node.cachedResult = preview;
-  return { frame: out };
-}
+/** What a frame verb answers: a lazy frame, a frame or a Cube value, an error, or nothing. */
+type FrameOut = FrameRef | FrameValue | CubeValue | SolError | null;
 
 type Inputs = Record<string, unknown[] | undefined>;
-
-/** A lazy verb's body run over refs: each input of `keys` holding a frame (not a ref, nor a Cube the body reads) is
- *  uploaded for a ref with nothing planned, and `uploaded` names those inputs, so a body passing one through answers
- *  that ref and the frame itself comes back. A failed upload is the answer. */
-async function planOnBody<O extends Record<string, unknown>>(inputs: Inputs, keys: readonly string[], body: (inputs: Inputs) => O, cubes = true): Promise<O | SolError> {
-  const resolved: Inputs = { ...inputs };
-  const values = new Map<unknown, unknown>();
-  const uploaded: string[] = [];
-  for (const k of keys) {
-    const v = inputs[k]?.[0];
-    if (v == null || isFrameRef(v) || (cubes && isCubeValue(v))) continue;
-    const ref = await uploadFrame(v as FrameValue);
-    if (isSolError(ref)) return ref;
-    values.set(ref, v);
-    resolved[k] = [ref];
-    uploaded.push(k);
-  }
-  if (uploaded.length) resolved.uploaded = uploaded;
-  const out: Record<string, unknown> = body(resolved);
-  const refs = keys.map((k) => resolved[k]?.[0]).filter(isFrameRef);
-  for (const k of Object.keys(out)) {
-    const v = out[k];
-    if (values.has(v)) out[k] = values.get(v);
-    else if (isFrameRef(v)) out[k] = relinked(v, refs);
-  }
-  return out as O;
-}
-
-/** A plan the body extended from an input ref, its leading ops that ref's own objects: the backend reuses a flushed
- *  prefix by its ops' identity. */
-export function relinked(out: FrameRef, from: readonly FrameRef[]): FrameRef {
-  const src = from.find((r) => r.__frameRef === out.__frameRef && r.__plan.length < out.__plan.length);
-  return src ? { __frameRef: out.__frameRef, __plan: [...src.__plan, ...out.__plan.slice(src.__plan.length)] } : out;
-}
-
-type LazyOut = FrameRef | FrameValue | CubeValue | SolError | null;
-
-/** What a stacking body (Append, Bind Columns) answers: one frame, or the inputs, in order, for the shell to stack. */
-type StackRequest = { frame?: FrameRef | null; stack?: string[] };
-
-/** A lazy verb's pass: its body over refs; a Cube's answer is the body's own, which it showed, a frame's is emitted. */
-async function lazyPass(node: FrameVerbNode & { body(inputs: Inputs): { frame: LazyOut } }, inputs: Inputs): Promise<{ frame: LazyOut }> {
-  const gen = beginPass(node);
-  const out = await planOnBody(inputs, ["frame"], (i) => node.body(i));
-  if (isSolError(out)) return emitFrame(node, gen, out);
-  if (isCubeValue(inputs.frame?.[0]) && out.frame != null) return { frame: out.frame };
-  return emitFrame(node, gen, out.frame as FrameRef | FrameValue | SolError | null);
-}
-
-/** `lazyPass` for a verb on a frame socket: a Cube there is uploaded as any other value. */
-async function lazyFramePass(node: FrameVerbNode & { body(inputs: Inputs): { frame: LazyOut } }, inputs: Inputs): Promise<{ frame: FrameRef | FrameValue | SolError | null }> {
-  const gen = beginPass(node);
-  const out = await planOnBody(inputs, ["frame"], (i) => node.body(i), false);
-  return emitFrame(node, gen, isSolError(out) ? out : out.frame as FrameRef | FrameValue | SolError | null);
-}
 
 // ─── FRAME INPUT ─────────────────────────────────────────────────────────────
 
@@ -240,12 +136,8 @@ export class DistinctNode extends GraphNode {
 
   passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
 
-  async data(inputs: { frame?: unknown[] }) {
-    return lazyPass(this, { ...inputs, frame: [rowVerbInput(inputs.frame?.[0] ?? null)] });
-  }
-
-  body(inputs: Inputs): { frame: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -286,12 +178,8 @@ export class HeadNode extends GraphNode {
 
   passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
 
-  async data(inputs: { frame?: unknown[]; rows?: number[]; to?: number[] }) {
-    return lazyPass(this, { ...inputs, frame: [rowVerbInput(inputs.frame?.[0] ?? null)] });
-  }
-
-  body(inputs: Inputs): { frame: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -320,12 +208,8 @@ export class SortFrameNode extends GraphNode {
 
   columnPickers(): ColumnPickerSpec[] { return [{ key: "column", frameInput: "frame" }]; }
 
-  async data(inputs: { frame?: unknown[]; column?: string[] }) {
-    return lazyPass(this, { ...inputs, frame: [rowVerbInput(inputs.frame?.[0] ?? null)] });
-  }
-
-  body(inputs: Inputs): { frame: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -343,9 +227,6 @@ export class FilterFrameNode extends GraphNode {
   cachedResult: FrameValue | CubeValue | SolError | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = {};
-  _gen?: number;
-  _ref?: FrameRef | null;
-  _refDropped?: FrameRef | null;
   width = 210; height = 240;
 
   constructor(init?: {
@@ -404,27 +285,8 @@ export class FilterFrameNode extends GraphNode {
     ];
   }
 
-  private publishDropped(gen: number, out: FrameRef | FrameValue | SolError | null): FrameRef | FrameValue | SolError | null {
-    if (gen !== this._gen) {
-      if (isFrameRef(out) && out !== this._refDropped) dropFrameRef(out);
-      return null;
-    }
-    if (this._refDropped && this._refDropped !== out) dropFrameRef(this._refDropped);
-    this._refDropped = isFrameRef(out) ? out : null;
-    return out;
-  }
-
-  async data(inputs: { frame?: unknown[]; [k: string]: unknown[] | undefined }) {
-    const f = rowVerbInput(inputs.frame?.[0] ?? null);
-    const gen = beginPass(this);
-    const out = await planOnBody({ ...inputs, frame: [f] }, ["frame"], (i) => this.body(i));
-    if (isSolError(out)) return { ...(await emitFrame(this, gen, out)), dropped: this.publishDropped(gen, out) };
-    if (isCubeValue(f)) return out as { frame: CubeValue | SolError; dropped: CubeValue | SolError };
-    return { ...(await emitFrame(this, gen, out.frame as FrameRef | FrameValue | SolError | null)), dropped: this.publishDropped(gen, out.dropped as FrameRef | FrameValue | SolError | null) };
-  }
-
-  body(inputs: Inputs): { frame: LazyOut; dropped: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut; dropped: LazyOut };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut; dropped: FrameOut };
   }
 }
 
@@ -473,32 +335,12 @@ export class JoinNode extends GraphNode {
     return [{ key: "leftKey", frameInput: "left" }, { key: "rightKey", frameInput: "right" }];
   }
 
-  /** The body names the join to run, or answers none; the shell runs it on the backend. */
-  async data(inputs: Inputs) {
-    const gen = beginPass(this);
-    const out = await planOnBody(inputs, ["left", "right"], (i) => this.body(i), false);
-    if (isSolError(out)) return emitFrame(this, gen, out);
-    if (out.frame !== undefined) return emitFrame(this, gen, out.frame);
-    const { leftKey, rightKey, how, asofDirection, asofTolerance } = out as Required<JoinRequest>;
-    return emitFrame(this, gen, await runFrameJoin(inputs.left![0] as FrameInput, inputs.right![0] as FrameInput, {
-      leftKey, rightKey, how, asofDirection, asofTolerance: asofTolerance ?? undefined,
-    }));
-  }
-
-  body(inputs: Inputs): JoinRequest {
-    return nodeOnCore(this, inputs) as JoinRequest;
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
-
-/** What a Join body answers: no frame, or the join for the shell to run. */
-type JoinRequest = { frame?: null; leftKey?: string; rightKey?: string; how?: JoinHow; asofDirection?: AsofDirection; asofTolerance?: number };
 
 // ─── COLUMNS (KEEP / DROP) ───────────────────────────────────────────────────
-
-function readColumnList(wired: string[][] | undefined): string[] | null {
-  const v = readInput(wired, [] as string[]);
-  return v === null ? null : v.filter((c): c is string => typeof c === "string");
-}
 
 export type ColumnsOp = "keep" | "drop";
 
@@ -536,12 +378,8 @@ export class ColumnsNode extends GraphNode {
     return shapeOf({ kind: "drop", columns: cols }, input);
   }
 
-  async data(inputs: { frame?: unknown[]; columns?: string[][] }) {
-    return lazyPass(this, { ...inputs, frame: [rowVerbInput(inputs.frame?.[0] ?? null)] });
-  }
-
-  body(inputs: Inputs): { frame: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -600,40 +438,8 @@ export class GroupByFrameNode extends GraphNode {
 
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
 
-  async data(inputs: { frame?: (FrameInput | CubeValue | null)[]; keys?: string[][]; column?: string[] }) {
-    const raw = rowVerbInput(inputs.frame?.[0]);
-    if (isCubeValue(raw) || this.totalDepth !== 0) return this.flatData(raw, inputs);
-    return lazyPass(this, { ...inputs, frame: [raw] }) as Promise<{ frame: FrameRef | FrameValue | SolError | null }>;
-  }
-
-  body(inputs: Inputs): { frame: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut };
-  }
-
-  /** A Cube flattened to the columns it groups, and the totals, which pivot the frame's cells, stay here. */
-  private async flatData(raw: FrameInput | CubeValue | null, inputs: { keys?: string[][]; column?: string[] }) {
-    const keys = readColumnList(inputs.keys);
-    const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
-    if (raw == null || colRaw === null || keys === null) return emitFrame(this, beginPass(this), null);
-    const col = colRaw.trim();
-    const flat = isCubeValue(raw) ? flatCubeToFrame(raw, keys.length && col ? [...keys, col] : "scalar") : raw;
-    if (isSolError(flat)) return emitFrame(this, beginPass(this), flat);
-    const f = flat;
-    if (!(keys.length && col)) return emitFrame(this, beginPass(this), await passFrame(f));
-    if (this.totalDepth !== 0) {
-      const mat = await readFrame(f);
-      if (mat == null || isSolError(mat)) return emitFrame(this, beginPass(this), mat);
-      const spec: PivotSpec = { rowFields: keys, colFields: [], values: [col], funcs: [this.agg], rowTotalDepth: this.totalDepth };
-      const out = runVerb(() => pivotOnEngine(mat, spec) ?? solError("#ERROR!", TRAPPED_MESSAGE));
-      // A min or max of dates stays a date, as the plain groupBy's does (`shapeOf`).
-      if (!isSolError(out) && (this.agg === "min" || this.agg === "max") && getColumn(mat, col)?.type === "date") {
-        const last = out.columns.length - 1;
-        out.columns[last] = { ...out.columns[last], type: "date" };
-      }
-      return emitFrame(this, beginPass(this), out);
-    }
-    return emitFrame(this, beginPass(this),
-      await runFrameUnary(f, { kind: "groupBy", keys, aggs: [{ column: col, op: this.agg, as: col }] }));
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -662,8 +468,6 @@ export class PivotNode extends GraphNode {
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   sourceColumns: { name: string; type: FrameColType; distinct: string[] }[] = [];
   stringLiterals: Record<string, string> = { rowFields: "", colFields: "", values: "" };
-  _gen?: number;
-  _ref?: FrameRef | null;
   width = 220; height = 300;
 
   constructor(init?: {
@@ -705,49 +509,16 @@ export class PivotNode extends GraphNode {
     return shapeOf({ kind: "pivot", rowFields, colFields, values, funcs, rowTotalDepth: this.rowTotalDepth }, input);
   }
 
-  /** The layout of the pivot the body just ran, as the engine wrote it; the shell keeps it beside the frame. */
-  pivotWire?: unknown;
-
-  /** A ref's schema is read first; the body names the columns it reads, which are read next, and then it answers.
-   *  A stale pass writes nothing. */
   data(inputs: Inputs) {
-    const raw = inputs.frame?.[0] ?? null;
-    if (!isFrameRef(raw)) return this.adopt(this.body(inputs));
-    const gen = beginPass(this);
-    return (async () => {
-      const schema = await materialize(collectPreview(raw, 0));
-      if (gen !== this._gen) return { frame: null };
-      let out = this.body({ ...inputs, schema: [schema] });
-      if (out.read) {
-        const cols = await materialize(Promise.all(out.read.map((n) => readRefColumn(raw, n))));
-        if (gen !== this._gen) return { frame: null };
-        const read = isSolError(cols) ? cols : { __frame: true, columns: cols.filter((c): c is FrameColumn => c != null) };
-        out = this.body({ ...inputs, schema: [schema], columns: [read] });
-      }
-      if (isFrameRef(out.frame)) {
-        this.pruneTo(out);
-        return emitFrame(this, beginPass(this), relinked(out.frame, [raw]));
-      }
-      return this.adopt(out);
-    })() as unknown as { frame: FrameValue | SolError | null };
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 
-  private adopt(out: PivotAnswer): { frame: FrameValue | SolError | null } {
-    this.pruneTo(out);
-    const wire = this.pivotWire;
-    this.pivotWire = undefined;
-    if (wire !== undefined && isFrameValue(out.frame)) attachPivotLayout(out.frame, wire);
-    return { frame: (out.frame ?? null) as FrameValue | SolError | null };
-  }
-
-  /** Over a value: the answer. Over a ref: given its schema, the columns to read (`read`); given them (`columns`),
-   *  the answer, which passes the ref on (a plan) where there is nothing to pivot. */
-  body(inputs: Inputs): PivotAnswer {
-    return nodeOnCore(this, inputs) as PivotAnswer;
-  }
-
-  private pruneTo(out: PivotAnswer): void {
-    if (out.fieldNames) this.pruneFieldsTo(new Set(out.fieldNames));
+  /** The input's column names, which the body shows each run: saved field names the input no longer has are
+   *  dropped (`nodeOnCore`'s `coreWatch`). */
+  fieldNames?: string[];
+  static coreWatch = "fieldNames";
+  coreWatched(): void {
+    if (this.fieldNames) this.pruneFieldsTo(new Set(this.fieldNames));
   }
 
   /** Saved field names the input no longer has are dropped. */
@@ -763,10 +534,6 @@ export class PivotNode extends GraphNode {
     if (this.detailFields.some((n) => !valid.has(n))) this.detailFields = this.detailFields.filter((n) => valid.has(n));
   }
 }
-
-/** What a Pivot body answers: the frame (a plan passing a ref on) and the frame's column names, to which the shell
- *  prunes the saved fields; or the columns of a ref it reads first. */
-type PivotAnswer = { frame?: FrameRef | FrameValue | SolError | null; read?: string[]; fieldNames?: string[] };
 
 export class UnpivotNode extends GraphNode {
   label: string;
@@ -791,12 +558,8 @@ export class UnpivotNode extends GraphNode {
     return shapeOf({ kind: "unpivot", idColumns: csvList(this.stringLiterals.idColumns), valueColumns: vals }, input);
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; idColumns?: string[][]; valueColumns?: string[][] }) {
-    return lazyFramePass(this, inputs);
-  }
-
-  body(inputs: Inputs): { frame: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -896,15 +659,8 @@ export class AppendNode extends GraphNode {
     return shapes.length === 1 ? shapes[0] : shapeOfAppend(shapes);
   }
 
-  async data(inputs: Inputs) {
-    const gen = beginPass(this);
-    const out = await planOnBody(inputs, this.valueInputKeys(), (i) => this.body(i), false);
-    if (isSolError(out) || !out.stack) return emitFrame(this, gen, isSolError(out) ? out : out.frame ?? null);
-    return emitFrame(this, gen, await runFrameAppend(out.stack.map((k) => inputs[k]![0] as FrameInput)));
-  }
-
-  body(inputs: Inputs): StackRequest {
-    return nodeOnCore(this, inputs) as StackRequest;
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -963,15 +719,8 @@ export class BindColumnsNode extends GraphNode {
     return bound ? shapeOfFrameValue(bound) : null;
   }
 
-  async data(inputs: Inputs) {
-    const gen = beginPass(this);
-    const out = await planOnBody(inputs, this.valueInputKeys(), (i) => this.body(i), false);
-    if (isSolError(out) || !out.stack) return emitFrame(this, gen, isSolError(out) ? out : out.frame ?? null);
-    return emitFrame(this, gen, await runFrameBindColumns(out.stack.map((k) => inputs[k]![0] as FrameInput)));
-  }
-
-  body(inputs: Inputs): StackRequest {
-    return nodeOnCore(this, inputs) as StackRequest;
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -1002,12 +751,8 @@ export class RenameNode extends GraphNode {
     return Object.keys(map).length ? shapeOf({ kind: "rename", map }, input) : input;
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; from?: string[][]; to?: string[][] }) {
-    return lazyFramePass(this, inputs);
-  }
-
-  body(inputs: Inputs): { frame: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -1041,12 +786,8 @@ export class SplitColumnNode extends GraphNode {
     return shapeOfSplitColumn(input, column, this.stringLiterals.delimiter ?? "");
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; column?: string[]; delimiter?: string[]; into?: string[][] }) {
-    return lazyFramePass(this, inputs);
-  }
-
-  body(inputs: Inputs): { frame: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -1073,12 +814,8 @@ export class AddIndexNode extends GraphNode {
     return shapeOfAddIndex(input, this.stringLiterals.name || "Index");
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; start?: number[]; name?: string[] }) {
-    return lazyFramePass(this, inputs);
-  }
-
-  body(inputs: Inputs): { frame: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -1110,12 +847,8 @@ export class FillBlanksNode extends GraphNode {
     return shapeOf({ kind: "fillBlanks", columns, dir: this.dir }, input);
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
-    return lazyFramePass(this, inputs);
-  }
-
-  body(inputs: Inputs): { frame: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -1152,12 +885,8 @@ export class ReplaceValuesNode extends GraphNode {
     }, input);
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; column?: string[]; find?: unknown[]; replace?: unknown[] }) {
-    return lazyFramePass(this, inputs);
-  }
-
-  body(inputs: Inputs): { frame: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -1188,12 +917,8 @@ export class MergeColumnsNode extends GraphNode {
     return shapeOf({ kind: "mergeColumns", columns, separator: "", name: this.stringLiterals.name ?? "" }, input);
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][]; separator?: string[]; name?: string[] }) {
-    return lazyFramePass(this, inputs);
-  }
-
-  body(inputs: Inputs): { frame: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -1257,12 +982,8 @@ export class DropBlankRowsNode extends GraphNode {
   }
 
 
-  async data(inputs: { frame?: (FrameInput | null)[] }) {
-    return lazyFramePass(this, inputs);
-  }
-
-  body(inputs: Inputs): { frame: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -1811,7 +1532,6 @@ export class GetColumnNode extends GraphNode {
   cachedResult: (number | UnitCell | null | SolError)[] | string[] | (boolean | null | SolError)[] | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = { name: "" };
-  private _gen = 0;
   width = 200; height = 205;
 
   constructor(init?: { label?: string; readAs?: GetColumnReadAs }) {
@@ -1831,21 +1551,7 @@ export class GetColumnNode extends GraphNode {
 
   columnPickers(): ColumnPickerSpec[] { return [{ key: "name", frameInput: "frame" }]; }
 
-  /** A ref's column is read from the backend first, and the body reads it as `column`: one column, an error or none. */
-  data(inputs: { frame?: unknown[]; name?: string[] }): { values: GetColumnValues } {
-    const gen = ++this._gen;
-    const f = inputs.frame?.[0] ?? null;
-    const name = readInput(inputs.name, this.stringLiterals.name ?? "");
-    if (!isFrameRef(f) || typeof name !== "string" || name.trim() === "") return this.body(inputs);
-    // The engine awaits a promise-returning data(); the cast keeps the sync signature.
-    return (async () => {
-      const col = await materialize(readRefColumn(f, name));
-      if (gen !== this._gen) return { values: null };
-      return this.body({ ...inputs, column: [col && !isSolError(col) ? { __frame: true, columns: [col] } : col] });
-    })() as unknown as { values: GetColumnValues };
-  }
-
-  body(inputs: Record<string, unknown[] | undefined>): { values: GetColumnValues } {
+  data(inputs: Inputs) {
     return nodeOnCore(this, inputs) as { values: GetColumnValues };
   }
 }
@@ -1909,7 +1615,6 @@ export type ComputedColumnAs = "auto" | AddColumnAddAs;
 
 const COMPUTED_RESERVED = ["frame", "name", "fn", "after"];
 
-type ComputedColumnInputs = { frame?: unknown[]; name?: string[]; after?: string[]; fn?: unknown[] } & Record<string, unknown[] | undefined>;
 
 export class ComputedColumnNode extends GraphNode {
   unitAware = true;
@@ -1950,12 +1655,14 @@ export class ComputedColumnNode extends GraphNode {
 
   passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
 
-  /** The side inputs grown to `this.sideVars` from `before`; runs from data(), so socket changes wait for a
+  /** The side inputs grown to the body's `sideVars` (`nodeOnCore`'s `coreWatch`); the socket changes wait for a
    *  microtask, and cables on a removed socket are pruned first. */
-  private _reconcileSideSockets(before: readonly string[]): void {
+  static coreWatch = "sideVars";
+  coreWatched(): void {
     const needed = this.sideVars;
-    const added = needed.filter((v) => !before.includes(v));
-    const removed = before.filter((v) => !needed.includes(v));
+    const grown = Object.keys(this.inputs).filter((k) => !COMPUTED_RESERVED.includes(k));
+    const added = needed.filter((v) => !grown.includes(v));
+    const removed = grown.filter((v) => !needed.includes(v));
     if (added.length === 0 && removed.length === 0) return;
     queueMicrotask(() => {
       void (async () => {
@@ -1984,102 +1691,17 @@ export class ComputedColumnNode extends GraphNode {
     return shapeOfFrameValue({ __frame: true, columns: cols });
   }
 
-  _gen?: number;
-  _ref?: FrameRef | null;
-
-  /** The bindings cross whole: a save keeps only the ones the formula's variables name, and `@x` is not one. */
-  static coreFields = ["bindings"] as const;
-
-  data(inputs: ComputedColumnInputs) {
-    const raw = inputs.frame?.[0] ?? null;
-    // A ref's answer is a promise, which the compute pass awaits; a value's stays synchronous, as callers read it.
-    return (isFrameRef(raw) ? this.dataOnRef(raw, inputs) : this.dataValue(inputs)) as { frame: FrameValue | CubeValue | SolError | null };
+  /** The bindings cross whole: a save keeps only the ones the formula's variables name, and `@x` is not one. The
+   *  recalculation lets a kept answer stand only until F9 or midnight, for a TODAY or NOW in the formula or a wired
+   *  LAMBDA (`KEEPS_ANSWER`). */
+  static coreFields = ["bindings", "recalcGen"] as const;
+  get recalcGen(): number {
+    return getRecalcGen();
   }
 
-  /** A frame in the engine: the formula runs there and only its answer column comes back, for the body to type,
-   *  unit and place; the shell assembles the answer in the engine. Anything the engine path doesn't carry (a side
-   *  value with a unit, a plan that rescales) reads the frame and runs as a value. */
-  private async dataOnRef(ref: FrameRef, inputs: ComputedColumnInputs) {
-    const gen = beginPass(this);
-    const asValue = async () => {
-      const mat = await readFrame(ref);
-      // As the input boundary reads a ref for a node that sees no errors: the error is the answer.
-      if (isSolError(mat)) throw mat;
-      return gen === this._gen ? this.dataValue({ ...inputs, frame: [mat] }) : { frame: null };
-    };
-    const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
-    if (isLambdaValue(inputs.fn?.[0]) || Object.keys(this.bindings).length > 0 || !this.expr.trim() || nameRaw === null) return asValue();
-    const schema = await collectPreview(ref, 0);
-    if (!isFrameValue(schema)) return asValue();
-    let united = false;
-    const sideValue = (p: string) => {
-      const v = readInput(inputs[p] as unknown[] | undefined, this.literals[p] ?? 0);
-      if (stripUnitCells(v) !== v) united = true;
-      return v;
-    };
-    const r = await computeColumnOnRef(ref, this.expr, schema.columns.map((c) => c.name), { sideValue, reserved: COMPUTED_RESERVED });
-    if (!r || isSolError(r)) return asValue();
-    try {
-      if (united) return asValue();
-      const placed = this.body({ ...inputs, frame: [schema], cells: [r.cells] });
-      if (placed.asValue) return asValue();
-      if (gen !== this._gen) return { frame: null };
-      const before = this.sideVars;
-      this.sideVars = r.sideVars;
-      this._reconcileSideSockets(before);
-      const shape = placed.frame;
-      if (!isFrameValue(shape)) return emitFrame(this, gen, shape as SolError | null);
-      const out = await assembleOnEngine(
-        shape.columns.map((c, i) => (i === placed.fresh
-          ? { handle: r.col, column: "out", as: c.name, type: c.type }
-          : { handle: r.base, column: c.name, as: c.name, type: c.type })),
-        shape,
-      );
-      return emitFrame(this, gen, out);
-    } finally {
-      frameBackend().drop(r.col);
-    }
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
-
-  /** The body over a value, its answer kept while the input, definition, placement and side values stand. */
-  private dataValue(inputs: ComputedColumnInputs) {
-    const rawF = inputs.frame?.[0] ?? null;
-    const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
-    const name = (nameRaw ?? "").trim() || "computed";
-    const after = (readInput(inputs.after, this.stringLiterals.after ?? "") ?? "").trim();
-    const lam = inputs.fn?.[0];
-    const wired = isLambdaValue(lam) ? lam : null;
-    const sideVals = this.sideVars.map((p) => readInput(inputs[p] as unknown[] | undefined, this.literals[p] ?? 0));
-    const bindJson = JSON.stringify(this.bindings);
-    const stamp = volatileStamp(wired ? wired.expr : this.expr);
-    const k = this._lastKey;
-    if (
-      nameRaw !== null && this.cachedResult && !isSolError(this.cachedResult) && k &&
-      Object.is(k.f, rawF) && Object.is(k.lam, wired) && k.expr === this.expr && k.addAs === this.addAs &&
-      k.name === name && k.after === after && k.bindings === bindJson && k.stamp === stamp &&
-      k.sideVals.length === sideVals.length && k.sideVals.every((v, i) => Object.is(v, sideVals[i]))
-    ) {
-      return { frame: this.cachedResult };
-    }
-    const before = this.sideVars;
-    const { frame } = this.body(inputs);
-    this._reconcileSideSockets(before);
-    const computed = frame != null && !isSolError(frame) && (wired !== null || this.expr.trim() !== "");
-    this._lastKey = computed ? { f: rawF, lam: wired, expr: this.expr, addAs: this.addAs, name, after, bindings: bindJson, sideVals, stamp } : null;
-    return { frame };
-  }
-
-  /** The card's answer over a value. With `cells`, `frame` is a frame ref's schema and `cells` the column the
-   *  engine computed over it: the answer is the columns the shell assembles, `fresh` the computed one's place, or
-   *  `asValue` where the ref must be read and run as a value. */
-  body(inputs: ComputedColumnInputs & { cells?: unknown[] }): { frame: FrameValue | CubeValue | SolError | null; fresh?: number; asValue?: true } {
-    return nodeOnCore(this, inputs) as { frame: FrameValue | CubeValue | SolError | null; fresh?: number; asValue?: true };
-  }
-
-  private _lastKey: {
-    f: unknown; lam: unknown; expr: string; addAs: ComputedColumnAs;
-    name: string; after: string; bindings: string; sideVals: unknown[]; stamp: number;
-  } | null = null;
 }
 
 // ─── GET ROW ────────────────────────────────────────────────────────────────────
@@ -2377,11 +1999,7 @@ export class WindowNode extends GraphNode {
 
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
 
-  async data(inputs: { frame?: (FrameInput | CubeValue | null)[]; keys?: string[][]; orderBy?: string[]; column?: string[]; n?: number[]; name?: string[] }) {
-    return lazyPass(this, { ...inputs, frame: [rowVerbInput(inputs.frame?.[0])] });
-  }
-
-  body(inputs: Inputs): { frame: LazyOut } {
-    return nodeOnCore(this, inputs) as { frame: LazyOut };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }

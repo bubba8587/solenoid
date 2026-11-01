@@ -10,8 +10,6 @@ import type { Cell } from "./coerce";
 import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
 import { parseCsvRows } from "../csv";
 import type { SolError } from "../errorValue";
-import { isFrameValue, frameRowCount, type FrameValue } from "../frame";
-import { isFrameRef, collectPreview, materialize } from "../frameBackend";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -555,25 +553,11 @@ export class TableInfoNode extends GraphNode {
     this.addOutput("cols", numOut("COLUMNS"));
   }
 
-  /** A frame reaches the body as its zero-row preview, the columns without their cells and the row count: a ref's
-   *  read from the backend, a value's taken here, so no frame crosses whole only to be counted. */
-  data(inputs: { matrix?: unknown[] }) {
-    const input = inputs.matrix?.[0];
-    if (isFrameRef(input)) {
-      return (async () => this.body({ preview: [await materialize(collectPreview(input, 0))] }))() as unknown as { rows: number | null; cols: number | null };
-    }
-    return this.body(isFrameValue(input) ? { preview: [rowless(input)] } : inputs);
-  }
-
-  body(inputs: Record<string, unknown[] | undefined>): { rows: number | SolError | null; cols: number | SolError | null } {
+  data(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { rows: number | SolError | null; cols: number | SolError | null };
   }
 }
 
-/** A frame's zero-row preview: its columns without their cells, and its row count. */
-function rowless(f: FrameValue): FrameValue {
-  return { __frame: true, columns: f.columns.map((c) => ({ name: c.name, type: c.type, values: [] })), __totalRows: f.__totalRows ?? frameRowCount(f) };
-}
 
 // ─── SOLVE (A·x = b) ──────────────────────────────────────────────────────────
 export class MatSolveNode extends GraphNode {

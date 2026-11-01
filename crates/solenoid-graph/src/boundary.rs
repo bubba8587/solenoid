@@ -205,7 +205,6 @@ fn keys() -> Rc<Keys> {
 
 /// What only the app's stores and frame code know, asked of TypeScript (`nodeBoundary.ts`).
 pub(crate) struct BoundaryHost {
-    pub(crate) collect: Function,
     frame_from_rows: Function,
     to_cube: Function,
     display_magnitude: Function,
@@ -240,7 +239,6 @@ pub fn set_boundary_host(host: Object) -> Result<(), JsValue> {
             })
     };
     let made = BoundaryHost {
-        collect: f("collect")?,
         frame_from_rows: f("frameFromRows")?,
         to_cube: f("toCube")?,
         display_magnitude: f("displayMagnitude")?,
@@ -1309,11 +1307,6 @@ fn from_thrown(t: Thrown) -> JsValue {
     }
 }
 
-/// What a node threw or rejected with, as the guard's error.
-pub(crate) fn thrown_error(e: JsValue) -> JsValue {
-    from_thrown(Thrown::Js(e))
-}
-
 /// The first error a node is handed, and the input it came on.
 fn first_input_error(inputs: &[(String, Vec<JsValue>)]) -> Option<(JsValue, String)> {
     inputs.iter().find_map(|(key, arr)| {
@@ -1400,42 +1393,50 @@ pub(crate) fn call<'a>(
             }),
         };
     }
-    Box::pin(async move {
-        let answer = async {
-            let mut collected = Vec::with_capacity(inputs.len());
-            for (key, arr) in &inputs {
-                let pending: Array = arr
-                    .iter()
-                    .map(|v| {
-                        if is_frame_ref(v) {
-                            call1(&call.host.collect, v)
-                        } else {
-                            Ok(v.clone())
-                        }
-                    })
-                    .collect::<R<Array>>()?;
-                let values = JsFuture::from(Promise::all(&pending))
-                    .await?
-                    .unchecked_into::<Array>()
-                    .to_vec();
-                if !facts.sees
-                    && let Some(failed) = values.iter().find(|v| is_sol_error(v))
-                {
-                    return Err(Thrown::Js(failed.clone()));
+    // A lazy frame is read whole in the core, read once a ref; one that fails is the answer.
+    let answer = (|| {
+        let mut collected = Vec::with_capacity(inputs.len());
+        for (key, arr) in &inputs {
+            let mut values = Vec::with_capacity(arr.len());
+            for v in arr {
+                if !is_frame_ref(v) {
+                    values.push(v.clone());
+                    continue;
                 }
-                collected.push((key.clone(), values));
+                let read = Val::from_js(v.clone()).frame_ref().map_or_else(
+                    || {
+                        sol_error(
+                            "#REF!",
+                            "The frame isn't held any more; recalculate to make it again",
+                        )
+                    },
+                    |r| crate::value::collected(&r).js(),
+                );
+                if !facts.sees && is_sol_error(&read) {
+                    return Err(Thrown::Js(read));
+                }
+                values.push(read);
             }
-            run_data(object, data, &coerce_all(object, facts, ports, &collected)?)
+            collected.push((key.clone(), values));
         }
-        .await;
-        let done = match answer {
-            Err(t) => Ok(call.thrown_out(t)),
-            Ok(Answer::Now(out)) => settle(&call, Ok(out)),
-            Ok(Answer::Later(p)) => settle(&call, JsFuture::from(p).await),
-        };
-        timed(&call, t0);
-        done
-    })
+        run_data(object, data, &coerce_all(object, facts, ports, &collected)?)
+    })();
+    match answer {
+        Err(t) => {
+            timed(&call, t0);
+            ready(Ok(call.thrown_out(t)))
+        }
+        Ok(Answer::Now(out)) => {
+            let done = call.finish(&out).unwrap_or_else(|t| call.thrown_out(t));
+            timed(&call, t0);
+            ready(Ok(done))
+        }
+        Ok(Answer::Later(p)) => Box::pin(async move {
+            let settled = JsFuture::from(p).await;
+            timed(&call, t0);
+            settle(&call, settled)
+        }),
+    }
 }
 
 pub(crate) fn now(host: &BoundaryHost) -> f64 {

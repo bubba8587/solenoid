@@ -6,7 +6,7 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use js_sys::{Array, Function, Object, Promise, Reflect};
+use js_sys::{Array, Function, Object, Reflect};
 use ruggine::classic;
 use ruggine::future::{ready, LocalBoxFuture};
 use ruggine::fxhash::{FxHashMap, FxHashSet};
@@ -16,7 +16,6 @@ use solenoid_core::error_value::{sol_error, ErrorCode, Origin};
 use solenoid_core::excel_functions::V;
 use solenoid_core::nodes::{self, Cv, Shown};
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_futures::JsFuture;
 
 use crate::boundary::{self, host, BoundaryHost, Facts};
 use crate::boundary_core::{
@@ -67,15 +66,21 @@ pub(crate) struct Direct {
     adopted: RefCell<FxHashSet<String>>,
     /// Each output's frame as its format picks stamped it, kept while the frame and the picks stand.
     stamped: RefCell<FxHashMap<String, Stamped>>,
+    /// The same for a lazy frame: the picks a step of its plan.
+    stamped_refs:
+        RefCell<FxHashMap<String, (Rc<Header>, Rc<solenoid_core::frame_ref::FrameRef>, Val)>>,
     /// A `nodes::keeps_answer` card's last answer, with the call and the inputs it answered (`call`).
     kept: RefCell<Option<Kept>>,
     /// What its body drew, and the recalc generation the draws hold for ([[C23]] calcModes).
     draws: RefCell<Option<(u64, nodes::Draws)>>,
 }
 
-/// A card's answer and the call and inputs it answered, and the recalculation it stands for when it read the clock.
+/// A card's answer and the call, the sketch mode, the `coreFields` and the inputs it answered, and the recalculation it
+/// stands for when it read the clock.
 type Kept = (
     Rc<Header>,
+    bool,
+    Option<String>,
     Vec<(String, Vec<Val>)>,
     Outputs<Val>,
     Option<u64>,
@@ -367,7 +372,24 @@ impl Run<'_> {
     }
 
     /// The body over the inputs (each already its own value, a lazy frame collected).
-    fn run(&self, raw: &[(String, Vec<Val>)]) -> Outputs<Val> {
+    /// The fields a class's `static coreFields` names, as the card reads them now (JSON text).
+    fn core_fields(&self, header: &Header) -> Option<String> {
+        if header.core_fields.is_empty() {
+            return None;
+        }
+        let names: Array = header
+            .core_fields
+            .iter()
+            .map(|f| JsValue::from_str(f))
+            .collect();
+        self.host
+            .fields
+            .call2(&JsValue::NULL, self.card.object, &names)
+            .ok()
+            .and_then(|t| t.as_string())
+    }
+
+    fn run(&self, raw: &[(String, Vec<Val>)], fields: Option<String>) -> Outputs<Val> {
         let Some(header) = self.header.clone() else {
             return self.thrown_out(Thrown::Message("the card's call can't be read".into()));
         };
@@ -404,20 +426,10 @@ impl Run<'_> {
             .map(|(k, a)| (k, a.into_iter().map(|x| x.v).collect()))
             .collect();
         let mut c = header.call.again(inputs, units_in);
-        if !header.core_fields.is_empty() {
-            let names: Array = header
-                .core_fields
-                .iter()
-                .map(|f| JsValue::from_str(f))
-                .collect();
-            let fields = self
-                .host
-                .fields
-                .call2(&JsValue::NULL, self.card.object, &names)
-                .ok()
-                .and_then(|t| t.as_string())
-                .and_then(|t| serde_json::from_str::<Map<String, Json>>(&t).ok())
-                .unwrap_or_default();
+        if let Some(fields) = fields
+            .or_else(|| self.core_fields(&header))
+            .and_then(|t| serde_json::from_str::<Map<String, Json>>(&t).ok())
+        {
             Rc::make_mut(&mut c.init).extend(fields);
         }
         let watched = header.watch.as_deref().map(|f| self.field(f));
@@ -536,19 +548,33 @@ impl Run<'_> {
         out
     }
 
-    /// A frame with the card's own format picks on its columns (a lazy one takes them as a step of its plan, in
-    /// `nodeBoundary.ts`), kept while the frame and the picks stand so it keeps its identity.
+    /// A frame with the card's own format picks on its columns (a lazy one takes them as a step of its plan),
+    /// kept while the frame and the picks stand so it keeps its identity.
     fn stamp(&self, header: &Rc<Header>, picks: &Map<String, Json>, key: &str, val: Val) -> Val {
-        if val.is_frame_ref() {
-            let js = val.js();
-            return match self
-                .host
-                .stamp
-                .call2(&JsValue::NULL, &self.id.as_str().into(), &js)
-            {
-                Ok(s) if s != js => Val::from_js(s),
-                _ => val,
-            };
+        if let Some(r) = val.frame_ref() {
+            if picks.is_empty() {
+                return val;
+            }
+            let held =
+                self.card
+                    .direct
+                    .stamped_refs
+                    .borrow()
+                    .get(key)
+                    .and_then(|(hd, input, out)| {
+                        (Rc::ptr_eq(hd, header) && Rc::ptr_eq(input, &r)).then(|| out.clone())
+                    });
+            if let Some(out) = held {
+                return out;
+            }
+            let op = serde_json::json!({ "kind": "formats", "formats": picks });
+            let out = Val::bare(Cv::Ref(r.then(op)));
+            self.card
+                .direct
+                .stamped_refs
+                .borrow_mut()
+                .insert(key.to_owned(), (header.clone(), r, out.clone()));
+            return out;
         }
         let Some(Cv::Frame(f)) = val.core().map(|a| &a.v) else {
             return val;
@@ -618,8 +644,8 @@ pub(crate) fn off_core(class: &str, inputs: &Inputs<Val>) -> bool {
         .is_some_and(|v| matches!(v.core().map(|a| &a.v), None | Some(Cv::V(V::Lambda(_)))))
 }
 
-/// The card computed on `inputs`: the guard, the boundary and its body, all in Rust; a lazy frame's collect and the
-/// first read of its call are the only calls into JavaScript.
+/// The card computed on `inputs`: the guard, a lazy frame's collect, the boundary and its body, all in Rust; the first
+/// read of its call is the only call into JavaScript.
 pub(crate) fn call<'a>(
     card: &'a Card<'a>,
     ports: &'a classic::Node,
@@ -660,78 +686,50 @@ pub(crate) fn call<'a>(
         return ready(Ok(run.thrown_out(Thrown::Message(m))));
     }
     let t0 = boundary::perf_on().then(|| boundary::now(&run.host));
-    let lazy_refs = !card.facts.lazy && raw.iter().any(|(_, vs)| vs.iter().any(Val::is_frame_ref));
-    if !lazy_refs {
-        // A card that keeps its answer gives the last one over the same call and the same inputs, the same objects.
-        let keeps = run
-            .header
-            .as_ref()
-            .filter(|h| nodes::keeps_answer(&h.kind))
-            .cloned();
-        let generation = || crate::wasm::session(|s| s.recalc_gen);
-        if let Some(h) = &keeps
-            && let Some((kh, kin, kout, kgen)) = &*card.direct.kept.borrow()
-            && Rc::ptr_eq(kh, h)
-            && same_inputs(kin, &raw)
-            && kgen.is_none_or(|g| g == generation())
-        {
-            timed(&run, t0);
-            return ready(Ok(kout.clone()));
-        }
-        let out = run.run(&raw);
-        if let Some(h) = keeps {
-            let kgen = run.volatile.get().then(generation);
-            *card.direct.kept.borrow_mut() = Some((h, raw.clone(), out.clone(), kgen));
-        }
-        timed(&run, t0);
-        return ready(Ok(out));
-    }
-    Box::pin(async move {
-        let mut collected: Vec<(String, Vec<Val>)> = Vec::with_capacity(raw.len());
-        for (key, vals) in &raw {
-            let pending: Array = vals
-                .iter()
-                .map(|v| {
-                    if v.is_frame_ref() {
-                        run.host
-                            .collect
-                            .call1(&JsValue::NULL, &v.js())
-                            .unwrap_or_else(|e| Promise::reject(&e).into())
-                    } else {
-                        v.js()
+    // A card that isn't lazy reads a lazy frame whole, read once a ref; one that fails is the answer.
+    let mut raw = raw;
+    if !card.facts.lazy {
+        for (_, vals) in raw.iter_mut() {
+            for v in vals.iter_mut() {
+                if let Some(r) = v.frame_ref() {
+                    *v = crate::value::collected(&r);
+                    if !card.facts.sees && v.is_err() {
+                        let failed = v.clone();
+                        timed(&run, t0);
+                        return ready(Ok(run.error_out(failed, None)));
                     }
-                })
-                .collect();
-            let settled = match JsFuture::from(Promise::all(&pending)).await {
-                Ok(s) => s.unchecked_into::<Array>(),
-                Err(e) => {
-                    timed(&run, t0);
-                    return Ok(run.error_out(Val::from_js(boundary::thrown_error(e)), None));
                 }
-            };
-            let values: Vec<Val> = vals
-                .iter()
-                .enumerate()
-                .map(|(i, v)| {
-                    if v.is_frame_ref() {
-                        Val::from_js(settled.get(i as u32))
-                    } else {
-                        v.clone()
-                    }
-                })
-                .collect();
-            if !card.facts.sees
-                && let Some(failed) = values.iter().find(|v| v.is_err())
-            {
-                timed(&run, t0);
-                return Ok(run.error_out(failed.clone(), None));
             }
-            collected.push((key.clone(), values));
         }
-        let out = run.run(&collected);
+    }
+    // A card that keeps its answer gives the last one over the same call and the same inputs, the same objects.
+    let sketch = solenoid_core::frame_ref::sketch();
+    let keeps = run
+        .header
+        .as_ref()
+        .filter(|h| nodes::keeps_answer(&h.kind))
+        .cloned();
+    let fields = keeps.as_ref().and_then(|h| run.core_fields(h));
+    let generation = || crate::wasm::session(|s| s.recalc_gen);
+    if let Some(h) = &keeps
+        && let Some((kh, ks, kf, kin, kout, kgen)) = &*card.direct.kept.borrow()
+        && Rc::ptr_eq(kh, h)
+        && *ks == sketch
+        && *kf == fields
+        && same_inputs(kin, &raw)
+        && kgen.is_none_or(|g| g == generation())
+    {
         timed(&run, t0);
-        Ok(out)
-    })
+        return ready(Ok(kout.clone()));
+    }
+    let out = run.run(&raw, fields.clone());
+    if let Some(h) = keeps {
+        // An answer that read the clock (TODAY, NOW) stands for this recalculation only.
+        let kgen = run.volatile.get().then(generation);
+        *card.direct.kept.borrow_mut() = Some((h, sketch, fields, raw, out.clone(), kgen));
+    }
+    timed(&run, t0);
+    ready(Ok(out))
 }
 
 /// Two calls' inputs as the change test reads them: the same keys, each value the same.

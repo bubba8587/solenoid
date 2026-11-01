@@ -3,7 +3,8 @@
 import { it, expect } from "vitest";
 import { wasmEngineLoaded, wasmInvokeSync, onCore, CoreTrap } from "../../src/graph/engineWasm";
 import { evaluateOnCore, callOnCore } from "../../src/graph/coreValues";
-import { computeColumnOnEngine, collectPreview, runFrameUnary, useWasmBackend } from "../../src/graph/frameBackend";
+import { computeColumnOnEngine, collectPreview } from "../../src/graph/frameBackend";
+import { planned } from "./frameRefKit";
 
 /** The fresh instance comes a microtask after the trap, once the stack has left the module. */
 const recovered = () => Promise.resolve();
@@ -25,17 +26,12 @@ it("a trap answers its own call and leaves later calls on a working core", async
   expect(col).toMatchObject({ cells: [2, 4] });
 });
 
-// A verb's failure rejects its preview, so the error guard makes it the node's own error and nothing downstream reads a
-// frame that is gone.
+// A lazy frame's JavaScript object outlives the instance that held it: its preview rejects with #REF!, so the error
+// guard makes it the node's own error and nothing downstream reads a frame that is gone.
 it("a lazy frame left in a dead instance rejects its preview with #REF!", async () => {
-  useWasmBackend();
-  try {
-    const frame = { __frame: true as const, columns: [{ name: "a", type: "number" as const, values: [3, 1, 2] }] };
-    const ref = await runFrameUnary(frame, { kind: "sort", by: "a", dir: "asc" });
-    expect(() => wasmInvokeSync("engine_trap")).toThrow(CoreTrap);
-    await recovered();
-    await expect(collectPreview(ref)).rejects.toMatchObject({ code: "#REF!" });
-  } finally {
-    useWasmBackend();
-  }
+  const frame = { __frame: true as const, columns: [{ name: "a", type: "number" as const, values: [3, 1, 2] }] };
+  const ref = planned(frame, { kind: "sort", by: "a", dir: "asc" });
+  expect(() => wasmInvokeSync("engine_trap")).toThrow(CoreTrap);
+  await recovered();
+  await expect(collectPreview(ref)).rejects.toMatchObject({ code: "#REF!" });
 });

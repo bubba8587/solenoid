@@ -116,16 +116,16 @@ cables (the author, 2026-10-25).
   Distinct, PIVOTBY, Unpivot, Nest, Unnest, Computed Column, Split Column and the rest of
   the catalog's Table group. (`nodes/frame.ts`, the core's `frame_verbs.rs`; inventory in
   `nodeCatalog.ts`)
-- **FrameBackend**: the seam frames live behind, by handle: the Rust core in wasm, on the web
-  and desktop alike. (`frameBackend.ts`; see [[C130]] rustCore)
+- **Frame store**: the core's eager frames by handle (`rs:<n>`), for the eager Frame tools
+  and the verb corpus. (`engine_source` and kin; see [[C130]] rustCore)
 - **Frame verbs**: the core's implementation of every verb (`frame_verbs.rs`); their
   vocabulary is `frameOps.ts`.
-- **Materialization boundary**: the point where a lazy `FrameRef` is collected into a
-  real `FrameValue` (e.g. Get Column, a chart, an export). (the input boundary, `boundary.rs`)
-- **Preview / collectPreview**: a verb card shows head-N rows, not the whole frame;
-  `FrameValue.__totalRows` carries the true count. (`frameBackend.ts`)
-- **Source-handle cache**: a WeakMap keyed by frame identity so a given frame uploads to
-  Rust only once. (`frameBackend.ts` `_sourceCache`)
+- **Lazy frame / FrameRef**: a frame on a cable as a base frame and a plan of ops not yet
+  run, held in the core and planned on by each verb card. (`frame_ref.rs`)
+- **Materialization boundary**: the point where a lazy frame is read whole (a non-lazy card's
+  input, a chart, an export). (`value::collected`, `boundary.rs`)
+- **Preview / collectPreview**: a verb card shows its first 100 rows, not the whole frame;
+  `FrameValue.__totalRows` carries the true count and `__ref` the ref. (`refs::preview`)
 - **Cube**: the recursive nested-table container, a Frame whose cells can be Frames, for
   nested data without flattening it to one wide sheet. It has a cached depth and a drill-in popup. (`CubeValue` in
   `frame.ts`; nodes in `nodes/cube.ts`, `cubePopupStore.ts`)

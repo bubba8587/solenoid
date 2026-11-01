@@ -2581,7 +2581,7 @@ fn conditional_regions(c: &mut Call) -> Answer {
     if flips.is_some() {
         columns.push(plain(&names[3], FrameColType::Number, margins));
     }
-    let out = Cv::Frame(Rc::new(Frame { columns, total_rows: None, approx: None }));
+    let out = Cv::Frame(Rc::new(Frame { columns, total_rows: None, approx: None, source: None, layout: None }));
     c.show("cachedError", V::Null);
     c.show("cachedPoints", whole(Json::Array(shown)));
     Ok(vec![("result".into(), out)])

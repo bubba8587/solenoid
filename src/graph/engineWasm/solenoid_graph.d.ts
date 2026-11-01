@@ -294,6 +294,28 @@ export function fmt_scalar(n: number): string;
 export function formatDim(dim: string): string;
 
 /**
+ * A lazy frame's first `rows` rows with its row count and itself as their source (`collectPreview`); it throws the
+ * error its plan answers.
+ */
+export function frameRefPreview(v: any, rows: number): any;
+
+/**
+ * A lazy frame's whole frame for JavaScript (`readFrame`): the frame, or the error its plan answers.
+ */
+export function frameRefRead(v: any): any;
+
+/**
+ * A frame (a lazy one, or a value) with one more op planned on it, the op as the verbs read it (a frame's format
+ * picks).
+ */
+export function frameRefThen(v: any, op: string): any;
+
+/**
+ * A lazy frame as a frozen case holds it (`refs::wire`), as JSON text; none where it isn't one the core holds.
+ */
+export function frameRefWire(v: any): string | undefined;
+
+/**
  * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
  */
 export function graphTrap(): void;
@@ -469,6 +491,10 @@ export interface InitOutput {
     readonly fmt_date: (a: number, b: number, c: number, d: number) => void;
     readonly fmt_scalar: (a: number, b: number) => void;
     readonly formatDim: (a: number, b: number, c: number) => void;
+    readonly frameRefPreview: (a: number, b: any, c: number) => void;
+    readonly frameRefRead: (a: any) => any;
+    readonly frameRefThen: (a: any, b: number, c: number) => any;
+    readonly frameRefWire: (a: number, b: any) => void;
     readonly graphTrap: () => void;
     readonly graphcore_addConnection: (a: number, b: number, c: any, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
     readonly graphcore_addNode: (a: number, b: number, c: number, d: number, e: any, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
@@ -544,8 +570,8 @@ export interface InitOutput {
     readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly uid: (a: number) => void;
     readonly unnamedEdits: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_8128: (a: number, b: number, c: number, d: any) => void;
-    readonly __wasm_bindgen_func_elem_8130: (a: number, b: number, c: any, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8125: (a: number, b: number, c: number, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8127: (a: number, b: number, c: any, d: any) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;

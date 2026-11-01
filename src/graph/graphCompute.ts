@@ -2,7 +2,6 @@
 import type { GraphEditor } from "./graphEditor";
 import { engineOf, type DataflowEngine, type NodeOutputs } from "./dataflowEngine";
 import { resolveTrigModes } from "./trigMode";
-import { clearCollectMemo } from "./frameBackend";
 import type { Schemes } from "./schemes";
 
 type Editor = GraphEditor<Schemes>;
@@ -24,7 +23,6 @@ export function downstreamClosure(editor: Editor, startId: string): Set<string> 
 /** The model pass: what `changedId` reaches cleared (everything without one), the loops seeded with `#CIRC!`, every
  *  node fetched ([[compute-pass]] § The model pass); the walk and the seeding are the engine's. */
 export async function computeAll(editor: Editor, engine: Engine, changedId?: string): Promise<PassValues> {
-  clearCollectMemo();
   resolveTrigModes(editor);
   return (await engine.computeAll(changedId))!;
 }

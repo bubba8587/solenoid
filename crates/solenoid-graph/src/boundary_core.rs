@@ -75,7 +75,7 @@ fn same_v(a: &V, b: &V) -> bool {
 }
 
 pub fn is_frame_ref(v: &Cv) -> bool {
-    matches!(v, Cv::Json(j) if j.get("__frameRef").is_some())
+    matches!(v, Cv::Ref(_))
 }
 
 fn nullish(v: &V) -> bool {

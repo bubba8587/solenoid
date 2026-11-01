@@ -27,6 +27,7 @@ mod logic;
 mod matrix;
 pub(crate) mod packs;
 pub mod qr;
+pub mod refs;
 mod scalar;
 mod sched;
 mod stats;
@@ -408,12 +409,14 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 pub const DIRECT: &[&str] = &[
     "AccruedInterestNode",
     "AddColumnNode",
+    "AddIndexNode",
     "AggregateNode",
     "AlertNode",
     "AllocatorNode",
     "AmortizationNode",
     "AngleDialNode",
     "AntoineNode",
+    "AppendNode",
     "ArgMinMaxNode",
     "ArithmeticNode",
     "AwgNode",
@@ -421,6 +424,7 @@ pub const DIRECT: &[&str] = &[
     "BesselNode",
     "BetweenNode",
     "BinNode",
+    "BindColumnsNode",
     "BinomDistRangeNode",
     "BitwiseNode",
     "BondPricingNode",
@@ -442,6 +446,7 @@ pub const DIRECT: &[&str] = &[
     "ColebrookNode",
     "ColorBlendNode",
     "ColorPickerNode",
+    "ColumnsNode",
     "CombinationsNode",
     "CombinatoricsNode",
     "ComparisonNode",
@@ -450,6 +455,7 @@ pub const DIRECT: &[&str] = &[
     "ComplexPowerNode",
     "ComplexUnaryNode",
     "ComplexUnpackNode",
+    "ComputedColumnNode",
     "ConcatListsNode",
     "ConcatNode",
     "ConditionalRegionsNode",
@@ -482,8 +488,10 @@ pub const DIRECT: &[&str] = &[
     "DiffNode",
     "DiscountSecurityNode",
     "DisplayNode",
+    "DistinctNode",
     "DistributionsNode",
     "DollarNode",
+    "DropBlankRowsNode",
     "DurationNode",
     "ESeriesNode",
     "EarnedValueNode",
@@ -497,7 +505,9 @@ pub const DIRECT: &[&str] = &[
     "ExpandNode",
     "ExpectNode",
     "ExpressionNode",
+    "FillBlanksNode",
     "FillNode",
+    "FilterFrameNode",
     "FilterNode",
     "FindPeaksNode",
     "FisherNode",
@@ -514,10 +524,13 @@ pub const DIRECT: &[&str] = &[
     "GCDNode",
     "GanttNode",
     "GaugeNode",
+    "GetColumnNode",
     "GetRowNode",
     "GridPainterNode",
+    "GroupByFrameNode",
     "GroupListsNode",
     "HashNode",
+    "HeadNode",
     "HeadersNode",
     "HeatmapNode",
     "HistogramNode",
@@ -535,6 +548,7 @@ pub const DIRECT: &[&str] = &[
     "IsTestNode",
     "IsaAtmosphereNode",
     "IspmtNode",
+    "JoinNode",
     "KMeansNode",
     "KpiNode",
     "LambdaNode",
@@ -550,6 +564,7 @@ pub const DIRECT: &[&str] = &[
     "MatEigenNode",
     "MatSolveNode",
     "MathFXNode",
+    "MergeColumnsNode",
     "MergePlotsNode",
     "MermaidNode",
     "MirrNode",
@@ -574,6 +589,7 @@ pub const DIRECT: &[&str] = &[
     "PcaNode",
     "PhysicsConstantNode",
     "PipeRoughnessNode",
+    "PivotNode",
     "PointPlotterNode",
     "PolyRootsNode",
     "PolyfitNode",
@@ -590,6 +606,8 @@ pub const DIRECT: &[&str] = &[
     "ReduceLambdaNode",
     "RegexNode",
     "RegressionNode",
+    "RenameNode",
+    "ReplaceValuesNode",
     "ReptNode",
     "ResistorCodeNode",
     "ReturnsNode",
@@ -610,22 +628,27 @@ pub const DIRECT: &[&str] = &[
     "ShiftNode",
     "ShuffleNode",
     "SliceNode",
+    "SlicerNode",
     "SliderInputNode",
     "SmoothNode",
     "SolarPositionNode",
+    "SortFrameNode",
     "SortNode",
     "SparklineNode",
     "SpectrumNode",
     "SpellNumberNode",
+    "SplitColumnNode",
     "SplitFrameNode",
     "StackNode",
     "StandardizeNode",
     "SubstituteNode",
+    "SumIfsNode",
     "SumProductNode",
     "SunriseSunsetNode",
     "SurfaceNode",
     "SwitchNode",
     "TableDiagNode",
+    "TableInfoNode",
     "TableInputNode",
     "TableMultNode",
     "TableOuterNode",
@@ -657,11 +680,13 @@ pub const DIRECT: &[&str] = &[
     "TwoInputMathNode",
     "UniqueNode",
     "UnnestNode",
+    "UnpivotNode",
     "UrlEncodeNode",
     "UuidNode",
     "WaterfallNode",
     "WeekInfoNode",
     "WeightedNode",
+    "WindowNode",
     "WorkdaysNode",
     "WorldClockNode",
     "WrapTextNode",
@@ -674,16 +699,47 @@ pub fn is_direct(kind: &str) -> bool {
     DIRECT.binary_search(&kind).is_ok()
 }
 
-/// Direct classes whose answer, over the same call and the same inputs, is the one they gave last, kept so it stays the
-/// same object: a frame they build would otherwise be a new one each full pass, which the frame backend uploads again
-/// (it keys an upload by identity), and a LAMBDA's consumers memo on its identity. A body that reads the clock or draws keeps no answer, so this is a list.
+/// Direct classes whose answer, over the same call, the same inputs and the same sketch mode, is the one they gave
+/// last, kept so it stays the same object: a frame they build would otherwise be a new one each full pass, read into
+/// the frame verbs again (`refs::planned` keys a frame by identity), a ref would run its plan again, and a LAMBDA's
+/// consumers memo on its identity. A body that reads the clock or draws keeps no answer, so this is a list; a class
+/// naming `coreFields` keeps it only while they read the same (Computed Column's TODAY/NOW stamp).
 /// One whose answer this call read the clock for (`Call::volatile`, a Frame or Cube Input text calling TODAY) keeps it
 /// for the recalculation only.
-pub const KEEPS_ANSWER: &[&str] =
-    &["BuildFrameNode", "CubeInputNode", "FrameFromListsNode", "FrameInputNode", "LambdaNode"];
+pub const KEEPS_ANSWER: &[&str] = &[
+    "AddIndexNode",
+    "AppendNode",
+    "BindColumnsNode",
+    "BuildFrameNode",
+    "ColumnsNode",
+    "ComputedColumnNode",
+    "CubeInputNode",
+    "DistinctNode",
+    "DropBlankRowsNode",
+    "FillBlanksNode",
+    "FilterFrameNode",
+    "FrameFromListsNode",
+    "FrameInputNode",
+    "GetColumnNode",
+    "GroupByFrameNode",
+    "HeadNode",
+    "JoinNode",
+    "LambdaNode",
+    "MergeColumnsNode",
+    "PivotNode",
+    "RenameNode",
+    "ReplaceValuesNode",
+    "SlicerNode",
+    "SortFrameNode",
+    "SplitColumnNode",
+    "SumIfsNode",
+    "TableInfoNode",
+    "UnpivotNode",
+    "WindowNode",
+];
 
 pub fn keeps_answer(kind: &str) -> bool {
-    KEEPS_ANSWER.contains(&kind)
+    KEEPS_ANSWER.binary_search(&kind).is_ok()
 }
 
 /// Direct classes that hand on in TypeScript a value the core can't hold (a LAMBDA, an object the card wire doesn't
@@ -737,15 +793,15 @@ impl serde::Serialize for NodeReply {
         use crate::frame_backend::Out;
         use serde::ser::SerializeMap;
         use values::CvCell;
-        // An output that is one of the inputs as it came (a frame ref or a LAMBDA passed through) crosses as where it came from,
-        // so the TS hands back that very object: plan flushes and collects are memoized by the ref's identity.
+        // An output that is one of the inputs as it came (a frame, a lazy one or a LAMBDA passed through) crosses as where
+        // it came from, so the TS hands back that very object: a consumer keys a frame and a LAMBDA by identity.
         struct Outs<'a>(&'a [(String, Cv)], &'a [(String, Vec<Cv>)]);
         impl serde::Serialize for Outs<'_> {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 let mut m = s.serialize_map(Some(self.0.len()))?;
                 for (k, v) in self.0 {
                     let from = match v {
-                        Cv::Json(_) | Cv::V(V::Lambda(_)) => {
+                        Cv::Json(_) | Cv::Ref(_) | Cv::Frame(_) | Cv::Cube(_) | Cv::V(V::Lambda(_)) => {
                             self.1.iter().find_map(|(key, vs)| vs.iter().position(|x| x.same(v)).map(|at| (key, at)))
                         }
                         _ => None,

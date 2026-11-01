@@ -35,6 +35,7 @@ pub mod formulajs;
 pub mod frame;
 pub mod frame_backend;
 pub mod frame_fns;
+pub mod frame_ref;
 pub mod frame_verbs;
 pub mod hash_ops;
 pub mod js_radix;

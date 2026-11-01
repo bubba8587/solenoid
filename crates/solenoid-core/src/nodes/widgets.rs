@@ -77,7 +77,7 @@ fn num_column(name: &str, values: Vec<V>) -> Column {
 }
 
 fn frame_of(columns: Vec<Column>) -> Cv {
-    Cv::Frame(Rc::new(Frame { columns, total_rows: None, approx: None }))
+    Cv::Frame(Rc::new(Frame { columns, total_rows: None, approx: None, source: None, layout: None }))
 }
 
 // ─── Value Input, Slider ────────────────────────────────────────────────────────

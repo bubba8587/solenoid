@@ -298,7 +298,7 @@ fn frame_from_records(records: &[Record], picks: &[(String, FrameColType)]) -> F
             }
         })
         .collect();
-    Frame { columns, total_rows: None, approx: None }
+    Frame { columns, total_rows: None, approx: None, source: None, layout: None }
 }
 
 /// `recordsToCube`: `picks` types the columns, and each table nested in a cell takes what `nested` declares for its

@@ -10,6 +10,12 @@ import { nodeUnwire, readNodeReply, jsonDec } from "../../src/graph/nodeWire";
 import { isSolError } from "../../src/graph/errorValue";
 import { isUnitCell, matrixUnitOf, withMatrixUnit, type ColumnUnit } from "../../src/graph/unitValue";
 import { isCx } from "../../src/graph/cxValue";
+import { isFrameRef } from "../../src/graph/frameBackend";
+import { frameRefWire } from "../../src/graph/engineWasm/solenoid_graph.js";
+import "../../src/graph/nodeBoundary";
+
+/** A lazy frame as its case froze it: its frame's cells and its plan. */
+const frozen = (v: unknown): unknown => (isFrameRef(v) ? JSON.parse(frameRefWire(v) ?? "null") : v);
 
 const DIR = path.resolve(__dirname, "../../fixtures/core/nodes");
 type Case = { init: unknown; inputs: [string, unknown[]][]; result: { out?: Record<string, unknown>; thrown?: unknown }; ctx: { clock: unknown }; unstable?: true };
@@ -61,7 +67,7 @@ describe("card bodies on the core answer as frozen", () => {
             const got = from ? nodeUnwire(c.inputs.find(([key]) => key === from[0])?.[1][from[1]])
               : r.out && k in r.out ? readNodeReply(r.out[k])?.value : "(missing)";
             if (r.matrixUnits?.[k]) withMatrixUnit(got, jsonDec(r.matrixUnits[k]) as ColumnUnit);
-            if (!same(got, nodeUnwire(w))) bad.push(`${k}: ${JSON.stringify(got)} vs ${JSON.stringify(w)} on ${JSON.stringify(c.inputs)}`);
+            if (isFrameRef(got) ? !same(frozen(got), w) : !same(got, nodeUnwire(w))) bad.push(`${k}: ${JSON.stringify(got)} vs ${JSON.stringify(w)} on ${JSON.stringify(c.inputs)}`);
           }
         } else if (c.result.thrown !== undefined) {
           const got = r.thrown === undefined ? "(no throw)" : readNodeReply(r.thrown)?.value;

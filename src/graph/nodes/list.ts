@@ -7,18 +7,17 @@ import { dropInputCables } from "../components/cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
 import { cardShapeOnCore, type Shape } from "../frameShape";
 import type { Cell as AnyCell } from "./coerce";
-import { readInput, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn, anyDataIn, adoptiveDataOut } from "./shared";
+import { listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn, anyDataIn, adoptiveDataOut } from "./shared";
 import { rolesFrom, setting, LEFT_OUT, type InputRole } from "../inputRoles";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys } from "./logic";
 import { type FilterCondConfig } from "../frameOps";
-import { isSolError, type SolError } from "../errorValue";
+import type { SolError } from "../errorValue";
 import { type Tri } from "../valueKinds";
 import { type UnitCell } from "../unitValue";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { type OutlierMethod, type RunningOp, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, ARG_LIST_OPS } from "./listOps";
-import { isFrameRef, readRefColumn, materialize } from "../frameBackend";
 import { type FrameValue, type CubeValue, type CubeCell } from "../frame";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
@@ -714,18 +713,6 @@ export class SliceNode extends GraphNode {
 export type { FilterCombine } from "../frameOps";
 import type { FilterCombine } from "../frameOps";
 
-/** Null means a wired blank; any other wired value stringifies (an error to its code) to match a typed literal. */
-function readFilterValue(wired: unknown[] | undefined, literal: string | undefined): string | null {
-  const raw: unknown = wired === undefined || wired.length === 0 ? (literal ?? "") : (wired[0] ?? null);
-  if (raw === null) return null;
-  if (isSolError(raw)) return raw.code;
-  return String(raw);
-}
-
-/** A condition's value or column is a setting: a blank one is the condition left out, so it keeps every row ([[D86]] blankRoles). */
-const readConditionValue = (wired: unknown[] | undefined, literal: string | undefined): string =>
-  readFilterValue(wired, literal) ?? "";
-
 export class FilterNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     list: "A list keeps or drops its items. A table keeps or drops its rows, tested on one column.",
@@ -849,7 +836,6 @@ export class SumIfsNode extends GraphNode {
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["Column", "Value"];
   cachedResult: number | UnitCell | SolError | null = null;
-  private _gen = 0;
   width = 210;
   height = 280;
 
@@ -903,29 +889,7 @@ export class SumIfsNode extends GraphNode {
     delete this.stringLiterals[`value${id}`];
   }
 
-  /** A ref's columns the body reads are read from the backend first and handed it as `read`: a frame of them, each
-   *  under the name it was asked by, or the error a read answered. */
-  data(inputs: Record<string, unknown[] | undefined>): { result: number | UnitCell | SolError | null } {
-    const gen = ++this._gen;
-    const raw = inputs.frame?.[0];
-    if (!isFrameRef(raw)) return this.body(inputs);
-    const names = new Set<string>();
-    for (const [colKey] of this.valuePairKeys()) {
-      const n = readConditionValue(inputs[colKey], this.stringLiterals[colKey]).trim();
-      if (n !== "") names.add(n);
-    }
-    const vn = readInput(inputs.values as string[] | undefined, this.stringLiterals.values ?? "");
-    if (vn != null && String(vn).trim() !== "") names.add(String(vn).trim());
-    return (async () => {
-      const cols = await materialize(Promise.all([...names].map(async (n) => [n, await readRefColumn(raw, n)] as const)));
-      if (gen !== this._gen) return { result: null };
-      const read: FrameValue | SolError = isSolError(cols) ? cols
-        : { __frame: true, columns: cols.filter(([, c]) => c != null).map(([n, c]) => ({ ...c!, name: n })) };
-      return this.body({ ...inputs, read: [read] });
-    })() as unknown as { result: number | UnitCell | SolError | null };
-  }
-
-  body(inputs: Record<string, unknown[] | undefined>): { result: number | UnitCell | SolError | null } {
+  data(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { result: number | UnitCell | SolError | null };
   }
 }

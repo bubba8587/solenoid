@@ -434,6 +434,11 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             "packs": crate::fns_packs::NAMES,
         })),
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),
+        // What the frame layer did since the last ask (`frame_ref::Stats`), for the tests that hold a chain's cost.
+        "engine_frame_stats" => {
+            let s = crate::frame_ref::take_stats();
+            Ok(json!({ "runs": s.runs, "ops": s.ops, "taken": s.taken, "collects": s.collects }))
+        }
         other => crate::csv::invoke(other, args)
             .ok_or_else(|| sol_error(ErrorCode::Error, format!("unknown engine command \"{other}\""))),
     }

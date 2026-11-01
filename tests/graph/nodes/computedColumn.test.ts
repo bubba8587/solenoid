@@ -2,7 +2,6 @@
 import { GraphEditor } from "../../../src/graph/graphEditor";
 import { DataflowEngine } from "../../../src/graph/dataflowEngine";
 import type { Schemes } from "../../../src/graph/schemes";
-import { GraphConnection } from "../../../src/graph/graphModel";
 import { describe, it, expect } from "vitest";
 import { ComputedColumnNode, FrameInputNode } from "../../../src/graph/nodes/frame";
 import { LambdaNode, perRowParamClashes } from "../../../src/graph/nodes/lambda";
@@ -11,6 +10,29 @@ import { rowRefNames } from "../coreVerbs";
 import { getColumn, frameSourceToText, parseFrameSource, type FrameValue } from "../../../src/graph/frame";
 import { solError, isSolError } from "../../../src/graph/errorValue";
 import { extractInit } from "../../../src/graph/nodeInit";
+import { GraphConnection, GraphNode } from "../../../src/graph/graphModel";
+import { frameOut } from "../../../src/graph/nodes/shared";
+
+/** A Computed Column fed `frame` by a source card, computed in full passes as the app runs them; `feed` swaps the frame. */
+async function inEditor(n: ComputedColumnNode) {
+  let frame: FrameValue = sales;
+  class Src extends GraphNode {
+    constructor() { super("Src"); this.addOutput("frame", frameOut("Frame")); }
+    data() { return { frame }; }
+  }
+  const editor = new GraphEditor<Schemes>();
+  const engine = new DataflowEngine<Schemes>();
+  editor.use(engine);
+  const src = new Src();
+  await editor.addNode(src as never);
+  await editor.addNode(n as never);
+  await editor.addConnection(new GraphConnection(src, "frame", n, "frame") as never);
+  return {
+    pass: async () => { await engine.pass(undefined, undefined, false); return engine.landed(n.id, "frame") as FrameValue; },
+    feed: (f: FrameValue) => { frame = f; src.edited(); },
+    dispose: () => editor.dispose(),
+  };
+}
 
 // ─── Computed Column — the row-wise formula verb ─────────────────────────────
 // The node that keeps frames OUT of formulas ([[C15]] matricesInFormulas): the row iteration lives
@@ -792,27 +814,37 @@ describe("identity-stable outputs — the backend upload cache holds across pass
     editor.dispose();
 
     const n = named("@price * @qty", "rev");
-    const r1 = run(n, sales) as FrameValue;
-    const r2 = run(n, sales) as FrameValue;
-    expect(r2).toBe(r1);
+    const cc = await inEditor(n);
+    const r1 = await cc.pass();
+    expect(await cc.pass()).toBe(r1);
     // A different input frame (new identity) recomputes.
-    const r3 = run(n, { ...sales }) as FrameValue;
+    cc.feed({ ...sales });
+    const r3 = await cc.pass();
     expect(r3).not.toBe(r1);
     // A config change recomputes.
     n.stringLiterals.name = "revenue";
-    expect(run(n, { ...sales })).not.toBe(r3);
+    n.edited();
+    expect(await cc.pass()).not.toBe(r3);
+    cc.dispose();
   });
 
   it("a changed side value or binding busts the CC memo; Frame Input computed frames are stable per (text, λ identities)", async () => {
     const n = named("@price * (1 - disc)", "net");
-    run(n, sales); // grows disc
-    const r1 = run(n, sales, { disc: [0.1] }) as FrameValue;
-    expect(run(n, sales, { disc: [0.1] })).toBe(r1);
-    const r2 = run(n, sales, { disc: [0.2] }) as FrameValue;
+    const cc = await inEditor(n);
+    const lit = (v: number) => { (n as unknown as { literals: Record<string, number> }).literals.disc = v; n.edited(); };
+    lit(0.1);
+    // The first pass grows the `disc` side socket, which is a new call; from the one after, it stands.
+    await cc.pass();
+    const r1 = await cc.pass();
+    expect(await cc.pass()).toBe(r1);
+    lit(0.2);
+    const r2 = await cc.pass();
     expect(r2).not.toBe(r1);
     expect(getColumn(r2, "net")!.values).toEqual([8, 16, 24]);
     n.bindings = { disc: "qty" };
-    expect(run(n, sales, { disc: [0.2] })).not.toBe(r2);
+    n.edited();
+    expect(await cc.pass()).not.toBe(r2);
+    cc.dispose();
 
     const fi = new FrameInputNode({
       frameText: frameSourceToText([

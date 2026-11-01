@@ -95,11 +95,17 @@ pub(crate) fn core_column(c: &FrameColumn) -> Column {
 
 /// The core's answer as a card's frame (`decodeBinary`): no unit, format or typed text.
 pub(crate) fn from_core(f: &FrameValue) -> Frame {
-    Frame { columns: f.columns.iter().map(core_column).collect(), total_rows: None, approx: None }
+    Frame {
+        columns: f.columns.iter().map(core_column).collect(),
+        total_rows: None,
+        approx: None,
+        source: None,
+        layout: None,
+    }
 }
 
 pub(crate) fn frame_v(columns: Vec<Column>) -> Cv {
-    Cv::Frame(Rc::new(Frame { columns, total_rows: None, approx: None }))
+    Cv::Frame(Rc::new(Frame { columns, total_rows: None, approx: None, source: None, layout: None }))
 }
 
 pub(crate) fn num_column(name: &str, values: Vec<V>) -> Column {
@@ -803,7 +809,13 @@ fn headers(c: &mut Call) -> Answer {
                     if fc.raw.is_some() { fc.values.iter().skip(1).cloned().collect() } else { core_column(rc).values };
                 Column { name: rc.name.clone(), values, raw, ..fc.clone() }
             });
-            Cv::Frame(Rc::new(Frame { columns: columns.collect(), total_rows: None, approx: None }))
+            Cv::Frame(Rc::new(Frame {
+                columns: columns.collect(),
+                total_rows: None,
+                approx: None,
+                source: None,
+                layout: None,
+            }))
         }
         Some(Ok(r)) => Cv::Frame(Rc::new(from_core(&r))),
         Some(Err(e)) => Cv::V(e),
@@ -848,7 +860,7 @@ fn split_frame(c: &mut Call) -> Answer {
         return out(c, Cv::V(matrix), Cv::V(headers), false);
     }
     let mixed = cols.iter().any(|col| col.ty == FrameColType::String);
-    let sub = Frame { columns: cols, total_rows: None, approx: None };
+    let sub = Frame { columns: cols, total_rows: None, approx: None, source: None, layout: None };
     let matrix = match crate::frame_fns::call("splitFrame", &[&to_core(&sub)], &[]) {
         crate::frame_fns::FrameOut::Value(V::List(v)) => v.first().cloned().unwrap_or(V::Null),
         _ => V::Null,
@@ -1166,6 +1178,8 @@ fn settle(c: &mut Call) -> Answer {
                 .collect(),
             total_rows: None,
             approx: None,
+            source: None,
+            layout: None,
         },
         _ => return settle_shown(c, Ok((Cv::NULL, Cv::NULL))),
     };
@@ -1455,7 +1469,7 @@ pub fn frame_from_rows(rows: &[Vec<V>]) -> Frame {
             )
         })
         .collect();
-    Frame { columns, total_rows: None, approx: None }
+    Frame { columns, total_rows: None, approx: None, source: None, layout: None }
 }
 
 /// A table, a list as one row, a value as one cell.
