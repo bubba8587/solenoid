@@ -133,8 +133,8 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
       // A standard box's read takes a big list's first rows (`listPreview.ts`); any other read takes it whole.
       get: () => onCore(() => guarded(() => {
         if (!isPreviewing()) return editor.core().shown(node.id, field);
-        const [v, total] = editor.core().shownPreview(node.id, field) as [unknown, number?] | undefined ?? [undefined];
-        if (total !== undefined && v && typeof v === "object") markPreview(v, total, () => editor.core().shown(node.id, field));
+        const [v, total, width] = editor.core().shownPreview(node.id, field) as [unknown, number?, number?] | undefined ?? [undefined];
+        if (total !== undefined && v && typeof v === "object") markPreview(v, total, width, () => editor.core().shown(node.id, field));
         return v;
       }), undefined),
       set: (value: unknown) => {

@@ -19,14 +19,14 @@ use crate::boundary_core::{is_frame_ref, Arrived};
 struct Inner {
     js: OnceCell<JsValue>,
     core: OnceCell<Option<Arrived>>,
-    /// A big list's first rows for a card's box, `[rows, total]`, made once (`preview_js`).
+    /// A big list's first rows for a card's box, `[rows, length, table width]`, made once (`preview_js`).
     preview: OnceCell<JsValue>,
 }
 
 /// A list this long is shown by its first rows (`preview_js`).
 const PREVIEW_FROM: usize = 10_000;
-/// The rows a box's preview holds: more than any box draws.
-const PREVIEW_ROWS: usize = 100;
+/// The rows, and a table's columns, a box's preview holds: what a box draws.
+const PREVIEW_CELLS: usize = 4;
 
 #[derive(Clone)]
 pub(crate) struct Val(Rc<Inner>);
@@ -64,7 +64,7 @@ impl Val {
     }
 
     /// What a card's box shows ([[C120]] linearWork, drawing stops at the screen): a big list the core made and
-    /// JavaScript hasn't taken whole as `[first rows, length]`, made once, so the box never takes the whole of it;
+    /// JavaScript hasn't taken whole as `[first rows, length, table width]`, made once, so the box never takes the whole of it;
     /// anything else as `[value]`, its JavaScript form.
     pub(crate) fn preview_js(&self) -> JsValue {
         if let Some(js) = self.0.js.get() {
@@ -76,10 +76,26 @@ impl Val {
                     .0
                     .preview
                     .get_or_init(|| {
+                        // A table's rows are cut to their first columns too; its width rides beside its length.
+                        let cut = |v: &V| match v {
+                            V::List(r) => solenoid_core::nodes::list(
+                                r.iter().take(PREVIEW_CELLS).cloned().collect(),
+                            ),
+                            other => other.clone(),
+                        };
                         let rows = Arrived::bare(solenoid_core::nodes::list(
-                            items[..PREVIEW_ROWS].to_vec(),
+                            items.iter().take(PREVIEW_CELLS).map(cut).collect(),
                         ));
-                        Array::of2(&to_js(&rows), &JsValue::from_f64(items.len() as f64)).into()
+                        let width = match items.first() {
+                            Some(V::List(r)) => JsValue::from_f64(r.len() as f64),
+                            _ => JsValue::UNDEFINED,
+                        };
+                        Array::of3(
+                            &to_js(&rows),
+                            &JsValue::from_f64(items.len() as f64),
+                            &width,
+                        )
+                        .into()
                     })
                     .clone(),
                 _ => Array::of1(&self.js()).into(),

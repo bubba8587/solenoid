@@ -154,7 +154,7 @@ export class GraphCore {
      */
     settleTypes(facts: string): string;
     /**
-     * What a card's box shows of a field the core holds (`Val::preview_js`): `[first rows, length]` for a big list,
+     * What a card's box shows of a field the core holds (`Val::preview_js`): `[first rows, length, table width]` for a big list,
      * `[value]` otherwise; `undefined` where it holds none.
      */
     shownPreview(id: string, field: string): any;
@@ -544,8 +544,8 @@ export interface InitOutput {
     readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly uid: (a: number) => void;
     readonly unnamedEdits: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_8007: (a: number, b: number, c: number, d: any) => void;
-    readonly __wasm_bindgen_func_elem_8009: (a: number, b: number, c: any, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8009: (a: number, b: number, c: number, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8011: (a: number, b: number, c: any, d: any) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;

@@ -8,7 +8,7 @@ import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { SeriesNode } from "../../src/graph/nodes/list";
 import { CastNode } from "../../src/graph/nodes/cast";
-import { previewed, listLength, fullList } from "../../src/graph/listPreview";
+import { previewed, listLength, tableWidth, fullList } from "../../src/graph/listPreview";
 
 async function texts(count: number) {
   const editor = new GraphEditor<Schemes>();
@@ -27,8 +27,7 @@ describe("a box's preview of a big list", () => {
   it("is its first rows, counted and read whole on demand", async () => {
     const { editor, cast } = await texts(20_000);
     const rows = previewed(() => cast.cachedResult) as string[];
-    expect(rows.length).toBeLessThan(20_000);
-    expect(rows.slice(0, 3)).toEqual(["1", "2", "3"]);
+    expect(rows).toEqual(["1", "2", "3", "4"]);
     expect(listLength(rows)).toBe(20_000);
     expect(previewed(() => cast.cachedResult)).toBe(rows);
     const whole = fullList(rows);
@@ -43,6 +42,22 @@ describe("a box's preview of a big list", () => {
     const whole = cast.cachedResult as string[];
     expect(whole).toHaveLength(20_000);
     expect(previewed(() => cast.cachedResult)).toBe(whole);
+    editor.dispose();
+  });
+
+  it("cuts a big table to its first rows and columns, counting both whole", async () => {
+    const editor = new GraphEditor<Schemes>();
+    editor.use(new DataflowEngine<Schemes>());
+    const s = new SeriesNode({ op: "sequence" });
+    (s as unknown as { literals: Record<string, number> }).literals = { count: 20_000, cols: 6 };
+    await editor.addNode(s as never);
+    await editor.engine!.pass(undefined, undefined, false);
+    const rows = previewed(() => s.cachedList) as number[][];
+    expect(rows).toHaveLength(4);
+    expect(rows[0]).toHaveLength(4);
+    expect(listLength(rows)).toBe(20_000);
+    expect(tableWidth(rows)).toBe(6);
+    expect((fullList(rows) as number[][])[19_999]).toHaveLength(6);
     editor.dispose();
   });
 

@@ -1075,7 +1075,7 @@ impl GraphCore {
             .map_or(JsValue::UNDEFINED, |v| v.js())
     }
 
-    /// What a card's box shows of a field the core holds (`Val::preview_js`): `[first rows, length]` for a big list,
+    /// What a card's box shows of a field the core holds (`Val::preview_js`): `[first rows, length, table width]` for a big list,
     /// `[value]` otherwise; `undefined` where it holds none.
     #[wasm_bindgen(js_name = shownPreview)]
     pub fn shown_preview(&self, id: &str, field: &str) -> JsValue {
