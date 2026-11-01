@@ -11,12 +11,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as zlib from "node:zlib";
 import * as readline from "node:readline";
+import { frozenForm, caseKey, readFixture, LAYOUT } from "./node-cases.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const CALLS = path.join(ROOT, ".dev/node-calls");
 const OUT = path.join(ROOT, "fixtures/core/nodes");
 const CAP = 2500;
-const LAYOUT = new Set(["width", "height", "x", "y", "collapsed"]);
 
 const args = process.argv.slice(2);
 const reportOnly = args.includes("--report");
@@ -41,6 +41,7 @@ for (const file of fs.readdirSync(CALLS).filter((f) => f.endsWith(".jsonl"))) {
     }
     if (c.result.thrownJs) k.thrownJs++;
     if (c.result.outRaw !== undefined) k.outRaw++;
+    delete c.at;
     for (const f of LAYOUT) delete c.init?.[f];
     const key = JSON.stringify([c.init, c.literals, c.stringLiterals, c.sockets, c.outputs, c.inputs, c.ctx.settings, c.prior]);
     const prev = k.cases.get(key);
@@ -57,7 +58,7 @@ for (const [kind, k] of [...byKind].sort()) {
   let cases = [...k.cases.values()];
   let frozenBefore = [];
   if (merge && fs.existsSync(path.join(OUT, `${kind}.json.gz`))) {
-    frozenBefore = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(OUT, `${kind}.json.gz`))).toString("utf8"));
+    frozenBefore = readFixture(path.join(OUT, `${kind}.json.gz`));
   }
   // A field is kept in `prior` where any case writes it, the frozen ones too when merging.
   const written = new Set([...cases, ...frozenBefore].flatMap((c) => Object.keys(c.display ?? {})));
@@ -67,17 +68,11 @@ for (const [kind, k] of [...byKind].sort()) {
     const step = cases.length / CAP;
     cases = Array.from({ length: CAP }, (_, i) => cases[Math.floor(i * step)]);
   }
-  // Socket and input order is the card's (a row's place is its meaning), so they freeze as lists of pairs.
-  let frozen = cases.map(({ kind: _k, unstable: u, sockets, outputs, inputs, ...c }) => ({
-    ...c, sockets: Object.entries(sockets).map(([k, row]) => [k, ...row]),
-    outputs: Object.entries(outputs).map(([k, row]) => [k, ...(Array.isArray(row) ? row : [row])]), inputs: Object.entries(inputs),
-    ...(u ? { unstable: true } : {}),
-  }));
+  let frozen = cases.map(frozenForm);
   let added = 0;
   if (merge) {
-    const keyOf = (c) => JSON.stringify([c.init, c.literals, c.stringLiterals, c.sockets, c.outputs, c.inputs, c.ctx?.settings]);
-    const held = new Set(frozenBefore.map(keyOf));
-    const fresh = frozen.filter((c) => !held.has(keyOf(c)));
+    const held = new Set(frozenBefore.map(caseKey));
+    const fresh = frozen.filter((c) => !held.has(caseKey(c)));
     added = fresh.length;
     frozen = [...frozenBefore, ...fresh];
   }
