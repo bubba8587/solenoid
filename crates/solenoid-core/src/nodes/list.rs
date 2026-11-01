@@ -1921,24 +1921,6 @@ fn shuffle(c: &mut Call) -> Answer {
     Ok(vec![("result".into(), Cv::from(order))])
 }
 
-/// `a > b` as JS compares them: two texts by UTF-16 order, anything else as numbers.
-fn js_greater(a: &V, b: &V) -> bool {
-    match (a, b) {
-        (V::Str(x), V::Str(y)) => crate::jsnum::compare_text(x, y) == std::cmp::Ordering::Greater,
-        _ => js_number(a) > js_number(b),
-    }
-}
-
-/// `lo + x` as JS adds them: a number, or text where `lo` is text or an object.
-fn js_plus(lo: &V, x: f64) -> V {
-    match lo {
-        V::Num(_) | V::Null | V::Bool(_) | V::Undef => {
-            V::Num(if matches!(lo, V::Undef) { f64::NAN } else { js_number(lo) } + x)
-        }
-        other => V::str(&format!("{}{}", value_text(other), number_to_string(x))),
-    }
-}
-
 /// The RANDARRAY card: as many rolls as the count, held until the generation advances, scaled into Min and Max, so
 /// new bounds rescale the same draws. An error in Count, Min or Max is the answer, the first in that order.
 fn rand_array(c: &mut Call) -> Answer {
@@ -1950,6 +1932,8 @@ fn rand_array(c: &mut Call) -> Answer {
     let read = crate::fns_random::array_count(js_number(&count_raw));
     let count = *read.as_ref().unwrap_or(&0.0);
     let passed = [&count_raw, &lo, &hi].into_iter().find(|v| matches!(v, V::Err(_))).cloned();
+    // Min and Max are numbers (a logical as 1 or 0); text is never one ([[C10]] socketLattice).
+    let (a, b) = (crate::excel_functions::to_num(&lo), crate::excel_functions::to_num(&hi));
     let bad = match read {
         _ if passed.is_some() => passed,
         Err(e) => Some(e),
@@ -1961,11 +1945,9 @@ fn rand_array(c: &mut Call) -> Answer {
                 number_to_string(MAX_GENERATED)
             ),
         )),
-        Ok(_) if matches!(lo, V::Num(x) if x.is_nan()) || matches!(hi, V::Num(x) if x.is_nan()) => {
-            Some(err(ErrorCode::Value, "RANDARRAY's Min and Max must be numbers"))
-        }
-        Ok(_) if js_greater(&lo, &hi) => Some(err(ErrorCode::Value, "RANDARRAY's Min is above its Max")),
-        Ok(_) if whole && js_number(&lo).ceil() > js_number(&hi).floor() => {
+        Ok(_) if a.is_nan() || b.is_nan() => Some(err(ErrorCode::Value, "RANDARRAY's Min and Max must be numbers")),
+        Ok(_) if a > b => Some(err(ErrorCode::Value, "RANDARRAY's Min is above its Max")),
+        Ok(_) if whole && a.ceil() > b.floor() => {
             Some(err(ErrorCode::Value, "RANDARRAY's Min and Max hold no whole number"))
         }
         Ok(_) => None,
@@ -1975,7 +1957,6 @@ fn rand_array(c: &mut Call) -> Answer {
         return Ok(vec![("list".into(), Cv::from(e))]);
     }
     let rolls = c.rolls("rolls", count as usize, false);
-    let (a, b) = (js_number(&lo), js_number(&hi));
     let drawn = list(
         rolls
             .iter()
@@ -1983,7 +1964,7 @@ fn rand_array(c: &mut Call) -> Answer {
                 if whole {
                     V::Num(a.ceil() + (r * (b.floor() - a.ceil() + 1.0)).floor())
                 } else {
-                    js_plus(&lo, r * (b - a))
+                    V::Num(a + r * (b - a))
                 }
             })
             .collect(),

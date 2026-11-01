@@ -1,7 +1,7 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! The list, set, series and signal bodies, the returns, and SPARKLINE's picture. A list cell arrives as
-//! the TS hands it over, raw, so the bodies keep JavaScript's coercions: `-` and `<` read a cell as `Number`
-//! reads it. The set functions compare a nested list by its items.
+//! The list, set, series and signal bodies, the returns, and SPARKLINE's picture. A list cell arrives raw; a body reads
+//! it as a number with `num_blank_zero` (a blank as 0, a logical as 1 or 0, text never). The set functions compare a
+//! nested list by its items.
 
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -119,7 +119,7 @@ fn present_numbers(arr: &[V]) -> Vec<f64> {
     arr.iter().filter_map(finite).collect()
 }
 
-/// `Number(v)`.
+/// A cell as a number: a blank as 0, a logical as 1 or 0, text never ([[C10]] socketLattice).
 fn number(v: &V) -> f64 {
     num_blank_zero(v)
 }

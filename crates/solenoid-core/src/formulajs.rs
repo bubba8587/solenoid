@@ -1,7 +1,8 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! The Formula.js 4.6.1 bodies a formula reaches straight through (no internal registration
-//! over them). They keep their JavaScript coercions:
-//! a string where a number goes, `||` on a falsy argument, `new Array(n).join` on a length JS refuses.
+//! The function bodies first ported from Formula.js 4.6.1 that a formula reaches straight through (no internal
+//! registration over them): engineering, radix and statistics helpers. They read their arguments as Excel does
+//! (`parse_number`: text is #VALUE!, never a number, [[C10]] socketLattice), checked against Excel's documented answers
+//! (`tests/excel_examples.rs`).
 
 #![allow(clippy::excessive_precision, clippy::approx_constant)]
 
@@ -104,28 +105,6 @@ fn parse_number_array(arr: &[V]) -> Result<Vec<f64>, V> {
     Ok(out)
 }
 
-fn invalid_array_length() -> Thrown {
-    Thrown::value("That many characters is more than a text can hold")
-}
-
-/// `new Array(n).join(text)`: n − 1 copies, where n is a valid array length.
-fn array_join(n: f64, text: &str) -> Result<String, Thrown> {
-    if !((0.0..=4_294_967_295.0).contains(&n) && n.fract() == 0.0) {
-        return Err(invalid_array_length());
-    }
-    // V8's longest string, in UTF-16 units.
-    let units = text.encode_utf16().count() as f64;
-    if (n - 1.0).max(0.0) * units > 536_870_888.0 {
-        return Err(invalid_array_length());
-    }
-    Ok(text.repeat((n as usize).saturating_sub(1)))
-}
-
-/// Formula.js's own REPT.
-fn rept(text: &str, times: f64) -> Result<String, Thrown> {
-    array_join(times + 1.0, text)
-}
-
 /// The places argument the DEC2…/…2BIN family pads with.
 fn with_places(result: String, places: &V) -> Result<V, Thrown> {
     if matches!(places, V::Undef) {
@@ -144,7 +123,7 @@ fn with_places(result: String, places: &V) -> Result<V, Thrown> {
         return Ok(NUM);
     }
     let len = result.len() as f64;
-    Ok(if p >= len { V::str(&(rept("0", p - len)? + &result)) } else { NUM })
+    Ok(if p >= len { V::str(&("0".repeat((p - len) as usize) + &result)) } else { NUM })
 }
 
 /// A whole number from 0 up in `radix`, lowercase.
@@ -175,10 +154,9 @@ fn matches_decimal(s: &str, max: usize) -> bool {
     matches_digits(s.strip_prefix('-').unwrap_or(s), 10, max)
 }
 
-/// `'1' + REPT('0', 9 − b.length) + b`, b being (512 + n) in binary.
+/// A negative number in 10-bit two's complement: a 1, then (512 + n) in 9 binary digits.
 fn negative_binary(n: f64) -> Result<V, Thrown> {
-    let b = radix_text(512.0 + n, 2);
-    Ok(V::str(&format!("1{}{b}", rept("0", 9.0 - b.len() as f64)?)))
+    Ok(V::str(&format!("1{:0>9}", radix_text(512.0 + n, 2))))
 }
 
 /// The base conversions.

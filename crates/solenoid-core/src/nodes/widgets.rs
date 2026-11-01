@@ -9,7 +9,7 @@ use super::values::{Column, CubeColumn, Frame};
 use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
-use crate::excel_functions::{js_parse_float, num_blank_zero, value_text, V};
+use crate::excel_functions::{num_blank_zero, value_text, V};
 use crate::frame::FrameColType;
 use crate::jsnum::{
     fixed_text, is_space_char, lower_text, nan_max, nan_min, number_to_string, round_half_up, trim_space,
@@ -655,7 +655,8 @@ pub(crate) fn parse_points(text: &str) -> Vec<(f64, f64)> {
         if parts.len() < 2 {
             continue;
         }
-        let (x, y) = (js_parse_float(parts[0]), js_parse_float(parts[1]));
+        // Each part reads as typed text does ([[C58]] tableInputRawText): "3abc" is no number.
+        let (x, y) = (crate::value_kinds::decimal_from_text(parts[0]), crate::value_kinds::decimal_from_text(parts[1]));
         if x.is_finite() && y.is_finite() {
             out.push((x, y));
         }

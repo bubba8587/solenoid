@@ -557,49 +557,6 @@ pub fn fx_error_to_sol(code: FxError) -> SolError {
     sol_error(mapped, "The formula produced an error")
 }
 
-/// JS `parseFloat`: the longest decimal (or `Infinity`) prefix after leading space.
-pub(crate) fn js_parse_float(s: &str) -> f64 {
-    let t = s.trim_start_matches(is_space_char);
-    let b = t.as_bytes();
-    let mut i = 0;
-    if i < b.len() && (b[i] == b'+' || b[i] == b'-') {
-        i += 1;
-    }
-    if t[i..].starts_with("Infinity") {
-        return if b.first() == Some(&b'-') { f64::NEG_INFINITY } else { f64::INFINITY };
-    }
-    let digits = |mut j: usize| {
-        while j < b.len() && b[j].is_ascii_digit() {
-            j += 1;
-        }
-        j
-    };
-    let int_end = digits(i);
-    let mut end = int_end;
-    let mut any = int_end > i;
-    if end < b.len() && b[end] == b'.' {
-        let frac_end = digits(end + 1);
-        if frac_end > end + 1 || any {
-            any = any || frac_end > end + 1;
-            end = frac_end;
-        }
-    }
-    if !any {
-        return f64::NAN;
-    }
-    if end < b.len() && (b[end] == b'e' || b[end] == b'E') {
-        let mut j = end + 1;
-        if j < b.len() && (b[j] == b'+' || b[j] == b'-') {
-            j += 1;
-        }
-        let exp_end = digits(j);
-        if exp_end > j {
-            end = exp_end;
-        }
-    }
-    t[..end].parse::<f64>().unwrap_or(f64::NAN)
-}
-
 /// A number argument for the bodies ported from Formula.js: a number or logical, a blank as 0, a list of one as its item;
 /// anything else is `#VALUE!`, an error itself.
 pub(crate) fn parse_number(v: &V) -> V {
@@ -618,16 +575,17 @@ pub(crate) fn parse_number(v: &V) -> V {
     }
 }
 
-/// Formula.js `parseString`.
+/// A text argument: a blank as "", a number or logical as Excel writes it; an error is the answer.
 fn parse_string(v: &V) -> Result<String, V> {
     match v {
-        V::Fx(_) => Err(v.clone()),
+        V::Fx(_) | V::Err(_) => Err(v.clone()),
         V::Undef | V::Null => Ok(String::new()),
         other => Ok(value_text(other)),
     }
 }
 
-/// JS truthiness.
+/// A value as a condition reads it: a number is TRUE unless 0 or NaN, text unless empty, a blank FALSE, anything else
+/// TRUE. A formula's logical arguments reach it only as numbers and logicals; text is refused before.
 pub(crate) fn truthy(v: &V) -> bool {
     match v {
         V::Undef | V::Null => false,
@@ -6106,25 +6064,6 @@ fn date_nums(dates: &[V], n: usize) -> (Vec<f64>, bool) {
     (ds.iter().map(num_blank_zero).collect(), before)
 }
 
-/// `parseInt(x, 10)` of a number: the integer its `String` starts with.
-fn parse_int_of(x: f64) -> f64 {
-    let s = number_to_string(x);
-    let (neg, digits) = match s.strip_prefix('-') {
-        Some(rest) => (true, rest),
-        None => (false, s.as_str()),
-    };
-    let end = digits.bytes().position(|b| !b.is_ascii_digit()).unwrap_or(digits.len());
-    if end == 0 {
-        return f64::NAN;
-    }
-    let n: f64 = digits[..end].parse().unwrap_or(f64::NAN);
-    if neg {
-        -n
-    } else {
-        n
-    }
-}
-
 fn finance_function(name: &str, a: &[V]) -> Result<V, Thrown> {
     use crate::finance_ops::{self as f, CouponOp, OddCouponOp, ReturnsOp, SecurityDiscOp, TBillOp};
     let n = |i: usize| to_num(arg(a, i));
@@ -6383,7 +6322,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             if life == 0.0 || per < 1.0 || per > life {
                 return V::Fx(FxError::Num);
             }
-            let per = parse_int_of(per);
+            let per = per.trunc();
             V::Num(((cost - salvage) * (life - per + 1.0) * 2.0) / (life * (life + 1.0)))
         }
         "EFFECT" | "NOMINAL" => {
@@ -6392,7 +6331,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             if rate <= 0.0 || npery < 1.0 {
                 return V::Fx(FxError::Num);
             }
-            let npery = parse_int_of(npery);
+            let npery = npery.trunc();
             V::Num(if name == "EFFECT" {
                 libm::pow(1.0 + rate / npery, npery) - 1.0
             } else {
@@ -6424,8 +6363,8 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             if (0.0..1.0).contains(&fraction) {
                 return V::Fx(FxError::DivZero);
             }
-            let fraction = parse_int_of(fraction);
-            let mut result = parse_int_of(dollar);
+            let fraction = fraction.trunc();
+            let mut result = dollar.trunc();
             let digits = (log(fraction) / std::f64::consts::LN_10).ceil();
             if name == "DOLLARFR" {
                 result += (dollar % 1.0) * libm::pow(10.0, -digits) * fraction;
