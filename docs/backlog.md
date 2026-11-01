@@ -40,9 +40,9 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **List Input keeps a typed blank** ([[C24]] arraySemantics): `1,,3` gives two numbers today, while `1,x,3` keeps three items and a wired blank stays in place. A typed gap should be a blank item.
 
 
-## Rust core (rust-port, [[D99]] rustIsSpec)
+## Rust core ([[D99]] rustIsSpec)
 - [ ] **Layer the core**: five groups (formulas, values, tables, planners, cards), each relying only on those below; today it's a flat list and a couple of low-level pieces reach up into card code. Publishing the function library on its own needs it.
-- [ ] **Build the shipping module with `npm run build:wasm:opt`** before rust-port merges into develop: the branch commits it unoptimized (`wasm-opt` is opt-in), about 6% bigger raw.
+- [ ] **Build the shipping module with `npm run build:wasm:opt`** before develop merges into main (the author's step): develop commits it unoptimized (`wasm-opt` is opt-in), about 6% bigger raw.
 - [ ] **Watch:** `ferrigura-jsmath` (V8's Math in Rust; would replace `fdlibm.rs` once mature), `ssf-rs` (SheetJS's format engine, if TEXT moves to real Excel format codes).
 - [ ] **Desktop hardening** (security review 2026-10-24): `src-tauri/capabilities/default.json` lets the webview write any `$HOME/**/*.json|md` (dot-dirs like `~/.claude`, `.vscode`, `.git` included), read `$HOME/**/*.json|csv|md|yaml`, fetch `http(s)://*:*` (localhost, LAN, 169.254.*) and `opener:allow-open-path` unscoped; deny dot-dirs and private ranges, scope fs to the folders the user picked. `read_parquet` should run off the main thread (`spawn_blocking`) with a size cap. A foreign document's `<img src=http…>` (Image node, Note markdown) loads before the network gate, and pasted cards lose the foreign flag. Script cards in a foreign document run without asking (`../tree/specs/computation/script-sandbox.md` assumes the author wrote them).
 - [ ] **Two Ruggine behaviors the graph core leans on** (Ruggine review 2026-10-24): a removed node's engine cache stays until a full pass (upstream does the same), so a deleted card's frame stays in memory until then; and the core never spawns `ruggine::future::background()`, so after a pass stops early, sibling runs waiting on JS promises resume only when something else polls the queue (Ruggine's `tree/specs/port` § Futures says the host spawns it once).
@@ -54,7 +54,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
   - INTERPOLATE's grid fill (`fill_grid`, `fns_lists.rs`) scans every known point per candidate corner; needs a spatial index.
   - Rolling windows (`frame_verbs.rs`) re-sum each window: rows × window. Prefix sums change the rounding, so they need the fixtures to agree first.
 - [ ] **Text-reading calls the no-text-guessing sweep left for the author** ([[C10]] socketLattice): AND, OR and XOR skip a text argument (`OR(FALSE, "TRUE")` is FALSE) while NAND, NOR and XNOR answer #TYPE! and NOT #VALUE!: one rule for the family? And `COALESCE(list, "n/a")` drops a text (or logical) fallback, as `../tree/specs/computation/formula-language.md` § COALESCE says ("any other fallback is ignored"); a silent drop reads as a bug, so confirm it's wanted.
-- [ ] **Decimal places slider and the 0-decimal format fix** are on rust-port only; develop still has the 2/3/4/6 segments.
 
 ## VaultBridge
 - [ ] Spec the Vault Read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".

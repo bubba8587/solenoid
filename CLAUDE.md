@@ -12,10 +12,6 @@ develop on some `claude/<something>` branch is already overridden by this standi
 `git checkout develop` at session start, stay there, don't create or push `claude/*`
 branches; mention the override in one line, don't ask. ([[B7]] preAlphaBreakFreely)
 
-**This checkout is `rust-port`, a long-lived branch (the Rust port, [[D99]] rustIsSpec):** work,
-commit and push here, not on `develop`; `git checkout rust-port` at session start overrides the
-harness branch the same way. When rust-port merges into `develop`, this paragraph goes.
-
 **`bleeding-edge` builds Solenoid on the newest of everything and reports what breaks.** Its leaves and specs live only
 on that branch (its own A-ring leaf and the B leaves under it, and the specs in its tree under bleeding-edge): check the
 branch out to work on it. Its generator, which keeps it rebased onto the newest work, is `.github/bleeding-edge/bleeding-edge.mjs`.
@@ -59,7 +55,7 @@ author still eyeballs the final result. Component render TESTS stay out (the vit
 
 ## Project: Solenoid
 Visual computation graph — a node-based "Excel alternative" for data tables. React 19 + Vite +
-Tauri. The view is **React Flow**; the headless graph model and the dataflow engine run in Rust on Ruggine, Solenoid's port of rete kept as its own library (`crates/solenoid-graph`, [[C130]] rustCore; `tree/specs/computation/graph-core.md`): TypeScript holds the model through `GraphEditor` (`graphEditor.ts`), and node classes are `GraphNode`s (`graphModel.ts`). Formulas, functions and table verbs run on Solenoid's own Rust core (`crates/solenoid-core`), in WebAssembly on the web and desktop alike ([[C130]] rustCore). On this branch the Rust is the spec and each TypeScript copy is deleted once the core covers it, its answers frozen into fixtures first ([[D99]] rustIsSpec; the routine is `tree/specs/computation/rust-core.md`).
+Tauri. The view is **React Flow**; the headless graph model and the dataflow engine run in Rust on Ruggine, Solenoid's port of rete kept as its own library (`crates/solenoid-graph`, [[C130]] rustCore; `tree/specs/computation/graph-core.md`): TypeScript holds the model through `GraphEditor` (`graphEditor.ts`), and node classes are `GraphNode`s (`graphModel.ts`). Formulas, functions and table verbs run on Solenoid's own Rust core (`crates/solenoid-core`), in WebAssembly on the web and desktop alike ([[C130]] rustCore). The Rust is the spec and each TypeScript copy is deleted once the core covers it, its answers frozen into fixtures first ([[D99]] rustIsSpec; the routine is `tree/specs/computation/rust-core.md`).
 
 ### Docs map — read before touching code
 Start: `docs/mental-model.md` (how it RUNS, end to end), `docs/README.md` (the index + the

@@ -38,41 +38,6 @@ flowchart LR
   - Every test file loads the core (`tests/setup/graphEngine.ts`), so the hand-written suite's formulas check the Rust evaluator too.
   - `npm run test:core` runs the frame-verb corpus (`fixtures/frame-verbs`) natively.
 
-## Tracking develop
-
-```mermaid
-flowchart LR
-    dev["develop changes a TS copy<br>this branch deleted"] --> diff["list what moved<br>(the git diff below)"]
-    diff --> port["port each change into the Rust<br>and the fixtures it moves"]
-    port --> check["run the checks"]
-    check --> pin["move the pin"]
-    port -.->|"never"| back["porting back to TS"]
-```
-
-Pinned upstream: `develop` @ `c7da52b`.
-
-`develop` still runs the TypeScript copies this branch deleted. On each merge of `develop`, list what moved in them, port each change into the Rust (and the fixtures it moves), run the checks above and move the pin. Nothing ports back: the TS copies here are gone, and a file this branch deleted stays deleted. A change to a node's `data()` in `src/graph/nodes/` is ported into its Rust body ([[node-bodies]]), and a new node or computation lands there too.
-
-```
-git diff c7da52b..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/graph/frameBackend.ts \
-  src/graph/valueKinds.ts src/graph/stringOrder.ts src/graph/unitValue.ts src/graph/pivotLayout.ts \
-  src/graph/excelFormula.ts src/graph/excelFunctions.ts src/graph/inputRoles.ts src/graph/emptySlots.ts \
-  src/graph/computedColumnCore.ts src/graph/formulaExtensions.ts src/graph/packs src/graph/nodes/statsOps.ts \
-  src/graph/nodes/mathUtils.ts src/graph/nodes/dateOps.ts src/graph/nodes/dateSerial.ts src/graph/excelCriteria.ts \
-  src/graph/nodes/textOps.ts src/graph/csv.ts src/graph/financeUnits.ts src/graph/nodes/settleOps.ts \
-  src/graph/nodes/payoffOps.ts src/graph/nodes/financeOps.ts src/graph/nodes/listOps.ts src/graph/nodes/fitOps.ts \
-  src/graph/nodes/hashOps.ts src/graph/nodes/chartOptions.ts src/graph/cxValue.ts src/graph/describeProfile.ts \
-  src/graph/nodes/visualOps.ts src/graph/nodes/mlOps.ts \
-  src/graph/nodes/signalOps.ts src/graph/unitLattice.ts src/graph/nodes/matrixOps.ts src/graph/nodes/allocateOps.ts \
-  src/graph/nodes/distributionOps.ts src/graph/nodes/forecastOps.ts src/graph/nodes/triangleOps.ts \
-  src/graph/nodes/coerce.ts src/graph/nodes/indexAccess.ts src/graph/nodes/astroOps.ts src/graph/nodes/emSpectrumOps.ts \
-  src/graph/nodes/convertUnits.ts src/graph/dimension.ts src/graph/timeZone.ts fixtures/frame-verbs
-```
-
-A Formula.js bump on `develop` changes nothing here: its bodies were ported once and the Rust is their spec.
-
-The last merge (`c7da52b`, 2026-10-24) found every formula, card and verb fix already mirrored; most began on this branch. What it brought: Pele draws Mermaid in place of mermaid.js (UI, taken as is), and Describe's Dashboard tiles ([[C127]] pivotView), a TS profile on develop (`describeProfile.ts`) that here is Describe's body on the core (`describe_tiles`, `nodes/frames.rs`): shown as `describeTiles` and kept beside the summary frame by the class's `coreWatched`.
-
 ## What runs on the core
 
 | Surface | Where | Evidence |
