@@ -65,16 +65,12 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] Filter Frame's text tests on a number cell read its exact digits (`value_text`); [[C10]] socketLattice says a text test on a number is an error instead. Cast "general" and Spell Number write Excel's 15 digits (2026-11-01).
 - [ ] One number reader: `string_to_number` (`Number(s)`: hex, `Infinity`, "" as 0) becomes the [[C58]] tableInputRawText reader.
 - [ ] Text `<`/`>` in formulas ignores case, text above numbers (against [[C59]] byteStringOrder and the `#TYPE!` for mixed kinds: the author's call).
-- [ ] The Formula.js local-time date path (EDATE, ACCRINT, COUPDAYS, DISC, PRICEDISC, DATEDIF days) moves to the UTC day kernels: it brings back the 29 Feb 1900 [[C44]] dateSerials rules out, and answers JS `TypeError` text.
 - [ ] The JS crash texts left: the Obsidian, Script and boundary cards' frozen `thrownJs` texts come from the graph side (`boundary.rs`, `wasm.rs`). The core's card and formula copies went 2026-11-01.
 
 **Regex:** - [ ] fancy-regex under Excel's PCRE2 reading; the Regex card's JS flags become Excel's case setting with inline `(?m)`/`(?s)`; `js_regex.rs` and `crates/vendor/regress` go (the REGEX functions, the Regex card and the template token are its last users).
 
-**Redesigns:**
-- [ ] The typed-date reader reads the wall clock as written, with no local round trip: today a DST gap or a year under 100 (`Date.UTC`'s 1900s) changes the answer by machine.
-
 **No visible change (delete the JS framing):**
-- [ ] `zone.rs`'s copy of V8's `Date.prototype` goes after the date path above; the host's local day stays (a platform need). IANA zones from jiff's tzdb in wasm too, so the browser and desktop agree.
+- [ ] IANA zones from jiff's tzdb in wasm too, so the browser and desktop agree (`zone.rs` reads `Intl` in wasm). The local-time date copies went 2026-11-01; the host's local day for TODAY stays (a platform need).
 - [ ] Left of the renames (2026-11-01 renamed the JS helpers: `trim_space`, `lower_text`, `round_half_up`, `nan_min`, `fixed_text`…): the `compare_utf16` data sort to code-point order (astral characters move); `serial_to_js_date` to whole days. `V::Undef` stays (an omitted argument, [[C80]] blankArgIsExcelBlank) without its JS readings.
 
 **Also:**

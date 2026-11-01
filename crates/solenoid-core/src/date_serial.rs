@@ -184,3 +184,66 @@ mod tests {
         assert_eq!(format_date_serial(1.0, "D/M/YY"), "31/12/99");
     }
 }
+
+/// A date as milliseconds of UTC read and set by its calendar fields, with no time zone: the date-only kernels of the
+/// functions ported from Formula.js (EDATE, YEARFRAC, the coupon days, DATEDIF's days), which once read the host's
+/// local wall clock, so a daylight-saving change or the machine's zone moved a date-only answer.
+pub mod civil {
+    use crate::zone::{make_date, make_day, make_time, time_clip};
+
+    const MS_PER_DAY: f64 = 86_400_000.0;
+
+    /// A date's fields: year, month from 0, day of the month, and the milliseconds into the day.
+    #[derive(Clone, Copy, Debug)]
+    pub struct Fields {
+        pub year: f64,
+        pub month: f64,
+        pub date: f64,
+        pub in_day: f64,
+    }
+
+    /// The instant of a calendar date and time; months and days carry.
+    pub fn new_date(y: f64, m: f64, d: f64, h: f64, mi: f64, s: f64, ms: f64) -> f64 {
+        time_clip(make_date(make_day(y, m, d), make_time(h, mi, s, ms)))
+    }
+
+    /// The calendar fields of an instant, None for no date.
+    pub fn fields(t: f64) -> Option<Fields> {
+        if t.is_nan() {
+            return None;
+        }
+        let days = (t / MS_PER_DAY).floor();
+        let (y, m, d) = super::civil_from_days(days as i64);
+        Some(Fields { year: y as f64, month: f64::from(m - 1), date: f64::from(d), in_day: t - days * MS_PER_DAY })
+    }
+
+    pub fn get_full_year(t: f64) -> f64 {
+        fields(t).map_or(f64::NAN, |l| l.year)
+    }
+
+    pub fn get_month(t: f64) -> f64 {
+        fields(t).map_or(f64::NAN, |l| l.month)
+    }
+
+    pub fn get_date(t: f64) -> f64 {
+        fields(t).map_or(f64::NAN, |l| l.date)
+    }
+
+    pub fn set_date(t: f64, d: f64) -> f64 {
+        fields(t).map_or(f64::NAN, |l| time_clip(make_date(make_day(l.year, l.month, d), l.in_day)))
+    }
+
+    pub fn set_month(t: f64, m: f64) -> f64 {
+        fields(t).map_or(f64::NAN, |l| time_clip(make_date(make_day(l.year, m, l.date), l.in_day)))
+    }
+
+    /// The same day in year `y`; no date counts from 1 Jan 1970.
+    pub fn set_full_year(t: f64, y: f64) -> f64 {
+        let l = fields(t).unwrap_or(Fields { year: 1970.0, month: 0.0, date: 1.0, in_day: 0.0 });
+        time_clip(make_date(make_day(y, l.month, l.date), l.in_day))
+    }
+
+    pub fn start_of_day(t: f64) -> f64 {
+        fields(t).map_or(f64::NAN, |l| time_clip(make_date(make_day(l.year, l.month, l.date), 0.0)))
+    }
+}

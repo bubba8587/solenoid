@@ -356,15 +356,9 @@ fn iso_date_time(t: &str) -> Option<DateReading> {
     }
     let ms = match (clock, offset) {
         (Some(c), Some(off)) => days as f64 * 86_400_000.0 + c - off * 60_000.0,
-        _ => {
-            use crate::zone;
-            // `new Date(y, m, d, h, …)` then `setFullYear(y)`: the wall clock as an instant, chrono implying noon.
-            let at = zone::utc(zone::make_date(zone::make_day(year, month - 1.0, day), clock.unwrap_or(43_200_000.0)));
-            let l = zone::local_fields(at)?;
-            // `Date.UTC` reads a year from 0 to 99 as 1900 to 1999.
-            let y = if (0.0..=99.0).contains(&l.year) { l.year + 1900.0 } else { l.year };
-            zone::make_date(zone::make_day(y, l.month, l.date), if clock.is_some() { l.in_day } else { 0.0 })
-        }
+        // The wall clock as written, with no zone between: the same day on every machine.
+        (Some(c), None) => days as f64 * 86_400_000.0 + c,
+        (None, _) => days as f64 * 86_400_000.0,
     };
     Some(DateReading::Serial(ms / 86_400_000.0 + 25569.0))
 }

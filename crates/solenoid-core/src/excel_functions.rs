@@ -5552,7 +5552,6 @@ fn prob_between(range: &[V], probs: &[V], lo: f64, hi: f64) -> V {
 /// months with the day clamped to the month's last, its time back to a serial rounded to the day.
 fn fx_edate(start: &V, months: &V) -> V {
     use crate::fns_stats::{parse_date, FxDate};
-    use crate::zone;
     if matches!(start, V::List(_) | V::Cx(..) | V::Lambda(_)) {
         return V::Fx(FxError::Value);
     }
@@ -5563,13 +5562,13 @@ fn fx_edate(start: &V, months: &V) -> V {
     if num_blank_zero(months).is_nan() {
         return V::Fx(FxError::Value);
     }
-    let mut stored = zone::get_date(date);
-    date = zone::set_date(date, 1.0);
+    let mut stored = crate::date_serial::civil::get_date(date);
+    date = crate::date_serial::civil::set_date(date, 1.0);
     let m = num_blank_zero(months).trunc();
-    date = zone::set_month(date, zone::get_month(date) + m);
-    let target = zone::get_month(date);
+    date = crate::date_serial::civil::set_month(date, crate::date_serial::civil::get_month(date) + m);
+    let target = crate::date_serial::civil::get_month(date);
     if stored > 28.0 {
-        let y = zone::get_full_year(date);
+        let y = crate::date_serial::civil::get_full_year(date);
         let leap = (y % 4.0 == 0.0 && y % 100.0 != 0.0) || y % 400.0 == 0.0;
         // `[…][NaN]` is undefined, and `Math.min` of it is NaN.
         let dim = if target.is_nan() {
@@ -5581,7 +5580,7 @@ fn fx_edate(start: &V, months: &V) -> V {
         };
         stored = crate::jsnum::nan_min(stored, dim);
     }
-    date = zone::set_date(date, stored);
+    date = crate::date_serial::civil::set_date(date, stored);
     if date.is_nan() {
         return V::err(sol_error(ErrorCode::Domain, "These months move the date past the calendar's range"));
     }

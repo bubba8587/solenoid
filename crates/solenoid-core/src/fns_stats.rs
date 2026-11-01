@@ -4,7 +4,7 @@
 
 #![allow(clippy::excessive_precision)]
 
-use crate::date_serial::parts_of_ms;
+use crate::date_serial::civil;
 use crate::dists::{chi_sq_cdf, f_cdf, std_norm_cdf};
 use crate::error_value::{sol_error, ErrorCode, FxError};
 use crate::excel_functions::{
@@ -12,7 +12,6 @@ use crate::excel_functions::{
     value_text, Thrown, V,
 };
 use crate::jsnum::{nan_max, nan_min, number_to_string, round_half_up};
-use crate::zone;
 use libm::{cos, exp, log, sin};
 
 /// `LEGACY_ALIASES`: a blocked name and the function that replaces it.
@@ -366,18 +365,18 @@ fn accrint(a: &[V]) -> V {
     V::Num(par * rate * fx_yearfrac(issue, settlement, basis))
 }
 
-/// `isLeapYear`: `new Date(year, 1, 29).getMonth() === 1`.
+/// Whether `year` has a 29 February.
 fn fx_is_leap(year: f64) -> bool {
-    zone::get_month(zone::new_local(year, 1.0, 29.0, 0.0, 0.0, 0.0, 0.0)) == 1.0
+    civil::get_month(civil::new_date(year, 1.0, 29.0, 0.0, 0.0, 0.0, 0.0)) == 1.0
 }
 
 fn fx_days_between(s: f64, e: f64) -> f64 {
     ((e - s) / 1000.0 / 60.0 / 60.0 / 24.0).ceil()
 }
 
-/// Formula.js YEARFRAC on two valid Dates, read in local time.
+/// Formula.js YEARFRAC on two valid Dates.
 fn fx_yearfrac(s: f64, e: f64, basis: f64) -> f64 {
-    let (Some(a), Some(b)) = (zone::local_fields(s), zone::local_fields(e)) else { return f64::NAN };
+    let (Some(a), Some(b)) = (civil::fields(s), civil::fields(e)) else { return f64::NAN };
     let (mut sd, sm, sy) = (a.date, a.month + 1.0, a.year);
     let (mut ed, em, ey) = (b.date, b.month + 1.0, b.year);
     let thirty = |sd: f64, ed: f64| (ed + em * 30.0 + ey * 360.0 - (sd + sm * 30.0 + sy * 360.0)) / 360.0;
@@ -395,13 +394,13 @@ fn fx_yearfrac(s: f64, e: f64, basis: f64) -> f64 {
         }
         1 => {
             let feb29_between = |d1: f64, d2: f64| {
-                let y1 = zone::get_full_year(d1);
-                let mar1 = zone::new_local(y1, 2.0, 1.0, 0.0, 0.0, 0.0, 0.0);
+                let y1 = civil::get_full_year(d1);
+                let mar1 = civil::new_date(y1, 2.0, 1.0, 0.0, 0.0, 0.0, 0.0);
                 if fx_is_leap(y1) && d1 < mar1 && d2 >= mar1 {
                     return true;
                 }
-                let y2 = zone::get_full_year(d2);
-                let mar2 = zone::new_local(y2, 2.0, 1.0, 0.0, 0.0, 0.0, 0.0);
+                let y2 = civil::get_full_year(d2);
+                let mar2 = civil::new_date(y2, 2.0, 1.0, 0.0, 0.0, 0.0, 0.0);
                 fx_is_leap(y2) && d2 >= mar2 && d1 < mar2
             };
             if sy == ey || (sy + 1.0 == ey && (sm > em || (sm == em && sd >= ed))) {
@@ -409,8 +408,8 @@ fn fx_yearfrac(s: f64, e: f64, basis: f64) -> f64 {
                 return fx_days_between(s, e) / if leap { 366.0 } else { 365.0 };
             }
             let years = ey - sy + 1.0;
-            let days = (zone::new_local(ey + 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0)
-                - zone::new_local(sy, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0))
+            let days = (civil::new_date(ey + 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0)
+                - civil::new_date(sy, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0))
                 / 1000.0
                 / 60.0
                 / 60.0
@@ -875,27 +874,15 @@ pub(crate) enum FxDate {
     Err(FxError),
 }
 
-fn serial_to_date(mut serial: f64) -> f64 {
-    if serial < 60.0 {
-        serial += 1.0;
-    }
-    let utc_days = (serial - 25569.0).floor();
-    if !utc_days.is_finite() {
+/// A serial as a date: its day (Solenoid's serials have no 29 February 1900, [[C44]] dateSerials) and its time of
+/// day to the second.
+fn serial_to_date(serial: f64) -> f64 {
+    let days = (serial - 25569.0).floor();
+    if !days.is_finite() {
         return f64::NAN;
     }
-    let info = parts_of_ms(utc_days * 86_400_000.0);
-    let fractional_day = serial - serial.floor() + 0.0000001;
-    let mut total_seconds = (86400.0 * fractional_day).floor();
-    let seconds = total_seconds % 60.0;
-    total_seconds -= seconds;
-    let hours = (total_seconds / 3600.0).floor();
-    let minutes = (total_seconds / 60.0).floor() % 60.0;
-    let (mut days, mut month) = (f64::from(info.day), f64::from(info.month) - 1.0);
-    if (60.0..61.0).contains(&serial) {
-        days = 29.0;
-        month = 1.0;
-    }
-    zone::new_local(info.year as f64, month, days, hours, minutes, seconds, 0.0)
+    let seconds = (86400.0 * (serial - serial.floor() + 0.0000001)).floor();
+    civil::new_date(1970.0, 0.0, 1.0 + days, 0.0, 0.0, seconds, 0.0)
 }
 
 /// Formula.js `parseDate`, without its reading of date text: text is never a date ([[C10]] socketLattice).
@@ -932,27 +919,26 @@ fn not_a_function(_method: &str) -> Thrown {
     Thrown::value("A date argument isn't a date")
 }
 
+/// A date's serial, rounded up to its day.
 fn date_to_serial(t: f64) -> f64 {
-    let d1900 = zone::new_local(1900.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0);
-    let add_on = if t > -22038912e5 { 2.0 } else { 1.0 };
-    ((t - d1900) / 86_400_000.0).ceil() + add_on
+    (t / 86_400_000.0).ceil() + 25569.0
 }
 
-/// `DATEDIF(start, end, 'D')`, which is `DAYS(end, start)`: local midnights apart, through `dateToSerial`.
+/// `DATEDIF(start, end, 'D')`, which is `DAYS(end, start)`: midnights apart.
 fn datedif_days(start: f64, end: f64) -> Result<f64, Thrown> {
     if start.is_nan() || end.is_nan() {
         return Err(not_a_function("getFullYear"));
     }
-    Ok(date_to_serial(zone::start_of_day(end)) - date_to_serial(zone::start_of_day(start)))
+    Ok(date_to_serial(civil::start_of_day(end)) - date_to_serial(civil::start_of_day(start)))
 }
 
 fn last_coupon_before(settlement: f64, maturity: f64, frequency: f64) -> f64 {
-    let mut date = zone::set_full_year(maturity, zone::get_full_year(settlement));
+    let mut date = civil::set_full_year(maturity, civil::get_full_year(settlement));
     if date < settlement {
-        date = zone::set_full_year(date, zone::get_full_year(date) + 1.0);
+        date = civil::set_full_year(date, civil::get_full_year(date) + 1.0);
     }
     while date > settlement {
-        date = zone::set_month(date, zone::get_month(date) + -12.0 / frequency);
+        date = civil::set_month(date, civil::get_month(date) + -12.0 / frequency);
     }
     date
 }
@@ -980,20 +966,20 @@ fn coupdays(a: &[V]) -> Result<V, Thrown> {
         if date.is_nan() {
             return Err(not_a_function("nextDate.getMonth"));
         }
-        let next = zone::set_month(date, zone::get_month(date) + 12.0 / frequency);
+        let next = civil::set_month(date, civil::get_month(date) + 12.0 / frequency);
         return Ok(V::Num(datedif_days(date, next)?));
     }
     Ok(V::Num(if basis == 3.0 { 365.0 } else { 360.0 } / frequency))
 }
 
-/// Days in a month as `new Date(y, m + 1, 0).getDate()` counts them: a year from 0 to 99 is read as 1900 to 1999.
+/// The days in month `m` (from 0) of year `y`.
 fn days_in_month(y: f64, m: f64) -> f64 {
-    zone::get_date(zone::new_local(y, m + 1.0, 0.0, 0.0, 0.0, 0.0, 0.0))
+    civil::get_date(civil::new_date(y, m + 1.0, 0.0, 0.0, 0.0, 0.0, 0.0))
 }
 
 /// Formula.js `DAYS360` over two Dates; an Invalid Date answers an Error, which the caller's arithmetic reads as NaN.
 fn days360(start: f64, end: f64, european: bool) -> f64 {
-    let (Some(s), Some(e)) = (zone::local_fields(start), zone::local_fields(end)) else { return f64::NAN };
+    let (Some(s), Some(e)) = (civil::fields(start), civil::fields(end)) else { return f64::NAN };
     let sm = s.month;
     let mut em = e.month;
     let (sd, ed);
