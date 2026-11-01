@@ -6,7 +6,7 @@ use super::kit::{broadcast_err, core_call};
 use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{js_string_of, num_blank_zero, V};
+use crate::excel_functions::{num_blank_zero, value_text, V};
 use crate::jsnum::trim_space;
 
 /// An input's raw value: unwired, the typed literal (a number's, else a text's); wired, the first cable's.
@@ -587,7 +587,7 @@ fn regex(c: &mut Call) -> Answer {
         return blank(c);
     }
     let Some((jf, global, sticky)) = crate::js_regex::parse_flags(&flags) else { return blank(c) };
-    let re = match crate::js_regex::compile_with(&utf16(&js_string_of(&pattern)), jf) {
+    let re = match crate::js_regex::compile_with(&utf16(&value_text(&pattern)), jf) {
         crate::js_regex::Compiled::Ok(re) => re,
         crate::js_regex::Compiled::Invalid => return blank(c),
         crate::js_regex::Compiled::Unsure => {
@@ -606,12 +606,12 @@ fn regex(c: &mut Call) -> Answer {
             Some(v) => v.clone(),
         },
     };
-    let replacement_text = utf16(&js_string_of(&replacement));
+    let replacement_text = utf16(&value_text(&replacement));
     let apply = |cell: &V| -> Result<V, V> {
         if matches!(cell, V::Null | V::Undef) || cell.is_sol_error() {
             return Ok(if cell.is_sol_error() { cell.clone() } else { V::Null });
         }
-        let t = utf16(&js_string_of(cell));
+        let t = utf16(&value_text(cell));
         if replace && occ != 0.0 {
             let all = p.all(&t);
             let target = if occ < 0.0 { all.len() as f64 + occ + 1.0 } else { occ };
@@ -841,13 +841,13 @@ fn cast_one(
                 let pattern = match format {
                     V::Str(s) if s.is_empty() => "DD-MMM-YYYY".to_string(),
                     V::Str(s) => s.to_string(),
-                    other => js_string_of(other),
+                    other => value_text(other),
                 };
                 V::str(&crate::date_serial::format_date_serial(*n, &pattern))
             }
             V::Num(n) => V::str(&format_number_pattern(*n, format)?),
             V::Bool(b) => V::str(if *b { "TRUE" } else { "FALSE" }),
-            other => V::str(&js_string_of(other)),
+            other => V::str(&value_text(other)),
         },
         "date" => match x {
             V::Num(n) => V::Num(*n),

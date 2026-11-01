@@ -356,7 +356,7 @@ fn apply_cx_op(op: BinOp, a: &V, b: &V) -> V {
                 V::Cx(re, im) => format_cx(*re, *im),
                 V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).to_string(),
                 V::Num(n) => crate::excel_formula::number_to_text(*n),
-                other => crate::excel_functions::js_string_of(other),
+                other => crate::excel_functions::value_text(other),
             };
             V::Str(Rc::from(s(a) + &s(b)))
         }

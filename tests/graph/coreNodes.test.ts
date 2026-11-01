@@ -27,10 +27,11 @@ type Reply = { out?: Record<string, unknown>; thrown?: unknown; none?: true; mat
 const REFREEZE = ["1", "nodes"].some((s) => (process.env.FREEZE_CORE ?? "").split(",").includes(s));
 /** A value as the recorder freezes it (`tests/setup/nodeRecorder.ts`). */
 const wireOf = (v: unknown): unknown => (isFrameRef(v) ? frozen(v) : JSON.parse(JSON.stringify(nodeWire(v) ?? null, (k, x) => (k === "ref" ? undefined : x))));
-/** A shown field as the recorder freezes it. */
-function shownWire(r: unknown, out: Record<string, unknown>): unknown {
+/** A shown field as the recorder freezes it; one that shows an output is that output as the case froze it. */
+function shownWire(r: unknown, out: Record<string, unknown>, outWire: Record<string, unknown> | undefined): unknown {
   const o = r as { undef?: true; output?: string } | null;
   if (o && typeof o === "object" && o.undef === true) return { __undef: 1 };
+  if (o && typeof o === "object" && typeof o.output === "string" && outWire && o.output in outWire) return outWire[o.output];
   const v = o && typeof o === "object" && typeof o.output === "string" ? out[o.output] : readNodeReply(r)?.value;
   const w = nodeWire(v);
   return w === undefined ? { __json: jsonEnc(v) } : wireOf(v);
@@ -106,8 +107,8 @@ describe("card bodies on the core answer as frozen", () => {
             const held = [c.display, c.prior, init].find((o) => o && field in o);
             const want = held?.[field];
             if (want === undefined || (typeof want === "object" && want !== null && "__deleted" in want)) continue;
-            const got = shownWire(v, out);
-            if (JSON.stringify(nodeUnwire(want)) !== JSON.stringify(nodeUnwire(got))) (c.display ??= {})[field] = got;
+            const got = shownWire(v, out, c.result.out);
+            if (JSON.stringify(want) !== JSON.stringify(got)) (c.display ??= {})[field] = got;
           }
         }
         if (bad.length >= 5) break;

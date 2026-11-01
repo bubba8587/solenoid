@@ -7,7 +7,7 @@ use super::list::{js_number, nullish, slot, truthy};
 use super::Cv;
 use super::{list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::{sol_error, ErrorCode, SolError};
-use crate::excel_functions::{js_string_of, V};
+use crate::excel_functions::{value_text, V};
 use crate::frame::FrameColType;
 use crate::jsnum::{lower_text, nan_max, nan_min, string_to_number, trim_space};
 use serde_json::{json, Map, Value as Json};
@@ -50,7 +50,7 @@ fn norm(s: &str) -> String {
 fn js_str(v: Option<&V>) -> String {
     match v {
         None | Some(V::Null | V::Undef) => String::new(),
-        Some(v) => js_string_of(v),
+        Some(v) => value_text(v),
     }
 }
 
@@ -154,7 +154,7 @@ fn lag_of(v: Option<&V>) -> f64 {
 fn link_type(raw: Option<&V>) -> String {
     let s = match raw {
         None | Some(V::Null) => "FS".to_string(),
-        Some(v) => js_string_of(v),
+        Some(v) => value_text(v),
     };
     trim_space(&s).to_uppercase()
 }
@@ -226,7 +226,7 @@ fn read_predecessors(v: Option<&Cv>, task_name: &str) -> Rd<Vec<Dependency>> {
     match v {
         Cv::V(V::List(items)) => Ok(items
             .iter()
-            .map(|x| if nullish(x) { String::new() } else { trim_space(&js_string_of(x)).to_string() })
+            .map(|x| if nullish(x) { String::new() } else { trim_space(&value_text(x)).to_string() })
             .filter(|s| !s.is_empty())
             .map(|t| Dependency::fs(&t))
             .collect()),
@@ -575,7 +575,7 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
         let deadline = read_date(at(cols.deadline, i), &name, "Deadline")?;
         let group = at(cols.group, i)
             .filter(|g| !nullish(g))
-            .map(|g| trim_space(&js_string_of(g)).to_string())
+            .map(|g| trim_space(&value_text(g)).to_string())
             .filter(|g| !g.is_empty());
         let actual_start = read_date(at(cols.actual, i), &name, "Actual start")?;
         tasks.push(PlanTask {
@@ -1337,7 +1337,7 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
             t.insert("deadline".into(), json_num(d.floor()));
         }
         if let Some(g) = r.first(&["project", "section", "group"]) {
-            let g = trim_space(&js_string_of(g)).to_string();
+            let g = trim_space(&value_text(g)).to_string();
             if !g.is_empty() {
                 t.insert("group".into(), Json::String(g));
             }

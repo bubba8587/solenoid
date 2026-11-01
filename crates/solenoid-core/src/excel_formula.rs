@@ -667,7 +667,7 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
                 V::Str(s) => out.push_str(s),
                 V::Bool(b) => out.push_str(if *b { "TRUE" } else { "FALSE" }),
                 V::Num(n) => out.push_str(&number_to_text(*n)),
-                other => out.push_str(&crate::excel_functions::js_string_of(other)),
+                other => out.push_str(&crate::excel_functions::value_text(other)),
             };
             let mut joined = String::with_capacity(32);
             push(&mut joined, a);

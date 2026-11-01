@@ -6,7 +6,7 @@
 use crate::dists::{bisection_inv, compute, Form};
 use crate::error_value::sol_error;
 use crate::error_value::{ErrorCode, FxError};
-use crate::excel_functions::{js_number_of as js_number, js_string_of, parse_number, to_num, V};
+use crate::excel_functions::{js_number_of as js_number, parse_number, to_num, value_text, V};
 use crate::jsnum::{is_space_char, lower_text, number_to_string, round_half_up, trim_space};
 use crate::value_kinds::MAX_GENERATED;
 use std::rc::Rc;
@@ -268,7 +268,7 @@ pub(crate) fn sample_quantiles(key: &str, continuous: bool, inverse: bool, us: &
 fn randdist(a: &[V]) -> V {
     let family = match arg(a, 0) {
         V::Null | V::Undef => String::new(),
-        v => js_string_of(v),
+        v => value_text(v),
     };
     // `.trim().toLowerCase().replace(/\s+/g, "-")`.
     let key =

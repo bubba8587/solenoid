@@ -3,7 +3,7 @@
 //! similarity ones, the list padders and BIN, and TIMEZONECONVERT.
 
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{hypot_all, js_string_of, to_num, to_str, Thrown, V};
+use crate::excel_functions::{hypot_all, to_num, to_str, value_text, Thrown, V};
 use crate::jsnum::{is_space_char, lower_text, number_to_string, round_half_up, string_to_number, trim_space};
 use crate::value_kinds::MAX_GENERATED;
 use libm::{atan2, cos, cosh, exp, log, sin, sinh};
@@ -316,7 +316,7 @@ fn sim_method(m: &V) -> Option<Sim> {
     if is_nullish(m) {
         return Some(Sim::Ratio);
     }
-    let k: String = lower_text(trim_space(&js_string_of(m)))
+    let k: String = lower_text(trim_space(&value_text(m)))
         .chars()
         .map(|c| if c == '-' || is_space_char(c) { '_' } else { c })
         .collect();

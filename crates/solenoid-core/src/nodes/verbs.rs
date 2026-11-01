@@ -15,7 +15,7 @@ use super::scalar::{read_role, Role};
 use super::Cv;
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::{sol_error, ErrorCode, SolError};
-use crate::excel_functions::{js_string_of, V};
+use crate::excel_functions::{value_text, V};
 use crate::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::{
     apply_verb, compile_filter, format_frame_cell, pivot_frame, require_text_column, slice_bounds, FilterOp, PivotSpec,
@@ -126,7 +126,7 @@ fn filter_value(c: &Call, key: &str) -> Option<String> {
     match raw {
         V::Null | V::Undef => None,
         V::Err(e) => Some(e.code.to_string()),
-        v => Some(js_string_of(&v)),
+        v => Some(value_text(&v)),
     }
 }
 
@@ -417,7 +417,7 @@ fn rename(c: &mut Call) -> Answer {
     let mut map = Map::new();
     for (a, b) in from.iter().zip(to.iter()) {
         if truthy(a) && truthy(b) {
-            map.insert(js_string_of(a), to_json(b));
+            map.insert(value_text(a), to_json(b));
         }
     }
     one(if map.is_empty() { pass(&f) } else { plan(&f, json!({ "kind": "rename", "map": map })) })
@@ -802,7 +802,7 @@ fn sum_ifs(c: &mut Call) -> Answer {
             }
             let vn = str_input(c, "values", "");
             if !matches!(vn, V::Null | V::Undef) {
-                want(trim_space(&js_string_of(&vn)));
+                want(trim_space(&value_text(&vn)));
             }
             let mut columns = Vec::new();
             for n in &names {
@@ -891,7 +891,7 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
     if matches!(vname, V::Null) {
         return Ok(V::Null);
     }
-    let vname = js_string_of(&vname);
+    let vname = value_text(&vname);
     let vname = trim_space(&vname);
     if vname.is_empty() {
         return Ok(V::Null);
@@ -1139,7 +1139,7 @@ impl<'a> ListCond<'a> {
             .filter_map(|it| {
                 let t = match it {
                     Cv::V(V::List(_) | V::Null | V::Undef) | Cv::Frame(_) | Cv::Cube(_) | Cv::Cells(_) => return None,
-                    Cv::V(v) => js_string_of(v),
+                    Cv::V(v) => value_text(v),
                     Cv::Json(_) | Cv::Ref(_) => "[object Object]".to_string(),
                 };
                 Some(if self.match_case { t } else { lower_text(&t).into_owned() })

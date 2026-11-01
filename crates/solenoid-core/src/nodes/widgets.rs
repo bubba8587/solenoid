@@ -9,7 +9,7 @@ use super::values::{Column, CubeColumn, Frame};
 use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
-use crate::excel_functions::{js_number_of, js_parse_float, js_string_of, V};
+use crate::excel_functions::{js_number_of, js_parse_float, value_text, V};
 use crate::frame::FrameColType;
 use crate::jsnum::{
     fixed_text, is_space_char, lower_text, nan_max, nan_min, number_to_string, round_half_up, string_to_number,
@@ -591,7 +591,7 @@ fn color_blend(c: &mut Call) -> Answer {
         if matches!(raw, V::Err(_)) {
             return Some(Err(raw));
         }
-        let text = js_string_of(&raw);
+        let text = value_text(&raw);
         let s = trim_space(&text);
         Some(parse_color(s).ok_or_else(|| err(ErrorCode::Value, format!("{label} isn't a color: \"{s}\""))))
     };

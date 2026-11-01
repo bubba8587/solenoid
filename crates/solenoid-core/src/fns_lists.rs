@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use crate::dists::{ln_gamma, norm_s_inv};
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{js_string_of, num_blank_zero, to_num, to_str, Thrown, V};
+use crate::excel_functions::{num_blank_zero, to_num, to_str, value_text, Thrown, V};
 use crate::jsnum::{lower_text, nan_max, nan_min, number_to_string, round_half_up, trim_space};
 use crate::sort::stable_sort_by;
 use crate::value_kinds::MAX_GENERATED;
@@ -151,7 +151,7 @@ fn is_true(v: &V) -> bool {
 
 /// `String(v).trim().toLowerCase()`.
 fn lower_key(v: &V) -> String {
-    lower_text(trim_space(&js_string_of(v))).into_owned()
+    lower_text(trim_space(&value_text(v))).into_owned()
 }
 
 /// Numbers and logicals, one level of lists spread; text is skipped ([[C10]] socketLattice).
@@ -602,7 +602,7 @@ fn answer(name: &str, a: &[V]) -> V {
             if blank(op) || blank(l) {
                 return V::Null;
             }
-            let shown = js_string_of(op);
+            let shown = value_text(op);
             if !matches!(
                 trim_space(&shown).to_uppercase().as_str(),
                 "SUM" | "AVERAGE" | "AVG" | "MIN" | "MAX" | "MEDIAN" | "PRODUCT" | "STDEV"

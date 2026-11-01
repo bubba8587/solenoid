@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{
-    hypot_all, js_number_of as js_number, js_string_of, logical_or_type_error, to_num, Thrown, V,
+    hypot_all, js_number_of as js_number, logical_or_type_error, to_num, value_text, Thrown, V,
 };
 use crate::jsnum::{lower_text, nan_max, number_to_string, round_half_up, trim_space};
 use crate::value_kinds::MAX_GENERATED;
@@ -917,13 +917,13 @@ enum Acc {
 fn js_add(acc: Acc, v: &V) -> Acc {
     let text = match v {
         V::Str(s) => Some(s.to_string()),
-        V::List(_) | V::Err(_) | V::Cx(..) | V::Fx(_) | V::Lambda(_) => Some(js_string_of(v)),
+        V::List(_) | V::Err(_) | V::Cx(..) | V::Fx(_) | V::Lambda(_) => Some(value_text(v)),
         _ => None,
     };
     match (acc, text) {
         (Acc::Num(a), None) => Acc::Num(a + js_number(v)),
         (Acc::Num(a), Some(t)) => Acc::Str(number_to_string(a) + &t),
-        (Acc::Str(a), None) => Acc::Str(a + &js_string_of(v)),
+        (Acc::Str(a), None) => Acc::Str(a + &value_text(v)),
         (Acc::Str(a), Some(t)) => Acc::Str(a + &t),
     }
 }
@@ -1225,8 +1225,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
         }
         "XSTACK" => {
             let axis = arg(a, 0);
-            let ax =
-                if nullish(axis) { String::new() } else { lower_text(trim_space(&js_string_of(axis))).to_string() };
+            let ax = if nullish(axis) { String::new() } else { lower_text(trim_space(&value_text(axis))).to_string() };
             if ax != "v" && ax != "h" {
                 return Ok(err(ErrorCode::Value, "XSTACK axis must be \"v\" or \"h\""));
             }

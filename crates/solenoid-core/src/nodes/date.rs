@@ -89,7 +89,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
                 raw => {
                     let text = match raw {
                         V::Null => String::new(),
-                        v => crate::jsnum::trim_space(&crate::excel_functions::js_string_of(&v)).to_string(),
+                        v => crate::jsnum::trim_space(&crate::excel_functions::value_text(&v)).to_string(),
                     };
                     if text.is_empty() {
                         V::Null

@@ -7,7 +7,7 @@ use super::Cv;
 use super::{err, list, Answer, Call, Column, Cube, Frame};
 use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};
 use crate::error_value::ErrorCode;
-use crate::excel_functions::{js_string_of, V};
+use crate::excel_functions::{value_text, V};
 use crate::frame::FrameColType;
 use crate::jsnum::{lower_text, number_to_string, round_half_up, string_to_number, trim_space};
 use serde_json::{json, Map, Value as Json};
@@ -406,7 +406,7 @@ fn cell(col: &Column, r: usize) -> V {
 fn shown_text(col: &Column, r: usize, format: Option<&Json>) -> Option<String> {
     match format_cell(col.ty, &cell(col, r), format) {
         V::Null => None,
-        v => Some(js_string_of(&v)),
+        v => Some(value_text(&v)),
     }
 }
 
@@ -465,7 +465,7 @@ fn typed_column(name: &str, cells: &[V], rows: usize, known: Option<FrameColType
             Some(c) => match ty {
                 FrameColType::String => match c {
                     V::Str(_) => c.clone(),
-                    _ => V::str(&js_string_of(c)),
+                    _ => V::str(&value_text(c)),
                 },
                 FrameColType::Logical => match c {
                     V::Bool(_) => c.clone(),
@@ -1840,7 +1840,7 @@ fn grid_axes(z: &V, xs: Option<&V>, ys: Option<&V>) -> Option<Axes> {
 /// `Number(v)` as `Math.round` reads its argument.
 fn to_number(v: &V) -> f64 {
     match v {
-        V::List(_) => string_to_number(&js_string_of(v)),
+        V::List(_) => string_to_number(&value_text(v)),
         v => super::kit::num(v),
     }
 }
@@ -2499,7 +2499,7 @@ fn conditional_regions(c: &mut Call) -> Answer {
     };
     let items: Vec<V> =
         list_key.map_or_else(Vec::new, |k| super::stats::items(&c.read_input(k, list(Vec::new()))).to_vec());
-    c.show("cachedLabels", list(items.iter().map(|v| V::str(&js_string_of(v))).collect()));
+    c.show("cachedLabels", list(items.iter().map(|v| V::str(&value_text(v))).collect()));
     let marks = c.field(marks_key).and_then(Json::as_object).cloned().unwrap_or_default();
     let listed = list_key.is_some();
     let read = |k: &str| -> Option<i64> {
@@ -2534,7 +2534,7 @@ fn conditional_regions(c: &mut Call) -> Answer {
         answers.push(match mark {
             None => V::Null,
             Some(i) if op == "num" => V::Num(super::kit::num(&items[i as usize])),
-            Some(i) if listed => V::str(&js_string_of(&items[i as usize])),
+            Some(i) if listed => V::str(&value_text(&items[i as usize])),
             Some(i) => V::Bool(i == 1),
         });
         if let Some(grid) = &grid {

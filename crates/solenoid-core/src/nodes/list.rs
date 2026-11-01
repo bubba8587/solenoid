@@ -9,7 +9,7 @@ use super::Cv;
 use super::{err, list, Answer, Call, Column, Frame};
 use crate::error_value::ErrorCode;
 use crate::excel_criteria::DateReading;
-use crate::excel_functions::{js_string_of, MatchMode, Matcher, V};
+use crate::excel_functions::{value_text, MatchMode, Matcher, V};
 use crate::frame::{FrameCell, FrameColType};
 use crate::frame_verbs::FilterOp;
 use crate::jsnum::{number_to_string, round_half_up, trim_space};
@@ -694,7 +694,7 @@ pub(crate) fn list_item_of(ty: &str, v: &V) -> V {
         },
         "string" => match v {
             V::Str(_) => v.clone(),
-            V::Num(_) | V::Bool(_) => V::str(&js_string_of(v)),
+            V::Num(_) | V::Bool(_) => V::str(&value_text(v)),
             _ => V::Null,
         },
         _ => match v {
@@ -762,7 +762,7 @@ fn as_cell(v: &V) -> FrameCell {
         V::Bool(b) => FrameCell::Bool(*b),
         V::Str(s) => FrameCell::Str(s.clone()),
         V::Err(e) => FrameCell::Err(e.clone()),
-        other => FrameCell::str(&js_string_of(other)),
+        other => FrameCell::str(&value_text(other)),
     }
 }
 
@@ -778,7 +778,7 @@ fn condition_value(c: &Call, key: &str) -> String {
     match raw {
         V::Null | V::Undef => String::new(),
         V::Err(e) => e.code.to_string(),
-        v => js_string_of(&v),
+        v => value_text(&v),
     }
 }
 
@@ -847,7 +847,7 @@ fn filter(c: &mut Call) -> Answer {
             other => {
                 let e = err(
                     ErrorCode::Value,
-                    format!("Column {} is outside the table's {width} columns", js_string_of(&other)),
+                    format!("Column {} is outside the table's {width} columns", value_text(&other)),
                 );
                 return done(c, e, V::Null);
             }
@@ -1034,7 +1034,7 @@ fn aggregate(c: &mut Call) -> Answer {
                 V::Num(n) => format!("n{}", (n + 0.0).to_bits()),
                 V::Str(s) => format!("s{s}"),
                 V::Bool(b) => format!("b{b}"),
-                other => format!("o{}", crate::excel_functions::js_string_of(other)),
+                other => format!("o{}", crate::excel_functions::value_text(other)),
             });
         }
         return shown(c, "cachedResult", "result", V::Num(seen.len() as f64));
@@ -1200,7 +1200,7 @@ pub(crate) fn infer_cells(name: &str, cells: &[V]) -> (Column, Vec<Rc<str>>) {
                     Rc::from(t)
                 }
             }
-            c => Rc::from(trim_space(&js_string_of(c))),
+            c => Rc::from(trim_space(&value_text(c))),
         })
         .collect();
     let filled = || cells.iter().filter(|c| !blank(c) && !c.is_sol_error());
@@ -1350,7 +1350,7 @@ pub(crate) fn js_number(v: &V) -> f64 {
         V::Null => 0.0,
         V::Bool(b) => f64::from(u8::from(*b)),
         V::Str(s) => crate::jsnum::string_to_number(s),
-        V::List(_) => crate::jsnum::string_to_number(&js_string_of(v)),
+        V::List(_) => crate::jsnum::string_to_number(&value_text(v)),
         _ => f64::NAN,
     }
 }
@@ -1369,7 +1369,7 @@ fn group_lists(c: &mut Call) -> Answer {
     let mut buckets: std::collections::HashMap<String, Vec<f64>> = std::collections::HashMap::new();
     for i in 0..n {
         let k = &raw_keys[i];
-        let key = js_string_of(k);
+        let key = value_text(k);
         if !buckets.contains_key(&key) {
             buckets.insert(key.clone(), Vec::new());
             order.push(k.clone());
@@ -1389,7 +1389,7 @@ fn group_lists(c: &mut Call) -> Answer {
     let values: Vec<V> = order
         .iter()
         .map(|k| {
-            let vals = &buckets[&js_string_of(k)];
+            let vals = &buckets[&value_text(k)];
             V::Num(if vals.is_empty() { 0.0 } else { agg(vals, vals.iter().fold(0.0, |a, b| a + b)) })
         })
         .collect();
@@ -1935,7 +1935,7 @@ fn js_plus(lo: &V, x: f64) -> V {
         V::Num(_) | V::Null | V::Bool(_) | V::Undef => {
             V::Num(if matches!(lo, V::Undef) { f64::NAN } else { js_number(lo) } + x)
         }
-        other => V::str(&format!("{}{}", js_string_of(other), number_to_string(x))),
+        other => V::str(&format!("{}{}", value_text(other), number_to_string(x))),
     }
 }
 

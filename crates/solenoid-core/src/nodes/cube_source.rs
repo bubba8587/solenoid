@@ -5,7 +5,7 @@
 
 use super::list::{frame_cell_of, infer_column, list_item_of};
 use super::{list, Column, Cube, CubeColumn, Cv, Frame};
-use crate::excel_functions::{js_string_of, V};
+use crate::excel_functions::{value_text, V};
 use crate::frame::{make_headers, FrameColType};
 use crate::jsnum::{number_to_string, trim_space};
 use serde_json::{Map, Value as Json};
@@ -173,7 +173,7 @@ fn parse(text: &str) -> Result<Source, String> {
 fn picked_cell(ty: FrameColType, c: &Cv) -> Cv {
     match c {
         Cv::V(V::Null | V::Undef) => Cv::NULL,
-        Cv::V(v) => Cv::V(frame_cell_of(ty.as_str(), &js_string_of(v))),
+        Cv::V(v) => Cv::V(frame_cell_of(ty.as_str(), &value_text(v))),
         other => other.clone(),
     }
 }
@@ -280,7 +280,7 @@ fn frame_from_records(records: &[Record], picks: &[(String, FrameColType)]) -> F
                     V::Null => String::new(),
                     V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).into(),
                     V::Num(n) => number_to_string(*n),
-                    v => js_string_of(v),
+                    v => value_text(v),
                 })
                 .collect();
             let values = cells

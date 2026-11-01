@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode, SolError};
-use crate::excel_functions::{js_string_of, V};
+use crate::excel_functions::{value_text, V};
 use crate::jsnum::{is_space_char, lower_text, nan_max as js_max, nan_min as js_min, trim_space};
 use crate::string_order::compare_strings;
 use crate::value_kinds::decimal_from_text;
@@ -821,7 +821,7 @@ fn parse_criterion(raw: &V, numeric_range: bool) -> Parsed {
         V::Err(_) => return Parsed::Err(raw.clone()),
         _ => {}
     }
-    let text = js_string_of(raw);
+    let text = value_text(raw);
     let (mut op, mut rest) = (Op::Eq, text.as_str());
     for (p, o) in PREFIX {
         if let Some(r) = text.strip_prefix(p) {
@@ -949,7 +949,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
                 ErrorCode::Type,
                 format!(
                     "\"{}\" compares numbers, but its range holds text. Cast the range to numbers first.",
-                    js_string_of(raw)
+                    value_text(raw)
                 ),
             ));
         }

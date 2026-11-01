@@ -287,22 +287,25 @@ pub fn value_le(a: &V, b: &V) -> bool {
     }
 }
 
-/// `String(v)`.
-pub fn js_string_of(v: &V) -> String {
+/// A value as text, as Excel writes one with full precision: a number's shortest exact digits (so two numbers
+/// never read alike; `to_str` writes Excel's 15 digits for display), TRUE or FALSE, a blank as empty text, an error
+/// as its code, a complex number as `a+bi`, a value with a unit as its shown number and unit, a list's items joined by
+/// commas.
+pub fn value_text(v: &V) -> String {
     match v {
-        V::Undef => "undefined".into(),
-        V::Null => "null".into(),
+        V::Undef | V::Null => String::new(),
         V::Num(n) => number_to_string(*n),
         V::Str(s) => String::from(&**s),
-        V::Bool(b) => (if *b { "true" } else { "false" }).into(),
-        V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) => "[object Object]".into(),
-        V::Fx(code) => format!("Error: {code}"),
-        // `Array.prototype.join` renders null and undefined as empty.
-        V::List(items) => items
-            .iter()
-            .map(|v| if matches!(v, V::Null | V::Undef) { String::new() } else { js_string_of(v) })
-            .collect::<Vec<_>>()
-            .join(","),
+        V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).into(),
+        V::Err(e) => e.code.as_str().into(),
+        V::Fx(code) => code.as_str().into(),
+        V::Cx(re, im) => crate::eval::format_cx(*re, *im),
+        V::Unit(u) => match (&u.display, u.offset) {
+            (Some(d), None) => format!("{} {d}", number_to_string(u.value / u.scale.unwrap_or(1.0))),
+            _ => number_to_string(u.value),
+        },
+        V::Lambda(_) => "LAMBDA".into(),
+        V::List(items) => items.iter().map(value_text).collect::<Vec<_>>().join(","),
     }
 }
 
@@ -430,7 +433,7 @@ pub(crate) fn to_str(v: &V) -> String {
         V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).into(),
         V::Null | V::Undef => String::new(),
         V::Num(n) => number_to_text(*n),
-        other => js_string_of(other),
+        other => value_text(other),
     }
 }
 
@@ -517,7 +520,7 @@ fn parse_string(v: &V) -> Result<String, V> {
     match v {
         V::Fx(_) => Err(v.clone()),
         V::Undef | V::Null => Ok(String::new()),
-        other => Ok(js_string_of(other)),
+        other => Ok(value_text(other)),
     }
 }
 
@@ -1572,7 +1575,7 @@ pub(crate) fn logical_or_type_error(v: &V, place: &str) -> Result<Option<bool>, 
         }
         other => Err(V::err(sol_error(
             ErrorCode::Type,
-            format!("{place}: {} isn't a logical. Only TRUE, FALSE or a number read as one", js_string_of(other)),
+            format!("{place}: {} isn't a logical. Only TRUE, FALSE or a number read as one", value_text(other)),
         ))),
     }
 }
@@ -2403,7 +2406,7 @@ fn epoch_unit(u: &V) -> Option<bool> {
     if matches!(u, V::Null | V::Undef) {
         return Some(false);
     }
-    let text = js_string_of(u);
+    let text = value_text(u);
     let t = trim_space(&text);
     if t.eq_ignore_ascii_case("ms") {
         Some(true)
@@ -4304,7 +4307,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 return value_err("DATETRUNC");
             }
             let unit = arg(a, 1);
-            let unit = if matches!(unit, V::Null | V::Undef) { "day".to_string() } else { js_string_of(unit) };
+            let unit = if matches!(unit, V::Null | V::Undef) { "day".to_string() } else { value_text(unit) };
             match crate::date_ops::date_trunc_unit_for(&unit) {
                 Some(u) => V::Num(crate::date_ops::date_trunc(n, u, is_true(arg(a, 2)))),
                 None => V::err(sol_error(
@@ -4784,7 +4787,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             let side = if matches!(side, V::Null | V::Undef) {
                 "right".to_string()
             } else {
-                crate::jsnum::lower_text(crate::jsnum::trim_space(&js_string_of(side))).replacen("both", "center", 1)
+                crate::jsnum::lower_text(crate::jsnum::trim_space(&value_text(side))).replacen("both", "center", 1)
             };
             if !matches!(side.as_str(), "left" | "right" | "center") {
                 return V::err(sol_error(ErrorCode::Domain, "PADTEXT side must be left, right or center"));
@@ -5122,7 +5125,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
         F::HASH => {
             let alg: String = match arg(a, 1) {
                 V::Null | V::Undef => "sha256".into(),
-                v => lower_text(trim_space(&js_string_of(v)))
+                v => lower_text(trim_space(&value_text(v)))
                     .chars()
                     .filter(|&c| c != '-' && c != '_' && !is_space_char(c))
                     .collect(),
@@ -5679,9 +5682,9 @@ fn template_format(v: &V, spec: Option<&str>) -> Result<String, Thrown> {
         V::Null | V::Undef => String::new(),
         V::Err(e) => e.code.to_string(),
         V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).into(),
-        V::Num(n) => js_string_of(&excel_text(&V::Num(*n), &V::str(spec.unwrap_or("@")))?),
+        V::Num(n) => value_text(&excel_text(&V::Num(*n), &V::str(spec.unwrap_or("@")))?),
         V::List(items) => items.iter().map(|x| template_format(x, spec)).collect::<Result<Vec<_>, _>>()?.join(", "),
-        other => js_string_of(other),
+        other => value_text(other),
     })
 }
 

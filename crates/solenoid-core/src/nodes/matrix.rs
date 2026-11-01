@@ -12,7 +12,7 @@ use super::{err, list, Answer, Call};
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::eval::{variables, Env, Eval, LambdaV};
 use crate::excel_formula::{parse_formula, Ast};
-use crate::excel_functions::js_string_of;
+use crate::excel_functions::value_text;
 use crate::excel_functions::V;
 use crate::frame::FrameCell;
 use crate::jsnum::{number_to_string, round_half_up, trim_space};
@@ -891,7 +891,7 @@ fn choose_axis(m: &[Vec<V>], indices: &[V], by_row: bool) -> V {
         let n = js_number(i);
         let p = if n < 0.0 { size + n.trunc() } else { n.trunc() - 1.0 };
         if !(p >= 0.0 && p < size) {
-            let (i, size) = (js_string_of(i), number_to_string(size));
+            let (i, size) = (value_text(i), number_to_string(size));
             return err(
                 ErrorCode::Value,
                 format!("{label}: {kind} index {i} is out of range for a table with {size} {kind}s"),

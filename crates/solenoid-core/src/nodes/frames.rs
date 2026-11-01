@@ -849,7 +849,7 @@ fn split_frame(c: &mut Call) -> Answer {
                                     Some(V::Str(s)) => V::Str(s.clone()),
                                     Some(V::Err(e)) => V::str(e.code.as_str()),
                                     None | Some(V::Null | V::Undef) => V::str(""),
-                                    Some(v) => V::str(&crate::excel_functions::js_string_of(v)),
+                                    Some(v) => V::str(&crate::excel_functions::value_text(v)),
                                 })
                                 .collect(),
                         )
@@ -1003,7 +1003,7 @@ fn top_values(cells: &[V]) -> Json {
             V::Null | V::Undef => continue,
             V::Err(e) => e.code.as_str().to_string(),
             V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).to_string(),
-            v => crate::excel_functions::js_string_of(v),
+            v => crate::excel_functions::value_text(v),
         };
         filled += 1;
         match slot.get(&key) {
@@ -1144,7 +1144,7 @@ fn ledger_names(items: &[V]) -> FrameCell {
             },
             V::Null | V::Undef | V::Unit(_) => {}
             V::Err(_) | V::Bool(_) => return core_cell(v),
-            v => out.push(crate::excel_functions::js_string_of(v)),
+            v => out.push(crate::excel_functions::value_text(v)),
         }
     }
     FrameCell::Str(out.join(",").into())
@@ -1282,7 +1282,7 @@ fn decision_sensitivity_cube(
                     if matches!(v, FrameCell::Null) {
                         String::new()
                     } else {
-                        crate::excel_functions::js_string_of(&card_cell(v))
+                        crate::excel_functions::value_text(&card_cell(v))
                     }
                 })
                 .collect();
@@ -1823,7 +1823,7 @@ fn xlookup(c: &mut Call) -> Answer {
         if super::list::nullish(v) {
             String::new()
         } else {
-            trim_space(&crate::excel_functions::js_string_of(v)).to_string()
+            trim_space(&crate::excel_functions::value_text(v)).to_string()
         }
     };
     let result = (|| -> Result<Cv, V> {
@@ -2253,7 +2253,7 @@ fn key_id(v: &V) -> String {
             let cur = if cur.is_empty() { String::new() } else { format!(":{cur}") };
             format!("~u:{}{cur}:{}", crate::unit_lists::format_dim(&u.dim), crate::jsnum::number_to_string(key))
         }
-        other => crate::excel_functions::js_string_of(other),
+        other => crate::excel_functions::value_text(other),
     }
 }
 
@@ -2440,7 +2440,7 @@ fn text_column(name: &str, cells: &[V]) -> Column {
         .map(|v| match v {
             V::Null | V::Undef => V::Null,
             V::Err(_) | V::Str(_) => v.clone(),
-            other => V::str(&crate::excel_functions::js_string_of(other)),
+            other => V::str(&crate::excel_functions::value_text(other)),
         })
         .collect();
     Column { name: name.to_string(), ty: FrameColType::String, values, unit: None, format: None, raw: None }
@@ -3152,7 +3152,7 @@ fn parsed_headers(headers: &V) -> Vec<(String, Option<Json>)> {
         .map(|h| match h {
             V::Null | V::Undef => (String::new(), None),
             V::Str(s) => parse_column_unit_from_header(s),
-            other => parse_column_unit_from_header(&crate::excel_functions::js_string_of(other)),
+            other => parse_column_unit_from_header(&crate::excel_functions::value_text(other)),
         })
         .collect()
 }
@@ -3200,7 +3200,7 @@ fn frame_from_lists(c: &mut Call) -> Answer {
         let name = match str_input(c, name_k, "") {
             V::Null => return shown_frame(c, "frame", V::Null),
             V::Str(s) => trim_space(&s).to_string(),
-            other => trim_space(&crate::excel_functions::js_string_of(&other)).to_string(),
+            other => trim_space(&crate::excel_functions::value_text(&other)).to_string(),
         };
         names.push(V::str(&name));
         lists.push(if matches!(wired, V::List(_)) { wired } else { list(vec![wired]) });
@@ -3290,7 +3290,7 @@ fn summarize_reconcile(s: &V) -> String {
             .map(super::stats::items)
             .unwrap_or_default()
             .iter()
-            .map(crate::excel_functions::js_string_of)
+            .map(crate::excel_functions::value_text)
             .collect()
     };
     let mut parts = vec![

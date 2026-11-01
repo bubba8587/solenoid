@@ -13,7 +13,7 @@ use super::verbs::{column_list, drop_nothing, flat_column, nullish, pass, plan, 
 use super::Cv;
 use super::{kit, list, Answer, Call, Column, Cube, Frame};
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{js_string_of, V};
+use crate::excel_functions::{value_text, V};
 use crate::frame::{FrameCell, FrameValue};
 use crate::frame_ref::FrameRef;
 use crate::frame_verbs::{
@@ -199,7 +199,7 @@ fn slicer_uniques(values: &[V]) -> Vec<V> {
     }
     crate::decision::sort_by_num(&mut out, |a, b| match (a, b) {
         (V::Num(x), V::Num(y)) => x - y,
-        _ => compare_strings(&js_string_of(a), &js_string_of(b)) as i32 as f64,
+        _ => compare_strings(&value_text(a), &value_text(b)) as i32 as f64,
     });
     out
 }
@@ -208,7 +208,7 @@ fn slicer_uniques(values: &[V]) -> Vec<V> {
 /// pick matches a cell only when it is that very value, as the card's pressed buttons show, on a value and a ref
 /// alike.
 fn slicer_picks(picked: &[V], values: &[V]) -> Vec<String> {
-    picked.iter().filter(|p| values.iter().any(|v| !nullish(v) && same_value_zero(p, v))).map(js_string_of).collect()
+    picked.iter().filter(|p| values.iter().any(|v| !nullish(v) && same_value_zero(p, v))).map(value_text).collect()
 }
 
 fn slicer(c: &mut Call) -> Answer {
@@ -324,7 +324,7 @@ fn pivot_cell_key(v: &V) -> String {
         V::Err(e) => e.code.to_string(),
         V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).into(),
         V::Num(n) => number_to_string(*n),
-        v => js_string_of(v),
+        v => value_text(v),
     }
 }
 

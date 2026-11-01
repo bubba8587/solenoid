@@ -136,7 +136,7 @@ fn text_values(cells: &[V]) -> Vec<V> {
         .map(|c| match c {
             V::Null | V::Undef => V::Null,
             V::Err(_) | V::Str(_) => c.clone(),
-            other => V::str(&crate::excel_functions::js_string_of(other)),
+            other => V::str(&crate::excel_functions::value_text(other)),
         })
         .collect()
 }

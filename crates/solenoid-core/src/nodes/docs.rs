@@ -14,7 +14,7 @@ use super::{err, list, Answer, Call, Column};
 use crate::error_value::ErrorCode;
 use crate::eval::LambdaV;
 use crate::excel_formula::Ast;
-use crate::excel_functions::{js_string_of, value_less, V};
+use crate::excel_functions::{value_less, value_text, V};
 use crate::frame::FrameColType;
 use crate::jsnum::{lower_text, number_to_string, string_to_number, trim_space};
 use crate::unit_dims::{dim_equal, Dim, UnitCell};
@@ -160,7 +160,7 @@ fn alert_status(c: &Call) -> Result<V, V> {
                 return Ok(V::Num(0.0));
             }
             let hit = match &text {
-                V::Str(t) => t.contains(js_string_of(&needle).as_str()),
+                V::Str(t) => t.contains(value_text(&needle).as_str()),
                 V::List(items) => items.iter().any(|x| same_value_zero(x, &needle)),
                 _ => {
                     return Err(super::err(
@@ -186,7 +186,7 @@ fn status_text(v: &V) -> String {
         V::Num(n) => number_to_string(*n),
         V::Null | V::Undef => String::new(),
         V::Err(e) => e.code.as_str().to_string(),
-        other => js_string_of(other),
+        other => value_text(other),
     }
 }
 
@@ -233,7 +233,7 @@ fn alert_message(c: &Call, condition: &str, result: &V) -> String {
         _ => {
             let m = match c.read_input("match", text_literal(c, "match", "")) {
                 V::Null | V::Undef => String::new(),
-                v => js_string_of(&v),
+                v => value_text(&v),
             };
             format!("{name}: contains \"{m}\"")
         }
@@ -318,7 +318,7 @@ fn json_of(v: &V) -> String {
             format!("{{\"__solError\":true,\"code\":{},\"message\":{}}}", quote(e.code.as_str()), quote(&e.message))
         }
         V::Unit(u) => format!("{{\"__unitCell\":true,\"value\":{}}}", json_of(&V::Num(u.value))),
-        other => js_string_of(other),
+        other => value_text(other),
     }
 }
 
@@ -387,7 +387,7 @@ impl Allowed {
                     m.nums.insert(num_key(*n));
                 }
                 _ => {
-                    let s = js_string_of(a);
+                    let s = value_text(a);
                     let t = trim_space(&s);
                     let lower = lower_text(t).into_owned();
                     if lower == "true" || lower == "false" {
@@ -412,7 +412,7 @@ impl Allowed {
         match cell {
             V::Bool(b) => self.bools.contains(b) || self.texts.contains(if *b { "true" } else { "false" }),
             V::Num(n) => self.nums.contains(&num_key(*n)) || self.texts.contains(&number_to_string(*n)),
-            other => self.texts.contains(lower_text(trim_space(&js_string_of(other))).as_ref()),
+            other => self.texts.contains(lower_text(trim_space(&value_text(other))).as_ref()),
         }
     }
 }
@@ -751,9 +751,9 @@ fn template_format(v: &V, spec: Option<&str>, is_date: bool) -> String {
         V::Num(n) if is_date => {
             crate::date_serial::format_date_serial(*n, spec.unwrap_or(crate::date_serial::DEFAULT_DATE_FORMAT))
         }
-        V::Num(n) => js_string_of(&super::kit::core_call("TEXT", &[V::Num(*n), V::str(spec.unwrap_or("@"))])),
+        V::Num(n) => value_text(&super::kit::core_call("TEXT", &[V::Num(*n), V::str(spec.unwrap_or("@"))])),
         V::List(items) => items.iter().map(|x| template_format(x, spec, is_date)).collect::<Vec<_>>().join(", "),
-        other => js_string_of(other),
+        other => value_text(other),
     }
 }
 
@@ -985,7 +985,7 @@ fn record_cell(col: &Column, r: usize) -> V {
     match frame_cell_text(col, v) {
         V::Null => V::Null,
         V::Str(s) => V::Str(s),
-        other => V::str(&js_string_of(&other)),
+        other => V::str(&value_text(&other)),
     }
 }
 
@@ -1037,7 +1037,7 @@ fn record_deck(cols: &[Column], drawn: &[usize], d: crate::card_helpers::NumberD
         None | Some(V::Null | V::Undef) => String::new(),
         Some(V::Err(e)) => e.code.as_str().to_string(),
         Some(V::Bool(b)) => (if *b { "TRUE" } else { "FALSE" }).into(),
-        Some(v) => js_string_of(v),
+        Some(v) => value_text(v),
     };
     let shown_text = |col: &Column, r: usize| match record_cell(col, r) {
         V::Null => String::new(),
@@ -1050,7 +1050,7 @@ fn record_deck(cols: &[Column], drawn: &[usize], d: crate::card_helpers::NumberD
                 number_to_string(n)
             }
         }
-        v => js_string_of(&v),
+        v => value_text(&v),
     };
     let chip_cols: Vec<usize> = cols
         .iter()

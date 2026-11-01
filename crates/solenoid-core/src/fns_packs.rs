@@ -5,7 +5,7 @@
 use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{holds_text, js_string_of, num_blank_zero, V};
+use crate::excel_functions::{holds_text, num_blank_zero, value_text, V};
 use crate::jsnum::{lower_text, round_half_up, trim_space};
 use crate::nodes::packs as k;
 
@@ -181,7 +181,7 @@ fn lower_or(v: &V, dflt: &str) -> String {
     if nullish(v) {
         dflt.to_string()
     } else {
-        lower_text(&js_string_of(v)).into_owned()
+        lower_text(&value_text(v)).into_owned()
     }
 }
 
@@ -240,7 +240,7 @@ pub fn call(name: &str, a: &[V]) -> V {
         "MOLARMASS" => match arg(a, 0) {
             v if nullish(v) => V::Null,
             v => {
-                let s = js_string_of(v);
+                let s = value_text(v);
                 if trim_space(&s).is_empty() {
                     V::Null
                 } else {
@@ -292,7 +292,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             let value = arg(a, 0);
             let Some(v) = (if nullish(value) { None } else { finite(value) }) else { return V::Null };
             let series = arg(a, 1);
-            let s = if nullish(series) { "E24".to_string() } else { js_string_of(series).to_uppercase() };
+            let s = if nullish(series) { "E24".to_string() } else { value_text(series).to_uppercase() };
             let Some(table) = k::e_series_table(&s) else {
                 return err(ErrorCode::Value, format!("Unknown E-series \"{s}\". Use E3, E6, E12, E24, E48 or E96"));
             };
@@ -327,7 +327,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             if a.iter().any(nullish) {
                 return V::Null;
             }
-            let c: Vec<Option<String>> = a.iter().map(|b| Some(lower_text(&js_string_of(b)).into_owned())).collect();
+            let c: Vec<Option<String>> = a.iter().map(|b| Some(lower_text(&value_text(b)).into_owned())).collect();
             let band = |i: usize| c.get(i).cloned().flatten();
             let r = if c.len() == 5 {
                 k::decode_resistor(&[band(0), band(1), band(2)], band(3), band(4))
@@ -351,7 +351,7 @@ pub fn call(name: &str, a: &[V]) -> V {
         "PHYSICSCONSTANT" => match arg(a, 0) {
             v if nullish(v) => V::Null,
             v => {
-                let id = js_string_of(v);
+                let id = value_text(v);
                 k::physics_constant_value(&id).map_or_else(
                     || {
                         err(
@@ -379,7 +379,7 @@ pub fn call(name: &str, a: &[V]) -> V {
         "PIPEROUGHNESS" => match arg(a, 0) {
             v if nullish(v) => V::Null,
             v => {
-                let id = js_string_of(v);
+                let id = value_text(v);
                 k::pipe_roughness_mm(&id).map_or_else(
                     || err(ErrorCode::Name, format!("Unknown material \"{id}\". Try pvc, copper, steel or castiron")),
                     V::Num,
@@ -427,7 +427,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             if nullish(arg(a, 0)) || nullish(arg(a, 1)) {
                 return V::Null;
             }
-            let id = js_string_of(arg(a, 0));
+            let id = value_text(arg(a, 0));
             let Some((ca, cb, cc)) = k::antoine_coefficients(&id) else {
                 return err(ErrorCode::Name, format!("Unknown substance \"{id}\". Try water, ethanol or acetone"));
             };
@@ -493,9 +493,9 @@ fn element(el: &V, property: &V) -> V {
     }
     let found = match el {
         V::Num(n) => (*n >= 1.0 && *n <= 118.0 && n.fract() == 0.0).then(|| *n as usize - 1),
-        v => k::element(&js_string_of(v)).map(|(n, _)| n as usize - 1),
+        v => k::element(&value_text(v)).map(|(n, _)| n as usize - 1),
     };
-    let Some(i) = found else { return err(ErrorCode::Name, format!("Unknown element \"{}\"", js_string_of(el))) };
+    let Some(i) = found else { return err(ErrorCode::Name, format!("Unknown element \"{}\"", value_text(el))) };
     let (n, (symbol, mass)) = ((i + 1) as f64, k::ELEMENTS[i]);
     let p = lower_or(property, "mass");
     match p.as_str() {

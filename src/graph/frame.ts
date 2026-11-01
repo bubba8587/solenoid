@@ -5,6 +5,7 @@ import { parseDate } from "./nodes/dateSerial";
 import { isSolError, solError, type SolError } from "./errorValue";
 import { coerceLogical, decimalFromText } from "./valueKinds";
 import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";
+import { isCx, assembleCx } from "./cxValue";
 import { parseColumnUnitFromHeader, columnUnitFromSpec, tagFrameCellUnit, matrixCellsFromList } from "./unitColumn";
 import { displayMagnitudeOf } from "./unitBridge";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
@@ -282,6 +283,15 @@ export function guessNoteColumnType(values: ReadonlyArray<unknown>, isDate: (v: 
   return "string";
 }
 
+/** A cell's text as Excel writes it (the core's `value_text`): TRUE or FALSE, an error's code, a complex number as `a + bi`, a blank as empty text. */
+function cellRawText(c: unknown): string {
+  if (isSolError(c)) return c.code;
+  if (c == null) return "";
+  if (typeof c === "boolean") return c ? "TRUE" : "FALSE";
+  if (isCx(c)) return assembleCx(c, (n) => (Number.isInteger(n) ? String(n) : n.toFixed(4).replace(/\.?0+$/, ""))).text;
+  return String(c).trim();
+}
+
 /** Each column of the one type every filled cell reads as, text otherwise, its trimmed text kept as `raw`; a list of one unit keeps it. The types are read on the core in one call (`nodes::infer_cells`); a text column's cells are its trimmed text, which the core doesn't send back. */
 export function inferColumns(cols: ReadonlyArray<{ name: string; cells: ReadonlyArray<unknown> }>): FrameColumn[] {
   if (cols.length === 0) return [];
@@ -291,7 +301,7 @@ export function inferColumns(cols: ReadonlyArray<{ name: string; cells: Readonly
     let unit: ColumnUnit | undefined;
     if (cells.some(isUnitCell)) ({ mags: cells, unit } = matrixCellsFromList(cells));
     units.push(unit);
-    raws.push(cells.map((c) => (isSolError(c) ? c.code : c == null ? "" : String(c).trim())));
+    raws.push(cells.map(cellRawText));
     return { name, type: "string", values: cells as FrameCell[] };
   });
   return decodeBinary(wasmInferBin(encodeBinary({ __frame: true, columns }))).map(({ type, values }, j) => {

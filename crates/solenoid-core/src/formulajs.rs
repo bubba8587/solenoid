@@ -6,7 +6,7 @@
 #![allow(clippy::excessive_precision, clippy::approx_constant)]
 
 use crate::error_value::{sol_error, ErrorCode, FxError};
-use crate::excel_functions::{js_string_of, nums_of, parse_number, truthy, Thrown, V};
+use crate::excel_functions::{nums_of, parse_number, truthy, value_text, Thrown, V};
 use crate::jsnum::number_to_string;
 use libm::exp;
 use std::ops::{BitAnd, BitOr, BitXor};
@@ -206,7 +206,7 @@ fn first_char(v: &V) -> Option<char> {
 
 /// The base conversions.
 fn base_convert(name: &str, number: &V, places: &V) -> Result<V, Thrown> {
-    let s = js_string_of(number);
+    let s = value_text(number);
     Ok(match name {
         "BIN2DEC" | "BIN2HEX" | "BIN2OCT" => {
             if !matches_digits(&s, 2, 10) {
@@ -572,7 +572,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                 return Ok(e);
             }
             let Some(r) = num_of(&radix).map(f64::trunc) else { return Ok(VALUE) };
-            let text = if matches!(a[0], V::Null | V::Undef) { String::new() } else { js_string_of(&a[0]) };
+            let text = if matches!(a[0], V::Null | V::Undef) { String::new() } else { value_text(&a[0]) };
             if !(2.0..=36.0).contains(&r) || text.encode_utf16().count() > 255 {
                 return Ok(NUM);
             }
@@ -607,7 +607,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             V::Undef | V::Null => V::Num(0.0),
             e @ V::Fx(_) => e.clone(),
             v => {
-                let s = js_string_of(v);
+                let s = value_text(v);
                 if s.encode_utf16().count() > 255 {
                     VALUE
                 } else {
