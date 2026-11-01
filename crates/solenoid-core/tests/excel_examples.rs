@@ -298,12 +298,18 @@ fn errors_reach_the_bodies_that_read_them() {
     assert_eq!(code("CONCAT(NA(), \"a\")"), "#N/A");
     assert_eq!(code("ROWS(VSTACK(1, NA(), 3))"), "#N/A");
     assert_eq!(code("INDEX(VSTACK(1, 1/0), 1)"), "#DIV/0!");
+    assert_eq!(code("VSTACK(1, NA(), 3)"), "#N/A");
+    assert_eq!(code("SWITCH(1, NA(), 5, 1, 9)"), "#N/A");
+    assert_eq!(num("SWITCH(1, 1, 5, NA(), 9)"), 5.0);
+    assert_eq!(code("SWITCH(NA(), 1, 5, 9)"), "#N/A");
 }
 
-/// The author's Excel, 2026-11-01: conditional sections of a TEXT format.
+/// The author's Excel, 2026-11-01: conditional sections of a TEXT format. A third section keeps the minus sign.
 #[test]
 fn text_conditional_sections() {
     assert_eq!(text("TEXT(-5, \"[>10]0;[<0]-0\")"), "-5");
     assert!(is_error("TEXT(5, \"[>10]0;[<0]0\")"));
     assert!(is_error("TEXT(5, \"0 days\")"));
+    assert_eq!(text("TEXT(-5, \"[<0]-0;0\")"), "-5");
+    assert_eq!(text("TEXT(-5, \"[>10]0;[>0]0;-0\")"), "--5");
 }
