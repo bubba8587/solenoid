@@ -233,14 +233,17 @@ fn resistor_code(c: &mut Call) -> Answer {
     shown(c, &[("ohms", "cachedOhms", Cv::V(ohms)), ("tolerance", "cachedTol", Cv::V(tol))])
 }
 
-/// The ohms and tolerance of the digit bands, the multiplier and the tolerance band, each by its
-/// colour; a band left out reads as `undefined`.
+/// The ohms and tolerance of the digit bands, the multiplier and the tolerance band, each by its colour; a band left
+/// out is named as blank.
 pub(crate) fn decode_resistor(
     digits: &[Option<String>],
     mult: Option<String>,
     tol: Option<String>,
 ) -> Result<(f64, f64), V> {
-    let named = |b: &Option<String>| b.clone().unwrap_or_else(|| "undefined".into());
+    let bad = |b: &Option<String>, which: &str| match b {
+        Some(s) => err(ErrorCode::Value, format!("\"{s}\" is not a {which} band color")),
+        None => err(ErrorCode::Value, format!("The {which} band is blank")),
+    };
     let digit = |s: &str| {
         ["black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "gray", "white"]
             .iter()
@@ -249,7 +252,7 @@ pub(crate) fn decode_resistor(
     let mut value = 0.0;
     for d in digits {
         let Some(v) = d.as_deref().and_then(digit) else {
-            return Err(err(ErrorCode::Value, format!("\"{}\" is not a digit band color", named(d))));
+            return Err(bad(d, "digit"));
         };
         value = value * 10.0 + v as f64;
     }
@@ -258,9 +261,9 @@ pub(crate) fn decode_resistor(
         Some("silver") => 0.01,
         Some(s) => match digit(s) {
             Some(k) => [1.0, 10.0, 100.0, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9][k],
-            None => return Err(err(ErrorCode::Value, format!("\"{}\" is not a multiplier band color", named(&mult)))),
+            None => return Err(bad(&mult, "multiplier")),
         },
-        None => return Err(err(ErrorCode::Value, "\"undefined\" is not a multiplier band color")),
+        None => return Err(bad(&None, "multiplier")),
     };
     let t = match tol.as_deref() {
         Some("brown") => 1.0,
@@ -271,7 +274,7 @@ pub(crate) fn decode_resistor(
         Some("gray") => 0.05,
         Some("gold") => 5.0,
         Some("silver") => 10.0,
-        _ => return Err(err(ErrorCode::Value, format!("\"{}\" is not a tolerance band color", named(&tol)))),
+        _ => return Err(bad(&tol, "tolerance")),
     };
     Ok((value * m, t))
 }
@@ -430,10 +433,6 @@ fn count_at(s: &[u16], i: usize) -> Option<(usize, f64)> {
     Some((j - i, crate::value_kinds::decimal_from_text(&String::from_utf16_lossy(&s[i..j]))))
 }
 
-fn unit_text(u: Option<&u16>) -> String {
-    u.map_or_else(|| "undefined".into(), |u| String::from_utf16_lossy(&[*u]))
-}
-
 /// A run of elements and bracketed groups, each with its count, to `close`.
 fn parse_group(s: &[u16], mut i: usize, close: Option<u16>) -> Result<(f64, usize), V> {
     let upper = |u: u16| (u16::from(b'A')..=u16::from(b'Z')).contains(&u);
@@ -457,7 +456,10 @@ fn parse_group(s: &[u16], mut i: usize, close: Option<u16>) -> Result<(f64, usiz
             continue;
         }
         if !upper(ch) {
-            return Err(err(ErrorCode::Value, format!("Unexpected \"{}\" in formula", unit_text(Some(&ch)))));
+            return Err(err(
+                ErrorCode::Value,
+                format!("Unexpected \"{}\" in formula", String::from_utf16_lossy(&[ch])),
+            ));
         }
         let two = s.get(i + 1).is_some_and(|&u| lower(u));
         let sym = String::from_utf16_lossy(&s[i..i + 1 + usize::from(two)]);
@@ -854,10 +856,7 @@ fn antoine(c: &mut Call) -> Answer {
     let t = c.read_input("t", c.literal("t"));
     let substance = c.field_str("substance", "water");
     let Some((a, b, cc)) = antoine_coefficients(substance) else {
-        return Err(err(
-            ErrorCode::Error,
-            "Cannot destructure property 'A' of 'ANTOINE[this.substance]' as it is undefined.",
-        ));
+        return Err(err(ErrorCode::Value, format!("\"{substance}\" is not a substance the Antoine card knows")));
     };
     let pressure = match number(&t) {
         None => V::Null,
