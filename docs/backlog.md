@@ -107,7 +107,6 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
   node (`docs/dte.md` § Solenoid practice; `archive/1.4-plan.md` D3).
 
 ## Cubes and lists (author 2026-09-26)
-- [ ] **Shuffle draws with replacement too** (author 2026-11-01): Shuffle becomes an op family (`nodeOps.ts`) with Shuffle (each item once, today's behavior, SHUFFLE) and Sample (each draw independent, so an item can repeat), Sample taking a Count (blank: the list's length) and the same Weights (a weighted draw with replacement, numpy's `choice(replace=True)`). Its formula is `RANDSAMPLE(list, [count], [weights])`, beside SHUFFLE in `fns_random.rs`, held until the generation advances like RANDARRAY. Search finds it as Shuffle: Sample and by `sample`, `pick`, `draw with replacement`; the catalog description and keywords move with it.
 
 - [ ] **A list read as a column** (the author, 2026-09-26): if TAKE/DROP ever need to count a list's items as rows,
   that is a toggle on the card plus a formula argument, never an exception in [[D85]] columnsStayColumns.

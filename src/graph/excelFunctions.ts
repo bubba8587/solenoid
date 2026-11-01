@@ -137,7 +137,7 @@ export const FUNCTION_ARITY: Record<string, readonly [number, number]> = {
   ROUNDUP: [2, 2], ROW: [0, 0], ROWS: [1, 1], RSQ: [2, 2], RUNNING: [2, 3], SAVGOL: [3, 3], SCAN: [3, 3],
   SEARCH: [2, 3], SECOND: [1, 1], SEM: [1, 255], SEQUENCE: [1, 4], SETDIFFERENCE: [2, 2], SETDISJOINT: [2, 2],
   SETEQUAL: [2, 2], SETINTERSECT: [2, 2], SETSUBSET: [2, 2], SETSUPERSET: [2, 2], SETSYMDIFF: [2, 2],
-  SETUNION: [2, 2], SHARPE: [1, 3], SHIFT: [2, 3], SHUFFLE: [1, 1], SIMILARITY: [2, 3], SKEW: [1, 255],
+  SETUNION: [2, 2], SHARPE: [1, 3], SHIFT: [2, 3], SHUFFLE: [1, 1], RANDSAMPLE: [1, 3], SIMILARITY: [2, 3], SKEW: [1, 255],
   "SKEW.P": [1, 255], SLICE: [2, 3], SLN: [3, 3], SLOPE: [2, 2], SLUGIFY: [1, 2], SMALL: [2, 2], SOLVE: [2, 2],
   SORT: [1, 4], SORTBY: [2, 255], SORTINO: [1, 3], SPARKLINE: [1, 2], SPEARMAN: [2, 2], SPECTRUM: [1, 2],
   SPELLNUMBER: [1, 1], SQRT: [1, 1], SQRTPI: [1, 1], STANDARDIZE: [3, 3], STDEV: [1, 255], "STDEV.P": [1, 255],

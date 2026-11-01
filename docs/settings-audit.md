@@ -162,6 +162,7 @@ argument; a value is the typed blank it reads as.
 | QUARTILE.INC | `quart` → 0 |
 | RANDARRAY | `rows` → omitted; `columns` → omitted; `min` → omitted; `max` → omitted; `whole_number` → omitted |
 | RANDDIST | `n` → #SYNTAX! |
+| RANDSAMPLE | `count` → omitted |
 | RANGE | `start` → #SYNTAX!; `step` → omitted |
 | RANK | `order` → omitted |
 | RANK.AVG | `order` → omitted |

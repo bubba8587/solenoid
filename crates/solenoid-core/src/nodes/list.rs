@@ -1876,6 +1876,9 @@ fn shuffle(c: &mut Call) -> Answer {
         Some(V::Str(s)) => s.chars().map(|ch| V::str(&ch.to_string())).collect(),
         _ => Vec::new(),
     };
+    if c.field_str("op", "shuffle") == "sample" {
+        return sample(c, arr);
+    }
     // Per-slot uniforms, not a fixed permutation, so live values flow through while the order holds until the
     // generation advances; a new length draws them all anew.
     let held = c.rolls("keys", arr.len(), true);
@@ -1914,6 +1917,26 @@ fn shuffle(c: &mut Call) -> Answer {
     let order = list(pairs.into_iter().map(|p| p.0).collect());
     c.show("cachedList", order.clone());
     Ok(vec![("result".into(), Cv::from(order))])
+}
+
+/// Shuffle's Sample op, RANDSAMPLE: Count draws with replacement (blank: the list's length), uniform or by Weights.
+/// The rolls hold until the generation advances, so changed values flow through the same picks.
+fn sample(c: &mut Call, arr: Vec<V>) -> Answer {
+    let count = read_role(c, "count", &Role::Setting(V::Undef));
+    let weights = match c.wired("weights").and_then(|w| w.first()) {
+        Some(V::List(w)) => Some(w.as_ref().clone()),
+        _ => None,
+    };
+    let drawn = match count {
+        e @ V::Err(_) => Err(e),
+        n => crate::fns_random::sample_count(&n, arr.len()).and_then(|n| {
+            let rolls = c.rolls("draws", n, false);
+            crate::fns_random::sample_with(&arr, weights.as_deref(), &rolls)
+        }),
+    };
+    let out = drawn.map_or_else(|e| e, list);
+    c.show("cachedList", if out.is_sol_error() { list(Vec::new()) } else { out.clone() });
+    Ok(vec![("result".into(), Cv::from(out))])
 }
 
 /// The RANDARRAY card: as many rolls as the count, held until the generation advances, scaled into Min and Max, so

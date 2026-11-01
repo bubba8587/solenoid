@@ -1250,23 +1250,37 @@ export class NormalizeNode extends GraphNode {
 }
 
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
+export type ShuffleOp = "shuffle" | "sample";
+
+export const SHUFFLE_OP_META: Record<ShuffleOp, { label: string; fx: string; keywords: string }> = {
+  shuffle: { label: "Shuffle", fx: "SHUFFLE", keywords: "shuffle reorder permutation each once without replacement" },
+  sample:  { label: "Sample",  fx: "RANDSAMPLE", keywords: "sample draw pick with replacement bootstrap choice randsample" },
+};
+
 export class ShuffleNode extends GraphNode {
+  /** Count reads as RANDSAMPLE declares it: blank is the list's length ([[D86]] blankRoles). */
+  static inputRoles = rolesFrom("RANDSAMPLE", { count: 1 });
   static socketDocs: Record<string, string> = {
-    result: "The order holds until a recalculation. Changed values flow through without reshuffling.",
-    weights: "Optional, at least as long as the list. Higher weight tends to land earlier: a weighted draw without replacement. Otherwise a uniform shuffle.",
+    result: "The order, or the draws, hold until a recalculation. Changed values flow through without reshuffling.",
+    weights: "Optional, one per item. Shuffle: higher weight tends to land earlier, a weighted draw without replacement. Sample: an item is drawn in proportion to its weight.",
+    count: "Only Sample reads this: how many draws. Blank draws as many as the list holds.",
   };
 
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
+  op: ShuffleOp;
   cachedList: unknown[] = [];
+  literals: Record<string, number> = {};
   width = 180; height = 150;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; op?: ShuffleOp }) {
     super("Shuffle");
     this.label = init?.label ?? "Shuffle";
+    this.op = init?.op ?? "shuffle";
     this.addInput("list",    adoptiveListIn("List"));
+    this.addInput("count",   numIn("Count"));
     this.addInput("weights", numListIn("Weights"));
-    this.addOutput("result", adoptiveListOut("Shuffled"));
+    this.addOutput("result", adoptiveListOut("Result"));
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {

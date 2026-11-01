@@ -134,6 +134,7 @@ export const ARG_ROLES: Record<string, ArgRoles> = {
   TOROW: { 1: setting(LEFT_OUT), 2: setting(LEFT_OUT) },
   SEQUENCE: { 0: required, 1: setting(LEFT_OUT), 2: setting(LEFT_OUT), 3: setting(LEFT_OUT) },
   RANDARRAY: { 0: setting(LEFT_OUT), 1: setting(LEFT_OUT), 2: setting(LEFT_OUT), 3: setting(LEFT_OUT), 4: setting(LEFT_OUT) },
+  RANDSAMPLE: { 1: setting(LEFT_OUT) },
   FILTER: { 2: setting(LEFT_OUT) },
   MAKEARRAY: { 0: required, 1: required },
   SLICE: { 1: required, 2: setting(LEFT_OUT) },

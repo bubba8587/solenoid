@@ -203,7 +203,7 @@ Examples: RAND (`RandBetweenNode`), Shuffle, RANDARRAY, Promo, UUID and the Dist
 
 `sourceInvariants.test.ts` fails when a TypeScript file under `nodes/` or `packs/` calls `Math.random()` without referencing `getRecalcGen`, apart from a sanctioned list with reasons (`nodes/composite.ts`, which mints ids, not values).
 
-Volatile functions inside a formula (`RAND`, `RANDARRAY`, `SHUFFLE` and the other draws in the core's `fns_random.rs`: RANDBETWEEN, RANDDIST, UUID) draw fresh values on every evaluation, so an Expression holding one re-rolls whenever that Expression is recomputed.
+Volatile functions inside a formula (`RAND`, `RANDARRAY`, `SHUFFLE` and the other draws in the core's `fns_random.rs`: RANDBETWEEN, RANDDIST, RANDSAMPLE, UUID) draw fresh values on every evaluation, so an Expression holding one re-rolls whenever that Expression is recomputed.
 
 The midnight rollover (`volatileDates.ts`, armed once in `App.tsx`) sets one timer for a second past the next local midnight; when it fires, it calls `requestRecalc()` if the document holds a Today / Now, Holidays or World Clock card, a node whose `expr`, `frameText` or `cubeText` calls `TODAY(` or `NOW(` (any case), a Knap body piping `'now' | date`, or a date input (a Value Input on its Date op, or a `date` literal) holding a relative date phrase, looking inside composites too (`hasVolatileDates`), then re-arms. A World Clock also ticks each minute (`armMinuteTick`, armed beside it): a second timer, aligned to the minute, calls `processGraph` on each top-level card that holds one, so the clock and what it feeds recompute without rolling the rest of the document; Manual mode marks it dirty instead. TODAY and NOW read the local calendar, so their day turns at the same local midnight.
 

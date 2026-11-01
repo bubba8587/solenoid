@@ -7,8 +7,8 @@ import { DIST_SPECS, DistributionsNode, type DistKey } from "./nodes/distributio
 import { ChartNode, SparklineNode, SurfaceNode, ProportionNode, RecordNode, ConditionalRegionsNode } from "./nodes/visual";
 import { CHART_OP_META, SPARKLINE_OP_META, PROPORTION_OP_META, RECORD_OP_META, REGIONS_OP_META } from "./nodes/visual";
 import {
-  FillNode, SetsNode, SumIfsNode,
-  FILL_OP_META, COND_AGG_OP_META,
+  FillNode, SetsNode, SumIfsNode, ShuffleNode,
+  FILL_OP_META, COND_AGG_OP_META, SHUFFLE_OP_META,
   SET_META, PAD_OP_META, PadNode,
   SeriesNode,
 } from "./nodes/list";
@@ -128,6 +128,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new ColumnsNode({ op: op as never }), leafOps: ["keep", "drop"] },
   { type: "list-pad", ctor: PadNode, ops: fromMeta(PAD_OP_META),
     create: (op) => new PadNode({ op: op as never }) },
+  { type: "list-shuffle", ctor: ShuffleNode, ops: fromMeta(SHUFFLE_OP_META),
+    create: (op) => new ShuffleNode({ op: op as never }) },
   { type: "list-sets", ctor: SetsNode, ops: fromMeta(SET_META),
     create: (op) => new SetsNode({ op: op as never }) },
   { type: "cast", ctor: CastNode, ops: fromMeta(CAST_OP_META),

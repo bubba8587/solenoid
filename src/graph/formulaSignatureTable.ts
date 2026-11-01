@@ -408,6 +408,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   RANGE: "start, stop, [step]",
   CONCATLISTS: "list1, [list2], …",
   SHUFFLE: "list",
+  RANDSAMPLE: "list, [count], [weights]",
 
   // ── Excel names ──
   // math / trig

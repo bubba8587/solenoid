@@ -49,7 +49,7 @@ const FORMULA_NODE_ALIAS: Record<string, string> = {
   NTILE: "Bin node (quantiles mode)", ISOUTLIER: "Outliers node", FROMEPOCH: "Epoch → Date node", TOEPOCH: "Date → Epoch node",
   DATETRUNC: "Truncate Date node",
   LEVENSHTEIN: "Text Similarity node (edit distance)", SIMILARITY: "Text Similarity node",
-  FITDIST: "Fit Distribution node", RANDDIST: "Distribution node (sample form)",
+  FITDIST: "Fit Distribution node", RANDDIST: "Distribution node (sample form)", RANDSAMPLE: "Shuffle node (sample op)",
   POLYROOTS: "Polynomial Roots node",
   SAVGOL: "Smooth node (Savitzky–Golay op)", LOWESS: "Smooth node (LOWESS op)", GAUSSIANSMOOTH: "Smooth node (Gaussian op)",
   LOGRETURNS: "Returns node (log op)", CUMRETURNS: "Returns node (cumulative op)", DRAWDOWN: "Returns node (drawdown op)",

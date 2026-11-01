@@ -1,4 +1,5 @@
 // [[C17]], [[B16]] oneFormulaSurface
+import { isSolError } from "../../src/graph/errorValue";
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isFunctionName } from "../../src/graph/excelFunctions";
@@ -227,6 +228,24 @@ describe("the SET*/FILL* families — names DECLARED, not despaced", () => {
     // permutation itself is still one implementation.
     const draws = new Set(Array.from({ length: 40 }, () => JSON.stringify(ev("SHUFFLE(x)", { x }))));
     expect(draws.size).toBeGreaterThan(1);
+  });
+
+  it("RANDSAMPLE draws with replacement: Count draws from the list, by weight when given", () => {
+    const x = ["a", "b", "c"];
+    const out = ev("RANDSAMPLE(x)", { x }) as string[];
+    expect(out).toHaveLength(3);
+    expect(out.every((v) => x.includes(v))).toBe(true);
+    const many = ev("RANDSAMPLE(x, 200)", { x }) as string[];
+    expect(many).toHaveLength(200);
+    expect(new Set(many).size).toBeGreaterThan(1);
+    // A weight of 0 is never drawn; the rest come in proportion.
+    const w = ev("RANDSAMPLE(x, 200, ws)", { x, ws: [0, 1, 1] }) as string[];
+    expect(w.includes("a")).toBe(false);
+    expect((ev("RANDSAMPLE(x, 0)", { x }) as string[])).toEqual([]);
+    for (const bad of ["RANDSAMPLE(x, -1)", "RANDSAMPLE(x, 2, ws)"]) {
+      const r = ev(bad, { x, ws: [0, 0, 0] });
+      expect(isSolError(r), bad).toBe(true);
+    }
   });
 
   it("RANGE and CONCATLISTS", () => {

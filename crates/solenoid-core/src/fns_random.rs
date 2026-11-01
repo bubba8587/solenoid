@@ -1,5 +1,5 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! The random draws: Formula.js's RAND and RANDBETWEEN, and RANDARRAY, RANDDIST, SHUFFLE and UUID. Each draw is
+//! The random draws: Formula.js's RAND and RANDBETWEEN, and RANDARRAY, RANDDIST, SHUFFLE, RANDSAMPLE and UUID. Each draw is
 //! `Math.random()`'s kind, uniform over [0, 1) and fresh per call: the browser's own in wasm, a seeded generator
 //! natively. UUID's bytes come from `crypto.getRandomValues` where the browser has it.
 
@@ -12,7 +12,7 @@ use crate::value_kinds::MAX_GENERATED;
 use std::rc::Rc;
 
 /// The names this module answers.
-pub const NAMES: &[&str] = &["RAND", "RANDBETWEEN", "RANDARRAY", "RANDDIST", "SHUFFLE", "UUID"];
+pub const NAMES: &[&str] = &["RAND", "RANDBETWEEN", "RANDARRAY", "RANDDIST", "SHUFFLE", "RANDSAMPLE", "UUID"];
 
 /// A uniform draw from [0, 1): `Math.random()` in a browser, `fastrand` outside one.
 pub fn random() -> f64 {
@@ -58,6 +58,7 @@ pub fn call(name: &str, a: &[V]) -> V {
         "RANDARRAY" => randarray(a),
         "RANDDIST" => randdist(a),
         "SHUFFLE" => shuffle(arg(a, 0)),
+        "RANDSAMPLE" => randsample(a),
         "UUID" => V::str(&uuid_v4()),
         _ => V::Undef,
     }
@@ -307,6 +308,94 @@ fn shuffle(v: &V) -> V {
     list(order.into_iter().map(|i| items[i].clone()).collect())
 }
 
+/// How many RANDSAMPLE draws: blank is the list's length; a count truncates and is `#VALUE!` below 0.
+pub(crate) fn sample_count(raw: &V, len: usize) -> Result<usize, V> {
+    if blank(raw) {
+        return Ok(len);
+    }
+    let n = to_num(raw).trunc();
+    if !(n >= 0.0) {
+        return Err(err(ErrorCode::Value, "RANDSAMPLE needs a count of 0 or more"));
+    }
+    if n > MAX_GENERATED {
+        return Err(err(
+            ErrorCode::Overflow,
+            format!(
+                "RANDSAMPLE count {} exceeds the {} element limit",
+                number_to_string(n),
+                number_to_string(MAX_GENERATED)
+            ),
+        ));
+    }
+    Ok(n as usize)
+}
+
+/// Draws with replacement from `items`, one per roll in [0, 1): each item equally likely, or by `weights` (one
+/// non-negative number per item, not all zero) when given. Each draw is independent, so an item can repeat.
+pub(crate) fn sample_with(items: &[V], weights: Option<&[V]>, rolls: &[f64]) -> Result<Vec<V>, V> {
+    if rolls.is_empty() {
+        return Ok(Vec::new());
+    }
+    if items.is_empty() {
+        return Err(err(ErrorCode::Value, "RANDSAMPLE has nothing to draw from"));
+    }
+    let Some(w) = weights else {
+        let n = items.len();
+        return Ok(rolls.iter().map(|&r| items[((r * n as f64) as usize).min(n - 1)].clone()).collect());
+    };
+    if w.len() != items.len() {
+        return Err(err(
+            ErrorCode::Shape,
+            format!("The weights list has {} values but the list has {}", w.len(), items.len()),
+        ));
+    }
+    let mut cumulative = Vec::with_capacity(w.len());
+    let mut total = 0.0;
+    for x in w {
+        match x {
+            V::Num(x) if x.is_finite() && *x >= 0.0 => total += x,
+            V::Err(_) => return Err(x.clone()),
+            _ => return Err(err(ErrorCode::Value, "Each weight is a number of 0 or more")),
+        }
+        cumulative.push(total);
+    }
+    if !(total > 0.0) {
+        return Err(err(ErrorCode::Value, "The weights are all zero, so nothing can be drawn"));
+    }
+    // The first item whose running total passes the roll; an item of weight 0 is never drawn.
+    Ok(rolls
+        .iter()
+        .map(|&r| {
+            let at = r * total;
+            let i = cumulative.partition_point(|&c| c <= at).min(items.len() - 1);
+            items[i].clone()
+        })
+        .collect())
+}
+
+/// RANDSAMPLE(list, [count], [weights]): `count` draws with replacement, fresh each evaluation.
+fn randsample(a: &[V]) -> V {
+    let items: Vec<V> = match arg(a, 0) {
+        V::List(items) => items.as_ref().clone(),
+        V::Null | V::Undef => Vec::new(),
+        other => vec![other.clone()],
+    };
+    let n = match sample_count(arg(a, 1), items.len()) {
+        Ok(n) => n,
+        Err(e) => return e,
+    };
+    let weights = match arg(a, 2) {
+        V::List(w) => Some(w.as_ref().clone()),
+        V::Null | V::Undef => None,
+        other => Some(vec![other.clone()]),
+    };
+    let rolls: Vec<f64> = (0..n).map(|_| random()).collect();
+    match sample_with(&items, weights.as_deref(), &rolls) {
+        Ok(drawn) => list(drawn),
+        Err(e) => e,
+    }
+}
+
 /// Bytes from the browser's `crypto.getRandomValues`, as the UUID card draws them; `random()`'s where there is none.
 #[cfg(target_arch = "wasm32")]
 fn random_bytes(b: &mut [u8]) {
@@ -393,5 +482,25 @@ mod tests {
         assert_eq!(seen, (1..=20).map(f64::from).collect::<Vec<_>>());
         let u = uuid_v4();
         assert_eq!((u.len(), &u[14..15]), (36, "4"));
+    }
+
+    #[test]
+    fn sample_draws_with_replacement() {
+        let items = [V::str("a"), V::str("b"), V::str("c")];
+        let got = sample_with(&items, None, &[0.0, 0.34, 0.99, 0.0]).unwrap();
+        let text: Vec<String> = got.iter().map(value_text).collect();
+        assert_eq!(text, ["a", "b", "c", "a"]);
+        let w = [V::Num(0.0), V::Num(1.0), V::Num(3.0)];
+        let got = sample_with(&items, Some(&w), &[0.0, 0.24, 0.26, 0.999]).unwrap();
+        let text: Vec<String> = got.iter().map(value_text).collect();
+        assert_eq!(text, ["b", "b", "c", "c"]);
+        assert!(sample_with(&items, Some(&[V::Num(0.0), V::Num(0.0), V::Num(0.0)]), &[0.5]).is_err());
+        assert!(sample_with(&items, Some(&[V::Num(1.0)]), &[0.5]).is_err());
+        assert!(sample_with(&[], None, &[0.5]).is_err());
+        assert_eq!(sample_with(&[], None, &[]).unwrap().len(), 0);
+        assert_eq!(sample_count(&V::Undef, 4).unwrap(), 4);
+        assert_eq!(sample_count(&V::Num(2.9), 4).unwrap(), 2);
+        assert!(sample_count(&V::Num(-1.0), 4).is_err());
+        assert!(sample_count(&V::str("x"), 4).is_err());
     }
 }
