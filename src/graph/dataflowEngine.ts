@@ -6,6 +6,7 @@ import { guarded, onCore, tracked } from "./engineWasm";
 import type { GraphSchemes } from "./graphModel";
 import type { Schemes } from "./schemes";
 import "./nodeBoundary";
+import { forgetCollected } from "./heldValues";
 
 /** The engine an editor uses: the graph walks live there, beside the graph they walk. */
 export function engineOf<S extends GraphSchemes>(editor: GraphEditor<S>): DataflowEngine<S> {
@@ -120,6 +121,7 @@ export class DataflowEngine<S extends GraphSchemes = Schemes> {
     renderOnly: ReadonlySet<string> | undefined,
     topology: boolean,
   ): Promise<string[] | null> {
+    forgetCollected();
     return tracked(() => this.core().pass(changed, renderOnly ? [...renderOnly] : undefined, topology));
   }
 

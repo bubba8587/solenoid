@@ -41,25 +41,48 @@ pub fn binary_out(v: &Cv) -> Option<Binary> {
     }
 }
 
-// `engine_node`'s staging: a big input crosses as buffers before the call and as `{"__staged": id}` in it; a big
+// `engine_node`'s staging: a big input is kept before the call (`keep`, below) and named `{"__held": id}` in it; a big
 // answer is set aside while the reply is written and crosses as `{"staged": id}`, which the caller takes right after.
 thread_local! {
-    static INBOX: RefCell<Vec<Option<Cv>>> = const { RefCell::new(Vec::new()) };
-    static OUTBOX: RefCell<Vec<Option<Binary>>> = const { RefCell::new(Vec::new()) };
+    static OUTBOX: RefCell<Vec<Option<(Binary, Cv)>>> = const { RefCell::new(Vec::new()) };
     static STAGING: Cell<bool> = const { Cell::new(false) };
+    static KEPT: RefCell<rustc_hash::FxHashMap<u32, Cv>> = RefCell::new(Default::default());
+    static KEPT_LAST: Cell<u32> = const { Cell::new(0) };
 }
 
-/// Holds `v` for the next call to read as `{"__staged": id}`.
-pub fn stage_in(v: Cv) -> u32 {
-    INBOX.with(|b| {
-        let mut b = b.borrow_mut();
-        b.push(Some(v));
-        (b.len() - 1) as u32
-    })
+// A big value that crossed to JavaScript or from it is kept here under an id for as long as its JavaScript object
+// lives, so the same object crossing again sends the id alone, `{"__held": id}` on the card wire ([[C120]]
+// linearWork; a value is never changed in place, so an object's identity is its content). JavaScript forgets an id
+// when the object is collected (`forget`). Ids only grow, so a forgotten one never names another value.
+
+/// Keeps `v`; its id.
+pub fn keep(v: Cv) -> u32 {
+    let id = KEPT_LAST.with(|n| {
+        n.set(n.get() + 1);
+        n.get()
+    });
+    KEPT.with(|k| k.borrow_mut().insert(id, v));
+    id
 }
 
-pub(crate) fn take_in(id: u64) -> Option<Cv> {
-    INBOX.with(|b| b.borrow_mut().get_mut(id as usize).and_then(Option::take))
+/// The value kept under `id`.
+pub fn kept(id: u32) -> Option<Cv> {
+    KEPT.with(|k| k.borrow().get(&id).cloned())
+}
+
+/// Drops the values kept under `ids`.
+pub fn forget(ids: &[u32]) {
+    KEPT.with(|k| {
+        let mut k = k.borrow_mut();
+        for id in ids {
+            k.remove(id);
+        }
+    });
+}
+
+/// How many values are kept.
+pub fn kept_count() -> usize {
+    KEPT.with(|k| k.borrow().len())
 }
 
 /// Sets `v` aside as buffers while a reply is written, where it qualifies; its id in the outbox.
@@ -70,24 +93,22 @@ pub(crate) fn stage_out(v: &Cv) -> Option<usize> {
     let staged = binary_out(v)?;
     Some(OUTBOX.with(|b| {
         let mut b = b.borrow_mut();
-        b.push(Some(staged));
+        b.push(Some((staged, v.clone())));
         b.len() - 1
     }))
 }
 
-/// What `stage_out` set aside under `id`.
-pub fn take_out(id: u32) -> Option<Binary> {
+/// What `stage_out` set aside under `id`, and the value it is.
+pub fn take_out(id: u32) -> Option<(Binary, Cv)> {
     OUTBOX.with(|b| b.borrow_mut().get_mut(id as usize).and_then(Option::take))
 }
 
-/// Writes a reply with its big answers set aside: the outbox from the last call goes, and the inbox once `write` has
-/// read it.
+/// Writes a reply with its big answers set aside; the outbox from the last call goes.
 pub fn staging<T>(write: impl FnOnce() -> T) -> T {
     OUTBOX.with(|b| b.borrow_mut().clear());
     STAGING.with(|s| s.set(true));
     let out = write();
     STAGING.with(|s| s.set(false));
-    INBOX.with(|b| b.borrow_mut().clear());
     out
 }
 

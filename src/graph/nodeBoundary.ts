@@ -11,7 +11,8 @@ import { isFrameRef, readFrame, refWithFormats, type FrameRef } from "./frameBac
 import { displayMagnitudeOf } from "./unitBridge";
 import { carryMatrixUnit, withMatrixUnit, type ColumnUnit, type UnitCell } from "./unitValue";
 import { coreHeader, coreFieldsOf } from "./nodeOnCore";
-import { nodeWire, readNodeReply, jsonDec, wireBinary, readBinary } from "./nodeWire";
+import { nodeWire, readNodeReply, jsonDec, wireBinary, readBinary, heldIdOf } from "./nodeWire";
+import { holdAs } from "./heldValues";
 import { engineClock } from "./coreValues";
 import { parseListLiteral } from "./listLiterals";
 import { frameFormatStore } from "./frameFormatStore";
@@ -119,7 +120,11 @@ whenWasmEngineLoads(() => setBoundaryHost({
   cellKinds,
   header: coreHeader,
   fields: coreFieldsOf,
+  // An object that crossed before goes as the id the core keeps it under (`heldValues.ts`); a big flat one as
+  // buffers, which the core keeps and names back through `held`.
   toCore: (v: unknown) => {
+    const held = heldIdOf(v);
+    if (held !== undefined) return held;
     const b = wireBinary(v);
     if (b) return b;
     const w = nodeWire(v);
@@ -131,10 +136,12 @@ whenWasmEngineLoads(() => setBoundaryHost({
     if (unit !== undefined) withMatrixUnit(r.value, jsonDec(JSON.parse(unit)) as ColumnUnit);
     return [r.value];
   },
-  fromCoreBin: (kind: string, schema: string | undefined, tags: Uint8Array, nums: Float64Array, strs: string, lens: Uint32Array, unit: string | undefined) => {
+  fromCoreBin: (kind: string, schema: string | undefined, tags: Uint8Array, nums: Float64Array, strs: string, lens: Uint32Array, unit: string | undefined, held: number | undefined) => {
     const value = readBinary(kind, schema, tags, nums, strs, lens);
     if (unit !== undefined) withMatrixUnit(value, jsonDec(JSON.parse(unit)) as ColumnUnit);
+    if (held !== undefined) holdAs(value as object, held);
     return [value];
   },
+  held: (v: object, id: number) => holdAs(v, id),
   clock: () => engineClock().now,
 }));

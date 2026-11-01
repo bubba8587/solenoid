@@ -170,8 +170,14 @@ fn to_js(a: &Arrived) -> JsValue {
             let read = host()
                 .ok()
                 .and_then(|h| match binary_out(v) {
+                    // Kept for the object JavaScript makes of it, so it comes back as its id (`columnar::keep`).
                     Some(args) => {
                         args.push(&unit);
+                        let id = (a.munit.is_none())
+                            .then(|| solenoid_core::nodes::columnar::keep(v.clone()));
+                        args.push(
+                            &id.map_or(JsValue::UNDEFINED, |id| JsValue::from_f64(f64::from(id))),
+                        );
                         h.from_core_bin.apply(&JsValue::NULL, &args).ok()
                     }
                     None => {
@@ -236,9 +242,19 @@ fn from_js(v: &JsValue) -> Option<Arrived> {
     if v.is_undefined() {
         return Some(Arrived::bare(V::Undef));
     }
-    let wired = host().ok()?.to_core.call1(&JsValue::NULL, v).ok()?;
+    let h = host().ok()?;
+    let wired = h.to_core.call1(&JsValue::NULL, v).ok()?;
+    // An object that crossed before is the value kept under its id.
+    if let Some(id) = wired.as_f64() {
+        return solenoid_core::nodes::columnar::kept(id as u32).map(Arrived::bare);
+    }
     if let Some(a) = wired.dyn_ref::<Array>() {
-        return binary_in(a).map(Arrived::bare);
+        let cv = binary_in(a)?;
+        let id = solenoid_core::nodes::columnar::keep(cv.clone());
+        h.held
+            .call2(&JsValue::NULL, v, &JsValue::from_f64(f64::from(id)))
+            .ok()?;
+        return Some(Arrived::bare(cv));
     }
     let text = wired.as_string()?;
     let json: Json = serde_json::from_str(&text).ok()?;

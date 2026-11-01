@@ -123,10 +123,21 @@ pub fn engine_csv_rows(text: &str, detect: bool, keep_blank: bool) -> String {
     reply(Ok(serde_json::json!(rows)))
 }
 
-/// Holds a big input of `engine_node`'s next call, a frame or a list as buffers (`nodes::columnar`); its id, which the
-/// call names as `{"__staged": id}`.
+/// Stages the answer `engine_node`'s reply named `{"staged": id}` for the `take_*` calls; its kind and schema as JSON
+/// with the id it is kept under (`{"kind", "schema", "held"}`, `nodes::columnar::keep`), or null where it was taken
+/// already.
 #[wasm_bindgen]
-pub fn card_stage(
+pub fn card_unstage(id: u32) -> Option<String> {
+    let ((kind, schema, out), v) = crate::nodes::columnar::take_out(id)?;
+    STAGED.with(|s| *s.borrow_mut() = out);
+    let held = crate::nodes::columnar::keep(v);
+    Some(serde_json::json!({ "kind": kind, "schema": schema, "held": held }).to_string())
+}
+
+/// Keeps a big frame or list that crossed as buffers; the id a card call names it by,
+/// `{"__held": id}` (`nodes::columnar::keep`).
+#[wasm_bindgen]
+pub fn card_keep(
     kind: &str,
     schema: Option<String>,
     tags: &[u8],
@@ -139,16 +150,19 @@ pub fn card_stage(
         "frame" => columnar::frame_in(schema.as_deref().unwrap_or("{}"), tags, nums, strs, lens),
         _ => columnar::list_in(tags, nums, strs, lens),
     };
-    v.map(columnar::stage_in).map_err(|e| JsValue::from_str(&e.message))
+    v.map(columnar::keep).map_err(|e| JsValue::from_str(&e.message))
 }
 
-/// Stages the answer `engine_node`'s reply named `{"staged": id}` for the `take_*` calls; its kind and schema as JSON
-/// (`{"kind", "schema"}`), or null where it was taken already.
+/// Drops the kept values whose JavaScript objects were collected.
 #[wasm_bindgen]
-pub fn card_unstage(id: u32) -> Option<String> {
-    let (kind, schema, out) = crate::nodes::columnar::take_out(id)?;
-    STAGED.with(|s| *s.borrow_mut() = out);
-    Some(serde_json::json!({ "kind": kind, "schema": schema }).to_string())
+pub fn card_forget(ids: &[u32]) {
+    crate::nodes::columnar::forget(ids);
+}
+
+/// How many values the core keeps for JavaScript objects (`card_keep`), for the tests.
+#[wasm_bindgen]
+pub fn card_kept_count() -> usize {
+    crate::nodes::columnar::kept_count()
 }
 
 #[wasm_bindgen]

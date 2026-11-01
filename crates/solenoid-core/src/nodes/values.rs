@@ -132,11 +132,20 @@ pub struct Cube {
     pub columns: Vec<CubeColumn>,
 }
 
+/// A held value the core no longer has: never, while JavaScript forgets only what it collected and a fresh instance
+/// starts with no ids.
+fn lost() -> Cv {
+    Cv::V(V::err(crate::error_value::sol_error(
+        crate::error_value::ErrorCode::Error,
+        "The engine lost a value it was holding; recalculate to send it again",
+    )))
+}
+
 /// A wire value as a card reads it: a frame, a cube or plain data, or anything `decode` reads.
 pub fn decode_card(j: &Json) -> Cv {
     match j {
-        Json::Object(o) if o.contains_key("__staged") => {
-            o["__staged"].as_u64().and_then(super::columnar::take_in).unwrap_or(Cv::UNDEF)
+        Json::Object(o) if o.contains_key("__held") => {
+            o["__held"].as_u64().and_then(|id| super::columnar::kept(u32::try_from(id).ok()?)).unwrap_or_else(lost)
         }
         Json::Array(items) => Cv::list(items.iter().map(decode_card).collect()),
         Json::Object(o) if o.contains_key("__frame") => {

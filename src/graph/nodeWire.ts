@@ -5,7 +5,8 @@
 import { coreValue, readReply, toWellFormed } from "./coreValues";
 import { solError, type SolErrorCode } from "./errorValue";
 import { encodeBinary, decodeBinary } from "./binaryCells";
-import { wasmCardStage, wasmCardUnstage } from "./engineWasm";
+import { wasmCardKeep, wasmCardUnstage } from "./engineWasm";
+import { heldId, holdAs } from "./heldValues";
 import { cx } from "./cxValue";
 import { matrixUnitOf, withMatrixUnit, type ColumnUnit } from "./unitValue";
 import { isFrameValue, isCubeValue, makeCube, type FrameValue, type CubeValue, type CubeColumn, type FrameColumn, type FrameCell } from "./frame";
@@ -76,10 +77,23 @@ function all(vs: readonly unknown[]): unknown[] | undefined {
   return out.includes(undefined) ? undefined : out;
 }
 
-/** `nodeWire` for an `engine_node` call: a big frame or list of flat cells is staged in the core as buffers and named. */
+/** `nodeWire` for an `engine_node` call: a big frame or list of flat cells crosses once as buffers, and from then on
+ *  as the id the core keeps it under (`heldValues.ts`). */
 export function nodeCallWire(v: unknown): unknown {
+  const held = heldIdOf(v);
+  if (held !== undefined) return { __held: held };
   const b = wireBinary(v);
-  return b ? { __staged: wasmCardStage(b) } : nodeWire(v);
+  if (!b) return nodeWire(v);
+  const id = wasmCardKeep(b);
+  holdAs(v as object, id);
+  return { __held: id };
+}
+
+/** The id the core keeps `v` under, where its copy is all of it: a table's unit rides beside the cells, so a list
+ *  that took one after it crossed goes whole again. */
+export function heldIdOf(v: unknown): number | undefined {
+  const id = heldId(v);
+  return id !== undefined && !matrixUnitOf(v) ? id : undefined;
 }
 
 /** A value as a card body on the core reads it; undefined where it can't cross (a frame ref, a closure, other objects). */
@@ -215,7 +229,10 @@ export function readNodeReply(r: unknown): { value: unknown } | null {
   }
   if (typeof (o as { staged?: unknown }).staged === "number") {
     const b = wasmCardUnstage((o as { staged: number }).staged);
-    return b ? { value: readBinary(b.kind, b.schema, b.tags, b.nums, b.strs, b.lens) } : null;
+    if (!b) return null;
+    const value = readBinary(b.kind, b.schema, b.tags, b.nums, b.strs, b.lens);
+    holdAs(value as object, b.held);
+    return { value };
   }
   if ("json" in o) return { value: jsonDec(o.json) };
   if (o.frame) {

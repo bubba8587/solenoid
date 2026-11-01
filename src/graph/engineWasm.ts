@@ -2,7 +2,7 @@
 // The one WebAssembly module: the graph engine and the core it links (`crates/solenoid-graph`, `crates/solenoid-core`),
 // answering the core's commands in-process. A trap anywhere drops the instance and brings a fresh one
 // (tree/specs/computation/graph-core.md § Traps). `npm run build:wasm` regenerates `engineWasm/`.
-import init, { initSync, __wbg_reset, setPanicHandler, display_settings, fmt_scalar, fmt_annotated, fmt_date, card_is_hex_color, card_link_href, card_image_src, read_decimal, read_logical, region_keys, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, engine_infer_bin, card_stage, card_unstage, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_graph.js";
+import init, { initSync, __wbg_reset, setPanicHandler, display_settings, fmt_scalar, fmt_annotated, fmt_date, card_is_hex_color, card_link_href, card_image_src, read_decimal, read_logical, region_keys, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, engine_infer_bin, card_keep, card_forget, card_kept_count, card_unstage, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_graph.js";
 import { toSolError } from "./errorValue";
 import type { ColumnUnit } from "./unitValue";
 import type { FormatAnnotation } from "./formatAnnotationStore";
@@ -231,18 +231,29 @@ export function wasmInferBin(cells: BinaryCells): BinaryCells {
   return command(() => ({ schema, tags: take_tags(), nums: take_nums(), strs: take_strs(), lens: take_lens() }));
 }
 
-/** Holds a big input for the next `engine_node` call, `[kind, schema, tags, nums, strs, lens]` as `wireBinary` makes it;
- *  the id the call names as `{__staged: id}`. */
-export function wasmCardStage(b: readonly unknown[]): number {
-  return command(() => card_stage(b[0] as string, b[1] as string | undefined, b[2] as Uint8Array, b[3] as Float64Array, b[4] as string, b[5] as Uint32Array));
+/** Keeps a big frame or list in the core, `[kind, schema, tags, nums, strs, lens]` as `wireBinary` makes it; the id a
+ *  card call names it by, `{__held: id}` (`heldValues.ts`). */
+export function wasmCardKeep(b: readonly unknown[]): number {
+  return command(() => card_keep(b[0] as string, b[1] as string | undefined, b[2] as Uint8Array, b[3] as Float64Array, b[4] as string, b[5] as Uint32Array));
 }
 
-/** The answer an `engine_node` reply named `{staged: id}`, as buffers; null where it was taken already. */
-export function wasmCardUnstage(id: number): { kind: string; schema?: string; tags: Uint8Array; nums: Float64Array; strs: string; lens: Uint32Array } | null {
+/** Drops the values the core keeps under `ids`. */
+export function wasmCardForget(ids: Uint32Array): void {
+  command(() => card_forget(ids));
+}
+
+/** How many values the core keeps for JavaScript objects. */
+export function wasmCardKeptCount(): number {
+  return command(() => card_kept_count());
+}
+
+/** The answer an `engine_node` reply named `{staged: id}`, as buffers with the id the core keeps it under; null where
+ *  it was taken already. */
+export function wasmCardUnstage(id: number): { kind: string; schema?: string; held: number; tags: Uint8Array; nums: Float64Array; strs: string; lens: Uint32Array } | null {
   const head = command(() => card_unstage(id));
   if (head == null) return null;
-  const { kind, schema } = JSON.parse(head) as { kind: string; schema: string | null };
-  return command(() => ({ kind, ...(schema != null ? { schema } : {}), tags: take_tags(), nums: take_nums(), strs: take_strs(), lens: take_lens() }));
+  const { kind, schema, held } = JSON.parse(head) as { kind: string; schema: string | null; held: number };
+  return command(() => ({ kind, ...(schema != null ? { schema } : {}), held, tags: take_tags(), nums: take_nums(), strs: take_strs(), lens: take_lens() }));
 }
 
 /** The rows CSV text reads as (`csv::rows_columnar`). */

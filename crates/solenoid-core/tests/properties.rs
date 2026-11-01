@@ -145,3 +145,34 @@ fn sort_unique_and_sum_keep_their_laws() {
         assert_eq!(nums(&run("MAX(l)", &xs)), vec![want[want.len() - 1]], "MAX({xs:?})");
     }
 }
+
+#[test]
+fn a_whole_number_prints_as_js_prints_it() {
+    let mut r = rng();
+    let edges = [
+        1.0,
+        -1.0,
+        9_007_199_254_740_992.0,
+        9_007_199_254_740_993.0,
+        1e20,
+        9.999_999_999_999_999e20,
+        -9.999_999_999_999_999e20,
+        1e21,
+        123_456_789_012_345_680_000.0,
+    ];
+    let picks = (0..cases()).map(|_| {
+        let x = f64::from_bits(r.u64(..)).trunc();
+        if r.bool() {
+            x
+        } else {
+            (r.f64() * [1.0, 1e3, 1e6, 1e9, 1e12, 1e15, 9e15][r.usize(0..7)]).trunc()
+                * if r.bool() { 1.0 } else { -1.0 }
+        }
+    });
+    for x in edges.into_iter().chain(picks) {
+        if !x.is_finite() || x == 0.0 {
+            continue;
+        }
+        assert_eq!(number_to_string(x), ryu_js::Buffer::new().format(x), "{x:e}");
+    }
+}

@@ -11,6 +11,7 @@ import { engineClock } from "./coreValues";
 import { nodeWire, nodeCallWire, readNodeReply, jsonDec, jsonEnc, jsonText } from "./nodeWire";
 import { withMatrixUnit, type ColumnUnit } from "./unitValue";
 import { wasmInvokeSync, CoreTrap } from "./engineWasm";
+import { forgetCollected } from "./heldValues";
 import { solError } from "./errorValue";
 
 type Reply = { out?: Record<string, unknown>; thrown?: unknown; none?: true; display: Record<string, unknown>; matrixUnits?: Record<string, unknown> };
@@ -113,6 +114,7 @@ export function coreFieldsOf(node: GraphNode, names: readonly string[]): string 
 
 function invoke(node: GraphNode, inputs: Record<string, unknown[] | undefined>): Reply {
   const n = node as unknown as { literals?: unknown; stringLiterals?: unknown };
+  forgetCollected();
   const wired: [string, unknown[]][] = [];
   for (const [k, arr] of Object.entries(inputs)) {
     if (!Array.isArray(arr)) continue;

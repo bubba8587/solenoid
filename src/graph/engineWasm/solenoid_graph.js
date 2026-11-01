@@ -792,6 +792,16 @@ export function auditNamedEdits(on) {
 }
 
 /**
+ * Drops the kept values whose JavaScript objects were collected.
+ * @param {Uint32Array | number[]} ids
+ */
+export function card_forget(ids) {
+    const ptr0 = passArray32ToWasm0(ids, wasm.__wbindgen_export);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.card_forget(ptr0, len0);
+}
+
+/**
  * The image a Record cell's text shows, if any ([[C103]] untrustedContentSeams).
  * @param {string} text
  * @returns {string | undefined}
@@ -828,32 +838,8 @@ export function card_is_hex_color(text) {
 }
 
 /**
- * The address a card cell's text links to, if any.
- * @param {string} text
- * @returns {string | undefined}
- */
-export function card_link_href(text) {
-    try {
-        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
-        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export, wasm.__wbindgen_export2);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.card_link_href(retptr, ptr0, len0);
-        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        let v2;
-        if (r0 !== 0) {
-            v2 = getStringFromWasm0(r0, r1);
-            wasm.__wbindgen_export3(r0, r1 * 1, 1);
-        }
-        return v2;
-    } finally {
-        wasm.__wbindgen_add_to_stack_pointer(16);
-    }
-}
-
-/**
- * Holds a big input of `engine_node`'s next call, a frame or a list as buffers (`nodes::columnar`); its id, which the
- * call names as `{"__staged": id}`.
+ * Keeps a big frame or list that crossed as buffers; the id a card call names it by,
+ * `{"__held": id}` (`nodes::columnar::keep`).
  * @param {string} kind
  * @param {string | null | undefined} schema
  * @param {Uint8Array | number[]} tags
@@ -862,7 +848,7 @@ export function card_link_href(text) {
  * @param {Uint32Array | number[]} lens
  * @returns {number}
  */
-export function card_stage(kind, schema, tags, nums, strs, lens) {
+export function card_keep(kind, schema, tags, nums, strs, lens) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
         let ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5;
@@ -888,7 +874,7 @@ export function card_stage(kind, schema, tags, nums, strs, lens) {
             if (ptr0) { wasm.__wbindgen_export3(ptr0, len0 * 1, 1); }
             throw e;
         }
-        wasm.card_stage(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5);
+        wasm.card_keep(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -902,8 +888,42 @@ export function card_stage(kind, schema, tags, nums, strs, lens) {
 }
 
 /**
+ * How many values the core keeps for JavaScript objects (`card_keep`), for the tests.
+ * @returns {number}
+ */
+export function card_kept_count() {
+    const ret = wasm.card_kept_count();
+    return ret >>> 0;
+}
+
+/**
+ * The address a card cell's text links to, if any.
+ * @param {string} text
+ * @returns {string | undefined}
+ */
+export function card_link_href(text) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.card_link_href(retptr, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        let v2;
+        if (r0 !== 0) {
+            v2 = getStringFromWasm0(r0, r1);
+            wasm.__wbindgen_export3(r0, r1 * 1, 1);
+        }
+        return v2;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
  * Stages the answer `engine_node`'s reply named `{"staged": id}` for the `take_*` calls; its kind and schema as JSON
- * (`{"kind", "schema"}`), or null where it was taken already.
+ * with the id it is kept under (`{"kind", "schema", "held"}`, `nodes::columnar::keep`), or null where it was taken
+ * already.
  * @param {number} id
  * @returns {string | undefined}
  */
@@ -2201,7 +2221,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_4551(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_4563(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -2311,8 +2331,8 @@ function __wbg_get_imports() {
             return ret;
         },
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 710, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_4534);
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 712, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_4546);
             return ret;
         },
         __wbindgen_generic_0000000000000002: function(arg0) {
@@ -2340,14 +2360,14 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_4551(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_4551(arg0, arg1, arg2, arg3);
+function __wasm_bindgen_func_elem_4563(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_4563(arg0, arg1, arg2, arg3);
 }
 
-function __wasm_bindgen_func_elem_4534(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_4546(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
-        wasm.__wasm_bindgen_func_elem_4534(retptr, arg0, arg1, arg2);
+        wasm.__wasm_bindgen_func_elem_4546(retptr, arg0, arg1, arg2);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {

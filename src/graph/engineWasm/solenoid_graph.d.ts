@@ -175,6 +175,11 @@ export class GraphCore {
 export function auditNamedEdits(on: boolean): void;
 
 /**
+ * Drops the kept values whose JavaScript objects were collected.
+ */
+export function card_forget(ids: Uint32Array | number[]): void;
+
+/**
  * The image a Record cell's text shows, if any ([[C103]] untrustedContentSeams).
  */
 export function card_image_src(text: string): string | undefined;
@@ -185,19 +190,25 @@ export function card_image_src(text: string): string | undefined;
 export function card_is_hex_color(text: string): boolean;
 
 /**
+ * Keeps a big frame or list that crossed as buffers; the id a card call names it by,
+ * `{"__held": id}` (`nodes::columnar::keep`).
+ */
+export function card_keep(kind: string, schema: string | null | undefined, tags: Uint8Array | number[], nums: Float64Array | number[], strs: string, lens: Uint32Array | number[]): number;
+
+/**
+ * How many values the core keeps for JavaScript objects (`card_keep`), for the tests.
+ */
+export function card_kept_count(): number;
+
+/**
  * The address a card cell's text links to, if any.
  */
 export function card_link_href(text: string): string | undefined;
 
 /**
- * Holds a big input of `engine_node`'s next call, a frame or a list as buffers (`nodes::columnar`); its id, which the
- * call names as `{"__staged": id}`.
- */
-export function card_stage(kind: string, schema: string | null | undefined, tags: Uint8Array | number[], nums: Float64Array | number[], strs: string, lens: Uint32Array | number[]): number;
-
-/**
  * Stages the answer `engine_node`'s reply named `{"staged": id}` for the `take_*` calls; its kind and schema as JSON
- * (`{"kind", "schema"}`), or null where it was taken already.
+ * with the id it is kept under (`{"kind", "schema", "held"}`, `nodes::columnar::keep`), or null where it was taken
+ * already.
  */
 export function card_unstage(id: number): string | undefined;
 
@@ -431,10 +442,12 @@ export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_graphcore_free: (a: number, b: number) => void;
     readonly auditNamedEdits: (a: number) => void;
+    readonly card_forget: (a: number, b: number) => void;
     readonly card_image_src: (a: number, b: number, c: number) => void;
     readonly card_is_hex_color: (a: number, b: number) => number;
+    readonly card_keep: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
+    readonly card_kept_count: () => number;
     readonly card_link_href: (a: number, b: number, c: number) => void;
-    readonly card_stage: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
     readonly card_unstage: (a: number, b: number) => void;
     readonly computeNode: (a: number, b: any, c: any, d: number) => void;
     readonly directBodies: (a: number) => void;
@@ -525,8 +538,8 @@ export interface InitOutput {
     readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly uid: (a: number) => void;
     readonly unnamedEdits: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_4534: (a: number, b: number, c: number, d: any) => void;
-    readonly __wasm_bindgen_func_elem_4551: (a: number, b: number, c: any, d: any) => void;
+    readonly __wasm_bindgen_func_elem_4546: (a: number, b: number, c: number, d: any) => void;
+    readonly __wasm_bindgen_func_elem_4563: (a: number, b: number, c: any, d: any) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;

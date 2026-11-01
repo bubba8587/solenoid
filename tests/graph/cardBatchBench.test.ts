@@ -1,5 +1,5 @@
 // [[C120]] linearWork, [[D99]] rustIsSpec
-// Timing, not a check: cards mapping one core body over a 50,000-item list.
+// Timing, not a check: one card's body over a big list, called from JS (`data()` → `nodeOnCore`). The app's pass calls direct cards in Rust instead, so for "is the app fast" use `passBench.test.ts`.
 // `BENCH=1 npx vitest run tests/graph/cardBatchBench.test.ts` prints the table; a plain run skips it.
 import { describe, it } from "vitest";
 import { TextTransformNode } from "../../src/graph/nodes/text";

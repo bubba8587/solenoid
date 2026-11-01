@@ -137,6 +137,7 @@ superseded, or restating what a test already pins.
 - Several agents on this repo at once: one test run at a time, a one-line claim in
   `docs/agent-coordination.md`, the Lead merges (the protocol is that file). Solo session: claim nothing.
 - An audit that finds defensible but worse behavior fixes it by default; leaving it takes a stated reason.
+- **Measuring speed? Time the path the app runs, and find it before you bench** (it was missed twice): a whole pass through the engine, `tests/graph/passBench.test.ts` (`engine.pass` + `landed`), not a card's `data()`, `nodeOnCore` or `compileEvaluator` called from JS, which direct cards skip (`tree/specs/computation/graph-core.md` § Direct calls). Before blaming a crossing, read the spec for what already avoids it. Compare against an older build by running the same graph there, and say which path a number measured.
 - Writing a loop over rows, a sort, a cache or a chart? `tree/specs/floors/engineering.md` § Performance first ([[C120]] linearWork): nothing whole-table per row, comparators only compare, a cache names every input, drawing stops at the screen.
 - Changed a site page's copy (`src/graph/landing/`, a seed label, a pack description)? Regenerate the crawler snapshots yourself: `node scripts/prerender-site.mjs`, then commit `prerender/` (`prerender.test.ts` fails until you do).
 - A black screen: every render is boundaried — ask for the copied error text first, don't hunt
