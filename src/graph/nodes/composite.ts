@@ -16,6 +16,7 @@ import {
 } from "../monteCarlo";
 import { isFrameValue, frameRowCount, frameFromRows, isCubeValue, cubeRowCount, cubeFromColumns } from "../frame";
 import { isGraphRebuilding } from "../process";
+import { session } from "../passSession";
 import { fireAlert } from "../alertStore";
 import { compositeStaleStore } from "../compositeStaleStore";
 import { connectionStore, whenConnectionsSettled } from "../connectionStore";
@@ -239,6 +240,9 @@ export class CompositeNode extends GraphNode {
   internalEditSeq = 0;
   runSeq = 0;
   private _lastRunMode: CompositeRunMode | null = null;
+  private _lastHeavy = false;
+  /** The pass key of the one plain pass `cachedOutputs` holds, or null when they hold anything else (blanks, a multi-run). */
+  private lastPassKey: string | null = null;
   private _refIds = new WeakMap<object, number>();
   private _refSeq = 0;
   internalPositions: Record<string, { x: number; y: number }> = {};
@@ -739,6 +743,8 @@ export class CompositeNode extends GraphNode {
     }
     resolveTrigModes(this.internalEditor);
     const heavy = this.isHeavyMode();
+    const fromHeavy = this._lastHeavy;
+    this._lastHeavy = heavy;
     if (heavy && this.runMode !== this._lastRunMode) this.lastSolveKey = null;
     this._lastRunMode = this.runMode;
     if (heavy) {
@@ -752,6 +758,7 @@ export class CompositeNode extends GraphNode {
         this.cachedOutputs = outputs;
         // Key on the real inputs, not solveInputs, to match the hold branch.
         this.lastSolveKey = this.solveKey(inputs);
+        this.lastPassKey = this.runMode === "manual" && solveInputs === inputs ? this.passKey(inputs) : null;
         this.solveRequested = false;
         this.solveInsideOnly = false;
         this.unsettled = !settled || this.gatedInside();
@@ -770,6 +777,7 @@ export class CompositeNode extends GraphNode {
         // Every output key, blank: the engine refuses a result missing a key.
         const blank: Record<string, unknown> = Object.fromEntries(Object.keys(this.outputs).map((k) => [k, null]));
         this.cachedOutputs = blank;
+        this.lastPassKey = null;
         this.goalSeekResult = null;
         for (const port of this.inputPorts) {
           const m = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
@@ -786,8 +794,16 @@ export class CompositeNode extends GraphNode {
     // Live: nothing to hold, so a Solve asked of it (before a switch out of a heavy mode, say) has nothing left to do.
     this.solveRequested = false;
     this.solveInsideOnly = false;
+    // A switch out of a held mode asks for the pass a Refresh just ran: the held outputs answer it.
+    const key = this.passKey(inputs);
+    if (fromHeavy && !this.unsettled && key === this.lastPassKey) {
+      this.stale = false;
+      compositeStaleStore.set(this.id, false);
+      return this.cachedOutputs;
+    }
     const outputs = await this.runActiveMode(inputs);
     this.cachedOutputs = outputs;
+    this.lastPassKey = key;
     this.stale = false;
     compositeStaleStore.set(this.id, false);
     return outputs;
@@ -885,7 +901,9 @@ export class CompositeNode extends GraphNode {
     return changed;
   }
 
-  private solveKey(inputs: Record<string, unknown[]>): string {
+  /** What one plain pass reads: the inputs (a primitive by value, an object by a per-composite reference token), the
+   *  input markers' seeds and spreads, the edits inside and the live data inside. */
+  private passParts(inputs: Record<string, unknown[]>): Record<string, unknown> {
     const token = (v: unknown): unknown => {
       if (v === null || typeof v !== "object") return v;
       let id = this._refIds.get(v as object);
@@ -896,7 +914,7 @@ export class CompositeNode extends GraphNode {
     for (const [k, arr] of Object.entries(inputs)) {
       inputTokens[k] = Array.isArray(arr) ? arr.map(token) : token(arr);
     }
-    return JSON.stringify({
+    return {
       inputs: inputTokens,
       seeds: this.inputPorts.map((p) => (this.internalEditor.getNode(p.internalNodeId) as CompositeInputNode | undefined)?.defaultValue ?? null),
       uncertainty: this.inputPorts.map((p) => {
@@ -905,6 +923,19 @@ export class CompositeNode extends GraphNode {
       }),
       edits: this.internalEditSeq,
       live: connectionStore.liveStamp(nestedNodeIds(this.internalEditor)),
+    };
+  }
+
+  /** One plain pass's key: its parts, the recalc generation and whether the pass samples (Sketch), so F9 or an exact
+   *  pass never reuses an older answer. */
+  private passKey(inputs: Record<string, unknown[]>): string {
+    const { gen, mode, forceExact } = session();
+    return JSON.stringify({ ...this.passParts(inputs), gen, sketch: mode === "sketch" && forceExact === 0 });
+  }
+
+  private solveKey(inputs: Record<string, unknown[]>): string {
+    return JSON.stringify({
+      ...this.passParts(inputs),
       mode: this.runMode,
       goalSeek: this.goalSeek,
       monteCarlo: this.monteCarlo,

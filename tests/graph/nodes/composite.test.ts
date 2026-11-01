@@ -1,6 +1,7 @@
 // [[C23]]
 import { cubeFromColumns, isCubeValue, type CubeValue } from "../../../src/graph/frame";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import { nextGeneration } from "../../../src/graph/passSession";
 import { GraphEditor } from "../../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../../src/graph/graphModel";
 import type { Schemes } from "../../../src/graph/schemes";
@@ -1406,6 +1407,46 @@ describe("CompositeNode manual refresh mode", () => {
     const out = await c.data({ [inId]: [5] });
     expect(out[outId]).toBe(5);
     expect(c.stale).toBe(false);
+  });
+
+  it("a switch from Manual to Single after a Refresh reuses the pass it just ran; F9 or a new input runs again", async () => {
+    const { c, inId, outId } = await makePassthrough();
+    const runs = vi.spyOn(c as unknown as { runActiveMode: () => unknown }, "runActiveMode");
+    c.requestSolve();
+    await c.data({ [inId]: [5] });
+    expect(runs).toHaveBeenCalledTimes(1);
+    c.runMode = "single";
+    const reused = await c.data({ [inId]: [5] });
+    expect(reused[outId]).toBe(5);
+    expect(c.stale).toBe(false);
+    expect(runs).toHaveBeenCalledTimes(1); // the switch ran nothing
+    await c.data({ [inId]: [5] });
+    expect(runs).toHaveBeenCalledTimes(2); // later live passes stay live
+    c.runMode = "manual";
+    await c.data({ [inId]: [5] });
+    c.requestSolve();
+    await c.data({ [inId]: [5] });
+    expect(runs).toHaveBeenCalledTimes(3);
+    nextGeneration(); // F9
+    c.runMode = "single";
+    await c.data({ [inId]: [5] });
+    expect(runs).toHaveBeenCalledTimes(4);
+    c.runMode = "manual";
+    await c.data({ [inId]: [5] });
+    c.requestSolve();
+    await c.data({ [inId]: [5] });
+    c.runMode = "single";
+    const fresh = await c.data({ [inId]: [6] }); // a different input than the Refresh saw
+    expect(fresh[outId]).toBe(6);
+    expect(runs).toHaveBeenCalledTimes(6);
+  });
+
+  it("a switch to Single after Manual held blanks runs, since there is no pass to reuse", async () => {
+    const { c, inId, outId } = await makePassthrough();
+    await c.data({ [inId]: [5] }); // never refreshed: blank
+    c.runMode = "single";
+    const out = await c.data({ [inId]: [5] });
+    expect(out[outId]).toBe(5);
   });
 });
 
