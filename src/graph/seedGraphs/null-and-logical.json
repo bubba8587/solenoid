@@ -267,7 +267,7 @@
       "y": 699,
       "init": {
         "label": "Cast → Number",
-        "target": "number"
+        "op": "number"
       }
     },
     {
@@ -793,7 +793,7 @@
       "y": 3033,
       "init": {
         "label": "#VALUE!  ·  CAST(\"abc\"→#)",
-        "target": "number"
+        "op": "number"
       }
     },
     {

@@ -17,7 +17,7 @@ async function texts(count: number) {
   editor.use(new DataflowEngine<Schemes>());
   const s = new SeriesNode({ op: "sequence" });
   (s as unknown as { literals: Record<string, number> }).literals = { count };
-  const cast = new CastNode({ target: "text" });
+  const cast = new CastNode({ op: "text" });
   await editor.addNode(s as never);
   await editor.addNode(cast as never);
   await editor.addConnection(new GraphConnection(s, "list", cast, "value") as never);

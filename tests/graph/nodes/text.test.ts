@@ -39,7 +39,7 @@ describe("NUMBERVALUE — strict full-string parse", () => {
 // [[B11]] maximalMerge: Cast to Number is VALUE's reading, with NUMBERVALUE's separators on the card.
 describe("Cast to Number reads as VALUE does, with the separators it is given", () => {
   const cast = (text: string, decimal_sep?: string, group_sep?: string) => {
-    const n = new CastNode({ target: "number" });
+    const n = new CastNode({ op: "number" });
     if (decimal_sep !== undefined) n.stringLiterals.decimal_sep = decimal_sep;
     if (group_sep !== undefined) n.stringLiterals.group_sep = group_sep;
     return n.data({ value: [text] }).result;
@@ -59,15 +59,15 @@ describe("Cast to Number reads as VALUE does, with the separators it is given", 
     expect(cast("3,5%", ",")).toBe(0.035);
     expect(isSolError(cast("1,5", ",", ","))).toBe(true);
   });
-  it("Format and the separators exist only on the target that reads them, and a switch keeps the other target's text", () => {
-    const n = new CastNode({ target: "text" });
+  it("Format and the separators exist only on the op that reads them, and a switch keeps the other op's text", () => {
+    const n = new CastNode({ op: "text" });
     expect(Object.keys(n.inputs)).toEqual(["value", "format"]);
     n.stringLiterals.format = "0.00%";
     expect(n.data({ value: [0.1234] }).result).toBe("12.34%");
     expect(n.keysDroppedBySwitch("number")).toEqual(["format"]);
-    n.setTarget("number");
+    n.setOp("number");
     expect(Object.keys(n.inputs)).toEqual(["value", "decimal_sep", "group_sep"]);
-    n.setTarget("date");
+    n.setOp("date");
     expect(Object.keys(n.inputs)).toEqual(["value"]);
   });
 });
@@ -115,7 +115,7 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     expect(dt(new TextLenNode(), "out", "result")).toBe("numlist");
     expect(dt(new TextSliceNode(), "in", "n")).toBe("numlist");
     // NUMBERVALUE's separators pick a parsing CONVENTION, not a per-element operand.
-    const nv = new CastNode({ target: "number" });
+    const nv = new CastNode({ op: "number" });
     expect(dt(nv, "in", "decimal_sep")).toBe("string");
     expect(dt(nv, "in", "group_sep")).toBe("string");
   });

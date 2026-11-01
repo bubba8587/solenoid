@@ -14,7 +14,7 @@ it("a mixed list cell from a cube passes through Cast, item by item", async () =
   const engine = new DataflowEngine<Schemes>(); editor.use(engine);
   const cube = new CubeInputNode({ cubeText: '[{"a":"x","l":[5,7,"seven"]}]' });
   const idx = new ListIndexNode(); idx.literals.index = 1; idx.literals.column = 2;
-  const cast = new CastNode({ target: "number" });
+  const cast = new CastNode({ op: "number" });
   for (const n of [cube, idx, cast]) await editor.addNode(n);
   await connect(editor, cube, "cube", idx, "list");
   await connect(editor, idx, "result", cast, "value");

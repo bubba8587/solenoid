@@ -12,7 +12,7 @@ Serves [[B11]] maximalMerge through [[#Control-driven socket swaps]]. The static
 
 A Format Controller has no fixed type. It adopts the concrete type flowing into it, and picks a date format for a date type. The core's FC reconcile (`fc.rs`, from the facts `fcFacts.ts` gathers) walks upstream through passthrough wildcard sockets (all six family-less rungs, `is_wildcard_rung`, since a rank with no family answers nothing) and reads each socket's type now. That re-adaptation runs from the canvas's `connectioncreated` / `connectionremoved` pipe.
 
-Several nodes change an output socket's type in place from a UI control: **Cast**'s target, the **LAMBDA** and **Expression** result type (`ResultTypeToggle`), **Get Column**'s read-as, and a **Note**'s frontmatter. An in-place retype fires no connection event, so without help the downstream FCs keep formatting by the old type. A date serial retyped to a number would still render as a date.
+Several nodes change an output socket's type in place from a UI control: **Cast**'s op, the **LAMBDA** and **Expression** result type (`ResultTypeToggle`), **Get Column**'s read-as, and a **Note**'s frontmatter. An in-place retype fires no connection event, so without help the downstream FCs keep formatting by the old type. A date serial retyped to a number would still render as a date.
 
 ## Control-driven socket swaps
 
@@ -54,7 +54,7 @@ The combo Auto rung is `anycombo`, not `any`: an Auto result is a list whenever 
 
 ## The rule: an in-place retype re-drives FC adaptation
 
-**MUST:** when a node changes the type of one of its own inputs or outputs in place, everything wired to it is updated to match, never left working by the old type. No wiring event fires in this case, so the node itself must see to it. A pick on a node may change its own sockets ([[#Control-driven socket swaps]]), and nothing downstream sees that change on its own: left alone, a downstream Format Controller keeps formatting by the old type and shows a wrong-looking value. The retypers include Cast's target, a LAMBDA table's result type, Get Column's read-as, a Note's frontmatter, List and Table Input element types, Add and Split Column, Cable Switch and Import from Obsidian; the completeness test (`sourceInvariants.test.ts`) owns the full list.
+**MUST:** when a node changes the type of one of its own inputs or outputs in place, everything wired to it is updated to match, never left working by the old type. No wiring event fires in this case, so the node itself must see to it. A pick on a node may change its own sockets ([[#Control-driven socket swaps]]), and nothing downstream sees that change on its own: left alone, a downstream Format Controller keeps formatting by the old type and shows a wrong-looking value. The retypers include Cast's op, a LAMBDA table's result type, Get Column's read-as, a Note's frontmatter, List and Table Input element types, Add and Split Column, Cable Switch and Import from Obsidian; the completeness test (`sourceInvariants.test.ts`) owns the full list.
 
 So any code that changes a socket's `dataType` in place must re-drive FC adaptation, through `fcReconcile.ts`:
 

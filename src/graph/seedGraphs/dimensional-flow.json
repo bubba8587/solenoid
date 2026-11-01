@@ -288,7 +288,7 @@
       "y": 1642,
       "init": {
         "label": "Cast → Number",
-        "target": "number"
+        "op": "number"
       }
     },
     {
@@ -322,7 +322,7 @@
       "y": 1873,
       "init": {
         "label": "Cast → Number",
-        "target": "number"
+        "op": "number"
       }
     },
     {

@@ -16,6 +16,7 @@ import { HeadNode, ColumnsNode, HEAD_OP_META, COLUMNS_OP_META } from "./nodes/fr
 import { RegexNode, REGEX_OP_META } from "./nodes/text";
 import { DATE_DIFF_OP_META, DateTimeValueNode, WorkdaysNode } from "./nodes/date";
 import { IFErrorNode } from "./nodes/logic";
+import { CastNode, CAST_OP_META } from "./nodes/cast";
 import { ValueInputNode, VALUE_INPUT_OP_META } from "./nodes/control";
 import { ByAxisNode, BY_AXIS_OP_META } from "./nodes/tableLambda";
 import { StackNode, STACK_OP_META } from "./nodes/matrix";
@@ -129,6 +130,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new PadNode({ op: op as never }) },
   { type: "list-sets", ctor: SetsNode, ops: fromMeta(SET_META),
     create: (op) => new SetsNode({ op: op as never }) },
+  { type: "cast", ctor: CastNode, ops: fromMeta(CAST_OP_META),
+    create: (op) => new CastNode({ op: op as never }), primaryRow: true },
   { type: "iferror", ctor: IFErrorNode,
     ops: [{ op: "iferror", label: "IFERROR" }, { op: "ifna", label: "IFNA" }],
     create: (op) => new IFErrorNode({ op: op as never }), leafOps: ["iferror", "ifna"] },

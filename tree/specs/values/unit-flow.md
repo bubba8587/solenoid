@@ -32,7 +32,7 @@ flowchart LR
   - Table Input's own unit picker (the `author` policy in `matrixUnitPolicy.test.ts`).
   The Number node is a plain literal source and sets nothing.
 - **How it travels.** The tag rides through anything that passes the value along. A transform works the dimension out again through the algebra (`tag_dim`, the core's `unit_lists.rs`) and keeps an operand's `display` when the result's dimension matches it (`$5 + 2 = $7`, `2 × 3 m = 6 m`). A result whose dimension fits neither operand falls back to its derived-symbol form.
-- **Where it becomes text.** Cast to Text writes the unit into the text in the unit the value reads in (`5 km`, `$5`; `unit_cell_text` in `crates/solenoid-core/src/nodes/text.rs`), so a cast never drops it silently; Cast's other targets read the value as it shows, unit-blind.
+- **Where it becomes text.** Cast to Text writes the unit into the text in the unit the value reads in (`5 km`, `$5`; `unit_cell_text` in `crates/solenoid-core/src/nodes/text.rs`), so a cast never drops it silently; Cast's other ops read the value as it shows, unit-blind.
 
 ## Dimensions (`unit_dims.rs`, `unit_catalog.rs`; `dimension.ts` in the app)
 

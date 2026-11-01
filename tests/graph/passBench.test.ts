@@ -50,9 +50,9 @@ describe.skipIf(!process.env.BENCH)("passes", () => {
     const cases: [string, () => GraphNode[]][] = [
       ["JS words -> UPPER", () => [new WordsNode(), new TextTransformNode({ op: "upper" })]],
       ["JS words -> UPPER -> LOWER -> LEN", () => [new WordsNode(), new TextTransformNode({ op: "upper" }), new TextTransformNode({ op: "lower" }), new TextLenNode()]],
-      ["Series -> Cast", () => [series(), new CastNode({ target: "text" })]],
-      ["Series -> Cast -> UPPER", () => [series(), new CastNode({ target: "text" }), new TextTransformNode({ op: "upper" })]],
-      ["Series -> Cast -> UPPER -> LOWER -> LEN", () => [series(), new CastNode({ target: "text" }), new TextTransformNode({ op: "upper" }), new TextTransformNode({ op: "lower" }), new TextLenNode()]],
+      ["Series -> Cast", () => [series(), new CastNode({ op: "text" })]],
+      ["Series -> Cast -> UPPER", () => [series(), new CastNode({ op: "text" }), new TextTransformNode({ op: "upper" })]],
+      ["Series -> Cast -> UPPER -> LOWER -> LEN", () => [series(), new CastNode({ op: "text" }), new TextTransformNode({ op: "upper" }), new TextTransformNode({ op: "lower" }), new TextLenNode()]],
       ["Series -> Sort", () => [series(), new SortNode({ order: "desc" } as never)]],
     ];
     for (const [name, make] of cases) {

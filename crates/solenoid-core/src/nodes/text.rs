@@ -903,7 +903,7 @@ fn cast_display(v: &V, target: &str) -> V {
 }
 
 fn cast(c: &mut Call) -> Answer {
-    let target = c.field_str("target", "text").to_string();
+    let target = c.field_str("op", "text").to_string();
     let first = match c.wired("value").and_then(|w| w.first()) {
         None | Some(V::Undef) => V::Undef,
         Some(v) => v.clone(),

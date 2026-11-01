@@ -1,6 +1,6 @@
 // [[B11]] maximalMerge, [[C24]]
 import { describe, expect, it } from "vitest";
-import { CastNode, castOutput, type CastTarget } from "../../../src/graph/nodes/cast";
+import { CastNode, castOutput, type CastOp } from "../../../src/graph/nodes/cast";
 import { cx } from "../../../src/graph/cxValue";
 import { isSolError } from "../../../src/graph/errorValue";
 import { SolenoidSocket, isDateType } from "../../../src/graph/sockets";
@@ -11,8 +11,8 @@ import { throughBoundary } from "../boundaryKit";
 // be disambiguated here — those paths are typed by the live socket. Everything
 // else (parsing, formatting, list mapping) is pure and covered below.
 
-const cast = (target: CastTarget, value: unknown) => {
-  const n = new CastNode({ target });
+const cast = (op: CastOp, value: unknown) => {
+  const n = new CastNode({ op });
   return n.data({ value: [value] }).result;
 };
 
@@ -130,7 +130,7 @@ describe("Cast node", () => {
   });
 
   it("passes null through and exposes lists as a structured value (chip, not a joined string)", () => {
-    const n = new CastNode({ target: "text" });
+    const n = new CastNode({ op: "text" });
     expect(n.data({ value: [null] }).result).toBeNull();
     n.data({ value: [[1, 2, 3]] });
     // ValueDisplay-compatible array → rendered as a chip, not "[1, 2, 3]".
@@ -140,7 +140,7 @@ describe("Cast node", () => {
   it("keeps a date cast as numeric serials (ValueDisplay formats them — list → chip)", () => {
     // Cast no longer pre-formats dates; the date socket drives display formatting
     // in ValueDisplay (see valueDisplayFormat.test.ts), so a list stays a chip.
-    const n = new CastNode({ target: "date" });
+    const n = new CastNode({ op: "date" });
     n.data({ value: [45000] });
     expect(n.cachedResult).toBe(45000);
     n.data({ value: [[45000, 45001]] });
@@ -149,8 +149,8 @@ describe("Cast node", () => {
 });
 
 describe("Cast keeps a value's unit where the target can hold it ([[C25]] firstClassUnits)", () => {
-  const through = (target: CastTarget, value: unknown) => {
-    const n = new CastNode({ target });
+  const through = (op: CastOp, value: unknown) => {
+    const n = new CastNode({ op });
     throughBoundary(n as unknown as Parameters<typeof throughBoundary>[0]);
     return n.data({ value: [value] }).result;
   };
@@ -166,8 +166,8 @@ describe("Cast keeps a value's unit where the target can hold it ([[C25]] firstC
 });
 
 describe("Cast reads what the card is set to", () => {
-  const card = (target: CastTarget, fields: Record<string, string>, source: string | null = null) => {
-    const n = new CastNode({ target });
+  const card = (op: CastOp, fields: Record<string, string>, source: string | null = null) => {
+    const n = new CastNode({ op });
     n.stringLiterals = fields;
     (n as unknown as { sourceKind: () => string | null }).sourceKind = () => source;
     return n;
