@@ -439,11 +439,11 @@ fn confidence(c: &mut Call) -> Answer {
         return answer(c, V::Null);
     }
     let (alpha, stdev) = (js_num(&alpha), js_num(&stdev));
-    let n = math_round(js_num(&n_raw));
+    let n = js_num(&n_raw).trunc();
     let mut result = V::Null;
     if n >= 1.0 && stdev > 0.0 && alpha > 0.0 && alpha < 1.0 {
         if !t {
-            result = V::Num(norm_s_inv(1.0 - alpha / 2.0) * stdev / n.sqrt());
+            result = V::Num(-norm_s_inv(alpha / 2.0) * stdev / n.sqrt());
         } else if n >= 2.0 {
             let tv = bisection_inv(|x| t_cdf(x, n - 1.0), 1.0 - alpha / 2.0, -1e6, 1e6);
             result = V::Num(tv * stdev / n.sqrt());

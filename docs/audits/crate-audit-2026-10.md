@@ -7,7 +7,7 @@ Ranked by lines a swap would delete. "Same answers" was checked bit for bit agai
 | # | Our code (lines) | Crate | Answers | Verdict |
 |---|---|---|---|---|
 | 1 | NFD table + `text_ops::nfd` (~770) | unicode-normalization 0.1.26 | identical | **swapped** 2026-10-31 |
-| 2 | distribution kernels in dists.rs, fns_stats, formulajs jStat (~530) | statrs 0.19.1 | last digits (≤1.8e-10 rel) | keep: statrs computes with Rust's platform `ln`/`exp`, so wasm and native answers differ in the last bits (`fdlibm.rs` keeps them equal); its erf/erfc are also only ~1e-11 accurate, and its Γ overflows at 170 |
+| 2 | distribution kernels in dists.rs, fns_stats, formulajs jStat (~530) | statrs 0.19.1 | last digits (≤1.8e-10 rel) | keep dists.rs: statrs computes with Rust's platform `ln`/`exp`, so wasm and native answers differ in the last bits (`libm` keeps them equal); its erf/erfc are also only ~1e-11 accurate, and its Γ overflows at 170. jStat's erf, Γ and t inverse went 2026-11-01 for `libm::erf`/`erfc`/`tgamma` and the dists.rs inverses |
 | 3 | fdlibm.rs (1442) | libm 0.2.16 | differs from V8 in the last bit on log/log10/pow/sin/cos/tanh | swapped 2026-11-01: V8 isn't the reference ([[B27]] computeAnswersToExcel) |
 | 4 | matrix det/inverse/rank/solve/eigen/roots/polyfit (~370) | nalgebra / faer | pivot, sign, order change | keep |
 | 5 | Formula.js Bessel (~240) | libm jn/yn, puruspe | up to 1.4e-4 rel (bessel.js is imprecise) | keep: puruspe is far more accurate (1e-15) but uses platform math as statrs does, misreads underflow at large orders, and panics in its real-order routines; a swap needs a vendored copy on `fdlibm.rs` |

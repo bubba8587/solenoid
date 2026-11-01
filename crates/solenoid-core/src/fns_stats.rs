@@ -11,10 +11,9 @@ use crate::excel_functions::{
     average_ranks, holds_text, js_parse_float, js_string_of, mean_of, nums_of, parse_number, ssd, sum, to_f64_js,
     to_num, Thrown, V,
 };
-use crate::formulajs::jstat_gammaln as gammaln;
 use crate::jsnum::{math_max, math_min, math_round, number_to_string};
 use crate::zone;
-use libm::{cos, exp, log, pow, sin};
+use libm::{cos, exp, log, sin};
 
 /// `LEGACY_ALIASES`: a blocked name and the function that replaces it.
 const BLOCKED: &[(&str, &str)] = &[
@@ -312,8 +311,17 @@ fn answer(name: &str, a: &[V]) -> V {
         }
         "CONFIDENCE.T" => match (parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2))) {
             (V::Num(alpha), V::Num(sd), V::Num(size)) => {
-                let change = (studentt_inv(alpha / 2.0, size - 1.0) * sd / size.sqrt()).abs();
-                V::Num((1.0 + change) - 1.0)
+                if !(alpha > 0.0 && alpha < 1.0) || !(sd > 0.0) || !(size >= 1.0) {
+                    return V::Fx(FxError::Num);
+                }
+                let size = size.trunc();
+                if size == 1.0 {
+                    return V::Fx(FxError::DivZero);
+                }
+                // T.INV.2T's own inverse (`excel_functions.rs`), so the two agree.
+                let t =
+                    crate::dists::bisection_inv(|t| crate::dists::t_cdf(t, size - 1.0), 1.0 - alpha / 2.0, -1e6, 1e6);
+                V::Num(t * sd / size.sqrt())
             }
             _ => V::Fx(FxError::Value),
         },
@@ -852,131 +860,6 @@ fn ks_two_sample_p(a: &[f64], b: &[f64]) -> Option<f64> {
         prob = next;
     }
     Some(math_min(1.0, math_max(0.0, 1.0 - prob[n2])))
-}
-
-// ─── jStat's Student t inverse, for Formula.js's CONFIDENCE.T ───────────────────
-
-fn betacf(x: f64, a: f64, b: f64) -> f64 {
-    let fpmin = 1e-30;
-    let (qab, qap, qam) = (a + b, a + 1.0, a - 1.0);
-    let mut c = 1.0;
-    let mut d = 1.0 - qab * x / qap;
-    if d.abs() < fpmin {
-        d = fpmin;
-    }
-    d = 1.0 / d;
-    let mut h = d;
-    let mut m = 1.0;
-    while m <= 100.0 {
-        let m2 = 2.0 * m;
-        let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
-        d = 1.0 + aa * d;
-        if d.abs() < fpmin {
-            d = fpmin;
-        }
-        c = 1.0 + aa / c;
-        if c.abs() < fpmin {
-            c = fpmin;
-        }
-        d = 1.0 / d;
-        h *= d * c;
-        let aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
-        d = 1.0 + aa * d;
-        if d.abs() < fpmin {
-            d = fpmin;
-        }
-        c = 1.0 + aa / c;
-        if c.abs() < fpmin {
-            c = fpmin;
-        }
-        d = 1.0 / d;
-        let del = d * c;
-        h *= del;
-        if (del - 1.0).abs() < 3e-7 {
-            break;
-        }
-        m += 1.0;
-    }
-    h
-}
-
-/// `jStat.ibeta`; its `false` for an x outside [0, 1] reads as 0 where it is subtracted from.
-fn ibeta(x: f64, a: f64, b: f64) -> f64 {
-    let bt = if x == 0.0 || x == 1.0 {
-        0.0
-    } else {
-        exp(gammaln(a + b) - gammaln(a) - gammaln(b) + a * log(x) + b * log(1.0 - x))
-    };
-    if x < 0.0 || x > 1.0 {
-        return 0.0;
-    }
-    if x < (a + 1.0) / (a + b + 2.0) {
-        return bt * betacf(x, a, b) / a;
-    }
-    1.0 - bt * betacf(1.0 - x, b, a) / b
-}
-
-fn ibetainv(p: f64, a: f64, b: f64) -> f64 {
-    const EPS: f64 = 1e-8;
-    let (a1, b1) = (a - 1.0, b - 1.0);
-    if p <= 0.0 {
-        return 0.0;
-    }
-    if p >= 1.0 {
-        return 1.0;
-    }
-    let mut x;
-    if a >= 1.0 && b >= 1.0 {
-        let pp = if p < 0.5 { p } else { 1.0 - p };
-        let t = (-2.0 * log(pp)).sqrt();
-        x = (2.30753 + t * 0.27061) / (1.0 + t * (0.99229 + t * 0.04481)) - t;
-        if p < 0.5 {
-            x = -x;
-        }
-        let al = (x * x - 3.0) / 6.0;
-        let h = 2.0 / (1.0 / (2.0 * a - 1.0) + 1.0 / (2.0 * b - 1.0));
-        let w = (x * (al + h).sqrt() / h)
-            - (1.0 / (2.0 * b - 1.0) - 1.0 / (2.0 * a - 1.0)) * (al + 5.0 / 6.0 - 2.0 / (3.0 * h));
-        x = a / (a + b * exp(2.0 * w));
-    } else {
-        let lna = log(a / (a + b));
-        let lnb = log(b / (a + b));
-        let t = exp(a * lna) / a;
-        let u = exp(b * lnb) / b;
-        let w = t + u;
-        x = if p < t / w { pow(a * w * p, 1.0 / a) } else { 1.0 - pow(b * w * (1.0 - p), 1.0 / b) };
-    }
-    let afac = -gammaln(a) - gammaln(b) + gammaln(a + b);
-    for j in 0..10 {
-        if x == 0.0 || x == 1.0 {
-            return x;
-        }
-        let err = ibeta(x, a, b) - p;
-        let t = exp(a1 * log(x) + b1 * log(1.0 - x) + afac);
-        let u = err / t;
-        let t = u / (1.0 - 0.5 * math_min(1.0, u * (a1 / x - b1 / (1.0 - x))));
-        x -= t;
-        if x <= 0.0 {
-            x = 0.5 * (x + t);
-        }
-        if x >= 1.0 {
-            x = 0.5 * (x + t + 1.0);
-        }
-        if t.abs() < EPS * x && j > 0 {
-            break;
-        }
-    }
-    x
-}
-
-fn studentt_inv(p: f64, dof: f64) -> f64 {
-    let x = ibetainv(2.0 * math_min(p, 1.0 - p), 0.5 * dof, 0.5);
-    let x = (dof * (1.0 - x) / x).sqrt();
-    if p > 0.5 {
-        x
-    } else {
-        -x
-    }
 }
 
 // ─── Formula.js's date-reading finance bodies ───────────────────────────────────

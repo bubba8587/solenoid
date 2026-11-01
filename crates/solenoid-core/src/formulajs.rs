@@ -1,15 +1,15 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
 //! The Formula.js 4.6.1 bodies a formula reaches straight through (no internal registration
-//! over them), with the jStat kernels they call, each named as there. They keep their JavaScript coercions:
+//! over them). They keep their JavaScript coercions:
 //! a string where a number goes, `||` on a falsy argument, `new Array(n).join` on a length JS refuses.
 
 #![allow(clippy::excessive_precision, clippy::approx_constant)]
 
 use crate::error_value::FxError;
 use crate::excel_functions::{js_string_of, parse_number, truthy, Thrown, V};
-use crate::js_radix::{parse_int, to_int32, to_radix_string};
-use crate::jsnum::{math_round, number_to_string, string_to_number};
-use libm::{exp, log, sin};
+use crate::js_radix::{parse_int, to_radix_string};
+use crate::jsnum::{number_to_string, string_to_number};
+use libm::exp;
 use std::ops::{BitAnd, BitOr, BitXor};
 
 const VALUE: V = V::Fx(FxError::Value);
@@ -393,159 +393,46 @@ fn roman(n: f64) -> Result<V, Thrown> {
     Ok(V::str(&(array_join(string_to_number(&rest) + 1.0, "M")? + &roman)))
 }
 
-// ─── jStat ─────────────────────────────────────────────────────────────────────
+// ─── Error function and CHISQ.TEST's table ─────────────────────────────────────
 
-/// `jStat.erf`, its argument as JS has it: a string stays a string for `2 + x`, so it concatenates there.
-fn jstat_erf(x: &V) -> f64 {
-    const COF: [f64; 28] = [
-        -1.3026537197817094,
-        6.4196979235649026e-1,
-        1.9476473204185836e-2,
-        -9.561514786808631e-3,
-        -9.46595344482036e-4,
-        3.66839497852761e-4,
-        4.2523324806907e-5,
-        -2.0278578112534e-5,
-        -1.624290004647e-6,
-        1.303655835580e-6,
-        1.5626441722e-8,
-        -8.5238095915e-8,
-        6.529054439e-9,
-        5.059343495e-9,
-        -9.91364156e-10,
-        -2.27365122e-10,
-        9.6467911e-11,
-        2.394038e-12,
-        -6.886027e-12,
-        8.94487e-13,
-        3.13092e-13,
-        -1.12708e-13,
-        3.81e-16,
-        7.106e-15,
-        -1.523e-15,
-        -9.4e-17,
-        1.21e-16,
-        -2.8e-17,
-    ];
-    let mut xn = js_number(x);
-    let mut text = if let V::Str(s) = x { Some(s.clone()) } else { None };
-    let mut isneg = false;
-    if xn < 0.0 {
-        xn = -xn;
-        text = None;
-        isneg = true;
+/// erf(upper) − erf(lower), through erfc where both sit in one tail so the difference keeps its digits.
+fn erf_between(lower: f64, upper: f64) -> f64 {
+    if lower >= 0.0 && upper >= 0.0 {
+        libm::erfc(lower) - libm::erfc(upper)
+    } else if lower <= 0.0 && upper <= 0.0 {
+        libm::erfc(-upper) - libm::erfc(-lower)
+    } else {
+        libm::erf(upper) - libm::erf(lower)
     }
-    let t = match text {
-        Some(s) => 2.0 / string_to_number(&format!("2{s}")),
-        None => 2.0 / (2.0 + xn),
+}
+
+/// CHISQ.TEST's table: its rows, columns and numbers. A nested list is a row each (an array literal's
+/// `{1,2;3,4}`); a flat one is a column. A row of another length or a cell that is no number is `#VALUE!`, and an
+/// error cell is itself.
+fn chisq_table(v: &V) -> Result<(usize, usize, Vec<f64>), V> {
+    let rows: Vec<&V> = match v {
+        V::List(l) => l.iter().collect(),
+        other => vec![other],
     };
-    let ty = 4.0 * t - 2.0;
-    let (mut d, mut dd) = (0.0, 0.0);
-    for j in (1..COF.len()).rev() {
-        let tmp = d;
-        d = ty * d - dd + COF[j];
-        dd = tmp;
-    }
-    let res = t * exp(-xn * xn + 0.5 * (COF[0] + ty * d) - dd);
-    if isneg {
-        res - 1.0
-    } else {
-        1.0 - res
-    }
-}
-
-pub fn jstat_gammaln(x: f64) -> f64 {
-    const COF: [f64; 6] = [
-        76.18009172947146,
-        -86.50532032941677,
-        24.01409824083091,
-        -1.231739572450155,
-        0.1208650973866179e-2,
-        -0.5395239384953e-5,
-    ];
-    let mut ser = 1.000000000190015;
-    let xx = x;
-    let mut y = x;
-    let mut tmp = x + 5.5;
-    tmp -= (xx + 0.5) * log(tmp);
-    for c in COF {
-        y += 1.0;
-        ser += c / y;
-    }
-    log(2.5066282746310005 * ser / xx) - tmp
-}
-
-fn jstat_gammafn(x: f64) -> f64 {
-    const P: [f64; 8] = [
-        -1.716185138865495,
-        24.76565080557592,
-        -379.80425647094563,
-        629.3311553128184,
-        866.9662027904133,
-        -31451.272968848367,
-        -36144.413418691176,
-        66456.14382024054,
-    ];
-    const Q: [f64; 8] = [
-        -30.8402300119739,
-        315.35062697960416,
-        -1015.1563674902192,
-        -3107.771671572311,
-        22538.118420980151,
-        4755.8462775278811,
-        -134659.9598649693,
-        -115132.2596755535,
-    ];
-    let mut fact = 0.0;
-    let mut n = 0.0;
-    let (mut xden, mut xnum) = (0.0, 0.0);
-    let mut y = x;
-    if x > 171.6243769536076 {
-        return f64::INFINITY;
-    }
-    if y <= 0.0 {
-        let res = y % 1.0 + 3.6e-16;
-        if res != 0.0 && !res.is_nan() {
-            fact = (if to_int32(y) & 1 == 0 { 1.0 } else { -1.0 }) * std::f64::consts::PI
-                / sin(std::f64::consts::PI * res);
-            y = 1.0 - y;
-        } else {
-            return f64::INFINITY;
+    let mut cols = None;
+    let mut cells = Vec::new();
+    for row in &rows {
+        let row: &[V] = match row {
+            V::List(r) => r,
+            other => std::slice::from_ref(*other),
+        };
+        if *cols.get_or_insert(row.len()) != row.len() {
+            return Err(VALUE);
         }
-    }
-    let yi = y;
-    let z;
-    if y < 1.0 {
-        z = y;
-        y += 1.0;
-    } else {
-        n = f64::from(to_int32(y)) - 1.0;
-        y -= n;
-        z = y - 1.0;
-    }
-    for i in 0..8 {
-        xnum = (xnum + P[i]) * z;
-        xden = xden * z + Q[i];
-    }
-    let mut res = xnum / xden + 1.0;
-    if yi < y {
-        res /= yi;
-    } else if yi > y {
-        let mut i = 0.0;
-        while i < n {
-            // Once infinite, zero or NaN, the product stays so: the loop's other steps change nothing.
-            if !res.is_finite() || res == 0.0 {
-                break;
+        for c in row {
+            match c {
+                V::Num(n) => cells.push(*n),
+                e @ (V::Fx(_) | V::Err(_)) => return Err(e.clone()),
+                _ => return Err(VALUE),
             }
-            res *= y;
-            y += 1.0;
-            i += 1.0;
         }
     }
-    if fact != 0.0 && !fact.is_nan() {
-        res = fact / res;
-    }
-    res
+    Ok((rows.len(), cols.unwrap_or(0), cells))
 }
 
 // ─── Statistics the tests read (Formula.js's own AVERAGE, VAR.S, NORM.S.DIST) ───
@@ -578,43 +465,6 @@ fn fx_var_s(xs: &[f64]) -> f64 {
     sigma / (xs.len() as f64 - 1.0)
 }
 
-/// `NORM.S.DIST(z, true)`: `jStat.normal.cdf(z, 0, 1)`, a NaN z its #VALUE!.
-fn fx_norm_s_cdf(z: f64) -> Result<f64, V> {
-    match parse_number(&V::Num(z)) {
-        V::Num(z) => {
-            let e = jstat_erf(&V::Num((z - 0.0) / (2.0f64 * 1.0 * 1.0).sqrt()));
-            Ok(0.5 * (1.0 + e))
-        }
-        e => Err(e),
-    }
-}
-
-fn jstat_erfcinv(p: f64) -> f64 {
-    if p >= 2.0 {
-        return -100.0;
-    }
-    if p <= 0.0 {
-        return 100.0;
-    }
-    let pp = if p < 1.0 { p } else { 2.0 - p };
-    let t = (-2.0 * log(pp / 2.0)).sqrt();
-    let mut x = -0.70711 * ((2.30753 + t * 0.27061) / (1.0 + t * (0.99229 + t * 0.04481)) - t);
-    for _ in 0..2 {
-        let err = (1.0 - jstat_erf(&V::Num(x))) - pp;
-        x += err / (1.12837916709551257 * exp(-x * x) - x * err);
-    }
-    if p < 1.0 {
-        x
-    } else {
-        -x
-    }
-}
-
-/// `jStat.normal.cdf(x, 0, 1)`.
-fn std_normal_cdf(x: f64) -> f64 {
-    0.5 * (1.0 + jstat_erf(&V::Num((x - 0.0) / (2.0f64 * 1.0 * 1.0).sqrt())))
-}
-
 /// The parsed numbers, or None where one is a Formula.js error (`anyIsError`).
 fn parsed<const N: usize>(vs: [&V; N]) -> Option<[f64; N]> {
     let mut out = [0.0; N];
@@ -622,32 +472,6 @@ fn parsed<const N: usize>(vs: [&V; N]) -> Option<[f64; N]> {
         *o = num_of(&parse_number(v))?;
     }
     Some(out)
-}
-
-/// CHISQ.TEST's `ChiSq`.
-fn chi_sq(xsqr: f64, dof: f64) -> Result<f64, Thrown> {
-    let mut p = exp(-0.5 * xsqr);
-    if dof % 2.0 == 1.0 {
-        p *= (2.0 * xsqr / std::f64::consts::PI).sqrt();
-    }
-    let mut k = dof;
-    while k >= 2.0 {
-        p = p * xsqr / k;
-        k -= 2.0;
-    }
-    let mut t = p;
-    let mut a = dof;
-    let mut steps = 0u32;
-    while t > 0.0000000001 * p {
-        a += 2.0;
-        t = t * xsqr / a;
-        p += t;
-        steps += 1;
-        if steps > 10_000_000 {
-            return Err(Thrown::value("CHISQ.TEST's statistic is too large to sum"));
-        }
-    }
-    Ok(1.0 - p)
 }
 
 /// JS `v[key]` on an argument: a list's item, a string's UTF-16 unit (a lone half reads as U+FFFD) or length,
@@ -895,29 +719,25 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             V::List(_) => V::Num(64.0),
             _ => V::Undef,
         },
+        "ERF" | "ERF.PRECISE" | "ERFC" | "ERFC.PRECISE" if matches!(arg(a, 0), V::Undef) => VALUE,
         "ERF" | "ERF.PRECISE" => {
-            let upper = if matches!(arg(a, 1), V::Undef) { V::Num(0.0) } else { arg(a, 1).clone() };
-            match (parse_number(arg(a, 0)), parse_number(&upper)) {
-                (V::Num(x), V::Num(_)) => V::Num(jstat_erf(&V::Num(x))),
-                _ => VALUE,
+            let Some(lower) = num_of(&parse_number(arg(a, 0))) else { return Ok(VALUE) };
+            if name == "ERF.PRECISE" || matches!(arg(a, 1), V::Undef) {
+                return Ok(V::Num(libm::erf(lower)));
             }
+            let Some(upper) = num_of(&parse_number(arg(a, 1))) else { return Ok(VALUE) };
+            V::Num(erf_between(lower, upper))
         }
-        "ERFC" | "ERFC.PRECISE" => {
-            let x = arg(a, 0);
-            if is_nan(x) {
-                return Ok(VALUE);
-            }
-            V::Num(1.0 - jstat_erf(x))
-        }
+        "ERFC" | "ERFC.PRECISE" => num_of(&parse_number(arg(a, 0))).map_or(VALUE, |x| V::Num(libm::erfc(x))),
         "GAMMA" => {
             let n = match parse_number(arg(a, 0)) {
                 V::Num(n) => n,
                 e => return Ok(e),
             };
-            if n == 0.0 || (parse_int(&number_to_string(n), 10.0) == n && n < 0.0) {
+            if n <= 0.0 && n.fract() == 0.0 {
                 return Ok(NUM);
             }
-            V::Num(jstat_gammafn(n))
+            V::Num(libm::tgamma(n))
         }
         "Z.TEST" => {
             let x = parse_number(arg(a, 1));
@@ -930,39 +750,37 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             } else {
                 sd
             };
-            match fx_norm_s_cdf((mean - x) / (sigma / n.sqrt())) {
-                Ok(p) => V::Num(1.0 - p),
-                Err(_) => V::Num(f64::NAN),
-            }
+            V::Num(0.5 * libm::erfc((mean - x) / (sigma / n.sqrt()) / std::f64::consts::SQRT_2))
         }
         "CHISQ.TEST" => {
             if a.len() != 2 {
                 return Ok(NA);
             }
-            let (V::List(actual), V::List(expected)) = (&a[0], &a[1]) else { return Ok(VALUE) };
-            if actual.len() != expected.len() {
-                return Ok(VALUE);
+            let (actual, expected) = match (chisq_table(&a[0]), chisq_table(&a[1])) {
+                (Ok(x), Ok(e)) => (x, e),
+                (Err(e), _) | (_, Err(e)) => return Ok(e),
+            };
+            let ((rows, cols, actual), (_, _, expected)) = if (actual.0, actual.1) == (expected.0, expected.1) {
+                (actual, expected)
+            } else {
+                return Ok(NA);
+            };
+            let dof = if rows > 1 && cols > 1 { (rows - 1) * (cols - 1) } else { (rows * cols).saturating_sub(1) };
+            if dof == 0 {
+                return Ok(NA);
             }
-            if truthy(arg(actual, 0)) && truthy(arg(expected, 0)) && str_len(&actual[0]) != str_len(&expected[0]) {
-                return Ok(VALUE);
-            }
-            if actual.is_empty() {
-                return Err(Thrown::value("Cannot read properties of undefined (reading 'length')"));
-            }
-            if actual.iter().chain(expected.iter()).any(|v| matches!(v, V::List(_))) {
-                return Err(Thrown::value("CHISQ.TEST reads two tables of numbers"));
-            }
-            let dof = actual.len() as f64 - 1.0;
             let mut xsqr = 0.0;
-            for (x, e) in actual.iter().zip(expected.iter()) {
-                let e = js_number(e);
-                xsqr += libm::pow(js_number(x) - e, 2.0) / e;
+            for (x, e) in actual.iter().zip(&expected) {
+                if *e <= 0.0 {
+                    return Ok(if *e == 0.0 { V::Fx(FxError::DivZero) } else { NUM });
+                }
+                xsqr += (x - e) * (x - e) / e;
             }
-            V::Num(math_round(chi_sq(xsqr, dof)? * 1_000_000.0) / 1_000_000.0)
+            V::Num(1.0 - crate::dists::chi_sq_cdf(xsqr, dof as f64))
         }
         "NA" => NA,
         "GAUSS" => match parse_number(arg(a, 0)) {
-            V::Num(z) => V::Num(std_normal_cdf(z) - 0.5),
+            V::Num(z) => V::Num(0.5 * libm::erf(z / std::f64::consts::SQRT_2)),
             e => e,
         },
         "PHI" => match parse_number(arg(a, 0)) {
@@ -971,9 +789,10 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
         },
         "CONFIDENCE.NORM" => {
             let Some([alpha, sd, size]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2)]) else { return Ok(VALUE) };
-            let inv = -1.41421356237309505 * 1.0 * jstat_erfcinv(2.0 * (alpha / 2.0)) + 0.0;
-            let change = (inv * sd / size.sqrt()).abs();
-            V::Num((1.0 + change) - 1.0)
+            if !(alpha > 0.0 && alpha < 1.0) || !(sd > 0.0) || !(size >= 1.0) {
+                return Ok(NUM);
+            }
+            V::Num(-crate::dists::norm_s_inv(alpha / 2.0) * sd / size.trunc().sqrt())
         }
         _ => V::Undef,
     })
