@@ -35,6 +35,10 @@ fn numbers(n: usize) -> Vec<f64> {
 fn env_with(xs: &[f64]) -> Env {
     let mut env = Env::default();
     env.insert("l".into(), V::List(xs.iter().map(|&x| V::Num(x)).collect::<Vec<_>>().into()));
+    env.insert(
+        "t".into(),
+        V::List((0..xs.len()).map(|i| V::str(&format!("item {i} straße"))).collect::<Vec<_>>().into()),
+    );
     env
 }
 
@@ -56,6 +60,8 @@ fn main() {
         ("UNIQUE of the column", on("UNIQUE(l, TRUE)")),
         ("an element-wise formula", on("ROUND(l * 1.07 + 3, 2)")),
         ("AVERAGEIF on a criterion", on("AVERAGEIF(l, \">0\")")),
+        ("UPPER over text", on("UPPER(t)")),
+        ("LEN over text", on("LEN(t)")),
         ("numbers to text", Box::new(|_| xs.iter().for_each(|&x| black_box(number_to_string(x)).clear()))),
         (
             "text to numbers",
