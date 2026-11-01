@@ -6305,35 +6305,33 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             if cost < 0.0 || salvage < 0.0 || life < 0.0 || period < 0.0 {
                 return V::Fx(FxError::Num);
             }
-            if !(1.0..=12.0).contains(&month) || month.fract() != 0.0 || period > life {
+            // Periods run 1 to the life, plus a partial last one when the first year is partial, as Excel's do.
+            let last = if month < 12.0 { life + 1.0 } else { life };
+            if !(1.0..=12.0).contains(&month) || month.fract() != 0.0 || period < 1.0 || period > last {
                 return V::Fx(FxError::Num);
             }
             if salvage >= cost {
                 return V::Num(0.0);
             }
-            // `toFixed(3)` answers text, which the arithmetic below reads back as a number.
-            let rate = crate::jsnum::fixed_text(1.0 - libm::pow(salvage / cost, 1.0 / life), 3.0)
-                .map_or(f64::NAN, |t| string_to_number(&t));
-            let initial = (cost * rate * month) / 12.0;
-            let mut total = initial;
-            let mut current = 0.0;
-            let ceiling = if period == life { life - 1.0 } else { period };
-            if ceiling > 1e6 {
+            if period > 1e6 {
                 return V::err(sol_error(ErrorCode::Domain, "DB needs a period of at most 1,000,000"));
             }
-            let mut i = 2.0;
-            while i <= ceiling {
-                current = (cost - total) * rate;
-                total += current;
+            // The rate rounds to three places, as Excel's does.
+            let rate = round_half_up((1.0 - libm::pow(salvage / cost, 1.0 / life)) * 1000.0) / 1000.0;
+            let (mut total, mut dep) = (0.0, 0.0);
+            let mut i = 1.0;
+            while i <= period.trunc() {
+                dep = if i == 1.0 {
+                    cost * rate * month / 12.0
+                } else if i > life {
+                    (cost - total) * rate * (12.0 - month) / 12.0
+                } else {
+                    (cost - total) * rate
+                };
+                total += dep;
                 i += 1.0;
             }
-            V::Num(if period == 1.0 {
-                initial
-            } else if period == life {
-                (cost - total) * rate
-            } else {
-                current
-            })
+            V::Num(dep)
         }
         "DDB" => {
             // [[C120]] linearWork: a step per period, so a huge period within a huge life is refused before the loop.

@@ -212,3 +212,22 @@ fn dec2_truncates_and_bessel_matches_excel() {
     close("BESSELI(1.5, 1)", 0.981666428, 1e-7);
     close("BESSELK(1.5, 1)", 0.277387804, 1e-7);
 }
+
+#[test]
+fn depreciation_npv_and_factorials_match_excel() {
+    close("DB(1000000, 100000, 6, 1, 7)", 186083.33, 0.005);
+    close("DB(1000000, 100000, 6, 2, 7)", 259639.42, 0.005);
+    close("DB(1000000, 100000, 6, 7, 7)", 15845.10, 0.005);
+    close("DDB(2400, 300, 10*365, 1)", 1.32, 0.005);
+    close("DDB(2400, 300, 10*12, 1)", 40.0, 0.005);
+    close("DDB(2400, 300, 10, 1)", 480.0, 0.005);
+    close("DDB(2400, 300, 10, 2, 1.5)", 306.0, 0.005);
+    close("DDB(2400, 300, 10, 10)", 22.12, 0.005);
+    close("NPV(0.1, -10000, 3000, 4200, 6800)", 1188.44, 0.005);
+    assert_eq!(num("FACT(5)"), 120.0);
+    assert_eq!(num("FACT(1.9)"), 1.0);
+    assert_eq!(num("FACT(0)"), 1.0);
+    assert!(is_error("FACT(-1)"));
+    assert_eq!(num("FACTDOUBLE(6)"), 48.0);
+    assert_eq!(num("FACTDOUBLE(7)"), 105.0);
+}

@@ -74,7 +74,7 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 
 **Also:**
 - [ ] DATEVALUE reads Excel's formats (`3/5/24` with the 2029 pivot, `Mar 5`, `March 2024`, `5-Mar-24`) with its own reader, apart from what typed entry takes ([[C58]] tableInputRawText, [[C44]] dateSerials stay as they are; author 2026-11-01).
-- [ ] [[formulajs-divergences]] keeps several answers "as Formula.js did" (TEXT, the text pass-throughs, DB/DDB, NPV, FACT; BESSEL stays, Excel shares its fits): each becomes Excel's or goes, case by case.
+- [ ] [[formulajs-divergences]] keeps several answers "as Formula.js did" (TEXT, the text pass-throughs; BESSEL, DDB, NPV and FACT match Excel's documented examples, `tests/excel_examples.rs`): each becomes Excel's or goes, case by case.
 
 ## VaultBridge
 - [ ] Spec the Vault Read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".
