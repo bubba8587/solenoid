@@ -77,5 +77,30 @@
   border-color: var(--accent);
 }
 
-/* The phone's nav pill tucked into its edge handle (edgeTuck.tsx), level with the pill. */
-.solenoid-nav-handle { top: calc(var(--chrome-top, 66px) + 14px); }
+/* The phone's tuck (layout-chrome § Mobile): the handle is part of the pill, a half-pill hung off its left side,
+   rounded on the left and flat where it meets the pill. Tucked, the pill sits just past the screen's right edge and
+   only the handle shows, flat against that edge; a swipe drags the real pill back out with it. */
+.solenoid-nav__handle { display: none; }
+.solenoid-nav--tucked .solenoid-nav__handle {
+  position: absolute;
+  right: 100%;
+  top: -1px;
+  bottom: -1px;
+  width: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 0 2px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-right: none;
+  border-radius: 999px 0 0 999px;
+  color: var(--text);
+  cursor: pointer;
+}
+/* The touch target reaches the platform's 44px without growing the drawn handle. */
+.solenoid-nav--tucked .solenoid-nav__handle::before { content: ""; position: absolute; inset: -5px 0 -5px -18px; }
+/* The pill's own left end goes flat where the handle meets it, so the two read as one piece. */
+.solenoid-nav--tucked { border-left-color: transparent; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.solenoid-nav--settling { transition: transform 140ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .solenoid-nav--settling { transition: none; } }

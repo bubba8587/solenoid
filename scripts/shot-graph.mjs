@@ -37,7 +37,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--click-edge") opt.steps.push({ click: argv[++i], edge: true });
   else if (a === "--type") opt.steps.push({ type: argv[++i], text: argv[++i] });
   else if (a === "--press") opt.steps.push({ press: argv[++i] });
-  else if (a === "--drag") opt.steps.push({ drag: argv[++i], dx: Number(argv[++i]), dy: Number(argv[++i]) });
+  else if (a === "--drag" || a === "--drag-hold") opt.steps.push({ drag: argv[++i], dx: Number(argv[++i]), dy: Number(argv[++i]), hold: a === "--drag-hold" });
   else if (a === "--wait") opt.wait = Number(argv[++i]);
   else if (a === "--palette") opt.palette = argv[++i];
   else if (a === "--light") opt.light = true;
@@ -48,7 +48,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--popup") opt.steps.push({ popup: /^\d+$/.test(argv[i + 1] ?? "") ? Number(argv[++i]) : 1 });
   else opt.file = a;
 }
-if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy]… [--wait ms] [--palette name] [--light] [--setting key=value] [--full] [--size WxH] [--scale N]"); process.exit(2); }
+if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy] [--drag-hold css dx dy]… [--wait ms] [--palette name] [--light] [--setting key=value] [--full] [--size WxH] [--scale N]"); process.exit(2); }
 
 const graph = expand(JSON.parse(readFileSync(opt.file, "utf8")));
 execFileSync(process.execPath, [fileURLToPath(new URL("./dev-up.mjs", import.meta.url))], { stdio: "inherit" });
@@ -149,12 +149,12 @@ try {
       if (opt.size) {
         await page.touchscreen.touchStart(x, y);
         for (let k = 1; k <= 10; k++) await page.touchscreen.touchMove(x + (step.dx * k) / 10, y + (step.dy * k) / 10);
-        await page.touchscreen.touchEnd();
+        if (!step.hold) await page.touchscreen.touchEnd();
       } else {
         await page.mouse.move(x, y);
         await page.mouse.down();
         for (let k = 1; k <= 10; k++) await page.mouse.move(x + (step.dx * k) / 10, y + (step.dy * k) / 10);
-        await page.mouse.up();
+        if (!step.hold) await page.mouse.up();
       }
       console.log("cards after drag: ", (await boxes()).join(" | "));
     }

@@ -1,12 +1,12 @@
 // [[C88]] collapsedGroupCard (collapsedAwareNodesRect), [[C92]] pinchUnvetoable
 import { floorZoom } from "./viewPresets";
-import { useEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
 import { getActiveView, getActiveEditor } from "./activeGraph";
 import { collapsedAwareNodesRect } from "./components/Minimap";
 import { canvasLockStore } from "./canvasLock";
 import { cableFlourishBridge } from "./cableFlourishStore";
-import { IS_COARSE, isMobile, deviceModeStore } from "./coarse";
-import { EdgeHandle, enteringClass, useTuckState, useTuckSwipe } from "./edgeTuck";
+import { IS_COARSE, isMobile, deviceModeStore, prefersReducedMotion } from "./coarse";
+import { useSideSwipe, useTuckState } from "./edgeTuck";
 import { fullscreenSupported, toggleFullscreen } from "./fullscreen";
 import { clamp } from "./nodes/mathUtils";
 import "./NavMenu.css";
@@ -100,12 +100,36 @@ export async function fitAll() {
   await view.pan(ax - cx * k, ay - cy * k);
 }
 
+/** How far a swipe must carry the pill to tuck it, or pull it back out, and how long it then slides. */
+const TUCK_AT = 40;
+const SLIDE_MS = 140;
+
 export function NavMenu() {
   const mobile = useSyncExternalStore(deviceModeStore.subscribe, deviceModeStore.get);
   const [tucked, setTucked] = useTuckState("solenoid.navTucked");
-  const [entering, setEntering] = useState(false);
   const pill = useRef<HTMLDivElement>(null);
-  const pillSwipe = useTuckSwipe(pill, "right", () => setTucked(true));
+  const [dragging, setDragging] = useState(false);
+  // Tucked, the pill slides right until only the handle on its left side shows at the screen edge (its own 12px gap
+  // closed); a swipe moves the real pill, handle and all, with the finger, and a release past TUCK_AT finishes the move.
+  const tuckedAt = () => (pill.current?.offsetWidth ?? 0) + 12;
+  const place = (x: number, animate: boolean) => {
+    const el = pill.current;
+    if (!el) return;
+    el.classList.toggle("solenoid-nav--settling", animate && !prefersReducedMotion());
+    el.style.transform = x === 0 ? "" : `translateX(${x}px)`;
+  };
+  const settle = (tuck: boolean) => {
+    place(tuck ? tuckedAt() : 0, true);
+    window.setTimeout(() => { setDragging(false); setTucked(tuck); }, prefersReducedMotion() ? 0 : SLIDE_MS);
+  };
+  useLayoutEffect(() => { place(mobile && tucked ? tuckedAt() : 0, false); }, [mobile, tucked]);
+  const pillSwipe = useSideSwipe(
+    (dx) => {
+      setDragging(true);
+      place(clamp((tucked ? tuckedAt() : 0) + dx, 0, tuckedAt()), false);
+    },
+    (dx) => settle(tucked ? -dx < TUCK_AT : dx >= TUCK_AT),
+  );
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
   // Shown on any touch-primary device (IS_COARSE; no F11 there), and hidden where the browser can't go fullscreen.
   const showFullscreen = IS_COARSE && fullscreenSupported();
@@ -117,23 +141,25 @@ export function NavMenu() {
     onChange();
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, [showFullscreen]);
-  if (mobile && tucked) {
-    return (
-      <EdgeHandle
-        edge="right"
-        className="solenoid-nav-handle"
-        label="Show the canvas controls"
-        onOpen={() => { setEntering(true); setTucked(false); }}
-      />
-    );
-  }
   return (
     <div
       ref={pill}
-      className={`solenoid-nav${enteringClass("right", entering)}`}
-      onAnimationEnd={() => setEntering(false)}
+      className={`solenoid-nav${mobile && (tucked || dragging) ? " solenoid-nav--tucked" : ""}`}
       {...(mobile ? pillSwipe : { onPointerDown: (e: ReactPointerEvent) => e.stopPropagation() })}
     >
+      {mobile && (
+        <button
+          className="solenoid-nav__handle"
+          title="Show the canvas controls"
+          aria-label="Show the canvas controls"
+          tabIndex={tucked ? 0 : -1}
+          onClick={() => { if (tucked) settle(false); }}
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 3.5 L5.5 8 L10 12.5" />
+          </svg>
+        </button>
+      )}
       <button className="solenoid-nav__btn solenoid-nav__btn--zoomin" title="Zoom in" onClick={() => zoomBy(ZOOM_STEP)}>
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="7" cy="7" r="4.5" />

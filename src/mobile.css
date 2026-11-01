@@ -127,8 +127,6 @@ html.is-mobile {
     /* A sideways swipe tucks it into the edge handle; the browser mustn't take the gesture. */
     touch-action: none;
   }
-  /* Level with the pill it stands in for, and as tall (30px buttons + 2·3 padding + 2·1 border). */
-  .solenoid-nav-handle { top: calc(92px + env(safe-area-inset-top)); height: 38px; }
   .solenoid-nav__btn--zoomin,
   .solenoid-nav__btn--zoomout,
   .solenoid-nav__btn--flourish { display: none; }
@@ -174,10 +172,6 @@ html.is-mobile {
 
   /* ── Navigator ── */
   .solenoid-outline__open-pill { display: none; }
-  /* The tucked navigator's handle sits level with where the panel's top was; the panel's rows scroll vertically,
-     so only a sideways swipe on it is the tuck. */
-  .solenoid-outline-handle { top: calc(92px + env(safe-area-inset-top)); height: 38px; }
-  .solenoid-outline { touch-action: pan-y; }
   .solenoid-outline {
     top: calc(92px + env(safe-area-inset-top));
     bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 27px);

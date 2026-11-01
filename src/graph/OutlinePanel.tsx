@@ -30,7 +30,6 @@ import { documentStore } from "./documentStore";
 import { WorkspaceTree, RowMenu, Glyph, filesAddMenu, type MenuItem } from "./WorkspaceTree";
 import { isNavPreview } from "./workspacePreview";
 import { useIsMobile } from "./useDeviceMode";
-import { EdgeHandle, enteringClass, useTuckState, useTuckSwipe } from "./edgeTuck";
 import { searchLibrary, type SearchHit } from "./workspaceSearch";
 import { treeKeyStep, typeAhead, type KeyRow, type TreeKey } from "./workspaceRows";
 import { nodeNameStore } from "./nodeNameStore";
@@ -286,11 +285,6 @@ export function OutlinePanel() {
   const [viewMenu, setViewMenu] = useState<{ x: number; y: number } | null>(null);
   const [addMenu, setAddMenu] = useState<{ x: number; y: number; sub?: MenuItem[] } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  // On the phone a swipe left tucks the open navigator into a handle on the left edge; opening it any way untucks it.
-  const [tucked, setTucked] = useTuckState("solenoid.navigatorTucked");
-  const [entering, setEntering] = useState(false);
-  const tuckSwipe = useTuckSwipe(panelRef, "left", () => { setTucked(true); setOpen(false); });
-  useEffect(() => { if (open && tucked) setTucked(false); }, [open, tucked, setTucked]);
   const [navW, setNavW] = useState<number>(() => clampWidth(readJson<number>(WIDTH_KEY, 248)));
   useEffect(() => {
     if (!open || isMobile()) return;
@@ -566,16 +560,6 @@ export function OutlinePanel() {
       return next;
     });
 
-  if (!open && tucked && isMobile()) {
-    return (
-      <EdgeHandle
-        edge="left"
-        className="solenoid-outline-handle"
-        label="Show the navigator"
-        onOpen={() => { setEntering(true); setOpen(true); }}
-      />
-    );
-  }
   if (!open) {
     return (
       <div className="solenoid-outline__open-pill" onPointerDown={(e) => e.stopPropagation()}>
@@ -878,11 +862,10 @@ export function OutlinePanel() {
 
   return (
     <div
-      className={`solenoid-outline solenoid-outline--${layout}${enteringClass("left", entering && isPhone)}`}
+      className={`solenoid-outline solenoid-outline--${layout}`}
       ref={panelRef}
       style={isPhone ? undefined : { width: navW }}
-      onAnimationEnd={(e) => { if (e.target === e.currentTarget) setEntering(false); }}
-      {...(isPhone ? tuckSwipe : { onPointerDown: (e: ReactPointerEvent) => e.stopPropagation() })}
+      onPointerDown={(e) => e.stopPropagation()}
     >
       {!isPhone && <div className="solenoid-outline__resize" role="separator" aria-orientation="vertical" aria-label="Resize navigator" onPointerDown={startWidthDrag} />}
       {/* On desktop the stacked sections' own heads carry the panel, so the title row goes (the preview keeps it for its toggle). */}
