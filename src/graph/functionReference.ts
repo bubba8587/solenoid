@@ -2,11 +2,12 @@
 // Generated from catalog metadata: never add a hand-kept row. EXCEL_GAP (functions with no node) is the one standalone
 // list, and it self-heals.
 
+import { isCategory, isPair } from "./catalogSearch";
 import { buildCatalog } from "./catalogUtils";
 import { EXCEL_GAP } from "./nodeExcel";
 import { allPacks } from "./packs";
 import type {
-  CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry, ExcelEquiv,
+  CatalogEntry, NodeCatalogEntry, ExcelEquiv,
 } from "./AddNodeMenu";
 
 export interface FnRefRow {
@@ -38,8 +39,6 @@ interface LeafInfo {
   excel?: ExcelEquiv[];
 }
 
-function isCategory(e: CatalogEntry): e is CatalogCategory { return e.type === "category"; }
-function isPair(e: CatalogEntry): e is CatalogPair { return e.type === "pair"; }
 
 function indexCatalog(): Map<string, LeafInfo> {
   const idx = new Map<string, LeafInfo>();

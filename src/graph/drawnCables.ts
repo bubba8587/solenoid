@@ -1,4 +1,5 @@
 import { createNotifier } from "./storeKit";
+import { clamp } from "./nodes/mathUtils";
 import { registerNodeForgetAll } from "./nodeStoreRegistry";
 import { unselectAllNodes } from "./canvasCommands";
 import { cableSelectionStore } from "./cableState";
@@ -46,8 +47,6 @@ const WIDTH_MIN = 0.2;
 const WIDTH_MAX = 40;
 const HEAD_MIN = 0.1;
 const HEAD_MAX = 10;
-
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 function num(v: unknown, fallback: number, lo: number, hi: number): number {
   return typeof v === "number" && Number.isFinite(v) ? clamp(v, lo, hi) : fallback;

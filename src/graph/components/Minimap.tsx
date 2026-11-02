@@ -3,18 +3,10 @@ import { getActiveView, getActiveEditor } from "../activeGraph";
 import type { SolenoidNode } from "../schemes";
 import { GroupNode, NoteNode, nodeAccent } from "../nodeClasses";
 import { groupCollapseStore } from "../groupCollapse";
-import { themeAccent, resolveColor } from "../palette";
+import { themeAccent, resolveColor, hexToRgba } from "../palette";
 import "./Minimap.css";
 
 // Shared by the RF minimaps (FlowCanvas, the drill-in) and NavMenu's fit-all math.
-
-function hexToRgba(hex: string, a: number): string {
-  const h = hex.replace("#", "");
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${a})`;
-}
 
 interface Fill { background: string; borderColor: string }
 

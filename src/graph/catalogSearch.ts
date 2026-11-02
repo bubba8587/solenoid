@@ -7,11 +7,11 @@ import { nodeTypeName } from "./nodeNamer";
 import { SolenoidSocket, canConnect, type SocketDataType } from "./sockets";
 import type { NodeCatalogEntry, CatalogEntry, CatalogCategory, CatalogPair } from "./AddNodeMenu";
 
-function isCategory(e: CatalogEntry): e is CatalogCategory {
-  return (e as CatalogCategory).type === "category";
+export function isCategory(e: CatalogEntry): e is CatalogCategory {
+  return e.type === "category";
 }
-function isPair(e: CatalogEntry): e is CatalogPair {
-  return (e as CatalogPair).type === "pair";
+export function isPair(e: CatalogEntry): e is CatalogPair {
+  return e.type === "pair";
 }
 
 export type LeafWithContext = { leaf: NodeCatalogEntry; categoryPath: string[] };

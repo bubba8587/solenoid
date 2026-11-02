@@ -1,3 +1,4 @@
+import { clamp } from "../nodes/mathUtils";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getCablePath, Position } from "../cablePaths";
@@ -25,7 +26,6 @@ type Run = {
 
 const angleDeg = (from: Pt, to: Pt) => (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI;
 const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
-const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
 
 // The cardinal side a direction most points along — the router's no-angle-hint fallback.
 function posFromDir(dx: number, dy: number): Position {
@@ -159,7 +159,7 @@ export function CableFlourish() {
     >
       <defs>
           {runs.map((run) => {
-            const u = clamp01((now - run.start) / run.duration);
+            const u = clamp((now - run.start) / run.duration, 0, 1);
             const headLen = u * run.total;
             const trailLen = Math.min(180, run.total * 0.28);
             const fromLen = Math.max(0, headLen - trailLen);
@@ -180,7 +180,7 @@ export function CableFlourish() {
           })}
         </defs>
         {runs.map((run) => {
-          const u = clamp01((now - run.start) / run.duration);
+          const u = clamp((now - run.start) / run.duration, 0, 1);
           const headLen = u * run.total;
           const trailLen = Math.min(180, run.total * 0.28);
           const fromLen = Math.max(0, headLen - trailLen);

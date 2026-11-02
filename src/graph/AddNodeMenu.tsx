@@ -1,7 +1,7 @@
 // [[B16]] oneFormulaSurface
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { flattenLeaves, searchLeaves } from "./catalogSearch";
+import { flattenLeaves, isCategory, isPair, searchLeaves } from "./catalogSearch";
 import { IS_COARSE, deviceModeStore } from "./coarse";
 import { addMenuRequest } from "./addMenuStore";
 import { descriptionText } from "./descriptionMd";
@@ -93,12 +93,6 @@ export type CatalogPair = {
 
 export type CatalogEntry = NodeCatalogEntry | CatalogCategory | CatalogPair;
 
-function isCategory(e: CatalogEntry): e is CatalogCategory {
-  return e.type === "category";
-}
-function isPair(e: CatalogEntry): e is CatalogPair {
-  return e.type === "pair";
-}
 
 // ─── Render/nav items ───────────────────────────────────────────────────
 type RenderItem =

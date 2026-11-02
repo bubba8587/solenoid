@@ -1,6 +1,7 @@
 // [[B16]] oneFormulaSurface
+import { isCategory, isPair } from "./catalogSearch";
 import { buildCatalog } from "./catalogUtils";
-import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "./AddNodeMenu";
+import type { CatalogEntry, NodeCatalogEntry } from "./AddNodeMenu";
 import { NODE_EXCEL, EXCEL_GAP } from "./nodeExcel";
 import { FUNCTION_ARITY, formulaFunctionNames } from "./excelFunctions";
 import { opsFor } from "./nodeOps";
@@ -33,8 +34,6 @@ function isPresetFormula(leaf: NodeCatalogEntry): boolean {
   }
 }
 
-const isCategory = (e: CatalogEntry): e is CatalogCategory => e.type === "category";
-const isPair = (e: CatalogEntry): e is CatalogPair => e.type === "pair";
 
 function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formulaNames: Set<string>): void {
   for (const e of entries) {

@@ -7,15 +7,14 @@ import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { NODE_EXCEL } from "./nodeExcel";
 import { processGraph } from "./process";
 import { unselectAllNodes, selectNode } from "./canvasCommands";
-import type { NodeCatalogEntry, CatalogCategory, CatalogPair, CatalogEntry } from "./AddNodeMenu";
+import type { NodeCatalogEntry, CatalogCategory, CatalogEntry } from "./AddNodeMenu";
 import { nodeNameStore } from "./nodeNameStore";
+import { isCategory, isPair } from "./catalogSearch";
 // Cycle-safe: nodeCtorRegistry imports FLAT_CATALOG from here, but neither touches the other's exports at init.
 import { ctorRegistry, type NodeCtor } from "./nodeCtorRegistry";
 import { getActiveView, getActiveEditor } from "./activeGraph";
 
 
-function isCategory(e: CatalogEntry): e is CatalogCategory { return e.type === "category"; }
-function isPair(e: CatalogEntry): e is CatalogPair { return e.type === "pair"; }
 
 function flattenCatalog(
   entries: CatalogEntry[],
