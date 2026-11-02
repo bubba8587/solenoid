@@ -27,7 +27,6 @@ Vitest 5 transforms with Oxc, so the `esbuild: { keepNames: true }` in `vite.con
 the production minify, and its "esbuild options ignored" warning is expected.
 
 ## Formula library
-- [ ] **A logical typed straight into SUM counts** ([[A5]] excelParity): `SUM(TRUE, 1)` is 1 today; Excel gives 2, since it counts a TRUE passed directly and skips one only inside a range. Holds whichever way the inbox's list-cell question goes.
 - [ ] **AVERAGEIF and AVERAGEIFS over nothing answer blank** ([[C24]] arraySemantics), as AVERAGE already does; today no matching rows is `#DIV/0!`.
 - [ ] **`INDEX(m, 0, c)` gives a one-column table** ([[A5]] excelParity, [[D85]] columnsStayColumns), in formulas and on the INDEX card, not a list: with `m = [[3,1,2],[9,8,7]]`, `m / INDEX(m, 0, 1)` should divide each row by its first value, not across the columns.
 - [ ] **Cards that lack their formula's options** ([[D73]] nodeCoversFormula): WORKDAY and NETWORKDAYS take a weekend pattern like "0000011", CONCAT rows take a list, TEXTJOIN gets more than one text row. RANDARRAY's rows by columns, FILTER's include mask and if_empty, and XLOOKUP over plain lists are already on another card (Frame Filter, Frame from Lists); point to it from the card's description.

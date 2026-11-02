@@ -428,8 +428,8 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             if a.is_empty() {
                 return Ok(VALUE);
             }
-            // Each argument a list of cells (a value is one); every list the same length, and a cell that is no
-            // number counts as 0, as Excel's does.
+            // Each argument a list of cells (a value is one); every list the same length. A logical reads as 1 or 0
+            // ([[D108]] aggregatesCountLogicals); any other cell that is no number counts as 0.
             let lists: Vec<Vec<V>> = a.iter().map(flatten).collect();
             if lists.iter().any(|l| l.len() != lists[0].len()) {
                 return Ok(V::err(sol_error(ErrorCode::Value, "SUMPRODUCT's lists must be the same size")));
@@ -437,7 +437,11 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             if let Some(e) = lists.iter().flatten().find(|v| matches!(v, V::Fx(_) | V::Err(_))) {
                 return Ok(e.clone());
             }
-            let cell = |v: &V| if let V::Num(n) = v { *n } else { 0.0 };
+            let cell = |v: &V| match v {
+                V::Num(n) => *n,
+                V::Bool(b) => f64::from(u8::from(*b)),
+                _ => 0.0,
+            };
             V::Num((0..lists[0].len()).fold(0.0, |s, i| s + lists.iter().map(|l| cell(&l[i])).product::<f64>()))
         }
         "SUMX2MY2" | "SUMX2PY2" | "SUMXMY2" => {

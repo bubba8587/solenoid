@@ -3777,7 +3777,15 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if let Some(e) = cells.iter().find(|v| v.is_err()) {
                 return e.clone();
             }
-            let nums: Vec<f64> = cells.iter().filter_map(|v| if let V::Num(n) = v { Some(*n) } else { None }).collect();
+            // A logical reads as 1 or 0 ([[D108]] aggregatesCountLogicals); text is skipped ([[C10]] socketLattice).
+            let nums: Vec<f64> = cells
+                .iter()
+                .filter_map(|v| match v {
+                    V::Num(n) => Some(*n),
+                    V::Bool(b) => Some(f64::from(u8::from(*b))),
+                    _ => None,
+                })
+                .collect();
             if nums.is_empty() {
                 return V::Num(0.0);
             }
@@ -4899,7 +4907,8 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
         {
             e.clone()
         }
-        F::COUNT => V::Num(a.iter().filter(|v| matches!(v, V::Num(_))).count() as f64),
+        // A logical is a number here ([[D108]] aggregatesCountLogicals).
+        F::COUNT => V::Num(a.iter().filter(|v| matches!(v, V::Num(_) | V::Bool(_))).count() as f64),
         F::COUNTA | F::COUNTBLANK => {
             let blanks =
                 a.iter().filter(|v| matches!(v, V::Undef | V::Null) || matches!(v, V::Str(s) if s.is_empty())).count();
@@ -5847,7 +5856,8 @@ fn sum_like_fx(a: &[V]) -> V {
         match v {
             V::Fx(_) => return v.clone(),
             V::Num(n) => result = snapped_sum(result, *n),
-            // Text is skipped, never read as a number ([[C10]] socketLattice).
+            // A logical reads as 1 or 0 ([[D108]] aggregatesCountLogicals); text is skipped ([[C10]] socketLattice).
+            V::Bool(b) => result = snapped_sum(result, f64::from(u8::from(*b))),
             V::List(items) => match sum_like_fx(items) {
                 V::Num(n) => result = snapped_sum(result, n),
                 e => return e,
