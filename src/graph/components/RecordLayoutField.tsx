@@ -9,7 +9,7 @@ export function RecordLayoutField({ value, wired, onCommit, onSuggest, placehold
   wired?: boolean;
   onCommit: (next: string) => void;
   /** The layout read from the data ([[D111]] cardLayouts): Suggest, shown inside the field while it is empty, commits it. */
-  onSuggest?: () => string;
+  onSuggest?: () => string | Promise<string>;
   placeholder?: string;
 }) {
   const [draft, setDraft] = useState(value);
@@ -43,9 +43,9 @@ export function RecordLayoutField({ value, wired, onCommit, onSuggest, placehold
           title="Write a layout laid out from the data"
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
+          onClick={async (e) => {
             e.stopPropagation();
-            const next = onSuggest();
+            const next = await onSuggest();
             if (next === "") return;
             setDraft(next);
             onCommit(next);

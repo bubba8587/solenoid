@@ -10,7 +10,8 @@ import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { cableValueStore } from "../cableValueStore";
 import { isFrameValue } from "../frame";
-import { suggestFrameLayout } from "../cardLayout";
+import { suggestFrameLayout, PROFILE_ROWS } from "../cardLayout";
+import { collectPreview } from "../frameBackend";
 import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
 import { RecordLayoutField } from "./RecordLayoutField";
@@ -58,10 +59,11 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
     void processGraph(data.id);
   }
 
-  // Suggest reads the frame on the Frame cable ([[D111]] cardLayouts); Detail's single card gets four columns, a tile two.
-  function suggestLayout(): string {
+  // Suggest reads the frame on the Frame cable ([[D111]] cardLayouts), which arrives as a lazy handle: only the rows the
+  // suggestion profiles are collected. Detail's single card gets four columns, a tile two.
+  async function suggestLayout(): Promise<string> {
     const conn = getOwningEditor(data.id)?.getConnections().find((c) => c.target === data.id && c.targetInput === "frame");
-    const f = conn ? cableValueStore.get(conn.source, conn.sourceOutput) : undefined;
+    const f = conn ? await collectPreview(cableValueStore.get(conn.source, conn.sourceOutput), PROFILE_ROWS) : null;
     return isFrameValue(f) ? suggestFrameLayout(f, op === "detail" ? 4 : 2) : "";
   }
   function commitLayout(next: string) {
