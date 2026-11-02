@@ -97,12 +97,13 @@ function getAngleBezierPath(args: PathArgs): string {
   }
   const dS = exitDir(args);
   const dT = entryDir(args);
-  // Both arms share one length: at least ARM_MIN, at most 0.4 of the distance, and no more than half the farther
-  // way the cable travels along either socket's direction. With room sideways the arms meet in the middle (an S, no
-  // backward bulge); an end facing away from its target travels far against its direction, so the arms stay long
-  // and make the loop; nearly in line, ARM_MIN bends the cable back.
+  // Both arms share one length: the original max(ARM_MIN, 0.4 × distance), no longer than the farther way the cable
+  // travels along either socket's direction plus ARM_MIN. Equal arms longer than that travel make the cable double
+  // back; the ARM_MIN allowance keeps a visible lead out of each socket at the cost of a small bend-back where the
+  // cards are close sideways. With room sideways nothing changes; an end facing away travels far against its
+  // direction, so its loop keeps its full arms.
   const travel = Math.max(Math.abs(dx * dS.x + dy * dS.y), Math.abs(dx * dT.x + dy * dT.y));
-  const arm = Math.max(ARM_MIN, Math.min(dist * 0.4, 0.5 * travel));
+  const arm = Math.max(ARM_MIN, Math.min(dist * 0.4, travel + ARM_MIN));
   const armS = arm;
   const armT = arm;
   const c1x = args.sourceX + dS.x * armS;

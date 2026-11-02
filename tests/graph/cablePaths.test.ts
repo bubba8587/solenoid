@@ -312,19 +312,30 @@ describe("spline", () => {
     }
   });
 
-  it("doesn't bend back when there is room sideways, and still does when there isn't", () => {
-    // With room, the control points stay between the sockets horizontally: the arms meet in the middle at most.
-    for (const ty of [150, 400, 900]) {
-      const d = spline({ sx: 0, sy: 0, tx: 220, ty, sa: null, ta: null });
-      const m = /C\s*([-\d.eE]+),[-\d.eE]+\s+([-\d.eE]+),/.exec(d)!;
-      const [c1x, c2x] = [parseFloat(m[1]), parseFloat(m[2])];
-      expect(c1x, `ty ${ty}`).toBeLessThanOrEqual(110 + 1e-9);
-      expect(c2x, `ty ${ty}`).toBeGreaterThanOrEqual(110 - 1e-9);
+  it("bends back little or not at all with room sideways, and keeps a lead out of each socket", () => {
+    // The curve's sideways position, sampled: how far it doubles back, and how far it runs out before turning 20°.
+    const shape = (tx: number, ty: number) => {
+      const m = /C\s*([-\d.eE]+),([-\d.eE]+)\s+([-\d.eE]+),([-\d.eE]+)/.exec(spline({ sx: 0, sy: 0, tx, ty, sa: null, ta: null }))!;
+      const [a, b, c, d] = m.slice(1).map(parseFloat);
+      const at = (t: number) => { const u = 1 - t; return [3 * u * u * t * a + 3 * u * t * t * c + t ** 3 * tx, 3 * u * u * t * b + 3 * u * t * t * d + t ** 3 * ty]; };
+      let back = 0, hi = -Infinity, lead = 0, turned = false, prev = [0, 0];
+      for (let k = 1; k <= 2000; k++) {
+        const p = at(k / 2000);
+        hi = Math.max(hi, p[0]); back = Math.max(back, hi - p[0]);
+        if (!turned && Math.abs(Math.atan2(p[1] - prev[1], p[0] - prev[0])) > (20 * Math.PI) / 180) turned = true;
+        if (!turned) lead += Math.hypot(p[0] - prev[0], p[1] - prev[1]);
+        prev = p;
+      }
+      return { back, lead };
+    };
+    // Room sideways: no bend-back, and a lead of 30px or more.
+    for (const [tx, ty] of [[220, 150], [220, 400], [220, 600]]) {
+      const s = shape(tx, ty);
+      expect(s.back, `${tx},${ty}`).toBeLessThan(10);
+      expect(s.lead, `${tx},${ty}`).toBeGreaterThan(30);
     }
-    // Nearly in line sideways, each arm keeps its 40px lead, so the curve bends back to reach the socket.
-    const d = spline({ sx: 0, sy: 0, tx: 30, ty: 400, sa: null, ta: null });
-    const m = /C\s*([-\d.eE]+),[-\d.eE]+\s+([-\d.eE]+),/.exec(d)!;
-    expect(parseFloat(m[1])).toBeGreaterThan(parseFloat(m[2]));
+    // Close sideways: a small bend-back, far less than the uncapped arms' 50 to 70px.
+    for (const [tx, ty] of [[120, 600], [60, 500], [30, 400]]) expect(shape(tx, ty).back, `${tx},${ty}`).toBeLessThan(25);
   });
 
   it("holds across every pair of Conduit angles and a grid of positions: finite, tangent-exact, continuous, no longer arms than before", () => {
