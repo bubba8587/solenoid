@@ -32,8 +32,8 @@
 .react-flow__viewport.sol-pan-layer { translate: 0 0 1px; }
 /* The opaque canvas color and dots under every card, in graph coordinates, so the pan layer stays one layer and the grid rides it. */
 .sol-canvas-backing { position: absolute; z-index: -1000; pointer-events: none; background-color: var(--canvas-bg); }
-.sol-canvas-backing__dots { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
-.sol-canvas-backing circle { fill: var(--canvas-dot); }
+.sol-canvas-backing__dots { background: none; transform-origin: 0 0; }
+.sol-canvas-backing__dots circle { fill: var(--canvas-dot); }
 html.perf-no-grid-dots .sol-canvas-backing__dots { display: none; }
 
 /* A dragged open group clips its paint (with room for the selection glow), so the members riding over it stay their own layers instead of re-rastering the group's every frame. */
