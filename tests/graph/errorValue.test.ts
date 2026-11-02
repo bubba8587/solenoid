@@ -282,8 +282,8 @@ describe("error consumers", () => {
     // List: flags each null cell. Matrix: per CELL (was a crash/garbage before).
     expect(new IsTestNode({ op: "isnull" }).data({ value: [[1, null, 3, null]] }).result).toEqual([false, true, false, true]);
     expect(new IsTestNode({ op: "isnull" }).data({ value: [[[1, null], [null, 4]]] }).result).toEqual([[false, true], [true, false]]);
-    // ISBLANK tests the whole input as one cell — a populated list is not blank.
-    expect(new IsTestNode({ op: "isblank" }).data({ value: [[1, null, 3]] }).result).toBe(false);
+    // ISBLANK tests per cell too, as the ISBLANK formula does over a list ([[C17]] shareImpl).
+    expect(new IsTestNode({ op: "isblank" }).data({ value: [[1, null, 3]] }).result).toEqual([false, true, false]);
   });
 });
 

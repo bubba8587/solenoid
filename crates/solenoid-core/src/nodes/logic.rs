@@ -559,11 +559,9 @@ fn is_test(c: &mut Call) -> Answer {
         return done(c, input, V::Bool(hit));
     }
     let value = input.clone();
-    if op == "isblank" {
-        return done(c, V::Null, V::Bool(matches!(input, V::Null)));
-    }
+    // Every check, ISBLANK included, tests per cell, as the formula does over a list.
     let test: fn(&V) -> bool = match op.as_str() {
-        "isnull" => |x| matches!(x, V::Null),
+        "isnull" | "isblank" => |x| matches!(x, V::Null),
         "istext" => |x| matches!(x, V::Str(_)),
         "isnontext" => |x| !matches!(x, V::Str(_)),
         "isnumber" => |x| matches!(x, V::Num(n) if n.is_finite()),

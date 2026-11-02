@@ -6,22 +6,20 @@ import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { NODE_CATALOG } from "../../src/graph/nodeCatalog";
 import { flattenLeaves } from "../../src/graph/catalogSearch";
 import { compileEvaluator } from "../../src/graph/excelFormula";
+import { opsFor } from "../../src/graph/nodeOps";
 
 /** Pairs the in-order mapping can't compare, each with why: a card's type for all its pairs, or `type:NAME` for one. */
 const UNCOMPARED: Record<string, string> = {
-  "constant:TRUE": "one card for every constant, picked by its op",
-  "constant:FALSE": "one card for every constant, picked by its op",
-  "distributions": "one card for many distributions; its inputs follow the chosen distribution, not one function's order",
-  "convert": "a unit conversion card; DEGREES and RADIANS are two of its conversions",
-  "is-test": "one card for every IS function, picked by its op",
+  "constant:TRUE": "the Constant card holds the math constants; TRUE and FALSE are Value Input's",
+  "constant:FALSE": "the Constant card holds the math constants; TRUE and FALSE are Value Input's",
+  "convert": "answers an angle with its unit ([[C25]] firstClassUnits), where DEGREES and RADIANS answer a bare number",
   "sumifs": "takes a table and column pickers, not the function's ranges",
-  "correl-correl": "one card for CORREL, PEARSON and RSQ, picked by its op",
-  "regression-steyx": "one card for STEYX, SLOPE and INTERCEPT, picked by its op",
   "gcd-lcm": "pairs two lists item by item, where GCD folds every argument into one answer",
   "lcm": "pairs two lists item by item, where LCM folds every argument into one answer",
-  "stat-quartile": "one card for QUARTILE.INC and QUARTILE.EXC, picked by its op",
-  "stat-percentile": "one card for PERCENTILE.INC and PERCENTILE.EXC, picked by its op",
 };
+
+/** A function whose op wears Solenoid's own name: ISLOGICAL is the Type Check card's ISBOOLEAN. */
+const OP_NAMES: Record<string, string> = { ISLOGICAL: "ISBOOLEAN" };
 
 const POOL = [0.5, 2, 3, 7, 1.5, -2, 10, 0, 1, 4.25, 100, 0.1];
 
@@ -49,10 +47,22 @@ describe("cards answer as their formula twins", () => {
   });
 
   it.each(pairs)("$type answers as $name", async ({ type, name }) => {
-    const node = (leaves.get(type) as { create: () => unknown }).create() as {
+    // A card with an op per function is created set to this function's op: the op naming it by its formula name or its
+    // label, else its search row (`excelEntry`).
+    const decl = opsFor(type);
+    const named = OP_NAMES[name] ?? name;
+    const op = decl?.ops?.find((o) => (o.fx ?? o.label).replace(/\s+/g, "").toUpperCase() === named)
+      ?? decl?.ops?.find((o) => (o.keywords ?? "").split(/\s*\/\s*/).includes(name));
+    const make = op && decl?.create ? () => decl.create!(op.op)
+      : (leaves.get(`${type}__excel-${name}`) ?? leaves.get(type) as { create: () => unknown }).create;
+    const node = make() as {
+      form?: string;
       inputs: Record<string, { socket?: { name?: string } } | undefined>;
       data: (inputs: Record<string, unknown[]>) => unknown;
     };
+    // A distribution's right tail and two tails are its card's RT and 2T forms (F.DIST.RT is the F op in RT).
+    if (node.form !== undefined && name.endsWith(".RT")) node.form = "rt";
+    if (node.form !== undefined && name.endsWith(".2T")) node.form = "2t";
     const keys = Object.keys(node.inputs ?? {});
     const syntax = NODE_EXCEL[type].find((e) => e.syntax?.includes(`${name}(`))!.syntax!;
     const args = /\(([^)]*)\)/.exec(syntax)![1].split(",").map((s) => s.trim()).filter((s) => s && !s.startsWith("["));
