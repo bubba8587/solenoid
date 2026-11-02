@@ -125,9 +125,9 @@ export function reconcileFrames(left: FrameValue, right: FrameValue, opts: Recon
 }
 
 // ─── Lookups ───
-export const lookupRowIndex = (f: FrameValue, column: string, lookup: string, mm: LookupMatchMode = "exact", sm: LookupSearchMode = "first") =>
+export const lookupRowIndex = (f: FrameValue, column: string, lookup: string, mm: LookupMatchMode = "eq", sm: LookupSearchMode = "first") =>
   frameFn("lookupRowIndex", [f], [column, lookup, mm, sm]).value as number;
-export const lookupCell = (f: FrameValue, column: string, ret: string, lookup: string, mm: LookupMatchMode = "exact", sm: LookupSearchMode = "first") =>
+export const lookupCell = (f: FrameValue, column: string, ret: string, lookup: string, mm: LookupMatchMode = "eq", sm: LookupSearchMode = "first") =>
   frameFn("lookupCell", [f], [column, ret, lookup, mm, sm]).value;
 export const frameRowAt = (f: FrameValue, i: number) => frameOf("frameRowAt", [f], [i]);
 

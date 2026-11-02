@@ -100,7 +100,9 @@ export interface JoinOpts {
   asofTolerance?: number;
 }
 
-export type LookupMatchMode = "exact" | "nextSmaller" | "nextLarger";
+/** XLOOKUP's modes are Filter's ops ([[B11]] maximalMerge): =, ≤ and ≥ as Excel's exact and closest match, < and > the
+ *  closest strictly past, the rest the first row Filter's test passes. */
+export type LookupMatchMode = Exclude<FilterOp, "iserror" | "noterror" | "listContains" | "listContainsAny" | "listContainsAll" | "listEmpty">;
 export type LookupSearchMode = "first" | "last";
 export type DecisionNormalize = "none" | "max" | "range" | "rank";
 export type CorrMethod = "pearson" | "spearman" | "kendall" | "covariance";

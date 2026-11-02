@@ -329,7 +329,7 @@
       "y": -629,
       "init": {
         "label": "XLOOKUP: next-smaller volume tier (≤)",
-        "matchMode": "nextSmaller"
+        "matchMode": "lte"
       },
       "stringLiterals": {
         "lookup": "35",

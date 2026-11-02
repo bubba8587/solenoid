@@ -1058,6 +1058,10 @@ impl<K: AsRef<[V]>> Matcher<K> {
         Matcher { keys, mm, last, index: index.flatten(), steps, text_steps }
     }
 
+    pub(crate) fn mode(&self) -> MatchMode {
+        self.mm
+    }
+
     pub(crate) fn find(&self, lookup: &V) -> Result<Option<usize>, V> {
         match (&self.index, &self.steps, exact_key(lookup), lookup) {
             (Some(index), _, Some(key), _) => Ok(key.and_then(|k| index.get(&k).copied())),

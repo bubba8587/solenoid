@@ -806,45 +806,148 @@ fn lookup_needle(lookup: &str, ty: FrameColType) -> Res<V> {
     })
 }
 
+/// How a lookup matches, Filter's ops ([[C10]] socketLattice keeps a text test on text): `eq` exactly, `lte` / `gte`
+/// the closest key at most / at least (XLOOKUP's -1 and 1), `lt` / `gt` the closest strictly below / above, and
+/// the rest the first (or last) row Filter's test passes.
+enum LookupHow {
+    Match(crate::excel_functions::Matcher<Vec<V>>),
+    Strict { below: bool, nums: Vec<(f64, usize)>, texts: Vec<(String, usize)> },
+    Test(crate::frame_verbs::FilterOp),
+}
+
 /// What a frame lookup reads once for every lookup value in a list of them: the In column, its type and its keys.
 struct LookupPlan {
     ty: FrameColType,
-    exact: bool,
-    keys: crate::excel_functions::Matcher<Vec<V>>,
+    last: bool,
+    how: LookupHow,
+}
+
+/// Distinct number keys and distinct text keys, each with the row the search meets first.
+type Steps = (Vec<(f64, usize)>, Vec<(String, usize)>);
+
+/// Each distinct key (numbers, and text lowercased in character-code order, [[C59]] byteStringOrder) with the row
+/// the search meets first.
+fn lookup_steps(keys: &[V], last: bool) -> Steps {
+    let mut nums: Vec<(f64, usize)> = Vec::new();
+    let mut texts: Vec<(String, usize)> = Vec::new();
+    for (i, k) in keys.iter().enumerate() {
+        match k {
+            V::Num(x) if x.is_finite() => nums.push((x + 0.0, i)),
+            V::Str(t) => texts.push((lower_text(t).into_owned(), i)),
+            _ => {}
+        }
+    }
+    let by_row = |a: usize, b: usize| if last { b.cmp(&a) } else { a.cmp(&b) };
+    nums.sort_by(|a, b| a.0.total_cmp(&b.0).then(by_row(a.1, b.1)));
+    nums.dedup_by(|later, first| later.0 == first.0);
+    texts.sort_by(|a, b| a.0.cmp(&b.0).then(by_row(a.1, b.1)));
+    texts.dedup_by(|later, first| later.0 == first.0);
+    (nums, texts)
 }
 
 /// Row indices over a frame (the cube its node reads, made from it): args are the In column, the lookup text,
-/// the match mode and the search mode. None where nothing matched. `plan` holds the column's keys across the
+/// the mode (a Filter op) and the search mode. None where nothing matched. `plan` holds the column's keys across the
 /// lookups of one call.
 fn lookup_row_index(f: &FrameValue, args: &[V], plan: &std::cell::RefCell<Option<LookupPlan>>) -> Res<Option<usize>> {
     use crate::excel_functions::{MatchMode, Matcher};
+    use crate::frame_verbs::FilterOp;
     let (column, lookup) = (str_arg(args, 0)?, str_arg(args, 1)?);
+    let key = require_column(f, &column)?;
     if plan.borrow().is_none() {
-        let mm = match opt_str_arg(args, 2)?.as_deref() {
-            None | Some("exact") => MatchMode::Exact,
-            Some("nextSmaller") => MatchMode::NextSmaller,
-            Some("nextLarger") => MatchMode::NextLarger,
-            Some(_) => return Err(bad()),
-        };
+        let op: FilterOp = opt_str_arg(args, 2)?.as_deref().unwrap_or("eq").parse().map_err(|_| bad())?;
         let last = opt_str_arg(args, 3)?.as_deref() == Some("last");
-        let key = require_column(f, &column)?;
-        if mm != MatchMode::Exact && key.ty == FrameColType::Logical {
-            return Err(FrameOut::Error(sol_error(
-                ErrorCode::Value,
-                "Approximate lookup needs a number, date or text column",
-            )));
-        }
+        let keys = || key.values.iter().map(cell_to_v).collect::<Vec<V>>();
+        let approximate = |mm| {
+            if key.ty == FrameColType::Logical {
+                return Err(FrameOut::Error(sol_error(
+                    ErrorCode::Value,
+                    "A closest-match lookup needs a number, date or text column",
+                )));
+            }
+            Ok(mm)
+        };
         // The column is read whole either way, so even one lookup indexes it.
-        let keys = Matcher::new(key.values.iter().map(cell_to_v).collect(), mm, last, usize::MAX);
-        *plan.borrow_mut() = Some(LookupPlan { ty: key.ty, exact: mm == MatchMode::Exact, keys });
+        let how = match op {
+            FilterOp::Eq => LookupHow::Match(Matcher::new(keys(), MatchMode::Exact, last, usize::MAX)),
+            FilterOp::Lte => {
+                LookupHow::Match(Matcher::new(keys(), approximate(MatchMode::NextSmaller)?, last, usize::MAX))
+            }
+            FilterOp::Gte => {
+                LookupHow::Match(Matcher::new(keys(), approximate(MatchMode::NextLarger)?, last, usize::MAX))
+            }
+            FilterOp::Lt | FilterOp::Gt => {
+                approximate(MatchMode::Exact)?;
+                let (nums, texts) = lookup_steps(&keys(), last);
+                LookupHow::Strict { below: op == FilterOp::Lt, nums, texts }
+            }
+            FilterOp::Neq
+            | FilterOp::Contains
+            | FilterOp::StartsWith
+            | FilterOp::EndsWith
+            | FilterOp::IsBlank
+            | FilterOp::NotBlank => {
+                crate::frame_verbs::require_text_column(op, key.ty, &column).map_err(FrameOut::Error)?;
+                LookupHow::Test(op)
+            }
+            _ => return Err(bad()),
+        };
+        *plan.borrow_mut() = Some(LookupPlan { ty: key.ty, last, how });
     }
     let plan = plan.borrow();
     let plan = plan.as_ref().expect("planned above");
-    let needle = lookup_needle(&lookup, plan.ty)?;
-    if !plan.exact && !matches!(needle, V::Str(_)) && !matches!(needle, V::Num(n) if n.is_finite()) {
-        return Ok(None);
+    match &plan.how {
+        LookupHow::Match(m) => {
+            let needle = lookup_needle(&lookup, plan.ty)?;
+            let exact = matches!(m.mode(), MatchMode::Exact);
+            if !exact && !matches!(needle, V::Str(_)) && !matches!(needle, V::Num(n) if n.is_finite()) {
+                return Ok(None);
+            }
+            Ok(m.find(&needle).unwrap_or(None))
+        }
+        LookupHow::Strict { below, nums, texts } => {
+            let at = match lookup_needle(&lookup, plan.ty)? {
+                V::Num(x) if x.is_finite() => {
+                    let k = if *below {
+                        nums.partition_point(|&(v, _)| v < x)
+                    } else {
+                        nums.partition_point(|&(v, _)| v <= x)
+                    };
+                    if *below {
+                        k.checked_sub(1).map(|j| nums[j].1)
+                    } else {
+                        nums.get(k).map(|s| s.1)
+                    }
+                }
+                V::Str(t) => {
+                    let want = lower_text(&t);
+                    let k = if *below {
+                        texts.partition_point(|(v, _)| v.as_str() < want.as_ref())
+                    } else {
+                        texts.partition_point(|(v, _)| v.as_str() <= want.as_ref())
+                    };
+                    if *below {
+                        k.checked_sub(1).map(|j| texts[j].1)
+                    } else {
+                        texts.get(k).map(|s| s.1)
+                    }
+                }
+                _ => None,
+            };
+            Ok(at)
+        }
+        LookupHow::Test(op) => {
+            let value = FrameCell::str(&lookup);
+            let mut pass = crate::frame_verbs::compile_filter(*op, &value, plan.ty, false).map_err(FrameOut::Error)?;
+            let n = key.values.len();
+            for s in 0..n {
+                let i = if plan.last { n - 1 - s } else { s };
+                if pass(key.cell_at(i)).map_err(FrameOut::Error)? {
+                    return Ok(Some(i));
+                }
+            }
+            Ok(None)
+        }
     }
-    Ok(plan.keys.find(&needle).unwrap_or(None))
 }
 
 /// The Return column's cell on the matched row, or `undefined` where nothing matched.

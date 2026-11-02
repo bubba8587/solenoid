@@ -1787,10 +1787,12 @@ fn xlookup(c: &mut Call) -> Answer {
     }
     let in_col = trimmed(&in_raw, "The lookup column")?;
     let ret_col = trimmed(&ret_raw, "The return column")?;
-    let scalar_blank = match &lookup_raw {
-        V::List(_) => false,
-        other => trimmed(other, "The lookup value")?.is_empty(),
-    };
+    let valueless = lookup_ignores_value(c.field_str("matchMode", "eq"));
+    let scalar_blank = !valueless
+        && match &lookup_raw {
+            V::List(_) => false,
+            other => trimmed(other, "The lookup value")?.is_empty(),
+        };
     let across = c.field_str("direction", "rows") == "columns";
     if matches!(raw, Cv::V(V::Null)) || (in_col.is_empty() && !across) || scalar_blank {
         return shown_value(c, V::Null);
@@ -1822,7 +1824,7 @@ fn xlookup(c: &mut Call) -> Answer {
     }
     let whole_row = ret_col.is_empty();
     let fb = trimmed(&fb_raw, "The fallback")?;
-    let (mm, sm) = (c.field_str("matchMode", "exact").to_string(), c.field_str("searchMode", "first").to_string());
+    let (mm, sm) = (c.field_str("matchMode", "eq").to_string(), c.field_str("searchMode", "first").to_string());
     let as_text = |v: &V| {
         if super::list::nullish(v) {
             String::new()
@@ -1835,7 +1837,7 @@ fn xlookup(c: &mut Call) -> Answer {
             V::List(l) => l.to_vec(),
             other => vec![other.clone()],
         };
-        let lookups: Vec<String> = raws.iter().map(as_text).filter(|t| !t.is_empty()).collect();
+        let lookups: Vec<String> = raws.iter().map(as_text).filter(|t| valueless || !t.is_empty()).collect();
         let found = match &src_frame {
             Some(f) => lookup_on_core(f, &in_col, if whole_row { None } else { Some(&ret_col) }, &lookups, &mm, &sm)?,
             None => None,
@@ -1845,7 +1847,7 @@ fn xlookup(c: &mut Call) -> Answer {
         let mut k = 0;
         let mut match_one = |v: &V| -> Result<Cv, V> {
             let lookup = as_text(v);
-            if lookup.is_empty() {
+            if lookup.is_empty() && !valueless {
                 return Ok(Cv::NULL);
             }
             let hit = found.as_ref().map(|f| f.get(k).cloned().unwrap_or(V::Undef));
@@ -1897,7 +1899,6 @@ fn xlookup(c: &mut Call) -> Answer {
 /// XLOOKUP across: the lookup searches a row (the column names, or row `inRow`) and returns the matched column whole,
 /// or its cell in row `returnRow`. A blank or 0 row is the names, or the whole column.
 fn xlookup_across(c: &mut Call, cube: &Cube, lookup_raw: &V, fb: &str) -> Answer {
-    use crate::excel_functions::{MatchMode, Matcher};
     let rows = cube_row_count(cube);
     let row_of = |c: &Call, key: &str| -> Result<Option<usize>, V> {
         let n = super::kit::num(&c.read_num(key, 0.0));
@@ -1918,51 +1919,82 @@ fn xlookup_across(c: &mut Call, cube: &Cube, lookup_raw: &V, fb: &str) -> Answer
                 cube.columns.iter().map(|k| k.cells.get(r).and_then(|x| x.v().cloned()).unwrap_or(V::Null)).collect()
             }
         };
-        // A row holding numbers reads a lookup that parses as one as a number, as a number column does; the names read text.
-        let numeric = in_row.is_some() && keys.iter().any(|k| matches!(k, V::Num(_)));
-        let mm = match c.field_str("matchMode", "exact") {
-            "nextSmaller" => MatchMode::NextSmaller,
-            "nextLarger" => MatchMode::NextLarger,
-            _ => MatchMode::Exact,
+        // The searched row as a one-column frame, so it matches exactly as a column does: a row of numbers is a
+        // number column, the names and any other row text.
+        let numeric = in_row.is_some()
+            && keys.iter().any(|k| matches!(k, V::Num(_)))
+            && keys.iter().all(|k| matches!(k, V::Num(_) | V::Null | V::Undef));
+        let (ty, cells): (FrameColType, Vec<V>) = if numeric {
+            (FrameColType::Number, keys)
+        } else {
+            let text =
+                |k: &V| if super::list::nullish(k) { V::Null } else { V::str(&crate::excel_functions::value_text(k)) };
+            (FrameColType::String, keys.iter().map(text).collect())
         };
-        let last = c.field_str("searchMode", "first") == "last";
+        let searched = FrameValue { columns: vec![FrameColumn::new("k", ty, cells.iter().map(core_cell).collect())] };
         let raws: Vec<V> = match lookup_raw {
             V::List(l) => l.to_vec(),
             other => vec![other.clone()],
         };
-        let text = |v: &V| {
-            if super::list::nullish(v) {
-                String::new()
-            } else {
-                trim_space(&crate::excel_functions::value_text(v)).to_string()
+        let valueless = lookup_ignores_value(c.field_str("matchMode", "eq"));
+        let texts: Vec<String> = raws
+            .iter()
+            .map(|v| {
+                if super::list::nullish(v) {
+                    String::new()
+                } else {
+                    trim_space(&crate::excel_functions::value_text(v)).to_string()
+                }
+            })
+            .collect();
+        let asked: Vec<V> = texts.iter().filter(|t| valueless || !t.is_empty()).map(|t| V::str(t)).collect();
+        let found: Vec<i64> = if asked.is_empty() {
+            Vec::new()
+        } else {
+            let args = [
+                V::str("k"),
+                list(asked),
+                V::str(c.field_str("matchMode", "eq")),
+                V::str(c.field_str("searchMode", "first")),
+            ];
+            match crate::frame_fns::call("lookupRowIndex", &[&searched], &args) {
+                crate::frame_fns::FrameOut::Value(V::List(f)) => {
+                    f.iter().map(|i| if let V::Num(i) = i { *i as i64 } else { -1 }).collect()
+                }
+                crate::frame_fns::FrameOut::Error(e) => return Err(V::err(e)),
+                _ => return Err(thrown("XLOOKUP got an answer it doesn't read")),
             }
         };
-        let matcher = Matcher::new(keys, mm, last, raws.len());
-        let one = |v: &V| -> Result<Cv, V> {
-            let t = text(v);
-            if t.is_empty() {
-                return Ok(Cv::NULL);
+        let mut k = 0;
+        let mut one = |t: &String| -> Cv {
+            if t.is_empty() && !valueless {
+                return Cv::NULL;
             }
-            let n = crate::value_kinds::decimal_from_text(&t);
-            let needle = if numeric && n.is_finite() { V::Num(n) } else { V::str(&t) };
-            if let Some(col) = matcher.find(&needle)?.and_then(|i| cube.columns.get(i)) {
-                return Ok(match ret_row {
+            let at = found.get(k).copied().unwrap_or(-1);
+            k += 1;
+            if let Some(col) = usize::try_from(at).ok().and_then(|i| cube.columns.get(i)) {
+                return match ret_row {
                     None => Cv::list(col.cells.clone()),
                     Some(r) => col.cells.get(r).cloned().unwrap_or(Cv::NULL),
-                });
+                };
             }
             if fb.is_empty() {
-                return Ok(Cv::V(err(ErrorCode::NotAvailable, "No column matched the lookup value")));
+                return Cv::V(err(ErrorCode::NotAvailable, "No column matched the lookup value"));
             }
             let n = crate::value_kinds::decimal_from_text(fb);
-            Ok(Cv::V(if n.is_nan() { V::str(fb) } else { V::Num(n) }))
+            Cv::V(if n.is_nan() { V::str(fb) } else { V::Num(n) })
         };
-        match lookup_raw {
-            V::List(_) => raws.iter().map(one).collect::<Result<Vec<_>, _>>().map(Cv::list),
-            other => one(other),
-        }
+        Ok(match lookup_raw {
+            V::List(_) => Cv::list(texts.iter().map(&mut one).collect()),
+            _ => one(&texts[0]),
+        })
     })();
     shown_value(c, result.unwrap_or_else(Cv::V))
+}
+
+/// A lookup mode that tests the cell alone (is blank, not blank): the lookup value is never read.
+fn lookup_ignores_value(mode: &str) -> bool {
+    matches!(mode, "isblank" | "notblank")
 }
 
 fn shown_value(c: &mut Call, v: impl Into<Cv>) -> Answer {

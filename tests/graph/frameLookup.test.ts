@@ -43,7 +43,7 @@ describe("frame/cube XLOOKUP shares the XMATCH formula kernel (no surface drift)
     expect(lookupFrameRowIndex(people, "id", "2")).toBe(xmatchIndex(2, ids));             // number exact
     expect(lookupFrameRowIndex(people, "name", "Zed")).toBe(xmatchIndex("Zed", names));   // miss → -1 both
     expect(lookupFrameRowIndex(people, "joined", "46010")).toBe(xmatchIndex(46010, joined)); // date parsed to serial
-    expect(lookupFrameRowIndex(people, "id", "2.5", "nextSmaller"))
+    expect(lookupFrameRowIndex(people, "id", "2.5", "lte"))
       .toBe(xmatchIndex(2.5, ids, "next_smaller"));                                        // approximate
   });
 });
@@ -92,7 +92,7 @@ describe("lookupFrameCell — frame XLOOKUP/VLOOKUP", () => {
       ],
     };
     expect(lookupFrameCell(dup, "k", "v", "x")).toBe(10);                    // first (default)
-    expect(lookupFrameCell(dup, "k", "v", "x", "exact", "last")).toBe(30);   // last
+    expect(lookupFrameCell(dup, "k", "v", "x", "eq", "last")).toBe(30);   // last
   });
 });
 
@@ -165,28 +165,28 @@ describe("lookupFrameCell — approximate match (XLOOKUP match_mode -1/1)", () =
   });
 
   it("nextSmaller: exact match wins, else the closest smaller key", () => {
-    expect(lookupFrameCell(prices, "qty", "discount", "10", "nextSmaller")).toBe(0.05); // exact
-    expect(lookupFrameCell(prices, "qty", "discount", "20", "nextSmaller")).toBe(0.05); // between 10 and 50
-    expect(lookupFrameCell(prices, "qty", "discount", "0", "nextSmaller")).toBeUndefined(); // below every key
+    expect(lookupFrameCell(prices, "qty", "discount", "10", "lte")).toBe(0.05); // exact
+    expect(lookupFrameCell(prices, "qty", "discount", "20", "lte")).toBe(0.05); // between 10 and 50
+    expect(lookupFrameCell(prices, "qty", "discount", "0", "lte")).toBeUndefined(); // below every key
   });
 
   it("nextLarger: exact match wins, else the closest larger key", () => {
-    expect(lookupFrameCell(prices, "qty", "discount", "10", "nextLarger")).toBe(0.05); // exact
-    expect(lookupFrameCell(prices, "qty", "discount", "20", "nextLarger")).toBe(0.1); // between 10 and 50
-    expect(lookupFrameCell(prices, "qty", "discount", "1000", "nextLarger")).toBeUndefined(); // above every key
+    expect(lookupFrameCell(prices, "qty", "discount", "10", "gte")).toBe(0.05); // exact
+    expect(lookupFrameCell(prices, "qty", "discount", "20", "gte")).toBe(0.1); // between 10 and 50
+    expect(lookupFrameCell(prices, "qty", "discount", "1000", "gte")).toBeUndefined(); // above every key
   });
 
   it("a text column steps case-insensitively, as XMATCH does", () => {
     const named: FrameValue = { __frame: true, columns: [{ name: "n", type: "string", values: ["apple", "Cherry", "melon"] }, { name: "v", type: "number", values: [1, 2, 3] }] };
-    expect(lookupFrameCell(named, "n", "v", "banana", "nextSmaller")).toBe(1);
-    expect(lookupFrameCell(named, "n", "v", "banana", "nextLarger")).toBe(2);
-    expect(lookupFrameCell(named, "n", "v", "CHERRY", "nextLarger")).toBe(2);
-    expect(lookupFrameCell(named, "n", "v", "zebra", "nextLarger")).toBeUndefined();
+    expect(lookupFrameCell(named, "n", "v", "banana", "lte")).toBe(1);
+    expect(lookupFrameCell(named, "n", "v", "banana", "gte")).toBe(2);
+    expect(lookupFrameCell(named, "n", "v", "CHERRY", "gte")).toBe(2);
+    expect(lookupFrameCell(named, "n", "v", "zebra", "gte")).toBeUndefined();
   });
 
   it("a logical column refuses an approximate match", () => {
     const flags: FrameValue = { __frame: true, columns: [{ name: "f", type: "logical", values: [true, false] }, { name: "v", type: "number", values: [1, 2] }] };
-    const err = (() => { try { lookupFrameCell(flags, "f", "v", "true", "nextSmaller"); } catch (e) { return e; } })();
+    const err = (() => { try { lookupFrameCell(flags, "f", "v", "true", "lte"); } catch (e) { return e; } })();
     expect(isSolError(err) && err.code).toBe("#VALUE!");
   });
 });
@@ -210,7 +210,7 @@ describe("XLOOKUP across: search a row, return a column", () => {
       { name: "Feb", type: "number", values: [30, 40] },
     ],
   };
-  const across = (lookup: string, set: { inRow?: number; returnRow?: number; ifNotFound?: string; matchMode?: "exact" | "nextSmaller" | "nextLarger" } = {}) => {
+  const across = (lookup: string, set: { inRow?: number; returnRow?: number; ifNotFound?: string; matchMode?: "eq" | "lte" | "gte" } = {}) => {
     const n = new XLookupNode({ direction: "columns", matchMode: set.matchMode });
     throughBoundary(n);
     n.stringLiterals = { lookup, ifNotFound: set.ifNotFound ?? "" };
@@ -225,7 +225,7 @@ describe("XLOOKUP across: search a row, return a column", () => {
 
   it("In row searches that row's cells, a number row reading the lookup as a number", () => {
     expect(across("40", { inRow: 2, returnRow: 1 })).toBe(30);
-    expect(across("35", { inRow: 2, returnRow: 1, matchMode: "nextSmaller" })).toBe(10);
+    expect(across("35", { inRow: 2, returnRow: 1, matchMode: "lte" })).toBe(10);
   });
 
   it("a miss is #N/A or the fallback; a row past the table is #REF!", () => {
@@ -241,5 +241,44 @@ describe("XLOOKUP across: search a row, return a column", () => {
     expect(Object.keys(n.inputs)).toEqual(["frame", "lookup", "inColumn", "returnColumn", "ifNotFound"]);
     expect(n.setDirection("columns")).toEqual(["inColumn", "returnColumn"]);
     expect(Object.keys(n.inputs)).toEqual(["frame", "lookup", "ifNotFound", "inRow", "returnRow"]);
+  });
+});
+
+describe("XLOOKUP's modes are Filter's ops", () => {
+  const towns: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "town", type: "string", values: ["Enterprise", "Eufaula", null, "Dothan"] },
+      { name: "pop", type: "number", values: [28, 13, 7, 71] },
+    ],
+  };
+  const at = (lookup: string, mm: LookupMatchMode, sm: LookupSearchMode = "first") => lookupFrameCell(towns, "town", "pop", lookup, mm, sm);
+
+  it("starts with, contains and ends with take the first row that passes, ignoring case", () => {
+    expect(at("euf", "startsWith")).toBe(13);
+    expect(at("PRISE", "endsWith")).toBe(28);
+    expect(at("a", "contains")).toBe(13);
+    expect(at("a", "contains", "last")).toBe(71);
+    expect(at("zz", "contains")).toBeUndefined();
+  });
+
+  it("≤ and ≥ take the closest key; < and > the closest strictly past it", () => {
+    expect(at("euf", "lte")).toBe(28);
+    expect(at("eufaula", "lte")).toBe(13);
+    expect(at("eufaula", "lt")).toBe(28);
+    expect(at("dothan", "gt")).toBe(28);
+    expect(lookupFrameCell(towns, "pop", "town", "7", "lt")).toBeUndefined();
+    expect(lookupFrameCell(towns, "pop", "town", "28", "gt")).toBe("Dothan");
+  });
+
+  it("≠ and the blank tests are Filter's: is blank ignores the lookup", () => {
+    expect(at("Enterprise", "neq")).toBe(13);
+    expect(at("", "isblank")).toBe(7);
+    expect(at("anything", "notblank", "last")).toBe(71);
+  });
+
+  it("a text test on a number column is Filter's #TYPE!", () => {
+    const err = (() => { try { lookupFrameCell(towns, "pop", "town", "1", "contains"); } catch (e) { return e; } })();
+    expect(isSolError(err) && (err as { code: string }).code).toBe("#TYPE!");
   });
 });

@@ -1137,11 +1137,8 @@ export function GetRowComponent({ data, emit }: NodeProps<GetRowNodeType>) {
 
 // ─── XLOOKUP (table / cube / widened list) ──────────────────────────────────────
 
-const LOOKUP_MATCH_OPTIONS: { value: LookupMatchMode; label: string; title: string }[] = [
-  { value: "exact", label: "Exact", title: "Only an equal cell matches" },
-  { value: "nextSmaller", label: "≤", title: "Exact match, else the closest smaller number, date or text" },
-  { value: "nextLarger", label: "≥", title: "Exact match, else the closest larger number, date or text" },
-];
+// Filter's own list: the same words for the same tests on both cards.
+const LOOKUP_MATCH_OPTIONS = FILTER_OP_OPTIONS as { value: LookupMatchMode; label: string }[];
 
 const LOOKUP_SEARCH_OPTIONS: { value: LookupSearchMode; label: string; title: string }[] = [
   { value: "first", label: "First", title: "On duplicate keys, return the first match, scanning top to bottom" },
@@ -1172,14 +1169,14 @@ export function XLookupComponent({ data, emit }: NodeProps<XLookupNodeType>) {
     <NodeShell node={data} emit={emit}>
       <SegToggle value={direction} options={LOOKUP_DIRECTION_OPTIONS} onChange={(d) => void pickDirection(d)} />
       <InlineInputs node={data} emit={emit} keys={collapsed ? undefined : ["frame", "lookup", ...XLookupNode.axisKeys(direction)]} />
+      {!collapsed && <ArgSelect value={matchMode} options={LOOKUP_MATCH_OPTIONS} onChange={setMatchMode} />}
       {!collapsed && <CardSection
         label="Options"
         collapsible
-        defaultOpen={fallback || matchMode !== "exact" || searchMode !== "first"}
+        defaultOpen={fallback || searchMode !== "first"}
         sockets={{ node: data, emit, keys: XLOOKUP_OPTION_KEYS }}
       >
         <InlineInputs node={data} emit={emit} keys={XLOOKUP_OPTION_KEYS} />
-        <SegToggle value={matchMode} options={LOOKUP_MATCH_OPTIONS} onChange={setMatchMode} />
         <SegToggle value={searchMode} options={LOOKUP_SEARCH_OPTIONS} onChange={setSearchMode} />
       </CardSection>}
       {/* ResultDisplay routes a whole-row or nested-cell return to its display. */}

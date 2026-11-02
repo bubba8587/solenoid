@@ -1745,7 +1745,7 @@ export type LookupDirection = "rows" | "columns";
 export class XLookupNode extends GraphNode {
   static fieldPlaceholders: Record<string, string> = { returnColumn: "all", inRow: "names", returnRow: "all" };
   static socketDocs: Record<string, string> = {
-    lookup: "Matching follows the In column's type: text ignores case, and a number or date column parses the lookup text.",
+    lookup: "Matching follows the In column's type: text ignores case, and a number or date column parses the lookup text. =, ≤ and ≥ take the equal or closest key, < and > the closest strictly past it; contains, starts with and the rest take the first row that passes, as Filter's tests do. Is blank and not blank ignore it.",
     returnColumn: "Blank returns the whole matched row.",
     inRow: "The row searched, counting from 1. Blank searches the column names.",
     returnRow: "The row whose cell comes back from the matched column. Blank returns the whole column.",
@@ -1765,7 +1765,7 @@ export class XLookupNode extends GraphNode {
   constructor(init?: { label?: string; matchMode?: LookupMatchMode; searchMode?: LookupSearchMode; direction?: LookupDirection }) {
     super("XLookup");
     this.label = init?.label ?? "XLOOKUP";
-    this.matchMode = init?.matchMode ?? "exact";
+    this.matchMode = init?.matchMode ?? "eq";
     this.searchMode = init?.searchMode ?? "first";
     this.direction = init?.direction === "columns" ? "columns" : "rows";
     this.addInput("frame", cubeAdoptIn("Table / Cube"));
