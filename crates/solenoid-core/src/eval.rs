@@ -645,6 +645,9 @@ pub struct Eval<'a> {
     /// A computed column's row-free subtrees (`row_free`), each with its value once a row has computed it.
     hoisted: RefCell<FxHashMap<*const Ast, Option<V>>>,
     hoists: Cell<bool>,
+    /// The address of the formula's root, whose `+` or `-` snaps a cancellation to zero as Excel's last operation does
+    /// (`snapped_sum`); 0 where nothing snaps (a LAMBDA host's body, a formula wholly in parentheses).
+    root: Cell<usize>,
 }
 
 /// A list as a range call with `prep` reads it: flattened from a one-wide table, its first error, its blanks gone.
@@ -830,10 +833,17 @@ impl Eval<'_> {
             }
             Ast::Bin { op, l, r } => {
                 let (l, r) = (self.eval(l, env), self.eval(r, env));
+                let snaps = matches!(op, BinOp::Add | BinOp::Sub) && std::ptr::eq(n, self.root.get() as *const Ast);
+                let one = |a: &V, b: &V| match (snaps, a, b, op2(*op, a, b)) {
+                    (true, V::Num(x), V::Num(y), V::Num(_)) => {
+                        V::Num(crate::excel_formula::snapped_sum(*x, if *op == BinOp::Sub { -y } else { *y }))
+                    }
+                    (_, _, _, v) => v,
+                };
                 if is_arr(&l) || is_arr(&r) {
-                    return map_cells(&[l, r], &mut |x| op2(*op, &x[0], &x[1]));
+                    return map_cells(&[l, r], &mut |x| one(&x[0], &x[1]));
                 }
-                op2(*op, &l, &r)
+                one(&l, &r)
             }
             Ast::Apply { func, args } => {
                 let Some(_depth) = CallDepth::enter() else { return CallDepth::too_deep() };
@@ -1840,6 +1850,9 @@ pub fn formula(src: &str, env: Env) -> Option<V> {
                 ast: crate::excel_formula::parse_formula(src)?,
                 eval: Eval { memo_calls: true, ..Eval::default() },
             });
+            if !crate::excel_formula::wholly_parenthesized(src) {
+                c.eval.root.set(&c.ast as *const Ast as usize);
+            }
             FORMULAS.with(|f| {
                 let mut f = f.borrow_mut();
                 if f.len() == FORMULAS_KEPT {
@@ -2193,6 +2206,9 @@ fn column_hoisting<C>(
     let rows = Rows;
     match spec {
         ColumnSpec::Expr { ast, .. } => {
+            // Each cell is a formula whose last `+` or `-` snaps; the column holds the tree, not the text, so a formula
+            // wholly in parentheses snaps here too.
+            ev.root.set(ast as *const Ast as usize);
             for p in row_refs(ast) {
                 if ctx.reserved.contains(&p) {
                     continue;

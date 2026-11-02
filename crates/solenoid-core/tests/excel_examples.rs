@@ -392,3 +392,52 @@ fn everyday_answers_match_excel() {
         assert_eq!(text(src), want, "{src}");
     }
 }
+
+/// The author's Excel, 2026-11-02: comparisons and criteria read numbers equal to 15 significant digits as equal;
+/// XMATCH and EXACT don't change; text turns scientific from 1E+20 and keeps 0.00001 whole.
+#[test]
+fn near_equal_numbers_compare_as_excel() {
+    let t = |src: &str| matches!(eval(src), V::Bool(true));
+    assert!(t("0.1 + 0.2 = 0.3"));
+    assert!(t("1 - 0.9 = 0.1"));
+    assert!(!t("0.1 + 0.2 <> 0.3"));
+    assert!(!t("0.1 + 0.2 > 0.3"));
+    assert!(t("0.1 + 0.2 <= 0.3"));
+    assert!(t("0.1 + 0.2 >= 0.3"));
+    assert!(!t("0.3 < 0.1 + 0.2"));
+    assert!(t("1E+15 + 0.4 = 1E+15"));
+    assert!(!t("0.1 + 0.2 - 0.3 = 0"));
+    assert_eq!(text("IF(0.1 + 0.2 = 0.3, \"same\", \"differ\")"), "same");
+    assert_eq!(num("COUNTIF(VSTACK(0.1 + 0.2, 0.3), 0.3)"), 2.0);
+    assert!(is_error("XMATCH(0.3, VSTACK(0.1, 0.1 + 0.2, 0.5))"));
+    assert!(t("EXACT(0.1 + 0.2, 0.3)"));
+    for (src, want) in [
+        ("1E+19 & \"\"", "10000000000000000000"),
+        ("1.5E+19 & \"\"", "15000000000000000000"),
+        ("1E+20 & \"\"", "1E+20"),
+        ("-1E+20 & \"\"", "-1E+20"),
+        ("1E+100 & \"\"", "1E+100"),
+        ("1E+15 & \"\"", "1000000000000000"),
+        ("1E+16 & \"\"", "10000000000000000"),
+        ("123456789012345 & \"\"", "123456789012345"),
+        ("0.0001 & \"\"", "0.0001"),
+        ("0.00001 & \"\"", "0.00001"),
+        ("1.23456789012345E-10 & \"\"", "1.23456789012345E-10"),
+        ("(0.1 + 0.2) & \"\"", "0.3"),
+    ] {
+        assert_eq!(text(src), want, "{src}");
+    }
+}
+
+/// The author's Excel, 2026-11-02: a formula's last `+` or `-` that cancels to 15 digits is 0, as is SUM's; the same
+/// cancellation inside parentheses wrapping the whole formula, a function's argument, a product or a comparison isn't.
+#[test]
+fn the_last_addition_snaps_as_excel() {
+    for src in ["0.1+0.2-0.3", "1-0.9-0.1", "0.3-0.1-0.2", "(0.1+0.2)-0.3", "1E+15+0.3-1E+15", "SUM(0.1, 0.2, -0.3)"] {
+        assert_eq!(num(src), 0.0, "{src}");
+    }
+    for src in ["(0.1+0.2-0.3)", "0.1+0.2-0.3+0", "ABS(0.1+0.2-0.3)"] {
+        close(src, 5.551115123125783e-17, 1e-30);
+    }
+    close("(0.1+0.2-0.3)*1E+17", 5.551115123125783, 1e-12);
+}

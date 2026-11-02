@@ -333,7 +333,8 @@ pub fn number_to_text(x: f64) -> String {
     }
     let v = to_precision(x, 15);
     let mag = v.abs();
-    if mag != 0.0 && !(1e-4..1e21).contains(&mag) {
+    // The author's Excel, 2026-11-02: 1E+19 writes in full, 1E+20 as 1E+20; 0.00001 in full, 1.23456789012345E-10 not.
+    if mag != 0.0 && !(1e-5..1e20).contains(&mag) {
         let shortest = format!("{v:e}");
         let (m, e) = shortest.split_once('e').unwrap_or((&shortest, "0"));
         let exp: i32 = e.parse().unwrap_or(0);
@@ -5838,15 +5839,17 @@ fn date_from_parts(raw_y: f64, raw_m: f64, raw_d: f64) -> V {
 }
 
 /// Formula.js's SUM, a nested list adding as its own subtotal.
+/// Each addition snaps a cancellation to zero as Excel's SUM does (`SUM(0.1, 0.2, -0.3)` is 0; `snapped_sum`).
 fn sum_like_fx(a: &[V]) -> V {
+    use crate::excel_formula::snapped_sum;
     let mut result = 0.0;
     for v in a {
         match v {
             V::Fx(_) => return v.clone(),
-            V::Num(n) => result += n,
+            V::Num(n) => result = snapped_sum(result, *n),
             // Text is skipped, never read as a number ([[C10]] socketLattice).
             V::List(items) => match sum_like_fx(items) {
-                V::Num(n) => result += n,
+                V::Num(n) => result = snapped_sum(result, n),
                 e => return e,
             },
             _ => {}

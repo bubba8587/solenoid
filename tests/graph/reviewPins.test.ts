@@ -310,7 +310,9 @@ describe("review pins: number-to-text scientific form", () => {
     const numberToText = (x: number) => compileEvaluator('x & ""')!({ x });
     expect(numberToText(1e21)).toBe("1E+21");
     expect(numberToText(0.0000001)).toBe("1E-07");
-    expect(numberToText(0.00001)).toBe("1E-05");
+    expect(numberToText(0.00001)).toBe("0.00001"); // the author's Excel, 2026-11-02
+    expect(numberToText(1e19)).toBe("10000000000000000000");
+    expect(numberToText(1e20)).toBe("1E+20");
     expect(numberToText(0.0001)).toBe("0.0001");
     expect(numberToText(0.1 + 0.2)).toBe("0.3");
     expect(numberToText(-0)).toBe("0");

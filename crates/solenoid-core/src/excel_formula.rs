@@ -608,6 +608,53 @@ fn num_of(v: &V) -> V {
     }
 }
 
+/// Two numbers Excel's comparisons read as one: equal to 15 significant digits (the author's Excel, 2026-11-02:
+/// `0.1+0.2=0.3` and `1E+15+0.4=1E+15` are TRUE, `0.1+0.2>0.3` FALSE). Exact equality answers first, and only a pair
+/// already within 1e-14 of each other is rounded, so a comparison over a column stays cheap ([[C120]] linearWork).
+pub fn same_to_15(x: f64, y: f64) -> bool {
+    if x == y {
+        return true;
+    }
+    if !x.is_finite() || !y.is_finite() || (x - y).abs() > x.abs().max(y.abs()) * 1e-14 {
+        return false;
+    }
+    format!("{x:.14e}") == format!("{y:.14e}")
+}
+
+/// `x + y` as Excel's last addition answers it: zero where the two cancel to 15 significant digits, so
+/// `0.1+0.2-0.3` is 0 and not 5.55E-17 (the author's Excel, 2026-11-02).
+pub fn snapped_sum(x: f64, y: f64) -> f64 {
+    let r = x + y;
+    if r != 0.0 && same_to_15(x, -y) {
+        0.0
+    } else {
+        r
+    }
+}
+
+/// Whether the formula's text is one parenthesized whole, `(0.1+0.2-0.3)`, which Excel doesn't snap.
+pub fn wholly_parenthesized(src: &str) -> bool {
+    let t = src.trim().trim_start_matches('=').trim();
+    if !t.starts_with('(') || !t.ends_with(')') {
+        return false;
+    }
+    let (mut depth, mut quoted) = (0i32, false);
+    for (i, c) in t.char_indices() {
+        match c {
+            '"' => quoted = !quoted,
+            '(' if !quoted => depth += 1,
+            ')' if !quoted => {
+                depth -= 1;
+                if depth == 0 {
+                    return i == t.len() - 1;
+                }
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
 pub fn number_to_text(x: f64) -> String {
     crate::excel_functions::number_to_text(x)
 }
@@ -686,7 +733,7 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
                         }
                 }
                 _ => match (&na, &nb) {
-                    (V::Num(x), V::Num(y)) => x == y,
+                    (V::Num(x), V::Num(y)) => same_to_15(*x, *y),
                     (V::Str(x), V::Str(y)) => x == y,
                     (V::Undef, V::Undef) => true,
                     _ => false,
@@ -697,7 +744,9 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
         BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => {
             let cmp = match (&na, &nb) {
                 (V::Num(x), V::Num(y)) => {
-                    if x < y {
+                    if same_to_15(*x, *y) {
+                        0
+                    } else if x < y {
                         -1
                     } else if x > y {
                         1

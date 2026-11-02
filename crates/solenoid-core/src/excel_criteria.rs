@@ -880,7 +880,8 @@ fn criterion_matches(cell: &V, crit: &Criterion) -> bool {
         Value::Num(n) => {
             return match cell {
                 V::Bool(_) => false,
-                V::Num(c) => cmp(crit.op, c - n),
+                // Excel's criteria read numbers equal to 15 digits as its `=` does (the author's Excel, 2026-11-02).
+                V::Num(c) => cmp(crit.op, if crate::excel_formula::same_to_15(*c, *n) { 0.0 } else { c - n }),
                 _ => crit.op == Op::Neq,
             };
         }

@@ -386,6 +386,8 @@ Ragged element-wise math pads with `null`, never `#N/A`. Shape-building function
 
 ## Scalar operators
 
+**The last addition snaps** (the author's Excel, 2026-11-02). The `+` or `-` at a formula's root answers 0 where its two numbers cancel to 15 significant digits (`snapped_sum`), so `0.1+0.2-0.3`, `(0.1+0.2)-0.3` and `1E+15+0.3-1E+15` are 0. Only the root snaps: the same cancellation inside parentheses wrapping the whole formula, inside a function's argument, before a product or under a comparison keeps its 5.55E-17. SUM snaps each addition the same way (`SUM(0.1, 0.2, -0.3)` is 0). The root is the formula's, set by `formula` (unless `wholly_parenthesized`) and by a computed column for every cell; a column holds its tree, not its text, so a column formula wholly in parentheses snaps too, and the unit-aware Expression path (`unit_expression.rs`) doesn't snap yet. A LAMBDA host's body never does.
+
 `op2(op, a, b)` runs per cell. Checks in order: an error in `a`, then in `b`, is the answer; a `null` on either side answers `null`; a complex operand goes to the complex table; a LAMBDA operand answers `#TYPE!` ("A LAMBDA isn't a value…"). Otherwise `apply_op` (`excel_formula.rs`) runs: logicals become 1 and 0 for the numeric operators and ordering, and:
 
 | Operator | Result |
@@ -393,14 +395,14 @@ Ragged element-wise math pads with `null`, never `#N/A`. Shape-building function
 | `+` `-` `*` `^` | Arithmetic on the operands, then `guard`. `^` runs the POWER and Arithmetic card kernel: zero to a negative power is `#DIV/0!`, as in Excel. A text operand to any of these (and to `/`) is `#VALUE!` "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE" ([[C10]] socketLattice). |
 | `/` | `#DIV/0!` when the divisor is 0 and the dividend is a number; otherwise divide, then `guard`. |
 | `&` | Both sides as text: numbers through `number_to_text`, logicals as `TRUE` and `FALSE`, strings as they are. `null & "a"` is `null`. |
-| `=` `<>` | Two strings compare case-insensitively (`toLowerCase`, [[C45]] excelComparisons). Anything else compares with `===` after the logical bridge, so `5 = "5"` is FALSE and `TRUE = 1` is TRUE. |
-| `<` `>` `<=` `>=` | Two numbers numerically; two strings by code point (`compare_text`, `jsnum.rs`, [[C59]] byteStringOrder), which is case-sensitive; any other pair `#TYPE!` "Cannot order values of different types; Cast one side first". |
+| `=` `<>` | Two strings compare case-insensitively (`toLowerCase`, [[C45]] excelComparisons). Anything else compares with `===` after the logical bridge, so `5 = "5"` is FALSE and `TRUE = 1` is TRUE; two numbers equal to 15 significant digits are equal (`same_to_15`), so `0.1+0.2=0.3` is TRUE, as in Excel. |
+| `<` `>` `<=` `>=` | Two numbers numerically, those equal to 15 significant digits as equal (`0.1+0.2>0.3` is FALSE, `<=` TRUE); two strings by code point (`compare_text`, `jsnum.rs`, [[C59]] byteStringOrder), which is case-sensitive; any other pair `#TYPE!` "Cannot order values of different types; Cast one side first". |
 
 **Case** ([[C45]] excelComparisons). Every equality test and match ignores case, as Excel's `=` does: `=` and `<>`, the Comparison node's equality ops, lookup matches, the criteria family and the Filter's text ops. EXACT and the "Match case" option compare case-sensitively. Every identity operation respects case instead: Join keys, GROUPBY keys and Distinct ([[frame-verbs]]), since merging "Apple" and "apple" into one group or one match would destroy a distinction the data held, with nothing on screen to show it. Ordering goes by character code and so respects case too ([[C59]] byteStringOrder). A per-verb option to ignore case in keys would be an addition inside this rule.
 
 `0^0` is 1, as in Google Sheets, IEEE 754's `pow` and nearly every language, not Excel's `#NUM!`: the empty product is 1, and the formulas that rely on it (polynomials, series, `x^0` columns) shouldn't break at zero ([[B27]] computeAnswersToExcel, the better app where Excel's answer only gets in the way).
 
-`number_to_text(x)`: non-finite values use `String`; otherwise round to 15 significant digits and strip trailing zeros, so `(0.1+0.2) & "kg"` is `0.3kg`. Magnitudes of 1e21 or more, or nonzero below 1e-4, are written Excel's way: `1E+21`, `1E-07` (uppercase E, signed, at least two exponent digits).
+`number_to_text(x)`: non-finite values use `String`; otherwise round to 15 significant digits and strip trailing zeros, so `(0.1+0.2) & "kg"` is `0.3kg`. Magnitudes of 1e20 or more, or nonzero below 1e-5, are written Excel's way: `1E+20`, `1E-07` (uppercase E, signed, at least two exponent digits); `1E+19` and `0.00001` are written whole (the author's Excel, 2026-11-02; where between 1e-5 and 1.2e-10 Excel turns scientific is unchecked).
 
 Complex operands (`apply_cx_op`): `&` formats the complex value with `format_cx` (`eval.rs`); `=` and `<>` are true only for two complex values with equal real and imaginary parts; ordering answers `#TYPE!` "Complex numbers have no order…"; arithmetic answers `#TYPE!` naming `IMSUM`, `IMSUB`, `IMPRODUCT` and `IMDIV`.
 
