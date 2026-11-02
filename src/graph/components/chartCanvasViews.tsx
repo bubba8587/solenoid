@@ -32,20 +32,6 @@ function setupCanvas(canvas: HTMLCanvasElement, W: number, H: number): Ctx | nul
   return ctx;
 }
 
-/** A resolved `rgb(…)` or `#rrggbb` color as its channels; black when it reads as neither. */
-function inkRgb(color: string): [number, number, number] {
-  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(color);
-  const hex = /^#([0-9a-f]{6})$/i.exec(color);
-  return m ? [+m[1], +m[2], +m[3]] : hex ? [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16)) as [number, number, number] : [0, 0, 0];
-}
-
-/** Whether a resolved color is a light one (a light-theme surface). */
-function isLightInk(color: string): boolean {
-  const [r, g, b] = inkRgb(color);
-  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.5;
-}
-
-
 function themeInk(canvas: HTMLCanvasElement) {
   const v = (name: string, fb: string) => themeColor(name, fb, canvas);
   return {
@@ -53,7 +39,7 @@ function themeInk(canvas: HTMLCanvasElement) {
     dim: v("--text-dim", "#888"),
     border: v("--border-strong", "#555"),
     sunken: v("--surface-sunken", "#2a2a2a"),
-    subtle: v("--border-subtle", "#2a2a2a"),
+    emptyCell: v("--chart-empty-cell", "#141414"),
     up: resolveColor("green"),
     down: resolveColor("vermilion"),
     accent: v("--accent", resolveColor("sky")),
@@ -274,9 +260,8 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, o: ChartOptio
   if (!L) return null;
   const { byDay, start, end, gridStart, weeks, cell, gap, padL, perBand } = L;
   const scale = heatScale(L.lo, L.hi, o);
-  // A day's cell sits on the sunken surface; on a white page that is a step deeper, so the empty days and the faint
-  // low values still read against the page.
-  const cellBase = isLightInk(ink.sunken) ? ink.subtle : ink.sunken;
+  // A day's cell: its own theme color, picked per mode in CSS, so nothing here guesses the mode from a color.
+  const cellBase = ink.emptyCell;
   // No cmap and no center keeps the accent, at an opacity by value over the empty-day color.
   const color = heatColorFn(o);
   const paint: Paint = o.cmap || o.center !== undefined
