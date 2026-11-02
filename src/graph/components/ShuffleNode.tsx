@@ -18,8 +18,8 @@ export function ShuffleComponent({ data, emit }: NodeProps<ShuffleNodeType>) {
     <NodeShell node={data} emit={emit}>
       <OpToggle value={op} options={OPTIONS} onChange={setOp} />
       <InlineInputs node={data} emit={emit} keys={op === "sample" ? ["list", "count", "weights"] : ["list", "weights"]} />
-      <ResultDisplay value={previewed(() => data.cachedList)} label={nodeDisplayName(data)} />
       <RecalcButton title={op === "sample" ? "Draw again" : "Shuffle again"} />
+      <ResultDisplay value={previewed(() => data.cachedList)} label={nodeDisplayName(data)} />
     </NodeShell>
   );
 }

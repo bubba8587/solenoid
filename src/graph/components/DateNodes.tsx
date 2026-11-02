@@ -44,8 +44,8 @@ export function TodayNowComponent({ data, emit }: NodeProps<TodayNowNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <OpSelect value={op} onChange={handleOp} options={TODAY_NOW_OPS} />
-      <ValueDisplay value={data.cachedResult} />
       <RecalcButton title="Refresh to current date/time" />
+      <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );
 }

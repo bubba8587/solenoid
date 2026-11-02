@@ -29,8 +29,8 @@ export function RandArrayComponent({ data, emit }: NodeProps<RandArrayNodeType>)
         />
         Integer
       </label>
-      <ResultDisplay value={data.cachedList} label={nodeDisplayName(data)} />
       <RecalcButton title="Roll new random values" />
+      <ResultDisplay value={data.cachedList} label={nodeDisplayName(data)} />
     </NodeShell>
   );
 }

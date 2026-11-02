@@ -82,8 +82,8 @@ export function ScriptComponent({ data: node, emit }: NodeProps<ScriptNodeType>)
       )}
       <InlineInputs node={node} emit={emit} />
       {/* No result-type toggle: the value types itself ([[C66]] scriptNode). */}
-      <ValueDisplay value={node.cachedResult as number | number[] | string | string[] | SolError | null} />
       {scriptIsVolatile(node.expr) && <RecalcButton title="Run the script again" />}
+      <ValueDisplay value={node.cachedResult as number | number[] | string | string[] | SolError | null} />
     </NodeShell>
   );
 }

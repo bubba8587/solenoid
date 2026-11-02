@@ -26,8 +26,8 @@ export function makeNodeComponent<N extends ShellNode & InlineNode>(
     return (
       <NodeShell node={data} emit={emit}>
         <InlineInputs node={data} emit={emit} />
-        <ResultDisplay value={previewed(() => value(data))} label={nodeDisplayName(data)} />
         {opts.recalc != null && <RecalcButton title={opts.recalc} />}
+        <ResultDisplay value={previewed(() => value(data))} label={nodeDisplayName(data)} />
       </NodeShell>
     );
   };

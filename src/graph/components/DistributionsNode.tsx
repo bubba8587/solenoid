@@ -47,8 +47,8 @@ export function DistributionsComponent({ data, emit }: NodeProps<DistributionNod
         emit={emit}
         keys={data.inputKeys}
       />
-      <ValueDisplay value={data.cachedResult} />
       {form === "sample" && <RecalcButton title="Draw new samples" />}
+      <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );
 }
