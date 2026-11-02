@@ -660,7 +660,13 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   const colTarget = inRange(sel?.axis === "col" ? sel.indices : focusCell ? [focusCell.c] : [], cols);
   // ── Form view ────────────────────────────────────────────────────────────
   const formCapable = !!state.onSaveSource;
-  const fRow = Math.min(formRow, Math.max(0, rows - 1));
+  // While the header's filter holds text, the form pages through the matching records, in the Grid's order.
+  const formOrder = filtering ? matchedOrder : null;
+  const fBase = Math.min(formRow, Math.max(0, rows - 1));
+  const fRow = formOrder ? (formOrder.includes(fBase) ? fBase : formOrder[0] ?? -1) : fBase;
+  const fPos = formOrder ? formOrder.indexOf(fRow) : fRow;
+  const fCount = formOrder ? formOrder.length : rows;
+  const stepForm = (dir: 1 | -1) => setFormRow(formOrder ? formOrder[fPos + dir] : fRow + dir);
   // With no authored layout the form is laid out from its data ([[D111]] cardLayouts), recomputed only when a cell, name or type changes.
   const suggestedForm = (): string => {
     const names = Array.from({ length: cols }, (_, c) => (headerNames[c] ?? "").trim() || colLabel(c));
@@ -850,7 +856,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     noun: view === "form" ? "Record" : "Row",
     sides: view === "form" ? ["before", "after"] : ["above", "below"],
     ends: view === "form" ? ["start", "end"] : ["top", "bottom"],
-    target: view === "form" ? (rows > 0 ? [fRow] : []) : rowTarget,
+    target: view === "form" ? (fRow >= 0 ? [fRow] : []) : rowTarget,
     total: rows,
     insert: insertRows,
     remove: deleteRows,
@@ -1030,7 +1036,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
       fitNarrow
       zoomable
       headerExtra={<>
-        {((view === "grid" && sortable && viewRows > 1) || view === "cards" || view === "pivot" || view === "dashboard") && (
+        {((view === "grid" && sortable && viewRows > 1) || view === "cards" || (view === "form" && rows > 1) || view === "pivot" || view === "dashboard") && (
           <SearchField collapsible value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering && view !== "pivot" && view !== "dashboard" ? `${matchedOrder.length} of ${viewRows}` : undefined} />
         )}
         <span className="table-popup__dims">{state.list ? `${listLen} items` : `${rows}×${cols}`}{rowsTruncated || listTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
@@ -1369,15 +1375,16 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
         <div className="table-popup__form-scroll sol-popup__scroll">
           <div className="table-popup__form" style={{ "--form-cols": formPlaced.length > 0 ? formCols : 1 } as React.CSSProperties}>
             <div className="table-popup__form-nav">
-              <button type="button" className="table-popup__btn" onClick={() => setFormRow(Math.max(0, fRow - 1))} disabled={fRow <= 0} title="Previous record">
+              <button type="button" className="table-popup__btn" onClick={() => stepForm(-1)} disabled={fPos <= 0} title="Previous record">
                 <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M6.5 1l-4 4 4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
-              <span className="table-popup__form-count">{rows === 0 ? "0 / 0" : `${fRow + 1} / ${rows}`}</span>
-              <button type="button" className="table-popup__btn" onClick={() => setFormRow(Math.min(rows - 1, fRow + 1))} disabled={fRow >= rows - 1} title="Next record">
+              <span className="table-popup__form-count">{fCount === 0 ? "0 / 0" : `${fPos + 1} / ${fCount}`}{formOrder ? " matches" : ""}</span>
+              <button type="button" className="table-popup__btn" onClick={() => stepForm(1)} disabled={fPos >= fCount - 1} title="Next record">
                 <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M3.5 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
             </div>
-            {rows > 0 && (() => {
+            {formOrder && fRow < 0 && <div className="table-popup__form-empty">No matches</div>}
+            {rows > 0 && fRow >= 0 && (() => {
               const box = (c: number, name: string, key: number | string, at?: React.CSSProperties, hint?: string) => {
                 const type = c === -1 ? "string" : colTypeAt(c);
                 const computedHere = c !== -1 && colExprs[c] !== undefined;

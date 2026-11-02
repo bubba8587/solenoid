@@ -877,6 +877,11 @@
   align-items: center;
   gap: 6px;
 }
+.table-popup__form-empty {
+  padding: 12px 2px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
 .table-popup__form-count {
   font-family: var(--font-mono);
   font-size: 11px;
