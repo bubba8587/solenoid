@@ -130,7 +130,9 @@ const PRO_OPTIONS = { hideAttribution: false };
 const MINIMAP_STYLE = { width: 182, height: 105 };
 const DELETE_KEYS = ["Backspace", "Delete"];
 const DEFAULT_EDGE_OPTIONS = { type: "cable" as const, interactionWidth: 0 };
-const MINIMAP_MASK = "color-mix(in srgb, var(--overlay-bg) 72%, transparent)";
+// The canvas outside the view, shaded so it reads against the minimap's own background (the overlay color), not only
+// where it crosses a card.
+const MINIMAP_MASK = "var(--minimap-mask)";
 
 export type SurfaceHandlers = {
   bumpNode(id: string): void;

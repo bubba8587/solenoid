@@ -50,6 +50,7 @@
   --panel-bg: var(--surface);
   --panel-border: var(--border);
   --overlay-bg: var(--surface);
+  --minimap-mask: light-dark(rgba(27, 30, 35, 0.12), rgba(0, 0, 0, 0.45));
   --overlay-border: light-dark(#aeb6c1, #474c54);
   --overlay-border-width: 2px;
   --overlay-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);

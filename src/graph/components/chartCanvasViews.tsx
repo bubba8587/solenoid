@@ -53,7 +53,7 @@ function themeInk(canvas: HTMLCanvasElement) {
     dim: v("--text-dim", "#888"),
     border: v("--border-strong", "#555"),
     sunken: v("--surface-sunken", "#2a2a2a"),
-    raised: v("--surface-raised", "#262626"),
+    subtle: v("--border-subtle", "#2a2a2a"),
     up: resolveColor("green"),
     down: resolveColor("vermilion"),
     accent: v("--accent", resolveColor("sky")),
@@ -276,7 +276,7 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, o: ChartOptio
   const scale = heatScale(L.lo, L.hi, o);
   // A day's cell sits on the sunken surface; on a white page that is a step deeper, so the empty days and the faint
   // low values still read against the page.
-  const cellBase = isLightInk(ink.sunken) ? ink.raised : ink.sunken;
+  const cellBase = isLightInk(ink.sunken) ? ink.subtle : ink.sunken;
   // No cmap and no center keeps the accent, at an opacity by value over the empty-day color.
   const color = heatColorFn(o);
   const paint: Paint = o.cmap || o.center !== undefined
