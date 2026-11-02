@@ -243,6 +243,16 @@
 .table-popup__colhead-input {
   min-width: 0;
   width: 100%;
+  display: block;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+  max-height: calc(2 * 1.25em + 4px);
+}
+.table-popup__colhead-input:focus {
+  max-height: none;
   padding: 2px 6px;
   font-weight: 600;
   font-size: 12px;
@@ -276,11 +286,19 @@
 }
 .table-popup__coltype:hover { border-color: var(--node-accent, var(--accent)); }
 
+/* A long name wraps onto a second line, then ellipsizes, so it never widens its column past 14em. */
 .table-popup__colhead-label {
   flex: 1 1 auto;
   min-width: 0;
+  max-width: 14em;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .table-popup__coltype--fx,
@@ -787,9 +805,7 @@
     font-size: 12px;
   }
   .table-popup__coltype--fx { font-size: 11px; }
-  /* The paintbrush alone says format; its chevron costs a column 10px. */
   .table-popup__fmtbtn { box-sizing: border-box; height: 24px; padding: 0 4px; }
-  .table-popup__fmtbtn > svg:last-child { display: none; }
   /* A header name is as wide as its text (the input's size), not the cell input's 52px floor, which is for values. */
   .table-popup__colhead-field { flex: 1 0 auto; }
   .table-popup__colhead-input { min-width: 0; width: auto; flex: 1 0 auto; font-size: 13px; padding: 3px 4px; }

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import type * as React from "react";
 import { useEscapeLayer } from "./escapeLayers";
 import { createPortal } from "react-dom";
 import { stepListSel } from "./gridKeyboard";
@@ -88,10 +89,6 @@ export function ColumnFormatButton({ picked, children, title = "Column format", 
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
       >
         <PaintbrushIcon size={12} />
-        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor"
-             strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <polyline points="1.5,3 4,5.5 6.5,3" />
-        </svg>
       </button>
       {open && createPortal(
         <div ref={panelRef} className="table-popup__fmtpanel" style={style} {...stopAll}>
@@ -252,5 +249,44 @@ export function ColumnExprField({ value, lambdaOptions, onDraft, onCommit, onRev
         document.body,
       )}
     </div>
+  );
+}
+
+/** An editable column name that wraps onto a second line when it is long, rather than widening its column. Enter commits by blurring; a pasted line break reads as a space. */
+export function HeaderNameField({ value, placeholder, onChange, onFocus, onBlur, onKeyDown, onMouseDown }: {
+  value: string;
+  placeholder: string;
+  onChange: (v: string) => void;
+  onFocus: () => void;
+  onBlur?: () => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onMouseDown: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      className="table-popup__input table-popup__input--text table-popup__colhead-input"
+      value={value}
+      rows={1}
+      cols={Math.min(16, Math.max(3, value.length + 1))}
+      placeholder={placeholder}
+      spellCheck={false}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      onMouseDown={onMouseDown}
+      onKeyDown={(e) => {
+        onKeyDown(e);
+        if (e.defaultPrevented) return;
+        if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.blur(); }
+      }}
+      onChange={(e) => onChange(e.target.value.replace(/[\r\n]+/g, " "))}
+    />
   );
 }

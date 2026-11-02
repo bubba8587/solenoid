@@ -11,7 +11,7 @@ import { parseCsvRows, joinCsvRows } from "../csv";
 import { isSolError, ERROR_EXPLANATIONS } from "../errorValue";
 import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import { coerceFrameCell, formatFrameCell, columnTypesAfterCsvEdit, makeHeaders, type FrameSourceColumn } from "../frame";
-import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
+import { isDateStyle, type FormatAnnotation } from "../formatAnnotationStore";
 import { isUnitCell } from "../unitValue";
 import { decimalFromText } from "../valueKinds";
 import { columnUnitLabel, cellUnitAnnotation } from "../unitColumn";
@@ -22,14 +22,13 @@ import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect, CustomPatternField } from "./fcControls";
 import { CategoryChip } from "./CategoryChip";
 import { categoryColorIndex } from "../categoryColor";
-import { applyTextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { useFocusTrap } from "./useFocusTrap";
 import "./confirmDialog.css";
 import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton } from "./columnSort";
-import { ColumnFormatButton, ColumnExprField, HeaderHelpButton, COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
+import { ColumnFormatButton, ColumnExprField, HeaderHelpButton, HeaderNameField, COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
 import { TypeIcon } from "./TypeIcon";
 import { CellEditAffix } from "./CellEditAffix";
 import { CsvEditor } from "./CsvEditor";
@@ -39,6 +38,7 @@ import { SearchField } from "./SearchField";
 import { CellSuggest, type CellSuggestHandle } from "./CellSuggest";
 import { parseRecordLayout, recordImageSrc, cellImageSrc } from "../recordLayout";
 import { CellImage } from "./cubeCell";
+import { controlledCellText } from "./controlledCell";
 import "./chartCards.css"; // .sol-record__img, for the Form's image cells
 import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, statReadsAsCell, summarizeColumns } from "./tableFooterStats";
 import { saveCsvFileDialog } from "../fileBridge";
@@ -169,6 +169,8 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   const [formRow, setFormRow] = useState(0);
 
   const editDraft = useRef("");
+  // Excel's Edit mode: a click into a cell, or F2, gives the arrows to the caret until the cell is left.
+  const caretCell = useRef<{ r: number; c: number } | null>(null);
   const [, bumpDraft] = useState(0);
   const gridRef = useRef<HTMLTableElement | null>(null);
   const [colStat, setColStat] = useState<Record<number, FooterStat>>({});
@@ -462,28 +464,8 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     return cellUnitAnnotation(ann.unit !== "none" ? ann.unit : state?.columnUnits?.[state.formatControls === "matrix" ? 0 : c]?.display);
   }
   function controlledCell(raw: CellValue, c: number): string {
-    if (raw === null || raw === undefined || raw === "") return "";
-    if (isSolError(raw)) return raw.code;
-    const type = colTypeAt(c);
     const ann = annFor(c);
-    if (type === "logical" || typeof raw === "boolean") {
-      const b = typeof raw === "boolean" ? raw : coerceFrameCell("logical", String(raw));
-      return typeof b === "boolean" ? applyLogicalStyle(b, ann.logicalStyle) : b === null ? "" : "NaN";
-    }
-    const v: CellValue = typeof raw === "string" && (type === "number" || type === "date")
-      ? coerceFrameCell(type, raw)
-      : raw;
-    if (v === null) return "";
-    if (typeof v === "number" && type === "date") {
-      const fmt: FormatStyleId = isDateStyle(ann.format) ? ann.format : "date_dmy";
-      return formatNumberWithAnnotation(v, { ...ann, format: fmt, unit: "none" });
-    }
-    if (typeof v === "number" && type === "number") {
-      const fmt: FormatStyleId = isDateStyle(ann.format) ? "auto" : ann.format;
-      return formatNumberWithAnnotation(v, { ...ann, format: fmt, ...cellUnit(c, ann) });
-    }
-    if (type === "string") return applyTextCase(String(v), ann.textCase);
-    return String(v);
+    return controlledCellText(raw, colTypeAt(c), ann, () => cellUnit(c, ann));
   }
 
   const vertical = !!state.list && listVertical;
@@ -889,6 +871,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   const focusGridCell = (target: { vi: number; c: number } | null) => {
     if (!target) return;
     const el = gridRef.current?.querySelector<HTMLElement>(`[data-vi="${target.vi}"][data-c="${target.c}"]`);
+    caretCell.current = null;
     if (el) { el.focus(); if (el.matches("input")) el.select(); }
   };
   const chipCols = new Map<number, Map<string, number>>();
@@ -1113,12 +1096,9 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
                           const nameOptions = headerNameOptions(c);
                           return (
                             <span className={`table-popup__colhead-field${nameOptions.length ? " table-popup__colhead-field--affix" : ""}`}>
-                              <input
-                                className="table-popup__input table-popup__input--text table-popup__colhead-input"
+                              <HeaderNameField
                                 value={headerNames[c] ?? ""}
-                                size={Math.min(24, Math.max(3, (headerNames[c] ?? "").length + 1))}
                                 placeholder={colLabel(c)}
-                                spellCheck={false}
                                 onFocus={() => {
                                   setSel(null);
                                   setFocusCell((f) => ({ r: f?.r ?? -1, c }));
@@ -1127,7 +1107,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
                                 onBlur={state.columnNameOptions ? () => setEditHead(null) : undefined}
                                 onKeyDown={(e) => { if (!e.nativeEvent.isComposing) headSuggestRef.current?.onKey(e); }}
                                 onMouseDown={(e) => { if (e.shiftKey && colAxis) e.preventDefault(); }}
-                                onChange={(e) => setHeaderName(c, e.target.value)}
+                                onChange={(v) => setHeaderName(c, v)}
                               />
                               {nameOptions.length > 0 && (
                                 <CellSuggest
@@ -1158,7 +1138,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
                         {fmtButton(c)}
                       </div>
                     ) : (
-                      colHeaderLabel(c)
+                      <span className="table-popup__colhead-label">{colHeaderLabel(c)}</span>
                     )}
                     {editableHeaders && !vertical && colExprs[c] !== undefined && (
                       <ColumnExprField
@@ -1277,16 +1257,22 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
                           if (editingHere) bumpDraft((x) => x + 1);
                           else setEditCell({ r, c });
                         }}
-                        onBlur={canEdit ? () => { if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); } } : undefined}
+                        onBlur={canEdit ? () => {
+                          if (caretCell.current?.r === r && caretCell.current.c === c) caretCell.current = null;
+                          if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); }
+                        } : undefined}
+                        onPointerDown={canEdit ? () => { caretCell.current = { r, c }; } : undefined}
                         data-vi={vi}
                         data-c={c}
                         onKeyDown={canEdit ? (e) => {
                           if (e.nativeEvent.isComposing) return;
                           if (suggestRef.current?.onKey(e)) return;
+                          if (e.key === "F2") { e.preventDefault(); caretCell.current = { r, c }; const el = e.currentTarget; el.setSelectionRange(el.value.length, el.value.length); return; }
                           const k = gridKeyOf(e);
                           if (!k) return; // Escape belongs to the shell's capture-phase onEscape
                           const midEdit = editingHere && editDraft.current !== (grid[r]?.[c] ?? "");
-                          if (midEdit && k !== "Enter" && k !== "ShiftEnter" && k !== "Tab" && k !== "ShiftTab") return;
+                          const caretMode = midEdit || (caretCell.current?.r === r && caretCell.current.c === c);
+                          if (caretMode && k !== "Enter" && k !== "ShiftEnter" && k !== "Tab" && k !== "ShiftTab") return;
                           const target = nextCell(k, { vi, c }, { rows: visibleOrder.length, cols: viewCols }, (_vi, cc) => isComputedCol(cc));
                           if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); }
                           if (!target) return;
