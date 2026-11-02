@@ -269,7 +269,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             children: [
               { type: "candlestick", label: "Candlestick", description: "OHLC candles for price history from a Date, Open, High, Low, Close frame, the shape Data Feed's stock history has.", create: () => new CandlestickNode(), parity: false, keywords: "candlestick candle ohlc stock price open high low close market trading finance" },
               { type: "waterfall", label: "Waterfall", description: "The finance bridge chart: each row of a 2-column frame (Label, Delta) steps the running total up or down, with a computed Total bar at the end.", create: () => new WaterfallNode(), parity: false, keywords: "waterfall bridge chart delta variance walk finance running total steps" },
-              { type: "calendar-heatmap", label: "Calendar", description: "A year of daily activity as a weeks-by-weekdays grid, each day tinted by its value from a Date, Value frame. Duplicate days sum.", create: () => new CalendarHeatmapNode(), parity: false, keywords: "calendar heatmap daily activity year contribution github days streak" },
+              { type: "calendar-heatmap", label: "Calendar Heatmap", description: "A year of daily activity as a weeks-by-weekdays grid, each day tinted by the sum of its rows from a Date, Value frame. A row without a number counts as 1, so a list of dated entries shows how many fall on each day.", create: () => new CalendarHeatmapNode(), parity: false, keywords: "calendar heatmap daily activity year contribution github days streak" },
             ],
           },
         ],

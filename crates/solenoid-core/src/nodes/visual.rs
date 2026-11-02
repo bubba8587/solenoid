@@ -1926,20 +1926,24 @@ fn boxplot(c: &mut Call) -> Answer {
     figure(c, "boxplot", Json::Null, json!({ "kind": "boxplot", "boxes": boxes }), opts, "Boxplot")
 }
 
+/// Each day in column 0 with the sum of its rows' values: a number from column 1, or 1 for a row without one (a blank
+/// cell, or a second column that isn't numbers), so a frame of dated entries counts them per day.
 fn calendar_heatmap(c: &mut Call) -> Answer {
     let frame = first(c, "frame");
     let cols = frame_columns(&frame);
-    let raw = |i: usize| cols.get(i).map_or_else(Vec::new, |col| col.values.iter().map(finite).collect::<Vec<_>>());
-    let (serials, vals) = (raw(0), raw(1));
-    let (mut days, mut values) = (Vec::new(), Vec::new());
+    let serials: Vec<Option<f64>> = cols.first().map_or_else(Vec::new, |col| col.values.iter().map(finite).collect());
+    let amounts = cols.get(1).filter(|col| col.ty == FrameColType::Number);
+    let mut by_day: std::collections::BTreeMap<i64, f64> = std::collections::BTreeMap::new();
     for (i, d) in serials.iter().enumerate() {
-        let (Some(d), Some(Some(v))) = (d, vals.get(i)) else { continue };
-        days.push(jn(d.floor()));
-        values.push(jn(*v));
+        let Some(d) = d else { continue };
+        let v = amounts.and_then(|col| col.values.get(i)).and_then(finite).unwrap_or(1.0);
+        *by_day.entry(d.floor() as i64).or_insert(0.0) += v;
     }
+    let days: Vec<Json> = by_day.keys().map(|&d| jn(d as f64)).collect();
+    let values: Vec<Json> = by_day.values().map(|&v| jn(v)).collect();
     let opts = read_options(c)?;
     let payload = json!({ "kind": "calheat", "days": days, "values": values });
-    figure(c, "calheat", Json::Array(values), payload, opts, "Calendar")
+    figure(c, "calheat", Json::Array(values), payload, opts, "Calendar Heatmap")
 }
 
 fn quiver(c: &mut Call) -> Answer {

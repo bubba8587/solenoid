@@ -63,7 +63,7 @@ The figure picks its renderer, not the surface ([[C100]] chartIsAValue): rechart
 | `waterfall` | `names: string[]`, `values: (number \| null)[]` (signed deltas; null is an unknown step), `total: boolean` (append a computed Total bar). |
 | `candle` | `labels: string[]`, `open`, `high`, `low`, `close`: parallel `(number \| null)[]`. |
 | `boxplot` | `boxes: { name, lo, q1, med, q3, hi, outliers: number[] }[]`. |
-| `calheat` | `days: number[]` (whole date serials), `values: number[]`, parallel. |
+| `calheat` | `days: number[]` (whole date serials, each once, ascending), `values: number[]` (each day's total), parallel. |
 | `heatmap` | `z: (number \| null)[][]` row-major, null a gap; `rows`, `cols: string[]` (the labels); `totalRows?`, `totalCols?`, set only when the table was cut to `HEATMAP_MAX` (400) rows or columns. |
 | `quiver` | `u`, `v`: same-shaped `(number \| null)[][]` of the x and y components, one arrow per cell. |
 | `record` | See The Record figure. |
@@ -107,7 +107,7 @@ Each figure node computes its value in `data()`, caches it on the node (`cachedC
 | Choice Ladder | `frame` (Options), `weights`, `limits`, `close`; outputs `frame` (Plan) and `chart` | `ladder` | null | none, `{}` |
 | Mermaid | `source` (string) | MermaidValue | n/a | n/a |
 
-Title defaults (used when neither the options `title` nor the label is set): Sparkline `"Sparkline"`, Chart `"Chart"`, Merge Plots `"Merged Plot"`, Histogram `"Histogram"`, Gauge `"Gauge"`, KPI `"KPI"`, Proportion `"Proportion"`, Sankey `"Sankey"`, Surface `"Surface"` or `"Contour"`, Waterfall `"Waterfall"`, Candlestick `"Candlestick"`, Boxplot `"Boxplot"`, Calendar Heatmap `"Calendar"`, Heatmap `"Heatmap"`, Record `"Record"`, Vector Field `"Vector Field"`, Gantt `"Gantt"`, Choice Ladder `"Choice Ladder"`. Nodes without options take the title from the label alone.
+Title defaults (used when neither the options `title` nor the label is set): Sparkline `"Sparkline"`, Chart `"Chart"`, Merge Plots `"Merged Plot"`, Histogram `"Histogram"`, Gauge `"Gauge"`, KPI `"KPI"`, Proportion `"Proportion"`, Sankey `"Sankey"`, Surface `"Surface"` or `"Contour"`, Waterfall `"Waterfall"`, Candlestick `"Candlestick"`, Boxplot `"Boxplot"`, Calendar Heatmap `"Calendar Heatmap"`, Heatmap `"Heatmap"`, Record `"Record"`, Vector Field `"Vector Field"`, Gantt `"Gantt"`, Choice Ladder `"Choice Ladder"`. Nodes without options take the title from the label alone.
 
 ### Sparkline
 
@@ -191,7 +191,7 @@ Proportion, Sankey, Waterfall, Candlestick and Calendar Heatmap read their frame
 - **Sankey:** sources from column 0, targets column 1, values column 2 (null as 0). `merge_flows` first folds every repeated From and To pair into one flow carrying the sum of their values, in first-seen order, so the payload holds one flow per pair. `acyclic_flows` then walks the flows in order: a blank end, a self-loop or a value that is not positive is kept in place untouched; a flow whose target already reaches its source closes a cycle and is dropped (counted in `droppedLoops`, which the card shows under the figure as "N looped flows dropped"); the rest are added to the graph. When at least one flow was dropped and no drawable flow remains, the output is `#SHAPE!` "The flows form a loop; a Sankey needs a direction".
 - **Waterfall:** names column 0, deltas column 1 with null kept as a gap; `total` is always true.
 - **Candlestick:** no columns gives a null output. Fewer than four columns is `#SHAPE!` "Candlestick needs Open, High, Low and Close columns (a date column first is optional)". Five or more: column 0 is the label axis (as text) and columns 1 to 4 are OHLC. Exactly four: all four are OHLC and labels are `"1"`, `"2"`, ….
-- **Calendar Heatmap:** column 0 and column 1 are read raw (a date stays a serial). A row is kept only when both are finite numbers; the day is `floor(serial)`. A day without a value is dropped, never painted as zero.
+- **Calendar Heatmap:** column 0 is read raw (a date stays a serial) and a row without a finite date is dropped; the day is `floor(serial)`. Each day carries the sum of its rows: a row adds its column 1 number when column 1 is a Number column and the cell is a finite number, else 1, so a blank value counts the row and a frame of dated entries (a second column of text, or none) counts entries per day (author 2026-11-02). The days come out once each, in date order. The figure still sums any repeated day it is handed.
 
 ### Heatmap
 

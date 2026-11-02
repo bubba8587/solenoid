@@ -459,6 +459,25 @@ describe("chart-wave nodes emit their payloads", () => {
     expect(p.values).toEqual([3, 5]);
   });
 
+  it("Calendar Heatmap sums each day's rows, counts a row with no number as 1, and orders the days", async () => {
+    const n = new CalendarHeatmapNode();
+    expect(n.label).toBe("Calendar Heatmap");
+    const f = frame([
+      { name: "Day", type: "date", values: [45002.75, 45000, 45002.25, 45000] },
+      { name: "N", type: "number", values: [2, 3, null, 4] },
+    ]);
+    const p = (await n.data({ frame: [f] })).chart.payload as CalHeatPayload;
+    expect(p.days).toEqual([45000, 45002]);
+    expect(p.values).toEqual([7, 3]);
+    const entries = frame([
+      { name: "Day", type: "date", values: [45000, 45001, 45000] },
+      { name: "Title", type: "string", values: ["a", "b", "c"] },
+    ]);
+    const q = (await n.data({ frame: [entries] })).chart.payload as CalHeatPayload;
+    expect(q.days).toEqual([45000, 45001]);
+    expect(q.values).toEqual([2, 1]);
+  });
+
   it("Proportion carries label/value pairs and defaults to the treemap layout", async () => {
     const n = new ProportionNode();
     const f = frame([
@@ -855,15 +874,15 @@ describe("figures: a blank cell is a gap, never a zero (review pins)", () => {
     expect(p.totalRows).toBe(HEATMAP_MAX + 5);
     expect(p.totalCols).toBeUndefined();
   });
-  it("Calendar skips a day whose value is blank instead of painting 0", async () => {
+  it("Calendar Heatmap counts a dated row whose value is blank as 1, never 0", async () => {
     const n = new CalendarHeatmapNode();
     const f = frame([
       { name: "Day", type: "date", values: [46023, 46024, 46025] },
       { name: "N", type: "number", values: [3, null, 4] },
     ]);
     const p = (await n.data({ frame: [f] })).chart.payload as CalHeatPayload;
-    expect(p.days).toEqual([46023, 46025]);
-    expect(p.values).toEqual([3, 4]);
+    expect(p.days).toEqual([46023, 46024, 46025]);
+    expect(p.values).toEqual([3, 1, 4]);
   });
 });
 

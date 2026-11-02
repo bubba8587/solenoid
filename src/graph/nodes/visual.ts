@@ -755,7 +755,7 @@ export class CalendarHeatmapNode extends GraphNode {
 
   constructor(init?: { label?: string }) {
     super("CalendarHeatmap");
-    this.label = init?.label ?? "Calendar";
+    this.label = init?.label ?? "Calendar Heatmap";
     this.addInput("frame", frameIn("Date + Value"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
