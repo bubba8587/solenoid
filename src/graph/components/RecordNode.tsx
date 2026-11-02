@@ -12,9 +12,16 @@ import { cableValueStore } from "../cableValueStore";
 import { isFrameValue } from "../frame";
 import { suggestFrameLayout, PROFILE_ROWS } from "../cardLayout";
 import { collectPreview } from "../frameBackend";
-import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
 import { RecordLayoutField } from "./RecordLayoutField";
+import { CardSection, useRowsInUse } from "./CardSection";
+import { sectionFoldStore } from "../sectionFoldStore";
+import { ChartFigure } from "./chartView";
+import { ChartExpandButton } from "./ChartExpandButton";
+import { nodeDisplayName } from "../catalogUtils";
+
+const LAYOUT = "Layout";
+const FIG_H = 220;
 
 const OPTIONS: ReadonlyArray<OpOption<RecordOp>> = (Object.keys(RECORD_OP_META) as RecordOp[])
   .map((value) => ({ value, label: RECORD_OP_META[value].label }));
@@ -30,17 +37,6 @@ async function applyRecordOp(node: RecordNodeType, next: RecordOp): Promise<void
   node.edited(); await processGraph();
 }
 
-function Chevron({ back }: { back?: boolean }) {
-  return (
-    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-      <path
-        d={back ? "M6.5 1l-4 4 4 4" : "M3.5 1l4 4-4 4"}
-        fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const [op, setOpState] = useState<RecordOp>(data.op);
@@ -50,7 +46,6 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
   const cv = data.cachedChart;
   const payload = cv?.payload?.kind === "record" ? cv.payload : null;
   const total = payload?.total ?? 0;
-  const index = payload?.index ?? 0;
 
   function step(delta: number) {
     const next = Math.min(total, Math.max(1, (data.literals.page ?? 1) + delta));
@@ -80,6 +75,9 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
     setLayoutTop((prev) => (prev === t ? prev : t));
   });
   const layoutPort = data.inputs.layout;
+  // Open while a layout is written or wired; a hand fold or open is saved with the document (CardSection).
+  const layoutInUse = useRowsInUse(data, ["layout"]);
+  const layoutOpen = useSyncExternalStore(sectionFoldStore.subscribe, () => sectionFoldStore.get(data.id, LAYOUT)) ?? layoutInUse;
 
   const hasBoxes = !!payload && (payload.cards.some((c) => c.length > 0) || (payload.deck?.rows.length ?? 0) > 0);
   const keys = ["frame", "rows", ...(op === "board" ? ["by"] : []), ...(collapsed ? ["layout"] : []), "options"];
@@ -88,42 +86,32 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
     <NodeShell
       node={data}
       emit={emit}
-      leading={!collapsed && layoutPort && layoutTop !== undefined
+      leading={!collapsed && layoutOpen && layoutPort && layoutTop !== undefined
         ? <NodeSocket side="input" socketKey="layout" nodeId={data.id} emit={emit} payload={layoutPort.socket} top={layoutTop} />
         : null}
     >
       <OpSelect value={op} onChange={setOp} options={OPTIONS} />
       <InlineInputs node={data} emit={emit} keys={keys} />
       {!collapsed && (
-        <div ref={layoutRef} style={{ position: "relative", marginTop: 4 }}>
-          <RecordLayoutField value={data.stringLiterals.layout ?? ""} wired={layoutWired} onCommit={commitLayout} onSuggest={suggestLayout} />
-        </div>
+        <CardSection label={LAYOUT} collapsible defaultOpen={layoutInUse} sockets={{ node: data, emit, keys: ["layout"] }}>
+          <div ref={layoutRef} style={{ position: "relative", marginTop: 4 }}>
+            <RecordLayoutField value={data.stringLiterals.layout ?? ""} wired={layoutWired} onCommit={commitLayout} onSuggest={suggestLayout} />
+          </div>
+        </CardSection>
       )}
       <div className="solenoid-node__section-divider" />
-      {!collapsed && op === "detail" && total > 0 && (
-        <div className="solenoid-record__pager">
-          <button
-            type="button" className="solenoid-record__pager-btn" title="Previous record"
-            disabled={index <= 1}
-            onClick={(e) => { e.stopPropagation(); step(-1); }}
-            onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-          >
-            <Chevron back />
-          </button>
-          <span className="solenoid-record__pager-count">{index > 0 ? index : "–"} / {total}{payload?.filtered ? " matches" : ""}</span>
-          <button
-            type="button" className="solenoid-record__pager-btn" title="Next record"
-            disabled={index >= total}
-            onClick={(e) => { e.stopPropagation(); step(1); }}
-            onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-          >
-            <Chevron />
-          </button>
+      {/* The figure draws in the card as other charts do, scrolling inside its box; Detail pages with its own pager. */}
+      {!collapsed && hasBoxes && cv ? (
+        <div className="solenoid-record__figure nowheel">
+          <ChartFigure value={cv} width={(data.width ?? 240) - 22} height={FIG_H} recordNav={op === "detail" && total > 1 ? step : undefined} />
+          <ChartExpandButton title={nodeDisplayName(data)} op="column" axes={false} series={[]} value={cv} />
+        </div>
+      ) : !collapsed && <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}
+      {cv && (
+        <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
+          <ChartChip value={cv} />
         </div>
       )}
-      {hasBoxes && cv
-        ? <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={cv} /></div>
-        : <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}
     </NodeShell>
   );
 }

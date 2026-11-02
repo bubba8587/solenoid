@@ -1399,6 +1399,13 @@ body.solenoid-scrubbing * {
   font-style: italic;
   cursor: default;
 }
+/* The Record card's figure: a stack of boxes that scrolls in its box rather than squashing (chart-figures.md § Sizing). */
+.solenoid-record__figure {
+  position: relative;
+  max-height: 260px;
+  margin-top: 4px;
+  overflow: auto;
+}
 .solenoid-record__pager {
   display: flex;
   align-items: center;
