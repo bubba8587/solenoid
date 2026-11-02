@@ -27,8 +27,9 @@
   border-radius: 0 0 6px 6px;
   box-shadow: var(--overlay-shadow);
   min-width: 170px;
-  max-height: min(392px, 85vh);
-  max-height: min(392px, 85dvh);
+  /* Exactly the root level's height (search, twelve categories, three group dividers), so the root never scrolls. */
+  max-height: min(412px, 85vh);
+  max-height: min(412px, 85dvh);
   /* Clip here and scroll __scroll inside, so the rounded corner clips the native scrollbar. */
   overflow: hidden;
 }
@@ -88,10 +89,11 @@
   white-space: nowrap;
 }
 
+/* The 22% wash a pressed segment or open button wears (DESIGN.md § The Accent-Mix Ladder: washes run 12–22%), one step up from --accent-soft. */
 .solenoid-add-menu__item:hover,
 .solenoid-add-menu__item--active,
 .solenoid-add-menu__item--open {
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 /* Quick-wire: a leaf that can't wire to the dragged socket is inert, so it gets no hover or active fill. */
@@ -197,4 +199,12 @@
   font-size: 9px;
   color: var(--text-muted);
   flex-shrink: 0;
+}
+
+/* Between the top level's groups (a category with `groupStart`). */
+.solenoid-add-menu__divider {
+  height: 1px;
+  margin: 4px 10px;
+  background: var(--border);
+  flex: none;
 }

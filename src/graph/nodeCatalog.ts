@@ -308,7 +308,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
 
   // ── NUMBERS ──────────────────────────────────────────────────────────────────
   {
-    type: "category", label: "Numbers", description: "Scalar math: arithmetic, functions, rounding, and trigonometry.",
+    type: "category", groupStart: true, label: "Numbers", description: "Scalar math: arithmetic, functions, rounding, and trigonometry.",
     children: [
       { type: "pair", children: [
         { type: "expression", label: "Expression", description: "A formula like `a*b+1`, where each variable becomes an input. Works on single values, Lists and matrices, with the Excel functions and the constants `pi`, `tau`, `e` and `phi`. For Frames, use a computed column.", create: () => new ExpressionNode(), accent: "math" },
@@ -439,36 +439,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
         { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: `(value − mean) ÷ std dev`. Excel: `STANDARDIZE`.", create: () => new StandardizeNode(), keywords: "probability z score normalize" },
         { type: "binomdistrng", label: "BINOM.DIST.RANGE", description: "`P(lo ≤ X ≤ hi)`: the sum of binomial PMFs over a range. Excel: `BINOM.DIST.RANGE`.", create: () => new BinomDistRangeNode(), keywords: "binom.dist.range" },
       ]},
-    ],
-  },
-
-  // ── DOCS & FILES ─────────────────────────────────────────────────────────────
-  {
-    type: "category", label: "Docs & Files", description: "Documents and files: markdown notes and reports, your Obsidian vault, and attached pictures, files and graphics.",
-    children: [
-      { type: "pair", children: [
-        { type: "note", label: "Note", description: "A free-floating markdown note, any position, any tint. Open the body with a ----fenced YAML block to turn each key into a typed output, a note doubling as a constants source. The body is a Knap template over those fields: `{{ title }}`, `{% if %}`, `{% for %}` and the standard filters.", create: () => new NoteNode(), parity: false },
-        { type: "report", label: "Report", description: "A markdown document written as a Knap template. `{{ name }}` shows a value the way the canvas does, `{% for %}` repeats over a Frame and `{% if %}` gates a section. A Note on Template supplies the text instead, and Records turns it into a mail merge, one page per row. The Knap tab in Help has the syntax.", keywords: "mail merge merge fields letters one note per row batch template document markdown knap", create: () => new ReportNode(), parity: false },
-      ]},
-      { type: "dashboard", label: "Dashboard", description: "A full-screen board of live values, charts and tables on a grid. The layout reads like Frame Input's Form Layout: a line per row, names split by `|`, `Chart*2` spans two columns, and a repeated name merges its boxes. Each name is a box.", keywords: "dashboard board panel tiles overview monitor grid layout full screen kpi summary", create: () => new DashboardNode(), parity: false },
-      { type: "pair", children: [
-        { type: "image", label: "Image", description: "A free-floating picture from a local file or a web URL. Annotation only, no data. Web URLs persist; local files are session-only.", create: () => new ImageNode(), parity: false },
-        { type: "file-link", label: "File Link", description: "A link to a file on your computer: the path, not the file. Shows a title and preview with an Open button that launches it in its default app. Annotation only, no data. On desktop the link persists in the save; on the web an attach is session-only.", create: () => new FileLinkNode(), parity: false, keywords: "file link attachment attach open path shortcut document local disk launch reference external" },
-      ]},
-      { type: "pair", children: [
-        { type: "svg", label: "SVG", description: "An interactive SVG from a local `.svg` or a URL: the selected shape outputs its name, so a map, floorplan, or schematic becomes a selector.", create: () => new SvgPickerNode(), parity: false, keywords: "svg map picker region layer shape hotspot clickable diagram floorplan schematic slice filter select vector" },
-        { type: "promo", label: "✨ Promo", description: "A random Solenoid tagline. Re-rolls on recalc (F9). Pure easter egg.", create: () => new PromoNode() },
-      ]},
-      {
-        type: "category", label: "Obsidian", description: "Your vault as data and back: notes and tasks in, notes and properties out. A folder of tasks read as a Vault Folder gives title, status, priority, due and tags; TaskNotes adds the rest. Set the vault in Settings ▸ Obsidian. Desktop only.",
-        children: [
-          { type: "vault-folder", label: "Vault Folder", description: "Reads an Obsidian vault folder as one cube: a row per note, file columns plus every frontmatter key. Types from an mdbase schema or types.json. Desktop only.", create: () => new VaultFolderNode(), parity: false, keywords: "obsidian vault notes markdown frontmatter cube folder mdbase bases properties tags links daily notes tasknotes" },
-          { type: "import-obsidian", label: "Import Obsidian Note", description: "A `.md` note from your Obsidian vault as a read-only Note: frontmatter becomes typed outputs, the body renders inline. Desktop only.", create: () => new ImportObsidianNode(), parity: false, keywords: "obsidian vault markdown md note import read source frontmatter" },
-          { type: "tasknotes", label: "TaskNotes", description: "Reads what a folder of files can't total: time tracked per task, recurring and completed instances, the calendar of events between two dates, the task-count stats. Through the TaskNotes plugin's local API. Turn the API on in the plugin; the address is in Settings ▸ Obsidian, the token on the card.", create: () => new TaskNotesNode(), parity: false, keywords: "tasknotes task notes obsidian plugin api tasks todo due scheduled projects calendar events stats time tracking timeEntries" },
-          { type: "write-obsidian", label: "Write to Obsidian", description: "Writes a Note, a Report, or a cube of rows into your Obsidian vault. A Note or Report becomes one markdown note with its tables, diagrams, math and charts; a mail-merge Report writes one note per page. Rows write each note's frontmatter and body, keyed by a path column and patched line by line. Preview shows what Run would do. Never writes on its own. Desktop only.", create: () => new WriteObsidianNode(), parity: false, keywords: "obsidian vault markdown md note export sink write document properties frontmatter yaml note-body cube patch bases plan preview" },
-          { type: "write-tasks", label: "Write Tasks", description: "Creates or updates TaskNotes tasks from rows: a row with a path updates that task, one without creates it from its title. Sends the writable task fields present, or the ones you list. Preview marks the rows that would not change; Run sends the rest. Never writes on its own.", create: () => new WriteTasksNode(), parity: false, keywords: "write tasks tasknotes obsidian create update sink api post put plan preview" },
-        ],
-      },
     ],
   },
 
@@ -640,6 +610,272 @@ export const NODE_CATALOG: CatalogEntry[] = [
     ],
   },
 
+  // ── TABLES ───────────────────────────────────────────────────────────────────
+  {
+    type: "category", label: "Tables", description: "Plain 2D tables of one type, Excel's arrays: pick and slice rows and columns, reshape between lists and tables, run a formula per cell, and matrix math.",
+    children: [
+      { type: "pair", children: [selectLeaf("chooserows"), selectLeaf("choosecols")] },
+      { type: "pair", children: [
+        { type: "takedrop",      label: "TAKE", description: TAKEDROP_OP_META.take.description, create: () => new TakeDropNode({ op: "take" }), parity: false, keywords: "take drop list table rows columns elements edge first last head tail" },
+        { type: "takedrop-drop", label: "DROP", description: TAKEDROP_OP_META.drop.description, create: () => new TakeDropNode({ op: "drop" }), parity: true, keywords: "take drop list table rows columns elements edge first last head tail" },
+      ]},
+      {
+        type: "category", label: "Shape", description: "Reshape between 1D lists and 2D tables, stack tables side-by-side.",
+        children: [
+          { type: "pair", children: [reshapeLeaf("wraprows"), reshapeLeaf("wrapcols")] },
+          { type: "pair", children: [reshapeLeaf("tocol"),    reshapeLeaf("torow")]    },
+          { type: "xstack", label: "XSTACK", description: "Stacks tables top-to-bottom or side by side, in row order. A list counts as one row; a ragged edge pads with `#N/A`. Excel: `VSTACK` / `HSTACK`.", create: () => new StackNode(), parity: false, keywords: "stack vertical horizontal rows side by side rbind cbind lists to table" },
+          { type: "table-expand", label: "EXPAND", description: "Grows a table to a target number of rows or columns. New cells take the Fill value, or stay blank without one; use `NA` as Fill for Excel's `#N/A`. Shrinking is `#VALUE!`; use `TAKE` for that. Excel: `EXPAND`.", create: () => new ExpandNode(), parity: false, keywords: "grow pad resize table fill" },
+          { type: "table-set-cell", label: "Set Cell", description: "Writes values into a table at a 1-based `(row, column)` address: a list writes a row, a table a block. Later writes win; a value past the edge errors. Excel has no equivalent.", create: () => new SetCellNode(), keywords: "set cell overwrite poke write address table matrix block row" },
+        ],
+      },
+      {
+        type: "category", label: "Lambda (per-cell / per-row)", description: "Apply a formula over a table: each cell, each row or column, fold to one value, or generate from indices.",
+        children: [
+          { type: "map-table",  label: "MAP",       description: "Applies a formula to every cell of up to three tables of the same shape. `value`, `value2` and `value3` are each table's cell, and `row` and `col` are its 1-based position; a single value in `value2` or `value3` is repeated to fit. Set Result type for text or dates. Excel: `MAP`.", create: () => new MapTableNode(),  parity: false },
+          { type: "pair", children: [
+            { type: "by-axis",    label: "BYROW", description: "Reduces each row of a table to one value in a column, or each column to one value in a list. Variable `values` = the row or column as a list. Pick the result type for text or date. Excel: `BYROW`.", create: () => new ByAxisNode(), parity: false },
+            { type: "by-col",    label: "BYCOL", description: "Reduces each row or column of a table to one value. Variable `v` = the row or column as a list. Pick the result type for text or date. Excel: `BYCOL`.", create: () => new ByAxisNode({ op: "col" }), parity: false },
+          ]},
+          { type: "make-array", label: "MAKEARRAY", description: "A rows×cols table from a formula of its indices, `row` and `col` 1-based. Pick the result type for text or date. Excel: `MAKEARRAY`.", create: () => new MakeArrayNode(), parity: false },
+          { type: "reduce-lambda", label: "REDUCE", description: "Folds a list or table to one value from Initial: `acc` the accumulator, `value` this element, `step` its 1-based position. Excel: `REDUCE`.", create: () => new ReduceLambdaNode(), parity: false },
+          { type: "scan-lambda", label: "SCAN", description: "`REDUCE` that keeps every running value, in the input's shape: a running total is `acc + value` from `0`. Same `acc`, `value`, `step`. Excel: `SCAN`.", create: () => new ScanLambdaNode(), parity: false, keywords: "running total cumulative accumulate prefix sum" },
+        ],
+      },
+      {
+        type: "category", label: "Matrix math", description: "Linear algebra: multiply, invert, determinant, identity.",
+        children: [
+          { type: "table-mult",      label: "MMULT",     description: "Matrix multiply: A (m×n) × B (n×p) → result (m×p). Excel: `MMULT`.",                                    create: () => new TableMultNode(),                   parity: false },
+          { type: "pair", children: [matDetLeaf("mdeterm"), matDetLeaf("minverse")] },
+          { type: "pair", children: [matDetLeaf("trace"), matDetLeaf("rank")] },
+          matDetLeaf("norm"),
+          { type: "table-unit",      label: "MUNIT",     description: "n×n identity matrix: diagonal 1s, rest 0s, or blanks (nulls) so the off-diagonal stays out of sums. Excel: `MUNIT`.",                                             create: () => new TableUnitNode(),                   parity: false },
+          { type: "table-diag",      label: "DIAGONAL",  description: "Turns a list into a square matrix's diagonal, the rest 0s or blanks (nulls, out of sums). `numpy.diag`.",                                              create: () => new TableDiagNode(),                   parity: false },
+          { type: "pair", children: [
+            { type: "table-outer",     label: "OUTER",     description: "Outer product of two lists: the matrix of every product a×b. `numpy.outer`.",                                                                          create: () => new TableOuterNode(),                  parity: false },
+            { type: "vector-cross",    label: "Cross Product", description: "Cross product of two 3-D vectors: the vector perpendicular to both. `numpy.cross`.",                                                          create: () => new CrossNode(),                       parity: false, keywords: "cross product vector perpendicular normal 3d numpy physics torque" },
+          ]},
+          { type: "table-transpose", label: "TRANSPOSE", description: "Flips rows and columns of a table. Excel: `TRANSPOSE`.",                                                    create: () => new TableTransposeNode(),              parity: false },
+        ],
+      },
+      { type: "table-info",  label: "Table Size", description: "Number of rows and number of columns in a table. Excel: `ROWS` / `COLUMNS`.", create: () => new TableInfoNode(), parity: false, keywords: "rows columns count size dimensions" },
+    ],
+  },
+
+  // ── FRAMES ───────────────────────────────────────────────────────────────────
+  {
+    type: "category", label: "Frames", description: "Data tables with named, typed columns: filter, sort, join, group, clean, reshape and analyze them, and nest them into Cubes.",
+    children: [
+      {
+        type: "category", label: "Build & Read", description: "Make a Frame from a Matrix and headers or from lists, take one apart, and read or add rows and columns.",
+        children: [
+          { type: "build-frame", label: "Build Frame", description: "Combines a Matrix and a List of headers into a Frame. Missing headers become `Col1`, `Col2`…, and duplicates are made unique.", create: () => new BuildFrameNode(), parity: false },
+          { type: "frame-from-lists", label: "Frame from Lists", description: "Builds a Frame straight from lists: each column pairs a typed name with a list of any type. Ragged columns pad with blanks.", create: () => new FrameFromListsNode(), parity: false, keywords: "lists to frame columns table build fast assemble" },
+          { type: "split-frame", label: "Split Frame", description: "Takes a Frame apart into its numeric Matrix body and header text-list; the inverse of Build Frame. The type filter (All / Num / Date / Bool / Text) keeps only columns of that type.", create: () => new SplitFrameNode(), parity: false },
+          { type: "get-column",  label: "Get Column",  description: "Pulls one column out of a Frame as a list, by name or 1-based number. Read as Number, Text, or Date.", create: () => new GetColumnNode(), parity: false },
+          { type: "get-row",     label: "Get Row",     description: "Pulls one row out of a Frame by 1-based number, as a one-row Frame, since a row can mix types.", create: () => new GetRowNode(), parity: false },
+          { type: "add-column",  label: "Add Column",  description: "Appends a list to a Frame or Cube as a named column, or replaces the column of that name. Shorter lists pad with blanks.", create: () => new AddColumnNode(), parity: false },
+          { type: "computed-column", label: "Computed Column", description: "Adds a column calculated once per row. `@Price` reads this row's Price and a bare `Price` is the whole column, so `@Price / SUM(Price)` is each row's share. Bracket a name with spaces: `@[Unit Price]`. `ROW()` is this row's number and `ROWS(Price)` the row count. Power Query: Custom Column.", keywords: "custom column calculated field formula derive mutate row-wise index this-row @ row number rownum ROW ROWS", create: () => new ComputedColumnNode(), parity: false },
+        ],
+      },
+      { type: "filter-frame",label: "Frame Filter", description: "Keeps the rows that pass its conditions, joined by AND or OR; the rest go to Dropped. Blanks and errors fail a value test, and `is blank` and `has error` select them. SQL: `WHERE`. Excel: `FILTER`.", create: () => new FilterFrameNode(), parity: false, keywords: "filter rows where keep drop errors iserror noterror clean" },
+      { type: "sort-frame",  label: "Frame Sort",  description: "Sorts a Frame's rows by one column, ascending or descending, with blanks and errors last. Ties keep their order, so to sort by several columns, chain Frame Sorts from the least important column to the most. Excel: `SORT`.", create: () => new SortFrameNode(), parity: false, keywords: "sort order multi key then by stable" },
+      { type: "head",        label: "Head",        description: "Keeps a slice of rows: the first N, the last N, all but the first N, or rows N to To (1-based). Power Query: Keep Rows and Remove Rows.", create: () => new HeadNode(), parity: false, keywords: "head tail first last skip range keep remove top bottom rows limit offset" },
+      { type: "distinct",    label: "Distinct",    description: "Removes duplicate rows from a Frame, keeping the first of each. Rows compare case-sensitively, unlike Excel. Excel: `UNIQUE`.", create: () => new DistinctNode(), parity: false },
+      { type: "join",        label: "Join",        description: "Combines two Frames on a key column: inner, left, right, outer or as-of. A key with several matches gives one row per match, except in as-of. Keys are case-sensitive, unlike Excel's `XLOOKUP`.", create: () => new JoinNode(), parity: false },
+      { type: "pair", children: [
+        { type: "append",      label: "Append",      description: "Stacks Frames vertically. Columns match by name, a missing column fills with blanks, and a type clash is `#TYPE!`. Excel: `VSTACK`.", create: () => new AppendNode(), parity: false },
+        { type: "bind-columns", label: "Bind Columns", description: "Places Frames side by side by position. A repeated name gets a suffix, and a shorter Frame pads with blanks. pandas `concat`, R `bind_cols`, Excel `HSTACK`.", create: () => new BindColumnsNode(), parity: false, keywords: "bind_cols cbind concat axis 1 side by side zip frames columns hstack horizontal" },
+      ]},
+      { type: "group-by-frame", label: "GROUPBY", description: "Groups rows by key columns and aggregates one column, with optional total and subtotal rows. Excel: `GROUPBY`.", create: () => new GroupByFrameNode(), parity: false },
+      { type: "sumifs", label: "SUMIFS", description: "Aggregates one Frame column over the rows that meet criteria on other columns, matching all or any. Excel: `SUMIFS`, `COUNTIFS`, `AVERAGEIFS`, `MINIFS`, `MAXIFS`.", create: () => new SumIfsNode(), keywords: "sumif countif averageif minif maxif criteria conditional aggregate frame all any or" },
+      { type: "window", label: "Window", description: "Adds a column calculated per group while keeping every row: running totals, ranks, lag and lead, rolling windows, shares. SQL `OVER`, pandas `transform`, dplyr `mutate`.", create: () => new WindowNode(), parity: false, keywords: "window partition over running cumulative cumsum rank dense_rank row_number lag lead shift diff pct_change rolling moving transform group share percent of total first last ntile sql" },
+      {
+        type: "category", label: "Columns", description: "Column surgery: keep, drop, rename, split, or number columns.",
+        children: [
+          { type: "pair", children: [
+            { type: "keep-columns", label: "Keep Columns", description: "Keeps only the named columns, in the order given. Like Excel's `CHOOSECOLS`, but by column name.", keywords: "columns select keep choosecols", create: () => new ColumnsNode(), parity: false },
+            { type: "drop-columns", label: "Drop Columns", description: "Removes the named columns; the rest pass through.", keywords: "columns drop remove", create: () => new ColumnsNode({ op: "drop" }), parity: false },
+          ]},
+          { type: "rename",      label: "Rename",      description: "Renames columns from two Lists matched by position: From `[\"qty\"]` → To `[\"Quantity\"]`.", create: () => new RenameNode(), parity: false },
+          { type: "split-column", label: "Split Column", description: "Splits one text column into several by a delimiter, the parts replacing the source. Power Query: Split Column by Delimiter.", create: () => new SplitColumnNode(), parity: false, keywords: "split delimiter text column separate parse divide power query" },
+          { type: "add-index",   label: "Add Index",   description: "Prepends a row-number column from a start value (default 1). Power Query: Add Index Column.", create: () => new AddIndexNode(), parity: false, keywords: "index row number sequence counter rownum power query" },
+          { type: "merge-columns", label: "Merge Columns", description: "Joins two or more columns into one text column with a separator, in the first source\'s place. The inverse of Split Column. Power Query: Merge Columns.", create: () => new MergeColumnsNode(), parity: false, keywords: "merge combine concatenate join columns text textjoin concat inverse split" },
+          { type: "headers", label: "Headers", description: "Promotes the first row to column names, or demotes the names back into a first row of text. Power Query: Use First Row as Headers.", create: () => new HeadersNode(), parity: false, keywords: "promote demote headers first row column names use as titles header" },
+        ],
+      },
+      {
+        type: "category", label: "Clean", description: "The everyday cleanup verbs: fill blanks from above, find and replace, drop spacer rows.",
+        children: [
+          { type: "fill-blanks", label: "Fill Down", description: "Fills blank cells from the neighboring row: Down carries the last value forward, Up the next one back. Power Query: Fill Down.", create: () => new FillBlanksNode(), parity: false, keywords: "fill down up forward backward blanks nulls merged cells carry propagate ffill bfill clean" },
+          { type: "replace-values", label: "Replace Values", description: "Find-and-replace in one column or all. Whole-cell swaps cells equal to Find, taking the column's type; Substring rewrites inside text cells. Case-sensitive. Power Query: Replace Values.", create: () => new ReplaceValuesNode(), parity: false, keywords: "replace find substitute swap value cells fix clean search change" },
+          { type: "drop-blank-rows", label: "Drop Blank Rows", description: "Removes blank rows: only fully blank spacer rows, or any row with a blank cell. Errors count as values. Power Query: Remove Blank Rows.", create: () => new DropBlankRowsNode(), parity: false, keywords: "drop remove blank empty rows spacers nulls complete clean" },
+        ],
+      },
+      {
+        type: "category", label: "Reshape", description: "Change the layout: pivot wide, melt long, nest into a Cube and back.",
+        children: [
+          { type: "pivot",       label: "PIVOTBY",     description: "Turns long data into a cross-tab by Row and Column fields, with `SUM`, `AVERAGE` or `COUNT` per value and optional totals and subtotals. Min and max over text give the first and last alphabetically, where Excel ignores text. Excel: `PIVOTBY`.", create: () => new PivotNode(), parity: false },
+          { type: "unpivot",     label: "Unpivot",     description: "Turns wide data long: the Id columns stay, and each chosen Value column becomes variable and value rows. Power Query: Unpivot. pandas: `melt`.", create: () => new UnpivotNode(), parity: false },
+          { type: "pair", children: [
+            { type: "nest",   label: "Nest",   description: "Groups a flat Frame by key into a Cube. Each key's other columns collapse into a nested table cell. The flat → nested bridge.", create: () => new NestNode(), parity: false },
+            { type: "unnest", label: "Unnest", description: "A Cube's nested column expanded one level, each parent row repeating per nested row; a nested Frame flattens fully. The inverse of Nest.", create: () => new UnnestNode(), parity: false },
+          ]},
+        ],
+      },
+      {
+        type: "category", label: "Analyze", description: "Score, profile, and compare Frames: weighted decisions, column summaries and correlations, version reconciliation.",
+        children: [
+          { type: "decision-matrix", label: "Decision Matrix", description: "Scores and ranks a Frame of options: rows are options and number columns are criteria. Score = `Σ(value × weight) / Σ|weight|`, ranked on the rounded score. Weights come from a Weights table, one row per criterion; a negative weight favors lower values like cost, and a criterion left out weighs 1. Norm scales each criterion so dollars and out-of-10 scores compare: Raw, ÷Max (the default), Range (lowest 0 to highest 1) or Rank. At least and At most columns are deal-breakers: an option outside them is ruled out before weighing. A blank counts as the criterion's median. Breakdown adds each criterion's contribution to the Score. A Cube's nested tables, from Nest Join, are further choices: each row counts its best option inside, so a neighborhood is judged with its best apartment.", create: () => new DecisionMatrixNode(), parity: false, keywords: "decision matrix weighted score rank ranking criteria weight choose compare options podium dmbv multi-criteria mcda deal-breaker chained nested staged" },
+          { type: "decision-sensitivity", label: "Sensitivity", description: "Re-scores the same options under several weight Scenarios to see whether the winner holds. The Scenarios table is the Decision Matrix's Weights table with one weight column per scenario, and an optional Norm column. The result is a Cube with one row per scenario: the Winner, the Margin over the runner-up, and the full Ranking to drill into. Options tied for first are listed together. Flip points mode takes the Weights table instead and gives, per criterion, the weight below and above its own at which another option would win. Pairs with Decision Matrix.", create: () => new DecisionSensitivityNode(), parity: false, keywords: "decision sensitivity robustness scenario weight cube what-if stress test ranking stability mcda flip point break-even tipping" },
+          { type: "choice-ladder", label: "Choice Ladder", description: "Orders a Decision Matrix's options into the sequence to take them in when you can't do them all. Limits name cost columns with an At most, an At least, or neither for a rough cost such as political capital. Optional Requires and Excludes columns link options, Must and Never columns force them in or out, and a One of column takes at most one per group. Where two options are nearer each other than Close within, the ladder forks, and the side you take is kept. A fork that would only swap the order of two options is left out. Value flows down and each rung takes what it serves. Plan is the main line.", create: () => new ChoiceLadderNode(), parity: false, keywords: "choice ladder choose several pick set shortlist budget limit constraint knapsack portfolio itinerary decision matrix fork plan trip restaurants policy agenda priority capital requires excludes" },
+          { type: "describe",    label: "Describe",    description: "One row per column: count, blank, distinct, and for numbers mean, std, min, quartiles, max. Its popup opens on a dashboard with a chart per column. pandas `describe`, R `summary`.", create: () => new DescribeNode(), parity: false, keywords: "describe summary summarize profile statistics count mean std quartile overview explore eda dashboard histogram distribution top values" },
+          { type: "corr-matrix", label: "Correlation Matrix", description: "Pearson, Spearman or Kendall correlation, or covariance, between every pair of number columns, with a leading name column. pandas `df.corr`, R `cor`.", create: () => new CorrMatrixNode(), parity: false, keywords: "correlation matrix corr cov covariance pearson spearman kendall pairwise heatmap" },
+          { type: "reconcile",   label: "Reconcile",   description: "Two Frame versions compared by key: each row Added, Removed, Changed or Unchanged, with before, after and Δ per number column.", create: () => new ReconcileNode(), parity: false, keywords: "reconcile compare diff variance price volume mix pvm audit changed added removed data quality trust" },
+        ],
+      },
+      {
+        type: "category", label: "Plan", description: "Rows in, a plan out: spread a budget, schedule a project, pay off debts, and settle who owes whom.",
+        children: [
+          { type: "allocator", label: "Allocator", description: "Spreads a budget across categories, each with a min, max and weight: all of it in proportion, or the least spend that meets a target. Water-filling.", create: () => new AllocatorNode(), parity: false, keywords: "budget allocator allocate allocation split spend divide categories weights value water-filling waterfilling proportional minimize target knapsack money planner portfolio" },
+          { type: "schedule", label: "Schedule", description: "Critical-path scheduling: each task's Start, Finish, Float and Critical from its duration and predecessors, on working or calendar days.", create: () => new ScheduleNode(), parity: false, keywords: "schedule cpm critical path gantt project plan timeline tasks predecessors dependencies float slack milestone duration working days finish date pert multiple critical paths" },
+          { type: "earned-value", label: "Earned Value", description: "Project performance at a status date: planned and earned value, actual cost, variances, SPI, CPI and EAC. Cost keeps its currency.", create: () => new EarnedValueNode(), parity: false, keywords: "earned value evm bcws bcwp acwp planned earned actual cost variance schedule variance spi cpi eac vac tcpi budget baseline project performance" },
+          { type: "payoff-planner", label: "Payoff Planner", description: "Plans paying off several debts from each Balance, APR and minimum payment, plus an extra amount every month. Every minimum is paid; the extra and each freed minimum go to the head debt, avalanche (highest APR first) or snowball (smallest balance first). Summary gives months, interest and payoff date per debt; Schedule gives each month's balances.", create: () => new PayoffPlannerNode(), parity: false, keywords: "debt payoff planner avalanche snowball loans credit card interest extra payment months schedule" },
+          { type: "settle",      label: "Group Cost Settle", description: "Squares up a group that paid unevenly: who pays whom in the fewest transfers, plus each person's Paid, Owes, Owed and Net.", create: () => new SettleNode(), parity: false, keywords: "settle settlement split bill trip expenses transactions ledger who owes whom debts transfers splitwise group cost share even up payer participants" },
+        ],
+      },
+      {
+        type: "category", label: "Cubes", description: "A Cube is a Frame whose cells can hold anything: a scalar, a list, a nested Frame, or another Cube. `INDEX` reads a cell back out.",
+        children: [
+          { type: "nest-join", label: "Nest Join", description: "Nests two Frames into a Cube on a shared key: each Parent row gains a cell of its matching Child rows, so nothing fans out. tidyr `nest_join`.", create: () => new NestJoinNode(), parity: false, keywords: "cube nest join relate nest_join relational merge group hierarchy multi-level deepen" },
+          { type: "build-cube", label: "Build Cube", description: "Collects values into one Cube column, each cell holding any value: a scalar, list, Frame, or nested Cube. The manual way to put non-table values into a cube.", create: () => new BuildCubeNode(), parity: false, keywords: "cube nest nested pack wrap list of frames container" },
+          { type: "cube-columns", label: "Cube Columns", description: "Assembles a Cube from N columns side by side: a list gives its elements, a single-column cube its cells, a frame or scalar one cell. The Names list names them.", create: () => new CubeColumnsNode(), parity: false, keywords: "cube columns multi-column assemble combine build frame side by side hstack" },
+          { type: "cube-rollup", label: "Cube Rollup", description: "Aggregates a column inside each row's nested table and flattens the Cube to a Frame with the roll-up appended: an assembly's cost as a `SUM` of parts.", create: () => new CubeRollupNode(), parity: false, keywords: "cube rollup aggregate sum bom bill of materials costing nested cost roll up assembly subtotal" },
+        ],
+      },
+    ],
+  },
+
+  // ── TEXT ─────────────────────────────────────────────────────────────────────
+  {
+    type: "category", groupStart: true, label: "Text", description: "String type: inputs, manipulation, and conversion to and from numbers.",
+    children: [
+      {
+        type: "category", label: "Transform", description: "Case, whitespace, and character manipulation.",
+        children: [
+          { type: "pair", children: [textXformLeaf("upper", "uppercase capitals"), textXformLeaf("lower", "lowercase")] },
+          { type: "pair", children: [textXformLeaf("trim", "spaces"),  textXformLeaf("proper", "title case capitalize")] },
+          { type: "pair", children: [textXformLeaf("clean"), textXformLeaf("unaccent")] },
+          textXformLeaf("slugify"),
+          { type: "pair", children: [
+            { type: "text-pad", label: "Pad Text", description: "Pads text to a width with a fill character, on the left, right, or both sides. Python `ljust` / `rjust` / `center`, R `str_pad`.", create: () => new PadTextNode(), parity: false, keywords: "pad padding ljust rjust center justify align width fill zero-pad str_pad fixed width column" },
+            { type: "text-truncate", label: "Truncate Text", description: "Cuts text to a maximum width, ending in an ellipsis when anything was cut. R `str_trunc`, `textwrap.shorten`.", create: () => new TruncateTextNode(), parity: false, keywords: "truncate shorten ellipsis clip cut width max length abbreviate str_trunc" },
+          ]},
+          { type: "text-wrap", label: "Wrap Text", description: "Wraps text into a list of lines no wider than a set number of characters, breaking on spaces. R `str_wrap`, Python `textwrap.wrap`.", create: () => new WrapTextNode(), parity: false, keywords: "wrap wraptext str_wrap textwrap lines width fold" },
+        ],
+      },
+      {
+        type: "category", label: "Build & Slice", description: "Concatenate, split, and extract substrings.",
+        children: [
+          { type: "text-concat", label: "CONCAT",    description: "Joins pieces of text in order, one per row. Excel: `CONCAT`.",                            accent: STR, create: () => new ConcatNode(),    parity: false },
+          { type: "template", label: "Template", description: "Fills a text with named values: `{name}` inserts the input of that name, `{total:0.00}` formats it with an Excel `TEXT` code, `{{ }}` print braces. A list on any name spills a list. R `str_glue` / `glue`, Python f-strings and `str.format`. Excel: `TEXT` & \"…\" chains.", create: () => new TemplateNode(), parity: false, keywords: "template glue format f-string interpolate placeholder string.format sprintf mail merge message label" },
+          { type: "text-join",   label: "TEXTJOIN",  description: "Joins a list of strings with a delimiter, optionally ignoring empty strings. Excel: `TEXTJOIN`.",             create: () => new TextJoinNode(),  parity: false },
+          { type: "text-split",  label: "TEXTSPLIT", description: "Splits text at a delimiter into a list of strings. Excel: `TEXTSPLIT`.",                                      create: () => new TextSplitNode(), parity: false },
+          { type: "pair", children: [textSliceLeaf("left"), textSliceLeaf("right")] },
+          textSliceLeaf("mid"),
+          { type: "text-rept",   label: "REPT",      description: "Repeats text N times. Excel: `REPT`.",                                                                        create: () => new ReptNode(),      parity: false },
+        ],
+      },
+      {
+        type: "category", label: "Search & Replace", description: "Find positions, replace substrings, extract around delimiters.",
+        children: [
+          { type: "pair", children: [textFindLeaf("find"), textFindLeaf("search")] },
+          { type: "pair", children: [textAfterBeforeLeaf("after"), textAfterBeforeLeaf("before")] },
+          { type: "text-substitute", label: "SUBSTITUTE",  description: "Replaces `old_text` with `new_text`: every occurrence, or only the nth when Instance is set. Excel: `SUBSTITUTE`.", create: () => new SubstituteNode(),   parity: true },
+          { type: "text-replace",    label: "REPLACE",     description: "Replaces N characters starting at a position. Excel: `REPLACE`.",          create: () => new TextReplaceNode(), parity: false },
+          { type: "regex",           label: "Regex",       description: "Tests, extracts, or replaces text using a regular expression. Excel: `REGEXTEST`, `REGEXEXTRACT`, `REGEXREPLACE`.", keywords: "regex regextest regexextract regexreplace regular expression match extract replace", create: () => new RegexNode(), parity: false },
+        ],
+      },
+      {
+        type: "category", label: "Measure & Encode", description: "String length, comparison, and character encoding.",
+        children: [
+          { type: "text-len",   label: "LEN",   keywords: "length characters", description: "Number of characters in the string. Excel: `LEN`.",                          create: () => new TextLenNode(), parity: false },
+          { type: "text-exact", label: "EXACT", description: "`1` if two strings are identical (case-sensitive), else `0`. Excel: `EXACT`.", create: () => new ExactNode(),   parity: false },
+          { type: "pair", children: [
+            { type: "text-similarity", label: "Text Similarity", description: "How alike two strings are: Levenshtein, Damerau, Jaro-Winkler, or the raw edit distance. `rapidfuzz`, R `stringdist`. Excel: the Fuzzy Lookup add-in.", create: () => new TextSimilarityNode(), parity: false, keywords: "similarity fuzzy levenshtein edit distance jaro winkler damerau stringdist rapidfuzz typo match" },
+            { type: "fuzzy-match",     label: "Fuzzy Match",     description: "The closest candidate to a text and its score, above a threshold: typo-tolerant matching. rapidfuzz `extractOne`, R stringdist `amatch`.", create: () => new FuzzyMatchNode(), parity: false, keywords: "fuzzy match lookup approximate nearest string typo dedupe reconcile names extractOne amatch" },
+          ]},
+          { type: "pair", children: [charCodeLeaf("char"), charCodeLeaf("code")] },
+          { type: "pair", children: [
+            { type: "url-encode", label: "ENCODEURL", description: "Percent-encode a string for use in a URL. Spaces become `%20`. Excel: `ENCODEURL`.", create: () => new UrlEncodeNode({ op: "encode" }), parity: false },
+            { type: "url-decode", label: "DECODEURL", description: "Decode a percent-encoded URL string; `%20` becomes a space.", create: () => new UrlEncodeNode({ op: "decode" }), parity: false },
+          ]},
+          { type: "pair", children: [
+            { type: "base64-encode", label: "ENCODEBASE64", description: "Base64 of the UTF-8 text, standard alphabet with padding. Python `base64.b64encode`, R `base64enc`.", create: () => new UrlEncodeNode({ op: "base64" }), parity: false, keywords: "base64 encode b64encode" },
+            { type: "base64-decode", label: "DECODEBASE64", description: "Text back from base64; non-base64 input passes through unchanged.", create: () => new UrlEncodeNode({ op: "unbase64" }), parity: false, keywords: "base64 decode b64decode" },
+          ]},
+          { type: "pair", children: [
+            { type: "hash", label: "Hash", description: "Digest of a text as lowercase hex: SHA-256, SHA-1, MD5, CRC-32 or FNV-1a. Joins on a hashed ID keep the raw key out. Python `hashlib`, R `digest`.", create: () => new HashNode(), parity: false, keywords: "hash digest sha256 sha1 md5 crc32 fnv checksum anonymize anonymise pseudonymize fingerprint hashlib" },
+            { type: "uuid", label: "UUID", description: "A random v4 UUID, new on every recalculation (F9). Python `uuid.uuid4`, R `uuid::UUIDgenerate`.", create: () => new UuidNode(), parity: false, keywords: "uuid guid unique id identifier random key uuid4" },
+          ]},
+        ],
+      },
+      { type: "text-dollar", label: "DOLLAR",  description: "Format a number as a currency string, for example `\"$1,234.56\"`, or `\"($78.90)\"` for a negative. Excel: `DOLLAR`.", create: () => new FormatDollarNode() },
+      { type: "text-fixed", label: "FIXED",     description: "Format a number as a fixed-decimal string with optional thousands separators. Excel: `FIXED`.", create: () => new FixedNode() },
+      { type: "pair", children: [romanArabicLeaf("roman"), romanArabicLeaf("arabic")] },
+    ],
+  },
+
+  // ── DATE & TIME ───────────────────────────────────────────────────────────────
+  {
+    type: "category", label: "Date & Time", description: "Date serial type (like Excel): build and parse dates, pull out their parts, count between them, shift them, and count working days.",
+    children: [
+      { type: "date-construct", label: "DATE (Build)", description: "Builds a date from Year, Month, Day. Handles overflow, so month 13 → Jan next year. Excel: `DATE`.", create: () => new DateConstructNode(), parity: false, accent: DT },
+      { type: "pair", children: [todayNowLeaf("today"), todayNowLeaf("now")] },
+      { type: "date-time",     label: "TIME",      description: "Builds a time fraction 0–1 from Hour, Minute, Second. Add it to a date serial for date+time. Excel: `TIME`.", create: () => new TimeConstructNode(), parity: false },
+      { type: "save-times",    label: "Save Times",  description: "When this document was last autosaved and when it was last written to a file, as two date values.", create: () => new SaveTimesNode(), parity: false, keywords: "save autosave saved timestamp version document file written when last clock" },
+      { type: "pair", children: [
+        { type: "date-workday",     label: "WORKDAY",     description: WORKDAYS_OP_META.workday.description, keywords: "workdays", create: () => new WorkdaysNode({ op: "workday" }),         parity: false },
+        { type: "date-networkdays", label: "NETWORKDAYS", description: WORKDAYS_OP_META.networkdays.description, keywords: "workdays", create: () => new WorkdaysNode({ op: "networkdays" }), parity: false },
+      ]},
+      {
+        type: "category", label: "Parse", description: "Convert text strings to date or time values, and Unix time both ways.",
+        children: [
+          { type: "pair", children: [dateTimeValueLeaf("date"), dateTimeValueLeaf("time")] },
+          { type: "pair", children: [
+            { type: "date-epoch-from", label: "Epoch → Date", description: "Unix time (seconds or milliseconds since `1970-01-01` UTC) → a date. pandas `to_datetime`, R `as.POSIXct`. Excel: `n/86400 + 25569`.", create: () => new EpochNode({ op: "from" }), parity: false, keywords: "epoch unix timestamp posix seconds milliseconds 1970 utc to_datetime" },
+            { type: "date-epoch-to",   label: "Date → Epoch", description: "A date → Unix time in seconds or milliseconds. pandas `astype(int64)`, R `as.numeric()`. Excel: `(date − 25569)·86400`.", create: () => new EpochNode({ op: "to" }), parity: false, keywords: "epoch unix timestamp posix seconds milliseconds 1970 utc" },
+          ]},
+        ],
+      },
+      {
+        type: "category", label: "Parts", description: "Pull the year, month, day, hour, minute or second out of a date, its weekday, or its week number.",
+        children: [
+          { type: "pair", children: [datePartLeaf("year"), datePartLeaf("month")] },
+          { type: "pair", children: [datePartLeaf("day"),  datePartLeaf("hour")] },
+          { type: "pair", children: [datePartLeaf("minute"), datePartLeaf("second")] },
+          weekInfoLeaf("weekday"),
+          { type: "pair", children: [weekInfoLeaf("weeknum"), weekInfoLeaf("isoweeknum")] },
+        ],
+      },
+      {
+        type: "category", label: "Difference", description: "Count the days, 360-day days, year fraction or whole years, months and days between two dates.",
+        children: [
+          dateDiffLeaf("days"),
+          { type: "pair", children: [dateDiffLeaf("days360"), dateDiffLeaf("yearfrac")] },
+        { type: "date-datedif",     label: "DATEDIF",     description: "Whole years, months, or days between two dates, or the remainder past larger units, like months ignoring years. Excel: `DATEDIF`.", create: () => new DateDiffNode({ op: "years" }), parity: false },
+        ],
+      },
+      {
+        type: "category", label: "Shift & Round", description: "Move a date by N months, jump to the end of its month, or snap it to the start of a period.",
+        children: [
+          { type: "pair", children: [dateAddLeaf("edate"), dateAddLeaf("eomonth")] },
+            { type: "date-trunc", label: "Truncate Date", description: "Floors a date to its day, week, month, quarter or year, or ceilings to the next. lubridate `floor_date`, pandas `to_period`, SQL `DATE_TRUNC`. Excel: `DATE(YEAR(d), MONTH(d), 1)`.", create: () => new DateTruncNode(), parity: false, keywords: "truncate floor ceiling date period month week quarter year resample bucket floor_date date_trunc to_period start of month" },
+        ],
+      },
+    ],
+  },
+
   // ── LOGIC ────────────────────────────────────────────────────────────────────
   {
     type: "category", label: "Logic", description: "Decisions, comparisons, boolean operations, and fallback handling.",
@@ -735,274 +971,33 @@ export const NODE_CATALOG: CatalogEntry[] = [
     ],
   },
 
-  // ── DATE & TIME ───────────────────────────────────────────────────────────────
+  // ── DOCS & FILES ─────────────────────────────────────────────────────────────
   {
-    type: "category", label: "Date & Time", description: "Date serial type (like Excel): sources, extract parts, arithmetic, and working-day calculations.",
+    type: "category", groupStart: true, label: "Docs & Files", description: "Documents and files: markdown notes and reports, your Obsidian vault, and attached pictures, files and graphics.",
     children: [
-      { type: "date-construct", label: "DATE (Build)", description: "Builds a date from Year, Month, Day. Handles overflow, so month 13 → Jan next year. Excel: `DATE`.", create: () => new DateConstructNode(), parity: false, accent: DT },
-      { type: "pair", children: [todayNowLeaf("today"), todayNowLeaf("now")] },
-      { type: "date-time",     label: "TIME",      description: "Builds a time fraction 0–1 from Hour, Minute, Second. Add it to a date serial for date+time. Excel: `TIME`.", create: () => new TimeConstructNode(), parity: false },
-      {
-        type: "category", label: "Parse", description: "Convert text strings to date or time values, and Unix time both ways.",
-        children: [
-          { type: "pair", children: [dateTimeValueLeaf("date"), dateTimeValueLeaf("time")] },
-          { type: "pair", children: [
-            { type: "date-epoch-from", label: "Epoch → Date", description: "Unix time (seconds or milliseconds since `1970-01-01` UTC) → a date. pandas `to_datetime`, R `as.POSIXct`. Excel: `n/86400 + 25569`.", create: () => new EpochNode({ op: "from" }), parity: false, keywords: "epoch unix timestamp posix seconds milliseconds 1970 utc to_datetime" },
-            { type: "date-epoch-to",   label: "Date → Epoch", description: "A date → Unix time in seconds or milliseconds. pandas `astype(int64)`, R `as.numeric()`. Excel: `(date − 25569)·86400`.", create: () => new EpochNode({ op: "to" }), parity: false, keywords: "epoch unix timestamp posix seconds milliseconds 1970 utc" },
-          ]},
-        ],
-      },
-      {
-        type: "category", label: "Extract Part", description: "Pull year, month, day, hour, minute, or second from a date serial.",
-        children: [
-          { type: "pair", children: [datePartLeaf("year"), datePartLeaf("month")] },
-          { type: "pair", children: [datePartLeaf("day"),  datePartLeaf("hour")] },
-          { type: "pair", children: [datePartLeaf("minute"), datePartLeaf("second")] },
-        ],
-      },
-      {
-        type: "category", label: "Week", description: "Day-of-week and week-number calculations.",
-        children: [
-          weekInfoLeaf("weekday"),
-          { type: "pair", children: [weekInfoLeaf("weeknum"), weekInfoLeaf("isoweeknum")] },
-        ],
-      },
-      {
-        type: "category", label: "Difference", description: "Count days, 360-day days, or year fraction between two dates.",
-        children: [
-          dateDiffLeaf("days"),
-          { type: "pair", children: [dateDiffLeaf("days360"), dateDiffLeaf("yearfrac")] },
-        ],
-      },
-      {
-        type: "category", label: "Add Months", description: "Shift a date by N months, jump to end of month, or snap to the start of a period.",
-        children: [
-          { type: "pair", children: [dateAddLeaf("edate"), dateAddLeaf("eomonth")] },
-          { type: "date-trunc", label: "Truncate Date", description: "Floors a date to its day, week, month, quarter or year, or ceilings to the next. lubridate `floor_date`, pandas `to_period`, SQL `DATE_TRUNC`. Excel: `DATE(YEAR(d), MONTH(d), 1)`.", create: () => new DateTruncNode(), parity: false, keywords: "truncate floor ceiling date period month week quarter year resample bucket floor_date date_trunc to_period start of month" },
-        ],
-      },
       { type: "pair", children: [
-        { type: "date-workday",     label: "WORKDAY",     description: WORKDAYS_OP_META.workday.description, keywords: "workdays", create: () => new WorkdaysNode({ op: "workday" }),         parity: false },
-        { type: "date-networkdays", label: "NETWORKDAYS", description: WORKDAYS_OP_META.networkdays.description, keywords: "workdays", create: () => new WorkdaysNode({ op: "networkdays" }), parity: false },
+        { type: "note", label: "Note", description: "A free-floating markdown note, any position, any tint. Open the body with a ----fenced YAML block to turn each key into a typed output, a note doubling as a constants source. The body is a Knap template over those fields: `{{ title }}`, `{% if %}`, `{% for %}` and the standard filters.", create: () => new NoteNode(), parity: false },
+        { type: "report", label: "Report", description: "A markdown document written as a Knap template. `{{ name }}` shows a value the way the canvas does, `{% for %}` repeats over a Frame and `{% if %}` gates a section. A Note on Template supplies the text instead, and Records turns it into a mail merge, one page per row. The Knap tab in Help has the syntax.", keywords: "mail merge merge fields letters one note per row batch template document markdown knap", create: () => new ReportNode(), parity: false },
       ]},
-      { type: "date-datedif",     label: "DATEDIF",     description: "Whole years, months, or days between two dates, or the remainder past larger units, like months ignoring years. Excel: `DATEDIF`.", create: () => new DateDiffNode({ op: "years" }), parity: false },
-      { type: "save-times",    label: "Save Times",  description: "When this document was last autosaved and when it was last written to a file, as two date values.", create: () => new SaveTimesNode(), parity: false, keywords: "save autosave saved timestamp version document file written when last clock" },
-    ],
-  },
-
-  // ── TEXT ─────────────────────────────────────────────────────────────────────
-  {
-    type: "category", label: "Text", description: "String type: inputs, manipulation, and conversion to and from numbers.",
-    children: [
-      {
-        type: "category", label: "Transform", description: "Case, whitespace, and character manipulation.",
-        children: [
-          { type: "pair", children: [textXformLeaf("upper", "uppercase capitals"), textXformLeaf("lower", "lowercase")] },
-          { type: "pair", children: [textXformLeaf("trim", "spaces"),  textXformLeaf("proper", "title case capitalize")] },
-          { type: "pair", children: [textXformLeaf("clean"), textXformLeaf("unaccent")] },
-          textXformLeaf("slugify"),
-          { type: "pair", children: [
-            { type: "text-pad", label: "Pad Text", description: "Pads text to a width with a fill character, on the left, right, or both sides. Python `ljust` / `rjust` / `center`, R `str_pad`.", create: () => new PadTextNode(), parity: false, keywords: "pad padding ljust rjust center justify align width fill zero-pad str_pad fixed width column" },
-            { type: "text-truncate", label: "Truncate Text", description: "Cuts text to a maximum width, ending in an ellipsis when anything was cut. R `str_trunc`, `textwrap.shorten`.", create: () => new TruncateTextNode(), parity: false, keywords: "truncate shorten ellipsis clip cut width max length abbreviate str_trunc" },
-          ]},
-          { type: "text-wrap", label: "Wrap Text", description: "Wraps text into a list of lines no wider than a set number of characters, breaking on spaces. R `str_wrap`, Python `textwrap.wrap`.", create: () => new WrapTextNode(), parity: false, keywords: "wrap wraptext str_wrap textwrap lines width fold" },
-        ],
-      },
-      {
-        type: "category", label: "Build & Slice", description: "Concatenate, split, and extract substrings.",
-        children: [
-          { type: "text-concat", label: "CONCAT",    description: "Joins pieces of text in order, one per row. Excel: `CONCAT`.",                            accent: STR, create: () => new ConcatNode(),    parity: false },
-          { type: "template", label: "Template", description: "Fills a text with named values: `{name}` inserts the input of that name, `{total:0.00}` formats it with an Excel `TEXT` code, `{{ }}` print braces. A list on any name spills a list. R `str_glue` / `glue`, Python f-strings and `str.format`. Excel: `TEXT` & \"…\" chains.", create: () => new TemplateNode(), parity: false, keywords: "template glue format f-string interpolate placeholder string.format sprintf mail merge message label" },
-          { type: "text-join",   label: "TEXTJOIN",  description: "Joins a list of strings with a delimiter, optionally ignoring empty strings. Excel: `TEXTJOIN`.",             create: () => new TextJoinNode(),  parity: false },
-          { type: "text-split",  label: "TEXTSPLIT", description: "Splits text at a delimiter into a list of strings. Excel: `TEXTSPLIT`.",                                      create: () => new TextSplitNode(), parity: false },
-          { type: "pair", children: [textSliceLeaf("left"), textSliceLeaf("right")] },
-          textSliceLeaf("mid"),
-          { type: "text-rept",   label: "REPT",      description: "Repeats text N times. Excel: `REPT`.",                                                                        create: () => new ReptNode(),      parity: false },
-        ],
-      },
-      {
-        type: "category", label: "Search & Replace", description: "Find positions, replace substrings, extract around delimiters.",
-        children: [
-          { type: "pair", children: [textFindLeaf("find"), textFindLeaf("search")] },
-          { type: "pair", children: [textAfterBeforeLeaf("after"), textAfterBeforeLeaf("before")] },
-          { type: "text-substitute", label: "SUBSTITUTE",  description: "Replaces `old_text` with `new_text`: every occurrence, or only the nth when Instance is set. Excel: `SUBSTITUTE`.", create: () => new SubstituteNode(),   parity: true },
-          { type: "text-replace",    label: "REPLACE",     description: "Replaces N characters starting at a position. Excel: `REPLACE`.",          create: () => new TextReplaceNode(), parity: false },
-          { type: "regex",           label: "Regex",       description: "Tests, extracts, or replaces text using a regular expression. Excel: `REGEXTEST`, `REGEXEXTRACT`, `REGEXREPLACE`.", keywords: "regex regextest regexextract regexreplace regular expression match extract replace", create: () => new RegexNode(), parity: false },
-        ],
-      },
-      {
-        type: "category", label: "Measure & Encode", description: "String length, comparison, and character encoding.",
-        children: [
-          { type: "text-len",   label: "LEN",   keywords: "length characters", description: "Number of characters in the string. Excel: `LEN`.",                          create: () => new TextLenNode(), parity: false },
-          { type: "text-exact", label: "EXACT", description: "`1` if two strings are identical (case-sensitive), else `0`. Excel: `EXACT`.", create: () => new ExactNode(),   parity: false },
-          { type: "pair", children: [
-            { type: "text-similarity", label: "Text Similarity", description: "How alike two strings are: Levenshtein, Damerau, Jaro-Winkler, or the raw edit distance. `rapidfuzz`, R `stringdist`. Excel: the Fuzzy Lookup add-in.", create: () => new TextSimilarityNode(), parity: false, keywords: "similarity fuzzy levenshtein edit distance jaro winkler damerau stringdist rapidfuzz typo match" },
-            { type: "fuzzy-match",     label: "Fuzzy Match",     description: "The closest candidate to a text and its score, above a threshold: typo-tolerant matching. rapidfuzz `extractOne`, R stringdist `amatch`.", create: () => new FuzzyMatchNode(), parity: false, keywords: "fuzzy match lookup approximate nearest string typo dedupe reconcile names extractOne amatch" },
-          ]},
-          { type: "pair", children: [charCodeLeaf("char"), charCodeLeaf("code")] },
-          { type: "pair", children: [
-            { type: "url-encode", label: "ENCODEURL", description: "Percent-encode a string for use in a URL. Spaces become `%20`. Excel: `ENCODEURL`.", create: () => new UrlEncodeNode({ op: "encode" }), parity: false },
-            { type: "url-decode", label: "DECODEURL", description: "Decode a percent-encoded URL string; `%20` becomes a space.", create: () => new UrlEncodeNode({ op: "decode" }), parity: false },
-          ]},
-          { type: "pair", children: [
-            { type: "base64-encode", label: "ENCODEBASE64", description: "Base64 of the UTF-8 text, standard alphabet with padding. Python `base64.b64encode`, R `base64enc`.", create: () => new UrlEncodeNode({ op: "base64" }), parity: false, keywords: "base64 encode b64encode" },
-            { type: "base64-decode", label: "DECODEBASE64", description: "Text back from base64; non-base64 input passes through unchanged.", create: () => new UrlEncodeNode({ op: "unbase64" }), parity: false, keywords: "base64 decode b64decode" },
-          ]},
-          { type: "pair", children: [
-            { type: "hash", label: "Hash", description: "Digest of a text as lowercase hex: SHA-256, SHA-1, MD5, CRC-32 or FNV-1a. Joins on a hashed ID keep the raw key out. Python `hashlib`, R `digest`.", create: () => new HashNode(), parity: false, keywords: "hash digest sha256 sha1 md5 crc32 fnv checksum anonymize anonymise pseudonymize fingerprint hashlib" },
-            { type: "uuid", label: "UUID", description: "A random v4 UUID, new on every recalculation (F9). Python `uuid.uuid4`, R `uuid::UUIDgenerate`.", create: () => new UuidNode(), parity: false, keywords: "uuid guid unique id identifier random key uuid4" },
-          ]},
-        ],
-      },
-      { type: "text-dollar", label: "DOLLAR",  description: "Format a number as a currency string, for example `\"$1,234.56\"`, or `\"($78.90)\"` for a negative. Excel: `DOLLAR`.", create: () => new FormatDollarNode() },
-      { type: "text-fixed", label: "FIXED",     description: "Format a number as a fixed-decimal string with optional thousands separators. Excel: `FIXED`.", create: () => new FixedNode() },
-      { type: "pair", children: [romanArabicLeaf("roman"), romanArabicLeaf("arabic")] },
-    ],
-  },
-
-  // ── FRAMES ───────────────────────────────────────────────────────────────────
-  {
-    type: "category", label: "Frames", description: "Data tables with named, typed columns: filter, sort, join, group, clean, reshape and analyze them, and nest them into Cubes.",
-    children: [
-      { type: "distinct",    label: "Distinct",    description: "Removes duplicate rows from a Frame, keeping the first of each. Rows compare case-sensitively, unlike Excel. Excel: `UNIQUE`.", create: () => new DistinctNode(), parity: false },
-      { type: "head",        label: "Head",        description: "Keeps a slice of rows: the first N, the last N, all but the first N, or rows N to To (1-based). Power Query: Keep Rows and Remove Rows.", create: () => new HeadNode(), parity: false, keywords: "head tail first last skip range keep remove top bottom rows limit offset" },
-      { type: "sort-frame",  label: "Frame Sort",  description: "Sorts a Frame's rows by one column, ascending or descending, with blanks and errors last. Ties keep their order, so to sort by several columns, chain Frame Sorts from the least important column to the most. Excel: `SORT`.", create: () => new SortFrameNode(), parity: false, keywords: "sort order multi key then by stable" },
-      { type: "filter-frame",label: "Frame Filter", description: "Keeps the rows that pass its conditions, joined by AND or OR; the rest go to Dropped. Blanks and errors fail a value test, and `is blank` and `has error` select them. SQL: `WHERE`. Excel: `FILTER`.", create: () => new FilterFrameNode(), parity: false, keywords: "filter rows where keep drop errors iserror noterror clean" },
-      { type: "join",        label: "Join",        description: "Combines two Frames on a key column: inner, left, right, outer or as-of. A key with several matches gives one row per match, except in as-of. Keys are case-sensitive, unlike Excel's `XLOOKUP`.", create: () => new JoinNode(), parity: false },
-      { type: "sumifs", label: "SUMIFS", description: "Aggregates one Frame column over the rows that meet criteria on other columns, matching all or any. Excel: `SUMIFS`, `COUNTIFS`, `AVERAGEIFS`, `MINIFS`, `MAXIFS`.", create: () => new SumIfsNode(), keywords: "sumif countif averageif minif maxif criteria conditional aggregate frame all any or" },
-      { type: "window", label: "Window", description: "Adds a column calculated per group while keeping every row: running totals, ranks, lag and lead, rolling windows, shares. SQL `OVER`, pandas `transform`, dplyr `mutate`.", create: () => new WindowNode(), parity: false, keywords: "window partition over running cumulative cumsum rank dense_rank row_number lag lead shift diff pct_change rolling moving transform group share percent of total first last ntile sql" },
-      { type: "group-by-frame", label: "GROUPBY", description: "Groups rows by key columns and aggregates one column, with optional total and subtotal rows. Excel: `GROUPBY`.", create: () => new GroupByFrameNode(), parity: false },
+      { type: "dashboard", label: "Dashboard", description: "A full-screen board of live values, charts and tables on a grid. The layout reads like Frame Input's Form Layout: a line per row, names split by `|`, `Chart*2` spans two columns, and a repeated name merges its boxes. Each name is a box.", keywords: "dashboard board panel tiles overview monitor grid layout full screen kpi summary", create: () => new DashboardNode(), parity: false },
       { type: "pair", children: [
-        { type: "append",      label: "Append",      description: "Stacks Frames vertically. Columns match by name, a missing column fills with blanks, and a type clash is `#TYPE!`. Excel: `VSTACK`.", create: () => new AppendNode(), parity: false },
-        { type: "bind-columns", label: "Bind Columns", description: "Places Frames side by side by position. A repeated name gets a suffix, and a shorter Frame pads with blanks. pandas `concat`, R `bind_cols`, Excel `HSTACK`.", create: () => new BindColumnsNode(), parity: false, keywords: "bind_cols cbind concat axis 1 side by side zip frames columns hstack horizontal" },
+        { type: "image", label: "Image", description: "A free-floating picture from a local file or a web URL. Annotation only, no data. Web URLs persist; local files are session-only.", create: () => new ImageNode(), parity: false },
+        { type: "file-link", label: "File Link", description: "A link to a file on your computer: the path, not the file. Shows a title and preview with an Open button that launches it in its default app. Annotation only, no data. On desktop the link persists in the save; on the web an attach is session-only.", create: () => new FileLinkNode(), parity: false, keywords: "file link attachment attach open path shortcut document local disk launch reference external" },
+      ]},
+      { type: "pair", children: [
+        { type: "svg", label: "SVG", description: "An interactive SVG from a local `.svg` or a URL: the selected shape outputs its name, so a map, floorplan, or schematic becomes a selector.", create: () => new SvgPickerNode(), parity: false, keywords: "svg map picker region layer shape hotspot clickable diagram floorplan schematic slice filter select vector" },
+        { type: "promo", label: "✨ Promo", description: "A random Solenoid tagline. Re-rolls on recalc (F9). Pure easter egg.", create: () => new PromoNode() },
       ]},
       {
-        type: "category", label: "Clean", description: "The everyday cleanup verbs: fill blanks from above, find and replace, drop spacer rows.",
+        type: "category", label: "Obsidian", description: "Your vault as data and back: notes and tasks in, notes and properties out. A folder of tasks read as a Vault Folder gives title, status, priority, due and tags; TaskNotes adds the rest. Set the vault in Settings ▸ Obsidian. Desktop only.",
         children: [
-          { type: "fill-blanks", label: "Fill Down", description: "Fills blank cells from the neighboring row: Down carries the last value forward, Up the next one back. Power Query: Fill Down.", create: () => new FillBlanksNode(), parity: false, keywords: "fill down up forward backward blanks nulls merged cells carry propagate ffill bfill clean" },
-          { type: "replace-values", label: "Replace Values", description: "Find-and-replace in one column or all. Whole-cell swaps cells equal to Find, taking the column's type; Substring rewrites inside text cells. Case-sensitive. Power Query: Replace Values.", create: () => new ReplaceValuesNode(), parity: false, keywords: "replace find substitute swap value cells fix clean search change" },
-          { type: "drop-blank-rows", label: "Drop Blank Rows", description: "Removes blank rows: only fully blank spacer rows, or any row with a blank cell. Errors count as values. Power Query: Remove Blank Rows.", create: () => new DropBlankRowsNode(), parity: false, keywords: "drop remove blank empty rows spacers nulls complete clean" },
+          { type: "vault-folder", label: "Vault Folder", description: "Reads an Obsidian vault folder as one cube: a row per note, file columns plus every frontmatter key. Types from an mdbase schema or types.json. Desktop only.", create: () => new VaultFolderNode(), parity: false, keywords: "obsidian vault notes markdown frontmatter cube folder mdbase bases properties tags links daily notes tasknotes" },
+          { type: "import-obsidian", label: "Import Obsidian Note", description: "A `.md` note from your Obsidian vault as a read-only Note: frontmatter becomes typed outputs, the body renders inline. Desktop only.", create: () => new ImportObsidianNode(), parity: false, keywords: "obsidian vault markdown md note import read source frontmatter" },
+          { type: "tasknotes", label: "TaskNotes", description: "Reads what a folder of files can't total: time tracked per task, recurring and completed instances, the calendar of events between two dates, the task-count stats. Through the TaskNotes plugin's local API. Turn the API on in the plugin; the address is in Settings ▸ Obsidian, the token on the card.", create: () => new TaskNotesNode(), parity: false, keywords: "tasknotes task notes obsidian plugin api tasks todo due scheduled projects calendar events stats time tracking timeEntries" },
+          { type: "write-obsidian", label: "Write to Obsidian", description: "Writes a Note, a Report, or a cube of rows into your Obsidian vault. A Note or Report becomes one markdown note with its tables, diagrams, math and charts; a mail-merge Report writes one note per page. Rows write each note's frontmatter and body, keyed by a path column and patched line by line. Preview shows what Run would do. Never writes on its own. Desktop only.", create: () => new WriteObsidianNode(), parity: false, keywords: "obsidian vault markdown md note export sink write document properties frontmatter yaml note-body cube patch bases plan preview" },
+          { type: "write-tasks", label: "Write Tasks", description: "Creates or updates TaskNotes tasks from rows: a row with a path updates that task, one without creates it from its title. Sends the writable task fields present, or the ones you list. Preview marks the rows that would not change; Run sends the rest. Never writes on its own.", create: () => new WriteTasksNode(), parity: false, keywords: "write tasks tasknotes obsidian create update sink api post put plan preview" },
         ],
       },
-      {
-        type: "category", label: "Columns", description: "Column surgery: keep, drop, rename, split, or number columns.",
-        children: [
-          { type: "pair", children: [
-            { type: "keep-columns", label: "Keep Columns", description: "Keeps only the named columns, in the order given. Like Excel's `CHOOSECOLS`, but by column name.", keywords: "columns select keep choosecols", create: () => new ColumnsNode(), parity: false },
-            { type: "drop-columns", label: "Drop Columns", description: "Removes the named columns; the rest pass through.", keywords: "columns drop remove", create: () => new ColumnsNode({ op: "drop" }), parity: false },
-          ]},
-          { type: "rename",      label: "Rename",      description: "Renames columns from two Lists matched by position: From `[\"qty\"]` → To `[\"Quantity\"]`.", create: () => new RenameNode(), parity: false },
-          { type: "split-column", label: "Split Column", description: "Splits one text column into several by a delimiter, the parts replacing the source. Power Query: Split Column by Delimiter.", create: () => new SplitColumnNode(), parity: false, keywords: "split delimiter text column separate parse divide power query" },
-          { type: "add-index",   label: "Add Index",   description: "Prepends a row-number column from a start value (default 1). Power Query: Add Index Column.", create: () => new AddIndexNode(), parity: false, keywords: "index row number sequence counter rownum power query" },
-          { type: "merge-columns", label: "Merge Columns", description: "Joins two or more columns into one text column with a separator, in the first source\'s place. The inverse of Split Column. Power Query: Merge Columns.", create: () => new MergeColumnsNode(), parity: false, keywords: "merge combine concatenate join columns text textjoin concat inverse split" },
-          { type: "headers", label: "Headers", description: "Promotes the first row to column names, or demotes the names back into a first row of text. Power Query: Use First Row as Headers.", create: () => new HeadersNode(), parity: false, keywords: "promote demote headers first row column names use as titles header" },
-        ],
-      },
-      {
-        type: "category", label: "Reshape", description: "Change the layout: pivot wide, melt long, nest into a Cube and back.",
-        children: [
-          { type: "pivot",       label: "PIVOTBY",     description: "Turns long data into a cross-tab by Row and Column fields, with `SUM`, `AVERAGE` or `COUNT` per value and optional totals and subtotals. Min and max over text give the first and last alphabetically, where Excel ignores text. Excel: `PIVOTBY`.", create: () => new PivotNode(), parity: false },
-          { type: "unpivot",     label: "Unpivot",     description: "Turns wide data long: the Id columns stay, and each chosen Value column becomes variable and value rows. Power Query: Unpivot. pandas: `melt`.", create: () => new UnpivotNode(), parity: false },
-          { type: "pair", children: [
-            { type: "nest",   label: "Nest",   description: "Groups a flat Frame by key into a Cube. Each key's other columns collapse into a nested table cell. The flat → nested bridge.", create: () => new NestNode(), parity: false },
-            { type: "unnest", label: "Unnest", description: "A Cube's nested column expanded one level, each parent row repeating per nested row; a nested Frame flattens fully. The inverse of Nest.", create: () => new UnnestNode(), parity: false },
-          ]},
-        ],
-      },
-      {
-        type: "category", label: "Analyze", description: "Score, profile, and compare Frames: weighted decisions, column summaries and correlations, version reconciliation.",
-        children: [
-          { type: "decision-matrix", label: "Decision Matrix", description: "Scores and ranks a Frame of options: rows are options and number columns are criteria. Score = `Σ(value × weight) / Σ|weight|`, ranked on the rounded score. Weights come from a Weights table, one row per criterion; a negative weight favors lower values like cost, and a criterion left out weighs 1. Norm scales each criterion so dollars and out-of-10 scores compare: Raw, ÷Max (the default), Range (lowest 0 to highest 1) or Rank. At least and At most columns are deal-breakers: an option outside them is ruled out before weighing. A blank counts as the criterion's median. Breakdown adds each criterion's contribution to the Score. A Cube's nested tables, from Nest Join, are further choices: each row counts its best option inside, so a neighborhood is judged with its best apartment.", create: () => new DecisionMatrixNode(), parity: false, keywords: "decision matrix weighted score rank ranking criteria weight choose compare options podium dmbv multi-criteria mcda deal-breaker chained nested staged" },
-          { type: "decision-sensitivity", label: "Sensitivity", description: "Re-scores the same options under several weight Scenarios to see whether the winner holds. The Scenarios table is the Decision Matrix's Weights table with one weight column per scenario, and an optional Norm column. The result is a Cube with one row per scenario: the Winner, the Margin over the runner-up, and the full Ranking to drill into. Options tied for first are listed together. Flip points mode takes the Weights table instead and gives, per criterion, the weight below and above its own at which another option would win. Pairs with Decision Matrix.", create: () => new DecisionSensitivityNode(), parity: false, keywords: "decision sensitivity robustness scenario weight cube what-if stress test ranking stability mcda flip point break-even tipping" },
-          { type: "choice-ladder", label: "Choice Ladder", description: "Orders a Decision Matrix's options into the sequence to take them in when you can't do them all. Limits name cost columns with an At most, an At least, or neither for a rough cost such as political capital. Optional Requires and Excludes columns link options, Must and Never columns force them in or out, and a One of column takes at most one per group. Where two options are nearer each other than Close within, the ladder forks, and the side you take is kept. A fork that would only swap the order of two options is left out. Value flows down and each rung takes what it serves. Plan is the main line.", create: () => new ChoiceLadderNode(), parity: false, keywords: "choice ladder choose several pick set shortlist budget limit constraint knapsack portfolio itinerary decision matrix fork plan trip restaurants policy agenda priority capital requires excludes" },
-          { type: "describe",    label: "Describe",    description: "One row per column: count, blank, distinct, and for numbers mean, std, min, quartiles, max. Its popup opens on a dashboard with a chart per column. pandas `describe`, R `summary`.", create: () => new DescribeNode(), parity: false, keywords: "describe summary summarize profile statistics count mean std quartile overview explore eda dashboard histogram distribution top values" },
-          { type: "corr-matrix", label: "Correlation Matrix", description: "Pearson, Spearman or Kendall correlation, or covariance, between every pair of number columns, with a leading name column. pandas `df.corr`, R `cor`.", create: () => new CorrMatrixNode(), parity: false, keywords: "correlation matrix corr cov covariance pearson spearman kendall pairwise heatmap" },
-          { type: "reconcile",   label: "Reconcile",   description: "Two Frame versions compared by key: each row Added, Removed, Changed or Unchanged, with before, after and Δ per number column.", create: () => new ReconcileNode(), parity: false, keywords: "reconcile compare diff variance price volume mix pvm audit changed added removed data quality trust" },
-        ],
-      },
-      {
-        type: "category", label: "Plan", description: "Rows in, a plan out: spread a budget, schedule a project, pay off debts, and settle who owes whom.",
-        children: [
-          { type: "allocator", label: "Allocator", description: "Spreads a budget across categories, each with a min, max and weight: all of it in proportion, or the least spend that meets a target. Water-filling.", create: () => new AllocatorNode(), parity: false, keywords: "budget allocator allocate allocation split spend divide categories weights value water-filling waterfilling proportional minimize target knapsack money planner portfolio" },
-          { type: "schedule", label: "Schedule", description: "Critical-path scheduling: each task's Start, Finish, Float and Critical from its duration and predecessors, on working or calendar days.", create: () => new ScheduleNode(), parity: false, keywords: "schedule cpm critical path gantt project plan timeline tasks predecessors dependencies float slack milestone duration working days finish date pert multiple critical paths" },
-          { type: "earned-value", label: "Earned Value", description: "Project performance at a status date: planned and earned value, actual cost, variances, SPI, CPI and EAC. Cost keeps its currency.", create: () => new EarnedValueNode(), parity: false, keywords: "earned value evm bcws bcwp acwp planned earned actual cost variance schedule variance spi cpi eac vac tcpi budget baseline project performance" },
-          { type: "payoff-planner", label: "Payoff Planner", description: "Plans paying off several debts from each Balance, APR and minimum payment, plus an extra amount every month. Every minimum is paid; the extra and each freed minimum go to the head debt, avalanche (highest APR first) or snowball (smallest balance first). Summary gives months, interest and payoff date per debt; Schedule gives each month's balances.", create: () => new PayoffPlannerNode(), parity: false, keywords: "debt payoff planner avalanche snowball loans credit card interest extra payment months schedule" },
-          { type: "settle",      label: "Group Cost Settle", description: "Squares up a group that paid unevenly: who pays whom in the fewest transfers, plus each person's Paid, Owes, Owed and Net.", create: () => new SettleNode(), parity: false, keywords: "settle settlement split bill trip expenses transactions ledger who owes whom debts transfers splitwise group cost share even up payer participants" },
-        ],
-      },
-      {
-        type: "category", label: "Build & Read", description: "Make a Frame from a Matrix and headers or from lists, take one apart, and read or add rows and columns.",
-        children: [
-          { type: "build-frame", label: "Build Frame", description: "Combines a Matrix and a List of headers into a Frame. Missing headers become `Col1`, `Col2`…, and duplicates are made unique.", create: () => new BuildFrameNode(), parity: false },
-          { type: "frame-from-lists", label: "Frame from Lists", description: "Builds a Frame straight from lists: each column pairs a typed name with a list of any type. Ragged columns pad with blanks.", create: () => new FrameFromListsNode(), parity: false, keywords: "lists to frame columns table build fast assemble" },
-          { type: "split-frame", label: "Split Frame", description: "Takes a Frame apart into its numeric Matrix body and header text-list; the inverse of Build Frame. The type filter (All / Num / Date / Bool / Text) keeps only columns of that type.", create: () => new SplitFrameNode(), parity: false },
-          { type: "get-column",  label: "Get Column",  description: "Pulls one column out of a Frame as a list, by name or 1-based number. Read as Number, Text, or Date.", create: () => new GetColumnNode(), parity: false },
-          { type: "get-row",     label: "Get Row",     description: "Pulls one row out of a Frame by 1-based number, as a one-row Frame, since a row can mix types.", create: () => new GetRowNode(), parity: false },
-          { type: "add-column",  label: "Add Column",  description: "Appends a list to a Frame or Cube as a named column, or replaces the column of that name. Shorter lists pad with blanks.", create: () => new AddColumnNode(), parity: false },
-          { type: "computed-column", label: "Computed Column", description: "Adds a column calculated once per row. `@Price` reads this row's Price and a bare `Price` is the whole column, so `@Price / SUM(Price)` is each row's share. Bracket a name with spaces: `@[Unit Price]`. `ROW()` is this row's number and `ROWS(Price)` the row count. Power Query: Custom Column.", keywords: "custom column calculated field formula derive mutate row-wise index this-row @ row number rownum ROW ROWS", create: () => new ComputedColumnNode(), parity: false },
-        ],
-      },
-      {
-        type: "category", label: "Cubes", description: "A Cube is a Frame whose cells can hold anything: a scalar, a list, a nested Frame, or another Cube. `INDEX` reads a cell back out.",
-        children: [
-          { type: "nest-join", label: "Nest Join", description: "Nests two Frames into a Cube on a shared key: each Parent row gains a cell of its matching Child rows, so nothing fans out. tidyr `nest_join`.", create: () => new NestJoinNode(), parity: false, keywords: "cube nest join relate nest_join relational merge group hierarchy multi-level deepen" },
-          { type: "build-cube", label: "Build Cube", description: "Collects values into one Cube column, each cell holding any value: a scalar, list, Frame, or nested Cube. The manual way to put non-table values into a cube.", create: () => new BuildCubeNode(), parity: false, keywords: "cube nest nested pack wrap list of frames container" },
-          { type: "cube-columns", label: "Cube Columns", description: "Assembles a Cube from N columns side by side: a list gives its elements, a single-column cube its cells, a frame or scalar one cell. The Names list names them.", create: () => new CubeColumnsNode(), parity: false, keywords: "cube columns multi-column assemble combine build frame side by side hstack" },
-          { type: "cube-rollup", label: "Cube Rollup", description: "Aggregates a column inside each row's nested table and flattens the Cube to a Frame with the roll-up appended: an assembly's cost as a `SUM` of parts.", create: () => new CubeRollupNode(), parity: false, keywords: "cube rollup aggregate sum bom bill of materials costing nested cost roll up assembly subtotal" },
-        ],
-      },
-    ],
-  },
-
-  // ── TABLES ───────────────────────────────────────────────────────────────────
-  {
-    type: "category", label: "Tables", description: "Plain 2D tables of one type, Excel's arrays: pick and slice rows and columns, reshape between lists and tables, run a formula per cell, and matrix math.",
-    children: [
-      { type: "pair", children: [selectLeaf("chooserows"), selectLeaf("choosecols")] },
-      { type: "pair", children: [
-        { type: "takedrop",      label: "TAKE", description: TAKEDROP_OP_META.take.description, create: () => new TakeDropNode({ op: "take" }), parity: false, keywords: "take drop list table rows columns elements edge first last head tail" },
-        { type: "takedrop-drop", label: "DROP", description: TAKEDROP_OP_META.drop.description, create: () => new TakeDropNode({ op: "drop" }), parity: true, keywords: "take drop list table rows columns elements edge first last head tail" },
-      ]},
-      {
-        type: "category", label: "Shape", description: "Reshape between 1D lists and 2D tables, stack tables side-by-side.",
-        children: [
-          { type: "pair", children: [reshapeLeaf("wraprows"), reshapeLeaf("wrapcols")] },
-          { type: "pair", children: [reshapeLeaf("tocol"),    reshapeLeaf("torow")]    },
-          { type: "xstack", label: "XSTACK", description: "Stacks tables top-to-bottom or side by side, in row order. A list counts as one row; a ragged edge pads with `#N/A`. Excel: `VSTACK` / `HSTACK`.", create: () => new StackNode(), parity: false, keywords: "stack vertical horizontal rows side by side rbind cbind lists to table" },
-          { type: "table-expand", label: "EXPAND", description: "Grows a table to a target number of rows or columns. New cells take the Fill value, or stay blank without one; use `NA` as Fill for Excel's `#N/A`. Shrinking is `#VALUE!`; use `TAKE` for that. Excel: `EXPAND`.", create: () => new ExpandNode(), parity: false, keywords: "grow pad resize table fill" },
-          { type: "table-set-cell", label: "Set Cell", description: "Writes values into a table at a 1-based `(row, column)` address: a list writes a row, a table a block. Later writes win; a value past the edge errors. Excel has no equivalent.", create: () => new SetCellNode(), keywords: "set cell overwrite poke write address table matrix block row" },
-        ],
-      },
-      {
-        type: "category", label: "Lambda (per-cell / per-row)", description: "Apply a formula over a table: each cell, each row or column, fold to one value, or generate from indices.",
-        children: [
-          { type: "map-table",  label: "MAP",       description: "Applies a formula to every cell of up to three tables of the same shape. `value`, `value2` and `value3` are each table's cell, and `row` and `col` are its 1-based position; a single value in `value2` or `value3` is repeated to fit. Set Result type for text or dates. Excel: `MAP`.", create: () => new MapTableNode(),  parity: false },
-          { type: "pair", children: [
-            { type: "by-axis",    label: "BYROW", description: "Reduces each row of a table to one value in a column, or each column to one value in a list. Variable `values` = the row or column as a list. Pick the result type for text or date. Excel: `BYROW`.", create: () => new ByAxisNode(), parity: false },
-            { type: "by-col",    label: "BYCOL", description: "Reduces each row or column of a table to one value. Variable `v` = the row or column as a list. Pick the result type for text or date. Excel: `BYCOL`.", create: () => new ByAxisNode({ op: "col" }), parity: false },
-          ]},
-          { type: "make-array", label: "MAKEARRAY", description: "A rows×cols table from a formula of its indices, `row` and `col` 1-based. Pick the result type for text or date. Excel: `MAKEARRAY`.", create: () => new MakeArrayNode(), parity: false },
-          { type: "reduce-lambda", label: "REDUCE", description: "Folds a list or table to one value from Initial: `acc` the accumulator, `value` this element, `step` its 1-based position. Excel: `REDUCE`.", create: () => new ReduceLambdaNode(), parity: false },
-          { type: "scan-lambda", label: "SCAN", description: "`REDUCE` that keeps every running value, in the input's shape: a running total is `acc + value` from `0`. Same `acc`, `value`, `step`. Excel: `SCAN`.", create: () => new ScanLambdaNode(), parity: false, keywords: "running total cumulative accumulate prefix sum" },
-        ],
-      },
-      {
-        type: "category", label: "Matrix math", description: "Linear algebra: multiply, invert, determinant, identity.",
-        children: [
-          { type: "table-mult",      label: "MMULT",     description: "Matrix multiply: A (m×n) × B (n×p) → result (m×p). Excel: `MMULT`.",                                    create: () => new TableMultNode(),                   parity: false },
-          { type: "pair", children: [matDetLeaf("mdeterm"), matDetLeaf("minverse")] },
-          { type: "pair", children: [matDetLeaf("trace"), matDetLeaf("rank")] },
-          matDetLeaf("norm"),
-          { type: "table-unit",      label: "MUNIT",     description: "n×n identity matrix: diagonal 1s, rest 0s, or blanks (nulls) so the off-diagonal stays out of sums. Excel: `MUNIT`.",                                             create: () => new TableUnitNode(),                   parity: false },
-          { type: "table-diag",      label: "DIAGONAL",  description: "Turns a list into a square matrix's diagonal, the rest 0s or blanks (nulls, out of sums). `numpy.diag`.",                                              create: () => new TableDiagNode(),                   parity: false },
-          { type: "pair", children: [
-            { type: "table-outer",     label: "OUTER",     description: "Outer product of two lists: the matrix of every product a×b. `numpy.outer`.",                                                                          create: () => new TableOuterNode(),                  parity: false },
-            { type: "vector-cross",    label: "Cross Product", description: "Cross product of two 3-D vectors: the vector perpendicular to both. `numpy.cross`.",                                                          create: () => new CrossNode(),                       parity: false, keywords: "cross product vector perpendicular normal 3d numpy physics torque" },
-          ]},
-          { type: "table-transpose", label: "TRANSPOSE", description: "Flips rows and columns of a table. Excel: `TRANSPOSE`.",                                                    create: () => new TableTransposeNode(),              parity: false },
-        ],
-      },
-      { type: "table-info",  label: "Table Size", description: "Number of rows and number of columns in a table. Excel: `ROWS` / `COLUMNS`.", create: () => new TableInfoNode(), parity: false, keywords: "rows columns count size dimensions" },
     ],
   },
 

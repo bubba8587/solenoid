@@ -2,7 +2,7 @@
 
 import { HYPOTENUSE_ENTRY } from "./geometry";
 import { ReverseTextNode, SpellNumberNode, TimeZoneConvertNode, WorldClockNode, QrCodeNode } from "../nodeClasses";
-import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { placeFormulas, formulaNode, type Pack, type FormulaPackEntry } from "./packShared";
 
 const TIMESAVER_NUMERIC: FormulaPackEntry[] = [
   { type: "ts-percent-change", label: "Percent Change", expr: "(after-before)/before",
@@ -31,6 +31,11 @@ const TIMESAVER_TEXT: FormulaPackEntry[] = [
     description: "How many times substring sub appears in t (case-sensitive)   (=(LEN(A1)-LEN(SUBSTITUTE(A1,\"x\",\"\")))/LEN(\"x\"))",
     keywords: "substring count find occurrences" },
 ];
+
+/** The Date & Time folder each date timesaver joins, beside the core functions it builds on. */
+const DATE_FOLDER: Record<string, string> = {
+  "ts-quarter": "Parts", "ts-days-in-month": "Parts", "ts-age": "Difference", "ts-nth-weekday": "Shift & Round",
+};
 
 const TIMESAVER_DATE: FormulaPackEntry[] = [
   { type: "ts-quarter", label: "Quarter", expr: "ROUNDUP((MOD(MONTH(date)-start,12)+1)/3,0)",
@@ -72,9 +77,9 @@ export const TIMESAVERS_PACK: Pack = {
     { path: ["Numbers", "Trigonometry"], entry: HYPOTENUSE_ENTRY },
     ...placeFormulas(["Numbers", "Arithmetic"], TIMESAVER_NUMERIC),
     ...placeFormulas(["Text", "Transform"], TIMESAVER_TEXT),
-    ...placeFormulas(["Date & Time"], TIMESAVER_DATE),
+    ...TIMESAVER_DATE.map((e) => ({ path: ["Date & Time", DATE_FOLDER[e.type]], entry: formulaNode(e) })),
     {
-      path: ["Date & Time"],
+      path: ["Date & Time", "Time Zones"],
       entry: {
         type: "ts-timezone-convert",
         label: "Time Zone Convert",
@@ -84,7 +89,7 @@ export const TIMESAVERS_PACK: Pack = {
       },
     },
     {
-      path: ["Date & Time"],
+      path: ["Date & Time", "Time Zones"],
       entry: {
         type: "ts-world-clock",
         label: "World Clock",

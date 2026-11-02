@@ -240,6 +240,7 @@
   pointer-events: none;
 }
 
+/* A long name wraps at word breaks onto a second line rather than widening its column; focused, every line shows. */
 .table-popup__colhead-input {
   min-width: 0;
   width: 100%;
@@ -247,16 +248,16 @@
   resize: none;
   overflow: hidden;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
   line-height: 1.25;
   max-height: calc(2 * 1.25em + 4px);
-}
-.table-popup__colhead-input:focus {
-  max-height: none;
   padding: 2px 6px;
   font-weight: 600;
   font-size: 12px;
   color: color-mix(in srgb, var(--node-accent, var(--text)) 70%, var(--text));
+}
+.table-popup__colhead-input:focus {
+  max-height: none;
 }
 
 .table-popup__colhead-edit {
@@ -286,13 +287,12 @@
 }
 .table-popup__coltype:hover { border-color: var(--node-accent, var(--accent)); }
 
-/* A long name wraps onto a second line, then ellipsizes, so it never widens its column past 14em. */
+/* A long name wraps at word breaks onto a second line, then clips, so it never widens its column past 14em. */
 .table-popup__colhead-label {
   flex: 1 1 auto;
   min-width: 0;
   max-width: 14em;
   white-space: normal;
-  overflow-wrap: anywhere;
   line-height: 1.25;
   display: -webkit-box;
   -webkit-box-orient: vertical;

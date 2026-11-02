@@ -26,7 +26,7 @@ The stored truth is always text on the node (`tableText`, `frameText`, `cubeText
 
 On an editable Frame the order is type button → name → paintbrush → sort. On a read-only Frame it is name → paintbrush → sort. The paintbrush carries no chevron, since it costs every column its width.
 
-- **A long name wraps to two lines** rather than widening its column: a read-only name wraps at 14em and ellipsizes past two lines, and an editable name is a textarea (`HeaderNameField`) that grows to two lines, shows every line while focused, commits on Enter by blurring and reads a pasted line break as a space.
+- **A long name wraps to two lines** at word breaks, never mid-word, rather than widening its column: a read-only name wraps at 14em and clips past two lines, and an editable name is a textarea (`HeaderNameField`) that grows to two lines, shows every line while focused, commits on Enter by blurring and reads a pasted line break as a space.
 
 - **Only the sort button sorts**, in table and Cube popups alike. It is drawn on every sortable column, stays quiet until it carries a direction (then takes the surface's accent), and a click anywhere else in the header does nothing. The header reserves the button's room (`--sortpad`). How the sort orders rows is [[table-popup]] § Sorting.
 - **The paintbrush** (the shared `PaintbrushIcon`, the Format Controller's icon) opens the column's Format Controller picks (style, the inherited-format hint, unit) in a dropdown panel, tinted once this node has made a pick. There is no format row under the header; a matrix keeps its one whole-sheet pair above the grid.

@@ -1,5 +1,5 @@
 // [[B16]] oneFormulaSurface
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { flattenLeaves, isCategory, isPair, searchLeaves } from "./catalogSearch";
 import { IS_COARSE, deviceModeStore } from "./coarse";
@@ -84,6 +84,8 @@ export type CatalogCategory = {
   label: string;
   description?: string;
   children: CatalogEntry[];
+  /** Opens a new group of the menu's top level: a thin divider draws above it. */
+  groupStart?: boolean;
 };
 
 export type CatalogPair = {
@@ -196,8 +198,9 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
         if (it.kind === "category") {
           const open = onPath && path.length > depth + 1;
           return (
+            <Fragment key={`cat:${it.entry.label}`}>
+            {it.entry.groupStart && <div className="solenoid-add-menu__divider" role="separator" />}
             <div
-              key={`cat:${it.entry.label}`}
               ref={(el) => { anchorRefs.current[i] = el; }}
               className={`solenoid-add-menu__item solenoid-add-menu__item--category${onPath ? " solenoid-add-menu__item--active" : ""}${open ? " solenoid-add-menu__item--open" : ""}`}
               title={it.entry.description && descriptionText(it.entry.description)}
@@ -213,6 +216,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
                 </Submenu>
               )}
             </div>
+            </Fragment>
           );
         }
         const leaf = it.entry;
@@ -290,14 +294,16 @@ function DrillMenu({ entries, stack, onPush, onPop, onSelect, isDim }: {
         </div>
       )}
       {items.map((it, i) => it.kind === "category" ? (
+        <Fragment key={`cat:${it.entry.label}`}>
+        {it.entry.groupStart && <div className="solenoid-add-menu__divider" role="separator" />}
         <div
-          key={`cat:${it.entry.label}`}
           className="solenoid-add-menu__item solenoid-add-menu__item--category"
           onClick={(e) => { e.stopPropagation(); onPush(i); }}
         >
           <span>{it.entry.label}</span>
           <span className="solenoid-add-menu__arrow"><ChevronRightIcon size={12} /></span>
         </div>
+        </Fragment>
       ) : (
         <LeafRow key={`leaf:${it.entry.type}`} leaf={it.entry} half={it.half} dim={isDim(it.entry)} onSelect={() => onSelect(it.entry)} />
       ))}
