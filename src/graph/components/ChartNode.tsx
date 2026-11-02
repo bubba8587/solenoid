@@ -27,10 +27,11 @@ const OPS_BY_FAMILY: Record<string, ChartOp[]> = Object.fromEntries(
 );
 const FAMILY_OPTS: ReadonlyArray<OpOption<string>> = FAMILIES.map((value) => ({ value, label: value }));
 
-const W = 218;
 const H = 150;
 
 export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
+  // The figure fills the card, whatever width tier it wears.
+  const W = (data.width ?? 300) - 22;
   const [op, setOpState] = useState<ChartOp>(data.op);
   const setOp = useCallback((v: ChartOp) => { setOpState(v); void applyChartOp(data, v); }, [data]);
   const family = CHART_OP_META[op].group;

@@ -15,10 +15,11 @@ const MODE_OPTIONS = (Object.keys(HISTOGRAM_MODE_META) as HistogramMode[]).map((
 }));
 
 // Fills the wide card (240) minus body padding.
-const W = 218;
 const H = 150;
 
 export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>) {
+  // The figure fills the card, whatever width tier it wears.
+  const W = (data.width ?? 300) - 22;
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const cv = data.cachedChart;
   const has = !!cv && (cv.op === "heatmap"

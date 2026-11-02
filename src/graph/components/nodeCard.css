@@ -72,6 +72,10 @@
   width: 240px;
 }
 
+.solenoid-node--xwide {
+  width: 300px;
+}
+
 .solenoid-node--geocode {
   width: 240px;
 }

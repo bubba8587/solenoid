@@ -14,10 +14,11 @@ import type { SolError } from "../errorValue";
 import { nodeDisplayName } from "../catalogUtils";
 
 // Fills the wide card (240) minus body padding, as Chart does.
-const W = 218;
 const H = 150;
 
 export function MergePlotsComponent({ data, emit }: NodeProps<MergePlotsNodeType>) {
+  // The figure fills the card, whatever width tier it wears.
+  const W = (data.width ?? 300) - 22;
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   // An FC on the chart output scales the figure's text (display only).
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);

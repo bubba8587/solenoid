@@ -17,7 +17,6 @@ import { stopDragStart } from "../coarse";
 const RegionsFigure = lazy(() => import("./chartRender").then((m) => ({ default: m.RegionsFigure })));
 
 // Fills the wide card (240) minus body padding, as Chart does.
-const W = 218;
 const H = 170;
 
 const MODE_OPTIONS = (Object.keys(REGIONS_MODE_META) as RegionsMode[])
@@ -46,6 +45,8 @@ function nextLabel(marks: Record<string, number>, key: string, count: number): R
 }
 
 export function ConditionalRegionsComponent({ data, emit }: NodeProps<ConditionalRegionsNodeType>) {
+  // The figure fills the card, whatever width tier it wears.
+  const W = (data.width ?? 300) - 22;
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
   const fontScale = formatAnnotationStore.getForNode(data.id)?.chartFontScale;

@@ -4,7 +4,7 @@ import { repositionDockedNodes } from "../canvasCommands";
 import { toggleNodeCollapsed } from "../selectionOps";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { connectionVersionStore } from "../graphSignals";
-import { nodeAccent, nodeResizable, nodeWide, nodeMedium } from "../nodeClasses";
+import { nodeAccent, nodeResizable, nodeWide, nodeXWide, nodeMedium } from "../nodeClasses";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { collapseStore } from "../collapseStore";
 import { groupMembershipStore } from "../groupMembership";
@@ -151,8 +151,9 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
     () => (node ? nodeSizeStore.get(node.id) : undefined),
   );
   const resizable = !!node && nodeResizable(node as unknown as GraphNode);
-  const wide = !collapsed && !!node && nodeWide(node as unknown as GraphNode);
-  const medium = !collapsed && !wide && !!node && nodeMedium(node as unknown as GraphNode);
+  const xwide = !collapsed && !!node && nodeXWide(node as unknown as GraphNode);
+  const wide = !collapsed && !xwide && !!node && nodeWide(node as unknown as GraphNode);
+  const medium = !collapsed && !xwide && !wide && !!node && nodeMedium(node as unknown as GraphNode);
   // Clamped to the current content's minimum: the grip clamps only live drags, and a Display sized for a scalar may now show a chart.
   const stored = collapsed || !node ? undefined : nodeSizeStore.get(node.id);
   const min = stored && node ? nodeSizeStore.getMin(node.id) : undefined;
@@ -200,7 +201,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
         `solenoid-node${selected ? " solenoid-node--selected" : ""}` +
         `${collapsed ? " solenoid-node--collapsed" : ""}${groupColor ? " solenoid-node--grouped" : ""}` +
         `${resizable ? " solenoid-node--resizable" : ""}${size ? " solenoid-node--sized" : ""}` +
-        `${wide ? " solenoid-node--wide" : ""}${medium ? " solenoid-node--medium" : ""}${squareCollapse ? " solenoid-node--square-collapse" : ""}` +
+        `${xwide ? " solenoid-node--xwide" : ""}${wide ? " solenoid-node--wide" : ""}${medium ? " solenoid-node--medium" : ""}${squareCollapse ? " solenoid-node--square-collapse" : ""}` +
         `${squareCollapse && !outputWired ? " solenoid-node--output-unwired" : ""}` +
         `${!collapsible ? " solenoid-node--no-chevron" : ""}${className ? " " + className : ""}`
       }

@@ -90,7 +90,7 @@ export class ChartNode extends GraphNode {
   rawInputs: ReadonlySet<string> = new Set(["values"]);
   chartOptions: ChartOptions = {};
   stringLiterals: Record<string, string> = {};
-  width = 240;
+  width = 300;
   height = 240;
 
   static frameHints: Record<string, FrameHint> = {
@@ -133,7 +133,7 @@ export class MergePlotsNode extends GraphNode {
   chartOptions: ChartOptions = {};
   stringLiterals: Record<string, string> = {};
   cachedChart: ChartValue | SolError | null = null;
-  width = 240;
+  width = 300;
   height = 240;
 
   constructor(init?: { label?: string; valueKeys?: string[] }) {
@@ -222,7 +222,7 @@ export class ConditionalRegionsNode extends GraphNode {
   cachedCuts: RegionCuts | null = null;
   cachedPoints: RegionPoint[] | null = null;
   cachedError: SolError | null = null;
-  width = 240;
+  width = 300;
   height = 280;
 
   constructor(init?: {
@@ -299,7 +299,7 @@ export class HistogramNode extends GraphNode {
   stringLiterals: Record<string, string> = {};
   cachedResult: number[] | null = null;
   cachedChart: ChartValue | null = null;
-  width = 240;
+  width = 300;
   height = 240;
 
   constructor(init?: { label?: string; mode?: HistogramMode }) {
@@ -470,7 +470,7 @@ export class ProportionNode extends GraphNode {
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
-  width = 240;
+  width = 300;
   height = 220;
 
   static frameHints: Record<string, FrameHint> = {
@@ -506,7 +506,7 @@ export class SankeyNode extends GraphNode {
   chartOptions: ChartOptions = {};
   cachedPayload: SankeyPayload | null = null;
   droppedLoops = 0;
-  width = 260;
+  width = 300;
   height = 220;
 
   static frameHints: Record<string, FrameHint> = {
@@ -543,7 +543,7 @@ export class HeatmapNode extends GraphNode {
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
   rawInputs: ReadonlySet<string> = new Set(["values"]);
-  width = 280;
+  width = 300;
   height = 260;
 
   static frameHints: Record<string, FrameHint> = {
@@ -641,7 +641,7 @@ export class WaterfallNode extends GraphNode {
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
-  width = 240;
+  width = 300;
   height = 220;
 
   static frameHints: Record<string, FrameHint> = {
@@ -675,7 +675,7 @@ export class CandlestickNode extends GraphNode {
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | SolError | null = null;
-  width = 260;
+  width = 300;
   height = 220;
 
   static frameHints: Record<string, FrameHint> = {
@@ -713,7 +713,7 @@ export class BoxplotNode extends GraphNode {
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
   rawInputs: ReadonlySet<string> = new Set(["values"]);
-  width = 240;
+  width = 300;
   height = 220;
 
   static frameHints: Record<string, FrameHint> = {
@@ -798,7 +798,7 @@ export class RecordNode extends GraphNode {
   stringLiterals: Record<string, string> = { rows: "" };
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
-  width = 240;
+  width = 300;
   height = 220;
 
   static frameHints: Record<string, FrameHint> = {
@@ -888,7 +888,7 @@ export class QuiverNode extends GraphNode {
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
-  width = 240;
+  width = 300;
   height = 240;
 
   constructor(init?: { label?: string }) {
