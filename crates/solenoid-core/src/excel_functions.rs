@@ -327,6 +327,18 @@ fn opt_num(v: &V, dflt: f64) -> f64 {
     }
 }
 
+/// The value with every Formula.js error read as Solenoid's, through lists: a card's answer and a formula's result
+/// carry a cell's error as an error, never as a bare JavaScript one (`ACOTH` over a list).
+pub fn solenoid_errors(v: V) -> V {
+    match v {
+        V::Fx(m) => V::err(fx_error_to_sol(m)),
+        V::List(items) if items.iter().any(|x| matches!(x, V::Fx(_) | V::List(_))) => {
+            V::List(Rc::new(items.iter().cloned().map(solenoid_errors).collect()))
+        }
+        other => other,
+    }
+}
+
 pub fn number_to_text(x: f64) -> String {
     if !x.is_finite() {
         return number_to_string(x);

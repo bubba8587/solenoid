@@ -584,25 +584,6 @@ fn same(a: &V, b: &V) -> bool {
 /// its own memo too ([[C120]] linearWork).
 const MEMO_SHAPERS: [&str; 6] = ["FILTER", "UNIQUE", "SORT", "SORTBY", "TAKE", "DROP"];
 
-/// A list holding a Formula.js error anywhere, which must cross as Solenoid's.
-fn holds_fx(v: &V) -> bool {
-    match v {
-        V::Fx(_) => true,
-        V::List(items) => items.iter().any(holds_fx),
-        _ => false,
-    }
-}
-
-/// The value with every Formula.js error read as Solenoid's, so a list answers its cells' errors as errors and not as
-/// bare JavaScript ones (`ACOTH` over a list).
-fn solenoid_errors(v: V) -> V {
-    match v {
-        V::Fx(code) => V::err(fx_error_to_sol(code)),
-        V::List(items) => V::List(Rc::new(items.iter().cloned().map(solenoid_errors).collect())),
-        other => other,
-    }
-}
-
 /// `BRANCH_SELECTORS`: the arguments that pick a branch. Only an error there is the call's answer; an error in a branch
 /// not taken isn't, as in Excel, so `IF(@qty = 0, 0, @total / @qty)` guards its division. SWITCH's cases are read by
 /// its body, which answers an error case it reaches before the match. COUNT and COUNTA take every error to their body,
@@ -753,7 +734,7 @@ impl Eval<'_> {
                 "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY",
             )),
             V::Fx(code) => V::err(fx_error_to_sol(code)),
-            list @ V::List(_) if holds_fx(&list) => solenoid_errors(list),
+            list @ V::List(_) => crate::excel_functions::solenoid_errors(list),
             other => other,
         }
     }

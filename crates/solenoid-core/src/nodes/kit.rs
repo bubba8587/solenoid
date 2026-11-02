@@ -36,18 +36,7 @@ pub fn core_call(name: &str, args: &[V]) -> V {
             Err(t) => return V::err(t.0),
         },
     };
-    normalize(v)
-}
-
-/// A Formula.js error answered as its SolError, through lists.
-pub fn normalize(v: V) -> V {
-    match v {
-        V::Fx(m) => V::err(crate::excel_functions::fx_error_to_sol(m)),
-        V::List(items) if items.iter().any(|x| matches!(x, V::Fx(_) | V::List(_))) => {
-            list(items.iter().cloned().map(normalize).collect())
-        }
-        other => other,
-    }
+    crate::excel_functions::solenoid_errors(v)
 }
 
 /// The first error among the cells, else null where one is missing, else nothing.
