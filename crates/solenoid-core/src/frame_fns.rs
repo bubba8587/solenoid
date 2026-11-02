@@ -828,10 +828,10 @@ fn lookup_row_index(f: &FrameValue, args: &[V], plan: &std::cell::RefCell<Option
         };
         let last = opt_str_arg(args, 3)?.as_deref() == Some("last");
         let key = require_column(f, &column)?;
-        if mm != MatchMode::Exact && !matches!(key.ty, FrameColType::Number | FrameColType::Date) {
+        if mm != MatchMode::Exact && key.ty == FrameColType::Logical {
             return Err(FrameOut::Error(sol_error(
                 ErrorCode::Value,
-                "Approximate lookup requires a numeric or date column",
+                "Approximate lookup needs a number, date or text column",
             )));
         }
         // The column is read whole either way, so even one lookup indexes it.
@@ -841,7 +841,7 @@ fn lookup_row_index(f: &FrameValue, args: &[V], plan: &std::cell::RefCell<Option
     let plan = plan.borrow();
     let plan = plan.as_ref().expect("planned above");
     let needle = lookup_needle(&lookup, plan.ty)?;
-    if !plan.exact && !matches!(needle, V::Num(n) if n.is_finite()) {
+    if !plan.exact && !matches!(needle, V::Str(_)) && !matches!(needle, V::Num(n) if n.is_finite()) {
         return Ok(None);
     }
     Ok(plan.keys.find(&needle).unwrap_or(None))

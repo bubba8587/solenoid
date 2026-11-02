@@ -515,7 +515,7 @@ The Power Query column and row tools. Each returns a new Frame, and names go thr
 
 ### Lookup over a Frame
 
-The XLookup card finds a row in a Frame or a Cube. A Frame is converted with `frameToCube` first, so one path serves both. `xlookup` (`nodes/frames.rs`) normalizes the card's input: a Cube or Frame passes, a matrix becomes a Frame by rows, and (as fallbacks, since the card's shape guard already refuses them) a flat list becomes a one-row Frame and a scalar a 1×1 Frame.
+The XLookup card finds a row in a Frame or a Cube. A Frame is converted with `frameToCube` first, so one path serves both. `xlookup` (`nodes/frames.rs`) normalizes the card's input: a Cube or Frame passes, a matrix becomes a Frame by rows, and (as fallbacks, since the card's shape guard already refuses them) a flat list becomes a one-row Frame and a scalar a 1×1 Frame. Its Table input adopts what is wired and its output follows (`passthrough`, `project`): a named Return column on a Frame of known shape types the output as that column's family on the combo rung, so a date column's cell shows as a date, not its serial ([[C44]] dateSerials); a blank Return with an unwired Lookup is a one-row Frame or Cube; anything else stays `trueany`.
 
 `lookupRowIndex(cube, lookupColumn, lookup, matchMode = "exact", searchMode = "first")` returns the matching 0-based row, or −1.
 
@@ -527,10 +527,10 @@ The XLookup card finds a row in a Frame or a Cube. A Frame is converted with `fr
 
 | Mode | Values | Meaning |
 |---|---|---|
-| `matchMode` | `exact` (default), `nextSmaller`, `nextLarger` | Excel's match_mode 0, −1 and 1. The approximate modes fall back to the closest key ≤ or ≥ the lookup only when there is no exact match. They need a number or date key (`#VALUE!`, `Approximate lookup requires a numeric or date column`) and a finite lookup, or nothing matches. |
+| `matchMode` | `exact` (default), `nextSmaller`, `nextLarger` | Excel's match_mode 0, −1 and 1. The approximate modes fall back to the closest key ≤ or ≥ the lookup only when there is no exact match. They need a number, date or text key (`#VALUE!`, `Approximate lookup needs a number, date or text column`); a number or date key needs a finite lookup, or nothing matches. A text key steps case-insensitively in character-code order ([[C59]] byteStringOrder), as XMATCH does. |
 | `searchMode` | `first` (default), `last` | Excel's search_mode 1 and −1: which of several equal keys wins. An approximate match already picks the closest key. |
 
-`lookupCell(cube, lookupColumn, returnColumn, …)` returns the matched row's cell in the return column whole, so a nested Frame or Cube comes out intact; `undefined` on no match, and `#REF!` for a missing return column, checked even when nothing matched. The whole-row return (`Return = *`) is `frameRowAt` (a one-row Frame, `raw` dropped) or `cube_row_at` (a one-row Cube, each cell whole, types kept).
+`lookupCell(cube, lookupColumn, returnColumn, …)` returns the matched row's cell in the return column whole, so a nested Frame or Cube comes out intact; `undefined` on no match, and `#REF!` for a missing return column, checked even when nothing matched. The whole-row return (a blank Return, its field showing `all`) is `frameRowAt` (a one-row Frame, `raw` dropped) or `cube_row_at` (a one-row Cube, each cell whole, types kept).
 
 ## Analysis verbs
 

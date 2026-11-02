@@ -6,6 +6,7 @@ import type { Schemes } from "../../src/graph/schemes";
 import { setEditorRefs } from "../../src/graph/process";
 import { RecordNode } from "../../src/graph/nodes/visual";
 import { recordNavTarget } from "../../src/graph/components/recordNav";
+import type { RecordPayload } from "../../src/graph/chartValue";
 import type { FrameValue } from "../../src/graph/frame";
 
 // B3: the Record card popup pages with ←/→ + on-screen prev/next. recordNavTarget gates
@@ -51,5 +52,35 @@ describe("recordNavTarget — when the Record pager (prev/next) is offered", () 
     expect(recordNavTarget(rec.id)).toBe(rec.id);
     await rec.data({ frame: [frameOf(5)], rows: [3] });
     expect(recordNavTarget(rec.id)).toBeNull(); // one pick: nothing to step through
+  });
+});
+
+describe("Detail's filter (the popup's Filter field)", () => {
+  const people: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "Name", type: "string", values: ["Ada Lovelace", "Alan Turing", "Grace Hopper"] },
+      { name: "Born", type: "number", values: [1815, 1912, 1906] },
+    ],
+  };
+  const pageWith = async (query: string, page = 1) => {
+    const rec = new RecordNode({ op: "detail" });
+    rec.stringLiterals.query = query;
+    rec.literals.page = page;
+    await rec.data({ frame: [people] });
+    return rec.cachedChart!.payload as RecordPayload;
+  };
+
+  it("pages through the records holding every word, caseless, numbers as shown", async () => {
+    const p = await pageWith("19");
+    expect([p.total, p.filtered]).toEqual([2, true]);
+    expect((await pageWith("GRACE 1906")).total).toBe(1);
+    expect((await pageWith("19", 2)).cards[0][0].value).toBe("Grace Hopper");
+  });
+
+  it("no match draws nothing to page; a blank filter is every record", async () => {
+    expect((await pageWith("zzz")).total).toBe(0);
+    const all = await pageWith("  ");
+    expect([all.total, all.filtered]).toEqual([3, undefined]);
   });
 });

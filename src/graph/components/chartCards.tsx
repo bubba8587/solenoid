@@ -315,7 +315,9 @@ export function RecordCardView({ payload, width, fscale, title, onStep, colorBy 
     <div className={`sol-record-card ${figClass}`} style={outer}>
       {titleLine}
       <div className="sol-record-card__grid">
-        <RecordGrid fields={payload.cards[0] ?? []} cols={payload.cols} flow={payload.flow} />
+        {payload.filtered && payload.total === 0
+          ? <div className="sol-record__empty">No matches</div>
+          : <RecordGrid fields={payload.cards[0] ?? []} cols={payload.cols} flow={payload.flow} />}
       </div>
       {onStep && payload.total > 1 && (
         <div className="sol-record-nav">
@@ -327,7 +329,7 @@ export function RecordCardView({ payload, width, fscale, title, onStep, colorBy 
           >
             <NavChevron back />
           </button>
-          <span className="sol-record-nav__count">{payload.index > 0 ? payload.index : "–"} / {payload.total}</span>
+          <span className="sol-record-nav__count">{payload.index > 0 ? payload.index : "–"} / {payload.total}{payload.filtered ? " matches" : ""}</span>
           <button
             type="button" className="sol-record-nav__btn" title="Next record"
             disabled={payload.index >= payload.total}

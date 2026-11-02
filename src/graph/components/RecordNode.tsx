@@ -110,7 +110,7 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
           >
             <Chevron back />
           </button>
-          <span className="solenoid-record__pager-count">{index > 0 ? index : "–"} / {total}</span>
+          <span className="solenoid-record__pager-count">{index > 0 ? index : "–"} / {total}{payload?.filtered ? " matches" : ""}</span>
           <button
             type="button" className="solenoid-record__pager-btn" title="Next record"
             disabled={index >= total}

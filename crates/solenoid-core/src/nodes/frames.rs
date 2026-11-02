@@ -1791,7 +1791,7 @@ fn xlookup(c: &mut Call) -> Answer {
         V::List(_) => false,
         other => trimmed(other, "The lookup value")?.is_empty(),
     };
-    if matches!(raw, Cv::V(V::Null)) || in_col.is_empty() || ret_col.is_empty() || scalar_blank {
+    if matches!(raw, Cv::V(V::Null)) || in_col.is_empty() || scalar_blank {
         return shown_value(c, V::Null);
     }
     let tabular = match &raw {
@@ -1816,7 +1816,7 @@ fn xlookup(c: &mut Call) -> Answer {
         (_, Some(f)) => frame_to_cube(f),
         _ => Cube::default(),
     };
-    let whole_row = ret_col == "*";
+    let whole_row = ret_col.is_empty();
     let fb = trimmed(&fb_raw, "The fallback")?;
     let (mm, sm) = (c.field_str("matchMode", "exact").to_string(), c.field_str("searchMode", "first").to_string());
     let as_text = |v: &V| {

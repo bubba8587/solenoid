@@ -96,7 +96,7 @@ describe("lookupFrameCell — frame XLOOKUP/VLOOKUP", () => {
   });
 });
 
-describe("lookupFrameRowIndex + frameRowAt — the whole-row (*) path", () => {
+describe("lookupFrameRowIndex + frameRowAt — the whole-row (blank Return) path", () => {
   it("returns the matched 0-based row index, or -1 for a miss", () => {
     expect(lookupFrameRowIndex(people, "name", "Cy")).toBe(2);
     expect(lookupFrameRowIndex(people, "name", "Zed")).toBe(-1);
@@ -176,9 +176,17 @@ describe("lookupFrameCell — approximate match (XLOOKUP match_mode -1/1)", () =
     expect(lookupFrameCell(prices, "qty", "discount", "1000", "nextLarger")).toBeUndefined(); // above every key
   });
 
-  it("approximate mode requires a numeric/date column", () => {
-    const named: FrameValue = { __frame: true, columns: [{ name: "n", type: "string", values: ["a", "b"] }, { name: "v", type: "number", values: [1, 2] }] };
-    const err = (() => { try { lookupFrameCell(named, "n", "v", "a", "nextSmaller"); } catch (e) { return e; } })();
+  it("a text column steps case-insensitively, as XMATCH does", () => {
+    const named: FrameValue = { __frame: true, columns: [{ name: "n", type: "string", values: ["apple", "Cherry", "melon"] }, { name: "v", type: "number", values: [1, 2, 3] }] };
+    expect(lookupFrameCell(named, "n", "v", "banana", "nextSmaller")).toBe(1);
+    expect(lookupFrameCell(named, "n", "v", "banana", "nextLarger")).toBe(2);
+    expect(lookupFrameCell(named, "n", "v", "CHERRY", "nextLarger")).toBe(2);
+    expect(lookupFrameCell(named, "n", "v", "zebra", "nextLarger")).toBeUndefined();
+  });
+
+  it("a logical column refuses an approximate match", () => {
+    const flags: FrameValue = { __frame: true, columns: [{ name: "f", type: "logical", values: [true, false] }, { name: "v", type: "number", values: [1, 2] }] };
+    const err = (() => { try { lookupFrameCell(flags, "f", "v", "true", "nextSmaller"); } catch (e) { return e; } })();
     expect(isSolError(err) && err.code).toBe("#VALUE!");
   });
 });

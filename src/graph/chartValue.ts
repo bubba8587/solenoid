@@ -148,6 +148,8 @@ export interface RecordPayload {
   clamp?: boolean;
   index: number;
   total: number;
+  /** Detail only: a filter holds, so `total` counts the matching records. */
+  filtered?: boolean;
 }
 export interface OverlaySeries {
   name: string;

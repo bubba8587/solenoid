@@ -8,7 +8,8 @@ import { ChartView, ChartFigure } from "./chartView";
 import { PopupSkeleton, useAfterPaint } from "./PopupSkeleton";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { clamp } from "../nodes/mathUtils";
-import { recordNavTarget, stepRecordRow } from "./recordNav";
+import { recordNavTarget, recordDetailTarget, setRecordQuery, stepRecordRow } from "./recordNav";
+import { SearchField } from "./SearchField";
 import { ladderTarget, applyLadderAction } from "./ladderNav";
 import type { LadderAction } from "../nodes/ladderOps";
 import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
@@ -58,6 +59,22 @@ export function ChartPopup() {
     title: undefined,
     options: shown.options ? { ...shown.options, title: undefined } : shown.options,
   }, [shown]);
+
+  // Detail's filter, the Form view's twin: it lives while the popup shows this Record and clears when it closes.
+  const detailId = state?.value?.op === "record" && state.pinNodeId ? recordDetailTarget(state.pinNodeId) : null;
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    if (!detailId) return;
+    return () => { setQuery(""); void setRecordQuery(detailId, ""); };
+  }, [detailId]);
+  const filterDetail = (next: string) => {
+    setQuery(next);
+    if (!detailId || !state) return;
+    const s = state;
+    void setRecordQuery(detailId, next).then((fresh) => {
+      if (fresh && chartPopup.get()?.pinNodeId === s.pinNodeId) chartPopup.open({ ...chartPopup.get()!, value: fresh });
+    });
+  };
 
   // A hook before the early return. canvasKeyboard stands down under the overlay (modalGuard), so this is the only arrow handler.
   useEffect(() => {
@@ -129,7 +146,9 @@ export function ChartPopup() {
       title={state.title}
       onClose={() => chartPopup.close()}
       cardStyle={cardStyle}
-      headerExtra={state.series && <span className="table-popup__dims">{state.series.length} pts</span>}
+      headerExtra={detailId
+        ? <SearchField collapsible value={query} onChange={filterDetail} placeholder="Filter" label="Filter records" count={query.trim() && figValue?.payload?.kind === "record" ? `${figValue.payload.total} matches` : undefined} />
+        : state.series && <span className="table-popup__dims">{state.series.length} pts</span>}
       menuItems={copySvg ? [{ label: "Copy SVG", onClick: copySvg }] : []}
       pinNodeId={state.pinNodeId}
       resizable={resizable}

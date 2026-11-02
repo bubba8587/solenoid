@@ -278,6 +278,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Detail's filter matched no record (the Form view's empty line). */
+.sol-record__empty {
+  padding: 12px 2px;
+  font-size: calc(12px * var(--chart-fscale, 1));
+  color: var(--text-dim);
+}
 .sol-record__more {
   margin-top: 4px;
   font-size: calc(10px * var(--chart-fscale, 1));

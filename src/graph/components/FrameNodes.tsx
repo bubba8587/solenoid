@@ -1138,8 +1138,8 @@ export function GetRowComponent({ data, emit }: NodeProps<GetRowNodeType>) {
 
 const LOOKUP_MATCH_OPTIONS: { value: LookupMatchMode; label: string; title: string }[] = [
   { value: "exact", label: "Exact", title: "Only an equal cell matches" },
-  { value: "nextSmaller", label: "≤", title: "Exact match, else the closest smaller number/date" },
-  { value: "nextLarger", label: "≥", title: "Exact match, else the closest larger number/date" },
+  { value: "nextSmaller", label: "≤", title: "Exact match, else the closest smaller number, date or text" },
+  { value: "nextLarger", label: "≥", title: "Exact match, else the closest larger number, date or text" },
 ];
 
 const LOOKUP_SEARCH_OPTIONS: { value: LookupSearchMode; label: string; title: string }[] = [

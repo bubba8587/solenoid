@@ -27,6 +27,24 @@ export function recordNavTarget(nodeId: string): string | null {
   return total > 1 ? rec.id : null;
 }
 
+/** The Detail Record a figure shows, however many records it pages through: the popup's filter reaches it. */
+export function recordDetailTarget(nodeId: string): string | null {
+  const rec = recordSourceOf(nodeId);
+  return rec && rec.op === "detail" ? rec.id : null;
+}
+
+/** Detail pages through the records holding every word of `query`, from the first; blank pages through them all. */
+export async function setRecordQuery(recordId: string, query: string): Promise<ChartValue | null> {
+  const rec = getOwningEditor(recordId)?.getNode(recordId);
+  if (!(rec instanceof RecordNode)) return null;
+  if ((rec.stringLiterals.query ?? "") === query) return rec.cachedChart;
+  if (query) rec.stringLiterals.query = query;
+  else delete rec.stringLiterals.query;
+  rec.literals.page = 1;
+  await processGraph(recordId);
+  return rec.cachedChart;
+}
+
 export async function stepRecordRow(recordId: string, delta: number): Promise<ChartValue | null> {
   const editor = getOwningEditor(recordId);
   const rec = editor?.getNode(recordId);

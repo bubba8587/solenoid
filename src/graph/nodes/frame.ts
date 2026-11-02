@@ -3,13 +3,13 @@ import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { chartOut } from "./shared";
 import type { ChartValue } from "../chartValue";
-import { numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, trueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { setting, required, LEFT_OUT } from "../inputRoles";
 import type { PassthroughSpec } from "./passthrough";
 import { dropInputCables } from "../components/cablePrune";
 import { getOwningView } from "../activeGraph";
 import type { FrameHint } from "../frameHint";
-import { SolenoidSocket } from "../sockets";
+import { SolenoidSocket, comboOfFamily } from "../sockets";
 import { solError, type SolError } from "../errorValue";
 import {
   colTypeForSocket,
@@ -1740,8 +1740,10 @@ export class GetRowNode extends GraphNode {
 // ─── XLOOKUP ───────────────────────────────────────────────────────────────────
 
 export class XLookupNode extends GraphNode {
+  static fieldPlaceholders: Record<string, string> = { returnColumn: "all" };
   static socketDocs: Record<string, string> = {
     lookup: "Matching follows the In column's type: text ignores case, and a number or date column parses the lookup text.",
+    returnColumn: "Blank returns the whole matched row.",
   };
 
   label: string;
@@ -1758,12 +1760,34 @@ export class XLookupNode extends GraphNode {
     this.label = init?.label ?? "XLOOKUP";
     this.matchMode = init?.matchMode ?? "exact";
     this.searchMode = init?.searchMode ?? "first";
-    this.addInput("frame", cubeIn("Table / Cube"));
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("lookup", strComboIn("Lookup"));
     this.addInput("inColumn", strIn("In column"));
     this.addInput("returnColumn", strIn("Return"));
     this.addInput("ifNotFound", strIn("If not found"));
-    this.addOutput("value", staticTrueAnyOut("Value"));
+    this.addOutput("value", trueAnyOut("Value"));
+  }
+
+  /** A blank Return is the whole row; a named one carries its column's family on the combo rung (a lookup list
+   *  gives a list), so a date column's serials show as dates ([[C44]] dateSerials). */
+  passthrough(): PassthroughSpec[] {
+    return [{
+      output: "value",
+      inputs: ["frame"],
+      combine: "single",
+      project: (ctx) => {
+        const ret = ctx.wired("returnColumn") ? null : (this.stringLiterals.returnColumn ?? "").trim();
+        const shape = ctx.shapeOf("frame");
+        const col = ret && shape && !shape.dynamic ? shape.columns.find((c) => c.name === ret) : undefined;
+        // A wired lookup may be a list, which returns a list of rows.
+        const oneRow = !ctx.wired("lookup");
+        return {
+          frame: ret === "" ? (oneRow ? "frame" : "trueany") : col ? comboOfFamily(col.type) ?? "trueany" : "trueany",
+          cube: ret === "" && oneRow ? "cube" : "trueany",
+          tables: "trueany",
+        };
+      },
+    }];
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { value: CubeCell | null } {

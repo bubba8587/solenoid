@@ -977,6 +977,22 @@ fn frame_cell_text(col: &Column, v: &V) -> V {
     }
 }
 
+/// Whether every word is in the row's cells as the record shows them, lowercased.
+fn record_row_matches(cols: &[Column], r: usize, words: &[&str], d: crate::card_helpers::NumberDisplay) -> bool {
+    let mut hay = String::new();
+    for col in cols {
+        match record_cell(col, r) {
+            V::Num(n) => hay.push_str(&record_number_text(n, col.format.as_ref(), d)),
+            V::Str(s) => hay.push_str(&s),
+            V::Null => {}
+            other => hay.push_str(&value_text(&other)),
+        }
+        hay.push('\u{1}');
+    }
+    let hay = lower_text(&hay);
+    words.iter().all(|w| hay.contains(w))
+}
+
 /// A number column's number stays a number for `recordNumberText`; anything else is its shown text.
 fn record_cell(col: &Column, r: usize) -> V {
     let v = match col.values.get(r) {
@@ -1143,8 +1159,18 @@ fn record(c: &mut Call) -> Answer {
         Cv::Frame(f) => &f.columns,
         _ => &[],
     };
-    let order =
+    let mut order =
         record_rows(&picks(super::text::role_value(c, "rows")), cols.first().map_or_default(|c| c.values.len()));
+    // Detail's filter, as the Form view's: every word somewhere in the record's shown cells, caseless.
+    let query = match c.string_literal("query") {
+        V::Str(q) if op == "detail" => lower_text(trim_space(&q)).into_owned(),
+        _ => String::new(),
+    };
+    let filtered = !query.is_empty();
+    if filtered {
+        let words: Vec<&str> = query.split(crate::jsnum::is_space_char).filter(|w| !w.is_empty()).collect();
+        order.retain(|&r| record_row_matches(cols, r, &words, display));
+    }
     let total = order.len();
     let mut index = 0;
     if op == "detail" && total > 0 {
@@ -1325,6 +1351,9 @@ fn record(c: &mut Call) -> Answer {
     }
     payload.insert("index".into(), index.into());
     payload.insert("total".into(), total.into());
+    if filtered {
+        payload.insert("filtered".into(), Json::Bool(true));
+    }
     let title = match options.get("title") {
         Some(Json::String(t)) if !t.is_empty() => t.clone(),
         _ if c.field_str("label", "").is_empty() => "Record".into(),
