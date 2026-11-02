@@ -12,8 +12,8 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 solenoid-core = { path = "../solenoid-core" }
 serde_json = { version = "1", features = ["float_roundtrip", "preserve_order"] }
-ruggine = { git = "https://github.com/bubba8587/ruggine", rev = "2aa2ca2fbab976d2d6f3f4b78863a091ebbd5482" }
-ruggine-engine = { git = "https://github.com/bubba8587/ruggine", rev = "2aa2ca2fbab976d2d6f3f4b78863a091ebbd5482" }
+netcore = { git = "https://github.com/bubba8587/netcore-rs", rev = "68e667f650dda9a3e2534b633af7da076ba4e2a1" }
+netcore-engine = { git = "https://github.com/bubba8587/netcore-rs", rev = "68e667f650dda9a3e2534b633af7da076ba4e2a1" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "=0.2.130"

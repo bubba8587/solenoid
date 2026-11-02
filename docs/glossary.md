@@ -225,9 +225,9 @@ cables (the author, 2026-10-25).
 - **processGraph**: the recompute-and-rerender entry point; never call it from a text
   field's `onChange` (edits commit on Enter/blur). (`process.ts`)
 - **DataflowEngine**: the PULL-based execution engine (inputs resolve recursively
-  before `data()` runs; async ones awaited), rete-engine's, ported to Rust in Ruggine.
+  before `data()` runs; async ones awaited), rete-engine's, ported to Rust in netcore-rs.
   (`dataflowEngine.ts`, `crates/solenoid-graph`)
-- **GraphEditor**: the model's TypeScript handle over the graph core's Ruggine editor: add and
+- **GraphEditor**: the model's TypeScript handle over the graph core's netcore-rs editor: add and
   remove nodes and cables, read them, and `addPipe` to hear their signals. (`graphEditor.ts`)
 - **GraphNode / GraphSocket / GraphInput / GraphOutput / GraphConnection**: what node classes
   are built from, Solenoid's own in place of rete's classic preset. (`graphModel.ts`)

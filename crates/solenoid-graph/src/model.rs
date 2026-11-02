@@ -1,15 +1,15 @@
 // [[C130]] rustCore
-//! The graph model: a Ruggine editor whose nodes are classic nodes (ports and their socket types)
+//! The graph model: a netcore-rs editor whose nodes are classic nodes (ports and their socket types)
 //! beside the host's own node object, its cables, the signals it sends the host's pipes, and the
 //! dataflow engine attached to it (`tree/specs/computation/graph-core.md` § The model).
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use ruggine::classic::{self, ClassicConnection, ClassicNode, Input, Output, Socket};
-use ruggine::future::{now_or_never, LocalBoxFuture};
-use ruggine::{ConnectionBase, GetSchemes, NodeBase, NodeEditor, PipeId, Plugin, Root};
-use ruggine_engine::{DataflowEngine, DataflowNode, Error, Inputs, Outputs};
+use netcore::classic::{self, ClassicConnection, ClassicNode, Input, Output, Socket};
+use netcore::future::{now_or_never, LocalBoxFuture};
+use netcore::{ConnectionBase, GetSchemes, NodeBase, NodeEditor, PipeId, Plugin, Root};
+use netcore_engine::{DataflowEngine, DataflowNode, Error, Inputs, Outputs};
 
 /// What the host keeps beside the model: its node and cable objects, the values its nodes
 /// compute, what its pipes throw, and how a node computes.
@@ -103,11 +103,11 @@ pub type Port = (String, String);
 #[derive(Debug)]
 pub enum Failure<T> {
     Thrown(T),
-    Graph(ruggine::Error),
+    Graph(netcore::Error),
 }
 
-impl<T> From<ruggine::Error> for Failure<T> {
-    fn from(e: ruggine::Error) -> Self {
+impl<T> From<netcore::Error> for Failure<T> {
+    fn from(e: netcore::Error) -> Self {
         Failure::Graph(e)
     }
 }
@@ -202,7 +202,7 @@ impl<H: Host> Graph<H> {
     /// The edit's answer, or what a pipe threw during it.
     fn finish<T>(
         &self,
-        result: Option<Result<T, ruggine::Error>>,
+        result: Option<Result<T, netcore::Error>>,
     ) -> Result<T, Failure<H::Thrown>> {
         if let Some(thrown) = self.thrown.borrow_mut().take() {
             return Err(Failure::Thrown(thrown));
@@ -260,8 +260,8 @@ impl<H: Host> Graph<H> {
         self.finish(now_or_never(self.editor.clear()))
     }
 
-    fn node(&self, id: &str) -> Result<Rc<GraphNode<H>>, ruggine::Error> {
-        self.editor.get_node(id).ok_or(ruggine::Error::NodeNotFound)
+    fn node(&self, id: &str) -> Result<Rc<GraphNode<H>>, netcore::Error> {
+        self.editor.get_node(id).ok_or(netcore::Error::NodeNotFound)
     }
 
     /// Gives a node in the editor exactly these ports, in this order: one call for every port a change to the node
@@ -271,7 +271,7 @@ impl<H: Host> Graph<H> {
         id: &str,
         inputs: &[Port],
         outputs: &[Port],
-    ) -> Result<(), ruggine::Error> {
+    ) -> Result<(), netcore::Error> {
         let node = self.node(id)?;
         let classic = &node.classic;
         let same = |held: Vec<Port>, given: &[Port]| held.as_slice() == given;

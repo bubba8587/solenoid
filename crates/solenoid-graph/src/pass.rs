@@ -4,10 +4,10 @@
 
 use std::rc::Rc;
 
-use ruggine::classic::ClassicConnection;
-use ruggine::fxhash::{FxHashMap, FxHashSet};
-use ruggine::{ConnectionBase, NodeBase, NodeEditor, Schemes};
-use ruggine_engine::{DataflowEngine, DataflowNode, Error, Outputs};
+use netcore::classic::ClassicConnection;
+use netcore::fxhash::{FxHashMap, FxHashSet};
+use netcore::{ConnectionBase, NodeBase, NodeEditor, Schemes};
+use netcore_engine::{DataflowEngine, DataflowNode, Error, Outputs};
 
 /// Every node on a cycle: self-loops first, in cable order, then each strongly connected
 /// component of two or more as Tarjan's walk closes it.

@@ -10,11 +10,11 @@ use std::rc::Rc;
 use std::rc::Weak;
 
 use js_sys::{Array, Function, Map, Object, Promise, Reflect};
-use ruggine::classic::{self, Connection};
-use ruggine::future::{ready, LocalBoxFuture};
-use ruggine::fxhash::{FxHashMap, FxHashSet};
-use ruggine::{NodeBase, Root};
-use ruggine_engine::{Error, Inputs, Outputs};
+use netcore::classic::{self, Connection};
+use netcore::future::{ready, LocalBoxFuture};
+use netcore::fxhash::{FxHashMap, FxHashSet};
+use netcore::{NodeBase, Root};
+use netcore_engine::{Error, Inputs, Outputs};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::{future_to_promise, JsFuture};
 
@@ -238,10 +238,10 @@ pub fn set_panic_handler(handler: Function) {
     }));
 }
 
-/// A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, Ruggine's `getUID`.
+/// A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, netcore-rs's `getUID`.
 #[wasm_bindgen]
 pub fn uid() -> String {
-    ruggine::get_uid()
+    netcore::get_uid()
 }
 
 /// The socket lattice as the tables the app reads (`lattice::tables_json`).
@@ -592,7 +592,7 @@ impl Shared {
                     }
                 }
             }
-            let seeded = ruggine_engine::Cancellable::resolved(Ok(Rc::new(outputs)));
+            let seeded = netcore_engine::Cancellable::resolved(Ok(Rc::new(outputs)));
             self.graph.engine().cache().patch(id.clone(), seeded);
         }
     }
@@ -629,7 +629,7 @@ fn failed(failure: Failure<JsValue>) -> JsValue {
     }
 }
 
-fn graph_error(e: ruggine::Error) -> JsValue {
+fn graph_error(e: netcore::Error) -> JsValue {
     js_sys::Error::new(&e.to_string()).into()
 }
 
@@ -1056,7 +1056,7 @@ impl GraphCore {
 
     /// Gives the node `outputs` without running it, until something clears its cache.
     pub fn seed(&self, id: String, outputs: JsValue) {
-        let seeded = ruggine_engine::Cancellable::resolved(Ok(Rc::new(outputs_from_js(outputs))));
+        let seeded = netcore_engine::Cancellable::resolved(Ok(Rc::new(outputs_from_js(outputs))));
         self.shared.graph.engine().cache().patch(id, seeded);
     }
 

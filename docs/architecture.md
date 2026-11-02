@@ -38,7 +38,7 @@ mindmap
 | `src/` | React + TypeScript frontend (the canvas + UI) |
 | `tests/` | ALL vitest suites, mirroring src/ (tests/graph/foo.test.ts tests src/graph/foo.ts; "(+`.test.ts`)" below means its suite lives at the mirrored path) |
 | `src-tauri/` | Tauri (Rust) shell: window, fs/dialog plugins, the Parquet read |
-| `crates/` | solenoid-core, the Rust core (formulas, functions, verbs, card bodies; wasm in the app, native in tests; ../tree/specs/computation/rust-core.md), solenoid-schedule (the scheduling engine and the plan-file readers, MIT and publishable on its own), solenoid-graph (the model, the engine and the pass on Ruggine; it links solenoid-core into the one wasm module) and solenoid-parquet (the desktop's Parquet reader, on the parquet and arrow crates); vendor/ holds the patched interim |
+| `crates/` | solenoid-core, the Rust core (formulas, functions, verbs, card bodies; wasm in the app, native in tests; ../tree/specs/computation/rust-core.md), solenoid-schedule (the scheduling engine and the plan-file readers, MIT and publishable on its own), solenoid-graph (the model, the engine and the pass on netcore-rs; it links solenoid-core into the one wasm module) and solenoid-parquet (the desktop's Parquet reader, on the parquet and arrow crates); vendor/ holds the patched interim |
 | `public/` | Static assets served by Vite |
 | `assets/` | loose design sources and test inputs (logo, cube glyph, CSVs); video/ holds the kept cut of the demo video and its poster (scripts/demo-video/) |
 | `fixtures/` | frame-verbs/ — the verb corpus, run in wasm and natively; core/ — the core's frozen answers (replayed natively by solenoid-core's tests/conformance.rs and tests/nodes.rs, in wasm by coreConformance, a sample, and coreNodes); schedule/ — MSPDI goldens + divergences.json for the scheduling engine |
@@ -56,8 +56,8 @@ mindmap
 
 - **View layer**: React Flow (`@xyflow/react`) — the ONE renderer. Cards, cables,
   minimap, viewport all render in the app's single React tree.
-- **Model/compute spine**: the graph core (`crates/solenoid-graph`, Rust on Ruggine, linked
-  with the formula core into one wasm module, [[C130]] rustCore): a Ruggine editor holding the nodes, their ports
+- **Model/compute spine**: the graph core (`crates/solenoid-graph`, Rust on netcore-rs, linked
+  with the formula core into one wasm module, [[C130]] rustCore): a netcore-rs editor holding the nodes, their ports
   and the cables, behind `GraphEditor` (`graphEditor.ts`), and the DataflowEngine
   (pull-based recompute, `dataflowEngine.ts`) on that same editor. `elkjs` is called
   directly for Tidy.
@@ -491,7 +491,7 @@ are `../tree/specs/computation/graph-core.md`.
 | Module | Role |
 |---|---|
 | `lib.rs`, `wasm.rs` | The crate root and the WebAssembly entry: one `GraphCore` per editor, the pipes `graphEditor.ts` adds and the engine `dataflowEngine.ts` drives; it links `solenoid-core` into the one module |
-| `model.rs` | The graph model on Ruggine: classic nodes (ports, socket types) beside the host's node object, cables, signals, the attached engine |
+| `model.rs` | The graph model on netcore-rs: classic nodes (ports, socket types) beside the host's node object, cables, signals, the attached engine |
 | `pass.rs`, `session.rs` | The pass's walks (loops, the downstream cone, invalidation, the pull in editor order) and its state between passes (calc mode, dirty flag, generation, rebuild depth, single flight) |
 | `direct.rs`, `value.rs` | A card the engine calls in Rust (its call, shown fields and draws for the recalc generation), and the value on a cable (one shared cell, core and JavaScript forms) |
 | `boundary.rs`, `boundary_core.rs` | The input boundary (error guard, arrival coercion, unit boundary, list literals) over JavaScript values and over core values |

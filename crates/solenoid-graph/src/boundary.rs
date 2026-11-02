@@ -8,10 +8,10 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use js_sys::{Array, Function, Map, Object, Promise, Reflect};
-use ruggine::classic;
-use ruggine::future::{ready, LocalBoxFuture};
-use ruggine::fxhash::FxHashSet;
-use ruggine_engine::{Error, Inputs, Outputs};
+use netcore::classic;
+use netcore::future::{ready, LocalBoxFuture};
+use netcore::fxhash::FxHashSet;
+use netcore_engine::{Error, Inputs, Outputs};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 

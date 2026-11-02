@@ -41,7 +41,7 @@ bundled npm package at `third-party-licenses.txt` (produced by
 `rollup-plugin-license`, see `vite.config.ts`), and every Rust crate compiled into the
 engine and the desktop shell at `third-party-licenses-rust.txt` (produced by
 `scripts/rust-licenses.mjs` with `cargo-about`). Highlights: the graph model and
-the dataflow engine are [Ruggine](https://github.com/bubba8587/ruggine) (MIT),
+the dataflow engine are [netcore-rs](https://github.com/bubba8587/netcore-rs) (MIT),
 Solenoid's Rust port of `rete` and `rete-engine`; the Excel functions run on
 Solenoid's own Rust core (`crates/solenoid-core`), which ports Formula.js and the
 libraries it bundled (both under *Ported from* below); charts are
@@ -62,7 +62,7 @@ with it.
 ### Rete.js (`rete` 2.0.6, `rete-engine` 2.1.1)
 
 [Rete.js](https://retejs.org) is ported to Rust by
-[Ruggine](https://github.com/bubba8587/ruggine), which `crates/solenoid-graph`
+[netcore-rs](https://github.com/bubba8587/netcore-rs), which `crates/solenoid-graph`
 builds on. Both packages are distributed under the MIT License:
 
 ```

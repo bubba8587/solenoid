@@ -10,7 +10,7 @@ summaries; the docs they point to are authoritative.
 The app is one React tree. **React Flow** (`@xyflow/react`) is the view. It renders every
 card, cable, the minimap and the viewport. `flow/FlowSurface.tsx` is the one surface,
 shared by the main canvas and the composite drill-in ([[B3]] sameNodeEverywhere). The
-headless model is the graph core's Ruggine editor, in Rust: which nodes and cables exist and
+headless model is the graph core's netcore-rs editor, in Rust: which nodes and cables exist and
 each node's ports. TypeScript holds it through `GraphEditor` (`graphEditor.ts`), node classes
 are `GraphNode`s (`graphModel.ts`), and the compute spine, `DataflowEngine`, runs on that same
 editor (`dataflowEngine.ts`, [[C130]] rustCore, `tree/specs/computation/graph-core.md`).

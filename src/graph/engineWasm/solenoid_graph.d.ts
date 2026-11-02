@@ -452,7 +452,7 @@ export function textFormRead(text: string, version: number): string;
 export function textFormWrite(graph: string, names: string, order: string): string;
 
 /**
- * A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, Ruggine's `getUID`.
+ * A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, netcore-rs's `getUID`.
  */
 export function uid(): string;
 

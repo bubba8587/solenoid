@@ -8,7 +8,7 @@ tags: [spec, canvas]
 
 Serves [[B3]] sameNodeEverywhere. It covers what the system does and blocks, and the decision each behavior serves.
 
-The canvas is drawn by React Flow (RF) over a headless model ([[A1]] visualGraphCalculator): a `GraphEditor` (`graphEditor.ts`), the handle on a Ruggine editor in the Rust graph core ([[C130]] rustCore, [[graph-core]]). RF owns the screen: node wrappers, the edge layer, selection, dragging, the camera. The model owns the graph: nodes, connections, absolute positions, values. React Flow only draws and knows nothing of typed sockets or values flowing; the graph core supplies those. This spec says which side owns what, how values cross the seam between them, and what the one shared surface does: its keyboard, its selection, deletion, copy and paste, Format Controller docking, isolate, and undo.
+The canvas is drawn by React Flow (RF) over a headless model ([[A1]] visualGraphCalculator): a `GraphEditor` (`graphEditor.ts`), the handle on a netcore-rs editor in the Rust graph core ([[C130]] rustCore, [[graph-core]]). RF owns the screen: node wrappers, the edge layer, selection, dragging, the camera. The model owns the graph: nodes, connections, absolute positions, values. React Flow only draws and knows nothing of typed sockets or values flowing; the graph core supplies those. This spec says which side owns what, how values cross the seam between them, and what the one shared surface does: its keyboard, its selection, deletion, copy and paste, Format Controller docking, isolate, and undo.
 
 ## One surface for both canvases
 

@@ -1,0 +1,3 @@
+# Wording-only sweeps. One line each; a leaf's History stays about the decision.  dte:B61
+# date	by	note	leaves (id@body-hash)
+2026-11-02	Claude Opus 5.5	Ruggine, the graph library, is renamed netcore-rs (its crates netcore and netcore-engine), on the author's word	C130@36d22731d28a

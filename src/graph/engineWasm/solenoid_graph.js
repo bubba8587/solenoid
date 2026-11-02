@@ -1947,7 +1947,7 @@ export function textFormWrite(graph, names, order) {
 }
 
 /**
- * A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, Ruggine's `getUID`.
+ * A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, netcore-rs's `getUID`.
  * @returns {string}
  */
 export function uid() {

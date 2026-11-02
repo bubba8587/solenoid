@@ -2,10 +2,10 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use ruggine::classic::Connection;
-use ruggine::future::{now_or_never, ready, LocalBoxFuture};
-use ruggine::{keymap, GetSchemes, NodeBase, NodeEditor};
-use ruggine_engine::{DataflowEngine, DataflowNode, Error, Inputs, Outputs, PortSelection};
+use netcore::classic::Connection;
+use netcore::future::{now_or_never, ready, LocalBoxFuture};
+use netcore::{keymap, GetSchemes, NodeBase, NodeEditor};
+use netcore_engine::{DataflowEngine, DataflowNode, Error, Inputs, Outputs, PortSelection};
 use solenoid_graph::pass::{downstream_closure, fetch_all, invalidate, loop_members};
 
 /// Sums its inputs plus one onto `out`; logs each run.
@@ -155,7 +155,7 @@ fn fetch_all_stops_or_records_a_cancelled_node() {
             if id == "a" {
                 engine.cache().patch(
                     "b".into(),
-                    ruggine_engine::Cancellable::resolved(Err(Error::Cancelled)),
+                    netcore_engine::Cancellable::resolved(Err(Error::Cancelled)),
                 );
             }
             Ok(())
@@ -178,7 +178,7 @@ fn a_seeded_loop_returns_its_seed() {
     for id in loop_members(&g.editor) {
         g.engine.cache().patch(
             id,
-            ruggine_engine::Cancellable::resolved(Ok(Rc::new(keymap! { "out" => -1.0 }))),
+            netcore_engine::Cancellable::resolved(Ok(Rc::new(keymap! { "out" => -1.0 }))),
         );
     }
     let values = now_or_never(fetch_all(&g.editor, &g.engine, |_, _| Ok(()), false))

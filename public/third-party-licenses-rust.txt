@@ -1052,7 +1052,7 @@ SOFTWARE.
 
 ================================================================================
 MIT License
-Used by: ruggine 0.1.0, ruggine-engine 0.1.0, solenoid-core 0.1.0, solenoid-graph 0.1.0, libm 0.2.16, qrcodegen 1.8.0, r-efi 5.3.0
+Used by: netcore-engine 0.1.0, netcore 0.1.0, solenoid-core 0.1.0, solenoid-graph 0.1.0, libm 0.2.16, qrcodegen 1.8.0, r-efi 5.3.0
 ================================================================================
 
 MIT License

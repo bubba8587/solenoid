@@ -7,10 +7,10 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use js_sys::{Array, Function, Object, Reflect};
-use ruggine::classic;
-use ruggine::future::{ready, LocalBoxFuture};
-use ruggine::fxhash::{FxHashMap, FxHashSet};
-use ruggine_engine::{Error, Inputs, Outputs};
+use netcore::classic;
+use netcore::future::{ready, LocalBoxFuture};
+use netcore::fxhash::{FxHashMap, FxHashSet};
+use netcore_engine::{Error, Inputs, Outputs};
 use serde_json::{Map, Value as Json};
 use solenoid_core::error_value::{sol_error, ErrorCode, Origin};
 use solenoid_core::excel_functions::V;

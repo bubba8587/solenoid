@@ -20,7 +20,7 @@ This file owns what happens from "something changed" to "every card shows its ne
 
 ## The engine
 
-The model is a `GraphEditor` (`graphEditor.ts`), a handle over the graph core's Ruggine editor; the engine is the graph core's `DataflowEngine` (`dataflowEngine.ts`) attached with `editor.use(engine)`, both [[graph-core]]. The app uses `fetch`, `reset`, `seed` and the graph walks below.
+The model is a `GraphEditor` (`graphEditor.ts`), a handle over the graph core's netcore-rs editor; the engine is the graph core's `DataflowEngine` (`dataflowEngine.ts`) attached with `editor.use(engine)`, both [[graph-core]]. The app uses `fetch`, `reset`, `seed` and the graph walks below.
 
 - **The boundary.** Every engine runs each node's `data()` through the input boundary ([[#The per-node wrappers]]); `new DataflowEngine({ raw: true })` calls it as it is, the bare rete-engine shape the engine's own tests use. `engine.compute(id, inputs)` runs one node the same way without its cache (a composite's simulation steps), and `computeNode(node, inputs)` one node outside any editor (the tests, through `tests/graph/boundaryKit.ts`).
 - **Registration.** The engine runs on its editor's own core graph, so nothing is mirrored: a node's input and output key sets are the core's port sets at every fetch, kept current as the node changes its sockets ([[graph-core]] § The model), and a node that adds or removes sockets needs no re-registration.

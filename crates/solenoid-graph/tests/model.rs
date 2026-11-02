@@ -2,10 +2,10 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use ruggine::classic::{self, Connection};
-use ruggine::future::{now_or_never, ready, LocalBoxFuture};
-use ruggine::keymap;
-use ruggine_engine::{Error, Inputs, Outputs};
+use netcore::classic::{self, Connection};
+use netcore::future::{now_or_never, ready, LocalBoxFuture};
+use netcore::keymap;
+use netcore_engine::{Error, Inputs, Outputs};
 use solenoid_graph::model::{Failure, Graph, Host, Side, Signal};
 use solenoid_graph::pass::loop_members;
 
@@ -43,7 +43,7 @@ fn cable(id: &str, source: &str, target: &str, input: &str) -> Connection {
 }
 
 fn describe(signal: &Signal<Test>) -> String {
-    use ruggine::Root::*;
+    use netcore::Root::*;
     match signal {
         NodeCreate(n) | NodeCreated(n) | NodeRemove(n) | NodeRemoved(n) => {
             format!("{} {}", signal.type_name(), n.object)
@@ -113,14 +113,14 @@ fn signals_come_in_rete_order() {
 #[test]
 fn a_pipe_cancels_a_change_it_is_told_of_first() {
     let graph = Graph::<Test>::new();
-    graph.add_pipe(|s| Ok(!matches!(s, ruggine::Root::NodeCreate(n) if n.object == "no")));
+    graph.add_pipe(|s| Ok(!matches!(s, netcore::Root::NodeCreate(n) if n.object == "no")));
     let log = logged(&graph);
     assert!(!graph.add_node("n".into(), "no", &[], &[]).unwrap());
     assert!(graph.add_node("y".into(), "yes", &[], &[]).unwrap());
     assert_eq!(graph.node_ids(), ["y"]);
     assert_eq!(*log.borrow(), ["nodecreate yes", "nodecreated yes"]);
 
-    graph.add_pipe(|s| Ok(!matches!(s, ruggine::Root::Clear)));
+    graph.add_pipe(|s| Ok(!matches!(s, netcore::Root::Clear)));
     assert!(!graph.clear().unwrap());
     assert_eq!(graph.node_ids(), ["y"]);
     assert_eq!(log.borrow().last().unwrap(), "clearcancelled");
@@ -130,7 +130,7 @@ fn a_pipe_cancels_a_change_it_is_told_of_first() {
 fn a_throwing_pipe_stops_the_chain_and_fails_the_edit() {
     let graph = Graph::<Test>::new();
     graph.add_pipe(|s| match s {
-        ruggine::Root::NodeCreated(_) => Err("boom".to_owned()),
+        netcore::Root::NodeCreated(_) => Err("boom".to_owned()),
         _ => Ok(true),
     });
     let log = logged(&graph);
