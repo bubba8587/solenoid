@@ -216,7 +216,7 @@ A ref's flush runs once per sketch mode and is kept with the ref, so every reade
 | Schema | `refs::schema` | Column names and types with no rows, and the row count (Table Size, Pivot). |
 | One column | `refs::column` | One column by `getColumn` rules (Get Column, SUMIFS, Pivot, Slicer). |
 
-Every reader applies sketch scaling and then the aggregate guard (below) to what it reads (`Flushed::finish`). `frame_ref::take_stats` (`engine_frame_stats`) counts runs, ops, frames taken in and whole collects, which `lazyChain.test.ts` holds to.
+Every reader applies the aggregate guard (below) to what it reads (`Flushed::finish`). `frame_ref::take_stats` (`engine_frame_stats`) counts runs, ops, frames taken in and whole collects, which `lazyChain.test.ts` holds to.
 
 ### Who receives a ref
 
@@ -231,13 +231,13 @@ flowchart LR
     flush["a flush in sketch mode"] --> samp["sample its input:<br>10,000 evenly strided rows"]
     samp --> run["run the plan on the sample"]
     run --> g{"a groupBy<br>in the plan?"}
-    g -->|yes| scale["at read time: the last groupBy's<br>sum and count × total/sampled,<br>the value marked approx"]
+    g -->|yes| scale["right after the first groupBy:<br>its sum and count × total/sampled,<br>the value marked approx"]
     g -->|no| plain["the sampled rows as they are"]
 ```
 
-In the sketch calculation mode (`frame_ref::set_sketch`, kept current by every step of the session), a flush first takes a deterministic sample of its input (`SKETCH_SAMPLE_ROWS = 10,000`; evenly strided rows `floor(i × total / n)`, order kept, never random); a flush on a parent already sampled doesn't sample again. The factor is `total / sampled`. When the plan contains a `groupBy`, the output columns of the last `groupBy`'s `sum` and `count` aggregates are multiplied by the factor at read time, and the read value carries `approx`. A flush and its readers' values are kept per sketch mode, so leaving sketch reads the exact frame.
+In the sketch calculation mode (`frame_ref::set_sketch`, kept current by every step of the session), a flush first takes a deterministic sample of its input (`SKETCH_SAMPLE_ROWS = 10,000`; evenly strided rows `floor(i × total / n)`, order kept, never random); a flush on a parent already sampled doesn't sample again. The factor is `total / sampled`. When the plan contains a `groupBy`, the output columns of the first `groupBy`'s `sum` and `count` aggregates are multiplied by the factor as soon as it runs (`scale_sums`), so every op after it reads whole-table totals (a filter on a total keeps what the exact pass keeps), and the read value carries `approx`. A later `groupBy` groups the groups, which are no sample, so it isn't scaled again. A flush and its readers' values are kept per sketch mode, so leaving sketch reads the exact frame.
 
-The aggregate guard classifies non-finite aggregate results at read time ([[C24]] arraySemantics): for a frame produced by a plan with a `groupBy`, any aggregate output column holding a non-finite number goes through `guard_finite`, with an infinite input assumed when the source column of the plan's input holds `±Infinity`. A ref extending one past a GROUPBY inherits its guard and scaling, so a card downstream of GROUPBY classifies and scales as the GROUPBY card does.
+The aggregate guard classifies non-finite aggregate results at read time ([[C24]] arraySemantics): for a frame produced by a plan with a `groupBy`, any aggregate output column holding a non-finite number goes through `guard_finite`, with an infinite input assumed when the source column of the plan's input holds `±Infinity`. A ref extending one past a GROUPBY inherits its guard and its scaled totals, so a card downstream of GROUPBY classifies as the GROUPBY card does and reads the same totals.
 
 ## The frame store
 

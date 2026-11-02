@@ -81,16 +81,11 @@ pub struct Flushed {
     pub frame: Rc<FrameValue>,
     /// `total / sampled` where the frame was made from a sample, else 1.
     factor: f64,
-    scale: Option<Rc<Scale>>,
+    /// The factor a sample's GROUPBY sums and counts were scaled up by, which marks a reading approximate.
+    scaled: Option<f64>,
     guard: Option<Rc<Guard>>,
     /// A plan ending in a pivot: the layout it laid the frame out with.
     pub layout: Option<Json>,
-}
-
-/// A sampled plan with a GROUPBY: its sums and counts scale up to the whole when read.
-struct Scale {
-    factor: f64,
-    columns: Vec<String>,
 }
 
 /// A plan with a GROUPBY: the aggregate columns, each by the column it read on the plan's own frame, so an
@@ -102,29 +97,17 @@ struct Guard {
 
 impl Flushed {
     fn plain(frame: Rc<FrameValue>) -> Flushed {
-        Flushed { frame, factor: 1.0, scale: None, guard: None, layout: None }
+        Flushed { frame, factor: 1.0, scaled: None, guard: None, layout: None }
     }
 
     /// The factor a reading of this frame is marked approximate by, where a sample's sums were scaled.
     pub fn approx(&self) -> Option<f64> {
-        self.scale.as_ref().map(|s| s.factor)
+        self.scaled
     }
 
-    /// Columns read from the frame as a reading must give them: a sample's sums and counts scaled, the aggregates'
-    /// non-finite numbers classified ([[C24]] arraySemantics).
+    /// Columns read from the frame as a reading must give them: the aggregates' non-finite numbers classified
+    /// ([[C24]] arraySemantics).
     pub fn finish(&self, mut columns: Vec<FrameColumn>) -> Vec<FrameColumn> {
-        if let Some(s) = &self.scale {
-            for c in columns.iter_mut().filter(|c| s.columns.contains(&c.name)) {
-                let scaled = c.values.iter().map(|v| {
-                    if let FrameCell::Num(n) = v {
-                        FrameCell::Num(n * s.factor)
-                    } else {
-                        v.clone()
-                    }
-                });
-                *c = c.with_values(scaled.collect());
-            }
-        }
         if let Some(g) = &self.guard {
             let source = |name: &str| g.aggs.iter().rev().find(|(as_, _)| as_ == name).map(|(_, col)| col.as_str());
             let mut inf_in: Vec<(String, bool)> = Vec::new();
@@ -158,6 +141,35 @@ impl Flushed {
     pub fn head(&self, n: usize) -> Vec<FrameColumn> {
         let take = n.min(frame_row_count(&self.frame));
         self.frame.columns.iter().map(|c| c.with_values((0..take).map(|r| c.cell_at(r).clone()).collect())).collect()
+    }
+}
+
+/// A sampled GROUPBY's answer with its sums and counts scaled by `factor` to stand for the whole frame.
+fn scale_sums(f: &FrameValue, group_by: &Json, factor: f64) -> FrameValue {
+    let scaled: Vec<&str> = group_by
+        .get("aggs")
+        .and_then(Json::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|a| matches!(a.get("op").and_then(Json::as_str), Some("sum" | "count")))
+        .filter_map(|a| a.get("as").and_then(Json::as_str))
+        .collect();
+    FrameValue {
+        columns: f
+            .columns
+            .iter()
+            .map(|c| {
+                if !scaled.contains(&c.name.as_str()) {
+                    return c.clone();
+                }
+                c.with_values(
+                    c.values
+                        .iter()
+                        .map(|v| if let FrameCell::Num(n) = v { FrameCell::Num(n * factor) } else { v.clone() })
+                        .collect(),
+                )
+            })
+            .collect(),
     }
 }
 
@@ -252,8 +264,8 @@ impl FrameRef {
             Some(p) => (Some(p.flush()?), &self.plan[p.plan.len()..]),
             None => (None, &self.plan[..]),
         };
-        let (frame, in_factor, in_scale, in_guard) = match &input {
-            Some(f) => (f.frame.clone(), f.factor, f.scale.clone(), f.guard.clone()),
+        let (frame, in_factor, in_scaled, in_guard) = match &input {
+            Some(f) => (f.frame.clone(), f.factor, f.scaled, f.guard.clone()),
             None => (self.base.clone(), 1.0, None, None),
         };
         // A frame made from a sample isn't sampled again.
@@ -262,12 +274,12 @@ impl FrameRef {
                 Some(s) => {
                     let f = frame_row_count(&frame) as f64 / frame_row_count(&s) as f64;
                     if f <= 1.0 {
-                        (frame, in_factor, in_scale)
+                        (frame, in_factor, in_scaled)
                     } else {
                         (Rc::new(s), f, None)
                     }
                 }
-                None => (frame, in_factor, in_scale),
+                None => (frame, in_factor, in_scaled),
             };
         let ops = parse(tail)?;
         count(|s| {
@@ -276,6 +288,10 @@ impl FrameRef {
         });
         let mut f = src;
         let mut layout = None;
+        // A sample's first GROUPBY scales its sums and counts up to the whole at once, so every op after it (a filter
+        // on a total, a computed column over one) reads whole-table numbers. Later GROUPBYs group the groups, which
+        // are no sample, so they aren't scaled again; nor is a plan rebased on a frame already scaled.
+        let mut scaled = inherited;
         for (k, op) in ops.iter().enumerate() {
             f = Rc::new(match op {
                 FrameOp::Pivot(spec) if ops[k + 1..].iter().all(|o| matches!(o, FrameOp::Formats { .. })) => {
@@ -285,6 +301,10 @@ impl FrameRef {
                 }
                 _ => apply_verb(&f, op)?,
             });
+            if factor > 1.0 && scaled.is_none() && is_group_by(&tail[k]) {
+                f = Rc::new(scale_sums(&f, &tail[k], factor));
+                scaled = Some(factor);
+            }
         }
         let last_group_by = tail.iter().rev().find(|op| is_group_by(op));
         let aggs: Vec<(String, String, String)> = last_group_by
@@ -306,23 +326,7 @@ impl FrameRef {
             })),
             None => in_guard,
         };
-        let (factor, scale) = if factor > 1.0 {
-            let scale = match last_group_by {
-                Some(_) => {
-                    let columns: Vec<String> = aggs
-                        .iter()
-                        .filter(|(_, _, op)| op == "sum" || op == "count")
-                        .map(|(as_, _, _)| as_.clone())
-                        .collect();
-                    (!columns.is_empty()).then(|| Rc::new(Scale { factor, columns }))
-                }
-                None => inherited,
-            };
-            (factor, scale)
-        } else {
-            (1.0, None)
-        };
-        Ok(Flushed { frame: f, factor, scale, guard, layout })
+        Ok(Flushed { frame: f, factor, scaled, guard, layout })
     }
 
     /// What a reader kept beside the ref for the sketch mode now, made with `make` on first ask.
@@ -411,5 +415,31 @@ mod tests {
     #[test]
     fn an_op_reads_as_javascript_handed_it_on() {
         assert_eq!(as_js(&json!({ "n": { "__nf": "inf" }, "to": { "__undef": 1 } })), Some(json!({ "n": null })));
+    }
+
+    #[test]
+    fn ops_after_a_sampled_groupby_read_whole_table_totals() {
+        let n = 50_000;
+        let base = Rc::new(FrameValue {
+            columns: vec![
+                FrameColumn::new(
+                    "k",
+                    FrameColType::String,
+                    (0..n).map(|i| FrameCell::str(if i % 5 < 3 { "a" } else { "b" })).collect(),
+                ),
+                nums("v", (0..n).map(|_| 1.0)),
+            ],
+        });
+        let grouped = FrameRef::source(base)
+            .then(json!({ "kind": "groupBy", "keys": ["k"], "aggs": [{ "column": "v", "op": "sum", "as": "v" }] }));
+        let r = grouped.then(json!({ "kind": "filter", "column": "v", "op": "gt", "value": 25000 }));
+        let regrouped = grouped
+            .then(json!({ "kind": "groupBy", "keys": [], "aggs": [{ "column": "v", "op": "sum", "as": "total" }] }));
+        set_sketch(true);
+        let (f, g) = (r.flush().unwrap(), regrouped.flush().unwrap());
+        set_sketch(false);
+        assert_eq!(frame_row_count(&f.frame), 1, "the filter keeps the group whose whole-table total passes");
+        assert_eq!(f.approx(), Some(5.0));
+        assert_eq!(values(&g.frame.columns[0]), [n as f64], "a second GROUPBY sums the scaled totals once");
     }
 }
