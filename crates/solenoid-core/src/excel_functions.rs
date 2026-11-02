@@ -333,11 +333,21 @@ pub fn number_to_text(x: f64) -> String {
     }
     let v = to_precision(x, 15);
     let mag = v.abs();
-    // The author's Excel, 2026-11-02: 1E+19 writes in full, 1E+20 as 1E+20; 0.00001 in full, 1.23456789012345E-10 not.
-    if mag != 0.0 && !(1e-5..1e20).contains(&mag) {
-        let shortest = format!("{v:e}");
-        let (m, e) = shortest.split_once('e').unwrap_or((&shortest, "0"));
-        let exp: i32 = e.parse().unwrap_or(0);
+    let shortest = format!("{v:e}");
+    let (m, e) = shortest.split_once('e').unwrap_or((&shortest, "0"));
+    let exp: i32 = e.parse().unwrap_or(0);
+    // A small number is written whole where the author's Excel wrote it whole (2026-11-02): up to 17 digits after the
+    // point (0.00000000015, 0.00012345678901234), where 1.23456789012345E-10's 24 were not. Excel's own cut between 17
+    // and 24 is unchecked, so past 17 stays in E form until it is.
+    if mag != 0.0 && mag < 1e-5 {
+        let digits: String = m.chars().filter(char::is_ascii_digit).collect();
+        let zeros = (-exp - 1) as usize;
+        if zeros + digits.len() <= 17 {
+            return format!("{}0.{}{digits}", if v < 0.0 { "-" } else { "" }, "0".repeat(zeros));
+        }
+    }
+    // 1E+19 is written whole and 1E+20 as 1E+20, as the author's Excel writes them (2026-11-02).
+    if mag >= 1e20 || (mag != 0.0 && mag < 1e-5) {
         let m = to_precision(m.parse::<f64>().unwrap_or(f64::NAN), 15);
         return format!("{}E{}{:02}", number_to_string(m), if exp < 0 { "-" } else { "+" }, exp.abs());
     }
