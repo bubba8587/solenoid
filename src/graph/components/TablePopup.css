@@ -29,7 +29,7 @@
   border-collapse: separate;
   border-spacing: 0;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .table-popup__grid thead th {
@@ -48,7 +48,7 @@
   background: var(--surface-sunken);
   color: var(--text-dim);
   font-weight: 500;
-  font-size: 11px;
+  font-size: 10px;
   text-align: center;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -105,7 +105,7 @@
   padding: 4px 8px;
   color: var(--text-bright);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
   text-align: right;
   outline: none;
 }
@@ -125,11 +125,11 @@
   white-space: nowrap;
   overflow: hidden;
 }
-/* Only wins specificity over the read-only rule; the look is `.sol-error-chip`'s, at the grid's 13px. */
+/* Only wins specificity over the read-only rule; the look is `.sol-error-chip`'s, at the grid's 12px. */
 .table-popup__input.sol-error-chip,
 .table-popup__input.sol-error-chip[readonly] {
   color: var(--sol-error);
-  font-size: 13px;
+  font-size: 12px;
 }
 .table-popup__input--text {
   text-align: left;
@@ -253,7 +253,7 @@
   max-height: calc(2 * 1.25em + 4px);
   padding: 2px 6px;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 11px;
   color: color-mix(in srgb, var(--node-accent, var(--text)) 70%, var(--text));
 }
 .table-popup__colhead-input:focus {
@@ -281,7 +281,7 @@
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   line-height: 1;
   color: var(--node-accent, var(--text));
@@ -308,7 +308,7 @@
 
 .table-popup__coltype--fx,
 .table-popup__coltype--fx:hover {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--surface);
   background: var(--node-accent, var(--accent));
   border-color: var(--node-accent, var(--accent));
@@ -379,14 +379,14 @@
 }
 .table-popup__exprprefix {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-dim);
 }
 .table-popup__exprinput {
   flex: 1;
   min-width: 60px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 1px 3px;
@@ -791,14 +791,14 @@
 @media (max-width: 640px) {
   .table-popup { width: calc(100vw - 16px); }
   .table-popup__grid-scroll { margin: 8px; }
-  .table-popup__grid { font-size: 14px; }
+  .table-popup__grid { font-size: 13px; }
   .table-popup__input {
     min-width: 52px;
     padding: 8px 6px;
-    font-size: 14px;
+    font-size: 13px;
   }
   .table-popup__colhead,
-  .table-popup__rowhead { font-size: 12px; padding-top: 2px; padding-bottom: 2px; padding-left: 4px; }
+  .table-popup__rowhead { font-size: 11px; padding-top: 2px; padding-bottom: 2px; padding-left: 4px; }
   .table-popup__rowhead { padding-right: 4px; }
   .table-popup__rowhead { min-width: 22px; }
   .table-popup__colhead--name { min-width: 84px; padding-top: 3px; padding-bottom: 3px; padding-left: 4px; }
@@ -807,13 +807,13 @@
     box-sizing: border-box;
     width: 24px;
     height: 24px;
-    font-size: 12px;
+    font-size: 11px;
   }
-  .table-popup__coltype--fx { font-size: 11px; }
+  .table-popup__coltype--fx { font-size: 10px; }
   .table-popup__fmtbtn { box-sizing: border-box; height: 24px; padding: 0 4px; }
   /* A header name is as wide as its text (the input's size), not the cell input's 52px floor, which is for values. */
   .table-popup__colhead-field { flex: 1 0 auto; }
-  .table-popup__colhead-input { min-width: 0; width: auto; flex: 1 0 auto; font-size: 13px; padding: 3px 4px; }
+  .table-popup__colhead-input { min-width: 0; width: auto; flex: 1 0 auto; font-size: 12px; padding: 3px 4px; }
   .table-popup__csv { font-size: 14px; margin: 8px; width: calc(100% - 16px); }
   /* The CSV block is an editor: it asks for the whole screen and shrinks to what the header and footer leave. */
   .sol-popup--fitnarrow .table-popup__csv { height: 100vh; height: 100dvh; }
@@ -854,7 +854,7 @@
 
 @media (pointer: coarse) {
   .cube-popup__crumb { padding: 5px 8px; font-size: 13px; }
-  .table-popup__cell .solenoid-array-chip--sm { padding: 5px 10px; font-size: 13px; }
+  .table-popup__cell .solenoid-array-chip--sm { padding: 5px 10px; font-size: 12px; }
 }
 
 /* ── Form view ──────────────────────────────────────────────────────────────── */

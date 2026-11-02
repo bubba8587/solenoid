@@ -514,7 +514,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   const viewRow = (r: number): string[] => { let v = viewRowCache.get(r); if (!v) { v = viewRowAt(r); viewRowCache.set(r, v); } return v; };
 
   // An input has no intrinsic width, so measure: the mono advance is 27/42 em (the shipped .fnt metrics), plus 16px padding.
-  const MONO_CH_PX = 13 * (27 / 42);
+  const MONO_CH_PX = 12 * (27 / 42);
   const colMinWidths: Array<number | undefined> = [];
   for (let c = 0; c < viewCols; c++) {
     const colType = vertical ? cellType : typeAt(c, cellType, state.columnTypes);
