@@ -1348,9 +1348,12 @@ body.solenoid-scrubbing * {
 }
 .solenoid-layout-field + .solenoid-layout-field,
 .solenoid-layout-field + .solenoid-node__add-input { margin-top: 6px; }
+/* Inside an empty layout field, bottom-left, clear of the resize grip at bottom-right. */
 .solenoid-record-layout__suggest {
-  display: block;
-  margin: 3px 0 0 auto;
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  z-index: 5;
   padding: 1px 6px;
   font-size: 10px;
   color: var(--text-dim);

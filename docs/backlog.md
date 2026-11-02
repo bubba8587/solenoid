@@ -92,6 +92,7 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 
 ## Performance (found 2026-10-06, not done)
 - [ ] **`raw` source text** rides beside every imported number/date column (`inferColumn`), doubling its memory; only the value popup reads it.
+- [ ] **Table popup rows aren't virtualized**: a 366×41 frame is ~15k inputs, so the first resize step (the card turning sized: ~0.3 s style, ~0.8 s layout) and crossing a `table-popup` container breakpoint (560, 640: ~0.4 s style) restyle every cell; steady resize is ~80 ms a step in headless Chromium. Rendering only the visible rows fixes all three, and the filter item below with them.
 - [ ] **Table popup filter** formats every row per keystroke (`TablePopup.tsx` `matchedOrder`), and up to 1000 rows × every column render unvirtualized; a memo needs every display dep (format controls, Source toggle, column types, computed values) or it filters stale text.
 - [ ] **Each edit serializes the graph twice** (history at 400 ms, autosave at 700 ms): sharing one capture needs an edit counter every mutation bumps, or a store-only edit between the two could be dropped from the save.
 - [ ] **Undo rebuilds the whole graph** (`loadGraph`); a per-node delta restore needs each node to re-apply state in place ([[B12]] losslessSaves).

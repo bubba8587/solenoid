@@ -8,7 +8,7 @@ export function RecordLayoutField({ value, wired, onCommit, onSuggest, placehold
   value: string;
   wired?: boolean;
   onCommit: (next: string) => void;
-  /** The layout read from the data ([[D111]] cardLayouts): Suggest commits it in place of the text. */
+  /** The layout read from the data ([[D111]] cardLayouts): Suggest, shown inside the field while it is empty, commits it. */
   onSuggest?: () => string;
   placeholder?: string;
 }) {
@@ -36,11 +36,11 @@ export function RecordLayoutField({ value, wired, onCommit, onSuggest, placehold
         onMouseDown={(e) => e.stopPropagation()}
       />
       <FieldResizeGrip targetRef={ref} />
-      {onSuggest && (
+      {onSuggest && draft.trim() === "" && (
         <button
           type="button"
           className="solenoid-record-layout__suggest"
-          title="Replace the layout with one laid out from the data"
+          title="Write a layout laid out from the data"
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {

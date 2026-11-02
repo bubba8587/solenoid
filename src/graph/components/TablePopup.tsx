@@ -47,8 +47,7 @@ import "./errorChip.css";
 import "./TablePopup.css";
 import { ChevronDownIcon } from "./Icons";
 import { PivotTableView, PivotRibbon, PivotSheetButton, type PivotRibbonProps } from "./PivotTableView";
-import { PopupChoice, segmentsWidth, useFitsWidth } from "./PopupChoice";
-import { IS_COARSE } from "../coarse";
+import { FittingChoice } from "./PopupChoice";
 import { DEFAULT_PIVOT_VIEW, livePivotFolds, withGrand, withSubtotals, type PivotViewOptions } from "../pivotLayout";
 import { framePopupData } from "../valuePopup";
 import type { FrameValue } from "../frame";
@@ -209,16 +208,6 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   const [pivotOpts, setPivotOpts] = useState<PivotViewOptions>(DEFAULT_PIVOT_VIEW);
   const pivotHost = useRef<PivotHost | null>(null);
   // The view switch is segments while the footer has room for them, else a dropdown.
-  const Dashboard = getDashboardView();
-  const viewOptions: { value: PopupView; label: string }[] = !state ? [] : [
-    ...(state.describe && Dashboard ? [{ value: "dashboard" as const, label: "Dashboard" }] : []),
-    ...(state.pivot ? [{ value: "pivot" as const, label: "Pivot" }] : []),
-    { value: "grid", label: "Grid" },
-    ...(state.columnTypes && !state.list ? [{ value: "cards" as const, label: "Cards" }] : []),
-    ...(state.onSaveSource ? [{ value: "form" as const, label: "Form" }] : []),
-    { value: "csv", label: "CSV" },
-  ];
-  const { ref: footerRef, fits: footerFits } = useFitsWidth(".table-popup__viewswitch", segmentsWidth(viewOptions.map((o) => o.label), IS_COARSE));
 
   useEffect(() => {
     if (!state) { initedFor.current = null; return; }
@@ -956,6 +945,15 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     }
   };
 
+  const Dashboard = getDashboardView();
+  const viewOptions: { value: PopupView; label: string }[] = [
+    ...(state.describe && Dashboard ? [{ value: "dashboard" as const, label: "Dashboard" }] : []),
+    ...(state.pivot ? [{ value: "pivot" as const, label: "Pivot" }] : []),
+    { value: "grid", label: "Grid" },
+    ...(cardsCapable ? [{ value: "cards" as const, label: "Cards" }] : []),
+    ...(formCapable ? [{ value: "form" as const, label: "Form" }] : []),
+    { value: "csv", label: "CSV" },
+  ];
   const pickView = (v: PopupView) => (v === "csv" ? showCSV() : leaveCsv(v));
 
   // ── Pivot view ([[C127]] pivotView) ───────────────────────────────────────
@@ -1517,14 +1515,13 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
 
       {ctxMenu && editsRows && <TableContextMenu at={ctxMenu} row={menuRow} col={menuCol} onClose={() => setCtxMenu(null)} />}
       <div className="table-popup__footer">
-        <div className="table-popup__tools" ref={footerRef}>
-        <PopupChoice
+        <div className="table-popup__tools">
+        <FittingChoice
           className="table-popup__viewswitch"
           label="View"
           value={view}
           options={viewOptions}
           onChange={pickView}
-          segmented={footerFits}
         />
         {view === "pivot" && pivotRibbonProps && <PivotSheetButton><PivotRibbon {...pivotRibbonProps} sheet /></PivotSheetButton>}
         {state.list && view === "grid" && (

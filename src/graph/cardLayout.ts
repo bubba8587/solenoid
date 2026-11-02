@@ -1,5 +1,6 @@
 // [[C114]] cardsView, [[C103]] untrustedContentSeams
 import { wasmInvokeSync, coreIsHexColor, coreLinkHref } from "./engineWasm";
+import { formatFrameCell, type FrameValue } from "./frame";
 
 export type CardColType = "number" | "string" | "date" | "logical";
 
@@ -80,6 +81,16 @@ export function planCards(cols: readonly CardColumnInput[]): CardPlan {
  *  authored layout uses, and what the layout fields' Suggest writes out. */
 export function suggestRecordLayout(cols: readonly CardColumnInput[], units: number): string {
   return wasmInvokeSync<string>("engine_plan_cards", { cols, units });
+}
+
+/** `suggestRecordLayout` for a Frame value as it reads (a Frame Input's output, or the frame on a Record's cable). */
+export function suggestFrameLayout(f: FrameValue, units: number): string {
+  const rows = Math.min(f.columns.reduce((m, c) => Math.max(m, c.values.length), 0), PROFILE_ROWS);
+  return suggestRecordLayout(f.columns.map((col) => ({
+    name: col.name,
+    type: col.type,
+    cells: Array.from({ length: rows }, (_, r) => { const v = formatFrameCell(col.type, col.values[r] ?? null); return v === null ? "" : String(v); }),
+  })), units);
 }
 
 export function cardMatches(texts: readonly string[], query: string): boolean {

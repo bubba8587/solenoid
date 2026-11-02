@@ -172,7 +172,7 @@ export function AutoCard({
             <div className="sol-card__sub">
               {subtitle !== "" && <CellText text={subtitle} />}
               {subtitle !== "" && meta !== "" && " · "}
-              {meta !== "" && <span className="sol-card__meta">{meta}</span>}
+              {meta !== "" && <span className="sol-card__meta">{start !== "" && end !== "" ? meta : <CellText text={meta} />}</span>}
             </div>
           )}
         </div>

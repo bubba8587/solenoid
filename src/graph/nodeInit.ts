@@ -17,7 +17,7 @@ export const INIT_FIELD_ORDER = [
   "runMode", "simulationSteps", "stopWhenPortId", "stopWhenOp", "stopWhenValue", "byRowPortId", "embeds", "steps",
   "wrap", "method", "ceiling", "model", "standardize",
   "action", "agg", "order", "condition", "algorithm", "substance", "bands", "material", "symbol",
-  "layoutHidden",
+  "layoutHidden", "cardLayoutHidden",
   "inheritFormat",
   "chip",
   "pickedLabel",
@@ -45,7 +45,7 @@ export const INIT_EXTRA_FIELD_ORDER = [
  *  out, so resizing or recoloring a card leaves its call as the core holds it (graph-core.md § Direct calls). No body
  *  on the core reads one (`namedEdits.test.ts`). */
 export const VIEW_FIELDS = [
-  "width", "height", "collapsed", "color", "lockedPosition", "layoutHidden", "advancedOpen", "chartFontScale",
+  "width", "height", "collapsed", "color", "lockedPosition", "layoutHidden", "cardLayoutHidden", "advancedOpen", "chartFontScale",
   "textScale", "textAlign", "bold", "italic", "textMono", "textMarkdown",
 ] as const;
 

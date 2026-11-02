@@ -7,7 +7,10 @@ import { InlineInputs, useConnectedInputs } from "./inlineInput";
 import { ChartChip } from "./ChartChip";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
-import { getOwningView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
+import { cableValueStore } from "../cableValueStore";
+import { isFrameValue } from "../frame";
+import { suggestFrameLayout } from "../cardLayout";
 import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
 import { RecordLayoutField } from "./RecordLayoutField";
@@ -55,6 +58,12 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
     void processGraph(data.id);
   }
 
+  // Suggest reads the frame on the Frame cable ([[D111]] cardLayouts); Detail's single card gets four columns, a tile two.
+  function suggestLayout(): string {
+    const conn = getOwningEditor(data.id)?.getConnections().find((c) => c.target === data.id && c.targetInput === "frame");
+    const f = conn ? cableValueStore.get(conn.source, conn.sourceOutput) : undefined;
+    return isFrameValue(f) ? suggestFrameLayout(f, op === "detail" ? 4 : 2) : "";
+  }
   function commitLayout(next: string) {
     data.stringLiterals.layout = next;
     void processGraph(data.id);
@@ -85,7 +94,7 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
       <InlineInputs node={data} emit={emit} keys={keys} />
       {!collapsed && (
         <div ref={layoutRef} style={{ position: "relative", marginTop: 4 }}>
-          <RecordLayoutField value={data.stringLiterals.layout ?? ""} wired={layoutWired} onCommit={commitLayout} />
+          <RecordLayoutField value={data.stringLiterals.layout ?? ""} wired={layoutWired} onCommit={commitLayout} onSuggest={suggestLayout} />
         </div>
       )}
       <div className="solenoid-node__section-divider" />

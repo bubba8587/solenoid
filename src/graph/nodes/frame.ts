@@ -62,19 +62,22 @@ export class FrameInputNode extends GraphNode {
   label: string;
   cachedResult: FrameValue | null = null;
   frameText: string;
-  /** Holds `layout`, the Form view's Record layout; this declaration is what lets load restore it. */
+  /** Holds `layout`, the Form view's Record layout, and `cardLayout`, the Cards view's; this declaration is what lets load restore them. */
   stringLiterals: Record<string, string> = {};
   /** Hiding keeps the text but makes it inert, so read `activeLayout`, never `stringLiterals.layout`. */
   layoutHidden: boolean;
+  /** The same for `cardLayout`: read `activeCardLayout`. */
+  cardLayoutHidden: boolean;
   lambdaKeys: string[] = [];
   // Reserves the full default card (header, both add rows, the capped preview) so Tidy never stacks a neighbor into it.
   width = 240; height = 280;
 
-  constructor(init?: { label?: string; frameText?: string; lambdaKeys?: string[]; layoutHidden?: boolean }) {
+  constructor(init?: { label?: string; frameText?: string; lambdaKeys?: string[]; layoutHidden?: boolean; cardLayoutHidden?: boolean }) {
     super("FrameInput");
     this.label = init?.label ?? "Frame Input";
     this.frameText = init?.frameText ?? "A, B\n1, 2\n3, 4";
     this.layoutHidden = init?.layoutHidden ?? false;
+    this.cardLayoutHidden = init?.cardLayoutHidden ?? false;
     if (Array.isArray(init?.lambdaKeys)) this.lambdaKeys = init.lambdaKeys.filter((k) => typeof k === "string");
     for (const k of this.lambdaKeys) this.addInput(k, lambdaIn(lambdaSocketName(k)));
     this.addOutput("frame", frameOut("Frame"));
@@ -82,6 +85,10 @@ export class FrameInputNode extends GraphNode {
 
   get activeLayout(): string | undefined {
     return this.layoutHidden ? undefined : this.stringLiterals.layout;
+  }
+
+  get activeCardLayout(): string | undefined {
+    return this.cardLayoutHidden ? undefined : this.stringLiterals.cardLayout;
   }
 
   addValueInput(): string {

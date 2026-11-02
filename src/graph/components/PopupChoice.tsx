@@ -1,5 +1,6 @@
 // [[B14]] oneDesignSystem
 import { useLayoutEffect, useRef, useState } from "react";
+import { IS_COARSE } from "../coarse";
 
 export interface PopupChoiceOption<T extends string> { value: T; label: string; title?: string }
 
@@ -83,4 +84,24 @@ export function useFitsWidth(itemSelector: string, need: number): { ref: (el: HT
     return () => { ro.disconnect(); mo.disconnect(); };
   }, [row, itemSelector]);
   return { ref: setRow, fits };
+}
+
+/** A PopupChoice that turns to segments when the row it sits in has room for them (`useFitsWidth` on its parent).
+ *  It owns that state itself, so a flip re-renders this switch alone, never the host: on the Table popup a host
+ *  render redraws every cell of the grid. */
+export function FittingChoice<T extends string>({ className, options, ...rest }: {
+  value: T;
+  options: readonly PopupChoiceOption<T>[];
+  onChange: (next: T) => void;
+  label: string;
+  className: string;
+}) {
+  const { ref, fits } = useFitsWidth(`.${className.split(" ")[0]}`, segmentsWidth(options.map((o) => o.label), IS_COARSE));
+  const anchor = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => { ref(anchor.current?.parentElement ?? null); }, [ref]);
+  return (
+    <span ref={anchor} style={{ display: "contents" }}>
+      <PopupChoice className={className} options={options} segmented={fits} {...rest} />
+    </span>
+  );
 }

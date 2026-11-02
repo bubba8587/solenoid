@@ -440,6 +440,22 @@ describe("Frame Input's Form layout hides without deleting", () => {
     expect(new FrameInputNode(init).layoutHidden).toBe(true);
     expect(new FrameInputNode().layoutHidden).toBe(false);
   });
+
+  it("the Card layout hides the same way, on its own flag, and survives a save/load cycle", () => {
+    const n = new FrameInputNode();
+    n.stringLiterals.layout = "Name | Qty";
+    n.stringLiterals.cardLayout = "#Name | Qty";
+    n.cardLayoutHidden = true;
+    expect(n.activeCardLayout).toBeUndefined();
+    expect(n.activeLayout).toBe("Name | Qty");
+    const init = extractInit(n) as { cardLayoutHidden?: boolean };
+    expect(init.cardLayoutHidden).toBe(true);
+    const back = new FrameInputNode(init);
+    back.stringLiterals.cardLayout = "#Name | Qty";
+    expect(back.activeCardLayout).toBeUndefined();
+    back.cardLayoutHidden = false;
+    expect(back.activeCardLayout).toBe("#Name | Qty");
+  });
 });
 
 describe("Frame Input is a LITERAL source — never rewrites what you typed", () => {
