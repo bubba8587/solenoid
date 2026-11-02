@@ -1515,7 +1515,9 @@ fn list_index(c: &mut Call) -> Answer {
     let produced = match (&v, &result) {
         (_, Cv::Frame(_) | Cv::Cube(_)) => None,
         (Cv::Frame(f), _) => picked_family(&col, &f.columns.iter().map(|k| Some(k.ty)).collect::<Vec<_>>()),
-        (Cv::Cube(q), _) => picked_family(&col, &q.columns.iter().map(|k| k.ty).collect::<Vec<_>>()),
+        (Cv::Cube(q), _) => {
+            picked_family(&col, &q.columns.iter().map(super::frames::cube_column_family).collect::<Vec<_>>())
+        }
         _ => None,
     };
     c.produced(produced);

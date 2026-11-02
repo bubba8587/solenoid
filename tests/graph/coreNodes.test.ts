@@ -110,6 +110,15 @@ describe("card bodies on the core answer as frozen", () => {
             const got = shownWire(v, out, c.result.out);
             if (JSON.stringify(want) !== JSON.stringify(got)) (c.display ??= {})[field] = got;
           }
+          // A field the core now shows that no case froze is recorded too, or only the native check
+          // (`tests/nodes.rs`, which compares every shown field) would ever see it.
+          for (const [field, v] of Object.entries(r.display ?? {})) {
+            if ([c.display, c.prior, init].some((o) => o && field in o)) continue;
+            const u = v as { undef?: true } | null;
+            if (u && typeof u === "object" && u.undef === true) continue;
+            (c.display ??= {})[field] = shownWire(v, out, c.result.out);
+            rewritten++;
+          }
         }
         if (bad.length >= 5) break;
       }

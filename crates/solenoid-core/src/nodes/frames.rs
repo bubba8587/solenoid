@@ -1900,11 +1900,34 @@ fn xlookup(c: &mut Call) -> Answer {
     } else {
         match &src_frame {
             Some(f) => f.columns.iter().find(|k| k.name == ret_col).map(|k| k.ty),
-            None => src_cube.columns.iter().find(|k| k.name == ret_col).and_then(|k| k.ty),
+            None => src_cube.columns.iter().find(|k| k.name == ret_col).and_then(cube_column_family),
         }
     };
     c.produced(family);
     shown_value(c, result.unwrap_or_else(Cv::V))
+}
+
+/// A Cube column's element family: its declared type, else the one kind every filled cell shares. A bare serial never
+/// reads as a date, since nothing but the declared type can say a number is one.
+pub(crate) fn cube_column_family(col: &CubeColumn) -> Option<FrameColType> {
+    if col.ty.is_some() {
+        return col.ty;
+    }
+    let mut kind = None;
+    for cell in &col.cells {
+        let k = match cell.v() {
+            Some(V::Null | V::Undef) => continue,
+            Some(V::Num(_)) => FrameColType::Number,
+            Some(V::Str(_)) => FrameColType::String,
+            Some(V::Bool(_)) => FrameColType::Logical,
+            _ => return None,
+        };
+        match kind {
+            Some(seen) if seen != k => return None,
+            _ => kind = Some(k),
+        }
+    }
+    kind
 }
 
 /// XLOOKUP across: the lookup searches a row (the column names, or row `inRow`) and returns the matched column whole,
@@ -1979,7 +2002,8 @@ fn xlookup_across(c: &mut Call, cube: &Cube, lookup_raw: &V, fb: &str) -> Answer
         };
         // The matched columns' one shared type, the family this run produced ([[C136]] typesKnownAfterCalc).
         let mut hit = found.iter().filter_map(|&i| usize::try_from(i).ok().and_then(|i| cube.columns.get(i)));
-        across_family = hit.next().and_then(|first| first.ty).filter(|t| hit.all(|k| k.ty == Some(*t)));
+        across_family =
+            hit.next().and_then(cube_column_family).filter(|t| hit.all(|k| cube_column_family(k) == Some(*t)));
         let mut k = 0;
         let mut one = |t: &String| -> Cv {
             if t.is_empty() && !valueless {

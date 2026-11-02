@@ -344,8 +344,13 @@ impl Call {
         self.matrix_units_out.push((key.to_string(), unit));
     }
 
+    /// Sets a field the card's component reads; showing a field again replaces it, as the card reads only the last.
     pub fn show(&mut self, field: &str, v: impl Into<Cv>) {
-        self.display.push((field.to_string(), Shown::V(v.into())));
+        let v = Shown::V(v.into());
+        match self.display.iter_mut().find(|(f, _)| f == field) {
+            Some(slot) => slot.1 = v,
+            None => self.display.push((field.to_string(), v)),
+        }
     }
 
     /// The element family the body extracted on this run (a lookup's or INDEX's column), none where it can't name
