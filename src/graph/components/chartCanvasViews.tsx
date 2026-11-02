@@ -339,9 +339,12 @@ type Paint = (ctx: Ctx, x: number, y: number, w: number, h: number, t: number) =
 function drawColorbar(ctx: Ctx, ink: ReturnType<typeof themeInk>, box: { x: number; y: number; w: number; h: number; textX: number }, scale: HeatScale, paint: Paint, ticks: number[], lineH: number) {
   const { x, y, w, h, textX } = box;
   const span = scale.hi - scale.lo;
-  for (let i = 0; i < h; i++) {
-    const v = span > 0 ? scale.hi - (span * (i + 0.5)) / h : scale.lo;
-    paint(ctx, x, y + i, w, Math.min(1.5, h - i), scale.t(v));
+  // One whole-pixel row each, touching and never overlapping: an overlap paints a translucent fill twice, and a
+  // fractional edge antialiases, either of which shows as a hairline between the bar's segments.
+  const top = Math.round(y), rows = Math.max(1, Math.round(y + h) - top), left = Math.round(x), wide = Math.round(x + w) - left;
+  for (let i = 0; i < rows; i++) {
+    const v = span > 0 ? scale.hi - (span * (i + 0.5)) / rows : scale.lo;
+    paint(ctx, left, top + i, wide, 1, scale.t(v));
   }
   ctx.fillStyle = ink.dim;
   ctx.textAlign = "left";

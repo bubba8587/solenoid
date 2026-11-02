@@ -50,8 +50,8 @@
   --panel-bg: var(--surface);
   --panel-border: var(--border);
   --overlay-bg: var(--surface);
-  /* An empty cell in a canvas figure (the Calendar Heatmap's days): a recess in dark, a faint gray on a light card. */
-  --chart-empty-cell: light-dark(var(--surface-raised), var(--surface-sunken));
+  /* An empty cell in a canvas figure (the Calendar Heatmap's days): a faint step from the card either way, half a recess in dark. */
+  --chart-empty-cell: light-dark(var(--surface-raised), color-mix(in srgb, var(--surface-sunken) 50%, var(--surface)));
   --minimap-mask: light-dark(rgba(27, 30, 35, 0.12), rgba(0, 0, 0, 0.45));
   --overlay-border: light-dark(#aeb6c1, #474c54);
   --overlay-border-width: 2px;
