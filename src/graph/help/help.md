@@ -115,6 +115,8 @@ A frame's popup has a **Cards** view, and **Record: Cards** draws the same cards
 
 A blank cell is left off its card.
 
+To lay the cards out yourself, open **Card Layout** under a Frame Input's Advanced section (or type a Layout on **Record: Cards**). It uses the Form layout's lines: `#Name | Rating` puts the name in the heading with the rating beside it, and each later line is a row of fields. The parts above still decide how each field looks. **Suggest** writes a starting layout from your data, and a Form with no layout of its own uses that suggestion.
+
 ## Keyboard
 
 Single keys work when you're not typing in a field.

@@ -252,15 +252,19 @@ export function ColumnExprField({ value, lambdaOptions, onDraft, onCommit, onRev
   );
 }
 
-/** An editable column name that wraps onto a second line when it is long, rather than widening its column. Enter commits by blurring; a pasted line break reads as a space. */
-export function HeaderNameField({ value, placeholder, onChange, onFocus, onBlur, onKeyDown, onMouseDown }: {
+/** A one-line text field that wraps and grows to fit its text rather than scrolling sideways: Enter commits by
+ *  blurring, and a pasted line break reads as a space, so its value stays one line of text. */
+export function AutoGrowField({ value, className, cols, placeholder, inputMode, onChange, onFocus, onBlur, onKeyDown, onMouseDown }: {
   value: string;
-  placeholder: string;
+  className: string;
+  cols?: number;
+  placeholder?: string;
+  inputMode?: "text" | "decimal";
   onChange: (v: string) => void;
-  onFocus: () => void;
+  onFocus?: () => void;
   onBlur?: () => void;
-  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
-  onMouseDown: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onMouseDown?: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement | null>(null);
   useLayoutEffect(() => {
@@ -272,21 +276,42 @@ export function HeaderNameField({ value, placeholder, onChange, onFocus, onBlur,
   return (
     <textarea
       ref={ref}
-      className="table-popup__input table-popup__input--text table-popup__colhead-input"
+      className={className}
       value={value}
       rows={1}
-      cols={Math.min(16, Math.max(3, value.length + 1))}
+      cols={cols}
       placeholder={placeholder}
+      inputMode={inputMode}
       spellCheck={false}
       onFocus={onFocus}
       onBlur={onBlur}
       onMouseDown={onMouseDown}
       onKeyDown={(e) => {
-        onKeyDown(e);
+        onKeyDown?.(e);
         if (e.defaultPrevented) return;
         if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.blur(); }
       }}
       onChange={(e) => onChange(e.target.value.replace(/[\r\n]+/g, " "))}
+    />
+  );
+}
+
+/** An editable column name that wraps onto a second line when it is long, rather than widening its column. */
+export function HeaderNameField({ value, placeholder, onChange, onFocus, onBlur, onKeyDown, onMouseDown }: {
+  value: string;
+  placeholder: string;
+  onChange: (v: string) => void;
+  onFocus: () => void;
+  onBlur?: () => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onMouseDown: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
+}) {
+  return (
+    <AutoGrowField
+      className="table-popup__input table-popup__input--text table-popup__colhead-input"
+      value={value}
+      cols={Math.min(16, Math.max(3, value.length + 1))}
+      {...{ placeholder, onChange, onFocus, onBlur, onKeyDown, onMouseDown }}
     />
   );
 }

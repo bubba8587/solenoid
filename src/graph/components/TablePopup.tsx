@@ -28,12 +28,12 @@ import "./confirmDialog.css";
 import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton } from "./columnSort";
-import { ColumnFormatButton, ColumnExprField, HeaderHelpButton, HeaderNameField, COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
+import { ColumnFormatButton, ColumnExprField, HeaderHelpButton, HeaderNameField, AutoGrowField, COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
 import { TypeIcon } from "./TypeIcon";
 import { CellEditAffix } from "./CellEditAffix";
 import { CsvEditor } from "./CsvEditor";
 import { TableCards } from "./TableCards";
-import { cardMatches } from "../cardLayout";
+import { cardMatches, suggestRecordLayout, PROFILE_ROWS } from "../cardLayout";
 import { SearchField } from "./SearchField";
 import { CellSuggest, type CellSuggestHandle } from "./CellSuggest";
 import { parseRecordLayout, recordImageSrc, cellImageSrc } from "../recordLayout";
@@ -166,6 +166,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   // The draft is a ref, so Escape can reset it and blur synchronously without a stale closure.
   const [editCell, setEditCell] = useState<{ r: number; c: number } | null>(null);
   const distinctMemo = useRef<{ grid: unknown; c: number; values: string[] } | null>(null);
+  const suggestMemo = useRef<{ key: string; grid: unknown; text: string } | null>(null);
   const [formRow, setFormRow] = useState(0);
 
   const editDraft = useRef("");
@@ -652,8 +653,23 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   // ── Form view ────────────────────────────────────────────────────────────
   const formCapable = !!state.onSaveSource;
   const fRow = Math.min(formRow, Math.max(0, rows - 1));
-  const formLayout = state.formLayout ?? "";
+  // With no authored layout the form is laid out from its data ([[D111]] cardLayouts), recomputed only when a cell, name or type changes.
+  const suggestedForm = (): string => {
+    const names = Array.from({ length: cols }, (_, c) => (headerNames[c] ?? "").trim() || colLabel(c));
+    const types = Array.from({ length: cols }, (_, c) => colTypeAt(c));
+    const key = JSON.stringify([names, types]);
+    const memo = suggestMemo.current;
+    if (memo && memo.grid === grid && memo.key === key) return memo.text;
+    const n = Math.min(rows, PROFILE_ROWS);
+    const text = suggestRecordLayout(names.map((name, c) => ({
+      name, type: types[c], cells: Array.from({ length: n }, (_r, r) => grid[r]?.[c] ?? ""),
+    })), 4);
+    suggestMemo.current = { key, grid, text };
+    return text;
+  };
+  const formLayout = state.formLayout?.trim() ? state.formLayout : view === "form" && cols > 0 ? suggestedForm() : "";
   const formPlaced = formLayout.trim() !== "" ? parseRecordLayout(formLayout) : [];
+  const cardPlaced = state.cardLayout?.trim() ? parseRecordLayout(state.cardLayout) : undefined;
   const formCols = formPlaced.length > 0 ? Math.max(...formPlaced.map((pl) => pl.col + pl.colSpan - 1)) : 1;
   const formColIndex = (name: string): number =>
     headerNames.findIndex((h) => (h ?? "").trim().toLowerCase() === name.trim().toLowerCase());
@@ -1342,7 +1358,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
         </div>
       ) : view === "form" ? (
         <div className="table-popup__form-scroll sol-popup__scroll">
-          <div className="table-popup__form">
+          <div className="table-popup__form" style={{ "--form-cols": formPlaced.length > 0 ? formCols : 1 } as React.CSSProperties}>
             <div className="table-popup__form-nav">
               <button type="button" className="table-popup__btn" onClick={() => setFormRow(Math.max(0, fRow - 1))} disabled={fRow <= 0} title="Previous record">
                 <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M6.5 1l-4 4 4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -1399,6 +1415,21 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
                       })()
                     ) : (
                       <span className={type === "date" || suggestHere ? "table-popup__form-box-date" : undefined} style={type === "date" || suggestHere ? undefined : { display: "contents" }}>
+                      {type === "string" ? (
+                        <AutoGrowField
+                          className="table-popup__form-box-input table-popup__form-box-input--wrap"
+                          value={editingHere ? editDraft.current : shown}
+                          placeholder={hint}
+                          onFocus={() => { editDraft.current = grid[fRow]?.[c] ?? ""; setEditCell({ r: fRow, c }); }}
+                          onChange={(v) => {
+                            editDraft.current = v;
+                            if (editingHere) bumpDraft((x) => x + 1);
+                            else setEditCell({ r: fRow, c });
+                          }}
+                          onBlur={() => { if (editingHere) { setCell(fRow, c, editDraft.current); setEditCell(null); } }}
+                          onKeyDown={(e) => { if (!e.nativeEvent.isComposing) suggestRef.current?.onKey(e); }}
+                        />
+                      ) : (
                       <input
                         className="table-popup__form-box-input"
                         value={editingHere ? editDraft.current : shown}
@@ -1418,6 +1449,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
                           if (e.key === "Enter") e.currentTarget.blur();
                         }}
                       />
+                      )}
                       {suggestHere && (
                         <CellSuggest
                           handle={suggestRef}
@@ -1468,6 +1500,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
           onSort={setSort}
           query={query}
           onEdit={formCapable ? (r) => { setFormRow(r); setView("form"); } : undefined}
+          layout={cardPlaced}
         />
       ) : (
         <CsvEditor

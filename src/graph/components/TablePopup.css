@@ -859,11 +859,13 @@
   max-height: 56dvh;
   overflow: auto;
 }
+/* The form widens with its layout, about 220px a grid column, and never narrower than one comfortable field. */
 .table-popup__form {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: 380px;
+  width: 100%;
+  max-width: max(380px, calc(var(--form-cols, 1) * 220px));
 }
 .table-popup__form-nav {
   display: flex;
@@ -916,6 +918,13 @@
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.35;
+}
+.table-popup__form-box-input--wrap {
+  display: block;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .table-popup__form-box-input[readonly] {
   color: var(--text-dim);

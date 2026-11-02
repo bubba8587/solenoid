@@ -33,11 +33,12 @@ type FrameOpenProps = {
   onCommitSource?: (columns: FrameSourceColumn[]) => Promise<SourceCommitRefresh | null>;
   lambdaOptions?: string[];
   formLayout?: string;
+  cardLayout?: string;
   popupOverrides?: Partial<TablePopupState>;
 };
 
 /** What a frame chip's click opens: the grid editor for a source, else the value popup. `el` lends the popup its accent and group colors. */
-export function openFrameChipPopup(el: HTMLElement, { value, label, hostId, accent, source, onSaveSource, onCommitSource, lambdaOptions, formLayout, popupOverrides }: FrameOpenProps): void {
+export function openFrameChipPopup(el: HTMLElement, { value, label, hostId, accent, source, onSaveSource, onCommitSource, lambdaOptions, formLayout, cardLayout, popupOverrides }: FrameOpenProps): void {
   const st = readChipPopupStyle(el, "--sock-frame");
   if (!source || !onSaveSource) {
     void openFramePopup(value, {
@@ -65,6 +66,7 @@ export function openFrameChipPopup(el: HTMLElement, { value, label, hostId, acce
     groupColorDark: st.groupColorDark,
     pinNodeId: hostId ?? undefined,
     formLayout,
+    cardLayout,
     lambdaOptions: lambdaOptions ?? [],
     sourceExprs: source.map((c) => c.expr),
     computedCells: Array.from(
@@ -76,7 +78,7 @@ export function openFrameChipPopup(el: HTMLElement, { value, label, hostId, acce
   });
 }
 
-export function FrameChip({ value, label, size = "md", accent, source, onSaveSource, onCommitSource, pinNodeId, lambdaOptions, formLayout, popupOverrides }: {
+export function FrameChip({ value, label, size = "md", accent, source, onSaveSource, onCommitSource, pinNodeId, lambdaOptions, formLayout, cardLayout, popupOverrides }: {
   value: FrameValue;
   label?: string;
   size?: "sm" | "md";
@@ -87,6 +89,7 @@ export function FrameChip({ value, label, size = "md", accent, source, onSaveSou
   pinNodeId?: string;
   lambdaOptions?: string[];
   formLayout?: string;
+  cardLayout?: string;
   popupOverrides?: Partial<TablePopupState>;
 }) {
   const ctxHostId = useHostNodeId();
@@ -105,7 +108,7 @@ export function FrameChip({ value, label, size = "md", accent, source, onSaveSou
       title={`${approx ? "≈ " : ""}${totalRows}×${cols} frame${approx ? ", extrapolated from a sketch-mode sample" : ""}${computedCols ? `, ${computedCols} computed column${computedCols === 1 ? "" : "s"}` : ""}. ${onSaveSource ? "Edit" : "View"}.`}
       onClick={(e) => {
         e.stopPropagation();
-        openFrameChipPopup(e.currentTarget, { value: fullList(value), label, hostId, accent, source, onSaveSource, onCommitSource, lambdaOptions, formLayout, popupOverrides });
+        openFrameChipPopup(e.currentTarget, { value: fullList(value), label, hostId, accent, source, onSaveSource, onCommitSource, lambdaOptions, formLayout, cardLayout, popupOverrides });
       }}
       onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}

@@ -788,7 +788,7 @@ export class RecordNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     rows: "Picks the records, 1-based, in order: 3, or 1, 3, 5; -1 is the last. Blank shows every record. Detail pages through the picks.",
     by: "Names the column whose values become the board's lanes. Blank or unmatched draws nothing.",
-    layout: "A line per row, names split by |. Repeat to merge. Photo*2 spans two, #Name titles, Qty: 40 is placeholder, a dot is blank. Empty stacks columns.",
+    layout: "A line per row, names split by |. Repeat to merge. Photo*2 spans two, #Name titles, Qty: 40 is placeholder, a dot is blank. Empty stacks columns; on Cards, empty lays each card out from the data.",
     options: "title=Parts;fontsize=12;cardsize=l. Gallery and Cards tiles size s, m or l; clamp=on caps long values at three lines and folds a card past six fields.",
   };
 
@@ -817,7 +817,7 @@ export class RecordNode extends GraphNode {
     this.addInput("frame", frameIn("Frame"));
     this.addInput("rows", numListIn("Rows"));
     if (this.op === "board") this.addInput("by", strIn("Group by"));
-    if (this.op !== "cards") this.addInput("layout", strIn("Layout"));
+    this.addInput("layout", strIn("Layout"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
@@ -827,8 +827,6 @@ export class RecordNode extends GraphNode {
     this.op = next;
     if (next === "board") { if (!this.inputs.by) this.addInput("by", strIn("Group by")); }
     else if (this.inputs.by) this.removeInput("by");
-    if (next !== "cards") { if (!this.inputs.layout) this.addInput("layout", strIn("Layout")); }
-    else if (this.inputs.layout) this.removeInput("layout");
   }
 
   /** The display settings a number nobody formatted shows by ([[C118]] formatTravelsWithValue), which the Cards plan reads. */

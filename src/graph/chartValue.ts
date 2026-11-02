@@ -1,5 +1,6 @@
 // [[C100]] chartIsAValue
 import type { CardColType, CardPlan } from "./cardLayout";
+import type { RecordPlacement } from "./recordLayout";
 import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation } from "./formatAnnotationStore";
 import { type ChartOp, CHART_OP_META } from "./nodes/visual";
 import type { ChartOptions, LineStyle } from "./nodes/chartOptions";
@@ -126,6 +127,8 @@ export interface RecordDeck {
   formats: (FormatAnnotation | null)[];
   chipCols: number[];
   plan: CardPlan;
+  /** The authored card layout's placements ([[D111]] cardLayouts); none draws the inferred cards. */
+  layout?: RecordPlacement[];
   rows: (number | string | null)[][];
   /** Each drawn row's 1-based number in the frame. */
   rowNumbers: number[];

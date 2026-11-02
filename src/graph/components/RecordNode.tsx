@@ -18,7 +18,6 @@ const OPTIONS: ReadonlyArray<OpOption<RecordOp>> = (Object.keys(RECORD_OP_META) 
 // A switch drops the departing keys' cables before the sockets go, or a cable would live on invisibly.
 async function applyRecordOp(node: RecordNodeType, next: RecordOp): Promise<void> {
   const departing: string[] = [];
-  if (node.op !== "cards" && next === "cards") departing.push("layout");
   if (node.op === "board" && next !== "board") departing.push("by");
   if (departing.length) await dropInputCables(node.id, departing);
   node.setOp(next);
@@ -72,19 +71,19 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
   const layoutPort = data.inputs.layout;
 
   const hasBoxes = !!payload && (payload.cards.some((c) => c.length > 0) || (payload.deck?.rows.length ?? 0) > 0);
-  const keys = ["frame", "rows", ...(op === "board" ? ["by"] : []), ...(collapsed && op !== "cards" ? ["layout"] : []), "options"];
+  const keys = ["frame", "rows", ...(op === "board" ? ["by"] : []), ...(collapsed ? ["layout"] : []), "options"];
 
   return (
     <NodeShell
       node={data}
       emit={emit}
-      leading={!collapsed && op !== "cards" && layoutPort && layoutTop !== undefined
+      leading={!collapsed && layoutPort && layoutTop !== undefined
         ? <NodeSocket side="input" socketKey="layout" nodeId={data.id} emit={emit} payload={layoutPort.socket} top={layoutTop} />
         : null}
     >
       <OpSelect value={op} onChange={setOp} options={OPTIONS} />
       <InlineInputs node={data} emit={emit} keys={keys} />
-      {!collapsed && op !== "cards" && (
+      {!collapsed && (
         <div ref={layoutRef} style={{ position: "relative", marginTop: 4 }}>
           <RecordLayoutField value={data.stringLiterals.layout ?? ""} wired={layoutWired} onCommit={commitLayout} />
         </div>

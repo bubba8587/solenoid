@@ -1,9 +1,9 @@
-// [[C114]] cardsView, [[C103]] untrustedContentSeams
+// [[C114]] cardsView, [[D111]] cardLayouts, [[C103]] untrustedContentSeams
 import type { ReactNode } from "react";
 import { CellImage } from "./cubeCell";
 import { splitTags, isHexColor, linkHref, shortLink, type CardColType, type CardPlan } from "../cardLayout";
 import { categoryColorIndex } from "../categoryColor";
-import { cellImageSrc } from "../recordLayout";
+import { cellImageSrc, type RecordPlacement } from "../recordLayout";
 import { decimalFromText } from "../valueKinds";
 import { ERROR_EXPLANATIONS } from "../errorValue";
 import { stopDragStart } from "../coarse";
@@ -111,9 +111,11 @@ function tilesOf(plan: CardPlan): Tile[] {
  * With `fold`, a card past TILE_LIMIT fields and its prose stay short until `open`; `onToggle` flips that.
  */
 export function AutoCard({
-  plan, names, types, computed, chipColors, texts, raw, items, cellNode, rowNumber, fold, open = false, onToggle, toggleOnClick = false, onEdit,
+  plan, layout, names, types, computed, chipColors, texts, raw, items, cellNode, rowNumber, fold, open = false, onToggle, toggleOnClick = false, onEdit,
 }: {
   plan: CardPlan;
+  /** An authored card layout: it picks the fields and places them, and the plan still decides how each one draws. */
+  layout?: readonly RecordPlacement[];
   names: readonly string[];
   types: readonly CardColType[];
   computed: ReadonlySet<number>;
@@ -132,6 +134,9 @@ export function AutoCard({
   onEdit?: () => void;
 }) {
   const text = (c: number | null): string => (c === null ? "" : (texts[c] ?? "").trim());
+  if (layout && layout.length > 0) {
+    return <LaidOutCard {...{ plan, layout, names, types, computed, chipColors, texts, raw, items, cellNode, rowNumber, onEdit }} />;
+  }
   const img = plan.image !== null ? cellImageSrc(raw(plan.image)) : null;
   const title = [plan.title, ...plan.titleRest].map(text).filter((t) => t !== "").join(" ");
   const key = text(plan.key);
@@ -249,6 +254,118 @@ export function AutoCard({
         >
           {open ? "Show Fewer Fields" : `Show All ${rowTiles.length} Fields`}
         </button>
+      )}
+    </article>
+  );
+}
+
+/** A card drawn to an authored layout ([[D111]] cardLayouts): the title field heads it, every other placed field is a
+ *  tile at its place in the grid, and each tile draws the way the plan reads its column. A name that matches no column
+ *  keeps its box with the layout's hint. */
+function LaidOutCard({ plan, layout, names, types, computed, chipColors, texts, raw, items, cellNode, rowNumber, onEdit }: {
+  plan: CardPlan;
+  layout: readonly RecordPlacement[];
+  names: readonly string[];
+  types: readonly CardColType[];
+  computed: ReadonlySet<number>;
+  chipColors: ReadonlyMap<number, ReadonlyMap<string, number>>;
+  texts: readonly string[];
+  raw: (c: number) => string;
+  items?: (c: number) => readonly string[] | null;
+  cellNode?: (c: number) => ReactNode;
+  rowNumber: number;
+  onEdit?: () => void;
+}) {
+  const colOf = (name: string) => names.findIndex((n) => n.trim().toLowerCase() === name.trim().toLowerCase());
+  const text = (c: number): string => (c < 0 ? "" : (texts[c] ?? "").trim());
+  const titleAt = layout.find((p) => p.title);
+  const titleCol = titleAt ? colOf(titleAt.name) : -1;
+  const title = text(titleCol);
+  // Fields sharing the title's row sit in the header beside it, so the title's own cell leaves no gap in the grid.
+  const inTitleRow = (p: RecordPlacement) => !!titleAt && p.row < titleAt.row + titleAt.rowSpan && titleAt.row < p.row + p.rowSpan;
+  const headFields = layout.filter((p) => p !== titleAt && inTitleRow(p));
+  const body = layout.filter((p) => p !== titleAt && !inTitleRow(p));
+  const cols = Math.max(1, ...body.map((p) => p.col + p.colSpan - 1));
+  const minRow = Math.min(...body.map((p) => p.row));
+  const meterOf = (c: number) => plan.meters.find((m) => m.col === c);
+  const value = (c: number): ReactNode => {
+    const t = text(c);
+    if (t === "") return null;
+    const node = cellNode?.(c);
+    if (node) return node;
+    const n = decimalFromText(raw(c).trim());
+    if (c === plan.image) { const src = cellImageSrc(raw(c)); if (src) return <CellImage className="sol-card__pic" src={src} />; }
+    if (plan.chips.includes(c)) return <CategoryChip value={t} index={chipColors.get(c)?.get(raw(c).trim()) ?? 0} />;
+    if (plan.tags.includes(c)) {
+      return <span className="sol-card__chips sol-card__chips--inline">{(items?.(c) ?? splitTags(raw(c))).map((tag, i) => (
+        <CategoryChip key={i} value={tag} index={chipColors.get(c)?.get(tag) ?? 0} />
+      ))}</span>;
+    }
+    if (plan.swatches.includes(c) && isHexColor(raw(c))) {
+      return <span className="sol-card__swatch"><span className="sol-card__swatch-dot" style={{ background: raw(c).trim() }} />{t}</span>;
+    }
+    if (plan.flags.includes(c)) {
+      const v = readLogical(raw(c));
+      if (v !== null) return <span className={`sol-card__flag${v ? " sol-card__flag--on" : ""}`}>{v ? <CheckIcon size={10} strokeWidth={2.4} /> : <CloseIcon size={10} />}{v ? "Yes" : "No"}</span>;
+    }
+    if (plan.ratings.includes(c) && Number.isFinite(n)) return <><Stars value={n} /><CellText text={t} /></>;
+    const meter = meterOf(c);
+    if (meter && Number.isFinite(n)) {
+      const share = Math.max(0, Math.min(1, n / (meter.max || 1)));
+      return (
+        <>
+          <CellText text={t.endsWith("%") ? t : `${Math.round((n / (meter.max || 1)) * 100)}%`} />
+          <span className="sol-card__meter" aria-hidden="true"><span style={{ width: `${Math.round(share * 100)}%` }} /></span>
+        </>
+      );
+    }
+    return <CellText text={texts[c] ?? ""} />;
+  };
+  return (
+    <article className="sol-card sol-card--laid">
+      <header className="sol-card__head">
+        <div className="sol-card__titles">
+          <div className="sol-card__title-line">
+            <span className={`sol-card__title${title === "" ? " sol-card__title--none" : ""}`}>
+              {title !== "" ? <CellText text={title} /> : `Row ${rowNumber}`}
+            </span>
+          </div>
+        </div>
+        {headFields.map((p, i) => {
+          const c = colOf(p.name);
+          const v = c < 0 ? null : value(c);
+          if (v === null) return null;
+          return (
+            <div key={i} className="sol-card__headstat">
+              <span className="sol-card__headstat-value">{v}</span>
+              <span className="sol-card__label">{computed.has(c) && <FxDot />}{names[c]}</span>
+            </div>
+          );
+        })}
+        {onEdit && (
+          <button type="button" className="sol-card__edit" title="Edit in Form" aria-label="Edit in Form" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+            <PencilIcon size={14} />
+          </button>
+        )}
+      </header>
+      {body.length > 0 && (
+        <dl className="sol-card__grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+          {body.map((p, i) => {
+            const c = colOf(p.name);
+            const v = c < 0 ? null : value(c);
+            if (v === null && !p.hint) return null;
+            return (
+              <div
+                key={i}
+                className={`sol-card__stat${c >= 0 && types[c] === "string" ? " sol-card__stat--text" : ""}${c >= 0 && plan.prose.includes(c) ? " sol-card__stat--prose" : ""}`}
+                style={{ gridRow: `${p.row - minRow + 1} / span ${p.rowSpan}`, gridColumn: `${p.col} / span ${p.colSpan}` }}
+              >
+                <dt className="sol-card__label">{c >= 0 && computed.has(c) && <FxDot />}{c >= 0 ? names[c] : p.name}</dt>
+                <dd>{v ?? <span className="sol-card__hint">{p.hint ?? ""}</span>}</dd>
+              </div>
+            );
+          })}
+        </dl>
       )}
     </article>
   );

@@ -33,7 +33,7 @@ export function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: Forma
   return formatScalar(c);
 }
 
-export function FrameDisplay({ frame: given, label, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout, peek }: {
+export function FrameDisplay({ frame: given, label, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout, cardLayout, peek }: {
   frame: FrameValue | SolError | null;
   label?: string;
   peek?: boolean;
@@ -47,6 +47,7 @@ export function FrameDisplay({ frame: given, label, source, onSaveSource, onComm
   scroll?: boolean;
   lambdaOptions?: string[];
   formLayout?: string;
+  cardLayout?: string;
 }) {
   // A big frame a card's box shows is its first rows (`listPreview.ts`); a full table takes the whole.
   const frame = full && given && !isSolError(given) ? fullList(given) : given;
@@ -76,7 +77,7 @@ export function FrameDisplay({ frame: given, label, source, onSaveSource, onComm
         <div className="solenoid-node__display-value solenoid-table-display" style={{ padding: "4px 8px", userSelect: "text" }}>
           <div style={{ color: "var(--text-muted)", fontSize: 11, fontStyle: "italic" }}>empty</div>
           <div className="solenoid-table-display__chip">
-            <FrameChip value={stub} label={label} size="sm" source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} />
+            <FrameChip value={stub} label={label} size="sm" source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} cardLayout={cardLayout} />
           </div>
         </div>
       );
@@ -134,7 +135,7 @@ export function FrameDisplay({ frame: given, label, source, onSaveSource, onComm
       </table>
       {!full && !peek && (
         <div className="solenoid-table-display__chip">
-          <FrameChip value={frame} label={label} size="sm" source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} />
+          <FrameChip value={frame} label={label} size="sm" source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} cardLayout={cardLayout} />
         </div>
       )}
     </div>

@@ -48,6 +48,8 @@ export interface TablePopupState {
   onSaveMatrixUnit?: (unitId: string) => void;
   pinNodeId?: string;
   formLayout?: string;
+  /** The Cards view's authored layout ([[D111]] cardLayouts), in the Form layout's grammar. */
+  cardLayout?: string;
   lambdaOptions?: string[];
   noFormulaColumns?: boolean;
   /** Names a column header may take, each with the types it has elsewhere; a pick sets the type only when there is one. Read when a header is focused. */

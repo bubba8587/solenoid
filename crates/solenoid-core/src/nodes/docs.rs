@@ -1158,7 +1158,7 @@ fn record(c: &mut Call) -> Answer {
         V::Undef => V::Null,
         v => v,
     };
-    let lay = if op == "cards" { V::Null } else { c.read_input("layout", lit(c, "layout")) };
+    let lay = c.read_input("layout", lit(c, "layout"));
     let opt_in = c.read_input("options", lit(c, "options"));
     let opt_str: Option<String> = match opt_in {
         V::Str(s) => Some(s.to_string()),
@@ -1242,7 +1242,11 @@ fn record(c: &mut Call) -> Answer {
     match op.as_str() {
         "detail" => cards.push(card_at(if index >= 1 { Some(order[index - 1]) } else { None })),
         "cards" => {
-            deck = Some(record_deck(cols, drawn, display));
+            let mut d = record_deck(cols, drawn, display);
+            if !placed.is_empty() {
+                d["layout"] = Json::Array(placed.iter().map(|p| p.to_json()).collect());
+            }
+            deck = Some(d);
             more = total - drawn.len();
         }
         "gallery" | "list" => {

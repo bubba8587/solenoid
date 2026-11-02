@@ -743,25 +743,21 @@ describe("Record node", () => {
     expect(((await n.data({ frame: [f], by: [null as unknown as string] })).chart.payload as RecordPayload).cards).toEqual([]);
   });
 
-  it("setOp swaps the Group-by and Layout sockets with the view; Rows stays on every view", () => {
+  it("setOp swaps the Group-by socket with the view; Rows and Layout stay on every view", () => {
     const n = new RecordNode();
-    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
-    n.setOp("gallery");
     expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
     n.setOp("board");
     expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options", "by"]);
-    n.setOp("detail");
-    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
-    n.setOp("cards");
-    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "options"]);
-    n.setOp("list");
-    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "options", "layout"]);
-    expect(Object.keys(new RecordNode({ op: "cards" }).inputs)).toEqual(["frame", "rows", "options"]);
+    for (const op of ["detail", "cards", "list", "gallery"] as const) {
+      n.setOp(op);
+      expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
+    }
+    expect(Object.keys(new RecordNode({ op: "cards" }).inputs)).toEqual(["frame", "rows", "layout", "options"]);
   });
 
   it("Cards plans the whole frame and ships the drawn rows, numbers raw and the rest as shown", async () => {
     const n = new RecordNode({ op: "cards" });
-    n.stringLiterals.layout = "Price"; // Cards is never authored: a leftover layout is ignored
+    n.stringLiterals.layout = "#Name | Price"; // a written layout rides along; the plan still reads every column
     const f: FrameValue = { __frame: true, columns: [
       { name: "Name", type: "string", values: Array.from({ length: 70 }, (_, i) => `Item ${i + 1}`) },
       { name: "Price", type: "number", values: Array.from({ length: 70 }, (_, i) => i + 0.5), format: { format: "decimal", unit: "none" } },
@@ -778,6 +774,10 @@ describe("Record node", () => {
     expect(deck.plan).toMatchObject({ title: 0, hero: 1, meta: 2, flags: [3] });
     expect(deck.rows[0]).toEqual(["Item 1", 0.5, "01-Jan-2026", "TRUE"]);
     expect(deck.formats[1]).toMatchObject({ format: "decimal" });
+    expect(deck.layout).toEqual([
+      { name: "Name", row: 1, col: 1, rowSpan: 1, colSpan: 1, title: true },
+      { name: "Price", row: 1, col: 2, rowSpan: 1, colSpan: 1 },
+    ]);
   });
 });
 

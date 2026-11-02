@@ -1,4 +1,4 @@
-// [[C114]] cardsView
+// [[C114]] cardsView, [[D111]] cardLayouts
 import { useMemo, useState, type ReactNode } from "react";
 import { planCards, cardMatches, PROFILE_ROWS, type CardColType, type CardColumnInput } from "../cardLayout";
 import { type ColumnSort, type SortDir } from "./columnSort";
@@ -7,6 +7,7 @@ import { Markdown } from "./Markdown";
 import { helpSection } from "../helpSection";
 import helpMd from "../help/help.md?raw";
 import { AutoCard, cardChipColors } from "./AutoCard";
+import type { RecordPlacement } from "../recordLayout";
 import "./TableCards.css";
 
 const PAGE = 100;
@@ -14,8 +15,10 @@ const CARD_RULES = helpSection(helpMd, "Cards");
 
 /** `dataKey` changes whenever the cells or their shown text do; the plan, the chip colors and the row texts are cached on it. */
 export function TableCards({
-  names, types, computed, chipCols, nestedCols, listCols, rowCount, order, rawAt, shownRow, itemsAt, cellNodeAt, dataKey, sort, onSort, query, onEdit,
+  names, types, computed, chipCols, nestedCols, listCols, rowCount, order, rawAt, shownRow, itemsAt, cellNodeAt, dataKey, sort, onSort, query, onEdit, layout,
 }: {
+  /** An authored card layout ([[D111]] cardLayouts); none keeps the inferred cards. */
+  layout?: readonly RecordPlacement[];
   names: readonly string[];
   types: readonly CardColType[];
   computed: ReadonlySet<number>;
@@ -83,6 +86,7 @@ export function TableCards({
     <AutoCard
       key={r}
       plan={plan}
+      layout={layout}
       names={names}
       types={types}
       computed={computed}

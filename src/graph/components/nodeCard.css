@@ -1346,6 +1346,23 @@ body.solenoid-scrubbing * {
 .solenoid-layout-field {
   position: relative;
 }
+.solenoid-layout-field + .solenoid-layout-field,
+.solenoid-layout-field + .solenoid-node__add-input { margin-top: 6px; }
+.solenoid-record-layout__suggest {
+  display: block;
+  margin: 3px 0 0 auto;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.solenoid-record-layout__suggest:hover {
+  color: var(--text-bright);
+  background: var(--btn-hover);
+}
 .solenoid-layout-field__hide {
   position: absolute;
   top: 3px;

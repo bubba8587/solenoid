@@ -55,11 +55,12 @@ import { VALUELESS_FILTER_OPS } from "../frameOps";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
 import type { FilterCondConfig, SettleMode } from "../nodes/frame";
 import { RecordLayoutField } from "./RecordLayoutField";
+import { suggestRecordLayout, PROFILE_ROWS } from "../cardLayout";
 import { CloseIcon } from "./CloseIcon";
 import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META, COLUMNS_OP_META, lambdaSocketName } from "../nodes/frame";
 import { CubeDisplay } from "./CubeDisplay";
 import { isCubeValue } from "../frame";
-import { parseFrameSource, frameSourceToText, isFrameValue, frameRowCount, type FrameSourceColumn, type FrameValue, type CubeValue } from "../frame";
+import { parseFrameSource, frameSourceToText, isFrameValue, frameRowCount, formatFrameCell, type FrameSourceColumn, type FrameValue, type CubeValue } from "../frame";
 import type { SolError } from "../errorValue";
 
 function FrameOrCubeDisplay({ value, label }: { value: FrameValue | CubeValue | SolError | null; label?: string }) {
@@ -143,12 +144,25 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
       columnTypes: src.map((c, j) => (c.expr ? (derived.columns[j]?.type ?? "number") : c.type)),
     };
   }, [data]);
-  function commitLayout(next: string) {
-    if (next.trim()) data.stringLiterals.layout = next;
-    else delete data.stringLiterals.layout;
+  function commitLayout(next: string, key: "layout" | "cardLayout" = "layout") {
+    if (next.trim()) data.stringLiterals[key] = next;
+    else delete data.stringLiterals[key];
     data.edited();
     scheduleAutosave();
   }
+  const [showCardLayout, setShowCardLayout] = useState(false);
+  const hasCardLayout = !!data.stringLiterals.cardLayout;
+  // The Suggest button's layout, read from the frame the card outputs ([[D111]] cardLayouts).
+  const suggestFor = (units: number) => () => {
+    const f = data.cachedResult;
+    if (!isFrameValue(f)) return "";
+    const rows = Math.min(frameRowCount(f), PROFILE_ROWS);
+    return suggestRecordLayout(f.columns.map((col) => ({
+      name: col.name,
+      type: col.type,
+      cells: Array.from({ length: rows }, (_, r) => { const v = formatFrameCell(col.type, col.values[r] ?? null); return v === null ? "" : String(v); }),
+    })), units);
+  };
   const [showLayout, setShowLayout] = useState(false);
   const [layoutHidden, setLayoutHidden] = useState(data.layoutHidden);
   function setHidden(next: boolean) {
@@ -166,20 +180,20 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
         onOpen={(el) => openFrameChipPopup(el, {
           value: isFrameValue(data.cachedResult) ? data.cachedResult : { __frame: true, columns: [] },
           label: nodeDisplayName(data), hostId: data.id, source, onSaveSource, onCommitSource,
-          lambdaOptions: data.lambdaKeys.map(lambdaSocketName), formLayout: data.activeLayout,
+          lambdaOptions: data.lambdaKeys.map(lambdaSocketName), formLayout: data.activeLayout, cardLayout: data.stringLiterals.cardLayout,
         })}
       />
       <CardSection
         label="Advanced"
         collapsible
-        defaultOpen={data.lambdaKeys.length > 0 || (hasLayout && !layoutHidden)}
+        defaultOpen={data.lambdaKeys.length > 0 || (hasLayout && !layoutHidden) || hasCardLayout}
         sockets={{ node: data, emit, keys: data.lambdaKeys }}
       >
         {/* A column formula in the grid editor reaches each λ input by its socket name. */}
         <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="Add LAMBDA" />
         {!layoutHidden && (hasLayout || showLayout) ? (
           <div className="solenoid-layout-field">
-            <RecordLayoutField value={data.stringLiterals.layout ?? ""} onCommit={commitLayout} />
+            <RecordLayoutField value={data.stringLiterals.layout ?? ""} onCommit={(v) => commitLayout(v)} onSuggest={suggestFor(4)} placeholder="Form layout" />
             <button
               type="button"
               className="solenoid-layout-field__hide"
@@ -201,11 +215,24 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
             {layoutHidden && hasLayout ? "Show Form Layout" : "Form Layout"}
           </button>
         )}
+        {hasCardLayout || showCardLayout ? (
+          <div className="solenoid-layout-field">
+            <RecordLayoutField value={data.stringLiterals.cardLayout ?? ""} onCommit={(v) => commitLayout(v, "cardLayout")} onSuggest={suggestFor(2)} placeholder="Card layout" />
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="solenoid-node__add-input"
+            onClick={(e) => { e.stopPropagation(); setShowCardLayout(true); }}
+          >
+            Card Layout
+          </button>
+        )}
       </CardSection>
       <FrameDisplay
         frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} source={source}
         onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={data.lambdaKeys.map(lambdaSocketName)}
-        formLayout={data.activeLayout}
+        formLayout={data.activeLayout} cardLayout={data.stringLiterals.cardLayout}
       />
     </NodeShell>
   );

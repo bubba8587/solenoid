@@ -259,3 +259,33 @@
   .sol-card__stat dd,
   .sol-card__prose p { font-size: 13px; }
 }
+
+/* An authored card layout's body: tiles placed on the layout's grid. */
+.sol-card__grid {
+  display: grid;
+  gap: 6px 12px;
+  margin: 0;
+  padding-top: 8px;
+  box-shadow: inset 0 1px 0 var(--border);
+}
+.sol-card__stat--prose dd { font-family: var(--font-sans); line-height: 1.45; }
+.sol-card__chips--inline { display: flex; flex-wrap: wrap; gap: 4px; padding: 0; }
+.sol-card__hint { color: var(--text-dim); font-style: italic; }
+.sol-card__headstat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex: 0 0 auto;
+  max-width: 45%;
+  text-align: right;
+}
+.sol-card__headstat-value {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: calc(13px * var(--chart-fscale, 1));
+  color: var(--text-bright);
+  font-variant-numeric: tabular-nums;
+}

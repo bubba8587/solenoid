@@ -206,7 +206,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             crate::excel_criteria::DateReading::NotADate => Json::Null,
             crate::excel_criteria::DateReading::Ambiguous(e) => serde_json::json!({ "ambiguous": e.message }),
         }),
-        // The Cards view's plan for a table's columns, and a Record layout's placements ([[C114]] cardsView), as the
+        // The Cards view's plan for a table's columns (or, given `units`, the layout suggested from it), and a Record layout's placements ([[C114]] cardsView), as the
         // Table popup draws them (`card_helpers.rs`).
         "engine_plan_cards" => {
             let cols = list_arg(args, "cols")?.unwrap_or_default();
@@ -229,7 +229,10 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                     lists: flag(c, "lists"),
                 })
                 .collect();
-            Ok(crate::card_helpers::plan_cards(&cols))
+            match args.get("units").and_then(Json::as_u64) {
+                Some(units) => Ok(Json::from(crate::card_helpers::suggest_record_layout(&cols, units as usize))),
+                None => Ok(crate::card_helpers::plan_cards(&cols)),
+            }
         }
         "engine_record_layout" => Ok(Json::Array(
             crate::card_helpers::parse_record_layout(&parse::<String>(args, "text")?)

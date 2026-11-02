@@ -181,6 +181,7 @@ function RecordCards({ payload }: { payload: RecordPayload }) {
       tile={(r) => (
         <AutoCard
           plan={deck.plan}
+          layout={deck.layout}
           names={deck.names}
           types={deck.types}
           computed={NO_COMPUTED}

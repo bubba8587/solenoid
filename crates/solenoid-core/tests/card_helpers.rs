@@ -4,7 +4,8 @@
 
 use serde_json::Value as Json;
 use solenoid_core::card_helpers::{
-    format_number_with_annotation, parse_record_layout, plan_cards, Annotation, CardColumn, NumberDisplay,
+    format_number_with_annotation, parse_record_layout, plan_cards, suggest_record_layout, Annotation, CardColumn,
+    NumberDisplay,
 };
 use std::io::Read;
 
@@ -76,4 +77,43 @@ fn record_layouts_as_frozen() {
         }
     }
     report(&bad, cases.len());
+}
+
+fn text_col(name: &str, ty: &str, cells: &[&str]) -> CardColumn {
+    CardColumn {
+        name: name.into(),
+        ty: ty.into(),
+        cells: cells.iter().map(|s| s.to_string()).collect(),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn a_suggested_layout_leads_with_the_title_and_gives_prose_a_row() {
+    let cols = vec![
+        text_col(
+            "Notes",
+            "string",
+            &[
+                "A long note that runs well past forty characters, so it reads as prose",
+                "Another long note about this that is also long enough",
+            ],
+        ),
+        text_col("Name", "string", &["Ada Lovelace", "Alan Turing"]),
+        text_col("Revenue", "number", &["1200", "40"]),
+        text_col("Start", "date", &["46000", "46001"]),
+        text_col("Active", "logical", &["TRUE", "FALSE"]),
+    ];
+    let text = suggest_record_layout(&cols, 4);
+    assert_eq!(text, "#Name*2 | Start | Revenue\nActive*4\nNotes*4");
+    let placed = parse_record_layout(&text);
+    assert_eq!(placed.len(), 5, "every column is placed");
+    assert!(placed.iter().any(|p| p.title && p.name == "Name"));
+}
+
+#[test]
+fn a_suggested_layout_never_runs_wider_than_its_columns() {
+    let cols = vec![text_col("A", "number", &["1", "2"])];
+    assert_eq!(suggest_record_layout(&cols, 4), "A");
+    assert_eq!(suggest_record_layout(&[], 4), "");
 }

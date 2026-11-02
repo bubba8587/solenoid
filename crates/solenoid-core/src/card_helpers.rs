@@ -1298,6 +1298,87 @@ pub fn plan_cards(cols: &[CardColumn]) -> Json {
     })
 }
 
+/// A Record layout written from the data, for a form or a card that has none authored: the plan's lead fields
+/// first (picture, key, title, subtitle, dates, hero), then every other column in order, packed into rows of
+/// `units` grid columns. Long text takes two units and prose a whole row; the last box in a row stretches to
+/// close it. The title carries `#`. Every column is placed, an empty one too, since a form edits them all.
+pub fn suggest_record_layout(cols: &[CardColumn], units: usize) -> String {
+    if cols.is_empty() {
+        return String::new();
+    }
+    let plan = plan_cards(cols);
+    let one = |k: &str| plan.get(k).and_then(Json::as_u64).map(|i| i as usize);
+    let many = |k: &str| -> Vec<usize> {
+        plan.get(k)
+            .and_then(Json::as_array)
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_u64().or_else(|| v.get("col").and_then(Json::as_u64)))
+                    .map(|i| i as usize)
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let units = units.clamp(1, 12).min(cols.len());
+    let title = one("title");
+    let prose: HashSet<usize> = many("prose").into_iter().collect();
+    let tags: HashSet<usize> = many("tags").into_iter().collect();
+    let mut order: Vec<usize> = Vec::new();
+    let lead = [one("image"), one("key"), title]
+        .into_iter()
+        .flatten()
+        .chain(many("titleRest"))
+        .chain([one("subtitle"), one("meta"), one("metaEnd"), one("hero")].into_iter().flatten());
+    for i in lead.chain(0..cols.len()) {
+        if !order.contains(&i) && !prose.contains(&i) {
+            order.push(i);
+        }
+    }
+    order.extend((0..cols.len()).filter(|i| prose.contains(i)));
+    let width = |i: usize| -> usize {
+        if prose.contains(&i) {
+            return units;
+        }
+        let (p, _) = profile(&cols[i]);
+        let long = cols[i].ty == "string" && (p.avg_len > 24.0 || p.max_len > 40);
+        if Some(i) == title || tags.contains(&i) || long {
+            2.min(units)
+        } else {
+            1
+        }
+    };
+    let cell = |i: usize, w: usize| {
+        let name = format!("{}{}", if Some(i) == title { "#" } else { "" }, trim_space(&cols[i].name));
+        if w > 1 {
+            format!("{name}*{w}")
+        } else {
+            name
+        }
+    };
+    let mut lines: Vec<String> = Vec::new();
+    let mut row: Vec<(usize, usize)> = Vec::new();
+    let flush = |row: &mut Vec<(usize, usize)>, lines: &mut Vec<String>| {
+        let used: usize = row.iter().map(|(_, w)| w).sum();
+        if let Some(last) = row.last_mut() {
+            last.1 += units - used;
+        }
+        if !row.is_empty() {
+            lines.push(row.iter().map(|&(i, w)| cell(i, w)).collect::<Vec<_>>().join(" | "));
+        }
+        row.clear();
+    };
+    for i in order {
+        let w = width(i);
+        let used: usize = row.iter().map(|(_, w)| w).sum();
+        if used + w > units {
+            flush(&mut row, &mut lines);
+        }
+        row.push((i, w));
+    }
+    flush(&mut row, &mut lines);
+    lines.join("\n")
+}
+
 // ─── The Record layout ──────────────────────────────────────────────────────────
 
 /// `RecordPlacement`.
