@@ -1016,13 +1016,19 @@ body.solenoid-scrubbing * {
   color: var(--text);
 }
 
+/* One repeated group of rows (a Filter condition, a Sort key, a SUMIFS pair): its rows breathe, and a hairline with
+   room on both sides parts it from the next. */
 .solenoid-node__pair-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 7px;
+  margin-bottom: 7px;
   box-shadow: inset 0 -1px 0 var(--border);
-  margin-bottom: 3px;
 }
-.solenoid-node__pair-group:last-of-type {
+.solenoid-node__pair-group:not(:has(+ .solenoid-node__pair-group)) {
   box-shadow: none;
-  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 .solenoid-node__section-divider {
