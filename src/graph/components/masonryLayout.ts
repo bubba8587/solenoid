@@ -16,10 +16,12 @@ export function planColumns(
   { ideal, min, max, items }: { ideal: number; min: number; max: number; items: number },
 ): MasonryPlan {
   if (width <= 0 || items <= 0) return { count: Math.max(1, items > 0 ? 1 : 0), colWidth: ideal };
-  let count = Math.max(1, Math.round((width + gap) / (ideal + gap)));
-  count = Math.min(count, Math.max(1, items));
+  const natural = Math.max(1, Math.round((width + gap) / (ideal + gap)));
+  let count = Math.min(natural, Math.max(1, items));
   while (count > 1 && (width - (count - 1) * gap) / count < min) count--;
-  const colWidth = Math.min(max, (width - (count - 1) * gap) / count);
+  const fill = (width - (count - 1) * gap) / count;
+  // Fewer items than the row holds keep their ideal width, so the size choice shows instead of stretching away.
+  const colWidth = Math.min(items < natural ? ideal : max, fill);
   return { count, colWidth };
 }
 

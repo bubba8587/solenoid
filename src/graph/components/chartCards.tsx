@@ -70,9 +70,9 @@ function RecordGrid({ fields, cols, flow }: { fields: RecordPayload["cards"][num
 
 const GALLERY_GAP = 6;
 const GALLERY_TRACK_BY_SIZE: Record<RecordSize, { ideal: number; min: number; max: number }> = {
-  s: { ideal: 130, min: 110, max: 190 },
-  m: { ideal: 170, min: 140, max: 260 },
-  l: { ideal: 230, min: 190, max: 340 },
+  s: { ideal: 120, min: 100, max: 150 },
+  m: { ideal: 170, min: 145, max: 210 },
+  l: { ideal: 250, min: 215, max: 310 },
 };
 
 type Track = { ideal: number; min: number; max: number };
@@ -154,9 +154,9 @@ function RecordGallery({ payload }: { payload: RecordPayload }) {
 
 // Wider than Gallery's tracks: a card carries a header row and a grid of field tiles.
 const CARDS_TRACK_BY_SIZE: Record<RecordSize, Track> = {
-  s: { ideal: 240, min: 210, max: 310 },
-  m: { ideal: 300, min: 250, max: 400 },
-  l: { ideal: 380, min: 320, max: 500 },
+  s: { ideal: 230, min: 200, max: 270 },
+  m: { ideal: 300, min: 260, max: 350 },
+  l: { ideal: 390, min: 340, max: 450 },
 };
 const NO_COMPUTED: ReadonlySet<number> = new Set();
 
@@ -236,6 +236,7 @@ function RecordList({ payload }: { payload: RecordPayload }) {
 
 const RECORD_TILE_MIN: Record<RecordSize, number> = { s: 110, m: 150, l: 200 };
 const RECORD_LANE_MIN: Record<RecordSize, number> = { s: 140, m: 180, l: 240 };
+const RECORD_LIST_MIN: Record<RecordSize, number> = { s: 160, m: 220, l: 300 };
 
 export function RecordCardView({ payload, width, fscale, title, onStep }: {
   payload: RecordPayload; width?: number; fscale?: number; title?: string; onStep?: (delta: number) => void;
@@ -247,6 +248,7 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
     ...fscaleStyle(fscale),
     "--record-tile": `${RECORD_TILE_MIN[size]}px`,
     "--record-lane": `${RECORD_LANE_MIN[size]}px`,
+    "--record-list": `${RECORD_LIST_MIN[size]}px`,
   } as React.CSSProperties;
   const figClass = payload.clamp ? "sol-record-fig sol-record-fig--clamp" : "sol-record-fig";
   const titleLine = title ? <div className="sol-record-figtitle">{title}</div> : null;
