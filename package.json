@@ -43,7 +43,7 @@
     "test:core": "cargo test --manifest-path crates/solenoid-core/Cargo.toml --target-dir crates/solenoid-core/target"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.3.0",
+    "@anthropic-ai/sdk": "^1.4.0",
     "@fontsource-variable/atkinson-hyperlegible-mono": "^5.3.0",
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
     "@lezer/common": "^1.5.5",
@@ -54,14 +54,14 @@
     "@tauri-apps/plugin-fs": "^2.7.1",
     "@tauri-apps/plugin-http": "2.8.3",
     "@tauri-apps/plugin-opener": "^2.7.2",
-    "@xyflow/react": "^12.12.0",
-    "@xyflow/system": "0.0.83",
+    "@xyflow/react": "^12.12.1",
+    "@xyflow/system": "0.0.84",
     "colord": "^2.10.0",
     "dompurify": "^3.4.17",
     "elkjs": "^0.12.1",
     "katex": "^0.19.1",
     "knap": "^0.6.0",
-    "marked": "^18.1.2",
+    "marked": "^18.1.3",
     "pele": "^1.13.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -77,7 +77,7 @@
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.2",
+    "@vitejs/plugin-react": "^6.2.1",
     "esbuild": "^0.28.2",
     "estree-walker": "3.0.3",
     "magic-string": "1.4.5",
@@ -89,6 +89,6 @@
     "three": "0.187.0",
     "tsrs": "0.20.1-ts7.1.0-beta",
     "vite": "^8.3.5",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   }
 }
