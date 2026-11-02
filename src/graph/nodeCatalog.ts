@@ -860,12 +860,78 @@ export const NODE_CATALOG: CatalogEntry[] = [
     ],
   },
 
-  // ── TABLES & FRAMES ───────────────────────────────────────────────────────────
+  // ── FRAMES ───────────────────────────────────────────────────────────────────
   {
-    type: "category", label: "Tables & Frames", description: "2D data: numeric tables and matrix math, plus data frames with named columns, reshape, and selection.",
+    type: "category", label: "Frames", description: "Data tables with named, typed columns: filter, sort, join, group, clean, reshape and analyze them, and nest them into Cubes.",
     children: [
+      { type: "distinct",    label: "Distinct",    description: "Removes duplicate rows from a Frame, keeping the first of each. Rows compare case-sensitively, unlike Excel. Excel: `UNIQUE`.", create: () => new DistinctNode(), parity: false },
+      { type: "head",        label: "Head",        description: "Keeps a slice of rows: the first N, the last N, all but the first N, or rows N to To (1-based). Power Query: Keep Rows and Remove Rows.", create: () => new HeadNode(), parity: false, keywords: "head tail first last skip range keep remove top bottom rows limit offset" },
+      { type: "sort-frame",  label: "Frame Sort",  description: "Sorts a Frame's rows by one column, ascending or descending, with blanks and errors last. Ties keep their order, so to sort by several columns, chain Frame Sorts from the least important column to the most. Excel: `SORT`.", create: () => new SortFrameNode(), parity: false, keywords: "sort order multi key then by stable" },
+      { type: "filter-frame",label: "Frame Filter", description: "Keeps the rows that pass its conditions, joined by AND or OR; the rest go to Dropped. Blanks and errors fail a value test, and `is blank` and `has error` select them. SQL: `WHERE`. Excel: `FILTER`.", create: () => new FilterFrameNode(), parity: false, keywords: "filter rows where keep drop errors iserror noterror clean" },
+      { type: "join",        label: "Join",        description: "Combines two Frames on a key column: inner, left, right, outer or as-of. A key with several matches gives one row per match, except in as-of. Keys are case-sensitive, unlike Excel's `XLOOKUP`.", create: () => new JoinNode(), parity: false },
+      { type: "sumifs", label: "SUMIFS", description: "Aggregates one Frame column over the rows that meet criteria on other columns, matching all or any. Excel: `SUMIFS`, `COUNTIFS`, `AVERAGEIFS`, `MINIFS`, `MAXIFS`.", create: () => new SumIfsNode(), keywords: "sumif countif averageif minif maxif criteria conditional aggregate frame all any or" },
+      { type: "window", label: "Window", description: "Adds a column calculated per group while keeping every row: running totals, ranks, lag and lead, rolling windows, shares. SQL `OVER`, pandas `transform`, dplyr `mutate`.", create: () => new WindowNode(), parity: false, keywords: "window partition over running cumulative cumsum rank dense_rank row_number lag lead shift diff pct_change rolling moving transform group share percent of total first last ntile sql" },
+      { type: "group-by-frame", label: "GROUPBY", description: "Groups rows by key columns and aggregates one column, with optional total and subtotal rows. Excel: `GROUPBY`.", create: () => new GroupByFrameNode(), parity: false },
+      { type: "pair", children: [
+        { type: "append",      label: "Append",      description: "Stacks Frames vertically. Columns match by name, a missing column fills with blanks, and a type clash is `#TYPE!`. Excel: `VSTACK`.", create: () => new AppendNode(), parity: false },
+        { type: "bind-columns", label: "Bind Columns", description: "Places Frames side by side by position. A repeated name gets a suffix, and a shorter Frame pads with blanks. pandas `concat`, R `bind_cols`, Excel `HSTACK`.", create: () => new BindColumnsNode(), parity: false, keywords: "bind_cols cbind concat axis 1 side by side zip frames columns hstack horizontal" },
+      ]},
       {
-        type: "category", label: "Frames (named columns)", description: "A data table = a Matrix plus a header list. Build one, take it apart, and read or add columns.",
+        type: "category", label: "Clean", description: "The everyday cleanup verbs: fill blanks from above, find and replace, drop spacer rows.",
+        children: [
+          { type: "fill-blanks", label: "Fill Down", description: "Fills blank cells from the neighboring row: Down carries the last value forward, Up the next one back. Power Query: Fill Down.", create: () => new FillBlanksNode(), parity: false, keywords: "fill down up forward backward blanks nulls merged cells carry propagate ffill bfill clean" },
+          { type: "replace-values", label: "Replace Values", description: "Find-and-replace in one column or all. Whole-cell swaps cells equal to Find, taking the column's type; Substring rewrites inside text cells. Case-sensitive. Power Query: Replace Values.", create: () => new ReplaceValuesNode(), parity: false, keywords: "replace find substitute swap value cells fix clean search change" },
+          { type: "drop-blank-rows", label: "Drop Blank Rows", description: "Removes blank rows: only fully blank spacer rows, or any row with a blank cell. Errors count as values. Power Query: Remove Blank Rows.", create: () => new DropBlankRowsNode(), parity: false, keywords: "drop remove blank empty rows spacers nulls complete clean" },
+        ],
+      },
+      {
+        type: "category", label: "Columns", description: "Column surgery: keep, drop, rename, split, or number columns.",
+        children: [
+          { type: "pair", children: [
+            { type: "keep-columns", label: "Keep Columns", description: "Keeps only the named columns, in the order given. Like Excel's `CHOOSECOLS`, but by column name.", keywords: "columns select keep choosecols", create: () => new ColumnsNode(), parity: false },
+            { type: "drop-columns", label: "Drop Columns", description: "Removes the named columns; the rest pass through.", keywords: "columns drop remove", create: () => new ColumnsNode({ op: "drop" }), parity: false },
+          ]},
+          { type: "rename",      label: "Rename",      description: "Renames columns from two Lists matched by position: From `[\"qty\"]` → To `[\"Quantity\"]`.", create: () => new RenameNode(), parity: false },
+          { type: "split-column", label: "Split Column", description: "Splits one text column into several by a delimiter, the parts replacing the source. Power Query: Split Column by Delimiter.", create: () => new SplitColumnNode(), parity: false, keywords: "split delimiter text column separate parse divide power query" },
+          { type: "add-index",   label: "Add Index",   description: "Prepends a row-number column from a start value (default 1). Power Query: Add Index Column.", create: () => new AddIndexNode(), parity: false, keywords: "index row number sequence counter rownum power query" },
+          { type: "merge-columns", label: "Merge Columns", description: "Joins two or more columns into one text column with a separator, in the first source\'s place. The inverse of Split Column. Power Query: Merge Columns.", create: () => new MergeColumnsNode(), parity: false, keywords: "merge combine concatenate join columns text textjoin concat inverse split" },
+          { type: "headers", label: "Headers", description: "Promotes the first row to column names, or demotes the names back into a first row of text. Power Query: Use First Row as Headers.", create: () => new HeadersNode(), parity: false, keywords: "promote demote headers first row column names use as titles header" },
+        ],
+      },
+      {
+        type: "category", label: "Reshape", description: "Change the layout: pivot wide, melt long, nest into a Cube and back.",
+        children: [
+          { type: "pivot",       label: "PIVOTBY",     description: "Turns long data into a cross-tab by Row and Column fields, with `SUM`, `AVERAGE` or `COUNT` per value and optional totals and subtotals. Min and max over text give the first and last alphabetically, where Excel ignores text. Excel: `PIVOTBY`.", create: () => new PivotNode(), parity: false },
+          { type: "unpivot",     label: "Unpivot",     description: "Turns wide data long: the Id columns stay, and each chosen Value column becomes variable and value rows. Power Query: Unpivot. pandas: `melt`.", create: () => new UnpivotNode(), parity: false },
+          { type: "pair", children: [
+            { type: "nest",   label: "Nest",   description: "Groups a flat Frame by key into a Cube. Each key's other columns collapse into a nested table cell. The flat → nested bridge.", create: () => new NestNode(), parity: false },
+            { type: "unnest", label: "Unnest", description: "A Cube's nested column expanded one level, each parent row repeating per nested row; a nested Frame flattens fully. The inverse of Nest.", create: () => new UnnestNode(), parity: false },
+          ]},
+        ],
+      },
+      {
+        type: "category", label: "Analyze", description: "Score, profile, and compare Frames: weighted decisions, column summaries and correlations, version reconciliation.",
+        children: [
+          { type: "decision-matrix", label: "Decision Matrix", description: "Scores and ranks a Frame of options: rows are options and number columns are criteria. Score = `Σ(value × weight) / Σ|weight|`, ranked on the rounded score. Weights come from a Weights table, one row per criterion; a negative weight favors lower values like cost, and a criterion left out weighs 1. Norm scales each criterion so dollars and out-of-10 scores compare: Raw, ÷Max (the default), Range (lowest 0 to highest 1) or Rank. At least and At most columns are deal-breakers: an option outside them is ruled out before weighing. A blank counts as the criterion's median. Breakdown adds each criterion's contribution to the Score. A Cube's nested tables, from Nest Join, are further choices: each row counts its best option inside, so a neighborhood is judged with its best apartment.", create: () => new DecisionMatrixNode(), parity: false, keywords: "decision matrix weighted score rank ranking criteria weight choose compare options podium dmbv multi-criteria mcda deal-breaker chained nested staged" },
+          { type: "decision-sensitivity", label: "Sensitivity", description: "Re-scores the same options under several weight Scenarios to see whether the winner holds. The Scenarios table is the Decision Matrix's Weights table with one weight column per scenario, and an optional Norm column. The result is a Cube with one row per scenario: the Winner, the Margin over the runner-up, and the full Ranking to drill into. Options tied for first are listed together. Flip points mode takes the Weights table instead and gives, per criterion, the weight below and above its own at which another option would win. Pairs with Decision Matrix.", create: () => new DecisionSensitivityNode(), parity: false, keywords: "decision sensitivity robustness scenario weight cube what-if stress test ranking stability mcda flip point break-even tipping" },
+          { type: "choice-ladder", label: "Choice Ladder", description: "Orders a Decision Matrix's options into the sequence to take them in when you can't do them all. Limits name cost columns with an At most, an At least, or neither for a rough cost such as political capital. Optional Requires and Excludes columns link options, Must and Never columns force them in or out, and a One of column takes at most one per group. Where two options are nearer each other than Close within, the ladder forks, and the side you take is kept. A fork that would only swap the order of two options is left out. Value flows down and each rung takes what it serves. Plan is the main line.", create: () => new ChoiceLadderNode(), parity: false, keywords: "choice ladder choose several pick set shortlist budget limit constraint knapsack portfolio itinerary decision matrix fork plan trip restaurants policy agenda priority capital requires excludes" },
+          { type: "describe",    label: "Describe",    description: "One row per column: count, blank, distinct, and for numbers mean, std, min, quartiles, max. Its popup opens on a dashboard with a chart per column. pandas `describe`, R `summary`.", create: () => new DescribeNode(), parity: false, keywords: "describe summary summarize profile statistics count mean std quartile overview explore eda dashboard histogram distribution top values" },
+          { type: "corr-matrix", label: "Correlation Matrix", description: "Pearson, Spearman or Kendall correlation, or covariance, between every pair of number columns, with a leading name column. pandas `df.corr`, R `cor`.", create: () => new CorrMatrixNode(), parity: false, keywords: "correlation matrix corr cov covariance pearson spearman kendall pairwise heatmap" },
+          { type: "reconcile",   label: "Reconcile",   description: "Two Frame versions compared by key: each row Added, Removed, Changed or Unchanged, with before, after and Δ per number column.", create: () => new ReconcileNode(), parity: false, keywords: "reconcile compare diff variance price volume mix pvm audit changed added removed data quality trust" },
+        ],
+      },
+      {
+        type: "category", label: "Plan", description: "Rows in, a plan out: spread a budget, schedule a project, pay off debts, and settle who owes whom.",
+        children: [
+          { type: "allocator", label: "Allocator", description: "Spreads a budget across categories, each with a min, max and weight: all of it in proportion, or the least spend that meets a target. Water-filling.", create: () => new AllocatorNode(), parity: false, keywords: "budget allocator allocate allocation split spend divide categories weights value water-filling waterfilling proportional minimize target knapsack money planner portfolio" },
+          { type: "schedule", label: "Schedule", description: "Critical-path scheduling: each task's Start, Finish, Float and Critical from its duration and predecessors, on working or calendar days.", create: () => new ScheduleNode(), parity: false, keywords: "schedule cpm critical path gantt project plan timeline tasks predecessors dependencies float slack milestone duration working days finish date pert multiple critical paths" },
+          { type: "earned-value", label: "Earned Value", description: "Project performance at a status date: planned and earned value, actual cost, variances, SPI, CPI and EAC. Cost keeps its currency.", create: () => new EarnedValueNode(), parity: false, keywords: "earned value evm bcws bcwp acwp planned earned actual cost variance schedule variance spi cpi eac vac tcpi budget baseline project performance" },
+          { type: "payoff-planner", label: "Payoff Planner", description: "Plans paying off several debts from each Balance, APR and minimum payment, plus an extra amount every month. Every minimum is paid; the extra and each freed minimum go to the head debt, avalanche (highest APR first) or snowball (smallest balance first). Summary gives months, interest and payoff date per debt; Schedule gives each month's balances.", create: () => new PayoffPlannerNode(), parity: false, keywords: "debt payoff planner avalanche snowball loans credit card interest extra payment months schedule" },
+          { type: "settle",      label: "Group Cost Settle", description: "Squares up a group that paid unevenly: who pays whom in the fewest transfers, plus each person's Paid, Owes, Owed and Net.", create: () => new SettleNode(), parity: false, keywords: "settle settlement split bill trip expenses transactions ledger who owes whom debts transfers splitwise group cost share even up payer participants" },
+        ],
+      },
+      {
+        type: "category", label: "Build & Read", description: "Make a Frame from a Matrix and headers or from lists, take one apart, and read or add rows and columns.",
         children: [
           { type: "build-frame", label: "Build Frame", description: "Combines a Matrix and a List of headers into a Frame. Missing headers become `Col1`, `Col2`…, and duplicates are made unique.", create: () => new BuildFrameNode(), parity: false },
           { type: "frame-from-lists", label: "Frame from Lists", description: "Builds a Frame straight from lists: each column pairs a typed name with a list of any type. Ragged columns pad with blanks.", create: () => new FrameFromListsNode(), parity: false, keywords: "lists to frame columns table build fast assemble" },
@@ -877,78 +943,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       {
-        type: "category", label: "Table verbs", description: "Relational verbs over a Frame: filter, sort, join, group, reshape, nest and unnest.",
-        children: [
-          { type: "distinct",    label: "Distinct",    description: "Removes duplicate rows from a Frame, keeping the first of each. Rows compare case-sensitively, unlike Excel. Excel: `UNIQUE`.", create: () => new DistinctNode(), parity: false },
-          { type: "head",        label: "Head",        description: "Keeps a slice of rows: the first N, the last N, all but the first N, or rows N to To (1-based). Power Query: Keep Rows and Remove Rows.", create: () => new HeadNode(), parity: false, keywords: "head tail first last skip range keep remove top bottom rows limit offset" },
-          { type: "sort-frame",  label: "Frame Sort",  description: "Sorts a Frame's rows by one column, ascending or descending, with blanks and errors last. Ties keep their order, so to sort by several columns, chain Frame Sorts from the least important column to the most. Excel: `SORT`.", create: () => new SortFrameNode(), parity: false, keywords: "sort order multi key then by stable" },
-          { type: "filter-frame",label: "Frame Filter", description: "Keeps the rows that pass its conditions, joined by AND or OR; the rest go to Dropped. Blanks and errors fail a value test, and `is blank` and `has error` select them. SQL: `WHERE`. Excel: `FILTER`.", create: () => new FilterFrameNode(), parity: false, keywords: "filter rows where keep drop errors iserror noterror clean" },
-          { type: "join",        label: "Join",        description: "Combines two Frames on a key column: inner, left, right, outer or as-of. A key with several matches gives one row per match, except in as-of. Keys are case-sensitive, unlike Excel's `XLOOKUP`.", create: () => new JoinNode(), parity: false },
-          { type: "sumifs", label: "SUMIFS", description: "Aggregates one Frame column over the rows that meet criteria on other columns, matching all or any. Excel: `SUMIFS`, `COUNTIFS`, `AVERAGEIFS`, `MINIFS`, `MAXIFS`.", create: () => new SumIfsNode(), keywords: "sumif countif averageif minif maxif criteria conditional aggregate frame all any or" },
-          { type: "window", label: "Window", description: "Adds a column calculated per group while keeping every row: running totals, ranks, lag and lead, rolling windows, shares. SQL `OVER`, pandas `transform`, dplyr `mutate`.", create: () => new WindowNode(), parity: false, keywords: "window partition over running cumulative cumsum rank dense_rank row_number lag lead shift diff pct_change rolling moving transform group share percent of total first last ntile sql" },
-          { type: "group-by-frame", label: "GROUPBY", description: "Groups rows by key columns and aggregates one column, with optional total and subtotal rows. Excel: `GROUPBY`.", create: () => new GroupByFrameNode(), parity: false },
-          { type: "pair", children: [
-            { type: "append",      label: "Append",      description: "Stacks Frames vertically. Columns match by name, a missing column fills with blanks, and a type clash is `#TYPE!`. Excel: `VSTACK`.", create: () => new AppendNode(), parity: false },
-            { type: "bind-columns", label: "Bind Columns", description: "Places Frames side by side by position. A repeated name gets a suffix, and a shorter Frame pads with blanks. pandas `concat`, R `bind_cols`, Excel `HSTACK`.", create: () => new BindColumnsNode(), parity: false, keywords: "bind_cols cbind concat axis 1 side by side zip frames columns hstack horizontal" },
-          ]},
-          {
-            type: "category", label: "Clean", description: "The everyday cleanup verbs: fill blanks from above, find and replace, drop spacer rows.",
-            children: [
-              { type: "fill-blanks", label: "Fill Down", description: "Fills blank cells from the neighboring row: Down carries the last value forward, Up the next one back. Power Query: Fill Down.", create: () => new FillBlanksNode(), parity: false, keywords: "fill down up forward backward blanks nulls merged cells carry propagate ffill bfill clean" },
-              { type: "replace-values", label: "Replace Values", description: "Find-and-replace in one column or all. Whole-cell swaps cells equal to Find, taking the column's type; Substring rewrites inside text cells. Case-sensitive. Power Query: Replace Values.", create: () => new ReplaceValuesNode(), parity: false, keywords: "replace find substitute swap value cells fix clean search change" },
-              { type: "drop-blank-rows", label: "Drop Blank Rows", description: "Removes blank rows: only fully blank spacer rows, or any row with a blank cell. Errors count as values. Power Query: Remove Blank Rows.", create: () => new DropBlankRowsNode(), parity: false, keywords: "drop remove blank empty rows spacers nulls complete clean" },
-            ],
-          },
-          {
-            type: "category", label: "Columns", description: "Column surgery: keep, drop, rename, split, or number columns.",
-            children: [
-              { type: "pair", children: [
-                { type: "keep-columns", label: "Keep Columns", description: "Keeps only the named columns, in the order given. Like Excel's `CHOOSECOLS`, but by column name.", keywords: "columns select keep choosecols", create: () => new ColumnsNode(), parity: false },
-                { type: "drop-columns", label: "Drop Columns", description: "Removes the named columns; the rest pass through.", keywords: "columns drop remove", create: () => new ColumnsNode({ op: "drop" }), parity: false },
-              ]},
-              { type: "rename",      label: "Rename",      description: "Renames columns from two Lists matched by position: From `[\"qty\"]` → To `[\"Quantity\"]`.", create: () => new RenameNode(), parity: false },
-              { type: "split-column", label: "Split Column", description: "Splits one text column into several by a delimiter, the parts replacing the source. Power Query: Split Column by Delimiter.", create: () => new SplitColumnNode(), parity: false, keywords: "split delimiter text column separate parse divide power query" },
-              { type: "add-index",   label: "Add Index",   description: "Prepends a row-number column from a start value (default 1). Power Query: Add Index Column.", create: () => new AddIndexNode(), parity: false, keywords: "index row number sequence counter rownum power query" },
-              { type: "merge-columns", label: "Merge Columns", description: "Joins two or more columns into one text column with a separator, in the first source\'s place. The inverse of Split Column. Power Query: Merge Columns.", create: () => new MergeColumnsNode(), parity: false, keywords: "merge combine concatenate join columns text textjoin concat inverse split" },
-              { type: "headers", label: "Headers", description: "Promotes the first row to column names, or demotes the names back into a first row of text. Power Query: Use First Row as Headers.", create: () => new HeadersNode(), parity: false, keywords: "promote demote headers first row column names use as titles header" },
-            ],
-          },
-          {
-            type: "category", label: "Reshape", description: "Change the layout: pivot wide, melt long, nest into a Cube and back.",
-            children: [
-              { type: "pivot",       label: "PIVOTBY",     description: "Turns long data into a cross-tab by Row and Column fields, with `SUM`, `AVERAGE` or `COUNT` per value and optional totals and subtotals. Min and max over text give the first and last alphabetically, where Excel ignores text. Excel: `PIVOTBY`.", create: () => new PivotNode(), parity: false },
-              { type: "unpivot",     label: "Unpivot",     description: "Turns wide data long: the Id columns stay, and each chosen Value column becomes variable and value rows. Power Query: Unpivot. pandas: `melt`.", create: () => new UnpivotNode(), parity: false },
-              { type: "pair", children: [
-                { type: "nest",   label: "Nest",   description: "Groups a flat Frame by key into a Cube. Each key's other columns collapse into a nested table cell. The flat → nested bridge.", create: () => new NestNode(), parity: false },
-                { type: "unnest", label: "Unnest", description: "A Cube's nested column expanded one level, each parent row repeating per nested row; a nested Frame flattens fully. The inverse of Nest.", create: () => new UnnestNode(), parity: false },
-              ]},
-            ],
-          },
-          {
-            type: "category", label: "Analyze", description: "Score, profile, and compare Frames: weighted decisions, column summaries and correlations, version reconciliation.",
-            children: [
-              { type: "decision-matrix", label: "Decision Matrix", description: "Scores and ranks a Frame of options: rows are options and number columns are criteria. Score = `Σ(value × weight) / Σ|weight|`, ranked on the rounded score. Weights come from a Weights table, one row per criterion; a negative weight favors lower values like cost, and a criterion left out weighs 1. Norm scales each criterion so dollars and out-of-10 scores compare: Raw, ÷Max (the default), Range (lowest 0 to highest 1) or Rank. At least and At most columns are deal-breakers: an option outside them is ruled out before weighing. A blank counts as the criterion's median. Breakdown adds each criterion's contribution to the Score. A Cube's nested tables, from Nest Join, are further choices: each row counts its best option inside, so a neighborhood is judged with its best apartment.", create: () => new DecisionMatrixNode(), parity: false, keywords: "decision matrix weighted score rank ranking criteria weight choose compare options podium dmbv multi-criteria mcda deal-breaker chained nested staged" },
-              { type: "decision-sensitivity", label: "Sensitivity", description: "Re-scores the same options under several weight Scenarios to see whether the winner holds. The Scenarios table is the Decision Matrix's Weights table with one weight column per scenario, and an optional Norm column. The result is a Cube with one row per scenario: the Winner, the Margin over the runner-up, and the full Ranking to drill into. Options tied for first are listed together. Flip points mode takes the Weights table instead and gives, per criterion, the weight below and above its own at which another option would win. Pairs with Decision Matrix.", create: () => new DecisionSensitivityNode(), parity: false, keywords: "decision sensitivity robustness scenario weight cube what-if stress test ranking stability mcda flip point break-even tipping" },
-              { type: "choice-ladder", label: "Choice Ladder", description: "Orders a Decision Matrix's options into the sequence to take them in when you can't do them all. Limits name cost columns with an At most, an At least, or neither for a rough cost such as political capital. Optional Requires and Excludes columns link options, Must and Never columns force them in or out, and a One of column takes at most one per group. Where two options are nearer each other than Close within, the ladder forks, and the side you take is kept. A fork that would only swap the order of two options is left out. Value flows down and each rung takes what it serves. Plan is the main line.", create: () => new ChoiceLadderNode(), parity: false, keywords: "choice ladder choose several pick set shortlist budget limit constraint knapsack portfolio itinerary decision matrix fork plan trip restaurants policy agenda priority capital requires excludes" },
-              { type: "describe",    label: "Describe",    description: "One row per column: count, blank, distinct, and for numbers mean, std, min, quartiles, max. Its popup opens on a dashboard with a chart per column. pandas `describe`, R `summary`.", create: () => new DescribeNode(), parity: false, keywords: "describe summary summarize profile statistics count mean std quartile overview explore eda dashboard histogram distribution top values" },
-              { type: "corr-matrix", label: "Correlation Matrix", description: "Pearson, Spearman or Kendall correlation, or covariance, between every pair of number columns, with a leading name column. pandas `df.corr`, R `cor`.", create: () => new CorrMatrixNode(), parity: false, keywords: "correlation matrix corr cov covariance pearson spearman kendall pairwise heatmap" },
-              { type: "reconcile",   label: "Reconcile",   description: "Two Frame versions compared by key: each row Added, Removed, Changed or Unchanged, with before, after and Δ per number column.", create: () => new ReconcileNode(), parity: false, keywords: "reconcile compare diff variance price volume mix pvm audit changed added removed data quality trust" },
-            ],
-          },
-          {
-            type: "category", label: "Plan", description: "Rows in, a plan out: spread a budget, schedule a project, pay off debts, and settle who owes whom.",
-            children: [
-              { type: "allocator", label: "Allocator", description: "Spreads a budget across categories, each with a min, max and weight: all of it in proportion, or the least spend that meets a target. Water-filling.", create: () => new AllocatorNode(), parity: false, keywords: "budget allocator allocate allocation split spend divide categories weights value water-filling waterfilling proportional minimize target knapsack money planner portfolio" },
-              { type: "schedule", label: "Schedule", description: "Critical-path scheduling: each task's Start, Finish, Float and Critical from its duration and predecessors, on working or calendar days.", create: () => new ScheduleNode(), parity: false, keywords: "schedule cpm critical path gantt project plan timeline tasks predecessors dependencies float slack milestone duration working days finish date pert multiple critical paths" },
-              { type: "earned-value", label: "Earned Value", description: "Project performance at a status date: planned and earned value, actual cost, variances, SPI, CPI and EAC. Cost keeps its currency.", create: () => new EarnedValueNode(), parity: false, keywords: "earned value evm bcws bcwp acwp planned earned actual cost variance schedule variance spi cpi eac vac tcpi budget baseline project performance" },
-              { type: "payoff-planner", label: "Payoff Planner", description: "Plans paying off several debts from each Balance, APR and minimum payment, plus an extra amount every month. Every minimum is paid; the extra and each freed minimum go to the head debt, avalanche (highest APR first) or snowball (smallest balance first). Summary gives months, interest and payoff date per debt; Schedule gives each month's balances.", create: () => new PayoffPlannerNode(), parity: false, keywords: "debt payoff planner avalanche snowball loans credit card interest extra payment months schedule" },
-              { type: "settle",      label: "Group Cost Settle", description: "Squares up a group that paid unevenly: who pays whom in the fewest transfers, plus each person's Paid, Owes, Owed and Net.", create: () => new SettleNode(), parity: false, keywords: "settle settlement split bill trip expenses transactions ledger who owes whom debts transfers splitwise group cost share even up payer participants" },
-            ],
-          },
-        ],
-      },
-      {
-        type: "category", label: "Cubes (nested tables)", description: "A Cube is a Frame whose cells can hold anything: a scalar, a list, a nested Frame, or another Cube. `INDEX` reads a cell back out.",
+        type: "category", label: "Cubes", description: "A Cube is a Frame whose cells can hold anything: a scalar, a list, a nested Frame, or another Cube. `INDEX` reads a cell back out.",
         children: [
           { type: "nest-join", label: "Nest Join", description: "Nests two Frames into a Cube on a shared key: each Parent row gains a cell of its matching Child rows, so nothing fans out. tidyr `nest_join`.", create: () => new NestJoinNode(), parity: false, keywords: "cube nest join relate nest_join relational merge group hierarchy multi-level deepen" },
           { type: "build-cube", label: "Build Cube", description: "Collects values into one Cube column, each cell holding any value: a scalar, list, Frame, or nested Cube. The manual way to put non-table values into a cube.", create: () => new BuildCubeNode(), parity: false, keywords: "cube nest nested pack wrap list of frames container" },
@@ -956,6 +951,13 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "cube-rollup", label: "Cube Rollup", description: "Aggregates a column inside each row's nested table and flattens the Cube to a Frame with the roll-up appended: an assembly's cost as a `SUM` of parts.", create: () => new CubeRollupNode(), parity: false, keywords: "cube rollup aggregate sum bom bill of materials costing nested cost roll up assembly subtotal" },
         ],
       },
+    ],
+  },
+
+  // ── TABLES ───────────────────────────────────────────────────────────────────
+  {
+    type: "category", label: "Tables", description: "Plain 2D tables of one type, Excel's arrays: pick and slice rows and columns, reshape between lists and tables, run a formula per cell, and matrix math.",
+    children: [
       { type: "pair", children: [selectLeaf("chooserows"), selectLeaf("choosecols")] },
       { type: "pair", children: [
         { type: "takedrop",      label: "TAKE", description: TAKEDROP_OP_META.take.description, create: () => new TakeDropNode({ op: "take" }), parity: false, keywords: "take drop list table rows columns elements edge first last head tail" },

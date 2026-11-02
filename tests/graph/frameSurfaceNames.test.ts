@@ -28,7 +28,7 @@ const typeable = (n: string) => /^[A-Z][A-Z0-9.]*$/.test(n);
 const isCategory = (e: CatalogEntry): e is CatalogCategory => e.type === "category";
 const isPair = (e: CatalogEntry): e is CatalogPair => e.type === "pair";
 
-/** Every visible Tables & Frames leaf: its typeable candidate names + label. */
+/** Every visible Frames or Tables leaf: its typeable candidate names + label. */
 function frameLeaves(): Array<{ names: string[]; label: string }> {
   const out: Array<{ names: string[]; label: string }> = [];
   const walk = (entries: CatalogEntry[], path: string[]): void => {
@@ -36,7 +36,7 @@ function frameLeaves(): Array<{ names: string[]; label: string }> {
       if (isCategory(e)) { walk(e.children, [...path, e.label]); continue; }
       if (isPair(e)) { walk(e.children, path); continue; }
       const leaf: NodeCatalogEntry = e;
-      if (leaf.hidden || path[0] !== "Tables & Frames") continue;
+      if (leaf.hidden || (path[0] !== "Frames" && path[0] !== "Tables")) continue;
       const names = [...new Set([despace(leaf.label), ...(leaf.excel ?? []).map((x) => x.excel.toUpperCase())])];
       out.push({ names: names.filter(typeable), label: leaf.label });
     }
@@ -50,7 +50,7 @@ describe("FRAME_SURFACE_NAMES ← catalog derivation (both ways)", () => {
   const dispatchable = new Set(formulaFunctionNames().map((n) => n.toUpperCase()));
   const leaves = frameLeaves();
 
-  it("every Tables & Frames leaf whose typeable name doesn't dispatch is in the map", () => {
+  it("every Frames or Tables leaf whose typeable name doesn't dispatch is in the map", () => {
     const missing: string[] = [];
     for (const leaf of leaves) {
       for (const n of leaf.names) {
@@ -63,7 +63,7 @@ describe("FRAME_SURFACE_NAMES ← catalog derivation (both ways)", () => {
   it("no map entry shadows a dispatchable name, a legacy alias, or a ghost leaf", () => {
     // Redirect targets may live anywhere in the tree — K-Means/PCA/Logistic moved
     // under Packs › Data Science but remain frame verbs — so ghosts check the WHOLE
-    // catalog, not just the Tables & Frames walk the teaching check above scopes to.
+    // catalog, not just the Frames and Tables walk the teaching check above scopes to.
     const labels = new Set<string>();
     const collect = (entries: CatalogEntry[]): void => {
       for (const e of entries) {
@@ -88,7 +88,7 @@ describe("FRAME_SURFACE_NAMES ← catalog derivation (both ways)", () => {
   // dispatch. The misread hazard is a leaf whose label is a bare STRUCTURAL/count function doing
   // something else, so those are denylisted by name (ROWS/COLUMNS the origin, author 2026-08-25).
   const COUNT_FNS = new Set(["ROWS", "COLUMNS", "ROW", "COLUMN"]);
-  it("no Tables & Frames leaf is named for a bare count/structural function", () => {
+  it("no Frames or Tables leaf is named for a bare count/structural function", () => {
     const collisions = leaves
       .filter((l) => COUNT_FNS.has(despace(l.label)))
       .map((l) => l.label);
