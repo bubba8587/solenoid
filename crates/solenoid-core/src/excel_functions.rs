@@ -927,13 +927,29 @@ pub(crate) fn xmatch_index(lookup: &V, keys: &[V], mm: MatchMode, last: bool) ->
     if mm == MatchMode::Exact {
         return Ok((0..n).map(at).find(|&i| !matches!(keys[i], V::Null | V::Err(_)) && lookup_eq(&keys[i], lookup)));
     }
+    if let V::Str(text) = lookup {
+        let want = crate::jsnum::lower_text(text);
+        let mut best: Option<(usize, std::borrow::Cow<str>)> = None;
+        for i in (0..n).map(at) {
+            let V::Str(k) = &keys[i] else { continue };
+            let k = crate::jsnum::lower_text(k);
+            if k == want {
+                return Ok(Some(i));
+            }
+            let better = match (mm, &best) {
+                (MatchMode::NextSmaller, b) => k < want && b.as_ref().is_none_or(|(_, bk)| k > *bk),
+                (_, b) => k > want && b.as_ref().is_none_or(|(_, bk)| k < *bk),
+            };
+            if better {
+                best = Some((i, k));
+            }
+        }
+        return Ok(best.map(|(i, _)| i));
+    }
     let lookup = match lookup {
         V::Num(x) if x.is_finite() => *x,
         _ => {
-            return Err(V::err(sol_error(
-                ErrorCode::Value,
-                "Approximate match compares numbers. Use exact match (0) for text",
-            )));
+            return Err(V::err(sol_error(ErrorCode::Value, "Approximate match compares numbers or text")));
         }
     };
     let mut best: Option<(usize, f64)> = None;
@@ -986,6 +1002,8 @@ pub(crate) struct Matcher<K: AsRef<[V]>> {
     index: Option<rustc_hash::FxHashMap<ExactKey, usize>>,
     /// For an approximate match, each distinct finite key (-0 as 0) in order, with the position the scan meets first.
     steps: Option<Vec<(f64, usize)>>,
+    /// The same for the text keys, lowercased, in character-code order ([[C59]] byteStringOrder).
+    text_steps: Option<Vec<(String, usize)>>,
 }
 
 impl<K: AsRef<[V]>> Matcher<K> {
@@ -1023,7 +1041,21 @@ impl<K: AsRef<[V]>> Matcher<K> {
             steps.dedup_by(|later, first| later.0 == first.0);
             steps
         });
-        Matcher { keys, mm, last, index: index.flatten(), steps }
+        let text_steps = (mm != MatchMode::Exact && lookups >= 16).then(|| {
+            let mut steps: Vec<(String, usize)> = keys
+                .as_ref()
+                .iter()
+                .enumerate()
+                .filter_map(|(i, k)| match k {
+                    V::Str(s) => Some((crate::jsnum::lower_text(s).into_owned(), i)),
+                    _ => None,
+                })
+                .collect();
+            steps.sort_by(|a, b| a.0.cmp(&b.0).then(if last { b.1.cmp(&a.1) } else { a.1.cmp(&b.1) }));
+            steps.dedup_by(|later, first| later.0 == first.0);
+            steps
+        });
+        Matcher { keys, mm, last, index: index.flatten(), steps, text_steps }
     }
 
     pub(crate) fn find(&self, lookup: &V) -> Result<Option<usize>, V> {
@@ -1035,6 +1067,16 @@ impl<K: AsRef<[V]>> Matcher<K> {
                     Some(&(v, i)) if v == *x => Some(i),
                     _ if self.mm == MatchMode::NextSmaller => k.checked_sub(1).map(|j| steps[j].1),
                     next => next.map(|&(_, i)| i),
+                })
+            }
+            (_, _, _, V::Str(t)) if self.text_steps.is_some() => {
+                let steps = self.text_steps.as_ref().unwrap();
+                let want = crate::jsnum::lower_text(t);
+                let k = steps.partition_point(|(v, _)| v.as_str() < want.as_ref());
+                Ok(match steps.get(k) {
+                    Some((v, i)) if v.as_str() == want.as_ref() => Some(*i),
+                    _ if self.mm == MatchMode::NextSmaller => k.checked_sub(1).map(|j| steps[j].1),
+                    next => next.map(|(_, i)| *i),
                 })
             }
             _ => xmatch_index(lookup, self.keys.as_ref(), self.mm, self.last),
@@ -6577,6 +6619,17 @@ mod matcher_tests {
     use super::*;
 
     #[test]
+    fn approximate_match_reads_text_without_case() {
+        let keys: Vec<V> = ["apple", "Banana", "cherry"].map(V::str).into();
+        let at = |x: &str, mm| xmatch_index(&V::str(x), &keys, mm, false).ok().flatten();
+        assert_eq!(at("blueberry", MatchMode::NextSmaller), Some(1));
+        assert_eq!(at("blueberry", MatchMode::NextLarger), Some(2));
+        assert_eq!(at("BANANA", MatchMode::NextLarger), Some(1));
+        assert_eq!(at("aardvark", MatchMode::NextSmaller), None);
+        assert_eq!(at("zebra", MatchMode::NextLarger), None);
+    }
+
+    #[test]
     fn an_indexed_matcher_finds_what_the_scan_finds() {
         let mut seed = 11u64;
         let mut next = |m: u64| {
@@ -6592,6 +6645,8 @@ mod matcher_tests {
             5 => V::str("Ab"),
             6 => V::str("ab"),
             7 => V::Bool(true),
+            8 => V::str("b"),
+            9 => V::str("Ca"),
             r => V::Num((r % 7) as f64 - 3.0),
         };
         for _ in 0..400 {
@@ -6603,7 +6658,7 @@ mod matcher_tests {
                         let x = if r == 16 {
                             V::Num(-3.5)
                         } else if r == 17 {
-                            V::Num(9.0)
+                            V::str("BB")
                         } else {
                             pick(r)
                         };

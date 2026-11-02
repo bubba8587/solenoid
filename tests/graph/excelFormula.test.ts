@@ -657,8 +657,10 @@ describe("classic lookups redirect to their current-Excel replacements ([[B16]] 
     }
   });
 
-  it("approximate match needs a numeric lookup value", () => {
-    const r = ev('XMATCH("pear", k, 1)', { k: ["apple", "pear"] });
+  it("approximate match reads text without case, in character-code order", () => {
+    expect(ev('XMATCH("Peach", k, 1)', { k: ["apple", "pear"] })).toBe(2);
+    expect(ev('XMATCH("Peach", k, -1)', { k: ["apple", "pear"] })).toBe(1);
+    const r = ev('XMATCH(TRUE, k, 1)', { k: ["apple", "pear"] });
     expect(isSolError(r) && r.code).toBe("#VALUE!");
   });
 });
