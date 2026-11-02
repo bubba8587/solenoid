@@ -1,5 +1,5 @@
 // [[B14]] oneDesignSystem
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 export interface PopupChoiceOption<T extends string> { value: T; label: string; title?: string }
 
@@ -36,14 +36,20 @@ export function segmentsWidth(labels: readonly string[], touch = false): number 
 }
 
 /**
- * The room a row leaves for one of its items: its inner width less every other item and the gaps.
- * The other items never change size with the measured one, so the answer can't feed back on itself.
+ * Whether a row leaves `need` pixels for one of its items: its inner width less every other item and the gaps.
+ * The other items never change size with the measured one, so the answer can't feed back on itself. Only the
+ * yes or no is state, so resizing the row re-renders its host when the answer flips, never per pixel: a host
+ * holding a big grid (the Table popup) would otherwise redraw every cell on every step of a resize.
  * Attach `ref` to the row.
  */
-export function useFreeWidth(itemSelector: string): { ref: (el: HTMLElement | null) => void; free: number } {
+export function useFitsWidth(itemSelector: string, need: number): { ref: (el: HTMLElement | null) => void; fits: boolean } {
   const [row, setRow] = useState<HTMLElement | null>(null);
-  // Zero until measured, which happens before the first paint: a dropdown never flashes as segments.
-  const [free, setFree] = useState(0);
+  // False until measured, which happens before the first paint: a dropdown never flashes as segments.
+  const [fits, setFits] = useState(false);
+  const free = useRef(-Infinity);
+  const needRef = useRef(need);
+  needRef.current = need;
+  useLayoutEffect(() => { setFits(free.current >= need); }, [need]);
   // Measured only when the row or one of its items resizes or an item comes or goes, never per render.
   useLayoutEffect(() => {
     if (!row) return;
@@ -61,8 +67,8 @@ export function useFreeWidth(itemSelector: string): { ref: (el: HTMLElement | nu
       };
       for (const child of Array.from(row.children) as HTMLElement[]) count(child);
       const inner = row.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
-      const next = Math.floor(inner - used - gap * n);
-      setFree((f) => (f === next ? f : next));
+      free.current = Math.floor(inner - used - gap * n);
+      setFits(free.current >= needRef.current);
     };
     const ro = new ResizeObserver(measure);
     const watch = () => {
@@ -76,5 +82,5 @@ export function useFreeWidth(itemSelector: string): { ref: (el: HTMLElement | nu
     measure();
     return () => { ro.disconnect(); mo.disconnect(); };
   }, [row, itemSelector]);
-  return { ref: setRow, free };
+  return { ref: setRow, fits };
 }

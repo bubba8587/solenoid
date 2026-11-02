@@ -19,6 +19,7 @@ function onMove(e: PointerEvent) {
 function onUp() {
   if (!active) return;
   active = null;
+  document.documentElement.classList.remove("sol-popup-resizing");
   window.removeEventListener("pointermove", onMove);
   window.removeEventListener("pointerup", onUp);
   window.removeEventListener("pointercancel", onUp);
@@ -37,6 +38,8 @@ export function PopupResizeGrip({ cardRef, min, onResize }: {
     const r = el.getBoundingClientRect();
     e.currentTarget.setPointerCapture?.(e.pointerId);
     active = { sx: e.clientX, sy: e.clientY, startW: r.width, startH: r.height, min, set: onResize };
+    // The overlay's blur re-rasterizes behind the card on every step of a resize; it goes while the grip is held.
+    document.documentElement.classList.add("sol-popup-resizing");
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);

@@ -6,7 +6,7 @@ import {
 } from "../pivotLayout";
 import { formatFrameCell, type FrameCell } from "../frame";
 import { ChevronDownIcon, ChevronRightIcon, MinusSquareIcon, PlusSquareIcon, SlidersIcon } from "./Icons";
-import { PopupChoice, segmentsWidth, useFreeWidth } from "./PopupChoice";
+import { PopupChoice, segmentsWidth, useFitsWidth } from "./PopupChoice";
 import { useEscapeLayer } from "./escapeLayers";
 import { IS_COARSE } from "../coarse";
 import { APP_LOCALE } from "../locale";
@@ -63,7 +63,7 @@ export interface PivotRibbonProps {
 
 /** The layout controls: one line over the table on a wide popup, or stacked in the footer's sheet on a phone (`sheet`). */
 export function PivotRibbon({ layout, options, onOptions, totals, valueFormat, formatPicked = false, onFields, sheet = false }: PivotRibbonProps & { sheet?: boolean }) {
-  const { ref: barRef, free } = useFreeWidth(".pivot-view__layout");
+  const { ref: barRef, fits } = useFitsWidth(".pivot-view__layout", segmentsWidth(FORM_OPTIONS.map((o) => o.label), IS_COARSE));
   const set = (patch: Partial<PivotViewOptions>) => onOptions({ ...options, ...patch });
   const keyCols = layout.rowFields.length;
   const compact = options.form === "compact";
@@ -87,7 +87,7 @@ export function PivotRibbon({ layout, options, onOptions, totals, valueFormat, f
         value={options.form}
         options={FORM_OPTIONS}
         onChange={(form) => set({ form })}
-        segmented={sheet || free >= segmentsWidth(FORM_OPTIONS.map((o) => o.label), IS_COARSE)}
+        segmented={sheet || fits}
       />
       {modes && totals && select(modes.sub, SUB_OPTIONS, totals.setSubtotals, "Subtotals. They change the Pivot's output.")}
       {modes && totals && select(modes.grand, GRAND_OPTIONS, totals.setGrand, "Grand totals. They change the Pivot's output.")}
