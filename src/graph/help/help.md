@@ -22,7 +22,6 @@ Deleting a simple pass-through node leaves a dashed **ghost cable** that offers 
 
 ## Reading a graph
 
-- **Isolate** dims everything but the selection (or its whole wired chain, if you ask), to follow one calculation through a busy canvas.
 - **Pin** parks a node's live result in a strip along the top. The pin flies you back to its node.
 - A failed calculation turns the value box red with an Excel code like `#DIV/0!`, `#N/A`, or `#SHAPE!`, and the error flows downstream, so a trail of red leads back to where it started. IFERROR and the IS-checks catch it the way Excel does.
 
@@ -126,13 +125,12 @@ Single keys work when you're not typing in a field.
 | **A** | Add a node at the cursor |
 | **N** | Show or hide the Navigator |
 | **Enter** | Open the command palette |
-| **G** / **I** | Group / isolate the selection |
+| **G** | Group the selection |
 | **T** / **C** | Tidy (auto-arrange) / cleanup (tidy, collapse, fit) |
 | **E** / **F** | Expand or collapse groups / fit a group to its members |
 | **[** **]** | Rotate the selected Conduit, Angle Dial, or Standoff |
 | **arrows** | Nudge selection (Shift = larger step) |
 | **Tab** | Show or hide the side panels |
-| **Esc** | Leave isolate mode |
 | **Ctrl+Z / Ctrl+Shift+Z** | Undo / redo |
 | **Ctrl+C / Ctrl+V** | Copy / paste, wiring intact |
 | **Ctrl+Shift+G** | Make a Composite from the selection |

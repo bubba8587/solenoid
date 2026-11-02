@@ -4,7 +4,7 @@ import { downstreamClosure } from "./graphCompute";
 import { getActiveEditor } from "./activeGraph";
 import { GroupNode, FormatControllerNode } from "./nodeClasses";
 import type { SolenoidNode } from "./schemes";
-import { chainClosure, isolateStore } from "./isolateStore";
+import { chainClosure, isolateStore, ISOLATE_ON } from "./isolateStore";
 import { unselectAllNodes, selectNode } from "./canvasCommands";
 
 type AnyEditor = NonNullable<ReturnType<typeof getEditor>>;
@@ -30,13 +30,16 @@ function expandEntities(editor: AnyEditor, ids: Set<string>): Set<string> {
   return out;
 }
 
-/** Receded cards leave the selection, so no verb acts on a card the user can't see. */
-function enter(editor: AnyEditor, focus: Set<string>, mode?: string): void {
+/** Receded cards leave the selection, so no verb acts on a card the user can't see. Switched off, nothing enters
+ *  ([[C135]] isolateOff). */
+function enter(editor: AnyEditor, focus: Set<string>, mode?: string): boolean {
+  if (!ISOLATE_ON) return false;
   isolateStore.set(focus, mode);
   const selected = [...selectedIds(editor)];
-  if (selected.every((id) => focus.has(id))) return;
+  if (selected.every((id) => focus.has(id))) return true;
   unselectAllNodes();
   selected.filter((id) => focus.has(id)).forEach((id, i) => selectNode(id, i > 0));
+  return true;
 }
 
 export function isolateNodes(ids: Iterable<string>): boolean {
@@ -44,8 +47,7 @@ export function isolateNodes(ids: Iterable<string>): boolean {
   if (!editor) return false;
   const seed = new Set(ids);
   if (seed.size === 0) return false;
-  enter(editor, expandEntities(editor, seed));
-  return true;
+  return enter(editor, expandEntities(editor, seed));
 }
 
 export function isolateChainOf(ids: Iterable<string>): boolean {
@@ -55,16 +57,14 @@ export function isolateChainOf(ids: Iterable<string>): boolean {
   if (seed0.size === 0) return false;
   const seed = expandEntities(editor, seed0);
   const edges = editor.getConnections().map((c) => ({ source: c.source, target: c.target }));
-  enter(editor, expandEntities(editor, chainClosure(edges, seed)));
-  return true;
+  return enter(editor, expandEntities(editor, chainClosure(edges, seed)));
 }
 
 export function isolateWhereUsed(nodeId: string): boolean {
   const editor = getActiveEditor();
   if (!editor) return false;
   const downstream = downstreamClosure(editor, nodeId);
-  enter(editor, expandEntities(editor, downstream), `Where used · ${downstream.size - 1} downstream`);
-  return true;
+  return enter(editor, expandEntities(editor, downstream), `Where used · ${downstream.size - 1} downstream`);
 }
 
 export function isolateSelection(): boolean {

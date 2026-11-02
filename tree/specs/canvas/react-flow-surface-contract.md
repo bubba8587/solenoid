@@ -347,6 +347,8 @@ A Format Controller (FC) can dock onto a socket of another card and ride with it
 
 Isolate is a view-only focus: the focus set shows and every other card recedes. Nothing is removed, and nothing is saved or recorded in undo.
 
+**Switched off** ([[C135]] isolateOff): `ISOLATE_ON` (`isolateStore.ts`) is false, so `isolate.ts`'s entry points enter nothing and return false, the I key passes through, and the node menu, the command palette and the shortcuts list carry no isolate items. Everything below is the mechanism the switch restores; its tests run only while it is on.
+
 - `isolateStore` holds the focus set (null when not isolating), a mode label for the Isolate pill ("Where used"), and `isVisible(id)`, true when not isolating or when the node is in the set. The endpoint selection on the isolate overlay is exclusive with node, cable and standoff selection.
 - `isolate.ts` resolves through the active editor, so isolate works in a drill-in. It always expands to whole entities: a group brings its members and a node brings its docked FCs. Isolate chain (`isolateChainOf`) takes the connected chain both up- and downstream, seeded with group members so a group's own cables are walked, then re-expanded for anything reached. Where-used (`isolateWhereUsed`) takes only the downstream stream from one node; it dims the same way, so the pill's label is what tells the two apart.
 - The overlay's boundary analysis (`isolateBoundary.ts`) finds the entries (an outside output feeding a focused input, drawn on the left) and the exits (a focused output feeding an outside input, drawn on the right).

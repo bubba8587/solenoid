@@ -22,7 +22,7 @@ import { setGroupsCollapsed } from "./groupPush";
 import { groupCollapseStore } from "./groupCollapse";
 import { standoffStore, settleStandoffs, anchorFromVector, ANCHOR_DIR } from "./standoffs";
 import { drawModeStore, drawnCableStore, finishDrawing } from "./drawnCables";
-import { isolateStore } from "./isolateStore";
+import { isolateStore, ISOLATE_ON } from "./isolateStore";
 import { isolateSelection } from "./isolate";
 import { addMenuRequest } from "./addMenuStore";
 import { expandMoveSet, stackSelection } from "./selectionOps";
@@ -187,6 +187,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         }
         switch (e.code) {
           case "KeyI":
+            if (!ISOLATE_ON) break;
             if (isolateStore.isActive()) isolateStore.exit(); else isolateSelection();
             e.preventDefault(); return;
           case "KeyA":
