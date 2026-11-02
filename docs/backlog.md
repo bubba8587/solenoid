@@ -35,7 +35,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **The IF, IFS, SWITCH and CHOOSE cards see only their test's error** ([[A5]] excelParity): formulas already do (`IF(x=0, 0, 1/x)` at x = 0 is 0, `branch_selector`), but the cards aren't in `SEES_ERRORS` (`boundary.rs`), so a wired error in a branch not taken is still the card's answer. Needs an exception line under [[C24]] arraySemantics.
 - [ ] **Finish the settings sweep** ([[D86]] blankRoles): the inputs `docs/settings-audit.md` § Not swept yet lists (column choices on table cards, an as-of Join's tolerance, the Slider's bounds) get their roles the way the swept ones did.
 - [ ] **Equation answers any type, and solver cards show only the solved output**: an unwired variable's output retypes to fit its answer, so `x^2 + 1 = 0` gives a complex answer instead of `#SOLVE!` (complex, text, date or logical). The Equation card and Triangle Solver then show an output box only for the unwired variable (asked for 2026-10-07).
-- [ ] **Text passed straight to AND, OR or XOR is `#VALUE!`** ([[A5]] excelParity): `AND("a", TRUE)` is TRUE today, where Excel errors. The number aggregates already refuse text ([[D109]] aggregatesRefuseText).
 - [ ] **The list-reading stat cards and Frame aggregation still leave text out** ([[D109]] aggregatesRefuseText leaves them undecided): the Aggregate card, Rank & Percentile's Large, Small, Percentile and Quartile, and a Frame column's aggregation filter their list to numbers first (`for_aggregate` in `nodes/stats.rs`, `value_kinds.rs`; `for_aggregate_units`), so a text item is skipped where `SUM(xs)` is `#VALUE!`. Ask the author whether they follow the formula.
 - [ ] **List Input keeps a typed blank** ([[C24]] arraySemantics): `1,,3` gives two numbers today, while `1,x,3` keeps three items and a wired blank stays in place. A typed gap should be a blank item.
 
@@ -52,7 +51,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Quadratic work the C120 sweep left** ([[C120]] linearWork, 2026-10-24; the small ones landed):
   - INTERPOLATE's grid fill (`fill_grid`, `fns_lists.rs`) scans every known point per candidate corner; needs a spatial index.
   - Rolling windows (`frame_verbs.rs`) re-sum each window: rows × window. Prefix sums change the rounding, so they need the fixtures to agree first.
-- [ ] **Text-reading calls the no-text-guessing sweep left for the author** ([[C10]] socketLattice): AND, OR and XOR skip a text argument (`OR(FALSE, "TRUE")` is FALSE) while NAND, NOR and XNOR answer #TYPE! and NOT #VALUE!: one rule for the family? And `COALESCE(list, "n/a")` drops a text (or logical) fallback, as `../tree/specs/computation/formula-language.md` § COALESCE says ("any other fallback is ignored"); a silent drop reads as a bug, so confirm it's wanted.
+- [ ] **Text-reading calls the no-text-guessing sweep left for the author** ([[C10]] socketLattice): NAND, NOR and XNOR answer #TYPE! for text where AND, OR, XOR and NOT answer #VALUE! ([[D110]] logicRefusesText): one error for the family? And `COALESCE(list, "n/a")` drops a text (or logical) fallback, as `../tree/specs/computation/formula-language.md` § COALESCE says ("any other fallback is ignored"); a silent drop reads as a bug, so confirm it's wanted.
 
 ## JavaScript the core still imitates ([[B27]] computeAnswersToExcel, [[B7]] preAlphaBreakFreely)
 
@@ -117,6 +116,7 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 
 ## Sources
 
+- [ ] **CSV import: a number/date column with stray cells (N/A, error text, NaN) turns entirely to text**; decide how such cells import (blank, error, or NaN) so the rest stay numbers.
 - [ ] **Widget nodes Tier 2 (`v2.0/16`), post-1.4:** Air Quality/Pollen preset of Weather, Ticking Now timer.
 
 ## Obsidian + TaskNotes (author 2026-09-07: THE adoption bet — correct, great, useful)

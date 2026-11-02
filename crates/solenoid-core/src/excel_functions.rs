@@ -3394,15 +3394,15 @@ fn text_refused(name: &str, r: Option<&Refused>, a: &[V]) -> Option<V> {
     r.flags.iter().any(text_at).then(|| V::err(sol_error(ErrorCode::Value, format!("{name} needs TRUE or FALSE"))))
 }
 
-/// The aggregates that refuse text, by the error their algebra gives ([[D109]] aggregatesRefuseText): `2 + "a"`'s
-/// #VALUE! for those built from arithmetic, `2 > "a"`'s #TYPE! for those built from ordering. `first` keeps the check
-/// to the list of values, before a position or fraction argument.
+/// The functions that refuse text, by the error their algebra gives ([[D109]] aggregatesRefuseText): `2 + "a"`'s
+/// #VALUE! for those built from arithmetic, AND, OR and XOR over 0 and 1 among them ([[D110]] logicRefusesText),
+/// `2 > "a"`'s #TYPE! for those built from ordering. `first` keeps the check to the list of values, before a position
+/// or fraction argument.
 fn refuses_text(name: &str) -> Option<(ErrorCode, bool)> {
     Some(match name {
         "SUM" | "PRODUCT" | "AVERAGE" | "SUMSQ" | "SUMPRODUCT" | "GEOMEAN" | "HARMEAN" | "AVEDEV" | "DEVSQ"
-        | "SKEW" | "SKEW.P" | "KURT" | "STDEV" | "STDEV.S" | "STDEV.P" | "VAR" | "VAR.S" | "VAR.P" => {
-            (ErrorCode::Value, false)
-        }
+        | "SKEW" | "SKEW.P" | "KURT" | "STDEV" | "STDEV.S" | "STDEV.P" | "VAR" | "VAR.S" | "VAR.P" | "AND" | "OR"
+        | "XOR" => (ErrorCode::Value, false),
         "MIN" | "MAX" | "MEDIAN" => (ErrorCode::Type, false),
         "LARGE" | "SMALL" | "PERCENTILE" | "PERCENTILE.INC" | "PERCENTILE.EXC" | "QUARTILE" | "QUARTILE.INC"
         | "QUARTILE.EXC" => (ErrorCode::Type, true),
@@ -3422,12 +3422,12 @@ fn text_answer(name: &str, (code, first): (ErrorCode, bool), a: &[V]) -> Option<
         }
     }
     let values = if first { &a[..a.len().min(1)] } else { a };
-    let what = if code == ErrorCode::Type { "can't order text among numbers" } else { "needs numbers, not text" };
-    values
-        .iter()
-        .find_map(first_bad)
-        .filter(|&text| text)
-        .map(|_| V::err(sol_error(code, format!("{name} {what}; Cast it to a number first"))))
+    let what = match (code, name) {
+        (ErrorCode::Type, _) => "can't order text among numbers; Cast it to a number first",
+        (_, "AND" | "OR" | "XOR") => "needs logicals or numbers, not text; Cast it to a logical first",
+        _ => "needs numbers, not text; Cast it to a number first",
+    };
+    values.iter().find_map(first_bad).filter(|&text| text).map(|_| V::err(sol_error(code, format!("{name} {what}"))))
 }
 
 /// `name`'s route, resolved once per name and kept.
