@@ -1137,8 +1137,16 @@ export function GetRowComponent({ data, emit }: NodeProps<GetRowNodeType>) {
 
 // ─── XLOOKUP (table / cube / widened list) ──────────────────────────────────────
 
-// Filter's own list: the same words for the same tests on both cards.
-const LOOKUP_MATCH_OPTIONS = FILTER_OP_OPTIONS as { value: LookupMatchMode; label: string }[];
+// Filter's own ops in Filter's order, with the symbols kept for Excel parity; the four comparisons read as the lookup
+// means them, the closest key rather than every one past it.
+const LOOKUP_NEAREST: Partial<Record<LookupMatchMode, string>> = {
+  lte: "≤ equal or nearest below",
+  gte: "≥ equal or nearest above",
+  lt: "＜ nearest below",
+  gt: "＞ nearest above",
+};
+const LOOKUP_MATCH_OPTIONS = (FILTER_OP_OPTIONS as { value: LookupMatchMode; label: string }[])
+  .map((o) => ({ value: o.value, label: LOOKUP_NEAREST[o.value] ?? o.label }));
 
 const LOOKUP_SEARCH_OPTIONS: { value: LookupSearchMode; label: string; title: string }[] = [
   { value: "first", label: "First", title: "On duplicate keys, return the first match, scanning top to bottom" },
