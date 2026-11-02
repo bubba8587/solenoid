@@ -407,6 +407,7 @@ pub const DIRECT: &[&str] = &[
     "CableSwitchNode",
     "CalendarHeatmapNode",
     "CandlestickNode",
+    "CardsNode",
     "CastNode",
     "CharCodeNode",
     "ChartBuilderNode",

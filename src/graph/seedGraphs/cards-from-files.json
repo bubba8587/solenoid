@@ -263,12 +263,11 @@
     },
     {
       "id": "products-cards",
-      "type": "RecordNode",
+      "type": "CardsNode",
       "x": 341,
       "y": -355,
       "init": {
-        "label": "Record: Cards → the catalog",
-        "op": "cards"
+        "label": "Cards → the catalog"
       },
       "stringLiterals": {
         "rows": "",

@@ -17,7 +17,7 @@ const frameOf = (n: number): FrameValue => ({
   columns: [{ name: "Item", type: "string", values: Array.from({ length: n }, (_, i) => `r${i}`) }],
 });
 
-async function setup(op: "detail" | "cards" | "gallery" | "list", rows = 3) {
+async function setup(op: "detail" | "gallery" | "list", rows = 3) {
   const editor = new GraphEditor<Schemes>();
   const rec = new RecordNode({ op });
   await editor.addNode(rec as never);
@@ -32,8 +32,7 @@ describe("recordNavTarget — when the Record pager (prev/next) is offered", () 
     expect(recordNavTarget(rec.id)).toBe(rec.id);
   });
 
-  it("a cards/gallery/list view is not steppable (it already shows every row)", async () => {
-    expect(recordNavTarget((await setup("cards")).rec.id)).toBeNull();
+  it("a gallery or list view is not steppable (it already shows every row)", async () => {
     expect(recordNavTarget((await setup("gallery")).rec.id)).toBeNull();
     expect(recordNavTarget((await setup("list")).rec.id)).toBeNull();
   });

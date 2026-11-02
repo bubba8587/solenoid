@@ -8,7 +8,7 @@ import { nodeNameStore } from "./nodeNameStore";
 import { processGraph } from "./process";
 import { scheduleAutosave } from "./persistence";
 import { flyToNodeAndFlash } from "./flyToNode";
-import { RecordNode } from "./nodeClasses";
+import { CardsNode } from "./nodeClasses";
 import type { SolenoidConnection } from "./schemes";
 import { setRecordCardsAction } from "./tablePopupStore";
 
@@ -43,14 +43,14 @@ function frameOutputOf(hostId: string): string | null {
   return keys.includes("frame") ? "frame" : keys[0] ?? null;
 }
 
-/** Places a Record node in the Cards view right of the host, wired to its frame output, and flies to it. */
+/** Places a Cards node right of the host, wired to its frame output, and flies to it. */
 async function addRecordCards(hostId: string): Promise<string | null> {
   const editor = getOwningEditor(hostId);
   const view = getOwningView(hostId);
   const host = editor?.getNode(hostId);
   const out = frameOutputOf(hostId);
   if (!editor || !view || !host || !out) return null;
-  const rec = new RecordNode({ op: "cards", label: "Cards" });
+  const rec = new CardsNode();
   await editor.addNode(rec as never);
   nodeNameStore.ensure(rec.id, rec.constructor.name);
   const boxOf = (id: string): Box | null => {

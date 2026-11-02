@@ -30,7 +30,11 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "FormatControllerNode" => format_controller(c),
         "TemplateNode" => template(c),
         "FrameInputNode" => frame_input(c),
-        "RecordNode" => record(c),
+        "RecordNode" => {
+            let op = c.field_str("op", "detail").to_string();
+            record(c, &op)
+        }
+        "CardsNode" => record(c, "cards"),
         _ => return None,
     })
 }
@@ -1146,8 +1150,8 @@ fn record_field(name: &str, col: Option<&Column>, row: Option<usize>, at: &At) -
     Json::Object(o)
 }
 
-fn record(c: &mut Call) -> Answer {
-    let op = c.field_str("op", "detail").to_string();
+fn record(c: &mut Call, op: &str) -> Answer {
+    let op = op.to_string();
     let display = c.field("numberDisplay").map_or_else(crate::card_helpers::NumberDisplay::default, |d| {
         crate::card_helpers::NumberDisplay {
             decimals: d.get("decimals").map_or(4.0, json_f64),

@@ -227,7 +227,7 @@ export {
   WaterfallComponent, CandlestickComponent, BoxplotComponent,
   CalendarHeatmapComponent, HeatmapComponent, ProportionComponent, QuiverComponent,
 } from "./FigureNodes";
-export { RecordComponent } from "./RecordNode";
+export { RecordComponent, CardsComponent } from "./RecordNode";
 export { GanttComponent } from "./GanttNode";
 export { PointPlotterComponent } from "./PointPlotterNode";
 export { CurveComponent } from "./CurveNode";

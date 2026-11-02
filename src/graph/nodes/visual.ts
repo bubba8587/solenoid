@@ -771,11 +771,10 @@ export class CalendarHeatmapNode extends GraphNode {
 
 export { parseRecordLayout, recordImageSrc, type RecordPlacement };
 
-export type RecordOp = "detail" | "cards" | "gallery" | "board" | "list";
+export type RecordOp = "detail" | "gallery" | "board" | "list";
 
 export const RECORD_OP_META = {
   detail:  { label: "Detail", keywords: "single one record form pager" },
-  cards:   { label: "Cards", keywords: "card stack deck profile people contacts auto layout mobile" },
   gallery: { label: "Gallery" },
   board:   { label: "Board", keywords: "kanban lanes" },
   list:    { label: "List" },
@@ -788,8 +787,8 @@ export class RecordNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     rows: "Picks the records, 1-based, in order: 3, or 1, 3, 5; -1 is the last. Blank shows every record. Detail pages through the picks.",
     by: "Names the column whose values become the board's lanes. Blank or unmatched draws nothing.",
-    layout: "A line per row, names split by |. Repeat to merge. Photo*2 spans two, #Name titles, Qty: 40 is placeholder, a dot is blank. Empty stacks columns; on Cards, empty lays each card out from the data.",
-    options: "title=Parts;fontsize=12;cardsize=l. Tiles size s, m or l: Gallery and Cards tiles, List columns, Board lanes and the columns a record with no layout wraps into. clamp=on caps long values at three lines.",
+    layout: "A line per row, names split by |. Repeat to merge. Photo*2 spans two, #Name titles, Qty: 40 is placeholder, a dot is blank. Empty stacks columns.",
+    options: "title=Parts;fontsize=12;cardsize=l. Tiles size s, m or l: Gallery tiles, List columns, Board lanes and the columns a record with no layout wraps into. clamp=on caps long values at three lines.",
   };
 
   label: string;
@@ -841,6 +840,44 @@ export class RecordNode extends GraphNode {
     const p = out.chart.payload as RecordPayload;
     if (this.op === "detail" && p.total > 0) this.literals.page = p.index;
     return out;
+  }
+}
+
+/** Every picked record as an AutoCard in a masonry deck ([[C114]] cardsView); Record's other views stay on Record. */
+export class CardsNode extends GraphNode {
+  static inputRoles = { rows: picks() };
+  static socketDocs: Record<string, string> = {
+    rows: "Picks the records, 1-based, in order: 3, or 1, 3, 5; -1 is the last. Blank shows every record.",
+    layout: "A line per row, names split by |. Repeat to merge. Photo*2 spans two, #Name titles, Qty: 40 is placeholder, a dot is blank. Empty lays each card out from the data.",
+    options: "title=Parts;fontsize=12;cardsize=l;c=Status. Cards size s, m or l. c names the column whose color tints each card. clamp=on caps long values at three lines.",
+  };
+
+  label: string;
+  stringLiterals: Record<string, string> = { rows: "" };
+  chartOptions: ChartOptions = {};
+  cachedChart: ChartValue | null = null;
+  width = 300;
+  height = 260;
+
+  static frameHints: Record<string, FrameHint> = RecordNode.frameHints;
+
+  constructor(init?: { label?: string }) {
+    super("Cards");
+    this.label = init?.label ?? "Cards";
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("rows", numListIn("Rows"));
+    this.addInput("layout", strIn("Layout"));
+    this.addInput("options", strIn("Options"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  static coreFields = ["numberDisplay"] as const;
+  get numberDisplay(): { decimals: number; sciAbove: string } {
+    return { decimals: displayDecimals(), sciAbove: String(settingsStore.get("sciAbove")) };
+  }
+
+  data(inputs: RecordInputs): { chart: ChartValue } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
 

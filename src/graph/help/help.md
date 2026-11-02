@@ -95,7 +95,7 @@ Every document autosaves and comes back when you reopen. **Save / Open** read an
 
 ## Cards
 
-A frame's popup has a **Cards** view, and **Record: Cards** draws the same cards as a chart. Each column goes to one part of the card by its name, type and contents.
+A frame's popup has a **Cards** view, and the **Cards** node draws the same cards on the canvas. Each column goes to one part of the card by its name, type and contents.
 
 | Part | Takes |
 |---|---|
@@ -114,7 +114,7 @@ A frame's popup has a **Cards** view, and **Record: Cards** draws the same cards
 
 A blank cell is left off its card.
 
-To lay the cards out yourself, open **Card Layout** under a Frame Input's Advanced section (or type a Layout on **Record: Cards**). It uses the Form layout's lines: `#Name | Rating` puts the name in the heading with the rating beside it, and each later line is a row of fields. The parts above still decide how each field looks. **Suggest**, inside an empty layout field, writes a starting layout from your data, and a Form with no layout of its own uses that suggestion.
+To lay the cards out yourself, open **Card Layout** under a Frame Input's Advanced section (or type a Layout on the **Cards** node). It uses the Form layout's lines: `#Name | Rating` puts the name in the heading with the rating beside it, and each later line is a row of fields. The parts above still decide how each field looks. **Suggest**, inside an empty layout field, writes a starting layout from your data, and a Form with no layout of its own uses that suggestion.
 
 ## Keyboard
 

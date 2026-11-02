@@ -1,5 +1,5 @@
-import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { RecordNode as RecordNodeType, RecordOp } from "../nodeClasses";
+import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import type { RecordNode as RecordNodeType, CardsNode as CardsNodeType, RecordOp } from "../nodeClasses";
 import { RECORD_OP_META } from "../nodeClasses";
 import { NodeShell, OpSelect, type NodeProps, type OpOption } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
@@ -38,9 +38,30 @@ async function applyRecordOp(node: RecordNodeType, next: RecordOp): Promise<void
 }
 
 export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
-  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const [op, setOpState] = useState<RecordOp>(data.op);
   const setOp = useCallback((v: RecordOp) => { setOpState(v); void applyRecordOp(data, v); }, [data]);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
+  const keys = ["frame", "rows", ...(op === "board" ? ["by"] : []), ...(collapsed ? ["layout"] : []), "options"];
+  return (
+    <RecordCardComponent data={data} emit={emit} op={op}>
+      <OpSelect value={op} onChange={setOp} options={OPTIONS} />
+      <InlineInputs node={data} emit={emit} keys={keys} />
+    </RecordCardComponent>
+  );
+}
+
+export function CardsComponent({ data, emit }: NodeProps<CardsNodeType>) {
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
+  return (
+    <RecordCardComponent data={data} emit={emit} op="cards">
+      <InlineInputs node={data} emit={emit} keys={["frame", "rows", ...(collapsed ? ["layout"] : []), "options"]} />
+    </RecordCardComponent>
+  );
+}
+
+/** The card both Record and Cards wear; `children` are the rows above the layout (the view picker and the inputs). */
+function RecordCardComponent({ data, emit, op, children }: NodeProps<RecordNodeType | CardsNodeType> & { op: RecordOp | "cards"; children: ReactNode }) {
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const connected = useConnectedInputs(data.id);
   const layoutWired = connected.has("layout");
   const cv = data.cachedChart;
@@ -48,6 +69,7 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
   const total = payload?.total ?? 0;
 
   function step(delta: number) {
+    if (!("literals" in data)) return;
     const next = Math.min(total, Math.max(1, (data.literals.page ?? 1) + delta));
     if (next === data.literals.page) return;
     data.literals.page = next;
@@ -80,7 +102,6 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
   const layoutOpen = useSyncExternalStore(sectionFoldStore.subscribe, () => sectionFoldStore.get(data.id, LAYOUT)) ?? layoutInUse;
 
   const hasBoxes = !!payload && (payload.cards.some((c) => c.length > 0) || (payload.deck?.rows.length ?? 0) > 0);
-  const keys = ["frame", "rows", ...(op === "board" ? ["by"] : []), ...(collapsed ? ["layout"] : []), "options"];
 
   return (
     <NodeShell
@@ -90,8 +111,7 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
         ? <NodeSocket side="input" socketKey="layout" nodeId={data.id} emit={emit} payload={layoutPort.socket} top={layoutTop} />
         : null}
     >
-      <OpSelect value={op} onChange={setOp} options={OPTIONS} />
-      <InlineInputs node={data} emit={emit} keys={keys} />
+      {children}
       {!collapsed && (
         <CardSection label={LAYOUT} collapsible defaultOpen={layoutInUse} sockets={{ node: data, emit, keys: ["layout"] }}>
           <div ref={layoutRef} style={{ position: "relative", marginTop: 4 }}>

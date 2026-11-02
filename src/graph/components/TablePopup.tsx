@@ -1048,7 +1048,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
             ...(isFramePopup && footer ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
             ...(showFmtControls ? [{ label: showCellUnits ? "Hide units in cells" : "Show units in cells", onClick: () => settingsStore.set("tablePopupCellUnits", !showCellUnits) }] : []),
             ...(view === "grid" ? [{ label: frozen ? "Unfreeze header" : "Freeze header", onClick: () => settingsStore.set("tablePopupFrozen", !frozen) }] : []),
-            ...(cardsCapable && state.pinNodeId && recordCards?.canAdd(state.pinNodeId) ? [{ label: "Add Record: Cards", onClick: () => addCardsChart(state.pinNodeId!) }] : []),
+            ...(cardsCapable && state.pinNodeId && recordCards?.canAdd(state.pinNodeId) ? [{ label: "Add Cards", onClick: () => addCardsChart(state.pinNodeId!) }] : []),
       ]}
     >
       {view === "grid" && showFmtControls && state.formatControls === "matrix" && (

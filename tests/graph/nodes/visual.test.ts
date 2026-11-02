@@ -5,7 +5,7 @@ import {
   SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, SurfaceNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, ProportionNode, QuiverNode,
   HistogramNode,
-  RecordNode, parseRecordLayout, recordImageSrc,
+  RecordNode, CardsNode, parseRecordLayout, recordImageSrc,
 } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_FIELDS } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "../../../src/graph/nodes/chartOptions";
@@ -688,7 +688,7 @@ describe("Record node", () => {
     board.stringLiterals.by = "Status";
     p = (await board.data({ frame: [f], rows: [[3, 1, 2]] })).chart.payload as RecordPayload;
     expect(p.lanes).toEqual([{ label: "Open", cards: [0, 1] }, { label: "Done", cards: [2] }]);
-    const cards = new RecordNode({ op: "cards" });
+    const cards = new CardsNode();
     p = (await cards.data({ frame: [f], rows: [[-1, 1]] })).chart.payload as RecordPayload;
     expect(p.deck?.rows.map((r) => r[0])).toEqual(["d", "a"]);
     expect(p.deck?.rowNumbers).toEqual([4, 1]);
@@ -696,7 +696,7 @@ describe("Record node", () => {
 
   it("Rows: 1-based picks in order, negatives from the end, junk and out of range dropped, none is every row", async () => {
     const f = frame([{ name: "Item", type: "string", values: ["a", "b", "c"] }]);
-    const n = new RecordNode({ op: "cards" });
+    const n = new CardsNode();
     const picked = async (rows?: unknown) =>
       ((await n.data({ frame: [f], ...(rows === undefined ? {} : { rows: [rows] }) })).chart.payload as RecordPayload).deck?.rowNumbers;
     expect(await picked()).toEqual([1, 2, 3]);
@@ -767,15 +767,15 @@ describe("Record node", () => {
     expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
     n.setOp("board");
     expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options", "by"]);
-    for (const op of ["detail", "cards", "list", "gallery"] as const) {
+    for (const op of ["detail", "list", "gallery"] as const) {
       n.setOp(op);
       expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
     }
-    expect(Object.keys(new RecordNode({ op: "cards" }).inputs)).toEqual(["frame", "rows", "layout", "options"]);
+    expect(Object.keys(new CardsNode().inputs)).toEqual(["frame", "rows", "layout", "options"]);
   });
 
   it("Cards plans the whole frame and ships the drawn rows, numbers raw and the rest as shown", async () => {
-    const n = new RecordNode({ op: "cards" });
+    const n = new CardsNode();
     n.stringLiterals.layout = "#Name | Price"; // a written layout rides along; the plan still reads every column
     const f: FrameValue = { __frame: true, columns: [
       { name: "Name", type: "string", values: Array.from({ length: 70 }, (_, i) => `Item ${i + 1}`) },
