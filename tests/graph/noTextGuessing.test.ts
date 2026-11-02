@@ -31,12 +31,12 @@ describe("a formula never reads a number, date or logical out of text ([[C10]] s
     expect(code(ev('XNOR("TRUE", TRUE)'))).toBe("#TYPE!");
   });
 
-  it("an aggregate that skips non-numbers skips numeric text", () => {
-    expect(ev("SUM(x)", { x })).toBe(4);
-    expect(ev('SUM(1, "5")')).toBe(1);
-    expect(ev("AVERAGE(x)", { x })).toBe(2);
-    expect(ev("MEDIAN(x)", { x })).toBe(2);
-    expect(ev("LARGE(x, 1)", { x })).toBe(3);
+  it("an aggregate refuses numeric text, and COUNT leaves it out ([[D109]] aggregatesRefuseText)", () => {
+    expect(code(ev("SUM(x)", { x }))).toBe("#VALUE!");
+    expect(code(ev('SUM(1, "5")'))).toBe("#VALUE!");
+    expect(code(ev("AVERAGE(x)", { x }))).toBe("#VALUE!");
+    expect(code(ev("MEDIAN(x)", { x }))).toBe("#TYPE!");
+    expect(code(ev("LARGE(x, 1)", { x }))).toBe("#TYPE!");
     expect(ev("COUNT(x)", { x })).toBe(2);
   });
 

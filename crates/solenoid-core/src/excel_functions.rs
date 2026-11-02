@@ -3394,6 +3394,42 @@ fn text_refused(name: &str, r: Option<&Refused>, a: &[V]) -> Option<V> {
     r.flags.iter().any(text_at).then(|| V::err(sol_error(ErrorCode::Value, format!("{name} needs TRUE or FALSE"))))
 }
 
+/// The aggregates that refuse text, by the error their algebra gives ([[D109]] aggregatesRefuseText): `2 + "a"`'s
+/// #VALUE! for those built from arithmetic, `2 > "a"`'s #TYPE! for those built from ordering. `first` keeps the check
+/// to the list of values, before a position or fraction argument.
+fn refuses_text(name: &str) -> Option<(ErrorCode, bool)> {
+    Some(match name {
+        "SUM" | "PRODUCT" | "AVERAGE" | "SUMSQ" | "SUMPRODUCT" | "GEOMEAN" | "HARMEAN" | "AVEDEV" | "DEVSQ"
+        | "SKEW" | "SKEW.P" | "KURT" | "STDEV" | "STDEV.S" | "STDEV.P" | "VAR" | "VAR.S" | "VAR.P" => {
+            (ErrorCode::Value, false)
+        }
+        "MIN" | "MAX" | "MEDIAN" => (ErrorCode::Type, false),
+        "LARGE" | "SMALL" | "PERCENTILE" | "PERCENTILE.INC" | "PERCENTILE.EXC" | "QUARTILE" | "QUARTILE.INC"
+        | "QUARTILE.EXC" => (ErrorCode::Type, true),
+        _ => return None,
+    })
+}
+
+/// The first text or error among the values, read in order through every list: text answers the function's error,
+/// an error is left to its body. Empty text is not text here (a blank's ruling is its own).
+fn text_answer(name: &str, (code, first): (ErrorCode, bool), a: &[V]) -> Option<V> {
+    fn first_bad(v: &V) -> Option<bool> {
+        match v {
+            V::Str(t) => (!t.is_empty()).then_some(true),
+            V::Err(_) | V::Fx(_) => Some(false),
+            V::List(items) => items.iter().find_map(first_bad),
+            _ => None,
+        }
+    }
+    let values = if first { &a[..a.len().min(1)] } else { a };
+    let what = if code == ErrorCode::Type { "can't order text among numbers" } else { "needs numbers, not text" };
+    values
+        .iter()
+        .find_map(first_bad)
+        .filter(|&text| text)
+        .map(|_| V::err(sol_error(code, format!("{name} {what}; Cast it to a number first"))))
+}
+
 /// `name`'s route, resolved once per name and kept.
 pub fn route(name: &str) -> Route {
     thread_local! {
@@ -3434,6 +3470,7 @@ pub fn route(name: &str) -> Route {
 #[derive(Clone)]
 pub struct Resolved {
     refused: Option<&'static Refused>,
+    refuses_text: Option<(ErrorCode, bool)>,
     no_logicals: &'static [usize],
     flat_range: bool,
     route: Route,
@@ -3451,6 +3488,7 @@ fn no_logicals(name: &str) -> &'static [usize] {
 pub fn resolve(name: &str) -> Resolved {
     Resolved {
         refused: refused(name),
+        refuses_text: refuses_text(name),
         no_logicals: no_logicals(name),
         flat_range: crate::eval::traits(name)
             .is_some_and(|t| t.kind == crate::eval::Kind::Range && !t.fast.reads_lists),
@@ -3465,6 +3503,9 @@ pub fn call_function(name: &str, a: &[V]) -> Result<V, Thrown> {
 /// `call_function` with the name's lookups done (`resolve(name)`).
 pub fn call_resolved(name: &str, r: &Resolved, a: &[V]) -> Result<V, Thrown> {
     if let Some(e) = text_refused(name, r.refused, a) {
+        return Ok(e);
+    }
+    if let Some(e) = r.refuses_text.and_then(|t| text_answer(name, t, a)) {
         return Ok(e);
     }
     if r.no_logicals.iter().any(|&i| matches!(a.get(i), Some(V::Bool(_)))) {
@@ -3788,7 +3829,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if let Some(e) = cells.iter().find(|v| v.is_err()) {
                 return e.clone();
             }
-            // A logical reads as 1 or 0 ([[D108]] aggregatesCountLogicals); text is skipped ([[C10]] socketLattice).
+            // A logical reads as 1 or 0 ([[D108]] aggregatesCountLogicals).
             let nums: Vec<f64> = cells
                 .iter()
                 .filter_map(|v| match v {
@@ -5867,7 +5908,7 @@ fn sum_like_fx(a: &[V]) -> V {
         match v {
             V::Fx(_) => return v.clone(),
             V::Num(n) => result = snapped_sum(result, *n),
-            // A logical reads as 1 or 0 ([[D108]] aggregatesCountLogicals); text is skipped ([[C10]] socketLattice).
+            // A logical reads as 1 or 0 ([[D108]] aggregatesCountLogicals).
             V::Bool(b) => result = snapped_sum(result, f64::from(u8::from(*b))),
             V::List(items) => match sum_like_fx(items) {
                 V::Num(n) => result = snapped_sum(result, n),
@@ -6454,7 +6495,7 @@ mod tests {
                 "{name}: {r:?}"
             );
         }
-        assert!(matches!(call_function("SUM", &[V::Num(1.0), s("5")]), Ok(V::Num(n)) if n == 1.0));
+        assert!(matches!(call_function("SUM", &[V::Num(1.0), s("5")]), Ok(V::Err(e)) if e.code == ErrorCode::Value));
         assert!(matches!(call_function("VALUE", &[s("5")]), Ok(V::Num(n)) if n == 5.0));
     }
 }

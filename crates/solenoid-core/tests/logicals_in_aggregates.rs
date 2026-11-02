@@ -35,10 +35,8 @@ fn typed_straight_in_as_excel() {
 }
 
 #[test]
-fn unchanged_text_and_counta() {
-    // Text inside a list is still skipped; COUNTA counts every non-blank item as before.
-    // t = 1, "a", TRUE.
-    assert_eq!(num("SUM(t)"), 2.0);
+fn count_and_counta() {
+    // COUNT counts the numbers, the logical among them; COUNTA counts every non-blank item. t = 1, "a", TRUE.
     assert_eq!(num("COUNT(t)"), 2.0);
     assert_eq!(num("COUNTA(t)"), 3.0);
 }
