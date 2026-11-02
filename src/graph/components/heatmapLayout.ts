@@ -93,6 +93,8 @@ export interface CalLayout {
   /** The drawn days, `start..end`, on a Monday-first grid of `weeks` columns from `gridStart`. */
   start: number; end: number; gridStart: number; weeks: number;
   truncated: boolean;
+  /** The baseline of the "last N wk" note under the grid. */
+  noteY: number;
   /** The weeks wrap into `bands` stacked strips of `perBand` weeks, each with its month row above it. */
   bands: number; perBand: number; bandH: number;
   cell: number; gap: number; padL: number; padT: number;
@@ -126,9 +128,13 @@ export function calendarLayout(days: readonly number[], values: readonly number[
   if (days.length === 0) return null;
   const byDay = new Map<number, number>();
   for (let i = 0; i < days.length; i++) byDay.set(days[i], (byDay.get(days[i]) ?? 0) + (values[i] ?? 0));
-  const { padL, padT, padR, padB } = calPads(fs, cbarTickW !== null);
+  const { padL, padT, padR, padB: cbarPadB } = calPads(fs, cbarTickW !== null);
   const availW = W - padL - padR - cbarWidth(cbarTickW);
   const { end, dataStart, weeks, gridStart, start } = calSpan(byDay, availW);
+  // A cut-off span says so under the grid ("last N wk"), so the bottom keeps a line for it.
+  const truncated = dataStart < start;
+  const noteH = truncated ? Math.ceil(12 * fs) : 0;
+  const padB = Math.max(cbarPadB, noteH);
   let bands = 1, cell = 0;
   for (let b = 1; b <= Math.min(MAX_BANDS, weeks); b++) {
     const c = Math.min(availW / Math.ceil(weeks / b), (H - b * padT - (b - 1) * BAND_GAP - padB) / (7 * b));
@@ -140,7 +146,7 @@ export function calendarLayout(days: readonly number[], values: readonly number[
   for (const [d, v] of byDay) if (d >= start) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
   const gridR = padL + perBand * cell;
   return {
-    byDay, start, end, gridStart, weeks, truncated: dataStart < start,
+    byDay, start, end, gridStart, weeks, truncated, noteY: bands * bandH + (bands - 1) * BAND_GAP + noteH,
     bands, perBand, bandH,
     cell, gap: cell > 6 ? 1 : 0.5, padL, padT, lo, hi,
     cbar: cbarTickW === null ? null : { x: gridR + 6, y: padT, w: 6, h: bands * bandH + (bands - 1) * BAND_GAP - padT, textX: gridR + 6 + 6 + 3 },

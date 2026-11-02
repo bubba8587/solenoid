@@ -32,13 +32,19 @@ function setupCanvas(canvas: HTMLCanvasElement, W: number, H: number): Ctx | nul
   return ctx;
 }
 
-/** Whether a resolved `rgb(…)` or hex color is a light one (a light-theme surface). */
-function isLightInk(color: string): boolean {
+/** A resolved `rgb(…)` or `#rrggbb` color as its channels; black when it reads as neither. */
+function inkRgb(color: string): [number, number, number] {
   const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(color);
   const hex = /^#([0-9a-f]{6})$/i.exec(color);
-  const [r, g, b] = m ? [+m[1], +m[2], +m[3]] : hex ? [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16)) : [0, 0, 0];
+  return m ? [+m[1], +m[2], +m[3]] : hex ? [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16)) as [number, number, number] : [0, 0, 0];
+}
+
+/** Whether a resolved color is a light one (a light-theme surface). */
+function isLightInk(color: string): boolean {
+  const [r, g, b] = inkRgb(color);
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.5;
 }
+
 
 function themeInk(canvas: HTMLCanvasElement) {
   const v = (name: string, fb: string) => themeColor(name, fb, canvas);
@@ -47,7 +53,7 @@ function themeInk(canvas: HTMLCanvasElement) {
     dim: v("--text-dim", "#888"),
     border: v("--border-strong", "#555"),
     sunken: v("--surface-sunken", "#2a2a2a"),
-    empty: v("--border-subtle", "#dfe3e9"),
+    raised: v("--surface-raised", "#262626"),
     up: resolveColor("green"),
     down: resolveColor("vermilion"),
     accent: v("--accent", resolveColor("sky")),
@@ -266,32 +272,25 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, o: ChartOptio
   }
   const L = calendarLayout(p.days, p.values, W, H, fs, showCbar ? tickW : null);
   if (!L) return null;
-  const { byDay, start, end, gridStart, weeks, cell, gap, padL, padT, perBand } = L;
+  const { byDay, start, end, gridStart, weeks, cell, gap, padL, perBand } = L;
   const scale = heatScale(L.lo, L.hi, o);
-  const light = isLightInk(ink.sunken);
+  // A day's cell sits on the sunken surface; on a white page that is a step deeper, so the empty days and the faint
+  // low values still read against the page.
+  const cellBase = isLightInk(ink.sunken) ? ink.raised : ink.sunken;
   // No cmap and no center keeps the accent, at an opacity by value over the empty-day color.
   const color = heatColorFn(o);
   const paint: Paint = o.cmap || o.center !== undefined
     ? (c, x, y, w, h, t) => { c.fillStyle = rgbCss(color(t)); c.fillRect(x, y, w, h); }
-    : light
-      // On a white page the accent alone spans too little lightness: start stronger and deepen toward the ink.
-      ? (c, x, y, w, h, t) => {
-        c.fillStyle = ink.sunken; c.fillRect(x, y, w, h);
-        c.fillStyle = ink.accent; c.globalAlpha = 0.3 + 0.7 * t; c.fillRect(x, y, w, h);
-        c.fillStyle = ink.text; c.globalAlpha = 0.4 * t; c.fillRect(x, y, w, h); c.globalAlpha = 1;
-      }
-      : (c, x, y, w, h, t) => {
-        c.fillStyle = ink.sunken; c.fillRect(x, y, w, h);
-        c.fillStyle = ink.accent; c.globalAlpha = 0.16 + 0.84 * t; c.fillRect(x, y, w, h); c.globalAlpha = 1;
-      };
-  // A day without data is a recess in dark mode; on a light page it needs a visible gray of its own.
-  const emptyDay = light ? ink.empty : ink.sunken;
+    : (c, x, y, w, h, t) => {
+      c.fillStyle = cellBase; c.fillRect(x, y, w, h);
+      c.fillStyle = ink.accent; c.globalAlpha = 0.16 + 0.84 * t; c.fillRect(x, y, w, h); c.globalAlpha = 1;
+    };
 
   ctx.fillStyle = ink.dim;
   if (L.truncated) {
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
-    ctx.fillText(`last ${weeks} wk`, padL + perBand * cell, padT - 2);
+    ctx.fillText(`last ${weeks} wk`, padL + perBand * cell, L.noteY);
   }
   ctx.textAlign = "left";
   ctx.textBaseline = "bottom";
@@ -323,7 +322,7 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, o: ChartOptio
       if (day < start || day > end) continue;
       const { x, y } = calCellXY(L, w, r);
       const v = byDay.get(day);
-      if (v == null) { ctx.fillStyle = emptyDay; ctx.fillRect(x, y, cell - gap, cell - gap); }
+      if (v == null) { ctx.fillStyle = cellBase; ctx.fillRect(x, y, cell - gap, cell - gap); }
       else paint(ctx, x, y, cell - gap, cell - gap, scale.t(v));
     }
   }
@@ -359,9 +358,6 @@ function drawColorbar(ctx: Ctx, ink: ReturnType<typeof themeInk>, box: { x: numb
     const v = span > 0 ? scale.hi - (span * (i + 0.5)) / h : scale.lo;
     paint(ctx, x, y + i, w, Math.min(1.5, h - i), scale.t(v));
   }
-  ctx.strokeStyle = ink.border;
-  ctx.lineWidth = 0.5;
-  ctx.strokeRect(x, y, w, h);
   ctx.fillStyle = ink.dim;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
