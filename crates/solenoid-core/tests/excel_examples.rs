@@ -467,3 +467,13 @@ fn the_unit_expression_path_snaps_too() {
     let wrapped = solenoid_core::unit_expression::expression_units("(a+b-0.3)", &env, &[]);
     assert!(matches!(wrapped, Some(V::Num(n)) if n != 0.0), "{wrapped:?}");
 }
+
+/// An error a function answers for one cell of a list crosses as Solenoid's error, as a lone one does.
+#[test]
+fn a_cells_error_in_a_list_is_solenoids() {
+    let xs = V::List(std::rc::Rc::new(vec![V::Num(0.5), V::Num(3.0)]));
+    let env: Env = [("xs".to_string(), xs)].into_iter().collect();
+    let Some(V::List(got)) = formula("ACOTH(xs)", env) else { panic!("a list") };
+    assert!(matches!(&got[0], V::Err(_)), "{got:?}");
+    assert!(matches!(got[1], V::Num(_)), "{got:?}");
+}
