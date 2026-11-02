@@ -3444,6 +3444,25 @@ fn text_answer(name: &str, (code, first): (ErrorCode, bool), a: &[V]) -> Option<
             _ => None,
         }
     }
+    // A computed column's rows pass the same column each time: its verdict is kept against it ([[C120]] linearWork).
+    type Verdict = Option<(Rc<Vec<V>>, Option<bool>)>;
+    thread_local! {
+        static LAST: std::cell::RefCell<Verdict> = const { std::cell::RefCell::new(None) };
+    }
+    let first_bad = |v: &V| match v {
+        V::List(l) if l.len() >= 64 => LAST.with(|last| {
+            let mut last = last.borrow_mut();
+            match &*last {
+                Some((k, s)) if Rc::ptr_eq(k, l) => *s,
+                _ => {
+                    let s = first_bad(v);
+                    *last = Some((l.clone(), s));
+                    s
+                }
+            }
+        }),
+        _ => first_bad(v),
+    };
     let values = if first { &a[..a.len().min(1)] } else { a };
     let what = match (code, name) {
         (ErrorCode::Type, _) => "can't order text among numbers; Cast it to a number first",
