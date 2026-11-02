@@ -265,7 +265,11 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
     if run_env.values().any(crate::unit_dims::holds_unit) {
         return None;
     }
-    let raw = crate::eval::Eval::default().run(&ast, &Rc::new(run_env));
+    let ev = crate::eval::Eval::default();
+    if !crate::excel_formula::wholly_parenthesized(src) {
+        ev.snap_at(&ast);
+    }
+    let raw = ev.run(&ast, &Rc::new(run_env));
     let mut result = match &raw {
         V::Lambda(_) => V::err(sol_error(
             ErrorCode::Value,

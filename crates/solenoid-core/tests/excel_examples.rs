@@ -456,3 +456,14 @@ fn the_last_addition_snaps_as_excel() {
     close("(0.1+0.2-0.3)*1E+17", 5.551115123125783, 1e-12);
     assert_eq!(num("LAMBDA(x, x-0.3)(0.1+0.2)"), 0.0);
 }
+
+/// The unit-aware Expression path snaps its last `+` or `-` as a plain formula does.
+#[test]
+fn the_unit_expression_path_snaps_too() {
+    let env: solenoid_core::eval::Env =
+        [("a".to_string(), V::Num(0.1)), ("b".to_string(), V::Num(0.2))].into_iter().collect();
+    let got = solenoid_core::unit_expression::expression_units("a+b-0.3", &env, &[]);
+    assert!(matches!(got, Some(V::Num(n)) if n == 0.0), "{got:?}");
+    let wrapped = solenoid_core::unit_expression::expression_units("(a+b-0.3)", &env, &[]);
+    assert!(matches!(wrapped, Some(V::Num(n)) if n != 0.0), "{wrapped:?}");
+}

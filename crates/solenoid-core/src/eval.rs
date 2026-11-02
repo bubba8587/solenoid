@@ -722,6 +722,11 @@ impl Eval<'_> {
     }
 
     /// A formula's answer: a LAMBDA left uncalled is an error, a Formula.js error reads as Solenoid's.
+    /// `ast` is the formula's root, whose last `+` or `-` snaps (`snapped_sum`).
+    pub fn snap_at(&self, ast: &Ast) {
+        self.root.set(ast as *const Ast as usize);
+    }
+
     pub fn run(&self, ast: &Ast, env: &Rc<Env>) -> V {
         match self.eval(ast, env) {
             V::Lambda(_) => V::err(sol_error(
