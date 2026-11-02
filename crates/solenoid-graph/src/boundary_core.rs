@@ -86,8 +86,6 @@ fn list(items: Vec<V>) -> V {
     V::List(Rc::new(items))
 }
 
-const TYPEABLE_LIST: [&str; 3] = ["strlist", "datelist", "logicallist"];
-
 /// The rungs a singleton collapses on (socket-lattice req. 4).
 const COLLAPSING: [&str; 11] = [
     "numlist",
@@ -102,12 +100,6 @@ const COLLAPSING: [&str; 11] = [
     "anydata",
     "anycombo",
 ];
-
-/// Whether `rung` takes a typed list literal on `key` when it is unwired; `in_lits` is whether the card's literal map
-/// names the key.
-pub fn takes_literal(rung: &str, in_lits: bool) -> bool {
-    TYPEABLE_LIST.contains(&rung) || (rung == "numlist" && in_lits)
-}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Family {
@@ -599,15 +591,6 @@ fn strip_unit_cells(v: &V) -> Option<V> {
         }
         _ => None,
     }
-}
-
-fn js_trim_is_empty(s: &str) -> bool {
-    s.chars().all(|c| c.is_whitespace() || c == '\u{feff}')
-}
-
-/// Whether a literal's text reads as nothing.
-pub fn blank_literal(text: &str) -> bool {
-    js_trim_is_empty(text)
 }
 
 /// The first error a card is handed, and the input it came on.

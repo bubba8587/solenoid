@@ -167,7 +167,7 @@ A shared mutable socket means wiring a date into one card retypes another card's
 ## The API
 
 - `accepts(in_t, out_t)` (`lattice.rs`) is the one directional primitive. `canConnect(out, inp)` and `SolenoidSocket.canConnectTo(input)` are its directional forms, used by the connection guard. `areCompatible` and `isCompatibleWith` are symmetric and serve only non-connection uses such as legend and highlight grouping.
-- `is2DType` is true for the matrices, `anytable`, `frame` and `cube`. `is_matrix` (`lattice.rs`) is the homogeneous matrices plus `anytable`, not `frame`.
+- `is_matrix` (`lattice.rs`) is the homogeneous matrices plus `anytable`, not `frame`.
 - `elementFamilyOf(dt)` is a type's family at any rank, or `null` outside the five families. `typeAtRank(dt, rank)` is the same family at another rank (`strlist` at rank 2 is `strtable`). `comboOfType(dt)` is the family's combo rung, the honest output type for an element-preserving extraction whose rank depends on runtime arguments (INDEX), and `comboOfFamily(name)` does the same from a family name, which is what a Frame column's `type` is.
 - `latticeRank(dt)` is 0 for a scalar and `any`, 1 for a list or combo and for `anylist` and `anycombo`, 2 for a matrix and for `anytable` and `anydata`, and `null` for the rankless structural types.
 - `SOCKET_COLORS` are CSS variables, so socket colors follow the theme live; `SOCKET_TYPE_LABELS` is a socket dot's hover title, the only path to "what type is this" that doesn't depend on color.

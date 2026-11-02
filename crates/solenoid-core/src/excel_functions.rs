@@ -287,15 +287,6 @@ pub fn value_less(a: &V, b: &V) -> bool {
     }
 }
 
-/// `a <= b` for two values of one kind, as `value_less` reads them.
-pub fn value_le(a: &V, b: &V) -> bool {
-    match (a, b) {
-        (V::Str(_), V::Str(_)) => !value_less(b, a),
-        (V::Num(_) | V::Bool(_), V::Num(_) | V::Bool(_)) => to_num(a) <= to_num(b),
-        _ => false,
-    }
-}
-
 /// A value as text, as Excel writes one with full precision: a number's shortest exact digits (so two numbers
 /// never read alike; `to_str` writes Excel's 15 digits for display), TRUE or FALSE, a blank as empty text, an error
 /// as its code, a complex number as `a+bi`, a value with a unit as its shown number and unit, a list's items joined by

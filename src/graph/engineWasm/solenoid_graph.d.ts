@@ -357,8 +357,6 @@ export function read_logical(text: string): number | undefined;
  */
 export function region_keys(cuts: string, xs: Float64Array | number[], ys: Float64Array | number[]): string;
 
-export function seesErrors(_class: string): boolean;
-
 /**
  * Sets (`true`) or clears the dirty flag; `true` on a transition.
  */
@@ -546,7 +544,6 @@ export interface InitOutput {
     readonly read_decimal: (a: number, b: number) => number;
     readonly read_logical: (a: number, b: number, c: number) => void;
     readonly region_keys: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
-    readonly seesErrors: (a: number, b: number) => number;
     readonly sessionDirty: (a: number) => number;
     readonly sessionEnter: (a: number, b: number, c: number, d: number) => void;
     readonly sessionExit: (a: number) => any;
@@ -570,8 +567,8 @@ export interface InitOutput {
     readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly uid: (a: number) => void;
     readonly unnamedEdits: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_8044: (a: number, b: number, c: number, d: any) => void;
-    readonly __wasm_bindgen_func_elem_8046: (a: number, b: number, c: any, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8030: (a: number, b: number, c: number, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8032: (a: number, b: number, c: any, d: any) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;

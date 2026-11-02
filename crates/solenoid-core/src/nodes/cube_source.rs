@@ -354,7 +354,7 @@ pub(crate) fn source_cube(text: &str) -> Result<(Cube, Vec<Option<String>>), Str
     Ok((Cube { columns }, src.columns.into_iter().map(|c| c.expr).collect()))
 }
 
-/// The text calls TODAY or NOW (`volatileStamp`): what it makes is the recalculation's, not the text's alone.
+/// The text calls TODAY or NOW: what it makes is the recalculation's, not the text's alone.
 pub(crate) fn calls_clock(text: &str) -> bool {
     let b = text.as_bytes();
     let word = |i: usize| i < b.len() && (b[i].is_ascii_alphanumeric() || b[i] == b'_');

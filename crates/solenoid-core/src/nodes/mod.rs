@@ -63,18 +63,15 @@ pub struct Call {
     pub string_literals: Rc<Map<String, Json>>,
     /// The inputs, in the card's order.
     pub sockets: Rc<[Socket]>,
-    /// The outputs, in the card's order.
-    pub outputs: Rc<[Output]>,
     /// The inputs as `data()` receives them: a key is there when a cable is, and holds each cable's value.
     pub inputs: Vec<(String, Vec<Cv>)>,
     /// The inputs as a body reading values sees them (`wired`): a table there is `#VALUE!`, since it reaches only a
     /// table or an any socket, whose body reads `inputs` (`wired_card`).
     values: Vec<(String, Vec<V>)>,
     pub display: Vec<(String, Shown)>,
-    /// The type an adoptive socket took up (`socket.dataType`), where it differs from the declared one: inputs, then
-    /// outputs, by key. A run-time fact no save keeps.
+    /// The type an adoptive input took up (`socket.dataType`), where it differs from the declared one, by key. A
+    /// run-time fact no save keeps.
     pub adopted_in: Rc<[(String, String)]>,
-    pub adopted_out: Rc<[(String, String)]>,
     /// A table's unit (`matrixUnitOf`, a hidden field on the JS array) on an input's first value, by input key.
     pub matrix_units_in: Vec<(String, Json)>,
     /// The unit to put on an output table (`withMatrixUnit`), by output key.
@@ -104,12 +101,6 @@ pub struct Socket {
     pub key: String,
     pub ty: Option<String>,
     pub label: String,
-}
-
-/// An output socket: its key and declared type.
-pub struct Output {
-    pub key: String,
-    pub ty: Option<String>,
 }
 
 /// The inputs' values: a table, which reaches only a table or an any socket, is `#VALUE!` here.
@@ -157,12 +148,8 @@ impl Call {
                 Socket { key, ty: text(r, 1), label }
             })
             .collect();
-        let outputs =
-            rows("outputs").iter().map(|r| Output { key: text(r, 0).unwrap_or_default(), ty: text(r, 1) }).collect();
-        let adopted = |k: &str, at: usize| -> Vec<(String, String)> {
-            rows(k).iter().filter_map(|r| Some((text(r, 0)?, text(r, at)?))).collect()
-        };
-        let (adopted_in, adopted_out) = (adopted("sockets", 3), adopted("outputs", 2));
+        let adopted_in: Vec<(String, String)> =
+            rows("sockets").iter().filter_map(|r| Some((text(r, 0)?, text(r, 3)?))).collect();
         let mut matrix_units_in = Vec::new();
         let inputs: Vec<(String, Vec<Cv>)> = rows("inputs")
             .iter()
@@ -182,12 +169,10 @@ impl Call {
             literals: Rc::new(obj("literals")),
             string_literals: Rc::new(obj("stringLiterals")),
             sockets,
-            outputs,
             inputs,
             values,
             display: Vec::new(),
             adopted_in: adopted_in.into(),
-            adopted_out: adopted_out.into(),
             matrix_units_in,
             matrix_units_out: Vec::new(),
             draws: None,
@@ -202,12 +187,10 @@ impl Call {
             literals: self.literals.clone(),
             string_literals: self.string_literals.clone(),
             sockets: self.sockets.clone(),
-            outputs: self.outputs.clone(),
             values: values_of(&inputs, &self.sockets),
             inputs,
             display: Vec::new(),
             adopted_in: self.adopted_in.clone(),
-            adopted_out: self.adopted_out.clone(),
             matrix_units_in,
             matrix_units_out: Vec::new(),
             draws: None,
@@ -353,14 +336,6 @@ impl Call {
             .or_else(|| self.sockets.iter().find(|s| s.key == key).and_then(|s| s.ty.as_deref()))
     }
 
-    pub fn output_type(&self, key: &str) -> Option<&str> {
-        self.adopted_out
-            .iter()
-            .find(|(k, _)| k == key)
-            .map(|(_, t)| t.as_str())
-            .or_else(|| self.outputs.iter().find(|o| o.key == key).and_then(|o| o.ty.as_deref()))
-    }
-
     pub fn matrix_unit(&self, key: &str) -> Option<&Json> {
         self.matrix_units_in.iter().find(|(k, _)| k == key).map(|(_, u)| u)
     }
@@ -371,10 +346,6 @@ impl Call {
 
     pub fn show(&mut self, field: &str, v: impl Into<Cv>) {
         self.display.push((field.to_string(), Shown::V(v.into())));
-    }
-
-    pub fn show_undef(&mut self, field: &str) {
-        self.display.push((field.to_string(), Shown::Undef));
     }
 }
 

@@ -74,8 +74,6 @@ export function coreHeader(node: GraphNode, stamp: number): [number, string] | n
     const input = node.inputs[k];
     sockets.push([k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k, ...adopted(input?.socket)]);
   }
-  const outputs: unknown[] = [];
-  for (const k in node.outputs) outputs.push([k, declaredTypeOf(node.outputs[k]?.socket) ?? null, ...adopted(node.outputs[k]?.socket)]);
   const watch = coreWatchOf(node);
   const text = jsonText({
     kind: node.constructor.name,
@@ -86,7 +84,6 @@ export function coreHeader(node: GraphNode, stamp: number): [number, string] | n
     ...(n.literals ? { literals: n.literals } : {}),
     ...(lits ? { stringLiterals: lits } : {}),
     sockets,
-    outputs,
     passthrough: typeof n.passthrough === "function" ? n.passthrough().flatMap((s) => s.inputs ?? []) : [],
     raw: [...(n.rawInputs ?? [])],
     noWiden: [...(n.noWidenInputs ?? [])],
@@ -130,7 +127,6 @@ function invoke(node: GraphNode, inputs: Record<string, unknown[] | undefined>):
       ...(n.literals ? { literals: jsonEnc(n.literals) } : {}),
       ...(n.stringLiterals ? { stringLiterals: jsonEnc(n.stringLiterals) } : {}),
       sockets: Object.entries(node.inputs).map(([k, input]) => [k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k, ...adopted(input?.socket)]),
-      outputs: Object.entries(node.outputs).map(([k, output]) => [k, declaredTypeOf(output?.socket) ?? null, ...adopted(output?.socket)]),
       inputs: wired,
       clock: engineClock(),
     });

@@ -127,10 +127,6 @@ const facts = (dt: SocketDataType) => lattice().types[dt];
 
 export type ElementFamily = "number" | "string" | "date" | "complex" | "logical";
 
-export function is2DType(dt: SocketDataType): boolean {
-  return dt === "frame" || dt === "cube" || (facts(dt)?.rank === 2 && dt !== "anydata");
-}
-
 export function isDateType(dt: SocketDataType): boolean {
   return facts(dt)?.family === "date";
 }

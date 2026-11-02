@@ -84,8 +84,7 @@ pub fn is_lazy_frame_node(class: &str) -> bool {
     LAZY_FRAME_NODES.contains(&class)
 }
 
-#[wasm_bindgen(js_name = seesErrors)]
-pub fn sees_errors(class: &str) -> bool {
+fn sees_errors(class: &str) -> bool {
     SEES_ERRORS.contains(&class)
 }
 

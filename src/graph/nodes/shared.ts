@@ -4,8 +4,7 @@ import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, d
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { solError, type SolError } from "../errorValue";
 import { applyRole, type InputRole } from "../inputRoles";
-import { type UnitCell, magnitudeOf } from "../unitValue";
-import { dimOf } from "../unitValue";
+import { dimOf, magnitudeOf } from "../unitValue";
 
 export const BASIS_DOC = "Day-count basis: 0 = US 30/360, 1 = actual/actual, 2 = actual/360, 3 = actual/365, 4 = European 30/360.";
 
@@ -131,10 +130,6 @@ function readAsRole<T = unknown>(node: GraphNode, key: string, wired: readonly u
 export type CellResult<T> = T | (T | SolError | null)[] | SolError | null;
 
 export type BroadcastResult = CellResult<number>;
-
-export type UnitOperand = number | UnitCell;
-export type BroadcastUnitResult =
-  number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null;
 
 export { dimOf, magnitudeOf };
 
