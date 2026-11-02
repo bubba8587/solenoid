@@ -283,7 +283,7 @@ html.is-mobile {
   .fr-header-row1 { flex-wrap: wrap; }
   .fr-search { flex: 1 1 100%; }
   .fr-filters { margin-left: 0; }
-  .fr-select { padding: 7px 8px; flex-shrink: 0; }
+  .fr-select { padding: 7px 24px 7px 8px; flex-shrink: 0; }
   /* The divider separates it from the filters on one row; wrapped onto its own line it is a stray rule. */
   .fr-colcheck { padding-top: 6px; padding-bottom: 6px; padding-left: 2px; box-shadow: none; }
   .fr-stats { display: none; }
