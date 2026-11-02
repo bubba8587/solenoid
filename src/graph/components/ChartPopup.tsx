@@ -8,8 +8,8 @@ import { ChartView, ChartFigure } from "./chartView";
 import { PopupSkeleton, useAfterPaint } from "./PopupSkeleton";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { clamp } from "../nodes/mathUtils";
-import { recordNavTarget, recordDetailTarget, setRecordQuery, stepRecordRow } from "./recordNav";
-import { SearchField } from "./SearchField";
+import { recordNavTarget, recordFilterTarget, setRecordQuery, stepRecordRow } from "./recordNav";
+import { ganttMatching } from "./ganttFilter";
 import { ladderTarget, applyLadderAction } from "./ladderNav";
 import type { LadderAction } from "../nodes/ladderOps";
 import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
@@ -27,6 +27,8 @@ function chartSize(maxH = MAX_H) {
 }
 const FIG_PAD = 16;    // the figure region's inline padding, each side
 const CARD_CHROME = 40; // header height + the card's own top/bottom border
+
+const matchCount = (n: number | null) => (n === null ? undefined : `${n} ${n === 1 ? "match" : "matches"}`);
 
 export function ChartPopup() {
   const state = useSyncExternalStore(chartPopup.subscribe, chartPopup.get);
@@ -60,21 +62,30 @@ export function ChartPopup() {
     options: shown.options ? { ...shown.options, title: undefined } : shown.options,
   }, [shown]);
 
-  // Detail's filter, the Form view's twin: it lives while the popup shows this Record and clears when it closes.
-  const detailId = state?.value?.op === "record" && state.pinNodeId ? recordDetailTarget(state.pinNodeId) : null;
+  // The header's Filter: a Record or Cards figure narrows its records on the core, a Gantt its task rows here. It lives
+  // while the popup shows this figure and clears when it closes.
+  const filterId = state?.value?.op === "record" && state.pinNodeId ? recordFilterTarget(state.pinNodeId) : null;
   const [query, setQuery] = useState("");
+  const filterKey = state ? `${state.pinNodeId ?? ""}|${state.title}` : null;
   useEffect(() => {
-    if (!detailId) return;
-    return () => { setQuery(""); void setRecordQuery(detailId, ""); };
-  }, [detailId]);
-  const filterDetail = (next: string) => {
+    setQuery("");
+    if (!filterId) return;
+    return () => { void setRecordQuery(filterId, ""); };
+  }, [filterId, filterKey]);
+  const onFilter = (next: string) => {
     setQuery(next);
-    if (!detailId || !state) return;
+    if (!filterId || !state) return;
     const s = state;
-    void setRecordQuery(detailId, next).then((fresh) => {
+    void setRecordQuery(filterId, next).then((fresh) => {
       if (fresh && chartPopup.get()?.pinNodeId === s.pinNodeId) chartPopup.open({ ...chartPopup.get()!, value: fresh });
     });
   };
+
+  const ganttFiltered = useMemo(() => {
+    const p = figValue?.op === "gantt" && figValue.payload?.kind === "gantt" ? (figValue.payload as GanttPayload) : null;
+    return p && query.trim() ? ganttMatching(p, query) : null;
+  }, [figValue, query]);
+  const drawn = ganttFiltered && figValue ? { ...figValue, payload: ganttFiltered.payload } : figValue;
 
   // A hook before the early return. canvasKeyboard stands down under the overlay (modalGuard), so this is the only arrow handler.
   useEffect(() => {
@@ -146,17 +157,23 @@ export function ChartPopup() {
       title={state.title}
       onClose={() => chartPopup.close()}
       cardStyle={cardStyle}
-      headerExtra={detailId
-        ? <SearchField collapsible value={query} onChange={filterDetail} placeholder="Filter" label="Filter records" count={query.trim() && figValue?.payload?.kind === "record" ? `${figValue.payload.total} matches` : undefined} />
-        : state.series && <span className="table-popup__dims">{state.series.length} pts</span>}
+      filter={filterId || ganttPayload
+        ? {
+            value: query,
+            onChange: onFilter,
+            label: filterId ? "Filter records" : "Filter tasks",
+            count: matchCount(ganttFiltered ? ganttFiltered.matches : figValue?.payload?.kind === "record" ? figValue.payload.total : null),
+          }
+        : undefined}
+      headerExtra={state.series && <span className="table-popup__dims">{state.series.length} pts</span>}
       menuItems={copySvg ? [{ label: "Copy SVG", onClick: copySvg }] : []}
       pinNodeId={state.pinNodeId}
       resizable={resizable}
     >
       <div ref={figRef} className="sol-popup__scroll" style={stacked ? { padding: FIG_PAD, overflow: "auto" } : { padding: FIG_PAD, display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
-        {figValue ? (
+        {drawn ? (
           <ChartFigure
-            value={figValue}
+            value={drawn}
             width={w}
             height={h}
             fontScale={fontScale}

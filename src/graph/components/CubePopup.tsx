@@ -12,7 +12,6 @@ import { cubeLevelColumns, statValues, isContainer } from "../cubeLevelTable";
 import { cardMatches } from "../cardLayout";
 import { TableCards } from "./TableCards";
 import { ChevronDownIcon } from "./Icons";
-import { SearchField } from "./SearchField";
 import { settingsStore } from "../settingsStore";
 import { type FooterStat, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, summarizeColumns } from "./tableFooterStats";
 import { PopupSkeleton, useAfterPaint } from "./PopupSkeleton";
@@ -236,11 +235,9 @@ export function CubePopup({ footer = true }: { footer?: boolean } = {}) {
       grouped={grouped}
       cardStyle={cardStyle}
       resizable={{ min: { w: 320, h: 220 } }}
+      filter={table ? { value: query, onChange: setQuery, count: filtering ? `${matchedOrder.length} of ${rows}` : undefined } : undefined}
       headerExtra={
         <>
-          {table && (cards || rows > 1) && (
-            <SearchField collapsible value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering ? `${matchedOrder.length} of ${rows}` : undefined} />
-          )}
           <span className="table-popup__dims">{view.kind === "list" ? `${view.items.length} items` : `${rows}×${cols}`}{rowsTruncated || colsTruncated ? ` · first ${MAX_VISIBLE.toLocaleString(APP_LOCALE)}` : ""}</span>
           {depth !== null && (
             <span

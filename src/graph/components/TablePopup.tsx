@@ -35,7 +35,6 @@ import { CellEditAffix } from "./CellEditAffix";
 import { CsvEditor } from "./CsvEditor";
 import { TableCards } from "./TableCards";
 import { cardMatches, suggestRecordLayout, PROFILE_ROWS } from "../cardLayout";
-import { SearchField } from "./SearchField";
 import { CellSuggest, type CellSuggestHandle } from "./CellSuggest";
 import { parseRecordLayout, recordImageSrc, cellImageSrc } from "../recordLayout";
 import { CellImage } from "./cubeCell";
@@ -1034,10 +1033,10 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
       cardStyle={cardStyle}
       resizable={{ min: { w: 320, h: 220 } }}
       fitNarrow
+      filter={view !== "csv" && (view !== "grid" || sortable)
+        ? { value: query, onChange: setQuery, count: filtering && view !== "pivot" && view !== "dashboard" ? `${matchedOrder.length} of ${viewRows}` : undefined }
+        : undefined}
       headerExtra={<>
-        {((view === "grid" && sortable && viewRows > 1) || view === "cards" || (view === "form" && rows > 1) || view === "pivot" || view === "dashboard") && (
-          <SearchField collapsible value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering && view !== "pivot" && view !== "dashboard" ? `${matchedOrder.length} of ${viewRows}` : undefined} />
-        )}
         <span className="table-popup__dims">{state.list ? `${listLen} items` : `${rows}×${cols}`}{rowsTruncated || listTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
       </>}
       pinNodeId={state.pinNodeId}

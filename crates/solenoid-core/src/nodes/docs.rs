@@ -1165,9 +1165,9 @@ fn record(c: &mut Call, op: &str) -> Answer {
     };
     let mut order =
         record_rows(&picks(super::text::role_value(c, "rows")), cols.first().map_or_default(|c| c.values.len()));
-    // Detail's filter, as the Form view's: every word somewhere in the record's shown cells, caseless.
+    // The popup's Filter, as the Form view's: every word somewhere in the record's shown cells, caseless.
     let query = match c.string_literal("query") {
-        V::Str(q) if op == "detail" => lower_text(trim_space(&q)).into_owned(),
+        V::Str(q) => lower_text(trim_space(&q)).into_owned(),
         _ => String::new(),
     };
     let filtered = !query.is_empty();

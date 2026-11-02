@@ -1,4 +1,5 @@
 // [[B14]] oneDesignSystem
+import { SearchField } from "./SearchField";
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";
@@ -25,6 +26,8 @@ export function popupCardVars(v: {
   return vars;
 }
 
+export type PopupFilter = { value: string; onChange: (next: string) => void; label?: string; count?: string };
+
 /** Mount only while open: the capture-phase Escape hook lives as long as the shell. */
 export function PopupShell({
   title,
@@ -34,6 +37,7 @@ export function PopupShell({
   grouped = false,
   cardStyle,
   headerExtra,
+  filter,
   pinNodeId,
   menuItems = [],
   resizable,
@@ -47,6 +51,8 @@ export function PopupShell({
   grouped?: boolean;
   cardStyle?: CSSProperties;
   headerExtra?: ReactNode;
+  /** The header's Filter field, one slot every popup with rows fills the same way; `count` trails while it filters. */
+  filter?: PopupFilter;
   pinNodeId?: string;
   menuItems?: PopupMenuItem[];
   resizable?: { min: PopupSize; initial?: PopupSize };
@@ -68,6 +74,9 @@ export function PopupShell({
       <div ref={cardRef} className={cardClass} style={style} onPointerDown={(e) => e.stopPropagation()}>
         <div className="sol-popup__header" ref={headerRef}>
           <div className="sol-popup__title">{title}</div>
+          {filter && (
+            <SearchField collapsible value={filter.value} onChange={filter.onChange} placeholder="Filter" label={filter.label ?? "Filter rows"} count={filter.value.trim() ? filter.count : undefined} />
+          )}
           {headerExtra}
           {items.length > 0 && <PopupOverflowMenu items={items} />}
           <button className="sol-popup__close" onClick={() => onClose()} aria-label="Close"><CloseIcon size={16} /></button>
