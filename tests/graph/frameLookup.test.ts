@@ -200,3 +200,46 @@ describe("a lookup column with a unit reads the typed needle in that unit ([[C25
     expect(new ExpressionNode({ expr: 'XLOOKUP(7, ks, vs, "none", -1)' }).data({ ks: [miles], vs: [vs] }).result).toBe("pad");
   });
 });
+
+describe("XLOOKUP across: search a row, return a column", () => {
+  const sales: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "Region", type: "string", values: ["North", "South"] },
+      { name: "Jan", type: "number", values: [10, 20] },
+      { name: "Feb", type: "number", values: [30, 40] },
+    ],
+  };
+  const across = (lookup: string, set: { inRow?: number; returnRow?: number; ifNotFound?: string; matchMode?: "exact" | "nextSmaller" | "nextLarger" } = {}) => {
+    const n = new XLookupNode({ direction: "columns", matchMode: set.matchMode });
+    throughBoundary(n);
+    n.stringLiterals = { lookup, ifNotFound: set.ifNotFound ?? "" };
+    n.literals = { ...(set.inRow ? { inRow: set.inRow } : {}), ...(set.returnRow ? { returnRow: set.returnRow } : {}) };
+    return (n.data({ frame: [sales] }) as { value: unknown }).value;
+  };
+
+  it("a blank In row searches the column names; a blank Return row gives the whole column", () => {
+    expect(across("feb")).toEqual([30, 40]);
+    expect(across("Jan", { returnRow: 2 })).toBe(20);
+  });
+
+  it("In row searches that row's cells, a number row reading the lookup as a number", () => {
+    expect(across("40", { inRow: 2, returnRow: 1 })).toBe(30);
+    expect(across("35", { inRow: 2, returnRow: 1, matchMode: "nextSmaller" })).toBe(10);
+  });
+
+  it("a miss is #N/A or the fallback; a row past the table is #REF!", () => {
+    const miss = across("Mar");
+    expect(isSolError(miss) && (miss as { code: string }).code).toBe("#N/A");
+    expect(across("Mar", { ifNotFound: "0" })).toBe(0);
+    const ref = across("Jan", { returnRow: 9 });
+    expect(isSolError(ref) && (ref as { code: string }).code).toBe("#REF!");
+  });
+
+  it("switching direction swaps the axis sockets", () => {
+    const n = new XLookupNode();
+    expect(Object.keys(n.inputs)).toEqual(["frame", "lookup", "inColumn", "returnColumn", "ifNotFound"]);
+    expect(n.setDirection("columns")).toEqual(["inColumn", "returnColumn"]);
+    expect(Object.keys(n.inputs)).toEqual(["frame", "lookup", "ifNotFound", "inRow", "returnRow"]);
+  });
+});

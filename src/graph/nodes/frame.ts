@@ -5,11 +5,11 @@ import { chartOut } from "./shared";
 import type { ChartValue } from "../chartValue";
 import { numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, trueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { setting, required, LEFT_OUT } from "../inputRoles";
-import type { PassthroughSpec } from "./passthrough";
+import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import { dropInputCables } from "../components/cablePrune";
 import { getOwningView } from "../activeGraph";
 import type { FrameHint } from "../frameHint";
-import { SolenoidSocket, comboOfFamily } from "../sockets";
+import { SolenoidSocket, comboOfFamily, type SocketDataType } from "../sockets";
 import { solError, type SolError } from "../errorValue";
 import {
   colTypeForSocket,
@@ -1739,33 +1739,66 @@ export class GetRowNode extends GraphNode {
 
 // ─── XLOOKUP ───────────────────────────────────────────────────────────────────
 
+export type LookupDirection = "rows" | "columns";
+
+/** Rows: the lookup searches a column and returns a row's cell. Columns: it searches a row and returns a column. */
 export class XLookupNode extends GraphNode {
-  static fieldPlaceholders: Record<string, string> = { returnColumn: "all" };
+  static fieldPlaceholders: Record<string, string> = { returnColumn: "all", inRow: "names", returnRow: "all" };
   static socketDocs: Record<string, string> = {
     lookup: "Matching follows the In column's type: text ignores case, and a number or date column parses the lookup text.",
     returnColumn: "Blank returns the whole matched row.",
+    inRow: "The row searched, counting from 1. Blank searches the column names.",
+    returnRow: "The row whose cell comes back from the matched column. Blank returns the whole column.",
   };
 
   label: string;
   matchMode: LookupMatchMode;
   searchMode: LookupSearchMode;
   cachedResult: CubeCell | null = null;
+  direction: LookupDirection;
   stringLiterals: Record<string, string> = { lookup: "", inColumn: "", returnColumn: "", ifNotFound: "" };
+  literals: Record<string, number> = {};
   // Skip rank widening so a scalar or bare list reaches the shape guard in data() instead of becoming a one-row cube.
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   width = 200; height = 350;
 
-  constructor(init?: { label?: string; matchMode?: LookupMatchMode; searchMode?: LookupSearchMode }) {
+  constructor(init?: { label?: string; matchMode?: LookupMatchMode; searchMode?: LookupSearchMode; direction?: LookupDirection }) {
     super("XLookup");
     this.label = init?.label ?? "XLOOKUP";
     this.matchMode = init?.matchMode ?? "exact";
     this.searchMode = init?.searchMode ?? "first";
+    this.direction = init?.direction === "columns" ? "columns" : "rows";
     this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("lookup", strComboIn("Lookup"));
-    this.addInput("inColumn", strIn("In column"));
-    this.addInput("returnColumn", strIn("Return"));
+    for (const k of XLookupNode.axisKeys(this.direction)) this.addInput(k, XLookupNode.axisInput(k));
     this.addInput("ifNotFound", strIn("If not found"));
     this.addOutput("value", trueAnyOut("Value"));
+  }
+
+  /** The two sockets that say where to search and what comes back, per direction. */
+  static axisKeys(d: LookupDirection): [string, string] {
+    return d === "columns" ? ["inRow", "returnRow"] : ["inColumn", "returnColumn"];
+  }
+  static axisInput(key: string) {
+    switch (key) {
+      case "inRow": return numIn("In row");
+      case "returnRow": return numIn("Return row");
+      case "inColumn": return strIn("In column");
+      default: return strIn("Return");
+    }
+  }
+
+  /** Swaps the axis sockets; the caller prunes the departing ones' cables first. */
+  setDirection(next: LookupDirection): string[] {
+    if (next === this.direction) return [];
+    const departing = XLookupNode.axisKeys(this.direction);
+    for (const k of departing) { if (this.inputs[k]) this.removeInput(k); delete this.literals[k]; delete this.stringLiterals[k]; }
+    this.direction = next;
+    for (const k of XLookupNode.axisKeys(next)) {
+      if (!this.inputs[k]) this.addInput(k, XLookupNode.axisInput(k));
+      if (next === "rows") this.stringLiterals[k] = "";
+    }
+    return departing;
   }
 
   /** A blank Return is the whole row; a named one carries its column's family on the combo rung (a lookup list
@@ -1776,6 +1809,7 @@ export class XLookupNode extends GraphNode {
       inputs: ["frame"],
       combine: "single",
       project: (ctx) => {
+        if (this.direction === "columns") return this.acrossProjection(ctx);
         const ret = ctx.wired("returnColumn") ? null : (this.stringLiterals.returnColumn ?? "").trim();
         const shape = ctx.shapeOf("frame");
         const col = ret && shape && !shape.dynamic ? shape.columns.find((c) => c.name === ret) : undefined;
@@ -1788,6 +1822,17 @@ export class XLookupNode extends GraphNode {
         };
       },
     }];
+  }
+
+  /** Across, a typed lookup naming a column of a known shape, searched among the names, gives that column's family:
+   *  its cell or the whole column, both on the combo rung. Anything else is only known at run time. */
+  private acrossProjection(ctx: ProjectContext): { frame: SocketDataType; cube: SocketDataType; tables: "trueany" } {
+    const byName = !ctx.wired("lookup") && !ctx.wired("inRow") && !this.literals.inRow;
+    const name = (this.stringLiterals.lookup ?? "").trim();
+    const shape = byName && name ? ctx.shapeOf("frame") : null;
+    // Names match as the core's lookup does, ignoring case.
+    const col = shape && !shape.dynamic ? shape.columns.find((c) => c.name.toLowerCase() === name.toLowerCase()) : undefined;
+    return { frame: col ? comboOfFamily(col.type) ?? "trueany" : "trueany", cube: "trueany", tables: "trueany" };
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { value: CubeCell | null } {

@@ -55,6 +55,7 @@ import { VALUELESS_FILTER_OPS } from "../frameOps";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
 import type { FilterCondConfig, SettleMode } from "../nodes/frame";
 import { RecordLayoutField } from "./RecordLayoutField";
+import { XLookupNode, type LookupDirection } from "../nodes/frame";
 import { suggestFrameLayout } from "../cardLayout";
 import { CloseIcon } from "./CloseIcon";
 import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META, COLUMNS_OP_META, lambdaSocketName } from "../nodes/frame";
@@ -1147,17 +1148,30 @@ const LOOKUP_SEARCH_OPTIONS: { value: LookupSearchMode; label: string; title: st
   { value: "last", label: "Last", title: "On duplicate keys, return the last match, scanning bottom to top" },
 ];
 
-const XLOOKUP_MAIN_KEYS = ["frame", "lookup", "inColumn", "returnColumn"];
 const XLOOKUP_OPTION_KEYS = ["ifNotFound"];
+const LOOKUP_DIRECTION_OPTIONS: { value: LookupDirection; label: string; title: string }[] = [
+  { value: "rows", label: "Rows", title: "Search a column, return a cell from the matched row" },
+  { value: "columns", label: "Columns", title: "Search a row, return the matched column" },
+];
 
 export function XLookupComponent({ data, emit }: NodeProps<XLookupNodeType>) {
   const [matchMode, setMatchMode] = useNodeField(data, "matchMode");
   const [searchMode, setSearchMode] = useNodeField(data, "searchMode");
+  const [direction, setDirectionState] = useState<LookupDirection>(data.direction);
+  async function pickDirection(next: LookupDirection) {
+    if (next === data.direction) return;
+    setDirectionState(next);
+    await dropInputCables(data.id, [...XLookupNode.axisKeys(data.direction)]);
+    data.setDirection(next);
+    await getOwningView(data.id)?.rerenderNode(data.id);
+    data.edited(); await processGraph();
+  }
   const fallback = useRowsInUse(data, XLOOKUP_OPTION_KEYS);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} keys={collapsed ? undefined : XLOOKUP_MAIN_KEYS} />
+      <SegToggle value={direction} options={LOOKUP_DIRECTION_OPTIONS} onChange={(d) => void pickDirection(d)} />
+      <InlineInputs node={data} emit={emit} keys={collapsed ? undefined : ["frame", "lookup", ...XLookupNode.axisKeys(direction)]} />
       {!collapsed && <CardSection
         label="Options"
         collapsible

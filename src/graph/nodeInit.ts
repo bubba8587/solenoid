@@ -33,7 +33,7 @@ export const INIT_FIELD_ORDER = [
   "typedKeys",
   "choices",
   "layout",
-  "margin",
+  "margin", "direction",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [

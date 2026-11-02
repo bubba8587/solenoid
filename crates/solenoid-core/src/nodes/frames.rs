@@ -1791,7 +1791,8 @@ fn xlookup(c: &mut Call) -> Answer {
         V::List(_) => false,
         other => trimmed(other, "The lookup value")?.is_empty(),
     };
-    if matches!(raw, Cv::V(V::Null)) || in_col.is_empty() || scalar_blank {
+    let across = c.field_str("direction", "rows") == "columns";
+    if matches!(raw, Cv::V(V::Null)) || (in_col.is_empty() && !across) || scalar_blank {
         return shown_value(c, V::Null);
     }
     let tabular = match &raw {
@@ -1816,6 +1817,9 @@ fn xlookup(c: &mut Call) -> Answer {
         (_, Some(f)) => frame_to_cube(f),
         _ => Cube::default(),
     };
+    if across {
+        return xlookup_across(c, &src_cube, &lookup_raw, &trimmed(&fb_raw, "The fallback")?);
+    }
     let whole_row = ret_col.is_empty();
     let fb = trimmed(&fb_raw, "The fallback")?;
     let (mm, sm) = (c.field_str("matchMode", "exact").to_string(), c.field_str("searchMode", "first").to_string());
@@ -1885,6 +1889,77 @@ fn xlookup(c: &mut Call) -> Answer {
         match &lookup_raw {
             V::List(l) => l.iter().map(&mut match_one).collect::<Result<Vec<_>, _>>().map(Cv::list),
             other => match_one(other),
+        }
+    })();
+    shown_value(c, result.unwrap_or_else(Cv::V))
+}
+
+/// XLOOKUP across: the lookup searches a row (the column names, or row `inRow`) and returns the matched column whole,
+/// or its cell in row `returnRow`. A blank or 0 row is the names, or the whole column.
+fn xlookup_across(c: &mut Call, cube: &Cube, lookup_raw: &V, fb: &str) -> Answer {
+    use crate::excel_functions::{MatchMode, Matcher};
+    let rows = cube_row_count(cube);
+    let row_of = |c: &Call, key: &str| -> Result<Option<usize>, V> {
+        let n = super::kit::num(&c.read_num(key, 0.0));
+        if !n.is_finite() || n == 0.0 {
+            return Ok(None);
+        }
+        let r = crate::jsnum::round_half_up(n);
+        if r < 1.0 || r > rows as f64 {
+            return Err(err(ErrorCode::Ref, format!("row {r} is outside the table's {rows} rows")));
+        }
+        Ok(Some(r as usize - 1))
+    };
+    let result = (|| -> Result<Cv, V> {
+        let (in_row, ret_row) = (row_of(c, "inRow")?, row_of(c, "returnRow")?);
+        let keys: Vec<V> = match in_row {
+            None => cube.columns.iter().map(|k| V::str(&k.name)).collect(),
+            Some(r) => {
+                cube.columns.iter().map(|k| k.cells.get(r).and_then(|x| x.v().cloned()).unwrap_or(V::Null)).collect()
+            }
+        };
+        // A row holding numbers reads a lookup that parses as one as a number, as a number column does; the names read text.
+        let numeric = in_row.is_some() && keys.iter().any(|k| matches!(k, V::Num(_)));
+        let mm = match c.field_str("matchMode", "exact") {
+            "nextSmaller" => MatchMode::NextSmaller,
+            "nextLarger" => MatchMode::NextLarger,
+            _ => MatchMode::Exact,
+        };
+        let last = c.field_str("searchMode", "first") == "last";
+        let raws: Vec<V> = match lookup_raw {
+            V::List(l) => l.to_vec(),
+            other => vec![other.clone()],
+        };
+        let text = |v: &V| {
+            if super::list::nullish(v) {
+                String::new()
+            } else {
+                trim_space(&crate::excel_functions::value_text(v)).to_string()
+            }
+        };
+        let matcher = Matcher::new(keys, mm, last, raws.len());
+        let one = |v: &V| -> Result<Cv, V> {
+            let t = text(v);
+            if t.is_empty() {
+                return Ok(Cv::NULL);
+            }
+            let n = crate::value_kinds::decimal_from_text(&t);
+            let needle = if numeric && n.is_finite() { V::Num(n) } else { V::str(&t) };
+            if let Some(col) = matcher.find(&needle)?.and_then(|i| cube.columns.get(i)) {
+                return Ok(match ret_row {
+                    None => Cv::list(col.cells.clone()),
+                    Some(r) => col.cells.get(r).cloned().unwrap_or(Cv::NULL),
+                });
+            }
+            if fb.is_empty() {
+                return Ok(Cv::V(err(ErrorCode::NotAvailable, "No column matched the lookup value")));
+            }
+            let n = crate::value_kinds::decimal_from_text(fb);
+            Ok(Cv::V(if n.is_nan() { V::str(fb) } else { V::Num(n) }))
+        };
+        match lookup_raw {
+            V::List(_) => raws.iter().map(one).collect::<Result<Vec<_>, _>>().map(Cv::list),
+            other => one(other),
         }
     })();
     shown_value(c, result.unwrap_or_else(Cv::V))
