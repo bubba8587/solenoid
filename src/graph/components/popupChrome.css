@@ -277,3 +277,28 @@
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+
+/* ── Loading skeleton (PopupSkeleton): the popup opens at once and shimmers until its body is drawn ── */
+.sol-skeleton {
+  padding: 14px;
+}
+.sol-skeleton__block {
+  display: block;
+  height: 200px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-sunken) 0%,
+    color-mix(in srgb, var(--text) 13%, var(--surface-sunken)) 50%,
+    var(--surface-sunken) 100%
+  );
+  background-size: 200% 100%;
+  animation: sol-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+@keyframes sol-skeleton-shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sol-skeleton__block { animation: none; }
+}

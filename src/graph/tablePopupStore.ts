@@ -47,6 +47,8 @@ export interface TablePopupState {
   unitTaggable?: boolean;
   onSaveMatrixUnit?: (unitId: string) => void;
   pinNodeId?: string;
+  /** Opened before its data arrived: the popup shows its loading skeleton until `open` is called again with the data. */
+  loading?: boolean;
   formLayout?: string;
   /** The Cards view's authored layout ([[D111]] cardLayouts), in the Form layout's grammar. */
   cardLayout?: string;

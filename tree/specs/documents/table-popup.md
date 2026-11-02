@@ -16,6 +16,8 @@ Code: `src/graph/components/TablePopup.tsx` (the popup), `src/graph/tablePopupSt
 
 `tablePopup` is a module value store (`createValueStore`): `open(state)` replaces the state, `close()` clears it. It is a module store so a node card deep in the canvas, or code outside React (`valuePopup.ts`), opens it with no context threaded down from App, where the one `TablePopup` instance is mounted. The popup renders nothing while the state is null.
 
+**Opening at once.** The Table, Cube and Chart popups paint their shell and a skeleton, one neutral shimmering block (`PopupSkeleton`, `popupChrome.css`), on the frame they open, and render their body only after that frame is painted (`useAfterPaint`, keyed on the host node and title, so a refresh of the same popup never flashes it). A frame that must be read in full first (`openFramePopup` on a head-N preview) opens on the skeleton with `loading: true`, waits for that paint (`afterNextPaint`), reads, and opens again with its data unless another popup opened meanwhile. Under reduced motion the skeleton holds still.
+
 `valuePopup.ts` is the one home for opening a value's data popup, shared by the collapsed chips (`ArrayChip`, `FrameChip`, `CubeChip`) and the Display's corner expand button (`ValueExpandButton`).
 
 ```mermaid

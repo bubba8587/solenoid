@@ -23,6 +23,7 @@ import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, Tex
 import { CategoryChip } from "./CategoryChip";
 import { categoryColorIndex } from "../categoryColor";
 import { PopupShell, popupCardVars } from "./PopupShell";
+import { PopupSkeleton, useAfterPaint } from "./PopupSkeleton";
 import { useFocusTrap } from "./useFocusTrap";
 import "./confirmDialog.css";
 import { settingsStore } from "../settingsStore";
@@ -164,6 +165,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   const [displayMode, setDisplayMode] = useState<"formatted" | "source">("formatted");
   // The draft is a ref, so Escape can reset it and blur synchronously without a stale closure.
   const [editCell, setEditCell] = useState<{ r: number; c: number } | null>(null);
+  const painted = useAfterPaint(state ? `${state.pinNodeId ?? ""}|${state.title}` : null);
   const distinctMemo = useRef<{ grid: unknown; c: number; values: string[] } | null>(null);
   const suggestMemo = useRef<{ key: string; grid: unknown; text: string } | null>(null);
   const [formRow, setFormRow] = useState(0);
@@ -270,6 +272,14 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   }, [state]);
 
   if (!state) return null;
+  // Open at once: the shell and a skeleton paint first, and the grid renders the frame after (or once the data lands).
+  if (!painted || state.loading) {
+    return (
+      <PopupShell title={state.title} onClose={() => tablePopup.close()} cardClassName="table-popup" cardStyle={popupCardVars(state)} fitNarrow>
+        <PopupSkeleton />
+      </PopupShell>
+    );
+  }
   const cellType: CellType = state.cellType ?? "number";
   const editable = !!state.onSaveSource || !!state.onSaveRaw;
   const literalSource = !!state.onSaveSource || !!state.onSaveRaw;

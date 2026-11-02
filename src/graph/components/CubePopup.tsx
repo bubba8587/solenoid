@@ -15,6 +15,7 @@ import { ChevronDownIcon } from "./Icons";
 import { SearchField } from "./SearchField";
 import { settingsStore } from "../settingsStore";
 import { type FooterStat, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, summarizeColumns } from "./tableFooterStats";
+import { PopupSkeleton, useAfterPaint } from "./PopupSkeleton";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton, type SortKey } from "./columnSort";
 import { HeaderHelpButton } from "./columnHeadControls";
@@ -128,6 +129,7 @@ function levelText(view: DrillView, headers: string[] | null, order: readonly nu
 /** `footer: false` drops the summary footer, which the core computes (the Obsidian plugin runs without it). */
 export function CubePopup({ footer = true }: { footer?: boolean } = {}) {
   const state = useSyncExternalStore(cubePopup.subscribe, cubePopup.get);
+  const painted = useAfterPaint(state ? `${state.pinNodeId ?? ""}|${state.stack[0]?.label ?? ""}` : null);
   const last = state?.stack[state.stack.length - 1];
   const editView = state?.edit && last && last.path ? last : null;
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -171,6 +173,14 @@ export function CubePopup({ footer = true }: { footer?: boolean } = {}) {
   }, [focus]);
 
   if (!state) return null;
+  // Open at once: the shell and a skeleton paint first, and the table renders the frame after.
+  if (!painted) {
+    return (
+      <PopupShell title={state.stack[state.stack.length - 1]?.label ?? ""} onClose={() => cubePopup.close()} cardClassName="table-popup" cardStyle={popupCardVars(state)}>
+        <PopupSkeleton />
+      </PopupShell>
+    );
+  }
   const view = state.stack[state.stack.length - 1];
   const { headers, rows, cols, depth, cell, sortKey } = describe(view, listVertical, sourceMode);
   const sortable = !(view.kind === "list" && !listVertical);

@@ -5,6 +5,7 @@ import { chartPopup } from "../chartPopupStore";
 import { appThemeStore } from "../appTheme";
 import { formatAnnotationStore } from "../formatAnnotationStore";
 import { ChartView, ChartFigure } from "./chartView";
+import { PopupSkeleton, useAfterPaint } from "./PopupSkeleton";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { clamp } from "../nodes/mathUtils";
 import { recordNavTarget, stepRecordRow } from "./recordNav";
@@ -35,6 +36,7 @@ export function ChartPopup() {
     : undefined;
   const figRef = useRef<HTMLDivElement>(null);
   const [{ w, h }, setFig] = useState(chartSize);
+  const painted = useAfterPaint(state ? `${state.pinNodeId ?? ""}|${state.title}` : null);
   useLayoutEffect(() => {
     const el = figRef.current;
     if (!el) return;
@@ -47,7 +49,7 @@ export function ChartPopup() {
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [state]);
+  }, [state, painted]);
 
   // One value per opened chart, so a resize doesn't hand the figure a new value and redraw a heavy one.
   const shown = state?.value;
@@ -83,6 +85,16 @@ export function ChartPopup() {
   const isTall = isGantt || state.value?.op === "ladder";
   const initialCard = (() => { const f = chartSize(isTall ? MAX_H_GANTT : MAX_H); return { w: f.w + FIG_PAD * 2, h: f.h + FIG_PAD * 2 + CARD_CHROME }; })();
   const cardStyle = popupCardVars(state);
+  const resizable = { min: isGantt ? { w: 520, h: 300 } : { w: 260, h: 200 }, initial: initialCard };
+  // Open at once: the shell (at its final size, which it takes only on mount) and a skeleton paint first, and the
+  // figure draws the frame after.
+  if (!painted) {
+    return (
+      <PopupShell title={state.title} onClose={() => chartPopup.close()} cardStyle={cardStyle} resizable={resizable}>
+        <PopupSkeleton />
+      </PopupShell>
+    );
+  }
 
   const copySvg = ganttPayload
     ? () => {
@@ -120,7 +132,7 @@ export function ChartPopup() {
       headerExtra={state.series && <span className="table-popup__dims">{state.series.length} pts</span>}
       menuItems={copySvg ? [{ label: "Copy SVG", onClick: copySvg }] : []}
       pinNodeId={state.pinNodeId}
-      resizable={{ min: isGantt ? { w: 520, h: 300 } : { w: 260, h: 200 }, initial: initialCard }}
+      resizable={resizable}
     >
       <div ref={figRef} className="sol-popup__scroll" style={stacked ? { padding: FIG_PAD, overflow: "auto" } : { padding: FIG_PAD, display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
         {figValue ? (

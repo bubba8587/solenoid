@@ -3,6 +3,7 @@ import { tablePopup, type Cell, type TablePopupState } from "./tablePopupStore";
 import { cubePopup, type CubeEditBinding } from "./cubePopupStore";
 import { frameToGrid, frameRowCount, isFrameValue, isCubeValue, type FrameValue, type CubeValue } from "./frame";
 import { readFrame, type FrameRef } from "./frameBackend";
+import { afterNextPaint } from "./components/PopupSkeleton";
 import { matrixUnitOf, isUnitCell } from "./unitValue";
 import { isSolError } from "./errorValue";
 import { isCx } from "./cxValue";
@@ -95,7 +96,13 @@ export async function openFramePopup(
 ): Promise<void> {
   let resolved = value;
   if (value.__totalRows != null && value.__ref) {
+    // Opens at once on its skeleton while the whole frame is read, unless something else opened meanwhile.
+    const loading = { title: label || "Frame", data: [], loading: true, accent, groupColor, groupColorDark, pinNodeId: hostId ?? undefined };
+    tablePopup.open(loading);
+    await afterNextPaint();
+    if (tablePopup.get() !== loading) return;
     const collected = await readFrame(value.__ref as FrameRef);
+    if (tablePopup.get() !== loading) return;
     if (isFrameValue(collected)) resolved = collected;
   }
   tablePopup.open({
