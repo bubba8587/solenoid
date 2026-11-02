@@ -109,6 +109,9 @@ export function ChartPopup() {
       }
     : undefined;
 
+  // A Record view other than Detail is a stack of boxes taller than the popup, not a drawing that scales: it scrolls
+  // from its top, where centering would push its first rows out of reach. Detail scrolls inside its own grid.
+  const stacked = figValue?.op === "record" && figValue.payload?.kind === "record" && figValue.payload.view !== "detail";
   return (
     <PopupShell
       title={state.title}
@@ -119,7 +122,7 @@ export function ChartPopup() {
       pinNodeId={state.pinNodeId}
       resizable={{ min: isGantt ? { w: 520, h: 300 } : { w: 260, h: 200 }, initial: initialCard }}
     >
-      <div ref={figRef} className="sol-popup__scroll" style={{ padding: FIG_PAD, display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
+      <div ref={figRef} className="sol-popup__scroll" style={stacked ? { padding: FIG_PAD, overflow: "auto" } : { padding: FIG_PAD, display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
         {figValue ? (
           <ChartFigure
             value={figValue}
