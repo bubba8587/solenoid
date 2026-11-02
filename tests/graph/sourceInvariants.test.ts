@@ -1076,3 +1076,23 @@ describe("the shared test project never runs a module mock", () => {
     expect(leaks, `add to ISOLATED in vitest.config.ts: ${leaks.join(", ")}`).toEqual([]);
   });
 });
+
+// ─── heroLast: the result box is the card's last row ─────────────────────────
+// A Recalculate button, a formula's error line or a status note under the result made
+// cards end differently; they go above it (floors/components.md § The value box).
+describe("heroLast: nothing that acts on the answer sits under a card's result box", () => {
+  const RESULT = /<(ValueDisplay|ResultDisplay|TableDisplay|FrameDisplay|FrameOrCubeDisplay)\b/;
+  const AFTER = /<(RecalcButton|FormulaError)\b|solenoid-expr__error|violations\.length/;
+  it("no RecalcButton, error line or status note follows a result display inside a NodeShell", () => {
+    const offenders: string[] = [];
+    for (const file of walk(path.join(SRC, "components"))) {
+      let seen = false;
+      fs.readFileSync(file, "utf8").split(/\r?\n/).forEach((line, i) => {
+        if (/<NodeShell\b/.test(line) || /<\/NodeShell>/.test(line)) seen = false;
+        if (seen && AFTER.test(line)) offenders.push(`${path.relative(SRC, file)}:${i + 1}`);
+        if (RESULT.test(line)) seen = true;
+      });
+    }
+    expect(offenders, "move it above the result box (heroLast)").toEqual([]);
+  });
+});

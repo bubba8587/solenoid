@@ -90,12 +90,12 @@ export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
           )}
         </MeasuredSocketRow>
       )}
-      <ResultDisplay value={data.cachedValue} label={nodeDisplayName(data)} />
       {data.violations.length > 0 && (
-        <div style={{ textAlign: "right", fontSize: 11, marginTop: 3, color: "var(--sol-error)" }}>
+        <div style={{ textAlign: "right", fontSize: 11, marginBottom: 3, color: "var(--sol-error)" }}>
           {`Failed: ${data.violations.map((v) => EXPECT_CHECK_LABEL[v]).join(", ")}`}
         </div>
       )}
+      <ResultDisplay value={data.cachedValue} label={nodeDisplayName(data)} />
     </NodeShell>
   );
 }

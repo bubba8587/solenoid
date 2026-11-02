@@ -11,8 +11,8 @@ export function OdeIntegrateComponent({ data, emit }: NodeProps<OdeIntegrateNode
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
-      <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       <FormulaError msg={data.cachedError} />
+      <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
     </NodeShell>
   );
 }
