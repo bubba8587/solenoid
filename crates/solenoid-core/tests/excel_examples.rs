@@ -342,3 +342,53 @@ fn regex_syntax_reads_as_excel() {
     assert_eq!(n("REGEXTEST(\"SS\", \"ß\", 1)"), 0.0);
     assert_eq!(n("REGEXTEST(\"é\", \"\\bé\\b\")"), 1.0);
 }
+
+/// The author's Excel, 2026-11-01: everyday answers a port from JavaScript can drift on. Floating-point smoothing
+/// (`0.1+0.2=0.3`, the zero snap, scientific text past 1E+20, typed digits past 15) differs today and is left out.
+#[test]
+fn everyday_answers_match_excel() {
+    let nums = [
+        ("ROUND(2.675, 2)", 2.68),
+        ("ROUND(-2.5, 0)", -3.0),
+        ("ROUND(1.005, 2)", 1.01),
+        ("MOD(-7, 3)", 2.0),
+        ("MOD(7, -3)", -2.0),
+        ("MOD(5.5, 1)", 0.5),
+        ("INT(-2.5)", -3.0),
+        ("CEILING(-2.5, 1)", -2.0),
+        ("FLOOR(-2.5, 1)", -3.0),
+        ("MROUND(-5, -2)", -6.0),
+        ("LEN(0.1 + 0.2)", 3.0),
+        ("VALUE(\"1,234.5\")", 1234.5),
+        ("VALUE(\"12%\")", 0.12),
+        ("VALUE(\"$5\")", 5.0),
+        ("VALUE(\" 5 \")", 5.0),
+        ("VALUE(\"1e3\")", 1000.0),
+        ("VALUE(\"(5)\")", -5.0),
+        ("TRUE + TRUE", 2.0),
+        ("FIND(\"\", \"abc\")", 1.0),
+        ("SEARCH(\"a?c\", \"xabc\")", 2.0),
+        ("CODE(\"é\")", 233.0),
+        ("UNICODE(\"😀\")", 128_512.0),
+        ("LEN(\"😀\")", 2.0),
+        ("DATE(2024, 2, 30)", 45_352.0),
+        ("DATEDIF(DATE(2024, 1, 31), DATE(2024, 2, 29), \"m\")", 0.0),
+        ("WEEKNUM(DATE(2024, 1, 1), 21)", 1.0),
+        ("DAYS360(DATE(2024, 2, 29), DATE(2024, 3, 31))", 30.0),
+        ("MODE.SNGL(1, 2, 2, 3, 3)", 2.0),
+        ("AVERAGE(TRUE, 1)", 1.0),
+    ];
+    for (src, want) in nums {
+        close(src, want, 1e-12);
+    }
+    close("YEARFRAC(DATE(2024, 1, 1), DATE(2024, 12, 31), 1)", 0.99726776, 1e-8);
+    for (src, want) in [
+        ("LEFT(12.5, 2)", "12"),
+        ("1/3 & \"\"", "0.333333333333333"),
+        ("PROPER(\"hello wORLD o'neil 2nd\")", "Hello World O'Neil 2Nd"),
+        ("SUBSTITUTE(\"aaa\", \"a\", \"b\", 2)", "aba"),
+        ("REPT(\"ab\", 2.9)", "abab"),
+    ] {
+        assert_eq!(text(src), want, "{src}");
+    }
+}
