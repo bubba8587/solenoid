@@ -33,7 +33,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Cards that lack their formula's options** ([[D73]] nodeCoversFormula): WORKDAY and NETWORKDAYS take a weekend pattern like "0000011", CONCAT rows take a list, TEXTJOIN gets more than one text row. RANDARRAY's rows by columns, FILTER's include mask and if_empty, and XLOOKUP over plain lists are already on another card (Frame Filter, Frame from Lists); point to it from the card's description.
 - [ ] **Merges under [[B11]] maximalMerge**: the correlation, covariance and regression cards become one card with nine ops (CORREL, RSQ, SPEARMAN, KENDALL, COVARIANCE.P, COVARIANCE.S, SLOPE, INTERCEPT, STEYX), switching op keeping both cables; REDUCE with SCAN; Append with Bind Columns; FIXED with DOLLAR (DOLLAR adds the currency sign); Web Source, Import HTML and Import XML as one fetcher with a format choice. Group Lists stays, as the quick one-dimensional version of the Frame GROUPBY card. Formula names and answers stay; old saves break (pre-alpha).
 - [ ] **Range checks a date against date bounds**: Min and Max take the kind of value being checked, so a date in 2026 is checked against 1-Jan-2026 and 31-Dec-2026, not the serials 46023 and 46387.
-- [ ] **IF, IFS, SWITCH and CHOOSE see only their test's error** ([[A5]] excelParity): an error in a branch that isn't chosen never reaches the answer, so `IF(x=0, 0, 1/x)` at x = 0 is 0, as in Excel, not `#DIV/0!`. On formulas and cards alike; needs an exception line under [[C24]] arraySemantics.
+- [ ] **The IF, IFS, SWITCH and CHOOSE cards see only their test's error** ([[A5]] excelParity): formulas already do (`IF(x=0, 0, 1/x)` at x = 0 is 0, `branch_selector`), but the cards aren't in `SEES_ERRORS` (`boundary.rs`), so a wired error in a branch not taken is still the card's answer. Needs an exception line under [[C24]] arraySemantics.
 - [ ] **Finish the settings sweep** ([[D86]] blankRoles): the inputs `docs/settings-audit.md` § Not swept yet lists (column choices on table cards, an as-of Join's tolerance, the Slider's bounds) get their roles the way the swept ones did.
 - [ ] **Equation answers any type, and solver cards show only the solved output**: an unwired variable's output retypes to fit its answer, so `x^2 + 1 = 0` gives a complex answer instead of `#SOLVE!` (complex, text, date or logical). The Equation card and Triangle Solver then show an output box only for the unwired variable (asked for 2026-10-07).
 - [ ] **Text passed straight to an aggregate is `#VALUE!`** ([[A5]] excelParity): `SUM("a")` is 0 and `AND("a", TRUE)` is TRUE today, where Excel errors. Text inside a list or range stays skipped; a text value wired into an aggregate card's single-value input counts as passed straight.
@@ -58,12 +58,8 @@ the production minify, and its "esbuild options ignored" warning is expected.
 
 Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D99]] rustIsSpec). Checked in the live engine: the LOG and DATEVALUE examples below; the rest are read from the code, Excel's answers from its documentation.
 
-**Wrong answers, to Excel's (start here):**
-- [ ] The rest of `excel_functions.rs`'s "JavaScript's coercions" (`parse_string`; `value_text` replaced `js_string_of`, `parse_number` and `num_blank_zero` lost their JavaScript list readings and `JsSum`/`js_less` went 2026-11-01): every formula body onto `to_num`/`opt_num`/`nums_of`/`value_err` ([[C10]] socketLattice), then the card bodies. Pass 1 (2026-11-01) fixed LOG, F.TEST, TRIMMEAN, SUMSQ, SUMPRODUCT, SUMX*, Z.TEST, WAVG, TYPE and REPLACE.
 - [ ] A case setting on the cards and functions that order text (sorts, `<`/`>`), case-insensitive as Excel's when on; [[C59]] byteStringOrder stays the default and text against a number stays `#TYPE!` (author 2026-11-01).
-
-**No visible change (delete the JS framing):**
-- [ ] `V::Undef` (an omitted argument, [[C80]] blankArgIsExcelBlank) loses its leftover JavaScript readings (`undefined` in a few bodies' coercions).
+- [ ] What's left is wording: comments that still describe a body by the JavaScript it once copied (`V8's Math.hypot`, `JS undefined`, `JS a > b`) and `truthy`'s name for the logical reading of a number. No answer changes; the coercions, number readers, regex, TEXT, zones and card truthiness went 2026-11-01 and 02.
 
 ## VaultBridge
 - [ ] Spec the Vault Read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".
