@@ -20,9 +20,17 @@ everything on `develop` since the v1.4.0 tag. The 1.4.1 list as written is in gi
   view reads the columns and lays each row out on its own, with a title from the name
   columns, dates as ranges, tags as chips, ratings as stars, progress as meters, colors
   as swatches, links you can click and pictures inline. Filter, sort and Show More sit
-  on top. Record's new Cards view puts the same cards on the canvas as a masonry
-  gallery, and **Add Record: Cards** in the popup wires one up for you. The Cards from
-  files example shows it off on a crew, products and orders set.
+  on top. The new **Cards** card puts the same cards on the canvas as a masonry
+  gallery, each card tinted by a Color column if you name one, and **Add Cards** in the
+  popup wires one up for you. The Cards from files example shows it off on a crew,
+  products and orders set.
+- **[slide] XLOOKUP both ways.** Look down a column or across a row, and match the way
+  Filter does: equal, nearest at or below, nearest above, contains, starts with. "euf"
+  finds Eufaula. Leave Return blank and the whole row (or column) comes back.
+- **A date stays a date.** Whatever picks it, a lookup, INDEX or an IF, a date comes out
+  as a date and not as a serial number, and the type follows the data as it changes.
+- **Filter in every popup.** Tables, Cubes, Record and Cards figures and Gantt charts all
+  have the same Filter field in the same place.
 - **Cubes with typed columns.** A Cube Input column takes a type (Number, Text,
   Date, Boolean, Formula) the way a Frame's does, and it holds at every depth: a table
   nested inside a cell keeps its own column types, so one column's rows can hold
