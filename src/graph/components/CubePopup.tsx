@@ -236,6 +236,7 @@ export function CubePopup({ footer = true }: { footer?: boolean } = {}) {
       grouped={grouped}
       cardStyle={cardStyle}
       resizable={{ min: { w: 320, h: 220 } }}
+      zoomable
       headerExtra={
         <>
           {table && (cards || rows > 1) && (

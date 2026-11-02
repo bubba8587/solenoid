@@ -1028,6 +1028,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
       cardStyle={cardStyle}
       resizable={{ min: { w: 320, h: 220 } }}
       fitNarrow
+      zoomable
       headerExtra={<>
         {((view === "grid" && sortable && viewRows > 1) || view === "cards" || view === "pivot" || view === "dashboard") && (
           <SearchField collapsible value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering && view !== "pivot" && view !== "dashboard" ? `${matchedOrder.length} of ${viewRows}` : undefined} />

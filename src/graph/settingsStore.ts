@@ -33,6 +33,8 @@ export interface Settings {
   hideGridDots: boolean;
   tablePopupSummary: boolean;
   tablePopupFrozen: boolean;
+  /** The data popups' body zoom (the header's − 100% + control), shared by every popup that offers it. */
+  popupZoom: number;
   /** The table and cube popups write each number's unit in its cell (`100 km`). */
   tablePopupCellUnits: boolean;
 
@@ -65,6 +67,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hideGridDots: false,
   tablePopupSummary: true,
   tablePopupFrozen: true,
+  popupZoom: 1,
   tablePopupCellUnits: true,
   quickWire: false,
   semanticZoom: false,
