@@ -646,7 +646,7 @@ pub struct Eval<'a> {
     hoisted: RefCell<FxHashMap<*const Ast, Option<V>>>,
     hoists: Cell<bool>,
     /// The address of the formula's root, whose `+` or `-` snaps a cancellation to zero as Excel's last operation does
-    /// (`snapped_sum`); 0 where nothing snaps (a LAMBDA host's body, a formula wholly in parentheses).
+    /// (`snapped_sum`); 0 where nothing snaps (a formula wholly in parentheses). `call_lambda` points it at a body.
     root: Cell<usize>,
 }
 
@@ -882,6 +882,15 @@ impl Eval<'_> {
             };
         }
         let body = lam.body.as_ref().expect("a LAMBDA has a body");
+        // A LAMBDA's body is a formula of its own: its last `+` or `-` snaps as a formula's does (the author's Excel,
+        // 2026-11-02: `LAMBDA(x, x-0.3)(0.1+0.2)` is 0).
+        let outer = self.root.replace(&**body as *const Ast as usize);
+        let out = self.lambda_body(lam, body, args);
+        self.root.set(outer);
+        out
+    }
+
+    fn lambda_body(&self, lam: &LambdaV, body: &Ast, args: &[V]) -> V {
         if let Some(captured) = &lam.captured {
             // `compilePositional` over the parameters, then the captures; a column outranks a capture ([[C22]] rowFormulaRefs).
             let mut inner: Env = FxHashMap::default();
