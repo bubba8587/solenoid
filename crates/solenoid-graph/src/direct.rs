@@ -210,6 +210,11 @@ impl Direct {
                 },
                 raw: text(&j, "raw"),
                 no_widen: text(&j, "noWiden"),
+                op: j
+                    .pointer("/init/op")
+                    .and_then(Json::as_str)
+                    .unwrap_or("")
+                    .to_string(),
                 owns_literals: j
                     .get("ownsListLiterals")
                     .and_then(Json::as_bool)

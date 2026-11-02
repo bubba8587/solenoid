@@ -145,6 +145,7 @@ struct Keys {
     data: JsValue,
     raw_inputs: JsValue,
     no_widen: JsValue,
+    op: JsValue,
     unit_aware: JsValue,
     string_literals: JsValue,
     owns_literals: JsValue,
@@ -179,6 +180,7 @@ thread_local! {
         data: "data".into(),
         raw_inputs: "rawInputs".into(),
         no_widen: "noWidenInputs".into(),
+        op: "op".into(),
         unit_aware: "unitAware".into(),
         string_literals: "stringLiterals".into(),
         owns_literals: "ownsListLiterals".into(),
@@ -502,10 +504,14 @@ fn kind_text(c: &JsValue) -> &'static str {
 
 /// A value of another family on a typed port is a per-cell `#TYPE!` (B17 typedValueModel); the one bridge is
 /// logical and number (C10 socketLattice), and a date is a number at run time.
-fn family_cell(fam: Family, c: &JsValue) -> JsValue {
+/// `keep_text`: the card answers non-empty text itself, as its formula does (`nodes::reads_text`).
+fn family_cell(fam: Family, keep_text: bool, c: &JsValue) -> JsValue {
     let num = c.as_f64();
     let boolean = c.as_bool();
     let text = c.is_string();
+    if keep_text && c.as_string().is_some_and(|s| !s.is_empty()) {
+        return c.clone();
+    }
     if num.is_none() && boolean.is_none() && !text && !is_cx(c) {
         return c.clone();
     }
@@ -557,9 +563,9 @@ fn family_cell(fam: Family, c: &JsValue) -> JsValue {
 }
 
 /// Always a fresh array: a node may reorder what it's given, and the input is shared.
-fn family_cells(h: &BoundaryHost, fam: Family, v: &JsValue) -> R<JsValue> {
+fn family_cells(h: &BoundaryHost, fam: Family, keep_text: bool, v: &JsValue) -> R<JsValue> {
     let Some(a) = as_array(v) else {
-        return Ok(family_cell(fam, v));
+        return Ok(family_cell(fam, keep_text, v));
     };
     let out = a.slice(0, a.length());
     for (i, kind) in kinds(h, a)?.into_iter().enumerate() {
@@ -574,9 +580,9 @@ fn family_cells(h: &BoundaryHost, fam: Family, v: &JsValue) -> R<JsValue> {
         if changes {
             let c = a.get(i as u32);
             let x = if kind == ARRAY {
-                family_cells(h, fam, &c)?
+                family_cells(h, fam, keep_text, &c)?
             } else {
-                family_cell(fam, &c)
+                family_cell(fam, keep_text, &c)
             };
             out.set(i as u32, x);
         }
@@ -789,7 +795,7 @@ fn coerce_unit_cell_value(rung: &str, v: &JsValue) -> R<JsValue> {
 /// A value reaching a port of `rung`, shaped for it (compute-pass.md § Full coercion, per rung).
 /// A table passes as it is, a frame turned to a Cube on a Cube port; a table reaching a value port is the body's
 /// `#VALUE!` (`Call::value_of`).
-fn coerce_value(h: &BoundaryHost, rung: &str, v: &JsValue) -> R<JsValue> {
+fn coerce_value(h: &BoundaryHost, rung: &str, keep_text: bool, v: &JsValue) -> R<JsValue> {
     if is_frame_ref(v) || is_sol_error(v) || (is_table(v) && rung != "cube") {
         return Ok(v.clone());
     }
@@ -798,7 +804,7 @@ fn coerce_value(h: &BoundaryHost, rung: &str, v: &JsValue) -> R<JsValue> {
     }
     let fam = family_of(rung);
     let cells = || match fam {
-        Some(f) => family_cells(h, f, v),
+        Some(f) => family_cells(h, f, keep_text, v),
         None => Ok(v.clone()),
     };
     let nullish = v.is_null() || v.is_undefined();
@@ -868,12 +874,12 @@ fn coerce_value(h: &BoundaryHost, rung: &str, v: &JsValue) -> R<JsValue> {
 }
 
 /// `noWidenInputs`: the value keeps its rank, its cells their family's coercion.
-fn coerce_value_no_widen(h: &BoundaryHost, rung: &str, v: &JsValue) -> R<JsValue> {
+fn coerce_value_no_widen(h: &BoundaryHost, rung: &str, keep_text: bool, v: &JsValue) -> R<JsValue> {
     if is_frame_ref(v) || is_sol_error(v) || has_unit_cell(h, v)? {
         return Ok(v.clone());
     }
     match family_of(rung) {
-        Some(f) => scalar_or_throw(family_cells(h, f, v)?),
+        Some(f) => scalar_or_throw(family_cells(h, f, keep_text, v)?),
         None => Ok(v.clone()),
     }
 }
@@ -973,6 +979,7 @@ fn coerce_all(
     });
     let raw_inputs = get(object, &k.raw_inputs);
     let no_widen = get(object, &k.no_widen);
+    let op = get(object, &k.op).as_string().unwrap_or_default();
     let coerced = Object::new();
     let mut wired: FxHashSet<&str> = FxHashSet::default();
     for (key, arr) in inputs {
@@ -987,13 +994,14 @@ fn coerce_all(
         }
         let rung = ports.input(key).map(|p| p.socket().name.clone());
         if let Some(rung) = rung.filter(|_| !set_has(&raw_inputs, key)) {
+            let keep_text = solenoid_core::nodes::reads_text(&facts.class, &op, key);
             if set_has(&no_widen, key) {
                 for v in values.iter_mut() {
-                    *v = coerce_value_no_widen(&h, &rung, v)?;
+                    *v = coerce_value_no_widen(&h, &rung, keep_text, v)?;
                 }
             } else {
                 for v in values.iter_mut() {
-                    *v = coerce_value(&h, &rung, v)?;
+                    *v = coerce_value(&h, &rung, keep_text, v)?;
                 }
             }
         }

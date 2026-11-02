@@ -1011,15 +1011,56 @@ fn aggregate_plain(op: &str, arr: &[f64]) -> V {
     cell(guard_cells(r, arr))
 }
 
+/// The formula an Aggregate op is ([[C17]] shareImpl), where it is one of the functions that read text their own way:
+/// those that refuse it ([[D109]] aggregatesRefuseText) and COUNT, which leaves it out.
+pub(crate) fn aggregate_formula(op: &str) -> Option<&'static str> {
+    let name = match op {
+        "sum" => "SUM",
+        "avg" => "AVERAGE",
+        "min" => "MIN",
+        "max" => "MAX",
+        "median" => "MEDIAN",
+        "product" => "PRODUCT",
+        "stdev" => "STDEV.S",
+        "stdev_p" => "STDEV.P",
+        "var_s" => "VAR.S",
+        "var_p" => "VAR.P",
+        "geomean" => "GEOMEAN",
+        "harmean" => "HARMEAN",
+        "sumsq" => "SUMSQ",
+        "devsq" => "DEVSQ",
+        "avedev" => "AVEDEV",
+        "skew" => "SKEW",
+        "skew_p" => "SKEW.P",
+        "kurt" => "KURT",
+        "count" => "COUNT",
+        _ => return None,
+    };
+    (name == "COUNT" || crate::excel_functions::refuses_text_in(name)).then_some(name)
+}
+
+/// Text that is not empty (empty text waits on the blank rulings, [[C134]] functionsFollowAlgebra).
+pub(crate) fn is_text(v: &V) -> bool {
+    matches!(v, V::Str(s) if !s.is_empty())
+}
+
 fn aggregate(c: &mut Call) -> Answer {
     let op = c.field_str("op", "sum").to_string();
-    let values = items(&list_in(c, "list"));
+    let mut values = items(&list_in(c, "list"));
     if op == "countblank" {
         let n = values.iter().filter(|v| matches!(v, V::Null)).count();
         return shown(c, "cachedResult", "result", V::Num(n as f64));
     }
     if let Some(e) = values.iter().find(|v| v.is_sol_error()) {
         return shown(c, "cachedResult", "result", e.clone());
+    }
+    // Text answers as the op's formula answers it, after any error: its error, or left out by COUNT.
+    if let Some(name) = aggregate_formula(&op).filter(|_| values.iter().any(is_text)) {
+        if name == "COUNT" {
+            values.retain(|v| !is_text(v));
+        } else if let Some(e) = crate::excel_functions::text_refusal(name, &[list(values.clone())]) {
+            return shown(c, "cachedResult", "result", e);
+        }
     }
     // Text or logicals among the items: distinct by value and kind, as COUNTA(UNIQUE(range)) counts them.
     if op == "countdistinct" && values.iter().any(|v| matches!(v, V::Str(_) | V::Bool(_))) {
@@ -1374,6 +1415,22 @@ fn group_lists(c: &mut Call) -> Answer {
             buckets.entry(key).or_default().push(v);
         }
     }
+    // A group holding text answers its formula's error, as `GROUPBY(keys, values, SUM)` does ([[C17]] shareImpl,
+    // [[D109]] aggregatesRefuseText); COUNT leaves the text out.
+    let name = aggregate_formula(c.field_str("agg", "sum")).filter(|&n| n != "COUNT");
+    let mut refused: std::collections::HashMap<String, V> = std::collections::HashMap::new();
+    if let Some(name) = name.filter(|_| raw_vals[..n].iter().any(is_text)) {
+        let mut groups: std::collections::HashMap<String, Vec<V>> = std::collections::HashMap::new();
+        for i in 0..n {
+            groups.entry(value_text(&raw_keys[i])).or_default().push(raw_vals[i].clone());
+        }
+        // A group holding an error keeps the card's answer: the card skips errors, where the formula answers them.
+        for (key, vals) in groups.into_iter().filter(|(_, vals)| !vals.iter().any(V::is_sol_error)) {
+            if let Some(e) = crate::excel_functions::text_refusal(name, &[list(vals)]) {
+                refused.insert(key, e);
+            }
+        }
+    }
     let agg: fn(&[f64], f64) -> f64 = match c.field_str("agg", "sum") {
         "avg" => |vals, sum| sum / vals.len() as f64,
         "min" => |vals, _| vals.iter().fold(f64::INFINITY, |m, &v| if v < m { v } else { m }),
@@ -1384,7 +1441,11 @@ fn group_lists(c: &mut Call) -> Answer {
     let values: Vec<V> = order
         .iter()
         .map(|k| {
-            let vals = &buckets[&value_text(k)];
+            let key = value_text(k);
+            if let Some(e) = refused.get(&key) {
+                return e.clone();
+            }
+            let vals = &buckets[&key];
             V::Num(if vals.is_empty() { 0.0 } else { agg(vals, vals.iter().fold(0.0, |a, b| a + b)) })
         })
         .collect();

@@ -714,6 +714,25 @@ pub fn keeps_answer(kind: &str) -> bool {
     KEEPS_ANSWER.binary_search(&kind).is_ok()
 }
 
+/// Whether text on the input `key` of a `kind` card on `op` reaches its body, which answers it as its formula does
+/// ([[C17]] shareImpl, [[D109]] aggregatesRefuseText, [[D110]] logicRefusesText). Elsewhere text on a number or
+/// logical port is the port's `#TYPE!`, and so is empty text here.
+pub fn reads_text(kind: &str, op: &str, key: &str) -> bool {
+    match kind {
+        "AggregateNode" => key == "list" && list::aggregate_formula(if op.is_empty() { "sum" } else { op }).is_some(),
+        "RankPercentileNode" => {
+            key == "list"
+                && matches!(
+                    if op.is_empty() { "large" } else { op },
+                    "large" | "small" | "percentile-inc" | "percentile-exc" | "quartile-inc" | "quartile-exc"
+                )
+        }
+        "GroupListsNode" => key == "values",
+        "BooleanOpNode" => key.starts_with('a'),
+        _ => false,
+    }
+}
+
 /// Direct classes that hand on in TypeScript a value the core can't hold (a LAMBDA, an object the card wire doesn't
 /// carry): their `data()` runs instead of the body when this input holds one.
 pub const OFF_CORE: &[(&str, &str)] = &[("DisplayNode", "in"), ("ExpectNode", "in"), ("FormatControllerNode", "in")];

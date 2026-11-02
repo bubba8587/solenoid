@@ -3422,6 +3422,17 @@ fn refuses_text(name: &str) -> Option<(ErrorCode, bool)> {
     })
 }
 
+/// Whether `name` refuses text among its values ([[D109]] aggregatesRefuseText, [[D110]] logicRefusesText).
+pub fn refuses_text_in(name: &str) -> bool {
+    refuses_text(name).is_some()
+}
+
+/// The error `name` answers for text among `a` before its body runs, as `call_resolved` checks it, for a card that
+/// reads its values its own way ([[C17]] shareImpl): `None` when the values hold no text, or an error comes first.
+pub fn text_refusal(name: &str, a: &[V]) -> Option<V> {
+    refuses_text(name).and_then(|t| text_answer(name, t, a))
+}
+
 /// The first text or error among the values, read in order through every list: text answers the function's error,
 /// an error is left to its body. Empty text is not text here (a blank's ruling is its own).
 fn text_answer(name: &str, (code, first): (ErrorCode, bool), a: &[V]) -> Option<V> {

@@ -50,6 +50,8 @@ pub struct Facts {
     pub pass_keys: Vec<String>,
     pub raw: Vec<String>,
     pub no_widen: Vec<String>,
+    /// The card's op, which says which inputs pass text on to its body (`nodes::reads_text`).
+    pub op: String,
     pub owns_literals: bool,
     /// Each typed list literal an unwired input takes, read, in the card's port order.
     pub literals: Vec<(String, V)>,
@@ -136,10 +138,12 @@ fn err(code: ErrorCode, message: impl Into<String>) -> V {
 
 /// A value of another family on a typed port is a per-cell `#TYPE!` (B17 typedValueModel); the one bridge is
 /// logical and number (C10 socketLattice), and a date is a number at run time. `None` where it stays as it is.
-fn family_cell(fam: Family, c: &V) -> Option<V> {
+/// `keep_text`: the card answers non-empty text itself, as its formula does (`nodes::reads_text`).
+fn family_cell(fam: Family, keep_text: bool, c: &V) -> Option<V> {
     let (num, boolean, text) = match c {
         V::Num(n) => (Some(*n), None, false),
         V::Bool(b) => (None, Some(*b), false),
+        V::Str(s) if keep_text && !s.is_empty() => return None,
         V::Str(_) => (None, None, true),
         V::Cx(..) => (None, None, false),
         _ => return None,
@@ -192,15 +196,15 @@ fn family_cell(fam: Family, c: &V) -> Option<V> {
 }
 
 /// Always a fresh list: a card may reorder what it's given, and the input is shared.
-fn family_cells(fam: Family, v: &V) -> V {
+fn family_cells(fam: Family, keep_text: bool, v: &V) -> V {
     let V::List(a) = v else {
-        return family_cell(fam, v).unwrap_or_else(|| v.clone());
+        return family_cell(fam, keep_text, v).unwrap_or_else(|| v.clone());
     };
     list(
         a.iter()
             .map(|c| match c {
-                V::List(_) => family_cells(fam, c),
-                _ => family_cell(fam, c).unwrap_or_else(|| c.clone()),
+                V::List(_) => family_cells(fam, keep_text, c),
+                _ => family_cell(fam, keep_text, c).unwrap_or_else(|| c.clone()),
             })
             .collect(),
     )
@@ -457,7 +461,7 @@ fn coerce_unit_cell_value(rung: &str, v: &V) -> R<Cv> {
 /// A value reaching a port of `rung`, shaped for it (compute-pass.md § Full coercion, per rung).
 /// A table, plain data or an error passes as it is, a frame turned to a Cube on a Cube port; a table reaching a value
 /// port is the body's `#VALUE!` (`Call::value_of`).
-fn coerce_value(rung: &str, a: &Arrived) -> R<Arrived> {
+fn coerce_value(rung: &str, keep_text: bool, a: &Arrived) -> R<Arrived> {
     let same = || Ok(a.clone());
     let new = |v: V| Ok(Arrived::bare(v));
     let v = match &a.v {
@@ -475,7 +479,7 @@ fn coerce_value(rung: &str, a: &Arrived) -> R<Arrived> {
     }
     let fam = family_of(rung);
     let cells = || match fam {
-        Some(f) => family_cells(f, v),
+        Some(f) => family_cells(f, keep_text, v),
         None => v.clone(),
     };
     match rung {
@@ -554,16 +558,18 @@ fn coerce_value(rung: &str, a: &Arrived) -> R<Arrived> {
 }
 
 /// `noWidenInputs`: the value keeps its rank, its cells their family's coercion.
-fn coerce_value_no_widen(rung: &str, a: &Arrived) -> R<Arrived> {
+fn coerce_value_no_widen(rung: &str, keep_text: bool, a: &Arrived) -> R<Arrived> {
     let v = match &a.v {
         Cv::V(v) if !matches!(v, V::Err(_)) && !has_unit_cell(v) => v,
         _ => return Ok(a.clone()),
     };
     match family_of(rung) {
         Some(f) => {
-            let out = scalar_or_throw(family_cells(f, v))?;
+            let out = scalar_or_throw(family_cells(f, keep_text, v))?;
             Ok(
-                if same_v(&out, v) || (!matches!(v, V::List(_)) && family_cell(f, v).is_none()) {
+                if same_v(&out, v)
+                    || (!matches!(v, V::List(_)) && family_cell(f, keep_text, v).is_none())
+                {
                     a.clone()
                 } else {
                     Arrived::bare(out)
@@ -624,11 +630,12 @@ pub fn coerce_all(
             .collect();
         if let Some(rung) = rung_of(key).filter(|_| !facts.raw.iter().any(|k| k == key)) {
             let no_widen = facts.no_widen.iter().any(|k| k == key);
+            let keep_text = solenoid_core::nodes::reads_text(&facts.class, &facts.op, key);
             for a in values.iter_mut() {
                 *a = if no_widen {
-                    coerce_value_no_widen(&rung, a)?
+                    coerce_value_no_widen(&rung, keep_text, a)?
                 } else {
-                    coerce_value(&rung, a)?
+                    coerce_value(&rung, keep_text, a)?
                 };
             }
         }

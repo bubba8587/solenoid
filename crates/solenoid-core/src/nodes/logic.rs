@@ -271,8 +271,20 @@ fn boolean_op(c: &mut Call) -> Answer {
         "xor" => Op::Xor,
         _ => Op::Xnor,
     };
+    let name = match op {
+        Op::And => "AND",
+        Op::Or => "OR",
+        Op::Nand => "NAND",
+        Op::Nor => "NOR",
+        Op::Xor => "XOR",
+        Op::Xnor => "XNOR",
+    };
     let operands: Vec<V> = keys_from(c, "a").iter().map(|k| c.read_num(k, 0.0)).collect();
     let result = broadcast_el(&operands, |xs| {
+        // An item holding text answers as the op's formula answers it ([[C17]] shareImpl, [[D110]] logicRefusesText).
+        if xs.iter().any(|x| super::list::is_text(x)) {
+            return core_call(name, &xs.iter().map(|x| (*x).clone()).collect::<Vec<_>>());
+        }
         let tris: Vec<Option<bool>> = xs.iter().map(|x| tri_bool(x)).collect();
         let reduce = |start: bool, f: fn(Option<bool>, Option<bool>) -> Option<bool>| {
             let mut acc = Some(start);

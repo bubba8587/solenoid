@@ -213,28 +213,42 @@ fn rank_percentile(c: &mut Call) -> Answer {
         let r = core_call(if op == "rank-avg" { "RANK.AVG" } else { "RANK.EQ" }, &[v, arr, order]);
         return answer(c, r);
     }
-    let arr = match for_aggregate(&first(c, "list")) {
+    let name = match family {
+        "nth" if op == "large" => "LARGE",
+        "nth" => "SMALL",
+        "percentile" if exc => "PERCENTILE.EXC",
+        "percentile" => "PERCENTILE.INC",
+        _ if exc => "QUARTILE.EXC",
+        _ => "QUARTILE.INC",
+    };
+    let raw = first(c, "list");
+    let arr = match for_aggregate(&raw) {
         Ok(nums) => list(nums),
         Err(e) => return answer(c, e),
     };
+    // Text in the list, after any error, answers the formula's error ([[C17]] shareImpl, [[D109]]
+    // aggregatesRefuseText).
+    if let Some(e) = crate::excel_functions::text_refusal(name, std::slice::from_ref(&raw)) {
+        return answer(c, e);
+    }
     let result = match family {
         "nth" => {
             let k = read_role(c, "k", Role::Required);
             if k.is_sol_error() {
                 return answer(c, k);
             }
-            core_call(if op == "large" { "LARGE" } else { "SMALL" }, &[arr, k])
+            core_call(name, &[arr, k])
         }
         "percentile" => {
             let p = read_role(c, "p", Role::Required);
             if p.is_sol_error() {
                 return answer(c, p);
             }
-            core_call(if exc { "PERCENTILE.EXC" } else { "PERCENTILE.INC" }, &[arr, p])
+            core_call(name, &[arr, p])
         }
         _ => {
             let q = read_role(c, "q", Role::Setting(V::Num(0.0)));
-            core_call(if exc { "QUARTILE.EXC" } else { "QUARTILE.INC" }, &[arr, q])
+            core_call(name, &[arr, q])
         }
     };
     answer(c, result)

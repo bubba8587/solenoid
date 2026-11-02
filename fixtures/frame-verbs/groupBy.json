@@ -945,7 +945,7 @@
    }
   },
   {
-   "name": "a text column: sum 0, min is its alphabetical first, count still counts",
+   "name": "a text column: sum is SUM's #VALUE!, min is its alphabetical first, count still counts",
    "frames": {
     "in": {
      "columns": [
@@ -1004,7 +1004,9 @@
       "name": "total",
       "type": "number",
       "values": [
-       0
+       {
+        "__err": "#VALUE!"
+       }
       ]
      },
      {

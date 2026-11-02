@@ -795,6 +795,9 @@ pub fn aggregate_group(values: &[FrameCell], op: AggOp, ty: Option<FrameColType>
         AggregatePrep::Error(e) => return e,
         AggregatePrep::Nums(n) => n,
     };
+    if let Some(e) = text_refused(values, op) {
+        return e;
+    }
     if nums.is_empty() {
         return match op {
             AggOp::Sum => FrameCell::Num(0.0),
@@ -806,6 +809,32 @@ pub fn aggregate_group(values: &[FrameCell], op: AggOp, ty: Option<FrameColType>
         return guard_finite(f64::NAN, &nums);
     }
     guard_agg(raw_aggregate(&nums, op), &nums)
+}
+
+/// Text among a group's cells, which hold no error, answers what the op's formula answers for it ([[C17]] shareImpl,
+/// [[D109]] aggregatesRefuseText): `SUM(cells)`'s error. MODE leaves text out, as MODE.SNGL does.
+fn text_refused(values: &[FrameCell], op: AggOp) -> Option<FrameCell> {
+    let name = match op {
+        AggOp::Sum => "SUM",
+        AggOp::Avg => "AVERAGE",
+        AggOp::Min => "MIN",
+        AggOp::Max => "MAX",
+        AggOp::Product => "PRODUCT",
+        AggOp::Median => "MEDIAN",
+        AggOp::Stdev => "STDEV.S",
+        AggOp::StdevP => "STDEV.P",
+        AggOp::Var => "VAR.S",
+        AggOp::VarP => "VAR.P",
+        AggOp::Mode | AggOp::Count | AggOp::PercentOf => return None,
+    };
+    if !values.iter().any(|v| matches!(v, FrameCell::Str(s) if !s.is_empty())) {
+        return None;
+    }
+    let cells = crate::excel_functions::V::List(Rc::new(values.iter().map(crate::excel_formula::cell_to_v).collect()));
+    match crate::excel_functions::text_refusal(name, &[cells])? {
+        crate::excel_functions::V::Err(e) => Some(FrameCell::Err(e)),
+        _ => None,
+    }
 }
 
 // [[C24]] arraySemantics: code-unit order ([[C59]] byteStringOrder), blanks and "" skipped.
