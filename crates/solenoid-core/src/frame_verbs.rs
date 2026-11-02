@@ -286,6 +286,9 @@ pub enum FrameOp {
         #[serde(rename = "replaceWith")]
         replace_with: String,
         mode: ReplaceMode,
+        /// Text matches case exactly; off, it ignores case as Filter's Aa does.
+        #[serde(default, rename = "matchCase")]
+        match_case: bool,
     },
     #[serde(rename = "sliceRows")]
     SliceRows {
@@ -2043,8 +2046,8 @@ pub fn apply_verb(f: &FrameValue, op: &FrameOp) -> Res<FrameValue> {
         FrameOp::Window(spec) => window_frame(f, spec),
         FrameOp::Pivot(spec) => pivot_frame(f, spec).map(|(out, _)| out),
         FrameOp::FillBlanks { columns, dir } => fill_blanks(f, columns, *dir),
-        FrameOp::ReplaceValues { column, find, replace_with, mode } => {
-            replace_values(f, column, find, replace_with, *mode)
+        FrameOp::ReplaceValues { column, find, replace_with, mode, match_case } => {
+            replace_values(f, column, find, replace_with, *mode, *match_case)
         }
         FrameOp::SliceRows { mode, n, to } => Ok(slice_rows(f, *mode, *n, *to)),
         FrameOp::DropBlankRows { mode } => Ok(drop_blank_rows(f, *mode)),
@@ -2119,6 +2122,7 @@ pub fn replace_values(
     find: &str,
     replace_with: &str,
     mode: ReplaceMode,
+    match_case: bool,
 ) -> Res<FrameValue> {
     if find.is_empty() {
         return Ok(f.clone());
@@ -2148,7 +2152,11 @@ pub fn replace_values(
                     .iter()
                     .map(|v| {
                         if let FrameCell::Str(s) = v {
-                            FrameCell::str(&s.replace(find, replace_with))
+                            FrameCell::str(&if match_case {
+                                s.replace(find, replace_with)
+                            } else {
+                                replace_caseless(s, find, replace_with)
+                            })
                         } else {
                             v.clone()
                         }
@@ -2167,7 +2175,13 @@ pub fn replace_values(
                         FrameCell::Null | FrameCell::Err(_) => false,
                         FrameCell::Num(n) => numeric_find && *n == find_num,
                         FrameCell::Bool(b) => (if *b { "TRUE" } else { "FALSE" }) == find_upper,
-                        FrameCell::Str(s) => s.as_ref() == find,
+                        FrameCell::Str(s) => {
+                            if match_case {
+                                s.as_ref() == find
+                            } else {
+                                lower_text(s) == lower_text(find)
+                            }
+                        }
                     };
                     if hit {
                         replacement.clone()
@@ -2180,6 +2194,36 @@ pub fn replace_values(
         })
         .collect();
     Ok(frame(cols))
+}
+
+/// Every occurrence of `find` in `s`, ignoring case, replaced with `with`; the rest of `s` is kept as written.
+fn replace_caseless(s: &str, find: &str, with: &str) -> String {
+    let want: Vec<char> = find.chars().flat_map(char::to_lowercase).collect();
+    if want.is_empty() {
+        return s.to_string();
+    }
+    let chars: Vec<char> = s.chars().collect();
+    let mut out = String::with_capacity(s.len());
+    let mut i = 0;
+    while i < chars.len() {
+        let (mut j, mut k) = (i, 0);
+        while k < want.len() && j < chars.len() {
+            let lower: Vec<char> = chars[j].to_lowercase().collect();
+            if !want[k..].starts_with(&lower) {
+                break;
+            }
+            k += lower.len();
+            j += 1;
+        }
+        if k == want.len() {
+            out.push_str(with);
+            i = j;
+        } else {
+            out.push(chars[i]);
+            i += 1;
+        }
+    }
+    out
 }
 
 pub fn slice_bounds(rows: usize, mode: SliceMode, n: f64, to: Option<f64>) -> (usize, usize) {

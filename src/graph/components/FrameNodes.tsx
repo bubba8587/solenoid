@@ -694,9 +694,10 @@ const REPLACE_MODE_OPTIONS: { value: ReplaceMode; label: string; title: string }
 
 export function ReplaceValuesComponent({ data, emit }: NodeProps<ReplaceValuesNodeType>) {
   const [mode, setMode] = useNodeField(data, "mode");
+  const [matchCase, setMatchCase] = useNodeField(data, "matchCase");
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
+      <InlineInputs node={data} emit={emit} trailing={{ find: <MatchCaseButton on={matchCase} onToggle={() => setMatchCase(!matchCase)} title="Match case. Off finds text whatever its case." /> }} />
       <SegToggle value={mode} options={REPLACE_MODE_OPTIONS} onChange={setMode} />
       <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
     </NodeShell>

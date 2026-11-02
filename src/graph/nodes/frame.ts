@@ -867,15 +867,18 @@ export class ReplaceValuesNode extends GraphNode {
   };
   label: string;
   mode: ReplaceMode;
+  /** Find's Aa: text matches case exactly; off, it ignores case as Filter's does. */
+  matchCase: boolean;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { column: "", find: "", replace: "" };
   textLiterals = true;
   width = 200; height = 205;
 
-  constructor(init?: { label?: string; mode?: ReplaceMode }) {
+  constructor(init?: { label?: string; mode?: ReplaceMode; matchCase?: boolean }) {
     super("ReplaceValues");
     this.label = init?.label ?? "Replace Values";
     this.mode = init?.mode ?? "cell";
+    this.matchCase = init?.matchCase ?? false;
     this.addInput("frame", frameIn("Frame"));
     this.addInput("column", strIn("Column"));
     this.addInput("find", anyIn("Find"));
@@ -888,7 +891,7 @@ export class ReplaceValuesNode extends GraphNode {
     if (!input || ctx.wired("column")) return null;
     return shapeOf({
       kind: "replaceValues", column: this.stringLiterals.column ?? "",
-      find: this.stringLiterals.find ?? "", replaceWith: this.stringLiterals.replace ?? "", mode: this.mode,
+      find: this.stringLiterals.find ?? "", replaceWith: this.stringLiterals.replace ?? "", mode: this.mode, matchCase: this.matchCase,
     }, input);
   }
 

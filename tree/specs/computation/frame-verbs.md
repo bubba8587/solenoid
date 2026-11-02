@@ -429,10 +429,10 @@ The Window card always sends `orderDir: "asc"`, derives `as` from the function l
 
 ### replaceValues
 
-`{ kind: "replaceValues", column, find, replaceWith, mode: "cell" | "substring" }`. Targets one column, or every column when `column` is blank. An empty `find` is the identity. An unknown column is `#REF!`. Matching is case-sensitive except for logicals.
+`{ kind: "replaceValues", column, find, replaceWith, mode: "cell" | "substring", matchCase? }`. Targets one column, or every column when `column` is blank. An empty `find` is the identity. An unknown column is `#REF!`. Text matching ignores case unless `matchCase` is set, the card's Aa beside Find, as Filter's is; a logical always matches either case.
 
-- `substring`: in string columns only, every literal occurrence of `find` inside a text cell is replaced (no regex).
-- `cell`: a whole cell matches when a number (or date serial) equals `decimal_from_text(find)` (a non-numeric find matches no number), a logical's `TRUE`/`FALSE` equals `find` in upper case, or a string equals `find` exactly. Blank and error cells never match. The replacement is coerced to the column type: blank text becomes `null`; a number or date column needs a finite number, and otherwise that column is left unchanged; a logical takes `true`/`1` or `false`/`0` (any case), anything else `null`; a string column takes the text verbatim. So Replace Values never writes a `NaN` into a number column, since a `NaN` cell is neither a value, a blank nor an error that anything downstream could read.
+- `substring`: in string columns only, every literal occurrence of `find` inside a text cell is replaced (no regex), the rest of the cell kept as written (`replace_caseless` when case is ignored).
+- `cell`: a whole cell matches when a number (or date serial) equals `decimal_from_text(find)` (a non-numeric find matches no number), a logical's `TRUE`/`FALSE` equals `find` in upper case, or a string equals `find` (exactly under `matchCase`, else ignoring case). Blank and error cells never match. The replacement is coerced to the column type: blank text becomes `null`; a number or date column needs a finite number, and otherwise that column is left unchanged; a logical takes `true`/`1` or `false`/`0` (any case), anything else `null`; a string column takes the text verbatim. So Replace Values never writes a `NaN` into a number column, since a `NaN` cell is neither a value, a blank nor an error that anything downstream could read.
 
 The card's Find and Replace take a wired value of any type, stringified by `readFilterValue`.
 

@@ -75,7 +75,7 @@ export type FrameOp =
   | ({ kind: "pivot" } & PivotSpec)
   | ({ kind: "window" } & WindowSpec)
   | { kind: "fillBlanks"; columns: string[]; dir: "down" | "up" }
-  | { kind: "replaceValues"; column: string; find: string; replaceWith: string; mode: "cell" | "substring" }
+  | { kind: "replaceValues"; column: string; find: string; replaceWith: string; mode: "cell" | "substring"; matchCase?: boolean }
   | { kind: "sliceRows"; mode: "first" | "last" | "skip" | "range"; n: number; to?: number }
   | { kind: "dropBlankRows"; mode: "all" | "any" }
   | { kind: "addIndex"; name: string; start: number }

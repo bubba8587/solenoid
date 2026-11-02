@@ -473,9 +473,10 @@ fn replace_values(c: &mut Call) -> Answer {
         return one(V::Null);
     }
     let mode = c.field_str("mode", "cell").to_string();
+    let match_case = c.field("matchCase").and_then(Json::as_bool).unwrap_or(false);
     one(plan(
         &f,
-        json!({ "kind": "replaceValues", "column": to_json(&column), "find": find, "replaceWith": replace, "mode": mode }),
+        json!({ "kind": "replaceValues", "column": to_json(&column), "find": find, "replaceWith": replace, "mode": mode, "matchCase": match_case }),
     ))
 }
 

@@ -63,8 +63,8 @@ export const unpivotFrame = (f: FrameValue, idColumns: string[], valueColumns: s
 export const pivotFrame = (f: FrameValue, spec: PivotSpec) => applyVerb(f, { kind: "pivot", ...spec });
 export const windowFrame = (f: FrameValue, spec: WindowSpec) => applyVerb(f, { kind: "window", ...spec });
 export const fillBlanks = (f: FrameValue, columns: string[], dir: "down" | "up") => applyVerb(f, { kind: "fillBlanks", columns, dir });
-export const replaceValues = (f: FrameValue, column: string, find: string, replaceWith: string, mode: "cell" | "substring") =>
-  applyVerb(f, { kind: "replaceValues", column, find, replaceWith, mode });
+export const replaceValues = (f: FrameValue, column: string, find: string, replaceWith: string, mode: "cell" | "substring", matchCase = false) =>
+  applyVerb(f, { kind: "replaceValues", column, find, replaceWith, mode, matchCase });
 export const sliceRows = (f: FrameValue, mode: "first" | "last" | "skip" | "range", n: number, to?: number) =>
   applyVerb(f, { kind: "sliceRows", mode, n, ...(to === undefined ? {} : { to }) });
 export const dropBlankRows = (f: FrameValue, mode: "all" | "any") => applyVerb(f, { kind: "dropBlankRows", mode });

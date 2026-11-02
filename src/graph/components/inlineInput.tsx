@@ -1,7 +1,7 @@
 // [[B19]] spreadsheetHabits (useDraftCommit, useEditableLabel), [[C28]] literalsIffEditable, [[B11]] maximalMerge. Mechanics: tree/specs/documents/literal-input-editors.md.
 import { FieldResizeGrip } from "./FieldResizeGrip";
 import type { Emit } from "./nodeKit";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent, type ReactNode } from "react";
 import { useKatexRender } from "./katexLoader";
 import type { GraphSocket } from "../graphModel";
 import { SolenoidSocket } from "../sockets";
@@ -487,6 +487,8 @@ type Props = {
   mathLabelKeys?: ReadonlySet<string>;
   /** Rendered as a native `<datalist>`, so typing offers matches but any value still commits. */
   suggest?: Record<string, readonly string[]>;
+  /** A control at the end of a key's row, such as Find's Aa. */
+  trailing?: Record<string, ReactNode>;
 };
 
 function MathLabel({ text }: { text: string }) {
@@ -504,7 +506,7 @@ function MathLabel({ text }: { text: string }) {
     : <span className="solenoid-node__io-label" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKeys, mathLabelKeys, suggest }: Props) {
+export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKeys, mathLabelKeys, suggest, trailing }: Props) {
   const connected = useConnectedInputs(node.id);
   const incoming = useIncomingSources(node.id);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
@@ -617,6 +619,7 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
             ) : isCsvList ? (
               <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} listId={suggest && key in suggest ? suggestId : undefined} />
             ) : null}
+            {trailing?.[key]}
           </MeasuredSocketRow>
         );
       })}
