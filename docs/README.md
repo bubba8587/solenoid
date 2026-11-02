@@ -58,7 +58,6 @@ is parked there.
   composite pack shape + distribution).
 - **`release-notes-features.md`** — the curated selling list / What's-New source for
   the release in progress (1.5; the 1.4 list is at the v1.4.0 tag).
-- **`release-notes-1.5.md`** — the 1.5 GitHub release notes, written from that list.
 - **`grid-system.md`** — the (unbuilt) soft-grid design spec; parked in
   `deferrals.md`.
 - **`out-of-scope.md`** — the standing NO list.

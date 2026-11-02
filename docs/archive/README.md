@@ -48,6 +48,8 @@ load-bearing core (noted below); the full originals are likewise in git history.
 - [`units-format-controller.md`](units-format-controller.md) — the shipped A4 units-by-dimensionality plan (the FC flagship; live truth is `formatModel.ts` + subsystem-invariants "Unit flow" + D20).
 - [`1.2-plan.md`](1.2-plan.md) — the executed 1.2 build queue (author-run release tail tracked in `../backlog.md`).
 - [`release-plan-1.1.md`](release-plan-1.1.md) — the shipped 1.1 release view, kept for the cut-process shape (readiness / checklist / decision structure).
+- [`release-notes-1.5.md`](release-notes-1.5.md) — the shipped 1.5 GitHub release notes (v1.5.0), kept as the shape for the next release's.
+- [`code-review-2026-08.md`](code-review-2026-08.md) — the 2026-08-09 adversarial code review, from before the Rust port; its findings landed or were superseded by the port.
 
 ### Dev-notes history
 - [`dev-notes-history.md`](dev-notes-history.md) — the swept session log (everything through 2026-08-04a + the old reference sections). The live `../dev-notes.md` holds open problems + the latest session window only.
