@@ -133,7 +133,6 @@ describe("catalog ↔ registry consistency", () => {
     FormatControllerNode: "the FC is the RESOLVER — fcReconcile drives its sockets",
     CompositeNode: "boundary port adoption runs in the composite's own sync pass",
     CompositeInputNode: "a composite boundary marker — typed by the composite's sync pass",
-    XLookupNode: "a genuinely unknowable producer — the result type depends on the looked-up data",
     UnnestNode: "result rank depends on the input's nesting depth (a Frame at depth 1, a Cube at depth >=2)",
   };
   it("every class with a trueany output declares passthrough() (or is sanctioned, with a reason) ([[C10]] socketLattice)", () => {

@@ -77,6 +77,12 @@ cables (the author, 2026-10-25).
 - **Socket lattice**: the rules for what can connect to what. Type families never cross on
   their own (that takes a Cast), and values flow freely up in rank. (`sockets.ts`,
   `socketConnect.test.ts`; [[C10]] socketLattice, `../tree/specs/values/socket-lattice.md`)
+- **the Type Settle**: the one process that decides every adoptive socket's current type. It
+  runs after a cable change or a load, from the wiring alone, and again after a calculation
+  whose run-time facts moved (the branch a card took, the family an extraction produced), so a
+  wildcard left by the wiring takes the type of what it carried ([[C136]] typesKnownAfterCalc).
+  Not the readouts: they only show what it decided. (the core's `settle.rs`, `trueAnyAdopt.ts`
+  `settleWildcardTypes`, `settleFacts.ts`; `../tree/specs/values/socket-lattice.md` req. 9)
 - **Cast**: the explicit node to change a value's type family (the required bridge the
   lattice won't do automatically). (`nodes/cast.ts`)
 - **Fill**: the opt-in node to treat `null` as a real value.

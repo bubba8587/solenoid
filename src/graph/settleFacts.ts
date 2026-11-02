@@ -5,12 +5,35 @@
 import type { GraphEditor } from "./graphEditor";
 import type { GraphConnection, GraphNode } from "./graphModel";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } from "./sockets";
-import { getPassthrough, type CombineMode, type ProjectContext } from "./nodes/passthrough";
+import { getPassthrough, type CombineMode, type PassthroughSpec, type ProjectContext } from "./nodes/passthrough";
 import { makeFrameShapeResolver } from "./frameShapeResolver";
 import { ConduitNode, conduitInKey, conduitOutKey, CONDUIT_MAX_LANES } from "./nodes/conduit";
 
 /** A socket: key, its type now, its declared base, and whether the settle may retype it: 0 fixed, 1 mutable, 2 adoptive. */
 export type SocketFact = [key: string, now: SocketDataType, base: SocketDataType, kind: 0 | 1 | 2];
+
+const lastFacts = new WeakMap<object, string>();
+
+/** Whether any of these freshly computed cards' run-time facts moved since the Type Settle last read them: the one
+ *  question the pass asks before settling again ([[C136]] typesKnownAfterCalc). */
+export function runtimeFactsMoved(nodes: readonly unknown[]): boolean {
+  let moved = false;
+  for (const n of nodes) {
+    if (!n || typeof n !== "object") continue;
+    const specs = getPassthrough(n).filter((s) => s.selected || s.produced);
+    if (specs.length === 0) continue;
+    const now = specs.map((s) => { const f = runtimeFacts(s); return `${f.selected ?? ""}|${f.produced ?? ""}`; }).join(";");
+    if (lastFacts.get(n) !== now) { lastFacts.set(n, now); moved = true; }
+  }
+  return moved;
+}
+
+/** What the last pass knew that the wiring can't: the input a branch card took, the family an extraction produced. */
+export function runtimeFacts(s: PassthroughSpec): { selected?: string; produced?: string } {
+  const selected = s.selected?.() ?? null;
+  const produced = s.produced?.() ?? null;
+  return { ...(selected ? { selected } : {}), ...(produced ? { produced } : {}) };
+}
 
 /** How a passthrough's output reads what it forwards: a frame or cube becomes the type named, any other table the
  *  `tables` rule ("trueany", or "combo": its family's combo), and anything else its combo. */
@@ -26,6 +49,9 @@ export interface PassthroughFact {
   combine: CombineMode;
   active?: number;
   project?: ProjectFacts;
+  /** Run-time facts, read only where the wiring leaves a wildcard ([[C136]] typesKnownAfterCalc). */
+  selected?: string;
+  produced?: string;
 }
 
 export interface NodeFacts {
@@ -71,6 +97,7 @@ export function settleFacts(editor: AnyEditor): NodeFacts[] {
       combine: s.combine,
       ...(s.activeIndex ? { active: s.activeIndex() } : {}),
       ...(s.project ? { project: s.project(ctx) } : {}),
+      ...runtimeFacts(s),
     }));
     if (pass.length) facts.pass = pass;
     if (node instanceof ConduitNode) {

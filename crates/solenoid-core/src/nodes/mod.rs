@@ -347,6 +347,12 @@ impl Call {
     pub fn show(&mut self, field: &str, v: impl Into<Cv>) {
         self.display.push((field.to_string(), Shown::V(v.into())));
     }
+
+    /// The element family the body extracted on this run (a lookup's or INDEX's column), none where it can't name
+    /// one: a run-time fact the Type Settle reads where the wiring leaves a wildcard ([[C136]] typesKnownAfterCalc).
+    pub fn produced(&mut self, ty: Option<crate::frame::FrameColType>) {
+        self.show("_producedFamily", ty.map_or(V::Null, |t| V::str(t.as_str())));
+    }
 }
 
 /// The class's body, or `None` where the class has none on the core yet.

@@ -14,7 +14,7 @@ import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { ArrayChip, isArrayValue, arrayAccentFor } from "./ArrayChip";
 import { CategoryChip } from "./CategoryChip";
-import { nodeOutputElemFamily, formatListCell, resolveDisplayAnnotation } from "./valueDisplayFormat";
+import { nodeOutputElemFamily, formatListCell, resolveDisplayAnnotation, dateFormatDisplay } from "./valueDisplayFormat";
 import { isCx } from "../cxValue";
 import { isUnitCell } from "../unitValue";
 import { FrameChip, FrameRefChip } from "./FrameChip";
@@ -52,7 +52,9 @@ function renderWireValue(v: unknown, annNodeId: string, outKey: string) {
     return <span className="solenoid-cable-inspector__value">{applyLogicalStyle(v, ann?.logicalStyle)}</span>;
   }
   if (typeof v === "number") {
-    return <span className="solenoid-cable-inspector__value">{ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v)}</span>;
+    // A date-typed cable shows its serial as the date, as a card does ([[C136]] typesKnownAfterCalc).
+    const shown = ann ? formatNumberWithAnnotation(v, ann) : nodeOutputElemFamily(annNodeId, outKey) === "date" ? String(dateFormatDisplay(v, true, false)) : formatScalar(v);
+    return <span className="solenoid-cable-inspector__value">{shown}</span>;
   }
   if (isCx(v) || isUnitCell(v)) {
     const one = (n: number) => (ann ? formatNumberWithAnnotation(n, ann) : formatScalar(n));

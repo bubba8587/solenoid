@@ -264,6 +264,8 @@ export class ListIndexNode extends GraphNode {
   static axisKeys(axes: "rowcol" | "position"): string[] { return axes === "position" ? ["position"] : ["index", "column"]; }
   static axisInput(key: string) { return numListIn(key === "position" ? "Position" : key === "index" ? "Row" : "Column"); }
 
+  /** The picked column's family the last run took, from the body ([[C136]] typesKnownAfterCalc). */
+  _producedFamily: string | null = null;
   /** The axes the body worked out from the wired value ([[D85]] columnsStayColumns), null while they stand. */
   axesMove: "rowcol" | "position" | null = null;
 
@@ -293,6 +295,7 @@ export class ListIndexNode extends GraphNode {
       output: "result",
       inputs: ["list"],
       combine: "single",
+      produced: () => this._producedFamily,
       project: (ctx) => ({
         frame: this.frameProjection(ctx),
         cube: this.cubeProjection(ctx),

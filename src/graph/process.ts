@@ -11,6 +11,8 @@ import { calcModeStore } from "./calcModeStore";
 import { session, nextGeneration, rebuild, openRebuildScope, closeRebuildScope, markTopoDirty, enterPass, exitPass } from "./passSession";
 import { compositePassStore } from "./compositeEditorStore";
 import { resolveTrigModes } from "./trigMode";
+import { runtimeFactsMoved } from "./settleFacts";
+import { reconcileTypesAfterEdit } from "./fcReconcile";
 import type { Schemes } from "./schemes";
 
 let _editor: GraphEditor<Schemes> | null = null;
@@ -181,6 +183,9 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   const t1 = perf ? performance.now() : 0;
   cableValueStore.bump();
   await Promise.all(toRender.map((id) => _view!.rerenderNode(id)));
+  // Once the calculation has run nothing is unknown: a card that now knows its taken branch or extracted family
+  // types its output through the Type Settle ([[C136]] typesKnownAfterCalc).
+  if (runtimeFactsMoved(toRender.map((id) => _editor!.getNode(id)))) reconcileTypesAfterEdit(_editor, _view);
   if (perf) {
     const t2 = performance.now();
     const ipc1 = ipcSnapshot();

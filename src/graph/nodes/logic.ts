@@ -246,7 +246,8 @@ export class IFErrorNode extends GraphNode {
   literals: Record<string, number> = { value: 0, fallback: 0 };
   width = 180;
   height = 200;
-  passthrough(): PassthroughSpec[] { return [{ output: "result", inputs: ["value", "fallback"], combine: "agree" }]; }
+  _selectedUnitKey: string | null = null;
+  passthrough(): PassthroughSpec[] { return [{ output: "result", inputs: ["value", "fallback"], combine: "agree", selected: () => this._selectedUnitKey }]; }
 
   constructor(init?: { label?: string; op?: IFErrorMode }) {
     super("IFError");

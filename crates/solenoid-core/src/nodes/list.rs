@@ -1511,6 +1511,14 @@ fn list_index(c: &mut Call) -> Answer {
     let col = if has(c, "column") { picks(&c.label("column"), role_value(c, "column")) } else { V::Undef };
     let unit = c.matrix_unit("list").cloned();
     let result = index_container(&v, &row, &col, unit.as_ref());
+    // A cell or column taken out of a table keeps its column's type once the run has picked it ([[C136]]).
+    let produced = match (&v, &result) {
+        (_, Cv::Frame(_) | Cv::Cube(_)) => None,
+        (Cv::Frame(f), _) => picked_family(&col, &f.columns.iter().map(|k| Some(k.ty)).collect::<Vec<_>>()),
+        (Cv::Cube(q), _) => picked_family(&col, &q.columns.iter().map(|k| k.ty).collect::<Vec<_>>()),
+        _ => None,
+    };
+    c.produced(produced);
     if let (Some(u), Cv::V(V::List(a)), Cv::V(V::List(b))) = (&unit, &v, &result)
         && std::rc::Rc::ptr_eq(a, b)
     {
@@ -1518,6 +1526,25 @@ fn list_index(c: &mut Call) -> Answer {
     }
     c.show("cachedResult", result.clone());
     Ok(vec![("result".into(), result)])
+}
+
+/// The one type every picked column shares, 1-based positions as INDEX reads them; none for a blank or 0 Column (the
+/// whole row) or columns of different types.
+fn picked_family(col: &V, types: &[Option<FrameColType>]) -> Option<FrameColType> {
+    let positions: Vec<f64> = match col {
+        V::Num(_) => vec![trunc_of(col)],
+        V::List(items) => items.iter().map(trunc_of).collect(),
+        _ => return None,
+    };
+    let mut shared: Option<FrameColType> = None;
+    for p in positions {
+        let ty = (p >= 1.0).then(|| types.get(p as usize - 1).copied().flatten()).flatten()?;
+        match shared {
+            Some(s) if s != ty => return None,
+            _ => shared = Some(ty),
+        }
+    }
+    shared
 }
 
 /// A `picks` input ([[D86]] blankRoles): a blank position in a list dropped, none left (or a blank) the

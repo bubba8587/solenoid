@@ -15,7 +15,7 @@ import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { ArrayChip, isArrayValue, arrayAccentFor } from "./ArrayChip";
 import { CategoryChip } from "./CategoryChip";
-import { nodeOutputElemFamily, formatListCell, resolveDisplayAnnotation } from "./valueDisplayFormat";
+import { nodeOutputElemFamily, formatListCell, resolveDisplayAnnotation, dateFormatDisplay } from "./valueDisplayFormat";
 import { isCx } from "../cxValue";
 import { isUnitCell } from "../unitValue";
 import { FrameChip, FrameRefChip } from "./FrameChip";
@@ -58,7 +58,9 @@ function renderValue(v: unknown, label?: string, annNodeId?: string, outKey?: st
     return <span className="solenoid-pin__value">{(ann ? applyTextCase(v, ann.textCase) : v) || "—"}</span>;
   }
   if (typeof v === "number") {
-    return <span className="solenoid-pin__value">{ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v)}</span>;
+    // A date-typed output shows its serial as the date, as a card does ([[C136]] typesKnownAfterCalc).
+    const shown = ann ? formatNumberWithAnnotation(v, ann) : nodeOutputElemFamily(annNodeId ?? null, outKey) === "date" ? String(dateFormatDisplay(v, true, false)) : formatScalar(v);
+    return <span className="solenoid-pin__value">{shown}</span>;
   }
   if (typeof v === "boolean" || isCx(v) || isUnitCell(v)) {
     const one = (n: number) => (ann ? formatNumberWithAnnotation(n, ann) : formatScalar(n));

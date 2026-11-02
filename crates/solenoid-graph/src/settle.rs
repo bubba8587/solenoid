@@ -45,6 +45,10 @@ pub struct Pass {
     pub combine: Combine,
     pub active: Option<f64>,
     pub project: Option<Project>,
+    /// Run-time facts, read only where the static answer is a wildcard: the input the last pass forwarded (a branch
+    /// card's taken branch), and the family of what it produced (an extraction from a table).
+    pub selected: Option<String>,
+    pub produced: Option<String>,
 }
 
 pub struct Node {
@@ -102,6 +106,8 @@ pub fn node_from_json(j: &Json) -> Node {
                 _ => Combine::Single,
             },
             active: p["active"].as_f64(),
+            selected: p["selected"].as_str().map(String::from),
+            produced: p["produced"].as_str().map(String::from),
             project: p.get("project").filter(|x| x.is_object()).map(|x| Project {
                 frame: s(&x["frame"]),
                 cube: s(&x["cube"]),
@@ -271,6 +277,23 @@ fn adoption_once(nodes: &mut [Node], g: &Graph) -> BTreeSet<String> {
             let resolved = match &spec.project {
                 Some(pr) => project(pr, &forwarded),
                 None => forwarded,
+            };
+            // Once a calculation has run nothing is unknown ([[C136]] typesKnownAfterCalc): where the static answer is a wildcard, what
+            // the last pass actually forwarded or produced types the output.
+            let resolved = if crate::lattice::is_wildcard_rung(&resolved) {
+                let taken = spec
+                    .selected
+                    .as_deref()
+                    .and_then(|k| vote(nodes, k))
+                    .filter(|t| !crate::lattice::is_wildcard_rung(t));
+                let made = spec
+                    .produced
+                    .as_deref()
+                    .and_then(combo_of)
+                    .map(String::from);
+                taken.or(made).unwrap_or(resolved)
+            } else {
+                resolved
             };
             let out_key = spec.output.clone();
             let Some(o) = nodes[i]

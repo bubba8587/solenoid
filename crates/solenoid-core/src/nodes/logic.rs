@@ -419,6 +419,13 @@ fn if_error(c: &mut Call) -> Answer {
     let fallback = wired(c, "fallback", lit(c, "fallback", V::Num(0.0)));
     let na_only = c.field_str("op", "iferror") == "ifna";
     let caught = |v: &V| if na_only { is_na(v) } else { v.is_sol_error() };
+    // A single value took one branch; a list mixes them per cell, so it names none.
+    let taken = match &value {
+        Cv::V(V::List(_)) => None,
+        Cv::V(v) => Some(if caught(v) { "fallback" } else { "value" }),
+        _ => None,
+    };
+    select(c, taken);
     let r = replace_caught(&value, &fallback, &caught, None);
     c.show("cachedResult", r.clone());
     Ok(vec![("result".into(), r)])

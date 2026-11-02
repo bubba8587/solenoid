@@ -97,7 +97,7 @@ The FC's own type-adapt walk doesn't read it: the reconcile walks upstream on so
 
 ### A trueany output declares its passthrough
 
-**MUST:** a class with a `trueany` output either declares `passthrough()` or is listed with the reason its type resolves another way: the FC is the resolver, Conduit lanes resolve through `conduitTrace`, composite boundary ports sync in their own pass, and XLOOKUP and NA are unknowable. A forwarder that skips the declaration leaves its output `trueany` forever, so downstream FCs can't key a family and a date serial silently shows as its raw number.
+**MUST:** a class with a `trueany` output either declares `passthrough()` or is listed with the reason its type resolves another way: the FC is the resolver, Conduit lanes resolve through `conduitTrace`, composite boundary ports sync in their own pass, and NA is an error by design. A forwarder that skips the declaration leaves its output `trueany` forever, so downstream FCs can't key a family and a date serial silently shows as its raw number. An extraction (a passthrough with a `project`) also declares `produced`, and a passthrough whose branches vote (`agree`) also declares `selected`, so the Type Settle can type them once the calculation has run ([[socket-lattice]] req. 9; [[C136]] typesKnownAfterCalc). *Exception:* the combiners (Concat Lists, Sets, Interleave, Stack) put every input into the output, so inputs that disagree are a real mix with no taken branch, and they declare no `selected`. **Removed by:** a combiner that keeps one input's values whole. Machine-checked by `passthroughSystem.test.ts`.
 
 ### Relays are transparent
 

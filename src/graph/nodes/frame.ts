@@ -1756,6 +1756,8 @@ export class XLookupNode extends GraphNode {
   searchMode: LookupSearchMode;
   cachedResult: CubeCell | null = null;
   direction: LookupDirection;
+  /** The Return column's family the last run picked, from the body ([[C136]] typesKnownAfterCalc). */
+  _producedFamily: string | null = null;
   stringLiterals: Record<string, string> = { lookup: "", inColumn: "", returnColumn: "", ifNotFound: "" };
   literals: Record<string, number> = {};
   // Skip rank widening so a scalar or bare list reaches the shape guard in data() instead of becoming a one-row cube.
@@ -1808,6 +1810,7 @@ export class XLookupNode extends GraphNode {
       output: "value",
       inputs: ["frame"],
       combine: "single",
+      produced: () => this._producedFamily,
       project: (ctx) => {
         if (this.direction === "columns") return this.acrossProjection(ctx);
         const ret = ctx.wired("returnColumn") ? null : (this.stringLiterals.returnColumn ?? "").trim();

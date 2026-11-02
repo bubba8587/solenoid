@@ -183,3 +183,28 @@ describe("passthrough declarations", () => {
     expect(canConnect(out, "string")).toBe(false);
   });
 });
+
+// [[C136]] typesKnownAfterCalc: once a calculation has run nothing is unknown, so every passthrough the wiring can
+// leave a wildcard names the run-time fact that settles it.
+describe("every passthrough the wiring can leave untyped declares its run-time fact", () => {
+  it("an extraction declares `produced`, and branches that vote declare `selected`", async () => {
+    const { FLAT_CATALOG } = await import("../../src/graph/catalogUtils");
+    // Combiners put every input into the output, so inputs that disagree make a real mix, not an unknown: there is no
+    // taken branch to name.
+    const COMBINERS = new Set(["ConcatListsNode", "SetsNode", "InterleaveNode", "StackNode"]);
+    const gaps: string[] = [];
+    const seen = new Set<string>();
+    for (const entry of FLAT_CATALOG.values()) {
+      let n: object;
+      try { n = entry.create() as object; } catch { continue; }
+      const cls = n.constructor.name;
+      if (seen.has(cls)) continue;
+      seen.add(cls);
+      for (const s of getPassthrough(n)) {
+        if (s.project && !s.produced) gaps.push(`${cls}.${s.output}: an extraction with no produced`);
+        if (s.combine === "agree" && s.inputs.length > 1 && !s.selected && !COMBINERS.has(cls)) gaps.push(`${cls}.${s.output}: voting branches with no selected`);
+      }
+    }
+    expect(gaps).toEqual([]);
+  });
+});
