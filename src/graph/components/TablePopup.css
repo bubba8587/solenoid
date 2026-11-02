@@ -240,7 +240,7 @@
   pointer-events: none;
 }
 
-/* A long name wraps at word breaks onto a second line rather than widening its column; focused, every line shows. */
+/* A long name wraps at word breaks onto a second line rather than widening its column; focused, it is one line again that scrolls inside the field. */
 .table-popup__colhead-input {
   min-width: 0;
   width: 100%;
@@ -257,8 +257,13 @@
   color: color-mix(in srgb, var(--node-accent, var(--text)) 70%, var(--text));
 }
 .table-popup__colhead-input:focus {
-  max-height: none;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-height: calc(1.25em + 4px);
+  scrollbar-width: none;
 }
+.table-popup__colhead-input:focus::-webkit-scrollbar { display: none; }
 
 .table-popup__colhead-edit {
   display: flex;
