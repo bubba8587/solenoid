@@ -1304,6 +1304,10 @@ fn record(c: &mut Call) -> Answer {
     payload.insert("view".into(), Json::String(op.clone()));
     payload.insert("cols".into(), ncols.into());
     payload.insert("cards".into(), Json::Array(cards));
+    // No layout written: the boxes are a stack the figure may flow into as many columns as fit.
+    if placed.is_empty() && op != "cards" {
+        payload.insert("flow".into(), Json::Bool(true));
+    }
     if let Some(d) = deck {
         payload.insert("deck".into(), d);
     }

@@ -41,14 +41,18 @@ export function KpiCard({ payload, fscale, format }: { payload: KpiPayload; fsca
   );
 }
 
-function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][number]; cols: number }) {
+/** `flow` (no layout written) lets the stacked boxes wrap into as many columns as the figure's width fits. */
+function RecordGrid({ fields, cols, flow }: { fields: RecordPayload["cards"][number]; cols: number; flow?: boolean }) {
   return (
-    <div className="sol-record" style={{ gridTemplateColumns: `repeat(${Math.max(1, cols)}, minmax(0, 1fr))` }}>
+    <div
+      className={`sol-record${flow ? " sol-record--flow" : ""}`}
+      style={flow ? undefined : { gridTemplateColumns: `repeat(${Math.max(1, cols)}, minmax(0, 1fr))` }}
+    >
       {fields.map((f, i) => (
         <div
           key={i}
           className={`sol-record__box${f.isTitle ? " sol-record__box--title" : ""}`}
-          style={{ gridRow: `${f.row} / span ${f.rowSpan}`, gridColumn: `${f.col} / span ${f.colSpan}` }}
+          style={flow ? undefined : { gridRow: `${f.row} / span ${f.rowSpan}`, gridColumn: `${f.col} / span ${f.colSpan}` }}
         >
           {f.isTitle ? null : <div className="sol-record__label">{f.label}</div>}
           {f.image ? (
@@ -141,9 +145,9 @@ function RecordGallery({ payload }: { payload: RecordPayload }) {
     <MasonryGallery
       count={payload.cards.length}
       track={GALLERY_TRACK_BY_SIZE[payload.size ?? "m"]}
-      className={`sol-record-gallery${payload.clamp ? " sol-record-gallery--clamp" : ""}`}
+      className="sol-record-gallery"
       layoutKey={payload}
-      tile={(i) => <RecordGrid fields={payload.cards[i]} cols={payload.cols} />}
+      tile={(i) => <RecordGrid fields={payload.cards[i]} cols={payload.cols} flow={payload.flow} />}
     />
   );
 }
@@ -230,15 +234,26 @@ function RecordList({ payload }: { payload: RecordPayload }) {
   );
 }
 
+const RECORD_TILE_MIN: Record<RecordSize, number> = { s: 110, m: 150, l: 200 };
+const RECORD_LANE_MIN: Record<RecordSize, number> = { s: 140, m: 180, l: 240 };
+
 export function RecordCardView({ payload, width, fscale, title, onStep }: {
   payload: RecordPayload; width?: number; fscale?: number; title?: string; onStep?: (delta: number) => void;
 }) {
-  const outer = { ...(width ? { width } : undefined), ...fscaleStyle(fscale) };
+  // Tile size and clamp reach every view: the size sets the no-layout columns' and Board lanes' minimum width.
+  const size = payload.size ?? "m";
+  const outer = {
+    ...(width ? { width } : undefined),
+    ...fscaleStyle(fscale),
+    "--record-tile": `${RECORD_TILE_MIN[size]}px`,
+    "--record-lane": `${RECORD_LANE_MIN[size]}px`,
+  } as React.CSSProperties;
+  const figClass = payload.clamp ? "sol-record-fig sol-record-fig--clamp" : "sol-record-fig";
   const titleLine = title ? <div className="sol-record-figtitle">{title}</div> : null;
   const moreLine = payload.more ? <div className="sol-record__more">+{payload.more} more</div> : null;
   if (payload.view === "cards") {
     return (
-      <div style={outer}>
+      <div className={figClass} style={outer}>
         {titleLine}
         <RecordCards payload={payload} />
         {moreLine}
@@ -247,7 +262,7 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
   }
   if (payload.view === "gallery") {
     return (
-      <div style={outer}>
+      <div className={figClass} style={outer}>
         {titleLine}
         <RecordGallery payload={payload} />
         {moreLine}
@@ -256,7 +271,7 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
   }
   if (payload.view === "list") {
     return (
-      <div style={outer}>
+      <div className={figClass} style={outer}>
         {titleLine}
         <RecordList payload={payload} />
         {moreLine}
@@ -265,13 +280,13 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
   }
   if (payload.view === "board") {
     return (
-      <div style={outer}>
+      <div className={figClass} style={outer}>
         {titleLine}
         <div className="sol-record-board">
           {(payload.lanes ?? []).map((lane, li) => (
             <div key={li} className="sol-record-lane">
               <div className="sol-record-lane__label">{recordLaneText(lane)}</div>
-              {lane.cards.map((ci) => <RecordGrid key={ci} fields={payload.cards[ci] ?? []} cols={payload.cols} />)}
+              {lane.cards.map((ci) => <RecordGrid key={ci} fields={payload.cards[ci] ?? []} cols={payload.cols} flow={payload.flow} />)}
             </div>
           ))}
         </div>
@@ -281,10 +296,10 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
   }
   // The column fills a definite height and only the grid gives, so a short host never clips the pager away.
   return (
-    <div className="sol-record-card" style={outer}>
+    <div className={`sol-record-card ${figClass}`} style={outer}>
       {titleLine}
       <div className="sol-record-card__grid">
-        <RecordGrid fields={payload.cards[0] ?? []} cols={payload.cols} />
+        <RecordGrid fields={payload.cards[0] ?? []} cols={payload.cols} flow={payload.flow} />
       </div>
       {onStep && payload.total > 1 && (
         <div className="sol-record-nav">

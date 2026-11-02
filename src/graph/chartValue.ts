@@ -134,6 +134,8 @@ export interface RecordDeck {
   rowNumbers: number[];
 }
 export interface RecordPayload {
+  /** No layout was written, so the boxes flow into as many columns as fit rather than one stacked column. */
+  flow?: boolean;
   kind: "record";
   view: "detail" | "cards" | "gallery" | "board" | "list";
   deck?: RecordDeck;

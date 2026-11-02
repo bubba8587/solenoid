@@ -48,7 +48,7 @@ function MeasuredChart({ value, fontScale, recordNav, ladderAction }: { value: C
     return () => ro.disconnect();
   }, []);
   return (
-    <div ref={ref} style={{ width: "100%", height: "100%", overflow: "hidden" }}>
+    <div ref={ref} className={value.op === "record" ? "nowheel" : undefined} style={{ width: "100%", height: "100%", overflow: value.op === "record" ? "auto" : "hidden" }}>
       <ChartFigure value={value} width={size.w} height={size.h} fontScale={fontScale} recordNav={recordNav} ladderAction={ladderAction} />
     </div>
   );
@@ -89,7 +89,8 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   const growScalar = full && !grow && !isError && !isLambda && v != null && !Array.isArray(v) && typeof v !== "object";
   const growClass = grow ? "solenoid-node--display-grow" : growScalar ? "solenoid-node--display-grow-scalar" : undefined;
 
-  const minSize = isChart ? { w: 230, h: 150 }
+  const minSize = isChart && v.op === "record" ? { w: 260, h: 180 }
+    : isChart ? { w: 230, h: 150 }
     : isMermaid ? { w: 200, h: 120 }
     : isSvg ? { w: 200, h: 120 }
     : (isFrame || isCube || isTable) ? { w: 200, h: 90 }
@@ -100,7 +101,9 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   }, [data.id, minSize.w, minSize.h]);
 
   // A sized body scrolls whatever overflows it (lists, text, lambda views), so only a figure that scales skips the wheel trap.
-  const figure = isChart || isSvg || isMermaid;
+  // A Record figure is a stack of cards, not a drawing that scales, so a tall one scrolls like a frame does.
+  const isRecord = isChart && v.op === "record";
+  const figure = (isChart && !isRecord) || isSvg || isMermaid;
 
   const popKind = popOutKindFor(v);
   const expandBadge = full && popKind !== null
@@ -122,7 +125,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
           <div style={{ position: "relative", width: sized ? "100%" : undefined, height: sized ? "100%" : undefined }}>
             {sized
               ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} recordNav={recordStep} ladderAction={ladderAct} />
-              : <ChartFigure value={v} width={210} height={130} fontScale={ann?.chartFontScale} recordNav={recordStep} ladderAction={ladderAct} />}
+              : <ChartFigure value={v} width={v.op === "record" ? 280 : 210} height={130} fontScale={ann?.chartFontScale} recordNav={recordStep} ladderAction={ladderAct} />}
             <ChartExpandButton value={v} op={v.op as ChartShape} axes series={[]} title={v.title || nodeDisplayName(data)} />
           </div>
         )

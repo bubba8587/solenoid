@@ -789,7 +789,7 @@ export class RecordNode extends GraphNode {
     rows: "Picks the records, 1-based, in order: 3, or 1, 3, 5; -1 is the last. Blank shows every record. Detail pages through the picks.",
     by: "Names the column whose values become the board's lanes. Blank or unmatched draws nothing.",
     layout: "A line per row, names split by |. Repeat to merge. Photo*2 spans two, #Name titles, Qty: 40 is placeholder, a dot is blank. Empty stacks columns; on Cards, empty lays each card out from the data.",
-    options: "title=Parts;fontsize=12;cardsize=l. Gallery and Cards tiles size s, m or l; clamp=on caps long values at three lines and folds a card past six fields.",
+    options: "title=Parts;fontsize=12;cardsize=l. Tiles size s, m or l: Gallery and Cards tiles, Board lanes and the columns a record with no layout wraps into. clamp=on caps long values at three lines and folds a card past six fields.",
   };
 
   label: string;
