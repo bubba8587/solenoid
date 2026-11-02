@@ -26,6 +26,14 @@ bump them together. `magic-string` stays on 0.30 (the plugin build's pin; 1.x is
 Vitest 5 transforms with Oxc, so the `esbuild: { keepNames: true }` in `vite.config.ts` serves only
 the production minify, and its "esbuild options ignored" warning is expected.
 
+## Value handling (author 2026-11-02, walked piece by piece; [[C134]] functionsFollowAlgebra, [[C17]] shareImpl)
+
+- [ ] **The four kinds of "nothing" under C134**, one at a time: trueblank (unwired, empty cell), empty slot (`SUM(2, )`, 0 by [[C80]] blankArgIsExcelBlank), empty text `""`, NaN. Known tension: `AVERAGE(2, x)` skips a trueblank (2) where `(2 + x) / 2` doesn't; `2 + trueblank` answers blank today. Author leans skip for `""`, since `IF(c, x, "")` is the usual "show nothing" (`" "` is real text). NaN is common, not rare: "a" typed in a number column is NaN with its raw text kept ([[C58]] tableInputRawText); probe that path, not just a bare NaN. Today a bare NaN is `#DOMAIN!` in SUM/AVERAGE/MAX and `2 + x`, but COUNT counts it and AND reads it FALSE.
+- [ ] **Card vs formula on blank, `""` and NaN** (must align, C17): Boolean Op reads blanks Kleene-style (`AND(TRUE, blank)` blank on the card, TRUE in the formula; NOR the other way) and NaN as blank; `""` on a typed port is `#TYPE!` on Aggregate, Rank & Percentile and Boolean Op where formulas skip it; COUNT with an error in the list answers the error on the card, skips it in the formula; Rank & Percentile called directly skips logicals.
+- [ ] **Text leftovers after [[D109]] aggregatesRefuseText / [[D110]] logicRefusesText:** a Frame's `min`/`max` over a text column answer first/last text where the formula is `#TYPE!` (keep the feature?); Pivot `percentof` skips text; Frame `count` counts text (COUNTA's meaning); Group Lists skips error cells; PTP, IQR, MAD, SEM, CV, RMS (likely Mode, Trim Mean, Rank, Percent Rank, Correl too, unchecked) skip text in formulas but error on cards, so add them to D109; MODE.SNGL undecided (equality, not arithmetic); SUMSQ/SUMPRODUCT turn a typed `""` into `#VALUE!` while other aggregates skip it.
+- [ ] **SUMX2MY2, SUMX2PY2, SUMXMY2** still skip logical pairs ([[D108]] aggregatesCountLogicals) and text pairs (D109).
+- [ ] **The same walk-through for the card surface's typed fields** (a literal typed into a card, no cable) and the remaining families: arithmetic, comparison, IF, single-value functions (ABS, ROUND).
+
 ## Formula library
 - [ ] **AVERAGEIF and AVERAGEIFS over nothing answer blank** ([[C24]] arraySemantics), as AVERAGE already does; today no matching rows is `#DIV/0!`.
 - [ ] **`INDEX(m, 0, c)` gives a one-column table** ([[A5]] excelParity, [[D85]] columnsStayColumns), in formulas and on the INDEX card, not a list: with `m = [[3,1,2],[9,8,7]]`, `m / INDEX(m, 0, 1)` should divide each row by its first value, not across the columns.
