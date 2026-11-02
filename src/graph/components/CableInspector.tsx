@@ -22,8 +22,6 @@ import { isFrameRef } from "../frameBackend";
 import { CubeChip } from "./CubeChip";
 import { isFrameValue, isCubeValue } from "../frame";
 import { CloseIcon } from "./CloseIcon";
-import { SolenoidSocket } from "../sockets";
-import { makeFrameShapeResolver } from "../frameShapeResolver";
 import { conduitPath, type ConduitPathEnd } from "../conduitTrace";
 import "./cableInspector.css";
 
@@ -106,11 +104,6 @@ export const CableInspector = memo(function CableInspector() {
   const srcPort = outPortOf(origin);
 
   const value = cableValueStore.get(origin.nodeId, origin.key);
-
-  // `frame` cables only; null when the walk can't resolve the shape, and the row then doesn't render.
-  const srcSocket = editor.getNode(origin.nodeId)?.outputs[origin.key]?.socket;
-  const isFrameCable = srcSocket instanceof SolenoidSocket && srcSocket.dataType === "frame";
-  const frameShape = isFrameCable ? makeFrameShapeResolver(editor).outShape(origin.nodeId, origin.key) : null;
 
   const tgtSummary = terminals.length === 1
     ? titleOf(terminals[0].nodeId)
@@ -201,21 +194,6 @@ export const CableInspector = memo(function CableInspector() {
         <span className="solenoid-cable-inspector__role">Value</span>
         {renderWireValue(value, origin.nodeId, origin.key)}
       </div>
-
-      {frameShape && (
-        <div className="solenoid-cable-inspector__shape">
-          <span className="solenoid-cable-inspector__role">Shape</span>
-          <div className="solenoid-cable-inspector__shape-cols">
-            {frameShape.columns.map((c) => (
-              <span key={c.name} className="solenoid-cable-inspector__shape-col">
-                {c.name}
-                <span className="solenoid-cable-inspector__shape-type"> · {c.type}</span>
-              </span>
-            ))}
-            {frameShape.dynamic && <span className="solenoid-cable-inspector__shape-dynamic">+ more</span>}
-          </div>
-        </div>
-      )}
     </div>
   );
 });
