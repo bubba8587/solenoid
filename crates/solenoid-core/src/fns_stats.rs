@@ -13,6 +13,10 @@ use crate::excel_functions::{
 use crate::jsnum::{nan_max, nan_min, number_to_string, round_half_up};
 use libm::{cos, exp, log, sin};
 
+/// Why CONFIDENCE.NORM and CONFIDENCE.T refuse their arguments.
+pub(crate) const CONFIDENCE_RANGE: &str =
+    "CONFIDENCE needs an alpha between 0 and 1, a standard deviation above 0 and a sample size of 1 or more";
+
 /// `LEGACY_ALIASES`: a blocked name and the function that replaces it.
 const BLOCKED: &[(&str, &str)] = &[
     ("SUMIF", "SUMIFS"),
@@ -310,11 +314,11 @@ fn answer(name: &str, a: &[V]) -> V {
         "CONFIDENCE.T" => match (parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2))) {
             (V::Num(alpha), V::Num(sd), V::Num(size)) => {
                 if !(alpha > 0.0 && alpha < 1.0) || !(sd > 0.0) || !(size >= 1.0) {
-                    return V::Fx(FxError::Num);
+                    return V::err(sol_error(ErrorCode::Domain, CONFIDENCE_RANGE));
                 }
                 let size = size.trunc();
                 if size == 1.0 {
-                    return V::Fx(FxError::DivZero);
+                    return V::err(sol_error(ErrorCode::DivZero, "CONFIDENCE.T needs a sample size of 2 or more"));
                 }
                 // T.INV.2T's own inverse (`excel_functions.rs`), so the two agree.
                 let t =

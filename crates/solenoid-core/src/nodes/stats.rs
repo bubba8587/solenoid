@@ -5,7 +5,7 @@
 use super::kit::{broadcast_err, core_call, num};
 use super::Cv;
 use super::{err, list, Answer, Call};
-use crate::dists::{bisection_inv, ln_combin, norm_s_inv, regularized_gamma, std_norm_cdf, t_cdf};
+use crate::dists::{ln_combin, regularized_gamma, std_norm_cdf};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::{num_blank_zero, V};
 use crate::jsnum::round_half_up;
@@ -376,13 +376,7 @@ fn standardize(c: &mut Call) -> Answer {
     let result = if [&v, &m, &s].iter().any(|x| matches!(x, V::Null)) {
         V::Null
     } else {
-        broadcast_err(&[v, m, s], |o| {
-            if matches!(o[2], V::Num(z) if *z == 0.0) {
-                err(ErrorCode::DivZero, "Standard deviation is zero")
-            } else {
-                V::Num((num(o[0]) - num(o[1])) / num(o[2]))
-            }
-        })
+        broadcast_err(&[v, m, s], |o| core_call("STANDARDIZE", &[o[0].clone(), o[1].clone(), o[2].clone()]))
     };
     answer(c, result)
 }
@@ -402,17 +396,8 @@ fn confidence(c: &mut Call) -> Answer {
     if [&alpha, &stdev, &n_raw].iter().any(|x| matches!(x, V::Null)) {
         return answer(c, V::Null);
     }
-    let (alpha, stdev) = (js_num(&alpha), js_num(&stdev));
-    let n = js_num(&n_raw).trunc();
-    let mut result = V::Null;
-    if n >= 1.0 && stdev > 0.0 && alpha > 0.0 && alpha < 1.0 {
-        if !t {
-            result = V::Num(-norm_s_inv(alpha / 2.0) * stdev / n.sqrt());
-        } else if n >= 2.0 {
-            let tv = bisection_inv(|x| t_cdf(x, n - 1.0), 1.0 - alpha / 2.0, -1e6, 1e6);
-            result = V::Num(tv * stdev / n.sqrt());
-        }
-    }
+    // The card is CONFIDENCE.NORM and CONFIDENCE.T, so it answers as they do, errors included ([[C17]] shareImpl).
+    let result = core_call(if t { "CONFIDENCE.T" } else { "CONFIDENCE.NORM" }, &[alpha, stdev, n_raw]);
     answer(c, result)
 }
 

@@ -610,7 +610,10 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                 e => return Ok(e),
             };
             if n <= 0.0 && n.fract() == 0.0 {
-                return Ok(NUM);
+                return Ok(V::err(crate::error_value::sol_error(
+                    crate::error_value::ErrorCode::Domain,
+                    "GAMMA is undefined at 0 and the negative whole numbers",
+                )));
             }
             V::Num(libm::tgamma(n))
         }
@@ -675,7 +678,10 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
         "CONFIDENCE.NORM" => {
             let Some([alpha, sd, size]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2)]) else { return Ok(VALUE) };
             if !(alpha > 0.0 && alpha < 1.0) || !(sd > 0.0) || !(size >= 1.0) {
-                return Ok(NUM);
+                return Ok(V::err(crate::error_value::sol_error(
+                    crate::error_value::ErrorCode::Domain,
+                    crate::fns_stats::CONFIDENCE_RANGE,
+                )));
             }
             V::Num(-crate::dists::norm_s_inv(alpha / 2.0) * sd / size.trunc().sqrt())
         }

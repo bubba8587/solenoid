@@ -4055,7 +4055,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 V::Num(n) => n,
                 e => return e,
             };
-            let div0 = V::Fx(FxError::DivZero);
+            let div0 = V::err(sol_error(ErrorCode::DivZero, "This function divides by zero at 0"));
             V::Num(match arm {
                 F::SIN => sin(n),
                 F::COS => cos(n),
@@ -4234,12 +4234,18 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             let (n, sig) = (*n, *sig);
             match arm {
                 F::CEILING if sig == 0.0 => V::Num(0.0),
-                F::FLOOR if sig == 0.0 || sig.is_nan() => V::Fx(FxError::DivZero),
-                F::CEILING | F::FLOOR if n > 0.0 && sig < 0.0 => V::Fx(FxError::Num),
+                F::FLOOR if sig == 0.0 || sig.is_nan() => {
+                    V::err(sol_error(ErrorCode::DivZero, "FLOOR's significance can't be 0"))
+                }
+                F::CEILING | F::FLOOR if n > 0.0 && sig < 0.0 => {
+                    V::err(sol_error(ErrorCode::Domain, "A positive number needs a positive significance"))
+                }
                 F::CEILING => V::Num((n / sig).ceil() * sig),
                 F::FLOOR => V::Num((n / sig).floor() * sig),
                 _ if n * sig == 0.0 => V::Num(0.0),
-                _ if n * sig < 0.0 => V::Fx(FxError::Num),
+                _ if n * sig < 0.0 => {
+                    V::err(sol_error(ErrorCode::Domain, "MROUND needs the value and multiple to share a sign"))
+                }
                 _ => V::Num(round_half_up(n / sig) * sig),
             }
         }

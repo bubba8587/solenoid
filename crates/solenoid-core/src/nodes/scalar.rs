@@ -209,15 +209,6 @@ fn clamp(c: &mut Call) -> Answer {
     Ok(vec![("result".into(), Cv::from(result))])
 }
 
-/// `Math.sign`.
-fn sign(x: f64) -> f64 {
-    if x.is_nan() || x == 0.0 {
-        x
-    } else {
-        x.signum()
-    }
-}
-
 fn mround(c: &mut Call) -> Answer {
     #[derive(Clone, Copy, PartialEq)]
     enum Toward {
@@ -237,20 +228,14 @@ fn mround(c: &mut Call) -> Answer {
     } else if matches!(value, V::Null) {
         V::Null
     } else {
+        // The card is MROUND, CEILING.MATH and FLOOR.MATH, so it answers as they do ([[C17]] shareImpl).
         broadcast_err(&[value, multiple], |o| {
-            let (v, m) = (num(o[0]), num(o[1]));
-            if m == 0.0 {
-                return V::Num(0.0);
-            }
-            if op == Toward::Nearest && v != 0.0 && sign(v) != sign(m) {
-                return err(ErrorCode::Domain, "MROUND needs the value and multiple to share a sign");
-            }
-            // CEILING.MATH and FLOOR.MATH read the multiple's magnitude only; the card's up and down follow its sign.
-            match op {
-                Toward::Nearest => core_call("MROUND", &[o[0].clone(), o[1].clone()]),
-                Toward::Up => V::Num((v / m).ceil() * m),
-                Toward::Down => V::Num((v / m).floor() * m),
-            }
+            let name = match op {
+                Toward::Nearest => "MROUND",
+                Toward::Up => "CEILING.MATH",
+                Toward::Down => "FLOOR.MATH",
+            };
+            core_call(name, &[o[0].clone(), o[1].clone()])
         })
     };
     c.show("cachedResult", result.clone());
@@ -344,9 +329,6 @@ fn two_input_math(c: &mut Call) -> Answer {
             match op {
                 Two::Atan2 => core_call("ATAN2", &[o[0].clone(), o[1].clone()]),
                 Two::Hypot => V::Num((x * x + y * y).sqrt()),
-                Two::Log if x <= 0.0 || y <= 0.0 || matches!(o[1], V::Num(n) if *n == 1.0) => {
-                    err(ErrorCode::Domain, "LOG needs x > 0 and a base > 0, ≠ 1")
-                }
                 Two::Log => core_call("LOG", &[o[0].clone(), o[1].clone()]),
                 Two::Delta => V::Num(if (x - y).abs() < 1e-12 { 1.0 } else { 0.0 }),
                 Two::Gestep => core_call("GESTEP", &[o[0].clone(), o[1].clone()]),
@@ -456,28 +438,6 @@ fn math_fn_result_dim(op: &str, dim: &crate::unit_dims::Dim) -> Result<Option<cr
     Err(V::err(crate::unit_value::unit_error(&format!("{upper} needs a dimensionless argument."))))
 }
 
-/// The card's own kernel where the formula twin answers differently (last-digit noise, the ERF approximation, ACOTH
-/// at 1 and -1).
-fn own_kernel(op: &str, x: f64) -> Option<Option<f64>> {
-    use libm::{atanh, cosh, exp, sinh, tanh};
-    Some(match op {
-        "tanh" => Some(tanh(x)),
-        "sinh" => Some(sinh(x)),
-        "asinh" => Some(libm::asinh(x)),
-        "coth" => (sinh(x) != 0.0).then(|| cosh(x) / sinh(x)),
-        "csch" => (sinh(x) != 0.0).then(|| 1.0 / sinh(x)),
-        "acoth" => ((x <= -1.0 || x >= 1.0) && x.abs() != 1.0).then(|| atanh(1.0 / x)),
-        "erf" | "erfc" => {
-            let t = 1.0 / (1.0 + 0.3275911 * x.abs());
-            let p = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
-            let e = (if x < 0.0 { -1.0 } else { 1.0 }) * (1.0 - p * exp(-x * x));
-            Some(if op == "erf" { e } else { 1.0 - e })
-        }
-        "gammaln" => (x > 0.0).then(|| crate::dists::ln_gamma(x)),
-        _ => return None,
-    })
-}
-
 fn math_fx(c: &mut Call) -> Answer {
     use super::units::{dim_of, magnitude_of, tag};
     let op = c.field_str("op", "abs").to_string();
@@ -490,13 +450,12 @@ fn math_fx(c: &mut Call) -> Answer {
     let (deg2rad, rad2deg) = (std::f64::consts::PI / 180.0, 180.0 / std::f64::consts::PI);
     let domain_err = || err(ErrorCode::Domain, "Input is outside this function's domain");
     let name = if op == "log" { "LN".to_string() } else { op.to_uppercase() };
-    let compute_raw = |x: f64| -> Option<f64> {
-        if let Some(r) = own_kernel(&op, x) {
-            return r;
-        }
+    // The formula twin's own answer, its error included ([[C17]] shareImpl).
+    let compute_raw = |x: f64| -> Result<f64, V> {
         match core_call(&name, &[V::Num(x)]) {
-            V::Num(r) => Some(r),
-            _ => None,
+            V::Num(r) => Ok(r),
+            e @ V::Err(_) => Err(e),
+            _ => Err(domain_err()),
         }
     };
     let input = c.read_input("in", c.literal("in"));
@@ -517,12 +476,15 @@ fn math_fx(c: &mut Call) -> Answer {
                     crate::unit_expression::display_unit(u).filter(|s| crate::unit_dims::dim_equal(&s.dim, &u.dim))
             {
                 return match compute_raw(crate::unit_expression::display_magnitude_of(u)) {
-                    None => domain_err(),
-                    Some(r) => tag(r * shown.scale + shown.offset, shown.dim, Some(u)),
+                    Err(e) => e,
+                    Ok(r) => tag(r * shown.scale + shown.offset, shown.dim, Some(u)),
                 };
             }
             let x = magnitude_of(cell);
-            let Some(raw) = compute_raw(if bare && fwd_deg { x * deg2rad } else { x }) else { return domain_err() };
+            let raw = match compute_raw(if bare && fwd_deg { x * deg2rad } else { x }) {
+                Ok(r) => r,
+                Err(e) => return e,
+            };
             let out = if bare && inv_deg { raw * rad2deg } else { raw };
             match rd {
                 None => V::Num(out),
@@ -533,8 +495,8 @@ fn math_fx(c: &mut Call) -> Answer {
         broadcast_err(&[input], |o| {
             let x = num(o[0]);
             match compute_raw(if fwd_deg { x * deg2rad } else { x }) {
-                Some(r) => V::Num(if inv_deg { r * rad2deg } else { r }),
-                None => domain_err(),
+                Ok(r) => V::Num(if inv_deg { r * rad2deg } else { r }),
+                Err(e) => e,
             }
         })
     };
