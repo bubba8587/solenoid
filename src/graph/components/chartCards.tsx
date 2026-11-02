@@ -1,6 +1,9 @@
 // [[B11]] maximalMerge, [[C100]] chartIsAValue, [[C114]] cardsView
 import { CellImage } from "./cubeCell";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { appThemeStore } from "../appTheme";
+import { resolveColor } from "../palette";
+import { boxTintVars, namedColor } from "./boxTint";
 import type { KpiPayload, ScalePayload, RecordPayload, RecordSize } from "../chartValue";
 import { recordFieldText, recordLaneText, recordNumberText, titleIndexFor } from "../chartValue";
 import { formatScalar } from "./format";
@@ -160,8 +163,11 @@ const CARDS_TRACK_BY_SIZE: Record<RecordSize, Track> = {
 };
 const NO_COMPUTED: ReadonlySet<number> = new Set();
 
-function RecordCards({ payload }: { payload: RecordPayload }) {
+function RecordCards({ payload, colorBy }: { payload: RecordPayload; colorBy?: string }) {
   const deck = payload.deck;
+  const mode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
+  const tints = useMemo(() => cardTints(deck, colorBy, mode), [deck, colorBy, mode]);
+  const tintColumn = deck && colorBy ? deck.names.findIndex((n) => n.trim().toLowerCase() === colorBy.trim().toLowerCase()) : -1;
   const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set());
   const texts = useMemo(() => (deck?.rows ?? []).map((row) => row.map((v, c) => {
     if (v === null) return "";
@@ -186,6 +192,8 @@ function RecordCards({ payload }: { payload: RecordPayload }) {
         <AutoCard
           plan={deck.plan}
           layout={deck.layout}
+          tint={tints?.[r]}
+          tintColumn={tintColumn}
           names={deck.names}
           types={deck.types}
           computed={NO_COMPUTED}
@@ -200,6 +208,19 @@ function RecordCards({ payload }: { payload: RecordPayload }) {
       )}
     />
   );
+}
+
+/**
+ * Each card's colors from the `colorBy` column's cell: a hex color or a palette slot's name as itself, anything else
+ * (another word, a blank) the gray slot. No such column leaves every card plain.
+ */
+function cardTints(deck: RecordPayload["deck"], colorBy: string | undefined, mode: "dark" | "light"): CSSProperties[] | null {
+  const key = colorBy?.trim().toLowerCase();
+  if (!deck || !key) return null;
+  const c = deck.names.findIndex((n) => n.trim().toLowerCase() === key);
+  if (c < 0) return null;
+  const gray = resolveColor("gray");
+  return deck.rows.map((row) => boxTintVars(namedColor(row[c] === null || row[c] === undefined ? "" : String(row[c])) ?? gray, mode));
 }
 
 function NavChevron({ back }: { back?: boolean }) {
@@ -238,8 +259,10 @@ const RECORD_TILE_MIN: Record<RecordSize, number> = { s: 110, m: 150, l: 200 };
 const RECORD_LANE_MIN: Record<RecordSize, number> = { s: 140, m: 180, l: 240 };
 const RECORD_LIST_MIN: Record<RecordSize, number> = { s: 160, m: 220, l: 300 };
 
-export function RecordCardView({ payload, width, fscale, title, onStep }: {
+export function RecordCardView({ payload, width, fscale, title, onStep, colorBy }: {
   payload: RecordPayload; width?: number; fscale?: number; title?: string; onStep?: (delta: number) => void;
+  /** Cards only: the column whose cell colors each card (the options' `c`). */
+  colorBy?: string;
 }) {
   // Tile size and clamp reach every view: the size sets the no-layout columns' and Board lanes' minimum width.
   const size = payload.size ?? "m";
@@ -257,7 +280,7 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
     return (
       <div className={figClass} style={outer}>
         {titleLine}
-        <RecordCards payload={payload} />
+        <RecordCards payload={payload} colorBy={colorBy} />
         {moreLine}
       </div>
     );

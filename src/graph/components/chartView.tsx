@@ -224,7 +224,7 @@ const FigureBody = memo(function FigureBody({ value, width, height, axes = true,
   if (value.op === "quiver" && value.payload?.kind === "quiver")
     return <QuiverView payload={value.payload} options={value.options} width={width} height={height} />;
   if (value.op === "record" && value.payload?.kind === "record")
-    return <RecordCardView payload={value.payload} width={width} fscale={fscale} title={value.options?.title} onStep={recordNav} />;
+    return <RecordCardView payload={value.payload} width={width} fscale={fscale} title={value.options?.title} onStep={recordNav} colorBy={value.options?.c} />;
   if (value.payload?.kind === "xy")
     return <XYView payload={value.payload} width={width} height={height} opts={value.options} fontScale={fontScale} refs={value.refs} />;
   if (value.op === "overlay" && value.payload?.kind === "overlay")

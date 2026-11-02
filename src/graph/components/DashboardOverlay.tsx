@@ -14,7 +14,8 @@ import { flyToNode, flyToNodeAndFlash } from "../flyToNode";
 import { isSolError, ERROR_EXPLANATIONS, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { notifyGraphChanged } from "../process";
-import { themeAccent, resolveColor, contrastInk, darkenAccent, hexToRgba } from "../palette";
+import { resolveColor } from "../palette";
+import { boxTintVars } from "./boxTint";
 import { DashboardNode } from "../nodeClasses";
 import { writeRecordLayout, type RecordPlacement } from "../recordLayout";
 import { isChartValue } from "../chartValue";
@@ -314,19 +315,9 @@ export function DashboardOverlay() {
   const cols = placed.length ? Math.max(...placed.map((p) => p.col + p.colSpan - 1)) : 1;
   const rows = placed.length ? Math.max(...placed.map((p) => p.row + p.rowSpan - 1)) : 1;
   const mode = appThemeStore.getMode();
-  // A Group's colors ([[C88]] collapsedGroupCard's header and fill, GroupNode.tsx): a solid header in the slot's
-  // color with contrast ink, a border darkened in light mode, and the body washed with the color.
   const tint = (name: string): CSSProperties | undefined => {
     const slot = node.boxColors[name];
-    if (!slot) return undefined;
-    const base = resolveColor(slot);
-    const color = themeAccent(base, mode);
-    return {
-      "--box-color": color,
-      "--box-ink": contrastInk(color),
-      "--box-border": mode === "light" ? darkenAccent(base) : color,
-      "--box-fill": hexToRgba(color, mode === "light" ? 0.14 : 0.08),
-    } as CSSProperties;
+    return slot ? boxTintVars(resolveColor(slot), mode) : undefined;
   };
   const sourceOf = (name: string) => getOwningEditor(node.id)?.getConnections().find((c) => c.target === node.id && c.targetInput === name)?.source;
 

@@ -289,3 +289,23 @@
   color: var(--text-bright);
   font-variant-numeric: tabular-nums;
 }
+
+/* A card in a user-picked color (Record: Cards' Color column), worn as a Group or a Dashboard box wears one: a solid
+   header band with contrast ink, the border in the color, the body washed with it (boxTint.ts). */
+.sol-card--tinted,
+.sol-card--tinted:hover {
+  padding-top: 0;
+  border-color: var(--box-border);
+  background: linear-gradient(var(--box-fill), var(--box-fill)), var(--surface-sunken);
+}
+.sol-card--tinted > .sol-card__head {
+  margin: 0 -12px;
+  padding: 8px 12px;
+  border-radius: 5px 5px 0 0;
+  background: var(--box-color);
+  color: var(--box-ink);
+}
+.sol-card--tinted > .sol-card__head :is(.sol-card__title, .sol-card__key, .sol-card__hero-value, .sol-card__edit) { color: var(--box-ink); }
+.sol-card--tinted > .sol-card__head :is(.sol-card__sub, .sol-card__label, .sol-card__meta, .sol-card__title--none) {
+  color: color-mix(in srgb, var(--box-ink) 78%, var(--box-color));
+}

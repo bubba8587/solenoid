@@ -1,5 +1,5 @@
 // [[C114]] cardsView, [[D111]] cardLayouts, [[C103]] untrustedContentSeams
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { CellImage } from "./cubeCell";
 import { splitTags, isHexColor, linkHref, shortLink, type CardColType, type CardPlan } from "../cardLayout";
 import { categoryColorIndex } from "../categoryColor";
@@ -111,9 +111,13 @@ function tilesOf(plan: CardPlan): Tile[] {
  * With `fold`, a card past TILE_LIMIT fields and its prose stay short until `open`; `onToggle` flips that.
  */
 export function AutoCard({
-  plan, layout, names, types, computed, chipColors, texts, raw, items, cellNode, rowNumber, fold, open = false, onToggle, toggleOnClick = false, onEdit,
+  plan, layout, names, types, computed, chipColors, texts, raw, items, cellNode, rowNumber, fold, open = false, onToggle, toggleOnClick = false, onEdit, tint, tintColumn,
 }: {
   plan: CardPlan;
+  /** A user-picked color worn as a Group or Dashboard box wears it (`boxTintVars`): header band, border, body wash. */
+  tint?: CSSProperties;
+  /** The column that picked the tint: its chip wears the card's color rather than its own. */
+  tintColumn?: number;
   /** An authored card layout: it picks the fields and places them, and the plan still decides how each one draws. */
   layout?: readonly RecordPlacement[];
   names: readonly string[];
@@ -135,7 +139,7 @@ export function AutoCard({
 }) {
   const text = (c: number | null): string => (c === null ? "" : (texts[c] ?? "").trim());
   if (layout && layout.length > 0) {
-    return <LaidOutCard {...{ plan, layout, names, types, computed, chipColors, texts, raw, items, cellNode, rowNumber, onEdit }} />;
+    return <LaidOutCard {...{ plan, layout, names, types, computed, chipColors, texts, raw, items, cellNode, rowNumber, onEdit, tint, tintColumn }} />;
   }
   const img = plan.image !== null ? cellImageSrc(raw(plan.image)) : null;
   const title = [plan.title, ...plan.titleRest].map(text).filter((t) => t !== "").join(" ");
@@ -156,7 +160,8 @@ export function AutoCard({
   const opens = fold && !!onToggle && (prose.length > 0 || rowTiles.length > TILE_LIMIT);
   return (
     <article
-      className={`sol-card${folded ? " sol-card--folded" : ""}${opens && toggleOnClick ? " sol-card--opens" : ""}`}
+      className={`sol-card${folded ? " sol-card--folded" : ""}${opens && toggleOnClick ? " sol-card--opens" : ""}${tint ? " sol-card--tinted" : ""}`}
+      style={tint}
       onClick={opens && toggleOnClick ? onToggle : undefined}
     >
       <header className="sol-card__head">
@@ -197,7 +202,7 @@ export function AutoCard({
       {(chips.length > 0 || tagTokens.length > 0 || swatches.length > 0 || flags.length > 0) && (
         <div className="sol-card__chips">
           {chips.map((c) => (
-            <CategoryChip key={c} value={text(c)} index={chipColors.get(c)?.get(raw(c).trim()) ?? 0} />
+            <CategoryChip key={c} value={text(c)} index={chipColors.get(c)?.get(raw(c).trim()) ?? 0} hue={tint && c === tintColumn ? "var(--box-color)" : undefined} />
           ))}
           {tagTokens.map(({ c, t }, i) => (
             <CategoryChip key={`t${c}-${i}`} value={t} index={chipColors.get(c)?.get(t) ?? 0} />
@@ -262,7 +267,7 @@ export function AutoCard({
 /** A card drawn to an authored layout ([[D111]] cardLayouts): the title field heads it, every other placed field is a
  *  tile at its place in the grid, and each tile draws the way the plan reads its column. A name that matches no column
  *  keeps its box with the layout's hint. */
-function LaidOutCard({ plan, layout, names, types, computed, chipColors, texts, raw, items, cellNode, rowNumber, onEdit }: {
+function LaidOutCard({ plan, layout, names, types, computed, chipColors, texts, raw, items, cellNode, rowNumber, onEdit, tint, tintColumn }: {
   plan: CardPlan;
   layout: readonly RecordPlacement[];
   names: readonly string[];
@@ -275,6 +280,8 @@ function LaidOutCard({ plan, layout, names, types, computed, chipColors, texts, 
   cellNode?: (c: number) => ReactNode;
   rowNumber: number;
   onEdit?: () => void;
+  tint?: CSSProperties;
+  tintColumn?: number;
 }) {
   const colOf = (name: string) => names.findIndex((n) => n.trim().toLowerCase() === name.trim().toLowerCase());
   const text = (c: number): string => (c < 0 ? "" : (texts[c] ?? "").trim());
@@ -295,7 +302,7 @@ function LaidOutCard({ plan, layout, names, types, computed, chipColors, texts, 
     if (node) return node;
     const n = decimalFromText(raw(c).trim());
     if (c === plan.image) { const src = cellImageSrc(raw(c)); if (src) return <CellImage className="sol-card__pic" src={src} />; }
-    if (plan.chips.includes(c)) return <CategoryChip value={t} index={chipColors.get(c)?.get(raw(c).trim()) ?? 0} />;
+    if (plan.chips.includes(c)) return <CategoryChip value={t} index={chipColors.get(c)?.get(raw(c).trim()) ?? 0} hue={tint && c === tintColumn ? "var(--box-color)" : undefined} />;
     if (plan.tags.includes(c)) {
       return <span className="sol-card__chips sol-card__chips--inline">{(items?.(c) ?? splitTags(raw(c))).map((tag, i) => (
         <CategoryChip key={i} value={tag} index={chipColors.get(c)?.get(tag) ?? 0} />
@@ -322,7 +329,7 @@ function LaidOutCard({ plan, layout, names, types, computed, chipColors, texts, 
     return <CellText text={texts[c] ?? ""} />;
   };
   return (
-    <article className="sol-card sol-card--laid">
+    <article className={`sol-card sol-card--laid${tint ? " sol-card--tinted" : ""}`} style={tint}>
       <header className="sol-card__head">
         <div className="sol-card__titles">
           <div className="sol-card__title-line">

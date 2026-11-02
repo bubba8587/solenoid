@@ -83,7 +83,7 @@ const GANTT_TIMELINE_KEYS: readonly ChartBuilderKey[] =
 const GANTT_CALENDAR_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "layout", "critical", "minutes", "window", "week"];
 const RECORD_KEYS: readonly ChartBuilderKey[] =
-  ["title", "fontsize", "cardsize", "clamp"];
+  ["title", "c", "fontsize", "cardsize", "clamp"];
 const CALHEAT_KEYS: readonly ChartBuilderKey[] = ["title", "cmap", "center", "vmin", "vmax", "cbar", "fontsize"];
 const CONTOUR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "cmap", "center", "vmin", "vmax", "cbar", "fontsize"];
 const FIELD_KEYS: readonly ChartBuilderKey[] = ["title", "cmap", "fontsize"];
