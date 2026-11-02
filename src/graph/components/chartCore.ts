@@ -1,5 +1,6 @@
 // [[C100]] chartIsAValue, [[B2]] webTryDesktopFull
 // Must stay recharts-free: a helper imported from here must not drag recharts into the main bundle.
+import { themeColor } from "./themeColor";
 import { useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import { resolveColor, type PaletteSlot } from "../palette";
@@ -20,8 +21,7 @@ const SERIES_SLOTS: PaletteSlot[] = [
 // recharts writes colors as SVG attributes, where CSS var() doesn't resolve.
 export function useChartColors() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  const cs = getComputedStyle(document.documentElement);
-  const get = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback;
+  const get = (name: string, fallback: string) => themeColor(name, fallback);
   return {
     grid: get("--border-strong", "#3a3a3a"),
     axis: get("--text-dim", "#888"),
