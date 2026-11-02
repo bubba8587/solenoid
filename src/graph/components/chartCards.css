@@ -95,8 +95,8 @@
 .sol-record--flow {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--record-tile, 150px)), 1fr));
 }
-/* clamp=on caps a long value at three lines on every view. */
-.sol-record-fig--clamp .sol-record__value {
+/* clamp=on caps a long value at three lines on every view, a card's notes included. */
+.sol-record-fig--clamp :is(.sol-record__value, .sol-card__prose p) {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;

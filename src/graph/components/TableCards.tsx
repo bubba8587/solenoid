@@ -43,7 +43,6 @@ export function TableCards({
   const [limit, setLimit] = useState(PAGE);
   const [seenQuery, setSeenQuery] = useState(query);
   if (query !== seenQuery) { setSeenQuery(query); setLimit(PAGE); }
-  const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set());
   const [rulesOpen, setRulesOpen] = useState(false);
   const cols = names.length;
 
@@ -76,11 +75,6 @@ export function TableCards({
   const primary = sort[0];
   const dir: SortDir = primary?.dir ?? "asc";
 
-  const toggle = (r: number) => setOpen((s) => {
-    const next = new Set(s);
-    if (next.has(r)) next.delete(r); else next.add(r);
-    return next;
-  });
 
   const card = (r: number) => (
     <AutoCard
@@ -96,10 +90,6 @@ export function TableCards({
       items={itemsAt ? (c) => itemsAt(r, c) : undefined}
       cellNode={cellNodeAt ? (c) => cellNodeAt(r, c) : undefined}
       rowNumber={r + 1}
-      fold
-      open={open.has(r)}
-      onToggle={() => toggle(r)}
-      toggleOnClick
       onEdit={onEdit ? () => onEdit(r) : undefined}
     />
   );

@@ -163,19 +163,8 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   text-wrap-style: pretty;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
-}
-.sol-card:not(.sol-card--folded) .sol-card__prose p {
-  display: block;
-  -webkit-line-clamp: unset;
-  line-clamp: none;
 }
 .sol-card__nan { color: var(--text-muted); font-style: italic; }
-.sol-card--opens { cursor: pointer; }
 .sol-card__link {
   color: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-ink, 55%), var(--text));
   text-decoration: underline;
@@ -225,18 +214,6 @@
   border-radius: 2px;
   background: var(--node-accent, var(--accent));
 }
-.sol-card__fields {
-  align-self: flex-start;
-  margin: -2px 0 0;
-  padding: 0;
-  font: inherit;
-  font-size: calc(11px * var(--chart-fscale, 1));
-  color: var(--text-dim);
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-.sol-card__fields:hover { color: var(--node-accent, var(--accent)); }
 .sol-card__pic {
   display: block;
   width: 36px;

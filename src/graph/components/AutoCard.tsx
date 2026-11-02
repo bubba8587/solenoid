@@ -12,8 +12,6 @@ import { CheckIcon, PencilIcon } from "./Icons";
 import { CloseIcon } from "./CloseIcon";
 import "./AutoCard.css";
 
-// A folded card shows this many field tiles until it is opened.
-const TILE_LIMIT = 6;
 
 function isErrCode(s: string): boolean {
   return Object.prototype.hasOwnProperty.call(ERROR_EXPLANATIONS, s.trim());
@@ -108,10 +106,9 @@ function tilesOf(plan: CardPlan): Tile[] {
 
 /**
  * One row as a card, laid out by `plan`. `texts` is each column's shown text, `raw(c)` its raw text.
- * With `fold`, a card past TILE_LIMIT fields and its prose stay short until `open`; `onToggle` flips that.
  */
 export function AutoCard({
-  plan, layout, names, types, computed, chipColors, texts, raw, items, cellNode, rowNumber, fold, open = false, onToggle, toggleOnClick = false, onEdit, tint, tintColumn,
+  plan, layout, names, types, computed, chipColors, texts, raw, items, cellNode, rowNumber, onEdit, tint, tintColumn,
 }: {
   plan: CardPlan;
   /** A user-picked color worn as a Group or Dashboard box wears it (`boxTintVars`): header band, border, body wash. */
@@ -131,10 +128,6 @@ export function AutoCard({
   /** A tile's value drawn by the host (a nested cell's drill chip), else its text. */
   cellNode?: (c: number) => ReactNode;
   rowNumber: number;
-  fold: boolean;
-  open?: boolean;
-  onToggle?: () => void;
-  toggleOnClick?: boolean;
   onEdit?: () => void;
 }) {
   const text = (c: number | null): string => (c === null ? "" : (texts[c] ?? "").trim());
@@ -155,14 +148,10 @@ export function AutoCard({
   const flags = plan.flags.flatMap((c) => { const v = readLogical(raw(c)); return v === null ? [] : [{ c, v }]; });
   const rowTiles = tilesOf(plan).filter((t) => text(t.c) !== "");
   const prose = plan.prose.filter((c) => text(c) !== "");
-  const folded = fold && !open;
-  const visibleTiles = folded && rowTiles.length > TILE_LIMIT ? rowTiles.slice(0, TILE_LIMIT) : rowTiles;
-  const opens = fold && !!onToggle && (prose.length > 0 || rowTiles.length > TILE_LIMIT);
   return (
     <article
-      className={`sol-card${folded ? " sol-card--folded" : ""}${opens && toggleOnClick ? " sol-card--opens" : ""}${tint ? " sol-card--tinted" : ""}`}
+      className={`sol-card${tint ? " sol-card--tinted" : ""}`}
       style={tint}
-      onClick={opens && toggleOnClick ? onToggle : undefined}
     >
       <header className="sol-card__head">
         {img && <CellImage className="sol-card__thumb" src={img} />}
@@ -221,9 +210,9 @@ export function AutoCard({
           ))}
         </div>
       )}
-      {visibleTiles.length > 0 && (
+      {rowTiles.length > 0 && (
         <dl className="sol-card__stats">
-          {visibleTiles.map(({ c, kind, max }) => {
+          {rowTiles.map(({ c, kind, max }) => {
             const n = decimalFromText(raw(c).trim());
             return (
               <div key={c} className={`sol-card__stat${types[c] === "string" ? " sol-card__stat--text" : ""}`}>
@@ -248,18 +237,6 @@ export function AutoCard({
           <p><CellText text={texts[c] ?? ""} /></p>
         </div>
       ))}
-      {fold && onToggle && rowTiles.length > TILE_LIMIT && (
-        <button
-          type="button"
-          className="sol-card__fields"
-          aria-expanded={open}
-          onClick={(e) => { e.stopPropagation(); onToggle(); }}
-          onPointerDown={stopDragStart}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          {open ? "Show Fewer Fields" : `Show All ${rowTiles.length} Fields`}
-        </button>
-      )}
     </article>
   );
 }

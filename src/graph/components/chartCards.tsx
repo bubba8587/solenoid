@@ -168,7 +168,6 @@ function RecordCards({ payload, colorBy }: { payload: RecordPayload; colorBy?: s
   const mode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
   const tints = useMemo(() => cardTints(deck, colorBy, mode), [deck, colorBy, mode]);
   const tintColumn = deck && colorBy ? deck.names.findIndex((n) => n.trim().toLowerCase() === colorBy.trim().toLowerCase()) : -1;
-  const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set());
   const texts = useMemo(() => (deck?.rows ?? []).map((row) => row.map((v, c) => {
     if (v === null) return "";
     return typeof v === "number" ? recordNumberText(v, deck!.formats[c]) : v;
@@ -177,17 +176,12 @@ function RecordCards({ payload, colorBy }: { payload: RecordPayload; colorBy?: s
     ? cardChipColors(deck.plan, new Set(deck.chipCols), deck.rows.length, (r, c) => String(deck.rows[r]?.[c] ?? ""))
     : new Map<number, Map<string, number>>()), [deck]);
   if (!deck) return null;
-  const toggle = (r: number) => setOpen((s) => {
-    const next = new Set(s);
-    if (next.has(r)) next.delete(r); else next.add(r);
-    return next;
-  });
   return (
     <MasonryGallery
       count={deck.rows.length}
       track={CARDS_TRACK_BY_SIZE[payload.size ?? "m"]}
       className="sol-record-gallery"
-      layoutKey={`${deck.rows.length}|${[...open].join(",")}|${payload.clamp ? 1 : 0}`}
+      layoutKey={`${deck.rows.length}|${payload.clamp ? 1 : 0}`}
       tile={(r) => (
         <AutoCard
           plan={deck.plan}
@@ -201,9 +195,6 @@ function RecordCards({ payload, colorBy }: { payload: RecordPayload; colorBy?: s
           texts={texts[r]}
           raw={(c) => String(deck.rows[r]?.[c] ?? "")}
           rowNumber={deck.rowNumbers[r] ?? r + 1}
-          fold={!!payload.clamp}
-          open={open.has(r)}
-          onToggle={() => toggle(r)}
         />
       )}
     />
