@@ -370,7 +370,12 @@
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  width: 44px;
+  /* As wide as its longest word, one word a line, so every hint ends 10px in from the edge however long its words. */
+  width: min-content;
+  /* A hint wider than the label's 44px reserve covers the label's end in the header's own tint, faded in, never printed over it. */
+  padding-left: 8px;
+  background: linear-gradient(to right, transparent,
+    color-mix(in srgb, var(--node-accent, var(--surface)) var(--header-tint), var(--surface)) 8px);
   white-space: normal;
   line-height: 1.25;
   text-align: right;
@@ -378,7 +383,8 @@
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 45%, var(--text));
+  /* The 65% lives in the ink, not the element, so the backing stays solid over the label. */
+  color: color-mix(in srgb, color-mix(in srgb, var(--node-accent, var(--text-dim)) 45%, var(--text)) 65%, transparent);
   opacity: 0;
   /* Hidden, not just transparent, so 300 resting hints cost no paint per pan frame; it flips after the fade-out. */
   visibility: hidden;
@@ -388,7 +394,7 @@
 }
 
 .solenoid-node:hover .solenoid-node__type-hint {
-  opacity: 0.65;
+  opacity: 1;
   visibility: visible;
   transition: opacity 200ms;
 }
