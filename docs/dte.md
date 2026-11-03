@@ -33,11 +33,13 @@ DTE's rules govern how the tree is kept. These are the habits Solenoid adds on t
 leaf, because none is a product call.
 
 - **Author-ruled means ratified** (DTE A3 provenance, B59 provenanceFields). A leaf binds as the author's
-  ruling only when `ratified_by` names the author, set on the author's word in session. Something
-  the author said once, a quote in a Why, or an agent's confidence about what the author meant
-  confers nothing; an unratified leaf binds as the working agent's inference and is open to
-  question on those terms. The owner keeps `OWNER_RATIFIED` in `rules.test.ts`; on the author's word in
-  session the agent ratifies and adds the ID there in the same commit.
+  ruling only when `ratified_by` names the author. An agent sets it only on a direct instruction
+  naming the leaf ("ratify Z7 for me please"), never inferred: the author agreeing with a proposal,
+  choosing an option, or saying "go with it" ratifies nothing. Something the author said once, a quote
+  in a Why, or an agent's confidence about what the author meant confers nothing; an unratified leaf
+  binds as the working agent's inference and is open to question on those terms. The owner keeps
+  `OWNER_RATIFIED` in `rules.test.ts`; on that direct instruction the agent ratifies and adds the ID
+  there in the same commit.
 - **A Why is the plain reason for the call** (the author's ratified leaves are the model). One or two
   sentences a person would say out loud: why this is the product we want ("it's nice to have groups
   that take up a lot less space", "there's no good reason to have two versions of a function"). It
