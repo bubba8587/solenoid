@@ -7,4 +7,5 @@
   vertical-align: middle;
 }
 .sol-typeicon svg { display: block; }
-.solenoid-segbtn .sol-typeicon { font-size: 12px; font-weight: 600; }
+/* 14px sets `#` and `Aa` optically level with the drawn glyphs. */
+.solenoid-segbtn .sol-typeicon { font-size: 14px; font-weight: 600; }
