@@ -795,7 +795,7 @@ fn mode_of(nums: &[f64]) -> f64 {
 }
 
 fn sum_of(nums: &[f64]) -> f64 {
-    nums.iter().fold(0.0, |a, b| a + b)
+    crate::exact_sum::exact_sum(nums)
 }
 
 fn variance_of(nums: &[f64], sample: bool) -> Option<f64> {
@@ -1648,7 +1648,9 @@ fn sum_group(values: &[FrameCell]) -> FrameCell {
         .collect();
     match for_aggregate(&as_nums) {
         AggregatePrep::Error(e) => e,
-        AggregatePrep::Nums(n) => FrameCell::Num(n.iter().filter(|x| x.is_finite()).fold(0.0, |a, b| a + b)),
+        AggregatePrep::Nums(n) => {
+            FrameCell::Num(sum_of(&n.iter().copied().filter(|x| x.is_finite()).collect::<Vec<_>>()))
+        }
     }
 }
 
@@ -2589,7 +2591,18 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
         let total = sum_of(&present);
         let ranked = order_vals.iter().filter(|k| !blank_key(k)).count();
         let (mut run_start, mut dense) = (0usize, 0usize);
-        let (mut cum_sum, mut cum_count, mut cum_min, mut cum_max) = (0.0, 0usize, f64::INFINITY, f64::NEG_INFINITY);
+        let (mut cum_sum, mut cum_count, mut cum_min, mut cum_max) =
+            (crate::exact_sum::ExactSum::default(), 0usize, f64::INFINITY, f64::NEG_INFINITY);
+        // The window a rolling function reads: its exact sum and count, slid a row at a time, and the rows that can
+        // still be its least or greatest, so each row costs the same however wide the window ([[C120]] linearWork).
+        let width = if big_n.is_nan() || big_n < 1.0 { 0 } else { big_n as usize };
+        let mut roll_sum = crate::exact_sum::ExactSum::default();
+        let mut roll_count = 0usize;
+        // The running and the rolling numbers as written, brought up to date only when a total asks (`Written`).
+        let (mut cum_written, mut cum_upto) = (crate::exact_sum::Written::default(), 0usize);
+        let (mut roll_written, mut roll_from, mut roll_upto) = (crate::exact_sum::Written::default(), 0usize, 0usize);
+        let num_at = |q: usize| nums.get(q).copied().flatten();
+        let (mut lows, mut highs) = (std::collections::VecDeque::new(), std::collections::VecDeque::new());
         for p in 0..m {
             let row = ordered[p];
             if order_col.is_some() && (p == 0 || window_cmp(order_vals[p], order_vals[p - 1]) != Ordering::Equal) {
@@ -2597,8 +2610,34 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
                 dense += 1;
             }
             let x = nums.get(p).copied().flatten();
+            if width > 0 {
+                if let Some(x) = x {
+                    roll_sum.add(x);
+                    roll_count += 1;
+                    while lows.back().is_some_and(|&q: &usize| num_at(q).is_some_and(|y| y > x)) {
+                        lows.pop_back();
+                    }
+                    lows.push_back(p);
+                    while highs.back().is_some_and(|&q: &usize| num_at(q).is_some_and(|y| y < x)) {
+                        highs.pop_back();
+                    }
+                    highs.push_back(p);
+                }
+                if p >= width {
+                    if let Some(y) = num_at(p - width) {
+                        roll_sum.remove(y);
+                        roll_count -= 1;
+                    }
+                    while lows.front().is_some_and(|&q| q + width <= p) {
+                        lows.pop_front();
+                    }
+                    while highs.front().is_some_and(|&q| q + width <= p) {
+                        highs.pop_front();
+                    }
+                }
+            }
             if let Some(x) = x {
-                cum_sum += x;
+                cum_sum.add(x);
                 cum_count += 1;
                 if x < cum_min {
                     cum_min = x;
@@ -2642,8 +2681,18 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
                     (Some(e), _) => e.clone(),
                     (None, None) => FrameCell::Null,
                     (None, Some(_)) => FrameCell::Num(match func {
-                        WindowFn::CumSum => cum_sum,
-                        WindowFn::CumAvg => cum_sum / cum_count as f64,
+                        WindowFn::CumSum | WindowFn::CumAvg => {
+                            let total = cum_sum.total_by(|| {
+                                nums[cum_upto..=p].iter().flatten().for_each(|&y| cum_written.add(y));
+                                cum_upto = p + 1;
+                                cum_written.cancels()
+                            });
+                            if func == WindowFn::CumSum {
+                                total
+                            } else {
+                                total / cum_count as f64
+                            }
+                        }
                         WindowFn::CumMin => cum_min,
                         _ => cum_max,
                     }),
@@ -2684,19 +2733,20 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
                     } else if pf < big_n - 1.0 || x.is_none() {
                         FrameCell::Null
                     } else {
-                        let (mut sum, mut count, mut lo, mut hi) = (0.0, 0usize, f64::INFINITY, f64::NEG_INFINITY);
-                        if !big_n.is_nan() {
-                            for y in nums[p + 1 - big_n as usize..=p].iter().flatten() {
-                                sum += y;
-                                count += 1;
-                                if *y < lo {
-                                    lo = *y;
-                                }
-                                if *y > hi {
-                                    hi = *y;
-                                }
+                        let at = |q: Option<&usize>, empty: f64| q.and_then(|&q| num_at(q)).unwrap_or(empty);
+                        let (lo, hi) = (at(lows.front(), f64::INFINITY), at(highs.front(), f64::NEG_INFINITY));
+                        let from = p + 1 - width;
+                        let sum = roll_sum.total_by(|| {
+                            if roll_upto <= from {
+                                roll_written = crate::exact_sum::Written::default();
+                                (roll_from, roll_upto) = (from, from);
                             }
-                        }
+                            nums[roll_from..from].iter().flatten().for_each(|&y| roll_written.remove(y));
+                            nums[roll_upto..=p].iter().flatten().for_each(|&y| roll_written.add(y));
+                            (roll_from, roll_upto) = (from, p + 1);
+                            roll_written.cancels()
+                        });
+                        let count = roll_count;
                         FrameCell::Num(match func {
                             WindowFn::RollingSum => sum,
                             WindowFn::RollingAvg => sum / count as f64,

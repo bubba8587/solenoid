@@ -654,7 +654,7 @@ fn clamp_index(x: f64, len: usize) -> usize {
 // ─── Statistics ─────────────────────────────────────────────────────────────────
 
 pub(crate) fn sum(a: &[f64]) -> f64 {
-    a.iter().fold(0.0, |x, y| x + y)
+    crate::exact_sum::exact_sum(a)
 }
 
 pub(crate) fn ssd(a: &[f64], m: f64) -> f64 {
@@ -6001,23 +6001,27 @@ fn date_from_parts(raw_y: f64, raw_m: f64, raw_d: f64) -> V {
 
 /// Formula.js's SUM, a nested list adding as its own subtotal.
 /// Each addition snaps a cancellation to zero as Excel's SUM does (`SUM(0.1, 0.2, -0.3)` is 0; `snapped_sum`).
+/// SUM: exact, snapped once at the end (`exact_sum`).
 fn sum_like_fx(a: &[V]) -> V {
-    use crate::excel_formula::snapped_sum;
-    let mut result = 0.0;
-    for v in a {
-        match v {
-            V::Fx(_) => return v.clone(),
-            V::Num(n) => result = snapped_sum(result, *n),
-            // A logical reads as 1 or 0 ([[D108]] aggregatesCountLogicals).
-            V::Bool(b) => result = snapped_sum(result, f64::from(u8::from(*b))),
-            V::List(items) => match sum_like_fx(items) {
-                V::Num(n) => result = snapped_sum(result, n),
-                e => return e,
-            },
-            _ => {}
+    fn add(a: &[V], xs: &mut Vec<f64>) -> Option<V> {
+        for v in a {
+            match v {
+                V::Fx(_) => return Some(v.clone()),
+                V::Num(n) => xs.push(*n),
+                // A logical reads as 1 or 0 ([[D108]] aggregatesCountLogicals).
+                V::Bool(b) => xs.push(f64::from(u8::from(*b))),
+                V::List(items) => {
+                    if let Some(early) = add(items, xs) {
+                        return Some(early);
+                    }
+                }
+                _ => {}
+            }
         }
+        None
     }
-    V::Num(result)
+    let mut xs = Vec::new();
+    add(a, &mut xs).unwrap_or_else(|| V::Num(crate::exact_sum::exact_sum(&xs)))
 }
 
 trait AddWeek {

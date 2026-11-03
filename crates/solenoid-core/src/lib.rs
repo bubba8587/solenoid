@@ -19,6 +19,7 @@ pub mod decision;
 pub mod dists;
 pub mod error_value;
 pub mod eval;
+pub mod exact_sum;
 pub mod excel_criteria;
 pub mod excel_format;
 pub mod excel_formula;

@@ -65,8 +65,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
   - A body that answers fewer outputs than its ports rejects the whole pass, not just its card (`MissingOutputs`); only reachable by changing Equation's `expr` without rebuilding its sockets.
 - [ ] **Quadratic work the C120 sweep left** ([[C120]] linearWork, 2026-10-24; the small ones landed):
   - INTERPOLATE's grid fill (`fill_grid`, `fns_lists.rs`) scans every known point per candidate corner; needs a spatial index.
-  - Rolling windows (`frame_verbs.rs`) re-sum each window: rows × window. Prefix sums change the rounding, so they need the fixtures to agree first.
-  - SUMIFS and AVERAGEIFS with one comparison over values that aren't all whole numbers still scan every row (`SUMIFS(price, day, "<="&@day)`, a running total: 6 s at 20k rows). MINIFS, MAXIFS, COUNTIFS and whole-number sums read a sorted run (`Rolled`, `excel_criteria.rs`); a fractional sum read that way adds in another order, so it can differ in the last digit from the scan. Needs the author's call: an exactly rounded sum on both paths (fixtures move), or keep the scan.
 - [ ] **Text-reading calls the no-text-guessing sweep left for the author** ([[C10]] socketLattice): NAND, NOR and XNOR answer #TYPE! for text where AND, OR, XOR and NOT answer #VALUE! ([[D110]] logicRefusesText): one error for the family? And `COALESCE(list, "n/a")` drops a text (or logical) fallback, as `../tree/specs/computation/formula-language.md` § COALESCE says ("any other fallback is ignored"); a silent drop reads as a bug, so confirm it's wanted.
 
 ## JavaScript the core still imitates ([[B27]] computeAnswersToExcel, [[B7]] preAlphaBreakFreely)

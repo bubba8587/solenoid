@@ -991,7 +991,8 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair
             _ => {}
         }
     }
-    let total = || kept.iter().fold(0.0, |a, b| a + b);
+    // Rounded once, so a sorted run's sum (`Rolled`) answers the same ([[C120]] linearWork).
+    let total = || crate::exact_sum::exact_sum(&kept);
     match kind {
         Kind::Count => V::Num(count as f64),
         Kind::Sum => V::Num(total()),
@@ -1050,10 +1051,18 @@ struct Rolled {
     suf_min: Vec<f64>,
     pre_max: Vec<f64>,
     suf_max: Vec<f64>,
-    /// Their sums, kept only where every finite value is a whole number and no sum can round, so adding them in
-    /// sorted order gives the scan's row-order sum to the bit.
-    sums: Option<(Vec<f64>, Vec<f64>)>,
+    /// The exact sum of the finite values in the first `CHECKPOINT * j` sorted cells, by `j`, and over every cell: a
+    /// run's sum is a checkpoint and fewer than `CHECKPOINT` cells more, or the whole less that, rounded once as the
+    /// scan's is.
+    checkpoints: Vec<crate::exact_sum::ExactSum>,
+    whole: crate::exact_sum::ExactSum,
+    /// Each sorted cell's finite value, 0 where it has none (the scan skips it).
+    finite: Vec<f64>,
+    /// The same checkpoints as written (`Written`), made the first time a run's total is small enough to ask.
+    written: std::cell::OnceCell<(Vec<crate::exact_sum::Written>, crate::exact_sum::Written)>,
 }
+
+const CHECKPOINT: usize = 64;
 
 impl Rolled {
     fn of(t: &Tally, values: &Rc<Vec<V>>) -> Rolled {
@@ -1070,7 +1079,6 @@ impl Rolled {
             let mut n = vec![0; len + 1];
             let mut lo = vec![f64::NAN; len + 1];
             let mut hi = vec![f64::NAN; len + 1];
-            let mut sum = vec![0.0; len + 1];
             let steps: Box<dyn Iterator<Item = usize>> = if rev { Box::new((0..len).rev()) } else { Box::new(0..len) };
             for p in steps {
                 let (from, to) = if rev { (p + 1, p) } else { (p, p + 1) };
@@ -1079,15 +1087,20 @@ impl Rolled {
                 n[to] = n[from] + usize::from(x.is_some());
                 lo[to] = x.map_or(lo[from], |x| both(lo[from], x, js_min));
                 hi[to] = x.map_or(hi[from], |x| both(hi[from], x, js_max));
-                sum[to] = sum[from] + x.unwrap_or(0.0);
             }
-            (e, n, lo, hi, sum)
+            (e, n, lo, hi)
         };
-        let whole = (0..len)
-            .filter_map(finite)
-            .try_fold(0.0f64, |a, x| (x.fract() == 0.0 && a + x.abs() <= 9_007_199_254_740_992.0).then(|| a + x.abs()));
-        let (pre_err, pre_n, pre_min, pre_max, pre_sum) = roll(false);
-        let (suf_err, suf_n, suf_min, suf_max, suf_sum) = roll(true);
+        let at: Vec<f64> = (0..len).map(|p| finite(p).unwrap_or(0.0)).collect();
+        let mut checkpoints = Vec::with_capacity(len / CHECKPOINT + 1);
+        let mut whole = crate::exact_sum::ExactSum::default();
+        for (p, &x) in at.iter().enumerate() {
+            if p % CHECKPOINT == 0 {
+                checkpoints.push(whole.clone());
+            }
+            whole.add(x);
+        }
+        let (pre_err, pre_n, pre_min, pre_max) = roll(false);
+        let (suf_err, suf_n, suf_min, suf_max) = roll(true);
         Rolled {
             values: values.clone(),
             pre_err,
@@ -1098,11 +1111,54 @@ impl Rolled {
             suf_min,
             pre_max,
             suf_max,
-            sums: whole.map(|_| (pre_sum, suf_sum)),
+            checkpoints,
+            whole,
+            finite: at,
+            written: std::cell::OnceCell::new(),
         }
     }
 
-    /// The aggregate over a run, or None where only the scan can answer it to the bit.
+    /// Whether a run's finite values cancel as written.
+    fn run_cancels(&self, k: usize, pre: bool) -> bool {
+        let (marks, whole) = self.written.get_or_init(|| {
+            let mut marks = Vec::with_capacity(self.checkpoints.len());
+            let mut w = crate::exact_sum::Written::default();
+            for (p, &x) in self.finite.iter().enumerate() {
+                if p % CHECKPOINT == 0 {
+                    marks.push(w.clone());
+                }
+                w.add(x);
+            }
+            (marks, w)
+        });
+        let j = k / CHECKPOINT;
+        let mut first = marks.get(j).cloned().unwrap_or_else(|| whole.clone());
+        if j < marks.len() {
+            self.finite[j * CHECKPOINT..k].iter().for_each(|&x| first.add(x));
+        }
+        if pre {
+            first.cancels()
+        } else {
+            let mut rest = whole.clone();
+            rest.merge(&first, true);
+            rest.cancels()
+        }
+    }
+
+    /// The exact sum of the first `k` sorted cells' finite values.
+    fn first(&self, k: usize) -> crate::exact_sum::ExactSum {
+        let j = k / CHECKPOINT;
+        match self.checkpoints.get(j) {
+            Some(c) => {
+                let mut s = c.clone();
+                self.finite[j * CHECKPOINT..k].iter().for_each(|&x| s.add(x));
+                s
+            }
+            None => self.whole.clone(),
+        }
+    }
+
+    /// The aggregate over a run, or None for a count, which the tally answers.
     fn answer(&self, kind: Kind, run: Run, values: &[V]) -> Option<V> {
         let (k, pre) = match run {
             Run::First(k) => (k, true),
@@ -1121,8 +1177,14 @@ impl Rolled {
             Kind::Max => V::Num(or_zero(pick(&self.pre_max, &self.suf_max))),
             Kind::Average if n == 0 => V::err(sol_error(ErrorCode::DivZero, "No rows matched the criteria")),
             Kind::Sum | Kind::Average => {
-                let (a, b) = self.sums.as_ref()?;
-                let total = pick(a, b);
+                let total = if pre {
+                    self.first(k)
+                } else {
+                    let mut s = self.whole.clone();
+                    s.merge(&self.first(k), true);
+                    s
+                }
+                .total_by(|| self.run_cancels(k, pre));
                 V::Num(if kind == Kind::Sum { total } else { total / n as f64 })
             }
         })

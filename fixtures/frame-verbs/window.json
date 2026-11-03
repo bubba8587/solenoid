@@ -4752,7 +4752,7 @@
    }
   },
   {
-   "name": "rolling_avg sums each window fresh, so a large value leaving it leaves no rounding behind",
+   "name": "rolling_avg sums each window exactly, so a large value leaving it leaves no rounding behind",
    "frames": {
     "in": {
      "columns": [
@@ -4806,7 +4806,7 @@
       "type": "number",
       "values": [
        6.666666666666667e-16,
-       0.7666666666666669,
+       0.766666666666667,
        null,
        null,
        3.3333333333333336e-16,
