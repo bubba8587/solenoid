@@ -16,6 +16,7 @@ export async function pasteCopy<T extends GraphNode>(src: T): Promise<T> {
     position: (id: string) => editor.getNode(id)?.position,
     moveNode: async (id: string, p: { x: number; y: number }) => { const n = editor.getNode(id); if (n) n.position = { ...p }; },
     rerenderNode: async () => {},
+    rerenderCables: async () => {},
     nodeElement: () => null,
     hasNode: (id: string) => !!editor.getNode(id),
   } as unknown as View;

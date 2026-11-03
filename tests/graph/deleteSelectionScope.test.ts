@@ -19,7 +19,7 @@ function makeGraph() {
   const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
-  const view = { rerenderNode: async () => {}, position: () => null, nodeElement: () => null, hasNode: () => false } as unknown as View;
+  const view = { rerenderNode: async () => {}, rerenderCables: async () => {}, position: () => null, nodeElement: () => null, hasNode: () => false } as unknown as View;
   setEditorRefs(editor, engine, view);
   return { editor, view };
 }

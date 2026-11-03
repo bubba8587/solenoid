@@ -45,8 +45,8 @@ export async function retypeInputCables(
 export function reconcileFcTypes(
   editor: GraphEditor<Schemes>,
   view: View | null,
+  settled: ReturnType<typeof settleWildcardTypes> = settleWildcardTypes(editor),
 ): void {
-  const settled = settleWildcardTypes(editor);
   let cablesStale = false;
   if (settled.conduitChanged) {
     for (const n of editor.getNodes()) {
@@ -97,5 +97,6 @@ export function reconcileTypesAfterEdit(
 ): void {
   const settled = settleWildcardTypes(editor);
   if (!settled.conduitChanged && settled.adopted.size === 0) return;
-  reconcileFcTypes(editor, view);
+  // The cards this settle retyped redraw: settling again would find nothing moved and redraw none of them.
+  reconcileFcTypes(editor, view, settled);
 }

@@ -111,6 +111,30 @@ describe("[[C136]] once a calculation has run, an output's type is the type of w
     expect(nodeOutputElemFamily(iff.id)).toBe("number"); // never a number shown as a date
   });
 
+  it("a card the Type Settle retypes after the pass is drawn again with its new type", async () => {
+    const editor = new GraphEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    const drawn: [string, string][] = [];
+    const typeOf = (n: GraphNode) => (n.outputs.result!.socket as unknown as { dataType: string }).dataType;
+    const iff = new IfNode();
+    const view = { rerenderNode: async (id: string) => { if (id === iff.id) drawn.push([id, typeOf(iff)]); }, rerenderCables: async () => {} } as unknown as View;
+    setEditorRefs(editor, engine, view);
+    const d = new Src(solDate(46037), dateSocket);
+    const n = new Src(7, numberSocket);
+    for (const x of [d, n, iff]) await editor.addNode(x as unknown as Schemes["Node"]);
+    iff.literals = { cond: 1 };
+    await editor.addConnection(new GraphConnection(d, "out", iff, "then") as unknown as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(n, "out", iff, "else") as unknown as Schemes["Connection"]);
+    await processGraph();
+    expect(drawn[drawn.length - 1]?.[1]).toBe(typeOf(iff));
+    iff.literals = { cond: 0 };
+    iff.edited();
+    await processGraph();
+    expect(nodeOutputElemFamily(iff.id)).toBe("number");
+    expect(drawn[drawn.length - 1]?.[1]).toBe(typeOf(iff)); // the last draw saw the number type, not the date it had
+  });
+
   it("IFERROR shows the value's type when nothing was caught", async () => {
     const { add, wire } = await graph();
     const d = await add(new Src(solDate(46037), dateSocket));

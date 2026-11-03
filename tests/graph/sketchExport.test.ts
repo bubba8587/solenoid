@@ -41,7 +41,7 @@ async function wire(sink: GraphNode, input: string) {
   for (const n of [src, distinct, sink]) await editor.addNode(n as unknown as Schemes["Node"]);
   await editor.addConnection(new GraphConnection(src, "frame", distinct, "frame") as unknown as Schemes["Connection"]);
   await editor.addConnection(new GraphConnection(distinct, "frame", sink, input) as unknown as Schemes["Connection"]);
-  setEditorRefs(editor, engine, { rerenderNode: async () => {} } as unknown as View);
+  setEditorRefs(editor, engine, { rerenderNode: async () => {}, rerenderCables: async () => {} } as unknown as View);
   await processGraph();
 }
 
