@@ -105,7 +105,7 @@ Today a card whose output the wiring can't type declares what it extracted (`Cal
 
 - After a pass, the Type Settle reads each wildcard output's last value from the engine's cache (`settle_types` in `solenoid-graph/src/wasm.rs` holds the graph, whose engine cache holds every card's outputs), and takes its family from the value: a core value through `Census::family` (number, date, text, logical, mixed), a table as frame or cube, a TypeScript card's value through the same reading of its JS form (a `SolDate` is a date).
 - An answer with no value to read keeps the family the output last carried; before any, the family its source declares, else untyped ([[D117]]). The declared family is today's static projection, which stays: a passthrough's `project` reads the picked column's type off the frame's shape (`settleFacts.ts`, `frameShapeResolver`) before anything has run.
-- Removed with it: every `produced` declaration and `_producedFamily` field, `selected` where it only types the output, the formula family's `lastResultShape` watch, `runtimeFacts` in `settleFacts.ts` (the settle reads values itself), and the `passthroughSystem` requirement. `runtimeFactsMoved` becomes "any recomputed card's output family moved".
+- Removed with it: every `produced` declaration and `_producedFamily` field, `selected` where it only types the output, the formula family's `lastResultShape` watch, `runtimeFacts` in `settleFacts.ts` (the settle reads values itself), and the requirement in `passthroughSystem.test.ts`. `runtimeFactsMoved` becomes "any recomputed card's output family moved".
 - The parity of the value's family with today's declarations, over the card fixtures, is in [[D117]] § Consequences.
 
 ## Rules and their reasons
