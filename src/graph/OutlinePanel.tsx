@@ -678,6 +678,7 @@ export function OutlinePanel() {
                   ? {
                       background: hexToRgba(r.color, 0.24),
                       "--group-edge": hexToRgba(r.color, 0.55),
+                      "--group-ink": r.color,
                     }
                   : null),
               } as CSSProperties}

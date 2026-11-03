@@ -190,14 +190,19 @@
   font-weight: 600;
   box-shadow: inset 0 0 0 1px var(--group-edge);
 }
-.solenoid-outline__row--group.solenoid-outline__row--sel { box-shadow: inset 0 0 0 2px var(--accent); }
+/* A selected group keeps its own color: the app accent would turn a purple group gold. The light theme draws the ink toward
+   the text, as --nav-ink does, so a pale group color still reads. */
+.solenoid-outline__row--group.solenoid-outline__row--sel,
+.solenoid-outline__row--group.solenoid-outline__row--sel:hover { color: var(--group-ink); }
+:root[data-theme="light"] .solenoid-outline__row--group.solenoid-outline__row--sel { color: color-mix(in srgb, var(--group-ink) 55%, var(--text)); }
+.solenoid-outline__row--group.solenoid-outline__row--sel { box-shadow: inset 0 0 0 2px var(--group-ink); }
 .solenoid-outline__row--group:hover {
   background: inherit;
   /* An inset overlay, not `filter: brightness()`: filter promotes the hovered row to a layer, and that churn lags a scroll. */
   box-shadow: inset 0 0 0 1px var(--group-edge), inset 0 0 0 100vmax rgba(255, 255, 255, 0.08);
 }
 .solenoid-outline__row--group.solenoid-outline__row--sel:hover {
-  box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 0 100vmax rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 2px var(--group-ink), inset 0 0 0 100vmax rgba(255, 255, 255, 0.08);
 }
 
 .solenoid-outline__chevron {
@@ -529,7 +534,7 @@
 }
 .solenoid-outline__row[data-node]:focus { outline: none; }
 .solenoid-outline__row[data-node]:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
-.solenoid-outline__row--group[data-node]:focus-visible { box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 0 100vmax rgba(255, 255, 255, 0.08); }
+.solenoid-outline__row--group[data-node]:focus-visible { box-shadow: inset 0 0 0 2px var(--group-ink), inset 0 0 0 100vmax rgba(255, 255, 255, 0.08); }
 
 /* ── The phone's section switch, in the header ── */
 .solenoid-outline__switch {
