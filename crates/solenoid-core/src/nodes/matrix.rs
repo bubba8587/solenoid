@@ -489,8 +489,7 @@ pub(crate) fn result_cell(v: &V) -> V {
 
 /// The card's answer typed by its values (`typed_answer`), and the fields its component shows.
 pub(crate) fn body_done(c: &mut Call, result: V) -> Answer {
-    let family = super::formula::answer_family(&result);
-    let result = super::formula::typed_answer(c, result, family);
+    let result = super::formula::typed_answer(c, result);
     lambda_done(c, result, None)
 }
 

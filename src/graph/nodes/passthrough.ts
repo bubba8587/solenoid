@@ -13,11 +13,8 @@ export interface PassthroughSpec {
   inputs: string[];
   combine: CombineMode;
   activeIndex?: () => number;
-  /** The input the last pass forwarded (a branch card's taken branch): a run-time fact for the Type Settle and the
-   *  format walk ([[C136]] typesKnownAfterCalc). */
+  /** The input the last pass forwarded (a branch card's taken branch), which the format walk and unit flow follow. */
   selected?: () => string | null;
-  /** The element family the last pass extracted (a lookup's or INDEX's column), as the body reported it. */
-  produced?: () => string | null;
   pure?: boolean;
   /** What the output reads a forwarded table as (`settleFacts.ts` `ProjectFacts`). */
   project?: (ctx: ProjectContext) => { frame: SocketDataType; cube: SocketDataType; tables: "trueany" | "combo" };

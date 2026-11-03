@@ -5,7 +5,6 @@ import { isSolError, solError, type SolError } from "../errorValue";
 import { scriptParams, checkScript } from "./scriptRun";
 import { coerceScriptResult, scriptArgToJs } from "./scriptCoerce";
 import { executeScript } from "../scriptExecutor";
-import { reconcileResultRank, type ProducedFamily } from "./expression";
 
 export const DEFAULT_SCRIPT = "(x) => x";
 
@@ -37,8 +36,6 @@ export class ScriptNode extends GraphNode {
   height = 240;
 
   varNames: string[] = [];
-  lastResultRank: 1 | 2 = 1;
-  lastResultFamily: ProducedFamily = "auto";
   private syntaxError: string | null = null;
 
   constructor(init?: { label?: string; expr?: string; literals?: Record<string, number>; stringLiterals?: Record<string, string> }) {
@@ -91,12 +88,10 @@ export class ScriptNode extends GraphNode {
     }
     const out = await executeScript(this.expr, args);
     let result: unknown;
-    let family: ProducedFamily | null = null;
-    if (out.ok) ({ value: result, family } = coerceScriptResult(out.value));
+    if (out.ok) result = coerceScriptResult(out.value);
     else result = solError(out.code, out.message);
     this.cachedError = out.ok ? null : out.message;
     this.cachedResult = result;
-    reconcileResultRank(this, result, family ?? this.lastResultFamily);
     return { result };
   }
 }

@@ -2,6 +2,11 @@
 import { describe, it, expect } from "vitest";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
 import { throughBoundary } from "./boundaryKit";
+import type { View } from "../../src/graph/view";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
+import type { Schemes } from "../../src/graph/schemes";
+import { processGraph, setEditorRefs } from "../../src/graph/process";
 import { canConnect, SolenoidSocket } from "../../src/graph/sockets";
 
 // ─── [[C15]] matricesInFormulas: the Expression lift ([[C10]] socketLattice) ────────────────────────────────────────
@@ -57,25 +62,23 @@ describe("the connect-time gate ([[C10]] socketLattice acceptance)", () => {
   });
 });
 
-describe("the result socket reconciles RANK, keeps FAMILY ([[C10]] socketLattice + [[B11]] maximalMerge)", () => {
-  it("a matrix result marks the node rank-2; a scalar result marks it back", async () => {
-    const node = new ExpressionNode({ expr: "a * 2" });
-    throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
-    // Headless (no active editor): the socket swap is skipped by design, but the
-    // rank tracking that drives it must still follow the value.
-    node.data({ a: [M] });
-    expect((node as unknown as { lastResultRank: number }).lastResultRank).toBe(2);
-    node.data({ a: [3] });
-    await Promise.resolve(); // let the (no-op headless) microtask drain
-    expect((node as unknown as { lastResultRank: number }).lastResultRank).toBe(1);
-  });
-
-  it("an error result leaves the rank alone (no flapping on failure)", () => {
-    const node = new ExpressionNode({ expr: "a * 2" });
-    throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
-    node.data({ a: [M] });
-    expect((node as unknown as { lastResultRank: number }).lastResultRank).toBe(2);
-    node.data({ a: [{ __solError: true, code: "#DIV/0!", message: "x" }] });
-    expect((node as unknown as { lastResultRank: number }).lastResultRank).toBe(2);
+describe("the result socket takes the rank and family of the value it carried ([[D117]] emptyKeepsLastType)", () => {
+  it("a matrix answer types it a table, a scalar a list; an error keeps the last type", async () => {
+    const editor = new GraphEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    setEditorRefs(editor, engine, { rerenderNode: async () => {}, rerenderCables: async () => {} } as unknown as View);
+    const node = new ExpressionNode({ expr: "SEQUENCE(2, 2)" });
+    await editor.addNode(node as unknown as Schemes["Node"]);
+    const typed = async (expr: string) => {
+      node.expr = expr;
+      node.edited();
+      await processGraph();
+      return (node.outputs.result!.socket as unknown as { dataType: string }).dataType;
+    };
+    expect(await typed("SEQUENCE(2, 2)")).toBe("table");
+    expect(await typed("1/0")).toBe("table");
+    expect(await typed("3")).toBe("numlist");
+    expect(await typed("\"a\"")).toBe("strcombo");
   });
 });

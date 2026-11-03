@@ -22,6 +22,8 @@ pub struct Socket {
     pub now: String,
     pub base: String,
     pub kind: Kind,
+    /// An output typed by the value it carries, with no passthrough to type it ([[D117]] emptyKeepsLastType).
+    pub valued: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -45,10 +47,6 @@ pub struct Pass {
     pub combine: Combine,
     pub active: Option<f64>,
     pub project: Option<Project>,
-    /// Run-time facts, read only where the static answer is a wildcard: the input the last pass forwarded (a branch
-    /// card's taken branch), and the family of what it produced (an extraction from a table).
-    pub selected: Option<String>,
-    pub produced: Option<String>,
 }
 
 pub struct Node {
@@ -58,6 +56,9 @@ pub struct Node {
     pub pass: Vec<Pass>,
     pub lanes: Option<Vec<(String, String)>>,
     pub error_only: bool,
+    /// Each output's type as its last carried value read (`Val::socket_type`, `""` a mix of families), kept through
+    /// an answer with nothing to read ([[D117]] emptyKeepsLastType).
+    pub read: HashMap<String, String>,
 }
 
 pub struct Settled {
@@ -78,10 +79,11 @@ fn sockets(j: &Json) -> Vec<Socket> {
             now: s(&f[1]),
             base: s(&f[2]),
             kind: match f[3].as_u64() {
-                Some(2) => Kind::Adoptive,
+                Some(2 | 3) => Kind::Adoptive,
                 Some(1) => Kind::Mutable,
                 _ => Kind::Fixed,
             },
+            valued: f[3].as_u64() == Some(3),
         })
         .collect()
 }
@@ -106,8 +108,6 @@ pub fn node_from_json(j: &Json) -> Node {
                 _ => Combine::Single,
             },
             active: p["active"].as_f64(),
-            selected: p["selected"].as_str().map(String::from),
-            produced: p["produced"].as_str().map(String::from),
             project: p.get("project").filter(|x| x.is_object()).map(|x| Project {
                 frame: s(&x["frame"]),
                 cube: s(&x["cube"]),
@@ -125,6 +125,7 @@ pub fn node_from_json(j: &Json) -> Node {
         pass,
         lanes,
         error_only: j["errorOnly"].as_bool() == Some(true),
+        read: HashMap::new(),
     }
 }
 
@@ -278,20 +279,15 @@ fn adoption_once(nodes: &mut [Node], g: &Graph) -> BTreeSet<String> {
                 Some(pr) => project(pr, &forwarded),
                 None => forwarded,
             };
-            // Once a calculation has run nothing is unknown ([[C136]] typesKnownAfterCalc): where the static answer is a wildcard, what
-            // the last pass actually forwarded or produced types the output.
+            // Once a calculation has run nothing is unknown ([[C136]] typesKnownAfterCalc): where the wiring leaves a
+            // wildcard, the value the output last carried types it ([[D117]] emptyKeepsLastType).
             let resolved = if crate::lattice::is_wildcard_rung(&resolved) {
-                let taken = spec
-                    .selected
-                    .as_deref()
-                    .and_then(|k| vote(nodes, k))
-                    .filter(|t| !crate::lattice::is_wildcard_rung(t));
-                let made = spec
-                    .produced
-                    .as_deref()
-                    .and_then(combo_of)
-                    .map(String::from);
-                taken.or(made).unwrap_or(resolved)
+                nodes[i]
+                    .read
+                    .get(&spec.output)
+                    .filter(|t| !t.is_empty())
+                    .cloned()
+                    .unwrap_or(resolved)
             } else {
                 resolved
             };
@@ -305,7 +301,7 @@ fn adoption_once(nodes: &mut [Node], g: &Graph) -> BTreeSet<String> {
             };
             let sock = &nodes[i].outs[o];
             let want = if sock.kind == Kind::Adoptive {
-                project_type_to_base(&sock.base, &resolved).to_string()
+                fit(&sock.base, &resolved).to_string()
             } else {
                 resolved
             };
@@ -314,8 +310,32 @@ fn adoption_once(nodes: &mut [Node], g: &Graph) -> BTreeSet<String> {
                 changed.insert(id.clone());
             }
         }
+        // An output typed by its value alone: the value it last carried, at its declared rung; before any, the rung.
+        for o in 0..nodes[i].outs.len() {
+            let sock = &nodes[i].outs[o];
+            if !sock.valued || nodes[i].pass.iter().any(|p| p.output == sock.key) {
+                continue;
+            }
+            let want = match nodes[i].read.get(&sock.key).filter(|t| !t.is_empty()) {
+                Some(t) => fit(&sock.base, t).to_string(),
+                None => sock.base.clone(),
+            };
+            if nodes[i].outs[o].now != want {
+                nodes[i].outs[o].now = want;
+                changed.insert(id.clone());
+            }
+        }
     }
     changed
+}
+
+/// What an adoptive output declared at `base` shows for `t`: a scalar rung keeps a family's value, the strict rungs
+/// keep their rank (`project_type_to_base`), the rest show `t`.
+fn fit<'a>(base: &'a str, t: &'a str) -> &'a str {
+    if base == "any" {
+        return crate::lattice::type_at_rank(t, 0).unwrap_or(base);
+    }
+    project_type_to_base(base, t)
 }
 
 fn adoption(nodes: &mut [Node], g: &Graph) -> BTreeSet<String> {

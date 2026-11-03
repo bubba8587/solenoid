@@ -473,6 +473,19 @@ export class GraphCore {
         return ret;
     }
     /**
+     * Reads the type of each `[id, output, type now]` in `keys` off the value the last pass landed there, keeping the
+     * last reading where the value has nothing to read ([[D117]] emptyKeepsLastType). Whether the Type Settle should
+     * run again: a reading moved, or an output still shows a wildcard its reading would type.
+     * @param {string} keys
+     * @returns {boolean}
+     */
+    readTypes(keys) {
+        const ptr0 = passStringToWasm0(keys, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.graphcore_readTypes(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
      * The Format Controller reconcile over this graph, from each node's facts (`fcFacts.ts`): `fc::reconcile`'s
      * answer as JSON.
      * @param {string} facts
@@ -2282,7 +2295,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_8294(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_8270(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -2388,8 +2401,8 @@ function __wbg_get_imports() {
             return ret;
         },
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 912, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_8292);
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 913, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_8268);
             return ret;
         },
         __wbindgen_generic_0000000000000002: function(arg0) {
@@ -2417,14 +2430,14 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_8294(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_8294(arg0, arg1, arg2, arg3);
+function __wasm_bindgen_func_elem_8270(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_8270(arg0, arg1, arg2, arg3);
 }
 
-function __wasm_bindgen_func_elem_8292(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_8268(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
-        wasm.__wasm_bindgen_func_elem_8292(retptr, arg0, arg1, arg2);
+        wasm.__wasm_bindgen_func_elem_8268(retptr, arg0, arg1, arg2);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {

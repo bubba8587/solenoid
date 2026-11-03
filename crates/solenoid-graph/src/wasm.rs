@@ -447,6 +447,9 @@ struct Shared {
     wired: Cell<u64>,
     /// Each node's outputs as the last pass landed them: the change test's and the cable readouts' values.
     landed: RefCell<FxHashMap<String, Vec<(String, Val)>>>,
+    /// Each wildcard output's type as the last value it carried with something to read made it (`Val::socket_type`):
+    /// the Type Settle's reading, kept through an empty answer ([[D117]] emptyKeepsLastType).
+    read: RefCell<FxHashMap<String, FxHashMap<String, &'static str>>>,
 }
 
 type Node = Rc<crate::model::GraphNode<Js>>;
@@ -546,6 +549,7 @@ impl Shared {
     /// The node left the editor: the fields the core held for it go back to its object.
     fn left(&self, node: &Node) {
         self.landed.borrow_mut().remove(node.id());
+        self.read.borrow_mut().remove(node.id());
         if let Some(d) = &node.object.direct {
             d.restore(&node.object.object);
         }
@@ -695,6 +699,7 @@ impl GraphCore {
                 loops: RefCell::new(None),
                 wired: Cell::new(0),
                 landed: RefCell::new(FxHashMap::default()),
+                read: RefCell::new(FxHashMap::default()),
             }),
             cancelled,
             boundary: Rc::new(Cell::new(false)),
@@ -898,13 +903,21 @@ impl GraphCore {
             .filter_map(|f| f["id"].as_str().map(|id| (id, f)))
             .collect();
         let graph = &self.shared.graph;
+        let read = self.shared.read.borrow();
         let mut nodes: Vec<crate::settle::Node> = graph
             .node_ids()
             .iter()
             .filter_map(|id| {
-                by_id
-                    .get(id.as_str())
-                    .map(|f| crate::settle::node_from_json(f))
+                by_id.get(id.as_str()).map(|f| {
+                    let mut n = crate::settle::node_from_json(f);
+                    if let Some(r) = read.get(id.as_str()) {
+                        n.read = r
+                            .iter()
+                            .map(|(k, t)| (k.clone(), (*t).to_owned()))
+                            .collect();
+                    }
+                    n
+                })
             })
             .collect();
         let before: Vec<Vec<String>> = nodes
@@ -927,6 +940,35 @@ impl GraphCore {
         }
         serde_json::json!({ "changes": changes, "conduitChanged": settled.conduit_changed, "adopted": settled.adopted })
             .to_string()
+    }
+
+    /// Reads the type of each `[id, output, type now]` in `keys` off the value the last pass landed there, keeping the
+    /// last reading where the value has nothing to read ([[D117]] emptyKeepsLastType). Whether the Type Settle should
+    /// run again: a reading moved, or an output still shows a wildcard its reading would type.
+    #[wasm_bindgen(js_name = readTypes)]
+    pub fn read_types(&self, keys: &str) -> bool {
+        let keys: Vec<(String, String, String)> = serde_json::from_str(keys).unwrap_or_default();
+        let landed = self.shared.landed.borrow();
+        let mut read = self.shared.read.borrow_mut();
+        let mut moved = false;
+        for (id, key, now) in keys {
+            let value = landed
+                .get(&id)
+                .and_then(|outs| outs.iter().find(|(k, _)| *k == key))
+                .and_then(|(_, v)| v.socket_type());
+            let held = read.entry(id).or_default();
+            match value {
+                Some(t) if held.get(&key) != Some(&t) => {
+                    held.insert(key, t);
+                    moved = true;
+                }
+                _ => {
+                    let typed = held.get(&key).is_some_and(|t| !t.is_empty());
+                    moved |= typed && crate::lattice::is_wildcard_rung(&now);
+                }
+            }
+        }
+        moved
     }
 
     fn is_conduit(&self, id: &str) -> bool {

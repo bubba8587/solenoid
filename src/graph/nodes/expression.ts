@@ -1,44 +1,7 @@
 import { GraphNode } from "../graphModel";
-import { anyDataIn, resultOut, resultSocket, isResultFamily, type ResultType, type CastTo } from "./shared";
-import { frameSocket, cubeSocket } from "../sockets";
-import { getOwningEditor, getOwningView } from "../activeGraph";
-import { retypeOutputCables } from "../fcReconcile";
+import { anyDataIn, resultOut, type CastTo } from "./shared";
 import { extractVariables } from "../excelFormula";
-import { isSolError } from "../errorValue";
 import { nodeOnCore } from "../nodeOnCore";
-
-export type ProducedFamily = ResultType | "frame" | "cube";
-
-type RankedProducer = GraphNode & { lastResultRank: 1 | 2; lastResultFamily?: ProducedFamily };
-
-export function reconcileResultRank(node: RankedProducer, result: unknown, family?: ProducedFamily): void {
-  if (isSolError(result)) return;
-  const want: 1 | 2 = Array.isArray(result) && result.length > 0 && Array.isArray(result[0]) ? 2 : 1;
-  const familyChanged = family !== undefined && node.lastResultFamily !== family;
-  if (want === node.lastResultRank && !familyChanged) return;
-  node.lastResultRank = want;
-  if (family !== undefined) node.lastResultFamily = family;
-  retypeResult(node, family ?? "auto");
-}
-
-/** Retypes the result socket to the producer's rank and family once the pass is over, and its cables after it. */
-function retypeResult(node: RankedProducer, family: ProducedFamily): void {
-  queueMicrotask(() => {
-    void (async () => {
-      const out = node.outputs.result;
-      if (!out) return;
-      out.socket = family === "frame"
-        ? frameSocket
-        : family === "cube"
-          ? cubeSocket
-          : resultSocket(node.lastResultRank === 2 ? "matrix" : "combo", family);
-      const editor = getOwningEditor(node.id);
-      const view = getOwningView(node.id);
-      if (editor?.getNode(node.id)) await retypeOutputCables(editor, view, node.id, "result");
-      await view?.rerenderNode(node.id);
-    })();
-  });
-}
 
 export class ExpressionNode extends GraphNode {
   unitAware = true;
@@ -57,10 +20,6 @@ export class ExpressionNode extends GraphNode {
   varDescriptions: Record<string, string> = {};
   /** A preset's input units: the formula reads that variable's number in this unit ([[C25]] firstClassUnits). */
   varUnits: Record<string, string> = {};
-  lastResultRank: 1 | 2 = 1;
-  lastResultFamily?: ProducedFamily;
-  /** The body's last answer as `rank|family` ("1|date"), which the result socket follows (`coreWatch`). */
-  lastResultShape = "1|";
 
   constructor(init?: { label?: string; expr?: string; locked?: boolean; castTo?: CastTo; literals?: Record<string, number>; varDescriptions?: Record<string, string>; varUnits?: Record<string, string> }) {
     super("Expression");
@@ -98,15 +57,6 @@ export class ExpressionNode extends GraphNode {
 
     this.varNames = next;
     return { added, removed };
-  }
-
-  /** The body's answer changed rank or family: the result socket follows (`nodeOnCore`'s `coreWatch`). */
-  static coreWatch = "lastResultShape";
-  coreWatched(): void {
-    const [rank, family] = this.lastResultShape.split("|");
-    this.lastResultRank = rank === "2" ? 2 : 1;
-    this.lastResultFamily = isResultFamily(family) ? family : undefined;
-    retypeResult(this, this.castTo === "none" ? this.lastResultFamily ?? "auto" : this.castTo);
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {

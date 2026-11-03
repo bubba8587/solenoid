@@ -44,6 +44,6 @@ describe("kernels take a list longer than a call's argument limit", () => {
 
   it("a script returning many rows", () => {
     const r = coerceScriptResult(col);
-    expect((r.value as number[][]).length).toBe(N);
+    expect((r as number[][]).length).toBe(N);
   });
 });

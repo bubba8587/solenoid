@@ -14,8 +14,6 @@ type Producer = {
   id: string;
   edited(): void;
   castTo: CastTo;
-  /** The family the last run computed before any cast ([[C136]] typesKnownAfterCalc). */
-  lastResultFamily?: string;
   outputs: { result?: { socket: GraphSocket } };
 };
 
@@ -31,7 +29,7 @@ async function applyCast(node: Producer, dim: ResultDim, castTo: CastTo): Promis
   const editor = getOwningEditor(node.id);
   const view = getOwningView(node.id);
   const out = node.outputs.result;
-  if (out) out.socket = castResultSocket(dim, castTo, node.lastResultFamily);
+  if (out) out.socket = castResultSocket(dim, castTo);
   if (editor && view) await retypeOutputCables(editor, view, node.id, "result");
   if (view) await view.rerenderNode(node.id);
   node.edited(); await processGraph();

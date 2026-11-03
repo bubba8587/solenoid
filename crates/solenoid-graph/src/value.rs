@@ -154,6 +154,31 @@ impl Val {
             .as_ref()
     }
 
+    /// The socket type this value reads as ([[D117]] emptyKeepsLastType, [[C136]] typesKnownAfterCalc): a frame or cube
+    /// as itself, a table at its family's matrix, anything else at its family's combo; `""` for a mix of families;
+    /// none for a value with nothing to read (empty, blank, errors only, or no kind the lattice has).
+    pub(crate) fn socket_type(&self) -> Option<&'static str> {
+        use crate::lattice::{combo_of, type_at_rank};
+        match &self.core()?.v {
+            Cv::Frame(_) | Cv::Ref(_) => Some("frame"),
+            Cv::Cube(_) => Some("cube"),
+            Cv::V(v) => {
+                let family = match solenoid_core::date_values::census(v).family() {
+                    "" => return None,
+                    "mixed" => return Some(""),
+                    "text" => "string",
+                    f => f,
+                };
+                if matches!(v, V::List(items) if matches!(items.first(), Some(V::List(_)))) {
+                    type_at_rank(family, 2)
+                } else {
+                    combo_of(family)
+                }
+            }
+            Cv::Json(_) | Cv::Cells(_) => None,
+        }
+    }
+
     /// The core form where it was made or asked for already.
     fn core_now(&self) -> Option<&Cv> {
         self.0.core.get().and_then(Option::as_ref).map(|a| &a.v)

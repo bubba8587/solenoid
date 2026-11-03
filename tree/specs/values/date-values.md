@@ -79,7 +79,7 @@ A card body reads and answers dates as the formulas do ([[D114]] dateIsAKind):
 - A table built from values types a column of dates Date and refuses dates beside another kind in one column (`infer_column`, Build Frame, Frame from Lists); a list widened into a table is typed the same way.
 - A planner that reads amounts, rates or weights by name (Allocator, Payoff Planner, Group Cost Settle, Earned Value's cost) never reads a Date column as one.
 - Cast is the one way to a serial; a date cast to text keeps its time of day where it has one.
-- `produced`, the family a lookup or a branch extracted, stays: it is how the Type Settle types a wildcard output after a run for every kind ([[C136]] typesKnownAfterCalc), not a date relay.
+- A wildcard output shows dates because its value holds them: the Type Settle reads every output's type off its value after a run ([[socket-lattice]] req. 9), so no card names a date family it produced.
 
 `tests/date_fuzz.rs` hands every card dates wherever a date can be wired (the wildcard, table and date sockets) over its frozen cases: no body may panic or hand back an input's day as a plain number.
 

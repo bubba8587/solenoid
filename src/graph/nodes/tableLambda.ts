@@ -1,9 +1,7 @@
 // [[B14]], [[C50]]
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, castResultSocket, isResultFamily, type CastTo, type ResultDim } from "./shared";
-import { getOwningEditor, getOwningView } from "../activeGraph";
-import { retypeOutputCables } from "../fcReconcile";
+import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, type CastTo, type ResultDim } from "./shared";
 import { type SolError } from "../errorValue";
 import type { UnitCell } from "../unitValue";
 
@@ -11,26 +9,6 @@ import type { UnitCell } from "../unitValue";
 
 type Cell = number | string | boolean | null | SolError;
 
-type FollowsResult = GraphNode & { castTo: CastTo; lastResultShape: string; lastResultFamily?: string };
-
-/** The body's answer named its family (`lastResultShape`, "rank|family"): Auto takes it, after the pass, and the cables
- *  downstream follow ([[C136]] typesKnownAfterCalc, [[C137]] datesNeverSerials). */
-function followResult(node: FollowsResult, dim: ResultDim): void {
-  const family = node.lastResultShape.split("|")[1];
-  node.lastResultFamily = isResultFamily(family) ? family : undefined;
-  const want = castResultSocket(dim, node.castTo, node.lastResultFamily);
-  queueMicrotask(() => {
-    void (async () => {
-      const out = node.outputs.result;
-      if (!out || out.socket === want) return;
-      out.socket = want;
-      const editor = getOwningEditor(node.id);
-      const view = getOwningView(node.id);
-      if (editor?.getNode(node.id)) await retypeOutputCables(editor, view, node.id, "result");
-      await view?.rerenderNode(node.id);
-    })();
-  });
-}
 type Mat = Cell[][];
 
 // ─── MAP ────────────────────────────────────────────────────────────────────────
@@ -44,11 +22,6 @@ export class MapTableNode extends GraphNode {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
-  /** The body's last answer as `rank|family`, which an Auto result follows (`coreWatch`). */
-  lastResultShape = "1|";
-  lastResultFamily?: string;
-  static coreWatch = "lastResultShape";
-  coreWatched(): void { followResult(this, "matrix"); }
   readonly lambdaSig = { vars: ["value", "value2", "value3", "row", "col"], required: 1 };
   width = 210;
   height = 270;
@@ -90,11 +63,6 @@ export class ByAxisNode extends GraphNode {
   stringLiterals: Record<string, string>;
   cachedResult: (Cell | UnitCell)[] | (Cell | UnitCell)[][] | SolError | null = null;
   cachedError: string | null = null;
-  /** The body's last answer as `rank|family`, which an Auto result follows (`coreWatch`). */
-  lastResultShape = "1|";
-  lastResultFamily?: string;
-  static coreWatch = "lastResultShape";
-  coreWatched(): void { followResult(this, this.resultDim); }
   readonly lambdaSig = { vars: ["values"], required: 1 };
   width = 210;
   height = 218;
@@ -114,7 +82,7 @@ export class ByAxisNode extends GraphNode {
   setOp(next: ByAxis): boolean {
     if (next === this.op) return false;
     this.op = next;
-    const spec = resultOut(ByAxisNode.labelFor(next), ByAxisNode.dimFor(next), this.castTo === "none" ? (isResultFamily(this.lastResultFamily) ? this.lastResultFamily : "auto") : this.castTo);
+    const spec = resultOut(ByAxisNode.labelFor(next), ByAxisNode.dimFor(next), this.castTo === "none" ? "auto" : this.castTo);
     this.outputs.result!.socket = spec.socket;
     this.outputs.result!.label = spec.label;
     return true;
@@ -141,11 +109,6 @@ export class ReduceLambdaNode extends GraphNode {
   stringLiterals: Record<string, string>;
   cachedResult: Cell | UnitCell | SolError | null = null;
   cachedError: string | null = null;
-  /** The body's last answer as `rank|family`, which an Auto result follows (`coreWatch`). */
-  lastResultShape = "1|";
-  lastResultFamily?: string;
-  static coreWatch = "lastResultShape";
-  coreWatched(): void { followResult(this, "scalar"); }
   readonly lambdaSig = { vars: ["acc", "value", "step"], required: 2 };
   width = 210;
   height = 246;
@@ -183,11 +146,6 @@ export class ScanLambdaNode extends GraphNode {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
-  /** The body's last answer as `rank|family`, which an Auto result follows (`coreWatch`). */
-  lastResultShape = "1|";
-  lastResultFamily?: string;
-  static coreWatch = "lastResultShape";
-  coreWatched(): void { followResult(this, "matrix"); }
   readonly lambdaSig = { vars: ["acc", "value", "step"], required: 2 };
   width = 210;
   height = 246;
@@ -221,11 +179,6 @@ export class MakeArrayNode extends GraphNode {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
-  /** The body's last answer as `rank|family`, which an Auto result follows (`coreWatch`). */
-  lastResultShape = "1|";
-  lastResultFamily?: string;
-  static coreWatch = "lastResultShape";
-  coreWatched(): void { followResult(this, "matrix"); }
   readonly lambdaSig = { vars: ["row", "col"], required: 2 };
   width = 210;
   height = 246;

@@ -156,7 +156,7 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
     };
     for (const [op, want] of [["minifs", 46000], ["maxifs", 46010], ["averageifs", 46005]] as const) {
       const n = ifs(op);
-      expect(await run(n, [[new Src(frame, frameSocket), "frame"]], (c) => c.cachedResult), op).toBe(want);
+      expect(await run(n, [[new Src(frame, frameSocket), "frame"]], (c) => c.cachedResult), op).toEqual(solDate(want));
       expect(nodeOutputElemFamily(n.id, "result"), op).toBe("date");
     }
     expect(typeError(await run(ifs("sumifs"), [[new Src(frame, frameSocket), "frame"]], (c) => c.cachedResult))).toBe(true);
@@ -179,17 +179,17 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
     const table = () => new Src([[solDate(46000)], [solDate(46010)]], dateTableSocket);
     const map = new MapTableNode({ expr: "value + 1" });
     expect(await run(map, [[table(), "table"]], (c) => c.cachedResult)).toEqual([[solDate(46001)], [solDate(46011)]]);
-    expect(map.lastResultFamily).toBe("date");
+    expect(nodeOutputElemFamily(map.id, "result")).toBe("date");
     const text = new MapTableNode({ expr: "value & \"!\"" });
     expect(await run(text, [[table(), "table"]], (c) => c.cachedResult)).toEqual([["09-Dec-2025!"], ["19-Dec-2025!"]]);
     // A fold over dates starts from a date: a plain 0 beside dates is a mix ([[D114]] dateIsAKind).
     const latest = new ReduceLambdaNode({ expr: "MAX(acc, value)" });
     const start = new Src(solDate(1), dateSocket);
     expect(await run(latest, [[table(), "table"], [start, "initial"]], (c) => c.cachedResult)).toEqual(solDate(46010));
+    expect(nodeOutputElemFamily(latest.id, "result")).toBe("date");
     const fromZero = new ReduceLambdaNode({ expr: "MAX(acc, value)" });
     fromZero.literals = { initial: 0 };
     expect(typeError(await run(fromZero, [[table(), "table"]], (c) => c.cachedResult))).toBe(true);
-    expect(latest.lastResultFamily).toBe("date");
   });
   it("an InlineCast runs Cast: Number gives a date's serials, Text formats it, Date reads numbers as days ([[D113]] inlineCast)", async () => {
     const cast = async (castTo: "number" | "text" | "date" | "logical", expr: string, src: () => GraphNode) => {
@@ -208,6 +208,6 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
   it("a mixed answer is typed as mixed, not as its first cell", async () => {
     const n = new ExpressionNode({ expr: "IF(d > 1, d, \"n/a\")" });
     expect(await run(n, [[nums(), "d"]], (c) => c.cachedResult)).toEqual(["n/a", 2]);
-    expect(n.lastResultFamily).toBeUndefined();
+    expect(nodeOutputElemFamily(n.id, "result")).toBeUndefined();
   });
 });

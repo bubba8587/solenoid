@@ -1527,32 +1527,20 @@ fn list_index(c: &mut Call) -> Answer {
     let col = if has(c, "column") { picks(&c.label("column"), role_value(c, "column")) } else { V::Undef };
     let unit = c.matrix_unit("list").cloned();
     let result = index_container(&v, &row, &col, unit.as_ref());
-    // A cell or column taken out of a table keeps its column's type once the run has picked it ([[C136]]).
-    let produced = match (&v, &result) {
-        (_, Cv::Frame(_) | Cv::Cube(_)) => None,
-        (Cv::Frame(f), _) => picked_family(&col, &f.columns.iter().map(|k| Some(k.ty)).collect::<Vec<_>>()),
-        (Cv::Cube(q), _) => {
-            picked_family(&col, &q.columns.iter().map(super::frames::cube_column_family).collect::<Vec<_>>())
-        }
-        _ => None,
-    };
     // Columns of different kinds picked together, a date among them, would hand on one list of both ([[C137]]).
     let picked_date = match &v {
         Cv::Frame(f) => picked_types(&col, &f.columns.iter().map(|k| Some(k.ty)).collect::<Vec<_>>()),
         Cv::Cube(q) => picked_types(&col, &q.columns.iter().map(super::frames::cube_column_family).collect::<Vec<_>>()),
         _ => Vec::new(),
     };
-    if produced.is_none()
-        && !matches!(result, Cv::Frame(_) | Cv::Cube(_))
+    if !matches!(result, Cv::Frame(_) | Cv::Cube(_))
         && picked_date.contains(&Some(FrameColType::Date))
-        && picked_date.len() > 1
+        && picked_date.iter().any(|t| *t != Some(FrameColType::Date))
     {
         let e = Cv::V(crate::date_values::mixed("other kinds"));
-        c.produced(None);
         c.show("cachedResult", e.clone());
         return Ok(vec![("result".into(), e)]);
     }
-    c.produced(produced);
     if let (Some(u), Cv::V(V::List(a)), Cv::V(V::List(b))) = (&unit, &v, &result)
         && std::rc::Rc::ptr_eq(a, b)
     {
@@ -1570,25 +1558,6 @@ fn picked_types(col: &V, types: &[Option<FrameColType>]) -> Vec<Option<FrameColT
         _ => return Vec::new(),
     };
     positions.into_iter().map(|p| (p >= 1.0).then(|| types.get(p as usize - 1).copied().flatten()).flatten()).collect()
-}
-
-/// The one type every picked column shares, 1-based positions as INDEX reads them; none for a blank or 0 Column (the
-/// whole row) or columns of different types.
-fn picked_family(col: &V, types: &[Option<FrameColType>]) -> Option<FrameColType> {
-    let positions: Vec<f64> = match col {
-        V::Num(_) => vec![trunc_of(col)],
-        V::List(items) => items.iter().map(trunc_of).collect(),
-        _ => return None,
-    };
-    let mut shared: Option<FrameColType> = None;
-    for p in positions {
-        let ty = (p >= 1.0).then(|| types.get(p as usize - 1).copied().flatten()).flatten()?;
-        match shared {
-            Some(s) if s != ty => return None,
-            _ => shared = Some(ty),
-        }
-    }
-    shared
 }
 
 /// A `picks` input ([[D86]] blankRoles): a blank position in a list dropped, none left (or a blank) the
@@ -1708,7 +1677,13 @@ fn index_container(v: &Cv, row: &V, col: &V, unit: Option<&serde_json::Value>) -
                     .collect(),
             );
         }
-        return cube_cell_at(&cube.columns[ci as usize].cells, r);
+        let column = &cube.columns[ci as usize];
+        return match cube_cell_at(&column.cells, r) {
+            Cv::V(cell) if super::frames::cube_column_family(column) == Some(FrameColType::Date) => {
+                Cv::V(crate::date_values::wrap(&cell))
+            }
+            cell => cell,
+        };
     }
     let Cv::Frame(frame) = v else { return Cv::NULL };
     if row_all && col_all {
@@ -1721,15 +1696,20 @@ fn index_container(v: &Cv, row: &V, col: &V, unit: Option<&serde_json::Value>) -
     if !col_all && outside(ci, frame.columns.len()) {
         return Cv::V(index_ref_error(ci + 1.0, frame.columns.len(), "Column"));
     }
+    // A Date column's cells leave as dates; the column packs its days as numbers ([[D114]] dateIsAKind).
+    let dated = |col: &Column, v: V| if col.ty == FrameColType::Date { crate::date_values::wrap(&v) } else { v };
     if row_all {
         let col = &frame.columns[ci as usize];
-        return Cv::V(list(match &col.unit {
-            Some(u) => {
-                let tag = super::frames::UnitTag::new(u);
-                col.values.iter().map(|x| tag.tag(x)).collect()
-            }
-            None => col.values.clone(),
-        }));
+        return Cv::V(dated(
+            col,
+            list(match &col.unit {
+                Some(u) => {
+                    let tag = super::frames::UnitTag::new(u);
+                    col.values.iter().map(|x| tag.tag(x)).collect()
+                }
+                None => col.values.clone(),
+            }),
+        ));
     }
     if col_all {
         let columns = frame
@@ -1759,7 +1739,7 @@ fn index_container(v: &Cv, row: &V, col: &V, unit: Option<&serde_json::Value>) -
     let cell = or_null(at_pos(&col.values, r));
     match &col.unit {
         Some(u) => Cv::V(tag_cell_unit(&cell, u)),
-        None => Cv::V(cell),
+        None => Cv::V(dated(col, cell)),
     }
 }
 

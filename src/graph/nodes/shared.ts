@@ -1,6 +1,6 @@
 // [[C24]] arraySemantics
 import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
-import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
+import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, trueAnySocket, AdoptiveSocket, ValueTypedSocket, type SocketDataType } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { listLiteralText } from "../listLiterals";
@@ -88,19 +88,22 @@ export const CAST_TO_META: Record<CastTo, { label: string; title: string }> = {
 export const isResultFamily = (f: string | undefined): f is Exclude<ResultType, "auto"> =>
   f === "number" || f === "text" || f === "date" || f === "logical";
 
-const RESULT_SOCKETS: Record<ResultDim, Record<ResultType, GraphSocket>> = {
-  scalar: { number: numberSocket,  text: stringSocket,   date: dateSocket,      logical: logicalSocket,      auto: anySocket },
-  combo:  { number: numListSocket, text: strComboSocket, date: dateComboSocket, logical: logicalComboSocket, auto: anyComboSocket },
-  matrix: { number: tableSocket,   text: strTableSocket, date: dateTableSocket, logical: logicalTableSocket, auto: anyTableSocket },
+const RESULT_SOCKETS: Record<ResultDim, Record<Exclude<ResultType, "auto">, GraphSocket>> = {
+  scalar: { number: numberSocket,  text: stringSocket,   date: dateSocket,      logical: logicalSocket },
+  combo:  { number: numListSocket, text: strComboSocket, date: dateComboSocket, logical: logicalComboSocket },
+  matrix: { number: tableSocket,   text: strTableSocket, date: dateTableSocket, logical: logicalTableSocket },
 };
 
-/** The socket a result takes at `dim`: the InlineCast's pick, else the family the last run computed. */
-export function castResultSocket(dim: ResultDim, castTo: CastTo, computed: string | undefined): GraphSocket {
-  return resultSocket(dim, castTo !== "none" ? castTo : isResultFamily(computed) ? computed : "auto");
+/** The wildcard rung an Auto result declares at each dim, which the value it carries then types. */
+const AUTO_RUNG: Record<ResultDim, SocketDataType> = { scalar: "any", combo: "anycombo", matrix: "anytable" };
+
+/** The socket a result takes at `dim`: the InlineCast's pick, else one the value it carries types ([[D117]]). */
+export function castResultSocket(dim: ResultDim, castTo: CastTo): GraphSocket {
+  return resultSocket(dim, castTo === "none" ? "auto" : castTo);
 }
 
 export function resultSocket(dim: ResultDim, t: ResultType): GraphSocket {
-  return RESULT_SOCKETS[dim][t];
+  return t === "auto" ? new ValueTypedSocket(AUTO_RUNG[dim]) : RESULT_SOCKETS[dim][t];
 }
 
 export function resultOut(label: string, dim: ResultDim, t: ResultType): GraphOutput<GraphSocket> {

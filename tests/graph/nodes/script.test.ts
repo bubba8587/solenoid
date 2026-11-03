@@ -9,8 +9,25 @@ import { isSolError, solError } from "../../../src/graph/errorValue";
 import { extractInit } from "../../../src/graph/nodeInit";
 import { pasteCopy } from "../fixtures/pasteCopy";
 import { jsDateToSerial } from "../../../src/graph/nodes/dateSerial";
+import type { View } from "../../../src/graph/view";
+import { GraphEditor } from "../../../src/graph/graphEditor";
+import { DataflowEngine } from "../../../src/graph/dataflowEngine";
+import type { Schemes } from "../../../src/graph/schemes";
+import { processGraph, setEditorRefs } from "../../../src/graph/process";
 
 const code = (v: unknown) => (isSolError(v) ? v.code : v);
+
+/** A Script card alone in an editor, through a real pass: its result socket's type after the Type Settle. */
+async function passed(expr: string) {
+  const editor = new GraphEditor<Schemes>();
+  const engine = new DataflowEngine<Schemes>();
+  editor.use(engine);
+  setEditorRefs(editor, engine, { rerenderNode: async () => {}, rerenderCables: async () => {} } as unknown as View);
+  const node = new ScriptNode({ expr });
+  await editor.addNode(node as unknown as Schemes["Node"]);
+  await processGraph();
+  return { node, typed: () => (node.outputs.result!.socket as unknown as { dataType: string }).dataType };
+}
 
 async function run(expr: string, inputs: Record<string, unknown[]> = {}, init: { literals?: Record<string, number>; stringLiterals?: Record<string, string> } = {}) {
   const node = new ScriptNode({ expr, ...init });
@@ -117,26 +134,31 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
     const r = (await run("() => [0 / 0, null, 2]")).result as unknown[];
     expect(r.map(code)).toEqual(["#DOMAIN!", null, 2]);
   });
-  it("the result socket family follows the value (no toggle)", async () => {
-    expect((await run("() => 5")).node.lastResultFamily).toBe("number");
-    expect((await run("() => ['a', 'b']")).node.lastResultFamily).toBe("text");
-    expect((await run("() => new Date(Date.UTC(2026, 0, 1))")).node.lastResultFamily).toBe("date");
-    expect((await run("() => true")).node.lastResultFamily).toBe("auto"); // no boolean result socket
-    // A vote-less result keeps the settled family rather than flapping to auto.
-    const { node } = await run("() => 5");
-    await (node.data({}) as Promise<unknown>); // still 5 → number
-    node.expr = "() => []";
-    node._rebuild();
-    await (node.data({}) as Promise<unknown>);
-    expect(node.lastResultFamily).toBe("number");
+  it("the result socket takes the type of the value it carried, and keeps it through an empty answer ([[D117]])", async () => {
+    const { node, typed } = await passed("() => 5");
+    expect(typed()).toBe("numlist");
+    for (const [expr, want] of [
+      ["() => []", "numlist"],
+      ["() => ['a', 'b']", "strcombo"],
+      ["() => new Date(Date.UTC(2026, 0, 1))", "datecombo"],
+      ["() => true", "logicalcombo"],
+      ["() => [[1, 2], [3, 4]]", "table"],
+      ["() => [[true, false], [false, true]]", "logicaltable"],
+      ["() => [{ n: 1 }]", "frame"],
+      ["() => [{ region: 'EU', months: [1, 2] }]", "cube"],
+    ] as const) {
+      node.expr = expr;
+      node._rebuild();
+      node.edited();
+      await processGraph();
+      expect(typed(), expr).toBe(want);
+    }
   });
   it("Solenoid.date lifts a serial (or a list of them) to dates; a non-serial is #TYPE!", async () => {
-    const { result, node } = await run("(d) => Solenoid.date(d + 30)", { d: [46000] });
+    const { result } = await run("(d) => Solenoid.date(d + 30)", { d: [46000] });
     expect(result).toEqual(solDate(46030));
-    expect(node.lastResultFamily).toBe("date");
     const list = await run("(d) => Solenoid.date([d, d + 7])", { d: [46000] });
     expect(list.result).toEqual([solDate(46000), solDate(46007)]);
-    expect(list.node.lastResultFamily).toBe("date");
     expect(code((await run("() => Solenoid.date('soon')")).result)).toBe("#TYPE!");
   });
   it("containers are single-typed, uniformly: a mixed list OR mixed rows are #AMBIGUOUS!", async () => {
@@ -144,17 +166,14 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
     expect(code((await run("() => [['year', 1], [2, 3]]")).result)).toBe("#AMBIGUOUS!");
     const ok = await run("() => [[1, 2], [3, 4]]");
     expect(ok.result).toEqual([[1, 2], [3, 4]]);
-    expect(ok.node.lastResultFamily).toBe("number");
     // Homogeneous booleans are not "mixed" — they ride the wildcard whole.
-    expect((await run("() => [[true, false], [false, true]]")).node.lastResultFamily).toBe("auto");
   });
   it("{name: value} rows become a FRAME with typed columns; a single object is one row", async () => {
-    const { result, node } = await run("() => [{ n: 1, who: 'ada' }, { n: 2, who: 'lin' }]");
+    const { result } = await run("() => [{ n: 1, who: 'ada' }, { n: 2, who: 'lin' }]");
     const f = result as { __frame: true; columns: Array<{ name: string; type: string; values: unknown[] }> };
     expect(f.__frame).toBe(true);
     expect(f.columns.map((c) => [c.name, c.type])).toEqual([["n", "number"], ["who", "string"]]);
     expect(f.columns[1].values).toEqual(["ada", "lin"]);
-    expect(node.lastResultFamily).toBe("frame");
     // A missing key is a blank cell; a Date-valued column types as date.
     const g = (await run("() => [{ a: 1 }, { a: 2, b: new Date(Date.UTC(2026, 0, 1)) }]")).result as { columns: Array<{ name: string; type: string; values: unknown[] }> };
     expect(g.columns.map((c) => [c.name, c.type])).toEqual([["a", "number"], ["b", "date"]]);
@@ -168,12 +187,11 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
     expect(code((await run("() => [{ a: 1 }, 2]")).result)).toBe("#SHAPE!");
   });
   it("rows whose cells nest rows or lists become a CUBE", async () => {
-    const { result, node } = await run(
+    const { result } = await run(
       "() => [{ region: 'EU', months: [1, 2], detail: [{ m: 1, sales: 3 }] }]",
     );
     const c = result as { __cube: true; depth: number; columns: Array<{ name: string; cells: unknown[] }> };
     expect(c.__cube).toBe(true);
-    expect(node.lastResultFamily).toBe("cube");
     expect(c.columns.map((x) => x.name)).toEqual(["region", "months", "detail"]);
     expect(c.columns[1].cells[0]).toEqual([1, 2]);
     const detail = c.columns[2].cells[0] as { __frame: true; columns: Array<{ name: string }> };
@@ -191,11 +209,10 @@ describe("ScriptNode.data — frames and cubes in", () => {
     ],
   };
   it("a script can round-trip a frame: read rows, return transformed rows", async () => {
-    const { result, node } = await run("(f) => f.map((r) => ({ city: r.city, big: r.sales * 100 }))", { f: [frame] });
+    const { result } = await run("(f) => f.map((r) => ({ city: r.city, big: r.sales * 100 }))", { f: [frame] });
     const out = result as { __frame: true; columns: Array<{ name: string; type: string; values: unknown[] }> };
     expect(out.columns.map((c) => [c.name, c.type])).toEqual([["city", "string"], ["big", "number"]]);
     expect(out.columns[1].values).toEqual([1000, 700]);
-    expect(node.lastResultFamily).toBe("frame");
   });
   it("an error cell inside a frame propagates without running the script", async () => {
     const bad = {
@@ -246,8 +263,8 @@ describe("evaluator + coercer, standalone", () => {
     expect(await invokeScript("async (x) => x * 2", [2])).toEqual({ ok: true, value: 4 });
   });
   it("a BigInt outside the safe range is #OVERFLOW!; in range it is a number", () => {
-    expect(code(coerceScriptResult(2n ** 60n).value)).toBe("#OVERFLOW!");
-    expect(coerceScriptResult(7n)).toEqual({ value: 7, family: "number" });
+    expect(code(coerceScriptResult(2n ** 60n))).toBe("#OVERFLOW!");
+    expect(coerceScriptResult(7n)).toBe(7);
   });
 });
 
@@ -303,6 +320,5 @@ describe("a date goes into a script as a Date ([[C137]] datesNeverSerials)", () 
     throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
     const out = await (node.data({ d: [solDate(46000)] }) as Promise<{ result: unknown }>);
     expect(out.result).toEqual(solDate(46000));
-    expect(node.lastResultFamily).toBe("date");
   });
 });

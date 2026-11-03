@@ -1,5 +1,6 @@
 // [[C136]] typesKnownAfterCalc
 import { describe, it, expect, afterEach } from "vitest";
+import { solDate } from "../../src/graph/dateValue";
 import type { View } from "../../src/graph/view";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode, GraphOutput, type GraphSocket } from "../../src/graph/graphModel";
@@ -96,7 +97,7 @@ describe("[[C136]] once a calculation has run, an output's type is the type of w
 
   it("IF with a date branch and a number branch shows the branch it took", async () => {
     const { add, wire } = await graph();
-    const d = await add(new Src(46037, dateSocket));
+    const d = await add(new Src(solDate(46037), dateSocket));
     const n = await add(new Src(7, numberSocket));
     const iff = await add(new IfNode());
     iff.literals = { cond: 1 };
@@ -112,7 +113,7 @@ describe("[[C136]] once a calculation has run, an output's type is the type of w
 
   it("IFERROR shows the value's type when nothing was caught", async () => {
     const { add, wire } = await graph();
-    const d = await add(new Src(46037, dateSocket));
+    const d = await add(new Src(solDate(46037), dateSocket));
     const f = await add(new Src("none", stringSocket));
     const ie = await add(new IFErrorNode());
     await wire(d, "out", ie, "value");

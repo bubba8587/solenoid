@@ -1794,7 +1794,6 @@ fn cube_row_at(c: &Cube, i: usize) -> Cv {
 }
 
 fn xlookup(c: &mut Call) -> Answer {
-    c.produced(None);
     let raw = card(c, "frame");
     let [lookup_raw, in_raw, ret_raw, fb_raw] =
         ["lookup", "inColumn", "returnColumn", "ifNotFound"].map(|k| str_input(c, k, ""));
@@ -1915,16 +1914,8 @@ fn xlookup(c: &mut Call) -> Answer {
             other => match_one(other),
         }
     })();
-    // The Return column's type, which the run has now picked ([[C136]] typesKnownAfterCalc); a whole row is a table.
-    let family = if whole_row {
-        None
-    } else {
-        match &src_frame {
-            Some(f) => f.columns.iter().find(|k| k.name == ret_col).map(|k| k.ty),
-            None => src_cube.columns.iter().find(|k| k.name == ret_col).and_then(cube_column_family),
-        }
-    };
-    c.produced(family);
+    // A cell out of a Date column leaves as a date ([[D114]] dateIsAKind).
+    let result = if ret_dated { result.map(dated) } else { result };
     shown_value(c, result.unwrap_or_else(Cv::V))
 }
 
@@ -1978,7 +1969,6 @@ fn xlookup_across(c: &mut Call, cube: &Cube, lookup_raw: &V, fb: &str) -> Answer
         }
         Ok(Some(r as usize - 1))
     };
-    let mut across_family: Option<FrameColType> = None;
     let result = (|| -> Result<Cv, V> {
         let (in_row, ret_row) = (row_of(c, "inRow")?, row_of(c, "returnRow")?);
         let keys: Vec<V> = match in_row {
@@ -2033,13 +2023,11 @@ fn xlookup_across(c: &mut Call, cube: &Cube, lookup_raw: &V, fb: &str) -> Answer
                 _ => return Err(thrown("XLOOKUP got an answer it doesn't read")),
             }
         };
-        // The matched columns' one shared type, the family this run produced ([[C136]] typesKnownAfterCalc).
         let hits: Vec<&CubeColumn> =
             found.iter().filter_map(|&i| usize::try_from(i).ok().and_then(|i| cube.columns.get(i))).collect();
         let families: Vec<Option<FrameColType>> = hits.iter().map(|k| cube_column_family(k)).collect();
-        across_family = families.first().copied().flatten().filter(|t| families.iter().all(|f| *f == Some(*t)));
         // Lookups that land on a date column and another kind would hand on one list of both ([[C137]]).
-        if families.contains(&Some(FrameColType::Date)) && across_family.is_none() {
+        if families.contains(&Some(FrameColType::Date)) && families.iter().any(|f| *f != Some(FrameColType::Date)) {
             return Err(crate::date_values::mixed("other kinds"));
         }
         let mut k = 0;
@@ -2050,10 +2038,11 @@ fn xlookup_across(c: &mut Call, cube: &Cube, lookup_raw: &V, fb: &str) -> Answer
             let at = found.get(k).copied().unwrap_or(-1);
             k += 1;
             if let Some(col) = usize::try_from(at).ok().and_then(|i| cube.columns.get(i)) {
-                return match ret_row {
+                let got = match ret_row {
                     None => Cv::list(col.cells.clone()),
                     Some(r) => col.cells.get(r).cloned().unwrap_or(Cv::NULL),
                 };
+                return if cube_column_family(col) == Some(FrameColType::Date) { dated(got) } else { got };
             }
             if fb.is_empty() {
                 return Cv::V(err(ErrorCode::NotAvailable, "No column matched the lookup value"));
@@ -2066,13 +2055,20 @@ fn xlookup_across(c: &mut Call, cube: &Cube, lookup_raw: &V, fb: &str) -> Answer
             _ => one(&texts[0]),
         })
     })();
-    c.produced(across_family);
     shown_value(c, result.unwrap_or_else(Cv::V))
 }
 
 /// A lookup mode that tests the cell alone (is blank, not blank): the lookup value is never read.
 fn lookup_ignores_value(mode: &str) -> bool {
     matches!(mode, "isblank" | "notblank")
+}
+
+/// A value read out of a Date column, as a date: the column packs its days as numbers ([[D114]] dateIsAKind).
+fn dated(v: Cv) -> Cv {
+    match v {
+        Cv::V(v) => Cv::V(crate::date_values::wrap(&v)),
+        other => other,
+    }
 }
 
 fn shown_value(c: &mut Call, v: impl Into<Cv>) -> Answer {

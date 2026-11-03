@@ -673,15 +673,8 @@ fn read_column(c: &mut Call, col: &Column) -> Answer {
             ErrorCode::Type,
             format!("\"{}\" holds dates. Read it as Auto or Date, or Cast to Number for the serials", col.name),
         );
-        c.produced(None);
         return values_answer(c, e.clone(), e);
     }
-    c.produced(Some(match read_as.as_str() {
-        "date" => FrameColType::Date,
-        "text" => FrameColType::String,
-        "logical" => FrameColType::Logical,
-        _ => FrameColType::Number,
-    }));
     let out: Vec<V> = match read_as.as_str() {
         "text" => col
             .values
@@ -855,17 +848,17 @@ fn sum_ifs(c: &mut Call) -> Answer {
         Cv::Frame(f) => Some(Source { columns: f.columns.clone(), by_position: true }),
         _ => None,
     };
-    // MIN, MAX and AVERAGE of dates are dates ([[C137]] datesNeverSerials); the family rides `produced`.
-    if matches!(c.field_str("op", "sumifs"), "minifs" | "maxifs" | "averageifs") {
-        let vname = value_text(&str_input(c, "values", ""));
-        let ty = source.as_ref().and_then(|s| s.find(trim_space(&vname))).map(|col| col.ty);
-        c.produced(ty.map(|t| if t == FrameColType::Date { t } else { FrameColType::Number }));
-    }
+    // MIN, MAX and AVERAGE of dates are dates ([[C137]] datesNeverSerials, [[D114]] dateIsAKind).
+    let dated = matches!(c.field_str("op", "sumifs"), "minifs" | "maxifs" | "averageifs")
+        && source.as_ref().is_some_and(|s| {
+            let name = value_text(&str_input(c, "values", ""));
+            s.find(trim_space(&name)).is_some_and(|col| col.ty == FrameColType::Date)
+        });
     let r = match source {
         Some(s) => sum_ifs_over(c, &s)?,
         None => V::Null,
     };
-    sum_ifs_answer(c, r)
+    sum_ifs_answer(c, if dated { crate::date_values::wrap(&r) } else { r })
 }
 
 fn sum_ifs_answer(c: &mut Call, r: V) -> Answer {

@@ -105,6 +105,12 @@ export class GraphCore {
      */
     ports(id: string, output: boolean): Array<any> | undefined;
     /**
+     * Reads the type of each `[id, output, type now]` in `keys` off the value the last pass landed there, keeping the
+     * last reading where the value has nothing to read ([[D117]] emptyKeepsLastType). Whether the Type Settle should
+     * run again: a reading moved, or an output still shows a wildcard its reading would type.
+     */
+    readTypes(keys: string): boolean;
+    /**
      * The Format Controller reconcile over this graph, from each node's facts (`fcFacts.ts`): `fc::reconcile`'s
      * answer as JSON.
      */
@@ -519,6 +525,7 @@ export interface InitOutput {
     readonly graphcore_nodeIds: (a: number, b: number) => void;
     readonly graphcore_pass: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
     readonly graphcore_ports: (a: number, b: number, c: number, d: number) => any;
+    readonly graphcore_readTypes: (a: number, b: number, c: number) => number;
     readonly graphcore_reconcileFcs: (a: number, b: number, c: number, d: number) => void;
     readonly graphcore_release: (a: number) => void;
     readonly graphcore_removeConnection: (a: number, b: number, c: number, d: number) => void;
@@ -567,8 +574,8 @@ export interface InitOutput {
     readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly uid: (a: number) => void;
     readonly unnamedEdits: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_8292: (a: number, b: number, c: number, d: any) => void;
-    readonly __wasm_bindgen_func_elem_8294: (a: number, b: number, c: any, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8268: (a: number, b: number, c: number, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8270: (a: number, b: number, c: any, d: any) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;

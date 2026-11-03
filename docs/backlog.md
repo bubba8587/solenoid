@@ -27,7 +27,6 @@ Vitest 5 transforms with Oxc, so the `esbuild: { keepNames: true }` in `vite.con
 the production minify, and its "esbuild options ignored" warning is expected.
 
 ## Dates as a kind ([[D114]] dateIsAKind; `tree/specs/values/date-values.md`)
-- **Wildcard outputs typed off their values** (building to [[D117]] emptyKeepsLastType, unratified): the Type Settle reads each wildcard output's family from the engine cache's last value, replacing every card's `produced`, `selected` where it only types, and the formula family's `lastResultShape` watch (`tree/specs/values/socket-lattice.md` § Proposed: the family read off the value).
 - **Probe a first-time-empty answer for its type** (parked; reopen if wildcards staying untyped until a result arrives feels bad): when an output that has never carried a value answers empty, run the card once on one sample value per wired input's family and type the socket from that, in place of the source's declared type ([[D117]]).
 - **Dates before 1900 (negative serials), the author's call:** DATE, DATEVALUE, YEAR/MONTH/DAY, WEEKDAY, arithmetic, display text and the popup sort take them; EDATE (`#DOMAIN!`) and TEXT (`#VALUE!` "can't be negative") refuse them, as Excel, which has no dates before 1900. Support them everywhere (EDATE, TEXT and the other Excel refusals made to agree) or refuse them everywhere; then a targeted fuzz below serial 0.
 - The formula conformance fuzz gains date cases for every operator row and every function class (the cards have theirs, `tests/date_fuzz.rs`).

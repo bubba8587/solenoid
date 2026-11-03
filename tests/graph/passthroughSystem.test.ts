@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { getPassthrough, isPurePassthroughNode, passInputKeys, selectedPassInput } from "../../src/graph/nodes/passthrough";
 import type { Shape } from "../../src/graph/frameShape";
 import { settledOutputs } from "./settleKit";
-import { canConnect, isDateType, type SocketDataType } from "../../src/graph/sockets";
+import { canConnect, isDateType, MutableSocket, type SocketDataType } from "../../src/graph/sockets";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { ExpectNode } from "../../src/graph/nodes/quality";
 import { CableSwitchNode } from "../../src/graph/nodes/control";
@@ -184,10 +184,10 @@ describe("passthrough declarations", () => {
   });
 });
 
-// [[C136]] typesKnownAfterCalc: once a calculation has run nothing is unknown, so every passthrough the wiring can
-// leave a wildcard names the run-time fact that settles it.
-describe("every passthrough the wiring can leave untyped declares its run-time fact", () => {
-  it("an extraction declares `produced`, and branches that vote declare `selected`", async () => {
+// [[C136]] typesKnownAfterCalc: once a calculation has run nothing is unknown, so every passthrough output is one the
+// value it carried can type ([[D117]] emptyKeepsLastType), and a branch card names the input it took for the format walk.
+describe("every passthrough output can take the type of its value", () => {
+  it("its socket is retypeable, and branches that vote declare `selected`", async () => {
     const { FLAT_CATALOG } = await import("../../src/graph/catalogUtils");
     // Combiners put every input into the output, so there is no taken branch to name; inputs that would mix dates with
     // another kind refuse with #TYPE! instead ([[C137]] datesNeverSerials).
@@ -201,7 +201,9 @@ describe("every passthrough the wiring can leave untyped declares its run-time f
       if (seen.has(cls)) continue;
       seen.add(cls);
       for (const s of getPassthrough(n)) {
-        if (s.project && !s.produced) gaps.push(`${cls}.${s.output}: an extraction with no produced`);
+        const socket = (n as { outputs?: Record<string, { socket?: unknown }> }).outputs?.[s.output]?.socket;
+        const wildcard = ["any", "anycombo", "anylist", "anytable", "anydata", "trueany"].includes((socket as { dataType?: string })?.dataType ?? "");
+        if (wildcard && !(socket instanceof MutableSocket)) gaps.push(`${cls}.${s.output}: a fixed wildcard the value can't type`);
         if (s.combine === "agree" && s.inputs.length > 1 && !s.selected && !COMBINERS.has(cls)) gaps.push(`${cls}.${s.output}: voting branches with no selected`);
       }
     }

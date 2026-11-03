@@ -264,8 +264,6 @@ export class ListIndexNode extends GraphNode {
   static axisKeys(axes: "rowcol" | "position"): string[] { return axes === "position" ? ["position"] : ["index", "column"]; }
   static axisInput(key: string) { return numListIn(key === "position" ? "Position" : key === "index" ? "Row" : "Column"); }
 
-  /** The picked column's family the last run took, from the body ([[C136]] typesKnownAfterCalc). */
-  _producedFamily: string | null = null;
   /** The axes the body worked out from the wired value ([[D85]] columnsStayColumns), null while they stand. */
   axesMove: "rowcol" | "position" | null = null;
 
@@ -295,7 +293,6 @@ export class ListIndexNode extends GraphNode {
       output: "result",
       inputs: ["list"],
       combine: "single",
-      produced: () => this._producedFamily,
       project: (ctx) => ({
         frame: this.frameProjection(ctx),
         cube: this.cubeProjection(ctx),
@@ -871,8 +868,6 @@ export class SumIfsNode extends GraphNode {
   static keepsDates(op: CondAggOp): boolean { return op === "minifs" || op === "maxifs" || op === "averageifs"; }
   static outputFor(op: CondAggOp) { return SumIfsNode.keepsDates(op) ? trueAnyOut("Result") : numOut("Result"); }
 
-  /** The family the last run's Values column had, from the body. */
-  _producedFamily: string | null = null;
 
   /** Swaps the result between a number and the Values column's family; true when the output changed. */
   setOp(next: CondAggOp): boolean {
@@ -882,14 +877,13 @@ export class SumIfsNode extends GraphNode {
     return changed;
   }
 
-  /** The Values column's family where the frame's shape names it, else what the run read. */
+  /** The Values column's family where the frame's shape names it, else the values it carried. */
   passthrough(): PassthroughSpec[] {
     if (!SumIfsNode.keepsDates(this.op)) return [];
     return [{
       output: "result",
       inputs: ["frame"],
       combine: "single",
-      produced: () => this._producedFamily,
       project: (ctx) => {
         const name = ctx.wired("values") ? "" : (this.stringLiterals.values ?? "").trim();
         const shape = name ? ctx.shapeOf("frame") : null;

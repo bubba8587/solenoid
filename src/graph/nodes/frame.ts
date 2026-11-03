@@ -1518,7 +1518,7 @@ export class SplitFrameNode extends GraphNode {
 
 export type GetColumnReadAs = "auto" | "number" | "text" | "date" | "logical";
 
-/** Auto's list adopts the picked column's family (`passthrough`, `produced`); the others declare their own. */
+/** Auto's list adopts the picked column's family (`passthrough`, else the values it carried); the others declare their own. */
 function getColumnOutput(readAs: GetColumnReadAs) {
   return readAs === "text" ? strListOut("Values")
     : readAs === "date" ? dateListOut("Values")
@@ -1541,8 +1541,6 @@ export class GetColumnNode extends GraphNode {
 
   label: string;
   readAs: GetColumnReadAs;
-  /** The family the last run read, from the body ([[C137]] datesNeverSerials). */
-  _producedFamily: string | null = null;
   cachedResult: (number | UnitCell | null | SolError)[] | string[] | (boolean | null | SolError)[] | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = { name: "" };
@@ -1558,14 +1556,13 @@ export class GetColumnNode extends GraphNode {
     this.addOutput("values", getColumnOutput(this.readAs));
   }
 
-  /** On Auto, the output takes the named column's family where the shape is known, else what the run read. */
+  /** On Auto, the output takes the named column's family where the shape is known, else the values it carried. */
   passthrough(): PassthroughSpec[] {
     if (this.readAs !== "auto") return [];
     return [{
       output: "values",
       inputs: ["frame"],
       combine: "single",
-      produced: () => this._producedFamily,
       project: (ctx) => {
         const name = ctx.wired("name") ? "" : (this.stringLiterals.name ?? "").trim();
         const shape = name ? ctx.shapeOf("frame") : null;
@@ -1782,8 +1779,6 @@ export class XLookupNode extends GraphNode {
   searchMode: LookupSearchMode;
   cachedResult: CubeCell | null = null;
   direction: LookupDirection;
-  /** The Return column's family the last run picked, from the body ([[C136]] typesKnownAfterCalc). */
-  _producedFamily: string | null = null;
   stringLiterals: Record<string, string> = { lookup: "", inColumn: "", returnColumn: "", ifNotFound: "" };
   literals: Record<string, number> = {};
   // Skip rank widening so a scalar or bare list reaches the shape guard in data() instead of becoming a one-row cube.
@@ -1836,7 +1831,6 @@ export class XLookupNode extends GraphNode {
       output: "value",
       inputs: ["frame"],
       combine: "single",
-      produced: () => this._producedFamily,
       project: (ctx) => {
         if (this.direction === "columns") return this.acrossProjection(ctx);
         const ret = ctx.wired("returnColumn") ? null : (this.stringLiterals.returnColumn ?? "").trim();

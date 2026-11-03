@@ -58,7 +58,7 @@ flowchart TD
 4. `executeScript(src, args)` sends `{ id, src, args }` to the worker, with a fresh request id per call, and starts the timer.
 5. In the worker, `invokeScript` compiles (cached) and calls the function, awaiting a returned promise. A throw is `#VALUE!` with `Name: message`; a compile failure is `#SYNTAX!`. The card shows the message under the source field.
 6. The return value is passed through `toClonable` so it can cross back to the main thread. Functions and symbols become an `__unclonable` marker, as do `Map`, `Set` and anything nested more than 7 levels deep; typed arrays become plain arrays. The depth limit clears the deepest legal shape (cube rows holding frame rows holding lists) with a level to spare.
-7. On the main thread, `coerceScriptResult` folds the value onto the value model and names its family (below). The result socket then reconciles its family and rank to the value (`reconcileResultRank`). A result with no family (an empty list, all blanks or errors) keeps the card's last settled family.
+7. On the main thread, `coerceScriptResult` folds the value onto the value model (below). The result socket takes the type of the value it carried, as every wildcard output does ([[socket-lattice]] req. 9): a list's family at the combo rung, a table at its matrix, a frame or cube as itself. A result with nothing to read (an empty list, all blanks or errors) keeps the last type ([[D117]] emptyKeepsLastType).
 
 ## The arguments
 
