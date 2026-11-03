@@ -8,6 +8,8 @@ use solenoid_core::excel_functions::V;
 
 enum Want {
     N(f64, f64),
+    /// A date, by its serial ([[D114]] dateIsAKind).
+    D(f64),
     T(&'static str),
     B(bool),
     E,
@@ -24,6 +26,7 @@ fn run(rows: &[(&str, Want)], env: &Env) -> Vec<String> {
         let got = formula(src, env.clone());
         let ok = match (want, &got) {
             (N(w, tol), Some(V::Num(g))) => (g - w).abs() <= *tol,
+            (D(w), Some(V::Date(g))) => g == w,
             (T(w), Some(V::Str(g))) => &**g == *w,
             (B(w), Some(V::Bool(g))) => g == w,
             (E, Some(V::Err(_) | V::Fx(_))) => true,
@@ -32,6 +35,7 @@ fn run(rows: &[(&str, Want)], env: &Env) -> Vec<String> {
         if !ok {
             let w = match want {
                 N(w, _) => w.to_string(),
+                D(w) => format!("the date {w}"),
                 T(t) => format!("{t:?}"),
                 B(b) => b.to_string(),
                 E => "an error".into(),
@@ -376,10 +380,10 @@ fn checked_in_excel() {
         // Excel reads 3/5/24 month first; Solenoid answers #AMBIGUOUS! for two numbers that could each be the month
         // (author 2026-11-01), and reads one past 12 as the day.
         ("DATEVALUE(\"3/5/24\")", E),
-        ("DATEVALUE(\"13/5/24\")", N(45425.0, 0.0)),
-        ("DATEVALUE(\"3/3/24\")", N(45354.0, 0.0)),
-        ("DATEVALUE(\"March 2024\")", N(45352.0, 0.0)),
-        ("DATEVALUE(\"5-Mar-24\")", N(45356.0, 0.0)),
+        ("DATEVALUE(\"13/5/24\")", D(45425.0)),
+        ("DATEVALUE(\"3/3/24\")", D(45354.0)),
+        ("DATEVALUE(\"March 2024\")", D(45352.0)),
+        ("DATEVALUE(\"5-Mar-24\")", D(45356.0)),
     ];
     let bad = run(&rows, &e);
     assert!(bad.is_empty(), "\n{}", bad.join("\n"));

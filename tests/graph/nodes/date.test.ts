@@ -1,4 +1,5 @@
 // [[C44]], [[B11]]
+import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect, afterEach } from "vitest";
 import { DateAddNode, DateTimeValueNode, DateConstructNode, WorkdaysNode, WeekInfoNode, DateDiffNode, parseDateToSerial, parseDate, serialToJsDate, jsDateToSerial, type DateDiffOp } from "../../../src/graph/nodes/date";
 import { isSolError } from "../../../src/graph/errorValue";
@@ -17,7 +18,7 @@ describe("WORKDAY / NETWORKDAYS — optional holidays list (Excel [holidays] par
     const n = new WorkdaysNode({ op: "networkdays" });
     expect(n.data({ start: [MON + 0.5], end: [WED + 0.25] }).result).toBe(3);
     expect(n.data({ start: [WED + 0.25], end: [MON + 0.5] }).result).toBe(-3);
-    expect(compileEvaluator("NETWORKDAYS(s, f)")!({ s: MON + 0.5, f: WED + 0.25 })).toBe(3);
+    expect(compileEvaluator("NETWORKDAYS(s, f)")!({ s: solDate(MON + 0.5), f: solDate(WED + 0.25) })).toBe(3);
   });
 
   it("an unknown weekend code is #VALUE! on the card, as in WORKDAY.INTL and NETWORKDAYS.INTL", () => {

@@ -18,7 +18,7 @@ export function evalPackFormula(expr: string, env: Record<string, unknown> = {})
 /** Evaluate one formula entry with the given variable values. */
 export function evalFormula(
   e: FormulaPackEntry,
-  inputs: Record<string, number | string | (number | string)[]>,
+  inputs: Record<string, unknown>,
 ): unknown {
   // Seed literals as the Add menu does, or an unprovided config variable reads 0 instead of its preset default.
   const node = new ExpressionNode({ expr: e.expr, locked: true, literals: e.literals });

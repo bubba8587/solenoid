@@ -1,4 +1,5 @@
 // [[B2]] webTryDesktopFull, [[C100]] chartIsAValue
+import { solDate } from "../../src/graph/dateValue";
 import { describe, it, expect, vi } from "vitest";
 import { sanitizeChartLabel } from "../../src/graph/components/chartRender";
 import { coreFunction } from "./coreFunction";
@@ -195,24 +196,25 @@ describe("review pins: whole-argument formulas", () => {
     expect(ev("MULTINOMIAL(a)", { a: [2, 3, 4] })).toBe(1260);
     expect(ev("PERCENTRANK.INC(a, 3)", { a: [1, 2, 3, 4] }) as number).toBeCloseTo(0.666, 2);
   });
+  // Dates cross as themselves ([[D114]] dateIsAKind): `D(n)` is the date with serial n.
   it("a holiday list is one argument of NETWORKDAYS / WORKDAY", async () => {
     const { compileEvaluator } = await import("../../src/graph/excelFormula");
     const ev = (src: string, vars: Record<string, unknown>) => compileEvaluator(src)!(vars);
-    const mon = 46027, fri = 46031;
-    expect(ev("NETWORKDAYS(s, f, h)", { s: mon, f: fri, h: [mon + 1, mon + 2] })).toBe(3);
-    expect(ev("WORKDAY(s, 2, h)", { s: mon, h: [mon + 1, mon + 2] })).toBe(mon + 4);
+    const mon = 46027, fri = 46031, D = solDate;
+    expect(ev("NETWORKDAYS(s, f, h)", { s: D(mon), f: D(fri), h: [D(mon + 1), D(mon + 2)] })).toBe(3);
+    expect(ev("WORKDAY(s, 2, h)", { s: D(mon), h: [D(mon + 1), D(mon + 2)] })).toEqual(D(mon + 4));
   });
   it("only the holiday list of the workday functions is whole; start, end and days blank-gate and broadcast", async () => {
     const { compileEvaluator } = await import("../../src/graph/excelFormula");
     const ev = (src: string, vars: Record<string, unknown>) => compileEvaluator(src)!(vars);
-    const mon = 46027, fri = 46031;
+    const mon = 46027, fri = 46031, D = solDate;
     expect(ev("WORKDAY(a, 5)", { a: null })).toBe(null);
-    expect(ev("NETWORKDAYS(a, f)", { a: null, f: fri })).toBe(null);
-    expect(ev("WORKDAY(s, 1)", { s: [mon, mon + 1] })).toEqual([mon + 1, mon + 2]);
-    expect(ev("NETWORKDAYS(s, f)", { s: [mon, mon + 3], f: fri })).toEqual([5, 2]);
-    expect(ev("WORKDAY(s, 2, h)", { s: mon, h: [mon + 1, null] })).toBe(mon + 3);
-    expect(ev("NETWORKDAYS.INTL(s, f, 1, h)", { s: mon, f: fri, h: [mon + 1, null] })).toBe(4);
-    expect(ev("WORKDAY.INTL(s, n, 1, h)", { s: mon, n: [1, 2], h: [mon + 1] })).toEqual([mon + 2, mon + 3]);
+    expect(ev("NETWORKDAYS(a, f)", { a: null, f: D(fri) })).toBe(null);
+    expect(ev("WORKDAY(s, 1)", { s: [D(mon), D(mon + 1)] })).toEqual([D(mon + 1), D(mon + 2)]);
+    expect(ev("NETWORKDAYS(s, f)", { s: [D(mon), D(mon + 3)], f: D(fri) })).toEqual([5, 2]);
+    expect(ev("WORKDAY(s, 2, h)", { s: D(mon), h: [D(mon + 1), null] })).toEqual(D(mon + 3));
+    expect(ev("NETWORKDAYS.INTL(s, f, 1, h)", { s: D(mon), f: D(fri), h: [D(mon + 1), null] })).toBe(4);
+    expect(ev("WORKDAY.INTL(s, n, 1, h)", { s: D(mon), n: [1, 2], h: [D(mon + 1)] })).toEqual([D(mon + 2), D(mon + 3)]);
   });
   it("an exponential Fit over collinear x is #DIV/0! like the linear op, and so are LINEST and LOGEST", async () => {
     const { LinestNode } = await import("../../src/graph/nodes/stats");

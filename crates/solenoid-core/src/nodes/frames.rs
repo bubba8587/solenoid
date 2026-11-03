@@ -55,7 +55,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 /// else blank.
 pub(crate) fn core_cell(v: &V) -> FrameCell {
     match v {
-        V::Num(n) => FrameCell::Num(*n),
+        V::Num(n) | V::Date(n) => FrameCell::Num(*n),
         V::Str(s) => FrameCell::Str(s.clone()),
         V::Bool(b) => FrameCell::Bool(*b),
         V::Err(e) => FrameCell::Err(e.clone()),
@@ -151,7 +151,7 @@ pub(crate) fn json_num(n: f64) -> Json {
 /// Plain data as `jsonEnc` writes it: lists as arrays, numbers as `json_num`, an error as its wire form.
 pub(crate) fn to_json(v: &V) -> Json {
     match v {
-        V::Num(n) => json_num(*n),
+        V::Num(n) | V::Date(n) => json_num(*n),
         V::Str(s) => Json::String(s.to_string()),
         V::Bool(b) => Json::Bool(*b),
         V::List(l) => Json::Array(l.iter().map(to_json).collect()),

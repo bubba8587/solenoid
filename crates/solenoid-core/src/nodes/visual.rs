@@ -78,7 +78,7 @@ fn jv(v: &V) -> Json {
     match v {
         V::Undef => undef(),
         V::Null => Json::Null,
-        V::Num(n) => jn(*n),
+        V::Num(n) | V::Date(n) => jn(*n),
         V::Str(s) => Json::String(s.to_string()),
         V::Bool(b) => Json::Bool(*b),
         V::Err(e) => json!({ "__solError": true, "code": e.code, "message": e.message }),
@@ -401,7 +401,7 @@ fn shown_text(col: &Column, r: usize, format: Option<&Json>) -> Option<String> {
 
 fn finite(v: &V) -> Option<f64> {
     match v {
-        V::Num(n) if n.is_finite() => Some(*n),
+        V::Num(n) | V::Date(n) if n.is_finite() => Some(*n),
         _ => None,
     }
 }

@@ -1,4 +1,5 @@
 // [[C136]] typesKnownAfterCalc
+import { isSolError } from "../../src/graph/errorValue";
 import { describe, it, expect, afterEach } from "vitest";
 import type { View } from "../../src/graph/view";
 import { CubeInputNode } from "../../src/graph/nodes/cube";
@@ -40,8 +41,17 @@ describe("a formula column that hands back a date is a date column", () => {
     expect(typeOf(expr)).toBe("date");
   });
 
-  it.each(["SUM(d)", "@d - @d", "MAX(d) - MIN(d)", "IF(@n > 2, @d, @n)", "STDEV(d)"])("%s stays a number", (expr) => {
+  it.each(["@d - @d", "MAX(d) - MIN(d)", "STDEV(d)"])("%s stays a number", (expr) => {
     expect(typeOf(expr)).toBe("number");
+  });
+
+  it("a sum of dates, and a column mixing dates with numbers, are #TYPE! where a date would be ([[D115]] datesArePoints)", () => {
+    const cells = (expr: string) => cubeOf([...typed, { name: "out", expr }], rows).columns.find((c) => c.name === "out")!.cells;
+    expect(cells("SUM(d)").every((v) => isSolError(v) && v.code === "#TYPE!")).toBe(true);
+    // Row B (n 5) takes its date, rows A and C their numbers: the date can't show in a Number column.
+    const mixed = cells("IF(@n > 2, @d, @n)");
+    expect(isSolError(mixed[1]) && mixed[1].code).toBe("#TYPE!");
+    expect([mixed[0], mixed[2]]).toEqual([2, 1]);
   });
 });
 
@@ -81,6 +91,7 @@ describe("the Formula card on Auto takes the family its formula computed", () =>
     settleWildcardTypes(editor); // as every connection change runs it
     await processGraph();
     await new Promise((r) => setTimeout(r, 0)); // the retype lands in a microtask after the pass
+    console.log("DBG", expr, JSON.stringify(f.cachedResult), (f as unknown as {lastResultShape: string}).lastResultShape);
     return nodeOutputElemFamily(f.id, "result");
   }
 

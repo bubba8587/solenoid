@@ -10,8 +10,8 @@ describe("WORKDAY.INTL returns a serial, not a raw Date", () => {
   it("matches plain WORKDAY (both land on the same working day)", () => {
     const intl = ev("WORKDAY.INTL(DATE(2024,1,1), 5, 1)"); // weekend code 1 = Sat/Sun (the default)
     const plain = ev("WORKDAY(DATE(2024,1,1), 5)");
-    expect(intl).toBe(plain);            // 2024-01-01 (Mon) + 5 workdays = 2024-01-08
-    expect(intl - ev("DATE(2024,1,8)")).toBe(0); // and serial arithmetic works
+    expect(intl).toEqual(plain);            // 2024-01-01 (Mon) + 5 workdays = 2024-01-08
+    expect(ev("WORKDAY.INTL(DATE(2024,1,1), 5, 1) - DATE(2024,1,8)")).toBe(0); // and a span between dates works
   });
 });
 
@@ -33,8 +33,8 @@ describe("NETWORKDAYS is the negation of the forward count on a reversed span", 
 describe("WORKDAY refuses a start outside the years 1 to 9999", () => {
   // Past 2^53 a step left the day where it was, and a start that was also a holiday never finished counting.
   it("answers #DOMAIN!, not a hang", () => {
-    expect(compileEvaluator("WORKDAY(1e308, 3, 1e308)")!({})).toMatchObject({ code: "#DOMAIN!" });
-    expect(compileEvaluator("WORKDAY(-700000, 3)")!({})).toMatchObject({ code: "#DOMAIN!" });
+    expect(compileEvaluator("WORKDAY(DATE(2024,1,1) + 1e308, 3, DATE(2024,1,1) + 1e308)")!({})).toMatchObject({ code: "#DOMAIN!" });
+    expect(compileEvaluator("WORKDAY(DATE(1900,1,1) - 700000, 3)")!({})).toMatchObject({ code: "#DOMAIN!" });
   });
 });
 
@@ -42,7 +42,7 @@ describe("NETWORKDAYS refuses a date outside the years 1 to 9999", () => {
   // The day loop ran from a finite start up to an infinite end and never ended.
   it("an infinite or astronomical end answers #DOMAIN!, not a hang", () => {
     for (const end of ["1e400", "1e300"]) {
-      expect(compileEvaluator(`NETWORKDAYS(5, ${end})`)!({})).toMatchObject({ code: "#DOMAIN!" });
+      expect(compileEvaluator(`NETWORKDAYS(DATE(1900, 1, 5), DATE(1900, 1, 1) + ${end})`)!({})).toMatchObject({ code: "#DOMAIN!" });
     }
   });
 });

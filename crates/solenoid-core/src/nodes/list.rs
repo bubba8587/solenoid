@@ -116,7 +116,7 @@ fn rounded(v: &V) -> f64 {
 
 /// A finite number, no coercion.
 fn finite(v: &V) -> bool {
-    matches!(v, V::Num(n) if n.is_finite())
+    matches!(v, V::Num(n) | V::Date(n) if n.is_finite())
 }
 
 fn over_limit(what: &str, n: f64) -> V {

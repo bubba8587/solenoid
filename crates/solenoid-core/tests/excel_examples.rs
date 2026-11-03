@@ -11,7 +11,8 @@ fn eval(src: &str) -> V {
 
 fn num(src: &str) -> f64 {
     match eval(src) {
-        V::Num(n) => n,
+        // A date answers by its serial, as Excel's cell holds it ([[D114]] dateIsAKind).
+        V::Num(n) | V::Date(n) => n,
         other => panic!("{src} answered {other:?}"),
     }
 }
@@ -257,10 +258,10 @@ fn toolpak_dates_refuse_logicals() {
     for src in [
         "EDATE(TRUE, 1)",
         "EOMONTH(TRUE, 1)",
-        "EDATE(45000, TRUE)",
-        "YEARFRAC(TRUE, 45000)",
+        "EDATE(DATE(2023, 3, 15), TRUE)",
+        "YEARFRAC(TRUE, DATE(2023, 3, 15))",
         "WORKDAY(TRUE, 1)",
-        "NETWORKDAYS(TRUE, 45000)",
+        "NETWORKDAYS(TRUE, DATE(2023, 3, 15))",
     ] {
         assert!(matches!(eval(src), V::Err(e) if e.code == solenoid_core::error_value::ErrorCode::Value), "{src}");
     }

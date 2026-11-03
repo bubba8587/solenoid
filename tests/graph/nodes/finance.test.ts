@@ -1,4 +1,5 @@
 // [[C17]]
+import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import {
   TvmNode,
@@ -103,7 +104,7 @@ describe("TBILL and PRICEMAT answer #DOMAIN! where Excel answers #NUM! ([[C24]] 
     const tb = new DiscountSecurityNode({ op: "tbillprice" });
     expect(tb.data({ settle: [d("2024-01-15")], maturity: [d("2025-02-20")], discount: [0.05] }).result)
       .toMatchObject({ code: "#DOMAIN!", message: "TBILLPRICE needs the maturity date within one year of settlement" });
-    domain(ev("TBILLPRICE(s, m, 0.05)", { s: d("2024-01-15"), m: d("2025-02-20") }));
+    domain(ev("TBILLPRICE(s, m, 0.05)", { s: solDate(d("2024-01-15")), m: solDate(d("2025-02-20")) }));
     expect(tb.data({ settle: [d("2024-01-15")], maturity: [d("2025-01-15")], discount: [0.05] }).result).toBeCloseTo(100 * (1 - 0.05 * 366 / 360), 9);
   });
   it("a zero or negative discount or price is an error", () => {
@@ -112,7 +113,7 @@ describe("TBILL and PRICEMAT answer #DOMAIN! where Excel answers #NUM! ([[C24]] 
     domain(new DiscountSecurityNode({ op: "tbilleq" }).data({ settle: [s], maturity: [m], discount: [-0.05] }).result);
     expect(new DiscountSecurityNode({ op: "tbillyield" }).data({ settle: [s], maturity: [m], pr: [0] }).result)
       .toMatchObject({ code: "#DOMAIN!", message: "TBILLYIELD needs a price above 0" });
-    domain(ev("TBILLYIELD(s, m, -1)", { s, m }));
+    domain(ev("TBILLYIELD(s, m, -1)", { s: solDate(s), m: solDate(m) }));
   });
   it("a missing date stays a quiet blank", () => {
     expect(new DiscountSecurityNode({ op: "tbillprice" }).data({ maturity: [d("2024-07-15")], discount: [0.05] }).result).toBeNull();
@@ -123,7 +124,7 @@ describe("TBILL and PRICEMAT answer #DOMAIN! where Excel answers #NUM! ([[C24]] 
       .toMatchObject({ code: "#DOMAIN!", message: "PRICEMAT needs the settlement date before the maturity date" });
     domain(priceMat("yieldmat", s, m, issue, 0.05, 99));
     domain(priceMat("pricemat", m, m, issue, 0.05, 0.06));
-    domain(ev("PRICEMAT(s, m, i, 0.05, 0.06)", { s, m, i: issue }));
+    domain(ev("PRICEMAT(s, m, i, 0.05, 0.06)", { s: solDate(s), m: solDate(m), i: solDate(issue) }));
   });
 });
 
@@ -213,8 +214,8 @@ describe("NPV / IRR — the Dated toggle (old XNPV / XIRR)", () => {
     expect(dated([39448, 39508, 39751, 39859, 39904]) as number).toBeCloseTo(2086.65, 2);
     expect((dated([39448, 39508, 39400, 39859, 39904]) as { code?: string }).code).toBe("#DOMAIN!");
     const ev = compileEvaluator("XNPV(0.09, a, b)")!;
-    expect(ev({ a: [-10000, 2750, 4250, 3250, 2750], b: [39448, 39508, 39751, 39859, 39904] }) as number).toBeCloseTo(2086.65, 2);
-    expect((ev({ a: [-10000, 2750], b: [39448, 39400] }) as { code?: string }).code).toBe("#DOMAIN!");
+    expect(ev({ a: [-10000, 2750, 4250, 3250, 2750], b: [39448, 39508, 39751, 39859, 39904].map(solDate) }) as number).toBeCloseTo(2086.65, 2);
+    expect((ev({ a: [-10000, 2750], b: [39448, 39400].map(solDate) }) as { code?: string }).code).toBe("#DOMAIN!");
   });
 
 

@@ -31,6 +31,8 @@ pub enum V {
     Lambda(Rc<crate::eval::LambdaV>),
     /// A value with a unit, opaque to every body but the unit-aware ones.
     Unit(Rc<crate::unit_dims::UnitCell>),
+    /// A date: its day serial, the fraction its time of day ([[D114]] dateIsAKind). A `Num` is never a date.
+    Date(f64),
 }
 
 impl V {
@@ -306,6 +308,8 @@ pub fn value_text(v: &V) -> String {
         },
         V::Lambda(_) => "LAMBDA".into(),
         V::List(items) => items.iter().map(value_text).collect::<Vec<_>>().join(","),
+        // A date reads as a date ([[C137]] datesNeverSerials, [[C44]] dateSerials).
+        V::Date(n) => crate::date_values::date_text(*n),
     }
 }
 
@@ -582,6 +586,8 @@ pub(crate) fn parse_number(v: &V) -> V {
         V::Num(n) if n.is_nan() => V::Fx(FxError::Value),
         // -0 reads as 0, as these bodies always have.
         V::Num(n) => V::Num(*n + 0.0),
+        // A card body still reads a date as its serial; a formula's functions never see one here (`date_values`).
+        V::Date(n) => V::Num(*n + 0.0),
         // Text is never read as a number ([[C10]] socketLattice).
         V::Str(_) => V::Fx(FxError::Value),
         // A list of one is its item; a longer one is no single number.
@@ -604,7 +610,7 @@ fn parse_string(v: &V) -> Result<String, V> {
 pub(crate) fn truthy(v: &V) -> bool {
     match v {
         V::Undef | V::Null => false,
-        V::Num(n) => *n != 0.0 && !n.is_nan(),
+        V::Num(n) | V::Date(n) => *n != 0.0 && !n.is_nan(),
         V::Str(s) => !s.is_empty(),
         V::Bool(b) => *b,
         V::Err(_) | V::Fx(_) | V::List(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) => true,
@@ -2580,7 +2586,7 @@ pub(crate) fn sample_variance(xs: &[f64]) -> f64 {
 /// TYPE: 1 a number (or a blank, as an empty cell is), 2 text, 4 a logical, 16 an error, 64 a list, 128 a LAMBDA.
 pub(crate) fn excel_type(v: &V) -> V {
     V::Num(match v {
-        V::Num(_) | V::Null | V::Unit(_) => 1.0,
+        V::Num(_) | V::Null | V::Unit(_) | V::Date(_) => 1.0,
         V::Str(_) | V::Cx(..) => 2.0,
         V::Bool(_) => 4.0,
         V::Err(_) | V::Fx(_) => 16.0,

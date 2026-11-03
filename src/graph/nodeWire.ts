@@ -8,6 +8,7 @@ import { encodeBinary, decodeBinary } from "./binaryCells";
 import { wasmCardKeep, wasmCardUnstage } from "./engineWasm";
 import { heldId, holdAs } from "./heldValues";
 import { cx } from "./cxValue";
+import { isSolDate, solDate } from "./dateValue";
 import { matrixUnitOf, withMatrixUnit, type ColumnUnit } from "./unitValue";
 import { isFrameValue, isCubeValue, makeCube, type FrameValue, type CubeValue, type CubeColumn, type FrameColumn, type FrameCell } from "./frame";
 import { compilePositional } from "./excelFormula";
@@ -141,7 +142,7 @@ export function nodeWire(v: unknown): unknown {
   }
   // A lazy frame crosses only as the id the core keeps it under (`nodeCallWire`, `toCore`).
   if (v && typeof v === "object" && "__frameRef" in v) return undefined;
-  if (v && typeof v === "object" && isPlainData(v)) return { __json: jsonEnc(v) };
+  if (v && typeof v === "object" && isPlainData(v) && !isSolDate(v)) return { __json: jsonEnc(v) };
   return coreValue(v, true);
 }
 
@@ -153,7 +154,8 @@ export const BINARY_MIN_CELLS = 64;
  *  isn't, or where the value is small enough that JSON is cheaper. */
 export function wireBinary(v: unknown): unknown[] | undefined {
   if (Array.isArray(v)) {
-    if (v.length < BINARY_MIN_CELLS || matrixUnitOf(v)) return undefined;
+    // A loose date is no flat cell; a list holding one crosses as JSON.
+    if (v.length < BINARY_MIN_CELLS || matrixUnitOf(v) || v.some(isSolDate)) return undefined;
     const b = encodeBinary({ __frame: true, columns: [{ name: "", type: "string", values: v as FrameCell[] }] }, false, true);
     return b && ["list", undefined, b.tags, b.nums, b.strs, b.lens];
   }
@@ -295,6 +297,7 @@ export function nodeUnwire(w: unknown): unknown {
   if (typeof o.__nf === "string") return { nan: NaN, inf: Infinity, "-inf": -Infinity, "-0": -0 }[o.__nf];
   if (typeof o.__err === "string") return solError(o.__err as SolErrorCode, String(o.msg ?? ""));
   if (Array.isArray(o.__cx)) return cx(nodeUnwire(o.__cx[0]) as number, nodeUnwire(o.__cx[1]) as number);
+  if ("__date" in o) return solDate(nodeUnwire(o.__date) as number);
   if (o.__unit) {
     const u = o.__unit as { value: unknown; dim?: Record<string, unknown>; display?: string; ratio?: boolean };
     const dim = Object.fromEntries(Object.entries(u.dim ?? {}).map(([k, x]) => [k, nodeUnwire(x) as number]));

@@ -394,6 +394,9 @@ fn op2(op: BinOp, a: &V, b: &V) -> V {
             "A LAMBDA isn't a value. Call it with (…) or pass it to MAP, REDUCE and the other helpers",
         ));
     }
+    if let Some(r) = crate::date_values::date_op(op, a, b) {
+        return r;
+    }
     apply_op(op, a, b)
 }
 
@@ -438,7 +441,7 @@ impl Col<'_> {
     /// `c.values[i] ?? null`.
     fn cell(&self, i: usize) -> V {
         match self {
-            Col::Frame(c) => cell_to_v(c.cell_at(i)),
+            Col::Frame(c) => frame_cell_v(c, i),
             Col::Row(c) => match c.values.get(i) {
                 None | Some(V::Undef) => V::Null,
                 Some(v) => v.clone(),
@@ -451,6 +454,14 @@ impl Col<'_> {
             Col::Frame(c) => &c.name,
             Col::Row(c) => &c.name,
         }
+    }
+}
+
+/// A frame cell as a formula reads it: a Date column's cell is a date ([[D114]] dateIsAKind).
+fn frame_cell_v(c: &FrameColumn, i: usize) -> V {
+    match (c.ty, c.cell_at(i)) {
+        (crate::frame::FrameColType::Date, crate::frame::FrameCell::Num(n)) => V::Date(*n),
+        (_, cell) => cell_to_v(cell),
     }
 }
 
@@ -494,7 +505,7 @@ impl<'a> RowCtx<'a> {
             .borrow_mut()
             .entry(c.name().to_string())
             .or_insert_with(|| match c {
-                Col::Frame(c) => list((0..c.values.len()).map(|i| list(vec![cell_to_v(c.cell_at(i))])).collect()),
+                Col::Frame(c) => list((0..c.values.len()).map(|i| list(vec![frame_cell_v(c, i)])).collect()),
                 Col::Row(RowColumn { whole: Some(w), .. }) => w.clone(),
                 Col::Row(c) => list(c.values.iter().map(|v| list(vec![v.clone()])).collect()),
             })
@@ -807,6 +818,8 @@ impl Eval<'_> {
                         "Operators don't work on complex numbers. Use IMSUB(0, z) to negate",
                     )),
                     V::Str(_) => text_operand(),
+                    V::Date(_) if neg => crate::date_values::point_refused("-"),
+                    V::Date(n) => V::Date(*n),
                     other => V::Num(if neg { -js_unary(other) } else { js_unary(other) }),
                 };
                 if is_arr(&a) {
@@ -827,6 +840,7 @@ impl Eval<'_> {
                         "Operators don't work on complex numbers. Use IMDIV(z, COMPLEX(100, 0))",
                     )),
                     V::Str(_) => text_operand(),
+                    V::Date(_) => crate::date_values::point_refused("%"),
                     other => V::Num(js_unary(other) / 100.0),
                 };
                 if is_arr(&a) {
@@ -985,6 +999,18 @@ impl Eval<'_> {
                 }
             }
         }
+        // A date is read by the function's class, and its answer re-stamped ([[D114]] dateIsAKind).
+        if crate::date_values::concerns(name, &argv) {
+            return match crate::date_values::ready(name, argv) {
+                Ok((argv, after)) => after.apply(self.call_with(name, t, args, argv, settled)),
+                Err(e) => e,
+            };
+        }
+        self.call_with(name, t, args, argv, settled)
+    }
+
+    /// A call's body over its evaluated arguments: errors, broadcasting and the memo, then the route.
+    fn call_with(&self, name: &str, t: &Traits, args: &[Ast], argv: Vec<V>, settled: &[bool]) -> V {
         if t.kind == Kind::Handler {
             return crate::excel_functions::error_handler(name, &argv);
         }
@@ -1005,7 +1031,7 @@ impl Eval<'_> {
                 }
                 let r = self.route_call(name, t, argv.clone(), settled);
                 if !is_arr(&r) || t.fast.memo_shaper {
-                    self.memo.borrow_mut().insert(key, Memo { name: name.clone(), args: argv, answer: r.clone() });
+                    self.memo.borrow_mut().insert(key, Memo { name: name.to_string(), args: argv, answer: r.clone() });
                 }
                 return r;
             }
@@ -1881,16 +1907,6 @@ pub fn formula(src: &str, env: Env) -> Option<V> {
     Some(compiled.eval.run(&compiled.ast, &Rc::new(env)))
 }
 
-/// `ast` evaluated over `env`, uncached: a tree the caller rewrote (`date_typing::dates_as_text`). Its last `+` or `-`
-/// snaps as `formula`'s does unless `src` is wholly in parentheses.
-pub fn formula_tree(ast: &Ast, src: &str, env: Env) -> V {
-    let eval = Eval { memo_calls: true, ..Eval::default() };
-    if !crate::excel_formula::wholly_parenthesized(src) {
-        eval.root.set(ast as *const Ast as usize);
-    }
-    eval.run(ast, &Rc::new(env))
-}
-
 /// The readied lists the kept formulas' evaluators hold, let go with the other kept lists.
 pub(crate) fn forget_readied() {
     FORMULAS.with(|f| {
@@ -1935,6 +1951,10 @@ pub fn decode_value(j: &serde_json::Value) -> V {
             v
         }
         Json::Object(o) if o.contains_key("__undef") => V::Undef,
+        Json::Object(o) if o.contains_key("__date") => match cell_to_v(&crate::wire::decode_cell(&o["__date"])) {
+            V::Num(n) => V::Date(n),
+            _ => V::Num(f64::NAN),
+        },
         Json::Object(o) if o.contains_key("__cx") => {
             let part = |i: usize| match o["__cx"].get(i).map(|p| cell_to_v(&crate::wire::decode_cell(p))) {
                 Some(V::Num(n)) => n,
@@ -2024,13 +2044,13 @@ pub struct ColumnInputs<'a> {
     pub reserved: Vec<String>,
     pub alias: FxHashMap<String, String>,
     pub rows: usize,
-    /// The date columns of a Rows table, which carries no types; a Frame's say for themselves.
-    pub dates: Vec<String>,
 }
 
 pub struct ColumnOutcome<C = crate::frame::FrameCell> {
     pub cells: Vec<C>,
     pub side_vars: Vec<String>,
+    /// Every value the column computed is a date, so it is a Date column ([[D114]] dateIsAKind).
+    pub dates: bool,
 }
 
 /// Each row's cell and the side inputs the formula reads, or the error that stops it.
@@ -2160,6 +2180,7 @@ fn column_hoisting<C>(
     tag: fn(V) -> C,
     hoist: bool,
 ) -> Result<ColumnOutcome<C>, crate::error_value::SolError> {
+    let mut kinds = Kinds::default();
     let cols: FxHashMap<&str, Col> = match &inp.table {
         Table::Frame(f) => f.columns.iter().map(|c| (c.name.as_str(), Col::Frame(c))).collect(),
         Table::Rows(cs) => cs.iter().map(|c| (c.name.as_str(), Col::Row(c))).collect(),
@@ -2173,20 +2194,6 @@ fn column_hoisting<C>(
         wholes: RefCell::default(),
         row_sides: inp.row_sides,
         at_verdict: RefCell::default(),
-    };
-    // A date the formula turns into text reads as a date, never its serial ([[C137]] datesNeverSerials).
-    let is_date = |n: &str| {
-        let n = ctx.alias.get(n).map_or(n, String::as_str);
-        inp.dates.iter().any(|d| d == n)
-            || matches!(ctx.cols.get(n), Some(Col::Frame(c)) if c.ty == crate::frame::FrameColType::Date)
-    };
-    let as_text = match &spec {
-        ColumnSpec::Expr { ast, .. } => crate::date_typing::dates_as_text(ast, &is_date),
-        ColumnSpec::Lambda(_) => None,
-    };
-    let spec = match (&spec, &as_text) {
-        (ColumnSpec::Expr { lambdas, .. }, Some(t)) => ColumnSpec::Expr { ast: t, lambdas },
-        _ => spec,
     };
     let ev = Eval { row: Some(&ctx), ..Eval::default() };
     let has_col = |n: &str| ctx.cols.contains_key(n);
@@ -2291,6 +2298,7 @@ fn column_hoisting<C>(
                 ctx.cursor.set(i);
                 rows.at(i);
                 let v = ev.run(ast, &env);
+                kinds.note(&v);
                 cells.push(tag(v));
             }
         }
@@ -2315,11 +2323,29 @@ fn column_hoisting<C>(
                     Some(e) => e,
                     None => ev.call_lambda(lam, &argv),
                 };
+                kinds.note(&v);
                 cells.push(tag(v));
             }
         }
     }
-    Ok(ColumnOutcome { cells, side_vars })
+    Ok(ColumnOutcome { cells, side_vars, dates: kinds.dates && !kinds.other })
+}
+
+/// Whether a column's values are dates: some date and nothing else but blanks and errors.
+#[derive(Default)]
+struct Kinds {
+    dates: bool,
+    other: bool,
+}
+
+impl Kinds {
+    fn note(&mut self, v: &V) {
+        match v {
+            V::Date(_) => self.dates = true,
+            V::Null | V::Undef | V::Err(_) | V::Fx(_) => {}
+            _ => self.other = true,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -2385,7 +2411,6 @@ mod hoist_tests {
             let run = |hoist: bool| {
                 let inp = ColumnInputs {
                     table: Table::Frame(&f),
-                    dates: Vec::new(),
                     sides: Default::default(),
                     row_sides: Default::default(),
                     reserved: vec![],

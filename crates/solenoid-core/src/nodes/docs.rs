@@ -315,6 +315,7 @@ fn json_of(v: &V) -> String {
     match v {
         V::Num(n) if n.is_finite() => number_to_string(*n),
         V::Num(_) | V::Null | V::Undef => "null".into(),
+        V::Date(n) => quote(&crate::date_values::date_text(*n)),
         V::Str(s) => quote(s),
         V::Bool(b) => b.to_string(),
         V::List(items) => format!("[{}]", items.iter().map(json_of).collect::<Vec<_>>().join(",")),
@@ -1399,16 +1400,15 @@ fn run_column(
     };
     let inputs = crate::eval::ColumnInputs {
         table: crate::eval::Table::Frame(&frame),
-        dates: Vec::new(),
         sides,
         row_sides,
         reserved: Vec::new(),
         alias: Default::default(),
         rows,
     };
-    match crate::eval::column(spec, inputs) {
+    match crate::eval::column_with(spec, inputs, super::columns::tag_cell) {
         Err(e) => Err(V::err(e)),
-        Ok(o) => Ok(o.cells.iter().map(super::frames::card_cell).collect()),
+        Ok(o) => Ok(o.cells),
     }
 }
 
@@ -1615,11 +1615,8 @@ fn frame_input_columns(c: &mut Call) -> Answer {
                 Err(e) => fill(&mut columns, i, e),
                 Ok(cells) => {
                     let (cells, unit) = plan.finish(cells);
-                    let definition = match &lam {
-                        Some(l) => l.body.as_deref().cloned(),
-                        None => ast.clone(),
-                    };
-                    let ty = computed_column_type(&source[i].name, &cells, &table, definition.as_ref(), &[]);
+                    let ty = computed_column_type(&source[i].name, &cells);
+                    let cells = super::columns::settled_cells(&cells, ty);
                     columns[i] = Column {
                         name: source[i].name.clone(),
                         ty,

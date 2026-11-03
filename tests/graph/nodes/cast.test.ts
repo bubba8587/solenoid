@@ -1,4 +1,5 @@
 // [[B11]] maximalMerge, [[C24]]
+import { solDate } from "../../../src/graph/dateValue";
 import { describe, expect, it } from "vitest";
 import { CastNode, castOutput, type CastOp } from "../../../src/graph/nodes/cast";
 import { cx } from "../../../src/graph/cxValue";
@@ -68,9 +69,9 @@ describe("Cast node", () => {
   });
 
 
-  it("casts to date serials", () => {
-    expect(cast("date", "1970-01-01")).toBe(25569); // JS epoch = Excel serial 25569
-    expect(cast("date", 45000)).toBe(45000);        // serials pass through
+  it("casts to dates ([[D114]] dateIsAKind)", () => {
+    expect(cast("date", "1970-01-01")).toEqual(solDate(25569)); // JS epoch = Excel serial 25569
+    expect(cast("date", 45000)).toEqual(solDate(45000));        // a number reads as its day
   });
 
   it("casts to logical (boolean) — text, number, and passthrough", () => {
@@ -137,14 +138,12 @@ describe("Cast node", () => {
     expect(n.cachedResult).toEqual(["1", "2", "3"]);
   });
 
-  it("keeps a date cast as numeric serials (ValueDisplay formats them — list → chip)", () => {
-    // Cast no longer pre-formats dates; the date socket drives display formatting
-    // in ValueDisplay (see valueDisplayFormat.test.ts), so a list stays a chip.
+  it("answers dates as themselves, never pre-formatted text (ValueDisplay formats them — list → chip)", () => {
     const n = new CastNode({ op: "date" });
     n.data({ value: [45000] });
-    expect(n.cachedResult).toBe(45000);
+    expect(n.cachedResult).toEqual(solDate(45000));
     n.data({ value: [[45000, 45001]] });
-    expect(n.cachedResult).toEqual([45000, 45001]);
+    expect(n.cachedResult).toEqual([solDate(45000), solDate(45001)]);
   });
 });
 

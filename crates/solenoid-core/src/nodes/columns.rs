@@ -286,8 +286,12 @@ fn cube_cells_type(cells: &[V]) -> Option<FrameColType> {
     Some(super::list::infer_column("", &items).ty)
 }
 
-fn tag_cell(v: V) -> V {
-    super::frames::card_cell(&crate::excel_formula::tag_computed_cell(v))
+pub(crate) fn tag_cell(v: V) -> V {
+    match v {
+        // A date stays a date until the column is built ([[D114]] dateIsAKind).
+        V::Date(n) if n.is_finite() => v,
+        v => super::frames::card_cell(&crate::excel_formula::tag_computed_cell(v)),
+    }
 }
 
 /// A Cube row's answer may be a list or a grid, its items tagged as one value is.
@@ -339,34 +343,34 @@ pub(crate) fn called_names(ast: &Ast, out: &mut Vec<String>) {
     }
 }
 
-pub(crate) use crate::date_typing::yields_date;
-
 fn aliased<'a>(alias: &'a [(String, String)], name: &'a str) -> &'a str {
     alias.iter().find(|(k, _)| k == name).map_or(name, |(_, t)| t.as_str())
 }
 
-/// The type the cells read as, a number column a date where the formula shifts a date.
-pub(crate) fn computed_column_type(
-    name: &str,
-    cells: &[V],
-    columns: &[TableColumn],
-    definition: Option<&Ast>,
-    alias: &[(String, String)],
-) -> FrameColType {
-    let ty = super::list::infer_column(name, cells).ty;
-    match definition {
-        Some(ast) if ty == FrameColType::Number => {
-            let is_date = |n: &str| {
-                columns.iter().find(|c| c.name() == aliased(alias, n)).is_some_and(|c| c.ty == FrameColType::Date)
-            };
-            if yields_date(ast, &is_date) {
-                FrameColType::Date
-            } else {
-                ty
-            }
-        }
-        _ => ty,
+/// The type the cells read as: a Date column where every value is a date ([[D114]] dateIsAKind).
+pub(crate) fn computed_column_type(name: &str, cells: &[V]) -> FrameColType {
+    let present = || cells.iter().filter(|v| !matches!(v, V::Null | V::Undef | V::Err(_)));
+    if present().next().is_some() && present().all(|v| matches!(v, V::Date(_))) {
+        return FrameColType::Date;
     }
+    let plain: Vec<V> = cells.iter().map(crate::date_values::unwrap).collect();
+    super::list::infer_column(name, &plain).ty
+}
+
+/// A computed column's cells as its table holds them, by its type: a Date column's days, and in any other column a
+/// date is #TYPE!, since a column of one kind can't show it as a date ([[C137]] datesNeverSerials).
+pub(crate) fn settled_cells(cells: &[V], ty: FrameColType) -> Vec<V> {
+    cells
+        .iter()
+        .map(|v| match v {
+            V::Date(n) if ty == FrameColType::Date => V::Num(*n),
+            V::Date(_) => {
+                err(ErrorCode::Type, "This column mixes dates with another kind. Cast one side so they agree")
+            }
+            V::List(_) => crate::date_values::unwrap(v),
+            _ => v.clone(),
+        })
+        .collect()
 }
 
 // ─── The unit plan ─────────────────────────────────────────────────────────────
@@ -788,14 +792,24 @@ fn run_cells(
     alias: &[(String, String)],
     tag: fn(V) -> V,
 ) -> Result<(Vec<V>, Vec<String>), V> {
+    // A Date column's cells enter as dates ([[D114]] dateIsAKind).
+    let dated: Vec<Option<RowColumn>> = table
+        .iter()
+        .map(|c| {
+            (c.ty == FrameColType::Date).then(|| RowColumn {
+                name: c.row.name.clone(),
+                values: c.row.values.iter().map(crate::date_values::wrap).collect(),
+                whole: c.row.whole.as_ref().map(crate::date_values::wrap),
+            })
+        })
+        .collect();
     let inputs = crate::eval::ColumnInputs {
-        table: crate::eval::Table::Rows(table.iter().map(|c| &c.row).collect()),
+        table: crate::eval::Table::Rows(table.iter().zip(&dated).map(|(c, d)| d.as_ref().unwrap_or(&c.row)).collect()),
         sides,
         row_sides,
         reserved: reserved.iter().map(|r| r.to_string()).collect(),
         alias: alias.iter().cloned().collect(),
         rows: table_rows(table),
-        dates: table.iter().filter(|c| c.ty == FrameColType::Date).map(|c| c.name().to_string()).collect(),
     };
     match crate::eval::column_with(spec, inputs, tag) {
         Err(e) => Err(V::err(e)),
@@ -1089,13 +1103,10 @@ fn computed_column(c: &mut Call) -> Answer {
         Ok(pl) => pl.finish(cells),
         Err(e) => (cells.iter().map(|_| e.clone()).collect(), None),
     };
-    let definition = match &lam {
-        Some(l) => l.body.as_deref(),
-        None => ast.as_ref(),
-    };
     let ty = pinned_type(c)
         .or_else(|| cube.as_ref().and_then(|_| cube_cells_type(&values)))
-        .unwrap_or_else(|| computed_column_type(&name, &values, &table, definition, &alias));
+        .unwrap_or_else(|| computed_column_type(&name, &values));
+    let values = settled_cells(&values, ty);
     let out = match (&cube, &frame) {
         (Some(cb), _) => cube_with_column(cb, &name, values, ty, &after, unit.as_ref()).unwrap_or_else(Cv::V),
         (_, Some(f)) => {
@@ -1143,7 +1154,6 @@ fn on_ref(c: &mut Call, r: &Rc<crate::frame_ref::FrameRef>) -> Result<Option<Vec
     }
     let inputs = crate::eval::ColumnInputs {
         table: crate::eval::Table::Frame(&flushed.frame),
-        dates: Vec::new(),
         sides,
         row_sides,
         reserved: RESERVED.iter().map(|r| r.to_string()).collect(),
@@ -1168,7 +1178,8 @@ fn on_ref(c: &mut Call, r: &Rc<crate::frame_ref::FrameRef>) -> Result<Option<Vec
     c.show("sourceColumns", names_list(&schema.columns.iter().map(|c| c.name.clone()).collect::<Vec<_>>()));
     c.show("defVars", names_list(&crate::eval::variables(&ast)));
     c.show("sideVars", names_list(&outcome.side_vars));
-    let ty = pinned_type(c).unwrap_or_else(|| computed_column_type(&name, &cells, &table, Some(&ast), &bindings(c)));
+    let ty =
+        pinned_type(c).unwrap_or(if outcome.dates { FrameColType::Date } else { computed_column_type(&name, &cells) });
     let shape: Vec<Column> = schema.columns.iter().map(|col| Column { values: Vec::new(), ..col.clone() }).collect();
     let (cols, at, replaced) = add_column(&shape, &name, Vec::new(), ty, unit);
     let (cols, fresh) = match placed(cols, replaced, &after, |c| &c.name) {
@@ -1298,8 +1309,8 @@ fn formula_columns(cube: Cube, exprs: &[Option<String>]) -> Result<Cv, V> {
                 }
             };
             let (cells, unit) = plan.finish(cells);
-            let ty = cube_cells_type(&cells)
-                .unwrap_or_else(|| computed_column_type(&cols[i].name, &cells, &table, Some(ast), &[]));
+            let ty = cube_cells_type(&cells).unwrap_or_else(|| computed_column_type(&cols[i].name, &cells));
+            let cells = settled_cells(&cells, ty);
             let cells = match unit.as_ref().filter(|_| ty == FrameColType::Number) {
                 Some(u) => {
                     let tag = UnitTag::new(u);

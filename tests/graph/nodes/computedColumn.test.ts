@@ -233,9 +233,10 @@ describe("ComputedColumnNode — side inputs, row, and the output type", () => {
     };
     const auto = run(named("@start + 7", "due"), due) as FrameValue;
     expect(getColumn(auto, "due")!.type).toBe("date"); // [[C118]]: a date + days is a date
-    // A serial the formula can't see through (a product) stays a number until declared.
-    expect(getColumn(run(named("@start * 1", "due"), due) as FrameValue, "due")!.type).toBe("number");
-    const typedNode = named("@start * 1 + 7", "due");
+    // A date can't be scaled ([[D115]] datesArePoints).
+    const scaled = getColumn(run(named("@start * 1", "due"), due) as FrameValue, "due")!.values;
+    expect(scaled.every((v) => isSolError(v) && v.code === "#TYPE!")).toBe(true);
+    const typedNode = named("@start + 7", "due");
     typedNode.addAs = "date";
     const typed = run(typedNode, due) as FrameValue;
     expect(getColumn(typed, "due")!.type).toBe("date");
@@ -536,8 +537,10 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
     const out = n.data({}).frame as FrameValue;
     const type = (name: string) => getColumn(out, name)!.type;
     expect([type("due"), type("later"), type("pick")]).toEqual(["date", "date", "date"]);
-    expect(type("half")).toBe("number"); // the omitted else is FALSE, so one date branch doesn't make a date column
-    expect([type("span"), type("scaled")]).toEqual(["number", "number"]);
+    // Every row took its date branch, so the column is dates: its type is what it computed ([[C136]] typesKnownAfterCalc).
+    expect(type("half")).toBe("date");
+    expect(type("span")).toBe("number");
+    expect(getColumn(out, "scaled")!.values.every((v) => isSolError(v) && v.code === "#TYPE!")).toBe(true);
     expect(getColumn(out, "span")!.values).toEqual([5, 7]);
   });
 

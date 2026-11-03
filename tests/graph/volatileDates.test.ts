@@ -1,4 +1,5 @@
 // [[C44]] dateSerials
+import { dateSerialOf } from "../../src/graph/dateValue";
 import { describe, it, expect, vi } from "vitest";
 import { hasVolatileDates, msUntilNextMidnight, armMidnightRollover, armMinuteTick, clockCardIds } from "../../src/graph/volatileDates";
 import { TodayNowNode, WorldClockNode } from "../../src/graph/nodes/date";
@@ -42,7 +43,7 @@ describe("volatileDates (R5 midnight rollover)", () => {
   it("TODAY and NOW read the local wall clock, the same day the midnight rollover and a relative date use", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 7, 23, 30, 0));
-    const today = serialToJsDate(compileEvaluator("TODAY()")!({}) as number);
+    const today = serialToJsDate(dateSerialOf(compileEvaluator("TODAY()")!({})) as number);
     expect([today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()]).toEqual([2026, 8, 7]);
     const now = serialToJsDate(new TodayNowNode({ op: "now" }).data().result);
     expect([now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes()]).toEqual([7, 23, 30]);

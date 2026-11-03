@@ -106,7 +106,7 @@ pub fn each(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
 /// A number as JS reads it in arithmetic (`+x`): a logical as 0 or 1, null as 0, anything else NaN.
 pub fn num(v: &V) -> f64 {
     match v {
-        V::Num(n) => *n,
+        V::Num(n) | V::Date(n) => *n,
         V::Bool(b) => f64::from(u8::from(*b)),
         V::Null => 0.0,
         V::Str(s) => crate::value_kinds::decimal_from_text(s),

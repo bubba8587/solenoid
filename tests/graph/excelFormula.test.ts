@@ -1,4 +1,5 @@
 // [[B16]] oneFormulaSurface
+import { dateSerialOf } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import {
   extractVariables,
@@ -547,15 +548,15 @@ describe("NOW/TODAY return serials in formulas (audit finding 9)", () => {
     return fn({});
   };
 
-  it("TODAY() is an integer serial and YEAR(TODAY()) works", () => {
-    const t = ev("TODAY()");
+  it("TODAY() is a whole day and YEAR(TODAY()) works", () => {
+    const t = dateSerialOf(ev("TODAY()"));
     expect(Number.isInteger(t)).toBe(true);
     expect(ev("YEAR(TODAY())")).toBe(new Date().getFullYear());
   });
 
-  it("NOW() is a number with a time fraction and NOW()+1 is numeric", () => {
-    const n = ev("NOW()");
-    expect(ev("NOW() + 1")).toBeCloseTo((n as number) + 1, 4);
+  it("NOW() is a date with a time of day, and NOW()+1 is the next day ([[D115]] datesArePoints)", () => {
+    const n = dateSerialOf(ev("NOW()")) as number;
+    expect(dateSerialOf(ev("NOW() + 1")) as number).toBeCloseTo(n + 1, 4);
   });
 });
 

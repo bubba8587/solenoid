@@ -188,6 +188,43 @@ fn values_of(inputs: &[(String, Vec<Cv>)], sockets: &[Socket]) -> Vec<(String, V
         .collect()
 }
 
+/// The cards whose bodies take a date as itself ([[D114]] dateIsAKind). Every other body still reads a date as its serial,
+/// as it did before dates were a kind, until it is converted (`date-values.md` § Order of work).
+const SEES_DATES: &[&str] = &[
+    "ExpressionNode",
+    "MapTableNode",
+    "ByAxisNode",
+    "ReduceLambdaNode",
+    "ScanLambdaNode",
+    "MakeArrayNode",
+    "CastNode",
+];
+
+fn undated_cv(c: Cv) -> Cv {
+    match c {
+        Cv::V(v) if crate::date_values::holds_date(&v) => Cv::V(crate::date_values::unwrap(&v)),
+        Cv::Cells(items) if items.iter().any(|x| matches!(x, Cv::V(v) if crate::date_values::holds_date(v))) => {
+            Cv::Cells(Rc::new(items.iter().cloned().map(undated_cv).collect()))
+        }
+        Cv::Cube(q)
+            if q.columns
+                .iter()
+                .any(|col| col.cells.iter().any(|x| matches!(x, Cv::V(v) if crate::date_values::holds_date(v)))) =>
+        {
+            let mut q = (*q).clone();
+            for col in &mut q.columns {
+                col.cells = std::mem::take(&mut col.cells).into_iter().map(undated_cv).collect();
+            }
+            Cv::Cube(Rc::new(q))
+        }
+        other => other,
+    }
+}
+
+fn undated_inputs(inputs: Vec<(String, Vec<Cv>)>) -> Vec<(String, Vec<Cv>)> {
+    inputs.into_iter().map(|(k, vs)| (k, vs.into_iter().map(undated_cv).collect())).collect()
+}
+
 /// What a body answers: its outputs in order, or the error it throws (the error guard makes it every output's).
 pub type Answer = Result<Vec<(String, Cv)>, V>;
 
@@ -231,6 +268,8 @@ impl Call {
             })
             .collect();
         let inputs = dated_tables(inputs, &from_in);
+        let kind = j.get("kind").and_then(Json::as_str).unwrap_or("");
+        let inputs = if SEES_DATES.contains(&kind) { inputs } else { undated_inputs(inputs) };
         let values = values_of(&inputs, &sockets);
         Call {
             init: Rc::new(obj("init")),

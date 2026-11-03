@@ -56,7 +56,6 @@ fn main() {
                 reserved: vec![],
                 alias: Default::default(),
                 rows,
-                dates: Vec::new(),
             };
             let t = Instant::now();
             let out = column(ColumnSpec::Expr { ast: &ast, lambdas: &[] }, inp);

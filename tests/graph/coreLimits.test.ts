@@ -44,10 +44,10 @@ it("FISHEREXACT and BINOM.DIST.RANGE past 2^53 answer instead of looping", () =>
 });
 
 it("PRICE and YIELD with a far maturity don't walk every coupon in between", () => {
-  const { v, ms } = timed(() => evaluateOnCore("PRICE(1, 2958465, 0.05, 0.06, 100, 2)", {}));
+  const { v, ms } = timed(() => evaluateOnCore("PRICE(DATE(1900, 1, 1), DATE(9999, 12, 31), 0.05, 0.06, 100, 2)", {}));
   expect(ms).toBeLessThan(2000);
   expect(typeof v).toBe("number");
-  expect(timed(() => evaluateOnCore("YIELD(1, 1E8, 0.05, 90, 100, 2)", {})).ms).toBeLessThan(2000);
+  expect(timed(() => evaluateOnCore("YIELD(DATE(1900, 1, 1), DATE(1900, 1, 1) + 1E8, 0.05, 90, 100, 2)", {})).ms).toBeLessThan(2000);
 });
 
 it("the ETS Forecast card caps its horizon at the generated-values limit", () => {

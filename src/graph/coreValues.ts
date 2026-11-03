@@ -6,6 +6,7 @@ import { solError, isSolError, type SolError, type SolErrorCode, type SolErrorOr
 import { isCx, cx } from "./cxValue";
 import { isLambdaValue } from "./lambdaValue";
 import { isUnitCell, displayScale, displayOffset, displayDim, type UnitCell } from "./unitValue";
+import { isSolDate, solDate } from "./dateValue";
 import { wallClockSerial } from "./nodes/dateSerial";
 import { wasmInvokeSync, onCore, onWasmEngineReset } from "./engineWasm";
 
@@ -64,6 +65,7 @@ export function coreValue(v: unknown, units = false): unknown {
     return out.includes(undefined) ? undefined : out;
   }
   if (isCx(v)) return { __cx: [wireCell(v.re), wireCell(v.im)] };
+  if (isSolDate(v)) return { __date: wireCell(v.__date) };
   if (isLambdaValue(v)) {
     if (v.eta) return { __lambda: { eta: v.expr } };
     if (!v.expr) return undefined;
@@ -94,8 +96,9 @@ function fromReply(r: unknown): unknown {
   if (typeof r === "number") return r;
   if (Array.isArray(r)) throw new Uncrossable();
   const o = r as { undef?: true; num?: string; str?: string; bool?: boolean; err?: string; msg?: string; ref?: number; origin?: SolErrorOrigin; fx?: string; list?: unknown[]; cx?: string[]; lambda?: true;
-    unit?: { value: string; dim: [string, string][]; display: string | null; ratio: boolean } };
+    unit?: { value: string; dim: [string, string][]; display: string | null; ratio: boolean }; date?: string };
   if (o.num !== undefined) return fromBits(o.num);
+  if (o.date !== undefined) return solDate(fromBits(o.date));
   if (o.str !== undefined) return o.str;
   if (o.bool !== undefined) return o.bool;
   if (o.err !== undefined) return errorFromCore(o.err, o.msg ?? "", o.ref, o.origin);

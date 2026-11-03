@@ -1,4 +1,5 @@
 // [[B16]] oneFormulaSurface, [[C17]] shareImpl
+import { solDate, isSolDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { formulaFunctionNames } from "../../src/graph/excelFunctions";
 import { compileEvaluator } from "../../src/graph/excelFormula";
@@ -238,10 +239,9 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
     expect(ev("NORM.DIST(0, 0, 1, 1)", {})).toBe(0.5);
   });
 
-  it("date-returning functions emit our SERIAL (a number), not a Formula.js Date object", () => {
-    const serial = ev("DATE(2026, 3, 15)");           // 2026-03-15
-    expect(serial).toBe(46096);
-    expect(ev("EDATE(DATE(2026, 3, 15), 2)")).toBe(46157);    // 2026-05-15, still a number
-    expect(typeof ev("DATEVALUE(\"2026-03-15\")")).toBe("number");
+  it("date-returning functions answer a date value, not a bare serial ([[D114]] dateIsAKind)", () => {
+    expect(ev("DATE(2026, 3, 15)")).toEqual(solDate(46096));           // 2026-03-15
+    expect(ev("EDATE(DATE(2026, 3, 15), 2)")).toEqual(solDate(46157)); // 2026-05-15
+    expect(isSolDate(ev("DATEVALUE(\"2026-03-15\")"))).toBe(true);
   });
 });

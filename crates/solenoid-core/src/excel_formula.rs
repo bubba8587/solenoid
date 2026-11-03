@@ -778,7 +778,7 @@ pub(crate) fn tag_computed_cell(v: V) -> FrameCell {
         V::Num(n) if n.is_nan() => {
             FrameCell::err(sol_error(ErrorCode::Domain, "The result is undefined: not a number"))
         }
-        V::Num(n) => FrameCell::Num(n),
+        V::Num(n) | V::Date(n) => FrameCell::Num(n),
         V::Str(s) => FrameCell::Str(s),
         V::Bool(b) => FrameCell::Bool(b),
         V::Null | V::Undef => FrameCell::Null,

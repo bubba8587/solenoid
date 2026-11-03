@@ -1,4 +1,5 @@
 // [[C79]], [[B11]], [[C48]]
+import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { coreFunction } from "../coreFunction";
@@ -125,9 +126,9 @@ describe("FROMEPOCH / TOEPOCH", () => {
     expect(epochToSerial(86400, "s")).toBe(25570);
     expect(epochToSerial(1_700_000_000, "s")).toBeCloseTo(d("2023-11-14") + 22.2222 / 24, 3); // 2023-11-14T22:13:20Z
     expect(serialToEpoch(epochToSerial(1_700_000_000_000, "ms"), "ms")).toBeCloseTo(1_700_000_000_000, 3);
-    expect(ev("FROMEPOCH(0)")).toBe(25569);
-    expect(ev("TOEPOCH(25570, \"ms\")")).toBe(86400000);
-    expect(isSolError(ev("TOEPOCH(25570, \"h\")"))).toBe(true);
+    expect(ev("FROMEPOCH(0)")).toEqual(solDate(25569));
+    expect(ev("TOEPOCH(DATE(1970, 1, 2), \"ms\")")).toBe(86400000);
+    expect(isSolError(ev("TOEPOCH(DATE(1970, 1, 2), \"h\")"))).toBe(true);
     expect(new EpochNode({ op: "from" }).data({ value: [86400] }).result).toBe(25570);
     expect(new EpochNode({ op: "to", unit: "ms" }).data({ value: [25570] }).result).toBe(86400000);
   });
@@ -152,9 +153,9 @@ describe("DATETRUNC / Truncate Date (floor_date / ceiling_date)", () => {
     expect(dateTrunc(d("2026-12-15"), "month", true)).toBe(d("2027-01-01"));
   });
   it("formula == node, unit spellings from Excel/pandas/lubridate accepted", () => {
-    expect(ev("DATETRUNC(x, \"month\")", { x })).toBe(d("2026-03-01"));
-    expect(ev("DATETRUNC(x, \"M\")", { x })).toBe(d("2026-03-01"));
-    expect(ev("DATETRUNC(x, \"quarter\", TRUE)", { x })).toBe(d("2026-04-01"));
+    expect(ev("DATETRUNC(x, \"month\")", { x: solDate(x) })).toEqual(solDate(d("2026-03-01")));
+    expect(ev("DATETRUNC(x, \"M\")", { x: solDate(x) })).toEqual(solDate(d("2026-03-01")));
+    expect(ev("DATETRUNC(x, \"quarter\", TRUE)", { x: solDate(x) })).toEqual(solDate(d("2026-04-01")));
     expect(isSolError(ev("DATETRUNC(x, \"fortnight\")", { x }))).toBe(true);
     expect(new DateTruncNode({ unit: "week" }).data({ date: [x] }).result).toBe(d("2026-03-16"));
     expect(new DateTruncNode({ unit: "year", ceiling: true }).data({ date: [x] }).result).toBe(d("2027-01-01"));

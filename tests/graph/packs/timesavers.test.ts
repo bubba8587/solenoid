@@ -1,4 +1,5 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C44]]
+import { solDate, dateSerialOf } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { TIMESAVER_FORMULAS } from "../../../src/graph/packs/timesavers";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
@@ -8,10 +9,11 @@ import { isSolError } from "../../../src/graph/errorValue";
 
 const spellNumber = (n: number) => coreFunction("SPELLNUMBER")!(n);
 
-const run = (type: string, inputs: Record<string, number | string>) =>
+const run = (type: string, inputs: Record<string, unknown>) =>
   evalFormula(entryByType(TIMESAVER_FORMULAS, type), inputs);
 
-const ser = (y: number, m: number, d: number) => jsDateToSerial(new Date(Date.UTC(y, m - 1, d)));
+// A date crosses as itself ([[D114]] dateIsAKind).
+const ser = (y: number, m: number, d: number) => solDate(jsDateToSerial(new Date(Date.UTC(y, m - 1, d))));
 
 describe("Timesavers formula presets", () => {
   it("every formula compiles and is well-formed", () => {
@@ -65,8 +67,8 @@ describe("Timesavers formula presets", () => {
 });
 
 describe("Timesaver date idioms with config (C5)", () => {
-  const weekdayOf = (serial: number) => serialToJsDate(serial).getUTCDay(); // 0=Sun … 6=Sat
-  const domOf = (serial: number) => serialToJsDate(serial).getUTCDate();
+  const weekdayOf = (d: unknown) => serialToJsDate(dateSerialOf(d) as number).getUTCDay(); // 0=Sun … 6=Sat
+  const domOf = (d: unknown) => serialToJsDate(dateSerialOf(d) as number).getUTCDate();
 
   it("Fiscal Quarter: start defaults to 1 (calendar); a fiscal start shifts the quarters", () => {
     // April fiscal year (start=4): April is Q1, March is Q4, July is Q2.

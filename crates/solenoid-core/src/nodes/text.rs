@@ -768,7 +768,8 @@ fn cast_one(
     Ok(match target {
         "number" => match x {
             V::Cx(re, _) => V::Num(*re),
-            V::Num(n) => V::Num(*n),
+            // Cast is the one place a date becomes its serial ([[C137]] datesNeverSerials).
+            V::Num(n) | V::Date(n) => V::Num(*n),
             V::Bool(b) => V::Num(f64::from(u8::from(*b))),
             V::Str(s) => V::Num(parse_value_text(s, seps.0, seps.1)),
             _ => V::Num(f64::NAN),
@@ -777,6 +778,14 @@ fn cast_one(
             V::Unit(u) => V::str(&unit_cell_text(u, labels, format)?),
             V::Cx(re, im) => V::str(&crate::eval::format_cx(*re, *im)),
             V::Str(_) => x.clone(),
+            V::Date(n) => {
+                let pattern = match format {
+                    V::Str(s) if s.is_empty() => return Ok(V::str(&crate::date_values::date_text(*n))),
+                    V::Str(s) => s.to_string(),
+                    other => value_text(other),
+                };
+                V::str(&crate::excel_format::format_number(*n, &pattern).map_err(|m| err(ErrorCode::Value, m))?)
+            }
             V::Num(n) if dateish => {
                 let pattern = match format {
                     V::Str(s) if s.is_empty() => crate::date_serial::DEFAULT_DATE_FORMAT.to_string(),
@@ -790,11 +799,11 @@ fn cast_one(
             other => V::str(&value_text(other)),
         },
         "date" => match x {
-            V::Num(n) => V::Num(*n),
+            V::Num(n) | V::Date(n) => V::Date(*n),
             V::Str(s) => {
                 use crate::excel_criteria::{parse_date, DateReading};
                 match parse_date(s) {
-                    DateReading::Serial(d) => V::Num(d),
+                    DateReading::Serial(d) => V::Date(d),
                     _ => V::Num(f64::NAN),
                 }
             }
@@ -829,7 +838,7 @@ fn cast_one(
 fn cast_failed(v: &V) -> bool {
     match v {
         V::Cx(re, im) => re.is_nan() || im.is_nan(),
-        V::Num(n) => n.is_nan(),
+        V::Num(n) | V::Date(n) => n.is_nan(),
         _ => false,
     }
 }

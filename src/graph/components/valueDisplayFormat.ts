@@ -7,13 +7,14 @@ import { SolenoidSocket, isDateType, elementFamilyOf, type SocketDataType } from
 import type { ElemFamily } from "./ArrayChip";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/dateSerial";
 import { isSolError, type SolError } from "../errorValue";
+import { isSolDate, type SolDate } from "../dateValue";
 import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
 import { fcUnitToUnit } from "../dimension";
 import { cellUnitAnnotation } from "../unitColumn";
 import { dimEqual } from "../dimension";
 import { formatScalar, displaySettingsKey } from "./format";
 import { frameFormatStore, MATRIX_FORMAT_KEY } from "../frameFormatStore";
-import { formatAnnotationStore, formatNumberWithAnnotation, formatCxWithAnnotation, applyTextCase, applyLogicalStyle, type FormatAnnotation, type FormatStyle } from "../formatAnnotationStore";
+import { formatAnnotationStore, formatNumberWithAnnotation, isDateStyle, formatCxWithAnnotation, applyTextCase, applyLogicalStyle, type FormatAnnotation, type FormatStyle } from "../formatAnnotationStore";
 
 export function resolveDisplayAnnotation(nodeId: string | null, socketKey?: string): FormatAnnotation | undefined {
   if (!nodeId) return undefined;
@@ -76,11 +77,12 @@ export type DisplayValue =
   | null;
 
 export function formatListCell(
-  v: number | string | boolean | null | SolError | UnitCell | Cx,
+  v: number | string | boolean | null | SolError | UnitCell | Cx | SolDate,
   fmtNum: (n: number) => string,
   ann?: FormatAnnotation,
 ): string {
   if (v === null) return "null";
+  if (isSolDate(v)) return ann && isDateStyle(ann.format) ? formatNumberWithAnnotation(v.__date, ann) : fmtSerial(v.__date);
   if (isUnitCell(v)) {
     const a = annotationForValue(v, ann);
     return a ? formatNumberWithAnnotation(displayMagnitude(v, a), a) : formatCellWithDisplay(v, fmtNum);

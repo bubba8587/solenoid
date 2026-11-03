@@ -1,4 +1,5 @@
 import { useCallback, useState, useRef, type ReactNode, useLayoutEffect, useContext, useSyncExternalStore } from "react";
+import { datesAsSerials } from "../dateValue";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { copyText } from "../clipboard";
@@ -466,7 +467,7 @@ function ChipList({ items, cased }: { items: (string | null | SolError)[]; cased
 }
 
 export function ValueDisplay({
-  value: rawValue,
+  value: givenValue,
   empty = "—",
   render,
   toClipboard,
@@ -497,6 +498,8 @@ export function ValueDisplay({
 
   // Hooks before the object-kind early return: the value can flip kind across renders, and a changed hook count unmounts the node.
   const ctxNodeId = useContext(NodeFormatContext);
+  // A date value shows as a date whatever the socket says ([[D114]] dateIsAKind).
+  const { value: rawValue, dated } = datesAsSerials(givenValue);
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
 
   // An object value that slipped in through `any` must not reach the number and string path below.
@@ -518,7 +521,7 @@ export function ValueDisplay({
 
   // The declared element family, never a cell scan: a date serial looks numeric and an all-null list has no cells.
   const elemFam = nodeOutputElemFamily(ctxNodeId, socketKey);
-  const isDate = elemFam === "date";
+  const isDate = dated || elemFam === "date";
   // Resolve a complex to a string here, after `ann`, so box, chip and clipboard all honor the FC.
   const cxFmt = (c: Cx): string => (ann ? formatCxWithAnnotation(c, ann) : formatCxDisplay(c));
   const shown = (raw: DisplayValue) => {

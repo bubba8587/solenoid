@@ -44,6 +44,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 |---|---|---|
 | `../tree/specs/values/socket-lattice.md` | which sockets connect, and the wildcard ladder | `sockets.ts` |
 | `../tree/specs/values/type-propagation-on-in-place-socket-retype.md` | reconciling downstream when a socket retypes in place | `fcReconcile.ts` |
+| `../tree/specs/values/date-values.md` | dates as a value kind: representation, arithmetic, function classes, display | `date_values.rs`, `dateValue.ts` |
 | `../tree/specs/values/unit-flow.md` | units on values and formats flowing downstream | `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts` |
 | `../tree/specs/values/error-values.md` | error codes, propagation and display | `errorValue.ts` |
 | `../tree/specs/values/value-semantics.md` | null, NaN, infinity and errors per context, and reading an input (wired blank vs literal) | every `data()` |

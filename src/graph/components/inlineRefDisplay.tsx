@@ -1,4 +1,5 @@
 // [[C68]] knapIsTheDocumentSyntax
+import { isSolDate } from "../dateValue";
 import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import DOMPurify from "dompurify";
@@ -68,6 +69,7 @@ export function refSourceType(nodeId: string, refKey: string): SocketDataType | 
 export function refPreview(value: unknown, ann: FormatAnnotation | undefined, sourceType?: SocketDataType): string {
   if (value === null || value === undefined) return "—";
   if (isSolError(value)) return value.code;
+  if (isSolDate(value)) return refPreview(value.__date, ann, "date");
   if (typeof value === "boolean") return applyLogicalStyle(value, ann?.logicalStyle);
   if (typeof value === "number") {
     if (ann) return formatNumberWithAnnotation(value, ann);

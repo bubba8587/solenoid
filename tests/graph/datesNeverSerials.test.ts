@@ -1,4 +1,5 @@
 // [[C137]] datesNeverSerials
+import { solDate } from "../../src/graph/dateValue";
 import { describe, it, expect, afterEach } from "vitest";
 import type { View } from "../../src/graph/view";
 import { GraphEditor } from "../../src/graph/graphEditor";
@@ -7,7 +8,7 @@ import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { processGraph, setEditorRefs } from "../../src/graph/process";
 import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
-import { dateListSocket, dateTableSocket, numListSocket, frameSocket, logicalListSocket, strListSocket } from "../../src/graph/sockets";
+import { dateListSocket, dateTableSocket, dateSocket, numListSocket, frameSocket, logicalListSocket, strListSocket } from "../../src/graph/sockets";
 import { isSolError } from "../../src/graph/errorValue";
 import { ConcatListsNode, ListIndexNode, SumIfsNode } from "../../src/graph/nodes/list";
 import { GetColumnNode, SplitFrameNode } from "../../src/graph/nodes/frame";
@@ -177,13 +178,17 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
   it("the LAMBDA helpers: an uncast date answer is a date, and text reads a date as a date", async () => {
     const table = () => new Src([[46000], [46010]], dateTableSocket);
     const map = new MapTableNode({ expr: "value + 1" });
-    expect(await run(map, [[table(), "table"]], (c) => c.cachedResult)).toEqual([[46001], [46011]]);
+    expect(await run(map, [[table(), "table"]], (c) => c.cachedResult)).toEqual([[solDate(46001)], [solDate(46011)]]);
     expect(map.lastResultFamily).toBe("date");
     const text = new MapTableNode({ expr: "value & \"!\"" });
     expect(await run(text, [[table(), "table"]], (c) => c.cachedResult)).toEqual([["09-Dec-2025!"], ["19-Dec-2025!"]]);
+    // A fold over dates starts from a date: a plain 0 beside dates is a mix ([[D114]] dateIsAKind).
     const latest = new ReduceLambdaNode({ expr: "MAX(acc, value)" });
-    latest.literals = { initial: 0 };
-    expect(await run(latest, [[table(), "table"]], (c) => c.cachedResult)).toBe(46010);
+    const start = new Src(1, dateSocket);
+    expect(await run(latest, [[table(), "table"], [start, "initial"]], (c) => c.cachedResult)).toEqual(solDate(46010));
+    const fromZero = new ReduceLambdaNode({ expr: "MAX(acc, value)" });
+    fromZero.literals = { initial: 0 };
+    expect(typeError(await run(fromZero, [[table(), "table"]], (c) => c.cachedResult))).toBe(true);
     expect(latest.lastResultFamily).toBe("date");
   });
   it("an InlineCast runs Cast: Number gives a date's serials, Text formats it, Date reads numbers as days ([[D113]] inlineCast)", async () => {
@@ -194,7 +199,7 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
     };
     expect(await cast("number", "d + 1", dates)).toEqual([[46001, 46011], "number"]);
     expect(await cast("text", "d", dates)).toEqual([["09-Dec-2025", "19-Dec-2025"], "string"]);
-    expect(await cast("date", "d * 2", nums)).toEqual([[2, 4], "date"]);
+    expect(await cast("date", "d * 2", nums)).toEqual([[solDate(2), solDate(4)], "date"]);
     expect(await cast("logical", "d - 1", nums)).toEqual([[false, true], "logical"]);
     const bad = new ExpressionNode({ expr: "\"x\" & d", castTo: "number" });
     expect(((await run(bad, [[nums(), "d"]], (c) => c.cachedResult)) as unknown[]).every((v) => isSolError(v) && (v as { code: string }).code === "#VALUE!")).toBe(true);

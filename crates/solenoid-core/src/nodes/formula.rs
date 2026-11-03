@@ -167,31 +167,30 @@ fn tag_result(v: &V) -> V {
     match v {
         V::Err(_) | V::Str(_) | V::Bool(_) | V::Cx(..) => v.clone(),
         V::Fx(m) => V::err(fx_error_to_sol(*m)),
-        V::Num(n) if n.is_nan() => err(ErrorCode::Domain, "The result is undefined: not a number"),
-        V::Num(_) => v.clone(),
+        V::Num(n) | V::Date(n) if n.is_nan() => err(ErrorCode::Domain, "The result is undefined: not a number"),
+        V::Num(_) | V::Date(_) => v.clone(),
         _ => V::Null,
     }
 }
 
-/// The family a formula's answer is ([[C136]] typesKnownAfterCalc): a date where the formula hands back a date it was
-/// given (a variable whose socket took a date type, through `yields_date`), else the kind of value it computed; blank
-/// where neither says.
 /// Whether variable `n`'s socket took a date type.
 fn is_date_input(c: &Call, n: &str) -> bool {
     c.input_type(n).is_some_and(|t| t.starts_with("date"))
 }
 
-fn result_family(c: &Call, ast: &Ast, result: &V) -> &'static str {
-    answer_family(ast, &|n: &str| is_date_input(c, n), result)
+fn result_family(_c: &Call, _ast: &Ast, result: &V) -> &'static str {
+    answer_family(result)
 }
 
-/// The family of `result`, a formula's answer over variables `is_date` names the dates of.
-pub(crate) fn answer_family(ast: &Ast, is_date: &dyn Fn(&str) -> bool, result: &V) -> &'static str {
+/// The family of `result`, a formula's answer, read off its values ([[D114]] dateIsAKind, [[C136]]
+/// typesKnownAfterCalc): one kind, else "mixed"; "" where it holds no value to tell.
+pub(crate) fn answer_family(result: &V) -> &'static str {
     fn kinds(v: &V, out: &mut Vec<&'static str>) {
         let k = match v {
             V::List(items) => return items.iter().for_each(|x| kinds(x, out)),
             V::Null | V::Undef | V::Err(_) => return,
             V::Num(_) | V::Unit(_) => "number",
+            V::Date(_) => "date",
             V::Str(_) => "text",
             V::Bool(_) => "logical",
             _ => "mixed",
@@ -202,12 +201,8 @@ pub(crate) fn answer_family(ast: &Ast, is_date: &dyn Fn(&str) -> bool, result: &
     }
     let mut found = Vec::new();
     kinds(result, &mut found);
-    let dated = super::columns::yields_date(ast, is_date);
     match found.as_slice() {
-        // An answer with no values is still the formula's: a date where it hands back dates ([[D113]] inlineCast).
-        [] if dated => "date",
         [] => "",
-        ["number"] if dated => "date",
         [one] => one,
         _ => "mixed",
     }
@@ -260,6 +255,8 @@ fn expression(c: &mut Call) -> Answer {
         if read.is_sol_error() {
             return expression_done(c, read, None, None);
         }
+        // Until every source sends a date as itself, a date-typed input's serials enter as dates ([[D114]] dateIsAKind).
+        let read = if is_date_input(c, v) { crate::date_values::wrap(&read) } else { read };
         env.insert(v.clone(), read);
     }
     if names.iter().any(|v| has_unit_cell(&env[v])) {
@@ -274,11 +271,7 @@ fn expression(c: &mut Call) -> Answer {
             }
         };
     }
-    // A date the formula turns into text reads as a date, never its serial ([[C137]] datesNeverSerials).
-    let raw = match crate::date_typing::dates_as_text(&ast, &|n: &str| is_date_input(c, n)) {
-        Some(tree) => Ok(crate::eval::formula_tree(&tree, &expr, env)),
-        None => evaluate(&expr, env),
-    };
+    let raw = evaluate(&expr, env);
     let Ok(raw) = raw else {
         let e = err(ErrorCode::Value, "The formula failed to evaluate");
         return expression_done(c, e, Some("Evaluation error"), None);

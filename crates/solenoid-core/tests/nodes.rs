@@ -22,7 +22,7 @@ fn load(path: &std::path::Path) -> Vec<Json> {
 /// cells by what crosses back.
 fn same_v(a: &V, b: &V) -> bool {
     match (a, b) {
-        (V::Num(x), V::Num(y)) => x.to_bits() == y.to_bits() || (x.is_nan() && y.is_nan()),
+        (V::Num(x), V::Num(y)) | (V::Date(x), V::Date(y)) => x.to_bits() == y.to_bits() || (x.is_nan() && y.is_nan()),
         (V::Str(x), V::Str(y)) => x == y,
         (V::Bool(x), V::Bool(y)) => x == y,
         (V::Null, V::Null) | (V::Undef, V::Undef) => true,
@@ -104,6 +104,7 @@ fn show_v(v: &V) -> String {
         V::Unit(u) => format!("unit({} {:?} {:?})", u.value, u.dim, u.display),
         V::Lambda(_) => "lambda".into(),
         V::Fx(m) => format!("fx({m})"),
+        V::Date(n) => format!("date({n:?})"),
     }
 }
 

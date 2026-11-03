@@ -1,4 +1,5 @@
 // [[C10]] socketLattice, [[B17]] typedValueModel
+import { solDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";
@@ -51,9 +52,9 @@ describe("a formula never reads a number, date or logical out of text ([[C10]] s
     expect(ev('GEOMETRIC("1", 2, 3)')).toMatchObject({ code: "#VALUE!", message: "GEOMETRIC needs a number" });
   });
 
-  it("ACCRINT reads its dates as serials, as every date argument does, and never date text", () => {
-    expect(ev("ACCRINT(39508, 39691, 39569, 0.1, 1000, 2, 0)") as number).toBeCloseTo(16.666667, 6); // Excel's example
-    expect(code(ev('ACCRINT("2008-03-01", 39691, 39569, 0.1, 1000, 2, 0)'))).toBe("#VALUE!");
+  it("ACCRINT reads its dates as dates, as every date argument does, and never date text", () => {
+    expect(ev("ACCRINT(DATE(2008,3,1), DATE(2008,8,31), DATE(2008,5,1), 0.1, 1000, 2, 0)") as number).toBeCloseTo(16.666667, 6); // Excel's example
+    expect(code(ev('ACCRINT("2008-03-01", DATE(2008,8,31), DATE(2008,5,1), 0.1, 1000, 2, 0)'))).toBe("#VALUE!");
   });
 
   it("TEXT formats a number and leaves text as it is", () => {
@@ -64,7 +65,7 @@ describe("a formula never reads a number, date or logical out of text ([[C10]] s
   it("the explicit converters read text, as a typed input does", () => {
     expect(ev('VALUE("5")')).toBe(5);
     expect(ev('NUMBERVALUE("1.234,5", ",", ".")')).toBe(1234.5);
-    expect(ev('DATEVALUE("2024-01-01")')).toBe(45292);
+    expect(ev('DATEVALUE("2024-01-01")')).toEqual(solDate(45292));
     expect(ev('TIMEVALUE("12:00")')).toBe(0.5);
     expect(ev('BIN2DEC("101")')).toBe(5);
   });
@@ -78,9 +79,9 @@ describe("a formula never reads a number, date or logical out of text ([[C10]] s
   });
 
   it("a pack or coupon function refuses numeric text where it read blank or #DOMAIN!", () => {
-    for (const src of ['SUNRISE(45292, "51.5", 0)', 'AWGWIRE("12")', 'COLEBROOK("1e5", 0.001)', 'STANDARDATMOSPHERE("1000")',
-      'TRIANGLESOLVER(2, 2, "2")', 'ANTOINE("water", "100")', 'COUPDAYS(45292, 45658, 2, "1")',
-      'ACCRINT(45292, 45474, 45658, "0.1", 1000, 2, 0)'])
+    for (const src of ['SUNRISE(DATE(2024,1,1), "51.5", 0)', 'AWGWIRE("12")', 'COLEBROOK("1e5", 0.001)', 'STANDARDATMOSPHERE("1000")',
+      'TRIANGLESOLVER(2, 2, "2")', 'ANTOINE("water", "100")', 'COUPDAYS(DATE(2024,1,1), DATE(2025,1,1), 2, "1")',
+      'ACCRINT(DATE(2024,1,1), DATE(2024,7,1), DATE(2025,1,1), "0.1", 1000, 2, 0)'])
       expect(code(ev(src))).toBe("#VALUE!");
     expect(code(ev('ANTOINE("water", 100)'))).not.toBe("#VALUE!");
   });
@@ -88,7 +89,7 @@ describe("a formula never reads a number, date or logical out of text ([[C10]] s
   it("a dated cash flow or a signal refuses a text cell, as NPV does, where it read 0; IRR and MIRR skip it as Excel does", () => {
     const flows = [-100, "60", 60];
     for (const src of ["XNPV(0.1, f, d)", "XIRR(f, d)", "CONVOLVE(f, f)", "SPECTRUM(f)", "NPV(0.1, f)"])
-      expect(code(ev(src, { f: flows, d: [45292, 45658, 46023] }))).toBe("#VALUE!");
+      expect(code(ev(src, { f: flows, d: [45292, 45658, 46023].map(solDate) }))).toBe("#VALUE!");
     expect(ev("IRR(f)", { f: flows })).toBeCloseTo(-0.4, 12);
     expect(code(ev("IRR(f)", { f: [-100, null, 120] }))).not.toBe("#VALUE!");
   });
@@ -102,11 +103,11 @@ describe("a formula never reads a number, date or logical out of text ([[C10]] s
   });
 
   it("number slots the second sweep found refuse text with #VALUE!", () => {
-    const r = [0.1, -0.05, 0.2], c = [-100, 60, 60], d = [45292, 45658, 46023];
+    const r = [0.1, -0.05, 0.2], c = [-100, 60, 60], d = [45292, 45658, 46023].map(solDate);
     for (const [src, vars] of [
       ['CAGR(r, "1")', { r }], ['SHARPE(r, "0.01")', { r }], ['T.TEST(r, r, "2", 1)', { r }], ['HYPOTENUSE("3", 4)', {}],
       ['LOG2("8")', {}], ['PPMT(0.1, "1", 3, 100)', {}], ['FUZZYMATCH("abc", t, "0.9")', { t: ["abc"] }],
-      ["WAVG(v, w)", { v: [1, "2"], w: [1, 1] }], ['IRR(c, "0.1")', { c }], ["XIRR(c, x)", { c, x: [45292, "45658", 46023] }],
+      ["WAVG(v, w)", { v: [1, "2"], w: [1, 1] }], ['IRR(c, "0.1")', { c }], ["XIRR(c, x)", { c, x: [solDate(45292), "45658", solDate(46023)] }],
       ['XNPV("0.1", c, d)', { c, d }], ['GCD("12", 18)', {}], ['MULTINOMIAL("2", 3)', {}], ['TEXTSPLIT("a,b", ",", , , "1")', {}],
     ] as [string, Record<string, unknown>][])
       expect(code(ev(src, vars)), src).toBe("#VALUE!");

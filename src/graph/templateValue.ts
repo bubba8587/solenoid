@@ -1,4 +1,5 @@
 // [[C68]] knapIsTheDocumentSyntax
+import { isSolDate } from "./dateValue";
 import { type FrameValue, type CubeValue, type CubeCell, type FrameColType, isFrameValue, isCubeValue, frameRowCount } from "./frame";
 import { isDocumentValue } from "./documentValue";
 import { isMermaidValue } from "./mermaidValue";
@@ -37,6 +38,7 @@ function cubeCell(cell: CubeCell, type?: FrameColType): unknown {
   if (isCubeValue(cell)) return cubeToTemplateRows(cell);
   if (isFrameValue(cell)) return frameToTemplateRows(cell);
   if (isUnitCell(cell)) return displayMagnitudeOf(cell);
+  if (isSolDate(cell)) return cellValue(cell.__date, "date");
   // A list cell's items take the column's type, so a date list stays dates ([[C137]] datesNeverSerials).
   if (Array.isArray(cell)) return cell.map((c) => cubeCell(c, type));
   return cellValue(cell, type);
@@ -62,6 +64,8 @@ export function toTemplateValue(v: unknown, type?: SocketDataType | null): unkno
   if (isMermaidValue(v)) return mermaidToMarkdown(v);
   if (isLambdaValue(v)) return lambdaToMarkdown(v);
   if (isUnitCell(v)) return displayMagnitudeOf(v);
+  // A date value reads as a date whatever its socket says ([[D114]] dateIsAKind).
+  if (isSolDate(v)) return toTemplateValue(v.__date, "date");
   if (Array.isArray(v)) {
     const date = !!type && isDateType(type);
     return v.map((x) => toTemplateValue(x, date ? "date" : null));

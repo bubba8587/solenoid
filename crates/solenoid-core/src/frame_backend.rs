@@ -339,7 +339,6 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             };
             let inputs = crate::eval::ColumnInputs {
                 table: crate::eval::Table::Frame(&f),
-                dates: Vec::new(),
                 sides: values("sides")?,
                 row_sides: values("rowSides")?,
                 reserved: parse::<Option<Vec<String>>>(args, "reserved")?.unwrap_or_default(),
@@ -366,7 +365,8 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             match outcome {
                 Err(e) => Ok(json!({ "error": { "code": e.code, "message": e.message, "ref": e.reference } })),
                 Ok(o) => {
-                    let out = FrameValue { columns: vec![FrameColumn::new("out", FrameColType::Number, o.cells)] };
+                    let ty = if o.dates { FrameColType::Date } else { FrameColType::Number };
+                    let out = FrameValue { columns: vec![FrameColumn::new("out", ty, o.cells)] };
                     Ok(json!({ "handle": register(out), "sideVars": o.side_vars }))
                 }
             }
@@ -601,6 +601,7 @@ impl serde::Serialize for Out<'_> {
             V::Undef => one(s, "undef", &true),
             V::Fx(code) => one(s, "fx", code),
             V::Num(n) => one(s, "num", &bits(*n)),
+            V::Date(n) => one(s, "date", &bits(*n)),
             V::Str(t) => one(s, "str", t.as_ref()),
             V::Bool(b) => one(s, "bool", b),
             V::Lambda(l) => crate::nodes::serialize_lambda(l, s),

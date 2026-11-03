@@ -163,42 +163,43 @@ describe("REGEXREPLACE occurrence", () => {
 });
 
 describe("finance functions: formula matches node", () => {
-  // 15-Mar-2026 settlement, 15-Nov-2030 maturity as date serials.
+  // 15-Mar-2026 settlement, 31-Oct-2030 maturity: serials for the cards, dates for the formulas ([[D114]] dateIsAKind).
   const settle = 46096, maturity = 47787;
+  const S = "DATE(2026,3,15)", M = "DATE(2030,10,31)";
 
   it("COUPNUM / COUPDAYBS", () => {
     const num = new CouponNode({ op: "coupnum" });
-    expect(ev(`COUPNUM(${settle}, ${maturity}, 2)`))
+    expect(ev(`COUPNUM(${S}, ${M}, 2)`))
       .toBe(num.data({ settle: [settle], maturity: [maturity], frequency: [2], basis: [0] }).result);
     const bs = new CouponNode({ op: "coupdaybs" });
-    expect(ev(`COUPDAYBS(${settle}, ${maturity}, 2)`))
+    expect(ev(`COUPDAYBS(${S}, ${M}, 2)`))
       .toBe(bs.data({ settle: [settle], maturity: [maturity], frequency: [2], basis: [0] }).result);
   });
 
   it("COUPDAYBS on 30/360 counts a coupon on the last day of February as the 30th", () => {
     // previous coupon 28-Feb-2026, settlement 15-Mar-2026, maturity 28-Aug-2030
-    expect(ev(`COUPDAYBS(${settle}, DATE(2030,8,28), 2, 0)`)).toBe(15);
-    expect(ev(`COUPDAYSNC(${settle}, DATE(2030,8,28), 2, 0)`)).toBe(165);
+    expect(ev("COUPDAYBS(DATE(2026,3,15), DATE(2030,8,28), 2, 0)")).toBe(15);
+    expect(ev("COUPDAYSNC(DATE(2026,3,15), DATE(2030,8,28), 2, 0)")).toBe(165);
   });
 
   it("PRICE / YIELD round-trip through each other", () => {
     const priceNode = new BondPricingNode({ op: "price" });
-    const price = ev(`PRICE(${settle}, ${maturity}, 0.065, 0.07, 100, 2)`);
+    const price = ev(`PRICE(${S}, ${M}, 0.065, 0.07, 100, 2)`);
     expect(price).toBe(priceNode.data({
       settle: [settle], maturity: [maturity], rate: [0.065], yld: [0.07], redemption: [100], frequency: [2],
     }).result);
     // The yield that reproduces that price is the yield we priced at.
-    expect(ev(`YIELD(${settle}, ${maturity}, 0.065, ${price}, 100, 2)`)).toBeCloseTo(0.07, 8);
+    expect(ev(`YIELD(${S}, ${M}, 0.065, ${price}, 100, 2)`)).toBeCloseTo(0.07, 8);
   });
 
   it("DURATION / MDURATION", () => {
     const node = new DurationNode({ op: "duration" });
-    expect(ev(`DURATION(${settle}, ${maturity}, 0.08, 0.09, 2)`)).toBe(node.data({
+    expect(ev(`DURATION(${S}, ${M}, 0.08, 0.09, 2)`)).toBe(node.data({
       settle: [settle], maturity: [maturity], coupon: [0.08], yld: [0.09], frequency: [2], basis: [0],
     }).result);
     // Modified duration is Macaulay discounted by one period's yield.
-    const mac = ev(`DURATION(${settle}, ${maturity}, 0.08, 0.09, 2)`) as number;
-    expect(ev(`MDURATION(${settle}, ${maturity}, 0.08, 0.09, 2)`)).toBeCloseTo(mac / (1 + 0.09 / 2), 10);
+    const mac = ev(`DURATION(${S}, ${M}, 0.08, 0.09, 2)`) as number;
+    expect(ev(`MDURATION(${S}, ${M}, 0.08, 0.09, 2)`)).toBeCloseTo(mac / (1 + 0.09 / 2), 10);
   });
 
   it("VDB", () => {
@@ -209,7 +210,7 @@ describe("finance functions: formula matches node", () => {
   });
 
   it("answers #DOMAIN!, not a number, when an argument is out of range ([[C24]] arraySemantics)", () => {
-    expect(ev(`COUPNUM(${settle}, ${maturity}, 3)`)).toMatchObject({ code: "#DOMAIN!", message: "COUPNUM needs a frequency of 1, 2 or 4" });
+    expect(ev(`COUPNUM(${S}, ${M}, 3)`)).toMatchObject({ code: "#DOMAIN!", message: "COUPNUM needs a frequency of 1, 2 or 4" });
     expect(ev("VDB(10000, 1000, 10, 5, 2)")).toMatchObject({ code: "#DOMAIN!", message: "VDB needs 0 ≤ start ≤ end ≤ life" });
   });
 });

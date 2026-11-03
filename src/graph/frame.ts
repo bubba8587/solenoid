@@ -1,7 +1,8 @@
 // [[C24]] arraySemantics, [[C44]] dateSerials, [[C25]] firstClassUnits
+import { isSolDate, dateSerialOf } from "./dateValue";
 import { wasmInvokeSync, wasmInferBin } from "./engineWasm";
 import { encodeBinary, decodeBinary } from "./binaryCells";
-import { parseDate } from "./nodes/dateSerial";
+import { parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { isSolError, solError, type SolError } from "./errorValue";
 import { coerceLogical, decimalFromText } from "./valueKinds";
 import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";
@@ -85,16 +86,18 @@ export function typedColumn(
   knownType?: FrameColType | null,
 ): FrameColumn {
   const present = cells.filter((c) => c !== null && c !== undefined && !isSolError(c));
+  // A column of date values is a Date column, its cells their serials ([[D114]] dateIsAKind).
   const type: FrameColType = knownType
-    ?? (present.length > 0 && present.every((c) => typeof c === "number") ? "number"
+    ?? (present.length > 0 && present.every(isSolDate) ? "date"
+      : present.length > 0 && present.every((c) => typeof c === "number") ? "number"
       : present.length > 0 && present.every((c) => typeof c === "boolean") ? "logical"
       : "string");
   const values: FrameCell[] = [];
   for (let i = 0; i < length; i++) {
-    const c = cells[i];
+    const c = dateSerialOf(cells[i]);
     if (c === null || c === undefined) { values.push(null); continue; }
     if (isSolError(c)) { values.push(c); continue; }
-    if (type === "string") { values.push(typeof c === "string" ? c : String(c)); continue; }
+    if (type === "string") { values.push(typeof c === "string" ? c : isSolDate(cells[i]) ? formatDateSerial(c as number, DEFAULT_DATE_FORMAT) : String(c)); continue; }
     if (type === "logical") { values.push(typeof c === "boolean" ? c : cellToBool(c)); continue; }
     values.push(typeof c === "number" ? c : (cellToNumber(c) ?? NaN));
   }

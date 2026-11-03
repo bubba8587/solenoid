@@ -1735,16 +1735,14 @@ fn earned_value_card(c: &mut Call) -> Answer {
 
 fn scan_lambda(c: &mut Call) -> Answer {
     use super::matrix::{
-        any_matrix, body_done, fn_error, fold_date_vars, holds_unit_cell, lambda_done, resolve, result_cell,
+        body_done, dated_matrix, dated_num, fn_error, holds_unit_cell, lambda_done, resolve, result_cell,
     };
-    let initial = c.read_num("initial", 0.0);
-    let m = any_matrix(&slot(c, "table"));
+    let initial = dated_num(c, "initial", 0.0);
+    let m = dated_matrix(c, "table");
     let body = match resolve(c, "acc + value", &["acc", "value", "step"]) {
         Ok(b) => b,
         Err(e) => return fn_error(c, e),
     };
-    let is_date = fold_date_vars(c, &body);
-    let body = body.dated(&is_date);
     let Some(m) = m else { return lambda_done(c, V::Null, None) };
     if matches!(initial, V::Unit(_)) || holds_unit_cell(&m) {
         return match body.fold(crate::unit_fold::FoldKind::Scan, &m, &initial) {
@@ -1769,7 +1767,7 @@ fn scan_lambda(c: &mut Call) -> Answer {
             )
         })
         .collect();
-    body_done(c, &body, &is_date, list(out))
+    body_done(c, list(out))
 }
 
 /// `rk4`: the classical fourth-order steps, None where the derivative is undefined or the solution diverges.

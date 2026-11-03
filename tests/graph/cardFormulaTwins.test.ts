@@ -1,6 +1,7 @@
 // [[C17]] shareImpl
 // Every card the catalog marks `parity: true` against a formula answers as that formula does: the same inputs, the same
 // numbers and the same error codes (messages may differ). The card's inputs map to the function's arguments in order.
+import { solDate, dateSerialOf } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { NODE_CATALOG } from "../../src/graph/nodeCatalog";
@@ -80,9 +81,13 @@ describe("cards answer as their formula twins", () => {
       } catch (e) {
         card = e;
       }
-      const env = Object.fromEntries(vals.map((v, i) => [`a${i}`, v]));
+      // A date input's values cross into the formula as dates, as a date-typed cable carries them ([[D114]] dateIsAKind).
+      const dated = (k: string) => /^date/.test(String((node.inputs[k]?.socket as { dataType?: string } | undefined)?.dataType ?? ""));
+      const asDate = (v: unknown): unknown => (typeof v === "number" ? solDate(v) : Array.isArray(v) ? v.map(asDate) : v);
+      const env = Object.fromEntries(vals.map((v, i) => [`a${i}`, dated(keys[i]) ? asDate(v) : v]));
       const formula = compileEvaluator(`${name}(${keys.map((_, i) => `a${i}`).join(",")})`)!(env);
-      if (JSON.stringify(shape(card)) !== JSON.stringify(shape(formula))) {
+      const asSerial = (v: unknown): unknown => (Array.isArray(v) ? v.map(asSerial) : dateSerialOf(v));
+      if (JSON.stringify(shape(card)) !== JSON.stringify(shape(asSerial(formula)))) {
         misses.push(`${JSON.stringify(vals)}: card ${JSON.stringify(shape(card))}, formula ${JSON.stringify(shape(formula))}`);
       }
     }

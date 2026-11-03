@@ -1,4 +1,5 @@
 // [[C24]] arraySemantics, [[D86]] blankRoles, [[C17]] shareImpl
+import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import {
   CouponNode, AccruedInterestNode, DiscountSecurityNode, DurationNode, BondPricingNode, DepreciationNode,
@@ -10,7 +11,10 @@ import { compileEvaluator } from "../../../src/graph/excelFormula";
 // Each case runs the node and the formula and requires the same error from both.
 
 const d = (s: string) => parseDateToSerial(s);
-const ev = (expr: string, env: Record<string, unknown>) => compileEvaluator(expr)!(env);
+// The date arguments (settlement, maturity, issue, first and last coupon) cross as dates ([[D114]] dateIsAKind).
+const DATE_VARS = new Set(["s", "m", "i", "f", "l"]);
+const ev = (expr: string, env: Record<string, unknown>) =>
+  compileEvaluator(expr)!(Object.fromEntries(Object.entries(env).map(([k, v]) => [k, DATE_VARS.has(k) && typeof v === "number" ? solDate(v) : v])));
 const s = d("2024-01-15"), m = d("2029-01-15");
 
 function same(node: unknown, formula: unknown, message: string) {
