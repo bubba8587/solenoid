@@ -17,11 +17,35 @@ import { RecordLayoutField } from "./RecordLayoutField";
 import { CardSection, useRowsInUse } from "./CardSection";
 import { sectionFoldStore } from "../sectionFoldStore";
 import { ChartFigure } from "./chartView";
+import type { ChartValue } from "../chartValue";
 import { ChartExpandButton } from "./ChartExpandButton";
 import { nodeDisplayName } from "../catalogUtils";
 
 const LAYOUT = "Layout";
 const FIG_H = 220;
+
+// The figure takes the width its scroll box offers, not the card's: a vertical scrollbar narrows it (Display measures the same way).
+function RecordFigure({ value, step, fallback, children }: {
+  value: ChartValue; step?: (delta: number) => void; fallback: number; children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(fallback);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setW(Math.max(120, Math.floor(el.clientWidth)));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className="solenoid-record__figure nowheel">
+      <ChartFigure value={value} width={w} height={FIG_H} recordNav={step} />
+      {children}
+    </div>
+  );
+}
 
 const OPTIONS: ReadonlyArray<OpOption<RecordOp>> = (Object.keys(RECORD_OP_META) as RecordOp[])
   .map((value) => ({ value, label: RECORD_OP_META[value].label }));
@@ -122,10 +146,9 @@ function RecordCardComponent({ data, emit, op, children }: NodeProps<RecordNodeT
       <div className="solenoid-node__section-divider" />
       {/* The figure draws in the card as other charts do, scrolling inside its box; Detail pages with its own pager. */}
       {!collapsed && hasBoxes && cv ? (
-        <div className="solenoid-record__figure nowheel">
-          <ChartFigure value={cv} width={(data.width ?? 240) - 22} height={FIG_H} recordNav={op === "detail" && total > 1 ? step : undefined} />
+        <RecordFigure value={cv} fallback={(data.width ?? 240) - 22} step={op === "detail" && total > 1 ? step : undefined}>
           <ChartExpandButton title={nodeDisplayName(data)} op="column" axes={false} series={[]} value={cv} />
-        </div>
+        </RecordFigure>
       ) : !collapsed && <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}
       {cv && (
         <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">

@@ -1415,6 +1415,7 @@ body.solenoid-scrubbing * {
   max-height: 260px;
   margin-top: 4px;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 .solenoid-record__pager {
   display: flex;
