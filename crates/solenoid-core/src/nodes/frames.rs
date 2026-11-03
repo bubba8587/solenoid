@@ -1851,7 +1851,7 @@ fn xlookup(c: &mut Call) -> Answer {
         if super::list::nullish(v) {
             String::new()
         } else {
-            trim_space(&crate::excel_functions::value_text(v)).to_string()
+            trim_space(&crate::frame_verbs::plan_text(v)).to_string()
         }
     };
     let result = (|| -> Result<Cv, V> {
@@ -2997,15 +2997,9 @@ fn within_group(t: &Cv, score_at: usize, rank_at: usize) -> (Cv, Best) {
     (table, best)
 }
 
-/// JS `===` on cells: primitives by value, objects never.
+/// `===` on cells: values by `strict_equals`, tables never.
 fn strict_eq(a: &Cv, b: &Cv) -> bool {
-    match (a, b) {
-        (Cv::V(V::Num(x)), Cv::V(V::Num(y))) => x == y,
-        (Cv::V(V::Str(x)), Cv::V(V::Str(y))) => x == y,
-        (Cv::V(V::Bool(x)), Cv::V(V::Bool(y))) => x == y,
-        (Cv::V(V::Null), Cv::V(V::Null)) | (Cv::V(V::Undef), Cv::V(V::Undef)) => true,
-        _ => false,
-    }
+    matches!((a, b), (Cv::V(x), Cv::V(y)) if crate::excel_functions::strict_equals(x, y))
 }
 
 /// Tables with the same columns stacked into one, frames as a frame and anything with a Cube as a Cube.

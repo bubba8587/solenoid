@@ -861,15 +861,18 @@ fn ceiling_floor_math(ceiling: bool, n: V, sig: V, mode: V) -> V {
 }
 
 /// `===`: an error value is equal only to the same Formula.js constant.
-fn strict_equals(x: &V, y: &V) -> bool {
+/// `===` over values: the one equality a match, a SWITCH case or a membership reads; a date equals the same date and
+/// never its serial ([[D114]] dateIsAKind).
+pub(crate) fn strict_equals(x: &V, y: &V) -> bool {
     match (x, y) {
-        (V::Num(a), V::Num(b)) => a == b,
+        (V::Num(a), V::Num(b)) | (V::Date(a), V::Date(b)) => a == b,
         (V::Str(a), V::Str(b)) => a == b,
         (V::Bool(a), V::Bool(b)) => a == b,
         (V::Null, V::Null) | (V::Undef, V::Undef) => true,
         (V::Fx(a), V::Fx(b)) => a == b,
         (V::Err(a), V::Err(b)) => Rc::ptr_eq(a, b),
         (V::List(a), V::List(b)) => Rc::ptr_eq(a, b),
+        (V::Unit(a), V::Unit(b)) => Rc::ptr_eq(a, b),
         _ => false,
     }
 }
@@ -983,6 +986,7 @@ pub(crate) fn xmatch_index(lookup: &V, keys: &[V], mm: MatchMode, last: bool) ->
 enum ExactKey {
     Str(String),
     Num(u64),
+    Date(u64),
     Bool(bool),
     Undef,
 }
@@ -993,6 +997,8 @@ fn exact_key(v: &V) -> Option<Option<ExactKey>> {
         V::Str(s) => Some(ExactKey::Str(crate::jsnum::lower_text(s).into_owned())),
         V::Num(n) if n.is_nan() => None,
         V::Num(n) => Some(ExactKey::Num((n + 0.0).to_bits())),
+        V::Date(n) if n.is_nan() => None,
+        V::Date(n) => Some(ExactKey::Date((n + 0.0).to_bits())),
         V::Bool(b) => Some(ExactKey::Bool(*b)),
         V::Undef => Some(ExactKey::Undef),
         _ => return None,

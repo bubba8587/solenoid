@@ -556,6 +556,17 @@ pub fn sample_frame(f: &FrameValue, n: usize) -> Option<FrameValue> {
 
 // ─── Filter ─────────────────────────────────────────────────────────────────────
 
+/// A value as text for a plan that takes its value as text (a lookup, a find, a list test): a date as its day's
+/// exact number, which a Date column reads back as that day; an error as its code ([[D114]] dateIsAKind).
+pub fn plan_text(v: &crate::excel_functions::V) -> String {
+    use crate::excel_functions::V;
+    match v {
+        V::Date(n) => crate::jsnum::number_to_string(*n),
+        V::Err(e) => e.code.to_string(),
+        v => crate::excel_functions::value_text(v),
+    }
+}
+
 /// A filter's value as the test reads it: a date its day, as a Date column packs its cells ([[D114]] dateIsAKind);
 /// an error its code, which a text test reads.
 pub fn filter_cell(v: &crate::excel_functions::V) -> FrameCell {

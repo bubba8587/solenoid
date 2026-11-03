@@ -150,7 +150,7 @@ fn series(c: &mut Call) -> Answer {
                 } else {
                     let (s0, s1, st) = (super::kit::num(&start), super::kit::num(&stop), super::kit::num(&step));
                     if st == 0.0 {
-                        if strict_eq(&start, &stop) {
+                        if crate::excel_functions::strict_equals(&start, &stop) {
                             1.0
                         } else {
                             f64::INFINITY
@@ -244,17 +244,6 @@ fn series(c: &mut Call) -> Answer {
         c.show("lastRank", V::Num(if matches!(first, V::List(_)) { 2.0 } else { 1.0 }));
     }
     Ok(vec![("list".into(), Cv::from(result))])
-}
-
-/// `a === b` on two cells.
-fn strict_eq(a: &V, b: &V) -> bool {
-    match (a, b) {
-        (V::Num(x), V::Num(y)) => x == y,
-        (V::Str(x), V::Str(y)) => x == y,
-        (V::Bool(x), V::Bool(y)) => x == y,
-        (V::Null, V::Null) | (V::Undef, V::Undef) => true,
-        _ => false,
-    }
 }
 
 fn list_length(c: &mut Call) -> Answer {
@@ -1133,6 +1122,8 @@ fn xmatch(c: &mut Call) -> Answer {
     }
     let keys = slot(c, "array");
     let wired = !nullish(&keys);
+    // As XMATCH reads them, a date as its day on both sides ([[D114]] dateIsAKind).
+    let (val, keys) = (crate::date_values::unwrap(&val), crate::date_values::unwrap(&keys));
     let ks = items(&keys);
     let mm = match c.field_str("matchMode", "exact") {
         "next_larger" => MatchMode::NextLarger,
@@ -1179,17 +1170,6 @@ fn cell_number(v: &V) -> Option<f64> {
 fn date_serial(v: &V) -> Option<f64> {
     let V::Str(s) = v else { return None };
     crate::csv::date_text_serial(s)
-}
-
-/// A column of the one type every filled cell reads as, text otherwise; a list of one unit keeps it.
-/// `infer_column` over cells a wired list brought: a list whose socket is a date type makes a Date column, which the
-/// cells alone can't tell from numbers ([[C137]] datesNeverSerials).
-fn typed_column(c: &Call, key: &str, name: &str, cells: &[V]) -> Column {
-    let mut col = infer_column(name, cells);
-    if col.ty == FrameColType::Number && c.input_type(key).is_some_and(|t| t.starts_with("date")) {
-        col.ty = FrameColType::Date;
-    }
-    col
 }
 
 pub(crate) fn infer_column(name: &str, cells: &[V]) -> Column {
@@ -1382,7 +1362,7 @@ fn outliers(c: &mut Call) -> Answer {
         format: None,
         raw: None,
     };
-    let frame = frame_of(vec![typed_column(c, "list", "Value", &clean), outlier]);
+    let frame = frame_of(vec![infer_column("Value", &clean), outlier]);
     shown(c, "cachedResult", "result", frame)
 }
 
@@ -1407,7 +1387,7 @@ fn tally(c: &mut Call) -> Answer {
     } else {
         let keys: Vec<V> = seen.iter().map(|(v, _)| v.clone()).collect();
         frame_of(vec![
-            typed_column(c, "list", "Value", &keys),
+            infer_column("Value", &keys),
             number_column("Count", seen.iter().map(|(_, n)| V::Num(*n)).collect()),
         ])
     };
@@ -1485,7 +1465,7 @@ fn group_lists(c: &mut Call) -> Answer {
             V::Num(if vals.is_empty() { 0.0 } else { agg(vals, vals.iter().fold(0.0, |a, b| a + b)) })
         })
         .collect();
-    let frame = frame_of(vec![typed_column(c, "keys", "Key", &order), number_column("Value", values)]);
+    let frame = frame_of(vec![infer_column("Key", &order), number_column("Value", values)]);
     shown(c, "cachedResult", "result", frame)
 }
 

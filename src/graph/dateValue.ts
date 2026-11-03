@@ -12,6 +12,11 @@ export function solDate(serial: number): SolDate {
   return Object.freeze({ __date: serial });
 }
 
+/** A wired value's day where it is a date, else null: what a date input reads (the core's `kit::day`). */
+export function dayOf(v: unknown): number | null {
+  return isSolDate(v) && Number.isFinite(v.__date) ? v.__date : null;
+}
+
 /** A date's serial, or the value itself: for code that stores a date in a Date column, where the column says it. */
 export function dateSerialOf(v: unknown): unknown {
   return isSolDate(v) ? v.__date : v;

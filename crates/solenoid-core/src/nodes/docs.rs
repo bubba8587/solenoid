@@ -83,22 +83,9 @@ fn broadcast(args: &[V], f: impl Fn(&[&V]) -> f64) -> V {
     })
 }
 
-/// `===` between two cells.
-fn strict_eq(a: &V, b: &V) -> bool {
-    match (a, b) {
-        (V::Num(x), V::Num(y)) => x == y,
-        (V::Str(x), V::Str(y)) => x == y,
-        (V::Bool(x), V::Bool(y)) => x == y,
-        (V::Null, V::Null) | (V::Undef, V::Undef) => true,
-        (V::List(x), V::List(y)) => Rc::ptr_eq(x, y),
-        (V::Err(x), V::Err(y)) => Rc::ptr_eq(x, y),
-        _ => false,
-    }
-}
-
 /// SameValueZero, as `Array.prototype.includes` compares.
 fn same_value_zero(a: &V, b: &V) -> bool {
-    matches!((a, b), (V::Num(x), V::Num(y)) if x.is_nan() && y.is_nan()) || strict_eq(a, b)
+    matches!((a, b), (V::Num(x), V::Num(y)) if x.is_nan() && y.is_nan()) || crate::excel_functions::strict_equals(a, b)
 }
 
 // ─── Display ────────────────────────────────────────────────────────────────────
@@ -143,7 +130,7 @@ fn alert_status(c: &Call) -> Result<V, V> {
             if blank(&[&v, &t]) {
                 return Ok(V::Null);
             }
-            broadcast(&[v, t], |o| f64::from(u8::from(strict_eq(o[0], o[1]))))
+            broadcast(&[v, t], |o| f64::from(u8::from(crate::excel_functions::strict_equals(o[0], o[1]))))
         }
         "boolean" => {
             let v = scalarish(c, "value");

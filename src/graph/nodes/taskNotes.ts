@@ -1,4 +1,5 @@
 // [[B11]], [[B18]] safeToShare, [[D62]] demoVaultResolution
+import { dayOf } from "../dateValue";
 import { listLiteralItems } from "../listLiterals";
 import { GraphNode } from "../graphModel";
 import { dateIn, cubeOut, frameOut } from "./shared";
@@ -97,15 +98,15 @@ export class TaskNotesNode extends GraphNode {
   private apiUrl(): string { return settingsStore.get("taskNotesUrl"); }
   private headers(): Record<string, string> { return authHeaders(apiKeyStore.get(TASKNOTES_KEY_ID)); }
 
-  data(inputs: { from?: (number | null)[]; to?: (number | null)[] }): Record<string, unknown> {
+  data(inputs: { from?: unknown[]; to?: unknown[] }): Record<string, unknown> {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     let from = 0, to = 0;
     let have = true;
     if (this.provider === "calendar") {
-      const f = inputs.from ? inputs.from[0] : todaySerial() - 365;
-      const t = inputs.to ? inputs.to[0] : todaySerial() + 365;
-      have = typeof f === "number" && typeof t === "number" && Number.isFinite(f) && Number.isFinite(t);
-      if (have) { from = Math.min(f as number, t as number); to = Math.max(f as number, t as number); }
+      const f = inputs.from ? dayOf(inputs.from[0]) : todaySerial() - 365;
+      const t = inputs.to ? dayOf(inputs.to[0]) : todaySerial() + 365;
+      have = f !== null && t !== null;
+      if (f !== null && t !== null) { from = Math.min(f, t); to = Math.max(f, t); }
     }
     const key = connectionStore.key(this.id, have ? `${this.provider}|${isDemoTaskNotes() ? "demo" : this.apiUrl()}|${from}|${to}` : "");
     if (key !== this._lastKey) {

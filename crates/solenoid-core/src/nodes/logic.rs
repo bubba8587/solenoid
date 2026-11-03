@@ -123,20 +123,6 @@ fn is_set(c: &Call, key: &str) -> bool {
     c.wired(key).is_some() || !matches!(typed_literal(c, key), V::Undef)
 }
 
-/// JS `===`: an object only equals itself.
-fn strict_eq(a: &V, b: &V) -> bool {
-    match (a, b) {
-        (V::Num(x), V::Num(y)) => x == y,
-        (V::Str(x), V::Str(y)) => x == y,
-        (V::Bool(x), V::Bool(y)) => x == y,
-        (V::Null, V::Null) | (V::Undef, V::Undef) => true,
-        (V::Err(x), V::Err(y)) => Rc::ptr_eq(x, y),
-        (V::List(x), V::List(y)) => Rc::ptr_eq(x, y),
-        (V::Unit(x), V::Unit(y)) => Rc::ptr_eq(x, y),
-        _ => false,
-    }
-}
-
 /// The keys of the card's inputs that start with `prefix`, in the card's order.
 fn keys_from(c: &Call, prefix: &str) -> Vec<String> {
     c.sockets.iter().filter(|s| s.key.starts_with(prefix)).map(|s| s.key.clone()).collect()
@@ -348,7 +334,7 @@ fn switch(c: &mut Call) -> Answer {
         return answer(c, "result", V::Null);
     }
     for when in keys_from(c, "when") {
-        if strict_eq(&expr, &pick_slot(c, &when)) {
+        if crate::excel_functions::strict_equals(&expr, &pick_slot(c, &when)) {
             let then = format!("then{}", &when[4..]);
             select(c, Some(&then));
             let v = pick_slot(c, &then);

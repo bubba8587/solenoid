@@ -127,12 +127,9 @@ fn filter_input(c: &Call, key: &str) -> Option<V> {
     (!matches!(raw, V::Null | V::Undef)).then_some(raw)
 }
 
-/// A filter input as text: a column name, or an error's code.
+/// A filter input as text: a column name, a find, or a value a text plan reads (`plan_text`).
 fn filter_value(c: &Call, key: &str) -> Option<String> {
-    filter_input(c, key).map(|v| match v {
-        V::Err(e) => e.code.to_string(),
-        v => value_text(&v),
-    })
+    filter_input(c, key).map(|v| crate::frame_verbs::plan_text(&v))
 }
 
 /// A Cube verb's answer, which the card shows.
@@ -891,8 +888,10 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
             (s.key.clone(), format!("value{id}"), op, match_case)
         })
         .collect();
-    let values: Vec<FrameCell> =
-        pairs.iter().map(|(_, v, _, _)| FrameCell::str(&filter_value(c, v).unwrap_or_default())).collect();
+    let values: Vec<FrameCell> = pairs
+        .iter()
+        .map(|(_, v, _, _)| filter_input(c, v).map_or(FrameCell::str(""), |v| crate::frame_verbs::filter_cell(&v)))
+        .collect();
     let mut crits = Vec::new();
     for ((col_key, _, op_name, match_case), val) in pairs.iter().zip(&values) {
         let name = filter_value(c, col_key).unwrap_or_default();
@@ -1192,7 +1191,7 @@ impl<'a> ListCond<'a> {
             .filter_map(|it| {
                 let t = match it {
                     Cv::V(V::List(_) | V::Null | V::Undef) | Cv::Frame(_) | Cv::Cube(_) | Cv::Cells(_) => return None,
-                    Cv::V(v) => value_text(v),
+                    Cv::V(v) => crate::frame_verbs::plan_text(v),
                     Cv::Json(_) | Cv::Ref(_) => "[object Object]".to_string(),
                 };
                 Some(if self.match_case { t } else { lower_text(&t).into_owned() })

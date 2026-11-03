@@ -668,6 +668,8 @@ fn array_count(n: f64, f: &str) -> Result<f64, V> {
 #[derive(Hash, PartialEq, Eq)]
 pub(crate) enum Key {
     Num(u64),
+    /// A date's day, a key of its own: a date is never its serial ([[D114]] dateIsAKind).
+    Date(u64),
     Str(Rc<str>),
     Bool(bool),
     Undef,
@@ -679,6 +681,7 @@ pub(crate) enum Key {
 pub(crate) fn set_key(v: &V) -> Key {
     match v {
         V::Num(n) => Key::Num((n + 0.0).to_bits()),
+        V::Date(n) => Key::Date((n + 0.0).to_bits()),
         V::Str(s) => Key::Str(s.clone()),
         V::Bool(b) => Key::Bool(*b),
         V::Cx(re, im) => Key::Cx(format!("{},{}", number_to_string(*re), number_to_string(*im))),

@@ -289,6 +289,7 @@ enum KeyPart {
     Null,
     /// A number's bits, -0 as 0: two numbers print alike exactly when they're the same double (shortest round trip).
     Num(u64),
+    Date(u64),
     Str(Rc<str>),
     Bool(bool),
 }
@@ -297,6 +298,7 @@ fn key_part(v: &V) -> KeyPart {
     match v {
         V::Err(e) => KeyPart::Str(Rc::from(format!("\u{0}err:{}", e.code))),
         V::Num(n) if n.is_finite() => KeyPart::Num(if *n == 0.0 { 0 } else { n.to_bits() }),
+        V::Date(n) if n.is_finite() => KeyPart::Date(if *n == 0.0 { 0 } else { n.to_bits() }),
         V::Str(s) => KeyPart::Str(s.clone()),
         V::Bool(b) => KeyPart::Bool(*b),
         V::Unit(u) => KeyPart::Str(Rc::from(crate::unit_lists::unit_set_key(u))),

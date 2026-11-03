@@ -1,4 +1,5 @@
 // [[B11]], [[C103]] untrustedContentSeams, [[C1]] demoVault
+import { dayOf } from "../dateValue";
 import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
 import { frameOut, strListOut, strIn, numIn, numOut, numListIn, numListOut, strOut, dateOut, dateIn, dateListOut, cubeOut, readInput, readTextInput } from "./shared";
 import { serialToJsDate } from "./dateSerial";
@@ -758,8 +759,8 @@ export class FxNode extends GraphNode {
 
   private readDate(wired: unknown[] | undefined, literal: string | undefined, dayOffset: number): string {
     if (wired && wired.length > 0) {
-      const s = wired[0];
-      return typeof s === "number" && Number.isFinite(s) ? fxSerialToIso(s) : "";
+      const day = dayOf(wired[0]);
+      return day !== null ? fxSerialToIso(day) : "";
     }
     const iso = (literal ?? "").trim();
     return iso !== "" ? iso : isoDaysFromNow(dayOffset);
