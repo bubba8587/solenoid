@@ -56,7 +56,7 @@
   --overlay-border: light-dark(#aeb6c1, #474c54);
   --overlay-border-width: 2px;
   --overlay-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
-  --dock-shadow: -4px 0 12px rgba(0, 0, 0, 0.25);
+  --dock-shadow: -4px 0 14px rgba(0, 0, 0, 0.2);
   --btn-bg: var(--surface-sunken);
   --btn-hover: light-dark(#e9ecf0, #1f1f1f);
   --btn-border: var(--border);
@@ -76,7 +76,7 @@
   --mix-ring: 80%;
 
   --overlay-shadow: 0 4px 14px rgba(20, 30, 50, 0.09), 0 1px 4px rgba(20, 30, 50, 0.05);
-  --dock-shadow: -4px 0 12px rgba(20, 30, 50, 0.1);
+  --dock-shadow: -4px 0 14px rgba(20, 30, 50, 0.06);
 }
 
 html,

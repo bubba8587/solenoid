@@ -744,7 +744,7 @@ export function adaptChrome(ramp: ChromeRamp, homeHex: string, accentHex: string
 export const DERIVED_CHROME_VARS = [
   "--overlay-border", "--btn-hover",
   "--gauge-track", "--cable-selected", "--wordmark-color",
-  "--shadow-card", "--shadow-pop", "--overlay-shadow",
+  "--shadow-card", "--shadow-pop", "--dock-shadow", "--overlay-shadow",
 ] as const;
 
 /** Per-channel sRGB blend: t=0 is `a`, t=1 is `b`. */
@@ -771,6 +771,7 @@ export function chromeCssVars(ramp: ChromeRamp, mode: "dark" | "light"): Record<
     out["--wordmark-color"] = text;
     out["--shadow-card"] = `0 1px 2px ${hexToRgba(text, 0.1)}`;
     out["--shadow-pop"] = `0 4px 14px ${hexToRgba(text, 0.07)}`;
+    out["--dock-shadow"] = `-4px 0 14px ${hexToRgba(text, 0.07)}`;
     out["--overlay-shadow"] = `0 4px 14px ${hexToRgba(text, 0.1)}, 0 1px 4px ${hexToRgba(text, 0.06)}`;
   }
   return out;

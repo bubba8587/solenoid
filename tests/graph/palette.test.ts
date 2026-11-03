@@ -408,9 +408,9 @@ describe("chromeCssVars", () => {
         expect(out[name], `${mode}/${name}`).toBe(BUILTIN_CHROME.Orchard[mode][key]);
       }
       // Dark keeps App.css's black shadows and its accent-tinted wordmark, so those
-      // four stay unwritten and get cleared. Light derives every one.
+      // five stay unwritten and get cleared. Light derives every one.
       const derived = DERIVED_CHROME_VARS.filter((v) => out[v] !== undefined);
-      expect(derived.length, mode).toBe(mode === "light" ? DERIVED_CHROME_VARS.length : DERIVED_CHROME_VARS.length - 4);
+      expect(derived.length, mode).toBe(mode === "light" ? DERIVED_CHROME_VARS.length : DERIVED_CHROME_VARS.length - 5);
     }
   });
 
