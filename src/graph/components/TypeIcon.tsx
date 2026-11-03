@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import "./TypeIcon.css";
 
-export type TypeIconKind = "number" | "string" | "text" | "date" | "logical" | "complex" | "frame" | "any" | "asis";
+export type TypeIconKind = "number" | "string" | "text" | "date" | "logical" | "complex" | "frame" | "any" | "asis" | "special";
 
 /** A glyph on a 24-unit-high box, `width` units wide; drawn glyphs stroke at 2.2 and center their ink on the box. */
 const Svg = ({ size, width = 24, children }: { size: number; width?: number; children: ReactNode }) => (
@@ -19,6 +19,8 @@ const DateGlyph = ({ size }: { size: number }) => <Svg size={size}><rect width="
 const FrameGlyph = ({ size }: { size: number }) => <Svg size={size}><rect width="16" height="16" x="4" y="4" rx="2" /><path d="M9.5 15.9V9.2h6.4M9.5 12.3h5.3" /></Svg>;
 /** The wildcard `*`, cut from the app font as `#` and `Aa` are, at `Aa`'s ink height, where its arms match the 2.2 stroke. */
 const AnyGlyph = ({ size }: { size: number }) => <Svg size={size}><path fill="currentColor" stroke="none" d="M8.40 19.75L6.04 18.02L9.61 13.08L3.83 11.29L4.76 8.44L10.55 10.32L10.55 4.25L13.46 4.25L13.46 10.32L19.24 8.44L20.17 11.29L14.30 13.08L17.92 18.02L15.60 19.75L11.94 14.86Z" /></Svg>;
+/** Lucide "star" (ISC): the special sockets, which carry no value family (a LAMBDA, a chart, a document). */
+const SpecialGlyph = ({ size }: { size: number }) => <Svg size={size}><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" /></Svg>;
 /** Lucide "shapes" (ISC): a value taken at its own rank, whatever shape it has. */
 const AsIsGlyph = ({ size }: { size: number }) => <Svg size={size}><path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z" /><rect x="3" y="14" width="7" height="7" rx="1" /><circle cx="17.5" cy="17.5" r="3.5" /></Svg>;
 /** `#` and `Aa` cut from Atkinson Hyperlegible Next at weight 600. */
@@ -41,6 +43,7 @@ export function TypeIcon({ type, size = 14 }: { type: TypeIconKind; size?: numbe
     case "complex": return <span className="sol-typeicon" aria-hidden="true"><ComplexGlyph size={size} /></span>;
     case "frame": return <span className="sol-typeicon" aria-hidden="true"><FrameGlyph size={size} /></span>;
     case "any": return <span className="sol-typeicon" aria-hidden="true"><AnyGlyph size={size} /></span>;
+    case "special": return <span className="sol-typeicon" aria-hidden="true"><SpecialGlyph size={size} /></span>;
     case "asis": return <span className="sol-typeicon" aria-hidden="true"><AsIsGlyph size={size} /></span>;
   }
 }

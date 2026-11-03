@@ -48,7 +48,7 @@ const GROUPS: LegendGroup[] = [
     { kind: "frame", color: SOCKET_COLORS.frame, tip: "Frame" },
     { kind: "cube", color: SOCKET_COLORS.cube,  tip: "Cube" },
   ] },
-  { label: "Special", dots: [
+  { label: "Special", icon: "special", dots: [
     { kind: "lambda",   color: SOCKET_COLORS.lambda,   tip: "LAMBDA" },
     { kind: "chart",    color: SOCKET_COLORS.chart,    tip: "Chart" },
     { kind: "document", color: SOCKET_COLORS.document, tip: "Document" },
