@@ -131,7 +131,7 @@ A `Shape` is `{ columns: { name, type }[], dynamic? }`. `dynamic` means the outp
 
 Anything a rule throws becomes `null`, just as a bad config shows an error value at runtime rather than crashing.
 
-**Column pickers** use the same idea. A node whose string literal names a column of an incoming Frame declares it once through `columnPickers()` (`nodes/columnPickerHook.ts`): the literal's key and the Frame input it belongs to. The shared `ColumnPickerField`, rendered by `InlineInputs` for those keys, offers that Frame's static column names (`frameShapeResolver` → `columnNamesOf`) with a free-text fallback, and commits the same string literal, so the socket and literal model doesn't change. Declare it next to `frameShape()`. Sort, Join and Get Column use it.
+**Column pickers** use the same idea. A node whose string literal names a column of an incoming Frame declares it once through `columnPickers()` (`nodes/columnPickerHook.ts`): the literal's key and the Frame input it belongs to. The shared `ColumnPickerField`, rendered by `InlineInputs` for those keys, offers that Frame's static column names (`frameShapeResolver` → `columnNamesOf`) with a free-text fallback, and commits the same string literal, so the socket and literal model doesn't change. A String List input takes `ColumnListField` instead: the plain list field, suggesting the columns not yet named after what is already typed. Declare it next to `frameShape()`. Sort, Join and Get Column use it for one column; Write to Obsidian and Write Tasks for their Keys list.
 
 Machine-checked by `frameShapeCoverage.test.ts` (every catalog Frame output has a rule, forwards one, or is a named data-dependent producer) and `frameShapeRules.test.ts` (one case per rule).
 

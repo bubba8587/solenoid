@@ -15,7 +15,8 @@ import {
   planTaskWrites, taskPlanFrame, taskUrl, createTaskUrl, taskRecord, unwrap, cellToTaskField,
   type TaskNotesProvider, type TaskRecord, type TaskStats, type TaskWritePlanRow,
 } from "../taskNotesApi";
-import { cubeIn, frameOut as frameOutPort } from "./shared";
+import { cubeIn, frameOut as frameOutPort, strListIn, keysCsv } from "./shared";
+import { type ColumnPickerSpec } from "./columnPickerHook";
 import { fetchJson } from "../httpBridge";
 import { type Shape } from "../frameShape";
 import { withExactPass } from "../process";
@@ -189,8 +190,10 @@ export type WriteTasksStatus = "idle" | "previewing" | "writing" | "ok" | "error
 export class WriteTasksNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     tasks: "A row with a path updates that task; a row without one creates a task from its title. Only Run writes; the node loads disarmed.",
+    keys: "The fields to send, by column name. Blank sends every column.",
     plan: "One row per input row: path, title, the action and the fields to send. Preview marks the rows that would not change.",
   };
+  static fieldPlaceholders: Record<string, string> = { keys: "all" };
   label: string;
   stringLiterals: Record<string, string> = { keys: "" };
   enabled = false;
@@ -213,20 +216,21 @@ export class WriteTasksNode extends GraphNode {
     super("WriteTasks");
     this.label = init?.label ?? "Write Tasks";
     this.addInput("tasks", cubeIn("Rows"));
+    this.addInput("keys", strListIn("Keys"));
     this.addOutput("plan", frameOutPort("Plan"));
   }
 
-  private keys(): string[] {
-    return listLiteralItems(this.stringLiterals.keys ?? "");
-  }
+  columnPickers(): ColumnPickerSpec[] { return [{ key: "keys", frameInput: "tasks" }]; }
 
-  data(inputs: { tasks?: (CubeValue | SolError | null)[] }): { plan: FrameValue | SolError | null } {
+  data(inputs: { tasks?: (CubeValue | SolError | null)[]; keys?: unknown[] }): { plan: FrameValue | SolError | null } {
+    const keys = keysCsv(inputs.keys, this.stringLiterals.keys ?? "");
+    if (isSolError(keys)) { this.cachedPlan = keys; this.planRows = []; return { plan: keys }; }
     const raw = inputs.tasks?.[0] ?? null;
     if (raw !== this.cachedCube) this.resolved = new Map();
     this.cachedCube = raw;
     if (isSolError(raw)) { this.cachedPlan = raw; this.planRows = []; return { plan: raw }; }
     if (!isCubeValue(raw)) { this.cachedPlan = null; this.planRows = []; return { plan: null }; }
-    this.planRows = planTaskWrites(raw, this.keys());
+    this.planRows = planTaskWrites(raw, listLiteralItems(keys));
     this.cachedPlan = taskPlanFrame(this.planRows, this.resolved);
     return { plan: this.cachedPlan };
   }

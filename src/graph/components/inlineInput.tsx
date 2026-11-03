@@ -14,7 +14,7 @@ import { nodeName } from "../catalogUtils";
 import { collapseStore } from "../collapseStore";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
-import { ColumnPickerField } from "./ColumnPickerField";
+import { ColumnPickerField, ColumnListField } from "./ColumnPickerField";
 import { columnPickersOf } from "../nodes/columnPickerHook";
 import { stopDragStart } from "../coarse";
 import { usePendingDraft } from "../draftFlush";
@@ -617,7 +617,11 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
                 <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} listId={suggest && key in suggest ? suggestId : undefined} />
               )
             ) : isCsvList ? (
-              <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} listId={suggest && key in suggest ? suggestId : undefined} />
+              pickerKeys.has(key) ? (
+                <ColumnListField nodeId={node.id} frameInput={pickerKeys.get(key)!} value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
+              ) : (
+                <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} listId={suggest && key in suggest ? suggestId : undefined} />
+              )
             ) : null}
             {trailing?.[key]}
           </MeasuredSocketRow>

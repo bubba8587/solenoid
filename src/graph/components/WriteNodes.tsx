@@ -1,5 +1,4 @@
 // [[B18]] safeToShare, [[B11]] maximalMerge, [[C26]] opArgDistinct
-import { listLiteralItems, listLiteralText } from "../listLiterals";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WriteFormat } from "../nodeClasses";
 import { hasFs, isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal } from "../fileBridge";
@@ -178,7 +177,6 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   const [subfolder, setSubfolder] = useState(d.subfolder);
   const [mode, setMode] = useState<ObsidianWriteMode>(d.mode);
   const [stamp, setStamp] = useState(d.stamp);
-  const [keys, setKeys] = useState(d.stringLiterals.keys ?? "");
   const [addMissing, setAddMissing] = useState(d.addMissing);
   const [writeBase, setWriteBase] = useState(d.writeBase);
   const [armed, setArmed] = useState(d.enabled);
@@ -192,7 +190,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot());
 
   const activeMode = d.resolveMode(); // "note" | "properties"
-  const inputKeys = activeMode === "properties" ? ["in", "rows"] : ["in", "path", "rows"];
+  const inputKeys = activeMode === "properties" ? ["in", "rows", "keys"] : ["in", "path", "rows"];
 
   useEffect(() => {
     let live = true;
@@ -218,11 +216,6 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   function toggleStamp() { d.stamp = !d.stamp; setStamp(d.stamp); notifyGraphChanged(); }
   function toggleAddMissing() { d.addMissing = !d.addMissing; setAddMissing(d.addMissing); d.edited(); void processGraph(); }
   function toggleWriteBase() { d.writeBase = !d.writeBase; setWriteBase(d.writeBase); notifyGraphChanged(); }
-  function commitKeys() {
-    const next = listLiteralText(listLiteralItems(keys));
-    setKeys(next);
-    if (next !== (d.stringLiterals.keys ?? "")) { d.stringLiterals.keys = next; d.edited(); void processGraph(); }
-  }
 
   // Picking a note fills the folder select + the `path` literal (its bare name), so the
   // two controls stay in sync; a wired `path` overrides both.
@@ -339,12 +332,6 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
           </>
         ) : (
           <>
-            <input
-              className="sol-conn__url" type="text" value={keys} placeholder="Properties to write (blank = all)" spellCheck={false}
-              onChange={(e) => setKeys(e.target.value)} onBlur={commitKeys}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-              {...stopPtr}
-            />
             <label className="sol-write__armed" title="Add + register a property the note doesn't have yet" {...stopPtr}>
               <input type="checkbox" checked={addMissing} onChange={toggleAddMissing} />
               Add missing
@@ -409,17 +396,9 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
 // ─── WRITE TASKS ────────────────────────────────────────────────────────────────
 // Preview reads, Run writes through the TaskNotes API.
 export function WriteTasksComponent({ data, emit }: NodeProps<WriteTasksNodeType>) {
-  const [keys, setKeys] = useState(data.stringLiterals.keys ?? "");
   const [armed, setArmed] = useState(data.enabled);
   const [status, setStatus] = useState<string>(data.status);
   const [message, setMessage] = useState(data.statusMessage);
-  useEffect(() => { setKeys(data.stringLiterals.keys ?? ""); }, [data.stringLiterals.keys]);
-
-  function commitKeys() {
-    const next = listLiteralText(listLiteralItems(keys));
-    setKeys(next);
-    if (next !== (data.stringLiterals.keys ?? "")) { data.stringLiterals.keys = next; data.edited(); void processGraph(); }
-  }
   function toggleArmed() { data.enabled = !data.enabled; setArmed(data.enabled); }
   async function preview() {
     setStatus("previewing");
@@ -439,17 +418,6 @@ export function WriteTasksComponent({ data, emit }: NodeProps<WriteTasksNodeType
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <div className="sol-conn">
-        <input
-          className="sol-conn__url"
-          type="text"
-          value={keys}
-          placeholder="Fields to send (blank = all)"
-          spellCheck={false}
-          onChange={(e) => setKeys(e.target.value)}
-          onBlur={commitKeys}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-          {...stopPtr}
-        />
         <div className="sol-write__row">
           <button
             type="button"

@@ -1,6 +1,6 @@
 // [[C101]] onePatchPath, [[B18]] safeToShare
 import { GraphNode } from "../graphModel";
-import { documentIn, strIn, strOut, cubeIn, frameOut, readTextInput } from "./shared";
+import { documentIn, strIn, strOut, cubeIn, frameOut, readTextInput, strListIn, keysCsv } from "./shared";
 import { formatDateSerial } from "./dateSerial";
 import type { ObsidianWriteMode } from "../obsidianWrite";
 import { NoteNode } from "./annotation";
@@ -19,6 +19,7 @@ import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../f
 import { isComplexText } from "../scalarText";
 import { type Shape } from "../frameShape";
 import { type FrameHint } from "../frameHint";
+import { type ColumnPickerSpec } from "./columnPickerHook";
 
 import { getOwningEditor, getOwningView } from "../activeGraph";
 // obsidianWrite is imported lazily inside run(), because an eager import closes an init cycle through the node barrel.
@@ -89,8 +90,10 @@ export class WriteObsidianNode extends GraphNode {
     in: "The Document to write as a note. Only Run writes; the node loads disarmed.",
     path: "The note to write: a vault-relative path, or a bare name without .md. A leading folder overrides the subfolder.",
     rows: "Rows to write as properties: a path column names each note, a note-body column writes its body, every other column its frontmatter. Only Run writes.",
+    keys: "The columns to write, by name. Blank writes every column but path; a listed column is added even where it's blank.",
     plan: "One row per note and property: the current value, the value to write, and what Run would do. Empty for a Note.",
   };
+  static fieldPlaceholders: Record<string, string> = { keys: "all" };
   static frameHints: Record<string, FrameHint> = {
     rows: { columns: [
       { name: "path", type: "string", cells: ["Projects/Alpha.md", "Projects/Beta.md", "Projects/Gamma.md"] },
@@ -138,8 +141,11 @@ export class WriteObsidianNode extends GraphNode {
     this.addInput("in", documentIn("Document"));
     this.addInput("path", strIn("Path"));
     this.addInput("rows", cubeIn("Rows"));
+    this.addInput("keys", strListIn("Keys"));
     this.addOutput("plan", frameOut("Plan"));
   }
+
+  columnPickers(): ColumnPickerSpec[] { return [{ key: "keys", frameInput: "rows" }]; }
 
   resolveMode(): "note" | "properties" {
     if (this.target === "note") return "note";
@@ -147,11 +153,12 @@ export class WriteObsidianNode extends GraphNode {
     return isCubeValue(this.cachedCube) && !isDocumentValue(this.cachedDoc) ? "properties" : "note";
   }
 
-  data(inputs: { in?: (DocumentValue | SolError)[]; path?: (string | null)[]; rows?: (CubeValue | SolError | null)[] }): { plan: FrameValue | SolError | null } {
+  data(inputs: { in?: (DocumentValue | SolError)[]; path?: (string | null)[]; rows?: (CubeValue | SolError | null)[]; keys?: unknown[] }): { plan: FrameValue | SolError | null } {
     this.cachedDoc = inputs.in?.[0] ?? null;
     this.resolvedPath = readTextInput(inputs.path, this.stringLiterals?.path ?? "", "Path");
     const raw = inputs.rows?.[0] ?? null;
-    const keys = this.stringLiterals.keys ?? "";
+    const keys = keysCsv(inputs.keys, this.stringLiterals.keys ?? "");
+    if (isSolError(keys)) { this.cachedCube = null; this.plannedKeys = ""; this.cachedPlan = keys; this.planRows = []; return { plan: keys }; }
     if (raw !== this.cachedCube || keys !== this.plannedKeys) { // re-plan only on new rows or keys, because Preview mutates planRows
       this.cachedCube = raw;
       this.plannedKeys = keys;
@@ -340,7 +347,7 @@ export class WriteObsidianNode extends GraphNode {
           r.after = displayValue(r.value);
           const { action, before } = resolveKey(text, r.key, r.value);
           r.before = before;
-          r.action = action === "add" && holdsAdd(this.addMissing, this.stringLiterals.keys ?? "", r.key, r.value) ? "unchanged" : action;
+          r.action = action === "add" && holdsAdd(this.addMissing, this.plannedKeys, r.key, r.value) ? "unchanged" : action;
           r.reason = undefined;
         }
         this.validateRows(rows, await this.schemaFor(vault, p));
@@ -375,7 +382,7 @@ export class WriteObsidianNode extends GraphNode {
           if (r.key === NOTE_BODY) { if (resolveBody(text, r.value as string).action === "update") { newBody = r.value as string; touched++; } continue; }
           const value = keepDateTime(text, r.key, r.key === "tags" ? frontmatterTags(text, r.value) : r.value);
           const { action } = resolveKey(text, r.key, value);
-          if (action === "add" && holdsAdd(this.addMissing, this.stringLiterals.keys ?? "", r.key, value)) continue;
+          if (action === "add" && holdsAdd(this.addMissing, this.plannedKeys, r.key, value)) continue;
           if (action === "unchanged") continue;
           if (sch) {
             if (sch.required.includes(r.key) && value === null) continue;
@@ -403,7 +410,7 @@ export class WriteObsidianNode extends GraphNode {
         try {
           const folders = new Set(this.planRows.map((r) => (r.path.includes("/") ? r.path.slice(0, r.path.lastIndexOf("/")) : "")));
           const folder = folders.size === 1 ? [...folders][0] : "";
-          await writeTextFilePath(await joinPath(vault, ...baseRelPath(folder, this.label).split("/")), buildBaseView(folder, writableKeys(cube, this.stringLiterals.keys ?? ""), this.label));
+          await writeTextFilePath(await joinPath(vault, ...baseRelPath(folder, this.label).split("/")), buildBaseView(folder, writableKeys(cube, this.plannedKeys), this.label));
         } catch { /* the .base companion is a convenience, never a write failure */ }
       }
       this.status = failed ? "error" : "ok";

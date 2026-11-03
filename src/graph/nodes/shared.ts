@@ -2,7 +2,8 @@
 import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
 import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
-import { solError, type SolError } from "../errorValue";
+import { solError, isSolError, type SolError } from "../errorValue";
+import { listLiteralText } from "../listLiterals";
 import { applyRole, type InputRole } from "../inputRoles";
 import { dimOf, magnitudeOf } from "../unitValue";
 
@@ -117,6 +118,13 @@ export function readTextInput(wired: readonly unknown[] | undefined, literal: st
   if (v === null || v === undefined) return "";
   if (typeof v !== "string") throw solError("#TYPE!", `${label} takes text`);
   return v.trim();
+}
+
+/** A column-name list input as the CSV a literal stores: a wired list's items, else the typed literal. */
+export function keysCsv(wired: readonly unknown[] | undefined, literal: string): string | SolError {
+  const v = wired?.[0];
+  if (isSolError(v)) return v;
+  return Array.isArray(v) ? listLiteralText(v.flat().filter((x) => x !== null && x !== "").map(String)) : literal;
 }
 
 /** A card's input roles: its class's, or for a card whose roles change with its op (Series), the current op's. */

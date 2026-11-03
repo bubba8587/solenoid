@@ -9,6 +9,7 @@ specific item.
 ### SESSION DIGEST (2026-11-03: Write Properties types with Solenoid Properties; cloud session)
 - **New keys register Solenoid Properties types** ([[D116]] writeSolenoidTypes, new): `obsidianTypeName` maps a Cube cell to `solenoid-cube`, a Frame cell to `solenoid-frame`, a matrix or list to its family's `solenoid-*table` / `solenoid-*list`, complex text to `solenoid-complex`; plain scalars keep Obsidian's types, and `tags` / `aliases` / `cssclasses` are never registered.
 - **The YAML writer now writes matrices and nested rows**: a matrix was written as a list of `"1,2"` strings and a table inside a row as `[object Object]`; both now spell as the plugin and Obsidian do (`frontmatterPatch.test.ts` round-trips the demo vault's `Property types.md`).
+- **Keys is a normal input row** on Write to Obsidian (Properties) and Write Tasks: a String List socket, `ColumnListField` suggesting the wired rows' columns, placeholder `all`; it replaced the one-off monospace box. The `annotations` fixture was spliced for `vault-as-a-table` only: re-freezing it whole also moves power-features, computed-columns and null-and-logical (MAP/Display families), drift from elsewhere left for its owner.
 - **Write to Obsidian's `rows` socket has an example hint** (`path`, `property1`, `property2`) on hover and in the Inspector. The hint mechanism was never socket-type gated; the node just had none.
 
 ### SESSION DIGEST (2026-11-03: dates are a value kind; InlineCast; cloud session, continued)
