@@ -1,4 +1,5 @@
 // [[C10]] socketLattice
+import { TypeIcon, type TypeIconKind } from "./TypeIcon";
 import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { SOCKET_COLORS } from "../sockets";
@@ -14,35 +15,36 @@ type Dot = {
   tip?: string;
 };
 
-type LegendGroup = { dots: Dot[]; label: string };
+/** `icon`: the type's own icon (`TypeIcon`), the one every type switcher and column type button shows. */
+type LegendGroup = { dots: Dot[]; label: string; icon?: TypeIconKind };
 
 const GROUPS: LegendGroup[] = [
-  { label: "Numeric", dots: [
+  { label: "Numeric", icon: "number", dots: [
     { kind: "circle", color: SOCKET_COLORS.number, tip: "Numeric" },
     { kind: "square", color: SOCKET_COLORS.list,   tip: "Numeric List" },
     { kind: "grid",   color: SOCKET_COLORS.table,  tip: "Numeric Matrix" },
   ] },
-  { label: "String", dots: [
+  { label: "String", icon: "string", dots: [
     { kind: "circle", color: SOCKET_COLORS.string,   tip: "String" },
     { kind: "square", color: SOCKET_COLORS.strlist,  tip: "String List" },
     { kind: "grid",   color: SOCKET_COLORS.strtable, tip: "String Matrix" },
   ] },
-  { label: "Date", dots: [
+  { label: "Date", icon: "date", dots: [
     { kind: "circle", color: SOCKET_COLORS.date,      tip: "Date" },
     { kind: "square", color: SOCKET_COLORS.datelist,  tip: "Date List" },
     { kind: "grid",   color: SOCKET_COLORS.datetable, tip: "Date Matrix" },
   ] },
-  { label: "Complex", dots: [
+  { label: "Complex", icon: "complex", dots: [
     { kind: "circle", color: SOCKET_COLORS.complex,      tip: "Complex" },
     { kind: "square", color: SOCKET_COLORS.complexlist,  tip: "Complex List" },
     { kind: "grid",   color: SOCKET_COLORS.complextable, tip: "Complex Matrix" },
   ] },
-  { label: "Boolean", dots: [
+  { label: "Boolean", icon: "logical", dots: [
     { kind: "circle", color: SOCKET_COLORS.logical,      tip: "Boolean" },
     { kind: "square", color: SOCKET_COLORS.logicallist,  tip: "Boolean List" },
     { kind: "grid",   color: SOCKET_COLORS.logicaltable, tip: "Boolean Matrix" },
   ] },
-  { label: "Frame", dots: [
+  { label: "Frame", icon: "frame", dots: [
     { kind: "frame", color: SOCKET_COLORS.frame, tip: "Frame" },
     { kind: "cube", color: SOCKET_COLORS.cube,  tip: "Cube" },
   ] },
@@ -320,6 +322,7 @@ export function SocketLegendRows() {
     <>
       {GROUPS.map((g) => (
         <div key={g.label} className="solenoid-legend__row">
+          <span className="solenoid-legend__icon">{g.icon && <TypeIcon type={g.icon} size={11} />}</span>
           <span className="solenoid-legend__type">{g.label}</span>
           <span className="solenoid-legend__dots">
             {g.dots.map((d, i) => (

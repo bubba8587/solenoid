@@ -1,9 +1,10 @@
 .solenoid-legend {
   position: absolute;
-  /* Above the minimap (105px tall, 11px gap, its own 11px gutter), same width and right edge, so the two stack as one column. */
+  /* Above the minimap (105px tall, 11px gap, its own 11px gutter), on its right edge. Wider than the minimap by the type
+     icons' column, so the Any row's five rungs keep their place (author 2026-11-03). */
   bottom: calc(var(--chrome-bottom, 19px) + 129px);
   right: 16px;
-  width: 147px;
+  width: 168px;
   box-sizing: border-box;
   background: var(--overlay-bg);
   border: var(--overlay-border-width) solid var(--overlay-border);
@@ -85,6 +86,16 @@ html.minimap-hidden .solenoid-legend {
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
+}
+
+/* The type's icon, in a fixed column so every label starts at one edge; a family with none leaves it blank. */
+.solenoid-legend__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  flex: none;
+  color: var(--text-dim);
 }
 
 .solenoid-legend__row:last-child {

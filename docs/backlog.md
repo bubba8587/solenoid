@@ -7,10 +7,6 @@ the dev-notes digests are the record. **1.4 is built** (2026-09-16: every promot
 structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tree (`dte.md`).
 
-## Bugs reported, not yet fixed
-
-- **Card charts colored with `c=[color]` keep the old colors on a palette change** (author 2026-11-03): the chart doesn't redraw when the palette moves.
-
 ## Leaves the code breaks
 
 Each line is a leaf whose rule the code doesn't keep yet. The leaf carries an `*Unenforced:*` bullet pointing here ([dte.md](dte.md) § Solenoid practice). Highest stakes first; delete a line when the code keeps the rule, and delete the leaf's bullet with it.
@@ -142,6 +138,7 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] **Widget nodes Tier 2 (`v2.0/16`), post-1.4:** Air Quality/Pollen preset of Weather, Ticking Now timer.
 
 ## Obsidian + TaskNotes (author 2026-09-07: THE adoption bet — correct, great, useful)
+- **Solenoid Properties plugin: the app's type icons** (author 2026-11-03): its property type pickers use more of the family icons the app draws (`TypeIcon.tsx`: `#`, `Aa`, the calendar, the checkbox, the double-struck C, the Frame outline), as its Frame type already does.
 - [ ] **A daily-note source card**: outputs today's daily-note path from the user's Obsidian daily-notes settings, to wire into a vault-writing card. It replaces the removed `{{daily}}` shortcut, asked back as something wirable; its exact shape is open.
 - [ ] **Import Obsidian Note says when its note is gone**: renamed or deleted, the card keeps its last body and shows a status line, as connection cards do when they lose their source. Today the stale body looks live.
 - [ ] **A Note card shows a list property as a chip** ([[D87]] knapNotes): a bare `{{ items }}` holding a list or table prints raw text such as `[1,2,3]` on the card, where Obsidian with the plugin draws the chip.

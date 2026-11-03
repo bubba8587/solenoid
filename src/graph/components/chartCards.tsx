@@ -2,7 +2,7 @@
 import { CellImage } from "./cubeCell";
 import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { appThemeStore } from "../appTheme";
-import { resolveColor } from "../palette";
+import { paletteStore, resolveColor } from "../palette";
 import { boxTintVars, namedColor } from "./boxTint";
 import type { KpiPayload, ScalePayload, RecordPayload, RecordSize } from "../chartValue";
 import { recordFieldText, recordLaneText, recordNumberText, titleIndexFor } from "../chartValue";
@@ -166,7 +166,9 @@ const NO_COMPUTED: ReadonlySet<number> = new Set();
 function RecordCards({ payload, colorBy }: { payload: RecordPayload; colorBy?: string }) {
   const deck = payload.deck;
   const mode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
-  const tints = useMemo(() => cardTints(deck, colorBy, mode), [deck, colorBy, mode]);
+  // A slot's name resolves through the palette, so a palette change re-tints the cards.
+  const palette = useSyncExternalStore(paletteStore.subscribe, paletteStore.version);
+  const tints = useMemo(() => cardTints(deck, colorBy, mode), [deck, colorBy, mode, palette]);
   const tintColumn = deck && colorBy ? deck.names.findIndex((n) => n.trim().toLowerCase() === colorBy.trim().toLowerCase()) : -1;
   const texts = useMemo(() => (deck?.rows ?? []).map((row) => row.map((v, c) => {
     if (v === null) return "";
