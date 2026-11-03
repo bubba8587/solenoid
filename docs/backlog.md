@@ -7,6 +7,10 @@ the dev-notes digests are the record. **1.4 is built** (2026-09-16: every promot
 structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tree (`dte.md`).
 
+## Socket naming
+
+- **`anydata` and `trueany` as their own category** (author 2026-11-03): unlike the rank wildcards (`any`, `anycombo`, `anylist`, `anytable`, which lift a value to their rank or collapse a singleton), these two take a value at its own rank. The socket legend shows them as their own row under a working name, "As-is"; settle the category's name, then carry it through the socket reference, the glossary and the type names if the author wants them renamed.
+
 ## Leaves the code breaks
 
 Each line is a leaf whose rule the code doesn't keep yet. The leaf carries an `*Unenforced:*` bullet pointing here ([dte.md](dte.md) § Solenoid practice). Highest stakes first; delete a line when the code keeps the rule, and delete the leaf's bullet with it.

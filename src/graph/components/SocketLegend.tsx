@@ -58,6 +58,9 @@ const GROUPS: LegendGroup[] = [
     { kind: "circle", color: SOCKET_COLORS.any,      tip: "Any Scalar" },
     { kind: "square", color: SOCKET_COLORS.anylist,  tip: "Any List" },
     { kind: "grid",   color: SOCKET_COLORS.anytable, tip: "Any Matrix" },
+  ]},
+  // These two take a value at its own rank, never lifting or collapsing it as the rungs above do (working name).
+  { label: "As-is", dots: [
     { kind: "hollowSquare", color: SOCKET_COLORS.anydata, tip: "Any Data" },
     { kind: "ring",   color: SOCKET_COLORS.trueany,  tip: "True Any" },
   ] },

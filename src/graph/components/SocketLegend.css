@@ -1,10 +1,10 @@
 .solenoid-legend {
   position: absolute;
   /* Above the minimap (105px tall, 11px gap, its own 11px gutter), on its right edge. Wider than the minimap by the type
-     icons' column, so the Any row's five rungs keep their place (author 2026-11-03). */
+     icons' column, so every label keeps its place beside its dots (author 2026-11-03). */
   bottom: calc(var(--chrome-bottom, 19px) + 129px);
   right: 16px;
-  width: 168px;
+  width: 160px;
   box-sizing: border-box;
   background: var(--overlay-bg);
   border: var(--overlay-border-width) solid var(--overlay-border);
