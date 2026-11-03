@@ -7,7 +7,7 @@ import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { processGraph, setEditorRefs } from "../../src/graph/process";
 import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
-import { dateListSocket, numListSocket, frameSocket, logicalListSocket, strListSocket } from "../../src/graph/sockets";
+import { dateListSocket, dateTableSocket, numListSocket, frameSocket, logicalListSocket, strListSocket } from "../../src/graph/sockets";
 import { isSolError } from "../../src/graph/errorValue";
 import { ConcatListsNode, ListIndexNode, SumIfsNode } from "../../src/graph/nodes/list";
 import { GetColumnNode, SplitFrameNode } from "../../src/graph/nodes/frame";
@@ -15,6 +15,8 @@ import { nodeOutputElemFamily } from "../../src/graph/components/valueDisplayFor
 import { IfNode } from "../../src/graph/nodes/logic";
 import { XLookupNode } from "../../src/graph/nodes/frame";
 import { ChartNode } from "../../src/graph/nodes/visual";
+import { MapTableNode, ReduceLambdaNode } from "../../src/graph/nodes/tableLambda";
+import { ExpressionNode } from "../../src/graph/nodes/expression";
 import type { FrameValue } from "../../src/graph/frame";
 import { groupByFrame, pivotFrame, windowFrame, replaceValues } from "./coreVerbs";
 
@@ -164,5 +166,23 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
     const lone: FrameValue = { __frame: true, columns: [{ name: "due", type: "date", values: [46000, 46010] }] };
     expect(typeError(await run(new ChartNode(), [[new Src(lone, frameSocket), "values"]], (c) => c.cachedError))).toBe(true);
     expect(await run(new ChartNode(), [[nums(), "values"]], (c) => c.cachedError)).toBe(null);
+  });
+  it("the LAMBDA helpers: Auto takes a date answer, Number refuses it, and text reads a date as a date", async () => {
+    const table = () => new Src([[46000], [46010]], dateTableSocket);
+    const map = new MapTableNode({ expr: "value + 1" });
+    expect(await run(map, [[table(), "table"]], (c) => c.cachedResult)).toEqual([[46001], [46011]]);
+    expect(map.lastResultFamily).toBe("date");
+    const asNumber = new MapTableNode({ expr: "value + 1", resultAs: "number" });
+    expect(typeError(await run(asNumber, [[table(), "table"]], (c) => c.cachedResult))).toBe(true);
+    const text = new MapTableNode({ expr: "value & \"!\"" });
+    expect(await run(text, [[table(), "table"]], (c) => c.cachedResult)).toEqual([["09-Dec-2025!"], ["19-Dec-2025!"]]);
+    const latest = new ReduceLambdaNode({ expr: "MAX(acc, value)" });
+    latest.literals = { initial: 0 };
+    expect(await run(latest, [[table(), "table"]], (c) => c.cachedResult)).toBe(46010);
+    expect(latest.lastResultFamily).toBe("date");
+  });
+  it("a Formula card set to Number refuses a date answer", async () => {
+    const n = new ExpressionNode({ expr: "d + 1", resultAs: "number" });
+    expect(typeError(await run(n, [[dates(), "d"]], (c) => c.cachedResult))).toBe(true);
   });
 });

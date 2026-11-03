@@ -46,9 +46,8 @@ describe("Expression — value-polymorphic results", () => {
     expect(dt(new ExpressionNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("anycombo");
   });
 
-  it("the 2-D producers: Number default is the numeric matrix; Auto is anytable (wildcardLadder)", () => {
-    expect(dt(new MapTableNode().outputs.result?.socket)).toBe("table"); // default resultAs: number
-    expect(dt(new MapTableNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("anytable");
+  it("the 2-D producers: Auto, the default, is anytable until a run names the family (wildcardLadder)", () => {
+    expect(dt(new MapTableNode().outputs.result?.socket)).toBe("anytable");
     expect(dt(new MakeArrayNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("anytable");
   });
 

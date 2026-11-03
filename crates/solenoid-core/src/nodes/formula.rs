@@ -182,7 +182,11 @@ fn is_date_input(c: &Call, n: &str) -> bool {
 }
 
 fn result_family(c: &Call, ast: &Ast, result: &V) -> &'static str {
-    let is_date = |n: &str| is_date_input(c, n);
+    answer_family(ast, &|n: &str| is_date_input(c, n), result)
+}
+
+/// The family of `result`, a formula's answer over variables `is_date` names the dates of.
+pub(crate) fn answer_family(ast: &Ast, is_date: &dyn Fn(&str) -> bool, result: &V) -> &'static str {
     fn first(v: &V) -> Option<&V> {
         match v {
             V::List(items) => items.iter().find_map(first),
@@ -191,20 +195,32 @@ fn result_family(c: &Call, ast: &Ast, result: &V) -> &'static str {
         }
     }
     match first(result) {
-        Some(V::Num(_) | V::Unit(_)) if super::columns::yields_date(ast, &is_date) => "date",
+        Some(V::Num(_) | V::Unit(_)) if super::columns::yields_date(ast, is_date) => "date",
         Some(V::Num(_) | V::Unit(_)) => "number",
         Some(V::Str(_)) => "text",
         _ => "",
     }
 }
 
-fn expression_done(c: &mut Call, result: V, error: Option<&str>, family: Option<&str>) -> Answer {
-    if let Some(family) = family.filter(|_| !result.is_sol_error()) {
-        // A table answers at rank 2, anything else at 1, with the family it computed; the TS retypes the socket on a
-        // change, and an Auto result takes the family.
-        let table = matches!(&result, V::List(items) if matches!(items.first(), Some(V::List(_))));
-        c.show("lastResultShape", V::str(&format!("{}|{family}", if table { 2 } else { 1 })));
+/// Shows the answer's `rank|family`, which the TS retypes the result socket by and an Auto result takes; a date answer
+/// on a card set to Number is `#TYPE!`, since only Cast makes a date a number ([[C137]] datesNeverSerials).
+pub(crate) fn typed_answer(c: &mut Call, result: V, family: &str) -> V {
+    if result.is_sol_error() {
+        return result;
     }
+    let table = matches!(&result, V::List(items) if matches!(items.first(), Some(V::List(_))));
+    c.show("lastResultShape", V::str(&format!("{}|{family}", if table { 2 } else { 1 })));
+    if family == "date" && c.field_str("resultAs", "auto") == "number" {
+        return err(ErrorCode::Type, "This answers dates. Pick Auto or Date, or Cast to Number for the serials");
+    }
+    result
+}
+
+fn expression_done(c: &mut Call, result: V, error: Option<&str>, family: Option<&str>) -> Answer {
+    let result = match family {
+        Some(family) => typed_answer(c, result, family),
+        None => result,
+    };
     c.show("cachedResult", result.clone());
     c.show("cachedError", error.map_or(V::Null, V::str));
     Ok(vec![("result".into(), Cv::from(result))])

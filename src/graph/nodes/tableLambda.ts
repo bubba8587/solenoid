@@ -1,13 +1,37 @@
 // [[B14]], [[C50]]
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, type ResultType, type ResultDim } from "./shared";
+import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, resultSocket, type ResultType, type ResultDim } from "./shared";
+import { getOwningEditor, getOwningView } from "../activeGraph";
+import { retypeOutputCables } from "../fcReconcile";
 import { type SolError } from "../errorValue";
 import type { UnitCell } from "../unitValue";
 
 // ─── 2D LAMBDA family: MAP / BYROW / BYCOL / MAKEARRAY / REDUCE / SCAN ─────────
 
 type Cell = number | string | boolean | null | SolError;
+
+type FollowsResult = GraphNode & { resultAs: ResultType; lastResultShape: string; lastResultFamily?: ResultType };
+
+/** The body's answer named its family (`lastResultShape`, "rank|family"): Auto takes it, after the pass, and the cables
+ *  downstream follow ([[C136]] typesKnownAfterCalc, [[C137]] datesNeverSerials). */
+function followResult(node: FollowsResult, dim: ResultDim): void {
+  const family = node.lastResultShape.split("|")[1];
+  node.lastResultFamily = family === "number" || family === "text" || family === "date" ? family : undefined;
+  if (node.resultAs !== "auto") return;
+  const want = resultSocket(dim, node.lastResultFamily ?? "auto");
+  queueMicrotask(() => {
+    void (async () => {
+      const out = node.outputs.result;
+      if (!out || out.socket === want) return;
+      out.socket = want;
+      const editor = getOwningEditor(node.id);
+      const view = getOwningView(node.id);
+      if (editor?.getNode(node.id)) await retypeOutputCables(editor, view, node.id, "result");
+      await view?.rerenderNode(node.id);
+    })();
+  });
+}
 type Mat = Cell[][];
 
 // ─── MAP ────────────────────────────────────────────────────────────────────────
@@ -20,6 +44,11 @@ export class MapTableNode extends GraphNode {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
+  /** The body's last answer as `rank|family`, which an Auto result follows (`coreWatch`). */
+  lastResultShape = "1|";
+  lastResultFamily?: ResultType;
+  static coreWatch = "lastResultShape";
+  coreWatched(): void { followResult(this, "matrix"); }
   readonly lambdaSig = { vars: ["value", "value2", "value3", "row", "col"], required: 1 };
   width = 210;
   height = 270;
@@ -27,7 +56,7 @@ export class MapTableNode extends GraphNode {
   constructor(init?: { label?: string; expr?: string; resultAs?: ResultType }) {
     super("MapTable");
     this.label = init?.label ?? "MAP";
-    this.resultAs = init?.resultAs ?? "number";
+    this.resultAs = init?.resultAs ?? "auto";
     this.stringLiterals = { formula: init?.expr ?? "value^2" };
     this.addInput("table", anyTableIn("Values (value)"));
     this.addInput("table2", anyTableIn("value2 (optional)"));
@@ -60,6 +89,11 @@ export class ByAxisNode extends GraphNode {
   stringLiterals: Record<string, string>;
   cachedResult: (Cell | UnitCell)[] | (Cell | UnitCell)[][] | SolError | null = null;
   cachedError: string | null = null;
+  /** The body's last answer as `rank|family`, which an Auto result follows (`coreWatch`). */
+  lastResultShape = "1|";
+  lastResultFamily?: ResultType;
+  static coreWatch = "lastResultShape";
+  coreWatched(): void { followResult(this, this.resultDim); }
   readonly lambdaSig = { vars: ["values"], required: 1 };
   width = 210;
   height = 218;
@@ -68,7 +102,7 @@ export class ByAxisNode extends GraphNode {
     super("ByAxis");
     this.op = init?.op ?? "row";
     this.label = init?.label ?? "";
-    this.resultAs = init?.resultAs ?? "number";
+    this.resultAs = init?.resultAs ?? "auto";
     this.stringLiterals = { formula: init?.expr ?? "SUM(values)" };
     this.addInput("table", anyTableIn("Table"));
     this.addInput("lambda", lambdaIn("Lambda"));
@@ -79,7 +113,7 @@ export class ByAxisNode extends GraphNode {
   setOp(next: ByAxis): boolean {
     if (next === this.op) return false;
     this.op = next;
-    const spec = resultOut(ByAxisNode.labelFor(next), ByAxisNode.dimFor(next), this.resultAs);
+    const spec = resultOut(ByAxisNode.labelFor(next), ByAxisNode.dimFor(next), this.resultAs === "auto" ? this.lastResultFamily ?? "auto" : this.resultAs);
     this.outputs.result!.socket = spec.socket;
     this.outputs.result!.label = spec.label;
     return true;
@@ -105,6 +139,11 @@ export class ReduceLambdaNode extends GraphNode {
   stringLiterals: Record<string, string>;
   cachedResult: Cell | UnitCell | SolError | null = null;
   cachedError: string | null = null;
+  /** The body's last answer as `rank|family`, which an Auto result follows (`coreWatch`). */
+  lastResultShape = "1|";
+  lastResultFamily?: ResultType;
+  static coreWatch = "lastResultShape";
+  coreWatched(): void { followResult(this, "scalar"); }
   readonly lambdaSig = { vars: ["acc", "value", "step"], required: 2 };
   width = 210;
   height = 246;
@@ -112,7 +151,7 @@ export class ReduceLambdaNode extends GraphNode {
   constructor(init?: { label?: string; expr?: string; resultAs?: ResultType; literals?: Record<string, number> }) {
     super("ReduceLambda");
     this.label = init?.label ?? "REDUCE";
-    this.resultAs = init?.resultAs ?? "number";
+    this.resultAs = init?.resultAs ?? "auto";
     this.stringLiterals = { formula: init?.expr ?? "acc + value" };
     if (init?.literals) this.literals = { ...init.literals };
     this.addInput("initial", anyIn("Initial"));
@@ -141,6 +180,11 @@ export class ScanLambdaNode extends GraphNode {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
+  /** The body's last answer as `rank|family`, which an Auto result follows (`coreWatch`). */
+  lastResultShape = "1|";
+  lastResultFamily?: ResultType;
+  static coreWatch = "lastResultShape";
+  coreWatched(): void { followResult(this, "matrix"); }
   readonly lambdaSig = { vars: ["acc", "value", "step"], required: 2 };
   width = 210;
   height = 246;
@@ -148,7 +192,7 @@ export class ScanLambdaNode extends GraphNode {
   constructor(init?: { label?: string; expr?: string; resultAs?: ResultType; literals?: Record<string, number> }) {
     super("ScanLambda");
     this.label = init?.label ?? "SCAN";
-    this.resultAs = init?.resultAs ?? "number";
+    this.resultAs = init?.resultAs ?? "auto";
     this.stringLiterals = { formula: init?.expr ?? "acc + value" };
     if (init?.literals) this.literals = { ...init.literals };
     this.addInput("initial", anyIn("Initial"));
@@ -173,6 +217,11 @@ export class MakeArrayNode extends GraphNode {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
+  /** The body's last answer as `rank|family`, which an Auto result follows (`coreWatch`). */
+  lastResultShape = "1|";
+  lastResultFamily?: ResultType;
+  static coreWatch = "lastResultShape";
+  coreWatched(): void { followResult(this, "matrix"); }
   readonly lambdaSig = { vars: ["row", "col"], required: 2 };
   width = 210;
   height = 246;
@@ -180,7 +229,7 @@ export class MakeArrayNode extends GraphNode {
   constructor(init?: { label?: string; expr?: string; resultAs?: ResultType; literals?: Record<string, number> }) {
     super("MakeArray");
     this.label = init?.label ?? "MAKEARRAY";
-    this.resultAs = init?.resultAs ?? "number";
+    this.resultAs = init?.resultAs ?? "auto";
     this.stringLiterals = { formula: init?.expr ?? "row * col" };
     if (init?.literals) this.literals = { ...init.literals };
     this.addInput("rows", numIn("Rows"));

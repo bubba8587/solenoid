@@ -438,6 +438,55 @@ pub(crate) fn resolve(c: &Call, fallback: &str, vars: &[&str]) -> Result<Body, S
 }
 
 impl Body {
+    /// The body with every date it turns into text read as a date ([[C137]] datesNeverSerials); `is_date` names the
+    /// variables that carry dates.
+    pub(crate) fn dated(self, is_date: &dyn Fn(&str) -> bool) -> Body {
+        match self {
+            Body::Inline(ast, names) => match crate::date_typing::dates_as_text(&ast, is_date) {
+                Some(tree) => Body::Inline(tree, names),
+                None => Body::Inline(ast, names),
+            },
+            Body::Lambda(lam, order) => {
+                let tree = lam.body.as_ref().and_then(|b| crate::date_typing::dates_as_text(b, is_date));
+                match tree {
+                    Some(tree) => Body::Lambda(
+                        Rc::new(LambdaV {
+                            params: lam.params.clone(),
+                            body: Some(Rc::new(tree)),
+                            env: lam.env.clone(),
+                            eta: lam.eta.clone(),
+                            captured: lam.captured.clone(),
+                            src: lam.src.clone(),
+                            units: lam.units.clone(),
+                            descriptions: lam.descriptions.clone(),
+                        }),
+                        order,
+                    ),
+                    None => Body::Lambda(lam, order),
+                }
+            }
+        }
+    }
+
+    /// Whether this body hands back a date, over variables `is_date` names the dates of.
+    pub(crate) fn yields_date(&self, is_date: &dyn Fn(&str) -> bool) -> bool {
+        match self {
+            Body::Inline(ast, _) => super::columns::yields_date(ast, is_date),
+            Body::Lambda(lam, _) => lam.body.as_ref().is_some_and(|b| super::columns::yields_date(b, is_date)),
+        }
+    }
+
+    /// The family of `result`, this body's answer.
+    pub(crate) fn family(&self, is_date: &dyn Fn(&str) -> bool, result: &V) -> &'static str {
+        match self {
+            Body::Inline(ast, _) => super::formula::answer_family(ast, is_date, result),
+            Body::Lambda(lam, _) => match &lam.body {
+                Some(b) => super::formula::answer_family(b, is_date, result),
+                None => super::formula::answer_family(&Ast::Bool(false), &|_| false, result),
+            },
+        }
+    }
+
     /// The fold's unit wrapper (`unit_fold.rs`) over a table holding a unit cell; None where it has no reading.
     pub(crate) fn fold(&self, kind: FoldKind, m: &[Vec<V>], initial: &V) -> Option<V> {
         match self {
@@ -486,6 +535,31 @@ pub(crate) fn result_cell(v: &V) -> V {
     }
 }
 
+/// Which of a card's variables carry dates: each names the input it reads, and a date-typed input dates it.
+pub(crate) fn date_vars(c: &Call, vars: &[(&'static str, &str)]) -> impl Fn(&str) -> bool + use<> {
+    let dated: Vec<&'static str> = vars
+        .iter()
+        .filter(|(_, key)| c.input_type(key).is_some_and(|t| t.starts_with("date")))
+        .map(|(v, _)| *v)
+        .collect();
+    move |n: &str| dated.contains(&n)
+}
+
+/// A fold's dated variables: `acc` holds a date where the initial value is one, or where the table holds dates and the
+/// body keeps a date it is handed back (`MAX(acc, value)` over dates).
+pub(crate) fn fold_date_vars(c: &Call, body: &Body) -> impl Fn(&str) -> bool + use<> {
+    let base = date_vars(c, &[("acc", "initial"), ("value", "table")]);
+    let acc = base("acc") || (base("value") && body.yields_date(&|n: &str| n == "acc" || base(n)));
+    move |n: &str| (n == "acc" && acc) || base(n)
+}
+
+/// The card's answer typed by the body's family (`typed_answer`), and the fields its component shows.
+pub(crate) fn body_done(c: &mut Call, body: &Body, is_date: &dyn Fn(&str) -> bool, result: V) -> Answer {
+    let family = body.family(is_date, &result);
+    let result = super::formula::typed_answer(c, result, family);
+    lambda_done(c, result, None)
+}
+
 /// The card's answer and the two fields its component shows.
 pub(crate) fn lambda_done(c: &mut Call, result: V, error: Option<String>) -> Answer {
     c.show("cachedResult", if result.is_sol_error() && error.is_some() { V::Null } else { result.clone() });
@@ -508,6 +582,9 @@ fn map_table(c: &mut Call) -> Answer {
         Ok(b) => b,
         Err(e) => return fn_error(c, e),
     };
+    let vars = [("value", "table"), ("value2", "table2"), ("value3", "table3")];
+    let is_date = date_vars(c, &vars);
+    let body = body.dated(&is_date);
     let Some(m) = m else { return lambda_done(c, V::Null, None) };
     let extras = [any_matrix(&slot(c, "table2")), any_matrix(&slot(c, "table3"))];
     let w = |m: &[Vec<V>]| m.first().map_or_default(Vec::len);
@@ -545,7 +622,7 @@ fn map_table(c: &mut Call) -> Answer {
                 .collect()
         })
         .collect();
-    lambda_done(c, matrix_v(&out), None)
+    body_done(c, &body, &is_date, matrix_v(&out))
 }
 
 fn by_axis(c: &mut Call) -> Answer {
@@ -555,6 +632,9 @@ fn by_axis(c: &mut Call) -> Answer {
         Ok(b) => b,
         Err(e) => return fn_error(c, e),
     };
+    let vars = [("values", "table")];
+    let is_date = date_vars(c, &vars);
+    let body = body.dated(&is_date);
     let Some(m) = m.filter(|m| !m.is_empty()) else { return lambda_done(c, V::Null, None) };
     if holds_unit_cell(&m) {
         let kind = if by_row { FoldKind::ByRow } else { FoldKind::ByCol };
@@ -571,7 +651,7 @@ fn by_axis(c: &mut Call) -> Answer {
     let ev = Eval::default();
     let out: Vec<V> = vectors.into_iter().map(|vec| result_cell(&body.call(&ev, &[list(vec)]))).collect();
     let shaped = if by_row { list(out.into_iter().map(|x| list(vec![x])).collect()) } else { list(out) };
-    lambda_done(c, shaped, None)
+    body_done(c, &body, &is_date, shaped)
 }
 
 fn reduce_lambda(c: &mut Call) -> Answer {
@@ -581,6 +661,8 @@ fn reduce_lambda(c: &mut Call) -> Answer {
         Ok(b) => b,
         Err(e) => return fn_error(c, e),
     };
+    let is_date = fold_date_vars(c, &body);
+    let body = body.dated(&is_date);
     let Some(m) = m else { return lambda_done(c, V::Null, None) };
     if matches!(initial, V::Unit(_)) || holds_unit_cell(&m) {
         if let Some(r) = body.fold(FoldKind::Reduce, &m, &initial) {
@@ -595,7 +677,7 @@ fn reduce_lambda(c: &mut Call) -> Answer {
         i += 1.0;
         acc = body.call(&ev, &[acc, x.clone(), V::Num(i)]);
     }
-    lambda_done(c, result_cell(&acc), None)
+    body_done(c, &body, &is_date, result_cell(&acc))
 }
 
 fn make_array(c: &mut Call) -> Answer {
@@ -624,7 +706,7 @@ fn make_array(c: &mut Call) -> Answer {
     let out: Vec<Vec<V>> = (1..=r)
         .map(|i| (1..=k).map(|j| result_cell(&body.call(&ev, &[V::Num(i as f64), V::Num(j as f64)]))).collect())
         .collect();
-    lambda_done(c, matrix_v(&out), None)
+    body_done(c, &body, &|_| false, matrix_v(&out))
 }
 
 // ─── The table cards that keep a table's unit ────────────────────────────────────────────────────────────────────────
