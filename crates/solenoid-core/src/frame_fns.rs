@@ -439,8 +439,26 @@ fn describe_frame(f: &FrameValue) -> FrameValue {
     for (name, values) in ["count", "blank", "distinct"].into_iter().zip(counts) {
         columns.push(FrameColumn::new(name, FrameColType::Number, values));
     }
+    // Min and max hold a date column's dates beside other columns' numbers: one column can't be both, so where a date
+    // column is described they read as each column shows its own, never a date as its serial ([[C137]]).
+    let dated = f.columns.iter().any(|c| c.ty == FrameColType::Date);
     for (name, values) in ["mean", "std", "min", "25%", "50%", "75%", "max"].into_iter().zip(stats) {
-        columns.push(FrameColumn::new(name, FrameColType::Number, values));
+        if dated && matches!(name, "min" | "max") {
+            let shown = values
+                .iter()
+                .zip(&f.columns)
+                .map(|(v, c)| {
+                    if v.is_null() {
+                        FrameCell::Null
+                    } else {
+                        FrameCell::str(&crate::frame_verbs::format_frame_cell(c.ty, v))
+                    }
+                })
+                .collect();
+            columns.push(FrameColumn::new(name, FrameColType::String, shown));
+        } else {
+            columns.push(FrameColumn::new(name, FrameColType::Number, values));
+        }
     }
     FrameValue { columns }
 }

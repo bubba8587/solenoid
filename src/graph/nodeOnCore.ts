@@ -5,6 +5,7 @@
 import type { GraphNode } from "./graphModel";
 import { callInit } from "./nodeInit";
 import { declaredTypeOf, AdoptiveSocket, type SocketDataType } from "./sockets";
+import { getOwningEditor } from "./activeGraph";
 import { parseListLiteral } from "./listLiterals";
 import { frameFormatStore } from "./frameFormatStore";
 import { engineClock } from "./coreValues";
@@ -29,6 +30,38 @@ function shown(r: unknown): unknown {
 }
 
 /** The type an adoptive socket took up, where it differs from the one it was declared at. */
+/** Each table input's row in a call: key, declared type, label, adopted type, and the type of the output wired into it,
+ *  so the core types a table it widens from a date list as dates ([[C137]] datesNeverSerials). */
+export function socketRows(node: GraphNode): unknown[] {
+  const from = wiredTypes(node);
+  return Object.entries(node.inputs).map(([k, input]) => {
+    const row: unknown[] = [k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k, adopted(input?.socket)[0] ?? null];
+    const f = from.get(k);
+    if (f) row.push(f);
+    return row;
+  });
+}
+
+const TABLE_INPUTS: ReadonlySet<string> = new Set(["frame", "cube"]);
+
+/** The wired source output's type on each frame or cube input. */
+function wiredTypes(node: GraphNode): Map<string, string> {
+  const out = new Map<string, string>();
+  const wants = Object.entries(node.inputs).filter(([, input]) => {
+    const s = input?.socket as { base?: string; dataType?: string } | undefined;
+    return TABLE_INPUTS.has(s?.base ?? s?.dataType ?? "");
+  });
+  if (wants.length === 0) return out;
+  const editor = getOwningEditor(node.id);
+  if (!editor) return out;
+  for (const c of editor.getConnections()) {
+    if (c.target !== node.id || !wants.some(([k]) => k === c.targetInput)) continue;
+    const t = (editor.getNode(c.source)?.outputs[c.sourceOutput as string]?.socket as { dataType?: string } | undefined)?.dataType;
+    if (t) out.set(c.targetInput as string, t);
+  }
+  return out;
+}
+
 export function adopted(socket: unknown): string[] {
   const now = (socket as { dataType?: string } | undefined)?.dataType;
   return socket instanceof AdoptiveSocket && now !== undefined && now !== socket.base ? [now] : [];
@@ -69,11 +102,7 @@ export function coreHeader(node: GraphNode, stamp: number): [number, string] | n
     }
   }
   const picks = frameFormatStore.forNode(node.id);
-  const sockets: unknown[] = [];
-  for (const k in node.inputs) {
-    const input = node.inputs[k];
-    sockets.push([k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k, ...adopted(input?.socket)]);
-  }
+  const sockets = socketRows(node);
   const watch = coreWatchOf(node);
   const text = jsonText({
     kind: node.constructor.name,
@@ -126,7 +155,7 @@ function invoke(node: GraphNode, inputs: Record<string, unknown[] | undefined>):
       init: jsonEnc(coreInit(node)),
       ...(n.literals ? { literals: jsonEnc(n.literals) } : {}),
       ...(n.stringLiterals ? { stringLiterals: jsonEnc(n.stringLiterals) } : {}),
-      sockets: Object.entries(node.inputs).map(([k, input]) => [k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k, ...adopted(input?.socket)]),
+      sockets: socketRows(node),
       inputs: wired,
       clock: engineClock(),
     });

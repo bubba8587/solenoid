@@ -762,7 +762,7 @@ fn get_column(c: &mut Call) -> Answer {
         },
         Cv::Cells(_) => values_answer(c, V::Null, V::Null),
         Cv::V(other) => {
-            let fr = widen_to_frame(other);
+            let fr = c.widened("frame", widen_to_frame(other));
             match column_named(&fr.columns, &name) {
                 Some(col) => read_column(c, &col.clone()),
                 None => values_answer(c, V::Null, V::Null),

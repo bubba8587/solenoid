@@ -72,6 +72,8 @@ pub struct Call {
     /// The type an adoptive input took up (`socket.dataType`), where it differs from the declared one, by key. A
     /// run-time fact no save keeps.
     pub adopted_in: Rc<[(String, String)]>,
+    /// The type of the output wired into a table input, by key: a table widened from a date list holds dates.
+    pub from_in: Rc<[(String, String)]>,
     /// A table's unit (`matrixUnitOf`, a hidden field on the JS array) on an input's first value, by input key.
     pub matrix_units_in: Vec<(String, Json)>,
     /// The unit to put on an output table (`withMatrixUnit`), by output key.
@@ -101,6 +103,64 @@ pub struct Socket {
     pub key: String,
     pub ty: Option<String>,
     pub label: String,
+}
+
+/// Whether the output wired into `key` carries dates.
+fn dated_from(from_in: &[(String, String)], key: &str) -> bool {
+    from_in.iter().any(|(k, t)| k == key && t.starts_with("date"))
+}
+
+/// A table built from a date list or table holds dates: its columns, read from bare serials as numbers, are Date
+/// ([[C137]] datesNeverSerials).
+pub fn date_columns(frame: &mut Frame) {
+    for col in &mut frame.columns {
+        if col.ty == crate::frame::FrameColType::Number {
+            col.ty = crate::frame::FrameColType::Date;
+        }
+    }
+}
+
+fn dated_tables(inputs: Vec<(String, Vec<Cv>)>, from_in: &[(String, String)]) -> Vec<(String, Vec<Cv>)> {
+    if from_in.is_empty() {
+        return inputs;
+    }
+    inputs
+        .into_iter()
+        .map(|(k, vs)| {
+            if !dated_from(from_in, &k) {
+                return (k, vs);
+            }
+            let vs = vs
+                .into_iter()
+                .map(|v| match v {
+                    Cv::Frame(mut f) => {
+                        date_columns(Rc::make_mut(&mut f));
+                        Cv::Frame(f)
+                    }
+                    Cv::Cube(mut q) => {
+                        for col in &mut Rc::make_mut(&mut q).columns {
+                            if matches!(col.ty, None | Some(crate::frame::FrameColType::Number)) {
+                                col.ty = Some(crate::frame::FrameColType::Date);
+                            }
+                        }
+                        Cv::Cube(q)
+                    }
+                    other => other,
+                })
+                .collect();
+            (k, vs)
+        })
+        .collect()
+}
+
+impl Call {
+    /// A Frame this card widened itself from what arrived on `key` (a list or a matrix), Date where that was dates.
+    pub fn widened(&self, key: &str, mut frame: Frame) -> Frame {
+        if dated_from(&self.from_in, key) {
+            date_columns(&mut frame);
+        }
+        frame
+    }
 }
 
 /// The inputs' values: a table, which reaches only a table or an any socket, is `#VALUE!` here.
@@ -150,6 +210,8 @@ impl Call {
             .collect();
         let adopted_in: Vec<(String, String)> =
             rows("sockets").iter().filter_map(|r| Some((text(r, 0)?, text(r, 3)?))).collect();
+        let from_in: Rc<[(String, String)]> =
+            rows("sockets").iter().filter_map(|r| Some((text(r, 0)?, text(r, 4)?))).collect();
         let mut matrix_units_in = Vec::new();
         let inputs: Vec<(String, Vec<Cv>)> = rows("inputs")
             .iter()
@@ -163,6 +225,7 @@ impl Call {
                 (key, values)
             })
             .collect();
+        let inputs = dated_tables(inputs, &from_in);
         let values = values_of(&inputs, &sockets);
         Call {
             init: Rc::new(obj("init")),
@@ -173,6 +236,7 @@ impl Call {
             values,
             display: Vec::new(),
             adopted_in: adopted_in.into(),
+            from_in,
             matrix_units_in,
             matrix_units_out: Vec::new(),
             draws: None,
@@ -182,6 +246,7 @@ impl Call {
 
     /// The same card called again on `inputs`: what a save holds and the sockets shared, nothing shown yet.
     pub fn again(&self, inputs: Vec<(String, Vec<Cv>)>, matrix_units_in: Vec<(String, Json)>) -> Call {
+        let inputs = dated_tables(inputs, &self.from_in);
         Call {
             init: self.init.clone(),
             literals: self.literals.clone(),
@@ -191,6 +256,7 @@ impl Call {
             inputs,
             display: Vec::new(),
             adopted_in: self.adopted_in.clone(),
+            from_in: self.from_in.clone(),
             matrix_units_in,
             matrix_units_out: Vec::new(),
             draws: None,

@@ -15,7 +15,7 @@ import { nodeOutputElemFamily } from "../../src/graph/components/valueDisplayFor
 import { IfNode } from "../../src/graph/nodes/logic";
 import { XLookupNode } from "../../src/graph/nodes/frame";
 import type { FrameValue } from "../../src/graph/frame";
-import { groupByFrame, pivotFrame, windowFrame } from "./coreVerbs";
+import { groupByFrame, pivotFrame, windowFrame, replaceValues } from "./coreVerbs";
 
 // A date never comes out as its serial number: a summary of dates that is still a date stays a Date column.
 
@@ -58,6 +58,19 @@ class Src extends GraphNode {
   }
   data() { return { out: this.value }; }
 }
+
+describe("dates read and named as dates", () => {
+  it("Pivot heads the columns of a date field with dates", () => {
+    const out = pivotFrame(orders, { rowFields: ["rep"], colFields: ["due"], values: ["due"], funcs: ["count"] });
+    expect(out.columns.map((c) => c.name)).toContain("09-Dec-2025");
+    expect(out.columns.map((c) => c.name).some((n) => /^460\d\d/.test(n))).toBe(false);
+  });
+
+  it("Replace Values finds and writes a date typed as a date", () => {
+    const out = replaceValues(orders, "due", "9-Dec-2025", "1-Jan-2026", "cell");
+    expect(out.columns[1].values[0]).toBe(46023);
+  });
+});
 
 describe("a step that would mix dates with another kind refuses with #TYPE!", () => {
   afterEach(() => setEditorRefs(null as never, null as never, null as never));

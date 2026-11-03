@@ -1900,7 +1900,16 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
 
     let multi_val = v_n > 1;
     let col_header = |co: &AxisOut, v: usize| -> String {
-        let join = |t: &[FrameCell]| t.iter().map(|x| js_string(x).into_owned()).collect::<Vec<_>>();
+        // Each key as its column shows it, so a date field heads its columns with dates, never serials ([[C137]]).
+        let join = |t: &[FrameCell]| {
+            t.iter()
+                .enumerate()
+                .map(|(k, x)| match col_cols.get(k) {
+                    Some(col) if col.ty == FrameColType::Date && !x.is_null() => format_frame_cell(col.ty, x),
+                    _ => js_string(x).into_owned(),
+                })
+                .collect::<Vec<_>>()
+        };
         let base = match co.kind {
             AxisKind::Grand => "Grand Total".to_string(),
             AxisKind::Sub => {
@@ -2135,16 +2144,31 @@ pub fn fill_blanks(f: &FrameValue, columns: &[String], dir: FillDir) -> Res<Fram
 }
 
 /// `undefined` (the column stays as it is) is `None`.
+/// A date typed as text (15-Jan-2026, 2026-01-15), as a date column's cells hold it; a bare number is taken as the serial
+/// the user wrote ([[C137]] datesNeverSerials: the user types dates, never serials, but a serial typed is still read).
+fn date_text_serial(s: &str) -> Option<f64> {
+    let t = trim_space(s);
+    let n = decimal_from_text(t);
+    if n.is_finite() {
+        return Some(n);
+    }
+    match crate::excel_criteria::parse_date(t) {
+        crate::excel_criteria::DateReading::Serial(d) => Some(d),
+        _ => None,
+    }
+}
+
 fn coerce_replacement(t: FrameColType, text: &str) -> Option<FrameCell> {
     let s = trim_space(text);
     if s.is_empty() {
         return Some(FrameCell::Null);
     }
     match t {
-        FrameColType::Number | FrameColType::Date => {
+        FrameColType::Number => {
             let n = decimal_from_text(s);
             n.is_finite().then_some(FrameCell::Num(n))
         }
+        FrameColType::Date => date_text_serial(s).map(FrameCell::Num),
         FrameColType::Logical => {
             let l = s.to_lowercase();
             Some(match l.as_str() {
@@ -2176,6 +2200,7 @@ pub fn replace_values(
     };
     let find_num = decimal_from_text(find);
     let numeric_find = find_num.is_finite();
+    let find_date = date_text_serial(find);
     let find_upper = find.to_uppercase();
     let cols = f
         .columns
@@ -2214,6 +2239,7 @@ pub fn replace_values(
                 .map(|v| {
                     let hit = match v {
                         FrameCell::Null | FrameCell::Err(_) => false,
+                        FrameCell::Num(n) if col.ty == FrameColType::Date => find_date == Some(*n),
                         FrameCell::Num(n) => numeric_find && *n == find_num,
                         FrameCell::Bool(b) => (if *b { "TRUE" } else { "FALSE" }) == find_upper,
                         FrameCell::Str(s) => {

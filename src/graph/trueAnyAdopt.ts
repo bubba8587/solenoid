@@ -19,6 +19,11 @@ export function settleWildcardTypes(editor: GraphEditor<{ Node: GraphNode; Conne
     // An input's adopted type is part of the card's call (`adopted`, `nodeOnCore.ts`): naming the card makes a direct
     // card read it afresh, or its body keeps the type it was first called with.
     if (side === "in" && node) editor.named(id);
+    // A card's call also carries the type wired into each of its table inputs (`socketRows`), so a retyped output
+    // names the cards it feeds.
+    if (side === "out" && node) {
+      for (const c of editor.getConnections()) if (c.source === id && c.sourceOutput === key) editor.named(c.target);
+    }
   }
   return { conduitChanged: answer.conduitChanged, adopted: new Set(answer.adopted) };
 }

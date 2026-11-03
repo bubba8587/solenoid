@@ -186,7 +186,9 @@ describe("Describe (pandas describe / R summary)", () => {
     expect(col("std")![0]).toBeCloseTo(1.2909944487358056, 12); // pandas ddof=1
     expect(col("25%")).toEqual([1.75, null, null]);
     expect(col("50%")).toEqual([2.5, null, null]);
-    expect(col("max")).toEqual([4, null, 45004]);
+    // A date column beside them makes min and max read as each column shows its own: never a date as a serial ([[C137]]).
+    expect(col("max")).toEqual(["4", null, "19-Mar-2023"]);
+    expect(out.columns.find((c) => c.name === "max")!.type).toBe("string");
     expect(new DescribeNode().data({ frame: [f] }).frame).toEqual(out);
   });
 });

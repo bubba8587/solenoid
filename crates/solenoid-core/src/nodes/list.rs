@@ -1182,6 +1182,16 @@ fn date_serial(v: &V) -> Option<f64> {
 }
 
 /// A column of the one type every filled cell reads as, text otherwise; a list of one unit keeps it.
+/// `infer_column` over cells a wired list brought: a list whose socket is a date type makes a Date column, which the
+/// cells alone can't tell from numbers ([[C137]] datesNeverSerials).
+fn typed_column(c: &Call, key: &str, name: &str, cells: &[V]) -> Column {
+    let mut col = infer_column(name, cells);
+    if col.ty == FrameColType::Number && c.input_type(key).is_some_and(|t| t.starts_with("date")) {
+        col.ty = FrameColType::Date;
+    }
+    col
+}
+
 pub(crate) fn infer_column(name: &str, cells: &[V]) -> Column {
     let (mut column, raw) = infer_cells(name, cells);
     column.raw = Some(serde_json::Value::Array(raw.iter().map(|t| serde_json::Value::String(t.to_string())).collect()));
@@ -1356,7 +1366,7 @@ fn outliers(c: &mut Call) -> Answer {
         format: None,
         raw: None,
     };
-    let frame = frame_of(vec![infer_column("Value", &clean), outlier]);
+    let frame = frame_of(vec![typed_column(c, "list", "Value", &clean), outlier]);
     shown(c, "cachedResult", "result", frame)
 }
 
@@ -1381,7 +1391,7 @@ fn tally(c: &mut Call) -> Answer {
     } else {
         let keys: Vec<V> = seen.iter().map(|(v, _)| v.clone()).collect();
         frame_of(vec![
-            infer_column("Value", &keys),
+            typed_column(c, "list", "Value", &keys),
             number_column("Count", seen.iter().map(|(_, n)| V::Num(*n)).collect()),
         ])
     };
@@ -1459,7 +1469,7 @@ fn group_lists(c: &mut Call) -> Answer {
             V::Num(if vals.is_empty() { 0.0 } else { agg(vals, vals.iter().fold(0.0, |a, b| a + b)) })
         })
         .collect();
-    let frame = frame_of(vec![infer_column("Key", &order), number_column("Value", values)]);
+    let frame = frame_of(vec![typed_column(c, "keys", "Key", &order), number_column("Value", values)]);
     shown(c, "cachedResult", "result", frame)
 }
 

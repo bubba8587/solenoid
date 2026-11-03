@@ -1529,7 +1529,7 @@ fn add_column(c: &mut Call) -> Answer {
     }
     let f = match &raw {
         Cv::Frame(f) => (**f).clone(),
-        Cv::V(other) => widen_to_frame(other),
+        Cv::V(other) => c.widened("frame", widen_to_frame(other)),
         _ => widen_to_frame(&V::Null),
     };
     let rows = f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0).max(values.len());
@@ -1582,7 +1582,7 @@ fn get_row(c: &mut Call) -> Answer {
     }
     let f = match &raw {
         Cv::Frame(f) => (**f).clone(),
-        Cv::V(other) => widen_to_frame(other),
+        Cv::V(other) => c.widened("frame", widen_to_frame(other)),
         _ => widen_to_frame(&V::Null),
     };
     if i < 0.0 || i >= f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0) as f64 {
@@ -1812,7 +1812,7 @@ fn xlookup(c: &mut Call) -> Answer {
     let src_frame: Option<Frame> = match &raw {
         Cv::Cube(_) => None,
         Cv::Frame(f) => Some((**f).clone()),
-        Cv::V(other) => Some(widen_to_frame(other)),
+        Cv::V(other) => Some(c.widened("frame", widen_to_frame(other))),
         _ => None,
     };
     let src_cube: Cube = match (&raw, &src_frame) {
@@ -1824,6 +1824,12 @@ fn xlookup(c: &mut Call) -> Answer {
         return xlookup_across(c, &src_cube, &lookup_raw, &trimmed(&fb_raw, "The fallback")?);
     }
     let whole_row = ret_col.is_empty();
+    // A fallback in a date column is a date typed as text, read as one ([[C137]] datesNeverSerials).
+    let ret_dated = !whole_row
+        && match &src_frame {
+            Some(f) => f.columns.iter().any(|k| k.name == ret_col && k.ty == FrameColType::Date),
+            None => src_cube.columns.iter().any(|k| k.name == ret_col && k.ty == Some(FrameColType::Date)),
+        };
     let fb = trimmed(&fb_raw, "The fallback")?;
     let (mm, sm) = (c.field_str("matchMode", "eq").to_string(), c.field_str("searchMode", "first").to_string());
     let as_text = |v: &V| {
@@ -1886,7 +1892,7 @@ fn xlookup(c: &mut Call) -> Answer {
             if fb.is_empty() {
                 return Ok(Cv::V(err(ErrorCode::NotAvailable, "No row matched the lookup value")));
             }
-            let n = crate::value_kinds::decimal_from_text(&fb);
+            let n = if ret_dated { fallback_date(&fb) } else { crate::value_kinds::decimal_from_text(&fb) };
             Ok(Cv::V(if n.is_nan() { V::str(&fb) } else { V::Num(n) }))
         };
         match &lookup_raw {
@@ -1928,6 +1934,18 @@ pub(crate) fn cube_column_family(col: &CubeColumn) -> Option<FrameColType> {
         }
     }
     kind
+}
+
+/// A fallback typed into a date column: a date as text, or a number as the serial it names.
+fn fallback_date(fb: &str) -> f64 {
+    let n = crate::value_kinds::decimal_from_text(fb);
+    if n.is_finite() {
+        return n;
+    }
+    match crate::excel_criteria::parse_date(trim_space(fb)) {
+        crate::excel_criteria::DateReading::Serial(d) => d,
+        _ => f64::NAN,
+    }
 }
 
 /// XLOOKUP across: the lookup searches a row (the column names, or row `inRow`) and returns the matched column whole,
@@ -2132,9 +2150,13 @@ fn shown_cube(c: &mut Call, v: impl Into<Cv>) -> Answer {
     Ok(vec![("cube".into(), v)])
 }
 
-/// A column inferred under the name given, the format kept.
-fn inferred(name: &str, cells: &[V], format: Option<Json>) -> Column {
+/// A column inferred under the name given, the format kept; a Cube column typed Date stays Date, which its serials
+/// alone can't say ([[C137]] datesNeverSerials).
+fn inferred(name: &str, cells: &[V], format: Option<Json>, ty: Option<FrameColType>) -> Column {
     let mut col = super::list::infer_column(name, cells);
+    if ty == Some(FrameColType::Date) && col.ty == FrameColType::Number {
+        col.ty = FrameColType::Date;
+    }
     if format.is_some() {
         col.format = format;
     }
@@ -2187,9 +2209,12 @@ fn unnest_cube(c: &Cube, nested_name: &str) -> Result<Cv, V> {
                 }
             }
         }
-        let mut columns: Vec<Column> =
-            flat.iter().enumerate().map(|(k, fc)| inferred(&fc.name, &flat_vals[k], fc.format.clone())).collect();
-        columns.push(inferred(&nested.name, &exploded, None));
+        let mut columns: Vec<Column> = flat
+            .iter()
+            .enumerate()
+            .map(|(k, fc)| inferred(&fc.name, &flat_vals[k], fc.format.clone(), fc.ty))
+            .collect();
+        columns.push(inferred(&nested.name, &exploded, None, nested.ty));
         return Ok(frame_v(columns));
     }
     if saw_cube {
@@ -2257,7 +2282,7 @@ fn unnest_cube(c: &Cube, nested_name: &str) -> Result<Cv, V> {
     let names: Vec<String> = flat.iter().map(|c| c.name.clone()).chain(schema.iter().map(|c| c.name.clone())).collect();
     let names = crate::frame::make_headers(&names, names.len());
     let mut columns: Vec<Column> =
-        flat.iter().enumerate().map(|(k, fc)| inferred(&names[k], &flat_vals[k], fc.format.clone())).collect();
+        flat.iter().enumerate().map(|(k, fc)| inferred(&names[k], &flat_vals[k], fc.format.clone(), fc.ty)).collect();
     columns.extend(schema.iter().enumerate().map(|(k, cc)| Column {
         name: names[flat.len() + k].clone(),
         ty: cc.ty,
@@ -2298,6 +2323,19 @@ fn literal_cell(c: &Call, key: &str) -> V {
 }
 
 /// Each value input's cell, by its key's prefix in the card's order: the cable's value, else the literal.
+/// Whether each `prefix` input brings dates: its wired type, or a Cube whose first column is Date ([[C137]]).
+fn value_dates(c: &Call, prefix: char) -> Vec<bool> {
+    c.sockets
+        .iter()
+        .map(|s| s.key.as_str())
+        .filter(|k| k.starts_with(prefix))
+        .map(|k| {
+            c.input_type(k).is_some_and(|t| t.starts_with("date"))
+                || matches!(c.wired_card(k), Some([Cv::Cube(q), ..]) if q.columns.first().is_some_and(|f| f.ty == Some(FrameColType::Date)))
+        })
+        .collect()
+}
+
 fn value_cells(c: &Call, prefix: char) -> Vec<Cv> {
     c.sockets
         .iter()
@@ -2318,7 +2356,9 @@ fn build_cube(c: &mut Call) -> Answer {
     }
     let name = trimmed(&name_raw, "The name")?;
     let name = if name.is_empty() { "Items".to_string() } else { name };
-    let out = cube_from_columns(vec![CubeColumn { name, cells, ty: None, format: None }]);
+    let dates = value_dates(c, 'v');
+    let ty = (!dates.is_empty() && dates.iter().all(|d| *d)).then_some(FrameColType::Date);
+    let out = cube_from_columns(vec![CubeColumn { name, cells, ty, format: None }]);
     shown_cube(c, out)
 }
 
@@ -2355,14 +2395,16 @@ fn cube_columns(c: &mut Call) -> Answer {
         cols.push((if name.is_empty() { format!("Col{}", i + 1) } else { name }, cube_column_from_value(v)));
     }
     let max = cols.iter().map(|(_, cells)| cells.len()).max().unwrap_or(0);
+    let dates = value_dates(c, 'c');
     let padded = cols
         .into_iter()
-        .map(|(name, cells)| CubeColumn {
+        .enumerate()
+        .map(|(i, (name, cells))| CubeColumn {
             name,
             cells: (0..max)
                 .map(|r| cells.get(r).filter(|v| !matches!(v, Cv::V(V::Undef))).cloned().unwrap_or(Cv::NULL))
                 .collect(),
-            ty: None,
+            ty: dates.get(i).copied().unwrap_or(false).then_some(FrameColType::Date),
             format: None,
         })
         .collect();
@@ -2529,7 +2571,7 @@ fn nest_join(c: &mut Call) -> Answer {
     let child = match card(c, "child") {
         Cv::V(V::Null) => None,
         v @ (Cv::Cube(_) | Cv::Frame(_)) => Some(v),
-        other => Some(Cv::Frame(Rc::new(widen_to_frame(&c.value_of("child", &other))))),
+        other => Some(Cv::Frame(Rc::new(c.widened("child", widen_to_frame(&c.value_of("child", &other)))))),
     };
     let key_raw = str_input(c, "key", "");
     let name_raw = str_input(c, "name", "");
@@ -2631,6 +2673,7 @@ fn cube_rollup(c: &mut Call) -> Answer {
     let rows = cube_row_count(&cube);
     let mut flat_vals: Vec<Vec<V>> = vec![Vec::new(); flat.len()];
     let mut rolled: Vec<V> = Vec::new();
+    let mut rolled_dates = false;
     let mut text_rolled = false;
     for i in 0..rows {
         for (k, fc) in flat.iter().enumerate() {
@@ -2671,6 +2714,7 @@ fn cube_rollup(c: &mut Call) -> Answer {
             Ok((values, ty, _)) => {
                 let cells: Vec<FrameCell> = values.iter().map(core_cell).collect();
                 let op = op.ok_or_else(|| err(ErrorCode::Name, format!("Unknown aggregation \"{agg}\"")))?;
+                rolled_dates |= ty == Some(FrameColType::Date) && op.keeps_dates();
                 card_cell(&agg_unit_plan(op, unit.as_deref()).cell(aggregate_group(&cells, op, ty)))
             }
         };
@@ -2686,13 +2730,14 @@ fn cube_rollup(c: &mut Call) -> Answer {
     names.push(out_name);
     let names = crate::frame::make_headers(&names, flat.len() + 1);
     let mut columns: Vec<Column> =
-        flat.iter().enumerate().map(|(k, _)| super::list::infer_column(&names[k], &flat_vals[k])).collect();
+        flat.iter().enumerate().map(|(k, fc)| inferred(&names[k], &flat_vals[k], None, fc.ty)).collect();
     let last = &names[flat.len()];
     columns.push(if text_rolled {
         text_column(last, &rolled)
     } else {
         let (mags, unit) = matrix_cells_from_list(&rolled);
-        Column { name: last.clone(), ty: FrameColType::Number, values: mags, unit, format: None, raw: None }
+        let ty = if rolled_dates { FrameColType::Date } else { FrameColType::Number };
+        Column { name: last.clone(), ty, values: mags, unit, format: None, raw: None }
     });
     shown_frame(c, "frame", frame_v(columns))
 }
@@ -3261,7 +3306,7 @@ fn decision_matrix(c: &mut Call) -> Answer {
         other => {
             let f = match other {
                 Cv::Frame(f) => (**f).clone(),
-                v => widen_to_frame(&c.value_of("frame", v)),
+                v => c.widened("frame", widen_to_frame(&c.value_of("frame", v))),
             };
             crate::decision::decision_matrix(&to_core(&f), w.as_ref(), normalize, breakdown)
                 .map(|f| Cv::Frame(Rc::new(from_core(&f))))
