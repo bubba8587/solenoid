@@ -371,12 +371,9 @@ fn dollar(c: &mut Call) -> Answer {
     answer(c, result)
 }
 
-/// A date input's day; anything but a date is NaN ([[D114]] dateIsAKind).
+/// A date input's day; anything but a date is NaN.
 fn serial(v: &V) -> f64 {
-    match v {
-        V::Date(n) => *n,
-        _ => f64::NAN,
-    }
+    super::kit::day(v).unwrap_or(f64::NAN)
 }
 
 fn discount_security(c: &mut Call, op: &str) -> V {

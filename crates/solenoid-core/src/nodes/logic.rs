@@ -245,18 +245,14 @@ fn if_node(c: &mut Call) -> Answer {
         },
     };
     select(c, selected);
-    // A list of conditions takes each cell from either branch, so a date branch beside another kind would mix them.
-    if matches!(cond, V::List(_))
-        && let Some(other) = c.dates_meet(&["then", "else"])
-    {
-        return answer(c, "result", super::dates_mixed(other));
-    }
+    let list = matches!(cond, V::List(_));
     let result = broadcast_el(&[cond, then, els], |o| match if_test(o[0]) {
         V::Bool(true) => o[1].clone(),
         V::Bool(false) => o[2].clone(),
         t => t,
     });
-    answer(c, "result", result)
+    // A list of conditions takes each cell from either branch: the cells it took may not mix dates with another kind.
+    answer(c, "result", if list { crate::date_values::refuse_mixed(result) } else { result })
 }
 
 fn boolean_op(c: &mut Call) -> Answer {
@@ -433,9 +429,9 @@ fn if_error(c: &mut Call) -> Answer {
     };
     select(c, taken);
     if taken.is_none()
-        && let Some(other) = c.dates_meet(&["value", "fallback"])
+        && let Some(other) = c.mixes_dates(&["value", "fallback"])
     {
-        let e = Cv::V(super::dates_mixed(other));
+        let e = Cv::V(crate::date_values::mixed(other));
         c.show("cachedResult", e.clone());
         return Ok(vec![("result".into(), e)]);
     }

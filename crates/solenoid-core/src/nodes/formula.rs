@@ -180,27 +180,7 @@ fn result_family(_c: &Call, _ast: &Ast, result: &V) -> &'static str {
 /// The family of `result`, a formula's answer, read off its values ([[D114]] dateIsAKind, [[C136]]
 /// typesKnownAfterCalc): one kind, else "mixed"; "" where it holds no value to tell.
 pub(crate) fn answer_family(result: &V) -> &'static str {
-    fn kinds(v: &V, out: &mut Vec<&'static str>) {
-        let k = match v {
-            V::List(items) => return items.iter().for_each(|x| kinds(x, out)),
-            V::Null | V::Undef | V::Err(_) => return,
-            V::Num(_) | V::Unit(_) => "number",
-            V::Date(_) => "date",
-            V::Str(_) => "text",
-            V::Bool(_) => "logical",
-            _ => "mixed",
-        };
-        if !out.contains(&k) {
-            out.push(k);
-        }
-    }
-    let mut found = Vec::new();
-    kinds(result, &mut found);
-    match found.as_slice() {
-        [] => "",
-        [one] => one,
-        _ => "mixed",
-    }
+    crate::date_values::census(result).family()
 }
 
 /// Shows the answer's `rank|family`, the family it computed before any cast, which the TS types the result socket by

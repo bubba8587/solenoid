@@ -225,9 +225,9 @@ fn workdays(c: &Call) -> V {
     let mut hol: Vec<f64> = Vec::new();
     if let Some(V::List(hs)) = c.wired("holidays").and_then(|w| w.first()) {
         for h in hs.iter() {
-            if let V::Num(n) | V::Date(n) = h {
+            if let Some(n) = super::kit::day(h) {
                 let day = (n + 1e-9).floor();
-                if n.is_finite() && !hol.iter().any(|d| d.to_bits() == day.to_bits()) {
+                if !hol.iter().any(|d| d.to_bits() == day.to_bits()) {
                     hol.push(day);
                 }
             }

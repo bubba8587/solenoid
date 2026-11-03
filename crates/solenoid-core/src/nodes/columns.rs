@@ -347,14 +347,9 @@ fn aliased<'a>(alias: &'a [(String, String)], name: &'a str) -> &'a str {
     alias.iter().find(|(k, _)| k == name).map_or(name, |(_, t)| t.as_str())
 }
 
-/// The type the cells read as: a Date column where every value is a date ([[D114]] dateIsAKind).
+/// The type the cells read as, a column of dates Date ([[D114]] dateIsAKind).
 pub(crate) fn computed_column_type(name: &str, cells: &[V]) -> FrameColType {
-    let present = || cells.iter().filter(|v| !matches!(v, V::Null | V::Undef | V::Err(_)));
-    if present().next().is_some() && present().all(|v| matches!(v, V::Date(_))) {
-        return FrameColType::Date;
-    }
-    let plain: Vec<V> = cells.iter().map(crate::date_values::unwrap).collect();
-    super::list::infer_column(name, &plain).ty
+    super::list::infer_column(name, cells).ty
 }
 
 /// A computed column's cells as its table holds them, by its type: a Date column's days, and in any other column a
@@ -364,9 +359,7 @@ pub(crate) fn settled_cells(cells: &[V], ty: FrameColType) -> Vec<V> {
         .iter()
         .map(|v| match v {
             V::Date(n) if ty == FrameColType::Date => V::Num(*n),
-            V::Date(_) => {
-                err(ErrorCode::Type, "This column mixes dates with another kind. Cast one side so they agree")
-            }
+            V::Date(_) => crate::date_values::column_mixed(),
             V::List(_) => crate::date_values::unwrap(v),
             _ => v.clone(),
         })

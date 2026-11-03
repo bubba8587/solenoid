@@ -109,6 +109,22 @@ pub fn each(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
     list(out)
 }
 
+/// A loose input's day: only a date ([[D114]] dateIsAKind).
+pub fn day(v: &V) -> Option<f64> {
+    match v {
+        V::Date(n) if n.is_finite() => Some(*n),
+        _ => None,
+    }
+}
+
+/// A table cell's day: a date, or the number a Date column packs it as.
+pub fn cell_day(v: &V) -> Option<f64> {
+    match v {
+        V::Date(n) | V::Num(n) if n.is_finite() => Some(*n),
+        _ => None,
+    }
+}
+
 /// A number as JS reads it in arithmetic (`+x`): a logical as 0 or 1, null as 0, anything else NaN.
 pub fn num(v: &V) -> f64 {
     match v {

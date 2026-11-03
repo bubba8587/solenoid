@@ -116,7 +116,7 @@ fn rounded(v: &V) -> f64 {
 
 /// A finite number, no coercion.
 fn finite(v: &V) -> bool {
-    matches!(v, V::Num(n) | V::Date(n) if n.is_finite())
+    matches!(v, V::Num(n) if n.is_finite())
 }
 
 fn over_limit(what: &str, n: f64) -> V {
@@ -419,8 +419,8 @@ fn sets(c: &mut Call) -> Answer {
         let r = core_call(fx, &[or(a, empty()), or(b, empty())]);
         return shown(c, "cachedRelation", "result", r);
     }
-    if let Some(other) = c.dates_meet(&["a", "b"]) {
-        return shown(c, "cachedList", "result", super::dates_mixed(other));
+    if let Some(other) = c.mixes_dates(&["a", "b"]) {
+        return shown(c, "cachedList", "result", crate::date_values::mixed(other));
     }
     let a = strip_unit_cells(&list_in(c, "a"));
     let b = strip_unit_cells(&list_in(c, "b"));
@@ -430,8 +430,8 @@ fn sets(c: &mut Call) -> Answer {
 
 fn concat_lists(c: &mut Call) -> Answer {
     let keys: Vec<String> = c.sockets.iter().filter(|s| s.key.starts_with('l')).map(|s| s.key.clone()).collect();
-    if let Some(other) = c.dates_meet(&keys.iter().map(String::as_str).collect::<Vec<_>>()) {
-        return shown(c, "cachedList", "result", super::dates_mixed(other));
+    if let Some(other) = c.mixes_dates(&keys.iter().map(String::as_str).collect::<Vec<_>>()) {
+        return shown(c, "cachedList", "result", crate::date_values::mixed(other));
     }
     let args: Vec<V> =
         c.sockets.iter().filter(|s| s.key.starts_with('l')).map(|s| or(slot(c, &s.key), V::Null)).collect();
@@ -511,8 +511,8 @@ fn nth_element(c: &mut Call) -> Answer {
 }
 
 fn interleave(c: &mut Call) -> Answer {
-    if let Some(other) = c.dates_meet(&["a", "b"]) {
-        return shown(c, "cachedList", "result", super::dates_mixed(other));
+    if let Some(other) = c.mixes_dates(&["a", "b"]) {
+        return shown(c, "cachedList", "result", crate::date_values::mixed(other));
     }
     let r = core_call("INTERLEAVE", &[list_in(c, "a"), list_in(c, "b")]);
     shown(c, "cachedList", "result", r)
@@ -1207,15 +1207,16 @@ pub(crate) fn infer_column(name: &str, cells: &[V]) -> Column {
 pub(crate) fn infer_cells(name: &str, cells: &[V]) -> (Column, Vec<Rc<str>>) {
     // Dates make a Date column, their days packed as numbers; beside another kind, each date is #TYPE!
     // ([[D114]] dateIsAKind, [[C137]] datesNeverSerials).
-    if cells.iter().any(|c| matches!(c, V::Date(_))) {
-        let only_dates = cells.iter().all(|c| matches!(c, V::Date(_) | V::Null | V::Undef | V::Err(_)));
-        if only_dates {
+    let census =
+        cells.iter().fold(crate::value_kinds::Census::default(), |c, v| c.join(crate::value_kinds::Census::of(v)));
+    if census.dates {
+        if census.only_dates() {
             let (mut column, raw) =
                 infer_cells(name, &cells.iter().map(crate::date_values::unwrap).collect::<Vec<_>>());
             column.ty = FrameColType::Date;
             return (column, raw);
         }
-        let mixed = super::dates_mixed("other kinds");
+        let mixed = crate::date_values::column_mixed();
         let refused: Vec<V> =
             cells.iter().map(|c| if matches!(c, V::Date(_)) { mixed.clone() } else { c.clone() }).collect();
         return infer_cells(name, &refused);
@@ -1571,7 +1572,7 @@ fn list_index(c: &mut Call) -> Answer {
         && picked_date.contains(&Some(FrameColType::Date))
         && picked_date.len() > 1
     {
-        let e = Cv::V(super::dates_mixed("other kinds"));
+        let e = Cv::V(crate::date_values::mixed("other kinds"));
         c.produced(None);
         c.show("cachedResult", e.clone());
         return Ok(vec![("result".into(), e)]);

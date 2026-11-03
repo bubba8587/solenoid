@@ -66,20 +66,12 @@ fn num(v: Option<&V>) -> Option<f64> {
     }
 }
 
-/// A loose input's day: only a date ([[D114]] dateIsAKind).
 fn day(v: Option<&V>) -> Option<f64> {
-    match v {
-        Some(V::Date(n)) if n.is_finite() => Some(*n),
-        _ => None,
-    }
+    v.and_then(super::kit::day)
 }
 
-/// A table cell's day: a date, or a Date column's packed number.
 fn cell_day(v: Option<&V>) -> Option<f64> {
-    match v {
-        Some(V::Date(n) | V::Num(n)) if n.is_finite() => Some(*n),
-        _ => None,
-    }
+    v.and_then(super::kit::cell_day)
 }
 
 /// A percent complete; a done checkbox reads TRUE as 100 and FALSE as 0.
@@ -327,7 +319,7 @@ fn read_date(v: Option<&V>, task: &str, column: &str) -> Rd<Option<f64>> {
     match v {
         None | Some(V::Null) => Ok(None),
         Some(V::Str(s)) if s.is_empty() => Ok(None),
-        Some(V::Num(n) | V::Date(n)) if n.is_finite() => Ok(Some(*n)),
+        Some(v @ (V::Num(_) | V::Date(_))) if super::kit::cell_day(v).is_some() => Ok(super::kit::cell_day(v)),
         Some(V::Str(s)) => match parse_date_text(s) {
             Err(e) => {
                 Err(sol_error(e.code, format!("Schedule: task \"{task}\" has a {column} that reads two ways: {s}")))
@@ -1170,7 +1162,7 @@ fn gantt_flatten(c: &Cube, level: f64, out: &mut Vec<Row>) -> Result<(), SolErro
 /// `date`: a date cell that may still be text.
 fn gantt_date(v: Option<&V>) -> Rd<Option<f64>> {
     match v {
-        Some(V::Num(n) | V::Date(n)) if n.is_finite() => Ok(Some(*n)),
+        Some(v @ (V::Num(_) | V::Date(_))) if super::kit::cell_day(v).is_some() => Ok(super::kit::cell_day(v)),
         Some(V::Str(s)) if !trim_space(s).is_empty() => Ok(Some(parse_date_text(s)?).filter(|d| d.is_finite())),
         _ => Ok(None),
     }

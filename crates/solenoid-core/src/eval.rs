@@ -2373,35 +2373,30 @@ fn column_hoisting<C>(
         }
     }
     // A column of one kind can't show a date beside another kind: each date there is #TYPE! ([[C137]] datesNeverSerials).
-    if kinds.dates && kinds.other {
+    if kinds.census.beside_dates().is_some() {
         for &i in &kinds.at {
-            cells[i] = tag(V::err(sol_error(
-                ErrorCode::Type,
-                "This column mixes dates with another kind. Cast one side so they agree",
-            )));
+            cells[i] = tag(crate::date_values::column_mixed());
         }
     }
-    Ok(ColumnOutcome { cells, side_vars, dates: kinds.dates && !kinds.other })
+    Ok(ColumnOutcome { cells, side_vars, dates: kinds.census.only_dates() })
 }
 
-/// Whether a column's values are dates: some date and nothing else but blanks and errors; and the rows of its dates.
+/// What a column's values hold (`Census`), and the rows of its dates.
 #[derive(Default)]
 struct Kinds {
-    dates: bool,
-    other: bool,
+    census: crate::value_kinds::Census,
     at: Vec<usize>,
 }
 
 impl Kinds {
     fn note(&mut self, v: &V, row: usize) {
-        match v {
-            V::Date(_) => {
-                self.dates = true;
-                self.at.push(row);
-            }
-            V::Null | V::Undef | V::Err(_) | V::Fx(_) => {}
-            _ => self.other = true,
+        if matches!(v, V::Fx(_)) {
+            return;
         }
+        if matches!(v, V::Date(_)) {
+            self.at.push(row);
+        }
+        self.census.note(v);
     }
 }
 

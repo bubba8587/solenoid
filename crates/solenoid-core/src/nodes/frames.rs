@@ -604,9 +604,8 @@ fn named(col: &Column, names: &[&str]) -> bool {
     names.contains(&crate::jsnum::lower_text(trim_space(&col.name)).as_ref())
 }
 
-/// The column named one of `names`; a Date column is never an amount, a weight or a bound ([[C137]] datesNeverSerials).
 fn by_name(f: &Frame, names: &[&str]) -> Option<usize> {
-    f.columns.iter().position(|col| col.ty != FrameColType::Date && named(col, names))
+    f.columns.iter().position(|col| named(col, names))
 }
 
 /// `{ ...c, unit, format }` of another column's, where it has them.
@@ -666,7 +665,7 @@ fn allocator(c: &mut Call) -> Answer {
 
 /// The first of this month.
 fn month_start() -> f64 {
-    let (V::Num(today) | V::Date(today)) = super::kit::core_call("TODAY", &[]) else { return f64::NAN };
+    let Some(today) = super::kit::day(&super::kit::core_call("TODAY", &[])) else { return f64::NAN };
     let (y, m, _) = crate::date_serial::civil_from_days(today as i64 - 25569);
     crate::date_serial::days_from_civil(y, m, 1) as f64 + 25569.0
 }
@@ -679,8 +678,7 @@ fn payoff_planner(c: &mut Call) -> Answer {
         None => Some(month_start()),
         Some(w) => match w.first() {
             None | Some(V::Null | V::Undef) => None,
-            Some(V::Num(n) | V::Date(n)) => Some(*n),
-            Some(_) => Some(f64::NAN),
+            Some(v) => Some(super::kit::day(v).unwrap_or(f64::NAN)),
         },
     };
     let order = if c.field_str("order", "avalanche") == "snowball" { "snowball" } else { "avalanche" };
@@ -2048,7 +2046,7 @@ fn xlookup_across(c: &mut Call, cube: &Cube, lookup_raw: &V, fb: &str) -> Answer
         across_family = families.first().copied().flatten().filter(|t| families.iter().all(|f| *f == Some(*t)));
         // Lookups that land on a date column and another kind would hand on one list of both ([[C137]]).
         if families.contains(&Some(FrameColType::Date)) && across_family.is_none() {
-            return Err(super::dates_mixed("other kinds"));
+            return Err(crate::date_values::mixed("other kinds"));
         }
         let mut k = 0;
         let mut one = |t: &String| -> Cv {
@@ -3377,39 +3375,21 @@ fn parsed_headers(headers: &V) -> Vec<(String, Option<Json>)> {
         .collect()
 }
 
-/// What a column of values holds of dates: none, only dates beside blanks and errors, or dates and another kind.
-#[derive(PartialEq)]
-enum Dated {
-    No,
-    All,
-    Mixed,
-}
-
-fn dated<'a>(cells: impl IntoIterator<Item = &'a V>) -> Dated {
-    let (mut dates, mut other) = (false, false);
-    for v in cells {
-        match v {
-            V::Date(_) => dates = true,
-            V::Null | V::Undef | V::Err(_) => {}
-            _ => other = true,
-        }
-    }
-    match (dates, other) {
-        (false, _) => Dated::No,
-        (true, false) => Dated::All,
-        (true, true) => Dated::Mixed,
-    }
-}
-
 fn build_frame(c: &mut Call) -> Answer {
     let raw = super::list::slot(c, "matrix");
     let headers = super::list::slot(c, "headers");
     let Some(m) = to_any_matrix(&raw).filter(|m| !m.is_empty()) else { return shown_frame(c, "frame", V::Null) };
     // A column of dates is a Date column, its days packed as numbers ([[D114]] dateIsAKind).
     let width = m.iter().map(Vec::len).max().unwrap_or(0);
-    let date_cols: Vec<Dated> = (0..width).map(|j| dated(m.iter().filter_map(|r| r.get(j)))).collect();
-    if date_cols.contains(&Dated::Mixed) {
-        return shown_frame(c, "frame", super::dates_mixed("other kinds"));
+    let date_cols: Vec<crate::value_kinds::Census> = (0..width)
+        .map(|j| {
+            m.iter()
+                .filter_map(|r| r.get(j))
+                .fold(crate::value_kinds::Census::default(), |c, v| c.join(crate::date_values::census(v)))
+        })
+        .collect();
+    if date_cols.iter().any(|c| c.beside_dates().is_some()) {
+        return shown_frame(c, "frame", crate::date_values::mixed("other kinds"));
     }
     let m: Vec<Vec<V>> = m.iter().map(|r| r.iter().map(crate::date_values::unwrap).collect()).collect();
     let known = col_type_for_socket(c.input_type("matrix"));
@@ -3429,7 +3409,7 @@ fn build_frame(c: &mut Call) -> Answer {
     };
     let mut f = from_core(&f);
     for (col, d) in f.columns.iter_mut().zip(&date_cols) {
-        if *d == Dated::All {
+        if d.only_dates() {
             col.ty = crate::frame::FrameColType::Date;
         }
     }
@@ -3461,15 +3441,14 @@ fn frame_from_lists(c: &mut Call) -> Answer {
         names.push(V::str(&name));
         let wired = if matches!(wired, V::List(_)) { wired } else { list(vec![wired]) };
         // A list of dates is a Date column ([[D114]] dateIsAKind).
-        let V::List(items) = &wired else { unreachable!() };
-        match dated(items.iter()) {
-            Dated::Mixed => return shown_frame(c, "frame", super::dates_mixed("other kinds")),
-            Dated::All => {
-                lists.push(crate::date_values::unwrap(&wired));
-                known.push(V::str("date"));
-                continue;
-            }
-            Dated::No => {}
+        let census = crate::date_values::census(&wired);
+        if census.beside_dates().is_some() {
+            return shown_frame(c, "frame", crate::date_values::mixed("other kinds"));
+        }
+        if census.only_dates() {
+            lists.push(crate::date_values::unwrap(&wired));
+            known.push(V::str("date"));
+            continue;
         }
         lists.push(wired);
         known.push(col_type_for_socket(c.input_type(vals_k)).map_or(V::Null, V::str));

@@ -17,6 +17,7 @@ pub fn date_text(serial: f64) -> String {
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::V;
+use crate::value_kinds::Census;
 use std::rc::Rc;
 
 /// Which arguments a class reads its dates from.
@@ -122,8 +123,7 @@ fn class_of(name: &str) -> Option<Class> {
 /// What a long list holds, kept with the list so a reused address can't answer for another.
 struct Seen {
     list: std::rc::Weak<Vec<V>>,
-    dates: bool,
-    plain: bool,
+    census: Census,
 }
 
 /// Which reading of a list a kept copy is.
@@ -154,29 +154,23 @@ thread_local! {
 const SCAN_ONCE: usize = 64;
 const KEPT_COPIES: usize = 16;
 
-/// What a long list holds: (a date, a plain number), scanned on first sight.
-fn seen(items: &Rc<Vec<V>>) -> (bool, bool) {
+/// What a long list holds, scanned on first sight.
+fn seen(items: &Rc<Vec<V>>) -> Census {
     let key = Rc::as_ptr(items) as usize;
     let known = SEEN.with(|m| {
-        m.borrow()
-            .get(&key)
-            .filter(|e| e.list.upgrade().is_some_and(|r| Rc::ptr_eq(&r, items)))
-            .map(|e| (e.dates, e.plain))
+        m.borrow().get(&key).filter(|e| e.list.upgrade().is_some_and(|r| Rc::ptr_eq(&r, items))).map(|e| e.census)
     });
     known.unwrap_or_else(|| {
-        let (dates, plain) = items.iter().fold((false, false), |(d, n), x| {
-            let (a, b) = kinds(x);
-            (d || a, n || b)
-        });
+        let found = items.iter().fold(Census::default(), |c, x| c.join(census(x)));
         SEEN.with(|m| {
             let mut m = m.borrow_mut();
             if m.len() >= 4096.max(2 * SWEPT.get()) {
                 m.retain(|_, e| e.list.strong_count() > 0);
                 SWEPT.set(m.len());
             }
-            m.insert(key, Seen { list: Rc::downgrade(items), dates, plain });
+            m.insert(key, Seen { list: Rc::downgrade(items), census: found });
         });
-        (dates, plain)
+        found
     })
 }
 
@@ -205,27 +199,42 @@ fn copy_of(items: &Rc<Vec<V>>, reading: Reading, f: fn(&V) -> V) -> V {
     })
 }
 
-/// Whether a value is or holds a date.
-pub fn holds_date(v: &V) -> bool {
+/// The kinds a value holds (`Census`), a long list's read once.
+pub fn census(v: &V) -> Census {
     match v {
-        V::Date(_) => true,
-        V::List(items) if items.len() >= SCAN_ONCE => seen(items).0,
-        V::List(items) => items.iter().any(holds_date),
-        _ => false,
+        V::List(items) if items.len() >= SCAN_ONCE => seen(items),
+        V::List(items) => items.iter().fold(Census::default(), |c, x| c.join(census(x))),
+        other => Census::of(other),
     }
 }
 
-/// Dates and plain numbers in a value: (a date, a plain number).
+/// Whether a value is or holds a date.
+pub fn holds_date(v: &V) -> bool {
+    census(v).dates
+}
+
+/// A value's dates and plain numbers: (a date, a plain number).
 fn kinds(v: &V) -> (bool, bool) {
-    match v {
-        V::Date(_) => (true, false),
-        V::Num(n) => (false, !n.is_nan()),
-        V::List(items) if items.len() >= SCAN_ONCE => seen(items),
-        V::List(items) => items.iter().fold((false, false), |(d, n), x| {
-            let (a, b) = kinds(x);
-            (d || a, n || b)
-        }),
-        _ => (false, false),
+    let c = census(v);
+    (c.dates, c.numbers)
+}
+
+/// `#TYPE!` for a step that would put dates and `other` in one result ([[C137]] datesNeverSerials).
+pub fn mixed(other: &str) -> V {
+    V::err(sol_error(ErrorCode::Type, format!("This would mix dates with {other} in one result. Cast one side first")))
+}
+
+/// A column cell's `#TYPE!` where a column of one kind would show a date beside another kind.
+pub fn column_mixed() -> V {
+    V::err(sol_error(ErrorCode::Type, "This column mixes dates with another kind. Cast one side so they agree"))
+}
+
+/// A card's answer, or `#TYPE!` where it holds dates beside another kind: a combining step refuses rather than hand
+/// on a mix, read off the answer itself ([[C137]] datesNeverSerials).
+pub fn refuse_mixed(v: V) -> V {
+    match census(&v).beside_dates() {
+        Some(other) => mixed(other),
+        None => v,
     }
 }
 
@@ -234,7 +243,7 @@ pub fn unwrap(v: &V) -> V {
     match v {
         V::Date(n) => V::Num(*n),
         V::List(items) if items.len() >= SCAN_ONCE => {
-            if seen(items).0 {
+            if seen(items).dates {
                 copy_of(items, Reading::Serials, unwrap)
             } else {
                 v.clone()
@@ -261,7 +270,7 @@ fn as_text(v: &V) -> V {
     match v {
         V::Date(n) => V::str(&date_text(*n)),
         V::List(items) if items.len() >= SCAN_ONCE => {
-            if seen(items).0 {
+            if seen(items).dates {
                 copy_of(items, Reading::Text, as_text)
             } else {
                 v.clone()
@@ -287,19 +296,7 @@ impl After {
         match self {
             After::AsIs => v,
             After::Dates if v.is_sol_error() || matches!(v, V::Fx(_)) => v,
-            // A number that isn't finite stays a number, for the guard after to make it its error.
-            After::Dates => match v {
-                V::Num(n) if !n.is_finite() => v,
-                V::List(ref items) if items.iter().any(|x| matches!(x, V::Num(n) if !n.is_finite())) => {
-                    V::List(Rc::new(
-                        items
-                            .iter()
-                            .map(|x| if matches!(x, V::Num(n) if !n.is_finite()) { x.clone() } else { wrap(x) })
-                            .collect(),
-                    ))
-                }
-                _ => wrap(&v),
-            },
+            After::Dates => wrap(&v),
         }
     }
 }

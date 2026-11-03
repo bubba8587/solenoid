@@ -85,12 +85,8 @@ fn null_or(v: Option<f64>) -> V {
     v.map_or(V::Null, V::Num)
 }
 
-/// A when input: only a date ([[D114]] dateIsAKind).
 fn when_of(c: &Call) -> Option<f64> {
-    match first(c, "when") {
-        V::Date(n) => Some(n),
-        _ => None,
-    }
+    super::kit::day(&first(c, "when"))
 }
 
 // ─── Electrical ────────────────────────────────────────────────────────────────

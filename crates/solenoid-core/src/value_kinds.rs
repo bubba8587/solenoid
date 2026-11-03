@@ -153,3 +153,76 @@ pub fn for_aggregate(values: &[FrameCell]) -> AggregatePrep {
     }
     AggregatePrep::Nums(values.iter().filter_map(|v| if let FrameCell::Num(n) = v { Some(*n) } else { None }).collect())
 }
+
+/// The kinds a value holds, blanks and errors aside: the one scan every "is this one kind?" question reads
+/// ([[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Census {
+    pub dates: bool,
+    /// Numbers but NaN, unit cells among them.
+    pub numbers: bool,
+    pub text: bool,
+    pub logicals: bool,
+    /// Anything else: a complex number, a LAMBDA, a format.
+    pub other: bool,
+}
+
+impl Census {
+    pub fn of(v: &crate::excel_functions::V) -> Census {
+        let mut c = Census::default();
+        c.note(v);
+        c
+    }
+
+    pub fn note(&mut self, v: &crate::excel_functions::V) {
+        use crate::excel_functions::V;
+        match v {
+            V::List(items) => items.iter().for_each(|x| self.note(x)),
+            V::Null | V::Undef | V::Err(_) => {}
+            V::Date(_) => self.dates = true,
+            V::Num(n) => self.numbers |= !n.is_nan(),
+            V::Unit(_) => self.numbers = true,
+            V::Str(_) => self.text = true,
+            V::Bool(_) => self.logicals = true,
+            _ => self.other = true,
+        }
+    }
+
+    pub fn join(self, o: Census) -> Census {
+        Census {
+            dates: self.dates || o.dates,
+            numbers: self.numbers || o.numbers,
+            text: self.text || o.text,
+            logicals: self.logicals || o.logicals,
+            other: self.other || o.other,
+        }
+    }
+
+    /// The one kind it holds, by its family's name; "mixed" for more than one; "" for none.
+    pub fn family(self) -> &'static str {
+        let kinds = [(self.numbers, "number"), (self.dates, "date"), (self.text, "text"), (self.logicals, "logical")];
+        let n = kinds.iter().filter(|k| k.0).count() + usize::from(self.other);
+        match n {
+            0 => "",
+            1 if self.other => "mixed",
+            1 => kinds.iter().find(|k| k.0).map_or("", |k| k.1),
+            _ => "mixed",
+        }
+    }
+
+    /// Dates and nothing else but blanks and errors.
+    pub fn only_dates(self) -> bool {
+        self.dates && self.beside_dates().is_none()
+    }
+
+    /// The first kind beside dates, by its plural, where it holds dates and another kind.
+    pub fn beside_dates(self) -> Option<&'static str> {
+        if !self.dates {
+            return None;
+        }
+        [(self.numbers, "numbers"), (self.text, "text"), (self.logicals, "logicals"), (self.other, "other kinds")]
+            .into_iter()
+            .find(|k| k.0)
+            .map(|k| k.1)
+    }
+}

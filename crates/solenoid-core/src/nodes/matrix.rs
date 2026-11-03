@@ -758,8 +758,8 @@ fn cells_from_list(cells: &[V]) -> (Vec<V>, Option<Json>) {
 
 fn stack(c: &mut Call) -> Answer {
     let keys: Vec<String> = c.sockets.iter().map(|s| s.key.clone()).filter(|k| k.starts_with('t')).collect();
-    if let Some(other) = c.dates_meet(&keys.iter().map(String::as_str).collect::<Vec<_>>()) {
-        return result(c, super::dates_mixed(other), None);
+    if let Some(other) = c.mixes_dates(&keys.iter().map(String::as_str).collect::<Vec<_>>()) {
+        return result(c, crate::date_values::mixed(other), None);
     }
     let mut mats = Vec::new();
     for k in &keys {
