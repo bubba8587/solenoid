@@ -42,7 +42,7 @@ flowchart LR
 
 ## The result-type selector (`ResultTypeToggle`)
 
-A polyform producer computes through a runtime-polymorphic lambda or formula, so its element type can't be inferred. The user declares it instead (`ResultType`: Number, Text, Date or Auto), and the output socket swaps at the node's own dimensionality (`ResultDim`). `resultSocket(dim, t)` is the one table, used both to build the port (`resultOut`) and to swap it in place:
+A polyform producer computes through a runtime-polymorphic lambda or formula, so its element type can't be inferred ahead of the run. The user declares it (`ResultType`: Number, Text, Date or Auto; on the Formula card Auto is the default and takes the family the run computed, [[formula-language]] § Result socket), and the output socket swaps at the node's own dimensionality (`ResultDim`). `resultSocket(dim, t)` is the one table, used both to build the port (`resultOut`) and to swap it in place:
 
 | Dimensionality | Nodes | Number | Text | Date | Auto |
 |---|---|---|---|---|---|

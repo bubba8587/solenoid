@@ -291,7 +291,6 @@ live in specs.
 - [ ] **The formula highlighter paints a called λ socket (`λ1(`) as an unknown function** (`identClass`,
   formulaSyntax.ts). No surface shows it today (the popup's formula field is a plain input); fix it the day a
   highlighted editor edits a Frame Input column formula.
-- [ ] **Formulas still drop a date** ([[C136]] typesKnownAfterCalc; the cards were fixed 2026-11-02): a computed column's type comes from `yields_date` (`nodes/columns.rs`), so `XLOOKUP` / `MAX` / `MIN` / `INDEX` over a date column give a Number column, and a Formula card on Auto takes its family from `resultAs`, never from the run (`reconcileResultRank` gets a rank only). The formula evaluator knows when an argument is a date column; carry that family to the result (a produced family, as the extraction cards report) instead of widening the static declarations.
 - [ ] **Pivot view follow-ups** ([[C127]] pivotView, built 2026-10-20): fold column items as rows fold; sort an
   axis from its header (Configure Fields holds the sort today); Excel's "Merge and center cells with labels";
   drill-through from a value cell (Details lists a leaf's rows; a cell's rows also split by its column item), and

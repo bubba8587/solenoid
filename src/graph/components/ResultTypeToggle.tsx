@@ -12,8 +12,12 @@ type Producer = {
   id: string;
   edited(): void;
   resultAs: ResultType;
+  /** The family the last run computed, which Auto takes ([[C136]] typesKnownAfterCalc). */
+  lastResultFamily?: string;
   outputs: { result?: { socket: GraphSocket } };
 };
+
+const isResultType = (f: string | undefined): f is ResultType => f === "number" || f === "text" || f === "date";
 
 const RESULT_TYPE_OPTIONS = (Object.keys(RESULT_TYPE_META) as ResultType[]).map((value) => ({
   value,
@@ -28,7 +32,8 @@ async function applyResultAs(node: Producer, dim: ResultDim, resultAs: ResultTyp
   const editor = getOwningEditor(node.id); // active graph: result-type toggle inside a drill-in
   const view = getOwningView(node.id);
   const out = node.outputs.result;
-  if (out) out.socket = resultSocket(dim, resultAs);
+  const family = resultAs === "auto" && isResultType(node.lastResultFamily) ? node.lastResultFamily : resultAs;
+  if (out) out.socket = resultSocket(dim, family);
   if (editor && view) await retypeOutputCables(editor, view, node.id, "result");
 
   if (view) await view.rerenderNode(node.id);

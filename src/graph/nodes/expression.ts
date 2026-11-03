@@ -57,13 +57,18 @@ export class ExpressionNode extends GraphNode {
   /** A preset's input units: the formula reads that variable's number in this unit ([[C25]] firstClassUnits). */
   varUnits: Record<string, string> = {};
   lastResultRank: 1 | 2 = 1;
+  lastResultFamily?: ProducedFamily;
+  /** The body's last answer as `rank|family` ("1|date"), which the result socket follows (`coreWatch`). */
+  lastResultShape = "1|";
 
   constructor(init?: { label?: string; expr?: string; locked?: boolean; resultAs?: ResultType; literals?: Record<string, number>; varDescriptions?: Record<string, string>; varUnits?: Record<string, string> }) {
     super("Expression");
     this.label = init?.label ?? "Expression";
     this.expr  = init?.expr  ?? "";
     this.locked = init?.locked ?? false;
-    this.resultAs = init?.resultAs ?? "number";
+    // Auto by default: the result takes the family the formula computed, so a date it hands back stays a date
+    // ([[C136]] typesKnownAfterCalc); a picked Number, Text or Date is the user's declaration and stands.
+    this.resultAs = init?.resultAs ?? "auto";
     if (init?.literals) this.literals = { ...init.literals };
     if (init?.varDescriptions) this.varDescriptions = { ...init.varDescriptions };
     if (init?.varUnits) this.varUnits = { ...init.varUnits };
@@ -96,10 +101,13 @@ export class ExpressionNode extends GraphNode {
     return { added, removed };
   }
 
-  /** The body's answer changed rank: the result socket follows (`nodeOnCore`'s `coreWatch`). */
-  static coreWatch = "lastResultRank";
+  /** The body's answer changed rank or family: the result socket follows (`nodeOnCore`'s `coreWatch`). */
+  static coreWatch = "lastResultShape";
   coreWatched(): void {
-    retypeResult(this, this.resultAs);
+    const [rank, family] = this.lastResultShape.split("|");
+    this.lastResultRank = rank === "2" ? 2 : 1;
+    this.lastResultFamily = family === "number" || family === "text" || family === "date" ? family : undefined;
+    retypeResult(this, this.resultAs === "auto" ? this.lastResultFamily ?? "auto" : this.resultAs);
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {

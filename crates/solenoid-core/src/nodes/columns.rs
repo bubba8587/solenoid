@@ -358,24 +358,57 @@ const DATE_FUNCTIONS: &[&str] = &[
     "SUNSET",
 ];
 
-/// A date column or a date function, shifted by days, is a date.
-fn yields_date(ast: &Ast, is_date_name: &dyn Fn(&str) -> bool) -> bool {
+/// Whether a formula's answer is a date ([[C136]] typesKnownAfterCalc): a date column or name, a date function, a date
+/// shifted by days, or a function that hands back a date it was given: one it picks (XLOOKUP's return array, INDEX,
+/// the taken branch of IF, IFS, SWITCH, CHOOSE or IFERROR when every branch is a date), the mean, min, max or median of
+/// dates ([[C118]] formatTravelsWithValue), the sort and shape functions, and a rounded date. A sum or a spread of
+/// dates is a number, not a date.
+pub(crate) fn yields_date(ast: &Ast, is_date_name: &dyn Fn(&str) -> bool) -> bool {
     use crate::excel_formula::{BinOp, UnaryOp};
+    let d = |a: &Ast| yields_date(a, is_date_name);
+    // A blank or "" branch (IFERROR(x, "")) leaves the others to say.
+    let blank = |a: &Ast| matches!(a, Ast::Blank) || matches!(a, Ast::Str(t) if t.is_empty());
+    let all_dates = |xs: &mut dyn Iterator<Item = &Ast>| {
+        let mut any = false;
+        for x in xs.filter(|x| !blank(x)) {
+            if !d(x) {
+                return false;
+            }
+            any = true;
+        }
+        any
+    };
     match ast {
         Ast::Name(n) | Ast::AtCol(n) | Ast::WholeCol(n) => is_date_name(n),
-        Ast::Unary { op, arg } => *op == UnaryOp::Plus && yields_date(arg, is_date_name),
-        Ast::Bin { op: BinOp::Add, l, r } => yields_date(l, is_date_name) != yields_date(r, is_date_name),
-        Ast::Bin { op: BinOp::Sub, l, r } => yields_date(l, is_date_name) && !yields_date(r, is_date_name),
+        Ast::Unary { op, arg } => *op == UnaryOp::Plus && d(arg),
+        Ast::Bin { op: BinOp::Add, l, r } => d(l) != d(r),
+        Ast::Bin { op: BinOp::Sub, l, r } => d(l) && !d(r),
         Ast::Call { name, args } => {
             let up = name.to_uppercase();
             if DATE_FUNCTIONS.contains(&up.as_str()) {
                 return true;
             }
-            if up == "IF" && args.len() == 3 {
-                let branches: Vec<&Ast> = args[1..].iter().filter(|a| !matches!(a, Ast::Blank)).collect();
-                return !branches.is_empty() && branches.iter().all(|b| yields_date(b, is_date_name));
+            let arg = |i: usize| args.get(i).is_some_and(d);
+            match up.as_str() {
+                // IF with no else answers FALSE there, so only a written else can keep the column a date.
+                "IF" => args.len() == 3 && all_dates(&mut args[1..].iter()),
+                "IFS" => all_dates(&mut args.iter().skip(1).step_by(2)),
+                "SWITCH" => {
+                    let rest = args.get(1..).unwrap_or_default();
+                    let default = (rest.len() % 2 == 1).then(|| rest.last()).flatten();
+                    all_dates(&mut rest.chunks(2).filter_map(|p| p.get(1)).chain(default))
+                }
+                "CHOOSE" => all_dates(&mut args.iter().skip(1)),
+                "IFERROR" | "IFNA" => all_dates(&mut args.iter().take(2)),
+                "XLOOKUP" => arg(2),
+                "AVERAGEIF" => arg(if args.len() >= 3 { 2 } else { 0 }),
+                "MAX" | "MIN" | "MEDIAN" | "AVERAGE" | "VSTACK" | "HSTACK" => all_dates(&mut args.iter()),
+                "INDEX" | "SORT" | "SORTBY" | "FILTER" | "UNIQUE" | "TAKE" | "DROP" | "CHOOSEROWS" | "CHOOSECOLS"
+                | "TOCOL" | "TOROW" | "TRANSPOSE" | "WRAPROWS" | "WRAPCOLS" | "EXPAND" | "LARGE" | "SMALL"
+                | "MAXIFS" | "MINIFS" | "AVERAGEIFS" | "ROUND" | "ROUNDDOWN" | "ROUNDUP" | "INT" | "TRUNC"
+                | "MROUND" | "FLOOR" | "CEILING" | "FLOOR.MATH" | "CEILING.MATH" => arg(0),
+                _ => false,
             }
-            false
         }
         _ => false,
     }

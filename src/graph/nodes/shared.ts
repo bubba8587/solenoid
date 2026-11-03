@@ -73,10 +73,10 @@ export type ResultType = "number" | "text" | "date" | "auto";
 export type ResultDim = "scalar" | "combo" | "matrix";
 
 export const RESULT_TYPE_META: Record<ResultType, { label: string; title: string }> = {
-  number: { label: "Number", title: "The result is a number, the default" },
+  number: { label: "Number", title: "The result is a number" },
   text:   { label: "Text",   title: "The result is text, like UPPER(x) or x & \" \" & y" },
   date:   { label: "Date",   title: "The result is a date, like DATE(y,m,d) or EDATE(x,1)" },
-  auto:   { label: "Auto",   title: "The result takes whatever type the formula returns" },
+  auto:   { label: "Auto",   title: "The result takes the type the formula computes" },
 };
 
 const RESULT_SOCKETS: Record<ResultDim, Record<ResultType, GraphSocket>> = {

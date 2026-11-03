@@ -96,7 +96,9 @@ The type is inferred from the computed cells (`inferColumn`). Cells alone can't 
 - `date + number` (either order) is a date, and `date − number` is a date; `date − date` is a number of days;
 - unary `+` keeps a date;
 - a function whose registration declares `returns: "date"` gives a date;
-- IF gives a date when every branch it has is one.
+- a function that hands back a date it was given gives a date ([[C136]] typesKnownAfterCalc): the value XLOOKUP's return array, INDEX, the sort and shape functions (SORT, SORTBY, FILTER, UNIQUE, TAKE, DROP, CHOOSEROWS, CHOOSECOLS, TOCOL, TOROW, TRANSPOSE, WRAPROWS, WRAPCOLS, EXPAND), LARGE, SMALL, MAXIFS, MINIFS, AVERAGEIFS and AVERAGEIF read, and a date rounded (ROUND, ROUNDDOWN, ROUNDUP, INT, TRUNC, MROUND, FLOOR, CEILING and their .MATH forms);
+- MAX, MIN, MEDIAN, AVERAGE, VSTACK and HSTACK give a date when every argument is one; a sum or a spread of dates is a number ([[C118]] formatTravelsWithValue);
+- IF (with its else written: an omitted else is FALSE), IFS, SWITCH, CHOOSE, IFERROR and IFNA give a date when every branch they have is one, a blank or `""` branch leaving the others to say.
 
 Anything else stays a number. The Computed Column node can also pin the type instead of inferring it (Number, Text, Date or Boolean). Its output type picker (`addAs`) defaults to Auto, which infers from the computed cells; Date is offered because inference cannot always reach it, since a date serial is indistinguishable from a number.
 

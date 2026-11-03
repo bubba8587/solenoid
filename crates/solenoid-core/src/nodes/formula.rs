@@ -173,11 +173,36 @@ fn tag_result(v: &V) -> V {
     }
 }
 
-fn expression_done(c: &mut Call, result: V, error: Option<&str>, ranked: bool) -> Answer {
-    if ranked && !result.is_sol_error() {
-        // A table answers at rank 2, anything else at 1; the TS retypes the socket on a change.
+/// The family a formula's answer is ([[C136]] typesKnownAfterCalc): a date where the formula hands back a date it was
+/// given (a variable whose socket took a date type, through `yields_date`), else the kind of value it computed; blank
+/// where neither says.
+fn result_family(c: &Call, ast: &Ast, result: &V) -> &'static str {
+    let is_date = |n: &str| {
+        let ty = c.adopted_in.iter().find(|(k, _)| k == n).map(|(_, t)| t.as_str());
+        let ty = ty.or_else(|| c.sockets.iter().find(|s| s.key == n).and_then(|s| s.ty.as_deref()));
+        ty.is_some_and(|t| t.starts_with("date"))
+    };
+    fn first(v: &V) -> Option<&V> {
+        match v {
+            V::List(items) => items.iter().find_map(first),
+            V::Null | V::Undef | V::Err(_) => None,
+            other => Some(other),
+        }
+    }
+    match first(result) {
+        Some(V::Num(_) | V::Unit(_)) if super::columns::yields_date(ast, &is_date) => "date",
+        Some(V::Num(_) | V::Unit(_)) => "number",
+        Some(V::Str(_)) => "text",
+        _ => "",
+    }
+}
+
+fn expression_done(c: &mut Call, result: V, error: Option<&str>, family: Option<&str>) -> Answer {
+    if let Some(family) = family.filter(|_| !result.is_sol_error()) {
+        // A table answers at rank 2, anything else at 1, with the family it computed; the TS retypes the socket on a
+        // change, and an Auto result takes the family.
         let table = matches!(&result, V::List(items) if matches!(items.first(), Some(V::List(_))));
-        c.show("lastResultRank", V::Num(if table { 2.0 } else { 1.0 }));
+        c.show("lastResultShape", V::str(&format!("{}|{family}", if table { 2 } else { 1 })));
     }
     c.show("cachedResult", result.clone());
     c.show("cachedError", error.map_or(V::Null, V::str));
@@ -188,11 +213,11 @@ fn expression(c: &mut Call) -> Answer {
     let expr = c.field_str("expr", "").to_string();
     let Some(ast) = parse_formula(&expr) else {
         if trim_space(&expr).is_empty() {
-            return expression_done(c, V::Null, None, false);
+            return expression_done(c, V::Null, None, None);
         }
         let hint = syntax_hint(&expr);
         let e = err(ErrorCode::Syntax, hint.clone().unwrap_or_else(|| "The formula has a syntax error".into()));
-        return expression_done(c, e, Some(hint.as_deref().unwrap_or("Syntax error")), false);
+        return expression_done(c, e, Some(hint.as_deref().unwrap_or("Syntax error")), None);
     };
     let names = variables(&ast);
     let units = c.field("varUnits").and_then(Json::as_object).cloned().unwrap_or_default();
@@ -204,22 +229,25 @@ fn expression(c: &mut Call) -> Answer {
             _ => raw,
         };
         if read.is_sol_error() {
-            return expression_done(c, read, None, false);
+            return expression_done(c, read, None, None);
         }
         env.insert(v.clone(), read);
     }
     if names.iter().any(|v| has_unit_cell(&env[v])) {
         return match crate::unit_expression::expression_units(&expr, &env, &names) {
-            Some(v) => expression_done(c, v, None, true),
+            Some(v) => {
+                let family = result_family(c, &ast, &v);
+                expression_done(c, v, None, Some(family))
+            }
             _ => {
                 let e = err(ErrorCode::Value, "The formula failed to evaluate");
-                expression_done(c, e, Some("Evaluation error"), false)
+                expression_done(c, e, Some("Evaluation error"), None)
             }
         };
     }
     let Ok(raw) = evaluate(&expr, env) else {
         let e = err(ErrorCode::Value, "The formula failed to evaluate");
-        return expression_done(c, e, Some("Evaluation error"), false);
+        return expression_done(c, e, Some("Evaluation error"), None);
     };
     let result = match &raw {
         V::List(items) => list(
@@ -230,7 +258,8 @@ fn expression(c: &mut Call) -> Answer {
         ),
         _ => tag_result(&raw),
     };
-    expression_done(c, result, None, true)
+    let family = result_family(c, &ast, &result);
+    expression_done(c, result, None, Some(family))
 }
 
 // ─── Equation ──────────────────────────────────────────────────────────────────────
