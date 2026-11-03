@@ -2,7 +2,7 @@
 aliases: ["Value semantics"]
 tags: [spec, values]
 ---
-<!-- [[C24]] arraySemantics, [[D86]] blankRoles, [[C45]] excelComparisons, [[B16]] oneFormulaSurface, [[C22]] rowFormulaRefs -->
+<!-- [[C24]] arraySemantics, [[D114]] dateIsAKind, [[D86]] blankRoles, [[C45]] excelComparisons, [[B16]] oneFormulaSurface, [[C22]] rowFormulaRefs -->
 
 # Spec: Value semantics
 
@@ -156,6 +156,23 @@ flowchart TD
 ### What the node does with a blank
 
 Reading the input correctly is half of it; the other half is what the node then does, and that depends on the input's role: data stays blank, a setting left blank is its default, a blank pick is dropped, and a required one with no default is `#SYNTAX!` ([[D86]] blankRoles). The roles, the one declaration every function and card subscribes to (`ARG_ROLES`, `readRole`), what each input kind does today, where the check goes and the checklist for a new node are [[input-roles]].
+
+## Comparing, keying and storing a value
+
+A card body never builds its own reading of a value for a comparison, a key or a cell: each job has one path, and a new kind (a date was the last, [[D114]] dateIsAKind) is taught there once. A local converter with a catch-all is how a kind drifts: a date that fell to its display text compared as text, and one that fell to a shared key matched every other date. `crates/solenoid-core/tests/value_paths.rs` fails on a new local converter.
+
+| Job | The one path |
+|---|---|
+| What kinds a value holds (one kind, a mix, dates beside another kind) | `value_kinds::Census`, read through `date_values::census` (a long list's census is kept) |
+| A loose value as a table cell | `FrameCell::of_scalar`: a date is its day, as a Date column packs it; a list, a LAMBDA or a complex number is no cell |
+| A wired value as a filter's test value | `frame_verbs::filter_cell` (`of_scalar`, an error as its code) |
+| A value as text for a plan that takes text (a lookup, a find, a list test) | `frame_verbs::plan_text`: a date is its exact day number, which a Date column reads back as that day |
+| Equality (`===`): a match, a SWITCH case, a membership | `excel_functions::strict_equals`: a date equals the same date and never its serial |
+| A key for a set, a tally, an index or a lookup | `fns_matrix::set_key`, `fns_lists` `key_of`, `ExactKey`, `shapers` `KeyPart`: each has a Date key of its own, so a date never keys as its serial |
+| A date input's day | `kit::day` (only a date), `kit::cell_day` (a date or a Date column's packed number); in TypeScript `dayOf` (`dateValue.ts`) |
+| Combining inputs into one answer | `Call::mixes_dates` over the inputs' values, or `date_values::refuse_mixed` over the answer |
+
+Showing a value is not one of these jobs: display text (`value_text`, `formatDateSerial`) is for display and for a text function's argument, never for a value something then compares.
 
 ## Boundaries and bridges
 

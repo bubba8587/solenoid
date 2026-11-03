@@ -2958,7 +2958,7 @@ fn within_group(t: &Cv, score_at: usize, rank_at: usize) -> (Cv, Best) {
     for (n, s) in scores.iter().enumerate() {
         let r = if s.is_nullish() {
             V::Null
-        } else if n > 0 && strict_eq(&scores[n - 1], s) {
+        } else if n > 0 && cells_equal(&scores[n - 1], s) {
             ranks[n - 1].clone()
         } else {
             V::Num((n + 1) as f64)
@@ -2998,7 +2998,7 @@ fn within_group(t: &Cv, score_at: usize, rank_at: usize) -> (Cv, Best) {
 }
 
 /// `===` on cells: values by `strict_equals`, tables never.
-fn strict_eq(a: &Cv, b: &Cv) -> bool {
+fn cells_equal(a: &Cv, b: &Cv) -> bool {
     matches!((a, b), (Cv::V(x), Cv::V(y)) if crate::excel_functions::strict_equals(x, y))
 }
 

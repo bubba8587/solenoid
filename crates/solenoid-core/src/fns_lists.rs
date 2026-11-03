@@ -169,21 +169,11 @@ fn nums_of(v: &V) -> Vec<f64> {
         .collect()
 }
 
-/// `a === b`: objects (a list, an error) only equal themselves, and no two arguments share one.
-fn strict_eq(a: &V, b: &V) -> bool {
-    match (a, b) {
-        (V::Num(x), V::Num(y)) => x == y,
-        (V::Str(x), V::Str(y)) => x == y,
-        (V::Bool(x), V::Bool(y)) => x == y,
-        (V::Null, V::Null) | (V::Undef, V::Undef) => true,
-        _ => false,
-    }
-}
-
 /// A set member's key: NaN is one key, -0 is 0, a list keys by its items; a LAMBDA or unit value is only itself.
 #[derive(Hash, PartialEq, Eq, Clone)]
 enum Key {
     Num(u64),
+    Date(u64),
     Str(Rc<str>),
     Bool(bool),
     Null,
@@ -195,6 +185,7 @@ enum Key {
 fn key_of(v: &V, id: usize) -> Key {
     match v {
         V::Num(n) => Key::Num(if n.is_nan() { f64::NAN.to_bits() } else { (n + 0.0).to_bits() }),
+        V::Date(n) => Key::Date((n + 0.0).to_bits()),
         V::Str(s) => Key::Str(s.clone()),
         V::Bool(b) => Key::Bool(*b),
         V::Null => Key::Null,
@@ -576,7 +567,7 @@ fn answer(name: &str, a: &[V]) -> V {
             let mut i = 0;
             while i < l.len() {
                 let mut j = i + 1;
-                while j < l.len() && strict_eq(&l[j], &l[i]) {
+                while j < l.len() && crate::excel_functions::strict_equals(&l[j], &l[i]) {
                     j += 1;
                 }
                 out.push(list(vec![l[i].clone(), V::Num((j - i) as f64)]));
@@ -2470,7 +2461,15 @@ fn bracket(axis: &[V], x: f64) -> (usize, usize, f64) {
         return (lo, lo, 0.0);
     }
     let (x0, x1) = (&axis[lo], &axis[hi]);
-    (lo, hi, if lo == hi || strict_eq(x1, x0) { 0.0 } else { (x - number(x0)) / (number(x1) - number(x0)) })
+    (
+        lo,
+        hi,
+        if lo == hi || crate::excel_functions::strict_equals(x1, x0) {
+            0.0
+        } else {
+            (x - number(x0)) / (number(x1) - number(x0))
+        },
+    )
 }
 
 /// Grid mode: the axes, the forecast reading and `fill_grid`.
