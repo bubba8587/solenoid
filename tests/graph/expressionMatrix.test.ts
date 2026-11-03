@@ -80,5 +80,7 @@ describe("the result socket takes the rank and family of the value it carried ([
     expect(await typed("1/0")).toBe("table");
     expect(await typed("3")).toBe("numlist");
     expect(await typed("\"a\"")).toBe("strcombo");
+    expect(await typed("COMPLEX(3, 4)")).toBe("complexcombo");
+    expect(await typed("MAKEARRAY(2, 2, LAMBDA(r, c, COMPLEX(r, c)))")).toBe("complextable");
   });
 });

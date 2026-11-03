@@ -163,7 +163,8 @@ pub struct Census {
     pub numbers: bool,
     pub text: bool,
     pub logicals: bool,
-    /// Anything else: a complex number, a LAMBDA, a format.
+    pub complex: bool,
+    /// Anything else: a LAMBDA, a format.
     pub other: bool,
 }
 
@@ -184,6 +185,7 @@ impl Census {
             V::Unit(_) => self.numbers = true,
             V::Str(_) => self.text = true,
             V::Bool(_) => self.logicals = true,
+            V::Cx(..) => self.complex = true,
             _ => self.other = true,
         }
     }
@@ -194,13 +196,20 @@ impl Census {
             numbers: self.numbers || o.numbers,
             text: self.text || o.text,
             logicals: self.logicals || o.logicals,
+            complex: self.complex || o.complex,
             other: self.other || o.other,
         }
     }
 
     /// The one kind it holds, by its family's name; "mixed" for more than one; "" for none.
     pub fn family(self) -> &'static str {
-        let kinds = [(self.numbers, "number"), (self.dates, "date"), (self.text, "text"), (self.logicals, "logical")];
+        let kinds = [
+            (self.numbers, "number"),
+            (self.dates, "date"),
+            (self.text, "text"),
+            (self.logicals, "logical"),
+            (self.complex, "complex"),
+        ];
         let n = kinds.iter().filter(|k| k.0).count() + usize::from(self.other);
         match n {
             0 => "",
@@ -220,9 +229,15 @@ impl Census {
         if !self.dates {
             return None;
         }
-        [(self.numbers, "numbers"), (self.text, "text"), (self.logicals, "logicals"), (self.other, "other kinds")]
-            .into_iter()
-            .find(|k| k.0)
-            .map(|k| k.1)
+        [
+            (self.numbers, "numbers"),
+            (self.text, "text"),
+            (self.logicals, "logicals"),
+            (self.complex, "complex numbers"),
+            (self.other, "other kinds"),
+        ]
+        .into_iter()
+        .find(|k| k.0)
+        .map(|k| k.1)
     }
 }
