@@ -767,6 +767,7 @@ describe("[[A1]] visualGraphCalculator — every node-keyed store registers with
     "scriptPopupStore.ts": "ONE transient open-popup id, not a per-node map",
     "pivotEditorStore.ts": "ONE transient open-editor id, not a per-node map",
     "elementPickerStore.ts": "ONE transient open-picker id, not a per-node map",
+    "filePickerStore.ts": "ONE transient open file picker, not a per-node map",
     "compositeEditorStore.ts": "ONE transient open-drill-in id, not a per-node map",
   };
 

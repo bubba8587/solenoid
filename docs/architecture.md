@@ -362,6 +362,8 @@ shared by the voice lint (`uiCopy.test.ts`) and the hand-rewrite tool
 `connectionStore.ts` (cached async fetch + refresh generation),
 `fileBridge.ts` (Tauri fs/dialog behind an `isDesktop()` guard, plus a
 path-aware dispatch so a demo-vault path routes to the in-memory provider),
+`chooseFile.ts` + `FilePicker.tsx` + `PickField.tsx` (a card's file or folder pick: the
+operating system's dialog on desktop, the app's own picker on the web and for the demo vault),
 `demoVault.ts` + `demoVaultData.ts` (the bundled read-only demo vault behind
 the sentinel root `solenoid:demo-vault`, so the vault readers work with no
 filesystem — web included; `getVaultRoot()` selects it via the "Use demo

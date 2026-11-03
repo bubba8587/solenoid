@@ -29,6 +29,8 @@ import { FrameDisplay } from "./FrameDisplay";
 import { ArrayChip } from "./ArrayChip";
 import { CubeChip } from "./CubeChip";
 import { LazySelect } from "./LazySelect";
+import { PickField } from "./PickField";
+import { chooseFile } from "../chooseFile";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
@@ -263,7 +265,6 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
 }
 
 // ─── CSV CONNECTION (local folder) ──────────────────────────────────────────────
-// A native <LazySelect> needs pointerdown and mousedown stopPropagation, or the node-drag re-render closes it mid-pick.
 
 export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>) {
   const folder = useSyncExternalStore(settingsStore.subscribe, getCsvFolder);
@@ -300,17 +301,20 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
         ) : !folder ? (
           <div className="sol-conn__note">No target folder set. Open Settings ▸ Data to choose one.</div>
         ) : (
-          <LazySelect
-            className="sol-conn__select"
+          <PickField
             value={name}
-            onChange={(e) => pick(e.target.value)}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <option value="">Pick a file…</option>
-            {name !== "" && !files.includes(name) && <option value={name}>{name} (missing)</option>}
-            {files.map((f) => <option key={f} value={f}>{f}</option>)}
-          </LazySelect>
+            placeholder="Pick a file…"
+            missing={name !== "" && !files.includes(name)}
+            title={name ? `${name}: choose another file` : "Choose a CSV or Parquet file in the data folder"}
+            onPick={() => void chooseFile({
+              title: "Choose a file",
+              root: folder,
+              extensions: ["csv", "parquet"],
+              current: name || undefined,
+              list: () => listLocalFiles(folder),
+              empty: "No CSV or Parquet files in the data folder",
+            }).then((rel) => { if (rel) pick(rel); })}
+          />
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
         {desktop && folder && (
@@ -800,20 +804,22 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 </button>
               )}
             </div>
-            <select
-                className="sol-conn__select"
-                style={{ width: "100%" }}
-                value={folder}
-                disabled={connected.has("folder")}
-                title={connected.has("folder") ? "Driven by the Folder cable" : undefined}
-                onChange={(e) => pickFolder(e.target.value)}
-                onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-              >
-                <option value="">Whole vault</option>
-                {/* A picked folder that no longer lists still shows, so the selection isn't silently lost. */}
-                {folder && !folders.includes(folder) && <option value={folder}>{folder}</option>}
-                {folders.map((f) => <option key={f} value={f}>{f}</option>)}
-              </select>
+            <PickField
+              value={folder}
+              placeholder="Whole vault"
+              missing={folder !== "" && !folders.includes(folder)}
+              disabled={connected.has("folder")}
+              title={connected.has("folder") ? "Driven by the Folder cable" : "Choose a vault folder"}
+              onPick={() => void chooseFile({
+                title: "Choose a vault folder",
+                root: vault,
+                kind: "folder",
+                current: folder || undefined,
+                rootLabel: "Whole vault",
+                list: () => listVaultFolders(vault),
+                blocked: vault.trim() === "" ? "Set the Obsidian vault folder in Settings." : undefined,
+              }).then((rel) => { if (rel !== null) pickFolder(rel); })}
+            />
             <label className="sol-conn__field" title="Only notes whose name matches. * stands for anything.">
               Filter
               <input

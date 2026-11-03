@@ -1,5 +1,5 @@
 // [[B18]] safeToShare, [[B11]] maximalMerge, [[C26]] opArgDistinct
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WriteFormat } from "../nodeClasses";
 import { hasFs, isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal } from "../fileBridge";
 import { getVaultRoot } from "../demoVault";
@@ -15,7 +15,8 @@ import { DocumentChip } from "./DocumentChip";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { dropInputCables } from "./cablePrune";
-import { RefreshIcon } from "./RefreshIcon";
+import { PickField } from "./PickField";
+import { chooseFile } from "../chooseFile";
 import { SegToggle } from "./SegToggle";
 import { OBSIDIAN_WRITE_MODE_OPTIONS, OBSIDIAN_TARGET_OPTIONS, type WriteObsidianTarget } from "../nodes/obsidian";
 import type { ObsidianWriteMode } from "../obsidianWrite";
@@ -182,33 +183,12 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   const [armed, setArmed] = useState(d.enabled);
   const [status, setStatus] = useState(d.status);
   const [message, setMessage] = useState(d.statusMessage);
-  const [folders, setFolders] = useState<string[]>([]);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [files, setFiles] = useState<string[]>([]);
-  const [search, setSearch] = useState("");
   const vaultFs = hasFs();
   const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot());
 
   const activeMode = d.resolveMode(); // "note" | "properties"
   const inputKeys = activeMode === "properties" ? ["in", "rows", "keys"] : ["in", "path", "rows"];
 
-  useEffect(() => {
-    let live = true;
-    void listVaultFolders(vault).then((f) => { if (live) setFolders(f); });
-    return () => { live = false; };
-  }, [vault]);
-  useEffect(() => {
-    if (!pickerOpen) return;
-    let live = true;
-    void listVaultMarkdownFiles(vault).then((f) => { if (live) setFiles(f); });
-    return () => { live = false; };
-  }, [pickerOpen, vault]);
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return q ? files.filter((f) => f.toLowerCase().includes(q)) : files;
-  }, [files, search]);
-
-  function refreshFolders() { void listVaultFolders(vault).then(setFolders); }
   function pickTarget(v: WriteObsidianTarget) { d.target = v; setTarget(v); void getOwningView(d.id)?.rerenderNode(d.id); d.edited(); void processGraph(); }
   function pickSubfolder(v: string) { d.subfolder = v; setSubfolder(v); notifyGraphChanged(); }
   function pickMode(v: ObsidianWriteMode) { d.mode = v; setMode(v); notifyGraphChanged(); }
@@ -226,7 +206,6 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
     const base = slash >= 0 ? noMd.slice(slash + 1) : noMd;
     d.subfolder = folder; setSubfolder(folder);
     (d.stringLiterals ??= {}).path = base;
-    setPickerOpen(false);
     void getOwningView(d.id)?.rerenderNode(d.id);
     d.edited(); void processGraph();
   }
@@ -263,57 +242,21 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
 
         {activeMode === "note" ? (
           <>
-            <button
-              type="button"
-              className="sol-write__browse"
-              title={pickerOpen ? "Hide vault notes" : "Browse the vault for a note to write to"}
-              onClick={(e) => { e.stopPropagation(); setPickerOpen((o) => !o); }}
-              {...stopPtr}
-            >
-              {/* Lucide "folder-open" (ISC), the Import chooser's glyph. */}
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" />
-              </svg>
-              Browse…
-            </button>
-            {pickerOpen && (
-              <div className="sol-import__picker" {...stopPtr}>
-                {!vaultFs ? (
-                  <div className="sol-import__empty">Reading a vault is available in the desktop app only.</div>
-                ) : vault.trim() === "" ? (
-                  <div className="sol-import__empty">Set the Obsidian vault folder in Settings.</div>
-                ) : (
-                  <>
-                    <input
-                      className="sol-import__search"
-                      type="text"
-                      value={search}
-                      placeholder="Search notes…"
-                      spellCheck={false}
-                      autoFocus
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
-                    <div className="sol-import__list nowheel">
-                      {filtered.length === 0 ? (
-                        <div className="sol-import__empty">No .md files</div>
-                      ) : (
-                        filtered.map((f) => (
-                          <button
-                            key={f}
-                            type="button"
-                            className={`sol-import__row${f.replace(/\.md$/i, "") === [d.subfolder, d.stringLiterals?.path].filter(Boolean).join("/") ? " sol-import__row--on" : ""}`}
-                            title={f}
-                            onClick={() => pickFile(f)}
-                          >
-                            {f}
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+            <PickField
+              value={[d.subfolder, d.stringLiterals?.path].filter(Boolean).join("/")}
+              placeholder="Browse the vault for a note…"
+              title="Choose a vault note to write to"
+              disabled={!vaultFs}
+              onPick={() => void chooseFile({
+                title: "Choose a note to write to",
+                root: vault,
+                extensions: ["md"],
+                current: d.stringLiterals?.path ? `${[d.subfolder, d.stringLiterals.path].filter(Boolean).join("/")}.md` : undefined,
+                list: () => listVaultMarkdownFiles(vault),
+                empty: "No notes in the vault",
+                blocked: vault.trim() === "" ? "Set the Obsidian vault folder in Settings." : undefined,
+              }).then((rel) => { if (rel) pickFile(rel); })}
+            />
             {rtarget.name && <div className="sol-conn__note" title="Where Run writes">{[rtarget.subfolder, renderedName].filter(Boolean).join("/")}.md</div>}
             <SegToggle value={mode} options={OBSIDIAN_WRITE_MODE_OPTIONS} onChange={pickMode} />
             <label className="sol-write__armed" title="Add a solenoid: link on the note + a Solenoid/<graph> stub note" {...stopPtr}>
@@ -321,14 +264,21 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
               Link to graph
             </label>
             {stamp && <div className="sol-conn__note" title="Stub note this write adds a solenoid: link to">+ {stubRelPath(documentStore.currentName())}</div>}
-            <div className="sol-conn__line">
-              <select className="sol-conn__select" style={{ flex: 1 }} value={subfolder} onChange={(e) => pickSubfolder(e.target.value)} {...stopPtr}>
-                <option value="">Vault root</option>
-                {subfolder && !folders.includes(subfolder) && <option value={subfolder}>{subfolder}</option>}
-                {folders.map((f) => <option key={f} value={f}>{f}</option>)}
-              </select>
-              <button type="button" className="sol-conn__refresh" title="Rescan vault folders" onClick={(e) => { e.stopPropagation(); refreshFolders(); }} {...stopPtr}><RefreshIcon /></button>
-            </div>
+            <PickField
+              value={subfolder}
+              placeholder="Vault root"
+              title="The folder the note is written in"
+              disabled={!vaultFs}
+              onPick={() => void chooseFile({
+                title: "Choose a folder to write in",
+                root: vault,
+                kind: "folder",
+                current: subfolder || undefined,
+                rootLabel: "Vault root",
+                list: () => listVaultFolders(vault),
+                blocked: vault.trim() === "" ? "Set the Obsidian vault folder in Settings." : undefined,
+              }).then((rel) => { if (rel !== null) pickSubfolder(rel); })}
+            />
           </>
         ) : (
           <>

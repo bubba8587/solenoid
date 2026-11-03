@@ -1,0 +1,71 @@
+/* Quiet Accent: rows are plain, color marks only the highlighted row and the current pick. */
+
+.file-picker {
+  width: 440px;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-picker__body {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.file-picker__list {
+  display: flex;
+  flex-direction: column;
+  max-height: min(420px, 60vh);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-sunken);
+}
+
+.file-picker__row {
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 5px 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+  min-width: 0;
+}
+.file-picker__row:last-child { border-bottom: none; }
+.file-picker__row--at { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.file-picker__row--current { color: var(--text-bright); }
+.file-picker__row--current .file-picker__name { font-weight: 600; }
+
+.file-picker__name {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-picker__folder {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.file-picker__empty {
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 14px 8px;
+  text-align: center;
+  text-wrap-style: balance;
+}

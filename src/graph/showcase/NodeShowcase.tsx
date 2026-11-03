@@ -12,6 +12,7 @@ import { TablePopup } from "../components/TablePopup";
 import { CubePopup } from "../components/CubePopup";
 import { ChartPopup } from "../components/ChartPopup";
 import { ElementPicker } from "../components/ElementPicker";
+import { FilePicker } from "../components/FilePicker";
 import { PivotEditorPopup } from "../components/PivotEditorPopup";
 import "./NodeShowcase.css";
 
@@ -165,6 +166,7 @@ function LoadedShowcase({ initialType }: { initialType: string }) {
       <CubePopup />
       <ChartPopup />
       <ElementPicker />
+      <FilePicker />
       <PivotEditorPopup />
     </div>
   );

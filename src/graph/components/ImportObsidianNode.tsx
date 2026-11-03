@@ -27,6 +27,8 @@ import type { NodeProps } from "./nodeKit";
 import type { FrontmatterFieldType } from "../noteFrontmatter";
 import "./NoteNode.css";
 import "./ImportObsidianNode.css";
+import { PickField } from "./PickField";
+import { chooseFile } from "../chooseFile";
 import { renderNoteMarkdown } from "../noteMarkdown";
 import { useKatexReady } from "./katexLoader";
 import { measureThenWrite } from "./layoutBatch";
@@ -50,8 +52,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const [body, setBody] = useState(data.body);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [files, setFiles] = useState<string[]>([]);
   const [minutes, setMinutes] = useState(data.refreshMinutes);
   const [, setFieldsVersion] = useState(0);
   const swatchRef = useRef<HTMLButtonElement>(null);
@@ -66,17 +66,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
   useEffect(() => { setBody(data.body); }, [data.body]);
 
-  useEffect(() => {
-    if (!pickerOpen) return;
-    let live = true;
-    void listVaultMarkdownFiles(vault).then((f) => { if (live) setFiles(f); });
-    return () => { live = false; };
-  }, [pickerOpen, vault]);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return q ? files.filter((f) => f.toLowerCase().includes(q)) : files;
-  }, [files, search]);
 
   // The Note's on-blur reconcile: re-derive the frontmatter sockets, then drop the cables a removed or retyped key stranded.
   async function applyBody(content: string, sourcePath: string) {
@@ -100,7 +89,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     try {
       const content = await readVaultFile(vault, rel);
       await applyBody(content, rel);
-      setPickerOpen(false);
     } catch { /* unreadable (moved/renamed) — leave the current body */ }
   }
 
@@ -180,7 +168,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
         <button
           type="button"
           className="solenoid-note__swatch"
-          title={pickerOpen ? "Hide files" : "Choose a vault file"}
+          title={pickerOpen ? "Hide the note's source" : "The note's source: which vault note, and how often it reloads"}
           onClick={(e) => { e.stopPropagation(); setPickerOpen((o) => !o); }}
           onPointerDown={stopDragStart}
           onMouseDown={stopDragStart}
@@ -234,34 +222,20 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
             <div className="sol-import__empty">Set the Obsidian vault folder in Settings.</div>
           ) : (
             <>
-              <input
-                className="sol-import__search"
-                type="text"
-                value={search}
-                placeholder="Search notes…"
-                spellCheck={false}
-                autoFocus
-                onChange={(e) => setSearch(e.target.value)}
+              <PickField
+                value={data.fileName}
+                placeholder="Choose a note…"
+                title={data.fileName ? `${data.fileName}: choose another note` : "Choose a note in the vault"}
+                onPick={() => void chooseFile({
+                  title: "Choose a note",
+                  root: vault,
+                  extensions: ["md"],
+                  current: data.fileName || undefined,
+                  list: () => listVaultMarkdownFiles(vault),
+                  empty: "No notes in the vault",
+                }).then((rel) => { if (rel) void pickFile(rel); })}
               />
-              <div className="sol-import__list nowheel">
-                {filtered.length === 0 ? (
-                  <div className="sol-import__empty">No .md files</div>
-                ) : (
-                  filtered.map((f) => (
-                    <button
-                      key={f}
-                      type="button"
-                      className={`sol-import__row${f === data.fileName ? " sol-import__row--on" : ""}`}
-                      title={f}
-                      onClick={() => void pickFile(f)}
-                    >
-                      {f}
-                    </button>
-                  ))
-                )}
-              </div>
               <div className="sol-import__foot">
-                <span className="sol-import__file" title={data.fileName || undefined}>{data.fileName || "no file"}</span>
                 <label className="sol-import__every" title="Reload from the vault on this cadence. 0 turns it off.">
                   every
                   <input

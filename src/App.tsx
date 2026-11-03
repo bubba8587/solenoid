@@ -21,6 +21,7 @@ import { TablePopup } from "./graph/components/TablePopup";
 import { CubePopup } from "./graph/components/CubePopup";
 import { ChartPopup } from "./graph/components/ChartPopup";
 import { ElementPicker } from "./graph/components/ElementPicker";
+import { FilePicker } from "./graph/components/FilePicker";
 import { PivotEditorPopup } from "./graph/components/PivotEditorPopup";
 import { ShortcutsOverlay } from "./graph/ShortcutsOverlay";
 import { Settings } from "./graph/Settings";
@@ -138,6 +139,7 @@ function MainApp() {
       <TablePopup />
       <ChartPopup />
       <ElementPicker />
+      <FilePicker />
       <PivotEditorPopup />
       <ShortcutsOverlay />
       <HelpDialogs />
