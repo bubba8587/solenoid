@@ -103,7 +103,7 @@ Lists, matrices and Frames carry three distinct kinds besides values ([[C24]] ar
 
 - a first-class `null`: missing, rendered `null`, skipped by aggregators, dropped by Filter's predicate, propagated by element-wise math;
 - per-cell `SolError`s, which propagate;
-- a first-class logical: the purple socket family, TRUE/FALSE, converting to and from 1/0.
+- a first-class logical: the blue socket family, TRUE/FALSE, converting to and from 1/0.
 
 The core carries it: `for_aggregate` (`value_kinds.rs`: skip null, propagate errors) and the Kleene AND and OR (`kleene_and`, `kleene_or`). `FrameColumn` has a `logical` column type and per-cell errors, and the table popup edits number, text, date and logical columns. `IS.TEST` (ISNULL and the type checks) tests per cell to any depth, Frames included. Saving needs no new format: computed values regenerate, and a Frame Input's logical and null cells round-trip through `frameText`. In the popup grid an error cell shows its code as text, not a badge.
 

@@ -189,11 +189,11 @@ family.
 | Hollow ring (outline only) | anything | `trueany` |
 
 Colors by family: number amber, text yellow-green, date pink, complex sky blue,
-logical purple, frame and cube violet, and GREEN shared three ways — function,
+logical blue, frame and cube violet, and GREEN shared three ways — function,
 chart and document all draw the same green slot, told apart only by glyph (λ,
 plain circle, two text lines); all six wildcards gray. Within a family, the
-strict list is a darker shade of the scalar and the matrix is hue-shifted −11°
-(plus a saturation gain) — the hue shift is what separates a 2-D socket from
+strict list is a darker shade of the scalar and the matrix is hue-shifted −12°
+in OKLCh, a little darker — the hue shift is what separates a 2-D socket from
 its scalar. A combo's split square
 takes the scalar color on the upper-left triangle and the list color on the
 lower-right. `anycombo`, whose family has only one color, takes gray on the

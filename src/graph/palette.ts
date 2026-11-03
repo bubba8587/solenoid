@@ -139,21 +139,28 @@ export const COLOR_PALETTE: PaletteSlot[] = [
   "gray", "vermilion", "violet", "pink", "sky", "teal",
 ];
 
-const ARRAY_VALUE_SCALE = 0.85;
-export function socketArrayShade(hex: string): string {
-  const t = parseHex(hex);
-  if (!t) return hex;
-  const [h, s, v] = rgbToHsv(...t);
-  return hsvToHex(h, s, v * ARRAY_VALUE_SCALE);
+// A list's and a matrix's shade of its family's color, made in OKLCH so one rule looks equally strong in every family:
+// HSV's hue angle and value aren't how eyes see color, so −11° of HSV hue turned gold into orange and barely moved
+// purple. The list rule is what the HSV one already did, measured; the matrix rule is its median step (author 2026-11-03).
+const ARRAY_LIGHTNESS = 0.885;
+const ARRAY_CHROMA = 0.88;
+const MATRIX_LIGHTNESS = 0.91;
+const MATRIX_HUE_SHIFT = -12;
+
+/** `hex` at `lScale` its OKLCH lightness, `cScale` its chroma and its hue turned `dh` degrees; a color past sRGB gives
+ *  up chroma until it fits (`oklchToHex`). */
+function oklchShade(hex: string, lScale: number, cScale: number, dh: number): string {
+  if (!parseHex(hex)) return hex;
+  const [L, C, h] = hexToOklch(hex);
+  return oklchToHex(L * lScale, C * cScale, h + dh);
 }
-const MATRIX_HUE_SHIFT = -11;
-const MATRIX_SAT_GAIN = 1.18;
-const MATRIX_VALUE_SCALE = 0.92;
+
+export function socketArrayShade(hex: string): string {
+  return oklchShade(hex, ARRAY_LIGHTNESS, ARRAY_CHROMA, 0);
+}
+
 export function socketMatrixShade(hex: string): string {
-  const t = parseHex(hex);
-  if (!t) return hex;
-  const [h, s, v] = rgbToHsv(...t);
-  return hsvToHex(h + MATRIX_HUE_SHIFT, Math.min(1, s * MATRIX_SAT_GAIN), v * MATRIX_VALUE_SCALE);
+  return oklchShade(hex, MATRIX_LIGHTNESS, 1, MATRIX_HUE_SHIFT);
 }
 
 export type SocketVarKind = "scalar" | "array" | "matrix";
@@ -169,9 +176,9 @@ export const SOCKET_VARS: { var: string; slot: PaletteSlot; kind: SocketVarKind 
   { var: "--sock-complex",     slot: "sky",       kind: "scalar" },
   { var: "--sock-complexlist", slot: "sky",       kind: "array" },
   { var: "--sock-complextable",slot: "sky",       kind: "matrix" },
-  { var: "--sock-logical",     slot: "purple",    kind: "scalar" },
-  { var: "--sock-logicallist", slot: "purple",    kind: "array" },
-  { var: "--sock-logicaltable",slot: "purple",    kind: "matrix" },
+  { var: "--sock-logical",     slot: "blue",      kind: "scalar" },
+  { var: "--sock-logicallist", slot: "blue",      kind: "array" },
+  { var: "--sock-logicaltable",slot: "blue",      kind: "matrix" },
   { var: "--sock-table",       slot: "gold",      kind: "matrix" },
   { var: "--sock-frame",       slot: "violet",    kind: "scalar" },
   { var: "--sock-cube",        slot: "violet",    kind: "scalar" },

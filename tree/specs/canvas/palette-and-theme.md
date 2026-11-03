@@ -29,9 +29,9 @@ The twelve slots and their Default hexes:
 |---|---|---|
 | `gray` | `#8a8f98` | `--sock-any` |
 | `amber` | `#d9742b` | none (the input node kind) |
-| `blue` | `#3173e0` | none (the math node kind) |
+| `blue` | `#3173e0` | the logical sockets (and the math node kind) |
 | `teal` | `#4fc89a` | none (the convert node kind) |
-| `purple` | `#c05dd1` | the logical sockets (the logic node kind) |
+| `purple` | `#c05dd1` | none (the logic node kind) |
 | `green` | `#00b862` | `--sock-lambda`, `--sock-chart` |
 | `gold` | `#f5b914` | `--sock-number`, `--sock-list`, `--sock-table` |
 | `lime` | `#c8e040` | the string sockets |
@@ -62,7 +62,7 @@ Each socket color is derived in this order:
 
 1. Resolve the slot through the effective palette.
 2. Apply the light-mode accent drop (`themeAccent`). This comes first so the drop compounds exactly once, not again on top of the shade.
-3. Apply the kind's shade. `socketArrayShade` multiplies HSV value by 0.85. `socketMatrixShade` shifts hue by −11°, multiplies saturation by 1.18 (capped at 1) and value by 0.92. The hue shift is what tells a 2-D socket from its scalar; the saturation and value steps only keep it in the same weight class.
+3. Apply the kind's shade, in OKLCh (`oklchShade`): `socketArrayShade` takes lightness × 0.885 and chroma × 0.88; `socketMatrixShade` takes lightness × 0.91 and turns the hue −12°, chroma kept. A color the step pushes past sRGB gives up chroma until it fits (`oklchToHex`). The hue turn is what tells a 2-D socket from its scalar. OKLCh because it measures color as eyes see it, so one step reads equally strong in every family: the HSV steps these replaced (value × 0.85; hue −11°, saturation × 1.18, value × 0.92) turned gold's matrix 25° into orange and barely moved sky's. The list step is the HSV one's own measured effect, the matrix step its median (author 2026-11-03).
 4. Write the result as `--sock-X` and a ring as `--sock-X-ring`: `socketRingShade`, a fixed HSV value drop of 0.23 off that same fill, so every glyph's border reads at the same contrast whatever the fill's lightness.
 
 ```mermaid
@@ -71,14 +71,14 @@ flowchart LR
     r --> drop["2. the light-mode<br>accent drop"]
     drop --> kind{"3. its kind"}
     kind -->|scalar| as["as is"]
-    kind -->|"array: a list"| arr["HSV value × 0.85"]
-    kind -->|matrix| mat["hue −11°, saturation × 1.18,<br>value × 0.92"]
+    kind -->|"array: a list"| arr["OKLCh lightness × 0.885,<br>chroma × 0.88"]
+    kind -->|matrix| mat["OKLCh lightness × 0.91,<br>hue −12°"]
     as --> out["4. --sock-X, and its ring<br>(value − 0.23)"]
     arr --> out
     mat --> out
 ```
 
-All of these steps run in HSV (`DESIGN.md` §Tertiary). A canvas renderer (the minimap, the HTML-in-Canvas snapshot) cannot read a CSS variable, so `socketVarHex(expr, mode)` runs the same derivation without the DOM. It accepts a bare `--sock-*` name or a `var(--sock-*)` expression, passes a bare hex through unchanged, and returns gray for anything it does not recognize.
+The accent drop and the ring run in HSV, the shades in OKLCh (`DESIGN.md` §Tertiary). A canvas renderer (the minimap, the HTML-in-Canvas snapshot) cannot read a CSS variable, so `socketVarHex(expr, mode)` runs the same derivation without the DOM. It accepts a bare `--sock-*` name or a `var(--sock-*)` expression, passes a bare hex through unchanged, and returns gray for anything it does not recognize.
 
 ## Card colors
 

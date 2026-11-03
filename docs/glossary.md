@@ -64,7 +64,7 @@ cables (the author, 2026-10-25).
   (the core's `value_kinds.rs`; its unit-aware twin is `for_aggregate_units`, `unit_lists.rs`)
 - **Kleene logic**: 3-valued AND/OR/NOT (true/false/null) matching SQL.
   (the core's `kleene_and`/`kleene_or`, `excel_functions.rs`; [[C24]] arraySemantics)
-- **Logical type**: the first-class Boolean (the purple socket family), rendering TRUE/FALSE
+- **Logical type**: the first-class Boolean (the blue socket family), rendering TRUE/FALSE
   and converting to and from 1/0. Logical ↔ number is the one cross-family socket bridge.
   (`sockets.ts`, `nodes/logic.ts`)
 - **V / Cv**: the core's two value types. **V** is a formula value: a scalar, a list, a matrix,
