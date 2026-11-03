@@ -8,7 +8,7 @@ import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { CardSection } from "./CardSection";
 import { SegToggle } from "./SegToggle";
-import { TypeIcon } from "./TypeIcon";
+import { NoCastIcon, TypeIcon } from "./TypeIcon";
 
 type Producer = {
   id: string;
@@ -21,7 +21,7 @@ type Producer = {
 
 const OPTIONS = (Object.keys(CAST_TO_META) as CastTo[]).map((value) => ({
   value,
-  label: value === "none" ? CAST_TO_META.none.label : <TypeIcon type={value} />,
+  label: value === "none" ? <NoCastIcon /> : <TypeIcon type={value} />,
   title: CAST_TO_META[value].title,
 }));
 

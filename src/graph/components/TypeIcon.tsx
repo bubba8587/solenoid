@@ -14,6 +14,11 @@ const Svg = ({ size, children }: { size: number; children: ReactNode }) => (
 const LogicalGlyph = ({ size }: { size: number }) => <Svg size={size}><rect width="18" height="18" x="3" y="3" rx="2" /><path d="m8.5 12 2.5 2.5 4.5-5" /></Svg>;
 const ComplexGlyph = ({ size }: { size: number }) => <Svg size={size}><path d="M19 6.2A8.5 8.5 0 1 0 19 17.8" /><path d="M8 5.5v13" /></Svg>;
 
+/** No cast: an empty-set ∅ drawn to match the type glyphs. The caller's tooltip says what it means. */
+export function NoCastIcon({ size = 14 }: { size?: number }): ReactNode {
+  return <span className="sol-typeicon" aria-hidden="true"><Svg size={size}><circle cx="12" cy="12" r="7" /><path d="M18 4.5 6 19.5" /></Svg></span>;
+}
+
 /** The type's icon: `#`, `Aa`, the date picker's calendar, a checkbox, a double-struck C. The caller's tooltip names the type. */
 export function TypeIcon({ type, size = 14 }: { type: TypeIconKind; size?: number }): ReactNode {
   switch (type) {
