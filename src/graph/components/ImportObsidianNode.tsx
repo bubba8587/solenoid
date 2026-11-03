@@ -226,7 +226,8 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
                 value={data.fileName}
                 placeholder="Choose a note…"
                 title={data.fileName ? `${data.fileName}: choose another note` : "Choose a note in the vault"}
-                onPick={() => void chooseFile({
+                onPick={(from) => void chooseFile({
+                from,
                   title: "Choose a note",
                   root: vault,
                   extensions: ["md"],

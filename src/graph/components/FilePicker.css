@@ -15,35 +15,10 @@
   min-height: 0;
 }
 
-.file-picker__top { display: flex; flex-direction: column; gap: 6px; }
 
 /* Resized by its grip, the panes take the height the card gives. */
 .file-picker.sol-popup--sized .file-picker__body { flex: 1 1 auto; }
 .file-picker.sol-popup--sized .file-picker__panes { flex: 1 1 auto; height: auto; }
-
-/* ─── Breadcrumb ─── */
-.file-picker__crumbs {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px;
-  font-size: 11px;
-  min-height: 20px;
-}
-.file-picker__crumb-wrap { display: inline-flex; align-items: center; gap: 2px; }
-.file-picker__crumb-sep { color: var(--text-dim); padding: 0 2px; }
-.file-picker__crumb {
-  font: inherit;
-  color: var(--text-dim);
-  background: none;
-  border: none;
-  border-radius: 3px;
-  padding: 1px 4px;
-  cursor: pointer;
-}
-.file-picker__crumb:hover { color: var(--text); background: var(--surface-sunken); }
-.file-picker__crumb--here { color: var(--text-bright); font-weight: 600; cursor: default; }
-.file-picker__crumb--here:hover { background: none; }
 
 /* ─── Panes ─── */
 .file-picker__panes {
@@ -52,11 +27,6 @@
   gap: 8px;
   height: min(380px, 56vh);
   min-height: 0;
-}
-@media (max-width: 620px) {
-  .file-picker__panes { grid-template-columns: minmax(0, 1fr); height: auto; }
-  .file-picker__list { max-height: 46vh; }
-  .file-picker__preview { display: none; }
 }
 
 .file-picker__list {
@@ -100,13 +70,13 @@
   flex: none;
 }
 .file-picker__row:last-child { border-bottom: none; }
-.file-picker__row--at { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.file-picker__row--at { background: color-mix(in srgb, var(--node-accent, var(--accent)) 16%, transparent); }
 .file-picker__row--current .file-picker__name { font-weight: 600; color: var(--text-bright); }
 .file-picker__row--here { color: var(--text-bright); font-weight: 600; }
 
 .file-picker__icon { flex: none; display: inline-flex; color: var(--text-dim); }
 .file-picker__row--folder .file-picker__icon,
-.file-picker__row--here .file-picker__icon { color: color-mix(in srgb, var(--accent) 55%, var(--text-dim)); }
+.file-picker__row--here .file-picker__icon { color: color-mix(in srgb, var(--node-accent, var(--accent)) 55%, var(--text-dim)); }
 
 .file-picker__name {
   flex: 0 1 auto;
@@ -116,7 +86,7 @@
   white-space: nowrap;
 }
 .file-picker__mark {
-  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 30%, transparent);
   color: var(--text-bright);
   border-radius: 2px;
 }
@@ -146,7 +116,7 @@
   margin-left: auto;
   flex: none;
   font-size: 10px;
-  color: var(--accent);
+  color: var(--node-accent, var(--accent));
 }
 .file-picker__folder + .file-picker__now,
 .file-picker__count + .file-picker__now { margin-left: 0; }
@@ -242,33 +212,48 @@
 .file-picker__pv-none { font-size: 11px; color: var(--text-dim); }
 .file-picker__pv-wait .sol-skeleton__block { display: block; height: 64px; border-radius: 4px; }
 
-/* ─── Footer ─── */
+/* ─── Footer: the popups' one confirming action, in the card's accent (PivotEditorPopup's Done) ─── */
 .file-picker__foot {
+  flex: none;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  padding-top: 2px;
+  gap: 10px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
 }
-
-.file-picker__cancel,
+.file-picker__picked {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .file-picker__choose {
+  flex: none;
   font: inherit;
   font-size: 12px;
-  border-radius: 4px;
-  padding: 4px 12px;
+  padding: 5px 14px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--node-accent, var(--accent));
+  color: var(--node-accent-ink, var(--accent-ink, #fff));
   cursor: pointer;
 }
-.file-picker__cancel {
-  color: var(--text);
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-}
-.file-picker__cancel:hover { border-color: var(--text-dim); }
-.file-picker__choose {
-  color: var(--accent-ink);
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  font-weight: 600;
-}
+.file-picker__choose:hover:not(:disabled) { filter: brightness(1.06); }
 .file-picker__choose:disabled { opacity: 0.45; cursor: default; }
+
+/* Touch: rows and the action grow to a finger's size. */
+@media (pointer: coarse) {
+  .file-picker__row { padding: 9px 10px; font-size: 13px; gap: 9px; }
+  .file-picker__choose { font-size: 13px; padding: 9px 16px; }
+}
+/* A phone: the list fills the card; a tap picks (FilePicker.tsx), so the footer only names the pick. */
+@media (max-width: 640px) {
+  .file-picker { width: 96vw; }
+  .file-picker__body { padding: 8px; }
+  .file-picker__panes { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .file-picker__list { max-height: 62vh; }
+  .file-picker__preview { display: none; }
+}

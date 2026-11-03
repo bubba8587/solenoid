@@ -11,7 +11,8 @@ export function PickField({ value, placeholder, missing = false, title, disabled
   missing?: boolean;
   title?: string;
   disabled?: boolean;
-  onPick: () => void;
+  /** Hands over the field, whose card lends the picker its accent. */
+  onPick: (el: HTMLElement) => void;
 }) {
   return (
     <button
@@ -19,7 +20,7 @@ export function PickField({ value, placeholder, missing = false, title, disabled
       className={`sol-pick${value ? "" : " sol-pick--empty"}`}
       title={title ?? value}
       disabled={disabled}
-      onClick={(e) => { e.stopPropagation(); onPick(); }}
+      onClick={(e) => { e.stopPropagation(); onPick(e.currentTarget); }}
       onPointerDown={stop}
       onMouseDown={stop}
     >

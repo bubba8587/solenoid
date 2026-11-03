@@ -9,9 +9,9 @@ import type { FrameValue } from "../frame";
 import { FrameDisplay } from "./FrameDisplay";
 import { parseNoteFrontmatter } from "../noteFrontmatter";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
-import { PopupShell } from "./PopupShell";
+import { PopupShell, popupCardVars } from "./PopupShell";
 import { PopupSkeleton } from "./PopupSkeleton";
-import { SearchField } from "./SearchField";
+import "./TablePopup.css";
 import "./FilePicker.css";
 
 /** One row the list shows: an entry of the folder being browsed, a search match, or a recent pick. */
@@ -52,6 +52,7 @@ function PickerBody({ state }: { state: FilePickerState }) {
   const deferred = useDeferredValue(query);
   const [folder, setFolder] = useState(() => (state.current ? (folderMode ? parentOf(state.current) : parentOf(state.current)) : ""));
   const [at, setAt] = useState(0);
+  const phone = useSyncExternalStore(subscribePhone, phoneNow, () => false);
   const bodyRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const recent = useMemo(() => (state.recentKey ? recentPicks(state.recentKey) : []), [state.recentKey]);
@@ -95,7 +96,8 @@ function PickerBody({ state }: { state: FilePickerState }) {
     setAt(cur >= 0 ? cur : 0);
   }, [all, tree, state.current]);
 
-  useEffect(() => { if (paths) bodyRef.current?.querySelector<HTMLInputElement>(".file-picker__search input")?.focus(); }, [paths]);
+  // Search first where there's a keyboard; a phone browses, so its keyboard stays down until the Filter is tapped.
+  useEffect(() => { if (paths && !phone) bodyRef.current?.closest(".sol-popup")?.querySelector<HTMLInputElement>(".sol-popup__header input")?.focus(); }, [paths, phone]);
   useEffect(() => { listRef.current?.querySelector(`[data-at="${at}"]`)?.scrollIntoView({ block: "nearest" }); }, [at]);
 
   const sel = all[at];
@@ -112,7 +114,7 @@ function PickerBody({ state }: { state: FilePickerState }) {
   };
   const up = () => { if (!searching && folder) { const was = folder; setFolder(parentOf(folder)); setAt(Math.max(0, entriesAt(tree!, parentOf(was)).findIndex((e) => e.path === was) + (folderMode ? 1 : 0))); } };
 
-  const onKey = (e: React.KeyboardEvent) => {
+  const onKey = (e: KeyboardEvent) => {
     const page = 8;
     if (e.key === "ArrowDown") { e.preventDefault(); setAt((i) => Math.min(i + 1, all.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setAt((i) => Math.max(i - 1, 0)); }
@@ -122,39 +124,57 @@ function PickerBody({ state }: { state: FilePickerState }) {
     else if (e.key === "ArrowRight" && sel?.kind === "folder" && !searching) { e.preventDefault(); enter(sel); }
     else if ((e.key === "ArrowLeft" || (e.key === "Backspace" && query === "")) && !searching && folder) { e.preventDefault(); up(); }
   };
+  // The Filter lives in the shell's header, outside this body: the keys are heard on the card.
+  const keyRef = useRef(onKey);
+  keyRef.current = onKey;
+  useEffect(() => {
+    const listen = (e: KeyboardEvent) => { if ((e.target as HTMLElement | null)?.closest?.(".file-picker")) keyRef.current(e); };
+    document.addEventListener("keydown", listen);
+    return () => document.removeEventListener("keydown", listen);
+  }, []);
 
-  const count = paths ? (folderMode ? paths.length : paths.length) : 0;
-  const footerPick = sel && sel.kind !== "folder" ? sel.path : folderMode && sel ? sel.path : null;
+  const count = paths?.length ?? 0;
+  const footerPick = sel && (sel.kind !== "folder" || folderMode) ? sel.path : null;
+  // The drill-down trail, as the Cube popup draws its own: shown once the browse has gone into a folder.
+  const showCrumbs = !!tree && !searching && folder !== "";
 
   return (
-    <PopupShell title={state.title} onClose={() => state.answer(null)} cardClassName="file-picker" fitNarrow resizable={{ min: { w: 420, h: 320 } }}>
-      <div ref={bodyRef} className="file-picker__body" onKeyDown={onKey}>
+    <PopupShell
+      title={state.title}
+      onClose={() => state.answer(null)}
+      cardClassName="file-picker"
+      cardStyle={popupCardVars(state)}
+      grouped={!!state.groupColor}
+      fitNarrow
+      resizable={{ min: { w: 420, h: 320 } }}
+      filter={state.blocked || !tree ? undefined : {
+        value: query,
+        onChange: (q) => { setQuery(q); setAt(0); },
+        label: folderMode ? "Search folders" : "Search files",
+        count: `${found.total} of ${count}`,
+      }}
+    >
+      {showCrumbs && (
+        <nav className="cube-popup__crumbs" aria-label="Folder">
+          {crumbsOf(folder, rootLabel).map(([p, label], i, list) => (
+            <span key={p || "\u0000root"}>
+              {i > 0 && <span className="cube-popup__crumb-sep"> ▸ </span>}
+              {i === list.length - 1 ? (
+                <span className="cube-popup__crumb cube-popup__crumb--here">{label}</span>
+              ) : (
+                <button type="button" className="cube-popup__crumb" onClick={() => { setFolder(p); setAt(0); }}>{label}</button>
+              )}
+            </span>
+          ))}
+        </nav>
+      )}
+      <div ref={bodyRef} className="file-picker__body">
         {state.blocked ? (
           <div className="file-picker__empty">{state.blocked}</div>
         ) : paths === null || !tree ? (
           <PopupSkeleton />
         ) : (
           <>
-            <div className="file-picker__top">
-              <SearchField
-                className="file-picker__search"
-                value={query}
-                onChange={(q) => { setQuery(q); setAt(0); }}
-                placeholder={folderMode ? `Search ${count} folders` : `Search ${count} files`}
-                label={folderMode ? "Search folders" : "Search files"}
-                count={searching ? `${found.total} of ${count}` : undefined}
-              />
-              {!searching && (folder !== "" || (tree.folders.get("")?.size ?? 0) > 0) && (
-                <nav className="file-picker__crumbs" aria-label="Folder">
-                  {crumbsOf(folder, rootLabel).map(([p, label], i, list) => (
-                    <span key={p || "\u0000root"} className="file-picker__crumb-wrap">
-                      {i > 0 && <span className="file-picker__crumb-sep" aria-hidden="true">›</span>}
-                      <button type="button" className={`file-picker__crumb${i === list.length - 1 ? " file-picker__crumb--here" : ""}`} onClick={() => { setFolder(p); setAt(0); }}>{label}</button>
-                    </span>
-                  ))}
-                </nav>
-              )}
-            </div>
             <div className="file-picker__panes">
               <div ref={listRef} className="file-picker__list nowheel" role="listbox" aria-label={state.title}>
                 {all.length === 0 ? (
@@ -169,7 +189,8 @@ function PickerBody({ state }: { state: FilePickerState }) {
                     head={i === 0 && recentRows.length > 0 ? "Recent" : i === recentRows.length && recentRows.length > 0 ? (folder ? nameOf(folder) : rootLabel) : undefined}
                     recent={i < recentRows.length}
                     onHover={() => setAt(i)}
-                    onPick={() => { setAt(i); if (r.kind === "folder" && !folderMode) enter(r); }}
+                    // A phone shows no preview, so a tap picks; elsewhere a click selects and shows what it holds.
+                    onPick={() => { setAt(i); if (r.kind === "folder" && !folderMode) enter(r); else if (phone) act(r); }}
                     onChoose={() => act(r)}
                   />
                 ))}
@@ -177,18 +198,29 @@ function PickerBody({ state }: { state: FilePickerState }) {
               </div>
               <Preview state={state} row={sel} tree={tree} />
             </div>
-            <div className="file-picker__foot">
-              <button type="button" className="file-picker__cancel" onClick={() => state.answer(null)}>Cancel</button>
-              <button type="button" className="file-picker__choose" disabled={footerPick === null} onClick={() => { if (footerPick !== null) choose(footerPick); }}>
-                {folderMode ? "Choose folder" : "Choose"}
-              </button>
-            </div>
           </>
         )}
       </div>
+      {!state.blocked && tree && (
+        <div className="file-picker__foot">
+          <span className="file-picker__picked" title={footerPick ?? undefined}>{footerPick === null ? "" : footerPick || rootLabel}</span>
+          <button type="button" className="file-picker__choose" disabled={footerPick === null} onClick={() => { if (footerPick !== null) choose(footerPick); }}>
+            {folderMode ? "Choose folder" : "Choose"}
+          </button>
+        </div>
+      )}
     </PopupShell>
   );
 }
+
+const PHONE = "(max-width: 640px)";
+const subscribePhone = (l: () => void) => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
+  const mq = window.matchMedia(PHONE);
+  mq.addEventListener("change", l);
+  return () => mq.removeEventListener("change", l);
+};
+const phoneNow = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(PHONE).matches;
 
 function PickerRow({ row, i, on, current, head, recent, onHover, onPick, onChoose }: {
   row: Row; i: number; on: boolean; current: boolean; head?: string; recent: boolean;

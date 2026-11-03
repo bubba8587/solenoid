@@ -247,7 +247,8 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
               placeholder="Browse the vault for a note…"
               title="Choose a vault note to write to"
               disabled={!vaultFs}
-              onPick={() => void chooseFile({
+              onPick={(from) => void chooseFile({
+                from,
                 title: "Choose a note to write to",
                 root: vault,
                 extensions: ["md"],
@@ -273,7 +274,8 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
               placeholder="Vault root"
               title="The folder the note is written in"
               disabled={!vaultFs}
-              onPick={() => void chooseFile({
+              onPick={(from) => void chooseFile({
+                from,
                 title: "Choose a folder to write in",
                 root: vault,
                 kind: "folder",

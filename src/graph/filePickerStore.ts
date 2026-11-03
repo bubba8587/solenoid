@@ -23,6 +23,10 @@ export interface FilePickerState {
   recentKey?: string;
   /** Folder mode: every file beneath the root, so a folder's preview shows what it holds. */
   files?: () => Promise<string[]>;
+  /** The asking card's colors (`readChipPopupStyle`): the popup's header, highlight and Choose take its accent. */
+  accent?: string;
+  groupColor?: string;
+  groupColorDark?: string;
   answer: (rel: string | null) => void;
 }
 

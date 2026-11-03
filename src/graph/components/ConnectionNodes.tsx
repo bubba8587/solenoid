@@ -306,7 +306,8 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
             placeholder="Pick a file…"
             missing={name !== "" && !files.includes(name)}
             title={name ? `${name}: choose another file` : "Choose a CSV or Parquet file in the data folder"}
-            onPick={() => void chooseFile({
+            onPick={(from) => void chooseFile({
+                from,
               title: "Choose a file",
               root: folder,
               extensions: ["csv", "parquet"],
@@ -813,7 +814,8 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
               missing={folder !== "" && !folders.includes(folder)}
               disabled={connected.has("folder")}
               title={connected.has("folder") ? "Driven by the Folder cable" : "Choose a vault folder"}
-              onPick={() => void chooseFile({
+              onPick={(from) => void chooseFile({
+                from,
                 title: "Choose a vault folder",
                 root: vault,
                 kind: "folder",

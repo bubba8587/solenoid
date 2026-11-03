@@ -5,6 +5,7 @@ import { isDesktop } from "./fileBridge";
 import { isDemoVaultPath } from "./demoVault";
 import { filePicker } from "./filePickerStore";
 import { pushNotice } from "./noticeStore";
+import { readChipPopupStyle } from "./components/chipStyle";
 
 export interface ChooseOptions {
   title: string;
@@ -23,6 +24,8 @@ export interface ChooseOptions {
   readHead?: (rel: string, chars: number) => Promise<string>;
   stat?: (rel: string) => Promise<{ mtimeMs: number | null } | null>;
   recentKey?: string;
+  /** The field that asked: the popup takes its card's accent. */
+  from?: HTMLElement;
   files?: () => Promise<string[]>;
 }
 
@@ -67,6 +70,7 @@ export async function chooseFile(o: ChooseOptions): Promise<string | null> {
       stat: o.stat,
       recentKey: o.recentKey,
       files: o.files,
+      ...(o.from ? readChipPopupStyle(o.from) : {}),
       answer: (rel) => { filePicker.close(); resolve(rel); },
     });
   });
