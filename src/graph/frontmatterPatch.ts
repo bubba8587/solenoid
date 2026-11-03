@@ -7,8 +7,8 @@ import { parseNoteFrontmatter } from "./noteFrontmatter";
 import { extractInlineTags } from "./vaultCube";
 
 export type YamlScalarV = string | number | boolean | null;
-export type YamlRowV = YamlScalarV | YamlScalarV[];
-export type YamlValue = YamlScalarV | YamlScalarV[] | Record<string, YamlRowV>[];
+export type YamlRowV = YamlScalarV | YamlScalarV[] | Record<string, YamlRowV>[];
+export type YamlValue = YamlScalarV | YamlScalarV[] | YamlScalarV[][] | Record<string, YamlRowV>[];
 
 export interface PatchResult { text: string; }
 
@@ -25,6 +25,9 @@ export function cellToYaml(cell: CubeCell, colType: FrameColType | undefined, no
   if (cell === null || cell === undefined) return null;
   if (isFrameValue(cell)) return frameRows(cell.columns.map((c) => ({ name: c.name, cells: c.values as CubeCell[], type: c.type })), noteNames);
   if (isCubeValue(cell)) return frameRows(cell.columns.map((c) => ({ name: c.name, cells: c.cells, type: c.type })), noteNames);
+  if (Array.isArray(cell) && cell.some(Array.isArray)) {
+    return cell.map((r) => (Array.isArray(r) ? r : [r]).map((c) => scalarToYaml(c as CubeCell, colType, noteNames)));
+  }
   if (Array.isArray(cell)) return cell.map((c) => scalarToYaml(c as CubeCell, colType, noteNames)) as YamlScalarV[];
   return scalarToYaml(cell, colType, noteNames);
 }
@@ -50,38 +53,48 @@ function frameRows(cols: Col[], noteNames: ReadonlySet<string>): Record<string, 
     const row: Record<string, YamlRowV> = {};
     for (const c of cols) {
       const cell = c.cells[i] ?? null;
-      row[c.name] = Array.isArray(cell) ? cell.map((x) => scalarToYaml(x as CubeCell, c.type, noteNames)) : scalarToYaml(cell, c.type, noteNames);
+      row[c.name] = isFrameValue(cell) || isCubeValue(cell) ? cellToYaml(cell, c.type, noteNames) as Record<string, YamlRowV>[]
+        : Array.isArray(cell) ? cell.map((x) => scalarToYaml(x as CubeCell, c.type, noteNames))
+        : scalarToYaml(cell, c.type, noteNames);
     }
     rows.push(row);
   }
   return rows;
 }
 
-function isRows(v: YamlValue): v is Record<string, YamlRowV>[] {
-  return Array.isArray(v) && v.length > 0 && typeof v[0] === "object" && v[0] !== null;
+function isRows(v: YamlValue | YamlRowV): v is Record<string, YamlRowV>[] {
+  return Array.isArray(v) && v.length > 0 && typeof v[0] === "object" && v[0] !== null && !Array.isArray(v[0]);
+}
+
+function isMatrix(v: YamlValue): v is YamlScalarV[][] {
+  return Array.isArray(v) && v.length > 0 && Array.isArray(v[0]);
 }
 
 /** A blank value is written as Obsidian writes it, `key:` with nothing after. */
 const line = (head: string, v: YamlScalarV) => `${head} ${renderScalar(v)}`.trimEnd();
 
-function renderRow(row: Record<string, YamlRowV>): string[] {
-  const out: string[] = [];
-  for (const [k, val] of Object.entries(row)) {
-    const lead = out.length === 0 ? "  - " : "    ";
-    const key = yamlKey(k);
-    if (Array.isArray(val)) {
-      if (val.length === 0) { out.push(`${lead}${key}: []`); continue; }
-      out.push(`${lead}${key}:`, ...val.map((x) => line("      -", x)));
-    } else {
-      out.push(line(`${lead}${key}:`, val));
+/** Rows as `- k: v` items at `pad`; a list field nests under its key, and nested rows nest the same way one level in. */
+function renderRows(rows: Record<string, YamlRowV>[], pad: string): string[] {
+  return rows.flatMap((row) => {
+    const out: string[] = [];
+    for (const [k, val] of Object.entries(row)) {
+      const lead = out.length === 0 ? `${pad}- ` : `${pad}  `;
+      const key = yamlKey(k);
+      if (Array.isArray(val) && val.length === 0) out.push(`${lead}${key}: []`);
+      else if (isRows(val)) out.push(`${lead}${key}:`, ...renderRows(val, `${pad}    `));
+      else if (Array.isArray(val)) out.push(`${lead}${key}:`, ...(val as YamlScalarV[]).map((x) => line(`${pad}    -`, x)));
+      else out.push(line(`${lead}${key}:`, val));
     }
-  }
-  return out;
+    return out;
+  });
 }
 
 export function renderKey(rawKey: string, v: YamlValue, spelledAs?: string): string[] {
   const key = spelledAs ?? yamlKey(rawKey);
-  if (isRows(v)) return [`${key}:`, ...v.flatMap(renderRow)];
+  if (isRows(v)) return [`${key}:`, ...renderRows(v, "  ")];
+  if (isMatrix(v)) {
+    return [`${key}:`, ...v.flatMap((r) => r.length === 0 ? ["  - []"] : r.map((x, j) => line(j === 0 ? "  - -" : "    -", x)))];
+  }
   if (Array.isArray(v)) {
     if (v.length === 0) return [`${key}: []`];
     return [`${key}:`, ...(v as YamlScalarV[]).map((x) => line("  -", x))];
@@ -259,6 +272,7 @@ export function displayValue(v: YamlValue): string {
   if (v === null) return "";
   if (Array.isArray(v)) {
     if (isRows(v)) return `${v.length} row${v.length === 1 ? "" : "s"}`;
+    if (isMatrix(v)) return `[${v.map((r) => `[${r.map(renderScalar).join(", ")}]`).join(", ")}]`;
     return `[${(v as YamlScalarV[]).map((x) => renderScalar(x)).join(", ")}]`;
   }
   return renderScalar(v);

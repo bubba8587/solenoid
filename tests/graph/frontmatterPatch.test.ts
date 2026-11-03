@@ -43,6 +43,15 @@ describe("renderKey", () => {
     expect(renderKey("m", [{ k: 1, v: "z" }])).toEqual(["m:", "  - k: 1", "    v: z"]);
     expect(renderKey("m", [{ k: 1, after: ["a", "b"], none: [] }])).toEqual(["m:", "  - k: 1", "    after:", "      - a", "      - b", "    none: []"]);
   });
+  it("a matrix is a sequence of sequences, as the Solenoid Properties matrix types spell it", () => {
+    expect(cellToYaml([[1, 2], [3, 4]], "number", NO_NAMES)).toEqual([[1, 2], [3, 4]]);
+    expect(renderKey("g", [[1, 2], [3]])).toEqual(["g:", "  - - 1", "    - 2", "  - - 3"]);
+    expect(renderKey("g", [[1], []])).toEqual(["g:", "  - - 1", "  - []"]);
+  });
+  it("rows nested in a row nest one level in", () => {
+    expect(renderKey("p", [{ phase: "A", tasks: [{ task: "x", hours: 6 }] }]))
+      .toEqual(["p:", "  - phase: A", "    tasks:", "      - task: x", "        hours: 6"]);
+  });
   it("quotes an ambiguous scalar", () => {
     expect(renderKey("a", "1:2")).toEqual(['a: "1:2"']);
   });
@@ -98,6 +107,28 @@ describe("round trip — a demo-vault note re-patched with its own values is unc
       milestones: cellToYaml(milestones, undefined, NO_NAMES),
     };
     const { text: out } = patchFrontmatter(text, patch);
+    expect(out).toBe(text);
+  });
+});
+
+describe("round trip — the Solenoid Properties shapes re-patch byte-identical", () => {
+  it("Property types: a matrix and a cube with nested rows reproduce as written", () => {
+    const VAULT = path.resolve(__dirname, "../../demo-vault");
+    const text = fs.readFileSync(path.join(VAULT, "Solenoid/Property types.md"), "utf8");
+    const tasks = (rows: [string, number][]) => ({ __frame: true as const, columns: [
+      { name: "task", type: "string" as const, values: rows.map((r) => r[0]) },
+      { name: "hours", type: "number" as const, values: rows.map((r) => r[1]) },
+    ] });
+    const phases = { __cube: true as const, depth: 2, columns: [
+      { name: "phase", type: "string" as const, cells: ["Demolition", "Install"] },
+      { name: "days", type: "number" as const, cells: [3, 8] },
+      { name: "crew", type: "string" as const, cells: [["Ana", "Ben"], ["Chidi"]] },
+      { name: "tasks", type: undefined, cells: [tasks([["Strip cabinets", 6], ["Haul debris", 4]]), tasks([["Hang cabinets", 20]])] },
+    ] } as unknown as CubeValue;
+    const { text: out } = patchFrontmatter(text, {
+      grid: cellToYaml([[1, 2, 3], [4, 5, 6]], "number", NO_NAMES),
+      phases: cellToYaml(phases, undefined, NO_NAMES),
+    });
     expect(out).toBe(text);
   });
 });

@@ -16,7 +16,9 @@ import { planPropertyWrites, propertyPlanFrame, resolveKey, resolveBody, patchFr
 import { buildBaseView, baseRelPath } from "../baseView";
 import { nearestMdbaseSchema, validateAgainst, parseMdbaseCollection, type MdbaseCollection, type PropConstraint } from "../mdbaseTypes";
 import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../frame";
+import { isComplexText } from "../scalarText";
 import { type Shape } from "../frameShape";
+import { type FrameHint } from "../frameHint";
 
 import { getOwningEditor, getOwningView } from "../activeGraph";
 // obsidianWrite is imported lazily inside run(), because an eager import closes an init cycle through the node barrel.
@@ -45,16 +47,35 @@ function noteNamesOf(cube: CubeValue): Set<string> {
   return names;
 }
 
-/** Null when Obsidian has no type for it (rows, a matrix): registering Text there would only raise its mismatch warning. */
+const OBSIDIAN_OWNED = new Set(["tags", "aliases", "cssclasses"]);
+
+/** The element family of a column's present cells, as the Solenoid Properties type ids spell it ("" is Number). */
+function cellFamily(cells: unknown[], colType: CubeValue["columns"][number]["type"]): "" | "str" | "date" | "logical" | "complex" {
+  const present = cells.filter((c) => c !== null && c !== undefined && c !== "");
+  if (colType === "date") return "date";
+  if (present.length && present.every((c) => typeof c === "boolean")) return "logical";
+  if (present.every((c) => typeof c === "number")) return "";
+  if (present.some((c) => typeof c === "string" && isComplexText(c.trim()))
+    && present.every((c) => typeof c === "number" || (typeof c === "string" && isComplexText(c.trim())))) return "complex";
+  return "str";
+}
+
+/** The type a new key registers ([[D116]] writeSolenoidTypes): a Solenoid Properties type for a list, matrix, Frame, Cube or complex
+ *  number, Obsidian's own for a plain scalar; null for a key Obsidian types itself. */
 export function obsidianTypeName(cube: CubeValue, key: string): string | null {
+  if (OBSIDIAN_OWNED.has(key)) return null;
   const col = cube.columns.find((c) => c.name === key);
-  if (col?.cells.some((cell) => isFrameValue(cell) || isCubeValue(cell) || (Array.isArray(cell) && cell.some(Array.isArray)))) return null;
-  if (col && col.cells.some((cell) => Array.isArray(cell))) return "multitext";
-  switch (col?.type) {
+  if (!col) return "text";
+  if (col.cells.some(isCubeValue)) return "solenoid-cube";
+  if (col.cells.some(isFrameValue)) return "solenoid-frame";
+  const arrays = col.cells.filter(Array.isArray) as unknown[][];
+  if (arrays.some((a) => a.some(Array.isArray))) return `solenoid-${cellFamily(arrays.flat(2), col.type)}table`;
+  if (arrays.length) return `solenoid-${cellFamily(arrays.flat(), col.type)}list`;
+  switch (col.type) {
     case "number":  return "number";
     case "logical": return "checkbox";
     case "date":    return col.cells.some((c) => typeof c === "number" && !Number.isInteger(c)) ? "datetime" : "date";
-    default:        return "text";
+    default:        return cellFamily(col.cells, col.type) === "complex" ? "solenoid-complex" : "text";
   }
 }
 
@@ -69,6 +90,13 @@ export class WriteObsidianNode extends GraphNode {
     path: "The note to write: a vault-relative path, or a bare name without .md. A leading folder overrides the subfolder.",
     rows: "Rows to write as properties: a path column names each note, a note-body column writes its body, every other column its frontmatter. Only Run writes.",
     plan: "One row per note and property: the current value, the value to write, and what Run would do. Empty for a Note.",
+  };
+  static frameHints: Record<string, FrameHint> = {
+    rows: { columns: [
+      { name: "path", type: "string", cells: ["Projects/Alpha.md", "Projects/Beta.md", "Projects/Gamma.md"] },
+      { name: "property1", type: "string", cells: ["Active", "Paused", "Done"] },
+      { name: "property2", type: "number", cells: [3, 1, 5] },
+    ] },
   };
   label: string;
   subfolder: string;

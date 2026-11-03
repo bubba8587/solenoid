@@ -6,6 +6,11 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-03: Write Properties types with Solenoid Properties; cloud session)
+- **New keys register Solenoid Properties types** ([[D116]] writeSolenoidTypes, new): `obsidianTypeName` maps a Cube cell to `solenoid-cube`, a Frame cell to `solenoid-frame`, a matrix or list to its family's `solenoid-*table` / `solenoid-*list`, complex text to `solenoid-complex`; plain scalars keep Obsidian's types, and `tags` / `aliases` / `cssclasses` are never registered.
+- **The YAML writer now writes matrices and nested rows**: a matrix was written as a list of `"1,2"` strings and a table inside a row as `[object Object]`; both now spell as the plugin and Obsidian do (`frontmatterPatch.test.ts` round-trips the demo vault's `Property types.md`).
+- **Write to Obsidian's `rows` socket has an example hint** (`path`, `property1`, `property2`) on hover and in the Inspector. The hint mechanism was never socket-type gated; the node just had none.
+
 ### SESSION DIGEST (2026-11-03: dates are a value kind; InlineCast; cloud session, continued)
 - **A date is its own kind** ([[D114]] dateIsAKind, [[D115]] datesArePoints, new): `V::Date` in the core, `{__date}` on the wire, `SolDate` in TypeScript (`dateValue.ts`); the spec is `tree/specs/values/date-values.md`. Operators shift a date by days and take a span between dates; anything else with a date is `#TYPE!`. Every function is classed once (`date_values.rs` `class_of`), readied after its arguments evaluate (`Eval::call`); an unlisted function refuses a date. The formula-text date guess (`date_typing.rs`) is gone: results are typed by their values.
 - **Still relaying, listed in the spec:** date-typed inputs read as dates on the way into formulas, computed columns and the LAMBDA helpers; card bodies outside `SEES_DATES` read a date as its serial; the source-type relays (`from_in`, `produced`, Cast's and Script's sniffing, the display hand-offs) stand until each source sends a date itself.

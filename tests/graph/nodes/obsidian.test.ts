@@ -65,21 +65,42 @@ describe("WriteObsidianNode.run() guards", () => {
   });
 });
 
-describe("the type a new property registers in types.json", () => {
+describe("the type a new property registers in types.json ([[D116]] writeSolenoidTypes)", () => {
   const frame = { __frame: true as const, columns: [{ name: "x", type: "number" as const, values: [1] }] };
+  const inner = { __cube: true as const, depth: 1, columns: [{ name: "x", cells: [[1, 2]], type: "number" as const }] };
   const cube = { __cube: true as const, columns: [
     { name: "rows", cells: [frame], type: undefined },
+    { name: "nested", cells: [inner, frame], type: undefined },
     { name: "grid", cells: [[[1, 2]]], type: "number" as const },
+    { name: "dategrid", cells: [[[46000], [46001]]], type: "date" as const },
+    { name: "crew", cells: [["a"]], type: "string" as const },
+    { name: "readings", cells: [[1.5, 2]], type: "number" as const },
+    { name: "seen", cells: [[46000]], type: "date" as const },
+    { name: "checks", cells: [[true, false]], type: "logical" as const },
+    { name: "impedance", cells: [["3+4i", 2]], type: "string" as const },
+    { name: "z", cells: ["1-2i", null], type: "string" as const },
+    { name: "note", cells: ["hello"], type: "string" as const },
     { name: "tags", cells: [["a"]], type: "string" as const },
     { name: "when", cells: [46000.5], type: "date" as const },
     { name: "due", cells: [46000], type: "date" as const },
   ] } as never;
-  it("rows and matrices register nothing; a time of day is Date & time", () => {
-    expect(obsidianTypeName(cube, "rows")).toBeNull();
-    expect(obsidianTypeName(cube, "grid")).toBeNull();
-    expect(obsidianTypeName(cube, "tags")).toBe("multitext");
+  it("tables, matrices, lists and complex numbers take the Solenoid Properties types", () => {
+    expect(obsidianTypeName(cube, "rows")).toBe("solenoid-frame");
+    expect(obsidianTypeName(cube, "nested")).toBe("solenoid-cube");
+    expect(obsidianTypeName(cube, "grid")).toBe("solenoid-table");
+    expect(obsidianTypeName(cube, "dategrid")).toBe("solenoid-datetable");
+    expect(obsidianTypeName(cube, "crew")).toBe("solenoid-strlist");
+    expect(obsidianTypeName(cube, "readings")).toBe("solenoid-list");
+    expect(obsidianTypeName(cube, "seen")).toBe("solenoid-datelist");
+    expect(obsidianTypeName(cube, "checks")).toBe("solenoid-logicallist");
+    expect(obsidianTypeName(cube, "impedance")).toBe("solenoid-complexlist");
+    expect(obsidianTypeName(cube, "z")).toBe("solenoid-complex");
+  });
+  it("a plain scalar keeps Obsidian's own type, a time of day is Date & time, and Obsidian's own keys stay its", () => {
+    expect(obsidianTypeName(cube, "note")).toBe("text");
     expect(obsidianTypeName(cube, "when")).toBe("datetime");
     expect(obsidianTypeName(cube, "due")).toBe("date");
+    expect(obsidianTypeName(cube, "tags")).toBeNull();
   });
 });
 
