@@ -99,13 +99,22 @@ flowchart LR
     both -->|yes| done["types settled; no cable touched,<br>nothing saved"]
 ```
 
+### Proposed: the family read off the value ([[D117]] emptyKeepsLastType, unratified)
+
+Today a card whose output the wiring can't type declares what it extracted (`Call::produced`, the TypeScript `_producedFamily` and `produced:` on its passthrough, `passthroughSystem.test.ts` requiring one), a branch card declares the input it took (`selected`), and the formula family retypes its result from `lastResultShape` through `coreWatched`. The proposal replaces all three with one reading:
+
+- After a pass, the Type Settle reads each wildcard output's last value from the engine's cache (`settle_types` in `solenoid-graph/src/wasm.rs` holds the graph, whose engine cache holds every card's outputs), and takes its family from the value: a core value through `Census::family` (number, date, text, logical, mixed), a table as frame or cube, a TypeScript card's value through the same reading of its JS form (a `SolDate` is a date).
+- An answer with no value to read keeps the family the output last carried; before any, the family its source declares, else untyped ([[D117]]). The declared family is today's static projection, which stays: a passthrough's `project` reads the picked column's type off the frame's shape (`settleFacts.ts`, `frameShapeResolver`) before anything has run.
+- Removed with it: every `produced` declaration and `_producedFamily` field, `selected` where it only types the output, the formula family's `lastResultShape` watch, `runtimeFacts` in `settleFacts.ts` (the settle reads values itself), and the `passthroughSystem` requirement. `runtimeFactsMoved` becomes "any recomputed card's output family moved".
+- The parity of the value's family with today's declarations, over the card fixtures, is in [[D117]] § Consequences.
+
 ## Rules and their reasons
 
 ### Date-valued ports are date-typed
 
 **MUST:** a socket whose value is a date uses the date family (`date`, `datecombo`, `datelist`, `datetable`), never `number` or `numlist` on the grounds that a serial is numerically a number (req. 7). A wildcard rung is not a violation, since it has committed to no family.
 
-A date serial and a plain number are the same `number` at runtime, so once a date rides a numeric port nothing downstream can tell them apart: Cast's date-aware text conversion, the FC's date styles and the type-default display all read the socket, not the number. The date family also brings the typeable date-list editor, which is why such a port declares `stringLiterals` too ([[inline-literal-maps]]).
+A date is a kind of its own at runtime ([[D114]] dateIsAKind), so a number socket would refuse the very value it is meant to carry, and the socket's family is how a cable, a peek and the Add menu say what flows before anything has. The date family also brings the typeable date-list editor, which is why such a port declares `stringLiterals` too ([[inline-literal-maps]]).
 
 *Exception:* a port whose label only mentions time while holding a count or an index ("Start period", "Days", "Coupon rate") is a number and stays one. The guard anchors on a label ending in date or dates for exactly this reason. **Removed by:** port semantics declared directly instead of inferred from the label.
 
