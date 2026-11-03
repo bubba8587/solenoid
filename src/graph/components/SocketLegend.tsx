@@ -54,13 +54,13 @@ const GROUPS: LegendGroup[] = [
     { kind: "document", color: SOCKET_COLORS.document, tip: "Document" },
   ] },
   // anycombo is deliberately not a row: as a legend entry it only restates the ladder.
-  { label: "Any", dots: [
+  { label: "Any", icon: "any", dots: [
     { kind: "circle", color: SOCKET_COLORS.any,      tip: "Any Scalar" },
     { kind: "square", color: SOCKET_COLORS.anylist,  tip: "Any List" },
     { kind: "grid",   color: SOCKET_COLORS.anytable, tip: "Any Matrix" },
   ]},
   // These two take a value at its own rank, never lifting or collapsing it as the rungs above do (working name).
-  { label: "As-is", dots: [
+  { label: "As-is", icon: "asis", dots: [
     { kind: "hollowSquare", color: SOCKET_COLORS.anydata, tip: "Any Data" },
     { kind: "ring",   color: SOCKET_COLORS.trueany,  tip: "True Any" },
   ] },
@@ -325,7 +325,7 @@ export function SocketLegendRows() {
     <>
       {GROUPS.map((g) => (
         <div key={g.label} className="solenoid-legend__row">
-          <span className="solenoid-legend__icon">{g.icon && <TypeIcon type={g.icon} size={11} />}</span>
+          <span className="solenoid-legend__icon">{g.icon && <TypeIcon type={g.icon} size={14} />}</span>
           <span className="solenoid-legend__type">{g.label}</span>
           <span className="solenoid-legend__dots">
             {g.dots.map((d, i) => (

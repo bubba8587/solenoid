@@ -93,7 +93,9 @@ html.minimap-hidden .solenoid-legend {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
+  width: 20px;
+  /* Sized as the socket dots are; the wider Aa takes its room from the legend's left padding, never from the width. */
+  margin-left: -4px;
   flex: none;
   color: var(--text-dim);
 }
