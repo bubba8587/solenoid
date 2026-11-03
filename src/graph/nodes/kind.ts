@@ -305,7 +305,7 @@ export function nodeResizable(node: GraphNode): boolean {
   return node instanceof DisplayNode;
 }
 
-/** The widest tier, 300px: cards that draw a chart or a deck of records in the card, where width is the figure's room. */
+/** The widest tier, 340px: cards that draw a chart or a deck of records in the card, where width is the figure's room. */
 export function nodeXWide(node: GraphNode): boolean {
   return node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof ConditionalRegionsNode ||
     node instanceof HistogramNode || node instanceof SankeyNode || node instanceof ProportionNode ||
