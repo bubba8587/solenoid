@@ -88,17 +88,40 @@
   color: var(--accent-ink);
 }
 
+/* --u is one viewBox unit in px: the art's 40×16 box meets the icon's box at its width. */
 .solenoid-toolbar__flow-icon {
+  --u: 0.8px;
+  position: relative;
   display: block;
   width: 32px;
   height: 13px;
 }
-
+.solenoid-toolbar__flow-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.solenoid-toolbar__flow-window {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(5 * var(--u));
+  width: calc(30 * var(--u));
+  overflow: hidden;
+}
+.solenoid-toolbar__flow-beads {
+  position: absolute;
+  top: 0;
+  left: calc(-15.01 * var(--u));
+  width: calc(60.02 * var(--u));
+  height: 100%;
+}
 .solenoid-toolbar__flow--active .solenoid-toolbar__flow-beads {
   animation: solenoid-flow-bead 1.1s linear infinite;
 }
 @keyframes solenoid-flow-bead {
-  to { stroke-dashoffset: -10.01; }
+  to { transform: translateX(16.6778%); } /* one period, 10.01 of the strip's 60.02 units */
 }
 @media (prefers-reduced-motion: reduce) {
   .solenoid-toolbar__flow--active .solenoid-toolbar__flow-beads { animation: none; }

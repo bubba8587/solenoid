@@ -36,4 +36,4 @@
 /* As tall as the shape picker beside it. */
 .sol-msheet .solenoid-toolbar__flow { box-sizing: border-box; height: 28px; padding: 0 9px; }
 .sol-msheet .solenoid-toolbar__icon { width: 18px; height: 16px; }
-.sol-msheet .solenoid-toolbar__flow-icon { width: 30px; height: 13px; }
+.sol-msheet .solenoid-toolbar__flow-icon { --u: 0.75px; width: 30px; height: 13px; }
