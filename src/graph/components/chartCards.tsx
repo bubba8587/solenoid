@@ -122,7 +122,9 @@ function MasonryGallery({ count, track, className, layoutKey, tile }: {
   const colWidth = Math.round(plan.colWidth);
   if (box?.settled) shownOnce.current = true;
   const show = box !== null && (box.settled || shownOnce.current);
-  const packed = box ? packMasonry(box.heights, plan.count, GALLERY_GAP) : null;
+  // Heights measured for another count of tiles (Rows just changed) place nothing: the layout effect measures the new
+  // ones before the browser paints.
+  const packed = box && box.heights.length === n ? packMasonry(box.heights, plan.count, GALLERY_GAP) : null;
   return (
     <div ref={ref} className={className} style={show && packed ? { height: packed.height } : undefined}>
       {Array.from({ length: n }, (_, i) => (
