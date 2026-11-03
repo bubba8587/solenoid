@@ -10,6 +10,8 @@ import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
 import { dateListSocket, numListSocket, frameSocket, logicalListSocket, strListSocket } from "../../src/graph/sockets";
 import { isSolError } from "../../src/graph/errorValue";
 import { ConcatListsNode, ListIndexNode } from "../../src/graph/nodes/list";
+import { GetColumnNode } from "../../src/graph/nodes/frame";
+import { nodeOutputElemFamily } from "../../src/graph/components/valueDisplayFormat";
 import { IfNode } from "../../src/graph/nodes/logic";
 import { XLookupNode } from "../../src/graph/nodes/frame";
 import type { FrameValue } from "../../src/graph/frame";
@@ -108,5 +110,17 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
     n.literals = { index: 1 };
     const got = await run(n, [[new Src(frame, frameSocket), "list"], [new Src([1, 2], numListSocket), "column"]], (c) => c.cachedResult);
     expect(typeError(got)).toBe(true);
+  });
+
+  it("Get Column reads a date column as dates by default, and refuses to read it as Number", async () => {
+    const frame: FrameValue = { __frame: true, columns: [{ name: "due", type: "date", values: [46000, 46010] }] };
+    const n = new GetColumnNode();
+    n.stringLiterals = { name: "due" };
+    expect(n.readAs).toBe("auto");
+    expect(await run(n, [[new Src(frame, frameSocket), "frame"]], (c) => c.cachedResult)).toEqual([46000, 46010]);
+    expect(nodeOutputElemFamily(n.id, "values")).toBe("date");
+    const asNumber = new GetColumnNode({ readAs: "number" });
+    asNumber.stringLiterals = { name: "due" };
+    expect(typeError(await run(asNumber, [[new Src(frame, frameSocket), "frame"]], (c) => c.cachedResult))).toBe(true);
   });
 });

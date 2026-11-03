@@ -26,7 +26,7 @@ const rows = [
   { name: "C", d: "2026-10-10", n: 1 },
 ];
 const typed = [{ name: "name", type: "string" }, { name: "d", type: "date" }, { name: "n", type: "number" }];
-const typeOf = (expr: string) => cubeOf([...typed, { name: "x", expr }], rows).columns.find((c) => c.name === "x")!.type;
+const typeOf = (expr: string) => cubeOf([...typed, { name: "out", expr }], rows).columns.find((c) => c.name === "out")!.type;
 
 describe("a formula column that hands back a date is a date column", () => {
   it.each([
@@ -34,12 +34,26 @@ describe("a formula column that hands back a date is a date column", () => {
     "INDEX(d, 1)", "XLOOKUP(\"B\", name, d)",
     "IF(@n > 2, @d, @d + 7)", "CHOOSE(1, @d, @d + 1)", "IFERROR(@d, \"\")", "SWITCH(@name, \"A\", @d, @d + 1)",
     "ROUND(@d, 0)", "INT(@d)", "@d + 30", "EDATE(@d, 1)",
+    "IFERROR(@d, 0)", "PERCENTILE(d, 0.5)",
+    "LAMBDA(x, x + 7)(@d)",
   ])("%s", (expr) => {
     expect(typeOf(expr)).toBe("date");
   });
 
   it.each(["SUM(d)", "@d - @d", "MAX(d) - MIN(d)", "IF(@n > 2, @d, @n)", "STDEV(d)"])("%s stays a number", (expr) => {
     expect(typeOf(expr)).toBe("number");
+  });
+});
+
+describe("a date a formula turns into text reads as a date ([[C137]] datesNeverSerials)", () => {
+  const cellsOf = (expr: string) => cubeOf([...typed, { name: "out", expr }], rows).columns.find((c) => c.name === "out")!.cells;
+  it.each([
+    ["\"Due \" & @d", "Due 01-Sep-2026"],
+    ["CONCAT(@name, \": \", @d)", "A: 01-Sep-2026"],
+    ["TEXTJOIN(\" \", TRUE, @name, @d + 1)", "A 02-Sep-2026"],
+    ["@name & \" \" & @n", "A 2"],
+  ])("%s", (expr, first) => {
+    expect(cellsOf(expr)[0]).toBe(first);
   });
 });
 
@@ -74,6 +88,21 @@ describe("the Formula card on Auto takes the family its formula computed", () =>
     expect(new ExpressionNode().resultAs).toBe("auto");
     expect(await formula("MAX(x)")).toBe("date");
     expect(await formula("INDEX(x, 2)")).toBe("date");
+  });
+
+  it("text it builds from a date reads as a date", async () => {
+    const editor = new GraphEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    setEditorRefs(editor, engine, { rerenderNode: async () => {}, rerenderCables: async () => {} } as unknown as View);
+    const src = new Dates();
+    const f = new ExpressionNode({ expr: "\"First \" & INDEX(x, 1)" });
+    await editor.addNode(src as unknown as Schemes["Node"]);
+    await editor.addNode(f as unknown as Schemes["Node"]);
+    await editor.addConnection(new GraphConnection(src, "out", f, "x") as unknown as Schemes["Connection"]);
+    settleWildcardTypes(editor);
+    await processGraph();
+    expect(f.cachedResult).toBe("First 15-Jan-2026");
   });
 
   it("a span of dates is a number; a picked Number stands", async () => {

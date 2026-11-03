@@ -339,6 +339,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             };
             let inputs = crate::eval::ColumnInputs {
                 table: crate::eval::Table::Frame(&f),
+                dates: Vec::new(),
                 sides: values("sides")?,
                 row_sides: values("rowSides")?,
                 reserved: parse::<Option<Vec<String>>>(args, "reserved")?.unwrap_or_default(),

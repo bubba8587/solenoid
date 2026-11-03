@@ -1029,9 +1029,10 @@ export function SplitFrameComponent({ data, emit }: NodeProps<SplitFrameNodeType
 // ─── GET COLUMN ────────────────────────────────────────────────────────────────
 
 const GET_COLUMN_READ_OPTIONS: { value: GetColumnReadAs; label: ReactNode; title: string }[] = [
+  { value: "auto", label: "Auto", title: "Read the column as its own type" },
   { value: "number", label: <TypeIcon type="number" />, title: "Read the column as numbers" },
   { value: "text", label: <TypeIcon type="text" />, title: "Read the column as text" },
-  { value: "date", label: <TypeIcon type="date" />, title: "Read the column as dates, stored as Excel serials" },
+  { value: "date", label: <TypeIcon type="date" />, title: "Read the column as dates" },
   { value: "logical", label: <TypeIcon type="logical" />, title: "Read the column as logicals (TRUE/FALSE). A 0/1 or true/false column coerces." },
 ];
 

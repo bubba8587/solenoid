@@ -1,7 +1,7 @@
 // [[B17]], [[C48]]
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { chartOut } from "./shared";
+import { chartOut, adoptiveListOut } from "./shared";
 import type { ChartValue } from "../chartValue";
 import { numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, trueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { setting, required, LEFT_OUT } from "../inputRoles";
@@ -1516,12 +1516,14 @@ export class SplitFrameNode extends GraphNode {
 
 // ─── GET COLUMN ────────────────────────────────────────────────────────────────
 
-export type GetColumnReadAs = "number" | "text" | "date" | "logical";
+export type GetColumnReadAs = "auto" | "number" | "text" | "date" | "logical";
 
+/** Auto's list adopts the picked column's family (`passthrough`, `produced`); the others declare their own. */
 function getColumnOutput(readAs: GetColumnReadAs) {
   return readAs === "text" ? strListOut("Values")
     : readAs === "date" ? dateListOut("Values")
     : readAs === "logical" ? logicalListOut("Values")
+    : readAs === "auto" ? adoptiveListOut("Values")
     : listOut("Values");
 }
 
@@ -1539,6 +1541,8 @@ export class GetColumnNode extends GraphNode {
 
   label: string;
   readAs: GetColumnReadAs;
+  /** The family the last run read, from the body ([[C137]] datesNeverSerials). */
+  _producedFamily: string | null = null;
   cachedResult: (number | UnitCell | null | SolError)[] | string[] | (boolean | null | SolError)[] | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = { name: "" };
@@ -1547,10 +1551,29 @@ export class GetColumnNode extends GraphNode {
   constructor(init?: { label?: string; readAs?: GetColumnReadAs }) {
     super("GetColumn");
     this.label = init?.label ?? "Get Column";
-    this.readAs = init?.readAs ?? "number";
-    this.addInput("frame", cubeIn("Table / Cube"));
+    // Auto reads a column as its own type, so a date column comes out as dates ([[C137]] datesNeverSerials).
+    this.readAs = init?.readAs ?? "auto";
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("name", strIn("Column"));
     this.addOutput("values", getColumnOutput(this.readAs));
+  }
+
+  /** On Auto, the output takes the named column's family where the shape is known, else what the run read. */
+  passthrough(): PassthroughSpec[] {
+    if (this.readAs !== "auto") return [];
+    return [{
+      output: "values",
+      inputs: ["frame"],
+      combine: "single",
+      produced: () => this._producedFamily,
+      project: (ctx) => {
+        const name = ctx.wired("name") ? "" : (this.stringLiterals.name ?? "").trim();
+        const shape = name ? ctx.shapeOf("frame") : null;
+        const col = shape && !shape.dynamic ? shape.columns.find((c) => c.name === name) : undefined;
+        const fam: SocketDataType = col ? comboOfFamily(col.type) ?? "trueany" : "trueany";
+        return { frame: fam, cube: "trueany", tables: "trueany" };
+      },
+    }];
   }
 
   setReadAs(next: GetColumnReadAs): void {

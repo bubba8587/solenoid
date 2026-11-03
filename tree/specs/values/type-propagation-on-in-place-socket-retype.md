@@ -12,7 +12,7 @@ Serves [[B11]] maximalMerge through [[#Control-driven socket swaps]]. The static
 
 A Format Controller has no fixed type. It adopts the concrete type flowing into it, and picks a date format for a date type. The core's FC reconcile (`fc.rs`, from the facts `fcFacts.ts` gathers) walks upstream through passthrough wildcard sockets (all six family-less rungs, `is_wildcard_rung`, since a rank with no family answers nothing) and reads each socket's type now. That re-adaptation runs from the canvas's `connectioncreated` / `connectionremoved` pipe.
 
-Several nodes change an output socket's type in place from a UI control: **Cast**'s op, the **LAMBDA** and **Expression** result type (`ResultTypeToggle`), **Get Column**'s read-as, and a **Note**'s frontmatter. An in-place retype fires no connection event, so without help the downstream FCs keep formatting by the old type. A date serial retyped to a number would still render as a date.
+Several nodes change an output socket's type in place from a UI control: **Cast**'s op, the **LAMBDA** and **Expression** result type (`ResultTypeToggle`), **Get Column**'s read-as (Auto, the default, reads the column as its own type and its list adopts that family through `passthrough` and `produced`; reading a date column as Number is `#TYPE!`, since only Cast makes a date a number, [[C137]] datesNeverSerials), and a **Note**'s frontmatter. An in-place retype fires no connection event, so without help the downstream FCs keep formatting by the old type. A date serial retyped to a number would still render as a date.
 
 ## Control-driven socket swaps
 

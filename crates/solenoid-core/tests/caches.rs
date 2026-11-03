@@ -28,6 +28,7 @@ fn cells(src: &str) -> Vec<FrameCell> {
         reserved: vec![],
         alias: Default::default(),
         rows: 3,
+        dates: Vec::new(),
     };
     match column(ColumnSpec::Expr { ast: &ast, lambdas: &[] }, inp) {
         Ok(ColumnOutcome { cells, .. }) => cells,
@@ -191,6 +192,7 @@ fn a_lambda_calling_its_parameter_reads_the_row() {
             reserved: vec![],
             alias: Default::default(),
             rows: 3,
+            dates: Vec::new(),
         };
         match column(ColumnSpec::Expr { ast: &ast, lambdas }, inp) {
             Ok(ColumnOutcome { cells, .. }) => format!("{cells:?}"),

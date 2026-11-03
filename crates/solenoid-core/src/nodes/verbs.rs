@@ -649,7 +649,31 @@ fn values_answer(c: &mut Call, shown: V, values: V) -> Answer {
 /// A column read as the card's Read as: text as it shows, logicals as Cast reads them, numbers and dates coerced
 /// (text read as a Frame cell of the type, [[C58]] tableInputRawText), a number column keeping its unit.
 fn read_column(c: &mut Call, col: &Column) -> Answer {
-    let read_as = c.field_str("readAs", "number").to_string();
+    // Auto reads the column as its own type, so dates come out as dates ([[C137]] datesNeverSerials).
+    let read_as = match c.field_str("readAs", "auto") {
+        "auto" => match col.ty {
+            FrameColType::Date => "date",
+            FrameColType::String => "text",
+            FrameColType::Logical => "logical",
+            FrameColType::Number => "number",
+        },
+        other => other,
+    }
+    .to_string();
+    if read_as == "number" && col.ty == FrameColType::Date {
+        let e = err(
+            ErrorCode::Type,
+            format!("\"{}\" holds dates. Read it as Auto or Date, or Cast to Number for the serials", col.name),
+        );
+        c.produced(None);
+        return values_answer(c, e.clone(), e);
+    }
+    c.produced(Some(match read_as.as_str() {
+        "date" => FrameColType::Date,
+        "text" => FrameColType::String,
+        "logical" => FrameColType::Logical,
+        _ => FrameColType::Number,
+    }));
     let out: Vec<V> = match read_as.as_str() {
         "text" => col
             .values
@@ -719,7 +743,12 @@ fn get_column(c: &mut Call) -> Answer {
                 );
                 return values_answer(c, V::Null, e);
             }
-            read_column(c, &infer_column(&name, &cube_values(&cc.cells)))
+            // A typed Cube column keeps its type; only an untyped one is read from its cells.
+            let mut col = infer_column(&name, &cube_values(&cc.cells));
+            if cc.ty == Some(FrameColType::Date) && col.ty == FrameColType::Number {
+                col.ty = FrameColType::Date;
+            }
+            read_column(c, &col)
         }
         Cv::Ref(r) => match refs::column(r, &name) {
             Ok(Some(col)) => read_column(c, &col),

@@ -1399,6 +1399,7 @@ fn run_column(
     };
     let inputs = crate::eval::ColumnInputs {
         table: crate::eval::Table::Frame(&frame),
+        dates: Vec::new(),
         sides,
         row_sides,
         reserved: Vec::new(),

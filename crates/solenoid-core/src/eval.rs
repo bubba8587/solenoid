@@ -1881,6 +1881,16 @@ pub fn formula(src: &str, env: Env) -> Option<V> {
     Some(compiled.eval.run(&compiled.ast, &Rc::new(env)))
 }
 
+/// `ast` evaluated over `env`, uncached: a tree the caller rewrote (`date_typing::dates_as_text`). Its last `+` or `-`
+/// snaps as `formula`'s does unless `src` is wholly in parentheses.
+pub fn formula_tree(ast: &Ast, src: &str, env: Env) -> V {
+    let eval = Eval { memo_calls: true, ..Eval::default() };
+    if !crate::excel_formula::wholly_parenthesized(src) {
+        eval.root.set(ast as *const Ast as usize);
+    }
+    eval.run(ast, &Rc::new(env))
+}
+
 /// The readied lists the kept formulas' evaluators hold, let go with the other kept lists.
 pub(crate) fn forget_readied() {
     FORMULAS.with(|f| {
@@ -2014,6 +2024,8 @@ pub struct ColumnInputs<'a> {
     pub reserved: Vec<String>,
     pub alias: FxHashMap<String, String>,
     pub rows: usize,
+    /// The date columns of a Rows table, which carries no types; a Frame's say for themselves.
+    pub dates: Vec<String>,
 }
 
 pub struct ColumnOutcome<C = crate::frame::FrameCell> {
@@ -2161,6 +2173,20 @@ fn column_hoisting<C>(
         wholes: RefCell::default(),
         row_sides: inp.row_sides,
         at_verdict: RefCell::default(),
+    };
+    // A date the formula turns into text reads as a date, never its serial ([[C137]] datesNeverSerials).
+    let is_date = |n: &str| {
+        let n = ctx.alias.get(n).map_or(n, String::as_str);
+        inp.dates.iter().any(|d| d == n)
+            || matches!(ctx.cols.get(n), Some(Col::Frame(c)) if c.ty == crate::frame::FrameColType::Date)
+    };
+    let as_text = match &spec {
+        ColumnSpec::Expr { ast, .. } => crate::date_typing::dates_as_text(ast, &is_date),
+        ColumnSpec::Lambda(_) => None,
+    };
+    let spec = match (&spec, &as_text) {
+        (ColumnSpec::Expr { lambdas, .. }, Some(t)) => ColumnSpec::Expr { ast: t, lambdas },
+        _ => spec,
     };
     let ev = Eval { row: Some(&ctx), ..Eval::default() };
     let has_col = |n: &str| ctx.cols.contains_key(n);
@@ -2359,6 +2385,7 @@ mod hoist_tests {
             let run = |hoist: bool| {
                 let inp = ColumnInputs {
                     table: Table::Frame(&f),
+                    dates: Vec::new(),
                     sides: Default::default(),
                     row_sides: Default::default(),
                     reserved: vec![],

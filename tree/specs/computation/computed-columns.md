@@ -98,7 +98,10 @@ The type is inferred from the computed cells (`inferColumn`). Cells alone can't 
 - a function whose registration declares `returns: "date"` gives a date;
 - a function that hands back a date it was given gives a date ([[C136]] typesKnownAfterCalc): the value XLOOKUP's return array, INDEX, the sort and shape functions (SORT, SORTBY, FILTER, UNIQUE, TAKE, DROP, CHOOSEROWS, CHOOSECOLS, TOCOL, TOROW, TRANSPOSE, WRAPROWS, WRAPCOLS, EXPAND), LARGE, SMALL, MAXIFS, MINIFS, AVERAGEIFS and AVERAGEIF read, and a date rounded (ROUND, ROUNDDOWN, ROUNDUP, INT, TRUNC, MROUND, FLOOR, CEILING and their .MATH forms);
 - MAX, MIN, MEDIAN, AVERAGE, VSTACK and HSTACK give a date when every argument is one; a sum or a spread of dates is a number ([[C118]] formatTravelsWithValue);
-- IF (with its else written: an omitted else is FALSE), IFS, SWITCH, CHOOSE, IFERROR and IFNA give a date when every branch they have is one, a blank or `""` branch leaving the others to say.
+- IF (with its else written: an omitted else is FALSE), IFS, SWITCH, CHOOSE, IFERROR and IFNA give a date when every branch they have is one, a blank, `""` or number branch leaving the others to say (a 0 fallback shows as a date, never a date as its number);
+- SEQUENCE starting from a date, PERCENTILE and QUARTILE of dates, MODE of dates, an inline LAMBDA called on a date and MAP's LAMBDA over a date list read their parameters as dates.
+
+The rule lives in `date_typing.rs` (`yields_date`), one home for formula columns and the Formula card. A date a formula turns into text (`&`, CONCAT, CONCATENATE, TEXTJOIN) is wrapped in `TEXT(…, "dd-mmm-yyyy")` before it runs (`dates_as_text`, in `eval::column_with` and the Formula card), so `"Due " & @d` reads `Due 15-Jan-2026` ([[C137]] datesNeverSerials).
 
 Anything else stays a number. The Computed Column node can also pin the type instead of inferring it (Number, Text, Date or Boolean). Its output type picker (`addAs`) defaults to Auto, which infers from the computed cells; Date is offered because inference cannot always reach it, since a date serial is indistinguishable from a number.
 

@@ -176,12 +176,13 @@ fn tag_result(v: &V) -> V {
 /// The family a formula's answer is ([[C136]] typesKnownAfterCalc): a date where the formula hands back a date it was
 /// given (a variable whose socket took a date type, through `yields_date`), else the kind of value it computed; blank
 /// where neither says.
+/// Whether variable `n`'s socket took a date type.
+fn is_date_input(c: &Call, n: &str) -> bool {
+    c.input_type(n).is_some_and(|t| t.starts_with("date"))
+}
+
 fn result_family(c: &Call, ast: &Ast, result: &V) -> &'static str {
-    let is_date = |n: &str| {
-        let ty = c.adopted_in.iter().find(|(k, _)| k == n).map(|(_, t)| t.as_str());
-        let ty = ty.or_else(|| c.sockets.iter().find(|s| s.key == n).and_then(|s| s.ty.as_deref()));
-        ty.is_some_and(|t| t.starts_with("date"))
-    };
+    let is_date = |n: &str| is_date_input(c, n);
     fn first(v: &V) -> Option<&V> {
         match v {
             V::List(items) => items.iter().find_map(first),
@@ -245,7 +246,12 @@ fn expression(c: &mut Call) -> Answer {
             }
         };
     }
-    let Ok(raw) = evaluate(&expr, env) else {
+    // A date the formula turns into text reads as a date, never its serial ([[C137]] datesNeverSerials).
+    let raw = match crate::date_typing::dates_as_text(&ast, &|n: &str| is_date_input(c, n)) {
+        Some(tree) => Ok(crate::eval::formula_tree(&tree, &expr, env)),
+        None => evaluate(&expr, env),
+    };
+    let Ok(raw) = raw else {
         let e = err(ErrorCode::Value, "The formula failed to evaluate");
         return expression_done(c, e, Some("Evaluation error"), None);
     };
