@@ -66,6 +66,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Quadratic work the C120 sweep left** ([[C120]] linearWork, 2026-10-24; the small ones landed):
   - INTERPOLATE's grid fill (`fill_grid`, `fns_lists.rs`) scans every known point per candidate corner; needs a spatial index.
   - Rolling windows (`frame_verbs.rs`) re-sum each window: rows × window. Prefix sums change the rounding, so they need the fixtures to agree first.
+  - A range function given a whole column and a row value in one call (`MAX(value, @value)`, `SUMIFS(value, cat, ">"&@cat)`) reruns over the column every row, since the row value misses the range memo: 10 s at 20k rows (`examples/colbench.rs`). Splitting the range part from the per-row part, or a sorted index for SUMIFS's comparisons, would make them linear.
 - [ ] **Text-reading calls the no-text-guessing sweep left for the author** ([[C10]] socketLattice): NAND, NOR and XNOR answer #TYPE! for text where AND, OR, XOR and NOT answer #VALUE! ([[D110]] logicRefusesText): one error for the family? And `COALESCE(list, "n/a")` drops a text (or logical) fallback, as `../tree/specs/computation/formula-language.md` § COALESCE says ("any other fallback is ignored"); a silent drop reads as a bug, so confirm it's wanted.
 
 ## JavaScript the core still imitates ([[B27]] computeAnswersToExcel, [[B7]] preAlphaBreakFreely)

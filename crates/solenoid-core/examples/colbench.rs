@@ -15,7 +15,9 @@ fn main() {
     let mut key = Vec::new();
     let mut cat = Vec::new();
     let mut value = Vec::new();
+    let mut day = Vec::new();
     for _ in 0..rows {
+        day.push(FrameCell::Num(45000.0 + (rand() * 3650.0).floor()));
         key.push(FrameCell::Str(format!("k{}", (rand() * 1000.0).floor()).into()));
         cat.push(FrameCell::Num((rand() * 50.0).floor()));
         value.push(if rand() < 0.02 {
@@ -29,6 +31,7 @@ fn main() {
             FrameColumn::new("key", FrameColType::String, key),
             FrameColumn::new("cat", FrameColType::Number, cat),
             FrameColumn::new("value", FrameColType::Number, value),
+            FrameColumn::new("day", FrameColType::Date, day),
         ],
     };
     let src: Vec<String> = std::env::args().skip(1).collect();

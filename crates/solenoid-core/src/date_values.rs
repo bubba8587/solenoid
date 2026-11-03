@@ -119,39 +119,51 @@ fn class_of(name: &str) -> Option<Class> {
     })
 }
 
-/// A list's answer to `holds_date`, held with the list so a reused address can't answer for another.
-type Scanned = rustc_hash::FxHashMap<usize, (std::rc::Weak<Vec<V>>, bool)>;
-
-thread_local! {
-    /// Whether a long list holds a date, by the list: a range function per row of a computed column is handed the same
-    /// column every row, and scanning it each time would be whole-table work per row ([[C120]] linearWork).
-    static SCANNED: std::cell::RefCell<Scanned> = std::cell::RefCell::new(Scanned::default());
+/// What a long list holds and its readings, kept with the list so a reused address can't answer for another.
+struct Seen {
+    list: std::rc::Weak<Vec<V>>,
+    dates: bool,
+    plain: bool,
+    serials: Option<V>,
+    text: Option<V>,
 }
 
-/// Below this many items a list is scanned each time; above, once per list.
+thread_local! {
+    /// Long lists already read, by the list: a range function per row of a computed column is handed the same column
+    /// every row, and scanning or copying it each time would be whole-table work per row ([[C120]] linearWork). The
+    /// copies keep one address across rows, so the memo and the lookup indexes downstream hit too.
+    static SEEN: std::cell::RefCell<rustc_hash::FxHashMap<usize, Seen>> = Default::default();
+}
+
+/// Below this many items a list is read each time; above, once per list.
 const SCAN_ONCE: usize = 64;
+
+/// `read` over a long list's entry, made on first sight.
+fn seen<T>(items: &Rc<Vec<V>>, read: impl FnOnce(&mut Seen) -> T) -> T {
+    let key = Rc::as_ptr(items) as usize;
+    let hit =
+        SEEN.with(|m| m.borrow().get(&key).is_some_and(|e| e.list.upgrade().is_some_and(|r| Rc::ptr_eq(&r, items))));
+    if !hit {
+        let (dates, plain) = items.iter().fold((false, false), |(d, n), x| {
+            let (a, b) = kinds(x);
+            (d || a, n || b)
+        });
+        SEEN.with(|m| {
+            let mut m = m.borrow_mut();
+            if m.len() > 4096 {
+                m.retain(|_, e| e.list.strong_count() > 0);
+            }
+            m.insert(key, Seen { list: Rc::downgrade(items), dates, plain, serials: None, text: None });
+        });
+    }
+    SEEN.with(|m| read(m.borrow_mut().get_mut(&key).expect("just seen")))
+}
 
 /// Whether a value is or holds a date.
 pub fn holds_date(v: &V) -> bool {
     match v {
         V::Date(_) => true,
-        V::List(items) if items.len() >= SCAN_ONCE => {
-            let key = Rc::as_ptr(items) as usize;
-            let known = SCANNED.with(|m| {
-                m.borrow().get(&key).and_then(|(w, b)| w.upgrade().filter(|r| Rc::ptr_eq(r, items)).map(|_| *b))
-            });
-            known.unwrap_or_else(|| {
-                let b = items.iter().any(holds_date);
-                SCANNED.with(|m| {
-                    let mut m = m.borrow_mut();
-                    if m.len() > 4096 {
-                        m.retain(|_, (w, _)| w.strong_count() > 0);
-                    }
-                    m.insert(key, (Rc::downgrade(items), b));
-                });
-                b
-            })
-        }
+        V::List(items) if items.len() >= SCAN_ONCE => seen(items, |e| e.dates),
         V::List(items) => items.iter().any(holds_date),
         _ => false,
     }
@@ -162,6 +174,7 @@ fn kinds(v: &V) -> (bool, bool) {
     match v {
         V::Date(_) => (true, false),
         V::Num(n) => (false, !n.is_nan()),
+        V::List(items) if items.len() >= SCAN_ONCE => seen(items, |e| (e.dates, e.plain)),
         V::List(items) => items.iter().fold((false, false), |(d, n), x| {
             let (a, b) = kinds(x);
             (d || a, n || b)
@@ -170,10 +183,26 @@ fn kinds(v: &V) -> (bool, bool) {
     }
 }
 
+/// A long list read by `f` once: a list `f` leaves alone is itself, else the copy `slot` keeps.
+fn once(v: &V, items: &Rc<Vec<V>>, slot: fn(&mut Seen) -> &mut Option<V>, f: fn(&V) -> V) -> V {
+    if !holds_date(v) {
+        return v.clone();
+    }
+    if let Some(done) = seen(items, |e| slot(e).clone()) {
+        return done;
+    }
+    let done = V::List(Rc::new(items.iter().map(f).collect()));
+    // A copy outlives its list only until the next copy is made.
+    SEEN.with(|m| m.borrow_mut().retain(|_, e| e.list.strong_count() > 0));
+    seen(items, |e| *slot(e) = Some(done.clone()));
+    done
+}
+
 /// A value with its dates as their serials.
 pub fn unwrap(v: &V) -> V {
     match v {
         V::Date(n) => V::Num(*n),
+        V::List(items) if items.len() >= SCAN_ONCE => once(v, items, |e| &mut e.serials, unwrap),
         V::List(items) if items.iter().any(holds_date) => V::List(Rc::new(items.iter().map(unwrap).collect())),
         _ => v.clone(),
     }
@@ -191,6 +220,7 @@ pub fn wrap(v: &V) -> V {
 fn as_text(v: &V) -> V {
     match v {
         V::Date(n) => V::str(&date_text(*n)),
+        V::List(items) if items.len() >= SCAN_ONCE => once(v, items, |e| &mut e.text, as_text),
         V::List(items) if items.iter().any(holds_date) => V::List(Rc::new(items.iter().map(as_text).collect())),
         _ => v.clone(),
     }
@@ -324,4 +354,38 @@ pub fn date_op(op: crate::excel_formula::BinOp, a: &V, b: &V) -> Option<V> {
         )),
         _ => point_refused(op.as_str()),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn dates(n: usize, from: f64) -> V {
+        V::List(Rc::new((0..n).map(|i| V::Date(from + i as f64)).collect()))
+    }
+
+    /// A long list's serial copy is made once, so a range function per row of a column reads one list, not a copy a row
+    /// ([[C120]] linearWork).
+    #[test]
+    fn a_long_lists_serials_are_one_copy() {
+        let d = dates(SCAN_ONCE * 2, 45000.0);
+        let (V::List(a), V::List(b)) = (unwrap(&d), unwrap(&d)) else { panic!() };
+        assert!(Rc::ptr_eq(&a, &b));
+        assert!(matches!(a[1], V::Num(n) if n == 45001.0));
+    }
+
+    /// A list freed and another made at its address reads as itself.
+    #[test]
+    fn a_reused_address_answers_for_its_own_list() {
+        for i in 0..50 {
+            let from = 45000.0 + f64::from(i) * 1000.0;
+            let d = dates(SCAN_ONCE, from);
+            let V::List(s) = unwrap(&d) else { panic!() };
+            assert!(matches!(s[0], V::Num(n) if n == from));
+            let V::List(t) = as_text(&d) else { panic!() };
+            assert!(matches!(&t[0], V::Str(x) if **x == *date_text(from)), "{:?}", t[0]);
+            let plain = V::List(Rc::new(vec![V::Num(from); SCAN_ONCE]));
+            assert!(!holds_date(&plain));
+        }
+    }
 }

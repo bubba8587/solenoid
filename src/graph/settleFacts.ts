@@ -73,7 +73,6 @@ type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<Grap
 
 export function settleFacts(editor: AnyEditor): NodeFacts[] {
   const shapes = makeFrameShapeResolver(editor as never);
-  const conns = editor.getConnections();
   return editor.getNodes().map((node) => {
     const facts: NodeFacts = { id: node.id, ins: [], outs: [] };
     for (const k in node.inputs) {
@@ -86,10 +85,10 @@ export function settleFacts(editor: AnyEditor): NodeFacts[] {
     }
     const ctx: ProjectContext = {
       shapeOf: (key) => {
-        const feed = conns.find((c) => c.target === node.id && c.targetInput === key);
+        const feed = editor.connectionsInto(node.id).find((c) => c.targetInput === key);
         return feed ? shapes.outShape(feed.source, feed.sourceOutput) : null;
       },
-      wired: (key) => conns.some((c) => c.target === node.id && c.targetInput === key),
+      wired: (key) => editor.connectionsInto(node.id).some((c) => c.targetInput === key),
     };
     const pass = getPassthrough(node).map((s): PassthroughFact => ({
       output: s.output,

@@ -54,8 +54,8 @@ function wiredTypes(node: GraphNode): Map<string, string> {
   if (wants.length === 0) return out;
   const editor = getOwningEditor(node.id);
   if (!editor) return out;
-  for (const c of editor.getConnections()) {
-    if (c.target !== node.id || !wants.some(([k]) => k === c.targetInput)) continue;
+  for (const c of editor.connectionsInto(node.id)) {
+    if (!wants.some(([k]) => k === c.targetInput)) continue;
     const t = (editor.getNode(c.source)?.outputs[c.sourceOutput as string]?.socket as { dataType?: string } | undefined)?.dataType;
     if (t) out.set(c.targetInput as string, t);
   }

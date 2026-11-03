@@ -68,6 +68,7 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
   private connections = new Map<string, S["Connection"]>();
   private nodeList: S["Node"][] | null = [];
   private connectionList: S["Connection"][] | null = [];
+  private byTarget: Map<string, S["Connection"][]> | null = null;
   private piped: Piped[] = [];
   /** Nodes here whose ports changed since the core last heard. */
   private movedPorts = new Set<S["Node"]>();
@@ -168,10 +169,12 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
       case "connectioncreated":
         this.connections.set(signal.data.id, signal.data);
         this.connectionList = null;
+        this.byTarget = null;
         break;
       case "connectionremoved":
         this.connections.delete(signal.data.id);
         this.connectionList = null;
+        this.byTarget = null;
         break;
     }
   }
@@ -207,6 +210,19 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
   getConnections(): S["Connection"][] {
     this.connectionList ??= [...this.connections.values()];
     return this.connectionList.slice();
+  }
+
+  /** The connections into a node, without walking the whole graph per card ([[C120]] linearWork). */
+  connectionsInto(id: string): readonly S["Connection"][] {
+    if (!this.byTarget) {
+      this.byTarget = new Map();
+      for (const c of this.connections.values()) {
+        const list = this.byTarget.get(c.target);
+        if (list) list.push(c);
+        else this.byTarget.set(c.target, [c]);
+      }
+    }
+    return this.byTarget.get(id) ?? [];
   }
 
   /** `false` when a `nodecreate` pipe cancelled it. */

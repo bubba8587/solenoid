@@ -581,7 +581,7 @@ fn same(a: &V, b: &V) -> bool {
         (V::List(x), V::List(y)) => Rc::ptr_eq(x, y),
         (V::Err(x), V::Err(y)) => Rc::ptr_eq(x, y),
         (V::Lambda(x), V::Lambda(y)) => Rc::ptr_eq(x, y),
-        (V::Num(x), V::Num(y)) => x.to_bits() == y.to_bits() || (x.is_nan() && y.is_nan()),
+        (V::Num(x), V::Num(y)) | (V::Date(x), V::Date(y)) => x.to_bits() == y.to_bits() || (x.is_nan() && y.is_nan()),
         (V::Str(x), V::Str(y)) => x == y,
         (V::Bool(x), V::Bool(y)) => x == y,
         (V::Null, V::Null) | (V::Undef, V::Undef) => true,
