@@ -498,3 +498,11 @@ html.sol-report-docked .solenoid-cmdpalette {
 .report-filters__opt { display: flex; gap: 8px; align-items: baseline; width: 100%; text-align: left; }
 .report-filters__name { flex: 0 0 110px; font-weight: 600; }
 .report-filters__opt code { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Each scrolling pane is its own compositor layer, so scrolling doesn't re-rasterize the backdrop's blur every frame (as TablePopup.css's grid). */
+.report-source,
+.report-source--wired,
+.report-preview {
+  transform: translateZ(0);
+  contain: paint;
+}

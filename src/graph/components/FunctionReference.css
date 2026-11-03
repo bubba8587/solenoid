@@ -388,3 +388,10 @@
 /* The help docs are authored in the repo with no unbroken runs, so a table cell wraps only between words. */
 .fr-doc-scroll .sol-md th,
 .fr-doc-scroll .sol-md td { overflow-wrap: break-word; }
+
+/* Each scrolling pane is its own compositor layer, so scrolling doesn't re-rasterize the backdrop's blur every frame (as TablePopup.css's grid). */
+.fr-scroll,
+.fr-doc-scroll {
+  transform: translateZ(0);
+  contain: paint;
+}
