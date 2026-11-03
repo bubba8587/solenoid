@@ -23,6 +23,6 @@ export type HintAnchor = { left: number; right: number; centerY: number };
 /** One payload at a time: the example mini-table for an unwired frame input, or a live value peek. */
 export type FrameHintState =
   | { kind: "example"; hint: FrameHint; anchor: HintAnchor }
-  | { kind: "value"; value: unknown; nodeId: string; anchor: HintAnchor };
+  | { kind: "value"; value: unknown; nodeId: string; outKey: string; anchor: HintAnchor };
 
 export const frameHintStore = createValueStore<FrameHintState>();

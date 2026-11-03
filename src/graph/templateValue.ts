@@ -37,7 +37,8 @@ function cubeCell(cell: CubeCell, type?: FrameColType): unknown {
   if (isCubeValue(cell)) return cubeToTemplateRows(cell);
   if (isFrameValue(cell)) return frameToTemplateRows(cell);
   if (isUnitCell(cell)) return displayMagnitudeOf(cell);
-  if (Array.isArray(cell)) return cell.map((c) => cubeCell(c));
+  // A list cell's items take the column's type, so a date list stays dates ([[C137]] datesNeverSerials).
+  if (Array.isArray(cell)) return cell.map((c) => cubeCell(c, type));
   return cellValue(cell, type);
 }
 

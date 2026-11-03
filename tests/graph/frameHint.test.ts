@@ -99,7 +99,7 @@ describe("frameHintStore — one overlay payload at a time (hover peek on any so
     expect(frameHintStore.get()?.kind).toBe("example");
 
     // A socket's live value peek replaces it — never both open at once.
-    frameHintStore.open({ kind: "value", value: 42, nodeId: "n1", anchor });
+    frameHintStore.open({ kind: "value", value: 42, nodeId: "n1", outKey: "result", anchor });
     const s = frameHintStore.get();
     expect(s?.kind).toBe("value");
     expect(s && s.kind === "value" ? s.value : null).toBe(42);

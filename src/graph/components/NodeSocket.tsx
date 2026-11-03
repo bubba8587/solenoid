@@ -164,12 +164,12 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
   useEffect(() => cancelHint, []); // eslint-disable-line react-hooks/exhaustive-deps
   useLayoutEffect(() => presentSocketStore.mount(nodeId, side, socketKey), [nodeId, side, socketKey]);
 
-  const resolvePeekValue = (): { value: unknown; nodeId: string } | null => {
-    if (side === "output") return { value: cableValueStore.get(nodeId, socketKey), nodeId };
+  const resolvePeekValue = (): { value: unknown; nodeId: string; outKey: string } | null => {
+    if (side === "output") return { value: cableValueStore.get(nodeId, socketKey), nodeId, outKey: socketKey };
     const conn = getOwningEditor(nodeId)?.getConnections()
       .find((c) => c.target === nodeId && c.targetInput === socketKey);
     if (!conn) return null;
-    return { value: cableValueStore.get(conn.source, conn.sourceOutput), nodeId: conn.source };
+    return { value: cableValueStore.get(conn.source, conn.sourceOutput), nodeId: conn.source, outKey: conn.sourceOutput as string };
   };
 
   const hintEnter = (e: React.PointerEvent) => {
@@ -183,7 +183,7 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
       hintTimer.current = null;
       const r = el.getBoundingClientRect();
       const anchor = { left: r.left, right: r.right, centerY: r.top + r.height / 2 };
-      if (willValue) frameHintStore.open({ kind: "value", value: peek!.value, nodeId: peek!.nodeId, anchor });
+      if (willValue) frameHintStore.open({ kind: "value", value: peek!.value, nodeId: peek!.nodeId, outKey: peek!.outKey, anchor });
       else frameHintStore.open({ kind: "example", hint: hint!, anchor });
       setPeekShown(true);
     }, willValue ? PEEK_DELAY_MS : HINT_DELAY_MS);

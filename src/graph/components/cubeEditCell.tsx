@@ -35,9 +35,11 @@ function frameViewAt(records: CubeRecord[], path: CubePath, label: string, neste
   return { kind: "frame", frame: frameCellFromRecords(rowsAt(records, path), typesAt(nested, path)), label, path };
 }
 
-function listViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
+/** `type` is the column the list sits in, so a date list drills in as dates ([[C137]] datesNeverSerials). */
+function listViewAt(records: CubeRecord[], path: CubePath, label: string, type?: ColType): DrillView {
   const sub = getAtPath(records, path);
-  return { kind: "list", items: Array.isArray(sub) ? (sub as unknown[]) : [], label, path };
+  const items = Array.isArray(sub) ? (sub as unknown[]) : [];
+  return { kind: "list", items, label, path, ...(type ? { type } : {}) };
 }
 
 function gridViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
@@ -129,8 +131,8 @@ function NestedChip({ edit, cellPath, value, kind, crumb, from, type }: {
     const list = (value ?? []) as unknown[];
     const famClass = elemChipClass(list as Parameters<typeof elemChipClass>[0], false, type);
     return (
-      <button type="button" className={chipClass("array") + famClass} title={`${list.length}-item list ${cubeCellToken(list as CubeCell)}. Drill in and edit.`}
-        onPointerDown={stop} onMouseDown={stop} onClick={drill(listViewAt(records, cellPath, crumb))}>
+      <button type="button" className={chipClass("array") + famClass} title={`${list.length}-item list ${cubeCellToken(list as CubeCell, type)}. Drill in and edit.`}
+        onPointerDown={stop} onMouseDown={stop} onClick={drill(listViewAt(records, cellPath, crumb, type))}>
         [{list.length}× List]
       </button>
     );

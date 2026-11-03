@@ -517,7 +517,7 @@ export function ValueDisplay({
     : cardStyleAnnotation(rawValue, cardStyle) ?? annotationForValue(rawValue, resolveDisplayAnnotation(ctxNodeId, socketKey));
 
   // The declared element family, never a cell scan: a date serial looks numeric and an all-null list has no cells.
-  const elemFam = nodeOutputElemFamily(ctxNodeId);
+  const elemFam = nodeOutputElemFamily(ctxNodeId, socketKey);
   const isDate = elemFam === "date";
   // Resolve a complex to a string here, after `ann`, so box, chip and clipboard all honor the FC.
   const cxFmt = (c: Cx): string => (ann ? formatCxWithAnnotation(c, ann) : formatCxDisplay(c));

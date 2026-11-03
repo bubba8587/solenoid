@@ -104,7 +104,7 @@ function tokenAt(view: DrillView, r: number, c: number, listVertical: boolean): 
     const col = view.frame.columns[c];
     return cubeCellToken(col.values[r] ?? null, col.type);
   }
-  if (view.kind === "list") return cubeCellToken((view.items[listVertical ? r : c] ?? null) as CubeCell);
+  if (view.kind === "list") return cubeCellToken((view.items[listVertical ? r : c] ?? null) as CubeCell, view.type);
   return cubeCellToken(view.cells[r]?.[c] ?? null);
 }
 
