@@ -15,13 +15,13 @@ const TIMESAVER_NUMERIC: FormulaPackEntry[] = [
 ];
 
 const TIMESAVER_TEXT: FormulaPackEntry[] = [
-  { type: "ts-ordinal", label: "Ordinal Suffix", expr: "ORDINAL(n)", resultAs: "text",
+  { type: "ts-ordinal", label: "Ordinal Suffix", expr: "ORDINAL(n)",
     description: "1 → 1st, 23 → 23rd, handling the 11th/12th/13th case. No single Excel function; the usual formula nests CHOOSE and MOD.",
     keywords: "st nd rd th rank suffix" },
-  { type: "ts-clean-whitespace", label: "Clean Whitespace", expr: "TRIM(CLEAN(SUBSTITUTE(t,CHAR(160),\" \")))", resultAs: "text",
+  { type: "ts-clean-whitespace", label: "Clean Whitespace", expr: "TRIM(CLEAN(SUBSTITUTE(t,CHAR(160),\" \")))",
     description: "TRIM, CLEAN, and strip non-breaking spaces (CHAR(160)) in one step: the web and PDF paste fixer.",
     keywords: "trim clean nbsp paste sanitize" },
-  { type: "ts-mask-last", label: "Mask (Show Last N)", expr: "REPT(\"*\",MAX(LEN(t)-k,0))&RIGHT(t,MIN(k,LEN(t)))", resultAs: "text",
+  { type: "ts-mask-last", label: "Mask (Show Last N)", expr: "REPT(\"*\",MAX(LEN(t)-k,0))&RIGHT(t,MIN(k,LEN(t)))",
     description: "Redact all but the last k characters: ****1234   (=REPT(\"*\",LEN(A1)-4)&RIGHT(A1,4))",
     keywords: "redact stars hide card ssn" },
   { type: "ts-count-words", label: "Count Words", expr: "IF(LEN(TRIM(t))=0,0,LEN(TRIM(t))-LEN(SUBSTITUTE(TRIM(t),\" \",\"\"))+1)",
@@ -46,12 +46,12 @@ const TIMESAVER_DATE: FormulaPackEntry[] = [
   { type: "ts-days-in-month", label: "Days in Month", expr: "DAY(EOMONTH(date,0))",
     description: "How many days are in a date's month, 28–31. Excel: DAY(EOMONTH(date, 0)).",
     keywords: "month length last day eomonth 28 29 30 31" },
-  { type: "ts-age", label: "Age", resultAs: "text",
+  { type: "ts-age", label: "Age",
     expr: "DATEDIF(dob,TODAY(),\"Y\")&\"y \"&DATEDIF(dob,TODAY(),\"YM\")&\"m \"&DATEDIF(dob,TODAY(),\"MD\")&\"d\"",
     varDescriptions: { dob: "The birth date (or any start date). Age is measured to today." },
     description: "Age to today as \"34y 2m 5d\" via DATEDIF. The days (\"MD\") borrow from the month before the end date, so month-end cases can differ from Excel.",
     keywords: "birthday dob datedif years months days duration elapsed how old" },
-  { type: "ts-nth-weekday", label: "Nth Weekday", resultAs: "date",
+  { type: "ts-nth-weekday", label: "Nth Weekday",
     expr: "DATE(YEAR(date),MONTH(date),1+MOD(weekday-WEEKDAY(DATE(YEAR(date),MONTH(date),1))+7,7)+(n-1)*7)",
     literals: { n: 2, weekday: 3 },
     varDescriptions: {

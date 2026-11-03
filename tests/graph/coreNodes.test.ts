@@ -99,16 +99,16 @@ describe("card bodies on the core answer as frozen", () => {
         if (REFREEZE) {
           // A thrown JS text stays as frozen unless the answer moved.
           if (!moved) c.result = asFrozen;
-          // A shown field moves with the answer (`cachedResult`), on a case whose answer moved. Its frozen value is the
-          // case's display, else its prior, else its init, as `tests/nodes.rs` reads it.
+          // A shown field that moved is rewritten, with the answer or alone (a type the card reports). Its frozen value is
+          // the case's display, else its prior, else its init, as `tests/nodes.rs` reads it.
           const out = Object.fromEntries(Object.entries(r.out ?? {}).map(([k, v]) => [k, readNodeReply(v)?.value]));
           const init = (c.init ?? {}) as Record<string, unknown>;
-          for (const [field, v] of moved ? Object.entries(r.display ?? {}) : []) {
+          for (const [field, v] of Object.entries(r.display ?? {})) {
             const held = [c.display, c.prior, init].find((o) => o && field in o);
             const want = held?.[field];
             if (want === undefined || (typeof want === "object" && want !== null && "__deleted" in want)) continue;
             const got = shownWire(v, out, c.result.out);
-            if (JSON.stringify(want) !== JSON.stringify(got)) (c.display ??= {})[field] = got;
+            if (JSON.stringify(want) !== JSON.stringify(got)) { (c.display ??= {})[field] = got; rewritten++; }
           }
           // A field the core now shows that no case froze is recorded too, or only the native check
           // (`tests/nodes.rs`, which compares every shown field) would ever see it.

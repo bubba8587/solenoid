@@ -36,23 +36,22 @@ describe("Expression — value-polymorphic results", () => {
     expect(n.data({ a: [5], b: [3] }).result).toBe(true);
   });
 
-  it("swaps the output socket to match the declared result type", () => {
-    expect(dt(new ExpressionNode({ resultAs: "number" }).outputs.result?.socket)).toBe("numlist");
-    expect(dt(new ExpressionNode({ resultAs: "text" }).outputs.result?.socket)).toBe("strcombo");
-    expect(dt(new ExpressionNode({ resultAs: "date" }).outputs.result?.socket)).toBe("datecombo");
-    // anyCOMBO, not `any`: an Auto result IS a list whenever a list variable
-    // broadcasts, so the scalar circle was a lying dot — and it let a list-shaped
-    // result reach strict scalar inputs (#SHAPE! at runtime).
-    expect(dt(new ExpressionNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("anycombo");
+  it("an InlineCast types the output socket as its cast; ∅ waits for the run ([[D113]] inlineCast)", () => {
+    expect(dt(new ExpressionNode({ castTo: "number" }).outputs.result?.socket)).toBe("numlist");
+    expect(dt(new ExpressionNode({ castTo: "text" }).outputs.result?.socket)).toBe("strcombo");
+    expect(dt(new ExpressionNode({ castTo: "date" }).outputs.result?.socket)).toBe("datecombo");
+    expect(dt(new ExpressionNode({ castTo: "logical" }).outputs.result?.socket)).toBe("logicalcombo");
+    // anyCOMBO, not `any`: an uncast result IS a list whenever a list variable broadcasts.
+    expect(dt(new ExpressionNode().outputs.result?.socket)).toBe("anycombo");
   });
 
-  it("the 2-D producers: Auto, the default, is anytable until a run names the family (wildcardLadder)", () => {
+  it("the 2-D producers: uncast, the default, is anytable until a run names the family (wildcardLadder)", () => {
     expect(dt(new MapTableNode().outputs.result?.socket)).toBe("anytable");
-    expect(dt(new MakeArrayNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("anytable");
+    expect(dt(new MakeArrayNode().outputs.result?.socket)).toBe("anytable");
   });
 
   it("variable inputs are `anydata` so text/date arrays AND matrices connect, and a scalar stays scalar", () => {
-    const n = new ExpressionNode({ expr: "UPPER(name)", resultAs: "text" });
+    const n = new ExpressionNode({ expr: "UPPER(name)", castTo: "text" });
     // `anydata` ([[C15]] matricesInFormulas/[[C10]] socketLattice) replaced `anycombo`, which had replaced `anylist` + the `noWidenInputs` side-channel:
     // same acceptance, but the SOCKET now says the evaluator takes either rank.
     expect(dt(n.inputs.name?.socket)).toBe("anydata");
@@ -62,10 +61,10 @@ describe("Expression — value-polymorphic results", () => {
 describe("MAP — text & date matrices", () => {
 
 
-  it("output socket follows the result type (matrix level)", () => {
-    expect(dt(new MapTableNode({ resultAs: "number" }).outputs.result?.socket)).toBe("table");
-    expect(dt(new MapTableNode({ resultAs: "text" }).outputs.result?.socket)).toBe("strtable");
-    expect(dt(new MapTableNode({ resultAs: "date" }).outputs.result?.socket)).toBe("datetable");
+  it("output socket follows the InlineCast (matrix level)", () => {
+    expect(dt(new MapTableNode({ castTo: "number" }).outputs.result?.socket)).toBe("table");
+    expect(dt(new MapTableNode({ castTo: "text" }).outputs.result?.socket)).toBe("strtable");
+    expect(dt(new MapTableNode({ castTo: "date" }).outputs.result?.socket)).toBe("datetable");
   });
 
   it("value inputs are the 2-D `anytable` (a 1-D list widens in)", () => {
@@ -82,9 +81,9 @@ describe("BYROW / REDUCE / MAKEARRAY — text", () => {
 
   // [[D85]] columnsStayColumns: BYROW answers a one-column table, BYCOL a list.
   it("BYROW's output socket is the text table, BYCOL's the text combo, and the switch retypes it", () => {
-    const n = new ByAxisNode({ resultAs: "text" });
+    const n = new ByAxisNode({ castTo: "text" });
     expect(dt(n.outputs.result?.socket)).toBe("strtable");
-    expect(dt(new ByAxisNode({ resultAs: "text", op: "col" }).outputs.result?.socket)).toBe("strcombo");
+    expect(dt(new ByAxisNode({ castTo: "text", op: "col" }).outputs.result?.socket)).toBe("strcombo");
     expect(n.setOp("col")).toBe(true);
     expect(dt(n.outputs.result?.socket)).toBe("strcombo");
     expect(n.outputs.result?.label).toBe("Per column");
@@ -92,8 +91,8 @@ describe("BYROW / REDUCE / MAKEARRAY — text", () => {
 
 
   it("REDUCE output socket is a scalar string", () => {
-    expect(dt(new ReduceLambdaNode({ resultAs: "text" }).outputs.result?.socket)).toBe("string");
-    expect(dt(new ReduceLambdaNode({ resultAs: "number" }).outputs.result?.socket)).toBe("number");
+    expect(dt(new ReduceLambdaNode({ castTo: "text" }).outputs.result?.socket)).toBe("string");
+    expect(dt(new ReduceLambdaNode({ castTo: "number" }).outputs.result?.socket)).toBe("number");
   });
 
 });

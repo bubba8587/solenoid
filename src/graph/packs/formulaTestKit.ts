@@ -21,7 +21,7 @@ export function evalFormula(
   inputs: Record<string, number | string | (number | string)[]>,
 ): unknown {
   // Seed literals as the Add menu does, or an unprovided config variable reads 0 instead of its preset default.
-  const node = new ExpressionNode({ expr: e.expr, locked: true, resultAs: e.resultAs, literals: e.literals });
+  const node = new ExpressionNode({ expr: e.expr, locked: true, literals: e.literals });
   const env: Record<string, unknown[]> = {};
   for (const [k, v] of Object.entries(inputs)) env[k] = [v];
   return (node.data(env) as { result: unknown }).result;

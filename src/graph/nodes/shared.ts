@@ -69,21 +69,34 @@ export const chartOut     = (label: string) => new GraphOutput(chartSocket,  lab
 export const documentIn   = (label: string) => new GraphInput(documentSocket, label);
 export const documentOut  = (label: string) => new GraphOutput(documentSocket, label);
 
-export type ResultType = "number" | "text" | "date" | "auto";
+/** A result socket's family: what the card computed, or `auto` (the wildcard) before a run or for a mixed answer. */
+export type ResultType = "number" | "text" | "date" | "logical" | "auto";
 export type ResultDim = "scalar" | "combo" | "matrix";
 
-export const RESULT_TYPE_META: Record<ResultType, { label: string; title: string }> = {
-  number: { label: "Number", title: "The result is a number" },
-  text:   { label: "Text",   title: "The result is text, like UPPER(x) or x & \" \" & y" },
-  date:   { label: "Date",   title: "The result is a date, like DATE(y,m,d) or EDATE(x,1)" },
-  auto:   { label: "Auto",   title: "The result takes the type the formula computes" },
+/** An InlineCast's pick on a card's result ([[D113]] inlineCast): ∅ keeps the computed type; the rest run Cast. */
+export type CastTo = "none" | "number" | "text" | "date" | "logical";
+
+export const CAST_TO_META: Record<CastTo, { label: string; title: string }> = {
+  none:    { label: "∅",       title: "No cast: the result keeps the type it computed" },
+  number:  { label: "Number",  title: "Cast the result to numbers, as the Cast card does. A date becomes its serial" },
+  text:    { label: "Text",    title: "Cast the result to text, as the Cast card does. A date reads as a date" },
+  date:    { label: "Date",    title: "Cast the result to dates, as the Cast card does. A number is read as a serial" },
+  logical: { label: "Boolean", title: "Cast the result to TRUE/FALSE, as the Cast card does" },
 };
 
+export const isResultFamily = (f: string | undefined): f is Exclude<ResultType, "auto"> =>
+  f === "number" || f === "text" || f === "date" || f === "logical";
+
 const RESULT_SOCKETS: Record<ResultDim, Record<ResultType, GraphSocket>> = {
-  scalar: { number: numberSocket,  text: stringSocket,   date: dateSocket,        auto: anySocket },
-  combo:  { number: numListSocket, text: strComboSocket, date: dateComboSocket,   auto: anyComboSocket },
-  matrix: { number: tableSocket,   text: strTableSocket, date: dateTableSocket,   auto: anyTableSocket },
+  scalar: { number: numberSocket,  text: stringSocket,   date: dateSocket,      logical: logicalSocket,      auto: anySocket },
+  combo:  { number: numListSocket, text: strComboSocket, date: dateComboSocket, logical: logicalComboSocket, auto: anyComboSocket },
+  matrix: { number: tableSocket,   text: strTableSocket, date: dateTableSocket, logical: logicalTableSocket, auto: anyTableSocket },
 };
+
+/** The socket a result takes at `dim`: the InlineCast's pick, else the family the last run computed. */
+export function castResultSocket(dim: ResultDim, castTo: CastTo, computed: string | undefined): GraphSocket {
+  return resultSocket(dim, castTo !== "none" ? castTo : isResultFamily(computed) ? computed : "auto");
+}
 
 export function resultSocket(dim: ResultDim, t: ResultType): GraphSocket {
   return RESULT_SOCKETS[dim][t];

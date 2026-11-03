@@ -187,33 +187,45 @@ fn result_family(c: &Call, ast: &Ast, result: &V) -> &'static str {
 
 /// The family of `result`, a formula's answer over variables `is_date` names the dates of.
 pub(crate) fn answer_family(ast: &Ast, is_date: &dyn Fn(&str) -> bool, result: &V) -> &'static str {
-    fn first(v: &V) -> Option<&V> {
-        match v {
-            V::List(items) => items.iter().find_map(first),
-            V::Null | V::Undef | V::Err(_) => None,
-            other => Some(other),
+    fn kinds(v: &V, out: &mut Vec<&'static str>) {
+        let k = match v {
+            V::List(items) => return items.iter().for_each(|x| kinds(x, out)),
+            V::Null | V::Undef | V::Err(_) => return,
+            V::Num(_) | V::Unit(_) => "number",
+            V::Str(_) => "text",
+            V::Bool(_) => "logical",
+            _ => "mixed",
+        };
+        if !out.contains(&k) {
+            out.push(k);
         }
     }
-    match first(result) {
-        Some(V::Num(_) | V::Unit(_)) if super::columns::yields_date(ast, is_date) => "date",
-        Some(V::Num(_) | V::Unit(_)) => "number",
-        Some(V::Str(_)) => "text",
-        _ => "",
+    let mut found = Vec::new();
+    kinds(result, &mut found);
+    let dated = super::columns::yields_date(ast, is_date);
+    match found.as_slice() {
+        // An answer with no values is still the formula's: a date where it hands back dates ([[D113]] inlineCast).
+        [] if dated => "date",
+        [] => "",
+        ["number"] if dated => "date",
+        [one] => one,
+        _ => "mixed",
     }
 }
 
-/// Shows the answer's `rank|family`, which the TS retypes the result socket by and an Auto result takes; a date answer
-/// on a card set to Number is `#TYPE!`, since only Cast makes a date a number ([[C137]] datesNeverSerials).
+/// Shows the answer's `rank|family`, the family it computed before any cast, which the TS types the result socket by
+/// beside the InlineCast's pick; a pick runs Cast's conversion on the answer ([[D113]] inlineCast, [[C136]]
+/// typesKnownAfterCalc).
 pub(crate) fn typed_answer(c: &mut Call, result: V, family: &str) -> V {
     if result.is_sol_error() {
         return result;
     }
     let table = matches!(&result, V::List(items) if matches!(items.first(), Some(V::List(_))));
     c.show("lastResultShape", V::str(&format!("{}|{family}", if table { 2 } else { 1 })));
-    if family == "date" && c.field_str("resultAs", "auto") == "number" {
-        return err(ErrorCode::Type, "This answers dates. Pick Auto or Date, or Cast to Number for the serials");
+    match c.field_str("castTo", "none") {
+        t @ ("number" | "text" | "date" | "logical") => super::text::inline_cast(&result, t, family == "date"),
+        _ => result,
     }
-    result
 }
 
 fn expression_done(c: &mut Call, result: V, error: Option<&str>, family: Option<&str>) -> Answer {

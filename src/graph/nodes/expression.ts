@@ -1,5 +1,5 @@
 import { GraphNode } from "../graphModel";
-import { anyDataIn, resultOut, resultSocket, type ResultType } from "./shared";
+import { anyDataIn, resultOut, resultSocket, isResultFamily, type ResultType, type CastTo } from "./shared";
 import { frameSocket, cubeSocket } from "../sockets";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
@@ -9,7 +9,7 @@ import { nodeOnCore } from "../nodeOnCore";
 
 export type ProducedFamily = ResultType | "frame" | "cube";
 
-type RankedProducer = GraphNode & { resultAs?: ResultType; lastResultRank: 1 | 2; lastResultFamily?: ProducedFamily };
+type RankedProducer = GraphNode & { lastResultRank: 1 | 2; lastResultFamily?: ProducedFamily };
 
 export function reconcileResultRank(node: RankedProducer, result: unknown, family?: ProducedFamily): void {
   if (isSolError(result)) return;
@@ -18,7 +18,7 @@ export function reconcileResultRank(node: RankedProducer, result: unknown, famil
   if (want === node.lastResultRank && !familyChanged) return;
   node.lastResultRank = want;
   if (family !== undefined) node.lastResultFamily = family;
-  retypeResult(node, family ?? node.resultAs ?? "auto");
+  retypeResult(node, family ?? "auto");
 }
 
 /** Retypes the result socket to the producer's rank and family once the pass is over, and its cables after it. */
@@ -45,7 +45,8 @@ export class ExpressionNode extends GraphNode {
   label: string;
   expr: string;
   locked: boolean;
-  resultAs: ResultType;
+  /** The InlineCast's pick on the result ([[D113]] inlineCast). */
+  castTo: CastTo;
   cachedResult: unknown = null;
   cachedError: string | null = null;
   literals: Record<string, number> = {};
@@ -61,19 +62,17 @@ export class ExpressionNode extends GraphNode {
   /** The body's last answer as `rank|family` ("1|date"), which the result socket follows (`coreWatch`). */
   lastResultShape = "1|";
 
-  constructor(init?: { label?: string; expr?: string; locked?: boolean; resultAs?: ResultType; literals?: Record<string, number>; varDescriptions?: Record<string, string>; varUnits?: Record<string, string> }) {
+  constructor(init?: { label?: string; expr?: string; locked?: boolean; castTo?: CastTo; literals?: Record<string, number>; varDescriptions?: Record<string, string>; varUnits?: Record<string, string> }) {
     super("Expression");
     this.label = init?.label ?? "Expression";
     this.expr  = init?.expr  ?? "";
     this.locked = init?.locked ?? false;
-    // Auto by default: the result takes the family the formula computed, so a date it hands back stays a date
-    // ([[C136]] typesKnownAfterCalc); a picked Number, Text or Date is the user's declaration and stands.
-    this.resultAs = init?.resultAs ?? "auto";
+    this.castTo = init?.castTo ?? "none";
     if (init?.literals) this.literals = { ...init.literals };
     if (init?.varDescriptions) this.varDescriptions = { ...init.varDescriptions };
     if (init?.varUnits) this.varUnits = { ...init.varUnits };
 
-    this.addOutput("result", resultOut("Result", "combo", this.resultAs));
+    this.addOutput("result", resultOut("Result", "combo", this.castTo === "none" ? "auto" : this.castTo));
     this._rebuild();
   }
 
@@ -106,8 +105,8 @@ export class ExpressionNode extends GraphNode {
   coreWatched(): void {
     const [rank, family] = this.lastResultShape.split("|");
     this.lastResultRank = rank === "2" ? 2 : 1;
-    this.lastResultFamily = family === "number" || family === "text" || family === "date" ? family : undefined;
-    retypeResult(this, this.resultAs === "auto" ? this.lastResultFamily ?? "auto" : this.resultAs);
+    this.lastResultFamily = isResultFamily(family) ? family : undefined;
+    retypeResult(this, this.castTo === "none" ? this.lastResultFamily ?? "auto" : this.castTo);
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {

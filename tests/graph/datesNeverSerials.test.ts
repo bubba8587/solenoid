@@ -174,13 +174,11 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
     expect(typeError(await run(new ChartNode(), [[new Src(lone, frameSocket), "values"]], (c) => c.cachedError))).toBe(true);
     expect(await run(new ChartNode(), [[nums(), "values"]], (c) => c.cachedError)).toBe(null);
   });
-  it("the LAMBDA helpers: Auto takes a date answer, Number refuses it, and text reads a date as a date", async () => {
+  it("the LAMBDA helpers: an uncast date answer is a date, and text reads a date as a date", async () => {
     const table = () => new Src([[46000], [46010]], dateTableSocket);
     const map = new MapTableNode({ expr: "value + 1" });
     expect(await run(map, [[table(), "table"]], (c) => c.cachedResult)).toEqual([[46001], [46011]]);
     expect(map.lastResultFamily).toBe("date");
-    const asNumber = new MapTableNode({ expr: "value + 1", resultAs: "number" });
-    expect(typeError(await run(asNumber, [[table(), "table"]], (c) => c.cachedResult))).toBe(true);
     const text = new MapTableNode({ expr: "value & \"!\"" });
     expect(await run(text, [[table(), "table"]], (c) => c.cachedResult)).toEqual([["09-Dec-2025!"], ["19-Dec-2025!"]]);
     const latest = new ReduceLambdaNode({ expr: "MAX(acc, value)" });
@@ -188,8 +186,23 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
     expect(await run(latest, [[table(), "table"]], (c) => c.cachedResult)).toBe(46010);
     expect(latest.lastResultFamily).toBe("date");
   });
-  it("a Formula card set to Number refuses a date answer", async () => {
-    const n = new ExpressionNode({ expr: "d + 1", resultAs: "number" });
-    expect(typeError(await run(n, [[dates(), "d"]], (c) => c.cachedResult))).toBe(true);
+  it("an InlineCast runs Cast: Number gives a date's serials, Text formats it, Date reads numbers as days ([[D113]] inlineCast)", async () => {
+    const cast = async (castTo: "number" | "text" | "date" | "logical", expr: string, src: () => GraphNode) => {
+      const n = new ExpressionNode({ expr, castTo });
+      const got = await run(n, [[src(), "d"]], (c) => c.cachedResult);
+      return [got, nodeOutputElemFamily(n.id, "result")];
+    };
+    expect(await cast("number", "d + 1", dates)).toEqual([[46001, 46011], "number"]);
+    expect(await cast("text", "d", dates)).toEqual([["09-Dec-2025", "19-Dec-2025"], "string"]);
+    expect(await cast("date", "d * 2", nums)).toEqual([[2, 4], "date"]);
+    expect(await cast("logical", "d - 1", nums)).toEqual([[false, true], "logical"]);
+    const bad = new ExpressionNode({ expr: "\"x\" & d", castTo: "number" });
+    expect(((await run(bad, [[nums(), "d"]], (c) => c.cachedResult)) as unknown[]).every((v) => isSolError(v) && (v as { code: string }).code === "#VALUE!")).toBe(true);
+  });
+
+  it("a mixed answer is typed as mixed, not as its first cell", async () => {
+    const n = new ExpressionNode({ expr: "IF(d > 1, d, \"n/a\")" });
+    expect(await run(n, [[nums(), "d"]], (c) => c.cachedResult)).toEqual(["n/a", 2]);
+    expect(n.lastResultFamily).toBeUndefined();
   });
 });

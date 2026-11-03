@@ -12,7 +12,7 @@ Serves [[B11]] maximalMerge through [[#Control-driven socket swaps]]. The static
 
 A Format Controller has no fixed type. It adopts the concrete type flowing into it, and picks a date format for a date type. The core's FC reconcile (`fc.rs`, from the facts `fcFacts.ts` gathers) walks upstream through passthrough wildcard sockets (all six family-less rungs, `is_wildcard_rung`, since a rank with no family answers nothing) and reads each socket's type now. That re-adaptation runs from the canvas's `connectioncreated` / `connectionremoved` pipe.
 
-Several nodes change an output socket's type in place from a UI control: **Cast**'s op, the **LAMBDA** and **Expression** result type (`ResultTypeToggle`), **Get Column**'s read-as (Auto, the default, reads the column as its own type and its list adopts that family through `passthrough` and `produced`; reading a date column as Number is `#TYPE!`, since only Cast makes a date a number, [[C137]] datesNeverSerials), and a **Note**'s frontmatter. An in-place retype fires no connection event, so without help the downstream FCs keep formatting by the old type. A date serial retyped to a number would still render as a date.
+Several nodes change an output socket's type in place from a UI control: **Cast**'s op, the **InlineCast** on the Formula card and the LAMBDA helpers (`InlineCast`), **Get Column**'s read-as (Auto, the default, reads the column as its own type and its list adopts that family through `passthrough` and `produced`; reading a date column as Number is `#TYPE!`, since only Cast makes a date a number, [[C137]] datesNeverSerials), and a **Note**'s frontmatter. An in-place retype fires no connection event, so without help the downstream FCs keep formatting by the old type. A date serial retyped to a number would still render as a date.
 
 ## Control-driven socket swaps
 
@@ -40,17 +40,17 @@ flowchart LR
 
 **Examples:** `WorkdaysNode` (Days ↔ End-date input, date ↔ number output), `SettleNode` (people-frame ↔ ledger-cube input on its `mode`), `RecordNode` (Row and Group-by sockets per op), `ReturnsNode`, the finance nodes and `date.ts` (output family), `CableSwitchNode` (One ↔ Many output), `GetColumnNode`, `SplitFrameNode` and `AddColumnNode` (`setReadAs`, `setColType`, `setAddAs`, driven from `frameEdit.ts`), and `Expression`, `composite` and `formatController` (`setType`).
 
-## The result-type selector (`ResultTypeToggle`)
+## The InlineCast (`InlineCast`)
 
-A polyform producer computes through a runtime-polymorphic lambda or formula, so its element type can't be inferred ahead of the run. The user declares it (`ResultType`: Number, Text, Date or Auto; on the Formula card and the LAMBDA helpers Auto is the default and takes the family the run computed, [[formula-language]] § Result socket), and the output socket swaps at the node's own dimensionality (`ResultDim`). `resultSocket(dim, t)` is the one table, used both to build the port (`resultOut`) and to swap it in place:
+A formula or LAMBDA card's result takes the type it computed, and its InlineCast casts it ([[D113]] inlineCast; [[formula-language]] § Result socket). The output socket swaps at the node's own dimensionality (`ResultDim`) to the cast's family, or under ∅ to the computed one (`castResultSocket`). `resultSocket(dim, t)` is the one table, used both to build the port (`resultOut`) and to swap it in place:
 
-| Dimensionality | Nodes | Number | Text | Date | Auto |
-|---|---|---|---|---|---|
-| `scalar` | REDUCE | `number` | `string` | `date` | `any` |
-| `combo` | Expression, BYROW, BYCOL | `numlist` | `strcombo` | `datecombo` | `anycombo` |
-| `matrix` | MAP, MAKEARRAY | `table` | `strtable` | `datetable` | `anytable` |
+| Dimensionality | Nodes | Number | Text | Date | Boolean | Untyped |
+|---|---|---|---|---|---|---|
+| `scalar` | REDUCE | `number` | `string` | `date` | `logical` | `any` |
+| `combo` | Expression, BYCOL | `numlist` | `strcombo` | `datecombo` | `logicalcombo` | `anycombo` |
+| `matrix` | MAP, BYROW, SCAN, MAKEARRAY | `table` | `strtable` | `datetable` | `logicaltable` | `anytable` |
 
-The combo Auto rung is `anycombo`, not `any`: an Auto result is a list whenever a list variable broadcasts, and `any` would let it reach strict scalar inputs.
+The untyped combo rung is `anycombo`, not `any`: an uncast result is a list whenever a list variable broadcasts, and `any` would let it reach strict scalar inputs.
 
 ## The rule: an in-place retype re-drives FC adaptation
 
@@ -63,7 +63,7 @@ So any code that changes a socket's `dataType` in place must re-drive FC adaptat
   2. Re-render every Conduit when lane types changed, and every node whose adoption changed, then rebuild the cables once rather than once per connection.
   3. `reconcileFcs`: one core call answers every FC's type (in graph order, each FC's new type seen by the ones after it) and the from-unit a Convert ahead dictates to it, and every Convert's unit arrows; each takes its answer, then every FC writes its annotation (`refreshAnnotation`) and re-renders.
   4. If any FC retyped, re-render the cables again on the next animation frame, since a retyped socket's cables stay detached until their paths recompute.
-- **`retypeOutputCables(editor, area, nodeId, outKey)`** runs after an output socket is swapped. It reads the new type off the already-swapped socket, keeps each outgoing cable the new type can still feed (an `any` input always survives, and so does same-family widening), drops only the ones that no longer fit, then calls `reconcileFcTypes`. An adoptive input is judged by its `base`, not the type it adopted from this very cable: a rank-2 result retyped onto a Display that adopted the rank-1 type keeps the cable and re-adopts ([[socket-lattice#The wildcard ladder keeps rank]]). Cast, `ResultTypeToggle` and Get Column use it. The Note's `commitFields` does the same for each retyped key.
+- **`retypeOutputCables(editor, area, nodeId, outKey)`** runs after an output socket is swapped. It reads the new type off the already-swapped socket, keeps each outgoing cable the new type can still feed (an `any` input always survives, and so does same-family widening), drops only the ones that no longer fit, then calls `reconcileFcTypes`. An adoptive input is judged by its `base`, not the type it adopted from this very cable: a rank-2 result retyped onto a Display that adopted the rank-1 type keeps the cable and re-adopts ([[socket-lattice#The wildcard ladder keeps rank]]). Cast, `InlineCast` and Get Column use it. The Note's `commitFields` does the same for each retyped key.
 
 The reconcile's upstream walk goes through wildcard passthroughs (a Display fed by a date reads as a date) but stops at a node with its own concrete output type. So a retype ends at the first node that types the value itself, like a math node that always outputs a number. That's correct, not a gap.
 

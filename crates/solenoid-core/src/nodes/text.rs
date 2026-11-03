@@ -842,6 +842,27 @@ fn cast_display(v: &V, target: &str) -> V {
     }
 }
 
+/// An InlineCast ([[D113]] inlineCast): Cast's conversion to `target` over a card's result, cell by cell at any depth,
+/// with Cast's defaults (no format, the default separators); a cell that won't convert is `#VALUE!`, a blank stays blank.
+/// `dateish`: the result is dates, so text formats them as dates.
+pub(crate) fn inline_cast(v: &V, target: &str, dateish: bool) -> V {
+    let v = if target == "text" { v.clone() } else { super::list::strip_unit_cells(v) };
+    let format = V::str("");
+    fn walk(v: &V, one: &dyn Fn(&V) -> V) -> V {
+        match v {
+            V::List(items) => list(items.iter().map(|x| walk(x, one)).collect()),
+            V::Err(_) => v.clone(),
+            x => one(x),
+        }
+    }
+    let one = |x: &V| match cast_one(x, target, &format, dateish, ("", ""), &[]) {
+        Ok(r) if cast_failed(&r) => err(ErrorCode::Value, format!("Could not convert the value to {target}")),
+        Ok(r) => r,
+        Err(e) => e,
+    };
+    walk(&v, &one)
+}
+
 fn cast(c: &mut Call) -> Answer {
     let target = c.field_str("op", "text").to_string();
     let first = match c.wired("value").and_then(|w| w.first()) {

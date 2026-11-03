@@ -97,8 +97,7 @@
       "y": 312,
       "init": {
         "label": "Breaks even on",
-        "expr": "EDATE(installed, years * 12)",
-        "resultAs": "date"
+        "expr": "EDATE(installed, years * 12)"
       }
     }
   ],

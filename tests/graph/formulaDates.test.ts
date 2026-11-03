@@ -68,13 +68,13 @@ class Dates extends GraphNode {
 describe("the Formula card on Auto takes the family its formula computed", () => {
   afterEach(() => setEditorRefs(null as never, null as never, null as never));
 
-  async function formula(expr: string, resultAs?: "number" | "auto") {
+  async function formula(expr: string, castTo?: "number") {
     const editor = new GraphEditor<Schemes>();
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
     setEditorRefs(editor, engine, { rerenderNode: async () => {}, rerenderCables: async () => {} } as unknown as View);
     const src = new Dates();
-    const f = new ExpressionNode({ expr, ...(resultAs ? { resultAs } : {}) });
+    const f = new ExpressionNode({ expr, ...(castTo ? { castTo } : {}) });
     await editor.addNode(src as unknown as Schemes["Node"]);
     await editor.addNode(f as unknown as Schemes["Node"]);
     await editor.addConnection(new GraphConnection(src, "out", f, "x") as unknown as Schemes["Connection"]);
@@ -84,8 +84,8 @@ describe("the Formula card on Auto takes the family its formula computed", () =>
     return nodeOutputElemFamily(f.id, "result");
   }
 
-  it("Auto is the default, and MAX of dates is a date", async () => {
-    expect(new ExpressionNode().resultAs).toBe("auto");
+  it("no cast is the default, and MAX of dates is a date", async () => {
+    expect(new ExpressionNode().castTo).toBe("none");
     expect(await formula("MAX(x)")).toBe("date");
     expect(await formula("INDEX(x, 2)")).toBe("date");
   });
@@ -105,7 +105,7 @@ describe("the Formula card on Auto takes the family its formula computed", () =>
     expect(f.cachedResult).toBe("First 15-Jan-2026");
   });
 
-  it("a span of dates is a number; a picked Number stands", async () => {
+  it("a span of dates is a number; a Number cast gives the serials", async () => {
     expect(await formula("MAX(x) - MIN(x)")).toBe("number");
     expect(await formula("MAX(x)", "number")).toBe("number");
   });

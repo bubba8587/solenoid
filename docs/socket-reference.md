@@ -873,7 +873,7 @@ What `anycombo` is to rank 1, this is to rank 2. Frames and cubes stay out: the
 matrices-only endpoint is the decision, permanently.
 **Dot:** hollow gray square, outline only (`SocketComponent.tsx`, `hicSocketGlyph.ts` `hollowSquare`).
 **Ports:** Expression's formula variables (the matricesInFormulas lift). The result output is
-NOT this type — it keeps its `resultAs` family and reconciles its RANK to the
+NOT this type — it keeps its computed (or InlineCast) family and reconciles its RANK to the
 computed value (combo rung for a scalar/list result, the family's matrix rung
 for a matrix result).
 

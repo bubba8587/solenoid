@@ -37,7 +37,7 @@ describe("polyform through the engine", () => {
   it("MAP turns a numeric matrix source into a text matrix", async () => {
     const { editor, engine } = makeEditor();
     const table = new TableInputNode({ tableText: "1, 2\n3, 4" });
-    const map = new MapTableNode({ expr: '"r" & row & "c" & col', resultAs: "text" });
+    const map = new MapTableNode({ expr: '"r" & row & "c" & col' });
     await editor.addNode(table);
     await editor.addNode(map);
     // table (a `table` output) → MAP's `any` value input: the matrix passes
@@ -54,7 +54,7 @@ describe("polyform through the engine", () => {
     const { editor, engine } = makeEditor();
     const split = new TextSplitNode();
     split.stringLiterals = { text: "alice,bob,cara", delimiter: "," };
-    const expr = new ExpressionNode({ expr: "UPPER(name)", resultAs: "text" });
+    const expr = new ExpressionNode({ expr: "UPPER(name)" });
     await editor.addNode(split);
     await editor.addNode(expr);
     // strlist → Expression's `any` input `name`: arrives as the raw string[]
@@ -66,7 +66,7 @@ describe("polyform through the engine", () => {
 
   it("a text Expression result flows out its swapped socket into a consumer", async () => {
     const { editor, engine } = makeEditor();
-    const expr = new ExpressionNode({ expr: 'UPPER("hi")', resultAs: "text" });
+    const expr = new ExpressionNode({ expr: 'UPPER("hi")' });
     const disp = new DisplayNode();
     await editor.addNode(expr);
     await editor.addNode(disp);
@@ -81,7 +81,7 @@ describe("polyform through the engine", () => {
   it("a text matrix flows MAP → TOROW → list (the reshaper completes the chain)", async () => {
     const { editor, engine } = makeEditor();
     const table = new TableInputNode({ tableText: "1, 2\n3, 4" });
-    const map = new MapTableNode({ expr: '"#" & value', resultAs: "text" });
+    const map = new MapTableNode({ expr: '"#" & value' });
     const torow = new TableReshapeNode({ op: "torow" });
     await editor.addNode(table);
     await editor.addNode(map);

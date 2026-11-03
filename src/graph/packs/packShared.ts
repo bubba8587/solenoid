@@ -4,7 +4,6 @@
 
 import type { NodeCatalogEntry, ExcelEquiv } from "../AddNodeMenu";
 import type { PackUnit, PackFormat } from "../formatAnnotationStore";
-import type { ResultType } from "../nodes/shared";
 import { ExpressionNode, EquationNode } from "../nodeClasses";
 
 /** A pack's formula function: the core carries its body (`fns_packs.rs`); the pack declares how the editor shows it. */
@@ -24,9 +23,8 @@ export interface FormulaPackEntry {
   label: string;
   description: string;
   expr: string;
-  /** A locked Equation instead of an Expression; numeric only, so `resultAs` does not apply. */
+  /** A locked Equation instead of an Expression. */
   equation?: boolean;
-  resultAs?: ResultType;
   excel?: ExcelEquiv[];
   /** Space-separated search synonyms, never displayed. */
   keywords?: string;
@@ -47,7 +45,7 @@ export function formulaNode(e: FormulaPackEntry): NodeCatalogEntry {
     // No `accent`: the Add-menu highlight is reserved for key nodes.
     create: () => e.equation
       ? new EquationNode({ label: e.label, expr: e.expr, locked: true, varDescriptions: e.varDescriptions, varUnits: e.units })
-      : new ExpressionNode({ label: e.label, expr: e.expr, locked: true, resultAs: e.resultAs, varDescriptions: e.varDescriptions, varUnits: e.units, literals: e.literals }),
+      : new ExpressionNode({ label: e.label, expr: e.expr, locked: true, varDescriptions: e.varDescriptions, varUnits: e.units, literals: e.literals }),
   };
 }
 
