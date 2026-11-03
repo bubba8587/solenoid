@@ -169,6 +169,71 @@ fn a_kept_criteria_tally_answers_as_the_scan_does() {
     }
 }
 
+/// From a long range's second call on, one comparison's SUMIFS, AVERAGEIFS, MINIFS and MAXIFS come from the range's
+/// sorted cells; they answer as the scan does, to the bit.
+#[test]
+fn a_sorted_run_answers_as_the_scan_does() {
+    use solenoid_core::error_value::{sol_error, ErrorCode};
+    use solenoid_core::eval::{formula, Env};
+    use solenoid_core::excel_functions::V;
+    use std::rc::Rc;
+    let range: Vec<V> = (0..90)
+        .map(|i| match i % 11 {
+            0 => V::Num(-0.0),
+            1 => V::Num(f64::INFINITY),
+            2 => V::Num(f64::NAN),
+            3 => V::Bool(true),
+            4 => V::Null,
+            5 => V::str("x"),
+            6 => V::Num(f64::NEG_INFINITY),
+            _ => V::Num(((i * 37) % 13) as f64 - 6.0),
+        })
+        .collect();
+    let whole: Vec<V> = (0..90)
+        .map(|i| match i {
+            _ if i % 17 == 0 => V::Null,
+            _ if i % 19 == 0 => V::Num(f64::NAN),
+            _ if i % 29 == 0 => V::Bool(true),
+            _ if i == 77 => V::Num(-0.0),
+            _ => V::Num(((i * 7) % 23) as f64 - 11.0),
+        })
+        .collect();
+    let mut fractions: Vec<V> = (0..90).map(|i| V::Num(i as f64 * 0.1 - 3.3)).collect();
+    fractions[40] = V::Num(f64::INFINITY);
+    let mut with_error = whole.clone();
+    with_error[50] = V::err(sol_error(ErrorCode::Ref, "gone"));
+    with_error[12] = V::err(sol_error(ErrorCode::Value, "bad"));
+    let formulas = [
+        "SUMIFS(vals, range, crit)",
+        "AVERAGEIFS(vals, range, crit)",
+        "MINIFS(vals, range, crit)",
+        "MAXIFS(vals, range, crit)",
+        "AVERAGEIF(range, crit, vals)",
+    ];
+    let crits = ["<0", "<=0", ">0", ">=0", "<-6", "<=-6", ">6", ">=6", "<100", ">-100", ">=3", "<3", ">2.5"];
+    for vals in [whole, fractions, with_error] {
+        let shared_vals = V::List(Rc::new(vals.clone()));
+        let shared = V::List(Rc::new(range.clone()));
+        for src in formulas {
+            for crit in crits {
+                let call = |list: &V, vals: &V, crit: &str| {
+                    let env: Env = [
+                        ("range".to_string(), list.clone()),
+                        ("crit".to_string(), V::str(crit)),
+                        ("vals".to_string(), vals.clone()),
+                    ]
+                    .into_iter()
+                    .collect();
+                    format!("{:?}", formula(src, env))
+                };
+                let scanned = call(&V::List(Rc::new(range.clone())), &V::List(Rc::new(vals.clone())), crit);
+                call(&shared, &shared_vals, "warm");
+                assert_eq!(call(&shared, &shared_vals, crit), scanned, "{src} {crit}");
+            }
+        }
+    }
+}
+
 /// A LAMBDA whose parameter holds a wired LAMBDA that reads `@a` reads the row, so the MAP around it is computed per
 /// row rather than kept from the first.
 #[test]
@@ -209,4 +274,63 @@ fn a_lambda_calling_its_parameter_reads_the_row() {
     let listed = serde_json::json!([wired.clone()]);
     assert_eq!(run("SUM(MAP(fs, LAMBDA(f, f(1))))", "fs", listed.clone(), &[]), rows);
     assert_eq!(run("SUM(MAP(fs, LAMBDA(f, MAP(1, f))))", "fs", listed, &[]), rows);
+}
+
+/// `MAX(col, @x)` and `MIN(col, @x)` read the column's own extreme once; every row answers as a lone call does.
+#[test]
+fn a_kept_column_extreme_answers_as_the_scan_does() {
+    use solenoid_core::eval::{formula, Env};
+    use solenoid_core::excel_functions::V;
+    use std::rc::Rc;
+    let n = 100;
+    let col: Vec<FrameCell> = (0..n)
+        .map(|i| match i % 9 {
+            0 => FrameCell::Num(-0.0),
+            1 => FrameCell::Null,
+            2 => FrameCell::Bool(i % 2 == 0),
+            _ => FrameCell::Num(((i * 13) % 7) as f64 - 3.0),
+        })
+        .collect();
+    let xs: Vec<FrameCell> =
+        (0..n).map(|i| if i % 5 == 0 { FrameCell::Num(0.0) } else { FrameCell::Num(i as f64 - 50.0) }).collect();
+    let f = FrameValue {
+        columns: vec![
+            FrameColumn::new("v", FrameColType::Number, col.clone()),
+            FrameColumn::new("x", FrameColType::Number, xs.clone()),
+        ],
+    };
+    let as_v = |c: &FrameCell| match c {
+        FrameCell::Num(x) => V::Num(*x),
+        FrameCell::Bool(b) => V::Bool(*b),
+        FrameCell::Str(s) => V::str(s),
+        _ => V::Null,
+    };
+    for src in ["MAX(v, @x)", "MIN(@x, v)", "MAX(v, @x, v)", "MIN(v, 2, @x)"] {
+        let ast = solenoid_core::excel_formula::parse_formula(src).expect("parses");
+        let inp = ColumnInputs {
+            table: Table::Frame(&f),
+            sides: Default::default(),
+            row_sides: Default::default(),
+            reserved: vec![],
+            alias: Default::default(),
+            rows: n,
+        };
+        let Ok(ColumnOutcome { cells, .. }) = column(ColumnSpec::Expr { ast: &ast, lambdas: &[] }, inp) else {
+            panic!("no column")
+        };
+        let lone = src.replace("@x", "x");
+        for (i, got) in cells.iter().enumerate() {
+            let env: Env =
+                [("v".to_string(), V::List(Rc::new(col.iter().map(as_v).collect()))), ("x".to_string(), as_v(&xs[i]))]
+                    .into_iter()
+                    .collect();
+            let want = formula(&lone, env);
+            let same = match (got, &want) {
+                (FrameCell::Num(a), Some(V::Num(b))) => a.to_bits() == b.to_bits(),
+                (FrameCell::Err(a), Some(V::Err(b))) => a.message == b.message,
+                _ => false,
+            };
+            assert!(same, "{src} row {i}: {got:?} against {want:?}");
+        }
+    }
 }

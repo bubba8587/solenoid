@@ -653,6 +653,9 @@ pub struct Eval<'a> {
     /// A whole column readied for a range call, kept by the list it came as: the column reaches the call row after row,
     /// and readying it there would copy and scan the whole column per row ([[C120]] linearWork).
     readied: RefCell<Vec<Rc<Readied>>>,
+    /// MIN or MAX of a whole column, kept by the column: `MAX(col, @x)` reads it beside a row's value every row
+    /// ([[C120]] linearWork).
+    partials: RefCell<Vec<Partial>>,
     /// A computed column's row-free subtrees (`row_free`), each with its value once a row has computed it.
     hoisted: RefCell<FxHashMap<*const Ast, Option<V>>>,
     hoists: Cell<bool>,
@@ -660,6 +663,9 @@ pub struct Eval<'a> {
     /// (`snapped_sum`); 0 where nothing snaps (a formula wholly in parentheses). `call_lambda` points it at a body.
     root: Cell<usize>,
 }
+
+/// A column's MIN or MAX: the function, the column, its answer where a number stands in for it.
+type Partial = (&'static str, Rc<Vec<V>>, Option<f64>);
 
 /// A list as a range call with `prep` reads it: flattened from a one-wide table, its first error, its blanks gone.
 struct Readied {
@@ -1181,6 +1187,9 @@ impl Eval<'_> {
                 r => r,
             };
         }
+        if let Some(args) = self.column_extreme(name, t, &args) {
+            return self.range_dispatch(name, t, args);
+        }
         let flat_owned: Vec<V>;
         let flat: &[V] = match args.as_slice() {
             [V::List(l)] => l.as_slice(),
@@ -1200,6 +1209,45 @@ impl Eval<'_> {
             V::Num(r) if !r.is_finite() => guard(r, flat),
             r => r,
         }
+    }
+
+    /// MIN or MAX over long lists beside other values, each list stood in for by its own MIN or MAX: the answer is
+    /// the same, since the first extreme of a list is the one the scan keeps from it. None where a list has no number
+    /// or logical, or its own answer isn't a finite number, so the scan answers (an error, a nested list).
+    fn column_extreme(&self, name: &str, t: &Traits, args: &[V]) -> Option<Vec<V>> {
+        let key: &'static str = match name {
+            "MIN" => "MIN",
+            "MAX" => "MAX",
+            _ => return None,
+        };
+        let long = |a: &V| matches!(a, V::List(l) if l.len() >= 64);
+        if !args.iter().any(long) || args.iter().all(|a| matches!(a, V::List(_))) {
+            return None;
+        }
+        args.iter()
+            .map(|a| {
+                let V::List(l) = a else { return Some(a.clone()) };
+                if l.len() < 64 {
+                    return Some(a.clone());
+                }
+                let kept =
+                    self.partials.borrow().iter().find(|(n, from, _)| *n == key && Rc::ptr_eq(from, l)).map(|e| e.2);
+                let x = kept.unwrap_or_else(|| {
+                    let counted = l.iter().any(|v| matches!(v, V::Num(_) | V::Bool(_)));
+                    let x = match counted.then(|| self.range_dispatch(name, t, vec![a.clone()])) {
+                        Some(V::Num(x)) if x.is_finite() => Some(x),
+                        _ => None,
+                    };
+                    let mut p = self.partials.borrow_mut();
+                    if p.len() >= 8 {
+                        p.remove(0);
+                    }
+                    p.push((key, l.clone(), x));
+                    x
+                });
+                x.map(V::Num)
+            })
+            .collect()
     }
 
     fn broadcast_call(&self, name: &str, t: &Traits, argv: &[V], blank_slots: &[bool]) -> V {

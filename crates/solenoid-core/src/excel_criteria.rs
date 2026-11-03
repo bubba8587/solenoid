@@ -923,7 +923,7 @@ pub fn as_range(v: &V) -> Rc<Vec<V>> {
     }
 }
 
-pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V {
+pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair]) -> V {
     if pairs.is_empty() {
         return V::err(sol_error(ErrorCode::Value, "At least one criteria range and criterion is needed"));
     }
@@ -954,6 +954,16 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
         && let Some(n) = f.tally.as_ref().and_then(|t| t.count(c, range.len()))
     {
         return V::Num(n as f64);
+    }
+    // One comparison on a range of numbers matches a run of its sorted cells: the aggregate is read off the run
+    // ([[C120]] linearWork).
+    if let (Some(vals), [(range, _)], [c], [f]) = (values, pairs, &crits[..], &facts[..])
+        && vals.len() == range.len()
+        && let Some(t) = f.tally.as_ref()
+        && let Some(run) = t.run(c)
+        && let Some(r) = f.rolled(t, vals).answer(kind, run, vals)
+    {
+        return r;
     }
     let mut n = pairs.iter().map(|(r, _)| r.len()).min().unwrap_or(0);
     if let Some(v) = values {
@@ -999,12 +1009,131 @@ struct Facts {
     has_num: bool,
     has_text: bool,
     tally: Option<Tally>,
+    /// The values ranges aggregated over this one, each rolled along its sorted cells.
+    rolled: std::cell::RefCell<Vec<Rc<Rolled>>>,
+}
+
+impl Facts {
+    fn rolled(&self, t: &Tally, values: &Rc<Vec<V>>) -> Rc<Rolled> {
+        let mut kept = self.rolled.borrow_mut();
+        if let Some(r) = kept.iter().find(|r| Rc::ptr_eq(&r.values, values)) {
+            return r.clone();
+        }
+        if kept.len() >= 4 {
+            kept.remove(0);
+        }
+        let r = Rc::new(Rolled::of(t, values));
+        kept.push(r.clone());
+        r
+    }
+}
+
+/// Which of a range's sorted number cells a comparison matches: the first `k`, or all from the `k`th on.
+#[derive(Clone, Copy)]
+enum Run {
+    First(usize),
+    From(usize),
+}
+
+/// A values range read along a criteria range's sorted cells, from each end: what any run of them aggregates to, the
+/// same answer the scan gives. Index `k` of a `pre_` table covers the first `k` sorted cells, of a `suf_` table the
+/// cells from the `k`th on.
+struct Rolled {
+    values: Rc<Vec<V>>,
+    /// The first row in a run whose value is an error, `usize::MAX` where none is.
+    pre_err: Vec<usize>,
+    suf_err: Vec<usize>,
+    /// The finite values in a run: how many, and their least and greatest (NaN where none).
+    pre_n: Vec<usize>,
+    suf_n: Vec<usize>,
+    pre_min: Vec<f64>,
+    suf_min: Vec<f64>,
+    pre_max: Vec<f64>,
+    suf_max: Vec<f64>,
+    /// Their sums, kept only where every finite value is a whole number and no sum can round, so adding them in
+    /// sorted order gives the scan's row-order sum to the bit.
+    sums: Option<(Vec<f64>, Vec<f64>)>,
+}
+
+impl Rolled {
+    fn of(t: &Tally, values: &Rc<Vec<V>>) -> Rolled {
+        let len = t.order.len();
+        let cell = |p: usize| &values[t.order[p]];
+        let finite = |p: usize| match cell(p) {
+            V::Num(x) if x.is_finite() => Some(*x),
+            _ => None,
+        };
+        let err = |p: usize| if matches!(cell(p), V::Err(_)) { t.order[p] } else { usize::MAX };
+        let both = |a: f64, b: f64, f: fn(f64, f64) -> f64| if a.is_nan() { b } else { f(a, b) };
+        let roll = |rev: bool| {
+            let mut e = vec![usize::MAX; len + 1];
+            let mut n = vec![0; len + 1];
+            let mut lo = vec![f64::NAN; len + 1];
+            let mut hi = vec![f64::NAN; len + 1];
+            let mut sum = vec![0.0; len + 1];
+            let steps: Box<dyn Iterator<Item = usize>> = if rev { Box::new((0..len).rev()) } else { Box::new(0..len) };
+            for p in steps {
+                let (from, to) = if rev { (p + 1, p) } else { (p, p + 1) };
+                e[to] = e[from].min(err(p));
+                let x = finite(p);
+                n[to] = n[from] + usize::from(x.is_some());
+                lo[to] = x.map_or(lo[from], |x| both(lo[from], x, js_min));
+                hi[to] = x.map_or(hi[from], |x| both(hi[from], x, js_max));
+                sum[to] = sum[from] + x.unwrap_or(0.0);
+            }
+            (e, n, lo, hi, sum)
+        };
+        let whole = (0..len)
+            .filter_map(finite)
+            .try_fold(0.0f64, |a, x| (x.fract() == 0.0 && a + x.abs() <= 9_007_199_254_740_992.0).then(|| a + x.abs()));
+        let (pre_err, pre_n, pre_min, pre_max, pre_sum) = roll(false);
+        let (suf_err, suf_n, suf_min, suf_max, suf_sum) = roll(true);
+        Rolled {
+            values: values.clone(),
+            pre_err,
+            suf_err,
+            pre_n,
+            suf_n,
+            pre_min,
+            suf_min,
+            pre_max,
+            suf_max,
+            sums: whole.map(|_| (pre_sum, suf_sum)),
+        }
+    }
+
+    /// The aggregate over a run, or None where only the scan can answer it to the bit.
+    fn answer(&self, kind: Kind, run: Run, values: &[V]) -> Option<V> {
+        let (k, pre) = match run {
+            Run::First(k) => (k, true),
+            Run::From(k) => (k, false),
+        };
+        let pick = |a: &Vec<f64>, b: &Vec<f64>| if pre { a[k] } else { b[k] };
+        let err = if pre { self.pre_err[k] } else { self.suf_err[k] };
+        if err != usize::MAX {
+            return Some(values[err].clone());
+        }
+        let n = if pre { self.pre_n[k] } else { self.suf_n[k] };
+        let or_zero = |x: f64| if x.is_nan() { 0.0 } else { x };
+        Some(match kind {
+            Kind::Count => return None,
+            Kind::Min => V::Num(or_zero(pick(&self.pre_min, &self.suf_min))),
+            Kind::Max => V::Num(or_zero(pick(&self.pre_max, &self.suf_max))),
+            Kind::Average if n == 0 => V::err(sol_error(ErrorCode::DivZero, "No rows matched the criteria")),
+            Kind::Sum | Kind::Average => {
+                let (a, b) = self.sums.as_ref()?;
+                let total = pick(a, b);
+                V::Num(if kind == Kind::Sum { total } else { total / n as f64 })
+            }
+        })
+    }
 }
 
 /// A range's cells by what `criterion_matches` asks of them.
 struct Tally {
-    /// The numbers that aren't NaN, sorted.
+    /// The numbers that aren't NaN, sorted, and their rows in that order.
     nums: Vec<f64>,
+    order: Vec<usize>,
     /// The rows of each number other than NaN (-0 as 0), and of each text cell by its lowered text, in order.
     num_rows: rustc_hash::FxHashMap<u64, Vec<usize>>,
     text_rows: rustc_hash::FxHashMap<String, Vec<usize>>,
@@ -1015,12 +1144,18 @@ struct Tally {
 
 impl Tally {
     fn of(range: &[V]) -> Tally {
-        let mut t =
-            Tally { nums: Vec::new(), num_rows: Default::default(), text_rows: Default::default(), errs: 0, bools: 0 };
+        let mut t = Tally {
+            nums: Vec::new(),
+            order: Vec::new(),
+            num_rows: Default::default(),
+            text_rows: Default::default(),
+            errs: 0,
+            bools: 0,
+        };
         for (i, v) in range.iter().enumerate() {
             match v {
                 V::Num(n) if !n.is_nan() => {
-                    t.nums.push(*n);
+                    t.order.push(i);
                     t.num_rows.entry((n + 0.0).to_bits()).or_default().push(i);
                 }
                 V::Str(s) if !s.is_empty() => t.text_rows.entry(lower_text(s).into_owned()).or_default().push(i),
@@ -1029,8 +1164,30 @@ impl Tally {
                 _ => {}
             }
         }
-        t.nums.sort_by(f64::total_cmp);
+        let key = |i: usize| match range[i] {
+            V::Num(n) => n,
+            _ => f64::NAN,
+        };
+        t.order.sort_by(|&a, &b| key(a).total_cmp(&key(b)));
+        t.nums = t.order.iter().map(|&i| key(i)).collect();
         t
+    }
+
+    /// The run of sorted cells a comparison with a number other than ±∞ matches.
+    fn run(&self, c: &Criterion) -> Option<Run> {
+        let Value::Num(x) = &c.value else { return None };
+        if !x.is_finite() {
+            return None;
+        }
+        let below = self.nums.partition_point(|&v| v < *x);
+        let upto = self.nums.partition_point(|&v| v <= *x);
+        Some(match c.op {
+            Op::Lt => Run::First(below),
+            Op::Lte => Run::First(upto),
+            Op::Gt => Run::From(upto),
+            Op::Gte => Run::From(below),
+            Op::Eq | Op::Neq => return None,
+        })
     }
 
     /// `criterion_matches` over the whole range, for a number or a plain text criterion. A number other than NaN
@@ -1084,6 +1241,7 @@ fn facts_of(range: &Rc<Vec<V>>) -> Rc<Facts> {
         has_num: range.iter().any(|v| matches!(v, V::Num(_))),
         has_text: range.iter().any(is_text),
         tally: tally.then(|| Tally::of(range)),
+        rolled: Default::default(),
     };
     if range.len() < 64 {
         return Rc::new(read(false));

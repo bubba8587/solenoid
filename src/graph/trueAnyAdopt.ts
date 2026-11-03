@@ -22,7 +22,7 @@ export function settleWildcardTypes(editor: GraphEditor<{ Node: GraphNode; Conne
     // A card's call also carries the type wired into each of its table inputs (`socketRows`), so a retyped output
     // names the cards it feeds.
     if (side === "out" && node) {
-      for (const c of editor.getConnections()) if (c.source === id && c.sourceOutput === key) editor.named(c.target);
+      for (const c of editor.connectionsOutOf(id)) if (c.sourceOutput === key) editor.named(c.target);
     }
   }
   return { conduitChanged: answer.conduitChanged, adopted: new Set(answer.adopted) };

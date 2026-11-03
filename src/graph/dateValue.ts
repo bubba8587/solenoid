@@ -17,17 +17,19 @@ export function dateSerialOf(v: unknown): unknown {
   return isSolDate(v) ? v.__date : v;
 }
 
-const serialLists = new WeakMap<object, unknown[]>();
+/** Each list's serial copy, or null for a list with no date: a list is scanned once, not on every render. */
+const serialLists = new WeakMap<object, unknown[] | null>();
 
 /** A value with its dates as their serials, and whether it held one: for the display layer, which formats a serial as a
  *  date once it knows the value is dates. Lists keep their identity per input, so a re-render reuses the copy. */
 export function datesAsSerials<T>(v: T): { value: T; dated: boolean } {
   if (isSolDate(v)) return { value: v.__date as unknown as T, dated: true };
-  if (!Array.isArray(v) || !v.some((c) => isSolDate(c) || (Array.isArray(c) && c.some(isSolDate)))) return { value: v, dated: false };
+  if (!Array.isArray(v)) return { value: v, dated: false };
   let out = serialLists.get(v);
-  if (!out) {
-    out = v.map((c) => (Array.isArray(c) ? c.map(dateSerialOf) : dateSerialOf(c)));
+  if (out === undefined) {
+    const dated = v.some((c) => isSolDate(c) || (Array.isArray(c) && c.some(isSolDate)));
+    out = dated ? v.map((c) => (Array.isArray(c) ? c.map(dateSerialOf) : dateSerialOf(c))) : null;
     serialLists.set(v, out);
   }
-  return { value: out as unknown as T, dated: true };
+  return out ? { value: out as unknown as T, dated: true } : { value: v, dated: false };
 }

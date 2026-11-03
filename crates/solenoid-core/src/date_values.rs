@@ -119,51 +119,97 @@ fn class_of(name: &str) -> Option<Class> {
     })
 }
 
-/// What a long list holds and its readings, kept with the list so a reused address can't answer for another.
+/// What a long list holds, kept with the list so a reused address can't answer for another.
 struct Seen {
     list: std::rc::Weak<Vec<V>>,
     dates: bool,
     plain: bool,
-    serials: Option<V>,
-    text: Option<V>,
 }
+
+/// Which reading of a list a kept copy is.
+#[derive(Clone, Copy, PartialEq)]
+enum Reading {
+    Serials,
+    Text,
+    Dates,
+}
+
+/// A long list read into a copy: the list, the reading, the copy.
+type Copy = (std::rc::Weak<Vec<V>>, Reading, V);
 
 thread_local! {
     /// Long lists already read, by the list: a range function per row of a computed column is handed the same column
-    /// every row, and scanning or copying it each time would be whole-table work per row ([[C120]] linearWork). The
-    /// copies keep one address across rows, so the memo and the lookup indexes downstream hit too.
+    /// every row, and scanning it each time would be whole-table work per row ([[C120]] linearWork).
     static SEEN: std::cell::RefCell<rustc_hash::FxHashMap<usize, Seen>> = Default::default();
+    /// SEEN's size after its last sweep of lists gone: it sweeps again once it doubles, so a sweep costs each entry
+    /// once.
+    static SWEPT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    /// The last few copies used: the column a range function reads every row keeps one copy, at one address, so the
+    /// memo and the lookup indexes downstream hit as they do for a number column. A few, since only the lists a row is
+    /// reading now are wanted again.
+    static COPIES: std::cell::RefCell<Vec<Copy>> = const { std::cell::RefCell::new(Vec::new()) };
 }
 
 /// Below this many items a list is read each time; above, once per list.
 const SCAN_ONCE: usize = 64;
+const KEPT_COPIES: usize = 16;
 
-/// `read` over a long list's entry, made on first sight.
-fn seen<T>(items: &Rc<Vec<V>>, read: impl FnOnce(&mut Seen) -> T) -> T {
+/// What a long list holds: (a date, a plain number), scanned on first sight.
+fn seen(items: &Rc<Vec<V>>) -> (bool, bool) {
     let key = Rc::as_ptr(items) as usize;
-    let hit =
-        SEEN.with(|m| m.borrow().get(&key).is_some_and(|e| e.list.upgrade().is_some_and(|r| Rc::ptr_eq(&r, items))));
-    if !hit {
+    let known = SEEN.with(|m| {
+        m.borrow()
+            .get(&key)
+            .filter(|e| e.list.upgrade().is_some_and(|r| Rc::ptr_eq(&r, items)))
+            .map(|e| (e.dates, e.plain))
+    });
+    known.unwrap_or_else(|| {
         let (dates, plain) = items.iter().fold((false, false), |(d, n), x| {
             let (a, b) = kinds(x);
             (d || a, n || b)
         });
         SEEN.with(|m| {
             let mut m = m.borrow_mut();
-            if m.len() > 4096 {
+            if m.len() >= 4096.max(2 * SWEPT.get()) {
                 m.retain(|_, e| e.list.strong_count() > 0);
+                SWEPT.set(m.len());
             }
-            m.insert(key, Seen { list: Rc::downgrade(items), dates, plain, serials: None, text: None });
+            m.insert(key, Seen { list: Rc::downgrade(items), dates, plain });
         });
-    }
-    SEEN.with(|m| read(m.borrow_mut().get_mut(&key).expect("just seen")))
+        (dates, plain)
+    })
+}
+
+/// A long list's `reading`, made by `f` once and kept while the list is read.
+fn copy_of(items: &Rc<Vec<V>>, reading: Reading, f: fn(&V) -> V) -> V {
+    // Least recently used goes first: a column read every row stays while each row's own answers come and go.
+    let kept = COPIES.with(|c| {
+        let mut c = c.borrow_mut();
+        let at = c.iter().position(|(w, r, _)| *r == reading && w.upgrade().is_some_and(|l| Rc::ptr_eq(&l, items)))?;
+        let e = c.remove(at);
+        let done = e.2.clone();
+        c.push(e);
+        Some(done)
+    });
+    kept.unwrap_or_else(|| {
+        let done = V::List(Rc::new(items.iter().map(f).collect()));
+        COPIES.with(|c| {
+            let mut c = c.borrow_mut();
+            c.retain(|(w, ..)| w.strong_count() > 0);
+            if c.len() >= KEPT_COPIES {
+                c.remove(0);
+            }
+            c.push((Rc::downgrade(items), reading, done.clone()));
+        });
+        done
+    })
 }
 
 /// Whether a value is or holds a date.
 pub fn holds_date(v: &V) -> bool {
     match v {
         V::Date(_) => true,
-        V::List(items) if items.len() >= SCAN_ONCE => seen(items, |e| e.dates),
+        V::List(items) if items.len() >= SCAN_ONCE => seen(items).0,
         V::List(items) => items.iter().any(holds_date),
         _ => false,
     }
@@ -174,7 +220,7 @@ fn kinds(v: &V) -> (bool, bool) {
     match v {
         V::Date(_) => (true, false),
         V::Num(n) => (false, !n.is_nan()),
-        V::List(items) if items.len() >= SCAN_ONCE => seen(items, |e| (e.dates, e.plain)),
+        V::List(items) if items.len() >= SCAN_ONCE => seen(items),
         V::List(items) => items.iter().fold((false, false), |(d, n), x| {
             let (a, b) = kinds(x);
             (d || a, n || b)
@@ -183,26 +229,17 @@ fn kinds(v: &V) -> (bool, bool) {
     }
 }
 
-/// A long list read by `f` once: a list `f` leaves alone is itself, else the copy `slot` keeps.
-fn once(v: &V, items: &Rc<Vec<V>>, slot: fn(&mut Seen) -> &mut Option<V>, f: fn(&V) -> V) -> V {
-    if !holds_date(v) {
-        return v.clone();
-    }
-    if let Some(done) = seen(items, |e| slot(e).clone()) {
-        return done;
-    }
-    let done = V::List(Rc::new(items.iter().map(f).collect()));
-    // A copy outlives its list only until the next copy is made.
-    SEEN.with(|m| m.borrow_mut().retain(|_, e| e.list.strong_count() > 0));
-    seen(items, |e| *slot(e) = Some(done.clone()));
-    done
-}
-
 /// A value with its dates as their serials.
 pub fn unwrap(v: &V) -> V {
     match v {
         V::Date(n) => V::Num(*n),
-        V::List(items) if items.len() >= SCAN_ONCE => once(v, items, |e| &mut e.serials, unwrap),
+        V::List(items) if items.len() >= SCAN_ONCE => {
+            if seen(items).0 {
+                copy_of(items, Reading::Serials, unwrap)
+            } else {
+                v.clone()
+            }
+        }
         V::List(items) if items.iter().any(holds_date) => V::List(Rc::new(items.iter().map(unwrap).collect())),
         _ => v.clone(),
     }
@@ -212,6 +249,7 @@ pub fn unwrap(v: &V) -> V {
 pub fn wrap(v: &V) -> V {
     match v {
         V::Num(n) => V::Date(*n),
+        V::List(items) if items.len() >= SCAN_ONCE => copy_of(items, Reading::Dates, wrap),
         V::List(items) => V::List(Rc::new(items.iter().map(wrap).collect())),
         _ => v.clone(),
     }
@@ -220,7 +258,13 @@ pub fn wrap(v: &V) -> V {
 fn as_text(v: &V) -> V {
     match v {
         V::Date(n) => V::str(&date_text(*n)),
-        V::List(items) if items.len() >= SCAN_ONCE => once(v, items, |e| &mut e.text, as_text),
+        V::List(items) if items.len() >= SCAN_ONCE => {
+            if seen(items).0 {
+                copy_of(items, Reading::Text, as_text)
+            } else {
+                v.clone()
+            }
+        }
         V::List(items) if items.iter().any(holds_date) => V::List(Rc::new(items.iter().map(as_text).collect())),
         _ => v.clone(),
     }

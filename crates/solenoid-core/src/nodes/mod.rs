@@ -83,6 +83,8 @@ pub struct Call {
     pub draws: Option<Draws>,
     /// The body's answer read the clock (TODAY or NOW): a kept answer stands for the recalculation only.
     pub volatile: bool,
+    /// The body takes a date as itself (`SEES_DATES`); every other body reads its serial, on each call.
+    sees_dates: bool,
 }
 
 /// A card's draws in one recalc generation: its uniform rolls, and the text it drew (UUID).
@@ -133,11 +135,16 @@ fn dated_tables(inputs: Vec<(String, Vec<Cv>)>, from_in: &[(String, String)]) ->
             let vs = vs
                 .into_iter()
                 .map(|v| match v {
-                    Cv::Frame(mut f) => {
+                    // Only a table with a column to retype is copied: a copy per call is whole-table work.
+                    Cv::Frame(mut f) if f.columns.iter().any(|c| c.ty == crate::frame::FrameColType::Number) => {
                         date_columns(Rc::make_mut(&mut f));
                         Cv::Frame(f)
                     }
-                    Cv::Cube(mut q) => {
+                    Cv::Cube(mut q)
+                        if q.columns
+                            .iter()
+                            .any(|c| matches!(c.ty, None | Some(crate::frame::FrameColType::Number))) =>
+                    {
                         for col in &mut Rc::make_mut(&mut q).columns {
                             if matches!(col.ty, None | Some(crate::frame::FrameColType::Number)) {
                                 col.ty = Some(crate::frame::FrameColType::Date);
@@ -269,7 +276,8 @@ impl Call {
             .collect();
         let inputs = dated_tables(inputs, &from_in);
         let kind = j.get("kind").and_then(Json::as_str).unwrap_or("");
-        let inputs = if SEES_DATES.contains(&kind) { inputs } else { undated_inputs(inputs) };
+        let sees_dates = SEES_DATES.contains(&kind);
+        let inputs = if sees_dates { inputs } else { undated_inputs(inputs) };
         let values = values_of(&inputs, &sockets);
         Call {
             init: Rc::new(obj("init")),
@@ -285,12 +293,14 @@ impl Call {
             matrix_units_out: Vec::new(),
             draws: None,
             volatile: false,
+            sees_dates,
         }
     }
 
     /// The same card called again on `inputs`: what a save holds and the sockets shared, nothing shown yet.
     pub fn again(&self, inputs: Vec<(String, Vec<Cv>)>, matrix_units_in: Vec<(String, Json)>) -> Call {
         let inputs = dated_tables(inputs, &self.from_in);
+        let inputs = if self.sees_dates { inputs } else { undated_inputs(inputs) };
         Call {
             init: self.init.clone(),
             literals: self.literals.clone(),
@@ -305,6 +315,7 @@ impl Call {
             matrix_units_out: Vec::new(),
             draws: None,
             volatile: false,
+            sees_dates: self.sees_dates,
         }
     }
 

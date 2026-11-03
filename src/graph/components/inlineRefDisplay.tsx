@@ -61,7 +61,7 @@ export function useRefAnnotation(nodeId: string, refKey: string): FormatAnnotati
 /** The type of the socket feeding `refKey`: a date serial previews as a date, as the card that made it shows it. */
 export function refSourceType(nodeId: string, refKey: string): SocketDataType | undefined {
   const ed = getOwningEditor(nodeId);
-  const c = ed?.getConnections().find((c) => c.target === nodeId && c.targetInput === refKey);
+  const c = ed?.connectionsInto(nodeId).find((c) => c.targetInput === refKey);
   const s = c ? ed?.getNode(c.source)?.outputs[c.sourceOutput]?.socket : undefined;
   return s instanceof SolenoidSocket ? s.dataType : undefined;
 }

@@ -69,6 +69,7 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
   private nodeList: S["Node"][] | null = [];
   private connectionList: S["Connection"][] | null = [];
   private byTarget: Map<string, S["Connection"][]> | null = null;
+  private bySource: Map<string, S["Connection"][]> | null = null;
   private piped: Piped[] = [];
   /** Nodes here whose ports changed since the core last heard. */
   private movedPorts = new Set<S["Node"]>();
@@ -170,11 +171,13 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
         this.connections.set(signal.data.id, signal.data);
         this.connectionList = null;
         this.byTarget = null;
+        this.bySource = null;
         break;
       case "connectionremoved":
         this.connections.delete(signal.data.id);
         this.connectionList = null;
         this.byTarget = null;
+        this.bySource = null;
         break;
     }
   }
@@ -214,15 +217,24 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
 
   /** The connections into a node, without walking the whole graph per card ([[C120]] linearWork). */
   connectionsInto(id: string): readonly S["Connection"][] {
-    if (!this.byTarget) {
-      this.byTarget = new Map();
-      for (const c of this.connections.values()) {
-        const list = this.byTarget.get(c.target);
-        if (list) list.push(c);
-        else this.byTarget.set(c.target, [c]);
-      }
-    }
+    this.byTarget ??= this.indexBy((c) => c.target);
     return this.byTarget.get(id) ?? [];
+  }
+
+  /** The connections out of a node. */
+  connectionsOutOf(id: string): readonly S["Connection"][] {
+    this.bySource ??= this.indexBy((c) => c.source);
+    return this.bySource.get(id) ?? [];
+  }
+
+  private indexBy(end: (c: S["Connection"]) => string): Map<string, S["Connection"][]> {
+    const out = new Map<string, S["Connection"][]>();
+    for (const c of this.connections.values()) {
+      const list = out.get(end(c));
+      if (list) list.push(c);
+      else out.set(end(c), [c]);
+    }
+    return out;
   }
 
   /** `false` when a `nodecreate` pipe cancelled it. */

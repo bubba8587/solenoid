@@ -55,7 +55,7 @@ Every function is classed once (`class_of`, `date_values.rs`; a name the core re
 - **Returns** (SORT, SORTBY, UNIQUE over their first; XLOOKUP over its return array; the set functions over all) compares by days and hands back dates where it was given dates; dates beside plain numbers there are #TYPE!.
 - **Unlisted:** SUM, PRODUCT, SUMPRODUCT and every function in no class answer #TYPE! "… takes no date. Cast to Number for its serial" for a date argument, so a new function can't let a serial out.
 
-A long list is read once per list, not once per row (`date_values.rs` `SEEN`): whether it holds a date or a plain number, and its serial and text copies. The copies keep one address across rows, so the range memo and the lookup indexes, which know a list by its address, hit as they do for a number column, and a range function per row of a computed column stays linear ([[C120]] linearWork).
+A long list is read once per list, not once per row (`date_values.rs`): whether it holds a date or a plain number (`SEEN`, swept of gone lists each time it doubles), and its serial, text and date copies (`COPIES`, the few used last). A copy keeps one address across rows, so the range memo and the lookup indexes, which know a list by its address, hit as they do for a number column, and a kept answer re-stamped as dates is the same list each time; a range function per row of a computed column stays linear ([[C120]] linearWork).
 
 The table verbs (Group By, Pivot, Window, Rollup) and the SUMIFS card read a Date column by its type: a sum, product or share of dates is #TYPE! there too (`dates_plan`, [[frame-verbs]]).
 
