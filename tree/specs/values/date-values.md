@@ -42,17 +42,17 @@ In `eval.rs` the operators match `Date` before numbers:
 
 ## Functions
 
-Every function is classed once (`class_of`, `date_values.rs`), and the call readies its arguments by the class after they are evaluated and before any other step (`ready`, called from `Eval::call`); no body checks for `Date` by hand. A function's class decides only when an argument holds a date, or the function builds one.
+Every function is classed once (`class_of`, `date_values.rs`; a name the core refuses with a pointer to another, such as VLOOKUP or MATCH, never reaches it), and the call readies its arguments by the class after they are evaluated and before any other step (`ready`, called from `Eval::call`); no body checks for `Date` by hand. A function's class decides only when an argument holds a date, or the function builds or reads one.
 
 - **Builds** (DATE, DATEVALUE, TODAY, NOW, FROMEPOCH, EDATE, EOMONTH, WORKDAY, WORKDAY.INTL, COUPNCD, COUPPCD) answers a `Date`; a plain number where it reads a date is #TYPE! "… takes a date there, not a number. Cast to Date or build it with DATE()" ([[C10]] socketLattice). DATETRUNC, TIMEZONECONVERT, SUNRISE and SUNSET answer a `Date` and read a number there too.
 - **Reads** (YEAR, MONTH, DAY, WEEKDAY, WEEKNUM, ISOWEEKNUM, TOEPOCH, DAYS, DAYS360, DATEDIF, YEARFRAC, NETWORKDAYS(.INTL), the coupon day counts and the dated finance functions, XNPV's and XIRR's dates) answers a number; a plain number where it reads a date is #TYPE!: `YEAR(46000)` is #TYPE!, `YEAR(DATE(2025, 12, 9))` is 2025. HOUR, MINUTE, SECOND, TEXT, DAYLENGTH, SUNPOSITION and MOONPHASE read a date or a number (a time of day is a number until that is ruled).
 - **Keeps** (MIN, MAX, MEDIAN, MODE, AVERAGE, CLAMP over all their arguments; LARGE, SMALL, PERCENTILE, QUARTILE, TRIMMEAN, the rounding functions, WAVG over their first) answers a `Date` where the values it reads there are dates; a date elsewhere, or dates beside plain numbers there, is #TYPE!. MAXIFS, MINIFS, AVERAGEIFS and AVERAGEIF do the same over their value range and take dates in their criteria ranges. SEQUENCE starting from a date is dates.
 - **Spreads** (STDEV, VAR and their forms, AVEDEV, DEVSQ, IQR, MAD, PTP, SEM) answer a plain number of days (VAR in days squared); dates beside plain numbers are #TYPE!.
-- **Counts** (COUNT, COUNTA, COUNTBLANK, COUNTIF(S), COUNTDISTINCT, RANK, PERCENTRANK, MATCH, XMATCH, ROWS, COLUMNS, ARGSORT, ARGMIN, ARGMAX, ISIN, BETWEEN, TALLY, WHICH) read dates as their days and answer a number.
-- **Sums** (SUMIF, SUMIFS) refuse a date in the range they add, and take dates in their criteria ranges.
+- **Counts** (COUNT, COUNTA, COUNTBLANK, COUNTIF(S), COUNTDISTINCT, RANK, PERCENTRANK, XMATCH, ROWS, COLUMNS, ARGSORT, ARGMIN, ARGMAX, ISIN, BETWEEN, TALLY, WHICH) read dates as their days and answer a number.
+- **Sums** (SUMIFS) refuses a date in the range it adds, and takes dates in its criteria ranges.
 - **Text** (CONCAT, TEXTJOIN, LEN, LEFT, SUBSTITUTE, the regex and padding functions and kin) reads a date as its text.
-- **Moves** (IF, IFS, SWITCH, CHOOSE, IFERROR, IFNA, INDEX, TAKE, DROP, the reshapes and stacks, FILTER, VLOOKUP, HLOOKUP, the IS functions, TYPE, the LAMBDA helpers and kin) passes a date through as itself.
-- **Returns** (SORT, SORTBY, UNIQUE, DISTINCT over their first; XLOOKUP over its return array; LOOKUP over its last; the set functions over all) compares by days and hands back dates where it was given dates; dates beside plain numbers there are #TYPE!.
+- **Moves** (IF, IFS, SWITCH, CHOOSE, IFERROR, IFNA, INDEX, TAKE, DROP, the reshapes and stacks, FILTER, the IS functions, TYPE, the LAMBDA helpers and kin) passes a date through as itself.
+- **Returns** (SORT, SORTBY, UNIQUE over their first; XLOOKUP over its return array; the set functions over all) compares by days and hands back dates where it was given dates; dates beside plain numbers there are #TYPE!.
 - **Unlisted:** SUM, PRODUCT, SUMPRODUCT and every function in no class answer #TYPE! "… takes no date. Cast to Number for its serial" for a date argument, so a new function can't let a serial out.
 
 Whether a long list holds a date is scanned once per list (`holds_date`), not once per row, so a range function per row of a computed column stays linear ([[C120]] linearWork).

@@ -26,7 +26,6 @@ enum At {
     Pos(&'static [usize]),
     /// Argument 2 when there are three or more, else argument 0 (AVERAGEIF's average range).
     ThirdOrFirst,
-    Last,
 }
 
 impl At {
@@ -35,7 +34,6 @@ impl At {
             At::All => true,
             At::Pos(p) => p.contains(&i),
             At::ThirdOrFirst => i == if n >= 3 { 2 } else { 0 },
-            At::Last => i + 1 == n,
         }
     }
 }
@@ -75,7 +73,7 @@ fn class_of(name: &str) -> Option<Class> {
         "DATE" | "DATEVALUE" | "TODAY" | "NOW" | "FROMEPOCH" => Builds(At::Pos(&[])),
         "EDATE" | "EOMONTH" => Builds(At::Pos(&[0])),
         "WORKDAY" => Builds(At::Pos(&[0, 2])),
-        "WORKDAY.INTL" | "WORKDAYINTL" => Builds(At::Pos(&[0, 3])),
+        "WORKDAY.INTL" => Builds(At::Pos(&[0, 3])),
         "COUPNCD" | "COUPPCD" => Builds(At::Pos(&[0, 1])),
         "DATETRUNC" | "TIMEZONECONVERT" | "SUNRISE" | "SUNSET" => BuildsLoose,
         "YEAR" | "MONTH" | "DAY" | "WEEKDAY" | "WEEKNUM" | "ISOWEEKNUM" | "TOEPOCH" => Reads(At::Pos(&[0])),
@@ -83,73 +81,39 @@ fn class_of(name: &str) -> Option<Class> {
         | "INTRATE" | "RECEIVED" | "PRICE" | "PRICEDISC" | "YIELD" | "YIELDDISC" | "DURATION" | "MDURATION"
         | "TBILLEQ" | "TBILLPRICE" | "TBILLYIELD" | "ACCRINTM" => Reads(At::Pos(&[0, 1])),
         "NETWORKDAYS" | "ACCRINT" | "PRICEMAT" | "YIELDMAT" | "ODDLPRICE" | "ODDLYIELD" => Reads(At::Pos(&[0, 1, 2])),
-        "NETWORKDAYS.INTL" | "NETWORKDAYSINTL" => Reads(At::Pos(&[0, 1, 3])),
+        "NETWORKDAYS.INTL" => Reads(At::Pos(&[0, 1, 3])),
         "ODDFPRICE" | "ODDFYIELD" => Reads(At::Pos(&[0, 1, 2, 3])),
         "XNPV" => Reads(At::Pos(&[2])),
         "XIRR" => Reads(At::Pos(&[1])),
         "HOUR" | "MINUTE" | "SECOND" | "TEXT" | "DAYLENGTH" | "SUNPOSITION" | "MOONPHASE" => ReadsLoose,
-        "MIN" | "MAX" | "MINA" | "MAXA" | "MEDIAN" | "MODE" | "MODE.SNGL" | "MODESNGL" | "MODE.MULT" | "MODEMULT"
-        | "AVERAGE" | "AVERAGEA" | "CLAMP" => Keeps(At::All),
-        "LARGE"
-        | "SMALL"
-        | "PERCENTILE"
-        | "PERCENTILE.INC"
-        | "PERCENTILE.EXC"
-        | "PERCENTILEINC"
-        | "PERCENTILEEXC"
-        | "QUARTILE"
-        | "QUARTILE.INC"
-        | "QUARTILE.EXC"
-        | "QUARTILEINC"
-        | "QUARTILEEXC"
-        | "TRIMMEAN"
-        | "ROUND"
-        | "ROUNDUP"
-        | "ROUNDDOWN"
-        | "MROUND"
-        | "FLOOR"
-        | "FLOOR.MATH"
-        | "FLOOR.PRECISE"
-        | "FLOORMATH"
-        | "FLOORPRECISE"
-        | "CEILING"
-        | "CEILING.MATH"
-        | "CEILING.PRECISE"
-        | "CEILINGMATH"
-        | "CEILINGPRECISE"
-        | "ISO.CEILING"
-        | "ISO.CEILING.MATH"
-        | "ISO.CEILING.PRECISE"
-        | "INT"
-        | "TRUNC"
-        | "WAVG" => Keeps(At::Pos(&[0])),
+        "MIN" | "MAX" | "MEDIAN" | "MODE" | "MODE.SNGL" | "MODE.MULT" | "AVERAGE" | "CLAMP" => Keeps(At::All),
+        "LARGE" | "SMALL" | "PERCENTILE" | "PERCENTILE.INC" | "PERCENTILE.EXC" | "QUARTILE" | "QUARTILE.INC"
+        | "QUARTILE.EXC" | "TRIMMEAN" | "ROUND" | "ROUNDUP" | "ROUNDDOWN" | "MROUND" | "FLOOR" | "FLOOR.MATH"
+        | "CEILING" | "CEILING.MATH" | "INT" | "TRUNC" | "WAVG" => Keeps(At::Pos(&[0])),
         "MAXIFS" | "MINIFS" | "AVERAGEIFS" => KeepsIfs(At::Pos(&[0])),
         "AVERAGEIF" => KeepsIfs(At::ThirdOrFirst),
         "SEQUENCE" => Keeps(At::Pos(&[2])),
-        "STDEV" | "STDEV.S" | "STDEV.P" | "STDEVS" | "STDEVP" | "STDEVA" | "STDEVPA" | "VAR" | "VAR.S" | "VAR.P"
-        | "VARS" | "VARP" | "VARA" | "VARPA" | "AVEDEV" | "DEVSQ" | "IQR" | "MAD" | "PTP" | "SEM" => Spreads,
+        "STDEV" | "STDEV.S" | "STDEV.P" | "VAR" | "VAR.S" | "VAR.P" | "AVEDEV" | "DEVSQ" | "IQR" | "MAD" | "PTP"
+        | "SEM" => Spreads,
         "COUNT" | "COUNTA" | "COUNTBLANK" | "COUNTIF" | "COUNTIFS" | "COUNTDISTINCT" | "RANK" | "RANK.EQ"
-        | "RANK.AVG" | "RANKEQ" | "RANKAVG" | "PERCENTRANK" | "PERCENTRANK.INC" | "PERCENTRANK.EXC"
-        | "PERCENTRANKINC" | "PERCENTRANKEXC" | "MATCH" | "XMATCH" | "ROWS" | "COLUMNS" | "ARGSORT" | "ARGMIN"
-        | "ARGMAX" | "ISIN" | "BETWEEN" | "TALLY" | "WHICH" => Counts,
-        "SUMIF" => SumsAt(At::ThirdOrFirst),
+        | "RANK.AVG" | "PERCENTRANK" | "PERCENTRANK.INC" | "PERCENTRANK.EXC" | "XMATCH" | "ROWS" | "COLUMNS"
+        | "ARGSORT" | "ARGMIN" | "ARGMAX" | "ISIN" | "BETWEEN" | "TALLY" | "WHICH" => Counts,
         "SUMIFS" => SumsAt(At::Pos(&[0])),
-        "CONCAT" | "CONCATENATE" | "TEXTJOIN" | "JOIN" | "LEN" | "LENGTH" | "LEFT" | "RIGHT" | "MID" | "UPPER"
-        | "LOWER" | "PROPER" | "TRIM" | "CLEAN" | "SUBSTITUTE" | "REPLACE" | "REPT" | "FIND" | "SEARCH" | "EXACT"
+        "CONCAT" | "CONCATENATE" | "TEXTJOIN" | "LEN" | "LENGTH" | "LEFT" | "RIGHT" | "MID" | "UPPER" | "LOWER"
+        | "PROPER" | "TRIM" | "CLEAN" | "SUBSTITUTE" | "REPLACE" | "REPT" | "FIND" | "SEARCH" | "EXACT"
         | "VALUETOTEXT" | "TEXTBEFORE" | "TEXTAFTER" | "TEXTSPLIT" | "PADLEFT" | "PADRIGHT" | "PADTEXT"
         | "REVERSETEXT" | "SLUGIFY" | "TRUNCATETEXT" | "UNACCENT" | "WRAPTEXT" | "REGEXEXTRACT" | "REGEXREPLACE"
         | "REGEXTEST" | "CONTAINS" | "LEVENSHTEIN" | "SIMILARITY" | "FUZZYMATCH" | "HASH" | "ENCODEURL"
-        | "ENCODEBASE64" | "TEXTFILTER" => Text,
+        | "ENCODEBASE64" => Text,
         "IF" | "IFS" | "SWITCH" | "CHOOSE" | "IFERROR" | "IFNA" | "INDEX" | "TAKE" | "DROP" | "CHOOSEROWS"
         | "CHOOSECOLS" | "TOCOL" | "TOROW" | "TRANSPOSE" | "WRAPROWS" | "WRAPCOLS" | "EXPAND" | "VSTACK" | "HSTACK"
         | "XSTACK" | "FILTER" | "ISBLANK" | "ISNUMBER" | "ISTEXT" | "ISERROR" | "ISERR" | "ISNA" | "ISLOGICAL"
-        | "ISNONTEXT" | "ISBOOLEAN" | "TYPE" | "ERROR.TYPE" | "COALESCE" | "HEAD" | "REVERSE" | "SHUFFLE" | "SLICE"
-        | "REPEAT" | "APPEND" | "CONCATLISTS" | "INTERLEAVE" | "T" | "MAP" | "REDUCE" | "SCAN" | "BYROW" | "BYCOL"
-        | "MAKEARRAY" | "LAMBDA" | "ELEMENT" | "SHIFT" | "FILLDOWN" | "FILLFORWARD" | "FILLBACKWARD" | "FILLVALUE"
-        | "RANDSAMPLE" | "NTHELEMENT" | "VLOOKUP" | "HLOOKUP" => Moves,
-        "SORT" | "SORTBY" | "UNIQUE" | "DISTINCT" => Returns(At::Pos(&[0])),
+        | "ISNONTEXT" | "ISBOOLEAN" | "TYPE" | "ERROR.TYPE" | "COALESCE" | "REVERSE" | "SHUFFLE" | "SLICE"
+        | "REPEAT" | "CONCATLISTS" | "INTERLEAVE" | "T" | "MAP" | "REDUCE" | "SCAN" | "BYROW" | "BYCOL"
+        | "MAKEARRAY" | "LAMBDA" | "ELEMENT" | "SHIFT" | "FILLFORWARD" | "FILLBACKWARD" | "FILLVALUE"
+        | "RANDSAMPLE" | "NTHELEMENT" => Moves,
+        "SORT" | "SORTBY" | "UNIQUE" => Returns(At::Pos(&[0])),
         "XLOOKUP" => Returns(At::Pos(&[2])),
-        "LOOKUP" => Returns(At::Last),
         "SETUNION" | "SETINTERSECT" | "SETDIFFERENCE" | "SETSYMDIFF" => Returns(At::All),
         _ => return None,
     })
