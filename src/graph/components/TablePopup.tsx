@@ -503,7 +503,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
 
   const sortable = !(state.list && !vertical);
   const sortOrder = sortedOrder(viewRows, sort, (r, c) =>
-    sortKeyOf(vertical ? grid[0]?.[r] : rawAt(r, c)));
+    sortKeyOf(vertical ? grid[0]?.[r] : rawAt(r, c), vertical ? cellType : colTypeAt(c)));
   const filtering = query.trim() !== "" && sortable;
   const matchedOrder = filtering
     ? sortOrder.filter((r) => cardMatches(displayRowAt(r, displayMode === "source" ? "source" : "shown"), query))

@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { sortKeyOf, sortedOrder, sortDirOf, nextSort, remapSort, type ColumnSort } from "../../src/graph/components/columnSort";
 import { solError } from "../../src/graph/errorValue";
+import { solDate } from "../../src/graph/dateValue";
 
 // The visual-only popup sort. Only the PURE parts are pinned here (the vitest env is
 // node — no component rendering): what a cell reduces to, and the row order that
@@ -182,5 +183,24 @@ describe("remapSort — the sort under structural column changes", () => {
 
   it("clears outright when the map rejects every key (the CSV-reshape case)", () => {
     expect(remapSort([{ col: 0, dir: "asc" }, { col: 3, dir: "desc" }], () => null)).toEqual([]);
+  });
+});
+
+describe("sort keys by the column's one type ([[D114]] dateIsAKind)", () => {
+  it("a date sorts by its day, before and after 1900 alike", () => {
+    const days = [solDate(45001), solDate(-3), null, solDate(44000)];
+    const order = sortedOrder(days.length, [{ col: 0, dir: "asc" }], (r) => sortKeyOf(days[r], "datelist"));
+    expect(order).toEqual([1, 3, 0, 2]);
+  });
+  it("a Date column's packed numbers sort as days", () => {
+    expect(sortKeyOf(45001, "date")).toBe(45001);
+  });
+  it("a text column reads every cell as text, digits too", () => {
+    expect(sortKeyOf("10", "string")).toBe("10");
+    expect(sortKeyOf("10", "strlist")).toBe("10");
+    expect(sortKeyOf("10")).toBe(10);
+    const codes = ["b2", "10", "a1", "9"];
+    const order = sortedOrder(codes.length, [{ col: 0, dir: "asc" }], (r) => sortKeyOf(codes[r], "string"));
+    expect(order.map((i) => codes[i])).toEqual(["9", "10", "a1", "b2"]);
   });
 });

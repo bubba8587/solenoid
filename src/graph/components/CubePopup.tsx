@@ -46,7 +46,7 @@ function describe(view: DrillView, listVertical: boolean, source: boolean): {
       cols: cube.columns.length,
       depth: cubeDepth(cube),
       cell: (r, c) => <CubeCellChip cell={cube.columns[c].cells[r] ?? null} crumb={cube.columns[c].name} size="sm" type={cube.columns[c].type} format={cube.columns[c].format} at={{ r, c }} />,
-      sortKey: (r, c) => sortKeyOf(cube.columns[c].cells[r] ?? null),
+      sortKey: (r, c) => sortKeyOf(cube.columns[c].cells[r] ?? null, cube.columns[c].type),
     };
   }
   if (view.kind === "frame") {
@@ -57,7 +57,7 @@ function describe(view: DrillView, listVertical: boolean, source: boolean): {
       cols: f.columns.length,
       depth: null,
       cell: (r, c) => frameCellNode(f.columns[c].type, f.columns[c].values[r] ?? null),
-      sortKey: (r, c) => sortKeyOf(f.columns[c].values[r] ?? null),
+      sortKey: (r, c) => sortKeyOf(f.columns[c].values[r] ?? null, f.columns[c].type),
     };
   }
   if (view.kind === "list") {
@@ -72,7 +72,7 @@ function describe(view: DrillView, listVertical: boolean, source: boolean): {
         cols: items.length,
         depth: null,
         cell: (_r, c) => item(c),
-        sortKey: (_r, c) => sortKeyOf(items[c] ?? null),
+        sortKey: (_r, c) => sortKeyOf(items[c] ?? null, view.type),
       };
     }
     return {
@@ -81,7 +81,7 @@ function describe(view: DrillView, listVertical: boolean, source: boolean): {
       cols: 1,
       depth: null,
       cell: (r) => item(r),
-      sortKey: (r) => sortKeyOf(items[r] ?? null),
+      sortKey: (r) => sortKeyOf(items[r] ?? null, view.type),
     };
   }
   const g = view.cells;

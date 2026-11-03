@@ -318,7 +318,7 @@ The sort is visual only: it orders the rendered rows and the read paths, and nev
 - Each rendered row keeps its source index, so the row number and every edit address the real row.
 - A list laid across one row has nothing to sort by column, so it shows no sort buttons.
 - **The click cycle** is unsorted, ascending, descending, unsorted. Several columns sort at once, as in Excel: priority is the order the keys were added, and changing a column's direction keeps its place. A structural column change remaps the keys by index (`remapSort`), and a key whose column was dropped goes.
-- **The key of a cell** (`sortKeyOf`) is a number, a logical as 1 or 0, decimal text read as a number (so a formatted "1,234" sorts numerically, while "0x1F" stays text), other text, an error's code (so failures group together), or nothing for a blank or a Frame, Cube or array cell.
+- **The key of a cell** (`sortKeyOf`) is read by the column's one type where the popup knows it (a Frame or Cube column's type, a list's family; a list is one type): a date, or a Date column's packed number, is its day ([[D114]] dateIsAKind); a text column's cell is always its text, digits included. With no type, a cell reads by its value: a number, a logical as 1 or 0, decimal text read as a number (so a formatted "1,234" sorts numerically, while "0x1F" stays text), other text. An error is its code (so failures group together), and a blank or a Frame, Cube or array cell is nothing.
 - **The order.** Blanks sink to the bottom in both directions, as in a spreadsheet. Numbers come before all text, and text compares in natural order, case-insensitively ([[C59]] byteStringOrder: "item2" before "item10"). Rows equal on every key keep their source order.
 
 ## Lists
