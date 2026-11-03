@@ -960,10 +960,30 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair
     if let (Some(vals), [(range, _)], [c], [f]) = (values, pairs, &crits[..], &facts[..])
         && vals.len() == range.len()
         && let Some(t) = f.tally.as_ref()
-        && let Some(run) = t.run(c)
+        && let Some(run) = t.sorted.run(c)
         && let Some(r) = f.rolled(t, vals).answer(kind, run, vals)
     {
         return r;
+    }
+    // An `=` criterion beside one comparison (a per-group running total): the group's rows, sorted by the comparison's
+    // range, are read as one comparison's run is.
+    if let ([(ra, _), (rb, _)], [ca, cb], [fa, fb]) = (pairs, &crits[..], &facts[..])
+        && ra.len() == rb.len()
+        && values.is_none_or(|v| v.len() == ra.len())
+    {
+        for (fe, ce, rc, cc) in [(fa, ca, rb, cb), (fb, cb, ra, ca)] {
+            let Some(rows) = fe.tally.as_ref().and_then(|t| t.rows(ce)) else { continue };
+            let group = fe.group(rc, rows);
+            let Some(run) = group.sorted.run(cc) else { continue };
+            match values {
+                None => return V::Num(group.sorted.run_len(run) as f64),
+                Some(vals) => {
+                    if let Some(r) = rolled_in(&group.rolled, &group.sorted, vals).answer(kind, run, vals) {
+                        return r;
+                    }
+                }
+            }
+        }
     }
     let mut n = pairs.iter().map(|(r, _)| r.len()).min().unwrap_or(0);
     if let Some(v) = values {
@@ -1012,20 +1032,109 @@ struct Facts {
     tally: Option<Tally>,
     /// The values ranges aggregated over this one, each rolled along its sorted cells.
     rolled: std::cell::RefCell<Vec<Rc<Rolled>>>,
+    /// Where this range holds an `=` criterion's groups: each group's rows sorted by another range's numbers, by that
+    /// range, made as a group is asked for.
+    grouped: std::cell::RefCell<Vec<Rc<Grouped>>>,
 }
 
 impl Facts {
     fn rolled(&self, t: &Tally, values: &Rc<Vec<V>>) -> Rc<Rolled> {
-        let mut kept = self.rolled.borrow_mut();
-        if let Some(r) = kept.iter().find(|r| Rc::ptr_eq(&r.values, values)) {
-            return r.clone();
+        rolled_in(&self.rolled, &t.sorted, values)
+    }
+
+    /// The group whose rows are `rows` (an `=` criterion's, from this range's tally), sorted by `by`'s numbers.
+    fn group(&self, by: &Rc<Vec<V>>, rows: &[usize]) -> Rc<Group> {
+        let grouped = {
+            let mut g = self.grouped.borrow_mut();
+            match g.iter().find(|x| Rc::ptr_eq(&x.by, by)) {
+                Some(x) => x.clone(),
+                None => {
+                    if g.len() >= 4 {
+                        g.remove(0);
+                    }
+                    let x = Rc::new(Grouped { by: by.clone(), groups: Default::default() });
+                    g.push(x.clone());
+                    x
+                }
+            }
+        };
+        let key = rows.as_ptr() as usize;
+        let mut groups = grouped.groups.borrow_mut();
+        groups
+            .entry(key)
+            .or_insert_with(|| {
+                Rc::new(Group { sorted: Sorted::over(by, rows.iter().copied()), rolled: Default::default() })
+            })
+            .clone()
+    }
+}
+
+/// A values range rolled along `sorted`, kept in `kept` by the values range.
+fn rolled_in(kept: &std::cell::RefCell<Vec<Rc<Rolled>>>, sorted: &Sorted, values: &Rc<Vec<V>>) -> Rc<Rolled> {
+    let mut kept = kept.borrow_mut();
+    if let Some(r) = kept.iter().find(|r| Rc::ptr_eq(&r.values, values)) {
+        return r.clone();
+    }
+    if kept.len() >= 4 {
+        kept.remove(0);
+    }
+    let r = Rc::new(Rolled::of(sorted, values));
+    kept.push(r.clone());
+    r
+}
+
+/// An `=` criterion's groups, each sorted by `by` ([[C120]] linearWork): a per-group running total reads its group's
+/// run, not every row of the group.
+struct Grouped {
+    by: Rc<Vec<V>>,
+    /// By the group's row list, which the `=` range's tally holds while these do.
+    groups: std::cell::RefCell<rustc_hash::FxHashMap<usize, Rc<Group>>>,
+}
+
+struct Group {
+    sorted: Sorted,
+    rolled: std::cell::RefCell<Vec<Rc<Rolled>>>,
+}
+
+/// Some rows' number cells (NaN aside), sorted, rows of equal numbers in row order; and those rows in that order.
+struct Sorted {
+    nums: Vec<f64>,
+    order: Vec<usize>,
+}
+
+impl Sorted {
+    fn over(range: &[V], rows: impl IntoIterator<Item = usize>) -> Sorted {
+        let key = |i: usize| match range[i] {
+            V::Num(n) => n,
+            _ => f64::NAN,
+        };
+        let mut order: Vec<usize> = rows.into_iter().filter(|&i| !key(i).is_nan()).collect();
+        order.sort_by(|&a, &b| key(a).total_cmp(&key(b)));
+        Sorted { nums: order.iter().map(|&i| key(i)).collect(), order }
+    }
+
+    /// The run of sorted cells a comparison with a number other than ±∞ matches.
+    fn run(&self, c: &Criterion) -> Option<Run> {
+        let Value::Num(x) = &c.value else { return None };
+        if !x.is_finite() {
+            return None;
         }
-        if kept.len() >= 4 {
-            kept.remove(0);
+        let below = self.nums.partition_point(|&v| v < *x);
+        let upto = self.nums.partition_point(|&v| v <= *x);
+        Some(match c.op {
+            Op::Lt => Run::First(below),
+            Op::Lte => Run::First(upto),
+            Op::Gt => Run::From(upto),
+            Op::Gte => Run::From(below),
+            Op::Eq | Op::Neq => return None,
+        })
+    }
+
+    fn run_len(&self, run: Run) -> usize {
+        match run {
+            Run::First(k) => k,
+            Run::From(k) => self.order.len() - k,
         }
-        let r = Rc::new(Rolled::of(t, values));
-        kept.push(r.clone());
-        r
     }
 }
 
@@ -1065,7 +1174,7 @@ struct Rolled {
 const CHECKPOINT: usize = 64;
 
 impl Rolled {
-    fn of(t: &Tally, values: &Rc<Vec<V>>) -> Rolled {
+    fn of(t: &Sorted, values: &Rc<Vec<V>>) -> Rolled {
         let len = t.order.len();
         let cell = |p: usize| &values[t.order[p]];
         let finite = |p: usize| match cell(p) {
@@ -1193,9 +1302,8 @@ impl Rolled {
 
 /// A range's cells by what `criterion_matches` asks of them.
 struct Tally {
-    /// The numbers that aren't NaN, sorted, and their rows in that order.
-    nums: Vec<f64>,
-    order: Vec<usize>,
+    /// The numbers that aren't NaN, sorted.
+    sorted: Sorted,
     /// The rows of each number other than NaN (-0 as 0), and of each text cell by its lowered text, in order.
     num_rows: rustc_hash::FxHashMap<u64, Vec<usize>>,
     text_rows: rustc_hash::FxHashMap<String, Vec<usize>>,
@@ -1207,8 +1315,7 @@ struct Tally {
 impl Tally {
     fn of(range: &[V]) -> Tally {
         let mut t = Tally {
-            nums: Vec::new(),
-            order: Vec::new(),
+            sorted: Sorted::over(range, 0..range.len()),
             num_rows: Default::default(),
             text_rows: Default::default(),
             errs: 0,
@@ -1216,54 +1323,28 @@ impl Tally {
         };
         for (i, v) in range.iter().enumerate() {
             match v {
-                V::Num(n) if !n.is_nan() => {
-                    t.order.push(i);
-                    t.num_rows.entry((n + 0.0).to_bits()).or_default().push(i);
-                }
+                V::Num(n) if !n.is_nan() => t.num_rows.entry((n + 0.0).to_bits()).or_default().push(i),
                 V::Str(s) if !s.is_empty() => t.text_rows.entry(lower_text(s).into_owned()).or_default().push(i),
                 V::Err(_) => t.errs += 1,
                 V::Bool(_) => t.bools += 1,
                 _ => {}
             }
         }
-        let key = |i: usize| match range[i] {
-            V::Num(n) => n,
-            _ => f64::NAN,
-        };
-        t.order.sort_by(|&a, &b| key(a).total_cmp(&key(b)));
-        t.nums = t.order.iter().map(|&i| key(i)).collect();
         t
-    }
-
-    /// The run of sorted cells a comparison with a number other than ±∞ matches.
-    fn run(&self, c: &Criterion) -> Option<Run> {
-        let Value::Num(x) = &c.value else { return None };
-        if !x.is_finite() {
-            return None;
-        }
-        let below = self.nums.partition_point(|&v| v < *x);
-        let upto = self.nums.partition_point(|&v| v <= *x);
-        Some(match c.op {
-            Op::Lt => Run::First(below),
-            Op::Lte => Run::First(upto),
-            Op::Gt => Run::From(upto),
-            Op::Gte => Run::From(below),
-            Op::Eq | Op::Neq => return None,
-        })
     }
 
     /// `criterion_matches` over the whole range, for a number or a plain text criterion. A number other than NaN
     /// compares with every number as `c - n` would; a blank, NaN or any other cell matches only `<>`.
     fn count(&self, c: &Criterion, total: usize) -> Option<usize> {
-        let below = |x: f64| self.nums.partition_point(|&v| v < x);
-        let upto = |x: f64| self.nums.partition_point(|&v| v <= x);
+        let below = |x: f64| self.sorted.nums.partition_point(|&v| v < x);
+        let upto = |x: f64| self.sorted.nums.partition_point(|&v| v <= x);
         let unlike = |equal: usize| total - self.errs - equal;
         match &c.value {
             Value::Num(n) if n.is_finite() => Some(match c.op {
                 Op::Eq => upto(*n) - below(*n),
                 Op::Neq => unlike(upto(*n) - below(*n)) - self.bools,
-                Op::Gt => self.nums.len() - upto(*n),
-                Op::Gte => self.nums.len() - below(*n),
+                Op::Gt => self.sorted.nums.len() - upto(*n),
+                Op::Gte => self.sorted.nums.len() - below(*n),
                 Op::Lt => below(*n),
                 Op::Lte => upto(*n),
             }),
@@ -1304,6 +1385,7 @@ fn facts_of(range: &Rc<Vec<V>>) -> Rc<Facts> {
         has_text: range.iter().any(is_text),
         tally: tally.then(|| Tally::of(range)),
         rolled: Default::default(),
+        grouped: Default::default(),
     };
     if range.len() < 64 {
         return Rc::new(read(false));

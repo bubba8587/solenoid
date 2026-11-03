@@ -234,6 +234,88 @@ fn a_sorted_run_answers_as_the_scan_does() {
     }
 }
 
+/// From a long range's second call on, an `=` criterion beside one comparison (a per-group running total) reads its
+/// group's sorted run; every kind answers as the scan does, to the bit, the pairs in either order.
+#[test]
+fn a_grouped_run_answers_as_the_scan_does() {
+    use solenoid_core::error_value::{sol_error, ErrorCode};
+    use solenoid_core::eval::{formula, Env};
+    use solenoid_core::excel_functions::V;
+    use std::rc::Rc;
+    let n = 120;
+    let groups: Vec<V> = (0..n)
+        .map(|i| match i % 7 {
+            0 => V::str("a"),
+            1 => V::str("A"),
+            2 => V::Num(2.0),
+            3 => V::Null,
+            4 => V::str("b"),
+            5 => V::Num(-0.0),
+            _ => V::str("a"),
+        })
+        .collect();
+    let range: Vec<V> = (0..n)
+        .map(|i| match i % 11 {
+            0 => V::Num(-0.0),
+            1 => V::Num(f64::INFINITY),
+            2 => V::Num(f64::NAN),
+            3 => V::Bool(true),
+            4 => V::Null,
+            5 => V::str("x"),
+            _ => V::Num(((i * 37) % 13) as f64 - 6.0),
+        })
+        .collect();
+    let whole: Vec<V> = (0..n).map(|i| V::Num(((i * 7) % 23) as f64 - 11.0)).collect();
+    let mut fractions: Vec<V> = (0..n)
+        .map(|i| match i % 3 {
+            0 => V::Num(0.1),
+            1 => V::Num(0.2),
+            _ => V::Num(-0.3),
+        })
+        .collect();
+    fractions[40] = V::Num(f64::INFINITY);
+    let mut with_error = whole.clone();
+    with_error[50] = V::err(sol_error(ErrorCode::Ref, "gone"));
+    with_error[13] = V::err(sol_error(ErrorCode::Value, "bad"));
+    let formulas = [
+        "SUMIFS(vals, g, gc, range, crit)",
+        "SUMIFS(vals, range, crit, g, gc)",
+        "AVERAGEIFS(vals, g, gc, range, crit)",
+        "MINIFS(vals, g, gc, range, crit)",
+        "MAXIFS(vals, range, crit, g, gc)",
+        "COUNTIFS(g, gc, range, crit)",
+        "COUNTIFS(range, crit, g, gc)",
+    ];
+    let group_crits = [V::str("a"), V::Num(2.0), V::Num(0.0), V::str("b"), V::str("zz")];
+    let crits = ["<0", "<=0", ">0", ">=0", "<-6", ">6", ">=3", "<3", ">2.5", "<100"];
+    for vals in [whole, fractions, with_error] {
+        let (shared_g, shared_r, shared_v) =
+            (V::List(Rc::new(groups.clone())), V::List(Rc::new(range.clone())), V::List(Rc::new(vals.clone())));
+        for src in formulas {
+            for gc in &group_crits {
+                for crit in crits {
+                    let call = |g: &V, r: &V, v: &V, gc: &V, crit: &str| {
+                        let env: Env = [
+                            ("g".to_string(), g.clone()),
+                            ("range".to_string(), r.clone()),
+                            ("vals".to_string(), v.clone()),
+                            ("gc".to_string(), gc.clone()),
+                            ("crit".to_string(), V::str(crit)),
+                        ]
+                        .into_iter()
+                        .collect();
+                        format!("{:?}", formula(src, env))
+                    };
+                    let fresh = |x: &Vec<V>| V::List(Rc::new(x.clone()));
+                    let scanned = call(&fresh(&groups), &fresh(&range), &fresh(&vals), gc, crit);
+                    call(&shared_g, &shared_r, &shared_v, &V::str("warm"), "warm");
+                    assert_eq!(call(&shared_g, &shared_r, &shared_v, gc, crit), scanned, "{src} {gc:?} {crit}");
+                }
+            }
+        }
+    }
+}
+
 /// A LAMBDA whose parameter holds a wired LAMBDA that reads `@a` reads the row, so the MAP around it is computed per
 /// row rather than kept from the first.
 #[test]
