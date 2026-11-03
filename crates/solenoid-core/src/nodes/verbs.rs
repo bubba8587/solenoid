@@ -115,7 +115,8 @@ fn trimmed_names(names: Vec<String>) -> Vec<String> {
 }
 
 /// A wired value as text, an error as its code; a blank wire is none.
-fn filter_value(c: &Call, key: &str) -> Option<String> {
+/// A filter input's value, wired or typed in; none where it is blank.
+fn filter_input(c: &Call, key: &str) -> Option<V> {
     let raw = match c.wired(key) {
         None | Some([]) => match c.string_literal(key) {
             V::Undef | V::Null => V::str(""),
@@ -123,11 +124,15 @@ fn filter_value(c: &Call, key: &str) -> Option<String> {
         },
         Some([first, ..]) => first.clone(),
     };
-    match raw {
-        V::Null | V::Undef => None,
-        V::Err(e) => Some(e.code.to_string()),
-        v => Some(value_text(&v)),
-    }
+    (!matches!(raw, V::Null | V::Undef)).then_some(raw)
+}
+
+/// A filter input as text: a column name, or an error's code.
+fn filter_value(c: &Call, key: &str) -> Option<String> {
+    filter_input(c, key).map(|v| match v {
+        V::Err(e) => e.code.to_string(),
+        v => value_text(&v),
+    })
 }
 
 /// A Cube verb's answer, which the card shows.
@@ -202,13 +207,13 @@ const LIST_OPS: [&str; 4] = ["listContains", "listContainsAny", "listContainsAll
 struct Cond {
     column: String,
     op: String,
-    value: String,
+    value: FrameCell,
     match_case: bool,
 }
 
 impl Cond {
     fn to_json(&self) -> Json {
-        json!({ "column": self.column, "op": self.op, "value": self.value, "matchCase": self.match_case })
+        json!({ "column": self.column, "op": self.op, "value": crate::wire::encode_cell(&self.value), "matchCase": self.match_case })
     }
 }
 
@@ -222,9 +227,15 @@ fn conditions(c: &Call, default_op: &str) -> Vec<Cond> {
         let col = filter_value(c, &s.key).unwrap_or_default();
         let cfg = config.get(id);
         let op = cfg.and_then(|o| o.get("op")).and_then(Json::as_str).unwrap_or(default_op).to_string();
-        let val = filter_value(c, &format!("value{id}")).unwrap_or_default();
+        let val =
+            filter_input(c, &format!("value{id}")).map_or(FrameCell::Null, |v| crate::frame_verbs::filter_cell(&v));
         let col = trim_space(&col).to_string();
-        if col.is_empty() || (!VALUELESS.contains(&op.as_str()) && trim_space(&val).is_empty()) {
+        let blank = match &val {
+            FrameCell::Null => true,
+            FrameCell::Str(s) => trim_space(s).is_empty(),
+            _ => false,
+        };
+        if col.is_empty() || (!VALUELESS.contains(&op.as_str()) && blank) {
             continue;
         }
         let match_case = cfg.and_then(|o| o.get("matchCase")).and_then(Json::as_bool).unwrap_or(false);
@@ -1230,14 +1241,15 @@ fn filter_cube(cube: &Cube, combine: &str, conds: &[Cond], complement: bool) -> 
         List(&'a [Cv], ListCond<'a>),
         Scalar(FrameColumn, Pred<'a>),
     }
-    let values: Vec<FrameCell> = conds.iter().map(|d| FrameCell::str(&d.value)).collect();
+    let values: Vec<FrameCell> = conds.iter().map(|d| d.value.clone()).collect();
     let mut tests = Vec::new();
     for (d, value) in conds.iter().zip(&values) {
         if LIST_OPS.contains(&d.op.as_str()) {
             let Some(raw) = cube.columns.iter().find(|c| c.name == d.column) else {
                 return Err(sol_error(ErrorCode::Ref, format!("column \"{}\" not found", d.column)));
             };
-            tests.push(Test::List(&raw.cells, ListCond::new(&d.op, &d.value, d.match_case)));
+            let text = crate::jsnum::js_string(&d.value).into_owned();
+            tests.push(Test::List(&raw.cells, ListCond::new(&d.op, &text, d.match_case)));
         } else {
             let (col, _) = scalar_column(cube, &d.column)?;
             let op = parse(&d.op)?;

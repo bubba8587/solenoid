@@ -1,4 +1,5 @@
 // [[C68]]
+import { solDate, type SolDate } from "../dateValue";
 import { GraphNode, GraphOutput } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { sanitizeSvg } from "../svgSanitize";
@@ -33,7 +34,8 @@ import {
   type FrontmatterValue,
 } from "../noteFrontmatter";
 
-type EmittedValue = FrontmatterValue | FrameValue | CubeValue | SolError;
+/** A field's value: a date field's a `SolDate` ([[D114]] dateIsAKind). */
+type EmittedValue = FrontmatterValue | SolDate | (FrontmatterScalar | SolDate)[] | (FrontmatterScalar | SolDate)[][] | FrameValue | CubeValue | SolError;
 
 const KNAP_UNQUOTED = 'Knap vars in frontmatter require quoted "{{var}}" syntax';
 
@@ -117,7 +119,11 @@ function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateCo
   const base = elementFamilyOf(type) as FieldBase;
   const rank = latticeRank(type);
   const datesAsText = guessed !== undefined && elementFamilyOf(guessed) === "date" && (base === "string" || base === "complex");
-  const one = (e: unknown) => coerceScalar((datesAsText && typeof e === "number" ? noteDateText(e) : e) as FrontmatterScalar, base);
+  // A date field's value is a date ([[D114]] dateIsAKind).
+  const one = (e: unknown) => {
+    const v = coerceScalar((datesAsText && typeof e === "number" ? noteDateText(e) : e) as FrontmatterScalar, base);
+    return base === "date" && typeof v === "number" ? solDate(v) : v;
+  };
   const items: unknown[] = Array.isArray(value) ? value : value === null ? [] : [value];
   if (rank === 2) return items.map((row) => (Array.isArray(row) ? row : [row]).map(one));
   if (rank === 1) return items.flat().map(one);
@@ -231,7 +237,7 @@ export class NoteNode extends GraphNode {
 
   templateVariables(): Record<string, unknown> {
     const vars: Record<string, unknown> = {};
-    for (const [k, v] of this._fieldValues) vars[k] = toTemplateValue(v, this.fieldType(k));
+    for (const [k, v] of this._fieldValues) vars[k] = toTemplateValue(v);
     return vars;
   }
 

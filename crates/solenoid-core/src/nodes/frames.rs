@@ -54,13 +54,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 /// A card cell as the columnar hand-off carries it (`encodeBinary`): a number, text, a logical or an error, anything
 /// else blank.
 pub(crate) fn core_cell(v: &V) -> FrameCell {
-    match v {
-        V::Num(n) | V::Date(n) => FrameCell::Num(*n),
-        V::Str(s) => FrameCell::Str(s.clone()),
-        V::Bool(b) => FrameCell::Bool(*b),
-        V::Err(e) => FrameCell::Err(e.clone()),
-        _ => FrameCell::Null,
-    }
+    FrameCell::of_scalar(v).unwrap_or(FrameCell::Null)
 }
 
 pub(crate) fn card_cell(c: &FrameCell) -> V {

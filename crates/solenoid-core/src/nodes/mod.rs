@@ -296,15 +296,9 @@ impl Call {
         }
     }
 
-    /// The typed literal, `undefined` where it isn't set. A date socket's literal is saved as its serial and read as a
-    /// date ([[D114]] dateIsAKind).
+    /// The typed literal, `undefined` where it isn't set.
     pub fn literal(&self, key: &str) -> V {
-        let v = self.literals.get(key).map(decode).unwrap_or(V::Undef);
-        if self.input_type(key).is_some_and(|t| t.starts_with("date")) {
-            crate::date_values::wrap(&v)
-        } else {
-            v
-        }
+        self.literals.get(key).map(decode).unwrap_or(V::Undef)
     }
 
     pub fn string_literal(&self, key: &str) -> V {

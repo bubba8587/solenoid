@@ -1,4 +1,5 @@
 // [[C86]] membershipByGesture, [[C17]] shareImpl
+import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { PayoffPlannerNode, type PayoffOrder, type PayoffView } from "../../../src/graph/nodeClasses";
 import { extractInit } from "../../../src/graph/nodeInit";
@@ -19,7 +20,7 @@ const debtFrame = (ds: Debt[], unit?: string): FrameValue => ({ __frame: true, c
 
 function plan(debts: FrameValue, extra: number, order: PayoffOrder, mode: PayoffView, start: number | null): FrameValue {
   const n = new PayoffPlannerNode({ order, mode });
-  const out = n.data({ debts: [debts], extra: [extra], ...(start === null ? {} : { start: [start] }) }).frame;
+  const out = n.data({ debts: [debts], extra: [extra], ...(start === null ? {} : { start: [solDate(start)] }) }).frame;
   if (!isFrameValue(out)) throw out;
   return out;
 }

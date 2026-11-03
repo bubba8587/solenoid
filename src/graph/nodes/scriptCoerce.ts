@@ -123,7 +123,7 @@ function cubeToRows(c: CubeValue): Record<string, unknown>[] {
 }
 
 /** `dated`: the input's settled type is a date family, so its numbers are serials. */
-export async function scriptArgToJs(v: unknown, dated = false): Promise<unknown> {
+export async function scriptArgToJs(v: unknown): Promise<unknown> {
   if (isLambdaValue(v) || isChartValue(v) || isDocumentValue(v)) {
     const kind = isLambdaValue(v) ? "a lambda" : isChartValue(v) ? "a chart" : "a document";
     return solError("#TYPE!", `A script reads data values; ${kind} has no script form`);
@@ -135,7 +135,7 @@ export async function scriptArgToJs(v: unknown, dated = false): Promise<unknown>
     return frameToRows(full);
   }
   if (isCubeValue(v)) return cubeToRows(v);
-  return dated ? asDate(v) : datesToJs(v);
+  return datesToJs(v);
 }
 
 const COL_TYPE: Record<Exclude<CellFamily, "complex">, FrameColType> = {

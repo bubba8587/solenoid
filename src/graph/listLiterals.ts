@@ -2,6 +2,7 @@
 // The typed list literals: a list input's text as a card stores it, and how its items read. Arrival coercion itself
 // is the graph core's input boundary (`crates/solenoid-graph/src/boundary.rs`, compute-pass.md § Arrival coercion).
 import type { SocketDataType } from "./sockets";
+import { solDate } from "./dateValue";
 import { coerceFrameCell, type FrameColType } from "./frame";
 import { parseCsvLine } from "./csv";
 import { csvField } from "./csvSafety";
@@ -22,5 +23,8 @@ const LITERAL_READ: Partial<Record<SocketDataType, FrameColType>> = { numlist: "
 export function parseListLiteral(csv: string, dt: SocketDataType): unknown[] {
   const parts = listLiteralItems(csv);
   const type = LITERAL_READ[dt];
-  return type ? parts.map((p) => coerceFrameCell(type, p)) : parts;
+  if (!type) return parts;
+  const cells = parts.map((p) => coerceFrameCell(type, p));
+  // A date list's items are dates ([[D114]] dateIsAKind).
+  return type === "date" ? cells.map((c) => (typeof c === "number" && Number.isFinite(c) ? solDate(c) : c)) : cells;
 }

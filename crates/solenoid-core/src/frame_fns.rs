@@ -249,7 +249,8 @@ fn each(args: &[V], at: usize, run: impl Fn(&[V]) -> Res<V>) -> Res<FrameOut> {
     Ok(FrameOut::Value(V::List(Rc::new(out))))
 }
 
-/// A value as a frame cell; one that isn't a cell (a list, a LAMBDA) is an argument the function doesn't take.
+/// A value as a frame cell; one that isn't a cell (a list, a LAMBDA) is an argument the function doesn't take, and so
+/// is a date, which only a column typed Date holds (its builder types it first, [[C137]] datesNeverSerials).
 fn v_cell(v: &V) -> Res<FrameCell> {
     Ok(match v {
         V::Undef | V::Null => FrameCell::Null,

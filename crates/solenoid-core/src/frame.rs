@@ -34,6 +34,20 @@ pub enum FrameCell {
 pub const NULL: &FrameCell = &FrameCell::Null;
 
 impl FrameCell {
+    /// A loose value as a table holds it: a date its day, as a Date column packs it ([[D114]] dateIsAKind); none
+    /// for a value that is no cell (a list, a LAMBDA, a complex number).
+    pub fn of_scalar(v: &crate::excel_functions::V) -> Option<FrameCell> {
+        use crate::excel_functions::V;
+        Some(match v {
+            V::Null | V::Undef => FrameCell::Null,
+            V::Num(n) | V::Date(n) => FrameCell::Num(*n),
+            V::Str(s) => FrameCell::Str(s.clone()),
+            V::Bool(b) => FrameCell::Bool(*b),
+            V::Err(e) => FrameCell::Err(e.clone()),
+            _ => return None,
+        })
+    }
+
     pub fn err(e: SolError) -> FrameCell {
         FrameCell::Err(Rc::new(e))
     }

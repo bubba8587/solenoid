@@ -73,8 +73,8 @@ describe("parseListLiteral — typed 1-D list literals", () => {
     expect(parseListLiteral('"First, Last", qty', "strlist")).toEqual(["First, Last", "qty"]);
     expect(parseListLiteral('"He said ""hi""", x', "strlist")).toEqual(['He said "hi"', "x"]);
   });
-  it("datelist: each part → a date serial", () => {
-    expect(parseListLiteral("2026-03-15", "datelist")).toEqual([46096]);
+  it("datelist: each part → a date", () => {
+    expect(parseListLiteral("2026-03-15", "datelist")).toEqual([solDate(46096)]);
   });
   it("logicallist: each part → a boolean (TRUE/FALSE, 0/1)", () => {
     expect(parseListLiteral("true, 0, FALSE, 1", "logicallist")).toEqual([true, false, false, true]);

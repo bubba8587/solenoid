@@ -1,4 +1,5 @@
 // [[C68]], [[B1]] obsidianBet, [[C10]] socketLattice
+import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { NoteNode } from "../../../src/graph/nodes/annotation";
 import { toggleTaskMarker } from "../../../src/graph/noteMarkdown";
@@ -38,7 +39,7 @@ describe("NoteNode frontmatter outputs", () => {
       title: "Budget",
       count: 42,
       active: true,
-      due: Math.round(parseDateToSerial("2026-03-01")),
+      due: solDate(Math.round(parseDateToSerial("2026-03-01"))),
       tags: ["a", "b"],
     });
     expect(n.renderBody).toBe("# Body");

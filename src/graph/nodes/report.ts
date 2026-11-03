@@ -11,7 +11,6 @@ import { isFrameRef, readFrame } from "../frameBackend";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { getOwningView } from "../activeGraph";
 import { dropInputCables } from "../components/cablePrune";
-import { type SocketDataType } from "../sockets";
 
 const FIXED = new Set(["template", "records"]);
 const BATCH_LOCALS = new Set(["record", "index"]);
@@ -121,11 +120,11 @@ export class ReportNode extends GraphNode {
     return embedBareVariables(body, wired);
   }
 
-  private async templateVariables(refs: Record<string, unknown>, present: ReadonlySet<string>, fallbackTypes: Map<string, SocketDataType | undefined>): Promise<Record<string, unknown>> {
+  private async templateVariables(refs: Record<string, unknown>, present: ReadonlySet<string>): Promise<Record<string, unknown>> {
     const vars: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(refs)) {
       if (!present.has(k)) continue;
-      vars[k] = toTemplateValue(isFrameRef(v) ? await readFrame(v) : v, fallbackTypes.get(k));
+      vars[k] = toTemplateValue(isFrameRef(v) ? await readFrame(v) : v);
     }
     return vars;
   }
@@ -158,7 +157,6 @@ export class ReportNode extends GraphNode {
 
     const tplNote = this._templateDoc ? new NoteNode({ body: source }) : null;
     const defaults = tplNote?.fieldValues() ?? {};
-    const fallbackTypes = new Map<string, SocketDataType | undefined>(Object.keys(defaults).map((k) => [k, tplNote!.fieldType(k)]));
     this._refValues = new Map(desired.map((k) => [k, inputs?.[k] !== undefined ? (inputs[k][0] ?? null) : (defaults[k] ?? null)]));
     const refs: Record<string, unknown> = Object.fromEntries(this._refValues);
     const present = new Set(desired.filter((k) => inputs?.[k] !== undefined || k in defaults));
@@ -177,7 +175,7 @@ export class ReportNode extends GraphNode {
         const fresh = tplNote.fieldValues();
         for (const k of desired) if (inputs?.[k] === undefined && k in fresh) { refs[k] = fresh[k]; this._refValues.set(k, fresh[k] as never); }
       }
-      this.templateVars = await this.templateVariables(refs, present, fallbackTypes);
+      this.templateVars = await this.templateVariables(refs, present);
       if (this._templateDoc) this.templateVars.template = source;
       if (recordsIn != null) {
         const raw = isFrameRef(recordsIn) ? await readFrame(recordsIn) : recordsIn;

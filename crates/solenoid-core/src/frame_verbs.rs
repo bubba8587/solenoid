@@ -556,10 +556,27 @@ pub fn sample_frame(f: &FrameValue, n: usize) -> Option<FrameValue> {
 
 // ─── Filter ─────────────────────────────────────────────────────────────────────
 
+/// A filter's value as the test reads it: a date its day, as a Date column packs its cells ([[D114]] dateIsAKind);
+/// an error its code, which a text test reads.
+pub fn filter_cell(v: &crate::excel_functions::V) -> FrameCell {
+    match v {
+        crate::excel_functions::V::Err(e) => FrameCell::str(e.code.as_str()),
+        v => FrameCell::of_scalar(v).unwrap_or_else(|| FrameCell::str(&crate::excel_functions::value_text(v))),
+    }
+}
+
 fn filter_value_to_number(value: &FrameCell, ty: FrameColType) -> Res<Option<f64>> {
     if ty == FrameColType::Logical {
         let b = logical_or_type_error(value, "Filter")?;
         return Ok(b.map(|b| if b { 1.0 } else { 0.0 }));
+    }
+    // A Date column reads a typed value as a date.
+    if let (FrameColType::Date, FrameCell::Str(s)) = (ty, value) {
+        return Ok(match crate::excel_criteria::parse_date(s) {
+            crate::excel_criteria::DateReading::Serial(d) if d.is_finite() => Some(d),
+            crate::excel_criteria::DateReading::Ambiguous(e) => return Err(e),
+            _ => None,
+        });
     }
     Ok(match value {
         FrameCell::Num(n) => n.is_finite().then_some(*n),

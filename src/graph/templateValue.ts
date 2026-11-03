@@ -9,7 +9,6 @@ import { displayMagnitudeOf } from "./unitBridge";
 import { isSolError } from "./errorValue";
 import { formatDateSerial } from "./nodes/dateSerial";
 import { mermaidToMarkdown, lambdaToMarkdown } from "./obsidianMarkdown";
-import { isDateType, type SocketDataType } from "./sockets";
 
 function serialToIso(serial: number): string {
   const whole = Number.isInteger(serial);
@@ -55,7 +54,7 @@ function cubeToTemplateRows(c: CubeValue): Record<string, unknown>[] {
   return rows;
 }
 
-export function toTemplateValue(v: unknown, type?: SocketDataType | null): unknown {
+export function toTemplateValue(v: unknown): unknown {
   if (v === undefined || v === null) return null;
   if (isSolError(v)) return v.code;
   if (isFrameValue(v)) return frameToTemplateRows(v);
@@ -64,13 +63,9 @@ export function toTemplateValue(v: unknown, type?: SocketDataType | null): unkno
   if (isMermaidValue(v)) return mermaidToMarkdown(v);
   if (isLambdaValue(v)) return lambdaToMarkdown(v);
   if (isUnitCell(v)) return displayMagnitudeOf(v);
-  // A date value reads as a date whatever its socket says ([[D114]] dateIsAKind).
-  if (isSolDate(v)) return toTemplateValue(v.__date, "date");
-  if (Array.isArray(v)) {
-    const date = !!type && isDateType(type);
-    return v.map((x) => toTemplateValue(x, date ? "date" : null));
-  }
-  if (typeof v === "number") return type && isDateType(type) && Number.isFinite(v) ? serialToIso(v) : v;
+  if (isSolDate(v)) return Number.isFinite(v.__date) ? serialToIso(v.__date) : v.__date;
+  if (Array.isArray(v)) return v.map(toTemplateValue);
+  if (typeof v === "number") return v;
   if (typeof v === "string" || typeof v === "boolean") return v;
   if (typeof v === "object" && ("__chart" in v || "__svg" in v || "__image" in v)) return null;
   return v;

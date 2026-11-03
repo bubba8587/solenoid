@@ -18,11 +18,12 @@ import { getOwningView, getOwningEditor } from "../activeGraph";
 import { reconcileFcTypes } from "../fcReconcile";
 import { scheduleAutosave } from "../persistence";
 import { standoffStore, settleStandoffs } from "../standoffs";
-import { SOCKET_COLORS, isDateType } from "../sockets";
+import { SOCKET_COLORS } from "../sockets";
+import { isSolDate, type SolDate } from "../dateValue";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
-import { parseNoteFrontmatter, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
+import { parseNoteFrontmatter, type FrontmatterFieldType, type FrontmatterValue, type FrontmatterScalar } from "../noteFrontmatter";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeDepth, type FrameValue, type CubeValue } from "../frame";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
@@ -35,7 +36,7 @@ import { renderNoteMarkdown, toggleTaskMarker } from "../noteMarkdown";
 import { useKatexReady } from "./katexLoader";
 import { measureThenWrite } from "./layoutBatch";
 
-type FieldValue = FrontmatterValue | FrameValue | CubeValue | SolError;
+type FieldValue = FrontmatterValue | SolDate | (FrontmatterScalar | SolDate)[] | (FrontmatterScalar | SolDate)[][] | FrameValue | CubeValue | SolError;
 
 const FIELD_TYPES_AT_RANK: FrontmatterFieldType[][] = [
   ["number", "string", "date", "logical", "complex"],
@@ -64,10 +65,10 @@ function previewValue(value: FieldValue, t: FrontmatterFieldType): string {
     if (!isCubeValue(value)) return "Cube";
     return `${cubeRowCount(value)}×${value.columns.length}×${cubeDepth(value)} Cube`;
   }
-  const one = (v: number | string | boolean | null): string => {
-    if (v === null) return "null";
+  const one = (v: unknown): string => {
+    if (v === null || v === undefined) return "null";
     if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
-    if (typeof v === "number" && isDateType(t)) return formatDateSerial(v, DEFAULT_DATE_FORMAT);
+    if (isSolDate(v)) return formatDateSerial(v.__date, DEFAULT_DATE_FORMAT);
     return String(v);
   };
   if (Array.isArray(value) && rankOfField(t) === 2) {

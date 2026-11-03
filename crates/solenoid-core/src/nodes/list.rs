@@ -755,6 +755,7 @@ fn list_input(c: &mut Call) -> Answer {
 fn elem_col_type(arr: &[V]) -> FrameColType {
     for v in arr {
         match v {
+            V::Date(_) => return FrameColType::Date,
             V::Str(_) => return FrameColType::String,
             V::Bool(_) => return FrameColType::Logical,
             V::Num(_) => return FrameColType::Number,
@@ -766,18 +767,11 @@ fn elem_col_type(arr: &[V]) -> FrameColType {
 
 /// A value as the filter's predicates read a cell.
 fn as_cell(v: &V) -> FrameCell {
-    match v {
-        V::Null => FrameCell::Null,
-        V::Num(n) => FrameCell::Num(*n),
-        V::Bool(b) => FrameCell::Bool(*b),
-        V::Str(s) => FrameCell::Str(s.clone()),
-        V::Err(e) => FrameCell::Err(e.clone()),
-        other => FrameCell::str(&value_text(other)),
-    }
+    FrameCell::of_scalar(v).unwrap_or_else(|| FrameCell::str(&value_text(v)))
 }
 
 /// A wired value as text (an error as its code), a blank as no condition.
-fn condition_value(c: &Call, key: &str) -> String {
+fn condition_value(c: &Call, key: &str) -> FrameCell {
     let raw = match c.wired(key) {
         None | Some([]) => match c.string_literal(key) {
             V::Undef | V::Null => V::str(""),
@@ -785,11 +779,7 @@ fn condition_value(c: &Call, key: &str) -> String {
         },
         Some([first, ..]) => first.clone(),
     };
-    match raw {
-        V::Null | V::Undef => String::new(),
-        V::Err(e) => e.code.to_string(),
-        v => value_text(&v),
-    }
+    crate::frame_verbs::filter_cell(&raw)
 }
 
 /// What a wired value says of the sockets a card shows for it: a JavaScript array of rows, an array of anything else,
@@ -866,14 +856,19 @@ fn filter(c: &mut Call) -> Answer {
     let mags: Vec<V> = arr.iter().map(strip_unit_cells).collect();
     let ty = elem_col_type(&mags);
     let config = c.field("condConfig").cloned();
-    let mut conds: Vec<(FilterOp, String, bool)> = Vec::new();
+    let mut conds: Vec<(FilterOp, FrameCell, bool)> = Vec::new();
     for key in c.sockets.iter().map(|s| &s.key).filter(|k| k.starts_with("value")) {
         let cfg = config.as_ref().and_then(|o| o.get(&key[5..]));
         let spelled = cfg.and_then(|o| o.get("op")).and_then(|v| v.as_str()).unwrap_or("gt");
         let op: FilterOp =
             spelled.parse().map_err(|_| err(ErrorCode::Value, format!("Unknown filter condition \"{spelled}\"")))?;
         let value = condition_value(c, key);
-        if !op.is_valueless() && trim_space(&value).is_empty() {
+        let blank = match &value {
+            FrameCell::Null => true,
+            FrameCell::Str(s) => trim_space(s).is_empty(),
+            _ => false,
+        };
+        if !op.is_valueless() && blank {
             continue;
         }
         let match_case = cfg.and_then(|o| o.get("matchCase")).and_then(|v| v.as_bool()).unwrap_or(false);
@@ -899,7 +894,7 @@ fn filter(c: &mut Call) -> Answer {
         }
     }
     let first_text = conds.iter().find_map(|(op, _, _)| op.text_label());
-    let values: Vec<FrameCell> = conds.iter().map(|(_, v, _)| FrameCell::str(v)).collect();
+    let values: Vec<FrameCell> = conds.iter().map(|(_, v, _)| v.clone()).collect();
     let mut preds = Vec::with_capacity(conds.len());
     for (k, (op, _, match_case)) in conds.iter().enumerate() {
         preds.push(crate::frame_verbs::compile_filter(*op, &values[k], ty, *match_case).map_err(V::err)?);
