@@ -84,7 +84,11 @@ export class ScriptNode extends GraphNode {
     // Exactly one map holds a typed literal, because InlineAutoField clears the other.
     const typed = (v: string): unknown => (v in this.literals ? this.literals[v] : this.stringLiterals[v]);
     const args = await Promise.all(
-      this.varNames.map((v) => scriptArgToJs(readInput<unknown>(inputs[v], typed(v)), isDateType((this.inputs[v]?.socket as SolenoidSocket | undefined)?.dataType ?? "trueany"))),
+      // A typed literal on a date socket is saved as its serial; a wired date arrives as a date.
+      this.varNames.map((v) => scriptArgToJs(
+        readInput<unknown>(inputs[v], typed(v)),
+        !inputs[v]?.length && isDateType((this.inputs[v]?.socket as SolenoidSocket | undefined)?.dataType ?? "trueany"),
+      )),
     );
     for (const a of args) {
       const e = firstCellError(a);

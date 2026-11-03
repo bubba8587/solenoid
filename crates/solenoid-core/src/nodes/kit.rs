@@ -29,14 +29,20 @@ pub fn core_call(name: &str, args: &[V]) -> V {
         r
     });
     let (traits, resolved) = &*found;
-    let v = match crate::eval::argument_error_by(traits.as_deref(), args) {
-        Some(e) => e,
-        None => match crate::excel_functions::call_resolved(name, resolved, args) {
-            Ok(v) => v,
-            Err(t) => return V::err(t.0),
-        },
+    let body = |args: &[V]| {
+        let v = match crate::eval::argument_error_by(traits.as_deref(), args) {
+            Some(e) => e,
+            None => match crate::excel_functions::call_resolved(name, resolved, args) {
+                Ok(v) => v,
+                Err(t) => return V::err(t.0),
+            },
+        };
+        crate::excel_functions::solenoid_errors(v)
     };
-    crate::excel_functions::solenoid_errors(v)
+    let Ok(v) = crate::date_values::call(&name.to_ascii_uppercase(), args.to_vec(), |a| {
+        Ok::<_, std::convert::Infallible>(body(&a))
+    });
+    v
 }
 
 /// The first error among the cells, else null where one is missing, else nothing.

@@ -82,15 +82,6 @@ pub(crate) fn finite_num(v: &V) -> Option<f64> {
     }
 }
 
-/// A number the way `Number.isFinite` gates it: itself where it is a number, NaN otherwise.
-pub(crate) fn strict_num(v: &V) -> f64 {
-    if let V::Num(n) = v {
-        *n
-    } else {
-        f64::NAN
-    }
-}
-
 /// What a blank means for a card input ([[D86]] blankRoles), as `inputRoles.ts` declares it.
 pub(crate) enum Role {
     /// A blank reads as this (`Undef` for the function's own default).

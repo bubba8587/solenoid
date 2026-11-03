@@ -694,7 +694,7 @@ pub(crate) fn list_item_of(ty: &str, v: &V) -> V {
             _ => V::Null,
         },
         "date" => match v {
-            V::Num(n) if n.is_finite() => v.clone(),
+            V::Num(n) | V::Date(n) if n.is_finite() => V::Date(*n),
             _ => V::Null,
         },
         "string" => match v {
@@ -734,7 +734,12 @@ fn list_input(c: &mut Call) -> Answer {
                     _ => String::new(),
                 };
                 for t in literal_items(&text) {
-                    items.push(frame_cell_of(&ty, &t));
+                    let item = frame_cell_of(&ty, &t);
+                    // A date list's items are dates ([[D114]] dateIsAKind).
+                    items.push(match item {
+                        V::Num(n) if ty == "date" && n.is_finite() => V::Date(n),
+                        other => other,
+                    });
                     source.push(V::str(&t));
                 }
             }
@@ -1200,6 +1205,21 @@ pub(crate) fn infer_column(name: &str, cells: &[V]) -> Column {
 
 /// `infer_column` with each cell's trimmed text (an error's code, blank as empty) beside the column, not in it.
 pub(crate) fn infer_cells(name: &str, cells: &[V]) -> (Column, Vec<Rc<str>>) {
+    // Dates make a Date column, their days packed as numbers; beside another kind, each date is #TYPE!
+    // ([[D114]] dateIsAKind, [[C137]] datesNeverSerials).
+    if cells.iter().any(|c| matches!(c, V::Date(_))) {
+        let only_dates = cells.iter().all(|c| matches!(c, V::Date(_) | V::Null | V::Undef | V::Err(_)));
+        if only_dates {
+            let (mut column, raw) =
+                infer_cells(name, &cells.iter().map(crate::date_values::unwrap).collect::<Vec<_>>());
+            column.ty = FrameColType::Date;
+            return (column, raw);
+        }
+        let mixed = super::dates_mixed("other kinds");
+        let refused: Vec<V> =
+            cells.iter().map(|c| if matches!(c, V::Date(_)) { mixed.clone() } else { c.clone() }).collect();
+        return infer_cells(name, &refused);
+    }
     let mut unit: Option<serde_json::Value> = None;
     let mags: Vec<V>;
     let cells: &[V] = if cells.iter().any(|c| matches!(c, V::Unit(_))) {

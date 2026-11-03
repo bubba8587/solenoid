@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { dated } from "../datedInputs";
 import { solDate } from "../../../src/graph/dateValue";
 import { NPVNode, IRRNode, MirrNode } from "../../../src/graph/nodes/finance";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
@@ -41,7 +42,7 @@ describe("IRR / XIRR / NPV / MIRR formulas agree with their nodes", () => {
     expect(ev("IRR(c, 0.2)", { c: cf })).toBeCloseTo(node, 12); // guess accepted, ignored
   });
   it("XIRR formula is the node's dated root", () => {
-    const node = new IRRNode({ op: "dates" }).data({ list: [flows], dates: [dates] }).result as number;
+    const node = new IRRNode({ op: "dates" }).data(dated({ list: [flows], dates: [dates] })).result as number;
     expect(ev("XIRR(c, d)", { c: flows, d: dates.map(solDate) })).toBeCloseTo(node, 12);
   });
   it("a same-sign series is #CONV! on both surfaces; too few points is blank", () => {
@@ -66,6 +67,6 @@ describe("IRR / XIRR / NPV / MIRR formulas agree with their nodes", () => {
   it("a blank DATE makes XIRR blank on both surfaces (the schedule is unknown)", () => {
     const ds = [dates[0], null, dates[2], dates[3], dates[4]];
     expect(ev("XIRR(c, d)", { c: flows, d: ds.map((x) => (x === null ? null : solDate(x))) })).toBeNull();
-    expect(new IRRNode({ op: "dates" }).data({ list: [flows], dates: [ds as number[]] }).result).toBeNull();
+    expect(new IRRNode({ op: "dates" }).data(dated({ list: [flows], dates: [ds as number[]] })).result).toBeNull();
   });
 });

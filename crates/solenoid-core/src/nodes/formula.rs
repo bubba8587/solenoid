@@ -173,11 +173,6 @@ fn tag_result(v: &V) -> V {
     }
 }
 
-/// Whether variable `n`'s socket took a date type.
-fn is_date_input(c: &Call, n: &str) -> bool {
-    c.input_type(n).is_some_and(|t| t.starts_with("date"))
-}
-
 fn result_family(_c: &Call, _ast: &Ast, result: &V) -> &'static str {
     answer_family(result)
 }
@@ -218,7 +213,7 @@ pub(crate) fn typed_answer(c: &mut Call, result: V, family: &str) -> V {
     let table = matches!(&result, V::List(items) if matches!(items.first(), Some(V::List(_))));
     c.show("lastResultShape", V::str(&format!("{}|{family}", if table { 2 } else { 1 })));
     match c.field_str("castTo", "none") {
-        t @ ("number" | "text" | "date" | "logical") => super::text::inline_cast(&result, t, family == "date"),
+        t @ ("number" | "text" | "date" | "logical") => super::text::inline_cast(&result, t),
         _ => result,
     }
 }
@@ -255,8 +250,6 @@ fn expression(c: &mut Call) -> Answer {
         if read.is_sol_error() {
             return expression_done(c, read, None, None);
         }
-        // Until every source sends a date as itself, a date-typed input's serials enter as dates ([[D114]] dateIsAKind).
-        let read = if is_date_input(c, v) { crate::date_values::wrap(&read) } else { read };
         env.insert(v.clone(), read);
     }
     if names.iter().any(|v| has_unit_cell(&env[v])) {

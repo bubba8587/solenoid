@@ -20,8 +20,7 @@ import { DashboardNode } from "../nodeClasses";
 import { writeRecordLayout, type RecordPlacement } from "../recordLayout";
 import { isChartValue } from "../chartValue";
 import { installTouchScrollChain } from "../touchScrollChain";
-import { InlineRefValue, refPreview, refSourceType, useRefAnnotation } from "./inlineRefDisplay";
-import { isDateType } from "../sockets";
+import { InlineRefValue, refPreview, useRefAnnotation } from "./inlineRefDisplay";
 import { IS_COARSE, prefersReducedMotion } from "../coarse";
 import { TableCards } from "./TableCards";
 import type { ColumnSort } from "./columnSort";
@@ -120,8 +119,7 @@ const COUNT_MS = 900;
  *  formatted every frame as the box shows it. A date never counts: the days in between mean nothing. */
 function CountUp({ nodeId, refKey, value }: { nodeId: string; refKey: string; value: number }) {
   const ann = useRefAnnotation(nodeId, refKey);
-  const type = refSourceType(nodeId, refKey);
-  const still = (type !== undefined && isDateType(type)) || prefersReducedMotion();
+  const still = prefersReducedMotion();
   const [shown, setShown] = useState(still ? value : 0);
   const from = useRef(still ? value : 0);
   useEffect(() => {
@@ -143,7 +141,7 @@ function CountUp({ nodeId, refKey, value }: { nodeId: string; refKey: string; va
   const places = (formatScalar(value).split(".")[1] ?? "").replace(/\D.*/, "").length;
   const v = shown === value || ann ? shown : Math.round(shown * 10 ** places) / 10 ** places;
   // The final value's length, so a phone's half box can size the figure to fit while it counts.
-  return <span className="solenoid-ref-inline" style={{ "--chars": refPreview(value, ann, type).length } as CSSProperties}>{refPreview(v, ann, type)}</span>;
+  return <span className="solenoid-ref-inline" style={{ "--chars": refPreview(value, ann).length } as CSSProperties}>{refPreview(v, ann)}</span>;
 }
 
 /** A box small enough to share a phone's row: a lone value, short text, or a widget figure (a KPI card or a gauge). */

@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { EarnedValueNode } from "../../../src/graph/nodeClasses";
 import { parseDateToSerial } from "../../../src/graph/nodes/dateSerial";
+import { solDate } from "../../../src/graph/dateValue";
 import { cubeFromColumns, isFrameValue, type CubeCell, type FrameValue } from "../../../src/graph/frame";
 
 const d = (iso: string) => parseDateToSerial(iso);
@@ -18,7 +19,7 @@ function earnedValue(tasks: Task[], status: number) {
     { name: "Finish", cells: tasks.map((t) => t.finish), type: "date" },
     ...(tasks.some((t) => t.actual != null) ? [{ name: "Actual cost", cells: tasks.map((t) => t.actual ?? null) as CubeCell[], type: "number" as const }] : []),
   ]);
-  const out = new EarnedValueNode().data({ schedule: [cube], status: [status] });
+  const out = new EarnedValueNode().data({ schedule: [cube], status: [solDate(status)] });
   if (!isFrameValue(out.frame)) throw new Error("expected a frame");
   const f = out.frame as FrameValue;
   const row = (i: number) => Object.fromEntries(f.columns.map((c) => [c.name.toLowerCase(), c.values[i]]));

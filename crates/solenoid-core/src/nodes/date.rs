@@ -14,15 +14,17 @@ use crate::value_kinds::OVERFLOW_MESSAGE;
 use crate::zone;
 use std::rc::Rc;
 
-/// As `broadcast_err`, but every answer but null goes through the non-finite guard, so one that isn't a
-/// number (an error included) is `#OVERFLOW!` unless an input was infinite.
+/// As `broadcast_err`, but every answer but null and an error goes through the non-finite guard, so one that isn't a
+/// number is `#OVERFLOW!` unless an input was infinite.
 fn broadcast(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
     each(args, |ops| match short_circuit(ops) {
         Some(sc) => sc,
         None => match f(ops) {
             V::Null => V::Null,
+            e @ V::Err(_) => e,
             V::Num(n) => guard_finite(n, ops),
-            other if ops.iter().any(|v| matches!(v, V::Num(n) if n.is_infinite())) => other,
+            V::Date(n) if n.is_finite() => V::Date(n),
+            other if ops.iter().any(|v| matches!(v, V::Num(n) | V::Date(n) if n.is_infinite())) => other,
             _ => err(ErrorCode::Overflow, OVERFLOW_MESSAGE),
         },
     })
@@ -67,7 +69,11 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "DateAddNode" => {
             let name = if c.field_str("op", "edate") == "edate" { "EDATE" } else { "EOMONTH" };
             let args = [first(c, "start"), c.read_num("months", 0.0)];
-            broadcast_err(&args, |o| core_call(name, &[V::Num(js_floor(o[0])), V::Num(js_floor(o[1]))]))
+            let floored = |v: &V| match v {
+                V::Date(n) => V::Date(n.floor()),
+                v => V::Num(js_floor(v)),
+            };
+            broadcast_err(&args, |o| core_call(name, &[floored(o[0]), V::Num(js_floor(o[1]))]))
         }
         "WorkdaysNode" => workdays(c),
         "EpochNode" => {
@@ -126,7 +132,7 @@ fn time_zone_convert(c: &Call) -> V {
     let from = c.read_input("from", typed("from"));
     let to = c.read_input("to", typed("to"));
     let named = |v: &V| matches!(v, V::Str(s) if !trim_space(s).is_empty());
-    if !matches!(serial, V::Num(n) if n.is_finite()) || !named(&from) || !named(&to) {
+    if !matches!(serial, V::Num(n) | V::Date(n) if n.is_finite()) || !named(&from) || !named(&to) {
         return V::Null;
     }
     core_call("TIMEZONECONVERT", &[serial, from, to])
@@ -205,7 +211,7 @@ fn date_diff(c: &Call) -> V {
             "days" => core_call("DAYS", &[e, s]),
             "days360" => core_call("DAYS360", &[s, e, V::Bool(basis != 0.0)]),
             "yearfrac" => core_call("YEARFRAC", &[s, e, V::Num(basis)]),
-            _ if value_less(&e, &s) => V::Null,
+            _ if matches!((&e, &s), (V::Date(e), V::Date(s)) if e < s) || value_less(&e, &s) => V::Null,
             _ => core_call("DATEDIF", &[s, e, V::str(unit)]),
         }
     })
@@ -219,7 +225,7 @@ fn workdays(c: &Call) -> V {
     let mut hol: Vec<f64> = Vec::new();
     if let Some(V::List(hs)) = c.wired("holidays").and_then(|w| w.first()) {
         for h in hs.iter() {
-            if let V::Num(n) = h {
+            if let V::Num(n) | V::Date(n) = h {
                 let day = (n + 1e-9).floor();
                 if n.is_finite() && !hol.iter().any(|d| d.to_bits() == day.to_bits()) {
                     hol.push(day);
@@ -227,7 +233,7 @@ fn workdays(c: &Call) -> V {
             }
         }
     }
-    let hol = list(hol.into_iter().map(V::Num).collect());
+    let hol = list(hol.into_iter().map(V::Date).collect());
     let workday = c.field_str("op", "workday") == "workday";
     let name = if workday { "WORKDAY.INTL" } else { "NETWORKDAYS.INTL" };
     let x = if workday { c.read_num("days", 5.0) } else { first(c, "end") };

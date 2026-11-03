@@ -25,8 +25,11 @@ fn text_col(name: impl Into<String>, xs: impl IntoIterator<Item = String>) -> Fr
 }
 
 /// The first column whose trimmed, lowercased name is one of `names`.
+/// The column named one of `names`; a Date column is never an amount, a rate or a name ([[C137]] datesNeverSerials).
 fn by_name(f: &FrameValue, names: &[&str]) -> Option<usize> {
-    f.columns.iter().position(|c| names.contains(&lower_text(trim_space(&c.name)).as_ref()))
+    f.columns
+        .iter()
+        .position(|c| c.ty != FrameColType::Date && names.contains(&lower_text(trim_space(&c.name)).as_ref()))
 }
 
 fn number_columns(f: &FrameValue) -> Vec<usize> {

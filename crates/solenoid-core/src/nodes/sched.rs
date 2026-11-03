@@ -66,6 +66,22 @@ fn num(v: Option<&V>) -> Option<f64> {
     }
 }
 
+/// A loose input's day: only a date ([[D114]] dateIsAKind).
+fn day(v: Option<&V>) -> Option<f64> {
+    match v {
+        Some(V::Date(n)) if n.is_finite() => Some(*n),
+        _ => None,
+    }
+}
+
+/// A table cell's day: a date, or a Date column's packed number.
+fn cell_day(v: Option<&V>) -> Option<f64> {
+    match v {
+        Some(V::Date(n) | V::Num(n)) if n.is_finite() => Some(*n),
+        _ => None,
+    }
+}
+
 /// A percent complete; a done checkbox reads TRUE as 100 and FALSE as 0.
 fn percent_complete(v: Option<&V>) -> Option<f64> {
     match v {
@@ -311,7 +327,7 @@ fn read_date(v: Option<&V>, task: &str, column: &str) -> Rd<Option<f64>> {
     match v {
         None | Some(V::Null) => Ok(None),
         Some(V::Str(s)) if s.is_empty() => Ok(None),
-        Some(V::Num(n)) if n.is_finite() => Ok(Some(*n)),
+        Some(V::Num(n) | V::Date(n)) if n.is_finite() => Ok(Some(*n)),
         Some(V::Str(s)) => match parse_date_text(s) {
             Err(e) => {
                 Err(sol_error(e.code, format!("Schedule: task \"{task}\" has a {column} that reads two ways: {s}")))
@@ -621,7 +637,7 @@ fn task_calendar(cols: &Cols, c: &Cube, i: usize, hours: Hours) -> Option<TaskCa
         spec.intervals = Some(engine::intervals_for_hours(h));
     }
     if let Some(V::List(hol)) = at(cols.holidays) {
-        spec.holidays = Some(hol.iter().filter_map(|x| num(Some(x))).map(Some).collect());
+        spec.holidays = Some(hol.iter().filter_map(|x| cell_day(Some(x))).map(Some).collect());
     }
     (spec != TaskCalendar::default()).then_some(spec)
 }
@@ -897,7 +913,7 @@ fn today() -> V {
 /// A holidays input as the engine reads it: a list's numbers, anything else none.
 fn holiday_list(v: &V) -> Option<Vec<Option<f64>>> {
     match v {
-        V::List(items) => Some(items.iter().map(|x| num(Some(x))).collect()),
+        V::List(items) => Some(items.iter().map(|x| day(Some(x))).collect()),
         V::Undef | V::Null => None,
         _ => Some(Vec::new()),
     }
@@ -932,7 +948,7 @@ fn schedule_card(c: &mut Call) -> Answer {
     };
     let tasks = c.raw_card("tasks");
     let start = wired_first(c, "start").unwrap_or_else(today);
-    let (Cv::Cube(tasks), V::Num(start)) = (&tasks, &start) else {
+    let (Cv::Cube(tasks), V::Date(start)) = (&tasks, &start) else {
         for f in FIELDS {
             c.show(f, V::Null);
         }
@@ -947,7 +963,7 @@ fn schedule_card(c: &mut Call) -> Answer {
     }
     let weekend_code = js_arith(&read_or(c, "weekend_code", 1.0));
     let hours_in = read_or(c, "hours", 8.0);
-    let status = wired_first(c, "status").and_then(|v| num(Some(&v)));
+    let status = wired_first(c, "status").and_then(|v| day(Some(&v)));
     let links = match c.raw_card("links") {
         Cv::Frame(f) => Some(f),
         _ => None,
@@ -1017,14 +1033,14 @@ fn schedule_card(c: &mut Call) -> Answer {
         Ok((cube, finish, gantt, diagnostics, output, mspdi)) => {
             let mspdi = V::str(&mspdi);
             c.show("cachedResult", cube.clone());
-            c.show("cachedFinish", V::Num(finish));
+            c.show("cachedFinish", V::Date(finish));
             c.show("cachedGantt", gantt.clone());
             c.show("cachedDiagnostics", diagnostics.clone());
             c.show("cachedOutput", Cv::Json(Rc::new(output)));
             c.show("cachedMspdi", mspdi.clone());
             Ok(vec![
                 ("cube".into(), cube),
-                ("finish".into(), Cv::from(V::Num(finish))),
+                ("finish".into(), Cv::from(V::Date(finish))),
                 ("diagnostics".into(), diagnostics),
                 ("gantt".into(), Cv::from(gantt)),
                 ("mspdi".into(), Cv::from(mspdi)),
@@ -1108,6 +1124,10 @@ impl Row {
         num(self.get(k))
     }
 
+    fn day(&self, k: &str) -> Option<f64> {
+        cell_day(self.get(k))
+    }
+
     /// `a ?? b ?? …`.
     fn first(&self, ks: &[&str]) -> Option<&V> {
         ks.iter().find_map(|k| self.get(k))
@@ -1150,7 +1170,7 @@ fn gantt_flatten(c: &Cube, level: f64, out: &mut Vec<Row>) -> Result<(), SolErro
 /// `date`: a date cell that may still be text.
 fn gantt_date(v: Option<&V>) -> Rd<Option<f64>> {
     match v {
-        Some(V::Num(n)) if n.is_finite() => Ok(Some(*n)),
+        Some(V::Num(n) | V::Date(n)) if n.is_finite() => Ok(Some(*n)),
         Some(V::Str(s)) if !trim_space(s).is_empty() => Ok(Some(parse_date_text(s)?).filter(|d| d.is_finite())),
         _ => Ok(None),
     }
@@ -1158,7 +1178,7 @@ fn gantt_date(v: Option<&V>) -> Rd<Option<f64>> {
 
 fn link_violated(d: &Dependency, pred: &Row, succ: &Row) -> bool {
     let (Some(ps), Some(pf), Some(ss), Some(sf)) =
-        (pred.num("start"), pred.num("finish"), succ.num("start"), succ.num("finish"))
+        (pred.day("start"), pred.day("finish"), succ.day("start"), succ.day("finish"))
     else {
         return false;
     };
@@ -1285,7 +1305,7 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
     let mut any_clock = false;
     let mut predecessor_text = Map::new();
     for (ri, r) in rows.iter().enumerate() {
-        let (Some(start), Some(finish)) = (r.num("start"), r.num("finish")) else {
+        let (Some(start), Some(finish)) = (r.day("start"), r.day("finish")) else {
             return Err(value_err(format!(
                 "Gantt: \"{}\" has no Start or Finish; it needs a Schedule node's output",
                 r.name
@@ -1324,7 +1344,9 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
             let parts: Vec<Json> = ss
                 .iter()
                 .enumerate()
-                .filter_map(|(k, a)| Some(json!([json_num(num(a.v())?), json_num(num(sf.get(k).and_then(Cv::v))?)])))
+                .filter_map(|(k, a)| {
+                    Some(json!([json_num(cell_day(a.v())?), json_num(cell_day(sf.get(k).and_then(Cv::v))?)]))
+                })
                 .collect();
             if parts.len() > 1 {
                 t.insert("segments".into(), Json::Array(parts));
@@ -1354,7 +1376,7 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
             t.insert("units".into(), json_num(r.num("units").filter(|u| *u >= 0.0).unwrap_or(1.0)));
         }
         if let Some(b) = base_by_key.get(&norm(&r.name)).map(|&k| &base_rows[k])
-            && let (Some(bs), Some(bf)) = (b.num("start"), b.num("finish"))
+            && let (Some(bs), Some(bf)) = (b.day("start"), b.day("finish"))
         {
             t.insert("baselineStart".into(), json_num(bs.floor()));
             t.insert("baselineFinish".into(), json_num(bf.floor()));
@@ -1448,10 +1470,10 @@ fn gantt_card(c: &mut Call) -> Answer {
     let inputs = GanttInputs {
         baseline: as_cube(&c.raw_card("baseline")),
         today: match today() {
-            V::Num(n) => n,
+            V::Date(n) => n,
             _ => f64::NAN,
         },
-        status: wired_first(c, "status").and_then(|v| num(Some(&v))),
+        status: wired_first(c, "status").and_then(|v| day(Some(&v))),
         options: opt.as_deref(),
         weekend_code,
         holidays: holiday_list(&slot(c, "holidays")),
@@ -1477,6 +1499,12 @@ fn gantt_card(c: &mut Call) -> Answer {
 fn ev_col<'a>(c: &'a Cube, names: &[&str]) -> Option<&'a CubeColumn> {
     let set: Vec<String> = names.iter().map(|n| norm(n)).collect();
     c.columns.iter().find(|col| set.contains(&norm(&col.name)))
+}
+
+/// A cost, actual or percent column by name: never a Date column ([[C137]] datesNeverSerials).
+fn ev_amount<'a>(c: &'a Cube, names: &[&str]) -> Option<&'a CubeColumn> {
+    let set: Vec<String> = names.iter().map(|n| norm(n)).collect();
+    c.columns.iter().find(|col| col.ty != Some(FrameColType::Date) && set.contains(&norm(&col.name)))
 }
 
 /// A money or percent cell as the number it shows; anything else 0.
@@ -1581,7 +1609,7 @@ fn earned_value_card(c: &mut Call) -> Answer {
     }
     let Some(scube) = as_cube(&sched) else { return empty(c, V::Null) };
     let status = match wired_first(c, "status").unwrap_or_else(today) {
-        V::Num(n) if n.is_finite() => n,
+        V::Date(n) if n.is_finite() => n,
         _ => return empty(c, V::Null),
     };
     let bcube = as_cube(&c.raw_card("baseline"));
@@ -1601,19 +1629,19 @@ fn earned_value_card(c: &mut Call) -> Answer {
     let Some(task_col) = task_col else {
         return empty(c, V::err(value_err("Earned Value needs a Task column naming each task")));
     };
-    let complete_col = ev_col(&scube, &["complete", "% complete", "percent complete", "done", "progress"]);
+    let complete_col = ev_amount(&scube, &["complete", "% complete", "percent complete", "done", "progress"]);
     let named = |t: &Cube| -> Option<usize> {
         (!cost_name.is_empty())
-            .then(|| ev_col(t, &[cost_name.as_str()]))
+            .then(|| ev_amount(t, &[cost_name.as_str()]))
             .flatten()
             .map(|col| t.columns.iter().position(|x| std::ptr::eq(x, col)).unwrap_or(0))
     };
-    let cost_col = named(&scube).map(|i| &scube.columns[i]).or_else(|| ev_col(&scube, &COST));
-    let actual_col = ev_col(&scube, &["actual cost", "actual", "acwp", "spent"]);
+    let cost_col = named(&scube).map(|i| &scube.columns[i]).or_else(|| ev_amount(&scube, &COST));
+    let actual_col = ev_amount(&scube, &["actual cost", "actual", "acwp", "spent"]);
     let (s_start, s_finish) = (ev_col(&scube, &["start"]), ev_col(&scube, &["finish", "end"]));
     let b = bcube.as_deref();
     let b_task = b.and_then(|b| ev_col(b, &TASK).or_else(|| b.columns.iter().find(|x| has_text(x))));
-    let b_cost = b.and_then(|b| named(b).map(|i| &b.columns[i]).or_else(|| ev_col(b, &COST)));
+    let b_cost = b.and_then(|b| named(b).map(|i| &b.columns[i]).or_else(|| ev_amount(b, &COST)));
     let (b_start, b_finish) = (b.and_then(|b| ev_col(b, &["start"])), b.and_then(|b| ev_col(b, &["finish", "end"])));
     let mut base_idx: HashMap<String, usize> = HashMap::new();
     if let Some(bt) = b_task {
@@ -1625,7 +1653,7 @@ fn earned_value_card(c: &mut Call) -> Answer {
         }
     }
     let cost_unit = unit_of(cost_col).or_else(|| unit_of(b_cost));
-    let date_of = |v: Option<&V>| num(v);
+    let date_of = cell_day;
     let mut tasks = Vec::new();
     for i in 0..rows_of(&scube) {
         let name = trim_space(&js_str(cell(Some(task_col), i))).to_string();
@@ -1734,11 +1762,9 @@ fn earned_value_card(c: &mut Call) -> Answer {
 // ─── SCAN, ODE Integrate ────────────────────────────────────────────────────────────────────────────────────────────
 
 fn scan_lambda(c: &mut Call) -> Answer {
-    use super::matrix::{
-        body_done, dated_matrix, dated_num, fn_error, holds_unit_cell, lambda_done, resolve, result_cell,
-    };
-    let initial = dated_num(c, "initial", 0.0);
-    let m = dated_matrix(c, "table");
+    use super::matrix::{body_done, fn_error, holds_unit_cell, lambda_done, resolve, result_cell};
+    let initial = c.read_num("initial", 0.0);
+    let m = super::matrix::any_matrix(&super::list::slot(c, "table"));
     let body = match resolve(c, "acc + value", &["acc", "value", "step"]) {
         Ok(b) => b,
         Err(e) => return fn_error(c, e),

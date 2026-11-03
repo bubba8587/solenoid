@@ -1,5 +1,7 @@
 // [[B11]]
 import { describe, it, expect } from "vitest";
+import { dated } from "../datedInputs";
+import { solDate } from "../../../src/graph/dateValue";
 import {
   BondPricingNode, DiscountSecurityNode, DurationNode, CouponNode, AccruedInterestNode,
   PaymentBreakdownNode,
@@ -13,13 +15,13 @@ import { parseDateToSerial } from "../../../src/graph/nodes/date";
 // real-Excel GOLDEN values the author verified by hand (2026-08-31).
 
 const d = (s: string) => parseDateToSerial(s);
-const accrintM = (...a: number[]) => coreFunction("ACCRINTM")!(...a) as number;
+const accrintM = (issue: number, settle: number, ...a: number[]) => coreFunction("ACCRINTM")!(solDate(issue), solDate(settle), ...a) as number;
 const settle = d("2024-01-15"), maturity = d("2029-01-15");
 
 describe("real-Excel golden values (author-verified 2026-08-31)", () => {
   it("ODDFPRICE / ODDFYIELD — the first coupon accrues from ISSUE across quasi periods", () => {
     // =ODDFPRICE(DATE(2024,1,25),DATE(2031,1,1),DATE(2023,11,11),DATE(2024,7,1),0.0575,0.06,100,2,0)
-    const args = { settle: [d("2024-01-25")], maturity: [d("2031-01-01")], issue: [d("2023-11-11")], firstcoupon: [d("2024-07-01")], rate: [0.0575], redemption: [100], frequency: [2] };
+    const args = dated({ settle: [d("2024-01-25")], maturity: [d("2031-01-01")], issue: [d("2023-11-11")], firstcoupon: [d("2024-07-01")], rate: [0.0575], redemption: [100], frequency: [2] });
     expect(new BondPricingNode({ op: "oddfprice" }).data({ ...args, yld: [0.06] }).result as number)
       .toBeCloseTo(98.5737779, 6);
     // =ODDFYIELD(DATE(2024,1,25),DATE(2031,1,1),DATE(2023,11,11),DATE(2024,7,1),0.0575,98,100,2,0)
@@ -28,7 +30,7 @@ describe("real-Excel golden values (author-verified 2026-08-31)", () => {
   });
   it("ODDLPRICE / ODDLYIELD — the odd-last period discounts with SIMPLE interest", () => {
     // =ODDLPRICE(DATE(2024,2,7),DATE(2024,6,15),DATE(2023,10,15),0.0375,0.0405,100,2,0)
-    const args = { settle: [d("2024-02-07")], maturity: [d("2024-06-15")], lastinterest: [d("2023-10-15")], rate: [0.0375], redemption: [100], frequency: [2] };
+    const args = dated({ settle: [d("2024-02-07")], maturity: [d("2024-06-15")], lastinterest: [d("2023-10-15")], rate: [0.0375], redemption: [100], frequency: [2] });
     expect(new BondPricingNode({ op: "oddlprice" }).data({ ...args, yld: [0.0405] }).result as number)
       .toBeCloseTo(99.87828601, 7);
     // =ODDLYIELD(DATE(2024,2,7),DATE(2024,6,15),DATE(2023,10,15),0.0375,99.8,100,2,0)
@@ -37,9 +39,9 @@ describe("real-Excel golden values (author-verified 2026-08-31)", () => {
   });
   it("ACCRINT per basis — E is 360/freq for actual/360, actual only for actual/actual", () => {
     // =ACCRINT(DATE(2023,7,15),DATE(2024,1,15),DATE(2024,1,15),0.06,1000,2,basis)
-    const acc = (basis: number) => new AccruedInterestNode().data({
+    const acc = (basis: number) => new AccruedInterestNode().data(dated({
       issue: [d("2023-07-15")], settle: [d("2024-01-15")], rate: [0.06], par: [1000], frequency: [2], basis: [basis],
-    }).result as number;
+    })).result as number;
     expect(acc(0)).toBeCloseTo(30, 9);
     expect(acc(1)).toBeCloseTo(30, 9);
     expect(acc(2)).toBeCloseTo(30.66666667, 7);
@@ -53,20 +55,20 @@ describe("real-Excel golden values (author-verified 2026-08-31)", () => {
   });
   it("MDURATION matches real Excel — Microsoft's published 5.7355689 is a doc typo", () => {
     // =MDURATION(DATE(2008,1,1),DATE(2016,1,1),0.08,0.09,2,1) = 5.735669814 in real Excel.
-    expect(new DurationNode({ op: "mduration" }).data({
+    expect(new DurationNode({ op: "mduration" }).data(dated({
       settle: [d("2008-01-01")], maturity: [d("2016-01-01")], coupon: [0.08], yld: [0.09], frequency: [2], basis: [1],
-    }).result as number).toBeCloseTo(5.735669814, 7);
+    })).result as number).toBeCloseTo(5.735669814, 7);
   });
   it("the COUP* family matches Excel when settlement lands ON a coupon date", () => {
     // Settle 15-Jan-2024, maturity 15-Jan-2029, semiannual, basis 0 (all six confirmed).
     const coup = (op: "coupdaybs" | "coupdays" | "coupdaysnc" | "coupnum" | "couppcd" | "coupncd") =>
-      new CouponNode({ op }).data({ settle: [settle], maturity: [maturity], frequency: [2], basis: [0] }).result as number;
+      new CouponNode({ op }).data(dated({ settle: [settle], maturity: [maturity], frequency: [2], basis: [0] })).result as number;
     expect(coup("coupdaybs")).toBe(0);
     expect(coup("coupdays")).toBeCloseTo(180, 9);
     expect(coup("coupdaysnc")).toBeCloseTo(180, 9);
     expect(coup("coupnum")).toBe(10);
-    expect(coup("couppcd")).toBe(settle);
-    expect(coup("coupncd")).toBe(d("2024-07-15"));
+    expect(coup("couppcd")).toEqual(solDate(settle));
+    expect(coup("coupncd")).toEqual(solDate(d("2024-07-15")));
   });
 });
 
@@ -74,13 +76,13 @@ describe("real-Excel golden values (author-verified 2026-08-31)", () => {
 
 describe("ODDFPRICE ↔ ODDFYIELD and ODDLPRICE ↔ ODDLYIELD are inverses", () => {
   it("odd-FIRST price/yield round-trip", () => {
-    const args = { settle: [d("2024-01-25")], maturity: [d("2031-01-01")], issue: [d("2023-11-11")], firstcoupon: [d("2024-07-01")], rate: [0.0575], redemption: [100], frequency: [2] };
+    const args = dated({ settle: [d("2024-01-25")], maturity: [d("2031-01-01")], issue: [d("2023-11-11")], firstcoupon: [d("2024-07-01")], rate: [0.0575], redemption: [100], frequency: [2] });
     const price = new BondPricingNode({ op: "oddfprice" }).data({ ...args, yld: [0.06] }).result as number;
     const yld = new BondPricingNode({ op: "oddfyield" }).data({ ...args, pr: [price] }).result as number;
     expect(yld).toBeCloseTo(0.06, 5);
   });
   it("odd-LAST price/yield round-trip", () => {
-    const args = { settle: [d("2024-02-07")], maturity: [d("2024-06-15")], lastinterest: [d("2023-10-15")], rate: [0.0375], redemption: [100], frequency: [2] };
+    const args = dated({ settle: [d("2024-02-07")], maturity: [d("2024-06-15")], lastinterest: [d("2023-10-15")], rate: [0.0375], redemption: [100], frequency: [2] });
     const price = new BondPricingNode({ op: "oddlprice" }).data({ ...args, yld: [0.0405] }).result as number;
     const yld = new BondPricingNode({ op: "oddlyield" }).data({ ...args, pr: [price] }).result as number;
     expect(yld).toBeCloseTo(0.0405, 5);
@@ -89,7 +91,7 @@ describe("ODDFPRICE ↔ ODDFYIELD and ODDLPRICE ↔ ODDLYIELD are inverses", () 
 
 describe("DURATION / MDURATION relationship", () => {
   const dur = (op: "duration" | "mduration", basis = 0) =>
-    new DurationNode({ op }).data({ settle: [settle], maturity: [maturity], coupon: [0.06], yld: [0.065], frequency: [2], basis: [basis] }).result as number;
+    new DurationNode({ op }).data(dated({ settle: [settle], maturity: [maturity], coupon: [0.06], yld: [0.065], frequency: [2], basis: [basis] })).result as number;
   it("modified duration = Macaulay / (1 + y/freq), and is strictly smaller", () => {
     const mac = dur("duration"), mod = dur("mduration");
     expect(mod).toBeCloseTo(mac / (1 + 0.065 / 2), 6);
@@ -98,10 +100,10 @@ describe("DURATION / MDURATION relationship", () => {
   });
   it("matches Microsoft's documented DURATION example", () => {
     // =DURATION(DATE(2018,7,1), DATE(2048,1,1), 0.08, 0.09, 2, 1) = 10.9191453.
-    const v = new DurationNode({ op: "duration" }).data({
+    const v = new DurationNode({ op: "duration" }).data(dated({
       settle: [d("2018-07-01")], maturity: [d("2048-01-01")],
       coupon: [0.08], yld: [0.09], frequency: [2], basis: [1],
-    }).result as number;
+    })).result as number;
     expect(v).toBeCloseTo(10.9191453, 7);
   });
 
@@ -112,9 +114,9 @@ describe("DURATION / MDURATION relationship", () => {
   describe("the basis input is applied to the first-period fraction", () => {
     const s = d("2023-02-15"), m = d("2023-07-01"); // mid-period settlement, one coupon left
     const durB = (basis: number) => new DurationNode({ op: "duration" })
-      .data({ settle: [s], maturity: [m], coupon: [0.06], yld: [0.05], frequency: [2], basis: [basis] }).result as number;
+      .data(dated({ settle: [s], maturity: [m], coupon: [0.06], yld: [0.05], frequency: [2], basis: [basis] })).result as number;
     const coupB = (op: "coupdaysnc" | "coupdays", basis: number) => new CouponNode({ op })
-      .data({ settle: [s], maturity: [m], frequency: [2], basis: [basis] }).result as number;
+      .data(dated({ settle: [s], maturity: [m], frequency: [2], basis: [basis] })).result as number;
     for (const basis of [0, 1, 2, 3, 4]) {
       it(`basis ${basis}: duration = COUPDAYSNC / COUPDAYS / freq`, () => {
         expect(durB(basis)).toBeCloseTo(coupB("coupdaysnc", basis) / coupB("coupdays", basis) / 2, 12);
@@ -162,8 +164,8 @@ describe("ONE Discount Security card: the op table drives the sockets", () => {
   it("every op reads only its own inputs: a blank on a socket the op does not show is not a blank answer", () => {
     const settle = d("2024-01-15"), maturity = d("2024-07-15");
     const n = new DiscountSecurityNode({ op: "pricedisc" });
-    expect(typeof n.data({ settle: [settle], maturity: [maturity], pr: [null as unknown as number] }).result).toBe("number");
-    expect(n.data({ settle: [settle], maturity: [maturity], discount: [null as unknown as number] }).result).toBeNull();
+    expect(typeof n.data(dated({ settle: [settle], maturity: [maturity], pr: [null as unknown as number] })).result).toBe("number");
+    expect(n.data(dated({ settle: [settle], maturity: [maturity], discount: [null as unknown as number] })).result).toBeNull();
   });
 });
 
@@ -180,7 +182,7 @@ describe("ONE Accrued Interest card: frequency is the periodic form's socket", (
   });
   it("At maturity is ACCRINTM", () => {
     const issue = d("2023-07-15"), settle = d("2024-01-15");
-    const viaNode = new AccruedInterestNode({ op: "maturity" }).data({ issue: [issue], settle: [settle], rate: [0.06], par: [1000], basis: [0] }).result;
+    const viaNode = new AccruedInterestNode({ op: "maturity" }).data(dated({ issue: [issue], settle: [settle], rate: [0.06], par: [1000], basis: [0] })).result;
     expect(viaNode).toBeCloseTo(accrintM(issue, settle, 0.06, 1000, 0) as number, 12);
   });
 });
@@ -220,11 +222,11 @@ describe("odd-coupon date order", () => {
   it("ODD* dates out of Excel's order are #DOMAIN!, not a throw ([[C24]] arraySemantics)", () => {
     const first = { settle: [d("2024-01-25")], maturity: [d("2031-01-01")], rate: [0.0575], redemption: [100], frequency: [2], yld: [0.06] };
     // issue after the first coupon
-    expect(new BondPricingNode({ op: "oddfprice" }).data({ ...first, issue: [d("2024-08-01")], firstcoupon: [d("2024-07-01")] }).result).toMatchObject({ code: "#DOMAIN!" });
+    expect(new BondPricingNode({ op: "oddfprice" }).data(dated({ ...first, issue: [d("2024-08-01")], firstcoupon: [d("2024-07-01")] })).result).toMatchObject({ code: "#DOMAIN!" });
     // settlement on or after the first coupon
-    expect(new BondPricingNode({ op: "oddfprice" }).data({ ...first, issue: [d("2023-11-11")], firstcoupon: [d("2024-01-01")] }).result).toMatchObject({ code: "#DOMAIN!" });
+    expect(new BondPricingNode({ op: "oddfprice" }).data(dated({ ...first, issue: [d("2023-11-11")], firstcoupon: [d("2024-01-01")] })).result).toMatchObject({ code: "#DOMAIN!" });
     // settlement before the last interest date
-    expect(new BondPricingNode({ op: "oddlprice" }).data({ settle: [d("2023-09-01")], maturity: [d("2024-06-15")], lastinterest: [d("2023-10-15")], rate: [0.0375], redemption: [100], frequency: [2], yld: [0.0405] }).result)
+    expect(new BondPricingNode({ op: "oddlprice" }).data(dated({ settle: [d("2023-09-01")], maturity: [d("2024-06-15")], lastinterest: [d("2023-10-15")], rate: [0.0375], redemption: [100], frequency: [2], yld: [0.0405] })).result)
       .toMatchObject({ code: "#DOMAIN!", message: "ODDLPRICE needs maturity after settlement, and settlement after the last interest date" });
   });
 });

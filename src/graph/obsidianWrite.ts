@@ -7,7 +7,7 @@ import { nodeChartSvgString } from "./canvasCapture";
 import { dataUrlToBytes, sanitizeName } from "./imageAssets";
 import { assembleDocumentMarkdown, valueToObsidianBlock } from "./obsidianMarkdown";
 import { isImageValue, type ImageValue } from "./imageValue";
-import { refPreview, resolveRefAnnotation, refSourceType } from "./components/inlineRefDisplay";
+import { refPreview, resolveRefAnnotation } from "./components/inlineRefDisplay";
 import { type DocumentValue } from "./documentValue";
 import { spliceBlock } from "./managedBlock";
 
@@ -179,7 +179,6 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
       return refPreview(
         value,
         doc.sourceId ? resolveRefAnnotation(doc.sourceId, name) : undefined,
-        doc.sourceId ? refSourceType(doc.sourceId, name) : undefined,
       );
     }
     const srcId = opts.refSources.get(name);

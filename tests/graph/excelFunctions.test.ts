@@ -1,5 +1,5 @@
 // [[B16]] oneFormulaSurface, [[C17]] shareImpl
-import { solDate, isSolDate } from "../../src/graph/dateValue";
+import { solDate, isSolDate, type SolDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { formulaFunctionNames } from "../../src/graph/excelFunctions";
 import { compileEvaluator } from "../../src/graph/excelFormula";
@@ -42,8 +42,8 @@ describe("first wave of native impls (registered through the seam)", () => {
   });
   it("YEAR + EOMONTH operate on the Solenoid date serial", () => {
     const serial = jsDateToSerial(new Date(Date.UTC(2026, 2, 15))); // 2026-03-15
-    expect(fn("YEAR")(serial)).toBe(2026);
-    const d = serialToJsDate(fn("EOMONTH")(serial, 0) as number);
+    expect(fn("YEAR")(solDate(serial))).toBe(2026);
+    const d = serialToJsDate((fn("EOMONTH")(solDate(serial), 0) as SolDate).__date);
     expect([d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()]).toEqual([2026, 2, 31]); // 2026-03-31
   });
   it("LEN is string → number", () => {
@@ -52,11 +52,11 @@ describe("first wave of native impls (registered through the seam)", () => {
   it("the datetime extractors read OUR serial, matching DatePartNode (getUTC*)", () => {
     // 2026-03-15 14:25:36 UTC
     const serial = jsDateToSerial(new Date(Date.UTC(2026, 2, 15, 14, 25, 36)));
-    expect(fn("MONTH")(serial)).toBe(3);
-    expect(fn("DAY")(serial)).toBe(15);
-    expect(fn("HOUR")(serial)).toBe(14);
-    expect(fn("MINUTE")(serial)).toBe(25);
-    expect(fn("SECOND")(serial)).toBe(36);
+    expect(fn("MONTH")(solDate(serial))).toBe(3);
+    expect(fn("DAY")(solDate(serial))).toBe(15);
+    expect(fn("HOUR")(solDate(serial))).toBe(14);
+    expect(fn("MINUTE")(solDate(serial))).toBe(25);
+    expect(fn("SECOND")(solDate(serial))).toBe(36);
     // non-number arg → tagged #VALUE!
     expect(isSolError(fn("MONTH")("nope"))).toBe(true);
   });

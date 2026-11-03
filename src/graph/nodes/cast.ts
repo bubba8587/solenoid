@@ -8,7 +8,6 @@ import { type SolError } from "../errorValue";
 import { fcUnitToUnit } from "../dimension";
 import { fcUnitAnnotations } from "../formatAnnotationStore";
 import type { Dim } from "../dimension";
-import { getOwningEditor } from "../activeGraph";
 import { nodeOnCore } from "../nodeOnCore";
 
 export type CastOp = "number" | "text" | "date" | "complex" | "logical";
@@ -87,9 +86,7 @@ export class CastNode extends GraphNode {
     if (out) out.socket = castOutput(next).socket;
   }
 
-  /** The source socket's type is the only witness telling a date serial from a number; the body reads it here. */
-  static coreFields = ["sourceType", "unitLabels"] as const;
-  get sourceType(): SocketDataType | null { return this.sourceKind(); }
+  static coreFields = ["unitLabels"] as const;
   /** Text names a value's unit by the FC's label, and packs register theirs at run time: each unit's id, label,
    *  whether the label leads, and its dimension. */
   get unitLabels(): [string, string, boolean, Dim | null][] | undefined {
@@ -97,16 +94,7 @@ export class CastNode extends GraphNode {
     return fcUnitAnnotations().map((u) => [u.id, u.label, !!u.prefix, fcUnitToUnit(u.id)?.dim ?? null]);
   }
 
-  private sourceKind(): SocketDataType | null {
-    const editor = getOwningEditor(this.id);
-    if (!editor) return null;
-    const conn = editor.getConnections().find(
-      (c) => c.target === this.id && c.targetInput === "value",
-    );
-    if (!conn) return null;
-    const sock = editor.getNode(conn.source)?.outputs[conn.sourceOutput]?.socket;
-    return sock && "dataType" in sock ? (sock as { dataType: SocketDataType }).dataType : null;
-  }
+
 
   data(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { result: CastScalar | (CastScalar | SolError)[] | SolError };

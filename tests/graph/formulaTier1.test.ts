@@ -1,4 +1,5 @@
 // [[C17]], [[B16]] oneFormulaSurface
+import { solDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { isFunctionName, formulaFunctionNames, LEGACY_ALIASES, POSITION_NAMES, NODE_SURFACE_NAMES, ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
 import { compileEvaluator } from "../../src/graph/excelFormula";
@@ -163,8 +164,8 @@ describe("REGEXREPLACE occurrence", () => {
 });
 
 describe("finance functions: formula matches node", () => {
-  // 15-Mar-2026 settlement, 31-Oct-2030 maturity: serials for the cards, dates for the formulas ([[D114]] dateIsAKind).
-  const settle = 46096, maturity = 47787;
+  // 15-Mar-2026 settlement, 31-Oct-2030 maturity.
+  const settle = solDate(46096), maturity = solDate(47787);
   const S = "DATE(2026,3,15)", M = "DATE(2030,10,31)";
 
   it("COUPNUM / COUPDAYBS", () => {

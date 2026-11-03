@@ -487,26 +487,6 @@ pub(crate) fn result_cell(v: &V) -> V {
     }
 }
 
-/// A table input's cells, a date-typed input's numbers as dates until every source sends a date as itself
-/// ([[D114]] dateIsAKind).
-pub(crate) fn dated_matrix(c: &Call, key: &str) -> Option<Vec<Vec<V>>> {
-    let m = any_matrix(&slot(c, key))?;
-    if !c.input_type(key).is_some_and(|t| t.starts_with("date")) {
-        return Some(m);
-    }
-    Some(m.iter().map(|r| r.iter().map(crate::date_values::wrap).collect()).collect())
-}
-
-/// A value input, a date-typed one's numbers as dates (`dated_matrix`).
-pub(crate) fn dated_num(c: &Call, key: &str, dflt: f64) -> V {
-    let v = c.read_num(key, dflt);
-    if c.input_type(key).is_some_and(|t| t.starts_with("date")) {
-        crate::date_values::wrap(&v)
-    } else {
-        v
-    }
-}
-
 /// The card's answer typed by its values (`typed_answer`), and the fields its component shows.
 pub(crate) fn body_done(c: &mut Call, result: V) -> Answer {
     let family = super::formula::answer_family(&result);
@@ -531,13 +511,13 @@ pub(crate) fn holds_unit_cell(m: &[Vec<V>]) -> bool {
 }
 
 fn map_table(c: &mut Call) -> Answer {
-    let m = dated_matrix(c, "table");
+    let m = any_matrix(&slot(c, "table"));
     let body = match resolve(c, "value^2", &["value", "value2", "value3", "row", "col"]) {
         Ok(b) => b,
         Err(e) => return fn_error(c, e),
     };
     let Some(m) = m else { return lambda_done(c, V::Null, None) };
-    let extras = [dated_matrix(c, "table2"), dated_matrix(c, "table3")];
+    let extras = [any_matrix(&slot(c, "table2")), any_matrix(&slot(c, "table3"))];
     let w = |m: &[Vec<V>]| m.first().map_or_default(Vec::len);
     for e in extras.iter().flatten() {
         let one = e.len() == 1 && w(e) == 1;
@@ -578,7 +558,7 @@ fn map_table(c: &mut Call) -> Answer {
 
 fn by_axis(c: &mut Call) -> Answer {
     let by_row = c.field_str("op", "row") == "row";
-    let m = dated_matrix(c, "table");
+    let m = any_matrix(&slot(c, "table"));
     let body = match resolve(c, "SUM(values)", &["values"]) {
         Ok(b) => b,
         Err(e) => return fn_error(c, e),
@@ -603,8 +583,8 @@ fn by_axis(c: &mut Call) -> Answer {
 }
 
 fn reduce_lambda(c: &mut Call) -> Answer {
-    let initial = dated_num(c, "initial", 0.0);
-    let m = dated_matrix(c, "table");
+    let initial = c.read_num("initial", 0.0);
+    let m = any_matrix(&slot(c, "table"));
     let body = match resolve(c, "acc + value", &["acc", "value", "step"]) {
         Ok(b) => b,
         Err(e) => return fn_error(c, e),

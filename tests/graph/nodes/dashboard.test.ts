@@ -68,12 +68,13 @@ describe("DashboardNode: one input per layout box", () => {
   });
 });
 
-describe("a ref preview reads its source socket's type", () => {
-  it("a number from a date socket previews as a date, a plain number as a number", async () => {
+describe("a ref preview reads a date by its value", () => {
+  it("a date previews as a date, a number as a number", async () => {
     const { refPreview } = await import("../../../src/graph/components/inlineRefDisplay");
-    expect(refPreview(46323, undefined, "date")).toBe("28-Oct-2026");
-    expect(refPreview([46323, 46324], undefined, "datelist")).toBe("[28-Oct-2026, 29-Oct-2026]");
-    expect(refPreview(46323, undefined, "number")).toBe("46323");
+    const { solDate } = await import("../../../src/graph/dateValue");
+    expect(refPreview(solDate(46323), undefined)).toBe("28-Oct-2026");
+    expect(refPreview([solDate(46323), solDate(46324)], undefined)).toBe("[28-Oct-2026, 29-Oct-2026]");
+    expect(refPreview(46323, undefined)).toBe("46323");
   });
 });
 

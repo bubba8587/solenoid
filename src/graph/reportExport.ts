@@ -3,8 +3,7 @@ import DOMPurify from "dompurify";
 import { getEditor } from "./process";
 import { NoteNode, ReportNode } from "./nodeClasses";
 import { nodeDisplayNames } from "./nodeNames";
-import { resolveRefAnnotation, refPreview, refSourceType } from "./components/inlineRefDisplay";
-import type { SocketDataType } from "./sockets";
+import { resolveRefAnnotation, refPreview } from "./components/inlineRefDisplay";
 import { isDocumentValue } from "./documentValue";
 import { parseNoteFrontmatter } from "./noteFrontmatter";
 import { captureCanvasImage, captureChartSvgs } from "./canvasCapture";
@@ -40,8 +39,7 @@ function frameToHtmlTable(frame: FrameValue): string {
 }
 
 /** The export's markup for one span's value; null leaves the span (an unwired fixed input). Values are escaped here, after the markdown render, so their text never reads as markdown or HTML. */
-/** `sourceType` is the type of the output the value came from, so a date reads as one, as on screen ([[C137]]). */
-function frozenRefHtml(value: unknown, highlight: boolean, ann: FormatAnnotation | undefined, sourceType?: SocketDataType): { html: string; block?: boolean } | null {
+function frozenRefHtml(value: unknown, highlight: boolean, ann: FormatAnnotation | undefined): { html: string; block?: boolean } | null {
   if (value === undefined) return null;
   if (isFrameValue(value)) return { html: frameToHtmlTable(value), block: true };
   if (isSvgValue(value) && value.source) {
@@ -52,7 +50,7 @@ function frozenRefHtml(value: unknown, highlight: boolean, ann: FormatAnnotation
     const h = Number.isFinite(value.height) && value.height > 0 ? ` height="${Math.round(value.height)}"` : "";
     return { html: `<img class="report-export__image" src="${escapeHtml(value.src)}" alt="${escapeHtml(value.alt ?? value.title ?? "")}"${h} />` };
   }
-  const text = escapeHtml(refPreview(value, ann, sourceType));
+  const text = escapeHtml(refPreview(value, ann));
   return { html: highlight && text !== "" ? `<mark class="sol-md__hl">${text}</mark>` : text };
 }
 
@@ -71,11 +69,10 @@ export function exportBodyHtml(
   refValue: (key: string) => unknown,
   annotation: (key: string) => FormatAnnotation | undefined,
   render: (md: string) => string = renderMarkdown,
-  sourceType: (key: string) => SocketDataType | undefined = () => undefined,
 ): string {
   const renderSegment = (md: string) => substituteRefCodes(render(md), (name, hl) =>
     refKeys.includes(name)
-      ? frozenRefHtml(refValue(name), hl, annotation(name), sourceType(name))
+      ? frozenRefHtml(refValue(name), hl, annotation(name))
       : null);
   const parts: string[] = [];
   const re = new RegExp(REF_RE);
@@ -88,7 +85,7 @@ export function exportBodyHtml(
     if (!isDocumentValue(value)) continue;
     parts.push(renderSegment(body.slice(last, m.index)));
     const embedded = substituteRefCodes(render(parseNoteFrontmatter(value.body).body), (n) =>
-      n in value.refs ? { html: escapeHtml(refPreview(value.refs[n], undefined, value.sourceId ? refSourceType(value.sourceId, n) : undefined)) } : null);
+      n in value.refs ? { html: escapeHtml(refPreview(value.refs[n], undefined)) } : null);
     parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${escapeHtml(name)}</div>${embedded}</div>`);
     last = m.index + m[0].length;
   }
@@ -163,7 +160,6 @@ function buildReportExportHtml(
     (k) => report.refValue(k),
     (k) => resolveRefAnnotation(report.id, k),
     renderMarkdown,
-    (k) => refSourceType(report.id, k),
   );
 
   const noteIds = new Set(allNodes.filter((n): n is NoteNode => n instanceof NoteNode).map((n) => n.id));

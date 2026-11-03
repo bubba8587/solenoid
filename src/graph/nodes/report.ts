@@ -9,9 +9,9 @@ import {
 import { toTemplateValue } from "../templateValue";
 import { isFrameRef, readFrame } from "../frameBackend";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { getOwningEditor, getOwningView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { dropInputCables } from "../components/cablePrune";
-import { SolenoidSocket, type SocketDataType } from "../sockets";
+import { type SocketDataType } from "../sockets";
 
 const FIXED = new Set(["template", "records"]);
 const BATCH_LOCALS = new Set(["record", "index"]);
@@ -121,24 +121,11 @@ export class ReportNode extends GraphNode {
     return embedBareVariables(body, wired);
   }
 
-  private sourceTypes(): Map<string, SocketDataType> {
-    const out = new Map<string, SocketDataType>();
-    const ed = getOwningEditor(this.id);
-    if (!ed) return out;
-    for (const c of ed.getConnections()) {
-      if (c.target !== this.id) continue;
-      const s = ed.getNode(c.source)?.outputs[c.sourceOutput]?.socket;
-      if (s instanceof SolenoidSocket) out.set(c.targetInput, s.dataType);
-    }
-    return out;
-  }
-
   private async templateVariables(refs: Record<string, unknown>, present: ReadonlySet<string>, fallbackTypes: Map<string, SocketDataType | undefined>): Promise<Record<string, unknown>> {
-    const types = this.sourceTypes();
     const vars: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(refs)) {
       if (!present.has(k)) continue;
-      vars[k] = toTemplateValue(isFrameRef(v) ? await readFrame(v) : v, types.get(k) ?? fallbackTypes.get(k));
+      vars[k] = toTemplateValue(isFrameRef(v) ? await readFrame(v) : v, fallbackTypes.get(k));
     }
     return vars;
   }

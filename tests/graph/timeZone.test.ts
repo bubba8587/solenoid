@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { solDate, dateSerialOf } from "../../src/graph/dateValue";
+import { solDate } from "../../src/graph/dateValue";
 import { coreFunction } from "./coreFunction";
 import { isSolError } from "../../src/graph/errorValue";
 
-const convertZone = (serial: number, from: string, to: string) => coreFunction("TIMEZONECONVERT")!(serial, from, to);
+const convertZone = (serial: number, from: string, to: string) => coreFunction("TIMEZONECONVERT")!(solDate(serial), from, to);
 
 // C1 Time Zone Convert — the Intl reinterpretation is pure + fixture-tested
 // (widget rule 5). Serials are wall-clock-as-UTC, so a serial is built the same way.
@@ -13,18 +13,18 @@ const serial = (y: number, mo: number, d: number, h = 0, mi = 0) =>
 describe("convertZone", () => {
   it("winter: 9:00 in New York (EST) is 14:00 in London", () => {
     const r = convertZone(serial(2026, 1, 15, 9, 0), "America/New_York", "Europe/London");
-    expect(r).toBe(serial(2026, 1, 15, 14, 0));
+    expect(r).toEqual(solDate(serial(2026, 1, 15, 14, 0)));
   });
 
   it("summer, across the date line: noon New York (EDT) is next-day 01:00 in Tokyo", () => {
     const r = convertZone(serial(2026, 7, 4, 12, 0), "America/New_York", "Asia/Tokyo");
-    expect(r).toBe(serial(2026, 7, 5, 1, 0));
+    expect(r).toEqual(solDate(serial(2026, 7, 5, 1, 0)));
   });
 
   it("same zone (and UTC↔UTC) is the identity", () => {
     const s = serial(2026, 3, 10, 8, 30);
-    expect(convertZone(s, "UTC", "UTC")).toBe(s);
-    expect(convertZone(s, "Asia/Tokyo", "Asia/Tokyo")).toBe(s);
+    expect(convertZone(s, "UTC", "UTC")).toEqual(solDate(s));
+    expect(convertZone(s, "Asia/Tokyo", "Asia/Tokyo")).toEqual(solDate(s));
   });
 
   it("an unknown zone is a #VALUE!", () => {
@@ -46,17 +46,16 @@ describe("TIMEZONECONVERT ↔ Time Zone Convert node", () => {
     const { compileEvaluator } = await import("../../src/graph/excelFormula");
     const { TimeZoneConvertNode } = await import("../../src/graph/nodes/date");
     const s = serial(2026, 7, 4, 12, 0);
-    const node = new TimeZoneConvertNode().data({ datetime: [s], from: ["America/New_York"], to: ["Asia/Tokyo"] });
+    const node = new TimeZoneConvertNode().data({ datetime: [solDate(s)], from: ["America/New_York"], to: ["Asia/Tokyo"] });
     const f = compileEvaluator('TIMEZONECONVERT(s, "America/New_York", "Asia/Tokyo")');
-    // The formula takes and answers a date; the card still carries its serial ([[D114]] dateIsAKind).
-    expect(dateSerialOf(f!({ s: solDate(s) }))).toBe(node.result);
-    expect(node.result).toBe(serial(2026, 7, 5, 1, 0));
+    expect(f!({ s: solDate(s) })).toEqual(node.result);
+    expect(node.result).toEqual(solDate(serial(2026, 7, 5, 1, 0)));
   });
 
   it("a blank argument is quiet; an unknown zone is a #VALUE!", async () => {
     const { compileEvaluator } = await import("../../src/graph/excelFormula");
     expect(compileEvaluator('TIMEZONECONVERT(s, "UTC", "Asia/Tokyo")')!({ s: null })).toBeNull();
-    const bad = compileEvaluator('TIMEZONECONVERT(s, "UTC", "Nowhere/Land")')!({ s: serial(2026, 1, 1) });
+    const bad = compileEvaluator('TIMEZONECONVERT(s, "UTC", "Nowhere/Land")')!({ s: solDate(serial(2026, 1, 1)) });
     expect(isSolError(bad)).toBe(true);
   });
 });

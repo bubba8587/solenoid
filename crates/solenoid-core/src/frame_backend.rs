@@ -449,11 +449,15 @@ fn call_body(name: &str, argv: &[crate::excel_functions::V], scan: bool) -> Resu
             format!("{name} reads plain values, and one of these has a unit"),
         )));
     }
-    // `scan`: a node's call reads an error argument as the formula's call does; without it, the bare body.
-    match if scan { crate::eval::argument_error(&upper, argv) } else { None } {
-        Some(e) => Ok(e),
-        None => call_function(name, argv),
+    // `scan`: a node's call reads its arguments as the formula's call does, an error and a date included
+    // ([[D114]] dateIsAKind); without it, the bare body.
+    if !scan {
+        return call_function(name, argv);
     }
+    crate::date_values::call(&upper, argv.to_vec(), |argv| match crate::eval::argument_error(&upper, &argv) {
+        Some(e) => Ok(e),
+        None => call_function(name, &argv),
+    })
 }
 
 /// What a unit wrapper answers where it can't carry the formula, as the card answers it.

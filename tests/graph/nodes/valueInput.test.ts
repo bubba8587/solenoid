@@ -1,4 +1,5 @@
 // [[B11]] maximalMerge, [[C118]] formatTravelsWithValue
+import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { ValueInputNode, carryValueText } from "../../../src/graph/nodes/control";
 import { extractInit } from "../../../src/graph/nodeInit";
@@ -72,7 +73,7 @@ describe("Value Input persistence", () => {
     const n = new ValueInputNode({ op: "date", value: "15-Mar-2026", format: "date_iso", logicalStyle: "yesno", textCase: "upper" });
     const back = new ValueInputNode(extractInit(n) as ConstructorParameters<typeof ValueInputNode>[0]);
     expect(extractInit(back)).toEqual(extractInit(n));
-    expect(back.data().value).toBe(46096);
+    expect(back.data().value).toEqual(solDate(46096));
   });
 
   it("falls back to Number on a stale type", () => {

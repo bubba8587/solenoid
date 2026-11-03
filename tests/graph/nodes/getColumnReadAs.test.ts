@@ -1,4 +1,5 @@
 // [[C24]] arraySemantics, [[C44]] dateSerials, [[B17]]
+import { isSolDate, solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { frameFromCells } from "../../../src/graph/frame";
 import { GetColumnNode } from "../../../src/graph/nodes/frame";
@@ -6,7 +7,8 @@ import { parseDateToSerial, jsDateToSerial } from "../../../src/graph/nodes/date
 
 const ser = (y: number, m: number, d: number) => jsDateToSerial(new Date(Date.UTC(y, m - 1, d)));
 const col = (n: GetColumnNode, f: ReturnType<typeof frameFromCells>, name: string) =>
-  n.data({ frame: [f], name: [name] }).values as number[];
+  n.data({ frame: [f], name: [name] }).values as unknown[];
+const day = (v: unknown) => (isSolDate(v) ? Math.floor(v.__date) : v);
 
 describe("parseDateToSerial (the one canonical text→date parser)", () => {
   it("parses an ISO date string to its serial", () => {
@@ -22,17 +24,17 @@ describe("parseDateToSerial (the one canonical text→date parser)", () => {
 // a date column ("2026-01-03") arrives as text. Get Column's read-as is a
 // COERCION: it must parse those, not NaN them (the bug this fixes).
 describe("Get Column read-as coerces text columns", () => {
-  it("read-as Date parses a TEXT date column to serials (was all N/A)", () => {
+  it("read-as Date parses a TEXT date column to dates (was all N/A)", () => {
     const f = frameFromCells(["Date"], [["2026-01-03"], ["2026-02-04"]]);
     const out = col(new GetColumnNode({ readAs: "date" }), f, "Date");
-    expect(out.map(Math.floor)).toEqual([Math.floor(ser(2026, 1, 3)), Math.floor(ser(2026, 2, 4))]);
+    expect(out.map(day)).toEqual([Math.floor(ser(2026, 1, 3)), Math.floor(ser(2026, 2, 4))]);
   });
 
   it("read-as Date leaves a genuinely unparseable cell as NaN", () => {
     const f = frameFromCells(["Date"], [["2026-01-03"], ["junk"]]);
     const out = col(new GetColumnNode({ readAs: "date" }), f, "Date");
-    expect(Math.floor(out[0])).toBe(Math.floor(ser(2026, 1, 3)));
-    expect(Number.isNaN(out[1])).toBe(true);
+    expect(day(out[0])).toBe(Math.floor(ser(2026, 1, 3)));
+    expect(out[1]).toBeNaN();
   });
 
   it("read-as Number parses numeric text in a string column", () => {
@@ -41,13 +43,13 @@ describe("Get Column read-as coerces text columns", () => {
     const out = col(new GetColumnNode({ readAs: "number" }), f, "Amt");
     expect(out[0]).toBe(10);
     expect(out[1]).toBe(20.5);
-    expect(Number.isNaN(out[2])).toBe(true);
+    expect(out[2]).toBeNaN();
   });
 
-  it("read-as Date still passes through a numeric (already-serial) column", () => {
+  it("read-as Date reads a numeric (serial) column as those days", () => {
     const f = frameFromCells(["S"], [["45000"], ["45001"]]); // all-numeric → number column
     const out = col(new GetColumnNode({ readAs: "date" }), f, "S");
-    expect(out).toEqual([45000, 45001]);
+    expect(out).toEqual([solDate(45000), solDate(45001)]);
   });
 
   it("read-as Text on a DATE column formats serials as date strings, not raw digits", () => {

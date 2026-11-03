@@ -8,7 +8,7 @@ tags: [spec, values]
 
 A date is a value kind beside number, text and logical ([[D114]] dateIsAKind), a point that shifts and differs by days ([[D115]] datesArePoints). This spec is how the core, the wire and the TypeScript side hold it, what each operator and function does with one, and how it shows.
 
-Status: the date kind, the operators, the function classes and the formula surfaces are in; the sources and most card bodies still relay (§ What was removed, and what still relays).
+Status: in. Every source sends a date as itself and every card body takes one; the relays that turned serials back into dates are gone (§ What was removed).
 
 ## Representation
 
@@ -70,20 +70,21 @@ Mixed kinds stay refused ([[C137]] datesNeverSerials): a list or table that woul
 
 A card's result family is read off its values (`Num`, `Str`, `Bool`, `Date`), not from its formula's text. A mixed answer is untyped; an empty answer keeps the last run's family.
 
-## What was removed, and what still relays
+## Cards
 
-Gone: the rule that guessed a date from a formula's text and the rewrite that formatted the dates a formula turned into text (they lived in `date_typing.rs`), and the LAMBDA helpers' date bookkeeping. A formula's answer is typed by its values.
+A card body reads and answers dates as the formulas do ([[D114]] dateIsAKind):
 
-Still relaying, until every source sends a date as itself (each goes with the step named):
-- A formula variable, LAMBDA-helper input and computed-column column typed date has its numbers read as dates on the way in (`is_date_input`, `dated_matrix`, `dated_num`, `frame_cell_v`, `run_cells`). Goes once Value, List and Frame Input, Get Column and the other sources send dates.
-- A card body not yet converted reads a date input as its serial (`SEES_DATES` in `nodes/mod.rs` lists the converted ones: the formula family and Cast). Goes card by card.
-- Each table input's wired source type (`from_in`, `dated_tables`, `Call::widened`, `wiredTypes` in `nodeOnCore.ts`), the extracting cards' `produced` family, Cast's and Script's socket sniffing, and the source types handed to the Slicer, the peek, exports, template lists and Cube popups. Each goes when the value it relays carries its own type.
-- A lazily computed column (a column over a held frame) types itself Date when every value is a date, but a row mixing kinds there still keeps its serial.
+- Every call to a function readies its arguments by the function's class in one place (`date_values::call`): a formula's (`Eval::call`), a card body's (`core_call`, the most of them) and a node's direct call (`engine_call` with `scan`). The date cards build and read dates, MIN and MAX keep them, SUM refuses them. The bare body (`engine_call` without `scan`, the function-bodies fixtures) takes plain numbers.
+- The sources send dates: Value Input and List Input typed Date, Get Column on a Date column, and a date socket's saved literal, which holds the serial and reads as a date (`Call::literal`). A Frame or Cube carries its dates in Date columns.
+- A table built from values types a column of dates Date and refuses dates beside another kind in one column (`infer_column`, Build Frame, Frame from Lists); a list widened into a table is typed the same way.
+- A planner that reads amounts, rates or weights by name (Allocator, Payoff Planner, Group Cost Settle, Earned Value's cost) never reads a Date column as one.
+- Cast is the one way to a serial; a date cast to text keeps its time of day where it has one.
+- `produced`, the family a lookup or a branch extracted, stays: it is how the Type Settle types a wildcard output after a run for every kind ([[C136]] typesKnownAfterCalc), not a date relay.
 
-## Order of work
+`tests/date_fuzz.rs` hands every card dates wherever a date can be wired (the wildcard, table and date sockets) over its frozen cases: no body may panic or hand back an input's day as a plain number.
 
-1. The kind: `V::Date`, the wire tag, `SolDate`, text and display.
-2. The operators and function classes, with the unlisted-function guard.
-3. Tables: Date columns read out as `Date` values; columns built from dates.
-4. Delete the relays, each one's tests moved onto the value.
-5. Re-freeze fixtures; the conformance fuzz gains date cases for every operator row and every class.
+## What was removed
+
+The rule that guessed a date from a formula's text (`date_typing.rs`), the LAMBDA helpers' date bookkeeping, the per-card stripping of dates back to serials, the re-wrapping of date-typed inputs into formulas and the LAMBDA helpers, the wired-source-type relay for tables, Cast's and Script's source-socket sniffing, and the display hand-offs that formatted a number as a date by its source socket (peeks, Report and Note refs, exports, templates). A formula's or card's answer is typed by its values.
+
+A computed column of dates is a Date column; one mixing dates with another kind holds `#TYPE!` where each date would be, however the column is computed (`eval::column`).

@@ -2,6 +2,7 @@
 import { GraphNode } from "../graphModel";
 import { cubeIn, cubeOut, dateIn, dateOut, strOut, dateListIn, numIn, frameIn, frameOut } from "./shared";
 import { type SolError } from "../errorValue";
+import type { SolDate } from "../dateValue";
 import { frameToCube, type CubeValue, type FrameValue } from "../frame";
 import { nodeOnCore } from "../nodeOnCore";
 import type { ScheduleOutput } from "../planTypes";
@@ -61,7 +62,7 @@ export class ScheduleNode extends GraphNode {
   literals: Record<string, number> = { ...SCHEDULE_DEFAULT_LITERALS };
   stringLiterals: Record<string, string> = {};
   cachedResult: CubeValue | SolError | null = null;
-  cachedFinish: number | SolError | null = null;
+  cachedFinish: SolDate | SolError | null = null;
   cachedGantt: string | SolError | null = null;
   cachedMspdi: string | SolError | null = null;
   cachedDiagnostics: FrameValue | SolError | null = null;
@@ -109,7 +110,7 @@ export class ScheduleNode extends GraphNode {
 
   data(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as {
-      cube: CubeValue | SolError | null; finish: number | SolError | null; diagnostics: FrameValue | SolError | null;
+      cube: CubeValue | SolError | null; finish: SolDate | SolError | null; diagnostics: FrameValue | SolError | null;
       gantt: string | SolError | null; mspdi: string | SolError | null;
     };
   }

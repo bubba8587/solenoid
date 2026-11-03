@@ -720,7 +720,7 @@ fn read_column(c: &mut Call, col: &Column) -> Answer {
                 .collect()
         }
     };
-    let out = list(out);
+    let out = if read_as == "date" { crate::date_values::wrap(&list(out)) } else { list(out) };
     values_answer(c, out.clone(), out)
 }
 
@@ -762,7 +762,7 @@ fn get_column(c: &mut Call) -> Answer {
         },
         Cv::Cells(_) => values_answer(c, V::Null, V::Null),
         Cv::V(other) => {
-            let fr = c.widened("frame", widen_to_frame(other));
+            let fr = widen_to_frame(other);
             match column_named(&fr.columns, &name) {
                 Some(col) => read_column(c, &col.clone()),
                 None => values_answer(c, V::Null, V::Null),

@@ -1,4 +1,5 @@
 // [[B11]] maximalMerge
+import { solDate } from "../../../src/graph/dateValue";
 import { cellImageSrc } from "../../../src/graph/recordLayout";
 import { describe, it, expect } from "vitest";
 import {
@@ -334,13 +335,13 @@ describe("histogram2d (numpy histogram2d)", () => {
 });
 
 describe("control nodes", () => {
-  it("a date Value Input derives its serial from the raw source text", () => {
+  it("a date Value Input derives its date from the raw source text", () => {
     const date = (value?: string) => new ValueInputNode({ op: "date", value });
-    expect(date("20-Mar-2026").data().value).toBe(Math.floor(parseDate("20-Mar-2026") as number));
+    expect(date("20-Mar-2026").data().value).toEqual(solDate(Math.floor(parseDate("20-Mar-2026") as number)));
     expect(date("").data()).toEqual({ value: null });
     expect(date("not a date").data()).toEqual({ value: null });
-    // default is today's serial
-    expect(date().data().value).toBe(Math.floor(jsDateToSerial(new Date())));
+    // default is today
+    expect(date().data().value).toEqual(solDate(Math.floor(jsDateToSerial(new Date()))));
   });
   it("a date Value Input keeps the raw text verbatim and surfaces #AMBIGUOUS! instead of guessing", () => {
     const d = new ValueInputNode({ op: "date", value: "20-mar-2026" });

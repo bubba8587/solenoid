@@ -23,6 +23,9 @@ fn load(path: &std::path::Path) -> Vec<Json> {
 fn same_v(a: &V, b: &V) -> bool {
     match (a, b) {
         (V::Num(x), V::Num(y)) | (V::Date(x), V::Date(y)) => x.to_bits() == y.to_bits() || (x.is_nan() && y.is_nan()),
+        (V::Num(x), V::Date(y)) | (V::Date(x), V::Num(y)) if std::env::var("LOOSE").is_ok() => {
+            x.to_bits() == y.to_bits()
+        }
         (V::Str(x), V::Str(y)) => x == y,
         (V::Bool(x), V::Bool(y)) => x == y,
         (V::Null, V::Null) | (V::Undef, V::Undef) => true,
@@ -239,7 +242,7 @@ fn card_bodies_answer_as_frozen() {
             case["kind"] = Json::String(kind.clone());
             if let Some(why) = mismatch(&case) {
                 bad += 1;
-                if shown.len() < 4 {
+                if shown.len() < std::env::var("SHOW").ok().and_then(|s| s.parse().ok()).unwrap_or(4) {
                     shown.push(format!(
                         "    {why}\n      init {} lits {} inputs {}",
                         case["init"], case["literals"], case["inputs"]

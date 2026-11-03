@@ -85,6 +85,14 @@ fn null_or(v: Option<f64>) -> V {
     v.map_or(V::Null, V::Num)
 }
 
+/// A when input: only a date ([[D114]] dateIsAKind).
+fn when_of(c: &Call) -> Option<f64> {
+    match first(c, "when") {
+        V::Date(n) => Some(n),
+        _ => None,
+    }
+}
+
 // ─── Electrical ────────────────────────────────────────────────────────────────
 
 /// The first error, else the reciprocal of the reciprocals' sum over the numbers.
@@ -679,7 +687,7 @@ pub(crate) fn lat_lon_error(lat: f64, lon: f64) -> Option<V> {
 
 /// The when, latitude and longitude a sun card reads, where all three are numbers.
 fn sun_inputs(c: &Call) -> Option<(f64, f64, f64)> {
-    let when = number(&first(c, "when"))?;
+    let when = when_of(c)?;
     let lat = number(&c.read_input("lat", c.literal("lat")))?;
     let lon = number(&c.read_input("lon", c.literal("lon")))?;
     Some((when, lat, lon))
@@ -710,7 +718,8 @@ fn sunrise_sunset(c: &mut Call) -> Answer {
             Some(e) => [e.clone(), e.clone(), e],
             None => {
                 let (rise, set, len) = sun_times(when, lat, lon);
-                [null_or(rise), null_or(set), V::Num(len)]
+                let date_or_null = |v: Option<f64>| v.map_or(V::Null, V::Date);
+                [date_or_null(rise), date_or_null(set), V::Num(len)]
             }
         },
     };
@@ -728,7 +737,7 @@ const SYNODIC_MONTH: f64 = 29.530588853;
 const NEW_MOON_EPOCH_SERIAL: f64 = 36531.7597;
 
 fn moon_phase_node(c: &mut Call) -> Answer {
-    let [phase, age, illumination] = match number(&first(c, "when")) {
+    let [phase, age, illumination] = match when_of(c) {
         None => [V::Null, V::Null, V::Null],
         Some(serial) => moon_phase_of(serial).map(V::Num),
     };

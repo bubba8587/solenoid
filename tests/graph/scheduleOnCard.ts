@@ -7,6 +7,7 @@ import { isSolError, type SolError } from "../../src/graph/errorValue";
 import { cubeFromColumns, type CubeValue, type FrameValue } from "../../src/graph/frame";
 import type { ScheduleOutput } from "../../src/graph/planTypes";
 import type { GanttPayload } from "@solenoid/gantt-layout";
+import { solDate, type SolDate } from "../../src/graph/dateValue";
 
 export interface ScheduleOptions {
   start: number;
@@ -24,11 +25,15 @@ export interface ScheduleOptions {
 
 export interface ScheduleResult {
   cube: CubeValue;
-  projectFinish: number;
+  projectFinish: SolDate;
   gantt: string;
   mspdi: string;
   diagnostics: FrameValue;
   output: ScheduleOutput;
+}
+
+function datesOf(days: readonly (number | null)[]): (SolDate | null)[] {
+  return days.map((d) => (d === null ? null : solDate(d)));
 }
 
 /** The Schedule card over `c`; a plan the card answers with an error throws that error. */
@@ -41,9 +46,9 @@ export function scheduleTasks(c: CubeValue, o: ScheduleOptions): ScheduleResult 
   });
   const out = n.data({
     tasks: [c],
-    start: [o.start],
-    ...(o.holidays ? { holidays: [[...o.holidays]] } : {}),
-    ...(o.statusDate != null ? { status: [o.statusDate] } : {}),
+    start: [solDate(o.start)],
+    ...(o.holidays ? { holidays: [datesOf(o.holidays)] } : {}),
+    ...(o.statusDate != null ? { status: [solDate(o.statusDate)] } : {}),
     ...(o.hoursPerDay != null ? { hours: [o.hoursPerDay] } : {}),
     ...(o.weekendCode != null ? { weekend_code: [o.weekendCode] } : {}),
     ...(o.links ? { links: [o.links] } : {}),
@@ -51,7 +56,7 @@ export function scheduleTasks(c: CubeValue, o: ScheduleOptions): ScheduleResult 
   if (isSolError(out.cube)) throw out.cube;
   return {
     cube: out.cube as CubeValue,
-    projectFinish: out.finish as number,
+    projectFinish: out.finish as SolDate,
     gantt: out.gantt as string,
     mspdi: out.mspdi as string,
     diagnostics: out.diagnostics as FrameValue,
@@ -74,8 +79,8 @@ export function ganttPayload(schedule: CubeValue | FrameValue, o: GanttOptions =
   const { chart } = n.data({
     schedule: [schedule],
     ...(o.baseline ? { baseline: [o.baseline] } : {}),
-    ...(o.statusDate != null ? { status: [o.statusDate] } : {}),
-    ...(o.holidays ? { holidays: [[...o.holidays]] } : {}),
+    ...(o.statusDate != null ? { status: [solDate(o.statusDate)] } : {}),
+    ...(o.holidays ? { holidays: [datesOf(o.holidays)] } : {}),
     ...(o.weekendCode != null ? { weekend_code: [o.weekendCode] } : {}),
   } as never);
   if (isSolError(chart)) return chart;

@@ -1005,14 +1005,10 @@ impl Eval<'_> {
                 }
             }
         }
-        // A date is read by the function's class, and its answer re-stamped ([[D114]] dateIsAKind).
-        if crate::date_values::concerns(name, &argv) {
-            return match crate::date_values::ready(name, argv) {
-                Ok((argv, after)) => after.apply(self.call_with(name, t, args, argv, settled)),
-                Err(e) => e,
-            };
-        }
-        self.call_with(name, t, args, argv, settled)
+        let Ok(v) = crate::date_values::call(name, argv, |argv| {
+            Ok::<_, std::convert::Infallible>(self.call_with(name, t, args, argv, settled))
+        });
+        v
     }
 
     /// A call's body over its evaluated arguments: errors, broadcasting and the memo, then the route.
@@ -2346,7 +2342,7 @@ fn column_hoisting<C>(
                 ctx.cursor.set(i);
                 rows.at(i);
                 let v = ev.run(ast, &env);
-                kinds.note(&v);
+                kinds.note(&v, cells.len());
                 cells.push(tag(v));
             }
         }
@@ -2371,25 +2367,38 @@ fn column_hoisting<C>(
                     Some(e) => e,
                     None => ev.call_lambda(lam, &argv),
                 };
-                kinds.note(&v);
+                kinds.note(&v, cells.len());
                 cells.push(tag(v));
             }
+        }
+    }
+    // A column of one kind can't show a date beside another kind: each date there is #TYPE! ([[C137]] datesNeverSerials).
+    if kinds.dates && kinds.other {
+        for &i in &kinds.at {
+            cells[i] = tag(V::err(sol_error(
+                ErrorCode::Type,
+                "This column mixes dates with another kind. Cast one side so they agree",
+            )));
         }
     }
     Ok(ColumnOutcome { cells, side_vars, dates: kinds.dates && !kinds.other })
 }
 
-/// Whether a column's values are dates: some date and nothing else but blanks and errors.
+/// Whether a column's values are dates: some date and nothing else but blanks and errors; and the rows of its dates.
 #[derive(Default)]
 struct Kinds {
     dates: bool,
     other: bool,
+    at: Vec<usize>,
 }
 
 impl Kinds {
-    fn note(&mut self, v: &V) {
+    fn note(&mut self, v: &V, row: usize) {
         match v {
-            V::Date(_) => self.dates = true,
+            V::Date(_) => {
+                self.dates = true;
+                self.at.push(row);
+            }
             V::Null | V::Undef | V::Err(_) | V::Fx(_) => {}
             _ => self.other = true,
         }

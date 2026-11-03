@@ -72,8 +72,6 @@ pub struct Call {
     /// The type an adoptive input took up (`socket.dataType`), where it differs from the declared one, by key. A
     /// run-time fact no save keeps.
     pub adopted_in: Rc<[(String, String)]>,
-    /// The type of the output wired into a table input, by key: a table widened from a date list holds dates.
-    pub from_in: Rc<[(String, String)]>,
     /// A table's unit (`matrixUnitOf`, a hidden field on the JS array) on an input's first value, by input key.
     pub matrix_units_in: Vec<(String, Json)>,
     /// The unit to put on an output table (`withMatrixUnit`), by output key.
@@ -83,8 +81,6 @@ pub struct Call {
     pub draws: Option<Draws>,
     /// The body's answer read the clock (TODAY or NOW): a kept answer stands for the recalculation only.
     pub volatile: bool,
-    /// The body takes a date as itself (`SEES_DATES`); every other body reads its serial, on each call.
-    sees_dates: bool,
 }
 
 /// A card's draws in one recalc generation: its uniform rolls, and the text it drew (UUID).
@@ -107,74 +103,6 @@ pub struct Socket {
     pub label: String,
 }
 
-/// Whether the output wired into `key` carries dates.
-fn dated_from(from_in: &[(String, String)], key: &str) -> bool {
-    from_in.iter().any(|(k, t)| k == key && t.starts_with("date"))
-}
-
-/// A table built from a date list or table holds dates: its columns, read from bare serials as numbers, are Date
-/// ([[C137]] datesNeverSerials).
-pub fn date_columns(frame: &mut Frame) {
-    for col in &mut frame.columns {
-        if col.ty == crate::frame::FrameColType::Number {
-            col.ty = crate::frame::FrameColType::Date;
-        }
-    }
-}
-
-fn dated_tables(inputs: Vec<(String, Vec<Cv>)>, from_in: &[(String, String)]) -> Vec<(String, Vec<Cv>)> {
-    if from_in.is_empty() {
-        return inputs;
-    }
-    inputs
-        .into_iter()
-        .map(|(k, vs)| {
-            if !dated_from(from_in, &k) {
-                return (k, vs);
-            }
-            let vs = vs
-                .into_iter()
-                .map(|v| match v {
-                    // Only a table with a column to retype is copied: a copy per call is whole-table work.
-                    Cv::Frame(mut f) if f.columns.iter().any(|c| c.ty == crate::frame::FrameColType::Number) => {
-                        date_columns(Rc::make_mut(&mut f));
-                        Cv::Frame(f)
-                    }
-                    Cv::Cube(mut q)
-                        if q.columns
-                            .iter()
-                            .any(|c| matches!(c.ty, None | Some(crate::frame::FrameColType::Number))) =>
-                    {
-                        for col in &mut Rc::make_mut(&mut q).columns {
-                            if matches!(col.ty, None | Some(crate::frame::FrameColType::Number)) {
-                                col.ty = Some(crate::frame::FrameColType::Date);
-                            }
-                        }
-                        Cv::Cube(q)
-                    }
-                    other => other,
-                })
-                .collect();
-            (k, vs)
-        })
-        .collect()
-}
-
-impl Call {
-    /// Whether the output wired into `key` (a frame or cube input) carries dates.
-    pub fn dated(&self, key: &str) -> bool {
-        dated_from(&self.from_in, key)
-    }
-
-    /// A Frame this card widened itself from what arrived on `key` (a list or a matrix), Date where that was dates.
-    pub fn widened(&self, key: &str, mut frame: Frame) -> Frame {
-        if dated_from(&self.from_in, key) {
-            date_columns(&mut frame);
-        }
-        frame
-    }
-}
-
 /// The inputs' values: a table, which reaches only a table or an any socket, is `#VALUE!` here.
 fn values_of(inputs: &[(String, Vec<Cv>)], sockets: &[Socket]) -> Vec<(String, Vec<V>)> {
     inputs
@@ -193,43 +121,6 @@ fn values_of(inputs: &[(String, Vec<Cv>)], sockets: &[Socket]) -> Vec<(String, V
             (key.clone(), vs)
         })
         .collect()
-}
-
-/// The cards whose bodies take a date as itself ([[D114]] dateIsAKind). Every other body still reads a date as its serial,
-/// as it did before dates were a kind, until it is converted (`date-values.md` § Order of work).
-const SEES_DATES: &[&str] = &[
-    "ExpressionNode",
-    "MapTableNode",
-    "ByAxisNode",
-    "ReduceLambdaNode",
-    "ScanLambdaNode",
-    "MakeArrayNode",
-    "CastNode",
-];
-
-fn undated_cv(c: Cv) -> Cv {
-    match c {
-        Cv::V(v) if crate::date_values::holds_date(&v) => Cv::V(crate::date_values::unwrap(&v)),
-        Cv::Cells(items) if items.iter().any(|x| matches!(x, Cv::V(v) if crate::date_values::holds_date(v))) => {
-            Cv::Cells(Rc::new(items.iter().cloned().map(undated_cv).collect()))
-        }
-        Cv::Cube(q)
-            if q.columns
-                .iter()
-                .any(|col| col.cells.iter().any(|x| matches!(x, Cv::V(v) if crate::date_values::holds_date(v)))) =>
-        {
-            let mut q = (*q).clone();
-            for col in &mut q.columns {
-                col.cells = std::mem::take(&mut col.cells).into_iter().map(undated_cv).collect();
-            }
-            Cv::Cube(Rc::new(q))
-        }
-        other => other,
-    }
-}
-
-fn undated_inputs(inputs: Vec<(String, Vec<Cv>)>) -> Vec<(String, Vec<Cv>)> {
-    inputs.into_iter().map(|(k, vs)| (k, vs.into_iter().map(undated_cv).collect())).collect()
 }
 
 /// What a body answers: its outputs in order, or the error it throws (the error guard makes it every output's).
@@ -259,8 +150,6 @@ impl Call {
             .collect();
         let adopted_in: Vec<(String, String)> =
             rows("sockets").iter().filter_map(|r| Some((text(r, 0)?, text(r, 3)?))).collect();
-        let from_in: Rc<[(String, String)]> =
-            rows("sockets").iter().filter_map(|r| Some((text(r, 0)?, text(r, 4)?))).collect();
         let mut matrix_units_in = Vec::new();
         let inputs: Vec<(String, Vec<Cv>)> = rows("inputs")
             .iter()
@@ -274,10 +163,6 @@ impl Call {
                 (key, values)
             })
             .collect();
-        let inputs = dated_tables(inputs, &from_in);
-        let kind = j.get("kind").and_then(Json::as_str).unwrap_or("");
-        let sees_dates = SEES_DATES.contains(&kind);
-        let inputs = if sees_dates { inputs } else { undated_inputs(inputs) };
         let values = values_of(&inputs, &sockets);
         Call {
             init: Rc::new(obj("init")),
@@ -288,19 +173,15 @@ impl Call {
             values,
             display: Vec::new(),
             adopted_in: adopted_in.into(),
-            from_in,
             matrix_units_in,
             matrix_units_out: Vec::new(),
             draws: None,
             volatile: false,
-            sees_dates,
         }
     }
 
     /// The same card called again on `inputs`: what a save holds and the sockets shared, nothing shown yet.
     pub fn again(&self, inputs: Vec<(String, Vec<Cv>)>, matrix_units_in: Vec<(String, Json)>) -> Call {
-        let inputs = dated_tables(inputs, &self.from_in);
-        let inputs = if self.sees_dates { inputs } else { undated_inputs(inputs) };
         Call {
             init: self.init.clone(),
             literals: self.literals.clone(),
@@ -310,12 +191,10 @@ impl Call {
             inputs,
             display: Vec::new(),
             adopted_in: self.adopted_in.clone(),
-            from_in: self.from_in.clone(),
             matrix_units_in,
             matrix_units_out: Vec::new(),
             draws: None,
             volatile: false,
-            sees_dates: self.sees_dates,
         }
     }
 
@@ -417,9 +296,15 @@ impl Call {
         }
     }
 
-    /// The typed literal, `undefined` where it isn't set.
+    /// The typed literal, `undefined` where it isn't set. A date socket's literal is saved as its serial and read as a
+    /// date ([[D114]] dateIsAKind).
     pub fn literal(&self, key: &str) -> V {
-        self.literals.get(key).map(decode).unwrap_or(V::Undef)
+        let v = self.literals.get(key).map(decode).unwrap_or(V::Undef);
+        if self.input_type(key).is_some_and(|t| t.starts_with("date")) {
+            crate::date_values::wrap(&v)
+        } else {
+            v
+        }
     }
 
     pub fn string_literal(&self, key: &str) -> V {

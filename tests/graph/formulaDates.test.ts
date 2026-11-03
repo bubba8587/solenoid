@@ -1,4 +1,5 @@
 // [[C136]] typesKnownAfterCalc
+import { solDate } from "../../src/graph/dateValue";
 import { isSolError } from "../../src/graph/errorValue";
 import { describe, it, expect, afterEach } from "vitest";
 import type { View } from "../../src/graph/view";
@@ -72,7 +73,7 @@ class Dates extends GraphNode {
     super("Dates");
     this.addOutput("out", new GraphOutput(dateListSocket));
   }
-  data() { return { out: [46037, 46083, 46200] }; }
+  data() { return { out: [46037, 46083, 46200].map(solDate) }; }
 }
 
 describe("the Formula card on Auto takes the family its formula computed", () => {
@@ -91,7 +92,6 @@ describe("the Formula card on Auto takes the family its formula computed", () =>
     settleWildcardTypes(editor); // as every connection change runs it
     await processGraph();
     await new Promise((r) => setTimeout(r, 0)); // the retype lands in a microtask after the pass
-    console.log("DBG", expr, JSON.stringify(f.cachedResult), (f as unknown as {lastResultShape: string}).lastResultShape);
     return nodeOutputElemFamily(f.id, "result");
   }
 

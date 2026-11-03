@@ -5,7 +5,7 @@ import { sanitizeChartLabel } from "../../src/graph/components/chartRender";
 import { coreFunction } from "./coreFunction";
 import { isSolError } from "../../src/graph/errorValue";
 
-const d = (y: number, m: number, day: number) => Date.UTC(y, m - 1, day) / 86400000 + 25569;
+const d = (y: number, m: number, day: number) => solDate(Date.UTC(y, m - 1, day) / 86400000 + 25569);
 
 describe("review pins", () => {
   it("PRICE with one coupon period left uses Excel's simple-interest form; YIELD inverts it", () => {
@@ -72,14 +72,14 @@ describe("review pins: analytics batch", () => {
     expect(coreFunction("CHOOSE")!(2.7, "a", "b", "c")).toBe("b");
   });
   it("XIRR names a date before the first date", () => {
-    const r = coreFunction("XIRR")!([-100, 60, 60], [45444, 45292, 45658]);
+    const r = coreFunction("XIRR")!([-100, 60, 60], [45444, 45292, 45658].map(solDate));
     expect(isSolError(r) && r.message).toMatch(/before the first/);
   });
   it("the XIRR node refuses a date before the first date, as =XIRR does", async () => {
     const { IRRNode } = await import("../../src/graph/nodes/finance");
-    const r = new IRRNode({ op: "dates" }).data({ list: [[-100, 60, 60]], dates: [[45444, 45292, 45658]] }).result;
+    const r = new IRRNode({ op: "dates" }).data({ list: [[-100, 60, 60]], dates: [[45444, 45292, 45658].map(solDate)] }).result;
     expect(isSolError(r) && r.code).toBe("#DOMAIN!");
-    expect(r).toEqual(coreFunction("XIRR")!([-100, 60, 60], [45444, 45292, 45658]));
+    expect(r).toEqual(coreFunction("XIRR")!([-100, 60, 60], [45444, 45292, 45658].map(solDate)));
   });
   it("DIAGONAL of a matrix is its diagonal", () => {
     expect(coreFunction("DIAGONAL")!([[1, 2], [3, 4]])).toEqual([1, 4]);
@@ -114,16 +114,16 @@ describe("review pins: Record layout", () => {
 
 describe("review pins: formula surface parity", () => {
   it("the T-bill formulas run the actual/360 kernel (Microsoft's worked examples)", () => {
-    const s = 45382, m = 45444; // 2024-03-31, 2024-06-01
+    const s = solDate(45382), m = solDate(45444); // 2024-03-31, 2024-06-01
     expect(coreFunction("TBILLYIELD")!(s, m, 98.45) as number).toBeCloseTo(0.09141696, 6);
     expect(coreFunction("TBILLEQ")!(s, m, 0.0914) as number).toBeCloseTo(0.09415149, 6);
     expect(coreFunction("TBILLPRICE")!(s, m, 0.09) as number).toBeCloseTo(98.45, 2);
   });
   it("WORKDAY.INTL takes the seven-character weekend mask", () => {
     const mon = 46027; // 2026-01-05
-    expect(coreFunction("WORKDAY.INTL")!(mon, 5, "0000011")).toBe(mon + 7);
-    expect(coreFunction("WORKDAY.INTL")!(mon, 5, "0000011", [mon + 1])).toBe(mon + 8);
-    expect(coreFunction("WORKDAY.INTL")!(mon, 1, 1)).toBe(mon + 1); // the numeric code still works
+    expect(coreFunction("WORKDAY.INTL")!(solDate(mon), 5, "0000011")).toEqual(solDate(mon + 7));
+    expect(coreFunction("WORKDAY.INTL")!(solDate(mon), 5, "0000011", [solDate(mon + 1)])).toEqual(solDate(mon + 8));
+    expect(coreFunction("WORKDAY.INTL")!(solDate(mon), 1, 1)).toEqual(solDate(mon + 1)); // the numeric code still works
   });
   it("RANK with a text order is #VALUE!, not an ascending rank", () => {
     for (const fn of ["RANK", "RANK.EQ", "RANK.AVG"]) {
@@ -178,8 +178,8 @@ describe("review pins: STDEV.S of one value, DATEDIF order, CONTAINS rank", () =
     expect(coreFunction("STDEV.S")!([1, 3]) as number).toBeCloseTo(Math.SQRT2, 10);
   });
   it("DATEDIF refuses a start after the end for every unit", () => {
-    expect(isSolError(coreFunction("DATEDIF")!(46030, 46027, "D"))).toBe(true);
-    expect(coreFunction("DATEDIF")!(46027, 46030, "D")).toBe(3);
+    expect(coreFunction("DATEDIF")!(solDate(46030), solDate(46027), "D")).toMatchObject({ code: "#DOMAIN!" });
+    expect(coreFunction("DATEDIF")!(solDate(46027), solDate(46030), "D")).toBe(3);
   });
   it("CONTAINS over a matrix is #SHAPE!, never a silent FALSE", () => {
     expect(isSolError(coreFunction("CONTAINS")!([[1, 2], [3, 4]], 2))).toBe(true);
@@ -251,7 +251,7 @@ describe("review pins: a blank optional numeric argument is Excel's 0", () => {
   it("ROUND / MOD / DATE read a blank slot like their siblings do", () => {
     expect(coreFunction("ROUND")!(2.567, null)).toBe(3);
     expect(isSolError(coreFunction("MOD")!(5, null)) && (coreFunction("MOD")!(5, null) as { code: string }).code).toBe("#DIV/0!");
-    expect(coreFunction("DATE")!(2026, 1, null)).toBe(coreFunction("DATE")!(2025, 12, 31));
+    expect(coreFunction("DATE")!(2026, 1, null)).toEqual(coreFunction("DATE")!(2025, 12, 31));
   });
 });
 

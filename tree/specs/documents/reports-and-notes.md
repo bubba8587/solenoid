@@ -253,13 +253,14 @@ The card (`ReportNode.tsx`) is an anchor, not an editor. It shows the Template r
 
 `InlineRefBody` renders a Report preview. It sets the sanitized HTML imperatively, finds every `<code>` element whose text matches `^=name!?$`, replaces it with an empty `<span>`, and portals an `InlineRefValue` into each. React never owns the parsed HTML, so re-renders do not orphan the portals. Each `InlineRefValue` subscribes to the cable-value store and re-renders only when its own `refValue(name)` changes.
 
-`InlineRefValue` is the one renderer both surfaces draw values with: the Report's preview places it in the text, a Dashboard places one per box ([[#A box]]) with `rich` (a Frame's 25 scrolling rows) and `fill` (a chart sized to its container, uncapped). Either way it knows the node feeding the ref, and through it: a date-typed source previews a number as a date (`refSourceType`); a Record's pager and a Choice Ladder's actions step that node, as a Display's do; a KPI card draws in its Value input's format (`valueFormat`); and a document's own spans resolve each value through the Report that made the document (its `sourceId`), so that Report's Format Controllers apply wherever the document is shown.
+`InlineRefValue` is the one renderer both surfaces draw values with: the Report's preview places it in the text, a Dashboard places one per box ([[#A box]]) with `rich` (a Frame's 25 scrolling rows) and `fill` (a chart sized to its container, uncapped). Either way it knows the node feeding the ref, and through it: a Record's pager and a Choice Ladder's actions step that node, as a Display's do; a KPI card draws in its Value input's format (`valueFormat`); and a document's own spans resolve each value through the Report that made the document (its `sourceId`), so that Report's Format Controllers apply wherever the document is shown.
 
 The formatting annotation for a span is the Format Controller docked on that Report input, else one reachable upstream through passthroughs (`resolveRefAnnotation`). A Frame embed reads per-column formats from the node feeding the input, not from the Report.
 
 | Value kind | Rendered as |
 |---|---|
-| number | `formatNumberWithAnnotation` when an annotation exists, else a date in `DD-MMM-YYYY` when the socket feeding the input is date-typed (`refSourceType`), else `formatScalar`; the card rows read the same, the webpage export does not yet |
+| number | `formatNumberWithAnnotation` when an annotation exists, else `formatScalar` |
+| date | `formatNumberWithAnnotation` on its serial when an annotation exists, else `DD-MMM-YYYY`; the card rows and the webpage export read the same |
 | text | the annotation's text case, else as is |
 | logical | the annotation's logical style |
 | complex | complex formatting, with the annotation when there is one |

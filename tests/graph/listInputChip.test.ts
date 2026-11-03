@@ -1,4 +1,5 @@
 // [[C58]] tableInputRawText
+import { solDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { ListInputNode } from "../../src/graph/nodes/list";
@@ -31,8 +32,8 @@ describe("List Input: the plain value box", () => {
     const k0 = Object.keys(n.inputs)[0];
     n.stringLiterals[k0] = "2024, 2025, 01-Jan-2026";
     const k1 = n.addValueInput();
-    const out = (n as unknown as { data: (i: Record<string, unknown[]>) => { list: unknown } }).data({ [k1]: [[46024]] });
-    expect(out.list).toEqual([2024, 2025, 46023, 46024]);
+    const out = (n as unknown as { data: (i: Record<string, unknown[]>) => { list: unknown } }).data({ [k1]: [[solDate(46024)]] });
+    expect(out.list).toEqual([2024, 2025, 46023, 46024].map(solDate));
     expect(n.cachedSource).toEqual(["2024", "2025", "01-Jan-2026", null]);
   });
 
@@ -41,7 +42,7 @@ describe("List Input: the plain value box", () => {
     n.stringLiterals[Object.keys(n.inputs)[0]] = "2024, abc";
     throughBoundary(n as unknown as Parameters<typeof throughBoundary>[0]);
     const out = (n as unknown as { data: (i: Record<string, unknown[]>) => { list: unknown } }).data({});
-    expect(out.list).toEqual([2024, NaN]);
+    expect(out.list).toEqual([solDate(2024), NaN]);
     expect(n.cachedSource).toEqual(["2024", "abc"]);
   });
 });

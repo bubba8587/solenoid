@@ -1,5 +1,6 @@
 // [[C17]]
 import { solDate } from "../../../src/graph/dateValue";
+import { dated } from "../datedInputs";
 import { describe, it, expect } from "vitest";
 import {
   TvmNode,
@@ -12,8 +13,8 @@ import {
 } from "../../../src/graph/nodes/finance";
 import { coreFunction } from "../coreFunction";
 
-const securityDisc = (op: string, ...a: number[]) => coreFunction(op)!(...a) as number;
-const priceMat = (op: string, ...a: number[]) => coreFunction(op)!(...a);
+const securityDisc = (op: string, s: number, m: number, ...a: number[]) => coreFunction(op)!(solDate(s), solDate(m), ...a) as number;
+const priceMat = (op: string, s: number, m: number, i: number, ...a: number[]) => coreFunction(op)!(solDate(s), solDate(m), solDate(i), ...a);
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 
@@ -92,7 +93,7 @@ describe("TBILL — money-market day-count conventions", () => {
   const d = (s: string) => parseDateToSerial(s);
   it("TBILLEQ switches to the compounding form past 182 days (real Excel = 0.052539935)", () => {
     // =TBILLEQ(DATE(2024,1,15), DATE(2024,12,15), 0.05); DSM = 335 > 182.
-    expect(new DiscountSecurityNode({ op: "tbilleq" }).data({ settle: [d("2024-01-15")], maturity: [d("2024-12-15")], discount: [0.05] }).result)
+    expect(new DiscountSecurityNode({ op: "tbilleq" }).data(dated({ settle: [d("2024-01-15")], maturity: [d("2024-12-15")], discount: [0.05] })).result)
       .toBeCloseTo(0.052539935, 9);
   });
 });
@@ -102,21 +103,21 @@ describe("TBILL and PRICEMAT answer #DOMAIN! where Excel answers #NUM! ([[C24]] 
   const domain = (r: unknown) => expect(r).toMatchObject({ code: "#DOMAIN!" });
   it("a T-bill maturing more than one year after settlement is an error", () => {
     const tb = new DiscountSecurityNode({ op: "tbillprice" });
-    expect(tb.data({ settle: [d("2024-01-15")], maturity: [d("2025-02-20")], discount: [0.05] }).result)
+    expect(tb.data(dated({ settle: [d("2024-01-15")], maturity: [d("2025-02-20")], discount: [0.05] })).result)
       .toMatchObject({ code: "#DOMAIN!", message: "TBILLPRICE needs the maturity date within one year of settlement" });
     domain(ev("TBILLPRICE(s, m, 0.05)", { s: solDate(d("2024-01-15")), m: solDate(d("2025-02-20")) }));
-    expect(tb.data({ settle: [d("2024-01-15")], maturity: [d("2025-01-15")], discount: [0.05] }).result).toBeCloseTo(100 * (1 - 0.05 * 366 / 360), 9);
+    expect(tb.data(dated({ settle: [d("2024-01-15")], maturity: [d("2025-01-15")], discount: [0.05] })).result).toBeCloseTo(100 * (1 - 0.05 * 366 / 360), 9);
   });
   it("a zero or negative discount or price is an error", () => {
     const s = d("2024-01-15"), m = d("2024-07-15");
-    domain(new DiscountSecurityNode({ op: "tbillprice" }).data({ settle: [s], maturity: [m], discount: [0] }).result);
-    domain(new DiscountSecurityNode({ op: "tbilleq" }).data({ settle: [s], maturity: [m], discount: [-0.05] }).result);
-    expect(new DiscountSecurityNode({ op: "tbillyield" }).data({ settle: [s], maturity: [m], pr: [0] }).result)
+    domain(new DiscountSecurityNode({ op: "tbillprice" }).data(dated({ settle: [s], maturity: [m], discount: [0] })).result);
+    domain(new DiscountSecurityNode({ op: "tbilleq" }).data(dated({ settle: [s], maturity: [m], discount: [-0.05] })).result);
+    expect(new DiscountSecurityNode({ op: "tbillyield" }).data(dated({ settle: [s], maturity: [m], pr: [0] })).result)
       .toMatchObject({ code: "#DOMAIN!", message: "TBILLYIELD needs a price above 0" });
     domain(ev("TBILLYIELD(s, m, -1)", { s: solDate(s), m: solDate(m) }));
   });
   it("a missing date stays a quiet blank", () => {
-    expect(new DiscountSecurityNode({ op: "tbillprice" }).data({ maturity: [d("2024-07-15")], discount: [0.05] }).result).toBeNull();
+    expect(new DiscountSecurityNode({ op: "tbillprice" }).data(dated({ maturity: [d("2024-07-15")], discount: [0.05] })).result).toBeNull();
   });
   it("PRICEMAT and YIELDMAT refuse a settlement on or after maturity", () => {
     const issue = d("2023-01-01"), s = d("2025-01-01"), m = d("2024-06-01");
@@ -208,11 +209,11 @@ describe("Depreciation — VDB absorbed as an op", () => {
 describe("NPV / IRR — the Dated toggle (old XNPV / XIRR)", () => {
 
   it("dated NPV answers Excel's XNPV example and refuses a date before the first", () => {
-    const dated = (dates: number[]) => new NPVNode({ op: "dates" }).data({
+    const xnpv = (dates: number[]) => new NPVNode({ op: "dates" }).data(dated({
       rate: [0.09], list: [[-10000, 2750, 4250, 3250, 2750]], dates: [dates],
-    }).result;
-    expect(dated([39448, 39508, 39751, 39859, 39904]) as number).toBeCloseTo(2086.65, 2);
-    expect((dated([39448, 39508, 39400, 39859, 39904]) as { code?: string }).code).toBe("#DOMAIN!");
+    })).result;
+    expect(xnpv([39448, 39508, 39751, 39859, 39904]) as number).toBeCloseTo(2086.65, 2);
+    expect((xnpv([39448, 39508, 39400, 39859, 39904]) as { code?: string }).code).toBe("#DOMAIN!");
     const ev = compileEvaluator("XNPV(0.09, a, b)")!;
     expect(ev({ a: [-10000, 2750, 4250, 3250, 2750], b: [39448, 39508, 39751, 39859, 39904].map(solDate) }) as number).toBeCloseTo(2086.65, 2);
     expect((ev({ a: [-10000, 2750], b: [39448, 39400].map(solDate) }) as { code?: string }).code).toBe("#DOMAIN!");

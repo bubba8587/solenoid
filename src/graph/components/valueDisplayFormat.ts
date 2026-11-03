@@ -41,13 +41,14 @@ export function resolveMatrixAnnotation(nodeId: string | null): FormatAnnotation
   return (nodeId ? frameFormatStore.get(nodeId, MATRIX_FORMAT_KEY) : undefined) ?? resolveDisplayAnnotation(nodeId);
 }
 
-export type RowCell = number | boolean | string | Cx | SolError | null;
+export type RowCell = number | boolean | string | Cx | SolDate | SolError | null;
 function formatRowCell(v: RowCell, ann?: FormatAnnotation): string {
   if (v === null) return "—";
   if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
   if (typeof v === "string") return ann ? applyTextCase(v, ann.textCase) : v;
   if (isCx(v)) return ann ? formatCxWithAnnotation(v, ann) : formatCxDisplay(v);
   if (isSolError(v)) return v.code;
+  if (isSolDate(v)) return ann && isDateStyle(ann.format) ? formatNumberWithAnnotation(v.__date, ann) : fmtSerial(v.__date);
   return ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v);
 }
 

@@ -1,4 +1,5 @@
 // [[B11]], [[C48]]
+import { datesAsSerials } from "../../../src/graph/dateValue";
 import { describe, it, expect, afterEach } from "vitest";
 import { GraphEditor } from "../../../src/graph/graphEditor";
 import { GraphConnection, GraphNode, GraphOutput } from "../../../src/graph/graphModel";
@@ -10,6 +11,7 @@ import { dateSocket, numberSocket, SolenoidSocket, canConnect } from "../../../s
 import { throughBoundary } from "../boundaryKit";
 import { jsDateToSerial } from "../../../src/graph/nodes/date";
 import { solError, isSolError } from "../../../src/graph/errorValue";
+import { solDate } from "../../../src/graph/dateValue";
 import { setEditorRefs, getEditor } from "../../../src/graph/process";
 import type { Schemes } from "../../../src/graph/schemes";
 import { ConduitNode, conduitInKey, conduitOutKey } from "../../../src/graph/nodes/conduit";
@@ -76,7 +78,8 @@ describe("dateFormatDisplay", () => {
     const list = n.data({}).list;
     expect(list.filter((v) => isSolError(v)).map((v) => (v as { code: string }).code))
       .toEqual(["#AMBIGUOUS!"]);
-    const shown = dateFormatDisplay(list as never, true, false) as unknown[];
+    const { value, dated } = datesAsSerials(list);
+    const shown = dateFormatDisplay(value as never, dated, false) as unknown[];
     expect(shown).toEqual(["13-Apr-2026", "#AMBIGUOUS!"]);
   });
 
@@ -323,6 +326,11 @@ describe("formatRowValue — annotated inline-output rows", () => {
     expect(formatRowValue(null)).toBe("—");
     expect(formatRowValue(true)).toBe("TRUE");
     expect(formatRowValue("abc")).toBe("abc");
+  });
+
+  it("a date shows as a date, never as its serial or an object", () => {
+    expect(formatRowValue(solDate(46027))).toBe("05-Jan-2026");
+    expect(formatRowValue(solDate(46027), ann2dp)).toBe("05-Jan-2026");
   });
 
   it("a numeric annotation reaches every cell, including list heads", () => {

@@ -1,9 +1,11 @@
 // [[C44]] dateSerials, [[C130]] rustCore
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { coreFunction } from "./coreFunction";
+import { dateSerialOf, isSolDate, solDate } from "../../src/graph/dateValue";
 import { TimeZoneConvertNode, WorldClockNode } from "../../src/graph/nodes/date";
 
-const convertZone = (serial: number, from: string, to: string) => coreFunction("TIMEZONECONVERT")!(serial, from, to);
+// Both sides take and answer dates ([[D114]] dateIsAKind); the cases compare the instants.
+const convertZone = (serial: number, from: string, to: string) => dateSerialOf(coreFunction("TIMEZONECONVERT")!(solDate(serial), from, to));
 
 // The two zone cards over real zones: each side of DST transitions, offset zones, aliases, case variants and bad
 // names. These calls are also the cases the cards' bodies on the core are held to (fixtures/core/nodes/), which is
@@ -75,8 +77,13 @@ const OFFSETS = ["+05:30", "-0800", "+14", "−03:00", "+23:59", "-23:59", "+00"
 const BAD = ["Nowhere/Land", "America/New York", "EUROPE/İSTANBUL", "Etc/Unknown", "GMT+5", "+24:00", "+5:30", "+05:30:00", "+0560", "Z", "America/", "Factory"];
 
 describe("Time Zone Convert card", () => {
-  const card = (datetime: number, from: string, to: string) =>
-    new TimeZoneConvertNode().data({ datetime: [datetime], from: [from], to: [to] }).result;
+  const run = (datetime: number, from: string, to: string) =>
+    new TimeZoneConvertNode().data({ datetime: [solDate(datetime)], from: [from], to: [to] }).result;
+  const card = (datetime: number, from: string, to: string) => dateSerialOf(run(datetime, from, to));
+
+  it("takes and answers a date", () => {
+    expect(isSolDate(run(serial(2026, 3, 8, 3, 0), "UTC", "Asia/Tokyo"))).toBe(true);
+  });
 
   it("crosses the New York spring gap and autumn overlap as Intl reads them", () => {
     expect(card(serial(2026, 3, 8, 1, 59), "America/New_York", "UTC")).toBeCloseTo(serial(2026, 3, 8, 6, 59), 9);

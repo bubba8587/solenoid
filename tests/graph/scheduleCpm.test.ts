@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { scheduleTasks } from "./scheduleOnCard";
 import { parseDateToSerial, formatDateSerial } from "../../src/graph/nodes/dateSerial";
 import { isSolError } from "../../src/graph/errorValue";
+import { solDate } from "../../src/graph/dateValue";
 import { cubeFromColumns, isFrameValue, flatCubeToFrame, type CubeValue, type CubeCell, type FrameValue } from "../../src/graph/frame";
 import { unnestCube } from "./coreVerbs";
 
@@ -47,7 +48,7 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     ]);
     expect(col(r.cube, "Float")).toEqual([0, 0, 1, 0, 2, 0, 0, 0]);
     expect(col(r.cube, "Critical")).toEqual([true, true, false, true, false, true, true, true]);
-    expect(iso(r.projectFinish)).toBe("2026-01-27");
+    expect(r.projectFinish).toEqual(solDate(d("2026-01-27")));
     // Original columns first (Predecessors rewritten in its structured form), then the four appended.
     expect(r.cube.columns.map((x) => x.name).slice(0, 7)).toEqual(["Task", "Duration", "Predecessors", "Start", "Finish", "Float", "Critical"]);
     expect(r.cube.columns.map((x) => x.name).slice(7)).toEqual(["Free Float", "Early Start", "Early Finish", "Late Start", "Late Finish", "Driving", "Late"]);
@@ -254,7 +255,7 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
   it("an empty tasks cube schedules nothing and finishes on the start", () => {
     const r = scheduleTasks(tasks([]), { start: MON, workingDays: true });
     expect(col(r.cube, "Start")).toEqual([]);
-    expect(iso(r.projectFinish)).toBe("2026-01-05");
+    expect(r.projectFinish).toEqual(solDate(MON));
   });
 
   it("a flat Links frame adds typed, lagged predecessors on top of any in-cell ones", () => {

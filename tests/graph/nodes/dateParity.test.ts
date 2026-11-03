@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { dateSerialOf, solDate } from "../../../src/graph/dateValue";
+import { solDate } from "../../../src/graph/dateValue";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { DateConstructNode, TimeConstructNode, DateTimeValueNode, WeekInfoNode, DateDiffNode } from "../../../src/graph/nodes/date";
 import { parseDateToSerial } from "../../../src/graph/nodes/dateSerial";
@@ -11,9 +11,7 @@ const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator
 const d = (s: string) => parseDateToSerial(s);
 /** A date variable crosses as a date ([[D114]] dateIsAKind). */
 const D = (n: number) => solDate(n);
-// A formula answers a date as itself, a card as its serial ([[D114]] dateIsAKind).
-const same = (formula: unknown, b: unknown) => {
-  const a = dateSerialOf(formula);
+const same = (a: unknown, b: unknown) => {
   if (isSolError(a) || isSolError(b)) expect(isSolError(a) && isSolError(b) && a.code === b.code, `${JSON.stringify(a)} vs ${JSON.stringify(b)}`).toBe(true);
   else expect(a).toEqual(b);
 };
@@ -42,10 +40,10 @@ describe("date formulas == date nodes", () => {
   it("WEEKDAY / WEEKNUM / ISOWEEKNUM with every return_type", () => {
     const dates = [d("2026-01-01"), d("2026-03-15"), d("2024-12-30"), d("2021-01-03")];
     for (const x of dates) {
-      for (const rt of [1, 2, 3]) same(ev("WEEKDAY(x, rt)", { x: D(x), rt }), new WeekInfoNode({ op: "weekday" }).data({ date: [x], return_type: [rt] }).result);
-      for (const rt of [1, 2]) same(ev("WEEKNUM(x, rt)", { x: D(x), rt }), new WeekInfoNode({ op: "weeknum" }).data({ date: [x], return_type: [rt] }).result);
-      same(ev("ISOWEEKNUM(x)", { x: D(x) }), new WeekInfoNode({ op: "isoweeknum" }).data({ date: [x] }).result);
-      same(ev("WEEKDAY(x)", { x: D(x) }), new WeekInfoNode({ op: "weekday" }).data({ date: [x] }).result); // default return_type 1
+      for (const rt of [1, 2, 3]) same(ev("WEEKDAY(x, rt)", { x: D(x), rt }), new WeekInfoNode({ op: "weekday" }).data({ date: [D(x)], return_type: [rt] }).result);
+      for (const rt of [1, 2]) same(ev("WEEKNUM(x, rt)", { x: D(x), rt }), new WeekInfoNode({ op: "weeknum" }).data({ date: [D(x)], return_type: [rt] }).result);
+      same(ev("ISOWEEKNUM(x)", { x: D(x) }), new WeekInfoNode({ op: "isoweeknum" }).data({ date: [D(x)] }).result);
+      same(ev("WEEKDAY(x)", { x: D(x) }), new WeekInfoNode({ op: "weekday" }).data({ date: [D(x)] }).result); // default return_type 1
     }
     expect(ev("WEEKDAY(x)", { x: D(d("2026-03-15")) })).toBe(1);   // a Sunday
     expect(ev("ISOWEEKNUM(x)", { x: D(d("2021-01-03")) })).toBe(53); // ISO week of the prior year
@@ -64,7 +62,7 @@ describe("date formulas == date nodes", () => {
     const [a, b] = [d("2024-01-01"), d("2024-01-02")];
     expect(ev("YEARFRAC(a, b, 3)", { a: D(a + 0.75), b: D(b + 0.5) })).toBeCloseTo(1 / 365, 12);
     expect((ev("YEARFRAC(a, b, 5)", { a: D(a), b: D(b) }) as { code: string }).code).toBe("#DOMAIN!");
-    const card = new DateDiffNode({ op: "yearfrac" }).data({ start: [a], end: [b], basis: [-1] }).result;
+    const card = new DateDiffNode({ op: "yearfrac" }).data({ start: [D(a)], end: [D(b)], basis: [-1] }).result;
     expect((card as { code: string }).code).toBe("#DOMAIN!");
   });
 
@@ -72,7 +70,7 @@ describe("date formulas == date nodes", () => {
     const [a, b] = [d("2024-01-01"), d("2024-01-02")];
     expect(ev("YEARFRAC(a, b, -0.5)", { a: D(a), b: D(b) })).toBeCloseTo(ev("YEARFRAC(a, b, 0)", { a: D(a), b: D(b) }) as number, 12);
     expect(ev("YEARFRAC(a, b, 3.9)", { a: D(a), b: D(b) })).toBeCloseTo(1 / 365, 12);
-    expect(new DateDiffNode({ op: "yearfrac" }).data({ start: [a], end: [b], basis: [-0.5] }).result).toBeCloseTo(1 / 360, 12);
+    expect(new DateDiffNode({ op: "yearfrac" }).data({ start: [D(a)], end: [D(b)], basis: [-0.5] }).result).toBeCloseTo(1 / 360, 12);
   });
 
   it("US 30/360 counts a start on the last day of February as the 30th", () => {
@@ -89,22 +87,22 @@ describe("date formulas == date nodes", () => {
     expect(yf0("2026-02-28", "2026-03-15")).toBeCloseTo(15, 9);
     expect(yf0("2026-02-28", "2026-03-31")).toBeCloseTo(31, 9);
     expect(yf0("2026-01-31", "2026-03-31")).toBeCloseTo(60, 9);
-    expect(new DateDiffNode({ op: "days360" }).data({ start: [d("2026-02-28")], end: [d("2026-03-31")], basis: [0] }).result).toBe(30);
+    expect(new DateDiffNode({ op: "days360" }).data({ start: [D(d("2026-02-28"))], end: [D(d("2026-03-31"))], basis: [0] }).result).toBe(30);
   });
 
   it("DAYS / DAYS360 / YEARFRAC / DATEDIF", () => {
     const s = d("2024-01-31"), z = d("2026-03-01");
-    same(ev("DAYS(z, s)", { s: D(s), z: D(z) }), new DateDiffNode({ op: "days" }).data({ start: [s], end: [z] }).result);
-    same(ev("DAYS(s, z)", { s: D(s), z: D(z) }), new DateDiffNode({ op: "days" }).data({ start: [z], end: [s] }).result); // signed
+    same(ev("DAYS(z, s)", { s: D(s), z: D(z) }), new DateDiffNode({ op: "days" }).data({ start: [D(s)], end: [D(z)] }).result);
+    same(ev("DAYS(s, z)", { s: D(s), z: D(z) }), new DateDiffNode({ op: "days" }).data({ start: [D(z)], end: [D(s)] }).result); // signed
     for (const basis of [0, 1]) {
-      same(ev("DAYS360(s, z, m)", { s: D(s), z: D(z), m: basis === 1 }), new DateDiffNode({ op: "days360" }).data({ start: [s], end: [z], basis: [basis] }).result);
+      same(ev("DAYS360(s, z, m)", { s: D(s), z: D(z), m: basis === 1 }), new DateDiffNode({ op: "days360" }).data({ start: [D(s)], end: [D(z)], basis: [basis] }).result);
     }
     for (const basis of [0, 1, 2, 3, 4]) {
-      same(ev("YEARFRAC(s, z, b)", { s: D(s), z: D(z), b: basis }), new DateDiffNode({ op: "yearfrac" }).data({ start: [s], end: [z], basis: [basis] }).result);
+      same(ev("YEARFRAC(s, z, b)", { s: D(s), z: D(z), b: basis }), new DateDiffNode({ op: "yearfrac" }).data({ start: [D(s)], end: [D(z)], basis: [basis] }).result);
     }
     const units: Array<[string, string]> = [["Y", "years"], ["M", "months"], ["D", "days"], ["YM", "ym"], ["MD", "md"], ["YD", "yd"]];
     for (const [unit, op] of units) {
-      same(ev("DATEDIF(s, z, u)", { s: D(s), z: D(z), u: unit }), new DateDiffNode({ op: op as never }).data({ start: [s], end: [z] }).result);
+      same(ev("DATEDIF(s, z, u)", { s: D(s), z: D(z), u: unit }), new DateDiffNode({ op: op as never }).data({ start: [D(s)], end: [D(z)] }).result);
     }
     expect(isSolError(ev("DATEDIF(z, s, \"Y\")", { s: D(s), z: D(z) }))).toBe(true);   // reversed range: #DOMAIN! (the node blanks the cell)
     expect(isSolError(ev("DATEDIF(s, z, \"Q\")", { s: D(s), z: D(z) }))).toBe(true);   // unknown unit

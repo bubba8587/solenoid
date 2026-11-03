@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { dateSerialOf } from "../../../src/graph/dateValue";
+import { isSolDate, solDate } from "../../../src/graph/dateValue";
 import { EARTHSKY_FORMULAS } from "../../../src/graph/packs/earthsky";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { SunriseSunsetNode } from "../../../src/graph/nodes/astro";
@@ -9,8 +9,10 @@ import { isSolError } from "../../../src/graph/errorValue";
 const call = (name: string, ...a: unknown[]) => coreFunction(name)!(...a) as number;
 const solarPosition = (w: number, lat: number, lon: number) =>
   ({ elevation: call("SUNPOSITION", w, lat, lon, "elevation"), azimuth: call("SUNPOSITION", w, lat, lon, "azimuth") });
+/** A sunrise or sunset is a date; the tests read its day number. */
+const dayOf = (v: unknown): number | null => (isSolDate(v) ? v.__date : (v as number | null));
 const sunTimes = (w: number, lat: number, lon: number) =>
-  ({ sunrise: call("SUNRISE", w, lat, lon) as number | null, sunset: call("SUNSET", w, lat, lon) as number | null, dayLength: call("DAYLENGTH", w, lat, lon) });
+  ({ sunrise: dayOf(call("SUNRISE", w, lat, lon)), sunset: dayOf(call("SUNSET", w, lat, lon)), dayLength: call("DAYLENGTH", w, lat, lon) });
 const moonPhase = (w: number) =>
   ({ phase: call("MOONPHASE", w, "phase"), age: call("MOONPHASE", w, "age"), illumination: call("MOONPHASE", w, "illumination") });
 
@@ -130,11 +132,12 @@ describe("moon phase", () => {
 
 describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
   it("SUNRISE / SUNSET / DAYLENGTH agree with the card at the equator", () => {
-    const c = new SunriseSunsetNode().data({ when: [46000], lat: [0], lon: [0] });
-    const t = { sunrise: c.sunrise, sunset: c.sunset, dayLength: c.daylength };
-    expect(dateSerialOf(evalPackFormula("SUNRISE(46000, 0, 0)"))).toBe(t.sunrise);
-    expect(dateSerialOf(evalPackFormula("SUNSET(46000, 0, 0)"))).toBe(t.sunset);
-    expect(evalPackFormula("DAYLENGTH(46000, 0, 0)")).toBe(t.dayLength);
+    const c = new SunriseSunsetNode().data({ when: [solDate(46000)], lat: [0], lon: [0] });
+    const when = { w: solDate(46000) };
+    expect(isSolDate(c.sunrise)).toBe(true);
+    expect(evalPackFormula("SUNRISE(w, 0, 0)", when)).toEqual(c.sunrise);
+    expect(evalPackFormula("SUNSET(w, 0, 0)", when)).toEqual(c.sunset);
+    expect(evalPackFormula("DAYLENGTH(w, 0, 0)", when)).toBe(c.daylength);
   });
   it("SUNPOSITION reads a part (elevation default); lat/lon are range-checked", () => {
     const p = solarPosition(46000.5, 40, -74);

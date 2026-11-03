@@ -101,7 +101,7 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
     return read(card);
   }
   const typeError = (v: unknown) => isSolError(v) && (v as { code: string }).code === "#TYPE!";
-  const dates = () => new Src([46000, 46010], dateListSocket);
+  const dates = () => new Src([solDate(46000), solDate(46010)], dateListSocket);
   const nums = () => new Src([1, 2], numListSocket);
 
   it("Concat Lists of a date list and a number list", async () => {
@@ -141,7 +141,7 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
     const n = new GetColumnNode();
     n.stringLiterals = { name: "due" };
     expect(n.readAs).toBe("auto");
-    expect(await run(n, [[new Src(frame, frameSocket), "frame"]], (c) => c.cachedResult)).toEqual([46000, 46010]);
+    expect(await run(n, [[new Src(frame, frameSocket), "frame"]], (c) => c.cachedResult)).toEqual([solDate(46000), solDate(46010)]);
     expect(nodeOutputElemFamily(n.id, "values")).toBe("date");
     const asNumber = new GetColumnNode({ readAs: "number" });
     asNumber.stringLiterals = { name: "due" };
@@ -176,7 +176,7 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
     expect(await run(new ChartNode(), [[nums(), "values"]], (c) => c.cachedError)).toBe(null);
   });
   it("the LAMBDA helpers: an uncast date answer is a date, and text reads a date as a date", async () => {
-    const table = () => new Src([[46000], [46010]], dateTableSocket);
+    const table = () => new Src([[solDate(46000)], [solDate(46010)]], dateTableSocket);
     const map = new MapTableNode({ expr: "value + 1" });
     expect(await run(map, [[table(), "table"]], (c) => c.cachedResult)).toEqual([[solDate(46001)], [solDate(46011)]]);
     expect(map.lastResultFamily).toBe("date");
@@ -184,7 +184,7 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
     expect(await run(text, [[table(), "table"]], (c) => c.cachedResult)).toEqual([["09-Dec-2025!"], ["19-Dec-2025!"]]);
     // A fold over dates starts from a date: a plain 0 beside dates is a mix ([[D114]] dateIsAKind).
     const latest = new ReduceLambdaNode({ expr: "MAX(acc, value)" });
-    const start = new Src(1, dateSocket);
+    const start = new Src(solDate(1), dateSocket);
     expect(await run(latest, [[table(), "table"], [start, "initial"]], (c) => c.cachedResult)).toEqual(solDate(46010));
     const fromZero = new ReduceLambdaNode({ expr: "MAX(acc, value)" });
     fromZero.literals = { initial: 0 };

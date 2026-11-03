@@ -855,7 +855,7 @@ fn chart(c: &mut Call) -> Answer {
     let mut v = V::Null;
     // A date has no height: plotted by position it would draw its serial ([[C137]] datesNeverSerials), refused until a chart draws a date axis for values ([[D112]] chartDatesHeld).
     let lone_dates = match &raw {
-        Cv::V(V::List(_) | V::Num(_)) => c.dated("values"),
+        Cv::V(v @ (V::List(_) | V::Date(_))) => crate::date_values::holds_date(v),
         Cv::Frame(f) => f.columns.len() == 1 && f.columns[0].ty == FrameColType::Date,
         _ => false,
     };

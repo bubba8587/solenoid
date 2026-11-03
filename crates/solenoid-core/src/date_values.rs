@@ -248,6 +248,8 @@ pub fn unwrap(v: &V) -> V {
 /// A value with its numbers as dates.
 pub fn wrap(v: &V) -> V {
     match v {
+        // A number that isn't finite is no day: it stays a number, for a guard after to make it its error.
+        V::Num(n) if !n.is_finite() => v.clone(),
         V::Num(n) => V::Date(*n),
         V::List(items) if items.len() >= SCAN_ONCE => copy_of(items, Reading::Dates, wrap),
         V::List(items) => V::List(Rc::new(items.iter().map(wrap).collect())),
@@ -285,7 +287,19 @@ impl After {
         match self {
             After::AsIs => v,
             After::Dates if v.is_sol_error() || matches!(v, V::Fx(_)) => v,
-            After::Dates => wrap(&v),
+            // A number that isn't finite stays a number, for the guard after to make it its error.
+            After::Dates => match v {
+                V::Num(n) if !n.is_finite() => v,
+                V::List(ref items) if items.iter().any(|x| matches!(x, V::Num(n) if !n.is_finite())) => {
+                    V::List(Rc::new(
+                        items
+                            .iter()
+                            .map(|x| if matches!(x, V::Num(n) if !n.is_finite()) { x.clone() } else { wrap(x) })
+                            .collect(),
+                    ))
+                }
+                _ => wrap(&v),
+            },
         }
     }
 }
@@ -349,6 +363,18 @@ pub fn ready(name: &str, argv: Vec<V>) -> Result<(Vec<V>, After), V> {
             }
         }
         None => Err(refused(name, "takes no date. Cast to Number for its serial")),
+    }
+}
+
+/// A call to `name` (upper case) with its arguments readied for dates and its answer re-stamped, as every call is:
+/// a formula's, a card body's and the engine's direct one ([[D114]] dateIsAKind).
+pub fn call<E>(name: &str, argv: Vec<V>, body: impl FnOnce(Vec<V>) -> Result<V, E>) -> Result<V, E> {
+    if !concerns(name, &argv) {
+        return body(argv);
+    }
+    match ready(name, argv) {
+        Ok((argv, after)) => body(argv).map(|v| after.apply(v)),
+        Err(e) => Ok(e),
     }
 }
 

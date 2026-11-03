@@ -3,9 +3,13 @@ import { describe, it, expect } from "vitest";
 import { ScheduleNode } from "../../../src/graph/nodeClasses";
 import { extractInit } from "../../../src/graph/nodeInit";
 import { parseDateToSerial, formatDateSerial } from "../../../src/graph/nodes/dateSerial";
+import { solDate, isSolDate } from "../../../src/graph/dateValue";
 import { cubeFromColumns, isCubeValue, formatFrameCell, type CubeValue, type FrameValue } from "../../../src/graph/frame";
 
-const MON = parseDateToSerial("2026-01-05");
+const day = (iso: string) => solDate(parseDateToSerial(iso));
+/** A date output as text, or the value itself when it is not a date. */
+const shown = (v: unknown, fmt = "YYYY-MM-DD") => (isSolDate(v) ? formatDateSerial(v.__date, fmt) : v);
+const MON = day("2026-01-05");
 const c: CubeValue = cubeFromColumns([
   { name: "Task", cells: ["A", "B"], type: "string" },
   { name: "Duration", cells: [2, 1], type: "number" },
@@ -17,7 +21,7 @@ describe("ScheduleNode", () => {
     const n = new ScheduleNode();
     const out = n.data({ tasks: [c], start: [MON] });
     expect(isCubeValue(out.cube)).toBe(true);
-    expect(formatDateSerial(out.finish as number, "YYYY-MM-DD")).toBe("2026-01-07");
+    expect(shown(out.finish)).toBe("2026-01-07");
     expect(String(out.gantt).startsWith("gantt")).toBe(true);
     expect(n.cachedResult).toBe(out.cube);
   });
@@ -33,8 +37,8 @@ describe("ScheduleNode", () => {
 
   it("calendar mode counts weekends; the mode round-trips through extractInit and a stale value falls back", () => {
     const n = new ScheduleNode({ mode: "calendar" });
-    const out = n.data({ tasks: [c], start: [parseDateToSerial("2026-01-09")] });
-    expect(formatDateSerial(out.finish as number, "YYYY-MM-DD")).toBe("2026-01-11");
+    const out = n.data({ tasks: [c], start: [day("2026-01-09")] });
+    expect(shown(out.finish)).toBe("2026-01-11");
     expect(extractInit(n as never).mode).toBe("calendar");
     expect(new ScheduleNode({ mode: "bogus" as never }).mode).toBe("working");
   });
@@ -45,7 +49,7 @@ describe("ScheduleNode", () => {
       { name: "Task", cells: ["A", "B"], type: "string" }, { name: "Duration", cells: [0.5, 0.5], type: "number" }, { name: "Predecessors", cells: [[], ["A"]] },
     ]);
     const out = n.data({ tasks: [half], start: [MON] });
-    expect(formatDateSerial(out.finish as number, "YYYY-MM-DD HH:mm")).toBe("2026-01-05 17:00");
+    expect(shown(out.finish, "YYYY-MM-DD HH:mm")).toBe("2026-01-05 17:00");
     expect(extractInit(n as never).precision).toBe("minutes");
     expect(new ScheduleNode({ precision: "bogus" as never }).precision).toBe("days");
   });
@@ -118,9 +122,9 @@ describe("ScheduleNode", () => {
     ] };
     const n = new ScheduleNode();
     const withLinks = n.data({ tasks: [tasksNoPred], links: [links], start: [MON] });
-    expect(formatDateSerial(withLinks.finish as number, "YYYY-MM-DD")).toBe("2026-01-07"); // B follows A
+    expect(shown(withLinks.finish)).toBe("2026-01-07"); // B follows A
     const without = n.data({ tasks: [tasksNoPred], start: [MON] });
-    expect(formatDateSerial(without.finish as number, "YYYY-MM-DD")).toBe("2026-01-06"); // A and B in parallel
+    expect(shown(without.finish)).toBe("2026-01-06"); // A and B in parallel
   });
 
   it("the Longest path value round-trips and reaches the engine", () => {
@@ -134,13 +138,13 @@ describe("ScheduleNode", () => {
   it("the weekend code and status date reach the engine", () => {
     const n = new ScheduleNode();
     n.literals.weekend_code = 7; // Fri + Sat off
-    const out = n.data({ tasks: [c], start: [parseDateToSerial("2026-01-08")] }); // a Thursday
-    expect(formatDateSerial(out.finish as number, "YYYY-MM-DD")).toBe("2026-01-12"); // Thu, Sun, Mon
+    const out = n.data({ tasks: [c], start: [day("2026-01-08")] }); // a Thursday
+    expect(shown(out.finish)).toBe("2026-01-12"); // Thu, Sun, Mon
     const s = new ScheduleNode();
     const progressed = cubeFromColumns([
       { name: "Task", cells: ["A"], type: "string" }, { name: "Duration", cells: [4], type: "number" }, { name: "Complete", cells: [50], type: "number" },
     ]);
-    const o = s.data({ tasks: [progressed], start: [MON], status: [parseDateToSerial("2026-01-08")] });
-    expect(formatDateSerial(o.finish as number, "YYYY-MM-DD")).toBe("2026-01-12");
+    const o = s.data({ tasks: [progressed], start: [MON], status: [day("2026-01-08")] });
+    expect(shown(o.finish)).toBe("2026-01-12");
   });
 });

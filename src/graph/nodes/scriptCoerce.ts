@@ -3,6 +3,7 @@ import { solError, isSolError, type SolError } from "../errorValue";
 import { jsDateToSerial, serialToJsDate } from "./dateSerial";
 import { isCx } from "../cxValue";
 import { isSolDateTag } from "./scriptRun";
+import { isSolDate, solDate } from "../dateValue";
 import type { ResultType } from "./shared";
 import type { ProducedFamily } from "./expression";
 import { isFrameValue, isCubeValue, frameRowCount, cubeFromColumns, type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type CubeValue, type CubeCell } from "../frame";
@@ -80,6 +81,13 @@ function asDate(v: unknown): unknown {
   return v;
 }
 
+/** Each date in a value as a JS `Date` ([[D114]] dateIsAKind). */
+function datesToJs(v: unknown): unknown {
+  if (isSolDate(v)) return Number.isFinite(v.__date) ? serialToJsDate(v.__date) : v.__date;
+  if (Array.isArray(v)) return v.map(datesToJs);
+  return v;
+}
+
 function frameToRows(f: FrameValue): Record<string, unknown>[] {
   const n = frameRowCount(f);
   const rows: Record<string, unknown>[] = [];
@@ -127,7 +135,7 @@ export async function scriptArgToJs(v: unknown, dated = false): Promise<unknown>
     return frameToRows(full);
   }
   if (isCubeValue(v)) return cubeToRows(v);
-  return dated ? asDate(v) : v;
+  return dated ? asDate(v) : datesToJs(v);
 }
 
 const COL_TYPE: Record<Exclude<CellFamily, "complex">, FrameColType> = {
@@ -208,10 +216,16 @@ function buildRows(rows: Record<string, unknown>[]): { value: unknown; family: P
   return nests ? buildCube(rows, names) : buildFrame(rows, names);
 }
 
+/** A loose cell as it leaves the script: a date as a date ([[D114]] dateIsAKind); a table's cells stay as its columns hold them. */
+function looseCell(c: unknown): { value: unknown; family: CellFamily | null } {
+  const r = coerceCell(c);
+  return r.family === "date" && typeof r.value === "number" ? { value: solDate(r.value), family: "date" } : r;
+}
+
 export function coerceScriptResult(v: unknown): { value: unknown; family: ProducedFamily | null } {
   if (isRowObject(v)) return buildRows([v]);
   if (!Array.isArray(v)) {
-    const r = coerceCell(v);
+    const r = looseCell(v);
     return { value: r.value, family: toSocketFamily(r.family) };
   }
   if (v.length === 0) return { value: [], family: null };
@@ -224,7 +238,7 @@ export function coerceScriptResult(v: unknown): { value: unknown; family: Produc
   let vote: Vote = null;
   if (rows === 0) {
     const cells = v.map((c) => {
-      const r = coerceCell(c);
+      const r = looseCell(c);
       vote = combine(vote, r.family);
       return r.value;
     });
@@ -239,7 +253,7 @@ export function coerceScriptResult(v: unknown): { value: unknown; family: Produc
   for (const row of v as unknown[][]) {
     if (row.some(Array.isArray)) return { value: solError("#SHAPE!", "Returned rows nested deeper than a table; return a list of rows"), family: null };
     const cells = row.map((c) => {
-      const r = coerceCell(c);
+      const r = looseCell(c);
       vote = combine(vote, r.family);
       return r.value;
     });

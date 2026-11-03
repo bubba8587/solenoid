@@ -1,4 +1,5 @@
 // [[C28]]
+import { solDate } from "../../src/graph/dateValue";
 import { describe, it, expect, beforeEach } from "vitest";
 import { parseListLiteral } from "../../src/graph/listLiterals";
 import { throughBoundary } from "./boundaryKit";
@@ -19,8 +20,8 @@ import { ListLengthNode, ListInputNode, ListIndexNode } from "../../src/graph/no
 
 const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist"]);
 
-const MAR_2026 = parseDateToSerial("2026-03-20");
-const APR_2027 = parseDateToSerial("2027-04-21");
+const MAR_2026 = solDate(parseDateToSerial("2026-03-20"));
+const APR_2027 = solDate(parseDateToSerial("2027-04-21"));
 
 // Persistence restores `literals` / `stringLiterals` only onto classes that
 // DECLARE the map (the inline-editability convention — a wire-driven card like

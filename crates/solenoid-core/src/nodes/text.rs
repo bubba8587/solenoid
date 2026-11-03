@@ -758,7 +758,6 @@ fn cast_one(
     x: &V,
     target: &str,
     format: &V,
-    dateish: bool,
     seps: (&str, &str),
     labels: &[(String, String, bool, Option<crate::unit_dims::Dim>)],
 ) -> Result<V, V> {
@@ -781,14 +780,6 @@ fn cast_one(
             V::Date(n) => {
                 let pattern = match format {
                     V::Str(s) if s.is_empty() => return Ok(V::str(&crate::date_values::date_text(*n))),
-                    V::Str(s) => s.to_string(),
-                    other => value_text(other),
-                };
-                V::str(&crate::excel_format::format_number(*n, &pattern).map_err(|m| err(ErrorCode::Value, m))?)
-            }
-            V::Num(n) if dateish => {
-                let pattern = match format {
-                    V::Str(s) if s.is_empty() => crate::date_serial::DEFAULT_DATE_FORMAT.to_string(),
                     V::Str(s) => s.to_string(),
                     other => value_text(other),
                 };
@@ -853,8 +844,7 @@ fn cast_display(v: &V, target: &str) -> V {
 
 /// An InlineCast ([[D113]] inlineCast): Cast's conversion to `target` over a card's result, cell by cell at any depth,
 /// with Cast's defaults (no format, the default separators); a cell that won't convert is `#VALUE!`, a blank stays blank.
-/// `dateish`: the result is dates, so text formats them as dates.
-pub(crate) fn inline_cast(v: &V, target: &str, dateish: bool) -> V {
+pub(crate) fn inline_cast(v: &V, target: &str) -> V {
     let v = if target == "text" { v.clone() } else { super::list::strip_unit_cells(v) };
     let format = V::str("");
     fn walk(v: &V, one: &dyn Fn(&V) -> V) -> V {
@@ -864,7 +854,7 @@ pub(crate) fn inline_cast(v: &V, target: &str, dateish: bool) -> V {
             x => one(x),
         }
     }
-    let one = |x: &V| match cast_one(x, target, &format, dateish, ("", ""), &[]) {
+    let one = |x: &V| match cast_one(x, target, &format, ("", ""), &[]) {
         Ok(r) if cast_failed(&r) => err(ErrorCode::Value, format!("Could not convert the value to {target}")),
         Ok(r) => r,
         Err(e) => e,
@@ -885,14 +875,10 @@ fn cast(c: &mut Call) -> Answer {
     if [&format, &decimal, &group].iter().any(|v| matches!(v, V::Null)) {
         return done(c, "cachedResult", V::Null);
     }
-    let dateish = matches!(
-        c.field("sourceType").and_then(serde_json::Value::as_str),
-        Some("date" | "datelist" | "datecombo" | "datetable")
-    );
     let labels = unit_labels(c);
     let (decimal, group) = (separator(&decimal), separator(&group));
     let failed = || err(ErrorCode::Value, format!("Could not convert the value to {target}"));
-    let one = |x: &V| cast_one(x, &target, &format, dateish, (&decimal, &group), &labels);
+    let one = |x: &V| cast_one(x, &target, &format, (&decimal, &group), &labels);
     if let V::List(items) = &raw {
         let out: Vec<V> = items
             .iter()

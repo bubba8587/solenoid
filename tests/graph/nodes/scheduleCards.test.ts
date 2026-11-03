@@ -11,9 +11,11 @@ import { cubeFromColumns, isCubeValue, isFrameValue, type CubeCell, type CubeVal
 import { columnUnitFromSpec, tagFrameCellUnit } from "../../../src/graph/unitColumn";
 import { isChartValue } from "../../../src/graph/chartValue";
 import { scheduleTasks } from "../scheduleOnCard";
+import { solDate } from "../../../src/graph/dateValue";
 
 const d = (iso: string) => parseDateToSerial(iso);
 const MON = d("2026-01-05");
+const day = (iso: string) => solDate(d(iso));
 type Col = { name: string; cells: CubeCell[]; type?: "string" | "number" | "date" | "logical" };
 const cube = (...cols: Col[]) => cubeFromColumns(cols);
 const frame = (cols: Record<string, CubeCell[]>): FrameValue => ({
@@ -30,7 +32,7 @@ const links = (rows: [string, string, string, number][]) => cube(
 
 function sched(c: CubeValue, init: ConstructorParameters<typeof ScheduleNode>[0] = {}, inputs: Record<string, unknown[]> = {}) {
   const n = new ScheduleNode(init);
-  const out = n.data({ tasks: [c], start: [MON], ...inputs } as never);
+  const out = n.data({ tasks: [c], start: [solDate(MON)], ...inputs } as never);
   return { n, out };
 }
 
@@ -52,16 +54,16 @@ describe("the Schedule card reads every column of a plan", () => {
     }
     for (const progress of ["split", "move"] as const) {
       const c = cube({ name: "Task", cells: ["A", "B"] }, { name: "Duration", cells: [4, 2] }, { name: "Complete", cells: [50, 0] }, { name: "Predecessors", cells: [[], ["A"]] });
-      expect(isCubeValue(sched(c, { progress }, { status: [d("2026-01-08")] }).out.cube)).toBe(true);
-      expect(isCubeValue(sched(c, { progress, precision: "minutes" }, { status: [d("2026-01-08")] }).out.cube)).toBe(true);
+      expect(isCubeValue(sched(c, { progress }, { status: [day("2026-01-08")] }).out.cube)).toBe(true);
+      expect(isCubeValue(sched(c, { progress, precision: "minutes" }, { status: [day("2026-01-08")] }).out.cube)).toBe(true);
     }
   });
 
   it("the calendar inputs: holidays, weekend codes, hours, an unwired start, a blank or text start", () => {
     for (const code of [1, 2, 7, 11, 17, 3.6]) expect(isCubeValue(sched(plain, {}, { weekend_code: [code] }).out.cube)).toBe(true);
     expect(sched(plain, {}, { weekend_code: [99] }).out.cube).toMatchObject({ code: "#VALUE!" });
-    expect(isCubeValue(sched(plain, {}, { holidays: [[d("2026-01-06"), null, d("2026-01-07")]] }).out.cube)).toBe(true);
-    expect(isCubeValue(sched(plain, { mode: "calendar" }, { holidays: [[d("2026-01-06")]] }).out.cube)).toBe(true);
+    expect(isCubeValue(sched(plain, {}, { holidays: [[day("2026-01-06"), null, day("2026-01-07")]] }).out.cube)).toBe(true);
+    expect(isCubeValue(sched(plain, { mode: "calendar" }, { holidays: [[day("2026-01-06")]] }).out.cube)).toBe(true);
     for (const h of [4, 6, 10, 20, 0, -2]) {
       expect(isCubeValue(sched(plain, { precision: "minutes" }, { hours: [h] }).out.cube)).toBe(true);
       expect(isCubeValue(sched(plain, {}, { hours: [h] }).out.cube)).toBe(true);
@@ -69,8 +71,12 @@ describe("the Schedule card reads every column of a plan", () => {
     expect(isCubeValue(new ScheduleNode().data({ tasks: [plain] }).cube)).toBe(true);
     expect(new ScheduleNode().data({ tasks: [plain], start: [null] }).cube).toBeNull();
     expect(new ScheduleNode().data({ tasks: [plain], start: [] }).cube).toBeNull();
+    expect(new ScheduleNode().data({ tasks: [plain], start: [MON as never] }).cube).toBeNull(); // a serial is not a date
+    const finishOf = (holidays: unknown[]) => sched(plain, {}, { holidays: [holidays] }).out.finish;
+    expect(finishOf([day("2026-01-06")])).not.toEqual(finishOf([]));
+    expect(finishOf([d("2026-01-06")])).toEqual(finishOf([])); // a serial is not a holiday
     expect(new ScheduleNode().data({ tasks: [null] }).cube).toBeNull();
-    expect(isCubeValue(sched(plain, {}, { status: [d("2026-01-06")] }).out.cube)).toBe(true);
+    expect(isCubeValue(sched(plain, {}, { status: [day("2026-01-06")] }).out.cube)).toBe(true);
     expect(isCubeValue(sched(plain, {}, { status: [null] }).out.cube)).toBe(true);
   });
 
@@ -182,10 +188,10 @@ describe("the Schedule card reads every column of a plan", () => {
     );
     for (const precision of ["days", "minutes"] as const) {
       expect(isCubeValue(sched(plan, { precision }).out.cube)).toBe(true);
-      expect(isCubeValue(sched(plan, { precision, criticalPaths: "longest" }, { status: [d("2026-01-09")] }).out.cube)).toBe(true);
+      expect(isCubeValue(sched(plan, { precision, criticalPaths: "longest" }, { status: [day("2026-01-09")] }).out.cube)).toBe(true);
     }
     const elapsed = cube({ name: "Task", cells: ["Cure", "Next"] }, { name: "Duration", cells: [3, 1] }, { name: "Elapsed", cells: [true, false] }, { name: "Predecessors", cells: [[], ["Cure"]] });
-    expect(isCubeValue(sched(elapsed, {}, { start: [d("2026-01-09")] }).out.cube)).toBe(true);
+    expect(isCubeValue(sched(elapsed, {}, { start: [day("2026-01-09")] }).out.cube)).toBe(true);
     const repeatOnly = cube({ name: "Task", cells: ["Pour", "Check"] }, { name: "Duration", cells: [1, 1] }, { name: "times", cells: [null, 2.7] }, { name: "interval", cells: [null, 5] }, { name: "Predecessors", cells: [[], links([["Pour", "", "FS", 2]])] });
     expect(isCubeValue(sched(repeatOnly).out.cube)).toBe(true);
   });
@@ -205,7 +211,7 @@ describe("the Schedule card reads every column of a plan", () => {
     for (const status of [d("2026-01-05"), d("2026-01-08"), d("2026-02-20")]) {
       for (const progress of ["split", "move"] as const) {
         for (const precision of ["days", "minutes"] as const) {
-          expect(isCubeValue(sched(c, { progress, precision }, { status: [status] }).out.cube)).toBe(true);
+          expect(isCubeValue(sched(c, { progress, precision }, { status: [solDate(status)] }).out.cube)).toBe(true);
         }
       }
     }
@@ -233,7 +239,7 @@ describe("the Gantt card's payload", () => {
     const n = new GanttNode();
     expect(isChartValue(n.data({ schedule: [s], options: ["zoom=week"] }).chart)).toBe(true);
     expect(isChartValue(n.data({ schedule: [s], options: [7 as never] }).chart)).toBe(true);
-    expect(isChartValue(n.data({ schedule: [s], weekend_code: [11], holidays: [[d("2026-01-06"), null]], status: [d("2026-01-07")] }).chart)).toBe(true);
+    expect(isChartValue(n.data({ schedule: [s], weekend_code: [11], holidays: [[day("2026-01-06"), null]], status: [day("2026-01-07")] }).chart)).toBe(true);
     expect(isChartValue(n.data({ schedule: [s], status: [null] }).chart)).toBe(true);
     const labelled = new GanttNode({ label: "Remodel" });
     expect(isChartValue(labelled.data({ schedule: [s] }).chart)).toBe(true);
@@ -306,16 +312,17 @@ describe("the Earned Value card", () => {
 
   it("status dates before, inside and after the plan; an unwired status reads today", () => {
     for (const status of [d("2026-01-01"), d("2026-01-05"), d("2026-01-07") + 0.5, d("2026-01-08"), d("2026-01-13"), d("2026-03-01")]) {
-      const out = new EarnedValueNode().data({ schedule: [plan()], status: [status] });
+      const out = new EarnedValueNode().data({ schedule: [plan()], status: [solDate(status)] });
       expect(isFrameValue(out.frame) || out.frame === null).toBe(true);
     }
     expect(isFrameValue(new EarnedValueNode().data({ schedule: [plan()] }).frame)).toBe(true);
     expect(new EarnedValueNode().data({ schedule: [plan()], status: [null] }).frame).toBeNull();
     expect(new EarnedValueNode().data({ schedule: [plan()], status: [NaN] }).frame).toBeNull();
+    expect(new EarnedValueNode().data({ schedule: [plan()], status: [d("2026-01-08") as never] }).frame).toBeNull();
   });
 
   it("actual costs, a named cost column, a baseline by name and the calendar inputs", () => {
-    const status = [d("2026-01-08")];
+    const status = [day("2026-01-08")];
     const actual = plan([{ name: "Actual cost", cells: [900, null, 0, 1] }]);
     expect(isFrameValue(new EarnedValueNode().data({ schedule: [actual], status }).frame)).toBe(true);
     const spent = plan([{ name: "spent", cells: [1200, 1500, 300, 0] }]);
@@ -332,11 +339,11 @@ describe("the Earned Value card", () => {
     expect(isFrameValue(new EarnedValueNode().data({ schedule: [plan()], baseline: [frame({ Title: ["C"], Cost: [50] })], status }).frame)).toBe(true);
     expect(isFrameValue(new EarnedValueNode().data({ schedule: [plan()], baseline: [null], status }).frame)).toBe(true);
     for (const code of [2, 7, 11, 17]) expect(isFrameValue(new EarnedValueNode().data({ schedule: [plan()], status, weekend_code: [code] }).frame)).toBe(true);
-    expect(isFrameValue(new EarnedValueNode().data({ schedule: [plan()], status, holidays: [[d("2026-01-06"), null, d("2026-01-13")]] }).frame)).toBe(true);
+    expect(isFrameValue(new EarnedValueNode().data({ schedule: [plan()], status, holidays: [[day("2026-01-06"), null, day("2026-01-13")]] }).frame)).toBe(true);
   });
 
   it("currencies on the cost, the actuals and the baseline; a frame schedule; the refusals", () => {
-    const status = [d("2026-01-08")];
+    const status = [day("2026-01-08")];
     const tag = (u: typeof usd, xs: number[]) => xs.map((x) => tagFrameCellUnit(x, u) as CubeCell);
     const money = cube({ name: "Task", cells: ["A", "B"] }, { name: "Cost", cells: tag(usd, [1000, 3000]) }, { name: "Actual", cells: tag(usd, [500, 100]) }, { name: "Complete", cells: [40, 10] });
     expect(isFrameValue(new EarnedValueNode().data({ schedule: [money], status }).frame)).toBe(true);

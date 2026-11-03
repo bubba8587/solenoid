@@ -109,7 +109,7 @@ fn value_input(c: &mut Call) -> Answer {
                 err(ErrorCode::Value, format!("\"{t}\" isn't a number"))
             }
         }
-        "date" => value_input_date(c, &value),
+        "date" => crate::date_values::wrap(&value_input_date(c, &value)),
         _ => V::Null,
     };
     if c.field_str("op", "number") != "date" {

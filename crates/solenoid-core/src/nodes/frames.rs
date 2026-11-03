@@ -604,8 +604,9 @@ fn named(col: &Column, names: &[&str]) -> bool {
     names.contains(&crate::jsnum::lower_text(trim_space(&col.name)).as_ref())
 }
 
+/// The column named one of `names`; a Date column is never an amount, a weight or a bound ([[C137]] datesNeverSerials).
 fn by_name(f: &Frame, names: &[&str]) -> Option<usize> {
-    f.columns.iter().position(|col| named(col, names))
+    f.columns.iter().position(|col| col.ty != FrameColType::Date && named(col, names))
 }
 
 /// `{ ...c, unit, format }` of another column's, where it has them.
@@ -630,8 +631,17 @@ fn shown_frame(c: &mut Call, key: &str, v: impl Into<Cv>) -> Answer {
     Ok(vec![(key.into(), v)])
 }
 
+/// A table with its Date columns left out, for a planner that reads amounts, rates and weights: a date is none of
+/// those, so no lookup by name or by type can read one as a number ([[C137]] datesNeverSerials).
+fn without_dates(f: &Frame) -> Frame {
+    let mut f = f.clone();
+    f.columns.retain(|col| col.ty != FrameColType::Date);
+    f
+}
+
 fn allocator(c: &mut Call) -> Answer {
     let Some(f) = frame_in(c, "categories") else { return shown_frame(c, "frame", V::Null) };
+    let f = without_dates(&f);
     let amount = super::list::or(c.read_num("amount", 0.0), V::Num(0.0));
     if amount.is_sol_error() {
         return shown_frame(c, "frame", amount);
@@ -656,19 +666,20 @@ fn allocator(c: &mut Call) -> Answer {
 
 /// The first of this month.
 fn month_start() -> f64 {
-    let V::Num(today) = super::kit::core_call("TODAY", &[]) else { return f64::NAN };
+    let (V::Num(today) | V::Date(today)) = super::kit::core_call("TODAY", &[]) else { return f64::NAN };
     let (y, m, _) = crate::date_serial::civil_from_days(today as i64 - 25569);
     crate::date_serial::days_from_civil(y, m, 1) as f64 + 25569.0
 }
 
 fn payoff_planner(c: &mut Call) -> Answer {
     let Some(f) = frame_in(c, "debts") else { return shown_frame(c, "frame", V::Null) };
+    let f = without_dates(&f);
     let extra = super::list::or(c.read_num("extra", 0.0), V::Num(0.0));
     let start = match c.wired("start") {
         None => Some(month_start()),
         Some(w) => match w.first() {
             None | Some(V::Null | V::Undef) => None,
-            Some(V::Num(n)) => Some(*n),
+            Some(V::Num(n) | V::Date(n)) => Some(*n),
             Some(_) => Some(f64::NAN),
         },
     };
@@ -1160,15 +1171,22 @@ fn settle(c: &mut Call) -> Answer {
     let split = c.field_str("split", "equal");
     if c.field_str("mode", "totals") == "transactions" {
         let cube: Vec<(String, Vec<V>)> = match &raw {
-            Cv::Cube(k) => k.columns.iter().map(|col| (col.name.clone(), cube_values(&col.cells))).collect(),
+            Cv::Cube(k) => k
+                .columns
+                .iter()
+                .filter(|col| col.ty != Some(FrameColType::Date))
+                .map(|col| (col.name.clone(), cube_values(&col.cells)))
+                .collect(),
             // A unit column's numbers become unit cells.
-            Cv::Frame(f) => f.columns.iter().map(|col| (col.name.clone(), frame_cube_cells(col))).collect(),
+            Cv::Frame(f) => {
+                without_dates(f).columns.iter().map(|col| (col.name.clone(), frame_cube_cells(col))).collect()
+            }
             _ => return settle_shown(c, Ok((Cv::NULL, Cv::NULL))),
         };
         let r = settle_ledger_card(&cube);
         return settle_shown(c, r);
     }
-    let f = match &raw {
+    let f = without_dates(&match &raw {
         Cv::Frame(f) => (**f).clone(),
         Cv::Cube(k) => Frame {
             columns: k
@@ -1187,7 +1205,7 @@ fn settle(c: &mut Call) -> Answer {
             layout: None,
         },
         _ => return settle_shown(c, Ok((Cv::NULL, Cv::NULL))),
-    };
+    });
     let by_name = |names: &[&str]| f.columns.iter().find(|col| names.contains(&settle_name_key(&col.name).as_str()));
     let share = by_name(&["share", "weight", "shares"]);
     let paid = by_name(&["paid", "amount", "spent"]).or_else(|| {
@@ -1534,7 +1552,7 @@ fn add_column(c: &mut Call) -> Answer {
     }
     let f = match &raw {
         Cv::Frame(f) => (**f).clone(),
-        Cv::V(other) => c.widened("frame", widen_to_frame(other)),
+        Cv::V(other) => widen_to_frame(other),
         _ => widen_to_frame(&V::Null),
     };
     let rows = f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0).max(values.len());
@@ -1587,7 +1605,7 @@ fn get_row(c: &mut Call) -> Answer {
     }
     let f = match &raw {
         Cv::Frame(f) => (**f).clone(),
-        Cv::V(other) => c.widened("frame", widen_to_frame(other)),
+        Cv::V(other) => widen_to_frame(other),
         _ => widen_to_frame(&V::Null),
     };
     if i < 0.0 || i >= f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0) as f64 {
@@ -1817,7 +1835,7 @@ fn xlookup(c: &mut Call) -> Answer {
     let src_frame: Option<Frame> = match &raw {
         Cv::Cube(_) => None,
         Cv::Frame(f) => Some((**f).clone()),
-        Cv::V(other) => Some(c.widened("frame", widen_to_frame(other))),
+        Cv::V(other) => Some(widen_to_frame(other)),
         _ => None,
     };
     let src_cube: Cube = match (&raw, &src_frame) {
@@ -2576,7 +2594,7 @@ fn nest_join(c: &mut Call) -> Answer {
     let child = match card(c, "child") {
         Cv::V(V::Null) => None,
         v @ (Cv::Cube(_) | Cv::Frame(_)) => Some(v),
-        other => Some(Cv::Frame(Rc::new(c.widened("child", widen_to_frame(&c.value_of("child", &other)))))),
+        other => Some(Cv::Frame(Rc::new(widen_to_frame(&c.value_of("child", &other))))),
     };
     let key_raw = str_input(c, "key", "");
     let name_raw = str_input(c, "name", "");
@@ -3311,7 +3329,7 @@ fn decision_matrix(c: &mut Call) -> Answer {
         other => {
             let f = match other {
                 Cv::Frame(f) => (**f).clone(),
-                v => c.widened("frame", widen_to_frame(&c.value_of("frame", v))),
+                v => widen_to_frame(&c.value_of("frame", v)),
             };
             crate::decision::decision_matrix(&to_core(&f), w.as_ref(), normalize, breakdown)
                 .map(|f| Cv::Frame(Rc::new(from_core(&f))))
@@ -3359,10 +3377,41 @@ fn parsed_headers(headers: &V) -> Vec<(String, Option<Json>)> {
         .collect()
 }
 
+/// What a column of values holds of dates: none, only dates beside blanks and errors, or dates and another kind.
+#[derive(PartialEq)]
+enum Dated {
+    No,
+    All,
+    Mixed,
+}
+
+fn dated<'a>(cells: impl IntoIterator<Item = &'a V>) -> Dated {
+    let (mut dates, mut other) = (false, false);
+    for v in cells {
+        match v {
+            V::Date(_) => dates = true,
+            V::Null | V::Undef | V::Err(_) => {}
+            _ => other = true,
+        }
+    }
+    match (dates, other) {
+        (false, _) => Dated::No,
+        (true, false) => Dated::All,
+        (true, true) => Dated::Mixed,
+    }
+}
+
 fn build_frame(c: &mut Call) -> Answer {
     let raw = super::list::slot(c, "matrix");
     let headers = super::list::slot(c, "headers");
     let Some(m) = to_any_matrix(&raw).filter(|m| !m.is_empty()) else { return shown_frame(c, "frame", V::Null) };
+    // A column of dates is a Date column, its days packed as numbers ([[D114]] dateIsAKind).
+    let width = m.iter().map(Vec::len).max().unwrap_or(0);
+    let date_cols: Vec<Dated> = (0..width).map(|j| dated(m.iter().filter_map(|r| r.get(j)))).collect();
+    if date_cols.contains(&Dated::Mixed) {
+        return shown_frame(c, "frame", super::dates_mixed("other kinds"));
+    }
+    let m: Vec<Vec<V>> = m.iter().map(|r| r.iter().map(crate::date_values::unwrap).collect()).collect();
     let known = col_type_for_socket(c.input_type("matrix"));
     let all_numeric =
         known.is_none() && m.iter().all(|row| row.iter().all(|x| matches!(x, V::Null | V::Err(_) | V::Num(_))));
@@ -3379,6 +3428,11 @@ fn build_frame(c: &mut Call) -> Answer {
         return Err(thrown("Build Frame got an answer it doesn't read"));
     };
     let mut f = from_core(&f);
+    for (col, d) in f.columns.iter_mut().zip(&date_cols) {
+        if *d == Dated::All {
+            col.ty = crate::frame::FrameColType::Date;
+        }
+    }
     for (col, (_, unit)) in f.columns.iter_mut().zip(&parsed) {
         if unit.is_some() && (!typed || col.ty == crate::frame::FrameColType::Number) {
             col.unit = unit.clone();
@@ -3405,7 +3459,19 @@ fn frame_from_lists(c: &mut Call) -> Answer {
             other => trim_space(&crate::excel_functions::value_text(&other)).to_string(),
         };
         names.push(V::str(&name));
-        lists.push(if matches!(wired, V::List(_)) { wired } else { list(vec![wired]) });
+        let wired = if matches!(wired, V::List(_)) { wired } else { list(vec![wired]) };
+        // A list of dates is a Date column ([[D114]] dateIsAKind).
+        let V::List(items) = &wired else { unreachable!() };
+        match dated(items.iter()) {
+            Dated::Mixed => return shown_frame(c, "frame", super::dates_mixed("other kinds")),
+            Dated::All => {
+                lists.push(crate::date_values::unwrap(&wired));
+                known.push(V::str("date"));
+                continue;
+            }
+            Dated::No => {}
+        }
+        lists.push(wired);
         known.push(col_type_for_socket(c.input_type(vals_k)).map_or(V::Null, V::str));
     }
     if names.is_empty() {

@@ -1,4 +1,5 @@
 // [[C66]]
+import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { ScriptNode, DEFAULT_SCRIPT } from "../../../src/graph/nodes/script";
 import { scriptParams, toClonable, invokeScript, scriptIsVolatile } from "../../../src/graph/nodes/scriptRun";
@@ -112,7 +113,7 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
   it("values keep their own kinds; blanks and error cells pass through", async () => {
     expect((await run("() => [1, 2, 3]")).result).toEqual([1, 2, 3]);
     const d = new Date(Date.UTC(2026, 0, 15));
-    expect((await run("() => new Date(Date.UTC(2026, 0, 15))")).result).toBe(jsDateToSerial(d));
+    expect((await run("() => new Date(Date.UTC(2026, 0, 15))")).result).toEqual(solDate(jsDateToSerial(d)));
     const r = (await run("() => [0 / 0, null, 2]")).result as unknown[];
     expect(r.map(code)).toEqual(["#DOMAIN!", null, 2]);
   });
@@ -131,10 +132,10 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
   });
   it("Solenoid.date lifts a serial (or a list of them) to dates; a non-serial is #TYPE!", async () => {
     const { result, node } = await run("(d) => Solenoid.date(d + 30)", { d: [46000] });
-    expect(result).toBe(46030);
+    expect(result).toEqual(solDate(46030));
     expect(node.lastResultFamily).toBe("date");
     const list = await run("(d) => Solenoid.date([d, d + 7])", { d: [46000] });
-    expect(list.result).toEqual([46000, 46007]);
+    expect(list.result).toEqual([solDate(46000), solDate(46007)]);
     expect(list.node.lastResultFamily).toBe("date");
     expect(code((await run("() => Solenoid.date('soon')")).result)).toBe("#TYPE!");
   });
@@ -300,8 +301,8 @@ describe("a date goes into a script as a Date ([[C137]] datesNeverSerials)", () 
     const node = new ScriptNode({ expr: "(d) => d" });
     (node.inputs.d!.socket as unknown as { setType(t: string): void }).setType("date");
     throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
-    const out = await (node.data({ d: [46000] }) as Promise<{ result: unknown }>);
-    expect(out.result).toBe(46000);
+    const out = await (node.data({ d: [solDate(46000)] }) as Promise<{ result: unknown }>);
+    expect(out.result).toEqual(solDate(46000));
     expect(node.lastResultFamily).toBe("date");
   });
 });

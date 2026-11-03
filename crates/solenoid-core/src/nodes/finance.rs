@@ -371,9 +371,12 @@ fn dollar(c: &mut Call) -> Answer {
     answer(c, result)
 }
 
-/// A date input's value as `Number.isFinite` gates it.
+/// A date input's day; anything but a date is NaN ([[D114]] dateIsAKind).
 fn serial(v: &V) -> f64 {
-    super::stats::strict_num(v)
+    match v {
+        V::Date(n) => *n,
+        _ => f64::NAN,
+    }
 }
 
 fn discount_security(c: &mut Call, op: &str) -> V {

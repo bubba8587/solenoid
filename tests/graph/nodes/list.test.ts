@@ -1,4 +1,5 @@
 // [[C24]] arraySemantics
+import { solDate } from "../../../src/graph/dateValue";
 import { coerceFrameCell } from "../../../src/graph/frame";
 import { describe, it, expect } from "vitest";
 import type { CondAggOp } from "../../../src/graph/nodes/list";
@@ -67,13 +68,14 @@ describe("List Input (multi-type)", () => {
 
 
 
-  it("a typed item reads exactly as a Frame Input cell of the same type: unreadable is NaN, never dropped", () => {
+  it("a typed item reads exactly as a Frame Input cell of the same type, a day as a date: unreadable is NaN, never dropped", () => {
     const text = "abc, 5, 2024, 01-Jan-2026, true";
+    const asDate = (c: unknown) => (typeof c === "number" && !Number.isNaN(c) ? solDate(c) : c);
     for (const t of ["number", "string", "date", "logical"] as const) {
       const n = new ListInputNode({ dataType: t });
       n.stringLiterals["v0"] = text;
       const items = text.split(",").map((x) => x.trim());
-      expect(n.data({}).list, t).toEqual(items.map((x) => coerceFrameCell(t, x)));
+      expect(n.data({}).list, t).toEqual(items.map((x) => coerceFrameCell(t, x)).map((c) => (t === "date" ? asDate(c) : c)));
     }
   });
   it("concatenates rows + a wired list, keeping only elements of the current type", () => {
