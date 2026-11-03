@@ -9,11 +9,12 @@ import { processGraph, setEditorRefs } from "../../src/graph/process";
 import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
 import { dateListSocket, numListSocket, frameSocket, logicalListSocket, strListSocket } from "../../src/graph/sockets";
 import { isSolError } from "../../src/graph/errorValue";
-import { ConcatListsNode, ListIndexNode } from "../../src/graph/nodes/list";
-import { GetColumnNode } from "../../src/graph/nodes/frame";
+import { ConcatListsNode, ListIndexNode, SumIfsNode } from "../../src/graph/nodes/list";
+import { GetColumnNode, SplitFrameNode } from "../../src/graph/nodes/frame";
 import { nodeOutputElemFamily } from "../../src/graph/components/valueDisplayFormat";
 import { IfNode } from "../../src/graph/nodes/logic";
 import { XLookupNode } from "../../src/graph/nodes/frame";
+import { ChartNode } from "../../src/graph/nodes/visual";
 import type { FrameValue } from "../../src/graph/frame";
 import { groupByFrame, pivotFrame, windowFrame, replaceValues } from "./coreVerbs";
 
@@ -135,5 +136,33 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
     const asNumber = new GetColumnNode({ readAs: "number" });
     asNumber.stringLiterals = { name: "due" };
     expect(typeError(await run(asNumber, [[new Src(frame, frameSocket), "frame"]], (c) => c.cachedResult))).toBe(true);
+  });
+  it("SUMIFS: MIN, MAX and AVERAGE of a date column are dates; a sum of dates is refused", async () => {
+    const frame: FrameValue = { __frame: true, columns: [{ name: "rep", type: "string", values: ["Ada", "Ada", "Bo"] }, { name: "due", type: "date", values: [46000, 46010, 46020] }] };
+    const ifs = (op: "minifs" | "maxifs" | "averageifs" | "sumifs") => {
+      const n = new SumIfsNode({ op });
+      n.stringLiterals = { values: "due", column0: "rep", value0: "Ada" };
+      return n;
+    };
+    for (const [op, want] of [["minifs", 46000], ["maxifs", 46010], ["averageifs", 46005]] as const) {
+      const n = ifs(op);
+      expect(await run(n, [[new Src(frame, frameSocket), "frame"]], (c) => c.cachedResult), op).toBe(want);
+      expect(nodeOutputElemFamily(n.id, "result"), op).toBe("date");
+    }
+    expect(typeError(await run(ifs("sumifs"), [[new Src(frame, frameSocket), "frame"]], (c) => c.cachedResult))).toBe(true);
+  });
+  it("Split Frame under All leaves no matrix over a date column; Date splits it as a date table", async () => {
+    const frame: FrameValue = { __frame: true, columns: [{ name: "due", type: "date", values: [46000] }, { name: "qty", type: "number", values: [3] }] };
+    const all = new SplitFrameNode();
+    expect(await run(all, [[new Src(frame, frameSocket), "frame"]], (c) => [c.cachedMatrix, c.cachedMixed])).toEqual([null, true]);
+    const dated = new SplitFrameNode({ colType: "date" });
+    expect(await run(dated, [[new Src(frame, frameSocket), "frame"]], (c) => c.cachedMatrix)).toEqual([[46000]]);
+    expect(nodeOutputElemFamily(dated.id, "matrix")).toBe("date");
+  });
+  it("a chart refuses to draw a plain date list or a lone date column as heights", async () => {
+    expect(typeError(await run(new ChartNode(), [[dates(), "values"]], (c) => c.cachedError))).toBe(true);
+    const lone: FrameValue = { __frame: true, columns: [{ name: "due", type: "date", values: [46000, 46010] }] };
+    expect(typeError(await run(new ChartNode(), [[new Src(lone, frameSocket), "values"]], (c) => c.cachedError))).toBe(true);
+    expect(await run(new ChartNode(), [[nums(), "values"]], (c) => c.cachedError)).toBe(null);
   });
 });

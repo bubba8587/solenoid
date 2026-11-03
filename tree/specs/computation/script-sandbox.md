@@ -66,7 +66,7 @@ Frames and Cubes go into and come out of a script, though a formula keeps them o
 
 `scriptArgToJs` hands the script the same shapes it can return, so what one script emits another can read:
 
-- A Frame becomes an array of `{name: value}` rows. A lazy Frame, or a head-N preview, is collected in full first (through the preview's `__ref` handle), never silently truncated. Date columns stay serials and unit-locked columns stay their typed magnitudes, since that is how the cells are stored.
+- A Frame becomes an array of `{name: value}` rows. A lazy Frame, or a head-N preview, is collected in full first (through the preview's `__ref` handle), never silently truncated. A date column's cells become JavaScript `Date`s (UTC midnight for a whole day), as does any input whose settled type is a date, so a date never reaches a script as its serial ([[C137]] datesNeverSerials); a `Date` the script returns comes back a date. Unit-locked columns stay their typed magnitudes, since that is how the cells are stored.
 - A Cube becomes rows whose cells may hold nested rows (a nested Frame or Cube) or lists. A unit cell unwraps to its display magnitude, so Script is unit-blind. Nested Frames are assumed materialized, as Cubes are built.
 - A LAMBDA, a chart or a document has no script form: `#TYPE!` "A script reads data values; a lambda has no script form" (or a chart, a document), before the run.
 - Everything else passes through unchanged.

@@ -1,6 +1,6 @@
 // [[B11]]
 import { GraphInput, GraphNode, GraphSocket } from "../graphModel";
-import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, BASIS_DOC } from "./shared";
+import { numIn, numOut, listIn, listOut, dateIn, dateOut, dateListIn, frameOut, BASIS_DOC } from "./shared";
 import { setting } from "../inputRoles";
 import type { FrameValue } from "../frame";
 import { sampleShapeOnCore, type Shape } from "../frameShape";
@@ -466,8 +466,8 @@ export const COUPON_OP_META = {
   coupdaybs:  { label: "COUPDAYBS",  description: "Days from beginning of coupon period to settlement. Excel: `COUPDAYBS`." },
   coupdays:   { label: "COUPDAYS",   description: "Days in the coupon period containing settlement. Excel: `COUPDAYS`." },
   coupdaysnc: { label: "COUPDAYSNC", description: "Days from settlement to next coupon date. Excel: `COUPDAYSNC`." },
-  coupncd:    { label: "COUPNCD",    description: "Next coupon date after settlement (as a date serial). Excel: `COUPNCD`." },
-  couppcd:    { label: "COUPPCD",    description: "Previous coupon date before settlement (as a date serial). Excel: `COUPPCD`." },
+  coupncd:    { label: "COUPNCD",    description: "Next coupon date after settlement. Excel: `COUPNCD`." },
+  couppcd:    { label: "COUPPCD",    description: "Previous coupon date before settlement. Excel: `COUPPCD`." },
   coupnum:    { label: "COUPNUM",    description: "Number of coupon periods between settlement and maturity. Excel: `COUPNUM`." },
 } satisfies Record<CouponOp, { label: string; description: string }>;
 
@@ -491,7 +491,21 @@ export class CouponNode extends GraphNode {
     this.addInput("maturity",  dateIn("Maturity date"));
     this.addInput("frequency", numIn("Frequency"));
     this.addInput("basis",     numIn("Basis"));
-    this.addOutput("result", numOut("Result"));
+    this.addOutput("result", CouponNode.outputFor(this.op));
+  }
+
+  /** COUPNCD and COUPPCD answer a date ([[C137]] datesNeverSerials); the rest count days or periods. */
+  static outputFor(op: CouponOp) { return op === "coupncd" || op === "couppcd" ? dateOut("Date") : numOut("Result"); }
+
+  /** True when the output's family changed. */
+  setOp(next: CouponOp): boolean {
+    const dated = (op: CouponOp) => op === "coupncd" || op === "couppcd";
+    const changed = dated(next) !== dated(this.op);
+    this.op = next;
+    const spec = CouponNode.outputFor(next);
+    this.outputs.result!.socket = spec.socket;
+    this.outputs.result!.label = spec.label;
+    return changed;
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: number | SolError | null } {

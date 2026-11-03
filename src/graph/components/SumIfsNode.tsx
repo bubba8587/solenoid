@@ -6,7 +6,8 @@ import { COND_AGG_OP_META } from "../nodeClasses";
 import type { FilterCondConfig } from "../frameOps";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
-import { getOwningView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
+import { retypeOutputCables } from "../fcReconcile";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
 import { NodeShell, OpSelect, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -22,7 +23,16 @@ const OPS = (Object.keys(COND_AGG_OP_META) as CondAggOp[]).map((op) => ({
 
 export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
   const connected = useConnectedInputs(data.id);
-  const [op, setOp] = useNodeField(data, "op");
+  const [op, setOpField] = useNodeField(data, "op");
+  async function pickOp(next: CondAggOp) {
+    if (next === data.op) return;
+    const outputChanged = data.setOp(next);
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
+    if (outputChanged && editor && view) await retypeOutputCables(editor, view, data.id, "result");
+    if (view) await view.rerenderNode(data.id);
+    setOpField(next);
+  }
   const [match, setMatch] = useNodeField(data, "match");
   const [cfg, setCfg] = useState<Record<string, FilterCondConfig>>(() => ({ ...data.condConfig }));
   const strLiterals = (data.stringLiterals ??= {});
@@ -62,7 +72,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
         <CollapsedInputPill node={data} emit={emit} keys={["frame", ...(op !== "countifs" ? ["values"] : []), ...pairs.flat()]} />
       ) : (<>
       <InlineInputs node={data} emit={emit} keys={["frame"]} />
-      <OpSelect value={op} onChange={setOp} options={OPS} />
+      <OpSelect value={op} onChange={(o) => void pickOp(o)} options={OPS} />
       {op !== "countifs" && (
         <MeasuredSocketRow side="input" socketKey="values" nodeId={data.id} emit={emit} payload={data.inputs.values!.socket}>
           <span className="solenoid-node__io-label">Values</span>

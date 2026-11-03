@@ -847,6 +847,12 @@ fn sum_ifs(c: &mut Call) -> Answer {
         Cv::Frame(f) => Some(Source { columns: f.columns.clone(), by_position: true }),
         _ => None,
     };
+    // MIN, MAX and AVERAGE of dates are dates ([[C137]] datesNeverSerials); the family rides `produced`.
+    if matches!(c.field_str("op", "sumifs"), "minifs" | "maxifs" | "averageifs") {
+        let vname = value_text(&str_input(c, "values", ""));
+        let ty = source.as_ref().and_then(|s| s.find(trim_space(&vname))).map(|col| col.ty);
+        c.produced(ty.map(|t| if t == FrameColType::Date { t } else { FrameColType::Number }));
+    }
     let r = match source {
         Some(s) => sum_ifs_over(c, &s)?,
         None => V::Null,
@@ -929,6 +935,12 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
     let Some(vcol) = src.find(vname) else {
         return Ok(err(ErrorCode::Ref, format!("No column \"{vname}\" in the frame")));
     };
+    if op == "sumifs" && vcol.ty == FrameColType::Date {
+        return Ok(err(
+            ErrorCode::Type,
+            format!("\"{vname}\" holds dates, which don't add. Cast to Number for the serials"),
+        ));
+    }
     let kept: Vec<&V> = passing.iter().map(|&i| vcol.values.get(i).unwrap_or(&V::Null)).collect();
     if let Some(e) = kept.iter().find(|v| matches!(v, V::Err(_))) {
         return Ok((*e).clone());

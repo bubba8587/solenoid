@@ -1,6 +1,6 @@
 // [[C66]] scriptNode
 import { solError, isSolError, type SolError } from "../errorValue";
-import { jsDateToSerial } from "./dateSerial";
+import { jsDateToSerial, serialToJsDate } from "./dateSerial";
 import { isCx } from "../cxValue";
 import { isSolDateTag } from "./scriptRun";
 import type { ResultType } from "./shared";
@@ -73,12 +73,19 @@ function isRowObject(v: unknown): v is Record<string, unknown> {
     && !("__unclonable" in v);
 }
 
+/** A date goes in as a JavaScript `Date`, never as its serial ([[C137]] datesNeverSerials); lists map through. */
+function asDate(v: unknown): unknown {
+  if (typeof v === "number") return Number.isFinite(v) ? serialToJsDate(v) : v;
+  if (Array.isArray(v)) return v.map(asDate);
+  return v;
+}
+
 function frameToRows(f: FrameValue): Record<string, unknown>[] {
   const n = frameRowCount(f);
   const rows: Record<string, unknown>[] = [];
   for (let i = 0; i < n; i++) {
     const r: Record<string, unknown> = {};
-    for (const c of f.columns) r[c.name] = c.values[i] ?? null;
+    for (const c of f.columns) r[c.name] = c.type === "date" ? asDate(c.values[i] ?? null) : c.values[i] ?? null;
     rows.push(r);
   }
   return rows;
@@ -98,13 +105,17 @@ function cubeToRows(c: CubeValue): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = [];
   for (let i = 0; i < n; i++) {
     const r: Record<string, unknown> = {};
-    for (const col of c.columns) r[col.name] = cubeCellToJs(col.cells[i] ?? null);
+    for (const col of c.columns) {
+      const js = cubeCellToJs(col.cells[i] ?? null);
+      r[col.name] = col.type === "date" ? asDate(js) : js;
+    }
     rows.push(r);
   }
   return rows;
 }
 
-export async function scriptArgToJs(v: unknown): Promise<unknown> {
+/** `dated`: the input's settled type is a date family, so its numbers are serials. */
+export async function scriptArgToJs(v: unknown, dated = false): Promise<unknown> {
   if (isLambdaValue(v) || isChartValue(v) || isDocumentValue(v)) {
     const kind = isLambdaValue(v) ? "a lambda" : isChartValue(v) ? "a chart" : "a document";
     return solError("#TYPE!", `A script reads data values; ${kind} has no script form`);
@@ -116,7 +127,7 @@ export async function scriptArgToJs(v: unknown): Promise<unknown> {
     return frameToRows(full);
   }
   if (isCubeValue(v)) return cubeToRows(v);
-  return v;
+  return dated ? asDate(v) : v;
 }
 
 const COL_TYPE: Record<Exclude<CellFamily, "complex">, FrameColType> = {

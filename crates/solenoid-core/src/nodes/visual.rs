@@ -853,8 +853,20 @@ fn chart(c: &mut Call) -> Answer {
     let num_col = |col: &Column| -> Vec<V> { col.values.iter().map(|v| finite(v).map_or(V::Null, V::Num)).collect() };
     let refs_shown = if refs.is_empty() { Cv::NULL } else { whole(Json::Array(refs.clone())) };
     let mut v = V::Null;
-    if XY_OPS.contains(&op.as_str()) {
-        let xy = match build_xy(&op, &raw, &opts) {
+    // A date has no height: plotted by position it would draw its serial ([[C137]] datesNeverSerials).
+    let lone_dates = match &raw {
+        Cv::V(V::List(_) | V::Num(_)) => c.dated("values"),
+        Cv::Frame(f) => f.columns.len() == 1 && f.columns[0].ty == FrameColType::Date,
+        _ => false,
+    };
+    let refused = lone_dates.then(|| {
+        err(
+            ErrorCode::Type,
+            "Dates have no height to plot. Put them in a table's first column, where they run along the x axis",
+        )
+    });
+    if XY_OPS.contains(&op.as_str()) || refused.is_some() {
+        let xy = match refused.map_or_else(|| build_xy(&op, &raw, &opts), Err) {
             Ok(xy) => xy,
             Err(e) => {
                 for f in ["cachedLabels", "cachedSeries", "cachedPayload", "cachedResult"] {

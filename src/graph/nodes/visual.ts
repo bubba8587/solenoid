@@ -73,7 +73,7 @@ export const CHART_OP_META = {
 
 export class ChartNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    values: "A list plots by position; a frame's first column is x, later number columns are series. Radar: columns are spokes, rows polygons. Bubble: x, y, size. Scatter, XY Line and Bubble can pick columns by name in the options.",
+    values: "A list plots by position, so a date list has nothing to plot; a frame's first column is x, later number columns are series. Radar: columns are spokes, rows polygons. Bubble: x, y, size. Scatter, XY Line and Bubble can pick columns by name in the options.",
     options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. Scatter, XY Line and Bubble also read x, y, s (size), c (color), annotate and by as column names. Unknown keys are ignored.",
     references: "Reference marks, one per row, read by column name: x alone is a dashed vertical line, y alone a horizontal one, x and y together a point. Add x2 or y2 for a shaded area: all four make a box, and a blank end runs to the edge of the plot. Label and color are optional. On a chart of categories, x names a category. Color takes a palette name or a CSS color.",
   };

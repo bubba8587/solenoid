@@ -1,7 +1,7 @@
 // [[B11]], [[C48]], [[C49]]
 import { GraphInput, GraphNode, GraphOutput } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
+import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfFamily, typeAtRank, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { dropInputCables } from "../components/cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
@@ -864,7 +864,40 @@ export class SumIfsNode extends GraphNode {
     } else {
       this.addValuePair();
     }
-    this.addOutput("result", numOut("Result"));
+    this.addOutput("result", SumIfsNode.outputFor(this.op));
+  }
+
+  /** MIN, MAX and AVERAGE of dates are dates, so their result takes the Values column's family ([[C137]] datesNeverSerials). */
+  static keepsDates(op: CondAggOp): boolean { return op === "minifs" || op === "maxifs" || op === "averageifs"; }
+  static outputFor(op: CondAggOp) { return SumIfsNode.keepsDates(op) ? trueAnyOut("Result") : numOut("Result"); }
+
+  /** The family the last run's Values column had, from the body. */
+  _producedFamily: string | null = null;
+
+  /** Swaps the result between a number and the Values column's family; true when the output changed. */
+  setOp(next: CondAggOp): boolean {
+    const changed = SumIfsNode.keepsDates(next) !== SumIfsNode.keepsDates(this.op);
+    this.op = next;
+    if (changed) this.outputs.result!.socket = SumIfsNode.outputFor(next).socket;
+    return changed;
+  }
+
+  /** The Values column's family where the frame's shape names it, else what the run read. */
+  passthrough(): PassthroughSpec[] {
+    if (!SumIfsNode.keepsDates(this.op)) return [];
+    return [{
+      output: "result",
+      inputs: ["frame"],
+      combine: "single",
+      produced: () => this._producedFamily,
+      project: (ctx) => {
+        const name = ctx.wired("values") ? "" : (this.stringLiterals.values ?? "").trim();
+        const shape = name ? ctx.shapeOf("frame") : null;
+        const col = shape && !shape.dynamic ? shape.columns.find((c) => c.name === name) : undefined;
+        const fam: SocketDataType = col ? typeAtRank(col.type as SocketDataType, 0) ?? "trueany" : "trueany";
+        return { frame: fam, cube: "trueany", tables: "trueany" };
+      },
+    }];
   }
 
   private addPairWithId(id: number): void {

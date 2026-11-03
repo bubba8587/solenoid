@@ -1483,14 +1483,14 @@ export function splitMatrixOutput(colType: SplitColType) {
 
 export class SplitFrameNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    matrix: "Under All, one text column blanks the whole matrix. Date cells ride as serials and booleans as 1 and 0.",
+    matrix: "Under All, one text or date column blanks the whole matrix; pick Text or Date to split those columns. Booleans ride as 1 and 0.",
   };
 
   label: string;
   colType: SplitColType;
   cachedMatrix: (number | string)[][] | null = null;
   cachedHeaders: string[] | null = null;
-  // True when the kept columns include text, so the Matrix output is null by design.
+  // True when All keeps a text or date column, so the Matrix output is null by design.
   cachedMixed = false;
   width = 230; height = 200;
 

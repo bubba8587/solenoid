@@ -286,3 +286,22 @@ describe("review pins: comments before the head; the inline path clones its argu
     expect(xs).toEqual([1, 2, 3]);
   });
 });
+
+describe("a date goes into a script as a Date ([[C137]] datesNeverSerials)", () => {
+  it("a date column reads as Date objects, and passes back out as a date column", async () => {
+    const frame = { __frame: true, columns: [{ name: "due", type: "date", values: [46000] }, { name: "qty", type: "number", values: [3] }] };
+    const seen = await run("(rows) => rows.every((r) => r.due instanceof Date && typeof r.qty === 'number')", { rows: [frame] });
+    expect(seen.result).toBe(true);
+    const back = (await run("(rows) => rows", { rows: [frame] })).result as { columns: Array<{ type: string; values: unknown[] }> };
+    expect(back.columns.map((c) => [c.type, c.values[0]])).toEqual([["date", 46000], ["number", 3]]);
+  });
+
+  it("a date-typed input reads as a Date and comes back a date", async () => {
+    const node = new ScriptNode({ expr: "(d) => d" });
+    (node.inputs.d!.socket as unknown as { setType(t: string): void }).setType("date");
+    throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
+    const out = await (node.data({ d: [46000] }) as Promise<{ result: unknown }>);
+    expect(out.result).toBe(46000);
+    expect(node.lastResultFamily).toBe("date");
+  });
+});

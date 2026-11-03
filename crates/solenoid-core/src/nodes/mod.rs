@@ -154,6 +154,11 @@ fn dated_tables(inputs: Vec<(String, Vec<Cv>)>, from_in: &[(String, String)]) ->
 }
 
 impl Call {
+    /// Whether the output wired into `key` (a frame or cube input) carries dates.
+    pub fn dated(&self, key: &str) -> bool {
+        dated_from(&self.from_in, key)
+    }
+
     /// A Frame this card widened itself from what arrived on `key` (a list or a matrix), Date where that was dates.
     pub fn widened(&self, key: &str, mut frame: Frame) -> Frame {
         if dated_from(&self.from_in, key) {

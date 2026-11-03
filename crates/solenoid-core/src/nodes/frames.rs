@@ -859,13 +859,18 @@ fn split_frame(c: &mut Call) -> Answer {
         };
         return out(c, Cv::V(matrix), Cv::V(headers), false);
     }
-    let mixed = cols.iter().any(|col| col.ty == FrameColType::String);
+    // Under All the matrix is a number table, so a text or date column blanks it: a date never rides as its serial
+    // ([[C137]] datesNeverSerials). Picking Date splits the date columns as dates.
+    let mixed = ty == "all" && cols.iter().any(|col| matches!(col.ty, FrameColType::String | FrameColType::Date));
+    if mixed {
+        return out(c, Cv::NULL, Cv::V(headers), true);
+    }
     let sub = Frame { columns: cols, total_rows: None, approx: None, source: None, layout: None };
     let matrix = match crate::frame_fns::call("splitFrame", &[&to_core(&sub)], &[]) {
         crate::frame_fns::FrameOut::Value(V::List(v)) => v.first().cloned().unwrap_or(V::Null),
         _ => V::Null,
     };
-    out(c, Cv::V(matrix), Cv::V(headers), mixed)
+    out(c, Cv::V(matrix), Cv::V(headers), false)
 }
 
 fn describe(c: &mut Call) -> Answer {

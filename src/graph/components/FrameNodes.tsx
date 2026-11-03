@@ -990,11 +990,11 @@ export function ReconcileComponent({ data, emit }: NodeProps<ReconcileNodeType>)
 // ─── SPLIT FRAME ───────────────────────────────────────────────────────────────
 
 const SPLIT_COLTYPE_OPTIONS: { value: SplitColType; label: ReactNode; title: string }[] = [
-  { value: "all", label: "All", title: "Keep every column" },
+  { value: "all", label: "All", title: "Keep every column. A text or date column leaves no Matrix." },
   { value: "number", label: <TypeIcon type="number" />, title: "Keep only number columns" },
-  { value: "date", label: <TypeIcon type="date" />, title: "Keep only date columns. The Matrix carries serials." },
+  { value: "date", label: <TypeIcon type="date" />, title: "Keep only date columns, as a date matrix." },
   { value: "logical", label: <TypeIcon type="logical" />, title: "Keep only logical columns. The Matrix carries 1/0." },
-  { value: "string", label: <TypeIcon type="text" />, title: "Keep only text columns. Headers only, since text has no numeric Matrix." },
+  { value: "string", label: <TypeIcon type="text" />, title: "Keep only text columns, as a text matrix." },
 ];
 
 export function SplitFrameComponent({ data, emit }: NodeProps<SplitFrameNodeType>) {
@@ -1012,7 +1012,7 @@ export function SplitFrameComponent({ data, emit }: NodeProps<SplitFrameNodeType
           {matrix && matrix.length
             ? <ArrayChip value={matrix} label={`${nodeDisplayName(data)}: Matrix`} size="sm" elem={nodeOutputElemFamily(data.id, "matrix")} />
             : data.cachedMixed
-              ? <span style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic" }} title="A frame with text columns has no numeric matrix. Pull a column with Get Column.">mixed; use Get Column</span>
+              ? <span style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic" }} title="A frame with text or date columns has no number matrix. Pick Text or Date, or pull a column with Get Column.">mixed; use Get Column</span>
               : "—"}
         </span>
       </MeasuredSocketRow>
