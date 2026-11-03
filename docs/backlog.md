@@ -26,6 +26,14 @@ bump them together. `magic-string` stays on 0.30 (the plugin build's pin; 1.x is
 Vitest 5 transforms with Oxc, so the `esbuild: { keepNames: true }` in `vite.config.ts` serves only
 the production minify, and its "esbuild options ignored" warning is expected.
 
+## Dates as a kind (finish [[D114]] dateIsAKind; `tree/specs/values/date-values.md` § What was removed, and what still relays)
+- Sources send dates as themselves: Value, List and Frame Input, Get Column, the date cards (Date, EDATE, Workdays, Today/Now, Coupon dates), then drop the formula-entry relays (`is_date_input` wrapping, `dated_matrix`, `dated_num`).
+- Convert card bodies one by one into `SEES_DATES` (IF, Switch, lookups and the table verbs first), each dropping its `produced` and source-type relay.
+- A lazily computed column (over a held frame) keeps a mixed row's serial; settle its cells as `settled_cells` does.
+- A refused date call answers one `#TYPE!` where a broadcast once answered one per item; decide whether the refusal should broadcast.
+- REDUCE/SCAN over dates need a date start (the default 0 is a mix); consider a blank start that takes the first item.
+- Rename the Formula.js divergence list (`tree/specs/computation/formulajs-divergences.md`) to an Excel divergence list, since Formula.js is ported away, and list D115's breaks from Excel there.
+
 ## Value handling (author 2026-11-02, walked piece by piece; [[C134]] functionsFollowAlgebra, [[C17]] shareImpl)
 
 - [ ] **The four kinds of "nothing" under C134**, one at a time: trueblank (unwired, empty cell), empty slot (`SUM(2, )`, 0 by [[C80]] blankArgIsExcelBlank), empty text `""`, NaN. Known tension: `AVERAGE(2, x)` skips a trueblank (2) where `(2 + x) / 2` doesn't; `2 + trueblank` answers blank today. Author leans skip for `""`, since `IF(c, x, "")` is the usual "show nothing" (`" "` is real text). NaN is common, not rare: "a" typed in a number column is NaN with its raw text kept ([[C58]] tableInputRawText); probe that path, not just a bare NaN. Today a bare NaN is `#DOMAIN!` in SUM/AVERAGE/MAX and `2 + x`, but COUNT counts it and AND reads it FALSE.
