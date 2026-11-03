@@ -1,0 +1,66 @@
+// [[B18]] safeToShare, [[C103]] untrustedContentSeams
+// A foreign document's Script cards wait until the user lets its scripts run, granted per document as the network
+// is (connectionStore.ts). The worker already has no network (`script-sandbox.md`); this keeps a stranger's code from
+// running at all until asked.
+import { docMetaStore } from "./docMetaStore";
+import { pushNotice, dismissNotice } from "./noticeStore";
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
+import { createNotifier } from "./storeKit";
+
+const _waiting = new Map<string, { edited(): void }>();
+let _queued = false;
+let _prompted = false;
+let _notice: number | undefined;
+let _generation = 0;
+const { notify, subscribe, version } = createNotifier();
+
+export const scriptGate = { subscribe, version, waiting: (id: string) => _waiting.has(id) };
+
+export function scriptsAllowed(): boolean {
+  return !docMetaStore.isForeign() || docMetaStore.scriptsAllowed() === true;
+}
+
+/** True when the card may run; otherwise it waits, and one prompt asks for every waiting card. */
+export function requestScript(id: string, card: { edited(): void }): boolean {
+  if (scriptsAllowed()) { _waiting.delete(id); return true; }
+  const fresh = !_waiting.has(id);
+  _waiting.set(id, card);
+  if (fresh) queueMicrotask(notify);
+  if (!_prompted && !_queued) {
+    _queued = true;
+    setTimeout(() => {
+      _queued = false;
+      if (_prompted || scriptsAllowed() || _waiting.size === 0) return;
+      _prompted = true;
+      const n = _waiting.size;
+      const generation = _generation;
+      _notice = pushNotice(
+        `This document has ${n} ${n === 1 ? "script" : "scripts"} someone else wrote. Run ${n === 1 ? "it" : "them"}?`,
+        "warn",
+        0,
+        { label: "Run", onClick: () => { if (generation === _generation) void allowScripts(); } },
+      );
+    }, 0);
+  }
+  return false;
+}
+
+export async function allowScripts(): Promise<void> {
+  docMetaStore.setScriptsAllowed(true);
+  const cards = [..._waiting.values()];
+  _waiting.clear();
+  if (_notice !== undefined) { dismissNotice(_notice); _notice = undefined; }
+  notify();
+  for (const c of cards) c.edited();
+  const { processGraph } = await import("./process");
+  await processGraph();
+}
+
+registerNodeForget((id) => { if (_waiting.delete(id)) notify(); });
+registerNodeForgetAll(() => {
+  _waiting.clear();
+  _prompted = false;
+  _generation++;
+  if (_notice !== undefined) { dismissNotice(_notice); _notice = undefined; }
+  notify();
+});

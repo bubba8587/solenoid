@@ -101,6 +101,10 @@ Frames and Cubes go into and come out of a script, though a formula keeps them o
 
 **The family vote.** Number, text and date map to their own result sockets. Logical and complex values are first-class but have no result socket of their own, so they ride the wildcard (`auto`). A Frame votes `frame` and a Cube votes `cube`, which swap the whole result socket. A mixed vote or no vote casts nothing.
 
+## A document someone else wrote
+
+A foreign document's Script cards (one opened or imported from outside the app, [[live-connections#The network gate]]) do not run until the user lets them ([[B18]] safeToShare). `requestScript` (`scriptGate.ts`) answers before the arguments are read: a waiting card's result is blank, and the card says "Someone else wrote this script. It runs when you allow it." beside a **Run** button. On the next tick one sticky notice asks for every waiting card ("This document has N scripts someone else wrote. Run them?"), and Settings, Data has the same Run while any wait. `allowScripts()` saves `scriptsAllowed` on the document's metadata, marks each waiting card edited and runs a pass. The grant is the document's own, apart from the network's (the "always allow" network setting does not cover scripts); importing a file clears any grant it carries, and a rewrite (the AI edit) keeps the document's trust, never the rewrite's (`docMetaStore.keepTrust`).
+
 ## The worker
 
 - One shared module worker, spawned on the first call. It holds one call at a time; the executor queues the rest and sends the next when the running call settles.

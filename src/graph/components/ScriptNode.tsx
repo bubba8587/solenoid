@@ -1,5 +1,5 @@
 // [[C66]] scriptNode, [[B19]] spreadsheetHabits
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ScriptNode as ScriptNodeType } from "../nodeClasses";
 import type { SolError } from "../errorValue";
 import { InlineInputs } from "./inlineInput";
@@ -11,6 +11,7 @@ import { applyScriptChange } from "./expressionEdit";
 import { JsEditor } from "./JsEditor";
 import { scriptPopup } from "../scriptPopupStore";
 import { stopDragStart } from "../coarse";
+import { scriptGate, allowScripts } from "../scriptGate";
 import "./ExpressionNode.css";
 import "./ScriptNode.css";
 
@@ -25,6 +26,8 @@ export function ScriptComponent({ data: node, emit }: NodeProps<ScriptNodeType>)
   const [draft, setDraft] = useState(node.expr);
   const [, forceUpdate] = useState(0);
   const canceled = useRef(false);
+  useSyncExternalStore(scriptGate.subscribe, scriptGate.version);
+  const waiting = scriptGate.waiting(node.id);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { setDraft(node.expr); }, [node.expr]);
@@ -77,6 +80,19 @@ export function ScriptComponent({ data: node, emit }: NodeProps<ScriptNodeType>)
         </button>
         <FieldResizeGrip targetRef={taRef} />
       </div>
+      {waiting && (
+        <div className="solenoid-script__waiting">
+          <span>Someone else wrote this script. It runs when you allow it.</span>
+          <button
+            type="button"
+            className="solenoid-script__allow"
+            title="Run every script in this document"
+            onPointerDown={stopDragStart}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); void allowScripts(); }}
+          >Run</button>
+        </div>
+      )}
       {node.cachedError && (
         <div className="solenoid-expr__error">{node.cachedError}</div>
       )}

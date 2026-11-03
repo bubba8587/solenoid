@@ -36,7 +36,7 @@ flowchart LR
 ```
 
 - `refreshConnection(id)` bumps that card's token, so only that card fetches again. The card's refresh button and its auto-refresh timer both call it. The timer lives in the store (`connectionStore.autoRefresh(id, minutes)`), kept in step by the card's own `data()` and by the cadence field, so a card that is not mounted (inside a composite or a collapsed group) keeps refreshing. A timer whose card is gone from every graph clears itself when it next fires.
-- `refreshAllConnections()` bumps the global counter, so every card fetches again. It is the "Refresh all connections" menu item, and it also notifies the store's subscribers. Import Obsidian Note sees the new counter in its own `data()` and re-reads its note (the wired path, or the picked file), so a card that is not mounted, inside a composite or a collapsed group, refreshes too; a note renamed or deleted since keeps what was loaded.
+- `refreshAllConnections()` bumps the global counter, so every card fetches again. It is the "Refresh all connections" menu item, and it also notifies the store's subscribers. Import Obsidian Note sees the new counter in its own `data()` and re-reads its note (the wired path, or the picked file), so a card that is not mounted, inside a composite or a collapsed group, refreshes too. A note renamed or deleted since keeps what was loaded and says so: a line above the body reads "Gone from the vault (renamed or deleted). Showing the last copy." (a wired path that names no note says that instead). An opened document checks its note is still there without re-reading it (`checkGone`, through `vaultFileExists`; a platform that can't read the vault never calls a note gone), and a read that fails asks the same question before flagging; the flag rides the card's connection state and clears on the next good read.
 
 A heavy-mode composite (one that holds its outputs until Solve) keys its staleness on `connectionStore.liveStamp(ids)` over every node nested inside it: the global counter, each live card's token, and a per-card count of landed fetches that `scheduleConnectionRecalc(id)` bumps. A refresh or a fresh answer inside it shows the composite stale rather than passing silently, and a Solve waits for the fetches it starts (`liveCardUnmounted.test.ts`).
 
@@ -82,6 +82,8 @@ A document opened or imported from outside the app is **foreign**, and its conne
 
 - allowed: the card proceeds;
 - not allowed: the card records itself as gated, and on the next tick, once every gated card has registered, one sticky warning asks "This document connects to N services. Allow it to fetch?" with an **Allow** button. The prompt shows once per document.
+
+Web pictures are fetches too. While the document may not fetch, an Image card's or a Report's image value from a web address shows a dashed "Web image" box (`components/WebImage.tsx`), and rendered note markdown holds back every web `src`, `srcset` and `poster` and any style with a `url(…)` (`noteHtml.ts`); each holder joins the one prompt through `askNetwork`, which counts it without touching any card's state, so a render may ask. A `data:` picture shows at once.
 
 `allowNetwork()` (the Allow button, or Settings, Data) saves the grant on the document's metadata and calls `refreshAllConnections()`. Importing a file clears any grant the file itself carries, so a shared file cannot skip the prompt.
 

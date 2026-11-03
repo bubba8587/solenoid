@@ -5,6 +5,7 @@ import { isSolError, solError, type SolError } from "../errorValue";
 import { scriptParams, checkScript } from "./scriptRun";
 import { coerceScriptResult, scriptArgToJs } from "./scriptCoerce";
 import { executeScript } from "../scriptExecutor";
+import { requestScript } from "../scriptGate";
 
 export const DEFAULT_SCRIPT = "(x) => x";
 
@@ -76,6 +77,12 @@ export class ScriptNode extends GraphNode {
       this.cachedError = this.syntaxError;
       this.cachedResult = err;
       return { result: err };
+    }
+    // [[B18]] safeToShare: a foreign document's script waits for the user to let it run.
+    if (!requestScript(this.id, this)) {
+      this.cachedError = null;
+      this.cachedResult = null;
+      return { result: null };
     }
     // Exactly one map holds a typed literal, because InlineAutoField clears the other.
     const typed = (v: string): unknown => (v in this.literals ? this.literals[v] : this.stringLiterals[v]);

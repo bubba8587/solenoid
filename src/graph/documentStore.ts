@@ -474,7 +474,7 @@ export const documentStore = {
     }
     if (!this.captureCurrent()) return;
     const prevId = _lib.currentId;
-    graph.meta = { ...graph.meta, foreign: true, networkAllowed: undefined };
+    graph.meta = { ...graph.meta, foreign: true, networkAllowed: undefined, scriptsAllowed: undefined };
     const doc = makeDoc(name, graph);
     if (filePath) doc.filePath = filePath;
     if (typeof graph.savedAt === "number") {

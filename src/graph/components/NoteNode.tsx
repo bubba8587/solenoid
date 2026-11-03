@@ -2,7 +2,7 @@
 import { usePendingDraft } from "../draftFlush";
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import DOMPurify from "dompurify";
+import { sanitizeNoteHtml, useNetworkGrant } from "../noteHtml";
 import type { NoteNode as NoteNodeType } from "../nodeClasses";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
@@ -194,10 +194,11 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   const tex = useKatexReady();
+  const net = useNetworkGrant();
   const bodyHtml = useMemo(
-    () => enableTaskCheckboxes(DOMPurify.sanitize(renderNoteMarkdown(renderBody || "")), rendered === body),
+    () => enableTaskCheckboxes(sanitizeNoteHtml(renderNoteMarkdown(renderBody || "")), rendered === body),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [renderBody, rendered, body, tex],
+    [renderBody, rendered, body, tex, net],
   );
   const renderedRef = useRef<HTMLDivElement>(null);
   function onRenderedClick(e: React.MouseEvent<HTMLDivElement>) {

@@ -15,6 +15,7 @@ import { useRenderMode, renderModeStore } from "./renderMode";
 import { supportsHtmlInCanvas } from "./htmlCanvasSupport";
 import { docMetaStore } from "./docMetaStore";
 import { networkAllowed, allowNetwork } from "./connectionStore";
+import { scriptsAllowed, allowScripts } from "./scriptGate";
 import { SwatchGrid } from "./components/SwatchGrid";
 import "./Settings.css";
 
@@ -158,6 +159,22 @@ function NetworkDocRow() {
       </span>
       <span className="solenoid-settings__folder-actions">
         <button type="button" className="solenoid-settings__store-btn" onClick={() => allowNetwork()}>Allow</button>
+      </span>
+    </div>
+  );
+}
+
+function ScriptsDocRow() {
+  useSyncExternalStore(docMetaStore.subscribe, docMetaStore.version);
+  if (scriptsAllowed()) return null;
+  return (
+    <div className="solenoid-settings__row solenoid-settings__row--folder">
+      <span className="solenoid-settings__row-text">
+        <span className="solenoid-settings__row-label">Scripts in this document</span>
+        <span className="solenoid-settings__row-help">Someone else wrote this document, so its scripts wait until you let them run.</span>
+      </span>
+      <span className="solenoid-settings__folder-actions">
+        <button type="button" className="solenoid-settings__store-btn" onClick={() => void allowScripts()}>Run</button>
       </span>
     </div>
   );
@@ -487,6 +504,7 @@ export function Settings() {
                   <div className="solenoid-settings__section-title">{section.title}</div>
                   <SectionFields fields={section.fields} />
                   {section.title === "Data" && <NetworkDocRow />}
+                  {section.title === "Data" && <ScriptsDocRow />}
                 </div>
               ))}
               <RendererSection />

@@ -180,6 +180,16 @@ export async function statVaultFile(root: string, relPath: string): Promise<{ mt
   }
 }
 
+/** Whether the vault holds the note, or null when this platform can't read the vault to tell. */
+export async function vaultFileExists(root: string, relPath: string): Promise<boolean | null> {
+  if (!canReadRoot(root) || !isInsideVault(relPath)) return null;
+  try {
+    return await fs().exists(await fs().join(root, ...relPath.split("/")));
+  } catch {
+    return null;
+  }
+}
+
 export async function readTextFilePath(path: string): Promise<string> {
   return fs().readTextFile(path);
 }

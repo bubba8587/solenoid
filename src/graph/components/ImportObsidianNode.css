@@ -53,3 +53,17 @@
   font-size: 11px;
   text-align: right;
 }
+
+/* The note this card read is gone from the vault: one line above the kept body, in the connection cards' error dot. */
+.sol-import__gone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 3px 9px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+}
+.sol-import__gone-dot { flex: none; align-self: flex-start; margin-top: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--sol-error); }
+.sol-import__gone-text { min-width: 0; line-height: 1.35; text-wrap-style: balance; }

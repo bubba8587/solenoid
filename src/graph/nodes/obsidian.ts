@@ -437,6 +437,8 @@ export class WriteObsidianNode extends GraphNode {
 
 const IMPORT_RESERVED: ReadonlySet<string> = new Set(["document", "path"]);
 
+const GONE_TEXT = "Gone from the vault (renamed or deleted). Showing the last copy.";
+
 export class ImportObsidianNode extends NoteNode {
   static socketDocs: Record<string, string> = {
     document: "The note's full text, frontmatter included.",
@@ -479,6 +481,26 @@ export class ImportObsidianNode extends NoteNode {
 
   private _wiredPath = "";
   private _seenGen = `${connectionStore.gen()}:${connectionStore.token(this.id)}`;
+  private _checked = false;
+
+  /** Why the shown body may be stale, or null while the note is where the card read it. */
+  goneText(): string | null {
+    const s = connectionStore.getState(this.id);
+    return s.status === "error" ? s.message ?? null : null;
+  }
+
+  setGone(text: string | null): void {
+    if (this.goneText() === text) return;
+    connectionStore.setState(this.id, text ? { status: "error", message: text } : { status: "idle" });
+  }
+
+  /** A read that failed: the note is gone when the vault no longer has it, and kept as shown either way. */
+  async checkGone(): Promise<void> {
+    if (!this.fileName) { this.setGone(null); return; }
+    const { vaultFileExists } = await import("../fileBridge");
+    const there = await vaultFileExists(getVaultRoot().trim(), this.fileName);
+    this.setGone(there === false ? GONE_TEXT : null);
+  }
 
   data(inputs?: { path?: (string | null)[] }): ReturnType<NoteNode["data"]> {
     const wired = readTextInput(inputs?.path, "", "Path");
@@ -492,6 +514,8 @@ export class ImportObsidianNode extends NoteNode {
     if (!wired) {
       this._wiredPath = "";
       if (refresh && readable && this.fileName) void trackInflight(this.reloadFile(), this.id);
+      // An opened document checks its note is still there, without re-reading it.
+      else if (!this._checked && readable && this.fileName) { this._checked = true; void this.checkGone(); }
     } else if ((wired !== this._wiredPath || refresh) && readable) {
       this._wiredPath = wired;
       void trackInflight(this.loadFromWire(wired, refresh), this.id);
@@ -502,13 +526,14 @@ export class ImportObsidianNode extends NoteNode {
       : { ...base, path: this.fileName };
   }
 
-  /** A note renamed or deleted since keeps what was loaded. */
+  /** A note renamed or deleted since keeps what was loaded, and says so. */
   async reloadFile(): Promise<void> {
     try {
       const vault = getVaultRoot().trim();
       const { readVaultFile } = await import("../fileBridge");
       await this.applyFile(vault, this.fileName, await readVaultFile(vault, this.fileName));
-    } catch { /* gone: keep the current body */ }
+      this.setGone(null);
+    } catch { await this.checkGone(); }
   }
 
   private async loadFromWire(path: string, force = false): Promise<void> {
@@ -520,9 +545,11 @@ export class ImportObsidianNode extends NoteNode {
       const base = (path.split("/").pop() ?? path).replace(/\.md$/i, "").toLowerCase();
       const rel = files.includes(withMd) ? withMd
         : files.find((f) => (f.split("/").pop() ?? f).replace(/\.md$/i, "").toLowerCase() === base) ?? null;
-      if (!rel || (rel === this.fileName && !force)) return;
+      if (!rel) { this.setGone(`No note named "${path}" in the vault.`); return; }
+      if (rel === this.fileName && !force) { this.setGone(null); return; }
       await this.applyFile(vault, rel, await readVaultFile(vault, rel));
-    } catch { /* unreadable (moved / renamed / off-desktop) — keep the current body */ }
+      this.setGone(null);
+    } catch { await this.checkGone(); }
   }
 
   /** The label follows the note while it is the default, blank, or the previous note's name. */

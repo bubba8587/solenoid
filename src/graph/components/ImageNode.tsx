@@ -8,6 +8,7 @@ import type { NodeProps } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { useDraftCommit, INVALID_DRAFT, useEditableLabel } from "./inlineInput";
 import { stopDragStart } from "../coarse";
+import { WebImage } from "./WebImage";
 import "./ImageNode.css";
 
 const MIN_H = 60;
@@ -129,7 +130,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
       {!collapsed && (
         <div className="solenoid-image__content">
           {src ? (
-            <img className="solenoid-image__img" src={src} alt={data.label || "image"} style={{ height }} draggable={false} />
+            <WebImage className="solenoid-image__img" src={src} alt={data.label || "image"} style={{ height }} />
           ) : (
             <button
               type="button"

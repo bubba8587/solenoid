@@ -54,7 +54,7 @@ export interface SavedGraph extends SideTables {
   drawnCables?: SavedDrawnCable[];
   palette?: { base?: string; overrides?: Record<string, string> };
   reportPalette?: { base?: string; overrides?: Record<string, string> };
-  meta?: { author?: string; tags?: string[]; foreign?: boolean; networkAllowed?: boolean };
+  meta?: { author?: string; tags?: string[]; foreign?: boolean; networkAllowed?: boolean; scriptsAllowed?: boolean };
   savedAt?: number;
   packs?: string[];
 }

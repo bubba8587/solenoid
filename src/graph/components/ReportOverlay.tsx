@@ -2,7 +2,7 @@
 import { dropInputCables } from "./cablePrune";
 import { usePendingDraft } from "../draftFlush";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import DOMPurify from "dompurify";
+import { sanitizeNoteHtml, useNetworkGrant } from "../noteHtml";
 import { GraphConnection } from "../graphModel";
 import { reportStore } from "../reportStore";
 import { siteChrome } from "../siteChrome";
@@ -109,18 +109,19 @@ export function ReportOverlay() {
   usePendingDraft(!!node && pageName !== node.pageName, () => void commitPageName());
 
   const tex = useKatexReady();
+  const net = useNetworkGrant();
   const bodyHtml = useMemo(
-    () => DOMPurify.sanitize(renderNoteMarkdown(previewText || "")),
+    () => sanitizeNoteHtml(renderNoteMarkdown(previewText || "")),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [previewText, tex],
+    [previewText, tex, net],
   );
 
   const sourceRef = useRef<HTMLTextAreaElement>(null);
 
   const noteHtml = useMemo(
-    () => note ? DOMPurify.sanitize(renderNoteMarkdown(parseNoteFrontmatter(note.body).body || "")) : "",
+    () => note ? sanitizeNoteHtml(renderNoteMarkdown(parseNoteFrontmatter(note.body).body || "")) : "",
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [note, note?.body, tex],
+    [note, note?.body, tex, net],
   );
 
   if (!opened) return null;

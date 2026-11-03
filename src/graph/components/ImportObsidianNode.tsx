@@ -1,7 +1,7 @@
 // [[B1]] obsidianBet, [[C1]] demoVault
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import DOMPurify from "dompurify";
+import { sanitizeNoteHtml, useNetworkGrant } from "../noteHtml";
 import type { ImportObsidianNode as ImportObsidianNodeType } from "../nodeClasses";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
@@ -58,6 +58,8 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const paletteRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(colorOpen, () => setColorOpen(false), [swatchRef, paletteRef]);
 
+  useSyncExternalStore(connectionStore.subscribe, connectionStore.version);
+  const gone = data.goneText();
   const desktop = isDesktop();
   const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot());
   const canRead = hasFs() || isDemoVaultPath(vault);
@@ -69,6 +71,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
 
   // The Note's on-blur reconcile: re-derive the frontmatter sockets, then drop the cables a removed or retyped key stranded.
   async function applyBody(content: string, sourcePath: string) {
+    data.setGone(null);
     data.body = content;
     data.adoptFile(sourcePath);
     await data.loadColumnPicks(vault);
@@ -89,13 +92,13 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     try {
       const content = await readVaultFile(vault, rel);
       await applyBody(content, rel);
-    } catch { /* unreadable (moved/renamed) — leave the current body */ }
+    } catch { /* unreadable: the picker only offers notes that exist, so the current body stays */ }
   }
 
   async function reload() {
     if (!data.fileName) return;
     try { await applyBody(await readVaultFile(vault, data.fileName), data.fileName); }
-    catch { /* file gone — keep what's loaded */ }
+    catch { await data.checkGone(); }
   }
 
   function pick(c: string) { setColor(c); data.color = c; void getOwningView(data.id)?.rerenderNode(data.id); scheduleAutosave(); }
@@ -128,10 +131,11 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   const tex = useKatexReady(); // math re-renders once KaTeX lands
+  const net = useNetworkGrant();
   const bodyHtml = useMemo(
-    () => DOMPurify.sanitize(renderNoteMarkdown(renderBody || "")),
+    () => sanitizeNoteHtml(renderNoteMarkdown(renderBody || "")),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [renderBody, tex],
+    [renderBody, tex, net],
   );
 
   const mode = appThemeStore.getMode();
@@ -294,6 +298,13 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
 
       {data.outputs.document && (
         <NodeSocket side="output" socketKey="document" nodeId={data.id} emit={emit} payload={data.outputs.document.socket} top={docDotTop} />
+      )}
+
+      {gone && !collapsed && (
+        <div className="sol-import__gone" role="status" title={data.fileName || undefined}>
+          <span className="sol-import__gone-dot" aria-hidden="true" />
+          <span className="sol-import__gone-text">{gone}</span>
+        </div>
       )}
 
       {!collapsed && !pickerOpen && (

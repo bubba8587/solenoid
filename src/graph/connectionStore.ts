@@ -119,8 +119,15 @@ let _docGeneration = 0;
 
 export function requestNetwork(id: string): boolean {
   if (networkAllowed()) { _gated.delete(id); return true; }
-  _gated.add(id);
+  askNetwork(id);
   connectionStore.setState(id, { status: "gated" });
+  return false;
+}
+
+/** Holds `key` (a card, or the markdown images a render withheld) for the one prompt. It notifies nothing, so a
+ *  render may ask: the prompt waits a tick, until every gated card has asked. */
+export function askNetwork(key: string): void {
+  _gated.add(key);
   if (!_prompted && !_promptQueued) {
     _promptQueued = true;
     setTimeout(() => {
@@ -137,7 +144,6 @@ export function requestNetwork(id: string): boolean {
       );
     }, 0);
   }
-  return false;
 }
 
 export function allowNetwork(): void {

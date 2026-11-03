@@ -2,7 +2,8 @@
 import { isSolDate } from "../dateValue";
 import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import DOMPurify from "dompurify";
+import { sanitizeNoteHtml, useNetworkGrant } from "../noteHtml";
+import { WebImage } from "./WebImage";
 
 import { cableValueStore } from "../cableValueStore";
 import { formatAnnotationStore, formatNumberWithAnnotation, formatCxWithAnnotation, applyLogicalStyle, applyTextCase, type FormatAnnotation, type LambdaView } from "../formatAnnotationStore";
@@ -200,15 +201,16 @@ function CollapsibleFigure({ title, children, defaultOpen = true }: {
 
 function DocumentEmbedBody({ value }: { value: DocumentValue }) {
   const tex = useKatexReady();
+  const net = useNetworkGrant();
   const html = useMemo(() => {
-    const html = DOMPurify.sanitize(renderNoteMarkdown(parseNoteFrontmatter(value.body).body));
+    const html = sanitizeNoteHtml(renderNoteMarkdown(parseNoteFrontmatter(value.body).body));
     // Each value as the producing Report shows it, by its Format Controller.
     const src = value.sourceId;
     return substituteRefCodes(html, (name) => name in value.refs
       ? { html: escapeHtml(refPreview(value.refs[name], src ? resolveRefAnnotation(src, name) : undefined)) }
       : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, tex]);
+  }, [value, tex, net]);
   return <span className="report-embed__body sol-md" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
@@ -240,12 +242,11 @@ function figureFor(
       caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
       body: value.src
         ? (
-          <img
+          <WebImage
             className="solenoid-ref-image"
             src={value.src}
             alt={value.alt || refKey}
             style={{ height: value.height, maxWidth: "100%", objectFit: "contain" }}
-            draggable={false}
           />
         )
         : <span className="report-embed-missing">no image attached</span>,
