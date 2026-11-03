@@ -13,6 +13,8 @@ import { IfNode, IFErrorNode } from "../../src/graph/nodes/logic";
 import { XLookupNode } from "../../src/graph/nodes/frame";
 import { ListIndexNode } from "../../src/graph/nodes/list";
 import { DisplayNode } from "../../src/graph/nodes/display";
+import { CompositeNode } from "../../src/graph/nodes/composite";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import type { FrameValue } from "../../src/graph/frame";
 
 // Before a calculation the wiring can't tell these outputs' types; once it has run, nothing is unknown, and the
@@ -133,6 +135,27 @@ describe("[[C136]] once a calculation has run, an output's type is the type of w
     await processGraph();
     expect(nodeOutputElemFamily(iff.id)).toBe("number");
     expect(drawn[drawn.length - 1]?.[1]).toBe(typeOf(iff)); // the last draw saw the number type, not the date it had
+  });
+
+  it("a card inside a composite takes the type of what it carried too", async () => {
+    const outer = new CompositeNode({ label: "Outer" });
+    const inner = outer.internalEditor;
+    const d = new ValueInputNode({ op: "date", value: "05-Jan-2026" });
+    const n = new ValueInputNode({ op: "number", value: "7" });
+    const iff = new IfNode();
+    iff.literals = { cond: 1 };
+    for (const x of [d, n, iff]) await inner.addNode(x as unknown as Schemes["Node"]);
+    await inner.addConnection(new GraphConnection(d, "value", iff, "then") as unknown as Schemes["Connection"]);
+    await inner.addConnection(new GraphConnection(n, "value", iff, "else") as unknown as Schemes["Connection"]);
+    const typeOf = () => (iff.outputs.result!.socket as unknown as { dataType: string }).dataType;
+    await outer.data({});
+    await Promise.resolve();
+    expect(typeOf()).toBe("datecombo");
+    iff.literals = { cond: 0 };
+    outer.markInternalEdit();
+    await outer.data({});
+    await Promise.resolve();
+    expect(typeOf()).toBe("numlist");
   });
 
   it("IFERROR shows the value's type when nothing was caught", async () => {

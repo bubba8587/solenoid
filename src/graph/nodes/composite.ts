@@ -5,7 +5,9 @@ import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } from "../sockets";
 import { resolveTrigModes } from "../trigMode";
-import { reconcileFcTypes } from "../fcReconcile";
+import { reconcileFcTypes, reconcileTypesAfterEdit } from "../fcReconcile";
+import { readTypeKeys } from "../settleFacts";
+import { getOwningView } from "../activeGraph";
 import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SideTables } from "../savedNodeBody";
 import { forgetNodeDeep } from "../nodeStoreRegistry";
 import { isSolError, solError, type SolError } from "../errorValue";
@@ -592,6 +594,19 @@ export class CompositeNode extends GraphNode {
       if (n instanceof CompositeInputNode || n instanceof CompositeOutputNode) continue;
       try { await this.internalEngine.fetch(n.id); } catch { /* an error card shows its own error */ }
     }
+    this.readInnerTypes();
+  }
+
+  /** Every card inside computed: an output the wiring leaves a wildcard takes the type of the value it carried, as on
+   *  the main canvas ([[C136]] typesKnownAfterCalc, [[D117]] emptyKeepsLastType), drawn again in an open drill-in. */
+  private readInnerTypes(): void {
+    const nodes = this.internalEditor.getNodes();
+    const keys = readTypeKeys(nodes);
+    if (!keys.length || !this.internalEditor.core().readTypes(JSON.stringify(keys))) return;
+    queueMicrotask(() => {
+      reconcileTypesAfterEdit(this.internalEditor, nodes[0] ? getOwningView(nodes[0].id) : null);
+      this.adoptBoundaryTypes();
+    });
   }
 
   private async collectMultiple(

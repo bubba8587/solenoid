@@ -949,13 +949,22 @@ impl GraphCore {
     pub fn read_types(&self, keys: &str) -> bool {
         let keys: Vec<(String, String, String)> = serde_json::from_str(keys).unwrap_or_default();
         let landed = self.shared.landed.borrow();
+        let cache = self.shared.graph.engine().cache();
         let mut read = self.shared.read.borrow_mut();
         let mut moved = false;
         for (id, key, now) in keys {
-            let value = landed
-                .get(&id)
-                .and_then(|outs| outs.iter().find(|(k, _)| *k == key))
-                .and_then(|(_, v)| v.socket_type());
+            // A composite's inside computes by fetching, not by a pass: its cards' values are in the engine's cache.
+            let value = match landed.get(&id) {
+                Some(outs) => outs
+                    .iter()
+                    .find(|(k, _)| *k == key)
+                    .and_then(|(_, v)| v.socket_type()),
+                None => cache
+                    .get(&id)
+                    .and_then(netcore::future::now_or_never)
+                    .and_then(Result::ok)
+                    .and_then(|outs| outs.get(&key).and_then(Val::socket_type)),
+            };
             let held = read.entry(id).or_default();
             match value {
                 Some(t) if held.get(&key) != Some(&t) => {
