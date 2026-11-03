@@ -63,6 +63,14 @@ spelled! {
     }
 }
 
+impl AggOp {
+    /// Whether its answer over dates is still a date ([[C137]] datesNeverSerials, [[C118]] formatTravelsWithValue):
+    /// the min, max, mean, median or mode of dates is a date; a sum, count, product or spread is not.
+    pub fn keeps_dates(self) -> bool {
+        matches!(self, AggOp::Min | AggOp::Max | AggOp::Avg | AggOp::Median | AggOp::Mode)
+    }
+}
+
 spelled! {
     /// `FilterOp`: `ComparisonOp`, the text and blank tests, and the list conditions a cube's filter reads.
     pub enum FilterOp {
@@ -83,6 +91,29 @@ spelled! {
         ListContainsAny = "listContainsAny",
         ListContainsAll = "listContainsAll",
         ListEmpty = "listEmpty",
+    }
+}
+
+impl WindowFn {
+    /// Whether its answer over a date column is still a date ([[C137]] datesNeverSerials): a shifted or picked row, and
+    /// a running or rolling min, max or mean; a sum, rank, count, difference or share is a number.
+    pub fn keeps_dates(self) -> bool {
+        matches!(
+            self,
+            WindowFn::Lag
+                | WindowFn::Lead
+                | WindowFn::First
+                | WindowFn::Last
+                | WindowFn::CumMin
+                | WindowFn::CumMax
+                | WindowFn::CumAvg
+                | WindowFn::RollingMin
+                | WindowFn::RollingMax
+                | WindowFn::RollingAvg
+                | WindowFn::GroupMin
+                | WindowFn::GroupMax
+                | WindowFn::GroupAvg
+        )
     }
 }
 
@@ -1026,8 +1057,16 @@ pub fn group_by_frame(f: &FrameValue, keys: &[String], aggs: &[AggSpec]) -> Res<
                 .collect();
         }
         out.push(
-            FrameColumn::new(spec.as_.clone(), if preserves { col.ty } else { FrameColType::Number }, values)
-                .with_unit(agg_unit(op, col.unit.as_ref())),
+            FrameColumn::new(
+                spec.as_.clone(),
+                if preserves || (col.ty == FrameColType::Date && op.keeps_dates()) {
+                    col.ty
+                } else {
+                    FrameColType::Number
+                },
+                values,
+            )
+            .with_unit(agg_unit(op, col.unit.as_ref())),
         );
     }
     let names: Vec<String> = out.iter().map(|c| c.name.clone()).collect();
@@ -1893,6 +1932,8 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     for (bi, (co, v)) in body_specs.iter().enumerate() {
         let ty = if val_cols[*v].ty == FrameColType::String && matches!(funcs[*v], AggOp::Min | AggOp::Max) {
             FrameColType::String
+        } else if val_cols[*v].ty == FrameColType::Date && funcs[*v].keeps_dates() {
+            FrameColType::Date
         } else {
             FrameColType::Number
         };
@@ -2651,6 +2692,7 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
     }
     let out_type = match val_col {
         Some(vc) if matches!(func, WindowFn::Lag | WindowFn::Lead | WindowFn::First | WindowFn::Last) => vc.ty,
+        Some(vc) if vc.ty == FrameColType::Date && func.keeps_dates() => FrameColType::Date,
         _ => FrameColType::Number,
     };
     let trimmed = trim_space(&spec.as_);

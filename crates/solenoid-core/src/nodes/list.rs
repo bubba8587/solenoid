@@ -419,6 +419,9 @@ fn sets(c: &mut Call) -> Answer {
         let r = core_call(fx, &[or(a, empty()), or(b, empty())]);
         return shown(c, "cachedRelation", "result", r);
     }
+    if let Some(other) = c.dates_meet(&["a", "b"]) {
+        return shown(c, "cachedList", "result", super::dates_mixed(other));
+    }
     let a = strip_unit_cells(&list_in(c, "a"));
     let b = strip_unit_cells(&list_in(c, "b"));
     let r = core_call(fx, &[a, b]);
@@ -426,6 +429,10 @@ fn sets(c: &mut Call) -> Answer {
 }
 
 fn concat_lists(c: &mut Call) -> Answer {
+    let keys: Vec<String> = c.sockets.iter().filter(|s| s.key.starts_with('l')).map(|s| s.key.clone()).collect();
+    if let Some(other) = c.dates_meet(&keys.iter().map(String::as_str).collect::<Vec<_>>()) {
+        return shown(c, "cachedList", "result", super::dates_mixed(other));
+    }
     let args: Vec<V> =
         c.sockets.iter().filter(|s| s.key.starts_with('l')).map(|s| or(slot(c, &s.key), V::Null)).collect();
     let r = core_call("CONCATLISTS", &args);
@@ -504,6 +511,9 @@ fn nth_element(c: &mut Call) -> Answer {
 }
 
 fn interleave(c: &mut Call) -> Answer {
+    if let Some(other) = c.dates_meet(&["a", "b"]) {
+        return shown(c, "cachedList", "result", super::dates_mixed(other));
+    }
     let r = core_call("INTERLEAVE", &[list_in(c, "a"), list_in(c, "b")]);
     shown(c, "cachedList", "result", r)
 }
@@ -1520,6 +1530,22 @@ fn list_index(c: &mut Call) -> Answer {
         }
         _ => None,
     };
+    // Columns of different kinds picked together, a date among them, would hand on one list of both ([[C137]]).
+    let picked_date = match &v {
+        Cv::Frame(f) => picked_types(&col, &f.columns.iter().map(|k| Some(k.ty)).collect::<Vec<_>>()),
+        Cv::Cube(q) => picked_types(&col, &q.columns.iter().map(super::frames::cube_column_family).collect::<Vec<_>>()),
+        _ => Vec::new(),
+    };
+    if produced.is_none()
+        && !matches!(result, Cv::Frame(_) | Cv::Cube(_))
+        && picked_date.contains(&Some(FrameColType::Date))
+        && picked_date.len() > 1
+    {
+        let e = Cv::V(super::dates_mixed("other kinds"));
+        c.produced(None);
+        c.show("cachedResult", e.clone());
+        return Ok(vec![("result".into(), e)]);
+    }
     c.produced(produced);
     if let (Some(u), Cv::V(V::List(a)), Cv::V(V::List(b))) = (&unit, &v, &result)
         && std::rc::Rc::ptr_eq(a, b)
@@ -1528,6 +1554,16 @@ fn list_index(c: &mut Call) -> Answer {
     }
     c.show("cachedResult", result.clone());
     Ok(vec![("result".into(), result)])
+}
+
+/// The type of each picked column, 1-based positions as INDEX reads them; none for a blank or 0 Column.
+fn picked_types(col: &V, types: &[Option<FrameColType>]) -> Vec<Option<FrameColType>> {
+    let positions: Vec<f64> = match col {
+        V::Num(_) => vec![trunc_of(col)],
+        V::List(items) => items.iter().map(trunc_of).collect(),
+        _ => return Vec::new(),
+    };
+    positions.into_iter().map(|p| (p >= 1.0).then(|| types.get(p as usize - 1).copied().flatten()).flatten()).collect()
 }
 
 /// The one type every picked column shares, 1-based positions as INDEX reads them; none for a blank or 0 Column (the

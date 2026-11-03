@@ -189,8 +189,8 @@ describe("passthrough declarations", () => {
 describe("every passthrough the wiring can leave untyped declares its run-time fact", () => {
   it("an extraction declares `produced`, and branches that vote declare `selected`", async () => {
     const { FLAT_CATALOG } = await import("../../src/graph/catalogUtils");
-    // Combiners put every input into the output, so inputs that disagree make a real mix, not an unknown: there is no
-    // taken branch to name.
+    // Combiners put every input into the output, so there is no taken branch to name; inputs that would mix dates with
+    // another kind refuse with #TYPE! instead ([[C137]] datesNeverSerials).
     const COMBINERS = new Set(["ConcatListsNode", "SetsNode", "InterleaveNode", "StackNode"]);
     const gaps: string[] = [];
     const seen = new Set<string>();

@@ -2001,9 +2001,14 @@ fn xlookup_across(c: &mut Call, cube: &Cube, lookup_raw: &V, fb: &str) -> Answer
             }
         };
         // The matched columns' one shared type, the family this run produced ([[C136]] typesKnownAfterCalc).
-        let mut hit = found.iter().filter_map(|&i| usize::try_from(i).ok().and_then(|i| cube.columns.get(i)));
-        across_family =
-            hit.next().and_then(cube_column_family).filter(|t| hit.all(|k| cube_column_family(k) == Some(*t)));
+        let hits: Vec<&CubeColumn> =
+            found.iter().filter_map(|&i| usize::try_from(i).ok().and_then(|i| cube.columns.get(i))).collect();
+        let families: Vec<Option<FrameColType>> = hits.iter().map(|k| cube_column_family(k)).collect();
+        across_family = families.first().copied().flatten().filter(|t| families.iter().all(|f| *f == Some(*t)));
+        // Lookups that land on a date column and another kind would hand on one list of both ([[C137]]).
+        if families.contains(&Some(FrameColType::Date)) && across_family.is_none() {
+            return Err(super::dates_mixed("other kinds"));
+        }
         let mut k = 0;
         let mut one = |t: &String| -> Cv {
             if t.is_empty() && !valueless {

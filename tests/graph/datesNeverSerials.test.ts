@@ -1,0 +1,112 @@
+// [[C137]] datesNeverSerials
+import { describe, it, expect, afterEach } from "vitest";
+import type { View } from "../../src/graph/view";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode, GraphOutput, type GraphSocket } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
+import type { Schemes } from "../../src/graph/schemes";
+import { processGraph, setEditorRefs } from "../../src/graph/process";
+import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
+import { dateListSocket, numListSocket, frameSocket, logicalListSocket, strListSocket } from "../../src/graph/sockets";
+import { isSolError } from "../../src/graph/errorValue";
+import { ConcatListsNode, ListIndexNode } from "../../src/graph/nodes/list";
+import { IfNode } from "../../src/graph/nodes/logic";
+import { XLookupNode } from "../../src/graph/nodes/frame";
+import type { FrameValue } from "../../src/graph/frame";
+import { groupByFrame, pivotFrame, windowFrame } from "./coreVerbs";
+
+// A date never comes out as its serial number: a summary of dates that is still a date stays a Date column.
+
+const orders: FrameValue = {
+  __frame: true,
+  columns: [
+    { name: "rep", type: "string", values: ["Ada", "Ada", "Bo", "Bo"] },
+    { name: "due", type: "date", values: [46000, 46010, 46020, 46031] },
+  ],
+};
+const typeOf = (f: FrameValue, name: string) => f.columns.find((c) => c.name === name)?.type;
+
+describe("table verbs keep a date a date", () => {
+  it("Group By: min, max, mean, median and mode of dates are dates; a sum and a count are numbers", () => {
+    const out = groupByFrame(orders, ["rep"], (["min", "max", "avg", "median", "mode", "sum", "count"] as const).map((op) => ({ column: "due", op, as: op })));
+    for (const op of ["min", "max", "avg", "median", "mode"]) expect(typeOf(out, op), op).toBe("date");
+    expect([typeOf(out, "sum"), typeOf(out, "count")]).toEqual(["number", "number"]);
+  });
+
+  it("Pivot: the same rule for each value column", () => {
+    const out = pivotFrame(orders, { rowFields: ["rep"], colFields: [], values: ["due", "due"], funcs: ["max", "sum"] });
+    const [, maxCol, sumCol] = out.columns;
+    expect([maxCol.type, sumCol.type]).toEqual(["date", "number"]);
+  });
+
+  it("Window: running and rolling min, max and mean of dates are dates; a difference is a number", () => {
+    for (const fn of ["cummin", "cummax", "cumavg", "rolling_min", "rolling_max", "rolling_avg", "group_min", "group_max", "group_avg", "lag"] as const) {
+      expect(typeOf(windowFrame(orders, { partitionBy: ["rep"], fn, column: "due", as: "w", n: 2 }), "w"), fn).toBe("date");
+    }
+    for (const fn of ["cumsum", "diff", "rank"] as const) {
+      expect(typeOf(windowFrame(orders, { partitionBy: ["rep"], orderBy: "due", fn, column: "due", as: "w" }), "w"), fn).toBe("number");
+    }
+  });
+});
+
+class Src extends GraphNode {
+  constructor(private value: unknown, socket: GraphSocket) {
+    super("Src");
+    this.addOutput("out", new GraphOutput(socket));
+  }
+  data() { return { out: this.value }; }
+}
+
+describe("a step that would mix dates with another kind refuses with #TYPE!", () => {
+  afterEach(() => setEditorRefs(null as never, null as never, null as never));
+
+  async function run<N extends GraphNode>(card: N, wires: [GraphNode, string][], read: (n: N) => unknown) {
+    const editor = new GraphEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    setEditorRefs(editor, engine, { rerenderNode: async () => {}, rerenderCables: async () => {} } as unknown as View);
+    await editor.addNode(card as unknown as Schemes["Node"]);
+    for (const [src, key] of wires) {
+      await editor.addNode(src as unknown as Schemes["Node"]);
+      await editor.addConnection(new GraphConnection(src, "out", card, key) as unknown as Schemes["Connection"]);
+    }
+    settleWildcardTypes(editor);
+    await processGraph();
+    return read(card);
+  }
+  const typeError = (v: unknown) => isSolError(v) && (v as { code: string }).code === "#TYPE!";
+  const dates = () => new Src([46000, 46010], dateListSocket);
+  const nums = () => new Src([1, 2], numListSocket);
+
+  it("Concat Lists of a date list and a number list", async () => {
+    const n = new ConcatListsNode();
+    const [k1, k2] = n.valueInputKeys();
+    expect(typeError(await run(n, [[dates(), k1], [nums(), k2]], (c) => c.cachedList))).toBe(true);
+    const ok = new ConcatListsNode();
+    const [j1, j2] = ok.valueInputKeys();
+    expect(typeError(await run(ok, [[dates(), j1], [dates(), j2]], (c) => c.cachedList))).toBe(false);
+  });
+
+  it("IF over a list of conditions with a date branch and a number branch", async () => {
+    const n = new IfNode();
+    const conds = new Src([true, false], logicalListSocket);
+    expect(typeError(await run(n, [[conds, "cond"], [dates(), "then"], [nums(), "else"]], (c) => c.cachedResult))).toBe(true);
+  });
+
+  it("XLOOKUP across that lands on a date column and a number column", async () => {
+    const frame: FrameValue = { __frame: true, columns: [{ name: "due", type: "date", values: [46000] }, { name: "qty", type: "number", values: [3] }] };
+    const n = new XLookupNode({ direction: "columns" });
+    n.literals = { returnRow: 1 };
+    n.stringLiterals = { lookup: "", ifNotFound: "" };
+    const got = await run(n, [[new Src(frame, frameSocket), "frame"], [new Src(["due", "qty"], strListSocket), "lookup"]], (c) => c.cachedResult);
+    expect(typeError(got)).toBe(true);
+  });
+
+  it("INDEX picking a date column and a number column", async () => {
+    const frame: FrameValue = { __frame: true, columns: [{ name: "due", type: "date", values: [46000] }, { name: "qty", type: "number", values: [3] }] };
+    const n = new ListIndexNode();
+    n.literals = { index: 1 };
+    const got = await run(n, [[new Src(frame, frameSocket), "list"], [new Src([1, 2], numListSocket), "column"]], (c) => c.cachedResult);
+    expect(typeError(got)).toBe(true);
+  });
+});

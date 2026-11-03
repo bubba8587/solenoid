@@ -353,6 +353,45 @@ impl Call {
         }
     }
 
+    /// The kind another wired input brings beside a date one, where these inputs would put dates and another kind in
+    /// one value: a step that does refuses rather than hand on a date as its serial ([[C137]] datesNeverSerials). An
+    /// unwired input or a wildcard says nothing.
+    pub fn dates_meet(&self, keys: &[&str]) -> Option<&'static str> {
+        fn kind(t: &str) -> Option<&'static str> {
+            if t.starts_with("date") {
+                Some("dates")
+            } else if t == "string" || t.starts_with("str") {
+                Some("text")
+            } else if t.starts_with("logical") {
+                Some("logicals")
+            } else if t.starts_with("complex") {
+                Some("complex numbers")
+            } else if matches!(t, "number" | "list" | "numlist" | "table") {
+                Some("numbers")
+            } else {
+                None
+            }
+        }
+        // A wired input says by its type; an unwired one by the value typed into it.
+        let kinds: Vec<&'static str> = keys
+            .iter()
+            .filter_map(|k| {
+                if self.inputs.iter().any(|(i, vs)| i == *k && !vs.is_empty()) {
+                    return self.input_type(k).and_then(kind);
+                }
+                match (self.string_literal(k), self.literal(k)) {
+                    (V::Str(s), _) if !s.is_empty() => Some("text"),
+                    (_, V::Num(_)) => Some("numbers"),
+                    _ => None,
+                }
+            })
+            .collect();
+        if !kinds.contains(&"dates") {
+            return None;
+        }
+        kinds.into_iter().find(|k| *k != "dates")
+    }
+
     /// The element family the body extracted on this run (a lookup's or INDEX's column), none where it can't name
     /// one: a run-time fact the Type Settle reads where the wiring leaves a wildcard ([[C136]] typesKnownAfterCalc).
     pub fn produced(&mut self, ty: Option<crate::frame::FrameColType>) {
@@ -361,6 +400,14 @@ impl Call {
 }
 
 /// The class's body, or `None` where the class has none on the core yet.
+/// `#TYPE!` for a step that would mix dates with `other` in one value ([[C137]] datesNeverSerials).
+pub fn dates_mixed(other: &str) -> V {
+    crate::excel_functions::V::err(crate::error_value::sol_error(
+        crate::error_value::ErrorCode::Type,
+        format!("This would mix dates with {other} in one result. Cast one side first"),
+    ))
+}
+
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     scalar::run(kind, c)
         .or_else(|| logic::run(kind, c))
