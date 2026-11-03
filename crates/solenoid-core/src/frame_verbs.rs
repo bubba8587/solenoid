@@ -1001,9 +1001,21 @@ fn reading_plan(unit: Option<&ColumnUnit>, refused: Option<&str>, delta: Option<
     }
 }
 
-/// How an aggregate's cells answer over a column in `unit`.
-pub(crate) fn agg_unit_plan(op: AggOp, unit: Option<&ColumnUnit>) -> ReadingPlan {
-    reading_plan(unit, agg_readings_refused(op), agg_readings_delta(op))
+/// How an aggregate's cells answer over a column in `unit`, of type `ty`.
+pub(crate) fn agg_unit_plan(op: AggOp, unit: Option<&ColumnUnit>, ty: Option<FrameColType>) -> ReadingPlan {
+    dates_plan(ty, agg_readings_refused(op))
+        .unwrap_or_else(|| reading_plan(unit, agg_readings_refused(op), agg_readings_delta(op)))
+}
+
+/// A date is a point in time, like a reading on an offset scale: what refuses a reading (a sum, a product, a share)
+/// refuses dates, `#TYPE!`, rather than add their serials ([[C137]] datesNeverSerials).
+fn dates_plan(ty: Option<FrameColType>, refused: Option<&str>) -> Option<ReadingPlan> {
+    (ty == Some(FrameColType::Date) && refused.is_some()).then(|| {
+        ReadingPlan::Refuse(Rc::new(sol_error(
+            ErrorCode::Type,
+            "Dates don't add up or scale. Cast to Number for the serials",
+        )))
+    })
 }
 
 /// The unit an aggregate's or a window's column takes over a column in `unit`.
@@ -1044,7 +1056,7 @@ pub fn group_by_frame(f: &FrameValue, keys: &[String], aggs: &[AggSpec]) -> Res<
     for (spec, col) in agg_cols {
         let op = known_agg(&spec.op)?;
         let preserves = matches!(op, AggOp::Min | AggOp::Max);
-        let plan = agg_unit_plan(op, col.unit.as_deref());
+        let plan = agg_unit_plan(op, col.unit.as_deref(), Some(col.ty));
         let mut values = Vec::with_capacity(buckets.len());
         for rows in &buckets {
             let cells: Vec<FrameCell> = rows.iter().map(|&i| col.cell_at(i).clone()).collect();
@@ -1937,7 +1949,8 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         }
     }
     let body_names = make_headers(&raw_headers, raw_headers.len());
-    let plans: Vec<ReadingPlan> = (0..v_n).map(|v| agg_unit_plan(funcs[v], val_cols[v].unit.as_deref())).collect();
+    let plans: Vec<ReadingPlan> =
+        (0..v_n).map(|v| agg_unit_plan(funcs[v], val_cols[v].unit.as_deref(), Some(val_cols[v].ty))).collect();
     for (bi, (co, v)) in body_specs.iter().enumerate() {
         let ty = if val_cols[*v].ty == FrameColType::String && matches!(funcs[*v], AggOp::Min | AggOp::Max) {
             FrameColType::String
@@ -2725,7 +2738,8 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
     let name = if trimmed.is_empty() { func.as_str().to_string() } else { trimmed.to_string() };
     let delta = if func == WindowFn::Diff { Some(1) } else { None };
     let plan = match val_col {
-        Some(vc) => reading_plan(vc.unit.as_deref(), func.readings_refused(), delta),
+        Some(vc) => dates_plan(Some(vc.ty), func.readings_refused())
+            .unwrap_or_else(|| reading_plan(vc.unit.as_deref(), func.readings_refused(), delta)),
         None => ReadingPlan::Identity,
     };
     let unit = spec

@@ -2720,7 +2720,7 @@ fn cube_rollup(c: &mut Call) -> Answer {
                 let cells: Vec<FrameCell> = values.iter().map(core_cell).collect();
                 let op = op.ok_or_else(|| err(ErrorCode::Name, format!("Unknown aggregation \"{agg}\"")))?;
                 rolled_dates |= ty == Some(FrameColType::Date) && op.keeps_dates();
-                card_cell(&agg_unit_plan(op, unit.as_deref()).cell(aggregate_group(&cells, op, ty)))
+                card_cell(&agg_unit_plan(op, unit.as_deref(), ty).cell(aggregate_group(&cells, op, ty)))
             }
         };
         if matches!(r, V::Str(_)) {
