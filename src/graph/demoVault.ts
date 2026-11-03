@@ -76,6 +76,11 @@ export const demoVaultFs: FsProvider = {
     if (content === undefined) throw new Error(`Not in the demo vault: ${relOf(path)}`);
     return content;
   },
+  async readTextHead(path, chars) {
+    const content = await readText(relOf(path));
+    if (content === undefined) throw new Error(`Not in the demo vault: ${relOf(path)}`);
+    return content.slice(0, chars);
+  },
   async readDir(path) {
     const keys = await listKeys();
     const base = relOf(path);

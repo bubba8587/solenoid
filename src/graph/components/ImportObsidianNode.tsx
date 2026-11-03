@@ -12,7 +12,7 @@ import { FieldRow } from "./NoteNode";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useKnapRender } from "./useKnapRender";
 import { parseNoteFrontmatter } from "../noteFrontmatter";
-import { hasFs, isDesktop, listVaultMarkdownFiles, readVaultFile, openExternal } from "../fileBridge";
+import { hasFs, isDesktop, listVaultMarkdownFiles, readVaultFile, readVaultFileHead, statVaultFile, openExternal } from "../fileBridge";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { getOwningView, getOwningEditor } from "../activeGraph";
@@ -232,6 +232,10 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
                   extensions: ["md"],
                   current: data.fileName || undefined,
                   list: () => listVaultMarkdownFiles(vault),
+                  readHead: (rel, chars) => readVaultFileHead(vault, rel, chars),
+                  stat: (rel) => statVaultFile(vault, rel),
+                  rootLabel: "Vault",
+                  recentKey: "vault-note",
                   empty: "No notes in the vault",
                 }).then((rel) => { if (rel) void pickFile(rel); })}
               />

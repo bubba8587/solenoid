@@ -1,7 +1,7 @@
 // [[B18]] safeToShare, [[B11]] maximalMerge, [[C26]] opArgDistinct
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WriteFormat } from "../nodeClasses";
-import { hasFs, isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal } from "../fileBridge";
+import { hasFs, isDesktop, listVaultFolders, listVaultMarkdownFiles, readVaultFileHead, statVaultFile, openExternal } from "../fileBridge";
 import { getVaultRoot } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { settingsStore } from "../settingsStore";
@@ -253,6 +253,10 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
                 extensions: ["md"],
                 current: d.stringLiterals?.path ? `${[d.subfolder, d.stringLiterals.path].filter(Boolean).join("/")}.md` : undefined,
                 list: () => listVaultMarkdownFiles(vault),
+                readHead: (rel, chars) => readVaultFileHead(vault, rel, chars),
+                stat: (rel) => statVaultFile(vault, rel),
+                rootLabel: "Vault",
+                recentKey: "vault-note",
                 empty: "No notes in the vault",
                 blocked: vault.trim() === "" ? "Set the Obsidian vault folder in Settings." : undefined,
               }).then((rel) => { if (rel) pickFile(rel); })}
@@ -276,6 +280,8 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
                 current: subfolder || undefined,
                 rootLabel: "Vault root",
                 list: () => listVaultFolders(vault),
+                files: () => listVaultMarkdownFiles(vault),
+                recentKey: "vault-folder",
                 blocked: vault.trim() === "" ? "Set the Obsidian vault folder in Settings." : undefined,
               }).then((rel) => { if (rel !== null) pickSubfolder(rel); })}
             />

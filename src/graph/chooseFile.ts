@@ -20,6 +20,10 @@ export interface ChooseOptions {
   empty?: string;
   rootLabel?: string;
   blocked?: string;
+  readHead?: (rel: string, chars: number) => Promise<string>;
+  stat?: (rel: string) => Promise<{ mtimeMs: number | null } | null>;
+  recentKey?: string;
+  files?: () => Promise<string[]>;
 }
 
 const slashed = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "");
@@ -58,6 +62,11 @@ export async function chooseFile(o: ChooseOptions): Promise<string | null> {
       rootLabel: o.rootLabel,
       empty: o.empty ?? (kind === "folder" ? "No folders" : "No files"),
       blocked: o.blocked,
+      readHead: o.readHead,
+      listKey: `${kind}|${o.root}|${(o.extensions ?? []).join(",")}`,
+      stat: o.stat,
+      recentKey: o.recentKey,
+      files: o.files,
       answer: (rel) => { filePicker.close(); resolve(rel); },
     });
   });

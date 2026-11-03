@@ -17,6 +17,8 @@ export function isDesktop(): boolean {
 
 export interface FsProvider {
   readTextFile(path: string): Promise<string>;
+  /** At most the first `chars` characters, never the whole of a big file; a provider without it reads whole and cuts. */
+  readTextHead?(path: string, chars: number): Promise<string>;
   readDir(path: string): Promise<{ name: string; isDirectory: boolean; isFile: boolean }[]>;
   writeTextFile(path: string, content: string): Promise<void>;
   rename(from: string, to: string): Promise<void>;
@@ -53,6 +55,10 @@ function baseFs(): FsProvider { return _provider ?? tauriFs; }
 
 const fsDispatch: FsProvider = {
   readTextFile: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).readTextFile(p),
+  readTextHead: (p, chars) => {
+    const f = isDemoVaultPath(p) ? demoVaultFs : baseFs();
+    return f.readTextHead ? f.readTextHead(p, chars) : f.readTextFile(p).then((t) => t.slice(0, chars));
+  },
   readDir: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).readDir(p),
   writeTextFile: (p, c) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).writeTextFile(p, c),
   rename: (f, t) => (isDemoVaultPath(f) || isDemoVaultPath(t) ? demoVaultFs : baseFs()).rename(f, t),
@@ -152,6 +158,18 @@ export async function readVaultFile(root: string, relPath: string): Promise<stri
 }
 
 /** Needs the `fs:allow-stat` capability; null off desktop or when the platform omits a time. */
+/** The first `chars` characters of a vault file, for a preview: a big file is never read whole where its provider can
+ *  read a head. */
+export async function readVaultFileHead(root: string, relPath: string, chars: number): Promise<string> {
+  if (!canReadRoot(root) || !isInsideVault(relPath)) throw new Error("outside the vault");
+  return fs().readTextHead!(await fs().join(root, ...relPath.split("/")), chars);
+}
+
+/** The first `chars` characters of a file in `folder`, for a preview. */
+export async function readFileHead(folder: string, name: string, chars: number): Promise<string> {
+  return fs().readTextHead!(await fs().join(folder, ...name.split("/")), chars);
+}
+
 export async function statVaultFile(root: string, relPath: string): Promise<{ mtimeMs: number | null; birthtimeMs: number | null } | null> {
   if (!canReadRoot(root) || !isInsideVault(relPath)) return null;
   try {

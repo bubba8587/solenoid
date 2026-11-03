@@ -20,7 +20,7 @@ import { processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
-import { hasFs, isDesktop, listLocalFiles, listVaultFolders, openExternal } from "../fileBridge";
+import { hasFs, isDesktop, listLocalFiles, listVaultFolders, listVaultMarkdownFiles, openExternal, readFileHead } from "../fileBridge";
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { apiKeyStore } from "../apiKeyStore";
@@ -312,6 +312,9 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
               extensions: ["csv", "parquet"],
               current: name || undefined,
               list: () => listLocalFiles(folder),
+              readHead: (rel, chars) => readFileHead(folder, rel, chars),
+              rootLabel: "Data folder",
+              recentKey: "local-file",
               empty: "No CSV or Parquet files in the data folder",
             }).then((rel) => { if (rel) pick(rel); })}
           />
@@ -817,6 +820,8 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 current: folder || undefined,
                 rootLabel: "Whole vault",
                 list: () => listVaultFolders(vault),
+                files: () => listVaultMarkdownFiles(vault),
+                recentKey: "vault-folder",
                 blocked: vault.trim() === "" ? "Set the Obsidian vault folder in Settings." : undefined,
               }).then((rel) => { if (rel !== null) pickFolder(rel); })}
             />

@@ -7,6 +7,10 @@ the dev-notes digests are the record. **1.4 is built** (2026-09-16: every promot
 structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tree (`dte.md`).
 
+## Bugs reported, not yet fixed
+
+- **Card charts colored with `c=[color]` keep the old colors on a palette change** (author 2026-11-03): the chart doesn't redraw when the palette moves.
+
 ## Leaves the code breaks
 
 Each line is a leaf whose rule the code doesn't keep yet. The leaf carries an `*Unenforced:*` bullet pointing here ([dte.md](dte.md) § Solenoid practice). Highest stakes first; delete a line when the code keeps the rule, and delete the leaf's bullet with it.
