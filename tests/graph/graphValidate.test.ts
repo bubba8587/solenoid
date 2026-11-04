@@ -1,9 +1,4 @@
-// [[B12]] losslessSaves
-// The strict validating reader (graphValidate.ts): every silently-repaired
-// load condition must surface as a repair-grade issue, and — just as load-
-// bearing — nothing a real save contains may false-positive. The seed sweep at
-// the bottom is that guard: every shipped seed, validated both as JSON and
-// through its text form, must come back clean.
+// [[B12]] losslessSaves, [[save-format#The strict validator]]
 
 import type { GraphNode } from "../../src/graph/graphModel";
 import { describe, it, expect } from "vitest";
@@ -192,9 +187,6 @@ describe("formatIssues", () => {
 });
 
 // ─── The false-positive guards ──────────────────────────────────────────────────
-// Every Add-menu leaf, saved exactly as its factory constructs it, must
-// validate clean — this is what makes the validator's checks (init keys, op
-// vocabulary, literal declarations) safe to enforce across the whole surface.
 
 describe("catalog sweep", () => {
   it("every catalog leaf validates clean as a single-node save", async () => {

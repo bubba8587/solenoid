@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C28]] literalsIffEditable
+// [[B12]] losslessSaves, [[C28]] literalsIffEditable, [[save-format#Every save passes through the text form]], [[save-format#Node lines]]
 import { describe, it, expect } from "vitest";
 import { isDeepStrictEqual } from "node:util";
 import type { GraphNode } from "../../src/graph/graphModel";
@@ -8,9 +8,7 @@ import { writeTextForm, readTextForm } from "../../src/graph/textForm";
 import type { SavedGraph, SavedNode, SavedConnection } from "../../src/graph/persistence";
 import { CURRENT_SAVE_VERSION } from "../../src/graph/persistenceCore";
 
-// persistenceSweep.test.ts proves init is a fixed point through a constructor; this proves the FILE
-// carries it: every catalog node, every literal, and a cable on every socket survive the text form a
-// save passes through, and the node rebuilt from what comes back captures the same init.
+
 
 type AnyNode = Record<string, unknown>;
 

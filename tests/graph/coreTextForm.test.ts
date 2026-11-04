@@ -1,8 +1,5 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec, [[B12]] losslessSaves
-// The text form: every seed written to text reads back to the same nodes and cables and writes the same text again,
-// and the hand-written texts (escapes, number spellings, key order, the malformed ones) read as frozen
-// (fixtures/core/text-form.json.gz; `crates/solenoid-graph/tests/text_form.rs` holds the Rust to the same answers).
-// Compared as text, since a save's key order is part of it.
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[B12]] losslessSaves, [[save-format#The text form]]
+// The text form's frozen answers (fixtures/core/text-form.json.gz), compared as text.
 import { describe, expect, it } from "vitest";
 import { frozen } from "./coreFixtures";
 import { SEEDS } from "../../src/graph/seeds";

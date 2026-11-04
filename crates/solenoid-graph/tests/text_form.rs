@@ -1,6 +1,5 @@
-// [[B12]] losslessSaves, [[D99]] rustIsSpec
-//! The text form held to the frozen answers the TypeScript gave over every seed graph and hand-written texts
-//! (`fixtures/core/text-form.json.gz`, written by `tests/graph/coreTextForm.test.ts`).
+// [[B12]] losslessSaves, [[D99]] rustIsSpec, [[save-format#The text form]]
+//! The text form held to the frozen answers in `fixtures/core/text-form.json.gz`.
 
 use std::io::Read;
 
