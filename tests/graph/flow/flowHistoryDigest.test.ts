@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator
+// [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator, [[drawn-cables#Selection and editing]]
 import { describe, it, expect } from "vitest";
 import { describeGraphDelta, sameIgnoringDims } from "../../../src/graph/flow/flowHistoryDigest";
 import type { SavedGraph, SavedNode } from "../../../src/graph/persistence";

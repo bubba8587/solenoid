@@ -1,3 +1,5 @@
+// [[A1]] visualGraphCalculator, [[drawn-cables#Geometry]], [[drawn-cables#Per-point heading]], [[drawn-cables#Pointer and touch]],
+// [[drawn-cables#Drawing mode]], [[drawn-cables#Selection and editing]], [[drawn-cables#Saving and loading]]
 import { describe, expect, it, beforeEach } from "vitest";
 import {
   drawnCablePath,
@@ -43,7 +45,6 @@ describe("drawnCablePath — the drawers, chained point to point", () => {
     for (const shape of SHAPES) {
       const d = drawnCablePath(shape, pts);
       expect(d.startsWith("M ")).toBe(true);
-      // A second M would break marker/join behavior across the joints.
       expect(d.slice(1).includes("M")).toBe(false);
     }
   });
@@ -89,8 +90,6 @@ describe("drawnCablePath — the drawers, chained point to point", () => {
 
 describe("drawnHeadings — the shared tangent at each joint", () => {
   it("an interior point takes the chord through its neighbours", () => {
-    // Both spans are handed the SAME heading at the shared point, which is what
-    // keeps the drawers' rigid end stubs collinear (no kink at the joint).
     const h = drawnHeadings([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 20, y: 0 }]);
     expect(h).toEqual([0, 0, 0]);
   });
@@ -104,8 +103,6 @@ describe("drawnHeadings — the shared tangent at each joint", () => {
   it("a point's own angle REPLACES the derived chord", () => {
     const pts: DrawnPoint[] = [{ x: 0, y: 0 }, { x: 10, y: 0, angle: 90 }, { x: 20, y: 0 }];
     expect(drawnHeadings(pts)[1]).toBe(90);
-    // Both spans at that point read the SAME entry, so an override rotates the cable
-    // through the point instead of opening a kink.
     expect(drawnHeadings(pts)[0]).toBe(0);
   });
 
@@ -115,8 +112,7 @@ describe("drawnHeadings — the shared tangent at each joint", () => {
   });
 
   it("snaps a DERIVED heading to the 45° grid, like the dial", () => {
-    // A cable drawn at ~37° reads back at 45° with no dial interaction — the auto
-    // heading already sits where the dial would pin it.
+    // Drawn at ~37°.
     const shallow = drawnHeadings([{ x: 0, y: 0 }, { x: 100, y: 20 }]); // ~11.3° → 0
     expect(shallow[0]).toBe(0);
     const mid = drawnHeadings([{ x: 0, y: 0 }, { x: 100, y: 75 }]); // ~36.9° → 45
@@ -127,7 +123,6 @@ describe("drawnHeadings — the shared tangent at each joint", () => {
   });
 
   it("leaves a pinned override untouched even off the grid", () => {
-    // Only DERIVED headings snap; an explicit angle is the user's, passed through as-is.
     expect(drawnHeadings([{ x: 0, y: 0, angle: 30 }, { x: 10, y: 0 }])[0]).toBe(30);
   });
 });
@@ -348,7 +343,6 @@ describe("drawModeStore", () => {
     drawModeStore.undoPoint();
     expect(drawModeStore.pending()).toHaveLength(2);
     const c = drawModeStore.finish();
-    // Finishing leaves the tool and selects the new cable, so its panel opens.
     expect(drawModeStore.armed()).toBe(false);
     expect(drawModeStore.pending()).toHaveLength(0);
     expect(drawnCableStore.all()).toHaveLength(1);
@@ -382,8 +376,6 @@ describe("drawModeStore", () => {
   });
 
   it("a cursor move wakes ONLY the cursor subscribers", () => {
-    // The chrome (toolbar toggle, menu bar) subscribes to the structural notifier; if a
-    // pointermove woke it, the app bar would re-render at pointer rate.
     let structural = 0;
     let cursor = 0;
     const offA = drawModeStore.subscribe(() => structural++);
