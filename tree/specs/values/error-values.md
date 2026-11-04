@@ -160,7 +160,7 @@ One rule per output cell, decided before the op, is built into every element-wis
 2. otherwise a `null` operand gives `null`;
 3. otherwise compute.
 
-**Error beats missing.** When a cell is both an error and missing, the error wins and passes on unchanged; it never turns into text, NaN, or `[object Object]`. Of the two, the error is the one the user must see: checking for missing first would drop the error or stringify it, and a real failure would show up as a blank. The same order binds a node that reads its settings and inspects a list for errors ([[input-roles]], "Where the check goes").
+**Error beats missing.** When a cell is both an error and missing, the error wins and passes on unchanged; it never turns into text, NaN, or `[object Object]`. Of the two, the error is the one the user must see: checking for missing first would drop the error or stringify it, and a real failure would show up as a blank. The same order binds a node that reads its settings and inspects a list for errors ([[input-roles#Where the check goes]]).
 
 Every broadcaster zips ragged lists to the longest, and a padded position is `null`. The non-numeric families (text, whose result is often another family) use `broadcast_err` too: its body may answer any value, and only a number goes through the guard.
 
