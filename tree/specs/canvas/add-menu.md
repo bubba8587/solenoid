@@ -6,7 +6,7 @@ tags: [spec, canvas]
 
 # Spec: Add menu
 
-Serves [[C138]] addMenuReachesAll: every node can be added from the menu in some form, and every choice of how the menu is arranged is the author's hand design, recorded here and nowhere else. The one standing exception: the cards [[D121]] hiddenUntilTheirPass keeps out of the menus for 1.6 (`hidden: true` in `nodeCatalog.ts`).
+Serves [[C138]] addMenuReachesAll: every node can be added from the menu in some form, and every choice of how the menu is arranged is the author's hand design, recorded here and nowhere else. A node the author holds back is `hidden: true` in `nodeCatalog.ts`: it leaves the menu and search but still loads and computes in a saved document.
 
 Serves [[B16]] oneFormulaSurface: every name a node shows has one home ([[#Where each name comes from]]) and a row's search words reach wider than its name ([[#A row's name and its search words]]). Placed nodes are titled by [[D22]] oneNamePerCard. It covers what the system does and blocks, and the decision each behavior serves.
 
