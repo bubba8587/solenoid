@@ -1,5 +1,5 @@
 # The Rust crates' own tests: the core ([[C130]] rustCore, the frame-verb corpus natively), the scheduler, the
-# desktop's Parquet reader and the graph core. It runs only when a crate or the corpus changes, so an ordinary push asks for one
+# desktop's Parquet reader and the graph core. It runs only when a crate, the corpus or the frozen answers the crates replay change, so an ordinary push asks for one
 # runner, not several.
 name: Engine test
 
@@ -8,11 +8,13 @@ on:
     paths:
       - "crates/**"
       - "fixtures/frame-verbs/**"
+      - "fixtures/core/**"
       - ".github/workflows/engine-test.yml"
   pull_request:
     paths:
       - "crates/**"
       - "fixtures/frame-verbs/**"
+      - "fixtures/core/**"
       - ".github/workflows/engine-test.yml"
   workflow_dispatch:
 
