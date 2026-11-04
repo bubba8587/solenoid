@@ -26,6 +26,10 @@ impl Host for Test {
         let sum: f64 = inputs.values().flatten().sum();
         ready(Ok(keymap! { "out" => sum + 1.0 }))
     }
+
+    fn missing_output(_: &str) -> Option<f64> {
+        Some(f64::NAN)
+    }
 }
 
 fn port(key: &str, ty: &str) -> (String, String) {
@@ -257,4 +261,32 @@ fn the_engine_reads_the_model_ports_and_registers_nodes_added_before_it() {
     graph.engine().reset(None).unwrap();
     assert_eq!(fetch("b").get("out"), Some(&1.0));
     assert!(loop_members(graph.editor(), |_, _| false).is_empty());
+}
+
+#[test]
+fn an_output_the_answer_leaves_out_fails_only_its_node() {
+    let graph = Graph::<Test>::new();
+    graph
+        .add_node(
+            "n".into(),
+            "n",
+            &[],
+            &[port("out", "number"), port("extra", "number")],
+        )
+        .unwrap();
+    graph.use_engine().unwrap();
+    let got = now_or_never(graph.engine().fetch("n")).unwrap().unwrap();
+    assert_eq!(got.get("out"), Some(&1.0));
+    assert!(got.get("extra").is_some_and(|v| v.is_nan()));
+}
+
+#[test]
+fn a_removed_node_leaves_the_engine_cache_at_once() {
+    let graph = Graph::<Test>::new();
+    two_nodes(&graph);
+    graph.use_engine().unwrap();
+    now_or_never(graph.engine().fetch("a")).unwrap().unwrap();
+    assert!(graph.engine().cache().get("a").is_some());
+    assert!(graph.remove_node("a").unwrap());
+    assert!(graph.engine().cache().get("a").is_none());
 }

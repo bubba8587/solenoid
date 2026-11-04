@@ -32,7 +32,6 @@ import {
   emptyFrameOf, totalLabelledKeys, sampleShapeOnCore, type Shape, type ShapeColumn,
 } from "../frameShape";
 import { csvList, type FrameShapeContext } from "./frameShapeHook";
-import { listLiteralText } from "../listLiterals";
 import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell } from "../unitValue";
@@ -518,27 +517,6 @@ export class PivotNode extends GraphNode {
 
   data(inputs: Inputs) {
     return nodeOnCore(this, inputs) as { frame: FrameOut };
-  }
-
-  /** The input's column names, which the body shows each run: saved field names the input no longer has are
-   *  dropped (`nodeOnCore`'s `coreWatch`). */
-  fieldNames?: string[];
-  static coreWatch = "fieldNames";
-  coreWatched(): void {
-    if (this.fieldNames) this.pruneFieldsTo(new Set(this.fieldNames));
-  }
-
-  /** Saved field names the input no longer has are dropped. */
-  private pruneFieldsTo(valid: Set<string>): void {
-    for (const key of ["rowFields", "colFields", "values"] as const) {
-      const cur = this.stringLiterals[key] ?? "";
-      if (cur.trim() === "") continue;
-      const next = listLiteralText(csvList(cur).filter((n) => n !== "" && valid.has(n)));
-      if (next !== cur) this.stringLiterals[key] = next;
-    }
-    for (const k of Object.keys(this.funcs)) if (!valid.has(k)) delete this.funcs[k];
-    for (const k of Object.keys(this.filterExclude)) if (!valid.has(k)) delete this.filterExclude[k];
-    if (this.detailFields.some((n) => !valid.has(n))) this.detailFields = this.detailFields.filter((n) => valid.has(n));
   }
 }
 

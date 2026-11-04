@@ -108,6 +108,18 @@ fn text(j: &Json, k: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// A saved field reads the same as the value a body shows for it; a value that isn't a plain scalar never does.
+fn saved_as(saved: &Json, v: &Cv) -> bool {
+    let Cv::V(v) = v else { return false };
+    match (saved, v) {
+        (Json::Number(n), V::Num(x)) => n.as_f64() == Some(*x),
+        (Json::String(t), V::Str(x)) => t.as_str() == &**x,
+        (Json::Bool(b), V::Bool(x)) => b == x,
+        (Json::Null, V::Null) => true,
+        _ => false,
+    }
+}
+
 thread_local! {
     static AUDIT: Cell<bool> = const { Cell::new(false) };
     static UNNAMED: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
@@ -458,14 +470,14 @@ impl Run<'_> {
         let display = std::mem::take(&mut c.display);
         match answer {
             None => {
-                self.show(display, &[]);
+                self.show(&header, display, &[]);
                 self.thrown_out(Thrown::Message(format!(
                     "{} has no body on the core",
                     header.kind
                 )))
             }
             Some(Err(e)) => {
-                self.show(display, &[]);
+                self.show(&header, display, &[]);
                 self.watch(&header, watched);
                 self.thrown_out(Thrown::Value(e))
             }
@@ -489,7 +501,7 @@ impl Run<'_> {
                         (k, val)
                     })
                     .collect();
-                self.show(display, &vals);
+                self.show(&header, display, &vals);
                 self.watch(&header, watched);
                 self.finish(&header, vals)
             }
@@ -510,8 +522,20 @@ impl Run<'_> {
         }
     }
 
-    /// The fields the body set for the card's component: one that is an output is that output's value.
-    fn show(&self, display: Vec<(String, Shown)>, outs: &[(String, Val)]) {
+    /// The fields the body set for the card's component: one that is an output is that output's value. A body that
+    /// rewrites a saved field (the Slider clamping its value, the Format Controller adopting a unit) leaves the call it
+    /// read stale, so the next compute reads the call again.
+    fn show(&self, header: &Header, display: Vec<(String, Shown)>, outs: &[(String, Val)]) {
+        if display
+            .iter()
+            .any(|(field, s)| match (header.call.init.get(field), s) {
+                (None, _) => false,
+                (Some(saved), Shown::V(v)) => !saved_as(saved, v),
+                (Some(_), Shown::Undef) => true,
+            })
+        {
+            self.card.direct.touch();
+        }
         for (field, s) in display {
             let v = match s {
                 Shown::Undef => Val::bare(V::Undef),

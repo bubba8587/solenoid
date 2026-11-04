@@ -209,7 +209,6 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     // ── recomputed from inputs every engine pass ──
     chartOptions: "parsed per data() from the persisted options input/literal",
     sourceColumns: "detected from the input frame per compute",
-    fieldNames: "the input's column names the body shows each run, to which the card prunes its saved fields (coreWatch)",
     describeTiles: "the Dashboard tiles Describe's body shows per compute, kept beside its summary frame",
     defVars: "the definition's variables/params, re-stashed per compute for the binding pickers",
     rawInputs: "the pass's raw wired values (chart/lookup diagnostics)",

@@ -2,8 +2,8 @@
 //! ref's columns: Join, Append and Bind Columns run their verb on their inputs' frames (a ref's plan run first) and
 //! answer a ref planning nothing yet, or one frame passed on. Table Size counts a ref's rows without reading them.
 //! Slicer and PIVOTBY over a ref read its schema, then the columns they need. PIVOTBY runs on the core's pivot and
-//! keeps its layout beside the frame; it shows the frame's column names (`fieldNames`), to which the card prunes its
-//! saved fields.
+//! keeps its layout beside the frame. A saved field the frame lacks is skipped, never dropped, so it returns when its
+//! column does.
 
 use super::frames::{card as first, core_cell, from_core, json_num, str_input, to_core, trimmed};
 use super::list::literal_items;
@@ -368,8 +368,7 @@ fn names_of(j: Option<&Json>) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// The saved fields the pivot reads, field names the input lacks dropped; the shell prunes the saved ones to the
-/// column names the body answers (`fieldNames`).
+/// The saved fields the pivot reads, field names the input lacks skipped (the saved ones stay).
 struct Fields {
     funcs: Map<String, Json>,
     exclude: Map<String, Json>,
@@ -539,7 +538,6 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
     }
     let valid: HashSet<String> = names.iter().cloned().collect();
     let fields = kept(c, &valid);
-    c.show("fieldNames", texts(&names));
     let answer = |frame: Cv| -> Answer { Ok(vec![("frame".into(), frame)]) };
     let mut lists = Vec::new();
     for key in AXES {

@@ -34,6 +34,7 @@ describe("PivotNode field lists keep names with commas and quotes", () => {
     node.stringLiterals.rowFields = listLiteralText([...rows, "Gone"]);
     node.stringLiterals.values = "Amount";
     node.data({ frame: [tricky], rowFields: [rows], colFields: [[]], values: [["Amount"]] });
-    expect(csvList(node.stringLiterals.rowFields)).toEqual(rows);
+    // A field the input lacks stays saved, to count again once its column is back.
+    expect(csvList(node.stringLiterals.rowFields)).toEqual([...rows, "Gone"]);
   });
 });

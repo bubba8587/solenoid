@@ -77,6 +77,13 @@ impl Host for Js {
         node.facts.class == "DelayedPassNode"
     }
 
+    fn missing_output(key: &str) -> Option<Val> {
+        Some(Val::from_js(boundary::sol_error(
+            "#VALUE!",
+            &format!("The card gave no answer for {key}"),
+        )))
+    }
+
     fn data<'a>(
         node: &'a JsNode,
         ports: &'a classic::Node,
@@ -676,6 +683,9 @@ const SIGNALS: [&str; 11] = [
 ];
 
 thread_local! {
+    /// Whether this thread's event loop for netcore's queue is running: work nobody awaits any more (the siblings of a
+    /// pass that stopped early) finishes as it would in JavaScript, not at the next call in.
+    static BACKGROUND: Cell<bool> = const { Cell::new(false) };
     static SIGNAL_NAMES: Vec<JsValue> = SIGNALS.iter().map(|s| JsValue::from_str(s)).collect();
 }
 
@@ -704,6 +714,11 @@ impl GraphCore {
     /// object read a field the core holds for it (`GraphEditor.adopt`).
     #[wasm_bindgen(constructor)]
     pub fn new(cancelled: Function, adopt: Function) -> GraphCore {
+        BACKGROUND.with(|spawned| {
+            if !spawned.replace(true) {
+                wasm_bindgen_futures::spawn_local(netcore::future::background());
+            }
+        });
         GraphCore {
             shared: Rc::new(Shared {
                 graph: Graph::new(),

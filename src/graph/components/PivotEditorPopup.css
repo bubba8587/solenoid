@@ -116,6 +116,8 @@
 .pivot-chip:active { cursor: grabbing; }
 /* A clear but legible "used" cue: a configured pivot has most fields used, and 0.55 washed the list out. */
 .pivot-chip--used { opacity: 0.74; }
+/* A saved field the input lacks right now: kept, and set apart until its column comes back. */
+.pivot-chip--missing { border-style: dashed; border-color: var(--sol-warn); color: var(--text-muted); }
 .pivot-chip__glyph {
   display: inline-flex;
   align-items: center;

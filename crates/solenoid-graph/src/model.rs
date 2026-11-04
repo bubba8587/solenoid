@@ -31,6 +31,12 @@ pub trait Host: 'static {
     fn delayed(_node: &Self::Node) -> bool {
         false
     }
+
+    /// What an output the node's answer left out carries, so only that node fails; `None` keeps the engine's
+    /// `MissingOutputs`, which fails the whole fetch.
+    fn missing_output(_key: &str) -> Option<Self::Value> {
+        None
+    }
 }
 
 /// The input of a Delayed Pass card the engine never fetches.
@@ -61,7 +67,18 @@ impl<H: Host> DataflowNode<H::Value> for GraphNode<H> {
         &self,
         inputs: Inputs<H::Value>,
     ) -> LocalBoxFuture<'_, Result<Outputs<H::Value>, Error>> {
-        H::data(&self.object, &self.classic, inputs)
+        let answer = H::data(&self.object, &self.classic, inputs);
+        Box::pin(async move {
+            let mut out = answer.await?;
+            for (key, _) in self.classic.outputs().iter() {
+                if !out.contains_key(key)
+                    && let Some(v) = H::missing_output(key)
+                {
+                    out.insert(key.to_owned(), v);
+                }
+            }
+            Ok(out)
+        })
     }
 }
 
@@ -258,9 +275,14 @@ impl<H: Host> Graph<H> {
         self.finish(now_or_never(self.editor.add_node(node)))
     }
 
-    /// `Ok(false)` when a `noderemove` pipe cancelled it.
+    /// `Ok(false)` when a `noderemove` pipe cancelled it. A removed node's cached run goes with it (cancelled if still
+    /// in flight), where upstream keeps it until the next full reset.
     pub fn remove_node(&self, id: &str) -> Result<bool, Failure<H::Thrown>> {
-        self.finish(now_or_never(self.editor.remove_node(id)))
+        let removed = self.finish(now_or_never(self.editor.remove_node(id)))?;
+        if removed {
+            self.engine.cache().delete(id);
+        }
+        Ok(removed)
     }
 
     /// `Ok(false)` when a `connectioncreate` pipe cancelled it.

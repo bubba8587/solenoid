@@ -94,6 +94,9 @@ export function PivotEditorPopup() {
   const close = () => { pivotEditor.close(); state.onClosed?.(); };
   const fields = node.sourceColumns ?? [];
   const typeOf = (name: string) => fields.find((f) => f.name === name)?.type ?? "number";
+  // A saved field whose column the input lacks right now stays in the layout, marked, and counts again once it's back.
+  const isMissing = (name: string) => fields.length > 0 && !fields.some((f) => f.name === name);
+  const chipTitle = (field: string) => (isMissing(field) ? `${field} · not in the input now` : `${field} · ${typeOf(field)}`);
 
   // Saved and recorded at once, not on the compute's finish, which manual calculation or an early-out pass would skip.
   function commit(next: Cfg) {
@@ -180,12 +183,12 @@ export function PivotEditorPopup() {
   const fieldChip = (field: string, zone: Zone) => (
     <span
       key={field}
-      className={`pivot-chip pivot-chip--${typeOf(field)}`}
+      className={`pivot-chip pivot-chip--${typeOf(field)}${isMissing(field) ? " pivot-chip--missing" : ""}`}
       draggable
       onDragStart={() => { drag.current = { from: zone, field }; }}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); applyDrop(zone, zoneArr(cfg, zone).indexOf(field)); }}
-      title={`${field} · ${typeOf(field)}`}
+      title={chipTitle(field)}
     >
       <span className="pivot-chip__glyph">{TYPE_GLYPH(typeOf(field))}</span>
       <span className="pivot-chip__name">{field}</span>
@@ -210,11 +213,11 @@ export function PivotEditorPopup() {
   };
 
   const valueChip = (field: string) => (
-    <span key={field} className={`pivot-chip pivot-chip--${typeOf(field)} pivot-chip--value`} draggable
+    <span key={field} className={`pivot-chip pivot-chip--${typeOf(field)} pivot-chip--value${isMissing(field) ? " pivot-chip--missing" : ""}`} draggable
       onDragStart={() => { drag.current = { from: "vals", field }; }}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); applyDrop("vals", cfg.vals.indexOf(field)); }}
-      title={`${field} · ${typeOf(field)}`}>
+      title={chipTitle(field)}>
       <span className="pivot-chip__name">{field}</span>
       <select className="pivot-chip__func" value={cfg.funcs[field] ?? node.agg} onChange={(e) => setFunc(field, e.target.value as AggOp)} onPointerDown={(e) => e.stopPropagation()}>
         {FUNC_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}

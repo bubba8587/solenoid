@@ -228,14 +228,19 @@ describe("Details ([[C127]] pivotView)", () => {
     expect(detailCellText({ name: "s", type: "string", values: [] }, null)).toBe("");
   });
 
-  it("saves with the node and prunes a column the source lost", () => {
+  it("saves with the node and keeps a field whose column the source lost, skipping it until it comes back", () => {
     const n = new PivotNode({ detailFields: ["Rep"] });
     expect(extractInit(n).detailFields).toEqual(["Rep"]);
     expect(extractInit(new PivotNode()).detailFields).toBeUndefined();
-    n.stringLiterals = { rowFields: "Region", colFields: "", values: "Amt" };
+    n.stringLiterals = { rowFields: "Region, Gone", colFields: "", values: "Amt" };
+    n.funcs = { Amt: "sum", Gone: "max" };
     n.detailFields = ["Rep", "Gone"];
-    n.data({ frame: [sales], rowFields: [["Region"]], colFields: [[]], values: [["Amt"]] } as never);
-    expect(n.detailFields).toEqual(["Rep"]);
-    expect(pivotLayoutOf(n.cachedResult as FrameValue)!.details?.map((d) => d.name)).toEqual(["Rep"]);
+    n.data({ frame: [sales], rowFields: [["Region", "Gone"]], colFields: [[]], values: [["Amt"]] } as never);
+    expect(n.detailFields).toEqual(["Rep", "Gone"]);
+    expect(n.stringLiterals.rowFields).toBe("Region, Gone");
+    expect(n.funcs).toEqual({ Amt: "sum", Gone: "max" });
+    const layout = pivotLayoutOf(n.cachedResult as FrameValue)!;
+    expect(layout.details?.map((d) => d.name)).toEqual(["Rep"]);
+    expect(layout.rowFields).toEqual(["Region"]);
   });
 });
