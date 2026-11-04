@@ -6,7 +6,7 @@ import type { PresentationNode } from "../nodes/presentation";
 import { CloseIcon } from "./CloseIcon";
 import "./PresentationOverlay.css";
 
-// The canvas itself is the slide (tree/specs/canvas/layout-chrome.md § Presenting).
+// The canvas itself is the slide ([[layout-chrome#Push or overlay: how the pieces interact]], Presenting).
 
 export function PresentationOverlay() {
   useSyncExternalStore(presentationStore.subscribe, presentationStore.version);

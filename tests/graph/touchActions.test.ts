@@ -1,4 +1,5 @@
-// [[C93]] gestureByPointerType, [[touch-gestures#Chrome (bars and pop-ups)]], [[touch-gestures#Device configurations]]
+// [[C93]] gestureByPointerType, [[touch-gestures#Chrome (bars and pop-ups)]], [[touch-gestures#Device configurations]],
+// [[layout-chrome#The two envelopes]]
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 
@@ -40,14 +41,6 @@ describe("the mobile bar and the tablet top-bar actions share one source", () =>
   });
 });
 
-// ─── The header envelope is MEASURED, not written down ───────────────────────
-// Six top-anchored overlays used to hard-code an offset derived from the same
-// 66px header height. That is the documented source of the recurring "overlay
-// overlaps a bar" bug (tree/specs/canvas/layout-chrome.md was started for it: the align pill
-// shipped at 56px against an 82px bar and landed inside the toolbar). A TABLET
-// wraps the bar to a second row, and where it wraps depends on the viewport —
-// so the envelope stopped being a number anyone could write down. Header.tsx
-// measures it into `--chrome-top`; these files must derive from that var.
 describe("top-anchored overlays derive from the measured header envelope", () => {
   const OVERLAYS = [
     "./NavMenu.css",
@@ -73,8 +66,6 @@ describe("top-anchored overlays derive from the measured header envelope", () =>
   it("Header publishes the measured height to the root", () => {
     const header = read("./Header.tsx");
     expect(header).toContain("ResizeObserver");
-    // To :root — the overlays are siblings elsewhere in the tree, so a var set
-    // on the header itself would never reach them.
     expect(header).toMatch(/documentElement\.style\.setProperty\(\s*\n?\s*"--chrome-top"/);
   });
 });
