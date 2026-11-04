@@ -1,10 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 
-// The complex (IM*) family is internal — tagged Cx values ([[C24]] arraySemantics). These invariants hold
-// by the algebra of complex numbers, so they need no oracle: inverses round-trip, Euler's
-// identity holds, sin²+cos²=1. Two complex results are equal iff |a−b| = 0, so `same`
-// asserts the magnitude of their difference is ~0.
+// [[C24]] arraySemantics, [[value-semantics#The value grammar]]
+// `same` asserts the magnitude of the two results' difference is ~0.
 const ev = (e: string) => compileEvaluator(e)!({}) as number;
 const z = "COMPLEX(3, 4)", w = "COMPLEX(1, -2)";
 const same = (a: string, b: string) => expect(ev(`IMABS(IMSUB(${a}, ${b}))`)).toBeCloseTo(0, 8);

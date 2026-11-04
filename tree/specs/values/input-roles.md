@@ -8,7 +8,7 @@ tags: [spec, values]
 
 Serves [[D86]] blankRoles (what a blank means depends on what the input is for), [[C80]] blankArgIsExcelBlank (a formula's empty slot), [[C24]] arraySemantics (data blanks), and [[C17]] shareImpl (the card and the formula read one declaration). It covers what the system does and blocks, and the decision each behavior serves.
 
-This file owns what a blank does once it reaches an input: the roles an input can have, the one declaration every function and card subscribes to, and how each surface reads it. How the blank gets there (unwired versus wired, `readInput`) is [[value-semantics]] "Reading an input"; what a blank then does inside a computation (totals skip it, element-wise math carries it) is the rest of [[value-semantics]]. The error codes are [[error-values]].
+This file owns what a blank does once it reaches an input: the roles an input can have, the one declaration every function and card subscribes to, and how each surface reads it. How the blank gets there (unwired versus wired, `readInput`) is [[value-semantics#Reading an input]]; what a blank then does inside a computation (totals skip it, element-wise math carries it) is the rest of [[value-semantics]]. The error codes are [[error-values]].
 
 A rule that is decided but not yet built carries a `[decided <date>]` tag and an item in the backlog (the settings sweep).
 
@@ -174,6 +174,6 @@ Two placement rules, both found by sweeping the finance cards. Neither is about 
 ## Writing a new node or function
 
 1. Name each input's role ("Choosing a role"). A formula function with a setting or a pick gets an `ARG_ROLES` entry; its card points at it with `rolesFrom`.
-2. Read data through `readInput` and declared inputs through `readRole`. Never `inputs.x?.[0] ?? this.literals.x` ([[value-semantics]] "Reading an input").
+2. Read data through `readInput` and declared inputs through `readRole`. Never `inputs.x?.[0] ?? this.literals.x` ([[value-semantics#Reading an input]]).
 3. Check what consumes the value, not only `data()`: a published field read elsewhere must hold the resolved value.
 4. Pin it in a test: a blank setting reads as its default, a blank pick is dropped, a required one is `#SYNTAX!`, and an unwired slot still uses the literal. Worked examples are in `inputRoles.test.ts` and `nodes/wiredNull.test.ts`.

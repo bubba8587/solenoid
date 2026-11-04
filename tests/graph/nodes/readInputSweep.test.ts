@@ -1,34 +1,12 @@
-// [[C24]] arraySemantics
+// [[C24]] arraySemantics, [[value-semantics#Reading an input]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// ─── The `?? literal` swallow — swept to zero, now a floor ────────────────────
-// `inputs.x?.[0] ?? this.literals.x` silently swallows a WIRED null into the node's
-// own typed literal, so a blank flowing down a cable becomes whatever value sits in
-// the box. `readInput()` (shared.ts) is the fix: a CONNECTED cable wins even when
-// its value is null; only an UNWIRED slot falls back.
-//
-// THE SPEC IS `tree/specs/values/value-semantics.md` -> "Reading an input" — what a wired blank
-// does, by the input's ROLE (operand / mode / shape / column reference / reduction
-// member / check parameter / control bound / filter condition), where the guard GOES,
-// and how `undefined` (omitted) stays distinct from `null` (unknown). Settled by the
-// author 2026-07-27: follow THIS project's value model, not Excel's optional-argument
-// defaulting. `nodes/wiredNull.test.ts` pins a worked example of each row.
-//
-// This started as a per-file ratchet counting down from ~350 sites. Every file is now
-// at zero, so it is simply a floor: a node reintroducing the idiom fails here. There
-// is no list to maintain and nothing to raise — a failure means one new read to fix,
-// not a budget to adjust.
-
-// `??` OR `||` (which swallows falsy values too), with any whitespace — including a
-// line break — between the operator and the literal read, so reformatting can't
-// hide a swallow from the floor.
+// `??` or `||`, with any whitespace (a line break included) before the literal read.
 const SWALLOW = /(\?\?|\|\|)\s*(this|node)\.(string)?[Ll]iterals/g;
 
-// Blank out comments while PRESERVING line structure, so `shared.ts`'s doc comment
-// (which describes the very idiom this counts) and notes written beside a fix don't
-// register — and so a trailing comment can't hide a live read on the same line.
+// Blanks comments out but keeps the line numbers.
 function stripComments(src: string): string {
   return src
     .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
@@ -68,7 +46,7 @@ describe("wired-null swallow — swept, and stays swept", () => {
         `disposition rather than being replaced by whatever is typed in the node's box.\n` +
         `Omit the \`?? default\` when the input has a genuine OMITTED reading — readInput\n` +
         `then hands back undefined for that and null for a blank cable.\n` +
-        `Spec: tree/specs/values/value-semantics.md -> "Reading an input". Worked examples of every\n` +
+        `Spec: [[value-semantics#Reading an input]]. Worked examples of every\n` +
         `role: nodes/wiredNull.test.ts.`,
     ).toEqual([]);
   });

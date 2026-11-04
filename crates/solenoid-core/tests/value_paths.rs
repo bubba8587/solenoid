@@ -1,7 +1,5 @@
-// [[D114]] dateIsAKind
-//! Each way of reading a value for a comparison, a key or a cell has one path (`tree/specs/values/value-semantics.md`
-//! § Comparing, keying and storing a value). A card that builds its own converter with a catch-all lets a new kind fall
-//! to text or to a shared key; this fails on one.
+// [[D114]] dateIsAKind, [[value-semantics#Comparing, keying and storing a value]]
+//! Fails a local value reading outside the places allowed one.
 
 use std::path::Path;
 
@@ -21,18 +19,13 @@ fn sources(dir: &Path, out: &mut Vec<(String, String)>) {
     }
 }
 
-/// The places allowed each pattern, with why.
+/// Each pattern and the places allowed it.
 const ALLOWED: &[(&str, &[&str])] = &[
-    // A local `===` copy instead of `strict_equals`.
     ("fn strict_eq(", &[]),
-    // A value-to-cell `match` beside the one in `FrameCell::of_scalar`: the computed-cell tagging (a NaN, a format and
-    // a list each have their own error), the binary list transport (a date there keeps its tag on the JSON path), a
-    // frame function's argument (a date is refused there until its column is typed) and Cast to Logical's reading.
     (
         "V::Num(n) => FrameCell::Num(*n)",
         &["src/frame.rs", "src/nodes/columnar.rs", "src/frame_fns.rs", "src/nodes/text.rs"],
     ),
-    // A value's display text made into a cell something then compares.
     ("FrameCell::str(&value_text(", &["src/nodes/list.rs"]),
 ];
 
@@ -49,5 +42,9 @@ fn every_value_reading_goes_through_its_one_path() {
             }
         }
     }
-    assert!(found.is_empty(), "a local value reading; use its one path (value-semantics.md):\n{}", found.join("\n"));
+    assert!(
+        found.is_empty(),
+        "a local value reading; use its one path ([[value-semantics#Comparing, keying and storing a value]]):\n{}",
+        found.join("\n")
+    );
 }

@@ -153,7 +153,7 @@ mindmap
 
 ## Reading inputs
 
-- **`data()` reads inputs the value-semantics way** ([[value-semantics]], "Reading an input"):
+- **`data()` reads inputs the value-semantics way** ([[value-semantics#Reading an input]]):
   - a null is skipped, not treated as zero ([[C24]] arraySemantics);
   - an error beats a missing value in the same cell ([[C24]] arraySemantics);
   - a producer turns a non-finite result into a classified error rather than emitting it bare ([[C24]] arraySemantics);

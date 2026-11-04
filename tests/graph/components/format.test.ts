@@ -1,4 +1,4 @@
-// [[C118]] formatTravelsWithValue
+// [[C118]] formatTravelsWithValue, [[value-semantics#Display]]
 import { describe, it, expect } from "vitest";
 import { formatScalar } from "../../../src/graph/components/format";
 import { settingsStore } from "../../../src/graph/settingsStore";
@@ -58,7 +58,7 @@ describe("formatScalar", () => {
     }
   });
 
-  it("Infinity renders as the ∞ glyph (tree/specs/values/value-semantics.md, author call 2026-08-05)", () => {
+  it("Infinity renders as the ∞ glyph", () => {
     expect(formatScalar(Infinity)).toBe("∞");
     expect(formatScalar(-Infinity)).toBe("-∞");
   });

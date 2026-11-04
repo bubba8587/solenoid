@@ -48,6 +48,11 @@ No scalar is a bare array, so `Array.isArray` at two depths is the complete rank
 
 A bare-array scalar collides with the list representation, and every consumer that checks shape then needs its own way to tell the two apart. Complex numbers as an `[re, im]` tuple once forced four such workarounds: complex.ts's own broadcaster, special cases in `coerceInputs`, array canonicalization in `set_key`, and `ArrayChip.is2D`, where a complex list reaching a generic chip rendered as a two-column table. With one grammar, [[C15]] matricesInFormulas admits matrices without a branded value type, and a new nesting scheme would reopen the ambiguity.
 
+Tests:
+
+- `broadcastRules.test.ts`: a value deeper than a matrix is `#SHAPE!` in a formula.
+- `complexInvariants.test.ts`: the tagged complex value through the IM functions, checked by the algebra (inverses round-trip, Euler's identity, sin² + cos² = 1), so it needs no oracle.
+
 Three distinctions carry the most weight:
 
 - **Null versus error.** A blank cell is data you don't have; an error is an answer that failed. Aggregators skip null but propagate errors, Filter drops rows whose predicate is null, Fill and Coalesce recover null, and IFERROR and IFNA recover errors. Detection and recovery form a 2 × 2: ISNULL, ISERROR and ISNA detect; Fill, Coalesce, IFERROR and IFNA recover.
@@ -116,11 +121,19 @@ mindmap
 
 The one sanctioned divergence ([[C24]] arraySemantics): the formula `AND(x)` is a reduction, so it skips nulls as Excel does, while the BooleanOp node is element-wise and uses Kleene logic. Same word, two contexts, both correct. Any other disagreement between a node and a formula is a bug.
 
+The Kleene family reads a wired logical as the real boolean the input boundary hands it as well as the 0 or 1 a number cable carries: `AND(FALSE, TRUE)` is FALSE and `NOT(FALSE)` is TRUE either way, and a wired blank still reads as unknown.
+
+Tests:
+
+- `valueKinds.test.ts`: the Aggregate's list prep skips `null` and propagates the first error.
+- `broadcastContract.test.ts`: element-wise calls, unary minus and percent carry an error or a `null` per cell.
+- `wiredNull.test.ts` ("Kleene logic through the real coercion wrapper"): AND and NOT through the input boundary, wired as numbers and as booleans, and a wired blank as unknown.
+
 **Scalar operators.** The operator table (`apply_op`: errors first, then `null` propagating, the logical bridge, case-blind `=`, code-unit ordering with `#TYPE!` across types) and blank arguments (a blank slot is `null` unless `ARG_ROLES` declares its role, [[input-roles]], so `IF(x,,y)` answers `null`, not 0) are in [[formula-language]].
 
-## Reading an input: a wired blank versus the typed literal
+## Reading an input
 
-The table above says how a missing value behaves once it is inside a computation. This section says how it gets there, which is a separate decision every node makes and which nodes long got wrong. **Read this section before writing a new node.**
+The table above says how a missing value behaves once it is inside a computation. This section says how it gets there, a wired blank versus the typed literal, which is a separate decision every node makes. **Read this section before writing a new node.**
 
 A value can also enter a computation through a reference resolved against a computed column's row, rather than through a socket ([[C22]] rowFormulaRefs). Its resolution order and what a miss answers are in [[computed-columns]]. A new surface must supply the core's `sideValue` hook and answer a miss explicitly, as Frame Input does with `#REF!`; the core supplies no default of its own.
 
@@ -132,8 +145,12 @@ Most inputs are both a socket and a field on the card. Read them with `readInput
 const n = readInput(inputs.count, this.literals.count ?? 1);
 ```
 
-- When the slot is **unwired** (`undefined`), the typed literal is the value: the field on the card is the input.
-- When the slot is **wired**, the cable's value wins, **even when it is `null`**: the typed value never stands in for a wired blank. What the blank then means is the input's role ([[input-roles]]).
+- When the slot is **unwired** (it arrives as `undefined`), the typed literal is the value: the field on the card is the input.
+- When the slot is **wired**, the cable's value wins, **even when it is `null`** (a wired blank arrives as `[null]`): the typed value never stands in for a wired blank. What the blank then means is the input's role ([[input-roles]]).
+
+An input with a real omitted reading passes no default: `readInput` then hands back `undefined` for the unwired slot and `null` for a blank cable, so the two stay apart.
+
+Both halves matter: a fix that propagated a blank whether or not the slot was wired would break every node's typed default as badly as the swallow breaks the wired blank. So each case is tested in a pair, the wired blank beside the unwired literal.
 
 ```mermaid
 flowchart TD
@@ -149,9 +166,15 @@ flowchart TD
     role -->|"required,<br>no default"| syn["#SYNTAX!"]
 ```
 
-**Never write `inputs.x?.[0] ?? this.literals.x`.** `??` can't tell "no cable" from "a cable carrying blank", so it silently puts the card's value in place of the graph's answer: a number the user never asked for, with an origin they can't see. This is the most common way a Solenoid node has produced a confidently wrong answer. `tests/graph/nodes/readInputSweep.test.ts` is a floor: any occurrence under `src/graph/nodes/` fails it.
+**Never write `inputs.x?.[0] ?? this.literals.x`.** `??` can't tell "no cable" from "a cable carrying blank", so it silently puts the card's value in place of the graph's answer: a number the user never asked for, with an origin they can't see. This is the most common way a Solenoid node has produced a confidently wrong answer. The project follows its own value model here, not Excel's defaulting of an omitted argument.
 
 **A wildcard slot's literal lives in one of two maps.** A slot typed `any` or `trueany` is element-agnostic, so its typed literal may be a number (`literals`) or text (`stringLiterals`). The inline field writes exactly one and clears the other, so the reader never has to break a tie. Only a node that declares `autoLiterals = true` gets that field: the value selectors IF, IFS, SWITCH and CHOOSE, whose wildcard rows are value branches, and the builders whose wildcard slots take a typed value (Build Cube, Cube Columns, Script, XMATCH, Set Cell). A wildcard sink or relay (Display, Cast, Report) leaves it off and stays wire-only. The unwired-versus-wired rule is unchanged; it just reads both maps (`pick_slot` in the core's `nodes/logic.rs`).
+
+Tests:
+
+- `readInputSweep.test.ts`: a floor at zero. Any read of a wired input with `?? literal` or `|| literal` under `src/graph/nodes/` or in the new-node templates fails it, whatever whitespace or line break sits between the operator and the literal; comments don't count, and a trailing comment can't hide a live read on its line.
+- `broadcastContract.test.ts`: `readInput` itself, unwired, wired with 0 and wired with `null`.
+- `wiredNull.test.ts`: a worked example of each role, in pairs ([[input-roles]]).
 
 ### What the node does with a blank
 
@@ -174,14 +197,30 @@ A card body never builds its own reading of a value for a comparison, a key or a
 
 Showing a value is not one of these jobs: display text (`value_text`, `formatDateSerial`) is for display and for a text function's argument, never for a value something then compares.
 
+A value-to-cell `match` of its own, beside `FrameCell::of_scalar`, is allowed in four places, each because its cells differ:
+
+- the computed-cell tagging (`frame.rs`), where a NaN, a format and a list each have their own error;
+- the binary list transport (`nodes/columnar.rs`), where a date keeps its tag on the JSON path;
+- a frame function's argument (`frame_fns.rs`), where a date is refused until its column is typed;
+- Cast to Logical's reading (`nodes/text.rs`).
+
+One place, `nodes/list.rs`, makes a value's display text into a cell something then compares. No place keeps a local copy of `strict_equals`.
+
+Tests: `value_paths.rs` (solenoid-core): scans the core's source and fails a local `===` copy, a value-to-cell `match` or a display-text cell outside the places above.
+
 ## Boundaries and bridges
 
 - **The logical and number bridge** (arrival coercion, `boundary.rs`). A logical is the number 0 or 1 ([[C133]] logicalIsZeroOrOne): FALSE is 0 and TRUE is 1 in arithmetic, comparison and every aggregate, and its TRUE/FALSE, 1/0, Yes/No or check-mark style changes only the drawing. Arriving where a logical is asked for, 0 maps to FALSE, any other number to TRUE, and **NaN maps to null** (an unknown truth value, as in R and pandas), consistent with `coerceLogical`.
 - **Text read as a number** (`decimalFromText`, `valueKinds.ts`): every place that reads a number out of text calls this one reader, from `coerceNumber` and `coerceLogical` to the frame inference, the filter and lookup verbs, the criteria family, VALUE and NUMBERVALUE, and the table popup. It accepts trimmed plain decimal or scientific text, or thousands grouped by commas (`1,234.5`). A `0x`, `0b` or `0o` radix prefix, `Infinity` and anything else is NaN, so `0x1F` is text, as in Excel. It is a call into the core's `decimal_from_text` (`crates/solenoid-core/src/value_kinds.rs`), the one implementation. Only the US form is read ([[C58]] tableInputRawText): a European `3,5` or `1.234,5` is not a number here, never reread as a different one. VALUE and Cast to Number read a comma anywhere before the decimal point as grouping ([[excel-divergences]]).
-- **Text on a number port** (arrival coercion, `boundary.rs` `family_cell`): only a wildcard cable can land text or a complex on a number-family input. It is `#TYPE!`, per cell on a list or matrix port and for the whole node on a scalar port, never a parsed number ([[B17]] typedValueModel). Pinned in `coerceInputs.test.ts` and the boundary's frozen answers (`coreBoundary.test.ts`).
+- **Text on a number port** (arrival coercion, `boundary.rs` `family_cell`): only a wildcard cable can land text or a complex on a number-family input. It is `#TYPE!`, per cell on a list or matrix port and for the whole node on a scalar port, never a parsed number ([[B17]] typedValueModel).
 - **The unit-blind boundary, and wired null versus unwired**, are arrival coercion and `readInput`: [[compute-pass]], "Arrival coercion", with the unit rules in [[unit-flow]].
 - **The IPC and frame boundary.** Non-finite numbers and per-cell errors cross the wire as tagged sentinels, and aggregates apply the scalar non-finite guard: [[frame-verbs]], "The FrameBackend seam".
 - **List ops versus relational verbs** ([[C45]] excelComparisons). List UNIQUE never dedupes error cells, since each is an independent problem, while frame Distinct dedupes by error code (errors as values, SQL identity). List and Frame Sort both put nulls and errors last, in both directions, stably.
+
+Tests:
+
+- `valueKinds.test.ts`: the logical and number bridge, and `coerceLogical` (a boolean, TRUE and FALSE text read case-blind and trimmed, a number or numeric text by the bridge, any other text as NaN, which a computation reads as `#TYPE!` naming the value).
+- `coerceInputs.test.ts` and the boundary's frozen answers (`coreBoundary.test.ts`): text on a number port.
 
 ## Display
 
@@ -189,6 +228,8 @@ Showing a value is not one of these jobs: display text (`value_text`, `formatDat
 - **`SolError`**: the red badge with its code. All 16 codes are in `errorValue.ts`, and `#OVERFLOW!` is toured in the error showcase seed.
 - **`NaN`**: the literal `NaN`, shown quietly with a muted background tint (not error red, not chip-like) and a fixed structural tooltip. Never "N/A".
 - **`Infinity`**: the `∞` glyph (`-∞` when negative), in `formatScalar` and list previews (`format.ts`).
+
+Tests: `format.test.ts` ("formatScalar"): NaN shows as `NaN`, ±Infinity as `∞` and `-∞`.
 
 ## Open divergence
 
