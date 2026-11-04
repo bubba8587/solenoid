@@ -40,6 +40,12 @@ flowchart LR
 
 **Examples:** `WorkdaysNode` (Days ↔ End-date input, date ↔ number output), `SettleNode` (people-frame ↔ ledger-cube input on its `mode`), `RecordNode` (Row and Group-by sockets per op), `ReturnsNode`, the finance nodes and `date.ts` (output family), `CableSwitchNode` (One ↔ Many output), `GetColumnNode`, `SplitFrameNode` and `AddColumnNode` (`setReadAs`, `setColType`, `setAddAs`, driven from `frameEdit.ts`), and `Expression`, `composite` and `formatController` (`setType`).
 
+## An input that follows another
+
+An input can take the kind of another input's settled type rather than its own cable's: Expect's Min and Max are `date` when the value it checks is a date (the In socket adopted a date rung) and `number` otherwise, so a date is bounded by dates ([[D120]] rangeBoundsTakeTheValuesKind). The wiring drives it, as it drives adoption, and no field does.
+
+**MUST:** a follower is a `MutableSocket` its class retypes in `settleFollowers()`, which answers the keys it retyped. `settleWildcardTypes` calls it on every node after applying the core's Type Settle, so it reads settled types, and names the card so its next call carries the new socket type ([[graph-core#Direct calls (phase C)]]); `reconcileFcTypes` then drops each cable into a retyped follower that its new type no longer takes, as `retypeInputCables` does. The settle in the core never sees a follower: it is an input with no adoption. A follower's literal for each kind is kept apart (Expect's number bounds in `literals`, its date bounds as typed text in `stringLiterals`, through `dateLiterals`), so the card keeps both as its value moves between kinds.
+
 ## The InlineCast (`InlineCast`)
 
 A formula or LAMBDA card's result takes the type it computed, and its InlineCast casts it ([[D113]] inlineCast; [[formula-language]] § Result socket). The output socket swaps at the node's own dimensionality (`ResultDim`) to the cast's family, or under ∅ to the computed one (`castResultSocket`). `resultSocket(dim, t)` is the one table, used both to build the port (`resultOut`) and to swap it in place:

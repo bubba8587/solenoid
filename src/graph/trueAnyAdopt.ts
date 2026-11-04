@@ -6,7 +6,7 @@ import { settleFacts } from "./settleFacts";
 
 /** The Type Settle (`settle.rs`): Conduit lanes and adoption to a joint fixpoint, run by the core over this editor's
  *  graph; each socket it retypes takes the new type here. */
-export function settleWildcardTypes(editor: GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>): { conduitChanged: boolean; adopted: Set<string> } {
+export function settleWildcardTypes(editor: GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>): { conduitChanged: boolean; adopted: Set<string>; followed: [string, string][] } {
   const answer = JSON.parse(editor.core().settleTypes(JSON.stringify(settleFacts(editor)))) as {
     changes: [string, "in" | "out", string, SocketDataType][];
     conduitChanged: boolean;
@@ -20,5 +20,15 @@ export function settleWildcardTypes(editor: GraphEditor<{ Node: GraphNode; Conne
     // card read it afresh, or its body keeps the type it was first called with.
     if (side === "in" && node) editor.named(id);
   }
-  return { conduitChanged: answer.conduitChanged, adopted: new Set(answer.adopted) };
+  const adopted = new Set(answer.adopted);
+  // An input that takes the kind of another input's settled type (Expect's bounds) follows it now.
+  const followed: [string, string][] = [];
+  for (const node of editor.getNodes()) {
+    const moved = (node as { settleFollowers?: () => string[] }).settleFollowers?.() ?? [];
+    if (moved.length === 0) continue;
+    adopted.add(node.id);
+    editor.named(node.id);
+    for (const key of moved) followed.push([node.id, key]);
+  }
+  return { conduitChanged: answer.conduitChanged, adopted, followed };
 }

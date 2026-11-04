@@ -48,6 +48,15 @@ export function reconcileFcTypes(
   settled: ReturnType<typeof settleWildcardTypes> = settleWildcardTypes(editor),
 ): void {
   let cablesStale = false;
+  // A follower retyped in place keeps only the cables its new type still takes.
+  for (const [id, key] of settled.followed) {
+    const inType = declaredTypeOf(editor.getNode(id)?.inputs[key]?.socket);
+    for (const c of [...editor.getConnections()]) {
+      if (c.target !== id || c.targetInput !== key) continue;
+      const outSock = editor.getNode(c.source)?.outputs?.[c.sourceOutput]?.socket;
+      if (!inType || !(outSock instanceof SolenoidSocket) || !canConnect(outSock.dataType, inType)) void editor.removeConnection(c.id);
+    }
+  }
   if (settled.conduitChanged) {
     for (const n of editor.getNodes()) {
       if (!(n instanceof ConduitNode)) continue;

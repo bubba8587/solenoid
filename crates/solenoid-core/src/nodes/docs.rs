@@ -451,6 +451,29 @@ fn has_duplicate(raw: &Cv) -> bool {
     flat.filter(|v| !missing(v)).any(|v| !seen.insert(cell_key(&v)))
 }
 
+/// A date bound: the cable's value, else the date typed on the card, kept as text beside the number bounds so a card
+/// moving between the two keeps both; blank is no bound.
+fn date_bound(c: &Call, key: &str) -> Result<V, V> {
+    use crate::excel_criteria::{parse_date, DateReading};
+    let typed = match c.string_literal(key) {
+        V::Str(s) => trim_space(&s).to_string(),
+        _ => String::new(),
+    };
+    let literal = if typed.is_empty() {
+        V::Null
+    } else {
+        match parse_date(&typed) {
+            DateReading::Serial(d) if d.is_finite() => V::Date(d.floor()),
+            DateReading::Ambiguous(e) => return Err(V::err(e)),
+            _ => {
+                let name = c.label(key);
+                return Err(super::err(ErrorCode::Value, format!("{name} reads a date, such as 1-Jan-2026")));
+            }
+        }
+    };
+    Ok(c.read_input(key, literal))
+}
+
 fn expect(c: &mut Call) -> Answer {
     let raw = card(c, "in");
     c.show("cachedValue", raw.clone());
@@ -459,8 +482,13 @@ fn expect(c: &mut Call) -> Answer {
         return Ok(vec![pass_on(c, "in", "out", raw)]);
     }
     let on = |k: &str| c.field(k).and_then(serde_json::Value::as_bool).unwrap_or(false);
-    let min = c.read_num("min", 0.0);
-    let max = c.read_num("max", 100.0);
+    let (min, max) = if c.input_type("min") != Some("date") {
+        (c.read_num("min", 0.0), c.read_num("max", 100.0))
+    } else if on("checkRange") {
+        (date_bound(c, "min")?, date_bound(c, "max")?)
+    } else {
+        (V::Null, V::Null)
+    };
     let pattern = c.read_input("pattern", text_literal(c, "pattern", ""));
     let mut values = Vec::new();
     scalar_cells(&raw, &mut values);
@@ -474,10 +502,25 @@ fn expect(c: &mut Call) -> Answer {
     }
     let (has_min, has_max) = (!matches!(min, V::Null), !matches!(max, V::Null));
     if on("checkRange") && (has_min || has_max) {
-        let bad = values.iter().any(|v| {
-            matches!(v, V::Num(n) if n.is_finite())
-                && ((has_min && value_less(v, &min)) || (has_max && value_less(&max, v)))
-        });
+        // The bounds take the kind of the value checked ([[D120]] rangeBoundsTakeTheValuesKind).
+        let kind = |v: &V| match v {
+            V::Num(n) if n.is_finite() => Some(false),
+            V::Date(n) if n.is_finite() => Some(true),
+            _ => None,
+        };
+        let bounds_dates = [&min, &max].into_iter().find_map(&kind);
+        if let Some(dates) = bounds_dates
+            && values.iter().filter_map(kind).any(|d| d != dates)
+        {
+            let what = if dates { "dates, so they check dates" } else { "numbers, so they check numbers" };
+            return Err(super::err(ErrorCode::Type, format!("Min and Max are {what} only")));
+        }
+        let less = |a: &V, b: &V| match (a, b) {
+            (V::Date(x), V::Date(y)) => x < y,
+            _ => value_less(a, b),
+        };
+        let bad =
+            values.iter().any(|v| kind(v).is_some() && ((has_min && less(v, &min)) || (has_max && less(&max, v))));
         if bad {
             violations.push("range");
         }

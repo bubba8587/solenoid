@@ -21,6 +21,7 @@ import { usePendingDraft } from "../draftFlush";
 import { decimalFromText } from "../valueKinds";
 import { fieldPlaceholder } from "../emptySlots";
 import { rolesOf } from "../nodes/shared";
+import { DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 
 // Body-height estimate only; socket placement is measured per row.
 export const INPUT_ROW_PITCH = 28;
@@ -425,6 +426,8 @@ export interface AutoLiteralHost {
   autoLiterals?: boolean;
   /** Wildcard rows take text exactly as typed, for a node whose op reads the value as text. */
   textLiterals?: boolean;
+  /** Date rows take a typed date, kept as its text beside the row's number (Expect's bounds). */
+  dateLiterals?: boolean;
   stringLiterals?: Record<string, string>;
 }
 
@@ -436,6 +439,10 @@ export function takesAutoLiteral(node: AutoLiteralHost, dt: string | undefined):
 
 export function takesTextLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
   return !!node.textLiterals && isWildcard(dt);
+}
+
+export function takesDateLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
+  return !!node.dateLiterals && dt === "date";
 }
 
 export function InlineCsvField({
@@ -608,6 +615,8 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
               <InlineAutoField num={literals[key]} text={strLiterals[key]} onChange={(v) => void setAuto(key, v)} placeholder={placeholder} />
             ) : takesTextLiteral(node, dt) ? (
               <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
+            ) : takesDateLiteral(node, dt) ? (
+              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={DEFAULT_DATE_FORMAT} />
             ) : isNumber ? (
               <InlineNumberField value={literals[key]} onChange={(v) => set(key, v)} placeholder={placeholder} />
             ) : isStr ? (

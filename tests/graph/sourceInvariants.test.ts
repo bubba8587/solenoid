@@ -58,6 +58,7 @@ describe("[[B11]] maximalMerge — a file that retypes sockets in place must rec
     "nodes/composite.ts": "port adoption synced by its own pass; the end-of-process settle runs reconcileFcTypes (process.ts)",
     "nodes/date.ts": "DateTimeValue and Workdays swap their result socket in setOp; their components (DateNodes.tsx) call retypeOutputCables",
     "nodes/finance.ts": "ReturnsNode.setOp returns `outputChanged`; its component (ReturnsNode.tsx) calls retypeOutputCables",
+    "nodes/quality.ts": "ExpectNode.settleFollowers retypes its Min and Max inputs, called by settleWildcardTypes itself, whose reconcileFcTypes drops the cables they no longer take; an input retype changes what the node accepts, not its output type",
   };
 
   it("every socket-retyping file references the reconciler (or is sanctioned, with a reason)", () => {

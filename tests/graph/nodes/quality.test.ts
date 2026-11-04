@@ -6,6 +6,13 @@ import { solError } from "../../../src/graph/errorValue";
 import { applyFcUnit } from "../../../src/graph/unitBridge";
 import type { FrameValue, FrameCell, FrameColType } from "../../../src/graph/frame";
 import { inEditor, Src } from "../cardPasses";
+import { GraphConnection, GraphNode, GraphOutput } from "../../../src/graph/graphModel";
+import { GraphEditor } from "../../../src/graph/graphEditor";
+import type { Schemes } from "../../../src/graph/schemes";
+import { MutableSocket, SolenoidSocket, type SocketDataType } from "../../../src/graph/sockets";
+import { settleWildcardTypes } from "../../../src/graph/trueAnyAdopt";
+import { reconcileFcTypes } from "../../../src/graph/fcReconcile";
+import { solDate } from "../../../src/graph/dateValue";
 
 // Expect checks over FRAMES (the audit-found blind spot: a FrameValue fell into
 // the scalar arm and every check silently no-opped) + the pre-existing
@@ -206,5 +213,54 @@ describe("Expect reads values as they're shown: units, Cubes and the allowlist b
     const u = new ExpectNode({ checkNotNull: false, checkUnique: true });
     expect(run(u, cube([["a", [1, 1]], ["b", ["x", "x"]]]))).toEqual(["unique"]);
     expect(run(u, cube([["a", [1, 1]], ["b", ["x", "y"]]]))).toEqual([]);
+  });
+});
+
+describe("Expect's range takes the kind of value it checks ([[D120]] rangeBoundsTakeTheValuesKind)", () => {
+  type Conn = { source: GraphNode; sourceOutput: string; target: GraphNode; targetInput: string };
+  const source = (type: SocketDataType) => {
+    const n = new GraphNode("Src");
+    n.addOutput("value", new GraphOutput(new SolenoidSocket(type)));
+    return n;
+  };
+  const editorOf = (nodes: GraphNode[], conns: Conn[]) => {
+    const ed = new GraphEditor<Schemes>();
+    for (const n of nodes) void ed.addNode(n as never);
+    for (const c of conns) void ed.addConnection(new GraphConnection(c.source, c.sourceOutput, c.target, c.targetInput) as never);
+    return ed;
+  };
+  const bounds = (n: ExpectNode) => [n.inputs.min?.socket, n.inputs.max?.socket].map((s) => (s as SolenoidSocket).dataType);
+
+  it("Min and Max turn date when a date is checked, and back when it goes", () => {
+    const dates = source("datelist");
+    const n = new ExpectNode({ checkRange: true });
+    const ed = editorOf([dates, n], [{ source: dates, sourceOutput: "value", target: n, targetInput: "in" }]);
+    expect(settleWildcardTypes(ed).followed).toEqual([[n.id, "min"], [n.id, "max"]]);
+    expect(bounds(n)).toEqual(["date", "date"]);
+    expect(settleWildcardTypes(ed).followed).toEqual([]);
+    expect(settleWildcardTypes(editorOf([dates, n], [])).followed).toHaveLength(2);
+    expect(bounds(n)).toEqual(["number", "number"]);
+  });
+
+  it("a number cable into Min goes when a date comes to be checked", async () => {
+    const dates = source("date");
+    const num = source("number");
+    const n = new ExpectNode({ checkRange: true });
+    const ed = editorOf([dates, num, n], [{ source: num, sourceOutput: "value", target: n, targetInput: "min" }]);
+    reconcileFcTypes(ed, null);
+    expect(ed.getConnections()).toHaveLength(1);
+    await ed.addConnection(new GraphConnection(dates, "value", n, "in") as never);
+    reconcileFcTypes(ed, null);
+    await Promise.resolve();
+    expect(ed.getConnections().map((c) => c.targetInput)).toEqual(["in"]);
+  });
+
+  it("a date is checked against the dates typed on the card", () => {
+    const n = new ExpectNode({ checkNotNull: false, checkRange: true });
+    for (const s of [n.inputs.min?.socket, n.inputs.max?.socket]) (s as MutableSocket).setType("date");
+    n.stringLiterals.min = "1-Jan-2026";
+    n.stringLiterals.max = "31-Dec-2026";
+    expect(run(n, solDate(46096))).toEqual([]);
+    expect(run(n, solDate(46400))).toEqual(["range"]);
   });
 });
