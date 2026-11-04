@@ -8,7 +8,7 @@ import { apiKeyStore } from "./apiKeyStore";
 import { AI_PROVIDER, AI_ENABLED } from "./aiKey";
 import { isMobile } from "./coarse";
 import { packsStore, allPacks, loadCustomPacks, customPacksFolder, PACK_GROUP_ORDER } from "./packs";
-import { isDesktop, isAndroidApp, pickFolderDialog, openInFileManager } from "./fileBridge";
+import { isDesktop, isAndroidApp, pickFolderDialog, openInFileManager, folderLabel } from "./fileBridge";
 import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette";
 import { appThemeStore } from "./appTheme";
 import { useRenderMode, renderModeStore } from "./renderMode";
@@ -136,7 +136,7 @@ function FolderRow({ field }: { field: SettingField }) {
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">{field.label}</span>
         {field.help && <span className="solenoid-settings__row-help">{field.help}</span>}
-        <span className="solenoid-settings__path" title={value || undefined}>{value || "Not set"}</span>
+        <span className="solenoid-settings__path" title={value ? folderLabel(value) : undefined}>{value ? folderLabel(value) : "Not set"}</span>
         {!desktop && <span className="solenoid-settings__muted">Available in the desktop app only.</span>}
       </span>
       <span className="solenoid-settings__folder-actions">
@@ -166,14 +166,14 @@ function NetworkDocRow() {
   );
 }
 
-/** Android keeps an app out of shared storage until the user turns on All files access for it (`docs/android.md`). */
+/** Android gives an app only the folders the user picks for it (`docs/android.md` § Folders on Android). */
 function AndroidFilesRow() {
   if (!isAndroidApp()) return null;
   return (
     <div className="solenoid-settings__row solenoid-settings__row--folder">
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">Files on this phone</span>
-        <span className="solenoid-settings__row-help">To read a vault or a data folder, turn on All files access for Solenoid: Android Settings, Apps, Special app access, All files access.</span>
+        <span className="solenoid-settings__row-help">Solenoid sees only the folders you choose below. Android asks once for each and remembers it.</span>
       </span>
     </div>
   );

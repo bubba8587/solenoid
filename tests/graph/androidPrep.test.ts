@@ -15,11 +15,10 @@ const TEMPLATE = `<?xml version="1.0" encoding="utf-8"?>
 `;
 
 describe("android-prep patchManifest", () => {
-  it("adds All files access once, beside the template's INTERNET", () => {
+  it("asks for no storage permission (the user grants folders), and keeps the template's INTERNET once", () => {
     const out = patchManifest(TEMPLATE) as string;
-    expect(out.match(/MANAGE_EXTERNAL_STORAGE/g)).toHaveLength(1);
+    expect(out).not.toMatch(/STORAGE/);
     expect(out.match(/android\.permission\.INTERNET/g)).toHaveLength(1);
-    expect(out.indexOf("MANAGE_EXTERNAL_STORAGE")).toBeLessThan(out.indexOf("<application"));
   });
 
   it("allows plain http in release too", () => {
@@ -36,11 +35,10 @@ describe("android-prep patchManifest", () => {
 
 describe("the Android capability", async () => {
   const { readFileSync } = await import("node:fs");
-  const cap = JSON.parse(readFileSync("src-tauri/capabilities/android.json", "utf8")) as { permissions: Array<string | { identifier: string; allow: { path: string }[] }> };
-  const paths = (id: string) => (cap.permissions.find((p) => typeof p !== "string" && p.identifier === id) as { allow: { path: string }[] }).allow.map((a) => a.path);
-  // `/storage/emulated/0/**` matches everything inside shared storage but not the folder itself (Tauri's glob scope,
-  // checked 2026-11-04), and the Android pickers start by listing that folder.
-  it("lets the pickers list, test and stat shared storage's root itself", () => {
-    for (const id of ["fs:allow-read-dir", "fs:allow-stat", "fs:allow-exists"]) expect(paths(id)).toContain("/storage/emulated/0");
+  const cap = readFileSync("src-tauri/capabilities/android.json", "utf8");
+  // The app reaches only the folders the user grants, through the saf command (docs/android.md § Folders on Android).
+  it("grants no file scope", () => {
+    expect(cap).not.toMatch(/"fs:/);
+    expect(cap).not.toMatch(/storage/);
   });
 });

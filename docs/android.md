@@ -15,37 +15,44 @@ differently (pickers, storage permission) is handled.
 |---|---|
 | The window frame, Linux shims and debug icon run on desktop only; `tauri-plugin-decorum` is a desktop-only dependency | `src-tauri/src/lib.rs` (`desktop_window`), `src-tauri/Cargo.toml` |
 | `open_devtools` and `toggle_fullscreen` do nothing on a phone (the webview is inspected from a computer's `chrome://inspect`) | `src-tauri/src/lib.rs` |
-| Android 11 and up (`minSdkVersion` 30), so storage is All files access only, with no legacy permissions | `src-tauri/tauri.conf.json` `bundle.android` |
-| Permissions: the desktop file is `platforms: linux, macOS, windows`; Android has its own, the desktop's file and network grants scoped to shared storage (`/storage/emulated/0`), no window permissions | `src-tauri/capabilities/default.json`, `android.json` |
+| Permissions: the desktop file is `platforms: linux, macOS, windows`; Android has its own, the network and links with no file scope (its files go through the folder plugin) and no window permissions | `src-tauri/capabilities/default.json`, `android.json` |
+| **Folders on Android** (author 2026-11-04): see § Folders on Android | `src-tauri/android/SafPlugin.kt`, `src-tauri/src/saf.rs`, `src/graph/androidFolders.ts` |
 | `isAndroidApp()`: the Tauri shell on Android. `isDesktop()` stays true there, since it means "has the desktop's files and network" | `src/graph/fileBridge.ts` |
 | `html[data-shell="android"]`, so the desktop frame's CSS stays off; no F11, F12 or window border calls; no "Open documents folder" | `src/main.tsx`, `fullscreen.ts`, `devtoolsHotkey.ts`, `nativeAccent.ts`, `menuModel.ts` |
-| A card's file and every folder are picked in the app's own picker over the real files: Android's picker has no folder mode and answers a file with a `content://` address the folder calls can't read. Settings' folder rows browse shared storage three levels deep | `chooseFile.ts`, `pickFolderDialog` in `fileBridge.ts` |
+| A folder (Settings' vault, data and documents folders) is granted in Android's own folder picker; a card's file inside one is picked in the app's own picker, which lists the granted folder | `pickFolderDialog` in `fileBridge.ts`, `chooseFile.ts` |
 | Opening a file in another app (File Link) says it isn't available: the opener hands Android a `file://` address, which Android refuses | `openFilePath` in `fileBridge.ts` |
-| Opening and saving files (a document, a CSV or web-page export, a Write File sink, a File Link pick) use the app's picker on shared storage, so every file is a real path as on desktop (author 2026-11-04): Open lists files, Save As browses folders and takes a name in the footer (the picker's `save` mode), and an existing file asks before it is replaced. The system dialogs would answer with `content://` addresses that name no folder and no file | `androidSaveAs`, `androidOpenFile` in `fileBridge.ts`; `FilePicker.tsx` (`save`, `withExtension`) |
+| Opening and saving files (a document, a CSV or web-page export, a Write File sink, a File Link pick) use the app's picker inside the documents folder (author 2026-11-04), granted the first time it's needed: Open lists files, Save As browses folders and takes a name in the footer (the picker's `save` mode), and an existing file asks before it is replaced. A picker that can't list its folder (a revoked grant) says so in place of the list | `androidDocsFolder`, `androidSaveAs`, `androidOpenFile`, `treeProblem` in `fileBridge.ts`; `FilePicker.tsx` (`save`, `withExtension`) |
 | The back gesture closes the topmost popup, menu or panel, as Escape does, and leaves the app (saving first) only from the bare canvas (author 2026-11-04). "Open" is a surface on the shared Escape hook, a menu on a popup, or anything with a dialog, menu or listbox role | `androidBack.ts`; `core:app:allow-exit` in `android.json` |
-| All files access stays instructions in Settings, Data, with no in-app button (author 2026-11-04; a button needs a native plugin) | `Settings.tsx` (`AndroidFilesRow`) |
 | Leaving the app saves (Android can end a backgrounded app without a `pagehide`) | `persistence.ts` |
-| Settings, Data says where to turn on All files access | `Settings.tsx` (`AndroidFilesRow`) |
-| The manifest patch: All files access, plain http in release too; idempotent, run by the npm scripts | `scripts/android-prep.mjs`, `tests/graph/androidPrep.test.ts` |
+| Settings, Data says Solenoid sees only the folders chosen there; a granted folder shows by its name on the phone | `Settings.tsx` (`AndroidFilesRow`, `folderLabel`) |
+| The project patch: copies the folder plugin into the app's package, allows plain http in release too, asks for no storage permission; idempotent, run by the npm scripts | `scripts/android-prep.mjs`, `tests/graph/androidPrep.test.ts` |
 | A debug APK built on GitHub's runners (their Android SDK and NDK) on each push touching the shell: checks the Android compile with no local toolchain | `.github/workflows/android-build.yml` |
 | Edge-to-edge checked in Chromium 153 with a 40 px status bar and a 28 px gesture bar faked through `env(safe-area-inset-*)` (2026-11-04): the top bar, the bottom toolbar, the menu sheet, Settings, a table popup and the notices all clear them. Rerun with `node scripts/shot-graph.mjs <graph> --size 390x844 --insets 40,28` | `scripts/shot-graph.mjs` `--insets` |
 
-**A scope glob doesn't cover its own folder:** `/storage/emulated/0/**` allows everything inside shared storage but
-not `/storage/emulated/0` itself, which the pickers list first, so `android.json` names the root beside it for listing,
-`stat` and `exists` (found on the phone, run #2; `androidPrep.test.ts` pins it). A picker that can't list the root shows
-the reason in place of the list (`androidStorageProblem`), so a missing grant or a refused path reads as one.
+## Folders on Android
 
-**Files reach shared storage by path, through All files access** (`MANAGE_EXTERNAL_STORAGE`). The user turns it on
-once: Android Settings, Apps, Special app access, All files access (for a test install,
-`adb shell appops set --uid com.solenoid.app MANAGE_EXTERNAL_STORAGE allow`). That keeps the desktop's model (a folder
-and the paths under it) for Local File, Vault Folder, the Obsidian cards and the writes. It suits a sideloaded APK;
-Google Play admits the permission only for apps whose main job is managing files, so a Play release needs the Storage
-Access Framework instead (a native plugin to walk a granted folder), a separate project.
+Android gives an app the folders the user picks in its own folder picker (the Storage Access Framework), each granted
+once and kept across restarts, and nothing else (author 2026-11-04, in place of All files access, which reads like a
+file manager's and keeps an app off Google Play). The desktop's model stays: a folder setting and paths under it. On
+Android the folder is the grant's tree address and a path under it is that address plus the relative path
+(`content://com.android.externalstorage.documents/tree/primary%3ADocuments%2FVault/Daily/a.md`).
+
+- **Granting.** Settings' Choose… for the vault, data or documents folder opens Android's folder picker
+  (`pickTreeFolder`); Open and Save As grant the documents folder the first time if none is granted.
+- **Reaching.** `fileBridge.ts` sends every call on a tree path to `treeFs` (`androidFolders.ts`), which calls the app
+  command `saf` (`src-tauri/src/saf.rs`), which runs the Kotlin plugin (`src-tauri/android/SafPlugin.kt`, copied
+  into the generated project by `android-prep.mjs`). The plugin lists, walks, reads (whole or a head), writes, makes
+  folders, renames over a file and tests for one, through `DocumentsContract`, off the main thread, keeping document
+  ids by path so a deep path isn't found from the top each time. A whole vault is walked in one call (`walk`).
+- **Reading as a person does.** A granted folder shows by its name on the phone (`treeLabel`: "Documents/Vault", an SD
+  card's "SD card/…"), in Settings and as the picker's root; an Obsidian link names the vault by that folder.
+- **Not yet:** a Parquet file in a granted folder (the shell's reader opens a path on disk; it answers `#N/A` saying
+  so); opening a file in another app (File Link).
 
 **What Tauri does on Android** (checked against the docs and the tauri, plugins-workspace and cargo-mobile2 sources,
 2026-11-04): the app runs at `http://tauri.localhost` and IPC at `http://ipc.localhost`, which the CSP already allows;
-the fs plugin's `$HOME` is `/storage/emulated/0`, and it reads and writes a `content://` file (`readTextFile`,
-`writeTextFile`, `stat`) but can't list, test, make or rename one; the dialog plugin has no folder picker and answers
+the fs plugin reads and writes a single `content://` file (`readTextFile`, `writeTextFile`, `stat`) but can't
+list, test, make or rename inside a granted folder, hence the folder plugin; the dialog plugin has no folder picker and answers
 `open` and `save` with `content://` addresses; the http plugin fetches in Rust over rustls, so no OpenSSL and no
 cleartext block; the opener's `openUrl` fires an Android VIEW intent (so `obsidian://` opens Obsidian), while
 `openPath` and `revealItemInDir` don't work; the Tauri CLI points cargo at the NDK's clang, so `ring` and `zstd-sys`
@@ -118,8 +125,8 @@ Done when an APK exists: `find src-tauri/gen/android/app/build/outputs/apk -name
 
 ### Phase 4: run it on the phone
 
-1. `adb install -r <the debug APK found above>`, then grant storage for testing:
-   `adb shell appops set --uid com.solenoid.app MANAGE_EXTERNAL_STORAGE allow`.
+1. `adb install -r <the debug APK found above>`, then grant folders as a user would: Settings, Data, Choose… for the
+   vault and the data folder (Android's folder picker; "Use this folder", then Allow).
 2. For live edits, `npm run android:dev`: the CLI points the phone at the computer's LAN address through
    `TAURI_DEV_HOST`, so the two share a network and the computer takes inbound 1420 (the dev server) and 1421 (its hot
    reload). Inspect from desktop Chrome's `chrome://inspect`. Note the phone's WebView version
@@ -133,9 +140,10 @@ Done when an APK exists: `find src-tauri/gen/android/app/build/outputs/apk -name
      the bare canvas the app leaves, and reopening shows the last edit.
    - Web Source on an https URL, then on an http URL; Weather or FX fetches.
    - A shared (foreign) document still asks before it fetches or runs a script.
-   - Settings' vault folder: the app's picker lists the phone's folders; pick the Obsidian vault.
-   - Vault Folder, Import Obsidian Note (the note picker, the preview, a reload), Local File with a CSV and with a
-     Parquet file.
+   - Settings' vault folder: Android's folder picker opens; grant the Obsidian vault, and Settings shows it by name
+     ("Documents/Vault"). Close and reopen the app: the grant holds.
+   - Vault Folder, Import Obsidian Note (the note picker, the preview, a reload), Local File with a CSV; a Parquet file
+     says it can't be read from an Android folder yet. A big vault's note picker opens in a few seconds at most.
    - Write to Obsidian writes a note, and Obsidian shows it.
    - The Obsidian button on Import Obsidian Note opens the note in Obsidian.
    - Send the app to the background, swipe it away, reopen: the last edit is there.
@@ -174,4 +182,4 @@ Update this file: § Status, what Phase 5 fixed, and anything Tauri did differen
 Delete the backlog line, extend the dev-notes digest, and push `develop` when the author says to.
 
 **Not in this plan** (backlog items if the author wants them): opening a `.solenoid` file from another app
-(`bundle.fileAssociations`), a Play Store release (the Storage Access Framework in place of All files access), iOS.
+(`bundle.fileAssociations`), a Play Store release (signing for the store and its listing), iOS.

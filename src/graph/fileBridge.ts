@@ -5,6 +5,7 @@ import { join, dirname } from "@tauri-apps/api/path";
 import { requestConfirm } from "./confirmStore";
 import { docMetaStore } from "./docMetaStore";
 import { demoVaultFs, isDemoVaultPath } from "./demoVault";
+import { isTreePath, treeFs, treeLabel, pickTreeFolder } from "./androidFolders";
 
 const JSON_FILTER = [{ name: "Solenoid graph", extensions: ["json"] }];
 const HTML_FILTER = [{ name: "Web page", extensions: ["html"] }];
@@ -21,74 +22,82 @@ export function isAndroidApp(): boolean {
   return isDesktop() && typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 }
 
-/** Android's shared storage, where a vault or a data folder lives; reading it needs All files access. */
-export const ANDROID_STORAGE_ROOT = "/storage/emulated/0";
+/** The folder Android documents live in: the documents folder setting when it is a granted folder, else one the user
+ *  grants now (and it becomes the documents folder). Null when they back out. */
+async function androidDocsFolder(): Promise<string | null> {
+  const { settingsStore } = await import("./settingsStore");
+  const docs = String(settingsStore.get("docsFolder") ?? "");
+  if (isTreePath(docs)) return docs;
+  const { pushNotice } = await import("./noticeStore");
+  pushNotice("Choose the folder Solenoid keeps documents in. Android will remember it.", "info");
+  const picked = await pickTreeFolder();
+  if (picked) settingsStore.set("docsFolder", picked);
+  return picked;
+}
 
-/** Why the phone's shared storage can't be listed, or undefined when it can. A refused listing would otherwise show
- *  as an empty picker; this says what to do and keeps the system's own words for a bug report. */
-async function androidStorageProblem(): Promise<string | undefined> {
+/** Why a granted folder can't be listed (the grant was revoked, or the folder moved), or undefined when it can. A
+ *  refused listing would otherwise show as an empty picker. */
+async function treeProblem(root: string): Promise<string | undefined> {
   try {
-    await fs().readDir(ANDROID_STORAGE_ROOT);
+    await fs().readDir(root);
     return undefined;
   } catch (e) {
     const why = e instanceof Error ? e.message : String(e);
-    return `Solenoid can't read this phone's files. Turn on All files access: Android Settings, Apps, Special app access, All files access. (${why})`;
+    return `Solenoid can't open this folder any more. Choose it again in Settings. (${why})`;
   }
 }
 
-/** Where an Android pick starts: the documents folder when it is on shared storage, else Documents. */
-async function androidStart(): Promise<string> {
-  const { settingsStore } = await import("./settingsStore");
-  const { relativeTo } = await import("./chooseFile");
-  const docs = String(settingsStore.get("docsFolder") ?? "");
-  return (docs && relativeTo(ANDROID_STORAGE_ROOT, docs)) || "Documents";
-}
-
-/** Save As on Android: a folder on shared storage and a name, from the app's own picker, as a real path. Android's
- *  save dialog answers with a content:// address that names no folder and no file (docs/android.md). */
+/** Save As on Android: a folder inside the documents folder and a name, from the app's own picker. */
 async function androidSaveAs(suggestedName: string, extension: string): Promise<string | null> {
+  const root = await androidDocsFolder();
+  if (!root) return null;
   const { chooseFile } = await import("./chooseFile");
   const rel = await chooseFile({
     title: "Save as",
-    root: ANDROID_STORAGE_ROOT,
+    root,
     kind: "folder",
-    current: await androidStart(),
-    rootLabel: "Phone",
-    list: () => listVaultFolders(ANDROID_STORAGE_ROOT, 3),
+    current: "",
+    rootLabel: treeLabel(root),
+    list: () => listVaultFolders(root, 4),
     empty: "No folders here.",
-    blocked: await androidStorageProblem(),
+    blocked: await treeProblem(root),
     recentKey: "android-save",
     save: { name: suggestedName.replace(/\.[^.]+$/, ""), extension },
   });
   if (!rel) return null;
-  const path = `${ANDROID_STORAGE_ROOT}/${rel}`;
+  const path = await fs().join(root, ...rel.split("/"));
   if (await pathExists(path)) {
-    const { requestConfirm } = await import("./confirmStore");
-    const ok = await requestConfirm({ message: `${baseNameOf(path)} already exists. Replace it?`, confirmLabel: "Replace" });
+    const ok = await requestConfirm({ message: `${baseNameOf(rel)} already exists. Replace it?`, confirmLabel: "Replace" });
     if (!ok) return null;
   }
   return path;
 }
 
-/** Open on Android: a file on shared storage from the app's own picker, as a real path. */
+/** Open on Android: a file inside the documents folder, from the app's own picker. */
 async function androidOpenFile(title: string, extensions?: string[]): Promise<string | null> {
+  const root = await androidDocsFolder();
+  if (!root) return null;
   const { chooseFile } = await import("./chooseFile");
   const keep = extensions ? (n: string) => extensions.some((e) => n.toLowerCase().endsWith(`.${e}`)) : undefined;
   const rel = await chooseFile({
     title,
-    root: ANDROID_STORAGE_ROOT,
+    root,
     kind: "file",
     extensions,
-    rootLabel: "Phone",
-    list: () => listVaultFiles(ANDROID_STORAGE_ROOT, 4, keep),
-    readHead: (r, chars) => readFileHead(ANDROID_STORAGE_ROOT, r, chars),
+    rootLabel: treeLabel(root),
+    list: () => listVaultFiles(root, 4, keep),
+    readHead: (r, chars) => readFileHead(root, r, chars),
     empty: "No files here.",
-    blocked: await androidStorageProblem(),
+    blocked: await treeProblem(root),
     recentKey: `android-open-${(extensions ?? ["any"]).join(",")}`,
   });
-  return rel ? `${ANDROID_STORAGE_ROOT}/${rel}` : null;
+  return rel ? fs().join(root, ...rel.split("/")) : null;
 }
 
+/** A folder setting as a person reads it: a granted Android folder by its name on the phone, a path as it is. */
+export function folderLabel(path: string): string {
+  return isTreePath(path) ? treeLabel(path) : path;
+}
 
 export interface FsProvider {
   readTextFile(path: string): Promise<string>;
@@ -104,6 +113,9 @@ export interface FsProvider {
   dirname(path: string): Promise<string>;
   readBinary(path: string): Promise<Uint8Array>;
   writeBinary(path: string, bytes: Uint8Array): Promise<void>;
+  /** Every path under `root`, `depth` folders deep, hidden names skipped: folders when `folders`, else files. A
+   *  provider whose every call is a round trip (an Android granted folder) answers a whole walk in one. */
+  walk?(root: string, depth: number, folders: boolean): Promise<string[]>;
 }
 
 let _provider: FsProvider | null = null;
@@ -128,22 +140,27 @@ const tauriFs: FsProvider = {
 
 function baseFs(): FsProvider { return _provider ?? tauriFs; }
 
+/** Which files a path is: the demo vault's, an Android granted folder's, or the desktop's (or a test's provider). */
+function providerFor(p: string): FsProvider {
+  return isDemoVaultPath(p) ? demoVaultFs : isTreePath(p) ? treeFs : baseFs();
+}
+
 const fsDispatch: FsProvider = {
-  readTextFile: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).readTextFile(p),
+  readTextFile: (p) => providerFor(p).readTextFile(p),
   readTextHead: (p, chars) => {
-    const f = isDemoVaultPath(p) ? demoVaultFs : baseFs();
+    const f = providerFor(p);
     return f.readTextHead ? f.readTextHead(p, chars) : f.readTextFile(p).then((t) => t.slice(0, chars));
   },
-  readDir: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).readDir(p),
-  writeTextFile: (p, c) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).writeTextFile(p, c),
-  rename: (f, t) => (isDemoVaultPath(f) || isDemoVaultPath(t) ? demoVaultFs : baseFs()).rename(f, t),
-  mkdir: (p, r) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).mkdir(p, r),
-  exists: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).exists(p),
-  stat: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).stat(p),
-  join: (...parts) => (isDemoVaultPath(parts[0]) ? demoVaultFs : baseFs()).join(...parts),
-  dirname: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).dirname(p),
-  readBinary: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).readBinary(p),
-  writeBinary: (p, b) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).writeBinary(p, b),
+  readDir: (p) => providerFor(p).readDir(p),
+  writeTextFile: (p, c) => providerFor(p).writeTextFile(p, c),
+  rename: (f, t) => (isDemoVaultPath(f) || isDemoVaultPath(t) ? demoVaultFs : providerFor(f)).rename(f, t),
+  mkdir: (p, r) => providerFor(p).mkdir(p, r),
+  exists: (p) => providerFor(p).exists(p),
+  stat: (p) => providerFor(p).stat(p),
+  join: (...parts) => providerFor(parts[0] ?? "").join(...parts),
+  dirname: (p) => providerFor(p).dirname(p),
+  readBinary: (p) => providerFor(p).readBinary(p),
+  writeBinary: (p, b) => providerFor(p).writeBinary(p, b),
 };
 
 function fs(): FsProvider { return fsDispatch; }
@@ -152,22 +169,8 @@ function canReadRoot(root: string): boolean { return hasFs() || isDemoVaultPath(
 
 export async function pickFolderDialog(): Promise<string | null> {
   if (!isDesktop()) return null;
-  // Android's own folder picker answers with a content:// address, not a path the file calls can read, so a folder is
-  // picked from the app's own list of shared storage.
-  if (isAndroidApp()) {
-    const { chooseFile } = await import("./chooseFile");
-    const rel = await chooseFile({
-      title: "Choose a folder",
-      root: ANDROID_STORAGE_ROOT,
-      kind: "folder",
-      rootLabel: "Phone",
-      list: () => listVaultFolders(ANDROID_STORAGE_ROOT, 3),
-      empty: "No folders here.",
-      blocked: await androidStorageProblem(),
-      recentKey: "android-folder",
-    });
-    return rel === null ? null : rel === "" ? ANDROID_STORAGE_ROOT : `${ANDROID_STORAGE_ROOT}/${rel}`;
-  }
+  // Android grants an app the folders the user picks in its own folder picker, and nothing else (docs/android.md).
+  if (isAndroidApp()) return pickTreeFolder();
   const res = await open({ directory: true, multiple: false, title: "Choose a data folder" });
   return typeof res === "string" ? res : null;
 }
@@ -197,6 +200,10 @@ export function listMarkdownFiles(folder: string): Promise<string[]> {
 
 export async function listVaultFolders(root: string, maxDepth = 6): Promise<string[]> {
   if (!root || !canReadRoot(root)) return [];
+  const walkAll = providerFor(root).walk;
+  if (walkAll) {
+    try { return (await walkAll(root, maxDepth, true)).sort((a, b) => a.localeCompare(b)); } catch { return []; }
+  }
   const out: string[] = [];
   async function walk(abs: string, rel: string, depth: number): Promise<void> {
     if (depth > maxDepth) return;
@@ -220,6 +227,12 @@ export function listVaultMarkdownFiles(root: string, maxDepth = 6): Promise<stri
 /** Vault-relative paths, hidden entries skipped. */
 export async function listVaultFiles(root: string, maxDepth = 6, keep: (name: string) => boolean = () => true): Promise<string[]> {
   if (!root || !canReadRoot(root)) return [];
+  const walkAll = providerFor(root).walk;
+  if (walkAll) {
+    try {
+      return (await walkAll(root, maxDepth, false)).filter((p) => keep(p.slice(p.lastIndexOf("/") + 1))).sort((a, b) => a.localeCompare(b));
+    } catch { return []; }
+  }
   const out: string[] = [];
   async function walk(abs: string, rel: string, depth: number): Promise<void> {
     if (depth > maxDepth) return;

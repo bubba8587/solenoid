@@ -261,6 +261,8 @@ export async function initFrameBackend(): Promise<void> {
 /** A Parquet file in `folder`, read by the desktop shell (`src-tauri/src/ipc.rs`); it crosses as one buffer of the
  *  columnar hand-off. */
 export async function readParquetFrame(folder: string, name: string): Promise<FrameValue | SolError> {
+  // The shell reads Parquet from a path on disk, which an Android granted folder isn't (docs/android.md).
+  if (/^content:\/\//.test(folder)) return solError("#N/A", "Parquet files can't be read from an Android folder yet; use a CSV.");
   try {
     const bytes = await ipcInvoke<ArrayBuffer>("read_parquet", { folder, name });
     return { __frame: true, columns: decodeBinary(binaryFromBytes(bytes)) };

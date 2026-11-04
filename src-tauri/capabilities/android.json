@@ -1,9 +1,13 @@
 {
   "$schema": "../gen/schemas/mobile-schema.json",
   "identifier": "android",
-  "description": "Capability for the Android app (docs/android.md): the desktop's files, scoped to shared storage, and its network; no window frame",
-  "windows": ["main"],
-  "platforms": ["android"],
+  "description": "Capability for the Android app (docs/android.md): its network and links; its files are the folders the user grants, reached through the saf command, so no file scope; no window frame",
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "android"
+  ],
   "permissions": [
     "core:default",
     "core:app:allow-exit",
@@ -11,88 +15,16 @@
     "opener:allow-open-path",
     {
       "identifier": "opener:allow-open-url",
-      "allow": [{ "url": "obsidian://**" }]
+      "allow": [
+        { "url": "obsidian://**" }
+      ]
     },
     "dialog:default",
     {
       "identifier": "http:default",
-      "allow": [{ "url": "http://*:*" }, { "url": "https://*:*" }]
-    },
-    {
-      "identifier": "fs:allow-read-text-file",
       "allow": [
-        { "path": "/storage/emulated/0/**/*.json" },
-        { "path": "/storage/emulated/0/**/*.csv" },
-        { "path": "/storage/emulated/0/**/*.md" },
-        { "path": "/storage/emulated/0/**/*.yaml" },
-        { "path": "/storage/emulated/0/**/*.yml" },
-        { "path": "/storage/emulated/0/**/.obsidian/*.json" },
-        { "path": "/storage/emulated/0/**/.obsidian/plugins/solenoid-properties/data.json" }
-      ]
-    },
-    {
-      "identifier": "fs:allow-stat",
-      "allow": [{ "path": "/storage/emulated/0" }, { "path": "/storage/emulated/0/**" }]
-    },
-    {
-      "identifier": "fs:allow-write-text-file",
-      "allow": [
-        { "path": "/storage/emulated/0/**/*.json" },
-        { "path": "/storage/emulated/0/**/*.json.tmp" },
-        { "path": "/storage/emulated/0/**/*.csv" },
-        { "path": "/storage/emulated/0/**/*.csv.tmp" },
-        { "path": "/storage/emulated/0/**/*.md" },
-        { "path": "/storage/emulated/0/**/*.md.tmp" },
-        { "path": "/storage/emulated/0/**/.obsidian/*.json" },
-        { "path": "/storage/emulated/0/**/.obsidian/*.json.tmp" }
-      ]
-    },
-    {
-      "identifier": "fs:allow-rename",
-      "allow": [
-        { "path": "/storage/emulated/0/**/*.json" },
-        { "path": "/storage/emulated/0/**/*.json.tmp" },
-        { "path": "/storage/emulated/0/**/*.csv" },
-        { "path": "/storage/emulated/0/**/*.csv.tmp" },
-        { "path": "/storage/emulated/0/**/*.md" },
-        { "path": "/storage/emulated/0/**/*.md.tmp" },
-        { "path": "/storage/emulated/0/**/.obsidian/*.json" },
-        { "path": "/storage/emulated/0/**/.obsidian/*.json.tmp" }
-      ]
-    },
-    {
-      "identifier": "fs:allow-read-dir",
-      "allow": [{ "path": "/storage/emulated/0" }, { "path": "/storage/emulated/0/**" }]
-    },
-    {
-      "identifier": "fs:allow-read-file",
-      "allow": [{ "path": "/storage/emulated/0/**/images/*" }]
-    },
-    {
-      "identifier": "fs:allow-write-file",
-      "allow": [
-        { "path": "/storage/emulated/0/**/images/*" },
-        { "path": "/storage/emulated/0/**/*.png" },
-        { "path": "/storage/emulated/0/**/*.jpg" },
-        { "path": "/storage/emulated/0/**/*.jpeg" },
-        { "path": "/storage/emulated/0/**/*.gif" },
-        { "path": "/storage/emulated/0/**/*.webp" }
-      ]
-    },
-    {
-      "identifier": "fs:allow-mkdir",
-      "allow": [
-        { "path": "/storage/emulated/0/**/images" },
-        { "path": "/storage/emulated/0/**" }
-      ]
-    },
-    {
-      "identifier": "fs:allow-exists",
-      "allow": [
-        { "path": "/storage/emulated/0/**/images" },
-        { "path": "/storage/emulated/0/**/images/*" },
-        { "path": "/storage/emulated/0" },
-        { "path": "/storage/emulated/0/**" }
+        { "url": "http://*:*" },
+        { "url": "https://*:*" }
       ]
     }
   ]

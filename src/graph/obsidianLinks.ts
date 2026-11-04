@@ -1,7 +1,9 @@
 // [[B1]] obsidianBet
+import { isTreePath, treeLabel } from "./androidFolders";
 
 export function vaultName(vaultPath: string): string {
-  const parts = vaultPath.replace(/\\/g, "/").replace(/\/+$/, "").split("/");
+  // An Android granted folder names the vault by its folder on the phone, not by its content:// address.
+  const parts = (isTreePath(vaultPath) ? treeLabel(vaultPath) : vaultPath).replace(/\\/g, "/").replace(/\/+$/, "").split("/");
   return parts[parts.length - 1] ?? "";
 }
 
