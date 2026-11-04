@@ -1,4 +1,4 @@
-// [[C68]] knapIsTheDocumentSyntax
+// [[C68]] knapIsTheDocumentSyntax, [[reports-and-notes#The DocumentValue]]
 import { describe, it, expect } from "vitest";
 import { isDocumentValue, makeDocument } from "../../src/graph/documentValue";
 import { describeValueKind } from "../../src/graph/valueKindLabel";
@@ -27,5 +27,4 @@ describe("DocumentValue", () => {
   });
 });
 
-// The `document` socket's identity-only lattice rules ride socketReference.test.ts's
-// per-variant connection lists, which cover every direction this file once re-asserted.
+

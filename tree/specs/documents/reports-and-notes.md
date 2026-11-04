@@ -39,6 +39,8 @@ mindmap
 
 A batch document's `body` is its page bodies joined by `PAGE_SEPARATOR` (`"\n\n---\n\n"`), for a consumer that reads one document.
 
+Tests: `documentValue.test.ts`: the DocumentValue's shape (a Report carries no frontmatter key); the `document` socket's connection rules are in `socketReference.test.ts`.
+
 ## What an author types
 
 A body is markdown with Knap tags. `hasKnapSyntax` treats a body as templated when it contains `{{`, `{%` or `{#` anywhere; a body without any of the three never touches the engine, and its node's `data()` stays synchronous.
@@ -83,6 +85,8 @@ After the rewrite the body goes through Knap. Knap copies a backtick code span t
 
 A bare tag embeds the value as the canvas shows it. Any other use of a name reads the value's **data form**.
 
+Tests: `noteInlineRefs.test.ts`: `substituteRefCodes` finds every span in source order and ignores a plain code span and a bare `=`; `obsidianMarkdown.test.ts`: the write copy of the span grammar agrees.
+
 ### The data form
 
 `toTemplateValue(value, sourceType)` (`templateValue.ts`, apart from `knapTemplate.ts` so the Obsidian plugin can bundle the engine without the value modules) turns a wired value into what Knap reads. `sourceType` is the data type of the source socket feeding the input, because a `trueany` input cannot tell a date serial from a number.
@@ -109,6 +113,14 @@ A date serial becomes `YYYY-MM-DD` when whole and `YYYY-MM-DDTHH:mm:ss` when it 
 `renderKnap(body, variables, { keepUnknown })` never throws. It returns `{ output, errors }`; when any error exists the output is `""`. Each error carries a line and column, and `knapErrorText` formats them as one `line:column message` line each. A render error makes the node's `document` output a `#SYNTAX!` error value whose message is that text; the card and overlay previews show the same lines in place of the rendered body.
 
 **keepUnknown** is the Note's mode. Before the render, every `{{ … }}` tag whose leading identifier is neither a known variable nor a template-local (any `for` iterator, `loop` or `set` name anywhere in the body) is replaced by an index sentinel, and restored verbatim after. Bare, dotted and filtered tags on an unknown name all survive as literal text, so a template Note reads as a template on the canvas and writes to the vault with its tags intact. The leading identifier is the first variable the tag reads, found by Knap's own parser, so an operator (`{{ not done }}` leads with `done`) or a literal keyword (`{{ true }}`) is never taken for one, and a tag that reads no variable (`{{ "{" }}`) is not parked. The template-locals are collected over the whole body, ignoring scope, so a Note that loops over a frontmatter list never parks its own iterator. An `if` or `for` on an unknown name still renders empty, as Knap does, because a block region cannot be parked without evaluating it. A Report renders without keepUnknown.
+
+The Knap render is the one asynchronous `data()` in the document family, and the engine and the input boundary await it.
+
+Tests:
+
+- `knapEngine.test.ts`: through the real engine and the input boundary, a Note's render is awaited, its bare tags arrive as spans and an embedded Note arrives rendered.
+- `knapTemplate.test.ts`: the Knap language as the templates use it (`>=` and `<=` at equality, the newline after a block tag dropped), and the engine edges the help's Gotchas list, so a `knap` bump that fixes or breaks one fails and the help follows.
+- `knapTemplateScope.test.ts`: a template's loop iterators, `loop` and `set` names render and are never parked as unknown tags, an iterator sharing a wired name is not rewritten inside its loop, and two records that render one page name get distinct names.
 
 ## Notes
 
@@ -157,6 +169,12 @@ flowchart TD
     guess --> sock["an output socket of that type<br>(syncFields adds, retypes, removes)"]
 ```
 
+Tests:
+
+- `noteFrontmatter.test.ts`: each YAML shape and the socket it makes, what Obsidian's Properties editor writes back, a column's type deciding what its text becomes, and YAML's infinity reading as ∞.
+- `noteFrontmatterCube.test.ts`: a row list whose values include a list is a Cube, so a list is never a string inside a cell.
+- `noteNodeRanks.test.ts`: the socket for every rank, a matrix and complex text included.
+
 ### Type pins
 
 `fieldTypes[key]` is the user's pick, made from the glyph on the field row. A pin holds only the element family (number, text, date, logical, complex). On every sync the pin is reshaped onto the guessed rank (`typeAtRank`), so a scalar pin on a list value becomes the matching list type. A pin is dropped when either side is a frame or cube, and a pin for a key that no longer exists is pruned. Frame and cube rows show no picker. When a pin disagrees with the guess, `coerceScalar` converts each element: to number with `Number()` (logical gives 1 or 0, non-finite gives null); to text with `String()`; to logical as `true` for `1`, `"1"` or case-insensitive `"true"`; to date by parsing the text to a rounded serial.
@@ -166,6 +184,8 @@ flowchart TD
 `syncFields()` reconciles the output sockets to the parsed fields and returns `{ removed, retyped }`. A vanished key's output is removed; a key whose socket type changed has its output removed and re-added under the same key; new keys are added. The `document` output (and a subclass's reserved outputs) is never touched. The node has no editor handle, so the caller cleans up cables: `dropStrandedFrontmatterCables` removes every cable from a removed key, and keeps a retyped key's cable only when `canConnect(newType, targetInputType)` still holds. After a retype the caller re-adapts downstream Format Controllers (`reconcileFcTypes`), because a pure retype fires no connection event.
 
 The body is a local draft while the textarea has focus and reaches the node on blur; the card reconciles then and after a type pick, never per keystroke ([[B19]] spreadsheetHabits). A blur whose body equals the last reconciled body does nothing.
+
+Tests: `noteFrontmatterSync.test.ts`: a retype judges each cable by the input's declared rung, keeping one into an adoptive input that adopted the old type; `noteFcPropagation.test.ts`: a retype re-adapts the Format Controllers downstream ([[type-propagation-on-in-place-socket-retype]]); `noteNodeRanks.test.ts`: a pin reshaped onto the value's rank.
 
 ### Knap in a Note
 
@@ -245,6 +265,8 @@ A render or page-name error yields `#SYNTAX!` on `document`. `templateVars` (the
 
 The document carries `pages`, the joined body, and `total` when truncated. `batchTruncation(total)` returns `{ truncated, shown, total }` for the callers that say "500 of N": the overlay's stepper and Write to Obsidian.
 
+Tests: `mailMergeSeed.test.ts`: the Mail Merge seed, the worked example of the two fixed inputs (a template Note wired into Template, its tags the inputs and its frontmatter the defaults; a ledger wired into Records, one page per row named by the page name), each page keeping its frontmatter, and the batch reaching Write to Obsidian.
+
 ### The Report card
 
 The card (`ReportNode.tsx`) is an anchor, not an editor. It shows the Template row, the Records row, a divider, one row per variable input (label plus the ref preview described below, formatted by an attached Format Controller), a divider, and a hero box. The hero is the Document chip, which opens the overlay, or the error code when `document` is an error; clicking an error with an origin flies to the node that minted it. Collapsed, every input converges on one pill (`CollapsedInputPill`) so cables survive.
@@ -281,6 +303,8 @@ In the Report overlay every figure kind (chart, Mermaid, picture, SVG, Frame, Cu
 
 `refPreview` is the short text form that the card rows and the webpage export use: the inline text forms above, and for a figure the value's title, the selected layer (SVG) or the kind word (`chart`, `diagram`, `image`, `svg`, `frame`, `cube`, `document`).
 
+Tests: `reportShowcaseSeed.test.ts`: the Report Showcase seed renders each embed path end to end through a bare tag (a scalar, an inline Frame table, a chart, a LAMBDA as a KaTeX equation, a Mermaid diagram, an embedded Note), and the mail-merge Report renders one page per record.
+
 ## The markdown renderer
 
 `renderNoteMarkdown` (`noteMarkdown.ts`) renders all Note-shaped text: Note cards, the overlay, a document embed and the webpage export. It is its own `marked` instance (GFM, single newlines as line breaks), so help prose and catalog descriptions (`Markdown.tsx`, `descriptionMd.ts`) are unaffected, and an error code in a description is never a tag. It returns unsanitized HTML, and every caller sanitizes. Before parsing, outside fenced code, it removes `%% comments %%` (a comment alone on its line takes the line with it) and trailing ` ^block-id` markers. Extensions:
@@ -294,6 +318,8 @@ In the Report overlay every figure kind (chart, Mermaid, picture, SVG, Frame, Cu
 | `> [!kind]± Title` | a callout. The kind picks an icon and, for failure, fail, missing, danger, error and bug, the danger ink. An unknown kind reads as `note`, and a blank title uses the capitalized kind. |
 
 KaTeX loads lazily (`katexLoader.ts`): `useKatexRender` starts the load, `useKatexReady` only listens, and a site re-renders when the chunk lands. In the app KaTeX renders HTML output only, with no MathML copy; the webpage export renders MathML only.
+
+Tests: `noteMarkdown.test.ts`: Obsidian's inline forms (wikilinks with their alias, heading and embed forms, tags and what isn't one); `noteTaskToggle.test.ts`: the Nth rendered checkbox ticks its own line; `knapHighlight.test.ts`: the editor's highlighting keeps every character and marks the tag and markdown tokens.
 
 ## The overlay
 
@@ -357,6 +383,8 @@ A key is quoted by the same rules as text, so a key YAML would read as anything 
 
 **Stamp.** When `stamp` is on and exactly one note was written, the note's frontmatter gains a `solenoid:` link to a `Solenoid/<doc>` stub note through `patchFrontmatter` ([[C101]] onePatchPath), and the stub note is merged. Stamping never fails the write. This is the only frontmatter write on the document path; a Note's own frontmatter reaches the vault as the text of its body.
 
+Tests: `frontmatterPatch.test.ts`: untouched bytes stay identical, and a cube round-trips through a note unchanged; `managedBlock.test.ts`: a block between markers is appended once and replaced in place after, each name owning its own; `obsidianMarkdown.test.ts`: values written as YAML, quoted where a plain scalar would misread and never splitting a line.
+
 ## Webpage export
 
 The overlay's Export button writes one self-contained `.html` file (`reportExport.ts`), through the native save dialog on desktop or a download on web. There is no PDF export, and no markdown export from the overlay; the vault write is the markdown path.
@@ -370,6 +398,8 @@ The overlay's Export button writes one self-contained `.html` file (`reportExpor
 7. Title the page with the escaped label (default "Report") and an "Exported from Solenoid" timestamp. The stylesheet is inline and dark. The accent (the `sky` slot) tints the title and section rules only when the document declares a report palette; wikilinks, highlights, callouts and tags always take the accent.
 
 The file name is the label with every character other than word characters, spaces and hyphens removed, plus `.html`; `report.html` when nothing survives. A failure raises an error notice.
+
+Tests: `reportExport.test.ts`: a Frame's format picks in the export, the Charts section taking only the sources wired into the Report (and into its embedded Notes), and the stylesheet identical when no report palette is declared, taking the brand accent once one is. The page assembly itself runs DOMPurify, which needs a real DOM the test environment doesn't have, so the branding is tested in the stylesheet builder.
 
 ## Dashboards
 
@@ -474,5 +504,7 @@ A body arrives in shared `.solenoid` files, so no rendered body is trusted. Each
 | SVG | markup is sanitized once at intake, in the SVG Picker's class: its `source` getter scrubs whatever sits in `stringLiterals.source` and writes the clean text back, so typed, fetched, file-picked, loaded and pasted markup all pass the same guard before `data()` sends it down a cable (`svgSanitize.ts`). It must be clean everywhere it lands, because the picker and every `SvgFigure` downstream inline it into the live DOM (hit-testing needs real elements) and it persists in the document. A text pass, which works headless and is what the tests pin, removes scripting elements, `on*` handlers (quoted or bare), every external `href` or `xlink:href` (a `use` or `image` beacon, an anchor) while keeping a local `#fragment`, and `javascript:` or `data:text/html` in any value; ids, names, classes, paths and fills stay. DOMPurify's SVG profile then runs wherever a DOM exists, with `inkscape:label` added to its allowed attributes because it is inert text and the layer name the picker shows. An SVG embedded in a Report is already clean; the webpage export sanitizes it again, since the file leaves the app. |
 | KaTeX and the lambda syntax view | KaTeX output and `highlightFormula` output are the only unsanitized HTML inserted, both generated from the value rather than copied from it. |
 | Vault write | markdown only; `..` segments dropped; file names sanitized and made unique; asset names stripped of wikilink metacharacters; web image alt and URL escaped; a managed block refuses `%%` content; frame cells escape pipes and newlines. |
+
+Tests: `svgSanitize.test.ts`: the SVG Picker's intake strips scripts, handlers, `foreignObject`, external image and `use` references and `javascript:` URLs, keeps what the picker needs (ids, names, classes, paths, fills, a local `use`), and runs headless.
 
 The other two seams under [[C103]] live elsewhere: CSV formula-injection escaping on every export (`csvSafety.ts`, the popup's Copy and Export and the Write File sink; [[table-popup]]), and the per-document network gate (`docMetaStore.networkAllowed`, asked once per foreign document, which every fetch path asks; [[live-connections]]).

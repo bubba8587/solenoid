@@ -1,4 +1,4 @@
-// [[B11]] maximalMerge, [[C10]] socketLattice
+// [[B11]] maximalMerge, [[C10]] socketLattice, [[reports-and-notes#Reconcile]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphInput, GraphNode } from "../../src/graph/graphModel";

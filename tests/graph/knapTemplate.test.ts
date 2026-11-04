@@ -1,4 +1,4 @@
-// [[C68]], [[C44]] dateSerials
+// [[C68]], [[C44]] dateSerials, [[reports-and-notes#Rendering]]
 import { solDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import {
@@ -143,8 +143,7 @@ describe("renderKnap keepUnknown (a Note's mode)", () => {
   });
 });
 
-// The Personal Finance advisor letter compares raw operands with >= / <= in
-// {% if %} verdicts, so pin that Knap supports both, including at equality.
+
 describe("renderKnap {% if %} comparisons", () => {
   it("supports >= and <= including the equal boundary", async () => {
     const at = async (body: string, vars: Record<string, unknown>) => (await renderKnap(body, vars)).output;

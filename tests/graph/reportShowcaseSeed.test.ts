@@ -1,4 +1,4 @@
-// [[C25]]
+// [[C25]], [[reports-and-notes#On-screen rendering of the span]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
@@ -12,12 +12,7 @@ import { isFrameValue } from "../../src/graph/frame";
 import { isDocumentValue } from "../../src/graph/documentValue";
 import seed from "../../src/graph/seedGraphs/report-showcase.json";
 
-// The Report Showcase seed exercises every distinct Report embed render path
-// end to end, each a bare `{{ name }}`: a scalar ({{ total }}), an inline frame
-// table ({{ table }}), a chart figure ({{ fig }} -> a first-class chart value), a
-// lambda -> KaTeX equation ({{ model }}), a Mermaid diagram ({{ flow }} -> a
-// chart-family figure), and a Note embedded through the SAME tag, wired
-// document -> input.
+
 
 type SavedNode = { id: string; type: string; init?: Record<string, unknown>; literals?: Record<string, number>; stringLiterals?: Record<string, string> };
 

@@ -1,4 +1,4 @@
-// [[C68]]
+// [[C68]], [[reports-and-notes#Rendering]]
 import { describe, it, expect } from "vitest";
 import { renderKnap, embedBareVariables, renderKnapPages } from "../../src/graph/knapTemplate";
 

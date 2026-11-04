@@ -1,4 +1,4 @@
-// [[C68]]
+// [[C68]], [[reports-and-notes#What is sanitized, and where]]
 import { describe, it, expect } from "vitest";
 import { scrubSvgText, sanitizeSvg, SVG_PURIFY_CONFIG } from "../../src/graph/svgSanitize";
 import { sourceHasLayer } from "../../src/graph/svgLayer";

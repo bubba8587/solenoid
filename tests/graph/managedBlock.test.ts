@@ -1,4 +1,4 @@
-// [[B1]] obsidianBet
+// [[B1]] obsidianBet, [[reports-and-notes#Write to Obsidian]]
 import { describe, it, expect } from "vitest";
 import { spliceBlock, beginMarker, END_MARKER, fencedLines } from "../../src/graph/managedBlock";
 import { toggleTaskMarker } from "../../src/graph/noteMarkdown";

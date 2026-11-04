@@ -1,4 +1,4 @@
-// [[C25]]
+// [[C25]], [[reports-and-notes#Mail merge]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
@@ -9,10 +9,7 @@ import { isDocumentValue, type DocumentValue } from "../../src/graph/documentVal
 import type { ReportNode } from "../../src/graph/nodes/report";
 import seed from "../fixtures/mail-merge.json"; // the retired seed, kept as the Report mail-merge fixture (2026-09-16)
 
-// The Mail Merge seed is the worked example of the Report's two fixed inputs: a
-// template NOTE wired into Template (its tags the inputs, its frontmatter the
-// defaults) and a ledger wired into Rows (one page per row, named by the page
-// name), the whole batch feeding Write to Obsidian.
+
 
 type SavedNode = { id: string; type: string; init?: Record<string, unknown>; literals?: Record<string, number>; stringLiterals?: Record<string, string> };
 

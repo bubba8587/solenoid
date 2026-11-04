@@ -1,4 +1,4 @@
-// [[C68]] knapIsTheDocumentSyntax
+// [[C68]] knapIsTheDocumentSyntax, [[reports-and-notes#The markdown renderer]]
 import { describe, it, expect } from "vitest";
 import { highlightKnap } from "../../src/graph/knapHighlight";
 

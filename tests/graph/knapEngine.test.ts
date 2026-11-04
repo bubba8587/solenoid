@@ -1,4 +1,4 @@
-// [[C25]]
+// [[C25]], [[reports-and-notes#Rendering]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
@@ -10,8 +10,7 @@ import { NoteNode } from "../../src/graph/nodes/annotation";
 import { ReportNode } from "../../src/graph/nodes/report";
 import { isDocumentValue, type DocumentValue } from "../../src/graph/documentValue";
 
-// The Knap render is the ONE async data() in the document family; this pins that
-// the real engine + the two Canvas wrappers (coercion, error guard) await it.
+
 
 function connect(editor: GraphEditor<Schemes>, src: GraphNode, srcOut: string, tgt: GraphNode, tgtIn: string) {
   return editor.addConnection(new GraphConnection(src, srcOut, tgt, tgtIn) as Schemes["Connection"]);

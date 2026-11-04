@@ -1,4 +1,4 @@
-// [[C68]] knapIsTheDocumentSyntax
+// [[C68]] knapIsTheDocumentSyntax, [[reports-and-notes#The bare tag and the internal span]]
 import { describe, it, expect } from "vitest";
 import { substituteRefCodes } from "../../src/graph/noteInlineRefs";
 

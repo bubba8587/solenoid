@@ -6,8 +6,7 @@ import { notesToCube } from "../../src/graph/vaultCube";
 import type { CubeValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 
-// Bundle 24 item B — the pure frontmatter line-patcher: untouched bytes stay identical,
-// and a cube round-trips through a note unchanged. [[C101]] onePatchPath: the ONE writer of a note's YAML.
+// [[C101]] onePatchPath, [[reports-and-notes#Write to Obsidian]]
 
 const NO_NAMES = new Set<string>();
 
