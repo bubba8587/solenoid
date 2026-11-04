@@ -1,4 +1,4 @@
-// [[C69]], [[C70]], [[C71]]
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing, [[schedule-and-gantt#The payload is data]]
 import { describe, it, expect } from "vitest";
 import { ganttPayload, scheduleTasks } from "./scheduleOnCard";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";

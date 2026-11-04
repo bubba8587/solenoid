@@ -1,4 +1,4 @@
-// [[C69]], [[C70]], [[C71]]
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing, [[schedule-and-gantt#The Gantt figure]]
 import { describe, it, expect } from "vitest";
 import { GanttNode } from "../../../src/graph/nodes/gantt";
 import { scheduleTasks } from "../scheduleOnCard";

@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[D99]] rustIsSpec, [[D68]] importUnsupportedIsNamed
+// [[C69]] ganttPackages, [[D99]] rustIsSpec, [[D68]] importUnsupportedIsNamed, [[schedule-and-gantt#Import at the border]]
 // The plan-file readers held to their frozen answers (fixtures/core/plan-readers.json.gz, the TS readers' before they
 // moved to crates/solenoid-schedule): the corpus, seeded MSPDI files that walk every field the reader looks at,
 // GanttProject and XER variations, telling the format, and predecessor text. A key left out and one set null read

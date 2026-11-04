@@ -86,6 +86,8 @@ There is no `parent_id`, indent level or `1.2.3` WBS column in a plan. Those exi
 
 A portfolio is a cube of projects, one row per project with its tasks nested. The composite by-row mode iterates a cube's rows (`byRowValues`), so a portfolio can be scheduled one project at a time.
 
+Tests: `scheduleCpm.test.ts`: a text Predecessors cell is one name, never split, matched trimmed and without regard to case, and a blank one is none; typed links nest as a Task, Type and Lag table and the nesting is the WBS; a plan mixing plain and typed links comes out as a table in every row, so Unnest reads it; a flat Links frame adds typed, lagged predecessors on top of the cells' own, the merged links land in the Predecessors column, and an unknown successor is `#VALUE!` naming it; a schedule unnested to a Links frame and fed back gives the same dates.
+
 ## The Schedule node
 
 The Schedule node is in the Add menu's Plan category.
@@ -204,6 +206,13 @@ The checks are the DCMA assessment's that fit a plan of tasks, under plain names
 - There is no Predecessors node; the cell is the predecessor list.
 - Reading a plan file is a format on Local File, not an Import Project node. Writing one is the `mspdi` output into a writer, which acts only from its Run button ([[B18]] safeToShare).
 
+Tests:
+
+- `scheduleCpm.test.ts`: the CPM pass over a cube (a diamond, a holiday inside a task, float on parallel branches, a closing milestone), two roots starting together, calendar mode counting weekends, a weekend start rolling to Monday, a blank duration as a milestone, errors naming the task (a cycle, an unknown predecessor, a bad duration, a duplicate), Work and Units setting a blank duration, an inactive row keeping its place with no dates and nothing waiting on it, recurring rows (`Repeat` past 1,000 is `#OVERFLOW!`), an unknown weekend code as an error on the card and the row, a done checkbox reading as 100% or 0%, an empty plan finishing on its start, a known column never read as the duration, the Active cell's blanks and faults, and a task's own Hours.
+- `nodes/schedule.test.ts`: the card takes a cube and a wired start and its three outputs agree; an unwired start is today and a wired blank schedules nothing; calendar mode, precision, Every path, Longest path, the weekend code and the status date reach the engine and survive a save.
+- `scheduleCards.test.ts`: the Schedule, Gantt and Earned Value cards over the plans their columns can hold, driven through their bodies so their frozen cases hold them.
+- The scheduling crate's `src/tests.rs` (solenoid-schedule): the engine, the rules, Minutes mode and the regressions.
+
 ## Import at the border
 
 Local File reads a Microsoft Project XML (MSPDI), GanttProject `.gan` or Primavera XER file (`planFileToPlan`) and emits its tasks as a tasks cube on the `plan` socket (`planToCube`); `frame` is blank, since a flat Frame could hold neither the nesting nor the links except as grammar text ([[#Link grammar stays at the border]]). A CSV whose Predecessors column (`predecessor`, `depends on`, `after`) uses the row-number grammar in every filled cell, Smartsheet's export, also comes out as a plan (`csvPlanToCube`): each token resolves through the row-to-name list to a task name. A CSV that is not a plan gives a null plan and stays a frame.
@@ -213,6 +222,12 @@ In the cube, a task whose dependencies are all FS with lag 0 gets a list of name
 ### Link grammar stays at the border
 
 Inside the engine a predecessor is a structured record keyed by task name (`{task, type, lag}`). The `3FS+2d` link grammar, the vendors' integer link-type codes (MSPDI, .gan and XER each number them differently), and row numbers or UIDs are parsed at each importer and never become an internal key or a stored string. An importer is a parser to that one record shape, and an exporter renders from it. Three vendors number link types three different ways, and a row number breaks as soon as the plan is sorted or filtered, while a name survives both; lists stored as strings inside a cell are ruled out too ([[C70]] oneScheduleRule). **Reopen if:** a plan needs links to tasks that have no name; ids would then be minted, and they would still not be row numbers.
+
+Tests:
+
+- `planImport.test.ts`: MSPDI becomes a nested cube the Schedule node reads back to the file's own dates; a Smartsheet-style CSV with row-number predecessors becomes a plan and a plain CSV does not; optional columns appear only when used.
+- `files.rs` (solenoid-schedule): the readers over the corpus in `tests/corpus/` and the GanttProject and XER samples, and the engine reproducing the dates a file stores.
+- `corePlanReaders.test.ts`: the readers against the frozen answers the TS readers gave (`fixtures/core/plan-readers.json.gz`).
 
 ## The Gantt figure
 
@@ -250,6 +265,15 @@ View options ride the `options` string and the Chart Builder's `gantt` target, w
 
 The webpage export and Write to Obsidian take a figure's SVG from a registered serializer. The Gantt registers `ganttSvg`, a second, pure renderer from payload to a standalone SVG string at a fixed width, which the popup's Copy SVG also uses ([[chart-figures]] § Exports). A PDF is the browser's print of the exported page; the app has no PDF path.
 
+Tests:
+
+- `ganttPayload.test.ts`: the payload flattens the WBS, carries the flags and links, shades from the calendar and parses the view keys; a milestone on its predecessor's finish day is no broken link; a baseline joins by name; a table without dates is `#VALUE!` naming the row; an unknown weekend code is refused; a row the Schedule left out is skipped with its subtree.
+- `nodes/gantt.test.ts`: a scheduled cube becomes a chart value of kind `gantt`; the Options string's title goes into the value and its view keys into the payload; the weekend literal feeds the shading; a wired Status date draws the status line.
+- `ganttBuilder.test.ts`: the Chart Builder offers every view key the figure parses, each round-trips, and the calendar layout narrows the set.
+- `ganttFilter.test.ts`: the popup's Filter keeps a match with its summaries and the links between kept tasks.
+- `packages/gantt-layout/src/*.test.ts`: the layout, the calendar, fit, the histogram, the features, the serials and the SVG export.
+- The frozen Gantt cases (`fixtures/core/nodes/GanttNode.json.gz`, [[node-bodies#Checks]]).
+
 ## The figure never writes
 
 There is no bar editing: edits happen in the plan ([[C71]] noBarEditing). It is also the only rule that can be built. A chart value is flat JSON on a cable, the figure is drawn by a different node than the one that owns the literal, values carry no provenance, and a plan that arrives through Filter or Join has no literal at all. The editor is the Cube Input popup, which already has drill levels and commits on Enter or blur, and snapshot undo covers it. What is lost is one gesture (dragging from one bar to another to make a link); the Predecessors cell covers its function. If editing on the chart is ever wanted, it comes back the way the Record node picks a record: the chart picks a task and another node follows that pick by name. The chart never edits the plan.
@@ -269,6 +293,4 @@ Precision is an engine mode, chosen on the card, never a display snap ([[C70]] o
 
 Finish is inclusive on the cell in both modes: a cell is the value, Get Column returns what the engine wrote, and there is no internal and display split. In Minutes mode a finish at midnight shows on the previous day, so a finish of 00:00 on a 24-hour calendar lands on the right day. The figure adds one day when it draws a bar's end.
 
-## Tests
-
-The crate's `src/tests.rs` (the engine, the rules, Minutes mode, the regressions) and `tests/files.rs` (the file formats and the corpus in `tests/corpus/`), `tests/graph/corePlanReaders.test.ts` (the readers against the frozen TS answers), `packages/gantt-layout/src/*.test.ts`, `tests/graph/scheduleCpm.test.ts`, `tests/graph/nodes/schedule.test.ts`, `tests/graph/planImport.test.ts`, `tests/graph/ganttPayload.test.ts` and the frozen Gantt cases (`fixtures/core/nodes/GanttNode.json.gz`).
+Tests: `nodes/schedule.test.ts`: in Minutes an FS successor starts the same afternoon, and the date columns carry the datetime format so their cells read with a time, while Days reads date-only.

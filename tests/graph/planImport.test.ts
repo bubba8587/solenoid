@@ -1,4 +1,4 @@
-// [[C69]], [[C70]], [[C71]]
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing, [[schedule-and-gantt#Import at the border]]
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

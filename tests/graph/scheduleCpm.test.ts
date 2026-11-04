@@ -1,4 +1,4 @@
-// [[C69]], [[C70]], [[C71]]
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing, [[schedule-and-gantt#The tasks cube]], [[schedule-and-gantt#The Schedule node]]
 import { describe, it, expect } from "vitest";
 import { scheduleTasks } from "./scheduleOnCard";
 import { parseDateToSerial, formatDateSerial } from "../../src/graph/nodes/dateSerial";
@@ -7,8 +7,6 @@ import { solDate } from "../../src/graph/dateValue";
 import { cubeFromColumns, isFrameValue, flatCubeToFrame, type CubeValue, type CubeCell, type FrameValue } from "../../src/graph/frame";
 import { unnestCube } from "./coreVerbs";
 
-// The tasks arrive as a CUBE: Predecessors is a list cell (zero or more names), never an
-// in-cell string list — the cube exists to eliminate those (author, 2026-09-07).
 
 const d = (iso: string) => parseDateToSerial(iso);
 const iso = (serial: unknown) => formatDateSerial(serial as number, "YYYY-MM-DD");
