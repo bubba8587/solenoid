@@ -23,7 +23,7 @@ differently (pickers, storage permission) is handled.
 | Leaving the app saves (Android can end a backgrounded app without a `pagehide`) | `persistence.ts` |
 | Settings, Data says where to turn on All files access | `Settings.tsx` (`AndroidFilesRow`) |
 | The manifest patch: All files access, plain http in release too; idempotent, run by the npm scripts | `scripts/android-prep.mjs`, `tests/graph/androidPrep.test.ts` |
-| A debug APK built on GitHub's runners (their Android SDK and NDK), manual only: checks the Android compile with no local toolchain | `.github/workflows/android-build.yml` |
+| A debug APK built on GitHub's runners (their Android SDK and NDK) on each push touching the shell: checks the Android compile with no local toolchain | `.github/workflows/android-build.yml` |
 | Edge-to-edge checked in Chromium 153 with a 40 px status bar and a 28 px gesture bar faked through `env(safe-area-inset-*)` (2026-11-04): the top bar, the bottom toolbar, the menu sheet, Settings, a table popup and the notices all clear them. Rerun with `node scripts/shot-graph.mjs <graph> --size 390x844 --insets 40,28` | `scripts/shot-graph.mjs` `--insets` |
 
 **Files reach shared storage by path, through All files access** (`MANAGE_EXTERNAL_STORAGE`). The user turns it on
@@ -68,7 +68,8 @@ The agent runs on the author's Linux machine, on `develop`, with the phone (a Sa
 
 ### Phase 0: the cloud build (before any local setup)
 
-Run "Build (Android, debug)" from the Actions tab (`.github/workflows/android-build.yml`). Green means the shell
+"Build (Android, debug)" (`.github/workflows/android-build.yml`) runs on every push to `develop` that touches
+`src-tauri`, the manifest patch or the workflow, and by hand from the Actions tab. Green means the shell
 compiles for Android and the APK, in the run's artifacts, can be sideloaded at once (Phase 4's list applies). Red is a
 compile problem that a cloud session can fix from the run's log, the same way as Phase 3, before anyone installs
 the toolchain.
