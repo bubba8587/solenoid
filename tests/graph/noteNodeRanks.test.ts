@@ -1,4 +1,5 @@
-// [[C10]] socketLattice, [[B11]] maximalMerge, [[C107]] obsidianPlugin
+// [[C10]] socketLattice, [[B11]] maximalMerge, [[C107]] obsidianPlugin, [[obsidian-plugin#What Solenoid reads back]],
+// [[obsidian-plugin#The app reads the picks]]
 import { type SolDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { NoteNode } from "../../src/graph/nodes/annotation";

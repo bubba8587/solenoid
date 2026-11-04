@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[C107]] obsidianPlugin
+// [[C17]] shareImpl, [[C107]] obsidianPlugin, [[obsidian-plugin#Requirements]]
 import { describe, it, expect } from "vitest";
 import { cellToYaml, frameSourceFromYaml, listToYaml } from "../../obsidian-plugin/src/yamlValue";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";

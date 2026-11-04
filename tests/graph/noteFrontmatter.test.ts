@@ -1,4 +1,4 @@
-// [[B1]] obsidianBet, [[C44]] dateSerials, [[B11]]
+// [[B1]] obsidianBet, [[C44]] dateSerials, [[B11]], [[obsidian-plugin#What Solenoid reads back]]
 import { describe, it, expect } from "vitest";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
 import { parseDateToSerial } from "../../src/graph/nodes/date";

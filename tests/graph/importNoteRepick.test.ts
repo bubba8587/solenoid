@@ -1,7 +1,6 @@
-// [[C107]] obsidianPlugin, [[D90]] cubeTypesAtDepth
+// [[C107]] obsidianPlugin, [[D90]] cubeTypesAtDepth, [[obsidian-plugin#The app reads the picks]]
 import { it, expect, vi } from "vitest";
 
-// The plugin edits column types without touching the note, so a Refresh of an unchanged note must still re-read them.
 const files = new Map<string, string>();
 vi.mock("../../src/graph/fileBridge", () => ({
   hasFs: () => true,
