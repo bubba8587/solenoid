@@ -136,8 +136,8 @@ fn select(c: &mut Call, key: Option<&str>) {
 
 fn comparison(c: &mut Call) -> Answer {
     let op = c.field_str("op", "gt").to_string();
-    let a = or_null(wired_or(c, "a", c.literal("a")));
-    let b = or_null(wired_or(c, "b", c.literal("b")));
+    let a = or_null(wired_or(c, "a", c.keyed("a")));
+    let b = or_null(wired_or(c, "b", c.keyed("b")));
     let result = if matches!(a, V::Null) && matches!(b, V::Null) {
         V::Null
     } else {
@@ -149,9 +149,9 @@ fn comparison(c: &mut Call) -> Answer {
 }
 
 fn between(c: &mut Call) -> Answer {
-    let value = or_null(wired_or(c, "value", c.literal("value")));
-    let lo = c.read_num("lo", 0.0);
-    let hi = c.read_num("hi", 0.0);
+    let value = or_null(wired_or(c, "value", c.keyed("value")));
+    let lo = or_null(c.read_input("lo", c.keyed("lo")));
+    let hi = or_null(c.read_input("hi", c.keyed("hi")));
     let result = if matches!(lo, V::Null) || matches!(hi, V::Null) {
         V::Null
     } else {

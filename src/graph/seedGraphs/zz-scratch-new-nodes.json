@@ -313,10 +313,10 @@
       "init": {
         "label": "Between"
       },
-      "literals": {
-        "value": 5,
-        "lo": 1,
-        "hi": 10
+      "stringLiterals": {
+        "value": "5",
+        "lo": "1",
+        "hi": "10"
       }
     },
     {
@@ -1617,9 +1617,9 @@
       "init": {
         "label": "Between 10 and 15"
       },
-      "literals": {
-        "lo": 10,
-        "hi": 15
+      "stringLiterals": {
+        "lo": "10",
+        "hi": "15"
       }
     },
     {

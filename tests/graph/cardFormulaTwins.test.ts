@@ -67,7 +67,8 @@ describe("cards answer as their formula twins", () => {
     const syntax = NODE_EXCEL[type].find((e) => e.syntax?.includes(`${name}(`))!.syntax!;
     const args = /\(([^)]*)\)/.exec(syntax)![1].split(",").map((s) => s.trim()).filter((s) => s && !s.startsWith("["));
     if (keys.length !== args.length) return; // inputs and arguments don't line up one to one: nothing to compare
-    const listy = (k: string) => /list|table|any/.test(String(node.inputs[k]?.socket?.name ?? ""));
+    // `any` is the scalar wildcard; every other wildcard rung can carry a list.
+    const listy = (k: string) => /list|table|anycombo|anydata|trueany/.test(String(node.inputs[k]?.socket?.name ?? ""));
     // A date input takes its values as dates on both sides ([[D114]] dateIsAKind).
     const dated = (k: string) => /^date/.test(String((node.inputs[k]?.socket as { dataType?: string } | undefined)?.dataType ?? ""));
     const asDate = (v: unknown): unknown => (typeof v === "number" ? solDate(v) : Array.isArray(v) ? v.map(asDate) : v);

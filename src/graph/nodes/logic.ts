@@ -1,7 +1,7 @@
 // [[C24]] arraySemantics
 import { GraphNode } from "../graphModel";
 import { forgetKeyed, type KeyedKind } from "../keyedLiterals";
-import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut } from "./shared";
+import { numListIn, anyComboIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut } from "./shared";
 import { rolesFrom } from "../inputRoles";
 import type { PassthroughSpec } from "./passthrough";
 import { solError, type SolError } from "../errorValue";
@@ -37,15 +37,17 @@ export const COMPARISON_OP_META = {
 
 export class ComparisonNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    result: "A blank A or B gives a blank. Ordering different dimensions is #UNIT!; equal is FALSE, not equal TRUE. A plain number against a unit value is read in that value's display unit.",
+    result: "A blank A or B gives a blank. Numbers, text, dates, logicals and units compare as IS, ABOVE and the rest do: kinds that differ are unequal and unordered (#TYPE!), and complex numbers are equal or not but have no order. Ordering different dimensions is #UNIT!; equal is FALSE, not equal TRUE. A plain number against a unit value is read in that value's display unit.",
   };
 
   /** Keeps UnitCell tags so the comparison runs on base-SI magnitudes and checks commensurability. */
   unitAware = true;
+  autoLiterals = true;
+  literalKinds: Record<string, KeyedKind> = {};
   label: string;
   op: ComparisonOp;
   cachedResult: Tri | Tri[] | SolError = null;
-  literals: Record<string, number> = { a: 0, b: 0 };
+  stringLiterals: Record<string, string> = {};
   width = 180;
   height = 200;
 
@@ -53,8 +55,8 @@ export class ComparisonNode extends GraphNode {
     super("Comparison");
     this.label = init?.label ?? "";
     this.op = init?.op ?? "gt";
-    this.addInput("a", numListIn("A"));
-    this.addInput("b", numListIn("B"));
+    this.addInput("a", anyComboIn("A"));
+    this.addInput("b", anyComboIn("B"));
     this.addOutput("result", logicalComboOut("Result"));
   }
 
@@ -66,25 +68,27 @@ export class ComparisonNode extends GraphNode {
 // ─── BETWEEN / IS CLOSE ───────────────────────────────────────────────────────
 export class BetweenNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    result: "TRUE when Low ≤ Value ≤ High (inclusive). Broadcasts over a list of Values. R between / pandas Series.between.",
+    result: "TRUE when Low ≤ Value ≤ High (inclusive), compared as ATLEAST and ATMOST do: numbers, text, dates and units, each against its own kind. Broadcasts over a list of Values. R between / pandas Series.between.",
   };
+  autoLiterals = true;
+  literalKinds: Record<string, KeyedKind> = {};
   label: string;
-  cachedResult: Tri | Tri[] = null;
-  literals: Record<string, number> = { value: 0, lo: 0, hi: 1 };
+  cachedResult: Tri | Tri[] | SolError = null;
+  stringLiterals: Record<string, string> = {};
   width = 180;
   height = 235;
 
   constructor(init?: { label?: string }) {
     super("Between");
     this.label = init?.label ?? "Between";
-    this.addInput("value", numListIn("Value"));
-    this.addInput("lo", numIn("Low"));
-    this.addInput("hi", numIn("High"));
+    this.addInput("value", anyComboIn("Value"));
+    this.addInput("lo", anyIn("Low"));
+    this.addInput("hi", anyIn("High"));
     this.addOutput("result", logicalComboOut("Result"));
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    return nodeOnCore(this, inputs) as { result: Tri | Tri[] };
+    return nodeOnCore(this, inputs) as { result: Tri | Tri[] | SolError };
   }
 }
 
@@ -102,8 +106,8 @@ export class IsCloseNode extends GraphNode {
   constructor(init?: { label?: string }) {
     super("IsClose");
     this.label = init?.label ?? "Is Close";
-    this.addInput("a", numListIn("A"));
-    this.addInput("b", numListIn("B"));
+    this.addInput("a", anyComboIn("A"));
+    this.addInput("b", anyComboIn("B"));
     this.addInput("tol", numIn("Tolerance"));
     this.addOutput("result", logicalComboOut("Result"));
   }

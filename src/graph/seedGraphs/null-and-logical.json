@@ -376,9 +376,9 @@
         "label": "vals > 2",
         "op": "gt"
       },
-      "literals": {
-        "a": 0,
-        "b": 2
+      "stringLiterals": {
+        "a": "0",
+        "b": "2"
       }
     },
     {

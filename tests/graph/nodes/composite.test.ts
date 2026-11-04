@@ -749,7 +749,7 @@ describe("CompositeNode Simulation run mode", () => {
     // A Comparison (pop > 130) is NOT on the cycle — it observes the loop.
     const { c, pop, popOutId } = await makePopulationModel(10);
     const cmp = new ComparisonNode({ op: "gt" });
-    cmp.literals = { a: 0, b: 130 };
+    cmp.stringLiterals = { a: "0", b: "130" };
     await c.internalEditor.addNode(cmp as unknown as Schemes["Node"]);
     await connect(c.internalEditor, pop, "result", cmp, "a");
     const stopMarker = new CompositeOutputNode({ label: "Reached" });

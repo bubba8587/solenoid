@@ -586,7 +586,7 @@ describe("classic lookups redirect to their current-Excel replacements ([[B16]] 
     const { XMatchNode } = await import("../../src/graph/nodes/list");
     const node = (value: number, array: number[], matchMode?: "exact" | "next_larger" | "next_smaller") => {
       const n = new XMatchNode(matchMode ? { matchMode } : undefined);
-      n.literals.value = value;
+      n.stringLiterals.value = String(value);
       return n.data({ array: [array] }).result;
     };
     expect(ev("XMATCH(7, x)", { x: [5, 7, 7] })).toEqual(node(7, [5, 7, 7]));            // 2 — first duplicate
@@ -600,7 +600,7 @@ describe("classic lookups redirect to their current-Excel replacements ([[B16]] 
     const { XMatchNode } = await import("../../src/graph/nodes/list");
     const node = (value: number, array: number[], searchMode: "first" | "last") => {
       const n = new XMatchNode({ searchMode });
-      n.literals.value = value;
+      n.stringLiterals.value = String(value);
       return n.data({ array: [array] }).result;
     };
     expect(ev("XMATCH(7, x, 0, -1)", { x: [5, 7, 7] })).toEqual(node(7, [5, 7, 7], "last"));

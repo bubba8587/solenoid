@@ -75,3 +75,20 @@ describe("BETWEEN(values, low, high) is the Between card", () => {
     expect(code(between([2, null, "x"], 1, 3))).toEqual([true, null, "#TYPE!"]);
   });
 });
+
+describe("an unwired Comparison or Between slot is read as the kind its button shows", () => {
+  it("keyed Text, Date and Number compare as their kinds, and nothing keyed is blank", () => {
+    const cmp = new ComparisonNode({ op: "eq" });
+    cmp.stringLiterals = { b: "APPLE" };
+    cmp.literalKinds = { b: "string" };
+    expect(cmp.data({ a: [["apple", "pear"]] }).result).toEqual([true, false]);
+    cmp.literalKinds = {};
+    expect(code(cmp.data({ a: ["apple"] }).result)).toBe("#TYPE!");
+    cmp.stringLiterals = {};
+    expect(cmp.data({ a: [5] }).result).toBeNull();
+    const btw = new BetweenNode();
+    btw.stringLiterals = { lo: "01-Jan-2026", hi: "31-Jan-2026" };
+    btw.literalKinds = { lo: "date", hi: "date" };
+    expect(btw.data({ value: [[solDate(46030), solDate(46060)]] }).result).toEqual([true, false]);
+  });
+});
