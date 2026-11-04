@@ -1,4 +1,4 @@
-// [[B11]] maximalMerge. Mechanics: tree/specs/canvas/input-cable-pruning.md.
+// [[B11]] maximalMerge. Mechanics: [[input-cable-pruning]].
 import { getOwningEditor } from "../activeGraph";
 
 type Gone = Iterable<string> | ((key: string) => boolean);

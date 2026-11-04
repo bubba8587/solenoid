@@ -1,4 +1,4 @@
-// [[B11]] maximalMerge, [[C77]] compositeIsSubgraph, [[composite-nodes#Edits inside and how they reach the outside]]
+// [[B11]] maximalMerge, [[C77]] compositeIsSubgraph, [[composite-nodes#Edits inside and how they reach the outside]], [[input-cable-pruning#The helper]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

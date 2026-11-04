@@ -670,12 +670,7 @@ describe("components never call node.data() (tree/specs/floors/components.md § 
 });
 
 describe("SSOT — input-cable pruning goes through dropInputCables", () => {
-  // Ten components hand-rolled "drop every cable into these target inputs"
-  // before a socket was hidden (mode switch) or removed (row delete, formula
-  // variable gone), with drifting details — some snapshotted the connection
-  // list, some iterated it LIVE while awaiting removals. cablePrune.ts is now
-  // the one loop; a component may still call `editor.removeConnection` directly
-  // only for a genuinely different shape, each sanctioned with its reason.
+  // [[input-cable-pruning#Who must use it]]
   const SANCTIONED: Record<string, string> = {
     "components/cablePrune.ts": "the helper itself",
     "nodes/composite.ts": "restoreInternal tears down the WHOLE internal graph before re-hydrating (undo restore) — a full clear, not an input-key prune",
@@ -685,10 +680,6 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
   };
 
   it("no component or node class hand-rolls an input-cable pruning loop (use dropInputCables)", () => {
-    // nodes/ and packs/ are in scope too: Computed Column's side-socket
-    // reconcile moved a "these sockets are going away" moment into a node
-    // class, which was exactly where the components-only scan couldn't see
-    // (the twelfth hand-rolled copy, tree/specs/canvas/input-cable-pruning.md § Why one helper).
     const offenders: string[] = [];
     const roots = ["components", "nodes", "packs"].map((d) => path.join(SRC, d));
     for (const root of roots) {

@@ -12,7 +12,9 @@ Many nodes change their own sockets: a mode or op switch hides some inputs, a va
 
 ## The helper
 
-`dropInputCables(nodeId, gone)` in `components/cablePrune.ts` removes every cable wired into the given input sockets of one node.
+Code: `dropInputCables`, `dropOutputCables` in `components/cablePrune.ts`.
+
+`dropInputCables(nodeId, gone)` removes every cable wired into the given input sockets of one node.
 
 - The `gone` argument tells `dropInputCables` which inputs to clear, in one of two ways: a list of socket keys, or a yes-or-no check it runs on each input. The check is simpler when a mode switch hides several inputs at once. It asks whether the new mode shows the input, and every input the new mode doesn't show loses its cables.
 - It works on the editor that owns the node (`getOwningEditor(nodeId)`), not the active one: a reconciler that runs as its node computes (Computed Column, Report, a direct card's `coreWatched()` such as Template's) can run for a main-canvas node while a drill-in is open, or for a drill-in node. A node inside a closed composite resolves too: `getOwningEditor` falls back to walking the composites' internal editors, at any depth.
@@ -22,6 +24,8 @@ Many nodes change their own sockets: a mode or op switch hides some inputs, a va
 Undo is snapshot-based and debounced (`flowHistory.schedule`, 400 ms), so the pruned cables normally land in the same undo entry as the edit that removed the sockets.
 
 `dropOutputCables(nodeId, gone)` is the same helper for the output side, for an op switch that removes an output socket. It matches cables by `sourceOutput` instead of `targetInput`.
+
+Tests: `closedCompositePrune.test.ts`: a node inside a closed composite, nested too, resolves to the composite's internal editor, so its prune reaches its cables.
 
 ## The ordering rule
 
@@ -43,7 +47,7 @@ A cable that references a removed socket is unsafe, and a hidden socket with a l
 
 ## Who must use it
 
-The rule binds node classes and pack code as much as components. `tests/graph/sourceInvariants.test.ts` scans every file under `src/graph/components`, `src/graph/nodes` and `src/graph/packs`, and fails on any direct `.removeConnection(` call outside its sanctioned list. A second test fails when a sanctioned file no longer exists or no longer calls `removeConnection`, so the list cannot go stale.
+The rule binds node classes and pack code as much as components: Computed Column's side-socket reconcile, for one, runs inside a node class. A source sweep scans every file under `src/graph/components`, `src/graph/nodes` and `src/graph/packs` and fails on any direct `.removeConnection(` call outside its sanctioned list. A second check fails when a sanctioned file no longer exists or no longer calls `removeConnection`, so the list cannot go stale.
 
 The sanctioned direct callers, each with a genuinely different shape:
 
@@ -53,11 +57,11 @@ The sanctioned direct callers, each with a genuinely different shape:
 | `nodes/composite.ts` | `restoreInternal` tears down the whole internal graph before rebuilding it on an undo restore. That is a full clear, not a prune by input key. |
 | `components/ConnectionDialog.tsx` | Deletes one user-selected cable (and, on an edit, the cable it replaces). |
 | `components/InterpolateNode.tsx` | The List / Grid variant switch swaps the entire socket set, so it prunes inputs and outputs together. |
-| `components/ListInputNode.tsx` | A type-compatibility filter: it keeps the cables the new element type still accepts (`canConnect`) and drops the rest. |
-| `components/ReportOverlay.tsx` | Targets the Report's owning editor (`getOwningEditor`), never the surface on screen, so a main-graph Report edits main-graph references while a drill-in is open and a Report inside a composite edits its own. |
 | `components/expressionEdit.ts` | The Equation prune covers both directions, because a variable owns an output socket too. Expression and LAMBDA already use the helper. |
 
 A new direct caller needs its reason added to that list in the test.
+
+Tests: `sourceInvariants.test.ts`: no file under components, nodes or packs calls `removeConnection` outside the sanctioned list, and every sanctioned file still exists and still calls it.
 
 ## Why one helper
 

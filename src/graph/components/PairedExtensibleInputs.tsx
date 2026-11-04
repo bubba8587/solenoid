@@ -84,7 +84,7 @@ export function PairedExtensibleInputs({
 
   async function removePair(keys: string[]) {
     await dropInputCables(node.id, keys);
-    // Prune first, then remove the tuple (tree/specs/canvas/input-cable-pruning.md).
+    // Prune first, then remove the tuple ([[input-cable-pruning#The ordering rule]]).
     node.removeValuePair(keys[0]);
     await getOwningView(node.id)?.rerenderNode(node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
