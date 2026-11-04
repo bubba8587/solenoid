@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere
+// [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere, [[composite-drill-in-mount-lifecycle#Bulk edits inside a level]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, afterEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

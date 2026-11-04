@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere
+// [[B3]] sameNodeEverywhere, [[composite-drill-in-mount-lifecycle#The canvas-substitution seam]]
 import { describe, it, expect, afterEach } from "vitest";
 import type { GraphEditor } from "../../src/graph/graphEditor";
 import type { Schemes } from "../../src/graph/schemes";

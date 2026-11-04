@@ -1,4 +1,4 @@
-// [[C77]] compositeIsSubgraph, [[A1]] visualGraphCalculator
+// [[C77]] compositeIsSubgraph, [[A1]] visualGraphCalculator, [[composite-drill-in-mount-lifecycle#What lasts and what doesn't]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

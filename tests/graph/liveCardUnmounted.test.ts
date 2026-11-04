@@ -1,4 +1,4 @@
-// [[C23]] calcModes, [[live-connections#The cache key]], [[live-connections#Fetching in the background]]
+// [[C23]] calcModes, [[live-connections#The cache key]], [[live-connections#Fetching in the background]], [[composite-drill-in-mount-lifecycle#What lasts and what doesn't]]
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";

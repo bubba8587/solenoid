@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[B12]] losslessSaves, [[composite-drill-in-mount-lifecycle#The canvas-substitution seam]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
@@ -14,12 +14,6 @@ import {
   MAIN_EDIT_SCOPE,
 } from "../../src/graph/activeGraph";
 
-// The action layer (keyboard, copy/paste, right-click, in-node socket/row edits)
-// resolves through getActive*/getOwningEditor so a Composite drill-in is first-class.
-// The CARDINAL SAFETY INVARIANT: persistence/serialize read process.ts getEditor()
-// DIRECTLY — those must ALWAYS see the MAIN graph, never the drill-in override, or
-// an autosave while drilled in would write the subgraph OVER the document. This test
-// locks that split at the resolver boundary.
 
 function fakeEditor(ids: string[]): GraphEditor<Schemes> {
   const nodes = new Map(ids.map((id) => [id, { id }]));
@@ -73,8 +67,7 @@ describe("activeGraph resolver", () => {
     expect(getOwningView("m1")).toBe(fakeView); // no drill-in → main view
     setActiveGraph({ editor: sub, view: subView });
     expect(getOwningView("s1")).toBe(subView); // internal node → drill-in view
-    // A MAIN node re-rendering BEHIND an open drill-in must still hit the main
-    // view (getActiveView() would wrongly return the drill-in here).
+    // A main node re-rendering behind an open drill-in.
     expect(getOwningView("m1")).toBe(fakeView);
     setActiveGraph(null);
     expect(getOwningView("s1")).toBeNull(); // no surface shows it, so no view may pan to or move it
