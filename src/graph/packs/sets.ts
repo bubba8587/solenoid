@@ -1,19 +1,53 @@
-// [[C51]] formulaNaming
-import { IsInNode, TallyNode } from "../nodeClasses";
+// [[C51]] formulaNaming, [[D124]] comparisonFunctions
+import { BetweenNode, ComparisonNode, IsInNode, SetsNode, TallyNode } from "../nodeClasses";
 import type { Pack } from "./packShared";
 import { SETS_PACK_FORMULAS } from "./setsFormulas";
+
+const PATH = ["Packs", "Sets & Comparisons"];
 
 export const SETS_PACK: Pack = {
   formulas: SETS_PACK_FORMULAS,
   id: "sets",
   group: "Everyday",
-  name: "Sets & Membership",
-  description: "List membership and counting: Is In (the ISNUMBER(MATCH()) idiom), Tally (value counts) and COUNT DISTINCT. Join's semi and anti modes cover tables.",
+  name: "Sets & Comparisons",
+  description: "Tests and set operations on lists: Comparison (IS, ABOVE and the rest), Between, Sets, Is In (the ISNUMBER(MATCH()) idiom), Tally (value counts) and COUNT DISTINCT. Join's semi and anti modes cover tables.",
   builtin: true,
-  defaultActive: false,
+  defaultActive: true,
   nodes: [
     {
-      path: ["Packs", "Sets & Membership"],
+      path: PATH,
+      entry: {
+        type: "comparison",
+        label: "Comparison",
+        description: "Compares two values (`=`, `≠`, `<`, `>`, `≤`, `≥`) and emits a logical `TRUE` or `FALSE`, item by item over a list. Formulas: `IS`, `ISNOT`, `ABOVE`, `BELOW`, `ATLEAST`, `ATMOST`.",
+        keywords: "compare equal greater less above below at least at most is isnot",
+        create: () => new ComparisonNode(),
+      },
+    },
+    {
+      path: PATH,
+      entry: {
+        type: "between",
+        label: "Between",
+        description: "`TRUE` when Low ≤ Value ≤ High (inclusive). R `between` / pandas `Series.between`. Formula: `BETWEEN`.",
+        parity: false,
+        keywords: "between range within inclusive bounds interval clamp test low high",
+        create: () => new BetweenNode(),
+      },
+    },
+    {
+      path: PATH,
+      entry: {
+        type: "list-sets",
+        label: "Sets",
+        description: "Set operations on two lists: union, intersection, difference, symmetric difference; the relations equal, subset, superset, disjoint give `TRUE` or `FALSE`. Excel builds these from `COUNTIF`.",
+        parity: false,
+        keywords: "set union intersect intersection difference except minus complement symmetric relation equal same identical subset superset disjoint overlap contains all within compare two lists distinct dedupe subtract exclude common membership issubset issuperset predicate test boolean",
+        create: () => new SetsNode(),
+      },
+    },
+    {
+      path: PATH,
       entry: {
         type: "sets-isin",
         label: "Is In",
@@ -23,7 +57,7 @@ export const SETS_PACK: Pack = {
       },
     },
     {
-      path: ["Packs", "Sets & Membership"],
+      path: PATH,
       entry: {
         type: "sets-tally",
         label: "Tally",

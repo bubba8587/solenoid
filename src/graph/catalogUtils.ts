@@ -104,12 +104,6 @@ export function buildCatalog(activeOnly: boolean): CatalogEntry[] {
     if (leaf) leaf.packs = [...(leaf.packs ?? []), ...packIds];
   }
 
-  // A pack node may already carry `excel` inline on its entry; merge, don't clobber.
-  for (const [type, equivs] of Object.entries(NODE_EXCEL)) {
-    const leaf = byType.get(type);
-    if (leaf) leaf.excel = [...(leaf.excel ?? []), ...equivs];
-  }
-
   for (const { packId, placement } of packPlacements({ activeOnly })) {
     const existing = byType.get(placement.entry.type);
     if (existing) {
@@ -125,6 +119,12 @@ export function buildCatalog(activeOnly: boolean): CatalogEntry[] {
     const leaf: NodeCatalogEntry = { ...placement.entry, packs: [packId] };
     cat.children.push(leaf);
     byType.set(leaf.type, leaf);
+  }
+
+  // Pack nodes too. A pack node may already carry `excel` inline on its entry; merge, don't clobber.
+  for (const [type, equivs] of Object.entries(NODE_EXCEL)) {
+    const leaf = byType.get(type);
+    if (leaf) leaf.excel = [...(leaf.excel ?? []), ...equivs];
   }
 
   applyNodeOps(root, byType);

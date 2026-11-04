@@ -2,7 +2,7 @@
 import { isSolDate, solDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "../../src/graph/nodeExcel";
-import { NODE_CATALOG } from "../../src/graph/nodeCatalog";
+import { buildCatalog } from "../../src/graph/catalogUtils";
 import { flattenLeaves } from "../../src/graph/catalogSearch";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { opsFor } from "../../src/graph/nodeOps";
@@ -32,7 +32,7 @@ function shape(v: unknown): unknown {
 }
 
 describe("cards answer as their formula twins", () => {
-  const leaves = new Map(flattenLeaves(NODE_CATALOG).map((l) => [l.leaf.type, l.leaf]));
+  const leaves = new Map(flattenLeaves(buildCatalog(false)).map((l) => [l.leaf.type, l.leaf]));
   const pairs: { type: string; name: string }[] = [];
   for (const [type, eqs] of Object.entries(NODE_EXCEL)) {
     if (type in UNCOMPARED) continue;
