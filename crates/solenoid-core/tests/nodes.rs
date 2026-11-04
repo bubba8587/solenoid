@@ -107,6 +107,7 @@ fn show_v(v: &V) -> String {
         V::Lambda(_) => "lambda".into(),
         V::Fx(m) => format!("fx({m})"),
         V::Date(n) => format!("date({n:?})"),
+        V::Crit(j) => format!("crit({:?} {})", j.op, show_v(&j.value)),
     }
 }
 

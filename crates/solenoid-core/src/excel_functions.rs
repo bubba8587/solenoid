@@ -33,6 +33,9 @@ pub enum V {
     Unit(Rc<crate::unit_dims::UnitCell>),
     /// A date: its day serial, the fraction its time of day ([[D114]] dateIsAKind). A `Num` is never a date.
     Date(f64),
+    /// An operator joined to a value in a criterion's place, `">="&cutoff`: the value kept as it is typed
+    /// ([[D123]] typedCriteria). Only a criteria function reads one; it never leaves the call.
+    Crit(Rc<crate::excel_criteria::Joined>),
 }
 
 impl V {
@@ -310,6 +313,7 @@ pub fn value_text(v: &V) -> String {
         V::List(items) => items.iter().map(value_text).collect::<Vec<_>>().join(","),
         // A date reads as a date ([[C137]] datesNeverSerials, [[C44]] dateSerials).
         V::Date(n) => crate::date_values::date_text(*n),
+        V::Crit(j) => j.text(),
     }
 }
 
@@ -592,7 +596,7 @@ pub(crate) fn parse_number(v: &V) -> V {
         V::Str(_) => V::Fx(FxError::Value),
         // A list of one is its item; a longer one is no single number.
         V::List(items) if items.len() == 1 => parse_number(&items[0]),
-        V::List(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) => V::Fx(FxError::Value),
+        V::List(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Crit(_) => V::Fx(FxError::Value),
     }
 }
 
@@ -613,7 +617,7 @@ pub(crate) fn truthy(v: &V) -> bool {
         V::Num(n) | V::Date(n) => *n != 0.0 && !n.is_nan(),
         V::Str(s) => !s.is_empty(),
         V::Bool(b) => *b,
-        V::Err(_) | V::Fx(_) | V::List(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) => true,
+        V::Err(_) | V::Fx(_) | V::List(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Crit(_) => true,
     }
 }
 
@@ -2593,7 +2597,7 @@ pub(crate) fn sample_variance(xs: &[f64]) -> f64 {
 pub(crate) fn excel_type(v: &V) -> V {
     V::Num(match v {
         V::Num(_) | V::Null | V::Unit(_) | V::Date(_) => 1.0,
-        V::Str(_) | V::Cx(..) => 2.0,
+        V::Str(_) | V::Cx(..) | V::Crit(_) => 2.0,
         V::Bool(_) => 4.0,
         V::Err(_) | V::Fx(_) => 16.0,
         V::List(_) => 64.0,
@@ -3142,7 +3146,6 @@ arms! {
     IPMT,
     PPMT,
     CLAMP,
-    BETWEEN,
     ISBOOLEAN,
     ISCLOSE,
     HYPOTENUSE,
@@ -4833,13 +4836,6 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 return value_err("CLAMP");
             }
             V::Num(crate::jsnum::nan_min(crate::jsnum::nan_max(n, lo), hi))
-        }
-        F::BETWEEN => {
-            let (n, lo, hi) = (to_num(arg(a, 0)), to_num(arg(a, 1)), to_num(arg(a, 2)));
-            if n.is_nan() || lo.is_nan() || hi.is_nan() {
-                return value_err("BETWEEN");
-            }
-            V::Bool(n >= lo && n <= hi)
         }
         F::ISBOOLEAN => V::Bool(matches!(arg(a, 0), V::Bool(_))),
         F::ISCLOSE => {

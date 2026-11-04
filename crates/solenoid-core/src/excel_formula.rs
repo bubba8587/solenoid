@@ -12,7 +12,6 @@ use crate::excel_functions::{call_function, num_blank_zero, V};
 use crate::frame::FrameCell;
 use crate::jsnum::trim_space;
 use crate::spelled::spelled;
-use crate::string_order::compare_strings;
 use crate::value_kinds::guard_finite;
 
 // ─── AST ────────────────────────────────────────────────────────────────────────
@@ -721,54 +720,7 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
             push(&mut joined, b);
             V::Str(Rc::from(joined))
         }
-        BinOp::Eq | BinOp::Ne => {
-            let eq = match (a, b) {
-                // Lowercasing allocates, so equal or all-ASCII text skips it; non-ASCII can lowercase into ASCII (K, the Kelvin sign).
-                (V::Str(x), V::Str(y)) => {
-                    x == y
-                        || if x.is_ascii() && y.is_ascii() {
-                            x.eq_ignore_ascii_case(y)
-                        } else {
-                            x.to_lowercase() == y.to_lowercase()
-                        }
-                }
-                _ => match (&na, &nb) {
-                    (V::Num(x), V::Num(y)) => same_to_15(*x, *y),
-                    (V::Str(x), V::Str(y)) => x == y,
-                    (V::Undef, V::Undef) => true,
-                    _ => false,
-                },
-            };
-            V::Bool(if op == BinOp::Eq { eq } else { !eq })
-        }
-        BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => {
-            let cmp = match (&na, &nb) {
-                (V::Num(x), V::Num(y)) => {
-                    if same_to_15(*x, *y) {
-                        0
-                    } else if x < y {
-                        -1
-                    } else if x > y {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                (V::Str(x), V::Str(y)) => compare_strings(x, y) as i32,
-                _ => {
-                    return V::err(sol_error(
-                        ErrorCode::Type,
-                        "Cannot order values of different types; Cast one side first",
-                    ));
-                }
-            };
-            V::Bool(match op {
-                BinOp::Lt => cmp < 0,
-                BinOp::Gt => cmp > 0,
-                BinOp::Le => cmp <= 0,
-                _ => cmp >= 0,
-            })
-        }
+        BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => crate::compare::compare(op, a, b),
     }
 }
 
@@ -780,6 +732,7 @@ pub(crate) fn tag_computed_cell(v: V) -> FrameCell {
         }
         V::Num(n) | V::Date(n) => FrameCell::Num(n),
         V::Str(s) => FrameCell::Str(s),
+        V::Crit(j) => FrameCell::str(&j.text()),
         V::Bool(b) => FrameCell::Bool(b),
         V::Null | V::Undef => FrameCell::Null,
         V::Err(e) => FrameCell::Err(e),

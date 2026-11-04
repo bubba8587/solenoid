@@ -360,13 +360,7 @@ fn apply_cx_op(op: BinOp, a: &V, b: &V) -> V {
             };
             V::Str(Rc::from(s(a) + &s(b)))
         }
-        BinOp::Eq | BinOp::Ne => {
-            let eq = matches!((a, b), (V::Cx(ar, ai), V::Cx(br, bi)) if ar == br && ai == bi);
-            V::Bool(if op == BinOp::Eq { eq } else { !eq })
-        }
-        BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => {
-            V::err(sol_error(ErrorCode::Type, "Complex numbers have no order. Compare their IMABS values instead"))
-        }
+        BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => crate::compare::compare(op, a, b),
         BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow => V::err(sol_error(
             ErrorCode::Type,
             "Operators don't work on complex numbers. Use IMSUM, IMSUB, IMPRODUCT or IMDIV",
@@ -384,6 +378,9 @@ fn op2(op: BinOp, a: &V, b: &V) -> V {
     }
     if is_missing(a) || is_missing(b) {
         return V::Null;
+    }
+    if matches!(op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge) {
+        return crate::compare::compare(op, a, b);
     }
     if matches!(a, V::Cx(..)) || matches!(b, V::Cx(..)) {
         return apply_cx_op(op, a, b);
@@ -587,6 +584,7 @@ fn same(a: &V, b: &V) -> bool {
         (V::Null, V::Null) | (V::Undef, V::Undef) => true,
         (V::Fx(x), V::Fx(y)) => x == y,
         (V::Cx(a, b), V::Cx(c, d)) => a.to_bits() == c.to_bits() && b.to_bits() == d.to_bits(),
+        (V::Crit(x), V::Crit(y)) => x.op == y.op && same(&x.value, &y.value),
         _ => false,
     }
 }
@@ -991,6 +989,12 @@ impl Eval<'_> {
         }
         let mut argv: Vec<V> = if t.fast.eta_host {
             args.iter().map(|a| self.eta_or_eval(a, env)).collect()
+        } else if crate::excel_criteria::is_criteria(name) {
+            let slot = |i| crate::excel_criteria::criterion_slot(name, i);
+            args.iter()
+                .enumerate()
+                .map(|(i, a)| if slot(i) { self.criterion(a, env) } else { self.eval(a, env) })
+                .collect()
         } else {
             args.iter().map(|a| self.eval(a, env)).collect()
         };
@@ -1009,6 +1013,18 @@ impl Eval<'_> {
             Ok::<_, std::convert::Infallible>(self.call_with(name, t, args, argv, settled))
         });
         v
+    }
+
+    /// A criterion argument: `"<op>"&value` reads as the operator and the value as it is typed, a date staying a date,
+    /// rather than as the text they join to ([[D123]] typedCriteria).
+    fn criterion(&self, a: &Ast, env: &Rc<Env>) -> V {
+        if let Ast::Bin { op: BinOp::Concat, l, r } = a
+            && let Ast::Str(p) = &**l
+            && let Some(op) = crate::excel_criteria::Op::of_prefix(p)
+        {
+            return crate::excel_criteria::joined(op, self.eval(r, env));
+        }
+        self.eval(a, env)
     }
 
     /// A call's body over its evaluated arguments: errors, broadcasting and the memo, then the route.

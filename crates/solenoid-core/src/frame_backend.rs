@@ -607,6 +607,7 @@ impl serde::Serialize for Out<'_> {
             V::Num(n) => one(s, "num", &bits(*n)),
             V::Date(n) => one(s, "date", &bits(*n)),
             V::Str(t) => one(s, "str", t.as_ref()),
+            V::Crit(j) => one(s, "str", &j.text()),
             V::Bool(b) => one(s, "bool", b),
             V::Lambda(l) => crate::nodes::serialize_lambda(l, s),
             V::Unit(u) => {

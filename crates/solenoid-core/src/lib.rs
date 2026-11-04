@@ -10,6 +10,7 @@
 
 pub mod binary;
 pub mod card_helpers;
+pub mod compare;
 pub mod convert_units;
 pub mod csv;
 pub mod date_ops;

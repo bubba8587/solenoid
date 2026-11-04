@@ -26,17 +26,17 @@ export type ComparisonOp = "gt" | "gte" | "lt" | "lte" | "eq" | "neq";
 
 // `label` is the name alone because an Add-menu search row showing a bare ≥ says nothing.
 export const COMPARISON_OP_META = {
-  gt:  { symbol: ">", label: "Greater than",     description: "`TRUE` when A is greater than B. Excel: `A>B`." },
-  gte: { symbol: "≥", label: "Greater or equal", description: "`TRUE` when A is greater than or equal to B. Excel: `A>=B`." },
-  lt:  { symbol: "<", label: "Less than",        description: "`TRUE` when A is less than B. Excel: `A<B`." },
-  lte: { symbol: "≤", label: "Less or equal",    description: "`TRUE` when A is less than or equal to B. Excel: `A<=B`." },
-  eq:  { symbol: "=", label: "Equal",            description: "`TRUE` when A equals B. Excel: `A=B`." },
-  neq: { symbol: "≠", label: "Not equal",        description: "`TRUE` when A differs from B. Excel: `A<>B`." },
-} satisfies Record<ComparisonOp, { symbol: string; label: string; description: string }>;
+  gt:  { symbol: ">", label: "Greater than",     fx: "ABOVE",   description: "`TRUE` when A is greater than B. Excel: `A>B`." },
+  gte: { symbol: "≥", label: "Greater or equal", fx: "ATLEAST", description: "`TRUE` when A is greater than or equal to B. Excel: `A>=B`." },
+  lt:  { symbol: "<", label: "Less than",        fx: "BELOW",   description: "`TRUE` when A is less than B. Excel: `A<B`." },
+  lte: { symbol: "≤", label: "Less or equal",    fx: "ATMOST",  description: "`TRUE` when A is less than or equal to B. Excel: `A<=B`." },
+  eq:  { symbol: "=", label: "Equal",            fx: "IS",      description: "`TRUE` when A equals B, text in any case. Excel: `A=B`." },
+  neq: { symbol: "≠", label: "Not equal",        fx: "ISNOT",   description: "`TRUE` when A differs from B. Excel: `A<>B`." },
+} satisfies Record<ComparisonOp, { symbol: string; label: string; fx: string; description: string }>;
 
 export class ComparisonNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    result: "Ordering different dimensions is #UNIT!; equal is FALSE, not equal TRUE. A plain number against a unit value is read in that value's display unit.",
+    result: "A blank A or B gives a blank. Ordering different dimensions is #UNIT!; equal is FALSE, not equal TRUE. A plain number against a unit value is read in that value's display unit.",
   };
 
   /** Keeps UnitCell tags so the comparison runs on base-SI magnitudes and checks commensurability. */

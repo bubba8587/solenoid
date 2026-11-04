@@ -32,7 +32,7 @@ mod scalar;
 mod sched;
 mod stats;
 mod text;
-mod units;
+pub(crate) mod units;
 mod values;
 mod verbs;
 mod visual;

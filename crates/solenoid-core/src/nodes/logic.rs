@@ -3,14 +3,11 @@
 
 use super::kit::core_call;
 use super::scalar::{read_role, Role};
-use super::units::{adopt_reading, currency_mismatch, dim_of, magnitude_of, shown};
 use super::Cv;
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::{kleene_and, kleene_or, V};
 use crate::frame::FrameColType;
-use crate::unit_dims::{dim_equal, is_dimensionless};
-use crate::unit_value::unit_error;
 use std::rc::Rc;
 
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
@@ -137,46 +134,6 @@ fn select(c: &mut Call, key: Option<&str>) {
     c.show("_selectedUnitKey", key.map_or(V::Null, V::str));
 }
 
-/// Units compared, then the op; different dimensions are unequal and unordered.
-fn compare_cell(op: &str, x: &V, y: &V) -> V {
-    if matches!(x, V::Null) || matches!(y, V::Null) {
-        return V::Null;
-    }
-    let (da, db) = (dim_of(x), dim_of(y));
-    let refused = if !is_dimensionless(da) && !is_dimensionless(db) && !dim_equal(da, db) {
-        Some("Can't compare values with different units.")
-    } else if currency_mismatch(x, y) {
-        Some("Can't compare different currencies. There is no exchange rate.")
-    } else {
-        None
-    };
-    if let Some(why) = refused {
-        return match op {
-            "eq" => V::Bool(false),
-            "neq" => V::Bool(true),
-            _ => V::err(unit_error(why)),
-        };
-    }
-    let l = if is_dimensionless(da) && !is_dimensionless(db) {
-        adopt_reading(magnitude_of(x), shown(y))
-    } else {
-        magnitude_of(x)
-    };
-    let r = if is_dimensionless(db) && !is_dimensionless(da) {
-        adopt_reading(magnitude_of(y), shown(x))
-    } else {
-        magnitude_of(y)
-    };
-    V::Bool(match op {
-        "gt" => l > r,
-        "gte" => l >= r,
-        "lt" => l < r,
-        "lte" => l <= r,
-        "eq" => l == r,
-        _ => l != r,
-    })
-}
-
 fn comparison(c: &mut Call) -> Answer {
     let op = c.field_str("op", "gt").to_string();
     let a = or_null(wired_or(c, "a", c.literal("a")));
@@ -184,7 +141,9 @@ fn comparison(c: &mut Call) -> Answer {
     let result = if matches!(a, V::Null) && matches!(b, V::Null) {
         V::Null
     } else {
-        broadcast_el(&[a, b], |o| compare_cell(&op, o[0], o[1]))
+        // The card is its function ([[D124]] comparisonFunctions), item by item.
+        let name = crate::compare::card_function(&op);
+        broadcast_el(&[a, b], |o| core_call(name, &[o[0].clone(), o[1].clone()]))
     };
     answer(c, "result", result)
 }
@@ -196,10 +155,7 @@ fn between(c: &mut Call) -> Answer {
     let result = if matches!(lo, V::Null) || matches!(hi, V::Null) {
         V::Null
     } else {
-        broadcast_el(&[value], |o| match o[0] {
-            V::Num(_) => core_call("BETWEEN", &[o[0].clone(), lo.clone(), hi.clone()]),
-            _ => V::Null,
-        })
+        broadcast_el(&[value], |o| core_call("BETWEEN", &[o[0].clone(), lo.clone(), hi.clone()]))
     };
     answer(c, "result", result)
 }

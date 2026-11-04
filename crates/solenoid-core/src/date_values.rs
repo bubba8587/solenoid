@@ -66,6 +66,8 @@ enum Class {
     Moves,
     /// Compares and hands back values from `At`: a date there comes back a date.
     Returns(At),
+    /// Compares its arguments as they are: a date with a date ([[D124]] comparisonFunctions).
+    Compares,
 }
 
 fn class_of(name: &str) -> Option<Class> {
@@ -98,7 +100,8 @@ fn class_of(name: &str) -> Option<Class> {
         | "SEM" => Spreads,
         "COUNT" | "COUNTA" | "COUNTBLANK" | "COUNTIF" | "COUNTIFS" | "COUNTDISTINCT" | "RANK" | "RANK.EQ"
         | "RANK.AVG" | "PERCENTRANK" | "PERCENTRANK.INC" | "PERCENTRANK.EXC" | "XMATCH" | "ROWS" | "COLUMNS"
-        | "ARGSORT" | "ARGMIN" | "ARGMAX" | "ISIN" | "BETWEEN" | "TALLY" | "WHICH" => Counts,
+        | "ARGSORT" | "ARGMIN" | "ARGMAX" | "ISIN" | "TALLY" | "WHICH" => Counts,
+        "IS" | "ISNOT" | "ABOVE" | "BELOW" | "ATLEAST" | "ATMOST" | "BETWEEN" => Compares,
         "SUMIFS" => SumsAt(At::Pos(&[0])),
         "CONCAT" | "CONCATENATE" | "TEXTJOIN" | "LEN" | "LENGTH" | "LEFT" | "RIGHT" | "MID" | "UPPER" | "LOWER"
         | "PROPER" | "TRIM" | "CLEAN" | "SUBSTITUTE" | "REPLACE" | "REPT" | "FIND" | "SEARCH" | "EXACT"
@@ -314,7 +317,9 @@ pub fn ready(name: &str, argv: Vec<V>) -> Result<(Vec<V>, After), V> {
     let n = argv.len();
     let plain_at = |at: At| argv.iter().enumerate().any(|(i, a)| at.has(i, n) && kinds(a).1);
     let dates_off = |at: At| argv.iter().enumerate().any(|(i, a)| !at.has(i, n) && holds_date(a));
-    let unwrapped = || argv.iter().map(unwrap).collect::<Vec<_>>();
+    // The criteria family reads its dates as dates ([[D123]] typedCriteria).
+    let criteria = crate::excel_criteria::is_criteria(name);
+    let unwrapped = || if criteria { argv.clone() } else { argv.iter().map(unwrap).collect::<Vec<_>>() };
     match class_of(name) {
         Some(Class::Builds(at)) | Some(Class::Reads(at)) if plain_at(at) => {
             Err(refused(name, "takes a date there, not a number. Cast to Date or build it with DATE()"))
@@ -346,7 +351,7 @@ pub fn ready(name: &str, argv: Vec<V>) -> Result<(Vec<V>, After), V> {
             Ok((unwrapped(), After::AsIs))
         }
         Some(Class::Text) => Ok((argv.iter().map(as_text).collect(), After::AsIs)),
-        Some(Class::Moves) => Ok((argv, After::AsIs)),
+        Some(Class::Moves) | Some(Class::Compares) => Ok((argv, After::AsIs)),
         Some(Class::Returns(at)) => {
             let source =
                 argv.iter().enumerate().filter(|(i, _)| at.has(*i, n)).fold((false, false), |(d, p), (_, a)| {
@@ -397,16 +402,6 @@ pub fn date_op(op: crate::excel_formula::BinOp, a: &V, b: &V) -> Option<V> {
         V::Bool(b) => Some(f64::from(u8::from(*b))),
         _ => None,
     };
-    let cmp = |x: f64, y: f64| {
-        V::Bool(match op {
-            Eq => x == y,
-            Ne => x != y,
-            Lt => x < y,
-            Gt => x > y,
-            Le => x <= y,
-            _ => x >= y,
-        })
-    };
     Some(match (op, a, b) {
         (Concat, _, _) => {
             V::str(&format!("{}{}", crate::excel_functions::value_text(a), crate::excel_functions::value_text(b)))
@@ -414,11 +409,7 @@ pub fn date_op(op: crate::excel_formula::BinOp, a: &V, b: &V) -> Option<V> {
         (Add, V::Date(d), x) | (Add, x, V::Date(d)) if days(x).is_some() => V::Date(d + days(x).unwrap_or(0.0)),
         (Sub, V::Date(d), x) if days(x).is_some() => V::Date(d - days(x).unwrap_or(0.0)),
         (Sub, V::Date(x), V::Date(y)) => V::Num(x - y),
-        (Eq | Ne | Lt | Gt | Le | Ge, V::Date(x), V::Date(y)) => cmp(*x, *y),
-        (Eq | Ne | Lt | Gt | Le | Ge, _, _) => V::err(sol_error(
-            ErrorCode::Type,
-            "A date compares only with a date. Build one with DATE(), or Cast to Date",
-        )),
+        (Eq | Ne | Lt | Gt | Le | Ge, _, _) => crate::compare::compare(op, a, b),
         _ => point_refused(op.as_str()),
     })
 }

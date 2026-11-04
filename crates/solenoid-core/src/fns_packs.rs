@@ -31,6 +31,21 @@ pub const NAMES: &[&str] = &[
     "ISIN",
     "TALLY",
     "TRIANGLESOLVER",
+    "IS",
+    "ISNOT",
+    "ABOVE",
+    "BELOW",
+    "ATLEAST",
+    "ATMOST",
+    "BETWEEN",
+    "SETUNION",
+    "SETINTERSECT",
+    "SETDIFFERENCE",
+    "SETSYMDIFF",
+    "SETEQUAL",
+    "SETSUBSET",
+    "SETSUPERSET",
+    "SETDISJOINT",
 ];
 
 const ELEMENT_NAMES: [&str; 118] = [
@@ -438,6 +453,14 @@ pub fn call(name: &str, a: &[V]) -> V {
                 V::Num(k::MMHG_TO_PA * libm::pow(10.0, ca - cb / (cc + tc)))
             }
         }
+        // The Sets pack's tests and set operations ([[D124]] comparisonFunctions): its cards call these too.
+        "IS" | "ISNOT" | "ABOVE" | "BELOW" | "ATLEAST" | "ATMOST" => {
+            let op = crate::compare::function_op(name).expect("a comparison function");
+            crate::compare::compare(op, arg(a, 0), arg(a, 1))
+        }
+        "BETWEEN" => crate::compare::between(arg(a, 0), arg(a, 1), arg(a, 2)),
+        "SETUNION" | "SETINTERSECT" | "SETDIFFERENCE" | "SETSYMDIFF" | "SETEQUAL" | "SETSUBSET" | "SETSUPERSET"
+        | "SETDISJOINT" => crate::fns_lists::call(name, a).unwrap_or_else(|t| V::err(t.0)),
         "ISIN" => {
             use crate::fns_matrix::set_key;
             let members: std::collections::HashSet<_> =

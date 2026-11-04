@@ -774,6 +774,38 @@ fn get_column(c: &mut Call) -> Answer {
 
 // ─── SUMIFS ─────────────────────────────────────────────────────────────────────
 
+/// A condition row's test of one cell.
+type Test<'a> = Box<dyn FnMut(&V) -> Result<bool, V> + 'a>;
+
+/// A condition row's value as the criterion reads it: a wired value as it comes; typed text in the column's type, as a
+/// typed input reads it, where it reads as one ([[C10]] socketLattice).
+fn row_value(c: &Call, key: &str, ty: FrameColType) -> V {
+    let Some(v) = filter_input(c, key) else { return V::Null };
+    if c.wired(key).is_some_and(|w| !w.is_empty()) {
+        return v;
+    }
+    let V::Str(t) = &v else { return v };
+    let t = trim_space(t);
+    match ty {
+        FrameColType::Number => {
+            let n = crate::value_kinds::decimal_from_text(t);
+            if n.is_finite() {
+                V::Num(n)
+            } else {
+                v
+            }
+        }
+        FrameColType::Date => match crate::excel_criteria::parse_date(t) {
+            crate::excel_criteria::DateReading::Serial(d) if d.is_finite() => V::Date(d),
+            crate::excel_criteria::DateReading::Ambiguous(e) => V::err(e),
+            _ => v,
+        },
+        FrameColType::Logical if t.eq_ignore_ascii_case("true") => V::Bool(true),
+        FrameColType::Logical if t.eq_ignore_ascii_case("false") => V::Bool(false),
+        _ => v,
+    }
+}
+
 /// The columns SUMIFS reads, and how a name finds one: as `column_named` does, or a ref's, read by the name it was
 /// asked by.
 struct Source {
@@ -885,8 +917,8 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
         .iter()
         .map(|(_, v, _, _)| filter_input(c, v).map_or(FrameCell::str(""), |v| crate::frame_verbs::filter_cell(&v)))
         .collect();
-    let mut crits = Vec::new();
-    for ((col_key, _, op_name, match_case), val) in pairs.iter().zip(&values) {
+    let mut crits: Vec<(Vec<V>, Test)> = Vec::new();
+    for ((col_key, value_key, op_name, match_case), val) in pairs.iter().zip(&values) {
         let name = filter_value(c, col_key).unwrap_or_default();
         let name = trim_space(&name);
         let valueless = op_name == "isblank" || op_name == "notblank";
@@ -901,8 +933,30 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
         if let Err(e) = require_text_column(op, col.ty, name) {
             return Ok(V::err(e));
         }
-        let pass = compile_filter(op, val, col.ty, *match_case).map_err(V::err)?;
-        crits.push((col.values.iter().map(core_cell).collect::<Vec<_>>(), pass));
+        // A Date column's cells are dates to the criterion ([[D114]] dateIsAKind).
+        let cells: Vec<V> = if col.ty == FrameColType::Date {
+            col.values.iter().map(|v| if let V::Num(n) = v { V::Date(*n) } else { v.clone() }).collect()
+        } else {
+            col.values.clone()
+        };
+        // The comparisons and the blank tests are the criteria family's, through its kernel, so the card answers as
+        // SUMIFS does ([[D123]] typedCriteria); the text tests are the Filter's.
+        let crit = match op {
+            FilterOp::IsBlank => Some((crate::excel_criteria::Op::Eq, V::Null)),
+            FilterOp::NotBlank => Some((crate::excel_criteria::Op::Neq, V::Null)),
+            _ => crate::excel_criteria::Op::of_card(op_name).map(|o| (o, row_value(c, value_key, col.ty))),
+        };
+        let test: Test = match crit {
+            Some((o, v)) => match crate::excel_criteria::card_criterion(o, &v, &cells, *match_case) {
+                Ok(t) => Box::new(move |cell: &V| Ok(t(cell))),
+                Err(e) => return Ok(e),
+            },
+            None => {
+                let mut pass = compile_filter(op, val, col.ty, *match_case).map_err(V::err)?;
+                Box::new(move |cell: &V| pass(&core_cell(cell)).map_err(V::err))
+            }
+        };
+        crits.push((cells, test));
     }
     if crits.is_empty() {
         return Ok(V::Null);
@@ -913,7 +967,7 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
         // `some` and `every`: the first verdict that settles the row ends its tests.
         let mut kept = !any;
         for (cells, pass) in crits.iter_mut() {
-            if pass(cells.get(i).unwrap_or(&FrameCell::Null)).map_err(V::err)? == any {
+            if pass(cells.get(i).unwrap_or(&V::Null))? == any {
                 kept = any;
                 break;
             }

@@ -933,9 +933,16 @@ pub struct UnitCell {
     pub unit_dim: Option<Dim>,
 }
 
-/// The bodies that take a value with a unit: the ones that move values without reading them, and those
-/// `unit_lists.rs` reads them for. Any other body answers #UNIT! for one.
+/// The bodies that take a value with a unit: the ones that move values without reading them, those `unit_lists.rs`
+/// reads them for, and the comparisons (`compare.rs`). Any other body answers #UNIT! for one.
 pub const UNIT_READY: &[&str] = &[
+    "IS",
+    "ISNOT",
+    "ABOVE",
+    "BELOW",
+    "ATLEAST",
+    "ATMOST",
+    "BETWEEN",
     "REVERSE",
     "SLICE",
     "NTHELEMENT",

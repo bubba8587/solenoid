@@ -1,5 +1,5 @@
-// [[C130]] rustCore
-//! COUNTIF-style criteria and the IFS aggregates.
+// [[C130]] rustCore, [[D123]] typedCriteria
+//! COUNTIF-style criteria and the IFS aggregates: one criterion kernel, which the SUMIFS card's condition rows run too.
 
 use std::cmp::Ordering;
 use std::rc::Rc;
@@ -10,8 +10,22 @@ use crate::jsnum::{is_space_char, lower_text, nan_max as js_max, nan_min as js_m
 use crate::string_order::compare_strings;
 use crate::value_kinds::decimal_from_text;
 
-#[derive(Clone, Copy, PartialEq)]
-enum Op {
+/// `">="&value` in a criterion's place: the operator and the value as it is typed ([[D123]] typedCriteria).
+#[derive(Clone, Debug)]
+pub struct Joined {
+    pub op: Op,
+    pub value: V,
+}
+
+impl Joined {
+    /// The criterion as Excel would join it, for a message.
+    pub fn text(&self) -> String {
+        format!("{}{}", self.op.prefix(), value_text(&self.value))
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Op {
     Eq,
     Neq,
     Gt,
@@ -20,9 +34,66 @@ enum Op {
     Lte,
 }
 
+impl Op {
+    /// The prefix a criterion spells it with.
+    pub fn prefix(self) -> &'static str {
+        match self {
+            Op::Eq => "=",
+            Op::Neq => "<>",
+            Op::Gt => ">",
+            Op::Gte => ">=",
+            Op::Lt => "<",
+            Op::Lte => "<=",
+        }
+    }
+
+    /// The operator a criterion prefix spells, the whole text being the prefix.
+    pub fn of_prefix(p: &str) -> Option<Op> {
+        PREFIX.iter().find(|(t, _)| *t == p).map(|(_, o)| *o)
+    }
+
+    /// The SUMIFS card's op by its name; the text and blank tests are not criteria.
+    pub fn of_card(name: &str) -> Option<Op> {
+        Some(match name {
+            "eq" => Op::Eq,
+            "neq" => Op::Neq,
+            "gt" => Op::Gt,
+            "gte" => Op::Gte,
+            "lt" => Op::Lt,
+            "lte" => Op::Lte,
+            _ => return None,
+        })
+    }
+}
+
+/// `prefix & value` in a criterion's place, item by item over a list; an error is the answer.
+pub fn joined(op: Op, value: V) -> V {
+    match value {
+        V::List(items) => V::List(Rc::new(items.iter().map(|v| joined(op, v.clone())).collect())),
+        e @ (V::Err(_) | V::Fx(_)) => e,
+        value => V::Crit(Rc::new(Joined { op, value })),
+    }
+}
+
+/// Whether argument `i` of `name` is a criterion.
+pub fn criterion_slot(name: &str, i: usize) -> bool {
+    match name {
+        "SUMIFS" | "AVERAGEIFS" | "MINIFS" | "MAXIFS" => i >= 2 && i.is_multiple_of(2),
+        "COUNTIFS" => !i.is_multiple_of(2),
+        "COUNTIF" | "AVERAGEIF" => i == 1,
+        _ => false,
+    }
+}
+
+/// The criteria family, which reads dates in its ranges and criteria as dates.
+pub fn is_criteria(name: &str) -> bool {
+    matches!(name, "SUMIFS" | "AVERAGEIFS" | "MINIFS" | "MAXIFS" | "COUNTIFS" | "COUNTIF" | "AVERAGEIF")
+}
+
 enum Value {
     Null,
     Num(f64),
+    Date(f64),
     Bool(bool),
     Str(Rc<str>),
 }
@@ -41,6 +112,8 @@ struct Criterion {
     wild: Option<Vec<Wild>>,
     /// A text value lowered once, for the comparison every cell makes.
     lowered: String,
+    /// Text compares as written: the SUMIFS card's Match case.
+    match_case: bool,
 }
 
 const PREFIX: [(&str, Op); 6] =
@@ -81,7 +154,7 @@ fn wildcard_pattern(pattern: &[u16]) -> Option<Vec<Wild>> {
 pub fn wild_search(find: &[u16], text: &[u16]) -> Option<usize> {
     let (mut tokens, _) = wildcard_tokens(find);
     tokens.push(Wild::Any);
-    (0..=text.len()).find(|&i| wild_matches(&tokens, &text[i..]))
+    (0..=text.len()).find(|&i| wild_matches(&tokens, &text[i..], false))
 }
 
 /// The `i` flag's Canonicalize without `u`: a unit's uppercase when that is one unit, unless it would carry a
@@ -102,7 +175,8 @@ fn canonicalize(u: u16) -> u16 {
 }
 
 /// `^source$` with the `i` flag, as a glob: backtrack to the last `*` on a miss.
-fn wild_matches(pattern: &[Wild], text: &[u16]) -> bool {
+fn wild_matches(pattern: &[Wild], text: &[u16], match_case: bool) -> bool {
+    let fold = |u: u16| if match_case { u } else { canonicalize(u) };
     let (mut p, mut t) = (0, 0);
     let mut star: Option<(usize, usize)> = None;
     while t < text.len() {
@@ -115,7 +189,7 @@ fn wild_matches(pattern: &[Wild], text: &[u16]) -> bool {
                 p += 1;
                 t += 1;
             }
-            Some(Wild::Unit(u)) if canonicalize(*u) == canonicalize(text[t]) => {
+            Some(Wild::Unit(u)) if fold(*u) == fold(text[t]) => {
                 p += 1;
                 t += 1;
             }
@@ -807,45 +881,129 @@ enum Parsed {
     Err(V),
 }
 
-fn parse_criterion(raw: &V, numeric_range: bool) -> Parsed {
-    let plain = |op, value| Parsed::Crit(Criterion { op, value, wild: None, lowered: String::new() });
-    match raw {
+/// `DATE(y,m,d)` for a day serial, as a message writes it.
+fn date_call(serial: f64) -> String {
+    let (y, m, d) = crate::date_serial::civil_from_days(serial.floor() as i64 - 25569);
+    format!("DATE({y},{m},{d})")
+}
+
+/// `#TYPE!` for a criterion that would read a date out of text or a number ([[D123]] typedCriteria): the message shows
+/// the joined form to write instead, the date itself where the text spelled one.
+fn needs_date(shown: &str, text: bool, op: Op, written: bool, date: Option<f64>) -> V {
+    let prefix = if written || op != Op::Eq { op.prefix() } else { "" };
+    let build = date.map_or_else(|| "DATE(year, month, day)".to_string(), date_call);
+    let (join, name) = if prefix.is_empty() {
+        (build, "a name holding a date".to_string())
+    } else {
+        (format!("\"{prefix}\"&{build}"), format!("join \"{prefix}\" to a name holding a date"))
+    };
+    let what = if text { "is text, which never reads as a date" } else { "is a number, and this range holds dates" };
+    V::err(sol_error(ErrorCode::Type, format!("{shown} {what}. Write {join}, or {name}")))
+}
+
+/// What a criterion's range holds, as its reading asks.
+#[derive(Clone, Copy, Default)]
+struct Holds {
+    num: bool,
+    text: bool,
+    date: bool,
+}
+
+fn parse_criterion(raw: &V, holds: Holds, match_case: bool) -> Parsed {
+    let plain = |op, value| Parsed::Crit(Criterion { op, value, wild: None, lowered: String::new(), match_case });
+    let refuse = |e: V| Parsed::Err(e);
+    // A number or a date as it is typed, against the range's kind: a date only with dates, a number never with them.
+    let typed = |op: Op, value: Value| -> Parsed {
+        let shown = || match raw {
+            V::Crit(j) => format!("\"{}\"&{}", j.op.prefix(), value_text(&j.value)),
+            other => value_text(other),
+        };
+        match value {
+            Value::Num(_) if holds.date => refuse(needs_date(&shown(), false, op, matches!(raw, V::Crit(_)), None)),
+            Value::Date(_) if holds.num || (holds.text && !holds.date) => refuse(V::err(sol_error(
+                ErrorCode::Type,
+                if holds.num {
+                    "A date criterion needs a range of dates, and this one holds numbers. Cast it to Date first"
+                } else {
+                    "A date criterion needs a range of dates, and this one holds text. Cast it to Date first"
+                },
+            ))),
+            Value::Num(_) if holds.text && !matches!(op, Op::Eq | Op::Neq) => refuse(V::err(sol_error(
+                ErrorCode::Type,
+                format!("{} compares numbers, but its range holds text. Cast the range to numbers first.", shown()),
+            ))),
+            v => plain(op, v),
+        }
+    };
+    let text = match raw {
         V::Null | V::Undef => return plain(Op::Eq, Value::Null),
-        V::Num(n) => return plain(Op::Eq, Value::Num(*n)),
+        V::Num(n) => return typed(Op::Eq, Value::Num(*n)),
+        V::Date(d) => return typed(Op::Eq, Value::Date(*d)),
         V::Bool(b) => return plain(Op::Eq, Value::Bool(*b)),
-        V::Err(_) => return Parsed::Err(raw.clone()),
-        _ => {}
-    }
-    let text = value_text(raw);
+        V::Err(_) | V::Fx(_) => return Parsed::Err(raw.clone()),
+        // `">="&value` keeps the value's type; joined text reads as Excel's criterion text.
+        V::Crit(j) => match &j.value {
+            V::Null | V::Undef => return plain(j.op, Value::Null),
+            V::Num(n) => return typed(j.op, Value::Num(*n)),
+            V::Date(d) => return typed(j.op, Value::Date(*d)),
+            V::Bool(b) => return plain(j.op, Value::Bool(*b)),
+            _ => j.text(),
+        },
+        other => value_text(other),
+    };
     let (mut op, mut rest) = (Op::Eq, text.as_str());
+    let mut written = false;
     for (p, o) in PREFIX {
         if let Some(r) = text.strip_prefix(p) {
-            (op, rest) = (o, r);
+            (op, rest, written) = (o, r, true);
             break;
         }
     }
+    from_text(op, rest, written, &text, holds, match_case)
+}
+
+/// A criterion's text after its prefix, by Excel's grammar: a number over numbers, TRUE or FALSE, else text with
+/// wildcards. `text` is the whole criterion, for a message.
+fn from_text(op: Op, rest: &str, written: bool, text: &str, holds: Holds, match_case: bool) -> Parsed {
+    let plain = |op, value| Parsed::Crit(Criterion { op, value, wild: None, lowered: String::new(), match_case });
+    let refuse = |e: V| Parsed::Err(e);
     if rest.is_empty() {
         return plain(op, Value::Null);
     }
     if rest == "TRUE" || rest == "FALSE" {
         return plain(op, Value::Bool(rest == "TRUE"));
     }
-    if numeric_range {
+    // Criterion text is never read as a date or a day's serial ([[D123]] typedCriteria): over dates, text that reads as
+    // a number or a date is refused; over numbers, a date-shaped text is text.
+    if !holds.text && (holds.num || holds.date) {
         let n = decimal_from_text(rest);
-        if n.is_finite() {
+        let shown = format!("\"{text}\"");
+        if holds.date {
+            if n.is_finite() {
+                return refuse(needs_date(&shown, true, op, written, None));
+            }
+            match parse_date(rest) {
+                DateReading::Serial(d) if d.is_finite() => {
+                    return refuse(needs_date(&shown, true, op, written, Some(d)))
+                }
+                DateReading::Ambiguous(_) => return refuse(needs_date(&shown, true, op, written, None)),
+                _ => {}
+            }
+        } else if n.is_finite() {
             return plain(op, Value::Num(n));
         }
-        match parse_date(rest) {
-            DateReading::Serial(d) if d.is_finite() => return plain(op, Value::Num(d)),
-            DateReading::Ambiguous(e) => return Parsed::Err(V::err(e)),
-            _ => {}
-        }
+    }
+    if holds.text && !matches!(op, Op::Eq | Op::Neq) && decimal_from_text(rest).is_finite() {
+        return refuse(V::err(sol_error(
+            ErrorCode::Type,
+            format!("\"{text}\" compares numbers, but its range holds text. Cast the range to numbers first."),
+        )));
     }
     let wild =
         if matches!(op, Op::Eq | Op::Neq) { wildcard_pattern(&rest.encode_utf16().collect::<Vec<_>>()) } else { None };
     let text = unescape(rest);
     let lowered = lower_text(&text).into_owned();
-    Parsed::Crit(Criterion { op, value: Value::Str(text), wild, lowered })
+    Parsed::Crit(Criterion { op, value: Value::Str(text), wild, lowered, match_case })
 }
 
 fn cmp(op: Op, c: f64) -> bool {
@@ -886,14 +1044,28 @@ fn criterion_matches(cell: &V, crit: &Criterion) -> bool {
                 _ => crit.op == Op::Neq,
             };
         }
+        Value::Date(d) => {
+            return match cell {
+                V::Bool(_) => false,
+                V::Date(c) => cmp(crit.op, c - d),
+                _ => crit.op == Op::Neq,
+            };
+        }
         Value::Str(_) => {}
     }
-    let (V::Str(s), Value::Str(_)) = (cell, &crit.value) else {
+    let (V::Str(s), Value::Str(t)) = (cell, &crit.value) else {
         return crit.op == Op::Neq;
     };
     if let Some(w) = &crit.wild {
-        let hit = wild_matches(w, &s.encode_utf16().collect::<Vec<_>>());
+        let hit = wild_matches(w, &s.encode_utf16().collect::<Vec<_>>(), crit.match_case);
         return if crit.op == Op::Eq { hit } else { !hit };
+    }
+    if crit.match_case {
+        return match crit.op {
+            Op::Eq => **s == **t,
+            Op::Neq => **s != **t,
+            op => cmp(op, ord(compare_strings(s, t))),
+        };
     }
     let (a, b) = (lower_text(s), crit.lowered.as_str());
     match crit.op {
@@ -931,25 +1103,10 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair
     let mut crits = Vec::with_capacity(pairs.len());
     let facts: Vec<Rc<Facts>> = pairs.iter().map(|(range, _)| facts_of(range)).collect();
     for ((_, raw), f) in pairs.iter().zip(&facts) {
-        let numeric = f.has_num && !f.has_text;
-        let c = match parse_criterion(raw, numeric) {
-            Parsed::Crit(c) => c,
+        match parse_criterion(raw, f.holds, false) {
+            Parsed::Crit(c) => crits.push(c),
             Parsed::Err(e) => return e,
-        };
-        if !numeric
-            && !matches!(c.op, Op::Eq | Op::Neq)
-            && matches!(&c.value, Value::Str(s) if decimal_from_text(s).is_finite())
-            && f.has_text
-        {
-            return V::err(sol_error(
-                ErrorCode::Type,
-                format!(
-                    "\"{}\" compares numbers, but its range holds text. Cast the range to numbers first.",
-                    value_text(raw)
-                ),
-            ));
         }
-        crits.push(c);
     }
     if let (Kind::Count, [(range, _)], [c], [f]) = (kind, pairs, &crits[..], &facts[..])
         && let Some(n) = f.tally.as_ref().and_then(|t| t.count(c, range.len()))
@@ -1008,7 +1165,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair
         let Some(values) = values else { continue };
         match &values[i] {
             e @ V::Err(_) => return e.clone(),
-            V::Num(x) if x.is_finite() => kept.push(*x),
+            V::Num(x) | V::Date(x) if x.is_finite() => kept.push(*x),
             _ => {}
         }
     }
@@ -1028,8 +1185,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair
 /// ([[C120]] linearWork). The tally comes on the range's second call, so a single call doesn't sort what it reads once.
 struct Facts {
     from: Rc<Vec<V>>,
-    has_num: bool,
-    has_text: bool,
+    holds: Holds,
     tally: Option<Tally>,
     /// The values ranges aggregated over this one, each rolled along its sorted cells.
     rolled: std::cell::RefCell<Vec<Rc<Rolled>>>,
@@ -1106,7 +1262,7 @@ struct Sorted {
 impl Sorted {
     fn over(range: &[V], rows: impl IntoIterator<Item = usize>) -> Sorted {
         let key = |i: usize| match range[i] {
-            V::Num(n) => n,
+            V::Num(n) | V::Date(n) => n,
             _ => f64::NAN,
         };
         let mut order: Vec<usize> = rows.into_iter().filter(|&i| !key(i).is_nan()).collect();
@@ -1116,7 +1272,7 @@ impl Sorted {
 
     /// The run of sorted cells a comparison with a number other than ±∞ matches.
     fn run(&self, c: &Criterion) -> Option<Run> {
-        let Value::Num(x) = &c.value else { return None };
+        let (Value::Num(x) | Value::Date(x)) = &c.value else { return None };
         if !x.is_finite() {
             return None;
         }
@@ -1179,7 +1335,7 @@ impl Rolled {
         let len = t.order.len();
         let cell = |p: usize| &values[t.order[p]];
         let finite = |p: usize| match cell(p) {
-            V::Num(x) if x.is_finite() => Some(*x),
+            V::Num(x) | V::Date(x) if x.is_finite() => Some(*x),
             _ => None,
         };
         let err = |p: usize| if matches!(cell(p), V::Err(_)) { t.order[p] } else { usize::MAX };
@@ -1324,7 +1480,7 @@ impl Tally {
         };
         for (i, v) in range.iter().enumerate() {
             match v {
-                V::Num(n) if !n.is_nan() => t.num_rows.entry((n + 0.0).to_bits()).or_default().push(i),
+                V::Num(n) | V::Date(n) if !n.is_nan() => t.num_rows.entry((n + 0.0).to_bits()).or_default().push(i),
                 V::Str(s) if !s.is_empty() => t.text_rows.entry(lower_text(s).into_owned()).or_default().push(i),
                 V::Err(_) => t.errs += 1,
                 V::Bool(_) => t.bools += 1,
@@ -1341,7 +1497,7 @@ impl Tally {
         let upto = |x: f64| self.sorted.nums.partition_point(|&v| v <= x);
         let unlike = |equal: usize| total - self.errs - equal;
         match &c.value {
-            Value::Num(n) if n.is_finite() => Some(match c.op {
+            Value::Num(n) | Value::Date(n) if n.is_finite() => Some(match c.op {
                 Op::Eq => upto(*n) - below(*n),
                 Op::Neq => unlike(upto(*n) - below(*n)) - self.bools,
                 Op::Gt => self.sorted.nums.len() - upto(*n),
@@ -1363,7 +1519,7 @@ impl Tally {
             return None;
         }
         let rows = match &c.value {
-            Value::Num(n) if n.is_finite() => self.num_rows.get(&(n + 0.0).to_bits()),
+            Value::Num(n) | Value::Date(n) if n.is_finite() => self.num_rows.get(&(n + 0.0).to_bits()),
             Value::Str(_) if c.wild.is_none() => self.text_rows.get(&c.lowered),
             _ => return None,
         };
@@ -1382,8 +1538,7 @@ pub(crate) fn forget_facts() {
 fn facts_of(range: &Rc<Vec<V>>) -> Rc<Facts> {
     let read = |tally: bool| Facts {
         from: range.clone(),
-        has_num: range.iter().any(|v| matches!(v, V::Num(_))),
-        has_text: range.iter().any(is_text),
+        holds: holds_of(range),
         tally: tally.then(|| Tally::of(range)),
         rolled: Default::default(),
         grouped: Default::default(),
@@ -1409,6 +1564,31 @@ fn facts_of(range: &Rc<Vec<V>>) -> Rc<Facts> {
             }
         }
     })
+}
+
+fn holds_of(range: &[V]) -> Holds {
+    range.iter().fold(Holds::default(), |h, v| Holds {
+        num: h.num || matches!(v, V::Num(_)),
+        text: h.text || is_text(v),
+        date: h.date || matches!(v, V::Date(_)),
+    })
+}
+
+/// A SUMIFS card's condition row as the criterion kernel reads it: the op and its value joined, as `">"&value` in a
+/// formula, over the column's cells ([[D123]] typedCriteria). Its test, or the error the row answers.
+pub fn card_criterion(op: Op, value: &V, cells: &[V], match_case: bool) -> Result<impl Fn(&V) -> bool + use<>, V> {
+    let holds = holds_of(cells);
+    let parsed = match value {
+        e @ (V::Err(_) | V::Fx(_)) => return Err(e.clone()),
+        // Text is the row's own, so it never joins to its op: `<` and "=x" stay `<` "=x".
+        V::Str(t) => from_text(op, t, true, &format!("{}{t}", op.prefix()), holds, match_case),
+        V::Undef => parse_criterion(&joined(op, V::Null), holds, match_case),
+        v => parse_criterion(&joined(op, v.clone()), holds, match_case),
+    };
+    match parsed {
+        Parsed::Crit(c) => Ok(move |cell: &V| criterion_matches(cell, &c)),
+        Parsed::Err(e) => Err(e),
+    }
 }
 
 /// The arguments after the values as range, criterion pairs.
