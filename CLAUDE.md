@@ -27,7 +27,7 @@ merges, bumps and stops. Installers build path-stripped via `npm run release:des
 ## Verifying UI changes — ASK which dev environment this session uses (FIRST)
 - **Local dev server** (`npm run dev`, localhost:1420): commit freely, do NOT push — the author
   verifies via HMR; hold pushes until told otherwise.
-- **Vercel preview of `develop`**: keep `tsrs` + `vitest` green, push to `develop`, they eyeball.
+- **Vercel preview of `develop`**: keep `tsrs` and the test buckets you touched green (§ Testing in a session), push to `develop`, they eyeball.
 - **Desktop build** (`npm run tauri build` / `release:desktop`): commit freely, hold pushes.
 
 **The author's live graph is readable:** with the dev server running, every autosave mirrors the
@@ -52,7 +52,7 @@ author still eyeballs the final result. Component render TESTS stay out (the vit
   step that builds a lot.
   **Don't build the desktop shell (`src-tauri`) unless the author asks for something desktop-specific**: in the
   Vercel workflow nothing needs it, and its build directory runs to gigabytes (`port.mjs` checks it only with `--desktop`).
-- **Before pushing Rust, run `bash scripts/check-rust.sh`** (`--test` adds the tests): CI's engine checks as CI runs them, clippy for wasm and the dev profile included, which a native `--release` run misses.
+- **Before pushing Rust, run `bash scripts/check-rust.sh <crate>`** for the crates you changed (`core`, `graph`, `schedule`, `parquet`; none named is all four): fmt and clippy as CI runs them, wasm and the dev profile included. Add `--test` only when the change is risky enough to want the whole crate's tests here.
 - **Never run `npm run build:wasm:opt` or install/run `wasm-opt`** (author's order): it costs half an hour. After a
   change to `crates/solenoid-core` or `crates/solenoid-graph`, rebuild with plain `npm run build:wasm`; the stamp
   test checks the source, not the optimization. Optimizing is the author's call at release time.
@@ -60,6 +60,19 @@ author still eyeballs the final result. Component render TESTS stay out (the vit
   the docs runs as `python3 tools/dte.py …`. Cargo builds land in `~/.cargo-target`; puppeteer
   scripts find the browser through `scripts/browser.mjs`. Debug desktop builds wear a bug-badged
   icon (`scripts/debug-icon.mjs`).
+
+## Testing in a session — run what's relevant, let CI run the rest (author 2026-11-04)
+Iterate fast: in a session, test only the layer you changed, and let GitHub (`Test`, `Engine test`) and the author's
+machine run everything. Check GitHub after a push and fix what it finds.
+- **TypeScript:** `npx tsrs`, the test files you touched, then the bucket(s) around them:
+  `node scripts/test-bucket.mjs <domain|tier>` (`--list` shows them; `tests/buckets.mjs` files every test). A change to
+  a core domain (engine, values, formulas, frames, documents) runs that domain; the full `npx vitest run` is for a
+  change that crosses tiers, or when asked.
+- **Rust:** the test binaries for what you changed (`cargo test --release --test <name>` in the crate, or `--lib` for
+  inline tests), not the crate's whole suite. A change to `crates/*/src` needs `npm run build:wasm` before a push (the
+  stamp test), and a changed answer needs its fixture refrozen (`tree/specs/computation/rust-core.md`).
+- **Always before a push:** whatever the change's own checks are (`python3 tools/dte.py validate --as <ring>` after a
+  tree or spec edit, `node scripts/prerender-site.mjs` after site copy).
 
 ## Project: Solenoid
 Visual computation graph — a node-based "Excel alternative" for data tables. React 19 + Vite +
