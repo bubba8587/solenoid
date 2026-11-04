@@ -94,7 +94,7 @@ function prepare(lc: LeafWithContext): Prepared {
   const { leaf, categoryPath } = lc;
   const excelNames = CATALOG_TO_EXCEL.get(leaf.type) ?? [];
   const category = categoryPath.join(" ");
-  const keywords = [leaf.keywords, ...(leaf.tags ?? [])].filter(Boolean).join(" ");
+  const keywords = leaf.keywords ?? "";
   const haystack = dashes(`${leaf.label} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords} ${familyOf(leaf)}`).toLowerCase();
   const bare = stripGlyphPrefix(leaf.label);
   const colon = leaf.label.indexOf(": ");
@@ -113,13 +113,11 @@ function prepare(lc: LeafWithContext): Prepared {
     ...own.filter((f) => f.trim()).map((f): [string, number] => [f.toLowerCase(), 0]),
     // A row that shows the typed Excel name beats one that only hides it in its keywords, since only one of them shows.
     ...(aliasName ? [[aliasName.toLowerCase(), -5] as [string, number]] : []),
-    // A tag is a name the card answers to on purpose, so it beats an op that only happens to wear the word.
-    ...(leaf.tags ?? []).map((t): [string, number] => [t.toLowerCase(), -5]),
     ...(family ? [[family.toLowerCase(), 5] as [string, number]] : []),
     ...excelNames.map((n): [string, number] => [n.toLowerCase(), 10]),
     ...legacy.map((n): [string, number] => [n.toLowerCase(), 20]),
   ];
-  const names = [leaf.label, bare, ...excelNames, ...(aliasName ? [aliasName] : []), ...(leaf.tags ?? [])].map((n) => n.toLowerCase());
+  const names = [leaf.label, bare, ...excelNames, ...(aliasName ? [aliasName] : [])].map((n) => n.toLowerCase());
   const p = { haystack, words, fields, names };
   prepared.set(lc, p);
   return p;
