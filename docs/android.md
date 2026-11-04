@@ -23,6 +23,8 @@ differently (pickers, storage permission) is handled.
 | Leaving the app saves (Android can end a backgrounded app without a `pagehide`) | `persistence.ts` |
 | Settings, Data says where to turn on All files access | `Settings.tsx` (`AndroidFilesRow`) |
 | The manifest patch: All files access, plain http in release too; idempotent, run by the npm scripts | `scripts/android-prep.mjs`, `tests/graph/androidPrep.test.ts` |
+| A debug APK built on GitHub's runners (their Android SDK and NDK), manual only: checks the Android compile with no local toolchain | `.github/workflows/android-build.yml` |
+| Edge-to-edge checked in Chromium 153 with a 40 px status bar and a 28 px gesture bar faked through `env(safe-area-inset-*)` (2026-11-04): the top bar, the bottom toolbar, the menu sheet, Settings, a table popup and the notices all clear them. Rerun with `node scripts/shot-graph.mjs <graph> --size 390x844 --insets 40,28` | `scripts/shot-graph.mjs` `--insets` |
 
 **Files reach shared storage by path, through All files access** (`MANAGE_EXTERNAL_STORAGE`). The user turns it on
 once: Android Settings, Apps, Special app access, All files access (for a test install,
@@ -63,6 +65,13 @@ The agent runs on the author's Linux machine, on `develop`, with the phone (a Sa
   (switching from a debug to a release build needs one, since the two are signed differently), save every document
   to a file.
 - Stop and ask the author where a phase says so, and whenever a fix would change what the app does.
+
+### Phase 0: the cloud build (before any local setup)
+
+Run "Build (Android, debug)" from the Actions tab (`.github/workflows/android-build.yml`). Green means the shell
+compiles for Android and the APK, in the run's artifacts, can be sideloaded at once (Phase 4's list applies). Red is a
+compile problem that a cloud session can fix from the run's log, the same way as Phase 3, before anyone installs
+the toolchain.
 
 ### Phase 1: toolchain (the author or the agent, once)
 
@@ -133,8 +142,8 @@ Done when an APK exists: `find src-tauri/gen/android/app/build/outputs/apk -name
   (the PWA in Chrome does the same). Stop and ask the author between: (a) leave it; (b) on Android, back closes the
   topmost popup, menu or panel first and leaves the app only from the bare canvas, through `onBackButtonPress`
   (recommended: it is what an Android user expects, and Escape already closes each of those).
-- **Bars over the page.** If the top bar or the bottom toolbar sits under the status or gesture bar, the WebView is
-  older than M144 (update Android System WebView from the Play Store first), or a surface lacks its
+- **Bars over the page.** The app's surfaces clear faked bars in Chromium (§ What is in place), so a surface under a
+  real bar most likely means the phone's WebView is older than M144 (update Android System WebView from the Play Store first), or the surface lacks its
   `env(safe-area-inset-*)` padding (add it, as the PWA's other surfaces have it). If the WebView can't be updated, a
   `ViewCompat.setOnApplyWindowInsetsListener` in `MainActivity` pads the content by the system bars and display cutout,
   and returns those insets zeroed (not consumed) so the CSS doesn't pad twice.

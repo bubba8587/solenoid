@@ -18,6 +18,8 @@
 //   --drag <css> <dx> <dy>  press the first match's center, move by (dx, dy) screen px, release; prints each card's box before and after
 // --setting key=value opens with that app setting (Settings' key, JSON value): --setting wasmEngine=false.
 // --size 390x844 shoots a phone (mobile UA, coarse pointer, touch) instead of the 1600×1000 desktop; --click taps and --drag drags a finger there.
+// --insets 40,28 reports a status bar and a gesture bar of those heights through env(safe-area-inset-top/bottom), as
+// an edge-to-edge Android app's WebView does (docs/android.md): every surface must clear them.
 // Card formulas edit in the formula popup: --click .solenoid-expr__rendered, then --type .fx-editor__input.
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -46,10 +48,11 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--full") opt.full = true;
   else if (a === "--size") { const [w, h] = argv[++i].split("x").map(Number); opt.size = { width: w, height: h }; }
   else if (a === "--scale") opt.scale = Number(argv[++i]);
+  else if (a === "--insets") { const [top, bottom] = argv[++i].split(",").map(Number); opt.insets = { top, bottom }; }
   else if (a === "--popup") opt.steps.push({ popup: /^\d+$/.test(argv[i + 1] ?? "") ? Number(argv[++i]) : 1 });
   else opt.file = a;
 }
-if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy] [--drag-hold css dx dy]… [--wait ms] [--palette name] [--light] [--setting key=value] [--full] [--size WxH] [--scale N]"); process.exit(2); }
+if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy] [--drag-hold css dx dy]… [--wait ms] [--palette name] [--light] [--setting key=value] [--full] [--size WxH] [--insets top,bottom] [--scale N]"); process.exit(2); }
 
 const graph = expand(JSON.parse(readFileSync(opt.file, "utf8")));
 execFileSync(process.execPath, [fileURLToPath(new URL("./dev-up.mjs", import.meta.url))], { stdio: "inherit" });
@@ -58,6 +61,12 @@ const browser = await puppeteer.launch({ executablePath: browserPath(), headless
 try {
   const page = await browser.newPage();
   await page.setViewport({ ...(opt.size ? { ...opt.size, isMobile: true, hasTouch: true } : { width: 1600, height: 1000 }), deviceScaleFactor: opt.scale || 1 });
+  if (opt.insets) {
+    const { top, bottom } = opt.insets;
+    await (await page.createCDPSession()).send("Emulation.setSafeAreaInsetsOverride", {
+      insets: { top, topMax: top, bottom, bottomMax: bottom, left: 0, leftMax: 0, right: 0, rightMax: 0 },
+    });
+  }
   if (opt.size) {
     // The phone model, not just a touch viewport: a mobile UA and (pointer: coarse) before the app loads (as touch-pan-probe.mjs).
     await page.setUserAgent(
