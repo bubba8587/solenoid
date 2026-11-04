@@ -1,4 +1,4 @@
-// [[C45]] excelComparisons, [[C24]], [[B11]]
+// [[C45]] excelComparisons, [[C24]] arraySemantics, [[B11]] maximalMerge, [[formula-language#Criteria]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";

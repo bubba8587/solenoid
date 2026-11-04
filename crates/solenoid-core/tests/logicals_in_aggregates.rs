@@ -1,6 +1,5 @@
-// [[D108]] aggregatesCountLogicals
-//! Every aggregate reads TRUE as 1 and FALSE as 0, typed straight in or inside a list: the leaf's worked table, with
-//! `x = 1, 6, 7`.
+// [[D108]] aggregatesCountLogicals, [[formula-language#Statistics]]
+//! The leaf's worked table of TRUE and FALSE in the aggregates, with `x = 1, 6, 7`.
 
 use solenoid_core::eval::{formula, Env};
 use solenoid_core::excel_functions::V;

@@ -1,6 +1,4 @@
-// [[C17]] shareImpl, [[D109]] aggregatesRefuseText, [[D110]] logicRefusesText
-// A card that is a formula answers text as its formula does, through the port it arrives on: the same error, the
-// same message. Empty text, blanks and NaN are not decided here ([[C134]] functionsFollowAlgebra).
+// [[C17]] shareImpl, [[D109]] aggregatesRefuseText, [[D110]] logicRefusesText, [[formula-language#Text is text]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { AggregateNode, GroupListsNode, type ReduceOp } from "../../src/graph/nodes/list";

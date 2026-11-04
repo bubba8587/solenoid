@@ -1,4 +1,4 @@
-// [[B16]] oneFormulaSurface, [[C17]] shareImpl
+// [[B16]] oneFormulaSurface, [[C17]] shareImpl, [[formula-language#Lexical grammar]], [[formula-language#The registry]], [[formula-language#Broadcast]], [[formula-language#Scalar operators]], [[formula-language#Logic and choice]], [[formula-language#Math]], [[formula-language#Dates and times]], [[formula-language#Statistics]], [[formula-language#Finance]], [[formula-language#Lookup and reference]]
 import { solDate, isSolDate, type SolDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { formulaFunctionNames } from "../../src/graph/excelFunctions";
@@ -105,14 +105,11 @@ describe("the typed-formula path now resolves the registry, not Formula.js", () 
   });
 });
 
-// The flat stat names Formula.js hides behind namespaced objects (STDEV.S, …) used to
-// THROW "Unknown function" in a formula (the tokenizer can't read a dotted name). The
-// registry exposes the flat Excel name, so they now compute.
 describe("statistics flat names — registered so a formula can call them at all", () => {
   const ev = (expr: string, env: Record<string, unknown>) => compileEvaluator(expr)!(env);
   const X = { x: [2, 4, 4, 4, 5, 5, 7, 9] };
 
-  it("STDEV / VAR / MODE / PERCENTILE / QUARTILE / COVAR resolve (were Unknown function)", () => {
+  it("STDEV / VAR / MODE / PERCENTILE / QUARTILE / COVAR resolve", () => {
     expect(coreFunction("COVAR")).toBeTypeOf("function");
   });
 
@@ -140,8 +137,6 @@ describe("statistics flat names — registered so a formula can call them at all
   });
 });
 
-// The full scalar-math sweep (node vs Formula.js) caught value bugs in Formula.js that
-// the registry now overrides so the formula path matches Excel + the visual node.
 describe("scalar-math — formula path overrides Formula.js where it's wrong", () => {
   const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
   it("MOD takes the divisor's sign (Excel); Formula.js gets it wrong", () => {
@@ -220,9 +215,6 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
   });
 
   it("an ARRAY lookup value SPILLS — one result per element (Excel parity)", () => {
-    // The scoped lookup-family spill: a rank-1 needle list gives a rank-1 result list.
-    // Regression guard against the old quiet #N/A, which treated the whole array as one
-    // un-findable needle.
     const env = { qs: [30, 10, 99], ks: [10, 20, 30], vs: [100, 200, 300] };
     const m = ev("XMATCH(qs, ks)", env) as unknown[];
     expect(m.slice(0, 2)).toEqual([3, 1]);                              // hits keep their positions
@@ -231,8 +223,6 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
   });
 
   it("DOTTED function names parse + resolve (the tokenizer + namespace walk)", () => {
-    // Previously these THREW: the tokenizer split on '.', and Formula.js hides them
-    // behind namespaced objects. Now the parser and the core both read dotted names.
     expect(ev("STDEV.S(x)", { x: [2, 4, 4, 4, 5, 5, 7, 9] })).toBeCloseTo(2.13809, 4);
     expect(ev("PERCENTILE.INC(x, 0.5)", { x: [1, 2, 3, 4, 5] })).toBe(3);
     expect(ev("RANK.EQ(4, x)", { x: [1, 2, 3, 4, 5] })).toBe(2);

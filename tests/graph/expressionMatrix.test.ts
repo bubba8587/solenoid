@@ -1,4 +1,4 @@
-// [[C10]] socketLattice
+// [[C10]] socketLattice, [[C15]] matricesInFormulas, [[formula-language#The Expression node]]
 import { describe, it, expect } from "vitest";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
 import { throughBoundary } from "./boundaryKit";
@@ -8,12 +8,6 @@ import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { processGraph, setEditorRefs } from "../../src/graph/process";
 import { canConnect, SolenoidSocket } from "../../src/graph/sockets";
-
-// ─── [[C15]] matricesInFormulas: the Expression lift ([[C10]] socketLattice) ────────────────────────────────────────
-// The connect-time half of the matrix decision: variables are `anydata`, matrices
-// flow in, the formula computes by the broadcast table ([[C15]] matricesInFormulas — semantics pinned
-// in broadcastRules.test.ts; THIS file pins the node-boundary lift), and the
-// result socket reconciles its RANK to the value while keeping its FAMILY.
 
 const run = (expr: string, inputs: Record<string, unknown[]>) => {
   const node = new ExpressionNode({ expr });

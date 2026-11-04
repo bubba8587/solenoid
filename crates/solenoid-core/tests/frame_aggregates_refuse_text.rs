@@ -1,5 +1,5 @@
-// [[C17]] shareImpl, [[D109]] aggregatesRefuseText, [[frame-verbs#groupBy]]
-//! Text in a Frame aggregate's group, against the op's formula over the same cells.
+// [[C17]] shareImpl, [[D109]] aggregatesRefuseText, [[formula-language#Text is text]]
+//! A Frame's GroupBy, Pivot and Rollup answer text in a group as the op's formula does over the same cells.
 
 use solenoid_core::eval::{formula, Env};
 use solenoid_core::excel_functions::V;

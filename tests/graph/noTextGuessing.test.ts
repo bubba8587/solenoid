@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[B17]] typedValueModel
+// [[C10]] socketLattice, [[B17]] typedValueModel, [[formula-language#Text is text]]
 import { solDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";

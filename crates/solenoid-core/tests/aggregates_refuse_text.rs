@@ -1,6 +1,5 @@
-// [[D109]] aggregatesRefuseText, [[C134]] functionsFollowAlgebra
-//! Text given to an aggregate is an error typed in, from a name, or inside a list, the error its algebra gives: the
-//! leaves' worked tables, with `x = "a"` and `xs = 2, "a"`.
+// [[D109]] aggregatesRefuseText, [[C134]] functionsFollowAlgebra, [[formula-language#Text is text]]
+//! The leaves' worked tables of text given to an aggregate, with `x = "a"` and `xs = 2, "a"`.
 
 use solenoid_core::eval::{formula, Env};
 use solenoid_core::excel_functions::V;

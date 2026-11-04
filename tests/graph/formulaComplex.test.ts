@@ -1,4 +1,4 @@
-// [[C15]] matricesInFormulas
+// [[C15]] matricesInFormulas, [[C17]] shareImpl, [[C24]] arraySemantics, [[formula-language#Complex numbers]], [[formula-language#The dispatch ladder]], [[formula-language#Scalar operators]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { cx, isCx, parseCx, formatCxDisplay, type Cx } from "../../src/graph/cxValue";
@@ -9,19 +9,6 @@ import {
   type ComplexUnaryOp, type ComplexBinaryOp,
 } from "../../src/graph/nodes/complex";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
-
-// ─── [[C15]] matricesInFormulas amendment tranche: complex numbers in formulas (2026-07-28) ──────────
-// The IM* family owned over tagged Cx ([[C24]] arraySemantics) — before this, complex ALREADY
-// flowed into formulas (complexcombo → anydata connects) and every surface
-// handled it as garbage: operators concatenated "[object Object]", the IM* names
-// worked on Formula.js text complexes while refusing the graph's own tagged
-// values. Three contracts pinned here:
-//   1. [[C17]] shareImpl — each IM* registration runs the node family's kernel, so identical
-//      inputs give identical outputs on both surfaces;
-//   2. operators on a Cx answer typed errors / structural equality / formatted
-//      text — never coercion garbage;
-//   3. containment — a Cx reaches a dispatch only through a cxArgs registration
-//      (Formula.js and the Number()-coercing internals never see one).
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const code = (v: unknown) => (isSolError(v) ? (v as SolError).code : v);
@@ -139,7 +126,7 @@ describe("Excel's representations coerce IN (never OUT)", () => {
 });
 
 describe("operators on a Cx — typed, never coercion garbage", () => {
-  it("arithmetic answers #TYPE! naming the IM* family (was '[object Object]1')", () => {
+  it("arithmetic answers #TYPE! naming the IM* family", () => {
     for (const expr of ["z + 1", "1 - z", "z * z", "z / 2", "z ^ 2"]) {
       const r = ev(expr, { z: Z });
       expect(code(r), expr).toBe("#TYPE!");

@@ -223,6 +223,7 @@ Tests:
 - `formulaTier1.test.ts`: every blocked spelling answers `#NAME?` naming its replacement, and the replacement is live; the core refuses no `#NAME?` spelling the TS tables don't name; COLUMN says columns go by name; no blocked spelling is advertised or gets range routing; FORECAST redirects to FORECAST.LINEAR.
 - `excelFormula.test.ts`: VLOOKUP, HLOOKUP and LOOKUP say "Use XLOOKUP", MATCH "Use XMATCH" and SUMIF "Use SUMIFS", while SUMIFS, COUNTIF, AVERAGEIF and INDEX still answer.
 - `blankArgIsExcelBlank.test.ts`: MATCH, VLOOKUP and HLOOKUP are blocked, so they need no empty-slot row.
+- `formulaMatrix.test.ts`: the D* database family is blocked like VLOOKUP and MATCH.
 - `frameSurfaceNames.test.ts`: the map against the catalog both ways (redirect targets anywhere in the catalog, since K-Means, PCA and Logistic sit under Packs › Data Science and are still Frame verbs), a typed Frame verb's `#TYPE!` naming the node in Expression and Equation alike, a node-only verb's `#NAME?`, the violet in the editor and the redirect in the parameter bar.
 
 ### Excel names on nodes
@@ -520,9 +521,14 @@ Tests:
 
 ## Scalar operators
 
-**The last addition snaps** (the author's Excel, 2026-11-02). The `+` or `-` at a formula's root answers 0 where its two numbers cancel to 15 significant digits (`snapped_sum`), so `0.1+0.2-0.3`, `(0.1+0.2)-0.3` and `1E+15+0.3-1E+15` are 0. Only the root snaps: the same cancellation inside parentheses wrapping the whole formula, inside a function's argument, before a product or under a comparison keeps its 5.55E-17. SUM does not snap each addition: see **Sums** below. The root is the formula's, set by `formula` (unless `wholly_parenthesized`) and by a computed column for every cell; a column holds its tree, not its text, so a column formula wholly in parentheses snaps too; the unit-aware Expression path (`unit_expression.rs`) sets it as `formula` does. A LAMBDA's body is a formula of its own, so its root snaps too, called inline or by a host (`call_lambda`; the author's Excel, 2026-11-02: `LAMBDA(x, x-0.3)(0.1+0.2)` is 0).
+**The last addition snaps**, as Excel's does. The `+` or `-` at a formula's root answers 0 where its two numbers cancel to 15 significant digits (`snapped_sum`), so `0.1+0.2-0.3`, `(0.1+0.2)-0.3` and `1E+15+0.3-1E+15` are 0. SUM does not snap each addition: see **Sums** below.
 
-**Sums** (the author, 2026-11-03). Every total of a list (SUM, AVERAGE, SUMIFS, AVERAGEIFS, AVERAGEIF, Group By, Pivot, Rollup and Window sums and means, running and rolling sums) is exact: the numbers' exact sum rounded once (`exact_sum.rs`), so it doesn't depend on their order, and SUM over a column, SUMIFS over the rows that match and a Group By of the same rows agree to the last digit. A total snaps to 0 only where the numbers as written (each read as the shortest decimal that gives it back) cancel exactly: `SUM(0.1, 0.2, -0.3)` is 0, while `SUM(1E+15, 0.3, -1E+15)` is 0.3 and `SUM(1E+297, -1E+297, -0.089061)` is -0.089061, where Excel's snap at each addition gives 0 for both. Being order-free is what lets a criteria sum read a sorted run of its range and a rolling sum slide a row at a time ([[C120]] linearWork). The statistics that sum computed terms (variance, skew, regression) keep their own arithmetic, over an exact mean.
+- Only the root snaps: the same cancellation inside parentheses wrapping the whole formula, inside a function's argument, before a product or under a comparison keeps its 5.55E-17.
+- The root is the formula's, set by `formula` (unless `wholly_parenthesized`) and by a computed column for every cell. A column holds its tree, not its text, so a column formula wholly in parentheses snaps too.
+- The unit-aware Expression path (`unit_expression.rs`) sets the root as `formula` does.
+- A LAMBDA's body is a formula of its own, so its root snaps too, called inline or by a host (`call_lambda`): `LAMBDA(x, x-0.3)(0.1+0.2)` is 0, as in Excel.
+
+**Sums.** Every total of a list (SUM, AVERAGE, SUMIFS, AVERAGEIFS, AVERAGEIF, Group By, Pivot, Rollup and Window sums and means, running and rolling sums) is exact: the numbers' exact sum rounded once (`exact_sum.rs`), so it doesn't depend on their order, and SUM over a column, SUMIFS over the rows that match and a Group By of the same rows agree to the last digit. A total snaps to 0 only where the numbers as written (each read as the shortest decimal that gives it back) cancel exactly: `SUM(0.1, 0.2, -0.3)` is 0, while `SUM(1E+15, 0.3, -1E+15)` is 0.3 and `SUM(1E+297, -1E+297, -0.089061)` is -0.089061, where Excel's snap at each addition gives 0 for both. Being order-free is what lets a criteria sum read a sorted run of its range and a rolling sum slide a row at a time ([[C120]] linearWork). The statistics that sum computed terms (variance, skew, regression) keep their own arithmetic, over an exact mean.
 
 `op2(op, a, b)` runs per cell. Checks in order: an error in `a`, then in `b`, is the answer; a `null` on either side answers `null`; a complex operand goes to the complex table; a LAMBDA operand answers `#TYPE!` ("A LAMBDA isn't a value…"). Otherwise `apply_op` (`excel_formula.rs`) runs: logicals become 1 and 0 for the numeric operators and ordering, and:
 
@@ -538,11 +544,27 @@ Tests:
 
 `0^0` is 1, as in Google Sheets, IEEE 754's `pow` and nearly every language, not Excel's `#NUM!`: the empty product is 1, and the formulas that rely on it (polynomials, series, `x^0` columns) shouldn't break at zero ([[B27]] computeAnswersToExcel, the better app where Excel's answer only gets in the way).
 
-`number_to_text(x)`: non-finite values use `String`; otherwise round to 15 significant digits and strip trailing zeros, so `(0.1+0.2) & "kg"` is `0.3kg`. Magnitudes of 1e20 or more are written Excel's way, `1E+20` (uppercase E, signed, at least two exponent digits), and `1E+19` whole. A number below 1 is written whole while that takes at most 18 digits after the point (`0.00000000015`, `0.000123456789012345`, `0.000000000000000001`), and in the same E form past that (`1.23456789012345E-05`, `1E-20`), as the author's Excel writes them (2026-11-02, checked at 18 and 19 digits); a negative number is read by the same count, unchecked. A typed number keeps every digit it was given: Excel cuts typed digits past the 15th to zeros (`1234567890123456` reads as `1234567890123450`), which mangles IDs and card numbers, so Solenoid deliberately doesn't.
+`number_to_text(x)` writes a number as text:
+
+- Non-finite values use `String`.
+- Otherwise it rounds to 15 significant digits and strips trailing zeros, so `(0.1+0.2) & "kg"` is `0.3kg`.
+- Magnitudes of 1e20 or more are written Excel's way, `1E+20` (uppercase E, signed, at least two exponent digits), and `1E+19` whole.
+- A number below 1 is written whole while that takes at most 18 digits after the point (`0.00000000015`, `0.000123456789012345`, `0.000000000000000001`), and in the same E form past that (`1.23456789012345E-05`, `1E-20`), as Excel writes them (checked at 18 and 19 digits); a negative number is read by the same count, unchecked against Excel.
+- A typed number keeps every digit it was given: Excel cuts typed digits past the 15th to zeros (`1234567890123456` reads as `1234567890123450`), which mangles IDs and card numbers, so Solenoid deliberately doesn't.
 
 Complex operands (`apply_cx_op`): `&` formats the complex value with `format_cx` (`eval.rs`); `=` and `<>` are true only for two complex values with equal real and imaginary parts; ordering answers `#TYPE!` "Complex numbers have no order…"; arithmetic answers `#TYPE!` naming `IMSUM`, `IMSUB`, `IMPRODUCT` and `IMDIV`.
 
 Unary `-` and `+` and postfix `%` run per cell through `map_cells` on a list or matrix, and directly on a scalar: an error passes, `null` stays `null`, a complex value answers `#TYPE!` (naming `IMSUB(0, z)` or `IMDIV(z, COMPLEX(100, 0))`), text answers the binary operators' `#VALUE!` ([[C10]] socketLattice), and otherwise the result is `-x`, `+x` or `x/100`, a logical reading as 1 or 0. These do not call `guard`.
+
+Tests:
+
+- `excelFormula.test.ts`: the operator table (case-blind `=` that never crosses types, `#TYPE!` ordering across types and text by character code, `&` writing TRUE and FALSE, blanks and per-cell errors through every operator, TRUE as 1 in arithmetic), text in arithmetic as `#VALUE!` while `&` joins, `#DIV/0!` from a scalar division carried up a chain, and `&`, CONCAT, CONCATENATE and TEXTJOIN writing `0.1 + 0.2` as `0.3`.
+- `excelFunctions.test.ts`: a number as text strips its binary noise at 15 significant digits and leaves clean values alone.
+- `broadcastContract.test.ts`: `2^5000` and `EXP(1000)` are `#OVERFLOW!`, and `0^0` is 1.
+- `formulaComplex.test.ts`: the complex operands' table.
+- `excel_examples.rs` (solenoid-core): the last addition snaps where Excel's does and nowhere else, on the unit-aware path too, and near-equal numbers compare and write as Excel's do.
+- `exact_sum.rs` inline tests (solenoid-core): a total rounds once, any order and any split of the numbers agree, and a sliding sum snaps as a fresh one does.
+- `properties.rs` (solenoid-core): SUM keeps its laws over random lists.
 
 ## Text is text
 
@@ -559,6 +581,14 @@ A card that reads text from a typed input does so through `value_kinds.rs` ([[C5
 
 Evaluation is eager. Both operands of every operator and every argument of every call are evaluated before the operator or function runs, including `IF`'s branches.
 
+Tests:
+
+- `noTextGuessing.test.ts`: an operator on text, a function that needs a number given numeric text, a date function given date text, and a condition or logical argument given the text TRUE all refuse; the aggregates refuse numeric text while COUNT leaves it out; the explicit converters read text; a paired-list function drops a text pair as it drops a blank one; and the pack, coupon, dated cash flow and signal functions refuse numeric text, while IRR and MIRR skip it as Excel does.
+- `cardsRefuseText.test.ts`: the Aggregate, Rank & Percentile, Boolean Op and Group Lists cards answer text as their formulas do, through the port it arrives on, with the same error and message.
+- `aggregates_refuse_text.rs` (solenoid-core): text given to an aggregate, typed in, from a name or inside a list, is the error its algebra gives ([[D109]] aggregatesRefuseText).
+- `logic_refuses_text.rs` (solenoid-core): text given to AND, OR or XOR is `#VALUE!` the same three ways ([[D110]] logicRefusesText).
+- `frame_aggregates_refuse_text.rs` (solenoid-core): a Frame's GroupBy, Pivot and Rollup answer text in a group as the op's formula does over the same cells, with the same error and message, while a text column's MIN and MAX order its text, which no formula does.
+
 ## Numeric and vendor boundaries
 
 `guard(result, inputs)` (`excel_formula.rs`, over `guard_finite`, [[C24]] arraySemantics): a finite result passes; NaN is `#DOMAIN!`; an infinite result is `#OVERFLOW!` unless some input was itself infinite, in which case the infinity passes (a first-class infinity from the Constant node). The operators, range dispatch, broadcast calls and eta calls apply it.
@@ -569,12 +599,18 @@ A body taken from Formula.js reports its failures as Formula.js did (`V::Fx`, it
 
 `compilePositional(expr, paramNames)` wraps `compileEvaluator` with positional binding: argument `i` binds to `paramNames[i]` in a fresh environment. A name that is a constant still reads the constant; the LAMBDA node refuses such a parameter before it compiles. The card wire uses it to rebuild a LAMBDA card's λ (*The LAMBDA node and wired lambdas*).
 
+Tests:
+
+- `broadcastContract.test.ts`: `guard` makes NaN `#DOMAIN!` and an infinity from finite inputs `#OVERFLOW!`, passes one when an input was already infinite, and leaves a finite result unchanged.
+- `excelFormula.test.ts`: a top-level Formula.js-style error maps to a `SolError` (`ASIN(2)`'s `#NUM!` is `#DOMAIN!`), and `compilePositional` binds by position, not by the order the names appear.
+- `formulaLambda.test.ts`: an unapplied LAMBDA at the top level is `#VALUE!`.
+
 ## Complex numbers
 
 A complex value is a tagged object, `{ __cx: true, re, im }` (`cxValue.ts`, [[value-semantics#The value grammar]]), so `Array.isArray` means exactly one thing everywhere, and every complex test goes through `isCx`, never a structural array check. It reaches only a function that is not `checksCx` (step 10 of the dispatch ladder): the IM* family. COMPLEX takes real arguments, so it is `checksCx` and refuses a complex one.
 
 - **Arguments** (`to_cx` in `fns_complex.rs`; the IM cards read text through the same parser): a complex value as is, a real number as `re + 0i`, or text in Excel's `a+bi` grammar. Text that does not parse is `#VALUE!` (Excel says `#NUM!`); anything else, logicals included, is `#TYPE!`.
-- **Results** are tagged complex values, not Excel's text complexes. IMREAL, IMAGINARY, IMABS and IMARGUMENT answer numbers.
+- **Results** are tagged complex values, not Excel's text complexes. IMREAL, IMAGINARY, IMABS and IMARGUMENT answer numbers. Each IM* function's body runs the IM cards' kernels, so the same inputs give the same answers on both surfaces ([[C17]] shareImpl).
 - The IM* functions are element-wise, like their nodes: they are not `whole`, so they broadcast over lists, and IMSUM and IMPRODUCT over two lists zip them pairwise rather than summing a whole range as Excel does.
 - IMARGUMENT(0) is 0, atan2's convention and the IM Unpack node's answer; Excel answers `#DIV/0!`.
 - IMPOWER's exponent is real on both surfaces; a complex exponent is `#TYPE!`.
@@ -583,6 +619,8 @@ A complex value is a tagged object, `{ __cx: true, re, im }` (`cxValue.ts`, [[va
 - **Text forms.** `assembleCx` is the one place that knows how a complex is spelled: `a + bi`, `a - bi`, `bi`, `-bi`, `i`, `a`, `0`, and `NaN` when either part is NaN. The core's `format_cx` is the Excel and coercion form, which drops a zero part (`23`, `4i`); the `&` operator and cast to text use it, and it round-trips with `parseCx`. `formatCxDisplay` always shows both parts (`0 + 4i`, `23 + 0i`). `hasBothParts` reports the two-term form, which a unit wrapper must parenthesize. In `format_cx` the parts print as integers or to 4 decimals with trailing zeros removed, since it makes data; `formatCxDisplay` prints each part as any unformatted number shows ([[C118]] formatTravelsWithValue). `parseCx` accepts Excel's forms and the spaced output (`3 + 4i`, `-2.5-1e3j`, `i`, `-j`, a bare real), and answers null otherwise so the caller picks the error.
 - The arithmetic kernels (`cx_add` through `cx_cosh`, `fns_complex.rs`) do no error classification; they carry their own non-finite forms (dividing by zero is `cx(NaN, NaN)`) rather than minting tagged errors. `cx_pow(0, n)` is 0.
 
+Tests: `formulaComplex.test.ts`: `parseCx` reads every Excel form and round-trips the `&` text, refusing other text; `formatCxDisplay` keeps a zero part visible and still round-trips; each IM* function, QUADRATICROOTS included, answers what its card answers, over lists too with the per-cell contract; text and real numbers coerce in, invalid text is `#VALUE!` and a logical `#TYPE!`; the operators answer typed errors, equality by parts and formatted text; the containment above; and the answers compose back into the language (IMABS bridges to a number).
+
 ## Error-handling functions
 
 `IFERROR`, `IFNA`, `ISERROR`, `ISERR`, `ISNA` and `ERROR.TYPE` (`kind: handler` in the call table) are handled by `error_handler` (`excel_functions.rs`) before error propagation. An operand counts as an error when it is a `SolError` or a Formula.js-style error. `IFNA` and `ISNA` catch only `#N/A`; `ISERR` catches everything except `#N/A`; the rest catch every error.
@@ -590,6 +628,8 @@ A complex value is a tagged object, `{ __cx: true, re, im }` (`cxValue.ts`, [[va
 - `IFERROR(value, fallback)` and `IFNA`: a scalar value is replaced by the fallback when caught. When either argument is a list or matrix, the two broadcast through `map_cells` like an operator's operands ([[#Broadcasting]]): a list fallback reads as one row across a matrix, and a cell past a shorter operand's edge is `null`. A missing fallback is `null`.
 - `ISERROR`, `ISERR`, `ISNA`: TRUE or FALSE, walked cell by cell over lists and matrices.
 - `ERROR.TYPE`: per cell of a list or matrix, Excel's number for the code (`#DIV/0!` 2, `#VALUE!` 3, `#REF!` 4, `#NAME?` 5, `#N/A` 7, and 6 for `#NUM!` and the Solenoid codes that split it: `#DOMAIN!`, `#OVERFLOW!`, `#CONV!`); any other code is 3; a non-error answers `#N/A`.
+
+Tests: `excelFormula.test.ts`: IFERROR catches a `#DIV/0!` the formula makes and IFNA only `#N/A`; ISERROR, ISNA and ISERR classify a wired-in error; the family works cell by cell over a list; `IFERROR(XLOOKUP(…), default)` composes; a list fallback broadcasts as an operator's operand; ERROR.TYPE answers Excel's code number, `#N/A` for a non-error, cell by cell over a matrix.
 
 ## LAMBDA
 
@@ -605,9 +645,13 @@ A lambda is applied three ways:
 
 A lambda is not a value the graph carries out of a formula: the top-level evaluator refuses one, and an operator given one answers `#TYPE!`.
 
+Tests: `formulaLambda.test.ts`: an unapplied lambda at the top level is `#VALUE!`; parameters must be plain names and appear once; a closure captures the formula's variables; application inline, curried and higher-order, with the declared arity checked and only a lambda applying; a lambda in an operator is `#TYPE!`.
+
 ### Eta expansion
 
-In an argument of `MAP`, `BYROW`, `BYCOL`, `REDUCE`, `SCAN` or `GROUPBY`, and in every argument of an application, a bare name that is not in the environment, is not a constant, and resolves to a function becomes an eta lambda (a `LambdaV` with no parameters whose `eta` names the function), which `call_lambda` dispatches and passes through `guard`. A host calls an eta lambda with only its meaningful arity (MAP with one array passes one value, not the row and column indices). `MAKEARRAY` is not an eta host, since its generator slot takes `(row, col)`. A variable of the same name wins over the function.
+In an argument of `MAP`, `BYROW`, `BYCOL`, `REDUCE`, `SCAN` or `GROUPBY`, and in every argument of an application, a bare name that is not in the environment, is not a constant, and resolves to a function becomes an eta lambda (a `LambdaV` with no parameters whose `eta` names the function), which `call_lambda` dispatches and passes through `guard`. A host calls an eta lambda with only its meaningful arity (MAP with one array passes one value, not the row and column indices), so a plain SQRT never sees MAP's row and column. `MAKEARRAY` is not an eta host, since its generator slot takes `(row, col)`. A variable of the same name wins over the function.
+
+Tests: `formulaLambda.test.ts`: a bare function name in a host's lambda slot is eta and no variable, two arrays reach the eta function cell by cell, a failure in it is that cell's error, a variable or parameter named like a function wins, and eta rides an application's arguments too (`LAMBDA(f, f(9))(SQRT)` is 3).
 
 ### Formula hosts
 
@@ -627,11 +671,29 @@ Arity is not checked by the hosts: missing parameters bind `null` from the host'
 
 The lambda answers one value each time in MAP, BYROW, BYCOL, SCAN and MAKEARRAY, as Excel's does (its `#CALC!`): a list answer is that cell's `#SHAPE!` "{HOST}'s LAMBDA answers one value for each {cell, row, column, step}, not a list", since keeping it would nest the answer past a table, which nothing downstream reads. A list or table of one cell is that cell, as Excel reads a 1×1 array, so `MAP(ys, LAMBDA(x, FILTER(vals, keys = "b")))` answers the one match. REDUCE's accumulator may be a list, and so may GROUPBY's answer for a group.
 
+A host card with an inline formula and the formula host with an inline `LAMBDA(…)` run the same evaluation over the same tagged `LambdaValue`, so the same inputs give the same answers ([[C17]] shareImpl).
+
+Tests: `formulaLambda.test.ts`: each host answers what its card answers (MAP's binding and two arrays zipping, BYROW and BYCOL handing the row or column as a list, REDUCE and SCAN folding row-major, SCAN over a list as the Running card's cumulative SUM, MAKEARRAY's 1-based indices and its one column staying a column, GROUPBY's first-seen groups keyed by value, a blank keys list answering blank); a cell error stops REDUCE; a blank cell reaches the lambda; a list answer is `#SHAPE!` and a one-cell answer its cell; a non-lambda in the lambda slot is `#VALUE!` naming the host.
+
 ### The LAMBDA node and wired lambdas
 
 The LAMBDA node has a comma-separated `params` field and a body `expr`. Every name in the body that is not a parameter, together with every identifier-shaped `@name` (from `atColNames`), becomes a capture input socket. The LAMBDA node (`nodes/lambda.rs`) answers the λ as its text and captures; the card wire rebuilds it as `{ __lambda: true, params, fn, expr, captured, descriptions }`, where `fn(...args)` compiles the body with `compilePositional(expr, [...params, ...captures])` and passes the first `params.length` arguments followed by the capture values ([[node-bodies]] § The call). An unchanged recompute returns the same object, since consumers memoize on identity: the card's shell keeps it. A parameter that is not an identifier, one named twice, or one named after a constant answers `#NAME?`, and the card shows the reason ("e is a constant" for the last, [[C50]] lambdaBindsByName); a body that does not parse answers `#SYNTAX!` with the syntax hint; an empty body answers `null`.
 
-A wired lambda reaching the MAP, BYROW, BYCOL, REDUCE, SCAN or MAKEARRAY node binds by parameter name, not position ([[C50]] lambdaBindsByName). The option not taken, filling those names in automatically whatever is wired, would leave inputs that do nothing. Each node has fixed variable names (MAP `value`, `value2`, `value3`, `row`, `col`; BYROW and BYCOL `values`; REDUCE and SCAN `acc`, `value`, `step`; MAKEARRAY `row`, `col`). A parameter outside that set answers `#VALUE!` naming the node's variables. A captured name that matches one of the node's variables is flagged on the card as a likely missing parameter (`undeclaredConsumerVars`). Without a wired lambda, the node compiles its inline formula text over its fixed variables, and any other name answers `#NAME?`, pointing at the LAMBDA node. The formula hosts above bind positionally; only the node hosts bind by name.
+A wired lambda reaching the MAP, BYROW, BYCOL, REDUCE, SCAN or MAKEARRAY node binds by parameter name, not position ([[C50]] lambdaBindsByName). The option not taken, filling those names in automatically whatever is wired, would leave inputs that do nothing.
+
+- Each node has fixed variable names: MAP `value`, `value2`, `value3`, `row`, `col`; BYROW and BYCOL `values`; REDUCE and SCAN `acc`, `value`, `step`; MAKEARRAY `row`, `col`. The order the lambda declares them in is free, and captured values pass through.
+- A parameter outside that set answers `#VALUE!` naming the node's variables.
+- A captured name that matches one of the node's variables is flagged on the card as a likely missing parameter (`undeclaredConsumerVars`).
+- Without a wired lambda, the node compiles its inline formula text over its fixed variables, and any other name answers `#NAME?`, pointing at the LAMBDA node.
+- REDUCE's and SCAN's Initial input takes a scalar, not a list, so a wired number seeds the fold as itself rather than as a one-item list that would broadcast every step into a list.
+
+The formula hosts above bind positionally; only the node hosts bind by name. How units ride through the host cards' folds is [[unit-flow]].
+
+Tests:
+
+- `nodes/tableLambda.test.ts`: the LAMBDA node emits a callable value binding its parameters by position; SCAN and REDUCE seed from a scalar Initial socket; the card names the variables a lambda used without declaring; the hosts carry units over a list.
+- `nodes.rs` (solenoid-core): the host cards' frozen cases, a wired lambda's by-name binding among them ([[node-bodies#Checks]]).
+- `formulaLambda.test.ts`: a parameter named after a constant or named twice is refused on the card.
 
 ## Errors a formula answers
 
@@ -649,7 +711,7 @@ A wired lambda reaching the MAP, BYROW, BYCOL, REDUCE, SCAN or MAKEARRAY node bi
 | `#N/A` | `ERROR.TYPE` of a non-error; lookups with no match; shape-builder padding. |
 | `#CONV!` | The iterative finance functions failing to converge (IRR, XIRR, RATE). |
 
-Errors produced by an implementation for its own reasons (a negative `SQRT`, a bad argument) are that implementation's business and are not listed.
+Errors produced by an implementation for its own reasons (a negative `SQRT`, a bad argument) are that implementation's business and are not listed. The table restates the sections above; their tests hold it.
 
 ## The Expression node
 
@@ -670,6 +732,12 @@ Errors produced by an implementation for its own reasons (a negative `SQRT`, a b
 
 **Result socket.** The result's type is what the formula computed, read off its values ([[D113]] inlineCast, [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; an answer that mixes kinds is untyped (the combo wildcard), and one with no values keeps the last run's family. Before the first run it is the untyped combo. A variable reads a date as a date ([[date-values]]); a plain number is never read as one. With no cast the socket is typed by the value it carries (`ValueTypedSocket`, [[socket-lattice]] req. 9): a table at its family's matrix, anything else at its family's combo, the cables following through the Type Settle after the pass. An error result leaves the socket where it was ([[D117]] emptyKeepsLastType). The card's **InlineCast** (`castTo`: ∅ `none`, the default, or `number`, `text`, `date`, `logical`) is a Cast on the result, labelled as one: the core runs Cast's own conversion over every cell (`inline_cast`, Cast's defaults: no format pattern, the default separators), a cell that won't convert is `#VALUE!`, and the socket takes the cast's family. A date cast to Number gives its serials, as Cast does ([[C137]] datesNeverSerials). The core's `typed_answer` does both, for this card and the LAMBDA helper cards (MAP, BYROW / BYCOL, REDUCE, SCAN, MAKEARRAY), whose inputs read dates the same way. A fold over dates starts from a date: a plain 0 beside dates is a mix.
 
+Tests:
+
+- `expressionMatrix.test.ts`: a fresh Expression declares `anydata` variables; every family's matrix connects and Frames, Cubes and objects never do; a wired matrix computes by the broadcast table, mixes ranks and aggregates whole, with per-cell blanks and errors riding through; the result socket takes the rank and family of the value it carried, and an error keeps the last type ([[D117]] emptyKeepsLastType).
+- `excelFormula.test.ts`: `extractVariables` collects bare names in first-appearance order and skips functions, constants, references and literals.
+- `formulaLambda.test.ts`: a LAMBDA's parameters and an eta name grow no socket.
+
 ## Static analyses
 
 Other surfaces read a formula without evaluating it. All return empty on a syntax error.
@@ -681,11 +749,15 @@ Other surfaces read a formula without evaluating it. All return empty on a synta
 | `atColNames(expr)` | identifier-shaped `@name` references only (the LAMBDA node's capture sockets) |
 | `formulaFunctionNames()` | every dispatchable name |
 
+Tests: `excelFormula.test.ts` (`extractVariables`); `formulaLambda.test.ts` (parameters and eta names).
+
 ## Rendering
 
 `formulaToLatex(expr)` renders the AST for KaTeX, or null on a syntax error. It uses KaTeX's own operator names (the arc functions are `\arcsin`, never `\asin`), and since KaTeX has no `\textquotedbl`, quotes stay literal inside `\text{}`. Division is `\frac`, `*` is `\cdot`, `^` is a superscript, comparisons use their symbols, `&` is `\mathbin{\&}`, a blank is `\varnothing`, strings are `\text{"…"}` with LaTeX specials escaped, logicals are upright words, and references are `\text{@name}` or `\text{[Name]}`. `SQRT`, `ABS`, `POWER`, `EXP`, `PI()`, `LN`, one-argument `LOG` and `LOG10`, and the trigonometric and hyperbolic functions get their math forms; any other call is `\operatorname{NAME}`. A name splits into a base and a subscript at its first underscore, or at a trailing digit run (`x2` is `x_2`); a Greek base becomes its letter (`phi` is `\varphi`); a longer base is upright. Parentheses are added only where precedence needs them.
 
 `evaluateSteps(expr, vars)` produces one LaTeX step per operation and call, deduplicated by rendered form, for a numeric scalar formula. It uses plain JavaScript arithmetic, not `apply_op`, reads unbound variables and blanks as 0 and logicals as 1 and 0, and answers null for strings, references, applications, `&`, a call that fails to dispatch, a non-finite result or no steps. Each step's LaTeX reads `operands = result`, with the operands shown as their computed numbers, as every unformatted number shows ([[C118]] formatTravelsWithValue).
+
+Tests: `excelFormula.test.ts`: `formulaToLatex`'s math forms, Greek names, subscripts, parentheses only where precedence needs them, KaTeX's own arc names and string literals KaTeX accepts with their specials escaped; `evaluateSteps`'s step per operation in order, one step for a repeated operation, none for a bare percent or literal, and numbers shown as unformatted numbers show.
 
 ## Editor support
 
@@ -709,7 +781,17 @@ The advertised set is re-read by identity on each call, never kept as a module c
 
 **Signatures** (`formulaSignatures.ts`). `signatureFor(name)` answers, in order: `frame verb — use the {node} node` for a Frame verb, `use the {node} node` for a node-only verb, the curated `FORMULA_SIGNATURES` entry, a pack's declared signature, a placeholder built from `FUNCTION_ARITY`, or null. It never answers a bare argument count. A curated entry is keyed by the uppercase name, joins its parameters with ", ", puts an optional parameter in brackets and ends a variadic tail with `…`; a blocked name has no entry, since a hint would advertise a name the parser refuses. `genericSignature([min, max])` writes `arg1, arg2, [arg3]`, showing max parameters, or for a variadic function (max 255 or more) `max(min, 1)` parameters followed by `…`; a function of no arguments is "". `signatureParams(sig)` splits a signature into parameters for the parameter bar, answers `[]` for "", and null for a prose redirect (one containing " — " or starting "use the "), which the bar shows as prose.
 
+A hint is the function's contract, so it agrees with the function's arity, whether curated, a pack's or built from the arity: its unbracketed parameters are the minimum, and all its named parameters the maximum, unless a `…` tail makes it variadic, in which case the maximum exceeds the named ones. LAMBDA's hint, `parameter1, …, calculation`, shows the special form's common shape and is exempt; a body taken from Formula.js declares no arity and can't be checked.
+
 **The parameter bar.** `enclosingCall(src, caret)` finds the innermost named call around the caret and the index of the argument the caret is in. It skips string literals and lets anonymous parentheses nest; commas count only on the innermost open group, so a named call's count already excludes an inner anonymous group's commas.
+
+Tests:
+
+- `formulaSyntax.test.ts`: the highlighter loses no character, classes a function, an unknown call, a variable and a constant (a name is a function only in call position, and a dotted name is one token), and escapes HTML; `tokenAtCaret` finds the word at the caret; `suggestFor` ranks an exact prefix first, offers the card's variables and the constants, drops a fully typed non-function and keeps a function; a function suggestion carries its hint; `enclosingCall` finds the innermost call and the caret's argument, past strings and anonymous parentheses.
+- `formulaSignatures.test.ts`: every curated signature names a real function, no hint is a bare argument count, every hint agrees with its function's arity, and `genericSignature` and `signatureParams` write and split signatures.
+- `frameSurfaceNames.test.ts`: a Frame verb and a node-only verb show in the violet and carry their redirect in the hint.
+- `emptySlots.test.ts`: the highlighter shows an empty slot's reading ([[D96]] emptySlotShowsItsValue).
+- `formulaExtensions.test.ts`: a pack's argument hint reaches `signatureFor`.
 
 ## Computed columns
 
@@ -728,6 +810,13 @@ Per-function behavior that the routing above does not decide. The node and the f
 - **ISCLOSE(a, b, [tolerance])**: `|a − b| ≤ tolerance`, default 10⁻⁹; a blank operand answers blank. **ISBOOLEAN** is TRUE only for a logical.
 - **CLAMP(x, lo, hi)** and **BETWEEN(x, lo, hi)** (inclusive) answer `#VALUE!` for a non-number.
 
+Tests:
+
+- `excelFormula.test.ts`: an error in a branch not taken is not IF's, IFS's or CHOOSE's answer, and an empty IF branch is 0.
+- `noTextGuessing.test.ts`: a condition never reads the text TRUE.
+- `excelFunctions.test.ts`: CLAMP bounds a number and BETWEEN answers a logical, both advertised.
+- `cardsRefuseText.test.ts`: NAND, NOR and XNOR answer text item by item as the Boolean Op card does.
+
 ### Math
 
 - **ROUND**, **ROUNDUP** and **ROUNDDOWN** run `round_digits` (`excel_functions.rs`), which the ROUND card calls too. ROUND rounds half away from zero, as Excel does (`ROUND(-2.5, 0)` is −3). The digits count truncates toward zero, and the scaled value is read at 15 significant digits before it rounds, as Excel reads it, so binary noise never tips a result: `ROUND(1.005, 2)` is 1.01 and `ROUNDUP(0.1+0.2, 1)` is 0.3. A blank digits argument is 0.
@@ -736,10 +825,15 @@ Per-function behavior that the routing above does not decide. The node and the f
 - **ERF.PRECISE** and **ERFC.PRECISE** are Excel's single-argument forms, identical to ERF and ERFC, and delegate to them.
 - **CONVERT** runs the unit system on the Convert node's units, by Excel code or unit id ([[excel-divergences]]).
 
+Tests:
+
+- `excelFunctions.test.ts`: ROUND rounds half away from zero, in a formula too; SQRT of a negative and the other domain misses (LN, LOG10, SQRTPI, ASIN, ACOS, ATANH) are `#DOMAIN!`; MOD takes the divisor's sign and ATAN2 Excel's argument order; MOD and QUOTIENT by zero are `#DIV/0!`; CONVERT runs the unit system and reads only its own table's units.
+- `broadcastContract.test.ts`: `0^0` is 1.
+
 ### Text
 
 - The text functions write a number through `number_to_text` (15 significant digits), so `(0.1+0.2) & "kg"` is `0.3kg`.
-- **TEXTJOIN(delimiter, ignore_empty, …)**: only FALSE or 0 keeps empty strings; a blank `ignore_empty` slot is FALSE. **CONCAT** and **TEXTJOIN** take whole ranges; **CONCATENATE** is element-wise.
+- **TEXTJOIN(delimiter, ignore_empty, …)**: only FALSE or 0 keeps empty strings; an empty `ignore_empty` slot is TRUE, as Excel reads it, and a blank value there is FALSE (*Blank and omitted arguments*). **CONCAT** and **TEXTJOIN** take whole ranges; **CONCATENATE** is element-wise.
 - **VALUETOTEXT** implements only Excel's concise form (format 0), what Cast to Text does with no format.
 - **REGEXTEST, REGEXEXTRACT, REGEXREPLACE** take Excel's documented optional arguments. `case_sensitivity` is 0 (case-sensitive, the default) or 1 (case-insensitive); anything else is `#VALUE!`. REGEXREPLACE's `occurrence` is 0 (the default, every match), n (only the nth) or -n (the nth from the end); a fraction truncates, and a non-finite one is `#VALUE!`. The node's Occurrence reads it the same way (`regex_occurrence`). REGEXEXTRACT's `return_mode` is 0 (the first match, the default), 1 (every match as a list) or 2 (the first match's capture groups as a list). The Regex card's Match case button is `case_sensitivity`, on by default.
 - **SIMILARITY(a, b, [method])** takes `ratio` (the default), `damerau`, `jaro_winkler` or `levenshtein`, case-insensitive with `-` and spaces read as `_`; `jaro` means `jaro_winkler`; anything else is `#DOMAIN!`. **LEVENSHTEIN(a, b)** is the raw distance. **FUZZYMATCH(text, candidates, [threshold], [method])** answers the best candidate among the text candidates, with a default threshold of 0.6, or `#N/A` when none is similar enough.
@@ -747,6 +841,13 @@ Per-function behavior that the routing above does not decide. The node and the f
 - **HASH(text, [algorithm])**: SHA-256 by default; the name is lowercased with `-`, `_` and spaces removed, and must be one of `HASH_ALGORITHM_META` (`#DOMAIN!` otherwise). The digests are written out in full in `hash_ops.rs`: UTF-8 in, lowercase hex out. **UUID()** is a random v4 UUID from the platform's secure generator. Base64 is the standard alphabet with padding over UTF-8 text; invalid base64 passes through unchanged.
 - **TEMPLATE(text, v0, v1, …)** takes positional placeholders only, `{0}`, `{1}` or `{0:0.00}`; a named placeholder is the Template node's business (it grows sockets), so here it is `#NAME?` and the mistake is loud. A number formats through TEXT with its spec (General, `@`, by default).
 - The Solenoid text functions (REVERSETEXT, UNACCENT, SLUGIFY, PADTEXT, TRUNCATETEXT, WRAPTEXT, SPELLNUMBER, DECODEURL, the Base64 pair, HASH, TEMPLATE) answer blank for a blank text.
+
+Tests:
+
+- `formulaTier1.test.ts`: TEXTSPLIT, TEXTAFTER and TEXTBEFORE (the not-found blank included), ENCODEURL and the REGEX functions answer what their cards answer, REGEXEXTRACT's groups mode and REGEXREPLACE's occurrence included (the nth match keeps its context, `$n`, `${name}`, `$0` and `$$` expand from it, a fraction truncates and a negative counts from the end); FIND and SEARCH take an empty find text one past the end; SEARCH reads Excel's wildcards; VALUE takes a comma before the decimal point.
+- `formulaReviewFixes.test.ts`: REGEXTEST's third argument is `case_sensitivity`, and anything but 0 or 1 is `#VALUE!`.
+- `blankArgIsExcelBlank.test.ts`: TEXTJOIN's empty `ignore_empty` slot and blank value.
+- `excelFormula.test.ts`: TEXTJOIN, CONCAT and CONCATENATE write numbers at 15 significant digits.
 
 ### Dates and times
 
@@ -757,6 +858,13 @@ Per-function behavior that the routing above does not decide. The node and the f
 - **TODAY()** is today's date on the local calendar as an integer serial; **NOW()** is the local wall clock with its time fraction. Both read the calc's clock (`engineClock`, from `wallClockSerial`), the Today / Now card's kernel and the day a relative date text such as `tomorrow` counts from, so the day turns at local midnight, when the rollover recalculates.
 - **FROMEPOCH(value, [unit])** and **TOEPOCH(date, [unit])** take `s` (the default) or `ms`, case-insensitive; any other unit is `#DOMAIN!`. **DATETRUNC(date, [unit], [ceiling])** defaults to `day`; an unknown unit is `#DOMAIN!`.
 - **TIMEZONECONVERT(datetime, from, to)** reads a datetime serial on one IANA zone's wall clock and rebuilds it on another's, the Time Zone Convert node's `convert_zone`; any blank argument answers blank.
+
+Tests:
+
+- `excelFormula.test.ts`: TODAY() is a whole day and NOW() carries a time of day, each a date; TEXT formats a date with a date-shaped code and passes numeric codes through.
+- `excelFunctions.test.ts`: YEAR, EOMONTH and the datetime extractors read Solenoid's serial, as the Date Part card does, and a date-returning function answers a date, not a bare serial ([[D114]] dateIsAKind).
+- `formulaTier1.test.ts`: YEARFRAC basis 1 uses 366 when a February 29 falls in the span.
+- The date-values tests ([[date-values#Functions]]) and `dates_before_1900.rs` (solenoid-core).
 
 ### Statistics
 
@@ -773,12 +881,29 @@ Per-function behavior that the routing above does not decide. The node and the f
 - **INTERPOLATE** covers both of the Interpolate node's modes under one name ([[#Derived names are unique]]), chosen by the first argument's rank. List mode, `INTERPOLATE(known_ys, known_xs, new_xs)`, requires all three arguments (`#VALUE!` otherwise), prepares the known pairs with the node's `pair_present`, and answers a linear interpolation per query (`interpolate`, `fns_lists.rs`); text in `known_ys`, `known_xs` or `new_xs` is `#VALUE!` naming the argument ("INTERPOLATE: known_ys need numbers", [[C10]] socketLattice); an error in the queries is the answer, a blank query stays blank in place, and a scalar query answers a scalar. Grid mode, `INTERPOLATE(table, [xs], [ys], [forecast])`, takes a matrix first and runs [[bordered-grid-fill]]. There a blank positional argument is an omitted axis counting 1, 2, 3, like an unwired socket, because a formula has no cables and so no wired blank; `forecast` defaults to TRUE.
 - **FORECAST.ETS**, **FORECAST.ETS.CONFINT** and **FORECAST.ETS.SEASONALITY** run the Forecast (ETS) node's kernel (*Signal and forecasting kernels*).
 
+Tests:
+
+- `excelFunctions.test.ts`: the flat names (STDEV, VAR, MODE, PERCENTILE, QUARTILE, COVAR) resolve with Excel's flat defaults; RANK of a value not in the list is `#N/A`; TRIMMEAN at 0.2 over five values trims nothing; PERCENTRANK interpolates and truncates as the Rank & Percentile card does; STANDARDIZE is `#DOMAIN!` for a standard deviation at or below 0.
+- `formulaReviewFixes.test.ts`: F.TEST answers the two-tailed p-value, T.TEST picks paired, pooled or Welch by its type and halves the p-value for one tail, an out-of-range type or tails is `#DOMAIN!`, PROB's omitted upper limit is the lower limit, and INTERPOLATE drops an incomplete known pair and refuses text.
+- `formulaTier1.test.ts`: FORECAST.LINEAR answers the card's line and `#DIV/0!` for Xs with no variance, and TREND and GROWTH with `const` FALSE fit through the origin and through 1.
+- `rangeRouting.test.ts`: TREND, GROWTH, LINEST and LOGEST each answer one fit (an omitted `new_xs` defaulting to the known Xs, the Forecast card mirroring a query's shape, an exponential fit's log-scale R² of 1, a Y at or below 0 `#DOMAIN!`, a blank pair dropped).
+- `distributionFormula.test.ts`: the distributions answer as the Distributions card's kernels do, with absolute anchors from Excel's examples beside the card comparison, so a kernel mistake can't hide behind being shared; BETA's support bounds; a domain refusal is `#DOMAIN!` on both surfaces; CHISQ, F and GAMMA at and below 0; RANDDIST draws the same family and refuses an unknown one; BINOM.INV and HYPGEOM.DIST refuse an infinite count rather than hang.
+- `formulaMatrix.test.ts`: INTERPOLATE picks its mode by the first argument's rank.
+- `logicals_in_aggregates.rs` (solenoid-core): every aggregate reads TRUE as 1 and FALSE as 0, typed in or inside a list ([[D108]] aggregatesCountLogicals).
+
 ### Finance
 
 - The bond, coupon, discount and T-bill functions (COUP*, ACCRINTM, INTRATE, RECEIVED, YIELDDISC, TBILLEQ, TBILLPRICE, TBILLYIELD, PRICEMAT, YIELDMAT, DURATION, MDURATION, PRICE, YIELD, ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD) run the finance nodes' kernels in Excel's argument order. An argument Excel answers `#NUM!` for is `#DOMAIN!` naming what is wrong, and only a missing date answers blank ([[C24]] arraySemantics). ODDF functions read an issue date and a first-coupon date; ODDL functions read only a last-interest date, so their argument lists differ in shape.
 - **IRR(values)**, **MIRR(values, finance_rate, reinvest_rate)** and **XIRR(values, dates)** prepare cash flows as the node does (`cash_prep`, `dated_prep`): a blank cash flow is 0 and a blank date makes the answer blank. IRR and MIRR skip text among the cash flows, as Excel does; XNPV and XIRR answer text among the cash flows or dates `#VALUE!` ([[C10]] socketLattice). Fewer than two cash flows answer blank. A failed solve is `#CONV!`, noting the cash flows may have no internal rate of return. XIRR, node and formula alike through `xirr` (`finance_ops.rs`), refuses a date before the first with `#DOMAIN!` (Excel's `#NUM!`), since a negative exponent would otherwise break the solver and be blamed on the sign pattern.
 - **VDB** switches to straight-line when that is the larger charge, Excel's default; a `no_switch` of TRUE stays on declining balance to the end, as Excel's. `factor` defaults to 2. A negative cost or salvage, a life or factor of 0 or less, or a period outside 0 ≤ start ≤ end ≤ life is `#DOMAIN!`.
 - **The return-series functions** are the Returns card's ops: LOGRETURNS, CUMRETURNS, DRAWDOWN, MAXDRAWDOWN, CAGR(list, [periods per year]), VOLATILITY(list, [periods per year]), SHARPE(list, [risk-free rate per period], [periods per year]) and SORTINO (the same arguments). Periods per year defaults to 1 and the risk-free rate to 0.
+
+Tests:
+
+- `formulaTier1.test.ts`: COUPNUM, COUPDAYBS (30/360 counting a coupon on the last day of February as the 30th), PRICE and YIELD round-tripping, DURATION and MDURATION, and VDB (with `no_switch` too) answer what their cards answer, and an out-of-range argument is `#DOMAIN!`.
+- `excelFunctions.test.ts`: the cash-flow functions take the list whole, as the cards do.
+- `noTextGuessing.test.ts`: XNPV and XIRR refuse text among their cash flows, while IRR and MIRR skip it.
+- `coreLimits.test.ts`: PRICE and YIELD with a far maturity don't walk every coupon in between.
 
 ### Lookup and reference
 
@@ -787,6 +912,13 @@ Per-function behavior that the routing above does not decide. The node and the f
   - An array lookup value spills, as in Excel: one result per element, as a list. A 1 × N or N × 1 matrix lookup value spills over its cells; a true grid is `#SHAPE!`. This spill is scoped to the lookup family; it is not a general per-argument spill ([[#Argument routing]]).
   - XLOOKUP's return array must be as long as the lookup array (`#VALUE!` otherwise). No match answers `if_not_found` when given, else `#N/A`. XMATCH answers a 1-based position.
 - **INDEX(array, [row], [col])** runs the INDEX node's accessor (`index_into`), so the formula answers what the card answers (*Index access*).
+
+Tests:
+
+- `excelFunctions.test.ts`: XLOOKUP and XMATCH match exactly, take a 1 × N or N × 1 matrix as the lookup array and refuse a grid with `#VALUE!`, and a list or one-row matrix lookup value spills while a grid one is `#SHAPE!`.
+- `excelFormula.test.ts`: XLOOKUP and XMATCH match text without case; INDEX's 0 is the whole axis and past the end is `#REF!`.
+- `blankArgIsExcelBlank.test.ts`: the blank match and search modes.
+- `coreLimits.test.ts`: a list of lookups indexes the keys once, a search from the end finds the last match, and text matches without case.
 
 ### Lists
 
@@ -804,6 +936,13 @@ Per-function behavior that the routing above does not decide. The node and the f
 
 - **SPARKLINE(range, [type])** draws a small picture of the range's numbers and answers it as `data:image/svg+xml` text ([[D82]] sparklineCell), which a table cell shows as the picture ([[C103]] untrustedContentSeams). The type is `line` (the default, also for a blank), `column` or `winloss`, case-insensitive, the Sparkline node's three; anything else is `#VALUE!` naming them. The range is a list or a matrix, read row by row; text, TRUE/FALSE and blanks are skipped, the first cell error is the answer, and a range with no number answers blank. Past 40 numbers the range is averaged into 40 equal buckets (`sparkline`, `fns_lists.rs`), so a cell's text stays a few hundred bytes however long the range. The picture is 80 × 20, one path (line, columns, in gold) or two (win/loss's green and vermilion), coordinates to one decimal (`sparkline` in `crates/solenoid-core/src/fns_lists.rs`). The text carries the Default palette's hexes and is marked `class='sol-spark'`; `CellImage` (`components/cubeCell.tsx`), which every grid, card and record picture goes through, repaints those three hexes in the active palette's slots (`repaintSparkline`, `SPARK_SLOTS`) and re-renders on a palette change. The Sparkline node paints the same three slots.
 
+Tests:
+
+- `formulaTier3.test.ts`: each list function answers what its card answers (REVERSE, SLICE in both forms, NTHELEMENT, INTERLEAVE, PADLEFT and PADRIGHT, DIFF, NORMALIZE, LENGTH, ARGMAX, ARGMIN, ARGSORT, WHICH, CONTAINS, the weighted statistics, the generators, the Set and Fill families, COALESCE, RANGE and CONCATLISTS), with each name read from its op table so a rename on one surface fails; RUNNING is one name with the aggregator as its argument, its window sliding, a blank window cumulative and an unknown aggregator `#VALUE!`, and the per-op RUNNING* names don't resolve; nulls keep their place and a cell error rides in its slot, while a whole-list reducer answers the error; a scalar widens to a one-item list; a generator is capped at the formula boundary; SHUFFLE is a fresh permutation each evaluation; RANDSAMPLE draws with replacement, by weight when given.
+- `formulaReviewFixes.test.ts`: CONTAINS with a blank needle is blank, a blank SLICE, NTHELEMENT or PADLEFT setting is `#SYNTAX!`, FILLVALUE fills with missing, DIFF's missing neighbour makes a missing difference, and RANGE with a step of 0 is an error.
+- `dispatchThrow.test.ts`: NTILE and GAUSSIANSMOOTH refuse a count that would loop or allocate past their limits.
+- `sparklineFormula.test.ts`: SPARKLINE answers `data:image/svg+xml` text with one path for a line, columns and a two-color win/loss strip, refuses an unknown type and passes a cell error through, is blank with no numbers and skips text and blanks, reads a matrix row by row, caps a long range, and the display repaints the three colors in the active palette and leaves other pictures alone; the text leaves the app unchanged through CSV and a note's frontmatter.
+
 ### Matrices and dynamic arrays
 
 - A matrix argument reads as itself, a list as one row ([[C10]] socketLattice), a scalar as 1 × 1, and a blank stays blank.
@@ -817,10 +956,19 @@ Per-function behavior that the routing above does not decide. The node and the f
 - **WRAPROWS** and **WRAPCOLS(list, count, [pad_with])**: a blank list or count answers blank, the count truncates (`wrap_count`, `fns_matrix.rs`, which the Table Reshape card reaches through WRAPROWS and WRAPCOLS), a count below 1 is `#DOMAIN!` (Excel's `#NUM!`), and the default pad is `#N/A` ([[C48]] appendLadder).
 - **TOCOL(array, [ignore], [scan_by_column])** stacks the cells into a one-column table and **TOROW** (same arguments) lines them up as a list (a row) ([[D85]] columnsStayColumns). Both read row by row unless `scan_by_column` is TRUE; `ignore` is Excel's code, 0 keeping every value, 1 skipping blanks, 2 errors and 3 both, and anything else is `#VALUE!`, as is a `scan_by_column` that isn't TRUE or FALSE. The Table Reshape card's TOCOL and TOROW ops carry the same two choices as its By row / By column toggle and its skip picker (`flatten_args`, `fns_matrix.rs`). TOROW is the way to turn a table or a column into a list.
 - **SEQUENCE(rows, [cols], [start], [step])**: one column answers a list, the Sequence node's own 1-D output; more columns wrap row by row. A blank row count answers blank. The counts truncate; a negative one is `#VALUE!`, and zero rows or columns answer an empty list.
-- **SORT(array, [sort_index], [sort_order], [by_col])**, **SORTBY(array, by_array1, [sort_order1], …)**, **FILTER(array, include, [if_empty])** and **UNIQUE(array, [by_col], [exactly_once])** take a list or a table, as Excel's do; a list is one row ([[D85]] columnsStayColumns), and the answer is a list again while one row is left. SORT sorts the rows by the values in column `sort_index`, or with `by_col` the columns by row `sort_index`; an index outside the table is `#VALUE!`, so on a list SORT changes nothing without `by_col`. SORTBY reads each key's shape: keys that are one-column tables sort the rows, keys that are rows (a list is one) sort the columns, earlier keys first, each with its own order; keys that run different ways, or a key of another length, are `#VALUE!`. FILTER does the same with its mask: a column keeps rows, a row keeps columns, another length is `#VALUE!`, and an empty result answers `if_empty` when given. UNIQUE keeps the first of each distinct row (or column with `by_col`), and with `exactly_once` only those that appear once; on a list without `by_col` it changes nothing. A sort order other than 1 or −1 is `#VALUE!`, and the settings are declared roles, so a blank one is its default ([[input-roles]]). All sort through `compare_list_cells`: numbers by value, text by character code ([[C59]] byteStringOrder), then FALSE and TRUE, Excel's order across kinds; blanks, errors and NaN go last in either direction, in their original order. Each include cell is read as IF reads a condition (`if_test`): text other than TRUE or FALSE is `#VALUE!`, a blank keeps nothing, and the first error in the include array is the answer, while an error in the data stays in its cell ([[E10]] pickVsAggregateErrors). The kernels are `sort`, `sort_by`, `filter` and `unique` in `crates/solenoid-core/src/shapers.rs`. A grid is filtered by flattening it first (TOCOL, then List Filter); no filter works cell by cell on a grid ([[C49]] filterOneJob).
+- **SORT(array, [sort_index], [sort_order], [by_col])**, **SORTBY(array, by_array1, [sort_order1], …)**, **FILTER(array, include, [if_empty])** and **UNIQUE(array, [by_col], [exactly_once])** take a list or a table, as Excel's do; a list is one row ([[D85]] columnsStayColumns), and the answer is a list again while one row is left. SORT sorts the rows by the values in column `sort_index`, or with `by_col` the columns by row `sort_index`; an index outside the table is `#VALUE!`, so on a list SORT changes nothing without `by_col`. SORTBY reads each key's shape: keys that are one-column tables sort the rows, keys that are rows (a list is one) sort the columns, earlier keys first, each with its own order; keys that run different ways, or a key of another length, are `#VALUE!`. FILTER does the same with its mask: a column keeps rows, a row keeps columns, another length is `#VALUE!`, and an empty result answers `if_empty` when given. UNIQUE keeps the first of each distinct row (or column with `by_col`), and with `exactly_once` only those that appear once; on a list without `by_col` it changes nothing. A sort order other than 1 or −1 is `#VALUE!`, and the settings are declared roles, so a blank one is its default ([[input-roles]]). All sort through `compare_list_cells`: numbers by value, text by character code ([[C59]] byteStringOrder), then FALSE and TRUE, Excel's order across kinds; blanks, errors and NaN go last in either direction, in their original order. Each include cell is read as IF reads a condition (`if_test`): text other than TRUE or FALSE is `#VALUE!`, a blank keeps nothing, and the first error in the include array is the answer, while an error in the data stays in its cell ([[E10]] pickVsAggregateErrors). The kernels are `sort`, `sort_by`, `filter` and `unique` in `crates/solenoid-core/src/shapers.rs`. A grid is filtered by flattening it first (TOCOL, then List Filter); no filter works cell by cell on a grid ([[C49]] filterOneJob). FILTER's include array has no card twin: the List Filter card is set up by condition rows, each an op and a value, a different mechanism from Excel's computed mask.
+- **Set Cell** has no formula, since a matrix writer taking any number of writes has no clean signature. Its card extends each write by the value's shape from its anchor (a scalar is a cell, a list a row segment, a matrix a block), later writes win, and a write past an edge is `#REF!` naming the axis, with no clipping.
 - **TAKE** and **DROP(array, rows, [cols])** take Excel's signed counts through the one `take_slice`/`drop_slice` kernel, per axis on a matrix. A list is one row ([[D85]] columnsStayColumns), so its items are columns: `TAKE(x, , 2)` is its first two items, `TAKE(x, 2)` is the whole list, `DROP(x, 1)` leaves nothing, and a list comes back as a list. Taking 0 rows or columns or dropping everything is `#DOMAIN!` (Excel's `#CALC!`), never a silent empty array. DROP of 0 drops nothing. A blank row count keeps every row (`TAKE(m,,2)`, `DROP(m,,1)`), which is what Excel's blank means in that slot ([[C80]] blankArgIsExcelBlank). The TAKE / DROP card has no way to leave a count out, so its 0 means "left out" and keeps the whole axis.
 - **UNIQUE**, **MODE.MULT** and **FREQUENCY(data, bins)** answer blank for a blank argument. FREQUENCY drops a bin that is no number, as Excel does, so it answers one count per number bin, plus one (checked in Excel 2026-11-01).
 - **RANDARRAY([rows], [cols], [min], [max], [integer])** defaults to one row, one column, 0 and 1. Its counts read as SEQUENCE's do (`array_count` in `fns_random.rs`, shared with the RANDARRAY card): they truncate, a negative one is `#VALUE!`, and zero answers an empty list. A Min above Max is `#VALUE!`, as in Excel. The whole-number option draws each whole number in [Min, Max] equally often, and a range holding none is `#VALUE!`; the formula's checks and draw are `rand_array_range` and `rand_array_draw` (`fns_random.rs`), and the card's `rand_array` (`nodes/list.rs`) repeats both. It is volatile, fresh values each evaluation, while the node holds its rolls for a recalculation.
+
+Tests:
+
+- `formulaMatrix.test.ts`: each matrix function answers what its card answers, error codes included (MMULT, MDETERM, MINVERSE, TRANSPOSE, MUNIT, DIAGONAL both ways, OUTER, COLUMNS and ROWS, the stacks and XSTACK, CHOOSECOLS and CHOOSEROWS, EXPAND, TOCOL and TOROW, WRAPROWS and WRAPCOLS, SEQUENCE, SORT, SORTBY, FILTER and UNIQUE, TAKE and DROP on a list, a matrix and a scalar); EXPAND past the cell cap is `#OVERFLOW!`; FILTER refuses text as a condition, keeps nothing for a blank, answers the include array's error and leaves a data error in its cell; INTERPOLATE's grid mode; the Set Cell card's writes.
+- `listSortOrder.test.ts`: SORT orders text by character code and mixed kinds numbers, text, FALSE and TRUE with blanks, errors and NaN last, and SORTBY takes text keys and a sort order, as the Sort card does.
+- `indexPosition.test.ts`: INDEX with several positions answers once per position, as Excel's array arguments do.
+- `dispatchThrow.test.ts`: WRAPROWS and WRAPCOLS refuse a count past their limits with `#OVERFLOW!`.
+- `generatorCaps.test.ts`: MAKEARRAY's cap and truncation, shared with its card.
 
 ### Criteria
 
@@ -839,6 +987,11 @@ The criteria family (SUMIFS, COUNTIFS, AVERAGEIFS, MINIFS, MAXIFS, COUNTIF, AVER
 **Matching a cell** (`criterion_matches`): an error cell never matches. A blank criterion matches a blank cell (null or empty text), and "not blank" matches the rest. A blank cell otherwise matches only a `<>` criterion. A logical criterion matches only logical cells. A number criterion compares only with number cells: text never reads as a number ([[B17]] typedValueModel), so other text matches only `<>`, and logical cells never match it. Text compares case-insensitively: a wildcard pattern matches the whole cell, and the ordering prefixes compare lowercased text by UTF-16 code unit (`compare_strings`, [[C45]] excelComparisons).
 
 **Aggregating** (`criteria_aggregate(kind, values, pairs)`): the ranges and the values range zip to the shortest length, and a row counts when it matches every criterion. An error in a matched value cell is the answer, as in Excel. A value cell contributes only when it is a finite number; text is ignored, numeric text included, as in Excel. COUNT counts matched rows; SUM of nothing is 0; AVERAGE of nothing is `#DIV/0!`; MIN and MAX of nothing are 0, as in Excel.
+
+Tests:
+
+- `criteriaFamily.test.ts`: wildcards, the `~` escape, comparisons and `<>` on text; a date-shaped text criterion against a date column; each of the family's functions; a blank criterion matching blank cells, a number only numbers, and errors never; the card and the formula agreeing; numeric text in a range never summing, averaging or meeting a number criterion, a number ordering over text being `#TYPE!`, and a typed criterion over a text range matching the same text.
+- `excelFormula.test.ts`: COUNTIF and AVERAGEIF never read a numeric-text range as numbers, and COUNTIF takes its range whole.
 
 ### Deliberate differences from Excel
 

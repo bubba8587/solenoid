@@ -1,6 +1,5 @@
-// [[D110]] logicRefusesText, [[C134]] functionsFollowAlgebra
-//! Text given to AND, OR or XOR is #VALUE! typed in, from a name, or inside a list, as the arithmetic on 0 and 1
-//! they stand for gives: the leaf's worked table, with `x = "a"`, `xs = TRUE, "a"` and `ys = FALSE, "a"`.
+// [[D110]] logicRefusesText, [[C134]] functionsFollowAlgebra, [[formula-language#Text is text]]
+//! The leaf's worked table of text given to AND, OR or XOR, with `x = "a"`, `xs = TRUE, "a"` and `ys = FALSE, "a"`.
 
 use solenoid_core::eval::{formula, Env};
 use solenoid_core::excel_functions::V;

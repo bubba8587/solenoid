@@ -1,8 +1,7 @@
-// [[C51]] formulaNaming
+// [[C51]] formulaNaming, [[formula-language#Editor support]]
 import { describe, it, expect } from "vitest";
 import { highlightFormula, tokenAtCaret, suggestFor, enclosingCall } from "../../src/graph/formulaSyntax";
 
-// Strip the tags to recover the original text — the highlighter must be lossless.
 const stripTags = (html: string) =>
   html.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
 
@@ -55,14 +54,12 @@ describe("suggestFor", () => {
     expect(vars).toContain("price");
   });
   it("drops a fully-typed non-function (nothing left to complete)", () => {
-    // `tau` is a constant with no Formula.js function of that name → nothing to add.
     expect(suggestFor("tau").some((x) => x.name.toLowerCase() === "tau")).toBe(false);
-    // but a fully-typed FUNCTION stays — accepting it still adds the `(`.
     expect(suggestFor("PI").some((x) => x.name === "PI")).toBe(true);
   });
 });
 
-describe("signature surfacing (audit 2026-07-16 — arg-count in autocomplete)", () => {
+describe("signature surfacing", () => {
   it("a function suggestion carries its signature hint", () => {
     const idx = suggestFor("INDE").find((s) => s.name === "INDEX");
     expect(idx?.hint).toBe("array, [row], [col]");

@@ -1,3 +1,4 @@
+// [[C15]] matricesInFormulas, [[C17]] shareImpl, [[formula-language#Matrices and dynamic arrays]], [[formula-language#The dispatch ladder]], [[formula-language#Whole-list natives]], [[formula-language#Lists, columns and tables]], [[formula-language#Blocked and wrong-surface names]], [[formula-language#Statistics]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { callTraits } from "./callTraits";
@@ -9,12 +10,6 @@ import { SeriesNode } from "../../src/graph/nodes/list";
 import { InterpolateNode } from "../../src/graph/nodes/stats";
 import { SetCellNode } from "../../src/graph/nodes/matrix";
 import { isSolError, solError, type SolError } from "../../src/graph/errorValue";
-
-// ─── [[C15]] matricesInFormulas tranche 1: the matrix core, node-equals-formula ([[C17]] shareImpl) ───────────────
-// Every matrix registration delegates to the same kernels the nodes run, so the
-// test that matters is equality against the NODE, not correctness in isolation —
-// the Tier 1/Tier 3 discipline at rank 2. Error CODES are part of the contract
-// (the node family's #TYPE!/#VALUE!/#SHAPE!/#DIV/0! taxonomy).
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const M = [[1, 2], [3, 4]];
@@ -118,11 +113,8 @@ describe("each matrix name computes what its node computes", () => {
   });
 });
 
-describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas's point)", () => {
-  it("MMULT is a matrix product, not the element-wise Hadamard the fallthrough gave", () => {
-    // Pre-tranche this answered [[{},{}],[{},{}]] — Formula.js MMULT mapped
-    // cell-wise. If this test ever sees a 2×2 of objects again, the meta lost
-    // its matrixArgs and the containment guard stopped routing.
+describe("a matrix reaches its function whole", () => {
+  it("MMULT is a matrix product, not an element-wise one", () => {
     const r = ev("MMULT(a, b)", { a: M, b: M }) as number[][];
     expect(r).toEqual([[7, 10], [15, 22]]);
   });
@@ -134,10 +126,6 @@ describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas'
   });
 
   it("COLUMNS / ROWS count the shape, sharing the TableInfo node's math ([[C17]] shareImpl)", () => {
-    // Pre-ownership these fell through to Formula.js element-wise, answering a
-    // same-shape array of #VALUE! even on a 1-D list. Now both surfaces call
-    // matrixShape: a list is a ROW here, so COLUMNS counts it and ROWS is 1; a
-    // scalar is 1x1; a wired blank stays unknown. Assert equality against the node.
     const info = (v: unknown) => new TableInfoNode().data({ matrix: [v] });
     for (const v of [[[1, 2, 3], [4, 5, 6]], [1, 2, 3], 9, [], null] as unknown[]) {
       expect(ev("COLUMNS(v)", { v })).toBe(info(v).cols);
@@ -188,7 +176,7 @@ describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas'
   });
 });
 
-describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, node-equals-formula", () => {
+describe("the array-returning functions compute what their cards compute", () => {
   it("UNIQUE / SORT / SORTBY match their nodes (incl. blanks-last)", async () => {
     const { UniqueNode, SortNode } = await import("../../src/graph/nodes/list");
     const x = [3, 1, 3, null, 2];
@@ -262,9 +250,6 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
   });
 
   it("FILTER by mask — Excel's include-array form", () => {
-    // The List Filter NODE is condition-ROW configured (per-row {op, matchCase}
-    // with wired comparison values) — a different mechanism from Excel's computed
-    // boolean mask, so [[C17]] shareImpl's node-equality doesn't apply term-for-term here.
     const x = [1, 5, 2, 9];
     expect(ev("FILTER(x, x > 2)", { x })).toEqual([5, 9]);
     expect(ev("FILTER(x, m)", { x, m: [true, false, true, false] })).toEqual([1, 2]);
@@ -292,7 +277,7 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
   it("MODE.MULT and FREQUENCY are owned — no more element-wise garbage", () => {
     expect(ev("MODE.MULT(x)", { x: [1, 1, 2, 2, 3] })).toEqual([1, 2]);
     expect(ev("FREQUENCY(x, b)", { x: [1, 5, 9, 3], b: [4, 8] })).toEqual([2, 1, 1]);
-    // Pre-tranche: UNIQUE([3,1,3,2]) broadcast to [[3],[1],[3],[2]]. A list is one row, so its items dedupe by column.
+    // A list is one row, so its items dedupe by column.
     expect(ev("UNIQUE(x, TRUE)", { x: [3, 1, 3, 2] })).toEqual([3, 1, 2]);
   });
 
@@ -347,8 +332,7 @@ describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
   });
 });
 
-// Set Cell has no formula (a variadic matrix writer has no clean signature), so the card is driven with one
-// Value/Row/Column triple per write. Unit carry + wired-blank roles live in the node test.
+// The card is driven with one Value/Row/Column triple per write.
 function setCells(m: unknown[][], writes: { r: unknown; c: unknown; v: unknown }[]): unknown {
   const node = new SetCellNode({ valueKeys: writes.map((_, i) => `value${i}`) });
   const inputs: Record<string, unknown[]> = { matrix: [m] };

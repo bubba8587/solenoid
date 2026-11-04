@@ -1,16 +1,10 @@
+// [[C15]] matricesInFormulas, [[C17]] shareImpl, [[C50]] lambdaBindsByName, [[formula-language#Syntax]], [[formula-language#Names]], [[formula-language#Syntax and evaluation]], [[formula-language#Eta expansion]], [[formula-language#Formula hosts]], [[formula-language#The LAMBDA node and wired lambdas]], [[formula-language#The Expression node]], [[formula-language#The registry]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator, compilePositional, extractVariables } from "../../src/graph/excelFormula";
 import { LambdaNode } from "../../src/graph/nodes/lambda";
 import { MapTableNode, ByAxisNode, ReduceLambdaNode, ScanLambdaNode, MakeArrayNode } from "../../src/graph/nodes/tableLambda";
 import { GroupListsNode, RunningNode } from "../../src/graph/nodes/list";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
-
-// ─── [[C15]] matricesInFormulas lambda tranche: the language feature, node-equals-formula ────────────
-// LAMBDA is the evaluator's one SPECIAL FORM; the hosts are registrations that
-// receive the SAME tagged LambdaValue the LAMBDA node emits. The parity target:
-// a host NODE with an inline formula and the formula host with an inline
-// LAMBDA(...) run the identical evaluation core, so identical inputs must give
-// identical outputs — the [[C17]] shareImpl discipline, closing gap A to ZERO.
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const M = [[1, 2], [3, 4]];
@@ -98,9 +92,7 @@ describe("each host computes what its node computes ([[C17]] shareImpl)", () => 
     const scanNode = new ScanLambdaNode({ expr: "acc + value", literals: { initial: 0 } });
     expect(ev("SCAN(0, m, LAMBDA(acc, value, acc + value))", { m: M }))
       .toEqual(scanNode.data({ table: [M] }).result);
-    // SCAN over a list ≡ the Running card's cumulative SUM — the general fold agreeing
-    // with the task-shaped RUNNING("sum", x). Asserted against the NODE so this pins
-    // the lambda machinery, not the RUNNING wrapper (formulaTier3 covers that).
+    // Against the Running card itself, so this holds the fold, not the RUNNING formula.
     expect(ev("SCAN(0, x, LAMBDA(a, v, a + v))", { x: [1, 2, 3, 4] }))
       .toEqual(new RunningNode({ agg: "sum" }).data({ list: [[1, 2, 3, 4]] }).result);
   });
@@ -117,7 +109,7 @@ describe("each host computes what its node computes ([[C17]] shareImpl)", () => 
   it("GROUPBY — first-seen groups, VALUE-keyed, lambda per group's value list", () => {
     const k = ["a", "b", "a", "b"], v = [1, 2, 3, 4];
     const node = new GroupListsNode({ agg: "sum" });
-    // The node emits one Key/Value frame now (C5); the GROUPBY formula still spills [key, value] rows.
+    // The card answers a Key/Value Frame; the formula spills [key, value] rows.
     const cols = node.data({ keys: [k], values: [v] }).result!.columns;
     const fx = ev("GROUPBY(k, v, LAMBDA(g, SUM(g)))", { k, v }) as unknown[][];
     expect(fx.map((r) => r[0])).toEqual(cols[0].values); // Key
@@ -144,12 +136,7 @@ describe("the value model rides through lambdas", () => {
   });
 });
 
-describe("eta-lambdas and application — the recorded deviations, closed", () => {
-  // Excel parity: a BARE dispatchable name works where a lambda belongs
-  // (`MAP(x, SQRT)` — eta), and a lambda value applies with `(…)` — inline
-  // (IIFE), curried, or through a parameter (higher-order). The eta wrapper
-  // declares no params and is marked `eta`, so hosts call it with their
-  // MEANINGFUL arity only (etaFn): a raw SQRT never sees MAP's row/col tuple.
+describe("eta-lambdas and application", () => {
   it("eta: a bare function name in a host's fn slot", () => {
     expect(ev("MAP(x, SQRT)", { x: [1, 4, 9] })).toEqual([1, 2, 3]);
     expect(ev("BYROW(m, SUM)", { m: M })).toEqual([[3], [7]]);

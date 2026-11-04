@@ -1,6 +1,4 @@
-// [[B11]], [[A1]]
-// The formula and the Distributions card answer alike: both run the core's kernels, and this guards that nobody
-// re-forks one surface.
+// [[B11]] maximalMerge, [[A1]] visualGraphCalculator, [[C17]] shareImpl, [[formula-language#Statistics]], [[formula-language#Distribution table]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { DistributionsNode } from "../../src/graph/nodes/distribution";
@@ -31,10 +29,6 @@ describe("registered gap distributions match the NODES", () => {
   });
 });
 
-// A1 backing flip (2026-08-23): the names Formula.js DOES have now run the node's spec
-// table too (distributionOps.DIST_SPECS), in Excel's argument order. Pinned exact (same
-// kernel, same call) plus a few absolute anchors so a kernel regression can't hide
-// behind a shared mistake.
 describe("Formula.js-overlap distributions run the NODE's DIST_SPECS", () => {
   const ev = (e: string) => compileEvaluator(e)!({});
   const eq = (a: unknown, b: unknown) => expect(a).toBe(b);
