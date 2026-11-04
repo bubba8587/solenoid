@@ -530,6 +530,7 @@ pub const DIRECT: &[&str] = &[
     "HeadersNode",
     "HeatmapNode",
     "HistogramNode",
+    "HoldNode",
     "HrZonesNode",
     "HypothesisTestNode",
     "IFErrorNode",

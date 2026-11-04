@@ -34,6 +34,7 @@ export const INIT_FIELD_ORDER = [
   "choices",
   "layout",
   "margin", "direction",
+  "heldText",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [

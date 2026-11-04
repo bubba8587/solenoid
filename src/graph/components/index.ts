@@ -141,6 +141,7 @@ export { WriteFileComponent, WriteObsidianComponent, WriteTasksComponent } from 
 export { ImportObsidianComponent } from "./ImportObsidianNode";
 
 export { CableSwitchComponent } from "./CableSwitchNode";
+export { HoldComponent } from "./HoldNode";
 
 export { NoteComponent } from "./NoteNode";
 

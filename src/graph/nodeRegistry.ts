@@ -4,7 +4,7 @@ import type { Emit } from "./components/nodeKit";
 import { GraphNode } from "./graphModel";
 import type { JSXElementConstructor } from "react";
 import {
-  AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, DashboardNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode, QrCodeNode,
+  AngleDialNode, SlicerNode, CableSwitchNode, HoldNode, NoteNode, ReportNode, DashboardNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode, QrCodeNode,
   SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ValueInputNode, DateRangeNode, XYPadNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, CardsNode, GanttNode,
   PointPlotterNode, CurveNode, GridPainterNode,
@@ -80,7 +80,7 @@ import {
   TornadoNode,
 } from "./nodeClasses";
 import {
-  AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, DashboardComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, FileLinkComponent, SvgPickerComponent, QrCodeComponent,
+  AngleDialComponent, SlicerComponent, CableSwitchComponent, HoldComponent, NoteComponent, ReportComponent, DashboardComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, FileLinkComponent, SvgPickerComponent, QrCodeComponent,
   SparklineComponent, ChartComponent, MergePlotsComponent, ConditionalRegionsComponent, HistogramComponent, KpiComponent, ProportionComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapComponent, ChartBuilderComponent, ValueInputComponent, DateRangeComponent, XYPadComponent,
   WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, QuiverComponent, RecordComponent, CardsComponent, GanttComponent,
   PointPlotterComponent, CurveComponent, GridPainterComponent,
@@ -174,6 +174,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [AngleDialNode,   comp(AngleDialComponent)],
   [SlicerNode,      comp(SlicerComponent)],
   [CableSwitchNode, comp(CableSwitchComponent)],
+  [HoldNode, comp(HoldComponent)],
   [ImportObsidianNode, comp(ImportObsidianComponent)],
   [NoteNode,        comp(NoteComponent)],
   [ReportNode,      comp(ReportComponent)],

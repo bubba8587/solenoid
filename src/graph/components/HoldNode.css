@@ -1,0 +1,17 @@
+.sol-hold__bar { display: flex; gap: 6px; align-items: center; margin: 4px 0 2px; }
+.sol-hold__mode { flex: 1; display: flex; }
+.sol-hold__mode .solenoid-segbtn { flex: 1; }
+.sol-hold__recapture {
+  flex: 0 0 auto;
+  height: 20px;
+  padding: 0 7px;
+  font-family: inherit;
+  font-size: 11px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.sol-hold__recapture:hover { border-color: var(--node-accent, var(--accent)); color: var(--text); }
+.sol-hold__note { color: var(--text-muted); font-size: 11px; margin: 2px 0; }
