@@ -1,4 +1,4 @@
-// [[C24]]
+// [[C24]] arraySemantics, [[error-values#Per-cell errors surface through a bounded scan]]
 import { describe, it, expect } from "vitest";
 import { findCellError } from "../../src/graph/engineWasm/solenoid_graph.js";
 import {
@@ -8,10 +8,6 @@ import {
   CELL_SCAN_STRIDE_SAMPLES,
 } from "../../src/graph/errorValue";
 
-// Task 1 (Stream D): the bounded per-cell error scan that lets the Problems
-// panel + model fuzzer see an error INSIDE a list/matrix/frame, not only a
-// top-level scalar failure — while capping the work per pass (full scans were
-// rejected on perf).
 
 describe("sampledCellIndices — the bound", () => {
   it("returns every index when the container fits in the head", () => {
@@ -60,15 +56,13 @@ describe("findCellError", () => {
   });
 
   it("catches a WHOLE-COLUMN (systematic) error even in a huge list", () => {
-    // A bad transform applied to every row — the common case — is always caught
-    // because the head is scanned in full.
+
     const big = Array.from({ length: 100_000 }, () => err);
     expect(findCellError(big)).toBe(err);
   });
 
   it("is a BOUNDED scan: a lone error buried past the head between strides is missed", () => {
-    // This documents the accepted cost of the cap. Index 100 sits after the head
-    // (64) and before the first tail stride, so it is not sampled.
+    // Index 100 sits after the head (64) and before the first tail stride.
     const idx = sampledCellIndices(100_000);
     expect(idx).not.toContain(100);
     const big: unknown[] = Array.from({ length: 100_000 }, () => 0);

@@ -1,4 +1,4 @@
-// [[C24]]
+// [[C24]] arraySemantics, [[error-values#The guard]], [[error-values#Shape errors are part of this system]], [[error-values#`#CIRC!` is engine-level, not a producer]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
@@ -27,9 +27,7 @@ function connect(
   );
 }
 
-// End-to-end checks that wire nodes through a real editor + DataflowEngine, whose
-// input boundary coerces each input and guards each call as the canvas's does. These cover the seed's cases that a bare node.data()
-// can't: the coercion #SHAPE! path and an error riding a cable into a consumer.
+
 function makeEditor() {
   const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
@@ -160,10 +158,7 @@ describe("dependency loops (#CIRC!)", () => {
     await editor.addNode(free);
     await connect(editor, a, "result", b, "a");
     await connect(editor, b, "result", a, "a");
-    // NOTE: `engine.fetch(a.id)` would HANG forever — the pull engine resolves
-    // inputs before data() and deadlocks on the loop. That is precisely why
-    // processGraph never fetches a cyclic node; it marks them #CIRC! directly.
-    // A node outside the loop has no path into it, so it computes normally.
+    // Fetching a or b would deadlock; free has no path into the loop.
     const out = await engine.fetch(free.id) as { result: unknown };
     expect(out.result).toBe(5);
   });

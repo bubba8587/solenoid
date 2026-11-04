@@ -1,4 +1,4 @@
-// [[C23]] calcModes, [[compute-pass#The model pass]]
+// [[C23]] calcModes, [[compute-pass#The model pass]], [[error-values#`#CIRC!` is engine-level, not a producer]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
@@ -40,12 +40,12 @@ describe("closing a cycle with a live cable (targeted topology pass)", () => {
     await connect(editor, a, "result", b, "a");
     await connect(editor, b, "result", a, "a"); // this cable CLOSES the loop
 
-    // As the canvas pipe does for a new cable: a targeted pass on its target with the topology flag.
+    // The pass a new cable runs: targeted at its target, with the topology flag.
     await expect(
       processGraph(a.id, undefined, { topology: true }),
     ).resolves.not.toThrow();
 
-    // The loop members must carry the seeded #CIRC! error, like a full pass gives.
+
     for (const n of [a, b]) {
       const out = cableValueStore.get(n.id, "result");
       expect((out as SolError).code).toBe("#CIRC!");

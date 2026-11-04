@@ -1,4 +1,4 @@
-// [[C25]]
+// [[C25]] firstClassUnits, [[error-values#Enforcement]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
@@ -9,12 +9,6 @@ import { isSolError, type SolError } from "../../src/graph/errorValue";
 import { computeAll } from "../../src/graph/graphCompute";
 import seed from "../../src/graph/seedGraphs/null-and-logical.json";
 
-// Loads the "Errors, Null & Logic" seed (the error-codes tour merged into it,
-// 2026-07-08 — the c_*/d_* cluster ids are preserved) and runs it through a real editor +
-// DataflowEngine with the SAME wrappers + cycle handling Canvas/processGraph use,
-// then checks that every ISERROR cluster lights up with the code its row promises.
-// A wrong socket key or a producer that quietly returns null shows up here as a
-// blank (null seenError) instead of in the running app.
 
 type SavedNode = {
   id: string; type: string;

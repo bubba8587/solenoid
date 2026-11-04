@@ -1,4 +1,4 @@
-// [[D86]], [[C24]] arraySemantics
+// [[D86]], [[C24]] arraySemantics, [[error-values#The per-cell contract and the non-finite guard]]
 import { describe, it, expect } from "vitest";
 import { readInput } from "../../src/graph/nodes/shared";
 import { compileEvaluator } from "../../src/graph/excelFormula";

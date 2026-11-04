@@ -1,4 +1,4 @@
-// [[C24]] arraySemantics, [[E9]]
+// [[C24]] arraySemantics, [[E9]] errorsKeepOrigin, [[error-values#The guard]], [[error-values#Producers and provenance]], [[error-values#Detect and recover: one notion of error]]
 import { describe, it, expect } from "vitest";
 import { growthAt4x } from "./timing";
 import { nodeDisplayName } from "../../src/graph/catalogUtils";
@@ -33,9 +33,7 @@ describe("the error guard", () => {
     throughBoundary(n);
     const e = solError("#DOMAIN!", "upstream");
     const out = n.data({ a: [e as unknown as number], b: [2] }) as { result: unknown };
-    // Origin tagging (Tier 1) mints a fresh object the first time an untagged
-    // error is seen, so this is no longer the SAME reference as `e` — check the
-    // code/message survived instead.
+    // Origin tagging copies the untagged error, so compare its code and message.
     expect(isSolError(out.result)).toBe(true);
     expect((out.result as SolError).code).toBe("#DOMAIN!");
     expect((out.result as SolError).message).toBe("upstream");
@@ -75,9 +73,7 @@ describe("the error guard", () => {
   });
 
   it("maps a thrown ShapeError to #SHAPE! (central coercion contract)", () => {
-    // The input-coercion wrapper throws ShapeError on a narrowing failure; the
-    // guard, wrapping it, must surface that as a tagged #SHAPE! rather than the
-    // generic #ERROR! — so a dimension mismatch reads as a shape problem.
+
     const n = new ArithmeticNode({ op: "add" });
     n.data = () => { throw new ShapeError("Expected a single value, got 4"); };
     throughBoundary(n);
@@ -97,9 +93,7 @@ describe("the error guard", () => {
   });
 
   it("a Chart is a figure sink: an error input yields an empty chart, not a SolError output", () => {
-    // Chart sees raw errors (SEES_ERRORS) and its data() sanitizes them to null,
-    // so the `chart` socket always carries a ChartValue — a bare error object out
-    // of a figure socket historically crashed the chart consumers.
+
     const n = new ChartNode({ op: "column" });
     throughBoundary(n);
     const out = n.data({ values: [solError("#DIV/0!", "x")] }) as { chart: unknown };
@@ -233,7 +227,7 @@ describe("error consumers", () => {
   });
 
   it("a real null (missing) is NOT an error — it passes through both modes", () => {
-    // null is no longer "not found"; a not-found is a tagged #N/A (e.g. XLOOKUP).
+
     expect(new IFErrorNode({ op: "iferror" }).data({ value: [null], fallback: [9] }).result).toBeNull();
     expect(new IFErrorNode({ op: "ifna" }).data({ value: [null], fallback: [9] }).result).toBeNull();
   });
@@ -254,7 +248,7 @@ describe("error consumers", () => {
   });
 
   it("ISERROR (Test) and IFERROR agree: only a tagged error counts (a bare NaN does not)", () => {
-    // A bare NaN is neither an error nor caught — Test's ISERROR and IFERROR match.
+
     expect(new IsTestNode({ op: "iserror" }).data({ value: [NaN] }).result).toBe(false);
     expect(new IFErrorNode({ op: "iferror" }).data({ value: [NaN], fallback: [9] }).result).toBeNaN();
   });
@@ -282,10 +276,10 @@ describe("error consumers", () => {
     expect(new IsTestNode({ op: "isnull" }).data({ value: [div0] }).result).toBe(false);
     // UNWIRED (no operand) is NOT null — the node has nothing to test → blank output.
     expect(new IsTestNode({ op: "isnull" }).data({}).result).toBeNull();
-    // List: flags each null cell. Matrix: per CELL (was a crash/garbage before).
+    // List: flags each null cell. Matrix: per cell.
     expect(new IsTestNode({ op: "isnull" }).data({ value: [[1, null, 3, null]] }).result).toEqual([false, true, false, true]);
     expect(new IsTestNode({ op: "isnull" }).data({ value: [[[1, null], [null, 4]]] }).result).toEqual([[false, true], [true, false]]);
-    // ISBLANK tests per cell too, as the ISBLANK formula does over a list ([[C17]] shareImpl).
+
     expect(new IsTestNode({ op: "isblank" }).data({ value: [[1, null, 3]] }).result).toEqual([false, true, false]);
   });
 });
@@ -353,16 +347,14 @@ describe("error producers", () => {
   });
 
   it("XMATCH node SPILLS a list lookup value, matching the XMATCH formula", () => {
-    // Same kernel (xmatchIndex) as the formula's `pick`, so the surfaces can't drift:
-    // a list needle gives a list of positions; a miss spills #N/A in place.
+    // A list needle gives a list of positions; a miss spills #N/A in place.
     const r = new XMatchNode().data({ value: [[30, 10, 99]], array: [[10, 20, 30]] }).result as unknown[];
     expect(r.slice(0, 2)).toEqual([3, 1]);
     expect(isSolError(r[2]) && (r[2] as SolError).code).toBe("#N/A");
   });
 
   it("Filter ([[C49]] filterOneJob) never shape-errors: a per-cell error just fails its condition", () => {
-    // The 1-D Filter has no mask and takes no tables, so its old #SHAPE!
-    // sources are gone; an error CELL fails the condition and exits Dropped.
+
     const n = new FilterNode({ condConfig: { "0": { op: "gt" } } });
     n.stringLiterals.value0 = "1";
     const err = solError("#DIV/0!", "x");
@@ -380,15 +372,13 @@ describe("error producers", () => {
   });
 
   it("iterative finance solvers report #CONV! when they can't converge", () => {
-    // An all-positive cash flow series has no internal rate of return — NPV is
-    // positive at every rate, so Newton never lands on a root.
+    // An all-positive cash flow: NPV is positive at every rate.
     const irr = new IRRNode().data({ list: [[100, 200, 300]] }).result;
     expect(isSolError(irr)).toBe(true);
     expect((irr as SolError).code).toBe("#CONV!");
     // A real sign-changing series still converges to a number.
     expect(new IRRNode().data({ list: [[-100, 0, 0, 0, 146.41]] }).result).toBeCloseTo(0.1, 4);
-    // Solving RATE on an unsolvable annuity (all same-sign, no rate balances
-    // it) now runs through the Equation TVM's numeric fallback → #SOLVE!.
+
     const rate = new TvmNode().data({ nper: [10], pmt: [100], pv: [100], fv: [100] }).rate;
     expect(isSolError(rate)).toBe(true);
     expect((rate as SolError).code).toBe("#SOLVE!");
@@ -427,8 +417,7 @@ describe("error producers", () => {
     const cross = new ConvertNode({ fromUnit: "m", toUnit: "kg" }).data({ in: [5] }).out;
     expect(isSolError(cross)).toBe(true);
     expect((cross as SolError).code).toBe("#N/A");
-    // A same-family conversion works (meters → kilometres): a base-SI UnitCell of
-    // 2000 m tagged display "km" (2 km) — FC A4 value-mutating Convert.
+    // A base-SI UnitCell of 2000 m that displays as 2 km.
     const ok = new ConvertNode({ fromUnit: "m", toUnit: "km" }).data({ in: [2000] }).out;
     expect(isUnitCell(ok)).toBe(true);
     expect((ok as UnitCell).value).toBeCloseTo(2000, 9);

@@ -21,7 +21,13 @@ flowchart LR
 
 ## Errors are values
 
-A `SolError` (`errorValue.ts`) is a tagged plain object, `{ __solError: true, code, message, origin? }`, not a class instance, so it survives `structuredClone` and never trips a cross-module `instanceof`. `solError(code, message)` mints one and `isSolError(v)` tests for the tag. The `message` is a short structural explanation ("Division by zero") that is safe for a tooltip; `ERROR_EXPLANATIONS` holds the longer per-code text that inspection surfaces show, so the badge and the producer's message stay terse.
+Code: `errorValue.ts`
+
+- **The shape.** A `SolError` is a tagged plain object, `{ __solError: true, code, message, origin? }`, not a class instance, so it survives `structuredClone` and never trips a cross-module `instanceof`.
+- **Minting and testing.** `solError(code, message)` mints one and `isSolError(v)` tests for the tag.
+- **The two texts.** The `message` is a short structural explanation ("Division by zero") that is safe for a tooltip. `ERROR_EXPLANATIONS` holds the longer per-code text that inspection surfaces show, so the badge and the producer's message stay terse.
+
+Tests: `errorValue.test.ts` ("SolError tagging"): a tagged error round-trips through the guard.
 
 ### The codes
 
@@ -74,11 +80,28 @@ mindmap
 | `#AMBIGUOUS!` | a date string could read as either D/M or M/D (`parse_date`, the core's `excel_criteria.rs`, through `parseDate` in `nodes/dateSerial.ts`) | Solenoid only |
 | `#ERROR!` | an unexpected internal failure; the guard's catch-all | Err:517 |
 
-IFERROR catches every code; IFNA and ISNA match only `#N/A`. The IFERROR card catches per cell in a list, a Frame and a Cube, nested cells included. Over a Frame or Cube its fallback is one value, and in a column whose type it doesn't suit (text in a number column, say) the caught cell becomes `#TYPE!` instead, so a column never mixes families ([[B17]] typedValueModel).
+What catches which code:
+
+- IFERROR catches every code; IFNA and ISNA match only `#N/A`.
+- The IFERROR card catches per cell in a list, a Frame and a Cube, nested cells included.
+- Over a Frame or Cube the IFERROR card's fallback is one value. In a column whose type the fallback doesn't suit (text in a number column, say) the caught cell becomes `#TYPE!` instead, so a column never mixes families ([[B17]] typedValueModel).
+
+Tests: `errorValue.test.ts` ("error consumers"): IFERROR catches every code and IFNA only `#N/A`, per cell over a list.
 
 ### The guard
 
-The error guard runs around every node's `data()` call, in the graph core's input boundary (the call sequence is in [[compute-pass]], "The error guard"). An error in means that error out, without running the node. A `data()` that throws degrades to a local `#ERROR!`, so one bad node can't half-kill a recompute pass; a thrown `SolError` (a verb reporting a missing column or a bad shape) is kept as itself. `cachedResult` mirrors the error, so the value box renders the red code badge (`ValueDisplay`, with the structural message as its tooltip). A figure card's own field is cleared too (`cachedChart` gets the error, `cachedPayload` becomes `null`), so it never keeps drawing the last good figure.
+The error guard runs around every node's `data()` call, in the graph core's input boundary (the call sequence is in [[compute-pass]], "The error guard"):
+
+- **An error in** means that error out on every output, without running the node.
+- **A `data()` that throws** degrades to a local `#ERROR!`, so one bad node can't half-kill a recompute pass.
+- **A thrown `SolError`** (a verb reporting a missing column or a bad shape) is kept as itself, code and message.
+- **`cachedResult` mirrors the error**, so the value box renders the red code badge (`ValueDisplay`, with the structural message as its tooltip).
+- **A figure card's own field is cleared too** (`cachedChart` gets the error, `cachedPayload` becomes `null`), so it never keeps drawing the last good figure.
+
+Tests:
+
+- `errorValue.test.ts` ("the error guard"): an error input goes to every output without running the node, a throwing `data()` is `#ERROR!`, a thrown `SolError` keeps its code and message, and a figure card drops its last figure.
+- `errorIntegration.test.ts`: an error rides a cable through a real editor and engine into a downstream computation.
 
 ### Nodes that see raw errors
 
@@ -89,13 +112,26 @@ The error guard runs around every node's `data()` call, in the graph core's inpu
 - **Display** reads `cachedValue`, not the `cachedResult` the guard mirrors to, so it has to run on the raw error to both show the badge and forward the error on `out`. Most nodes render `cachedResult` and show propagated errors already; the gap is only the minority that render `cachedValue`, `cachedList` or `cachedText`.
 - **Report**'s inline refs are independent lanes too. **Note** is output-only and is listed only to keep its read path uniform.
 - **Composite** and its **output marker** are a subgraph boundary: an error crosses into the members, whose own guards apply, so an IFERROR inside catches it and a lane that never reads it keeps its value, as unpacked. The output marker has no outputs of its own, so short-circuiting it would turn an arriving error into a blank.
-- **Chart** is a figure sink: it renders an errored input as an empty figure and never sends a `SolError` out its `chart` socket.
+- **Chart** is a figure sink: it renders an errored input as an empty figure and never sends a `SolError` out its `chart` socket, since every consumer of a `chart` socket reads a chart.
+
+Tests:
+
+- `errorValue.test.ts`: an error consumer sees the raw error, and a Chart handed an error answers an empty chart.
+- `errorIntegration.test.ts`: a Display shows the error in its box and forwards it, and an ISERROR after it reports TRUE.
 
 ### Producers and provenance
 
 A node returns `solError(...)` where the failure is a real error, never `null`; `null` stays the legitimate blank.
 
-Every error carries an `origin` ([[E9]] errorsKeepOrigin): `nodeId`, `nodeName` (the node's title, or its type name when untitled), `inputSlot` (set only when the origin was tagged at a relay rather than where it was minted). An origin names a node, never a row: a row index would go stale at the first sort or filter downstream. The guard sets it once, at the mint site or at the first relay that sees it untagged, and never overwrites it, so a chain of passthroughs still points at the original producer. Tagging copies only what it changes and returns the value untouched when nothing is untagged, so the error-free path costs nothing; within one output, every cell holding the same untagged error gets one shared tagged copy, so a column of 100k `#DIV/0!` costs one error object, not 100k.
+Every error carries an `origin` ([[E9]] errorsKeepOrigin):
+
+- **Its fields.** `nodeId`; `nodeName` (the node's title, or its type name when untitled); `inputSlot`, set only when the origin was tagged at a relay rather than where it was minted.
+- **A node, never a row.** A row index would go stale at the first sort or filter downstream.
+- **Set once.** The guard sets the origin at the mint site or at the first relay that sees the error untagged, and never overwrites it, so a chain of passthroughs still points at the original producer.
+- **Cells too.** A per-cell error inside a list or a Frame-shaped output is tagged with its node like a scalar one; a cell already tagged keeps its origin.
+- **The cost.** Tagging copies only what it changes and returns the value untouched when nothing is untagged, so the error-free path costs nothing. Within one output, every cell holding the same untagged error gets one shared tagged copy, so a column of 100k `#DIV/0!` costs one error object, not 100k. Many distinct errors tag in time linear in the cells ([[C120]] linearWork).
+
+Tests: `errorValue.test.ts` ("SolError origin"): a minted, a thrown and a relayed error's origin, an origin surviving a passthrough, per-cell tagging in a list and a Frame, one shared copy for repeats, and linear time over distinct errors.
 
 ## The value model inside containers
 
@@ -138,20 +174,28 @@ The shared helper is `short_circuit` (`nodes/kit.rs`, the full rule); the Kleene
 
 It runs at the producing op, so Expression's `tag_result` trusts it. The guarded producers are the core's: the element-wise broadcasters (`guard_finite`, `nodes/kit.rs`), the formula operators, the broadcast and range calls, the statistics kernels the cards call (`aggregate`, `percentile`, `quartile`, `pearson`, `covariance` and `regression`), the frame aggregation path (`guard_agg`, `frame_verbs.rs`); and the native engine's result normalizer (frameBackend). A kernel with its own recorded non-finite convention (a quiet null, a tagged error, IMDIV's `cx(NaN, NaN)`) is the deliberate alternative, not an exemption ([[C24]] arraySemantics). Both engines mask a non-finite join key to unmatchable. When rows are grouped, deduplicated or split into windows, +∞, −∞ and NaN are three keys of their own, and none of them ever matches in a Join: one shared bucket would merge values every other surface tells apart, and two rows that both overflowed are not the same thing ([[C24]] arraySemantics). Expression trusts the guard: a surviving ∞ passes, and a stray NaN becomes `#DOMAIN!`. `0^0 = 1`, as in JS and Polars, while Excel gives #NUM! (`parity: false` on the pow leaf).
 
-**Scalar reads** use `readInput(wired, literal)` (`shared.ts`) for data inputs, so a wired `null` propagates instead of being swallowed by the literal. Config inputs (base, digits, order, counts) keep their defaults. `readInputSweep.test.ts` is the zero-floor ratchet across `nodes/*.ts`, and the full rules are [[value-semantics]] "Reading an input". Machine-checked by `broadcastContract.test.ts`.
+**Scalar reads** use `readInput(wired, literal)` (`shared.ts`) for data inputs, so a wired `null` propagates instead of being swallowed by the literal. Config inputs (base, digits, order, counts) keep their defaults. The full rules are [[value-semantics#Reading an input: a wired blank versus the typed literal]].
+
+Tests:
+
+- `broadcastContract.test.ts`: `readInput` (unwired falls back, a wired 0 wins, a wired `null` propagates); the formula broadcasters' per-cell rule for a call, unary minus and percent, with ISBLANK still seeing the blank; `guardFinite`'s three cases; and `2^5000`, `EXP(1000)` and `0^0` in a formula.
+- `readInputSweep.test.ts`: the zero-floor ratchet across `nodes/*.ts`.
 
 ### Producers of each code
 
-- **finance:** IRR, RATE and XIRR not converging → `#CONV!`; MIRR with same-sign cash flows → `#DIV/0!`; MIRR overflow → `#OVERFLOW!`.
+- **finance:** IRR, RATE and XIRR not converging → `#CONV!` (an all-positive cash flow has no IRR); the TVM card solving for a rate that no rate balances (all same-sign flows) → `#SOLVE!`, through the Equation's numeric fallback; IRR wired with too few points stays blank; MIRR with same-sign cash flows → `#DIV/0!`; MIRR overflow → `#OVERFLOW!`.
 - **scalar:** Combinatorics out of domain → `#DOMAIN!`; overflow → `#OVERFLOW!`.
 - **Convert:** an incommensurable unit pick → `#N/A`; overflow → `#OVERFLOW!`.
 - **stats:** zero variance in Correl, Standardize, Forecast or Regression → `#DIV/0!`; a Fisher or Percentile domain miss → `#DOMAIN!`; Rank, PercentRank or FIND finding nothing → `#N/A`.
 - **cast and text:** parse failures → `#VALUE!`.
 - **date:** unparseable non-empty text in DATEVALUE or TIMEVALUE → `#VALUE!`; blank stays blank.
 - **matrix:** singular → `#DIV/0!`; non-conformable or non-square → `#SHAPE!`.
-- **list:** INDEX out of range → `#REF!`.
+- **list:** INDEX out of range → `#REF!`, and INDEX with no list wired stays blank. XLOOKUP and XMATCH finding nothing → `#N/A` (when a list of lookup values spills, a miss is `#N/A` in place and XLOOKUP's If-not-found applies per element); an unwired XMATCH stays blank. The 1-D Filter never errors on shape: an error cell fails its condition and exits Dropped.
+- **Expression:** a formula that doesn't parse → `#SYNTAX!`; an empty formula stays blank.
 
 The only deliberate null-on-failure sentinels left are the discrete-distribution pmf and cdf helpers (`binom_pmf`, `binom_cdf`, `hypgeom_pmf` in `crates/solenoid-core/src/dists.rs`), where an argument outside the support is blank by design, not a failed computation. A `broadcast` or `.map` over a list keeps per-item `null`s; only a scalar result becomes a `SolError`. `Displayable` (`standardNode.tsx`) includes `SolError`, so a producer using `makeNodeComponent((n) => n.cachedResult)` renders the badge with no extra work.
+
+Tests: `errorValue.test.ts` ("error producers"): scalar ÷0 and domain misses, XLOOKUP and XMATCH misses, Filter, Expression, the finance solvers, MIRR, Combinatorics, INDEX and Convert, each beside a case that answers.
 
 ## Detect and recover: one notion of error
 
@@ -177,7 +221,15 @@ flowchart TD
     k -->|"a value"| v["none of them touch it"]
 ```
 
-Fill and IFERROR split cleanly: Fill never touches errors and IFERROR never touches null. Fill's `coalesce` op is IFERROR's shape applied to `null`. Coalesce takes any number of inputs: FillNode's Else rows are extensible (`e0`, `e1`… with CHOOSE-style `valueKeys` round-tripping), the first present value of the List and then each Else wins per position, and a typed literal on an unwired Else row is a last-resort constant, broadcast.
+Fill and IFERROR split cleanly: Fill never touches errors and IFERROR never touches null. Fill's `coalesce` op is IFERROR's shape applied to `null`. Coalesce takes any number of inputs:
+
+- FillNode's Else rows are extensible (`e0`, `e1`… with CHOOSE-style `valueKeys` round-tripping);
+- the first present value of the List and then each Else wins per position;
+- a typed literal on an unwired Else row is a last-resort constant, broadcast.
+
+The IS checks answer a real logical, and each remembers the error it saw for the explanation panel. ISNULL tests per cell, lists and matrices included: a wired `null` is TRUE, a value or an error is FALSE, and an unwired ISNULL has nothing to test and answers blank. ISBLANK tests per cell too, as the ISBLANK formula does over a list ([[C17]] shareImpl).
+
+Tests: `errorValue.test.ts` ("error consumers"): a `null` passes IFERROR and IFNA, IFNA over a list catches only `#N/A`, a bare NaN is neither an ISERROR nor caught, and ISNULL and ISBLANK test per cell.
 
 ## Shape errors are part of this system
 
@@ -185,15 +237,33 @@ The central input coercion runs inside the error guard, both in the graph core's
 
 The shared result displays all tolerate a `SolError` in `cachedResult` and render the badge instead of crashing: `ValueDisplay`, `TableDisplay`, `FrameDisplay` and the collapsed GroupNode readout. A new custom result display gets an `isSolError(v)` branch up front.
 
+Tests:
+
+- `errorValue.test.ts`: a thrown `ShapeError` is `#SHAPE!`, not `#ERROR!`.
+- `errorIntegration.test.ts`: a 2×2 table wired where one number is wanted is `#SHAPE!` on the consumer.
+
 ## A formula node keeps both signals
 
 Expression, LAMBDA, MAP, BYROW, BYCOL, MAKEARRAY, REDUCE and Filter set a rich inline `cachedError` string (an authoring hint on the card, like `Shape mismatch (3×2 vs 2×2)`) and also return a propagating `SolError` whose code matches the failure: `#SYNTAX!` for a bad formula, `#VALUE!` for arity or evaluation, `#NAME?` for a bad parameter, `#SHAPE!` for dimensions, `#OVERFLOW!` for too large. `cachedResult` stays `null` on these, so the box shows the richer inline message, while the returned value carries the code (its message is the tooltip) downstream. A blank formula stays `null`, a legitimate no-value, never an error.
+
+Tests: `errorIntegration.test.ts`: a broken LAMBDA carries `#NAME?` down its cable into MAP.
 
 ## `#CIRC!` is engine-level, not a producer
 
 The pull-based DataflowEngine resolves a node's inputs recursively before calling its `data()`, so a dependency loop makes `engine.fetch` deadlock forever instead of throwing. The pass finds the loops' real members up front with Tarjan SCC (`loopMembers` in the graph core: nodes in a strongly connected component of two or more, or a self-loop) and seeds each one's result with a `#CIRC!` on every output (`seedLoops`, [[graph-core#The graph walks and the pass]]).
 
 A downstream node then resolves a member straight from the cache instead of recursing in, so it computes normally and shows the propagated `#CIRC!`; only the actual members dead-end. Seed only the SCC members, never their descendants, which would blank their own computation. The connection guard already blocks self-loops on creation; multi-node loops are caught here.
+
+Every kind of pass seeds the same way:
+
+- a targeted topology pass, the one a new cable runs, when that cable closes a loop: the reset before the seeding must not chase the loop;
+- an additive pass over pasted nodes that form a loop, which finds the loop afresh rather than reading the loop set an earlier pass kept;
+- a pass waiting on a slow card (a Script in its Worker, a Web Source) when a cable closes a loop meanwhile: the new members are seeded before the pass fetches into them, so the pass settles.
+
+Tests:
+
+- `errorIntegration.test.ts`: `loopMembers` flags only the loop, a node downstream of a loop shows the propagated `#CIRC!`, and a node outside a loop fetches normally.
+- `circularReset.test.ts`: each kind of pass above settles with `#CIRC!` on the members.
 
 ```mermaid
 flowchart LR
@@ -221,7 +291,9 @@ flowchart LR
 ```
 
 
-An error on every row, the common case of a bad transform, is always caught by the head. A lone bad cell buried past the head, between two strides, can be missed; that is the accepted cost of a constant-time check per output. `modelFuzz` reuses the same bound (`badValue` → `collectFinite` / `sampledCellIndices`). Nulls are not flagged, since a missing value is legitimate. See `cellErrorScan.test.ts`.
+An error on every row, the common case of a bad transform, is always caught by the head. A lone bad cell buried past the head, between two strides, can be missed; that is the accepted cost of a constant-time check per output. `modelFuzz` reuses the same bound (`badValue` → `collectFinite` / `sampledCellIndices`). Nulls are not flagged, since a missing value is legitimate.
+
+Tests: `cellErrorScan.test.ts`: the bound (every index when the container fits the head, head plus strides when it doesn't), an error found at top level and inside a list, a matrix and a Frame column, a whole-column error caught in a huge list, and a lone cell between strides missed.
 
 ## Literal sources: coercion happens at the value boundary
 
@@ -244,10 +316,17 @@ The popup's Source and Formatted views, the Form view's fields, the cell affixes
 - **The run.** The whole sweep runs inside one compute bracket, so the compute curtain stays up between the per-sample passes, and inside the rebuild gate, which lets sampled passes run in manual-calc mode and keeps Alert and Expect from firing on samples. Each leaf's original value is restored, and recomputed, on every exit path.
 - **`insertClampBefore(nodeId, socketKey, bounds?)`** splices a Clamp onto the cable feeding that input (nothing when it is unwired), placed midway between the two cards and 60 units above, with the bounds written as its min and max literals. An unwired min or max input reads those literals, so the Clamp arrives configured rather than as a pass-through.
 
+Tests: `clampSeeding.test.ts`: the pure helpers the Clamp suggestion stands on (`collectFinite`, `extendSafeRange`, `boundsFromSafeRange`) and which sources count as leaves. The sweep itself needs the canvas view, which the test environment doesn't have.
+
 ## Enforcement
 
-The **Errors, Null & Logic** seed (`seedGraphs/null-and-logical.json`) tours the codes: one row per code of the set current when it was built, each wired producer → Display → ISERROR, so the error shows its badge, propagates, and the ISERROR check explains it. `#ERROR!` is the unreachable internal catch-all, noted in the seed, and `#TYPE!`, `#UNIT!` and `#SOLVE!` aren't toured. The `#CIRC!` row loops back through an upside-down Conduit.
+The **Errors, Null & Logic** seed (`seedGraphs/null-and-logical.json`) tours the codes:
 
-- `errorSeed.test.ts` loads that JSON, runs it through a real editor and engine (coercion, guards and the cycle cache-seeding), and asserts every ISERROR reports its row's code, so a wrong socket key or a silently null producer fails CI instead of showing blank in the app.
-- `seeds.test.ts` validates structure.
-- `errorIntegration.test.ts` locks the engine paths: coercion `#SHAPE!`, LAMBDA → MAP `#NAME?`, Display showing and forwarding, and cycle cache-seeding.
+- one row per code of the set current when it was built, each wired producer → Display → ISERROR, so the error shows its badge, propagates, and the ISERROR check explains it;
+- `#ERROR!` is the unreachable internal catch-all, noted in the seed, and `#TYPE!`, `#UNIT!` and `#SOLVE!` aren't toured;
+- the `#CIRC!` row loops back through an upside-down Conduit.
+
+Tests:
+
+- `errorSeed.test.ts`: loads that JSON, runs it through a real editor and engine with the app's own pass (coercion, guards and the loop seeding), and checks that every ISERROR reports its row's code and every Display before a check shows the badge, so a wrong socket key or a silently null producer fails CI instead of showing blank in the app.
+- `seeds.test.ts`: the seed's structure.
