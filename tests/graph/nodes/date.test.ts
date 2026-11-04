@@ -1,4 +1,4 @@
-// [[C44]], [[B11]]
+// [[C44]] dateSerials, [[B11]] maximalMerge, [[formula-language#Date kernels]]
 import { solDate, type SolDate } from "../../../src/graph/dateValue";
 import { describe, it, expect, afterEach } from "vitest";
 import { AT_ONCE_MS } from "../timing";
@@ -136,14 +136,6 @@ describe("parseDateToSerial — a year token must be exactly four digits", () =>
   });
 });
 
-// parseDateToSerial's timezone independence (zone-less text as UTC wall-clock, a
-// zone designator as an absolute instant, date-only as an integer serial) is pinned
-// by the "parseDateToSerial is timezone-independent (v1.0 audit P0-1)" describe
-// below, which actually drives process.env.TZ across zones — the only way the
-// claim can fail for the reason it states.
-
-// Dates flow through the graph as Excel-style serials (1900 system, where the
-// JS epoch is serial 25569). Build them the same way the date nodes do.
 const ser = (y: number, m: number, d: number) =>
   jsDateToSerial(new Date(Date.UTC(y, m - 1, d)));
 
@@ -172,7 +164,7 @@ describe("DATEDIF ops (merged into the DateDiff family)", () => {
     expect(diff("months", ser(2020, 5, 10), ser(2024, 3, 9))).toBe(45);
   });
 
-  it("days counts days (DATEDIF D ≡ DAYS — the duplicate op was deleted in the merge)", () => {
+  it("days counts days (DATEDIF D is DAYS)", () => {
     expect(diff("days", ser(2024, 1, 1), ser(2024, 12, 31))).toBe(365); // leap year
     expect(diff("days", ser(2023, 1, 1), ser(2023, 12, 31))).toBe(364);
   });
@@ -180,9 +172,7 @@ describe("DATEDIF ops (merged into the DateDiff family)", () => {
   it("md matches Excel where Excel is well-defined", () => {
     // Same-or-later day in the month: plain difference.
     expect(diff("md", ser(2024, 5, 10), ser(2024, 8, 15))).toBe(5);
-    // The regression the outside review caught: borrow from the month before
-    // the end month. Excel returns 28 here; the unclamped Date.UTC rollover
-    // construct gave 26.
+    // Borrow from the month before the end month, as Excel's 28.
     expect(diff("md", ser(2024, 1, 31), ser(2024, 2, 28))).toBe(28);
     // Borrow across a leap February (29 days in the month before March).
     expect(diff("md", ser(2024, 1, 15), ser(2024, 3, 10))).toBe(24);
@@ -229,9 +219,8 @@ describe("DATEDIF ops (merged into the DateDiff family)", () => {
   });
 });
 
-describe("parseDateToSerial is timezone-independent (v1.0 audit P0-1)", () => {
-  // process.env.TZ takes effect on subsequently-created Dates on Linux, which is
-  // where the suite runs; each case must yield the SAME serial in every zone.
+describe("parseDateToSerial is timezone-independent", () => {
+  // process.env.TZ takes effect on Dates created after it is set, on Linux.
   const originalTz = process.env.TZ;
   afterEach(() => {
     if (originalTz === undefined) delete process.env.TZ;
@@ -272,7 +261,7 @@ describe("parseDateToSerial is timezone-independent (v1.0 audit P0-1)", () => {
   });
 });
 
-describe("EDATE clamps to month end (v1.0 audit finding 11)", () => {
+describe("EDATE clamps to month end", () => {
   const edate = (y: number, m: number, d: number, months: number) =>
     new DateAddNode({ op: "edate" }).data({ start: [solDate(ser(y, m, d))], months: [months] }).result;
 
@@ -291,7 +280,7 @@ describe("EDATE clamps to month end (v1.0 audit finding 11)", () => {
   });
 });
 
-describe("TIMEVALUE is timezone-independent (v1.0 audit finding 12)", () => {
+describe("TIMEVALUE is timezone-independent", () => {
   const originalTz = process.env.TZ;
   afterEach(() => {
     if (originalTz === undefined) delete process.env.TZ;
@@ -366,11 +355,6 @@ describe("DATEVALUE / TIMEVALUE — one node, op-switch mechanics", () => {
   });
 });
 
-// ─── Date nodes are element-wise (the 2026-07-25 combo pass) ──────────────────
-// The date family used rigid scalar sockets while every numeric node took
-// scalar-or-list. These now declare `datecombo`/`numlist` and broadcast, so a list
-// of dates flows through DatePart/WeekInfo/DateDiff/DateAdd/DATEDIF/WORKDAY/
-// NETWORKDAYS/DATE/TIME the way a list of numbers already flowed through ADD.
 describe("date nodes broadcast over lists (scalar-or-list combo sockets)", () => {
 
 

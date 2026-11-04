@@ -1,6 +1,4 @@
-// [[C17]] shareImpl
-// Every card the catalog marks `parity: true` against a formula answers as that formula does: the same inputs, the same
-// numbers and the same error codes (messages may differ). The card's inputs map to the function's arguments in order.
+// [[C17]] shareImpl, [[formula-language#Shared kernels]]
 import { isSolDate, solDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "../../src/graph/nodeExcel";

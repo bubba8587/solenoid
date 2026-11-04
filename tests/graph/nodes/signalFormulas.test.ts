@@ -1,4 +1,4 @@
-// [[C17]] shareImpl
+// [[C17]] shareImpl, [[formula-language#Signal and forecasting kernels]]
 import { describe, it, expect } from "vitest";
 import { coreFunction } from "../coreFunction";
 import { isSolError } from "../../../src/graph/errorValue";
@@ -49,8 +49,7 @@ describe("LOWESS", () => {
     expect(err(sm)).toBeLessThan(err(noisy) / 2);
   });
   it("a single outlier is robustified away (bisquare passes)", () => {
-    // a little noise keeps the MAD non-zero (on an EXACT line the classic algorithm stops
-    // robustifying, as R's lowess does when cmad vanishes)
+    // A little noise keeps the MAD above 0: on an exact line the robustness passes stop, as R's lowess does.
     const line = Array.from({ length: 25 }, (_, i) => i + (i % 3 - 1) * 0.1);
     const spiked = [...line]; spiked[12] = 40;
     const sm = lowess(spiked, 0.4) as number[];

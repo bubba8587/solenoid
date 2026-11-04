@@ -1,4 +1,4 @@
-// [[C17]], [[equation-solver#Which cards are relations]]
+// [[C17]] shareImpl, [[equation-solver#Which cards are relations]], [[formula-language#Finance kernels]]
 import { solDate } from "../../../src/graph/dateValue";
 import { dated } from "../datedInputs";
 import { describe, it, expect } from "vitest";
@@ -20,9 +20,7 @@ import { compileEvaluator } from "../../../src/graph/excelFormula";
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 
-// Reference values are what Excel's matching function returns. Excel cash-flow
-// sign convention: money received is positive, money paid out is negative, so a
-// loan's PMT/IPMT/PPMT are all negative when PV is positive.
+// Reference values are Excel's answers, money paid out negative.
 
 describe("TVM (equation)", () => {
 
@@ -162,8 +160,7 @@ describe("Depreciation", () => {
   it("DB honours the first-year Month, matching =DB (Microsoft's worked example)", () => {
     const db = (per: number, month?: number) => new DepreciationNode({ op: "db" })
       .data({ cost: [1000000], salvage: [100000], life: [6], per: [per], ...(month != null ? { month: [month] } : {}) }).result;
-    // =DB(1000000,100000,6,period,7) — a 7-month first year. Before the Month input the
-    // node was locked to month=12; now it matches the formula surface for month≠12.
+    // =DB(1000000,100000,6,period,7): a 7-month first year.
     expect(db(1, 7)).toBeCloseTo(186083.33, 2);
     expect(db(2, 7)).toBeCloseTo(259639.42, 2);
     expect(db(1, 7)).toBe(ev("DB(c,s,l,p,m)", { c: 1000000, s: 100000, l: 6, p: 1, m: 7 }));

@@ -1,4 +1,4 @@
-// [[B11]]
+// [[B11]] maximalMerge, [[formula-language#Finance kernels]]
 import { describe, it, expect } from "vitest";
 import { dated } from "../datedInputs";
 import { solDate } from "../../../src/graph/dateValue";
@@ -9,16 +9,11 @@ import {
 import { coreFunction } from "../coreFunction";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
 
-// Formula.js implements almost none of the bond/coupon family, so these functions have
-// no external oracle. These tests pin INVARIANTS that must hold whatever the exact value
-// is — inverse round-trips, day-count identities, depreciation totals — plus the
-// real-Excel GOLDEN values the author verified by hand (2026-08-31).
-
 const d = (s: string) => parseDateToSerial(s);
 const accrintM = (issue: number, settle: number, ...a: number[]) => coreFunction("ACCRINTM")!(solDate(issue), solDate(settle), ...a) as number;
 const settle = d("2024-01-15"), maturity = d("2029-01-15");
 
-describe("real-Excel golden values (author-verified 2026-08-31)", () => {
+describe("answers read off Excel", () => {
   it("ODDFPRICE / ODDFYIELD — the first coupon accrues from ISSUE across quasi periods", () => {
     // =ODDFPRICE(DATE(2024,1,25),DATE(2031,1,1),DATE(2023,11,11),DATE(2024,7,1),0.0575,0.06,100,2,0)
     const args = dated({ settle: [d("2024-01-25")], maturity: [d("2031-01-01")], issue: [d("2023-11-11")], firstcoupon: [d("2024-07-01")], rate: [0.0575], redemption: [100], frequency: [2] });
@@ -107,10 +102,7 @@ describe("DURATION / MDURATION relationship", () => {
     expect(v).toBeCloseTo(10.9191453, 7);
   });
 
-  // The first-period fraction is Excel's DSC/E and must be day-counted per the BASIS;
-  // it used to count actual days whatever the basis, so the DEFAULT basis 0 was wrong.
-  // One remaining coupon makes the whole cash-flow stream a single payment, so Macaulay
-  // duration collapses to DSC/E/freq exactly — an absolute pin that needs no oracle.
+  // One remaining coupon: Macaulay duration is exactly DSC/E/freq.
   describe("the basis input is applied to the first-period fraction", () => {
     const s = d("2023-02-15"), m = d("2023-07-01"); // mid-period settlement, one coupon left
     const durB = (basis: number) => new DurationNode({ op: "duration" })

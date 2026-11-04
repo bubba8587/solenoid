@@ -1,4 +1,4 @@
-// [[C44]]
+// [[C44]] dateSerials, [[formula-language#Date kernels]]
 import { solDate, type SolDate } from "../../../src/graph/dateValue";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { parseDate, parseDateToSerial, isRelativeDateText } from "../../../src/graph/nodes/dateSerial";
@@ -6,9 +6,6 @@ import { ValueInputNode } from "../../../src/graph/nodes/control";
 import { settingsStore } from "../../../src/graph/settingsStore";
 import { alertStore } from "../../../src/graph/alertStore";
 
-// Relative dates are an OPT-IN (Settings ▸ Data ▸ Relative dates, author-requested 2026-08-21):
-// off, every phrase stays unparseable (a stored date is a fixed calendar day); on, a date
-// Value Input resolves it against now on every pass and Alerts when the resolved day moves.
 const d = (s: string) => parseDateToSerial(s);
 const wed = new Date(2026, 2, 18, 15, 0, 0); // Wed 18 Mar 2026, local
 

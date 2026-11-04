@@ -1,4 +1,4 @@
-// [[C17]] shareImpl
+// [[C17]] shareImpl, [[formula-language#Signal and forecasting kernels]]
 import { describe, it, expect } from "vitest";
 import { coreFunction } from "../coreFunction";
 
@@ -9,9 +9,7 @@ function stlDecompose(y: (number | null)[], m: number): { trend: unknown[]; seas
   return Array.isArray(trend) ? { trend, seasonal: part("seasonal") as unknown[], residual: part("residual") as unknown[] } : null;
 }
 
-// STL (R stl s.window="periodic") on a hand-built trend + season: the decomposition of a
-// clean signal must recover an exactly-periodic seasonal and a ~zero residual (a linear
-// trend is recovered exactly by the local-linear lowess).
+// A hand-built linear trend plus season, which the local-linear LOWESS recovers exactly.
 describe("stlDecompose (STL, periodic seasonal)", () => {
   const m = 4, n = 16;
   const season = [3, -1, 0, -2]; // mean 0, period 4

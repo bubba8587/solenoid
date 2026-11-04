@@ -1,27 +1,17 @@
-// [[B11]], [[node-classes#Formula registrations and op modules]]
+// [[B11]], [[node-classes#Formula registrations and op modules]], [[B11]] maximalMerge, [[formula-language#Parity measurement]]
 import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";
 import { despace } from "../../src/graph/formulaNodeParity";
 import { FUNCTION_ARITY, FRAME_SURFACE_NAMES } from "../../src/graph/excelFunctions";
 import { initPackFormulas, packFormulaNames } from "../../src/graph/formulaExtensions";
 
-// Pack formulas register at startup, as in the app; their node coverage is each pack's
-// own audit (auditFormulaPack), so the curated core surface below leaves them out.
+// Pack formulas register as in the app; each pack audits its own (auditFormulaPack), so they are left out below.
 initPackFormulas();
 const PACK_NAMES = new Set(packFormulaNames());
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
 
 const isCategory = (e: CatalogEntry): e is CatalogCategory => e.type === "category";
 const isPair = (e: CatalogEntry): e is CatalogPair => e.type === "pair";
-
-// formulaNodeParity (the invariant the author demanded: node and formula surfaces MUST
-// carry the same CAPABILITY). Every CURATED formula function — one with declared meta in
-// FUNCTION_ARITY — must be reachable as a node. Most match a catalog leaf's label or Excel
-// alias directly; the rest are the SAME capability under a different node label or a node
-// MODE (which the author explicitly blessed), enumerated here with where they live. A new
-// declared function that has no node fails this until it gets one (or an entry below with a
-// reason) — that is the gap-guard. Formula.js PASSTHROUGH functions (no declared meta, e.g.
-// N / T / TYPE / SUBTOTAL) are the separate open-surface issue and are out of scope here.
 
 // formula name → the node (and mode/op) that carries the same capability.
 const FORMULA_NODE_ALIAS: Record<string, string> = {

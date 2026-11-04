@@ -1,50 +1,18 @@
-// [[B16]] oneFormulaSurface
+// [[B16]] oneFormulaSurface, [[C51]] formulaNaming, [[formula-language#Parity measurement]]
 import { describe, it, expect } from "vitest";
 import { measureParity, excelNamedGapNames, excelCoverage } from "../../src/graph/formulaNodeParity";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
 
-// ─── The parity RATCHET ([[C51]] formulaNaming) ─────────────────────────────────────────────────
-// The node set and the formula language drifted apart because NOTHING checked one
-// against the other — a node could ship with an Excel name that no formula could
-// call, and Formula.js could drag in a legacy name nobody decided to support. The
-// ratchet rules are [[C51]] formulaNaming / [[B16]] oneFormulaSurface.
-//
-// This test pins today's gaps and makes them one-way. Both directions assert
-// live ⊆ pinned (a NEW gap fails) AND pinned ⊆ live (a CLOSED gap must be deleted
-// from the pin, so the lists can't rot into fiction). Same idea as
-// `formatModel.ts`: the truth table lives in code, machine-checked.
-//
-// WHEN THIS FAILS, the message tells you which way. Never "fix" it by widening a
-// pin to make CI green — that is the drift this exists to stop. Either close the
-// gap (register the impl / add the node / curate the name) or, if the gap is
-// deliberate, record it where deliberate gaps live: `EXCEL_GAP` in `nodeExcel.ts`.
-
-// GAP A — a node carries an Excel name, but typing that name in an Expression
-// gives #NAME?. The sharpest gap: the node is right there in the Add menu.
-//
-// [[C15]] matricesInFormulas opened this list: the cap lifted, and the matrix tranche closed the
-// 2-D-shaped registrations (TOCOL/TOROW/WRAPROWS/WRAPCOLS/MDETERM/MINVERSE/
-// SEQUENCE — `formulaMatrix.test.ts`). What remains splits in two:
-// EMPTY — and keep it that way. The [[C15]] matricesInFormulas lambda tranche (2026-07-28) closed the
-// last eight: LAMBDA became the evaluator's one special form and the hosts
-// (MAP/BYROW/BYCOL/REDUCE/SCAN/MAKEARRAY/GROUPBY) registered against the same
-// LambdaValue currency the nodes use (formulaLambda.test.ts). Every Excel name a
-// node carries now dispatches. A name appearing here again is a NEW node shipped
-// without its registration — close it the [[C17]] shareImpl way before pinning it.
+// Gap A: a node's Excel name that gives #NAME? in a formula.
 const EXCEL_NAMED_GAP: string[] = [];
 
-// GAP C — dispatchable in a formula, but no node, no EXCEL_GAP entry, and not a
-// deliberately registered native: names Formula.js drags in that nobody decided to
-// support. [[C51]] formulaNaming decision 1 blocks the legacy/superseded ones outright (see
-// LEGACY_ALIASES in excelFunctions.ts), so what stays here is only what survived
-// curation. An empty list is the goal, not a bug.
+// Gap C: a dispatchable name with no node, no EXCEL_GAP entry, and no deliberate registration.
 const UNTRACKED_DISPATCHABLE: string[] = [];
 
 const fmt = (xs: string[]) => (xs.length ? `\n  ${xs.join("\n  ")}\n` : " (none)");
 
 describe("formula ↔ node parity ratchet", () => {
-  // Pack formula functions register at app startup (main.tsx) — measure the
-  // same registry the app runs, like the report script does.
+  // Pack formula functions register at app startup, as the report script measures them.
   initPackFormulas();
   const m = measureParity();
 
@@ -80,28 +48,18 @@ describe("formula ↔ node parity ratchet", () => {
     });
   });
 
-  // Formula.js's INTERNAL helper namespace is not an Excel surface: `utils.symbols.ADD`
-  // and `utils.date.serialToDate` are library plumbing that the namespace walk used to
-  // pick up, so they autocompleted in the formula editor as if they were functions a
-  // user could call. Pinned so the walk can't start advertising them again.
   it("never advertises Formula.js internals as formula functions", () => {
     const leaked = m.noNode.filter((n) => n.startsWith("utils."));
     expect(leaked, `Formula.js internals leaked into the formula name list:${fmt(leaked)}`).toEqual([]);
   });
 
-  // The coverage DENOMINATOR: in-scope ⊎ excluded-by-design must partition the
-  // catalog exactly — no leaf counted twice, none dropped. A coverage claim uses
-  // `inScope`, never `rows` (author ruling 2026-08-01: don't report a ratio whose
-  // denominator includes leaves that were never candidates).
   it("inScope and nativeGap partition the catalog — the coverage denominator is honest", () => {
     const inScope = new Set(m.inScope.map((r) => r.type));
     const excluded = new Set(m.nativeGap.map((r) => r.type));
     for (const t of inScope) expect(excluded.has(t), `${t} counted in BOTH populations`).toBe(false);
   });
 
-  // The live catalog can't pin this: gap A is empty, so every excel-named row is
-  // FULLY covered and `some` vs `every` agree on all of them. The synthetic
-  // partial case is the only input that distinguishes the quantifiers.
+  // Gap A is empty, so only a made-up partly covered row tells `every` from `some`.
   it("excelCovered quantifier is EVERY, not SOME — one missing name uncovers the node", () => {
     const only = (avail: string[]) => (n: string) => avail.includes(n);
     expect(excelCoverage(["CEILING", "CEILING.MATH"], only(["CEILING", "CEILING.MATH"]))).toBe(true);

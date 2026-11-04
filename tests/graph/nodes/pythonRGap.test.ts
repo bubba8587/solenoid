@@ -1,4 +1,4 @@
-// [[C79]], [[B11]], [[C48]]
+// [[C79]] packActivationIsPresentation, [[B11]] maximalMerge, [[C48]] appendLadder, [[formula-language#List kernels]], [[formula-language#Statistics kernels]], [[formula-language#Finance kernels]]
 import { solDate, type SolDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { AT_ONCE_MS } from "../timing";

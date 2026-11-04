@@ -1,3 +1,4 @@
+// [[C17]] shareImpl, [[formula-language#Finance kernels]], [[formula-language#Finance]]
 import { describe, it, expect } from "vitest";
 import { dated } from "../datedInputs";
 import { solDate } from "../../../src/graph/dateValue";
@@ -8,25 +9,8 @@ import { isSolError } from "../../../src/graph/errorValue";
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 
-// IRR/XIRR/MIRR are the finance-iterative family (own root-finder, no Formula.js). The
-// defining invariant needs no oracle: IRR is the rate that zeroes NPV, XIRR the rate that
-// zeroes XNPV. A solver that returns a rate NOT satisfying its own equation is broken.
-
 const flows = [-1000, 300, 400, 500, 200];
 
-
-
-// Both IRR modes run ONE kernel (`solveDiscountRate`) differing only in the exponent
-// — period index vs year fraction. These pin the two properties that kernel exists to
-// hold, each of which was a real defect before it: the rate floor, and a convergence
-// test that scales with the root.
-
-
-// capabilityParity / [[C17]] shareImpl: the IRR and XIRR FORMULAS run the node's solver
-// (financeOps.solveDiscountRate) — they used to fall through to Formula.js, whose
-// Newton answered 1000 (!) on the near-floor series the node solves. And the cash-flow
-// blank policy must match across surfaces: a blank period is a ZERO flow (dropping it
-// would shift every later period), a blank date makes the schedule unknown.
 describe("IRR / XIRR / NPV / MIRR formulas agree with their nodes", () => {
   const d = (s: string) => parseDateToSerial(s);
   const dates = [d("2020-01-01"), d("2020-06-01"), d("2021-01-01"), d("2021-06-01"), d("2022-01-01")];

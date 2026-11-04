@@ -692,7 +692,7 @@ The formula hosts above bind positionally; only the node hosts bind by name. How
 Tests:
 
 - `nodes/tableLambda.test.ts`: the LAMBDA node emits a callable value binding its parameters by position; SCAN and REDUCE seed from a scalar Initial socket; the card names the variables a lambda used without declaring; the hosts carry units over a list.
-- `nodes.rs` (solenoid-core): the host cards' frozen cases, a wired lambda's by-name binding among them ([[node-bodies#Checks]]).
+- `nodes.rs` (solenoid-core): the host cards' frozen cases, wired lambdas with captures among them ([[node-bodies#Checks]]). No test holds the by-name binding's other cases (another declaration order, a foreign parameter refused).
 - `formulaLambda.test.ts`: a parameter named after a constant or named twice is refused on the card.
 
 ## Errors a formula answers
@@ -995,11 +995,18 @@ Tests:
 
 ### Deliberate differences from Excel
 
-Each place Solenoid answers otherwise than Excel, and why, is in [[excel-divergences#Deliberate differences from Excel]].
+Each place Solenoid answers otherwise than Excel, and why, is in [[excel-divergences#Deliberate differences from Excel]]. Its tests, `formulaDivergence.test.ts` and the Excel checks among them, are listed there.
 
 ## Shared kernels
 
 A node and a formula call the same kernels, so the two can't answer differently. Each is named by its Rust function where it has one, else by the formula function whose arm holds it, under the core file it lives in ([[C17]] shareImpl, [[engineering#The formula path is graph-free]]). They never import the graph model; a kernel that would need something from a graph-reaching module takes it as an argument instead. Each takes plain values and answers a value, null for "no answer" (shown as a blank), or a `SolError` for a real domain failure. The caller, node or formula, prepares the inputs and tags its own failures.
+
+Each formula that shares a card's kernel is checked against the card, not against its own idea of the answer: a function must first resolve, and then answer what its card answers for the same inputs, error codes included. Sharing the kernel makes that structural, but a small change to one surface is how the two drifted before, so it is checked rather than assumed. A function whose two surfaces deliberately run different clocks (SHUFFLE, RANDARRAY and RANDDIST redraw each evaluation while their cards hold a draw for a recalculation) is checked on its answer's shape instead.
+
+Tests:
+
+- `cardFormulaTwins.test.ts`: every card the catalog marks `parity: true` answers as its formula twin, inputs mapped to arguments in order: the same numbers and error codes (messages may differ), with each uncompared pair naming a card that exists and why.
+- `formulaTier1.test.ts`, `formulaTier3.test.ts`, `formulaMatrix.test.ts`, `formulaLambda.test.ts`, `formulaComplex.test.ts`, `distributionFormula.test.ts`, `nodes/dateParity.test.ts` and `nodes/financeIterative.test.ts`: each family's formulas against its cards.
 
 ### List kernels
 
@@ -1081,6 +1088,13 @@ A `Cell` is a number, `null` or a `SolError`; `first_error` returns the first `S
 - `fft_real` (`fns_lists.rs`): the discrete Fourier transform of a real list at any length, as `{ re, im }`. A power-of-two length uses iterative radix-2 Cooley–Tukey; any other length uses Bluestein's chirp-z through a power-of-two FFT of size at least 2n − 1, so no padding changes the answer.
 - `spectrum` (`fns_lists.rs`; SPECTRUM and the Spectrum card): the one-sided amplitude spectrum, bins 0 to ⌊n/2⌋, frequency `k·rate/n`, phase in radians. Magnitudes are scaled by 2/n (1/n at DC, and at Nyquist for an even length) so a pure sine of amplitude A reads A. A blank in the signal counts as 0 and text in it is `#VALUE!` ([[C10]] socketLattice); the first error in the signal, or an error rate, is the answer.
 
+Tests:
+
+- `formulaTier3.test.ts`: each list function answers what its card answers over the same kernel, nulls keeping their place and errors riding in their slot.
+- `formulaReviewFixes.test.ts`: DIFF's missing neighbour, SERIESSUM's blank coefficient in place, and INTERPOLATE dropping an incomplete pair.
+- `formulaMatrix.test.ts`: UNIQUE, SORT and SORTBY with blanks last, TAKE and DROP at every rank, FILTER's mask, MODE.MULT and FREQUENCY as one answer each, and RANDARRAY's shape.
+- `nodes/pythonRGap.test.ts`: NTILE's equal-count buckets with blanks staying blank and errors riding, the Bin card's quantiles mode equal to the formula, and ISOUTLIER's z, IQR and MAD rules on the card and in the formula.
+
 ### Statistics kernels
 
 Code: `excel_functions.rs`, `fns_stats.rs`.
@@ -1126,6 +1140,13 @@ The Aggregate, Rank & Percentile, Correlation, Mode, Fisher and Hypothesis Test 
 | `two_proportion_p(x1, n1, x2, n2)` | Two-proportion z-test with the pooled standard error and no continuity correction (statsmodels `proportions_ztest`, R `prop.test(correct = FALSE)`). A zero standard error answers 0, or null when the proportions are equal. |
 | `binom_test_p(k, n, p0)` | Exact binomial test: the sum of every outcome probability no larger than the observed one. p₀ of 0 or 1 answers 1 when k matches it and 0 otherwise. |
 
+Tests:
+
+- `rangeRouting.test.ts`: the degenerate inputs answer the node's blank, `#DIV/0!` or `#DOMAIN!`, never a bare NaN.
+- `excelFunctions.test.ts`: RANK, TRIMMEAN and PERCENTRANK answer as Excel and as the Rank & Percentile card.
+- `formulaReviewFixes.test.ts`: `t_test_p`'s three kinds and its tails, F.TEST's p-value, and PROB's pairing.
+- `nodes/pythonRGap.test.ts`: the ANOVA p-value matches `scipy.stats.f_oneway`.
+
 ### Numeric kernels
 
 Code: `dists.rs`; `iterMin`, `iterMax` and `stdNormCDF` in `nodes/mathUtils.ts` for the canvas.
@@ -1141,6 +1162,12 @@ Code: `dists.rs`; `iterMin`, `iterMax` and `stdNormCDF` in `nodes/mathUtils.ts` 
 - **Hypothesis tests.** `t_test_p(kind, a, b)` is the two-tailed Student-t p-value: `paired` uses the differences over the shorter length; `equal-var` the pooled variance; `unequal-var` Welch's t and degrees of freedom. It answers null when a sample has fewer than two values, the variance is zero, or t or df is not finite, and clamps p to [0, 1]. F.TEST, the two-tailed p-value that the variances differ, null under the same guards. `prob_between(range, probs, lo, hi)` is Excel's PROB: the total probability of the values in [lo, hi] under the paired policy, clamped to [0, 1], null with no pairs.
 - `grid_axes` and `fill_grid` are the Interpolate card's grid mode and INTERPOLATE's matrix form; [[bordered-grid-fill]] owns them.
 - `poly_roots(coeffs)`: every complex root of a polynomial with coefficients highest degree first (`numpy.roots` order), as `[re, im]` pairs in no set order. Leading zeros drop; a constant has no roots (`[]`); an empty or non-finite input answers null. It runs Durand–Kerner iteration (up to 500 rounds) from starting points on a circle whose radius comes from the coefficient bound, then up to four Newton steps per root; a Newton step that would move the root far is refused, so polishing never wanders. Finally, parts tiny relative to the root's size snap to 0: 10⁻¹² for the real part and 10⁻⁷ for the imaginary part, because a multiple root converges only linearly and leaves residuals near 10⁻⁹, and a double root should read as two reals, as in numpy.
+
+Tests:
+
+- `nodes/distributions.test.ts`: the normal, t, χ², F, beta, gamma and Poisson functions give Excel's answers, and NORM.INV inverts NORM.DIST.
+- `distributionFormula.test.ts`: the distributions Formula.js lacked answer as the card does, CHISQ, F and GAMMA at and below 0 included.
+- `formulaTier1.test.ts` and `rangeRouting.test.ts`: `linear_fit` behind FORECAST.LINEAR and the regression quartet.
 
 ### Distribution table
 
@@ -1158,6 +1185,12 @@ Behind the one Distribution card, the op picks the distribution (`DistKey`), and
 - The discrete CDFs are 1 above their support and 0 below it, not blank: BINOM and POISSON above the top, and HYPGEOM beyond `min(n, M)`. Invalid parameters have no distribution at all and are `#DOMAIN!`. The binomial CDF is `I₁₋ₚ(n − k, k + 1)` through the regularized incomplete beta. BINOM.INV is the smallest k whose cumulative probability reaches alpha, or n when none does.
 - When the Distribution node switches to another distribution, it keeps the same form if the new distribution has it (`formAfterSwitch(form, next)` in `distributionOps.ts`). If not, it takes the closest match: PDF and PMF stand in for each other across continuous and discrete distributions, and any inverse form becomes plain `inv`. If there's no match, it takes the new distribution's default form, the first in its list.
 - `sample_quantile` (`fns_random.rs`) is one draw for the `sample` form, from a uniform `u` clamped into (10⁻¹², 1 − 10⁻¹²): a distribution with an inverse form uses it; a continuous one without (Weibull, exponential) is inverted by bisection on its CDF over [0, 10⁶]; a discrete one (Poisson, hypergeometric, negative binomial) walks k up from 0 until the CDF reaches `u`. Invalid parameters answer null. `sample_quantiles` answers a whole sample in draw order with the same values; for a discrete family without an inverse form it sorts the draws and walks the CDF once for all of them, so a sample costs one CDF call per k reached rather than per draw.
+
+Tests:
+
+- `nodes/distributions.test.ts`: an inverse form swaps the first input between x and probability; a distribution switch keeps the shared parameters, relabels them and swaps the rest; a form switch drops exactly the input it replaces; the form survives a switch when the target has it, else lands on its sibling; PHI is the density and GAUSS Φ − ½, on the card and in the formula; a discrete sample sweeps the CDF once (Poisson with λ = 10⁴ draws a thousand values).
+- `distributionFormula.test.ts`: the `sample` form draws N values whose marginal matches, stable within a pass and re-rolled by a recalculation, and RANDDIST draws the same family.
+- `nodes.rs` (solenoid-core): the Distributions card's frozen cases (`fixtures/core/nodes/DistributionsNode.json.gz`).
 
 ### Finance kernels
 
@@ -1211,6 +1244,17 @@ The finance nodes and the finance formulas share these kernels. Entry points tak
 - `volatility`: the sample standard deviation of the returns times `√periodsPerYear`.
 - `sharpe` and `sortino` work on excess returns `r − rf`, where `rf` is the risk-free rate per period and `periods_per_year` annualizes. Sharpe divides by the sample standard deviation, Sortino by the downside deviation (the root mean square of the negative excess returns). Zero spread is `#DIV/0!`; fewer than two returns is null.
 
+Formula.js had almost none of the bond and coupon family, so there is no outside oracle for most of these kernels. Their tests hold invariants that are true whatever the exact value (inverse round-trips, day-count identities, depreciation totals, the solver's root zeroing its own equation) beside answers read off Excel by hand.
+
+Tests:
+
+- `nodes/financeInvariants.test.ts`: Excel's answers for ODDFPRICE and ODDFYIELD (the first coupon accruing from issue across quasi periods), ODDLPRICE and ODDLYIELD (simple interest over the odd last period), ACCRINT per basis, VDB with fractional periods, MDURATION (Microsoft's published 5.7355689 is a typo for Excel's 5.735669814) and the COUP* family on a coupon date; the odd-coupon price and yield functions inverting each other; modified duration as Macaulay over `1 + y/freq`; the first-period fraction day-counted per the basis (one remaining coupon makes Macaulay duration exactly `DSC/E/freq`); ACCRINTM's closed form; VDB over the whole life depreciating exactly cost − salvage; the one-card op switches; odd-coupon dates out of Excel's order as `#DOMAIN!`.
+- `nodes/financeIterative.test.ts`: the IRR, XIRR, NPV and MIRR formulas agree with their cards; a same-sign series is `#CONV!` on both and too few points blank; a blank cash flow is a zero period on both, never a dropped one; a blank date makes XIRR blank; MIRR's same-sign `#DIV/0!`.
+- `nodes/finance.test.ts`: the Payment Breakdown card's IPMT, PPMT, CUMIPMT and CUMPRINC against Excel, and `#DOMAIN!` outside Excel's domain; TBILLEQ's switch past 182 days; the T-bill and PRICEMAT refusals and a missing date's blank; DISC counting its days by the basis; FVSCHEDULE on the card and in a formula, an overflow `#OVERFLOW!` on both; DB's first-year month; Depreciation's domain errors; dated NPV against Excel's XNPV example.
+- `formulaTier1.test.ts`: the coupon, price, yield, duration and VDB formulas answer what their cards answer.
+- `nodes/pythonRGap.test.ts`: the amortization Frame's balance reaching 0, interest plus principal making each payment, totals matching CUMIPMT, and a count past a million refused at once.
+- `coreLimits.test.ts`: PRICE and YIELD with a far maturity don't walk every coupon in between.
+
 ### Date kernels
 
 Code: `date_serial.rs`, `date_ops.rs`.
@@ -1228,7 +1272,7 @@ Code: `date_serial.rs`, `date_ops.rs`.
    - Month first: `March 5, 2024`, `Mar. 5 2024`, `March 5th 2024`, with an optional weekday before it (`Tuesday, March 5, 2024`, `Tue Mar 05 2024`); the weekday is not checked against the date.
    - Numeric: `M/D/YYYY` with `/`, `-` or `.`. Both leading parts 12 or less and different is `#AMBIGUOUS!`, with or without a time after it, with a message asking for a month name (3-Apr-2026) or ISO; where one part is above 12 the reading is forced. The parser never guesses.
    - Any of these may take a time after spaces, one comma or `at`: `10:30`, `15:00:00`, `3pm`, `3:30 pm`, then an optional zone (`Z`, `GMT`, `UTC`, `±HHMM`).
-   A day the month lacks (`February 29, 2023`, `April 31`) is NaN. An explicit zone is an absolute instant and is kept; a zone-less time means the same wall clock on every machine. The corpus `coreParseDate.test.ts` (`fixtures/core/parse-date.json.gz`) pins every shape against the answers chrono-node gave before the move.
+   A day the month lacks (`February 29, 2023`, `April 31`) is NaN. An explicit zone is an absolute instant and is kept; a zone-less time means the same wall clock on every machine.
 
 `parseDateToSerial` is NaN for every failure, an ambiguous date included; a surface that reports `#AMBIGUOUS!` calls `parseDate` instead.
 
@@ -1238,7 +1282,7 @@ Code: `date_serial.rs`, `date_ops.rs`.
 
 - `date_from_parts` (DATE): the year is literal, so 26 is the year 26, never 1926, a documented deviation from Excel. The year must be 1 to 9999 (`#DOMAIN!` otherwise); month and day overflow carries, and a day of 0 is the last day of the month before.
 - TIME: the fraction of a day, wrapping past 24 hours as Excel does.
-- DATEVALUE reads Excel's date text (author 2026-11-01): numbers with slashes are day and month in either order, `#AMBIGUOUS!` when both could be the month (`3/5/24`, where Excel reads month first), else the one past 12 is the day (`13/5/24`, `5/13` this year); and `5-Mar-24`, `Mar 5`, `Mar 5, 2024`, `March 2024` (its first day); a two-digit year 00 to 29 is 2000 to 2029 (`excel_datevalue`). Anything else goes to `parse_date`, whose `#AMBIGUOUS!` passes through; unparseable text is `#VALUE!`. The Date/Time Value card calls it.
+- DATEVALUE reads Excel's date text, as checked in Excel: numbers with slashes are day and month in either order, `#AMBIGUOUS!` when both could be the month (`3/5/24`, where Excel reads month first), else the one past 12 is the day (`13/5/24`, `5/13` this year); and `5-Mar-24`, `Mar 5`, `Mar 5, 2024`, `March 2024` (its first day); a two-digit year 00 to 29 is 2000 to 2029 (`excel_datevalue`). Anything else goes to `parse_date`, whose `#AMBIGUOUS!` passes through; unparseable text is `#VALUE!`. The Date/Time Value card calls it.
 - TIMEVALUE: `h:mm`, `h:mm:ss` or with fractional seconds, with an optional AM or PM (hours 1 to 12 then, else 0 to 23), gives the 0–1 fraction. Anything else goes through `parse_date`, an ambiguous date failing too, and keeps the fraction of a full datetime; failure is `#VALUE!`. It never uses `new Date("1970-01-01T…")`, which reads zone-less text as local time and would vary by machine.
 - WEEKDAY, WEEKNUM, ISOWEEKNUM: WEEKDAY's return type 1 is 1 Sunday to 7 Saturday, 2 is 1 Monday to 7 Sunday, 3 is 0 Monday to 6 Sunday. WEEKNUM's 1 counts Sunday-start weeks and 2 Monday-start weeks from 1 January. ISOWEEKNUM is the ISO 8601 week (weeks start Monday, week 1 contains 4 January) and ignores the return type.
 - `date_diff(op, start, end, basis)`:
@@ -1248,6 +1292,15 @@ Code: `date_serial.rs`, `date_ops.rs`.
   - The DATEDIF units (`date_diff_op_for_unit`: `D`, `Y`, `M`, `YM`, `MD`, `YD`, any case) are null over a reversed range. `MD` counts from the start day advanced by the whole months, clamped to that month's length (31 January plus a month is 28 February), so it is never negative. Excel's MD goes negative when the borrow crosses a short month (31 January to 1 March gives −2).
 - `epoch_to_serial` and `serial_to_epoch` (FROMEPOCH, TOEPOCH) convert Unix seconds or milliseconds since 1970-01-01 UTC.
 - `date_trunc(serial, unit, ceiling)` (DATETRUNC) floors to the start of its day, week (Monday, or Sunday for `week_sun`), month, quarter or year. `ceiling` answers the start of the next period instead, except that a value already on the boundary stays put either way. `date_trunc_unit_for` accepts `d`, `day`, `days`, `w`, `week`, `weeks`, `week_mon`, `monday`, `week_sun`, `sunday`, `m`, `month`, `months`, `q`, `quarter`, `quarters`, `y`, `year`, `years`, case-insensitive.
+
+Tests:
+
+- `nodes/date.test.ts`: WORKDAY and NETWORKDAYS with holidays, whole weeks and a count past year 9999; DATE's literal year; `parseDate`'s ordinals, month names, day-first separators, `#AMBIGUOUS!`, relative phrases refused and buried dates and garbage rejected; a year token of exactly four digits; serial 25569 as the Unix epoch; the DATEDIF units (MD borrowing from the month before the end month); `parseDateToSerial` and TIMEVALUE the same in every time zone, which the test proves by setting `TZ` across zones; EDATE clamping to the month's end; DATEVALUE and TIMEVALUE on one card; the date cards broadcasting over lists while a setting input stays scalar.
+- `nodes/dateParity.test.ts`: the date formulas answer what the date cards answer (DATE's literal year, TIME's wrap, the parsers, WEEKDAY, WEEKNUM and ISOWEEKNUM with every return type, YEARFRAC's bases, truncation and either order, DAYS, DAYS360 and DATEDIF).
+- `nodes/relativeDates.test.ts`: relative phrases are refused unless the Relative dates setting is on, and then resolve against now as whole days; a date Value Input under the setting resolves and alerts when the resolved day moves, but not when the phrase was edited.
+- `relative_dates.rs` (solenoid-core): the relative phrases a date Value Input reads, natively.
+- `coreParseDate.test.ts`: the parser's corpus (`fixtures/core/parse-date.json.gz`) for the text a typed date input reads (a date Value Input, Frame and Table cells, vault properties), frozen from chrono-node's answers with one change on purpose: a date that reads as day/month or month/day stays `#AMBIGUOUS!` with a time after it, where chrono read it month first. `FREEZE_CORE=parse-date` re-records it after a deliberate change.
+- `dates_before_1900.rs` (solenoid-core): the serial model before 1900 ([[date-values#Days before 1900]]).
 
 ### Text kernels
 
@@ -1272,6 +1325,11 @@ Each kernel works on one string; the text nodes and the text formulas broadcast 
 - `wrap_text(t, width)` (WRAPTEXT): greedy word wrap on whitespace to at most `width` code points per line. Words join with single spaces, runs of whitespace collapse, and a word longer than `width` sits alone on its line unbroken. `width` is at least 1; empty or all-blank text gives `[]`.
 - **Templates.** A field is `{name}` or `{name:spec}`. The name is a number or an identifier. An identifier starts with a letter or `_`, and after that it can also have digits, `_`, spaces, `.` and `-`. The `spec` is an Excel TEXT format code, or a date format that gets handed to the caller's formatter. `{{` and `}}` are literal braces. The Template card has one input per distinct name, in first-appearance order (`varsMove`, [[node-bodies]] § What moves and what stays). TEMPLATE (`template`, `nodes/docs.rs`) substitutes each placeholder through `lookup` and `fmt`. `template_format` is the standard `fmt`: a blank prints as "", an error as its code, a logical as `TRUE` or `FALSE`, a number through the injected number formatter (or the date formatter for a date-typed input), and a list as its elements joined with ", ".
 
+Tests:
+
+- `nodes/textOps.test.ts`: `wrap_text` fills lines greedily in whole words, collapses whitespace, leaves a long word alone on its line, refuses a width under 1, gives no lines for blank text and counts code points; WRAPTEXT shares the kernel.
+- `formulaTier1.test.ts`: TEXTSPLIT, TEXTAFTER, TEXTBEFORE, ENCODEURL and the REGEX functions on the card and in a formula, and REGEXREPLACE's substitutions.
+
 ### Matrix kernels
 
 Code: `fns_matrix.rs`, `shapers.rs`.
@@ -1289,6 +1347,8 @@ The matrix nodes and the matrix formulas share these; the nodes add unit tagging
 - TRACE sums the main diagonal. `mat_rank` is Gaussian elimination with partial pivoting, where a pivot within 10⁻¹⁰ of the largest entry counts as zero. NORM is the Frobenius norm (default), the 1-norm (largest column sum), the ∞-norm (largest row sum) or the largest absolute entry.
 - `mat_solve` (`nodes/matrix.rs`, SOLVE) solves `A·x = b` by Gaussian elimination with partial pivoting; null when A is singular (pivot below 10⁻¹²), not square, or b's length differs.
 - `mat_eigh` (`fns_matrix.rs`, the Eigen card and EIGENVALUES) decomposes a symmetric matrix by cyclic Jacobi rotations (up to 100 sweeps): eigenvalues descending, eigenvectors as the unit-length columns of `vectors` in the same order, each with its largest-magnitude component positive so the sign is deterministic. Null when the matrix is not square or not symmetric (within 10⁻⁹ of its scale).
+
+Tests: `formulaMatrix.test.ts`: each matrix kernel answers alike on the card and in the formula (MMULT's `#SHAPE!` and `#TYPE!`, MDETERM's and MINVERSE's `#SHAPE!` and `#DIV/0!`, DIAGONAL with a blank off-diagonal, the stacks' `#N/A` padding, EXPAND's blank fill and its refusal to shrink), and the Set Cell card's writes (row order, a block, a segment, `#REF!` naming the axis it runs off).
 
 ### Signal and forecasting kernels
 
@@ -1313,6 +1373,12 @@ Code: `fns_lists.rs`.
 
 - `seasonal_decompose(y, period, model)` is the classical filter (statsmodels `seasonal_decompose`, R `decompose`). The trend is a centered moving average over the period (a 2 × MA when the period is even), blank for the half-window at each end. The seasonal term is the per-position mean of the detrended series, centered to zero (additive) or to one (multiplicative) and tiled. The residual is what is left. Blanks in the input leave blanks where they touch. It needs a period of at least 2 and two full periods, else null.
 - `stl_decompose(y, period)` is STL with a periodic seasonal (R `stl(s.window = "periodic")`): the seasonal term is exactly periodic, each phase the mean of its cycle-subseries centered to zero, and the trend is a LOWESS fit of the deseasonalized series (frac `min(1, 1.5 · period / n)`), refined over 15 inner passes, enough to put a clean signal's residual well below 10⁻⁴. Because LOWESS is local linear, a smooth trend comes back cleanly and a linear one exactly, and the trend has no blank ends. It needs a gap-free series and two full periods, else null.
+
+Tests:
+
+- `nodes/signalFormulas.test.ts`: Savitzky–Golay, Gaussian smoothing and FINDPEAKS match scipy's answers (`savgol_filter` with `mode="interp"`, `gaussian_filter1d`, `find_peaks`); a blank is left out of its neighbours' fits and an even window refused; LOWESS reproduces a straight line and robustifies a single outlier away (a little noise keeps the median absolute deviation above 0, since on an exact line the robustness passes stop, as R's `lowess` does).
+- `nodes/stlDecompose.test.ts`: STL on a built trend and season recovers a near-zero residual, an exactly periodic seasonal summing to about 0 over a period and the linear trend with no blank ends, and answers blank for too few periods, a bad period or a gappy series.
+- `coreLimits.test.ts`: the ETS Forecast card caps its horizon at the generated-values limit, and FINDPEAKS with a distance walks each peak's neighbours, not every peak.
 
 ### Distribution fitting
 
@@ -1339,6 +1405,8 @@ Code: `nodes/convertUnits.ts`.
 
 `CONVERT_UNIT_DEFS` is the Convert node's unit table, keyed by the dropdown's unit id (the Format Controller's id wherever the FC lists the same unit, so `kmh`, `degC`, `L`), with each unit's label, Excel code and category (angle, length, mass, temperature, time, area, volume, speed, energy, pressure). Every factor is relative to its category's local base unit (radian, meter, gram, second, square meter, liter, m/s, joule, pascal), and a unit's SI scale is that factor times the base's SI scale (`CATEGORY_DIM`: 0.001 for the gram and the liter, 1 otherwise). Temperature is affine: its `dim` unit works in kelvin with an offset. The core's `convert_value` (`convert_units.rs`) converts through base SI and answers null for an unknown key or units of different dimensions, which CONVERT reports as `#N/A`; `convert_unit_key` reads CONVERT's unit argument, an Excel code first and a unit id second.
 
+Tests: `excelFunctions.test.ts`: CONVERT runs the unit table (°C to °F included) and reads only its own units, never `Object.prototype`'s members.
+
 ### Index access
 
 Code: `index_into` (`excel_functions.rs` and `nodes/list.rs`).
@@ -1353,6 +1421,12 @@ The INDEX node and the INDEX formula read a scalar, a list or a matrix alike; th
 - The card's position sockets are number lists (`numlist`), so a wired list of positions works as it does in a formula; a typed position is one number. The card swaps its Row and Column sockets for a single Position socket while a list is wired in, and back when a table arrives, through the ordinary socket swap (cables prune first, [[B11]] maximalMerge); a typed number rides across as Position or Row. A blank, an error or an empty array leaves the sockets as they are, and so does Filter's Column socket for an empty array, so a table that runs out of rows keeps its cables. `indexAxes` in the save records which pair is showing.
 - A position may be a list or a table of positions, as Excel's array arguments: INDEX answers once per position, shaped like the positions (`INDEX(x, p)` with `p` = 1, 3 is a list of the 1st and 3rd items). With both axes given, the two pair up as Excel's broadcasting does (a list against a column spreads into a table, a size mismatch pads with `#N/A`), and a pair that would pick a whole row is `#VALUE!`. A list of positions against a whole axis of a table picks those rows or columns, as CHOOSEROWS and CHOOSECOLS do. A blank in a flat list of positions is skipped, and a list with none left is the whole axis ([[D86]]); a blank inside a table of positions (a blank row too) is `#SYNTAX!` in its place, since the argument's role reads it first (`input-roles`); the kernel alone would answer it blank. A Frame or Cube takes one position per axis (`#VALUE!` otherwise).
 - Out of range is `#REF!` from `index_ref_error`, "Row 5 is outside 1…3", so both surfaces word it identically.
+
+Tests:
+
+- `indexPosition.test.ts`: INDEX on a single row or column, with several positions as Excel's array arguments, and the card swapping Row and Column for Position on a list, its positions as number lists.
+- `formulaMatrix.test.ts`: INDEX is the card's accessor, whole axis and rank 2, and a blank row in a table of positions is `#SYNTAX!` in its cells.
+- `excelFormula.test.ts` and `blankArgIsExcelBlank.test.ts`: 0 or a blank position is the whole axis, and past the end is `#REF!`.
 
 ## Parity measurement
 
@@ -1378,24 +1452,18 @@ The measurement reports:
 
 `excelNamedGapNames(m)` flattens gap A to a sorted, deduplicated list of the names that do not dispatch. It is the ratchet's unit, so closing one name of a multi-name node shows.
 
-## What pins this
+**The ratchet** pins gaps A and C and makes them one-way ([[C51]] formulaNaming, [[B16]] oneFormulaSurface):
 
-| Behavior | Test |
-|---|---|
-| The broadcast table, containment, singleton collapse | `tests/graph/broadcastRules.test.ts`, `broadcastContract.test.ts`, `expressionMatrix.test.ts` |
-| Parser, variables, LaTeX, steps, operator table, lookups redirect, omitted arguments | `tests/graph/excelFormula.test.ts`, `formulaSyntax.test.ts` |
-| Typed blanks | `tests/graph/blankArgIsExcelBlank.test.ts` |
-| Range routing and preparation policies | `tests/graph/rangeRouting.test.ts` |
-| Matrix and complex containment | `tests/graph/formulaMatrix.test.ts`, `formulaComplex.test.ts` |
-| LAMBDA and hosts | `tests/graph/formulaLambda.test.ts`, `tests/graph/nodes/tableLambda.test.ts` |
-| Node and formula give one answer | `tests/graph/formulaNodeParity.test.ts`, `formulaTier1.test.ts`, `formulaTier3.test.ts` |
-| Where Formula.js was wrong | `tests/graph/formulaDivergence.test.ts` |
-| Pack registration | `tests/graph/formulaExtensions.test.ts` |
-| The formula path stays graph-free | `tests/graph/formulaPathIsGraphFree.test.ts` |
-| The criteria grammar | `tests/graph/criteriaFamily.test.ts` |
-| Signatures and the parameter bar | `tests/graph/formulaSignatures.test.ts` |
-| The parity measurement and its ratchet | `tests/graph/formulaNodeParity.test.ts` |
-| Distribution kernels on both surfaces | `tests/graph/distributionFormula.test.ts`, `tests/graph/nodes/distributions.test.ts`, the frozen Distributions cases (`fixtures/core/nodes/DistributionsNode.json.gz`) |
-| Finance kernels and the discount-rate solver | `tests/graph/nodes/finance.test.ts`, `financeInvariants.test.ts`, `financeIterative.test.ts` |
-| Date kernels and relative dates | `tests/graph/nodes/date.test.ts`, `dateParity.test.ts`, `relativeDates.test.ts` |
-| Text, signal and forecasting kernels | `tests/graph/nodes/textOps.test.ts`, `signalFormulas.test.ts`, `stlDecompose.test.ts` |
+- Both directions are checked: a new gap fails (live ⊆ pinned), and so does a closed gap still pinned (pinned ⊆ live), so the lists can't drift from the truth.
+- A failure is never fixed by widening a pin. The gap is closed (register the function, add the node, curate the name), or, when it is deliberate, recorded in `EXCEL_GAP` (`nodeExcel.ts`).
+- Gap A is empty and stays so: every Excel name a node carries dispatches. A name appearing there is a new node shipped without its registration, closed the [[C17]] shareImpl way.
+- Gap C's goal is empty too; what stays there is what survived curation, since the blocklist refuses the retired names outright.
+- Formula.js's internal helper namespace (`utils.symbols.ADD`, `utils.date.serialToDate`) is no Excel surface and is never advertised as a function.
+- `inScope` and `nativeGap` partition the catalog exactly, no leaf counted twice or dropped, so a coverage claim's denominator is honest.
+
+**The other direction: every curated function has a node** ([[B11]] maximalMerge). Every function with a declared arity in `FUNCTION_ARITY` is reachable as a node: by a catalog leaf's label or Excel name, or as the same job under another label or as a node's mode, each such alias written down with where it lives. A new function with no node fails until it gets one or an alias with its reason. Pack functions are each pack's own audit (`auditFormulaPack`), and the functions taken from Formula.js with no declared arity are outside the check.
+
+Tests:
+
+- `formulaNodeParity.test.ts`: gap A and gap C hold no new name and keep no closed one; Formula.js internals are never advertised; `inScope` and `nativeGap` partition the catalog; `excelCovered` needs every name, which only a made-up partly covered row can show, since gap A is empty.
+- `formulaNodeCoverage.test.ts`: every function with a declared arity is reachable as a node.

@@ -1,5 +1,5 @@
-//! [[C44]] dateSerials: relative date phrases as a date Value Input reads them (`relative_date.rs`, on the patched
-//! interim). Natively the host's zone is UTC; the reference is Wednesday 2026-11-04 at 15:00.
+// [[C44]] dateSerials, [[formula-language#Date kernels]]
+//! Relative date phrases as a date Value Input reads them, natively in UTC from Wednesday 2026-11-04 at 15:00.
 
 use solenoid_core::relative_date::{is_relative, relative_date};
 

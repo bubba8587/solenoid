@@ -1,4 +1,4 @@
-// [[C24]]
+// [[C24]] arraySemantics, [[formula-language#Text kernels]]
 import { describe, it, expect } from "vitest";
 import { coreFunction } from "../coreFunction";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
@@ -6,8 +6,7 @@ import { isSolError } from "../../../src/graph/errorValue";
 
 const wrapText = (text: string, width: number) => coreFunction("WRAPTEXT")!(text, width);
 
-// R stringr::str_wrap / Python textwrap.wrap references, worked by hand (greedy,
-// whitespace-collapsing, long words unbroken on their own line).
+// R stringr::str_wrap and Python textwrap.wrap references, worked by hand.
 describe("wrapText (str_wrap / textwrap.wrap)", () => {
   it("greedily fills lines to the width in whole words", () => {
     expect(wrapText("the quick brown fox jumps", 10)).toEqual(["the quick", "brown fox", "jumps"]);

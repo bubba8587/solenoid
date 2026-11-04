@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[D114]] dateIsAKind, [[date-values#Cards]]
+// [[C17]] shareImpl, [[D114]] dateIsAKind, [[date-values#Cards]], [[formula-language#Date kernels]], [[formula-language#Dates and times]]
 import { describe, it, expect } from "vitest";
 import { solDate } from "../../../src/graph/dateValue";
 import { compileEvaluator } from "../../../src/graph/excelFormula";

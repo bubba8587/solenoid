@@ -1,4 +1,4 @@
-// [[B11]]
+// [[B11]] maximalMerge, [[formula-language#Numeric kernels]], [[formula-language#Distribution table]]
 import { describe, it, expect } from "vitest";
 import { DistributionsNode, formAfterSwitch } from "../../../src/graph/nodes/distribution";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
@@ -6,8 +6,7 @@ import { compileEvaluator } from "../../../src/graph/excelFormula";
 const dist = (op: string, form: string) =>
   new DistributionsNode({ op: op as never, form: form as never });
 
-// Each value below is the answer Excel's corresponding function returns, so a
-// regression here means we've drifted from spreadsheet parity.
+// Each value below is Excel's answer.
 
 describe("normal family", () => {
   it("NORM.INV is the inverse of NORM.DIST", () => {
