@@ -407,6 +407,12 @@ export function isExecutablePath(path: string): boolean {
 /** Needs `opener:allow-open-path`; reveal-in-dir alone would not launch the file. */
 export async function openFilePath(path: string): Promise<void> {
   if (!isDesktop() || !path) return;
+  // The opener hands Android a file:// address, which Android refuses to share with another app (docs/android.md).
+  if (isAndroidApp()) {
+    const { pushNotice } = await import("./noticeStore");
+    pushNotice("Opening a file in another app isn't available on Android yet.", "warn");
+    return;
+  }
   if (isExecutablePath(path) || docMetaStore.isForeign()) {
     const ok = await requestConfirm({
       message: isExecutablePath(path) ? "This link runs a program. Open it?" : "This link came with a shared document. Open it?",

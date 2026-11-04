@@ -173,7 +173,7 @@ function AndroidFilesRow() {
     <div className="solenoid-settings__row solenoid-settings__row--folder">
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">Files on this phone</span>
-        <span className="solenoid-settings__row-help">To read a vault or a data folder, allow Solenoid to manage all files: Android Settings, Apps, Solenoid, Permissions, Files.</span>
+        <span className="solenoid-settings__row-help">To read a vault or a data folder, turn on All files access for Solenoid: Android Settings, Apps, Special app access, All files access.</span>
       </span>
     </div>
   );
