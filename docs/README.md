@@ -75,7 +75,7 @@ is parked there.
 
 - **`backlog.md`** — OPEN items only; **the single source of truth for tasks.**
   Landed items get DELETED (git + digests are the record). 1.5 shipped 2026-10-08; the
-  1.6 cut is proposed in `1.6-plan.md`, the 2.0 cut in `2.0-plan.md`, and items land here as the
+  1.6 cut (three rounds, the rest after 1.6) is `1.6-plan.md`, the 2.0 cut in `2.0-plan.md`, and items land here as the
   author promotes them. The
   release tail lives here.
 - **`plans/`** — per-task execution plans for promoted backlog items, written so a
@@ -92,8 +92,8 @@ is parked there.
 - **`deferrals.md`** — the parked set WITHOUT a plan (reopen-only, trigger-gated,
   parked bugs and features), with the notes needed to reopen each. Planned items live
   in `2.0-plan.md`, never here too.
-- **`1.6-plan.md`** — the 1.6 release plan (PROPOSAL 2026-11-04): every open backlog line
-  sorted into finish / pull in / later, and the calls the cut waits on.
+- **`1.6-plan.md`** — the 1.6 release plan (the author's cut 2026-11-04): three rounds, a
+  desktop session, and what waits until after 1.6.
 - **`2.0-plan.md`** — the 2.0 release plan (PROPOSAL 2026-09-01): the arcs that change
   what a document is — pages, collaboration (accounts / cloud saves / multiplayer), the
   Excel transpiler, conditional formatting, canvas at scale, value-model extensions,

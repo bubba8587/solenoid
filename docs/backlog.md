@@ -1,8 +1,8 @@
 # Solenoid — Backlog
 
 **OPEN items only, kept terse.** When an item lands, DELETE its line — git history and
-the dev-notes digests are the record. **1.5.0 shipped 2026-10-08; the 1.6 cut is proposed in
-`1.6-plan.md`** (finish / pull in / later, plus the calls it waits on). The
+the dev-notes digests are the record. **1.5.0 shipped 2026-10-08; the 1.6 cut is
+`1.6-plan.md`** (three rounds and a desktop session; everything else waits until after 1.6). The
 structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tree (`dte.md`).
 
@@ -60,7 +60,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Layer the core**: five groups (formulas, values, tables, planners, cards), each relying only on those below; today it's a flat list and a couple of low-level pieces reach up into card code. Publishing the function library on its own needs it.
 - [ ] **Build the shipping module with `npm run build:wasm:opt`** before develop merges into main (the author's step): develop commits it unoptimized (`wasm-opt` is opt-in), about 6% bigger raw.
 - [ ] **Desktop hardening** (security review 2026-10-24): `src-tauri/capabilities/default.json` lets the webview write any `$HOME/**/*.json|md` (dot-dirs like `~/.claude`, `.vscode`, `.git` included), read `$HOME/**/*.json|csv|md|yaml`, fetch `http(s)://*:*` (localhost, LAN, 169.254.*) and `opener:allow-open-path` unscoped; deny dot-dirs and private ranges, scope fs to the folders the user picked. `read_parquet` should run off the main thread (`spawn_blocking`) with a size cap.
-- [ ] **Two netcore-rs behaviors the graph core leans on** (netcore-rs review 2026-10-24): a removed node's engine cache stays until a full pass (upstream does the same), so a deleted card's frame stays in memory until then; and the core never spawns `netcore::future::background()`, so after a pass stops early, sibling runs waiting on JS promises resume only when something else polls the queue (netcore-rs's `tree/specs/port` § Futures says the host spawns it once).
 - [ ] **Graph core leftovers** (fuzz run and named-edits review, 2026-10-24):
   - A shown field that is also in the call's `init` (`coreHeader`, `nodeOnCore.ts`) goes stale in the core's header when the body rewrites it, since the header is re-read only when the node is named (`Run::show`, `direct.rs`). Check Slider's `value` and the Format Controller's `unit`; if an answer differs, touch the header when `show` sets an `init` key.
   - A JS exception thrown through wasm frames (a JS card's list with a throwing index getter, or a list ~10k deep overflowing the JS stack in the boundary walk) leaves borrow flags set and the next run traps; recovery then doesn't free the single flight. Script results are coerced, so no card makes these today.
