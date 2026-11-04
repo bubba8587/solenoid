@@ -1,4 +1,4 @@
-// [[C22]], [[C120]] linearWork
+// [[C22]] rowFormulaRefs, [[C120]] linearWork, [[computed-columns#Names inside a row]]
 import { describe, expect, it } from "vitest";
 import { growthAt4x } from "./timing";
 import { computeColumnOnEngine } from "../../src/graph/frameBackend";

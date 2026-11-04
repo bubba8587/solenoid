@@ -1,5 +1,4 @@
-// [[C22]] rowFormulaRefs, [[C50]] lambdaBindsByName, [[C25]] firstClassUnits: Computed Column over Cubes,
-// widened values, wired λs with united captures, bindings and placement, driven through the card.
+// [[C22]] rowFormulaRefs, [[C50]] lambdaBindsByName, [[C25]] firstClassUnits, [[computed-columns#The Computed Column node]]
 import { describe, it, expect } from "vitest";
 import { ComputedColumnNode } from "../../src/graph/nodes/frame";
 import { LambdaNode } from "../../src/graph/nodes/lambda";

@@ -1,4 +1,4 @@
-// [[C22]] rowFormulaRefs: Cube Input's formula columns over list, grid and table cells, driven through the card.
+// [[C22]] rowFormulaRefs, [[computed-columns#Fx columns in Cube Input]]
 import { describe, it, expect } from "vitest";
 import { CubeInputNode } from "../../src/graph/nodes/cube";
 import { isCubeValue, type CubeValue } from "../../src/graph/frame";

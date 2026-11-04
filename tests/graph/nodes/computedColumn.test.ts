@@ -1,4 +1,5 @@
-// [[C22]], [[C25]] firstClassUnits
+// [[C22]] rowFormulaRefs, [[C25]] firstClassUnits, [[computed-columns#Names inside a row]],
+// [[computed-columns#Evaluating a column]], [[computed-columns#Fx columns in Frame Input]], [[computed-columns#The Computed Column node]]
 import { GraphEditor } from "../../../src/graph/graphEditor";
 import { DataflowEngine } from "../../../src/graph/dataflowEngine";
 import type { Schemes } from "../../../src/graph/schemes";
@@ -34,11 +35,6 @@ async function inEditor(n: ComputedColumnNode) {
   };
 }
 
-// ─── Computed Column — the row-wise formula verb ─────────────────────────────
-// The node that keeps frames OUT of formulas ([[C15]] matricesInFormulas): the row iteration lives
-// here, the formula only ever sees scalars. Variables are column names; a
-// wired λ takes over with its params bound the same way.
-
 const sales: FrameValue = {
   __frame: true,
   columns: [
@@ -69,12 +65,9 @@ describe("ComputedColumnNode — inline formula (tableRefSemantics: bare = whole
   });
 
   it("a bare column name is the WHOLE column — @revenue-style share-of-total works unwired", () => {
-    // The tableRefSemantics headline: mixing this-row and whole-column references, Excel's
-    // [@Amount] / [Amount] — the case v1 semantics could not spell at all.
     const r = run(named("@price / SUM(price)", "share"), sales) as FrameValue;
     expect(getColumn(r, "share")!.values.map((v) => (v as number).toFixed(4)))
       .toEqual(["0.1667", "0.3333", "0.5000"]);
-    // The author's case: aggregate one column filtered by THIS row's value.
     const grouped: FrameValue = {
       __frame: true,
       columns: [
@@ -87,8 +80,6 @@ describe("ComputedColumnNode — inline formula (tableRefSemantics: bare = whole
   });
 
   it("a bare column in scalar position is a LOUD per-row #SHAPE!, pointing at @", () => {
-    // The old silent trap (price * qty = cell math) now refuses per row with a
-    // message that names the fix.
     const r = run(named("price * qty", "rev"), sales) as FrameValue;
     const v = getColumn(r, "rev")!.values[0];
     expect(isSolError(v) && v.code).toBe("#SHAPE!");
@@ -256,11 +247,8 @@ describe("ComputedColumnNode — bracket references, rows, and placement", () =>
     };
     const quoted = run(named("@[2024] + @[Unit Price]", "sum"), awkward) as FrameValue;
     expect(getColumn(quoted, "sum")!.values).toEqual([105, 207]);
-    // A numeric name is a NAME, never a positional index; Excel's [@Name]
-    // and [@[Name]] spellings parse too.
     const bare = run(named("[@2024] + [@[2024]]", "dbl"), awkward) as FrameValue;
     expect(getColumn(bare, "dbl")!.values).toEqual([200, 400]);
-    // [Name] is the WHOLE column — the spelled-out bare name (tableRefSemantics).
     const whole = run(named("@[Unit Price] / SUM([Unit Price])", "shr"), awkward) as FrameValue;
     expect(getColumn(whole, "shr")!.values.map((v) => (v as number).toFixed(4))).toEqual(["0.4167", "0.5833"]);
   });
@@ -317,7 +305,7 @@ describe("ComputedColumnNode — kitchen sink", () => {
   });
 });
 
-describe("Frame Input λ columns (surface slice 1)", () => {
+describe("Frame Input λ columns", () => {
   const src = (cols: Parameters<typeof frameSourceToText>[0]) => frameSourceToText(cols);
   const lambda = (expr: string, params: string) =>
     (new LambdaNode({ expr, params }).data({}) as { result: unknown }).result;
@@ -406,7 +394,7 @@ describe("Frame Input λ columns (surface slice 1)", () => {
   });
 });
 
-describe("Frame Input Formula columns (surface slice 2)", () => {
+describe("Frame Input formula columns", () => {
   it("an expr column computes per row over the literal columns — no wiring at all", () => {
     const n = new FrameInputNode({
       frameText: frameSourceToText([
@@ -565,9 +553,6 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
   });
 
   it("a computed column's unit rides through INDEX and LOCKS a downstream FC", async () => {
-    // The author's repro (2026-07-31): unit on a computed column → INDEX pulls
-    // a cell → FC inherits AND locks (an inherited unit is set elsewhere in
-    // the chain — forwarding is a locked state).
     const { ListIndexNode } = await import("../../../src/graph/nodes/list");
     const { FormatControllerNode } = await import("../../../src/graph/nodes/formatController");
     const { isUnitCell } = await import("../../../src/graph/unitValue");
@@ -606,10 +591,6 @@ describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
   it("a ZERO-param λ reads the row via @ — capture sockets grow, columns win over them", () => {
     const lam = new LambdaNode({ expr: "@price * @qty", params: "" });
     const fn = (lam.data({}) as { result: unknown }).result;
-    // @names grow capture sockets like any free variable (the λ owns its
-    // names — author ruling 2026-07-30); on a table the COLUMNS win at
-    // row-eval, so the unwired captures are inert and the λ still computes
-    // with no wiring at all.
     expect(lam.captured).toEqual(["price", "qty"]);
     const r = run(named("", "rev"), sales, { fn: [fn] }) as FrameValue;
     expect(getColumn(r, "rev")!.values).toEqual([20, 60, 120]);
@@ -651,10 +632,6 @@ describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
 });
 
 describe("@ over side values — row-aligned lists (no capture, no column)", () => {
-  // The author's shape: λ(framecol1, framecol2) → framecol1*framecol2*@list.
-  // `list` is neither a param nor a column — it grows a CAPTURE socket on the
-  // LAMBDA node (the λ owns its names), and @ reads the captured list
-  // element-per-row inside the row context.
   it("a λ's @list rides the Lambda card's capture socket, element per row", () => {
     const lam = new LambdaNode({ expr: "qty * price * @scale", params: "qty, price" });
     expect(lam.captured).toEqual(["scale"]); // the @name grew a capture socket
@@ -709,8 +686,6 @@ describe("@ over side values — row-aligned lists (no capture, no column)", () 
     const n = named("@qty + 0", "q2");
     const r = run(n, sales, { qty: [[100, 100, 100]] }) as FrameValue;
     expect(getColumn(r, "q2")!.values).toEqual([2, 3, 4]); // the column, not the wire
-    // Frame Input's per-column sources have no side ports by design: an @name
-    // that matches no column stays a plain per-row #REF! there.
     const fi = new FrameInputNode({
       frameText: frameSourceToText([
         { name: "a", type: "number", cells: ["1"] },
@@ -849,7 +824,7 @@ describe("persistence", () => {
   });
 });
 
-describe("review pins — wired blanks, picked columns at @, λ params", () => {
+describe("wired blanks, picked columns at @, λ params", () => {
   it("a WIRED BLANK side value is unknown: blank rows, never 0; unwired keeps the default", () => {
     const n = named("@qty * rate", "amt");
     const blank = run(n, sales, { rate: [null] }) as FrameValue;
