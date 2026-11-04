@@ -596,6 +596,8 @@ describe("text tier 2: UNACCENT / SLUGIFY / Pad Text / Truncate Text", () => {
     tr.literals.width = 5;
     expect(tr.data({ text: ["abcdefgh"] }).result).toBe("abcd…");
     expect(ev('UNACCENT("über")')).toBe("uber");
+    // The letters UNACCENT spells out itself, since decomposing leaves them whole.
+    expect(ev('UNACCENT("ß æ Æ ø Ø œ Œ đ Đ ł Ł ð Ð þ Þ ı ŋ Ŋ")')).toBe("ss ae AE o O oe OE d D l L d D th TH i ng NG");
     expect(ev('SLUGIFY("Hello World", "_")')).toBe("hello_world");
     expect(ev('PADTEXT("7", 3, "left", "0")')).toBe("007");
     expect(ev('PADTEXT("ab", 4)')).toBe("ab  ");

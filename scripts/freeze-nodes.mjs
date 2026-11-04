@@ -11,7 +11,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as zlib from "node:zlib";
 import * as readline from "node:readline";
-import { frozenForm, caseKey, readFixture, LAYOUT } from "./node-cases.mjs";
+import { frozenForm, caseKey, readFixture, LAYOUT, STAYS_IN_TS } from "./node-cases.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const CALLS = path.join(ROOT, ".dev/node-calls");
@@ -32,6 +32,7 @@ for (const file of fs.readdirSync(CALLS).filter((f) => f.endsWith(".jsonl"))) {
     // JSON.stringify escapes only a lone surrogate, which no UTF-8 reader takes: text the core never sees whole.
     if (/\\ud[89a-f][0-9a-f]{2}/i.test(line)) (c.uncrossable ??= []).push("lone surrogate");
     if (only.size && !only.has(c.kind)) continue;
+    if (STAYS_IN_TS.has(c.kind)) continue;
     let k = byKind.get(c.kind);
     if (!k) byKind.set(c.kind, (k = { calls: 0, cases: new Map(), uncrossable: {}, thrownJs: 0, outRaw: 0, unstable: 0 }));
     k.calls++;

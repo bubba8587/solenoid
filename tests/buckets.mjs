@@ -41,7 +41,7 @@ export const RULES = [
   ["frames", /(^|\/)(frame\w*|cube\w*|pivot\w*|csv|coreCsv|coreInferColumn|corePlanReaders|reconcile|joinUnits|computedColumn\w*|table\w*|columnSort|columnPicker|describeProfile|backendVerbCards|lazyVerbBodies|lazyFrameReads|lazyChain|cellErrorScan|listSortOrder|listPreview|tableFooterStats|frameHint|indexPosition|conduitFilterTypes)\.test\./],
 
   // ── formulas: the formula language and its functions ──
-  ["formulas", /(^|\/)(excel\w*|formula\w*|blankArgIsExcelBlank|broadcast\w*|generatorCaps|spreadLimit|distributionFormula|criteriaFamily|rangeLift|rangeRouting|rangeCallMemo|expressionMatrix|emptySlots|datetimeParity|timeZone|fuzzy|coreConformance|corePlatform|coreSurrogates|coreParseDate|coreLimits|caseContract|stringOrder|roundingParity|scientificCutoff|complexInvariants|dispatchThrow)\.test\./],
+  ["formulas", /(^|\/)(excel\w*|formula\w*|blankArgIsExcelBlank|broadcast\w*|generatorCaps|spreadLimit|distributionFormula|criteriaFamily|rangeLift|rangeRouting|rangeCallMemo|expressionMatrix|emptySlots|datetimeParity|timeZone|fuzzy|coreConformance|coreSurrogates|coreParseDate|coreLimits|caseContract|stringOrder|roundingParity|scientificCutoff|complexInvariants|dispatchThrow)\.test\./],
 
   // ── values: errors, dates, units, formats ──
   ["values", /(^|\/)(error\w*|date\w*|datesNeverSerials|volatileDates|unit\w*|coreUnitCatalog|convertUnitLabels|cubeColumnUnits|valueKinds|formatModel|format\w*|fc\w*|coreFcReconcile|coreFcTag|noTextGuessing|noteFcPropagation|heldValues|coreAnnotations|coreDimLabels|pushWorldDockedFc|compositeFcSettle|tidyDisplayFcWidth)\.test\./],

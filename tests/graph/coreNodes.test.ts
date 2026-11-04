@@ -55,12 +55,14 @@ function same(got: unknown, want: unknown): boolean {
 
 const files = fs.existsSync(DIR) ? fs.readdirSync(DIR).filter((f) => f.endsWith(".json.gz")).sort() : [];
 
+const bodiless: string[] = [];
+
 describe("card bodies on the core answer as frozen", () => {
   for (const file of files) {
     const kind = file.replace(/\.json\.gz$/, "");
     const cases = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(DIR, file))).toString("utf8")) as Case[];
     const call = (c: Case) => wasmInvokeSync<Reply>("engine_node", { ...c, kind, clock: c.ctx.clock });
-    if (cases.length === 0 || call(cases[0]).none) continue;
+    if (cases.length === 0 || call(cases[0]).none) { bodiless.push(kind); continue; }
     it(kind, () => {
       const bad: string[] = [];
       let rewritten = 0;
@@ -129,4 +131,10 @@ describe("card bodies on the core answer as frozen", () => {
       expect(bad).toEqual([]);
     });
   }
+});
+
+// A class the core has no body for stays in TypeScript, so its frozen cases would hold nothing to anything:
+// scripts/node-cases.mjs lists it (STAYS_IN_TS) and the freeze skips it.
+it("every frozen card class has a body on the core", () => {
+  expect(bodiless, "delete the fixture and list the class in STAYS_IN_TS (scripts/node-cases.mjs)").toEqual([]);
 });
