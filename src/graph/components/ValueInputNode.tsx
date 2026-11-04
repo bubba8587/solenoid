@@ -98,8 +98,8 @@ export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType
 }
 
 /** Collapsed, the card is one editable cell, as a Frame cell is: it shows the value, a click shows the keyed text, and
- *  Enter or a blur commits it and shows the value again (Escape keeps the old text). The card keeps its type, so text
- *  its type can't read answers #VALUE!. */
+ *  Enter or a blur commits it and shows the value again (Escape keeps the old text); a logical flips instead. The card
+ *  keeps its type, so text its type can't read answers #VALUE!. */
 function ValueCell({ node, onCommit }: { node: ValueInputNodeType; onCommit: (text: string) => void }) {
   const [editing, setEditing] = useState(false);
   const field = useDraftCommit<string>(node.value, (v) => v, (t) => t, onCommit);
@@ -124,7 +124,17 @@ function ValueCell({ node, onCommit }: { node: ValueInputNodeType; onCommit: (te
     );
   }
   return (
-    <div className="solenoid-valin__cell-view" title="The value, edited in place" onClick={(e) => { e.stopPropagation(); setEditing(true); }} {...stop}>
+    <div
+      className="solenoid-valin__cell-view"
+      title={node.op === "logical" ? "TRUE or FALSE, flipped in place" : "The value, edited in place"}
+      onClick={(e) => {
+        e.stopPropagation();
+        // A logical has two values, so a press flips it, as its checkbox does; anything else opens its keyed text.
+        if (node.op === "logical") onCommit(/^true$/i.test(node.value.trim()) ? "FALSE" : "TRUE");
+        else setEditing(true);
+      }}
+      {...stop}
+    >
       <ValueDisplay value={node.cachedValue as DisplayValue} socketKey="value" copy={false} />
     </div>
   );
