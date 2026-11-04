@@ -9,7 +9,7 @@ import { appThemeStore } from "../appTheme";
 import { formatScalar } from "./format";
 import { parseCsvRows, joinCsvRows } from "../csv";
 import { isSolError, ERROR_EXPLANATIONS } from "../errorValue";
-import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
+import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT, FIRST_SERIAL, END_SERIAL } from "../nodes/dateSerial";
 import { coerceFrameCell, formatFrameCell, columnTypesAfterCsvEdit, makeHeaders, type FrameSourceColumn } from "../frame";
 import { isDateStyle, type FormatAnnotation } from "../formatAnnotationStore";
 import { isUnitCell } from "../unitValue";
@@ -111,7 +111,7 @@ function dateCellToISO(raw: string): string {
   if (t === "") return "";
   const n = decimalFromText(t);
   const serial = Number.isFinite(n) ? n : parseDateToSerial(t);
-  return Number.isFinite(serial) && serial > 0 ? serialToJsDate(serial).toISOString().slice(0, 10) : "";
+  return serial >= FIRST_SERIAL && serial < END_SERIAL ? serialToJsDate(serial).toISOString().slice(0, 10) : "";
 }
 
 /** A list's items in the view's order: a vertical list sorts, a horizontal one keeps its order. */

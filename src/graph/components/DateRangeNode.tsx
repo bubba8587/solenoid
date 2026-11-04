@@ -4,22 +4,22 @@ import { NodeShell, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { processGraph } from "../process";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
-function serialToISO(serial: number): string {
-  if (!(serial > 0)) return "";
+// A blank field is null; any day is a date, before 1900 too ([[D119]] datesBefore1900).
+function serialToISO(serial: number | null): string {
+  if (serial === null || !Number.isFinite(serial)) return "";
   return serialToJsDate(serial).toISOString().slice(0, 10);
 }
 
-function isoToSerial(iso: string): number {
-  if (!iso) return 0;
+function isoToSerial(iso: string): number | null {
   const d = new Date(`${iso}T00:00:00Z`);
-  return Number.isNaN(d.getTime()) ? 0 : Math.floor(jsDateToSerial(d));
+  return Number.isNaN(d.getTime()) ? null : Math.floor(jsDateToSerial(d));
 }
 
-function DateField({ serial, onCommit }: { serial: number; onCommit: (serial: number) => void }) {
+function DateField({ serial, onCommit }: { serial: number | null; onCommit: (serial: number | null) => void }) {
   const field = useDraftCommit(
     serial,
     serialToISO,
-    (iso) => { if (!iso) return 0; const n = isoToSerial(iso); return n > 0 ? n : INVALID_DRAFT; },
+    (iso) => (iso ? isoToSerial(iso) ?? INVALID_DRAFT : null),
     onCommit,
   );
   return (
@@ -39,7 +39,7 @@ function DateField({ serial, onCommit }: { serial: number; onCommit: (serial: nu
 // Each date input sits on its own output row, so its serial leaves the matching
 // socket; the picker IS the readout.
 export function DateRangeComponent({ data, emit }: NodeProps<DateRangeNodeType>) {
-  const commit = (key: "start" | "end") => (serial: number) => {
+  const commit = (key: "start" | "end") => (serial: number | null) => {
     data.literals[key] = serial;
     void processGraph(data.id);
   };

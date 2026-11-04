@@ -18,6 +18,12 @@ const FORMAT_MONTHS: [&str; 12] = [
 const FORMAT_DAYS: [&str; 7] = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 pub const DEFAULT_DATE_FORMAT: &str = "DD-MMM-YYYY";
 
+/// The serial of 01-Jan-0001: the calendar's first day. Days before 1900 are dates as days after it are ([[D119]]
+/// datesBefore1900), so a date function's range is the calendar's.
+pub const FIRST_SERIAL: f64 = -693_593.0;
+/// The serial of 01-Jan-10000, the first day past the calendar.
+pub const END_SERIAL: f64 = 2_958_466.0;
+
 const TOKENS: [&str; 17] =
     ["MMMM", "MMM", "MM", "M", "DDDD", "DDD", "DD", "D", "YYYY", "YY", "HH", "hh", "h", "mm", "ss", "A", "a"];
 
@@ -49,13 +55,13 @@ pub fn time_clip(ms: f64) -> Option<f64> {
     (ms.is_finite() && ms.abs() <= 8.64e15).then(|| ms.trunc() + 0.0)
 }
 
-/// `Date.UTC(y, m, d)`: a year from 0 to 99 reads as 1900 to 1999, and month and day carry, as MakeDay has it.
+/// `Date.UTC(y, m, d)` with the year as given (`Date.UTC` reads 0 to 99 as 1900 to 1999; a year read off a date in
+/// the first century is that year, [[D119]] datesBefore1900), month and day carrying as MakeDay has it.
 pub fn date_utc(y: f64, m: f64, d: f64) -> Option<f64> {
     if !(y.is_finite() && m.is_finite() && d.is_finite()) {
         return None;
     }
     let (y, m, d) = (y.trunc(), m.trunc(), d.trunc());
-    let y = if (0.0..=99.0).contains(&y) { 1900.0 + y } else { y };
     let ym = y + (m / 12.0).floor();
     let mn = m.rem_euclid(12.0);
     if ym.abs() > 400_000.0 || d.abs() > 1e9 {

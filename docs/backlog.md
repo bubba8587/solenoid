@@ -30,7 +30,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
 
 ## Dates as a kind ([[D114]] dateIsAKind; `tree/specs/values/date-values.md`)
 - **Probe a first-time-empty answer for its type** (parked; reopen if wildcards staying untyped until a result arrives feels bad): when an output that has never carried a value answers empty, run the card once on one sample value per wired input's family and type the socket from that, in place of the source's declared type ([[D117]]).
-- **Dates before 1900 (negative serials), the author's call:** DATE, DATEVALUE, YEAR/MONTH/DAY, WEEKDAY, arithmetic, display text and the popup sort take them; EDATE (`#DOMAIN!`) and TEXT (`#VALUE!` "can't be negative") refuse them, as Excel, which has no dates before 1900. Support them everywhere (EDATE, TEXT and the other Excel refusals made to agree) or refuse them everywhere; then a targeted fuzz below serial 0.
 - The formula conformance fuzz gains date cases for every operator row and every function class (the cards have theirs, `tests/date_fuzz.rs`).
 - A refused date call answers one `#TYPE!` where a broadcast once answered one per item; decide whether the refusal should broadcast.
 - REDUCE/SCAN over dates need a date start (the default 0 is a mix); consider a blank start that takes the first item.

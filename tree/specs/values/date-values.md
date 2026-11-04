@@ -2,7 +2,7 @@
 aliases: ["Date values"]
 tags: [spec, values]
 ---
-<!-- [[D114]] dateIsAKind, [[D115]] datesArePoints, [[C137]] datesNeverSerials -->
+<!-- [[D114]] dateIsAKind, [[D115]] datesArePoints, [[C137]] datesNeverSerials, [[D119]] datesBefore1900 -->
 
 # Spec: Date values
 
@@ -21,7 +21,7 @@ A date is a peer of number, text and logical at every level, not a number with a
 | Wire (`nodeWire`) | number | string | boolean | `{ "__date": serial }` |
 | TypeScript value | `number` | `string` | `boolean` | `SolDate` (`dateValue.ts`: a frozen `{ __date: serial }`, with `isSolDate`, `solDate(n)`) |
 
-- The serial counts days from 01-Jan-1900 with no 29-Feb-1900 ([[C44]] dateSerials); the fraction is the time of day. A `Num` is never a date.
+- The serial counts days from 30-Dec-1899 (serial 0) with no 29-Feb-1900 ([[C44]] dateSerials), so 01-Mar-1900 is 61 as in Excel and the days from 01-Jan-1900 to 28-Feb-1900 sit one higher than Excel's; the fraction is the time of day. A `Num` is never a date.
 - A column's type stays the column's declared kind. A Date column packs its cells as plain `f64` (as a Number column's are); reading a cell out of it into a formula gives a `Date` value, and the packing is never seen past the column.
 - Building a column from values: every non-blank, non-error cell a `Date` makes a Date column. A Cube column and a loose Cube cell follow the same rule.
 - Saved typed inputs (Value, List and Frame Input) store the serial under their declared type and read back as `Date` values; no save stores a loose `__date` inside a typed column.
@@ -60,6 +60,15 @@ A long list is read once per list, not once per row (`date_values.rs`): whether 
 The table verbs (Group By, Pivot, Window, Rollup) and the SUMIFS card read a Date column by its type: a sum, product or share of dates is #TYPE! there too (`dates_plan`, [[frame-verbs]]).
 
 Mixed kinds stay refused ([[C137]] datesNeverSerials): a list or table that would hold dates and another kind answers #TYPE!.
+
+## Days before 1900
+
+A day before 1900 is a date like any other ([[D119]] datesBefore1900): its serial is negative, and every function, card, display, sort and typed entry takes it, from 01-Jan-0001 (`FIRST_SERIAL`, `date_serial.rs`) to 31-Dec-9999 (`END_SERIAL` is the day after). The calendar is the proleptic Gregorian one throughout, read through Hinnant's day counts, so a date in 1066 has the weekday and leap years that calendar gives it.
+
+- The functions Excel refuses there take it: EDATE and the coupon and discount functions (`parse_date`, `fns_stats.rs`), TEXT (`format_date`, `excel_format.rs`), the Date Range card. EDATE and EOMONTH landing outside the calendar are `#DOMAIN!`, as WORKDAY and NETWORKDAYS were.
+- A year read off a date is that year: a date in the years 1 to 99 never reads as 1900 to 1999 (`date_utc`, `date_serial.rs`), and a serial with a time of day falls on the day below it (YEARFRAC floors, never truncates toward 0).
+- Typed date text takes a four-digit year below 1000 (`04-Jul-0426`), as the default format writes one.
+- `tests/dates_before_1900.rs` pins the days around serial 0, and runs every date function, operator row and date card over the same days 400, 800 and 1,600 years back (the calendar repeats every 146,097 days, a whole number of weeks): each answers as it does today, its dates moved by those days.
 
 ## Text and display
 

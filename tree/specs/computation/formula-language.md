@@ -616,7 +616,7 @@ Per-function behavior that the routing above does not decide. The node and the f
 
 ### Dates and times
 
-- The date functions run the date nodes' kernels on one serial model read in UTC ([[C44]] dateSerials); see *Date kernels*.
+- The date functions run the date nodes' kernels on one serial model read in UTC ([[C44]] dateSerials); see *Date kernels*. A day before 1900 is a date for every one of them ([[D119]] datesBefore1900, [[date-values#Days before 1900]]).
 - **DATE(year, month, day)**: the year is literal and a blank day is 0, the last day of the month before.
 - **DAYS(end, start)** is signed. **DAYS360(start, end, [method])** is European when `method` is TRUE. **YEARFRAC** defaults its basis to 0. **WEEKDAY** and **WEEKNUM** default their return type to 1.
 - **DATEDIF(start, end, unit)** refuses a start after the end for every unit with `#DOMAIN!`, as Excel does, while the Date Diff card's Days op keeps its sign. An unknown unit is `#DOMAIN!`.

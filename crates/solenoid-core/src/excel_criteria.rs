@@ -506,8 +506,9 @@ fn with_time(days: i64, after: &[u8]) -> Option<DateReading> {
 }
 
 /// chrono-node's `ENMonthNameLittleEndianParser`: a day of one or two digits with an optional ordinal and `of`, a
-/// month name, a year from 1000, each pair parted by `-`, `/` or spaces, then [`with_time`]. A day the month lacks is
-/// no date. None for anything else.
+/// month name, a four-digit year, each pair parted by `-`, `/` or spaces, then [`with_time`]. A day the month lacks is
+/// no date. None for anything else. A year below 1000 reads as a date before then shows (`04-Jul-0426`, [[D119]]
+/// datesBefore1900), where chrono takes years from 1000.
 fn month_name_little_endian(t: &str) -> Option<DateReading> {
     let b = t.as_bytes();
     let sep = |b: &[u8]| -> Option<usize> {
@@ -536,7 +537,7 @@ fn month_name_little_endian(t: &str) -> Option<DateReading> {
     let (month, rest) = month_word(rest)?;
     let rest = &rest[sep(rest)?..];
     let (year, after) = split_num(rest, 4, 4)?;
-    if year < 1000 || after.first().is_some_and(u8::is_ascii_alphanumeric) {
+    if after.first().is_some_and(u8::is_ascii_alphanumeric) {
         return None;
     }
     match civil_days(i64::from(year), month, day) {
@@ -546,7 +547,7 @@ fn month_name_little_endian(t: &str) -> Option<DateReading> {
 }
 
 /// chrono-node's `ENMonthNameMiddleEndianParser`: an optional weekday (and comma), a month name, a day with an
-/// optional ordinal and comma, a four-digit year from 1000, then [`with_time`]. The weekday is not checked against
+/// optional ordinal and comma, a four-digit year (below 1000 too, as above), then [`with_time`]. The weekday is not checked against
 /// the date, as chrono doesn't. None for anything else.
 fn month_name_middle_endian(t: &str) -> Option<DateReading> {
     let mut b = t.as_bytes();
@@ -575,7 +576,7 @@ fn month_name_middle_endian(t: &str) -> Option<DateReading> {
         return None;
     }
     let (year, after) = split_num(spaced, 4, 4)?;
-    if year < 1000 || after.first().is_some_and(u8::is_ascii_alphanumeric) {
+    if after.first().is_some_and(u8::is_ascii_alphanumeric) {
         return None;
     }
     match civil_days(i64::from(year), month, day) {

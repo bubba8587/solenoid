@@ -261,7 +261,10 @@ pub fn format_number(x: f64, code: &str) -> Result<String, FormatError> {
     if section.toks.is_empty() {
         return Ok(String::new());
     }
-    let v = if signed { x } else { x.abs() };
+    // A calendar day is the value's own, whichever section shows it: a day before 1900 is a date ([[D119]]
+    // datesBefore1900), not a number to show unsigned.
+    let calendar = section.toks.iter().any(|t| matches!(t, Tok::Date(b'y' | b'd', ..)));
+    let v = if signed || (calendar && section.is_date()) { x } else { x.abs() };
     if section.is_date() {
         return format_date(v, section);
     }
@@ -728,9 +731,6 @@ fn best_fraction(f: f64, max: u64) -> (u64, u64) {
 // ─── Dates and times ────────────────────────────────────────────────────────────
 
 fn format_date(x: f64, s: &Section) -> Result<String, FormatError> {
-    if x < 0.0 {
-        return Err("A date or time can't be negative");
-    }
     let toks = &s.toks;
     // Fractional seconds: `0`s after a point that follows seconds.
     let mut frac_digits = 0usize;
@@ -917,7 +917,9 @@ mod tests {
         assert_eq!(f(-5.0, "[>10]0;[<0]-0"), "-5");
         assert!(format_number(5.0, "[>10]0;[<0]0").is_err());
         assert!(format_number(45000.0, "0.00 yyyy").is_err());
-        assert!(format_number(-1.0, "yyyy").is_err());
+        // Excel refuses a day before 1900; Solenoid shows it ([[D119]] datesBefore1900).
+        assert_eq!(f(-1.0, "dd-mmm-yyyy"), "29-Dec-1899");
+        assert_eq!(f(-1.0, "yyyy;yyyy"), "1899");
         assert_eq!(f(-0.001, "0"), "0");
         // Excel answered ...345000: it cuts a typed number to 15 digits as it is entered; the formatter rounds.
         assert_eq!(f(123456789012345678.0, "0"), "123456789012346000");

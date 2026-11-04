@@ -102,7 +102,7 @@ pub fn date_diff(op: DiffOp, s: f64, e: f64, basis: f64) -> Result<Option<f64>, 
         if !((0.0..=4.0).contains(&basis)) {
             return Err(sol_error(ErrorCode::Domain, "Basis must be 0, 1, 2, 3, or 4"));
         }
-        (s, e) = (js_min(s, e).trunc(), js_max(s, e).trunc());
+        (s, e) = (js_min(s, e).floor(), js_max(s, e).floor());
     }
     if s > e && !matches!(op, DiffOp::Days360 | DiffOp::YearFrac | DiffOp::Days) {
         return Ok(None);

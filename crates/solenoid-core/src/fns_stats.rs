@@ -888,11 +888,13 @@ fn serial_to_date(serial: f64) -> f64 {
     civil::new_date(1970.0, 0.0, 1.0 + days, 0.0, 0.0, seconds, 0.0)
 }
 
-/// A serial as a date; text is never a date ([[C10]] socketLattice).
+/// A serial as a date, any day of the calendar ([[D119]] datesBefore1900); text is never a date ([[C10]]
+/// socketLattice).
 pub(crate) fn parse_date(v: &V) -> FxDate {
+    use crate::date_serial::{END_SERIAL, FIRST_SERIAL};
     let d = num_blank_zero(v);
     if !d.is_nan() {
-        if d < 0.0 || d >= 2958466.0 {
+        if !(FIRST_SERIAL..END_SERIAL).contains(&d) {
             return FxDate::Err(FxError::Num);
         }
         return FxDate::Date(serial_to_date(d));

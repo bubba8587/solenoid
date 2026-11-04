@@ -371,7 +371,7 @@ export class ValueInputNode extends GraphNode {
 
 export class DateRangeNode extends GraphNode {
   label: string;
-  literals: Record<string, number>;
+  literals: Record<string, number | null>;
   width  = 190;
   height = 150;
 

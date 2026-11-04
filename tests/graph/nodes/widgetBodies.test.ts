@@ -42,7 +42,7 @@ describe("the fixed-output widgets", () => {
   });
 
   it("Date Range orders its ends and blanks a missing one", () => {
-    const run = (start?: number, end?: number) => {
+    const run = (start?: number | null, end?: number | null) => {
       const n = new DateRangeNode();
       n.literals = {};
       if (start !== undefined) n.literals.start = start;
@@ -51,9 +51,11 @@ describe("the fixed-output widgets", () => {
     };
     expect(run(45000, 45007)).toEqual({ start: 45000, end: 45007 });
     expect(run(45010, 45001)).toEqual({ start: 45001, end: 45010 });
-    expect(run(0, 45001)).toEqual({ start: null, end: 45001 });
-    expect(run(45001, 0)).toEqual({ start: 45001, end: null });
-    expect(run(-5, 45001)).toEqual({ start: null, end: 45001 });
+    expect(run(null, 45001)).toEqual({ start: null, end: 45001 });
+    expect(run(45001, null)).toEqual({ start: 45001, end: null });
+    // A day before 1900 is a date ([[D119]] datesBefore1900).
+    expect(run(0, 45001)).toEqual({ start: 0, end: 45001 });
+    expect(run(45001, -5)).toEqual({ start: -5, end: 45001 });
     expect(run()).toEqual({ start: null, end: null });
     expect(run(45000.5, 45000.25)).toEqual({ start: 45000.25, end: 45000.5 });
     expect(run(45000, 45000)).toEqual({ start: 45000, end: 45000 });

@@ -3,7 +3,11 @@
 import { wasmInvokeSync, coreFormatDate } from "../engineWasm";
 import { solError, isSolError, type SolError } from "../errorValue";
 
-// Serial 1 is 1900-01-01, so the Unix epoch is serial 25569.
+// Serial 0 is 30-Dec-1899, so the Unix epoch is serial 25569 and 01-Mar-1900 is 61, as in Excel ([[C44]] dateSerials).
+
+/** The serials of 01-Jan-0001 and of 01-Jan-10000: the calendar a date reads in, before 1900 too ([[D119]] datesBefore1900). */
+export const FIRST_SERIAL = -693593;
+export const END_SERIAL = 2958466;
 
 /** Rounded to the millisecond: `new Date` truncates, so 04:00 as a float serial would read 03:59:59.999. */
 export function serialToJsDate(serial: number): Date {

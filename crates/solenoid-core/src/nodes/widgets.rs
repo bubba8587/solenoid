@@ -620,12 +620,20 @@ fn xy_pad(c: &mut Call) -> Answer {
 }
 
 fn date_range(c: &mut Call) -> Answer {
-    let (mut start, mut end) = (literal_num(c, "start", 0.0), literal_num(c, "end", 0.0));
-    if start > 0.0 && end > 0.0 && start > end {
+    // A blank field is no date; any day is one, before 1900 too ([[D119]] datesBefore1900).
+    let day = |key: &str| match literal_or(c, key, V::Null) {
+        V::Null => None,
+        V::Date(n) => Some(n).filter(|n| n.is_finite()),
+        v => Some(num_blank_zero(&v)).filter(|n| n.is_finite()),
+    };
+    let (mut start, mut end) = (day("start"), day("end"));
+    if let (Some(s), Some(e)) = (start, end)
+        && s > e
+    {
         std::mem::swap(&mut start, &mut end);
     }
-    let pos = |n: f64| if n > 0.0 { V::Num(n) } else { V::Null };
-    Ok(vec![("start".into(), Cv::from(pos(start))), ("end".into(), Cv::from(pos(end)))])
+    let out = |n: Option<f64>| n.map_or(V::Null, V::Num);
+    Ok(vec![("start".into(), Cv::from(out(start))), ("end".into(), Cv::from(out(end)))])
 }
 
 fn constant(c: &mut Call) -> Answer {

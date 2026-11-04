@@ -4278,7 +4278,12 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 let p = parts_of_ms(ms);
                 date_utc(p.year as f64, f64::from(p.month - 1) + m.trunc() + 1.0, 0.0)
             });
-            V::Num(eom.map_or(f64::NAN, |ms| round_half_up(ms / MS_PER_DAY + 25569.0)))
+            match eom.map(|ms| round_half_up(ms / MS_PER_DAY + 25569.0)) {
+                Some(s) if !(crate::date_serial::FIRST_SERIAL..crate::date_serial::END_SERIAL).contains(&s) => {
+                    V::err(sol_error(ErrorCode::Domain, "These months move the date past the calendar's range"))
+                }
+                s => V::Num(s.unwrap_or(f64::NAN)),
+            }
         }
         F::WEEKDAY | F::WEEKNUM | F::ISOWEEKNUM => {
             let n = to_num(arg(a, 0));
@@ -5743,10 +5748,11 @@ fn fx_edate(start: &V, months: &V) -> V {
         stored = crate::jsnum::nan_min(stored, dim);
     }
     date = crate::date_serial::civil::set_date(date, stored);
-    if date.is_nan() {
+    let serial = crate::jsnum::round_half_up(date / 86_400_000.0 + 25569.0);
+    if !(crate::date_serial::FIRST_SERIAL..crate::date_serial::END_SERIAL).contains(&serial) {
         return V::err(sol_error(ErrorCode::Domain, "These months move the date past the calendar's range"));
     }
-    V::Num(crate::jsnum::round_half_up(date / 86_400_000.0 + 25569.0))
+    V::Num(serial)
 }
 
 // ─── Regex and text utilities ───────────────────────────────────────────────────
