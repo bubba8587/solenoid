@@ -1,4 +1,5 @@
-// [[B11]], [[C26]], [[B16]] oneFormulaSurface
+// [[B11]], [[C26]], [[B16]] oneFormulaSurface, [[add-menu#Op families]], [[add-menu#The search rows]],
+// [[add-menu#Why one long label widens the whole menu]]
 import { describe, it, expect } from "vitest";
 import { NODE_OPS, opsFor, hiddenOps, opEntry } from "../../src/graph/nodeOps";
 import { buildCatalog } from "../../src/graph/catalogUtils";
@@ -7,10 +8,6 @@ import { despace } from "../../src/graph/formulaNodeParity";
 import { SET_META } from "../../src/graph/nodes/list";
 import type { CatalogEntry, NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
 
-// ─── Multi-op declarations ────────────────────────────────────────────────────
-// The contract: folding a family onto one Add-menu leaf is a NAVIGATION decision and
-// must never cost discoverability. Every op stays constructible and findable; the
-// `{ }` marker stays derived from the real menu rather than declared.
 
 const catalog = buildCatalog(false);
 
@@ -48,9 +45,6 @@ describe("declarations line up with the real catalog", () => {
     expect(dupes.map((d) => d.type)).toEqual([]);
   });
 
-  // `leafOps` is the one hand-written fact here — it names the ops that already have
-  // their own hand-written entry. If someone adds or removes such an entry, this is
-  // what catches the declaration going stale.
   it("leafOps matches which ops actually have their own leaf", () => {
     const realLeafOps = new Map<string, Set<string>>();
     for (const leaf of leaves) {
@@ -72,14 +66,6 @@ describe("declarations line up with the real catalog", () => {
 });
 
 describe("the ops list is derived, not transcribed", () => {
-  // Every family reads its ops from the ONE OP_META table its card's dropdown reads,
-  // so `satisfies Record<XOp, …>` makes tsc prove the list is complete and the two
-  // surfaces cannot disagree. They did: `islogical` shipped as ISBOOLEAN on the card
-  // and ISLOGICAL in search, because the list here was hand-transcribed. The Set
-  // families were the last hand-written exception — their labels were dropdown prose
-  // ("Union: in A or B") that a search row can't compose. [[D22]] oneNamePerCard (2026-08-25) made the
-  // labels bare names with the membership hint in `description` (the option tooltip),
-  // so they use fromMeta too: the meta is the one home.
   it("the derived ops list covers its meta exactly (the Set families included)", () => {
     for (const [type, meta] of [
       ["list-sets", SET_META],
@@ -91,19 +77,11 @@ describe("the ops list is derived, not transcribed", () => {
   });
 
   it("finds an op by the name its own card shows", () => {
-    // Searching for what you just read on a card (the op dropdown label) has to find it —
-    // the op labels ARE the searchable names on the Type Check card.
     const hits = searchLeaves(flattenLeaves(catalog), "ISBOOLEAN").map((l) => l.label);
     expect(hits, "ISBOOLEAN is on the Type Check card but not in search").toContain("Type Check: ISBOOLEAN");
   });
 });
 
-// OP and ARG are two different things (DESIGN.md § Op pickers). A node with a field
-// named `op` is an OP family: its values are ops, each a formula function and an
-// Add-menu name, declared in NODE_OPS so the menu and the formula surface can see
-// them. An ARGUMENT is a parameter of the node's one function and lives under its
-// own name (side, order, agg, view). The field name is the whole classification, so
-// the two directions below are the machine check that nothing sits in between.
 describe("op vs arg — a string `op` field means an op family, and only that", () => {
   const isDeclared = (inst: object) => NODE_OPS.some((d) => inst instanceof d.ctor);
 
@@ -148,8 +126,6 @@ describe("collapsed families keep every op reachable", () => {
   });
 
   it("does NOT mark a family whose ops all have leaves", () => {
-    // MathFn/Aggregate and friends are fully listed, so nothing is hidden and the
-    // marker must not appear — the mark means "there is more in here than this".
     for (const leaf of leaves) {
       if (!leaf.hiddenOps) continue;
       expect(opsFor(leaf.type), `${leaf.type} carries hiddenOps without a declaration`).toBeTruthy();
@@ -177,10 +153,6 @@ describe("collapsed families keep every op reachable", () => {
   });
 
   it("op rows DISCRIMINATE between siblings, not just against the rest of the menu", () => {
-    // They inherit the host's description but NOT its keywords. Those describe the
-    // family, so inheriting them made every sibling match a family-level query
-    // equally and searching "symmetric" surfaced Union instead of Symmetric
-    // difference. Each row has to be findable by its OWN name.
     const all = flattenLeaves(catalog);
     for (const [query, wanted] of [
       ["symmetric", "Symmetric difference"],
@@ -216,8 +188,6 @@ describe("the exposure flag is the whole change", () => {
 
 describe("a generated op row is exactly one op", () => {
   it("does not inherit the host's { } marker fields", () => {
-    // By search time applyNodeOps has stamped hiddenOps onto the host entry;
-    // spreading it into the row put the marker on every generated op row.
     const decl = opsFor("list-sets")! as Parameters<typeof opEntry>[0];
     const host = { ...byType.get("list-sets")!, hiddenOps: [{ op: "x", label: "X" }], hideOpsMark: true };
     const row = opEntry(decl, host, { op: "union", label: "Union" });
@@ -226,19 +196,10 @@ describe("a generated op row is exactly one op", () => {
   });
 });
 
-// ─── The distribution forms: SEARCH ROWS, never leaves (author ruling) ────────
-// 2026-08-01: asked whether the right-tail forms should become real Add-menu
-// leaves (Excel ships CHISQ.DIST.RT as its own function) or stay search rows on
-// the parent node, the author ruled SEARCH ROWS ONLY — a row per form would
-// triple the Distributions section and bury it, the same failure mode as the
-// data pickers. That makes SEARCH the whole discoverability mechanism for them,
-// so these pin both halves: the menu doesn't grow, and search actually finds
-// every form.
 describe("the one Distribution node is reachable by search without growing the menu", () => {
   const catalog = buildCatalog(false);
   const leaves = flattenLeaves(catalog);
-  // The catalog TREE (what the Add menu renders) — op rows are generated at search
-  // time and deliberately never inserted into it.
+  // The catalog tree the menu renders.
   const treeTypes = (function walk(es: CatalogEntry[]): string[] {
     return es.flatMap((e) =>
       "children" in e && Array.isArray((e as { children?: unknown }).children)
@@ -249,12 +210,6 @@ describe("the one Distribution node is reachable by search without growing the m
   it("declares one OPERATION per distribution; each op's fx is its primary Excel name", () => {
     const decl = opsFor("distributions");
     expect(decl, "distribution has no NODE_OPS declaration").toBeTruthy();
-    // The op axis is the distribution; the curve/inverse pick is the arg-tagged
-    // `form` field. Each op claims a REAL formula name via fx (NORM.DIST,
-    // GAMMA.DIST, ...). Most are dotted; PHI and GAUSS are legitimately bare (two
-    // standard-normal FORMS that moved here from Math). What the dotted rule really
-    // guarded is a collision with a Math FUNCTION leaf (the op-Gamma vs GAMMA(x)
-    // trap), so assert THAT directly.
     expect(decl!.ops!.length).toBeGreaterThan(12);
     const mathFnNames = new Set(
       leaves.filter((l) => l.leaf.type.startsWith("math-")).map((l) => despace(l.leaf.label).toUpperCase()),
@@ -284,11 +239,7 @@ describe("the one Distribution node is reachable by search without growing the m
   });
 
   it("the natural queries surface the right distribution near the top", () => {
-    // The Distribution LEAF carries every Excel name (nodeExcel), so it may
-    // outrank its own rows; the guard is that the specific distribution's row
-    // is right there with it, presetting the op. Asserted on the op TYPE rather
-    // than the label: the Excel spellings live in `keywords` now, so a dotted
-    // query has to reach the row WITHOUT the names being in what renders.
+    // The leaf carries every Excel name and may outrank its rows; the distribution's own row must be beside it.
     // What each row places: an Excel-name row stands in for the row it duplicates ("NORM.INV → Distributions").
     const top3 = (q: string) => searchLeaves(leaves, q).slice(0, 3).map((l) => l.places ?? l.type);
     expect(top3("weibull")).toContain("distributions__op-weibull");
@@ -296,21 +247,11 @@ describe("the one Distribution node is reachable by search without growing the m
     expect(top3("hypergeometric")).toContain("distributions__op-hypgeom");
     expect(top3("t.inv.2t")).toContain("distributions__op-t");
     expect(top3("chisq.inv.rt")).toContain("distributions__op-chisq");
-    // `normal` is the family's PRIMARY op, so it has no row of its own — the leaf
-    // itself is the right landing.
     expect(top3("norm.inv")).toContain("distributions");
     expect(top3("critbinom").join(" ")).toMatch(/distribution/);
   });
 
   it("no Add-menu label carries a parenthesised list of Excel names", () => {
-    // A label is what RENDERS; Excel spellings belong in `keywords`, which scores
-    // at full weight and never shows. Four dotted names in one Distribution label
-    // made that row 630px against a 94px median, and the panel's columns size to
-    // their widest item — so one row stretched the whole menu to 3× the moment
-    // anything was typed. Parentheses themselves are fine ("T.TEST (equal var)"),
-    // and so is a bare acronym that IS the name people know ("Growth Rate (CAGR)").
-    // What must not come back is an Excel FUNCTION spelling: dotted, or several
-    // slash-separated.
     const CAPS = /^[A-Z][A-Z0-9]*$/;
     const isExcelNameList = (inner: string) => {
       const parts = inner.split(" / ").map((t) => t.trim());

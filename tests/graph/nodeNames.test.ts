@@ -1,4 +1,4 @@
-// [[C79]]
+// [[C79]], [[add-menu#Naming a placed node]]
 import { nodeTypeName } from "../../src/graph/catalogUtils";
 import { describe, expect, it } from "vitest";
 import {

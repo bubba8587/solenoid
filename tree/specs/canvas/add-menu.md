@@ -10,7 +10,7 @@ Serves [[B16]] oneFormulaSurface: every name a node shows has one home ([[#Where
 
 A function's **listing** is everything that makes it findable: its leaf, its op entry, its Excel names, its search words and its Inspector notes. It is declared apart from what the function computes (its call-table row and its card, [[node-classes#A new function across the app]]), so one function can be listed several ways, as the map below shows.
 
-The Add menu is the panel a user opens to place a new card. With the search box empty it shows the catalog as a tree of categories; as soon as the user types, it shows one ranked list of every row that matches. The catalog is declared in `nodeCatalog.ts` and assembled by `catalogUtils.ts`; op families are declared in `nodeOps.ts`; search is `catalogSearch.ts` and `fuzzy.ts`; the panel is `AddNodeMenu.tsx`. `catalogSearch.test.ts`, `fuzzy.test.ts` and `nodeOps.test.ts` pin the behavior.
+The Add menu is the panel a user opens to place a new card. With the search box empty it shows the catalog as a tree of categories; as soon as the user types, it shows one ranked list of every row that matches. Code: `nodeCatalog.ts` (the catalog), `catalogUtils.ts` (its assembly), `nodeOps.ts` (op families), `catalogSearch.ts` and `fuzzy.ts` (search), `AddNodeMenu.tsx` (the panel).
 
 ## The catalog tree
 
@@ -96,15 +96,19 @@ flowchart LR
     act -->|no| prune["prune empty<br>categories only"]
 ```
 
-The Packs category is declared empty so it sits last among the core categories; the build fills it per active pack and prunes it when no pack targets it. Docs & Files, as the placement fallback, is never empty.
+The Packs category is declared empty so it sits last among the core categories; the build fills it per active pack and prunes it when no pack targets it. Docs & Files, as the placement fallback, is never empty. A pack switched off leaves the menu but stays registered, so saved graphs still load ([[C79]]).
+
+Tests: `catalogSearch.test.ts`: a pack's leaf is in the tree only while the pack is active.
 
 `FLAT_CATALOG` maps every type to its leaf, built with `buildCatalog(false)`: every pack, active or not, and hidden entries included, so a saved graph always resolves its types. The Composite Input and Composite Output markers are hidden leaves that exist only for this: they live inside a composite, never on the main canvas, but `hydrate()` rebuilds them from a snapshot. `classifyType` calls a type `matcher` when `CATALOG_TO_EXCEL` gives it Excel names and `core` otherwise; pack nodes are classified by their pack.
 
 `addNodeByCatalogType(type)` places a leaf from outside the menu: it creates the node, hydrates a composite that ships a pending internal snapshot (Query does), adds it, centers it in the view (default size 180 by 160), recomputes and selects it.
 
+Tests: `catalogRegistry.test.ts`: every `NODE_EXCEL` key resolves to a catalog entry.
+
 ## Op families
 
-An **op family** is one card class whose `op` field picks among several operations, each an Add-menu name and a formula function. A family that picks an argument instead (a sort order, an aggregator) is not declared anywhere ([[C26]] opArgDistinct, `DESIGN.md` § Op pickers). `NODE_OPS` holds one `NodeOpsDecl` per family:
+An **op family** is one card class whose `op` field picks among several operations, each an Add-menu name and a formula function. A family that picks an argument instead (a sort order, an aggregator) is not declared anywhere, and the argument lives under its own name (`side`, `order`, `agg`, `view`) ([[C26]] opArgDistinct, `DESIGN.md` § Op pickers). The field name is the whole classification: every node with a string `op` field is declared in `NODE_OPS`, and every `NODE_OPS` family has one. Folding a family onto one card is a navigation choice and never costs discoverability: every op stays constructible and findable. `NODE_OPS` holds one `NodeOpsDecl` per family:
 
 | Field | Meaning |
 |---|---|
@@ -115,11 +119,18 @@ An **op family** is one card class whose `op` field picks among several operatio
 | `expose` | `collapsed` (the default) or `leaves`. |
 | `mark` | `false` hides the `{ }` mark. |
 
-Each op (`OpEntryDecl`) has an `op`, a `label`, an optional `fx` and optional `keywords`. `fromMeta` reads them from a family's `OP_META` table, taking the op's name rather than any operator glyph the dropdown shows. `fx` is the formula name ([[C51]] formulaNaming), declared only where despacing the label would not give it: a prose label, or a bare label whose family word lives in the node title. The Distribution family's ops are the distributions; each op's `fx` is its first Excel spelling, dotted, and its `keywords` hold all of them, so typing "norm.inv" or "weibull" lands on the right row. The curve or inverse choice is the `form` argument, not an op.
+Each op (`OpEntryDecl`) has an `op`, a `label`, an optional `fx` and optional `keywords`. `fromMeta` reads them from a family's `OP_META` table, the one table the card's dropdown reads (typed `satisfies Record<XOp, …>`, so the compiler proves the list complete and the menu and the card can't disagree), taking the op's name rather than any operator glyph the dropdown shows. An op is therefore found by the name its own card shows. `fx` is the formula name ([[C51]] formulaNaming), declared only where despacing the label would not give it: a prose label, or a bare label whose family word lives in the node title.
+
+**The Distribution family.** Its ops are the distributions, and the curve or inverse choice is the `form` argument, not an op.
+
+- Each op's `fx` is its first Excel spelling, dotted, and its `keywords` hold all of them, so typing "norm.inv" or "weibull" lands on the right row. PHI and GAUSS are bare (two standard-normal forms). What the dotted spelling guards against is a clash with a Math function leaf (the Gamma op against GAMMA(x)), so no op's formula name may equal a Math leaf's.
+- The forms (the right tail, the inverse and the rest) are search rows, never leaves of their own, though Excel ships some as functions of their own (CHISQ.DIST.RT): a leaf per form would triple the Distributions section and bury it. Search is therefore the whole way to them, so the tree keeps exactly one Distribution leaf and every distribution has a search row carrying its Excel names.
 
 A family's **hidden ops** (`hiddenOps`) are the ops with no leaf of their own: every op not in `leafOps`, or, when `leafOps` is absent, every op except the **primary op**, the one the host leaf itself creates. `primaryOpOf` finds it by constructing the host and reading its `op`, cached per type, so a declaration can never disagree with the code; a host that fails to construct has no primary op. The Rank & Percentile class is one family declared three times, on the PERCENTILE, PERCENTRANK and QUARTILE leaves, each listing its `.INC` and `.EXC` pair and sharing one `leafOps` list, so each `.EXC` row rides the right host ("PERCENTILE: PERCENTILE.EXC").
 
-`applyNodeOps` applies each declaration that has hidden ops and a builder. For `collapsed`, it records the hidden ops on the host (`hiddenOps`), which shows the `{ }` mark unless `mark` is false. For `leaves`, it inserts a generated leaf for each hidden op right after the host, looking inside pairs as well as categories.
+`applyNodeOps` applies each declaration that has hidden ops and a builder. For `collapsed`, it records the hidden ops on the host (`hiddenOps`), which shows the `{ }` mark unless `mark` is false; a family whose ops all have leaves hides nothing, so it gets no mark, since the mark means there is more inside than the row shows. For `leaves`, it inserts a generated leaf for each hidden op right after the host, looking inside pairs as well as categories.
+
+Tests: `nodeOps.test.ts`: every declared host is a real leaf, every op constructs set to that op, no two declarations share a host, `leafOps` matches the ops that have their own leaf, the ops list covers its `OP_META` exactly, an op is found by its card's label; every node with an `op` field is declared and every declared family has one; the `{ }` mark only where ops are hidden; `leaves` exposure yields one preset leaf per hidden op; and the Distribution family (one op per distribution, its `fx` its Excel name and no Math leaf's, one leaf in the tree, a search row per distribution, the natural queries near the top).
 
 ## The search rows
 
@@ -135,6 +146,12 @@ A family's **hidden ops** (`hiddenOps`) are the ops with no leaf of their own: e
 Both kinds are views of the host leaf ([[#The search rows]]): they spread the host and replace only what must differ. Both are generated at search time and never inserted into the tree, so code that walks the catalog does not count them as extra nodes. Neither carries the host's `keywords`, and neither carries the host's hidden-op list or its `{ }` mark, since a row that is one op has nothing folded up. A hidden-op row does carry the op's own `keywords`.
 
 **MUST:** a hidden-op row is built from the host leaf plus the op's own declaration (`opEntry` spreading `...host`), never as a second hand-written catalog entry, and what the row must not inherit is named at that call site. Why: every property the leaf owns (label stem, pack, accent, description) has to follow the leaf automatically, or the menu and the card drift apart ([[engineering#One declaration per fact]]); the exceptions belong in the same function rather than a parallel table. The exception list blocks the host's `keywords`, not the op's own: blocking every `keywords` value once pushed per-op Excel spellings into the visible label.
+
+Tests:
+
+- `nodeOps.test.ts`: a hidden op is found by its own name and builds the card set to it, op rows tell siblings apart ("symmetric" finds Symmetric difference, not Union), op rows never enter the tree, and a generated row carries no `{ }` mark fields.
+- `catalogSearch.test.ts`: no alias row names another card or op, and GROUPBY and SCAN find their own cards, not Group Lists or Running.
+- `nameSurfaces.test.ts`: searching any `NODE_EXCEL` name lands on a row carrying that name.
 
 ## Scoring a row
 
@@ -175,9 +192,18 @@ flowchart TD
 
 Finally, when the whole query has 4 or more characters and is within one edit of the label, the stripped label or an Excel name, the bonus is at least 200. A typo of the name itself ("sunm" for SUM) therefore outranks a row that only carries the corrected word somewhere in its type or keywords (IMSUM's `cx-binary-sum`).
 
+Tests:
+
+- `catalogSearch.test.ts`, over the real catalog: a category name ("arithmetic") surfaces its leaves, label plus category ("table input") ranks its card first, an exact label still wins, an op glyph doesn't demote an exact match ("add" finds + Add first), Excel names match, a one-letter typo ("frane input") and reversed words ("input frame") rank their card first, a typo'd Excel name ("xlokup") finds its card, a hyphenated query finds an en-dash keyword, and "sunm" ranks SUM ahead.
+- `fuzzy.test.ts`: `withinOneEdit` takes each single-edit kind and rejects two, and `tokenWordScore` tiers exact over prefix over typo with no typo tolerance below four letters.
+
 ## Two search fields, two weights
 
 `keywords` scores as a full-weight field beside the label. It never renders, so it is where alternate spellings live. Excel names from `CATALOG_TO_EXCEL` score 10 below the label. A hidden-op row does not inherit its host's `keywords`: those describe the whole family, so every sibling row would match them identically and the ops would stop being told apart. It does carry the op's own `keywords`, which is where a family declares per-op alternate spellings. An argument's words go on the host leaf's `keywords`, never into op rows.
+
+Every catalog leaf of an op family carries the family's name in its label or keywords, so typing the card's name ("series") finds every op leaf. A family whose default name is one of its own op labels has no separate name to search for, and a hidden-op row is found through its host's label, which its own label starts with.
+
+Tests: `catalogSearch.test.ts`: every op family's leaves carry the family name, and TAKE and DROP, one card, each surface their own leaf and are found by the family keywords ("list take", "table take").
 
 ## The menu panel
 
@@ -203,15 +229,21 @@ Quick-wire is a setting (`quickWire`, off by default). With it on, a cable dropp
 
 `FlowSurface` passes `compatibleTypes` from `quickWireCompatibleTypes(buildCatalog(true), origin, side)`: the type of every row, generated rows included, whose card, freshly created, has an opposite-side socket that `canConnect` accepts (`filterByCompatibleSocket`). Each type's socket signature is read from one throwaway `create()` and cached for the app's lifetime, since a type's initial sockets never vary. The menu still shows the whole catalog but dims every row outside the set (`--incompatible`, 30% opacity). Every pick, by click or key, goes through one `select` gate that refuses a dimmed row, and a dimmed row's hover fill is suppressed. A card created from a cable dragged out of an input meets the drop point with its output edge: once the card has rendered, it shifts left by its own width.
 
+Tests: `catalogSearch.test.ts`: each leaf is instantiated once across repeated drops, a dragged Frame output genuinely narrows the catalog, and a number cable lights Arithmetic and not UPPER.
+
 ## Why one long label widens the whole menu
 
 `.solenoid-add-menu__scroll` is a two-column CSS grid (`grid-template-columns: auto auto`) so the two halves of a pair share column tracks. Every child that is not a pair half (`--half`) spans both columns (`grid-column: 1 / -1`), and a spanning item's natural width is split across both auto tracks. Rows are `white-space: nowrap` and the panel has no `max-width`. The panel is therefore as wide as its widest single row. The tree view hides this because it renders one category at a time; search renders every matching row at once, so the widest row in the whole catalog can set the width on the first keystroke. When the Distribution rows each carried their full list of dotted Excel names, one row was almost seven times the usual width and the menu tripled in width on the first keystroke; that is why Excel spellings live in `keywords` and never in a label ([[#A row's name and its search words]]).
 
+Tests: `nodeOps.test.ts`: no label carries a parenthesized Excel function spelling, dotted or several slash-separated.
+
 ## Search samples
 
-`scripts/search-samples.ts` holds one sample query per kind of searchable row (a card's label and its lower-case prefix, a card named after its function, a family name, an op label, an op's formula name, a card's Excel name, a Frame verb's Excel name, a retired Excel name, a keyword, a pack card's keyword, a one-edit typo, words in any order, an argument's words) with the row it must land on and how far down it may sit. `searchSamples.test.ts` runs them against the real catalog, and `npm run search-samples` (`-- --misses` for the misses alone) prints the results as a Markdown table. A sample whose row needs a pack searches with every pack on.
+`scripts/search-samples.ts` holds one sample query per kind of searchable row (a card's label and its lower-case prefix, a card named after its function, a family name, an op label, an op's formula name, a card's Excel name, a Frame verb's Excel name, a retired Excel name, a keyword, a pack card's keyword, a one-edit typo, words in any order, an argument's words) with the row it must land on and how far down it may sit. They run against the real catalog in the test below, and `npm run search-samples` (`-- --misses` for the misses alone) prints the results as a Markdown table. A sample whose row needs a pack searches with every pack on.
 
 An op's own `keywords` ride its row, declared on the family's `OP_META` beside its label (`fromMeta` carries them), so "kanban" lands on "Record: Board".
+
+Tests: `searchSamples.test.ts`: every sample lands on its row within its depth.
 
 ## Catalog checks
 
@@ -225,10 +257,16 @@ A placed node knows only its class and its `op`. The catalog lookups index every
 - `nodeName` gives the catalog label, skipping generated `__op-` rows. A cleared card title falls back to it, so the header never collapses to zero height.
 - `catalogTypeOf` gives the catalog type, which `NODE_EXCEL` and the pack metadata are keyed by.
 - `nodeDisplayName` is the name every surface shows ([[D22]] oneNamePerCard). `catalogUtils` binds it into `nodeNamer` at load, so modules below it in the import graph reach it through `displayNameOf`.
-- The title a placed node shows ([[D22]] oneNamePerCard) is `nodeDisplayName`: the user's own label if they typed one, else `nodeName` (op-aware, skipping the generated "Host: Op" search rows), else the class name. No class hardcodes a family title: every op family sets `this.label = init?.label ?? ""`, and no component syncs a label when the op changes, so the title follows the current op on its own. Every surface that names a node (header, Navigator, Inspector, cable inspector, history digest, popup titles) reads it.
+- The title a placed node shows ([[D22]] oneNamePerCard) is `nodeDisplayName`: the user's own label if they typed one, else `nodeName` (op-aware, skipping the generated "Host: Op" search rows), else the class name. So every leaf creates a card titled like its row, and an op family's card is named by its op (a placed ABS never reads "Math"). The exceptions derive their titles: a Conduit takes its sequence number, and a composite's boundary cards read Input and Output. No class hardcodes a family title: every op family sets `this.label = init?.label ?? ""`, and no component syncs a label when the op changes, so the title follows the current op on its own. Every surface that names a node (header, Navigator, Inspector, cable inspector, history digest, popup titles) reads it.
 - A leaf name is a title, so it carries no glyph prefix ("+ Add") and no hint ("ROUND to N digits"), and an "X / Y" row that creates only X is split into two leaves (`leafOps`).
 - A node's name never reads as a core Excel function that does something else ([[B16]] oneFormulaSurface): the node that keeps or drops columns is "Keep Columns" / "Drop Columns", never a bare "Columns", which reads as COLUMNS(). A label that is the node form of its like-named function (Sort and SORT) is fine. The check is a denylist: no Frames or Tables leaf despaces to ROWS, COLUMNS, ROW or COLUMN, the count functions that started the rule.
 - The hover type-hint (`.solenoid-node__type-hint`) shows the op-agnostic family name from `nodeTypeName`: the class name with its `Node` suffix removed and spaces added ("Series", "Math FX"). It is the one surface that does not show the node's name, on purpose: the hint exists to name the family once, which the title and op picker don't, so nothing removes this exception. A family name that reads wrong is fixed by renaming the class (`MathFnNode` to `MathFXNode`), never with an override map.
+
+Tests:
+
+- `cardTitle.test.ts`: every catalog leaf creates a card named like its row.
+- `nodeNames.test.ts`: `nodeTypeName` strips a trailing `Node`, splits camel case and leaves all-caps abbreviations whole.
+- `frameSurfaceNames.test.ts`: no Frames or Tables leaf despaces to a count function.
 
 ### Where each name comes from
 
@@ -278,7 +316,11 @@ flowchart LR
 
 The name surfaces exist so that a user who reads a name in one place finds the same name in the next; when each surface picked its own source they disagreed (one node read "Table Size" in the menu and "Table Info" on hover, and a search for ROWS returned a row that never said ROWS). The Excel-name search row puts the Excel name before an arrow, never after a colon, because "Card: Excel" reads as an op the card has. Socket labels carry no parentheticals, like “(1-based)”: that kind of detail belongs in the Inspector's socket descriptions, not on the node's card.
 
+A description's closing "Excel: X." is a second copy of the node's Excel names, so every function name it states resolves to the leaf's own Excel or formula names. A sign-off is a claim of equivalence only when its tail is a plain list of function names ("VSTACK", "COUNT / ROWS"); a tail with parentheses, operators or prose ("MIN(MAX(x,min),max)", "XLOOKUP or VLOOKUP") is an Excel construction that explains, not a claim, and isn't held.
+
 The class name, the `GraphNode` label it passes to `super()` and the registry type key are internal and never shown. `nodeTypeName` (`nodeNamer.ts`) is the last-resort fallback for a node with no catalog entry (a Placeholder, a composite boundary). Modules below `catalogUtils` in the import graph (`errorValue`, `groupCollapse`) reach the same derivation through `displayNameOf`, which `catalogUtils` binds at load. Nothing else reads `constructor.name` for display; the enforcing test lists the two sanctioned uses that are not for display.
+
+Tests: `nameSurfaces.test.ts`: every "Excel: NAME" a description states resolves to that node's Excel or op names, and only `nodeNamer.ts` turns a class name into a display string.
 
 ## A row's name and its search words
 

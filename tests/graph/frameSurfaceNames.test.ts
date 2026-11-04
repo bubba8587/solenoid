@@ -1,4 +1,4 @@
-// [[B16]]
+// [[B16]], [[add-menu#Naming a placed node]]
 import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";
 import { despace } from "../../src/graph/formulaNodeParity";
