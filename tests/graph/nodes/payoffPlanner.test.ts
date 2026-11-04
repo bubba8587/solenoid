@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[C17]] shareImpl
+// [[C86]] membershipByGesture, [[C17]] shareImpl, [[frame-verbs#Payoff Planner]]
 import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { PayoffPlannerNode, type PayoffOrder, type PayoffView } from "../../../src/graph/nodeClasses";
@@ -6,9 +6,6 @@ import { extractInit } from "../../../src/graph/nodeInit";
 import { parseDateToSerial, formatDateSerial } from "../../../src/graph/nodes/dateSerial";
 import { isSolError } from "../../../src/graph/errorValue";
 import { isFrameValue, type FrameValue } from "../../../src/graph/frame";
-
-// Payoff Planner: minimums everywhere, the extra + freed minimums cascade onto the head debt (highest APR =
-// avalanche, smallest balance = snowball), month by month.
 
 type Debt = { name: string; balance: number; apr: number; min: number };
 const debtFrame = (ds: Debt[], unit?: string): FrameValue => ({ __frame: true, columns: [

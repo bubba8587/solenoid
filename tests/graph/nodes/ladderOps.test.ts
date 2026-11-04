@@ -1,4 +1,4 @@
-// [[C100]] chartIsAValue
+// [[C100]] chartIsAValue, [[frame-verbs#Choice Ladder]]
 import { describe, it, expect } from "vitest";
 import { nextChoices } from "../../../src/graph/nodes/ladderOps";
 

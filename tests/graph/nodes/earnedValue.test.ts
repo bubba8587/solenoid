@@ -1,4 +1,4 @@
-// [[C44]] dateSerials, [[C24]] arraySemantics
+// [[C44]] dateSerials, [[C24]] arraySemantics, [[frame-verbs#Earned Value]]
 import { describe, it, expect } from "vitest";
 import { EarnedValueNode } from "../../../src/graph/nodeClasses";
 import { parseDateToSerial } from "../../../src/graph/nodes/dateSerial";

@@ -1,4 +1,4 @@
-// [[B17]], [[C48]], [[C24]] arraySemantics
+// [[B17]] typedValueModel, [[C48]] appendLadder, [[C24]] arraySemantics, [[frame-verbs#Allocator]]
 import { describe, it, expect } from "vitest";
 import { AllocatorNode } from "../../../src/graph/nodes/frame";
 import { type FrameValue, type FrameColumn, frameFromInputText } from "../../../src/graph/frame";
@@ -10,7 +10,6 @@ import seed from "../../../src/graph/seedGraphs/allocator.json";
 const frame = (columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });
 const allocOf = (out: { frame: FrameValue | unknown }): unknown[] =>
   (out.frame as FrameValue).columns.find((c) => c.name === "Allocation")!.values;
-// Weights are an ordered column on the frame (orderedColumnsAreFrames), never a wired list.
 
 describe("AllocatorNode", () => {
 

@@ -1,4 +1,4 @@
-// [[B17]]
+// [[B17]] typedValueModel, [[frame-verbs#Decision Matrix and Decision Sensitivity]]
 import { describe, it, expect } from "vitest";
 import seed from "../../src/graph/seedGraphs/decision-matrix.json";
 import { decisionMatrix, decisionCriteria, decisionSensitivity, resolveDecisionWeights } from "./coreVerbs";
@@ -7,11 +7,6 @@ import type { DecisionNormalize } from "../../src/graph/frameOps";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { extractKnapVariables } from "../../src/graph/knapTemplate";
 import { joinFrames } from "./coreVerbs";
-
-// Runtime check for the Decision Matrix seed: the notes state concrete outcomes
-// (who wins, where the winner flips, the dead tie), so run the seed's own data
-// through the verbs and hold the prose to them. Fails when data, weights, or
-// engine semantics drift apart.
 
 type SeedNode = {
   id: string;
@@ -29,9 +24,7 @@ const frameOf = (id: string): FrameValue => ({
   columns: JSON.parse(byId(id).init!.frameText as string) as FrameColumn[],
 });
 
-// The graph assembles the Scores frame the keyed way: the Note's frontmatter emits a
-// (Laptop, Screen) FRAME directly (rows-of-objects frontmatter), left-joined onto the
-// score table by laptop name — row order in either table cannot misalign a score.
+// The seed's Scores frame: the Note's (Laptop, Screen) frame left-joined onto the score table by laptop name.
 const screenNote = new NoteNode({ body: byId("noteScreen").init!.body as string });
 const screenFrame = screenNote.fieldValues().screen as FrameValue;
 const joinLits = byId("join").stringLiterals!;
@@ -108,7 +101,6 @@ describe("decision-matrix seed", () => {
     expect(margins[0]).toBeGreaterThan(0);
     expect(margins[1]).toBeGreaterThan(0);
     expect(margins[2]).toBe(0);
-    // the prose states exactly these outcomes — keep the note and the engine agreeing
     const body = byId("noteSens").init!.body as string;
     expect(body).toContain("Tie: UltraSlim, ValueBook");
     expect(body).toContain("PowerLifter");

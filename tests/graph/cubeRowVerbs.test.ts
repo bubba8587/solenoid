@@ -1,4 +1,4 @@
-// [[C24]] arraySemantics, [[C44]] dateSerials, [[C45]]
+// [[C24]] arraySemantics, [[C44]] dateSerials, [[C45]] excelComparisons, [[frame-verbs#Verbs on a Cube]]
 import { describe, it, expect } from "vitest";
 import {
   cubeFromColumns, frameFromRows, frameToCube, isCubeValue,
@@ -10,9 +10,6 @@ import { isSolError } from "../../src/graph/errorValue";
 import {
   ComputedColumnNode, AddColumnNode, SortFrameNode, DistinctNode, HeadNode, FilterFrameNode, WindowNode, type HeadOp, type WindowFn,
 } from "../../src/graph/nodes/frame";
-
-// A′: the row verbs take cubes. The cube path reorders/keeps WHOLE rows off the flat scalar
-// columns, nested cells riding along, and the order is the frame path's.
 
 const colCells = (c: CubeValue, name: string) => c.columns.find((k) => k.name === name)!.cells;
 const colVals = (f: FrameValue, name: string) => f.columns.find((k) => k.name === name)!.values;

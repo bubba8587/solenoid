@@ -1,4 +1,4 @@
-// [[B17]]
+// [[B17]] typedValueModel, [[frame-verbs#Decision Matrix and Decision Sensitivity]]
 import { describe, it, expect } from "vitest";
 import { decisionMatrix, decisionCriteria, decisionSensitivity, flipPoints, decisionCube, relateFramesToCube, relateCubeToFrame } from "./coreVerbs";
 import { DecisionSensitivityNode } from "../../src/graph/nodeClasses";
@@ -164,8 +164,7 @@ describe("decisionMatrix", () => {
   });
 
   it("a negative-weight criterion's contribution reads as a penalty (negative)", () => {
-    // weights [1, -1]: cost contributes −cost/2 — the breakdown must NOT show the
-    // bare post-normalize value, which would read as a high score for the worst row
+    // weights [1, -1]: cost contributes −cost/2.
     const out = decisionMatrix(f, [1, -1], "none", true) as FrameValue;
     const c = new Map(col(out, "name").values.map((n, i) => [n, col(out, "cost").values[i]]));
     expect(c.get("C")).toBe(-4.5); // costliest → the largest penalty
@@ -390,8 +389,6 @@ describe("decisionSensitivity (weight scenarios → cube)", () => {
   });
 
   it("#VALUE!s when no Scenarios row is named after a criterion", () => {
-    // every weight would default to 1 and all scenarios would come out identical —
-    // the renamed-criteria trap, not a sensitivity run
     const scen: FrameValue = {
       __frame: true,
       columns: [

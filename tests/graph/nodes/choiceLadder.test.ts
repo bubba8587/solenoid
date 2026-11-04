@@ -1,4 +1,4 @@
-// [[B17]] typedValueModel
+// [[B17]] typedValueModel, [[frame-verbs#Choice Ladder]]
 import { describe, it, expect } from "vitest";
 import { ChoiceLadderNode } from "../../../src/graph/nodes/frame";
 import type { FrameValue, FrameColumn } from "../../../src/graph/frame";

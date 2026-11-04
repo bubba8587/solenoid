@@ -1,11 +1,9 @@
-// [[B17]], [[C48]]
+// [[B17]] typedValueModel, [[C48]] appendLadder, [[frame-verbs#Group Cost Settle]]
 import { describe, it, expect } from "vitest";
 import { SettleNode, type SettleSplit } from "../../src/graph/nodes/frame";
 import { recordsToCube, type CubeValue, type FrameValue } from "../../src/graph/frame";
 import { isSolError } from "../../src/graph/errorValue";
 
-// Group Cost Settle: net everyone, then the biggest creditor takes from the biggest debtor — the fewest transfers a
-// greedy pass gives, exact to the cent.
 
 type Settled = { transfers: FrameValue; net: FrameValue };
 function settle(input: FrameValue | CubeValue, mode: "totals" | "transactions", split: SettleSplit = "equal"): Settled {
@@ -52,7 +50,7 @@ describe("totals", () => {
     expect(transfers(settleFrame(people([])).transfers)).toEqual([]);
   });
   it("Net = Paid + Owes + Owed is the fair share; equal split → equal Nets", () => {
-    // The author's example: three ways on $300, everyone's true cost is $100.
+    // Three ways on $300: everyone's true cost is $100.
     const { net } = settleFrame(people([["A", 200], ["B", 0], ["C", 100]]));
     expect(net.columns.map((c) => c.name)).toEqual(["Person", "Paid", "Owes", "Owed", "Net"]);
     expect(net.columns[1].values).toEqual([200, 0, 100]);   // Paid
@@ -62,8 +60,6 @@ describe("totals", () => {
   });
 });
 
-// TRANSACTIONS mode: a ledger of expenses, each split equally among its beneficiaries, with payers and beneficiaries
-// as independent sets. Both halves feed the same greedy pairing.
 describe("transactions", () => {
   it("reads an expense cube with list cells into the two frames", () => {
     const cube = recordsToCube([

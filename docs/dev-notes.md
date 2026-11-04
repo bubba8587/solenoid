@@ -27,6 +27,7 @@ specific item.
     | 308 | 17.9 s | 167 ms | not measured |
     | 462 | 34.1 s | 250 ms | 17 / 183 ms |
     | 616 | 53.4 s | not measured | 333 / 1333 ms |
+  - The Decision Matrix scenario battery (`decisionIntuition.test.ts`, its first 63 scenarios answered under each normalization, from `../tree/specs/computation/frame-verbs.md` § Decision Matrix): `max` missed 3, `range` 9, `rank` 10.
 
 ### SESSION DIGEST (2026-11-04: dates before 1900, the date tests, Expect's date bounds; cloud session)
 - **Days before 1900 are dates everywhere** ([[D119]] datesBefore1900; `../tree/specs/values/date-values.md` § Days before 1900): EDATE, the coupon and discount functions, TEXT, the Date Range card (a blank field is now null, day 0 a date) and the table popup's picker take them, from 01-Jan-0001 (`FIRST_SERIAL`/`END_SERIAL`). Fixed on the way: a year in 1 to 99 read off a date became 19xx (`date_utc`, which moved EOMONTH, WEEKNUM, ISOWEEKNUM, DATETRUNC), YEARFRAC truncated a negative fractional serial toward 0, and typed date text refused a year below 1000. `tests/dates_before_1900.rs` checks every date function, operator row and date card 400 to 1,600 years back against today.

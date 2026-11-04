@@ -973,26 +973,50 @@ Tests: `joinUnits.test.ts`: bind columns keeps each column's unit and format.
 
 ## Eager verbs outside the seam
 
-These run in `frame_fns.rs`, on the collected value. They have no `FrameOp` and no corpus file.
+These run in `frame_fns.rs`, on the collected value. They have no `FrameOp` and no corpus file; each card's answers are frozen with every other card's (`fixtures/core/nodes/<Class>.json.gz`, replayed by `nodes.rs` (solenoid-core) and `coreNodes.test.ts`, [[node-bodies]]).
 
 ### Verbs on a Cube
 
-| Verb | Function | Contract |
-|---|---|---|
-| Cube column verbs | `select_cube_columns`, `window_cube` (`nodes/verbs.rs`) | The Columns and Window cards on a Cube input. `select_cube_columns` keeps the listed columns in the listed order (a missing name is `#REF!`) or drops the listed ones (missing names ignored). `window_cube` reads only the partition, order and value columns (each through the scalar reading below, so a list or table cell in one of them is `#SHAPE!`) plus a hidden row index that keeps the row count when the function reads no column, runs the window over them, and appends the result as a cube column in the unit `window_frame` gives it, replacing one of the same name. Every other column, nested cells included, rides through, so a vault table (whose `tags`, `links` and `embeds` are lists) runs a rolling average and trims to flat columns for a chart. |
-| Cube row verbs | `sort_cube`, `distinct_cube`, the Head card's slice, `filter_cube` (`nodes/verbs.rs`) | The row verbs on a Cube input. Row order comes from the same index functions the frame verbs use, computed over a scalar reading of the needed column (`inferColumn`; a list or table cell in it is `#SHAPE!`); every column, nested cells included, rides along by reference. Distinct keys every column, nested cells encoded structurally. `filter_cube` adds the list-cell ops: a non-list cell counts as a one-item list and a blank as empty; membership folds case unless `matchCase`; any and all split the value on commas. |
+**Cube column verbs** (`select_cube_columns`, `window_cube`, `nodes/verbs.rs`): the Columns and Window cards on a Cube input.
+
+- `select_cube_columns` keeps the listed columns in the listed order (a missing name is `#REF!`) or drops the listed ones (missing names ignored).
+- `window_cube` reads only the partition, order and value columns, each through the scalar reading below, so a list or table cell in one of them is `#SHAPE!`, plus a hidden row index that keeps the row count when the function reads no column. It runs the window over them and appends the result as a cube column in the unit `window_frame` gives it, replacing one of the same name, and typed as the frame's window types it (a lag of a date column is a date column).
+- Every other column, nested cells included, rides through, so a vault table (whose `tags`, `links` and `embeds` are lists) runs a rolling average and trims to flat columns for a chart.
+
+**Cube row verbs** (`sort_cube`, `distinct_cube`, the Head card's slice, `filter_cube`, `nodes/verbs.rs`): the row verbs on a Cube input.
+
+- Row order comes from the same index functions the frame verbs use, computed over a scalar reading of the needed column (`inferColumn`, or the column's declared type, so a declared text column sorts as text); a list or table cell in it is `#SHAPE!`. So a Cube sorts, dedupes, slices and filters its scalar columns exactly as a Frame would.
+- Every column, nested cells included, rides along by reference.
+- Distinct keys every column, nested cells encoded structurally.
+- `filter_cube` adds the list-cell ops: a non-list cell counts as a one-item list and a blank as empty; membership folds case unless `matchCase`; any and all split the value on commas. A scalar op on a list column is `#SHAPE!`.
+
+The Computed Column and Add Column cards on a Cube input answer a Cube ([[computed-columns]]).
+
+Tests: `cubeRowVerbs.test.ts`: sort, distinct, head and filter on a Cube against the frame path, whole rows carried, the list-cell ops and their `#SHAPE!`, Computed Column and Add Column on a Cube, and the Cube verbs reading a column by its declared type.
 
 ### Nest and Unnest
 
-`nest_frame(f, keyColumns, nestedName = "items")` groups one flat Frame into a Cube: one row per distinct key tuple (by `cell_key`, first-seen order), then a nested column whose cell holds that group's rows of every non-key column as a sub-frame (type, unit and format kept). The key columns carry their type and format, so a date key stays date-matchable in a Cube XLOOKUP. Names go through `makeHeaders`, and a blank nested name is `items`. It is the single-Frame sibling of Nest Join and the inverse of Unnest. A missing key is `#REF!`.
+**Nest.** `nest_frame(f, keyColumns, nestedName = "items")` groups one flat Frame into a Cube.
 
-`unnest_cube(c, nestedColumn)` peels one level off a nested column (`#REF!` when it is missing). Each nested cell votes for a kind: a non-empty list votes list, a Frame votes Frame, a Cube votes Cube, and an empty list votes nothing, since it means "no children". Two kinds is `#TYPE!` (`nested cells must all be lists, all tables, or all cubes`). With no votes, the list path runs if any cell is a list, else the Frame path.
+- One row per distinct key tuple (by `cell_key`, first-seen order), then a nested column whose cell holds that group's rows of every non-key column as a sub-frame (type, unit and format kept).
+- The key columns carry their type and format, so a date key stays date-matchable in a Cube XLOOKUP.
+- Names go through `makeHeaders`, and a blank nested name is `items`.
+- A missing key is `#REF!`.
+- It is the single-Frame sibling of Nest Join and the inverse of Unnest.
+
+**Unnest.** `unnest_cube(c, nestedColumn)` peels one level off a nested column (`#REF!` when it is missing).
+
+- Each nested cell votes for a kind: a non-empty list votes list, a Frame votes Frame, a Cube votes Cube, and an empty list votes nothing, since it means "no children".
+- Two kinds is `#TYPE!` (`nested cells must all be lists, all tables, or all cubes`).
+- With no votes, the list path runs if any cell is a list, else the Frame path.
 
 | Path | Result |
 |---|---|
 | List | A Frame. Each parent row repeats once per item, and the item sits under the same column name (so a Predecessors list round-trips into the Schedule Links input). An empty or missing list keeps its row once with a blank, so a task with no predecessors survives. Every column is re-inferred; parent columns keep their format. |
-| Table | A Frame. Each parent row repeats once per child row, with the child's columns appended (their schema from the first Frame cell; a child lacking one is blank there). A row with no child rows is dropped. Parent columns are re-inferred and keep their format, child columns keep their type, unit and format, and names go through `makeHeaders`. |
-| Cube | A Cube one level shallower. As the table path, with the schema from the first Cube cell, carried types and formats kept, and each child's own nested columns left nested. |
+| Table | A Frame. Each parent row repeats once per child row, with the child's columns appended (their schema from the first Frame cell; a child lacking one is blank there). A row with no child rows, an empty list beside the tables included, is dropped. Parent columns are re-inferred and keep their format, child columns keep their type, unit and format, and names go through `makeHeaders`. |
+| Cube | A Cube one level shallower. As the table path, with the schema from the first Cube cell, carried types and formats kept, and each child's own nested columns left nested. So a depth-2 Cube unnests to depth 1, and a second Unnest recovers the flat rows. |
+
+Tests: `frameVerbs.test.ts`: nest and unnest as inverses, the key's type, units and formats kept, a missing column, peeling a depth-2 Cube, the list path, the mixed-kind `#TYPE!`, and an empty list beside tables.
 
 ### Frame tidies
 
@@ -1000,20 +1024,31 @@ The Power Query column and row tools. Each returns a new Frame, and names go thr
 
 | Function | Card | Rule |
 |---|---|---|
-| `splitColumn(f, column, delimiter, names?)` | Split Column | Splits each cell's display text (`formatFrameCell`, so a date splits as `15-Mar-2023` and a logical as `TRUE`) on `delimiter` into N string columns, N being the largest part count over the rows; a short row pads with blanks, and a blank or error cell gives blanks. The new columns replace the source in place, named from `names` (trimmed) or `<column> 1` … `<column> N`. An empty delimiter changes nothing. |
-| `add_index_column(f, name, start)` | Add Index | Prepends a number column counting up from `start` in steps of 1, named `name` trimmed (default `Index`). The index name is de-duplicated first, so an existing column with that name is the one renamed. |
+| `splitColumn(f, column, delimiter, names?)` | Split Column | Splits each cell's display text (`formatFrameCell`, so a date splits as `15-Mar-2023` and a logical as `TRUE`) on `delimiter` into N string columns, N being the largest part count over the rows; a short row pads with blanks, and a blank or error cell gives blanks. The new columns replace the source in place, named from `names` (trimmed; a part past the given names auto-numbers) or `<column> 1` … `<column> N`. An empty delimiter changes nothing. |
+| `add_index_column(f, name, start)` | Add Index | Prepends a number column counting up from `start` (default 1) in steps of 1, named `name` trimmed (default `Index`). The index name is de-duplicated first, so an existing column with that name is the one renamed. |
 | `mergeColumns(f, columns, separator, name)` | Merge Columns | Needs at least two columns (`#VALUE!`, `Merge needs at least two columns`). Joins each row's cells as display text (`formatFrameCell`, so a date merges as its date text and an error as its code; a blank contributes `""`) with `separator` into one string column named `name` trimmed (default `Merged`), placed where the first source sat. The sources are removed. It is the inverse of Split Column. |
-| `promoteHeaders(f)` | Headers | The first row becomes the column names (a blank or error cell becomes `Col{i}`, any other cell its display text trimmed). Column types stay and the first row is removed. An empty frame is unchanged. |
+| `promoteHeaders(f)` | Headers | The first row becomes the column names (a blank or error cell becomes `Col{i}`, any other cell its display text trimmed; repeats made unique). Column types stay and the first row is removed. An empty frame is unchanged. |
 | `demoteHeaders(f)` | Headers | The column names become a first row, and every column becomes a string column named `Col1`, `Col2` and so on (the header row is text, so a typed column would be mixed). Cells become display text; blanks and errors pass through. |
 | `dropBlankRows(f, mode)` | Drop Blank Rows | `all` drops only rows where every cell is blank (spacer rows); `any` keeps only complete rows. An error cell is a value, not a blank. |
 
 `distinctColumnValues(cells, isExcluded?)` (`TablePopup.tsx`) feeds a constrained-entry list: the distinct cell texts of one column in first-seen order, skipping blanks (`null` or `""`) and anything `isExcluded` rejects (the caller passes error codes).
 
+Tests: `frameVerbs.test.ts`: split and add index, merge, the two header tools, drop blank rows, and the row and value verbs dropping `raw`.
+
 ### Lookup over a Frame
 
-The XLookup card finds a row in a Frame or a Cube. A Frame is converted with `frameToCube` first, so one path serves both. `xlookup` (`nodes/frames.rs`) normalizes the card's input: a Cube or Frame passes, a matrix becomes a Frame by rows, and (as fallbacks, since the card's shape guard already refuses them) a flat list becomes a one-row Frame and a scalar a 1×1 Frame. Its Table input adopts what is wired and its output follows (`passthrough`, `project`): a named Return column on a Frame of known shape types the output as that column's family on the combo rung, so a date column's cell shows as a date, not its serial ([[C44]] dateSerials); a blank Return with an unwired Lookup is a one-row Frame or Cube; anything else stays `trueany`.
+The XLookup card finds a row in a Frame or a Cube. A Frame is converted with `frameToCube` first, so one path serves both.
 
-**Across.** The card's direction (`direction`, Rows or Columns, saved) chooses which way it reads the table, Excel's XLOOKUP over a row instead of a column. Columns swaps In column and Return for In row and Return row (number fields, the swap pruning the departing cables first): the lookup searches the column names, or row `inRow` (1-based) when one is given, and returns the matched column whole as a list, or its cell in row `returnRow` (`xlookup_across`, `nodes/frames.rs`). A row past the table is `#REF!`. Match mode, First or Last, If not found and a list of lookups read as they do in Rows. Names compare as text, ignoring case; a row holding numbers reads a lookup that parses as a number as one. The output's family is known only when a typed lookup names, ignoring case, a column of a known shape among the names; otherwise it stays `trueany`.
+- **Input.** `xlookup` (`nodes/frames.rs`) normalizes the card's input: a Cube or Frame passes, and a matrix becomes a Frame by rows. The Table input skips rank widening (`noWidenInputs`), so a wired Frame keeps its column types (a date column still matches an ISO lookup) and a scalar or bare list reaches the card's shape guard, which answers `#VALUE!` pointing at Build Frame instead of a silent widen. As fallbacks behind that guard, a flat list becomes a one-row Frame and a scalar a 1×1 Frame.
+- **Output type.** The Table input adopts what is wired and the output follows (`passthrough`, `project`): a named Return column on a Frame of known shape types the output as that column's family on the combo rung, so a date column's cell shows as a date, not its serial ([[C44]] dateSerials); a blank Return with an unwired Lookup is a one-row Frame or Cube; anything else stays `trueany`.
+
+**Across.** The card's direction (`direction`, Rows or Columns, saved) chooses which way it reads the table, Excel's XLOOKUP over a row instead of a column.
+
+- Columns swaps In column and Return for In row and Return row (number fields, the swap pruning the departing cables first).
+- The lookup searches the column names, or row `inRow` (1-based) when one is given, and returns the matched column whole as a list, or its cell in row `returnRow` (`xlookup_across`, `nodes/frames.rs`). A row past the table is `#REF!`.
+- Match mode, First or Last, If not found and a list of lookups read as they do in Rows.
+- Names compare as text, ignoring case; a row holding numbers reads a lookup that parses as a number as one.
+- The output's family is known only when a typed lookup names, ignoring case, a column of a known shape among the names; otherwise it stays `trueany`.
 
 `lookupRowIndex(cube, lookupColumn, lookup, matchMode = "exact", searchMode = "first")` returns the matching 0-based row, or −1.
 
@@ -1023,52 +1058,124 @@ The XLookup card finds a row in a Frame or a Cube. A Frame is converted with `fr
 4. A key column that carries a unit (`frameToCube` makes its cells base-SI unit cells) is read as the numbers it shows: each key in the first keyed cell's display unit, or in base SI when that cell has none, and a key of another dimension never matches (`keys_in_display_unit`). So `5` in a USD column finds $5, for exact and approximate match alike, as XLOOKUP in a formula reads a united list in its display unit ([[C25]] firstClassUnits, [[unit-flow#Expression]]).
 5. The match is delegated to the formula surface's `xmatch_index`, so the card and XLOOKUP cannot drift. A string key matches case-insensitively. A blank, error or container key cell never matches.
 
-| Mode | Values | Meaning |
-|---|---|---|
-| `matchMode` | Filter's ops ([[B11]] maximalMerge, Filter's list in Filter's order, the four comparisons labeled as the nearest match they are: ≤ equal or nearest below, ≥ equal or nearest above, ＜ nearest below, ＞ nearest above): `eq` (default), `lte`, `gte`, `lt`, `gt`, `neq`, `contains`, `startsWith`, `endsWith`, `isblank`, `notblank` | `eq`, `lte` and `gte` are Excel's match_mode 0, −1 and 1: the equal key, else the closest key at most or at least the lookup (numbers and dates by value, text caseless in character-code order, [[C59]] byteStringOrder). `lt` and `gt` take the closest key strictly below or above. A logical column refuses all four (`#VALUE!`, `A closest-match lookup needs a number, date or text column`), and a number or date key needs a finite lookup, or nothing matches. The rest take the first row (or last, under `last`) that Filter's own test passes (`compile_filter`), so a text test on a non-text column is Filter's `#TYPE!`, and `isblank` and `notblank` ignore the lookup. Every path, Frame, Cube and across, runs through `lookupRowIndex` (`frame_fns.rs`). |
-| `searchMode` | `first` (default), `last` | Excel's search_mode 1 and −1: which of several equal keys wins. An approximate match already picks the closest key. |
+**`matchMode`** takes Filter's ops ([[B11]] maximalMerge), in Filter's order, the four comparisons labeled as the nearest match they are (≤ equal or nearest below, ≥ equal or nearest above, ＜ nearest below, ＞ nearest above): `eq` (default), `lte`, `gte`, `lt`, `gt`, `neq`, `contains`, `startsWith`, `endsWith`, `isblank`, `notblank`.
 
-`lookupCell(cube, lookupColumn, returnColumn, …)` returns the matched row's cell in the return column whole, so a nested Frame or Cube comes out intact; `undefined` on no match, and `#REF!` for a missing return column, checked even when nothing matched. The whole-row return (a blank Return, its field showing `all`) is `frameRowAt` (a one-row Frame, `raw` dropped) or `cube_row_at` (a one-row Cube, each cell whole, types kept).
+- `eq`, `lte` and `gte` are Excel's match_mode 0, −1 and 1: the equal key, else the closest key at most or at least the lookup (numbers and dates by value, text caseless in character-code order, [[C59]] byteStringOrder).
+- `lt` and `gt` take the closest key strictly below or above.
+- A logical column refuses all four (`#VALUE!`, `A closest-match lookup needs a number, date or text column`), and a number or date key needs a finite lookup, or nothing matches.
+- The rest take the first row (or last, under `last`) that Filter's own test passes (`compile_filter`), so a text test on a non-text column is Filter's `#TYPE!`, and `isblank` and `notblank` ignore the lookup.
+- Every path, Frame, Cube and across, runs through `lookupRowIndex` (`frame_fns.rs`).
+
+**`searchMode`** is `first` (default) or `last`, Excel's search_mode 1 and −1: which of several equal keys wins. An approximate match already picks the closest key.
+
+**The return.** `lookupCell(cube, lookupColumn, returnColumn, …)` returns the matched row's cell in the return column whole, so a nested Frame or Cube comes out intact; `undefined` on no match, and `#REF!` for a missing return column, checked even when nothing matched. The whole-row return (a blank Return, its field showing `all`) is `frameRowAt` (a one-row Frame, `raw` dropped) or `cube_row_at` (a one-row Cube, each cell whole, types kept).
+
+Tests: `frameLookup.test.ts`: the card's match is XMATCH's, the cell and whole-row returns, the coercion that keeps a Frame typed and refuses a scalar or bare list, approximate match, a key with a unit, the across direction, and Filter's ops as modes.
 
 ## Analysis verbs
 
-These also run on the collected value.
+These also run on the collected value, and their cards' answers are frozen with the other cards' (`fixtures/core/nodes/`, [[node-bodies]]).
 
 ### Reconcile
 
 The Reconcile node compares a before Frame (left) with an after Frame (right) row by row on a key, through `reconcileFrames(left, right, { leftKey, rightKey, priceColumn?, qtyColumn? })`. Both keys must exist (`#REF!`).
 
 - **Keys.** Keys are indexed as in Join, so a blank, error or non-finite key is not matched. Keys are visited in first-seen order, left first, then keys found only on the right.
-- **Columns.** A shared column is a left non-key column that the right also has by name. A non-key column on only one side is listed in the summary as removed or added and never drives a row's status, since it would apply to every matched row equally.
-- **Rows.** For each key, duplicate rows pair up by position; the extra rows on the longer side are their own added or removed rows, so the row total stays exact. A row present only on the right is `added`, only on the left `removed`; a matched row is `changed` when any shared column differs (two blanks are equal, and an error cell is never unchanged) and `unchanged` otherwise. A row whose key is blank, an error or a non-finite number cannot be matched, so it is emitted after the rest (left rows, then right) as `skipped`.
-- **Output.** The key column (the left key's name and type, filled from whichever side has the row), `Status`, then per shared column `<name> (before)` and `<name> (after)`, plus `<name> Δ` (after − before when both are numbers) for a number column; then `<name> (removed)` holding the before values and `<name> (added)` holding the after values. Names go through `makeHeaders`. The summary counts `added`, `removed`, `changed`, `unchanged` and `skipped`.
-- **Price, volume, mix.** When `priceColumn` and `qtyColumn` both name shared columns that are numbers on both sides, the summary adds `pvm`. Per row, a factor on a side where the row is absent is a genuine 0 (a new or removed row); a present cell that is not a number is unknown, and the row is left out of the decomposition and counted in `excluded`. Over the included rows: `totalBefore = Σ P0·Q0`, `totalAfter = Σ P1·Q1`, `price = Σ (P1−P0)·Q0`, `volume = Σ (Q1−Q0)·P0`, `mix = Σ (P1−P0)·(Q1−Q0)`, and `delta = totalAfter − totalBefore`, which the three terms sum to exactly.
+- **Columns.** A shared column is a left non-key column that the right also has by name. A non-key column on only one side is listed in the summary as removed or added and never drives a row's status, since it would apply to every matched row equally; a renamed column so shows as one removed and one added.
+- **Rows.** For each key, duplicate rows pair up by position; the extra rows on the longer side are their own added or removed rows, so the row total stays exact. A row present only on the right is `added`, only on the left `removed`; a matched row is `changed` when any shared column differs (two blanks are equal, and an error cell is never unchanged) and `unchanged` otherwise. A row whose key is blank, an error or a non-finite number cannot be matched, so it is emitted after the rest (left rows, then right) as `skipped`, and counted only there.
+- **Output.**
+  - the key column (the left key's name and type, filled from whichever side has the row);
+  - `Status`;
+  - per shared column `<name> (before)` and `<name> (after)`, plus `<name> Δ` (after − before when both are numbers) for a number column;
+  - then `<name> (removed)` holding the before values and `<name> (added)` holding the after values, blank on a row where that side is absent.
+  - Names go through `makeHeaders`.
+  - The summary counts `added`, `removed`, `changed`, `unchanged` and `skipped`.
+- **Price, volume, mix.** When `priceColumn` and `qtyColumn` both name shared columns that are numbers on both sides, the summary adds `pvm`.
+  - Per row, a factor on a side where the row is absent is a genuine 0 (a new or removed row).
+  - A present cell that is not a number (a blank or an error) is unknown, and the row is left out of the decomposition and counted in `excluded`, never read as 0.
+  - Over the included rows: `totalBefore = Σ P0·Q0`, `totalAfter = Σ P1·Q1`, `price = Σ (P1−P0)·Q0`, `volume = Σ (Q1−Q0)·P0`, `mix = Σ (P1−P0)·(Q1−Q0)`, and `delta = totalAfter − totalBefore`, which the three terms sum to exactly.
+
+Tests: `reconcile.test.ts`: keyless rows emitted and counted as skipped, one-sided and renamed columns, the removed and added columns' alignment, and the price, volume and mix exclusions.
 
 ### Decision Matrix and Decision Sensitivity
 
 The Decision Matrix node scores and ranks a Frame of options, through `decisionMatrix(f, weights, normalize, breakdown = false, normalizeOverrides = {}, bounds = null)` ([[B17]] typedValueModel).
 
 1. **Columns** (`decision_columns`). The label is the first string column, if any; the criteria are every other number or logical column. A date column is never a criterion, since a serial is not a score. No criteria is `#VALUE!` (`Decision Matrix needs at least one numeric criterion column`), and an error cell in a criterion is returned as the result. Without a label column the options are `Option 1`, `Option 2` and so on.
-2. **Cells**. A finite number scores as itself and a logical as 1 or 0. A cell with no number (a blank, text or a non-finite number) is a missing score and takes the median of the column's finite numbers before normalizing (the mean of the middle two when their count is even), or 0 when the column has none; a blank in a logical column is FALSE. The output names each option's filled criteria (step 7).
-3. **Normalize**, per criterion (`normalizeOverrides[name]`, else `normalize`): `none` keeps the raw value; `max` divides by the column's largest absolute value (all zero stays zero), landing in [0, 1], or [−1, 1] with negatives; `range` maps the column's lowest value to 0 and its highest to 1, `(v − min) / (max − min)` (a column of one value is all 0), so ratings bunched between 6 and 10 spread across the whole scale and the cheapest price takes no penalty; `rank` scores each value by the fraction of the other rows it strictly beats, `count(o < v) / (n − 1)`, so ties share and a lone row is 1. So normalized columns of any mode stay comparable.
+2. **Cells.** A finite number scores as itself and a logical as 1 or 0. A cell with no number (a blank, text or a non-finite number) is a missing score and takes the median of the column's finite numbers before normalizing (the mean of the middle two when their count is even), or 0 when the column has none; a blank in a logical column is FALSE. The output names each option's filled criteria (step 7).
+3. **Normalize**, per criterion (`normalizeOverrides[name]`, else `normalize`; a criterion named like a JavaScript object member, such as `constructor`, takes the default too):
+   - `none` keeps the raw value;
+   - `max` divides by the column's largest absolute value (all zero stays zero), landing in [0, 1], or [−1, 1] with negatives;
+   - `range` maps the column's lowest value to 0 and its highest to 1, `(v − min) / (max − min)` (a column of one value is all 0), so ratings bunched between 6 and 10 spread across the whole scale and the cheapest price takes no penalty;
+   - `rank` scores each value by the fraction of the other rows it strictly beats, `count(o < v) / (n − 1)`, so ties share and a lone row is 1.
+   So normalized columns of any mode stay comparable.
 4. **Score.** A weight that is not a finite number is 1. `Score = round4(Σ effective × weight / Σ |weight|)`, or 0 when the weights sum to 0. `round4` rounds to 4 decimals on compute, not display, and turns −0 into 0, so two options that print the same score share a rank.
-5. **Deal-breakers** (`decision_screen`). A criterion with an `At least` or `At most` rules out every option whose finite value (a logical as 1 or 0) falls below or above it; a cell with no number fails nothing. Screening comes first: steps 2 to 4 then run on the options left, so a ruled-out option neither takes part in a median nor sets a column's scale.
+5. **Deal-breakers** (`decision_screen`). A criterion with an `At least` or `At most` rules out every option whose finite value (a logical as 1 or 0) falls below or above it; a cell with no number fails nothing. Screening comes first: steps 2 to 4 then run on the options left, so a ruled-out option neither takes part in a median nor sets a column's scale. A weight of 0 makes a criterion a screen only.
 6. **Rank** is the competition rank on the rounded score, highest first: equal scores share a rank and the next distinct score skips past them.
-7. **Output**, best first: the label column (its own name, or `Option`), then with `breakdown` each criterion's signed contribution `round4(effective × weight / Σ |weight|)`, which sum to the Score (to within the rounding) and show a negative-weight criterion as the penalty it is, then `Score` and `Rank`. Ruled-out options follow the ranked ones in their input order with every number blank, and when any option is ruled out a column `Ruled out by` says why, comma-separated, as `Rent over 2,400` or `Support under 6` (the bound in American digits), or for a chained row `no acceptable <nested>`. When any ranked option had a number criterion filled by the median, a last column `Filled in` names those criteria for each ranked option. Names go through `makeHeaders`, so a criterion named `Score` or `Rank` cannot collide.
+7. **Output**, best first:
+   - the label column (its own name, or `Option`);
+   - with `breakdown`, each criterion's signed contribution `round4(effective × weight / Σ |weight|)`, which sum to the Score (to within the rounding) and show a negative-weight criterion as the penalty it is;
+   - `Score` and `Rank`;
+   - ruled-out options follow the ranked ones in their input order with every number blank, and when any option is ruled out a column `Ruled out by` says why, comma-separated, as `Rent over 2,400` or `Support under 6` (the bound in American digits), or for a chained row `no acceptable <nested>`; with no bound set there is no such column;
+   - when any ranked option had a number criterion filled by the median, a last column `Filled in` names those criteria for each ranked option.
+   - Names go through `makeHeaders`, so a criterion named `Score` or `Rank` cannot collide.
 
-**Chained decisions** (`rank_cube`, `nodes/frames.rs`). A Cube in is ranked level by level. Its scalar columns score as above, and each column holding nested Frames (a Nest Join's) is one more criterion of its level, named after the column: the score of the best acceptable option inside the row's Frame. A parent column every Frame repeats row for row is the Nest Join's key, matched as Nest Join matches keys (a quantity across units, a number by its text): it never scores at either level, and a number key labels the rows by its shown text where no text column does. The Frames under one nested column are pooled and scored together (one median, one scale per criterion, one screen), so an option in one row's Frame compares with every other row's; each is then ranked within its own row, ranks recounted there. A nested Cube recurses, so a city counts its best neighborhood, which counts its best apartment. One Weights Frame serves every level, matched by name. A nested column that holds its parent row's own value in every cell of every Frame under the nested column (a Nest Join's key) is dropped before scoring, since it says where a row hangs, not how good an option is; a column merely named like a parent column counts. Pooled Frames name their options in one column: each Frame's first text column that isn't a key takes the first Frame's label name, so a child whose key comes before its name column still names its options. A nested column whose Frames have no criterion (notes, say) is carried along at the end, not scored. A row whose Frame is empty, missing or fully ruled out is ruled out as `no acceptable <nested>`. The result is a Cube, ranked as a Frame would be, with `Best in <nested>` (the best option's label) after the label column, a breakdown's nested contribution named `<nested> score`, and the ranked nested Frames last under their own names. The node's ports adopt, so a Frame in gives a Frame out and a Cube in a Cube out.
+**Chained decisions** (`rank_cube`, `nodes/frames.rs`). A Cube in is ranked level by level.
 
-`resolve_weights(weights_frame, criteria)` (`decision.rs`) aligns a weights frame to the criteria by name. The first string column holds the criterion names, matched trimmed and case-insensitive, first row winning. The weight is the number column named `Weight`, `Weights` or `Value`, else the first number column; a cell that is not a finite number (a logical counts as 1 or 0) gives 1, as does a criterion the frame omits or an unwired frame, except on a row that sets an `At least` or `At most`, where a blank weight gives 0: a row naming only a limit is a screen. Sensitivity reads a Scenarios row the same way, per scenario. Number columns named `At least` and `At most` are the bounds, never the weight column. An error cell in either is returned as itself. An optional column named `Norm` sets per-criterion overrides through `parse_normalize`, which lowercases, strips `÷` and spaces, and reads `raw` or `none`, `max` or `divmax`, `range` or `minmax`, and `rank`; anything else inherits the default.
+- **Criteria.** Its scalar columns score as above, and each column holding nested Frames (a Nest Join's) is one more criterion of its level, named after the column: the score of the best acceptable option inside the row's Frame.
+- **Keys.** A parent column every Frame repeats row for row is the Nest Join's key, matched as Nest Join matches keys (a quantity across units, a number by its text): it never scores at either level, and a number key labels the rows by its shown text where no text column does. A nested column that holds its parent row's own value in every cell of every Frame under the nested column is dropped before scoring, since it says where a row hangs, not how good an option is; a column merely named like a parent column counts, as does one whose value happens to match the parent's in one Frame.
+- **Pooling.** The Frames under one nested column are pooled and scored together (one median, one scale per criterion, one screen), so an option in one row's Frame compares with every other row's; each is then ranked within its own row, ranks recounted there.
+- **Depth.** A nested Cube recurses, so a city counts its best neighborhood, which counts its best apartment. One Weights Frame serves every level, matched by name.
+- **Labels.** Pooled Frames name their options in one column: each Frame's first text column that isn't a key takes the first Frame's label name, so a child whose key comes before its name column still names its options.
+- **Unscored columns.** A nested column whose Frames have no criterion (notes, say) is carried along at the end, not scored.
+- **Ruled out.** A row whose Frame is empty, missing or fully ruled out is ruled out as `no acceptable <nested>`.
+- **Output.** A Cube, ranked as a Frame would be, with `Best in <nested>` (the best option's label) after the label column, a breakdown's nested contribution named `<nested> score`, and the ranked nested Frames last under their own names. A nested column named `Score` leaves the real Score alone. The node's ports adopt, so a Frame in gives a Frame out and a Cube in a Cube out.
 
-`decision_sensitivity(scores, scenarios, normalize)` reruns the matrix once per scenario. Scenarios is the weights frame widened: the first string column names the criteria, each number column other than `At least` and `At most` is one scenario named by its header, and one optional `Norm` column and the bounds apply to all of them. No number column is `#VALUE!` (`Scenarios needs a number column per scenario`). When no row is named after any criterion every weight would default to 1 and every scenario would agree, so that is `#VALUE!` too (`No Scenarios row is named after a criterion`). A criterion a scenario omits weighs 1. The result is a Cube with one row per scenario: `Scenario` (the header), `Winner` (the top option, or every option tied at rank 1 as `Tie: A, B`), `Margin` (`round4(top − runner-up)`, blank with one option) and `Ranking` (the scenario's full label · Score · Rank frame, nested).
+**Weights.** `resolve_weights(weights_frame, criteria)` (`decision.rs`) aligns a weights frame to the criteria by name.
 
-`flipPoints(scores, weights, normalize)` is the node's Flip points mode. It reads the Decision Matrix's own Weights Frame (bounds included; unwired, every weight is 1), screens, and takes the winner W as the matrix's own first row: the top rounded score, the first in input order on a tie. For each criterion c, with every other weight held, option i's score orders by `A_i + e_ic · t` where `t` is c's weight, `e` the normalized value and `A_i` the rest of its weighted sum, since every score shares the denominator `Σ|w|`. An option with a larger `e_ic` than W's overtakes W at `t = (A_W − A_i) / (e_ic − e_Wc)` going up, a smaller one going down; the nearest such crossing on each side is the flip, kept on the weight's side of zero. A weight of 0 can't matter less, so its Less side is blank, and its More side is the nearer crossing either way, as a benefit or a cost. The result is a Frame, one row per criterion: `Criterion` · `Weight` · `Less at` · `Winner if less` · `More at` · `Winner if more`. Less and more are how much the criterion matters, toward zero or away from it, so for a weight against (a cost) less is the crossing above and more the one below. The weights are rounded to 2 decimals; where no crossing exists the weight is blank and the winner column names the current winner, who stays. At the flip itself the two options tie; past it the named one wins. A crossing exactly at zero is only a tie, since the weight can't pass it, so it isn't a flip. Unrounded, so the rounded ranking can show the tie a hair beyond it.
+- The first string column holds the criterion names, matched trimmed and case-insensitive, first row winning.
+- The weight is the number column named `Weight`, `Weights` or `Value`, else the first number column. Number columns named `At least` and `At most` are the bounds, never the weight column.
+- A weight cell that is not a finite number (a logical counts as 1 or 0) gives 1, as does a criterion the frame omits or an unwired frame, except on a row that sets an `At least` or `At most`, where a blank weight gives 0: a row naming only a limit is a screen. Sensitivity reads a Scenarios row the same way, per scenario.
+- An error cell in either is returned as itself.
+- An optional column named `Norm` sets per-criterion overrides through `parse_normalize`, which lowercases, strips `÷` and spaces, and reads `raw` or `none`, `max` or `divmax`, `range` or `minmax`, and `rank`; anything else inherits the default.
 
-**Why these rules** ([[B17]] typedValueModel). Each removes a plausible wrong reading. Both cards scale by `max` unless told otherwise (the card's `normalize`), because unscaled values mislead the moment criteria use different scales (dollars beside a 1 to 5 rating), and comparing unlike criteria is the nodes' reason to exist. The scenario battery (`decisionIntuition.test.ts` over `tests/fixtures/decision-scenarios.json`, scenarios written apart from the engine with the answer a careful person expects) bears the default out: `max` misses 3 of the battery's first 63 scenarios, `range` 9 and `rank` 10. Each of `max`'s misses passes once the person adds what they would reach for: a deal-breaker for an absurd outlier or for below-average options summed in a ladder, and Norm `Range` for values bunched far from zero (interest rates). A miss the math is right about carries its reason as a `ruling` in the scenario. The breakdown shows signed contributions because bare normalized values read backwards under a negative weight: the priciest option showed Price 1.0 while taking the largest penalty. Ranking on the score as shown means the displayed score and the rank never disagree, and Sensitivity's Margin is 0 exactly when its Winner names a tie (`Tie: A, B`). The no-matching-row `#VALUE!` catches the trap a renamed criterion springs, where every scenario would silently come out identical. A breakdown of unscaled values, if wanted back, is a third detail choice beside summary and breakdown rather than a redefinition of this one; a Scenarios Frame that legitimately runs with no matching criteria would reopen the `#VALUE!`. A missing score is unknown, not the worst or the best: counted as 0 it made an unpriced option look cheapest whenever price was weighted against, so a gap in the data won the decision; the median treats it as a typical option, as the author's Decision Matrix plugin for Obsidian does, and the `Filled in` column keeps the guess from being silent (reopened by a decision that needs a missing score to count against the option). Deal-breakers screen before anything is weighed because people rule options out before they weigh what's left: an apartment over budget isn't a cheap apartment scored down, and scoring it down would let a high score elsewhere buy back a hard limit and bend every other option's scale (reopened by a need for a soft limit, a penalty that grows past a threshold). Flip points answer how sure a weighted score is, one number per criterion in the units the person set, where named scenarios answer only for the scenarios someone thought to write; they replace nudging every weight by ±10% (reopened by a need to see two weights moving together). Chained decisions score each step with the best it leads to, as a person reasons backward from the end: judging a neighborhood on its own picks one whose apartments are all poor. Choices made in the face of chance, where what follows the first choice isn't known, are not this; they need probabilities (reopened by a chain whose second step needs its own Weights Frame).
+**Sensitivity.** `decision_sensitivity(scores, scenarios, normalize)` reruns the matrix once per scenario.
+
+- Scenarios is the weights frame widened: the first string column names the criteria, each number column other than `At least` and `At most` is one scenario named by its header, and one optional `Norm` column and the bounds apply to all of them.
+- No number column is `#VALUE!` (`Scenarios needs a number column per scenario`). When no row is named after any criterion, every weight would default to 1 and every scenario would agree, so that is `#VALUE!` too (`No Scenarios row is named after a criterion`).
+- A criterion a scenario omits weighs 1.
+- The result is a Cube with one row per scenario: `Scenario` (the header), `Winner` (the top option, or every option tied at rank 1 as `Tie: A, B`), `Margin` (`round4(top − runner-up)`, blank with one option) and `Ranking` (the scenario's full label · Score · Rank frame, nested).
+
+**Flip points.** `flipPoints(scores, weights, normalize)` is the node's Flip points mode.
+
+- It reads the Decision Matrix's own Weights Frame (bounds included; unwired, every weight is 1), screens, and takes the winner W as the matrix's own first row: the top rounded score, the first in input order on a tie. A ruled-out option never wins, and with one option left nothing flips.
+- For each criterion c, with every other weight held, option i's score orders by `A_i + e_ic · t`, where `t` is c's weight, `e` the normalized value and `A_i` the rest of its weighted sum, since every score shares the denominator `Σ|w|`.
+- An option with a larger `e_ic` than W's overtakes W at `t = (A_W − A_i) / (e_ic − e_Wc)` going up, a smaller one going down; the nearest such crossing on each side is the flip, kept on the weight's side of zero, so a cost stays a cost.
+- A weight of 0 can't matter less, so its Less side is blank, and its More side is the nearer crossing either way, as a benefit or a cost.
+- The result is a Frame, one row per criterion: `Criterion` · `Weight` · `Less at` · `Winner if less` · `More at` · `Winner if more`. Less and more are how much the criterion matters, toward zero or away from it, so for a weight against (a cost) less is the crossing above and more the one below.
+- The weights are rounded to 2 decimals; where no crossing exists the weight is blank and the winner column names the current winner, who stays. Options are named by their own label after screening.
+- At the flip itself the two options tie; past it the named one wins. A crossing exactly at zero is only a tie, since the weight can't pass it, so it isn't a flip. The flips are unrounded, so the rounded ranking can show the tie a hair beyond one.
+
+**Why these rules** ([[B17]] typedValueModel). Each removes a plausible wrong reading.
+
+- **Scaling by `max`.** Both cards scale by `max` unless told otherwise (the card's `normalize`), because unscaled values mislead the moment criteria use different scales (dollars beside a 1 to 5 rating), and comparing unlike criteria is the nodes' reason to exist. The scenario battery (`decisionIntuition.test.ts` over `tests/fixtures/decision-scenarios.json`, scenarios written apart from the engine with the answer a careful person expects) bears the default out: `max` misses fewer of its scenarios than `range` or `rank` (the test file exports `answer`, which answers a scenario under any mode). Each of `max`'s misses passes once the person adds what they would reach for: a deal-breaker for an absurd outlier or for below-average options summed in a ladder, and Norm `Range` for values bunched far from zero (interest rates). A miss the math is right about carries its reason as a `ruling` in the scenario.
+- **Signed breakdowns.** The breakdown shows signed contributions because bare normalized values read backwards under a negative weight: the priciest option showed Price 1.0 while taking the largest penalty. A breakdown of unscaled values, if wanted back, is a third detail choice beside summary and breakdown rather than a redefinition of this one.
+- **Ranking on the shown score** means the displayed score and the rank never disagree, and Sensitivity's Margin is 0 exactly when its Winner names a tie (`Tie: A, B`).
+- **The no-matching-row `#VALUE!`** catches the trap a renamed criterion springs, where every scenario would silently come out identical. A Scenarios Frame that legitimately runs with no matching criteria would reopen it.
+- **A missing score is unknown**, not the worst or the best: counted as 0 it made an unpriced option look cheapest whenever price was weighted against, so a gap in the data won the decision. The median treats it as a typical option, as the author's Decision Matrix plugin for Obsidian does, and the `Filled in` column keeps the guess from being silent. A decision that needs a missing score to count against the option would reopen it.
+- **Deal-breakers screen before anything is weighed**, because people rule options out before they weigh what's left: an apartment over budget isn't a cheap apartment scored down, and scoring it down would let a high score elsewhere buy back a hard limit and bend every other option's scale. A need for a soft limit, a penalty that grows past a threshold, would reopen it.
+- **Flip points** answer how sure a weighted score is, one number per criterion in the units the person set, where named scenarios answer only for the scenarios someone thought to write; they replace nudging every weight by ±10%. A need to see two weights moving together would reopen it.
+- **Chained decisions** score each step with the best it leads to, as a person reasons backward from the end: judging a neighborhood on its own picks one whose apartments are all poor. Choices made in the face of chance, where what follows the first choice isn't known, are not this; they need probabilities. A chain whose second step needs its own Weights Frame would reopen it.
+
+Tests:
+
+- `decisionMatrix.test.ts`: the score, weights, every normalization and its overrides, the median fill, the breakdown, deal-breakers, Sensitivity, flip points, chained decisions, and `Filled in`.
+- `decisionIntuition.test.ts`: the scenario battery, Choice Ladder scenarios included.
+- `decisionSeed.test.ts`: the Decision Matrix seed's notes state the outcomes its own data gives (the winner, where the winner flips, the tie).
 
 ### Choice Ladder
 
-`choiceLadder(f, weights, limits, normalize, close, choices)` orders a Decision Matrix's options into the sequence to take them in under limits. The kernels are the core's `ladder.rs`, its plan search held to exhaustive search on 1500 random problems by its unit tests; a viewer's next choices are `nodes/ladderOps.ts` (`nextChoices`); the figure is [[chart-figures]] § The ladder figure.
+`choiceLadder(f, weights, limits, normalize, close, choices)` orders a Decision Matrix's options into the sequence to take them in under limits. The kernels are the core's `ladder.rs`; a viewer's next choices are `nodes/ladderOps.ts` (`nextChoices`: taking a choice, moving a retaken pick to the end, undoing by name, clearing); the figure is the ladder figure in [[chart-figures#The CSS and canvas figures]].
 
 1. **Limits.** One row per resource: the first text column names it, matched to an Options number or logical column trimmed and case-insensitive (first row wins). The number column `At most` holds its cap and `At least` its floor; without an `At most` header the first other number column is the cap. A resource with a finite cap or floor is **countable**; with neither (blanks) it is a **rough** cost with no total, like political capital. A floor the kept options' costs can't sum to is `#VALUE!` (`Choice Ladder: the options can't reach …'s At least`). No text column is `#VALUE!`; an error cell is returned as itself; a name with no Options number column is `#VALUE!` (`Choice Ladder: no Options number column is named …`). Unwired Limits means no resource.
 2. **Relations.** An optional text column named `Requires` (or `Needs`, `Prerequisites`, `Depends on`) and one named `Excludes` (or `Conflicts`, `Conflicts with`) list other options by name, split on commas or semicolons, matched trimmed and case-insensitive; an unknown name or an option naming itself is ignored. Excludes works both ways. Optional logical columns named `Must` (or `Must have`) and `Never` flag options, and an optional text column named `One of` groups them: options sharing a value (trimmed, case-insensitive; blank is no group) exclude each other, so at most one per group is taken.
@@ -1077,7 +1184,9 @@ The Decision Matrix node scores and ranks a Frame of options, through `decisionM
 5. **Costs.** A countable cost below 0 counts as 0; a rough cost keeps its sign, so a negative one earns capital back. A logical cell counts TRUE as 1 and anything else as 0. In a number column, a cell that isn't a finite number is a missing cost and takes the median of the kept options' costs in that column, 0 when none has one; an error is returned as itself.
 6. **Order** (`priorities`). With rough costs, an option's place is its score over its share of the rough costs, each cost divided by that column's largest magnitude; one costing nothing rough or earning some back comes first (by score). With none, the place is the score.
 7. **Close** (`is_close`). Two options in the same tier are close when their places differ by no more than `close` of the larger. `close` is a fraction; 1 or more reads as a percent, a negative or non-finite one is 0. The card's default is 0.05; a wired blank is 0.
-8. **The plan from a point** (`best_plan`). With any countable resource (a cap or a floor, met or not), the most total score within every cap that meets every floor (what each still needs) honoring Requires and Excludes, by exact branch and bound, pruning a branch whose remaining options can't reach a floor; on a tie in total score the plan taking more options wins, so a worthless option that fits rides along, and a harmful one comes only when a Requires makes it pay; none meeting the floors at the top is `#VALUE!` (`Choice Ladder: no plan meets every At least`) (more than 40 options, `MAX_OPTIONS` in `ladder.rs`, or two million steps is `#VALUE!`). With none, everything open scoring 0 or more in order, each at its own turn together with what it requires, all of them or none when any would clash with what's in or their scores sum below 0 (so a harmful requirement comes only when the group pays, as in the exact search); an option whose Requires still can't come is then banned and the pass reruns, so an option that only clashed with it gets in.
+8. **The plan from a point** (`best_plan`).
+   - With any countable resource (a cap or a floor, met or not): the most total score within every cap that meets every floor (what each still needs), honoring Requires and Excludes, by exact branch and bound, pruning a branch whose remaining options can't reach a floor. On a tie in total score the plan taking more options wins, so a worthless option that fits rides along, and a harmful one comes only when a Requires makes it pay. None meeting the floors at the top is `#VALUE!` (`Choice Ladder: no plan meets every At least`). More than 40 options (`MAX_OPTIONS` in `ladder.rs`) or two million steps is `#VALUE!`.
+   - With none: everything open scoring 0 or more in order, each at its own turn together with what it requires, all of them or none when any would clash with what's in or their scores sum below 0 (so a harmful requirement comes only when the group pays, as in the exact search). An option whose Requires still can't come is then banned and the pass reruns, so an option that only clashed with it gets in.
 9. **Rungs** (`build_ladder`), level by level from the full limits:
    - **Musts first:** while a Must isn't taken, the pick is the first such in order (`must`), with no fork and nothing struck. Musts that, with what they require, exclude each other or overspend a countable limit are `#VALUE!` naming the pair or the resource (`must_clash`), checked before any rung.
    - Otherwise the pick is the first option in order that the plan takes. Every open option ahead of it that its side's best plan leaves out is struck there (`struck`) and closed to that side only, so the other side of a fork works out its own; whatever clashes with the pick, ahead of it or not, is its `conflicts` instead.
@@ -1086,40 +1195,69 @@ The Decision Matrix node scores and ranks a Frame of options, through `decisionM
    - **A fork:** only at a pick taken on its own merits (never a `must`, `required` or `quota` one), the open, affordable option nearest the pick in place whose own Requires are already taken, when close, leaving every floor reachable, and when taking it instead ends with a different set (`same_set`): a swap of order is no choice. The flow splits between the two in proportion to their scores (`close`). The option not taken stays open. A fork's two sides don't fork again on their next rung. A saved choice that names either option settles the fork on it (`chosen`, the later choice winning), and the side passed over stays as a `passed` rung with no share that goes nowhere; a choice whose fork never comes does nothing. At most 6 paths run at once; past that, no new fork.
    - **Merging:** two paths whose futures match (the same options open, the same Requires met, the same caps left and floors owed) become one state carrying the sum of their flow, even when they took different options to get there. So an excluded pair rejoins once the rest of the ladder is the same.
    - A state with nothing left to take ends its path.
-   The **main line** follows, from the top, the side with more of the flow at each fork. With no fork it is the best plan in order.
-10. **Output.** `Plan`, the main line: `Rung` · the label column (its name, or `Option`) · `Choice` (`Clear pick`, `Close`, `Your pick`, `Must`, or `Needed` for `required` and `quota`) · `Score` · one column per resource with the cost column's unit and format · then `<resource> so far`, each resource's running total down the plan, so a rough cost can be cut where the person judges it runs out, and, when any pick had a score or cost filled by the median, `Filled in` naming them. Names go through `makeHeaders`; the node's `frameShape` declares the first four and is dynamic. `Ladder` is the figure value, carrying the states, the edges and the choices that settled a fork.
+   - The **main line** follows, from the top, the side with more of the flow at each fork. With no fork it is the best plan in order.
+10. **Output.**
+    - `Plan`, the main line: `Rung` · the label column (its name, or `Option`) · `Choice` (`Clear pick`, `Close`, `Your pick`, `Must`, or `Needed` for `required` and `quota`) · `Score` · one column per resource with the cost column's unit and format · then `<resource> so far`, each resource's running total down the plan, so a rough cost can be cut where the person judges it runs out, and, when any pick had a score or cost filled by the median, `Filled in` naming them. Names go through `makeHeaders`; the node's `frameShape` declares the first four and is dynamic.
+    - `Ladder` is the figure value, carrying the states, the edges and the choices that settled a fork.
 
 **Why the ladder works this way.** Whatever the limit, the question is what to do next with what's left, so the answer is an order, and a rough cost still makes a favorite that eats everything worth less. Close scores are where the person, not the weights, should decide, and only where deciding changes the outcome, so a fork appears only there. Reopened by order in time starting to matter (an option that earns capital back enabling others), or by plans needing a value for capital left unspent.
 
+Tests:
+
+- `choiceLadder.test.ts`: the two seed plans, forks and saved choices, Close, deal-breakers, Must and Never, floors, unknown costs, One of, and the `#VALUE!`s.
+- `ladder.rs` (solenoid-core) unit tests: the plan search against exhaustive search on 1,500 random problems.
+- `ladderOps.test.ts`: `nextChoices`.
+- `decisionIntuition.test.ts`: the ladder scenarios.
+
 ### Allocator
 
-`allocateFrame(f, mode, amount)` spreads an amount across categories within each one's range, through `allocate_frame` (`decision.rs`, no solver). Columns are found by trimmed, case-insensitive name: the weight column is `weight`, `weights` or `value`; the range is `min` and `max`, falling back to the first two number columns that are not the weight column. Without both it is `#VALUE!` (`Allocator needs a min and a max number column`). Every min and max cell must be a finite number (`#VALUE!`, `Allocator: every min must be a number`; an error cell is returned as itself). A weight that is not a finite number is 1, and ordered weights ride this column rather than a wired list. The category name is the first string column, else `Item 1`, `Item 2` and so on.
+`allocateFrame(f, mode, amount)` spreads an amount across categories within each one's range, through `allocate_frame` (`decision.rs`, no solver).
 
-The output is `<name column or Category>` · `Allocation` · `Share`. Allocation comes first among the numbers, so a wired chart plots it, and carries the min column's unit and format. Share is each allocation's raw fraction of the total (0 when the total is not positive), to be formatted as a percent downstream. Comparing prices against the range is left to a join or computed column downstream.
+- **Columns** are found by trimmed, case-insensitive name:
+  - the weight column is `weight`, `weights` or `value`; a weight that is not a finite number is 1, and ordered weights ride this column rather than a wired list;
+  - the range is `min` and `max`, falling back to the first two number columns that are not the weight column. Without both it is `#VALUE!` (`Allocator needs a min and a max number column`). Every min and max cell must be a finite number (`#VALUE!`, `Allocator: every min must be a number`; an error cell is returned as itself);
+  - the category name is the first string column, else `Item 1`, `Item 2` and so on.
+- **Output:** `<name column or Category>` · `Allocation` · `Share`. Allocation comes first among the numbers, so a wired chart plots it, and carries the min column's unit and format. Share is each allocation's raw fraction of the total (0 when the total is not positive), to be formatted as a percent downstream. Comparing prices against the range is left to a join or computed column downstream.
 
 The kernels (`allocate_budget`, `allocate_min_target`, `allocate_proportional`, `decision.rs`) are three closed-form modes, each exact. Each row's range is normalized first, so a row whose min exceeds its max uses the smaller as the floor and the larger as the ceiling. Weights are read as non-negative (a non-finite or non-positive weight is 0), and when every weight is 0 they all become 1, so dividing by Σw is safe.
 
-- **`budget`** (Fit budget, a water-filling fixed point) spends `amount` in proportion to weight, each category clamped to [min, max]. A clamped category is fixed and the remaining budget redistributes among the still-free ones, pass after pass; each pass fixes at least one category or finishes. When the free categories have no weight, the remainder splits equally among them. A budget at or below Σmin gives every floor, and one at or above Σmax gives every ceiling.
-- **`minTarget`** (Min for target, a fractional knapsack) finds the least spend that reaches a weighted value Σwᵢaᵢ ≥ `amount`. Floors come first; then the extra value is bought from the highest-weight category (most value per dollar) up to its ceiling, spilling to the next. A target unreachable even at every ceiling returns every weighted category at its ceiling as a best effort.
+- **`budget`** (Fit budget, water-filling) spends `amount` in proportion to weight, each category clamped to its range: every weighted category takes `clamp(λ·wᵢ, minᵢ, maxᵢ)` for the one level λ at which they sum to the budget, found among the breakpoints `minᵢ/wᵢ` and `maxᵢ/wᵢ`; a zero-weight category sits at its floor. So a category capped early leaves the rest to the others, and one whose floor is above an even split still fits. When the weighted categories all reach their ceilings short of the budget, the remainder splits equally among the zero-weight ones. A budget at or below Σmin gives every floor, and one at or above Σmax gives every ceiling.
+- **`minTarget`** (Min for target, a fractional knapsack) finds the least spend that reaches a weighted value Σwᵢaᵢ ≥ `amount`. Floors come first; then the extra value is bought from the highest-weight category (most value per dollar) up to its ceiling, spilling to the next. A target unreachable even at every ceiling is `#VALUE!` naming the most reachable, Σwᵢ·maxᵢ (`The target is out of reach: the most is <n>`).
 - **`minProportional`** (Min proportional, `amount` ignored) finds the least spend keeping each aᵢ proportional to wᵢ above the floors: `k = maxᵢ(minᵢ / wᵢ)` and `aᵢ = clamp(k·wᵢ)`. A zero-weight category cannot be proportional to 0, so it takes its floor.
+
+Tests: `allocator.test.ts`: the seed's allocation, each mode's worked examples and edges, and range normalization.
 
 ### Group Cost Settle
 
 The Group Cost Settle card answers who pays whom in the fewest transfers, with no solver. Its kernels are the core's `planners.rs`, and both modes feed one greedy core, `min_transfers(balances)`:
 
-1. Balances for the same name net first, so nobody ever pays themselves.
+1. Balances for the same name net first, so nobody ever pays themselves. Names compare ignoring case, and the first spelling names the person.
 2. Creditors (net above half a cent) and debtors are each sorted largest first with a stable sort, so ties keep input order and the result is deterministic.
 3. The biggest creditor takes from the biggest debtor until one of them is even, and every amount rounds to cents.
 
-**Totals mode** (`settle_frame`, `planners.rs`): each row is a name, what they paid, and an optional `share` weight (1 is an equal share). Weights apply when any row carries one (or when the card's `split` asks for them), and then a blank, negative or non-finite weight counts as 1; otherwise everyone owes an equal share. A person's fair share is `paid total × weight / Σ weights`, their net is `paid − share` (positive is owed, negative owes), and a non-finite paid amount counts as 0.
+**Totals mode** (`settle_frame`, `planners.rs`).
 
-**Ledger mode** (`settleLedger(expenses)`): each expense is an amount fronted by one or more payers and split equally among its beneficiaries. Payers and beneficiaries are independent name sets, and a null beneficiary list means the whole group, everyone named anywhere in the ledger. Every named person is registered before any split is computed, so a whole-group split covers the full roster rather than only the people seen so far. The roster is in first-appearance order (payers before beneficiaries, row by row); duplicate names within one expense count once; an expense with no payers or no beneficiaries is skipped. Each expense credits its payers an equal part of the amount and debits its beneficiaries an equal part. The per-person paid totals, fair shares and nets round to cents, and the nets feed `min_transfers`. Ledger mode is equal-split only.
+- Each row is a name, what they paid, and an optional `share` weight (1 is an equal share).
+- Weights apply when any row carries one (or when the card's `split` asks for them), and then a blank, negative or non-finite weight counts as 1; otherwise everyone owes an equal share.
+- A person's fair share is `paid total × weight / Σ weights`, their balance is `paid − share` (positive is owed, negative owes), and a non-finite paid amount counts as 0.
+
+**Ledger mode** (`settleLedger(expenses)`).
+
+- Each expense is an amount fronted by one or more payers and split equally among its beneficiaries. Payers and beneficiaries are independent name sets, and a null beneficiary list means the whole group, everyone named anywhere in the ledger.
+- Every named person is registered before any split is computed, so a whole-group split covers the full roster rather than only the people seen so far. The roster is in first-appearance order (payers before beneficiaries, row by row); duplicate names within one expense count once; an expense with no payers or no beneficiaries is skipped.
+- Each expense credits its payers an equal part of the amount and debits its beneficiaries an equal part; a negative amount (a refund) keeps its sign.
+- The per-person paid totals, fair shares and nets round to cents, and the nets feed `min_transfers`. Ledger mode is equal-split only.
+
+**Outputs.** `transfers` is From · To · Amount. `net` is Person · Paid · Owes · Owed · Net: Net is each person's fair share, their true cost; Owes is what they still owe the group (positive), Owed what comes back to them (negative), and Paid + Owes + Owed is Net.
+
+Tests: `settle.test.ts`: both modes' worked examples, share weights, cents, an empty group, the whole-group roster, names in any case, and a refund.
 
 ### Payoff Planner
 
-The Payoff Planner node runs on the kernels in the core's `planners.rs`, a month-by-month amortization with no solver. Each debt has a name, a balance, an APR and a minimum monthly payment. An APR is a fraction (0.18), and a value of 1 or more reads as a percent (18); the monthly rate is APR / 12, and a negative or non-finite APR is 0.
+The Payoff Planner node runs on the kernels in the core's `planners.rs`, a month-by-month amortization with no solver.
 
-The payoff order (`payoff_plan`, `planners.rs`) ranks the debts head first: avalanche by the monthly rate the plan charges, highest first (so 18 and 0.24 compare correctly), and snowball by balance, smallest first. Ties keep input order.
+- **Debts.** Each debt has a name, a balance, an APR and a minimum monthly payment. An APR is a fraction (0.18), and a value of 1 or more reads as a percent (18); the monthly rate is APR / 12, and a negative or non-finite APR is 0.
+- **Order** (`payoff_plan`, `planners.rs`). The debts are ranked head first: avalanche by the monthly rate the plan charges, highest first (so 18 and 0.24 compare correctly), and snowball by balance, smallest first. Ties keep input order.
 
 Each month of `payoff_plan(debts, extra, order)`:
 
@@ -1127,33 +1265,81 @@ Each month of `payoff_plan(debts, extra, order)`:
 2. The pot is the extra, plus each cleared debt's minimum (only for a debt that was open at the start; a debt that started clear frees nothing), plus the unused part of any minimum larger than its balance.
 3. The pot pays the head debt and cascades down the order.
 
-A balance at or below half a cent counts as clear. The plan answers the months until the last debt clears, the schedule of balances (`[month][debt]`, month 0 the starting balances, rounded to cents), per debt the month it cleared (0 for one already clear) and its interest, and the total interest. Past 600 months the payments never clear a debt: the kernel throws naming the first such debt in the order, and the Payoff Planner node answers `#VALUE!`.
+- **Clear.** A balance at or below half a cent counts as clear.
+- **The plan** answers the months until the last debt clears, the schedule of balances (`[month][debt]`, month 0 the starting balances, rounded to cents), per debt the month it cleared (0 for one already clear) and its interest, and the total interest.
+- **A runaway plan.** Past 600 months the payments never clear a debt: the kernel throws naming the first such debt in the order, and the Payoff Planner node answers `#VALUE!`.
+- **The node.** A wired blank extra is 0. Its Summary is one row per debt (Debt · Months · Interest in the Balance column's unit · Payoff date, the months added to the start date as EDATE adds them, so a start on the 31st lands on a short month's last day); its Schedule is Month and one balance column per debt.
+
+Tests: `payoffPlanner.test.ts`: the plan's cascade and both orders, an APR read as a percent, a single or already-clear debt, the node's Summary and Schedule, a wired extra and a runaway plan.
 
 ### Earned Value
 
-The Earned Value node runs on the kernels of `earned_value_card` in `crates/solenoid-core/src/nodes/sched.rs` (`metrics_for`, `planned_fraction`). They are unit-free, magnitudes in and metrics out; the Earned Value node carries the Cost column's currency onto the money columns. Per task:
+The Earned Value node runs on the kernels of `earned_value_card` in `crates/solenoid-core/src/nodes/sched.rs` (`metrics_for`, `planned_fraction`). They are unit-free, magnitudes in and metrics out; the Earned Value node carries the Cost column's currency onto the money columns, never onto the indices. Its inputs are a schedule Cube and an optional baseline Cube, joined to the schedule by task name for the budget and the planned span; with no schedule it answers blank, and a schedule with no Task column is `#VALUE!`. Per task:
 
 - BAC (budget at completion) is the Cost column.
 - BCWS (planned value, PV) is BAC times the planned fraction.
 - BCWP (earned value, EV) is BAC × percent complete / 100.
 - ACWP (actual cost, AC) is the Actual cost column when present, else BCWP.
 
-The planned fraction (`planned_fraction`) is the share of the baseline span, counted in working days, elapsed by the end of the status date: 0 without a baseline or before its start day, 1 on or after its finish, and otherwise `count(start, status) / count(start, finish)`, so the start day itself is 1 / total. The counter is the schedule engine's `count_between` (`crates/solenoid-schedule/src/calendar.rs`, inclusive of both ends), so weekends and holidays match the schedule.
+The planned fraction (`planned_fraction`) is the share of the baseline span, counted in working days, elapsed by the end of the status date:
 
-The metrics are SV = BCWP − BCWS, CV = BCWP − ACWP, SPI = BCWP / BCWS, CPI = BCWP / ACWP, EAC = BAC / CPI (or BAC when CPI is unknown or not positive, assuming the rest runs to budget), VAC = BAC − EAC and TCPI = (BAC − BCWP) / (BAC − ACWP). A ratio whose denominator is 0 is null and draws blank. Project totals compute each ratio from the summed components, never by averaging the tasks' ratios, the project-management convention.
+- 0 without a baseline or before its start day;
+- 1 on or after its finish;
+- otherwise `count(start, status) / count(start, finish)`, so the start day itself is 1 / total.
+
+The counter is the schedule engine's `count_between` (`crates/solenoid-schedule/src/calendar.rs`, inclusive of both ends), so weekends and holidays match the schedule: a holiday inside the span lowers the planned value.
+
+The metrics:
+
+- SV = BCWP − BCWS and CV = BCWP − ACWP;
+- SPI = BCWP / BCWS and CPI = BCWP / ACWP;
+- EAC = BAC / CPI, or BAC when CPI is unknown or not positive, assuming the rest runs to budget;
+- VAC = BAC − EAC;
+- TCPI = (BAC − BCWP) / (BAC − ACWP).
+
+A ratio whose denominator is 0 is null and draws blank. Project totals compute each ratio from the summed components, never by averaging the tasks' ratios, the project-management convention.
+
+Tests:
+
+- `earnedValueOps.test.ts`: the planned fraction in working days, both ends in, the metrics and totals from components, and a cost overrun.
+- `earnedValue.test.ts`: the node's Summary and totals, the baseline joined by name, the currency on the money columns only, a holiday, and the blank and `#VALUE!` inputs.
 
 ### K-Means, PCA and Logistic Regression
 
 The kernels are the core's (`planners.rs`, `nodes/frames.rs`) and take rows × features numbers; the frame cards pick the numeric columns and drop rows with a blank.
 
-- **`kmeans(points, k)`** runs Lloyd's algorithm from k-means++ seeding, with 10 restarts of up to 300 iterations each, and keeps the run with the lowest inertia (the sum of squared distances to the assigned centers). The generator is seeded (`mulberry32`, default seed `0x5eed`), so a recalculation repeats itself ([[C23]] calcModes). A cluster that empties re-seeds at a random point. Labels are 1-based and renumbered by first appearance, so the same partition always reads the same. A frame with no rows answers blank. A k that isn't a number, rounds below 1, is infinite, or exceeds the rows with every number filled in is `#VALUE!` on both outputs, naming which (`K-Means needs at least 1 cluster`, `K-Means can't make 8 clusters from 7 rows with every number filled in`).
-- **`pca(points, { standardize })`** takes the principal components of the covariance matrix, centered as sklearn and `prcomp` do, through `mat_eigh`; with `standardize` it uses the correlation matrix, dividing each feature by its sample standard deviation (or 1 when that is zero). `scores` is rows × components; `loadings` is features × components, each column a unit-length axis whose largest-magnitude entry is positive; `variance` is each component's variance in descending order (negative values floor at 0); and `ratio` is its share of the total. Fewer than two rows answers null.
-- **`logistic_fit(X, y)`** is unregularized maximum likelihood by iteratively reweighted least squares on `[1 | X]` against a 0/1 target (R `glm(binomial)`, statsmodels `Logit`), up to 100 iterations until the largest coefficient change is below 10⁻¹⁰. Coefficients are the intercept first, then one per feature. It also gives Wald standard errors from the final information matrix, z-scores, two-sided normal p-values, the fitted P(y = 1) per row in input order, and the log-likelihood. No rows, a mismatched target, no more rows than columns, a constant target or a singular system answer null. Perfectly separable data reaches the iteration cap with huge coefficients and `converged: false`, like glm's warning.
+- **`kmeans(points, k)`** runs Lloyd's algorithm from k-means++ seeding, with 10 restarts of up to 300 iterations each, and keeps the run with the lowest inertia (the sum of squared distances to the assigned centers).
+  - The generator is seeded (`mulberry32`, default seed `0x5eed`), so a recalculation repeats itself ([[C23]] calcModes). A cluster that empties re-seeds at a random point.
+  - Labels are 1-based and renumbered by first appearance, so the same partition always reads the same.
+  - A frame with no rows answers blank. A k that isn't a number, rounds below 1, is infinite, or exceeds the rows with every number filled in is `#VALUE!` on both outputs, naming which (`K-Means needs at least 1 cluster`, `K-Means can't make 8 clusters from 7 rows with every number filled in`).
+- **`pca(points, { standardize })`** takes the principal components of the covariance matrix, centered as sklearn and `prcomp` do, through `mat_eigh`.
+  - With `standardize` it uses the correlation matrix, dividing each feature by its sample standard deviation (or 1 when that is zero).
+  - `scores` is rows × components; `loadings` is features × components, each column a unit-length axis whose largest-magnitude entry is positive; `variance` is each component's variance in descending order (negative values floor at 0); and `ratio` is its share of the total.
+  - Fewer than two rows answers null.
+- **`logistic_fit(X, y)`** is unregularized maximum likelihood by iteratively reweighted least squares on `[1 | X]` against a 0/1 target (R `glm(binomial)`, statsmodels `Logit`), up to 100 iterations until the largest coefficient change is below 10⁻¹⁰.
+  - Coefficients are the intercept first, then one per feature. It also gives Wald standard errors from the final information matrix, z-scores, two-sided normal p-values, the fitted P(y = 1) per row in input order, and the log-likelihood.
+  - No rows, a mismatched target, no more rows than columns, a constant target or a singular system answer null.
+  - Perfectly separable data reaches the iteration cap with huge coefficients and `converged: false`, like glm's warning.
+
+Tests: the cards' frozen answers (`fixtures/core/nodes/KMeansNode`, `PcaNode`, `LogisticNode`), replayed by `nodes.rs` (solenoid-core) and `coreNodes.test.ts`.
 
 ### Describe and Correlation Matrix
 
-`describe_column(values, type)` (`frame_fns.rs`) profiles one column, for the Describe card and, through `columnProfiles`, the table popup's summary footer: `count` (present cells, errors included), `blank`, `error` (the error cells among `count`) and `distinct` (distinct present non-error values, type-aware, so `1` and `"1"` differ). A number column adds `mean`, `std` (sample), `min`, the quartiles `q25`, `median`, `q75` (PERCENTILE.INC, pandas' linear method) and `max`, over its finite numbers. A date column adds only `min` and `max`, as serials. Other columns leave the statistics blank.
+`describe_column(values, type)` (`frame_fns.rs`) profiles one column, for the Describe card and, through `columnProfiles`, the table popup's summary footer.
+
+- Every column: `count` (present cells, errors included), `blank`, `error` (the error cells among `count`) and `distinct` (distinct present non-error values, type-aware, so `1` and `"1"` differ).
+- A number column adds `mean`, `std` (sample), `min`, the quartiles `q25`, `median`, `q75` (PERCENTILE.INC, pandas' linear method) and `max`, over its finite numbers.
+- A date column adds only `min` and `max`, as serials.
+- Other columns leave the statistics blank.
 
 `describeFrame(f)` returns one row per input column: `column`, `type`, `count`, `blank`, `distinct`, `mean`, `std`, `min`, `25%`, `50%`, `75%`, `max`.
 
-`correlationMatrix(f, method)` compares every pair of number columns by `pearson`, `spearman`, `kendall` or `covariance` (the sample covariance), like pandas `df.corr` and `df.cov`. Each pair uses only the rows where both cells are finite numbers (pairwise complete), so a patchy frame still answers; a pair with too little data or no variance is blank. The output is a `column` string column naming the variables, then one number column per variable, headers through `makeHeaders` (a variable called `column` heads `column2`).
+`correlationMatrix(f, method)` compares every pair of number columns by `pearson`, `spearman`, `kendall` or `covariance` (the sample covariance), like pandas `df.corr` and `df.cov`.
+
+- Each pair uses only the rows where both cells are finite numbers (pairwise complete), so a patchy frame still answers; a pair with too little data or no variance is blank.
+- The output is a `column` string column naming the variables, then one number column per variable, headers through `makeHeaders` (a variable called `column` heads `column2`).
+
+Tests:
+
+- The Describe card's frozen answers (`fixtures/core/nodes/DescribeNode`), replayed by `nodes.rs` (solenoid-core) and `coreNodes.test.ts`.
+- `describeProfile.test.ts`: Describe's dashboard tiles come from the node's own pass ([[table-popup]]).

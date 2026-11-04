@@ -1,4 +1,4 @@
-// [[C45]], [[C130]], [[C24]]
+// [[C45]] excelComparisons, [[C130]] rustCore, [[C24]] arraySemantics, [[frame-verbs#Lookup over a Frame]]
 import { describe, it, expect } from "vitest";
 import { type LookupMatchMode, type LookupSearchMode } from "../../src/graph/frameOps";
 import { lookupCell, lookupRowIndex, frameRowAt } from "./coreVerbs";
@@ -32,9 +32,6 @@ const xmatchIndex = (needle: unknown, list: unknown[], mode: "exact" | "next_sma
 };
 
 describe("frame/cube XLOOKUP shares the XMATCH formula kernel (no surface drift)", () => {
-  // The node parses its lookup STRING into a typed needle, then delegates the actual
-  // match to xmatchIndex — the SAME kernel the XMATCH/XLOOKUP formulas call. Pinning
-  // equality here is what makes "the two surfaces can't drift" a test, not a comment.
   const names = people.columns[1].values;   // ["Ann", "Bob", "Cy"]  (string)
   const ids = people.columns[0].values;      // [1, 2, 3]             (number)
   const joined = people.columns[2].values;   // [46000, 46010, 46020] (date serials)
@@ -112,12 +109,7 @@ describe("lookupFrameRowIndex + frameRowAt — the whole-row (blank Return) path
   });
 });
 
-// A4: the XLookup node's `frame` input used to carry `rawInputs` (skip ALL coercion) purely
-// to keep a wired Frame typed — coercion would toCube it. It now uses `noWidenInputs` instead:
-// the frame reaches data() at its natural rank (a Frame stays a typed Frame, a Cube a Cube),
-// so a scalar / bare 1-D list still arrives un-widened and the node's shape guard rejects it
-// with the "Build Frame two aligned lists first" #VALUE! rather than a silent widen.
-describe("XLOOKUP node coercion — retiring the rawInputs bypass (A4)", () => {
+describe("XLOOKUP node coercion", () => {
   const d1 = parseDateToSerial("2025-01-15");
   const d2 = parseDateToSerial("2025-06-30");
   const dated: FrameValue = {
@@ -135,7 +127,6 @@ describe("XLOOKUP node coercion — retiring the rawInputs bypass (A4)", () => {
   };
 
   it("keeps a wired frame's DATE typing through coerceInputs (matches an ISO string)", () => {
-    // If coercion stripped the type (toCube → number inference), the ISO string would miss.
     expect(run(dated, "2025-06-30")).toBe(20);
   });
 

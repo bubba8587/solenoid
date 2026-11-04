@@ -1,6 +1,4 @@
-// [[B17]] typedValueModel
-// Realistic scenarios, each with the answer a careful person would expect, written apart from the engine. A scenario the
-// engine answers differently is either a fix or a recorded reason (`ruling`) why the math is right to differ.
+// [[B17]] typedValueModel, [[frame-verbs#Decision Matrix and Decision Sensitivity]], [[frame-verbs#Choice Ladder]]
 import { describe, it, expect } from "vitest";
 import { type DecisionNormalize } from "../../src/graph/frameOps";
 import { decisionMatrix, decisionCube, flipPoints, resolveDecisionWeights, decisionCriteria, relateFramesToCube, relateCubeToFrame } from "./coreVerbs";
