@@ -182,7 +182,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   environment verifies it before starting.
 
 ## Hidden until they get their own pass (author 2026-11-04)
-- [ ] **Choice Ladder, Gantt (card and Chart Builder target), Schedule and Earned Value are out of the menus** (`hidden: true` in `nodeCatalog.ts` and `chartOptions.ts`; the `choice-ladder` and `product-launch-gantt` seeds hidden). Saved documents still load them, and `whats-new` and `kitchen-remodel-tasknotes` still show Gantt and Schedule. Each gets an author pass (the Choice Ladder review below, the Gantt + Schedule follow-ups) before it comes back.
+- [ ] **Choice Ladder, Gantt (card and Chart Builder target), Schedule and Earned Value are out of the menus** ([[D121]] hiddenUntilTheirPass) (`hidden: true` in `nodeCatalog.ts` and `chartOptions.ts`; the `choice-ladder` and `product-launch-gantt` seeds hidden). Saved documents still load them, and `whats-new` and `kitchen-remodel-tasknotes` still show Gantt and Schedule. Each gets an author pass (the Choice Ladder review below, the Gantt + Schedule follow-ups) before it comes back.
 
 ## Choice Ladder (built 2026-10-16)
 - [ ] **Author review of the Choice Ladder** (author 2026-10-29): it was built with little author attention and needs a pass through its node, figure and spec (the ladder figure bullets in `../tree/specs/computation/chart-figures.md`, and `../tree/specs/computation/frame-verbs.md` § Choice Ladder) to sort out what stays. The spec prose there hasn't had the readability pass ([[spec-prose]]). Open idea from the inbox: an option that earns back a rough cost (political capital) could enable options that need it, so order in time matters; wait until a real plan needs it.
