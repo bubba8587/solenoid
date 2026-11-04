@@ -5,7 +5,7 @@
 // ahead dictates, and each Convert's arrows; with the facts the reconcile reads (`fcFacts`).
 import { isDeepStrictEqual } from "node:util";
 import { describe, expect, it } from "vitest";
-import { frozen } from "./coreFixtures";
+import { freezes, frozen } from "./coreFixtures";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import * as Nodes from "../../src/graph/nodeClasses";
@@ -110,16 +110,23 @@ function answers(editor: GraphEditor<Schemes>, seedId: Map<string, string>): Wan
 describe("the Format Controller reconcile holds to its frozen answers", () => {
   it("every seed graph three ways, and 300 seeded graphs of FCs, Displays and Converts", async () => {
     const fresh: Case[] = [];
+    // Outside a freeze, each seed in one of its three variants (in turn) and every tenth random graph: the crate's own
+    // tests replay every frozen case natively.
+    const all = freezes("fc-reconcile");
+    let k = 0;
     for (const [id, seed] of Object.entries(SEEDS) as [string, { graph: { nodes: SavedNode[]; connections: SavedConn[] } }][]) {
       for (const variant of [0, 1, 2]) {
+        if (!all && variant !== k % 3) continue;
         const { editor, seedId, kept } = await build(seed.graph, variant);
         settleWildcardTypes(editor);
         const nm = (x: string) => seedId.get(x) ?? x;
         const facts = fcFacts(editor).map((f) => ({ ...f, id: nm(f.id), ...(f.fc?.host ? { fc: { ...f.fc, host: nm(f.fc.host) } } : {}) }));
         fresh.push({ graph: `${id}#${variant}`, facts, cables: kept, want: answers(editor, seedId) });
       }
+      k++;
     }
     for (let seed = 1; seed <= 300; seed++) {
+      if (!all && seed % 10 !== 0) continue;
       const { editor, seedId, kept } = await random(seed);
       settleWildcardTypes(editor);
       const nm = (x: string) => seedId.get(x) ?? x;
@@ -131,7 +138,8 @@ describe("the Format Controller reconcile holds to its frozen answers", () => {
     expect(cases.filter((c) => Object.keys(c.want.fcs).length > 0).length).toBeGreaterThan(5);
     expect(cases.some((c) => Object.values(c.want.fcs).some(([, d]) => d !== ""))).toBe(true);
     const now = new Map(fresh.map((c) => [c.graph, c]));
-    const bad = cases.filter((c) => !isDeepStrictEqual(now.get(c.graph)?.want, c.want)).map((c) => c.graph);
+    expect(now.size).toBeGreaterThan(20);
+    const bad = cases.filter((c) => now.has(c.graph)).filter((c) => !isDeepStrictEqual(now.get(c.graph)?.want, c.want)).map((c) => c.graph);
     expect(bad).toEqual([]);
   });
 });

@@ -4,7 +4,7 @@
 // governs it, each input's annotation, and each node's value origin; with the facts the walk reads (`annotationFacts`).
 import { isDeepStrictEqual } from "node:util";
 import { describe, expect, it } from "vitest";
-import { frozen } from "./coreFixtures";
+import { freezes, frozen } from "./coreFixtures";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import * as Nodes from "../../src/graph/nodeClasses";
@@ -72,18 +72,25 @@ function answers(editor: GraphEditor<Schemes>, seedId: Map<string, string>): { f
 describe("the annotation walk holds to its frozen answers", () => {
   it("every seed graph, three ways", async () => {
     const fresh: Case[] = [];
+    // Outside a freeze, each seed in one of its three variants (in turn): the crate's own
+    // tests replay every frozen case natively.
+    const all = freezes("annotations");
+    let k = 0;
     for (const [id, seed] of Object.entries(SEEDS) as [string, { graph: { nodes: SavedNode[]; connections: SavedConn[] } }][]) {
       for (const variant of [0, 1, 2]) {
+        if (!all && variant !== k % 3) continue;
         const { editor, seedId, kept } = await build(seed.graph, variant);
         settleWildcardTypes(editor);
         fresh.push({ graph: `${id}#${variant}`, cables: kept, ...answers(editor, seedId) });
       }
+      k++;
     }
     const cases = frozen<Case>("annotations", () => fresh);
     expect(cases.length).toBeGreaterThan(60);
     expect(cases.some((c) => Object.values(c.want.out).some((a) => a !== null))).toBe(true);
     const now = new Map(fresh.map((c) => [c.graph, c]));
-    const bad = cases.filter((c) => !isDeepStrictEqual(now.get(c.graph)?.want, c.want)).map((c) => c.graph);
+    expect(now.size).toBeGreaterThan(20);
+    const bad = cases.filter((c) => now.has(c.graph)).filter((c) => !isDeepStrictEqual(now.get(c.graph)?.want, c.want)).map((c) => c.graph);
     expect(bad).toEqual([]);
   });
 });

@@ -3,7 +3,7 @@
 // dropped and in reverse node order, as the facts the settle reads (`settleFacts`), the cables, and every socket's
 // type once it has settled.
 import { describe, expect, it } from "vitest";
-import { frozen } from "./coreFixtures";
+import { freezes, frozen } from "./coreFixtures";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import * as Nodes from "../../src/graph/nodeClasses";
@@ -67,20 +67,27 @@ const renamed = (facts: NodeFacts[], seedId: Map<string, string>): NodeFacts[] =
 describe("the Type Settle holds to its frozen answers", () => {
   it("every seed graph, three ways", async () => {
     const fresh: Case[] = [];
+    // Outside a freeze, each seed in one of its three variants (in turn): the crate's own
+    // tests replay every frozen case natively.
+    const all = freezes("settle");
+    let k = 0;
     for (const [id, seed] of Object.entries(SEEDS) as [string, { graph: { nodes: SavedNode[]; connections: SavedConn[] } }][]) {
       for (const variant of [0, 1, 2]) {
+        if (!all && variant !== k % 3) continue;
         const { editor, seedId, kept } = await build(seed.graph, variant);
         const facts = renamed(settleFacts(editor), seedId);
         const settled = settleWildcardTypes(editor);
         fresh.push({ graph: `${id}#${variant}`, facts, cables: kept, want: answer(editor, seedId, settled) });
       }
+      k++;
     }
     const cases = frozen<Case>("settle", () => fresh);
     expect(cases.length).toBeGreaterThan(60);
     expect(cases.some((c) => c.want!.adopted.length > 0)).toBe(true);
     expect(cases.some((c) => c.want!.conduitChanged)).toBe(true);
     const now = new Map(fresh.map((c) => [c.graph, c]));
-    const bad = cases.filter((c) => JSON.stringify(now.get(c.graph)?.want) !== JSON.stringify(c.want) || JSON.stringify(now.get(c.graph)?.facts) !== JSON.stringify(c.facts));
+    expect(now.size).toBeGreaterThan(20);
+    const bad = cases.filter((c) => now.has(c.graph)).filter((c) => JSON.stringify(now.get(c.graph)?.want) !== JSON.stringify(c.want) || JSON.stringify(now.get(c.graph)?.facts) !== JSON.stringify(c.facts));
     expect(bad.map((c) => c.graph)).toEqual([]);
   });
 });

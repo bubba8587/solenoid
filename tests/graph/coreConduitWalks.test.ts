@@ -3,7 +3,7 @@
 // (chained, fanned out, looped) and sinks, where each output's value really comes from (`resolveTypedSource`) and the
 // whole run every cable belongs to (`conduitPath`).
 import { describe, expect, it } from "vitest";
-import { frozen } from "./coreFixtures";
+import { freezes, frozen } from "./coreFixtures";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput } from "../../src/graph/graphModel";
 import { ConduitNode } from "../../src/graph/nodes/conduit";
@@ -80,15 +80,18 @@ function answers(editor: GraphEditor<Schemes>, name: Map<string, string>): Case 
 
 describe("the Conduit walks hold to their frozen answers", () => {
   it("every output's source and every cable's run, over 300 seeded graphs", async () => {
-    const fresh: Case[] = [];
+    // Outside a freeze, every tenth graph: the crate's own tests replay every frozen case natively.
+    const all = freezes("conduit-walks");
+    const fresh: (Case | undefined)[] = [];
     for (let seed = 1; seed <= 300; seed++) {
+      if (!all && seed % 10 !== 0) { fresh.push(undefined); continue; }
       const { editor, name } = await build(seed);
       fresh.push(answers(editor, name));
     }
-    const cases = frozen<Case>("conduit-walks", () => fresh);
+    const cases = frozen<Case>("conduit-walks", () => fresh as Case[]);
     expect(cases.length).toBe(300);
     expect(cases.some((c) => Object.values(c.want!.paths).some((p) => (p as { conduits: string[] }).conduits.length > 1))).toBe(true);
-    const bad = cases.filter((c, i) => JSON.stringify(c) !== JSON.stringify(fresh[i])).map((_, i) => i);
+    const bad = cases.filter((c, i) => fresh[i] !== undefined && JSON.stringify(c) !== JSON.stringify(fresh[i])).map((_, i) => i);
     expect(bad).toEqual([]);
   });
 });

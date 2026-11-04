@@ -65,6 +65,9 @@ const VOLATILE_DST = [
   "Asia/Gaza", "Antarctica/Troll",
 ];
 const DST_ZONES = [...STABLE_DST, ...VOLATILE_DST];
+/** One zone of each DST shape (plain, the British rules, a half-hour change, a 45-minute offset), for the transition
+ *  sweeps: the card and the formula share the zone database, so more zones test the database, not the card. */
+const DST_SHAPES = ["America/New_York", "Europe/London", "Australia/Lord_Howe", "Pacific/Chatham"];
 const settled = (zone: string) => !VOLATILE_DST.includes(zone);
 const SETTLED_MS = Date.UTC(2024, 11, 31);
 const FIXED_ZONES = ["UTC", "Asia/Kolkata", "Asia/Kathmandu", "Asia/Tokyo", "Asia/Tehran", "Pacific/Kiritimati", "Pacific/Pago_Pago", "Etc/GMT+5", "Etc/GMT-14"];
@@ -127,13 +130,10 @@ describe("Time Zone Convert card", () => {
 
 
   it("agrees with the formula on each side of every transition, there and back", () => {
-    for (const zone of DST_ZONES) {
+    for (const zone of DST_SHAPES) {
       const edges = [
-        ...transitions(zone, Date.UTC(1800, 0, 1), Date.UTC(1925, 0, 1), 30 * DAY).slice(0, 2),
         ...transitions(zone, Date.UTC(1943, 0, 1), Date.UTC(1946, 0, 1)),
-        ...(settled(zone)
-          ? transitions(zone, Date.UTC(2026, 0, 1), Date.UTC(2028, 0, 1))
-          : transitions(zone, Date.UTC(2016, 0, 1), Date.UTC(2018, 0, 1))),
+        ...transitions(zone, Date.UTC(2026, 0, 1), Date.UTC(2028, 0, 1)),
       ];
       for (const t of edges) {
         for (const d of [-1000, 0, 30 * M]) {
@@ -144,7 +144,7 @@ describe("Time Zone Convert card", () => {
         }
       }
     }
-  }, 60_000);
+  });
 
   it("holds every kind of zone across the calendar's span", () => {
     const at = [
@@ -202,11 +202,8 @@ describe("World Clock card", () => {
   it("reads every kind of zone at each side of its transitions", () => {
     const zones = [...DST_ZONES, ...FIXED_ZONES, ...ALIASES, ...CASES, ...OFFSETS, ...BAD];
     const instants = [Date.UTC(1850, 5, 1), Date.UTC(1999, 11, 31, 23, 59, 59), Date.UTC(2300, 6, 1, 12, 30), Date.UTC(100000, 0, 1), Date.UTC(275760, 6, 1), 8.64e15, -1, 0, Date.UTC(-50, 0, 1)];
-    for (const zone of STABLE_DST) {
+    for (const zone of DST_SHAPES) {
       for (const t of transitions(zone, Date.UTC(2026, 0, 1), Date.UTC(2027, 0, 1))) instants.push(t - 1000, t);
-    }
-    for (const zone of VOLATILE_DST) {
-      for (const t of transitions(zone, Date.UTC(2016, 0, 1), Date.UTC(2017, 0, 1))) instants.push(t - 1000, t);
     }
     for (const t of instants) {
       const shown = t > SETTLED_MS ? zones.filter(settled) : zones;

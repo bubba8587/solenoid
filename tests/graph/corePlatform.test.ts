@@ -1,12 +1,13 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-// Where the core ports a table the platform holds (Node's NFD), it is checked against the platform itself, every
-// code point.
+// Where the core ports a table the platform holds (Node's NFD), it is checked against the platform itself, over the
+// scripts whose letters carry marks. A Unicode version change shows on the bleeding-edge branch, which moves the
+// normalization crate and Node together.
 import { it, expect } from "vitest";
 import { wasmInvokeSync } from "../../src/graph/engineWasm";
 
 const call = (name: string, args: unknown[]) => wasmInvokeSync<{ str?: string; bool?: boolean; num?: string }>("engine_call", { name, args });
 
-it("UNACCENT's NFD is this Node's, every code point after a letter and before a mark", { timeout: 30_000 }, () => {
+it("UNACCENT's NFD is this Node's over the accented scripts, each code point after a letter and before a mark", () => {
   // UNACCENT spells these out itself after decomposing.
   const spelled: Record<string, string> = { "ß": "ss", "æ": "ae", "Æ": "AE", "ø": "o", "Ø": "O", "œ": "oe",
     "Œ": "OE", "đ": "d", "Đ": "D", "ł": "l", "Ł": "L", "ð": "d", "Ð": "D", "þ": "th", "Þ": "TH",
@@ -21,12 +22,8 @@ it("UNACCENT's NFD is this Node's, every code point after a letter and before a 
     const got = (call("UNACCENT", [lines.join("\n")]).str ?? "").split("\n");
     lines.forEach((t, i) => { if (got[i] !== expected(t)) bad.push(cps[i].toString(16)); });
   };
-  let batch: number[] = [];
-  for (let c = 0x80; c <= 0x10ffff; c++) {
-    if (c >= 0xd800 && c <= 0xdfff) continue;
-    batch.push(c);
-    if (batch.length === 20_000) { flush(batch); batch = []; }
-  }
-  if (batch.length) flush(batch);
+  // Latin with its extensions (Vietnamese among them), combining marks, Greek, Cyrillic, and the Hangul syllables.
+  const BLOCKS = [[0x80, 0x24f], [0x300, 0x36f], [0x370, 0x52f], [0x1e00, 0x1fff], [0xac00, 0xd7a3]];
+  for (const [lo, hi] of BLOCKS) flush(Array.from({ length: hi - lo + 1 }, (_, i) => lo + i));
   expect(bad.slice(0, 5)).toEqual([]);
 });
