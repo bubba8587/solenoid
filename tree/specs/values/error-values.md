@@ -108,6 +108,7 @@ Tests:
 `SEES_ERRORS` (`crates/solenoid-graph/src/boundary.rs`) names the classes, by constructor name, whose `data()` receives error values instead of short-circuiting ([[C24]] arraySemantics):
 
 - **IFERROR and the IS-checks** consume errors; that is their whole job.
+- **IF, IFS, SWITCH and CHOOSE** answer only an error in what picks the branch or in the branch they take, as their formulas do ([[D122]] branchCardsSeeTheirTest, the formula side in [[formula-language#The dispatch ladder]]): IF's condition, cell by cell over a list of conditions; CHOOSE's index; SWITCH's value and a case reached before the match; any of IFS's conditions. An error in a branch not taken never reaches the answer.
 - **Conduit and CableSwitch** route lanes independently, and the any-error-to-every-output rule would poison sibling lanes.
 - **Display** reads `cachedValue`, not the `cachedResult` the guard mirrors to, so it has to run on the raw error to both show the badge and forward the error on `out`. Most nodes render `cachedResult` and show propagated errors already; the gap is only the minority that render `cachedValue`, `cachedList` or `cachedText`.
 - **Report**'s inline refs are independent lanes too. **Note** is output-only and is listed only to keep its read path uniform.
@@ -118,6 +119,7 @@ Tests:
 
 - `errorValue.test.ts`: an error consumer sees the raw error, and a Chart handed an error answers an empty chart.
 - `errorIntegration.test.ts`: a Display shows the error in its box and forwards it, and an ISERROR after it reports TRUE.
+- `nodes/branchErrors.test.ts`: each branch card with an error wired into a branch not taken answers the branch taken, with one in its test or its chosen branch answers that error, and its formula answers the same.
 
 ### Producers and provenance
 

@@ -232,13 +232,28 @@ fn if_node(c: &mut Call) -> Answer {
     };
     select(c, selected);
     let list = matches!(cond, V::List(_));
-    let result = broadcast_el(&[cond, then, els], |o| match if_test(o[0]) {
-        V::Bool(true) => o[1].clone(),
-        V::Bool(false) => o[2].clone(),
-        t => t,
-    });
+    let result = if_cells(&cond, &then, &els);
     // A list of conditions takes each cell from either branch: the cells it took may not mix dates with another kind.
     answer(c, "result", if list { crate::date_values::refuse_mixed(result) } else { result })
+}
+
+/// IF item by item where any input is a list, a ragged position null: each cell answers its test's error or the
+/// branch it takes, never an error in the branch not taken ([[D122]] branchCardsSeeTheirTest).
+fn if_cells(cond: &V, then: &V, els: &V) -> V {
+    let pick = |t: &V, a: &V, b: &V| match if_test(t) {
+        V::Bool(true) => a.clone(),
+        V::Bool(false) => b.clone(),
+        t => t,
+    };
+    let at = |v: &V, i: usize| match v {
+        V::List(l) => l.get(i).cloned().unwrap_or(V::Null),
+        v => v.clone(),
+    };
+    let len = [cond, then, els].iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).max();
+    match len {
+        None => pick(cond, then, els),
+        Some(len) => list((0..len).map(|i| pick(&at(cond, i), &at(then, i), &at(els, i))).collect()),
+    }
 }
 
 fn boolean_op(c: &mut Call) -> Answer {
@@ -329,12 +344,17 @@ fn choose(c: &mut Call) -> Answer {
 
 fn switch(c: &mut Call) -> Answer {
     let expr = pick_slot(c, "expr");
-    if matches!(expr, V::Null) {
+    if expr.is_sol_error() || matches!(expr, V::Null) {
         select(c, None);
-        return answer(c, "result", V::Null);
+        return answer(c, "result", expr);
     }
     for when in keys_from(c, "when") {
-        if crate::excel_functions::strict_equals(&expr, &pick_slot(c, &when)) {
+        let case = pick_slot(c, &when);
+        if case.is_sol_error() {
+            select(c, None);
+            return answer(c, "result", case);
+        }
+        if crate::excel_functions::strict_equals(&expr, &case) {
             let then = format!("then{}", &when[4..]);
             select(c, Some(&then));
             let v = pick_slot(c, &then);
@@ -350,7 +370,13 @@ fn switch(c: &mut Call) -> Answer {
 }
 
 fn ifs(c: &mut Call) -> Answer {
-    for cond_key in keys_from(c, "cond") {
+    let conds = keys_from(c, "cond");
+    // Any test's error is the answer, one after the match included, as the formula reads them.
+    if let Some(e) = conds.iter().map(|k| pick_slot(c, k)).find(V::is_sol_error) {
+        select(c, None);
+        return answer(c, "result", e);
+    }
+    for cond_key in conds {
         let cond = pick_slot(c, &cond_key);
         let missing = matches!(cond, V::Null);
         if missing && c.wired(&cond_key).is_some_and(|w| !w.is_empty()) {
