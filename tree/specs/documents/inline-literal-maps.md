@@ -51,10 +51,8 @@ flowchart TD
     t -->|"number, numlist"| nf["a number field"] --> lit["literals"]
     t -->|"string, strcombo"| tf["a text field<br>or a column picker"] --> sl["stringLiterals"]
     t -->|"strlist, datelist, logicallist,<br>an opted-in numlist"| csv["a CSV field"] --> sl
-    t -->|"any, anydata, trueany"| w{"the node opts in?"}
-    w -->|autoLiterals| auto["the auto field: a number<br>to literals, else text"]
-    auto --> lit
-    auto --> sl
+    t -->|"any, anycombo, anydata, trueany"| w{"the node opts in?"}
+    w -->|autoLiterals| keyed["the keyed field and its<br>kind button"] --> sl
     w -->|textLiterals| txt["a text field, as typed"] --> sl
     w -->|neither| wire["wire-only"]
     t -->|"anything else"| wire
@@ -67,20 +65,24 @@ In `InlineInputs` (the fixed rows of most cards):
 | `number`, and `numlist` unless opted in | number field | `literals` |
 | `string`, `strcombo` | text field, or a column picker when the node declares that key as a Frame column picker | `stringLiterals` |
 | `strlist`, `datelist`, `logicallist`, an opted-in `numlist` | CSV field, with no quote marks, which would suggest one string | `stringLiterals` |
-| `any`, `anydata`, `trueany` on a node with `autoLiterals` | the auto field (below) | either |
-| `any`, `anydata`, `trueany` on a node with `textLiterals` | text field, kept exactly as typed | `stringLiterals` |
+| `any`, `anycombo`, `anydata`, `trueany` on a node with `autoLiterals` | the keyed field and its kind button (below) | `stringLiterals`, the kind in `literalKinds` |
+| `any`, `anycombo`, `anydata`, `trueany` on a node with `textLiterals` | text field, kept exactly as keyed | `stringLiterals` |
 | anything else | none | none |
 
-A combo (`numlist`, `strcombo`) edits in place as a scalar; it becomes a list only when a cable brings one.
+A combo (`numlist`, `strcombo`, `anycombo`) edits in place as a scalar; it becomes a list only when a cable brings one.
 
 In `ExtensibleInputs` (rows that can be added and removed), `string` and the list types `numlist`, `strlist`, `datelist`, `logicallist` get the text field, typed as CSV for a list. `anylist`, `anytable`, `table`, `frame`, `cube`, `logicalcombo`, `lambda` and `chart` rows are wire-only and show their row number, because a typed literal means nothing for them. A wildcard row is wire-only unless the node sets `autoLiterals`. Every other row gets the number field.
 
 ## Wildcard slots
 
-A node opts its wildcard rows into typed literals with `autoLiterals` (`AutoLiteralHost`, `takesAutoLiteral`). The value selectors opt in, since their wildcard rows are value branches, and so do the Cube builders, whose rows are cells. A wildcard sink or relay (Display, Cast, Report) leaves it off and stays wire-only. The opt-in covers `any`, `anydata` and `trueany`; a list or a matrix still arrives only by wire.
+A node opts its wildcard rows into typed literals with `autoLiterals` (`AutoLiteralHost`, `takesAutoLiteral`). The value selectors opt in, since their wildcard rows are value branches, and so do the Cube builders, whose rows are cells. A wildcard sink or relay (Display, Cast, Report) leaves it off and stays wire-only. The opt-in covers `any`, `anycombo`, `anydata` and `trueany`; a list or a matrix still arrives only by wire.
 
 A node whose op reads a wildcard slot as text opts in with `textLiterals` instead (`takesTextLiteral`): its rows get the plain text field, so a space, `007` or `1.50` reaches the op exactly as typed rather than trimmed or read as a number. Replace Values' Find and Replace take this field; a wired value of any type still connects.
 
-Tests: `cubeLiteralCells.test.ts`: an unwired wildcard row on the Cube builders takes a number or a text cell, and removing a row drops both maps' entries.
+Tests: `cubeLiteralCells.test.ts`: an unwired wildcard row on the Cube builders takes a number or a text cell, and removing a row drops its keyed text and kind.
 
-The auto field (`InlineAutoField`) holds a number or text. An entry that reads as a number (`decimalFromText`, the one text-to-number reading [[C58]] tableInputRawText sets, so "12abc" and `0x1F` are text) commits as a number into `literals`; anything else commits as text into `stringLiterals`, and the quote marks appear to show which landed, since a SWITCH case of `12` is not a case of `"12"`. The field keeps the number field's drag-to-scrub while it holds a number. Each commit deletes the key from both maps before writing one, so a wildcard slot lives in exactly one map and a reader never has to break a tie.
+**The kind shows before the text is read** ([[C10]] socketLattice: text becomes another kind only where the type shows on screen). The keyed field (`KeyedField`) keeps the text exactly as keyed in `stringLiterals`, and the Frame column's type button sits to its right (`sol-coltype`, the same button and icons): a click cycles Number, Text, Date and Boolean, Number when none is picked, and the pick is saved in the init field `literalKinds`. Nothing guesses the kind from the text, so `12` keyed as Text is the text `"12"`, and a SWITCH case of `12` matches only what its kind says. Text shows in quote marks and a Date shows the date format as its placeholder.
+
+- **One reader per kind, the Frame Input cell's** ([[C58]] tableInputRawText): the core reads a slot through `Call::keyed` (`keyed_value` over `frame_cell_of`), and a body that runs in JavaScript (Script) through `readKeyed`, on the same readers over wasm. Text the kind can't read is `#TYPE!` naming it; blank is unset. Flipping the kind rereads the same text.
+- **The socket takes the kind's color while unwired.** Once a kind is picked or text is keyed, the Type Settle adopts the unwired input to that kind (`keyedRestType`, the input fact's `rest`), so the socket and whatever its passthrough feeds show the value's type. A cable decides once wired, and acceptance still goes by the declared base, so any cable connects.
+- **No drag-to-scrub** on this field.

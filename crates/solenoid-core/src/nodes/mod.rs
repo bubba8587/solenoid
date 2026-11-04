@@ -43,6 +43,7 @@ pub use docs::{column_unit_parts, tag_fc_unit, TableUnit};
 pub(crate) use frames::core_cell;
 #[cfg(target_arch = "wasm32")]
 pub(crate) use list::infer_cells;
+pub use list::keyed_value;
 pub use values::{
     decode, decode_card, serialize_cube, serialize_frame, serialize_lambda, Column, Cube, CubeColumn, Cv, CvCell, Frame,
 };
@@ -305,6 +306,20 @@ impl Call {
         self.string_literals.get(key).map(decode).unwrap_or(V::Undef)
     }
 
+    /// The kind a wildcard slot's toggle shows (`literalKinds`): number, string, date or logical, Number when unset.
+    pub fn keyed_kind(&self, key: &str) -> &str {
+        self.init.get("literalKinds").and_then(|m| m.get(key)).and_then(Json::as_str).unwrap_or("number")
+    }
+
+    /// A wildcard slot's keyed text, read as its kind the way a Frame Input cell of that type reads it ([[C58]]
+    /// tableInputRawText); `undefined` where nothing is keyed.
+    pub fn keyed(&self, key: &str) -> V {
+        match self.string_literals.get(key).and_then(Json::as_str) {
+            Some(text) => list::keyed_value(self.keyed_kind(key), text),
+            None => V::Undef,
+        }
+    }
+
     /// Unwired, the typed literal, else `dflt`; wired, the first cable's value.
     pub fn read_num(&self, key: &str, dflt: f64) -> V {
         let lit = match self.literal(key) {
@@ -361,9 +376,9 @@ impl Call {
             .map(|k| {
                 let v = match self.wired(k) {
                     Some([first, ..]) => first.clone(),
-                    _ => match self.string_literal(k) {
-                        V::Str(s) if !s.is_empty() => V::Str(s),
-                        _ => self.literal(k),
+                    _ => match self.keyed(k) {
+                        V::Undef => self.literal(k),
+                        v => v,
                     },
                 };
                 crate::date_values::census(&v)

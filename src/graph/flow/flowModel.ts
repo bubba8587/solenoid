@@ -59,6 +59,7 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
     if (sn.stringLiterals && "stringLiterals" in anyNode) {
       anyNode.stringLiterals = { ...sn.stringLiterals };
     }
+    if (sn.init?.literalKinds && "literalKinds" in anyNode) anyNode.literalKinds = { ...(sn.init.literalKinds as object) };
     byId.set(sn.id, node);
     node.position = { x: sn.x ?? 0, y: sn.y ?? 0 };
     await editor.addNode(node);

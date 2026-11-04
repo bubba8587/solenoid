@@ -10,7 +10,7 @@ import { InfoIcon } from "./Icons";
 import { TypeIcon } from "./TypeIcon";
 import { closeParens } from "../closeParens";
 
-type ColType = "number" | "string" | "date" | "logical";
+export type ColType = "number" | "string" | "date" | "logical";
 export const COLTYPE_ORDER: ColType[] = ["number", "string", "date", "logical"];
 export const COLTYPE_NAME: Record<ColType, string> = { number: "Number", string: "Text", date: "Date", logical: "Boolean" };
 

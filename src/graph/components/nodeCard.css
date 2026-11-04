@@ -917,6 +917,15 @@ body.solenoid-scrubbing * {
   flex: 1 1 auto;
   min-width: 0;
 }
+/* A keyed wildcard slot: its field, then the kind button (`sol-coltype`). */
+.solenoid-node__keyed {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.solenoid-node__keyed > .sol-coltype { width: 16px; height: 16px; }
 .solenoid-node__quoted--inline .solenoid-node__quoted-field {
   flex: 1 1 auto;
   min-width: 0;

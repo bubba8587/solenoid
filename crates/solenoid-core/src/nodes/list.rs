@@ -669,6 +669,27 @@ pub(crate) fn frame_cell_of(ty: &str, raw: &str) -> V {
     V::Num(f64::NAN)
 }
 
+/// Keyed text read as a value of the kind its slot shows: blank is `undefined`, a date its day, and text the kind
+/// can't read `#TYPE!` naming it, never a guess at another kind ([[C10]] socketLattice).
+pub fn keyed_value(kind: &str, text: &str) -> V {
+    match frame_cell_of(kind, text) {
+        V::Null => V::Undef,
+        V::Num(n) if n.is_nan() => {
+            let name = match kind {
+                "date" => "date",
+                "logical" => "logical",
+                _ => "number",
+            };
+            V::err(crate::error_value::sol_error(
+                crate::error_value::ErrorCode::Type,
+                format!("\"{text}\" doesn't read as a {name}. Key in a {name}, or switch the slot's kind"),
+            ))
+        }
+        V::Num(n) if kind == "date" => V::Date(n),
+        v => v,
+    }
+}
+
 /// A wired item read as the list's type; converts, never filters.
 pub(crate) fn list_item_of(ty: &str, v: &V) -> V {
     if let V::Str(s) = v
@@ -1112,10 +1133,7 @@ fn aggregate(c: &mut Call) -> Answer {
 fn xmatch(c: &mut Call) -> Answer {
     let val = match c.wired("value") {
         Some([first, ..]) => first.clone(),
-        _ => match c.string_literal("value") {
-            V::Undef => or(c.literal("value"), V::Null),
-            text => text,
-        },
+        _ => or(c.keyed("value"), V::Null),
     };
     if matches!(val, V::Null) {
         return shown(c, "cachedResult", "result", V::Null);
@@ -2101,4 +2119,22 @@ fn rand_array(c: &mut Call) -> Answer {
     );
     c.show("cachedList", drawn.clone());
     Ok(vec![("list".into(), Cv::from(drawn))])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::keyed_value;
+    use crate::excel_functions::V;
+
+    #[test]
+    fn keyed_text_reads_as_its_slots_kind_never_a_guess() {
+        assert!(matches!(keyed_value("number", "12"), V::Num(n) if n == 12.0));
+        assert!(matches!(keyed_value("string", "12"), V::Str(s) if &*s == "12"));
+        assert!(matches!(keyed_value("date", "01-Feb-1992"), V::Date(_)));
+        assert!(matches!(keyed_value("logical", "true"), V::Bool(true)));
+        assert!(matches!(keyed_value("number", ""), V::Undef));
+        for (kind, text) in [("number", "12abc"), ("date", "Feb"), ("logical", "maybe")] {
+            assert!(matches!(keyed_value(kind, text), V::Err(e) if e.code.to_string() == "#TYPE!"), "{kind} {text}");
+        }
+    }
 }

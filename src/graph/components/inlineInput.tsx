@@ -4,7 +4,7 @@ import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent, type ReactNode } from "react";
 import { useKatexRender } from "./katexLoader";
 import type { GraphSocket } from "../graphModel";
-import { SolenoidSocket } from "../sockets";
+import { declaredTypeOf } from "../sockets";
 import { processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { connectionVersionStore } from "../graphSignals";
@@ -18,10 +18,14 @@ import { ColumnPickerField, ColumnListField } from "./ColumnPickerField";
 import { columnPickersOf } from "../nodes/columnPickerHook";
 import { stopDragStart } from "../coarse";
 import { usePendingDraft } from "../draftFlush";
-import { decimalFromText } from "../valueKinds";
 import { fieldPlaceholder } from "../emptySlots";
 import { rolesOf } from "../nodes/shared";
 import { DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
+import { COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
+import { isKeyedWildcard, keyedKindOf, type KeyedKind } from "../keyedLiterals";
+export type { KeyedKind } from "../keyedLiterals";
+import { TypeIcon } from "./TypeIcon";
+import "./colType.css";
 
 // Body-height estimate only; socket placement is measured per row.
 export const INPUT_ROW_PITCH = 28;
@@ -365,65 +369,69 @@ export function InlineTextField({
   return <QuotedTextInput value={value ?? ""} onChange={onChange} placeholder={placeholder} listId={listId} />;
 }
 
-export type AutoLiteral = number | string | undefined;
-const autoToText = (v: AutoLiteral) => (v == null ? "" : String(v));
-const parseAuto = (t: string): AutoLiteral => {
-  const trimmed = t.trim();
-  if (trimmed === "") return undefined;
-  const n = decimalFromText(trimmed);
-  return Number.isFinite(n) ? n : t;
-};
-
-export function InlineAutoField({
-  num,
-  text,
-  onChange,
-  placeholder,
-}: {
-  num: number | undefined;
-  text: string | undefined;
-  /** Writes exactly one of the two maps; the caller clears the other. */
-  onChange: (v: AutoLiteral) => void;
-  placeholder?: string;
-}) {
-  const committed: AutoLiteral = text !== undefined ? text : num;
-  const field = useDraftCommit<AutoLiteral>(committed, autoToText, parseAuto, onChange);
-  const quoted = typeof committed === "string";
-  const scrub = useNumberScrub(
-    num,
-    (v) => field.setDraft(autoToText(v)),
-    (next) => {
-      onChange(next);
-    },
+/** A wildcard slot's keyed literal: the text as keyed, and the type button beside it that says which kind the core reads
+ *  it as ([[C10]] socketLattice: a kind shows before it is read, never guessed from the text; [[C58]] tableInputRawText).
+ *  A kind picked or text keyed recolors the unwired socket (`keyedRestType`). */
+export function KeyedField({ node, slot, placeholder }: { node: AutoLiteralHost & { id: string; edited?: () => void }; slot: string; placeholder?: string }) {
+  const kind = keyedKindOf(node, slot);
+  const text = node.stringLiterals?.[slot] ?? "";
+  async function commit(next: { text?: string; kind?: KeyedKind }) {
+    const strs = (node.stringLiterals ??= {});
+    if (next.text !== undefined) {
+      if (next.text === "") delete strs[slot];
+      else strs[slot] = next.text;
+    }
+    if (next.kind !== undefined) (node.literalKinds ??= {})[slot] = next.kind;
+    node.edited?.();
+    const ed = getOwningEditor(node.id);
+    const ar = getOwningView(node.id);
+    if (ed && ar) reconcileTypesAfterEdit(ed, ar);
+    await processGraph(node.id);
+  }
+  const cycle = () => void commit({ kind: COLTYPE_ORDER[(COLTYPE_ORDER.indexOf(kind) + 1) % COLTYPE_ORDER.length] });
+  return (
+    <span className="solenoid-node__keyed">
+      {kind === "string" ? (
+        <QuotedInlineInput value={text} onChange={(t) => void commit({ text: t })} placeholder={placeholder} />
+      ) : (
+        <KeyedInput value={text} onChange={(t) => void commit({ text: t })} placeholder={kind === "date" ? DEFAULT_DATE_FORMAT : placeholder} />
+      )}
+      <button
+        type="button"
+        className="sol-coltype"
+        title={`Read as ${COLTYPE_NAME[kind]}. Cycle Number / Text / Date / Boolean.`}
+        onPointerDown={stopDragStart}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); cycle(); }}
+      >
+        <TypeIcon type={kind} size={12} />
+      </button>
+    </span>
   );
-  // type="text": a number input refuses a non-numeric draft outright.
-  const input = (
+}
+
+function KeyedInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const field = useDraftCommit(value, (v) => v, (t) => t.trim(), onChange);
+  return (
     <input
       type="text"
-      className={quoted ? "solenoid-node__quoted-input" : "solenoid-node__inline-input"}
+      className="solenoid-node__inline-input"
       value={field.draft}
       placeholder={placeholder}
       onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
       onBlur={field.onBlur}
       onKeyDown={field.onKeyDown}
-      {...(quoted ? { onPointerDown: stopDragStart } : scrub)}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
       spellCheck={false}
     />
-  );
-  // The chrome flips only on commit, when the field is already blurred, so this remount costs no focus.
-  if (!quoted) return input;
-  return (
-    <span className="solenoid-node__quoted solenoid-node__quoted--inline">
-      <span className="solenoid-node__quote" aria-hidden="true">"</span>
-      <span className="solenoid-node__quoted-field">{input}</span>
-      <span className="solenoid-node__quote" aria-hidden="true">"</span>
-    </span>
   );
 }
 
 export interface AutoLiteralHost {
   autoLiterals?: boolean;
+  /** Each keyed wildcard slot's kind, where it isn't Number ([[C10]] socketLattice). */
+  literalKinds?: Record<string, KeyedKind>;
   /** Wildcard rows take text exactly as typed, for a node whose op reads the value as text. */
   textLiterals?: boolean;
   /** Date rows take a typed date, kept as its text beside the row's number (Expect's bounds). */
@@ -431,7 +439,7 @@ export interface AutoLiteralHost {
   stringLiterals?: Record<string, string>;
 }
 
-const isWildcard = (dt: string | undefined) => dt === "any" || dt === "anydata" || dt === "trueany";
+const isWildcard = isKeyedWildcard;
 
 export function takesAutoLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
   return !!node.autoLiterals && isWildcard(dt);
@@ -481,6 +489,8 @@ export type InlineNode = {
   stringLiterals?: Record<string, string>;
   autoLiterals?: boolean;
   textLiterals?: boolean;
+  literalKinds?: Record<string, KeyedKind>;
+  edited?: () => void;
 };
 
 type Props = {
@@ -556,17 +566,6 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
     await processGraph(node.id);
   }
 
-  async function setAuto(key: string, v: AutoLiteral) {
-    // Exactly one map holds a wildcard slot, so the reader never has to break a tie.
-    delete literals[key];
-    delete strLiterals[key];
-    if (typeof v === "number") literals[key] = v;
-    else if (typeof v === "string") strLiterals[key] = v;
-    noteEdit(key, v === undefined);
-    settleTypes();
-    await processGraph(node.id);
-  }
-
   if (collapsed) {
     if (entries.length >= 2) {
       return <CollapsedInputPill node={node} emit={emit} keys={entries.map(([k]) => k)} />;
@@ -591,7 +590,8 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
     <>
       {entries.map(([key, input], i) => {
         const socket = input.socket;
-        const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
+        // The field goes by the declared rung: a keyed slot's socket adopts its kind while unwired.
+        const dt = declaredTypeOf(socket);
         const numlistCsv = dt === "numlist" && key in strLiterals;
         // A combo edits in place; it becomes a list only when a cable brings one.
         const isNumber = dt === "number" || (dt === "numlist" && !numlistCsv);
@@ -612,7 +612,7 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
               >↩ {incoming.get(key)?.label || "wired"}</span>
             ) : cableOnlyKeys?.has(key) ? null
               : takesAutoLiteral(node, dt) ? (
-              <InlineAutoField num={literals[key]} text={strLiterals[key]} onChange={(v) => void setAuto(key, v)} placeholder={placeholder} />
+              <KeyedField node={node} slot={key} placeholder={placeholder} />
             ) : takesTextLiteral(node, dt) ? (
               <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
             ) : takesDateLiteral(node, dt) ? (

@@ -17,6 +17,7 @@ import { cubeCellToken, CubeCellChip } from "./cubeCell";
 import { CellKindMenu } from "./CellKindMenu";
 import { ColumnExprField, COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
 import { TypeIcon } from "./TypeIcon";
+import "./colType.css";
 
 
 const rowsAt = (records: CubeRecord[], path: CubePath): CubeRecord[] => {
@@ -318,7 +319,7 @@ export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; 
       <div className="table-popup__colhead-edit">
         <button
           type="button"
-          className={`table-popup__coltype${kind === "fx" ? " table-popup__coltype--fx" : ""}`}
+          className={`sol-coltype${kind === "fx" ? " sol-coltype--fx" : ""}`}
           title={`Column type: ${KIND_NAME(kind)}. Cycle None / Number / Text / Date / Boolean${formulas ? " / Formula" : ""}.`}
           onClick={(e) => { e.stopPropagation(); cycle(); }}
         >

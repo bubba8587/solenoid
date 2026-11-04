@@ -30,7 +30,7 @@ async function passed(expr: string) {
   return { node, typed: () => (node.outputs.result!.socket as unknown as { dataType: string }).dataType };
 }
 
-async function run(expr: string, inputs: Record<string, unknown[]> = {}, init: { literals?: Record<string, number>; stringLiterals?: Record<string, string> } = {}) {
+async function run(expr: string, inputs: Record<string, unknown[]> = {}, init: { stringLiterals?: Record<string, string>; literalKinds?: Record<string, "number" | "string" | "date" | "logical"> } = {}) {
   const node = new ScriptNode({ expr, ...init });
   throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
   const out = await (node.data(inputs) as Promise<{ result: unknown }>);
@@ -96,9 +96,10 @@ describe("ScriptNode.data — values in", () => {
     expect((await run("(x) => x === null", { x: [null] })).result).toBe(true);
     expect((await run("(x) => x === undefined")).result).toBe(true);
   });
-  it("an unwired parameter takes the typed literal, number or text", async () => {
-    expect((await run("(x) => x + 1", {}, { literals: { x: 41 } })).result).toBe(42);
-    expect((await run("(s) => s.toUpperCase()", {}, { stringLiterals: { s: "hi" } })).result).toBe("HI");
+  it("an unwired parameter takes the keyed literal, read as its slot's kind", async () => {
+    expect((await run("(x) => x + 1", {}, { stringLiterals: { x: "41" } })).result).toBe(42);
+    expect((await run("(s) => s.toUpperCase()", {}, { stringLiterals: { s: "hi" }, literalKinds: { s: "string" } })).result).toBe("HI");
+    expect((await run("(x) => x", {}, { stringLiterals: { x: "hi" } })).result).toMatchObject({ code: "#TYPE!" });
   });
   it("a per-cell error in any input propagates without running the script", async () => {
     const bad = solError("#DIV/0!", "x");
@@ -271,7 +272,7 @@ describe("evaluator + coercer, standalone", () => {
 
 describe("persistence", () => {
   it("extractInit round-trips source and both literal maps", () => {
-    const n = new ScriptNode({ expr: "(a, b) => a", literals: { a: 2 }, stringLiterals: { b: "q" } });
+    const n = new ScriptNode({ expr: "(a, b) => a", stringLiterals: { a: "2", b: "q" }, literalKinds: { b: "string" } });
     n.label = "Mine";
     const init = extractInit(n) as Record<string, unknown>;
     const back = new ScriptNode(init as ConstructorParameters<typeof ScriptNode>[0]);
@@ -282,12 +283,12 @@ describe("persistence", () => {
   });
 
   it("a parameter named like an init field keeps both through the paste path", async () => {
-    const n = new ScriptNode({ expr: "(label) => label", literals: { label: 7 } });
+    const n = new ScriptNode({ expr: "(label) => label", stringLiterals: { label: "7" } });
     n.label = "Mine";
     expect(extractInit(n).label).toBe("Mine");
     const back = await pasteCopy(n);
     expect(back.label).toBe("Mine");
-    expect(back.literals.label).toBe(7);
+    expect(back.stringLiterals.label).toBe("7");
   });
 });
 
@@ -325,19 +326,19 @@ describe("a date goes into a script as a Date ([[C137]] datesNeverSerials)", () 
 });
 
 describe("a volatile Script holds its result until F9 ([[C23]] calcModes)", () => {
-  async function held(expr: string, literals: Record<string, number>) {
+  async function held(expr: string, stringLiterals: Record<string, string>) {
     const editor = new GraphEditor<Schemes>();
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
     setEditorRefs(editor, engine, { rerenderNode: async () => {}, rerenderCables: async () => {} } as unknown as View);
-    const node = new ScriptNode({ expr, literals });
+    const node = new ScriptNode({ expr, stringLiterals });
     await editor.addNode(node as unknown as Schemes["Node"]);
     await processGraph();
     return node;
   }
 
   it("keeps the draw through a plain recalculation with the same inputs", async () => {
-    const node = await held("(x) => x + Math.random()", { x: 1 });
+    const node = await held("(x) => x + Math.random()", { x: "1" });
     const first = node.cachedResult;
     expect(typeof first).toBe("number");
     await processGraph(node.id);
@@ -347,7 +348,7 @@ describe("a volatile Script holds its result until F9 ([[C23]] calcModes)", () =
   });
 
   it("draws anew on F9, which the Recalculate button sends", async () => {
-    const node = await held("(x) => x + Math.random()", { x: 1 });
+    const node = await held("(x) => x + Math.random()", { x: "1" });
     const first = node.cachedResult;
     await requestRecalc();
     expect(node.cachedResult).not.toBe(first);
@@ -355,8 +356,8 @@ describe("a volatile Script holds its result until F9 ([[C23]] calcModes)", () =
   });
 
   it("runs again when an input or the code changes", async () => {
-    const node = await held("(x) => x + Math.random()", { x: 1 });
-    node.literals = { x: 5 };
+    const node = await held("(x) => x + Math.random()", { x: "1" });
+    node.stringLiterals = { x: "5" };
     await processGraph(node.id);
     expect(Math.floor(node.cachedResult as number)).toBe(5);
     node.expr = "(x) => x + 10 + Math.random()";

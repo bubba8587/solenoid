@@ -349,6 +349,11 @@ export function parsePredecessors(text: string, names: string[]): string;
 export function readPlanFile(text: string, format: string): string;
 
 /**
+ * Text as a date's day, as a Frame Input Date cell reads it: NaN when it doesn't read as one, `undefined` for blank.
+ */
+export function read_date(text: string): number | undefined;
+
+/**
  * Text as a number: plain decimal or scientific, or thousands grouped by commas; NaN otherwise.
  */
 export function read_decimal(text: string): number;
@@ -548,6 +553,7 @@ export interface InitOutput {
     readonly offCoreBodies: (a: number) => void;
     readonly parsePredecessors: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly readPlanFile: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly read_date: (a: number, b: number, c: number) => void;
     readonly read_decimal: (a: number, b: number) => number;
     readonly read_logical: (a: number, b: number, c: number) => void;
     readonly region_keys: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
@@ -574,8 +580,8 @@ export interface InitOutput {
     readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly uid: (a: number) => void;
     readonly unnamedEdits: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_8346: (a: number, b: number, c: number, d: any) => void;
-    readonly __wasm_bindgen_func_elem_8348: (a: number, b: number, c: any, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8300: (a: number, b: number, c: number, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8302: (a: number, b: number, c: any, d: any) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;

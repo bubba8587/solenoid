@@ -6,16 +6,17 @@ import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
-import { SolenoidSocket } from "../sockets";
+import { declaredTypeOf } from "../sockets";
+import { isKeyedWildcard } from "../keyedLiterals";
 import {
   useConnectedInputs,
   useIncomingSources,
   InlineInputs,
   InlineNumberField,
   InlineTextField,
-  InlineAutoField,
+  KeyedField,
+  type KeyedKind,
   takesAutoLiteral,
-  type AutoLiteral,
 } from "./inlineInput";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
@@ -30,6 +31,7 @@ export interface ExtensibleNode {
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
   autoLiterals?: boolean;
+  literalKinds?: Record<string, KeyedKind>;
   addValueInput: () => string;
   removeValueInput: (key: string) => void;
 }
@@ -63,15 +65,6 @@ export function ExtensibleInputs({
 
   async function setStr(key: string, v: string) {
     strLiterals[key] = v;
-    node.edited(); await processGraph();
-  }
-
-  async function setAuto(key: string, v: AutoLiteral) {
-    // Exactly one map holds a wildcard slot, so the reader never has to break a tie.
-    delete literals[key];
-    delete strLiterals[key];
-    if (typeof v === "number") literals[key] = v;
-    else if (typeof v === "string") strLiterals[key] = v;
     node.edited(); await processGraph();
   }
 
@@ -119,10 +112,10 @@ export function ExtensibleInputs({
         const input = node.inputs[key];
         if (!input) return null;
         const isConn = connected.has(key);
-        const dt = input.socket instanceof SolenoidSocket ? input.socket.dataType : undefined;
+        const dt = declaredTypeOf(input.socket);
         const isTextField = dt === "string" || dt === "numlist" || dt === "strlist" || dt === "datelist" || dt === "logicallist";
         // Container, logicalcombo, lambda and chart rows are wire-only, and so is a wildcard row unless the node opts into auto literals.
-        const isWildcard = dt === "any" || dt === "anydata" || dt === "trueany";
+        const isWildcard = isKeyedWildcard(dt);
         const isWireOnly = dt === "anylist" || dt === "anytable" || dt === "table" || dt === "frame" || dt === "cube" || dt === "logicalcombo" || dt === "lambda" || dt === "chart"
           || (isWildcard && !takesAutoLiteral(node, dt));
         return (
@@ -136,7 +129,7 @@ export function ExtensibleInputs({
             ) : isConn ? (
               <span className="solenoid-node__io-wired" style={{ flex: 1 }} title="Driven by an incoming cable">↩ wired</span>
             ) : takesAutoLiteral(node, dt) ? (
-              <InlineAutoField num={literals[key]} text={strLiterals[key]} onChange={(v) => void setAuto(key, v)} />
+              <KeyedField node={node} slot={key} />
             ) : isTextField ? (
               <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
             ) : (

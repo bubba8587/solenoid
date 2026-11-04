@@ -230,6 +230,7 @@ async function rebuildGraph(
       const anyNode = node as unknown as Record<string, unknown>;
       if (sn.literals && typeof anyNode.literals === "object") anyNode.literals = { ...sn.literals };
       if (sn.stringLiterals && typeof anyNode.stringLiterals === "object") anyNode.stringLiterals = { ...sn.stringLiterals };
+      if (sn.init?.literalKinds && typeof anyNode.literalKinds === "object") anyNode.literalKinds = { ...(sn.init.literalKinds as object) };
     }
     idMap.set(sn.id, node.id);
     nodeNameStore.claim(node.id, sn.name, sn.type);

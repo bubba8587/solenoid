@@ -42,12 +42,12 @@ describe("Base Convert — the per-digit 0–9 rule", () => {
 describe("XMATCH — the match-mode family (first match wins)", () => {
   const run = (value: number, array: number[], matchMode?: "exact" | "next_larger" | "next_smaller") => {
     const node = new XMatchNode(matchMode ? { matchMode } : undefined);
-    node.literals.value = value;
+    node.stringLiterals.value = String(value);
     return node.data({ array: [array] }).result;
   };
   const runSearch = (value: number, array: number[], searchMode: "first" | "last") => {
     const node = new XMatchNode({ searchMode });
-    node.literals.value = value;
+    node.stringLiterals.value = String(value);
     return node.data({ array: [array] }).result;
   };
   it("search mode picks WHICH duplicate — the frame XLOOKUP's argument, same meaning", () => {

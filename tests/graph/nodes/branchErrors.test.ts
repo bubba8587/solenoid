@@ -8,6 +8,8 @@ import { isSolError, solError, type SolError } from "../../../src/graph/errorVal
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { ArithmeticNode } from "../../../src/graph/nodes/scalar";
 import { ChooseNode, IfNode, IfsNode, SwitchNode } from "../../../src/graph/nodes/logic";
+import { isKeyedWildcard } from "../../../src/graph/keyedLiterals";
+import { declaredTypeOf } from "../../../src/graph/sockets";
 
 /** The card's answer with `#DIV/0!` wired into `slot`, the other slots typed. */
 async function wired(card: IfNode | IfsNode | SwitchNode | ChooseNode, slot: string, literals: Record<string, number>) {
@@ -16,7 +18,13 @@ async function wired(card: IfNode | IfsNode | SwitchNode | ChooseNode, slot: str
   editor.use(engine);
   const div = new ArithmeticNode({ op: "div" });
   div.literals = { a: 1, b: 0 };
-  card.literals = literals;
+  // A wildcard slot takes keyed text; a logical or number slot its number field.
+  card.literals = {};
+  card.stringLiterals = {};
+  for (const [k, v] of Object.entries(literals)) {
+    if (isKeyedWildcard(declaredTypeOf(card.inputs[k]?.socket))) card.stringLiterals[k] = String(v);
+    else card.literals[k] = v;
+  }
   await editor.addNode(div);
   await editor.addNode(card);
   await editor.addConnection(new GraphConnection(div, "result", card, slot) as Schemes["Connection"]);

@@ -1,5 +1,6 @@
 // [[C10]] socketLattice (the Cube is the lattice supremum), [[C28]] literalsIffEditable
 import { GraphNode } from "../graphModel";
+import { forgetKeyed, type KeyedKind } from "../keyedLiterals";
 import { nodeOnCore } from "../nodeOnCore";
 import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut } from "./shared";
 import { DEFAULT_CUBE_TEXT } from "../literalEditors";
@@ -13,6 +14,7 @@ export class BuildCubeNode extends GraphNode {
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = { name: "" };
   autoLiterals = true;
+  literalKinds: Record<string, KeyedKind> = {};
   nextInputId = 0;
   width = 200;
   height = 250;
@@ -45,8 +47,7 @@ export class BuildCubeNode extends GraphNode {
 
   removeValueInput(key: string): void {
     this.removeInput(key);
-    delete this.literals[key];
-    delete this.stringLiterals[key];
+    forgetKeyed(this, key);
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { cube: CubeValue | null } {
@@ -86,6 +87,7 @@ export class CubeColumnsNode extends GraphNode {
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = { names: "" };
   autoLiterals = true;
+  literalKinds: Record<string, KeyedKind> = {};
   nextInputId = 0;
   width = 210;
   height = 250;
@@ -118,8 +120,7 @@ export class CubeColumnsNode extends GraphNode {
 
   removeValueInput(key: string): void {
     this.removeInput(key);
-    delete this.literals[key];
-    delete this.stringLiterals[key];
+    forgetKeyed(this, key);
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { cube: CubeValue | null } {

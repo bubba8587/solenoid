@@ -1,5 +1,6 @@
 // [[C66]] scriptNode, [[C24]] arraySemantics, [[C23]] calcModes
 import { GraphNode } from "../graphModel";
+import { keyedKindOf, readKeyed, type KeyedKind } from "../keyedLiterals";
 import { trueAnyIn, resultOut, readInput } from "./shared";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { scriptParams, checkScript, scriptIsVolatile } from "./scriptRun";
@@ -54,9 +55,9 @@ export class ScriptNode extends GraphNode {
   expr: string;
   cachedResult: unknown = null;
   cachedError: string | null = null;
-  literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {};
   autoLiterals = true;
+  literalKinds: Record<string, KeyedKind> = {};
   width  = 240;
   height = 240;
 
@@ -64,12 +65,12 @@ export class ScriptNode extends GraphNode {
   private syntaxError: string | null = null;
   private held: Held | null = null;
 
-  constructor(init?: { label?: string; expr?: string; literals?: Record<string, number>; stringLiterals?: Record<string, string> }) {
+  constructor(init?: { label?: string; expr?: string; stringLiterals?: Record<string, string>; literalKinds?: Record<string, KeyedKind> }) {
     super("Script");
     this.label = init?.label ?? "Script";
     this.expr = init?.expr ?? DEFAULT_SCRIPT;
-    if (init?.literals) this.literals = { ...init.literals };
     if (init?.stringLiterals) this.stringLiterals = { ...init.stringLiterals };
+    if (init?.literalKinds) this.literalKinds = { ...init.literalKinds };
     this.addOutput("result", resultOut("Result", "combo", "auto"));
     this._rebuild();
   }
@@ -109,8 +110,7 @@ export class ScriptNode extends GraphNode {
       this.cachedResult = null;
       return { result: null };
     }
-    // Exactly one map holds a typed literal, because InlineAutoField clears the other.
-    const typed = (v: string): unknown => (v in this.literals ? this.literals[v] : this.stringLiterals[v]);
+    const typed = (v: string): unknown => readKeyed(keyedKindOf(this, v), this.stringLiterals[v]);
     const args = await Promise.all(
       this.varNames.map((v) => scriptArgToJs(readInput<unknown>(inputs[v], typed(v)))),
     );

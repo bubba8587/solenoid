@@ -1,5 +1,6 @@
 // [[C24]] arraySemantics
 import { GraphNode } from "../graphModel";
+import { forgetKeyed, type KeyedKind } from "../keyedLiterals";
 import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut } from "./shared";
 import { rolesFrom } from "../inputRoles";
 import type { PassthroughSpec } from "./passthrough";
@@ -121,9 +122,10 @@ export class IfNode extends GraphNode {
 
   label: string;
   cachedResult: unknown = null;
-  literals: Record<string, number> = { cond: 0, then: 0, else: 0 };
+  literals: Record<string, number> = { cond: 0 };
   stringLiterals: Record<string, string> = {};
   autoLiterals = true;
+  literalKinds: Record<string, KeyedKind> = {};
   width = 180;
   height = 200;
 
@@ -343,6 +345,7 @@ export class ChooseNode extends GraphNode {
   literals: Record<string, number> = { index: 1 };
   stringLiterals: Record<string, string> = {};
   autoLiterals = true;
+  literalKinds: Record<string, KeyedKind> = {};
   nextInputId = 0;
   width = 180;
   height = 250;
@@ -380,8 +383,7 @@ export class ChooseNode extends GraphNode {
 
   removeValueInput(key: string): void {
     this.removeInput(key);
-    delete this.literals[key];
-    delete this.stringLiterals[key];
+    forgetKeyed(this, key);
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
@@ -402,6 +404,7 @@ export class SwitchNode extends GraphNode {
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {};
   autoLiterals = true;
+  literalKinds: Record<string, KeyedKind> = {};
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["When", "Then"];
   width = 180;
@@ -417,7 +420,7 @@ export class SwitchNode extends GraphNode {
     } else {
       for (let i = 0; i < 3; i++) this.addValuePair();
       // A fresh card matches when0 so it shows a real result; Default ships empty.
-      this.literals = { expr: 1, when0: 1, then0: 10, when1: 2, then1: 20, when2: 3, then2: 30 };
+      this.stringLiterals = { expr: "1", when0: "1", then0: "10", when1: "2", then1: "20", when2: "3", then2: "30" };
     }
     this.addInput("default", trueAnyIn("Default"));
     this.addOutput("result", trueAnyOut("Result"));
@@ -450,8 +453,7 @@ export class SwitchNode extends GraphNode {
     this.removeInput(`when${id}`);
     this.removeInput(`then${id}`);
     for (const k of [`when${id}`, `then${id}`]) {
-      delete this.literals[k];
-      delete this.stringLiterals[k];
+      forgetKeyed(this, k);
     }
   }
 
@@ -472,6 +474,7 @@ export class IfsNode extends GraphNode {
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {};
   autoLiterals = true;
+  literalKinds: Record<string, KeyedKind> = {};
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["If", "Then"];
   width = 180;
@@ -485,7 +488,8 @@ export class IfsNode extends GraphNode {
       for (const id of ids) this.addPairWithId(id);
     } else {
       for (let i = 0; i < 3; i++) this.addValuePair();
-      this.literals = { cond0: 1, val0: 10, cond1: 0, val1: 20, cond2: 0, val2: 30 };
+      this.literals = { cond0: 1, cond1: 0, cond2: 0 };
+      this.stringLiterals = { val0: "10", val1: "20", val2: "30" };
     }
     this.addInput("otherwise", trueAnyIn("Otherwise"));
     this.addOutput("result", trueAnyOut("Result"));
@@ -518,8 +522,7 @@ export class IfsNode extends GraphNode {
     this.removeInput(`cond${id}`);
     this.removeInput(`val${id}`);
     for (const k of [`cond${id}`, `val${id}`]) {
-      delete this.literals[k];
-      delete this.stringLiterals[k];
+      forgetKeyed(this, k);
     }
   }
 

@@ -3,6 +3,7 @@ import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
 import type { GraphSocket } from "../graphModel";
 import { processGraph } from "../process";
+import { declaredTypeOf } from "../sockets";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
@@ -11,12 +12,12 @@ import {
   InlineInputs,
   InlineNumberField,
   InlineTextField,
-  InlineAutoField,
+  KeyedField,
+  type KeyedKind,
   takesAutoLiteral,
-  type AutoLiteral,
 } from "./inlineInput";
 
-const dataTypeOf = (s: GraphSocket): string | undefined => (s as { dataType?: string }).dataType;
+const dataTypeOf = (s: GraphSocket): string | undefined => declaredTypeOf(s);
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import "./nodeCard.css";
@@ -35,6 +36,7 @@ export interface PairedExtensibleNode {
   pairLabels: string[];
   stringLiterals?: Record<string, string>;
   autoLiterals?: boolean;
+  literalKinds?: Record<string, KeyedKind>;
 }
 
 export function PairedExtensibleInputs({
@@ -64,15 +66,6 @@ export function PairedExtensibleInputs({
   async function setStrLiteral(key: string, v: string) {
     if (v === "") delete strLiterals[key];
     else strLiterals[key] = v;
-    node.edited(); await processGraph();
-  }
-
-  async function setAutoLiteral(key: string, v: AutoLiteral) {
-    // Exactly one map holds a wildcard slot, so the reader never has to break a tie.
-    delete literals[key];
-    delete strLiterals[key];
-    if (typeof v === "number") literals[key] = v;
-    else if (typeof v === "string") strLiterals[key] = v;
     node.edited(); await processGraph();
   }
 
@@ -116,8 +109,8 @@ export function PairedExtensibleInputs({
         <span className="solenoid-node__io-label">{label}</span>
         {isConn ? (
           <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
-        ) : takesAutoLiteral(node, dataTypeOf(input.socket)) ? (
-          <InlineAutoField num={literals[key]} text={strLiterals[key]} onChange={(v) => void setAutoLiteral(key, v)} placeholder={placeholder} />
+        ) : takesAutoLiteral(node, declaredTypeOf(input.socket)) ? (
+          <KeyedField node={node} slot={key} placeholder={placeholder} />
         ) : dataTypeOf(input.socket) === "string" ? (
           <InlineTextField value={strLiterals[key]} onChange={(v) => void setStrLiteral(key, v)} placeholder={placeholder} />
         ) : (

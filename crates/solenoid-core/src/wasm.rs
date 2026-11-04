@@ -243,6 +243,16 @@ pub fn read_decimal(text: &str) -> f64 {
     crate::value_kinds::decimal_from_text(text)
 }
 
+/// Text as a date's day, as a Frame Input Date cell reads it: NaN when it doesn't read as one, `undefined` for blank.
+#[wasm_bindgen]
+pub fn read_date(text: &str) -> Option<f64> {
+    match crate::nodes::keyed_value("date", text) {
+        crate::excel_functions::V::Date(d) => Some(d),
+        crate::excel_functions::V::Undef => None,
+        _ => Some(f64::NAN),
+    }
+}
+
 /// Each point's Conditional Regions key, by the cuts its card shows, one per line.
 #[wasm_bindgen]
 pub fn region_keys(cuts: &str, xs: &[f64], ys: &[f64]) -> String {

@@ -1,5 +1,6 @@
 // [[C58]] tableInputRawText, [[C48]], [[B11]]
 import { GraphNode, GraphOutput } from "../graphModel";
+import { forgetKeyed, type KeyedKind } from "../keyedLiterals";
 import { nodeOnCore } from "../nodeOnCore";
 import { SKIP_BY_CODE, type SkipCells } from "./matrixOps";
 import { numIn, numOut, listIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn } from "./shared";
@@ -488,6 +489,7 @@ export class SetCellNode extends GraphNode {
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {};
   autoLiterals = true;
+  literalKinds: Record<string, KeyedKind> = {};
   nextPairId = 0;
   readonly pairLabels: string[] = ["Value", "Row", "Column"];
   width = 210; height = 300;
@@ -527,8 +529,7 @@ export class SetCellNode extends GraphNode {
     const id = valueKey.slice(5);
     for (const k of [`value${id}`, `row${id}`, `col${id}`]) {
       this.removeInput(k);
-      delete this.literals[k];
-      delete this.stringLiterals[k];
+      forgetKeyed(this, k);
     }
   }
 

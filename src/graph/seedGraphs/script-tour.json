@@ -127,9 +127,9 @@
         "label": "Amortization table",
         "expr": "(principal, rate, years) => {\n  const r = rate / 100 / 12;\n  const n = years * 12;\n  const pow = (1 + r) ** -n;\n  const pay = principal * r / (1 - pow);\n  const rows = [];\n  let bal = principal;\n  let paid = 0;\n  for (let m = 1; m <= n; m++) {\n    const i = bal * r;\n    paid += i;\n    bal -= pay - i;\n    if (m % 60 === 0) rows.push({\n      year: m / 12,\n      interest: Math.round(paid),\n      balance: Math.round(bal),\n    });\n  }\n  return rows;\n}"
       },
-      "literals": {
-        "rate": 4.5,
-        "years": 30
+      "stringLiterals": {
+        "rate": "4.5",
+        "years": "30"
       }
     },
     {

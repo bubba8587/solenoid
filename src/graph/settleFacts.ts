@@ -7,11 +7,12 @@ import type { GraphConnection, GraphNode } from "./graphModel";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, ValueTypedSocket, type SocketDataType } from "./sockets";
 import { getPassthrough, type CombineMode, type ProjectContext } from "./nodes/passthrough";
 import { makeFrameShapeResolver } from "./frameShapeResolver";
+import { keyedRestType, type KeyedHost } from "./keyedLiterals";
 import { ConduitNode, conduitInKey, conduitOutKey, CONDUIT_MAX_LANES } from "./nodes/conduit";
 
 /** A socket: key, its type now, its declared base, and whether the settle may retype it: 0 fixed, 1 mutable, 2 adoptive,
- *  3 typed by its value. */
-export type SocketFact = [key: string, now: SocketDataType, base: SocketDataType, kind: 0 | 1 | 2 | 3];
+ *  3 typed by its value; an adoptive input may add the type it shows unwired (a keyed slot's kind, `keyedRestType`). */
+export type SocketFact = [key: string, now: SocketDataType, base: SocketDataType, kind: 0 | 1 | 2 | 3, rest?: SocketDataType];
 
 /** The outputs of these freshly computed cards whose type the value they carried may give, as the core's `readTypes`
  *  takes them: every passthrough output and every value-typed output, with its type now ([[D117]] emptyKeepsLastType). */
@@ -68,7 +69,9 @@ export function settleFacts(editor: AnyEditor): NodeFacts[] {
     const facts: NodeFacts = { id: node.id, ins: [], outs: [] };
     for (const k in node.inputs) {
       const f = socketFact(k, node.inputs[k]?.socket);
-      if (f) facts.ins.push(f);
+      if (!f) continue;
+      const rest = f[3] === 2 ? keyedRestType(node as KeyedHost, k, f[2]) : undefined;
+      facts.ins.push(rest ? [f[0], f[1], f[2], f[3], rest] : f);
     }
     for (const k in node.outputs) {
       const f = socketFact(k, node.outputs[k]?.socket);

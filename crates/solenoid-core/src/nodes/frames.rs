@@ -2322,15 +2322,12 @@ fn unnest(c: &mut Call) -> Answer {
 
 // ─── Build Cube, Cube Columns ───────────────────────────────────────────────────
 
-/// The typed literal, else the text one, else blank.
+/// The keyed cell, else blank.
 fn literal_cell(c: &Call, key: &str) -> V {
-    if c.literals.contains_key(key) {
-        return c.literal(key);
+    match c.keyed(key) {
+        V::Undef => V::Null,
+        v => v,
     }
-    if c.string_literals.contains_key(key) {
-        return c.string_literal(key);
-    }
-    V::Null
 }
 
 /// Each value input's cell, by its key's prefix in the card's order: the cable's value, else the literal.

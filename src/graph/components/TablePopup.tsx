@@ -45,6 +45,7 @@ import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
 import "./errorChip.css";
 import "./TablePopup.css";
+import "./colType.css";
 import { ChevronDownIcon } from "./Icons";
 import { PivotTableView, PivotRibbon, PivotSheetButton, type PivotRibbonProps } from "./PivotTableView";
 import { FittingChoice } from "./PopupChoice";
@@ -1115,7 +1116,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
                       <div className="table-popup__colhead-edit">
                         <button
                           type="button"
-                          className={`table-popup__coltype${colExprs[c] !== undefined ? " table-popup__coltype--fx" : ""}`}
+                          className={`sol-coltype${colExprs[c] !== undefined ? " sol-coltype--fx" : ""}`}
                           title={`Column type: ${colExprs[c] !== undefined ? "Formula" : COLTYPE_NAME[colTypeAt(c)]}. Cycle Number / Text / Date / Boolean${fxColumns ? " / Formula" : ""}.`}
                           onClick={(e) => { e.stopPropagation(); cycleColumnKind(c); }}
                         >

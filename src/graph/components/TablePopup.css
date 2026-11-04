@@ -272,25 +272,6 @@
 }
 .table-popup__colhead-field { position: relative; display: flex; flex: 1 1 auto; min-width: 0; }
 .table-popup__colhead-field--affix .table-popup__colhead-input { padding-right: 24px; }
-.table-popup__coltype {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--node-accent, var(--text));
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: 4px;
-  cursor: pointer;
-}
-.table-popup__coltype:hover { border-color: var(--node-accent, var(--accent)); }
 
 /* A long name wraps at word breaks onto a second line, then clips, so it never widens its column past 14em. */
 .table-popup__colhead-label {
@@ -306,13 +287,6 @@
   overflow: hidden;
 }
 
-.table-popup__coltype--fx,
-.table-popup__coltype--fx:hover {
-  font-size: 9px;
-  color: var(--surface);
-  background: var(--node-accent, var(--accent));
-  border-color: var(--node-accent, var(--accent));
-}
 
 .table-popup__fmtbtn {
   flex: 0 0 auto;
@@ -803,13 +777,6 @@
   .table-popup__rowhead { min-width: 22px; }
   .table-popup__colhead--name { min-width: 84px; padding-top: 3px; padding-bottom: 3px; padding-left: 4px; }
   .table-popup__colhead-edit { gap: 3px; }
-  .table-popup__coltype {
-    box-sizing: border-box;
-    width: 24px;
-    height: 24px;
-    font-size: 11px;
-  }
-  .table-popup__coltype--fx { font-size: 10px; }
   .table-popup__fmtbtn { box-sizing: border-box; height: 24px; padding: 0 4px; }
   /* A header name is as wide as its text (the input's size), not the cell input's 52px floor, which is for values. */
   .table-popup__colhead-field { flex: 1 0 auto; }

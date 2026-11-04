@@ -24,6 +24,8 @@ pub struct Socket {
     pub kind: Kind,
     /// An output typed by the value it carries, with no passthrough to type it ([[D117]] emptyKeepsLastType).
     pub valued: bool,
+    /// The type an adoptive input shows with no cable: a keyed slot's kind (`keyedRestType`), else its base.
+    pub rest: Option<String>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -84,6 +86,7 @@ fn sockets(j: &Json) -> Vec<Socket> {
                 _ => Kind::Fixed,
             },
             valued: f[3].as_u64() == Some(3),
+            rest: f[4].as_str().map(str::to_string),
         })
         .collect()
 }
@@ -228,7 +231,10 @@ fn adoption_once(nodes: &mut [Node], g: &Graph) -> BTreeSet<String> {
                     Some(out) => adopt_type_for_base(&base, &out).to_string(),
                     None => base,
                 },
-                None => base,
+                None => match &nodes[i].ins[k].rest {
+                    Some(rest) => adopt_type_for_base(&base, rest).to_string(),
+                    None => base,
+                },
             };
             if nodes[i].ins[k].now != want {
                 nodes[i].ins[k].now = want;

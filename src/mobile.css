@@ -241,7 +241,7 @@ html.is-mobile {
   .solenoid-conduit-toolbar__extend { padding: 8px 14px; font-size: 12px; }
 
   /* ── Table editor popup ── */
-  .table-popup__coltype { width: 26px; height: 26px; font-size: 12px; }
+  .sol-coltype { width: 26px; height: 26px; font-size: 12px; }
   .table-popup__view button { padding: 9px 14px; }
   .table-popup__btn { padding: 9px 14px; }
   .table-popup__grid-scroll,
