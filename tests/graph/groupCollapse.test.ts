@@ -1,4 +1,5 @@
-// [[C88]] collapsedGroupCard
+// [[C88]] collapsedGroupCard, [[group-collapse#What collapse hides]], [[group-collapse#Which readouts the card shows]],
+// [[group-collapse#Camera targets across collapsed groups]]
 import { describe, it, expect, afterEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
@@ -10,10 +11,6 @@ import { resolveVisibleTarget } from "../../src/graph/flyToNode";
 import type { Schemes } from "../../src/graph/schemes";
 
 type Editor = GraphEditor<Schemes>;
-
-// v1.1 A3 audit fix: a node DOCKED to a member (an FC never absorbed as a
-// member itself) is a VIRTUAL member for collapse — it hides with its host.
-// Before, the FC chip floated visibly over the collapsed box.
 
 const docked: string[] = [];
 afterEach(() => {
@@ -71,8 +68,6 @@ describe("group collapse — docked satellites are virtual members", () => {
     dock(fc.id, disp.id);
     const group = new GroupNode({ members: [disp.id], collapsed: true });
     await editor.addNode(group as never);
-    // The FC is a virtual member, so the hop is followed: the readout exposes
-    // the FC's out (the formatted end), with the Display as the visible row.
     const rows = groupReadouts(editor, group);
     expect(rows).toHaveLength(1);
     expect(rows[0].displayId).toBe(disp.id);
