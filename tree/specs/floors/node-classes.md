@@ -80,7 +80,7 @@ Each declaration in the map, and the spec that governs it:
 | `data() = nodeOnCore` | the node's work is done in Rust | [[node-bodies]] |
 | `inputRoles`, literal maps, `unitAware`, `passthrough()`, `noWidenInputs` | which roles its sockets take, which values it types inline, whether it sees units, which inputs it hands on unchanged, whether a Cube arrives as is | this spec, [[inline-literal-maps]], [[unit-flow]], [[compute-pass]] |
 | `coreFields` | run-time fields the body reads that no save keeps (a resolved angle mode) | [[node-bodies#The call (`nodeOnCore.ts`, `engine_node`)]] |
-| `nodes::run`, `DIRECT` | the Rust body's dispatch by class name; the classes the engine calls in Rust with no JavaScript between | [[node-bodies]], [[graph-core#Direct calls (phase C)]] |
+| `nodes::run`, `DIRECT` | the Rust body's dispatch by class name; the classes the engine calls in Rust with no JavaScript between | [[node-bodies]], [[graph-core#Direct calls]] |
 | `kind.ts`, the component, the registry | the card's accent, its face, and the class-to-component table persistence also reads | [[components]] |
 | the catalog leaf, `OP_META`, `NODE_OPS`, `NODE_EXCEL` | its name, description, search words and formula name; an op family's ops; its Excel names | [[add-menu]] |
 | `socketDocs`, `frameHints` | the Inspector's sentence per socket, and an example table per frame input | this spec |
@@ -114,7 +114,7 @@ mindmap
 
 ## Identity and persistence
 
-- **A node class is a `GraphNode`** (`graphModel.ts`), its ports `GraphInput`s and `GraphOutput`s holding sockets. Its ports change only through `addInput`, `removeInput`, `addOutput`, `removeOutput`, `moveInputLast`, a port's `socket` setter and a `MutableSocket`'s `setType`, which reach the graph core while the node is in an editor; `inputs` and `outputs` are read-only otherwise ([[graph-core#The model (`graphEditor.ts`, `graphModel.ts`, `model.rs`)]]).
+- **A node class is a `GraphNode`** (`graphModel.ts`), its ports `GraphInput`s and `GraphOutput`s holding sockets. Its ports change only through `addInput`, `removeInput`, `addOutput`, `removeOutput`, `moveInputLast`, a port's `socket` setter and a `MutableSocket`'s `setType`, which reach the graph core while the node is in an editor; `inputs` and `outputs` are read-only otherwise ([[graph-core#The model]]).
 - **The class name is the persisted type.** It is kept and unique, so renaming a class changes the save format ([[save-format#The persisted type is the class name]]).
 - **An unknown saved type loads as a Placeholder** and saves back out as itself, losing nothing ([[C35]] unknownViaPlaceholder). `PlaceholderNode` is not in the Add-menu catalog; only the loader builds one. It keeps the original type, init and literal maps verbatim, rebuilds the saved socket keys (adoptive inputs, `trueany` outputs) so the cables survive, and every output emits `#REF!` naming the missing type.
 - **Every field is either persisted or deliberately transient**, and the persistence sweep (`persistenceSweep.test.ts`) knows which ([[save-format#Every field is persisted or deliberately transient]]). `extractInit` is a fixed point, so saving a freshly loaded node gives back the same init, and its output is plain JSON ([[save-format#The capture is a fixed point, and plain JSON]]).

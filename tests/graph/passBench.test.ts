@@ -1,8 +1,5 @@
-// [[C120]] linearWork, [[C130]] rustCore
-// Timing, not a check: whole passes as the app runs them (`engine.pass`, then `landed` for the read a card's box makes),
-// over chains of cards at 800,000 items. This is the bench for "is the app fast": a card's `data()` or `nodeOnCore`
-// called from JS is a path the pass doesn't take between direct cards (graph-core.md § Direct calls).
-// `BENCH=1 npx vitest run tests/graph/passBench.test.ts` prints the table, and BENCH_OUT=<file> writes it there (BENCH_ITEMS for another size).
+// [[C120]] linearWork, [[C130]] rustCore, [[graph-core#Performance]]
+// Timing, not a check: `BENCH=1 npx vitest run tests/graph/passBench.test.ts` prints the table.
 import { describe, it } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
@@ -84,7 +81,6 @@ describe.skipIf(!process.env.BENCH)("passes", () => {
       if (sort.cachedResult?.columns?.[0]?.values?.length !== 5) throw new Error(`bad seed answer ${JSON.stringify(sort.cachedResult).slice(0, 300)}`);
     }));
     const table = `\n${N} items, best of 3\n` + rows.join("\n") + "\n";
-    // Vitest holds a test's console output back; BENCH_OUT=<file> writes the table there too.
     if (process.env.BENCH_OUT) (await import("node:fs")).appendFileSync(process.env.BENCH_OUT, table);
     console.log(table);
   }, 600_000);

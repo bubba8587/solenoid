@@ -1,6 +1,4 @@
-// [[C130]] rustCore, [[C23]] calcModes
-// A full cache clear trusts each direct card's stamped call: a card's call is read afresh only when its node was
-// named since (graph-core.md § Direct calls), so every edit names its node, even one manual mode holds back.
+// [[C130]] rustCore, [[C23]] calcModes, [[graph-core#Direct calls]]
 import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";

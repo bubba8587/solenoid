@@ -1,7 +1,4 @@
-// [[C130]] rustCore
-// A freed editor lets go of its graph: the core holds the nodes, cables and pipes as JavaScript values the garbage
-// collector can't reach past, so `dispose` frees it, and a composite leaving its editor frees its own. The fields the
-// core held go back to their nodes, and a freed editor used again builds a core from them (graph-core.md § The model).
+// [[C130]] rustCore, [[graph-core#The model]]
 import { describe, it, expect } from "vitest";
 import * as v8 from "node:v8";
 import * as vm from "node:vm";

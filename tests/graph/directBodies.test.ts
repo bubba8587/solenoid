@@ -1,7 +1,4 @@
-// [[C130]] rustCore
-// The cards the engine calls in Rust (graph-core.md § Direct calls) are exactly the classes whose `data()` is their
-// body on the core and nothing else (or that and handing on what the core can't hold), and such a card in an editor
-// computes with no call to its `data()`.
+// [[C130]] rustCore, [[graph-core#Direct calls]]
 import { describe, expect, it, vi } from "vitest";
 import { directBodies, offCoreBodies } from "../../src/graph/engineWasm/solenoid_graph.js";
 import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";

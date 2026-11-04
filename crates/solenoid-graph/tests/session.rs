@@ -1,4 +1,4 @@
-// [[C23]] calcModes
+// [[C23]] calcModes, [[graph-core#The session]]
 use solenoid_graph::session::{Entry, Mode, Rerun, Session};
 
 #[test]

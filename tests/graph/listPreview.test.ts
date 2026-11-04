@@ -1,6 +1,4 @@
-// [[C120]] linearWork, [[C130]] rustCore
-// A standard box's read of a big list a card body on the core made takes its first rows (`listPreview.ts`,
-// graph-core.md § Direct calls); every other read takes it whole.
+// [[C120]] linearWork, [[C130]] rustCore, [[graph-core#Direct calls]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection } from "../../src/graph/graphModel";

@@ -1,7 +1,5 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec, [[C10]] socketLattice, [[C24]] arraySemantics, [[E9]] errorsKeepOrigin
-// The input boundary's frozen answers (fixtures/core/boundary-*.json.gz): what a value arriving on each rung reaches
-// `data()` as, under full coercion, element coercion alone (`noWidenInputs`) and with its units kept or stripped; the
-// typed list literals; the guard's origin tagging of what a node answers and its reading of what a node throws.
+// [[graph-core#The input boundary]]: freezes fixtures/core/boundary-*.json.gz.
 import { describe, expect, it } from "vitest";
 import { frozen, replay } from "./coreFixtures";
 import { GraphNode, GraphInput, GraphOutput } from "../../src/graph/graphModel";
