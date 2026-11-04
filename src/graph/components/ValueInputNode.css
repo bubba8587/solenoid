@@ -8,27 +8,67 @@
    hangs right under the field it formats, and the result box sits a short step below Format. */
 .solenoid-valin__entry {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 4px;
 }
 .solenoid-valin__entry > :first-child {
   flex: 1 1 auto;
   min-width: 0;
 }
-.solenoid-valin__type {
-  margin-top: 3px;
+/* As tall as the field it types, so the two read as one control. */
+.solenoid-valin__entry > .solenoid-valin__type {
+  width: 24px;
+  height: auto;
+  min-height: 24px;
+  font-size: 11px;
+}
+/* A date's picker (and the formats note) ride inside its field's right edge, so the type button stays the only chip
+   beside the field and the card keeps its width. */
+.solenoid-valin__entry .solenoid-date-input {
+  gap: 0;
+}
+.solenoid-valin__entry .solenoid-date-input__picker {
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.solenoid-valin__entry .solenoid-date-input__picker:nth-of-type(1):not(:last-of-type) {
+  right: 21px;
+}
+.solenoid-valin__entry .solenoid-date-input > .solenoid-node__value-input {
+  padding-right: 24px;
+}
+.solenoid-valin__entry .solenoid-date-input:has(.solenoid-date-input__picker + .solenoid-date-input__picker) > .solenoid-node__value-input {
+  padding-right: 42px;
 }
 .solenoid-valin__format > .solenoid-node__section-caption {
   margin-top: -4px;
   margin-bottom: -2px;
 }
 
-/* Collapsed, the card is its value cell alone (square collapse, as Sparkline): the header steps out, the cell takes its
-   place, and the card is as wide as its value. A click edits it; a double-click on the card's edge still expands. */
+/* Collapsed, the card is its value cell alone (square collapse, as Sparkline): the header steps out, the card itself is
+   the cell, tinted by its type, and as wide as its value. The value sits right with room on the left for the chevron.
+   A click edits it; a double-click on the card's edge still expands. */
 .solenoid-valin.solenoid-node--collapsed {
   width: auto;
   min-width: 68px;
   max-width: 220px;
+}
+.solenoid-valin.solenoid-node--collapsed .solenoid-node__body {
+  padding: 4px 10px 4px 20px;
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 10%, transparent);
+}
+.solenoid-valin.solenoid-node--collapsed .solenoid-node__collapsed-only {
+  justify-content: flex-end;
+}
+.solenoid-valin__cell .solenoid-node__display-value {
+  background: none;
+  border: none;
+  padding: 0;
+  min-height: 0;
+  justify-content: flex-end;
+  text-align: right;
 }
 .solenoid-valin.solenoid-node--collapsed .solenoid-node__collapsed-only {
   pointer-events: auto;
