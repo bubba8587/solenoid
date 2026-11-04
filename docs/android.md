@@ -2,7 +2,8 @@
 
 <!-- [[B2]] webTryDesktopFull: the Android app is the full app in a phone's shell. -->
 
-**Status (2026-11-04):** prepared in a cloud session, never built. Everything that doesn't need the Android toolchain is
+**Status (2026-11-04):** prepared in a cloud session; **the shell compiles for Android** (the cloud build below,
+JDK 17, NDK 30.0.16248370: a universal debug APK of about 100 MB, most of it debug symbols), not yet run on a phone. Everything that doesn't need the Android toolchain is
 in the repository; a local agent on the author's Linux machine does the build, following § Plan below. The app is the
 desktop app, packaged: Tauri 2 builds Android from the same `src-tauri`, so the cards behave as on desktop and the
 screen is the phone layout the web app already has. Only what a phone lacks (a window frame, a file manager) or does
@@ -73,7 +74,8 @@ The agent runs on the author's Linux machine, on `develop`, with the phone (a Sa
 
 "Build (Android, debug)" (`.github/workflows/android-build.yml`) runs on every push to `develop` that touches
 `src-tauri`, the manifest patch or the workflow, and by hand from the Actions tab. Green means the shell
-compiles for Android and the APK, in the run's artifacts, can be sideloaded at once (Phase 4's list applies). Red is a
+compiles for Android and the APK, in the run's artifacts (`app-universal-debug.apk`), can be sideloaded at once
+(Phase 4's list applies). Its log's only warnings are deprecations inside Tauri's generated Kotlin. Red is a
 compile problem that a cloud session can fix from the run's log, the same way as Phase 3, before anyone installs
 the toolchain.
 
