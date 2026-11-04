@@ -38,14 +38,31 @@ the fs plugin's `$HOME` is `/storage/emulated/0`, and it reads and writes a `con
 `open` and `save` with `content://` addresses; the http plugin fetches in Rust over rustls, so no OpenSSL and no
 cleartext block; the opener's `openUrl` fires an Android VIEW intent (so `obsidian://` opens Obsidian), while
 `openPath` and `revealItemInDir` don't work; the Tauri CLI points cargo at the NDK's clang, so `ring` and `zstd-sys`
-build there (a plain `cargo build --target aarch64-linux-android` does not get that).
+build there (a plain `cargo build --target aarch64-linux-android` does not get that). The generated `MainActivity`
+calls `enableEdgeToEdge()`, so the page draws under the status and navigation bars, and Tauri adds no inset handling;
+Android System WebView reports those bars through `env(safe-area-inset-*)` for every WebView from M144 (for a
+fullscreen one from M136), and the app already pads by those for the PWA. The back gesture goes back in the webview's
+history and otherwise closes the app; `onBackButtonPress` in `@tauri-apps/api/app` (2.9 and up; the app has 2.12)
+takes it over, under `core:default`. The manifest sets no `windowSoftInputMode`; from M139 the keyboard shrinks the
+visual viewport, not the layout one. `additionalBrowserArgs` is Windows only and no Blink flag reaches Android's
+WebView, so HTML-in-canvas is off there and the canvas falls back as the PWA's does. `bundle.fileAssociations` can
+register the app for `.solenoid` files (not done). Kotlin reaches JavaScript through a mobile plugin (`@TauriPlugin`
+with `@Command` methods, registered from Rust), not through `MainActivity`.
 
 ## Plan for the local agent
 
-The agent runs on the author's Linux machine, on `develop`, with the phone (a Samsung S25+) on USB. Ground rules: the
-app's behavior doesn't change, only its packaging and what Android refuses; every fix keeps desktop and web as they are
-(`isAndroidApp()` gates it); `npx tsc --noEmit -p .` and `npx vitest run` pass before each commit; commits go to
-`develop`, one per phase. Stop and ask the author where a phase says so.
+The agent runs on the author's Linux machine, on `develop`, with the phone (a Samsung S25+) on USB. Ground rules:
+
+- The app's behavior doesn't change, only its packaging and what Android refuses. Every fix keeps desktop and web as
+  they are: web code behind `isAndroidApp()`, Rust behind `#[cfg(mobile)]` / `#[cfg(desktop)]`.
+- `npx tsc --noEmit -p .` and `npx vitest run` pass before each commit; one commit per phase on `develop`. Pushes wait
+  for the author's word (CLAUDE.md, local dev server).
+- The installed Tauri CLI's templates may differ from what § What Tauri does on Android read (the `dev` branch,
+  2026-11-04): read the generated files rather than assume them, and note any difference in this file.
+- **Documents live in the app's own storage**, so uninstalling the app deletes them. Before any `adb uninstall`
+  (switching from a debug to a release build needs one, since the two are signed differently), save every document
+  to a file.
+- Stop and ask the author where a phase says so, and whenever a fix would change what the app does.
 
 ### Phase 1: toolchain (the author or the agent, once)
 
@@ -63,8 +80,9 @@ Done when `npx tauri info` shows the Android section with no missing pieces.
 
 1. `npm ci`, then `npm run android:init` (Tauri writes `src-tauri/gen/android`, then `android-prep.mjs` patches its
    manifest; the script says "patched").
-2. Android icons: `npx tauri icon src-tauri/icons/icon.png`, then `git checkout -- src-tauri/icons` so the desktop icons
-   stay as they are; the mipmaps land in `gen/android/app/src/main/res/`.
+2. Android icons: `npx tauri icon src-tauri/icons/icon.png -o "$(mktemp -d)"`. The desktop set (and an iOS folder)
+   go to the throwaway folder, so `src-tauri/icons` stays as it is; the Android mipmaps land in
+   `gen/android/app/src/main/res/`. `git status` then shows changes under `gen/android` only.
 3. Read the generated `.gitignore` files (they leave out `build`, `local.properties`, `keystore.properties`, the copied
    config and the `.so` libraries), then commit `src-tauri/gen/android`.
 
@@ -76,17 +94,22 @@ Done when `npx tauri info` shows the Android section with no missing pieces.
    doesn't exist on mobile. Check the desktop shell still builds after the fix (`cargo check` in `src-tauri`).
 3. An error inside a C crate (`ring`, `zstd-sys`) means the NDK isn't found: recheck `NDK_HOME`; don't set `CC` by hand.
 
-Done when the APK exists under `src-tauri/gen/android/app/build/outputs/apk/`.
+Done when an APK exists: `find src-tauri/gen/android/app/build/outputs/apk -name '*.apk'`.
 
 ### Phase 4: run it on the phone
 
-1. `adb install -r <the debug APK>`, then grant storage for testing:
+1. `adb install -r <the debug APK found above>`, then grant storage for testing:
    `adb shell appops set --uid com.solenoid.app MANAGE_EXTERNAL_STORAGE allow`.
-2. For live edits, `npm run android:dev` (the CLI points the phone at the dev server's LAN address through
-   `TAURI_DEV_HOST`; the phone and the computer share a network). Inspect from desktop Chrome's `chrome://inspect`.
+2. For live edits, `npm run android:dev`: the CLI points the phone at the computer's LAN address through
+   `TAURI_DEV_HOST`, so the two share a network and the computer takes inbound 1420 (the dev server) and 1421 (its hot
+   reload). Inspect from desktop Chrome's `chrome://inspect`. Note the phone's WebView version
+   (`navigator.userAgent`, the `Chrome/` number): the inset and keyboard checks below depend on it.
 3. Walk this list, noting each result:
-   - The app opens to the phone layout, with no desktop title bar or window buttons.
-   - A seed document computes; a Formula, a chart and the Add menu work.
+   - The app opens to the phone layout, with no desktop title bar or window buttons, and nothing under the status bar
+     or the gesture bar (top bar, bottom toolbar, popups' edges), in portrait and landscape.
+   - A seed document computes; a Formula, a chart and the Add menu work; a Script card runs (its worker).
+   - Typing in a formula field near the bottom: the keyboard doesn't cover the field.
+   - The back gesture with a popup open, and with none (see Phase 5).
    - Web Source on an https URL, then on an http URL; Weather or FX fetches.
    - A shared (foreign) document still asks before it fetches or runs a script.
    - Settings' vault folder: the app's picker lists the phone's folders; pick the Obsidian vault.
@@ -106,10 +129,23 @@ Done when the APK exists under `src-tauri/gen/android/app/build/outputs/apk/`.
   fails or reads badly, stop and ask the author between: (a) on Android, Save As picks a folder and a name in the app
   (the documents folder on shared storage), so a document is a real path like on desktop; (b) keep the system picker
   and show the name Android reports.
+- **The back gesture.** By default it closes the app wherever the user is, since the app keeps no webview history
+  (the PWA in Chrome does the same). Stop and ask the author between: (a) leave it; (b) on Android, back closes the
+  topmost popup, menu or panel first and leaves the app only from the bare canvas, through `onBackButtonPress`
+  (recommended: it is what an Android user expects, and Escape already closes each of those).
+- **Bars over the page.** If the top bar or the bottom toolbar sits under the status or gesture bar, the WebView is
+  older than M144 (update Android System WebView from the Play Store first), or a surface lacks its
+  `env(safe-area-inset-*)` padding (add it, as the PWA's other surfaces have it). If the WebView can't be updated, a
+  `ViewCompat.setOnApplyWindowInsetsListener` in `MainActivity` pads the content by the system bars and display cutout,
+  and returns those insets zeroed (not consumed) so the CSS doesn't pad twice.
+- **The keyboard over a field.** Below M139 the keyboard may cover the field. If it does on the phone's WebView, scroll
+  the focused field into view on `visualViewport` resize, behind `isAndroidApp()`, without clearing focus (that closes
+  the keyboard again).
 - **The All files access screen.** The app can't open it or check the grant without native code (the opener sends only
-  VIEW intents). If the author wants a button, add a small Kotlin call in `MainActivity` for
-  `Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION` and `Environment.isExternalStorageManager()`, exposed as a
-  Tauri command; otherwise the Settings line stays the instructions.
+  VIEW intents). If the author wants a button: a small mobile plugin (a `@TauriPlugin` Kotlin class with `@Command`
+  methods, registered from Rust with `register_android_plugin`, https://v2.tauri.app/develop/plugins/develop-mobile/)
+  firing `Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION` for `package:com.solenoid.app` and answering
+  `Environment.isExternalStorageManager()`; otherwise the Settings line stays the instructions.
 - **Anything in the Phase 4 list that fails** and isn't listed here: fix it behind `isAndroidApp()` when the fix is
   packaging; stop and ask when the fix would change what the app does.
 
@@ -127,4 +163,7 @@ Done when the APK exists under `src-tauri/gen/android/app/build/outputs/apk/`.
 ### Phase 7: wrap up
 
 Update this file: § Status, what Phase 5 decided, and anything Tauri did differently from § What Tauri does on Android.
-Delete the backlog line, extend the dev-notes digest, push `develop`.
+Delete the backlog line, extend the dev-notes digest, and push `develop` when the author says to.
+
+**Not in this plan** (backlog items if the author wants them): opening a `.solenoid` file from another app
+(`bundle.fileAssociations`), a Play Store release (the Storage Access Framework in place of All files access), iOS.
