@@ -40,7 +40,7 @@ function Chevron({ back }: { back?: boolean }) {
 }
 
 // Rendered by kind like Display, never stringified; figures and Cubes that would overflow the card show as a chip.
-export function SwitchValue({ value, label, nodeId }: { value: unknown; label?: string; nodeId: string }) {
+function SwitchValue({ value, label, nodeId }: { value: unknown; label?: string; nodeId: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} />;
   // A display-value box, so NodeCard measures it and centers the output socket on it.
   if (isCubeValue(value)) return <div className="solenoid-node__display-value solenoid-node__display-value--chip"><CubeChip value={value} label={label} size="sm" accent="var(--sock-cube)" /></div>;

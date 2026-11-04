@@ -1,7 +1,6 @@
 // [[C44]] dateSerials, [[B11]] maximalMerge
 import { GraphInput, GraphNode, GraphOutput } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { nodeWire, jsonText } from "../nodeWire";
 import { numberSocket, stringSocket, dateSocket, logicalSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
 import { frameIn, frameOut, dateOut, numOut, tableOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
@@ -93,58 +92,6 @@ export class CableSwitchNode extends GraphNode {
 
   data(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { out: unknown };
-  }
-}
-
-export type HoldMode = "live" | "held";
-
-/** Passes its input through while Live; Held keeps the value it captured, saved in the document, until you capture
- *  again ([[C23]] calcModes: only your press changes it, never a pass). */
-export class HoldNode extends GraphNode {
-  static socketDocs: Record<string, string> = {
-    changed: "TRUE while held and the incoming value no longer matches the held one.",
-  };
-  label: string;
-  mode: HoldMode;
-  /** The held value as the card wire writes it (`nodeWire`), or "" when nothing is held. */
-  heldText: string;
-  /** What the card hands on, and the incoming value, which a capture takes; the body shows both. */
-  cachedValue: unknown = null;
-  cachedLive: unknown = null;
-  cachedChanged: unknown = null;
-  readonly outSocket = new MutableSocket("trueany");
-  width = 200; height = 160;
-
-  constructor(init?: { label?: string; mode?: HoldMode; heldText?: string }) {
-    super("Hold");
-    this.label = init?.label ?? "Hold";
-    this.mode = init?.mode === "held" ? "held" : "live";
-    this.heldText = typeof init?.heldText === "string" ? init.heldText : "";
-    this.addInput("in", new GraphInput(new AdoptiveSocket(), "In"));
-    this.addOutput("out", new GraphOutput(this.outSocket, "Out"));
-    this.addOutput("changed", new GraphOutput(logicalSocket, "Changed"));
-  }
-
-  /** Holds `value`. False, holding nothing new, when the value can't be saved (a LAMBDA a formula made). */
-  capture(value: unknown): boolean {
-    const w = nodeWire(value === undefined ? null : value);
-    if (w === undefined) return false;
-    this.heldText = jsonText(w);
-    this.mode = "held";
-    return true;
-  }
-
-  release(): void {
-    this.mode = "live";
-    this.heldText = "";
-  }
-
-  passthrough(): PassthroughSpec[] {
-    return [{ output: "out", inputs: ["in"], combine: "single" }];
-  }
-
-  data(inputs: Record<string, unknown[] | undefined>) {
-    return nodeOnCore(this, inputs) as { out: unknown; changed: unknown };
   }
 }
 

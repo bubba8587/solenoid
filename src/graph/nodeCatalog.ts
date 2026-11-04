@@ -1,6 +1,6 @@
 // [[B16]] oneFormulaSurface, [[C53]] queryIsCompositePreset
 import {
-  AngleDialNode, SlicerNode, CableSwitchNode, HoldNode, ValueInputNode, DateRangeNode, XYPadNode,
+  AngleDialNode, SlicerNode, CableSwitchNode, ValueInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, CardsNode, GanttNode,
@@ -196,7 +196,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "color-blend", label: "Color Blend", description: "Blends two colors with a standard blend mode: mix, multiply, screen, overlay, darken, lighten, difference, dodge, burn. Any CSS color string in, hex out.", create: () => new ColorBlendNode(), parity: false, keywords: "color blend mix multiply screen overlay tint shade combine average darken lighten" },
           { type: "slicer",      label: "Slicer",      description: "Filters a Frame like an Excel slicer: choose a column, then the values whose rows to keep.", create: () => new SlicerNode() },
           { type: "cable-switch", label: "Input Switch", description: "Passes on the value from the named slot you pick, of any type. Unlike `SWITCH`, it picks by name, not by matching a value. Many mode passes several, as a Cube of name and value rows.", create: () => new CableSwitchNode(), parity: false, keywords: "switch multiplexer select choose route mux named cube collect multi" },
-          { type: "hold", label: "Hold", description: "Freezes a value of any type. Live passes it on as it changes; Held keeps the value from the moment you switched, saved with the document, until you capture again. Changed is TRUE once the live value moves away from the held one.", create: () => new HoldNode(), parity: false, keywords: "hold freeze snapshot latch pin capture paste values keep baseline changed sample" },
         ],
       },
       {

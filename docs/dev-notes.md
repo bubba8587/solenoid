@@ -6,10 +6,6 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-11-04: control flow, the Hold card; cloud session)
-- **Hold landed** (Control category, `HoldNode`, body `widgets.rs` `hold`): Live/Held, Recapture, a Changed output. The held value saves as `heldText`, the card wire's JSON, so any value `nodeWire` can send holds and reloads (a formula-made LAMBDA can't). It's in `SEES_ERRORS` so a held value outlives an upstream error. The `text-form` fixture was re-frozen for the new init field only.
-- **[[C23]] calcModes contested, keep won**: no card may answer by how many passes ran, which rules out per-pass Counter/Latch/Gate/Clock on the canvas; stepping feedback stays in a composite's Simulation mode. The rest of the control-flow ideas are `2.0-plan.md` Arc 10 (Stop when it settles; a `#CIRC!` row that makes a Simulation composite).
-
 ### SESSION DIGEST (2026-11-03: Write Properties types with Solenoid Properties; cloud session)
 - **New keys register Solenoid Properties types** ([[D116]] writeSolenoidTypes, new): `obsidianTypeName` maps a Cube cell to `solenoid-cube`, a Frame cell to `solenoid-frame`, a matrix or list to its family's `solenoid-*table` / `solenoid-*list`, complex text to `solenoid-complex`; plain scalars keep Obsidian's types, and `tags` / `aliases` / `cssclasses` are never registered.
 - **The YAML writer now writes matrices and nested rows**: a matrix was written as a list of `"1,2"` strings and a table inside a row as `[object Object]`; both now spell as the plugin and Obsidian do (`frontmatterPatch.test.ts` round-trips the demo vault's `Property types.md`).

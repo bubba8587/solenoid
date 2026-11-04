@@ -1,7 +1,7 @@
 //! [[C28]] literalsIffEditable, [[C44]] dateSerials, [[C118]] formatTravelsWithValue, [[C23]] calcModes
 //! calcModes, [[C103]] untrustedContentSeams. The input widgets' bodies (Value Input,
 //! Slider, Color Picker and Blend, Angle Dial, XY Pad, Curve, Grid Painter, Point Plotter, Date Range, Constant, Input
-//! Switch, Hold), RAND over the roll its shell drew, and SVG Picker over the markup its shell scrubbed. Colours read as
+//! Switch), RAND over the roll its shell drew, and SVG Picker over the markup its shell scrubbed. Colours read as
 //! `colord` with its names plugin reads them.
 
 use super::frames::{cube_from_columns, json_num};
@@ -31,7 +31,6 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "DateRangeNode" => date_range(c),
         "ConstantNode" => constant(c),
         "CableSwitchNode" => cable_switch(c),
-        "HoldNode" => hold(c),
         "RandBetweenNode" => rand_between(c),
         "SvgPickerNode" => svg_picker(c),
         _ => return None,
@@ -799,72 +798,6 @@ fn grid_painter(c: &mut Call) -> Answer {
 }
 
 // ─── Input Switch ───────────────────────────────────────────────────────────────
-
-/// Hold: Live hands the input on; Held hands on the value its save holds, and says whether the input still matches it.
-fn hold(c: &mut Call) -> Answer {
-    let live = c.read_card("in");
-    c.show("cachedLive", live.clone());
-    if c.field_str("mode", "live") != "held" {
-        c.show("cachedValue", live.clone());
-        c.show("cachedChanged", V::Bool(false));
-        return Ok(vec![("out".into(), live), ("changed".into(), Cv::from(V::Bool(false)))]);
-    }
-    let wire: Option<Json> = serde_json::from_str(c.field_str("heldText", "")).ok();
-    let held = wire.as_ref().map_or(Cv::NULL, super::values::decode_card);
-    if let Some(unit) = wire.as_ref().and_then(|w| w.get("__munit")) {
-        c.set_matrix_unit("out", unit.clone());
-    }
-    let changed = V::Bool(!same_content(&live, &held));
-    c.show("cachedValue", held.clone());
-    c.show("cachedChanged", changed.clone());
-    Ok(vec![("out".into(), held), ("changed".into(), Cv::from(changed))])
-}
-
-/// Two card values with the same content: a frame's columns by name, type, unit and cells, a cube's cells, a list's
-/// items; display formats aside. Blank matches blank, and NaN matches NaN.
-fn same_content(a: &Cv, b: &Cv) -> bool {
-    match (a, b) {
-        (Cv::V(x), Cv::V(y)) => same_v(x, y),
-        (Cv::Frame(x), Cv::Frame(y)) => {
-            Rc::ptr_eq(x, y)
-                || (x.columns.len() == y.columns.len()
-                    && x.columns.iter().zip(&y.columns).all(|(p, q)| {
-                        p.name == q.name
-                            && p.ty == q.ty
-                            && p.unit == q.unit
-                            && p.values.len() == q.values.len()
-                            && p.values.iter().zip(&q.values).all(|(u, v)| same_v(u, v))
-                    }))
-        }
-        (Cv::Cube(x), Cv::Cube(y)) => {
-            Rc::ptr_eq(x, y)
-                || (x.columns.len() == y.columns.len()
-                    && x.columns.iter().zip(&y.columns).all(|(p, q)| {
-                        p.name == q.name
-                            && p.cells.len() == q.cells.len()
-                            && p.cells.iter().zip(&q.cells).all(|(u, v)| same_content(u, v))
-                    }))
-        }
-        (Cv::Json(x), Cv::Json(y)) => x == y,
-        (Cv::Cells(x), Cv::Cells(y)) => x.len() == y.len() && x.iter().zip(y.iter()).all(|(u, v)| same_content(u, v)),
-        _ => a.same(b),
-    }
-}
-
-fn same_v(a: &V, b: &V) -> bool {
-    match (a, b) {
-        (V::Null | V::Undef, V::Null | V::Undef) => true,
-        (V::Num(x), V::Num(y)) | (V::Date(x), V::Date(y)) => x == y || (x.is_nan() && y.is_nan()),
-        (V::Str(x), V::Str(y)) => x == y,
-        (V::Bool(x), V::Bool(y)) => x == y,
-        (V::Err(x), V::Err(y)) => x.code == y.code && x.message == y.message,
-        (V::Cx(p, q), V::Cx(r, s)) => p == r && q == s,
-        (V::List(x), V::List(y)) => x.len() == y.len() && x.iter().zip(y.iter()).all(|(u, v)| same_v(u, v)),
-        (V::Fx(_), V::Fx(_)) | (V::Unit(_), V::Unit(_)) => format!("{a:?}") == format!("{b:?}"),
-        (V::Lambda(x), V::Lambda(y)) => Rc::ptr_eq(x, y),
-        _ => false,
-    }
-}
 
 fn cable_switch(c: &mut Call) -> Answer {
     let keys: Vec<String> = c.sockets.iter().map(|s| s.key.clone()).collect();
