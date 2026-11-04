@@ -1,4 +1,4 @@
-// [[C136]] typesKnownAfterCalc
+// [[C136]] typesKnownAfterCalc, [[socket-lattice#Requirements]]
 import { describe, it, expect, afterEach } from "vitest";
 import { solDate } from "../../src/graph/dateValue";
 import type { View } from "../../src/graph/view";
@@ -17,8 +17,7 @@ import { CompositeNode } from "../../src/graph/nodes/composite";
 import { ValueInputNode } from "../../src/graph/nodes/control";
 import type { FrameValue } from "../../src/graph/frame";
 
-// Before a calculation the wiring can't tell these outputs' types; once it has run, nothing is unknown, and the
-// Type Settle types each output by what it carried, so a date never leaves as its serial.
+
 
 class Src extends GraphNode {
   constructor(private value: unknown, socket: GraphSocket) {

@@ -1,7 +1,4 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec, [[C10]] socketLattice
-// The socket lattice's frozen answers (fixtures/core/lattice.json.gz): for every pair of the 31 socket types, whether
-// an output connects to an input, what an adoptive input of that base takes up from that cable, and what an adoptive
-// output of that base shows for that type; per type, its rank, its element family and its forms at each rank.
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[C10]] socketLattice, [[socket-lattice#Enforcement]]
 import { describe, expect, it } from "vitest";
 import { freezes, frozen, readFrozen, replay } from "./coreFixtures";
 import {
@@ -31,8 +28,7 @@ function answer(c: Case): unknown {
       atRank: [typeAtRank(c.t, 0), typeAtRank(c.t, 1), typeAtRank(c.t, 2)],
     };
   }
-  // The settle's agreement vote is the core's alone now (`lattice.rs` `agree_types`, held to these cases natively), so a
-  // freeze, which makes the cases afresh, carries each vote over from the file instead of writing it blank.
+  // A freeze carries each vote over from the file (`agree_types` is the core's alone).
   return c.want ?? KEPT_VOTES.get(JSON.stringify(c.ts));
 }
 

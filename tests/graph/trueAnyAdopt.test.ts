@@ -1,4 +1,4 @@
-// [[C10]] socketLattice
+// [[C10]] socketLattice, [[socket-lattice#Requirements]], [[socket-lattice#The wildcard ladder keeps rank]]
 import { describe, it, expect } from "vitest";
 import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import { GraphEditor } from "../../src/graph/graphEditor";
@@ -51,11 +51,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
   });
 
   it("adoption never PERSISTS: a save/paste init carries no adopted type ([[C10]] socketLattice)", () => {
-    // The save records a node's init fields (extractInit — persistence and paste
-    // share it), never its sockets, so an adopted type must not appear there and
-    // a reconstructed node must start hollow. This is the "never persists" half
-    // of [[C10]] socketLattice, previously unpinned: if Display ever grows a whitelisted field
-    // holding the adopted type, this fails.
+    // Saves and pastes share extractInit; a node rebuilt from it starts hollow.
     const src = numSource();
     const disp = new DisplayNode();
     settleWildcardTypes(makeEditor([src, disp], [
@@ -177,9 +173,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     expect(dt(idx.outputs.result?.socket)).toBe("trueany");
   });
 
-  // 2026-07-27: a frame's element family is per COLUMN, so INDEX resolves it from the
-  // static shape walk instead of giving up at the `frame` socket. Without this a date
-  // pulled out of a frame read as a raw serial downstream (isDateType reads the socket).
+
   it("INDEX over a FRAME adopts the named COLUMN's type, through a verb chain", () => {
     const src = new FrameInputNode({ frameText: JSON.stringify([
       { name: "Item", type: "string", cells: ["nut", "bolt"] },
@@ -229,9 +223,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     expect(dt(idx.outputs.result?.socket)).toBe("datecombo");
   });
 
-  // 2026-07-30: a cube's slices are ALWAYS cubes (data() keeps nested cells
-  // whole), so any blank axis types the output `cube` — only a single CELL
-  // (Row and Column both given) is genuinely unknowable.
+
   it("INDEX over a CUBE: whole-axis slices type as cube; only a single cell is the placeholder", () => {
     const src = new GraphNode("Cube");
     src.addOutput("cube", new GraphOutput(cubeSocket));
@@ -277,17 +269,14 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     const wire = { source: src.id, sourceOutput: "frame", target: idx.id, targetInput: "list" };
     settleWildcardTypes(makeEditor([src, which, idx], [wire]));
     expect(dt(idx.outputs.result?.socket)).toBe("datecombo");
-    // Wire the Column socket: data() takes the cable over the literal, so the stale
-    // literal must stop deciding the type.
+
     settleWildcardTypes(makeEditor([src, which, idx], [
       wire, { source: which.id, sourceOutput: "value", target: idx.id, targetInput: "column" },
     ]));
     expect(dt(idx.outputs.result?.socket)).toBe("trueany");
   });
 
-  // The 2026-07-19 sweep: every honest element-preserving list op adopts its
-  // output (a String List through it never reads back as the neutral Any List —
-  // the stale glyph the author caught on a collapsed group's edge socket).
+
   it("Sort By / Group Lists keys / Set / Concat / Interleave forward the element type", () => {
     const strList = () => {
       const n = new GraphNode("Strs");
@@ -302,8 +291,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     ]));
     expect(dt(sort.outputs.result?.socket)).toBe("strlist");
 
-    // (Group Lists no longer has an adoptive `keys` output — it emits one frame now (C5);
-    // its Key column carries the type internally, not a trueany output socket.)
+
 
     const set = new SetsNode();
     settleWildcardTypes(makeEditor([s1, s2, set], [
@@ -381,11 +369,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
   });
 });
 
-// ─── The agree VOTE distinguishes unwired / unknowable / error-only (2026-07-28) ──
-// Three branch states, three dispositions: UNWIRED contributes no value (no vote);
-// wired to a STATIC-trueany source (XLOOKUP, Get Cell) is a real value of unknowable
-// type (VETO — a typed agreement would format it wrongly, the fa3565a bug); wired to
-// NA() is always a tagged error, which formats as an error under any type (abstain).
+
 describe("agree vote — unknowable vetoes, NA() abstains", () => {
   const trueAnySource = () => {
     const n = new GraphNode("Lookupish");
@@ -419,7 +403,7 @@ describe("agree vote — unknowable vetoes, NA() abstains", () => {
 });
 
 // ─── Rank-0/combo wildcard bases keep themselves on a family-less wire ────────
-describe("any/anycombo bases — a family-less wire keeps the base (Bug C, completed)", () => {
+describe("any/anycombo bases — a family-less wire keeps the base", () => {
   it("adoptTypeForBase(any, trueany) is any; (anycombo, trueany) is anycombo", () => {
     expect(adoptTypeForBase("any", "trueany")).toBe("any");
     expect(adoptTypeForBase("anycombo", "trueany")).toBe("anycombo");

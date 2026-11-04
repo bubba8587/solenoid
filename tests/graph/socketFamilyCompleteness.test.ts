@@ -1,4 +1,4 @@
-// [[C10]] socketLattice
+// [[C10]] socketLattice, [[socket-lattice#Enforcement]]
 import { describe, it, expect } from "vitest";
 import { cx } from "../../src/graph/cxValue";
 import { readFileSync } from "node:fs";
@@ -10,30 +10,11 @@ import {
 import { familyOf } from "../../src/graph/formatModel";
 import { throughBoundary } from "./boundaryKit";
 
-// Adding an element family is four edits (sockets.ts and the core's lattice.rs), and then more sites
-// that neither the compiler nor any other test can see, because they live in a
-// `Set<string>`, two string-keyed records, a CSS variable NAME, and a `default:`
-// branch. `docs/socket-reference.md` section 10 lists them; this file makes them
-// fail instead of merely being written down.
-//
-// Measured, not guessed: a throwaway `currency` family was added to sockets.ts and
-// the whole suite still passed, while its list rung silently refused to widen a
-// scalar, its combo silently refused to collapse a singleton, all four of its
-// rungs drew as a plain circle, its colors resolved to undefined CSS variables,
-// and the Format Controller offered it no controls. Every assertion below is one
-// of those symptoms.
-//
-// Scope note: the WILDCARD rungs (anylist/anycombo/anytable) are deliberately not
-// checked here — socketReference.test.ts already pins all 30 variants against the
-// glyph table. This file is about the (family × rank) grid staying square.
+
 
 const ALL = Object.keys(SOCKET_TYPE_LABELS) as SocketDataType[];
 
-// DERIVED, never restated. Listing the families by hand here would reproduce the
-// exact hole this file exists to close: a sixth family would simply not be
-// iterated, and every assertion below would pass while ignoring it. (That is not
-// hypothetical — the first draft of this file hardcoded the five and caught the
-// `currency` experiment at only one of its five sites.)
+// Derived from the code, so a new family is iterated too.
 const FAMILIES: ElementFamily[] = [
   ...new Set(ALL.map(elementFamilyOf).filter((f): f is ElementFamily => f !== null)),
 ];
@@ -67,20 +48,9 @@ describe("every element family is complete at the five sites the compiler can't 
     }
   });
 
-  // Site 1 — coerceInputs.coerceValue. A rung that falls through to `default:
-  // return v` still CONNECTS, so the bug surfaces as a wrong-ranked value inside
-  // data() rather than as a refused cable. This is the one that bites hardest.
-  // (Only the rank-1 rungs are checked: the MATRIX rungs of string/date/complex
-  // deliberately pass values through untouched — their producer already shaped
-  // them — which is what section 5 documents as "the value passes as-is".)
+
   it("every strict-list rung widens a lone value, and every combo rung collapses a singleton", () => {
-    // One probe per family, chosen so the family's own element coercion is a
-    // no-op — a boolean for logical, a tagged cx for complex ([[C24]] arraySemantics) — leaving the
-    // RANK change as the only thing the assertion can be measuring.
-    // `ElementFamily` is `keyof typeof FAMILIES` over a string-indexed record, so
-    // it widens to `string` — this map gets NO exhaustiveness check from tsc. Fall
-    // back to a plain number for an unlisted family so the assertion below still
-    // reads clearly instead of comparing `undefined` to `[undefined]`.
+    // A probe the family's element coercion leaves alone, so only the rank can change; an unlisted family gets a number.
     const PROBE: Record<string, unknown> = {
       number: 7, string: "a", date: 7, complex: cx(1, 2), logical: true,
     };
@@ -97,8 +67,7 @@ describe("every element family is complete at the five sites the compiler can't 
     }
   });
 
-  // Site 2 — SocketComponent's render branches are keyed by plain strings, so an
-  // unlisted rung silently falls to the final `else`: a plain circle.
+
   it("every family's list, combo and matrix rung has a glyph branch", () => {
     const listTypes = /const LIST_TYPES = new Set\(\[(.*?)\]\)/s.exec(SOCKET_COMPONENT)![1];
     const comboKeys = /const COMBO_COLORS[^{]*\{(.*?)\n\};/s.exec(SOCKET_COMPONENT)![1];
@@ -115,8 +84,7 @@ describe("every element family is complete at the five sites the compiler can't 
     }
   });
 
-  // Site 3 — SOCKET_COLORS only names CSS variables. A variable with no palette
-  // registry row resolves to nothing, so the dot renders unfilled.
+
   it("every socket color names a variable the palette actually defines", () => {
     for (const t of ALL) {
       const v = /var\((--[a-z-]+)\)/.exec(SOCKET_COLORS[t])?.[1];

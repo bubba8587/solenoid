@@ -1,4 +1,4 @@
-// [[C28]], [[B12]] losslessSaves, [[B18]] safeToShare, [[C10]] socketLattice
+// [[C28]], [[B12]] losslessSaves, [[B18]] safeToShare, [[C10]] socketLattice, [[socket-lattice#Each port owns its socket instance]], [[socket-lattice#Date-valued ports are date-typed]]
 import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -98,13 +98,7 @@ describe("catalog ↔ registry consistency", () => {
     expect(offenders, offenders.join("\n  ")).toEqual([]);
   });
 
-  // [[C10]] socketLattice: an adopting port OWNS its socket instance — the class doc says it
-  // outright ("One instance per port, never shared — a retype must not leak
-  // across cards"). A module-level shared MutableSocket means wiring a date into
-  // one card retypes ANOTHER card's port; that card then coerces under the wrong
-  // type and answers a plausible number (the Input Switch's old shared
-  // valueSocket). Two instances of every class: no MutableSocket may appear in
-  // both.
+
   it("no two instances of a class share a mutable socket ([[C10]] socketLattice)", () => {
     const offenders: string[] = [];
     for (const [type, entry] of FLAT_CATALOG.entries()) {
@@ -224,22 +218,10 @@ describe("catalog ↔ registry consistency", () => {
   });
 });
 
-// A port that HOLDS a date is typed as one — per [[C10]] socketLattice. Swept over
-// the whole catalog because the convention is only worth anything if it is total: it
-// already held on all 60-odd date ports in the finance and date families, and the two
-// that broke it (XIRR/XNPV `dates`, typed numlist and labelled "Date serials") were
-// invisible precisely because everything around them was right.
+
 describe("date-valued ports are typed date", () => {
   it("no catalog port whose label names a date sits on a non-date socket", () => {
-    // Anchored to the END of the label so a numeric port that merely mentions time
-    // ("Start period", "Coupon rate", "Days") is not swept in. A port whose label ends
-    // in "date"/"dates" is claiming to carry one.
-    //
-    // WILDCARD rungs are exempt, and the exemption is the point of the rule rather
-    // than a hole in it: the defect is a port that COMMITS to a concrete non-date type
-    // while carrying a date. A wildcard has committed to nothing — a formula-preset
-    // node ("ROUNDUP(MONTH(date)/3,0)") names its free variables as ports, so `date`
-    // there is an expression variable on the generic socket, not a mistyped date port.
+
     const CLAIMS_DATE = /\bdates?$/i;
     const broken: string[] = [];
     for (const [type, entry] of FLAT_CATALOG.entries()) {
