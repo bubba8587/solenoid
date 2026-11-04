@@ -12,7 +12,7 @@ The formulas and the nodes share one set of functions ([[B16]] oneFormulaSurface
 
 The formula language is the Excel-style expression language typed into an Expression card, a LAMBDA card and a computed column. A formula is parsed once into a syntax tree and evaluated per recompute against the card's variables. Every function it calls is implemented in Rust ([[rust-core]]) and usually shares its kernel with the matching node. This spec covers the grammar, how names and calls resolve, how arguments are prepared and broadcast, the function-by-function notes, the shared graph-free kernels both surfaces call, and the measurement that keeps nodes and formulas in step.
 
-The per-name reasons Solenoid answers otherwise than Formula.js did are [[formulajs-divergences]]; this spec does not repeat them. The mechanics below name the core's own functions (`eval.rs` unless another file is named) and the fields of its call table; the TypeScript copies are gone ([[D99]] rustIsSpec). Computed-column name resolution is [[computed-columns]]. The Equation node's symbolic rearrangement of the same AST is [[equation-solver]]. The dimension pass that runs beside the numeric evaluator is [[unit-flow]].
+Where Solenoid answers otherwise than Excel, and where it answers as Excel where Formula.js did not, is [[excel-divergences]]; this spec does not repeat it. The mechanics below name the core's own functions (`eval.rs` unless another file is named) and the fields of its call table; the TypeScript copies are gone ([[D99]] rustIsSpec). Computed-column name resolution is [[computed-columns]]. The Equation node's symbolic rearrangement of the same AST is [[equation-solver]]. The dimension pass that runs beside the numeric evaluator is [[unit-flow]].
 
 ```mermaid
 flowchart LR
@@ -583,7 +583,7 @@ A computed column's formula runs on this evaluator inside a row context pushed b
 
 ## Function notes
 
-Per-function behavior that the routing above does not decide. The node and the formula call the same kernel ([[C17]] shareImpl), so the kernel's own rules are in *Shared kernels*; where Solenoid answers otherwise than Formula.js did, and the evidence, are in [[formulajs-divergences]]. An omitted optional argument takes its default; a blank one follows the rules in *Blank and omitted arguments*.
+Per-function behavior that the routing above does not decide. The node and the formula call the same kernel ([[C17]] shareImpl), so the kernel's own rules are in *Shared kernels*; where Solenoid answers otherwise than Formula.js did, and the evidence, are in [[excel-divergences]]. An omitted optional argument takes its default; a blank one follows the rules in *Blank and omitted arguments*.
 
 ### Logic and choice
 
@@ -600,7 +600,7 @@ Per-function behavior that the routing above does not decide. The node and the f
 - **POWER** is the `^` operator and the Arithmetic card's power op, so `POWER(0, 0)` is 1 ([[B16]] oneFormulaSurface) and `POWER(0, -1)` is `#DIV/0!`.
 - **LOG2** of x at or below 0 is `#DOMAIN!`, as LN's is ([[C24]] arraySemantics). **HYPOTENUSE(x, y)** answers blank when either is blank.
 - **ERF.PRECISE** and **ERFC.PRECISE** are Excel's single-argument forms, identical to ERF and ERFC, and delegate to them.
-- **CONVERT** runs the unit system on the Convert node's units, by Excel code or unit id ([[formulajs-divergences]]).
+- **CONVERT** runs the unit system on the Convert node's units, by Excel code or unit id ([[excel-divergences]]).
 
 ### Text
 
@@ -706,22 +706,7 @@ The criteria family (SUMIFS, COUNTIFS, AVERAGEIFS, MINIFS, MAXIFS, COUNTIF, AVER
 
 ### Deliberate differences from Excel
 
-Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because consistency across the graph beats matching a quirk:
-
-- `0^0` is 1; Excel answers `#NUM!`.
-- DATE's year is literal: 26 is the year 26, never 1926. Date text needs a four-digit year. One reading of a year everywhere beats matching Excel's two-digit guess ([[C44]] dateSerials).
-- DATEDIF's `MD` is never negative; Excel's goes negative across a short month.
-- VALUE does not parse date or time text.
-- The IM* functions answer tagged complex values, zip lists pairwise, and answer IMARGUMENT(0) as 0; unparseable complex text is `#VALUE!` rather than `#NUM!`.
-- EXPAND's default padding is blank rather than `#N/A`.
-- CHAR and CODE are UNICHAR and UNICODE, the CHAR / CODE card's full-Unicode reading; Excel's stop at 255 and use the system code page.
-- SEQUENCE and RANDARRAY with zero rows or columns are an empty list; Excel, which has no empty array, answers `#CALC!`. TAKE and DROP keep the error, as `#DOMAIN!`, because an empty take there is almost always a wrong count.
-- The TAKE / DROP card reads a count of 0 as "left out", keeping the whole axis; Excel's TAKE of 0 is `#CALC!`, and so is the formula's (`#DOMAIN!`).
-- XMATCH and XLOOKUP refuse wildcard and binary search modes.
-- Excel's `#NUM!` is split into `#DOMAIN!`, `#OVERFLOW!` and `#CONV!`; `ERROR.TYPE` still reports all three as 6. A percentile outside its domain, taking nothing or dropping everything, and an XIRR date before the first are `#DOMAIN!`.
-- A sample statistic with too few values (SKEW below 3, KURT below 4, SEM and CV below 2) is blank rather than `#DIV/0!` ([[C24]] arraySemantics), and so are AVERAGE and MEDIAN of no numbers and LARGE or SMALL with k past the count (Excel: `#DIV/0!`, `#NUM!`); STDEV.S and VAR.S of one value stay `#DIV/0!`, as in Excel, and so does AVERAGEIF(S) with no matching row.
-- LOG2 of a value at or below 0 is blank.
-- FORECAST.ETS uses its own parameter search, so its values are close to Excel's but not identical.
+Each place Solenoid answers otherwise than Excel, and why, is in [[excel-divergences#Deliberate differences from Excel]].
 
 ## Shared kernels
 

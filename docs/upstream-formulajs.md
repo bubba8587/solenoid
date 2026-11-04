@@ -3,7 +3,7 @@
 Ready-to-paste issue texts for `formulajs/formulajs` (verified against 4.6.1, 2026-08-23):
 the divergences whose reason is a genuine Formula.js defect against Excel — NOT Solenoid
 design choices (null-skip, `#AMBIGUOUS!`, DATE's literal year, the units system,
-number-only VALUE stay ours; see `../tree/specs/computation/formulajs-divergences.md`).
+number-only VALUE stay ours; see `../tree/specs/computation/excel-divergences.md`).
 Formula.js is no longer a dependency: `crates/solenoid-core` ports it and answers these as
 Excel does, so an upstream fix changes nothing here. Submitting is the author's call, from
 the author's account. Each entry's "ours:" names the TypeScript fix the core's body was

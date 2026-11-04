@@ -24,7 +24,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 |---|---|---|
 | `../tree/specs/computation/compute-pass.md` | the recompute pass, calc modes, the per-node wrappers and arrival coercion | `graphCompute.ts`, `process.ts`, `passSession.ts`, `nodeBoundary.ts`, `listLiterals.ts`, `nodeRegistry.ts`, `crates/solenoid-graph/src/boundary.rs` |
 | `../tree/specs/computation/formula-language.md` | the formula grammar, operators, name resolution, dispatch, broadcasting, LAMBDA, Expression | `excelFormula.ts`, `excelFunctions.ts`, `formulaSignatures.ts` |
-| `../tree/specs/computation/formulajs-divergences.md` | where Solenoid answers otherwise than Formula.js did, and why | `crates/solenoid-core/src/excel_functions.rs`, `fns_*.rs` |
+| `../tree/specs/computation/excel-divergences.md` | where Solenoid answers otherwise than Excel, and where it answers as Excel where Formula.js did not, and why | `crates/solenoid-core/src/excel_functions.rs`, `fns_*.rs` |
 | `../tree/specs/computation/computed-columns.md` | per-row formulas on a Frame: Fx columns and the Computed Column node | `crates/solenoid-core/src/nodes/columns.rs`, `nodes/frame.ts` |
 | `../tree/specs/computation/graph-core.md` | the dataflow engine and the graph walks on netcore-rs, in the one wasm module with the core: hosting the JS nodes, calling the cards on the core directly, errors and `Cancelled`, traps | `crates/solenoid-graph/`, `dataflowEngine.ts`, `engineWasm.ts` |
 | `../tree/specs/computation/rust-core.md` | the Rust core in wasm: the port rule, what it carries, why nothing falls back, the rebase routine | `crates/solenoid-core/`, `engineWasm.ts`, `frameBackend.ts` |

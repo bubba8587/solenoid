@@ -16,7 +16,7 @@ owns. Written by A2 2026-08-25, plan-only, no code touched. Line numbers verifie
 `excelFormula.ts` / `excelFunctions.ts` on 2026-08-25 — grep the symbol if they drift.
 
 ## Read first
-`CLAUDE.md`; the formula-surface rule leaves ([[C17]] shareImpl and its siblings, `../tree/specs/computation/formula-language.md` § The dispatch ladder); `docs/formulajs-divergences.md`
+`CLAUDE.md`; the formula-surface rule leaves ([[C17]] shareImpl and its siblings, `../tree/specs/computation/formula-language.md` § The dispatch ladder); `tree/specs/computation/excel-divergences.md`
 (why each `registerInternal` override exists — read before deleting a fallthrough);
 `tree/specs/values/error-values.md`.
 
@@ -69,7 +69,7 @@ broadcast fallthrough for them; drop the ~68 undeclared names from `FX_FUNCTION_
 autocomplete stops advertising them. **The bulk of the work is the AUDIT**, which needs the
 author's per-name calls: each of the ~68 is either (a) a real Excel function we WANT →
 declare its `EXCEL_IMPL_META` (and any `registerInternal` divergence per
-`../../tree/specs/computation/formulajs-divergences.md`), or (b) unwanted → let it fall to `#NAME?`. This cannot be done
+`../../tree/specs/computation/excel-divergences.md`), or (b) unwanted → let it fall to `#NAME?`. This cannot be done
 mechanically — declaring a name is a product decision about the surface.
 
 **Recommendation (A2):** do **Option A now** (it removes the user-visible footgun and is

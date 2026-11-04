@@ -24,7 +24,7 @@ load-bearing core (noted below); the full originals are likewise in git history.
 - [`node-arity-audit.md`](node-arity-audit.md) — *condensed.* The labeled-slots-vs-list-socket KEEP verdicts (rule also lives in `node-coverage.md`).
 
 ### Still-consumed reference — kept whole; cited by live code / docs
-- [`formula-node-parity.md`](formula-node-parity.md) — *archived 2026-08-07, program complete (548/548 in-scope leaves callable).* The D19 parity program record only. Its Formula.js divergence catalogue was LIVE and moved out 2026-08-11 → `../formulajs-divergences.md`.
+- [`formula-node-parity.md`](formula-node-parity.md) — *archived 2026-08-07, program complete (548/548 in-scope leaves callable).* The D19 parity program record only. Its Formula.js divergence catalogue was LIVE and moved out 2026-08-11 → `../../tree/specs/computation/excel-divergences.md`.
 - [`cube-node-scope.md`](cube-node-scope.md) — *archived 2026-08-07, shipped.* The Cube model + node set rationale; live summary in `../node-coverage.md`, deferred slices in `../deferrals.md`.
 - [`excel-toolbar-supplementals.md`](excel-toolbar-supplementals.md) — *archived 2026-08-07.* The ribbon-by-ribbon non-function parity verdicts (all open questions answered 2026-07-05).
 - [`excel-pain-points.md`](excel-pain-points.md) — the Excel pain-point / function-gap research that seeded the parity work.

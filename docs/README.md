@@ -43,9 +43,9 @@ is parked there.
 - **`knap-upstream.md`** — the `knap` bugs (with repros) and API asks found
   integrating it, each with the workaround it would retire, re-verified on every
   bump. The list to file upstream.
-- **`../tree/specs/computation/formulajs-divergences.md`** — where Solenoid answers otherwise
-  than Formula.js did, and why. Read before changing one of those functions: the
-  library being wrong is the whole reason the core's answer differs from its.
+- **`../tree/specs/computation/excel-divergences.md`** — where Solenoid answers otherwise
+  than Excel, and where it answers as Excel where Formula.js did not, and why. Read before
+  changing one of those functions.
 - **`../tree/specs/floors/engineering.md`** — the cross-cutting code-hygiene rules: overrides on
   the declaration, generated name lists, one implementation per gating metric, `every` for
   completeness, the graph-free formula path, lazy heavy libraries.
@@ -147,7 +147,7 @@ results get retried and settled rulings relapse.
 | `flyToNode.ts`, any camera `zoomAt` caller | [[C88]] collapsedGroupCard; `../tree/specs/canvas/group-collapse.md` (camera targets) |
 | `activeGraph.ts` | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` (canvas-substitution seam) |
 | `fns_lists.rs` `fill_grid` | [[C102]] gridFillThenForecast; `../tree/specs/computation/bordered-grid-fill.md` |
-| `excel_functions.rs`, `fns_*.rs` (an answer that differs from Formula.js) | `../tree/specs/computation/formulajs-divergences.md` (why each one differs) |
+| `excel_functions.rs`, `fns_*.rs` (an answer that differs from Excel) | `../tree/specs/computation/excel-divergences.md` (why each one differs) |
 | `excel_formula.rs` `apply_op` scalar operators | `../tree/specs/computation/formula-language.md` § Scalar operators |
 | `nodes/matrix.ts` Table Input parse, `TablePopup.tsx`, `TableCards.tsx`, `cardLayout.ts` | [[C58]] tableInputRawText (raw text is the stored truth); `../tree/specs/documents/table-popup.md` |
 | `palette.ts`, `appTheme.ts`, `themeVars.ts` | `../tree/specs/canvas/palette-and-theme.md`; `../DESIGN.md` § Tertiary (Typed Socket Palette) |
@@ -176,7 +176,7 @@ results get retried and settled rulings relapse.
 | `nodes/composite.ts`, `compositeLogic.ts`, `components/CompositeNode.tsx` | `../tree/specs/computation/composite-nodes.md`; [[C77]] compositeIsSubgraph, [[C23]] calcModes |
 | `nodes/visual.ts`, `nodes/chartOptions.ts`, `components/chartView.tsx`, `components/chartRender.tsx`, `chartCanvasViews.tsx`, `chartCards.tsx`, `ladderView.tsx`, `ladderLayout.ts`, `ladderNav.ts` | `../tree/specs/computation/chart-figures.md`; [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib |
 | `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`, `scriptWorker.ts`, `scriptExecutor.ts`, `jsSyntax.ts`, `components/JsEditor.tsx`, `components/ScriptPopup.tsx` | [[C66]] scriptNode; `out-of-scope.md` §4 (the bounded form); `../tree/specs/computation/script-sandbox.md` |
-| `excelFunctions.ts`, `excelFormula.ts`, `formulaSignatures.ts`, `crates/solenoid-core/src/excel_formula.rs`, `eval.rs`, Expression/LAMBDA | `../tree/specs/computation/formula-language.md`; `../tree/specs/computation/formulajs-divergences.md`; the formula-surface nodes (`python3 tools/dte.py tree --under B16`) |
+| `excelFunctions.ts`, `excelFormula.ts`, `formulaSignatures.ts`, `crates/solenoid-core/src/excel_formula.rs`, `eval.rs`, Expression/LAMBDA | `../tree/specs/computation/formula-language.md`; `../tree/specs/computation/excel-divergences.md`; the formula-surface nodes (`python3 tools/dte.py tree --under B16`) |
 | `crates/solenoid-core/src/relative_date.rs` (relative date phrases), `DateEntry.tsx` | [[C44]] dateSerials; `../tree/specs/computation/formula-language.md` § Date kernels |
 | A card body in `crates/solenoid-core/src/nodes/` that shares a formula function's kernel, `fns_packs.rs` over `nodes/packs.rs`, `nodes/dateSerial.ts`, `nodes/convertUnits.ts` (+ the generated `convert_units.rs`), a family's `nodes/*Ops.ts` vocabulary, `packs/*Formulas.ts` — and ANY new shared node↔formula module | [[C17]] shareImpl (one impl, two surfaces) |
 | `crates/solenoid-core/src/nodes/columns.rs`, `ComputedColumnNode`, Frame Input and Cube Input Fx columns | [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas; `../tree/specs/computation/computed-columns.md` |

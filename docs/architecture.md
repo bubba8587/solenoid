@@ -304,7 +304,7 @@ idle is always the real DOM. There is no third renderer; do not build one.
 | `closeParens.ts` | `closeParens` for every formula surface's commit ([[C115]] closeParensOnCommit); outside `excelFormula.ts` so the Obsidian plugin doesn't bundle the engine |
 | `formulaSignatures.ts` (+`formulaSignatureTable.ts`, `emptySlots.ts`), `formulaSyntax.ts`, `formulaExtensions.ts`, `formulaNodeParity.ts` | The formula-surface cluster: signature metadata (the bare table, import-free) + what an empty argument slot reads as + syntax hints, highlighting, pack formula declarations, and the node↔formula parity model (`inFormula`/`excelCovered` — oneMetricImpl/oneThingPerMetric/useEveryNotSome) |
 | `nodeOps.ts` | Per-class op declarations (`kind: "op" \| "argument"`) — what the Add-menu search may surface and how ops are counted; aggregator hosts are `argument` (never searchable) |
-| `formulaDivergence.test.ts` | Pins the Excel-correct answers where Formula.js was wrong (MOD/QUOTIENT/ATAN2/ROUND/RANK/TRIMMEAN/PERCENTRANK and the rest, `../tree/specs/computation/formulajs-divergences.md`) |
+| `formulaDivergence.test.ts` | Pins the Excel-correct answers where Formula.js was wrong (MOD/QUOTIENT/ATAN2/ROUND/RANK/TRIMMEAN/PERCENTRANK and the rest, `../tree/specs/computation/excel-divergences.md`) |
 
 ### App chrome
 

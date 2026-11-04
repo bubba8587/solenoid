@@ -1,15 +1,49 @@
 ---
-aliases: ["Formula.js divergences"]
+aliases: ["Excel divergences"]
 tags: [spec, computation]
 ---
-<!-- [[C17]] shareImpl, [[C15]] matricesInFormulas -->
+<!-- [[A5]] excelParity, [[B16]] oneFormulaSurface, [[C17]] shareImpl, [[C15]] matricesInFormulas, [[D115]] datesArePoints, [[D119]] datesBefore1900 -->
 
-# Spec: Formula.js divergences
+# Spec: Excel divergences
 
-Serves [[C17]] shareImpl. Formula.js was the library behind every Excel function Solenoid didn't write itself; its bodies were ported into the core ([[rust-core]]) and the library is gone. Where its answer differed from Excel's, Solenoid answers as Excel does, usually through the same kernel the matching card runs. This spec lists each of those and the evidence for it. Read it before changing one of these functions: each entry is the reason Formula.js's answer was wrong for Solenoid. `tests/graph/formulaDivergence.test.ts` pins the Excel-correct answers. Every kernel below is the core's, its file under `crates/solenoid-core/src/`.
+Serves [[A5]] excelParity and [[B16]] oneFormulaSurface: a function keeps Excel's name and answer, and each place it doesn't is written here with its reason. Read this before changing a function whose answer differs from Excel's.
 
-Deliberate differences from Excel itself (not from Formula.js) are in [[formula-language]] under *Function notes*.
+The first part is Solenoid's own differences from Excel, deliberate ones. The rest is the functions Solenoid answers as Excel does where Formula.js did not: Formula.js was the library behind every Excel function Solenoid didn't write itself, its bodies were ported into the core ([[rust-core]]) and the library is gone, so each entry is the reason its answer was wrong for Solenoid and the evidence for Excel's. `tests/graph/formulaDivergence.test.ts` pins those Excel-correct answers. Every kernel below is the core's, its file under `crates/solenoid-core/src/`.
 
+## Deliberate differences from Excel
+
+Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because consistency across the graph beats matching a quirk:
+
+- `0^0` is 1; Excel answers `#NUM!`.
+- DATE's year is literal: 26 is the year 26, never 1926. Date text needs a four-digit year. One reading of a year everywhere beats matching Excel's two-digit guess ([[C44]] dateSerials).
+- DATEDIF's `MD` is never negative; Excel's goes negative across a short month.
+- VALUE does not parse date or time text.
+- The IM* functions answer tagged complex values, zip lists pairwise, and answer IMARGUMENT(0) as 0; unparseable complex text is `#VALUE!` rather than `#NUM!`.
+- EXPAND's default padding is blank rather than `#N/A`.
+- CHAR and CODE are UNICHAR and UNICODE, the CHAR / CODE card's full-Unicode reading; Excel's stop at 255 and use the system code page.
+- SEQUENCE and RANDARRAY with zero rows or columns are an empty list; Excel, which has no empty array, answers `#CALC!`. TAKE and DROP keep the error, as `#DOMAIN!`, because an empty take there is almost always a wrong count.
+- The TAKE / DROP card reads a count of 0 as "left out", keeping the whole axis; Excel's TAKE of 0 is `#CALC!`, and so is the formula's (`#DOMAIN!`).
+- XMATCH and XLOOKUP refuse wildcard and binary search modes.
+- Excel's `#NUM!` is split into `#DOMAIN!`, `#OVERFLOW!` and `#CONV!`; `ERROR.TYPE` still reports all three as 6. A percentile outside its domain, taking nothing or dropping everything, and an XIRR date before the first are `#DOMAIN!`.
+- A sample statistic with too few values (SKEW below 3, KURT below 4, SEM and CV below 2) is blank rather than `#DIV/0!` ([[C24]] arraySemantics), and so are AVERAGE and MEDIAN of no numbers and LARGE or SMALL with k past the count (Excel: `#DIV/0!`, `#NUM!`); STDEV.S and VAR.S of one value stay `#DIV/0!`, as in Excel, and so does AVERAGEIF(S) with no matching row.
+- LOG2 of a value at or below 0 is blank.
+- FORECAST.ETS uses its own parameter search, so its values are close to Excel's but not identical.
+
+### Dates are points
+
+A date is its own kind of value, a point in time, never a number ([[D114]] dateIsAKind, [[D115]] datesArePoints, [[C137]] datesNeverSerials; the rules are [[date-values]]). Excel's date is a number with a format, so each of these answers where Solenoid's is `#TYPE!`:
+
+- Arithmetic other than moving a date by days or measuring between two: `date * 2`, `date / 7`, `date ^ 2`, `date1 + date2`, `5 - date`, `-date` and `date%`. A date plus or minus a number is still a date, and a date minus a date a number of days, as in Excel.
+- A date compared with a number or text: `date = 46000`, `date < "x"`. Two dates compare as in Excel.
+- A function in no date class handed a date: `SUM(date)`, `ABS(date)`, `SQRT(date)`, SUMIFS adding a range of dates, and a sum, product or share of dates in the table verbs.
+- A number where a function reads a date: `YEAR(46000)`, `EDATE(46000, 1)`, and dates beside plain numbers in MIN, MAX, AVERAGE and the other functions that keep or spread dates. Cast to Number is the one way from a date to its serial, and Cast to Date or DATE the way back.
+- A list or table mixing dates with another kind, which Excel holds as numbers in one range.
+
+### Days before 1900
+
+Excel has no dates before 1 January 1900: it refuses a negative date in TEXT, EDATE, the coupon functions and the rest. Solenoid takes them everywhere, from 01-Jan-0001 ([[D119]] datesBefore1900; [[date-values#Days before 1900]]). Its serials have no 29-Feb-1900 ([[C44]] dateSerials), so a serial from 1 to 60 is one day earlier than Excel's (Excel's 1 is 01-Jan-1900, Solenoid's 31-Dec-1899), and from 61 on (01-Mar-1900) they agree.
+
+## Excel's answer, pinned
 ## Excel's answer, pinned
 
 **MUST:** where Formula.js gave a different answer from Excel, Solenoid gives Excel's, backed by the same implementation as the card ([[C17]] shareImpl), and a test pins it. The tripwires that held Formula.js to its wrong answers went with the library: no vendor update reaches the core. The first divergence list lived in a sweep script that was later lost and had to be rebuilt from notes, so the evidence lives in the suite, with the per-name reasons below.

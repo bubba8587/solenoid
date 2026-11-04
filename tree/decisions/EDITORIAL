@@ -1,3 +1,4 @@
 # Wording-only sweeps. One line each; a leaf's History stays about the decision.  dte:B61
 # date	by	note	leaves (id@body-hash)
 2026-11-02	Claude Opus 5.5	Ruggine, the graph library, is renamed netcore-rs (its crates netcore and netcore-engine), on the author's word	C130@36d22731d28a
+2026-11-04	Claude	C24 and C58 point at the renamed Excel divergence list, [[excel-divergences]] (was formulajs-divergences)	C24@0491e223bd1b C58@0e683874a6c9
