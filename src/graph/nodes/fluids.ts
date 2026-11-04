@@ -8,7 +8,8 @@ import { PIPE_ROUGHNESS } from "./fluidsOps";
 
 export class ColebrookNode extends GraphNode {
   label: string;
-  literals: Record<string, number> = { re: 100000, rr: 0.0001 };
+  static fieldPlaceholders: Record<string, string> = { re: "100000", rr: "0.0001" };
+  literals: Record<string, number> = {};
   cachedResult: number | SolError | null = null;
   width = 200;
   height = 170;

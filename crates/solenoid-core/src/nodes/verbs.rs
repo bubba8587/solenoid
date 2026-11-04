@@ -118,7 +118,7 @@ fn trimmed_names(names: Vec<String>) -> Vec<String> {
 /// A filter input's value, wired or typed in; none where it is blank.
 fn filter_input(c: &Call, key: &str) -> Option<V> {
     let raw = match c.wired(key) {
-        None | Some([]) => match c.string_literal(key) {
+        None | Some([]) => match c.unwired(key) {
             V::Undef | V::Null => V::str(""),
             v => v,
         },

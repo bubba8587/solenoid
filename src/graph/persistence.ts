@@ -26,6 +26,7 @@ import { paletteStore, reportPaletteStore } from "./palette";
 import { docMetaStore } from "./docMetaStore";
 import { loadRevealStore } from "./loadReveal";
 import { zoomAt } from "./zoomAt";
+import { restoreLiterals } from "./literalFields";
 
 
 const SWITCH_CURTAIN_MIN_WORK = 300;
@@ -227,10 +228,7 @@ async function rebuildGraph(
       placeholdered.push(sn.type);
     } else {
       node = new Ctor({ ...sn.init });
-      const anyNode = node as unknown as Record<string, unknown>;
-      if (sn.literals && typeof anyNode.literals === "object") anyNode.literals = { ...sn.literals };
-      if (sn.stringLiterals && typeof anyNode.stringLiterals === "object") anyNode.stringLiterals = { ...sn.stringLiterals };
-      if (sn.init?.literalKinds && typeof anyNode.literalKinds === "object") anyNode.literalKinds = { ...(sn.init.literalKinds as object) };
+      restoreLiterals(node, sn);
     }
     idMap.set(sn.id, node.id);
     nodeNameStore.claim(node.id, sn.name, sn.type);

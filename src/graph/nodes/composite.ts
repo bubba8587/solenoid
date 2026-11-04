@@ -27,6 +27,7 @@ import type { NodeCtor } from "../nodeCtorRegistry";
 import { PlaceholderNode, placeholderFor } from "./placeholder";
 import { FormatControllerNode } from "./formatController";
 import { deriveMissingNodeSockets, remapNodeRefs, mapNodeRefs, type NodeRefs } from "../persistenceCore";
+import { restoreLiterals } from "../literalFields";
 
 export type PortTier = "basic" | "advanced";
 export type PortExposure = "hidden" | "exposed";
@@ -331,11 +332,7 @@ export class CompositeNode extends GraphNode {
         node = placeholderFor(sn, phSockets.get(sn.id));
       } else {
         node = new Ctor({ ...sn.init });
-        const anyNode = node as unknown as Record<string, unknown>;
-        // [[C28]] literalsIffEditable: restore only onto classes that declare the map.
-        if (sn.literals && typeof anyNode.literals === "object") anyNode.literals = { ...sn.literals };
-        if (sn.stringLiterals && typeof anyNode.stringLiterals === "object") anyNode.stringLiterals = { ...sn.stringLiterals };
-        if (sn.init?.literalKinds && typeof anyNode.literalKinds === "object") anyNode.literalKinds = { ...(sn.init.literalKinds as object) };
+        restoreLiterals(node, sn);
         // A nested composite computes inside this one's pass, so it cannot wait for a drill-in to build.
         if (node instanceof CompositeNode) await node.hydrate(reg);
       }

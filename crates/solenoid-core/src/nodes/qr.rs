@@ -101,7 +101,7 @@ fn svg_src(size: usize, dark: &dyn Fn(usize, usize) -> bool) -> String {
 fn qr_code(c: &mut Call) -> Answer {
     let template = c.field_str("qrTemplate", "text").to_string();
     let text = if template == "text" {
-        let typed = match c.string_literal("text") {
+        let typed = match c.unwired("text") {
             V::Undef | V::Null => V::str(""),
             v => v,
         };
@@ -112,7 +112,7 @@ fn qr_code(c: &mut Call) -> Answer {
     } else {
         String::new()
     };
-    let lit = |k: &str| match c.string_literal(k) {
+    let lit = |k: &str| match c.unwired(k) {
         V::Str(s) => s.to_string(),
         _ => String::new(),
     };

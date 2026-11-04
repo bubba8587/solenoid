@@ -1492,38 +1492,43 @@ export function latticeTables() {
 }
 
 /**
- * The field a card's unwired input on `rung` shows (`nodes::fields`): number, logical, text, csv, keyed, date or none.
+ * The field a card's unwired input `key` on `rung` shows (`nodes::fields`): number, logical, text, csv, keyed, date,
+ * bound or none.
  * @param {string} _class
+ * @param {string} key
  * @param {string} rung
  * @param {boolean} kept_as_text
  * @returns {string}
  */
-export function literal_field(_class, rung, kept_as_text) {
-    let deferred4_0;
-    let deferred4_1;
+export function literal_field(_class, key, rung, kept_as_text) {
+    let deferred5_0;
+    let deferred5_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
-        const val3 = +kept_as_text;
-        let ptr0, len0, ptr1, len1;
+        const val4 = +kept_as_text;
+        let ptr0, len0, ptr1, len1, ptr2, len2;
         try {
             ptr0 = passStringToWasm0(_class, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             len0 = WASM_VECTOR_LEN;
-            ptr1 = passStringToWasm0(rung, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            ptr1 = passStringToWasm0(key, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             len1 = WASM_VECTOR_LEN;
+            ptr2 = passStringToWasm0(rung, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            len2 = WASM_VECTOR_LEN;
         } catch (e) {
+            if (ptr2) { wasm.__wbindgen_export3(ptr2, len2 * 1, 1); }
             if (ptr1) { wasm.__wbindgen_export3(ptr1, len1 * 1, 1); }
             if (ptr0) { wasm.__wbindgen_export3(ptr0, len0 * 1, 1); }
             throw e;
         }
-        wasm.literal_field(retptr, ptr0, len0, ptr1, len1, val3);
+        wasm.literal_field(retptr, ptr0, len0, ptr1, len1, ptr2, len2, val4);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        deferred4_0 = r0;
-        deferred4_1 = r1;
+        deferred5_0 = r0;
+        deferred5_1 = r1;
         return getStringFromWasm0(r0, r1);
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export3(deferred4_0, deferred4_1, 1);
+        wasm.__wbindgen_export3(deferred5_0, deferred5_1, 1);
     }
 }
 
@@ -2350,7 +2355,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_8322(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_8316(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -2457,7 +2462,7 @@ function __wbg_get_imports() {
         },
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 921, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_8320);
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_8314);
             return ret;
         },
         __wbindgen_generic_0000000000000002: function(arg0) {
@@ -2485,14 +2490,14 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_8322(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_8322(arg0, arg1, arg2, arg3);
+function __wasm_bindgen_func_elem_8316(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_8316(arg0, arg1, arg2, arg3);
 }
 
-function __wasm_bindgen_func_elem_8320(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_8314(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
-        wasm.__wasm_bindgen_func_elem_8320(retptr, arg0, arg1, arg2);
+        wasm.__wasm_bindgen_func_elem_8314(retptr, arg0, arg1, arg2);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {

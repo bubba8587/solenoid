@@ -37,10 +37,7 @@ pub(crate) enum Role {
 
 /// Unwired, the typed literal; wired, the cable's value; read by its role.
 pub(crate) fn read_role(c: &Call, key: &str, role: &Role) -> V {
-    let literal = match c.literal(key) {
-        V::Undef | V::Null => c.string_literal(key),
-        v => v,
-    };
+    let literal = c.unwired(key);
     let v = match c.wired(key) {
         None | Some([]) => literal,
         Some([first, ..]) => first.clone(),
@@ -105,8 +102,8 @@ fn first(c: &Call, key: &str) -> V {
 
 fn arithmetic(c: &mut Call) -> Answer {
     let op = ArithOp::parse(c.field_str("op", "mul"));
-    let a = c.read_input("a", c.literal("a"));
-    let b = c.read_input("b", c.literal("b"));
+    let a = c.read("a");
+    let b = c.read("b");
     let result = if matches!(a, V::Null) || matches!(b, V::Null) {
         V::Null
     } else if any_dimensioned(&[&a, &b]) {
@@ -190,7 +187,7 @@ fn base_convert(c: &mut Call) -> Answer {
 }
 
 fn clamp(c: &mut Call) -> Answer {
-    let value = c.read_input("value", c.literal("value"));
+    let value = c.read("value");
     let bound = |v: V, open: f64| match v {
         V::Undef => V::Num(open),
         V::List(items) => {
@@ -221,7 +218,7 @@ fn mround(c: &mut Call) -> Answer {
         "up" => Toward::Up,
         _ => Toward::Down,
     };
-    let value = c.read_input("value", c.literal("value"));
+    let value = c.read("value");
     let multiple = read_role(c, "multiple", &Role::Required);
     let result = if multiple.is_sol_error() {
         multiple
@@ -244,7 +241,7 @@ fn mround(c: &mut Call) -> Answer {
 
 fn round_n(c: &mut Call) -> Answer {
     let op = c.field_str("op", "round").to_uppercase();
-    let value = c.read_input("value", c.literal("value"));
+    let value = c.read("value");
     let digits = read_role(c, "digits", &Role::Setting(V::Num(0.0)));
     let result = if matches!(value, V::Null) {
         V::Null
@@ -257,8 +254,8 @@ fn round_n(c: &mut Call) -> Answer {
 
 fn gcd(c: &mut Call) -> Answer {
     let op = c.field_str("op", "gcd").to_uppercase();
-    let a = c.read_input("a", c.literal("a"));
-    let b = c.read_input("b", c.literal("b"));
+    let a = c.read("a");
+    let b = c.read("b");
     let result = broadcast_err(&[a, b], |o| core_call(&op, &[o[0].clone(), o[1].clone()]));
     c.show("cachedResult", result.clone());
     Ok(vec![("result".into(), Cv::from(result))])
@@ -315,11 +312,11 @@ fn two_input_math(c: &mut Call) -> Answer {
         "gestep" => Two::Gestep,
         _ => Two::Unknown,
     };
-    let a = c.read_input("a", c.literal("a"));
+    let a = c.read("a");
     let b = match op {
         Two::Log => left_out_as(read_role(c, "b", &Role::Setting(V::Undef)), 10.0),
         Two::Gestep => left_out_as(read_role(c, "b", &Role::Setting(V::Undef)), 0.0),
-        _ => c.read_input("b", c.literal("b")),
+        _ => c.read("b"),
     };
     let result = if matches!(a, V::Null) || matches!(b, V::Null) {
         V::Null
@@ -458,7 +455,7 @@ fn math_fx(c: &mut Call) -> Answer {
             _ => Err(domain_err()),
         }
     };
-    let input = c.read_input("in", c.literal("in"));
+    let input = c.read("in");
     let result = if matches!(input, V::Null) {
         V::Null
     } else if any_dimensioned(&[&input]) {

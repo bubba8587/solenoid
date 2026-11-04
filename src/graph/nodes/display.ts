@@ -61,7 +61,8 @@ export class AlertNode extends GraphNode {
   label: string;
   condition: AlertMode;
   cachedResult: number | number[] | null = null;
-  literals: Record<string, number> = { value: 50, low: 0, high: 100, target: 0 };
+  static fieldPlaceholders: Record<string, string> = { value: "50" };
+  literals: Record<string, number> = { low: 0, high: 100, target: 0 };
   stringLiterals: Record<string, string> = { text: "", match: "" };
   width = 190;
   height = 220;

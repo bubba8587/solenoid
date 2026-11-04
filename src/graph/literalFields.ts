@@ -56,8 +56,9 @@ export function readKeyed(kind: KeyedKind, text: string | undefined): unknown {
  *  - `number`: the number field, `literals`. `logical`: the TRUE/FALSE checkbox, `literals` as 1 or 0.
  *  - `text`: the text field or a column picker, `stringLiterals` as keyed. `csv`: a list keyed as comma-separated text.
  *  - `keyed`: a wildcard slot's keyed text and kind button, `stringLiterals` and `literalKinds`.
- *  - `date`: a date keyed as text (Expect's bounds). `none`: wire-only. */
-export type LiteralField = "number" | "logical" | "text" | "csv" | "keyed" | "date" | "none";
+ *  - `date`: a date keyed as text. `bound`: a range bound (Expect's), the number field on a number rung and a date's
+ *    text on a date rung, each kind keeping its own value. `none`: wire-only. */
+export type LiteralField = "number" | "logical" | "text" | "csv" | "keyed" | "date" | "bound" | "none";
 
 export interface LiteralFieldHost extends KeyedHost {
   inputs: Record<string, { socket?: unknown } | undefined>;
@@ -68,12 +69,43 @@ export function literalFieldOf(node: LiteralFieldHost, key: string): LiteralFiel
   const rung = declaredTypeOf(node.inputs[key]?.socket);
   if (!rung) return "none";
   const kept = node.stringLiterals !== undefined && key in node.stringLiterals;
-  return coreLiteralField(node.constructor.name, rung, kept) as LiteralField;
+  return coreLiteralField(node.constructor.name, key, rung, kept) as LiteralField;
 }
 
-/** Which map a field keeps its value in. */
-export function mapOfField(field: LiteralField): "literals" | "stringLiterals" | null {
-  return field === "number" || field === "logical" ? "literals" : field === "none" ? null : "stringLiterals";
+/** The field a row host draws: a bound shows its rung's kind. */
+export function drawnFieldOf(node: LiteralFieldHost, key: string): Exclude<LiteralField, "bound"> {
+  const field = literalFieldOf(node, key);
+  if (field !== "bound") return field;
+  return declaredTypeOf(node.inputs[key]?.socket) === "date" ? "date" : "number";
+}
+
+/** The maps a field keeps its value in. */
+export function mapsOfField(field: LiteralField): ReadonlyArray<"literals" | "stringLiterals"> {
+  switch (field) {
+    case "number": case "logical": return ["literals"];
+    case "bound": return ["literals", "stringLiterals"];
+    case "none": return [];
+    default: return ["stringLiterals"];
+  }
+}
+
+/** What a save keeps of a card's typed values. */
+export interface SavedLiterals {
+  literals?: Record<string, number>;
+  stringLiterals?: Record<string, string>;
+  init?: { literalKinds?: unknown };
+}
+
+/** Puts a save's typed values on the card its constructor rebuilt, onto the maps its class declares ([[C28]]
+ *  literalsIffEditable; after construction, or the constructor's defaults overwrite them), then drops what no field
+ *  reads (`pruneLiterals`). Every restore (a load, a composite's hydrate, a paste) goes through here. */
+export function restoreLiterals(node: object, saved: SavedLiterals): void {
+  const n = node as Record<string, unknown>;
+  if (saved.literals && typeof n.literals === "object") n.literals = { ...saved.literals };
+  if (saved.stringLiterals && typeof n.stringLiterals === "object") n.stringLiterals = { ...saved.stringLiterals };
+  const kinds = saved.init?.literalKinds;
+  if (kinds && typeof kinds === "object" && typeof n.literalKinds === "object") n.literalKinds = { ...kinds };
+  if (n.inputs && typeof n.inputs === "object") pruneLiterals(node as LiteralFieldHost & { literals?: Record<string, number> });
 }
 
 /** Drops each saved literal its input's field doesn't read, so what a card computes from is what it shows. Run on load, after the card's inputs are rebuilt. */
@@ -85,7 +117,7 @@ export function pruneLiterals(node: LiteralFieldHost & { literals?: Record<strin
       // A key with no input belongs to the card's own fields (Script's names before its first rebuild, List Input's rows):
       // only an input's entry is judged.
       if (!(key in node.inputs)) continue;
-      if (mapOfField(literalFieldOf(node, key)) !== map) delete m[key];
+      if (!mapsOfField(literalFieldOf(node, key)).includes(map)) delete m[key];
     }
   }
   for (const key of Object.keys(node.literalKinds ?? {})) {

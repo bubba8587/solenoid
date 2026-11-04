@@ -99,9 +99,9 @@ export function coreReadLogical(text: string): number | undefined {
   return read_logical(text);
 }
 
-/** The field a card's unwired input on `rung` shows, by the core's one table (`nodes/fields.rs`). */
-export function coreLiteralField(cardClass: string, rung: string, keptAsText: boolean): string {
-  return literal_field(cardClass, rung, keptAsText);
+/** The field a card's unwired input `key` on `rung` shows, by the core's one table (`nodes/fields.rs`). */
+export function coreLiteralField(cardClass: string, key: string, rung: string, keptAsText: boolean): string {
+  return literal_field(cardClass, key, rung, keptAsText);
 }
 
 /** A date's day as a Frame Input Date cell reads the text: NaN when it isn't a date, undefined for blank. */

@@ -534,9 +534,8 @@ export class InterpolateNode extends GraphNode {
   label: string;
   mode: InterpolateMode;
   cachedResult: number | (number | null)[] | (number | null)[][] | SolError | null = null;
-  literals: Record<string, number> = { x: 0 };
-  // Grid mode's typed Xs / Ys lists need these string slots, like a List Input.
-  stringLiterals: Record<string, string> = { xs: "", ys: "" };
+  literals: Record<string, number> = { new_xs: 0 };
+  stringLiterals: Record<string, string> = {};
   forecast = true;
   width = 180; height = 215;
 
@@ -553,6 +552,9 @@ export class InterpolateNode extends GraphNode {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);
     if (this.mode === "grid") {
+      // Grid mode keys its Xs and Ys as lists, like a List Input.
+      this.stringLiterals.xs ??= "";
+      this.stringLiterals.ys ??= "";
       this.addInput("z",  tableIn("Table"));
       this.addInput("xs", numListIn("Xs"));
       this.addInput("ys", numListIn("Ys"));

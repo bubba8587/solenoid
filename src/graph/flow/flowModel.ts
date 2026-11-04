@@ -9,6 +9,7 @@ import { nodeNameStore } from "../nodeNameStore";
 import { groupCollapseStore } from "../groupCollapse";
 import { isolateStore } from "../isolateStore";
 import { SolenoidSocket } from "../sockets";
+import { restoreLiterals } from "../literalFields";
 
 export type SavedNodeLite = {
   id: string;
@@ -54,12 +55,7 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
     const Ctor = resolveCtor(sn.type);
     if (!Ctor) throw new Error(`Unknown node type "${sn.type}" (id ${sn.id}).`);
     const node = new Ctor({ ...sn.init }) as SolenoidNode;
-    const anyNode = node as unknown as Record<string, unknown>;
-    if (sn.literals && "literals" in anyNode) anyNode.literals = { ...sn.literals };
-    if (sn.stringLiterals && "stringLiterals" in anyNode) {
-      anyNode.stringLiterals = { ...sn.stringLiterals };
-    }
-    if (sn.init?.literalKinds && "literalKinds" in anyNode) anyNode.literalKinds = { ...(sn.init.literalKinds as object) };
+    restoreLiterals(node, sn);
     byId.set(sn.id, node);
     node.position = { x: sn.x ?? 0, y: sn.y ?? 0 };
     await editor.addNode(node);

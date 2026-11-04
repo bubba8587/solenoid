@@ -246,7 +246,8 @@ export class IFErrorNode extends GraphNode {
   label: string;
   op: IFErrorMode;
   cachedResult: unknown = null;
-  literals: Record<string, number> = { value: 0, fallback: 0 };
+  stringLiterals: Record<string, string> = {};
+  literalKinds: Record<string, KeyedKind> = {};
   width = 180;
   height = 200;
   _selectedUnitKey: string | null = null;
@@ -293,7 +294,6 @@ export class IsTestNode extends GraphNode {
   cachedResult: boolean | boolean[] | boolean[][] | null = null;
   // The card renders this error's code and explanation, so the node is also where an error is read.
   seenError: SolError | null = null;
-  literals: Record<string, number> = { value: 0 };
   width = 180;
   height = 180;
 

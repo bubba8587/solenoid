@@ -1234,7 +1234,8 @@ export class ArgMinMaxNode extends GraphNode {
 export class ContainsNode extends GraphNode {
   label: string;
   cachedResult: boolean | null = null;
-  literals: Record<string, number> = { value: 0 };
+  stringLiterals: Record<string, string> = {};
+  literalKinds: Record<string, KeyedKind> = {};
   width = 180;
   height = 160;
 

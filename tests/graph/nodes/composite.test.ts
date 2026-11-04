@@ -1510,7 +1510,7 @@ describe("an error crossing the boundary acts as it would unpacked ([[C24]] arra
     const inA = new CompositeInputNode({ label: "A" });
     const inB = new CompositeInputNode({ label: "B" });
     const catcher = new IFErrorNode();
-    catcher.literals = { value: 0, fallback: -1 };
+    catcher.stringLiterals = { fallback: "-1" };
     const outA = new CompositeOutputNode({ label: "OutA" });
     const outB = new CompositeOutputNode({ label: "OutB" });
     for (const n of [inA, inB, catcher, outA, outB]) {

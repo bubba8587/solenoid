@@ -7,7 +7,8 @@ import { type SolError } from "../errorValue";
 
 export class EmSpectrumNode extends GraphNode {
   label: string;
-  literals: Record<string, number> = { freq: 5e14 };
+  static fieldPlaceholders: Record<string, string> = { freq: "5e14" };
+  literals: Record<string, number> = {};
   cachedBand: string | SolError | null = null;
   cachedFreq: number | SolError | null = null;
   cachedWavelength: number | SolError | null = null;

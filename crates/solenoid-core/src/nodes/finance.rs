@@ -216,7 +216,7 @@ fn bitwise(c: &mut Call) -> Answer {
 }
 
 fn depreciation(c: &mut Call, op: &str) -> V {
-    let lit = |c: &Call, k: &str| or(c.literal(k), V::Null);
+    let lit = |c: &Call, k: &str| or(c.unwired(k), V::Null);
     let cost = c.read_input("cost", lit(c, "cost"));
     let salvage = c.read_input("salvage", lit(c, "salvage"));
     let life = c.read_input("life", lit(c, "life"));
@@ -382,7 +382,7 @@ fn discount_security(c: &mut Call, op: &str) -> V {
     if nullish(&s) || nullish(&m) {
         return V::Null;
     }
-    let read = |c: &Call, k: &str| c.read_input(k, or(c.literal(k), V::Num(0.0)));
+    let read = |c: &Call, k: &str| c.read_input(k, or(c.unwired(k), V::Num(0.0)));
     let any_null = |vs: &[&V]| vs.iter().any(|v| matches!(v, V::Null));
     match op {
         "tbilleq" | "tbillprice" | "tbillyield" => {

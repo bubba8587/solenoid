@@ -77,7 +77,7 @@ fn join(c: &mut Call) -> Answer {
     let rk = str_input(c, "rightKey", "");
     let how = c.field_str("how", "inner").to_string();
     // Only the as-of join reads `tolerance`, so a wired blank must not blank the other joins.
-    let tolerance = if how == "asof" { c.read_input("tolerance", c.literal("tolerance")) } else { V::Undef };
+    let tolerance = if how == "asof" { c.read("tolerance") } else { V::Undef };
     if [&lk, &rk, &tolerance].iter().any(|v| matches!(v, V::Null)) {
         return one("frame", V::Null);
     }
@@ -356,7 +356,7 @@ fn show_sources(c: &mut Call, sources: Vec<Json>) {
 
 /// A list literal's items.
 fn csv_list(c: &Call, key: &str) -> Vec<String> {
-    match c.string_literal(key) {
+    match c.unwired(key) {
         V::Str(s) if !s.is_empty() => literal_items(&s),
         _ => Vec::new(),
     }

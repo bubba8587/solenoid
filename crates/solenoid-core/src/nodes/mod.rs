@@ -302,26 +302,40 @@ impl Call {
         }
     }
 
-    /// The typed literal, `undefined` where it isn't set.
-    pub fn literal(&self, key: &str) -> V {
+    /// The `literals` entry, `undefined` where it isn't set. Private: a body reads an input through its field
+    /// (`unwired`).
+    fn literal(&self, key: &str) -> V {
         self.literals.get(key).map(decode).unwrap_or(V::Undef)
     }
 
-    pub fn string_literal(&self, key: &str) -> V {
+    fn string_literal(&self, key: &str) -> V {
         self.string_literals.get(key).map(decode).unwrap_or(V::Undef)
     }
 
     /// The field `key`'s unwired value lives in ([[C28]] literalsIffEditable, `fields.rs`).
     pub fn literal_field(&self, key: &str) -> fields::Field {
-        let rung = self.sockets.iter().find(|s| s.key == key).and_then(|s| s.ty.as_deref()).unwrap_or("");
-        fields::field_of(&self.class, rung, self.string_literals.contains_key(key))
+        fields::field_of(&self.class, key, self.rung(key), self.string_literals.contains_key(key))
+    }
+
+    /// The declared rung of input `key`, `""` where it has none.
+    fn rung(&self, key: &str) -> &str {
+        self.sockets.iter().find(|s| s.key == key).and_then(|s| s.ty.as_deref()).unwrap_or("")
     }
 
     /// An unwired input's value, read from the one field the card shows for it: a number, a logical (TRUE or FALSE),
-    /// text as keyed, a keyed value as its kind or a date's text; `undefined` where nothing is set or the input is
+    /// text as keyed, a keyed value as its kind, a date's text, or a bound as its rung's kind; `undefined` where nothing is set or the input is
     /// wire-only. A typed list arrives through the boundary as if wired, so it reads `undefined` here.
+    ///
+    /// A key with no socket is the card's own saved field kept in the literal maps (a setting a mode's input takes
+    /// over, a widget's state): its number, else its text, as saved.
     pub fn unwired(&self, key: &str) -> V {
         use fields::Field;
+        if !self.sockets.iter().any(|s| s.key == key) {
+            return match self.literal(key) {
+                V::Undef | V::Null => self.string_literal(key),
+                v => v,
+            };
+        }
         match self.literal_field(key) {
             Field::Number => match self.literal(key) {
                 V::Num(n) => V::Num(n),
@@ -333,13 +347,26 @@ impl Call {
                 V::Bool(b) => V::Bool(b),
                 _ => V::Undef,
             },
-            Field::Text | Field::Date => match self.string_literal(key) {
+            Field::Bound if self.rung(key) != "date" => match self.literal(key) {
+                V::Num(n) => V::Num(n),
+                _ => V::Undef,
+            },
+            Field::Text | Field::Date | Field::Bound => match self.string_literal(key) {
                 V::Str(s) => V::Str(s),
                 _ => V::Undef,
             },
             Field::Keyed => self.keyed(key),
             Field::Csv | Field::None => V::Undef,
         }
+    }
+
+    /// A list field's text as keyed, for a body that splits it itself (a list on a rung the boundary doesn't parse);
+    /// `None` where the input's field isn't a list or nothing is keyed.
+    pub fn csv_text(&self, key: &str) -> Option<&str> {
+        if self.literal_field(key) != fields::Field::Csv {
+            return None;
+        }
+        self.string_literals.get(key).and_then(Json::as_str)
     }
 
     /// The kind a wildcard slot's toggle shows (`literalKinds`): number, string, date or logical, Number when unset.
@@ -356,9 +383,14 @@ impl Call {
         }
     }
 
-    /// Unwired, the typed literal, else `dflt`; wired, the first cable's value.
+    /// Unwired, its field's value; wired, the first cable's value, a blank as null (`read_input`).
+    pub fn read(&self, key: &str) -> V {
+        self.read_input(key, self.unwired(key))
+    }
+
+    /// Unwired, its field's value, else `dflt`; wired, the first cable's value.
     pub fn read_num(&self, key: &str, dflt: f64) -> V {
-        let lit = match self.literal(key) {
+        let lit = match self.unwired(key) {
             V::Undef | V::Null => V::Num(dflt),
             v => v,
         };

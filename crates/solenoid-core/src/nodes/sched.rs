@@ -1436,7 +1436,7 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
 
 fn gantt_card(c: &mut Call) -> Answer {
     let schedule = c.raw_card("schedule");
-    let lit = match c.string_literal("options") {
+    let lit = match c.unwired("options") {
         V::Str(s) => Some(s.to_string()),
         _ => None,
     };
@@ -1607,7 +1607,7 @@ fn earned_value_card(c: &mut Call) -> Answer {
     let bcube = as_cube(&c.raw_card("baseline"));
     let cost_name = match c.read_input(
         "cost",
-        match c.string_literal("cost") {
+        match c.unwired("cost") {
             V::Undef | V::Null => V::str(""),
             v => v,
         },

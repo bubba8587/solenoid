@@ -34,7 +34,8 @@ export class IsaAtmosphereNode extends GraphNode {
 export class AntoineNode extends GraphNode {
   label: string;
   substance: AntoineOp;
-  literals: Record<string, number> = { t: 25 };
+  static fieldPlaceholders: Record<string, string> = { t: "25" };
+  literals: Record<string, number> = {};
   cachedP: number | SolError | null = null;
   cachedBp: number | null = null;
   width = 220;

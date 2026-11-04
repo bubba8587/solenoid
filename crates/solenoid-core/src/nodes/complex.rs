@@ -210,8 +210,7 @@ fn quadratic_roots(a: f64, b: f64, c: f64) -> V {
 }
 
 fn quadratic_roots_node(c: &mut Call) -> Answer {
-    let args =
-        [c.read_input("a", c.literal("a")), c.read_input("b", c.literal("b")), c.read_input("c", c.literal("c"))];
+    let args = [c.read("a"), c.read("b"), c.read("c")];
     let root = |which: usize| {
         broadcast_complex(&args, |o| {
             let nan = |v: &V| matches!(v, V::Num(n) if n.is_nan());

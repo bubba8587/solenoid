@@ -68,7 +68,8 @@ export class ElementNode extends GraphNode {
 
 export class MolarMassNode extends GraphNode {
   label: string;
-  stringLiterals: Record<string, string> = { formula: "H2O" };
+  static fieldPlaceholders: Record<string, string> = { formula: "H2O" };
+  stringLiterals: Record<string, string> = {};
   cachedResult: number | SolError | null = null;
   width = 210;
   height = 140;

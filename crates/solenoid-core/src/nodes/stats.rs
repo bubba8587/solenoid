@@ -89,10 +89,7 @@ pub(crate) enum Role {
 
 /// Unwired, the typed literal; wired, the cable's; a blank as the role reads it.
 pub(crate) fn read_role(c: &Call, key: &str, role: Role) -> V {
-    let literal = match c.literal(key) {
-        V::Undef | V::Null => c.string_literal(key),
-        v => v,
-    };
+    let literal = c.unwired(key);
     let v = match c.wired(key) {
         None | Some([]) => literal,
         Some([first, ..]) => first.clone(),
@@ -186,7 +183,7 @@ fn rank_percentile(c: &mut Call) -> Answer {
     };
     if family == "rank" || family == "percentrank" {
         let arr = first(c, "list");
-        let v = c.read_input("value", or(c.literal("value"), V::Null));
+        let v = c.read_input("value", or(c.unwired("value"), V::Null));
         if family == "percentrank" {
             let sig = or(read_role(c, "significance", Role::Setting(V::Undef)), V::Num(3.0));
             if no_list(&arr) || matches!(v, V::Null) {
@@ -358,9 +355,9 @@ fn frequency(c: &mut Call) -> Answer {
 // ─── Scalars ───────────────────────────────────────────────────────────────────
 
 fn standardize(c: &mut Call) -> Answer {
-    let v = c.read_input("value", or(c.literal("value"), V::Null));
-    let m = c.read_input("mean", or(c.literal("mean"), V::Null));
-    let s = c.read_input("stdev", or(c.literal("stdev"), V::Null));
+    let v = c.read_input("value", or(c.unwired("value"), V::Null));
+    let m = c.read_input("mean", or(c.unwired("mean"), V::Null));
+    let s = c.read_input("stdev", or(c.unwired("stdev"), V::Null));
     let result = if [&v, &m, &s].iter().any(|x| matches!(x, V::Null)) {
         V::Null
     } else {
@@ -371,7 +368,7 @@ fn standardize(c: &mut Call) -> Answer {
 
 fn fisher(c: &mut Call) -> Answer {
     let op = c.field_str("op", "fisher").to_uppercase();
-    let v = c.read_input("value", or(c.literal("value"), V::Null));
+    let v = c.read_input("value", or(c.unwired("value"), V::Null));
     let result = if matches!(v, V::Null) { V::Null } else { broadcast_err(&[v], |o| core_call(&op, &[o[0].clone()])) };
     answer(c, result)
 }
@@ -409,7 +406,7 @@ fn binom_dist_range(c: &mut Call) -> Answer {
     }
     let n = js_num(&n_raw).floor();
     let lo_raw = c.read_num("lo", 0.0);
-    let hi_raw = c.read_input("hi", or(c.literal("hi"), V::Num(n)));
+    let hi_raw = c.read_input("hi", or(c.unwired("hi"), V::Num(n)));
     if matches!(lo_raw, V::Null) || matches!(hi_raw, V::Null) {
         return answer(c, V::Null);
     }
@@ -529,7 +526,7 @@ fn hypothesis_test(c: &mut Call) -> Answer {
         }
         "z" => {
             let x = c.read_num("x", 0.0);
-            let sigma = c.read_input("sigma", c.literal("sigma"));
+            let sigma = c.read("sigma");
             let xs: Option<Vec<f64>> = match &a {
                 V::List(l) => Some(l.iter().filter_map(finite_num).collect()),
                 _ => None,
@@ -624,7 +621,7 @@ fn interpolate(c: &mut Call) -> Answer {
         Ok(p) => p,
         Err(e) => return answer(c, e),
     };
-    let q = c.read_input("new_xs", c.literal("x"));
+    let q = c.read("new_xs");
     if q.is_sol_error() {
         return answer(c, q);
     }
@@ -872,7 +869,7 @@ fn distributions(c: &mut Call) -> Answer {
     let Some((x_key, params)) = dist_keys(&op) else {
         return Err(err(ErrorCode::Value, format!("Unknown distribution {op}")));
     };
-    let read = |c: &Call, k: &str| c.read_input(k, c.literal(k));
+    let read = |c: &Call, k: &str| c.read(k);
     let ps: Vec<V> = params.iter().map(|k| read(c, k)).collect();
     let result = if form == "sample" {
         let count = c.read_num("count", 100.0);

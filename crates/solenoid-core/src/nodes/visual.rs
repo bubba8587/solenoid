@@ -127,7 +127,7 @@ fn first_v(c: &Call, key: &str) -> V {
 
 /// `this.literals[key] ?? dflt`.
 fn literal_or(c: &Call, key: &str, dflt: V) -> V {
-    match c.literal(key) {
+    match c.unwired(key) {
         V::Undef | V::Null => dflt,
         v => v,
     }
@@ -148,7 +148,7 @@ fn title(opts: &Obj, c: &Call, dflt: &str) -> String {
 
 /// The options input, parsed: wired, anything but text or a blank is the crash `input.split` throws.
 fn read_options(c: &Call) -> Result<Obj, V> {
-    let lit = match c.string_literal("options") {
+    let lit = match c.unwired("options") {
         V::Undef => V::Null,
         v => v,
     };
@@ -836,7 +836,7 @@ fn chart(c: &mut Call) -> Answer {
         v => v,
     };
     let refs = read_chart_refs(&first(c, "references"));
-    let lit = match c.string_literal("options") {
+    let lit = match c.unwired("options") {
         V::Undef => V::Null,
         v => v,
     };
@@ -981,7 +981,7 @@ fn chart(c: &mut Call) -> Answer {
 // ─── Mermaid ────────────────────────────────────────────────────────────────────
 
 fn mermaid(c: &mut Call) -> Answer {
-    let lit = match c.string_literal("source") {
+    let lit = match c.unwired("source") {
         V::Undef | V::Null => V::str(""),
         v => v,
     };
@@ -1597,7 +1597,7 @@ fn kpi(c: &mut Call) -> Answer {
     let value = c.read_input("value", literal_or(c, "value", V::Null));
     let prev = c.read_input("prev", literal_or(c, "prev", V::Null));
     let opts = read_options(c)?;
-    let unit = match c.string_literal("unit") {
+    let unit = match c.unwired("unit") {
         V::Undef | V::Null => V::str(""),
         u => u,
     };
@@ -2026,11 +2026,11 @@ const CB_NUM_KEYS: [&str; 8] = ["linewidth", "markersize", "alpha", "fontsize", 
 
 /// The chart options over the card's fields: each one given a value, as `key=value` joined by semicolons.
 fn chart_builder(c: &mut Call) -> Answer {
-    let text = |k: &str| match c.read_input(k, c.string_literal(k)) {
+    let text = |k: &str| match c.read(k) {
         V::Null | V::Undef => None,
         v => Some(v),
     };
-    let num = |k: &str| match c.read_input(k, c.literal(k)) {
+    let num = |k: &str| match c.read(k) {
         V::Num(n) if n.is_finite() => Some(n),
         _ => None,
     };

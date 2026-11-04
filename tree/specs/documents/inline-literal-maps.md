@@ -19,7 +19,7 @@ The governing convention: **a node class declares a literal map if and only if i
 
 ## Load restores literals only onto declaring classes
 
-When `persistence.ts` loads a saved node, it copies the saved `literals` and `stringLiterals` onto the new node only when the class already has that field as an object (`typeof anyNode.literals === "object"`). A field the class does not declare is dropped.
+When a load restores a saved node (`restoreLiterals` in `literalFields.ts`), it copies the saved `literals` and `stringLiterals` onto the new node only when the class already has that field as an object. A field the class does not declare is dropped.
 
 A wire-driven card declares neither map. The Equation family (Equation, TVM, Triangle Solver) is the main case: its variables are known only through cables, and `equation` (`crates/solenoid-core/src/nodes/formula.rs`) has no literal fallback. So a hand-written save or seed cannot plant a hardcoded known that the user can neither see nor edit on the card.
 
@@ -39,21 +39,27 @@ Tests: `coerceInputs.test.ts`: a sweep constructs every catalog entry and fails 
 
 ## One field per input
 
-**What a card computes from is what it shows.** An unwired input has exactly one field, and that field names the one place its value lives and how it is read. The core holds the one table (`nodes/fields.rs`, `field_of(card class, declared rung)`), and every reader goes through it:
+**What a card computes from is what it shows.** An unwired input has exactly one field, and that field names the one place its value lives and how it is read. The core holds the one table (`nodes/fields.rs`, `field_of(card class, key, declared rung)`), and every reader goes through it:
 
-- **The canvas** draws the field the table names (`literalFieldOf`, which asks the core over wasm), in every row host alike: the fixed rows, the extensible rows and the paired rows.
-- **A body** reads an unwired input through it (`Call::unwired`): a number, a logical as TRUE or FALSE, text as keyed, a keyed value as its kind, or a date's text. A typed list reaches the body through the boundary as if wired.
-- **A load** drops each saved value its input's field doesn't read (`pruneLiterals`), so nothing survives in a map no field shows.
+- **The canvas** draws the field the table names (`literalFieldOf`, which asks the core over wasm), in every row host alike: the fixed rows, the extensible rows and the paired rows. A card that draws its own rows (Filter, Frame Filter and SUMIFS's criteria, Expect's In list) draws the field the table names for them.
+- **A body** reads an unwired input through it (`Call::unwired`, `Call::read`, `Call::read_num`): a number, a logical as TRUE or FALSE, text as keyed, a keyed value as its kind, a date's text, or a bound as its rung's kind. A typed list reaches the body through the boundary as if wired; a list on a rung the boundary doesn't parse (Expect's In list) is read as its keyed text (`Call::csv_text`). The literal maps themselves are private to `nodes/mod.rs`, so a body can't read around the field.
+- **Every restore** (a load, a composite's hydrate, a Flow model, a paste) puts the saved values on the rebuilt card through `restoreLiterals`, which drops each value its input's field doesn't read (`pruneLiterals`), so nothing survives in a map no field shows.
 
-The fields: `number` (the number field, `literals`), `logical` (the TRUE/FALSE checkbox Value Input's Boolean uses, `literals` as 1 or 0), `text` (`stringLiterals` as keyed), `csv` (a list keyed as comma-separated text), `keyed` (a wildcard slot's keyed text and kind, [[#Wildcard slots]]), `date` (a date keyed as text, Expect's bounds) and `none` (wire-only). A card's class decides only which wildcard and date slots take a field; the rung decides the rest.
+The fields: `number` (the number field, `literals`), `logical` (the TRUE/FALSE checkbox Value Input's Boolean uses, `literals` as 1 or 0), `text` (`stringLiterals` as keyed), `csv` (a list keyed as comma-separated text), `keyed` (a wildcard slot's keyed text and kind, [[#Wildcard slots]]), `date` (a date keyed as text), `bound` (a range bound: the number field on a number rung, a date's text on a date rung, each kind keeping its own value so a card moving between the two keeps both, [[D120]] rangeBoundsTakeTheValuesKind) and `none` (wire-only). The rung decides the field unless the table names the card:
 
-- *Exception:* card bodies still read the literal maps directly in places, and some cards draw their own editors for inputs the table calls wire-only (Filter's, Frame Filter's and SUMIFS's value rows, Expression's and LAMBDA's variables, REDUCE's initial value, IsClose, Contains, IFERROR, the IS tests, Interpolate), so loads don't prune yet. **Removed by:** the sweep that moves every body onto `Call::unwired`, puts those cards' fields in the table and turns pruning on, guarded by a test that every seed and every class default keeps its values through a prune.
+- `KEYED` and `TEXT`: the cards whose wildcard slots take a keyed value or text (below).
+- `NUMBER_VARIABLES`: the cards whose variables take a typed number while unwired, whatever a cable may bring (Expression, LAMBDA, Computed Column's side variables).
+- `ROWS`: inputs a card names by key, a numbered row included: the criteria rows of Filter, Frame Filter and SUMIFS (`text`), Expect's Min and Max (`bound`) and In list (`csv`), Is Close's A and B and REDUCE's and SCAN's Initial (`number`), and Fill's Else rows (`number`).
+
+A key with no input (a setting a mode's input takes over, a widget's own state) is the card's own field: a body reads it as saved and a prune leaves it.
+
+Tests: `seedsLiteralFields.test.ts`: every class's fresh defaults and every seed node, nested ones too, keep all their saved values through a restore; `fields.rs`'s own test pins the table's answers.
 
 **Reopen if:** a card needs an unwired value that no field shows.
 
 ## Defaults are real values; examples are placeholders
 
-A class that initializes a map, such as `literals = { rate: 0.05, … }`, declares a starting value the card computes with, shown in its field. A value that only shows what to key in (IFS's outputs, SWITCH's cases) is a placeholder instead (`static fieldPlaceholders`, `pairPlaceholders`): muted text in the empty field that never reaches the answer.
+A class that initializes a map, such as `literals = { rate: 0.05, … }`, declares a starting value the card computes with, shown in its field. A default stays where it keeps a fresh card from answering an error straight away (the 0s and 1s a divisor, a count or a digits field needs). A value that only shows what to key in and isn't needed to avoid an error (IFS's outputs, SWITCH's cases, a calculator's sample input such as AWG's gauge 12 or Molar Mass's H2O) is a placeholder instead (`static fieldPlaceholders`, `pairPlaceholders`): muted text in the empty field that never reaches the answer. Where it is unclear which a value is, it stays a default.
 
 ## Which field a row edits
 
@@ -83,13 +89,15 @@ In `InlineInputs` (the fixed rows of most cards):
 | `any`, `anycombo`, `anydata`, `trueany` on a text card (Replace Values) | text field, kept exactly as keyed | `stringLiterals` |
 | anything else | none | none |
 
+The table's entries by card and key (§ One field per input) come before the socket type: a row it names takes that field whatever its rung.
+
 A combo (`numlist`, `strcombo`, `anycombo`) edits in place as a scalar; it becomes a list only when a cable brings one.
 
 `ExtensibleInputs` (rows that can be added and removed) and `PairedExtensibleInputs` draw the same field for each row; a wire-only row shows its row number.
 
 ## Wildcard slots
 
-A card's wildcard rows take keyed values when the core's table names it a keyed card (`KEYED` in `nodes/fields.rs`). The value selectors are, since their wildcard rows are value branches, and so are the Cube builders, whose rows are cells. A wildcard sink or relay (Display, Cast, Report) leaves it off and stays wire-only. The opt-in covers `any`, `anycombo`, `anydata` and `trueany`; a list or a matrix still arrives only by wire.
+A card's wildcard rows take keyed values when the core's table names it a keyed card (`KEYED` in `nodes/fields.rs`). The value selectors are, since their wildcard rows are value branches, and so are the Cube builders, whose rows are cells. So are IFERROR, whose fallback is a typed value, and CONTAINS, whose value is the one looked for. A wildcard sink or relay (Display, Cast, Report) leaves it off and stays wire-only. The opt-in covers `any`, `anycombo`, `anydata` and `trueany`; a list or a matrix still arrives only by wire.
 
 A card whose op reads a wildcard slot as text is a text card instead (`TEXT` in `nodes/fields.rs`): its rows get the plain text field, so a space, `007` or `1.50` reaches the op exactly as typed rather than trimmed or read as a number. Replace Values' Find and Replace take this field; a wired value of any type still connects.
 

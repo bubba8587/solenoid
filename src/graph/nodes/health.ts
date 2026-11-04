@@ -22,7 +22,8 @@ export function hrZonesFrame(maxHr: number, restingHr: number | null): FrameValu
 
 export class HrZonesNode extends GraphNode {
   label: string;
-  literals: Record<string, number> = { age: 30 };
+  static fieldPlaceholders: Record<string, string> = { age: "30" };
+  literals: Record<string, number> = {};
   cachedFrame: FrameValue | SolError | null = null;
   width = 220;
   height = 190;

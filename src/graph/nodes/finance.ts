@@ -354,7 +354,8 @@ export class DollarNode extends GraphNode {
   label: string;
   op: DollarOp;
   cachedResult: number | null = null;
-  literals: Record<string, number> = { dollar: 1.02, fraction: 32 };
+  static fieldPlaceholders: Record<string, string> = { dollar: "1.02" };
+  literals: Record<string, number> = { fraction: 32 };
   width = 180; height = 200;
 
   constructor(init?: { label?: string; op?: DollarOp }) {

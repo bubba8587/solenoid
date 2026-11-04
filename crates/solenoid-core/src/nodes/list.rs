@@ -138,7 +138,7 @@ fn series(c: &mut Call) -> Answer {
     let result = match op.as_str() {
         "range" => {
             let start = required(c, "start");
-            let stop = c.read_input("stop", c.literal("stop"));
+            let stop = c.read("stop");
             let step = or(setting(c, "step"), V::Num(1.0));
             if start.is_sol_error() {
                 start
@@ -477,7 +477,7 @@ fn arg_min_max(c: &mut Call) -> Answer {
 
 fn contains(c: &mut Call) -> Answer {
     let arr = slot(c, "list");
-    let v = c.read_input("value", c.literal("value"));
+    let v = c.read("value");
     let r = if nullish(&arr) || nullish(&v) { V::Null } else { core_call("CONTAINS", &[arr, v]) };
     shown(c, "cachedResult", "result", r)
 }
@@ -558,7 +558,7 @@ fn fill(c: &mut Call) -> Answer {
         .map(|k| match slot(c, k) {
             w @ V::List(_) => w,
             _ if c.wired(k).is_some() => V::Null,
-            _ => match c.literal(k) {
+            _ => match c.unwired(k) {
                 n @ V::Num(_) => n,
                 _ => V::Null,
             },
@@ -739,10 +739,7 @@ fn list_input(c: &mut Call) -> Answer {
                 }
             }
             _ => {
-                let text = match c.string_literal(key) {
-                    V::Str(s) => s.to_string(),
-                    _ => String::new(),
-                };
+                let text = c.csv_text(key).unwrap_or("").to_string();
                 for t in literal_items(&text) {
                     let item = frame_cell_of(&ty, &t);
                     // A date list's items are dates ([[D114]] dateIsAKind).
@@ -783,7 +780,7 @@ fn as_cell(v: &V) -> FrameCell {
 /// A wired value as text (an error as its code), a blank as no condition.
 fn condition_value(c: &Call, key: &str) -> FrameCell {
     let raw = match c.wired(key) {
-        None | Some([]) => match c.string_literal(key) {
+        None | Some([]) => match c.unwired(key) {
             V::Undef | V::Null => V::str(""),
             v => v,
         },

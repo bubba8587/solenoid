@@ -85,7 +85,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         }
         "DateTimeValueNode" => {
             let name = if c.field_str("op", "date") == "date" { "DATEVALUE" } else { "TIMEVALUE" };
-            let lit = match c.string_literal("text") {
+            let lit = match c.unwired("text") {
                 V::Undef | V::Null => V::str(""),
                 v => v,
             };
@@ -124,7 +124,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 
 /// Null until there is a finite date and both zones, then `TIMEZONECONVERT`.
 fn time_zone_convert(c: &Call) -> V {
-    let typed = |key: &str| match c.string_literal(key) {
+    let typed = |key: &str| match c.unwired(key) {
         V::Undef | V::Null => V::str(""),
         v => v,
     };
@@ -144,9 +144,9 @@ fn world_clock(c: &Call) -> Cv {
     let now =
         c.field("nowMs").and_then(serde_json::Value::as_f64).unwrap_or_else(crate::excel_functions::clock_instant);
     let zones = match c.wired("zones") {
-        None | Some([]) => match c.string_literal("zones") {
-            V::Str(s) => super::list::literal_items(&s).iter().map(|z| V::str(z)).collect(),
-            _ => Vec::new(),
+        None | Some([]) => match c.csv_text("zones") {
+            Some(s) => super::list::literal_items(s).iter().map(|z| V::str(z)).collect(),
+            None => Vec::new(),
         },
         Some([V::List(items), ..]) => items.to_vec(),
         Some(_) => Vec::new(),

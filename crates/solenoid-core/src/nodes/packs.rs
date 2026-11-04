@@ -54,7 +54,7 @@ fn first(c: &Call, key: &str) -> V {
 
 /// Unwired, the typed literal or null; wired, the first cable's value.
 fn read_or_null(c: &Call, key: &str) -> V {
-    let lit = match c.literal(key) {
+    let lit = match c.unwired(key) {
         V::Undef => V::Null,
         v => v,
     };
@@ -156,7 +156,7 @@ pub(crate) fn nearest_e_series(value: f64, table: &[f64]) -> f64 {
 }
 
 fn e_series(c: &mut Call) -> Answer {
-    let v = c.read_input("value", c.literal("value"));
+    let v = c.read("value");
     let (nearest, errpct) = match number(&v) {
         Some(v) if v > 0.0 && v.is_finite() => match e_series_table(c.field_str("op", "E24")) {
             Some(table) => {
@@ -195,7 +195,7 @@ pub(crate) fn awg_ampacity(n: f64) -> Option<f64> {
 }
 
 fn awg(c: &mut Call) -> Answer {
-    let n = c.read_input("gauge", c.literal("gauge"));
+    let n = c.read("gauge");
     let outs = match number(&n) {
         Some(n) if !(-3.0..=40.0).contains(&n) => {
             let e = domain("AWG runs 4/0 (enter -3) through 40");
@@ -224,7 +224,7 @@ fn awg(c: &mut Call) -> Answer {
 
 /// The digit bands, the multiplier and the tolerance, each band by its colour.
 fn resistor_code(c: &mut Call) -> Answer {
-    let band = |k: &str| match c.string_literal(k) {
+    let band = |k: &str| match c.unwired(k) {
         V::Str(s) => Some(s.to_string()),
         _ => None,
     };
@@ -539,7 +539,7 @@ pub(crate) fn molar_mass(input: &str) -> V {
 }
 
 fn molar_mass_node(c: &mut Call) -> Answer {
-    let lit = match c.string_literal("formula") {
+    let lit = match c.unwired("formula") {
         V::Undef | V::Null => V::str(""),
         v => v,
     };
@@ -684,8 +684,8 @@ pub(crate) fn lat_lon_error(lat: f64, lon: f64) -> Option<V> {
 /// The when, latitude and longitude a sun card reads, where all three are numbers.
 fn sun_inputs(c: &Call) -> Option<(f64, f64, f64)> {
     let when = when_of(c)?;
-    let lat = number(&c.read_input("lat", c.literal("lat")))?;
-    let lon = number(&c.read_input("lon", c.literal("lon")))?;
+    let lat = number(&c.read("lat"))?;
+    let lon = number(&c.read("lon"))?;
     Some((when, lat, lon))
 }
 
@@ -822,7 +822,7 @@ pub(crate) fn standard_atmosphere(z: f64) -> Result<[f64; 4], V> {
 }
 
 fn isa_atmosphere(c: &mut Call) -> Answer {
-    let z = c.read_input("alt", c.literal("alt"));
+    let z = c.read("alt");
     let [temp, pressure, density, sound] = match number(&z).map(standard_atmosphere) {
         None => [V::Null, V::Null, V::Null, V::Null],
         Some(Err(e)) => [e.clone(), e.clone(), e.clone(), e],
@@ -858,7 +858,7 @@ pub(crate) fn antoine_coefficients(substance: &str) -> Option<(f64, f64, f64)> {
 pub(crate) const MMHG_TO_PA: f64 = 133.322387415;
 
 fn antoine(c: &mut Call) -> Answer {
-    let t = c.read_input("t", c.literal("t"));
+    let t = c.read("t");
     let substance = c.field_str("substance", "water");
     let Some((a, b, cc)) = antoine_coefficients(substance) else {
         return Err(err(ErrorCode::Value, format!("\"{substance}\" is not a substance the Antoine card knows")));
@@ -889,8 +889,8 @@ pub(crate) fn colebrook_f(re: f64, rr: f64) -> f64 {
 }
 
 fn colebrook(c: &mut Call) -> Answer {
-    let re = c.read_input("re", c.literal("re"));
-    let rr = c.read_input("rr", c.literal("rr"));
+    let re = c.read("re");
+    let rr = c.read("rr");
     let result = match (number(&re), number(&rr)) {
         (Some(re), Some(rr)) if re <= 0.0 || rr < 0.0 || rr >= 1.0 => {
             domain("Needs Re > 0 and relative roughness 0 ≤ ε/D < 1")

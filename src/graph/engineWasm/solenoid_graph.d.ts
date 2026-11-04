@@ -334,9 +334,10 @@ export function isLazyFrameNode(_class: string): boolean;
 export function latticeTables(): string;
 
 /**
- * The field a card's unwired input on `rung` shows (`nodes::fields`): number, logical, text, csv, keyed, date or none.
+ * The field a card's unwired input `key` on `rung` shows (`nodes::fields`): number, logical, text, csv, keyed, date,
+ * bound or none.
  */
-export function literal_field(_class: string, rung: string, kept_as_text: boolean): string;
+export function literal_field(_class: string, key: string, rung: string, kept_as_text: boolean): string;
 
 /**
  * The direct classes that hand on in TypeScript what the core can't hold (`nodes::OFF_CORE`).
@@ -555,7 +556,7 @@ export interface InitOutput {
     readonly graphcore_useEngine: (a: number, b: number, c: number) => void;
     readonly isLazyFrameNode: (a: number, b: number) => number;
     readonly latticeTables: (a: number) => void;
-    readonly literal_field: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+    readonly literal_field: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
     readonly offCoreBodies: (a: number) => void;
     readonly parsePredecessors: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly readPlanFile: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -586,8 +587,8 @@ export interface InitOutput {
     readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly uid: (a: number) => void;
     readonly unnamedEdits: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_8320: (a: number, b: number, c: number, d: any) => void;
-    readonly __wasm_bindgen_func_elem_8322: (a: number, b: number, c: any, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8314: (a: number, b: number, c: number, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8316: (a: number, b: number, c: any, d: any) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;

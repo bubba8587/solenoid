@@ -51,7 +51,7 @@ fn init_num(c: &Call, key: &str, dflt: f64) -> f64 {
 
 /// `this.literals[key] ?? dflt`.
 fn literal_or(c: &Call, key: &str, dflt: V) -> V {
-    match c.literal(key) {
+    match c.unwired(key) {
         V::Undef | V::Null => dflt,
         v => v,
     }
@@ -500,10 +500,10 @@ fn channel(v: &V) -> Option<f64> {
 }
 
 fn color_picker(c: &mut Call) -> Answer {
-    let ch = |k: &str| channel(&c.literal(k));
+    let ch = |k: &str| channel(&c.unwired(k));
     let color = match c.field_str("mode", "rgb") {
         "hex" => {
-            let typed = match c.string_literal("hex") {
+            let typed = match c.unwired("hex") {
                 V::Str(s) if !s.is_empty() => s.to_string(),
                 _ => "#000000".into(),
             };
@@ -579,7 +579,7 @@ fn blend(mode: &str, a: f64, b: f64) -> f64 {
 
 fn color_blend(c: &mut Call) -> Answer {
     let parse = |c: &Call, key: &str, label: &str| -> Option<Result<Rgba, V>> {
-        let lit = match c.string_literal(key) {
+        let lit = match c.unwired(key) {
             V::Undef | V::Null => V::str(""),
             v => v,
         };
@@ -968,7 +968,7 @@ fn source_has_layer(source: &str, name: &str) -> bool {
 }
 
 fn svg_picker(c: &mut Call) -> Answer {
-    let source = match c.string_literal("source") {
+    let source = match c.unwired("source") {
         V::Str(s) => s.to_string(),
         _ => String::new(),
     };

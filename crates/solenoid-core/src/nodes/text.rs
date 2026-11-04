@@ -11,10 +11,7 @@ use crate::jsnum::trim_space;
 
 /// An input's raw value: unwired, the typed literal (a number's, else a text's); wired, the first cable's.
 pub(crate) fn role_value(c: &Call, key: &str) -> V {
-    let lit = match c.literal(key) {
-        V::Undef | V::Null => c.string_literal(key),
-        v => v,
-    };
+    let lit = c.unwired(key);
     let v = match c.wired(key) {
         None | Some([]) => lit,
         Some([first, ..]) => first.clone(),
@@ -67,7 +64,7 @@ pub(crate) fn left_out_as(v: V, dflt: f64) -> V {
 
 /// Unwired, the typed text, else `dflt`; wired, the first cable's value.
 fn str_input(c: &Call, key: &str, dflt: &str) -> V {
-    let lit = match c.string_literal(key) {
+    let lit = match c.unwired(key) {
         V::Undef | V::Null => V::str(dflt),
         v => v,
     };
@@ -165,7 +162,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "ReverseTextNode" => each_text(c, "cachedText", "REVERSETEXT"),
         "SpellNumberNode" => {
             let value = match c.wired("value") {
-                None | Some([]) => c.literal("value"),
+                None | Some([]) => c.unwired("value"),
                 Some([first, ..]) => {
                     if matches!(first, V::Undef) {
                         V::Null

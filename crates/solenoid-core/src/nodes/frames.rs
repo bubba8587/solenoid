@@ -156,7 +156,7 @@ pub(crate) fn to_json(v: &V) -> Json {
 
 /// Unwired, the typed text, else `dflt`; wired, the first cable's value.
 pub(crate) fn str_input(c: &Call, key: &str, dflt: &str) -> V {
-    let lit = match c.string_literal(key) {
+    let lit = match c.unwired(key) {
         V::Undef | V::Null => V::str(dflt),
         v => v,
     };

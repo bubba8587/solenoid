@@ -415,7 +415,7 @@ pub(crate) fn resolve(c: &Call, fallback: &str, vars: &[&str]) -> Result<Body, S
         let order = lam.params.iter().map(|p| vars.iter().position(|v| v == p)).collect();
         return Ok(Body::Lambda(lam, order));
     }
-    let inline = match c.string_literal("formula") {
+    let inline = match c.unwired("formula") {
         V::Str(s) if !trim_space(&s).is_empty() => s.to_string(),
         _ => fallback.to_string(),
     };
@@ -859,10 +859,7 @@ fn or_null(v: V) -> V {
 /// the picks left out, which is `#SYNTAX!`.
 fn required_picks(c: &Call, key: &str) -> V {
     let label = c.label(key);
-    let literal = match c.literal(key) {
-        V::Undef | V::Null => c.string_literal(key),
-        v => v,
-    };
+    let literal = c.unwired(key);
     let v = match c.wired(key) {
         None | Some([]) => literal,
         Some([first, ..]) => first.clone(),
@@ -1043,7 +1040,7 @@ fn set_cell(c: &mut Call) -> Answer {
     let mut writes = Vec::new();
     for id in ids {
         let (rk, ck) = (format!("row{id}"), format!("col{id}"));
-        let at = |k: &str| c.read_input(k, or_null(c.literal(k)));
+        let at = |k: &str| c.read_input(k, or_null(c.unwired(k)));
         let (r, k) = (at(&rk), at(&ck));
         if matches!(r, V::Null) || matches!(k, V::Null) {
             return result(c, V::Null, None);

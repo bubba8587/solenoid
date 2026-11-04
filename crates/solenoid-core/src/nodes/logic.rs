@@ -153,8 +153,8 @@ fn between(c: &mut Call) -> Answer {
 }
 
 fn is_close(c: &mut Call) -> Answer {
-    let a = or_null(wired_or(c, "a", c.literal("a")));
-    let b = or_null(wired_or(c, "b", c.literal("b")));
+    let a = or_null(wired_or(c, "a", c.unwired("a")));
+    let b = or_null(wired_or(c, "b", c.unwired("b")));
     let tol = match read_role(c, "tol", &Role::Setting(V::Undef)) {
         V::Undef | V::Null => V::Num(1e-9),
         v => v,
@@ -167,7 +167,7 @@ fn is_close(c: &mut Call) -> Answer {
 }
 
 fn if_node(c: &mut Call) -> Answer {
-    let cond = wired_or(c, "cond", c.literal("cond"));
+    let cond = wired_or(c, "cond", c.unwired("cond"));
     let then = pick_slot(c, "then");
     let els = pick_slot(c, "else");
     let selected = match &cond {
@@ -349,7 +349,7 @@ fn ifs(c: &mut Call) -> Answer {
 
 fn is_even_odd(c: &mut Call) -> Answer {
     let name = if c.field_str("op", "iseven") == "iseven" { "ISEVEN" } else { "ISODD" };
-    let input = c.read_input("in", or_null(c.literal("in")));
+    let input = c.read_input("in", or_null(c.unwired("in")));
     let result = if matches!(input, V::Null) {
         V::Null
     } else {
@@ -365,7 +365,7 @@ fn is_na(v: &V) -> bool {
 }
 
 fn if_error(c: &mut Call) -> Answer {
-    let lit = |c: &Call, k: &str, dflt: V| match c.literal(k) {
+    let lit = |c: &Call, k: &str, dflt: V| match c.unwired(k) {
         V::Undef => dflt,
         v => v,
     };

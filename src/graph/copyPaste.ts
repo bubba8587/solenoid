@@ -14,6 +14,7 @@ import { foreignCardStore, type ForeignMark } from "./foreignCardStore";
 import { docMetaStore } from "./docMetaStore";
 import { networkAllowed } from "./connectionStore";
 import { scriptsAllowed } from "./scriptGate";
+import { restoreLiterals } from "./literalFields";
 
 /** What a card copied here still has to ask for wherever it is pasted: whatever this foreign document's user has
  *  not allowed, beside what the card itself still asks. */
@@ -129,10 +130,7 @@ function cloneEntry(e: ClipboardEntry): GraphNode | null {
   if (e.sockets) return placeholderFor({ ...e.body, init: structuredClone(e.body.init) }, e.sockets);
   try {
     const clone = new e.Ctor(structuredClone(e.body.init));
-    // Restore the value maps after construction, or the constructor's own defaults overwrite them.
-    const cloneAny = clone as unknown as Record<string, unknown>;
-    if (e.body.literals) cloneAny.literals = { ...e.body.literals };
-    if (e.body.stringLiterals) cloneAny.stringLiterals = { ...e.body.stringLiterals };
+    restoreLiterals(clone, e.body);
     return clone;
   } catch {
     return null;

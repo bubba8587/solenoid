@@ -63,7 +63,7 @@ fn missing(v: &V) -> bool {
 
 /// The typed text, else `dflt`.
 fn text_literal(c: &Call, key: &str, dflt: &str) -> V {
-    match c.string_literal(key) {
+    match c.unwired(key) {
         V::Undef | V::Null => V::str(dflt),
         v => v,
     }
@@ -100,7 +100,7 @@ fn display(c: &mut Call) -> Answer {
 
 /// Unwired, the typed literal or null; wired, the first cable's value.
 fn scalarish(c: &Call, key: &str) -> V {
-    let lit = match c.literal(key) {
+    let lit = match c.unwired(key) {
         V::Undef => V::Null,
         v => v,
     };
@@ -455,7 +455,7 @@ fn has_duplicate(raw: &Cv) -> bool {
 /// moving between the two keeps both; blank is no bound.
 fn date_bound(c: &Call, key: &str) -> Result<V, V> {
     use crate::excel_criteria::{parse_date, DateReading};
-    let typed = match c.string_literal(key) {
+    let typed = match c.unwired(key) {
         V::Str(s) => trim_space(&s).to_string(),
         _ => String::new(),
     };
@@ -548,10 +548,7 @@ fn expect(c: &mut Call) -> Answer {
     if on("checkAllowed") {
         let allow: Option<Vec<V>> = match c.wired("allowed") {
             None | Some([]) => {
-                let lit = match c.string_literal("allowed") {
-                    V::Str(s) => s.to_string(),
-                    _ => String::new(),
-                };
+                let lit = c.csv_text("allowed").unwrap_or("");
                 Some(lit.split(',').map(trim_space).filter(|s| !s.is_empty()).map(V::str).collect())
             }
             Some([first, ..]) => match first {
@@ -1197,7 +1194,7 @@ fn record(c: &mut Call, op: &str) -> Answer {
     let mut order =
         record_rows(&picks(super::text::role_value(c, "rows")), cols.first().map_or_default(|c| c.values.len()));
     // The popup's Filter, as the Form view's: every word somewhere in the record's shown cells, caseless.
-    let query = match c.string_literal("query") {
+    let query = match c.unwired("query") {
         V::Str(q) => lower_text(trim_space(&q)).into_owned(),
         _ => String::new(),
     };
@@ -1209,13 +1206,13 @@ fn record(c: &mut Call, op: &str) -> Answer {
     let total = order.len();
     let mut index = 0;
     if op == "detail" && total > 0 {
-        let page = match c.literal("page") {
+        let page = match c.unwired("page") {
             V::Undef | V::Null => 1.0,
             v => super::kit::num(&v),
         };
         index = crate::jsnum::round_half_up(page).clamp(1.0, total as f64) as usize;
     }
-    let lit = |c: &Call, key: &str| match c.string_literal(key) {
+    let lit = |c: &Call, key: &str| match c.unwired(key) {
         V::Undef => V::Null,
         v => v,
     };
