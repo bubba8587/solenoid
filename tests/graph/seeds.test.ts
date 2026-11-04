@@ -101,13 +101,7 @@ for (const [path, mod] of Object.entries(seedModules)) {
       expect(unknownTypes, `unknown node types: ${unknownTypes.join(", ")}`).toEqual([]);
     });
 
-    // A seed may only author `literals` / `stringLiterals` where the user could
-    // have typed them: a class DECLARES the map iff its card edits it inline.
-    // A wire-driven card (the Equation family) declares neither, so authoring a
-    // literal there would plant a hardcoded known the user can't see or edit on
-    // the card — the "TVM fv: 0" bug. Load enforces the same rule (persistence
-    // restores literals only onto declaring classes); this catches the seed at
-    // authoring time instead of silently dropping it.
+    // [[inline-literal-maps#Seeds are checked when they are written]]
     it("authored literals land on inline-editable (declaring) classes only", () => {
       const problems: string[] = [];
       for (const sn of g.nodes) {

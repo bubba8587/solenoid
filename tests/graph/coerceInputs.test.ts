@@ -23,12 +23,7 @@ const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logi
 const MAR_2026 = solDate(parseDateToSerial("2026-03-20"));
 const APR_2027 = solDate(parseDateToSerial("2027-04-21"));
 
-// Persistence restores `literals` / `stringLiterals` only onto classes that
-// DECLARE the map (the inline-editability convention — a wire-driven card like
-// the Equation family declares neither, so a save can't hardcode an invisible
-// known). The typeable-list CSV editor stores its text in `stringLiterals`, so
-// any node with a strlist/datelist/logicallist input MUST declare the map or
-// the user's typed CSV silently drops on reload.
+// [[inline-literal-maps#A typeable list implies the declaration]]
 describe("typeable-list inputs imply a declared stringLiterals map", () => {
   it("every catalog node with a typeable list input declares stringLiterals", () => {
     const broken: string[] = [];

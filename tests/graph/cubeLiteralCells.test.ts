@@ -1,10 +1,8 @@
-// [[C10]] socketLattice, [[C24]] arraySemantics, [[C44]] dateSerials
+// [[C10]] socketLattice, [[C24]] arraySemantics, [[C44]] dateSerials, [[inline-literal-maps#Wildcard slots]]
 import { describe, it, expect } from "vitest";
 import { BuildCubeNode } from "../../src/graph/nodes/cube";
 
-// An unwired wildcard row on the cube builders takes a typed cell that is a number OR
-// text (autoLiterals); before, the row fell back to the number-only field. A numeric
-// literal is still a number cell, byte-identical to the old path.
+
 
 describe("Build Cube literal cells", () => {
   it("removing a row drops both literal maps", () => {
