@@ -1542,7 +1542,7 @@ body.solenoid-scrubbing * {
    value on the open box and on the tinted collapsed cell alike. */
 .solenoid-const__symbol,
 .solenoid-const__unit {
-  color: color-mix(in srgb, var(--node-accent, var(--accent)) 80%, var(--text));
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
 }
 .solenoid-const__symbol { margin-right: 6px; }
 .solenoid-const__unit { margin-left: 6px; font-size: 0.85em; }
