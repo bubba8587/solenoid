@@ -41,7 +41,7 @@ describe("a branch card answers only its test's error and its chosen branch's, a
     ["IFS, a value not taken", () => new IfsNode(), "val1", { cond0: 1, val0: 7, cond1: 0, cond2: 0, val2: 9 }, 7, "IFS(TRUE, 7, FALSE, bad, FALSE, 9)"],
     ["IFS, the value taken", () => new IfsNode(), "val0", { cond0: 1, cond1: 0, val1: 8, cond2: 0, val2: 9 }, "#DIV/0!", "IFS(TRUE, bad, FALSE, 8, FALSE, 9)"],
     ["IFS, a test", () => new IfsNode(), "cond1", { cond0: 0, val0: 7, val1: 8, cond2: 1, val2: 9 }, "#DIV/0!", "IFS(FALSE, 7, bad, 8, TRUE, 9)"],
-    ["IFS, a test after the match", () => new IfsNode(), "cond1", { cond0: 1, val0: 7, val1: 8, cond2: 0, val2: 9 }, "#DIV/0!", "IFS(TRUE, 7, bad, 8, FALSE, 9)"],
+    ["IFS, a test after the match", () => new IfsNode(), "cond1", { cond0: 1, val0: 7, val1: 8, cond2: 0, val2: 9 }, 7, "IFS(TRUE, 7, bad, 8, FALSE, 9)"],
   ] as const)("%s", async (_, make, slot, literals, want, expr) => {
     expect(code(await wired(make(), slot, { ...literals }))).toBe(want);
     expect(formula(expr)).toBe(want);

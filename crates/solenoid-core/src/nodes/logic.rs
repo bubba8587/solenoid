@@ -371,11 +371,7 @@ fn switch(c: &mut Call) -> Answer {
 
 fn ifs(c: &mut Call) -> Answer {
     let conds = keys_from(c, "cond");
-    // Any test's error is the answer, one after the match included, as the formula reads them.
-    if let Some(e) = conds.iter().map(|k| pick_slot(c, k)).find(V::is_sol_error) {
-        select(c, None);
-        return answer(c, "result", e);
-    }
+    // The tests are read in order and the first TRUE wins: a test's error is the answer only when it comes first.
     for cond_key in conds {
         let cond = pick_slot(c, &cond_key);
         let missing = matches!(cond, V::Null);

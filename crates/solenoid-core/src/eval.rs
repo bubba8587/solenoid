@@ -596,13 +596,13 @@ fn same(a: &V, b: &V) -> bool {
 const MEMO_SHAPERS: [&str; 6] = ["FILTER", "UNIQUE", "SORT", "SORTBY", "TAKE", "DROP"];
 
 /// `BRANCH_SELECTORS`: the arguments that pick a branch. Only an error there is the call's answer; an error in a branch
-/// not taken isn't, as in Excel, so `IF(@qty = 0, 0, @total / @qty)` guards its division. SWITCH's cases are read by
-/// its body, which answers an error case it reaches before the match. COUNT and COUNTA take every error to their body,
+/// not taken isn't, as in Excel, so `IF(@qty = 0, 0, @total / @qty)` guards its division. IFS's conditions and SWITCH's
+/// cases are read by their bodies in order, which answer an error they reach before the match and nothing after it. COUNT and COUNTA take every error to their body,
 /// which skips it and counts it (the author's Excel, 2026-11-01).
 fn branch_selector(name: &str) -> Option<fn(usize) -> bool> {
     match name {
         "IF" | "CHOOSE" | "SWITCH" => Some(|i| i == 0),
-        "IFS" => Some(|i| i % 2 == 0),
+        "IFS" => Some(|i| i == 0),
         "COUNT" | "COUNTA" => Some(|_| false),
         _ => None,
     }
