@@ -17,10 +17,20 @@ Code: `htmlCanvasRenderer.ts`, `HtmlCanvasLayer.tsx`, `htmlCanvasLayer.css`, `re
 ## When it runs
 
 - **The setting.** Render mode `html` (the default is `dom`, and only `html` persists) is offered only where `supportsHtmlInCanvas()` (`htmlCanvasSupport.ts`) finds the WICG API, which today means Chromium behind `chrome://flags/#canvas-draw-element`. The check is synchronous and cheap, so it runs at startup.
-- **The size gate.** Even with the setting on, the layer stays inert until the graph weighs at least `RENDERER_MIN_NODES = 100` DOM units. The unit is kind-weighted (`nodeDomWeight`, `nodes/kind.ts`): a full figure (Chart, Mermaid, Record, Heatmap…) weighs 10, a tornado 6, a sparkline or gauge 3, a plain scalar card 1. So about ten charts engage it, while a scalar-only graph needs about a hundred cards. Below the gate the native DOM pans fine and the capture cost isn't worth paying. The weight is recounted on bind and on every node add or remove, even while inert, so crossing the line is noticed. `window.__hcMinNodes` overrides it live.
+- **The size gate.** Even with the setting on, the layer stays inert until the graph weighs at least `RENDERER_MIN_NODES = 100` DOM units. The unit is kind-weighted (`nodeDomWeight`, `nodes/kind.ts`), in tiers each strictly heavier than the one below; the numbers are coarse by design, and the order is what matters:
+  - a full figure (Chart, Histogram, Sankey, Mermaid, Record, Heatmap…) weighs 10;
+  - a Tornado's inline bars 6;
+  - a small inline figure (Sparkline, Gauge, Chart Builder) 3;
+  - a card that previews a Frame, table or Cube grid 2, and so does an SVG Picker, which shows one `<img>` at rest and mounts its inline SVG only on hover, never during a pan or zoom, the only time the gate reads the weight;
+  - a plain scalar or logic card 1.
+
+  So about ten charts engage it, while a scalar-only graph needs about a hundred cards. Below the gate the native DOM pans fine and the capture cost isn't worth paying. The weight is recounted on bind and on every node add or remove, even while inert, so crossing the line is noticed. `window.__hcMinNodes` overrides it live.
 - **Both canvases.** `FlowSurface` mounts `HtmlCanvasLayer` for the main canvas and for a composite drill-in alike.
 
-Tests: `renderMode.test.ts`: the mode defaults to `dom`, a set switches it, and setting the same value does not notify.
+Tests:
+
+- `renderMode.test.ts`: the mode defaults to `dom`, a set switches it, and setting the same value does not notify.
+- `nodes/kind.test.ts`: the weight tiers in order, and ten full charts reaching the default gate of 100.
 
 ## The lifecycle
 
