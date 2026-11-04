@@ -20,7 +20,7 @@ export const RULES = [
 
   // ── nodes: the card set and the packs ──
   ["nodes", /^tests\/graph\/(nodes|packs)\//],
-  ["nodes", /(^|\/)(cardSweep|nodeFuzz|nodeOps|nodeNames|nodeNameStore|cardTitle|cardLayout|decisionIntuition|decisionMatrix|monteCarlo|tornadoRun|qrCode|weightedShuffle|regexCard|timeZoneCards|cardsRefuseText|cardBlankReads|cardFormulaTwins|coreCardHelpers|coreCardShapes|coreNodes|directBodies|catalogRegistry|nodeStoreRegistry|textFormCatalog|literalEditors|inputRoles|controlledCell|constrainedEntry|listInputChip|nameCase|equationUnits|financeUnits|trigMode|uncertainValue|dataProviders|coreProviders|fxConvert|fxProvider|geocodeProvider|holidaysProvider|weatherProvider|coreQr|cardBatchBench)\.test\./],
+  ["nodes", /(^|\/)(cardSweep|nodeFuzz|nodeOps|nodeNames|nodeNameStore|cardTitle|cardLayout|decisionIntuition|decisionMatrix|monteCarlo|tornadoRun|qrCode|weightedShuffle|regexCard|timeZoneCards|cardsRefuseText|cardBlankReads|cardFormulaTwins|coreCardHelpers|coreCardShapes|coreNodes|directBodies|catalogRegistry|nodeStoreRegistry|textFormCatalog|literalEditors|inputRoles|controlledCell|constrainedEntry|listInputChip|nameCase|equationUnits|financeUnits|trigMode|uncertainValue|dataProviders|coreProviders|fxConvert|fxProvider|geocodeProvider|holidaysProvider|weatherProvider|cardBatchBench)\.test\./],
 
   // ── figures: charts, the Gantt and the scheduler, records ──
   ["figures", /^packages\/gantt-layout\//],

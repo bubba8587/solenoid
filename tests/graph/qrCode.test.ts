@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { QrCodeNode } from "../../src/graph/nodes/qr";
 
 // The QR Code card on the core: its payloads and image are pinned by `crates/solenoid-core/src/nodes/qr.rs`'s tests,
-// its symbols by the frozen encoder cases (coreQr.test.ts).
+// its symbols by the round trip in `crates/solenoid-core/tests/qr.rs`.
 
 describe("QR Code card templates", () => {
   const draw = async (template: "text" | "wifi" | "vcard", literals: Record<string, string>, text?: unknown[]) => {
