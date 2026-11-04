@@ -1,4 +1,4 @@
-// [[B18]] safeToShare: a card copied out of a document someone else made keeps asking wherever it is pasted.
+// [[B18]] safeToShare, [[script-sandbox#A document someone else wrote]]
 import { describe, it, expect, afterEach } from "vitest";
 import type { View } from "../../src/graph/view";
 import { GraphEditor } from "../../src/graph/graphEditor";

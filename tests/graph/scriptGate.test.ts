@@ -1,4 +1,4 @@
-// [[B18]] safeToShare: a foreign document's Script cards wait until the user lets its scripts run.
+// [[B18]] safeToShare, [[script-sandbox#A document someone else wrote]]
 import { describe, it, expect, afterEach } from "vitest";
 import { ScriptNode } from "../../src/graph/nodes/script";
 import { throughBoundary } from "./boundaryKit";

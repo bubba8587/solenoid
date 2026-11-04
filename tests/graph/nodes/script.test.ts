@@ -1,4 +1,5 @@
-// [[C66]]
+// [[C66]] scriptNode, [[script-sandbox#The source]], [[script-sandbox#One call]], [[script-sandbox#The arguments]],
+// [[script-sandbox#The result]]
 import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { ScriptNode, DEFAULT_SCRIPT } from "../../../src/graph/nodes/script";

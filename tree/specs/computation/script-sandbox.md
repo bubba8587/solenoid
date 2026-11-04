@@ -36,6 +36,8 @@ The one global a script sees is `Solenoid`, frozen, with a single method. JavaSc
 
 `scriptIsVolatile` scans the source for `Math.random`, `Date.now`, `new Date()`, `crypto.getRandomValues`, `crypto.randomUUID` and `performance.now`. A match means each run can differ, so the card shows a Recalculate button ("Run the script again"). The scan reads text, not meaning, so a renamed alias escapes it and a string can match falsely; either way the only cost is that button being missing or extra.
 
+Tests: `script.test.ts`: `scriptParams` reads the arrow, bare-arrow, function and async heads, a head after a leading line or block comment, and refuses a non-function, a destructured or defaulted parameter, a reserved word and a repeated name; `scriptIsVolatile` spots each volatile global and stays quiet on a pure script and on a `Date` built from the arguments; a new card carries the default script and its one input; `_rebuild` reports the added and departing names and keeps the rest; the source and both literal maps survive a save, and a parameter named like a saved field keeps both through a paste.
+
 ## One call
 
 ```mermaid
@@ -60,6 +62,8 @@ flowchart TD
 6. The return value is passed through `toClonable` so it can cross back to the main thread. Functions and symbols become an `__unclonable` marker, as do `Map`, `Set` and anything nested more than 7 levels deep; typed arrays become plain arrays. The depth limit clears the deepest legal shape (cube rows holding frame rows holding lists) with a level to spare.
 7. On the main thread, `coerceScriptResult` folds the value onto the value model (below). The result socket takes the type of the value it carried, as every wildcard output does ([[socket-lattice]] req. 9): a list's family at the combo rung, a table at its matrix, a frame or cube as itself. A result with nothing to read (an empty list, all blanks or errors) keeps the last type ([[D117]] emptyKeepsLastType).
 
+Tests: `script.test.ts`: building the card, as loading a document does, never runs its source; scalars, lists and matrices arrive as plain values; a wired blank is `null` and an unwired, untyped one `undefined`; an unwired parameter takes its typed number or text; an error cell in any argument, a Frame's included, becomes the result unrun; an empty source is blank, a broken one `#SYNTAX!` and a throw `#VALUE!` with its message; the result socket takes the carried value's type and keeps it through an empty answer; `toClonable` marks what cannot cross and flattens typed arrays; `invokeScript` awaits an async function; the card's cached result mirrors the answer and its error message clears on a success.
+
 ## The arguments
 
 Frames and Cubes go into and come out of a script, though a formula keeps them out ([[C15]] matricesInFormulas): Script is the advanced surface, and there is no good reason for the same limit there. This is [[C66]] scriptNode.
@@ -70,6 +74,8 @@ Frames and Cubes go into and come out of a script, though a formula keeps them o
 - A Cube becomes rows whose cells may hold nested rows (a nested Frame or Cube) or lists. A unit cell unwraps to its display magnitude, so Script is unit-blind. Nested Frames are assumed materialized, as Cubes are built.
 - A LAMBDA, a chart or a document has no script form: `#TYPE!` "A script reads data values; a lambda has no script form" (or a chart, a document), before the run.
 - Everything else passes through unchanged.
+
+Tests: `script.test.ts`: a Frame round-trips through a script as rows; a Cube arrives as rows with nested rows and lists in its cells; a LAMBDA is `#TYPE!` before the run; a date column and a date-typed input arrive as `Date`s and come back as dates.
 
 ## The result
 
@@ -101,11 +107,21 @@ Frames and Cubes go into and come out of a script, though a formula keeps them o
 
 **The family vote.** Number, text and date map to their own result sockets. Logical and complex values are first-class but have no result socket of their own, so they ride the wildcard (`auto`). A Frame votes `frame` and a Cube votes `cube`, which swap the whole result socket. A mixed vote or no vote casts nothing.
 
+Tests:
+
+- `script.test.ts`: values keep their own kinds and blank and error cells pass through; `Solenoid.date` lifts a serial or a list of them and refuses a non-serial with `#TYPE!`; a mixed list or mixed rows are `#AMBIGUOUS!` while a list of booleans alone rides the wildcard; `{name: value}` rows, or one object, build a Frame with typed columns, a missing key reading as a blank cell and a `Date` column typing as date; a Frame column mixing types is `#AMBIGUOUS!` and rows mixed with plain values `#SHAPE!`; rows nesting rows or lists build a Cube; functions and unclonables are `#TYPE!`, deeper or mixed nesting `#SHAPE!`; ragged rows pad with null; a `bigint` past the safe range is `#OVERFLOW!`.
+- `spreadLimit.test.ts`: `coerceScriptResult` folds more rows than a call takes arguments.
+
 ## A document someone else wrote
 
 A foreign document's Script cards (one opened or imported from outside the app, [[live-connections#The network gate]]) do not run until the user lets them ([[B18]] safeToShare). `requestScript` (`scriptGate.ts`) answers before the arguments are read: a waiting card's result is blank, and the card says "Someone else wrote this script. It runs when you allow it." beside a **Run** button. On the next tick one sticky notice asks for every waiting card ("This document has N scripts someone else wrote. Run them?"), and Settings, Data has the same Run while any wait. `allowScripts()` saves `scriptsAllowed` on the document's metadata, marks each waiting card edited and runs a pass. The grant is the document's own, apart from the network's (the "always allow" network setting does not cover scripts); importing a file clears any grant it carries, and a rewrite (the AI edit) keeps the document's trust, never the rewrite's (`docMetaStore.keepTrust`).
 
 A card keeps asking when it leaves the document: copying out of a foreign document marks each copied card with what that document's user has not yet allowed (`foreignCardStore.ts`, saved on the card as `foreign: { scripts, network }`), and a composite's inner cards take its mark on paste. Pasted into the user's own document, the card still waits, and only it: `scriptsAllowed(id)` and `networkAllowed(id)` read the mark beside the document's grant, and Run or Allow clears it on every marked card. An AI rewrite, which reads the document back from text that carries no marks, keeps each card's mark by its text-form name (`keepCardTrust`, `textForm.ts`).
+
+Tests:
+
+- `scriptGate.test.ts`: the user's own document runs its scripts; a foreign document's script waits, runs once allowed, and the grant saves with the document; a rewrite keeps the document's own trust.
+- `foreignPaste.test.ts`: a pasted script waits in the user's own document and runs once allowed, the mark saves with the card and comes back on load, a card from the user's own document pastes unmarked, and the marks match cards by their text-form names.
 
 ## The worker
 
@@ -119,10 +135,16 @@ The limit exists because a runaway loop would otherwise freeze the app, and free
 
 An uncaught error in the worker (a script throwing from a timer, a policy forbidding eval, a bundling fault) resolves the running call to `#VALUE!` with the reason and retires the worker; the queue carries on with a fresh one. An error thrown late by a call that already settled lands on whichever call is running then. A failure posting a request resolves that call to `#VALUE!`.
 
+Tests: `scriptExecutor.test.ts`, on a stand-in worker: two 600 ms scripts sent together both finish, a call past the limit times out alone and the next runs on a fresh worker, and an uncaught worker error fails only the running call.
+
 ## Hosts without Workers
 
 In vitest and other headless hosts, `executeScript` runs `invokeScript` inline, with no time limit. It deep-copies the arguments first (`structuredClone`), as posting to a worker would, so a script that mutates an argument never edits the upstream card's cached value.
 
+Tests: `script.test.ts`: a script that mutates its argument never edits the caller's array.
+
 ## Desktop security policy
 
 Because `new Function` is built on both the main thread and in the worker, the desktop content security policy (`src-tauri/tauri.conf.json`) must allow `'unsafe-eval'` in `script-src`. Without it, every Script card shows the policy refusal as its error.
+
+Tests: `desktopCsp.test.ts`: the desktop policy's `script-src` allows eval.
