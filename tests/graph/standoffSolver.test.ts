@@ -1,4 +1,5 @@
-// [[C89]] standoffsSolveLast
+// [[C89]] standoffsSolveLast, [[standoffs#The constraint]], [[standoffs#The solver runs last]], [[standoffs#Creating one]],
+// [[standoffs#Known gaps]]
 import { describe, it, expect } from "vitest";
 import { solveStandoffs } from "../../src/graph/standoffSolver";
 import { Standoff, Box, anchorPoint, anchorFromVector, liveStandoffs, standoffsTouching } from "../../src/graph/standoffs";
@@ -54,8 +55,7 @@ describe("solveStandoffs", () => {
   });
 
   it("locked: pulls the perpendicular offset to zero (rigid 45° align)", () => {
-    // B is offset both along (x) and across (y) the east axis. Unlocked would
-    // leave the vertical slack; locked also zeroes it so the bar lies on the axis.
+    // B is offset both along (x) and across (y) the east axis.
     const d = solveStandoffs(
       boxes({ a: box(0, 0), b: box(200, 80) }),
       [{ ...east("s1", "a", "b", 0, 1000), locked: true }],
@@ -68,8 +68,7 @@ describe("solveStandoffs", () => {
   });
 
   it("forceLock treats an unlocked standoff as rigid (perpendicular → 0)", () => {
-    // Same geometry as the locked test, but the standoff is NOT locked — the
-    // forceLock option makes a layout-op solve treat it as a rigid block anyway.
+    // The locked test's geometry, with the standoff unlocked.
     const d = solveStandoffs(
       boxes({ a: box(0, 0), b: box(200, 80) }),
       [east("s1", "a", "b", 0, 1000)],

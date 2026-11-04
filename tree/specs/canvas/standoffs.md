@@ -12,9 +12,11 @@ A standoff is an arrangement constraint the user declares between two items on t
 
 ## What a standoff links
 
-A standoff links two top-level items: loose nodes or groups. Conduits, Format Controllers (docked or not) and group members can't be linked. Each end names an anchor on its item's box, one of eight: a side midpoint (`n`, `e`, `s`, `w`) or a corner (`ne`, `nw`, `se`, `sw`). The two ends always use opposite anchors, so the bar spans the pair. A pair can have at most one standoff.
+Code: `standoffs.ts` (`Standoff`, `standoffStore`); the saved form is `SavedGraph.standoffs`, including `locked`.
 
-The model is `standoffs.ts` (`Standoff`, `standoffStore`); the saved form is `SavedGraph.standoffs`, including `locked`.
+- **What can be linked.** A standoff links two top-level items: loose nodes or groups. Conduits, Format Controllers (docked or not) and group members can't be linked.
+- **Anchors.** Each end names an anchor on its item's box, one of eight: a side midpoint (`n`, `e`, `s`, `w`) or a corner (`ne`, `nw`, `se`, `sw`). The two ends always use opposite anchors, so the bar spans the pair.
+- **One per pair.** A pair can have at most one standoff.
 
 ## The constraint
 
@@ -29,20 +31,32 @@ where `P_a` and `P_b` are the anchor points. This is an axis band: only distance
 - **Floor.** `min` is never below `STANDOFF_MIN` (30), and `max` is never below `min`. Both `add` and `setBand` enforce this.
 - **Direction.** The toolbar's angle dial sets the direction. `setAxis` changes a's anchor and gives b the opposite one.
 
+Tests:
+
+- `standoffSolver.test.ts`: a satisfied band moves nothing, an overstretched or too-close pair is pulled back to the band, the cross-axis offset is left alone when unlocked and pulled to 0 when locked or under `forceLock`, and a diagonal is corrected along its 45° axis only.
+- `layoutInvariants.test.ts`: over random anchors, bands and positions, a solve with one end pinned lands the axis distance in the band (and a locked one on the axis), and a chain of standoffs holds every band.
+
 ## Creating one
 
-Select exactly two linkable items, right-click one of them, and choose "Link with Standoff" (`linkStandoffBetween` in `canvasActions.ts`). The item must not already be linked to the other.
+Code: `linkStandoffBetween` in `canvasActions.ts`.
+
+Select exactly two linkable items, right-click one of them, and choose "Link with Standoff". The item must not already be linked to the other.
 
 1. The anchor faces along whichever of the eight directions is closest to the line from a's center to b's center (`anchorFromVector`, by angle, with 0° east and y pointing down); b takes the opposite anchor.
 2. The band starts at `min` = `STANDOFF_MIN` (30) and `max` = the current distance along the axis (or 30, if that is smaller). The code asks for `min(PUSH_GAP, distance)`, which is always below the floor, so the floor sets it.
 3. The new standoff is locked, becomes the selection (clearing node and cable selection), and is settled right away, so the pair snaps into alignment.
 
+Tests: `standoffSolver.test.ts`: `anchorFromVector` maps each of the eight directions to its anchor.
+
 ## The solver runs last
 
-`solveStandoffs` (`standoffSolver.ts`) is pure and unit-tested. The canvas registers the live settle routine that drives it (`setStandoffSettle`). It takes plain boxes, the standoffs, a set of pinned ids and an optional `forceLock`, and returns a displacement per box. Each displacement lands its box on a whole pixel: the solve stops once every error is within 0.25, and an unrounded leftover rode into a Tidy's cluster offsets and back out as a slightly different block size.
+Code: `solveStandoffs` in `standoffSolver.ts`; the canvas registers the live settle routine that drives it (`setStandoffSettle`).
 
-- It is iterative projection: up to 48 rounds, each correcting every active standoff in turn, stopping once no correction exceeds 0.25px.
-- Each correction splits evenly between the two ends. If one end is pinned, the other takes all of it. A standoff with both ends pinned is skipped.
+`solveStandoffs` is pure. It takes plain boxes, the standoffs, a set of pinned ids and an optional `forceLock`, and returns a displacement per box.
+
+- **Whole pixels.** Each displacement lands its box on a whole pixel, so repeated settles can't accumulate a fraction. The solve stops once every error is within 0.25, and an unrounded leftover would ride into a Tidy's cluster offsets and back out as a slightly different block size.
+- It is iterative projection: up to 48 rounds, each correcting every active standoff in turn, stopping once no correction exceeds 0.25px. Corrections propagate along a chain (a pinned end tows its partner, which tows the next), and an unsatisfiable cycle stays bounded instead of diverging.
+- Each correction splits evenly between the two ends. If one end is pinned, the other takes all of it. A standoff with both ends pinned, or with an end that has no box, is skipped.
 - `forceLock` treats every standoff as locked for that one solve, without touching the saved `locked` flag. Every LayoutFx uses it, so a cluster of items joined by standoffs (`standoffClusters()`, the connected groups) behaves as one rigid block.
 - Position-locked groups are always pinned (`withLockedGroupsPinned`).
 - A settle can be scoped with `touching`: only the clusters holding one of those ids solve (`standoffsTouching`). Every LayoutFx scopes its `forceLock` solve to what it moved, so an unrelated unlocked slant survives it.
@@ -68,9 +82,17 @@ flowchart LR
 
 Every pass in the table except the live drag and toolbar edits is a LayoutFx, so it then ends with the No-Overlap Pass ([[C112]] noOverlapsEver). It moves each standoff cluster as one unit, so it never breaks a band; only the members' own boxes collide, never the cluster's bounding box.
 
+Tests:
+
+- `standoffSolver.test.ts`: an even split with both ends free, a chain towed from a pinned root, a contradictory cycle staying bounded, a standoff skipped with both ends pinned or an end missing, every moved box landing on a whole pixel, and `standoffsTouching` keeping exactly the clusters that hold a touched id.
+- `groupPushRecords.test.ts`: a collapse pulls the partner in and the expand puts it back exactly, a collapse leaves the partner in place when the re-solve would land it on another box, and a toggle leaves an unrelated slanted standoff alone.
+- `groupPushCore.test.ts`: the No-Overlap Pass moves a standoff cluster whole while a box between its members stays put.
+
 ## Tidy and clusters
 
-Tidy lays out each cluster of loose items as a single ELK super-node (`makeArrangeFn` in `tidyArrange.ts`; `FlowCanvas` only wires it in). ELK is the automatic layout engine behind Tidy.
+Code: `makeArrangeFn` in `tidyArrange.ts`; `FlowCanvas` only wires it in.
+
+Tidy lays out each cluster of loose items as a single ELK super-node. ELK is the automatic layout engine behind Tidy.
 
 1. A cluster qualifies only if every member is a loose target of this Tidy.
 2. The leader is the member nearest the top-left (by `x + y`), preferring a non-group.
@@ -82,6 +104,8 @@ Without qualifying clusters none of this runs, so a graph with no standoffs tidi
 
 ## Drawing and selection
 
+Code: `StandoffLayer.tsx`, `StandoffLayer.css`.
+
 `StandoffLayer` draws the bars in an SVG inside React Flow's viewport portal (through `ViewportLayer`, [[react-flow-surface-contract#World-coordinate overlays]]), so they move with the camera. The main canvas mounts it (the host's `standoffs` hook); the layer redraws on standoff changes and on collapse changes, and each bar redraws when React Flow reports a move or a new measure of one of its two cards (`endsKey`, a selector on RF's node lookup).
 
 - Each bar is a 9px line between the two anchor points of the items' live boxes, with a small cap circle at each end. A wider invisible line (18px) is the hit target.
@@ -90,12 +114,19 @@ Without qualifying clusters none of this runs, so a graph with no standoffs tidi
 - A selected standoff shows a docked toolbar: the min and max of the band (each committing on Enter or blur via `useDraftCommit`), the 45° Lock toggle, the angle dial, and a delete button. The Delete key also removes it.
 - Deleting either end's node removes the standoff (`registerNodeForget`); a full rebuild clears them all (`registerNodeForgetAll`).
 
+Tests: `drawnCablePath.test.ts`: finishing a drawn cable selects it exclusively, dropping the standoff selection.
+
 ## Known gaps
 
 - A linked item dragged into a group stays linked, so a member can be an end after all. An end hidden inside a collapsed group makes the standoff dormant: the bar is hidden, and every solve and cluster reads `liveStandoffs`, which leaves it out.
 - A cluster whose members aren't all in the loose layout falls back to the `forceLock` settle instead of the super-node path.
 - Standoff edits don't record undo steps of their own.
 - Tidy and Cleanup edge cases under heavy overlap have not been fully tested.
+
+Tests:
+
+- `standoffSolver.test.ts`: a standoff with an end hidden in a collapsed group drops out of `liveStandoffs`, so the solve doesn't pull the visible end toward the hidden one.
+- `selectionOps.test.ts`: moving a linked item doesn't carry a partner hidden in a collapsed group.
 
 ## In seeds
 
@@ -106,3 +137,5 @@ Seed graphs use groups liberally and standoffs sparingly.
 - A data node never has a standoff to its consumer. An exhibit and its Note go in one group instead (a Note can be a member).
 
 Re-bake seeds with `scripts/tune-seeds.mjs` after editing. It expands every group for the whole pass and collapses the collapsed ones again at the end, because a whole-canvas Tidy of collapsed groups packs their small boxes and leaves their hidden members under the neighbors' boxes, which `seeds.test.ts` rejects. `decision-matrix.json` and `table-verbs.json` are the exemplars.
+
+Tests: `seeds.test.ts`: every seed standoff's ends name nodes the seed has, every group's box holds exactly its members' centers, and no other card's center sits inside an expanded group's box.

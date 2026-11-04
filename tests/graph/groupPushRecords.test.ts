@@ -333,7 +333,7 @@ describe("collapse and the selection ([[C52]] visibleSelection)", () => {
   });
 });
 
-// [[C89]] standoffsSolveLast
+// [[C89]] standoffsSolveLast, [[standoffs#The solver runs last]]
 describe("standoffs across a collapse round trip", () => {
   async function setup() {
     const editor = new GraphEditor<Schemes>();
