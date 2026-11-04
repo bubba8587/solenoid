@@ -3,7 +3,8 @@
 <!-- [[B2]] webTryDesktopFull: the Android app is the full app in a phone's shell. -->
 
 **Status (2026-11-04):** prepared in a cloud session; **the shell compiles for Android** (the cloud build below,
-JDK 17, NDK 30.0.16248370: a universal debug APK of about 100 MB, most of it debug symbols), not yet run on a phone. Everything that doesn't need the Android toolchain is
+JDK 17, NDK 30.0.16248370: a universal debug APK of about 100 MB, most of it debug symbols), and **runs on the author's phone** with granted
+folders (run #4, 2026-11-04; the author's first pass found it working well; Phase 4's list not yet walked in full). Everything that doesn't need the Android toolchain is
 in the repository; a local agent on the author's Linux machine does the build, following § Plan below. The app is the
 desktop app, packaged: Tauri 2 builds Android from the same `src-tauri`, so the cards behave as on desktop and the
 screen is the phone layout the web app already has. Only what a phone lacks (a window frame, a file manager) or does
