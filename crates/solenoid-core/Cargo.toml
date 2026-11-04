@@ -56,3 +56,8 @@ strip = true
 [[bench]]
 name = "core"
 harness = false
+
+# The tests run in the dev profile, where overflow checks catch our own arithmetic; the crates we depend on (JSON,
+# gzip, regex) are optimized, since every test spends most of its time decoding frozen fixtures through them.
+[profile.dev.package."*"]
+opt-level = 2
