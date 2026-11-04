@@ -165,8 +165,7 @@ describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas'
     expect(code(ev("CHOOSECOLS(a, 5)", { a }))).toBe("#VALUE!"); // out of range, both surfaces
     expect(code(new TableSelectNode({ op: "choosecols" }).data({ matrix: [a], indices: [[5]] }).result)).toBe("#VALUE!");
 
-    // EXPAND pads with first-class null (the author override of Excel's #N/A), and the
-    // node agrees because both call expandMat with the same omitted-Fill default.
+    // EXPAND pads with blank ([[excel-divergences#Deliberate differences from Excel]]), the card too.
     expect(ev("EXPAND(a, 3, 3)", { a })).toEqual(new ExpandNode().data({ matrix: [a], rows: [3], cols: [3] }).result);
     expect((ev("EXPAND(a, 3, 3)", { a }) as unknown[][])[2][2]).toBeNull();
     expect(code(ev("EXPAND(a, 1, 1)", { a }))).toBe("#VALUE!"); // shrink is refused, both surfaces

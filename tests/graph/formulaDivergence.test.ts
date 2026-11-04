@@ -1,15 +1,10 @@
-// [[C17]] shareImpl
+// [[C17]] shareImpl, [[excel-divergences#Excel's answer, pinned]]
 import { describe, it, expect } from "vitest";
 import { AT_ONCE_MS } from "./timing";
 import { coreFunction } from "./coreFunction";
 import { isSolError } from "../../src/graph/errorValue";
 import { MathFXNode } from "../../src/graph/nodes/scalar";
 import { TextSliceNode, TextFindNode } from "../../src/graph/nodes/text";
-
-// ─── Where Formula.js was wrong ──────────────────────────────────────────────────
-// The 2026-06-25 consolidation compared every formula-reachable function against Formula.js and overrode the handful
-// where it is wrong, so the function answers as Excel does AND the visual node runs the same kernel. These pin the
-// Excel-correct answers.
 
 const call = (name: string, ...args: unknown[]): unknown => {
   const fn = coreFunction(name);
@@ -211,7 +206,7 @@ describe("SUM reads a list without spreading it into a call", () => {
   });
 });
 
-// ─── TEXT-family sweep (B-4b, 2026-07-05): the Excel-correct answers. ───────────
+// ─── The TEXT family ───────────
 
 const str = (v: unknown): string => {
   expect(typeof v === "string", `expected a string, got ${JSON.stringify(v)}`).toBe(true);
@@ -219,7 +214,7 @@ const str = (v: unknown): string => {
 };
 
 describe("TEXT — format-code holes patched over FX", () => {
-  it("date codes format OUR serial (the audit-29 fix, pinned)", () => {
+  it("date codes format the serial as Solenoid reads it", () => {
     expect(str(call("TEXT", 46096, "yyyy-mm-dd"))).toBe("2026-03-15");
   });
 });

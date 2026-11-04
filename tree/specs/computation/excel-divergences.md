@@ -8,7 +8,7 @@ tags: [spec, computation]
 
 Serves [[A5]] excelParity and [[B16]] oneFormulaSurface: a function keeps Excel's name and answer, and each place it doesn't is written here with its reason. Read this before changing a function whose answer differs from Excel's.
 
-The first part is Solenoid's own differences from Excel, deliberate ones. The rest is the functions Solenoid answers as Excel does where Formula.js did not: Formula.js was the library behind every Excel function Solenoid didn't write itself, its bodies were ported into the core ([[rust-core]]) and the library is gone, so each entry is the reason its answer was wrong for Solenoid and the evidence for Excel's. `tests/graph/formulaDivergence.test.ts` pins those Excel-correct answers. Every kernel below is the core's, its file under `crates/solenoid-core/src/`.
+The first part is Solenoid's own differences from Excel, deliberate ones. The rest is the functions Solenoid answers as Excel does where Formula.js did not: Formula.js was the library behind every Excel function Solenoid didn't write itself, its bodies were ported into the core ([[rust-core]]) and the library is gone, so each entry is the reason its answer was wrong for Solenoid and the evidence for Excel's. Every kernel below is the core's, its file under `crates/solenoid-core/src/`.
 
 ## Deliberate differences from Excel
 
@@ -29,6 +29,8 @@ Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because co
 - LOG2 of a value at or below 0 is blank.
 - FORECAST.ETS uses its own parameter search, so its values are close to Excel's but not identical.
 
+Tests: `excelFormula.test.ts`: ERROR.TYPE reports the split errors as Excel's code; `formulaMatrix.test.ts`: EXPAND pads with blank, the formula and the EXPAND card alike; `formulaComplex.test.ts`: the IM* functions answer as the complex cards do.
+
 ### Dates are points
 
 A date is its own kind of value, a point in time, never a number ([[D114]] dateIsAKind, [[D115]] datesArePoints, [[C137]] datesNeverSerials; the rules are [[date-values]]). Excel's date is a number with a format, so each of these answers where Solenoid's is `#TYPE!`:
@@ -39,14 +41,23 @@ A date is its own kind of value, a point in time, never a number ([[D114]] dateI
 - A number where a function reads a date: `YEAR(46000)`, `EDATE(46000, 1)`, and dates beside plain numbers in MIN, MAX, AVERAGE and the other functions that keep or spread dates. Cast to Number is the one way from a date to its serial, and Cast to Date or DATE the way back.
 - A list or table mixing dates with another kind, which Excel holds as numbers in one range.
 
+Tests: `datesNeverSerials.test.ts` and the date-values tests ([[date-values#Functions]]).
+
 ### Days before 1900
 
 Excel has no dates before 1 January 1900: it refuses a negative date in TEXT, EDATE, the coupon functions and the rest. Solenoid takes them everywhere, from 01-Jan-0001 ([[D119]] datesBefore1900; [[date-values#Days before 1900]]). Its serials have no 29-Feb-1900 ([[C44]] dateSerials), so a serial from 1 to 60 is one day earlier than Excel's (Excel's 1 is 01-Jan-1900, Solenoid's 31-Dec-1899), and from 61 on (01-Mar-1900) they agree.
 
-## Excel's answer, pinned
+Tests: `dates_before_1900.rs` (solenoid-core).
+
 ## Excel's answer, pinned
 
-**MUST:** where Formula.js gave a different answer from Excel, Solenoid gives Excel's, backed by the same implementation as the card ([[C17]] shareImpl), and a test pins it. The tripwires that held Formula.js to its wrong answers went with the library: no vendor update reaches the core. The first divergence list lived in a sweep script that was later lost and had to be rebuilt from notes, so the evidence lives in the suite, with the per-name reasons below.
+**MUST:** where Formula.js gave a different answer from Excel, Solenoid gives Excel's, backed by the same implementation as the card ([[C17]] shareImpl), and a test pins it. No vendor update reaches the core, so the evidence lives in the suite, with the per-name reasons below.
+
+Tests:
+
+- `formulaDivergence.test.ts` pins the Excel-correct answer of each function below, and that the card sharing its kernel answers the same.
+- `excel_examples.rs` (solenoid-core): Excel's documented answers for the functions whose bodies were rewritten away from what JavaScript computed.
+- `excel_doc_sweep.rs` (solenoid-core): Excel's documented examples, function page by function page.
 
 ## Scalar math
 
