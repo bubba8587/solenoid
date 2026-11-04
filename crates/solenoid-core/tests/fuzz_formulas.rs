@@ -1,11 +1,5 @@
-// [[C130]] rustCore, [[C120]] linearWork
-//! Random formulas over every callable function, with hostile arguments (huge, tiny, infinite, blank, empty slots,
-//! text, lists, tables, nested calls), each of which must answer without a panic and without stalling. The shipped
-//! engine aborts on a panic, so one here is a card that would take the whole engine down.
-//! The cases are seeded and repeat run to run; `FUZZ_CASES=200000 cargo test --release --test fuzz_formulas` runs
-//! more, `FUZZ_SEED=n` starts elsewhere. Dates are among the arguments ([[D114]] dateIsAKind): the date cases below
-//! hold every operator row and every function class to `tree/specs/values/date-values.md`, and every function handed a
-//! date must never hand back its day as a plain number ([[C137]] datesNeverSerials).
+// [[C130]] rustCore, [[C120]] linearWork, [[D114]] dateIsAKind, [[C137]] datesNeverSerials, [[formula-language#The registry]]
+//! Random formulas over every callable function with hostile arguments, dates among them: none panics or stalls.
 
 use solenoid_core::eval::{formula, function_names, Env};
 use solenoid_core::excel_functions::V;

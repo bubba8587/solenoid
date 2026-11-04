@@ -1,4 +1,4 @@
-// [[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue, [[input-roles#Empty slots]], [[input-roles#Placeholders]]
+// [[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue, [[input-roles#Empty slots]], [[input-roles#Placeholders]], [[formula-language#Blank and omitted arguments]], [[formula-language#Editor support]]
 import { describe, it, expect } from "vitest";
 import { FUNCTION_ARITY } from "../../src/graph/excelFunctions";
 import { compileEvaluator } from "../../src/graph/excelFormula";

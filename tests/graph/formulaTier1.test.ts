@@ -1,4 +1,4 @@
-// [[C17]], [[B16]] oneFormulaSurface
+// [[C17]] shareImpl, [[B16]] oneFormulaSurface, [[formula-language#Blocked and wrong-surface names]], [[formula-language#Shared kernels]]
 import { solDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { isFunctionName, formulaFunctionNames, LEGACY_ALIASES, POSITION_NAMES, NODE_SURFACE_NAMES, ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
@@ -9,16 +9,6 @@ import { TextSplitNode, TextAfterBeforeNode, UrlEncodeNode, RegexNode } from "..
 import { CouponNode, BondPricingNode, DurationNode, DepreciationNode } from "../../src/graph/nodes/finance";
 import { ForecastNode } from "../../src/graph/nodes/stats";
 
-// ─── Tier 1 registrations ([[C51]] formulaNaming) ───────────────────────────────────────────────
-// The gap these close: a node carried an Excel name, and typing that same name in
-// an Expression returned #NAME?. Two things have to hold for each one, and the
-// second is the one that rots silently:
-//   1. the name DISPATCHES;
-//   2. it computes what the NODE computes — same input, same answer.
-// The registrations import the node's own helper precisely so (2) is structural,
-// but a future "small tweak" to one surface is exactly how they drifted the first
-// time, so it gets asserted rather than assumed.
-
 const ev = (expr: string, env: Record<string, unknown> = {}) => {
   const f = compileEvaluator(expr);
   expect(f, `failed to compile: ${expr}`).not.toBeNull();
@@ -26,8 +16,6 @@ const ev = (expr: string, env: Record<string, unknown> = {}) => {
 };
 
 describe("blocked spellings redirect to a LIVE replacement", () => {
-  // The redirect hint is the whole value of blocking: pointing a user at a name
-  // that also fails would be worse than leaving the legacy one callable.
   it("every LEGACY_ALIASES target actually dispatches", () => {
     const dead = [...new Set(Object.values(LEGACY_ALIASES))].filter((t) => !isFunctionName(t));
     expect(dead, `blocked names redirect to targets that do not dispatch: ${dead.join(", ")}`).toEqual([]);
@@ -45,8 +33,6 @@ describe("blocked spellings redirect to a LIVE replacement", () => {
   });
 
   it("blocks the superseded statistics spellings", () => {
-    // TDIST redirects to T.DIST.RT (Microsoft's own compat mapping — TDIST was
-    // right-tailed/2T, never the density-capable T.DIST).
     for (const [name, use] of [["NORMDIST", "NORM.DIST"], ["TDIST", "T.DIST.RT"], ["CRITBINOM", "BINOM.INV"]]) {
       const r = ev(`${name}(1, 2, 3, TRUE)`);
       expect(isSolError(r) && r.code, name).toBe("#NAME?");

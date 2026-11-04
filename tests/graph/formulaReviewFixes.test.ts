@@ -1,12 +1,7 @@
-// [[B16]] oneFormulaSurface
+// [[B16]] oneFormulaSurface, [[formula-language#The dispatch ladder]], [[formula-language#Whole-list natives]], [[formula-language#Range functions]], [[formula-language#Statistics]], [[formula-language#Lists]], [[formula-language#Text]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";
-
-// ─── Pins from the 2026-07-28 adversarial review of the [[C51]] formulaNaming formula work ─────
-// Each block pins a defect the review confirmed live. The common theme: the
-// formula surface fabricating an answer (or corrupting its inputs) in cases
-// where the NODE under the same name behaves.
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => {
   const f = compileEvaluator(expr);
@@ -16,9 +11,6 @@ const ev = (expr: string, env: Record<string, unknown> = {}) => {
 
 describe("Formula.js may not mutate the graph's own arrays", () => {
   it("CHISQ.TEST leaves its argument lists untouched", () => {
-    // FX.CHISQ.TEST rebuilds its ranges element-by-element IN PLACE; unprotected,
-    // one evaluation turned the upstream node's cached [10,20,…] into [[10],[20],…]
-    // for every other consumer of that cable.
     const a = [10, 20, 30, 40];
     const b = [12, 18, 32, 38];
     ev("CHISQ.TEST(a, b)", { a, b });
@@ -37,7 +29,6 @@ describe("the statistical tests answer what the NODE answers", () => {
   it("F.TEST returns the two-tailed p-value, not the variance ratio", () => {
     const p = ev("F.TEST(a, b)", { a, b }) as number;
     expect(p).toBeCloseTo(F_TEST_P, 12);
-    // The old FX passthrough returned v1/v2 = 0.25 here; the p-value is not that.
     expect(p).not.toBeCloseTo(0.25, 6);
   });
 
@@ -48,8 +39,6 @@ describe("the statistical tests answer what the NODE answers", () => {
     expect(p1).toBeCloseTo(T_TEST_P.paired, 12);
     expect(p2).toBeCloseTo(T_TEST_P.pooled, 12);
     expect(p3).toBeCloseTo(T_TEST_P.welch, 12);
-    // The three kinds genuinely differ on this data — the old FX impl returned
-    // one number for all of them.
     expect(p1).not.toBeCloseTo(p2, 6);
   });
 
@@ -68,18 +57,12 @@ describe("the statistical tests answer what the NODE answers", () => {
 
   it("PROB pairs values with probabilities and skips missing pairs", () => {
     expect(ev("PROB(x, p, 1, 2)", { x: [1, 2, 3], p: [0.2, 0.3, 0.5] })).toBeCloseTo(0.5, 12);
-    // Omitted upper limit = exactly lower (Excel).
     expect(ev("PROB(x, p, 2)", { x: [1, 2, 3], p: [0.2, 0.3, 0.5] })).toBeCloseTo(0.3, 12);
   });
 });
 
 describe("a wired-blank SCALAR argument propagates through a whole-arg native", () => {
   const x = [1, 2, 3];
-
-  // (RUNNINGSUM's blank-window case lived here until the per-op RUNNING* names were
-  // replaced by RUNNING(op, list, [window]) — the blank-window contract on THAT
-  // spelling is pinned in formulaTier3.test.ts, and on the node: list.test.ts "a wired blank window leaves the
-  // result unknown".)
 
   it("CONTAINS(list, blank) is blank — a blank needle can't be looked for", () => {
     expect(ev("CONTAINS(x, v)", { x: [1, null, 3], v: null })).toBeNull();
@@ -98,24 +81,17 @@ describe("a wired-blank SCALAR argument propagates through a whole-arg native", 
 });
 
 describe("position-preserving cell contract in the extracted list core", () => {
-  // The two RUNNING* cases here moved to the node when the formula names were removed
-  // (list.test.ts: "max ignores a missing cell", "a per-cell error lands in exactly the
-  // windows that contain it"). The list CORE they exercised is shared, so the contract
-  // is still covered — just from its only remaining surface.
-
   it("DIFF with a missing neighbour yields a missing difference", () => {
     expect(ev("DIFF(x)", { x: [1, null, 3] })).toEqual([null, null]);
   });
 
   it("SERIESSUM keeps a blank coefficient IN PLACE as zero, never shifting powers", () => {
-    // a₁x⁰ + a₂x¹ + a₃x²  with x=2, a=[1,null,3]: 1 + 0 + 12 = 13.
-    // The pooled null-drop once computed 1 + 3·2¹ = 7.
+    // a₁x⁰ + a₂x¹ + a₃x² with x=2, a=[1,null,3]: 1 + 0 + 12 = 13.
     expect(ev("SERIESSUM(2, 0, 1, a)", { a: [1, null, 3] })).toBeCloseTo(13, 12);
   });
 
   it("INTERPOLATE drops an incomplete known pair instead of fabricating x=0", () => {
-    // known x [1, null, 3] / y [10, 20, 30]: the (null, 20) pair drops; querying
-    // 0.5 clamps below x=1 → 10. The raw cast once answered 15 via a fake (0,20).
+    // The (null, 20) pair drops, and 0.5 clamps below x=1 to 10.
     expect(ev("INTERPOLATE(y, x, q)", { y: [10, 20, 30], x: [1, null, 3], q: [0.5] })).toEqual([10]);
   });
 
@@ -126,9 +102,6 @@ describe("position-preserving cell contract in the extracted list core", () => {
 });
 
 describe("generators overflow loudly", () => {
-  // The MAX_GENERATED cap itself is pinned at the formula boundary by
-  // formulaTier3.test.ts ("a generator is capped at the formula boundary") and at
-  // the node surface by auditFixes.test.ts; this is the step-0 guard only.
   it("RANGE with step 0 is a loud error, not an empty list", () => {
     const r = ev("RANGE(0, 5, 0)");
     expect(isSolError(r)).toBe(true);
@@ -136,9 +109,6 @@ describe("generators overflow loudly", () => {
 });
 
 describe("REGEX* take Excel's documented arguments", () => {
-  // REGEXEXTRACT return_mode and REGEXREPLACE occurrence are pinned against the
-  // node in formulaTier1.test.ts ("REGEXEXTRACT (groups) and REGEXREPLACE
-  // occurrence match the node"); only REGEXTEST's case_sensitivity lives here.
   it("REGEXTEST third argument is case_sensitivity (1 = insensitive), not a JS flag string", () => {
     expect(ev('REGEXTEST("Apple", "apple", 1)')).toBe(1);
     expect(ev('REGEXTEST("Apple", "apple", 0)')).toBe(0);

@@ -1,4 +1,4 @@
-// [[C59]] byteStringOrder, [[D73]] nodeCoversFormula
+// [[C59]] byteStringOrder, [[D73]] nodeCoversFormula, [[formula-language#Lists, columns and tables]], [[formula-language#Matrices and dynamic arrays]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { SortNode } from "../../src/graph/nodes/list";

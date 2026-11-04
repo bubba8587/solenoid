@@ -1,4 +1,4 @@
-// [[D85]] columnsStayColumns
+// [[D85]] columnsStayColumns, [[formula-language#Whole-list natives]], [[formula-language#Lists, columns and tables]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { FUNCTION_ARITY } from "../../src/graph/excelFunctions";
@@ -53,7 +53,6 @@ describe("in a computed column, a whole column is a column", () => {
   };
 
   it("a direction-free answer keeps the column's direction, so it combines element by element", () => {
-    // Element by element: 10·30 + 20·20 + 30·10. Spread into a grid it would be (10 + 20 + 30)² = 3600.
     expect(run("SUM(price * REVERSE(price))")).toEqual([1000, 1000, 1000]);
     expect(run("INDEX(REVERSE(price), ROW(), 1)")).toEqual([30, 20, 10]);
   });

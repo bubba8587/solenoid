@@ -1,4 +1,4 @@
-// [[C76]]
+// [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[formula-language#Packs]], [[formula-language#Derived names are unique]]
 import { describe, it, expect, afterEach } from "vitest";
 import { initPackFormulas, advertisedFunctionNames, packFormulaNames, packFormulaSignature } from "../../src/graph/formulaExtensions";
 import { packsStore, BUILTIN_PACKS, allPacks } from "../../src/graph/packs";
@@ -6,15 +6,6 @@ import { packFunctionNames, isFunctionName } from "../../src/graph/excelFunction
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { signatureFor } from "../../src/graph/formulaSignatures";
 import type { Pack } from "../../src/graph/packs/packShared";
-
-// ─── The pack → formula seam ([[C51]] formulaNaming decision 4) ─────────────────────────────────
-// The load-bearing asymmetry, and the reason this isn't just "hide the names":
-// RESOLUTION is global, ADVERTISING is active-only. A formula pack node
-// serializes as a plain ExpressionNode and reloads with its pack switched off
-// ([[C76]] formulaPackDefault), so the functions its formula calls MUST keep
-// answering — a deactivated pack that turned saved documents into #NAME? would
-// be data loss. Autocomplete, on the other hand, shouldn't teach a name whose
-// pack is off.
 
 /** Runs `f` with the chemistry pack (ELEMENT, MOLARMASS) on or off, then puts it back. */
 function withChemistry(on: boolean, f: () => void): void {

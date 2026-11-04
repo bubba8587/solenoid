@@ -1,15 +1,10 @@
-// [[D86]], [[C24]] arraySemantics, [[error-values#The per-cell contract and the non-finite guard]]
+// [[D86]], [[C24]] arraySemantics, [[error-values#The per-cell contract and the non-finite guard]], [[D86]] blankRoles, [[formula-language#Broadcast]], [[formula-language#Numeric and vendor boundaries]]
 import { describe, it, expect } from "vitest";
 import { readInput } from "../../src/graph/nodes/shared";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { guardFinite } from "../../src/graph/valueKinds";
 import { solError, isSolError } from "../../src/graph/errorValue";
 
-// The per-cell error/null contract, factored into every element-wise broadcaster
-// (docs/backlog.md 1.0-tail item 1). ONE rule, per output cell, BEFORE the op:
-// a SolError operand propagates unmorphed (first in arg order); else a missing
-// (null) operand propagates as null; else compute. So an in-range list cell
-// behaves identically to a scalar and to a ragged-padded position.
 const e = solError("#DIV/0!", "boom");
 
 describe("readInput — unwired (undefined) vs wired-missing (null)", () => {

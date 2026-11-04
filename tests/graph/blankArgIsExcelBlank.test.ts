@@ -1,4 +1,4 @@
-// [[C80]] blankArgIsExcelBlank, [[input-roles#Left out]], [[input-roles#Empty slots]]
+// [[C80]] blankArgIsExcelBlank, [[input-roles#Left out]], [[input-roles#Empty slots]], [[formula-language#Blank and omitted arguments]], [[formula-language#Blocked and wrong-surface names]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";

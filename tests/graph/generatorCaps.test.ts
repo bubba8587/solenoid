@@ -1,4 +1,4 @@
-// [[C17]] shareImpl
+// [[C17]] shareImpl, [[formula-language#The registry]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { MakeArrayNode } from "../../src/graph/nodes/tableLambda";

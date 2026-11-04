@@ -1,4 +1,4 @@
-// A range function's one-value arguments lift over a list, as in Excel (formula-language § Range functions).
+// [[A5]] excelParity, [[formula-language#Range functions]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { callTraits, liftsAScalar, callTraitNames } from "./callTraits";

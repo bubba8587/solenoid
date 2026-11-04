@@ -1,4 +1,4 @@
-// [[D85]] columnsStayColumns: a list is one row, walked by one Position; a one-row or one-column table walks too.
+// [[D85]] columnsStayColumns, [[formula-language#Lists, columns and tables]], [[formula-language#Index access]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { ListIndexNode } from "../../src/graph/nodes/list";

@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[C120]] linearWork, [[rust-core#Where it runs]]
+// [[C130]] rustCore, [[C120]] linearWork, [[rust-core#Where it runs]], [[formula-language#The registry]]
 import { it, expect } from "vitest";
 import { evaluateOnCore, callOnCore } from "../../src/graph/coreValues";
 import { isSolError } from "../../src/graph/errorValue";

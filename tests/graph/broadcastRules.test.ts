@@ -1,17 +1,7 @@
-// [[C15]], [[C24]] arraySemantics
+// [[C15]] matricesInFormulas, [[C24]] arraySemantics, [[formula-language#Broadcasting]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { callTraits } from "./callTraits";
-
-// ─── [[C15]] matricesInFormulas: the broadcast-rules table, transcribed ──────────────────────────────
-// The table IS this test:
-// a change to either without the other fails here. PAD follows the standing
-// rulings — element-wise ragged operands pad `null` (P3), never `#N/A`; shape
-// CONSTRUCTION functions own their #N/A padding inside their registered impls
-// ([[C48]] appendLadder) and never route through the broadcaster.
-//
-// Rank grammar (post-[[C24]] arraySemantics): no scalar is an array, so Array.isArray at two
-// depths is the complete test — a matrix is an array of ROW arrays.
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const M22 = [[1, 2], [3, 4]];
@@ -65,9 +55,7 @@ describe("the eleven rows", () => {
     expect(ev("x + 1", { x: [[41]] })).toBe(42);
   });
 
-  it("B11 — a 1-element list broadcasts as its scalar (the unbuilt half of P3)", () => {
-    // The zip used to pad this to [6, null, null]; P3's ruling ("length-1 still
-    // broadcasts") says the singleton is the scalar it holds.
+  it("B11 — a 1-element list broadcasts as its scalar", () => {
     expect(ev("x + y", { x: [5], y: [1, 2, 3] })).toEqual([6, 7, 8]);
     expect(ev("x * y", { x: [2], y: M22 })).toEqual([[2, 4], [6, 8]]);
   });
