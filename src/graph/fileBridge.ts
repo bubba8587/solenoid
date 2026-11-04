@@ -14,6 +14,16 @@ export function isDesktop(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
+/** The Tauri shell on an Android phone or tablet (`docs/android.md`): the files and network of the desktop app, a
+ *  phone's chrome. Everything that is the app (fetching, reading and writing files) keys off `isDesktop()`; only a
+ *  window's own frame and the operating system's pickers key off this. */
+export function isAndroidApp(): boolean {
+  return isDesktop() && typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+}
+
+/** Android's shared storage, where a vault or a data folder lives; reading it needs All files access. */
+export const ANDROID_STORAGE_ROOT = "/storage/emulated/0";
+
 
 export interface FsProvider {
   readTextFile(path: string): Promise<string>;
@@ -77,6 +87,21 @@ function canReadRoot(root: string): boolean { return hasFs() || isDemoVaultPath(
 
 export async function pickFolderDialog(): Promise<string | null> {
   if (!isDesktop()) return null;
+  // Android's own folder picker answers with a content:// address, not a path the file calls can read, so a folder is
+  // picked from the app's own list of shared storage.
+  if (isAndroidApp()) {
+    const { chooseFile } = await import("./chooseFile");
+    const rel = await chooseFile({
+      title: "Choose a folder",
+      root: ANDROID_STORAGE_ROOT,
+      kind: "folder",
+      rootLabel: "Phone",
+      list: () => listVaultFolders(ANDROID_STORAGE_ROOT, 3),
+      empty: "No folders here. Allow Solenoid All files access in Android's settings.",
+      recentKey: "android-folder",
+    });
+    return rel === null ? null : rel === "" ? ANDROID_STORAGE_ROOT : `${ANDROID_STORAGE_ROOT}/${rel}`;
+  }
   const res = await open({ directory: true, multiple: false, title: "Choose a data folder" });
   return typeof res === "string" ? res : null;
 }

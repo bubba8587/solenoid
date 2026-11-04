@@ -15,7 +15,7 @@ import { shouldReloadForChunkError, type ReloadStore } from "./graph/chunkReload
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
 import { initFullscreenHotkey } from "./graph/fullscreen";
 import { pushNotice } from "./graph/noticeStore";
-import { isDesktop } from "./graph/fileBridge";
+import { isDesktop, isAndroidApp } from "./graph/fileBridge";
 import { OWN_WINDOW_CONTROLS } from "./graph/WindowControls";
 import { IS_PHONE, deviceModeStore, isMobile, isTablet } from "./graph/coarse";
 import { installChromeZoom, landscapeFit } from "./graph/chromeZoom";
@@ -28,7 +28,7 @@ import "@fontsource-variable/atkinson-hyperlegible-mono/index.css";
 import "@fontsource-variable/atkinson-hyperlegible-mono/wght-italic.css";
 import "./desktopFrame.css";
 
-if (isDesktop()) document.documentElement.dataset.shell = "desktop";
+if (isDesktop()) document.documentElement.dataset.shell = isAndroidApp() ? "android" : "desktop";
 // linux shim for crisp canvas zoom (tree/specs/canvas/layout-chrome.md)
 if (OWN_WINDOW_CONTROLS) document.documentElement.dataset.webview = "webkitgtk";
 

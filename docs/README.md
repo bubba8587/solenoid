@@ -60,6 +60,8 @@ is parked there.
   the release in progress (1.5; the 1.4 list is at the v1.4.0 tag).
 - **`grid-system.md`** — the (unbuilt) soft-grid design spec; parked in
   `deferrals.md`.
+- **`android.md`** — the Android app: what is prepared, the first build on the author's
+  machine, and what to check then.
 - **`out-of-scope.md`** — the standing NO list.
 - **`dte.md`** — decision provenance: the vendored DTE tool (`tools/dte.py`), Solenoid's
   ring map and everyday commands. Read before creating or changing a decision leaf;
@@ -189,6 +191,7 @@ results get retried and settled rulings relapse.
 | any `.css`, any visual change | `../DESIGN.md` |
 | any bar/overlay position or z-index | `tree/specs/canvas/layout-chrome.md` |
 | `WindowControls.tsx`, `desktopFrame.css`, the window setup in `src-tauri/src/lib.rs` | `tree/specs/canvas/layout-chrome.md` § Desktop window frame |
+| `isAndroidApp`, `src-tauri/capabilities/android.json`, `scripts/android-prep.mjs` | `android.md` |
 | `vaultCube.ts`, `obsidianWrite.ts`, `frontmatterPatch.ts`, `taskNotesApi.ts`, `obsidianTypes.ts`, `pluginColumnTypes.ts` | `../tree/specs/integrations/vault-bridge.md` (VaultBridge Nodes and VaultBridgeFx: which spec governs each), under [[B1]] obsidianBet |
 | `obsidian-plugin/**` | `../tree/specs/integrations/obsidian-plugin.md` (what it has, how it is built, every divergence from the app), under [[C107]] obsidianPlugin |
 | `ConduitComponent.tsx`, conduit faces/lanes | [[C10]] socketLattice; `../tree/specs/canvas/conduit-lane-faces.md` |

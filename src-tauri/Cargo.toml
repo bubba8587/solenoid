@@ -30,9 +30,6 @@ tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 # Native HTTP so Web Source can fetch arbitrary URLs (no browser CORS wall).
 tauri-plugin-http = "2"
-# Custom window frame: a transparent overlay titlebar with native Snap support, so
-# the frame is HTML/CSS we control (themed to the accent) instead of the OS caption.
-tauri-plugin-decorum = "1"
 serde = { version = "1", features = ["derive"] }
 # float_roundtrip: serde_json's default float parse can land one ulp off; a cell crossing IPC must arrive exact.
 # preserve_order: an object keeps its keys in the order they were written, as a save does.
@@ -40,6 +37,12 @@ serde_json = { version = "1", features = ["float_roundtrip", "preserve_order"] }
 # Local File's Parquet reader, on the core's frame ([[C130]] rustCore).
 solenoid-core = { path = "../crates/solenoid-core" }
 solenoid-parquet = { path = "../crates/solenoid-parquet" }
+
+# Custom window frame: a transparent overlay titlebar with native Snap support, so
+# the frame is HTML/CSS we control (themed to the accent) instead of the OS caption.
+# Desktop only: a phone has no window frame (docs/android.md).
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-decorum = "1"
 
 # linux_webview.rs; already in the dep tree via wry.
 [target.'cfg(target_os = "linux")'.dependencies]

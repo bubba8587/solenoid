@@ -8,7 +8,7 @@ import { apiKeyStore } from "./apiKeyStore";
 import { AI_PROVIDER, AI_ENABLED } from "./aiKey";
 import { isMobile } from "./coarse";
 import { packsStore, allPacks, loadCustomPacks, customPacksFolder, PACK_GROUP_ORDER } from "./packs";
-import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
+import { isDesktop, isAndroidApp, pickFolderDialog, openInFileManager } from "./fileBridge";
 import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette";
 import { appThemeStore } from "./appTheme";
 import { useRenderMode, renderModeStore } from "./renderMode";
@@ -161,6 +161,19 @@ function NetworkDocRow() {
       </span>
       <span className="solenoid-settings__folder-actions">
         <button type="button" className="solenoid-settings__store-btn" onClick={() => allowNetwork()}>Allow</button>
+      </span>
+    </div>
+  );
+}
+
+/** Android keeps an app out of shared storage until the user turns on All files access for it (`docs/android.md`). */
+function AndroidFilesRow() {
+  if (!isAndroidApp()) return null;
+  return (
+    <div className="solenoid-settings__row solenoid-settings__row--folder">
+      <span className="solenoid-settings__row-text">
+        <span className="solenoid-settings__row-label">Files on this phone</span>
+        <span className="solenoid-settings__row-help">To read a vault or a data folder, allow Solenoid to manage all files: Android Settings, Apps, Solenoid, Permissions, Files.</span>
       </span>
     </div>
   );
@@ -506,6 +519,7 @@ export function Settings() {
                 <div key={section.title} className="solenoid-settings__section">
                   <div className="solenoid-settings__section-title">{section.title}</div>
                   <SectionFields fields={section.fields} />
+                  {section.title === "Data" && <AndroidFilesRow />}
                   {section.title === "Data" && <NetworkDocRow />}
                   {section.title === "Data" && <ScriptsDocRow />}
                 </div>

@@ -1,8 +1,9 @@
 // [[B14]] oneDesignSystem
-import { isDesktop } from "./fileBridge";
+import { isDesktop, isAndroidApp } from "./fileBridge";
 
 /** iOS Safari has no Fullscreen API for arbitrary elements, so callers hide the affordance. */
 export function fullscreenSupported(): boolean {
+  if (isAndroidApp()) return false;
   if (isDesktop()) return true;
   return typeof document !== "undefined" && !!document.documentElement.requestFullscreen;
 }
@@ -23,7 +24,7 @@ export function toggleFullscreen(): void {
 
 /** Tauri only: binding F11 on web would block the browser's own F11. */
 export function initFullscreenHotkey(): void {
-  if (!isDesktop()) return;
+  if (!isDesktop() || isAndroidApp()) return;
   window.addEventListener("keydown", (e) => {
     if (e.key !== "F11") return;
     e.preventDefault();

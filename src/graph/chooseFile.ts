@@ -1,7 +1,7 @@
-// [[B2]] webTryDesktopFull: the desktop app asks the operating system; the web, and the demo vault on any platform, pick
-// from the app's own list (`FilePicker.tsx`). Either way the answer is relative to the root it was asked under.
+// [[B2]] webTryDesktopFull: the desktop app asks the operating system; the web, Android, and the demo vault on any
+// platform, pick from the app's own list (`FilePicker.tsx`). Either way the answer is relative to the root it was asked under.
 import { open } from "@tauri-apps/plugin-dialog";
-import { isDesktop } from "./fileBridge";
+import { isDesktop, isAndroidApp } from "./fileBridge";
 import { isDemoVaultPath } from "./demoVault";
 import { filePicker } from "./filePickerStore";
 import { pushNotice } from "./noticeStore";
@@ -42,7 +42,8 @@ export function relativeTo(root: string, path: string): string | null {
 /** Asks for a file or folder under `root`: the relative answer, or null when cancelled. */
 export async function chooseFile(o: ChooseOptions): Promise<string | null> {
   const kind = o.kind ?? "file";
-  if (isDesktop() && o.root.trim() && !isDemoVaultPath(o.root) && !o.blocked) {
+  // On Android the system picker answers with a content:// address the file calls can't read, so the app lists.
+  if (isDesktop() && !isAndroidApp() && o.root.trim() && !isDemoVaultPath(o.root) && !o.blocked) {
     const res = await open({
       title: o.title,
       directory: kind === "folder",

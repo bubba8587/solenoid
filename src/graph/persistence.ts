@@ -1,6 +1,6 @@
 // [[B12]] losslessSaves
 import { flushDrafts } from "./draftFlush";
-import { isDesktop } from "./fileBridge";
+import { isDesktop, isAndroidApp } from "./fileBridge";
 import { GraphConnection, GraphNode } from "./graphModel";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
@@ -333,8 +333,10 @@ function flushOnExit(): void {
 
 if (typeof window !== "undefined") {
   window.addEventListener("pagehide", flushOnExit);
+  // Android can end an app in the background without a pagehide, so leaving it saves too.
+  if (isAndroidApp()) document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushOnExit(); });
   // Closing the desktop window has no guaranteed pagehide; a throwing handler would keep the window open.
-  if (isDesktop()) {
+  else if (isDesktop()) {
     void import("@tauri-apps/api/window").then((m) =>
       m.getCurrentWindow().onCloseRequested(() => { try { flushOnExit(); } catch (e) { console.error("[solenoid] close flush failed", e); } }));
   }

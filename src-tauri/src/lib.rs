@@ -1,6 +1,6 @@
 // [[C130]] rustCore
 use tauri::Manager;
-#[cfg(not(target_os = "linux"))]
+#[cfg(all(desktop, not(target_os = "linux")))]
 use tauri_plugin_decorum::WebviewWindowExt;
 
 mod ipc;
@@ -8,9 +8,13 @@ mod ipc;
 mod linux_webview;
 
 /// Needs the `tauri` crate's `devtools` feature (always on in debug, explicit for release).
+/// Desktop only: on Android the webview is inspected from a computer's chrome://inspect.
 #[tauri::command]
 fn open_devtools(window: tauri::WebviewWindow) {
+    #[cfg(desktop)]
     window.open_devtools();
+    #[cfg(mobile)]
+    let _ = window;
 }
 
 /// Paints the Windows 11 window border with the app accent (appTheme's apply() calls it on every accent, mode or palette change); a no-op off Windows 11.
@@ -42,35 +46,31 @@ fn set_window_border(window: tauri::WebviewWindow, r: u8, g: u8, b: u8) {
 /// Bound to F11 in the web layer, because the WebView2 shell has no native F11.
 #[tauri::command]
 fn toggle_fullscreen(window: tauri::WebviewWindow) {
-    let is = window.is_fullscreen().unwrap_or(false);
-    let _ = window.set_fullscreen(!is);
+    #[cfg(desktop)]
+    {
+        let is = window.is_fullscreen().unwrap_or(false);
+        let _ = window.set_fullscreen(!is);
+    }
+    #[cfg(mobile)]
+    let _ = window;
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_decorum::init())
+        .plugin(tauri_plugin_http::init());
+    // The window frame is a desktop thing; a phone shows the app edge to edge (docs/android.md).
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_decorum::init());
+    builder
         .setup(|app| {
-            // A transparent overlay title bar (custom controls, Windows Snap kept), styled in the web layer.
-            let main_window = app.get_webview_window("main").unwrap();
-            #[cfg(not(target_os = "linux"))]
-            main_window.create_overlay_titlebar().unwrap();
-            // linux shim for window controls (tree/specs/canvas/layout-chrome.md)
-            #[cfg(target_os = "linux")]
-            main_window.set_decorations(false)?;
-            #[cfg(target_os = "linux")]
-            main_window.with_webview(|wv| linux_webview::keep_nodes_off_gpu_layers(&wv.inner()))?;
-            // debug builds wear the bug icon
-            #[cfg(debug_assertions)]
-            main_window.set_icon(tauri::image::Image::new(
-                include_bytes!("../icons/debug/icon.rgba"),
-                256,
-                256,
-            ))?;
+            #[cfg(desktop)]
+            desktop_window(app)?;
+            #[cfg(mobile)]
+            let _ = app;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -81,4 +81,26 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// The desktop window's own frame: the overlay title bar, the Linux shims, the debug icon.
+#[cfg(desktop)]
+fn desktop_window(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    // A transparent overlay title bar (custom controls, Windows Snap kept), styled in the web layer.
+    let main_window = app.get_webview_window("main").unwrap();
+    #[cfg(not(target_os = "linux"))]
+    main_window.create_overlay_titlebar().unwrap();
+    // linux shim for window controls (tree/specs/canvas/layout-chrome.md)
+    #[cfg(target_os = "linux")]
+    main_window.set_decorations(false)?;
+    #[cfg(target_os = "linux")]
+    main_window.with_webview(|wv| linux_webview::keep_nodes_off_gpu_layers(&wv.inner()))?;
+    // debug builds wear the bug icon
+    #[cfg(debug_assertions)]
+    main_window.set_icon(tauri::image::Image::new(
+        include_bytes!("../icons/debug/icon.rgba"),
+        256,
+        256,
+    ))?;
+    Ok(())
 }

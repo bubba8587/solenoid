@@ -17,7 +17,7 @@ import { inspectorStore } from "./inspectorStore";
 import { addMenuRequest } from "./addMenuStore";
 import { connectionDialog } from "./connectionDialogStore";
 import { settingsPanel, settingsStore } from "./settingsStore";
-import { pickFolderDialog, openInFileManager, openExternal, isDesktop } from "./fileBridge";
+import { pickFolderDialog, openInFileManager, openExternal, isDesktop, isAndroidApp } from "./fileBridge";
 import { docPropertiesPanel } from "./docMetaStore";
 import { helpDialogStore } from "./helpDialogStore";
 import { gridSnapStore } from "./gridSnapStore";
@@ -72,7 +72,8 @@ export function buildMenus(): Menu[] {
         { label: "Document properties…", onClick: () => docPropertiesPanel.open() },
         { sep: true },
         { label: "Reload document", icon: "refresh", short: "Reload", inHeading: true, shortcut: "Ctrl+Shift+L", onClick: () => void documentStore.reloadCurrent() },
-        ...(isDesktop() ? ([{ sep: true }, {
+        // A phone has no file manager to show a folder in.
+        ...(isDesktop() && !isAndroidApp() ? ([{ sep: true }, {
           label: "Open documents folder",
           onClick: () => void (async () => {
             let folder = settingsStore.get("docsFolder");
