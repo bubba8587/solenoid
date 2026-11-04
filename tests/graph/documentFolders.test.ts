@@ -1,4 +1,4 @@
-// [[C132]] workspaceTree
+// [[C132]] workspaceTree, [[workspace-tree#Where the tree comes from]]
 import { describe, it, expect } from "vitest";
 import {
   emptyLibrary,

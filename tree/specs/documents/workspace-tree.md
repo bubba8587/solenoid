@@ -23,6 +23,9 @@ Serves [[C132]] workspaceTree and [[D103]] folderOnDisk. It covers what the syst
 - **A one-page document has no page row.** Its row expands to the outline directly; the second page brings the page rows in, the first of them the existing canvas.
 - **Order.** Folders before documents, then by name with numbers compared as numbers and case ignored, the outline's alphabetical compare. Pages keep the order the user gave them; page order is the document's, not the tree's.
 - **The open document and the open page** wear the selected-row fill *(built for documents)* (`--accent-soft`, the outline's `--sel` look). An ancestor of the open row is expanded whenever the open row changes, so it is never hidden in a folded folder.
+- **An empty folder** has nothing to fold.
+
+Tests: `workspaceRows.test.ts`: the order and folding, an empty folder, only the open document folding an outline (in the one-tree layout), revealing a document opening every ancestor, and the preview's page rows.
 
 ```mermaid
 flowchart TD
@@ -47,6 +50,8 @@ flowchart TD
 
 - **Web folders are paths, not records** *(built; on the desktop too, until the disk tree lands)*. A folder exists while some entry's path names it, plus any empty folder the user created, kept in a short `folders` list in the library index. Renaming a folder rewrites the path prefix of every entry under it in one library transform; every transform returns new `SolDoc` objects for the entries it changes ([[per-doc-autosave-persistence#Change detection is object identity]]).
 - **The desktop tree reads the disk** and keeps the library as its autosave buffer: a document's library entry is bound to its file (`filePath`), and a file with no entry gets one the first time it is opened. A rename or move in the pane renames or moves the file first and updates the binding only once the disk call succeeds.
+- **Folder paths are normalized**: segments are trimmed and empty ones dropped, and a slash in a typed name can't make a hidden level. A new folder's name is unique among its siblings only, and a rename onto a sibling's name takes a number. A document's folder brings its ancestors into existence.
+- **Moves and removals** *(built)*: a move to where the document already is changes nothing, and a duplicate stays in its source's folder; a folder renamed or moved carries every subfolder and document under it, and never moves into itself or its own subfolder; removing a folder removes its subfolders and every document under them.
 - **Outside changes** arrive through the file watcher bundle 21 Stage 0 builds. A changed file whose open copy has no unsaved edits reloads with a notice; one with unsaved edits offers Keep mine, Take theirs or Save mine as a copy. A file deleted outside the app leaves its library entry as an unsaved document, marked on its row.
 
 ```mermaid
@@ -58,6 +63,8 @@ flowchart LR
     clean -->|"no"| reload["reload, with a notice"]
     clean -->|"yes"| ask["Keep mine, Take theirs,<br>or Save mine as a copy"]
 ```
+
+Tests: `documentFolders.test.ts`: the paths, `addFolder`, `moveDocument`, `renameFolder`, `moveFolder`, `removeFolder`, and the library's validation keeping folders.
 
 ## Acting on rows
 
@@ -78,8 +85,14 @@ flowchart LR
 - **The one-tree layout** (the plan's layout A) nests the open page's outline under its row in Files and drops the Outline section. It is preview-only, behind the layout toggle, until one layout is chosen.
 - **Search scope** *(built: this document and every document)* is a globe toggle inside the search field. Off, the field searches the open document's outline, as before. On, it also lists, under Other documents, the documents whose name or folder matches and then the cards in the other documents whose title or type matches (Format Controllers left out, as in the outline, and at most 60 cards), each with where it lives. The library already holds every document's last captured graph, so the search reads those and never loads a graph to look inside it. A card hit opens its document and selects and centers the card, found by its saved name, else by its title and type, since a load gives cards new ids. With pages, a third scope, This page, narrows the outline to the open page.
 - **Keyboard** *(built)*: the tree is an ARIA `tree` with `treeitem` rows and one row in the tab order; Up and Down move, Home and End jump, Right opens a fold or steps into it, Left folds or steps out, Enter or Space opens, F2 renames, Delete or Backspace deletes (asking as the menu does), and typed letters jump to the next row whose name starts with them. Every key the tree takes stops there, so the canvas's own Delete and arrow keys never act on the selected cards at the same time. A rename ending by Enter, Escape or a click away hands focus back to its row.
-- **The documents menu** under the top bar's document name *(built)* keeps this device's last five opened documents (`recentDocsStore`, under `solenoid.recentDocs`, the open one always among them), New Blank Document and New from example. Its × clears a document from the recents, never from the library, and the open document has none, since it would come straight back; All Documents… opens the pane on Files with the open document's row focused. Deleting a document lives in the Files tree.
-- **Remembered state** *(built)*: the expanded rows, the split and the pane width, per device in `localStorage`, keyed by row path, so a renamed folder forgets only its own state.
+- **The documents menu** under the top bar's document name *(built)* shows this device's last five opened documents that still exist (`recentDocsStore`, under `solenoid.recentDocs`, which keeps the last twelve; the open one always among them), New Blank Document and New from example. Its × clears a document from the recents, never from the library, and the open document has none, since it would come straight back; All Documents… opens the pane on Files with the open document's row focused. Deleting a document lives in the Files tree.
+- **Remembered state** *(built)*: the expanded rows, the split and the pane width, per device in `localStorage`, keyed by row path, so a renamed folder keeps its own and its subfolders' open state and touches no one else's.
+
+Tests:
+
+- `workspaceRows.test.ts` ("tree keys", "expansion keys"): Right, Left, Up, Down and typed letters, and a renamed folder's open state.
+- `workspaceSearch.test.ts`: documents first by name or folder, then cards in other documents (an untitled card by its catalog name, keeping its saved name for the jump), Format Controllers left out, an empty query finding nothing, and the cap.
+- `recentDocs.test.ts`: the opened document moves to the front once, twelve are kept, and only ids that still name a document show, in order, up to the cap.
 
 ```mermaid
 flowchart TD

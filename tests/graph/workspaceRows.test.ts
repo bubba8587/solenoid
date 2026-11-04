@@ -1,4 +1,4 @@
-// [[C132]] workspaceTree
+// [[C132]] workspaceTree, [[workspace-tree#The rows]], [[workspace-tree#The pane]]
 import { describe, it, expect } from "vitest";
 import { libraryRows, previewRows, revealKeys, rekeyExpanded, folderKey, docFoldedKey, docKey, treeKeyStep, typeAhead } from "../../src/graph/workspaceRows";
 import { PREVIEW_WORKSPACE } from "../../src/graph/workspacePreview";

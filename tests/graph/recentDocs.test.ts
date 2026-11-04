@@ -1,4 +1,4 @@
-// [[C132]] workspaceTree
+// [[C132]] workspaceTree, [[workspace-tree#The pane]]
 import { describe, it, expect } from "vitest";
 import { touchRecent, recentDocs } from "../../src/graph/recentDocsStore";
 
