@@ -1,4 +1,4 @@
-// [[B1]] obsidianBet: an Import Obsidian Note whose note is renamed or deleted keeps its body and says so.
+// [[B1]] obsidianBet, [[live-connections#The cache key]]
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 const stat = vi.fn();

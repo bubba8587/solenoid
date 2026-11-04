@@ -1,4 +1,4 @@
-// [[C23]] calcModes
+// [[C23]] calcModes, [[live-connections#Fetching in the background]]
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { FxNode, WeatherNode } from "../../src/graph/nodes/connection";
 

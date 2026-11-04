@@ -1,3 +1,4 @@
+// [[C1]] demoVault, [[live-connections#The demo vault]]
 import { describe, it, expect, afterEach } from "vitest";
 import {
   DEMO_VAULT_ROOT,
@@ -11,8 +12,6 @@ import { settingsStore } from "../../src/graph/settingsStore";
 import { LocalFileNode } from "../../src/graph/nodes/connection";
 import type { FrameValue } from "../../src/graph/frame";
 
-// The bundled read-only demo vault seam: the sentinel root, the resolver (setting +
-// force override), and the in-memory FsProvider read against the real demo-vault files.
 
 const R = DEMO_VAULT_ROOT;
 const p = (rel: string) => `${R}/${rel}`;
@@ -73,7 +72,7 @@ describe("demoVaultFs — reads against the bundled files", () => {
   it("readDir on a subfolder lists its notes, not nested ones", async () => {
     const names = (await demoVaultFs.readDir(p("Notes"))).map((e) => e.name);
     expect(names).toContain("Deep Work.md");
-    expect(names).not.toContain("Notes"); // no self, no parent
+    expect(names).not.toContain("Notes");
   });
 
   it("exists is true for the root, a file and a folder; false for a miss", async () => {

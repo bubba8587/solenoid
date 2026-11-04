@@ -1,4 +1,4 @@
-// [[B2]] webTryDesktopFull: a native pick comes back relative to the folder it was asked under, or not at all.
+// [[B2]] webTryDesktopFull, [[live-connections#The demo vault]]
 import { describe, it, expect } from "vitest";
 import { relativeTo, chooseFile } from "../../src/graph/chooseFile";
 import { filePicker } from "../../src/graph/filePickerStore";

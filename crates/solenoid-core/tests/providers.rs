@@ -1,5 +1,5 @@
-//! [[C23]] calcModes, [[D99]] rustIsSpec: the data providers' replies read as frozen (`fixtures/core/providers.json.gz`,
-//! recorded by `tests/graph/coreProviders.test.ts`).
+//! [[C23]] calcModes, [[D99]] rustIsSpec, [[live-connections#Service providers]]
+//! The providers' replies against `fixtures/core/providers.json.gz` (written by `coreProviders.test.ts`).
 
 use serde_json::{json, Value as Json};
 use solenoid_core::excel_functions::V;

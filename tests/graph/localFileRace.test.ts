@@ -1,4 +1,4 @@
-// [[C23]] calcModes
+// [[C23]] calcModes, [[live-connections#Fetching in the background]]
 import { describe, it, expect, vi } from "vitest";
 
 const held: { name: string; release: (bytes: ArrayBuffer) => void; refuse: (e: unknown) => void }[] = [];

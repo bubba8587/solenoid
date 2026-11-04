@@ -1,4 +1,4 @@
-// [[B18]] safeToShare, [[script-sandbox#A document someone else wrote]]
+// [[B18]] safeToShare, [[script-sandbox#A document someone else wrote]], [[live-connections#The network gate]]
 import { describe, it, expect, afterEach } from "vitest";
 import type { View } from "../../src/graph/view";
 import { GraphEditor } from "../../src/graph/graphEditor";

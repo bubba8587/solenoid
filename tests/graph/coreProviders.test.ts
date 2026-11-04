@@ -1,6 +1,5 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec, [[C23]] calcModes
-// The data providers' parses held to their frozen answers (fixtures/core/providers.json.gz): Open-Meteo, Nager.Date and
-// Frankfurter bodies, well-formed and not, read into the frames and values the cards output.
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[C23]] calcModes, [[live-connections#Service providers]]: freezes
+// fixtures/core/providers.json.gz.
 import { describe, expect, it } from "vitest";
 import { isDeepStrictEqual } from "node:util";
 import { frozen } from "./coreFixtures";

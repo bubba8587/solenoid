@@ -1,10 +1,8 @@
-// [[C23]] calcModes, [[B18]] safeToShare
+// [[C23]] calcModes, [[B18]] safeToShare, [[live-connections#HTTP]]
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { fetchText, CorsLikelyError, MAX_FETCH_BYTES } from "../../src/graph/httpBridge";
 
-// First direct coverage for the CORS-bypass seam (v1.0 audit, quality). These
-// run in the BROWSER-shaped branch (no __TAURI_INTERNALS__ in the vitest env),
-// which is the half with the subtle behavior: CORS classification.
+// These run the browser branch: vitest has no __TAURI_INTERNALS__.
 
 const realFetch = globalThis.fetch;
 afterEach(() => {

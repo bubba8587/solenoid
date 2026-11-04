@@ -1,4 +1,4 @@
-// [[C23]] calcModes
+// [[C23]] calcModes, [[live-connections#Service providers]]
 import { describe, it, expect } from "vitest";
 import { geocodeUrl, parseGeocode, pickGeocodeMatch } from "../../src/graph/geocodeProvider";
 

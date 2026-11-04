@@ -1,4 +1,4 @@
-// [[C23]] calcModes
+// [[C23]] calcModes, [[live-connections#The cache key]], [[live-connections#The network gate]]
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection } from "../../src/graph/graphModel";
@@ -14,14 +14,6 @@ import { noticeStore } from "../../src/graph/noticeStore";
 import { forgetAllNodes } from "../../src/graph/nodeStoreRegistry";
 import { isGraphRebuilding } from "../../src/graph/process";
 import type { Schemes } from "../../src/graph/schemes";
-
-// Tier 1/2 live-data (bundle 07, #3): refreshConnection(id) — the function a
-// manual Refresh button AND an interval timer both call — must drive a REAL
-// recompute that an AlertNode downstream still fires off, exactly as it would
-// off a manual edit. The one thing that could silently break this is
-// refreshConnection accidentally running inside a "graph rebuild" scope (the
-// ONLY gate raiseWatched checks — see nodes/display.ts) the way
-// loadGraph does; it must not.
 
 function mockCsvResponse(body: string) {
   return {
@@ -67,17 +59,13 @@ describe("connectionStore refresh drives a real recompute that AlertNode still f
       new GraphConnection(col, "values", alert, "value") as Schemes["Connection"],
     );
 
-    // Drive the source's first fetch directly (deterministic — bypasses the
-    // fire-and-forget background-fetch scheduling WebSourceNode.data() uses,
-    // which exists for the live app's async-critical-path constraint, not for
-    // a headless test) so `engine.fetch` sees a populated cache immediately.
+    // The first fetch runs directly, not in the background, so `engine.fetch` sees a filled cache.
     const key1 = connectionStore.key(source.id, source.url.trim());
     await (source as unknown as { fetchFrame(ref: string, key: string): Promise<unknown> }).fetchFrame(source.url.trim(), key1);
 
     await engine.fetch(alert.id); // 50: calm, within [0,100]
     expect(alertStore.list().length).toBe(0);
 
-    // A manual click and an interval timer both call exactly this function.
     await refreshConnection(source.id);
 
     const key2 = connectionStore.key(source.id, source.url.trim());
@@ -91,7 +79,7 @@ describe("connectionStore refresh drives a real recompute that AlertNode still f
   });
 });
 
-describe("C2 — per-document network permission gate", () => {
+describe("the per-document network gate", () => {
   afterEach(() => {
     docMetaStore.setDocMeta(null);
     settingsStore.set("alwaysAllowNetwork", false);
