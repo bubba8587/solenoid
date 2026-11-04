@@ -380,7 +380,7 @@ Node kind `table`, with the gold accent the table socket shares (`NODE_KIND_SLOT
 
 **Script** (`ScriptNode`, `nodes/script.ts`, [[C66]] scriptNode; the bounded form of out-of-scope §4): a JavaScript function expression as a node. It is named Script, not Code, because CODE is the Excel node ([[B16]] oneFormulaSurface). The sandbox, arguments and result coercion are `../tree/specs/computation/script-sandbox.md`.
 - **Inputs.** Its parameter names are `trueany` inputs, re-derived on commit (`applyScriptChange`, Expression's mechanic).
-  - With `autoLiterals`, an unwired parameter takes a typed number or text. Unwired and untyped is `undefined`, and a wired blank is `null`.
+  - An unwired parameter takes a keyed value, read as the kind its button shows. Unwired and untyped is `undefined`, and a wired blank is `null`.
   - A wired Frame (materialized in full) or Cube arrives as the same rows-of-objects (`scriptArgToJs`). LAMBDAs, charts and documents error before the run, and an error anywhere in an argument becomes the result without running.
 - **The return value types itself.** `scriptCoerce.ts` folds it onto the value model; there is no declared result type.
   - Numbers, text and Booleans are their own families. A `Date` or `Solenoid.date(serial)` is a date.

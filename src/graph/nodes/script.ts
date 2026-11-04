@@ -1,6 +1,6 @@
 // [[C66]] scriptNode, [[C24]] arraySemantics, [[C23]] calcModes
 import { GraphNode } from "../graphModel";
-import { keyedKindOf, readKeyed, type KeyedKind } from "../keyedLiterals";
+import { keyedKindOf, readKeyed, type KeyedKind } from "../literalFields";
 import { trueAnyIn, resultOut, readInput } from "./shared";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { scriptParams, checkScript, scriptIsVolatile } from "./scriptRun";
@@ -56,7 +56,6 @@ export class ScriptNode extends GraphNode {
   cachedResult: unknown = null;
   cachedError: string | null = null;
   stringLiterals: Record<string, string> = {};
-  autoLiterals = true;
   literalKinds: Record<string, KeyedKind> = {};
   width  = 240;
   height = 240;

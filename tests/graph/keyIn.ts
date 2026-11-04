@@ -1,16 +1,16 @@
-import { isKeyedWildcard } from "../../src/graph/keyedLiterals";
-import { declaredTypeOf } from "../../src/graph/sockets";
+// [[C28]] literalsIffEditable
+import { literalFieldOf, type LiteralFieldHost } from "../../src/graph/literalFields";
 
-/** Sets a card's unwired values where its fields keep them: keyed text for a wildcard slot, the number field for any
- *  other. Replaces both maps. */
+/** Sets a card's unwired values where its fields keep them (`literalFieldOf`): keyed text for a keyed slot, the number
+ *  map for a number or logical one. Replaces both maps. */
 export function keyIn(
-  node: { inputs: Record<string, { socket?: unknown } | undefined>; literals?: Record<string, number>; stringLiterals?: Record<string, string> },
+  node: LiteralFieldHost & { literals?: Record<string, number>; stringLiterals?: Record<string, string> },
   values: Record<string, number>,
 ): void {
   node.literals = {};
   node.stringLiterals = {};
   for (const [k, v] of Object.entries(values)) {
-    if (isKeyedWildcard(declaredTypeOf(node.inputs[k]?.socket))) node.stringLiterals[k] = String(v);
+    if (literalFieldOf(node, k) === "keyed") node.stringLiterals[k] = String(v);
     else node.literals[k] = v;
   }
 }

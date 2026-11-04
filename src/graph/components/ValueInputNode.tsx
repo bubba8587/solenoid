@@ -15,7 +15,7 @@ import { LazySelect } from "./LazySelect";
 import { CardSection } from "./CardSection";
 import { TypeIcon } from "./TypeIcon";
 import { FormatStyleSelect, DateStyleSelect, TextCaseSelect, LogicalStyleSelect, UnitSelect, CustomPatternField } from "./fcControls";
-import { useDraftCommit, useNumberScrub, QuotedTextInput, INVALID_DRAFT } from "./inlineInput";
+import { useDraftCommit, useNumberScrub, QuotedTextInput, INVALID_DRAFT, LogicalCheck } from "./inlineInput";
 import { DateEntry } from "./DateEntry";
 import type { DisplayValue } from "./valueDisplayFormat";
 import "./ValueInputNode.css";
@@ -336,23 +336,3 @@ function NumberEntry({ text, onCommit }: { text: string; onCommit: (text: string
   );
 }
 
-/** A logical Value Input's TRUE/FALSE checkbox. */
-function LogicalCheck({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
-  return (
-    <label
-      style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "2px 0" }}
-      onPointerDown={stopDragStart}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onToggle}
-        style={{ width: 14, height: 14 }}
-      />
-      <span style={{ fontSize: 13, color: checked ? "color-mix(in srgb, var(--sol-ok) 70%, var(--text))" : "var(--text-dim)" }}>
-        {checked ? "TRUE" : "FALSE"}
-      </span>
-    </label>
-  );
-}

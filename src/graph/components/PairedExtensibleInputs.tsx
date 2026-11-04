@@ -3,7 +3,7 @@ import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
 import type { GraphSocket } from "../graphModel";
 import { processGraph } from "../process";
-import { declaredTypeOf } from "../sockets";
+import { literalFieldOf } from "../literalFields";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
@@ -13,11 +13,10 @@ import {
   InlineNumberField,
   InlineTextField,
   KeyedField,
+  LogicalCheck,
   type KeyedKind,
-  takesAutoLiteral,
 } from "./inlineInput";
 
-const dataTypeOf = (s: GraphSocket): string | undefined => declaredTypeOf(s);
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import "./nodeCard.css";
@@ -37,7 +36,6 @@ export interface PairedExtensibleNode {
   /** Muted text an empty field of the tuple shows, numbered like its label; it never reaches the card's answer. */
   pairPlaceholders?: readonly (string | undefined)[];
   stringLiterals?: Record<string, string>;
-  autoLiterals?: boolean;
   literalKinds?: Record<string, KeyedKind>;
 }
 
@@ -111,13 +109,15 @@ export function PairedExtensibleInputs({
         <span className="solenoid-node__io-label">{label}</span>
         {isConn ? (
           <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
-        ) : takesAutoLiteral(node, declaredTypeOf(input.socket)) ? (
+        ) : literalFieldOf(node, key) === "keyed" ? (
           <KeyedField node={node} slot={key} placeholder={placeholder} />
-        ) : dataTypeOf(input.socket) === "string" ? (
+        ) : literalFieldOf(node, key) === "text" ? (
           <InlineTextField value={strLiterals[key]} onChange={(v) => void setStrLiteral(key, v)} placeholder={placeholder} />
-        ) : (
+        ) : literalFieldOf(node, key) === "logical" ? (
+          <LogicalCheck checked={!!literals[key]} onToggle={() => void setLiteral(key, literals[key] ? 0 : 1)} />
+        ) : literalFieldOf(node, key) === "number" ? (
           <InlineNumberField value={literals[key]} onChange={(v) => setLiteral(key, v)} placeholder={placeholder} />
-        )}
+        ) : null}
       </MeasuredSocketRow>
     );
   };

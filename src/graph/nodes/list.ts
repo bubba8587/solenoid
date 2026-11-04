@@ -1,6 +1,6 @@
 // [[B11]], [[C48]], [[C49]]
 import { GraphInput, GraphNode, GraphOutput } from "../graphModel";
-import { type KeyedKind } from "../keyedLiterals";
+import { type KeyedKind } from "../literalFields";
 import { nodeOnCore } from "../nodeOnCore";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfFamily, typeAtRank, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
 import { getOwningEditor, getOwningView } from "../activeGraph";
@@ -1590,7 +1590,6 @@ export class XMatchNode extends GraphNode {
   cachedResult: XMatchResult = null;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {};
-  autoLiterals = true;
   literalKinds: Record<string, KeyedKind> = {};
   width = 180; height = 232;
 

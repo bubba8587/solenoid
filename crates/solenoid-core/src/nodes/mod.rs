@@ -17,6 +17,7 @@ mod control;
 mod cube_source;
 mod date;
 mod docs;
+pub mod fields;
 mod finance;
 mod formula;
 pub mod frames;
@@ -59,6 +60,8 @@ pub enum Shown {
 /// One body call: the card as a save holds it, its sockets, and the inputs it was handed.
 /// What a save holds and the sockets are shared, so the graph's calls of a card share one copy (`Call::again`).
 pub struct Call {
+    /// The card's class (`kind`), which with each input's rung says which field its unwired value lives in.
+    pub class: Rc<str>,
     pub init: Rc<Map<String, Json>>,
     pub literals: Rc<Map<String, Json>>,
     pub string_literals: Rc<Map<String, Json>>,
@@ -166,6 +169,7 @@ impl Call {
             .collect();
         let values = values_of(&inputs, &sockets);
         Call {
+            class: j.get("kind").and_then(Json::as_str).unwrap_or("").into(),
             init: Rc::new(obj("init")),
             literals: Rc::new(obj("literals")),
             string_literals: Rc::new(obj("stringLiterals")),
@@ -184,6 +188,7 @@ impl Call {
     /// The same card called again on `inputs`: what a save holds and the sockets shared, nothing shown yet.
     pub fn again(&self, inputs: Vec<(String, Vec<Cv>)>, matrix_units_in: Vec<(String, Json)>) -> Call {
         Call {
+            class: self.class.clone(),
             init: self.init.clone(),
             literals: self.literals.clone(),
             string_literals: self.string_literals.clone(),
@@ -306,18 +311,34 @@ impl Call {
         self.string_literals.get(key).map(decode).unwrap_or(V::Undef)
     }
 
-    /// An unwired slot's literal: a wildcard slot's keyed text read as its kind, never its number field (an older
-    /// save's number there is ignored, since the card shows only the keyed text); any other slot's number field.
-    pub fn slot_literal(&self, key: &str) -> V {
-        let wildcard = self
-            .sockets
-            .iter()
-            .find(|s| s.key == key)
-            .and_then(|s| s.ty.as_deref())
-            .is_some_and(|t| matches!(t, "any" | "anycombo" | "anydata" | "trueany"));
-        match self.keyed(key) {
-            V::Undef if !wildcard => self.literal(key),
-            v => v,
+    /// The field `key`'s unwired value lives in ([[C28]] literalsIffEditable, `fields.rs`).
+    pub fn literal_field(&self, key: &str) -> fields::Field {
+        let rung = self.sockets.iter().find(|s| s.key == key).and_then(|s| s.ty.as_deref()).unwrap_or("");
+        fields::field_of(&self.class, rung, self.string_literals.contains_key(key))
+    }
+
+    /// An unwired input's value, read from the one field the card shows for it: a number, a logical (TRUE or FALSE),
+    /// text as keyed, a keyed value as its kind or a date's text; `undefined` where nothing is set or the input is
+    /// wire-only. A typed list arrives through the boundary as if wired, so it reads `undefined` here.
+    pub fn unwired(&self, key: &str) -> V {
+        use fields::Field;
+        match self.literal_field(key) {
+            Field::Number => match self.literal(key) {
+                V::Num(n) => V::Num(n),
+                _ => V::Undef,
+            },
+            Field::Logical => match self.literal(key) {
+                V::Num(n) if n.is_nan() => V::Null,
+                V::Num(n) => V::Bool(n != 0.0),
+                V::Bool(b) => V::Bool(b),
+                _ => V::Undef,
+            },
+            Field::Text | Field::Date => match self.string_literal(key) {
+                V::Str(s) => V::Str(s),
+                _ => V::Undef,
+            },
+            Field::Keyed => self.keyed(key),
+            Field::Csv | Field::None => V::Undef,
         }
     }
 
@@ -391,7 +412,7 @@ impl Call {
             .map(|k| {
                 let v = match self.wired(k) {
                     Some([first, ..]) => first.clone(),
-                    _ => self.slot_literal(k),
+                    _ => self.unwired(k),
                 };
                 crate::date_values::census(&v)
             })

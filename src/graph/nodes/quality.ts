@@ -30,7 +30,6 @@ export class ExpectNode extends GraphNode {
   literals: Record<string, number> = { min: 0, max: 100 };
   /** A date bound is typed as a date and kept beside the number bound, so the card keeps both as its value moves. */
   stringLiterals: Record<string, string> = { pattern: "", allowed: "", min: "", max: "" };
-  dateLiterals = true;
   width = 220;
   height = 258;
   /** The checks the body last found failing, and what they fire (null when all pass). */

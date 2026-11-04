@@ -1,6 +1,6 @@
 // [[C10]] socketLattice (the Cube is the lattice supremum), [[C28]] literalsIffEditable
 import { GraphNode } from "../graphModel";
-import { forgetKeyed, type KeyedKind } from "../keyedLiterals";
+import { forgetKeyed, type KeyedKind } from "../literalFields";
 import { nodeOnCore } from "../nodeOnCore";
 import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut } from "./shared";
 import { DEFAULT_CUBE_TEXT } from "../literalEditors";
@@ -13,7 +13,6 @@ export class BuildCubeNode extends GraphNode {
   cachedResult: CubeValue | null = null;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = { name: "" };
-  autoLiterals = true;
   literalKinds: Record<string, KeyedKind> = {};
   nextInputId = 0;
   width = 200;
@@ -86,7 +85,6 @@ export class CubeColumnsNode extends GraphNode {
   cachedResult: CubeValue | null = null;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = { names: "" };
-  autoLiterals = true;
   literalKinds: Record<string, KeyedKind> = {};
   nextInputId = 0;
   width = 210;

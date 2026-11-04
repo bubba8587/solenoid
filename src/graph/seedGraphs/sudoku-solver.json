@@ -331,8 +331,8 @@
               },
               "x": 340,
               "y": 760,
-              "literals": {
-                "b": 0
+              "stringLiterals": {
+                "b": "0"
               }
             },
             {

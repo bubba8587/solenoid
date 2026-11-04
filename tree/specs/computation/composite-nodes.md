@@ -91,7 +91,7 @@ flowchart LR
 | `internalNodeId` | The live id of the `CompositeInputNode` this port feeds (its saved id in a save). |
 | `default` | Optional fallback value, below the marker's seed. Nothing in the app sets it yet except a saved or authored document. |
 
-An exposed port's card socket is an `AdoptiveSocket` with base `trueany`: unwired it is a wildcard, wired it adopts the concrete type of the cable through the outer type settle. Because an unwired wildcard input takes no inline literal on a Composite (the card declares no `autoLiterals`), the card shows each exposed input as a label row: the source's name when wired, nothing when not. The unwired value comes from inside, from the marker's seed.
+An exposed port's card socket is an `AdoptiveSocket` with base `trueany`: unwired it is a wildcard, wired it adopts the concrete type of the cable through the outer type settle. Because an unwired wildcard input takes no inline literal on a Composite (the core's field table gives it none, [[inline-literal-maps#One field per input]]), the card shows each exposed input as a label row: the source's name when wired, nothing when not. The unwired value comes from inside, from the marker's seed.
 
 `addInputPort(spec)` pushes the record and, for an exposed port, adds the socket; it returns the id. `removeInputPort(id)` requires the caller to have removed the card's cables into that socket first; it drops the record and socket, deletes that port's key from every scenario's overrides and from `dataTableValues`, clears `goalSeek` if the port was its driver, and clears `byRowPortId` if it was the By-Row port.
 

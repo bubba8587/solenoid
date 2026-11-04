@@ -5,7 +5,7 @@ import { planned, SKETCH_SAMPLE_ROWS } from "./frameRefKit";
 import { JoinNode, AppendNode } from "../../src/graph/nodes/frame";
 import { calcModeStore } from "../../src/graph/calcModeStore";
 import { ReplaceValuesNode } from "../../src/graph/nodes/frame";
-import { takesAutoLiteral, takesTextLiteral } from "../../src/graph/components/inlineInput";
+import { literalFieldOf } from "../../src/graph/literalFields";
 import { type FrameOp, type JoinOpts } from "../../src/graph/frameOps";
 import { selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows, groupByFrame, pivotFrame, unpivotFrame, joinFrames, appendFrames } from "./coreVerbs";
 
@@ -225,8 +225,7 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
 
   it("the card's typed Find and Replace are text kept exactly as typed", async () => {
     const n = new ReplaceValuesNode({ mode: "substring" });
-    expect(takesAutoLiteral(n, "any")).toBe(false);
-    expect(takesTextLiteral(n, "any")).toBe(true);
+    expect(literalFieldOf(n, "find")).toBe("text");
     const f: FrameValue = { __frame: true, columns: [{ name: "s", type: "string", values: ["a_b", "007"] }] };
     n.stringLiterals.find = "_";
     n.stringLiterals.replace = " ";

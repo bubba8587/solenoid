@@ -160,6 +160,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
 
   /** name → why this field must NOT persist. Grouped by mechanism. */
   const DELIBERATELY_TRANSIENT: Record<string, string> = {
+    pairPlaceholders: "class-constant muted text for an empty pair field; never a value",
     cleanSource: "The SVG Picker's memo of the last scrubbed markup; stringLiterals.source holds the persisted text ([[C103]])",
     columnPicks: "A Note's frame column picks from the Solenoid Properties plugin's data; the vault is the source, Import Obsidian Note re-reads them with the note ([[C107]])",
     nestedPicks: "A Note's nested cube-table picks from the Solenoid Properties plugin's data, this note's own; the vault is the source, Import Obsidian Note re-reads them with the note ([[D90]])",
@@ -187,7 +188,6 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     defVars: "the definition's variables/params, re-stashed per compute for the binding pickers",
     rawInputs: "the pass's raw wired values (chart/lookup diagnostics)",
     noWidenInputs: "coercion rank-widening opt-out set (XLOOKUP source); constructed, not persisted",
-    dateLiterals: "a class's opt-in to typed date literal fields (Expect's range bounds, [[D120]]); constructed, not persisted",
     seenError: "per-pass error latch",
     violations: "per-pass check results", results: "per-pass sweep results",
     cachedHolds: "per-pass hold state", solvedFor: "per-pass solve marker",
@@ -233,8 +233,6 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     ownsListLiterals: "class-constant declaration: List Input reads its own typed rows ([[C58]] tableInputRawText)",
     entryByOp: "Value Input's typed text per op this session, restored on switching back; only the shown op's text is saved ([[C28]] literalsIffEditable)",
     cachedSource: "List Input's typed text per item, for the popup's Source view; re-split from stringLiterals on every compute",
-    autoLiterals: "class-constant declaration — the VALUES land in literals/stringLiterals, which persist",
-    textLiterals: "class-constant declaration — the VALUES land in stringLiterals, which persist",
     // ── runtime edge-detection ([[D79]] effectsEdgeTriggered) ──
     alertKey: "effectsEdgeTriggered: the status the body last read, which raises an alert on a change",
     alertMessage: "effectsEdgeTriggered: what that status fires, shown by the body",

@@ -4,7 +4,6 @@ import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent, type ReactNode } from "react";
 import { useKatexRender } from "./katexLoader";
 import type { GraphSocket } from "../graphModel";
-import { declaredTypeOf } from "../sockets";
 import { processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { connectionVersionStore } from "../graphSignals";
@@ -22,8 +21,8 @@ import { fieldPlaceholder } from "../emptySlots";
 import { rolesOf } from "../nodes/shared";
 import { DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import { COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
-import { isKeyedWildcard, keyedKindOf, type KeyedKind } from "../keyedLiterals";
-export type { KeyedKind } from "../keyedLiterals";
+import { keyedKindOf, literalFieldOf, type KeyedKind, type LiteralField } from "../literalFields";
+export type { KeyedKind } from "../literalFields";
 import { TypeIcon } from "./TypeIcon";
 import "./colType.css";
 
@@ -429,28 +428,30 @@ function KeyedInput({ value, onChange, placeholder }: { value: string; onChange:
 }
 
 export interface AutoLiteralHost {
-  autoLiterals?: boolean;
   /** Each keyed wildcard slot's kind, where it isn't Number ([[C10]] socketLattice). */
   literalKinds?: Record<string, KeyedKind>;
-  /** Wildcard rows take text exactly as typed, for a node whose op reads the value as text. */
-  textLiterals?: boolean;
-  /** Date rows take a typed date, kept as its text beside the row's number (Expect's bounds). */
-  dateLiterals?: boolean;
   stringLiterals?: Record<string, string>;
 }
 
-const isWildcard = isKeyedWildcard;
-
-export function takesAutoLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
-  return !!node.autoLiterals && isWildcard(dt);
-}
-
-export function takesTextLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
-  return !!node.textLiterals && isWildcard(dt);
-}
-
-export function takesDateLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
-  return !!node.dateLiterals && dt === "date";
+/** The TRUE/FALSE checkbox: a logical Value Input, and every unwired logical input's field. */
+export function LogicalCheck({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
+  return (
+    <label
+      style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "2px 0" }}
+      onPointerDown={stopDragStart}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onToggle}
+        style={{ width: 14, height: 14 }}
+      />
+      <span style={{ fontSize: 13, color: checked ? "color-mix(in srgb, var(--sol-ok) 70%, var(--text))" : "var(--text-dim)" }}>
+        {checked ? "TRUE" : "FALSE"}
+      </span>
+    </label>
+  );
 }
 
 export function InlineCsvField({
@@ -487,8 +488,6 @@ export type InlineNode = {
   inputs: Record<string, InputPort | undefined>;
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
-  autoLiterals?: boolean;
-  textLiterals?: boolean;
   literalKinds?: Record<string, KeyedKind>;
   edited?: () => void;
 };
@@ -590,13 +589,8 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
     <>
       {entries.map(([key, input], i) => {
         const socket = input.socket;
-        // The field goes by the declared rung: a keyed slot's socket adopts its kind while unwired.
-        const dt = declaredTypeOf(socket);
-        const numlistCsv = dt === "numlist" && key in strLiterals;
-        // A combo edits in place; it becomes a list only when a cable brings one.
-        const isNumber = dt === "number" || (dt === "numlist" && !numlistCsv);
-        const isStr    = dt === "string" || dt === "strcombo";
-        const isCsvList = dt === "strlist" || dt === "datelist" || dt === "logicallist" || numlistCsv;
+        // One field per input, the one the core reads ([[C28]] literalsIffEditable).
+        const field: LiteralField = cableOnlyKeys?.has(key) ? "none" : literalFieldOf(node, key);
         const label = labelFor ? labelFor(key, i) : (input.label || key);
         const placeholder = ownPlaceholders?.[key] ?? fieldPlaceholder(roles?.[key], key);
         const isConn = connected.has(key);
@@ -610,22 +604,21 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
                 className="solenoid-node__io-wired"
                 title="Driven by the incoming cable named here"
               >↩ {incoming.get(key)?.label || "wired"}</span>
-            ) : cableOnlyKeys?.has(key) ? null
-              : takesAutoLiteral(node, dt) ? (
+            ) : field === "keyed" ? (
               <KeyedField node={node} slot={key} placeholder={placeholder} />
-            ) : takesTextLiteral(node, dt) ? (
-              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
-            ) : takesDateLiteral(node, dt) ? (
-              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={DEFAULT_DATE_FORMAT} />
-            ) : isNumber ? (
+            ) : field === "number" ? (
               <InlineNumberField value={literals[key]} onChange={(v) => set(key, v)} placeholder={placeholder} />
-            ) : isStr ? (
+            ) : field === "logical" ? (
+              <LogicalCheck checked={!!literals[key]} onToggle={() => void set(key, literals[key] ? 0 : 1)} />
+            ) : field === "date" ? (
+              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={DEFAULT_DATE_FORMAT} />
+            ) : field === "text" ? (
               pickerKeys.has(key) ? (
                 <ColumnPickerField nodeId={node.id} frameInput={pickerKeys.get(key)!} value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
               ) : (
                 <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} listId={suggest && key in suggest ? suggestId : undefined} />
               )
-            ) : isCsvList ? (
+            ) : field === "csv" ? (
               pickerKeys.has(key) ? (
                 <ColumnListField nodeId={node.id} frameInput={pickerKeys.get(key)!} value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
               ) : (

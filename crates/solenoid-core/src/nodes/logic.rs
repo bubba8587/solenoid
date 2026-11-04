@@ -100,7 +100,7 @@ fn or_null(v: V) -> V {
 pub(crate) fn pick_slot(c: &Call, key: &str) -> V {
     match c.wired(key) {
         Some([first, ..]) => first.clone(),
-        _ => match c.slot_literal(key) {
+        _ => match c.unwired(key) {
             V::Undef => V::Null,
             v => v,
         },
@@ -109,7 +109,7 @@ pub(crate) fn pick_slot(c: &Call, key: &str) -> V {
 
 /// A cable or a typed literal.
 fn is_set(c: &Call, key: &str) -> bool {
-    c.wired(key).is_some() || !matches!(c.slot_literal(key), V::Undef)
+    c.wired(key).is_some() || !matches!(c.unwired(key), V::Undef)
 }
 
 /// The keys of the card's inputs that start with `prefix`, in the card's order.

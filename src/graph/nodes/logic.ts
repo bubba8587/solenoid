@@ -1,6 +1,6 @@
 // [[C24]] arraySemantics
 import { GraphNode } from "../graphModel";
-import { forgetKeyed, type KeyedKind } from "../keyedLiterals";
+import { forgetKeyed, type KeyedKind } from "../literalFields";
 import { numListIn, anyComboIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut } from "./shared";
 import { rolesFrom } from "../inputRoles";
 import type { PassthroughSpec } from "./passthrough";
@@ -42,7 +42,6 @@ export class ComparisonNode extends GraphNode {
 
   /** Keeps UnitCell tags so the comparison runs on base-SI magnitudes and checks commensurability. */
   unitAware = true;
-  autoLiterals = true;
   literalKinds: Record<string, KeyedKind> = {};
   label: string;
   op: ComparisonOp;
@@ -70,7 +69,6 @@ export class BetweenNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "TRUE when Low ≤ Value ≤ High (inclusive), compared as ATLEAST and ATMOST do: numbers, text, dates and units, each against its own kind. Broadcasts over a list of Values. R between / pandas Series.between.",
   };
-  autoLiterals = true;
   literalKinds: Record<string, KeyedKind> = {};
   label: string;
   cachedResult: Tri | Tri[] | SolError = null;
@@ -128,7 +126,6 @@ export class IfNode extends GraphNode {
   cachedResult: unknown = null;
   literals: Record<string, number> = { cond: 0 };
   stringLiterals: Record<string, string> = {};
-  autoLiterals = true;
   literalKinds: Record<string, KeyedKind> = {};
   width = 180;
   height = 200;
@@ -348,7 +345,6 @@ export class ChooseNode extends GraphNode {
   cachedResult: unknown = null;
   literals: Record<string, number> = { index: 1 };
   stringLiterals: Record<string, string> = {};
-  autoLiterals = true;
   literalKinds: Record<string, KeyedKind> = {};
   nextInputId = 0;
   width = 180;
@@ -407,7 +403,6 @@ export class SwitchNode extends GraphNode {
   cachedResult: unknown = null;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {};
-  autoLiterals = true;
   literalKinds: Record<string, KeyedKind> = {};
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["When", "Then"];
@@ -477,7 +472,6 @@ export class IfsNode extends GraphNode {
   cachedResult: unknown = null;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {};
-  autoLiterals = true;
   literalKinds: Record<string, KeyedKind> = {};
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["If", "Then"];

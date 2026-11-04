@@ -1,6 +1,6 @@
 // [[C58]] tableInputRawText, [[C48]], [[B11]]
 import { GraphNode, GraphOutput } from "../graphModel";
-import { forgetKeyed, type KeyedKind } from "../keyedLiterals";
+import { forgetKeyed, type KeyedKind } from "../literalFields";
 import { nodeOnCore } from "../nodeOnCore";
 import { SKIP_BY_CODE, type SkipCells } from "./matrixOps";
 import { numIn, numOut, listIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn } from "./shared";
@@ -488,7 +488,6 @@ export class SetCellNode extends GraphNode {
   cachedResult: CellMat | SolError | null = null;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {};
-  autoLiterals = true;
   literalKinds: Record<string, KeyedKind> = {};
   nextPairId = 0;
   readonly pairLabels: string[] = ["Value", "Row", "Column"];

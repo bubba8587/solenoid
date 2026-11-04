@@ -7,7 +7,7 @@ import type { GraphConnection, GraphNode } from "./graphModel";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, ValueTypedSocket, type SocketDataType } from "./sockets";
 import { getPassthrough, type CombineMode, type ProjectContext } from "./nodes/passthrough";
 import { makeFrameShapeResolver } from "./frameShapeResolver";
-import { keyedRestType, type KeyedHost } from "./keyedLiterals";
+import { keyedRestType, type LiteralFieldHost } from "./literalFields";
 import { ConduitNode, conduitInKey, conduitOutKey, CONDUIT_MAX_LANES } from "./nodes/conduit";
 
 /** A socket: key, its type now, its declared base, and whether the settle may retype it: 0 fixed, 1 mutable, 2 adoptive,
@@ -70,7 +70,7 @@ export function settleFacts(editor: AnyEditor): NodeFacts[] {
     for (const k in node.inputs) {
       const f = socketFact(k, node.inputs[k]?.socket);
       if (!f) continue;
-      const rest = f[3] === 2 ? keyedRestType(node as KeyedHost, k, f[2]) : undefined;
+      const rest = f[3] === 2 ? keyedRestType(node as unknown as LiteralFieldHost, k) : undefined;
       facts.ins.push(rest ? [f[0], f[1], f[2], f[3], rest] : f);
     }
     for (const k in node.outputs) {

@@ -849,7 +849,6 @@ export class ReplaceValuesNode extends GraphNode {
   matchCase: boolean;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { column: "", find: "", replace: "" };
-  textLiterals = true;
   width = 200; height = 205;
 
   constructor(init?: { label?: string; mode?: ReplaceMode; matchCase?: boolean }) {

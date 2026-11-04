@@ -6,8 +6,7 @@ import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
-import { declaredTypeOf } from "../sockets";
-import { isKeyedWildcard } from "../keyedLiterals";
+import { literalFieldOf } from "../literalFields";
 import {
   useConnectedInputs,
   useIncomingSources,
@@ -15,8 +14,8 @@ import {
   InlineNumberField,
   InlineTextField,
   KeyedField,
+  LogicalCheck,
   type KeyedKind,
-  takesAutoLiteral,
 } from "./inlineInput";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
@@ -30,7 +29,6 @@ export interface ExtensibleNode {
   // Number rows bind to `literals`, string rows to `stringLiterals`.
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
-  autoLiterals?: boolean;
   literalKinds?: Record<string, KeyedKind>;
   addValueInput: () => string;
   removeValueInput: (key: string) => void;
@@ -112,12 +110,9 @@ export function ExtensibleInputs({
         const input = node.inputs[key];
         if (!input) return null;
         const isConn = connected.has(key);
-        const dt = declaredTypeOf(input.socket);
-        const isTextField = dt === "string" || dt === "numlist" || dt === "strlist" || dt === "datelist" || dt === "logicallist";
-        // Container, logicalcombo, lambda and chart rows are wire-only, and so is a wildcard row unless the node opts into auto literals.
-        const isWildcard = isKeyedWildcard(dt);
-        const isWireOnly = dt === "anylist" || dt === "anytable" || dt === "table" || dt === "frame" || dt === "cube" || dt === "logicalcombo" || dt === "lambda" || dt === "chart"
-          || (isWildcard && !takesAutoLiteral(node, dt));
+        // One field per input, the one the core reads; a wire-only row shows its number.
+        const field = literalFieldOf(node, key);
+        const isWireOnly = field === "none";
         return (
           <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={input.socket}>
             {isWireOnly ? (
@@ -128,12 +123,14 @@ export function ExtensibleInputs({
               )
             ) : isConn ? (
               <span className="solenoid-node__io-wired" style={{ flex: 1 }} title="Driven by an incoming cable">↩ wired</span>
-            ) : takesAutoLiteral(node, dt) ? (
+            ) : field === "keyed" ? (
               <KeyedField node={node} slot={key} />
-            ) : isTextField ? (
-              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
-            ) : (
+            ) : field === "logical" ? (
+              <LogicalCheck checked={!!literals[key]} onToggle={() => void setLiteral(key, literals[key] ? 0 : 1)} />
+            ) : field === "number" ? (
               <InlineNumberField value={literals[key]} onChange={(v) => setLiteral(key, v)} />
+            ) : (
+              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
             )}
             {keys.length > minRows && (
               <button
