@@ -145,7 +145,7 @@ flowchart LR
 Tests:
 
 - `nodes.rs` (solenoid-core) replays every frozen case of every class with a body on the core, natively, and skips a class with none (`NODES=ArithmeticNode,…` narrows it). A field the body sets must equal the frozen one, or what the card held before where the frozen call left it alone. A JS exception frozen as its text is checked as the error the error guard shows for it.
-- `coreNodes.test.ts` replays every fifth case of each class (all of a small class's, and all while refreezing) through the wasm module and the TS's reading of the reply, which shows the wasm build agrees with the native one.
+- `coreNodes.test.ts` replays every 25th case of each class (all of a small class's, and all while refreezing) through the wasm module and the TS's reading of the reply, which shows the wasm build agrees with the native one.
 - A case whose answer comes from host data is held by both: the zone cards' cases, frozen through Node's `Intl`, are replayed natively on jiff's bundled tzdb, so `timeZoneCards.test.ts`, whose calls are those cases, keeps to zones and instants on which the two tzdb releases agree: a zone whose future rules releases keep revising is probed only through 2024, and one a release rewrote (`EST5EDT` before 1967 in 2026e, Morocco and western Canada from 2026) stays out of them.
 - The whole vitest suite runs the ported cards on the core.
 
