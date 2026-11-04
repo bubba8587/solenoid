@@ -1,4 +1,3 @@
-// [[D99]] rustIsSpec
 // Every test file in one domain, and every domain in one tier, so a change can run the tests around it
 // (`node scripts/test-bucket.mjs <tier|domain>`) and a failure says at once which layer broke. The first rule whose
 // pattern matches a file's path wins; `tests/graph/testBuckets.test.ts` fails a file no rule claims.

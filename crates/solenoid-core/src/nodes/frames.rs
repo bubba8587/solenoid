@@ -269,7 +269,7 @@ fn amortization(c: &mut Call) -> Answer {
         return Ok(vec![("frame".into(), Cv::from(V::Null))]);
     }
     let n = super::kit::num(&nper);
-    if n.floor() > 1_000_000.0 {
+    if n.floor() > crate::value_kinds::MAX_GENERATED {
         c.show("cachedResult", V::Null);
         return Ok(vec![(
             "frame".into(),

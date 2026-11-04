@@ -68,7 +68,10 @@ describe("card bodies on the core answer as frozen", () => {
     it(kind, () => {
       const bad: string[] = [];
       let rewritten = 0;
-      for (const c of cases) {
+      // `tests/nodes.rs` replays every case natively, outputs and shown fields; here every fifth case of each class
+      // (all of a small class's, and all while refreezing) shows the wasm build agrees.
+      const sampled = REFREEZE || cases.length <= 20 ? cases : cases.filter((_, i) => i % 5 === 0);
+      for (const c of sampled) {
         if (c.unstable) continue;
         const r = call(c);
         const asFrozen = c.result;

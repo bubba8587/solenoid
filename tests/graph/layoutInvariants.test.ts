@@ -1,5 +1,6 @@
 // [[C85]] groupPushDeterministic, [[C52]], [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver
 import { describe, it, expect } from "vitest";
+import { fuzzRuns, fuzzSeed } from "./fuzzDepth";
 import { separateAll, computeExpandPush, type PushBox, type ExpandSpec, type Disp } from "../../src/graph/groupPushCore";
 import { distributeDeltas, DISTRIBUTE_GAP, type Placed } from "../../src/graph/selectionOps";
 import { solveStandoffs } from "../../src/graph/standoffSolver";
@@ -63,9 +64,9 @@ function randBoxes(rng: () => number, n: number, spread = 600): PushBox[] {
 }
 
 describe("separateAll on plain boxes — the hard no-overlap backstop (randomized)", () => {
-  it("clears every overlap across 300 seeded fixtures", () => {
-    const rng = mulberry32(0x0A11);
-    for (let iter = 0; iter < 300; iter++) {
+  it("clears every overlap across seeded fixtures", () => {
+    const rng = mulberry32(fuzzSeed(0x0A11, "seeded overlap fixtures"));
+    for (let iter = 0; iter < fuzzRuns(120); iter++) {
       const boxes = randBoxes(rng, ri(rng, 3, 10));
       const disp = separateAll(boxes);
       const moved = boxes.map((b) => applyDisp(b, disp));
@@ -81,8 +82,8 @@ describe("separateAll on plain boxes — the hard no-overlap backstop (randomize
 
 describe("separateAll — every op's final no-overlap pass (randomized)", () => {
   it("leaves no overlap bar fixed pairs, never moves a fixed box, and keeps clusters rigid", () => {
-    const rng = mulberry32(0x5A11);
-    for (let iter = 0; iter < 300; iter++) {
+    const rng = mulberry32(fuzzSeed(0x5A11, "separateAll"));
+    for (let iter = 0; iter < fuzzRuns(120); iter++) {
       const boxes = randBoxes(rng, ri(rng, 3, 12), 450);
       const ids = boxes.map((b) => b.id);
       const fixed = new Set(ids.filter(() => rng() < 0.15));

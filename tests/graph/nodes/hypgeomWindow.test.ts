@@ -1,5 +1,6 @@
 // [[C120]] linearWork
 import { it, expect } from "vitest";
+import { AT_ONCE_MS } from "../timing";
 import { coreFunction } from "../coreFunction";
 it("the cumulative hypergeometric sums only the window where terms are nonzero: the full loop's answer, fast", () => {
   const f = coreFunction("HYPGEOM.DIST")!;
@@ -16,6 +17,6 @@ it("the cumulative hypergeometric sums only the window where terms are nonzero: 
   }
   const t0 = performance.now();
   const v = f(1e8, 2e8, 4e8, 8e8, true) as number;
-  expect(performance.now() - t0).toBeLessThan(3000);
+  expect(performance.now() - t0).toBeLessThan(AT_ONCE_MS);
   expect(v).toBeCloseTo(0.5, 3);
 });

@@ -1,5 +1,6 @@
 // [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
+import { AT_ONCE_MS } from "./timing";
 import { coreFunction } from "./coreFunction";
 import { isSolError } from "../../src/graph/errorValue";
 import { MathFXNode } from "../../src/graph/nodes/scalar";
@@ -66,7 +67,7 @@ describe("BESSELJ, I, K and Y truncate their order and answer #DOMAIN! past a mi
       // Text is never an order, numeric or not ([[C10]] socketLattice); Formula.js would read both as numbers.
       for (const n of ["-1e12", "-Infinity"]) expect(call(name, 1, n)).toMatchObject({ code: "#VALUE!", message: `${name} needs a number` });
     }
-    expect(performance.now() - t).toBeLessThan(500);
+    expect(performance.now() - t).toBeLessThan(AT_ONCE_MS);
   });
 });
 
@@ -82,7 +83,7 @@ describe("DB and DDB past a million periods answer #DOMAIN! (FX steps once per p
   it("a huge period within the life answers at once; an ordinary one is Formula.js's", () => {
     const t = performance.now();
     for (const name of ["DB", "DDB"]) expect((call(name, 1000, 100, 1e12, 5e11) as { code?: string }).code).toBe("#DOMAIN!");
-    expect(performance.now() - t).toBeLessThan(500);
+    expect(performance.now() - t).toBeLessThan(AT_ONCE_MS);
     expect(num(call("DB", 1000, 100, 10, 3))).toBeCloseTo(129.869816, 6);
     expect(typeof call("DB", 1000, 100, 1e7, 2e7)).not.toBe("number");
   });

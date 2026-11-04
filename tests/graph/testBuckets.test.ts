@@ -1,4 +1,3 @@
-// [[D99]] rustIsSpec
 // Every test file belongs to one bucket (tests/buckets.mjs), so `node scripts/test-bucket.mjs <tier|domain>` runs all
 // of a layer's tests and none goes missing from every bucket.
 import { it, expect } from "vitest";

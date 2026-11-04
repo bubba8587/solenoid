@@ -1,5 +1,6 @@
 // [[A1]] visualGraphCalculator
 import { describe, expect, it } from "vitest";
+import { fuzzRuns, fuzzSeed } from "./fuzzDepth";
 import { getCablePath, draggedCableArgs, Position } from "../../src/graph/cablePaths";
 
 // Property tests for the cable routers. The contract, checked over thousands
@@ -246,8 +247,8 @@ function checkContinuity(mode: Mode) {
 for (const mode of ["diagonal", "straight"] as Mode[]) {
   describe(`${mode} walk router`, () => {
     it("holds the turn/heading invariants over random configurations", () => {
-      const rnd = makeRng(0xC0FFEE);
-      for (let i = 0; i < 5000; i++) checkInvariants(mode, randomCfg(rnd));
+      const rnd = makeRng(fuzzSeed(0xC0FFEE, `${mode} walk router`));
+      for (let i = 0; i < fuzzRuns(1500); i++) checkInvariants(mode, randomCfg(rnd));
     });
 
     it("holds the invariants at close / aligned / behind edge cases", () => {

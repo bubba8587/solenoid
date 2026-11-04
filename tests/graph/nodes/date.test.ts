@@ -1,6 +1,7 @@
 // [[C44]], [[B11]]
 import { solDate, type SolDate } from "../../../src/graph/dateValue";
 import { describe, it, expect, afterEach } from "vitest";
+import { AT_ONCE_MS } from "../timing";
 import { DateAddNode, DatePartNode, DateTimeValueNode, DateConstructNode, WorkdaysNode, WeekInfoNode, DateDiffNode, parseDateToSerial, parseDate, serialToJsDate, jsDateToSerial, type DateDiffOp } from "../../../src/graph/nodes/date";
 import { isSolError } from "../../../src/graph/errorValue";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
@@ -59,7 +60,7 @@ describe("WORKDAY jumps whole weeks and stays inside the calendar", () => {
       () => new WorkdaysNode({ op: "workday" }).data({ start: [solDate(MON)], days: [1e9] }).result]) {
       const t = Date.now();
       const r = f();
-      expect(Date.now() - t).toBeLessThan(500);
+      expect(Date.now() - t).toBeLessThan(AT_ONCE_MS);
       expect(isSolError(r) && r.code).toBe("#DOMAIN!");
     }
   });

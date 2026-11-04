@@ -75,6 +75,9 @@ tests/fixtures
 
 why: dev tooling serves the workflow; the decision, if any, is cited by the file it generates or drives
 scripts
+tests/buckets.mjs
+tests/graph/testBuckets.test.ts
+tests/graph/fuzzDepth.ts
 tools/string-editor
 tools/renumber_tree.py
 src/devCopyEdit.ts

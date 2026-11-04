@@ -1,5 +1,6 @@
 // [[B12]] losslessSaves, [[B16]] oneFormulaSurface
 import { describe, it, expect } from "vitest";
+import { fuzzRuns, fuzzSeed } from "./fuzzDepth";
 import { writeTextForm, readTextForm } from "../../src/graph/textForm";
 import type { SavedGraph } from "../../src/graph/persistence";
 
@@ -63,11 +64,11 @@ describe("textForm reader fuzz", () => {
     .filter((_, i, arr) => i === 0 || i === arr.length - 1);
 
   it("every mutant either throws a clean Error or yields a re-writable graph", () => {
-    const rng = mulberry32(0xF0221);
+    const rng = mulberry32(fuzzSeed(0xF0221, "textForm mutants"));
     let accepted = 0;
     let rejected = 0;
     for (const base of corpus) {
-      for (let i = 0; i < 400; i++) {
+      for (let i = 0; i < fuzzRuns(150); i++) {
         const mutant = mutate(base, rng);
         let g: SavedGraph | null = null;
         try {

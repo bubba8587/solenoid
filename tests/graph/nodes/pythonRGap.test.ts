@@ -1,6 +1,7 @@
 // [[C79]], [[B11]], [[C48]]
 import { solDate, type SolDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
+import { AT_ONCE_MS } from "../timing";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { coreFunction } from "../coreFunction";
 import { nodeDisplayName } from "../../../src/graph/catalogUtils";
@@ -280,14 +281,15 @@ describe("Amortization schedule", () => {
     expect(amortizationSchedule(0, 4, 1000)[0].payment).toBe(-250);
     expect(amortizationSchedule(0.01, 0, 1000)).toEqual([]);
   });
+  // The cap is the shared generator cap (`MAX_GENERATED`), whose boundary generatorCaps.test.ts pins.
   it("a row per period, so a count past a million (or an infinite one) is refused at once", () => {
-    for (const nper of [1e9, Infinity]) {
+    for (const nper of [1_000_001, 1e9, Infinity]) {
       const node = new AmortizationNode(); node.literals = { rate: 0.005, nper, pv: 10000, fv: 0 };
       expect((node.data({}).frame as { code?: string }).code).toBe("#DOMAIN!");
     }
-    const node = new AmortizationNode(); node.literals = { rate: 0.005, nper: 1_000_000, pv: 10000, fv: 0 };
-    expect((node.data({}).frame as FrameValue).columns[0].values.length).toBe(1_000_000);
-  }, 30_000);
+    const node = new AmortizationNode(); node.literals = { rate: 0.005, nper: 360, pv: 10000, fv: 0 };
+    expect((node.data({}).frame as FrameValue).columns[0].values.length).toBe(360);
+  });
 });
 
 describe("Hypothesis tests beyond Excel's four (values from scipy / R)", () => {
@@ -460,7 +462,7 @@ describe("Forecast (ETS) — Holt–Winters", () => {
       expect(ev("FORECAST.ETS(t, v, tl)", { t, v: y, tl: timeline })).toMatchObject({ code: "#DOMAIN!", message: "FORECAST.ETS takes a target at most 1,000,000 steps past the timeline's end" });
       expect(ev("FORECAST.ETS.CONFINT(t, v, tl)", { t, v: y, tl: timeline })).toMatchObject({ code: "#DOMAIN!", message: "FORECAST.ETS.CONFINT takes a target at most 1,000,000 steps past the timeline's end" });
     }
-    expect(performance.now() - t0).toBeLessThan(500);
+    expect(performance.now() - t0).toBeLessThan(AT_ONCE_MS);
     const infLine = timeline.map((v, i) => (i === timeline.length - 1 ? Infinity : v));
     expect(isSolError(ev("FORECAST.ETS(t, v, tl)", { t: Infinity, v: y, tl: infLine }))).toBe(true);
     expect(isSolError(ev("FORECAST.ETS.CONFINT(t, v, tl)", { t: Infinity, v: y, tl: infLine }))).toBe(true);

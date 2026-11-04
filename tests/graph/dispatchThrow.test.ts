@@ -1,5 +1,6 @@
 // [[C24]] arraySemantics, [[C120]] linearWork
 import { it, expect } from "vitest";
+import { AT_ONCE_MS } from "./timing";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";
 
@@ -18,5 +19,5 @@ it("WRAPROWS, NTILE and GAUSSIANSMOOTH refuse a count that would loop or allocat
     const r = ev(src);
     expect(isSolError(r) && r.code, src).toBe(code);
   }
-  expect(performance.now() - t).toBeLessThan(1000);
+  expect(performance.now() - t).toBeLessThan(AT_ONCE_MS);
 });
