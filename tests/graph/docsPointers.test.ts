@@ -167,6 +167,65 @@ describe("the tree/ vault's wikilinks resolve", () => {
   });
 });
 
+describe("a link to a note's heading names a heading the note has", () => {
+  // `[[graph-core#Direct calls]]` in a spec, a code file or a test points at one section; renaming the heading must
+  // move the links with it, or they point at nothing. Obsidian matches a heading ignoring case.
+  const TREE = path.join(ROOT, "tree");
+  const notes = new Map<string, string>();
+  const walkTree = (dir: string) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.name.startsWith(".")) continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walkTree(p);
+      else if (e.name.endsWith(".md")) {
+        notes.set(path.basename(p, ".md"), p);
+        const fm = read(p).match(/^---\n([\s\S]*?)\n---/);
+        for (const line of fm?.[1].match(/^(?:name|aliases):\s*(.+)$/gm) ?? []) {
+          const v = line.replace(/^(?:name|aliases):\s*/, "").replace(/^\[|\]$/g, "");
+          for (const a of v.split(",")) notes.set(a.trim().replace(/^"|"$/g, ""), p);
+        }
+      }
+    }
+  };
+  walkTree(TREE);
+  const norm = (h: string) => h.trim().replace(/\s+/g, " ").toLowerCase();
+  const headings = new Map<string, Set<string>>();
+  const headingsOf = (file: string) => {
+    let hs = headings.get(file);
+    if (!hs) {
+      hs = new Set((read(file).replace(/```[\s\S]*?```/g, "").match(/^#{1,6} .+$/gm) ?? []).map((h) => norm(h.replace(/^#+ /, ""))));
+      headings.set(file, hs);
+    }
+    return hs;
+  };
+  const sources: string[] = [];
+  const walkSrc = (dir: string) => {
+    if (!fs.existsSync(dir)) return;
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (["node_modules", "target", "dist", "pkg", "archive"].includes(e.name) || e.name.startsWith(".")) continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walkSrc(p);
+      else if (/\.(ts|tsx|rs|mjs|md)$/.test(e.name)) sources.push(p);
+    }
+  };
+  for (const d of ["tree", "src", "tests", "crates", "scripts", "docs"]) walkSrc(path.join(ROOT, d));
+  it("every [[note#Heading]] link resolves", () => {
+    const dead: string[] = [];
+    for (const f of sources) {
+      const text = f.endsWith(".md") ? read(f).replace(/```[\s\S]*?```/g, "") : read(f);
+      for (const m of text.matchAll(/\[\[([^\]|#]+)#([^\]|]+)(?:\|[^\]]*)?\]\]/g)) {
+        // In a note, a link inside a code span is code, not a link: an odd number of backticks before it on its line.
+        const lineStart = text.lastIndexOf("\n", m.index) + 1;
+        if (f.endsWith(".md") && (text.slice(lineStart, m.index).match(/`/g) ?? []).length % 2 === 1) continue;
+        const note = notes.get(m[1].trim());
+        if (!note) continue; // a dead note is the vault test's to report
+        if (!headingsOf(note).has(norm(m[2]))) dead.push(`${path.relative(ROOT, f)}: [[${m[1]}#${m[2]}]]`);
+      }
+    }
+    expect(dead).toEqual([]);
+  });
+});
+
 describe("the specs name code that exists", () => {
   // A spec that names a deleted function sends a reader looking for nothing, and the Rust port renamed most of
   // them. Every backticked camelCase, snake_case or CONSTANT name in the specs and the index docs must be a word
