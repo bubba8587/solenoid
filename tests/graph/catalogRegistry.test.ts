@@ -1,4 +1,4 @@
-// [[C28]], [[B12]] losslessSaves, [[B18]] safeToShare, [[C10]] socketLattice, [[socket-lattice#Each port owns its socket instance]], [[socket-lattice#Date-valued ports are date-typed]]
+// [[C28]], [[B12]] losslessSaves, [[B18]] safeToShare, [[C10]] socketLattice, [[socket-lattice#Each port owns its socket instance]], [[socket-lattice#Date-valued ports are date-typed]], [[type-propagation-on-in-place-socket-retype#A trueany output declares its passthrough]]
 import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -114,13 +114,7 @@ describe("catalog ↔ registry consistency", () => {
     expect(offenders, `classes sharing a MutableSocket across instances — adoption leaks between cards:\n  ${offenders.join("\n  ")}`).toEqual([]);
   });
 
-  // [[C10]] socketLattice: a class with a `trueany` OUTPUT either declares passthrough() (so
-  // the four derived-type consumers — adoption, unit flow, the display walk,
-  // coerceInputs' keep-tags boundary — can resolve it) or is sanctioned with the
-  // reason its type resolves another way. An undeclared forwarder's output stays
-  // trueany forever: a downstream FC can't key a family, so a date serial
-  // renders as its raw number — everything connects, nothing errors, the format
-  // is just silently wrong.
+
   const TRUEANY_OUT_SANCTIONED: Record<string, string> = {
     NaNode: "the deliberate #N/A producer — its output IS the error (errorOnlyOutput), no type to forward",
     ConduitNode: "lane types resolve through conduitTrace, the conduit's own resolution system",

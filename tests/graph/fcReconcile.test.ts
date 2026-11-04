@@ -1,4 +1,4 @@
-// [[B11]]
+// [[B11]] maximalMerge, [[type-propagation-on-in-place-socket-retype#The rule: an in-place retype re-drives FC adaptation]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput } from "../../src/graph/graphModel";
@@ -59,14 +59,7 @@ describe("retypeInputCables (Add Column's Add as)", () => {
   });
 });
 
-// ─── Family resolution treats EVERY family-less rung alike (isWildcardRung) ───
-// An FC resolves the family it should offer controls for from whatever socket it
-// can see. A rank-bearing wildcard (`anydata` on an Expression variable,
-// `anylist`, `anytable`) carries a RANK but no FAMILY — adopting it as the
-// answer left the FC with familyOf() === "none" and therefore NO controls at
-// all, while the same FC wired into a `trueany` input showed the provisional
-// number set. Same intent, two answers, decided by which family-less rung the
-// consumer happened to declare (2026-08-01).
+
 describe("FC family resolution ignores every family-less wildcard rung", () => {
   const fcInto = async (consumerSocket: SolenoidSocket) => {
     const editor = new GraphEditor() as unknown as AnyEditor;
@@ -91,19 +84,14 @@ describe("FC family resolution ignores every family-less wildcard rung", () => {
   it("a real type still resolves — including the non-family types that are genuinely resolved", async () => {
     expect(await fcInto(new SolenoidSocket("string"))).toBe("string");
     expect(await fcInto(new SolenoidSocket("datelist"))).toBe("datelist");
-    // frame/lambda/chart carry no ELEMENT family but are resolved types with
-    // their own FC treatment (none / view-as / text scale) — never provisional.
+
     expect(await fcInto(new SolenoidSocket("frame"))).toBe("frame");
     expect(await fcInto(new SolenoidSocket("lambda"))).toBe("lambda");
     expect(await fcInto(new SolenoidSocket("chart"))).toBe("chart");
   });
 });
 
-// ─── [[C10]] socketLattice at the retype seam ─────────────────────────────────────
-// A Display's `in` is an adoptive trueany; once it has adopted a producer's rank-1
-// type (datecombo), the producer's rank-2 reconcile (datetable) must judge the cable
-// against the DECLARED rung, or the very adoption it caused prunes it. This is how
-// the script-tour seed lost two Script → Display cables (2026-08-28).
+
 describe("retypeOutputCables judges an adoptive input by its base rung", () => {
   it("keeps a cable whose target adopted the previous type", async () => {
     const editor = new GraphEditor() as unknown as AnyEditor;

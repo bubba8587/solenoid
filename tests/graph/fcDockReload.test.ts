@@ -12,15 +12,7 @@ import { frameSourceToText } from "../../src/graph/frame";
 import type { Schemes } from "../../src/graph/schemes";
 import { reconcileFcs, reconcileFcTypes } from "../../src/graph/fcReconcile";
 
-// ─── Docked-FC reload order (the "false Frame type on reload" bug) ────────────
-// The author's chain: a computed column with a unit → INDEX pulls one cell →
-// an FC DOCKED on INDEX's output. On load, the FC reconcile
-// resolves the HOST socket — and before settleWildcardTypes has run, INDEX's
-// projected wildcard output still reads as its upstream's raw type (frame), so
-// the docked FC adopted "frame" and nothing re-adapted it after the settle.
-// Re-docking by hand fixed it because that re-ran the adapt post-settle. The
-// fix: the dock loop only records each dock, and `reconcileFcTypes` then settles
-// the wildcard types before it types the FCs. This test replays that load order.
+// The chain: a computed column with a unit → INDEX pulls one cell → an FC docked on INDEX's output.
 
 type AnyEditor = GraphEditor<Schemes>;
 

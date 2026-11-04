@@ -1,4 +1,4 @@
-// [[B11]]
+// [[B11]] maximalMerge, [[type-propagation-on-in-place-socket-retype#The rule: an in-place retype re-drives FC adaptation]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
@@ -8,10 +8,7 @@ import { reconcileFcs } from "../../src/graph/fcReconcile";
 
 type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
 
-// Core-promise guard: a type change at a Note's frontmatter output must propagate
-// to a downstream Format Controller so it stops formatting by the stale type — a
-// date serial retyped to a plain number must no longer render as a date. This is
-// exactly the per-FC work reconcileFcTypes() drives after a retype.
+
 describe("Note frontmatter retype propagates type to a downstream FC", () => {
   it("date → number retype re-adapts the FC and drops the date format", async () => {
     const editor = new GraphEditor() as unknown as AnyEditor;

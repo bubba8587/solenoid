@@ -11,11 +11,7 @@ import { ListIndexNode, FillNode, ConcatListsNode } from "../../src/graph/nodes/
 import { StackNode } from "../../src/graph/nodes/matrix";
 import { ValueInputNode } from "../../src/graph/nodes/control";
 
-// The passthrough declaration is the ONE source of truth that trueany TYPE adoption,
-// UNIT flow, the type-default DISPLAY walk, and coerceInputs' keep-tags boundary all
-// read (passthrough.ts). This pins each node's declaration so the type set and the unit
-// set can NEVER drift apart again (the exact bug that left Expect / Cable Switch /
-// IFERROR passing type but not units before the 2026-07-15 unification).
+// [[type-propagation-on-in-place-socket-retype#Passthrough is one declaration]], [[type-propagation-on-in-place-socket-retype#A trueany output declares its passthrough]]
 
 describe("passthrough declarations", () => {
   it("Display / Expect are PURE single passthroughs on their value input", () => {
@@ -28,8 +24,7 @@ describe("passthrough declarations", () => {
   });
 
   it("Expect forwards ONLY `in` — not its min/max/pattern check parameters", () => {
-    // The old passesUnitThrough=true meant "all inputs" and couldn't express this,
-    // which is why Expect never carried units. The explicit spec fixes it.
+
     expect(passInputKeys(new ExpectNode())).toEqual(["in"]);
   });
 
@@ -60,9 +55,7 @@ describe("passthrough declarations", () => {
     expect(getPassthrough(new CableSwitchNode({ multiSelect: true }))).toEqual([]); // Many → Cube, not passthrough
   });
 
-  it("Fill/Coalesce passes units like its 2×2 sibling IFERROR (audit 2026-07-16)", () => {
-    // Coalesce = agree across the list + its Else fallbacks (IFERROR's missing-value
-    // twin); the impute modes fill FROM the list's own values → single on the list.
+  it("Fill/Coalesce passes units like its 2×2 sibling IFERROR", () => {
     const co = new FillNode({ op: "coalesce" });
     const spec = getPassthrough(co)[0];
     expect(spec).toMatchObject({ output: "result", combine: "agree" });
@@ -73,9 +66,7 @@ describe("passthrough declarations", () => {
   });
 
   it("the append ladder declares `agree` over its extensible rows (1-D and 2-D rungs)", () => {
-    // Concat Lists (1-D) and VSTACK/HSTACK (2-D) are the same shape: element-preserving
-    // combiners whose value branches are ALL their rows, so the row keys must track the
-    // extensible set rather than a fixed pair ([[C48]] appendLadder).
+
     for (const n of [new ConcatListsNode(), new StackNode({ op: "vstack" }), new StackNode({ op: "hstack" })]) {
       const spec = getPassthrough(n)[0];
       expect(spec).toMatchObject({ output: "result", combine: "agree" });
@@ -88,17 +79,13 @@ describe("passthrough declarations", () => {
   });
 
   it("generative / producer nodes declare NO passthrough (their output is genuinely static)", () => {
-    // A Number is a source; a Boolean op / Comparison MAKE a new logical value. None
-    // of them forward an input type. (INDEX does — see the extraction test below.)
+
     for (const n of [new ValueInputNode(), new BooleanOpNode(), new ComparisonNode()]) {
       expect(getPassthrough(n)).toEqual([]);
     }
   });
 
-  // INDEX is an EXTRACTION: it forwards a value out of its container, so it declares a
-  // passthrough with a `project` that drops the container's RANK while keeping its
-  // element family. It was static `trueany` until 2026-07-25 on the grounds that its
-  // result "varies per row" — true only where the container is heterogeneous.
+
   it("INDEX forwards its container's element family at the COMBO rung", () => {
     const n = new ListIndexNode();
     expect(getPassthrough(n).length).toBeGreaterThan(0);
@@ -109,8 +96,7 @@ describe("passthrough declarations", () => {
 
     const resolve = (t: SocketDataType | null) => settledOutputs(n, t ? { list: t } : {}).result;
 
-    // A HOMOGENEOUS container: the family is fixed by the socket however you slice it,
-    // and the combo covers both shapes the runtime arguments can produce.
+    // A homogeneous container: the socket fixes the family however it is sliced.
     expect(resolve("datelist")).toBe("datecombo");
     expect(resolve("date")).toBe("datecombo");
     expect(resolve("datetable")).toBe("datecombo");
@@ -124,12 +110,9 @@ describe("passthrough declarations", () => {
       expect(resolve(t)).toBe("trueany");
     }
     expect(resolve(null)).toBe("trueany"); // unwired
-    // A FRAME resolves per COLUMN, not per socket — with no shape context and no
-    // Column set, the extraction is the whole row, which is still a frame.
+    // A Frame with no shape context and no Column set: the whole row, still a frame.
     expect(resolve("frame")).toBe("frame");
-    // A CUBE's slices are always cubes: with a blank axis (here both — the
-    // defaults) the result is a cube; only Row AND Column both given is an
-    // unknowable single cell.
+    // A Cube with both axes blank (the defaults).
     expect(resolve("cube")).toBe("cube");
     n.literals.index = 1;
     n.literals.column = 1;
@@ -151,8 +134,7 @@ describe("passthrough declarations", () => {
     n.literals.column = 0; // Excel's explicit "all columns"
     expect(resolve({})).toBe("frame");
 
-    // A named column: THAT column's family, at the combo rung (whole column for a
-    // blank Row, one cell otherwise).
+
     n.literals.column = 2;
     expect(resolve({})).toBe("datecombo");
     n.literals.column = 1;
@@ -160,9 +142,7 @@ describe("passthrough declarations", () => {
     n.literals.column = 3;
     expect(resolve({})).toBe("numlist");
 
-    // Out of range (a #REF! at runtime), an unknown upstream shape (CSV / Web
-    // Source), a data-driven column count, and a WIRED Column (a runtime value the
-    // literal no longer decides) all stay the placeholder.
+    // Out of range, an unknown upstream shape, a data-driven column count and a wired Column.
     n.literals.column = 9;
     expect(resolve({})).toBe("trueany");
     n.literals.column = 2;
@@ -171,26 +151,23 @@ describe("passthrough declarations", () => {
     expect(resolve({ wiredColumn: true })).toBe("trueany");
   });
 
-  // The point of the change: a date pulled out of a date list stays a DATE downstream.
-  // `isDateType` reads the socket, so a static `trueany` output rendered a raw serial.
+
   it("an extracted date is still date-typed, and reaches both a scalar and a list input", () => {
     const out = settledOutputs(new ListIndexNode(), { list: "datelist" }).result;
     expect(isDateType(out)).toBe(true);
     expect(canConnect(out, "date")).toBe(true);      // one cell → a scalar date input
     expect(canConnect(out, "datelist")).toBe(true);  // a whole axis → a date list input
-    // Element separation still holds — extraction never crosses families.
+
     expect(canConnect(out, "number")).toBe(false);
     expect(canConnect(out, "string")).toBe(false);
   });
 });
 
-// [[C136]] typesKnownAfterCalc: once a calculation has run nothing is unknown, so every passthrough output is one the
-// value it carried can type ([[D117]] emptyKeepsLastType), and a branch card names the input it took for the format walk.
+// [[C136]] typesKnownAfterCalc, [[D117]] emptyKeepsLastType
 describe("every passthrough output can take the type of its value", () => {
   it("its socket is retypeable, and branches that vote declare `selected`", async () => {
     const { FLAT_CATALOG } = await import("../../src/graph/catalogUtils");
-    // Combiners put every input into the output, so there is no taken branch to name; inputs that would mix dates with
-    // another kind refuse with #TYPE! instead ([[C137]] datesNeverSerials).
+
     const COMBINERS = new Set(["ConcatListsNode", "SetsNode", "InterleaveNode", "StackNode"]);
     const gaps: string[] = [];
     const seen = new Set<string>();

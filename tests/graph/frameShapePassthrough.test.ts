@@ -1,4 +1,4 @@
-// [[C10]] socketLattice
+// [[C10]] socketLattice, [[type-propagation-on-in-place-socket-retype#Relays are transparent]], [[type-propagation-on-in-place-socket-retype#Frame shape is declared per producer]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection } from "../../src/graph/graphModel";
@@ -26,7 +26,7 @@ async function chain(mid: (e: GraphEditor<Schemes>) => Promise<{ node: Schemes["
   return { direct: r.outShape(src.id, "frame"), viaMid: r.outShape(m.node.id, m.outKey), downstream: r.outShape(sort.id, "frame") };
 }
 
-describe("frame SHAPE survives a passthrough (Bug B)", () => {
+describe("frame SHAPE survives a passthrough", () => {
   const cols = (s: { columns: { name: string }[] } | null) => s?.columns.map((c) => c.name) ?? null;
 
   it("through a Display", async () => {

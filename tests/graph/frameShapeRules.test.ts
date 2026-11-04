@@ -1,4 +1,4 @@
-// [[B17]], [[C48]]
+// [[B17]] typedValueModel, [[C48]] appendLadder, [[type-propagation-on-in-place-socket-retype#Frame shape is declared per producer]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection } from "../../src/graph/graphModel";
@@ -20,9 +20,7 @@ import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
 import type { Schemes } from "../../src/graph/schemes";
 import type { Shape } from "../../src/graph/frameShape";
 
-// One case per DECLARED rule (nodes/frameShapeHook.ts): the static columns must be exactly
-// what the node's own run would produce. A rule that can't know its columns says so with
-// `null` — claiming a wrong name is worse than claiming nothing.
+
 
 const cols = (s: Shape | null) => s?.columns.map((c) => `${c.name}:${c.type}`) ?? null;
 
@@ -223,8 +221,7 @@ describe("declared frame shapes match what the node would produce", () => {
   });
 });
 
-// A literal speaks for an UNWIRED socket alone (nodes/frameShapeHook.ts): once a cable feeds
-// the config, the run reads the cable and the card text says nothing about the columns.
+
 describe("a wired config socket makes the shape unknown", () => {
   it("Columns reads the typed list, and goes unknown once Columns is wired", async () => {
     const keep = new ColumnsNode();
