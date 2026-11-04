@@ -1,4 +1,4 @@
-// [[C98]] paletteMirrorsMenubar
+// [[C98]] paletteMirrorsMenubar, [[command-palette#What it lists]]
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { fireMenuKey, buildMenus } from "../../src/graph/menuModel";
 
