@@ -1,4 +1,4 @@
-// [[C45]], [[C130]], [[C24]]
+// [[C45]], [[C130]], [[C24]], [[table-popup#The summary footer]]
 import { describe, it, expect } from "vitest";
 import { summarizeColumn as summarize } from "./coreVerbs";
 import { formatScalar } from "../../src/graph/components/format";

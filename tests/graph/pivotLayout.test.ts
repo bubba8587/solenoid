@@ -1,4 +1,4 @@
-// [[C127]] pivotView
+// [[C127]] pivotView, [[table-popup#The Pivot view]]
 import { describe, it, expect } from "vitest";
 import { pivotFrame } from "./coreVerbs";
 import { frameRowCount, type FrameValue, type FrameCell } from "../../src/graph/frame";

@@ -1,4 +1,4 @@
-// [[C58]] tableInputRawText
+// [[C58]] tableInputRawText, [[table-popup#Editing a cell]], [[table-popup#Lists]]
 import { describe, it, expect } from "vitest";
 import { listInViewOrder, suggestionCells } from "../../src/graph/components/TablePopup";
 import { distinctColumnValues } from "./coreVerbs";

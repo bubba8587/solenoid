@@ -1,14 +1,8 @@
-// [[C24]] arraySemantics
+// [[C24]] arraySemantics, [[table-popup#The on-card previews]]
 import { describe, it, expect } from "vitest";
 import { POP_OUT_KINDS, popOutKindFor, accentFallbackVar, type PopOutKind } from "../../src/graph/valuePopup";
 
-// An expanded Display drops the chip a collapsed one shows, so a frame / table / matrix
-// / list would have no way into its data popup — a recurring gap. This pins the invariant
-// at the shared choke point: EVERY pop-out kind is recognized by popOutKindFor (which the
-// Display's corner ValueExpandButton and the chips both read) AND is wired into the
-// opener's accent switch. The `sampleFor` switch is exhaustive over PopOutKind, so a
-// newly declared kind fails to compile until it joins this sweep — the Display analogue
-// of chartPopupCoverage.test.ts.
+
 
 function sampleFor(kind: PopOutKind): unknown {
   switch (kind) {

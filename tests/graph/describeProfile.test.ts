@@ -1,4 +1,4 @@
-// [[C127]] pivotView
+// [[C127]] pivotView, [[table-popup#The Dashboard view]]
 import { describe, it, expect } from "vitest";
 import { describeTilesOf } from "../../src/graph/describeProfile";
 import { carryFrameSidecars } from "../../src/graph/frameSidecar";

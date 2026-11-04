@@ -1,4 +1,4 @@
-// [[E9]] errorsKeepOrigin
+// [[E9]] errorsKeepOrigin, [[table-popup#Formatted and Source]]
 import { describe, expect, it } from "vitest";
 import { controlledCellText } from "../../src/graph/components/controlledCell";
 import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";

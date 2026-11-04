@@ -1,4 +1,4 @@
-// [[C114]] cardsView
+// [[C114]] cardsView, [[table-popup#The Cube popup]]
 import { describe, expect, it } from "vitest";
 import { cubeLevelColumns, statValues } from "../../src/graph/cubeLevelTable";
 import { recordsToCube } from "../../src/graph/frame";
