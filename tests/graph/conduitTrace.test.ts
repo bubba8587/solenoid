@@ -1,4 +1,4 @@
-// [[C10]] socketLattice
+// [[C10]] socketLattice, [[cable-rendering-knobs#Conduit runs]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput } from "../../src/graph/graphModel";
@@ -144,9 +144,6 @@ describe("conduitPath — the whole run a cable belongs to", () => {
       { id: "s3", source: cond.id, sourceOutput: conduitOutKey(0), target: c.id, targetInput: "in" },
     ];
     const ed = pathEditor({ [a.id]: a, [b.id]: b, [c.id]: c, [cond.id]: cond }, conns);
-    // EVERY segment must resolve to the SAME run, including a branch cable —
-    // the inspector's "is this selection one run?" check depends on it, and
-    // double-clicking one branch must light its siblings too.
     for (const seg of conns) {
       const p = ed.path(seg);
       expect(p.connIds).toEqual(["s1", "s2", "s3"]);

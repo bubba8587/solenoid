@@ -1,22 +1,8 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[cable-rendering-knobs#Diagonal and straight: the walk router]], [[cable-rendering-knobs#Spline]]
 import { describe, expect, it } from "vitest";
 import { fuzzRuns, fuzzSeed } from "./fuzzDepth";
 import { getCablePath, draggedCableArgs, Position } from "../../src/graph/cablePaths";
 
-// Property tests for the cable routers. The contract, checked over thousands
-// of random configurations per mode:
-//
-// diagonal (8 headings): every segment on a 45° multiple, every turn ≤45°.
-// straight (4 headings): every segment on a 90° multiple, turns are 90° —
-//   plus a "limited 45": at an off-grid stub junction (rotated connector arm)
-//   a turn ≤45° is allowed; nothing between 45° and 90° may appear.
-// both: the first/last segment leaves/enters along the socket's exact
-//   direction; the path starts and ends exactly on the sockets; the path is a
-//   continuous function of the endpoints (no flicker) away from the two
-//   documented discontinuities (near-touching collapse, head-on mirror line).
-// spline: a tangent-exact cubic — it must NOT collapse to a point-to-point
-//   line just because the sockets are axis-aligned; only true proximity
-//   collapses.
 
 type Pt = { x: number; y: number };
 type Mode = "diagonal" | "straight";
@@ -114,9 +100,7 @@ function checkInvariants(mode: Mode, c: Cfg) {
     expect(offGrid(a, grid), `heading seg ${i} ${label}`).toBeLessThan(TOL);
   }
 
-  // turns: diagonal — every turn ≤45 (off-grid stub junctions snap ≤22.5,
-  // which is under that). straight — turns are 90, with a limited ≤45 allowed
-  // (stub junctions of rotated arms); nothing in between may appear.
+  // turns: diagonal ≤45; straight 90, or ≤45 at an off-grid stub junction.
   for (let i = 1; i < pts.length - 1; i++) {
     const t = turnDeg(pts[i - 1], pts[i], pts[i + 1]);
     if (mode === "diagonal") {
@@ -193,10 +177,8 @@ function pathGap(a: Pt[], b: Pt[]): number {
   return worst;
 }
 
-// Sweeps chosen to cross walk-family boundaries: shallow→steep, in front →
-// behind, around a rotated source arm. Sweep lines stop short of exact
-// collinear head-on configs — the over/under loop choice on that line is the
-// one genuinely ambiguous (and documented) flip.
+// Sweeps crossing walk-family boundaries (shallow→steep, in front → behind, around a rotated source arm), stopping short
+// of the collinear head-on line.
 const SWEEPS: { sa: number | null; ta: number | null; from: Pt; to: Pt }[] = [
   { sa: null, ta: null, from: { x: 300, y: -250 }, to: { x: 300, y: 250 } },
   { sa: null, ta: null, from: { x: 300, y: 40 }, to: { x: -300, y: 40 } },
@@ -227,14 +209,10 @@ function checkContinuity(mode: Mode) {
         sa: sw.sa, ta: sw.ta,
       };
       const pts = route(mode, cfg);
-      // The straight-line collapse for near-touching sockets is the one
-      // documented discontinuity — don't measure across its boundary.
+      // Not measured across the near-touching collapse.
       const nearCollapse = Math.hypot(cfg.tx, cfg.ty) < STRAIGHT_THRESHOLD + 2;
       if (prev && !nearCollapse && pathGap(prev, pts) >= 10) {
-        // A large jump is sanctioned only as an equal-length topology swap:
-        // the router switches between two routes exactly where they cost the
-        // same (e.g. mirror loops around a behind-target). Anything else —
-        // the route length changing abruptly — is a routing bug.
+        // A large jump is allowed only as an equal-length route swap.
         const la = polyLen(prev), lb = polyLen(pts);
         expect(Math.abs(la - lb), `${mode} sweep ${JSON.stringify(sw)} step ${i} jumped between unequal routes (${la.toFixed(1)} vs ${lb.toFixed(1)})`)
           .toBeLessThan(Math.max(3, 0.02 * Math.max(la, lb)));
@@ -288,8 +266,7 @@ describe("spline", () => {
   }
 
   it("does not collapse for merely axis-aligned sockets (Conduit-below case)", () => {
-    // 0° conduit with a rotated conduit directly below: dx = 0 but the cable
-    // must still exit east as a curve, not become a point-to-point line.
+    // A 0° Conduit with a rotated Conduit directly below: dx = 0.
     const cu = parseCubic(spline({ sx: 0, sy: 0, tx: 0, ty: 250, sa: 0, ta: 270 }));
     expect(offGrid(cu!.exitDeg - 0, 360)).toBeLessThan(TOL);
     expect(offGrid(cu!.entryDeg - 270, 360)).toBeLessThan(TOL);
