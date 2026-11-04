@@ -358,7 +358,7 @@ export class EpochNode extends GraphNode {
   label: string;
   op: EpochOp;
   unit: EpochUnit = "s";
-  literals: Record<string, number> = { value: 0 };
+  literals: Record<string, number> = {};
   cachedResult: BroadcastResult = null;
   width = 190; height = 170;
 
@@ -367,7 +367,7 @@ export class EpochNode extends GraphNode {
     this.op = init?.op ?? "from";
     this.label = init?.label ?? "";
     if (init?.unit) this.unit = init.unit;
-    if (this.op === "from") { this.addInput("value", numListIn("Epoch")); this.addOutput("result", dateComboOut("Date")); }
+    if (this.op === "from") { this.literals.value = 0; this.addInput("value", numListIn("Epoch")); this.addOutput("result", dateComboOut("Date")); }
     else { this.addInput("value", dateComboIn("Date")); this.addOutput("result", numListOut("Epoch")); }
   }
 

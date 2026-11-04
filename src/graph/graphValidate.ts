@@ -6,6 +6,7 @@ import { ctorRegistry } from "./nodeCtorRegistry";
 import { opVocabByCtor } from "./opVocab";
 import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "./nodeInit";
 import { NAME_RE } from "./nodeNaming";
+import { literalFieldOf, restoreLiterals, type LiteralFieldHost } from "./literalFields";
 import {
   canConnect, SolenoidSocket, elementFamilyOf, latticeRank,
   type SocketDataType,
@@ -167,11 +168,19 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     };
     instances.set(sn.id, info);
 
+    // A value no field reads is dropped on load ([[inline-literal-maps#One field per input]]).
+    restoreLiterals(inst, sn);
+    const kept = { lit: (anyInst.literals ?? {}) as object, str: (anyInst.stringLiterals ?? {}) as object };
+    const unread = (k: string, map: "lit" | "str"): void =>
+      void issues.push({ line: at(name), node: name, message: `${map}:${k}: no field on ${sn.type} reads this value (its input's field is ${literalFieldOf(anyInst as unknown as LiteralFieldHost, k)}), so the loader would drop it.` });
+
     for (const k of Object.keys(sn.literals ?? {})) {
       if (!info.hasLiterals) {
         issues.push({ line: at(name), node: name, message: `lit:${k}: ${sn.type} takes no inline numeric literals (it declares no \`literals\` map), so the loader would silently drop this value.` });
       } else if (typeof sn.literals![k] !== "number") {
         issues.push({ line: at(name), node: name, message: `lit:${k} must be a number (got ${JSON.stringify(sn.literals![k])}). Non-numeric inline values use str:.` });
+      } else if (!(k in kept.lit)) {
+        unread(k, "lit");
       }
     }
     for (const k of Object.keys(sn.stringLiterals ?? {})) {
@@ -179,6 +188,8 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
         issues.push({ line: at(name), node: name, message: `str:${k}: ${sn.type} takes no inline text literals (it declares no \`stringLiterals\` map), so the loader would silently drop this value.` });
       } else if (typeof sn.stringLiterals![k] !== "string") {
         issues.push({ line: at(name), node: name, message: `str:${k} must be a string (got ${JSON.stringify(sn.stringLiterals![k])}).` });
+      } else if (!(k in kept.str)) {
+        unread(k, "str");
       }
     }
   }

@@ -42,7 +42,7 @@ Tests: `coerceInputs.test.ts`: a sweep constructs every catalog entry and fails 
 **What a card computes from is what it shows.** An unwired input has exactly one field, and that field names the one place its value lives and how it is read. The core holds the one table (`nodes/fields.rs`, `field_of(card class, key, declared rung)`), and every reader goes through it:
 
 - **The canvas** draws the field the table names (`literalFieldOf`, which asks the core over wasm), in every row host alike: the fixed rows, the extensible rows and the paired rows. A card that draws its own rows (Filter, Frame Filter and SUMIFS's criteria, Expect's In list) draws the field the table names for them.
-- **A body** reads an unwired input through it (`Call::unwired`, `Call::read`, `Call::read_num`): a number, a logical as TRUE or FALSE, text as keyed, a keyed value as its kind, or a bound as its rung's kind. A typed list reaches the body through the boundary as if wired; a list on a rung the boundary doesn't parse (Expect's In list) is read as its keyed text (`Call::csv_text`). The literal maps themselves are private to `nodes/mod.rs`, so a body can't read around the field.
+- **A body** reads an unwired input through it (`Call::unwired`, `Call::read`, `Call::read_num`): a number, a logical as TRUE or FALSE, text as keyed, a keyed value as its kind, or a bound as its rung's kind. A typed list reaches the body through the boundary as if wired; a list on a rung the boundary doesn't parse (Expect's In list) is read as its keyed text (`Call::csv_text`). The literal maps themselves are private to `nodes/fields.rs` (`fields::Saved`), so a body can't read around the field.
 - **Every restore** (a load, a composite's hydrate, a Flow model, a paste) puts the saved values on the rebuilt card through `restoreLiterals`, which drops each value its input's field doesn't read (`pruneLiterals`), so nothing survives in a map no field shows.
 
 The fields: `number` (the number field, `literals`), `logical` (the TRUE/FALSE checkbox Value Input's Boolean uses, `literals` as 1 or 0), `text` (`stringLiterals` as keyed), `csv` (a list keyed as comma-separated text), `keyed` (a wildcard slot's keyed text and kind, [[#Wildcard slots]]), `bound` (a range bound: the number field on a number rung, a date's text on a date rung, each kind keeping its own value so a card moving between the two keeps both, [[D120]] rangeBoundsTakeTheValuesKind) and `none` (wire-only). The rung decides the field unless the table names the card:
@@ -53,7 +53,7 @@ The fields: `number` (the number field, `literals`), `logical` (the TRUE/FALSE c
 
 A key with no input (a setting a mode's input takes over, a widget's own state) is the card's own field: a body reads it as saved and a prune leaves it.
 
-Tests: `seedsLiteralFields.test.ts`: every class's fresh defaults and every seed node, nested ones too, keep all their saved values through a restore; `fields.rs`'s own test pins the table's answers.
+Tests: `seedsLiteralFields.test.ts`: every class's fresh defaults and every seed node, nested ones too, keep all their saved values through a restore; `graphValidate.ts` names a saved value no field reads, and its catalog sweep holds every catalog leaf to that; `fields.rs`'s own test pins the table's answers.
 
 **Reopen if:** a card needs an unwired value that no field shows.
 

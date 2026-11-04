@@ -97,6 +97,12 @@ describe("validateGraph — semantics", () => {
     expect(issue?.message).toContain("silently drop");
   });
 
+  it("flags an inline literal in a map its input's field doesn't read", () => {
+    const { issues } = validateText(`A: KpiNode lit:options=1\n---\n{}`);
+    const issue = issues.find((i) => i.message.includes("lit:options"));
+    expect(issue?.message).toContain("field is text");
+  });
+
   it("flags a double-wired single-cable input", () => {
     // The grammar keeps only one `in<-` key per token map, so the double wire
     // is built straight on a SavedGraph.
