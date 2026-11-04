@@ -1,8 +1,5 @@
-// [[D114]] dateIsAKind, [[C137]] datesNeverSerials
-//! Every card handed dates wherever a date can be wired (the wildcard, table and date sockets): its frozen cases with
-//! their numbers there turned into dates and a table's Number columns into Date columns. No body may panic, and none
-//! may hand back an input's day as a plain number where the frozen answer held it. `DATE_FUZZ_REPORT=1` also lists
-//! the cases that now refuse or go blank, for review.
+// [[D114]] dateIsAKind, [[C137]] datesNeverSerials, [[date-values#Cards]]
+//! Every card's frozen cases, re-run with dates wherever a date can be wired.
 
 use serde_json::Value as Json;
 use solenoid_core::excel_functions::V;
@@ -61,7 +58,6 @@ fn leaks(want: &Cv, got: &Cv, days: &BTreeSet<u64>) -> bool {
         (Cv::V(a), Cv::V(b)) => v(a, b, days),
         (Cv::Cells(a), Cv::Cells(b)) => a.iter().zip(b.iter()).any(|(x, y)| leaks(x, y, days)),
         (Cv::Frame(a), Cv::Frame(b)) => a.columns.iter().zip(&b.columns).any(|(p, q)| {
-            // Describe's counts are counts, whatever a cell happens to hold.
             let counts = matches!(&*q.name, "count" | "blank" | "distinct");
             let hit = !counts
                 && q.ty == solenoid_core::frame::FrameColType::Number
@@ -94,7 +90,6 @@ fn every_card_takes_dates_where_they_can_be_wired() {
     let (mut panics, mut leaked, mut changed) = (Vec::new(), Vec::new(), Vec::new());
     for path in files {
         let kind = path.file_name().unwrap().to_str().unwrap().trim_end_matches(".json.gz").to_string();
-        // Cast to Number is the one way to a date's serial.
         if only.as_ref().is_some_and(|o| !o.contains(&kind)) || kind == "CastNode" {
             continue;
         }

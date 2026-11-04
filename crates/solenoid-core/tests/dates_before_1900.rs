@@ -1,8 +1,5 @@
-// [[D119]] datesBefore1900, [[C44]] dateSerials
-//! Days before 1900 are dates as days after it are. The anchors pin the days around serial 0 and a few far back, the
-//! answers checked against Python's proleptic Gregorian calendar. The sweeps lean on the calendar repeating every 400
-//! years (146,097 days, a whole number of weeks): every date function and every date card, handed the same days 400,
-//! 800 and 1,600 years back, must answer the same, its dates moved by those days and a year by those years.
+// [[D119]] datesBefore1900, [[C44]] dateSerials, [[date-values#Days before 1900]]
+//! Days before 1900: anchors around serial 0 and far back, and sweeps of the functions and cards 400-year cycles back.
 
 use serde_json::Value as Json;
 use solenoid_core::eval::{formula, Env};
@@ -290,7 +287,6 @@ fn every_date_function_answers_400_years_back_as_it_does_today() {
         }
     }
     assert!(bad.is_empty(), "{} differ:\n{}", bad.len(), bad.iter().take(30).cloned().collect::<Vec<_>>().join("\n"));
-    // Each call is asked on days it can answer, so the sweep holds answers, not one refusal against another.
     assert!(answered * 10 >= CALLS.len() * 5 * 8, "only {answered} answers");
 }
 
@@ -344,7 +340,6 @@ fn same_json(a: &Json, b: &Json) -> bool {
 
 #[test]
 fn every_date_card_answers_400_years_back_as_it_does_today() {
-    // Date Part's year moves with the years; Epoch counts from 1970 and Today/Now and Date Value read no wired date.
     let kinds = ["DatePartNode", "DateAddNode", "DateDiffNode", "WorkdaysNode", "WeekInfoNode", "DateTruncNode"];
     let mut bad = Vec::new();
     let mut checked = 0;

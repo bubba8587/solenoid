@@ -1,4 +1,4 @@
-// [[C136]] typesKnownAfterCalc
+// [[C136]] typesKnownAfterCalc, [[date-values#Representation]], [[date-values#Text and display]], [[date-values#Card types after a run]]
 import { solDate } from "../../src/graph/dateValue";
 import { isSolError } from "../../src/graph/errorValue";
 import { describe, it, expect, afterEach } from "vitest";
@@ -14,8 +14,6 @@ import { dateListSocket } from "../../src/graph/sockets";
 import { nodeOutputElemFamily } from "../../src/graph/components/valueDisplayFormat";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
 import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
-
-// A formula that hands back a date it was given answers a date, in a formula column and on the Formula card alike.
 
 const cubeOf = (columns: object[], rows: object[]): CubeValue => {
   const out = new CubeInputNode({ cubeText: JSON.stringify({ columns, rows }) }).data().cube;
@@ -49,7 +47,7 @@ describe("a formula column that hands back a date is a date column", () => {
   it("a sum of dates, and a column mixing dates with numbers, are #TYPE! where a date would be ([[D115]] datesArePoints)", () => {
     const cells = (expr: string) => cubeOf([...typed, { name: "out", expr }], rows).columns.find((c) => c.name === "out")!.cells;
     expect(cells("SUM(d)").every((v) => isSolError(v) && v.code === "#TYPE!")).toBe(true);
-    // Row B (n 5) takes its date, rows A and C their numbers: the date can't show in a Number column.
+    // Row B (n 5) takes its date, rows A and C their numbers.
     const mixed = cells("IF(@n > 2, @d, @n)");
     expect(isSolError(mixed[1]) && mixed[1].code).toBe("#TYPE!");
     expect([mixed[0], mixed[2]]).toEqual([2, 1]);

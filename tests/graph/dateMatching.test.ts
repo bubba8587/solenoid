@@ -1,5 +1,4 @@
-// [[D114]] dateIsAKind
-// A date matches the same date, never its serial and never another date: membership, tallies, matches and SWITCH.
+// [[D114]] dateIsAKind, [[date-values#Functions]]
 import { describe, it, expect } from "vitest";
 import { throughBoundary } from "./boundaryKit";
 import { IsInNode, TallyNode, XMatchNode } from "../../src/graph/nodes/list";

@@ -1,4 +1,4 @@
-// [[C137]] datesNeverSerials
+// [[C137]] datesNeverSerials, [[date-values#Functions]], [[date-values#Text and display]]
 import { solDate } from "../../src/graph/dateValue";
 import { describe, it, expect, afterEach } from "vitest";
 import type { View } from "../../src/graph/view";
@@ -20,8 +20,6 @@ import { MapTableNode, ReduceLambdaNode } from "../../src/graph/nodes/tableLambd
 import { ExpressionNode } from "../../src/graph/nodes/expression";
 import type { FrameValue } from "../../src/graph/frame";
 import { groupByFrame, pivotFrame, windowFrame, replaceValues } from "./coreVerbs";
-
-// A date never comes out as its serial number: a summary of dates that is still a date stays a Date column.
 
 const orders: FrameValue = {
   __frame: true,
@@ -182,7 +180,6 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
     expect(nodeOutputElemFamily(map.id, "result")).toBe("date");
     const text = new MapTableNode({ expr: "value & \"!\"" });
     expect(await run(text, [[table(), "table"]], (c) => c.cachedResult)).toEqual([["09-Dec-2025!"], ["19-Dec-2025!"]]);
-    // A fold over dates starts from a date: a plain 0 beside dates is a mix ([[D114]] dateIsAKind).
     const latest = new ReduceLambdaNode({ expr: "MAX(acc, value)" });
     const start = new Src(solDate(1), dateSocket);
     expect(await run(latest, [[table(), "table"], [start, "initial"]], (c) => c.cachedResult)).toEqual(solDate(46010));

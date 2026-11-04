@@ -184,7 +184,7 @@ fn check(rows: &[(&str, &str)]) {
     assert!(bad.is_empty(), "{}", bad.join("\n"));
 }
 
-/// Each row of `date-values.md` § Arithmetic.
+/// Each row of [[date-values#Arithmetic]].
 #[test]
 fn dates_through_every_operator_row() {
     check(&[
@@ -214,7 +214,7 @@ fn dates_through_every_operator_row() {
     ]);
 }
 
-/// Each class of `date-values.md` § Functions.
+/// Each class of [[date-values#Functions]].
 #[test]
 fn dates_through_every_function_class() {
     check(&[

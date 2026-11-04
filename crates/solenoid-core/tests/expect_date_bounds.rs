@@ -1,7 +1,5 @@
-// [[D120]] rangeBoundsTakeTheValuesKind, [[C137]] datesNeverSerials
-//! Expect's range check reads the kind of value it checks: a date against date bounds (typed as dates on the card, or
-//! wired), a number against number bounds. Its Min and Max sockets turn `date` when the value is a date
-//! (`ExpectNode.settleFollowers`), which is what the call's socket types say here.
+// [[D120]] rangeBoundsTakeTheValuesKind, [[C137]] datesNeverSerials, [[date-values#Cards]]
+//! Expect's range check over date and number bounds; the call's socket types are the ones the settle gives Min and Max.
 
 use serde_json::{json, Value as Json};
 use solenoid_core::excel_functions::V;
@@ -55,7 +53,6 @@ fn a_date_is_checked_against_typed_date_bounds() {
     assert_eq!(outcome(&after), Ok(vec!["range".to_string()]));
     let list = call("date", lits.clone(), IN_2026, json!([["in", [[d(date(2026, 1, 1)), d(date(2025, 12, 31))]]]]));
     assert_eq!(outcome(&list), Ok(vec!["range".to_string()]));
-    // The bounds are inclusive.
     let ends = call("date", lits, IN_2026, json!([["in", [[d(date(2026, 1, 1)), d(date(2026, 12, 31))]]]]));
     assert_eq!(outcome(&ends), Ok(vec![]));
 }
@@ -66,7 +63,6 @@ fn a_wired_date_bound_and_a_blank_one() {
     let wired =
         call("date", lits.clone(), ("", ""), json!([["in", [d(date(2026, 3, 15))]], ["min", [d(date(2026, 4, 1))]]]));
     assert_eq!(outcome(&wired), Ok(vec!["range".to_string()]));
-    // Nothing typed is no bound: the number bounds the card also keeps never read as days.
     let blank = call("date", lits, ("", ""), json!([["in", [d(date(2026, 3, 15))]]]));
     assert_eq!(outcome(&blank), Ok(vec![]));
 }

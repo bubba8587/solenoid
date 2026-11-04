@@ -1,6 +1,4 @@
-// [[D114]] dateIsAKind, [[C137]] datesNeverSerials
-// Frame Filter and List Filter compare a date as a day: a wired date, a typed date on a Date column, and a list of
-// dates filtered by a date.
+// [[D114]] dateIsAKind, [[C137]] datesNeverSerials, [[date-values#Cards]]
 import { describe, it, expect } from "vitest";
 import { throughBoundary } from "./boundaryKit";
 import { readFrame, type FrameRef } from "../../src/graph/frameBackend";
