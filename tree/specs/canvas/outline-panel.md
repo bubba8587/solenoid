@@ -8,14 +8,18 @@ tags: [spec, canvas]
 
 Serves [[A1]] visualGraphCalculator (focusing a node) and follows [[C52]] visibleSelection. It covers what the system does and blocks, and the decision each behavior serves.
 
-The Outline is the Navigator's lower section: the list of every node on the open level (the main canvas, or the composite drilled into), mirroring group membership and collapse state. The Files section above it, and how the two share the pane, are [[workspace-tree]]. Format Controllers are left out entirely. The code is `OutlinePanel.tsx`.
+The Outline is the Navigator's lower section: the list of every node on the open level (the main canvas, or the composite drilled into), mirroring group membership and collapse state. The Files section above it, and how the two share the pane, are [[workspace-tree]]. Format Controllers are left out entirely.
+
+Code: `OutlinePanel.tsx`.
 
 ## The list
 
 - **Unfiltered, it is a tree:** top-level nodes, and under each expanded group its members, indented 18 px per level, one icon slot, so a member's dot sits under its group's label.
 - **A search query or a filter chip switches to a flat list.** A query matches the display name and the catalog name (`nodeName`, the same string the card's hover hint shows).
 - **Filter and sort sit in one menu** behind the funnel inside the search field, beside the every-document globe, so they cost the panel no rows: Inputs and Displays as toggles, then Sort by Position or A–Z. The funnel wears the accent while a filter is on, and the field's placeholder names it (Search inputs…).
-- **The filters are Inputs and Displays.** A node is an input when it is a source by either measure: it has no input sockets but has an output, so it counts before it is wired; or nothing is wired into it while its output is wired onward, which stops being true the moment an input is wired.
+- **The filters are Inputs and Displays.** A node is an input when it is a source by either measure:
+  - it has no input sockets but has an output, so it counts before it is wired;
+  - or nothing is wired into it while its output is wired onward, which stops being true the moment an input is wired.
 - **Sorting** is Position (the default) or Alphabetical, remembered under `solenoid.navSort`. Position reads top to bottom in row bands of 120 world units, then left to right; the band is deliberately generous so the order doesn't react to small vertical jitter. Alphabetical compares display names numerically and ignoring case.
 - **A group row reads as a container:** its own color as a 24% tint fill inside a full 1 px edge at 55%, never an accent stripe. The edge is an inset shadow, so a group row is exactly as tall as a node row.
 - **Two columns.** Every control's box sits one gutter in from the panel edge and every text or icon one pad inside its box; a node's dot is centered in the chevron's slot, so group and node labels share one column.
