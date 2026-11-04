@@ -1,6 +1,4 @@
-// [[D99]] rustIsSpec
-// Feeds every catalog card random values of its sockets' types, so the recorder (tests/setup/nodeRecorder.ts) freezes
-// each body on more than the hand-written tests reach. Runs only while recording: `FREEZE_NODES=1`.
+// [[D99]] rustIsSpec, [[node-bodies#Freezing]]
 import { describe, it } from "vitest";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 import { throughBoundary } from "./boundaryKit";

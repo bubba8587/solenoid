@@ -1,6 +1,5 @@
-//! [[D99]] rustIsSpec: every card body on the core answers as its frozen TypeScript did (`fixtures/core/nodes/`,
-//! frozen by `scripts/freeze-nodes.mjs`). A class with no body on the core is skipped; one with a body must answer
-//! every frozen case. `NODES=ArithmeticNode,MathFXNode cargo test --test nodes` runs only those.
+// [[D99]] rustIsSpec, [[node-bodies#Checks]]
+//! Every card body on the core against its frozen cases (`fixtures/core/nodes/`), natively.
 
 use serde_json::Value as Json;
 use solenoid_core::excel_functions::V;

@@ -1,7 +1,4 @@
-// [[C130]] rustCore, [[C120]] linearWork
-// A big frame or list crosses between JavaScript and the core once: the core keeps it under an id for as long as its
-// JavaScript object lives, and the same object crossing again sends the id alone (`heldValues.ts`, `columnar::keep`;
-// node-bodies.md § The call).
+// [[C130]] rustCore, [[C120]] linearWork, [[node-bodies#The call]]
 import { describe, it, expect } from "vitest";
 import { nodeOnCore } from "../../src/graph/nodeOnCore";
 import { heldId } from "../../src/graph/heldValues";

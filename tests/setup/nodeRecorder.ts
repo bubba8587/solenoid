@@ -1,7 +1,4 @@
-// [[D99]] rustIsSpec, [[C130]] rustCore
-// FREEZE_NODES=1 records every card body's call while the suite runs: the class, its saved fields, the inputs its body
-// saw (after arrival coercion), what it answered or threw, and the fields it set on itself for its component. Each
-// worker appends to .dev/node-calls/<pid>.jsonl; `node scripts/freeze-nodes.mjs` folds them into fixtures/core/nodes/.
+// [[D99]] rustIsSpec, [[C130]] rustCore, [[node-bodies#Freezing]]
 import { afterAll, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";

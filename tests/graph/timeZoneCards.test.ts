@@ -7,9 +7,7 @@ import { TimeZoneConvertNode, WorldClockNode } from "../../src/graph/nodes/date"
 // Both sides take and answer dates ([[D114]] dateIsAKind); the cases compare the instants.
 const convertZone = (serial: number, from: string, to: string) => dateSerialOf(coreFunction("TIMEZONECONVERT")!(solDate(serial), from, to));
 
-// The two zone cards over real zones: each side of DST transitions, offset zones, aliases, case variants and bad
-// names. These calls are also the cases the cards' bodies on the core are held to (fixtures/core/nodes/), which is
-// where the native build's bundled tzdb meets Intl, so they keep to zones and instants on which the two releases agree.
+// The zone cards' calls are frozen cases too, so they keep to zones both tzdb releases agree on ([[node-bodies#Checks]]).
 const H = 3600000;
 const M = 60000;
 const DAY = 86400000;

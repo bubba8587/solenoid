@@ -1,8 +1,4 @@
-// [[D99]] rustIsSpec, [[C130]] rustCore
-// Every card body on the core, through the wasm module the app runs, answers its frozen cases (fixtures/core/nodes/,
-// frozen by scripts/freeze-nodes.mjs). `crates/solenoid-core/tests/nodes.rs` holds the native build to the same cases.
-// FREEZE_CORE=nodes answers every frozen case again through the core and rewrites the outputs and shown fields that
-// changed, as the recorder writes them: a change in behavior the cases' tests are gone for ([[D99]] rustIsSpec).
+// [[D99]] rustIsSpec, [[C130]] rustCore, [[node-bodies#Freezing]], [[node-bodies#Checks]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -68,8 +64,7 @@ describe("card bodies on the core answer as frozen", () => {
     it(kind, () => {
       const bad: string[] = [];
       let rewritten = 0;
-      // `tests/nodes.rs` replays every case natively, outputs and shown fields; here every 25th case of each class
-      // (all of a small class's, and all while refreezing) shows the wasm build agrees.
+      // Every 25th case of each class; all of a small class's, and all while refreezing.
       const sampled = REFREEZE || cases.length <= 25 ? cases : cases.filter((_, i) => i % 25 === 0);
       for (const c of sampled) {
         if (c.unstable) continue;
@@ -113,12 +108,11 @@ describe("card bodies on the core answer as frozen", () => {
             const got = shownWire(v, out, c.result.out);
             if (JSON.stringify(want) !== JSON.stringify(got)) { (c.display ??= {})[field] = got; rewritten++; }
           }
-          // A field the case froze that the core no longer shows goes, or only the native check would trip on it.
+          // A field the case froze that the core no longer shows goes.
           for (const field of Object.keys(c.display ?? {})) {
             if (!(field in (r.display ?? {}))) { delete (c.display as Record<string, unknown>)[field]; rewritten++; }
           }
-          // A field the core now shows that no case froze is recorded too, or only the native check
-          // (`tests/nodes.rs`, which compares every shown field) would ever see it.
+          // A field the core now shows that no case froze is recorded too.
           for (const [field, v] of Object.entries(r.display ?? {})) {
             if ([c.display, c.prior, init].some((o) => o && field in o)) continue;
             const u = v as { undef?: true } | null;

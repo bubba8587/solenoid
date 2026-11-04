@@ -79,7 +79,7 @@ Each declaration in the map, and the spec that governs it:
 | the class, `INIT_FIELD_ORDER` | the card's sockets and saved fields, in the save's order | this spec, [[save-format]] |
 | `data() = nodeOnCore` | the node's work is done in Rust | [[node-bodies]] |
 | `inputRoles`, literal maps, `unitAware`, `passthrough()`, `noWidenInputs` | which roles its sockets take, which values it types inline, whether it sees units, which inputs it hands on unchanged, whether a Cube arrives as is | this spec, [[inline-literal-maps]], [[unit-flow]], [[compute-pass]] |
-| `coreFields` | run-time fields the body reads that no save keeps (a resolved angle mode) | [[node-bodies#The call (`nodeOnCore.ts`, `engine_node`)]] |
+| `coreFields` | run-time fields the body reads that no save keeps (a resolved angle mode) | [[node-bodies#The call]] |
 | `nodes::run`, `DIRECT` | the Rust body's dispatch by class name; the classes the engine calls in Rust with no JavaScript between | [[node-bodies]], [[graph-core#Direct calls]] |
 | `kind.ts`, the component, the registry | the card's accent, its face, and the class-to-component table persistence also reads | [[components]] |
 | the catalog leaf, `OP_META`, `NODE_OPS`, `NODE_EXCEL` | its name, description, search words and formula name; an op family's ops; its Excel names | [[add-menu]] |

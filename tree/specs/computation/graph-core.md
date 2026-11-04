@@ -286,7 +286,7 @@ flowchart LR
 - **Values live where they were made** (`value.rs`).
   - A value on a cable is one shared cell holding the form its producer made: a card value (`Cv`, with a table's unit beside it) or a JavaScript object. The other form is made once a reader of the other kind first asks for it, and kept beside the first, so every reader of that kind gets the same one.
   - A direct card's inputs are core values; a JavaScript card's are objects.
-  - Converting is the card wire (`nodeWire.ts`: `toCore`, `fromCore`, and `fromCoreBin` for a big flat frame or list, which crosses as buffers, [[node-bodies]] § The call): one host call per value converted, never per cell, and a big value once. The same JavaScript object crossing again goes as the id the core keeps it under.
+  - Converting is the card wire (`nodeWire.ts`: `toCore`, `fromCore`, and `fromCoreBin` for a big flat frame or list, which crosses as buffers, [[node-bodies#The call]]): one host call per value converted, never per cell, and a big value once. The same JavaScript object crossing again goes as the id the core keeps it under.
   - An output that is one of the card's inputs as it came is that very cell.
   - Errors keep their origin on the wire ([[E9]] errorsKeepOrigin).
 - **The boundary on core values** (`boundary_core.rs`, held natively to every frozen arrival and tagging case, `tests/boundary_core.rs`). What only the app knows stays a host call, made only when a value needs it: a lazy frame's collect, a frame ref's format picks.
