@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C86]] membershipByGesture
+// [[B12]] losslessSaves, [[C86]] membershipByGesture, [[B18]] safeToShare
 import type { GraphEditor } from "./graphEditor";
 import { GraphConnection, GraphNode } from "./graphModel";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "./schemes";
@@ -10,6 +10,31 @@ import { nodeNameStore } from "./nodeNameStore";
 import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SideTables } from "./savedNodeBody";
 import { PlaceholderNode, placeholderFor } from "./nodes/placeholder";
 import { reconcileFcs } from "./fcReconcile";
+import { foreignCardStore, type ForeignMark } from "./foreignCardStore";
+import { docMetaStore } from "./docMetaStore";
+import { networkAllowed } from "./connectionStore";
+import { scriptsAllowed } from "./scriptGate";
+
+/** What a card copied here still has to ask for wherever it is pasted: whatever this foreign document's user has
+ *  not allowed, beside what the card itself still asks. */
+function copiedMark(id: string): ForeignMark | undefined {
+  const own = foreignCardStore.get(id);
+  const doc: ForeignMark = docMetaStore.isForeign()
+    ? { ...(scriptsAllowed() ? {} : { scripts: true as const }), ...(networkAllowed() ? {} : { network: true as const }) }
+    : {};
+  const mark: ForeignMark = { ...doc, ...own };
+  return mark.scripts || mark.network ? mark : undefined;
+}
+
+/** A pasted composite's inner cards carry its mark, since the foreign document marked none of them. */
+function markInner(node: GraphNode, mark: ForeignMark): void {
+  const inner = (node as unknown as { internalEditor?: GraphEditor<Schemes> }).internalEditor;
+  if (!inner) return;
+  for (const n of inner.getNodes()) {
+    foreignCardStore.set(n.id, { ...mark, ...foreignCardStore.get(n.id) });
+    markInner(n, mark);
+  }
+}
 
 // A snapshot taken at copy time, so a later edit or delete of the source never changes what pastes.
 interface ClipboardEntry {
@@ -54,6 +79,8 @@ export function copySet(editor: GraphEditor<Schemes>): SolenoidNode[] {
 
 function snapshotEntry(n: GraphNode, x: number, y: number): ClipboardEntry {
   const body = savedNodeBody(n);
+  const foreign = copiedMark(n.id);
+  if (foreign) body.foreign = foreign; else delete body.foreign;
   const sockets = n instanceof PlaceholderNode ? { inputs: Object.keys(n.inputs), outputs: Object.keys(n.outputs) } : undefined;
   return { id: n.id, Ctor: n.constructor as ClipboardEntry["Ctor"], body: { ...body, init: structuredClone(body.init) }, ...(sockets ? { sockets } : {}), x, y };
 }
@@ -173,6 +200,7 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
       const hydrate = (clone as unknown as { hydrate?: (r: typeof reg) => Promise<void> }).hydrate;
       if (typeof hydrate === "function") await hydrate(reg);
     }
+    for (const { clone } of toAdd) { const mark = foreignCardStore.get(clone.id); if (mark) markInner(clone, mark); }
     restoreSideTables(clip.side, (id) => oldToNew.get(id));
     toAdd.forEach(({ clone }, idx) => selectNode(clone.id, idx > 0));
     for (const conn of clip.connections) {

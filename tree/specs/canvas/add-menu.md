@@ -72,6 +72,7 @@ mindmap
 | `hideOpsMark` | Hides the `{ }` mark while keeping the ops in `hiddenOps` and in search. |
 | `excel` | The node's own Excel equivalents (`ExcelEquiv`: `excel`, `syntax`, and a `parity` and `note` that override the leaf's for that one function). The Function Reference generates from these; none means a Solenoid-native node. |
 | `keywords` | Space-separated search words, matched by search and never shown ([[#A row's name and its search words]]). |
+| `tags` | Names the card answers to as if it wore them ("mean" for AVERAGE), never shown: search scores a tag as one of the row's names, a little above a hidden op that only happens to wear the word, so "mean" lists AVERAGE before Fill: Mean. Kept for the one card a word means; a word several cards share stays in `keywords`. |
 | `fx` | The formula names the leaf answers to when the despaced label cannot be its name, because of punctuation or because one node splits into several functions. |
 
 ## Building the catalog

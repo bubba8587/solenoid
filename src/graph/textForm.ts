@@ -41,6 +41,16 @@ function fromCore(r: string): string {
   return r;
 }
 
+/** `next` (a rewrite read back from text, which carries no card marks) with each card someone else wrote still marked,
+ *  matched by the name the text form gives it ([[B18]] safeToShare): a rewrite never clears what a card still asks. */
+export function keepCardTrust(current: SavedGraph, next: SavedGraph): SavedGraph {
+  const idToName = assignNames(current.nodes);
+  const marks = new Map<string, NonNullable<SavedNode["foreign"]>>();
+  for (const n of current.nodes) if (n.foreign) marks.set(idToName.get(n.id) ?? n.id, n.foreign);
+  if (marks.size === 0) return next;
+  return { ...next, nodes: next.nodes.map((n) => { const m = marks.get(n.name ?? n.id); return m ? { ...n, foreign: { ...m, ...n.foreign } } : n; }) };
+}
+
 /** The save a text holds, read on the core (`text_form.rs`). */
 export function readTextForm(text: string): SavedGraph {
   return JSON.parse(fromCore(textFormRead(text, CURRENT_SAVE_VERSION))) as SavedGraph;

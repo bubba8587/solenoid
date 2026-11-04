@@ -14,8 +14,9 @@ import { appThemeStore } from "./appTheme";
 import { useRenderMode, renderModeStore } from "./renderMode";
 import { supportsHtmlInCanvas } from "./htmlCanvasSupport";
 import { docMetaStore } from "./docMetaStore";
-import { networkAllowed, allowNetwork } from "./connectionStore";
-import { scriptsAllowed, allowScripts } from "./scriptGate";
+import { networkWaits, allowNetwork } from "./connectionStore";
+import { foreignCardStore } from "./foreignCardStore";
+import { scriptsWait, allowScripts } from "./scriptGate";
 import { SwatchGrid } from "./components/SwatchGrid";
 import "./Settings.css";
 
@@ -150,7 +151,8 @@ function FolderRow({ field }: { field: SettingField }) {
 function NetworkDocRow() {
   useSyncExternalStore(docMetaStore.subscribe, docMetaStore.version);
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
-  if (!docMetaStore.isForeign() || networkAllowed()) return null;
+  useSyncExternalStore(foreignCardStore.subscribe, foreignCardStore.version);
+  if (!networkWaits()) return null;
   return (
     <div className="solenoid-settings__row solenoid-settings__row--folder">
       <span className="solenoid-settings__row-text">
@@ -166,12 +168,13 @@ function NetworkDocRow() {
 
 function ScriptsDocRow() {
   useSyncExternalStore(docMetaStore.subscribe, docMetaStore.version);
-  if (scriptsAllowed()) return null;
+  useSyncExternalStore(foreignCardStore.subscribe, foreignCardStore.version);
+  if (!scriptsWait()) return null;
   return (
     <div className="solenoid-settings__row solenoid-settings__row--folder">
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">Scripts in this document</span>
-        <span className="solenoid-settings__row-help">Someone else wrote this document, so its scripts wait until you let them run.</span>
+        <span className="solenoid-settings__row-help">Someone else wrote these scripts, so they wait until you let them run.</span>
       </span>
       <span className="solenoid-settings__folder-actions">
         <button type="button" className="solenoid-settings__store-btn" onClick={() => void allowScripts()}>Run</button>

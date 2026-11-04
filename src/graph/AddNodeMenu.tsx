@@ -49,6 +49,8 @@ export type NodeCatalogEntry = {
   hideOpsMark?: boolean;
   excel?: ExcelEquiv[];
   keywords?: string;
+  /** Names the card answers to as if it wore them ("mean" for AVERAGE): a search for one finds this card first. */
+  tags?: string[];
   fx?: string[];
   /** A generated row that places what another row places (the host, or `host__op-op`); search shows one of them. */
   places?: string;

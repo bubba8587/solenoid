@@ -8,9 +8,12 @@ import "./WebImage.css";
 
 const REMOTE = /^\s*(?:https?:)?\/\//i;
 
-export function WebImage({ src, alt, className, style }: { src: string; alt: string; className?: string; style?: CSSProperties }) {
-  const allowed = useNetworkGrant();
-  const held = !allowed && REMOTE.test(src);
+/** `nodeId` is the card the picture belongs to; `held` is an image value its card held ([[B18]] safeToShare). */
+export function WebImage({ src, alt, className, style, nodeId, held: valueHeld }: {
+  src: string; alt: string; className?: string; style?: CSSProperties; nodeId?: string; held?: boolean;
+}) {
+  const allowed = useNetworkGrant(nodeId);
+  const held = REMOTE.test(src) && (!allowed || valueHeld === true);
   useEffect(() => { if (held) askNetwork(`image:${src}`); }, [held, src]);
   if (held) {
     return (

@@ -83,7 +83,7 @@ A document opened or imported from outside the app is **foreign**, and its conne
 - allowed: the card proceeds;
 - not allowed: the card records itself as gated, and on the next tick, once every gated card has registered, one sticky warning asks "This document connects to N services. Allow it to fetch?" with an **Allow** button. The prompt shows once per document.
 
-Web pictures are fetches too. While the document may not fetch, an Image card's or a Report's image value from a web address shows a dashed "Web image" box (`components/WebImage.tsx`), and rendered note markdown holds back every web `src`, `srcset` and `poster` and any style with a `url(…)` (`noteHtml.ts`); each holder joins the one prompt through `askNetwork`, which counts it without touching any card's state, so a render may ask. A `data:` picture shows at once.
+Web pictures are fetches too. While the document may not fetch, an Image card's or a Report's image value from a web address shows a dashed "Web image" box (`components/WebImage.tsx`), and rendered note markdown holds back every web `src`, `srcset` and `poster` and any style with a `url(…)` (`noteHtml.ts`); an image value its card held arrives `held` and stays held wherever it shows, so a card pasted out of a foreign document ([[script-sandbox#A document someone else wrote]]) keeps its picture back in the user's own Report too; each holder joins the one prompt through `askNetwork`, which counts it without touching any card's state, so a render may ask. A `data:` picture shows at once.
 
 `allowNetwork()` (the Allow button, or Settings, Data) saves the grant on the document's metadata and calls `refreshAllConnections()`. Importing a file clears any grant the file itself carries, so a shared file cannot skip the prompt.
 

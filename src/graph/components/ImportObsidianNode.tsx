@@ -131,9 +131,9 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   const tex = useKatexReady(); // math re-renders once KaTeX lands
-  const net = useNetworkGrant();
+  const net = useNetworkGrant(data.id);
   const bodyHtml = useMemo(
-    () => sanitizeNoteHtml(renderNoteMarkdown(renderBody || "")),
+    () => sanitizeNoteHtml(renderNoteMarkdown(renderBody || ""), data.id),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [renderBody, tex, net],
   );

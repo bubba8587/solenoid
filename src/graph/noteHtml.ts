@@ -6,6 +6,7 @@ import DOMPurify from "dompurify";
 import { useSyncExternalStore } from "react";
 import { docMetaStore } from "./docMetaStore";
 import { settingsStore } from "./settingsStore";
+import { foreignCardStore } from "./foreignCardStore";
 import { askNetwork, networkAllowed } from "./connectionStore";
 
 const REMOTE = /^\s*(?:https?:)?\/\//i;
@@ -37,10 +38,11 @@ function install(): void {
   });
 }
 
-/** Rendered note HTML, made safe to insert. Re-render when `networkAllowed()` turns true (`useNetworkGrant`). */
-export function sanitizeNoteHtml(html: string): string {
+/** Rendered note HTML, made safe to insert; `nodeId` names the card it renders for. Re-render when the grant arrives
+ *  (`useNetworkGrant`). */
+export function sanitizeNoteHtml(html: string, nodeId?: string): string {
   install();
-  _holding = !networkAllowed();
+  _holding = !networkAllowed(nodeId);
   _held = 0;
   try {
     return DOMPurify.sanitize(html);
@@ -51,8 +53,9 @@ export function sanitizeNoteHtml(html: string): string {
 }
 
 /** Whether this document may fetch, for a memo of sanitized HTML to re-run on when the grant arrives. */
-export function useNetworkGrant(): boolean {
+export function useNetworkGrant(nodeId?: string): boolean {
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
   useSyncExternalStore(docMetaStore.subscribe, docMetaStore.version);
-  return networkAllowed();
+  useSyncExternalStore(foreignCardStore.subscribe, foreignCardStore.version);
+  return networkAllowed(nodeId);
 }

@@ -109,9 +109,9 @@ export function ReportOverlay() {
   usePendingDraft(!!node && pageName !== node.pageName, () => void commitPageName());
 
   const tex = useKatexReady();
-  const net = useNetworkGrant();
+  const net = useNetworkGrant(nodeId ?? undefined);
   const bodyHtml = useMemo(
-    () => sanitizeNoteHtml(renderNoteMarkdown(previewText || "")),
+    () => sanitizeNoteHtml(renderNoteMarkdown(previewText || ""), nodeId ?? undefined),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [previewText, tex, net],
   );
@@ -119,7 +119,7 @@ export function ReportOverlay() {
   const sourceRef = useRef<HTMLTextAreaElement>(null);
 
   const noteHtml = useMemo(
-    () => note ? sanitizeNoteHtml(renderNoteMarkdown(parseNoteFrontmatter(note.body).body || "")) : "",
+    () => note ? sanitizeNoteHtml(renderNoteMarkdown(parseNoteFrontmatter(note.body).body || ""), note.id) : "",
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [note, note?.body, tex, net],
   );

@@ -10,6 +10,7 @@ import { standoffStore, type StandoffEnd } from "./standoffs";
 import { pinStore, type Pin } from "./pinStore";
 import { commentStore, type SavedCommentData } from "./commentStore";
 import { frameFormatStore, type FrameColumnFormat } from "./frameFormatStore";
+import { foreignCardStore, type ForeignMark } from "./foreignCardStore";
 
 /** Everything a save keeps about one node besides its id, name and position; the main canvas and a composite's internals share it. */
 export interface SavedNodeBody {
@@ -22,6 +23,8 @@ export interface SavedNodeBody {
   flipped?: boolean;
   // CardSections folded or opened by hand, by label; true is open.
   sections?: Record<string, boolean>;
+  /** Someone else wrote this card and the user has not yet allowed what it does ([[B18]] safeToShare). */
+  foreign?: ForeignMark;
 }
 
 export function savedNodeBody(n: GraphNode): SavedNodeBody {
@@ -38,11 +41,14 @@ export function savedNodeBody(n: GraphNode): SavedNodeBody {
   if (socketFlipStore.get(n.id)) body.flipped = true;
   const sections = sectionFoldStore.all(n.id);
   if (sections && Object.keys(sections).length > 0) body.sections = { ...sections };
+  const foreign = foreignCardStore.get(n.id);
+  if (foreign) body.foreign = { ...foreign };
   return body;
 }
 
 /** The load half: the card state a saved body carries, written back onto the live node's stores. */
-export function restoreNodeState(liveId: string, sn: Pick<SavedNodeBody, "size" | "collapsed" | "flipped" | "sections">): void {
+export function restoreNodeState(liveId: string, sn: Pick<SavedNodeBody, "size" | "collapsed" | "flipped" | "sections" | "foreign">): void {
+  if (sn.foreign && typeof sn.foreign === "object") foreignCardStore.set(liveId, sn.foreign);
   if (sn.size) nodeSizeStore.set(liveId, { ...sn.size });
   if (sn.collapsed) collapseStore.set(liveId, true);
   if (sn.flipped) socketFlipStore.set(liveId, true);

@@ -194,9 +194,9 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   const tex = useKatexReady();
-  const net = useNetworkGrant();
+  const net = useNetworkGrant(data.id);
   const bodyHtml = useMemo(
-    () => enableTaskCheckboxes(sanitizeNoteHtml(renderNoteMarkdown(renderBody || "")), rendered === body),
+    () => enableTaskCheckboxes(sanitizeNoteHtml(renderNoteMarkdown(renderBody || ""), data.id), rendered === body),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [renderBody, rendered, body, tex, net],
   );

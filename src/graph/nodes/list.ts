@@ -1443,7 +1443,7 @@ export type ReduceOp =
 
 export const REDUCE_OP_META = {
   sum:     { label: "SUM",     description: "Sums all values. Excel: `SUM`." },
-  avg:     { label: "AVERAGE", description: "Arithmetic mean. Excel: `AVERAGE`.", keywords: "mean" },
+  avg:     { label: "AVERAGE", description: "Arithmetic mean. Excel: `AVERAGE`.", tags: ["mean"] },
   min:     { label: "MIN",     description: "Smallest value. Excel: `MIN`." },
   max:     { label: "MAX",     description: "Largest value. Excel: `MAX`." },
   count:   { label: "COUNT",   description: "Number of values. Excel: `COUNT`." },
@@ -1469,7 +1469,7 @@ export const REDUCE_OP_META = {
   sem:     { label: "SEM",     description: "Standard error of the mean: sample stdev ÷ `√n`. scipy `sem`, or `sd(x)/sqrt(n)` in R." },
   cv:      { label: "CV",      description: "Coefficient of variation: sample stdev ÷ mean. scipy `variation`, or `sd(x)/mean(x)` in R." },
   rms:     { label: "RMS",     description: "Root mean square: √ of the mean of the squares." },
-} satisfies Record<ReduceOp, { label: string; description: string; fx?: string; keywords?: string }>;
+} satisfies Record<ReduceOp, { label: string; description: string; fx?: string; keywords?: string; tags?: string[] }>;
 
 function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
   if (isDimensionless(dim)) return DIMENSIONLESS;

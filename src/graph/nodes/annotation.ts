@@ -25,6 +25,7 @@ import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { ColumnPicks, PluginColumnTypes } from "../pluginColumnTypes";
 import type { NestedTables } from "../cubeTypes";
 import type { ImageValue } from "../imageValue";
+import { requestNetwork } from "../connectionStore";
 import type { SvgValue } from "../svgValue";
 import {
   parseNoteFrontmatter,
@@ -315,7 +316,8 @@ export class ImageNode extends GraphNode {
   data(): { image: ImageValue | null } {
     const src = this.src;
     if (!src) return { image: null };
-    return { image: { __image: true, src, height: this.height, alt: this.label, title: this.label } };
+    const held = /^\s*(?:https?:)?\/\//i.test(src) && !requestNetwork(this.id, this);
+    return { image: { __image: true, src, height: this.height, alt: this.label, title: this.label, ...(held ? { held: true as const } : {}) } };
   }
 }
 

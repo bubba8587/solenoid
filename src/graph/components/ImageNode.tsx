@@ -130,7 +130,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
       {!collapsed && (
         <div className="solenoid-image__content">
           {src ? (
-            <WebImage className="solenoid-image__img" src={src} alt={data.label || "image"} style={{ height }} />
+            <WebImage nodeId={data.id} className="solenoid-image__img" src={src} alt={data.label || "image"} style={{ height }} />
           ) : (
             <button
               type="button"

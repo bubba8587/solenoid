@@ -312,3 +312,10 @@ describe("Add-menu search — the top hit for common queries", () => {
     expect(CATALOG_TO_EXCEL.get("linest")).not.toEqual(expect.arrayContaining(["SLOPE"]));
   });
 });
+
+describe("tags: names a card answers to on purpose", () => {
+  it("\"mean\" finds AVERAGE first, above Fill: Mean, which only wears the word", () => {
+    expect(search("mean")[0]?.label).toBe("AVERAGE");
+    expect(search("mean").map((l) => l.label)).toContain("Fill: Mean");
+  });
+});

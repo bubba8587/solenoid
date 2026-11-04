@@ -9,7 +9,7 @@ import { revealAddedNodes } from "./aiReveal";
 import { diffLines, hasChanges, type DiffLine } from "./textDiff";
 import { serializeGraph, loadGraph, type SavedGraph } from "./persistence";
 import { CURRENT_SAVE_VERSION } from "./persistenceCore";
-import { writeTextForm, readTextForm } from "./textForm";
+import { writeTextForm, readTextForm, keepCardTrust } from "./textForm";
 import { commandRecents } from "./commandRecents";
 import { paletteStore } from "./paletteStore";
 import { docMetaStore } from "./docMetaStore";
@@ -113,7 +113,8 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
       return;
     }
     const before = new Set(readTextForm(aiState.base).nodes.map((n) => n.name ?? n.id));
-    const graph = readTextForm(aiState.newText);
+    const current = serializeGraph();
+    const graph = current ? keepCardTrust(current, readTextForm(aiState.newText)) : readTextForm(aiState.newText);
     graph.meta = docMetaStore.keepTrust(graph.meta);
     const ok = await loadGraph(graph);
     if (!aliveRef.current) return;

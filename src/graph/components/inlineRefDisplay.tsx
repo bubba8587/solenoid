@@ -201,9 +201,9 @@ function CollapsibleFigure({ title, children, defaultOpen = true }: {
 
 function DocumentEmbedBody({ value }: { value: DocumentValue }) {
   const tex = useKatexReady();
-  const net = useNetworkGrant();
+  const net = useNetworkGrant(value.sourceId);
   const html = useMemo(() => {
-    const html = sanitizeNoteHtml(renderNoteMarkdown(parseNoteFrontmatter(value.body).body));
+    const html = sanitizeNoteHtml(renderNoteMarkdown(parseNoteFrontmatter(value.body).body), value.sourceId);
     // Each value as the producing Report shows it, by its Format Controller.
     const src = value.sourceId;
     return substituteRefCodes(html, (name) => name in value.refs
@@ -245,6 +245,7 @@ function figureFor(
           <WebImage
             className="solenoid-ref-image"
             src={value.src}
+            held={value.held}
             alt={value.alt || refKey}
             style={{ height: value.height, maxWidth: "100%", objectFit: "contain" }}
           />
