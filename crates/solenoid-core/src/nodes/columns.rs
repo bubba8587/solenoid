@@ -890,7 +890,11 @@ fn placed<T>(
     if after.is_empty() || replaced {
         return Ok((cols, last));
     }
-    let Some(anchor) = cols.iter().position(|c| name_of(c) == after) else {
+    // The anchor is one of the other columns; a new column named as its own anchor stays where it landed, last.
+    let Some(anchor) = cols[..last].iter().position(|c| name_of(c) == after) else {
+        if name_of(&cols[last]) == after {
+            return Ok((cols, last));
+        }
         return Err(err(ErrorCode::Ref, format!("No column \"{after}\" to place after")));
     };
     let fresh = cols.pop().expect("a new column was added");
@@ -1322,4 +1326,18 @@ fn formula_columns(cube: Cube, exprs: &[Option<String>]) -> Result<Cv, V> {
         }
     }
     Ok(cube_from_columns(cols))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::placed;
+
+    #[test]
+    fn a_new_column_named_as_its_own_anchor_stays_last() {
+        let (cols, at) = placed(vec!["a", "b", "x"], false, "x", |s| s).unwrap();
+        assert_eq!((cols, at), (vec!["a", "b", "x"], 2));
+        let (cols, at) = placed(vec!["a", "b", "x"], false, "a", |s| s).unwrap();
+        assert_eq!((cols, at), (vec!["a", "x", "b"], 1));
+        assert!(placed(vec!["a", "x"], false, "zz", |s| s).is_err());
+    }
 }
