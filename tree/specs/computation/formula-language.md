@@ -542,7 +542,7 @@ Tests:
 
 **One comparison** ([[D124]] comparisonFunctions). The six comparison operators, the functions IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST and BETWEEN, and the Comparison and Between cards all answer through one kernel, `compare` (`compare.rs`), so none of them can drift from another:
 
-- An error answers first, then a blank on either side answers blank, as the operators always have ([[C24]] arraySemantics). So `ABOVE(x, 2)` with `x` blank is blank, and over a list a blank item is a blank verdict.
+- An error answers first, then a blank on either side answers blank, as the operators always have ([[C24]] arraySemantics). So `ABOVE(x, 2)` with `x` blank is blank, and over a list a blank item is a blank verdict. [[D124]] words this as Excel's reading of a blank as 0 or empty text; the operators answer blank, so the functions do too, and whether the operators should read a blank as Excel does waits on the author (inbox `operators-read-blank-as-zero`).
 - A date compares only with a date; a date against anything else is `#TYPE!` "A date compares only with a date…" for every operator, `=` included ([[D115]] datesArePoints).
 - A value with a unit follows the Comparison card's rule: different dimensions, or two currencies, are unequal (`=` FALSE, `<>` TRUE) and unordered (`#UNIT!`), and a plain number beside a unit value is read in that value's display unit. A formula meets a unit value only through the unit-aware Expression and a card; the rule is the same there.
 - Text against text, numbers and logicals follow the table above. Two values of different kinds are unequal and unordered (`#TYPE!`).
