@@ -1,9 +1,8 @@
-# Solenoid — Backlog (1.4)
+# Solenoid — Backlog
 
 **OPEN items only, kept terse.** When an item lands, DELETE its line — git history and
-the dev-notes digests are the record. **1.4 is built** (2026-09-16: every promoted item in
-`archive/1.4-plan.md` landed, the selling list + What's New deck are written and the author rewrote the deck
-2026-09-16; the tag is the author's; the plan is archived). The
+the dev-notes digests are the record. **1.5.0 shipped 2026-10-08; the 1.6 cut is proposed in
+`1.6-plan.md`** (finish / pull in / later, plus the calls it waits on). The
 structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tree (`dte.md`).
 
