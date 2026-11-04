@@ -30,6 +30,11 @@ differently (pickers, storage permission) is handled.
 | A debug APK built on GitHub's runners (their Android SDK and NDK) on each push touching the shell: checks the Android compile with no local toolchain | `.github/workflows/android-build.yml` |
 | Edge-to-edge checked in Chromium 153 with a 40 px status bar and a 28 px gesture bar faked through `env(safe-area-inset-*)` (2026-11-04): the top bar, the bottom toolbar, the menu sheet, Settings, a table popup and the notices all clear them. Rerun with `node scripts/shot-graph.mjs <graph> --size 390x844 --insets 40,28` | `scripts/shot-graph.mjs` `--insets` |
 
+**A scope glob doesn't cover its own folder:** `/storage/emulated/0/**` allows everything inside shared storage but
+not `/storage/emulated/0` itself, which the pickers list first, so `android.json` names the root beside it for listing,
+`stat` and `exists` (found on the phone, run #2; `androidPrep.test.ts` pins it). A picker that can't list the root shows
+the reason in place of the list (`androidStorageProblem`), so a missing grant or a refused path reads as one.
+
 **Files reach shared storage by path, through All files access** (`MANAGE_EXTERNAL_STORAGE`). The user turns it on
 once: Android Settings, Apps, Special app access, All files access (for a test install,
 `adb shell appops set --uid com.solenoid.app MANAGE_EXTERNAL_STORAGE allow`). That keeps the desktop's model (a folder

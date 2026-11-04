@@ -24,6 +24,18 @@ export function isAndroidApp(): boolean {
 /** Android's shared storage, where a vault or a data folder lives; reading it needs All files access. */
 export const ANDROID_STORAGE_ROOT = "/storage/emulated/0";
 
+/** Why the phone's shared storage can't be listed, or undefined when it can. A refused listing would otherwise show
+ *  as an empty picker; this says what to do and keeps the system's own words for a bug report. */
+async function androidStorageProblem(): Promise<string | undefined> {
+  try {
+    await fs().readDir(ANDROID_STORAGE_ROOT);
+    return undefined;
+  } catch (e) {
+    const why = e instanceof Error ? e.message : String(e);
+    return `Solenoid can't read this phone's files. Turn on All files access: Android Settings, Apps, Special app access, All files access. (${why})`;
+  }
+}
+
 /** Where an Android pick starts: the documents folder when it is on shared storage, else Documents. */
 async function androidStart(): Promise<string> {
   const { settingsStore } = await import("./settingsStore");
@@ -43,7 +55,8 @@ async function androidSaveAs(suggestedName: string, extension: string): Promise<
     current: await androidStart(),
     rootLabel: "Phone",
     list: () => listVaultFolders(ANDROID_STORAGE_ROOT, 3),
-    empty: "No folders here. Allow Solenoid All files access in Android's settings.",
+    empty: "No folders here.",
+    blocked: await androidStorageProblem(),
     recentKey: "android-save",
     save: { name: suggestedName.replace(/\.[^.]+$/, ""), extension },
   });
@@ -69,7 +82,8 @@ async function androidOpenFile(title: string, extensions?: string[]): Promise<st
     rootLabel: "Phone",
     list: () => listVaultFiles(ANDROID_STORAGE_ROOT, 4, keep),
     readHead: (r, chars) => readFileHead(ANDROID_STORAGE_ROOT, r, chars),
-    empty: "No files here. Allow Solenoid All files access in Android's settings.",
+    empty: "No files here.",
+    blocked: await androidStorageProblem(),
     recentKey: `android-open-${(extensions ?? ["any"]).join(",")}`,
   });
   return rel ? `${ANDROID_STORAGE_ROOT}/${rel}` : null;
@@ -148,7 +162,8 @@ export async function pickFolderDialog(): Promise<string | null> {
       kind: "folder",
       rootLabel: "Phone",
       list: () => listVaultFolders(ANDROID_STORAGE_ROOT, 3),
-      empty: "No folders here. Allow Solenoid All files access in Android's settings.",
+      empty: "No folders here.",
+      blocked: await androidStorageProblem(),
       recentKey: "android-folder",
     });
     return rel === null ? null : rel === "" ? ANDROID_STORAGE_ROOT : `${ANDROID_STORAGE_ROOT}/${rel}`;

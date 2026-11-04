@@ -32,7 +32,7 @@
     },
     {
       "identifier": "fs:allow-stat",
-      "allow": [{ "path": "/storage/emulated/0/**" }]
+      "allow": [{ "path": "/storage/emulated/0" }, { "path": "/storage/emulated/0/**" }]
     },
     {
       "identifier": "fs:allow-write-text-file",
@@ -62,7 +62,7 @@
     },
     {
       "identifier": "fs:allow-read-dir",
-      "allow": [{ "path": "/storage/emulated/0/**" }]
+      "allow": [{ "path": "/storage/emulated/0" }, { "path": "/storage/emulated/0/**" }]
     },
     {
       "identifier": "fs:allow-read-file",
@@ -91,6 +91,7 @@
       "allow": [
         { "path": "/storage/emulated/0/**/images" },
         { "path": "/storage/emulated/0/**/images/*" },
+        { "path": "/storage/emulated/0" },
         { "path": "/storage/emulated/0/**" }
       ]
     }

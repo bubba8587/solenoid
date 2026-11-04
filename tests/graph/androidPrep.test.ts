@@ -33,3 +33,14 @@ describe("android-prep patchManifest", () => {
     expect(patchManifest(once)).toBe(once);
   });
 });
+
+describe("the Android capability", async () => {
+  const { readFileSync } = await import("node:fs");
+  const cap = JSON.parse(readFileSync("src-tauri/capabilities/android.json", "utf8")) as { permissions: Array<string | { identifier: string; allow: { path: string }[] }> };
+  const paths = (id: string) => (cap.permissions.find((p) => typeof p !== "string" && p.identifier === id) as { allow: { path: string }[] }).allow.map((a) => a.path);
+  // `/storage/emulated/0/**` matches everything inside shared storage but not the folder itself (Tauri's glob scope,
+  // checked 2026-11-04), and the Android pickers start by listing that folder.
+  it("lets the pickers list, test and stat shared storage's root itself", () => {
+    for (const id of ["fs:allow-read-dir", "fs:allow-stat", "fs:allow-exists"]) expect(paths(id)).toContain("/storage/emulated/0");
+  });
+});
