@@ -1,4 +1,4 @@
-// [[B11]]
+// [[B11]], [[node-classes#Formula registrations and op modules]]
 import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";
 import { despace } from "../../src/graph/formulaNodeParity";

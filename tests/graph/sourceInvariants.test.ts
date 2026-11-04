@@ -38,6 +38,7 @@ function codeLines(file: string): string[] {
 // (the whole file passes only on a "/" OS otherwise).
 const rel = (p: string) => path.relative(SRC, p).replace(/\\/g, "/");
 
+// [[node-classes#Sockets]]
 describe("[[B11]] maximalMerge — a file that retypes sockets in place must reconcile downstream", () => {
   // An in-place socket retype (swapping `port.socket` or calling
   // `MutableSocket.setType`) fires no connection event, so downstream Format
@@ -147,6 +148,7 @@ describe("dateAmbiguitySurfaces — a value-carrying text→date conversion keep
   });
 });
 
+// [[node-classes#Reading inputs]]
 describe("[[C25]] firstClassUnits — a node file that runs the dimension algebra declares unitAware", () => {
   // The unit-blind boundary strips `UnitCell` tags from every input UNLESS the
   // node declares `unitAware = true` (coerceInputs). So a node that calls the
@@ -201,6 +203,7 @@ describe("[[C25]] firstClassUnits — a node file that runs the dimension algebr
   });
 });
 
+// [[node-classes#Formula registrations and op modules]]
 describe("[[C26]] opArgDistinct — OP pickers bind `op`, ARG pickers never do", () => {
   // OP and ARG are two components each, not one component with a flag (DESIGN.md § Op
   // pickers). OpSelect / OpToggle is the family's op picker and binds the node's `op`
@@ -361,6 +364,7 @@ describe("[[B12]] losslessSaves — class names are load-bearing: keepNames stay
   });
 });
 
+// [[node-classes#Sockets]], [[components#The rules]]
 describe("[[B11]] maximalMerge — a node class reconciles on the editor that owns it", () => {
   // The active editor is the surface on screen; a main-graph node behind an open drill-in isn't in it.
   it("no nodes/packs file reads getActiveEditor / getActiveView (use getOwningEditor / getOwningView)", () => {
@@ -388,6 +392,7 @@ describe("[[B11]] maximalMerge — a node class reconciles on the editor that ow
   });
 });
 
+// [[node-classes#Reading inputs]]
 describe("[[D86]] blankRoles — a wired blank never falls back to a literal or default", () => {
   // `inputs.x?.[0] ?? fallback` hides a wired null behind the fallback. Test connection presence
   // (readInput, or inputs.x?.length) instead. `?? null` / `?? []` only normalize an absent cable.
@@ -418,6 +423,7 @@ describe("[[D86]] blankRoles — a wired blank never falls back to a literal or 
   });
 });
 
+// [[node-classes#Reading inputs]]
 describe("[[C23]] calcModes — a volatile data() freezes its roll on getRecalcGen()", () => {
   // Math.random() called bare in data() re-rolls on EVERY recompute pass — any
   // unrelated edit anywhere silently changes the value, F9 stops being the
@@ -457,6 +463,7 @@ describe("[[C23]] calcModes — a volatile data() freezes its roll on getRecalcG
   });
 });
 
+// [[node-classes#Reading inputs]]
 describe("[[B18]] safeToShare — data() never touches disk", () => {
   // A sink's data() caches for preview ONLY; the write lives in run(), fired by
   // the node's Run button. The two existing sink families are pinned by their
@@ -566,6 +573,7 @@ describe("[[B18]] safeToShare — data() never touches disk", () => {
   });
 });
 
+// [[node-classes#Reading inputs]]
 describe("[[D79]] effectsEdgeTriggered — an outward effect from data() gates on isGraphRebuilding()", () => {
   // The post-load recompute runs INSIDE the rebuild scope, so an alert/notice
   // fired from data() without the gate replays its whole backlog on every
@@ -819,6 +827,7 @@ describe("[[A1]] visualGraphCalculator — the socket box's greppable half", () 
   });
 });
 
+// [[node-classes#Frame input labels]]
 describe("[[B14]] oneDesignSystem — frame-input labels follow the column-role grammar", () => {
   // A frame input's label is the ONE place the expected columns can be read
   // before wiring (aligned columns arrive as one frame input by design). Roles

@@ -1,5 +1,4 @@
-// [[B11]], [[C26]], [[B16]] oneFormulaSurface, [[add-menu#Op families]], [[add-menu#The search rows]],
-// [[add-menu#Why one long label widens the whole menu]]
+// [[B11]], [[C26]], [[B16]] oneFormulaSurface, [[node-classes#Formula registrations and op modules]]
 import { describe, it, expect } from "vitest";
 import { NODE_OPS, opsFor, hiddenOps, opEntry } from "../../src/graph/nodeOps";
 import { buildCatalog } from "../../src/graph/catalogUtils";

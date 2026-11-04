@@ -117,8 +117,10 @@ mindmap
 - **A node class is a `GraphNode`** (`graphModel.ts`), its ports `GraphInput`s and `GraphOutput`s holding sockets. Its ports change only through `addInput`, `removeInput`, `addOutput`, `removeOutput`, `moveInputLast`, a port's `socket` setter and a `MutableSocket`'s `setType`, which reach the graph core while the node is in an editor; `inputs` and `outputs` are read-only otherwise ([[graph-core#The model]]).
 - **The class name is the persisted type.** It is kept and unique, so renaming a class changes the save format ([[save-format#The persisted type is the class name]]).
 - **An unknown saved type loads as a Placeholder** and saves back out as itself, losing nothing ([[C35]] unknownViaPlaceholder). `PlaceholderNode` is not in the Add-menu catalog; only the loader builds one. It keeps the original type, init and literal maps verbatim, rebuilds the saved socket keys (adoptive inputs, `trueany` outputs) so the cables survive, and every output emits `#REF!` naming the missing type.
-- **Every field is either persisted or deliberately transient**, and the persistence sweep (`persistenceSweep.test.ts`) knows which ([[save-format#Every field is persisted or deliberately transient]]). `extractInit` is a fixed point, so saving a freshly loaded node gives back the same init, and its output is plain JSON ([[save-format#The capture is a fixed point, and plain JSON]]).
+- **Every field is either persisted or deliberately transient**, and the persistence sweep knows which ([[save-format#Every field is persisted or deliberately transient]]). `extractInit` is a fixed point, so saving a freshly loaded node gives back the same init, and its output is plain JSON ([[save-format#The capture is a fixed point, and plain JSON]]).
 - **Extensible rows rebuild their exact keys.** A card with addable rows (value rows `v0`, `v1`, …, or paired rows such as `column0` and `value0`) takes the saved keys from `valueKeys` on load and paste and rebuilds exactly those, never a fresh sequence; paired cards read the ids through `pairIdsFromKeys`. Otherwise saved literals and cables stop lining up with their rows. A row's insertion order is its meaning (stack order, concatenation order, left to right). A fixed input that sits after the rows (SWITCH's Default, IFS's Otherwise, Merge Plots' Options) is re-seated last by `moveInputLast` each time a row is added, so the live socket order is the one a reload rebuilds.
+
+Tests: `persistenceSweep.test.ts` ([[save-format#Capturing a node's `init`]]); `sourceInvariants.test.ts`: both bundler configs keep class names.
 
 ## Formula registrations and op modules
 
@@ -151,6 +153,11 @@ mindmap
   - Distribution's `.RT` forms have search rows because Distribution is an op family, not because arguments may be searchable. Gauge's Dial and Bar are an argument (`mode`, a `SegToggle`): nobody searches for "dial", and the card has no formula surface. Whether every op is callable from a formula is [[D73]] nodeCoversFormula's business, not this classification's. The picker components and their layout: `DESIGN.md` § Op pickers.
 - **A node reaches everything its formula does** ([[D73]] nodeCoversFormula). A card whose body calls a function by name passes the function's full argument list. A node with its own computation covers every mode the registration does, preferably through one shared kernel: the REGEX card and the REGEX formulas run the core's one regex engine (`text_ops.rs`). An argument whose meaning lives only in a cell grid, or one the formula accepts and ignores (IRR's guess), has no socket; the reason is recorded against that function.
 
+Tests:
+
+- `nodeOps.test.ts`: every op reachable; `formulaNodeCoverage.test.ts`: cards and formulas cover each other.
+- `sourceInvariants.test.ts`: every `OpSelect` and `OpToggle` binds the node's own `op`, no `ArgSelect` or `SegToggle` does and no picker carries the retired `arg` prop ([[C26]] opArgDistinct), and no component writes an op's catalog label into `node.label` ([[D22]] oneNamePerCard).
+
 ## Reading inputs
 
 - **`data()` reads inputs the value-semantics way** ([[value-semantics#Reading an input]]):
@@ -174,6 +181,11 @@ flowchart LR
     sk -->|no| run
 ```
 
+Tests:
+
+- `readInputSweep.test.ts` ([[value-semantics#Reading an input]]).
+- `sourceInvariants.test.ts`, each sweep failing a new file that forgets its rule unless it is sanctioned with a reason: no node reads a cable as `?.[0] ?? <fallback>`; a node file that runs the dimension algebra declares `unitAware`; a node file calling `Math.random` keys on `getRecalcGen`; no `data()` body references a write API; a node file firing an alert gates on `isGraphRebuilding()`.
+
 ## Sockets
 
 - **A socket that is about to disappear loses its cables first.** A method that removes sockets returns the departing keys, so the caller runs `dropInputCables` before `removeInput` ([[input-cable-pruning#The ordering rule]]).
@@ -181,11 +193,15 @@ flowchart LR
 - **A literal map exists if and only if the card edits it inline** ([[C28]] literalsIffEditable; [[inline-literal-maps]]). A wildcard input row keeps its typed cell in exactly one of `literals` and `stringLiterals`.
 - **Socket docs are opt-in and live on the class.** A node class may declare a static `socketDocs` map (socket key to one plain-English sentence beyond the type name) for the Inspector's per-socket detail, read through `socketDocFor(node, key)`. It has the same declare-on-the-class shape as `frameHints` and `literals`, so the text sits beside the sockets it documents and survives minification. Most sockets need none, since the label plus `SOCKET_TYPE_LABELS` already describes them.
 
+Tests: `sourceInvariants.test.ts`: a file that retypes sockets in place references the reconciler, and a node class reconciles on the editor that owns it (`getOwningEditor`, never `getActiveEditor`).
+
 ### Frame input labels
 
 A Frame input's label names the columns it expects, in order, and an input that takes any columns gets a plain noun; the label never states the shape, which the socket already shows ([[B14]] oneDesignSystem). The label is the only place a user can see what columns a node wants before wiring it up. This would reopen if a node could show its expected columns some other way before it is wired.
 
 - **The label grammar.** A label that names columns lists their roles in the expected order, each a Title-case word, joined with `" + "` (`From + To + Value`, `Label + Value`); a standard group of columns may shorten to its standard initialism (`Date + OHLC`), never spaced-out single letters. An input that expects no particular columns is one plain Title-case noun (`Frame`, `Data`, `Series`). A label never carries the shape in brackets (`(2-D)`, `(list)`), which the socket and the Socket Legend already show. A role-labeled input declares its example in the class's static `frameHints` map under the input key (`frameHint.ts`), and the hint's column names equal the label's roles in order.
-- **Every role-labeled input shows a matching example table** (`frameHint.test.ts`). Its columns are the label's columns, in order, with a standard initialism spelled out (`OHLC` is Open, High, Low, Close). Every example, whether or not its label lists columns, is 3 to 5 full rows whose cells match the declared column types. The example is the label worked through, so the two are one promise: a labeled input with no example leaves the user guessing, and an example whose columns drift from the label shows a confidently wrong table, which is worse than none. That is why a test enforces it rather than care.
+- **Every role-labeled input shows a matching example table**. Its columns are the label's columns, in order, with a standard initialism spelled out (`OHLC` is Open, High, Low, Close). Every example, whether or not its label lists columns, is 3 to 5 full rows whose cells match the declared column types. The example is the label worked through, so the two are one promise: a labeled input with no example leaves the user guessing, and an example whose columns drift from the label shows a confidently wrong table, which is worse than none. That is why a test enforces it rather than care.
 
 *Exception:* the λ-table inputs in `nodes/tableLambda.ts` are named for the λ argument they bind (`Values (value)`, `value2 (optional)`), since that is what the user needs to know there; the exception is scoped to that file. **Removed by:** those nodes binding by column name instead.
+
+Tests: `sourceInvariants.test.ts`: every Frame input label parses by the grammar; `frameHint.test.ts`: every role-labeled input's example table.

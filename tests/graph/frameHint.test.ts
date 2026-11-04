@@ -1,4 +1,4 @@
-// [[B14]], [[touch-gestures#Sockets and cables]]
+// [[B14]], [[touch-gestures#Sockets and cables]], [[node-classes#Frame input labels]]
 import { describe, it, expect } from "vitest";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 import { frameHintStore, type FrameHint } from "../../src/graph/frameHint";
