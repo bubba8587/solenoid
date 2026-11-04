@@ -411,6 +411,8 @@ export class SwitchNode extends GraphNode {
   literalKinds: Record<string, KeyedKind> = {};
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["When", "Then"];
+  readonly pairPlaceholders = ["Case", "Output"] as const;
+  static fieldPlaceholders: Record<string, string> = { expr: "Value" };
   width = 180;
   height = 404;
 
@@ -423,8 +425,6 @@ export class SwitchNode extends GraphNode {
       for (const id of ids) this.addPairWithId(id);
     } else {
       for (let i = 0; i < 3; i++) this.addValuePair();
-      // A fresh card matches when0 so it shows a real result; Default ships empty.
-      this.stringLiterals = { expr: "1", when0: "1", then0: "10", when1: "2", then1: "20", when2: "3", then2: "30" };
     }
     this.addInput("default", trueAnyIn("Default"));
     this.addOutput("result", trueAnyOut("Result"));
@@ -481,6 +481,7 @@ export class IfsNode extends GraphNode {
   literalKinds: Record<string, KeyedKind> = {};
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["If", "Then"];
+  readonly pairPlaceholders = [undefined, "Output"] as const;
   width = 180;
   height = 339;
 
@@ -493,7 +494,6 @@ export class IfsNode extends GraphNode {
     } else {
       for (let i = 0; i < 3; i++) this.addValuePair();
       this.literals = { cond0: 1, cond1: 0, cond2: 0 };
-      this.stringLiterals = { val0: "10", val1: "20", val2: "30" };
     }
     this.addInput("otherwise", trueAnyIn("Otherwise"));
     this.addOutput("result", trueAnyOut("Result"));

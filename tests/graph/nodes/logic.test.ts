@@ -48,7 +48,7 @@ describe("BooleanOpNode — variadic boolean reducers emit a real logical", () =
 describe("IfNode — value passthrough (not a boolean)", () => {
   const ifRun = (cond: number, then: number, els: number) => {
     const n = new IfNode();
-    n.literals = { cond, then, else: els };
+    keyIn(n, { cond, then, else: els });
     return n.data({}).result;
   };
   it("condition true → the true branch, false → the false branch", () => {
@@ -101,7 +101,7 @@ describe("ChooseNode — extensible value rows, 1-based index", () => {
     const n = new ChooseNode();
     for (const k of n.valueInputKeys()) n.removeValueInput(k);
     const a = n.addValueInput(), b = n.addValueInput();
-    n.literals = { index: 2, [a]: 7, [b]: 9 };
+    keyIn(n, { index: 2, [a]: 7, [b]: 9 });
     expect(n.data({}).result).toBe(9);
     expect(n.valueInputKeys()).toEqual([a, b]);
   });
@@ -117,7 +117,7 @@ import { IfsNode } from "../../../src/graph/nodes/logic";
 describe("IfsNode — extensible condition/value pairs", () => {
   it("no condition true → the Otherwise fallback when set", () => {
     const n = new IfsNode();
-    n.literals = { cond0: 0, val0: 10, cond1: 0, val1: 20, cond2: 0, val2: 30, otherwise: 42 };
+    keyIn(n, { cond0: 0, val0: 10, cond1: 0, val1: 20, cond2: 0, val2: 30, otherwise: 42 });
     expect(n.data({}).result).toBe(42);
     expect("otherwise" in n.inputs).toBe(true);
   });
@@ -126,7 +126,7 @@ describe("IfsNode — extensible condition/value pairs", () => {
     n.addValuePair(); // cond3/val3
     const keys = n.valuePairKeys();
     expect(keys.length).toBe(4);
-    n.literals = { cond0: 0, val0: 1, cond1: 0, val1: 2, cond2: 0, val2: 3, cond3: 1, val3: 99 };
+    keyIn(n, { cond0: 0, val0: 1, cond1: 0, val1: 2, cond2: 0, val2: 3, cond3: 1, val3: 99 });
     expect(n.data({}).result).toBe(99);
   });
   it("removeValuePair drops both keys of the pair", () => {
@@ -148,7 +148,7 @@ describe("SwitchNode — fixed expr/default + extensible when/then pairs", () =>
     const n = new SwitchNode();
     n.addValuePair(); // when3/then3
     const [w, t] = n.valuePairKeys()[3];
-    n.literals[w] = 5; n.literals[t] = 500;
+    n.stringLiterals[w] = "5"; n.stringLiterals[t] = "500";
     expect(n.data({ expr: [5] }).result).toBe(500);
   });
   it("removeValuePair drops both keys; expr/default untouched", () => {
@@ -181,6 +181,7 @@ describe("value selectors take TEXT literals on their wildcard slots", () => {
 });
 
 import { isSolError } from "../../../src/graph/errorValue";
+import { keyIn } from "../keyIn";
 
 describe("value-selectors carry ANY value through (logical conditions, text values)", () => {
   it("IFS: a REAL boolean condition picks its paired text value", () => {

@@ -306,6 +306,21 @@ impl Call {
         self.string_literals.get(key).map(decode).unwrap_or(V::Undef)
     }
 
+    /// An unwired slot's literal: a wildcard slot's keyed text read as its kind, never its number field (an older
+    /// save's number there is ignored, since the card shows only the keyed text); any other slot's number field.
+    pub fn slot_literal(&self, key: &str) -> V {
+        let wildcard = self
+            .sockets
+            .iter()
+            .find(|s| s.key == key)
+            .and_then(|s| s.ty.as_deref())
+            .is_some_and(|t| matches!(t, "any" | "anycombo" | "anydata" | "trueany"));
+        match self.keyed(key) {
+            V::Undef if !wildcard => self.literal(key),
+            v => v,
+        }
+    }
+
     /// The kind a wildcard slot's toggle shows (`literalKinds`): number, string, date or logical, Number when unset.
     pub fn keyed_kind(&self, key: &str) -> &str {
         self.init.get("literalKinds").and_then(|m| m.get(key)).and_then(Json::as_str).unwrap_or("number")
@@ -376,10 +391,7 @@ impl Call {
             .map(|k| {
                 let v = match self.wired(k) {
                     Some([first, ..]) => first.clone(),
-                    _ => match self.keyed(k) {
-                        V::Undef => self.literal(k),
-                        v => v,
-                    },
+                    _ => self.slot_literal(k),
                 };
                 crate::date_values::census(&v)
             })

@@ -14,6 +14,7 @@ import type { FrameValue } from "../../../src/graph/frame";
 import { FormatDollarNode, FixedNode } from "../../../src/graph/nodes/text";
 import { TwoInputMathNode } from "../../../src/graph/nodes/scalar";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
+import { keyIn } from "../keyIn";
 
 // [[D86]] blankRoles, [[value-semantics#Reading an input]], [[input-roles#What each input kind does today]]
 
@@ -106,11 +107,11 @@ describe("a column-LIST reference — same rule as the scalar column", () => {
 describe("value selectors — an unknown selector is an unknown answer", () => {
   it("IFS: a WIRED blank condition propagates; an unset row just falls through", () => {
     const wired = new IfsNode();
-    wired.literals.otherwise = 7;
+    wired.stringLiterals.otherwise = "7";
     expect(wired.data({ cond0: [null] }).result).toBeNull();
     // Unset rows (nothing wired, nothing typed) fall through to Otherwise.
     const unset = new IfsNode();
-    unset.literals = { otherwise: 7 }; // clear the demo-seeded pair literals
+    keyIn(unset, { otherwise: 7 }); // clear the fresh card's conditions
     expect(unset.data({}).result).toBe(7);
   });
 

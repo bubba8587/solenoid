@@ -8,8 +8,7 @@ import { isSolError, solError, type SolError } from "../../../src/graph/errorVal
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { ArithmeticNode } from "../../../src/graph/nodes/scalar";
 import { ChooseNode, IfNode, IfsNode, SwitchNode } from "../../../src/graph/nodes/logic";
-import { isKeyedWildcard } from "../../../src/graph/keyedLiterals";
-import { declaredTypeOf } from "../../../src/graph/sockets";
+import { keyIn } from "../keyIn";
 
 /** The card's answer with `#DIV/0!` wired into `slot`, the other slots typed. */
 async function wired(card: IfNode | IfsNode | SwitchNode | ChooseNode, slot: string, literals: Record<string, number>) {
@@ -18,13 +17,7 @@ async function wired(card: IfNode | IfsNode | SwitchNode | ChooseNode, slot: str
   editor.use(engine);
   const div = new ArithmeticNode({ op: "div" });
   div.literals = { a: 1, b: 0 };
-  // A wildcard slot takes keyed text; a logical or number slot its number field.
-  card.literals = {};
-  card.stringLiterals = {};
-  for (const [k, v] of Object.entries(literals)) {
-    if (isKeyedWildcard(declaredTypeOf(card.inputs[k]?.socket))) card.stringLiterals[k] = String(v);
-    else card.literals[k] = v;
-  }
+  keyIn(card, literals);
   await editor.addNode(div);
   await editor.addNode(card);
   await editor.addConnection(new GraphConnection(div, "result", card, slot) as Schemes["Connection"]);
@@ -59,5 +52,18 @@ describe("a branch card answers only its test's error and its chosen branch's, a
     const card = new IfNode();
     const out = card.data({ cond: [[true, false]], then: [[1, solError("#DIV/0!", "Division by zero")]], else: [[solError("#VALUE!", "x"), 4]] }).result;
     expect((out as unknown[]).map(code)).toEqual([1, 4]);
+  });
+});
+
+describe("a wildcard slot reads only what its field shows", () => {
+  it("an older save's number on a value slot is ignored, so an empty field answers blank", async () => {
+    const card = new IfsNode();
+    card.literals = { cond0: 1, val0: 10 };
+    card.stringLiterals = {};
+    const editor = new GraphEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    await editor.addNode(card);
+    expect(((await engine.fetch(card.id)) as { result: unknown }).result).toBeNull();
   });
 });

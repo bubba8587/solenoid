@@ -96,19 +96,11 @@ fn or_null(v: V) -> V {
     }
 }
 
-/// A slot's keyed text read as its kind, else its number field's value (a logical or number slot).
-fn slot_literal(c: &Call, key: &str) -> V {
-    match c.keyed(key) {
-        V::Undef => c.literal(key),
-        v => v,
-    }
-}
-
 /// A connected cable wins even carrying null.
 pub(crate) fn pick_slot(c: &Call, key: &str) -> V {
     match c.wired(key) {
         Some([first, ..]) => first.clone(),
-        _ => match slot_literal(c, key) {
+        _ => match c.slot_literal(key) {
             V::Undef => V::Null,
             v => v,
         },
@@ -117,7 +109,7 @@ pub(crate) fn pick_slot(c: &Call, key: &str) -> V {
 
 /// A cable or a typed literal.
 fn is_set(c: &Call, key: &str) -> bool {
-    c.wired(key).is_some() || !matches!(slot_literal(c, key), V::Undef)
+    c.wired(key).is_some() || !matches!(c.slot_literal(key), V::Undef)
 }
 
 /// The keys of the card's inputs that start with `prefix`, in the card's order.

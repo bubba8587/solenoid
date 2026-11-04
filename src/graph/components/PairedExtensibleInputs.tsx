@@ -34,6 +34,8 @@ export interface PairedExtensibleNode {
   /** Remove the tuple identified by its FIRST key. */
   removeValuePair: (aKey: string) => void;
   pairLabels: string[];
+  /** Muted text an empty field of the tuple shows, numbered like its label; it never reaches the card's answer. */
+  pairPlaceholders?: readonly (string | undefined)[];
   stringLiterals?: Record<string, string>;
   autoLiterals?: boolean;
   literalKinds?: Record<string, KeyedKind>;
@@ -139,7 +141,7 @@ export function PairedExtensibleInputs({
               </button>
             </div>
           )}
-          {keys.map((k, j) => field(k, `${node.pairLabels[j] ?? ""} ${i + 1}`))}
+          {keys.map((k, j) => field(k, `${node.pairLabels[j] ?? ""} ${i + 1}`, node.pairPlaceholders?.[j] && `${node.pairPlaceholders[j]} ${i + 1}`))}
         </div>
       ))}
       <button
