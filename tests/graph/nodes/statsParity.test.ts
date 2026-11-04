@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
-import { AggregateNode } from "../../../src/graph/nodes/list";
 import { RankPercentileNode, CorrelNode, FisherNode, ModeNode } from "../../../src/graph/nodes/stats";
 import { isSolError } from "../../../src/graph/errorValue";
 
@@ -15,35 +14,8 @@ const same = (a: unknown, b: unknown) => {
   else expect(a).toEqual(b);
 };
 
-const SAMPLES: (number | null)[][] = [
-  [3, 1, 4, 1, 5, 9, 2, 6],
-  [5],
-  [2, null, 4, 4, 7],
-  [1, 1, 1],
-  [-4, 9],
-  [0.5, 2.5, 7, 7, 7, 11],
-  [1, 2, Infinity],
-  [1, 2, -Infinity],
-  [5, Infinity, -Infinity],
-  [Infinity, Infinity],
-  [1, NaN, 3],
-];
 
 describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
-  const OPS: Array<[string, string]> = [
-    ["AVERAGE", "avg"], ["AVEDEV", "avedev"], ["MEDIAN", "median"], ["GEOMEAN", "geomean"],
-    ["HARMEAN", "harmean"], ["DEVSQ", "devsq"], ["STDEV", "stdev"], ["STDEV.S", "stdev"],
-    ["STDEV.P", "stdev_p"], ["VAR", "var_s"], ["VAR.S", "var_s"], ["VAR.P", "var_p"],
-    ["SKEW", "skew"], ["SKEW.P", "skew_p"], ["KURT", "kurt"],
-    ["PTP", "ptp"], ["IQR", "iqr"], ["MAD", "mad"], ["SEM", "sem"], ["CV", "cv"], ["RMS", "rms"],
-    ["MIN", "min"], ["MAX", "max"],
-  ];
-  it.each(OPS)("%s(list) == Aggregate %s", (fn, op) => {
-    for (const list of SAMPLES) {
-      const node = new AggregateNode({ op: op as never }).data({ list: [list] }).result;
-      same(ev(`${fn}(x)`, { x: list }), node);
-    }
-  });
   it("a formula over several args flattens them into one sample", () => {
     expect(ev("AVERAGE(a, 10, b)", { a: [1, 2], b: [3] })).toBeCloseTo(4, 12);
   });

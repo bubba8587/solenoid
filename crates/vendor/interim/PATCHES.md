@@ -5,7 +5,8 @@ interim (MIT, Conrad Ludgate, https://github.com/conradludgate/interim), vendore
 "next month" reading as Monday, so Solenoid vendors `main` instead of depending on crates.io.
 
 Solenoid reads relative date phrases with it (`crates/solenoid-core/src/relative_date.rs`, [[C44]] dateSerials). Each
-patch below is marked `PATCH(n)` in the source and tested in `tests/patches.rs`. **Each should become an upstream pull
+patch below is marked `PATCH(n)` in the source and tested in `tests/patches.rs`, which runs only by hand (the vendored crate is
+not in CI); `crates/solenoid-core/tests/relative_dates.rs` holds every patch's phrase through the core. **Each should become an upstream pull
 request**; when one lands, drop it here, and when they all have, depend on the release and delete this vendored copy.
 To refresh from upstream: copy `src`, `tests`, `Cargo.toml`, `LICENSE.txt` and `README.md` from a newer `main` and
 reapply whatever is still listed here.

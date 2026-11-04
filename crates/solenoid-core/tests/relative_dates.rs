@@ -40,6 +40,7 @@ fn reads_the_phrases_people_type() {
         ("3 days ago", "2026-11-01"),
         ("a month ago", "2026-10-04"),
         ("tomorrow at 5pm", "2026-11-05"),
+        ("tomorrow at 9 PM", "2026-11-05"),
         ("next friday.", "2026-11-13"),
     ] {
         assert!(is_relative(text), "{text} is relative");
@@ -62,4 +63,13 @@ fn the_gate() {
     for text in ["in 2 weeks", "an hour from now", "upcoming monday", "a year hence"] {
         assert!(is_relative(text), "{text} is relative");
     }
+}
+
+/// The vendored interim's patch 7 (`crates/vendor/interim/PATCHES.md`): a signed count reads either way. The gate
+/// doesn't let a signed count through yet, so this calls the reader directly.
+#[test]
+fn a_signed_count_reads_forward_and_back() {
+    assert!(!is_relative("+3 days"));
+    assert_eq!(day("+3 days").as_deref(), Some("2026-11-07"));
+    assert_eq!(day("-3 days").as_deref(), Some("2026-11-01"));
 }
