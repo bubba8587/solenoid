@@ -1537,3 +1537,10 @@ body.solenoid-scrubbing * {
   border-color: var(--node-accent, var(--accent));
   color: var(--text);
 }
+
+/* A Constant's symbol (π, e) in the card's accent, so it reads as the constant's name beside its value on the open box
+   and on the tinted collapsed cell alike. */
+.solenoid-const__symbol {
+  margin-right: 6px;
+  color: color-mix(in srgb, var(--node-accent, var(--accent)) 80%, var(--text));
+}

@@ -18,7 +18,7 @@ export function ConstantComponent({ data, emit }: NodeProps<ConstantNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
   const meta = CONSTANTS[op];
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
-  const render = (v: number) => <><span style={{ marginRight: 6, color: "var(--text-dim)" }}>{meta.symbol}</span>{formatValue(v)}</>;
+  const render = (v: number) => <><span className="solenoid-const__symbol">{meta.symbol}</span>{formatValue(v)}</>;
   // Collapsed, the card is its value cell, read-only: a constant has nothing to key.
   return (
     <NodeShell node={data} emit={emit} cellCollapse>
