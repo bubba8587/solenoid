@@ -8,13 +8,26 @@ tags: [spec, canvas]
 
 Serves [[A1]] visualGraphCalculator; the position lock is [[#Position-locked groups]] ([[C112]] noOverlapsEver), the size read is [[#Size reads]], standoff clusters are [[C89]] standoffsSolveLast. It covers what the system does and blocks, and the decision each behavior serves.
 
-Tidy rearranges cards into a left-to-right (or top-to-bottom) flow using the ELK layered layout engine. It only moves cards; it never resizes them. Cleanup is a bigger pass built on Tidy: it tidies inside every group, fits and collapses the groups, then tidies the top level. Both live in `tidyArrange.ts` (`makeArrangeFn`, `makeCleanupFn`). The integration harness is `tidyArrangeGroups.test.ts`, which drives the real arrange and cleanup with real elkjs over a fake area that models the DOM contract.
+Tidy rearranges cards into a left-to-right (or top-to-bottom) flow using the ELK layered layout engine. It only moves cards; it never resizes them. Cleanup is a bigger pass built on Tidy: it tidies inside every group, fits and collapses the groups, then tidies the top level.
+
+Code: `tidyArrange.ts` (`makeArrangeFn`, `makeCleanupFn`), `nodeSize.ts`, `selectionOps.ts`.
+
+The integration harness is `tidyArrangeGroups.test.ts`. It drives the real arrange and Cleanup with real elkjs over a fake area that models the DOM contract: a position, and a measurable element whose size follows React's (a group's expanded box or collapsed card) and whose inline pins persist until cleared. Animation frames are queued and flushed by the test, so the deferred FC snap-back and Standoff Solve run when the test says so.
 
 ## What Tidy guarantees
 
 Tidy is an ELK layered layout, called directly, that only moves nodes. Ports sit at their sockets' heights (or symmetrically) so two connected nodes line up; the result is anchored to the flow's leading edge and its cross-axis center; no LayoutFx leaves a fixed inline size on a card. A global Tidy keeps each group as a rigid unit and never enters it; a group's own Tidy arranges exactly that group's members.
 
-Why: each of these closes a failure the opposite choice produced. rete-auto-arrange's `classic` preset put outputs at the top and inputs at the bottom, so every link staircased its target upward and the graph looked as if it floated high. Anchoring by the top-left corner dropped a flattened row to the top of the old footprint, the same symptom from the other side. And its applier stamped an inline height on every card, which froze it. Moving without resizing keeps cards content-driven, as [[react-flow-surface-contract#Node width and height]] demands of everything else. Symmetric ports and leading-edge anchoring give the same answer in either direction, so Cleanup's cycle of Tidy then Autofit is a fixed point. **Reopen if:** ELK is replaced, or React Flow starts owning card sizes (then the guard that drops pinned sizes becomes the wrong tool).
+Why: each of these closes a failure the opposite choice produced.
+
+- rete-auto-arrange's `classic` preset put outputs at the top and inputs at the bottom, so every link staircased its target upward and the graph looked as if it floated high.
+- Anchoring by the top-left corner dropped a flattened row to the top of the old footprint, the same symptom from the other side.
+- Its applier stamped an inline height on every card, which froze it. Moving without resizing keeps cards content-driven, as [[react-flow-surface-contract#Node width and height]] demands of everything else.
+- Symmetric ports and leading-edge anchoring give the same answer in either direction, so Cleanup's cycle of Tidy then Autofit is a fixed point.
+
+**Reopen if:** ELK is replaced, or React Flow starts owning card sizes (then the guard that drops pinned sizes becomes the wrong tool).
+
+Tests: `tidyArrangeGroups.test.ts`: a global Tidy carries an expanded group's members rigidly, never lands a loose card inside the group's box, leaves the group's box unchanged, and is idempotent within 1px under RIGHT, under DOWN and with a width cap of 3.
 
 ## Entry points
 
@@ -23,7 +36,11 @@ Why: each of these closes a failure the opposite choice produced. rete-auto-arra
 - **Cleanup** runs from View ▸ Cleanup or the `C` key. Above `TIDY_CONFIRM_THRESHOLD` units it asks for confirmation first.
 - The composite drill-in has its own arrange (`FlowCompositeOverlay.tsx`) that reads the same Tidy settings.
 
+Tests: `tidyArrangeGroups.test.ts`: the group Tidy button's flow (arrange, two frames, Autofit) lands every member inside the final box and pushes a right-hand neighbor clear.
+
 ## Size reads
+
+Code: `measuredBox()` in `nodeSize.ts`.
 
 Every size read in the movement stack (tidy, push, standoffs, splice, align, Autofit, focus, the Outline panel) goes through `measuredBox()` in `nodeSize.ts`. It never returns a zero size. Its tiers, in order:
 
@@ -36,7 +53,7 @@ Tiers 3 and 4 are collapse-aware: an unpainted collapsed card reports `COLLAPSED
 
 **MUST:** no feature reads `offsetWidth || node.width || 100` on its own. Separate reads disagreed exactly where it mattered: before first paint an unpainted member read as zero, which shrank a bounding box to its corner, and on a collapsed group the stored size is the taller expanded one (OutlinePanel, which tried the sources in the opposite order, once centered the camera on a collapsed group's expanded box).
 
-A source sweep enforces it: a direct `offsetWidth` or `offsetHeight` read in a movement-stack module outside `nodeSize.ts` fails unless the line above carries `measuredBox exception:` and its reason. Five exceptions stand, each the same ladder with a different last step, and each goes away when `measuredBox` accepts a fallback from its caller:
+A source sweep enforces it: a direct `offsetWidth` or `offsetHeight` read in a movement-stack module outside `nodeSize.ts` fails unless the line above carries `measuredBox exception:` and its reason (one marker covers a read split over two lines). A bare `void el.offsetWidth`, which forces a reflow and reads no size, is not a size read. Five exceptions stand, each the same ladder with a different last step, and each goes away when `measuredBox` accepts a fallback from its caller:
 
 - `zoomAt.frameSize` takes a narrower surface, so callers outside the flow view can frame a node.
 - The push world reads an expanded group at its stored size, which is exactly what it renders, since React Flow's measure lags a resize by a frame.
@@ -46,11 +63,18 @@ A source sweep enforces it: a direct `offsetWidth` or `offsetHeight` read in a m
 
 **Reopen if:** React Flow's measure becomes reliable before first paint, which would collapse the ladder to one step.
 
+Tests:
+
+- `sourceInvariants.test.ts`: no unsanctioned `offsetWidth` or `offsetHeight` read in the movement stack (`tidyArrange.ts`, `groupPush.ts`, `groupPushCore.ts`, `groupLogic.ts`, `groupCollapse.ts`, `standoffs.ts`, `standoffSolver.ts`, `flyToNode.ts`, `fcDocking.ts`, `canvasActions.ts`, `OutlinePanel.tsx`, `zoomAt.ts`).
+- `tidyArrangeGroups.test.ts`: Tidy reserves a plain card's measured box, not a constructor size that went stale.
+
 ## Building the ELK graph
+
+Code: `elkTidyLayout`, `makeEnsureElk` in `tidyArrange.ts`.
 
 `elkTidyLayout` builds the graph and applies the result through a `translate` callback. elkjs is a heavy chunk, so it loads lazily on the first Tidy (`makeEnsureElk`); a failed load clears the cache so the next Tidy retries, and a surface destroyed during the load returns null.
 
-- The root options are `ELK_ROOT_OPTIONS`: `elk.algorithm = layered`, `elk.edgeRouting = POLYLINE`. There is no `elk.hierarchyHandling`: the graph ELK sees is flat (a group is one rectangle), and `INCLUDE_CHILDREN` switches off ELK's packing of disconnected components, which stacked every unconnected card or collapsed group into one tall column. Packing lays them out as a block (`tidyArrangeGroups.test.ts` pins it). This constant is their one home: `elkTidyLayout` spreads it and the integration test consumes it verbatim, so the two cannot drift ([[engineering#One declaration per fact]]). `tidyLayerSplitFor` is shared with the test the same way.
+- The root options are `ELK_ROOT_OPTIONS`: `elk.algorithm = layered`, `elk.edgeRouting = POLYLINE`. There is no `elk.hierarchyHandling`: the graph ELK sees is flat (a group is one rectangle), and `INCLUDE_CHILDREN` switches off ELK's packing of disconnected components, which stacked every unconnected card or collapsed group into one tall column. Packing lays them out as a block. This constant is their one home: `elkTidyLayout` spreads it and the integration test consumes it verbatim, so the two cannot drift ([[engineering#One declaration per fact]]). `tidyLayerSplitFor` is shared with the test the same way.
 - Each card becomes a child with its ports sorted by socket index and `portConstraints: FIXED_POS`. Its ports are the sockets its card shows, wired or not (`presentSocketStore`), plus any socket a cable reaches, since ELK throws on an edge to a missing port; a card that has not rendered offers every declared socket. A card declares every socket it can have and several show only some (a Chart Builder's rows follow its target), and reserving the declared set laid such a card out as its largest variant, its symmetric ports running far past its edges. Edges connect port ids (`${nodeId}_${key}_${side}`); an edge with an empty socket key connects the node itself.
 - Docked Format Controllers are adornments, not layout nodes. They are left out, and their inline cables are bridged (host → FC → consumer becomes host → consumer) so the real graph still lays out.
 - ELK only sees edges whose both ends are in the layout, because an edge to an excluded node makes ELK throw. Edges into a group's members are remapped onto the group as node-level edges, and edges into a cluster follower are remapped onto its cluster leader.
@@ -58,7 +82,7 @@ A source sweep enforces it: a direct `offsetWidth` or `offsetHeight` read in a m
 - A Conduit exposes only its wired lanes as ports, whatever it shows, (one in and one out when nothing is wired), so ELK does not treat it as a tall multi-port card.
 - Cards are handed to ELK as Proxies. A Proxy keeps the card's `id`, so the applier still translates the real card, and any reserved size lives only on the proxy.
 - A plain card reserves its measured box. A cluster leader (a standoff cluster, see [[C89]] standoffsSolveLast) reserves the whole cluster's bounding box, and its followers are placed back at their offsets from the leader before the anchor step.
-- A card with a docked output Format Controller reserves the host plus FC as one inflated box, its socket's height read from the card's layout offsets (`socketLocalCenter`), never a screen rect divided by the zoom, so ELK does not pack a neighbor into the FC's area. The width grows by the FC width plus 8 per docked FC; the height covers the FC centered on its socket. This reservation is made only for hosts that are themselves layout targets, and it lives only in the proxy handed to ELK. Nothing is written to the card.
+- A card with a docked output Format Controller reserves the host plus FC as one inflated box, its socket's height read from the card's layout offsets (`socketLocalCenter`), never a screen rect divided by the zoom (the zoom quantizes that read, and the fraction of a pixel changed the layout from run to run), so ELK does not pack a neighbor into the FC's area. The width grows by the FC width plus 8 per docked FC; the height covers the FC centered on its socket. This reservation is made only for hosts that are themselves layout targets, and it lives only in the proxy handed to ELK. Nothing is written to the card.
 
 ```mermaid
 flowchart LR
@@ -69,6 +93,12 @@ flowchart LR
     anchor --> move["move every card once;<br>group members ride their group"]
     move --> after["one frame later: FCs re-dock,<br>standoffs settle, overlaps pushed apart"]
 ```
+
+Tests:
+
+- `tidyArrangeGroups.test.ts`: nine unconnected cards lay out as a block, not one tall column; a card reserves the sockets it shows (a Chart Builder its target's rows, not every field); two expanded groups with a docked FC on a member ride rigidly with no overlap.
+- `tidyDisplayFcWidth.test.ts`: a docked FC's host socket is read from the card's layout, with no screen read.
+- `layoutTidyIntegration.test.ts`: `ELK_ROOT_OPTIONS` with the knobs, handed to elkjs directly, wraps a fat layer without overlaps.
 
 ## Ports
 
@@ -81,16 +111,22 @@ The `tidyAlign` setting chooses where the ports sit:
 
 - **Balanced** (the default) puts each port halfway between the Center placement and its socket's real height on the card, read from the card's layout offsets (`socketLocalCenter`).
 - **Sockets** puts each port at its socket's real height, so ELK lines up the sockets a cable joins and the cable runs level.
-
-Balanced and Sockets apply under RIGHT only, since sockets sit on a card's left and right edges; under DOWN, and for a socket that is not drawn (an unmounted card, the landing scene), the Center placement stands. Why Balanced is the default: most cards put their output at the bottom and their inputs down the side, so lining every socket up walks a chain of cards down a staircase, and a level cable is not the goal in itself. Scored per cable against the two cards it joins (level enough when its rise is within half their mean height; a staircase when their centers sit apart), over eight seeds Balanced kept as many or more cables level enough than Center on every seed (53 to 73 percent where Center had 46 to 62 on the four that differed) with about half the center offset of Sockets, and the same side-by-side placement as Center.
 - **Center** puts the ports around the middle of the card, so card centers align, and cables slant wherever a socket sits off the middle.
 - **Top** puts the first port 20 from the leading edge, so card top edges (or left edges under DOWN) align.
 
+Balanced and Sockets apply under RIGHT only, since sockets sit on a card's left and right edges; under DOWN, and for a socket that is not drawn (an unmounted card, the landing scene), the Center placement stands.
+
+Why Balanced is the default: most cards put their output at the bottom and their inputs down the side, so lining every socket up walks a chain of cards down a staircase, and a level cable is not the goal in itself. Scored per cable against the two cards it joins (level enough when its rise is within half their mean height; a staircase when their centers sit apart), over eight seeds Balanced kept as many or more cables level enough than Center on every seed (53 to 73 percent where Center had 46 to 62 on the four that differed) with about half the center offset of Sockets, and the same side-by-side placement as Center.
+
 `tidyAlign` lives in `settingsStore` and shows as a Balanced / Sockets / Center / Top segmented control (a `"segment"` field type) in Settings ▸ Canvas.
+
+Tests: `tidyArrangeGroups.test.ts`: a drawn socket's port sits at its row (halfway there under Balanced), and an undrawn one where the spaced ports put it.
 
 ## The three Tidy knobs
 
-`tidyLayoutOptions` turns the settings into ELK options; the port preset's own `spacing` only places ports. Both call sites (the main canvas and the drill-in) read them at layout time through `tidyOptionsFromSettings`. The popover off the top-bar Tidy button (`TidyOptionsPopover.tsx`, `.solenoid-tidy-options`) mirrors the Settings rows.
+Code: `tidyLayoutOptions`, `tidyLayerSplitFor` in `tidyArrange.ts`; `TidyOptionsPopover.tsx`.
+
+`tidyLayoutOptions` turns the settings into ELK options; the port preset's own `spacing` only places ports. Both call sites (the main canvas and the drill-in) read them at layout time through `tidyOptionsFromSettings`. The popover off the top-bar Tidy button (`.solenoid-tidy-options`) mirrors the Settings rows.
 
 | Setting | ELK option | Values |
 |---|---|---|
@@ -98,13 +134,23 @@ Balanced and Sockets apply under RIGHT only, since sockets sit on a card's left 
 | `tidyDensity` | `elk.layered.spacing.nodeNodeBetweenLayers` / `elk.spacing.nodeNode` | compact 36 / 24, normal 55 / 38, airy 80 / 56 |
 | `tidyWidthCap` | layer unzipping | off, 2, 3 or 4 cards per layer |
 
-A width cap switches on ELK's layer unzipping. The root gets `elk.layered.layerUnzipping.strategy = ALTERNATING` (omitted when the cap is off), and the port preset's per-node `options` hook stamps `elk.layered.layerUnzipping.layerSplit` on every card. The split must be per card, because ELK ignores it on the root. `elkTidyLayout` computes it for each layout from the node count and the setting, so every caller, the landing page's scene included, gets its own; no split outlives a layout. Its value is `tidyLayerSplitFor(nodeCount, cap) = ceil(nodeCount / cap)`, at least 1. The count is the whole layout's node count, since per-layer widths are unknown before ELK runs. That over-splits a graph with cards outside the widest layer, which is safe: a layer of W cards has W ≤ nodeCount, so W / split ≤ cap. Layer unzipping needs elkjs 0.11 or later; the project is on 0.12.
+A width cap switches on ELK's layer unzipping:
+
+- **The root** gets `elk.layered.layerUnzipping.strategy = ALTERNATING` (omitted when the cap is off).
+- **Every card** gets `elk.layered.layerUnzipping.layerSplit`, stamped by the port preset's per-node `options` hook. The split must be per card, because ELK ignores it on the root.
+- **Per layout.** `elkTidyLayout` computes the split for each layout from the node count and the setting, so every caller, the landing page's scene included, gets its own; no split outlives a layout.
+- **Its value** is `tidyLayerSplitFor(nodeCount, cap) = ceil(nodeCount / cap)`, at least 1 (and none when the cap is off). The count is the whole layout's node count, since per-layer widths are unknown before ELK runs. That over-splits a graph with cards outside the widest layer, which is safe: a layer of W cards has W ≤ nodeCount, so W / split ≤ cap.
+- Layer unzipping needs elkjs 0.11 or later; the project is on 0.12.
+
+Tests: `layoutTidyIntegration.test.ts`: each knob maps to its ELK option, `tidyLayerSplitFor` rounds up and floors at 1, and under RIGHT and DOWN each cap wraps a nine-card fan so no column (or row) holds more than the cap, shorter than uncapped and with no overlap.
 
 ## Flipped cards
 
 A card in `socketFlipStore` reads from its right and emits to its left, so Tidy lays it out as a predecessor. Whenever either end of an edge is flipped, the edge is reversed and its ports are dropped, making it a node-level edge so the mirrored side never fights the symmetric ports. The test reads each end's ELK-visible id, so a grouped member counts as its group, which is never flipped. In a RIGHT layout a flipped sink lands to the left of its source.
 
-It also lands below its layer-mates, not above. When any ELK-visible card is flipped, `elkTidyLayout` lists the flipped cards last among the children and adds `FLIPPED_MODEL_ORDER_OPTIONS` (`elk.layered.considerModelOrder.strategy = NODES_AND_EDGES`, `elk.layered.crossingMinimization.forceNodeModelOrder = true` and `elk.hierarchyHandling = INCLUDE_CHILDREN`). ELK needs the strategy set alongside the force flag, because the flag assumes the model order has survived into crossing minimization, and the forced order places a flipped card last in its layer only under `INCLUDE_CHILDREN`, so a layout with a flipped card gives up component packing. Forced model order then sorts them to the trailing edge of their layer. A layout with no flipped card gets neither change, so it is identical to an ordinary layout. `tidyArrangeGroups.test.ts` pins both the placement and the unflipped options and children.
+A flipped sink joins its source's layer, so its order within the layer, not the edge reversal, decides whether it lands above or below. It lands below its layer-mates, not above. When any ELK-visible card is flipped, `elkTidyLayout` lists the flipped cards last among the children and adds `FLIPPED_MODEL_ORDER_OPTIONS` (`elk.layered.considerModelOrder.strategy = NODES_AND_EDGES`, `elk.layered.crossingMinimization.forceNodeModelOrder = true` and `elk.hierarchyHandling = INCLUDE_CHILDREN`). ELK needs the strategy set alongside the force flag, because the flag assumes the model order has survived into crossing minimization, and the forced order places a flipped card last in its layer only under `INCLUDE_CHILDREN`, so a layout with a flipped card gives up component packing. Forced model order then sorts them to the trailing edge of their layer. A layout with no flipped card gets neither change, so it is identical to an ordinary layout.
+
+Tests: `tidyArrangeGroups.test.ts`: an unflipped sink lands right of its source, a flipped one left and below, and a layout with no flip keeps the plain options and children order.
 
 ## Anchoring the result
 
@@ -114,7 +160,9 @@ ELK lays out from the origin, so the result is shifted back. The anchor keeps th
 - Under DOWN it keeps the top edge and horizontal center.
 - Within a group, the reference is the box interior (inset by `GROUP_PAD`, below `GROUP_HEADER`). The shift is clamped so centering never pushes members above the header under RIGHT, or past the left pad under DOWN.
 
-Both references are deterministic in either direction, so Cleanup's tidy-then-autofit cycle is a fixed point. The test pins this under DOWN with a width cap of 3.
+Both references are deterministic in either direction, so Cleanup's tidy-then-autofit cycle is a fixed point.
+
+Tests: `tidyArrangeGroups.test.ts`: a second Tidy stays within 1px under RIGHT, under DOWN and with a width cap of 3.
 
 ## After the layout
 
@@ -126,9 +174,20 @@ The selection is cleared for the layout and restored afterwards, because transla
 4. Autosave is scheduled, the selection is restored, and a Tidy of a selection zooms to it. Scheduling here is enough: `view.moveNode` schedules nothing, and the autosave debounce reads positions when it flushes, so the deferred settle below is still captured.
 5. One frame later, so the sockets have rendered at the new host positions before they are measured, docked FCs snap back onto their hosts; standoffs settle with `forceLock`, so a cluster is pulled back into a rigid block rather than merely band-satisfied; the No-Overlap Pass runs ([[C112]] noOverlapsEver, skipped under Cleanup's `skipPush`, whose own top-level Tidy runs it), preferring the layout targets (or the group, within a group), so a selection Tidy that lands on an unselected card pushes that card aside and a tidied card on a locked group moves off it; and a whole-canvas Tidy waits one more frame and then fits the view with `fitAll`. Never a raw `zoomAt`, which centers in the full container and lands content under the docked panels.
 
+Tests: `tidyArrangeGroups.test.ts`: a selection Tidy never leaves its cards on an unselected neighbor (a pair straddling a group, stacked around its old center, would land on it).
+
 ## Cards stay content-sized
 
-No LayoutFx may leave a fixed inline `height` on a card. A pinned height freezes the card: collapse can no longer shrink it and a grown value clips. The `View` has no resize verb, and `elkTidyLayout` only reports positions through its `translate` callback, so nothing stamps sizes today. The pin-drop loop in `arrangeFn` stays as a guard. For each layout target whose root is a `.solenoid-node`, it removes the inline `height`, then re-applies a manual width from `nodeSizeStore` (React won't re-diff what an imperative write set) or removes the inline `width`. A collapsed card keeps its own compact width, so it gets no manual width. Other roots are skipped, because they set their inline size from React's `style` prop and removing it would leave nothing to re-stamp it.
+No LayoutFx may leave a fixed inline `height` on a card. A pinned height freezes the card: collapse can no longer shrink it and a grown value clips. The `View` has no resize verb, and `elkTidyLayout` only reports positions through its `translate` callback, so nothing stamps sizes today. The pin-drop loop in `arrangeFn` stays as a guard. For each layout target:
+
+- **A `.solenoid-node` root** (a NodeCard) loses its inline `height`. Its inline `width` is then either re-applied from a manual width in `nodeSizeStore` (React won't re-diff what an imperative write set) or removed. The card is content-box and `offsetWidth` reads border-box, so a width read off the card and stamped back would grow it by its border on every Tidy.
+- **A collapsed card** keeps its own compact width, so it gets no manual width, the way NodeCard drops the manual size while collapsed.
+- **Other roots** (Note, Image, Conduit, the Obsidian cards) are skipped. They set their inline width from React's `style` prop and React doesn't re-stamp an unchanged style, so removing it would leave nothing to re-stamp it: the unsized root shrink-wraps against the zoom plane until its resize grip is touched.
+
+Tests:
+
+- `tidyDisplayFcWidth.test.ts`: a Display host with a docked FC keeps its width across three Tidies, a manually resized card keeps its chosen width, and a Note's inline width is never cleared while the standard cards' pins are.
+- `tidyArrangeGroups.test.ts`: no card is left with a pinned height after a Tidy of two groups, and a collapsed card gets no manual width while an expanded sized one does.
 
 ## Position-locked groups
 
@@ -144,15 +203,27 @@ A group with `GroupNode.lockedPosition` set (persisted through `INIT_FIELD_ORDER
 
 The lock is toggled from the group's right-click menu ("Lock position" / "Unlock position") or the header lock icon, which sits left of the Tidy icon and shows only while locked. `setGroupLocked` in `groupLogic.ts` is the one entry point.
 
+Tests:
+
+- `tidyArrangeGroups.test.ts`: a locked group and its members stay put through a Tidy and no tidied card lands on it.
+- `groupPushRecords.test.ts`: an expand never moves a locked group (the neighbor yields), and Autofit keeps a locked group's corner, bringing the members to it.
+- `selectionOps.test.ts`: a locked group is never in the move set, while its members still move on their own.
+
 ## Growing a group
+
+Code: `pushForGrownGroups` in `groupPush.ts`.
 
 After laying out its members, a within-group Tidy grows the box to wrap them: `width` and `height` become the larger of the old value and the members' extent plus `GROUP_PAD`, rounded to integers so the edge never lands on a half-pixel.
 
-If the box grew by more than half a pixel, `tidyArrange.ts` calls `pushForGrownGroups` (`groupPush.ts`). It uses the same `runExpandPushes` engine as expanding a collapsed group, with the pre-grow size as `preSizes`, so neighbors are shoved off the grown edges. It passes `record: false`: a Tidy is a deliberate manual action, so the displacement is permanent. No restore record is written, and pushed neighbors stay put when the group later collapses. A neighbor that already had an expand-push record from before now counts as manually moved, so it does not snap back either. The push only runs when the `groupPush` setting is on.
+If the box grew by more than half a pixel, `tidyArrange.ts` calls `pushForGrownGroups`. It uses the same `runExpandPushes` engine as expanding a collapsed group, with the pre-grow size as `preSizes`, so neighbors are shoved off the grown edges. It passes `record: false`: a Tidy is a deliberate manual action, so the displacement is permanent. No restore record is written, and pushed neighbors stay put when the group later collapses. A neighbor that already had an expand-push record from before now counts as manually moved, so it does not snap back either. The push only runs when the `groupPush` setting is on.
 
 Cleanup passes `skipPush: true` to its per-group arranges, because it runs its own Autofit, collapse and top-level re-tidy right after. A selection or whole-canvas Tidy runs no grow push, because it moves groups as whole units and leaves their interiors alone; only the final No-Overlap Pass moves what it lands on.
 
+Tests: `tidyArrangeGroups.test.ts`: three members crammed into a box too small for their row land inside the grown box, and a neighbor parked just past its right edge is pushed clear.
+
 ## Cleanup
+
+Code: `makeCleanupFn` in `tidyArrange.ts`.
 
 `makeCleanupFn` lays members out inside their boxes first and then arranges the collapsed groups and loose cards as units, so nothing is tidied twice. The steps, in order:
 
@@ -162,9 +233,13 @@ Cleanup passes `skipPush: true` to its per-group arranges, because it runs its o
 4. Collapse every unlocked group that is still expanded, then wait two frames: React Flow measures a card a frame after it renders, and a top-level Tidy that read the expanded sizes laid the collapsed groups out far apart, so a second Cleanup moved everything again.
 5. Tidy the top level, with groups as rigid collapsed units and no confirmation. That Tidy fits the view and schedules the autosave.
 
-A second Tidy or Cleanup moves nothing unless a card's content changed size in between. ELK is deterministic, but a sub-pixel change in any size it is handed can flip its ordering and move cards by hundreds of pixels, so every input is kept exact: whole-pixel positions from Tidy, the Standoff Solve and Autofit, and zoom-free socket offsets. `tidyArrangeGroups.test.ts` pins the group Tidy and Autofit cycle with fractional card heights.
+A second Tidy or Cleanup moves nothing unless a card's content changed size in between. ELK is deterministic, but a sub-pixel change in any size it is handed can flip its ordering and move cards by hundreds of pixels, so every input is kept exact: whole-pixel positions from Tidy, the Standoff Solve and Autofit, and zoom-free socket offsets.
+
+Tests: `tidyArrangeGroups.test.ts`: members ride their group through tidy, Autofit, collapse and the top-level Tidy, ending inside the group's stored expanded box so a later expand shows them inside it, and a second and third group Tidy and Autofit cycle moves nothing, even with fractional card heights.
 
 ## Align and distribute
+
+Code: `selectionOps.ts`.
 
 `selectionOps.ts` holds the manual layout verbs over the selection: align, distribute and batch collapse. It works through the `process.ts` singletons, so it is callable from anywhere.
 
@@ -174,3 +249,8 @@ A second Tidy or Cleanup moves nothing unless a card's content changed size in b
   - if the span from the first to the last card already fits every box plus that gap, both ends stay fixed and the interior evens out, with gaps of at least `DISTRIBUTE_GAP`;
   - otherwise the cards are too close to fit, so the first stays put and each next card is pushed out at exactly `DISTRIBUTE_GAP`, and the run grows.
 - **Batch collapse** (`collapseSelection`) collapses or expands the selected cards, silently skipping groups, Notes, Conduits and cards without a chevron. A card built with `collapsible={false}` carries `.solenoid-node--no-chevron`, and that class is the only signal readable outside the render tree.
+
+Tests:
+
+- `selectionOps.test.ts`: each align edge and center, distribute's even gaps (nothing for fewer than three cards, gaps not centers, either axis, a stacked run expanded to `DISTRIBUTE_GAP`), the move set (a locked group never in it, a standoff partner hidden in a collapsed group left behind), and a collapse toggle reporting a graph change.
+- `layoutInvariants.test.ts`: over random boxes, distribute leaves at least `DISTRIBUTE_GAP` between neighbors along its axis. Align is not overlap-free, so nothing asserts that of it.

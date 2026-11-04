@@ -1,4 +1,5 @@
-// [[C52]], [[C112]] noOverlapsEver
+// [[C52]], [[C112]] noOverlapsEver, [[auto-arrange-tidy#Align and distribute]], [[auto-arrange-tidy#Position-locked groups]],
+// [[standoffs#Known gaps]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { alignDeltas, distributeDeltas, expandMoveSet, DISTRIBUTE_GAP, toggleNodeCollapsed, restackOrder, type Placed } from "../../src/graph/selectionOps";

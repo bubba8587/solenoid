@@ -922,9 +922,7 @@ describe("heroChipRow: hero-box chips use the shared --chip row, never an inline
 });
 
 describe("[[A1]] visualGraphCalculator — the movement stack reads sizes through measuredBox", () => {
-  // Every module that moves or fits nodes. A direct DOM size read here is either a
-  // leftover ad-hoc ladder or a sanctioned exception carrying its reason on the line
-  // above; the leaf lists the four that stand.
+  // [[auto-arrange-tidy#Size reads]] lists the exceptions that stand.
   const STACK = ["tidyArrange.ts", "groupPush.ts", "groupPushCore.ts", "groupLogic.ts", "groupCollapse.ts",
     "standoffs.ts", "standoffSolver.ts", "flyToNode.ts", "fcDocking.ts", "canvasActions.ts", "OutlinePanel.tsx", "zoomAt.ts"];
   it("no unsanctioned offsetWidth/offsetHeight read outside nodeSize.ts", () => {

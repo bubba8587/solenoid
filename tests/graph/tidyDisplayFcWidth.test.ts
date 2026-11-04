@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[auto-arrange-tidy#Cards stay content-sized]], [[auto-arrange-tidy#Building the ELK graph]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
@@ -11,19 +11,8 @@ import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { nodeSizeStore } from "../../src/graph/nodeSizeStore";
 
-// ── Regression: "num → Display + Format Controller widens on every Tidy" ────────
-// The FC-host footprint restore captured measuredBox().w — which is offsetWidth,
-// a BORDER-BOX read that INCLUDES the card's 1px border — and re-stamped it as
-// style.width via view.resize onto the CONTENT-BOX `.solenoid-node` card. Each
-// Tidy therefore grew the host card by the border width, compounding without
-// bound (and dragging any group autofit along with it). Only the height pin was
-// dropped afterward, so height stayed put while width crept.
-//
-// This fake view models exactly that content-box contract: offsetWidth =
-// (inline style.width ?? natural content width) + BORDER, an inline width pin
-// persists until removeProperty("width") clears it, and view.resize stamps that
-// pin. The real makeArrangeFn drives real ELK over it. Pre-fix this test fails
-// (the host width climbs); with the width pin dropped it stays flat.
+// The fake view is content-box: offsetWidth = (inline style.width ?? natural width) + BORDER, and an inline width pin
+// persists until removeProperty("width") clears it. The real makeArrangeFn drives real ELK over it.
 
 const BORDER = 2; // 1px card border each side (content-box: offsetWidth = content + border)
 
@@ -142,8 +131,7 @@ async function buildScene() {
     new GraphConnection(num, "result", disp, "in") as Schemes["Connection"],
   );
 
-  // An FC docked to the Display's output — the footprint-restore path is what
-  // stamped offsetWidth and compounded.
+  // An FC docked to the Display's output.
   const fc = new FormatControllerNode({ hostNodeId: disp.id, socketKey: "in", side: "output" });
   await editor.addNode(fc as never);
   fc.dockSelf(editor as never);
@@ -203,7 +191,6 @@ describe("Tidy with a docked FC does not widen the host on repeat", () => {
     expect(fv.stampedW).toBe(260);
   });
 
-  // A screen rect divided by the zoom is quantized by the zoom, and that fraction of a pixel changed the layout from run to run.
   it("measures a docked FC's host socket from the card's layout, never the screen", async () => {
     const { view, arrangeFn } = await buildScene();
     view.pane.socketsDrawn = true;
@@ -215,12 +202,6 @@ describe("Tidy with a docked FC does not widen the host on repeat", () => {
     expect(view.pane.reads).toBe(0);
   });
 
-  // Regression: "Tidy makes Notes very very wide (sockets misaligned), fixed by
-  // touching the resize grip". Note / Image / Conduit / Obsidian roots set their
-  // inline width from React's style prop (data.width) — removeProperty("width")
-  // strips React's own value, React doesn't re-stamp an unchanged style, and the
-  // unsized element shrink-wraps against the zoom plane. The pin-drop loop must
-  // only touch .solenoid-node (NodeCard) roots.
   it("Tidy never clears the inline width of a React-sized root (Note)", async () => {
     const { editor, view, arrangeFn, add } = await buildScene();
     const note = new NoteNode({ body: "hello" });

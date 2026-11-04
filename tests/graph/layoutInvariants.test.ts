@@ -1,4 +1,5 @@
-// [[C85]] groupPushDeterministic, [[C52]], [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver
+// [[C85]] groupPushDeterministic, [[C52]], [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver, [[standoffs#The constraint]],
+// [[auto-arrange-tidy#Align and distribute]]
 import { describe, it, expect } from "vitest";
 import { fuzzRuns, fuzzSeed } from "./fuzzDepth";
 import { separateAll, computeExpandPush, type PushBox, type ExpandSpec, type Disp } from "../../src/graph/groupPushCore";
@@ -6,22 +7,8 @@ import { distributeDeltas, DISTRIBUTE_GAP, type Placed } from "../../src/graph/s
 import { solveStandoffs } from "../../src/graph/standoffSolver";
 import { anchorPoint, ANCHOR_DIR, STANDOFF_MIN, type Standoff, type StandoffAnchor, type Box } from "../../src/graph/standoffs";
 
-// ─── Property tests for the author's standing "no overlaps ever" rule ────────────
-// Randomized-fixture sweeps over the PURE layout cores, so the invariants each op
-// guarantees are machine-checked (there was no such check before). A fixed seed per
-// suite makes every failure reproducible: re-run and the same fixtures regenerate.
-//
-// What each op actually guarantees (do NOT over-assert):
-//   • separateAll — the HARD no-overlap backstop: after it no pair
-//     overlaps bar two pinned (fixed) ones. Every layout op ends with separateAll;
-//     computeExpandPush alone is heuristic and CAN leave overlaps by design.
-//   • distributeDeltas  — ≥ DISTRIBUTE_GAP between neighbors ALONG the distributed
-//     axis (overlap-free on that axis; the cross axis is intentionally untouched).
-//   • alignDeltas       — aligns the chosen edge; it is DELIBERATELY not overlap-free
-//     (a manual gesture, like every design tool's Align), so we assert the alignment
-//     contract, NOT no-overlap.
-//   • solveStandoffs    — the band holds: the axis projection lands in [min,max], and
-//     a locked/forced standoff also zeroes the perpendicular offset.
+// Randomized sweeps over the pure layout cores, each asserting only what its op guarantees; a fixed seed per suite
+// regenerates the same fixtures on a re-run.
 
 // Deterministic PRNG (mulberry32) — same pattern as modelFuzz.ts.
 function mulberry32(seed: number): () => number {
