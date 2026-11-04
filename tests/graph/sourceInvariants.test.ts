@@ -782,10 +782,7 @@ describe("[[A1]] visualGraphCalculator — every node-keyed store registers with
   });
 
   it("every registrant also registers the bulk reset (forgetAll)", () => {
-    // The rebuild path calls forgetAllNodes() ONCE instead of per-node forgets
-    // (O(nodes × entries) — the recorded rebuild cost). A store with only the
-    // per-node half silently opts back into the slow path AND leaks on rebuild
-    // (the per-node handler is skipped while rebuilding).
+    // [[graph-load-teardown-performance#Teardown]]
     const offenders: string[] = [];
     for (const file of walk(SRC)) {
       const base = rel(file);

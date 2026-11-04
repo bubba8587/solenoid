@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[stores#The rules]], [[graph-load-teardown-performance#Teardown]]
 import { describe, it, expect } from "vitest";
 import { forgetNode, forgetAllNodes } from "../../src/graph/nodeStoreRegistry";
 import { collapseStore } from "../../src/graph/collapseStore";

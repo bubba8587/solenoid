@@ -15,6 +15,18 @@ specific item.
   - Build size: `opt-level = "z"` 860 KB against 650 KB gzipped (2026-10-22); `opt-level = 2` 1.26 MB against 1.31 MB for 3 with brotli (2026-10-25). The module (2026-10-25): 4.6 MB raw, 1.7 MB gzipped, 1.26 MB brotli; HASH's crates add 20 KB gzipped; `call_function` is 53 KB before `wasm-opt`.
   - `cardBatchBench` over 50,000 items: UPPER about 30 ms (develop then: 23), ROUND about 36, ISEVEN about 27; `x - AVERAGE(vals)` over 3,000 items about 50 ms, from 1.9 s (develop then: 8 ms).
   - CSV: a 50 MB file reads into a typed frame in about 1.7 s in Node, from 4.1 s on Papa Parse and `inferColumn`; its rows alone in about 1.1 s.
+### SESSION DIGEST (2026-11-04: the spec ↔ test pass over values, documents and floors; cloud session)
+- **Each spec section names its tests, and each test cites its section** (`[[spec#Heading]]`) across `tree/specs/values/`, `tree/specs/documents/` and `tree/specs/floors/`; the tests' reasons moved into the specs.
+- **Load measurements moved out of** `../tree/specs/documents/graph-load-teardown-performance.md`, which keeps the claims and how to measure:
+  - The layout batch, on personal-finance (154 cards, production build, desktop CPU): forced layouts 860 to 306, React commits 1,070 to 645, load 6.9 s to 6.0 s. React Flow's own per-card measuring (`updateNodeInternals`) was about 0.7 s of a 241-card load.
+  - The web node budget, measured 2026-10-05 in phone emulation (412 × 915, DPR 2.6, CPU 4×), personal-finance tiled, a 30-step drag at zoom 0.6:
+
+    | Nodes | Load | Pan, frame p50 | Card drag, frame p50 / p95 |
+    |---|---|---|---|
+    | 154 | 8.9 s | 100 ms | 17 / 67 ms |
+    | 308 | 17.9 s | 167 ms | not measured |
+    | 462 | 34.1 s | 250 ms | 17 / 183 ms |
+    | 616 | 53.4 s | not measured | 333 / 1333 ms |
 
 ### SESSION DIGEST (2026-11-04: dates before 1900, the date tests, Expect's date bounds; cloud session)
 - **Days before 1900 are dates everywhere** ([[D119]] datesBefore1900; `../tree/specs/values/date-values.md` § Days before 1900): EDATE, the coupon and discount functions, TEXT, the Date Range card (a blank field is now null, day 0 a date) and the table popup's picker take them, from 01-Jan-0001 (`FIRST_SERIAL`/`END_SERIAL`). Fixed on the way: a year in 1 to 99 read off a date became 19xx (`date_utc`, which moved EOMONTH, WEEKNUM, ISOWEEKNUM, DATETRUNC), YEARFRAC truncated a negative fractional serial toward 0, and typed date text refused a year below 1000. `tests/dates_before_1900.rs` checks every date function, operator row and date card 400 to 1,600 years back against today.
