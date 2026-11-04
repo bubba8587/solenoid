@@ -6,6 +6,9 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-04: a volatile Script holds its result until F9; cloud session)
+- **A Script whose source draws or reads the clock holds its answer until F9 or Recalculate** ([[C23]] calcModes, P6): `scriptIsVolatile`'s scan decides, and the card reuses its result while the recalc generation, the source and the arguments (compared by value) stay the same. Spec: `../tree/specs/computation/script-sandbox.md` § The source.
+
 ### SESSION DIGEST (2026-11-04: the spec ↔ test pass over computation/; cloud session)
 - **Each computation spec's sections name their tests** and the tests cite them as `[[spec#Heading]]`; reasons and facts said only in test comments moved into the specs. Dated figures that sat in `../tree/specs/computation/rust-core.md`, as measured:
   - Load (2026-10-25): at 4 Mbps the chrome comes up at about 3 s where it waited about 13 s for the whole module; a `<link rel="preload">` brought the cards about 6% sooner at 40 Mbps but held the chrome back half a second at 4 Mbps (2026-10-22: the first render 0.4 s later). The 1.5.0-era `.deb` was 24 MB with Polars; on the core alone it is 18 MB.

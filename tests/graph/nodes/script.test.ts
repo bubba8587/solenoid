@@ -1,5 +1,5 @@
 // [[C66]] scriptNode, [[script-sandbox#The source]], [[script-sandbox#One call]], [[script-sandbox#The arguments]],
-// [[script-sandbox#The result]]
+// [[script-sandbox#The result]], [[C23]] calcModes
 import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { ScriptNode, DEFAULT_SCRIPT } from "../../../src/graph/nodes/script";
@@ -14,7 +14,7 @@ import type { View } from "../../../src/graph/view";
 import { GraphEditor } from "../../../src/graph/graphEditor";
 import { DataflowEngine } from "../../../src/graph/dataflowEngine";
 import type { Schemes } from "../../../src/graph/schemes";
-import { processGraph, setEditorRefs } from "../../../src/graph/process";
+import { processGraph, requestRecalc, setEditorRefs } from "../../../src/graph/process";
 
 const code = (v: unknown) => (isSolError(v) ? v.code : v);
 
@@ -321,5 +321,54 @@ describe("a date goes into a script as a Date ([[C137]] datesNeverSerials)", () 
     throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
     const out = await (node.data({ d: [solDate(46000)] }) as Promise<{ result: unknown }>);
     expect(out.result).toEqual(solDate(46000));
+  });
+});
+
+describe("a volatile Script holds its result until F9 ([[C23]] calcModes)", () => {
+  async function held(expr: string, literals: Record<string, number>) {
+    const editor = new GraphEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    setEditorRefs(editor, engine, { rerenderNode: async () => {}, rerenderCables: async () => {} } as unknown as View);
+    const node = new ScriptNode({ expr, literals });
+    await editor.addNode(node as unknown as Schemes["Node"]);
+    await processGraph();
+    return node;
+  }
+
+  it("keeps the draw through a plain recalculation with the same inputs", async () => {
+    const node = await held("(x) => x + Math.random()", { x: 1 });
+    const first = node.cachedResult;
+    expect(typeof first).toBe("number");
+    await processGraph(node.id);
+    expect(node.cachedResult).toBe(first);
+    await processGraph(undefined, undefined, { force: true });
+    expect(node.cachedResult).toBe(first);
+  });
+
+  it("draws anew on F9, which the Recalculate button sends", async () => {
+    const node = await held("(x) => x + Math.random()", { x: 1 });
+    const first = node.cachedResult;
+    await requestRecalc();
+    expect(node.cachedResult).not.toBe(first);
+    expect(Math.floor(node.cachedResult as number)).toBe(1);
+  });
+
+  it("runs again when an input or the code changes", async () => {
+    const node = await held("(x) => x + Math.random()", { x: 1 });
+    node.literals = { x: 5 };
+    await processGraph(node.id);
+    expect(Math.floor(node.cachedResult as number)).toBe(5);
+    node.expr = "(x) => x + 10 + Math.random()";
+    node._rebuild();
+    await processGraph(node.id);
+    expect(Math.floor(node.cachedResult as number)).toBe(15);
+  });
+
+  it("holds a clock reading the same way", async () => {
+    const node = await held("() => Date.now() + Math.random()", {});
+    const first = node.cachedResult;
+    await processGraph(node.id);
+    expect(node.cachedResult).toBe(first);
   });
 });

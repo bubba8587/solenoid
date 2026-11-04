@@ -1,11 +1,12 @@
-// [[C66]] scriptNode, [[C24]] arraySemantics
+// [[C66]] scriptNode, [[C24]] arraySemantics, [[C23]] calcModes
 import { GraphNode } from "../graphModel";
 import { trueAnyIn, resultOut, readInput } from "./shared";
 import { isSolError, solError, type SolError } from "../errorValue";
-import { scriptParams, checkScript } from "./scriptRun";
+import { scriptParams, checkScript, scriptIsVolatile } from "./scriptRun";
 import { coerceScriptResult, scriptArgToJs } from "./scriptCoerce";
 import { executeScript } from "../scriptExecutor";
 import { requestScript } from "../scriptGate";
+import { getRecalcGen } from "../process";
 
 export const DEFAULT_SCRIPT = "(x) => x";
 
@@ -25,6 +26,29 @@ function firstCellError(v: unknown): SolError | null {
   return null;
 }
 
+function sameArg(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (a instanceof Date || b instanceof Date) {
+    return a instanceof Date && b instanceof Date && Object.is(a.getTime(), b.getTime());
+  }
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    const bb = b as unknown[];
+    if (a.length !== bb.length) return false;
+    for (let i = 0; i < a.length; i++) if (!sameArg(a[i], bb[i])) return false;
+    return true;
+  }
+  const ka = Object.keys(a);
+  const ra = a as Record<string, unknown>;
+  const rb = b as Record<string, unknown>;
+  if (ka.length !== Object.keys(b).length) return false;
+  for (const k of ka) if (!(k in rb) || !sameArg(ra[k], rb[k])) return false;
+  return true;
+}
+
+type Held = { gen: number; expr: string; args: unknown[]; result: unknown; error: string | null };
+
 export class ScriptNode extends GraphNode {
   label: string;
   expr: string;
@@ -38,6 +62,7 @@ export class ScriptNode extends GraphNode {
 
   varNames: string[] = [];
   private syntaxError: string | null = null;
+  private held: Held | null = null;
 
   constructor(init?: { label?: string; expr?: string; literals?: Record<string, number>; stringLiterals?: Record<string, string> }) {
     super("Script");
@@ -93,12 +118,22 @@ export class ScriptNode extends GraphNode {
       const e = firstCellError(a);
       if (e) { this.cachedError = null; this.cachedResult = e; return { result: e }; }
     }
-    const out = await executeScript(this.expr, args);
+    const volatile = scriptIsVolatile(this.expr);
+    const gen = getRecalcGen();
+    const h = this.held;
+    if (volatile && h && h.gen === gen && h.expr === this.expr && sameArg(h.args, args)) {
+      this.cachedError = h.error;
+      this.cachedResult = h.result;
+      return { result: h.result };
+    }
+    const expr = this.expr;
+    const out = await executeScript(expr, args);
     let result: unknown;
     if (out.ok) result = coerceScriptResult(out.value);
     else result = solError(out.code, out.message);
     this.cachedError = out.ok ? null : out.message;
     this.cachedResult = result;
+    this.held = volatile ? { gen, expr, args, result, error: this.cachedError } : null;
     return { result };
   }
 }

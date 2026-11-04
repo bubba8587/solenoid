@@ -212,7 +212,7 @@ Tests:
 
 A card that draws random numbers draws in its body on the core and asks the call for its raw draws (uniforms in [0, 1), `Call::rolls`; UUID's text, `Call::drawn_text`). The engine holds each card's draws for the recalc generation they were drawn in (`Direct`, [[graph-core]] § Direct calls): within it the body gets the same ones, extended where it asks for more (RANDARRAY's longer count), or all drawn anew where it asks for a different count with `redraw` (Shuffle's keys, one per slot of its list); a new generation starts empty. The body derives the output from the raws and the current inputs, so changing a bound rescales the same draw instead of rolling a new one ([[C23]] calcModes). Outside the engine (a test calling `data()`, `nodeOnCore`) no one holds them: a body takes the draw a frozen call's `init` carries, else draws afresh.
 
-Every volatile node shows a Recalculate button (`RecalcButton`) that draws again without a full F9. A Script node counts as volatile when its code draws random numbers or reads the clock (`scriptIsVolatile`): it shows the button, and holds its result between recalculations like the rest ([[C23]] calcModes). Not built yet: a volatile Script runs again on every recalculation.
+Every volatile node shows a Recalculate button (`RecalcButton`) that draws again without a full F9. A Script node counts as volatile when its code draws random numbers or reads the clock (`scriptIsVolatile`): it shows the button, and holds its result between recalculations like the rest ([[C23]] calcModes; [[script-sandbox#The source]] has the scan and the hold).
 
 ```mermaid
 flowchart LR
