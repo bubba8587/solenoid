@@ -178,6 +178,7 @@ its members), and glows, shadows and rings.
 - `--mix-edge` (45%) toward `--border` — a structural edge on a field or bar.
 - `--mix-emphasis` (60%) toward `--border` — the quiet-emphasis edge: an operation selector at rest, an active step.
 - `--mix-ink` (55%) toward `--text` — accent-tinted glyphs and labels (header titles, chevrons, swatches).
+- No rung: accent TEXT that reads at full strength (a Constant's symbol, a unit beside a value, an active sort arrow) is `var(--node-accent, var(--accent))` itself. `--node-accent` is already themed (`themeAccent`: full on the dark canvas, dimmed in light), so a mix toward `--text` on top of it only washes it out.
 - `--mix-glow` (28%) toward `transparent` — the selection glow alpha.
 - `--mix-ring` toward `--ring-into` — the selection ring: 70% toward `#fff` in dark, 80% toward `#000` in light (the light nerf; a ~70% mix toward black reads as a harsh near-black frame over a pale card).
 Tint FILLS stay separate: the header band uses `--header-tint` (22% dark / 52% light) toward `--surface`; translucent washes (active rows, count pills, chips) run loose at 12–22% toward `transparent` and are not yet rungs. A new accent shade picks the rung whose role matches; needing a new percentage means proposing a new rung here, not inlining a number.

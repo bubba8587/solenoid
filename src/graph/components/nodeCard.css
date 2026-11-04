@@ -1539,10 +1539,11 @@ body.solenoid-scrubbing * {
 }
 
 /* A Constant's symbol (π, e) and a Physics Constant's unit in the card's accent, so each reads as a label beside the
-   value on the open box and on the tinted collapsed cell alike. */
+   value on the open box and on the tinted collapsed cell alike. The accent as it stands: --node-accent is already
+   themed (`themeAccent`), full strength on the dark canvas and dimmed in light, as the Slicer's and Cards' accent text. */
 .solenoid-const__symbol,
 .solenoid-const__unit {
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
+  color: var(--node-accent, var(--accent));
 }
 .solenoid-const__symbol { margin-right: 6px; }
 .solenoid-const__unit { margin-left: 6px; font-size: 0.85em; }
