@@ -1,5 +1,5 @@
 // [[C42]] htmlInCanvasRenderer
-// Mechanics: tree/specs/canvas/html-in-canvas.md (The DOM follows the presented camera).
+// Mechanics: [[html-in-canvas#Drawing and the camera]] (the DOM follows the presented camera).
 
 export interface CamXform { k: number; x: number; y: number }
 

@@ -8,19 +8,28 @@ tags: [spec, canvas]
 
 Serves [[C42]] htmlInCanvasRenderer; its GPU limits are [[#The GPU texture budget]]. It covers what the layer does, when it runs, and the number behind each knob. The knobs are tuning, not decisions: change one freely, and record the measurement that justified the change here.
 
-The layer makes pan and zoom cheap on a big graph. During a gesture it hides React Flow's viewport and draws captured bitmaps of the cards on a canvas instead; at rest the real DOM is back. It is never a DOM replacement: every click, edit and hover lands on the real cards. The live DOM and this layer are the canvas's only two ways of being drawn; a third would be another renderer to keep in step with every card. The layer rests on a flagged browser API, so it stays an opt-in: if the flag stalls or changes, the DOM default is untouched and nothing breaks. **Reopen if:** the API ships unflagged and the DOM path becomes the one that costs more to keep. The engine is `HtmlCanvasRenderer` (`htmlCanvasRenderer.ts`), an imperative class rather than a React component; `HtmlCanvasLayer` mounts it and feeds it.
+The layer makes pan and zoom cheap on a big graph. During a gesture it hides React Flow's viewport and draws captured bitmaps of the cards on a canvas instead; at rest the real DOM is back. It is never a DOM replacement: every click, edit and hover lands on the real cards. The live DOM and this layer are the canvas's only two ways of being drawn; a third would be another renderer to keep in step with every card. The layer rests on a flagged browser API, so it stays an opt-in: if the flag stalls or changes, the DOM default is untouched and nothing breaks. **Reopen if:** the API ships unflagged and the DOM path becomes the one that costs more to keep.
+
+The engine is `HtmlCanvasRenderer`, an imperative class rather than a React component; `HtmlCanvasLayer` mounts it and feeds it.
+
+Code: `htmlCanvasRenderer.ts`, `HtmlCanvasLayer.tsx`, `htmlCanvasLayer.css`, `renderMode.ts`, `htmlCanvasSupport.ts`, `zoomSettle.ts`, `domSync.ts`, `rasterAtlas.ts`, `hicGraphSnapshot.ts`, `hicCableGeom.ts`.
 
 ## When it runs
 
-- **The setting.** Render mode `html` (`renderMode.ts`; the default is `dom`, and only `html` persists) is offered only where `supportsHtmlInCanvas()` (`htmlCanvasSupport.ts`) finds the WICG API, which today means Chromium behind `chrome://flags/#canvas-draw-element`. The check is synchronous and cheap, so it runs at startup.
+- **The setting.** Render mode `html` (the default is `dom`, and only `html` persists) is offered only where `supportsHtmlInCanvas()` (`htmlCanvasSupport.ts`) finds the WICG API, which today means Chromium behind `chrome://flags/#canvas-draw-element`. The check is synchronous and cheap, so it runs at startup.
 - **The size gate.** Even with the setting on, the layer stays inert until the graph weighs at least `RENDERER_MIN_NODES = 100` DOM units. The unit is kind-weighted (`nodeDomWeight`, `nodes/kind.ts`): a full figure (Chart, Mermaid, Record, Heatmap…) weighs 10, a tornado 6, a sparkline or gauge 3, a plain scalar card 1. So about ten charts engage it, while a scalar-only graph needs about a hundred cards. Below the gate the native DOM pans fine and the capture cost isn't worth paying. The weight is recounted on bind and on every node add or remove, even while inert, so crossing the line is noticed. `window.__hcMinNodes` overrides it live.
 - **Both canvases.** `FlowSurface` mounts `HtmlCanvasLayer` for the main canvas and for a composite drill-in alike.
+
+Tests: `renderMode.test.ts`: the mode defaults to `dom`, a set switches it, and setting the same value does not notify.
 
 ## The lifecycle
 
 1. **Build.** On engaging, the layer starts in the gesture state (holder hidden, canvas active), so the DOM and the canvas never show as a double image, and it retries the capture every 120 ms until it succeeds. It then drops to idle.
 2. **Gesture.** Any camera change, or a held pointer while gesturing, enters the gesture: the React Flow viewport ("the holder") gets `visibility: hidden`, never `display: none`, so its layout stays measurable and an in-flight drag survives. DOM-only elements stay visible through it (below), and so does the canvas backing (the canvas color and dots, [[react-flow-surface-contract#The dot grid]]), which the canvas draws its cards over; it follows the holder's presented camera like any DOM-only element. Cable flow animation freezes to match the static canvas. On fine pointers the holder gets a gesture-scoped `will-change: transform` layer; on coarse pointers it never does ([[#The GPU texture budget]]).
-3. **Settle.** A gesture ends on a timer that each camera change re-arms: 140 ms after a pan, and `DEFAULT_ZOOM_SETTLE_MS = 420` after any gesture that zoomed (`zoomSettle.ts`; `window.__zoomSettle` overrides live). A scale change repaints the whole visible DOM at the new raster scale, while a pan only recomposites, and wheel zoom is notchy with no held-pointer signal. A short zoom settle would leave and re-enter the gesture on every notch and pay that repaint each time. A longer settle doesn't cure choppy zoom: a deployed 3000 ms A/B ruled it out.
+3. **Settle.** A gesture ends on a timer that each camera change re-arms: 140 ms after a pan, and `DEFAULT_ZOOM_SETTLE_MS = 420` after any gesture that zoomed.
+   - A scale change repaints the whole visible DOM at the new raster scale, while a pan only recomposites, and wheel zoom is notchy with no held-pointer signal. A short zoom settle would leave and re-enter the gesture on every notch and pay that repaint each time.
+   - A longer settle doesn't cure choppy zoom: a deployed 3000 ms A/B ruled it out.
+   - `window.__zoomSettle` overrides the zoom settle live, so a deployed preview can be A/B'd with no redeploy. Only a finite, non-negative number is taken; anything else falls back to the default rather than set a nonsense timer.
 4. **Held.** If the gesture ends below `HOLD_ZOOM = 0.4`, the canvas keeps drawing at rest. The DOM comes back muted (by opacity, so it still hit-tests) and the selected or focused cards show as live DOM on top. The renderer skips those live cards (`setDomLive`), so nothing paints twice. At that zoom DOM text is unreadable anyway, every card is in view so the settle repaint would be at its most expensive, and holding removes the pop at gesture end. `window.__hcHoldZoom` overrides it.
 5. **Idle.** Above the hold zoom the holder is fully restored and the canvas clears to transparent. The canvas element itself stays visible even when idle, because capture needs it rendered.
 
@@ -40,6 +49,8 @@ stateDiagram-v2
 ```
 
 A lasso never enters the gesture: it moves no camera, so the swap would only show a stale snapshot.
+
+Tests: `zoomSettle.test.ts`: the default with nothing set, a finite non-negative override honored, and junk values falling back to the default.
 
 ### The GPU texture budget
 
@@ -63,9 +74,11 @@ Each card's live element is cloned into the canvas (`layoutSubtree`) and capture
 - **Capture at 1×.** `REF = 1`: the clone lays out at true size (CSS `zoom`). A higher REF would supersample for crisp zoom-in, but it rounds text line boxes differently from the live DOM, a measured 0.9 px drift. The accepted trade is a softer image past 100% zoom. `live` mode (`window.__hcLive`) re-rasterizes at the exact transform every frame for anyone who needs it crisp.
 - **The mip pyramid.** Each card gets a pyramid of bitmaps halving from REF down to about `MIP_MIN_PX` (6 px). A frame draws the level `computeIdealMipLevel(scale, quality, dpr)` picks, `floor(log2(REF / (quality × scale × dpr)))`. Quality 1 is roughly one texture pixel per screen pixel; below 1 is cheaper and softer (`setQuality`).
 - **How a pyramid gets built.** `buildMips` first tries the captured image as a bitmap source, then a scratch-canvas raster of the captured image or the live clone. The shipped API's `ElementImage` is only `{width, height, close()}` and is not an `ImageBitmapSource`, by spec and permanently, so on most builds both fail and the card falls to the in-paint raster. That raster must run inside the `paint` event and before `drawFrame`, which clears the atlas pixels in the same paint task so they never present. It takes at most `RASTER_BATCH` cards per paint (24 on a coarse pointer, 48 on a fine one) to stay inside a frame budget, and a card is retried up to `RASTER_MAX_ATTEMPTS` (5) times, since a fresh clone may miss its first rendering update. `buildMips` loops until no unbuilt card remains, because an `updateNodes` that arrives mid-build returns early on the `building` guard.
-- **One read-back per paint.** Every card rastered in a paint packs into one atlas (`rasterAtlas.ts`, a shelf packer, which scales down anything larger than the canvas). The paint takes one canvas read-back, and each card's bitmap is cropped from the atlas bitmap (`createImageBitmap(atlas, x, y, w, h)`), which needs no further read-back. A read-back per card (about 16 per paint) is the expensive pattern on mobile GPUs. `createImageBitmap(canvas)` copies at invocation, so the paint's later clear cannot race it.
+- **One read-back per paint.** Every card rastered in a paint packs into one atlas (`rasterAtlas.ts`). The packer sorts the cards tallest first, so shelves stay dense, and places them left to right with a gutter, wrapping to a new shelf; a card larger than the atlas is scaled down to fit alone, and a card that does not fit this round is reported unplaced for the next. The paint takes one canvas read-back, and each card's bitmap is cropped from the atlas bitmap (`createImageBitmap(atlas, x, y, w, h)`), which needs no further read-back. A read-back per card (about 16 per paint) is the expensive pattern on mobile GPUs. `createImageBitmap(canvas)` copies at invocation, so the paint's later clear cannot race it.
 - **The ink check.** The first atlas is checked once for ink (every card paints an opaque body). A build that defers the raster past the read-back would otherwise cache a blank texture for every card. If the check cannot run, the layer proceeds.
 - **The slow path.** A card whose pyramid can't be built is drawn with `drawElementImage` on every frame instead, and a card with no capture at all draws its live clone, so it never blinks out. Both stay correct, just slower, and `getStats()` counts slow draws and permanent failures. When every capture throws, the layer still marks itself captured, so the tick loop does not spin `requestPaint` every frame.
+
+Tests: `rasterAtlas.test.ts`: an empty layout, one card at the origin unscaled, a row wrapping to a new shelf with the gutter, tallest first, an oversize card scaled to fit alone, cards that don't fit reported unplaced, and no placement overlapping another or leaving the atlas.
 
 ## Drawing and the camera
 
@@ -75,6 +88,11 @@ Each card's live element is cloned into the canvas (`layoutSubtree`) and capture
 - **The DOM follows the presented camera.** Mid-gesture the canvas draws the cards while DOM-only content (conduits, their cables, the standoff layer) stays live DOM, and the two pipelines can skew by a frame or more ("the conduit trails the pan"). So the holder's transform is steered to the camera the canvas actually presented (`holderSyncTransform`, `domSync.ts`). That camera comes from the matrix `drawElementImage` returns: for a box drawn at world anchor `a` at natural size the matrix is `translate(k·a + t) scale(k)`, so `k` is its `a` entry and `t = (e, f) − k·a` (`camFromDrawMatrix`). The API is experimental, so a derived camera is trusted only within 2% of scale and 4 CSS px of the layer's own bookkeeping (`plausibleNativeCam`); anything further is treated as a misparse, possibly an answer in backing-store pixels, and the bookkeeping wins. When the gesture ends the layer hands the transform back by re-serializing the live camera (`holderTransform`), so React Flow's next write is a no-op.
 - **Selection.** The per-card selection ring is a pseudo-element, so it rides along in the captured clone; a selection change re-captures only the cards whose ring toggled. The box-select rectangle is drawn in screen space, so its stroke stays a constant 1 px.
 
+Tests:
+
+- `domSync.test.ts`: `holderTransform`'s serialization; `holderSyncTransform` null with nothing presented or when live and presented agree, and the presented transform on a pan or zoom skew; `camFromDrawMatrix` recovering the camera from a translate-and-scale matrix and rejecting rotation, skew, uneven or degenerate scale and non-finite entries; `plausibleNativeCam` accepting a camera within rounding and rejecting a far scale or translation.
+- `hicCamera.test.ts`: the camera round-trips world and screen coordinates.
+
 ## Cables on the canvas
 
 `snapshotCables` (`hicGraphSnapshot.ts`) measures every visible card's sockets and returns the cables between them. Every read is guarded, so a half-built graph yields a partial list, never a throw. The layer draws those cables, minus the ones touching DOM-only elements; the cards themselves come from the captures above, never from the snapshot.
@@ -83,9 +101,14 @@ Each card's live element is cloned into the canvas (`layoutSubtree`) and capture
 - **Collapsed members.** Members of a collapsed group are skipped, and so are their cables, since the DOM shows nothing for them.
 - **Conduits.** A Conduit's model position is its wrapper's origin, but its body floats at an offset and rotates, so the snapshot uses the Conduit element's true rect.
 - **Color.** Each cable carries its source socket's data-type color, resolved from the `SOCKET_COLORS` CSS variables off the document root (neutral gray as the fallback) and cached for one snapshot, so a theme change is picked up.
-- **Routing.** `hicCableGeom.ts` routes each cable with the app's real router (`getCablePath` in `cablePaths.ts`), so canvas cables match DOM cables exactly, and flattens the SVG path to a polyline (`parsePathPoints`). A flipped endpoint leaves or enters from its mirrored side, as in `FlowCableEdge`.
+- **Routing.** `hicCableGeom.ts` routes each cable with the app's real router (`getCablePath` in `cablePaths.ts`), so canvas cables match DOM cables exactly, and flattens the SVG path to a polyline (`parsePathPoints`, which reads the M, L, Q and C commands the routers emit). Each end reaches `SOCKET_OVERLAP` into its socket, as the DOM cable does, so no seam shows at the handle edge. An exit angle is honored, and a flipped endpoint leaves or enters from its mirrored side, as in `FlowCableEdge`.
 - **Following moves.** The renderer stores each cable as offsets from its endpoint cards, so it follows them live; the snapshot's absolute positions are the fallback when an endpoint card is absent. Cables are routed once on a topology or shape change, and `relayoutCables(moved)` re-routes from current positions with no DOM read, limited to the cables touching `moved` when given.
 - **Drawing.** Visible cables are bucketed by color into one `Path2D` each, so a frame strokes a handful of paths rather than one per cable. The stroke is `1.8 × zoom` screen pixels, matching the DOM cable's 1.8-unit stroke inside the scaled viewport; a constant screen width would read far heavier once zoomed out. The idle opacity matches the DOM cable's non-hover default (0.72 in `FlowCableEdge`), or the gesture swap visibly pops.
+
+Tests:
+
+- `hicCableGeom.test.ts`: the ends reach `SOCKET_OVERLAP` into the sockets, every cable shape gives a finite polyline, an explicit exit angle is honored, and a flipped source's path equals `getCablePath`'s left-side route.
+- `pathPoints.test.ts`: `parsePathPoints` reads comma- and space-separated lines, flattens cubic and quadratic curves with exact endpoints, reads the walk router's rounded corners, and returns nothing for garbage.
 
 ## Keeping the capture fresh
 
