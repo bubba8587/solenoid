@@ -1,4 +1,4 @@
-// [[C25]]
+// [[C25]] firstClassUnits, [[unit-flow#One idea, a carrier per rank]]
 import { describe, it, expect } from "vitest";
 import { GraphNode } from "../../../src/graph/graphModel";
 import * as M from "../../../src/graph/nodes/matrix";
@@ -11,14 +11,7 @@ import { applyFcUnit } from "../../../src/graph/unitBridge";
 import { fcUnitToUnit } from "../../../src/graph/dimension";
 
 // ─── The matrix-unit POLICY guard (unitGranularity) ──────────────────────────────────────
-// A matrix carries ONE whole-grid unit as a non-enumerable Symbol tag (unitValue.ts).
-// That tag is dropped by any array rebuild, so EVERY node that transforms a matrix
-// must make a deliberate choice about the unit. This file is the machine-checked
-// register of those choices: the policy table below plus a COMPLETENESS sweep that
-// fails if a new matrix.ts node ships without a declared policy. It's the structural
-// guard that turns "did you remember to carry the unit?" from a silent runtime bug
-// (the 2026-07-15 INDEX/reshape whack-a-mole) into a red test.
-//
+
 //   carry            — structural reshape, same cells rearranged → the unit rides
 //   carry-if-uniform — a combiner → the unit rides only if every part shares it
 //   convert-to-list  — rank drop (matrix→list): the grid unit becomes per-cell tags

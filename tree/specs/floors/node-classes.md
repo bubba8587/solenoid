@@ -75,7 +75,7 @@ Each declaration in the map, and the spec that governs it:
 | `call_traits.json` | how a call routes (`kind`, `prep`), its vector direction (`free`), whether a matrix reaches the body (`matrixArgs`) and a complex value is refused before it (`checksCx`), the arguments a list lifts in (`scalar`), each argument's role and empty-slot reading, a blocked name's message | [[formula-language#The registry]], [[formula-language#Argument routing]], [[input-roles]] |
 | `FUNCTION_ARITY`, the signature table | the argument count and the hint the editor shows | [[formula-language#The registry]] |
 | `ARG_ROLES` | each argument's role (data, setting, required, picks), the same as the call table's | [[input-roles#The declaration]] |
-| a unit class in `unit_dims.rs` | what dimension the answer carries | [[unit-flow#Formula dimensions (`unit_dims.rs`)]] |
+| a unit class in `unit_dims.rs` | what dimension the answer carries | [[unit-flow#Formula dimensions]] |
 | the class, `INIT_FIELD_ORDER` | the card's sockets and saved fields, in the save's order | this spec, [[save-format]] |
 | `data() = nodeOnCore` | the node's work is done in Rust | [[node-bodies]] |
 | `inputRoles`, literal maps, `unitAware`, `passthrough()`, `noWidenInputs` | which roles its sockets take, which values it types inline, whether it sees units, which inputs it hands on unchanged, whether a Cube arrives as is | this spec, [[inline-literal-maps]], [[unit-flow]], [[compute-pass]] |

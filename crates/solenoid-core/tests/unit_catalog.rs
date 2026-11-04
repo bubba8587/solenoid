@@ -1,5 +1,5 @@
-//! [[C25]] firstClassUnits: the core's unit catalog resolves every id as the TS did
-//! (`fixtures/core/unit-catalog.json.gz`, frozen by `tests/graph/coreUnitCatalog.test.ts`).
+// [[C25]] firstClassUnits, [[unit-flow#Dimensions]]
+//! The core's unit catalog resolves every id as `fixtures/core/unit-catalog.json.gz` froze it.
 
 use serde_json::Value as Json;
 use solenoid_core::unit_catalog::fc_unit_to_unit;

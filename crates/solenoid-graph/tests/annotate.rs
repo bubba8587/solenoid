@@ -1,6 +1,5 @@
-// [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue, [[D99]] rustIsSpec
-//! The annotation walk held to the frozen answers the TypeScript gave over every seed graph, three ways
-//! (`fixtures/core/annotations.json.gz`, written by `tests/graph/coreAnnotations.test.ts`).
+// [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue, [[D99]] rustIsSpec, [[unit-flow#The resolver]]
+//! The annotation walk held to the frozen answers in `fixtures/core/annotations.json.gz`.
 
 use std::io::Read;
 

@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[D99]] rustIsSpec
+// [[C25]] firstClassUnits, [[D99]] rustIsSpec, [[unit-flow#Dimensions]]
 // Every display unit id the app can name, as `fcUnitToUnit` resolves it, frozen for the core's catalog
 // (`crates/solenoid-core/src/unit_catalog.rs`, held to these by its `tests/unit_catalog.rs`).
 import { isDeepStrictEqual } from "node:util";

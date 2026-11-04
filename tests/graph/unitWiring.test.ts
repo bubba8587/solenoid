@@ -1,4 +1,4 @@
-// [[C25]]
+// [[C25]] firstClassUnits, [[unit-flow#The unit on the value]], [[unit-flow#Expression]]
 import { describe, it, expect } from "vitest";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
 import { arithmeticCell } from "./coreVerbs";
@@ -10,9 +10,7 @@ import { formatDim } from "../../src/graph/dimension";
 
 const unitLabelOf = (v: unknown) => formatDim(dimOf(v));
 
-// Units enter a value through the Format Controller (the FC is value-mutating) or
-// Convert — NOT the Number node, which is a plain literal source. These tests drive
-// the algebra directly via `fromUnit` (the same base-SI cell an FC authors).
+// `fromUnit` builds the same base-SI cell an FC authors.
 const cell = (v: number, unitId: string): UnitCell => {
   const u = fcUnitToUnit(unitId)!;
   const c = fromUnit(v, u);
@@ -107,8 +105,7 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect(r).toMatchObject({ code: "#UNIT!", message: "xs holds mixed units: m and s." });
     expect(magnitudeOf(n.data({ xs: [[cell(1, "m"), 5]] }).result)).toBe(6);
   });
-  // [[C25]] firstClassUnits, [[B16]] oneFormulaSurface: the formula reads a united input
-  // as the Arithmetic and Comparison cards do, in its display unit.
+  // [[B16]] oneFormulaSurface
   it("a bare number adopts the display unit: 5 km + 3 is 8 km, and 5 km > 3000 is FALSE", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
     const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");
@@ -311,8 +308,7 @@ describe("custom units — an opaque free-text unit is its own dimension", () =>
   });
 
   it("custom axes are case-INSENSITIVE: Poop + poop adds (same quantity, one axis)", () => {
-    // Two FCs differing only in typed case must not #UNIT! against each other; the
-    // typed casing still shows through the display id.
+
     const a = applyFcUnit(2, "custom", "Poop");
     const b = applyFcUnit(3, "custom", "poop");
     const sum = arithmeticCell("add", a as never, b as never);
@@ -325,7 +321,7 @@ describe("custom units — an opaque free-text unit is its own dimension", () =>
     const sum = arithmeticCell("add", km5 as never, 3 as never);
     expect(magnitudeOf(sum)).toBe(8000); // base-SI meters — the 3 read as 3 km
     expect((sum as UnitCell).display).toBe("km"); // display id rides (unitLabelOf shows the derived dim symbol)
-    // × keeps the face value — a bare factor is a factor, not a length.
+
     expect(magnitudeOf(arithmeticCell("mul", km5 as never, 2 as never))).toBe(10000);
   });
 

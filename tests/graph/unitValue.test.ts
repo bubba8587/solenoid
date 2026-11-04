@@ -1,4 +1,4 @@
-// [[C25]]
+// [[C25]] firstClassUnits, [[unit-flow#Unit algebra]], [[unit-flow#Currency: the display code is the identity]]
 import { describe, it, expect } from "vitest";
 import {
   isUnitCell, dimOf, magnitudeOf, tagDim, fromUnit,
@@ -69,14 +69,12 @@ describe("dimensional algebra at the ops", () => {
     expect(dimOf(r)).toEqual({ length: 1 });
   });
   it("a bare number ADOPTS the dimensioned side's unit (spreadsheet reading)", () => {
-    // author decision 2026-07-13: `$5 + 2 = $7` — a dimensionless operand takes the
-    // other's dimension (at base-SI scale) + keeps its display id, rather than #UNIT!.
+
     const r = arithmeticCell("add", cell(5, "m"), 2) as UnitCell;
     expect(isSolError(r)).toBe(false);
     expect(r.value).toBe(7);
     expect(r.dim).toEqual({ length: 1 });
-    // (display preservation through the real FC path is covered in unitCoercion.test.ts)
-    // symmetric: bare number on the left
+    // A bare number on the left adopts too.
     const l = arithmeticCell("sub", 10, cell(3, "m")) as UnitCell;
     expect(l.value).toBe(7);
     expect(l.dim).toEqual({ length: 1 });
@@ -93,8 +91,7 @@ describe("dimensional algebra at the ops", () => {
 });
 
 describe("currency: no exchange rate → different codes are incommensurable", () => {
-  // Currency cells collapse onto the `currency` axis at scale 1, so a magnitude
-  // compare would call $5 == 5€. The display CODE is the real unit identity.
+
   const money = (value: number, code: string): UnitCell => ({ __unitCell: true, value, dim: { currency: 1 }, display: code });
   it("Comparison: $5 vs 5€ is #UNIT! (not equal-by-magnitude)", () => {
     expect(isSolError(compare("gt", money(5, "usd"), money(5, "eur")))).toBe(true);
@@ -127,19 +124,16 @@ describe("Aggregate over tagged cells", () => {
     expect((sum([cell(1, "m"), cell(1, "s")]) as { code?: string }).code).toBe("#UNIT!");
   });
   it("a bare number ADOPTS the list's unit (SUM(5 m, 2 m, 3) keeps length)", () => {
-    // author decision 2026-07-13: a dimensionless number adopts the op's unit.
-    // (display-carry through the real FC path is covered in unitCoercion.test.ts)
+
     const r = sum([cell(5, "m"), cell(2, "m"), 3]) as UnitCell;
     expect(r.dim).toEqual({ length: 1 });   // the bare 3 adopts length
     expect(r.value).toBe(10);
-    // symmetric: a leading bare number still adopts a later real dimension
+    // A leading bare number still adopts a later real dimension.
     expect((sum([3, cell(1, "m")]) as UnitCell).dim).toEqual({ length: 1 });
   });
 
   it("adoption reads the bare number in the list's DISPLAY unit (author 2026-07-16: SUM(5 km, 3) = 8 km)", () => {
-    // The bare 3 means 3 km → 3000 base-SI, not 3 meters. A LEADING bare number
-    // adopts the km discovered later (the two-pass scan).
-    // An FC-authored cell carries its display id — that's what the bare 3 reads in.
+    // The bare 3 reads in the km a later cell carries: 3000 in base SI.
     const km = (v: number) => fromUnit(v, U("km"), "km");
     expect((sum([km(5), 3]) as UnitCell).value).toBe(8000);
     expect((sum([3, km(5)]) as UnitCell).value).toBe(8000);

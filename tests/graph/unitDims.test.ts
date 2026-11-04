@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[C24]]
+// [[C25]] firstClassUnits, [[C24]] arraySemantics, [[unit-flow#Formula dimensions]]
 import { describe, it, expect } from "vitest";
 import { type Dim } from "../../src/graph/dimension";
 import { isSolError } from "../../src/graph/errorValue";

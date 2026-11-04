@@ -1,10 +1,4 @@
-// [[C25]]
-// The unit-blind boundary (FC A4 regression, 2026-07-13): a `UnitCell` must never
-// leak raw into a node that doesn't run the dimension algebra — it unwraps to its
-// DISPLAY magnitude (the number the user typed) at the central coercion seam, so a
-// comparison / threshold / chart downstream of an FC computes on `5`, not on a
-// NaN-coercing object or the base-SI `5000`. Unit-aware nodes and pure
-// passthroughs keep the tags (the algebra + display propagation live there).
+// [[C25]] firstClassUnits, [[unit-flow#The display bridge]], [[unit-flow#Who writes and who derives]]
 import { describe, it, expect, beforeAll } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
@@ -210,8 +204,7 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
   });
 
   it("an FC fed by another FC forwards: → → arrows, dropdown mirrors km and LOCKS", () => {
-    // An inherited unit is the value's, set elsewhere in the chain (author
-    // ruling 2026-07-31) — the downstream FC never re-authors over it.
+    // The downstream FC never re-authors an inherited unit.
     expect(fc2.forwarding).toBe(true);
     expect(fc2.lockedByConvert).toBe(false);
     expect(fc2.unitLocked).toBe(true);

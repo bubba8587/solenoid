@@ -1,7 +1,5 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec, [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue
-// The annotation walk's frozen answers (fixtures/core/annotations.json.gz): every seed graph, as saved, with every third
-// cable dropped and in reverse node order, once its types settle: each output's annotation and the one downstream that
-// governs it, each input's annotation, and each node's value origin; with the facts the walk reads (`annotationFacts`).
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue, [[unit-flow#The resolver]]
+// The annotation walk's frozen answers (fixtures/core/annotations.json.gz).
 import { isDeepStrictEqual } from "node:util";
 import { describe, expect, it } from "vitest";
 import { freezes, frozen } from "./coreFixtures";

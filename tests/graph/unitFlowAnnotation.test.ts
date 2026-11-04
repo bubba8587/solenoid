@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue
+// [[C10]] socketLattice, [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue, [[unit-flow#The format annotation]], [[unit-flow#The FC's unit tag]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
@@ -27,8 +27,7 @@ function node(label: string, extra: Record<string, unknown> = {}) {
   n.addInput("in", new GraphInput(sock, "In"));
   n.addOutput("out", new GraphOutput(sock, "Out"));
   Object.assign(n, extra);
-  // A pure-passthrough mock (Display) now declares it via passthrough() — the ONE
-  // source unitFlow reads (see passthrough.ts). Translate the old test flag.
+  // The mock's test flag becomes a passthrough() declaration.
   if (extra.passesUnitThrough) {
     delete n.passesUnitThrough;
     n.passthrough = () => [{ output: "out", inputs: ["in"], combine: "single", pure: true }];
@@ -58,10 +57,7 @@ function ifNode(label: string, selected: string | null | undefined) {
   }];
   return n;
 }
-/** A transform with REAL socket types — the format carry is family-gated, so a mock
- *  with the untyped `sock` above would carry nothing whatever the rule says. It stands in
- *  for a meaning-preserving op (an Add), so it DECLARES a carry from its value inputs
- *  (formatCarry); without the declaration a transform now carries nothing (formatCarryPerOp). */
+/** A meaning-preserving transform (an Add) with real socket types and a declared format carry. */
 function xformNode(label: string, inputs: Record<string, SocketDataType>, outType: SocketDataType) {
   const n = new GraphNode(label) as GraphNode & Record<string, unknown>;
   for (const [k, t] of Object.entries(inputs)) {
@@ -363,10 +359,7 @@ describe("applyFcUnit — the FC is value-mutating (FC A4: the unit rides the VA
   it("`none` / text pass through; a list tags per cell; a NUMERIC matrix takes ONE whole-grid unit (unitGranularity)", () => {
     expect(applyFcUnit(5, "none")).toBe(5);
     expect(applyFcUnit("hello", "km")).toBe("hello");
-    // A numeric matrix keeps its cells bare but carries one unit on the array (unitGranularity).
-    // The tag lands on a COPY, never the input — the DataflowEngine shares a node's
-    // cached array with every consumer, so mutating the source would leak this FC's
-    // unit onto the upstream value and race a second consumer.
+    // The grid unit lands on a copy; the engine shares the cached array with every consumer.
     const matrix = [[1, 2], [3, 4]];
     const tagged = applyFcUnit(matrix, "km");
     expect(tagged).not.toBe(matrix);                      // fresh outer array (no source mutation)

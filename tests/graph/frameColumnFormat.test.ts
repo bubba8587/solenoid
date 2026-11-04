@@ -1,4 +1,4 @@
-// [[C118]]
+// [[C118]] formatTravelsWithValue, [[unit-flow#A Frame's per-column format rides the value]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
@@ -50,8 +50,7 @@ async function collected(out: Record<string, unknown>): Promise<FrameValue> {
 beforeEach(() => { frameFormatStore.clear(); });
 afterEach(() => { frameFormatStore.clear(); });
 
-// [[C118]] formatTravelsWithValue: a frame column's DISPLAY format rides the value like its
-// unit — stamped at the producer from that node's own picks, overridden by a nearer one.
+
 describe("a per-column format rides the frame downstream", () => {
   it("survives Sort → Columns and renders through fmtCell", async () => {
     const input = new FrameInputNode({
@@ -119,8 +118,7 @@ describe("a per-column format rides the frame downstream", () => {
   });
 });
 
-// The author's report: the Headroom Computed Column's Decimal pick never reached the
-// Display fed by it, because each renderer read only its OWN node's entries.
+
 describe("the Allocator seed's Headroom column", () => {
   const hd = seed.nodes.find((n) => n.id === "hd")!;
 
@@ -145,8 +143,7 @@ describe("the Allocator seed's Headroom column", () => {
   });
 });
 
-// The unit rule is the precedent: a derived column carries the source column's format
-// exactly where the verb carries its unit (the core's `frame_verbs.rs`).
+
 describe("a DERIVED column carries the format only where it carries the unit", () => {
   it("Add Index: the index column carries nothing, the existing ones keep theirs", async () => {
     const input = new FrameInputNode({
@@ -173,8 +170,7 @@ describe("a DERIVED column carries the format only where it carries the unit", (
 
 });
 
-// The author's gap: "Auto" was a real pick that silently replaced the inherited format,
-// and there was no way to say "no pick of mine". The blank option is that way.
+
 describe("the format row's current value and hint", () => {
   it("no local pick + an inherited format: blank, and the hint names what flows in", () => {
     expect(columnFormatRow(undefined, DEC3)).toEqual({ value: "", hint: "← Decimal · 3 places" });
@@ -215,8 +211,7 @@ describe("the format row's current value and hint", () => {
   });
 });
 
-// The store stays the ONE persisted home (keyed by node); `format` on a column is
-// derived at compute time and must never reach a saved document.
+
 describe("a stamped format is never serialized", () => {
   it("stays out of the frame text form both ways", async () => {
     const input = new FrameInputNode({

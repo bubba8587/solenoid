@@ -1,4 +1,4 @@
-// [[B16]] oneFormulaSurface, [[C25]]
+// [[B16]] oneFormulaSurface, [[C25]] firstClassUnits, [[unit-flow#The one compute-time unit read]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
@@ -13,8 +13,7 @@ const mags = (r: unknown) => (r as unknown[]).map((c) => magnitudeOf(c));
 type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
 const sock = new (class extends GraphSocket {})("any");
 
-/** A source publishing a per-output unit via `annotationFor` — the Triangle
- *  Solver / MathFn-inverse-trig shape the resolver now reads. */
+/** A source publishing a per-output unit via `annotationFor`, as the Triangle Solver does. */
 function degSource() {
   const n = new GraphNode("Angle") as GraphNode & Record<string, unknown>;
   n.addOutput("A", new GraphOutput(sock, "A"));
@@ -39,7 +38,7 @@ describe("resolveTrigModes — Auto trig reads its incoming unit", () => {
     await connect(editor, deg, "A", sin);
     resolveTrigModes(editor);
     expect(sin.effectiveAngleMode()).toBe("deg");
-    // SIN(90°) computes to 1 now.
+
     expect(sin.data({ in: [90] }).result as number).toBeCloseTo(1, 9);
 
     // A plain (unitless) source → radians.
@@ -76,9 +75,7 @@ describe("resolveTrigModes — Auto trig reads its incoming unit", () => {
 
 describe("MathFn trig — per-cell mixed-unit interpretation", () => {
   it("in deg mode a mixed list reads each cell in its own unit", () => {
-    // A radian-tagged angle and a degree-tagged angle carry their OWN unit (base
-    // radians, so the node mode is ignored); a BARE number has no unit and follows the
-    // node's deg mode. One list, three interpretations.
+
     const sin = new MathFXNode({ op: "sin", angleMode: "deg" });
     const res = sin.data({ in: [[angle(Math.PI / 2, "rad"), angle(Math.PI / 3, "deg"), 30]] as never });
     const [a, b, c] = mags(res.result);

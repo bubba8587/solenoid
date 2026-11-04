@@ -1,18 +1,10 @@
-// [[C25]]
+// [[C25]] firstClassUnits, [[unit-flow#Currency: the display code is the identity]]
 import { describe, it, expect } from "vitest";
 import { type ArithmeticOp, type UnitCell } from "../../src/graph/unitValue";
 import { arithmeticCell } from "./coreVerbs";
 import { isSolError } from "../../src/graph/errorValue";
 
-// ─── The currency policy sweep (matrixUnitPolicy's shape, applied to currency) ──
-// FX is out of scope, so every currency collapses onto ONE `currency` axis at
-// scale 1 — $5 and 5€ store the same base magnitude. That makes the display CODE
-// the real unit identity, and every combinator must refuse two different explicit
-// codes ("no exchange rate") rather than silently combining magnitudes. The
-// checks lived in some combinators and not others — the live arithmetic path
-// answered $5 + 5€ = $10 and minted $10 ÷ 5€ into a 2:1 "ratio" (a fabricated FX
-// rate) while the currency-aware copy sat DEAD — so this sweep quantifies the
-// policy over EVERY op and every combinator.
+
 
 const money = (value: number, code: string): UnitCell =>
   ({ __unitCell: true, value, dim: { currency: 1 }, display: code });
@@ -21,10 +13,7 @@ const eur5 = money(5, "eur");
 const err = (v: unknown) => isSolError(v) && v.code === "#UNIT!";
 
 describe("every arithmetic op refuses mismatched currencies", () => {
-  // The policy per op — every ArithmeticOp MUST appear (the completeness check
-  // below). All seven refuse: +/−/mod can't combine, ×/÷/quotient would fabricate
-  // an exchange rate (÷ mints a RATIO — a unitless $/€ number IS an FX claim),
-  // and pow's currency exponent is doubly wrong.
+  // Every ArithmeticOp appears (the completeness check below).
   const POLICY: Record<ArithmeticOp, "refuse"> = {
     add: "refuse", sub: "refuse", mul: "refuse", div: "refuse",
     mod: "refuse", quotient: "refuse", pow: "refuse",
@@ -54,12 +43,7 @@ describe("every arithmetic op refuses mismatched currencies", () => {
 
 
 describe("the formula surface — codes ride the dim pass (the Expression gap, closed)", () => {
-  // The numeric evaluator computes on stripped magnitudes and can't see codes,
-  // so `$5 + 5€` answered 10 in an Expression while arithmeticCell refused.
-  // The codes now ride the DIMENSIONAL pass (unitDimExpr CodeEnv): operators
-  // refuse a mismatch with the same #UNIT!, and a coded result carries its
-  // code's dim. CALLS drop codes — the recorded limitation (SUM over two coded
-  // inputs still combines in a formula; the node-side aggregators refuse).
+
 
 
 
