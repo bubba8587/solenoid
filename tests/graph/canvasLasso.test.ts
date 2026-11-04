@@ -1,4 +1,4 @@
-// [[C52]] visibleSelection, [[C92]] pinchUnvetoable
+// [[C52]] visibleSelection, [[C92]] pinchUnvetoable, [[pointer-gestures#The lasso]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { installLassoSelection, type LassoState } from "../../src/graph/canvasLasso";
 import { lassoActiveStore } from "../../src/graph/lasso";
