@@ -306,12 +306,8 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
   });
 });
 
-// ─── INTERPOLATE grid mode: the last name [[C15]] matricesInFormulas unblocked ([[C17]] shareImpl) ────────────────
-// The node is ONE node with a List/Grid mode toggle, so it is ONE formula name —
-// the arm is chosen by the first argument's RANK, not by a second registration
-// ([[B16]] oneFormulaSurface injectivity). Grid mode was parked behind the noFramesInFormulas cap; [[C15]] matricesInFormulas lifted it.
+// ─── INTERPOLATE grid mode: [[C15]] matricesInFormulas, [[C17]] shareImpl, [[bordered-grid-fill#Inputs and coordinates]] ───
 describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
-  // Grid mode is now INTERPOLATE(table, xs?, ys?, forecast?) — coordinates ride beside Z.
   const z = [[0, 10], [null, null], [20, 30]];
   const xs = [0, 10];
   const ys = [0, 10, 20];
@@ -330,8 +326,6 @@ describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
   it("omitted axes count 1, 2, 3…, matching the node with unwired axes", () => {
     const node = new InterpolateNode({ mode: "grid" });
     expect(ev("INTERPOLATE(t)", { t: z })).toEqual(node.data({ z: [z] }).result);
-    // A BLANK positional axis is omitted too (a blank arg evaluates to null; the formula
-    // surface has no wired-blank to propagate), so the forecast flag can be reached alone.
     const off = new InterpolateNode({ mode: "grid", forecast: false });
     expect(ev("INTERPOLATE(t, , , FALSE)", { t: z })).toEqual(off.data({ z: [z] }).result);
   });

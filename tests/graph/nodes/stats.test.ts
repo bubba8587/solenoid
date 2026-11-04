@@ -1,4 +1,5 @@
-// [[C102]] gridFillThenForecast
+// [[C102]] gridFillThenForecast, [[bordered-grid-fill#Inputs and coordinates]], [[bordered-grid-fill#The two passes]],
+// [[bordered-grid-fill#Contested boxes]]
 import { describe, it, expect } from "vitest";
 import {
   RankPercentileNode,
@@ -140,9 +141,7 @@ describe("INTERPOLATE (piecewise-linear lookup)", () => {
 });
 
 describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)", () => {
-  // C4 moved coordinates BESIDE the Z matrix (the plain z, xs, ys convention). These cases
-  // were written with the coordinates in a border row/column, so split that off into
-  // xs/ys/z and re-form the filled Z for comparison — the interior algorithm is unchanged.
+  // Each case is drawn with X in a border row and Y in a border column; `unborder` splits them off.
   type Grid = (number | null)[][];
   const unborder = (t: Grid) => ({
     xs: t[0].slice(1) as number[],
@@ -166,8 +165,6 @@ describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)
       [5, null, null, null],
       [10, 10, null, 20],
     ];
-    // Every cell resolves to Z = x + y — the (X=5, Y=5) intersection (blank in BOTH a
-    // new row and a new column) is the true bilinear blend of the four coarse corners.
     expect(filled(t)).toEqual([
       [null, 0, 5, 10],
       [0, 0, 5, 10],
@@ -220,14 +217,10 @@ describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)
       [1, 0, null, 2],
       [2, 0, 2, 4],
     ]);
-    // Since the contested-box rule (2026-07-16) a hole fills via the SPLINE over
-    // all its neighbors (a row-line bilinear would ignore the equally-near
-    // column neighbors), so exactness is to float epsilon, not Object.is.
     expect(out[2][2]).toBeCloseTo(1, 9);
   });
   it("bilinear leaves an unenclosed cell blank; forecast fills it with the spline", () => {
-    // An L of data (top row + left column only): the far corner is missing, so bilinear
-    // can't enclose the interior — with forecast OFF it stays blank; ON, the spline fills.
+    // An L of data (top row and left column only).
     //   ·   0   1   2
     //   0   0   1   2
     //   1   1   ·   ·
@@ -237,11 +230,7 @@ describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)
     expect(Number.isFinite(filled(t)[2][2] as number)).toBe(true); // ON: spline fills it
   });
 
-  it("a sine DIAGONAL + 0 corners interpolates through the diagonal, not flat-0 (author 2026-07-16)", () => {
-    // The regression this pins: the only all-known-corner box was the grid's four
-    // 0-corners, so pass 1 claimed every blank at bilinear(0,0,0,0) = 0 — with the
-    // whole diagonal sitting INSIDE that box, ignored. The containment test now
-    // rejects contested boxes and the spline interpolates through diagonal + corners.
+  it("a sine DIAGONAL + 0 corners interpolates through the diagonal, not flat-0", () => {
     const s = (deg: number) => Math.sin((deg * Math.PI) / 180);
     const n = null;
     const t: (number | null)[][] = [
@@ -254,20 +243,16 @@ describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)
       [6,    0,       n,       n,       n,       n,       0],
     ];
     const out = filled(t);
-    // Every blank fills (forecast on)…
       for (let i = 1; i < out.length; i++) for (let j = 1; j < out[i].length; j++) {
       expect(Number.isFinite(out[i][j] as number)).toBe(true);
     }
-    // …and the cells flanking the diagonal are NOT flat 0: they sit between the
-    // corner 0s and the neighboring diagonal samples (0.2588 / 0.5).
     const a = out[2][4] as number; // row of s(15), col of s(30)'s neighbourhood
     const b = out[3][3] as number; // just off the diagonal between s(15) and s(30)
     expect(Math.abs(a)).toBeGreaterThan(0.01);
     expect(Math.abs(b)).toBeGreaterThan(0.05);
-    expect(b).toBeLessThan(0.75); // pulled toward the diagonal, not runaway
+    expect(b).toBeLessThan(0.75);
   });
 
-  // Node wiring — a Z table + optional Xs/Ys in, ONE table out.
   it("grid mode is a Z table + optional Xs/Ys in and one table output", () => {
     const n = new InterpolateNode({ mode: "grid" });
     expect(Object.keys(n.inputs).sort()).toEqual(["xs", "ys", "z"]);
@@ -283,17 +268,15 @@ describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)
   });
   it("fills a Z table through the node (a per-cell error reads as a blank)", () => {
     const err = solError("#REF!", "bad cell");
-    // Z = x·y with the center cell errored → reads as blank, filled by 2-D interp to 1.
     const z = [[0, 0, 0], [0, err, 2], [0, 2, 4]];
     const r = new InterpolateNode({ mode: "grid" }).data({ z: [z], xs: [[0, 1, 2]], ys: [[0, 1, 2]] }).result as (number | null)[][];
-    expect(r[1][1]).toBeCloseTo(1, 9); // spline fill (see the contested-box rule)
+    expect(r[1][1]).toBeCloseTo(1, 9);
   });
   it("unwired Xs/Ys count 1, 2, 3…, and a wired-blank axis makes the result null", () => {
     const z = [[1, null], [null, 4]];
     const idx = new InterpolateNode({ mode: "grid" }).data({ z: [z] }).result as (number | null)[][];
     expect(idx.length).toBe(2);
     expect(Number.isFinite(idx[0][1] as number)).toBe(true); // filled from the index axes
-    // a WIRED-blank axis is unknown → the whole result is null (shape propagates).
     expect(new InterpolateNode({ mode: "grid" }).data({ z: [z], xs: [null] }).result).toBeNull();
   });
   it("forecast defaults ON, drives the grid fill, and round-trips through extractInit", () => {
@@ -427,7 +410,7 @@ describe("Rank & Percentile — one node, op-switch mechanics", () => {
   });
 });
 
-describe("fillGrid: a degenerate-row box is contested only by data on that row (review pin)", () => {
+describe("fillGrid: a degenerate-row box is contested only by data on that row", () => {
   it("a blank between two knowns on a row interpolates along the row even when other rows carry data", () => {
     const z = [[0, null, 2], [null, null, null], [0, 5, 2]];
     const out = fillGrid(z, [0, 1, 2], [0, 1, 2], true);
