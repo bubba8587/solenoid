@@ -34,15 +34,15 @@ const GROUPS: LegendGroup[] = [
     { kind: "square", color: SOCKET_COLORS.datelist,  tip: "Date List" },
     { kind: "grid",   color: SOCKET_COLORS.datetable, tip: "Date Matrix" },
   ] },
-  { label: "Complex", icon: "complex", dots: [
-    { kind: "circle", color: SOCKET_COLORS.complex,      tip: "Complex" },
-    { kind: "square", color: SOCKET_COLORS.complexlist,  tip: "Complex List" },
-    { kind: "grid",   color: SOCKET_COLORS.complextable, tip: "Complex Matrix" },
-  ] },
   { label: "Boolean", icon: "logical", dots: [
     { kind: "circle", color: SOCKET_COLORS.logical,      tip: "Boolean" },
     { kind: "square", color: SOCKET_COLORS.logicallist,  tip: "Boolean List" },
     { kind: "grid",   color: SOCKET_COLORS.logicaltable, tip: "Boolean Matrix" },
+  ] },
+  { label: "Complex", icon: "complex", dots: [
+    { kind: "circle", color: SOCKET_COLORS.complex,      tip: "Complex" },
+    { kind: "square", color: SOCKET_COLORS.complexlist,  tip: "Complex List" },
+    { kind: "grid",   color: SOCKET_COLORS.complextable, tip: "Complex Matrix" },
   ] },
   { label: "Frame", icon: "frame", dots: [
     { kind: "frame", color: SOCKET_COLORS.frame, tip: "Frame" },
