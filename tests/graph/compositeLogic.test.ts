@@ -1,4 +1,4 @@
-// [[A1]], [[B3]], [[C25]]
+// [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere, [[C25]] firstClassUnits, [[composite-nodes#Make a composite from a selection]], [[composite-nodes#Unpack]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

@@ -1,4 +1,4 @@
-// [[C77]] compositeIsSubgraph
+// [[C77]] compositeIsSubgraph, [[composite-nodes#Edits inside and how they reach the outside]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection } from "../../src/graph/graphModel";

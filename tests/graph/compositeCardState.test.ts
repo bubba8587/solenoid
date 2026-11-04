@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C77]] compositeIsSubgraph
+// [[B12]] losslessSaves, [[C77]] compositeIsSubgraph, [[composite-nodes#Save and load]]
 import { describe, it, expect } from "vitest";
 import { CompositeNode, type CompositeSavedNode } from "../../src/graph/nodes/composite";
 import { ValueInputNode } from "../../src/graph/nodes/control";

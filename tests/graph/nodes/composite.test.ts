@@ -1,4 +1,4 @@
-// [[C23]]
+// [[C23]] calcModes, [[composite-nodes#Run modes]], [[composite-nodes#Loops]], [[composite-nodes#The heavy-mode hold]], [[composite-nodes#Ports]]
 import { cubeFromColumns, isCubeValue, type CubeValue } from "../../../src/graph/frame";
 import { describe, it, expect, vi } from "vitest";
 import { nextGeneration } from "../../../src/graph/passSession";
@@ -191,8 +191,6 @@ describe("CompositeNode shell", () => {
     });
 
     it("a Refresh on one held composite leaves a held sibling holding", async () => {
-      // The engine can fetch siblings concurrently, so the "solving around you" context must reach only the solving card's
-      // own insides. The race itself doesn't reproduce here (this engine resolves the siblings in turn); this pins the rule.
       const [a] = await nestManual(1);
       const [b] = await nestManual(1);
       const parent = new CompositeNode({ label: "P" });
@@ -1063,8 +1061,7 @@ describe("CompositeNode Goal Seek run mode", () => {
   it("arm-and-run: first pass holds blank and stale, Solve solves, then holds again", async () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
-    // Never solved (create/load): reads blank and stale until the user clicks Solve —
-    // people expect to watch it compute on Solve ([[C23]] calcModes).
+    // Never solved (create or load): blank and stale until Solve.
     const held0 = await c.data({ [inBId]: [10] });
     // Blank on every output key: rete-engine's fetch refuses a result missing a key.
     expect(held0[outId]).toBeNull();
@@ -1312,10 +1309,7 @@ describe("CompositeNode Monte Carlo run mode", () => {
   });
 });
 
-// ─── Manual refresh (the Power Query hold) ─────────────────────────────────────
-// Computationally a single pass, but ALWAYS heavy: the container recomputes only
-// on Refresh (requestSolve) and just flags stale on upstream ticks. These tests
-// pin the hold semantics and the Query catalog preset built on top of them.
+// ─── Manual refresh ─────────────────────────────────────
 describe("CompositeNode manual refresh mode", () => {
   /** A manual-mode passthrough: one exposed input marker wired straight to one
    *  output marker (the exact shape the Query preset ships). */
