@@ -57,8 +57,22 @@
 }
 .solenoid-valin.solenoid-node--collapsed .solenoid-node__body {
   padding: 4px 10px 4px 20px;
-  background: color-mix(in srgb, var(--node-accent, var(--accent)) 24%, transparent);
-  border-radius: inherit;
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 24%, var(--surface));
+  border-radius: 6px;
+}
+/* The edge is the header's (`__frame-cap`): 2px of the accent, inset 1px. The frame draws over the body, so it takes no
+   fill; the body's tint rounds to the frame's corners. */
+.solenoid-valin.solenoid-node--collapsed .solenoid-node__frame-body,
+:root[data-theme="light"] .solenoid-valin.solenoid-node--collapsed .solenoid-node__frame-body,
+.solenoid-valin.solenoid-node--collapsed:hover .solenoid-node__frame-body {
+  x: 1px;
+  y: 1px;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  rx: 5px;
+  fill: none;
+  stroke: var(--node-accent, var(--accent));
+  stroke-width: 2px;
 }
 .solenoid-valin.solenoid-node--collapsed .solenoid-node__collapsed-only {
   justify-content: flex-end;
