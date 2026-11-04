@@ -1,5 +1,8 @@
 import { ConstantNode as ConstantNodeType, ConstantOp, CONSTANTS } from "../nodeClasses";
+import { useSyncExternalStore } from "react";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { CollapsedCell } from "./CollapsedCell";
+import { collapseStore } from "../collapseStore";
 
 const OPS: { value: ConstantOp; label: string }[] = Object.entries(CONSTANTS).map(
   ([value, meta]) => ({ value: value as ConstantOp, label: `${meta.symbol}  ${meta.label}` }),
@@ -14,15 +17,17 @@ function formatValue(n: number): string {
 export function ConstantComponent({ data, emit }: NodeProps<ConstantNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
   const meta = CONSTANTS[op];
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
+  const render = (v: number) => <><span style={{ marginRight: 6, color: "var(--text-dim)" }}>{meta.symbol}</span>{formatValue(v)}</>;
+  // Collapsed, the card is its value cell, read-only: a constant has nothing to key.
   return (
-    <NodeShell node={data} emit={emit}>
+    <NodeShell node={data} emit={emit} cellCollapse>
       <OpSelect value={op} onChange={setOp} options={OPS} />
-      <ValueDisplay
-        value={meta.value}
-        renderWins
-        render={(v) => <><span style={{ marginRight: 6, color: "var(--text-dim)" }}>{meta.symbol}</span>{formatValue(v)}</>}
-        toClipboard={(v) => String(v)}
-      />
+      {collapsed ? (
+        <CollapsedCell value={meta.value} renderWins render={render} />
+      ) : (
+        <ValueDisplay value={meta.value} renderWins render={render} toClipboard={(v) => String(v)} />
+      )}
     </NodeShell>
   );
 }

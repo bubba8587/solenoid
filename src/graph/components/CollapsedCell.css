@@ -1,0 +1,53 @@
+/* [[C28]] literalsIffEditable
+   The cell collapse (`NodeShell cellCollapse`, `CollapsedCell`): collapsed, a value card is its value cell alone, as
+   Sparkline is its mini. The header steps out, the card itself is the cell, tinted by its type and edged in its
+   header's stroke, as wide as its value; the value sits right with room on the left for the chevron. An editable cell
+   (Value Input) edits on a press; a read-only one (Constant) only shows. A double-click on the card's edge expands. */
+.sol-cell-collapse.solenoid-node--collapsed {
+  width: auto;
+  min-width: 68px;
+  max-width: 220px;
+}
+.sol-cell-collapse.solenoid-node--collapsed .solenoid-node__body {
+  padding: 4px 10px 4px 20px;
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 24%, var(--surface));
+  border-radius: 6px;
+}
+/* The edge is the header's (`__frame-cap`): 2px of the accent, inset 1px. The frame draws over the body, so it takes no
+   fill; the body's tint rounds to the frame's corners. */
+.sol-cell-collapse.solenoid-node--collapsed .solenoid-node__frame-body,
+:root[data-theme="light"] .sol-cell-collapse.solenoid-node--collapsed .solenoid-node__frame-body,
+.sol-cell-collapse.solenoid-node--collapsed:hover .solenoid-node__frame-body {
+  x: 1px;
+  y: 1px;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  rx: 5px;
+  fill: none;
+  stroke: var(--node-accent, var(--accent));
+  stroke-width: 2px;
+}
+.sol-cell-collapse.solenoid-node--collapsed .solenoid-node__collapsed-only {
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+.sol-cell .solenoid-node__display-value {
+  background: none;
+  border: none;
+  padding: 0;
+  min-height: 0;
+  justify-content: flex-end;
+  text-align: right;
+}
+.sol-cell,
+.sol-cell__view {
+  width: 100%;
+}
+.sol-cell__view--edit {
+  cursor: text;
+}
+.sol-cell__input {
+  max-width: 100%;
+  box-sizing: border-box;
+  text-align: right;
+}

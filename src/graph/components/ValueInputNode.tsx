@@ -17,6 +17,7 @@ import { TypeIcon } from "./TypeIcon";
 import { FormatStyleSelect, DateStyleSelect, TextCaseSelect, LogicalStyleSelect, UnitSelect, CustomPatternField } from "./fcControls";
 import { useDraftCommit, useNumberScrub, QuotedTextInput, INVALID_DRAFT, LogicalCheck } from "./inlineInput";
 import { DateEntry } from "./DateEntry";
+import { CollapsedCell } from "./CollapsedCell";
 import type { DisplayValue } from "./valueDisplayFormat";
 import "./ValueInputNode.css";
 // The Format Controller's toggle and checkbox styles, so the same picks look the same on both cards.
@@ -63,7 +64,7 @@ export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType
   const entry = !collapsed;
 
   return (
-    <NodeShell node={data} emit={emit} squareCollapse className="solenoid-valin">
+    <NodeShell node={data} emit={emit} cellCollapse className="solenoid-valin">
       {entry && (
         <div className="solenoid-valin__entry">
           {dt === "number" && <NumberEntry text={data.value} onCommit={commitValue} />}
@@ -87,56 +88,20 @@ export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType
         <FormatRows node={data} dt={dt} pick={pick} />
       </CardSection>
       {collapsed ? (
-        <div className="solenoid-node__collapsed-only solenoid-valin__cell">
-          <ValueCell node={data} onCommit={commitValue} />
-        </div>
+        <CollapsedCell
+          value={data.cachedValue as DisplayValue}
+          socketKey="value"
+          edit={{
+            text: data.value,
+            onCommit: commitValue,
+            // A logical has two values, so a press flips it, as its checkbox does.
+            flip: dt === "logical" ? () => commitValue(/^true$/i.test(data.value.trim()) ? "FALSE" : "TRUE") : undefined,
+          }}
+        />
       ) : (
         <ValueDisplay value={data.cachedValue as DisplayValue} socketKey="value" />
       )}
     </NodeShell>
-  );
-}
-
-/** Collapsed, the card is one editable cell, as a Frame cell is: it shows the value, a click shows the keyed text, and
- *  Enter or a blur commits it and shows the value again (Escape keeps the old text); a logical flips instead. The card
- *  keeps its type, so text its type can't read answers #VALUE!. */
-function ValueCell({ node, onCommit }: { node: ValueInputNodeType; onCommit: (text: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const field = useDraftCommit<string>(node.value, (v) => v, (t) => t, onCommit);
-  const stop = {
-    onPointerDown: stopDragStart,
-    onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
-    onDoubleClick: (e: React.MouseEvent) => e.stopPropagation(),
-  };
-  if (editing) {
-    return (
-      <input
-        className="solenoid-node__value-input solenoid-valin__cell-input"
-        autoFocus
-        value={field.draft}
-        style={{ width: `${Math.max(4, field.draft.length + 2)}ch` }}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
-        onBlur={() => { field.onBlur(); setEditing(false); }}
-        onKeyDown={field.onKeyDown}
-        spellCheck={false}
-        {...stop}
-      />
-    );
-  }
-  return (
-    <div
-      className="solenoid-valin__cell-view"
-      title={node.op === "logical" ? "TRUE or FALSE, flipped in place" : "The value, edited in place"}
-      onClick={(e) => {
-        e.stopPropagation();
-        // A logical has two values, so a press flips it, as its checkbox does; anything else opens its keyed text.
-        if (node.op === "logical") onCommit(/^true$/i.test(node.value.trim()) ? "FALSE" : "TRUE");
-        else setEditing(true);
-      }}
-      {...stop}
-    >
-      <ValueDisplay value={node.cachedValue as DisplayValue} socketKey="value" copy={false} />
-    </div>
   );
 }
 

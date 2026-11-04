@@ -258,6 +258,7 @@ export function NodeShell({
   hideOutputSockets = false,
   collapsible = true,
   squareCollapse = false,
+  cellCollapse = false,
   className,
   accentOverride,
   nonScrollingBody = false,
@@ -272,6 +273,9 @@ export function NodeShell({
   hideOutputSockets?: boolean;
   collapsible?: boolean;
   squareCollapse?: boolean;
+  /** Collapsed, the card is its value cell alone (`CollapsedCell`, which the card renders while collapsed): a square
+   *  collapse whose mini is the cell. */
+  cellCollapse?: boolean;
   className?: string;
   accentOverride?: string;
   /** A figure body scales rather than scrolls, so a sized card must not trap the wheel (`nowheel`). */
@@ -337,7 +341,7 @@ export function NodeShell({
 
   return (
     <NodeFormatContext.Provider value={node.id}>
-      <NodeCard selected={node.selected} node={node} collapsible={collapsible} squareCollapse={squareCollapse} className={className} accentOverride={accentOverride}>
+      <NodeCard selected={node.selected} node={node} collapsible={collapsible} squareCollapse={squareCollapse || cellCollapse} className={cellCollapse ? `sol-cell-collapse${className ? ` ${className}` : ""}` : className} accentOverride={accentOverride}>
         <div className="solenoid-node__header" ref={headerRef} title={headerTooltip(node)}>
           {editing ? (
             <textarea
