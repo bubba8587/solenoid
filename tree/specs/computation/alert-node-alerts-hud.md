@@ -25,6 +25,11 @@ The card carries the full set of sockets at all times, and the component shows o
 
 An unwired socket falls back to the card's typed literal (defaults: `value` 50, `low` 0, `high` 100, `target` 0, `text` and `match` empty). A wired socket always wins, even when its cable carries a blank ([[D86]] blankRoles).
 
+Tests:
+
+- `alertNode.test.ts`: `condition` survives a save; `boolean` mode means a real true or 1, not any nonzero number; `equals` fires on a match; `text` fires when the text contains the match.
+- `wiredNull.test.ts`: in `range` mode a wired blank High makes the status null rather than reading the card's 100, while an unwired High uses the card's bound.
+
 ## The status output
 
 The `result` socket (labeled "Status") emits a number:
@@ -35,6 +40,8 @@ The `result` socket (labeled "Status") emits a number:
 - null when a needed input is missing, which means the status is unknown.
 
 A list input yields a list of statuses, one per element. A per-cell error or blank rides through as a non-alerting cell.
+
+Tests: `alertNode.test.ts`: a blank or error cell in a list is not alerting, and the list's message counts only the cells that are.
 
 The card's value box shows a neutral dot and word, never a pass or fail mark, because an Alert watches and notifies rather than judging. Calm reads "in range", "no match", "false" or "no match" by mode; met reads "below" or "above", "equal", "true" or "match". A list reads "all clear" or "some out". The met color is the theme's amber accent; calm is `--text-dim`.
 
@@ -59,7 +66,14 @@ flowchart TD
     rb -->|no| f["fireAlert: a HUD event<br>and a toast"]
 ```
 
-So in `range` mode, calm to LOW, calm to HIGH and LOW to HIGH (either way) all fire; LOW to LOW and HIGH to HIGH do not; returning to calm is silent. A new card holds no key, so a card born alerting, or switched into a condition that is already met, fires once. Expect fires the same way, its key the set of failed checks (`nodes/quality.ts`, `expect` in `docs.rs`).
+So in `range` mode, calm to LOW, calm to HIGH and LOW to HIGH (either way) all fire; LOW to LOW and HIGH to HIGH do not; returning to calm is silent. A new card holds no key, so a card born alerting, or switched into a condition that is already met, fires once. Expect fires the same way, its key the set of failed checks (`nodes/quality.ts`, `expect` in `docs.rs`). That key is the kinds of check that failed, not which cells failed or how many: a different cell failing the same check does not fire again, a new kind of check joining the failures fires, and a recovery to no failures fires nothing and lets the next failure fire.
+
+Tests:
+
+- `alertNode.test.ts`: the engine's direct call fires on a change of status and not while the graph rebuilds; a card born out of range fires on its first run; calm to alert fires once, a held status stays silent and a return to calm re-arms; every change between Low and High fires; a mode switch into a condition already met fires once.
+- `quality.test.ts`: Expect fires only when the set of failing checks changes, from the engine's direct call too.
+- `connectionStore.test.ts`: a live connection's refresh changes the value reaching an Alert and its change of status fires.
+- `sourceInvariants.test.ts`: every node file that fires an alert names the `isGraphRebuilding` gate.
 
 ## Firing
 
@@ -74,6 +88,8 @@ The message, which the body writes, is a neutral observation prefixed with the c
 - equals: "Tank: equals 7";
 - boolean: "Tank: is true";
 - text: `Log: contains "error"`.
+
+Tests: `alertNode.test.ts`: the range message ("Temp: 150 above 100"), a list's message, and the text mode's message carrying the label.
 
 Numbers print as every unformatted number does ([[C118]] formatTravelsWithValue).
 

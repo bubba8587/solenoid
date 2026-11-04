@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[D79]] effectsEdgeTriggered, [[alert-node-alerts-hud#When it fires]]
 import { describe, it, expect } from "vitest";
 import { ExpectNode } from "../../../src/graph/nodes/quality";
 import { alertStore } from "../../../src/graph/alertStore";
@@ -111,12 +111,6 @@ describe("Expect over lists/scalars (unchanged behavior)", () => {
   });
 });
 
-// The alert edge-detects on the SET of failing CHECK KINDS (violations.join),
-// NOT on which cells failed or how many — a "failure signature". So a different
-// cell failing the SAME check does not re-fire; a new check joining the set does;
-// recovery re-arms the edge. This is the intended coarse-grained design (quality.ts
-// comments; the alertStore "edge-detect on STATUS, not a boolean" invariant), pinned
-// here so a future change to the firing rule is a conscious one.
 describe("Expect alert edge-detect (fires on a NEW failure signature, not per bad cell)", () => {
   const alertsFor = (id: string) => alertStore.list().filter((e) => e.nodeId === id).length;
 

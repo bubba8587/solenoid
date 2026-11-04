@@ -1,4 +1,4 @@
-// [[D79]]
+// [[D79]] effectsEdgeTriggered, [[alert-node-alerts-hud#Modes]], [[alert-node-alerts-hud#When it fires]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { AlertNode } from "../../../src/graph/nodes/display";
 import { extractInit } from "../../../src/graph/nodeInit";
@@ -6,10 +6,6 @@ import { alertStore } from "../../../src/graph/alertStore";
 import { solError } from "../../../src/graph/errorValue";
 import { beginGraphRebuild, endGraphRebuild } from "../../../src/graph/process";
 import { inEditor } from "../cardPasses";
-
-// The Alert node fires (logs a HUD event + raises a toast) when its status changes to one that alerts. Its body
-// shows the status (`alertKey`) and what it fires (`alertMessage`); the TS only raises it. A freshly-created node
-// CAN fire on its first eval (so wiring in a triggering value works), and switching mode into a met condition fires.
 
 describe("AlertNode", () => {
   beforeEach(() => alertStore.clear());
@@ -73,9 +69,6 @@ describe("AlertNode", () => {
   });
 
   it("switching into an already-met condition fires once (carry-over value)", () => {
-    // The reported bug: trigger "is true" with a value, switch to range, and the
-    // carried-over value is already out of bounds — range must surface that, not
-    // sit silently pre-triggered.
     const n = new AlertNode({ condition: "boolean" });
     n.data({ value: [1] });                          // boolean: TRUE → fires
     expect(alertStore.list().length).toBe(1);
