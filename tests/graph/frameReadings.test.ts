@@ -1,6 +1,4 @@
-// [[C25]] firstClassUnits, [[C130]] rustCore: readings on an offset scale (°C, °F) through
-// the frame and cube verbs answer as a formula does. The corpus (fixtures/frame-verbs) holds the
-// core to the values and units; this file pins them through the cards and the wasm build.
+// [[C25]] firstClassUnits, [[C130]] rustCore, [[frame-verbs#groupBy]], [[frame-verbs#window]]
 import { describe, it, expect } from "vitest";
 import { type FrameOp } from "../../src/graph/frameOps";
 import { applyVerb, groupByFrame, pivotFrame, windowFrame } from "./coreVerbs";

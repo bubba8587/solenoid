@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits: a join reads the right key in the left key's unit.
+// [[C25]] firstClassUnits, [[frame-verbs#join]], [[frame-verbs#bindColumns]], [[frame-verbs#Nest Join]]
 import { describe, it, expect } from "vitest";
 import { joinFrames, bindColumns, relateFramesToCube } from "./coreVerbs";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";

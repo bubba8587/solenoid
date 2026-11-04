@@ -1,6 +1,5 @@
-// [[C17]] shareImpl, [[D109]] aggregatesRefuseText
-//! A Frame's column aggregation (GroupBy, Pivot, Rollup) answers text in a group as the op's formula does over the
-//! same cells: the same error and message. A text column's MIN and MAX order its text, which no formula does.
+// [[C17]] shareImpl, [[D109]] aggregatesRefuseText, [[frame-verbs#groupBy]]
+//! Text in a Frame aggregate's group, against the op's formula over the same cells.
 
 use solenoid_core::eval::{formula, Env};
 use solenoid_core::excel_functions::V;

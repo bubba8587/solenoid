@@ -1,7 +1,4 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec
-// A verb's static output shape (fixtures/core/shapes.json.gz): what each table verb answers for a frame of a given
-// shape before any data flows, the columns a picker offers downstream and the type a passthrough projects. Each case is
-// an op, a join or an append over shapes; the answer is the shape or the error code.
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[frame-verbs#Static shape]]
 import { describe, expect, it } from "vitest";
 import { frozen, replay } from "./coreFixtures";
 import { shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, type Shape } from "../../src/graph/frameShape";

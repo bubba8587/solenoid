@@ -20,7 +20,7 @@ A Frame is Solenoid's version of an Excel table, a table with headers: named, ty
 | `crates/solenoid-parquet` | The desktop's Parquet reader |
 | `fixtures/frame-verbs/` | The verb corpus |
 
-Computed columns (Frame Input's Fx column and the Computed Column node) have their own spec, [[computed-columns]]. Static schema prediction lives in `frameShape.ts`, whose `shapeOf(op, input)` must report exactly the columns a real `preview()` would.
+Computed columns (Frame Input's Fx column and the Computed Column node) have their own spec, [[computed-columns]]. A verb's output columns are predicted before any data flows ([[#Static shape]]).
 
 ## The Frame value
 
@@ -478,6 +478,7 @@ In the sketch calculation mode (`frame_ref::set_sketch`, kept current by every s
 - **Sample.** A flush first takes a deterministic sample of its input (`SKETCH_SAMPLE_ROWS = 10,000`): evenly strided rows `floor(i × total / n)`, order kept, never random. A flush on a parent already sampled doesn't sample again, and a frame at or under the sample size is never sampled.
 - **Scale.** The factor is `total / sampled`. When the plan contains a `groupBy`, the output columns of the first `groupBy`'s `sum` and `count` aggregates are multiplied by the factor as soon as it runs (`scale_sums`), so every op after it reads whole-table totals (a filter on a total keeps what the exact pass keeps), and the read value carries `approx`. An average is never scaled, since scaling one would make it wrong, not approximate. A later `groupBy` groups the groups, which are no sample, so it isn't scaled again.
 - **Mode.** A flush and its readers' values are kept per sketch mode, so leaving sketch reads the exact frame, and so does an F9 forced exact pass (`beginForceExact`) while sketch is selected.
+- **Preview rows.** `sampleFrame(f, n)` (`engine_sample`) takes n evenly spaced rows, the first row included and in order, and hands back the frame itself when it is no longer than n or n is not positive.
 - **Writes.** A write or export (Write File's run) reads every row exact, even while sketch samples the passes.
 
 The aggregate guard classifies non-finite aggregate results at read time ([[C24]] arraySemantics): for a frame produced by a plan with a `groupBy`, any aggregate output column holding a non-finite number goes through `guard_finite`, with an infinite input assumed when the source column of the plan's input holds `±Infinity`. So a sum past the largest double from finite cells is `#OVERFLOW!`, and a sum over an infinite cell stays infinite. A ref extending one past a GROUPBY inherits its guard and its scaled totals, so a card downstream of GROUPBY (SUMIFS, Get Column, PIVOTBY, Slicer) classifies as the GROUPBY card does and reads the same totals, and a truncated preview is scaled like the whole collect.
@@ -523,12 +524,36 @@ Tests:
 
 ## Rules shared by every verb
 
-- **Structural failures throw.** A verb throws a tagged SolError (missing column `#REF!`, type conflict `#TYPE!`, bad configuration `#VALUE!`, unknown aggregate `#NAME?`); the calling card turns the throw into its output value (a flush answers it as the ref's error, `frame_ref.rs`).
-- **Row verbs select indices.** Sort, distinct, head and filter compute a list of row indices and rebuild every column from it (`reorder_rows`), so a column's type, unit and format ride along.
-- **Identity keys.** Distinct, GROUPBY, Window partitions, Pivot's axes and Join keys read each cell through `cell_key` (`frame_verbs.rs`), its equality class: blank, a logical, a number, a string, or an error by its code. So `1` and `"1"` differ, `null` differs from `0` and `""`, two nulls are equal, `0` and `-0` are one key, every `NaN` is one key and each infinity is its own, and an error keys by its code. Keys compare case-sensitively ([[C45]] excelComparisons).
+- **Structural failures throw.** A verb throws a tagged SolError: a missing column is `#REF!`, a type conflict `#TYPE!`, a bad configuration `#VALUE!`, an unknown aggregate `#NAME?`. The calling card turns the throw into its output value (a flush answers it as the ref's error, `frame_ref.rs`).
+- **Degenerate shapes answer.** A frame with no rows, a ragged frame, a key column of blanks and a take of zero rows never throw: a row verb answers no rows and keeps the schema, a schema verb (select, drop, rename) reshapes the columns as usual, groupBy, pivot, unpivot and nest of no rows answer their columns with no rows, and an append of empty frames is the union schema with no rows.
+- **Row verbs select indices.** Sort, distinct, head and filter compute a list of row indices and rebuild every column from it (`reorder_rows`), so a column's type, unit and format ride along, and a cell in a column the verb doesn't read, an error included, rides along untouched.
+- **Work is linear in rows** ([[C120]] linearWork). A window or an aggregate over one partition of 200,000 rows runs in linear time and never spreads the partition into a call's arguments.
+- **Identity keys.** Distinct, GROUPBY, Window partitions, Pivot's axes and Join keys read each cell through `cell_key` (`frame_verbs.rs`), its equality class: blank, a logical, a number, a string, or an error by its code.
+  - `1` and `"1"` differ;
+  - `null` differs from `0` and `""`, and two nulls are equal;
+  - `0` and `-0` are one key;
+  - every `NaN` is one key, and each infinity is its own;
+  - an error keys by its code;
+  - keys compare case-sensitively ([[C45]] excelComparisons).
 - **Comparisons fold case; keys do not.** String `eq`/`neq` and the text predicates in Filter lowercase both sides with the plain Unicode lowercase (`toLowerCase` / Rust `to_lowercase`) unless `matchCase` is set. String ordering (`lt`, `gt`, sort) never folds.
 - **String order.** Every data sort and ordered comparison compares strings by code point (`compare_text`) ([[C59]] byteStringOrder). The order is case- and accent-sensitive: "B" comes before "a", and "é" after "z". Lists in the app's own interface (menus, the Navigator, a table popup's column sort) keep a friendly alphabetical order; only data sorts and compares by code. Language-aware data sorting, if ever wanted, needs a language fixed per document.
 - **New names go through `makeHeaders`.** Any verb that combines or invents column names de-duplicates them left to right.
+
+Tests: `frameVerbsEdge.test.ts`: every verb on an empty frame, a join with an empty side, ragged and all-null columns, and a window and the aggregates over one 200,000-row partition.
+
+## Static shape
+
+`frameShape.ts` predicts a verb's output columns before any data flows: `shapeOf(op, input)`, and `shapeOfJoin`, `shapeOfAppend`, `shapeOfAddIndex` and `shapeOfSplitColumn` for the verbs that aren't a single op over one frame. A picker downstream offers the predicted columns, and a passthrough projects their types.
+
+- A prediction reports exactly the columns a real `preview()` would, with their types.
+- Where the columns depend on the data, the shape is marked `dynamic` and declares only the columns known in advance: a pivot's row-key columns, a split's untouched columns.
+- A structural failure throws the code the verb throws (`#REF!`, `#VALUE!`, `#TYPE!`).
+- An empty split delimiter predicts the input's shape, as the verb answers it.
+
+Tests:
+
+- `frameShape.test.ts`: each prediction against the verb's real output columns for the same op and frame.
+- `coreShapes.test.ts`: the core's predictions, frozen (`fixtures/core/shapes`): each op, join or append over shapes answers a shape or an error code.
 
 ## Verb contracts
 
@@ -557,35 +582,57 @@ Tests:
 | `append` | Append | `#TYPE!` |
 | `bindColumns` | Bind Columns | nothing |
 
+Every verb below has its corpus file, `fixtures/frame-verbs/<verb>.json` ([[#The corpus]]), which pins its answers; a section's Tests line names only what is held elsewhere.
+
 ### select
 
-`{ kind: "select", columns }`. Keeps the named columns in the order given. A repeated name keeps its first occurrence only. Any unknown name is `#REF!`. Columns keep their type, unit, format and `raw`. An empty list yields a frame with no columns; the Keep card instead passes its input through when its list is empty.
+- **Op:** `{ kind: "select", columns }`.
+- **Columns:** the named columns in the order given; a repeated name keeps its first occurrence only. They keep their type, unit, format and `raw`.
+- **Edges:** any unknown name is `#REF!`. An empty list yields a frame with no columns.
+- **The card:** the Keep card passes its input through when its list is empty.
 
 ### drop
 
-`{ kind: "drop", columns }`. Removes the named columns; a name not present is ignored. The remaining columns keep their order and everything they carry. Dropping every column leaves a frame with no columns. `drop` with an empty list is the no-op a verb with nothing to do plans, so it forwards a ref of its own.
+- **Op:** `{ kind: "drop", columns }`.
+- **Columns:** the named columns are removed; a name not present is ignored. The remaining columns keep their order and everything they carry.
+- **Edges:** dropping every column leaves a frame with no columns. `drop` with an empty list is the no-op a verb with nothing to do plans, so it forwards a ref of its own.
 
 ### rename
 
-`{ kind: "rename", map }` (old name to new name). Every column's proposed name is `map[name]` or its own name; the whole list then goes through `makeHeaders`, so a collision renames the later column (renaming `a` to `b` in `a, b` gives `b, b2`) and every name is trimmed. A key naming no column does nothing. Column order is unchanged. The Rename card pairs its From and To lists by index and skips a pair with an empty side; with no complete pair it passes through.
+- **Op:** `{ kind: "rename", map }`, old name to new name.
+- **Columns:** every column's proposed name is `map[name]` or its own name; the whole list then goes through `makeHeaders`, so a collision renames the later column (renaming `a` to `b` in `a, b` gives `b, b2`) and every name is trimmed. Column order is unchanged.
+- **Edges:** a key naming no column does nothing.
+- **The card:** Rename pairs its From and To lists by index and skips a pair with an empty side; with no complete pair it passes through.
 
 ### sort
 
-`{ kind: "sort", by, dir: "asc" | "desc" }`. Orders rows by one column. Present values compare within the column's type: numbers and dates numerically, strings by code-unit order, logicals false before true. Blank cells, error cells and `NaN` form a tail that comes last in both directions, in input order. `NaN` must be pulled into the tail explicitly: every comparison with it is false, so a subtraction comparator would place it by input position. `±Infinity` sorts as a real magnitude. Ties keep input order (the sort is stable in both directions). The Frame Sort card passes through when the column is blank.
+- **Op:** `{ kind: "sort", by, dir: "asc" | "desc" }`. Orders rows by one column.
+- **Order:** present values compare within the column's type: numbers and dates numerically, strings by code-unit order, logicals false before true. `±Infinity` sorts as a real magnitude.
+- **The tail:** blank cells, error cells and `NaN` form a tail that comes last in both directions, in input order. `NaN` must be pulled into the tail explicitly: every comparison with it is false, so a subtraction comparator would place it by input position.
+- **Ties** keep input order: the sort is stable in both directions.
+- **The card:** Frame Sort passes through when the column is blank.
+- **Shared math:** `sorted_index_order` is the index math: the frame sort calls it, and a Cube's sort (`sort_cube`, `nodes/verbs.rs`) runs that frame sort over its scalar column, so a Frame and a Cube of the same data sort identically. `distinct_index_order` plays the same role for Distinct.
 
-`sorted_index_order` is the shared index math: the frame sort calls it, and a Cube's sort (`sort_cube`, `nodes/verbs.rs`) runs that frame sort over its scalar column, so a Frame and a Cube of the same data sort identically. `distinct_index_order` plays the same role for Distinct.
+Tests: `frameVerbs.test.ts`: error cells sort last with their rows.
 
 ### distinct
 
-`{ kind: "distinct", columns? }`. Keeps the first occurrence of each distinct row, in input order, keyed with `cell_key` over the listed columns or every column. The kept rows are whole rows. An unknown listed column is `#REF!`. Frame Distinct merges error cells with the same code, unlike list UNIQUE ([[C45]] excelComparisons). The card sends no `columns` (whole-row distinct).
+- **Op:** `{ kind: "distinct", columns? }`.
+- **Rows:** the first occurrence of each distinct row, in input order, keyed with `cell_key` over the listed columns or every column. The kept rows are whole rows.
+- **Edges:** an unknown listed column is `#REF!`. Frame Distinct merges error cells with the same code, unlike list UNIQUE ([[C45]] excelComparisons), and `+∞`, `−∞`, `NaN` and `null` are four keys.
+- **The card:** Distinct sends no `columns` (whole-row distinct).
+
+Tests: `frameVerbs.test.ts`: the infinities, `NaN` and `null` key apart.
 
 ### head
 
-`{ kind: "head", n }`. The first `trunc(n)` rows, clamped to `[0, rowCount]`; a negative `n` gives no rows and the schema is kept.
+- **Op:** `{ kind: "head", n }`.
+- **Rows:** the first `trunc(n)` rows, clamped to `[0, rowCount]`.
+- **Edges:** a negative `n` gives no rows and the schema is kept.
 
 ### sliceRows
 
-`{ kind: "sliceRows", mode, n, to? }`. A contiguous window `[start, end)` from `slice_bounds`, with `N = max(0, trunc(n))`:
+- **Op:** `{ kind: "sliceRows", mode, n, to? }`. A contiguous window `[start, end)` from `slice_bounds`, with `N = max(0, trunc(n))`:
 
 | Mode | Window |
 |---|---|
@@ -594,13 +641,24 @@ Tests:
 | `skip` | `[min(rows, N), rows)` |
 | `range` | `[max(0, trunc(n) − 1), min(rows, trunc(to ?? n)))`, 1-based inclusive rows `n` through `to` |
 
-An inverted window is empty. The Head card sends `head` for First N and `sliceRows` for the other three; it reads `to` only in range mode.
+- **Edges:** an inverted window is empty.
+- **The card:** Head sends `head` for First N and `sliceRows` for the other three; it reads `to` only in range mode.
 
 ### filter and filterMulti
 
-`{ kind: "filter", column, op, value, matchCase? }` keeps rows whose cell passes one predicate. `{ kind: "filterMulti", combine: "and" | "or", conditions: [{ column, op, value, matchCase? }], complement? }` keeps rows passing every condition (`and`) or any condition (`or`). With no conditions it is the identity under both combines; `complement` then gives the empty frame with the schema kept. With `complement` it keeps exactly the rows the plain filter drops: the row complement, not the negated predicate, so a row whose predicate was unknown lands in the complement. Kept rows stay in input order. An unknown column is `#REF!`, checked for every condition before any row is tested.
+- **`filter`:** `{ kind: "filter", column, op, value, matchCase? }` keeps rows whose cell passes one predicate.
+- **`filterMulti`:** `{ kind: "filterMulti", combine: "and" | "or", conditions: [{ column, op, value, matchCase? }], complement? }` keeps rows passing every condition (`and`) or any condition (`or`). An error or blank cell fails its own condition only, so under `or` another condition can still keep the row.
+- **No conditions** is the identity under both combines; `complement` then gives the empty frame with the schema kept.
+- **`complement`** keeps exactly the rows the plain filter drops: the row complement, not the negated predicate, so a row whose predicate was unknown (a blank or error cell) lands in the complement.
+- **Order:** kept rows stay in input order.
+- **Unknown column:** `#REF!`, checked for every condition before any row is tested.
+- **An error as the value** is the filter's answer, whatever the column.
 
-A text predicate (`contains`, `startsWith`, `endsWith`) on a column that is not string is `#TYPE!` ([[C10]] socketLattice), and the message names the column, its type and the two fixes: a Computed Column such as `TEXT(@<col>, "@")`, or Cast to Text. The List Filter applies the list twin (in `filter`, `crates/solenoid-core/src/nodes/list.rs`) to a list holding no text: an empty or all-blank list passes (and keeps nothing), and a list of numbers, dates or logicals is `#TYPE!`, one such condition failing the whole filter, under `or` too. A list mixing text with other values is answered item by item: the text items are filtered, and each item that isn't text stays in the result, in its place, as its own `#TYPE!`. There is one gate, `require_text_column` in the core's `frame_verbs.rs`, called by every frame filter entry (the Filter verbs, the *IFS criteria). No filter path ever compares `String(cell)` of a number, date or logical, so results never depend on JavaScript's number printing.
+**Text predicates** (`contains`, `startsWith`, `endsWith`) read a text column only ([[C10]] socketLattice):
+
+- On a column that is not string they are `#TYPE!`, and the message names the column, its type and the two fixes: a Computed Column such as `TEXT(@<col>, "@")`, or Cast to Text. One such condition fails the whole filter, under `or` too.
+- There is one gate, `require_text_column` in the core's `frame_verbs.rs`, called by every frame filter entry (the Filter verbs, the *IFS criteria). No filter path ever compares `String(cell)` of a number, date or logical, so results never depend on JavaScript's number printing.
+- The List Filter applies the list twin (in `filter`, `crates/solenoid-core/src/nodes/list.rs`) to a list holding no text: an empty or all-blank list passes (and keeps nothing), and a list of numbers, dates or logicals is `#TYPE!`, one such condition failing the whole filter, under `or` too. A list mixing text with other values is answered item by item: the text items are filtered, and each item that isn't text stays in the result, in its place, as its own `#TYPE!`.
 
 A row passes `filter_rows(f, column, op, value, match_case)` (`frame_verbs.rs`) when its cell does:
 
@@ -610,16 +668,27 @@ A row passes `filter_rows(f, column, op, value, match_case)` (`frame_verbs.rs`) 
 4. Otherwise a blank or error cell fails, and a `null` value matches nothing.
 5. Text predicates compare the cell text with the value text, both folded unless `matchCase`.
 6. On a string column, `eq`/`neq` compare folded text unless `matchCase`; `lt`/`lte`/`gt`/`gte` compare by code-unit order without folding.
-7. On a number or date column, the cell is compared numerically with the value read by `decimal_from_text` (`value_kinds.rs`), the reading "Reads as a number" names; a value that does not parse to a finite number matches no rows (under `or`, other conditions still can). A blank value never gets here, because the node leaves a condition with a blank value out. A date column compares against a serial; date text is not parsed.
-8. On a logical column, the cell is 1 or 0 and the value goes through `logical_or_type_error` (`value_kinds.rs`: `TRUE`/`FALSE` in any case, or any number `decimal_from_text` reads, non-zero being true; other text is `#TYPE!` naming it), so `eq 12` matches TRUE rows.
+7. On a number or date column, the cell is compared numerically with the value read by `decimal_from_text` (`value_kinds.rs`), the reading "Reads as a number" names. A value that does not parse to a finite number matches no rows (under `or`, other conditions still can). A blank value never gets here, because the node leaves a condition with a blank value out. A date column compares against a serial; date text is not parsed.
+8. On a logical column, the cell is 1 or 0 and the value goes through `logical_or_type_error` (`value_kinds.rs`: `TRUE`/`FALSE` in any case, or any number `decimal_from_text` reads, non-zero being true; other text is `#TYPE!` naming it), so `eq 12` matches TRUE rows. A NaN or blank cell in a logical column matches no op, `neq` included.
 
-The Frame Filter node: each condition row is a column, an op and a value (`filter_value` in `nodes/verbs.rs` reads a wired scalar as text, and an error value as its code). A filter starts from the whole object and keeps what passes the conditions that are applied. A condition with a blank column, or a blank value for an op that takes one, isn't applied, whether the blank was typed or wired ([[D86]] blankRoles). With no conditions applied, Kept is the input object unchanged and Dropped is blank. Kept and Dropped are both permanent outputs: `filterMulti` and the same op with `complement: true`. Dropped is a ref too, with no preview of its own, so it stays lazy until a consumer reads it. A list-cell op on a frame input is `#SHAPE!`, telling the user to connect a Cube. A Cube input runs `filter_cube` (see Eager verbs).
+**The Frame Filter node.**
 
-The card's op list is `FILTER_OP_OPTIONS_WITH_ERROR` (the base `FILTER_OP_OPTIONS` plus `noterror` and `iserror`), and `FILTER_OP_OPTIONS_WITH_LIST` adds the four list-cell ops for a Cube input. The error ops stay off the base list so SUMIFS, which shares it, never offers them. The value-free ops (`VALUELESS_FILTER_OPS`: the blank and error ops and `listEmpty`) hide the Value field and ignore a wired value. The case toggle (Aa) shows only for the ops where case matters (`TEXT_MATCH_OPS`: `eq`, `neq`, `contains`, `startsWith`, `endsWith`); numeric, date and logical comparisons ignore it.
+- **Conditions:** each condition row is a column, an op and a value. `filter_value` in `nodes/verbs.rs` reads a wired scalar as text, and an error value as its code.
+- **What applies:** a filter starts from the whole object and keeps what passes the conditions that are applied. A condition with a blank column, or a blank value for an op that takes one, isn't applied, whether the blank was typed or wired ([[D86]] blankRoles). With no conditions applied, Kept is the input object unchanged and Dropped is blank.
+- **Outputs:** Kept and Dropped are both permanent outputs: `filterMulti` and the same op with `complement: true`. Dropped is a ref too, with no preview of its own, so it stays lazy until a consumer reads it.
+- **Shapes:** a list-cell op on a frame input is `#SHAPE!`, telling the user to connect a Cube. A Cube input runs `filter_cube` (see Eager verbs).
+- **The op list** is `FILTER_OP_OPTIONS_WITH_ERROR` (the base `FILTER_OP_OPTIONS` plus `noterror` and `iserror`), and `FILTER_OP_OPTIONS_WITH_LIST` adds the four list-cell ops for a Cube input. The error ops stay off the base list so SUMIFS, which shares it, never offers them.
+- **Value-free ops** (`VALUELESS_FILTER_OPS`: the blank and error ops and `listEmpty`) hide the Value field and ignore a wired value.
+- **The case toggle** (Aa) shows only for the ops where case matters (`TEXT_MATCH_OPS`: `eq`, `neq`, `contains`, `startsWith`, `endsWith`); numeric, date and logical comparisons ignore it.
+
+Tests: `frameVerbs.test.ts`: error cells in `filter` and `filterMulti`, the text-predicate `#TYPE!` and its message, and a logical column's NaN and unreadable values.
 
 ### groupBy
 
-`{ kind: "groupBy", keys, aggs: [{ column, op, as }] }`. One output row per distinct key tuple (keyed by `cell_key`), in first-seen order; a null key is its own group, and each non-finite key value and each error code is its own group. With no keys the whole frame is one group, and a frame with no rows has none. Output columns are the key columns (type and unit kept, format dropped), each holding the group's first-seen cell, then one column per aggregate named `as`. All output names go through `makeHeaders`, so an aggregate named after a key becomes `k2` and the key keeps its name. An unknown key or aggregate column is `#REF!`.
+- **Op:** `{ kind: "groupBy", keys, aggs: [{ column, op, as }] }`.
+- **Rows:** one output row per distinct key tuple (keyed by `cell_key`), in first-seen order. A null key is its own group, and each non-finite key value and each error code is its own group. With no keys the whole frame is one group, and a frame with no rows has none.
+- **Columns:** the key columns (type and unit kept, format dropped), each holding the group's first-seen cell, then one column per aggregate named `as`. All output names go through `makeHeaders`, so an aggregate named after a key becomes `k2` and the key keeps its name.
+- **Edges:** an unknown key or aggregate column is `#REF!`.
 
 `aggregate_group(cells, op, type?)`:
 
@@ -636,43 +705,132 @@ The card's op list is `FILTER_OP_OPTIONS_WITH_ERROR` (the base `FILTER_OP_OPTION
 | `stdevp`, `varp` | Population (n); 0 for one point | null | number | no |
 | `percentof` | null (it needs a total set; only Pivot computes it) | null | number | no |
 
-Every op but `count` reads only numeric cells, logical cells as 1/0. Non-empty text in a group answers what the op's formula answers over the same cells, after the error cells below: `#VALUE!` for `sum`, `avg`, `product` and the spreads, `#TYPE!` for `min`, `max` and `median`, with the formula's message (`text_refused`, the formula's own `text_refusal`; [[D109]] aggregatesRefuseText, [[C17]] shareImpl). `mode` leaves text out, as MODE.SNGL does, and so does Pivot's `percentof` (`sum_group`). The exception is `min` and `max` over a text column ([[C24]] arraySemantics): they compare the group's cells as text by code unit ([[C59]] byteStringOrder), the order Sort uses, so the comparison is case-sensitive and a number stored as text orders as text (`"10"` before `"9"`). A column mixing numbers and text is already a text column (`typedColumn`), so it follows the same rule. Blanks and empty strings are skipped, and a group with nothing else is blank. The caller passes the column type, since the cells alone cannot tell a text column from a number column holding one stray string. An error cell anywhere in the group makes the result that error (the first in row order). Then the non-finite guard: a `NaN` input makes the group `#DOMAIN!`, checked before aggregating because a `NaN` inside a reduce gives an order-dependent answer; a `NaN` result is `#DOMAIN!`; an infinite result from all-finite inputs is `#OVERFLOW!`; an infinite result when an input was infinite passes. The guard lives inside `aggregate_group`, so pivot's re-aggregating totals get it too. Variance is the sequential two-pass form (sum, mean, sum of squared deviations) and median the midpoint `(lo + hi) / 2`. An op name outside the list is `#NAME?` (`Unknown aggregation "<op>"`) for the whole verb, raised when the core first aggregates a group with numeric cells.
+What a group's cells do, checked in this order:
 
-**Dates** are points in time, like readings ([[C137]] datesNeverSerials): over a date column, `min`, `max`, `avg`, `median` and `mode` answer a Date column (`AggOp::keeps_dates`), the spreads a number of days, `count` a count, and whatever refuses a reading (`sum`, `product`, `percentof`; Window's running, rolling and group sums, `share` and `pct_change`) is `#TYPE!` in every cell (`dates_plan`), never a total of serials. Cast to Number first for the serials. The SUMIFS card refuses a SUMIFS of dates the same way.
+1. **Errors.** An error cell anywhere in the group makes the result that error (the first in row order), `count` aside.
+2. **Text.** Every op but `count` reads only numeric cells, logical cells as 1/0. Non-empty text in a group answers what the op's formula answers over the same cells: `#VALUE!` for `sum`, `avg`, `product` and the spreads, `#TYPE!` for `min`, `max` and `median`, with the formula's message (`text_refused`, the formula's own `text_refusal`; [[D109]] aggregatesRefuseText, [[C17]] shareImpl). `mode` leaves text out, as MODE.SNGL does, and so does Pivot's `percentof` (`sum_group`).
+3. **Text columns.** The exception is `min` and `max` over a text column ([[C24]] arraySemantics): they compare the group's cells as text by code unit ([[C59]] byteStringOrder), the order Sort uses, so the comparison is case-sensitive and a number stored as text orders as text (`"10"` before `"9"`). A column mixing numbers and text is already a text column (`typedColumn`), so it follows the same rule. Blanks and empty strings are skipped, and a group with nothing else is blank. The caller passes the column type, since the cells alone cannot tell a text column from a number column holding one stray string.
+4. **The non-finite guard.** A `NaN` input makes the group `#DOMAIN!`, checked before aggregating because a `NaN` inside a reduce gives an order-dependent answer. A `NaN` result is `#DOMAIN!`; an infinite result from all-finite inputs is `#OVERFLOW!`; an infinite result when an input was infinite passes. The guard lives inside `aggregate_group`, so pivot's re-aggregating totals get it too.
+5. **Unknown op.** An op name outside the list is `#NAME?` (`Unknown aggregation "<op>"`) for the whole verb, raised when the core first aggregates a group with numeric cells.
 
-**Readings on an offset scale** (a °C or °F column) answer as a formula does ([[C25]] firstClassUnits, [[unit-flow]]); the core holds both the cells' rule and the unit's (`agg_unit_plan`, `agg_unit`). `sum`, `product` and `percentof` are `#UNIT!` in every group, since the op, not a cell, is at fault, and the column carries no unit. `stdev` and `stdevp` are a delta in kelvin and `var` and `varp` a squared one: the value scales by the unit's scale per power (5/9 for °F) and the column unit is the bare temperature dimension. `count` is plain; the rest stay readings in the column's unit. Over a linear unit, `stdev` and `stdevp` keep the column's unit and `var` and `varp` square it, landing in base SI as a formula's VAR does (a km column's variance is in m², the value scaled by the unit's scale squared). An aggregate's column carries the unit for `sum`, `avg`, `min`, `max`, `median` and `mode`, and the spreads' units above; `count` and `percentof` carry none, nor does any aggregate carry a format.
+Variance is the sequential two-pass form (sum, mean, sum of squared deviations) and median the midpoint `(lo + hi) / 2`.
 
-Cube Rollup runs the same aggregate over a nested sub-frame's column (`nodes/frames.rs`), passing that column's type and unit, so a roll-up and a GROUPBY agree on every op's edge cases and units. A nested cube's column reads its tagged cells in one unit first (`matrixCellsFromList`); when it carries no type, `inferColumn` reads its non-error cells for one, as a cube-to-frame read does, and its error cells stay errors. A roll-up that produced any text cell is a string column; otherwise it is number, carrying the unit its rows agree on. The Window verb's `group_min`, `rolling_min`, `cummin` and their max twins do not share it and stay numeric. The formula MIN and MAX over a list keep Excel's answer and ignore text; only the Frame aggregates read text ([[C24]] arraySemantics).
+**Dates** are points in time, like readings ([[C137]] datesNeverSerials). Over a date column:
 
-The GROUPBY card sends one aggregate over its Aggregate column with `as` equal to that column's name. With a totals depth other than 0 it collects its input and runs `pivot` with that column as the only value field and no column fields (the totals re-aggregate the source). A Cube input is flattened with `flatCubeToFrame`. With no keys or no column it passes through. The GROUPBY and Pivot cards' aggregate selector derives from `AGG_OP_META` ([[engineering#One declaration per fact]]) and leaves out the `pivotOnly` ops, which only the pivot assembly can run.
+- `min`, `max`, `avg`, `median` and `mode` answer a Date column (`AggOp::keeps_dates`);
+- the spreads answer a number of days, and `count` a count;
+- whatever refuses a reading (`sum`, `product`, `percentof`; Window's running, rolling and group sums, `share` and `pct_change`) is `#TYPE!` in every cell (`dates_plan`), never a total of serials. Cast to Number first for the serials. The SUMIFS card refuses a SUMIFS of dates the same way.
+
+**Readings on an offset scale** (a °C or °F column) answer as a formula does ([[C25]] firstClassUnits, [[unit-flow]]); the core holds both the cells' rule and the unit's (`agg_unit_plan`, `agg_unit`):
+
+- `sum`, `product` and `percentof` are `#UNIT!` in every group, since the op, not a cell, is at fault, and the column carries no unit;
+- `stdev` and `stdevp` are a delta in kelvin and `var` and `varp` a squared one: the value scales by the unit's scale per power (5/9 for °F) and the column unit is the bare temperature dimension;
+- `count` is plain;
+- the rest stay readings in the column's unit.
+
+**Linear units.** `stdev` and `stdevp` keep the column's unit, and `var` and `varp` square it, landing in base SI as a formula's VAR does (a km column's variance is in m², the value scaled by the unit's scale squared). An aggregate's column carries the unit for `sum`, `avg`, `min`, `max`, `median` and `mode`, and the spreads' units above; `count` and `percentof` carry none, nor does any aggregate carry a format.
+
+**Cube Rollup** runs the same aggregate over a nested sub-frame's column (`nodes/frames.rs`), passing that column's type and unit, so a roll-up and a GROUPBY agree on every op's edge cases and units.
+
+- A nested cube's column reads its tagged cells in one unit first (`matrixCellsFromList`); when it carries no type, `inferColumn` reads its non-error cells for one, as a cube-to-frame read does, and its error cells stay errors.
+- A roll-up that produced any text cell is a string column; otherwise it is number, carrying the unit its rows agree on.
+- The Window verb's `group_min`, `rolling_min`, `cummin` and their max twins do not share it and stay numeric. The formula MIN and MAX over a list keep Excel's answer and ignore text; only the Frame aggregates read text ([[C24]] arraySemantics).
+
+**The GROUPBY card.**
+
+- It sends one aggregate over its Aggregate column with `as` equal to that column's name.
+- With a totals depth other than 0 it collects its input and runs `pivot` with that column as the only value field and no column fields (the totals re-aggregate the source).
+- A Cube input is flattened with `flatCubeToFrame`.
+- With no keys or no column it passes through.
+- The GROUPBY and Pivot cards' aggregate selector derives from `AGG_OP_META` ([[engineering#One declaration per fact]]) and leaves out the `pivotOnly` ops, which only the pivot assembly can run.
+
+Tests:
+
+- `frameVerbs.test.ts`: an error cell through sum, avg and count, a text column's min and max in GROUPBY and PIVOTBY, and the units a key and each aggregate keep.
+- `frame_aggregates_refuse_text.rs` (solenoid-core): a group holding text answers its formula's error and message, an error still wins, and a text column's min and max order its text.
+- `frameReadings.test.ts`: GROUPBY, PIVOTBY and Cube Rollup over readings and linear units, through the cards in wasm.
+- `datesNeverSerials.test.ts`: the table verbs over a Date column ([[date-values#Functions]]).
 
 ### unpivot
 
-`{ kind: "unpivot", idColumns, valueColumns, variableName?, valueName? }`. Wide to long: for each input row, in order, one output row per value column, in the listed order. Output columns are the id columns (type and unit kept), a string column named `variableName` (default `variable`) holding the value column's name, and a column named `valueName` (default `value`) holding the cell. All names go through `makeHeaders`. The value column takes the value columns' shared type, and their unit when they all share one. Value columns of different types are `#TYPE!` (`Unpivot value columns must share a type (…)`); an unknown column is `#REF!`. The card passes through when Melt is empty.
+- **Op:** `{ kind: "unpivot", idColumns, valueColumns, variableName?, valueName? }`. Wide to long.
+- **Rows:** for each input row, in order, one output row per value column, in the listed order.
+- **Columns:**
+  - the id columns (type and unit kept);
+  - a string column named `variableName` (default `variable`) holding the value column's name;
+  - a column named `valueName` (default `value`) holding the cell. It takes the value columns' shared type, and their unit when they all share one.
+  - All names go through `makeHeaders`.
+- **Edges:** value columns of different types are `#TYPE!` (`Unpivot value columns must share a type (…)`); an unknown column is `#REF!`.
+- **The card:** Unpivot passes through when Melt is empty.
+
+Tests: `frameVerbs.test.ts`: the id column's unit and a shared value unit.
 
 ### pivot
 
 `{ kind: "pivot", rowFields, colFields, values, funcs, rowTotalDepth?, colTotalDepth?, rowSort?, colSort?, relativeTo?, filter?, details? }`, Excel's PIVOTBY. The PIVOTBY node runs it (`nodes/backend_verbs.rs`); GROUPBY's totals run it through `pivotOnEngine`. It always runs eagerly on a collected frame.
 
-**Setup.** Blank field names are dropped. No value fields is `#VALUE!` (`PIVOTBY needs at least one value field`); an unknown field is `#REF!`. `funcs[i]` applies to `values[i]`, falling back to `funcs[0]`, then `sum`. `filter`, when present, keeps only source rows whose mask entry is `true`. `details` names columns for the Pivot view only ([[C127]] pivotView): the output is the same with or without it, and with row fields the layout kept beside the output records each row leaf's source rows and those columns' values ([[table-popup#The Pivot view]]); an unknown name is `#REF!`.
+**Setup.**
+
+- Blank field names are dropped.
+- No value fields is `#VALUE!` (`PIVOTBY needs at least one value field`); an unknown field is `#REF!`.
+- `funcs[i]` applies to `values[i]`, falling back to `funcs[0]`, then `sum`.
+- `filter`, when present, keeps only source rows whose mask entry is `true`.
+- `details` names columns for the Pivot view only ([[C127]] pivotView): the output is the same with or without it, and with row fields the layout kept beside the output records each row leaf's source rows and those columns' values ([[table-popup#The Pivot view]]); an unknown name is `#REF!`.
 
 **Axes.** Each axis (rows, columns) has leaf groups: the distinct field tuples among the kept rows. Leaves are ordered hierarchically: each field level ranks its values by first appearance across the whole axis, and tuples sort by those ranks level by level, so each outer group stays contiguous. An axis with no fields has one anonymous leaf.
 
-**Sorting.** `rowSort` and `colSort` are signed 1-based indices into `[fields…, values…]`; negative means descending. A field index re-ranks that level by value (the column type's comparator, blanks and errors last), and descending reverses that level's whole order, which puts blanks first. A value index reorders the leaves by that value's aggregate over the whole axis (a `percentof` scores by sum; a text `min` or `max` scores by code unit, [[C24]] arraySemantics), and a blank, `NaN` or error score sorts last, and only when the axis has more than one leaf; it reorders leaves flatly.
+**Sorting.** `rowSort` and `colSort` are signed 1-based indices into `[fields…, values…]`; negative means descending.
 
-**Totals.** `rowTotalDepth`/`colTotalDepth`: 0 adds nothing, 1 adds a grand total, 2 or more adds subtotals too, and a negative depth places totals before their groups. Totals need at least one field on the axis. Subtotal levels are `min(|depth| − 1, fields − 1)`; for each prefix length p from 1 to that, every contiguous run of leaves sharing a p-field prefix gets a subtotal slot. By default a subtotal follows its run's last leaf, inner levels first, and the grand total comes last; placed at top, a subtotal precedes its run's first leaf, outer levels first, and the grand total comes first.
+- A field index re-ranks that level by value (the column type's comparator, blanks and errors last), and descending reverses that level's whole order, which puts blanks first.
+- A value index reorders the leaves flatly by that value's aggregate over the whole axis (a `percentof` scores by sum; a text `min` or `max` scores by code unit, [[C24]] arraySemantics). A blank, `NaN` or error score sorts last, and the reorder happens only when the axis has more than one leaf.
 
-**Cells.** A cell for value v over a set of row slots and column slots aggregates the source cells of every covered leaf pair with that value's function, so totals re-aggregate the source (a grand average is the average of all source rows). A combination with no source rows is blank. `percentof` is `SUM(cell) / SUM(total set)`, where `relativeTo` picks the total set: 0 the column total, 1 the row total, 2 the grand total, 3 the parent column group (leaves sharing all but the last column field), 4 the parent row group. A zero denominator is blank; an error cell propagates.
+**Totals.** `rowTotalDepth`/`colTotalDepth`:
 
-**Output.** One key column per row field (names through `makeHeaders`), then one body column per column slot and value. Key cells: a leaf shows its tuple; a subtotal shows its prefix, `Total` in the next field, and blanks after; the grand row shows `Grand Total` in the first key column. A key column that receives a `Total` or `Grand Total` marker becomes a string column, its other cells formatted as display text (`formatFrameCell`: dates as `DD-MMM-YYYY`, logicals as `TRUE`/`FALSE`). A body header is the column tuple's values joined with ` | `, each converted with `String()`, so a date shows its serial and a blank shows `null`. The grand total's column is headed `Grand Total`, and a subtotal's is its prefix plus `Total`. With more than one value, ` | <value name>` follows. With no column fields and one value, the header is just the value's name. Body headers go through `makeHeaders`. Body columns are number typed, except a `min` or `max` over a text value column, which is a string column ([[C24]] arraySemantics). Each carries the unit its value field's aggregate takes (as groupBy's, above) and no format; the key columns carry neither. The layout's Details columns take their source columns' formats ([[C127]] pivotView).
+- 0 adds nothing, 1 adds a grand total, 2 or more adds subtotals too, and a negative depth places totals before their groups.
+- Totals need at least one field on the axis.
+- Subtotal levels are `min(|depth| − 1, fields − 1)`; for each prefix length p from 1 to that, every contiguous run of leaves sharing a p-field prefix gets a subtotal slot.
+- By default a subtotal follows its run's last leaf, inner levels first, and the grand total comes last; placed at top, a subtotal precedes its run's first leaf, outer levels first, and the grand total comes first.
 
-The PIVOTBY card forwards its input unchanged when it has no value fields, and skips a saved field whose column the input lacks, keeping it saved so it counts again when the column comes back (Configure Fields marks it); the layout rides on the frame it answers (the Pivot view reads it). Its Rows, Columns and Values are list literals written by `listLiteralText` beside the list-literal reader (`listLiterals.ts`) and read by `csvList`, so a field name holding a comma or a quote survives; Configure Fields signals the graph changed on every edit (`notifyGraphChanged`), saving it whether or not a pass runs. Its per-field value exclusions (keys formed by `pivot_cell_key` in `nodes/backend_verbs.rs`: blank as `""`, an error as its code, a logical as `TRUE`/`FALSE`, anything else `String()`) are combined with the wired logical mask into `filter`. With a lazy input it reads the schema through a zero-row preview and fetches only the columns the pivot and the filter editor use. That read is a pass as a verb card's is (`beginPass`): if a newer pass started while it awaited, it writes nothing and returns `null`. Its Details columns (`detailFields`) are pruned with the fields, and a lazy input fetches them too. Each compute stashes `sourceColumns` (every column's name, type and up to 200 first-seen distinct keys), so the editor popup lists fields without fetching; with a lazy input only the fetched columns get distinct keys, and the rest keep an empty key list.
+**Cells.**
+
+- A cell for value v over a set of row slots and column slots aggregates the source cells of every covered leaf pair with that value's function, so totals re-aggregate the source: a grand average is the average of all source rows, not the average of the cells' averages.
+- A combination with no source rows is blank.
+- `percentof` is `SUM(cell) / SUM(total set)`, where `relativeTo` picks the total set: 0 the column total, 1 the row total, 2 the grand total, 3 the parent column group (leaves sharing all but the last column field), 4 the parent row group. A zero denominator is blank; an error cell propagates.
+
+**Output.**
+
+- **Columns:** one key column per row field (names through `makeHeaders`), then one body column per column slot and value.
+- **Key cells:** a leaf shows its tuple; a subtotal shows its prefix, `Total` in the next field, and blanks after; the grand row shows `Grand Total` in the first key column. A key column that receives a `Total` or `Grand Total` marker becomes a string column, its other cells formatted as display text (`formatFrameCell`: dates as `DD-MMM-YYYY`, logicals as `TRUE`/`FALSE`).
+- **Body headers:** the column tuple's values joined with ` | `, each converted with `String()`, so a date shows its serial and a blank shows `null`. The grand total's column is headed `Grand Total`, and a subtotal's is its prefix plus `Total`. With more than one value, ` | <value name>` follows. With no column fields and one value, the header is just the value's name. Body headers go through `makeHeaders`.
+- **Body types:** number, except a `min` or `max` over a text value column, which is a string column ([[C24]] arraySemantics).
+- **Units and formats:** each body column carries the unit its value field's aggregate takes (as groupBy's, above) and no format; the key columns carry neither. The layout's Details columns take their source columns' formats ([[C127]] pivotView).
+
+**The PIVOTBY card.**
+
+- **No value fields:** it forwards its input unchanged.
+- **Missing fields:** it skips a saved field whose column the input lacks, keeping it saved so it counts again when the column comes back (Configure Fields marks it).
+- **The layout** rides on the frame it answers (the Pivot view reads it).
+- **Field lists:** its Rows, Columns and Values are list literals written by `listLiteralText` beside the list-literal reader (`listLiterals.ts`) and read by `csvList`, so a field name holding a comma or a quote survives. Configure Fields signals the graph changed on every edit (`notifyGraphChanged`), saving it whether or not a pass runs.
+- **Value exclusions:** its per-field exclusions (keys formed by `pivot_cell_key` in `nodes/backend_verbs.rs`: blank as `""`, an error as its code, a logical as `TRUE`/`FALSE`, anything else `String()`) are combined with the wired logical mask into `filter`, so excluded rows drop before the pivot aggregates.
+- **A lazy input:** it reads the schema through a zero-row preview and fetches only the columns the pivot, the filter editor and its Details columns (`detailFields`, pruned with the fields) use. That read is a pass as a verb card's is (`beginPass`): if a newer pass started while it awaited, it writes nothing and returns `null`.
+- **Source columns:** each compute stashes `sourceColumns` (every column's name, type and up to 200 first-seen distinct keys), so the editor popup lists fields without fetching; with a lazy input only the fetched columns get distinct keys, and the rest keep an empty key list.
+
+Tests:
+
+- `frameVerbs.test.ts`: re-aggregating grand totals and subtotals, totals at the top, per-value functions, a grand total column, value and field sorts, the mask, `percentof`, the extra functions, and composite headers.
+- `pivotNodeFilter.test.ts`: field names with commas and quotes, and a missing field kept saved.
+- `pivotLayout.test.ts`: the layout beside the frame and Details ([[table-popup#The Pivot view]]).
+- `lazyChain.test.ts`: on a lazy upstream the card reads only its field columns.
 
 ### window
 
-`{ kind: "window", partitionBy, orderBy?, orderDir?, fn, column?, as, n? }`. Adds one column computed per partition and writes it back in the original row order; every other column is unchanged. Partitions are distinct `partitionBy` tuples by `cell_key` (empty means the whole frame). Within a partition, rows are ordered by `orderBy` (blank, NaN and error keys last, stable, `desc` reversing present keys; a NaN key ranks blank, as Sort reads it) or kept in input order. `N = max(1, round(n ?? 1))`. An unknown partition, order or value column is `#REF!`. An existing column named `as` (or `fn` when `as` is blank) is removed and the new one appended last.
-
-Values: the arithmetic functions read a numeric view of `column`: a number is present (an infinity included), a logical is 1 or 0, and NaN or text counts as blank; `lag`, `lead`, `first` and `last` read the raw cells. An error anywhere in the partition's value column makes every row's result that error for the cumulative, difference, rolling, group, share, first and last functions.
+- **Op:** `{ kind: "window", partitionBy, orderBy?, orderDir?, fn, column?, as, n? }`. Adds one column computed per partition and writes it back in the original row order; every other column is unchanged.
+- **Partitions** are distinct `partitionBy` tuples by `cell_key` (empty means the whole frame).
+- **Order:** within a partition, rows are ordered by `orderBy` (blank, NaN and error keys last, stable, `desc` reversing present keys; a NaN key ranks blank, as Sort reads it) or kept in input order.
+- **N** is `max(1, round(n ?? 1))`.
+- **Edges:** an unknown partition, order or value column is `#REF!`. An unknown function name is `#VALUE!`.
+- **The output column:** an existing column named `as` (or `fn` when `as` is blank) is removed and the new one appended last.
+- **Values:** the arithmetic functions read a numeric view of `column`: a number is present (an infinity included), a logical is 1 or 0, and NaN or text counts as blank. `lag`, `lead`, `first` and `last` read the raw cells. An error anywhere in the partition's value column makes every row's result that error for the cumulative, difference, rolling, group, share, first and last functions.
 
 | Function | Result per row (p is the 1-based position in the ordered partition, m its size) |
 |---|---|
@@ -691,36 +849,80 @@ Values: the arithmetic functions read a numeric view of `column`: a number is pr
 | `share` | This value over the partition's sum; blank when this value is blank (checked first, so an all-blank partition is all blank); `#DIV/0!` when the sum is 0 |
 | `first`, `last` | The partition's first or last value in order, on every row |
 
-Output type: `lag`, `lead`, `first` and `last` take the value column's type; everything else is number. The unit is kept for the cumulative, lag, lead, diff, rolling, group sum/avg/min/max, first and last functions. Over readings on an offset scale (as on groupBy), `cumsum`, `rolling_sum`, `group_sum`, `share` and `pct_change` are `#UNIT!` in every row, and `diff` is a delta in kelvin. An unknown function name is `#VALUE!`.
+- **Output type:** `lag`, `lead`, `first` and `last` take the value column's type; everything else is number.
+- **Units:** the unit is kept for the cumulative, lag, lead, diff, rolling, group sum/avg/min/max, first and last functions, and not for a rank or a count. Over readings on an offset scale (as on groupBy), `cumsum`, `rolling_sum`, `group_sum`, `share` and `pct_change` are `#UNIT!` in every row, and `diff` is a delta in kelvin.
+- **The card:** Window always sends `orderDir: "asc"`, derives `as` from the function label and Value column when the name is blank, sends `n` only for the functions that read it, and passes through when a value-reading function has no Value column. A Cube input stays a Cube: `window_cube` (below) appends the column, and the output socket adopts the input's rank.
 
-The Window card always sends `orderDir: "asc"`, derives `as` from the function label and Value column when the name is blank, sends `n` only for the functions that read it, and passes through when a value-reading function has no Value column. A Cube input stays a Cube: `window_cube` (below) appends the column, and the output socket adopts the input's rank.
+Tests:
+
+- `frameReadings.test.ts`: Window over readings, a Cube's window included.
+- `frameVerbs.test.ts`: the unit on a running sum, and none on a rank.
 
 ### fillBlanks
 
-`{ kind: "fillBlanks", columns, dir: "down" | "up" }`. In each listed column (every column when the list is empty), a `null` cell takes the nearest present value above (`down`) or below (`up`); a leading (or trailing) run stays blank. An error cell is a value: it is never filled, and it fills the blanks after it like any other. An unknown column is `#REF!`.
+- **Op:** `{ kind: "fillBlanks", columns, dir: "down" | "up" }`.
+- **Cells:** in each listed column (every column when the list is empty), a `null` cell takes the nearest present value above (`down`) or below (`up`); a leading (or trailing) run stays blank.
+- **Errors:** an error cell is a value: it is never filled, and it fills the blanks after it like any other.
+- **Edges:** an unknown column is `#REF!`.
 
 ### replaceValues
 
-`{ kind: "replaceValues", column, find, replaceWith, mode: "cell" | "substring", matchCase? }`. Targets one column, or every column when `column` is blank. An empty `find` is the identity. An unknown column is `#REF!`. Text matching ignores case unless `matchCase` is set, the card's Aa beside Find, as Filter's is; a logical always matches either case.
+- **Op:** `{ kind: "replaceValues", column, find, replaceWith, mode: "cell" | "substring", matchCase? }`.
+- **Target:** one column, or every column when `column` is blank.
+- **Edges:** an empty `find` is the identity. An unknown column is `#REF!`.
+- **Case:** text matching ignores case unless `matchCase` is set, the card's Aa beside Find, as Filter's is; a logical always matches either case.
+- **`substring`:** in string columns only, every literal occurrence of `find` inside a text cell is replaced (no regex), the rest of the cell kept as written (`replace_caseless` when case is ignored).
+- **`cell`:** a whole cell matches when
+  - a number (or date serial) equals `decimal_from_text(find)`, so `5.0` and `5` both match 5 and a non-numeric find matches no number;
+  - a logical's `TRUE`/`FALSE` equals `find` in upper case, so `1` and `0` never match a logical;
+  - a string equals `find` (exactly under `matchCase`, else ignoring case).
+  Blank and error cells never match.
+- **The replacement** is coerced to the column type:
+  - blank text becomes `null`;
+  - a number or date column needs a finite number, and otherwise that column is left unchanged;
+  - a logical takes `true`/`1` or `false`/`0` (any case), anything else `null`;
+  - a string column takes the text verbatim.
+  So Replace Values never writes a `NaN` into a number column, since a `NaN` cell is neither a value, a blank nor an error that anything downstream could read.
+- **The card:** Find and Replace take a wired value of any type, read as text by `filter_value` (`nodes/verbs.rs`), as Filter reads its values; typed, they are text kept exactly as typed.
 
-- `substring`: in string columns only, every literal occurrence of `find` inside a text cell is replaced (no regex), the rest of the cell kept as written (`replace_caseless` when case is ignored).
-- `cell`: a whole cell matches when a number (or date serial) equals `decimal_from_text(find)` (a non-numeric find matches no number), a logical's `TRUE`/`FALSE` equals `find` in upper case, or a string equals `find` (exactly under `matchCase`, else ignoring case). Blank and error cells never match. The replacement is coerced to the column type: blank text becomes `null`; a number or date column needs a finite number, and otherwise that column is left unchanged; a logical takes `true`/`1` or `false`/`0` (any case), anything else `null`; a string column takes the text verbatim. So Replace Values never writes a `NaN` into a number column, since a `NaN` cell is neither a value, a blank nor an error that anything downstream could read.
+Tests:
 
-The card's Find and Replace take a wired value of any type, read as text by `filter_value` (`nodes/verbs.rs`), as Filter reads its values.
+- `frameVerbs.test.ts`: the cell match rule, a text replacement leaving a number column alone, and `raw` dropped from a rewritten column.
+- `frameNodeBackend.test.ts`: a wired number or Boolean matches, and the typed Find and Replace stay as typed.
 
 ### formats
 
-`{ kind: "formats", formats }`. Sets each named column's display `format` and leaves the cells alone. No card emits it: the coercion wrapper appends it to a lazy node's output ref, carrying that node's own `frameFormatStore` picks ([[C118]] formatTravelsWithValue), as it stamps a materialized Frame. The core applies it as any op (`with_formats`, `frame_verbs.rs`). A column it names keeps its unit; a name no column holds does nothing. A pivot followed only by `formats` ops still leaves its layout.
+- **Op:** `{ kind: "formats", formats }`. Sets each named column's display `format` and leaves the cells alone.
+- **Who emits it:** no card. The coercion wrapper appends it to a lazy node's output ref, carrying that node's own `frameFormatStore` picks ([[C118]] formatTravelsWithValue), as it stamps a materialized Frame. The core applies it as any op (`with_formats`, `frame_verbs.rs`).
+- **Edges:** a column it names keeps its unit; a name no column holds does nothing. A pivot followed only by `formats` ops still leaves its layout.
+
+Tests: `frameBackend.test.ts`: format picks ride as one more op of the plan.
 
 ### join
 
-`join_frames(left, right, { leftKey, rightKey, how, asofDirection?, asofTolerance?, rightKeyScale?, rightKeyOffset? })`. The key columns must exist (`#REF!`) and share a type (`#TYPE!`, `Join keys must share a type ("<l>" vs "<r>")`); a Cross join needs neither. Keys of two types could never match, since element families never cross on their own ([[C10]] socketLattice), so the join refuses instead of returning a silent empty result.
+`join_frames(left, right, { leftKey, rightKey, how, asofDirection?, asofTolerance?, rightKeyScale?, rightKeyOffset? })`.
 
-Keys with units compare as quantities ([[C25]] firstClassUnits): `5 km` matches `5000 m`. When both key columns carry a unit and the units differ, the join (`join_key_transform`) reads the right key in the left key's unit as `right × scale + offset` (the offset is for temperatures). It treats each display unit as affine to base SI, `base = a·x + b`, reading `a` and `b` off the unit's own scale and offset; then `scale = a_right / a_left` and `offset = (b_right − b_left) / a_left`. The converted key rounds half up at the 15th significant digit of the larger of `right × scale` and `offset` (0 when it falls below that digit), so conversion noise cannot block a match: 68 °F matches 20 °C, 32 °F matches 0 °C and 0.3048 m matches 1 ft (`convert_key`, `convert_key` in the engine, which reads the exact decimal expansion as JS `toPrecision` does). The transform is applied to a number key only, and not at all when it is the identity. Keys that measure different things, or two different currencies, are `#UNIT!` (`Join keys measure different things (<l> and <r>). Convert one key first`). A unit on only one side converts nothing. Every output column keeps its source column's unit and format, a semi or anti join's left columns included.
+**Keys.**
 
-Matching: key cells match by `cell_key` identity, case-sensitive. A `null`, error or non-finite key never matches anything, including another of its kind; such rows still flow through the outer sides. Units on key columns are not consulted.
+- The key columns must exist (`#REF!`) and share a type (`#TYPE!`, `Join keys must share a type ("<l>" vs "<r>")`); a Cross join needs neither. Keys of two types could never match, since element families never cross on their own ([[C10]] socketLattice), so the join refuses instead of returning a silent empty result.
+- Key cells match by `cell_key` identity, case-sensitive.
+- A `null`, error or non-finite key never matches anything, including another of its kind; such rows still flow through the outer sides.
 
-Output layout for the equality and as-of joins: every left column, then every right column except the right key, names through `makeHeaders` (a colliding right column becomes `name2`). The key appears once, under the left key's name, filled from whichever side has the row. Unmatched cells are `null`. Every column keeps its unit and format; the key keeps the left key's.
+**Keys with units** compare as quantities ([[C25]] firstClassUnits): `5 km` matches `5000 m`.
+
+- When both key columns carry a unit and the units differ, the join (`join_key_transform`) reads the right key in the left key's unit as `right × scale + offset` (the offset is for temperatures, so 0 °C matches 273.15 K).
+- It treats each display unit as affine to base SI, `base = a·x + b`, reading `a` and `b` off the unit's own scale and offset; then `scale = a_right / a_left` and `offset = (b_right − b_left) / a_left`.
+- The converted key rounds half up at the 15th significant digit of the larger of `right × scale` and `offset` (0 when it falls below that digit), so conversion noise cannot block a match: 68 °F matches 20 °C, 32 °F matches 0 °C and 0.3048 m matches 1 ft (`convert_key`, which reads the exact decimal expansion as JS `toPrecision` does).
+- The transform is applied to a number key only, and not at all when it is the identity.
+- Keys that measure different things, or two different currencies, are `#UNIT!` (`Join keys measure different things (<l> and <r>). Convert one key first`).
+- A unit on only one side converts nothing.
+
+**Output layout** for the equality and as-of joins:
+
+- every left column, then every right column except the right key, names through `makeHeaders` (a colliding right column becomes `name2`);
+- the key appears once, under the left key's name, filled from whichever side has the row, so an outer join's right-only key arrives in the left key's unit;
+- unmatched cells are `null`;
+- every output column keeps its source column's unit and format, a semi or anti join's left columns included; the key keeps the left key's.
 
 | `how` | Rows |
 |---|---|
@@ -733,19 +935,41 @@ Output layout for the equality and as-of joins: every left column, then every ri
 | `asof` | Every left row once, in order, paired with at most one right row (no fan-out). |
 | `cross` | Every left row with every right row, left-major; all columns of both sides, each keeping its unit and format, names through `makeHeaders`; no keys. An empty side gives no rows and the full header. |
 
-As-of: both keys must be number or date (`#VALUE!`, `As-of join requires a numeric or date key`). Right rows with a finite key are sorted ascending (ties by row order). `backward` (the default) takes the last right key ≤ the left key; `forward` the first right key ≥ it; `nearest` whichever is closer, with a tie going backward. An exact key tie matches. When `asofTolerance` is set, a pick farther than it is no match. A left row with a blank or non-finite key has no match.
+**As-of.**
+
+- Both keys must be number or date (`#VALUE!`, `As-of join requires a numeric or date key`).
+- Right rows with a finite key are sorted ascending (ties by row order).
+- `backward` (the default) takes the last right key ≤ the left key; `forward` the first right key ≥ it; `nearest` whichever is closer, with a tie going backward. An exact key tie matches.
+- When `asofTolerance` is set, a pick farther than it is no match.
+- A left row with a blank or non-finite key has no match.
 
 An unknown `how` is `#VALUE!`.
 
-The Join card: a blank Right key reuses the Left key; a blank Left key yields nothing unless the join is Cross; Tolerance is read only for as-of, and a wired blank there (or a wired blank key) makes the output blank.
+**The Join card.** A blank Right key reuses the Left key; a blank Left key yields nothing unless the join is Cross; Tolerance is read only for as-of, and a wired blank there (or a wired blank key) makes the output blank.
+
+Tests:
+
+- `joinUnits.test.ts`: keys across units, conversion noise, temperatures, different dimensions and currencies, a unit on one side, an outer join's right-only key, and the units and formats every kind of join keeps.
+- `frameVerbsEdge.test.ts`: a join with an empty side.
 
 ### append
 
-`append_frames(frames)`. Stacks frames in order, matching columns by name. The output columns are the union of names in first-seen order; a frame lacking a column contributes blanks for its rows. A name with different types in two frames is `#TYPE!` (`append: column "<n>" is <t1> in one frame and <t2> in another`); nothing is coerced. A column keeps its unit and its format when every frame holding it agrees on them (the same unit, display included, and the same format), and loses whichever they disagree on; a frame lacking the column has no say. The card stacks its wired rows in row order and passes a single frame through.
+- **Function:** `append_frames(frames)`. Stacks frames in order, matching columns by name.
+- **Columns:** the union of names in first-seen order; a frame lacking a column contributes blanks for its rows.
+- **Types:** a name with different types in two frames is `#TYPE!` (`append: column "<n>" is <t1> in one frame and <t2> in another`); nothing is coerced.
+- **Units and formats:** a column keeps its unit and its format when every frame holding it agrees on them (the same unit, display included, and the same format), and loses whichever they disagree on; a frame holding the column with no unit disagrees with one that has a unit, and a frame lacking the column has no say.
+- **The card:** Append stacks its wired rows in row order and passes a single frame through.
+
+Tests: `frameVerbsEdge.test.ts`: the unit and format every frame agrees on, and an append of empty frames.
 
 ### bindColumns
 
-`bind_columns(frames)`. Places every column of every frame side by side in order, names through `makeHeaders`; the row count is the longest frame's, and shorter frames pad with blanks. A frame with no columns contributes nothing. Every column keeps its unit and format. The card passes a single frame through.
+- **Function:** `bind_columns(frames)`. Places every column of every frame side by side in order, names through `makeHeaders`.
+- **Rows:** the row count is the longest frame's, and shorter frames pad with blanks. A frame with no columns contributes nothing.
+- **Units and formats:** every column keeps its unit and format.
+- **The card:** Bind Columns passes a single frame through.
+
+Tests: `joinUnits.test.ts`: bind columns keeps each column's unit and format.
 
 ## Eager verbs outside the seam
 

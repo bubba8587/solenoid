@@ -1,22 +1,10 @@
-// [[B17]], [[C48]], [[C24]] arraySemantics
+// [[B17]] typedValueModel, [[C48]] appendLadder, [[C24]] arraySemantics, [[frame-verbs#pivot]]
 import { csvList } from "../../src/graph/nodes/frameShapeHook";
 import { listLiteralText } from "../../src/graph/listLiterals";
 import { describe, it, expect } from "vitest";
 import { PivotNode } from "../../src/graph/nodes/frame";
 import type { FrameValue } from "../../src/graph/frame";
 
-// The Pivot node's field-value filter (filterExclude) compiles to the engine row
-// mask: excluded value keys drop those source rows before the pivot aggregates,
-// AND-combined with any wired logical mask.
-
-
-
-// Repointing a Pivot at a different source (e.g. the built-in frame → a CSV with
-// different columns) must flush every field reference the new frame no longer has,
-// or a stale name aggregates a missing column / lingers in the editor.
-
-// A field list is a list literal: a name holding a comma or a quote survives being written and read back,
-// and the stale-field flush rewrites it in the same form.
 describe("PivotNode field lists keep names with commas and quotes", () => {
   const tricky: FrameValue = {
     __frame: true,
@@ -34,7 +22,6 @@ describe("PivotNode field lists keep names with commas and quotes", () => {
     node.stringLiterals.rowFields = listLiteralText([...rows, "Gone"]);
     node.stringLiterals.values = "Amount";
     node.data({ frame: [tricky], rowFields: [rows], colFields: [[]], values: [["Amount"]] });
-    // A field the input lacks stays saved, to count again once its column is back.
     expect(csvList(node.stringLiterals.rowFields)).toEqual([...rows, "Gone"]);
   });
 });

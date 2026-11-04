@@ -1,4 +1,5 @@
-// [[C130]] rustCore, [[C10]] socketLattice
+// [[C130]] rustCore, [[C10]] socketLattice, [[frame-verbs#Nulls, errors and non-finite numbers]], [[frame-verbs#filter and filterMulti]],
+// [[frame-verbs#groupBy]], [[frame-verbs#pivot]], [[frame-verbs#replaceValues]], [[frame-verbs#Nest and Unnest]], [[frame-verbs#Frame tidies]]
 import { describe, it, expect } from "vitest";
 import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows } from "./coreVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
@@ -12,9 +13,6 @@ const f: FrameValue = {
     { name: "qty", type: "number", values: [10, 20, 30] },
   ],
 };
-
-// The verb-semantics tests live in fixtures/frame-verbs (frameVerbCorpus.test.ts). What remains below is the
-// behavior of per-cell SolErrors, which the corpus compares by code alone.
 
 describe("sort — error cells", () => {
   const s: FrameValue = {
@@ -31,7 +29,7 @@ describe("sort — error cells", () => {
   });
 });
 
-describe("distinct — the cross-backend key contract (B-1a, re-cut 2026-08-22)", () => {
+describe("distinct — the key contract", () => {
   it("+∞, −∞ and NaN key apart from each other and from null", () => {
     const nf: FrameValue = {
       __frame: true,
@@ -206,7 +204,7 @@ describe("nest / unnest (flat ⟷ cube)", () => {
     expect(err.code).toBe("#REF!");
   });
 
-  // B8.1: a depth-2 cube (nested cells are CUBES) peels ONE level to a depth-1 cube.
+  // A depth-2 cube (nested cells are cubes) peels one level to a depth-1 cube.
   const orders1: FrameValue = { __frame: true, columns: [{ name: "sku", type: "string", values: ["a", "b"] }] };
   const orders2: FrameValue = { __frame: true, columns: [{ name: "sku", type: "string", values: ["z"] }] };
   const repN = cubeFromColumns([{ name: "rep", cells: ["Ann"], type: "string" }, { name: "orders", cells: [orders1] }]);
@@ -412,10 +410,10 @@ describe("splitColumn / addIndexColumn (Power Query column ops)", () => {
   });
 });
 
-// ─── Timesaver cleanup verbs (2026-07-16) ───────────────────────────────────────
+// ─── Timesaver cleanup verbs ────────────────────────────────────────────────────
 
 describe("timesaver verbs", () => {
-  it("replaceValues: the shared match rule (parity with Rust lazy_replace_values)", () => {
+  it("replaceValues: the cell match rule", () => {
     const g: FrameValue = {
       __frame: true,
       columns: [
@@ -423,11 +421,8 @@ describe("timesaver verbs", () => {
         { name: "flag", type: "logical", values: [true, false, true] },
       ],
     };
-    // Number: numeric equality against the parsed find — "5.0" and "5" both hit 5;
-    // a non-numeric find hits no number cell.
     expect(replaceValues(g, "n", "5.0", "99", "cell").columns[0].values).toEqual([99, 20, null]);
     expect(replaceValues(g, "n", "five", "99", "cell").columns[0].values).toEqual([5, 20, null]);
-    // Boolean: "1"/"0" never match a boolean.
     expect(replaceValues(g, "flag", "1", "false", "cell").columns[1].values).toEqual([true, false, true]);
   });
 
@@ -499,7 +494,6 @@ describe("[[C10]] socketLattice — a text predicate reads a TEXT column, or err
       expect(isSolError(err)).toBe(true);
       expect(err!.code).toBe("#TYPE!");
     }
-    // The message names the fix (Computed Column with TEXT, or Cast).
     const err = grab(() => filterRows(f, "qty", "contains", "0"));
     expect(err!.message).toContain('TEXT(@qty, "@")');
     expect(err!.message).toContain("Cast");
