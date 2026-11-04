@@ -4,12 +4,44 @@
   text-align: center;
 }
 
-/* Against the body's 6px row gap: the type toggle stands a little apart from the field, Format hangs right under
-   the field it formats, and the result box sits a short step below Format. */
+/* The entry field, then its type button on the right (`OpCycle`), the button level with the field's first line. Format
+   hangs right under the field it formats, and the result box sits a short step below Format. */
+.solenoid-valin__entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.solenoid-valin__entry > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .solenoid-valin__type {
-  margin-bottom: 4px;
+  margin-top: 3px;
 }
 .solenoid-valin__format > .solenoid-node__section-caption {
   margin-top: -4px;
   margin-bottom: -2px;
+}
+
+/* Collapsed, the card is its value cell alone (square collapse, as Sparkline): the header steps out, the cell takes its
+   place, and the card is as wide as its value. A click edits it; a double-click on the card's edge still expands. */
+.solenoid-valin.solenoid-node--collapsed {
+  width: auto;
+  min-width: 68px;
+  max-width: 220px;
+}
+.solenoid-valin.solenoid-node--collapsed .solenoid-node__collapsed-only {
+  pointer-events: auto;
+}
+.solenoid-valin__cell,
+.solenoid-valin__cell-view {
+  width: 100%;
+}
+.solenoid-valin__cell-view {
+  cursor: text;
+}
+.solenoid-valin__cell-input {
+  max-width: 100%;
+  box-sizing: border-box;
+  text-align: right;
 }

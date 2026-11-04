@@ -476,8 +476,11 @@ export function ValueDisplay({
   popupOverrides,
   renderWins,
   cardStyle,
+  copy = true,
 }: {
   value: DisplayValue;
+  /** The copy button; off where the box is itself an editor (a collapsed Value Input's cell). */
+  copy?: boolean;
   empty?: ReactNode;
   render?: (v: number) => ReactNode;
   /** The card's own `render` and `toClipboard` win over any annotation: the constant cards, which show their precision. */
@@ -617,7 +620,7 @@ export function ValueDisplay({
         ...(isString && ann?.textAlign ? { textAlign: ann.textAlign } : {}),
         userSelect: IS_COARSE ? "none" : "text",
         cursor: isEmpty ? undefined : "text",
-        paddingLeft: isEmpty ? undefined : 26,
+        paddingLeft: isEmpty || !copy ? undefined : 26,
       }}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
@@ -662,7 +665,7 @@ export function ValueDisplay({
           )
         : render && !ann ? render(value as number)
         : fmtScalar(value as number)}
-      {!isEmpty && (
+      {!isEmpty && copy && (
         <button
           className="sol-copy-icon"
           onClick={handleCopy}

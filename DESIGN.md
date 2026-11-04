@@ -247,13 +247,13 @@ A card body holds two kinds of pick, and they are different things all the way d
 |---|---|---|
 | What it is | Which operation the card performs. Its values are ops: each a top-level formula function and an Add-menu name. | A parameter of the card's one function: a sort order, an aggregator, a pad side, a view. |
 | Field | `op` | its own name (`order`, `agg`, `side`, `view`, `condition`) |
-| Component | `OpSelect` (dropdown) / `OpToggle` (segmented) | `ArgSelect` (dropdown) / `SegToggle` (segmented) |
+| Component | `OpSelect` (dropdown) / `OpToggle` (segmented) / `OpCycle` (the type button) | `ArgSelect` (dropdown) / `SegToggle` (segmented) |
 | On the card | Hoisted to the top of the body, 2px accent edge at `--mix-emphasis`: the op reads before the inputs it shapes. | Neutral, sits in its row. |
 | Add menu | Searchable per op ("Chart: Column"). | Not a row; its words ride the host leaf's `keywords`. |
 | Formula surface | A function per op (`ISEVEN`, `NORM.DIST`). | A parameter of the host's function: `SORT(list, index, order)`, `RUNNING(op, list, [window])`, `PADTEXT(text, width, [side])`. |
 | Declared in | `NODE_OPS` (`nodeOps.ts`) | nowhere |
 
-A family has at most one OP; the op picker is the only body control that spends the accent (the input card's edit button, § Buttons, is the named exception), and it is the only control that hoists. Everything else in the body stays neutral. There is no flag, `kind` or attribute that moves a control from one column to the other: the field name and the component are the whole classification, and the tests hold both directions (a string `op` field ⇔ a `NODE_OPS` family; `OpSelect`/`OpToggle` ⇔ bound to `op`; `ArgSelect`/`SegToggle` never bound to `op`).
+A family has at most one OP; the op picker is the only body control that spends the accent (the input card's edit button, § Buttons, is the named exception), and it is the only control that hoists. `OpCycle` is the column type button in the accent, one press cycling the op; it rides the field it types instead of hoisting (Value Input's type, beside its entry). Everything else in the body stays neutral. There is no flag, `kind` or attribute that moves a control from one column to the other: the field name and the component are the whole classification, and the tests hold both directions (a string `op` field ⇔ a `NODE_OPS` family; `OpSelect`/`OpToggle` ⇔ bound to `op`; `ArgSelect`/`SegToggle` never bound to `op`).
 
 **Type icons (author 2026-09-29).** A value type is drawn by one icon wherever a control picks or shows it: `#` Number, `Aa` Text, the date picker's calendar (`CalendarIcon`) for Date, a checkbox for Boolean, a double-struck C for Complex (`TypeIcon.tsx`). That covers the type segments (List Input, Table Input, Cast, Split Frame, Get Column, Add Column, a formula card's result type), the column type button, the (i) legend and the Pivot chips. A Cube column with no type stays `–`, Fx stays `Fx`, and a word option in the same row (`All`, `Auto`) stays a word. The tooltip names the type, and an icon segment takes its tooltip as its accessible name. A dropdown keeps the words.
 

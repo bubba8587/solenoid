@@ -206,14 +206,14 @@ describe("[[C25]] firstClassUnits — a node file that runs the dimension algebr
 // [[node-classes#Formula registrations and op modules]]
 describe("[[C26]] opArgDistinct — OP pickers bind `op`, ARG pickers never do", () => {
   // OP and ARG are two components each, not one component with a flag (DESIGN.md § Op
-  // pickers). OpSelect / OpToggle is the family's op picker and binds the node's `op`
+  // pickers). OpSelect / OpToggle / OpCycle is the family's op picker and binds the node's `op`
   // (directly, or a binding renamed via useNodeField(node, "op")), whose values are the
   // NODE_OPS ops. ArgSelect / SegToggle picks a parameter and binds a field with its own
   // name (side, order, agg, view, a per-row `c.op` on a criterion) — never the node's
   // own `op`. nodeOps.test.ts checks the class side (an `op` field ⇔ a NODE_OPS
   // family); this checks the component side, where a misuse is still visible as text.
   // A new general-purpose picker component must be added to one of the two lists.
-  const OP_PICKERS = ["<OpSelect", "<OpToggle"];
+  const OP_PICKERS = ["<OpSelect", "<OpToggle", "<OpCycle"];
   const ARG_PICKERS = ["<ArgSelect", "<SegToggle"];
 
   /** From the tag open, the text through its closing "/>" at brace depth 0
