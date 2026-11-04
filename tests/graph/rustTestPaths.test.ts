@@ -1,8 +1,4 @@
-// [[D99]] rustIsSpec
-// A Rust test finds its fixtures from the crate's folder as `cargo test` sets it when the test runs, never as it was
-// when the binary was built: scripts/check-rust.sh shares one build directory across checkouts and worktrees, and
-// cargo reuses a test binary built in another checkout, so a compile-time path reads that checkout's fixtures, or a
-// folder that is gone.
+// [[D99]] rustIsSpec, [[rust-core#The Rust is the spec]]
 import { it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";

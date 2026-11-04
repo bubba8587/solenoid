@@ -1,5 +1,4 @@
-// [[C130]] rustCore
-// The committed wasm module is built from the committed Rust: `npm run build:wasm` stamps the sources it built.
+// [[C130]] rustCore, [[graph-core#The module]]
 import { it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";

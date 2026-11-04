@@ -1,7 +1,5 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec
-//! Properties the core's building blocks hold for every input, checked over seeded random cases (the frozen fixtures
-//! pin chosen answers; these pin the laws between answers). `PROP_CASES=1000000 cargo test --release --test properties`
-//! runs more, `PROP_SEED=n` starts elsewhere.
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[rust-core#The Rust is the spec]]
+//! The laws between the core's answers over seeded random cases.
 
 use solenoid_core::date_serial::{civil_from_days, days_from_civil};
 use solenoid_core::eval::{formula, Env};

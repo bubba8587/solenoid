@@ -1,5 +1,4 @@
-// [[D99]] rustIsSpec: text stays well formed, so a cut that would halve a surrogate pair takes the whole character, as
-// Excel's LEFT does, and text holding a lone surrogate reads with U+FFFD for it as it crosses into the core.
+// [[D99]] rustIsSpec, [[rust-core#Nothing falls back]]
 import { it, expect } from "vitest";
 import { evaluateOnCore } from "../../src/graph/coreValues";
 import { coreStore } from "./coreStore";

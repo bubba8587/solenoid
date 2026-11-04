@@ -1,4 +1,4 @@
-//! [[C23]] calcModes, [[D99]] rustIsSpec, [[live-connections#Service providers]]
+// [[C23]] calcModes, [[D99]] rustIsSpec, [[live-connections#Service providers]]
 //! The providers' replies against `fixtures/core/providers.json.gz` (written by `coreProviders.test.ts`).
 
 use serde_json::{json, Value as Json};

@@ -38,7 +38,7 @@ export function errorFromCore(code: string, message: string, ref: number | undef
   return origin ? { ...e, origin } : e;
 }
 
-/** Text as the core holds it: a lone surrogate reads as U+FFFD ([[rust-core]] § Follow-ups, text is always well formed). */
+/** Text as the core holds it: a lone surrogate reads as U+FFFD ([[rust-core#Nothing falls back]]). */
 export const toWellFormed = (s: string): string => (s as string & { toWellFormed(): string }).toWellFormed();
 
 /** A number or error as the core's cell reader takes it: non-finite numbers and errors tagged. */
@@ -136,7 +136,7 @@ export function engineClock(at: Date = new Date()): EngineClock {
   return { now: wallClockSerial(at), ms: at.getTime() };
 }
 
-/** What a call answers where the core trapped mid-call; a fresh instance is on its way ([[rust-core]] § Where it runs). */
+/** What a call answers where the core trapped mid-call; a fresh instance is on its way ([[rust-core#Where it runs]]). */
 export const TRAPPED_MESSAGE = "The engine stopped while computing this; it restarted, so recalculate to try again";
 
 const FX_CODE: Record<string, SolErrorCode> = {

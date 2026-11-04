@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec, [[graph-core#Traps]]
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[graph-core#Traps]], [[rust-core#Where it runs]]
 import { it, expect } from "vitest";
 import { wasmEngineLoaded, wasmInvokeSync, onCore, CoreTrap } from "../../src/graph/engineWasm";
 import { evaluateOnCore, callOnCore } from "../../src/graph/coreValues";

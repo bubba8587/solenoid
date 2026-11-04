@@ -1,5 +1,4 @@
-// [[C130]] rustCore, [[C120]] linearWork: inputs a user can type or wire that once trapped the module (a stack overflow,
-// an index past a ragged row, an unbounded allocation), hung it, or took quadratic time, each now a prompt answer.
+// [[C130]] rustCore, [[C120]] linearWork, [[rust-core#Where it runs]]
 import { it, expect } from "vitest";
 import { evaluateOnCore, callOnCore } from "../../src/graph/coreValues";
 import { isSolError } from "../../src/graph/errorValue";

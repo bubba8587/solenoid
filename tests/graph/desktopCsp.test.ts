@@ -1,6 +1,4 @@
-// [[C130]] rustCore
-// The desktop webview fetches the core's .wasm from the app's own origin, so the CSP's connect-src must allow 'self';
-// without it the core never loads and nothing computes.
+// [[C130]] rustCore, [[rust-core#Where it runs]], [[script-sandbox#Desktop security policy]]
 import { it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";

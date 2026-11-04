@@ -1,12 +1,5 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec
-//! The core against its frozen answers (`fixtures/core/<suite>.json.gz`), natively: every case `coreConformance.test.ts`
-//! once replayed through the wasm build, asked here through the same commands and compared as the JS compares it. The
-//! JS keeps a sample of each suite, which proves the wasm build answers as this one, and the freeze routine
-//! (`tree/specs/computation/rust-core.md`). `SUITE=columns,verbs cargo test --test conformance` runs only those.
-//!
-//! The fixtures hold values as `coreFixtures.ts` `enc` writes them; the helpers below turn that form into what the JS
-//! sends (`coreValue`, `wire`, `encodeBinary`) and the core's reply into what the JS compares (`readReply`, `canon`,
-//! `unitData`, `view`), so a case passes here exactly where it passes there.
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[rust-core#The Rust is the spec]]
+//! The core against its frozen answers (`fixtures/core/<suite>.json.gz`), natively.
 
 use std::cell::RefCell;
 use std::io::Read;

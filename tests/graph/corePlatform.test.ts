@@ -1,7 +1,4 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec
-// Where the core ports a table the platform holds (Node's NFD), it is checked against the platform itself, over the
-// scripts whose letters carry marks. A Unicode version change shows on the bleeding-edge branch, which moves the
-// normalization crate and Node together.
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[rust-core#The Rust is the spec]]
 import { it, expect } from "vitest";
 import { wasmInvokeSync } from "../../src/graph/engineWasm";
 

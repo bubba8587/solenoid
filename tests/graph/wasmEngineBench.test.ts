@@ -1,6 +1,4 @@
-// [[C130]] rustCore
-// Timing, not a check: the Rust engine in WebAssembly over one large frame.
-// `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts` prints the table; a plain run skips it.
+// [[C130]] rustCore, [[rust-core#Performance]]: timing, not a check (`BENCH=1` prints the table).
 import { describe, it, beforeAll } from "vitest";
 import type { FrameOp } from "../../src/graph/frameOps";
 import type { FrameValue } from "../../src/graph/frame";

@@ -1,8 +1,4 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec
-// The Rust core against its frozen answers (coreFixtures.ts): the fixtures are the spec, and one changes only in the
-// commit that changes the behaviour, by FREEZE_CORE=<suite> answering the frozen cases again through the core. Every
-// case replays natively (crates/solenoid-core/tests/conformance.rs); here a sample of each suite shows the wasm build
-// answers as the native one, and a suite that freezes answers every case.
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[rust-core#The Rust is the spec]]
 import { describe, it, expect, vi } from "vitest";
 import { isSolError } from "../../src/graph/errorValue";
 import { isCx } from "../../src/graph/cxValue";
