@@ -114,33 +114,71 @@ export class RankPercentileNode extends GraphNode {
   }
 }
 
-export type CorrelOp = "correl" | "rsq" | "spearman" | "kendall";
+// ─── Correlation: every statistic of two paired lists ─────────────────────────
+export type CorrelOp =
+  | "correl" | "rsq" | "spearman" | "kendall"
+  | "covariance-p" | "covariance-s"
+  | "slope" | "intercept" | "steyx";
 
 export const CORREL_OP_META = {
   correl: { label: "CORREL", description: "Pearson correlation r between two lists. Excel: `CORREL`." },
   rsq:    { label: "RSQ",    description: "R², the square of the correlation coefficient. Excel: `RSQ`." },
   spearman: { label: "SPEARMAN", description: "Spearman's ρ: Pearson over the ranks, so it follows any monotone relation and ignores outliers. scipy `spearmanr`, R `cor(method = spearman)`." },
   kendall:  { label: "KENDALL",  description: "Kendall's τ-b: concordant minus discordant pairs, tie-corrected. scipy `kendalltau`, R `cor` with `method = kendall`." },
+  "covariance-p": { label: "COVARIANCE.P", description: "Population covariance: how two lists move together. Divides by **n**. For when you have every data point. Excel: `COVARIANCE.P`." },
+  "covariance-s": { label: "COVARIANCE.S", description: "Sample covariance: how two lists move together. Divides by **n−1**. For a sample of a bigger population. Excel: `COVARIANCE.S`." },
+  slope:     { label: "SLOPE",     description: "Slope of linear regression line through `known_ys` and `known_xs`. Excel: `SLOPE`." },
+  intercept: { label: "INTERCEPT", description: "Y-intercept of linear regression line. Excel: `INTERCEPT`." },
+  steyx:     { label: "STEYX",     description: "Standard error of predicted y-values in linear regression. Excel: `STEYX`." },
 } satisfies Record<CorrelOp, { label: string; description: string }>;
+
+type CorrelFamily = "correlation" | "covariance" | "regression";
+
+const CORREL_FAMILY: Record<CorrelOp, CorrelFamily> = {
+  correl: "correlation", rsq: "correlation", spearman: "correlation", kendall: "correlation",
+  "covariance-p": "covariance", "covariance-s": "covariance",
+  slope: "regression", intercept: "regression", steyx: "regression",
+};
+
+/** Rows in Excel's argument order: SLOPE, INTERCEPT and STEYX take Known Ys before Known Xs. */
+const CORREL_ROWS: Record<CorrelFamily, { rows: ReadonlyArray<{ key: "x" | "y"; label: string }>; outLabel: string }> = {
+  correlation: { rows: [{ key: "x", label: "X" }, { key: "y", label: "Y" }], outLabel: "r" },
+  covariance:  { rows: [{ key: "x", label: "X" }, { key: "y", label: "Y" }], outLabel: "Covariance" },
+  regression:  { rows: [{ key: "y", label: "Known Ys" }, { key: "x", label: "Known Xs" }], outLabel: "Result" },
+};
 
 export class CorrelNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    x: "Pairs with Y by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
+    x: "Pairs with the other list by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
   };
 
   label: string;
   op: CorrelOp;
   cachedResult: number | SolError | null = null;
   width = 180;
-  height = 170;
+  height = 185;
 
   constructor(init?: { label?: string; op?: CorrelOp }) {
     super("Correl");
     this.label = init?.label ?? "";
     this.op = init?.op ?? "correl";
-    this.addInput("x", listIn("X"));
-    this.addInput("y", listIn("Y"));
-    this.addOutput("result", numOut("r"));
+    const spec = CORREL_ROWS[CORREL_FAMILY[this.op]];
+    for (const r of spec.rows) this.addInput(r.key, listIn(r.label));
+    this.addOutput("result", numOut(spec.outLabel));
+  }
+
+  /** Relabels and reorders X and Y; the keys stay, so both cables do. */
+  setOp(next: CorrelOp): void {
+    if (next === this.op) return;
+    this.op = next;
+    const spec = CORREL_ROWS[CORREL_FAMILY[next]];
+    for (const r of spec.rows) {
+      const input = this.inputs[r.key];
+      if (input) input.label = r.label;
+    }
+    if (Object.keys(this.inputs)[0] !== spec.rows[0].key) this.moveInputLast(spec.rows[1].key);
+    const out = this.outputs.result;
+    if (out) out.label = spec.outLabel;
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: number | SolError | null } {
@@ -169,38 +207,6 @@ export class StandardizeNode extends GraphNode {
   }
 }
 
-// ─── Covariance ───────────────────────────────────────────────────────────────
-export type CovarianceOp = "pop" | "samp";
-
-export const COVARIANCE_OP_META = {
-  pop:  { label: "COVARIANCE.P", description: "Population covariance: how two lists move together. Divides by **n**. For when you have every data point. Excel: `COVARIANCE.P`." },
-  samp: { label: "COVARIANCE.S", description: "Sample covariance: how two lists move together. Divides by **n−1**. For a sample of a bigger population. Excel: `COVARIANCE.S`." },
-} satisfies Record<CovarianceOp, { label: string; description: string }>;
-
-export class CovarianceNode extends GraphNode {
-  static socketDocs: Record<string, string> = {
-    x: "Pairs with Y by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
-  };
-
-  label: string;
-  op: CovarianceOp;
-  cachedResult: number | SolError | null = null;
-  width = 180; height = 185;
-
-  constructor(init?: { label?: string; op?: CovarianceOp }) {
-    super("Covariance");
-    this.label = init?.label ?? "";
-    this.op = init?.op ?? "pop";
-    this.addInput("x", listIn("X"));
-    this.addInput("y", listIn("Y"));
-    this.addOutput("result", numOut("Covariance"));
-  }
-
-  data(inputs: Record<string, unknown[] | undefined>): { result: number | SolError | null } {
-    return nodeOnCore(this, inputs) as { result: number | SolError | null };
-  }
-}
-
 // ─── Fisher ───────────────────────────────────────────────────────────────────
 export type FisherOp = "fisher" | "fisherinv";
 
@@ -226,42 +232,6 @@ export class FisherNode extends GraphNode {
 
   data(inputs: Record<string, unknown[] | undefined>): { result: number | (number | SolError | null)[] | SolError | null } {
     return nodeOnCore(this, inputs) as { result: number | (number | SolError | null)[] | SolError | null };
-  }
-}
-
-// ─── Regression ───────────────────────────────────────────────────────────────
-
-export type RegressionOp = "slope" | "intercept" | "steyx";
-
-export const REGRESSION_OP_META = {
-  slope:     { label: "SLOPE",     description: "Slope of linear regression line through `known_ys` and `known_xs`. Excel: `SLOPE`." },
-  intercept: { label: "INTERCEPT", description: "Y-intercept of linear regression line. Excel: `INTERCEPT`." },
-  steyx:     { label: "STEYX",     description: "Standard error of predicted y-values in linear regression. Excel: `STEYX`." },
-} satisfies Record<RegressionOp, { label: string; description: string }>;
-
-export class RegressionNode extends GraphNode {
-  static socketDocs: Record<string, string> = {
-    ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
-  };
-
-  label: string;
-  op: RegressionOp;
-  cachedResult: number | SolError | null = null;
-  literals: Record<string, number> = {};
-  width = 180;
-  height = 185;
-
-  constructor(init?: { label?: string; op?: RegressionOp }) {
-    super("Regression");
-    this.label = init?.label ?? "";
-    this.op = init?.op ?? "slope";
-    this.addInput("ys", listIn("Known Ys"));
-    this.addInput("xs", listIn("Known Xs"));
-    this.addOutput("result", numOut("Result"));
-  }
-
-  data(inputs: Record<string, unknown[] | undefined>): { result: number | SolError | null } {
-    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 

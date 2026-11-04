@@ -39,7 +39,7 @@ const FORMULA_NODE_ALIAS: Record<string, string> = {
   // Pad node directions
   PADLEFT: "Pad (left)", PADRIGHT: "Pad (right)",
   // stats nodes under their canonical labels
-  COVAR: "Covariance node", RANK: "Rank node",
+  COVAR: "Correlation node (COVARIANCE.P op)", RANK: "Rank node",
   STDEV: "Aggregate / Spread (stdev)", VAR: "Aggregate / Spread (variance)",
   // node MODES added for the data-node batch (author-blessed)
   GRADIENT: "DIFF node (∇ gradient mode)", PCTCHANGE: "DIFF node (% mode)",

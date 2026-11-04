@@ -18,9 +18,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "DistributionsNode" => distributions(c),
         "CorrelNode" => correl(c),
         "StandardizeNode" => standardize(c),
-        "CovarianceNode" => covariance(c),
         "FisherNode" => fisher(c),
-        "RegressionNode" => regression(c),
         "ForecastNode" => forecast(c),
         "ModeNode" => mode(c),
         "TrimMeanNode" => trim_mean(c),
@@ -248,32 +246,17 @@ fn rank_percentile(c: &mut Call) -> Answer {
 // ─── Two lists ─────────────────────────────────────────────────────────────────
 
 fn correl(c: &mut Call) -> Answer {
-    let op = c.field_str("op", "correl").to_uppercase();
+    let op = c.field_str("op", "correl").to_string();
     let (xs, ys) = match pair_present(&first(c, "x"), &first(c, "y")) {
         Ok(p) => p,
         Err(e) => return answer(c, e),
     };
-    let r = if op == "RSQ" { core_call("RSQ", &[ys, xs]) } else { core_call(&op, &[xs, ys]) };
-    answer(c, r)
-}
-
-fn covariance(c: &mut Call) -> Answer {
-    let pop = c.field_str("op", "pop") == "pop";
-    let (xs, ys) = match pair_present(&first(c, "x"), &first(c, "y")) {
-        Ok(p) => p,
-        Err(e) => return answer(c, e),
+    let r = match op.as_str() {
+        "covariance-p" => core_call("COVARIANCE.P", &[xs, ys]),
+        "covariance-s" => core_call("COVARIANCE.S", &[xs, ys]),
+        "rsq" | "slope" | "intercept" | "steyx" => core_call(&op.to_uppercase(), &[ys, xs]),
+        _ => core_call(&op.to_uppercase(), &[xs, ys]),
     };
-    let r = core_call(if pop { "COVARIANCE.P" } else { "COVARIANCE.S" }, &[xs, ys]);
-    answer(c, r)
-}
-
-fn regression(c: &mut Call) -> Answer {
-    let op = c.field_str("op", "slope").to_uppercase();
-    let (xs, ys) = match pair_present(&first(c, "xs"), &first(c, "ys")) {
-        Ok(p) => p,
-        Err(e) => return answer(c, e),
-    };
-    let r = core_call(&op, &[ys, xs]);
     answer(c, r)
 }
 

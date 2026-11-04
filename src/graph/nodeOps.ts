@@ -25,7 +25,7 @@ import {
   IsEvenOddNode, ComparisonNode, IsTestNode,
   PARITY_OP_META, COMPARISON_OP_META, IS_TEST_OP_META,
 } from "./nodes/logic";
-import { RegressionNode, CorrelNode, ForecastNode, LinestNode, REGRESSION_OP_META, CORREL_OP_META, FORECAST_OP_META, FIT_OP_META } from "./nodes/stats";
+import { CorrelNode, ForecastNode, LinestNode, CORREL_OP_META, FORECAST_OP_META, FIT_OP_META, type CorrelOp } from "./nodes/stats";
 import {
   TwoInputMathNode, GCDNode, RoundNNode,
   TWO_INPUT_MATH_OP_META, GCD_OP_META, ROUNDN_OP_META,
@@ -35,7 +35,7 @@ import {
   BesselNode, BitwiseNode,
   BondPricingNode, BOND_PRICING_META, BooleanOpNode, CharCodeNode, 
   CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
-  ConfidenceNode, ConstantNode, CouponNode, CovarianceNode,
+  ConfidenceNode, ConstantNode, CouponNode,
   DateAddNode, DateDiffNode, EpochNode, SmoothNode, SMOOTH_OP_META, type SmoothOp, ReturnsNode, RETURNS_OP_META, type ReturnsOp, DISCOUNT_SECURITY_META,
   DatePartNode, DepreciationNode, DollarNode, DurationNode,
   ESeriesNode, 
@@ -91,6 +91,10 @@ const RANK_PERCENTILE_LEAF_OPS = [
   "large", "small", "rank-eq", "rank-avg", "percentile-inc", "quartile-inc", "percentrank-inc",
 ];
 
+const CORREL_LEAF_OPS = ["correl", "spearman", "kendall", "covariance-p", "covariance-s", "steyx"];
+/** The Correlation card's ops, split between its two Add-menu hosts so SLOPE and INTERCEPT sit under STEYX. */
+const correlOps = (ops: CorrelOp[]): OpEntryDecl[] => fromMeta(CORREL_OP_META).filter((o) => ops.includes(o.op as CorrelOp));
+
 export const NODE_OPS: NodeOpsDecl[] = [
   { type: "value-input", ctor: ValueInputNode, ops: fromMeta(VALUE_INPUT_OP_META),
     create: (op) => new ValueInputNode({ op: op as never }), primaryRow: true },
@@ -141,10 +145,10 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new RegexNode({ op: op as never }) },
   { type: "sumifs", ctor: SumIfsNode, ops: fromMeta(COND_AGG_OP_META),
     create: (op) => new SumIfsNode({ op: op as never }) },
-  { type: "regression-steyx", ctor: RegressionNode, ops: fromMeta(REGRESSION_OP_META),
-    create: (op) => new RegressionNode({ op: op as never }) },
-  { type: "correl-correl", ctor: CorrelNode, ops: fromMeta(CORREL_OP_META),
-    create: (op) => new CorrelNode({ op: op as never }) },
+  { type: "correl-correl", ctor: CorrelNode, ops: correlOps(["correl", "rsq", "spearman", "kendall", "covariance-p", "covariance-s"]),
+    leafOps: CORREL_LEAF_OPS, create: (op) => new CorrelNode({ op: op as never }) },
+  { type: "regression-steyx", ctor: CorrelNode, ops: correlOps(["slope", "intercept", "steyx"]),
+    leafOps: CORREL_LEAF_OPS, create: (op) => new CorrelNode({ op: op as never }) },
   { type: "forecast", ctor: ForecastNode, ops: fromMeta(FORECAST_OP_META),
     create: (op) => new ForecastNode({ op: op as never }) },
   { type: "linest", ctor: LinestNode, ops: fromMeta(FIT_OP_META),
@@ -179,7 +183,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "confidence-norm", ctor: ConfidenceNode },
   { type: "constant", ctor: ConstantNode },
   { type: "coupon-coupdaybs", ctor: CouponNode },
-  { type: "cov-pop", ctor: CovarianceNode },
   { type: "date-add-edate", ctor: DateAddNode },
   { type: "date-epoch-from", ctor: EpochNode },
   { type: "returns", ctor: ReturnsNode, ops: fromMeta(RETURNS_OP_META),

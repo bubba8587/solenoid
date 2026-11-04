@@ -4,6 +4,7 @@ import {
   RankPercentileNode,
   InterpolateNode,
   HypothesisTestNode,
+  CorrelNode,
 } from "../../../src/graph/nodes/stats";
 import { coreFunction } from "../coreFunction";
 
@@ -372,6 +373,27 @@ describe("Hypothesis Test — one node, six tests", () => {
     expect(init.op).toBe("t-welch");
     const clone = new HypothesisTestNode(init as { op: "t-welch" });
     expect(Object.keys(clone.inputs).sort()).toEqual(["a", "b"]);
+  });
+});
+
+describe("Correlation — one card for the paired-list statistics ([[B11]] maximalMerge)", () => {
+  const rows = (n: CorrelNode) => Object.entries(n.inputs).map(([k, p]) => `${k}:${p!.label}`);
+
+  it("a regression op puts Known Ys first; the keys stay x and y, so both cables do", () => {
+    const n = new CorrelNode({ op: "covariance-s" });
+    expect(rows(n)).toEqual(["x:X", "y:Y"]);
+    n.setOp("slope");
+    expect(rows(n)).toEqual(["y:Known Ys", "x:Known Xs"]);
+    expect(n.outputs.result!.label).toBe("Result");
+    n.setOp("intercept");
+    expect(rows(n)).toEqual(["y:Known Ys", "x:Known Xs"]);
+    n.setOp("kendall");
+    expect(rows(n)).toEqual(["x:X", "y:Y"]);
+    expect(n.outputs.result!.label).toBe("r");
+  });
+
+  it("a saved regression card reopens with its rows in Excel's order", () => {
+    expect(rows(new CorrelNode({ op: "steyx" }))).toEqual(["y:Known Ys", "x:Known Xs"]);
   });
 });
 

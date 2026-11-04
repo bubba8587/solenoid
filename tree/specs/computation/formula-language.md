@@ -626,7 +626,7 @@ Per-function behavior that the routing above does not decide. The node and the f
 
 ### Statistics
 
-- The statistics family runs the nodes' kernels (Aggregate, Rank & Percentile, Correlation, Covariance, Mode, Fisher). Range arguments arrive prepared by `prep_range_args`, so a registration only gathers the numbers: text is skipped, numeric text included ([[C10]] socketLattice), where the function doesn't refuse it first ([[D109]] aggregatesRefuseText), and a first-class infinity counts, as it does on the cards.
+- The statistics family runs the nodes' kernels (Aggregate, Rank & Percentile, Correlation, Mode, Fisher). Range arguments arrive prepared by `prep_range_args`, so a registration only gathers the numbers: text is skipped, numeric text included ([[C10]] socketLattice), where the function doesn't refuse it first ([[D109]] aggregatesRefuseText), and a first-class infinity counts, as it does on the cards.
 - The flat Excel names carry Excel's flat-name defaults: STDEV and VAR are the sample forms, PERCENTILE and QUARTILE inclusive, MODE single, COVAR the population form.
 - **SLOPE, INTERCEPT, STEYX, RSQ** take Excel's order, known Ys first, and **FORECAST.LINEAR(x, known_ys, known_xs)** runs the node's `linear_fit` (zero-variance Xs are `#DIV/0!`). **PERCENTRANK(array, x, [significance])** is the inclusive form with 3 digits by default.
 - **The tests beyond Excel's four** run the Hypothesis Test node's kernels: ANOVA and KRUSKAL take each group as a separate list argument (the node reads a matrix's columns); MANNWHITNEY, WILCOXON and KSTEST take two lists; FISHEREXACT(a, b, c, d), PROPTEST(x1, n1, x2, n2) and BINOMTEST(k, n, p) take numbers. **T.TEST(a, b, tails, type)** defaults tails to 2; a type other than 1, 2 or 3, or tails other than 1 or 2, is `#DOMAIN!`.
@@ -807,7 +807,7 @@ A `Cell` is a number, `null` or a `SolError`; `first_error` returns the first `S
 
 ### Statistics kernels (`excel_functions.rs`, `fns_stats.rs`)
 
-The Aggregate, Rank & Percentile, Correlation, Covariance, Mode, Fisher and Hypothesis Test nodes and the statistics formulas call these. Inputs are already-prepared numbers: errors propagated and blanks skipped by the caller. Null means the input cannot support the statistic (too few points, a flat list) and shows as a blank ([[C24]] arraySemantics); a `SolError` is a real domain failure.
+The Aggregate, Rank & Percentile, Correlation, Mode, Fisher and Hypothesis Test nodes and the statistics formulas call these. Inputs are already-prepared numbers: errors propagated and blanks skipped by the caller. Null means the input cannot support the statistic (too few points, a flat list) and shows as a blank ([[C24]] arraySemantics); a `SolError` is a real domain failure.
 
 **`aggregate(op, nums)`**, the Aggregate node's reducers:
 

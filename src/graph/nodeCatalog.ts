@@ -18,7 +18,7 @@ import {
   SaveTimesNode,
   AlertNode, NormalizeNode, BinNode, OutliersNode, ShiftNode, CombinationsNode, EwmaNode, CrossNode, PolyfitNode, TrapzNode, RleNode, BetweenNode, IsCloseNode,
   ShuffleNode, NthElementNode, InterleaveNode, PadNode,
-  StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
+  StandardizeNode, FisherNode, BitwiseNode,
   DepreciationNode,
   TvmNode, PaymentBreakdownNode, NPVNode, IRRNode, MirrNode, AmortizationNode, ReturnsNode,
   FvScheduleNode, IspmtNode, DollarNode, ProbNode,
@@ -57,7 +57,7 @@ import {
   type MatDetOp, type TableReshapeOp, type TableSelectOp,
   IsEvenOddNode, FormatDollarNode,
   DistributionsNode,
-  RegressionNode, ForecastNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
+  ForecastNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
   BesselNode,
   SeriesSumNode, MultinomialNode, SwitchNode, IfsNode,
   HypothesisTestNode, HYPOTHESIS_TEST_OP_META, type HypothesisTestOp,
@@ -65,23 +65,23 @@ import {
   ARITHMETIC_OP_META, MATH_FN_OP_META, BOOLEAN_OP_META, REDUCE_OP_META,
   COMBINATORICS_OP_META, ARG_MIN_MAX_OP_META,
   SUM_PRODUCT_OP_META, CORREL_OP_META, TWO_INPUT_MATH_OP_META,
-  COVARIANCE_OP_META, FISHER_OP_META, BITWISE_OP_META,
+  FISHER_OP_META, BITWISE_OP_META,
   DEPRECIATION_OP_META,
   DOLLAR_OP_META,
   WEIGHTED_OP_META,
   TEXT_TRANSFORM_OP_META, TEXT_SLICE_OP_META, TEXT_FIND_OP_META, TEXT_AFTER_BEFORE_OP_META,
-  BESSEL_OP_META, REGRESSION_OP_META,
+  BESSEL_OP_META,
   TODAY_NOW_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META, DATE_DIFF_OP_META, DATE_ADD_OP_META,
   type ArithmeticOp, type MathFnOp, type BooleanOp, type ReduceOp,
   type CombinatoricsOp, type ArgMinMaxOp,
   type SumProductOp, type CorrelOp, type TwoInputMathOp,
-  type CovarianceOp, type FisherOp, type BitwiseOp,
+  type FisherOp, type BitwiseOp,
   type DepreciationOp,
   type DollarOp, type WeightedOp,
   type CouponOp, type DurationOp,
   type TextTransformOp, type TextSliceOp, type TextFindOp, type CharCodeOp, type TextAfterBeforeOp,
   type RomanArabicOp,
-  type BesselOp, type RegressionOp,
+  type BesselOp,
   type TodayNowOp, type DateTimeValueOp, type DatePartOp, type WeekInfoOp, type DateDiffOp, type DateAddOp,
   ExpectNode, TornadoNode,
 } from "./nodeClasses";
@@ -102,13 +102,13 @@ const RP_LEAF_TYPE: Partial<Record<RankPercentileOp, string>> = { large: "nth-la
 const rpLeaf       = (op: RankPercentileOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: RP_LEAF_TYPE[op]!, label: RANK_PERCENTILE_OP_META[op].label, description: RANK_PERCENTILE_OP_META[op].description, create: () => new RankPercentileNode({ op }), ...overrides, keywords: ["rank & percentile", overrides?.keywords].filter(Boolean).join(" ") });
 const argLeaf      = (op: ArgMinMaxOp):    NodeCatalogEntry => ({ type: `arg-${op}`,       label: ARG_MIN_MAX_OP_META[op].label,    description: ARG_MIN_MAX_OP_META[op].description,    create: () => new ArgMinMaxNode({ op })     });
 const spLeaf       = (op: SumProductOp):   NodeCatalogEntry => ({ type: `sp-${op}`,        label: SUM_PRODUCT_OP_META[op].label,    description: SUM_PRODUCT_OP_META[op].description,    create: () => new SumProductNode({ op })    });
-const correlLeaf   = (op: CorrelOp):       NodeCatalogEntry => ({ type: `correl-${op}`,    label: CORREL_OP_META[op].label,         description: CORREL_OP_META[op].description,         create: () => new CorrelNode({ op })        });
+// NODE_EXCEL keys on these leaf types, so they don't follow the op names.
+const CORREL_LEAF_TYPE: Partial<Record<CorrelOp, string>> = { correl: "correl-correl", spearman: "correl-spearman", kendall: "correl-kendall", "covariance-p": "cov-pop", "covariance-s": "cov-samp", steyx: "regression-steyx" };
+const correlLeaf   = (op: CorrelOp, keywords?: string): NodeCatalogEntry => ({ type: CORREL_LEAF_TYPE[op]!, label: CORREL_OP_META[op].label, description: CORREL_OP_META[op].description, ...(keywords ? { keywords } : {}), create: () => new CorrelNode({ op }) });
 const twoMathLeaf  = (op: TwoInputMathOp): NodeCatalogEntry => ({ type: `twomath-${op}`,   label: TWO_INPUT_MATH_OP_META[op].label, description: TWO_INPUT_MATH_OP_META[op].description, create: () => new TwoInputMathNode({ op })  });
-const covLeaf      = (op: CovarianceOp):   NodeCatalogEntry => ({ type: `cov-${op}`,       label: COVARIANCE_OP_META[op].label,     description: COVARIANCE_OP_META[op].description,     create: () => new CovarianceNode({ op })    });
 const fisherLeaf   = (op: FisherOp):       NodeCatalogEntry => ({ type: `fisher-${op}`,    label: FISHER_OP_META[op].label,         description: FISHER_OP_META[op].description,         create: () => new FisherNode({ op })        });
 const bitwiseLeaf  = (op: BitwiseOp):      NodeCatalogEntry => ({ type: `bitwise-${op}`,   label: BITWISE_OP_META[op].label,        description: BITWISE_OP_META[op].description,        create: () => new BitwiseNode({ op })       });
 const deprLeaf     = (op: DepreciationOp): NodeCatalogEntry => ({ type: `depr-${op}`,      label: DEPRECIATION_OP_META[op].label,   description: DEPRECIATION_OP_META[op].description,   create: () => new DepreciationNode({ op })  });
-const regressionLeaf = (op: RegressionOp): NodeCatalogEntry => ({ type: `regression-${op}`,label: REGRESSION_OP_META[op].label,     description: REGRESSION_OP_META[op].description,     keywords: "regression", create: () => new RegressionNode({ op })    });
 // NODE_EXCEL keys on these leaf types, so they don't follow the op names.
 const TEST_LEAF_TYPE: Record<HypothesisTestOp, string> = {
   z: "z-test", "t-paired": "t-test-paired", "t-equal": "t-test-equal-var", "t-welch": "t-test-unequal-var", f: "f-test", chisq: "chisq-test",
@@ -495,7 +495,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             children: [
               correlLeaf("correl"),
               { type: "pair", children: [correlLeaf("spearman"), correlLeaf("kendall")] },
-              { type: "pair", children: [covLeaf("pop"), covLeaf("samp")] },
+              { type: "pair", children: [correlLeaf("covariance-p"), correlLeaf("covariance-s")] },
               { type: "pair", children: [fisherLeaf("fisher"), fisherLeaf("fisherinv")] },
               spLeaf("sumx2my2"),
               { type: "pair", children: [spLeaf("sumx2py2"), spLeaf("sumxmy2")] },
@@ -579,7 +579,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "linest",  label: "LINEST",  description: "Fits a line with `LINEST`, giving slope, intercept and R², or a growth curve with `LOGEST`, giving m, b and R² on the log scale.", create: () => new LinestNode(), parity: false, keywords: "linest logest slope intercept rsq regression fit linear exponential growth curve least squares" },
           { type: "forecast", label: "FORECAST.LINEAR", description: "Predict Y for one X or a list of them from known data: a straight line or a growth curve y = b·mˣ. Excel: `FORECAST.LINEAR` / `TREND`, or `GROWTH`.", create: () => new ForecastNode(), parity: false, keywords: "forecast trend growth predict linear exponential regression fit extrapolate" },
-          regressionLeaf("steyx"),
+          correlLeaf("steyx", "regression"),
           { type: "polyfit", label: "Poly Fit", description: "Least-squares polynomial fit of the chosen degree, evaluated back over the data. Degree 1 is a line, 2 a parabola, and so on. `numpy.polyfit` + `polyval`.", create: () => new PolyfitNode(), parity: false, keywords: "polynomial fit polyfit polyval regression curve degree quadratic cubic least squares numpy trendline" },
           { type: "ets-forecast", label: "Forecast (ETS)", description: "Holt-Winters smoothing: a forecast N steps ahead with a 95% band. statsmodels `ExponentialSmoothing`, R `HoltWinters`. Excel `FORECAST.ETS`, roughly.", create: () => new EtsForecastNode(), parity: false, keywords: "forecast ets exponential smoothing holt winters seasonal time series predict trend season confint seasonality" },
           { type: "interpolate", label: "INTERPOLATE", description: "Estimates values between known points, not a regression fit. List mode finds y for an x along a line of points. Grid mode interpolates over a table of heights, with optional Xs and Ys that count 1, 2, 3… when left out. Forecast, on by default, extends past the range. Useful for lookup tables like steam tables, pump curves and hardness conversions.", create: () => new InterpolateNode(), parity: false },
