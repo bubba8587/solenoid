@@ -12,6 +12,11 @@ export function consumeEscape(): boolean {
   return true;
 }
 
+/** How many menus are open on a popup, for Android's back gesture (`androidBack.ts`). */
+export function openLayerCount(): number {
+  return layers.length;
+}
+
 /** While `open`, Escape closes this menu first. */
 export function useEscapeLayer(open: boolean, close: () => void): void {
   const cb = useRef(close);

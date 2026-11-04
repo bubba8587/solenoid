@@ -56,6 +56,8 @@ function PickerBody({ state }: { state: FilePickerState }) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const recent = useMemo(() => (state.recentKey ? recentPicks(state.recentKey) : []), [state.recentKey]);
+  const [name, setName] = useState(state.save?.name ?? "");
+  const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (state.blocked) return;
@@ -102,6 +104,13 @@ function PickerBody({ state }: { state: FilePickerState }) {
 
   const sel = all[at];
   const choose = (path: string) => {
+    if (state.save) {
+      const file = withExtension(name.trim(), state.save.extension);
+      if (!file) { nameRef.current?.focus(); return; }
+      if (state.recentKey) rememberPick(state.recentKey, path);
+      state.answer(path ? `${path}/${file}` : file);
+      return;
+    }
     if (state.recentKey) rememberPick(state.recentKey, path);
     state.answer(path);
   };
@@ -203,14 +212,40 @@ function PickerBody({ state }: { state: FilePickerState }) {
       </div>
       {!state.blocked && tree && (
         <div className="file-picker__foot">
-          <span className="file-picker__picked" title={footerPick ?? undefined}>{footerPick === null ? "" : footerPick || rootLabel}</span>
-          <button type="button" className="file-picker__choose" disabled={footerPick === null} onClick={() => { if (footerPick !== null) choose(footerPick); }}>
-            {folderMode ? "Choose folder" : "Choose"}
+          {state.save ? (
+            <input
+              ref={nameRef}
+              className="file-picker__name-field"
+              value={name}
+              aria-label="File name"
+              spellCheck={false}
+              autoComplete="off"
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); if (footerPick !== null) choose(footerPick); } }}
+            />
+          ) : (
+            <span className="file-picker__picked" title={footerPick ?? undefined}>{footerPick === null ? "" : footerPick || rootLabel}</span>
+          )}
+          <button
+            type="button"
+            className="file-picker__choose"
+            disabled={footerPick === null || (!!state.save && !name.trim())}
+            title={state.save && footerPick !== null ? `Save in ${footerPick || rootLabel}` : undefined}
+            onClick={() => { if (footerPick !== null) choose(footerPick); }}
+          >
+            {state.save ? "Save" : folderMode ? "Choose folder" : "Choose"}
           </button>
         </div>
       )}
     </PopupShell>
   );
+}
+
+/** `name` ending in `.extension` once: "Budget" and "Budget.json" both save as Budget.json. */
+export function withExtension(name: string, extension: string): string {
+  const clean = name.replace(/[\\/]/g, "").trim();
+  if (!clean) return "";
+  return clean.toLowerCase().endsWith(`.${extension.toLowerCase()}`) ? clean : `${clean}.${extension}`;
 }
 
 const PHONE = "(max-width: 640px)";

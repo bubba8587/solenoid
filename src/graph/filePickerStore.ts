@@ -27,6 +27,9 @@ export interface FilePickerState {
   accent?: string;
   groupColor?: string;
   groupColorDark?: string;
+  /** Folder mode as Save As: a name field beside the folder, and the answer is the folder and the name with its
+   *  `extension` (Android, where the system's save dialog gives no path; docs/android.md). */
+  save?: { name: string; extension: string };
   answer: (rel: string | null) => void;
 }
 

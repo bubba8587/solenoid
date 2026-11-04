@@ -322,6 +322,11 @@ export function scheduleAutosave(): void {
   }, AUTOSAVE_DELAY);
 }
 
+/** Saves a pending edit now: leaving the app (Android's back gesture, `androidBack.ts`) doesn't wait for the timer. */
+export function flushSaveNow(): void {
+  flushOnExit();
+}
+
 function flushOnExit(): void {
   if (_suspend > 0) return;
   const flushed = flushDrafts();

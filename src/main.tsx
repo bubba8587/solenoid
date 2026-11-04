@@ -14,6 +14,7 @@ import { startCore } from "./graph/coreReady";
 import { shouldReloadForChunkError, type ReloadStore } from "./graph/chunkReloadGuard";
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
 import { initFullscreenHotkey } from "./graph/fullscreen";
+import { initAndroidBack } from "./graph/androidBack";
 import { pushNotice } from "./graph/noticeStore";
 import { isDesktop, isAndroidApp } from "./graph/fileBridge";
 import { OWN_WINDOW_CONTROLS } from "./graph/WindowControls";
@@ -121,6 +122,8 @@ void startCore();
 initDevtoolsHotkey();
 
 initFullscreenHotkey();
+
+void initAndroidBack();
 
 if (import.meta.env.DEV) {
   import("./graph/catalogValidator").then(m => m.validateCatalog());

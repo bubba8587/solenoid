@@ -24,6 +24,57 @@ export function isAndroidApp(): boolean {
 /** Android's shared storage, where a vault or a data folder lives; reading it needs All files access. */
 export const ANDROID_STORAGE_ROOT = "/storage/emulated/0";
 
+/** Where an Android pick starts: the documents folder when it is on shared storage, else Documents. */
+async function androidStart(): Promise<string> {
+  const { settingsStore } = await import("./settingsStore");
+  const { relativeTo } = await import("./chooseFile");
+  const docs = String(settingsStore.get("docsFolder") ?? "");
+  return (docs && relativeTo(ANDROID_STORAGE_ROOT, docs)) || "Documents";
+}
+
+/** Save As on Android: a folder on shared storage and a name, from the app's own picker, as a real path. Android's
+ *  save dialog answers with a content:// address that names no folder and no file (docs/android.md). */
+async function androidSaveAs(suggestedName: string, extension: string): Promise<string | null> {
+  const { chooseFile } = await import("./chooseFile");
+  const rel = await chooseFile({
+    title: "Save as",
+    root: ANDROID_STORAGE_ROOT,
+    kind: "folder",
+    current: await androidStart(),
+    rootLabel: "Phone",
+    list: () => listVaultFolders(ANDROID_STORAGE_ROOT, 3),
+    empty: "No folders here. Allow Solenoid All files access in Android's settings.",
+    recentKey: "android-save",
+    save: { name: suggestedName.replace(/\.[^.]+$/, ""), extension },
+  });
+  if (!rel) return null;
+  const path = `${ANDROID_STORAGE_ROOT}/${rel}`;
+  if (await pathExists(path)) {
+    const { requestConfirm } = await import("./confirmStore");
+    const ok = await requestConfirm({ message: `${baseNameOf(path)} already exists. Replace it?`, confirmLabel: "Replace" });
+    if (!ok) return null;
+  }
+  return path;
+}
+
+/** Open on Android: a file on shared storage from the app's own picker, as a real path. */
+async function androidOpenFile(title: string, extensions?: string[]): Promise<string | null> {
+  const { chooseFile } = await import("./chooseFile");
+  const keep = extensions ? (n: string) => extensions.some((e) => n.toLowerCase().endsWith(`.${e}`)) : undefined;
+  const rel = await chooseFile({
+    title,
+    root: ANDROID_STORAGE_ROOT,
+    kind: "file",
+    extensions,
+    rootLabel: "Phone",
+    list: () => listVaultFiles(ANDROID_STORAGE_ROOT, 4, keep),
+    readHead: (r, chars) => readFileHead(ANDROID_STORAGE_ROOT, r, chars),
+    empty: "No files here. Allow Solenoid All files access in Android's settings.",
+    recentKey: `android-open-${(extensions ?? ["any"]).join(",")}`,
+  });
+  return rel ? `${ANDROID_STORAGE_ROOT}/${rel}` : null;
+}
+
 
 export interface FsProvider {
   readTextFile(path: string): Promise<string>;
@@ -261,12 +312,14 @@ export function writeBinaryFilePath(path: string, bytes: Uint8Array): Promise<vo
 
 export async function pickSaveFilePath(suggestedName: string, extensions: string[]): Promise<string | null> {
   if (!isDesktop()) return null;
+  if (isAndroidApp()) return androidSaveAs(suggestedName, extensions[0] ?? "txt");
   const path = await save({ defaultPath: suggestedName, filters: [{ name: extensions.join("/").toUpperCase(), extensions }] });
   return typeof path === "string" ? path : null;
 }
 
 export async function pickSaveGraphPath(suggestedName: string): Promise<string | null> {
   if (!isDesktop()) return null;
+  if (isAndroidApp()) return androidSaveAs(suggestedName, "json");
   const path = await save({ defaultPath: suggestedName, filters: JSON_FILTER });
   return typeof path === "string" ? path : null;
 }
@@ -274,7 +327,7 @@ export async function pickSaveGraphPath(suggestedName: string): Promise<string |
 /** The chosen path; null on cancel, and always null in the browser, which downloads instead. */
 export async function saveTextFileDialog(suggestedName: string, content: string): Promise<string | null> {
   if (isDesktop()) {
-    const path = await save({ defaultPath: suggestedName, filters: JSON_FILTER });
+    const path = isAndroidApp() ? await androidSaveAs(suggestedName, "json") : await save({ defaultPath: suggestedName, filters: JSON_FILTER });
     if (!path) return null;
     await writeTextFileAtomic(path, content);
     return path;
@@ -285,7 +338,7 @@ export async function saveTextFileDialog(suggestedName: string, content: string)
 
 export async function saveCsvFileDialog(suggestedName: string, content: string): Promise<string | null> {
   if (isDesktop()) {
-    const path = await save({ defaultPath: suggestedName, filters: CSV_FILTER });
+    const path = isAndroidApp() ? await androidSaveAs(suggestedName, "csv") : await save({ defaultPath: suggestedName, filters: CSV_FILTER });
     if (!path) return null;
     await writeTextFileAtomic(path, content);
     return path;
@@ -296,7 +349,7 @@ export async function saveCsvFileDialog(suggestedName: string, content: string):
 
 export async function saveHtmlFileDialog(suggestedName: string, content: string): Promise<string | null> {
   if (isDesktop()) {
-    const path = await save({ defaultPath: suggestedName, filters: HTML_FILTER });
+    const path = isAndroidApp() ? await androidSaveAs(suggestedName, "html") : await save({ defaultPath: suggestedName, filters: HTML_FILTER });
     if (!path) return null;
     await writeTextFileAtomic(path, content);
     return path;
@@ -319,7 +372,7 @@ function downloadHtml(name: string, content: string): void {
 
 export async function openTextFileDialog(): Promise<{ path: string | null; content: string } | null> {
   if (isDesktop()) {
-    const res = await open({ multiple: false, directory: false, filters: JSON_FILTER });
+    const res = isAndroidApp() ? await androidOpenFile("Open a document", ["json"]) : await open({ multiple: false, directory: false, filters: JSON_FILTER });
     const path = typeof res === "string" ? res : null;
     if (!path) return null;
     return { path, content: await readTextFile(path) };
@@ -390,6 +443,7 @@ export async function openInFileManager(path: string): Promise<void> {
 
 export async function pickFileLinkDialog(): Promise<string | null> {
   if (!isDesktop()) return null;
+  if (isAndroidApp()) return androidOpenFile("Choose a file to link");
   const res = await open({ multiple: false, directory: false, title: "Choose a file to link" });
   return typeof res === "string" ? res : null;
 }

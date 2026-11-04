@@ -230,6 +230,18 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.file-picker__name-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+.file-picker__name-field:focus { outline: none; border-color: var(--node-accent, var(--accent)); }
 .file-picker__choose {
   flex: none;
   font: inherit;
@@ -248,6 +260,7 @@
 @media (pointer: coarse) {
   .file-picker__row { padding: 9px 10px; font-size: 13px; gap: 9px; }
   .file-picker__choose { font-size: 13px; padding: 9px 16px; }
+  .file-picker__name-field { font-size: 16px; padding: 8px 10px; }
 }
 /* A phone: the list fills the card; a tap picks (FilePicker.tsx), so the footer only names the pick. */
 @media (max-width: 640px) {

@@ -20,6 +20,9 @@ differently (pickers, storage permission) is handled.
 | `html[data-shell="android"]`, so the desktop frame's CSS stays off; no F11, F12 or window border calls; no "Open documents folder" | `src/main.tsx`, `fullscreen.ts`, `devtoolsHotkey.ts`, `nativeAccent.ts`, `menuModel.ts` |
 | A card's file and every folder are picked in the app's own picker over the real files: Android's picker has no folder mode and answers a file with a `content://` address the folder calls can't read. Settings' folder rows browse shared storage three levels deep | `chooseFile.ts`, `pickFolderDialog` in `fileBridge.ts` |
 | Opening a file in another app (File Link) says it isn't available: the opener hands Android a `file://` address, which Android refuses | `openFilePath` in `fileBridge.ts` |
+| Opening and saving files (a document, a CSV or web-page export, a Write File sink, a File Link pick) use the app's picker on shared storage, so every file is a real path as on desktop (author 2026-11-04): Open lists files, Save As browses folders and takes a name in the footer (the picker's `save` mode), and an existing file asks before it is replaced. The system dialogs would answer with `content://` addresses that name no folder and no file | `androidSaveAs`, `androidOpenFile` in `fileBridge.ts`; `FilePicker.tsx` (`save`, `withExtension`) |
+| The back gesture closes the topmost popup, menu or panel, as Escape does, and leaves the app (saving first) only from the bare canvas (author 2026-11-04). "Open" is a surface on the shared Escape hook, a menu on a popup, or anything with a dialog, menu or listbox role | `androidBack.ts`; `core:app:allow-exit` in `android.json` |
+| All files access stays instructions in Settings, Data, with no in-app button (author 2026-11-04; a button needs a native plugin) | `Settings.tsx` (`AndroidFilesRow`) |
 | Leaving the app saves (Android can end a backgrounded app without a `pagehide`) | `persistence.ts` |
 | Settings, Data says where to turn on All files access | `Settings.tsx` (`AndroidFilesRow`) |
 | The manifest patch: All files access, plain http in release too; idempotent, run by the npm scripts | `scripts/android-prep.mjs`, `tests/graph/androidPrep.test.ts` |
@@ -119,7 +122,8 @@ Done when an APK exists: `find src-tauri/gen/android/app/build/outputs/apk -name
      or the gesture bar (top bar, bottom toolbar, popups' edges), in portrait and landscape.
    - A seed document computes; a Formula, a chart and the Add menu work; a Script card runs (its worker).
    - Typing in a formula field near the bottom: the keyboard doesn't cover the field.
-   - The back gesture with a popup open, and with none (see Phase 5).
+   - The back gesture: with Settings, the menu sheet, a table popup and a card's menu open, each closes in turn; on
+     the bare canvas the app leaves, and reopening shows the last edit.
    - Web Source on an https URL, then on an http URL; Weather or FX fetches.
    - A shared (foreign) document still asks before it fetches or runs a script.
    - Settings' vault folder: the app's picker lists the phone's folders; pick the Obsidian vault.
@@ -129,20 +133,12 @@ Done when an APK exists: `find src-tauri/gen/android/app/build/outputs/apk -name
    - The Obsidian button on Import Obsidian Note opens the note in Obsidian.
    - Send the app to the background, swipe it away, reopen: the last edit is there.
    - Rotate to landscape: the tablet layout, scaled to fit.
-   - The documents menu: Open a `.solenoid` file, Save As, Save (see Phase 5).
+   - The documents menu: Save As into Documents (the picker's name field, then Save), Save again (no picker), Open
+     it back; Save As onto an existing file asks first. A table popup's CSV export and a Report's web page save the
+     same way.
 
 ### Phase 5: what is expected to need work
 
-- **Opening and saving a document file.** The system picker answers with a `content://` address. Reading one works,
-  and a save falls back from its temporary file (which can't be renamed there) to writing in place, so both may work;
-  the file name shown will be Android's id, not the name, and images can't be bundled beside it. If any of that
-  fails or reads badly, stop and ask the author between: (a) on Android, Save As picks a folder and a name in the app
-  (the documents folder on shared storage), so a document is a real path like on desktop; (b) keep the system picker
-  and show the name Android reports.
-- **The back gesture.** By default it closes the app wherever the user is, since the app keeps no webview history
-  (the PWA in Chrome does the same). Stop and ask the author between: (a) leave it; (b) on Android, back closes the
-  topmost popup, menu or panel first and leaves the app only from the bare canvas, through `onBackButtonPress`
-  (recommended: it is what an Android user expects, and Escape already closes each of those).
 - **Bars over the page.** The app's surfaces clear faked bars in Chromium (§ What is in place), so a surface under a
   real bar most likely means the phone's WebView is older than M144 (update Android System WebView from the Play Store first), or the surface lacks its
   `env(safe-area-inset-*)` padding (add it, as the PWA's other surfaces have it). If the WebView can't be updated, a
@@ -151,11 +147,6 @@ Done when an APK exists: `find src-tauri/gen/android/app/build/outputs/apk -name
 - **The keyboard over a field.** Below M139 the keyboard may cover the field. If it does on the phone's WebView, scroll
   the focused field into view on `visualViewport` resize, behind `isAndroidApp()`, without clearing focus (that closes
   the keyboard again).
-- **The All files access screen.** The app can't open it or check the grant without native code (the opener sends only
-  VIEW intents). If the author wants a button: a small mobile plugin (a `@TauriPlugin` Kotlin class with `@Command`
-  methods, registered from Rust with `register_android_plugin`, https://v2.tauri.app/develop/plugins/develop-mobile/)
-  firing `Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION` for `package:com.solenoid.app` and answering
-  `Environment.isExternalStorageManager()`; otherwise the Settings line stays the instructions.
 - **Anything in the Phase 4 list that fails** and isn't listed here: fix it behind `isAndroidApp()` when the fix is
   packaging; stop and ask when the fix would change what the app does.
 
@@ -172,7 +163,7 @@ Done when an APK exists: `find src-tauri/gen/android/app/build/outputs/apk -name
 
 ### Phase 7: wrap up
 
-Update this file: § Status, what Phase 5 decided, and anything Tauri did differently from § What Tauri does on Android.
+Update this file: § Status, what Phase 5 fixed, and anything Tauri did differently from § What Tauri does on Android.
 Delete the backlog line, extend the dev-notes digest, and push `develop` when the author says to.
 
 **Not in this plan** (backlog items if the author wants them): opening a `.solenoid` file from another app

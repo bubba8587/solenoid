@@ -27,6 +27,8 @@ export interface ChooseOptions {
   /** The field that asked: the popup takes its card's accent. */
   from?: HTMLElement;
   files?: () => Promise<string[]>;
+  /** Folder mode as Save As: the answer is the folder and this name (`FilePickerState.save`). */
+  save?: { name: string; extension: string };
 }
 
 const slashed = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "");
@@ -71,6 +73,7 @@ export async function chooseFile(o: ChooseOptions): Promise<string | null> {
       stat: o.stat,
       recentKey: o.recentKey,
       files: o.files,
+      save: o.save,
       ...(o.from ? readChipPopupStyle(o.from) : {}),
       answer: (rel) => { filePicker.close(); resolve(rel); },
     });
