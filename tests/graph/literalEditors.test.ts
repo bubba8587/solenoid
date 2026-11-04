@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture
+// [[C86]] membershipByGesture, [[literal-input-editors#The popup is the editor for rank-2+ literal sources]]
 import { describe, it, expect } from "vitest";
 import {
   parseCubeSource, cubeSourceToText, getAtPath, setAtPath, recordsShape, parseCellText, cellTextOf,
@@ -12,8 +12,7 @@ import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import { nextGeneration } from "../../src/graph/passSession";
 import type { Schemes } from "../../src/graph/schemes";
 
-// The literal inputs' shared editing helpers + the Cube Input node (the fourth literal
-// source beside Table / Frame / List Input).
+
 
 describe("parseCubeSource / cubeSourceToText", () => {
   it("reads a JSON array of records; blank = no rows; anything else is a reasoned error", () => {

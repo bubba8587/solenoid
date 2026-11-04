@@ -1,15 +1,11 @@
-// [[C58]] tableInputRawText
+// [[C58]] tableInputRawText, [[literal-input-editors#List Input is not one of them]]
 import { solDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { ListInputNode } from "../../src/graph/nodes/list";
 import { throughBoundary } from "./boundaryKit";
 
-// The List Input's value box draws the list through ValueDisplay, whose chip opens the
-// ordinary list value popup (one element per cell, Row / Column switcher). The card never
-// hosts a chip of its own and never makes the popup an editor: 758a2d70 added a dummy 1x1
-// table chip and a raw-row editor, and every "fix" since broke the popup a new way. The one
-// thing it hands the popup is the typed text, for the Source view.
+
 describe("List Input: the plain value box", () => {
   it("emits a rank-1 list: every typed row's values, in row order, as ONE flat list (the author's rule)", () => {
     const n = new ListInputNode();
