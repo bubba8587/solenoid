@@ -1075,7 +1075,7 @@ The measurement reports:
 | Range routing and preparation policies | `tests/graph/rangeRouting.test.ts` |
 | Matrix and complex containment | `tests/graph/formulaMatrix.test.ts`, `formulaComplex.test.ts` |
 | LAMBDA and hosts | `tests/graph/formulaLambda.test.ts`, `tests/graph/nodes/tableLambda.test.ts` |
-| Node and formula give one answer | `tests/graph/formulaNodeParity.test.ts`, `nodeFormulaArgParity.test.ts`, `formulaTier1.test.ts`, `formulaTier3.test.ts` |
+| Node and formula give one answer | `tests/graph/formulaNodeParity.test.ts`, `formulaTier1.test.ts`, `formulaTier3.test.ts` |
 | Where Formula.js was wrong | `tests/graph/formulaDivergence.test.ts` |
 | Pack registration | `tests/graph/formulaExtensions.test.ts` |
 | The formula path stays graph-free | `tests/graph/formulaPathIsGraphFree.test.ts` |

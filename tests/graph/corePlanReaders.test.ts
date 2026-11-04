@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { isDeepStrictEqual } from "node:util";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { frozen } from "./coreFixtures";
+import { frozen, sampled } from "./coreFixtures";
 import { readPlanFile, parsePredecessors } from "../../src/graph/engineWasm/solenoid_graph.js";
 
 type Case = { kind: "mspdi" | "gan" | "xer" | "sniff" | "pred"; text: string; names?: string[]; want?: unknown };
@@ -142,19 +142,24 @@ describe("the plan-file readers hold to their frozen answers", () => {
     const dir = join(__dirname, "../../crates/solenoid-schedule/tests/corpus");
     const files = readdirSync(dir).filter((f) => f.endsWith(".xml")).map((f) => readFileSync(join(dir, f), "utf8"));
     const msp = [...files, ...Array.from({ length: 300 }, (_, i) => mspdi(i + 1)), "<Project></Project>", "<NotProject/>", "<Project><Tasks><Task></Project>", "", "<Project><Title>A &lt;b&gt; &#9731;</Title></Project>"];
-    const fresh: Case[] = [
-      ...msp.map((text) => ({ kind: "mspdi" as const, text, want: read("mspdi", text) })),
-      ...GAN_VARIANTS.map((text) => ({ kind: "gan" as const, text, want: read("gan", text) })),
-      ...XER_VARIANTS.map((text) => ({ kind: "xer" as const, text, want: read("xer", text) })),
-      ...[...msp.slice(0, 5), ...GAN_VARIANTS, ...XER_VARIANTS, "plain text", "  <?xml?><Project>"].map((text) => {
-        const format = (JSON.parse(readPlanFile(text, "")) as { format?: string } | null)?.format ?? null;
-        return { kind: "sniff" as const, text, want: format };
-      }),
-      ...PREDS.map(([text, names]) => ({ kind: "pred" as const, text, names, want: JSON.parse(parsePredecessors(text, names)) as unknown })),
-    ];
-    const cases = frozen<Case>("plan-readers", () => fresh);
-    expect(cases.length).toBe(fresh.length);
-    const bad = cases.filter((c, i) => (c.kind === "sniff" ? sniffed(c.want) !== fresh[i].want : !isDeepStrictEqual(noNulls(c.want), noNulls(fresh[i].want)))).map((c) => `${c.kind} ${c.text.slice(0, 50)}`);
+    // Each case's answer through the app's own entry points; tests/plan_readers.rs (solenoid-core) replays every one.
+    const answer = (c: Omit<Case, "want">): unknown => {
+      if (c.kind === "sniff") return (JSON.parse(readPlanFile(c.text, "")) as { format?: string } | null)?.format ?? null;
+      if (c.kind === "pred") return JSON.parse(parsePredecessors(c.text, (c as { names: string[] }).names)) as unknown;
+      return read(c.kind, c.text);
+    };
+    const inputs = [
+      ...msp.map((text) => ({ kind: "mspdi" as const, text })),
+      ...GAN_VARIANTS.map((text) => ({ kind: "gan" as const, text })),
+      ...XER_VARIANTS.map((text) => ({ kind: "xer" as const, text })),
+      ...[...msp.slice(0, 5), ...GAN_VARIANTS, ...XER_VARIANTS, "plain text", "  <?xml?><Project>"].map((text) => ({ kind: "sniff" as const, text })),
+      ...PREDS.map(([text, names]) => ({ kind: "pred" as const, text, names })),
+    ] as Omit<Case, "want">[];
+    const cases = frozen<Case>("plan-readers", () => inputs.map((c) => ({ ...c, want: answer(c) }) as Case));
+    expect(cases.length).toBe(inputs.length);
+    const bad = sampled("plan-readers", cases, 10)
+      .filter((c) => (c.kind === "sniff" ? sniffed(c.want) !== answer(c) : !isDeepStrictEqual(noNulls(c.want), noNulls(answer(c)))))
+      .map((c) => `${c.kind} ${c.text.slice(0, 50)}`);
     expect(bad).toEqual([]);
   });
 });

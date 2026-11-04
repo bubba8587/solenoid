@@ -6,11 +6,8 @@ import { coreFunction } from "../coreFunction";
 
 // ─── BEHAVIOURAL node↔formula parity — the SHAPE-PARAMETRIC family ──────────────
 //
-// The arity guard (nodeFormulaArgParity.test.ts) only sees nodes that dispatch THROUGH
-// coreFunction; a node on its OWN kernel is invisible to it, and its own header
-// says those "are guarded by per-function BEHAVIOURAL node↔formula agreement tests
-// instead." This is that backstop for the class where the two surfaces most easily drift
-// on CAPABILITY: functions whose result SHAPE (rank, dimensions) is an argument —
+// The class where the two surfaces most easily drift on CAPABILITY: functions whose result SHAPE (rank, dimensions)
+// is an argument —
 // generators and reshapers. SEQUENCE is here because the node once produced only a 1-D
 // list while the formula produced 2-D (a real, shipped divergence). Each case runs the
 // NODE's data() and the =FORMULA on the SAME arguments and asserts identical output.

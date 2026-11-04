@@ -3,7 +3,7 @@
 // (`crates/solenoid-core/src/card_helpers.rs`, held to these by its `tests/card_helpers.rs`): a number as a format
 // annotation shows it, the Cards view's plan, and the Record layout grammar.
 import { it, expect } from "vitest";
-import { frozen } from "./coreFixtures";
+import { frozen, sampled } from "./coreFixtures";
 import { formatNumberWithAnnotation, type FormatAnnotation } from "../../src/graph/formatAnnotationStore";
 import { planCards, PROFILE_ROWS, type CardColumnInput, type CardColType } from "../../src/graph/cardLayout";
 import { parseRecordLayout } from "../../src/graph/recordLayout";
@@ -70,12 +70,12 @@ it("numbers show through their annotations as frozen", () => {
     return out;
   });
   expect(cases.length).toBeGreaterThan(20000);
-  // The app's own entry point (the core's formatter since 2026-10-25) answers every frozen case.
+  // The app's own entry point answers a sample of the frozen cases; tests/card_helpers.rs (solenoid-core) answers all.
   initPackFcExtensions();
   const prior = { numberDecimals: settingsStore.get("numberDecimals"), sciAbove: settingsStore.get("sciAbove") };
   const bad: unknown[] = [];
   try {
-    for (const c of cases) {
+    for (const c of sampled("number-format", cases, 10)) {
       settingsStore.set("numberDecimals", (c.settings.numberDecimals ?? prior.numberDecimals) as Settings["numberDecimals"]);
       settingsStore.set("sciAbove", (c.settings.sciAbove ?? prior.sciAbove) as Settings["sciAbove"]);
       const got = formatNumberWithAnnotation(c.n, c.ann);

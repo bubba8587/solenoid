@@ -100,6 +100,13 @@ function refuseSouredFreeze(suite: string, soured: unknown[], cases: readonly un
 
 export const sameJson = (a: unknown, b: unknown): boolean => JSON.stringify(enc(a)) === JSON.stringify(enc(b));
 
+/** The cases a wasm replay checks: every one while the suite freezes, so its file is written whole, else every
+ *  `every`-th. For a suite the native tests replay whole (each crate's `tests` folder), the wasm build needs only a sample to
+ *  show it agrees. */
+export function sampled<C>(suite: string, cases: readonly C[], every: number): C[] {
+  return freezes(suite) ? [...cases] : cases.filter((_, i) => i % every === 0);
+}
+
 /** The suite's cases: made and written when freezing, read back otherwise. `make` is the only place they are made. */
 export function frozen<C>(suite: string, make: () => C[]): C[] {
   if (freezes(suite)) {

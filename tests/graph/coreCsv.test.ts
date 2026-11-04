@@ -3,11 +3,12 @@
 // by its `tests/csv.rs`, and here through the callers): the rows under each option, a file's typed columns, the Frame
 // card's typed text, and the text a Sink writes, over a seeded generator of awkward CSV and the repo's own CSV files.
 // FREEZE_CORE=csv-rows,csv-frames,csv-sources,csv-unparse records the core's answers afresh after a deliberate change.
+// crates/solenoid-core/tests/csv.rs replays every case natively; here a sample shows the wasm build agrees.
 import { it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { frozen, enc, freezes } from "./coreFixtures";
+import { frozen, enc, sampled } from "./coreFixtures";
 import { parseCsvRows, unparseCsv, type CsvOptions } from "../../src/graph/csv";
 import { csvToFrame } from "../../src/graph/frameBackend";
 import { parseFrameSource } from "../../src/graph/frame";
@@ -167,16 +168,14 @@ const plain = (columns: readonly object[]) => columns.map((c) => ({ ...c }));
 it("CSV text reads into rows as frozen", () => {
   const cases = frozen<RowsCase>("csv-rows", () => texts().flatMap((text) => OPTS.map((opts) => ({ text, opts, rows: parseCsvRows(text, opts) }))));
   expect(cases.length).toBe(11420);
-  // crates/solenoid-core/tests/csv.rs replays every case natively; here every tenth shows the wasm build agrees.
-  const replayed = freezes("csv-rows") ? cases : cases.filter((_, i) => i % 10 === 0);
-  const bad = replayed.filter((c) => JSON.stringify(parseCsvRows(c.text, c.opts)) !== JSON.stringify(c.rows));
+  const bad = sampled("csv-rows", cases, 10).filter((c) => JSON.stringify(parseCsvRows(c.text, c.opts)) !== JSON.stringify(c.rows));
   expect(bad.slice(0, 5)).toEqual([]);
 });
 
 it("a CSV file reads into a typed frame as frozen", () => {
   const cases = frozen<ColumnsCase>("csv-frames", () => texts().map((text) => ({ text, columns: plain(csvToFrame(text).columns) })));
   expect(cases.length).toBe(2855);
-  const bad = cases.filter((c) => !isDeepStrictEqual(enc(plain(csvToFrame(c.text).columns)), enc(c.columns)));
+  const bad = sampled("csv-frames", cases, 10).filter((c) => !isDeepStrictEqual(enc(plain(csvToFrame(c.text).columns)), enc(c.columns)));
   expect(bad.slice(0, 5)).toEqual([]);
 });
 
@@ -184,13 +183,13 @@ it("a Frame card's CSV text reads into typed source columns as frozen", () => {
   const cases = frozen<ColumnsCase>("csv-sources", () =>
     texts().filter((t) => !t.trim().startsWith("[")).map((text) => ({ text, columns: plain(parseFrameSource(text)) })));
   expect(cases.length).toBe(2855);
-  const bad = cases.filter((c) => !isDeepStrictEqual(plain(parseFrameSource(c.text)), c.columns));
+  const bad = sampled("csv-sources", cases, 10).filter((c) => !isDeepStrictEqual(plain(parseFrameSource(c.text)), c.columns));
   expect(bad.slice(0, 5)).toEqual([]);
 });
 
 it("rows write as CSV text as frozen", () => {
   const cases = frozen<UnparseCase>("csv-unparse", unparseCases);
   expect(cases.length).toBe(800);
-  const bad = cases.filter((c) => unparseCsv(c.fields, c.data) !== c.text);
+  const bad = sampled("csv-unparse", cases, 10).filter((c) => unparseCsv(c.fields, c.data) !== c.text);
   expect(bad.slice(0, 5)).toEqual([]);
 });

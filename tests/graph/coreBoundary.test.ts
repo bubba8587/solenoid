@@ -1,7 +1,7 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec, [[C10]] socketLattice, [[C24]] arraySemantics, [[E9]] errorsKeepOrigin
 // [[graph-core#The input boundary]]: freezes fixtures/core/boundary-*.json.gz.
 import { describe, expect, it } from "vitest";
-import { frozen, replay } from "./coreFixtures";
+import { frozen, replay, sampled } from "./coreFixtures";
 import { GraphNode, GraphInput, GraphOutput } from "../../src/graph/graphModel";
 import { SolenoidSocket, type SocketDataType } from "../../src/graph/sockets";
 import { isSolError, solError } from "../../src/graph/errorValue";
@@ -126,9 +126,10 @@ describe("the input boundary's frozen answers", () => {
       for (const keep of [false, true]) for (const v of values) out.push({ rung: "number", mode: "raw", keep, v, want: null });
       return out;
     });
+    const checked = sampled("boundary-arrival", cases, 10);
     const got = new Map<Arrival, unknown>();
-    for (const c of cases) got.set(c, await arrive(c));
-    expect(replay("boundary-arrival", cases, (c) => got.get(c))).toEqual([]);
+    for (const c of checked) got.set(c, await arrive(c));
+    expect(replay("boundary-arrival", checked, (c) => got.get(c))).toEqual([]);
   });
 
   it("typed list literals on an unwired input", async () => {
@@ -152,8 +153,9 @@ describe("the input boundary's frozen answers", () => {
     const values = [...corpus(), [solError("#N/A", "a"), solError("#N/A", "a")], { ...solError("#REF!", "gone"), origin: { nodeId: "x", nodeName: "X" } }]
       .map(describe_);
     const cases = frozen<Answered>("boundary-origins", () => values.map((v) => ({ v, want: null })));
+    const checked = sampled("boundary-origins", cases, 10);
     const got = new Map<Answered, unknown>();
-    for (const c of cases) {
+    for (const c of checked) {
       const n = new ProbeNode("number");
       n.id = "probe";
       const v = undescribe(c.v);
@@ -161,7 +163,7 @@ describe("the input boundary's frozen answers", () => {
       const out = await computeAlone(n, {});
       got.set(c, { val: describe_(out.out), same: out.out === v });
     }
-    expect(replay("boundary-origins", cases, (c) => got.get(c))).toEqual([]);
+    expect(replay("boundary-origins", checked, (c) => got.get(c))).toEqual([]);
   });
 
   it("a throw, a rejection or an answer of nothing becomes the guard's error", async () => {
