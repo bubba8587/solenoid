@@ -7,9 +7,10 @@ import { paletteStore } from "./paletteStore";
 import { useBottomChrome } from "./chromeBottom";
 import {
   fireUndo, fireGroup, useHasSelection,
-  CommandGlyph, UndoGlyph, RedoGlyph, SelectGlyph, DeleteGlyph, GroupGlyph, PortsTabShape, PortGlyph,
+  CommandGlyph, UndoGlyph, RedoGlyph, SelectGlyph, DeleteGlyph, GroupGlyph, PortsTabShape, PortGlyph, LockGlyph,
 } from "./touchActions";
 import { compositeEditorStore } from "./compositeEditorStore";
+import { canvasLockStore } from "./canvasLock";
 import "./MobileControls.css";
 
 /** Buttons dim rather than disappear, so the bar never reflows. */
@@ -18,11 +19,22 @@ export function MobileControls() {
   const hasSelection = useHasSelection(useIsMobile());
   const selectMode = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
   const drilled = useSyncExternalStore(compositeEditorStore.subscribe, compositeEditorStore.isOpen);
+  const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
+  const editable = hasSelection && !locked;
 
   // The phone menu docks under the top bars, so the on-screen keyboard doesn't cover its search field.
   const openAddMenu = () => addMenuRequest.toggle(window.innerWidth / 2, 96);
 
-  const addButton = (
+  // A locked canvas takes no new cards: the ➕ becomes the lock, and a tap unlocks.
+  const addButton = locked ? (
+    <button
+      className="solenoid-mobile-bar__btn solenoid-mobile-bar__add"
+      aria-label="Unlock canvas"
+      onClick={() => canvasLockStore.toggle()}
+    >
+      <LockGlyph size={24} />
+    </button>
+  ) : (
     <button
       className="solenoid-mobile-bar__btn solenoid-mobile-bar__add"
       aria-label="Add node"
@@ -42,10 +54,10 @@ export function MobileControls() {
       <button className="solenoid-mobile-bar__btn" aria-label="Command palette" onClick={() => paletteStore.open()}>
         <CommandGlyph size={20} />
       </button>
-      <button className="solenoid-mobile-bar__btn" aria-label="Undo" onClick={() => fireUndo(false)}>
+      <button className={"solenoid-mobile-bar__btn" + (locked ? " solenoid-mobile-bar__btn--dim" : "")} aria-label="Undo" aria-disabled={locked} onClick={() => { if (!locked) fireUndo(false); }}>
         <UndoGlyph size={22} />
       </button>
-      <button className="solenoid-mobile-bar__btn" aria-label="Redo" onClick={() => fireUndo(true)}>
+      <button className={"solenoid-mobile-bar__btn" + (locked ? " solenoid-mobile-bar__btn--dim" : "")} aria-label="Redo" aria-disabled={locked} onClick={() => { if (!locked) fireUndo(true); }}>
         <RedoGlyph size={22} />
       </button>
       {drilled ? (
@@ -71,11 +83,11 @@ export function MobileControls() {
       <button
         className={
           "solenoid-mobile-bar__btn solenoid-mobile-bar__delete" +
-          (hasSelection ? "" : " solenoid-mobile-bar__btn--dim")
+          (editable ? "" : " solenoid-mobile-bar__btn--dim")
         }
         aria-label="Delete selection"
-        aria-disabled={!hasSelection}
-        onClick={() => void deleteSelected()}
+        aria-disabled={!editable}
+        onClick={() => { if (!locked) void deleteSelected(); }}
       >
         <DeleteGlyph size={20} />
       </button>
@@ -83,11 +95,11 @@ export function MobileControls() {
           blocked by the poll. */}
       <button
         className={
-          "solenoid-mobile-bar__btn" + (hasSelection ? "" : " solenoid-mobile-bar__btn--dim")
+          "solenoid-mobile-bar__btn" + (editable ? "" : " solenoid-mobile-bar__btn--dim")
         }
         aria-label="Group selection"
-        aria-disabled={!hasSelection}
-        onClick={fireGroup}
+        aria-disabled={!editable}
+        onClick={() => { if (!locked) fireGroup(); }}
       >
         <GroupGlyph size={20} />
       </button>

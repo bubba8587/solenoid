@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, typ
 import { getActiveView, getActiveEditor } from "./activeGraph";
 import { collapsedAwareNodesRect } from "./components/Minimap";
 import { canvasLockStore } from "./canvasLock";
+import { LockGlyph } from "./touchActions";
 import { cableFlourishBridge } from "./cableFlourishStore";
 import { IS_COARSE, isMobile, deviceModeStore, prefersReducedMotion } from "./coarse";
 import { useSideSwipe, useTuckState } from "./edgeTuck";
@@ -195,15 +196,7 @@ export function NavMenu() {
         title={locked ? "Unlock canvas" : "Lock canvas"}
         onClick={() => canvasLockStore.toggle()}
       >
-        {/* viewBox y-shifted +0.7: the body-heavy glyph's ink centroid measured
-            +0.73 below the box center, so it read low (the pushpin precedent —
-            archived dev-notes 2026-06-20). */}
-        <svg viewBox="0 0.7 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <rect x="3.5" y="7.5" width="9" height="6.5" rx="1.2" />
-          {locked
-            ? <path d="M5 7.5 V5.2 a3 3 0 0 1 6 0 V7.5" />
-            : <path d="M5 7.5 V5.2 a3 3 0 0 1 6 0" />}
-        </svg>
+        <LockGlyph size={14} locked={locked} />
       </button>
       {showFullscreen && (
         <button

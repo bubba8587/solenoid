@@ -5,6 +5,7 @@ import { touchSelectStore } from "./touchSelectStore";
 import { paletteStore } from "./paletteStore";
 import { IS_COARSE } from "./coarse";
 import { useIsMobile } from "./useDeviceMode";
+import { canvasLockStore } from "./canvasLock";
 import {
   fireUndo, fireGroup, useHasSelection,
   CommandGlyph, UndoGlyph, RedoGlyph, SelectGlyph, DeleteGlyph, GroupGlyph,
@@ -15,6 +16,10 @@ import {
 export function TabletActions() {
   const hasSelection = useHasSelection(IS_COARSE && !useIsMobile());
   const selectMode = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
+  // A locked canvas takes no edits: the edit buttons dim and do nothing until it unlocks.
+  const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
+  const editable = hasSelection && !locked;
+  const dimIf = (dim: boolean) => `solenoid-nav__btn${dim ? " solenoid-nav__btn--dim" : ""}`;
 
   return (
     <>
@@ -30,10 +35,10 @@ export function TabletActions() {
       </div>
 
       <div className="solenoid-topbar__group solenoid-topbar__group--tablet solenoid-topbar__group--tablet-edit">
-        <button className="solenoid-nav__btn" title="Undo (Ctrl+Z)" aria-label="Undo" onClick={() => fireUndo(false)}>
+        <button className={dimIf(locked)} title="Undo (Ctrl+Z)" aria-label="Undo" aria-disabled={locked} onClick={() => { if (!locked) fireUndo(false); }}>
           <UndoGlyph size={15} />
         </button>
-        <button className="solenoid-nav__btn" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" onClick={() => fireUndo(true)}>
+        <button className={dimIf(locked)} title="Redo (Ctrl+Shift+Z)" aria-label="Redo" aria-disabled={locked} onClick={() => { if (!locked) fireUndo(true); }}>
           <RedoGlyph size={15} />
         </button>
       </div>
@@ -51,20 +56,20 @@ export function TabletActions() {
           <SelectGlyph size={15} />
         </button>
         <button
-          className={`solenoid-nav__btn${hasSelection ? "" : " solenoid-nav__btn--dim"}`}
+          className={dimIf(!editable)}
           title="Group selection (G)"
           aria-label="Group selection"
-          aria-disabled={!hasSelection}
-          onClick={fireGroup}
+          aria-disabled={!editable}
+          onClick={() => { if (!locked) fireGroup(); }}
         >
           <GroupGlyph size={15} />
         </button>
         <button
-          className={`solenoid-nav__btn${hasSelection ? "" : " solenoid-nav__btn--dim"}`}
+          className={dimIf(!editable)}
           title="Delete selection (Del)"
           aria-label="Delete selection"
-          aria-disabled={!hasSelection}
-          onClick={() => void deleteSelected()}
+          aria-disabled={!editable}
+          onClick={() => { if (!locked) void deleteSelected(); }}
         >
           <DeleteGlyph size={15} />
         </button>

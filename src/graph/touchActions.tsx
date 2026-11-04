@@ -95,6 +95,17 @@ export function GroupGlyph({ size = 20 }: IconProps) {
   );
 }
 
+/** The canvas lock: shackle closed when `locked`, open otherwise. The viewBox sits 0.7 lower because the body-heavy
+ *  glyph's ink centroid measured 0.73 below the box center and read low. */
+export function LockGlyph({ size = 20, locked = true }: IconProps & { locked?: boolean }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0.7 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="3.5" y="7.5" width="9" height="6.5" rx="1.2" />
+      <path d={locked ? "M5 7.5 V5.2 a3 3 0 0 1 6 0 V7.5" : "M5 7.5 V5.2 a3 3 0 0 1 6 0"} />
+    </svg>
+  );
+}
+
 /** The drill-in ports tab's outline, sloped at its shoulders. */
 export function PortsTabShape() {
   return (
