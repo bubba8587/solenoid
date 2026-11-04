@@ -1,5 +1,5 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-// The core's frames from TypeScript (tree/specs/computation/frame-verbs.md § Lazy frames): a lazy frame is a core value
+// The core's frames from TypeScript ([[frame-verbs#Lazy frames]]): a lazy frame is a core value
 // (`frame_ref.rs`) whose JavaScript form names it; a JavaScript reader reads it through the core. Beside it, the eager
 // frame tools the cards' TS calls, a CSV file's text as a frame, and the desktop's Parquet reader.
 import type { FrameValue, FrameColumn, FrameCell, FrameColType } from "./frame";

@@ -1,6 +1,4 @@
-// [[C130]] rustCore, [[C24]] arraySemantics, [[C23]] calcModes
-// A lazy frame's plan, a join and a stack, read back whole, on the core in wasm: each must produce EXACTLY what the
-// pure verb produces. A structural failure reads back as a tagged SolError VALUE, never a throw.
+// [[C130]] rustCore, [[C24]] arraySemantics, [[C23]] calcModes, [[frame-verbs#Readers]], [[frame-verbs#Sketch mode and the aggregate guard]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { readFrame, collectPreview } from "../../src/graph/frameBackend";
 import { planned, SKETCH_SAMPLE_ROWS } from "./frameRefKit";
@@ -11,7 +9,6 @@ import { takesAutoLiteral, takesTextLiteral } from "../../src/graph/components/i
 import { type FrameOp, type JoinOpts } from "../../src/graph/frameOps";
 import { selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows, groupByFrame, pivotFrame, unpivotFrame, joinFrames, appendFrames } from "./coreVerbs";
 
-// A plan reads back whole to compare against the pure verb; one that fails reads back as its error.
 const u = async (op: FrameOp) => readFrame(planned(sample, op));
 const runFrameJoin = (left: FrameValue, right: FrameValue, opts: JoinOpts) => {
   const n = new JoinNode({ how: opts.how });
@@ -107,7 +104,7 @@ describe("Join / Append — parity", () => {
   });
 });
 
-describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates", () => {
+describe("sketch mode — sampled verb execution + extrapolated aggregates", () => {
   const big: FrameValue = {
     __frame: true,
     columns: [
@@ -139,10 +136,8 @@ describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates
     const out = await readFrame(planned(big, { kind: "groupBy", keys: ["region"], aggs }));
     if (isSolError(out) || out == null) throw new Error("expected a frame");
     expect(out.__approx!.factor).toBeCloseTo(2, 5); // 2×SKETCH_SAMPLE_ROWS rows sampled to SKETCH_SAMPLE_ROWS
-    // sum/count are EXTRAPOLATED (scaled by the factor) — never the sample's raw total
     const total = out.columns.find((c) => c.name === "total")!.values.reduce((a, b) => (a as number) + (b as number), 0);
     expect(total).toBeCloseTo(SKETCH_SAMPLE_ROWS * 2, 5);
-    // avg is NOT scaled — extrapolating an average would be wrong, not approximate
     for (const v of out.columns.find((c) => c.name === "avg")!.values) expect(v).toBe(1);
     calcModeStore.setMode("auto");
   });
@@ -205,13 +200,11 @@ describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates
   });
 });
 
-// C3.2: Replace Values' Find/Replace became `anyIn`, so a wired scalar of any type now
-// connects and stringifies through readFilterValue.
 describe("Replace Values — Find/Replace take a wired value of any type", () => {
   const collect = async (n: ReplaceValuesNode, inputs: Parameters<ReplaceValuesNode["data"]>[0]) =>
     readFrame((await n.data(inputs)).frame);
 
-  it("a wired NUMBER matches a number column (was impossible on a strIn socket)", async () => {
+  it("a wired NUMBER matches a number column", async () => {
     const f: FrameValue = { __frame: true, columns: [{ name: "qty", type: "number", values: [10, 20, 30] }] };
     const n = new ReplaceValuesNode({ mode: "cell" });
     n.stringLiterals.column = "qty";
@@ -243,7 +236,6 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
   });
 });
 
-// A groupBy's ±∞ comes back classified: #OVERFLOW! from finite inputs, ∞ where an input was ∞ ([[C24]] arraySemantics).
 describe("the aggregate guard on a collected groupBy", () => {
   const big = (values: number[]): FrameValue => ({ __frame: true, columns: [
     { name: "s", type: "string", values: values.map(() => "a") }, { name: "n", type: "number", values }] });

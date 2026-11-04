@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams
+// [[C103]] untrustedContentSeams, [[frame-verbs#Reading CSV text]]
 import { describe, it, expect } from "vitest";
 import { parseCsvRows, csvFieldSpans, joinCsvRows } from "../../src/graph/csv";
 
@@ -40,7 +40,6 @@ describe("parseCsvRows", () => {
     expect(parseCsvRows("   \n  \n")).toEqual([]);
   });
 
-  // Capabilities the bare split(",") couldn't do — the reason for the library.
   it("keeps a newline embedded in a quoted field as one row", () => {
     expect(parseCsvRows('a,"line one\nline two",c')).toEqual([
       ["a", "line one\nline two", "c"],

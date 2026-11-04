@@ -1,6 +1,4 @@
-// [[C130]], [[C24]]
-// A lazy frame read from JavaScript (frame-verbs.md § Lazy frames): read whole once a ref, its first rows as a card's
-// preview with its row count and itself beside them, a plan's error as a value.
+// [[C130]] rustCore, [[C24]] arraySemantics, [[frame-verbs#Readers]]
 import { describe, it, expect } from "vitest";
 import { readFrame, collectPreview, refWithFormats, isFrameRef } from "../../src/graph/frameBackend";
 import { isSolError } from "../../src/graph/errorValue";

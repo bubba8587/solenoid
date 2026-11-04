@@ -1,9 +1,4 @@
-// [[C103]] untrustedContentSeams, [[D99]] rustIsSpec
-// CSV text as the core reads and writes it (`crates/solenoid-core/src/csv.rs`, on the `csv` crate; held to these natively
-// by its `tests/csv.rs`, and here through the callers): the rows under each option, a file's typed columns, the Frame
-// card's typed text, and the text a Sink writes, over a seeded generator of awkward CSV and the repo's own CSV files.
-// FREEZE_CORE=csv-rows,csv-frames,csv-sources,csv-unparse records the core's answers afresh after a deliberate change.
-// crates/solenoid-core/tests/csv.rs replays every case natively; here a sample shows the wasm build agrees.
+// [[C103]] untrustedContentSeams, [[D99]] rustIsSpec, [[frame-verbs#Reading CSV text]]
 import { it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";

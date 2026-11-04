@@ -1,7 +1,4 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec
-// The lazy frame verbs through data(): the body plans over a frame value or extends a ref's plan, a pass-through hands
-// back what came in, and a Cube runs its verb on its cells. The sweep drives each card over its ops and settings, so
-// the recorder freezes each body on the inputs that matter.
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[frame-verbs#FrameRef]]
 import { describe, it, expect } from "vitest";
 import { GraphNode } from "../../src/graph/graphModel";
 import { throughBoundary } from "./boundaryKit";

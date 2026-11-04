@@ -1,5 +1,4 @@
-// [[C130]] rustCore
-// Readers on a lazy upstream answer as they do on the same frame held eagerly.
+// [[C130]] rustCore, [[frame-verbs#Who receives a ref]], [[frame-verbs#Sketch mode and the aggregate guard]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { readFrame } from "../../src/graph/frameBackend";
 import { planned, SKETCH_SAMPLE_ROWS } from "./frameRefKit";

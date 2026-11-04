@@ -1,4 +1,4 @@
-// [[C10]]
+// [[C10]] socketLattice, [[frame-verbs#Frames and Cubes]]
 import { describe, it, expect } from "vitest";
 import { WindowNode, GroupByFrameNode, ChartNode, AddColumnNode, ColumnsNode } from "../../src/graph/nodeClasses";
 import { throughBoundary } from "./boundaryKit";
@@ -7,9 +7,6 @@ import { isSolError } from "../../src/graph/errorValue";
 import { collectPreview } from "../../src/graph/frameBackend";
 import type { ChartValue } from "../../src/graph/chartValue";
 const draw = (n: ChartNode, inputs: Parameters<ChartNode["data"]>[0]) => n.data(inputs) as { chart: ChartValue };
-
-// The author's ruling (2026-09-12): a cube never enters a frame socket through the lattice;
-// a verb that wants one gets a cube-adoptive INPUT and flattens inside data().
 
 const flat = cubeFromColumns([
   { name: "Day", cells: ["Mon", "Tue", "Wed"], type: "string" },

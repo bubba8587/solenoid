@@ -1,6 +1,5 @@
-//! [[C103]] untrustedContentSeams: the core's CSV reader and writer answer as frozen (`fixtures/core/csv-rows.json.gz`,
-//! `csv-frames.json.gz`, `csv-sources.json.gz`, `csv-unparse.json.gz`, recorded through the callers by
-//! `tests/graph/coreCsv.test.ts`).
+// [[C103]] untrustedContentSeams, [[frame-verbs#Reading CSV text]]
+//! The core's CSV reader and writer against their frozen answers (`fixtures/core/csv-*.json.gz`), natively.
 
 use serde_json::Value as Json;
 use solenoid_core::binary::{TAG_FALSE, TAG_NUM, TAG_STR, TAG_TRUE};

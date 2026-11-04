@@ -1,5 +1,4 @@
-// [[C23]] calcModes
-// A write or export reads every row, even while Sketch mode samples the passes.
+// [[C23]] calcModes, [[frame-verbs#Sketch mode and the aggregate guard]]
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const written: string[] = [];

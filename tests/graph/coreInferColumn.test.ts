@@ -1,7 +1,4 @@
-// [[B17]] typedValueModel, [[D99]] rustIsSpec
-// The type an imported column's cells read as (`inferColumn`, `nodes::infer_cells`), frozen from the TypeScript reader's
-// answers when it moved to the core, with one change on purpose: a list cell crosses as its text, so a list of one
-// number reads as that number. FREEZE_CORE=infer-column re-records the core's answers after a deliberate change.
+// [[B17]] typedValueModel, [[D99]] rustIsSpec, [[frame-verbs#Type inference]]
 import { it, expect } from "vitest";
 import { frozen, readFrozen, sameJson } from "./coreFixtures";
 import { inferColumn, inferColumns } from "../../src/graph/frame";

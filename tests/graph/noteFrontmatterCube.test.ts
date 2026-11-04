@@ -1,10 +1,8 @@
-// [[B1]] obsidianBet, [[C68]], [[C24]] arraySemantics, [[reports-and-notes#Frontmatter becomes output sockets]]
+// [[B1]] obsidianBet, [[C68]], [[C24]] arraySemantics, [[reports-and-notes#Frontmatter becomes output sockets]], [[C68]] knapIsTheDocumentSyntax, [[frame-verbs#The Cube value]]
 import { describe, it, expect } from "vitest";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { isCubeValue, isFrameValue, recordsToCube, type CubeValue } from "../../src/graph/frame";
-
-
 
 const NOTE = [
   "---",

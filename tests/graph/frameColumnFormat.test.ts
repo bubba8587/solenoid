@@ -1,4 +1,4 @@
-// [[C118]] formatTravelsWithValue, [[unit-flow#A Frame's per-column format rides the value]]
+// [[C118]] formatTravelsWithValue, [[unit-flow#A Frame's per-column format rides the value]], [[frame-verbs#Units and formats]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
@@ -49,7 +49,6 @@ async function collected(out: Record<string, unknown>): Promise<FrameValue> {
 
 beforeEach(() => { frameFormatStore.clear(); });
 afterEach(() => { frameFormatStore.clear(); });
-
 
 describe("a per-column format rides the frame downstream", () => {
   it("survives Sort → Columns and renders through fmtCell", async () => {
@@ -118,7 +117,6 @@ describe("a per-column format rides the frame downstream", () => {
   });
 });
 
-
 describe("the Allocator seed's Headroom column", () => {
   const hd = seed.nodes.find((n) => n.id === "hd")!;
 
@@ -142,7 +140,6 @@ describe("the Allocator seed's Headroom column", () => {
     expect(fmtCell(headroom.values[0], headroom.type, headroom.format)).toBe("8,750.000");
   });
 });
-
 
 describe("a DERIVED column carries the format only where it carries the unit", () => {
   it("Add Index: the index column carries nothing, the existing ones keep theirs", async () => {
@@ -210,7 +207,6 @@ describe("the format row's current value and hint", () => {
       .toEqual({ value: "upper" });
   });
 });
-
 
 describe("a stamped format is never serialized", () => {
   it("stays out of the frame text form both ways", async () => {

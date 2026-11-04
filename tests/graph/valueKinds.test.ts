@@ -1,4 +1,4 @@
-// [[C24]] arraySemantics, [[value-semantics#Propagation, by context]], [[value-semantics#Boundaries and bridges]]
+// [[C24]] arraySemantics, [[value-semantics#Propagation, by context]], [[value-semantics#Boundaries and bridges]], [[frame-verbs#Type inference]]
 import { describe, it, expect } from "vitest";
 import { numberToLogical, coerceLogical, logicalOrTypeError } from "../../src/graph/valueKinds";
 import { AggregateNode } from "../../src/graph/nodes/list";

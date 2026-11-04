@@ -61,98 +61,267 @@ mindmap
       ["__approx: a sketch-mode scale factor"]
 ```
 
+Tests: `frame.test.ts`: `isFrameValue` knows a built frame and refuses everything else.
+
 ### Rows
 
-A frame has no row identifier. A row is a position. The row count is the length of the longest column (`frameRowCount`), and a read past the end of a shorter column is `null` (the core's `cell_at`, `frame.rs`), so ragged columns behave as if padded with blanks. Every verb returns a new frame and leaves its inputs untouched; the corpus runner checks this for every case.
+- A frame has no row identifier. A row is a position.
+- The row count is the length of the longest column (`frameRowCount`), and a read past the end of a shorter column is `null` (the core's `cell_at`, `frame.rs`), so ragged columns behave as if padded with blanks.
+- Every verb returns a new frame and leaves its inputs untouched.
+- A verb that moves or rewrites cells (sort, distinct, head, filter, slice, fill, replace, drop blank rows, and every verb built on `reorder_rows`) drops `raw`, because a derived column has no source text that lines up with its values.
 
-A verb that moves or rewrites cells (sort, distinct, head, filter, slice, fill, replace, drop blank rows, and every verb built on `reorder_rows`) drops `raw`, because a derived column has no source text that lines up with its values.
+Tests:
+
+- `frameVerbCorpus.test.ts`: every corpus case leaves its input frames as they were, so no verb needs a test of its own for it.
+- `frameVerbsEdge.test.ts`: a column shorter than the row count reads as blanks through a row verb.
 
 ### Names
 
-`makeHeaders(names, ncols)` is the one naming rule, used by every builder and every verb that emits new names. It returns exactly `ncols` names: each given name is trimmed; a blank becomes `Col{i+1}` (1-based position); a repeat takes the smallest free integer suffix starting at 2 (`Date, Name, Date` becomes `Date, Name, Date2`). Names are processed left to right, so the later of two colliding columns is the one renamed. The Rust engine's `make_headers` is the same algorithm.
+- **`makeHeaders(names, ncols)`** is the one naming rule, used by every builder and every verb that emits new names. It returns exactly `ncols` names. Each given name is trimmed; a blank becomes `Col{i+1}` (1-based position); a repeat takes the smallest free integer suffix starting at 2 (`Date, Name, Date` becomes `Date, Name, Date2`). Names are processed left to right, so the later of two colliding columns is the one renamed. The Rust engine's `make_headers` is the same algorithm.
+- **Strict lookup.** Column lookup is exact and case-sensitive everywhere a verb needs a column (`require_column`); a missing name is `#REF!` with the message `column "<name>" not found`.
+- **Loose lookup.** `getColumn` (used by Get Column and the `column` backend call) trims the name, matches exactly and case-sensitively, and otherwise accepts a bare integer string as a 1-based column index; a blank name, a miss or an index out of range is `null`. The engine's `engine_column` follows the same rule.
+- **`addColumn(f, name, values, type = "number")`** appends a column, or replaces the column already holding that name in place. A `Name (unit)` suffix is split off first and tags a number column with the unit; an appended name is de-duplicated with `makeHeaders`, and a replaced column drops its `raw`. The Add Column node pads a values list shorter than the frame with blanks to the row count.
 
-Column lookup is exact and case-sensitive everywhere a verb needs a column (`require_column`); a missing name is `#REF!` with the message `column "<name>" not found`. The looser `getColumn` (used by Get Column and the `column` backend call) trims the name, matches exactly, and otherwise accepts a bare integer string as a 1-based column index. The engine's `engine_column` follows the same rule.
-
-`addColumn(f, name, values, type = "number")` appends a column, or replaces the column already holding that name in place. A `Name (unit)` suffix is split off first and tags a number column with the unit; an appended name is de-duplicated with `makeHeaders`, and a replaced column drops its `raw`.
+Tests: `frame.test.ts`: `makeHeaders`, `getColumn` by name and by index, `addColumn`, and Add Column padding a short list.
 
 ### Building a Frame
 
 | Builder | Input | Rule |
 |---|---|---|
-| `buildFrame(matrix, names?)` | A numeric row-major matrix | Every column is number; a missing cell is `null`; `Name (unit)` headers lock units. The column count comes from the matrix alone. |
-| The Build Frame card (its body the core's) | A matrix of any cells | Each column typed as `typedColumn` types it; the adopted matrix socket's element family applies to every column, and an unadopted socket means infer per column. |
+| `buildFrame(matrix, names?)` | A numeric row-major matrix | Every column is number; a missing cell, a ragged row's included, is `null`; `Name (unit)` headers lock units. The column count comes from the matrix alone. |
+| The Build Frame card (its body the core's) | A matrix of any cells | Each column typed as `typedColumn` types it; the adopted matrix socket's element family applies to every column, and an unadopted socket means infer per column. A numeric matrix builds exactly what `buildFrame` builds. |
 | `frameFromCells(headers, rows)` | Rows of cells (an HTML table, a test) | Each column through `inferColumn`; the width is the larger of the header and the widest row. |
 | `csvToFrame(text)` (`frameBackend.ts`) | A CSV file's text | On the core ([[#Reading CSV text]]): the first row is the header, each column typed as `inferColumn` types text, the width as `frameFromCells`. |
-| `frameFromRecords(records)` | JSON array of objects | Columns are the union of keys in first-seen order. |
+| `frameFromRecords(records)` | JSON array of objects | Columns are the union of keys in first-seen order; a key a record lacks is `null` there. |
 | `frameFromRows(rows, headers?)` | JSON array of arrays | Positional columns. |
 | `frameFromColumnar(obj)` | `{ col: [values] }` | A scalar value becomes a one-row column. |
 
 `colTypeForSocket(dataType)` turns a socket's element family into a column type: number, string, date or logical, and null for a wildcard rung or `complex`, where the caller falls back to inference.
 
-For display, `formatFrameCell(type, v, format?)` shows an error as its code, a logical as `TRUE`/`FALSE`, and a finite date serial through the format annotation's date pattern or the default `DD-MMM-YYYY`; anything else is returned as is. `frameToGrid` builds the popup's row-major grid: a blank is `""`, a logical is `TRUE`/`FALSE`, and an error cell passes through.
+For display:
+
+- `formatFrameCell(type, v, format?)` shows an error as its code, a logical as `TRUE`/`FALSE`, and a finite date serial through the format annotation's date pattern or the default `DD-MMM-YYYY`; anything else is returned as is.
+- `frameToGrid` builds the popup's row-major grid: a blank is `""`, a logical is `TRUE`/`FALSE`, and an error cell passes through.
+
+Tests:
+
+- `frame.test.ts`: `frameFromCells`, ragged `buildFrame` rows, `colTypeForSocket`, the Build Frame card per adopted socket, Frame from Lists, and `formatFrameCell`.
+- `frameImport.test.ts`: the record, row and columnar builders.
 
 ### Type inference
 
 There are four entry paths, and they do not infer the same way.
 
-| Path | Used by | Rule |
-|---|---|---|
-| `inferColumn(name, cells)`, `inferColumns` (many columns, one core call) | CSV import (the core's `infer_text_column` in `csv.rs`, the same rule over text cells), HTML tables (`frameFromCells`), JSON records, arrays and columnar objects, cube-to-frame reads, Unnest | A cell is blank when it is `null`, `undefined` or whitespace text. If every non-blank cell is a JS boolean, the column is logical. Else if every one reads as a number, number. Else if every one is the text `TRUE` or `FALSE` (any case), logical. Else if every one is an unambiguous ISO date, date (cells become serials). Else string, with each cell trimmed. An all-blank column is string. An error cell stays that error in any column type and takes no part in the inference. `raw` keeps each cell's trimmed text, and an error's code. The reading runs on the core (`nodes::infer_cells`, through `engine_infer_bin`): the cells cross in the columnar hand-off, the types and the read numbers, logicals and dates come back, and the text stays on the TypeScript side, since a text column's cells and every `raw` are the trimmed text it sent. A list or object cell crosses as its text, so it reads as that text would. |
-| `typedColumn(name, cells, length, knownType)` | Build Frame from a matrix or lists, flat cube to frame | A known type from the socket wins; it is the only way to recover date. Without one, inference goes by runtime type and preserves it: all numbers (unit cells included) is number, all booleans is logical, anything else is string (the string `"1"` stays text). Cells are then coerced to the column type: a string column stringifies, a logical column reads a non-boolean as true only for the text `true`, and a number or date cell that cannot become a number is `NaN`. Errors and blanks pass through. |
-| `coerceFrameCell(type, raw)` via `deriveFrame` | Frame Input (the column type is stored, never inferred) | Blank text is `null`. A string column keeps the text verbatim. A logical column goes through `coerceLogical`. A number column parses the trimmed text or is `NaN`. A date column tries a number, then `parseDate`; a parse error (such as `#AMBIGUOUS!`) is kept as that error cell, and a non-finite result is `NaN`. |
-| The CSV half of `parseFrameSource` (`source_columns` in `csv.rs`) | A hand-typed or CSV-shaped `frameText` | Type only, cells kept raw: number, then logical, then ISO date, then string, over trimmed non-blank cells. |
+**`inferColumn(name, cells)`**, and `inferColumns` for many columns in one core call.
 
-**One text reading** ([[C58]] tableInputRawText). `coerceFrameCell` is the one reading wherever text becomes a value of a declared type: a Frame Input cell, a List Input item (typed or wired), an inline list field on any card, an item in a typed Cube list (`coerceListItem`), Get Column's Number or Date read, and a typed or guessed note property from the vault. So text the type can't read is `NaN` everywhere, never a silent blank, and a date the type can't settle stays its error. Following from the one reader: a bare number typed into a Date list is a day serial, as in a Frame's Date column (2024 is 16-Jul-1905); `yes` and `no` are not Booleans in a list field, as in a Frame cell; a NaN item is a number, so COUNT counts it; a date list shows a NaN item as `NaN` in its value box and popup. List Input keeps its typed text beside each value, so the list popup's Source view shows what was typed ([[literal-input-editors]]).
+- Used by CSV import (the core's `infer_text_column` in `csv.rs`, the same rule over text cells), HTML tables (`frameFromCells`), JSON records, arrays and columnar objects, cube-to-frame reads, and Unnest.
+- A cell is blank when it is `null`, `undefined` or whitespace text.
+- The type is the first that fits every non-blank cell:
+  1. every cell a JS boolean: logical;
+  2. every cell reads as a number: number;
+  3. every cell the text `TRUE` or `FALSE` (any case): logical;
+  4. every cell an unambiguous ISO date: date (cells become serials);
+  5. otherwise string, with each cell trimmed.
+- An all-blank column is string.
+- An error cell stays that error in any column type and takes no part in the inference.
+- `raw` keeps each cell's trimmed text, and an error's code.
+- The reading runs on the core (`nodes::infer_cells`, through `engine_infer_bin`): the cells cross in the columnar hand-off, the types and the read numbers, logicals and dates come back, and the text stays on the TypeScript side, since a text column's cells and every `raw` are the trimmed text it sent. A list or object cell crosses as its text, so it reads as that text would (a list of one number reads as that number).
 
-"Reads as a number" (`cellToNumber`) accepts a finite number, a boolean (as 1 or 0), a `UnitCell` (its display magnitude), or text that `decimalFromText` (`valueKinds.ts`; the core's `decimal_from_text`, `value_kinds.rs`) reads: trimmed plain decimal or scientific text, or thousands grouped by commas (`^[+-]?\d{1,3}(,\d{3})+(\.\d*)?$`), so the European `3,5` stays text instead of reading as 35. A `0x`, `0b` or `0o` radix prefix and `Infinity` are text, as in Excel. A column whose non-blank cells are all JS booleans infers logical before the number test runs; a mix of booleans and numbers reads as number with 1/0 cells. A 0/1 column stays number, because inference reads only the literals `TRUE`/`FALSE` as logical.
+**`typedColumn(name, cells, length, knownType)`**
 
-`inferColumn` also recovers units. When any cell is a `UnitCell` (a Cube column read back), `matrixCellsFromList` unwraps the cells to their display magnitudes before inference and returns the one unit they share, which tags the resulting number column; cells that disagree give no unit. So a Frame to Cube to Frame round trip keeps its units.
+- Used by Build Frame from a matrix or lists, and a flat cube to frame.
+- A known type from the socket wins; it is the only way to recover date.
+- Without one, inference goes by runtime type and preserves it: all numbers (unit cells included) is number, all booleans is logical, anything else is string (the string `"1"` stays text).
+- Cells are then coerced to the column type: a string column stringifies, a logical column reads a non-boolean as true only for the text `true`, and a number or date cell that cannot become a number is `NaN`.
+- Errors and blanks pass through, and a column shorter than `length` pads with blanks.
 
-`coerceLogical` (`valueKinds.ts`; the core's `coerce_logical`, `value_kinds.rs`) is the one reading of a value as a logical, for the explicit paths (Cast to Boolean, Get Column's read-as Logical, a Frame Input logical column, a list read as logical, a filter or lookup value on a logical column, the NAND/NOR/XNOR arguments and the logical settings of INTERPOLATE, TOROW and TOCOL). It reads a boolean as itself, a finite number or numeric text (`1`, `0`, `-2.5`) as true when non-zero, and other text only as `true` or `false` in any case; blank is null. Any other text (`yes`, `maybe`, `0x1`) is NaN ([[C58]] tableInputRawText, [[B17]] typedValueModel): a cell holds and shows `NaN`, and a computation turns it into `#TYPE!` naming the value (`logicalOrTypeError`, the core's `logical_or_type_error`). A NaN cell in a logical column matches no filter.
+**`coerceFrameCell(type, raw)` via `deriveFrame`**
 
-An unambiguous ISO date is `YYYY-MM-DD` with an optional ` ` or `T` time `hh:mm[:ss[.f]]` and an optional `Z` or `±hh[:]mm` zone, and it must parse to a finite serial. Bare years and slash dates such as `1/2/26` never infer as dates; Get Column's read-as converts those explicitly. One cell that isn't an unambiguous ISO date keeps the whole column as text: declining to guess is always safe, and a wrong date never is ([[C44]] dateSerials).
+- Used by Frame Input, whose column type is stored, never inferred.
+- Blank text is `null`.
+- A string column keeps the text verbatim.
+- A logical column goes through `coerceLogical`.
+- A number column parses the trimmed text or is `NaN`.
+- A date column tries a number, then `parseDate`; a parse error (such as `#AMBIGUOUS!`) is kept as that error cell, and a non-finite result is `NaN`.
+
+**The CSV half of `parseFrameSource`** (`source_columns` in `csv.rs`)
+
+- Used by a hand-typed or CSV-shaped `frameText`.
+- Type only, cells kept raw: number, then logical, then ISO date, then string, over trimmed non-blank cells. So a column mixing `1` and `TRUE` is string, and both literals stay as typed.
+
+**One text reading** ([[C58]] tableInputRawText). `coerceFrameCell` is the one reading wherever text becomes a value of a declared type:
+
+- a Frame Input cell;
+- a List Input item, typed or wired;
+- an inline list field on any card;
+- an item in a typed Cube list (`coerceListItem`);
+- Get Column's Number or Date read;
+- a typed or guessed note property from the vault.
+
+So text the type can't read is `NaN` everywhere, never a silent blank, and a date the type can't settle stays its error. Following from the one reader:
+
+- a bare number typed into a Date list is a day serial, as in a Frame's Date column (2024 is 16-Jul-1905);
+- `yes` and `no` are not Booleans in a list field, as in a Frame cell;
+- a NaN item is a number, so COUNT counts it;
+- a date list shows a NaN item as `NaN` in its value box and popup.
+
+List Input keeps its typed text beside each value, so the list popup's Source view shows what was typed ([[literal-input-editors]]).
+
+**Reads as a number** (`cellToNumber`) accepts:
+
+- a finite number;
+- a boolean, as 1 or 0;
+- a `UnitCell`, as its display magnitude;
+- text that `decimalFromText` (`valueKinds.ts`; the core's `decimal_from_text`, `value_kinds.rs`) reads: trimmed plain decimal or scientific text, or thousands grouped by commas (`^[+-]?\d{1,3}(,\d{3})+(\.\d*)?$`), so the European `3,5` stays text instead of reading as 35, and malformed grouping is text too.
+
+A `0x`, `0b` or `0o` radix prefix and `Infinity` are text, as in Excel. A column whose non-blank cells are all JS booleans infers logical before the number test runs; a mix of booleans and numbers reads as number with 1/0 cells. A 0/1 column stays number, because inference reads only the literals `TRUE`/`FALSE` as logical.
+
+**Units.** `inferColumn` also recovers units. When any cell is a `UnitCell` (a Cube column read back), `matrixCellsFromList` unwraps the cells to their display magnitudes before inference and returns the one unit they share, which tags the resulting number column; cells that disagree give no unit. So a Frame to Cube to Frame round trip keeps its units.
+
+**`coerceLogical`** (`valueKinds.ts`; the core's `coerce_logical`, `value_kinds.rs`) is the one reading of a value as a logical.
+
+- It serves the explicit paths: Cast to Boolean, Get Column's read-as Logical, a Frame Input logical column, a list read as logical, a filter or lookup value on a logical column, the NAND/NOR/XNOR arguments, and the logical settings of INTERPOLATE, TOROW and TOCOL.
+- A boolean reads as itself.
+- A finite number or numeric text (`1`, `0`, `-2.5`) is true when non-zero.
+- Other text reads only as `true` or `false`, in any case and trimmed.
+- Blank is null.
+- Any other text (`yes`, `maybe`, `0x1`) is NaN ([[C58]] tableInputRawText, [[B17]] typedValueModel): a cell holds and shows `NaN`, and a computation turns it into `#TYPE!` naming the value (`logicalOrTypeError`, the core's `logical_or_type_error`). A NaN cell in a logical column matches no filter.
+
+**Dates.** An unambiguous ISO date is `YYYY-MM-DD` with an optional ` ` or `T` time `hh:mm[:ss[.f]]` and an optional `Z` or `±hh[:]mm` zone, and it must parse to a finite serial. Bare years and slash dates such as `1/2/26` never infer as dates; Get Column's read-as converts those explicitly. One cell that isn't an unambiguous ISO date keeps the whole column as text: declining to guess is always safe, and a wrong date never is ([[C44]] dateSerials).
+
+Tests:
+
+- `frame.test.ts`: `inferColumn`'s types, blanks and `raw`, `typedColumn`, logical columns and per-cell errors, and Get Column's readings of a logical column.
+- `frameImport.test.ts`: ISO-only date inference and a column that goes text on one cell.
+- `coreInferColumn.test.ts`: the core's reading of imported columns, one at a time and many in one call, frozen (`fixtures/core/infer-column`; `FREEZE_CORE=infer-column` re-records it after a deliberate change).
+- `valueKinds.test.ts`: `coerceLogical` and the `#TYPE!` a computation makes of its NaN.
+- `cube.test.ts`: a Frame to Cube to Frame round trip keeps the unit.
 
 ### Reading CSV text
 
-CSV text is read in one place, the core's `csv.rs` ([[C130]] rustCore), on the `csv` crate (BurntSushi's `rust-csv`); Solenoid adds only the newline normalization, the delimiter guess, the blank-line options and the column typing. A Parquet file is the one exception (below); everything else comes here: Web Source, Local File's CSV and plan files, the data feed presets, a Frame Input's CSV text, a Table Input's and a list literal's text, the Table popup's CSV view.
+CSV text is read in one place, the core's `csv.rs` ([[C130]] rustCore), on the `csv` crate (BurntSushi's `rust-csv`); Solenoid adds only the newline normalization, the delimiter guess, the blank-line options and the column typing. A Parquet file is the one exception (below). Everything else comes here: Web Source, Local File's CSV and plan files, the data feed presets, a Frame Input's CSV text, a Table Input's and a list literal's text, and the Table popup's CSV view.
 
-- **Rows** (`parseCsvRows(text, opts)`). `\r\n` and `\r` read as `\n` first, inside quotes too, and a leading BOM is dropped. Then the crate reads RFC 4180: a field that starts with `"` is quoted, its `""` read as `"`; a `"` that isn't a field's first character is data. Rows may be ragged. Malformed quoting reads as the crate reads it: after a closing quote, whatever follows up to the next delimiter or newline joins the field (`"a" ,b` is `a ` and `b`; `"a"b"c"` is `ab"c"`), and an unclosed quote takes the rest of the text, its `""` read as `"`.
-- **Options.** `detectDelimiter` (file ingestion) guesses among `,` tab `|` `;` and the record and unit separators, over each one's first ten rows as the crate reads them: the smallest total change in field count from row to row wins, the larger average breaking a tie, and a delimiter averaging under two fields never wins; nothing qualifying means `,`. Otherwise the delimiter is `,`. (No maintained sniffer crate fits: `csv-sniffer` is unmaintained, and `qsv-sniffer` is built for qsv, wants a seekable reader and pulls in regex and a date parser.) `keepBlankLines` (a literal source, where a typed blank row is data) reads each empty line as a row of one empty field, which the crate would skip; a final newline ends the last row and adds none. Without it, a row whose fields are all whitespace is no row.
-- **A typed frame** (`csvToFrame`). Rows with the delimiter guessed and blank lines skipped; the first row, trimmed, names the columns through `makeHeaders`, and each column is typed as `inferColumn` types text. The frame crosses back in the columnar hand-off (`engine_csv_frame`, `binary.rs`), each non-text column followed by its trimmed source text, which becomes its `raw`; a text column's `raw` is its cells. The rows cross the same way (`engine_csv_rows`), so a big file's text crosses in once and its cells come back as buffers.
-- **Writing** (`unparseCsv`, the Sink's CSV). The crate's writer: the header row, then each row padded or cut to the header's width (as it stands with no header), every line ended by `\r\n`, the last one too. A field is quoted, its `"` doubled, when it holds a comma, `"`, `\r` or `\n`, and a row of one empty field writes as `""` so it reads back as a row. No rows still write the header line. The editors' own writer is `joinCsvRows`, and `csvFieldSpans` marks fields in place for the CSV editor; neither is a parser.
-- **Evidence.** `fixtures/core/csv-rows`, `csv-frames`, `csv-sources` and `csv-unparse`, recorded through the callers by `tests/graph/coreCsv.test.ts` (`FREEZE_CORE=csv-rows,csv-frames,csv-sources,csv-unparse` re-records them after a deliberate change) and replayed natively by `crates/solenoid-core/tests/csv.rs`. Well-formed text, the repo's own CSV files among it, reads as it did on Papa Parse 5.7.
+- **Rows** (`parseCsvRows(text, opts)`).
+  - `\r\n` and `\r` read as `\n` first, inside quotes too, and a leading BOM is dropped.
+  - Then the crate reads RFC 4180: a field that starts with `"` is quoted, its `""` read as `"`; a `"` that isn't a field's first character is data. Rows may be ragged.
+  - Malformed quoting reads as the crate reads it: after a closing quote, whatever follows up to the next delimiter or newline joins the field (`"a" ,b` is `a ` and `b`; `"a"b"c"` is `ab"c"`), and an unclosed quote takes the rest of the text, its `""` read as `"`.
+- **The delimiter.** Without `detectDelimiter` the delimiter is `,`, even when the text holds semicolons. `detectDelimiter` (file ingestion) guesses among `,` tab `|` `;` and the record and unit separators, over each one's first ten rows as the crate reads them:
+  - the smallest total change in field count from row to row wins;
+  - the larger average breaks a tie;
+  - a delimiter averaging under two fields never wins;
+  - nothing qualifying means `,`.
+  No maintained sniffer crate fits: `csv-sniffer` is unmaintained, and `qsv-sniffer` is built for qsv, wants a seekable reader and pulls in regex and a date parser.
+- **Blank lines.** `keepBlankLines` (a literal source, where a typed blank row is data) reads each empty line as a row of one empty field, which the crate would skip; a final newline ends the last row and adds none. Without it, a row whose fields are all whitespace is no row.
+- **A typed frame** (`csvToFrame`).
+  - Rows with the delimiter guessed and blank lines skipped.
+  - The first row, trimmed, names the columns through `makeHeaders`, and each column is typed as `inferColumn` types text.
+  - The frame crosses back in the columnar hand-off (`engine_csv_frame`, `binary.rs`), each non-text column followed by its trimmed source text, which becomes its `raw`; a text column's `raw` is its cells.
+  - The rows cross the same way (`engine_csv_rows`), so a big file's text crosses in once and its cells come back as buffers.
+- **Writing** (`unparseCsv`, the Sink's CSV). The crate's writer:
+  - the header row, then each row padded or cut to the header's width (as it stands with no header);
+  - every line ended by `\r\n`, the last one too;
+  - a field quoted, its `"` doubled, when it holds a comma, `"`, `\r` or `\n`;
+  - a row of one empty field written as `""`, so it reads back as a row;
+  - no rows still write the header line.
+- **The editors' helpers.** The editors' own writer is `joinCsvRows`, and `csvFieldSpans` marks fields in place for the CSV editor; neither is a parser. A blank one-column row survives `joinCsvRows` and a read back, a trailing one and a lone one too, and `csvFieldSpans` marks the fields the parser reads.
+- **Well-formed text**, the repo's own CSV files among it, reads as it did on Papa Parse 5.7.
+
+Tests:
+
+- `coreCsv.test.ts`: the core's rows under each option, a file's typed frame, a Frame Input's CSV text and the Sink's writes, over a seeded generator of awkward CSV and the repo's own CSV files, frozen through the callers (`fixtures/core/csv-rows`, `csv-frames`, `csv-sources`, `csv-unparse`; `FREEZE_CORE=csv-rows,csv-frames,csv-sources,csv-unparse` re-records them after a deliberate change). A sample runs in wasm.
+- `csv.rs` (solenoid-core): every frozen case replayed natively.
+- `csv.test.ts`: `parseCsvRows`, `parseCsvLine`, the delimiter guess, `csvFieldSpans` and `joinCsvRows`.
 
 ### Reading Parquet
 
-Local File reads a `.parquet` file on desktop only, from `folder/name` joined as the CSV path joins it: the shell's `read_parquet` command (`src-tauri/src/ipc.rs`) reads it with Apache's `parquet` and `arrow` crates (`crates/solenoid-parquet`) and answers the frame as one buffer of the columnar hand-off (`read_bytes`, `Columnar::to_bytes`), which crosses IPC as bytes and the app reads as a plain frame (`readParquetFrame`, `binaryFromBytes`). Columns keep the file's own types, narrowed to the frame's: Boolean is logical, text is string, `Date` becomes a serial (Unix days plus 25569, since serial 1 is 1900-01-01 and the Unix epoch is serial 25569), a timestamp becomes a fractional serial by its time unit, and every other column that casts to a float is a number column. A column that doesn't (a list, a struct, binary) fails the read with `#VALUE!` naming it, and a missing file is `#REF!`. On the web Local File's Parquet says it is desktop only.
+Local File reads a `.parquet` file on desktop only, from `folder/name` joined as the CSV path joins it. The shell's `read_parquet` command (`src-tauri/src/ipc.rs`) reads it with Apache's `parquet` and `arrow` crates (`crates/solenoid-parquet`) and answers the frame as one buffer of the columnar hand-off (`read_bytes`, `Columnar::to_bytes`), which crosses IPC as bytes and the app reads as a plain frame (`readParquetFrame`, `binaryFromBytes`).
+
+- **Column types** are the file's own, narrowed to the frame's:
+  - Boolean is logical;
+  - text is string, a dictionary-encoded text column included, read as its values;
+  - `Date` becomes a serial (Unix days plus 25569, since serial 1 is 1900-01-01 and the Unix epoch is serial 25569);
+  - a timestamp becomes a fractional serial by its time unit;
+  - every other column that casts to a float is a number column.
+- **An empty file** keeps its columns and their types, with no rows.
+- **Refusals.** A column that doesn't cast (a list, a struct, binary) fails the read with `#VALUE!` naming it. A missing file is `#REF!`, and so is a name that would reach outside the folder (`inside`): a blank name, `..`, an absolute path, a `./` prefix, or a link that points out of the folder.
+- **On the web** Local File's Parquet says it is desktop only.
+
+Tests: `read.rs` (solenoid-parquet): the column types and date serials, a dictionary column, an empty file, the `#VALUE!` naming a column that won't cast, a missing file, and a name outside the folder.
 
 ### Frame Input's source
 
-Frame Input is the editable literal Frame. Its stored text is never rewritten; the typed Frame flowing downstream is derived from it at compute time.
+Frame Input is the editable literal Frame. Its stored text is never rewritten; the typed Frame flowing downstream is derived from it at compute time. A computed error or logical is never stored, since it is computed again.
 
-- `FrameSource` is a list of `{ name, type, cells, unit?, expr? }`: `cells` are the raw typed strings, never coerced; `unit` is a Format Controller unit id; `expr` makes the column computed ([[computed-columns]]), and its raw cells are then ignored.
-- `deriveFrame(source)` coerces every cell through `coerceFrameCell` and keeps the raw strings as `raw`, so a read-only viewer still shows the literal source. A `unit` applies only to a number column, through `columnUnitFromSpec`.
-- `frameText` is stored as JSON: `[{ name, type, cells, unit?, expr? }]` (`frameSourceToText`; `unit` and `expr` only when set). `parseFrameSource` reads it back, running the names through `makeHeaders`; an unrecognized `type` reads as number, and a blank `expr` is dropped. It also reads a typed-`values` JSON (the form `frameColumnsToInputText` writes for a caller holding a typed Frame), stringifying the values back to raw cells with booleans as `TRUE`/`FALSE`. Anything else, malformed JSON included, goes to the CSV reader (`engine_csv_source`), where each cell is trimmed and the column's type is read off its cells. `frameFromInputText` is `deriveFrame` of `parseFrameSource`.
+- **`FrameSource`** is a list of `{ name, type, cells, unit?, expr? }`: `cells` are the raw typed strings, never coerced; `unit` is a Format Controller unit id; `expr` makes the column computed ([[computed-columns]]), and its raw cells are then ignored.
+- **`deriveFrame(source)`** coerces every cell through `coerceFrameCell` and keeps the raw strings as `raw`, so a read-only viewer still shows the literal source. A `unit` applies only to a number column, through `columnUnitFromSpec`.
+- **`frameText`** is stored as JSON: `[{ name, type, cells, unit?, expr? }]` (`frameSourceToText`; `unit` and `expr` only when set).
+- **`parseFrameSource`** reads it back:
+  - the names go through `makeHeaders`;
+  - an unrecognized `type` reads as number, and a blank `expr` is dropped;
+  - a typed-`values` JSON (the form `frameColumnsToInputText` writes for a caller holding a typed Frame) is read too, its values stringified back to raw cells with booleans as `TRUE`/`FALSE`;
+  - anything else, malformed JSON included, goes to the CSV reader (`engine_csv_source`), where each cell is trimmed and the column's type is read off its cells.
+- **`frameFromInputText`** is `deriveFrame` of `parseFrameSource`.
+
+Tests: `frame.test.ts`: a blank CSV cell is `null`, the CSV and JSON forms of `frameText` keep logical columns and blanks over a save and reload, a mixed `1`/`TRUE` Boolean column and a date column keep their typed text while the derived value is typed, and the Form and Card layouts hide without deleting.
 
 ### Nulls, errors and non-finite numbers
 
-`null` is an empty cell. It is skipped by aggregates, dropped by comparisons, sorted last, and is its own key in grouping and dedupe ([[C24]] arraySemantics). A `SolError` in a cell is a present value: it is not blank, it propagates through aggregates, sorts last, and keys by its code ([[C24]] arraySemantics). `±Infinity` is a real value in a number column. `NaN` is present but dirty: it is counted, it is not blank, it sorts into the tail, it fails every predicate except `neq`, and it poisons an aggregate to `#DOMAIN!`.
+- **`null`** is an empty cell. It is skipped by aggregates, dropped by comparisons, sorted last, and is its own key in grouping and dedupe ([[C24]] arraySemantics).
+- **A `SolError`** in a cell is a present value: it is not blank, it propagates through aggregates, sorts last, and keys by its code ([[C24]] arraySemantics).
+- **`±Infinity`** is a real value in a number column.
+- **`NaN`** is present but dirty: it is counted, it is not blank, it sorts into the tail, it fails every predicate except `neq`, and it poisons an aggregate to `#DOMAIN!`.
+
+Tests: `frameVerbs.test.ts`: error cells through sort, filter, `filterMulti` and groupBy. The corpus (`fixtures/frame-verbs/`) holds each verb's blanks, errors and non-finite cells by code.
 
 ### Units and formats
 
-A number column gets a fixed unit in one of two ways: from its header when the frame is built (`buildFrame`, the Build Frame node, `addColumn`), or from a Frame Input column's `unit` field. If a number column's header ends in a unit in parentheses, like `Price (USD)`, the column is named `Price` and tagged with that unit. Text in parentheses that isn't a known unit, like `Notes (draft)`, stays part of the name. Name clashes are checked on the name without the unit. Crossing into a Cube, a locked column's cells become per-cell base-SI `UnitCell`s (`cubeCellsFromColumn`, the one bridge); reading a cube column back through `inferColumn` recovers a uniform unit.
+A number column gets a fixed unit in one of two ways: from its header when the frame is built (`buildFrame`, the Build Frame node, `addColumn`), or from a Frame Input column's `unit` field.
 
-The `format` annotation is stamped on a node's FrameValue outputs by the input-coercion wrapper from `frameFormatStore`, per node and column; a nearer pick overrides a farther one. Picks are keyed `<nodeId>::<columnName>`, so a pick survives a column reorder but stays with the name, and the annotation's own `unit` field is ignored, since a column's unit belongs to its value. The store's `load` replaces the whole set, and its caller has already rewritten node ids after an id remap. The table popup's column-format row and its inherit hint are [[format-model]]. Unit and format behavior per verb is listed under each verb; unit rules themselves belong to [[unit-flow]].
+- If a number column's header ends in a unit in parentheses, like `Price (USD)`, the column is named `Price` and tagged with that unit.
+- Text in parentheses that isn't a known unit, like `Notes (draft)`, stays part of the name.
+- Name clashes are checked on the name without the unit.
+- Crossing into a Cube, a locked column's cells become per-cell base-SI `UnitCell`s (`cubeCellsFromColumn`, the one bridge), each carrying its display unit, and a plain column's cells stay bare; reading a cube column back through `inferColumn` recovers a uniform unit.
+
+The `format` annotation ([[C118]] formatTravelsWithValue):
+
+- It is stamped on a node's FrameValue outputs by the input-coercion wrapper from `frameFormatStore`, per node and column; a nearer pick overrides a farther one.
+- Picks are keyed `<nodeId>::<columnName>`, so a pick survives a column reorder but stays with the name.
+- The annotation's own `unit` field is ignored, since a column's unit belongs to its value.
+- A verb's output column carries a format only where it also carries a unit, as Add Index's column and an appended computed column carry neither; the reverse need not hold, since a groupBy key keeps its unit and drops its format.
+- The store is the one saved home; a stamped `format` is never written to a saved document.
+- The store's `load` replaces the whole set, and its caller has already rewritten node ids after an id remap.
+
+The table popup's column-format row and its inherit hint are [[format-model]]. Unit and format behavior per verb is listed under each verb; unit rules themselves belong to [[unit-flow]].
+
+Tests:
+
+- `frameColumnFormat.test.ts`: a column's format rides the frame downstream and a nearer pick wins, a derived column carries the format only where it carries the unit, and a stamped format is never serialized.
+- `cube.test.ts`: a locked column crosses into a Cube as per-cell unit cells, and a plain one stays bare.
 
 ### Frames and Cubes
 
-A Cube never enters a Frame socket ([[C10]] socketLattice). A verb card that accepts a Cube declares a cube-adoptive input with `noWidenInputs` and either runs its own cube branch (the cube row verbs under Eager verbs outside the seam) or calls `flatCubeToFrame(cube, only?)`, which types each column through `typedColumn` with the cube column's carried type and reads a column of `UnitCell`s in their shared unit, which the column then carries (`matrixCellsFromList`, as `inferColumn` does); cells that disagree read as bare base-SI values with no unit. `only` picks the columns: all of them, the named ones (`#REF!` for a missing name), or `"scalar"` (every column without nested cells). A list, Frame or Cube cell in a picked column is `#SHAPE!` (`Column "<name>" holds nested cells; this reads flat rows`). GROUPBY picks its keys and value column (its scalar columns while unconfigured); PIVOTBY, SUMIFS and Chart read `"scalar"`, so a list column is simply not a field. `frameToCube` goes the other way: depth 1, element type and format carried, locked cells tagged.
+A Cube never enters a Frame socket ([[C10]] socketLattice). A verb card that accepts a Cube declares a cube-adoptive input with `noWidenInputs` (Window, GROUPBY and Chart among them) and either runs its own cube branch (the cube row verbs under Eager verbs outside the seam) or calls `flatCubeToFrame(cube, only?)`. A bare list or matrix wired to a cube-adoptive input still widens to a frame as it would into a Frame socket.
+
+`flatCubeToFrame`:
+
+- Each column is typed through `typedColumn` with the cube column's carried type, and keeps its display format.
+- A column of `UnitCell`s reads in their shared unit, which the column then carries (`matrixCellsFromList`, as `inferColumn` does); cells that disagree read as bare base-SI values with no unit.
+- `only` picks the columns: all of them, the named ones (`#REF!` for a missing name), or `"scalar"` (every column without nested cells).
+- A list, Frame or Cube cell in a picked column is `#SHAPE!` (`Column "<name>" holds nested cells; this reads flat rows`).
+- GROUPBY picks its keys and value column (its scalar columns while unconfigured); PIVOTBY, SUMIFS and Chart read `"scalar"`, so a list column is simply not a field.
+
+`frameToCube` goes the other way: depth 1, element type and format carried, locked cells tagged.
+
+Tests: `cubeAdoptiveVerbs.test.ts`: `flatCubeToFrame`'s types, `#SHAPE!` and format, the cube-adoptive inputs, GROUPBY reading only its own columns, and a wired list or matrix widening.
 
 ### The Cube value
 
 A Cube is a `CubeValue`: `{ __cube: true, columns: CubeColumn[], depth }`, recognized by its `__cube` brand (`isCubeValue`). A cell (`CubeCell`) is any value, recursively: a Frame cell, a whole Frame, a Cube, a `UnitCell`, or a list of cells. A Cube is heterogeneous per cell ([[C25]] firstClassUnits), so a dimensioned cell carries its unit as a value, a base-SI `UnitCell`.
 
-A `CubeColumn` is `{ name, cells, type?, format? }`. `type` is the column's element type. A declared type (Cube Input's column type, a Solenoid Properties pick, a source Frame column's type) holds the column's values and list items to it, never a Frame nested in it, which carries its own columns' types ([[D90]] cubeTypesAtDepth); one inferred for a column nobody typed is a display hint, not a promise that every cell matches. A list column's type is its items' type, so its chips tint and print by it. `format` is the Cube counterpart of `FrameColumn.format`: a producing verb can stamp a date pattern on a column (a Minutes-mode Schedule stamps `DD-MMM-YYYY HH:mm` on Start and Finish).
+A `CubeColumn` is `{ name, cells, type?, format? }`.
+
+- **`type`** is the column's element type. A declared type (Cube Input's column type, a Solenoid Properties pick, a source Frame column's type) holds the column's values and list items to it, never a Frame nested in it, which carries its own columns' types ([[D90]] cubeTypesAtDepth). One inferred for a column nobody typed is a display hint, not a promise that every cell matches. A hand-built Cube has no column types. A list column's type is its items' type, so its chips tint and print by it.
+- **`format`** is the Cube counterpart of `FrameColumn.format`: a producing verb can stamp a date pattern on a column (a Minutes-mode Schedule stamps `DD-MMM-YYYY HH:mm` on Start and Finish).
 
 ```mermaid
 flowchart LR
@@ -167,28 +336,73 @@ flowchart LR
 
 - **Depth.** `depth` is cached at construction, bottom-up, so it never needs a re-walk: a Cube's depth is 1 plus the deepest Cube found in any of its cells. A Cube cell contributes its own cached depth, a list cell contributes the deepest of its items, and everything else, a nested Frame included, contributes nothing. So a flat Cube is depth 1 and a Cube of Cubes is depth 2. `makeCube` is the only constructor, so every Cube carries its depth.
 - **Rows.** The row count is the longest column (`cubeRowCount`).
-- **Constructors.** `cubeFromColumns(cols)` names the columns through `makeHeaders` and keeps each `type` and `format`. `cubeFromRows(rows, headers?)` builds from a row-major grid, padding short rows with `null`. `toCube(v)` widens any value, as arrival coercion widens into a Frame ([[compute-pass]] § Arrival coercion): a Cube passes, a Frame goes through `frameToCube`, a 2-D array is a grid, a 1-D list is one row, and a scalar is 1×1. Build Cube reads one wired value as a column (`cube_column_from_value`, `nodes/frames.rs`): a list gives its elements, a single-column Cube gives that column's cells (so a cell-wise Build Cube pipes straight in), a Frame, matrix or scalar is one cell holding it, and `null` is no cells.
+- **Constructors.**
+  - `cubeFromColumns(cols)` names the columns through `makeHeaders` and keeps each `type` and `format`.
+  - `cubeFromRows(rows, headers?)` builds from a row-major grid, padding short rows with `null`.
+  - `toCube(v)` widens any value, as arrival coercion widens into a Frame ([[compute-pass#Arrival coercion]]): a Cube passes, a Frame goes through `frameToCube`, a 2-D array is a grid, a 1-D list is one row, and a scalar is 1×1.
+  - Build Cube reads one wired value as a column (`cube_column_from_value`, `nodes/frames.rs`): a list gives its elements, a single-column Cube gives that column's cells (so a cell-wise Build Cube pipes straight in), a Frame, matrix or scalar is one cell holding it, and `null` is no cells. The Cube Columns card makes one column per input, each read the same way, padded to the longest.
 - **Row subsets.** The core's `select_cube_rows` (`nodes/frames.rs`) keeps whole rows by index, with nested cells carried by reference, so the Cube row verbs reorder rows without a verb ever reading a nested cell. An index past the end gives a blank row.
 
-**Records to a Cube.** `recordsToCube(records, picks?, nested?, base?)` is the rows-of-objects reader that frontmatter and the vault readers share. Columns are the keys in first-appearance order, named through `makeHeaders`. A list value becomes a list cell (never joined into text), a list of lists a 2-D cell; a list whose present items are all objects becomes a nested Cube, a `null` beside the objects counting as an empty record; a single object becomes a one-row nested Cube. `picks` types the top level's columns ([[D90]] cubeTypesAtDepth) through `typedCubeCell`: a scalar crosses the type's own value boundary, `coerceFrameCell`, as a Frame Input cell would, so what the type cannot read becomes `NaN`, never a silent blank ([[C58]]); the items of a list or 2-D cell cross `coerceListItem`, which reads text as `coerceFrameCell` does, so what the type cannot read is NaN there too (Date over `[10-Sep-2026, apple]` is a date and a NaN; [[C58]] tableInputRawText); a nested Cube or Frame passes untouched. Each nested Frame is read by its own declarations: `nested` (`cubeTypes.ts`) maps a table's records path from the top (`tableKey`, row and key down, a list index where a list holds it; `base` is the path of the records being read) to `{ frame?, types? }`, so two rows of one column declare their Frames independently. A table with `frame: true` becomes a Frame cell (`frameCellFromRecords`: a picked column through `coerceFrameCell` with its text as `raw`, the rest through `inferColumn`, a nested value blank); any other becomes a nested Cube read the same way one level down. The records are never rewritten. An unpicked column of scalars keeps its cells as they came and takes `inferColumn`'s type as its hint; an unpicked column of lists or Frames carries no type.
+**Records to a Cube.** `recordsToCube(records, picks?, nested?, base?)` is the rows-of-objects reader that frontmatter and the vault readers share. The records are never rewritten.
 
-**Cube Input's source.** `cubeText` is a JSON array of records while nothing, at any level, is typed or computed, and `{ columns, rows, nested? }` once something is (`cubeSourceToText`). The card's body reads it on the core (`nodes/cube_source.rs`), and the Cube popup's editor reads the same text with `parseCubeSource` into a `CubeSource`; the two read alike: `columns` lists every column in order, each `{ name, type?, expr? }` (a type outside the four is none; a repeated or blank name is dropped), `nested` is the nested tables' declarations (`readNestedTables` drops a key that is not a records path, a `frame` that is not `true` and a pick that is not a type), with any record key the list lacks appended in first-seen order (a record's keys in JavaScript's order, an array index first), and `rows` are the records as typed. The body builds the typed columns as `recordsToCube` does, each non-formula column typed by its declared type and each nested table by `nested`, places every column in the list's order, and fills the formula columns ([[computed-columns]], `nodes/columns.rs`). Formula columns belong to the top level only: a Frame nested in a cell types its own columns but has no formula columns. Blank text is an empty cube; anything else that is not one of the two forms is one `#VALUE!` with its reason. An unchanged text gives the same cube object each pass, one calling TODAY or NOW a new one each recalculation ([[graph-core]] § Direct calls).
+- **Columns** are the keys in first-appearance order, named through `makeHeaders`.
+- **Cells.** A list value becomes a list cell (never joined into text), a list of lists a 2-D cell. A list whose present items are all objects becomes a nested Cube, a `null` beside the objects counting as an empty record; a single object becomes a one-row nested Cube.
+- **Picks.** `picks` types the top level's columns ([[D90]] cubeTypesAtDepth) through `typedCubeCell`:
+  - a scalar crosses the type's own value boundary, `coerceFrameCell`, as a Frame Input cell would, so what the type cannot read becomes `NaN`, never a silent blank ([[C58]] tableInputRawText);
+  - the items of a list or 2-D cell cross `coerceListItem`, which reads text as `coerceFrameCell` does, so what the type cannot read is NaN there too (Date over `[10-Sep-2026, apple]` is a date and a NaN);
+  - a nested Cube or Frame passes untouched.
+- **Nested tables.** Each nested Frame is read by its own declarations. `nested` (`cubeTypes.ts`) maps a table's records path from the top (`tableKey`: row and key down, a list index where a list holds it; `base` is the path of the records being read) to `{ frame?, types? }`, so two rows of one column declare their Frames independently. A table with `frame: true` becomes a Frame cell (`frameCellFromRecords`: a picked column through `coerceFrameCell` with its text as `raw`, the rest through `inferColumn`, a nested value blank); any other becomes a nested Cube read the same way one level down.
+- **Unpicked columns.** An unpicked column of scalars keeps its cells as they came and takes `inferColumn`'s type as its hint; an unpicked column of lists or Frames carries no type.
+
+**Cube Input's source.** `cubeText` is a JSON array of records while nothing, at any level, is typed or computed, and `{ columns, rows, nested? }` once something is (`cubeSourceToText`). The card's body reads it on the core (`nodes/cube_source.rs`), and the Cube popup's editor reads the same text with `parseCubeSource` into a `CubeSource`; the two read alike:
+
+- `columns` lists every column in order, each `{ name, type?, expr? }`: a type outside the four is none, and a repeated or blank name is dropped. Any record key the list lacks is appended in first-seen order (a record's keys in JavaScript's order, an array index first).
+- `nested` is the nested tables' declarations: `readNestedTables` drops a key that is not a records path, a `frame` that is not `true` and a pick that is not a type.
+- `rows` are the records as typed.
+- The body builds the typed columns as `recordsToCube` does, each non-formula column typed by its declared type and each nested table by `nested`, places every column in the list's order, and fills the formula columns ([[computed-columns]], `nodes/columns.rs`).
+- Formula columns belong to the top level only: a Frame nested in a cell types its own columns but has no formula columns.
+- Blank text is an empty cube; anything else that is not one of the two forms is one `#VALUE!` with its reason.
+- An unchanged text gives the same cube object each pass, one calling TODAY or NOW a new one each recalculation ([[graph-core#Direct calls]]).
+
+Tests:
+
+- `cube.test.ts`: the brand, row count, the constructors, cells of any value, cached depth (a nested Frame adding none, the deepest branch winning, a list cell searched), `toCube`, and `frameToCube`'s types.
+- `cubeNodes.test.ts`: Build Cube and the Cube Columns card.
+- `noteFrontmatterCube.test.ts`: `recordsToCube`'s list cells and nested Cubes, and a `null` beside records read as an empty row.
+- `cubeTypes.test.ts`: the nested tables' declarations ([[table-popup#Editing a Cube Input]]).
 
 ### Nest Join
 
-The Nest Join node relates two Frames on a shared key column and returns a Cube. Its function is `relate_frames(parent, child, key, nested_name)` in `nodes/frames.rs`. The Cube has every parent column plus one nested column, and each parent row's cell in that column holds the child rows whose key matches. The nested column is named `items` by default, and its name goes through `makeHeaders`. It returns `null` when either side lacks the key column. Each parent cell is tagged with its column's unit (`tag_cell_unit`).
+The Nest Join node relates two Frames on a shared key column and returns a Cube. Its function is `relate_frames(parent, child, key, nested_name)` in `nodes/frames.rs`.
 
-- A Frame child's matching rows form a sub-frame that keeps each column's type, unit, format and `raw`; a Cube child's matching rows form a sub-cube (`select_cube_rows`), keeping its own nesting.
-- Keys compare as quantities: a logical keys as 1 or 0, a `UnitCell` keys by its dimension and base-SI magnitude (so `5 km` matches `5000 m` but not `5 kg` or a bare `5`), a currency keys by its display code as well (no exchange rates, so $5 ≠ 5€), and a dimensionless ratio keys as its bare magnitude. A number in a unit-locked column is converted to its base-SI quantity first, so it matches a `UnitCell` of the same quantity. The base-SI magnitude rounds at the 15th significant digit of the larger of its two terms (`round_at_larger_term`, `unit_value.rs`, the rounding Join's converted key uses), so `1 in` matches `2.54 cm` and `−459.67 °F` matches `−273.15 °C`.
-- A blank or error key never matches, as in Join, and a nested Frame, Cube or list cell is never a key.
+- **Output.** The Cube has every parent column plus one nested column, and each parent row's cell in that column holds the child rows whose key matches; a parent with no match keeps its row with an empty sub-frame or sub-cube. The nested column is named `items` by default, and its name goes through `makeHeaders`. Each parent cell is tagged with its column's unit (`tag_cell_unit`).
+- **Missing key.** It returns `null` when either side lacks the key column. The card is empty until its parent, child and key are all present.
+- **Children.** A Frame child's matching rows form a sub-frame that keeps each column's type, unit, format and `raw`, so a Cube of Frames is depth 1. A Cube child's matching rows form a sub-cube (`select_cube_rows`), keeping its own nesting.
+- **Keys compare as quantities.**
+  - A logical keys as 1 or 0.
+  - A `UnitCell` keys by its dimension and base-SI magnitude, so `5 km` matches `5000 m` but not `5 kg` or a bare `5`.
+  - A currency keys by its display code as well (no exchange rates, so $5 ≠ 5€).
+  - A dimensionless ratio keys as its bare magnitude.
+  - A number in a unit-locked column is converted to its base-SI quantity first, so it matches a `UnitCell` of the same quantity.
+  - The base-SI magnitude rounds at the 15th significant digit of the larger of its two terms (`round_at_larger_term`, `unit_value.rs`, the rounding Join's converted key uses), so `1 in` matches `2.54 cm` and `−459.67 °F` matches `−273.15 °C`.
+- **Keys that never match.** A blank or error key never matches, as in Join, and a nested Frame, Cube or list cell is never a key.
+- **A Cube parent.** `relate_cube(parent, child, key, nested_name)` deepens a chain by one level per call. It finds the first parent column holding a Frame or Cube cell (the first, so a hand-built Cube with several is deterministic) and relates inside each cell, recursing through nested Cubes; with no such column it returns the parent unchanged.
 
-On a Cube parent, `relate_cube(parent, child, key, nested_name)` deepens a chain by one level per call. It finds the first parent column holding a Frame or Cube cell (the first, so a hand-built Cube with several is deterministic) and relates inside each cell, recursing through nested Cubes; with no such column it returns the parent unchanged.
+Tests:
+
+- `cubeNodes.test.ts`: nesting on a key, a parent with no match, the nested name, a missing key, unit and currency keys, a Cube child, and `relate_cube` deepening a chain or returning a Cube with no nested column unchanged.
+- `joinUnits.test.ts`: Nest Join's keys with units.
 
 ## Lazy frames
 
 ### FrameRef
 
-A Frame on a cable between verb cards is usually a lazy frame: a core value (`Cv::Ref`, `crates/solenoid-core/src/frame_ref.rs`) holding a base frame, a plan of ops not yet run, and the ref it extends by one op. The verb cards are direct ([[graph-core]] § Direct calls), so a ref passes between them inside the core and a verb's body only plans: it extends the ref it got, or starts one on a FrameValue it takes in (`refs::planned`, once per value by identity). JavaScript sees a ref as `{ __frameRef: id }` (`isFrameRef`), the id the core keeps it under (`heldValues.ts`); after a trap that id reads `#REF!` ("The frame isn't held any more").
+A Frame on a cable between verb cards is usually a lazy frame: a core value (`Cv::Ref`, `crates/solenoid-core/src/frame_ref.rs`) holding a base frame, a plan of ops not yet run, and the ref it extends by one op.
+
+- The verb cards are direct ([[graph-core#Direct calls]]), so a ref passes between them inside the core and a verb's body only plans: it extends the ref it got, or starts one on a FrameValue it takes in (`refs::planned`, once per value by identity).
+- A card with nothing to do passes its input through: a FrameValue as itself, a ref as a new ref planning nothing more.
+- JavaScript sees a ref as `{ __frameRef: id }` (`isFrameRef`), the id the core keeps it under (`heldValues.ts`); after a trap that id reads `#REF!` ("The frame isn't held any more").
+- Join, Append and Bind Columns run their verb on their inputs' flushed frames and answer a ref with nothing planned.
 
 ```mermaid
 flowchart LR
@@ -201,11 +415,14 @@ flowchart LR
     f --> one["column / schema"]
 ```
 
-Join, Append and Bind Columns run their verb on their inputs' flushed frames and answer a ref with nothing planned.
+Tests: `lazyVerbBodies.test.ts`: each lazy verb card plans over a frame value or extends a ref's plan, passes through what came in, answers both of Filter's outputs and runs a Cube's verb on its cells, and a sweep drives each card over its ops and settings.
 
 ### Flushing
 
-A ref's flush runs once per sketch mode and is kept with the ref, so every reader of it shares one run. It runs its own op on its parent's flush, so a chain of N previewing cards costs one op per card; a ref whose ops include a GROUPBY runs its plan from the base instead, since the aggregate guard reads the plan's own input. Op JSON is normalized as JavaScript passed it on (`as_js`).
+- A ref's flush runs once per sketch mode and is kept with the ref, so every reader of it shares one run.
+- It runs its own op on its parent's flush, so a chain of N previewing cards costs one op per card.
+- A ref whose ops include a GROUPBY runs its plan from the base instead, since the aggregate guard reads the plan's own input.
+- Op JSON is normalized as JavaScript passed it on (`as_js`).
 
 ### Readers
 
@@ -216,13 +433,34 @@ A ref's flush runs once per sketch mode and is kept with the ref, so every reade
 | Schema | `refs::schema` | Column names and types with no rows, and the row count (Table Size, Pivot). |
 | One column | `refs::column` | One column by `getColumn` rules (Get Column, SUMIFS, Pivot, Slicer). |
 
-Every reader applies the aggregate guard (below) to what it reads (`Flushed::finish`). `frame_ref::take_stats` (`engine_frame_stats`) counts runs, ops, frames taken in and whole collects, which `lazyChain.test.ts` holds to.
+- Every reader applies the aggregate guard (below) to what it reads (`Flushed::finish`).
+- A plan that fails reads as its error value, and a preview of it throws that error.
+- A value that isn't a ref (a frame, `null`, an error) reads as itself.
+- `frame_ref::take_stats` (`engine_frame_stats`) counts runs, ops, frames taken in and whole collects.
+
+Tests:
+
+- `frameBackend.test.ts`: a whole read runs the plan once however often it is read, a preview carries its row count and its ref, a short frame previews whole, a failing plan, a value read as itself, and format picks riding as one more op.
+- `frameNodeBackend.test.ts`: a plan, a join and a stack read back whole answer exactly what the verb answers, and a structural failure reads back as an error value, not a throw.
+- `lazyChain.test.ts`: a chain of verb cards takes its source in once, runs one op a card and never reads it whole, and a pass whose inputs stand runs nothing again.
+- `frameVerbsPipeline.test.ts`: a join, a groupBy and a sort chained through the store, each intermediate handle still readable on its own.
 
 ### Who receives a ref
 
-`LAZY_FRAME_NODES` (`crates/solenoid-graph/src/boundary.rs`) lists the classes that receive a ref as is: the verb cards, Get Column, SUMIFS, Table Size, Write File, PIVOTBY, Slicer and Computed Column, which read through the readers above instead of a whole collect. Every other card, direct or JavaScript, gets the whole frame: the engine collects the ref in the core first (`value::collected`), shared by every reader of it. `lazyChain.test.ts` requires every class whose body plans over a ref to be in the set.
+`LAZY_FRAME_NODES` (`crates/solenoid-graph/src/boundary.rs`) lists the classes that receive a ref as is: the verb cards, Get Column, SUMIFS, Table Size, Write File, PIVOTBY, Slicer and Computed Column, which read through the readers above instead of a whole collect. Every other card, direct or JavaScript, gets the whole frame: the engine collects the ref in the core first (`value::collected`), shared by every reader of it. Every class whose body plans over a ref must be in the set.
+
+- Table Size counts without reading the frame whole.
+- SUMIFS reads only the named columns, and resolves a positional column against the upstream frame.
+- Write File holds the ref through `data()` and reads it whole only when it runs.
+- Slicer reads one column and plans its row filter as a `filterMulti` op; with no selection it forwards the ref (an empty `drop`).
+- PIVOTBY reads only its field columns.
 
 A ref lives while something holds it: the cell on a cable, a kept answer (`nodes::KEEPS_ANSWER`, which the verb cards are in, so a pass whose inputs stand runs nothing again), a JavaScript object (`heldValues.ts`). Its flush and readers' values live and die with it.
+
+Tests:
+
+- `lazyChain.test.ts`: the lazy set covers every class whose body plans over a ref, and the readers above on a lazy upstream.
+- `lazyFrameReads.test.ts`: readers on a lazy upstream answer as on the same frame held eagerly.
 
 ### Sketch mode and the aggregate guard
 
@@ -235,21 +473,53 @@ flowchart LR
     g -->|no| plain["the sampled rows as they are"]
 ```
 
-In the sketch calculation mode (`frame_ref::set_sketch`, kept current by every step of the session), a flush first takes a deterministic sample of its input (`SKETCH_SAMPLE_ROWS = 10,000`; evenly strided rows `floor(i × total / n)`, order kept, never random); a flush on a parent already sampled doesn't sample again. The factor is `total / sampled`. When the plan contains a `groupBy`, the output columns of the first `groupBy`'s `sum` and `count` aggregates are multiplied by the factor as soon as it runs (`scale_sums`), so every op after it reads whole-table totals (a filter on a total keeps what the exact pass keeps), and the read value carries `approx`. A later `groupBy` groups the groups, which are no sample, so it isn't scaled again. A flush and its readers' values are kept per sketch mode, so leaving sketch reads the exact frame.
+In the sketch calculation mode (`frame_ref::set_sketch`, kept current by every step of the session):
 
-The aggregate guard classifies non-finite aggregate results at read time ([[C24]] arraySemantics): for a frame produced by a plan with a `groupBy`, any aggregate output column holding a non-finite number goes through `guard_finite`, with an infinite input assumed when the source column of the plan's input holds `±Infinity`. A ref extending one past a GROUPBY inherits its guard and its scaled totals, so a card downstream of GROUPBY classifies as the GROUPBY card does and reads the same totals.
+- **Sample.** A flush first takes a deterministic sample of its input (`SKETCH_SAMPLE_ROWS = 10,000`): evenly strided rows `floor(i × total / n)`, order kept, never random. A flush on a parent already sampled doesn't sample again, and a frame at or under the sample size is never sampled.
+- **Scale.** The factor is `total / sampled`. When the plan contains a `groupBy`, the output columns of the first `groupBy`'s `sum` and `count` aggregates are multiplied by the factor as soon as it runs (`scale_sums`), so every op after it reads whole-table totals (a filter on a total keeps what the exact pass keeps), and the read value carries `approx`. An average is never scaled, since scaling one would make it wrong, not approximate. A later `groupBy` groups the groups, which are no sample, so it isn't scaled again.
+- **Mode.** A flush and its readers' values are kept per sketch mode, so leaving sketch reads the exact frame, and so does an F9 forced exact pass (`beginForceExact`) while sketch is selected.
+- **Writes.** A write or export (Write File's run) reads every row exact, even while sketch samples the passes.
+
+The aggregate guard classifies non-finite aggregate results at read time ([[C24]] arraySemantics): for a frame produced by a plan with a `groupBy`, any aggregate output column holding a non-finite number goes through `guard_finite`, with an infinite input assumed when the source column of the plan's input holds `±Infinity`. So a sum past the largest double from finite cells is `#OVERFLOW!`, and a sum over an infinite cell stays infinite. A ref extending one past a GROUPBY inherits its guard and its scaled totals, so a card downstream of GROUPBY (SUMIFS, Get Column, PIVOTBY, Slicer) classifies as the GROUPBY card does and reads the same totals, and a truncated preview is scaled like the whole collect.
+
+Tests:
+
+- `frameNodeBackend.test.ts`: the exact sum outside sketch, a sample scaled back toward the true total and marked approx, a truncated preview scaled alike, F9 forcing an exact pass, a small frame never sampled, approx carried through a verb after groupBy, and the aggregate guard on a collected groupBy.
+- `lazyFrameReads.test.ts`: one-column readers downstream of GROUPBY read the totals the GROUPBY card reads.
+- `sketchExport.test.ts`: Write File writes every row of a lazy input the pass sampled.
+- `frameVerbs.test.ts`: `sampleFrame`'s rows.
 
 ## The frame store
 
-The core also stores eager frames by handle (`rs:<n>`, numbered past a trapped instance's, `engine_handle_base`), for the eager Frame tools that run a verb over values outside a pass (`onCoreFrames`, `bindSchema`, `pivotOnEngine`, `frameFnOnCore`, CSV) and for the corpus: `engine_source`, `engine_apply`, `engine_apply_many`, `engine_join`, `engine_append`, `engine_bind_columns`, `engine_preview`, `engine_collect`, `engine_column`, `engine_drop`, `engine_sample`. A missing handle is `#REF!` (`frame handle <h> not found (dropped or never created)`). Frames cross as columnar buffers (`wasmSourceBin`, `wasmReadBin`, `crates/solenoid-core/src/binary.rs`). An op's own cells (a filter's value) and a pivot layout's cells cross as JSON (`encodeWireCell`, `decodeWireCell`, the core's `wire.rs`): a non-finite number as `{"__nf": "inf" | "-inf" | "nan"}`, a SolError as `{"__err": code, "msg", "ref"}`, where `ref` names the original error in a registry of weak references (`errorRef`), so the cell reads back as that same SolError, message and origin included, while the original is alive.
+The core also stores eager frames by handle (`rs:<n>`, numbered past a trapped instance's, `engine_handle_base`).
+
+- **Users.** The eager Frame tools that run a verb over values outside a pass (`onCoreFrames`, `bindSchema`, `pivotOnEngine`, `frameFnOnCore`, CSV), and the corpus.
+- **Commands.** `engine_source`, `engine_apply`, `engine_apply_many`, `engine_join`, `engine_append`, `engine_bind_columns`, `engine_preview`, `engine_collect`, `engine_column`, `engine_drop`, `engine_sample`. A missing handle is `#REF!` (`frame handle <h> not found (dropped or never created)`).
+- **Frames** cross as columnar buffers (`wasmSourceBin`, `wasmReadBin`, `crates/solenoid-core/src/binary.rs`).
+- **An op's own cells** (a filter's value) and a pivot layout's cells cross as JSON (`encodeWireCell`, `decodeWireCell`, the core's `wire.rs`):
+  - a non-finite number as `{"__nf": "inf" | "-inf" | "nan"}`;
+  - a SolError as `{"__err": code, "msg", "ref"}`, where `ref` names the original error in a registry of weak references (`errorRef`), so the cell reads back as that same SolError, message and origin included, while the original is alive.
 
 A column carries its name, type, cells, `unit` and `format`; `raw` stays behind. The core's `FrameColumn` holds the unit as a `ColumnUnit` (dimension and display) and the format as the annotation it never reads, and each verb decides what its output columns carry, as listed under each verb ([[C25]] firstClassUnits, [[C118]] formatTravelsWithValue): a column that keeps its cells keeps both. The verbs that read a unit read it there: an aggregate or window over readings on an offset scale, a variance over a scaled linear unit, and a join's keys. The eager Frame tools and computed columns send cells only, since a formula reads its units its own way ([[computed-columns]]).
 
 ### The corpus
 
-Every verb in `FRAME_OP_KINDS` and the binary verbs `join`, `append`, `bindColumns` has a fixture file in `fixtures/frame-verbs/<verb>.json`, plus `pipeline.json`. A file is `{ verb, cases: [{ name, frames, op, expect | expectError }] }`: `frames` maps names to wire frames (`in` for unary verbs, `left`/`right` for join, any names listed in `op.frames` for append and bind columns), `op` is the wire op (for join `{ kind: "join", …JoinOpts }`, for a pipeline `{ kind: "pipeline", ops }`, applied one after another), `expect` is a wire frame and `expectError` an error code. Exactly one of `expect` and `expectError` is present; case names are unique per file. `frameVerbCorpus.test.ts` runs the fixtures through the core in wasm on every push, and `crates/solenoid-core/tests/corpus.rs` runs them natively. Comparison is on name, type, unit, format and values; `-0` compares equal to `0` and error cells compare by code. The completeness test fails if a verb in the inventory lacks a file or a file names a verb outside it; `FRAME_OP_KINDS` is checked against the `FrameOp` union at compile time.
+Every verb in `FRAME_OP_KINDS` and the binary verbs `join`, `append`, `bindColumns` has a fixture file in `fixtures/frame-verbs/<verb>.json`, plus `pipeline.json`.
+
+- **A file** is `{ verb, cases: [{ name, frames, op, expect | expectError }] }`. Exactly one of `expect` and `expectError` is present, and case names are unique per file.
+- **`frames`** maps names to wire frames: `in` for unary verbs, `left` and `right` for join, any names listed in `op.frames` for append and bind columns (a list, since the map can't carry their order).
+- **`op`** is the wire op: for join `{ kind: "join", …JoinOpts }`, for a pipeline `{ kind: "pipeline", ops }`, applied one after another. The binary verbs are store commands, not `FrameOp`s, so the runners list them by hand.
+- **`expect`** is a wire frame and **`expectError`** an error code.
+- **Cells** take the wire's own form in both directions, since the corpus format is the wire format: a non-finite number as `{"__nf": …}`, an error cell as `{"__err": code}`.
+- **Comparison** is on name, type, unit, format and values, and `raw` stays out. `-0` compares equal to `0`, since JSON can't write `-0`, so the wire loses the sign of zero as every frame crossing it does, and no surface tells them apart. Error cells compare by code alone.
+- **Completeness.** A verb in the inventory without a file fails, and so does a file naming a verb outside it; `FRAME_OP_KINDS` is checked against the `FrameOp` union at compile time, so a new op kind fails to compile until it is listed and then fails until it ships with cases.
 
 **MUST:** every verb is specified by corpus cases, and a verb without them doesn't ship.
+
+Tests:
+
+- `frameVerbCorpus.test.ts`: every case through the core in wasm, every input left untouched, and the inventory and case names.
+- `corpus.rs` (solenoid-core): the same files natively, through the store's own commands.
 
 ## Rules shared by every verb
 
@@ -436,7 +706,7 @@ The Window card always sends `orderDir: "asc"`, derives `as` from the function l
 - `substring`: in string columns only, every literal occurrence of `find` inside a text cell is replaced (no regex), the rest of the cell kept as written (`replace_caseless` when case is ignored).
 - `cell`: a whole cell matches when a number (or date serial) equals `decimal_from_text(find)` (a non-numeric find matches no number), a logical's `TRUE`/`FALSE` equals `find` in upper case, or a string equals `find` (exactly under `matchCase`, else ignoring case). Blank and error cells never match. The replacement is coerced to the column type: blank text becomes `null`; a number or date column needs a finite number, and otherwise that column is left unchanged; a logical takes `true`/`1` or `false`/`0` (any case), anything else `null`; a string column takes the text verbatim. So Replace Values never writes a `NaN` into a number column, since a `NaN` cell is neither a value, a blank nor an error that anything downstream could read.
 
-The card's Find and Replace take a wired value of any type, stringified by `readFilterValue`.
+The card's Find and Replace take a wired value of any type, read as text by `filter_value` (`nodes/verbs.rs`), as Filter reads its values.
 
 ### formats
 

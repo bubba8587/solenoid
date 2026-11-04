@@ -1,4 +1,4 @@
-// [[C24]] arraySemantics, [[C44]] dateSerials, [[C10]] socketLattice
+// [[C24]] arraySemantics, [[C44]] dateSerials, [[C10]] socketLattice, [[frame-verbs#Nest Join]], [[frame-verbs#The Cube value]]
 import { describe, it, expect } from "vitest";
 import {
   buildFrame, isCubeValue, isFrameValue, cubeDepth, cubeRowCount, frameRowCount,
@@ -7,10 +7,6 @@ import {
 import { relateFramesToCube, relateCubeToFrame } from "./coreVerbs";
 import { BuildCubeNode, NestJoinNode, CubeColumnsNode } from "../../src/graph/nodes/cube";
 import { ListIndexNode } from "../../src/graph/nodes/list";
-
-// The Cube producers (Build Cube, Relate) + the cube/frame-aware INDEX accessor.
-// These exercise the node data() methods directly (the engine's error-guard wrap
-// isn't applied to a bare call), like the other node unit tests.
 
 describe("relateFramesToCube — nest two frames on a key", () => {
   const parent = buildFrame([[1], [2], [3]], ["id"]);
@@ -21,8 +17,6 @@ describe("relateFramesToCube — nest two frames on a key", () => {
     expect(isCubeValue(cube)).toBe(true);
     expect(cube.columns.map((c) => c.name)).toEqual(["id", "orders"]);
     expect(cubeRowCount(cube)).toBe(3);
-    // The nested cells are FRAMES, which are leaves — a cube of frames is depth 1
-    // (only a cube nested in a cube grows depth). Relate a cube child to go deeper.
     expect(cubeDepth(cube)).toBe(1);
     const o0 = cube.columns[1].cells[0];
     expect(isFrameValue(o0)).toBe(true);
@@ -47,7 +41,7 @@ describe("relateFramesToCube — nest two frames on a key", () => {
   });
 });
 
-describe("relateFramesToCube — dimension-keyed joins (author 2026-07-16: tagged units don't cross)", () => {
+describe("relateFramesToCube — dimension-keyed joins", () => {
   const matched = (cube: CubeValue) => frameRowCount(cube.columns[1].cells[0] as never);
 
   it("a km key never matches a kg key of the same magnitude", () => {
@@ -129,8 +123,6 @@ describe("relateFramesToCube — CUBE child (nest a pre-built cube whole)", () =
     const c1 = cube.columns[1].cells[0]; // cust=1 → a sub-cube of orders 10 & 20
     expect(isCubeValue(c1)).toBe(true);
     expect(cubeRowCount(c1 as CubeValue)).toBe(2);
-    // depth 2: a nested FRAME (lines) is a leaf (adds no depth); only the cube-in-cube
-    // (customers holding order-cubes) counts — so customers(1) over orders-cube(1) = 2.
     expect(cubeDepth(cube)).toBe(2);
   });
 

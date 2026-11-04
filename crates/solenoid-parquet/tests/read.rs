@@ -1,4 +1,5 @@
-//! [[C130]] rustCore: a Parquet file reads as the frame Local File gives.
+// [[C130]] rustCore, [[frame-verbs#Reading Parquet]]
+//! A Parquet file read as the frame Local File gives.
 use std::sync::Arc;
 
 use arrow_array::types::Int32Type;

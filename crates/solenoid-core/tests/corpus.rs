@@ -1,7 +1,5 @@
-// [[C130]] rustCore
-//! The frame-verb corpus (`fixtures/frame-verbs`), run natively through the engine's own commands:
-//! the same files `frameVerbCorpus.test.ts` runs in wasm. Cells compare as there: numbers
-//! sign-of-zero blind, errors by code.
+// [[C130]] rustCore, [[frame-verbs#The corpus]]
+//! The frame-verb corpus (`fixtures/frame-verbs`), natively.
 
 use std::fs;
 use std::path::Path;
