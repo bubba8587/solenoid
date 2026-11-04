@@ -636,11 +636,7 @@ describe("[[B12]] losslessSaves — every documentStore verb that swaps the canv
   });
 });
 
-describe("components never call node.data() (tree/specs/floors/components.md § The rules)", () => {
-  // `data()` assumes the engine's input boundary (coercion and, for most
-  // nodes, the error guard) has run; a component calling it raw gets
-  // un-coerced inputs and can throw during render (the NoteNode/CurveNode
-  // comments record exactly this). Components extract a pure helper instead.
+describe("components never call node.data() ([[components#The rules]])", () => {
   it("no component source calls .data(", () => {
     const offenders: string[] = [];
     // The components floor: components/, flow/ and the top-level .tsx chrome.
@@ -657,7 +653,7 @@ describe("components never call node.data() (tree/specs/floors/components.md § 
     }
     expect(
       offenders,
-      `Components must not call node.data() (tree/specs/floors/components.md § The rules) — extract a pure helper ` +
+      `Components must not call node.data() ([[components#The rules]]) — extract a pure helper ` +
       `(the input boundary assumes engine-driven calls):\n  ` + offenders.join("\n  "),
     ).toEqual([]);
   });
@@ -864,12 +860,7 @@ describe("[[B14]] oneDesignSystem — frame-input labels follow the column-role 
   });
 });
 
-// ─── heroChipRow: a chip in a hero box rides the shared flex row ─────────────
-// `.solenoid-node__display-value` is a BLOCK sized for a 16px text line; an inline chip
-// baseline-aligns in it and lands ~3px low. Five separate "center the chip" fixes were
-// per-card inline styles (a `justifyContent` without `display: flex` does nothing), and
-// each new chart card copied a broken one. The ONE home is the
-// `solenoid-node__display-value--chip` modifier (nodeCard.css); no card restates it.
+// ─── heroChipRow: [[components#The value box]] ───────────────────────────────
 describe("heroChipRow: hero-box chips use the shared --chip row, never an inline alignment", () => {
   const COMPONENTS = path.join(SRC, "components");
   const CHIP_TAG = /<(ChartChip|DiagramChip|DocumentChip|ErrorChip)[\s/>]/;
@@ -916,10 +907,7 @@ describe("[[A1]] visualGraphCalculator — the movement stack reads sizes throug
 });
 
 describe("[[B19]] spreadsheetHabits — no raw text field commits per keystroke", () => {
-  // A raw <input>/<textarea> whose onChange recomputes the graph commits every
-  // character. Discrete controls (checkbox, radio, range, color, <select>) apply
-  // immediately by the same rule, and the draft-commit fields expose onChange as the
-  // COMMIT callback, so only the raw text elements are scanned.
+  // [[components#The rules]]; the draft-commit fields' onChange is their commit, so only raw elements are scanned.
   it("no <input> or <textarea> onChange calls processGraph", () => {
     const bad: string[] = [];
     for (const file of walk(SRC).filter((p) => p.endsWith(".tsx"))) {
@@ -1051,9 +1039,7 @@ describe("the shared test project never runs a module mock", () => {
   });
 });
 
-// ─── heroLast: the result box is the card's last row ─────────────────────────
-// A Recalculate button, a formula's error line or a status note under the result made
-// cards end differently; they go above it (floors/components.md § The value box).
+// ─── heroLast: [[components#The value box]] ──────────────────────────────────
 describe("heroLast: nothing that acts on the answer sits under a card's result box", () => {
   const RESULT = /<(ValueDisplay|ResultDisplay|TableDisplay|FrameDisplay|FrameOrCubeDisplay)\b/;
   const AFTER = /<(RecalcButton|FormulaError)\b|solenoid-expr__error|violations\.length/;
