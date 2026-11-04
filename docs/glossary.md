@@ -53,6 +53,10 @@ cables (the author, 2026-10-25).
 
 ## Values, types, errors
 
+- **Keyed vs typed** (the author, 2026-11-04): *keyed* (keyed in, a keyed literal) is what a person enters at
+  the keyboard; *typed* means a value has a type (a typed value, a typed socket). Write "keyed" for keyboard
+  entry, so "typed" keeps one meaning. Older docs still say "typed literal" for a keyed one; fix it where you
+  edit.
 - **SolError**: a tagged error value (`#DIV/0!`, `#SHAPE!`, `#TYPE!`, `#DOMAIN!`,
   `#OVERFLOW!`, `#CIRC!`, `#N/A`…) that propagates through the graph. One notion of
   error; `ISERROR` ⟺ `IFERROR`. (`errorValue.ts`)
