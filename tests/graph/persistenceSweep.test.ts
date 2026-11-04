@@ -213,6 +213,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     defVars: "the definition's variables/params, re-stashed per compute for the binding pickers",
     rawInputs: "the pass's raw wired values (chart/lookup diagnostics)",
     noWidenInputs: "coercion rank-widening opt-out set (XLOOKUP source); constructed, not persisted",
+    dateLiterals: "a class's opt-in to typed date literal fields (Expect's range bounds, [[D120]]); constructed, not persisted",
     seenError: "per-pass error latch",
     violations: "per-pass check results", results: "per-pass sweep results",
     cachedHolds: "per-pass hold state", solvedFor: "per-pass solve marker",
