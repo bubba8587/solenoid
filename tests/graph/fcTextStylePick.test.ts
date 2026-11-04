@@ -1,4 +1,4 @@
-// [[C118]] formatTravelsWithValue
+// [[C118]] formatTravelsWithValue, [[format-model#The control truth table]]
 import { describe, it, expect } from "vitest";
 import { FormatControllerNode } from "../../src/graph/nodeClasses";
 

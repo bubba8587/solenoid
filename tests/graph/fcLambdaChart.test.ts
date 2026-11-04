@@ -1,5 +1,5 @@
-// [[C100]] chartIsAValue, [[chart-figures#A Format Controller on a chart socket]]
-// The wiring is DisplayNode's own: getForNode, then inAnnotation, then downstreamAnnotation.
+// [[C100]] chartIsAValue, [[format-model#The control truth table]]
+// Through DisplayNode's own chain (getForNode → inAnnotation → downstreamAnnotation), with real node classes.
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";

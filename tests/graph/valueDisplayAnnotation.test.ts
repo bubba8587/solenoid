@@ -14,10 +14,7 @@ import { fromUnit } from "../../src/graph/unitValue";
 import { formatScalar } from "../../src/graph/components/format";
 import { fcUnitToUnit } from "../../src/graph/dimension";
 
-// resolveDisplayAnnotation is the ONE question every value surface asks (nodeKit's
-// ValueDisplay + output rows, DisplayNode, TableDisplay, the pins, the cable
-// inspector, collapsed group readouts). Its three steps are pinned here; the walk
-// itself belongs to unitFlowAnnotation.test.ts.
+// [[format-model#Where the model is enforced]]
 
 type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
 const sock = new (class extends GraphSocket {})("any");
@@ -145,8 +142,7 @@ describe("formatListCell — the same annotation reaches every list cell", () =>
   });
 
   it("a CARRIED format (unit stripped) leaves the cell's own unit standing", () => {
-    // A format crossing a transform arrives with unit "none" ([[C118]] formatTravelsWithValue);
-    // the unit rides the VALUE, so the $ must survive — only the style is the ann's.
+    // A carried format's unit is "none"; the $ rides the value ([[C118]] formatTravelsWithValue).
     const carried: FormatAnnotation = { format: "decimal", decimalDigits: 2, decimalMode: "places", unit: "none", customUnit: "" };
     const dollars = fromUnit(1000, fcUnitToUnit("usd")!, "usd");
     expect(annotationForValue(dollars, carried)?.unit).toBe("usd");

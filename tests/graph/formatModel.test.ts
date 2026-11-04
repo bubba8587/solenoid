@@ -1,15 +1,13 @@
-// [[C118]] formatTravelsWithValue
+// [[C118]] formatTravelsWithValue, [[format-model#Where the model is enforced]]
 import { describe, it, expect } from "vitest";
 import { familyOf, controlsFor, precisionApplies } from "../../src/graph/formatModel";
 import { applyLogicalStyle } from "../../src/graph/formatAnnotationStore";
 import type { SocketDataType } from "../../src/graph/sockets";
 
-// The spec's truth table (tree/specs/values/format-model.md), machine-checked.
+
 
 describe("familyOf — the ENTIRE SocketDataType union is covered or explicitly none", () => {
-  // Every member of the union, exhaustively — a new socket type must be added
-  // here (Record<SocketDataType, …> makes tsc flag the omission), so it can't
-  // silently fall into the FC's "none" family without a decision.
+
   const EXPECTED: Record<SocketDataType, string> = {
     number: "number", list: "number", numlist: "number", table: "number",
     anytable: "number",           // formats its numeric cells

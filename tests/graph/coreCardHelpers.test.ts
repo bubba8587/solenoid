@@ -1,4 +1,4 @@
-// [[C118]] formatTravelsWithValue, [[C114]] cardsView, [[D99]] rustIsSpec
+// [[C118]] formatTravelsWithValue, [[C114]] cardsView, [[D99]] rustIsSpec, [[format-model#Rendering order]]
 // The helpers the Record card shares with the Table popup, frozen for the core's copies
 // (`crates/solenoid-core/src/card_helpers.rs`, held to these by its `tests/card_helpers.rs`): a number as a format
 // annotation shows it, the Cards view's plan, and the Record layout grammar.
@@ -70,7 +70,7 @@ it("numbers show through their annotations as frozen", () => {
     return out;
   });
   expect(cases.length).toBeGreaterThan(20000);
-  // The app's own entry point answers a sample of the frozen cases; tests/card_helpers.rs (solenoid-core) answers all.
+  // The app's own entry point answers every frozen case.
   initPackFcExtensions();
   const prior = { numberDecimals: settingsStore.get("numberDecimals"), sciAbove: settingsStore.get("sciAbove") };
   const bad: unknown[] = [];

@@ -1,8 +1,5 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec, [[C25]] firstClassUnits
-// The Format Controller reconcile's frozen answers (fixtures/core/fc-reconcile.json.gz): every seed graph, as saved, with
-// every third cable dropped and in reverse node order, and 300 seeded graphs of FCs, Displays and Converts, once its types
-// settle: each FC's type and the from-unit a Convert
-// ahead dictates, and each Convert's arrows; with the facts the reconcile reads (`fcFacts`).
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[C25]] firstClassUnits, [[format-model#The FC card]]
+// The Format Controller reconcile's frozen answers (fixtures/core/fc-reconcile.json.gz).
 import { isDeepStrictEqual } from "node:util";
 import { describe, expect, it } from "vitest";
 import { freezes, frozen } from "./coreFixtures";

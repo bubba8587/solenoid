@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C118]] formatTravelsWithValue
+// [[B12]] losslessSaves, [[C118]] formatTravelsWithValue, [[format-model#The FC card]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
@@ -8,12 +8,7 @@ import { formatAnnotationStore } from "../../src/graph/formatAnnotationStore";
 import seed from "../../src/graph/seedGraphs/personal-finance.json";
 import { reconcileFcs } from "../../src/graph/fcReconcile";
 
-// Faithfully replay the personal-finance seed's load order — build every node,
-// then add each connection in file order and, after each, run the FC derive that
-// Canvas's connectioncreated pipe runs (adaptType + refreshAnnotation for every
-// FC), then dockSelf + a final refresh — and assert each money FC's `format`
-// AND the annotation it writes both end at "currency_usd" (no silent reset to
-// "auto", which is the reported "Auto dropdown but currency value" desync).
+
 type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
 type SavedNode = { id: string; type: string; init?: Record<string, unknown> };
 type SavedConn = { source: string; sourceOutput: string; target: string; targetInput: string };

@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[react-flow-surface-contract#Format Controller docking]]
+// [[B12]] losslessSaves, [[react-flow-surface-contract#Format Controller docking]], [[format-model#The FC card]], [[type-propagation-on-in-place-socket-retype#Three derived-type systems, one settle point]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection } from "../../src/graph/graphModel";
@@ -38,12 +38,7 @@ async function buildChain() {
 }
 
 describe("a docked FC keeps its saved date style through load-time type hops", () => {
-  // The author's chain: Script → Display → FC set to "Wed, Jun 3, 2026". A Script's
-  // output type is only known after the data pass: at load the Display's `out` reads
-  // the wildcard, then the Script's construction-time NUMBER family, then the real date
-  // family. Re-defaulting the pick on each hop turned the saved date style into "auto"
-  // and then into the FIRST date style. The pick is never rewritten now; a pick outside
-  // the socket's family is inert (`effectiveFormat()`) until the family comes back.
+  // The chain: Script → Display → FC set to "Wed, Jun 3, 2026".
   it("resolving through trueany leaves the pick alone; the real date type keeps it", async () => {
     const editor = new GraphEditor() as unknown as AnyEditor;
     const disp = new DisplayNode();

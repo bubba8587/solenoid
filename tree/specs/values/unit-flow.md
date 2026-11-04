@@ -399,7 +399,7 @@ flowchart TD
 
 1. **Convert** (duck-typed: string `fromUnit` and `toUnit`) drops the inherited format. It sets a new unit and rescales the number, so the old precision no longer fits. It is the one transform that drops.
 2. **A per-output producer** (`annotationFor(outKey)`) locks each output's own format, such as a Triangle angle's ° or an inverse-trig result in degrees. When it returns none for an output, the rule falls through to the transform carry below. So a Triangle side (a value-level unit, not a format) or Element Z carries no format (no `formatCarry`), while MathFn's abs and round still carry, which is how abs(−5%) stays a percent.
-3. **An FC that may inherit** (`resolveAnnotation`) merges the format arriving at its `in` with its own unit ([[format-model]], "Inheriting the format"); it wins wherever it is present.
+3. **An FC that may inherit** (`resolveAnnotation`) merges the format arriving at its `in` with its own unit ([[format-model#Inheriting the format (`—`)]]); it wins wherever it is present.
 4. **An FC or node-level producer** locks its own `annotation()`.
 5. **A passthrough** (from the one `passthrough()` declaration; Display and the selectors) carries its input's format. The data-aware `selectedPassInput` picks the branch the node actually computed, so `IF(true, km, mi)` follows `then`. When the pick is undetermined, `passInputKeys` names the value branches and their annotations combine: every present one must share the same unit, format and custom unit, or the result is none. A passthrough with no value keys carries its first input's annotation.
 6. **A Conduit lane** `out_i` inherits `in_i`, duck-typed on `cachedLane`, on purpose with no `passthrough()` declaration.
