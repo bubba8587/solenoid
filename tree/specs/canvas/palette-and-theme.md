@@ -8,7 +8,9 @@ tags: [spec, canvas]
 
 Serves [[B14]] oneDesignSystem: every color rule below exists so the app wears one look at a time. It covers what the system does and blocks, and the decision each behavior serves.
 
-Every color the app paints comes from one of two places. A **palette** is a named set of twelve accent colors plus, optionally, a neutral ramp for the workbench around the graph. The **theme** is the user's accent choice and light or dark mode, which `appTheme.ts` writes onto `<html>` as CSS custom properties. The palette half lives in `palette.ts`; the theme half in `appTheme.ts` and `themeVars.ts`. What each built-in palette is meant to look like, and the structure every neutral ramp keeps, is in `DESIGN.md` §2 Colors. `palette.test.ts` pins the behavior.
+Every color the app paints comes from one of two places. A **palette** is a named set of twelve accent colors plus, optionally, a neutral ramp for the workbench around the graph. The **theme** is the user's accent choice and light or dark mode, which `appTheme.ts` writes onto `<html>` as CSS custom properties. What each built-in palette is meant to look like, and the structure every neutral ramp keeps, is in `DESIGN.md` §2 Colors.
+
+Code: `palette.ts` (the palette half), `appTheme.ts` and `themeVars.ts` (the theme half), `cssColor.ts`, `categoryColor.ts`.
 
 ```mermaid
 flowchart LR
@@ -52,7 +54,9 @@ The gray swatch cycles through three values: `neutral-white` (default `#f3f4f6`,
 
 `neutralHex(slot)` draws all three from the active palette's chrome, so on a tinted palette they are that palette's neutrals and not foreign grays ([[B14]] oneDesignSystem): a palette sets the look of the whole workbench, so its neutrals belong to it too, and a plain gray on a navy workbench looks out of place. Each shade borrows one color from the palette's dark-mode chrome ramp: white takes its `text`, gray its `textMuted`, and dark its `borderStrong`. The borrowed color is used only if it still looks like that shade, which means its OKLCh lightness is between 0.85 and 1 for white, 0.45 and 0.8 for gray, or 0.2 and 0.55 for dark. Solarized's dim text, for example, is too dark to count as white. When the borrowed color is out of its band, the shade keeps its default (`#f3f4f6` for white, the palette's `gray` slot for gray, `#3a3d42` for dark), tinted with the hue of the ramp's background (`appBg`) at a chroma of at most 0.05, keeping the default's lightness. A palette with no chrome ramp keeps the plain defaults. `resolveColor` routes the white and dark shades through it, and `resolveAccent` the app accent's gray, so groups, notes and cables colored with a neutral shade follow the palette the same way. A gray node or socket keeps the palette's own `gray` slot. **Reopen if:** a palette's chrome text or border reads badly as an accent; that palette then names its neutrals itself.
 
-`nextNeutral` steps gray to dark to white to gray, and any real color steps to gray. `NEUTRAL_CYCLE` lists them in the order the split disc draws them: upper left white, middle gray, lower right dark. `NEUTRAL_HEX` has a null prototype, so a stored slot such as `"constructor"` reads as undefined rather than a function.
+`nextNeutral` steps gray to dark to white to gray, and any real color (or none) steps to gray. `NEUTRAL_CYCLE` lists them in the order the split disc draws them: upper left white, middle gray, lower right dark. The two extremes are reachable only through the gray swatch and never appear as swatches of their own. `NEUTRAL_HEX` has a null prototype, so a stored slot such as `"constructor"` reads as undefined rather than a function.
+
+Tests: `palette.test.ts`: the cycle and its homing to gray, the neutrals plain under Default and taken from the chrome under a tinted palette (Solarized's dim text falling back to a white tinted with its background's hue), only the extremes counting as neutral shades, and neither extreme in the swatch grid.
 
 ## Socket colors
 
@@ -82,10 +86,14 @@ The accent drop, the list shade and the ring run in HSV, the matrix shade in OKL
 
 ## Card colors
 
-A card's accent is its node kind's slot (`NODE_KIND_SLOTS` in `nodes/shared.ts`); `nodeKindOf` in `nodes/kind.ts` files each card under a kind (its family), and a card it doesn't list falls back to math. Filing a card under a family is how its color is chosen, and the families stay as chosen. `nodeAccent` is the one place a card's color is read, and every consumer (the card header, the Navigator, the minimap, the canvas snapshot) goes through it. It departs from the kind's slot in two cases:
+A card's accent is its node kind's slot (`NODE_KIND_SLOTS` in `nodes/shared.ts`); `nodeKindOf` in `nodes/kind.ts` files each card under a kind (its family), and a card it doesn't list falls back to math. Filing a card under a family is how its color is chosen, and the families stay as chosen. `nodeAccent` is the one place a card's color is read, and every consumer (the card header, the Navigator, the minimap, the canvas snapshot) goes through it, so a minimap can never stay one color while its card recolors. It returns a concrete, theme-resolved hex, never a CSS variable, which a `<canvas>` can't paint. It departs from the kind's slot in two cases:
 
 - **Socket-driven cards** (List Input, Table Input, Sets, the Format Controller) wear their first output socket's color, so a retype recolors them.
-- **Unfiled cards** ([[B14]] oneDesignSystem): a card `explicitKindOf` returns no kind for, with exactly one output whose type is not a number, list, numeric matrix or wildcard, wears that output socket's color. A numeric fallback keeps math blue. A card's color tells you what it makes; math blue exists only so every card has a color, and a text or date result on a blue card would read as a number. **Reopen if:** the unfiled cards get a family of their own.
+- **Unfiled cards** ([[B14]] oneDesignSystem): a card `explicitKindOf` returns no kind for, with exactly one output whose type is not a number, list, numeric matrix or wildcard, wears that output socket's color. A numeric fallback keeps math blue. A card's color tells what it makes; math blue exists only so every card has a color, and a text or date result on a blue card would read as a number. **Reopen if:** the unfiled cards get a family of their own.
+
+`nodeAccentSlot` is the slot behind the accent the card paints, so a group of unfiled text cards takes their lime, not math blue.
+
+Tests: `nodes/kind.test.ts`: a plain card's theme-resolved kind color, always a concrete hex, List Input and Table Input tracking their element socket across a retype, the chart cards in chart green, an unfiled card wearing its one non-numeric output's color while a numeric one keeps math blue, and `nodeAccentSlot`.
 
 ## Accent helpers
 
@@ -94,9 +102,11 @@ A card's accent is its node kind's slot (`NODE_KIND_SLOTS` in `nodes/shared.ts`)
 - `hexToRgba(hex, alpha)`: falls back to `rgba(139,124,246,alpha)` for a bad hex.
 - `contrastInk(hex)`: the text or icon color for a solid fill: `#fff` when white clears 3:1 WCAG contrast against the fill (`1.05 / (L + 0.05) ≥ 3`, L the fill's WCAG relative luminance, so L ≤ 0.3), else `#1a1a1a`, and `#fff` for a bad hex. This is Android Chrome's own rule for the toolbar it tints with `theme-color` (`ColorUtils.shouldUseLightForegroundOnBackground`), and `theme-color` is the accent, so the app's accent ink and the browser's icons always agree. The earlier rule, gamma-encoded luma (0.299 R + 0.587 G + 0.114 B) above 0.62, overweighted greens and blues and put white on fills Chrome gave dark icons (Default green and sky, Neon green). Results are cached per hex, because a card asks for its ink on every render. Each palette change bakes the ink for every slot of the effective palette in its raw form and in both theme modes (`bakeInks`), since the light-mode drop can move a color across the threshold.
 
+Tests: `palette.test.ts`: every slot in both modes gets one of the two inks, the ink agrees with Android Chrome's rule, and the cache agrees with a fresh computation.
+
 ## The built-in palettes
 
-`BUILTIN_PALETTES` holds nine palettes, and `PALETTE_NAMES` lists them in this order:
+`BUILTIN_PALETTES` holds nine palettes, each setting all twelve slots as hexes. Slots may share a color only where color blindness forces it (Colorblind-safe maps twelve slots onto a smaller proven set) or where a palette is monochrome by design (Equinox); every other built-in gives all twelve slots distinct colors. `PALETTE_NAMES` lists them in this order:
 
 - **Default**: `PALETTE` itself.
 - **Muted**: the Default hues at about 0.62 of their saturation, with lightness nudged toward the middle.
@@ -112,7 +122,9 @@ A card's accent is its node kind's slot (`NODE_KIND_SLOTS` in `nodes/shared.ts`)
   4. **Spacing guard.** Within that window the slot takes the brightest candidate (81 samples, each through steps 1 and 2) whose OKLab distance to every other slot is at least the floor: Default's closest pair among the socket slots (gold and lime). If none qualifies, it takes the candidate with the most room. Slots choose in order of reach, darkest hue first, and the whole round runs three times so later choices are seen by earlier ones.
 
   The point of the guard is that brightening crowds colors toward the luminance peaks (yellow, cyan, magenta), where the neighbors are: without it gold and lime meet at yellow, and pink and purple at magenta.
-- **Dawn and Dusk**: Default's slots, softened and tinted toward the dusk ground, never authored (`dawnDuskPalette`). Each slot keeps its Default OKLab lightness; its chroma is scaled to 65% (`DD_SATURATION`), then it moves 10% of the way in OKLab a/b toward the dusk color (`DD_TINT`; the heatmap's `plasma` colormap at 0.4, the same purplish burgundy the dark ground uses), which warms every hue a little toward that ground so the set reads as one scene. Gray takes 3% of the tint. Plasma is the palette's inspiration, not a target: it supplies the tint and the chrome's two hues, and nothing else. As a sanity check, socket slots stay at least 60% of Default's closest socket-pair distance apart and no pair falls under 60% of the smaller of that distance and its own Default distance (`palette.test.ts`); gold and lime, Number and String, are the closest, at about 68%, the author having put harmony with the grounds first.
+- **Dawn and Dusk**: Default's slots, softened and tinted toward the dusk ground, never authored (`dawnDuskPalette`). Each slot keeps its Default OKLab lightness; its chroma is scaled to 65% (`DD_SATURATION`), then it moves 10% of the way in OKLab a/b toward the dusk color (`DD_TINT`; the heatmap's `plasma` colormap at 0.4, the same purplish burgundy the dark ground uses), which warms every hue a little toward that ground so the set reads as one scene. Gray takes 3% of the tint. Plasma is the palette's inspiration, not a target: it supplies the tint and the chrome's two hues, and nothing else. As a sanity check, socket slots stay at least 60% of Default's closest socket-pair distance apart and no pair falls under 60% of the smaller of that distance and its own Default distance (`palette.test.ts`); gold and lime, Number and String, are the closest, at about 68%, harmony with the grounds having been put first.
+
+Tests: `palette.test.ts`: every palette sets twelve hex slots, distinct outside Colorblind-safe and Equinox; Neon keeps Default's gray, makes every other slot readable on black, keeps the hue order with each pair a third of its Default gap, and puts no two slots closer than Default's closest socket pair; Dawn and Dusk keeps its socket spacing floor and Default's lightness steps on every chrome key.
 
 ## The neutral chrome ramp
 
@@ -128,9 +140,11 @@ Besides its slots, a palette may author the **chrome ramp**: the neutral workben
 | `surfaceRaised` | `--surface-raised` | `textMuted` | `--text-muted` |
 | `border` | `--border` | | |
 
-A ramp is all or nothing ([[B14]] oneDesignSystem): a palette sets every key in both modes or none and keeps the app's own, because a palette that set only some of the neutrals would leave the app wearing two looks at once. The other neutrals are mixed from that one set, never set one by one, so moving the set moves the whole chrome, including on a palette nobody has checked by eye. A tinted palette's workbench follows the accent the user picked ([[#Accent-adaptive ramps]]), and a document pinned to a palette takes its workbench too ([[#Which palette is in effect]]). A palette may recolor the workbench but never break its structure (`DESIGN.md` §2: canvas darker than a card, a legible dot, the field brightest in light mode and a recess in dark mode, hover stepping toward the ink, three border tiers stepping outward, four ink tiers stepping down in contrast); `palette.test.ts` checks it over every ramp, Default's included, since a rule Default fails is a wrong rule. The WCAG AA requirement (4.5:1 for ink on a card and a field) binds only Default, which nobody chose, and Colorblind-safe, which exists to be legible (`AA_PALETTES` in `palette.test.ts`); the others are looks a user opts into, whose value is fidelity to that look. A palette that becomes anyone's default joins `AA_PALETTES` that day. **Reopen the all-or-none rule if:** the workbench needs more than flat colors, such as a texture, a vignette or a workbench per document. Default authors none (`NO_CHROME`), because it is App.css's own ramp; every other built-in authors all thirteen keys in both modes. The rest of the neutral chrome follows the ramp two ways: through App.css's own `var()` chains (`--btn-bg` from `--surface-sunken`, `--panel-border` from `--border`, `--panel-bg` and `--overlay-bg` from `--surface`), and through the derived tokens below.
+A ramp is all or nothing ([[B14]] oneDesignSystem): a palette sets every key in both modes or none and keeps the app's own, because a palette that set only some of the neutrals would leave the app wearing two looks at once. The other neutrals are mixed from that one set, never set one by one, so moving the set moves the whole chrome, including on a palette nobody has checked by eye. A tinted palette's workbench follows the accent the user picked ([[#Accent-adaptive ramps]]), and a document pinned to a palette takes its workbench too ([[#Which palette is in effect]]). A palette may recolor the workbench but never break its structure (`DESIGN.md` §2: canvas darker than a card, a legible dot, the field brightest in light mode and a recess in dark mode, hover stepping toward the ink, three border tiers stepping outward, four ink tiers stepping down in contrast); `palette.test.ts` checks it over every ramp, Default's included, since a rule Default fails is a wrong rule. The WCAG AA requirement binds only Default, which nobody chose, and Colorblind-safe, which exists to be legible (`AA_PALETTES` in `palette.test.ts`); the others are looks a user opts into, whose value is fidelity to that look (Solarized sits near 3:1 by design, and forcing AA would no longer be Solarized). A palette that becomes anyone's default joins `AA_PALETTES` that day. The requirement is 4.5:1 for every ink tier on a card and a field, and for the body text on the canvas; the secondary tiers are not held on the canvas, since nothing sets them there and App.css's own light ramp sits at 4.35 there. **Reopen the all-or-none rule if:** the workbench needs more than flat colors, such as a texture, a vignette or a workbench per document. Default authors none (`NO_CHROME`), because it is App.css's own ramp; every other built-in authors all thirteen keys in both modes. The rest of the neutral chrome follows the ramp two ways: through App.css's own `var()` chains (`--btn-bg` from `--surface-sunken`, `--panel-border` from `--border`, `--panel-bg` and `--overlay-bg` from `--surface`), and through the derived tokens below.
 
 `DEFAULT_CHROME` is a hand-kept copy of App.css's two `:root` ramps. It is never written to the DOM. It seeds the Custom palette's ramp and the custom palette editor's chrome wells, so an author edits away from what they see. No test can read the stylesheet, so keep it in step with App.css by hand.
+
+Tests: `palette.test.ts`: every declared chrome key is known and a hex, a palette authors no ramp or a complete one in both modes, switching the app base swaps the ramp, a document pin picks the chrome and wins over the app's choice; every ramp and App.css's own keep the `DESIGN.md` §2 structure (a tinted canvas a clear step below its cards); every ink tier of the AA palettes clears 4.5:1, and those palettes are all among the ramps checked.
 
 ### App.css: the fallback tokens and the ramp's roles
 
@@ -177,6 +191,8 @@ On a tinted ramp the canvas and the cards share one hue, so only lightness sets 
 
 Light shadows take the ink's hue, so a warm ramp casts a warm shadow; dark mode keeps App.css's black. The mix steps were calibrated by running the Default ramp through them and matching App.css's hand-tuned literals. Retune a step by redoing that comparison, never by nudging it until one palette looks right.
 
+Tests: `palette.test.ts`: an unauthored ramp produces nothing, a partial ramp writes what it has and derives nothing, a full ramp writes all thirteen tokens plus the derived ones (all of them in light mode, five fewer in dark), and the Default ramp derives every token too.
+
 ### Accent-adaptive ramps
 
 `CHROME_HOME` names the slot a tinted ramp was authored against: Orchard `green`, Blueprint `blue`. Every other palette, Custom included, holds still. `adaptChrome(ramp, homeHex, accentHex)` retints such a ramp for the live accent:
@@ -186,16 +202,20 @@ Light shadows take the ink's hue, so a warm ramp casts a warm shadow; dark mode 
 3. Take the hue difference from home to accent, 0 to 360°. Within 0.5° of zero, return the ramp unchanged.
 4. Otherwise rotate every valid key's OKLCh hue by that difference (`rotateHueKeepLum`), holding its chroma, then bisect OK lightness (22 steps) until its WCAG relative luminance matches the authored value. Luminance rises steadily with OK lightness at fixed chroma and hue, so the bisection lands. Out-of-gamut results come back into gamut by bisecting chroma toward gray (16 steps) at fixed lightness and hue, so chroma can only drop, never grow.
 
-Returning the ramp object itself, rather than a copy, means the authored hexes pass through byte-identical at home.
+Returning the ramp object itself, rather than a copy, means the authored hexes pass through byte-identical at home. Each palette's own gray sits below the chroma floor, so picking a neutral accent never retints the workbench.
+
+The rotation may retint but never relight: every key keeps its WCAG luminance (within 8-bit rounding), its chroma never grows and drops only where the sRGB gamut is tighter at the new hue (near-white creams carried to pink, dark teals), and every structure rule holds for every adaptive palette under every pickable accent.
 
 Solarized, Colorblind-safe, Equinox, Muted and Custom do not rotate. The rotation does not reopen the socket-sibling HSV rule (`DESIGN.md` §Tertiary), whose steps stay near their own hue. The rotation is in OKLCh, never HSL: HSL's saturation varies with hue, so an HSL rotation washed the workbench in the accent color, at up to twice the authored perceived chroma on Orchard's dark ground.
+
+Tests: `palette.test.ts`: a home only on a palette that authors chrome, naming one of its own slots; the ramp passed through as the same object at home and for a gray accent; every key rotated by the hue difference with its luminance and chroma held, under every accent; the structure kept under every accent; and `chromeHomeHex` following the effective base, a document pin included, with Custom never adapting.
 
 ## Which palette is in effect
 
 Three layers decide the palette:
 
 - **The app base**, the user's switcher choice: a built-in name or `"Custom"`. It persists in `localStorage` under `solenoid.palette`.
-- **The document pin**: a document may declare `palette: { base?, overrides? }` ([[save-format]]). The base must be a built-in name; `overrides` maps slot ids to hexes, and unknown slots or non-string values are dropped. The pin wins over the app base for that document and never changes it.
+- **The document pin**: a document may declare `palette: { base?, overrides? }` ([[save-format]]). The base must be a built-in name; `overrides` maps slot ids to hexes. An unknown base, an unknown slot and any value that isn't a `#rrggbb` hex are dropped, so a shared file can't write markup into an exported page's stylesheet ([[C103]] untrustedContentSeams). The pin wins over the app base for that document and never changes it.
 - **The report palette**: a document may also declare `reportPalette` in the same shape. It colors only report and export surfaces, never the canvas, so a brand override for an export does not retint the live graph ([[reports-and-notes]]).
 
 ```mermaid
@@ -217,6 +237,8 @@ From these, `recompute` builds:
 
 `paletteStore.chromeHomeHex()` returns the home slot's hex from the built-in palette itself, never through document overrides, because the ramp was tuned against the palette's authored colors. It is null for Custom and for palettes with no home.
 
+Tests: `palette.test.ts`: with nothing declared the report mirrors the canvas; a report override or base pin changes the report and leaves the canvas alone; a non-hex override is dropped from the report and the document pin alike; the report declaration serializes only what was declared, round-trips, clears with `null`, and ignores an unknown base or slot.
+
 ### The Custom palette
 
 Custom is the user's own palette, and only the app base may be Custom. Its slot map (`solenoid.palette.custom`) starts as `PALETTE`. Its ramp (`solenoid.palette.custom.chrome`) is always complete, seeded from `DEFAULT_CHROME`, so choosing Custom always pins a ramp, one that starts identical to App.css.
@@ -228,6 +250,11 @@ Custom is the user's own palette, and only the app base may be Custom. Its slot 
 Each edit persists, and recomputes and notifies both stores only when Custom is actually on screen: the app base is Custom and no document pin overrides it. `paletteEditorPanel` is the editor's open flag. The Settings dialog's palette picker lists the built-ins plus Custom. The group member-dot store keeps each member's palette slot and resolves it when read, and it notifies on every palette change, so no switch path has to rebuild group membership.
 
 `initPalette()` runs once at startup. It reads the custom map and ramp (ignoring anything malformed, and keeping only valid hexes over the defaults), then the app base, recomputes, and notifies so subscribers pick up a persisted palette. Every `localStorage` read and write is wrapped in try/catch, so a private window still works.
+
+Tests:
+
+- `palette.test.ts`: a custom map active as the app base and edited live, a template seeding every slot, an edit while a built-in is active leaving the canvas alone, invalid hexes ignored by a slot edit and by `setCustomMap`, `customMap()` returning a copy, a whole map committed at once; the custom ramp starting neutral, always complete and edited on Save, and a template reseeding it (a chromeless one back to neutral).
+- `groupMembership.test.ts`: group member dots follow a palette switch with no rebuild, and announce it.
 
 ## The theme
 
@@ -249,10 +276,14 @@ The marketing pages' `.sol-landing` wrapper overrides the four accent variables 
 ## Palette-derived color for charts and chips
 
 - **The height ramp** (`heightRampColor(t)`, for Surface, Contour and Vector Field, and the default of the Heatmap, Calendar Heatmap's colormap and an XY figure's `c`): the slots blue, green, teal and gold exactly as the palette has them, sorted darkest to lightest by relative luminance, so the ramp reads as height and every stop is a palette color. Those four climb in luminance in every built-in palette (only green and teal trade places), which is why they were chosen. The diverging ramp (`divergingRampColor`, a Heatmap with a `center`) is blue, gray and vermilion, likewise unaltered. `t` is clamped to 0 to 1 and interpolated linearly between stops. The stops are cached per palette version, since a draw calls this thousands of times.
-- **Category chips** (`categoryColorIndex(values)` in `categoryColor.ts`): each distinct string gets an index by first appearance, skipping null and undefined. It is pure and order-deterministic, so a value keeps its index wherever it sits and a chip keeps its color when rows are reordered for display. The index maps to the chart series colors (`useSeriesColors`, modulo their count) at render time.
+- **Category chips** (`categoryColorIndex(values)` in `categoryColor.ts`): each distinct string gets an index by first appearance, skipping null and undefined. It is pure and order-deterministic, so a value keeps its index wherever it sits and a chip keeps its color when rows are reordered for display (the renderer feeds the source order). The index maps to the chart series colors (`useSeriesColors`, modulo their count) at render time.
+
+Tests: `categoryColor.test.ts`: an index by first appearance, deduplicated, with null and undefined skipped.
 
 ## Color math for canvas renderers
 
 A `<canvas>` cannot evaluate `color-mix()` or `var(--…)`, so `cssColor.ts` does that math for the canvas renderers. It stays free of the DOM; resolving a `var()` needs `getComputedStyle` and is the caller's job.
 
-- `parseColor` reads `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, `rgb()` and `rgba()` (alpha as a fraction or a percentage), and `color(srgb r g b / a)`. Chromium serializes any `color-mix()` result in that last form, so without it header tints and group-tinted borders fall back to a flat body fill. Its channels are rounded after scaling to 0 to 255, because the serialized floats are truncated and a bare multiply lands one step low. Anything else returns null.
+- `parseColor` reads `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, `rgb()` and `rgba()` (alpha as a fraction or a percentage), and `color(srgb r g b / a)`. Chromium serializes any `color-mix()` result in that last form, so without it header tints and group-tinted borders fall back to a flat body fill. Its channels are rounded after scaling to 0 to 255, because the serialized floats are truncated and a bare multiply lands one step low. Whitespace is tolerated. Anything else (a named color, `hsl()`, a `var()`, an unresolved `color-mix()`) returns null.
+
+Tests: `cssColor.test.ts`: each hex form, `rgb()` and `rgba()`, whitespace, the `color(srgb …)` form with and without alpha, and null for the unsupported forms.

@@ -1,10 +1,7 @@
-// [[B14]] oneDesignSystem
+// [[B14]] oneDesignSystem, [[palette-and-theme#Palette-derived color for charts and chips]]
 import { describe, it, expect } from "vitest";
 import { categoryColorIndex } from "../../src/graph/categoryColor";
 
-// The Chip hue assignment (B2.2): distinct strings → palette index by first appearance.
-// Pure and value-keyed, so a value keeps its color anywhere in the column — the property
-// that makes chips stable when the display is reordered (the renderer feeds source order).
 
 describe("categoryColorIndex — the Chip hue assignment", () => {
   it("assigns a palette index by first appearance, deduped", () => {

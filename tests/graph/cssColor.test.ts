@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[B14]] oneDesignSystem, [[palette-and-theme#Color math for canvas renderers]]
 import { describe, it, expect } from "vitest";
 import { parseColor } from "../../src/graph/cssColor";
 
