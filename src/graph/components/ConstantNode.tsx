@@ -1,8 +1,6 @@
 import { ConstantNode as ConstantNodeType, ConstantOp, CONSTANTS } from "../nodeClasses";
-import { useSyncExternalStore } from "react";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
-import { CollapsedCell } from "./CollapsedCell";
-import { collapseStore } from "../collapseStore";
+import { CollapsedCell, useCollapsed } from "./CollapsedCell";
 
 const OPS: { value: ConstantOp; label: string }[] = Object.entries(CONSTANTS).map(
   ([value, meta]) => ({ value: value as ConstantOp, label: `${meta.symbol}  ${meta.label}` }),
@@ -17,7 +15,7 @@ function formatValue(n: number): string {
 export function ConstantComponent({ data, emit }: NodeProps<ConstantNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
   const meta = CONSTANTS[op];
-  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
+  const collapsed = useCollapsed(data.id);
   const render = (v: number) => <><span className="solenoid-const__symbol">{meta.symbol}</span>{formatValue(v)}</>;
   // Collapsed, the card is its value cell, read-only: a constant has nothing to key.
   return (

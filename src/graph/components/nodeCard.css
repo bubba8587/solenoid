@@ -1538,9 +1538,11 @@ body.solenoid-scrubbing * {
   color: var(--text);
 }
 
-/* A Constant's symbol (π, e) in the card's accent, so it reads as the constant's name beside its value on the open box
-   and on the tinted collapsed cell alike. */
-.solenoid-const__symbol {
-  margin-right: 6px;
+/* A Constant's symbol (π, e) and a Physics Constant's unit in the card's accent, so each reads as a label beside the
+   value on the open box and on the tinted collapsed cell alike. */
+.solenoid-const__symbol,
+.solenoid-const__unit {
   color: color-mix(in srgb, var(--node-accent, var(--accent)) 80%, var(--text));
 }
+.solenoid-const__symbol { margin-right: 6px; }
+.solenoid-const__unit { margin-left: 6px; font-size: 0.85em; }

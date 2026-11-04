@@ -1,10 +1,16 @@
 // [[C28]] literalsIffEditable
-import { useState, type ChangeEvent, type MouseEvent, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type ChangeEvent, type MouseEvent, type ReactNode } from "react";
+import { collapseStore } from "../collapseStore";
 import { ValueDisplay } from "./nodeKit";
 import { useDraftCommit } from "./inlineInput";
 import { stopDragStart } from "../coarse";
 import type { DisplayValue } from "./valueDisplayFormat";
 import "./CollapsedCell.css";
+
+/** Whether a card is collapsed, for a cell-collapse card choosing between its open value box and `CollapsedCell`. */
+export function useCollapsed(nodeId: string): boolean {
+  return useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(nodeId));
+}
 
 /** How a collapsed cell edits: the keyed text it opens, what commits it, and for a two-valued type a flip in place of
  *  the text. */

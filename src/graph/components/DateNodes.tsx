@@ -29,6 +29,7 @@ import { nodeDisplayName } from "../catalogUtils";
 import { dropInputCables } from "./cablePrune";
 import { IANA_ZONES } from "../timeZone";
 import { previewed } from "../listPreview";
+import { CollapsedCell, useCollapsed } from "./CollapsedCell";
 
 // Date nodes never format their own serials: ValueDisplay does it for any date-typed output socket.
 
@@ -41,11 +42,13 @@ export function TodayNowComponent({ data, emit }: NodeProps<TodayNowNodeType>) {
   function handleOp(next: TodayNowOp) {
     setOp(next);
   }
+  const collapsed = useCollapsed(data.id);
+  // Collapsed, the card is its value cell, read-only: the date or time it last read.
   return (
-    <NodeShell node={data} emit={emit}>
+    <NodeShell node={data} emit={emit} cellCollapse>
       <OpSelect value={op} onChange={handleOp} options={TODAY_NOW_OPS} />
       <RecalcButton title="Refresh to current date/time" />
-      <ValueDisplay value={data.cachedResult} />
+      {collapsed ? <CollapsedCell value={data.cachedResult} /> : <ValueDisplay value={data.cachedResult} />}
     </NodeShell>
   );
 }
