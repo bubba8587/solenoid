@@ -76,6 +76,12 @@ The figure picks its renderer, not the surface ([[C100]] chartIsAValue): rechart
 
 `{ __mermaid: true, source: string, title?: string }`. `source` is Mermaid diagram text; `title` is the Mermaid node's label, else `"Diagram"`. It rides the same `chart` socket.
 
+Tests:
+
+- `chartValue.test.ts`: the chart value's shape and ops.
+- `chartLabel.test.ts`: `sanitizeChartLabel`.
+- `chartPopupCoverage.test.ts`: every op reaches the popup.
+
 ## The figure nodes
 
 Each figure node computes its value in `data()`, caches it on the node (`cachedChart`, `cachedPayload` or `cachedResult` with `cachedSeries` / `cachedLabels`) for its card, and returns it on the `chart` output (Mermaid's output is `diagram`). A card never calls `data()`; it reads the cache.
@@ -238,13 +244,22 @@ The Gantt node computes no dates ([[C71]] noBarEditing: the figure is display-on
 
 The source is the wired `source` string, else the card literal (a starter flowchart on a new card). A wired blank renders empty. The card offers starter templates only when the source is unwired.
 
+Tests:
+
+- `visual.test.ts`, `mergePlots.test.ts`, `conditionalRegions.test.ts`, `xyPlot.test.ts`: the figure cards' payloads.
+- `heatmap.test.ts`: the colormaps, the scale, `fmt` and the layout.
+- `recordViews.test.ts` and `masonryLayout.test.ts`: the Record figure.
+- `ganttPayload.test.ts`: the Gantt payload ([[schedule-and-gantt#The payload is data]]).
+
 ## The options string
 
 Figures with an `options` input take one string of `key=value` pairs separated by `;` ([[C96]] chartOptionsAreMatplotlib). It is typed on the card or produced by a Chart Builder.
 
 The key names are matplotlib's (`marker`, `markersize`, `fontsize`, `linestyle` and the rest), and pandas' scatter names where a key names a Frame column (`x`, `y`, `s`, `c`). A new option takes its matplotlib name where one exists; only a concept matplotlib lacks gets a name of our own, and the tables below mark it (`annotate`, `by`, `radarscale`, `pielabels`, the Record and Gantt keys). An unknown key is ignored rather than refused, so a string written for a newer build still draws on an older one.
 
-### Grammar (`parse_chart_options`, `nodes/visual.rs`)
+### Grammar
+
+Code: `parse_chart_options` (`nodes/visual.rs`).
 
 - Split on `;`. A part with no `=` is skipped. The key is the text before the first `=`, trimmed and lower-cased; the value is the rest, trimmed (so `title=a=b` is `a=b`). There is no escape: a value cannot contain `;`.
 - Pairs apply left to right, so a later key overrides an earlier one (`ylim=0,10;ymax=5` gives ymax 5).
@@ -332,6 +347,11 @@ Exceptions a key list cannot see, because the builder does not know the data:
 
 The Chart Builder node has one input per field (42 text, 11 number) and one output, `result` (a string). Each field is the wired value, else the card literal; a wired blank means the field is unset, never the literal. Its `target` (one of the 28 `CHART_BUILDER_TARGETS`, default `column`; a stale saved target loads as `column`) only chooses which rows the card offers (`chartBuilderKeys`; the Gantt target offers fewer keys when `layout=calendar`). The Chart node's own ops are targets of their own, and Histogram, Histogram 2-D and Merge Plots are targets beside them, so each offers only the keys its figure reads (see Which renderer reads which key), in a two-level dropdown (`group`). The categorical ops (Pie, Radar, Radial, Funnel) are not offered `color`, because they paint from the palette. The Gantt calendar layout draws its own grid and ignores the scale, bars, links and grid pane, so it is offered only `title`, `fontsize`, `layout`, `critical`, `minutes`, `window` and `week`; it always outlines today, shades weekends and labels its chips. Switching the target destroys every field the new figure does not read (`setTarget`): the card removes those fields' cables, then the node clears their values, so a builder only ever carries options for the figure it names. Within the Gantt target, a switch to `layout=calendar` narrows the rows without clearing them, so switching back restores the timeline's settings; meanwhile a row the calendar does not read stays visible and dimmed under Not used by the Gantt calendar while it is wired or holds a value. When the target offers more than ten rows, the secondary ones fold into sections by kind (`SECTIONS` in `ChartBuilderNode.tsx`: Columns, Style, Axes, Color scale, Timeline, Shown, Calendar), each open while any of its rows is wired or set (DESIGN.md § Card sections), and a row inside one drops the words its caption says (X column reads X under Columns, Color min reads Min under Color scale; `SECTION_LABELS`) while its socket keeps the full name for the collapsed card and cables; a shorter target stays uncaptioned. Every set field serializes. Toggles store `on`/`off`; a select's default option stores `""`, and the default shown is the target figure's own, so Aspect reads square cells on the Heatmap target and fill the plot elsewhere. The Colormap select lists every map in its family and every map reversed.
 
+Tests:
+
+- `chartOptions.test.ts`: the options string's grammar and keys.
+- `chartTitles.test.ts`: every target that offers a title draws one, draws a real op, and offers only keys a parser reads.
+
 ## Render dispatch
 
 `ChartFigure({ value, width, height, axes = true, fontScale, recordNav, virtualize })` in `chartView.tsx` is the one function that maps a `ChartValue` to a drawing. Every surface (the figure cards, Display, the popup, a Report embed, the socket peek, a Composite boundary) goes through it. It tests `op` together with a matching `payload.kind`:
@@ -414,6 +434,12 @@ All recharts figures run with animation off. Tick text is `9 · fs`, axis titles
 - **Dial.** A half-ring arc for `value` clamped to `[0, 1]` over a track, with the percent (one decimal) centered and `0%`, `100%` at the ends. Its size is the given `size`, else the width clamped to 120 to 200 pixels, drawn 0.55 times as tall. The Gauge card's square-collapsed miniature draws the same arc (`GaugeArc`).
 - **Tornado bars.** The Tornado node's card draws `TornadoBars`, a horizontal stacked bar chart 218 pixels wide (`TORNADO_W`, the same width as the Chart card, kept as a literal in `chartView.tsx` so reading it doesn't load the chunk) and `max(70, 22 per row + 16)` tall. Each row is a transparent offset bar plus a range bar: `#e0524d` when the output rises, `#4c8bf5` when it falls, and a muted full-width bar at 0.4 opacity for a diverged row, which has no finite swing and reads as off the chart. The tooltip shows the output range (or "diverged (non-finite)") and the input range with its basis (the slider range, or ±10% for a number), so a wide bar is never mistaken for a like-for-like comparison with a narrow nudge. The Tornado bars are not a chart value; they are drawn only on that card.
 
+Tests:
+
+- `chartCore.test.ts`: the render dispatch and the recharts core.
+- `chartThinning.test.ts`: a thinned series draws the same strokes, cells and envelopes.
+- `sourceInvariants.test.ts`: only `chartRender.tsx` imports recharts.
+
 ## The CSS and canvas figures
 
 - **KPI.** The formatted value (`formatScalar`) with the unit suffix. When `prev` is a finite number, a delta line shows an arrow (up, down, or a bar for no change), the absolute change and, when `prev` is not zero, the percent change against `|prev|`. It is green (`#2fae7a`) when the direction is good (`goodUp` decides), the error color when bad, dim when unchanged. The green is a semantic state color, never a palette slot, because a trend reads as good or bad, not as a series color.
@@ -486,6 +512,8 @@ The `chart` family has one control, the text scale `chartFontScale` (×0.8, ×1 
 - **Where it is read:** the Chart and Merge Plots cards (the FC on their own output), Display (`resolveDisplayAnnotation`: an FC on the Display, else one on its source output or downstream), the popup (the FC on the node it was opened from) and a Report embed (the FC resolved for that reference). The other figure cards do not read it.
 - **Figures it affects:** every recharts series figure, Overlay, XY, Treemap and Sankey labels, KPI, the Bar gauge and Record (through `--chart-fscale`), Gantt, and the canvas text of Waterfall, Candlestick, Boxplot, Calendar Heatmap, Heatmap, Waffle and Contour. It has no effect on the Dial, Surface or Vector Field.
 
+Tests: `fcLambdaChart.test.ts`: an FC's view-as and chart text scale reach a downstream Display through the real resolution chain, with real node classes.
+
 ## Errors and empty inputs
 
 Every figure node except Chart is subject to the error guard's short-circuit ([[compute-pass]]): a top-level `SolError` on any input becomes the `chart` output without running `data()`, and the guard also writes it to the card's `cachedChart` (and blanks `cachedPayload`), so a card never keeps drawing the last good figure. Chart runs on errors: a `SolError` on Data draws nothing, and one on Options falls back to the card text. Errors a node produces itself:
@@ -502,7 +530,3 @@ Every figure node except Chart is subject to the error guard's short-circuit ([[
 A chart output that is a `SolError` renders as an error everywhere else: Display's error value box, a Report's inline error code, the Merge Plots card's error chip, the shared figure card's code with the message as its tooltip.
 
 Empty is never an error. A figure with nothing to draw shows the muted em-dash box (`solenoid-node__display-value--empty`): the series path with no finite values (in any series, for a multi-series figure), a Pie with no positive slice, a Funnel or Radial with no value of 0 or more, a Treemap with no positive value, a Sankey with no drawable flow, an XY figure with no point, a Waterfall, Candlestick, Boxplot, Calendar Heatmap, Waffle or Vector Field with no rows, a Heatmap with no number, a Contour or Surface with fewer than two coordinates on an axis or no finite height. A canvas figure whose rows all turn out unusable (every candle a gap, a waffle whose values are all zero) draws an empty canvas. The KPI and gauges draw their frame with a dash for a null value (the Dial at 0%). A Record with no data draws its boxes empty. Candlestick with no columns and Gantt with no plan emit null, which surfaces show as an empty value. Blank or error cells inside the data are gaps, never zeros, in every figure (Sparkline, Chart, Waterfall, Candlestick, Calendar Heatmap, Heatmap, Contour, Surface, Vector Field); Proportion and Sankey read a blank value as 0, which draws nothing.
-
-## Enforced by
-
-`tests/graph/chartValue.test.ts`, `tests/graph/chartPopupCoverage.test.ts` (every op reaches the popup), `tests/graph/components/chartCore.test.ts`, `tests/graph/chartThinning.test.ts` (a thinned series draws the same strokes, cells and envelopes), `tests/graph/chartLabel.test.ts` (`sanitizeChartLabel`), `tests/graph/nodes/chartOptions.test.ts`, `tests/graph/nodes/visual.test.ts`, `tests/graph/nodes/mergePlots.test.ts`, `tests/graph/nodes/conditionalRegions.test.ts`, `tests/graph/nodes/xyPlot.test.ts`, `tests/graph/heatmap.test.ts` (colormaps, the scale, `fmt`, the layout), `tests/graph/recordViews.test.ts`, `tests/graph/components/masonryLayout.test.ts`, `tests/graph/ganttPayload.test.ts`, `tests/graph/fcLambdaChart.test.ts`, `tests/graph/chartTitles.test.ts` (every target that offers a title draws one, draws a real op, and offers only keys a parser reads), and the source sweep in `tests/graph/sourceInvariants.test.ts` (only `chartRender.tsx` imports recharts).

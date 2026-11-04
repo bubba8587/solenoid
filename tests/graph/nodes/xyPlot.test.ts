@@ -1,4 +1,4 @@
-// [[C96]] chartOptionsAreMatplotlib
+// [[C96]] chartOptionsAreMatplotlib, [[chart-figures#XY plots]]
 import { describe, it, expect } from "vitest";
 import { ChartNode, MergePlotsNode } from "../../../src/graph/nodes/visual";
 import { chartOptionsOf } from "../coreVerbs";

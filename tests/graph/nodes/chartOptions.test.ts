@@ -1,4 +1,4 @@
-// [[C96]] chartOptionsAreMatplotlib
+// [[C96]] chartOptionsAreMatplotlib, [[chart-figures#The options string]]
 import { describe, it, expect } from "vitest";
 import { chartOptionsOf } from "../coreVerbs";
 import { ChartBuilderNode } from "../../../src/graph/nodes/visual";

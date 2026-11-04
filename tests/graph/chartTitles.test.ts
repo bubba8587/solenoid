@@ -1,4 +1,4 @@
-// [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib
+// [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[chart-figures#Which renderer reads which key]]
 import { describe, it, expect } from "vitest";
 import { CHART_TARGET_LIST, chartBuilderKeys, type ChartBuilderKey } from "../../src/graph/nodes/chartOptions";
 import { chartOptionsOf } from "./coreVerbs";

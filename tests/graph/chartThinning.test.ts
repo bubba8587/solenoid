@@ -1,4 +1,4 @@
-// [[C100]] chartIsAValue
+// [[C100]] chartIsAValue, [[chart-figures#The recharts figures]]
 import { describe, expect, it } from "vitest";
 import { minMaxDecimate, envelopeRows, thinXY, figurePoints } from "../../src/graph/components/chartCore";
 

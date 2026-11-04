@@ -1,4 +1,4 @@
-// [[C100]] chartIsAValue
+// [[C100]] chartIsAValue, [[chart-figures#Conditional Regions]]
 import { describe, it, expect } from "vitest";
 import { ChartNode, ConditionalRegionsNode } from "../../../src/graph/nodes/visual";
 import type { ChartValue } from "../../../src/graph/chartValue";

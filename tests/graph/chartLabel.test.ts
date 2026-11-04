@@ -1,4 +1,4 @@
-// [[C100]] chartIsAValue
+// [[C100]] chartIsAValue, [[chart-figures#The values on the `chart` socket]]
 import { describe, it, expect } from "vitest";
 import { sanitizeChartLabel } from "../../src/graph/components/chartRender";
 

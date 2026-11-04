@@ -1,4 +1,4 @@
-// [[C96]] chartOptionsAreMatplotlib, [[C100]] chartIsAValue
+// [[C96]] chartOptionsAreMatplotlib, [[C100]] chartIsAValue, [[chart-figures#Heatmap]]
 import { describe, it, expect } from "vitest";
 import { colormapRgb, heatScale, normalizeCmap, COLORMAP_LIST } from "../../src/graph/colormaps";
 import { formatNumberSpec } from "../../src/graph/numberSpec";

@@ -1,9 +1,5 @@
-// [[C100]] chartIsAValue
-// FC lambda view-as / chart text-scale: the annotation must reach a downstream
-// Display through the REAL resolution chain (the exact wiring DisplayNode uses:
-// getForNode → inAnnotation → downstreamAnnotation), with real node classes —
-// not duck-typed mocks — so a change to the FC or resolver that drops the new
-// fields fails here.
+// [[C100]] chartIsAValue, [[chart-figures#A Format Controller on a chart socket]]
+// The wiring is DisplayNode's own: getForNode, then inAnnotation, then downstreamAnnotation.
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";

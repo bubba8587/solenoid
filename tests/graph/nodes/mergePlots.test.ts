@@ -1,4 +1,4 @@
-// [[B11]], [[C100]] chartIsAValue
+// [[B11]] maximalMerge, [[C100]] chartIsAValue, [[chart-figures#Merge Plots]]
 import { describe, it, expect } from "vitest";
 import { MergePlotsNode } from "../../../src/graph/nodes/visual";
 import type { ChartValue, ChartValueOp, OverlayPayload } from "../../../src/graph/chartValue";
