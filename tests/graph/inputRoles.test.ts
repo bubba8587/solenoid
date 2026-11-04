@@ -1,4 +1,4 @@
-// [[D86]]
+// [[D86]] blankRoles, [[input-roles#By the shape of the value]], [[input-roles#The declaration]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";
@@ -24,7 +24,7 @@ describe("[[D86]] blankRoles — data stays blank, a setting left blank is its d
   });
 
   it("the core's call table holds the same roles, argument by argument", () => {
-    // The core reads roles from its own table, its last two entries repeating past the end (`eval.rs` `periodic`).
+
     const table = JSON.parse(readFileSync("crates/solenoid-core/data/call_traits.json", "utf8")) as Record<string, { roles: unknown[] }>;
     const coreRole = (name: string, i: number) => {
       const r = table[name]?.roles ?? [];
@@ -52,7 +52,7 @@ describe("[[D86]] blankRoles — data stays blank, a setting left blank is its d
   it("every card that declares roles reads each declared socket through readRole", () => {
     const dir = "src/graph/nodes";
     const src = readdirSync(dir).filter((f) => f.endsWith(".ts")).map((f) => readFileSync(`${dir}/${f}`, "utf8")).join("\n");
-    // A body on the core ([[C130]] rustCore) reads its roles in Rust.
+
     const rustDir = "crates/solenoid-core/src/nodes";
     const rust = readdirSync(rustDir).filter((f) => f.endsWith(".rs")).map((f) => readFileSync(`${rustDir}/${f}`, "utf8")).join("\n");
     const seen = new Set<string>();

@@ -15,28 +15,10 @@ import { FormatDollarNode, FixedNode } from "../../../src/graph/nodes/text";
 import { TwoInputMathNode } from "../../../src/graph/nodes/scalar";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 
-// ─── A wired blank must not resurrect the typed literal ───────────────────────
-// The `inputs.x?.[0] ?? this.literals.x` idiom swallows a WIRED null into the
-// literal, so a blank flowing down a cable silently became whatever value sat in
-// the node's own box. Under the settled P6 model a missing value PROPAGATES —
-// null in, null out — and Fill/Coalesce is the opt-in recovery.
-//
-// The contract has two halves and both matter: a CONNECTED cable wins even when
-// its value is null, and only an UNWIRED slot falls back to the literal. Tests
-// come in pairs for that reason — a fix that propagated unconditionally would
-// break every node's typed default just as badly.
-//
-// A wired input arrives as `[null]` (the slot is connected, the value is missing);
-// an unwired one arrives as `undefined`.
-
-// [[D86]] blankRoles: a blank setting is its default, or #SYNTAX! when it has none; data blanks stay blank.
-
-
+// [[D86]] blankRoles, [[value-semantics#Reading an input]], [[input-roles#What each input kind does today]]
 
 describe("reducers SKIP a missing rather than propagating it", () => {
-  // The other half of the value model: an aggregator skips nulls (SUM does), while
-  // element-wise math propagates them. CONCAT is a reducer, so a missing input
-  // contributes nothing to the join — but it still must not resurrect the literal.
+
   it("CONCAT: a wired blank contributes nothing, and does not fall back to its box", () => {
     const node = new ConcatNode();
     const keys = Object.keys(node.inputs);
@@ -48,17 +30,6 @@ describe("reducers SKIP a missing rather than propagating it", () => {
   });
 
 });
-
-
-
-
-
-
-
-
-
-
-
 
 describe("figure sinks — empty figure for a datum, neutral default for styling", () => {
   it("Gauge (Bar style): value and target go blank, but the track's scale keeps the card's bound", () => {
@@ -74,30 +45,21 @@ describe("figure sinks — empty figure for a datum, neutral default for styling
     const p = out.payload as { value: number | null; target: number | null; max: number };
     expect(p.value).toBeNull();
     expect(p.target).toBeNull();
-    // The figure still has to render, so the SCALE behaves like a Slider bound.
+
     expect(p.max).toBe(250);
   });
 
-
 });
 
-
-
-// ─── The review sweep's second pass (2026-07-28) — misses the first pass left ──
-
 describe("Kleene logic THROUGH the real coercion wrapper", () => {
-  // The bare-data() tests above pass raw numbers, but the live engine coerces a
-  // wired logical to a REAL boolean first (`numsToBools`), and `false !== 0` is
-  // true — so AND(false, TRUE) computed as AND(true, true). These pin the family
-  // through the input boundary, the call the engine makes.
+
   function wrapped<T extends { data: (i: never) => unknown }>(node: T): T {
     throughBoundary(node as never);
     return node;
   }
 
   it("AND(false, true) is FALSE through coercion — wired as numbers AND as booleans", () => {
-    // The numbers wiring is the pre-fix control; the booleans wiring is the
-    // regression (`false !== 0` made AND(false, TRUE) compute as AND(true, true)).
+
     const node = wrapped(new BooleanOpNode({ op: "and" }));
     const [a, b] = Object.keys(node.inputs);
     expect((node.data({ [a]: [0], [b]: [1] }) as { result: unknown }).result).toBe(false);
@@ -128,11 +90,8 @@ describe("a CHECK never fires against a bound the graph withheld", () => {
 
 });
 
-
 describe("a column-LIST reference — same rule as the scalar column", () => {
   const f: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: [1] }, { name: "b", type: "number", values: [2] }] };
-
-
 
   it("Columns (Keep): a name the frame lacks is a #REF! error", async () => {
     await expect(Promise.resolve().then(() => new ColumnsNode().data({ frame: [f], columns: [["nope"]] }))).rejects.toMatchObject({ code: "#REF!" });
@@ -143,7 +102,6 @@ describe("a column-LIST reference — same rule as the scalar column", () => {
     expect(extractInit(new ColumnsNode()).op).toBe("keep");
   });
 });
-
 
 describe("value selectors — an unknown selector is an unknown answer", () => {
   it("IFS: a WIRED blank condition propagates; an unset row just falls through", () => {
@@ -158,10 +116,8 @@ describe("value selectors — an unknown selector is an unknown answer", () => {
 
 });
 
-
 describe("Distribution — a wired blank parameter propagates", () => {
-  // The [[B11]] maximalMerge flagship: every param reads through readInput, so a wired
-  // blank mean blanks the result while an unwired slot uses the seeded literal.
+
   it("NORM.DIST: a wired blank mean blanks the result; unwired uses the literals", () => {
     const node = new DistributionsNode({ op: "normal", form: "cdf" });
     const firstKey = node.spec.xKey;
@@ -170,15 +126,8 @@ describe("Distribution — a wired blank parameter propagates", () => {
   });
 });
 
-
-
 describe("Input family — wired blank by role", () => {
-  // Color A/B are operands: a wired blank propagates (blank out), it is NOT the
-  // "isn't a color" #VALUE! that a typed-empty card gives.
 
-  // COMPLEX's parts are operands — a blank real/imag makes the number unknown.
-
-  // RandBetween's bounds are the range's shape — a blank bound has no range to draw from.
   it("RAND: a wired blank bound propagates; unwired draws from the card range", () => {
     const node = new RandBetweenNode();
     node.literals.bound1 = 0;
@@ -187,7 +136,6 @@ describe("Input family — wired blank by role", () => {
     expect(typeof node.data({}).result).toBe("number");
   });
 
-  // The Input Switch is a relay with no card literal: a wired blank routes through as blank.
   it("Input Switch: a blank on the active input routes through as blank", () => {
     const node = new CableSwitchNode({ activeIndex: 0 });
     const [v0] = Object.keys(node.inputs);
@@ -196,21 +144,6 @@ describe("Input family — wired blank by role", () => {
   });
 });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-// [[D86]] blankRoles: a card with a formula twin reads a blank setting as the twin does, so a wired blank on the card
-// and a blank argument in the formula agree.
 describe("cards agree with their formula twin on a blank setting", () => {
   const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
   const blank = [null as unknown as number];

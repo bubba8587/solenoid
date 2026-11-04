@@ -1,4 +1,4 @@
-// [[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue
+// [[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue, [[input-roles#Empty slots]], [[input-roles#Placeholders]]
 import { describe, it, expect } from "vitest";
 import { FUNCTION_ARITY } from "../../src/graph/excelFunctions";
 import { compileEvaluator } from "../../src/graph/excelFormula";
@@ -42,7 +42,7 @@ describe("an empty slot reads as its parameter's Excel blank", () => {
     expect(ev("AVERAGE(2, )")).toBe(1);
     expect(ev("AVERAGE(2, b)", { b: null })).toBe(2);
     expect(ev('CONCAT("a", , "b")')).toBe("ab");
-    // Excel's own readings, checked in Excel: an empty ignore_empty is TRUE, an empty if_not_found is left out.
+
     expect(ev('TEXTJOIN(",", , "a", "", "b")')).toBe("a,b");
     expect((ev("XLOOKUP(9, a, b, )", { a: [1, 2, 3], b: [10, 20, 30] }) as { code?: string }).code).toBe("#N/A");
   });

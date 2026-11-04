@@ -55,11 +55,18 @@ A role applies to the whole value and, for a list or a table, to each item:
 
 So ROUND's digits `[1, blank]` round the second value to 0 places, INDEX's positions `[3, blank, 1]` pick two items, and `INDEX(x, P)` with a blank cell in the table `P` answers `#SYNTAX!` in that cell and values everywhere else.
 
+Tests: `inputRoles.test.ts`: `applyRole` for each role over a blank, a list and a table, with errors passing; and the worked cases on the card, in a formula and per row (ROUND's digits, INDEX's positions, CHOOSEROWS's indices, an error in a setting, blank data).
+
 ### Left out
 
 `LEFT_OUT` is `undefined`, the value an omitted formula argument already carries ([[formula-language#Blank and omitted arguments]]). Each surface applies its own omitted reading to it: a formula kernel reads `undefined` as the argument not given (TAKE keeps the axis, INDEX takes the whole row or column), and a card maps it to its default at the read (`readRole(...) ?? 0` on TAKE, where 0 keeps all). A left-out size or position keeps the whole thing, where that applies. This is a deliberate divergence from Excel, which reads an empty cell in a size slot as 0: `TAKE(m, A1, 2)` with `A1` empty is `#CALC!` in Excel, and here it keeps every row.
 
 A setting whose Excel blank is a value rather than an omission declares that value: TEXTJOIN's `ignore_empty` blank is FALSE, XMATCH's modes are 0, ROUND's digits are 0 ([[C80]] blankArgIsExcelBlank). A blank variable in those slots reads the same as a slot left empty.
+
+Tests:
+
+- `blankArgIsExcelBlank.test.ts`: a blank size keeps its axis in EXPAND, TAKE and DROP, and a blank INDEX position is the whole axis, typed or a blank value; XMATCH's and XLOOKUP's blank modes are 0; a blank value in an undeclared parameter still propagates as missing, never a made-up 0.
+- `inputRoles.test.ts`: an empty list of INDEX positions is the positions left out, on the card and in a formula.
 
 ## The declaration
 
@@ -90,7 +97,9 @@ flowchart TD
     c --> k
 ```
 
-The core reads the same roles from its call table (`roles` in `crates/solenoid-core/data/call_traits.json`, with the empty-slot readings beside them as `blanks`). `inputRoles.test.ts` pins the declaration: every declared function exists, every declared argument is within its arity, the core's table holds the same roles argument by argument, and every card that declares a role reads that socket through `readRole`, or in a core body through the role readers (`read_role`, `setting`, `required`).
+The core reads the same roles from its call table (`roles` in `crates/solenoid-core/data/call_traits.json`, with the empty-slot readings beside them as `blanks`). Past the end of a function's `roles`, its last two entries repeat in turn (`periodic`, `eval.rs`), which is how the core's table carries a variadic `rest`.
+
+Tests: `inputRoles.test.ts`: every declared function exists, every declared argument is within its arity, the core's table holds the same roles argument by argument, and every card that declares a role reads that socket through `readRole`, or in a core body through the role readers (`read_role`, `setting`, `required`).
 
 ## Reading
 
@@ -119,6 +128,13 @@ The core reads the same roles from its call table (`roles` in `crates/solenoid-c
 
 **Where Excel reads an empty slot its own way** (checked in Excel 2026-10-05), a table beside the readings says so (`EXCEL_EMPTY_SLOT` in `emptySlots.ts`) and wins over the role: TEXTJOIN's empty `ignore_empty` is TRUE, where a blank value is FALSE, and XLOOKUP's empty `if_not_found` is left out, so no match is `#N/A`.
 
+MATCH, VLOOKUP and HLOOKUP need no reading: they are refused names (`#NAME?`) pointing at XMATCH and XLOOKUP.
+
+Tests:
+
+- `emptySlots.test.ts`: every function with an empty slot in each position answers what the same call with the reading typed out answers, Excel's own readings included, and a blank value still follows its role.
+- `blankArgIsExcelBlank.test.ts`: TEXTJOIN's empty `ignore_empty` against a blank one, and the refused lookup names.
+
 ## Placeholders
 
 ([[D96]] emptySlotShowsItsValue). Wherever an empty slot's reading isn't "", the slot shows it as muted placeholder text, so a value nobody typed is never invisible:
@@ -129,6 +145,8 @@ The core reads the same roles from its call table (`roles` in `crates/solenoid-c
 
 A `LEFT_OUT` reading shows a short word for the default it stands for, declared with the setting: `all` for a size that keeps the whole axis (TAKE, DROP, EXPAND), `1` where the default is the first (an instance or a start), `none` where nothing is applied, and the default value itself wherever one exists.
 
+Tests: `emptySlots.test.ts`: the reading or its word, and nothing for blank text; the highlighter's CSS content in the editor and text when read-only; and a card's empty setting field showing its formula twin's reading, its own blank or its word, with data and required fields showing nothing.
+
 ## Choosing a role
 
 1. Does the node compute on this value, or does the value tell the node how to compute? The first is **data**.
@@ -137,7 +155,7 @@ A `LEFT_OUT` reading shows a short word for the default it stands for, declared 
 
 ## What each input kind does today
 
-The roles replace an older per-kind table in which most non-data inputs propagated a blank. The settings sweep (2026-09-26, Claude's judgement, `docs/settings-audit.md` for review) declared about 150 formula functions and their cards. Rows still marked `[decided 2026-09-26]` are settings under [[D86]] blankRoles that still propagate.
+The roles replace an older per-kind table in which most non-data inputs propagated a blank. The settings sweep (2026-09-26) declared about 150 formula functions and their cards; `docs/settings-audit.md` is its review sheet, and its formula table says what `ARG_ROLES` does until the sheet is reviewed and archived. Rows still marked `[decided 2026-09-26]` are settings under [[D86]] blankRoles that still propagate.
 
 | Input kind | Role | A wired blank today | Example |
 |---|---|---|---|
@@ -164,6 +182,20 @@ Two dispositions keep their reason under the new roles:
 
 **An empty string** is the literal most of these kinds ship with, and it already means something on almost every frame verb: "no column chosen, pass the Frame through". It is what an unwired slot on an untouched card reads. Read the raw value first and only then `.trim()` it: in `const raw = readInput(inputs.column, this.stringLiterals.column ?? "")`, `null` is the wired blank and `""` is the untouched card.
 
+Worked cases of the table:
+
+- RandBetween's bounds, Color's A and B and COMPLEX's parts are data: a wired blank answers blank, not the `#VALUE!` a typed-empty Color card gives.
+- The Input Switch is a relay with no literal: a blank on its active input routes through as blank.
+- Gauge's value and target are a figure's datum and go blank, while its scale bound is a setting and keeps the card's bound, so the figure still renders.
+- Alert's range bounds are a check's parameter: a wired blank High leaves the status unknown, never checked against the card's bound.
+- A card with a formula twin reads a blank setting as the twin does: DDB's and VDB's factor is 2, DOLLAR's and FIXED's decimals are 2 item by item, and LOG's base and GESTEP's step are settings while B stays data under the other ops.
+
+Tests:
+
+- `wiredNull.test.ts`: each worked case above, each beside the unwired slot that still reads the literal.
+- `inputRoles.test.ts` ("the settings sweep: formulas"): a blank mode, an optional setting and a distribution's parameter.
+- `settingsAudit.test.ts`: the audit sheet's formula table matches `ARG_ROLES`, function by function.
+
 ## Where the check goes
 
 Two placement rules, both found by sweeping the finance cards. Neither is about which role to take; both are about a guard that takes the right one in the wrong place, which typechecks and is silently wrong.
@@ -173,7 +205,7 @@ Two placement rules, both found by sweeping the finance cards. Neither is about 
 
 ## Writing a new node or function
 
-1. Name each input's role ("Choosing a role"). A formula function with a setting or a pick gets an `ARG_ROLES` entry; its card points at it with `rolesFrom`.
+1. Name each input's role ([[#Choosing a role]]). A formula function with a setting or a pick gets an `ARG_ROLES` entry; its card points at it with `rolesFrom`.
 2. Read data through `readInput` and declared inputs through `readRole`. Never `inputs.x?.[0] ?? this.literals.x` ([[value-semantics#Reading an input]]).
 3. Check what consumes the value, not only `data()`: a published field read elsewhere must hold the resolved value.
 4. Pin it in a test: a blank setting reads as its default, a blank pick is dropped, a required one is `#SYNTAX!`, and an unwired slot still uses the literal. Worked examples are in `inputRoles.test.ts` and `nodes/wiredNull.test.ts`.
