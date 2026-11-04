@@ -4,6 +4,11 @@
 //! it doesn't read (`pruneLiterals`). One rule, so a value can't sit in a map the card doesn't show
 //! (`tree/specs/documents/inline-literal-maps.md` § One field per input).
 
+use super::{decode, Call};
+use crate::excel_functions::V;
+use serde_json::{Map, Value as Json};
+use std::rc::Rc;
+
 /// The cards whose wildcard slots take a keyed value read as the kind its button shows.
 const KEYED: &[&str] = &[
     "ContainsNode",
@@ -59,8 +64,6 @@ pub enum Field {
     Csv,
     /// A wildcard slot's keyed text and its kind; `stringLiterals` and `literalKinds`.
     Keyed,
-    /// A date keyed as text; `stringLiterals`.
-    Date,
     /// A range bound, which takes the checked value's kind: the number field on a number rung (`literals`), a date's
     /// text on a date rung (`stringLiterals`). Each kind keeps its own value, so a card moving between the two keeps
     /// both, and reads only the one its rung shows.
@@ -77,7 +80,6 @@ impl Field {
             Field::Text => "text",
             Field::Csv => "csv",
             Field::Keyed => "keyed",
-            Field::Date => "date",
             Field::Bound => "bound",
             Field::None => "none",
         }
@@ -120,6 +122,95 @@ pub fn field_of(class: &str, key: &str, rung: &str, kept_as_text: bool) -> Field
         "string" | "strcombo" => Field::Text,
         "strlist" | "datelist" | "logicallist" => Field::Csv,
         _ => Field::None,
+    }
+}
+
+/// A card's saved values, `literals` and `stringLiterals`. Their maps are private to this module, so a body reads an
+/// input only through the field the card shows for it (`Call::unwired`), never around it.
+#[derive(Clone, Default)]
+pub struct Saved {
+    numbers: Rc<Map<String, Json>>,
+    texts: Rc<Map<String, Json>>,
+}
+
+impl Saved {
+    pub fn new(numbers: Map<String, Json>, texts: Map<String, Json>) -> Saved {
+        Saved { numbers: Rc::new(numbers), texts: Rc::new(texts) }
+    }
+
+    fn number(&self, key: &str) -> V {
+        self.numbers.get(key).map(decode).unwrap_or(V::Undef)
+    }
+
+    fn text(&self, key: &str) -> V {
+        self.texts.get(key).map(decode).unwrap_or(V::Undef)
+    }
+
+    fn raw_text(&self, key: &str) -> Option<&str> {
+        self.texts.get(key).and_then(Json::as_str)
+    }
+}
+
+impl Call {
+    /// The field `key`'s unwired value lives in ([[C28]] literalsIffEditable).
+    pub fn literal_field(&self, key: &str) -> Field {
+        field_of(&self.class, key, self.rung(key), self.saved.texts.contains_key(key))
+    }
+
+    /// An unwired input's value, read from the one field the card shows for it: a number, a logical (TRUE or FALSE),
+    /// text as keyed, a keyed value as its kind, or a bound as its rung's kind (a date's text on a date rung);
+    /// `undefined` where nothing is set or the input is wire-only. A typed list arrives through the boundary as if
+    /// wired, so it reads `undefined` here.
+    ///
+    /// A key with no socket is the card's own saved field kept in the literal maps (a setting a mode's input takes
+    /// over, a widget's state): its number, else its text, as saved.
+    pub fn unwired(&self, key: &str) -> V {
+        if !self.sockets.iter().any(|s| s.key == key) {
+            return match self.saved.number(key) {
+                V::Undef | V::Null => self.saved.text(key),
+                v => v,
+            };
+        }
+        match self.literal_field(key) {
+            Field::Number => match self.saved.number(key) {
+                V::Num(n) => V::Num(n),
+                _ => V::Undef,
+            },
+            Field::Logical => match self.saved.number(key) {
+                V::Num(n) if n.is_nan() => V::Null,
+                V::Num(n) => V::Bool(n != 0.0),
+                V::Bool(b) => V::Bool(b),
+                _ => V::Undef,
+            },
+            Field::Bound if self.rung(key) != "date" => match self.saved.number(key) {
+                V::Num(n) => V::Num(n),
+                _ => V::Undef,
+            },
+            Field::Text | Field::Bound => match self.saved.text(key) {
+                V::Str(s) => V::Str(s),
+                _ => V::Undef,
+            },
+            Field::Keyed => self.keyed(key),
+            Field::Csv | Field::None => V::Undef,
+        }
+    }
+
+    /// A list field's text as keyed, for a body that splits it itself (a list on a rung the boundary doesn't parse);
+    /// `None` where the input's field isn't a list or nothing is keyed.
+    pub fn csv_text(&self, key: &str) -> Option<&str> {
+        if self.literal_field(key) != Field::Csv {
+            return None;
+        }
+        self.saved.raw_text(key)
+    }
+
+    /// A wildcard slot's keyed text, read as its kind the way a Frame Input cell of that type reads it ([[C58]]
+    /// tableInputRawText); `undefined` where nothing is keyed.
+    pub fn keyed(&self, key: &str) -> V {
+        match self.saved.raw_text(key) {
+            Some(text) => super::list::keyed_value(self.keyed_kind(key), text),
+            None => V::Undef,
+        }
     }
 }
 

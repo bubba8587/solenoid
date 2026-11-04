@@ -243,8 +243,8 @@ pub fn read_decimal(text: &str) -> f64 {
     crate::value_kinds::decimal_from_text(text)
 }
 
-/// The field a card's unwired input `key` on `rung` shows (`nodes::fields`): number, logical, text, csv, keyed, date,
-/// bound or none.
+/// The field a card's unwired input `key` on `rung` shows (`nodes::fields`): number, logical, text, csv, keyed, bound
+/// or none.
 #[wasm_bindgen]
 pub fn literal_field(class: &str, key: &str, rung: &str, kept_as_text: bool) -> String {
     crate::nodes::fields::field_of(class, key, rung, kept_as_text).name().to_string()

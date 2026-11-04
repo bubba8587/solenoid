@@ -21,7 +21,7 @@ import { fieldPlaceholder } from "../emptySlots";
 import { rolesOf } from "../nodes/shared";
 import { DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import { COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
-import { drawnFieldOf, keyedKindOf, type KeyedKind, type LiteralField } from "../literalFields";
+import { drawnFieldOf, keyedKindOf, type KeyedKind, type DrawnField } from "../literalFields";
 export type { KeyedKind } from "../literalFields";
 import { TypeIcon } from "./TypeIcon";
 import "./colType.css";
@@ -590,7 +590,7 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
       {entries.map(([key, input], i) => {
         const socket = input.socket;
         // One field per input, the one the core reads ([[C28]] literalsIffEditable).
-        const field: LiteralField = cableOnlyKeys?.has(key) ? "none" : drawnFieldOf(node, key);
+        const field: DrawnField = cableOnlyKeys?.has(key) ? "none" : drawnFieldOf(node, key);
         const label = labelFor ? labelFor(key, i) : (input.label || key);
         const placeholder = ownPlaceholders?.[key] ?? fieldPlaceholder(roles?.[key], key);
         const isConn = connected.has(key);

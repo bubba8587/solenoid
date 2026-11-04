@@ -1492,8 +1492,8 @@ export function latticeTables() {
 }
 
 /**
- * The field a card's unwired input `key` on `rung` shows (`nodes::fields`): number, logical, text, csv, keyed, date,
- * bound or none.
+ * The field a card's unwired input `key` on `rung` shows (`nodes::fields`): number, logical, text, csv, keyed, bound
+ * or none.
  * @param {string} _class
  * @param {string} key
  * @param {string} rung
@@ -2355,7 +2355,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_8316(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_8311(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -2462,7 +2462,7 @@ function __wbg_get_imports() {
         },
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 921, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_8314);
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_8309);
             return ret;
         },
         __wbindgen_generic_0000000000000002: function(arg0) {
@@ -2490,14 +2490,14 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_8316(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_8316(arg0, arg1, arg2, arg3);
+function __wasm_bindgen_func_elem_8311(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_8311(arg0, arg1, arg2, arg3);
 }
 
-function __wasm_bindgen_func_elem_8314(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_8309(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
-        wasm.__wasm_bindgen_func_elem_8314(retptr, arg0, arg1, arg2);
+        wasm.__wasm_bindgen_func_elem_8309(retptr, arg0, arg1, arg2);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {

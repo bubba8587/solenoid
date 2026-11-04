@@ -56,9 +56,12 @@ export function readKeyed(kind: KeyedKind, text: string | undefined): unknown {
  *  - `number`: the number field, `literals`. `logical`: the TRUE/FALSE checkbox, `literals` as 1 or 0.
  *  - `text`: the text field or a column picker, `stringLiterals` as keyed. `csv`: a list keyed as comma-separated text.
  *  - `keyed`: a wildcard slot's keyed text and kind button, `stringLiterals` and `literalKinds`.
- *  - `date`: a date keyed as text. `bound`: a range bound (Expect's), the number field on a number rung and a date's
- *    text on a date rung, each kind keeping its own value. `none`: wire-only. */
-export type LiteralField = "number" | "logical" | "text" | "csv" | "keyed" | "date" | "bound" | "none";
+ *  - `bound`: a range bound (Expect's), the number field on a number rung and a date's text on a date rung, each kind
+ *    keeping its own value. `none`: wire-only. */
+export type LiteralField = "number" | "logical" | "text" | "csv" | "keyed" | "bound" | "none";
+
+/** What a row host draws: a field, with a bound shown as its rung's kind (`date`: a date keyed as text). */
+export type DrawnField = Exclude<LiteralField, "bound"> | "date";
 
 export interface LiteralFieldHost extends KeyedHost {
   inputs: Record<string, { socket?: unknown } | undefined>;
@@ -73,7 +76,7 @@ export function literalFieldOf(node: LiteralFieldHost, key: string): LiteralFiel
 }
 
 /** The field a row host draws: a bound shows its rung's kind. */
-export function drawnFieldOf(node: LiteralFieldHost, key: string): Exclude<LiteralField, "bound"> {
+export function drawnFieldOf(node: LiteralFieldHost, key: string): DrawnField {
   const field = literalFieldOf(node, key);
   if (field !== "bound") return field;
   return declaredTypeOf(node.inputs[key]?.socket) === "date" ? "date" : "number";
