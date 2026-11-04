@@ -590,13 +590,7 @@ describe("[[D79]] effectsEdgeTriggered — an outward effect from data() gates o
 });
 
 describe("[[B12]] losslessSaves — every documentStore verb that swaps the canvas captures first and guards the rebuild", () => {
-  // A verb that switches which document is on screen without captureCurrent()
-  // discards up to AUTOSAVE_DELAY of edits to the outgoing doc; without the
-  // isGraphRebuilding() guard it races a load and can serialize a half-built
-  // canvas INTO the current doc (audit 21p — the exact bug the guards close).
-  // Scan: every method of the documentStore object whose body loads a graph
-  // (loadGraph / showCurrent) must also reference captureCurrent AND
-  // isGraphRebuilding, or be sanctioned with the reason.
+  // [[per-doc-autosave-persistence#Swapping documents]]
   const SANCTIONED: Record<string, string> = {
     restore: "startup — no live graph exists to capture yet; the refused-doc fallback (audit 20p) is its own guard",
     reloadCurrent: "captureCurrent() carries the rebuild guard internally; the verb's own gate is loadRevealStore.isActive()",

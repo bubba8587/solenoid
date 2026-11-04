@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[B12]] losslessSaves, [[per-doc-autosave-persistence#Change detection is object identity]]
 import { describe, it, expect } from "vitest";
 import {
   emptyLibrary,
@@ -210,14 +210,7 @@ describe("validateLibrary", () => {
   });
 });
 
-// ─── [[B12]] losslessSaves — transforms are structurally immutable ─────────────────────────
-// documentStore.persist() decides what to WRITE by object identity
-// (`_lastPersisted.get(id) === doc` skips the write), so a transform that
-// mutates a SolDoc in place still updates the screen but is silently NEVER
-// persisted — the edit vanishes on the next reload. Deep-freezing the input and
-// walking EVERY exported transform makes a new in-place write throw by name
-// (strict-mode assignment on a frozen object), with no hand-kept list of
-// transforms to maintain.
+// ─── [[per-doc-autosave-persistence#Change detection is object identity]] ──────────────────
 import * as core from "../../src/graph/documentStoreCore";
 
 function deepFreeze<T>(o: T): T {

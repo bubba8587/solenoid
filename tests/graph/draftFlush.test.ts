@@ -1,4 +1,4 @@
-// [[B19]] spreadsheetHabits, [[B12]] losslessSaves
+// [[B19]] spreadsheetHabits, [[B12]] losslessSaves, [[per-doc-autosave-persistence#Open drafts]]
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { flushDrafts, registerPendingDraft } from "../../src/graph/draftFlush";

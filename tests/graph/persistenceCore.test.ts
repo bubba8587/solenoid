@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C35]]
+// [[B12]] losslessSaves, [[C35]], [[per-doc-autosave-persistence#Two slots per pair]]
 import { describe, it, expect } from "vitest";
 import {
   validateSavedGraph,

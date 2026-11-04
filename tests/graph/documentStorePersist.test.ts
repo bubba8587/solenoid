@@ -1,12 +1,7 @@
-// [[B12]] losslessSaves
+// [[B12]] losslessSaves, [[per-doc-autosave-persistence#Two slots per pair]], [[per-doc-autosave-persistence#Restore]]
 import { describe, it, expect, vi } from "vitest";
 
-// Per-doc autosave keys (2026-07-05): each document persists under its own
-// two-slot pair plus a light index — an edit writes ONLY the changed doc, and
-// deleting a doc removes its keys. Exercised through the real documentStore
-// against an in-memory localStorage stub (vitest env is node). The store runs
-// editor-less here: serializeGraph() returns null, so doc graphs stay the
-// EMPTY_GRAPH they were created with — persistence shape is what's under test.
+// Editor-less, serializeGraph() returns null and documents keep their EMPTY_GRAPH.
 
 const _mem = new Map<string, string>();
 const localStorageStub = {
@@ -146,8 +141,7 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
     const doc = documentStore.list().find((m) => m.name === "Traveled")!;
     const stored = docKeysFor(doc.id).map((k) => JSON.parse(_mem.get(k)!) as { doc?: { fileSavedAt?: number; updatedAt?: number } });
     expect(stored.some((s) => s.doc?.fileSavedAt === 1786871100000)).toBe(true);
-    // The autosave clock (updatedAt) reads the file's stamp too — autosave is the
-    // primary save, so a traveled doc shows when its content was last saved.
+
     expect(stored.some((s) => s.doc?.updatedAt === 1786871100000)).toBe(true);
   });
 
@@ -185,21 +179,12 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
   });
 });
 
-// ─── [[B12]] losslessSaves — slot freshness is a PREFIX read, so `seq` must come first ────
-// readSlotSeq decides which slot is newer with /^\{"seq":(\d+)/ — a prefix
-// regex, deliberately not a parse (the doc blob is large). A payload whose
-// stringify puts any other key first reads as seq null: chooseWriteSlot(null,…)
-// collapses the rotation to always-overwrite-A and chooseReadSlot resurrects
-// the OLDER write — silent loss of the newest edit, with perfectly valid JSON
-// in both slots. This pins the coupling the writers currently honor by literal
-// key order alone.
+
 describe("[[B12]] losslessSaves — every written slot payload starts {\"seq\":N and seq strictly increases", () => {
   const slotKeys = () => [..._mem.keys()].filter((k) => /^solenoid\.docs\.(index|doc\.[^.]+)\.(a|b)$/.test(k));
 
   it("every slot payload the STORE wrote is prefix-readable", () => {
-    // The corrupt-slot restore test above plants "{not json" by hand — that
-    // fixture is exactly what this rule protects against and is not a store
-    // write; drop it before sweeping.
+    // The corrupt slot planted above is not a store write.
     for (const [k, v] of [..._mem]) if (v === "{not json") _mem.delete(k);
     documentStore.saveAs("SeqCheck");
     expect(slotKeys().length).toBeGreaterThan(0);
