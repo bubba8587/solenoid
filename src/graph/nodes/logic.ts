@@ -408,7 +408,7 @@ export class SwitchNode extends GraphNode {
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["When", "Then"];
   width = 180;
-  height = 350;
+  height = 404;
 
   constructor(init?: { label?: string; valueKeys?: string[] }) {
     super("Switch");
@@ -478,7 +478,7 @@ export class IfsNode extends GraphNode {
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["If", "Then"];
   width = 180;
-  height = 285;
+  height = 339;
 
   constructor(init?: { label?: string; valueKeys?: string[] }) {
     super("Ifs");

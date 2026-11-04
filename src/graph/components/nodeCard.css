@@ -1043,6 +1043,24 @@ body.solenoid-scrubbing * {
   box-shadow: none;
   padding-bottom: 0;
 }
+/* A tuple whose rule rides above it, carrying its remove button at the right end (SWITCH, IFS). */
+.solenoid-node__pair-group--headed,
+.solenoid-node__pair-group--headed:not(:has(+ .solenoid-node__pair-group)) {
+  box-shadow: none;
+  padding-bottom: 0;
+  margin-bottom: 4px;
+}
+.solenoid-node__pair-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 14px;
+}
+.solenoid-node__pair-rule {
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--border);
+}
 
 .solenoid-node__section-divider {
   height: 1px;

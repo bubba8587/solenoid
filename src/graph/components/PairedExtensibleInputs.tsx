@@ -100,7 +100,7 @@ export function PairedExtensibleInputs({
     );
   }
 
-  const field = (key: string, label: string, remove?: () => void, placeholder?: string) => {
+  const field = (key: string, label: string, placeholder?: string) => {
     const input = node.inputs[key];
     if (!input) return null;
     const isConn = connected.has(key);
@@ -116,16 +116,6 @@ export function PairedExtensibleInputs({
         ) : (
           <InlineNumberField value={literals[key]} onChange={(v) => setLiteral(key, v)} placeholder={placeholder} />
         )}
-        {remove && (
-          <button
-            type="button"
-            className="solenoid-node__row-remove"
-            title={`Remove this ${rowNoun}`}
-            onClick={(e) => { e.stopPropagation(); void remove(); }}
-          >
-            ×
-          </button>
-        )}
       </MeasuredSocketRow>
     );
   };
@@ -134,13 +124,22 @@ export function PairedExtensibleInputs({
     <>
       {leading.length > 0 && <InlineInputs node={node} emit={emit} keys={leading} />}
       {pairs.map((keys, i) => (
-        // The remove button rides the tuple's first row, and only when there is more than one tuple.
-        <div key={keys[0]} className="solenoid-node__pair-group">
-          {keys.map((k, j) => field(
-            k,
-            `${node.pairLabels[j] ?? ""} ${i + 1}`,
-            j === 0 && pairs.length > 1 ? () => removePair(keys) : undefined,
-          ))}
+        // The tuple's remove button sits on the rule above it, so every field keeps the full width; one tuple has neither.
+        <div key={keys[0]} className="solenoid-node__pair-group solenoid-node__pair-group--headed">
+          {pairs.length > 1 && (
+            <div className="solenoid-node__pair-head">
+              <span className="solenoid-node__pair-rule" />
+              <button
+                type="button"
+                className="solenoid-node__row-remove"
+                title={`Remove this ${rowNoun}`}
+                onClick={(e) => { e.stopPropagation(); void removePair(keys); }}
+              >
+                ×
+              </button>
+            </div>
+          )}
+          {keys.map((k, j) => field(k, `${node.pairLabels[j] ?? ""} ${i + 1}`))}
         </div>
       ))}
       <button
@@ -151,7 +150,7 @@ export function PairedExtensibleInputs({
         Add {rowNoun[0].toUpperCase() + rowNoun.slice(1)}
       </button>
       {/* "N/A" is a state cue, not a typed value: no match with an unset fallback yields #N/A. */}
-      {trailing.map((key) => field(key, node.inputs[key]?.label ?? key, undefined, "N/A"))}
+      {trailing.map((key) => field(key, node.inputs[key]?.label ?? key, "N/A"))}
     </>
   );
 }
