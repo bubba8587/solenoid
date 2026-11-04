@@ -68,3 +68,9 @@ A Note and a Report are documents, not VaultBridge Nodes: they reach a vault thr
 - **Writes happen only on Run.** Write to Obsidian and Write Tasks load disarmed and write nothing on their own ([[B18]] safeToShare); a write refuses against the demo vault.
 - **Nothing leaves the vault.** A write drops empty, `.` and `..` path segments, and Vault Folder refuses a folder outside the vault.
 - **A write changes only what it targets** ([[C101]] onePatchPath).
+
+Tests:
+
+- `taskNotesWrite.test.ts`: Write Tasks loads disarmed, refuses to run while disarmed or with nothing to write without touching the network, and refuses Preview and Run while its reader shows the demo, so demo paths never reach a real server.
+- `catalogRegistry.test.ts`: no card persists an `enabled` arm flag, and none constructs armed.
+- `demoVault.test.ts`: the demo vault is read-only, every writer throwing.
