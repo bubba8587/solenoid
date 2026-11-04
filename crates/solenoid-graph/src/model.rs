@@ -9,7 +9,7 @@ use std::rc::Rc;
 use netcore::classic::{self, ClassicConnection, ClassicNode, Input, Output, Socket};
 use netcore::future::{now_or_never, LocalBoxFuture};
 use netcore::{ConnectionBase, GetSchemes, NodeBase, NodeEditor, PipeId, Plugin, Root};
-use netcore_engine::{DataflowEngine, DataflowNode, Error, Inputs, Outputs};
+use netcore_engine::{DataflowEngine, DataflowNode, Error, Inputs, Outputs, PortSelection};
 
 /// What the host keeps beside the model: its node and cable objects, the values its nodes
 /// compute, what its pipes throw, and how a node computes.
@@ -25,7 +25,16 @@ pub trait Host: 'static {
         ports: &'a classic::Node,
         inputs: Inputs<Self::Value>,
     ) -> LocalBoxFuture<'a, Result<Outputs<Self::Value>, Error>>;
+
+    /// A Delayed Pass card ([[D118]] delayedPass): the engine never fetches its `in` input, so a cycle through it never
+    /// recurses, and a cable into `in` makes no loop.
+    fn delayed(_node: &Self::Node) -> bool {
+        false
+    }
 }
+
+/// The input of a Delayed Pass card the engine never fetches.
+pub const DELAYED_INPUT: &str = "in";
 
 /// A node: its ports, as a classic node, and the host's object.
 pub struct GraphNode<H: Host> {
@@ -131,7 +140,24 @@ impl<H: Host> Graph<H> {
     pub fn new() -> Self {
         Self {
             editor: NodeEditor::new(),
-            engine: DataflowEngine::new(),
+            engine: DataflowEngine::with_configure(|node: &Rc<GraphNode<H>>| {
+                let (a, b) = (node.clone(), node.clone());
+                let delayed = H::delayed(&node.object);
+                PortSelection {
+                    inputs: Box::new(move || {
+                        if delayed {
+                            let keys = a.classic().input_keys();
+                            keys.iter()
+                                .filter(|k| k.as_str() != DELAYED_INPUT)
+                                .cloned()
+                                .collect()
+                        } else {
+                            a.classic().input_keys()
+                        }
+                    }),
+                    outputs: Box::new(move || b.classic().output_keys()),
+                }
+            }),
             pipes: RefCell::new(Vec::new()),
             thrown: Rc::new(RefCell::new(None)),
             engine_used: Cell::new(false),

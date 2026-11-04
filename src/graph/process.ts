@@ -1,6 +1,7 @@
 // [[A1]], [[C23]] calcModes (getRecalcGen), [[C130]] rustCore
 // The app's pass: its entry order and its body run in the graph core (`passSession.ts`, `engine.pass`); this module
 // holds the main editor, engine and view and does what touches them: the overlay, the cable values, the render.
+import { advanceDelayedPasses } from "./nodes/control";
 import type { View } from "./view";
 import type { GraphEditor } from "./graphEditor";
 import type { DataflowEngine } from "./dataflowEngine";
@@ -180,6 +181,7 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   cableValueStore.readFrom(_engine);
   const toRender = await _engine.pass(changedNodeId, renderOnly, topologyChanged);
   if (!toRender) return;
+  await advanceDelayedPasses(_editor, _engine);
   const t1 = perf ? performance.now() : 0;
   cableValueStore.bump();
   await Promise.all(toRender.map((id) => _view!.rerenderNode(id)));

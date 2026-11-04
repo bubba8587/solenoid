@@ -73,6 +73,10 @@ impl Host for Js {
     type Value = Val;
     type Thrown = JsValue;
 
+    fn delayed(node: &JsNode) -> bool {
+        node.facts.class == "DelayedPassNode"
+    }
+
     fn data<'a>(
         node: &'a JsNode,
         ports: &'a classic::Node,
@@ -555,11 +559,19 @@ impl Shared {
         }
     }
 
+    fn is_delayed(&self, id: &str, key: &str) -> bool {
+        key == crate::model::DELAYED_INPUT
+            && self
+                .graph
+                .get_node(id)
+                .is_some_and(|n| Js::delayed(&n.object))
+    }
+
     fn loop_set(&self, reuse: bool) -> Vec<String> {
         if reuse && let Some(loops) = self.loops.borrow().as_ref() {
             return loops.clone();
         }
-        let loops = pass::loop_members(self.graph.editor());
+        let loops = pass::loop_members(self.graph.editor(), |id, key| self.is_delayed(id, key));
         *self.loops.borrow_mut() = Some(loops.clone());
         loops
     }
@@ -1277,7 +1289,9 @@ impl GraphCore {
 
     #[wasm_bindgen(js_name = loopMembers)]
     pub fn loop_members(&self) -> Vec<String> {
-        pass::loop_members(self.shared.graph.editor())
+        pass::loop_members(self.shared.graph.editor(), |id, key| {
+            self.shared.is_delayed(id, key)
+        })
     }
 
     #[wasm_bindgen(js_name = downstreamClosure)]

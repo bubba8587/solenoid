@@ -6,6 +6,11 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-04: Delayed Pass; cloud session)
+- **Delayed Pass landed** ([[D118]] delayedPass, new, the author's ask): a loop through its `In` steps once per recalculation instead of `#CIRC!`. The engine never fetches `In` (a per-node port selection in `model.rs`), the loop finder skips cables into it, and `advanceDelayedPasses` hands each card its next value after every app pass. Spec: `../tree/specs/computation/compute-pass.md` § Delayed Pass.
+- **Open:** no composite run mode advances a Delayed Pass card yet (it answers Start there), and its value isn't saved, so a reopened document starts over.
+- The overnight Hold card, the C23 contest record and the control-flow write-up were reverted at the author's word (`033aab0`).
+
 ### SESSION DIGEST (2026-11-03: Write Properties types with Solenoid Properties; cloud session)
 - **New keys register Solenoid Properties types** ([[D116]] writeSolenoidTypes, new): `obsidianTypeName` maps a Cube cell to `solenoid-cube`, a Frame cell to `solenoid-frame`, a matrix or list to its family's `solenoid-*table` / `solenoid-*list`, complex text to `solenoid-complex`; plain scalars keep Obsidian's types, and `tags` / `aliases` / `cssclasses` are never registered.
 - **The YAML writer now writes matrices and nested rows**: a matrix was written as a list of `"1,2"` strings and a table inside a row as `[object Object]`; both now spell as the plugin and Obsidian do (`frontmatterPatch.test.ts` round-trips the demo vault's `Property types.md`).

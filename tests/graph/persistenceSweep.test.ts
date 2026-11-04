@@ -196,6 +196,8 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     planRows: "Write Tasks' plan, derived from the cached rows on every compute",
     plannedKeys: "Write to Obsidian's Keys text as of its last plan, so a Keys edit re-plans; re-read from the literal on every compute",
     planNotes: "Local File's list of what an MSPDI read could not carry over, for the status line; re-read with the file",
+    held: "Delayed Pass's value from the last recalculation; a reopened document starts from Start ([[D118]])",
+    stepCount: "Delayed Pass's count of recalculations since it was added, opened or reset, for the card",
     droppedLoops: "Sankey's count of flows dropped for closing a loop, for the card; re-derived from the input on every compute",
     // ── derived from persisted fields at construction / _rebuild ──
     varNames: "extracted from expr",

@@ -1,6 +1,6 @@
 // [[B16]] oneFormulaSurface, [[C53]] queryIsCompositePreset
 import {
-  AngleDialNode, SlicerNode, CableSwitchNode, ValueInputNode, DateRangeNode, XYPadNode,
+  AngleDialNode, SlicerNode, CableSwitchNode, DelayedPassNode, ValueInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, CardsNode, GanttNode,
@@ -196,6 +196,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "color-blend", label: "Color Blend", description: "Blends two colors with a standard blend mode: mix, multiply, screen, overlay, darken, lighten, difference, dodge, burn. Any CSS color string in, hex out.", create: () => new ColorBlendNode(), parity: false, keywords: "color blend mix multiply screen overlay tint shade combine average darken lighten" },
           { type: "slicer",      label: "Slicer",      description: "Filters a Frame like an Excel slicer: choose a column, then the values whose rows to keep.", create: () => new SlicerNode() },
           { type: "cable-switch", label: "Input Switch", description: "Passes on the value from the named slot you pick, of any type. Unlike `SWITCH`, it picks by name, not by matching a value. Many mode passes several, as a Cube of name and value rows.", create: () => new CableSwitchNode(), parity: false, keywords: "switch multiplexer select choose route mux named cube collect multi" },
+          { type: "delayed-pass", label: "Delayed Pass", description: "Hands on the value it received one recalculation earlier, so a loop can feed back through it without `#CIRC!`. Each recalculation moves the loop one step; Reset starts it again from blank.", create: () => new DelayedPassNode(), parity: false, keywords: "delay loop feedback circular cycle iterate step previous counter accumulate recursion z-1" },
         ],
       },
       {

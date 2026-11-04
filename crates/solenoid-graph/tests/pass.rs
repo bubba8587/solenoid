@@ -76,13 +76,23 @@ fn loop_members_lists_self_loops_then_each_cycle() {
         &["a", "b", "c", "d", "e"],
         &[("a", "b"), ("b", "c"), ("c", "b"), ("e", "e"), ("c", "d")],
     );
-    assert_eq!(loop_members(&g.editor), ["e", "c", "b"]);
+    assert_eq!(loop_members(&g.editor, |_, _| false), ["e", "c", "b"]);
+}
+
+#[test]
+fn a_cycle_through_a_delayed_card_is_no_loop() {
+    let g = graph(
+        &["a", "b", "d", "x"],
+        &[("a", "b"), ("b", "d"), ("d", "a"), ("x", "x")],
+    );
+    assert_eq!(loop_members(&g.editor, |id, _| id == "d"), ["x"]);
+    assert!(loop_members(&g.editor, |id, _| id == "d" || id == "x").is_empty());
 }
 
 #[test]
 fn loop_members_is_empty_on_a_dag() {
     let g = graph(&["a", "b", "c"], &[("a", "b"), ("a", "c"), ("b", "c")]);
-    assert!(loop_members(&g.editor).is_empty());
+    assert!(loop_members(&g.editor, |_, _| false).is_empty());
 }
 
 #[test]
@@ -92,7 +102,7 @@ fn loop_members_survives_a_long_ring() {
     let mut cables: Vec<(&str, &str)> = refs.windows(2).map(|w| (w[0], w[1])).collect();
     cables.push((refs[refs.len() - 1], refs[0]));
     let g = graph(&refs, &cables);
-    assert_eq!(loop_members(&g.editor).len(), 50_000);
+    assert_eq!(loop_members(&g.editor, |_, _| false).len(), 50_000);
 }
 
 #[test]
@@ -175,7 +185,7 @@ fn fetch_all_stops_or_records_a_cancelled_node() {
 #[test]
 fn a_seeded_loop_returns_its_seed() {
     let g = graph(&["a", "b"], &[("a", "b"), ("b", "a")]);
-    for id in loop_members(&g.editor) {
+    for id in loop_members(&g.editor, |_, _| false) {
         g.engine.cache().patch(
             id,
             netcore_engine::Cancellable::resolved(Ok(Rc::new(keymap! { "out" => -1.0 }))),

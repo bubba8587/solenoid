@@ -49,7 +49,7 @@ import { WriteObsidianNode } from "./obsidian";
 import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
 import { ReconcileNode } from "./frame";
-import { SlicerNode, CableSwitchNode, ValueInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
+import { SlicerNode, CableSwitchNode, DelayedPassNode, ValueInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
 import { SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, CardsNode, KpiNode } from "./visual";
 import { GanttNode } from "./gantt";
 import { NoteNode, ImageNode, FileLinkNode, SvgPickerNode } from "./annotation";
@@ -146,7 +146,7 @@ export function explicitKindOf(node: GraphNode): NodeKind | null {
     node instanceof ChooseNode || node instanceof NaNode ||
     node instanceof AlertNode || node instanceof IfNode ||
     node instanceof SwitchNode || node instanceof IfsNode ||
-    node instanceof CableSwitchNode || node instanceof NoteNode ||
+    node instanceof CableSwitchNode || node instanceof DelayedPassNode || node instanceof NoteNode ||
     node instanceof ImageNode || node instanceof FileLinkNode ||
     node instanceof ExpectNode ||
     node instanceof WriteFileNode ||

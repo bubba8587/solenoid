@@ -373,9 +373,21 @@ A Frame on a cable is usually a lazy frame: a ref to a verb chain held in the co
 
 A composite card owns a private `GraphEditor` and `DataflowEngine`, wrapped in the same order, and nothing inside it enters the outer engine or cache. Its pass writes each input port's value into its input marker, runs `internalEngine.reset()`, seeds `#CIRC!` on its internal loop members (with a message pointing at Simulation mode), and fetches the output markers, then, once its mode's passes are done, every other card inside ([[composite-nodes]] § Every card inside computes). Run modes and heavy-mode holding ([[C23]] calcModes) are [[composite-nodes]], and the drill-in is [[composite-drill-in-mount-lifecycle]]; this file only supplies the retargeting in the app pass above.
 
+## Delayed Pass
+
+A Delayed Pass card (`DelayedPassNode`, [[D118]] delayedPass) breaks a cable cycle by answering one recalculation late.
+
+- **The engine never fetches its `In`.** The graph core builds its engine with a per-node port selection (`model.rs`, `Host::delayed`): for a Delayed Pass card every input but `in` takes part, so a fetch never follows `In` and a cycle through it can't recurse. `Start` is an ordinary input.
+- **A cable into `In` is no edge to the loop finder** (`pass::loop_members`'s `delayed`, and `graphValidate.ts`'s `findCycle` for the text form), so the cycle's members are never seeded `#CIRC!`. A cable into `Start` that closes a cycle is still a loop.
+- **The card answers `held`**, or `Start` while `held` is `undefined` (before the first step and after Reset).
+- **After every app pass** (`runGraphPass`, after `engine.pass`), `advanceDelayedPasses` reads each card's `In` source through the engine (cached, so nothing recomputes), every source before any card moves, then sets each card's `held` and bumps its `stepCount`. A card whose `held` changed (`Object.is`) has its reach invalidated, so the next pass, targeted or full, computes from the new value. The canvas shows the step's answers until the next recalculation.
+- `held` and `stepCount` are run-time only; a reopened document starts from `Start`.
+- **Inside a composite** the card breaks the cycle the same way, but no composite run mode advances it yet, so it answers `Start`.
+
 ## Enforcement
 
 - `processTargeted.test.ts`: the cone includes the start and every transitive dependent across branches and joins, and terminates on a cycle.
+- `nodes/delayedPass.test.ts`: a loop through a Delayed Pass card steps once per pass, full or targeted, with no `#CIRC!`; Reset returns it to Start; the text validator sees no cycle through it. `crates/solenoid-graph/tests/pass.rs` pins the loop finder's cut.
 - `circularReset.test.ts`: closing a cycle with a live cable, or pasting one, yields `#CIRC!` on the members instead of a stack overflow or a hung pass.
 - `processReentrancy.test.ts`: a recompute fired during a pass runs no nested pass and settles as one rerun; a coalesced forced call stays forced, a coalesced F9 in sketch mode stays exact, and a coalesced edit inside a composite still marks the composite.
 - `namedEdits.test.ts`: an edit manual mode holds back is still read on F9's full pass, and every full pass a component asks for names its node first.

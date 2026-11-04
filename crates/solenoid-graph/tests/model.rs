@@ -256,5 +256,5 @@ fn the_engine_reads_the_model_ports_and_registers_nodes_added_before_it() {
     graph.set_ports("b", &[], &[port("out", "number")]).unwrap();
     graph.engine().reset(None).unwrap();
     assert_eq!(fetch("b").get("out"), Some(&1.0));
-    assert!(loop_members(graph.editor()).is_empty());
+    assert!(loop_members(graph.editor(), |_, _| false).is_empty());
 }

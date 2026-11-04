@@ -10,8 +10,16 @@ use netcore::{ConnectionBase, NodeBase, NodeEditor, Schemes};
 use netcore_engine::{DataflowEngine, DataflowNode, Error, Outputs};
 
 /// Every node on a cycle: self-loops first, in cable order, then each strongly connected
-/// component of two or more as Tarjan's walk closes it.
-pub fn loop_members<S: Schemes>(editor: &NodeEditor<S>) -> Vec<String> {
+/// component of two or more as Tarjan's walk closes it. A cable into the input `delayed` names
+/// (node, input) is no edge: a Delayed Pass card answers last pass's value, so a cycle through it
+/// is no loop.
+pub fn loop_members<S: Schemes>(
+    editor: &NodeEditor<S>,
+    delayed: impl Fn(&str, &str) -> bool,
+) -> Vec<String>
+where
+    S::Connection: ClassicConnection,
+{
     let ids: Vec<String> = editor
         .get_nodes()
         .iter()
@@ -26,6 +34,9 @@ pub fn loop_members<S: Schemes>(editor: &NodeEditor<S>) -> Vec<String> {
     let mut members = Vec::new();
     let mut seen = FxHashSet::default();
     for c in editor.get_connections() {
+        if delayed(c.target(), c.target_input()) {
+            continue;
+        }
         if c.source() == c.target() {
             if seen.insert(c.source().to_owned()) {
                 members.push(c.source().to_owned());

@@ -2,7 +2,7 @@
 import { GraphInput, GraphNode, GraphOutput } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numberSocket, stringSocket, dateSocket, logicalSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
-import { frameIn, frameOut, dateOut, numOut, tableOut } from "./shared";
+import { frameIn, frameOut, dateOut, numOut, tableOut, numListIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { FrameShapeContext } from "./frameShapeHook";
@@ -93,6 +93,78 @@ export class CableSwitchNode extends GraphNode {
   data(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { out: unknown };
   }
+}
+
+/** Hands on what In held at the end of the previous recalculation, so a cable cycle through it steps instead of
+ *  reading `#CIRC!` ([[D118]] delayedPass). The engine never fetches its input (`model.rs`, `Host::delayed`); the app
+ *  pass hands it the next value afterwards (`advanceDelayedPasses`). */
+export class DelayedPassNode extends GraphNode {
+  static socketDocs: Record<string, string> = {
+    out: "What In held at the end of the previous recalculation; Start before the first one and after Reset.",
+  };
+  label: string;
+  literals: Record<string, number> = { start: 0 };
+  /** The value it hands on this recalculation, `undefined` until the first step; not saved, so a reopened document
+   *  starts from Start. */
+  held: unknown = undefined;
+  /** Recalculations since it was added, opened or reset. */
+  stepCount = 0;
+  cachedValue: unknown = null;
+  readonly outSocket = new MutableSocket("trueany");
+  width = 200; height = 150;
+
+  constructor(init?: { label?: string }) {
+    super("DelayedPass");
+    this.label = init?.label ?? "Delayed Pass";
+    this.addInput("in", new GraphInput(new AdoptiveSocket(), "In"));
+    this.addInput("start", numListIn("Start"));
+    this.addOutput("out", new GraphOutput(this.outSocket, "Out"));
+  }
+
+  reset(): void {
+    this.held = undefined;
+    this.stepCount = 0;
+  }
+
+  passthrough(): PassthroughSpec[] {
+    return [{ output: "out", inputs: ["in"], combine: "single" }];
+  }
+
+  data(inputs: Record<string, unknown[] | undefined> = {}): { out: unknown } {
+    const out = this.held === undefined ? readInput(inputs.start, this.literals.start ?? 0) : this.held;
+    this.cachedValue = out;
+    return { out };
+  }
+}
+
+type DelayEditor = {
+  getNodes(): readonly unknown[];
+  getConnections(): readonly { source: string; sourceOutput: string; target: string; targetInput: string }[];
+};
+type DelayEngine = { fetch(id: string): Promise<Record<string, unknown>>; invalidate(id: string, keepCaches: boolean): unknown };
+
+/** After a recalculation: each Delayed Pass card takes what its input now holds, for the next one. Every source is read
+ *  before any card moves, so one card's new value can't leak into another's this step; a card whose value moved has
+ *  what it reaches cleared, so the next recalculation computes from it. */
+export async function advanceDelayedPasses(editor: DelayEditor, engine: DelayEngine): Promise<void> {
+  const cards = editor.getNodes().filter((n): n is DelayedPassNode => n instanceof DelayedPassNode);
+  if (!cards.length) return;
+  const conns = editor.getConnections();
+  const next = await Promise.all(cards.map(async (card) => {
+    const c = conns.find((x) => x.target === card.id && x.targetInput === "in");
+    if (!c) return undefined;
+    try {
+      return (await engine.fetch(c.source))[c.sourceOutput] ?? null;
+    } catch {
+      return card.held;
+    }
+  }));
+  cards.forEach((card, i) => {
+    card.stepCount += 1;
+    if (Object.is(next[i], card.held)) return;
+    card.held = next[i];
+    engine.invalidate(card.id, false);
+  });
 }
 
 export class AngleDialNode extends GraphNode {

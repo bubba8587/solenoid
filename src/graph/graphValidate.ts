@@ -242,9 +242,11 @@ function findCycle(g: SavedGraph): string[] | null {
   const indeg = new Map<string, number>();
   const adj = new Map<string, string[]>();
   const nameOf = new Map<string, string>();
+  // A cable into a Delayed Pass card carries last pass's value, so it closes no cycle ([[D118]] delayedPass).
+  const delayed = new Set(g.nodes.filter((n) => n.type === "DelayedPassNode").map((n) => n.id));
   for (const n of g.nodes) { indeg.set(n.id, 0); nameOf.set(n.id, n.name ?? n.id); }
   for (const c of g.connections) {
-    if (!indeg.has(c.source) || !indeg.has(c.target)) continue;
+    if (!indeg.has(c.source) || !indeg.has(c.target) || delayed.has(c.target)) continue;
     indeg.set(c.target, (indeg.get(c.target) ?? 0) + 1);
     (adj.get(c.source) ?? adj.set(c.source, []).get(c.source)!).push(c.target);
   }
