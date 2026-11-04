@@ -1,4 +1,4 @@
-// [[C17]]
+// [[C17]], [[equation-solver#Which cards are relations]]
 import { solDate } from "../../../src/graph/dateValue";
 import { dated } from "../datedInputs";
 import { describe, it, expect } from "vitest";
@@ -24,8 +24,6 @@ const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator
 // sign convention: money received is positive, money paid out is negative, so a
 // loan's PMT/IPMT/PPMT are all negative when PV is positive.
 
-// The TVM node is now ONE acausal Equation: wire four of {rate, nper, pmt, pv,
-// fv}, read the fifth off its own output — no op selector, no guess input.
 describe("TVM (equation)", () => {
 
 
@@ -49,10 +47,6 @@ describe("TVM (equation)", () => {
     expect(node.expr).toContain("pmt*(1+rate)*");
   });
 });
-
-// The two locked Equation presets that replaced PDURATION/RRI and
-// EFFECT/NOMINAL (nodeCatalog.ts Finance) — same exprs, pinned to the Excel
-// functions they stand in for.
 
 describe("Payment Breakdown (IPMT / PPMT / CUMIPMT / CUMPRINC)", () => {
   // =IPMT(0.05, 1, 12, 1000) = -50.00, =PPMT(0.05, 1, 12, 1000) = -62.83

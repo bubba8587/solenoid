@@ -18,11 +18,18 @@ Deliberately not converted, so no one converts them later: Depreciation; IPMT, P
 
 The solver is Solenoid's own and uses no outside algebra library, which keeps it small and free of dependencies. A quadratic gives every real root; nothing above degree two is solved in closed form, and demand for cubic or higher roots (a cubic formula or a bundled algebra system) would reopen that.
 
+Tests: `finance.test.ts`: TVM solves the payment at a zero rate and passes the fixed rate out its own socket, and the payment-timing switch swaps the relation without changing the sockets.
+
 ## Parsing and sockets
 
 - The relation must have exactly one `=`. No `=` at the top reads "An equation needs one = sign, like V = I * R"; a second one reads "Use exactly one = sign"; a parse failure reads "Syntax error". These show as the card's in-card message.
 - Every variable name in the relation gets an input socket and an output socket, both named after it. The card also has a `holds` output, labeled "Check". Editing the relation adds sockets for new names and returns the departing names so the caller drops their cables before removing the sockets ([[input-cable-pruning#The ordering rule]]).
 - A variable is known only through its cable. The card declares no literal map, so a save or seed cannot plant a hidden known ([[C28]] literalsIffEditable).
+
+Tests:
+
+- `nodes/formula.rs` inline tests (solenoid-core): the relation splits on its top-level `=` only.
+- `polyform.test.ts`: the Equation card carries a description per variable.
 
 ## What the card does with its inputs
 
@@ -41,6 +48,8 @@ flowchart LR
 
 - **Two or more unknowns:** the card shows "Wire in all but one variable".
 - **No unknowns:** the card checks whether the relation holds, and emits it on `holds`. Each side is evaluated and compared within a relative tolerance of 10⁻⁹ (`equals_within`), cell by cell for lists; a scalar broadcasts against a list and a ragged tail compares as null. With units, the check first compares the two sides' dimensions: different dimensions give `#UNIT!` "The two sides carry different units", and two different currencies give `#UNIT!` rather than holding by magnitude ([[C25]] firstClassUnits). An evaluation failure gives `#VALUE!`.
+
+Tests: `nodes/formula.rs` inline tests (solenoid-core): `equals_within` is relative, then absolute near zero.
 - **One unknown:** the card solves for it. The unknown's name is `solvedFor`, which the card uses for its accent highlight. An error on any known passes through as the answer; a blank known makes the answer null.
 
 ## Solving for one unknown
@@ -89,6 +98,10 @@ Any other step (`ABS`, a function of several arguments) has no clean inverse, an
 4. Bisect every bracket, and return the root closest to zero. Taking the first bracket in ascending order would pick the most negative root; a TVM rate residual also crosses zero where 1 + r < 0, and −290% interest is never the intended answer.
 5. With no root found, return `#SOLVE!` "No solution found between ±10¹². The equation may have no real root here".
 
+Tests: `nodes/formula.rs` inline tests (solenoid-core): isolation solves each variable of a relation, inverts powers and functions, and declines a repeated or hidden unknown; the quadratic sniff accepts true quadratics and turns away the rest; the quadratic and linear roots; and the numeric fallback, a pole never being a root and a root beside a domain edge being found.
+
 ## Units
 
-The numeric layers run on base-SI magnitudes: each known's dimension is captured, then its unit is stripped. The solved unknown's unit is the dimension of its isolated expression (`dim_eval_with_code`), tagged onto the result with its currency code, so a TVM payment on a dollar loan is in dollars. An unknown that appears more than once has no isolated form, so its result stays a bare number rather than a guessed unit. Knowns whose units cannot combine give `#UNIT!`.
+The numeric layers run on base-SI magnitudes: each known's dimension is captured, then its unit is stripped. The solved unknown's unit is the dimension of its isolated expression (`dim_eval_with_code`), tagged onto the result with its currency code, so a TVM payment on a dollar loan is in dollars. An unknown that appears more than once has no isolated form, so its result stays a bare number rather than a guessed unit. Knowns whose units cannot combine give `#UNIT!`. A relation whose knowns carry no units gives bare results, and a dimensionless ratio known is read as its plain magnitude, so `y = r * x` with r a ratio and x in meters solves y in meters, not as a ratio.
+
+Tests: `equationUnits.test.ts`: the unknown's unit derived through each layer (d = v · t solved for d and for v, both roots of x² = A in meters, R from volts and amps in ohms), a known passing through with its own display unit while the math runs on base SI, and a ratio known read as its magnitude.

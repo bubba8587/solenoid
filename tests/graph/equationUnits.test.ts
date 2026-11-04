@@ -1,8 +1,4 @@
-// [[C47]], [[C25]], [[C24]]
-// The Equation node derives the unknown's UNIT from the relation (FC A4
-// consistency): knowns wired in with units run the numeric engine on base-SI
-// magnitudes, and the solved variable comes out tagged with the dimension the
-// isolated expression implies. Bare graphs stay bare, byte-identical.
+// [[C47]] equationNode, [[C25]] firstClassUnits, [[C24]] arraySemantics, [[equation-solver#Units]]
 import { describe, it, expect } from "vitest";
 import { EquationNode } from "../../src/graph/nodes/equation";
 import { fromUnit, isUnitCell, dimOf, isRatio, type UnitCell } from "../../src/graph/unitValue";
@@ -41,11 +37,9 @@ describe("Equation node — units derive through the solve", () => {
 
   it("knowns pass through with their tags; base-SI runs the math (km known)", () => {
     const eq = new EquationNode({ expr: "d = v * t" });
-    // d = 1 km (base 1000 m), t = 200 s → v = 5 m/s
     const out = eq.data({ d: [cell(1, "km")], t: [cell(200, "s")] });
     expect(unitLabelOf(out.v)).toBe("m/s");
     expect((out.v as UnitCell).value).toBe(5);
-    // the known's own output keeps its display tag
     expect((out.d as UnitCell).display).toBe("km");
   });
 
@@ -53,16 +47,12 @@ describe("Equation node — units derive through the solve", () => {
     const eq = new EquationNode({ expr: "x^2 = A" });
     const A = fromUnit(36, fcUnitToUnit("m^2")!) as UnitCell;
     const out = eq.data({ A: [A] });
-    // both real roots, each tagged length
     const roots = out.x as (UnitCell | number)[];
     for (const r of roots) {
       expect(unitLabelOf(r)).toBe("m");
     }
     expect((roots as UnitCell[]).map((r) => r.value).sort((a, b) => a - b)).toEqual([-6, 6]);
   });
-
-
-
 
   it("Ohm's law with units: R from 12 V and 2 A reads 6 Ω", () => {
     const eq = new EquationNode({ expr: "V = I * R" });
@@ -76,8 +66,6 @@ describe("Equation node — units derive through the solve", () => {
 
 describe("pure ratio (cancellation) — end to end sanity", () => {
   it("a ratio solved INTO an equation behaves as a plain number", () => {
-    // ratio × base quantity re-dimensionalizes naturally elsewhere; here just
-    // confirm an equation consumes a ratio as its magnitude.
     const eq = new EquationNode({ expr: "y = r * x" });
     const r = { __unitCell: true, value: 2.5, dim: {}, ratio: true } as unknown as UnitCell;
     const out = eq.data({ r: [r], x: [cell(4, "m")] });
