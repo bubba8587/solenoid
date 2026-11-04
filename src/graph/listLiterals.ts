@@ -1,6 +1,6 @@
 // [[C58]] tableInputRawText, [[C24]] arraySemantics
 // The typed list literals: a list input's text as a card stores it, and how its items read. Arrival coercion itself
-// is the graph core's input boundary (`crates/solenoid-graph/src/boundary.rs`, compute-pass.md § Arrival coercion).
+// is the graph core's input boundary (`crates/solenoid-graph/src/boundary.rs`, [[compute-pass#Arrival coercion]]).
 import type { SocketDataType } from "./sockets";
 import { solDate } from "./dateValue";
 import { coerceFrameCell, type FrameColType } from "./frame";

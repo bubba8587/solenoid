@@ -1,6 +1,6 @@
 // [[C130]] rustCore, [[C118]] formatTravelsWithValue, [[C25]] firstClassUnits
 // What the graph core's input boundary (`crates/solenoid-graph/src/boundary.rs`) asks the app for: only what the
-// app's stores and frame code know (tree/specs/computation/compute-pass.md § The per-node wrappers). Installed each
+// app's stores and frame code know ([[compute-pass#The per-node wrappers]]). Installed each
 // time the module loads, a trap's fresh instance included. A direct card (graph-core.md § Direct calls) asks only
 // for its call (`coreHeader`), the card wire both ways (`toCore`, `fromCore`) and, once per pass, the clock and flags.
 import { setBoundaryHost } from "./engineWasm/solenoid_graph.js";

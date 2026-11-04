@@ -1,4 +1,4 @@
-// [[A1]], [[B3]]
+// [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere, [[compute-pass#Entry order]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
@@ -8,12 +8,7 @@ import type { Schemes } from "../../src/graph/schemes";
 import { processGraph, setEditorRefs, requestRecalc, graphSettled } from "../../src/graph/process";
 import { calcModeStore } from "../../src/graph/calcModeStore";
 
-// Single-flight invariant (the fix for the flushSync-mount crash): a processGraph call made
-// WHILE a pass is running must coalesce into one trailing full pass, never nest a pass inside
-// a pass. A nested pass resets/reads the shared engine + memo + loop state mid-flight and
-// corrupts it (the live symptom was rete-engine's "node is not initialized"). This drives the
-// real singleton processGraph with a stub view whose render step re-enters — exactly what a
-// node's mount/render effect (the Conduit) does under a synchronous render.
+// A stub view whose render step re-enters processGraph, as a card's mount effect (the Conduit's) can.
 
 class Src extends GraphNode {
   constructor(label: string) {

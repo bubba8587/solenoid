@@ -24,7 +24,7 @@ export type DataflowNode = {
 export class DataflowEngine<S extends GraphSchemes = Schemes> {
   editor?: GraphEditor<S>;
   /** Calls each node's `data()` as it is, where every other engine runs it through the input boundary
-   *  (compute-pass.md § The per-node wrappers): the bare rete-engine shape, for the engine's own tests. */
+   *  ([[compute-pass#The per-node wrappers]]): the bare rete-engine shape, for the engine's own tests. */
   readonly raw: boolean;
 
   constructor(opts?: { raw?: boolean }) {
@@ -112,7 +112,7 @@ export class DataflowEngine<S extends GraphSchemes = Schemes> {
     return tracked(() => this.core().computeAll(nodeId));
   }
 
-  /** The app's pass body (compute-pass.md § The pass body): `changed` retargeted into the composite holding it, its
+  /** The app's pass body ([[compute-pass#The pass body]]): `changed` retargeted into the composite holding it, its
    *  reach cleared (everything when none; nothing for an additive pass, `renderOnly`), the loops seeded (a value
    *  edit reuses the last set unless `topology`), every node fetched and landed (`landed`). The nodes to re-render,
    *  or `null` when a reset cancelled the pass. */

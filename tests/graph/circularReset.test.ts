@@ -1,4 +1,4 @@
-// [[C23]] calcModes
+// [[C23]] calcModes, [[compute-pass#The model pass]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
@@ -10,21 +10,6 @@ import { setEditorRefs, processGraph } from "../../src/graph/process";
 import { cableValueStore } from "../../src/graph/cableValueStore";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
 
-// Regression: closing a dependency loop must surface #CIRC!, not blow the stack.
-//
-// Canvas's connectioncreated pipe (Canvas.tsx ~2444, "audit finding 40") reacts to
-// a single new cable with a TARGETED pass: processGraph(cable.target, undefined,
-// { topology: true }). runGraphPass then calls `_engine.reset(changedNodeId)`
-// (process.ts:518) BEFORE the #CIRC! loop-seeding runs — and rete-engine 2.1.1's
-// DataflowEngine.reset(nodeId) walks outgoing connections RECURSIVELY with no
-// visited set, so the moment the new cable closes a cycle the reset chases it
-// around forever and throws "RangeError: Maximum call stack size exceeded".
-// The old (pre compile/fuse merge) pipe called the bare processGraph(), whose
-// full `_engine.reset()` is just cache.clear() — no recursion — and the seeding
-// then dead-ended the loop members with #CIRC!.
-//
-// This test drives the EXACT post-merge pipe call. It fails (RangeError) until
-// the targeted pass is made cycle-safe.
 
 function connect(
   editor: GraphEditor<Schemes>,
@@ -55,8 +40,7 @@ describe("closing a cycle with a live cable (targeted topology pass)", () => {
     await connect(editor, a, "result", b, "a");
     await connect(editor, b, "result", a, "a"); // this cable CLOSES the loop
 
-    // Exactly what Canvas's connectioncreated pipe now does for the new cable
-    // (target = a): a targeted pass with the topology flag.
+    // As the canvas pipe does for a new cable: a targeted pass on its target with the topology flag.
     await expect(
       processGraph(a.id, undefined, { topology: true }),
     ).resolves.not.toThrow();

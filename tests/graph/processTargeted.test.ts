@@ -1,4 +1,4 @@
-// [[C23]]
+// [[C23]] calcModes, [[compute-pass#The targeted pass equals the full pass]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
@@ -6,10 +6,6 @@ import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { downstreamClosure } from "../../src/graph/graphCompute";
 
-// Guards the correctness pillar of the TARGETED processGraph path (A1/A2): the
-// downstream closure must equal the set rete-engine's reset(nodeId) invalidates, so
-// re-rendering only that cone never leaves a downstream node stale. Pure topology —
-// no compute/area needed (so it runs in the node test env).
 function connect(
   editor: GraphEditor<Schemes>,
   src: GraphNode, srcOut: string, tgt: GraphNode, tgtIn: string,

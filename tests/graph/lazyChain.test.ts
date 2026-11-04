@@ -1,6 +1,4 @@
-// [[C130]], [[C24]], [[C25]]
-// What a verb CHAIN costs the frame layer when driven through a real editor and engine: how often a frame value is
-// taken in, how many ops run, and whether anything reads a frame whole (`frame_ref.rs`, `refs.rs`).
+// [[C130]] rustCore, [[C24]] arraySemantics, [[C25]] firstClassUnits, [[compute-pass#Lazy Frames and when they are collected]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { GraphEditor } from "../../src/graph/graphEditor";

@@ -64,7 +64,7 @@ A stack that sets `afterCableChange` gets the cable-change pipe (`installCableSe
 
 ## The `View` seam and positions
 
-`process.ts` holds the live `_editor`, `_engine` and `_view`. `processGraph()` recomputes through the engine's `pass`; the view-less pass (`computeAll`, `graphCompute.ts`) serves the CLI and the tests ([[compute-pass#The model pass (`graphCompute.ts`)]]).
+`process.ts` holds the live `_editor`, `_engine` and `_view`. `processGraph()` recomputes through the engine's `pass`; the view-less pass (`computeAll`, `graphCompute.ts`) serves the CLI and the tests ([[compute-pass#The model pass]]).
 
 `_view` is `flow/flowView.ts`, the one implementation of the `View` interface in `view.ts`. Model-side verbs become RF state through late-bound callbacks the surface supplies, and the surface writes back what RF reports: the viewport (from `onMove`), the pointer's canvas position, and each card's measured size (from `onNodesChange` dimension changes). The view offers:
 

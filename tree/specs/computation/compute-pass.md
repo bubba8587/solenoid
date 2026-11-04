@@ -29,7 +29,9 @@ The model is a `GraphEditor` (`graphEditor.ts`), a handle over the graph core's 
 - **Cache and cancellation.** Clearing a node's cache entry cancels its run; a cancelled fetch rejects with `Cancelled` at its next step. `engine.reset()` clears every entry; `engine.seed(id, outputs)` stores a result the node's `data()` never computes.
 - **A node is computed at most once per pass.** Everything that fetches it in the same pass receives the same cached promise, so fan-out costs nothing extra.
 
-## The model pass (`graphCompute.ts`)
+## The model pass
+
+Code: `graphCompute.ts`.
 
 `graphCompute.ts` defines the pass with no view; the graph walks run in the engine ([[graph-core]] § The graph walks and the pass), and `loopMembers(editor)` and `downstreamClosure(editor, id)` reach them through `engineOf(editor)`. Its pieces:
 
@@ -56,7 +58,15 @@ The headless runner (`scripts/run-graph.ts`) calls `computeAll`. The app's pass 
 
 Recomputing too much only wastes time. Recomputing too little is the dangerous half: a node left outside the set keeps showing its previous answer, with no error, beside fresh values ([[C23]] calcModes).
 
-## The app pass (`processGraph`)
+Tests:
+
+- `processTargeted.test.ts`: the cone holds the start and every transitive dependent across branches and joins, a mid-graph node's cone is itself and what it feeds, and the walk ends on a cycle.
+- `circularReset.test.ts`: closing a cycle with a live cable (the targeted topology pass) seeds `#CIRC!` on the members instead of overflowing the stack, pasting a loop (an additive pass) seeds its members, and a cable closing a loop while a slow card waits is seeded before the pass fetches into it.
+- `pass.rs` (solenoid-graph): the loop finder and the closure natively ([[graph-core#The graph walks and the pass]]).
+
+## The app pass
+
+Code: `processGraph` (`process.ts`).
 
 `process.ts` holds the main editor, engine and view (`setEditorRefs`, `getEditor`, `getEngine`, `getView`) and runs the app's pass. Its entry order's decisions and the state they keep (the gate, single flight, the coalesced rerun, the calc mode, the dirty flag, the generation, the rebuild depth) are the graph core's (`session.rs`, reached through `passSession.ts`, which caches the snapshot each transition answers); its body is the engine's `pass`. `process.ts` does what touches the view and the stores: the overlay, the cable values, the render, the hooks.
 
@@ -95,7 +105,11 @@ flowchart TD
 4. **Run.** Increments the compute-overlay counter (`beginCompute`), runs the pass body, clears the dirty flag on completion, and in a `finally` clears the in-flight flag and decrements the counter (`endCompute`). The overlay (`computeOverlayStore.ts`) is a "Computing…" curtain that blocks interaction, so a multi-second pass can't interleave with a pan, drag or add. It appears only once a pass has run for 150 ms (`REVEAL_DELAY`) and then stays at least 350 ms (`MIN_VISIBLE`) so it never flashes; a pass that ends before the reveal cancels it, and a new pass cancels a pending hide.
 5. **Drain.** If a rerun was requested, runs exactly one more full pass (a pass that throws leaves it to the next pass that finishes; a trap loses it), `processGraph()` with `{ force: true }` when any coalesced request was forced (otherwise the manual-mode gate would swallow a coalesced F9), inside its own `beginForceExact` bracket when any was exact (the F9 caller's bracket has already closed by then, so sketch would otherwise sample the pass F9 asked for). A full pass is a superset of any targeted request that was coalesced, so the arguments of coalesced calls are dropped, except their changed node ids: an id inside a composite gets its nesting chain's `markInternalEdit()` (`engine.markNested`) before the rerun (step 2 of the pass below would otherwise never see it). A coalesced call returns at once, before the rerun, because a call awaited from inside the running pass (a render effect) would otherwise wait on its own pass. A caller outside the pass that must read the result of its call (the Tornado sweep) awaits `graphSettled()` after it, which resolves once no pass is running and no rerun is queued; nothing inside a pass may await it, for the same reason. The drain runs after the in-flight flag clears, so it never nests, and a component effect whose dependencies did not change fires nothing, so the drain cannot queue itself forever.
 
-### The pass body (`runGraphPass`)
+Tests: `processReentrancy.test.ts`: `graphSettled` waits out a coalesced rerun; a recompute fired during a pass's render runs no nested pass and settles as one rerun; a coalesced forced call stays forced, an F9 during a sketch pass still runs on full data, and an edit inside a composite during a pass still marks the composite on the rerun.
+
+### The pass body
+
+Code: `runGraphPass`.
 
 ```mermaid
 flowchart TD
@@ -142,11 +156,15 @@ flowchart TD
 
 `bulkSettle(renderOnly?)` calls the settle the canvas registered with `setBulkSettle`: FC type reconcile, a connection-version bump, the FC unit-mismatch rescan, `processGraph(undefined, renderOnly)`, then the group-collapse sync. Its default before registration is a bare `processGraph(undefined, renderOnly)`.
 
-### The perf probe (`perfProbe.ts`)
+### The perf probe
+
+Code: `perfProbe.ts`.
 
 The probe is inert unless `window.__solenoidPerf = true`. The error guard then times each node's `data()` through promise settlement (`recordNode`, keyed by node id with its class name), so an async node's IPC round trip lands in its row, and `ipcBridge` times each engine IPC call (`recordIpc`, keyed by command, with a cheap payload-size estimate). `processGraph` clears the per-pass buffer at `beginPass()`, reads the slowest nodes with `passTopNodes(n)`, and takes an IPC delta from two `ipcSnapshot()`s. From the devtools console, `window.__solenoidStats()` prints the cumulative node and IPC tables, sorted by total time, and `window.__solenoidStatsReset()` clears them.
 
-## Calc modes and the dirty flag (`calcModeStore.ts`)
+## Calc modes and the dirty flag
+
+Code: `calcModeStore.ts`.
 
 The graph core's session holds `mode: "auto" | "manual" | "sketch"`, a `dirty` boolean and a `forceExact` depth counter, and makes every transition below; `calcModeStore.ts` reads the cached snapshot, persists the mode and notifies subscribers. It imports nothing but the notifier and `passSession.ts`, so `process.ts` can import it one way.
 
@@ -176,6 +194,12 @@ stateDiagram-v2
 | manual, clean | dirty set, no pass | forced exact pass, stays clean | dirty cleared, catch-up pass | no-op |
 | manual, dirty | stays dirty, no pass | forced exact pass, dirty cleared | dirty cleared, catch-up pass | no-op |
 
+Tests:
+
+- `calcModeStore.test.ts`: the mode and dirty-flag transitions, subscribers told on each transition and only then, and the version bumping with each notification.
+- `session.rs` (solenoid-graph): the session's transitions natively ([[graph-core#The session]]).
+- `namedEdits.test.ts`: an edit manual mode holds back is still read on F9's full pass, and every full pass a component asks for names its node first.
+
 ### Only the calc-mode gate skips a pass
 
 **MUST:** the calc mode and the dirty flag form the real state machine in the table above. In manual mode an edit marks the graph dirty instead of computing; switching to automatic or sketch clears the pending flag and the caller owes the catch-up recompute, since the store never runs a pass; an unavailable `localStorage` falls back to in-memory state, never to a graph that quietly stops recomputing. The entry-order gate is the only thing that drops a pass. A graph that has stopped recomputing looks exactly like one that doesn't need to, so the transitions have direct tests (`calcModeStore.test.ts`).
@@ -201,7 +225,7 @@ flowchart LR
 
 Examples: RAND (`RandBetweenNode`), Shuffle, RANDARRAY, Promo, UUID and the Distribution node's sample form (its seed one draw). Draws are not saved; a reload, a new instance or a restarted module rolls on its first pass.
 
-`sourceInvariants.test.ts` fails when a TypeScript file under `nodes/` or `packs/` calls `Math.random()` without referencing `getRecalcGen`, apart from a sanctioned list with reasons (`nodes/composite.ts`, which mints ids, not values).
+Tests: `sourceInvariants.test.ts`: no TypeScript file under `nodes/` or `packs/` calls `Math.random()` without referencing `getRecalcGen`, apart from a sanctioned list with reasons (`nodes/composite.ts`, which mints ids, not values).
 
 Volatile functions inside a formula (`RAND`, `RANDARRAY`, `SHUFFLE` and the other draws in the core's `fns_random.rs`: RANDBETWEEN, RANDDIST, RANDSAMPLE, UUID) draw fresh values on every evaluation, so an Expression holding one re-rolls whenever that Expression is recomputed.
 
@@ -235,6 +259,8 @@ What an open scope suppresses:
 **MUST:** a live-data refresh (`refreshConnection` from the manual button or the interval timer, `refreshAllConnections`, a background load landing) runs its pass outside `beginGraphRebuild` / `endGraphRebuild`. Bulk topology operations wrap themselves in scopes on purpose; a refresh must never be one of them. A scope suppresses outward effects so a load doesn't replay old alerts ([[D79]] effectsEdgeTriggered), and a refresh inside one would swallow a real alert on fresh data: an Alert watching a live feed would simply stop firing.
 
 The Tornado sweep opens a scope and `beginForceExact()` on purpose: its perturbation passes must run in manual mode, on full data, without raising real alerts.
+
+Tests: `connectionStore.test.ts`: `refreshConnection` never enters a rebuild scope ([[live-connections#The cache key]]).
 
 ## The per-node wrappers
 
@@ -275,6 +301,11 @@ Error sinks (`registerErrorSink` in `errorValue.ts`; the Problems store register
 - Deleting a node removes its entries, and a rebuild clears the store. `problemsPanelUi` holds the panel's open state outside the panel, so the status bar badge can open it.
 
 With the perf probe on, the guard records each node's `data()` time, measured through promise settlement.
+
+Tests:
+
+- `errorValue.test.ts`, `errorIntegration.test.ts`: the guard's short-circuit, the conversion of a throw, origin tagging, and a coercion `#SHAPE!` through a real engine.
+- `coreBoundary.test.ts`: a throw, a rejection or an answer of nothing read as the guard's error, and the origin tagging of what a node answers, frozen ([[graph-core#The input boundary]]).
 
 ## Arrival coercion
 
@@ -345,7 +376,14 @@ Details the table compresses:
 | `cube` | `toCube` |
 | any other rung | as is |
 
-### Element coercion only (`noWidenInputs`)
+Tests:
+
+- `coreBoundary.test.ts` freezes arrival on every rung (`fixtures/core/boundary-*`), full and element-only, units kept and stripped, and `boundary_core.rs` (solenoid-graph) holds the core's boundary to it.
+- `coerceInputs.test.ts`: the adoptive base rung, singleton collapse per family, the strict list rungs, and the `FrameRef` bridge for lazy and eager classes.
+
+### Element coercion only
+
+Code: `noWidenInputs`.
 
 For a key in `noWidenInputs` the value reaches `data()` at its natural rank. A `FrameRef`, a `SolError` or a unit-bearing value passes unchanged; otherwise, when the rung's element family is number, booleans become 1 or 0, and when it is logical, numbers become logicals (`NaN` to `null`). The socket and acceptance are unchanged. Expression keeps this set live by mutating it in place as its variables change.
 
@@ -353,9 +391,13 @@ For a key in `noWidenInputs` the value reaches `data()` at its natural rank. A `
 
 A key in `rawInputs` skips coercion entirely (the unit boundary and the lazy collect still apply). A polymorphic node uses it to branch on the runtime shape itself, for example a `cube` socket that must receive a Frame as a Frame rather than have `toCube` flatten its types. A broadcaster declares a combo rung instead of opting out.
 
-### Typed list literals (`parseListLiteral`)
+### Typed list literals
 
-The text is parsed as one CSV line (a quoted field keeps an embedded comma), each field trimmed, empty fields dropped (`listLiteralItems`). Each field is then read as a Frame cell of the rung's type (`coerceFrameCell`; [[C58]] tableInputRawText): `numlist` and `list` as Number, `datelist` as Date, `logicallist` as Boolean; `strlist` keeps the fields as text. So a field the type can't read is NaN, a Boolean field reads only what `coerceLogical` reads, and an ambiguous date such as `02-03-2026` stays its `#AMBIGUOUS!` error, because it is a question to the user and a value would answer it silently. A field is never dropped, which would shift later positions. Literal maps are restored on load only onto classes that declare them ([[inline-literal-maps]]); `coerceInputs.test.ts` fails when a catalog node with a typeable list input does not declare `stringLiterals`.
+Code: `parseListLiteral`.
+
+The text is parsed as one CSV line (a quoted field keeps an embedded comma), each field trimmed, empty fields dropped (`listLiteralItems`). Each field is then read as a Frame cell of the rung's type (`coerceFrameCell`; [[C58]] tableInputRawText): `numlist` and `list` as Number, `datelist` as Date, `logicallist` as Boolean; `strlist` keeps the fields as text. So a field the type can't read is NaN, a Boolean field reads only what `coerceLogical` reads, and an ambiguous date such as `02-03-2026` stays its `#AMBIGUOUS!` error, because it is a question to the user and a value would answer it silently. A field is never dropped, which would shift later positions. Literal maps are restored on load only onto classes that declare them ([[inline-literal-maps]]), so a catalog node with a typeable list input must declare `stringLiterals`, or the typed text drops on reload.
+
+Tests: `coerceInputs.test.ts`: typed-literal injection, `noWidenInputs`, and every catalog node with a typeable list input declaring `stringLiterals`; `coreBoundary.test.ts` freezes the typed list literals on an unwired input.
 
 ## What `data()` receives
 
@@ -365,9 +407,13 @@ The text is parsed as one CSV line (a quoted field keeps an embedded comma), eac
 - A value never contains a `UnitCell` unless units are kept for that input.
 - A value is never a `FrameRef` unless the node is lazy. The collect runs before `rawInputs` is consulted, so a raw input on an eager node still receives a collected Frame.
 
+Tests: `broadcastContract.test.ts`: an unwired input reads the literal, a wired value wins even when it is 0, and a wired blank reaches the node rather than the literal.
+
 ## Lazy Frames and when they are collected
 
-A Frame on a cable is usually a lazy frame: a ref to a verb chain held in the core ([[frame-verbs]] § Lazy frames, [[C130]] rustCore). The classes in `LAZY_FRAME_NODES` (matched by constructor name) receive refs uncollected: the relational verbs (Distinct, Head, Sort, Filter, Join, Columns, GROUPBY, Unpivot, Append, Bind Columns, Rename, Fill Blanks, Replace Values, Window, Drop Blank Rows, Add Index, Split Column, Merge Columns, Computed Column) and the nodes that read through a ref's schema, columns or preview (Get Column, SUMIFS, Table Info, Write File, Pivot, Slicer). `lazyChain.test.ts` pins the set. Every other node's inputs are collected to a whole frame at arrival, in the core, once per ref (`value::collected`): a ref fanned out to several consumers is read once, and a pass whose inputs stand reads nothing again, since the verb cards keep their answers (`nodes::KEEPS_ANSWER`). A collect failure is the ref's error value; the boundary sends it out every output without running the node, and a class in `SEES_ERRORS` receives it as a value instead ([[C24]] arraySemantics).
+A Frame on a cable is usually a lazy frame: a ref to a verb chain held in the core ([[frame-verbs]] § Lazy frames, [[C130]] rustCore). The classes in `LAZY_FRAME_NODES` (matched by constructor name) receive refs uncollected: the relational verbs (Distinct, Head, Sort, Filter, Join, Columns, GROUPBY, Unpivot, Append, Bind Columns, Rename, Fill Blanks, Replace Values, Window, Drop Blank Rows, Add Index, Split Column, Merge Columns, Computed Column) and the nodes that read through a ref's schema, columns or preview (Get Column, SUMIFS, Table Info, Write File, Pivot, Slicer). Every other node's inputs are collected to a whole frame at arrival, in the core, once per ref (`value::collected`): a ref fanned out to several consumers is read once, and a pass whose inputs stand reads nothing again, since the verb cards keep their answers (`nodes::KEEPS_ANSWER`). A collect failure is the ref's error value; the boundary sends it out every output without running the node, and a class in `SEES_ERRORS` receives it as a value instead ([[C24]] arraySemantics).
+
+Tests: `lazyChain.test.ts`: the lazy set, and what a verb chain driven through a real editor costs the frame layer (how often a frame is taken in, how many ops run, whether anything reads a frame whole).
 
 ## Composites
 
@@ -384,16 +430,7 @@ A Delayed Pass card (`DelayedPassNode`, [[D118]] delayedPass) breaks a cable cyc
 - `held` and `stepCount` are run-time only; a reopened document starts from `Start`.
 - **Inside a composite** the card breaks the cycle the same way, but no composite run mode advances it yet, so it answers `Start`.
 
-## Enforcement
+Tests:
 
-- `processTargeted.test.ts`: the cone includes the start and every transitive dependent across branches and joins, and terminates on a cycle.
-- `nodes/delayedPass.test.ts`: a loop through a Delayed Pass card steps once per pass, full or targeted, with no `#CIRC!`; Reset returns it to Start; the text validator sees no cycle through it. `crates/solenoid-graph/tests/pass.rs` pins the loop finder's cut.
-- `circularReset.test.ts`: closing a cycle with a live cable, or pasting one, yields `#CIRC!` on the members instead of a stack overflow or a hung pass.
-- `processReentrancy.test.ts`: a recompute fired during a pass runs no nested pass and settles as one rerun; a coalesced forced call stays forced, a coalesced F9 in sketch mode stays exact, and a coalesced edit inside a composite still marks the composite.
-- `namedEdits.test.ts`: an edit manual mode holds back is still read on F9's full pass, and every full pass a component asks for names its node first.
-- `calcModeStore.test.ts`: the mode and dirty-flag transitions, notification on each transition only, and a missing `localStorage`; the session's transitions natively (`crates/solenoid-graph/tests/session.rs`).
-- `coreBoundary.test.ts`: the boundary's frozen answers (`fixtures/core/boundary-*`): arrival on every rung, full and element-only, units kept and stripped; the typed list literals; origin tagging; a throw, a rejection or an answer of nothing read as the guard's error.
-- `coerceInputs.test.ts`: typed-literal injection and declaration, the adoptive base rung, `noWidenInputs`, singleton collapse per family, strict list rungs, and the `FrameRef` bridge for lazy and eager classes.
-- `errorValue.test.ts`, `errorIntegration.test.ts`: the guard's short-circuit, conversion, origin tagging, and coercion `#SHAPE!` through a real engine.
-- `sourceInvariants.test.ts`: the `Math.random` and `getRecalcGen` scan.
-- `broadcastContract.test.ts`: the unwired and wired-blank read.
+- `nodes/delayedPass.test.ts`: a loop through a Delayed Pass card steps once per pass, full or targeted, with no `#CIRC!`; Reset returns it to Start; the text validator sees no cycle through it.
+- `pass.rs` (solenoid-graph): the loop finder's cut at `In`.

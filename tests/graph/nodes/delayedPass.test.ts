@@ -1,4 +1,4 @@
-// [[D118]] delayedPass
+// [[D118]] delayedPass, [[compute-pass#Delayed Pass]]
 import { describe, it, expect } from "vitest";
 import type { View } from "../../../src/graph/view";
 import { GraphEditor } from "../../../src/graph/graphEditor";
