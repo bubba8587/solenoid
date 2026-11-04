@@ -38,6 +38,13 @@ their names, arities and hints. Formula nodes get
 units right because the formula engine already understands them; custom code is harder to
 trust from a third party and often runs only on desktop, which is why it is the short list.
 
+A pack can also own a family of ordinary cards and their formulas. The Sets pack
+(`packs/sets.ts`, on by default) holds Comparison, Between, Sets, Is In and Tally with IS,
+ISNOT, ABOVE, BELOW, ATLEAST, ATMOST, BETWEEN, the SET functions, ISIN and TALLY
+([[D124]] comparisonFunctions): the cards keep their own node classes, the functions run in
+`fns_packs.rs`, and `setsFormulas.ts` declares them. A pack entry's NODE_EXCEL rows are merged
+as a core leaf's are (`buildCatalog`).
+
 ### Input coercion — the default widens, opting out is one line
 A custom-logic node's `data()` receives every input already coerced to its socket's
 declared rank: a scalar widens into a `[scalar]` list, a list into a matrix, and so on

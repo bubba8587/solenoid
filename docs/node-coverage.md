@@ -68,6 +68,7 @@ The governing principle: keep types separate (a Cast crosses element families, a
 - **ISEVEN / ISODD** (`IsEvenOddNode`): one parity node with an even / odd toggle, emitting TRUE/FALSE (not 1/0) and broadcasting over a list. It lives in the Logic menu.
 - **Alert**: watches a value and, on a changed trigger, shows a toast and logs to the Alerts HUD (`../tree/specs/computation/alert-node-alerts-hud.md`).
 - **Between** (inclusive Low ≤ Value ≤ High) and **Is Close** (|A − B| ≤ tolerance): `numListIn` predicates that broadcast like Comparison, with `logicalcombo` out.
+- **Comparison, Between and Sets** are the Sets pack's, beside Is In and Tally, and the pack is on by default ([[D124]] comparisonFunctions). Each Comparison op is a function (IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST) and Between is BETWEEN: the card calls its function item by item, one kernel with the formula operators (`compare.rs`, [[formula-language#Scalar operators]]). Their sockets take numbers (and unit values), so dates and text reach the kernel only through the functions until the sockets widen.
 
 ## Lists
 

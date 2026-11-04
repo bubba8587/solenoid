@@ -17,7 +17,6 @@ Each line is a leaf whose rule the code doesn't keep yet. The leaf carries an `*
 - [ ] **C25 firstClassUnits** (a temperature difference stays a difference): subtracting two °C or °F readings, and a spread over readings (STDEV, GROUPBY's), should give Δ°C or Δ°F. Today it gives K, and converting that to °C shows −263.15 °C. Needs Δ°C and Δ°F units that convert by scale and add back to a reading.
 - [ ] **C25 firstClassUnits** (two temperature units never mix): mixing K with °C, or °C with °F, should be `#UNIT!` asking for a conversion. The Arithmetic card reads K as a change today (`20 °C + 300 K` is 320 °C), and formulas have no rule (`../tree/specs/values/unit-flow.md`, the rule for two absolute temperatures).
 - [ ] **C112 noOverlapsEver**: Align and opening a collapsed card don't end with the No-Overlap Pass, so Align can stack two cards and an opened card can cover the one below. Both should end with the same small cleanup Tidy, nudge and distribute do (`../tree/specs/canvas/group-expand-push.md` § LayoutFx).
-- [ ] **C10 socketLattice** (formulas never guess a type from text): COUNTIFS, SUMIFS and the other criterion functions still read a date out of criterion text, the way Excel's criteria syntax does (`COUNTIFS(dates, ">1-Jan-2026")`). The fix is replacing that syntax with an operator plus a typed value, as the List Filter card already takes; how that is written in a formula is still to be designed.
 
 ## Dependency updates (walking them one at a time)
 

@@ -6,6 +6,10 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-04: typed criteria, the comparison functions, the Sets pack; cloud session)
+- **A criterion is an operator and a typed value** ([[D123]] typedCriteria, F8): `">="&DATE(…)` and `"<="&cutoff` in a criterion's place compare with the date; criterion text against dates that reads as a date or a serial is `#TYPE!` naming the joined form; the SUMIFS card's rows run the same kernel (`excel_criteria::card_criterion`). [[formula-language#Criteria]].
+- **One comparison kernel** (`compare.rs`, [[D124]] comparisonFunctions): the operators, IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST, BETWEEN(values, low, high) and the Comparison and Between cards. Comparison, Between and Sets joined Is In and Tally in the Sets pack ("Sets & Comparisons"), on by default.
+
 ### SESSION DIGEST (2026-11-04: a volatile Script holds its result until F9; cloud session)
 - **A Script whose source draws or reads the clock holds its answer until F9 or Recalculate** ([[C23]] calcModes, P6): `scriptIsVolatile`'s scan decides, and the card reuses its result while the recalc generation, the source and the arguments (compared by value) stay the same. Spec: `../tree/specs/computation/script-sandbox.md` § The source.
 
