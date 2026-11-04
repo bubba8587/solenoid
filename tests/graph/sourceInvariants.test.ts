@@ -987,6 +987,7 @@ function rawFieldsReaching(effect: RegExp): string[] {
   }
 }
 
+// [[engineering#Heavy libraries load lazily]]
 describe("[[B2]] webTryDesktopFull — recharts is imported statically by exactly one module", () => {
   it("only components/chartRender.tsx imports recharts", () => {
     const importers = walk(SRC)

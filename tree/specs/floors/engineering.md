@@ -34,6 +34,8 @@ A typed-in list breaks without a sound: leave a name off and nothing errors, the
 
 *Exception:* `ShortcutsOverlay.tsx` keeps its own copy of the key bindings, because it only displays them. **Removed by:** the overlay reading the bindings table.
 
+Tests: `rangeRouting.test.ts`: what each hand-routed function does.
+
 ## Checks
 
 ### A gating metric has one implementation
@@ -75,11 +77,15 @@ flowchart LR
 
 Two modules look like pure value code but reach the graph model, and are the usual traps: `frame.ts` (through `sockets.ts`) and `unitColumn.ts` (through `formatAnnotationStore.ts` → `formatModel.ts` → `sockets.ts`).
 
+Tests: `formulaPathIsGraphFree.test.ts`: walks the relative imports from the formula path's roots (`excelFormula.ts`, `excelFunctions.ts` and every pack's `*Formulas.ts`) and fails on any module that imports the graph model, the editor, the engine or `sockets.ts`. A type-only import doesn't count, since only a value import loads a module at run time.
+
 ### Heavy libraries load lazily
 
-recharts is one lazy chunk. Every renderer that uses recharts lives in `components/chartRender.tsx`, and nothing the app imports statically may import it. `chartView.tsx`, which every card imports, stays free of recharts and loads the chunk behind `lazy` and `Suspense`. The other heavy figure and layout libraries follow the same rule: `pele` (MermaidView) and `elkjs` (Tidy) are reached only by dynamic import, never a static `from`. A source sweep enforces it: exactly one file under `src/` imports from `recharts`, and that file is `components/chartRender.tsx`.
+recharts is one lazy chunk. Every renderer that uses recharts lives in `components/chartRender.tsx`, and nothing the app imports statically may import it. `chartView.tsx`, which every card imports, stays free of recharts and loads the chunk behind `lazy` and `Suspense`. The other heavy figure and layout libraries follow the same rule: `pele` (MermaidView) and `elkjs` (Tidy) are reached only by dynamic import, never a static `from`. 
 
 recharts is the largest optional dependency, and most documents never draw a chart. On the web ([[B2]] webTryDesktopFull) the first load is the product's first impression, and one static import anywhere in the card tree drags the whole library into the main bundle. Reopen if charts become a core surface that most documents use, or the canvas figure views replace recharts.
+
+Tests: `sourceInvariants.test.ts`: exactly one file under `src/` imports from `recharts`, `components/chartRender.tsx`, and nothing imports `pele` or `elkjs` statically.
 
 ## Comments
 
@@ -104,6 +110,8 @@ Serves [[C120]] linearWork. Each rule names the shape that broke it, since every
 - *Count with a sort, not a scan.* Rank normalization counted smaller values with a `filter` per row (33 s at 20k rows); it now sorts once and binary-searches.
 - *A shared total is computed once per span.* A percent-of pivot re-summed its denominator for every body cell (154 s at 100k rows); `denominators` (`frame_verbs.rs`) keeps one sum per row span and column span.
 - *Key rows on the raw cell.* A one-column group, distinct or partition keys on the cell itself (`CellKey`, which groups as SameValueZero does, exactly as `encode_cell`). Several columns may still join a JSON key.
+
+Tests: `rangeCallMemo.test.ts`: a range function over a whole column answers per row, re-reads the column on the next run, and stays linear in the rows; `errorValue.test.ts`: many distinct errors tag in linear time.
 
 ### Sorting compares precomputed keys
 

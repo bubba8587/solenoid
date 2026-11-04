@@ -1,13 +1,8 @@
-// [[C17]] shareImpl
+// [[C17]] shareImpl, [[engineering#The formula path is graph-free]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// ─── [[C17]] shareImpl: the formula path never pulls in the graph model or the socket lattice ──────
-// The headless evaluator (run-graph, the Expression host) loads excelFormula → excelFunctions → the shared op
-// modules. Walk the relative import graph from those roots (every pack's packs/*Formulas.ts included) and fail on
-// any module that imports the graph model or sockets.ts. `import type` is skipped: only a value import loads the
-// module at run time (tree/specs/floors/engineering.md § The formula path is graph-free).
 
 const SRC = path.resolve(__dirname, "../../src/graph");
 const PACK_FORMULAS = fs.readdirSync(path.join(SRC, "packs")).filter((f) => f.endsWith("Formulas.ts")).map((f) => `packs/${f}`);
