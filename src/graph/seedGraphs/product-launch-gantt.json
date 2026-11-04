@@ -1,5 +1,6 @@
 {
   "v": 2,
+  "hidden": true,
   "order": 523,
   "label": "Product launch (Gantt)",
   "group": "Worked examples",

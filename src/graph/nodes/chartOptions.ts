@@ -90,7 +90,7 @@ const FIELD_KEYS: readonly ChartBuilderKey[] = ["title", "cmap", "fontsize"];
 const HEATMAP_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "cmap", "center", "vmin", "vmax", "annot", "fmt", "cbar", "aspect", "origin", "fontsize"];
 
-export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group: string; op: ChartValueOp; keys: readonly ChartBuilderKey[] }> = {
+export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group: string; op: ChartValueOp; keys: readonly ChartBuilderKey[]; hidden?: boolean }> = {
   column:    { label: "Column",           group: "Cartesian",    op: "column", keys: XY_KEYS },
   bar:       { label: "Bar",              group: "Cartesian",    op: "bar", keys: XY_KEYS },
   line:      { label: "Line",             group: "Cartesian",    op: "line", keys: LINE_KEYS },
@@ -117,7 +117,7 @@ export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group
   contour:   { label: "Contour",          group: "Figures",      op: "contour", keys: CONTOUR_KEYS },
   surface:   { label: "Surface",          group: "Figures",      op: "surface", keys: FIELD_KEYS },
   quiver:    { label: "Vector Field",     group: "Figures",      op: "quiver", keys: FIELD_KEYS },
-  gantt:     { label: "Gantt",            group: "Figures",      op: "gantt", keys: GANTT_TIMELINE_KEYS },
+  gantt:     { label: "Gantt",            group: "Figures",      op: "gantt", keys: GANTT_TIMELINE_KEYS, hidden: true },
   record:    { label: "Record",           group: "Figures",      op: "record", keys: RECORD_KEYS },
 };
 

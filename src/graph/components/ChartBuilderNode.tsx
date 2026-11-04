@@ -88,7 +88,9 @@ function SelectInputRow({ node, emit, socketKey, label, options, clearValue }: {
   );
 }
 
-const TARGET_OPTS = CHART_TARGET_LIST.map((t) => ({ value: t.id, label: t.label, group: t.group }));
+const targetOpts = (current: string) => CHART_TARGET_LIST
+  .filter((t) => !t.hidden || t.id === current)
+  .map((t) => ({ value: t.id, label: t.label, group: t.group }));
 
 const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color", "x", "y", "s", "c", "annotate", "by", "fmt", "window", "columns"];
 
@@ -309,7 +311,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div style={{ padding: "2px 0 4px" }}>
-        <ArgSelect value={target} onChange={(t) => void pickTarget(t)} options={TARGET_OPTS} />
+        <ArgSelect value={target} onChange={(t) => void pickTarget(t)} options={targetOpts(target)} />
       </div>
       {collapsed ? (
         // Collapsed, one InlineInputs carries every shown input: the toggle and select rows would hide their sockets, and two groups would draw two pills.
