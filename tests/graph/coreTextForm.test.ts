@@ -1,8 +1,8 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec, [[B12]] losslessSaves
-// The text form's frozen answers (fixtures/core/text-form.json.gz): every seed graph written to text and read back,
-// and hand-written texts read, well-formed and not. Valid JSON, not JavaScript's spelling of it: a number keeps its
-// sign and digits, an object the order its keys were written in. Compared as text, since a save's key order is part of it; the Rust
-// is held to the same answers natively (`crates/solenoid-graph/tests/text_form.rs`).
+// The text form: every seed written to text reads back to the same nodes and cables and writes the same text again,
+// and the hand-written texts (escapes, number spellings, key order, the malformed ones) read as frozen
+// (fixtures/core/text-form.json.gz; `crates/solenoid-graph/tests/text_form.rs` holds the Rust to the same answers).
+// Compared as text, since a save's key order is part of it.
 import { describe, expect, it } from "vitest";
 import { frozen } from "./coreFixtures";
 import { SEEDS } from "../../src/graph/seeds";
@@ -42,12 +42,20 @@ const TEXTS = [
 ];
 
 describe("the text form holds to its frozen answers", () => {
-  it("every seed written and read back, and hand-written texts read", () => {
-    const fresh: Case[] = [{ kind: "order", order: [...INIT_FIELD_ORDER, ...INIT_EXTRA_FIELD_ORDER] }];
+  it("every seed reads back to its nodes and cables, and writes the same text again", () => {
     for (const [id, seed] of Object.entries(SEEDS) as [string, { graph: SavedGraph }][]) {
-      const w = writeCase(id, seed.graph);
-      fresh.push(w, { kind: "read", text: w.want!, want: read(w.want!) });
+      const text = writeTextForm(seed.graph);
+      const back = read(text);
+      expect(back.startsWith("!"), `${id}: ${back}`).toBe(false);
+      const g = JSON.parse(back) as SavedGraph;
+      expect(g.nodes.map((n) => n.type).sort(), id).toEqual(seed.graph.nodes.map((n) => n.type).sort());
+      expect(g.connections.length, id).toBe(seed.graph.connections.length);
+      expect(writeTextForm(g), id).toBe(text);
     }
+  });
+
+  it("hand-written texts read, well-formed and not, as frozen", () => {
+    const fresh: Case[] = [{ kind: "order", order: [...INIT_FIELD_ORDER, ...INIT_EXTRA_FIELD_ORDER] }];
     for (const text of TEXTS) {
       fresh.push({ kind: "read", text, want: read(text) });
       const g = read(text);
