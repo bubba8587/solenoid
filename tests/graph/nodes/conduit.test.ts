@@ -1,9 +1,8 @@
-// [[B12]] losslessSaves, [[C10]] socketLattice
+// [[B12]] losslessSaves, [[C10]] socketLattice, [[conduit-lane-faces#Rotation]], [[conduit-lane-faces#Lane count and expansion]],
+// [[conduit-lane-faces#The toolbar]], [[react-flow-surface-contract#Deleting a selection]]
 import { describe, it, expect } from "vitest";
 import { ConduitNode, conduitGhostSpecs, conduitLaneOf, conduitSeqTaken } from "../../../src/graph/nodes/conduit";
 
-// rotateBy is what the Canvas `[` / `]` keys call. It must keep the angle on the
-// 45° quantum and wrap into [0, 360) in both directions.
 describe("ConduitNode.rotateBy", () => {
   it("steps by 45° per unit, CW (+) and CCW (-)", () => {
     const c = new ConduitNode({ angle: 0 });
@@ -35,8 +34,6 @@ describe("conduitLaneOf", () => {
   });
 });
 
-// conduitGhostSpecs is the per-lane rewire on Conduit delete: each in_i pairs
-// with out_i, ghosting the upstream source → downstream target.
 describe("conduitGhostSpecs", () => {
   const conn = (source: string, sourceOutput: string, target: string, targetInput: string) =>
     ({ source, sourceOutput, target, targetInput });

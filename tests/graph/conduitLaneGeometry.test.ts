@@ -1,4 +1,4 @@
-// [[C10]] socketLattice
+// [[C10]] socketLattice, [[conduit-lane-faces#Faces]], [[conduit-lane-faces#One lane geometry]]
 import { describe, it, expect } from "vitest";
 import {
   conduitLaneOffset,
@@ -6,15 +6,6 @@ import {
   CONDUIT_COL_GAP,
   CONDUIT_ROW_GAP,
 } from "../../src/graph/ribbonCable";
-
-// conduitLaneOffset is THE lane geometry: ConduitComponent centres each painted
-// socket square on it and FlowCableEdge lands each cable tip on it, so the two
-// cannot drift. What this pins is the shape of that offset — pitch, symmetry, the
-// in/out mirror, and rigid rotation — none of which any DOM measurement supplies.
-// (Cable tips used to come from React Flow's measured handle box instead. It is
-// re-measured only on a node version bump, so an expand left every tip on the
-// collapsed geometry, and it stores the AABB of the ROTATED square, which inflates
-// by √2 off-axis. Both put the tip off the pin hole it plugs into.)
 
 const lay = (over: Partial<{ angle: number; scale: number; lanes: number }> = {}) =>
   ({ angle: 0, scale: 1, lanes: 3, ...over });
@@ -31,7 +22,6 @@ describe("conduitLaneOffset — the Conduit's lane geometry", () => {
   it("centres the lane stack on the pivot, at one square + gap of pitch", () => {
     const ys = [0, 1, 2].map((i) => conduitLaneOffset(lay(), "in", i).y);
     expect(ys).toEqual([-ROW_PITCH, 0, ROW_PITCH]);
-    // Even lane counts straddle the pivot rather than sitting on it.
     const even = [0, 1].map((i) => conduitLaneOffset(lay({ lanes: 2 }), "in", i).y);
     expect(even).toEqual([-ROW_PITCH / 2, ROW_PITCH / 2]);
   });
