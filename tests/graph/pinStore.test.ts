@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[stores#Node-keyed stores in brief]]
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { pinStore } from "../../src/graph/pinStore";
 

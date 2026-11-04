@@ -1,9 +1,8 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[stores#The rules]]
 import { describe, it, expect } from "vitest";
 import { apiKeyStore } from "../../src/graph/apiKeyStore";
 
-// The node test env has no localStorage; the store degrades to in-memory (its guards
-// swallow the ReferenceError), so these exercise the pure key-map logic.
+
 describe("apiKeyStore", () => {
   // The plain set/get/has/remove round-trip is exercised for real by aiService.test.ts,
   // aiKey.test.ts and nodes/dataFeed.test.ts; only the normalization and observer

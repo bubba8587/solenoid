@@ -54,7 +54,15 @@ flowchart LR
 4. **A store that changes what is on screen notifies once per settled edit, never per keystroke** ([[B19]] spreadsheetHabits). Two notify at frame rate, each with its own notifier and one reader: the drawn-cable cursor in `drawnCables.ts`, which only the preview stroke subscribes to ([[drawn-cables]]), and `cableEndMotion.ts`, the cable ends a section fold's liquid carries, which only the cable edges read and which empties when the animation ends.
 5. **The app never calls `window.alert` or `window.confirm`**, which are unreliable in the Tauri desktop WebView ([[C106]] noNativeDialogs). `noticeStore` and `confirmStore` replace them: a new "are you sure" goes through `confirmStore`, a new message through `noticeStore`, and `window.prompt` is equally out. The provider API key lives only in this device's localStorage (`apiKeyStore.ts`), never in a saved graph or the text form ([[B18]] safeToShare).
 
-## The building blocks (`storeKit.ts`)
+Tests:
+
+- `sourceInvariants.test.ts`: every `src/graph/*Store*.ts` registers with `nodeStoreRegistry` or is sanctioned with the reason it holds no per-node map, and every registrant also registers the bulk reset.
+- `nodeStoreRegistry.test.ts`: a node forgotten across every real node-keyed store, others left intact, ids that share a prefix kept apart, and `forgetAllNodes` resetting the scanning stores in one pass; the per-store tests (`collapseStore.test.ts`, `nodeSizeStore.test.ts`) leave the cross-store cleanup to it.
+- `apiKeyStore.test.ts`: the key map, with no `localStorage` in the test environment, so the store's guards fall back to memory.
+
+## The building blocks
+
+Code: `storeKit.ts`
 
 - `createNotifier()` gives `notify`, `subscribe` and `version`. `notify()` bumps a counter and calls every listener, `subscribe(listener)` returns an unsubscribe function, and `version()` returns the counter.
 - `createToggleStore(initial = false)` is an open or closed flag with `get`, `set`, `open`, `close`, `toggle` and `subscribe`. `set`, `open` and `close` do nothing when the value would not change; `toggle` always flips and notifies.
@@ -76,6 +84,8 @@ A bridge holds a single handler. `register(fn)` returns an unregister function t
 - `requestConfirm(message or options)` opens the confirmation dialog and resolves true or false. A confirmation still open when a new one arrives resolves false first. `answerConfirm(ok)` closes the dialog, then resolves.
 - These are the app's only interruptions (rule 5 above): the browser's own boxes are also unstyled on the web, and the in-app dialog looks and handles the keyboard like every other dialog. File-access prompts belong to the operating system and don't count.
 
+Tests: `inspectorStore.test.ts`: a context-menu focus ends when the panel closes, so a later open shows the selection.
+
 ## Node-keyed stores in brief
 
 - `collapseStore`: the set of collapsed nodes. A collapsed card keeps its result box and socket dots.
@@ -84,7 +94,12 @@ A bridge holds a single handler. `register(fn)` returns an unregister function t
 - `presentSocketStore`: the sockets each card shows, wired or not. Every rendered socket (`NodeSocket.tsx`) counts itself in on mount and out on unmount; a socket removed from a card that stays drawn (a mode switch) leaves at once, and a card that unmounts whole (a collapsed group's member) keeps its last shown set. Changes settle and notify once per commit. `presentSocketKeys(node, side)` narrows the declared sockets to the shown ones, and returns every declared one for a card that never rendered. Tidy's ports and a collapsed group's leaf rows read it. It is render state, never saved.
 - `nodeNameStore`: every node's addressable name ([[addressable-model]]). `ensure(id, ctorName)` assigns a type-scoped default (`Filter_2`) if none is set; the prefix comes from the class name, or from a placeholder's missing type. `claim` is the load path: it takes a saved name as given, but an invalid or already-claimed name falls back to `ensure` rather than overwrite; a claim that renames an already-named id releases its old name. `rename` is the user path and validates identifier syntax and uniqueness in the document. Loading or renaming to a name with a counter advances that prefix's counter past it.
 
-## App settings (`settingsStore`)
+Tests: `collapseStore.test.ts`, `pinStore.test.ts` (toggle, remove and clear, notifying only on a change), `commentStore.test.ts` (an edit never changes the author), `presentSocketStore.test.ts` (a card that never rendered, sockets listed in declared order, a socket drawn twice counted until both copies unmount), `nodeSizeStore.test.ts`, `isolateStore.test.ts`, `nodeNameStore.test.ts` and `saveTimeStore.test.ts`.
+
+## App settings
+
+Code: `settingsStore`
+
 
 `settingsStore` holds the app-wide preferences as one object persisted under `solenoid.settings`; `initSettings()` reads it once at startup, laying any saved values over `DEFAULT_SETTINGS`. `get(key)`, `set(key, value)` (which does nothing when unchanged) and `toggle(key)` for booleans. `numberDecimals` and `sciAbove` are pushed to the core's formatter on load and on every change (`format.ts`), and `formatAnnotationStore` and `frameFormatStore` each notify when either changes (`displaySettingsKey`), so every value box and Frame card redraws ([[C118]] formatTravelsWithValue). `settingsPanel` is the Settings dialog's open flag.
 
@@ -102,5 +117,7 @@ The Settings dialog (`Settings.tsx`) renders from the schema, so a new field's c
 The dialog is a 580 pixel column, narrower on a phone with a 12 pixel gutter, so it never widens with the window; it is as tall as its content up to 80% of the screen, hung 10% from the top, so a search that shortens it shrinks it from the bottom and its header stays put. A search box at the right of the dialog's header, beside its close button and in the popups' search field (`SearchField`), filters it: with text in it, the dialog shows only the schema fields whose section title, label, help or accordion holds every typed word, flat (an accordion's match shows without its fold), the matching packs, and the fixed sections (Appearance, Renderer, AI, API keys) whose names or controls match; nothing matching says so. Escape clears the search before it closes the dialog.
 
 Some settings act through CSS: on every change the store sets classes on `<html>` so any React root's CSS can respond. `hideGridDots` sets `perf-no-grid-dots`; `minimapPosition` sets `minimap-top` or `minimap-hidden` ([[layout-chrome]]); `headerTitleCase` sets one of `hdr-case-upper`, `hdr-case-proper` and `hdr-case-as-typed`, a `text-transform` on the card title's display element only, never on the editing input, which shows the raw text.
+
+Tests: `settingsStore.test.ts`: `initSettings()` reads saved values over the defaults, through an in-memory `localStorage`.
 
 `gridSnapStore` is a separate preference (`solenoid.gridSnap`). Its snap step is the canvas dot spacing, `DOT_SPACING` = 24 world units, so snapped positions land exactly on visible dots: `FlowSurface` offsets React Flow's background pattern onto the same lattice React Flow's `snapToGrid` uses, and the dot tile scales from it.

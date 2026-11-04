@@ -1,10 +1,8 @@
-// [[C44]]
+// [[C44]] dateSerials, [[stores#App settings]]
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { settingsStore, initSettings, SETTINGS_SCHEMA } from "../../src/graph/settingsStore";
 
-// settingsStore.ts persists to localStorage. The test environment is Node
-// (no built-in localStorage), so we provide a minimal in-memory mock so
-// the initSettings() round-trip tests can exercise real behavior.
+// The test environment has no localStorage, so a minimal in-memory one stands in.
 const _ls: Record<string, string> = {};
 const localStorageMock: Storage = {
   getItem: (k) => _ls[k] ?? null,

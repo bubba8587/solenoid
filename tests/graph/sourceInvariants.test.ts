@@ -709,15 +709,7 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
 });
 
 describe("[[A1]] visualGraphCalculator — every node-keyed store registers with nodeStoreRegistry", () => {
-  // Per-node state lives in module-level stores (node classes and verbs outside
-  // React write it), and the registry is the ONE answer to "what happens on
-  // node delete / graph rebuild". A store that skips it leaks dead-id entries
-  // (bounded — node ids never collide across loads — but real: the sweep that
-  // built this found formatAnnotationStore, dockedNodeStore, compositeStaleStore
-  // and standoffs unregistered, and isolateStore's miss was a VISIBLE bug: a
-  // document switch while isolated dimmed the entire new graph). Every
-  // src/graph/*Store*.ts either references the registry or is sanctioned here
-  // with the reason it holds no per-node map.
+  // [[stores#The rules]]
   const SANCTIONED: Record<string, string> = {
     "nodeStoreRegistry.ts": "the registry itself",
     "documentStore.ts": "document-level (docs, slots, autosave) — not node-keyed",
