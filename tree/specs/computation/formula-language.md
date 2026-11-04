@@ -692,7 +692,8 @@ The formula hosts above bind positionally; only the node hosts bind by name. How
 Tests:
 
 - `nodes/tableLambda.test.ts`: the LAMBDA node emits a callable value binding its parameters by position; SCAN and REDUCE seed from a scalar Initial socket; the card names the variables a lambda used without declaring; the hosts carry units over a list.
-- `nodes.rs` (solenoid-core): the host cards' frozen cases, wired lambdas with captures among them ([[node-bodies#Checks]]). No test holds the by-name binding's other cases (another declaration order, a foreign parameter refused).
+- `nodes.rs` (solenoid-core): the host cards' frozen cases, wired lambdas with captures among them ([[node-bodies#Checks]]).
+- `nodes/tableLambda.test.ts`: a LAMBDA wired into REDUCE reads `acc` and `value` by name whichever is declared first, and a parameter the card doesn't offer is `#VALUE!` naming the card's variables.
 - `formulaLambda.test.ts`: a parameter named after a constant or named twice is refused on the card.
 
 ## Errors a formula answers

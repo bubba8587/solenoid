@@ -132,3 +132,21 @@ describe("REDUCE's initial value carries its unit into the fold ([[C25]] firstCl
     expect(prod).toEqual({ __unitCell: true, value: 30000, dim: { length: 1 }, display: "km" });
   });
 });
+
+describe("a wired LAMBDA binds the card's values by name, in any declared order ([[C50]] lambdaBindsByName)", () => {
+  // acc * 10 + value is not symmetric: over [1, 2, 3] it folds to 123 only when acc and value land where they're named.
+  const reduce = (params: string, expr: string) => {
+    const lam = new LambdaNode({ params, expr }).data({}).result;
+    return new ReduceLambdaNode().data({ initial: [0], table: [[1, 2, 3]], lambda: [lam] }).result;
+  };
+
+  it("reads acc and value by their names whichever is declared first", () => {
+    expect(reduce("acc, value", "acc * 10 + value")).toBe(123);
+    expect(reduce("value, acc", "acc * 10 + value")).toBe(123);
+  });
+
+  it("refuses a parameter the card doesn't offer", () => {
+    const r = reduce("acc, thing", "acc + thing") as SolError;
+    expect([r.code, r.message]).toEqual(["#VALUE!", "Lambda param thing isn't one of this node's variables (acc, value, step)"]);
+  });
+});
