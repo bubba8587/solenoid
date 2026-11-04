@@ -1,4 +1,5 @@
-// [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver
+// [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver, [[group-expand-push#The push, per expanding group]],
+// [[group-expand-push#After all groups: the Standoff Solve and the No-Overlap Pass]]
 import { describe, it, expect } from "vitest";
 import { computeExpandPush, separateAll, PushBox, Satellite, ExpandSpec, PUSH_GAP, Pt } from "../../src/graph/groupPushCore";
 
@@ -62,9 +63,6 @@ describe("clear (minimal disturbance)", () => {
   });
 });
 
-// A within-group Tidy doesn't go small-card → big-box; it grows an ALREADY-large
-// box a bit (e.g. ELK spread the members wider). Same engine, different pre-size:
-// neighbors the GROWN edge newly covers must still be pushed.
 describe("grow push (within-group Tidy grows an already-expanded box)", () => {
   // 200×150 group at origin, grown to 280×150 (wrapped wider members → +80 right).
   const grow: ExpandSpec = { x: 0, y: 0, preW: 200, preH: 150, postW: 280, postH: 150 };
@@ -161,13 +159,10 @@ describe("cascade", () => {
     const a = box("a", 130, 100, 80, 50);
     const b = box("b", 140, 110, 80, 50); // already overlapping a
     const d = run([a, b]);
-    // Both get cleared (both covered), but no cascade tries to pry them apart.
     expect(d.get("a")).toBeDefined();
     expect(d.get("b")).toBeDefined();
     const ra = after(a, d.get("a"));
     const rb = after(b, d.get("b"));
-    // Their relative offset may compress, but neither is flung further than
-    // one clearing distance.
     expect(Math.abs(rb.x - ra.x)).toBeLessThanOrEqual(20);
   });
 });
@@ -177,9 +172,6 @@ describe("connection anchors (shortest connections win)", () => {
     computeExpandPush(spec, obstacles, new Map(), anchors);
 
   it("a covered node wired to something on the LEFT hops left, staying near it", () => {
-    // The reported case: Group C (the spec) expands over loose node B, which
-    // is connected to Group A off to the left. B must end near A, not be
-    // flung past C's right edge.
     const b = box("b", 150, 100);
     const anchorsOfA = new Map([["b", [{ x: -200, y: 125 }]]]);
     const d = runA([b], anchorsOfA).get("b")!;
@@ -260,8 +252,7 @@ describe("separateAll on plain boxes (hard de-overlap backstop)", () => {
   });
 
   it("a pinned obstacle never moves; its partner yields instead", () => {
-    // L sits top-left (would normally hold); pinning F would be wrong. Here L is a
-    // fixed locked group and F a tidied node dropped onto it — F must be the mover.
+    // L is a fixed locked group at the top-left, F a tidied node dropped onto it.
     const L = box("L", 0, 0, 200, 150);
     const F = box("F", 40, 30, 200, 150);
     const disp = separateAll([L, F], { fixed: new Set(["L"]) });

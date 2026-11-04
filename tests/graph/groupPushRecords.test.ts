@@ -1,4 +1,4 @@
-// [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver
+// [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver, [[group-expand-push#Records and restore]], [[group-expand-push#Entry points]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
@@ -9,24 +9,6 @@ import { setGroupsCollapsed } from "../../src/graph/groupPush";
 import { standoffStore } from "../../src/graph/standoffs";
 import { swapSelectionSlots } from "../../src/graph/canvasCommands";
 import { autofitGroupWithHistory, createGroupFromSelection, GROUP_PAD, GROUP_HEADER } from "../../src/graph/groupLogic";
-
-// ─── Expand-push record staleness across a Tidy ─────────────────────────────────
-// The reported "Tidy/Cleanup around expanded groups misplaces nodes" sequence:
-//
-//   1. Expand group A → its push moves neighbor N aside; a restore record is
-//      written (preX = where N stood BEFORE the push, expX = where the push
-//      left it).
-//   2. A layout pass (Tidy / Cleanup / align) moves N somewhere new. The record
-//      survives, silently pointing at a PRE-TIDY coordinate.
-//   3. Expand group B → its push shoves N again. The merge path used to keep
-//      the ancient preX/preY while refreshing expX/expY — re-arming the record.
-//   4. Collapse A and B → the restore slides N back to the STEP-1 coordinate,
-//      a spot that only made sense in the pre-Tidy arrangement. Misplaced.
-//
-// The restore path already guards against this ("only if the node is still
-// where our push left it"); the MERGE path must apply the same staleness test:
-// a record whose node moved since our last push is void — start fresh from the
-// node's CURRENT position.
 
 type Pos = { x: number; y: number };
 
@@ -155,18 +137,15 @@ describe("expand-push records survive a Tidy only with a fresh restore target", 
     const pushedX = nView.position.x;
     expect(pushedX).toBeGreaterThan(420); // the push actually happened
 
-    // 2. A Tidy-style programmatic move relocates N (the applier does exactly
-    //    this: view.translate with no drag events, so no record invalidation).
+    // 2. A Tidy-style move relocates N: view.translate, no drag events.
     await view.moveNode(n.id, { x: 1200, y: 140 });
 
-    // 3. Expand B — its footprint (1000..1600 × 80..380) covers N's new spot,
-    //    so N is pushed again. This merge must treat the old record as stale.
+    // 3. Expand B: its footprint (1000..1600 × 80..380) covers N's new spot, so N is pushed again.
     await setGroupsCollapsed(editor, view, [gB], false);
     await flushRafs();
     expect(nView.position.x).toBeGreaterThan(1200); // pushed again
 
-    // 4. Collapse both. The restore must return N to where it stood BEFORE
-    //    B's push (its post-Tidy spot, x=1200) — NOT to the pre-Tidy x=420.
+    // 4. Collapse both: N returns to its post-Tidy spot, x=1200, not the pre-Tidy x=420.
     await setGroupsCollapsed(editor, view, [gA, gB], true);
     await flushRafs();
     expect(nView.position.x).toBe(1200);
@@ -354,8 +333,7 @@ describe("collapse and the selection ([[C52]] visibleSelection)", () => {
   });
 });
 
-// [[C89]] standoffsSolveLast: a collapse re-solves only the clusters it touches, records the moves, and never lands a box
-// on another; expanding slides the partner back.
+// [[C89]] standoffsSolveLast
 describe("standoffs across a collapse round trip", () => {
   async function setup() {
     const editor = new GraphEditor<Schemes>();
