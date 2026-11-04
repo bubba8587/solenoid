@@ -365,7 +365,8 @@ mod tests {
             ],
         );
         let bytes = Columnar::encode(&[&col, &text], None).to_bytes();
-        let file = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/core/columnar-bytes.bin");
+        let file = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+            .join("../../fixtures/core/columnar-bytes.bin");
         if std::env::var("FREEZE_CORE").is_ok_and(|v| v == "1" || v.split(',').any(|s| s == "columnar-bytes")) {
             std::fs::write(&file, &bytes).unwrap();
         }

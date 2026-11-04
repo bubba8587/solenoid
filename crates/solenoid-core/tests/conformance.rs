@@ -54,7 +54,8 @@ fn well_formed(text: &str) -> String {
 }
 
 fn load(suite: &str) -> Vec<Json> {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("../../fixtures/core/{suite}.json.gz"));
+    let path = PathBuf::from(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+        .join(format!("../../fixtures/core/{suite}.json.gz"));
     let mut s = String::new();
     flate2::read::GzDecoder::new(std::fs::File::open(&path).unwrap()).read_to_string(&mut s).unwrap();
     serde_json::from_str(&well_formed(&s)).unwrap()
@@ -105,7 +106,8 @@ fn check_or_freeze(suite: &str, got: impl Fn(&Json) -> Json) {
         }
     }
     if moved > 0 {
-        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("../../fixtures/core/{suite}.json.gz"));
+        let path = PathBuf::from(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+            .join(format!("../../fixtures/core/{suite}.json.gz"));
         let mut gz = flate2::write::GzEncoder::new(std::fs::File::create(&path).unwrap(), flate2::Compression::best());
         std::io::Write::write_all(&mut gz, serde_json::to_string(&cases).unwrap().as_bytes()).unwrap();
         gz.finish().unwrap();

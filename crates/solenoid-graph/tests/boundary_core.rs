@@ -16,7 +16,7 @@ use solenoid_graph::boundary_core::{
 };
 
 fn frozen(suite: &str) -> Vec<Json> {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+    let path = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
         .join(format!("../../fixtures/core/{suite}.json.gz"));
     let mut s = String::new();
     flate2::read::GzDecoder::new(std::fs::File::open(path).unwrap())

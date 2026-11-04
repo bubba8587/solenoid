@@ -8,7 +8,7 @@ use serde_json::{json, Value as Json};
 use solenoid_graph::conduit::{conduit_path, typed_source, Cable};
 
 fn frozen() -> Vec<Json> {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+    let path = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
         .join("../../fixtures/core/conduit-walks.json.gz");
     let mut s = String::new();
     flate2::read::GzDecoder::new(std::fs::File::open(path).unwrap())

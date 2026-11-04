@@ -11,7 +11,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 fn corpus() -> Vec<(String, String)> {
-    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/corpus");
+    let dir = PathBuf::from(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("tests/corpus");
     let mut files: Vec<(String, String)> = std::fs::read_dir(&dir)
         .unwrap()
         .map(|e| e.unwrap().path())
@@ -24,7 +24,10 @@ fn corpus() -> Vec<(String, String)> {
 }
 
 fn file(name: &str) -> String {
-    std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/corpus").join(name)).unwrap()
+    std::fs::read_to_string(
+        PathBuf::from(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("tests/corpus").join(name),
+    )
+    .unwrap()
 }
 
 fn dep(task: &str, ty: LinkType, lag: f64) -> Dependency {

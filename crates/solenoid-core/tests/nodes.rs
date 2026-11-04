@@ -9,7 +9,7 @@ use std::io::Read;
 use std::path::PathBuf;
 
 fn fixtures() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/core/nodes")
+    PathBuf::from(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("../../fixtures/core/nodes")
 }
 
 fn load(path: &std::path::Path) -> Vec<Json> {

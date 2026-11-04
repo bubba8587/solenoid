@@ -12,7 +12,8 @@ const LEVELS: [(&str, QrCodeEcc); 4] =
     [("L", QrCodeEcc::Low), ("M", QrCodeEcc::Medium), ("Q", QrCodeEcc::Quartile), ("H", QrCodeEcc::High)];
 
 fn path() -> std::path::PathBuf {
-    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/core/qr-encoder.json.gz")
+    std::path::PathBuf::from(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+        .join("../../fixtures/core/qr-encoder.json.gz")
 }
 
 fn level(name: &str) -> QrCodeEcc {

@@ -8,7 +8,8 @@ use solenoid_core::csv::{frame_columnar, parse_rows, source_columns, unparse, Cs
 use std::io::Read;
 
 fn load(name: &str) -> Vec<Json> {
-    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("../../fixtures/core/{name}.json.gz"));
+    let path = std::path::PathBuf::from(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+        .join(format!("../../fixtures/core/{name}.json.gz"));
     let mut s = String::new();
     flate2::read::GzDecoder::new(std::fs::File::open(path).unwrap()).read_to_string(&mut s).unwrap();
     serde_json::from_str(&s).unwrap()

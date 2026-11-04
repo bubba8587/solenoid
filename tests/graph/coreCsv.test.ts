@@ -7,7 +7,7 @@ import { it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { frozen, enc } from "./coreFixtures";
+import { frozen, enc, freezes } from "./coreFixtures";
 import { parseCsvRows, unparseCsv, type CsvOptions } from "../../src/graph/csv";
 import { csvToFrame } from "../../src/graph/frameBackend";
 import { parseFrameSource } from "../../src/graph/frame";
@@ -167,7 +167,9 @@ const plain = (columns: readonly object[]) => columns.map((c) => ({ ...c }));
 it("CSV text reads into rows as frozen", () => {
   const cases = frozen<RowsCase>("csv-rows", () => texts().flatMap((text) => OPTS.map((opts) => ({ text, opts, rows: parseCsvRows(text, opts) }))));
   expect(cases.length).toBe(11420);
-  const bad = cases.filter((c) => JSON.stringify(parseCsvRows(c.text, c.opts)) !== JSON.stringify(c.rows));
+  // crates/solenoid-core/tests/csv.rs replays every case natively; here every tenth shows the wasm build agrees.
+  const replayed = freezes("csv-rows") ? cases : cases.filter((_, i) => i % 10 === 0);
+  const bad = replayed.filter((c) => JSON.stringify(parseCsvRows(c.text, c.opts)) !== JSON.stringify(c.rows));
   expect(bad.slice(0, 5)).toEqual([]);
 });
 

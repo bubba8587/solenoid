@@ -9,8 +9,8 @@ use solenoid_graph::conduit::Cable;
 use solenoid_graph::settle::{node_from_json, settle, types_json};
 
 fn frozen() -> Vec<Json> {
-    let path =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/core/settle.json.gz");
+    let path = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+        .join("../../fixtures/core/settle.json.gz");
     let mut s = String::new();
     flate2::read::GzDecoder::new(std::fs::File::open(path).unwrap())
         .read_to_string(&mut s)

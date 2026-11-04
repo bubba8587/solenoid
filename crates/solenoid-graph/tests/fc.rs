@@ -9,7 +9,7 @@ use solenoid_graph::conduit::Cable;
 use solenoid_graph::fc::{node_from_json, reconcile};
 
 fn frozen() -> Vec<Json> {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+    let path = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
         .join("../../fixtures/core/fc-reconcile.json.gz");
     let mut s = String::new();
     flate2::read::GzDecoder::new(std::fs::File::open(path).unwrap())

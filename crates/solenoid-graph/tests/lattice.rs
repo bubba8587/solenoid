@@ -11,7 +11,7 @@ use solenoid_graph::lattice::{
 };
 
 fn frozen() -> Vec<Json> {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+    let path = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
         .join("../../fixtures/core/lattice.json.gz");
     let mut s = String::new();
     flate2::read::GzDecoder::new(std::fs::File::open(path).unwrap())

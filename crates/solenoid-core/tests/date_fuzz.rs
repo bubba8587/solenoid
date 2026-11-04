@@ -87,7 +87,7 @@ fn refused_or_blank(got: &Cv) -> Option<&'static str> {
 fn every_card_takes_dates_where_they_can_be_wired() {
     let report = std::env::var("DATE_FUZZ_REPORT").is_ok();
     let only: Option<Vec<String>> = std::env::var("NODES").ok().map(|s| s.split(',').map(String::from).collect());
-    let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/core/nodes");
+    let dir = std::path::PathBuf::from(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("../../fixtures/core/nodes");
     let mut files: Vec<_> = std::fs::read_dir(dir).unwrap().map(|e| e.unwrap().path()).collect();
     files.sort();
     std::panic::set_hook(Box::new(|_| {}));

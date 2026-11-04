@@ -40,6 +40,9 @@ export default defineConfig({
   test: {
     environment: "node",
     maxWorkers: 4,
+    // A dozen tests take 1 to 3 s alone and pass 5 s on a loaded machine (a Rust build beside the run, a busy CI
+    // runner); 20 s still fails a real hang.
+    testTimeout: 20_000,
     // Re-importing the node catalog per file was most of the run, so files share each
     // worker's module cache; tests/setup/sharedWorker.ts undoes a file's global edits.
     // A file that mocks a module would leak the mock, so it runs isolated.

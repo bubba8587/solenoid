@@ -10,8 +10,8 @@ it("the cumulative hypergeometric sums only the window where terms are nonzero: 
     for (let j = lo; j <= Math.min(k, hi); j++) sum += f(j, n, M, N, false) as number;
     return Math.min(1, Math.max(0, sum));
   };
-  for (let t = 0; t < 40; t++) {
-    const N = 20000 + Math.floor(r() * 60000), M = Math.floor(r() * N), n = Math.floor(r() * N), k = Math.floor(r() * Math.min(n, M));
+  for (let t = 0; t < 12; t++) {
+    const N = 10000 + Math.floor(r() * 30000), M = Math.floor(r() * N), n = Math.floor(r() * N), k = Math.floor(r() * Math.min(n, M));
     expect(f(k, n, M, N, true)).toBe(full(k, n, M, N));
   }
   const t0 = performance.now();

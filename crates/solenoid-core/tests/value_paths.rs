@@ -11,7 +11,11 @@ fn sources(dir: &Path, out: &mut Vec<(String, String)>) {
         if p.is_dir() {
             sources(&p, out);
         } else if p.extension().is_some_and(|x| x == "rs") {
-            let rel = p.strip_prefix(env!("CARGO_MANIFEST_DIR")).unwrap().to_string_lossy().replace('\\', "/");
+            let rel = p
+                .strip_prefix(std::env::var("CARGO_MANIFEST_DIR").unwrap())
+                .unwrap()
+                .to_string_lossy()
+                .replace('\\', "/");
             out.push((rel, std::fs::read_to_string(&p).unwrap()));
         }
     }
@@ -35,7 +39,7 @@ const ALLOWED: &[(&str, &[&str])] = &[
 #[test]
 fn every_value_reading_goes_through_its_one_path() {
     let mut files = Vec::new();
-    sources(&Path::new(env!("CARGO_MANIFEST_DIR")).join("src"), &mut files);
+    sources(&Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("src"), &mut files);
     let mut found = Vec::new();
     for (pattern, allowed) in ALLOWED {
         for (file, text) in &files {

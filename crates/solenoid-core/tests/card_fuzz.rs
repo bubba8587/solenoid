@@ -83,7 +83,7 @@ fn mutate(j: &mut Json, next: &mut dyn FnMut(usize) -> usize, hits: &mut usize) 
 #[test]
 fn hostile_text_never_panics_a_card() {
     // A panic's own message would flood the output; the cases that panicked are listed below instead.
-    let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/core/nodes");
+    let dir = std::path::PathBuf::from(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("../../fixtures/core/nodes");
     let mut files: Vec<_> = std::fs::read_dir(dir).unwrap().map(|e| e.unwrap().path()).collect();
     files.sort();
     let mut seed = 0x9E37_79B9_u64;

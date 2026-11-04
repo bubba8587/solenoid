@@ -78,7 +78,7 @@ fn run_case(verb: &str, kase: &Json) -> Result<Json, ErrorCode> {
 
 #[test]
 fn corpus() {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/frame-verbs");
+    let dir = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("../../fixtures/frame-verbs");
     let mut files: Vec<_> = fs::read_dir(&dir).unwrap().map(|e| e.unwrap().path()).collect();
     files.sort();
     let (mut passed, mut failures) = (0, Vec::new());
