@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere
+// [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere, [[react-flow-surface-contract#Flipped sockets]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { socketFlipStore } from "../../src/graph/socketFlipStore";
 import { isFlippableNode } from "../../src/graph/flippableNodes";

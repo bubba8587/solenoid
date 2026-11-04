@@ -32,6 +32,8 @@ Inside a composite the user works on the same canvas as the main one: gestures, 
 - Code that runs for one node finds its graph with `getOwningEditor` / `getOwningView`; `getOwningView` is null for a node no surface shows (one in a closed composite), so nothing pans to, moves or measures it through a view that doesn't hold it. Chrome finds the graph the user is looking at with `getActiveEditor` / `getActiveView`. The bare `getEditor()` / `getView()` are only for persistence and main-only lifecycle code ([[save-format#Saving binds the main graph]]).
 - Two mounted flows must carry different RF `id`s (`hooks.rfId`), because RF derives every internal pattern, marker and aria id from it. The main canvas uses `main`, the drill-in `drill`, the landing graph `landing`, and each landing scene card `scene` plus a React `useId`.
 
+Tests: `canvasCommandsSwap.test.ts`: the delete slot and the docked-FC reposition slot act on the drill-in while swapped and on the main canvas again after the restore.
+
 ### The stack and its handlers
 
 A `SurfaceStack` is a flow model plus its `view` and a set of `SurfaceHandlers`. The handlers are late-bound: each mount binds them and they fall back to no-ops (`idleHandlers`), so a stack can exist before, and across, mounts. They are `bumpNode`, `bumpConnections`, `bumpAllNodes` (re-render every card after a completed composite pass), `moveNode`, `setViewport`, `getContainer`, `syncTopology` and `syncSelection` (re-derive RF's `selected` from the model flags after a verb wrote them). `isRebuilding` reports a host-level rebuild (a drill-in hydrate, restore or bulk edit), during which live-creation behaviors such as group absorption stand down.
@@ -64,6 +66,8 @@ A stack that sets `afterCableChange` gets the cable-change pipe (`installCableSe
 
 ## The `View` seam and positions
 
+Code: `process.ts`, `view.ts`, `flow/flowView.ts`.
+
 `process.ts` holds the live `_editor`, `_engine` and `_view`. `processGraph()` recomputes through the engine's `pass`; the view-less pass (`computeAll`, `graphCompute.ts`) serves the CLI and the tests ([[compute-pass#The model pass]]).
 
 `_view` is `flow/flowView.ts`, the one implementation of the `View` interface in `view.ts`. Model-side verbs become RF state through late-bound callbacks the surface supplies, and the surface writes back what RF reports: the viewport (from `onMove`), the pointer's canvas position, and each card's measured size (from `onNodesChange` dimension changes). The view offers:
@@ -90,15 +94,23 @@ Positions are always absolute canvas coordinates, never RF's parent-relative one
 
 ## The flow model
 
+Code: `flow/flowModel.ts`.
+
 `flow/flowModel.ts` builds the headless model: a `GraphEditor` with its `DataflowEngine` attached (`editor.use(engine)`; the coercion and error guards are the engine's input boundary, [[graph-core#The input boundary]]), its edit verbs, and the projections RF reads. The projections are RF-shaped without importing RF, so they stay testable in the node test environment.
 
 - `canConnect` / `connect` are the user's connection gate: the socket lattice rule plus no self-loop, and a single-connection input evicts its existing cable first. RF's connect and quick-wire go through them. Programmatic rewires (paste, ghosts, Conduit insert, the FC splice) still call `editor.addConnection` directly and rely on their own sources being valid.
 - Removing nodes removes their cables through the editor, and their names go too.
-- `toFlowNodes` lists parents before their children, as RF requires.
+- `toFlowNodes` lists parents before their children, as RF requires. A node's handle ids are its socket keys.
+- An unwired input reads its literal, and a cycle seeds `#CIRC!` rather than overflowing.
 
-### What the surface uses from the model ([[A1]] visualGraphCalculator)
+Tests:
 
-The surface reaches the model through three things, each in [[graph-core]]: the model classes in `graphModel.ts` (`GraphNode`, `GraphInput`, `GraphOutput`, `GraphSocket`, `GraphConnection`; every node class extends `GraphNode`), the `GraphEditor` handle (add, remove and get nodes and connections, `reorderNodes`, and `addPipe` / `removePipe` for the `nodecreated`, `noderemoved`, `connectioncreated` and `connectionremoved` signals that the RF topology sync, the cable and node-removal settles, group absorption and the HTML-in-Canvas recount hang off), and `DataflowEngine` (`fetch`, `reset`, `seed`; the cache is not exposed).
+- `flow/flowModel.test.ts`: a saved graph builds the model, computes, and projects RF nodes and edges with their positions and handle ids; every seed round-trips through the model with no unknown types.
+- `flow/flowModelEdit.test.ts`: computing through wired inputs, the gate refusing a lattice-invalid or self connection, a single-connection input evicting its cable, an unwired input's literal, `addNode` placing a catalog entry that computes, and a cycle seeding `#CIRC!`.
+
+### What the surface uses from the model
+
+Serves [[A1]] visualGraphCalculator. The surface reaches the model through three things, each in [[graph-core]]: the model classes in `graphModel.ts` (`GraphNode`, `GraphInput`, `GraphOutput`, `GraphSocket`, `GraphConnection`; every node class extends `GraphNode`), the `GraphEditor` handle (add, remove and get nodes and connections, `reorderNodes`, and `addPipe` / `removePipe` for the `nodecreated`, `noderemoved`, `connectioncreated` and `connectionremoved` signals that the RF topology sync, the cable and node-removal settles, group absorption and the HTML-in-Canvas recount hang off), and `DataflowEngine` (`fetch`, `reset`, `seed`; the cache is not exposed).
 
 - React Flow is only a renderer, with no graph model, typed ports or engine. Beside it the canvas takes only elkjs: Tidy calls elkjs directly, undo is the snapshot history below, and app-wide state is the module-singleton stores (`storeKit.ts`).
 - A pipe that serves one mount is removed when the mount goes (the group-absorb pipe, the HTML-in-Canvas recount). A pipe that serves the stack (the topology sync, the cable settle, the node-removal settle) is installed once per stack and stands down while its level is closed.
@@ -125,6 +137,8 @@ Why: RF's own parenting gives towing and stacking for free, but everything else 
 
 The full rules are in [[group-expand-push]].
 
+Tests: `flow/flowModel.test.ts`: a member projects relative to its group, the group first, and the positions convert both ways at the boundary.
+
 ## An open group's interior is working canvas
 
 The inside of an expanded group behaves like empty canvas, not like a handle for dragging the group.
@@ -141,16 +155,18 @@ A Conduit gets the same treatment: its node box is a fixed 92 square around a mu
 
 - **Delete, selection and right-click.** RF handles Delete and Backspace (`deleteKeyCode` plus `onBeforeDelete`), selection (`useOnSelectionChange`) and context-menu routing (`onNodeContextMenu`, `onEdgeContextMenu`, `onPaneContextMenu`). The app's commands run from those callbacks. Don't add a second window listener for any of them. `deleteKeyCode` is null while the canvas is locked or the host sets `noKeyboard`.
 - **Settings that are off on purpose.** RF's own arrow-key move is off (`disableKeyboardA11y`), because the canvas keyboard nudges the selection on the dot grid, and RF's version needs a focused card and steps 5px. RF's box select is off (`selectionKeyCode={null}`), because shift-drag belongs to the lasso. Double-click zoom is off (`zoomOnDoubleClick={false}`, see [[touch-gestures]]). `zoomOnScroll` is off, because `installWheelZoom` is the one wheel path. `zIndexMode="manual"`.
-- **Locking.** A locked canvas passes `nodesDraggable`, `nodesConnectable` and `elementsSelectable` all false; the CSS half of locking is in [[pointer-gestures]].
+- **Locking.** A locked canvas passes `nodesDraggable`, `nodesConnectable` and `elementsSelectable` all false; the CSS half of locking is in [[pointer-gestures#Locking]].
 - **A node wrapper's inline `visibility`.** RF writes `visible` onto `.react-flow__node` after measuring, so any imperative visibility write there is silently overwritten. Per-node hide and show rides RF's `className` instead (`flowModel.nodeClassName` plus an `!important` rule in flow.css). Hiding the members of a collapsed group is the standing example ([[group-collapse]]). The surface re-stamps the classes whenever the collapse store notifies, because a collapse toggle changes no topology and `syncTopology` never runs for it.
 - **Stacking.** Each node's stacking is its RF `zIndex`, from `flowModel.nodeZIndex`: groups −2, Conduits −1, everything else 0 ([[#Stacking]]). Without it a group's body sits level with its members and takes their pointer events.
 - **Card sizes.** A grip resize (`resizing` set on the dimension change) stays out of RF state: the model sizes the card and RF only measures it. RF's own measures feed the DOM-free size source.
 
 ### Stacking
 
-RF stacks nodes by their `zIndex`, and the area-plane ladder is that data, not DOM order: standoff bars lowest, groups at −2 and Conduits at −1 (stamped by `nodeZIndex` in `flowModel.ts`), ordinary nodes at 0. Within a band, cards stack in the editor's node order, which RF draws in DOM order: a new card lands on top. Bring to front, Bring forward, Send backward and Send to back (`stackSelection` in `selectionOps.ts`; Ctrl+Shift+], Ctrl+], Ctrl+[, Ctrl+Shift+[, the Edit menu, and front and back on a card's right-click) rewrite that order: front and back move the selection past everything, forward and backward step each selected card past the nearest card of its band it overlaps, and a card with nothing overlapping it stays put. The new order goes to the core whole through `editor.reorderNodes` ([[graph-core#The model]]; pinned by `selectionOps.test.ts`); `stackOrderStore` then re-projects every surface. The save keeps the order ([[save-format#The sidecar]]), so undo and a reload bring it back. Expanding a card by hand (its chevron, Expand selection, a Diagram chip) brings it to the front while the `frontOnExpand` setting is on, the default (`frontOnExpand` in `selectionOps.ts`), so a card grown over its neighbours isn't left underneath them; a load, a composite pass or Collapse never restacks. The fixed lifts (isolate endpoints, an open group picker, the selected cable) stay explicit z-index writes. The standoff layer's depth is its own CSS (`StandoffLayer.css`, `z-index: -3`), since it renders in RF's viewport portal rather than as a node.
+RF stacks nodes by their `zIndex`, and the area-plane ladder is that data, not DOM order: standoff bars lowest, groups at −2 and Conduits at −1 (stamped by `nodeZIndex` in `flowModel.ts`), ordinary nodes at 0. Within a band, cards stack in the editor's node order, which RF draws in DOM order: a new card lands on top. Bring to front, Bring forward, Send backward and Send to back (`stackSelection` in `selectionOps.ts`; Ctrl+Shift+], Ctrl+], Ctrl+[, Ctrl+Shift+[, the Edit menu, and front and back on a card's right-click) rewrite that order: front and back move the selection past everything, forward and backward step each selected card past the nearest card of its band it overlaps, and a card with nothing overlapping it stays put. The new order goes to the core whole through `editor.reorderNodes` ([[graph-core#The model]]); `stackOrderStore` then re-projects every surface. The save keeps the order ([[save-format#The sidecar]]), so undo and a reload bring it back. Expanding a card by hand (its chevron, Expand selection, a Diagram chip) brings it to the front while the `frontOnExpand` setting is on, the default (`frontOnExpand` in `selectionOps.ts`), so a card grown over its neighbours isn't left underneath them; a load, a composite pass or Collapse never restacks. The fixed lifts (isolate endpoints, an open group picker, the selected cable) stay explicit z-index writes. The standoff layer's depth is its own CSS (`StandoffLayer.css`, `z-index: -3`), since it renders in RF's viewport portal rather than as a node.
 
 Why: a group's body has to sit below its members, or it catches their pointer events, and RF's own model for that is `zIndex`. Selecting a node never moves its DOM element, so selection can't close a native popup inside a card; the `pointerdown` swallow on form controls exists only to prevent a drag. **Reopen if:** cards visibly stack wrongly after selection, or a control needs the last-selected card on top, which RF's `zIndex` model does not give.
+
+Tests: `selectionOps.test.ts`: `restackOrder` takes the selection to the front or back in its own order, steps forward or back past the nearest overlapping card, leaves a card with nothing overlapping in place and moves a selected pair as a block; `reorderNodes` rewrites the order the save and RF read and ignores an order that doesn't name every node exactly.
 
 ### Node width and height
 
@@ -166,15 +182,15 @@ Why: a field with two jobs drifts silently, and this one can drift either way. A
 
 `snapToGrid` uses `[DOT_SPACING, DOT_SPACING]` (24), the lattice the arrow-key nudge also uses. Objects handed to `<ReactFlow>` (the snap grid, node and edge types, minimap style, delete keys) live at module scope, because a fresh reference per render re-renders the flow.
 
-The canvas color and the dots are one opaque backing in graph coordinates (`CanvasBacking`, rendered through `ViewportLayer`), not RF's `<Background>`. A div `±BACKING_SPAN` canvas units on a side (a multiple of `DOT_SPACING`) wears `--canvas-bg` as its own background color; beside it an SVG scaled back to screen pixels (`scale(1/zoom)`) draws the dots with RF's own tile: `DOT_SPACING × zoom` wide, a dot of radius `zoom` placed `zoom` in from the tile's corner, in `--canvas-dot`. That is RF's grid at the same places, size and antialiasing at every zoom (screenshots against RF's background differ by at most 3 levels in 255). It sits at `z-index: -1000`, below the standoff layer and every node band, and takes no pointer, so presses fall through to the pane. `hideGridDots` hides the SVG and keeps the color. The SVG covers three screens around the view (a window of whole `DOT_SPACING` cells anchored on the cell under the screen's center), not the backing, and re-renders when the zoom changes or the view's center crosses into another cell, never on a pan inside it.
+The canvas color and the dots are one opaque backing in graph coordinates (`CanvasBacking`, rendered through `ViewportLayer`), not RF's `<Background>`. A div `±BACKING_SPAN` canvas units on a side (a multiple of `DOT_SPACING`) wears `--canvas-bg` as its own background color; beside it an SVG scaled back to screen pixels (`scale(1/zoom)`) draws the dots with RF's own tile: `DOT_SPACING × zoom` wide, a dot of radius `zoom` placed `zoom` in from the tile's corner, in `--canvas-dot`. That is RF's grid at the same places, size and antialiasing at every zoom (a screenshot against RF's background differs by at most 3 levels in 255). It sits at `z-index: -1000`, below the standoff layer and every node band, and takes no pointer, so presses fall through to the pane. `hideGridDots` hides the SVG and keeps the color. The SVG covers three screens around the view (a window of whole `DOT_SPACING` cells anchored on the cell under the screen's center), not the backing, and re-renders when the zoom changes or the view's center crosses into another cell, never on a pan inside it.
 
 - The color is the div's background because the browser only knows a box's background color is opaque; an SVG fill, or anything under a scale, it doesn't, and the pan layer then splits ([[#Drag performance]]).
 - The SVG spans a window, not the backing, because spanning the backing it reached about ten million pixels zoomed in close and was re-rendered every frame of a pinch, the likely cause of the dots jittering mid-pinch there.
 - The dots are drawn at screen size because an SVG pattern rasters its tile in the SVG's own units: drawn in canvas units, a zoomed-out dot rastered soft and dim.
 
-Why the backing and not RF's background, both measured on personal-finance at zoom 0.1 (1600×1000, 120 pan frames):
+Why the backing and not RF's background:
 
-- RF's background is a screen-space pattern whose `x`, `y` and tile size it rewrites on every camera change, so every pan frame re-rastered a full-screen pattern. With the pan layer on ([[#Drag performance]]), RF's background still cost about 2.1 s of raster; the backing, which rides the layer, about 0.16 s.
+- RF's background is a screen-space pattern whose `x`, `y` and tile size it rewrites on every camera change, so every pan frame re-rastered a full-screen pattern, even with the pan layer on ([[#Drag performance]]); the backing rides the layer and costs a small fraction of that raster. `scripts/zoom-perf-probe.mjs` measures it by phase; the numbers are in `docs/canvas-frame-cost-findings.md`.
 - The pan layer needs an opaque first chunk to stay one layer ([[#Drag performance]]).
 
 **Reopen if:** a canvas needs a background RF draws that the backing can't (lines or crosses), or a pan reaches past `BACKING_SPAN`.
@@ -185,7 +201,9 @@ Why the backing and not RF's background, both measured on personal-finance at zo
 - The pane's cursor is a plain pointer at rest and the grab-hand only while panning; RF defaults to `grab` everywhere, which reads as always about to pan. A locked canvas keeps `grab`, since panning is then the only gesture. flow.css loads after RF's stylesheet, so these rules override RF's.
 - The layer sets `touch-action: none` (with no text selection and no touch callout), handing every touch gesture to the canvas. Without it the browser takes touch moves as page scroll and zoom. Field taps and focus still work.
 - RF's MiniMap wears the app's `.solenoid-minimap` window: its own margin and inset yield to the window's measured position, and its svg is transparent so the overlay background reads through.
-- A card sizes itself (NodeCard sets its width), so RF's wrapper adds no visible box. A node type with no registered component draws the generic fallback card `SolFlowNode`, with crude value previews (`flow/preview.ts`; containers read like the chips, rows × cols Name).
+- A card sizes itself (NodeCard sets its width), so RF's wrapper adds no visible box. A node type with no registered component draws the generic fallback card `SolFlowNode`, with crude value previews (`flow/preview.ts`; containers read like the chips, rows × cols Name, a Frame's or Cube's rows its longest column).
+
+Tests: `flowPreview.test.ts`: a Cube's and a Frame's rows are their longest column, as the chips count them.
 
 ## Cables
 
@@ -198,6 +216,8 @@ A cable renders as an SVG `<g>` inside RF's shared edge SVG (`FlowCableEdge.tsx`
 
 Starting a cable drag blurs the focused field first (`onConnectStart`), so a value that is mid-edit commits before it is wired. Rely on this; don't re-implement it. The drag also lights the origin socket for its duration, and the canvas root wears `solenoid-canvas--cabling` from pickup to drop: socket.css grows every socket's catch zone and re-arms mobile's drop targets off that class. The socket a dragged cable would land on (RF snaps within `connectionRadius`) lights once the pair validates.
 
+Tests: `cablePaths.test.ts`: `draggedCableArgs` leaves a plain output rightward with the pointer end facing back, a flipped output leftward from inside its glyph, and from an input takes the pointer as the source, a flipped input entered from the right.
+
 Every live cable change on either surface, including the ones components make themselves, settles through the cable-change pipe ([[B11]] maximalMerge). `settleCableChange` reconciles FC and wildcard types, bumps the connection version, rescans FC unit mismatches and re-derives group collapse; then the stack's `afterCableChange` recomputes. On the main canvas that is a targeted pass from the cable's target. The drill-in's is empty, because its topology pipe already recomputes from the breadcrumb root once per burst. Under a rebuild gate the pipe holds: the main gate marks the bulk topology dirty for `withGraphRebuild`, and a bulk edit's scope settles once at its end. A cable dropped on empty canvas can open the Add menu instead (quick-wire, [[add-menu]]).
 
 ## Sockets
@@ -206,7 +226,7 @@ The socket box is always exactly 12×12 ([[#The socket box and its row]]): `disp
 
 - A handle wraps the socket glyph (`FlowSocketHandle.tsx`, reset by `.sol-rf-handle-reset`). RF measures the handle's box for cable endpoints and uses its outer edge at mid-height.
 - **MUST:** the handle is RF's handle markup rendered by the app, never RF's `<Handle>`: the same `react-flow__handle` classes and `data-handleid`, `data-nodeid`, `data-handlepos` and `data-id` attributes, a connection started by `XYHandle.onPointerDown` (and click-to-connect by `XYHandle.isValid`) from `@xyflow/system` with the arguments RF's own Handle passes, and no store subscription.
-  - Why: RF's `<Handle>` subscribes every socket to the store (`useStore(connectingSelector)`) to toggle `connectingfrom`, `connectingto`, `valid` and `connectionindicator`, and a store update notifies every subscriber, so every pan frame re-ran that selector once per socket. On personal-finance that was 466 of 1,374 subscribers per camera update; without them a synthetic camera update costs about a third less (7.3 against 11.0 ms at 4× CPU slowdown, median of 15) and a phone pan about 7 to 15% less main-thread time (`docs/canvas-frame-cost-findings.md`).
+  - Why: RF's `<Handle>` subscribes every socket to the store (`useStore(connectingSelector)`) to toggle `connectingfrom`, `connectingto`, `valid` and `connectionindicator`, and a store update notifies every subscriber, so every pan frame re-ran that selector once per socket. On a large seed the sockets were about a third of the store's subscribers, and dropping them cut a camera update by about a third and a phone pan's main-thread time by 7 to 15% (`docs/canvas-frame-cost-findings.md` § 3, which says how to rerun it).
   - Those classes only switch `pointer-events` in RF's stylesheet, and `@xyflow/system` reads only `source`, `target`, `connectable` and `connectableend`, so the handle wears the idle set (`connectable connectablestart connectableend connectionindicator`) for good. The one thing lost is the dragged-from socket's `connectingfrom` class, which nothing styles; the socket a dragged cable would land on still lights from `litTargetStore` ([[#World-coordinate overlays]]).
   - `@xyflow/system` is pinned to the exact version `@xyflow/react` pins, so the handle and RF run one `XYHandle`; the two bump together.
   - **Reopen if:** an RF upgrade changes `HandleComponent` (its markup or what it passes `XYHandle`), a style needs the connecting classes, or RF stops subscribing a Handle to the store.
@@ -239,6 +259,8 @@ A node can flip its sockets to the opposite side, inputs on the right and output
 - `data-socket-side` stays semantic. DOM lookups find sockets by the measured dot, so they follow the flip with no extra work.
 - Toggling calls `rerenderNode`, so RF re-measures the moved handles.
 
+Tests: `socketFlip.test.ts`: the store toggles and sets per node, notifies, forgets a node and clears on a rebuild, and only an opted-in type (Display) is flippable.
+
 ## World-coordinate overlays
 
 An overlay drawn in graph coordinates renders into RF's viewport portal, which RF places inside the transformed viewport after the edge and node layers. It goes through `ViewportLayer` (`flow/ViewportLayer.tsx`), never RF's `<ViewportPortal>`: that one re-runs a `querySelector` over the whole canvas in its store selector on every store update, so every pan frame paid for it once per overlay. For the same reason a per-socket or per-card component never subscribes to the RF store (`useStore`, `useConnection`): every pan frame runs every subscriber's selector, so the socket a dragged cable would land on comes from `litTargetStore`, which the drag line (`FlowConnectionLine`) publishes and which changes only while a cable is dragged. Every surface mounts `PendingCableLayer`; `StandoffLayer` and `DrawnCableLayer` mount only when the host's `standoffs` / `drawnCables` hooks are on, which only the main canvas does. A sibling of `<ReactFlow>` would paint in screen space and not move with the camera. The armed drawn-cable tool is the exception: its capture sheet is screen-space, and because the pane never sees its presses, it pans the camera itself through a screen-space nudge on the surface ([[drawn-cables]]).
@@ -255,7 +277,9 @@ RF's selection is the selection. `useOnSelectionChange` mirrors it into the mode
 
 - Node and cable selection are mutually exclusive with each other in the chrome's verbs, and drawn-cable, standoff and isolate-endpoint selection are each exclusive with all the rest.
 - Every selection surface reaches only what the user can see ([[C52]] visibleSelection): Ctrl+A selects every node not hidden in a collapsed group and not receded by isolate, and creating a group from the selection skips hidden members. Collapsing a group drops its hidden members from the selection (`setGroupsCollapsed`), and entering isolate drops the receded cards (`isolate.ts`), so Delete, nudge and copy never act on an invisible card.
-- In touch-select mode (see [[pointer-gestures]]) RF's multi-selection flag is held and pane-drag panning yields to the lasso.
+- In touch-select mode (see [[pointer-gestures#Touch-select mode]]) RF's multi-selection flag is held and pane-drag panning yields to the lasso.
+
+Tests: `groupPushRecords.test.ts`: a member hidden by a collapse leaves the selection while a visible card stays.
 
 ## Context menus
 
@@ -268,17 +292,21 @@ RF reports which layer a right-click hit (node, edge or pane), and `canvasContex
 - **Pane menu.** The Add menu; suppressed while isolating.
 - **Locked canvas.** Every menu above stands down or goes view-only; the list is under the canvas keyboard's gate 8.
 
+Tests: `lockedContextMenus.test.ts`: on a locked canvas a socket offers no Attach Format Controller, a cable opens no menu and leaves the cable selection alone, and the node menu is view-only with no standoff link.
+
 ## The canvas keyboard
 
-`installCanvasKeyboard` (`canvasKeyboard.ts`) is installed by the surface, once per surface, as a `window` keydown listener over that surface's refs. The drill-in installs its own; the main canvas stands down while a drill-in is open (`standsDownWhenDrilled`).
+Code: `installCanvasKeyboard` in `canvasKeyboard.ts`, `modalGuard.ts`.
+
+`installCanvasKeyboard` is installed by the surface, once per surface, as a `window` keydown listener over that surface's refs. The drill-in installs its own; the main canvas stands down while a drill-in is open (`standsDownWhenDrilled`).
 
 The gates run in this order:
 
 1. While the compute overlay is up (`computeOverlayStore`), every key returns. The overlay blocks pointer input, and the keyboard too, so a queued key can't mutate the graph mid-pass. This is the only gate that outranks F9.
 2. The main canvas under an open drill-in returns, except F9.
 3. Presenting returns, except F9; otherwise the arrow keys would nudge a still-selected node on the hidden canvas.
-4. A key under a modal or pop-up (`keyUnderModal`, the modal guard) returns, except F9: Enter in a confirm must not also open the palette, and `A` under a Frame Input pop-up must not open the Add menu.
-5. A key whose target has a `.nokeys` ancestor returns, except F9 ([[pointer-gestures]]).
+4. A key under a modal or pop-up (`keyUnderModal`, the modal guard) returns, except F9: Enter in a confirm must not also open the palette, and `A` under a Frame Input pop-up must not open the Add menu. An overlay declares itself in the DOM (an `aria-modal` dialog or a pop-up overlay); the dialog-less surfaces (the palette, the Function Reference, Settings, Shortcuts) are read from their stores. The answer is taken when the key is captured and pinned on the event, so a key that closed its modal still reads as under it.
+5. A key whose target has a `.nokeys` ancestor returns, except F9 ([[pointer-gestures#Opt-out classes]]).
 6. F9 recomputes. It stays live while typing, presenting, drilled in and under a modal, where it is the only remaining recompute path.
 7. The armed draw tool is modal: outside a field and without Ctrl or Cmd, Escape disarms it, Enter finishes the run and Backspace drops the last point, before the palette and isolate can claim those keys.
 8. A locked canvas is view-only: the keys that move, add or remove stand down (Delete, nudge, paste, Tidy, Cleanup, group create, Wrap as Composite (Ctrl+Shift+G), Autofit, expand and collapse, `[` and `]` rotation, undo and redo). The menu bar, palette and touch commands press these same keys (`fireMenuKey`), so menu Tidy and Cleanup stand down through this gate too. The Add menu does not open from any entry point: the `A` key, the menu bar and toolbar `+` (both through `addMenuRequest`), and the pane's right-click menu. The other right-click menus follow the same line (`canvasContextMenu.ts`): a socket opens no menu (its one item, Attach Format Controller, adds a node), a cable opens none (Insert Conduit and Delete both edit, and resolving the target would select the cable), and the node menu is view-only, dropping Unpack composite, Link with Standoff, Flip sockets and Lock position while Inspector, Edit contents, Isolate, Where used, Pin value and Add comment stay. The view keys (palette, isolate, chrome, Tab, F9) keep working.
@@ -300,9 +328,13 @@ With Ctrl or Cmd:
 - Shift+G makes a composite from the selection; A selects all visible nodes; C copies; V pastes at the mouse (never while isolating or locked).
 - Z undoes; Shift+Z and Y redo.
 
+Tests: `modalGuard.test.ts`: no overlay and every surface closed reads false; a modal dialog or pop-up in the DOM, or an open dialog-less surface, reads true; and the capture-time answer is pinned on the event.
+
 ## Deleting a selection
 
-`deleteSelection` (`canvasActions.ts`) is the one delete verb for both surfaces, behind RF's `onBeforeDelete`, the canvas keyboard and the touch delete button. `onBeforeDelete` itself returns false: the app deletes from the model and RF follows through the topology pipe, since RF's own delete would also take a deleted group's members. A `DeleteScope` carries the host's differences: whether the main-only layers (drawn cables, standoffs) are in play, which nodes Delete keeps (a drill-in keeps its boundary markers, which are its ports), and the surface's `EditScope`, the rebuild gate and the one settle every bulk edit shares (`activeGraph.ts`: `bulkSettle` on the main canvas; `settleCableChange` in a drill-in, whose topology pipe then recomputes).
+Code: `deleteSelection`, `deleteCables` in `canvasActions.ts`.
+
+`deleteSelection` is the one delete verb for both surfaces, behind RF's `onBeforeDelete`, the canvas keyboard and the touch delete button. `onBeforeDelete` itself returns false: the app deletes from the model and RF follows through the topology pipe, since RF's own delete would also take a deleted group's members. A `DeleteScope` carries the host's differences: whether the main-only layers (drawn cables, standoffs) are in play, which nodes Delete keeps (a drill-in keeps its boundary markers, which are its ports), and the surface's `EditScope`, the rebuild gate and the one settle every bulk edit shares (`activeGraph.ts`: `bulkSettle` on the main canvas; `settleCableChange` in a drill-in, whose topology pipe then recomputes).
 
 What goes is the selection plus every FC docked to a doomed node, at any depth (`deleteSet`). A docked FC is part of its host's entity, as copy, isolate, nudge and Wrap as Composite treat it, and it formats nothing once its host is gone ([[C118]] formatTravelsWithValue), so deleting a host takes its FCs and no FC is ever left docked to a missing host.
 
@@ -318,7 +350,15 @@ What goes is the selection plus every FC docked to a doomed node, at any depth (
 
 `deleteCables` (the cable menu's Delete) commits any ghost and removes the cables.
 
+Tests:
+
+- `deleteSelectionScope.test.ts`: deleting a docked FC hands every consumer back to the host with solid cables, a docked FC goes before its host when both are selected, and a drill-in's scope keeps boundary markers, leaves the main canvas's layers alone and settles once.
+- `fcChainDelete.test.ts`: deleting the middle FC of a host, FC, FC chain takes the FC docked on it and keeps computing; deleting a host alone takes its docked FCs at any depth; a node removed mid-pass is skipped.
+- `nodes/conduit.test.ts`: `conduitGhostSpecs` pairs each `in_i` with `out_i` by lane index, and skips a lane missing an end, a self-loop and a cable that already exists, deduplicating the rest.
+
 ## Copy and paste
+
+Code: `copyPaste.ts`, `savedNodeBody.ts`.
 
 `copyPaste.ts` works on the active graph, so it works inside a drill-in too.
 
@@ -331,7 +371,11 @@ What goes is the selection plus every FC docked to a doomed node, at any depth (
   - Everything is added under the surface's edit scope (`editScopeFor`, the drill-in's own while one is open). Its gate skips the per-`nodecreated` absorb sweep, so pasted nodes keep their copied membership instead of joining whatever group they land in, and skips the per-cable settle of `connectioncreated`. A composite clone hydrates its captured subgraph once it has been added. Cables are re-added, skipping any that are incompatible or duplicate.
   - The selection clears first and the pasted nodes become the selection, through the selection slots, which a drill-in swaps to its own level. RF has no wrapper for a clone yet when it is selected, so `syncTopology` (`mergeFlowNodes`) gives a node RF hasn't seen the model's `selected` flag, while a node RF already holds keeps RF's. The scope's settle runs once: on the main canvas `bulkSettle` renders only the pasted nodes; in a drill-in `settleCableChange` settles the level and its topology pipe recomputes from the breadcrumb root.
 
+Tests: `copyPasteSnapshot.test.ts`: a copied host brings its docked FC and a boundary marker never goes; a Placeholder pastes as a Placeholder whose references follow the paste; the paste is what was copied, not what the source became; the clones are selected and a pasted docked FC re-docks onto the pasted host; size and Frame column formats come along; a paste inside a drill-in gates and settles through its own scope; and `mergeFlowNodes` gives a node RF hasn't seen the model's selection and keeps RF's for a known one.
+
 ## Format Controller docking
+
+Code: `fcDocking.ts`, `canvasGeometry.ts` (`socketLocalCenter`).
 
 A Format Controller (FC) can dock onto a socket of another card and ride with it ([[C118]] formatTravelsWithValue: a docked FC formats display only). `fcDocking.ts` is pure over an editor, a view, a container and the FC, so the main canvas and a drill-in share it.
 
@@ -342,6 +386,13 @@ A Format Controller (FC) can dock onto a socket of another card and ride with it
 - **Unsplicing** (`removeFcInline`) reverses it, and must run before `undock()` or any change to `hostNodeId`, since it reads the host, socket and side. A wired FC with no host, or whose host no longer has that socket, bridges its input's source straight to its output's consumers.
 - **Releasing.** An FC dragged off every socket releases its dock (`releaseDock`) without unsplicing: it stays in the data path as a free FC, so no consumer loses its value. Otherwise the consumers go back to the host output, or the source goes back to the host input, and the FC's own cables are dropped.
 - Adding an FC from a socket's menu (`attachFormatController`) docks it (`dockSelf` needs the id `addNode` assigns; undocked, the FC would land at the canvas origin), positions it, splices it in and recomputes.
+- **A socket's offset inside its card** (`socketLocalCenter`) sums the offset chain from the socket up to the card, so the zoom never enters it; it is null when the socket isn't drawn or its chain never reaches the card.
+
+Tests:
+
+- `deleteSelectionScope.test.ts`: `removeFcInline` with the host socket gone bridges the FC's source straight to its consumers.
+- `fcDockReload.test.ts`: a docked FC keeps its saved date style through the load-time type hops, and on reload adopts the cell's family.
+- `canvasGeometry.test.ts`: `socketLocalCenter` sums the offset chain, and is null for an undrawn socket.
 
 ## Isolate
 
@@ -355,9 +406,18 @@ Isolate is a view-only focus: the focus set shows and every other card recedes. 
 - `IsolateEndpoints` draws them as two terminal cards, Input(s) and Output(s), one lane per crossing named for the outside card, with dashed cables to the focused sockets. Every surface mounts it in RF's viewport portal over its own editor and view, so it pans and zooms with the graph and draws only where the focus is; its layer is lifted above every card (`z-index: 3`, `isolateEndpoints.css`). It redraws when the focus cards move or re-measure (a selector on RF's node lookup). Pressing a terminal selects it and drags it; a new focus puts both back beside the focus.
 - Receded cards fade out when isolation starts and take no pointer events. The dim is the `sol-isolate-dim` class from `flowModel.nodeClassName`, re-stamped when the isolate store notifies, like `sol-member-hidden`: RF rebuilds a wrapper's className on every selection change, so a class written on the element directly would drop, and its `pointer-events` rule is `!important` over RF's inline style (canvas.css). Positions, groups and push records are untouched: a move made while isolating stays. The Add menu is suppressed while isolating, and Escape exits.
 
+Tests:
+
+- `isolateActive.test.ts`: switched off, nothing enters isolate; switched on, it isolates the main selection with no drill-in open and the subgraph's while drilled in, targets the active editor's nodes, and drops a receded card from the selection.
+- `isolateStore.test.ts`: `chainClosure` walks up- and downstream within the connected component, unions several seeds, returns a lone seed and ends on a cycle.
+- `isolateBoundary.test.ts`: the crossings split into entries and exits, several lanes per side collect, and a self-contained focus has none.
+- `flow/flowModel.test.ts`: a receded card carries `sol-isolate-dim`.
+
 ## Undo history
 
-Undo is a snapshot history (`flow/flowHistory.ts`, [[A1]] visualGraphCalculator). Every settled mutation records the canonical document (`serializeGraph`), so no action needs its own inverse: an undo is a `loadGraph` of the earlier snapshot. A snapshot is stored as the document's top-level fields plus one JSON string per node, and a node unchanged since the step before reuses that step's string, so history costs one document plus what each step changed rather than one document per step. The parsed document of the current entry is kept for the next record's label.
+Code: `flow/flowHistory.ts`, `flow/flowHistoryDigest.ts`.
+
+Undo is a snapshot history ([[A1]] visualGraphCalculator). Every settled mutation records the canonical document (`serializeGraph`), so no action needs its own inverse: an undo is a `loadGraph` of the earlier snapshot. A snapshot is stored as the document's top-level fields plus one JSON string per node, and a node unchanged since the step before reuses that step's string, so history costs one document plus what each step changed rather than one document per step. The parsed document of the current entry is kept for the next record's label.
 
 - **Recording.** `schedule()` debounces by `COALESCE_MS` (400 ms); `recordNow()` records at once. Neither records while a restore or a rebuild is running. A snapshot identical to the current one is skipped, and so is one that differs only by the cards' measured `init.width` and `init.height`, which re-stamp after a restore mounts the cards; recording that drift would cut off the redo tail for nothing. A new record truncates the redo tail.
 - **Who records.** `processGraph`'s graph-changed hook records component edits and autosaves; position-only changes (a nudge, a group push, standoffs), which never run `processGraph`, record through `afterProgrammaticMove`; drawn-cable edits record through `commitDrawn()`.
@@ -367,6 +427,11 @@ Undo is a snapshot history (`flow/flowHistory.ts`, [[A1]] visualGraphCalculator)
 - **Labels.** `describeGraphDelta` (`flowHistoryDigest.ts`) derives each entry's label by diffing it against the one before. The parts join with "; ", most significant first: Added, Removed, Connected and Disconnected (a single cable reads "A → B"), Renamed, then Edited, each naming a single node or counting several. A card's `init.width` and `init.height` are measures re-stamped after every restore, so a change to them alone records nothing (`sameIgnoringDims`). A group's are the user's, so a grip resize or Autofit records an entry, labeled with the "Edited document" fallback. A redo first flushes a pending edit, as undo does, so the edit is kept. Moves are reported only when nothing else changed, since they ride along with group tows and Expand Pushes. Failing all of those, the label is "Changed standoffs", "Drew a cable", "Removed a drawn cable", "Edited a drawn cable" or "Edited document". `records()` lists the applied transitions still on the stack, oldest first and without the "Opened" baseline (once the limits trim the baseline, the oldest surviving entry is listed too), for Session History.
 
 A composite drill-in keeps its own per-composite history ([[composite-drill-in-mount-lifecycle]]).
+
+Tests:
+
+- `flow/flowHistory.test.ts`: an undo within the coalesce window keeps the pending edit and steps back one entry, a redo within it records the edit and drops the redo tail, the byte budget keeps the entry before the current one and lists every surviving action once the baseline is trimmed, the camera comes back exactly between zoom steps, and an unchanged node is shared between steps so a 4 MB table doesn't crowd out history.
+- `flow/flowHistoryDigest.test.ts`: the labels each change gets.
 
 ## The main canvas
 
@@ -392,7 +457,8 @@ A ghost cable is a cable drawn dashed to show it is not yet valid or not yet rea
   4. If the user wired that single-cable input from elsewhere while the ghost waited, theirs wins and the ghost dies, never a second cable on the input. A ghost whose target node is gone is dropped.
   5. `PendingCableLayer` draws each pending ghost dashed, in the Option A stroke, from RF's measured handle bounds, since no edge exists to carry it.
   6. Nothing is saved. `registerNodeForget` / `registerNodeForgetAll` clear a ghost when either of its nodes is removed, and on every load.
-  `cablePendingReconnect.test.ts` pins this behavior.
+
+Tests: `cablePendingReconnect.test.ts`: marking is idempotent by the four endpoint fields, a drop removes one ghost and a node's removal those on either end; a ghost reattaches when the output fits the same key again, waits while it can't, falls back to the same label, waits on an ambiguous label, and dies when its target is gone or another source took the input.
 
 ## Socket highlights
 
@@ -415,22 +481,24 @@ Two mechanisms keep loads fast ([[graph-load-teardown-performance]]). The topolo
 
 A drag or pan holds the frame rate however many figures the canvas shows.
 
-- A drag never re-renders a card. RF hands every card its absolute position and a `dragging` flag as props, the position new each frame; `SolNodeAdapter`'s memo ignores both, since no card reads them. Without this, a dragged chart rebuilt every mark each frame (measured on 36 charts of 250 points: a 30-step drag took 13 seconds).
+- A drag never re-renders a card. RF hands every card its absolute position and a `dragging` flag as props, the position new each frame; `SolNodeAdapter`'s memo ignores both, since no card reads them. Without this, a dragged chart rebuilt every mark each frame, and a drag over a few dozen charts took seconds (`scripts/drag-probe.mjs` times a drag and counts what it renders).
 - Selecting a card doesn't redraw its figure: `ChartFigure` is memoized and the Chart card keeps its figure value stable between computes.
 - A drag re-renders the dragged card's cables and nothing else of the app's. RF keeps the node list in `FlowSurface`'s state, so the surface re-renders every frame; every layer it renders (the standoff, drawn-cable and pending-cable layers, the HTML-canvas layer, both cable inspectors, the drawn-cable capture) is memoized and draws from its stores, and a standoff bar re-renders only when its own two cards move or resize (an RF-store selector on their boxes, as the pending ghosts do).
 - A hover never redraws every card: a card or pill reads its own socket's highlight (`socketHighlightStore.isHighlighted(key)` as the snapshot), never the store's version, so crossing a cable redraws only the sockets it lights. `scripts/drag-probe.mjs` counts what a drag renders.
-- A group drag moves its members without RF's `dragging` class, since RF renders them as the group's siblings. For the drag, `onNodeDragStart` gives each member of a dragged open group (and of the groups nested in it) the `sol-riding` class, which wears `will-change: transform` too, and a dragged open group clips its paint with a 24 pixel margin (room for its selection glow). Without the clip the browser folded the members overlapping the moving group into the group's layer and re-recorded the whole group every frame, the tile flashing on a phone; measured in phone emulation on personal-finance, the painted area of a 40-step group drag fell about 8 times and raster time about half.
-- Nothing changes compositing layers mid-drag. Chrome gives a layer to anything painted over a moving layer that overlaps it, and takes it away again as the overlap ends; on a phone the element blinks out for the frame its new layer waits for raster. So what moves floats above the cards for the drag (`dragging` and `sol-riding` at z 1002, an open group under its members at 1001), and the chrome over the canvas (header, status bar, legend, nav, outline pill, HUD stack, minimap) wears `will-change: opacity`, a layer of its own without becoming the containing block of its fixed-position menus. Measured with the layer tree in phone emulation: a group drag on personal-finance went from 10 to 25 layer changes (status bar, header, legend, minimap, a note the group slid under) to none.
+- A group drag moves its members without RF's `dragging` class, since RF renders them as the group's siblings. For the drag, `onNodeDragStart` gives each member of a dragged open group (and of the groups nested in it) the `sol-riding` class, which wears `will-change: transform` too, and a dragged open group clips its paint with a 24 pixel margin (room for its selection glow). Without the clip the browser folded the members overlapping the moving group into the group's layer and re-recorded the whole group every frame, the tile flashing on a phone; the clip cuts a group drag's painted area several times over and its raster time about in half.
+- Nothing changes compositing layers mid-drag. Chrome gives a layer to anything painted over a moving layer that overlaps it, and takes it away again as the overlap ends; on a phone the element blinks out for the frame its new layer waits for raster. So what moves floats above the cards for the drag (`dragging` and `sol-riding` at z 1002, an open group under its members at 1001), and the chrome over the canvas (header, status bar, legend, nav, outline pill, HUD stack, minimap) wears `will-change: opacity`, a layer of its own without becoming the containing block of its fixed-position menus. With the layer tree watched mid-drag, a group drag makes no layer changes.
 - A dragged card wears `will-change: transform` (one composited layer, so the browser moves a bitmap instead of repainting), and while a card is dragged or the canvas pans, chart internals (recharts' wrapper, the hover canvases) take no pointer, so they don't re-run hover hit-testing every frame (flow.css).
-- A pan moves a bitmap, not a repaint. When a press on the pane starts a pan, the first camera move gives the viewport the `sol-pan-layer` class, and the pan's end (or any pointer release) takes it away (`flow/panLayer.ts`). Without the layer, every pan frame re-recorded and re-rastered every card on screen, and the cards on screen grow with the square of how far out the camera is. Measured on personal-finance at zoom 0.1, 1600×1000, 120 pan frames: paint about 1.8 s against 0.5 s, raster about 3.0 s against 0.2 s.
+- A pan moves a bitmap, not a repaint. When a press on the pane starts a pan, the first camera move gives the viewport the `sol-pan-layer` class, and the pan's end (or any pointer release) takes it away (`flow/panLayer.ts`). Without the layer, every pan frame re-recorded and re-rastered every card on screen, and the cards on screen grow with the square of how far out the camera is. The layer cuts a far-out pan's paint several times and its raster by an order of magnitude (`docs/canvas-frame-cost-findings.md` § 1; rerun with `scripts/zoom-perf-probe.mjs`).
   - The layer comes from a flat 3D translate (`translate: 0 0 1px`, no perspective, so nothing moves), not `will-change: transform`. A `will-change` layer rasters at a rounded scale, so at zoom 0.3 text panned visibly soft and snapped sharp on release; a 3D-transformed layer rasters at the exact zoom, and screenshots mid-pan match the canvas at rest.
   - The camera is on whole device pixels for the pan: a press on the pane snaps it there (`alignedViewport`, at most half a pixel) before the drag reads its anchor, and a mouse's deltas keep it whole. A layer at a fractional offset is composited with smoothing, and text panned soft.
   - It is a pan-only layer. A layer keeps its raster scale while it zooms, so text would blur until the gesture ended; a camera move that changes the zoom drops the layer for the rest of the gesture, and wheel or pinch zoom (no press) never takes it. A click on the pane moves nothing and never promotes.
   - Chromium engines (Chrome, Edge, WebView2) with a fine pointer only, and never in the HTML-in-Canvas mode (`promotesPans`). The merge and raster behavior is measured in Chromium only; WebKit rasters a layer at 1× and stretches it ([[layout-chrome#The desktop window frame (the Tauri shell)]]); a coarse pointer may be a mobile GPU, where a viewport-sized layer fails tile allocation ([[html-in-canvas#The GPU texture budget]]); the HTML-in-Canvas mode hides the viewport for the gesture and promotes it itself.
   - One promote and one demote per gesture, never per frame: a flip re-creates the layer and re-rasters it. Only a press starts or ends it, since the press-time snap is itself a programmatic camera move.
-  - It stays one layer only over the opaque backing ([[#The dot grid]]). Chrome won't merge text on an opaque fill (a header, a table cell) into a layer whose contents aren't known to be opaque, since the text would lose its LCD antialiasing, nor two distant pieces into one sparse layer; with nothing opaque under the cards the promoted viewport split into 106 layers, every cable and header its own. A desktop screen at 1× is where this bites: with LCD text off, as at a phone's pixel density, it stayed at 12.
+  - It stays one layer only over the opaque backing ([[#The dot grid]]). Chrome won't merge text on an opaque fill (a header, a table cell) into a layer whose contents aren't known to be opaque, since the text would lose its LCD antialiasing, nor two distant pieces into one sparse layer; with nothing opaque under the cards the promoted viewport split into about a hundred layers, every cable and header its own. A desktop screen at 1× is where this bites: with LCD text off, as at a phone's pixel density, it stayed at a dozen.
   - Text keeps its LCD antialiasing in the layer: Chrome keeps it for a layer that is opaque, on whole pixels and not `will-change`, which the backing, the snap and the 3D translate give.
   - **Reopen if:** the layer splits again (`scripts/zoom-perf-probe.mjs` prints the layer count mid-pan), a mid-pan screenshot stops matching the canvas at rest, or a pan shows unrastered tiles at its leading edge.
+
+Tests: `flow/panLayer.test.ts`: the layer comes on with a press pan's first move and goes at its end; a click, a wheel zoom or a programmatic move never promotes; a zoom change drops it for the rest of the gesture, and a programmatic move inside the pan keeps it; it stays off where the gate refuses (Chromium with a fine pointer, outside the HTML-in-Canvas mode); and `alignedViewport` snaps the camera to whole device pixels.
 
 Reopen if a card needs its live position while it moves; it should read it from a store, not RF's props.
 

@@ -1,4 +1,4 @@
-// [[A1]], [[B3]], [[C135]] isolateOff
+// [[A1]], [[B3]], [[C135]] isolateOff, [[react-flow-surface-contract#Isolate]], [[composite-drill-in-mount-lifecycle#The canvas-substitution seam]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { GraphEditor } from "../../src/graph/graphEditor";
@@ -9,10 +9,6 @@ import { isolateStore, ISOLATE_ON } from "../../src/graph/isolateStore";
 import { isolateSelection, isolateNodes } from "../../src/graph/isolate";
 import { swapSelectionSlots } from "../../src/graph/canvasCommands";
 
-// Isolate resolves through the ACTIVE editor so the focus-set works inside a
-// composite drill-in too (the drill-in node cards read the same global
-// isolateStore). This locks that the entry points read getActiveEditor(), not
-// getEditor() (main). See activeGraph.test.ts for the persistence-side split.
 
 type FakeNode = { id: string; selected?: boolean };
 

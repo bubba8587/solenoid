@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere: a locked canvas is view-only, from the right-click menus too
+// [[B3]] sameNodeEverywhere, [[react-flow-surface-contract#Context menus]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection } from "../../src/graph/graphModel";

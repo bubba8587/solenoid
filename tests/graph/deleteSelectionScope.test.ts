@@ -1,4 +1,5 @@
-// [[B3]] sameNodeEverywhere, [[C118]] formatTravelsWithValue
+// [[B3]] sameNodeEverywhere, [[C118]] formatTravelsWithValue, [[react-flow-surface-contract#Deleting a selection]],
+// [[react-flow-surface-contract#Format Controller docking]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

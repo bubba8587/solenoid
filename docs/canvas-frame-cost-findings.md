@@ -54,7 +54,7 @@ translate; a fractional camera offset composites soft, so a press snaps the came
 
 **Result.** personal-finance at zoom 0.1, 120 pan frames: paint about 1.8 s to 0.5 s, raster about 3.0 s to 0.2 s, one
 layer mid-pan, mid-pan screenshots identical to the canvas at rest. The mechanism and its rules are in
-`../tree/specs/canvas/react-flow-surface-contract.md` § Drag performance and § The dot grid.
+[[react-flow-surface-contract#Drag performance]] and [[react-flow-surface-contract#The dot grid]].
 
 ## 2. The pan layer on phones (reverted)
 
@@ -163,6 +163,16 @@ inner transforms, transitions, z-index, text, masks on icons, the socket glyphs'
 header SVG clip, the chevron SVGs, and (for paint) the hidden members of collapsed groups, which cost about 1 ms of layout
 per zoom step and nothing in paint. The dot grid is about half of zoom-step raster in headless CPU raster only; a GPU
 tiles it nearly for free, and React Flow's old background cost the same.
+
+## 8. Numbers the surface contract held
+
+The surface contract states each of these mechanisms and how to rerun it; the measured numbers live here.
+
+- **The dot-grid backing** ([[react-flow-surface-contract#The dot grid]]). personal-finance at zoom 0.1, 1600×1000, 120 pan frames, pan layer on: React Flow's `<Background>` about 2.1 s of raster, the backing about 0.16 s (`scripts/zoom-perf-probe.mjs`).
+- **A drag never re-renders a card** ([[react-flow-surface-contract#Drag performance]]). Before the adapter's memo ignored the position and `dragging` props, a 30-step drag over 36 charts of 250 points took 13 seconds (`scripts/drag-probe.mjs`).
+- **The group-drag clip.** In phone emulation on personal-finance, the painted area of a 40-step group drag fell about 8 times and raster time about half.
+- **No layer changes mid-drag.** With the layer tree in phone emulation, a group drag on personal-finance went from 10 to 25 layer changes (status bar, header, legend, minimap, a note the group slid under) to none.
+- **The pan layer and the socket handle** are § 1 and § 3 above.
 
 ## Corrections made along the way
 

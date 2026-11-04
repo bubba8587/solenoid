@@ -1,5 +1,4 @@
-// [[A1]], [[B3]], [[C25]]
-// A docked FC is part of its host's entity, so deleting a host takes the FCs docked on it.
+// [[A1]], [[B3]], [[C25]], [[react-flow-surface-contract#Deleting a selection]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[react-flow-surface-contract#Isolate]]
 import { describe, it, expect } from "vitest";
 import { chainClosure } from "../../src/graph/isolateStore";
 

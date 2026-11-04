@@ -1,4 +1,5 @@
-// [[A1]] visualGraphCalculator, [[cable-rendering-knobs#Diagonal and straight: the walk router]], [[cable-rendering-knobs#Spline]]
+// [[A1]] visualGraphCalculator, [[cable-rendering-knobs#Diagonal and straight: the walk router]], [[cable-rendering-knobs#Spline]],
+// [[react-flow-surface-contract#Cables]]
 import { describe, expect, it } from "vitest";
 import { fuzzRuns, fuzzSeed } from "./fuzzDepth";
 import { getCablePath, draggedCableArgs, Position } from "../../src/graph/cablePaths";

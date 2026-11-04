@@ -1,4 +1,4 @@
-// [[A1]], [[B3]]
+// [[A1]], [[B3]], [[react-flow-surface-contract#The flow model]]
 import { describe, it, expect } from "vitest";
 import {
   buildModel,
@@ -13,8 +13,6 @@ import type { SolenoidNode } from "../../../src/graph/schemes";
 import { computeAll } from "../../../src/graph/graphCompute";
 import { isSolError } from "../../../src/graph/errorValue";
 
-// The model's edit verbs write through the editor under the socket lattice, and
-// the shared pass recomputes targeted.
 
 const FIXTURE: SavedGraphLite = {
   v: 2,

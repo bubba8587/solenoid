@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[C44]] dateSerials
+// [[A1]] visualGraphCalculator, [[C44]] dateSerials, [[react-flow-surface-contract#The canvas keyboard]]
 import { describe, it, expect, afterEach } from "vitest";
 import { modalOwnsKeyboard, markIfUnderModal, keyUnderModal, MODAL_SELECTOR } from "../../src/graph/modalGuard";
 import { paletteStore } from "../../src/graph/paletteStore";
@@ -6,10 +6,6 @@ import { frStore } from "../../src/graph/frStore";
 import { settingsPanel } from "../../src/graph/settingsStore";
 import { shortcutsStore } from "../../src/graph/shortcutsStore";
 
-// The canvas key handlers stand down while an overlay owns the keyboard (the Tidy
-// confirm's Enter must not also open the palette; A under a Frame Input pop-up must
-// not open the Add menu). Overlays declare themselves in the DOM; the dialog-less
-// surfaces are read from their stores.
 const docWith = (hit: boolean): Pick<Document, "querySelector"> =>
   ({ querySelector: (sel: string) => (hit && sel === MODAL_SELECTOR ? ({} as Element) : null) }) as Pick<Document, "querySelector">;
 

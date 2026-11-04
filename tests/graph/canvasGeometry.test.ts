@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere
+// [[B3]] sameNodeEverywhere, [[react-flow-surface-contract#Format Controller docking]]
 import { describe, it, expect } from "vitest";
 import { socketLocalCenter } from "../../src/graph/canvasGeometry";
 import type { View } from "../../src/graph/view";
