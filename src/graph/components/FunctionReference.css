@@ -630,3 +630,4 @@ button.fr-card__fx-via:hover { color: var(--accent); }
   cursor: pointer;
 }
 .fr-card__turn-on:hover { border-color: var(--accent); color: var(--text-bright); }
+.fr-card__tags { margin-top: 3px; font-size: 12px; color: var(--text-dim); font-style: italic; }

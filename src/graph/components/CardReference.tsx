@@ -8,6 +8,7 @@ import { addNodeFrom, buildCatalog } from "../catalogUtils";
 import { flattenLeaves, searchLeaves } from "../catalogSearch";
 import { formulaHomes } from "../formulaCards";
 import { examplesUsing } from "../cardExamples";
+import { tagsOf } from "../catalogTags";
 import { documentStore } from "../documentStore";
 import { allPacks, packsStore } from "../packs";
 import { DrillMenu, LeafRow, drillStackTo, type NodeCatalogEntry } from "../AddNodeMenu";
@@ -278,6 +279,9 @@ function CardPage({ card, leaf, startOp, packName, onBack, backTo, onRetrace, re
           </>
         )}
       </div>
+      {tagsOf(card.type).length > 0 && (
+        <div className="fr-card__tags">Also called {tagsOf(card.type).join(", ")}</div>
+      )}
       {card.description && (
         <p ref={descRef} className="fr-card__desc" onClick={onDescClick} dangerouslySetInnerHTML={{ __html: descriptionHtml(card.description) }} />
       )}

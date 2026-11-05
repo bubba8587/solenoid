@@ -74,6 +74,7 @@ mindmap
 | `hideOpsMark` | Hides the `{ }` mark while keeping the ops in `hiddenOps` and in search. |
 | `excel` | The node's own Excel equivalents (`ExcelEquiv`: `excel`, `syntax`, and a `parity` and `note` that override the leaf's for that one function). The Function Reference generates from these; none means a Solenoid-native node. |
 | `keywords` | Space-separated search words, matched by search and never shown ([[#A row's name and its search words]]). |
+| tags | Not on the leaf: `CARD_TAGS` (`catalogTags.ts`) maps a type to the words people mean the card by ("mean" on AVERAGE), ranked as names a step above labels and op names. A tag belongs to one card, never repeats a card's label and is never a formula or Excel name (that name already has a row that shows it); `catalogTags.test.ts` holds all three and that each tag lists its card first. |
 | `fx` | The formula names the leaf answers to when the despaced label cannot be its name, because of punctuation or because one node splits into several functions. |
 
 ## Building the catalog
@@ -161,8 +162,8 @@ Tests:
 
 Two texts are built from the row, and both are deliberately wider than what the menu renders:
 
-- The **haystack**: label, Excel names, category path, the type with `-` and `_` read as spaces, `keywords`, and the card's **family name** (`nodeTypeName`, the hover hint's name: "Table Reshape", "Bessel"), read off the class once per host type. The description stays out: it is prose, and a subsequence scan over prose lets nearly any short query land on a row whose sentences happen to hold its letters in order.
-- The **word list**: the family name's words, the words of the label, the label with any leading op glyph stripped ("+ Add" becomes "Add"), the type words, `keywords`, the category path, the Excel names and the row's **retired names**: every `LEGACY_ALIASES` name whose replacement is one of the row's Excel names, its stripped label or its op name (MATCH on XMATCH, FLOOR.PRECISE on FLOOR, DSUM on SUM). The formula surface refuses those names with "Use X", so the menu lands them on X's card. Words split on anything that is not a letter, digit or dot, so a hyphenated query ("k-means") lands word by word.
+- The **haystack**: label, Excel names, category path, the type with `-` and `_` read as spaces, `keywords`, the card's tags, and the card's **family name** (`nodeTypeName`, the hover hint's name: "Table Reshape", "Bessel"), read off the class once per host type. The description stays out: it is prose, and a subsequence scan over prose lets nearly any short query land on a row whose sentences happen to hold its letters in order.
+- The **word list**: the family name's words, the words of the label, the label with any leading op glyph stripped ("+ Add" becomes "Add"), the type words, `keywords`, the card's tags, the category path, the Excel names and the row's **retired names**: every `LEGACY_ALIASES` name whose replacement is one of the row's Excel names, its stripped label or its op name (MATCH on XMATCH, FLOOR.PRECISE on FLOOR, DSUM on SUM). The formula surface refuses those names with "Use X", so the menu lands them on X's card. Words split on anything that is not a letter, digit or dot, so a hyphenated query ("k-means") lands word by word.
 
 En and em dashes in either text, and in the query, read as plain hyphens, so "savitzky-golay" finds a keyword spelled with an en dash.
 
@@ -179,7 +180,10 @@ On top of the word total, the row gets the best **whole-query bonus** from its f
 - for a generated `Host: Name` row, the part after the colon, so an exact hit on an op's name ranks like an exact hit on a leaf's own label; for an alias row, the Excel name before the arrow, scored 5 higher, so on a tie with an op row that only hides the name in its keywords, the row that shows the typed name is the one kept;
 - the family name, scored 5 lower, so "table reshape" lands on the reshape ops and "bessel" on the Bessel functions;
 - each Excel name, scored 10 lower so an exact label still wins a tie;
-- each retired name, scored 20 lower, so a row that wears the name itself ("Sparkline: Column" for COLUMN) keeps first place.
+- each retired name, scored 20 lower, so a row that wears the name itself ("Sparkline: Column" for COLUMN) keeps first place;
+- each **tag** (as written and with its spaces removed), scored 30 higher, so the card a word means outranks an op that merely shares it ("mean" lists AVERAGE before Fill: Mean). A tag is also a name for the one-edit match. A generated op or alias row has its own type, so it never carries its host's tags.
+
+After sorting, a row scoring under 4% of the best row is dropped: a strong hit leaves stray letter-by-letter matches far below it (MEDIANSMOOTH also matched Truncate Date at about 1% of its score), and a weak best match, as from a typo, keeps everything.
 
 ```mermaid
 flowchart TD

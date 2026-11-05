@@ -1,5 +1,6 @@
 // [[B16]] oneFormulaSurface
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
+import { tagsOf } from "./catalogTags";
 import { LEGACY_ALIASES } from "./excelFunctions";
 import { fuzzyScoreLower, fieldScoreLower, tokenWordScore, withinOneEdit } from "./fuzzy";
 import { opsFor, opEntry, excelEntry } from "./nodeOps";
@@ -85,6 +86,9 @@ type Prepared = {
   names: string[];
 };
 
+/** How far a tag's match outranks the same match on a label or op name. */
+const TAG_LIFT = 30;
+
 // Everything scoreLeaf reads from a leaf but not the query, built once per leaf: the Add menu and the label sweep score every leaf per query.
 const prepared = new WeakMap<LeafWithContext, Prepared>();
 
@@ -95,7 +99,9 @@ function prepare(lc: LeafWithContext): Prepared {
   const excelNames = CATALOG_TO_EXCEL.get(leaf.type) ?? [];
   const category = categoryPath.join(" ");
   const keywords = leaf.keywords ?? "";
-  const haystack = dashes(`${leaf.label} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords} ${familyOf(leaf)}`).toLowerCase();
+  // A generated op or alias row ("host__op-mean") carries its own names, never its host's tags.
+  const tags = tagsOf(leaf.type);
+  const haystack = dashes(`${leaf.label} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords} ${tags.join(" ")} ${familyOf(leaf)}`).toLowerCase();
   const bare = stripGlyphPrefix(leaf.label);
   const colon = leaf.label.indexOf(": ");
   const opName = colon > 0 && leaf.type.includes("__") ? leaf.label.slice(colon + 2) : null;
@@ -104,7 +110,7 @@ function prepare(lc: LeafWithContext): Prepared {
   const family = familyOf(leaf);
   // A retired Excel spelling (MATCH, FLOOR.PRECISE) finds the card that answers to its replacement.
   const legacy = legacyNamesOf([...excelNames, bare, ...(opName ? [opName] : [])]);
-  const words = dashes(`${leaf.label} ${bare} ${typeWords(leaf.type)} ${keywords} ${category} ${excelNames.join(" ")} ${legacy.join(" ")} ${family}`)
+  const words = dashes(`${leaf.label} ${bare} ${typeWords(leaf.type)} ${keywords} ${tags.join(" ")} ${category} ${excelNames.join(" ")} ${legacy.join(" ")} ${family}`)
     .toLowerCase().split(WORD_SEP).filter(Boolean);
   const own = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];
   if (bare && bare !== leaf.label) own.push(bare);
@@ -116,8 +122,10 @@ function prepare(lc: LeafWithContext): Prepared {
     ...(family ? [[family.toLowerCase(), 5] as [string, number]] : []),
     ...excelNames.map((n): [string, number] => [n.toLowerCase(), 10]),
     ...legacy.map((n): [string, number] => [n.toLowerCase(), 20]),
+    // A tag ranks a step above any shown name, so the card a word means comes first ("mean" → AVERAGE, not Fill: Mean).
+    ...tags.flatMap((t): [string, number][] => [[t, -TAG_LIFT], [t.replace(/\s+/g, ""), -TAG_LIFT]]),
   ];
-  const names = [leaf.label, bare, ...excelNames, ...(aliasName ? [aliasName] : [])].map((n) => n.toLowerCase());
+  const names = [leaf.label, bare, ...excelNames, ...(aliasName ? [aliasName] : []), ...tags].map((n) => n.toLowerCase());
   const p = { haystack, words, fields, names };
   prepared.set(lc, p);
   return p;

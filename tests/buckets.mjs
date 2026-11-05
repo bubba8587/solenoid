@@ -14,7 +14,7 @@ export const TIERS = {
 /** Ordered: the first match wins, so a narrow rule sits above a broad one. Patterns match the path from the repo root. */
 export const RULES = [
   // ── meta: the repository's own rules, docs, site and build ──
-  ["meta", /(^|\/)(rules|docsPointers|sourceInvariants|sourceHygiene|specDiagrams|uiCopy|wasmStamp|rustTestPaths|settingsAudit|socketReference|functionReferenceLibs|cardReference|siteMeta|siteThumbs|landingBuildQueue|landingCompute|androidPrep|androidShell|desktopCsp|cssSyntax|cssTokens|finePrintContract|helpSection|docMeta|surfaceReviewPins|reviewPins|auditFixes|testBuckets|chunkReloadGuard|imageAssets|externalLinks)\.test\./],
+  ["meta", /(^|\/)(rules|docsPointers|sourceInvariants|sourceHygiene|specDiagrams|uiCopy|wasmStamp|rustTestPaths|settingsAudit|socketReference|functionReferenceLibs|cardReference|catalogTags|siteMeta|siteThumbs|landingBuildQueue|landingCompute|androidPrep|androidShell|desktopCsp|cssSyntax|cssTokens|finePrintContract|helpSection|docMeta|surfaceReviewPins|reviewPins|auditFixes|testBuckets|chunkReloadGuard|imageAssets|externalLinks)\.test\./],
   ["meta", /^tests\/graph\/landing\//],
   ["meta", /^scripts\//],
 

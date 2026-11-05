@@ -112,7 +112,7 @@ script when the component needs hand-writing anyway (op select, custom render).
 6. **Catalog** → one entry in `src/graph/nodeCatalog.ts`, in the right
    category. The `description` IS the node's Function Reference entry AND its
    hover tooltip — carry the Excel equivalent where one exists, per the
-   zero-learning-curve rule. A `keywords` string boosts Add-menu search.
+   zero-learning-curve rule. A `keywords` string boosts Add-menu search; the everyday words people mean the card by ("mean", "running total") go in `CARD_TAGS` (`src/graph/catalogTags.ts`), which rank first. A tag is never the card's label or a formula/Excel name.
    No Captain-Obvious phrasing (CLAUDE.md).
 7. **Excel metadata** (only for Excel-function nodes) → `src/graph/nodeExcel.ts`:
    `"foo": [{ excel: "FOO", syntax: "=FOO(x)" }]` (+ `parity: false` + `note`
