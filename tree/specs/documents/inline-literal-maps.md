@@ -77,11 +77,11 @@ Where a field's kind lives:
 - **A setting** declares it through its role ([[input-roles#The roles]]), shared with the formulas: its blank is a Fallback, `LEFT_OUT` a Behavior shown as its word, required a Required.
 - **Every other field** declares it in the core's table (`EMPTY` in `nodes/fields.rs`, `empty_of(card class, key)`), keyed by card class and input, a key matching a numbered row of itself as `ROWS` does. `Call::unwired` applies it when the field holds nothing (no saved value, or empty text), so every body reads the same Fallback the field shows.
 - **The canvas** asks one function (`emptyFieldShown` in `emptySlots.ts`): the core's declaration over wasm (`coreEmptyField`), else the setting's role. The row host draws `shown` as the field's placeholder and marks the row `solenoid-node__io-row--example` for an Example, which alone sets the placeholder in italics (`nodeCard.css`). The paired rows (IFS's and SWITCH's cases and outputs, `pairPlaceholders`) are Examples.
-- **A field that declares nothing** shows no placeholder and reads `undefined`, which a body may turn into any answer. These are the worklist: `tests/fixtures/empty-field-worklist.json`.
+- **The solver cards** (Equation, Triangle Solver, TVM) declare every field `[solve]` at once (`SOLVERS`): an empty field is the unknown.
 
-A value a body computes from when a field is empty, which the field doesn't show (a default argument to `Call::read_num`), is the Fallback that field hasn't declared yet.
+A body reads an empty field only through `Call::unwired`, so the value it computes from is the one declared; there is no reader that takes its own default. A formula's variables (Formula card, LAMBDA, a computed column) read 0 when empty through `Call::read_variable`, until the walk of that kind of nothing. A Fallback of empty text reads as nothing, as an empty field always has.
 
-Tests: `emptyFieldKinds.test.ts`: every catalog card's fields, a formula's variables aside, declare a kind or sit on the worklist, which only shrinks; `emptySlots.test.ts`: what `emptyFieldShown` gives for each kind; `fields.rs`'s own test pins the table's shown text.
+Tests: `emptyFieldKinds.test.ts`: every catalog card's fields, a formula's variables aside, declare a kind; `emptySlots.test.ts`: what `emptyFieldShown` gives for each kind; `fields.rs`'s own test pins the table's shown text.
 
 ## Which field a row edits
 
