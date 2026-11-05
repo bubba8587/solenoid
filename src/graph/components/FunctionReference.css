@@ -783,3 +783,16 @@
   text-transform: uppercase;
   color: var(--text-muted);
 }
+
+/* A landing box's title reads as a node card's header title: its color's ink, uppercase and tracked, and following
+   the header-case setting as the cards do. */
+.fr-land__head > span {
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
+  /* Larger than a card's 10px: on this page it heads a box of cards. */
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+html.hdr-case-as-typed .fr-land__head > span { text-transform: none; }
+html.hdr-case-proper .fr-land__head > span { text-transform: capitalize; }
