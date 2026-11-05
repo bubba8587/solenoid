@@ -22,13 +22,15 @@ specs and this file archives.
 
 ## Placeholder scheme (the author, 2026-11-05, "for now")
 
-What a card's empty field (`_`) shows and does is one of three kinds, told apart by shape:
+What a card's empty field (`_`) shows and does is one of four kinds; every field declares exactly one. The first three
+are told apart by shape:
 
 | Kind | Shows | The card computes with | Example |
 |---|---|---|---|
 | **Fallback** | the value, muted, upright | that value | a rate field showing `0.1` |
 | **Behavior** | a word in brackets, muted, upright | the behavior | XLOOKUP's Return showing `[all]` |
 | **Example** | a hint, muted, *italic* | nothing: the card answers blank | Molar Mass's *H2O* |
+| **Required** | nothing | nothing: the card answers a named error on purpose (`#SYNTAX!`, "*Number* is blank, and it has no default", as the required-setting role in [[input-roles]] already does) | none yet; kept as an option |
 
 - A **default** is the value a fresh card ships in the field, which a person can clear. It usually matches the
   field's fallback but need not.
@@ -41,6 +43,9 @@ What a card's empty field (`_`) shows and does is one of three kinds, told apart
 - Italics are reserved for Examples. Today every card field's placeholder is italic
   (`.solenoid-node__inline-input::placeholder` and `.solenoid-node__quoted-input::placeholder` in `nodeCard.css`), and
   so is a formula's empty-slot reading (`.fx-ghost` in `FormulaEditor.css`). Fallbacks and Behaviors lose the italic.
+- **A Fallback is what an empty field reads as, never a cable carrying a blank.** A wired blank stays blank
+  ([[C24]] arraySemantics: nothing turns it into zero).
+- A formula's empty-slot reading (the muted `0` in `ROUND(2.6, )`) is a Fallback, so it loses the italic too.
 - The formula side keeps Excel's reading of `_` (case 1). A card's Fallback lives on the card, not in `ARG_ROLES`,
   except where a setting's declared blank already serves both surfaces.
 
@@ -49,10 +54,10 @@ What a card's empty field (`_`) shows and does is one of three kinds, told apart
 - **Does a card read `_` as Excel's empty argument (0, FALSE, "")?** Reframed by the placeholder scheme: a card
   reads `_` as its field's kind says. Whether a field's Fallback should be Excel's empty-argument value is decided
   field by field; the ledger below keeps the evidence.
-- **Must every field be one of the three kinds?** A field with no Fallback, Behavior or Example today shows nothing
-  (or the number field's stock muted `0`, which the card doesn't compute with) and answers by accident (case 1).
-- **A formula's empty-slot reading** (the muted `0` in `ROUND(2.6, )`) is a Fallback by the scheme, so upright:
-  confirm.
+- **Data fields: Fallback 0 / FALSE / "" first, or Example first?** The author's starting rule (2026-11-05): data
+  fields typically get Excel's empty value as their Fallback, settings get the Fallback each needs, and Examples and
+  Behaviors are used where they fit better or where no Fallback is needed to keep the card from erroring. Which
+  wins when a field could be either (ROUND's Number) is open.
 
 ## Evidence ledger: a card reading `_` as Excel's empty argument
 
