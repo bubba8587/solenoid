@@ -128,19 +128,7 @@ export function PairedExtensibleInputs({
       {pairs.map((keys, i) => (
         // The tuple's remove button sits on the rule above it, so every field keeps the full width; one tuple has neither.
         <div key={keys[0]} className="solenoid-node__pair-group solenoid-node__pair-group--headed">
-          {pairs.length > 1 && (
-            <div className="solenoid-node__pair-head">
-              <span className="solenoid-node__pair-rule" />
-              <button
-                type="button"
-                className="solenoid-node__row-remove"
-                title={`Remove this ${rowNoun}`}
-                onClick={(e) => { e.stopPropagation(); void removePair(keys); }}
-              >
-                ×
-              </button>
-            </div>
-          )}
+          {pairs.length > 1 && <PairHead title={`Remove this ${rowNoun}`} onRemove={() => void removePair(keys)} />}
           {keys.map((k, j) => field(k, `${node.pairLabels[j] ?? ""} ${i + 1}`, node.pairPlaceholders?.[j] && `${node.pairPlaceholders[j]} ${i + 1}`))}
         </div>
       ))}
@@ -154,5 +142,23 @@ export function PairedExtensibleInputs({
       {/* "N/A" is a state cue, not a typed value: no match with an unset fallback yields #N/A. */}
       {trailing.map((key) => field(key, node.inputs[key]?.label ?? key, "N/A"))}
     </>
+  );
+}
+
+/** The rule that heads a repeated group of rows (a SWITCH pair, a Filter condition, a Sort key), its remove button at
+ *  the right end, so every field in the group keeps the full width. Its group takes `solenoid-node__pair-group--headed`. */
+export function PairHead({ title, onRemove }: { title: string; onRemove: () => void }) {
+  return (
+    <div className="solenoid-node__pair-head">
+      <span className="solenoid-node__pair-rule" />
+      <button
+        type="button"
+        className="solenoid-node__row-remove"
+        title={title}
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+      >
+        ×
+      </button>
+    </div>
   );
 }

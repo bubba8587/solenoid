@@ -15,6 +15,7 @@ import { MeasuredSocketRow } from "./NodeSocket";
 import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS, VALUELESS_OPS } from "./FrameNodes";
 import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
+import { PairHead } from "./PairedExtensibleInputs";
 
 const OPS = (Object.keys(COND_AGG_OP_META) as CondAggOp[]).map((op) => ({
   value: op,
@@ -87,23 +88,14 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
         const id = colKey.slice(6);
         const c = rowCfg(id);
         return (
-          <div key={colKey} className="solenoid-node__pair-group">
+          <div key={colKey} className="solenoid-node__pair-group solenoid-node__pair-group--headed">
+            {pairs.length > 1 && <PairHead title="Remove this criterion" onRemove={() => void removePair(colKey, valKey)} />}
             <MeasuredSocketRow side="input" socketKey={colKey} nodeId={data.id} emit={emit} payload={data.inputs[colKey]!.socket}>
               <span className="solenoid-node__io-label">Column{pairs.length > 1 ? ` ${i + 1}` : ""}</span>
               {connected.has(colKey) ? (
                 <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
               ) : (
                 <InlineTextField value={strLiterals[colKey]} onChange={(v) => setStr(colKey, v)} />
-              )}
-              {pairs.length > 1 && (
-                <button
-                  type="button"
-                  className="solenoid-node__row-remove"
-                  title="Remove this criterion"
-                  onClick={(e) => { e.stopPropagation(); void removePair(colKey, valKey); }}
-                >
-                  ×
-                </button>
               )}
             </MeasuredSocketRow>
             <ArgSelect value={c.op} options={FILTER_OP_OPTIONS} onChange={(next) => updateCfg(id, { op: next })} />

@@ -9,6 +9,7 @@ import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { dropInputCables } from "./cablePrune";
 import type { DisplayValue } from "./valueDisplayFormat";
+import { PairHead } from "./PairedExtensibleInputs";
 
 const DIRS: { value: SortDir; label: string }[] = [
   { value: "asc",  label: "Ascending ↑" },
@@ -65,19 +66,12 @@ export function SortComponent({ data, emit }: NodeProps<SortNodeType>) {
       {keys.map((key) => {
         const id = key.slice(3);
         return (
-          <div key={key} className="solenoid-node__pair-group">
+          <div key={key} className="solenoid-node__pair-group solenoid-node__pair-group--headed">
+            <PairHead title="Remove this sort key" onRemove={() => void removeKey(key)} />
             <ArgSelect value={keyOrder[id] ?? data.keyOrder[id] ?? "asc"} options={DIRS} onChange={(d) => setKeyDir(id, d)} />
             <MeasuredSocketRow side="input" socketKey={key} nodeId={data.id} emit={emit} payload={data.inputs[key]!.socket}>
               <span className="solenoid-node__io-label">{data.inputs[key]!.label}</span>
               {connected.has(key) && <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>}
-              <button
-                type="button"
-                className="solenoid-node__row-remove"
-                title="Remove this sort key"
-                onClick={(e) => { e.stopPropagation(); void removeKey(key); }}
-              >
-                ×
-              </button>
             </MeasuredSocketRow>
           </div>
         );

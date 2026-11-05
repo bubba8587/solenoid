@@ -359,7 +359,7 @@ export class SortNode extends GraphNode {
   literals: Record<string, number> = { index: 1 };
   cachedList: unknown = [];
   width = 190;
-  height = 210;
+  height = 228;
 
   constructor(init?: { label?: string; order?: SortDir; byCol?: boolean; keyOrder?: Record<string, SortDir>; valueKeys?: string[] }) {
     super("Sort");

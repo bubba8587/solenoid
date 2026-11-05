@@ -16,6 +16,7 @@ import { FILTER_OP_OPTIONS_WITH_ERROR, TEXT_MATCH_OPS, VALUELESS_OPS, FILTER_COM
 import type { DisplayValue } from "./valueDisplayFormat";
 import { dropInputCables } from "./cablePrune";
 import { nodeDisplayName } from "../catalogUtils";
+import { PairHead } from "./PairedExtensibleInputs";
 
 // The frame Filter's rows minus the column picker, since a list has no lanes; Kept rides the hero box and Dropped is the complement.
 export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
@@ -66,7 +67,8 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
         const id = key.slice(5);
         const c = rowCfg(id);
         return (
-          <div key={key} className="solenoid-node__pair-group">
+          <div key={key} className="solenoid-node__pair-group solenoid-node__pair-group--headed">
+            {keys.length > 1 && <PairHead title="Remove this condition" onRemove={() => void removeRow(key)} />}
             <ArgSelect value={c.op} options={FILTER_OP_OPTIONS_WITH_ERROR} onChange={(op) => updateCfg(id, { op })} />
             <MeasuredSocketRow side="input" socketKey={key} nodeId={data.id} emit={emit} payload={data.inputs[key]!.socket}>
               <span className="solenoid-node__io-label">Value{keys.length > 1 ? ` ${i + 1}` : ""}</span>
@@ -77,16 +79,6 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
               ) : null}
               {TEXT_MATCH_OPS.has(c.op) && (
                 <MatchCaseButton on={c.matchCase ?? false} onToggle={() => updateCfg(id, { matchCase: !c.matchCase })} />
-              )}
-              {keys.length > 1 && (
-                <button
-                  type="button"
-                  className="solenoid-node__row-remove"
-                  title="Remove this condition"
-                  onClick={(e) => { e.stopPropagation(); void removeRow(key); }}
-                >
-                  ×
-                </button>
               )}
             </MeasuredSocketRow>
           </div>

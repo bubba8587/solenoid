@@ -110,6 +110,7 @@ import type { AllocateMode } from "../nodes/allocateOps";
 import type { PayoffOrder } from "../nodes/frame";
 import { PAYOFF_ORDER_META } from "../nodes/frame";
 import { previewed } from "../listPreview";
+import { PairHead } from "./PairedExtensibleInputs";
 
 const ALLOCATE_MODE_OPTIONS: OpOption<AllocateMode>[] =
   (Object.entries(ALLOCATE_MODE_META) as [AllocateMode, { label: string }][]).map(([value, m]) => ({ value, label: m.label }));
@@ -413,23 +414,14 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
             const id = colKey.slice(6);
             const c = rowCfg(id);
             return (
-              <div key={colKey} className="solenoid-node__pair-group">
+              <div key={colKey} className="solenoid-node__pair-group solenoid-node__pair-group--headed">
+                {pairs.length > 1 && <PairHead title="Remove this condition" onRemove={() => void removePair(colKey, valKey)} />}
                 <MeasuredSocketRow side="input" socketKey={colKey} nodeId={data.id} emit={emit} payload={data.inputs[colKey]!.socket}>
                   <span className="solenoid-node__io-label">Column{pairs.length > 1 ? ` ${i + 1}` : ""}</span>
                   {connected.has(colKey) ? (
                     <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
                   ) : (
                     <InlineTextField value={strLiterals[colKey]} onChange={(v) => setStr(colKey, v)} />
-                  )}
-                  {pairs.length > 1 && (
-                    <button
-                      type="button"
-                      className="solenoid-node__row-remove"
-                      title="Remove this condition"
-                      onClick={(e) => { e.stopPropagation(); void removePair(colKey, valKey); }}
-                    >
-                      ×
-                    </button>
                   )}
                 </MeasuredSocketRow>
                 <ArgSelect value={c.op} options={FILTER_OP_OPTIONS_WITH_LIST} onChange={(op) => updateCfg(id, { op })} />

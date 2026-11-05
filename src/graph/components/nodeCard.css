@@ -1043,7 +1043,8 @@ body.solenoid-scrubbing * {
   box-shadow: none;
   padding-bottom: 0;
 }
-/* A tuple whose rule rides above it, carrying its remove button at the right end (SWITCH, IFS). */
+/* A group whose rule rides above it, carrying its remove button at the right end (`PairHead`: SWITCH, IFS, List and
+   Frame Filter, List Sort, SUMIFS). */
 .solenoid-node__pair-group--headed,
 .solenoid-node__pair-group--headed:not(:has(+ .solenoid-node__pair-group)) {
   box-shadow: none;
