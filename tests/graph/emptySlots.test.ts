@@ -91,7 +91,9 @@ describe("the editor shows an empty slot's reading; a read-only formula shows it
 
   it("the core and the editor agree on which functions need an argument and how many they take", async () => {
     const { readFileSync } = await import("node:fs");
-    await import("../../src/graph/formulaExtensions");
+    // Registers every pack's functions afresh, whatever an earlier test in this worker left behind.
+    const { initPackFormulas } = await import("../../src/graph/formulaExtensions");
+    initPackFormulas();
     const { needsArgument } = await import("../../src/graph/emptySlots");
     const { FORMULA_SIGNATURES } = await import("../../src/graph/formulaSignatureTable");
     const { maxArguments } = await import("../../src/graph/emptySlots");
