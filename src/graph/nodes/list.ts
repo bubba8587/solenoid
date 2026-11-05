@@ -589,6 +589,7 @@ export const CONVOLVE_MODE_META: Record<ShapeMode, { label: string; title: strin
 
 export class ConvolveNode extends GraphNode {
   static socketDocs: Record<string, string> = {
+    a: "A blank counts as 0.",
     b: "The weights slid along A. On a grid, a small table: a 3 × 3 of 1/9 is a box blur, 1, 0, −1 across a row finds edges.",
   };
   label: string;
@@ -673,6 +674,8 @@ export const TRAPZ_MODE_META: Record<ShapeMode, { label: string; title: string }
 export class TrapzNode extends GraphNode {
   static inputRoles = rolesFrom("TRAPZ", { dx: 1, dy: 2 });
   static socketDocs: Record<string, string> = {
+    list: "Every value must be a number: a gap is #VALUE!, never skipped.",
+    grid: "Every cell must be a number: a gap is #VALUE!, never skipped.",
     result: "The area under the piecewise-linear curve through the points, at uniform spacing dx. On a grid, the volume under the surface: across each row at dx, then down the rows at dy.",
     dx: "The spacing between neighboring points; on a grid, between columns.",
     dy: "The spacing between one row and the next.",
@@ -1823,9 +1826,12 @@ export class SmoothNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     list: "Blank and error cells are skipped by the fits and stay blank in the result.",
     grid: "A table of numbers. Blank cells stay blank, and their neighbors average over the numbers present.",
-    window: "Odd number of neighbours, larger than the order.",
+    window: "Odd number of neighbors, larger than the order.",
+    order: "Degree of the polynomial fitted in each window, below the window's width.",
     frac: "Share of the points in each local fit, 0–1; larger is smoother.",
+    sigma: "The spread in positions, cells on a grid; neighbors up to four sigmas away count.",
     size: "Odd window width: 3 takes one neighbor each side, a 3 × 3 block on a grid.",
+    result: "The same length as the list, or the same shape as the grid, each blank left in its place.",
   };
   label: string;
   op: SmoothOp;

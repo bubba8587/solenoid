@@ -34,7 +34,8 @@ push and fix what it finds.
   `cargo test --release --lib` for inline tests, `--test nodes` for card bodies, `--test conformance` for anything a
   formula reads or answers (empty slots, function bodies). Those run natively; `npm run build:wasm` once, when the Rust
   is done and before the TypeScript tests and the push (the TS tests run through it, the stamp test hashes the source),
-  not after each Rust edit. A moved answer is refrozen, not edited
+  not after each Rust edit; `git add` a new Rust file first (the stamp hashes `git ls-files`, so an untracked one
+  is left out and CI's stamp check fails). A moved answer is refrozen, not edited
   (`tree/specs/computation/rust-core.md`; `FREEZE_NATIVE=<suite>` for conformance).
 - **Docs and tree:** `python3 tools/dte.py validate --as <ring>` after a tree or spec edit; `node scripts/prerender-site.mjs`
   after site copy (a landing page, a seed label, a pack description), committing `prerender/`.
