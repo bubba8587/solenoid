@@ -6,6 +6,12 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-05: P7, what an empty card field is; cloud session)
+- **Every card field declares what it is when empty** ([[D96]] emptySlotShowsItsValue, rewritten at the author's direction; [[inline-literal-maps#What an empty field is]]): a Fallback (muted, upright, computed with), a Behavior (`[word]`), an Example (italic, the card answers blank) or Required. The core's table (`EMPTY`, `EMPTY_BY_OP`, `SOLVERS` in `nodes/fields.rs`) and settings' roles hold it; `Call::unwired` applies it; `emptyFieldShown` draws it. `read_num` and its hidden defaults are gone; `emptyFieldKinds.test.ts` fails an undeclared field.
+- **A formula's empty slot reads its card's Fallback** where Excel's empty value would error (`CARD_FALLBACK_SLOT`, the call table's `blanks`), and every card is held to its formula twin's empty reading.
+- **The walk itself, its rulings and the judgement calls for the author to look over:** `docs/p7-walk.md`. Out of scope until reopened: a cable carrying a blank, the formula variables (`x`).
+- **Date-family cards dropped the 210px medium tier**; the tier stays, empty.
+
 ### SESSION DIGEST (2026-11-04/05: typed card inputs, one field per input, cell collapse; cloud session)
 - **Keyed vs typed** (`glossary.md`): *keyed* is keyboard entry, *typed* is having a type.
 - **A wildcard slot's keyed value is read as the kind its button shows**, never guessed from the text: the Frame column's type button rides the field (Number, Text, Date, Boolean), the text stays as keyed, and the unwired socket takes the kind's color (the settle's rest type). `parseAuto` is gone ([[C10]] socketLattice, [[C58]] tableInputRawText; [[inline-literal-maps#Wildcard slots]]).
