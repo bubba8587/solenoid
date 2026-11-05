@@ -591,6 +591,8 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 12px;
+  /* Each box is as tall as its cards, never stretched to its row. */
+  align-items: start;
 }
 /* A folder draws as a node card does: a neutral body border, and its header capped in its color on three sides. */
 .fr-land__folder {
