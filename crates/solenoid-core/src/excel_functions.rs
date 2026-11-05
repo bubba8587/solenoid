@@ -3271,6 +3271,7 @@ const REFUSED: &[(&str, Refused)] = &[
     ("DIFF", flags(&[], &[1])),
     ("PCTCHANGE", flags(&[], &[1])),
     ("GRADIENT", flags(&[], &[1])),
+    ("REGIONS", flags(&[], &[1])),
     ("EWMA", nums(&[1])),
     ("TRAPZ", nums(&[1, 2])),
     ("NTILE", nums(&[1])),

@@ -43,10 +43,12 @@ pub const NAMES: &[&str] = &[
     "FORECAST.ETS.SEASONALITY",
     "GAUSSIANSMOOTH",
     "GRADIENT",
+    "GRIDDATA",
     "INTERLEAVE",
     "INTERPOLATE",
     "ISOUTLIER",
     "LINSPACE",
+    "LAPLACIAN",
     "LOGRETURNS",
     "LOWESS",
     "MEANSMOOTH",
@@ -57,6 +59,7 @@ pub const NAMES: &[&str] = &[
     "NTILE",
     "PCTCHANGE",
     "RANGE",
+    "REGIONS",
     "REVERSE",
     "RLE",
     "RUNNING",
@@ -672,7 +675,37 @@ fn answer(name: &str, a: &[V]) -> V {
         "FILLVALUE" | "FILLFORWARD" | "FILLBACKWARD" | "FILLMEAN" | "FILLMEDIAN" | "FILLMODE" | "FILLINTERPOLATE"
         | "FILLDROP" | "COALESCE" => fill_list(name, &to_list(a0), a),
         "LOGRETURNS" | "SIMPLERETURNS" | "CUMRETURNS" | "DRAWDOWN" => returns(name, &to_list(a0)),
-        "FINDPEAKS" => find_peaks(&to_list(a0), arg(a, 1), arg(a, 2), arg(a, 3)),
+        "FINDPEAKS" => match grid_filters::read_grid(name, a0) {
+            Err(e) => e,
+            Ok(g) if g.is_grid => {
+                if !blank(arg(a, 2)) || !blank(arg(a, 3)) {
+                    return value(
+                        "FINDPEAKS on a grid takes only a minimum height; distance and prominence are for a list",
+                    );
+                }
+                match grid_filters::param(name, "min_height", arg(a, 1), f64::NAN) {
+                    Ok(h) => grid_filters::peaks_2d(&g, (!h.is_nan()).then_some(h)),
+                    Err(e) => e,
+                }
+            }
+            Ok(g) => find_peaks(&g.cells, arg(a, 1), arg(a, 2), arg(a, 3)),
+        },
+        "GRIDDATA" => grid_filters::griddata(
+            &to_list(a0),
+            &to_list(arg(a, 1)),
+            &to_list(arg(a, 2)),
+            &to_list(arg(a, 3)),
+            &to_list(arg(a, 4)),
+            arg(a, 5),
+        ),
+        "REGIONS" => match grid_filters::read_grid(name, a0) {
+            Ok(g) => grid_filters::regions(&g, is_true(arg(a, 1))),
+            Err(e) => e,
+        },
+        "LAPLACIAN" => match grid_filters::read_grid(name, a0) {
+            Ok(g) => grid_filters::laplacian(&g),
+            Err(e) => e,
+        },
         "GAUSSIANSMOOTH" | "MEANSMOOTH" | "MEDIANSMOOTH" => {
             let (what, blank) = if name == "GAUSSIANSMOOTH" { ("sigma", 0.0) } else { ("size", 3.0) };
             match (grid_filters::read_grid(name, a0), grid_filters::param(name, what, arg(a, 1), blank)) {

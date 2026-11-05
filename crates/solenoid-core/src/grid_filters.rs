@@ -80,6 +80,10 @@ pub fn param(name: &str, what: &str, v: &V, blank: f64) -> Result<f64, V> {
     }
 }
 
+fn sq(x: f64) -> f64 {
+    x * x
+}
+
 fn domain(msg: impl Into<String>) -> V {
     V::err(sol_error(ErrorCode::Domain, msg))
 }
@@ -355,6 +359,187 @@ pub fn along(g: &Grid, across: bool, line: impl Fn(&[V]) -> Result<Vec<V>, V>) -
         (0..out_len).flat_map(|t| lines.iter().map(move |l| l[t].clone())).collect()
     };
     shape_as(cells, if across { out_len } else { n }, true)
+}
+
+/// LAPLACIAN: the second differences summed over each axis, `[1, -2, 1]` with reflect padding, as scipy's
+/// `ndimage.laplace`. A cell whose neighborhood holds a blank is blank; any error answers, any text is `#VALUE!`.
+pub fn laplacian(g: &Grid) -> V {
+    if let Some(e) = g.cells.iter().find(|v| matches!(v, V::Err(_))) {
+        return e.clone();
+    }
+    if g.cells.iter().any(|v| matches!(v, V::Str(_))) {
+        return V::err(sol_error(ErrorCode::Value, "LAPLACIAN reads numbers, not text"));
+    }
+    let axes: &[(i64, i64)] = if g.rows > 1 { &[(0, 1), (1, 0)] } else { &[(0, 1)] };
+    let out = (0..g.rows)
+        .flat_map(|i| (0..g.cols).map(move |j| (i, j)))
+        .map(|(i, j)| {
+            let at = |di: i64, dj: i64| finite(g.at(reflect(i as i64 + di, g.rows), reflect(j as i64 + dj, g.cols)));
+            let Some(c) = at(0, 0) else { return V::Null };
+            let mut sum = 0.0;
+            for &(di, dj) in axes {
+                match (at(-di, -dj), at(di, dj)) {
+                    (Some(p), Some(n)) => sum += p - 2.0 * c + n,
+                    _ => return V::Null,
+                }
+            }
+            V::Num(sum)
+        })
+        .collect();
+    g.shaped(out)
+}
+
+/// FINDPEAKS on a grid: each cell above every neighbor around it (up to eight; the edge's fewer), at least `height` when
+/// given, as `[row, column]` pairs, 1-based, row by row. A blank is never a peak and never a neighbor.
+pub fn peaks_2d(g: &Grid, height: Option<f64>) -> V {
+    if let Some(e) = g.cells.iter().find(|v| matches!(v, V::Err(_))) {
+        return e.clone();
+    }
+    let mut out = Vec::new();
+    for i in 0..g.rows {
+        for j in 0..g.cols {
+            let Some(c) = finite(g.at(i, j)) else { continue };
+            if height.is_some_and(|h| c < h) {
+                continue;
+            }
+            let mut top = true;
+            for di in -1i64..=1 {
+                for dj in -1i64..=1 {
+                    let (r, k) = (i as i64 + di, j as i64 + dj);
+                    if (di, dj) == (0, 0) || r < 0 || k < 0 || r >= g.rows as i64 || k >= g.cols as i64 {
+                        continue;
+                    }
+                    if finite(g.at(r as usize, k as usize)).is_some_and(|n| n >= c) {
+                        top = false;
+                    }
+                }
+            }
+            if top {
+                out.push(V::List(Rc::new(vec![V::Num((i + 1) as f64), V::Num((j + 1) as f64)])));
+            }
+        }
+    }
+    V::List(Rc::new(out))
+}
+
+/// GRIDDATA: scattered `(x, y, z)` points onto the grid of `new_xs` (one per column) by `new_ys` (one per row), by the
+/// nearest point or by inverse-distance weights (1 / d², a point on the spot giving its own z). A point missing any of
+/// its three numbers is dropped; text is `#VALUE!`.
+pub fn griddata(xs: &[V], ys: &[V], zs: &[V], new_xs: &[V], new_ys: &[V], method: &V) -> V {
+    let nearest = match method {
+        V::Null | V::Undef => false,
+        V::Str(s) => match &*crate::jsnum::lower_text(crate::jsnum::trim_space(s)) {
+            "idw" => false,
+            "nearest" => true,
+            _ => return V::err(sol_error(ErrorCode::Value, "GRIDDATA's method is \"idw\" or \"nearest\"")),
+        },
+        V::Err(_) => return method.clone(),
+        _ => return V::err(sol_error(ErrorCode::Value, "GRIDDATA's method is \"idw\" or \"nearest\"")),
+    };
+    for l in [xs, ys, zs, new_xs, new_ys] {
+        if let Some(e) = l.iter().find(|v| matches!(v, V::Err(_))) {
+            return e.clone();
+        }
+        if l.iter().any(holds_text) {
+            return V::err(sol_error(ErrorCode::Value, "GRIDDATA reads numbers, not text"));
+        }
+    }
+    let pts: Vec<(f64, f64, f64)> = (0..xs.len().min(ys.len()).min(zs.len()))
+        .filter_map(|i| Some((finite(&xs[i])?, finite(&ys[i])?, finite(&zs[i])?)))
+        .collect();
+    if pts.is_empty() {
+        return V::err(sol_error(ErrorCode::Value, "GRIDDATA needs at least one point with an x, a y and a z"));
+    }
+    if (pts.len() * new_xs.len() * new_ys.len()) as f64 > MAX_WORK {
+        return domain("GRIDDATA: keep the points times the grid's cells under 100 million");
+    }
+    if (new_xs.len() * new_ys.len()) as f64 > MAX_GENERATED {
+        return V::err(sol_error(ErrorCode::Overflow, "GRIDDATA's grid would pass the 1,000,000 element limit"));
+    }
+    let at = |qx: f64, qy: f64| {
+        if nearest {
+            let best = pts.iter().min_by(|a, b| {
+                let (da, db) = (sq(a.0 - qx) + sq(a.1 - qy), sq(b.0 - qx) + sq(b.1 - qy));
+                da.total_cmp(&db)
+            });
+            return V::Num(best.map_or(f64::NAN, |p| p.2));
+        }
+        let (mut num, mut den) = (0.0, 0.0);
+        for &(x, y, z) in &pts {
+            let d2 = sq(x - qx) + sq(y - qy);
+            if d2 == 0.0 {
+                return V::Num(z);
+            }
+            num += z / d2;
+            den += 1.0 / d2;
+        }
+        V::Num(num / den)
+    };
+    let rows = new_ys
+        .iter()
+        .map(|qy| {
+            V::List(Rc::new(
+                new_xs
+                    .iter()
+                    .map(|qx| match (finite(qx), finite(qy)) {
+                        (Some(qx), Some(qy)) => at(qx, qy),
+                        _ => V::Null,
+                    })
+                    .collect(),
+            ))
+        })
+        .collect();
+    V::List(Rc::new(rows))
+}
+
+/// REGIONS: each non-zero number's patch of touching non-zero numbers, numbered 1, 2, 3… in reading order, 0 between
+/// them, as scipy's `ndimage.label`; patches touch side to side, or corner to corner too when `diagonal`. A blank stays
+/// blank and divides like a 0; any error answers, any text is `#VALUE!`.
+pub fn regions(g: &Grid, diagonal: bool) -> V {
+    if let Some(e) = g.cells.iter().find(|v| matches!(v, V::Err(_))) {
+        return e.clone();
+    }
+    if g.cells.iter().any(holds_text) {
+        return V::err(sol_error(ErrorCode::Value, "REGIONS reads numbers, not text"));
+    }
+    let on = |k: usize| finite(&g.cells[k]).is_some_and(|x| x != 0.0);
+    let mut label = vec![0usize; g.cells.len()];
+    let mut next = 0;
+    let mut stack = Vec::new();
+    for start in 0..g.cells.len() {
+        if !on(start) || label[start] != 0 {
+            continue;
+        }
+        next += 1;
+        label[start] = next;
+        stack.push(start);
+        while let Some(k) = stack.pop() {
+            let (i, j) = ((k / g.cols) as i64, (k % g.cols) as i64);
+            for di in -1i64..=1 {
+                for dj in -1i64..=1 {
+                    if (di, dj) == (0, 0) || (!diagonal && di != 0 && dj != 0) {
+                        continue;
+                    }
+                    let (r, c) = (i + di, j + dj);
+                    if r < 0 || c < 0 || r >= g.rows as i64 || c >= g.cols as i64 {
+                        continue;
+                    }
+                    let n = r as usize * g.cols + c as usize;
+                    if on(n) && label[n] == 0 {
+                        label[n] = next;
+                        stack.push(n);
+                    }
+                }
+            }
+        }
+    }
+    let out = g
+        .cells
+        .iter()
+        .zip(label)
+        .map(|(v, l)| if matches!(v, V::Null | V::Undef) { V::Null } else { V::Num(l as f64) })
+        .collect();
+    g.shaped(out)
 }
 
 /// TRAPZ over a grid: the volume under the surface, by the trapezoidal rule across each row at `dx` and then down the

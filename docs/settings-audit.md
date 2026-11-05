@@ -109,6 +109,7 @@ argument; a value is the typed blank it reads as.
 | GEOMETRIC | `start` → #SYNTAX!; `count` → #SYNTAX! |
 | GESTEP | `step` → omitted |
 | GRADIENT | `by_col` → false |
+| GRIDDATA | `method` → omitted |
 | GROWTH | `const` → omitted |
 | HEX2BIN | `places` → omitted |
 | HEX2OCT | `places` → omitted |
@@ -176,6 +177,7 @@ argument; a value is the typed blank it reads as.
 | RATE | `type` → omitted; `guess` → omitted |
 | RECEIVED | `basis` → omitted |
 | REGEXEXTRACT | `return_mode` → omitted; `case_sensitivity` → omitted |
+| REGIONS | `diagonal` → false |
 | REPEAT | `count` → #SYNTAX! |
 | REPLACE | `start` → #SYNTAX!; `count` → #SYNTAX! |
 | REPT | `count` → #SYNTAX! |

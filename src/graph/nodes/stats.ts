@@ -515,11 +515,17 @@ export class HypothesisTestNode extends GraphNode {
 
 // ─── Interpolate (List = 1-D, Grid = fill a 2-D Z table) ──────────────────
 
-export type InterpolateMode = "list" | "grid";
+export type InterpolateMode = "list" | "grid" | "points";
+export type InterpolateMethod = "idw" | "nearest";
+export const INTERPOLATE_METHOD_META: Record<InterpolateMethod, { label: string; title: string }> = {
+  idw:     { label: "IDW",     title: "Inverse-distance weights: closer points count more (1 / d²)" },
+  nearest: { label: "Nearest", title: "Each cell takes the nearest point's value (scipy griddata nearest)" },
+};
 
 export const INTERPOLATE_MODE_META: Record<InterpolateMode, { label: string; title: string }> = {
   list: { label: "List", title: "1-D: interpolate y for a query x between known (x, y) points" },
   grid: { label: "Grid", title: "Fill the blanks in a Z table by 2-D interpolation; optional Xs/Ys, unwired axes count 1, 2, 3…" },
+  points: { label: "Points", title: "Scattered x, y, z points onto a grid of Xs by Ys (scipy griddata, MATLAB griddata)" },
 };
 
 
@@ -528,7 +534,10 @@ export class InterpolateNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     ys: "In LIST mode pairs with Known Xs by position (a pair blank on either side is dropped); in GRID mode one Y coordinate per row, unwired means 1, 2, 3…",
     new_xs: "A query outside the known range clamps to the nearest end. Nothing extrapolates.",
-    xs: "LIST mode: the known x values. GRID mode: one X coordinate per column; unwired means 1, 2, 3…",
+    xs: "LIST mode: the known x values. GRID mode: one X coordinate per column; unwired means 1, 2, 3…. POINTS mode: each point's x.",
+    zs: "Each point's value. A point missing its x, y or z is left out.",
+    gx: "The grid's X coordinates, one per column.",
+    gy: "The grid's Y coordinates, one per row.",
   };
 
   label: string;
@@ -537,12 +546,14 @@ export class InterpolateNode extends GraphNode {
   literals: Record<string, number> = { new_xs: 0 };
   stringLiterals: Record<string, string> = {};
   forecast = true;
+  method: InterpolateMethod = "idw";
   width = 180; height = 215;
 
-  constructor(init?: { label?: string; mode?: InterpolateMode; forecast?: boolean }) {
+  constructor(init?: { label?: string; mode?: InterpolateMode; forecast?: boolean; method?: InterpolateMethod }) {
     super("Interpolate");
     this.label = init?.label ?? "INTERPOLATE";
-    this.mode = init?.mode ?? "list";
+    this.mode = init?.mode === "grid" || init?.mode === "points" ? init.mode : "list";
+    if (init?.method === "nearest") this.method = "nearest";
     if (init?.forecast != null) this.forecast = init.forecast;
     this._rebuildSockets();
   }
@@ -551,6 +562,18 @@ export class InterpolateNode extends GraphNode {
   _rebuildSockets(): void {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    if (this.mode === "points") {
+      this.stringLiterals.gx ??= "";
+      this.stringLiterals.gy ??= "";
+      this.addInput("xs", listIn("Xs"));
+      this.addInput("ys", listIn("Ys"));
+      this.addInput("zs", listIn("Zs"));
+      this.addInput("gx", numListIn("Grid Xs"));
+      this.addInput("gy", numListIn("Grid Ys"));
+      this.addOutput("result", tableOut("Grid"));
+      this.height = 260;
+      return;
+    }
     if (this.mode === "grid") {
       // Grid mode keys its Xs and Ys as lists, like a List Input.
       this.stringLiterals.xs ??= "";

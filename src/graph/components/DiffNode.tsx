@@ -28,7 +28,7 @@ export function DiffComponent({ data, emit }: NodeProps<DiffNodeType>) {
     <NodeShell node={data} emit={emit}>
       <OpToggle value={op} options={OPS} onChange={(next) => { setOp(next); data.setOp(next); void processGraph(data.id); }} />
       <SegToggle value={mode} options={MODES} onChange={(next) => { setMode(next); void applyShapeMode(data, next); }} />
-      {mode === "grid" && (
+      {mode === "grid" && op !== "laplacian" && (
         <SegToggle value={byCol ? "across" : "down"} options={AXES} onChange={(next) => setByCol(next === "across")} />
       )}
       <InlineInputs node={data} emit={emit} />

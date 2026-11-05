@@ -2,7 +2,8 @@
 // The Grid modes of Smooth, Convolve and Integrate: List mode keeps the sockets it always had, Grid mode swaps in a
 // table, the card answers what its formula answers, and the mode survives a save.
 import { describe, it, expect } from "vitest";
-import { SmoothNode, ConvolveNode, TrapzNode, DiffNode, RandArrayNode } from "../../../src/graph/nodes/list";
+import { SmoothNode, ConvolveNode, TrapzNode, DiffNode, RandArrayNode, FindPeaksNode, RegionsNode } from "../../../src/graph/nodes/list";
+import { InterpolateNode } from "../../../src/graph/nodeClasses";
 import { extractInit } from "../../../src/graph/nodeInit";
 import { coreFunction } from "../coreFunction";
 import { inEditor, Src } from "../cardPasses";
@@ -10,7 +11,7 @@ import { withMatrixUnit, matrixUnitOf } from "../../../src/graph/unitValue";
 
 const GRID = [[3, 1, 4, 1, 5], [9, 2, 6, 5, 3], [5, 8, 9, 7, 9], [3, 2, 3, 8, 4]];
 
-async function answer(node: SmoothNode | ConvolveNode | TrapzNode | DiffNode, wires: Record<string, unknown>) {
+async function answer(node: { outputs: Record<string, unknown> }, wires: Record<string, unknown>) {
   const ed = await inEditor(node as never);
   for (const [key, value] of Object.entries(wires)) await ed.wire(new Src(value, "table"), key);
   const r = await ed.pass("result");
@@ -83,6 +84,29 @@ describe("Grid mode", () => {
     ed.dispose();
     expect(t.length).toBe(3);
     expect(t.every((r) => r.length === 4 && r.every((v) => Number.isInteger(v) && v >= 1 && v <= 6))).toBe(true);
+  });
+
+  it("takes the Laplacian over both axes, as scipy's ndimage.laplace", async () => {
+    const lap = await answer(new DiffNode({ op: "laplacian", mode: "grid" }), { grid: GRID }) as number[][];
+    expect(lap[0]).toEqual([4, 6, -4, 11, -6]);
+  });
+
+  it("finds the cells above every neighbor, with their heights", async () => {
+    const peaks = await answer(new FindPeaksNode({ mode: "grid" }), { grid: [[0, 1, 0], [1, 5, 1], [0, 1, 9]] }) as { columns: { name: string; values: unknown[] }[] };
+    expect(peaks.columns.map((c) => [c.name, c.values])).toEqual([["Row", [3]], ["Column", [3]], ["Height", [9]]]);
+  });
+
+  it("numbers the patches of touching cells, corners joining only when asked", async () => {
+    const m = [[1, 0, 2], [0, 1, 0]];
+    expect(await answer(new RegionsNode(), { grid: m })).toEqual([[1, 0, 2], [0, 3, 0]]);
+    expect(await answer(new RegionsNode({ diagonal: true }), { grid: m })).toEqual([[1, 0, 1], [0, 1, 0]]);
+  });
+
+  it("spreads scattered points onto a grid by INTERPOLATE's Points mode", async () => {
+    const n = new InterpolateNode({ mode: "points", method: "nearest" });
+    n.stringLiterals = { gx: "0, 2", gy: "0, 2" };
+    const t = await answer(n, { xs: [0, 2, 0, 2], ys: [0, 0, 2, 2], zs: [1, 2, 3, 4] });
+    expect(t).toEqual([[1, 2], [3, 4]]);
   });
 
   it("keeps its mode and shape through a save", () => {

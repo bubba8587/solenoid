@@ -608,6 +608,7 @@ pub const DIRECT: &[&str] = &[
     "ReconcileNode",
     "ReduceLambdaNode",
     "RegexNode",
+    "RegionsNode",
     "RenameNode",
     "ReplaceValuesNode",
     "ReptNode",

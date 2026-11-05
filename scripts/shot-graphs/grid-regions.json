@@ -1,0 +1,59 @@
+{
+ "nodes": [
+  {
+   "id": "t",
+   "type": "TableInputNode",
+   "x": 0,
+   "y": 0,
+   "init": {
+    "label": "Blob map",
+    "tableText": "1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1\n1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1\n0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0\n0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0\n0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0\n0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0\n1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0\n1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1\n1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0\n0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0"
+   }
+  },
+  {
+   "id": "r1",
+   "type": "RegionsNode",
+   "x": 480,
+   "y": -200,
+   "init": {
+    "label": "Sides only"
+   }
+  },
+  {
+   "id": "r2",
+   "type": "RegionsNode",
+   "x": 480,
+   "y": 300,
+   "init": {
+    "label": "Corners too",
+    "diagonal": true
+   }
+  },
+  {
+   "id": "p1",
+   "type": "SurfaceNode",
+   "x": 900,
+   "y": -200,
+   "init": {
+    "label": "Regions, sides only",
+    "op": "contour"
+   }
+  },
+  {
+   "id": "p2",
+   "type": "SurfaceNode",
+   "x": 900,
+   "y": 300,
+   "init": {
+    "label": "Regions, corners too",
+    "op": "contour"
+   }
+  }
+ ],
+ "cables": [
+  "t.table -> r1.grid",
+  "t.table -> r2.grid",
+  "r1.result -> p1.z",
+  "r2.result -> p2.z"
+ ]
+}

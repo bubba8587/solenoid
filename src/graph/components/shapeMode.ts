@@ -3,10 +3,10 @@ import { getOwningEditor, getOwningView } from "../activeGraph";
 import { processGraph } from "../process";
 import type { ShapeMode } from "../nodes/shared";
 
-type Shaped = { id: string; mode: ShapeMode; _rebuildSockets(): void; edited(): void };
+type Shaped<M extends string> = { id: string; mode: M; _rebuildSockets(): void; edited(): void };
 
-/** List and Grid carry different socket sets, so every cable goes first: removing a socket a cable still references is unsafe. */
-export async function applyShapeMode(node: Shaped, mode: ShapeMode): Promise<void> {
+/** Each shape carries its own socket set, so every cable goes first: removing a socket a cable still references is unsafe. */
+export async function applyShapeMode<M extends string = ShapeMode>(node: Shaped<M>, mode: M): Promise<void> {
   if (node.mode === mode) return;
   node.mode = mode;
   const editor = getOwningEditor(node.id);

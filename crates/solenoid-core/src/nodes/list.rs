@@ -50,6 +50,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "WeightedNode" => weighted(c),
         "FillNode" => fill(c),
         "SpectrumNode" => spectrum(c),
+        "RegionsNode" => regions(c),
         "SmoothNode" => smooth(c),
         "ListInputNode" => list_input(c),
         "FilterNode" => filter(c),
@@ -458,9 +459,20 @@ fn diff(c: &mut Call) -> Answer {
     let name = match c.field_str("op", "delta") {
         "percent" => "PCTCHANGE",
         "gradient" => "GRADIENT",
+        "laplacian" => "LAPLACIAN",
         _ => "DIFF",
     };
-    let r = if c.field_str("mode", "list") == "grid" {
+    let r = if name == "LAPLACIAN" {
+        let grid = c.field_str("mode", "list") == "grid";
+        let r = core_call(name, &[list_in(c, if grid { "grid" } else { "list" })]);
+        if grid
+            && matches!(r, V::List(_))
+            && let Some(u) = c.matrix_unit("grid").cloned()
+        {
+            c.set_matrix_unit("result", u);
+        }
+        r
+    } else if c.field_str("mode", "list") == "grid" {
         let across = c.field("byCol").and_then(|v| v.as_bool()).unwrap_or(false);
         let r = core_call(name, &[list_in(c, "grid"), V::Bool(across)]);
         // A change or a slope is in the grid's unit; a percent change is a plain ratio.
@@ -604,6 +616,13 @@ fn spectrum(c: &mut Call) -> Answer {
     let arr = list_in(c, "list");
     let rate = read_role(c, "rate", &Role::Setting(V::Num(1.0)));
     let r = if length(&arr) == Some(0) { V::Null } else { core_call("SPECTRUM", &[arr, rate]) };
+    shown(c, "cachedResult", "result", r)
+}
+
+fn regions(c: &mut Call) -> Answer {
+    let grid = slot(c, "grid");
+    let diagonal = c.field("diagonal").and_then(serde_json::Value::as_bool).unwrap_or(false);
+    let r = if nullish(&grid) { V::Null } else { core_call("REGIONS", &[grid, V::Bool(diagonal)]) };
     shown(c, "cachedResult", "result", r)
 }
 
@@ -1522,6 +1541,9 @@ fn group_lists(c: &mut Call) -> Answer {
 
 /// FINDPEAKS's positions, beside each peak's own cell.
 fn find_peaks(c: &mut Call) -> Answer {
+    if c.field_str("mode", "list") == "grid" {
+        return find_peaks_2d(c);
+    }
     let arr = slot(c, "list");
     if nullish(&arr) {
         return shown(c, "cachedResult", "result", V::Null);
@@ -1549,6 +1571,42 @@ fn find_peaks(c: &mut Call) -> Answer {
         })
         .collect();
     let columns = vec![number_column("Position", positions.as_ref().clone()), number_column("Height", height)];
+    let frame =
+        Cv::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None, source: None, layout: None }));
+    shown(c, "cachedResult", "result", frame)
+}
+
+/// Find Peaks' Grid mode: FINDPEAKS's `[row, column]` pairs, with each peak's height beside them.
+fn find_peaks_2d(c: &mut Call) -> Answer {
+    let grid = slot(c, "grid");
+    if nullish(&grid) {
+        return shown(c, "cachedResult", "result", V::Null);
+    }
+    let height = match super::text::setting(c, "height", V::Undef) {
+        V::Num(n) if n.is_nan() => V::Undef,
+        v => v,
+    };
+    let pairs = match core_call("FINDPEAKS", &[grid.clone(), height]) {
+        V::List(p) => p,
+        e if e.is_sol_error() => return Err(e),
+        _ => return Err(err(ErrorCode::Value, "Find Peaks needs a grid of numbers")),
+    };
+    let cell = |p: &V, k: usize| match p {
+        V::List(rc) => rc.get(k).cloned().unwrap_or(V::Undef),
+        _ => V::Undef,
+    };
+    let at = |p: &V| match (&grid, cell(p, 0), cell(p, 1)) {
+        (V::List(rows), V::Num(r), V::Num(k)) => match rows.get(r as usize - 1) {
+            Some(V::List(row)) => row.get(k as usize - 1).cloned().unwrap_or(V::Undef),
+            _ => V::Undef,
+        },
+        _ => V::Undef,
+    };
+    let columns = vec![
+        number_column("Row", pairs.iter().map(|p| cell(p, 0)).collect()),
+        number_column("Column", pairs.iter().map(|p| cell(p, 1)).collect()),
+        number_column("Height", pairs.iter().map(at).collect()),
+    ];
     let frame =
         Cv::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None, source: None, layout: None }));
     shown(c, "cachedResult", "result", frame)

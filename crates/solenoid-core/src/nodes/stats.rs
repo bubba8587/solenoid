@@ -607,6 +607,16 @@ fn hypothesis_test(c: &mut Call) -> Answer {
 // ─── Interpolate ───────────────────────────────────────────────────────────────
 
 fn interpolate(c: &mut Call) -> Answer {
+    if c.field_str("mode", "list") == "points" {
+        let method = V::str(c.field_str("method", "idw"));
+        let (xs, ys, zs) = (first(c, "xs"), first(c, "ys"), first(c, "zs"));
+        let (gx, gy) = (c.read("gx"), c.read("gy"));
+        if [&xs, &ys, &zs, &gx, &gy].iter().any(|v| nullish(v)) {
+            return answer(c, V::Null);
+        }
+        let r = core_call("GRIDDATA", &[xs, ys, zs, gx, gy, method]);
+        return answer(c, r);
+    }
     if c.field_str("mode", "list") == "grid" {
         // The filled table is the z table's, its unit too.
         let r = interpolate_grid(c);

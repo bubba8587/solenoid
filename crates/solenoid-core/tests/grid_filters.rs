@@ -147,3 +147,91 @@ fn differences_and_gradients_run_along_either_axis_as_numpy_does() {
     );
     assert_eq!(code("GRADIENT(g, \"a\")"), "#VALUE!");
 }
+
+/// scipy's `ndimage.laplace` (reflect padding) on the grid and on a list.
+#[test]
+fn the_laplacian_answers_what_scipy_answers() {
+    assert_eq!(
+        grid("LAPLACIAN(g)"),
+        vec![
+            vec![4.0, 6.0, -4.0, 11.0, -6.0],
+            vec![-17.0, 16.0, -4.0, -3.0, 10.0],
+            vec![5.0, -14.0, -12.0, 3.0, -13.0],
+            vec![1.0, 8.0, 10.0, -10.0, 9.0]
+        ]
+    );
+    let V::List(l) = run("LAPLACIAN(xs)") else { panic!() };
+    assert!(matches!(&l[..], [V::Num(a), V::Num(b), V::Num(c)] if (*a, *b, *c) == (4.0, -7.0, 3.0)));
+}
+
+/// scipy's `griddata(method="nearest")` on five points; inverse-distance weights give a point on the spot its own z.
+#[test]
+fn griddata_spreads_points_onto_a_grid() {
+    let mut env = Env::default();
+    env.insert("px".into(), row(&[0.0, 2.0, 0.0, 2.0, 1.0]));
+    env.insert("py".into(), row(&[0.0, 0.0, 2.0, 2.0, 1.0]));
+    env.insert("pz".into(), row(&[1.0, 2.0, 3.0, 4.0, 10.0]));
+    env.insert("gx".into(), row(&[0.0, 0.5, 1.0, 2.0]));
+    env.insert("gy".into(), row(&[0.0, 1.0, 2.0]));
+    let cells = |src: &str| match formula(src, env.clone()).expect("parses") {
+        V::List(rows) => rows
+            .iter()
+            .map(|r| match r {
+                V::List(cs) => cs.iter().map(|c| if let V::Num(n) = c { *n } else { f64::NAN }).collect::<Vec<_>>(),
+                other => panic!("{other:?}"),
+            })
+            .collect::<Vec<_>>(),
+        other => panic!("{src}: {other:?}"),
+    };
+    assert_eq!(
+        cells("GRIDDATA(px, py, pz, gx, gy, \"nearest\")"),
+        vec![vec![1.0, 1.0, 1.0, 2.0], vec![1.0, 10.0, 10.0, 2.0], vec![3.0, 3.0, 3.0, 4.0]]
+    );
+    let idw = cells("GRIDDATA(px, py, pz, gx, gy)");
+    assert_eq!((idw[0][0], idw[1][2], idw[2][3]), (1.0, 10.0, 4.0));
+    // (0, 1) sits 1 from (0,0), (0,2) and (1,1), √5 from the other two: weights 1, 1, 1, 1/5, 1/5.
+    assert!((idw[1][0] - (1.0 + 3.0 + 10.0 + 0.2 * 2.0 + 0.2 * 4.0) / 3.4).abs() < 1e-12);
+}
+
+/// scipy's `ndimage.label`, side to side (its default cross) and with diagonals (a 3 × 3 block).
+#[test]
+fn regions_number_the_patches_as_scipy_does() {
+    let mut env = Env::default();
+    env.insert(
+        "m".into(),
+        V::List(Rc::new(vec![
+            row(&[1.0, 1.0, 0.0, 0.0, 2.0]),
+            row(&[0.0, 1.0, 0.0, 3.0, 0.0]),
+            row(&[0.0, 0.0, 0.0, 3.0, 0.0]),
+            row(&[4.0, 0.0, 5.0, 0.0, 0.0]),
+        ])),
+    );
+    let cells = |src: &str| match formula(src, env.clone()).expect("parses") {
+        V::List(rows) => rows
+            .iter()
+            .map(|r| match r {
+                V::List(cs) => cs.iter().map(|c| if let V::Num(n) = c { *n } else { f64::NAN }).collect::<Vec<_>>(),
+                other => panic!("{other:?}"),
+            })
+            .collect::<Vec<_>>(),
+        other => panic!("{src}: {other:?}"),
+    };
+    assert_eq!(
+        cells("REGIONS(m)"),
+        vec![
+            vec![1.0, 1.0, 0.0, 0.0, 2.0],
+            vec![0.0, 1.0, 0.0, 3.0, 0.0],
+            vec![0.0, 0.0, 0.0, 3.0, 0.0],
+            vec![4.0, 0.0, 5.0, 0.0, 0.0]
+        ]
+    );
+    assert_eq!(
+        cells("REGIONS(m, TRUE)"),
+        vec![
+            vec![1.0, 1.0, 0.0, 0.0, 2.0],
+            vec![0.0, 1.0, 0.0, 2.0, 0.0],
+            vec![0.0, 0.0, 0.0, 2.0, 0.0],
+            vec![3.0, 0.0, 2.0, 0.0, 0.0]
+        ]
+    );
+}

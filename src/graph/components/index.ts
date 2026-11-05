@@ -288,6 +288,7 @@ export { DateTruncComponent } from "./DateTruncNode";
 export { AmortizationComponent } from "./AmortizationNode";
 export { ReturnsComponent } from "./ReturnsNode";
 export { SpectrumComponent } from "./SpectrumNode";
+export { RegionsComponent } from "./RegionsNode";
 export { TextSimilarityComponent, FuzzyMatchComponent } from "./TextSimilarityNode";
 export { EtsForecastComponent } from "./EtsForecastNode";
 export { DecomposeComponent } from "./DecomposeNode";

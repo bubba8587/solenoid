@@ -336,6 +336,8 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("IfsNode", "val1", Empty::Fallback(Fill::Text(""))),
     ("IfsNode", "val2", Empty::Fallback(Fill::Text(""))),
     ("ImportObsidianNode", "path", Empty::Fallback(Fill::Text(""))),
+    ("InterpolateNode", "gx", Empty::Required),
+    ("InterpolateNode", "gy", Empty::Required),
     ("InterpolateNode", "new_xs", Empty::Fallback(Fill::Num(0.0))),
     ("IsCloseNode", "a", Empty::Fallback(Fill::Num(0.0))),
     ("IsCloseNode", "b", Empty::Fallback(Fill::Num(0.0))),

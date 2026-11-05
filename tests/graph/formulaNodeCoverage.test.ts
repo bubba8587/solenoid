@@ -32,7 +32,7 @@ const FORMULA_NODE_ALIAS: Record<string, string> = {
   COVAR: "Correlation node (COVARIANCE.P op)", RANK: "Rank node",
   STDEV: "Aggregate / Spread (stdev)", VAR: "Aggregate / Spread (variance)",
   // node MODES added for the data-node batch (author-blessed)
-  GRADIENT: "DIFF node (∇ gradient mode)", PCTCHANGE: "DIFF node (% mode)",
+  GRADIENT: "DIFF node (∇ gradient mode)", LAPLACIAN: "DIFF node (∇² op)", GRIDDATA: "INTERPOLATE node (Points mode)", PCTCHANGE: "DIFF node (% mode)",
   ZSCORE: "Normalize node (z-score mode)", PERMUTATIONS: "Combinations node (permutations mode)",
   RLE: "Run Lengths node", TRAPZ: "Integrate node",
   ORDINAL: "Spell Number node (ordinal mode)",

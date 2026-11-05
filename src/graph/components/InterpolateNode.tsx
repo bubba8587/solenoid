@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { InterpolateNode as InterpolateNodeType, InterpolateMode } from "../nodeClasses";
-import { INTERPOLATE_MODE_META } from "../nodeClasses";
+import { INTERPOLATE_METHOD_META, INTERPOLATE_MODE_META, type InterpolateMethod } from "../nodeClasses";
 import { processGraph } from "../process";
 import { applyShapeMode } from "./shapeMode";
 import { InlineInputs } from "./inlineInput";
@@ -18,11 +18,15 @@ const MODE_OPTIONS = (Object.keys(INTERPOLATE_MODE_META) as InterpolateMode[]).m
   title: INTERPOLATE_MODE_META[m].title,
 }));
 
+const METHODS = (Object.keys(INTERPOLATE_METHOD_META) as InterpolateMethod[]).map((m) => ({ value: m, ...INTERPOLATE_METHOD_META[m] }));
+
 export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeType>) {
   // A local mirror, so the toggle re-renders before the socket swap completes.
   const [mode, setMode] = useState<InterpolateMode>(data.mode);
   useEffect(() => { setMode(data.mode); }, [data.mode]);
   const [forecast, setForecast] = useState(data.forecast);
+  const [method, setMethod] = useState<InterpolateMethod>(data.method);
+  useEffect(() => { setMethod(data.method); }, [data.method]);
   useEffect(() => { setForecast(data.forecast); }, [data.forecast]);
 
   return (
@@ -50,8 +54,15 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
           </label>
         </div>
       )}
+      {mode === "points" && (
+        <SegToggle
+          value={method}
+          options={METHODS}
+          onChange={(next) => { setMethod(next); data.method = next; void processGraph(data.id); }}
+        />
+      )}
       <InlineInputs node={data} emit={emit} />
-      {data.mode === "grid"
+      {data.mode !== "list"
         ? <TableDisplay table={isSolError(data.cachedResult) ? (data.cachedResult as SolError) : (data.cachedResult as (number | null)[][] | null)} label={nodeDisplayName(data)} elem="number" />
         : <ResultDisplay value={data.cachedResult} label={nodeDisplayName(data)} />}
     </NodeShell>

@@ -1203,13 +1203,14 @@ export class RunningNode extends GraphNode {
   }
 }
 
-export type DiffOp = "delta" | "percent" | "gradient";
-const DIFF_OUTPUT_LABEL: Record<DiffOp, string> = { delta: "Differences", percent: "Change", gradient: "Gradient" };
+export type DiffOp = "delta" | "percent" | "gradient" | "laplacian";
+const DIFF_OUTPUT_LABEL: Record<DiffOp, string> = { delta: "Differences", percent: "Change", gradient: "Gradient", laplacian: "Laplacian" };
 /** `label` is the toggle's glyph; `name` the op's row in search. */
 export const DIFF_OP_META: Record<DiffOp, { label: string; name: string; fx: string; keywords: string; title: string }> = {
   delta:    { label: "Δ", name: "Difference",     fx: "DIFF",      keywords: "diff delta change numpy diff", title: "Absolute difference: list[i] − list[i−1]" },
   percent:  { label: "%", name: "Percent Change", fx: "PCTCHANGE", keywords: "pct_change percent growth rate return", title: "Percent change: (list[i] − list[i−1]) / list[i−1] (pandas pct_change)" },
   gradient: { label: "∇", name: "Gradient",       fx: "GRADIENT",  keywords: "gradient slope derivative numpy gradient", title: "Gradient: central-difference slope at each point, same length as the input (numpy.gradient)" },
+  laplacian: { label: "∇²", name: "Laplacian",    fx: "LAPLACIAN", keywords: "laplacian laplace del2 curvature second derivative scipy ndimage laplace", title: "Laplacian: the second differences summed over both axes, curvature at each point, edges reflected (scipy ndimage.laplace)" },
 };
 export const DIFF_MODE_META: Record<ShapeMode, { label: string; title: string }> = {
   list: { label: "List", title: "Changes along a list" },
@@ -1222,7 +1223,7 @@ export const DIFF_AXIS_META: Record<"down" | "across", { label: string; title: s
 
 export class DiffNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    result: "Δ and % are one element shorter (change from the element before); ∇ is the same length, the central-difference slope at each point. On a grid, one row or column shorter along the chosen axis.",
+    result: "Δ and % are one element shorter (change from the element before); ∇ and ∇² are the same length. On a grid, Δ and % are one row or column shorter along the chosen axis, and ∇² takes both axes at once.",
     grid: "A table of numbers. Down and Across ∇ grids are a Vector Field's two components.",
   };
 
@@ -1929,32 +1930,78 @@ export class SmoothNode extends GraphNode {
   }
 }
 
+// ─── REGIONS ──────────────────────────────────────────────────────────────────
+export class RegionsNode extends GraphNode {
+  static socketDocs: Record<string, string> = {
+    grid: "A table of numbers. Every non-zero cell joins the patch it touches; zeros and blanks divide them.",
+    result: "Each cell's patch number, 1, 2, 3… in reading order, and 0 between patches; the highest number is the count.",
+  };
+  label: string;
+  diagonal = false;
+  cachedResult: ListCell[][] | SolError | null = null;
+  width = 200; height = 200;
+
+  constructor(init?: { label?: string; diagonal?: boolean }) {
+    super("Regions");
+    this.label = init?.label ?? "Regions";
+    this.diagonal = init?.diagonal === true;
+    this.addInput("grid", tableIn("Grid"));
+    this.addOutput("result", tableOut("Regions"));
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: ListCell[][] | SolError | null };
+  }
+}
+
 // ─── FIND PEAKS ───────────────────────────────────────────────────────────────
+export const FIND_PEAKS_MODE_META: Record<ShapeMode, { label: string; title: string }> = {
+  list: { label: "List", title: "Peaks along a series" },
+  grid: { label: "Grid", title: "Cells above every neighbor in a table of numbers" },
+};
+
 export class FindPeaksNode extends GraphNode {
   static inputRoles = { height: setting(LEFT_OUT, "none"), distance: setting(LEFT_OUT, "none"), prominence: setting(LEFT_OUT, "none") };
   static socketDocs: Record<string, string> = {
-    result: "One row per local maximum that passes every filter: Position (1-based) and Height.",
+    result: "One row per local maximum that passes every filter: Position (1-based) and Height; on a grid, Row, Column and Height.",
+    grid: "A table of numbers. A peak is above all of its up to eight neighbors; a blank is never one.",
     height: "Empty, there is no minimum; the same for the two filters below.",
     distance: "Minimum spacing between kept peaks (in samples); the higher peak wins.",
     prominence: "Minimum rise above the higher of the two surrounding valleys: the filter that separates peaks from ripples.",
   };
   label: string;
+  mode: ShapeMode;
   literals: Record<string, number> = {};
   cachedResult: FrameValue | null = null;
   width = 190; height = 230;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; mode?: ShapeMode }) {
     super("FindPeaks");
     this.label = init?.label ?? "Find Peaks";
-    this.addInput("list", listIn("List"));
-    this.addInput("height", numIn("Min height"));
-    this.addInput("distance", numIn("Min distance"));
-    this.addInput("prominence", numIn("Min prominence"));
+    this.mode = init?.mode === "grid" ? "grid" : "list";
+    this._rebuildSockets();
+  }
+
+  // Removes every socket, so callers prune all of this node's cables first (applyShapeMode).
+  _rebuildSockets(): void {
+    for (const key of Object.keys(this.inputs)) this.removeInput(key);
+    for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    if (this.mode === "grid") {
+      this.addInput("grid", tableIn("Grid"));
+      this.addInput("height", numIn("Min height"));
+    } else {
+      this.addInput("list", listIn("List"));
+      this.addInput("height", numIn("Min height"));
+      this.addInput("distance", numIn("Min distance"));
+      this.addInput("prominence", numIn("Min prominence"));
+    }
     this.addOutput("result", frameOut("Peaks"));
   }
 
   frameShape(): Shape | null {
-    return cardShapeOnCore(this, "result", { list: [[0, 3, 0, 5, 0]] });
+    return this.mode === "grid"
+      ? cardShapeOnCore(this, "result", { grid: [[[0, 1, 0], [1, 5, 1], [0, 1, 0]]] })
+      : cardShapeOnCore(this, "result", { list: [[0, 3, 0, 5, 0]] });
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: FrameValue | null } {

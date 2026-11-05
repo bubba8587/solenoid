@@ -202,6 +202,8 @@ export const ARG_ROLES: Record<string, ArgRoles> = {
   DIFF: { 1: setting(false) },
   PCTCHANGE: { 1: setting(false) },
   GRADIENT: { 1: setting(false) },
+  GRIDDATA: { 5: setting(LEFT_OUT, "idw") },
+  REGIONS: { 1: setting(false) },
   MEANSMOOTH: { 1: setting(3) },
   MEDIANSMOOTH: { 1: setting(3) },
   MUNIT: { 0: required },

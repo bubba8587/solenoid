@@ -134,7 +134,7 @@ const CORE = path.resolve(__dirname, "../../crates/solenoid-core/src");
 const VIEW_NAMES_ELSEWHERE: Record<string, { counts: Record<string, number>; why: string }> = {
   "nodes/text.rs": { counts: { width: 3 }, why: "the padding cards' width input" },
   "nodes/fields.rs": { counts: { color: 1 }, why: "Chart Builder's color input, declaring its empty kind" },
-  "nodes/list.rs": { counts: { height: 1 }, why: "Find Peaks' height input" },
+  "nodes/list.rs": { counts: { height: 2 }, why: "Find Peaks' height input, in its List and Grid modes" },
   "nodes/qr.rs": { counts: { height: 1 }, why: "a key of the image it makes" },
   "nodes/sched.rs": { counts: { color: 2 }, why: "a key of a task row on its input" },
   "nodes/visual.rs": { counts: { color: 9 }, why: "a chart option read from its inputs" },

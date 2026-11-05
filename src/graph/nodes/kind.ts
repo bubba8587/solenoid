@@ -23,7 +23,7 @@ import {
   UniqueNode, SetsNode, IsInNode, TallyNode,
   ConcatListsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
-  NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode,
+  NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, RegionsNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode,
   ShuffleNode, NthElementNode, InterleaveNode,
   PadNode,
   FillNode,
@@ -117,7 +117,7 @@ export function explicitKindOf(node: GraphNode): NodeKind | null {
     node instanceof ConcatListsNode || node instanceof RunningNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
     node instanceof NormalizeNode ||
-    node instanceof BinNode || node instanceof OutliersNode || node instanceof SmoothNode || node instanceof FindPeaksNode || node instanceof SpectrumNode || node instanceof ShiftNode || node instanceof CombinationsNode ||
+    node instanceof BinNode || node instanceof OutliersNode || node instanceof SmoothNode || node instanceof FindPeaksNode || node instanceof RegionsNode || node instanceof SpectrumNode || node instanceof ShiftNode || node instanceof CombinationsNode ||
     node instanceof EwmaNode || node instanceof ConvolveNode || node instanceof CrossNode ||
     node instanceof PolyfitNode || node instanceof TrapzNode || node instanceof RleNode ||
     node instanceof ShuffleNode || node instanceof NthElementNode || node instanceof InterleaveNode ||
