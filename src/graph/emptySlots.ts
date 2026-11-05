@@ -123,6 +123,18 @@ export function needsArgument(name: string): boolean {
   return !!sig && !sig.startsWith("[");
 }
 
+/** The most arguments the function takes (the core's `maxArgs`, from the same arity and signatures); Infinity where
+ *  it repeats its last ones or isn't known. */
+export function maxArguments(name: string): number {
+  const up = name.toUpperCase();
+  const arity = FUNCTION_ARITY[up];
+  if (arity) return arity[1] >= 255 ? Infinity : arity[1];
+  const sig = (FORMULA_SIGNATURES[up] ?? packMeta(up)?.signature)?.trim();
+  if (sig === undefined) return Infinity;
+  if (sig === "") return 0;
+  return sig.includes("…") || sig.includes("...") ? Infinity : sig.split(", ").length;
+}
+
 /** An empty slot at argument `i` of `name` reads as Excel's blank for that parameter ([[C80]] blankArgIsExcelBlank). */
 export function emptySlotReading(name: string, i: number): EmptySlotReading {
   const up = name.toUpperCase();

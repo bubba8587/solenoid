@@ -57,6 +57,9 @@ pub struct Traits {
     /// emptySlotShowsItsValue).
     #[serde(default)]
     pub needs_arg: bool,
+    /// The most arguments the function takes, where it has a bound; past it the call is `#SYNTAX!`, as Excel refuses it.
+    #[serde(default)]
+    pub max_args: Option<usize>,
     roles: Vec<Option<Role>>,
     blanks: Vec<serde_json::Value>,
     scalar: Vec<bool>,
@@ -990,6 +993,12 @@ impl Eval<'_> {
         };
         if let Some(r) = &t.refusal {
             return V::err(sol_error(r.code, r.message.as_str()));
+        }
+        if let Some(most) = t.max_args
+            && args.len() > most
+        {
+            let noun = if most == 1 { "argument" } else { "arguments" };
+            return V::err(sol_error(ErrorCode::Syntax, format!("{name} takes at most {most} {noun}")));
         }
         let mut argv: Vec<V> = if t.fast.eta_host {
             args.iter().map(|a| self.eta_or_eval(a, env)).collect()

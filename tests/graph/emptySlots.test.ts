@@ -81,14 +81,23 @@ describe("the editor shows an empty slot's reading; a read-only formula shows it
     expect(ev("PI()")).toBeCloseTo(Math.PI, 12);
   });
 
-  it("the core and the editor agree on which functions need an argument", async () => {
+  it("a slot past a function's last argument has no reading, and the call is #SYNTAX!", async () => {
+    const { highlightFormula } = await import("../../src/graph/formulaSyntax");
+    expect(highlightFormula("ROUND(2.6, , , )", "editor").match(/fx-ghost/g)).toHaveLength(1);
+    expect(show(ev("ROUND(2.6, 1, 3)"))).toBe("#SYNTAX!");
+    expect(show(ev("SQRT(4, 5)"))).toBe("#SYNTAX!");
+    expect(ev("SUM(1, 2, 3, 4, 5)")).toBe(15);
+  });
+
+  it("the core and the editor agree on which functions need an argument and how many they take", async () => {
     const { readFileSync } = await import("node:fs");
     await import("../../src/graph/formulaExtensions");
     const { needsArgument } = await import("../../src/graph/emptySlots");
     const { FORMULA_SIGNATURES } = await import("../../src/graph/formulaSignatureTable");
-    const table = JSON.parse(readFileSync("crates/solenoid-core/data/call_traits.json", "utf8")) as Record<string, { needsArg?: boolean }>;
+    const { maxArguments } = await import("../../src/graph/emptySlots");
+    const table = JSON.parse(readFileSync("crates/solenoid-core/data/call_traits.json", "utf8")) as Record<string, { needsArg?: boolean; maxArgs?: number }>;
     const known = (n: string) => n in FUNCTION_ARITY || n in FORMULA_SIGNATURES;
-    const off = Object.keys(table).filter((n) => known(n) && !!table[n].needsArg !== needsArgument(n));
+    const off = Object.keys(table).filter((n) => known(n) && (!!table[n].needsArg !== needsArgument(n) || (table[n].maxArgs ?? Infinity) !== maxArguments(n)));
     expect(off).toEqual([]);
   });
 });

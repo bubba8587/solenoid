@@ -4,7 +4,7 @@ import { FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES } from "./excelFunctions";
 import { advertisedFunctionNames } from "./formulaExtensions";
 import { signatureFor } from "./formulaSignatures";
 import { fuzzyScore } from "./fuzzy";
-import { emptySlotReading, needsArgument } from "./emptySlots";
+import { emptySlotReading, maxArguments, needsArgument } from "./emptySlots";
 
 // Not a module-level constant: packs register after load, and switching a pack off shrinks the advertised set.
 let _fnSet = new Set<string>();
@@ -50,6 +50,8 @@ export function highlightFormula(src: string, ghosts: GhostMode = "none"): strin
     if (ghosts === "none" || !top || !top.name || top.typed) return;
     // `F()` is an empty slot only where the function needs an argument (`PI()` takes none).
     if (closing && top.arg === 0 && !needsArgument(top.name)) return;
+    // A slot past the function's last argument has no reading: the call is an error, not a fallback.
+    if (top.arg >= maxArguments(top.name)) return;
     const shown = emptySlotReading(top.name, top.arg).shown;
     if (shown === null) return;
     // After the slot's spaces, where a typed value would end.

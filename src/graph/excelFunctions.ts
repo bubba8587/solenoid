@@ -112,7 +112,7 @@ export const FUNCTION_ARITY: Record<string, readonly [number, number]> = {
   IMCONJUGATE: [1, 1], IMCOS: [1, 1], IMCOSH: [1, 1], IMCOT: [1, 1], IMCSC: [1, 1], IMCSCH: [1, 1], IMDIV: [2, 2],
   IMEXP: [1, 1], IMLN: [1, 1], IMLOG10: [1, 1], IMLOG2: [1, 1], IMPOWER: [2, 2], IMPRODUCT: [1, 255], IMREAL: [1, 1],
   IMSEC: [1, 1], IMSECH: [1, 1], IMSIN: [1, 1], IMSINH: [1, 1], IMSQRT: [1, 1], IMSUB: [2, 2], IMSUM: [1, 255],
-  IMTAN: [1, 1], INDEX: [1, 3], INTERCEPT: [2, 2], INTERLEAVE: [2, 2], INTERPOLATE: [1, 3], INTRATE: [4, 5],
+  IMTAN: [1, 1], INDEX: [1, 3], INTERCEPT: [2, 2], INTERLEAVE: [2, 2], INTERPOLATE: [1, 4], INTRATE: [4, 5],
   IQR: [1, 255], IRR: [1, 2], ISBOOLEAN: [1, 1], ISCLOSE: [2, 3], ISOUTLIER: [1, 3], ISOWEEKNUM: [1, 1],
   KENDALL: [2, 2], KRUSKAL: [2, 255], KSTEST: [2, 2], KURT: [1, 255], LAMBDA: [1, 255], LARGE: [2, 2], LCM: [1, 255],
   LEFT: [1, 2], LEN: [1, 1], LENGTH: [1, 1], LEVENSHTEIN: [2, 2], LINEST: [1, 2], LINSPACE: [3, 3], LN: [1, 1],
