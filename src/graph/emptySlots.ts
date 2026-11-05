@@ -1,6 +1,7 @@
 // [[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue
 import { argRole, LEFT_OUT, type InputRole } from "./inputRoles";
 import { FORMULA_SIGNATURES } from "./formulaSignatureTable";
+import { FUNCTION_ARITY } from "./excelFunctions";
 import { coreEmptyField } from "./engineWasm";
 
 interface PackSlotMeta { signature?: string; emptySlotsLeftOut?: boolean; emptySlotShown?: string }
@@ -32,6 +33,15 @@ const LOGICAL_PARAMS = new Set([
 const EXCEL_EMPTY_SLOT: Record<string, Record<number, unknown>> = {
   TEXTJOIN: { 1: true },
   XLOOKUP: { 3: LEFT_OUT },
+  // A test of a value reads an empty slot as an empty cell: nothing, so ISNUMBER() is FALSE and ISBLANK() TRUE.
+  ISNUMBER: { 0: null },
+  ISTEXT: { 0: null },
+  ISNONTEXT: { 0: null },
+  ISLOGICAL: { 0: null },
+  ISBLANK: { 0: null },
+  ISERROR: { 0: null },
+  ISERR: { 0: null },
+  ISNA: { 0: null },
 };
 
 /** Where the function's card falls back to a value other than Excel's empty one, so the formula reads the card's
@@ -102,6 +112,16 @@ const behavior = (word: string): string => (VALUE_WORD.test(word) ? word : `[${w
 
 const show = (v: unknown): string | null =>
   v === "" || v === null ? null : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v);
+
+/** The function takes at least one argument, so empty parentheses read as an empty first argument (the core's
+ *  `needsArg`, generated from the same arity and signatures). */
+export function needsArgument(name: string): boolean {
+  const up = name.toUpperCase();
+  const arity = FUNCTION_ARITY[up];
+  if (arity) return arity[0] >= 1;
+  const sig = (FORMULA_SIGNATURES[up] ?? packMeta(up)?.signature)?.trim();
+  return !!sig && !sig.startsWith("[");
+}
 
 /** An empty slot at argument `i` of `name` reads as Excel's blank for that parameter ([[C80]] blankArgIsExcelBlank). */
 export function emptySlotReading(name: string, i: number): EmptySlotReading {

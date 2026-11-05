@@ -4,7 +4,7 @@ import { FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES } from "./excelFunctions";
 import { advertisedFunctionNames } from "./formulaExtensions";
 import { signatureFor } from "./formulaSignatures";
 import { fuzzyScore } from "./fuzzy";
-import { emptySlotReading } from "./emptySlots";
+import { emptySlotReading, needsArgument } from "./emptySlots";
 
 // Not a module-level constant: packs register after load, and switching a pack off shrinks the advertised set.
 let _fnSet = new Set<string>();
@@ -33,11 +33,11 @@ function identClass(word: string, isCall: boolean): string {
   return "fx-var";
 }
 
-/** How an empty slot's reading shows ([[D96]] emptySlotShowsItsValue): `editor` draws it as CSS content, so it takes
- *  room but never joins the editable text; `inline` is text, for a formula drawn read-only. */
-export type GhostMode = "editor" | "inline";
+/** Whether an empty slot's reading shows ([[D96]] emptySlotShowsItsValue): `editor` draws it as CSS content, so it
+ *  takes room but never joins the editable text; `none` draws the formula as typed, for a formula shown read-only. */
+export type GhostMode = "editor" | "none";
 
-export function highlightFormula(src: string, ghosts: GhostMode = "inline"): string {
+export function highlightFormula(src: string, ghosts: GhostMode = "none"): string {
   let out = "";
   let i = 0;
   const span = (cls: string, text: string) => `<span class="${cls}">${esc(text)}</span>`;
@@ -47,13 +47,13 @@ export function highlightFormula(src: string, ghosts: GhostMode = "inline"): str
   const typed = () => { const top = stack[stack.length - 1]; if (top) top.typed = true; };
   const closeSlot = (closing: boolean) => {
     const top = stack[stack.length - 1];
-    if (!top || !top.name || top.typed || (closing && top.arg === 0)) return;
+    if (ghosts === "none" || !top || !top.name || top.typed) return;
+    // `F()` is an empty slot only where the function needs an argument (`PI()` takes none).
+    if (closing && top.arg === 0 && !needsArgument(top.name)) return;
     const shown = emptySlotReading(top.name, top.arg).shown;
     if (shown === null) return;
     // After the slot's spaces, where a typed value would end.
-    out += ghosts === "editor"
-      ? `<span class="fx-ghost" data-ghost="${esc(shown)}"></span>`
-      : `<span class="fx-ghost-inline">${esc(shown)}</span>`;
+    out += `<span class="fx-ghost" data-ghost="${esc(shown)}"></span>`;
   };
   while (i < src.length) {
     const c = src[i];

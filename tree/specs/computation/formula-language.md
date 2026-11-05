@@ -332,6 +332,7 @@ Tests:
 Three things can sit in an argument's place, and they read differently ([[C80]] blankArgIsExcelBlank):
 
 - **An empty slot**, a comma with nothing typed before the next comma or the closing parenthesis, reads as Excel's blank for that parameter: 0, FALSE, "", or the argument left out where Excel reads it so; where the function's card falls back to another value because Excel's would make an error, the slot reads the card's ([[input-roles#Placeholders]]). Every parameter has this reading, declared once ([[input-roles#Empty slots]]), and it is shown in the slot wherever it isn't "" ([[D96]] emptySlotShowsItsValue).
+- **Empty parentheses** on a function that needs an argument (`SQRT()`) are one empty slot, its first argument (the call table's `needsArg`, generated from the functions' arity and signatures; `needsArgument` in `emptySlots.ts` reads the same). `PI()` and `TODAY()` take no argument and stay as they are. The parse tree keeps the call as typed; the evaluator adds the empty slot.
 - **A blank value**, a variable or cell holding blank, follows the parameter's role ([[D86]] blankRoles, [[input-roles]]): a blank in data stays missing ([[C24]] arraySemantics), a blank setting is its default, a blank pick is dropped.
 - **An omitted trailing argument** is absent, so the implementation receives `undefined` and takes its default. Implementations read `undefined` as "use the default" and never treat `null` as omitted.
 
@@ -340,6 +341,7 @@ So:
 - `TEXTJOIN(",",,"a","","b")` is `a,b`: an empty `ignore_empty` slot is TRUE, as Excel reads it, while a blank value there is FALSE and keeps the empties (`a,,b`).
 - `XMATCH(7, x, )` is an exact match, and `XLOOKUP(9, a, b, )` with no match is `#N/A`: an empty `if_not_found` is left out.
 - `POWER(2, )` is 1, and `IF(x,,y)` is 0 for a true `x`.
+- `SQRT()` is 0 and `SIN()` 0, as `SQRT(0)` and `SIN(0)`; `ISNUMBER()` is FALSE and `ISBLANK()` TRUE, since a test of a value reads an empty slot as an empty cell.
 - `AVERAGE(2,)` is 1, while `AVERAGE(2, b)` with `b` blank is 2.
 - A blank `search_mode` becomes 0, which the implementation rejects as Excel does.
 

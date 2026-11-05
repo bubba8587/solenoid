@@ -1,7 +1,6 @@
 // [[C22]], [[C80]], [[D99]] rustIsSpec
 import { isFunctionName } from "./excelFunctions";
 import { formatScalar } from "./components/format";
-import { emptySlotReading } from "./emptySlots";
 import { evaluateOnCore, callOnCore, toWellFormed } from "./coreValues";
 import { wasmInvokeSync, onCore } from "./engineWasm";
 
@@ -190,12 +189,10 @@ function tex(n: Ast, parent: number): string {
       return wrap(`${tex(n.fn, 7)}\\left(${n.args.map((x) => tex(x, 0)).join(", ")}\\right)`, 7);
     case "call": {
       const name = n.name.toUpperCase();
-      // An empty slot shows the value it reads as, muted ([[D96]] emptySlotShowsItsValue).
+      // Typeset as typed: an empty slot's reading shows only in the editor ([[D96]] emptySlotShowsItsValue).
       const arg = (i: number, prec: number): string => {
         const x = n.args[i];
-        if (x.t !== "blank") return tex(x, prec);
-        const shown = emptySlotReading(name, i).shown;
-        return shown === null ? "\\," : `\\textcolor{gray}{\\textit{${texText(shown)}}}`;
+        return x.t === "blank" ? "\\," : tex(x, prec);
       };
       const all = (sep: string) => n.args.map((_, i) => arg(i, 0)).join(sep);
       const a = n.args;

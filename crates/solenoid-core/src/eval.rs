@@ -53,6 +53,10 @@ pub struct Traits {
     pub resolves: bool,
     #[serde(default)]
     pub refusal: Option<Refusal>,
+    /// The function takes at least one argument, so empty parentheses read as an empty first argument ([[D96]]
+    /// emptySlotShowsItsValue).
+    #[serde(default)]
+    pub needs_arg: bool,
     roles: Vec<Option<Role>>,
     blanks: Vec<serde_json::Value>,
     scalar: Vec<bool>,
@@ -998,13 +1002,17 @@ impl Eval<'_> {
         } else {
             args.iter().map(|a| self.eval(a, env)).collect()
         };
-        let roled = apply_arg_roles(name, t, &site.empty, &mut argv);
-        let settled: &[bool] = roled.as_deref().unwrap_or(&site.empty);
-        if site.any_empty {
-            for (i, a) in args.iter().enumerate() {
-                if matches!(a, Ast::Blank)
-                    && let Some(v) = t.blank(i)
-                {
+        // Empty parentheses on a function that needs an argument: one empty first argument, read as any empty slot is.
+        let lone = args.is_empty() && t.needs_arg;
+        if lone {
+            argv.push(V::Null);
+        }
+        let empty: &[bool] = if lone { &[true] } else { &site.empty };
+        let roled = apply_arg_roles(name, t, empty, &mut argv);
+        let settled: &[bool] = roled.as_deref().unwrap_or(empty);
+        if site.any_empty || lone {
+            for (i, &e) in empty.iter().enumerate() {
+                if e && let Some(v) = t.blank(i) {
                     argv[i] = lowered(v);
                 }
             }

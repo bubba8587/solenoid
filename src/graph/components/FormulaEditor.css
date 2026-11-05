@@ -118,7 +118,6 @@
 }
 
 /* An empty argument slot's reading, muted ([[D96]] emptySlotShowsItsValue). In the editor's mirror it takes no width, so the
-   typed text and the caret above it never move; drawn read-only it sits in the text. */
+   typed text and the caret above it never move. A formula drawn read-only shows it as typed. */
 .fx-tokens .fx-ghost { user-select: none; }
 .fx-tokens .fx-ghost::after { content: attr(data-ghost); color: var(--text-dim); opacity: 0.6; pointer-events: none; }
-.fx-tokens .fx-ghost-inline { color: var(--text-dim); opacity: 0.6; }

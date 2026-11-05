@@ -118,6 +118,18 @@ For the author to look over: Dollar's and Base Convert's 0 (both used to show an
 Out of scope, waiting: a cable carrying a blank; the formula variables (`x`), which read 0 when empty through
 `Call::read_variable`.
 
+## Empty text and empty parentheses (the author, 2026-11-05)
+
+- **Empty text `""` is the same as having typed nothing.** In a total it is skipped like a blank (case 4: `SUM` over
+  `[2, ""]` is 2 on the card too). Built next: the cards that refuse `""` today (Aggregate's `#TYPE!`).
+- **Empty parentheses on a function that needs an argument are an empty first argument**: `SQRT()` reads as `SQRT(0)`,
+  the same as the SQRT card with its field cleared. While editing, the slot shows its muted value, as a card's field does;
+  a formula drawn read-only shows exactly what was typed (truth while editing, render what's proper). The value is only
+  shown, never written into the formula's text. Only slots that are opened show one (`ROUND(2.6, )`, `SQRT()`), never a
+  left-off trailing argument (`LOG(8)`).
+- A test of a value reads an empty slot as an empty cell: `ISNUMBER()` is FALSE, `ISBLANK()` TRUE (its kind, not 0).
+- Later: the muted value offered as a suggestion while typing an argument, a comma skipping it.
+
 ## Open questions
 
 - **Does a card read `_` as Excel's empty argument (0, FALSE, "")?** Reframed by the placeholder scheme: a card
