@@ -2,7 +2,7 @@
 // The Grid modes of Smooth, Convolve and Integrate: List mode keeps the sockets it always had, Grid mode swaps in a
 // table, the card answers what its formula answers, and the mode survives a save.
 import { describe, it, expect } from "vitest";
-import { SmoothNode, ConvolveNode, TrapzNode, DiffNode, RandArrayNode, FindPeaksNode, RegionsNode } from "../../../src/graph/nodes/list";
+import { SmoothNode, ConvolveNode, TrapzNode, DiffNode, RandArrayNode, FindPeaksNode, ConnectedRegionsNode } from "../../../src/graph/nodes/list";
 import { InterpolateNode } from "../../../src/graph/nodeClasses";
 import { extractInit } from "../../../src/graph/nodeInit";
 import { coreFunction } from "../coreFunction";
@@ -98,8 +98,8 @@ describe("Grid mode", () => {
 
   it("numbers the patches of touching cells, corners joining only when asked", async () => {
     const m = [[1, 0, 2], [0, 1, 0]];
-    expect(await answer(new RegionsNode(), { grid: m })).toEqual([[1, 0, 2], [0, 3, 0]]);
-    expect(await answer(new RegionsNode({ diagonal: true }), { grid: m })).toEqual([[1, 0, 1], [0, 1, 0]]);
+    expect(await answer(new ConnectedRegionsNode(), { grid: m })).toEqual([[1, 0, 2], [0, 3, 0]]);
+    expect(await answer(new ConnectedRegionsNode({ diagonal: true }), { grid: m })).toEqual([[1, 0, 1], [0, 1, 0]]);
   });
 
   it("spreads scattered points onto a grid by INTERPOLATE's Points mode", async () => {

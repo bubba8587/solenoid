@@ -31,7 +31,7 @@ const POLICY: Record<string, Policy> = {
   SetCellNode: "carry",           // overwriting cells by address keeps the grid's unit
   InterpolateNode: "carry",       // grid mode fills blanks in the SAME unit (dynamic
                                   // socket, so the sweep can't see it — kept manually)
-  RegionsNode: "na",             // patch numbers, never in the grid's unit
+  ConnectedRegionsNode: "na",             // patch numbers, never in the grid's unit
   FindPeaksNode: "na",           // Grid mode: positions out, a frame, no dimensioned matrix
   DiffNode: "carry",              // Grid mode: a change or a slope is in the grid's unit; % is a plain ratio
   SmoothNode: "carry",            // Grid mode smooths in the grid's unit (a dynamic socket, kept here by hand)

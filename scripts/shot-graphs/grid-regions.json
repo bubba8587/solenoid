@@ -12,7 +12,7 @@
   },
   {
    "id": "r1",
-   "type": "RegionsNode",
+   "type": "ConnectedRegionsNode",
    "x": 480,
    "y": -200,
    "init": {
@@ -21,7 +21,7 @@
   },
   {
    "id": "r2",
-   "type": "RegionsNode",
+   "type": "ConnectedRegionsNode",
    "x": 480,
    "y": 300,
    "init": {

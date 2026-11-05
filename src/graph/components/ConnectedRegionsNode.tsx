@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { RegionsNode as RegionsNodeType } from "../nodeClasses";
+import type { ConnectedRegionsNode as ConnectedRegionsNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { TableDisplay } from "./TableDisplay";
@@ -7,7 +7,7 @@ import { processGraph } from "../process";
 import { stopDragStart } from "../coarse";
 import { nodeDisplayName } from "../catalogUtils";
 
-export function RegionsComponent({ data, emit }: NodeProps<RegionsNodeType>) {
+export function ConnectedRegionsComponent({ data, emit }: NodeProps<ConnectedRegionsNodeType>) {
   const [diagonal, setDiagonal] = useState(data.diagonal);
   useEffect(() => { setDiagonal(data.diagonal); }, [data.diagonal]);
   return (

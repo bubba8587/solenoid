@@ -69,6 +69,7 @@ argument; a value is the typed blank it reads as.
 | CHOOSEROWS | `row1` → pick, none left = #SYNTAX!; the rest → pick, none left = #SYNTAX! |
 | CLAMP | `min` → omitted; `max` → omitted |
 | COMBINATIONS | `k` → #SYNTAX! |
+| CONNECTEDREGIONS | `diagonal` → false |
 | CONVERT | `from_unit` → #SYNTAX!; `to_unit` → #SYNTAX! |
 | CONVOLVE | `shape` → omitted |
 | COUPDAYBS | `frequency` → omitted; `basis` → omitted |
@@ -177,7 +178,6 @@ argument; a value is the typed blank it reads as.
 | RATE | `type` → omitted; `guess` → omitted |
 | RECEIVED | `basis` → omitted |
 | REGEXEXTRACT | `return_mode` → omitted; `case_sensitivity` → omitted |
-| REGIONS | `diagonal` → false |
 | REPEAT | `count` → #SYNTAX! |
 | REPLACE | `start` → #SYNTAX!; `count` → #SYNTAX! |
 | REPT | `count` → #SYNTAX! |

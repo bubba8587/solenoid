@@ -59,7 +59,7 @@ pub const NAMES: &[&str] = &[
     "NTILE",
     "PCTCHANGE",
     "RANGE",
-    "REGIONS",
+    "CONNECTEDREGIONS",
     "REVERSE",
     "RLE",
     "RUNNING",
@@ -698,8 +698,8 @@ fn answer(name: &str, a: &[V]) -> V {
             &to_list(arg(a, 4)),
             arg(a, 5),
         ),
-        "REGIONS" => match grid_filters::read_grid(name, a0) {
-            Ok(g) => grid_filters::regions(&g, is_true(arg(a, 1))),
+        "CONNECTEDREGIONS" => match grid_filters::read_grid(name, a0) {
+            Ok(g) => grid_filters::connected_regions(&g, is_true(arg(a, 1))),
             Err(e) => e,
         },
         "LAPLACIAN" => match grid_filters::read_grid(name, a0) {

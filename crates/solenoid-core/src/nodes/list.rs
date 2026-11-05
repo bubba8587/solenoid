@@ -50,7 +50,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "WeightedNode" => weighted(c),
         "FillNode" => fill(c),
         "SpectrumNode" => spectrum(c),
-        "RegionsNode" => regions(c),
+        "ConnectedRegionsNode" => connected_regions(c),
         "SmoothNode" => smooth(c),
         "ListInputNode" => list_input(c),
         "FilterNode" => filter(c),
@@ -619,10 +619,10 @@ fn spectrum(c: &mut Call) -> Answer {
     shown(c, "cachedResult", "result", r)
 }
 
-fn regions(c: &mut Call) -> Answer {
+fn connected_regions(c: &mut Call) -> Answer {
     let grid = slot(c, "grid");
     let diagonal = c.field("diagonal").and_then(serde_json::Value::as_bool).unwrap_or(false);
-    let r = if nullish(&grid) { V::Null } else { core_call("REGIONS", &[grid, V::Bool(diagonal)]) };
+    let r = if nullish(&grid) { V::Null } else { core_call("CONNECTEDREGIONS", &[grid, V::Bool(diagonal)]) };
     shown(c, "cachedResult", "result", r)
 }
 

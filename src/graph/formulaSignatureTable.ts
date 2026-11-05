@@ -370,7 +370,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   PERMUTATIONS: "list, k",
   GRADIENT: "data, [by_col]",
   LAPLACIAN: "data",
-  REGIONS: "data, [diagonal]",
+  CONNECTEDREGIONS: "data, [diagonal]",
   GRIDDATA: "xs, ys, zs, grid_xs, grid_ys, [method]",
   EWMA: "list, alpha",
   TRAPZ: "data, [dx], [dy]",

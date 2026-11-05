@@ -217,7 +217,7 @@ fn regions_number_the_patches_as_scipy_does() {
         other => panic!("{src}: {other:?}"),
     };
     assert_eq!(
-        cells("REGIONS(m)"),
+        cells("CONNECTEDREGIONS(m)"),
         vec![
             vec![1.0, 1.0, 0.0, 0.0, 2.0],
             vec![0.0, 1.0, 0.0, 3.0, 0.0],
@@ -226,7 +226,7 @@ fn regions_number_the_patches_as_scipy_does() {
         ]
     );
     assert_eq!(
-        cells("REGIONS(m, TRUE)"),
+        cells("CONNECTEDREGIONS(m, TRUE)"),
         vec![
             vec![1.0, 1.0, 0.0, 0.0, 2.0],
             vec![0.0, 1.0, 0.0, 2.0, 0.0],

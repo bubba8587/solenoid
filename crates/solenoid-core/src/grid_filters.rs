@@ -492,15 +492,15 @@ pub fn griddata(xs: &[V], ys: &[V], zs: &[V], new_xs: &[V], new_ys: &[V], method
     V::List(Rc::new(rows))
 }
 
-/// REGIONS: each non-zero number's patch of touching non-zero numbers, numbered 1, 2, 3… in reading order, 0 between
+/// CONNECTEDREGIONS: each non-zero number's patch of touching non-zero numbers, numbered 1, 2, 3… in reading order, 0 between
 /// them, as scipy's `ndimage.label`; patches touch side to side, or corner to corner too when `diagonal`. A blank stays
 /// blank and divides like a 0; any error answers, any text is `#VALUE!`.
-pub fn regions(g: &Grid, diagonal: bool) -> V {
+pub fn connected_regions(g: &Grid, diagonal: bool) -> V {
     if let Some(e) = g.cells.iter().find(|v| matches!(v, V::Err(_))) {
         return e.clone();
     }
     if g.cells.iter().any(holds_text) {
-        return V::err(sol_error(ErrorCode::Value, "REGIONS reads numbers, not text"));
+        return V::err(sol_error(ErrorCode::Value, "CONNECTEDREGIONS reads numbers, not text"));
     }
     let on = |k: usize| finite(&g.cells[k]).is_some_and(|x| x != 0.0);
     let mut label = vec![0usize; g.cells.len()];

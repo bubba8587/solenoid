@@ -1207,8 +1207,8 @@ export type DiffOp = "delta" | "percent" | "gradient" | "laplacian";
 const DIFF_OUTPUT_LABEL: Record<DiffOp, string> = { delta: "Differences", percent: "Change", gradient: "Gradient", laplacian: "Laplacian" };
 /** `label` is the toggle's glyph; `name` the op's row in search. */
 export const DIFF_OP_META: Record<DiffOp, { label: string; name: string; fx: string; keywords: string; title: string }> = {
-  delta:    { label: "Δ", name: "Difference",     fx: "DIFF",      keywords: "diff delta change numpy diff", title: "Absolute difference: list[i] − list[i−1]" },
-  percent:  { label: "%", name: "Percent Change", fx: "PCTCHANGE", keywords: "pct_change percent growth rate return", title: "Percent change: (list[i] − list[i−1]) / list[i−1] (pandas pct_change)" },
+  delta:    { label: "Δ", name: "Differences",     fx: "DIFF",      keywords: "diff delta change numpy diff", title: "Absolute difference: list[i] − list[i−1]" },
+  percent:  { label: "%", name: "Percent Changes", fx: "PCTCHANGE", keywords: "pct_change percent growth rate return", title: "Percent change: (list[i] − list[i−1]) / list[i−1] (pandas pct_change)" },
   gradient: { label: "∇", name: "Gradient",       fx: "GRADIENT",  keywords: "gradient slope derivative numpy gradient", title: "Gradient: central-difference slope at each point, same length as the input (numpy.gradient)" },
   laplacian: { label: "∇²", name: "Laplacian",    fx: "LAPLACIAN", keywords: "laplacian laplace del2 curvature second derivative scipy ndimage laplace", title: "Laplacian: the second differences summed over both axes, curvature at each point, edges reflected (scipy ndimage.laplace)" },
 };
@@ -1868,8 +1868,8 @@ export const SMOOTH_OP_META: Record<SmoothOp, { label: string; fx: string; param
   savgol:   { label: "Savitzky–Golay", fx: "SAVGOL", grid: false, params: [{ key: "window", label: "Window", def: 5 }, { key: "order", label: "Order", def: 2 }], description: "Polynomial least-squares over a sliding window (odd width); keeps peak shape better than a moving average. scipy `savgol_filter`, R `signal::sgolayfilt`." },
   lowess:   { label: "LOWESS",         fx: "LOWESS", grid: false, params: [{ key: "frac", label: "Fraction", def: 0.67 }], description: "Locally weighted linear regression over the nearest fraction of points, three robust passes. statsmodels `lowess`, R `lowess` / `loess`." },
   gaussian: { label: "Gaussian", fx: "GAUSSIANSMOOTH", grid: true, params: [{ key: "sigma", label: "Sigma", def: 1 }], description: "Gaussian-weighted average, σ in samples (in cells on a grid), edges reflected. scipy `gaussian_filter1d` / `gaussian_filter`, MATLAB `imgaussfilt`." },
-  mean:     { label: "Mean",     fx: "MEANSMOOTH",     grid: true, params: [SIZE], description: "The average over a centered window Size wide (Size × Size on a grid), edges reflected. scipy `uniform_filter`, MATLAB `movmean` / `smoothdata2`." },
-  median:   { label: "Median",   fx: "MEDIANSMOOTH",   grid: true, params: [SIZE], description: "The median over a centered window Size wide (Size × Size on a grid), edges reflected: clears lone spikes without blurring steps. scipy `median_filter` / `medfilt`, MATLAB `medfilt2`." },
+  mean:     { label: "Mean Filter",   fx: "MEANSMOOTH",     grid: true, params: [SIZE], description: "The average over a centered window Size wide (Size × Size on a grid), edges reflected. scipy `uniform_filter`, MATLAB `movmean` / `smoothdata2`." },
+  median:   { label: "Median Filter", fx: "MEDIANSMOOTH",   grid: true, params: [SIZE], description: "The median over a centered window Size wide (Size × Size on a grid), edges reflected: clears lone spikes without blurring steps. scipy `median_filter` / `medfilt`, MATLAB `medfilt2`." },
 };
 export const SMOOTH_MODE_META: Record<ShapeMode, { label: string; title: string }> = {
   list: { label: "List", title: "Smooth a series" },
@@ -1930,8 +1930,8 @@ export class SmoothNode extends GraphNode {
   }
 }
 
-// ─── REGIONS ──────────────────────────────────────────────────────────────────
-export class RegionsNode extends GraphNode {
+// ─── CONNECTED REGIONS ─────────────────────────────────────────────────────────────────
+export class ConnectedRegionsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     grid: "A table of numbers. Every non-zero cell joins the patch it touches; zeros and blanks divide them.",
     result: "Each cell's patch number, 1, 2, 3… in reading order, and 0 between patches; the highest number is the count.",
@@ -1942,8 +1942,8 @@ export class RegionsNode extends GraphNode {
   width = 200; height = 200;
 
   constructor(init?: { label?: string; diagonal?: boolean }) {
-    super("Regions");
-    this.label = init?.label ?? "Regions";
+    super("ConnectedRegions");
+    this.label = init?.label ?? "Connected Regions";
     this.diagonal = init?.diagonal === true;
     this.addInput("grid", tableIn("Grid"));
     this.addOutput("result", tableOut("Regions"));
