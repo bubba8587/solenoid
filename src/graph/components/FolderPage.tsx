@@ -33,71 +33,71 @@ const ICON_COLOR: Partial<Record<TypeIconKind | "frame-mark", string>> = {
   logical: "var(--sock-logical)", "frame-mark": "var(--sock-frame)",
 };
 
-/** Each top-level folder's page: how Solenoid approaches that part of the work, a real value of its kind where it has
- *  one, and the cards to start with (catalog types; a starter may live in another folder). */
+/** Each top-level folder's page: what Solenoid has for that part of the work, a real value of its kind where it has
+ *  one, and the card to start with (a catalog type; it may live in another folder). */
 const FOLDER_STORIES: Record<string, {
-  lede: string; shape?: () => ReactNode; icon?: TypeIconKind | SolenoidSocket | "frame-mark"; settings?: boolean; start?: string[];
+  lede: string; shape?: () => ReactNode; icon?: TypeIconKind | SolenoidSocket | "frame-mark"; settings?: boolean; start?: string;
 }> = {
   Input: {
-    lede: "Every graph starts from values someone types, picks or fetches. The input cards hold typed data as a single value, a List, a Table or a Frame; the controls change a value by hand with a slider, a dial or a pad; and the connections read files, web pages and live feeds.",
-    start: ["value-input", "frame-input"],
+    lede: "Solenoid has a variety of nodes for data entry, control widgets, and connections & queries.",
+    start: "value-input",
   },
   Output: {
-    lede: "Every card shows its own result, so an output card is for presenting one: Display shows any value at full size, the charts and gauges draw it, and Record and Cards lay out rows for reading. Convert and Cast change how a value is read on the way.",
-    start: ["display", "chart"],
+    lede: "Solenoid has nodes for showing results: displays, charts & gauges, and record & card views for reading rows.",
+    start: "display",
   },
   Numbers: {
     icon: "number",
-    lede: "Each card is one calculation, and a formula card holds a whole expression. A number can carry a unit, set where the value starts, and a calculation works out its result's unit: meters times meters is square meters, and adding meters to seconds is a #UNIT! error.",
+    lede: "Solenoid has nodes for arithmetic, rounding, trigonometry and the rest of Excel's math, plus formula nodes that hold a whole expression. Numbers can carry units, and the math keeps them right.",
     shape: () => box(tagDim(2410, { length: 1 }, "km")),
-    start: ["expression", "arith-add"],
+    start: "expression",
   },
   Lists: {
     icon: numListSocket,
-    lede: "An ordered run of values of one kind, and most cards work through a List item by item. A blank item is missing, not zero: totals skip it and it keeps its place.",
+    lede: "Solenoid has nodes for building, aggregating, shaping & searching Lists: ordered runs of values of one type. A blank item stays blank, so totals skip it.",
     shape: () => box([3, 6, 4, 8, 7]),
-    start: ["list-input", "reduce-sum"],
+    start: "list-input",
   },
   Tables: {
     icon: tableSocket,
-    lede: "Rows of plain values, with no column names or types: the shape a formula's array takes. A table holds one kind of value and one unit throughout, which is what the matrix math needs.",
+    lede: "Solenoid has nodes for reshaping tables and for matrix math. A table is rows of plain values with no column names, the same shape a formula's array takes.",
     shape: () => <div className="fr-fold__box"><TableDisplay table={[[1, 2, 3], [4, 5, 6], [7, 8, 9]]} elem="number" /></div>,
-    start: ["table-input", "table-mult"],
+    start: "table-input",
   },
   Frames: {
     icon: "frame-mark",
-    lede: "A table with headers. Each column has a name and one type, so a column of dates stays dates and a column can carry its own unit. Formulas don't take Frames; Get Column and Split Frame take the pieces out. A Cube is a Frame whose cells can hold anything, a whole Frame included, so nested data stays nested.",
+    lede: "Solenoid has nodes for building, filtering, joining & reshaping Frames: tables whose columns each have a name and a type. A Cube is a Frame whose cells can hold anything, even another Frame, so nested data stays nested.",
     shape: () => <FrameShapes />,
-    start: ["frame-input", "filter-frame"],
+    start: "frame-input",
   },
   Text: {
     icon: "string",
-    lede: "Every text card works on one piece of text or, item by item, on a List of them, so cleaning a whole column is one card.",
+    lede: "Solenoid has nodes for building, slicing, searching & cleaning text. Each one works on a single piece of text or on a whole List at once.",
     shape: () => box("Ada Lovelace"),
-    start: ["text-concat", "text-split"],
+    start: "text-concat",
   },
   "Date & Time": {
     icon: "date",
-    lede: "A date is its own kind of value. It shows as a date wherever it goes and does day math; a number becomes a date only through Cast.",
+    lede: "Solenoid has nodes for building, parsing & shifting dates, pulling out their parts, and counting the days between them. Dates stay dates wherever they go.",
     shape: () => box(solDate(46331)),
-    start: ["date-today", "date-diff-days"],
+    start: "date-today",
   },
   Logic: {
     icon: "logical",
-    lede: "TRUE and FALSE, plus unknown when an answer can't be told: TRUE OR unknown is TRUE, and FALSE OR unknown stays unknown. In arithmetic TRUE counts as 1 and FALSE as 0.",
+    lede: "Solenoid has nodes for conditions, tests and TRUE/FALSE logic, with a third answer, unknown, for when a value can't be told.",
     shape: () => box(true),
-    start: ["if"],
+    start: "if",
   },
   Finance: {
-    lede: "Loans, investments, depreciation and bonds, with Excel's own functions. What Excel spreads over a range of cells is one card here: an Amortization Schedule is a whole table from one card.",
-    start: ["tvm", "amortization"],
+    lede: "Solenoid has nodes for loans, investments, depreciation & bonds: Excel's finance functions, plus schedules that take a single node.",
+    start: "tvm",
   },
   "Docs & Files": {
-    lede: "Notes, Reports and Dashboards turn a graph into something to read and share, with live values and charts placed in the text. The file cards read and write files outside the app.",
-    start: ["note", "report"],
+    lede: "Solenoid has nodes for notes, reports & dashboards that show live values and charts, and for reading & writing files.",
+    start: "note",
   },
   Packs: {
-    lede: "A pack adds cards and formulas for one subject, such as geometry, circuits or health. Packs turn on and off in Settings.",
+    lede: "Packs add nodes and formulas for one subject, like geometry, circuits or health. Turn them on in Settings.",
     settings: true,
   },
 };
@@ -153,7 +153,7 @@ export function FolderPage({ folder, ancestors, accentStyle, onCard, onUp, cardO
   cardOf: (type: string) => NodeCatalogEntry | null;
 }) {
   const story = ancestors.length === 0 ? FOLDER_STORIES[folder.label] : undefined;
-  const starters = (story?.start ?? []).map(cardOf).filter((c): c is NodeCatalogEntry => !!c);
+  const starter = story?.start ? cardOf(story.start) : null;
   // Cards directly in the folder first, then each sub-folder as a caption over its cards.
   const direct = folder.children.filter((e) => e.type !== "category");
   const subs = folder.children.filter((e): e is CatalogCategory => e.type === "category");
@@ -198,16 +198,10 @@ export function FolderPage({ folder, ancestors, accentStyle, onCard, onUp, cardO
             </button>
           )}
           {story.shape && <div className="fr-fold__shape">{story.shape()}</div>}
-          {starters.length > 0 && (
+          {starter && (
             <p className="fr-fold__start">
-              Get started with{" "}
-              {starters.map((c, i) => (
-                <span key={c.type}>
-                  {i > 0 && (i === starters.length - 1 ? " or " : ", ")}
-                  <button type="button" className="fr-card__crumb-link fr-fold__start-link" onClick={() => onCard(c)}>{c.label}</button>
-                </span>
-              ))}
-              .
+              Get started with {/[a-z]/.test(starter.label) ? "the " : ""}
+              <button type="button" className="fr-card__crumb-link fr-fold__start-link" onClick={() => onCard(starter)}>{starter.label}</button>.
             </p>
           )}
         </div>
