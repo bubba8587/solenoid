@@ -24,20 +24,13 @@ import { SocketComponent } from "./SocketComponent";
 import { SegToggle } from "./SegToggle";
 import { ChevronLeftIcon } from "./Icons";
 import { openPackSettings } from "../Settings";
+import { FolderPage } from "./FolderPage";
 import "./nodeCard.css";
 import type { GraphNode } from "../graphModel";
 
 /** An op or formula row's leaf ("list-smooth__op-gaussian") belongs to its host card. */
 const cardTypeOf = (leaf: NodeCatalogEntry) => leaf.type.split("__")[0];
 
-// What an empty field does, as the card draws it: the field itself, its placeholder upright for a Fallback, in brackets
-// for a Behavior, italic for an Example, and blank for Required.
-const EMPTY_KIND: Record<EmptyFieldShown["kind"], { name: string; means: string }> = {
-  fallback: { name: "Fallback", means: "Left empty, the card computes with this value." },
-  behavior: { name: "Behavior", means: "Left empty, the card does this instead." },
-  example: { name: "Example", means: "A hint only: the card computes nothing from it, so type a value." },
-  required: { name: "Required", means: "Left empty, the card shows an error until it gets a value." },
-};
 
 export function CardReference() {
   const cards = useMemo(() => buildCardReference(), []);
@@ -104,13 +97,24 @@ export function CardReference() {
   // Pages reached by a link inside a page, so Back retraces them.
   const [trail, setTrail] = useState<NodeCatalogEntry[]>([]);
   const pick = (leaf: NodeCatalogEntry) => { setStartOp(null); setTrail([]); setPicked(leaf); };
-  // The open folder's color, worn by the navigator's top row as the landing's folder header wears it.
+  // The navigator wears the open card's color, as the page does, or with no card open the open folder's.
   const navMode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
+  const openFolder = useMemo(() => {
+    let entries: CatalogEntry[] = catalog;
+    let folder: CatalogCategory | null = null;
+    for (const i of stack) {
+      const e = entries[i];
+      if (!e || e.type !== "category") break;
+      folder = e as CatalogCategory;
+      entries = folder.children;
+    }
+    return folder;
+  }, [catalog, stack]);
   const navAccent = useMemo(() => {
+    if (picked) { try { return nodeAccent(picked.create() as GraphNode, navMode); } catch { /* fall through to the folder */ } }
     if (pack) return folderAccent(packCards, navMode);
-    const top = stack.length ? catalog[stack[0]] : null;
-    return top ? folderAccent(leavesUnder(top), navMode) : null;
-  }, [pack, packCards, stack, catalog, navMode]);
+    return openFolder ? folderAccent(leavesUnder(openFolder), navMode) : null;
+  }, [picked, pack, packCards, openFolder, navMode]);
   const follow = (leaf: NodeCatalogEntry) => {
     if (picked) setTrail([...trail, picked]);
     setStartOp(null);
@@ -131,9 +135,18 @@ export function CardReference() {
     return byLabel.get(name.toLowerCase()) ?? null;
   };
   const card = selected ? byType.get(selected) ?? null : null;
+  const topFolder = !q && !pack && stack.length ? catalog[stack[0]] : null;
+  // A crumb's folder: the navigator opens it, and the page shows that folder's top level.
+  const openPath = (depth: number) => {
+    if (!picked) return;
+    const full = drillStackTo(catalog, cardTypeOf(picked)) ?? [];
+    setPack(null);
+    setStack(full.slice(0, depth + 1));
+    setPicked(null);
+  };
   // Each page opens at its top, not where the last one was scrolled to.
   const pageRef = useRef<HTMLElement>(null);
-  useLayoutEffect(() => { pageRef.current?.scrollTo({ top: 0 }); }, [picked]);
+  useLayoutEffect(() => { pageRef.current?.scrollTo({ top: 0 }); }, [picked, topFolder]);
 
   return (
     <div className={`fr-cards${card ? " fr-cards--page" : ""}`}>
@@ -164,7 +177,7 @@ export function CardReference() {
             results.length === 0
               ? <div className="solenoid-add-menu__empty">Nothing matches “{q}”.</div>
               : results.map((leaf, i) => (
-                <LeafRow key={leaf.type} leaf={leaf} active={picked ? picked.type === leaf.type : i === active} dim={false} onSelect={() => { setActive(i); pick(leaf); }} />
+                <LeafRow key={leaf.type} leaf={leaf} active={i === active} dim={false} onSelect={() => { setActive(i); pick(leaf); }} />
               ))
           ) : pack ? (
             packCards.map((leaf) => (
@@ -189,13 +202,17 @@ export function CardReference() {
             key={`${picked!.type}#${startOp ?? ""}`}
             card={card} leaf={picked!} startOp={startOp} packName={packName}
             onBack={() => setPicked(null)}
+            backLabel={openFolder?.label ?? "Cards"}
+            onPath={openPath}
             backTo={trail.length ? byType.get(cardTypeOf(trail[trail.length - 1]))?.label ?? null : null}
             onRetrace={back}
             resolve={resolve}
             onFollow={follow}
           />
         ) : (
-          <Landing catalog={catalog} onCard={pick} onFolder={(i) => setStack([i])} />
+          topFolder && topFolder.type === "category"
+            ? <FolderPage folder={topFolder as CatalogCategory} accentStyle={accentVars(folderAccent(leavesUnder(topFolder), navMode))} onCard={pick} />
+            : <Landing catalog={catalog} onCard={pick} onFolder={(i) => { setPack(null); setStack([i]); }} />
         )}
       </section>
     </div>
@@ -211,9 +228,23 @@ function leavesUnder(e: CatalogEntry): NodeCatalogEntry[] {
   return (e as NodeCatalogEntry).hidden ? [] : [e as NodeCatalogEntry];
 }
 
-/** A folder's color: its first card's, as that card's header wears it. */
+/** A folder's color: the one most of its cards wear, so one stray card's color never stands for the folder. */
+const _cardAccent = new Map<string, string | null>();
+function cardAccent(c: NodeCatalogEntry, mode: "dark" | "light"): string | null {
+  const key = `${mode}:${c.type}`;
+  if (!_cardAccent.has(key)) {
+    let a: string | null = null;
+    try { a = nodeAccent(c.create() as GraphNode, mode); } catch { /* a card that fails to build has no say */ }
+    _cardAccent.set(key, a);
+  }
+  return _cardAccent.get(key)!;
+}
 function folderAccent(cards: NodeCatalogEntry[], mode: "dark" | "light"): string | null {
-  try { return cards[0] ? nodeAccent(cards[0].create() as GraphNode, mode) : null; } catch { return null; }
+  const count = new Map<string, number>();
+  for (const c of cards) { const a = cardAccent(c, mode); if (a) count.set(a, (count.get(a) ?? 0) + 1); }
+  let best: string | null = null;
+  for (const [a, n] of count) if (!best || n > count.get(best)!) best = a;
+  return best;
 }
 
 /** The color vars a surface in that color publishes, as NodeCard does. */
@@ -223,7 +254,7 @@ function accentVars(accent: string | null): React.CSSProperties | undefined {
     : undefined;
 }
 
-/** The landing: every top-level folder in its cards' color, with its count and first cards, then the legend. */
+/** The landing: every top-level folder in its cards' color, with its first cards. */
 function Landing({ catalog, onCard, onFolder }: {
   catalog: CatalogEntry[]; onCard: (leaf: NodeCatalogEntry) => void; onFolder: (i: number) => void;
 }) {
@@ -242,14 +273,14 @@ function Landing({ catalog, onCard, onFolder }: {
           <section key={f.label} className="fr-land__folder"
             style={accentVars(f.accent)}>
             <button type="button" className="fr-land__head" onClick={() => onFolder(f.i)} title="Open this folder">
-              <span>{f.label}</span><span className="fr-land__count">{f.cards.length}</span>
+              <span>{f.label}</span>
             </button>
             <div className="fr-land__cards">
               {f.cards.slice(0, 9).map((c) => (
                 <button key={c.type} type="button" className="fr-land__card" onClick={() => onCard(c)}>{c.label}</button>
               ))}
               {f.cards.length > 9 && (
-                <button type="button" className="fr-land__more" onClick={() => onFolder(f.i)}>{f.cards.length - 9} more ›</button>
+                <button type="button" className="fr-land__more" onClick={() => onFolder(f.i)}>{f.cards.length - 9}&nbsp;more&nbsp;›</button>
               )}
             </div>
           </section>
@@ -259,8 +290,9 @@ function Landing({ catalog, onCard, onFolder }: {
   );
 }
 
-function CardPage({ card, leaf, startOp, packName, onBack, backTo, onRetrace, resolve, onFollow }: {
+function CardPage({ card, leaf, startOp, packName, onBack, backLabel, onPath, backTo, onRetrace, resolve, onFollow }: {
   card: CardRef; leaf: NodeCatalogEntry; startOp: string | null; packName: Map<string, string>; onBack: () => void;
+  backLabel: string; onPath: (depth: number) => void;
   backTo: string | null; onRetrace: () => void;
   resolve: (text: string) => NodeCatalogEntry | null; onFollow: (leaf: NodeCatalogEntry) => void;
 }) {
@@ -315,14 +347,19 @@ function CardPage({ card, leaf, startOp, packName, onBack, backTo, onRetrace, re
   };
 
   const hasFormulas = !!ownFormula || card.excel.length > 0 || card.formulas.length > 0 || card.operators.length > 0;
-  const where = card.path[0] === "Packs"
-    ? `${card.packs.map((p) => packName.get(p) ?? p).join(", ")} pack${card.path.length > 2 ? ` ▸ ${card.path.slice(2).join(" ▸ ")}` : ""}`
-    : `${card.path.join(" ▸ ")}${card.packs.length ? ` · ${card.packs.map((p) => packName.get(p) ?? p).join(", ")} pack` : ""}`;
-  const hasRail = !!modeMeta || card.ops.length > 0 || examples.length > 0;
+  const description = useMemo(() => proseOf(card.description, hasFormulas, [ownFormula, ...card.operators]), [card, hasFormulas, ownFormula]);
+  // The folders: each opens in the navigator. A pack card's path starts at its pack, which links to Settings instead.
+  const inPack = card.path[0] === "Packs";
+  const folders = inPack ? card.path.slice(2) : card.path;
+  const packLabel = card.packs.length ? `${card.packs.map((p) => packName.get(p) ?? p).join(", ")} pack` : null;
+  // Examples alone don't earn a column: they join the main one.
+  const hasRail = !!modeMeta || card.ops.length > 0;
 
   return (
-    <article className="fr-card" style={accent ? ({ "--node-accent": accent, "--node-accent-ink": contrastInk(accent) } as React.CSSProperties) : undefined}>
-      <button type="button" className="fr-card__back" onClick={onBack}>‹ Cards</button>
+    <article className="fr-card" style={accentVars(accent)}>
+      <div className="solenoid-add-menu__item solenoid-add-menu__item--back fr-card__back" onClick={onBack}>
+        <ChevronLeftIcon size={14} /><span>{backLabel}</span>
+      </div>
       <header className="fr-card__head">
         {backTo && <button type="button" className="fr-card__retrace" onClick={onRetrace}>‹ {backTo}</button>}
         <div className="fr-card__head-row">
@@ -331,15 +368,19 @@ function CardPage({ card, leaf, startOp, packName, onBack, backTo, onRetrace, re
             onClick={() => { void addNodeFrom(make); frStore.close(); }}>Add to Canvas</button>
         </div>
         <div className="fr-card__crumb">
-          {card.packs.length > 0
-            ? <button type="button" className="fr-card__pack-link" title="Open this pack in Settings"
-                onClick={() => { frStore.close(); openPackSettings(card.packs[0]); }}>{where} ›</button>
-            : <span>{where}</span>}
+          {inPack && packLabel && <PackLink id={card.packs[0]} label={packLabel} />}
+          {folders.map((f, i) => (
+            <span key={i} className="fr-card__crumb-part">
+              {(i > 0 || inPack) && <span className="fr-card__crumb-sep" aria-hidden="true">▸</span>}
+              <button type="button" className="fr-card__crumb-link" onClick={() => onPath(inPack ? i + 2 : i)}>{f}</button>
+            </span>
+          ))}
+          {!inPack && packLabel && <><span className="fr-card__crumb-sep" aria-hidden="true">·</span><PackLink id={card.packs[0]} label={packLabel} /></>}
         </div>
       </header>
 
-      {card.description && (
-        <p ref={descRef} className="fr-card__desc" onClick={onDescClick} dangerouslySetInnerHTML={{ __html: descriptionHtml(card.description) }} />
+      {description && (
+        <p ref={descRef} className="fr-card__desc" onClick={onDescClick} dangerouslySetInnerHTML={{ __html: descriptionHtml(description) }} />
       )}
 
       <div className={`fr-card__body${hasRail ? "" : " fr-card__body--solo"}`}>
@@ -374,6 +415,16 @@ function CardPage({ card, leaf, startOp, packName, onBack, backTo, onRetrace, re
               ))}
             </Section>
           )}
+            {examples.length > 0 && (
+            <Section title="Examples">
+              <div className="fr-card__links">
+                {examples.slice(0, 8).map((ex) => (
+                  <button key={ex.id} type="button" className="fr-card__link" title="Open this example in a new tab"
+                    onClick={() => { frStore.close(); void documentStore.newFromTemplate(ex.id); }}>{ex.label}&nbsp;›</button>
+                ))}
+              </div>
+            </Section>
+          )}
         </div>
 
         {hasRail && (
@@ -399,21 +450,31 @@ function CardPage({ card, leaf, startOp, packName, onBack, backTo, onRetrace, re
                 </div>
               </Section>
             )}
-            {examples.length > 0 && (
-              <Section title="Examples">
-                <div className="fr-card__links">
-                  {examples.slice(0, 8).map((ex) => (
-                    <button key={ex.id} type="button" className="fr-card__link" title="Open this example in a new tab"
-                      onClick={() => { frStore.close(); void documentStore.newFromTemplate(ex.id); }}>{ex.label} ›</button>
-                  ))}
-                </div>
-              </Section>
-            )}
           </aside>
         )}
       </div>
     </article>
   );
+}
+
+/** A card's pack, linking to its row in Settings, where it turns on and off. */
+function PackLink({ id, label }: { id: string; label: string }) {
+  return (
+    <button type="button" className="fr-card__crumb-link" title="Open this pack in Settings"
+      onClick={() => { frStore.close(); openPackSettings(id); }}>{label}</button>
+  );
+}
+
+/** The description without what the page already shows: a closing "Excel: …" or "Formulas: …" when the Formulas
+ *  section lists them, an "(in Excel you'd write …)" aside, and a description that is only the card's formula. */
+function proseOf(text: string | undefined, hasFormulas: boolean, formulas: (string | null)[]): string | null {
+  if (!text) return null;
+  let t = text.replace(/\s*\(in Excel you'd write [^)]*\)/i, "");
+  if (hasFormulas) t = t.replace(/\s*(?:Excel|Formulas):[^]*$/, "");
+  t = t.trim();
+  const bare = (x: string) => x.replace(/[`\s.]/g, "").replace(/[−]/g, "-").replace(/[×]/g, "*").toLowerCase();
+  if (formulas.some((f) => f && bare(f) === bare(t))) return null;
+  return t || null;
 }
 
 /** A formula line; the code copies on click. */
@@ -431,15 +492,15 @@ function FxRow({ text, note, on, copied, onCopy }: {
   );
 }
 
-/** An empty field as the card draws it: the card's own inline input, its placeholder styled by kind. */
-function EmptyField({ kind, shown }: { kind: EmptyFieldShown["kind"]; shown?: string }) {
+/** An empty field as the card draws it, shown only when it has a value to show: the card's own inline input. */
+function EmptyField({ kind, shown }: { kind: EmptyFieldShown["kind"]; shown: string }) {
   return (
     <input
       readOnly
       tabIndex={-1}
       className={`solenoid-node__inline-input fr-card__field${kind === "example" ? " sol-placeholder-example" : ""}`}
-      placeholder={kind === "required" ? "" : shown ?? ""}
-      aria-label={EMPTY_KIND[kind].name}
+      placeholder={shown}
+      aria-hidden="true"
     />
   );
 }
@@ -464,7 +525,7 @@ function SocketLine({ node, sockKey, label, socket, empty, doc: given, unit }: {
         <span className="fr-card__sock-dot" title={t ? SOCKET_TYPE_LABELS[t] : undefined}>{socket instanceof SolenoidSocket && <SocketComponent data={socket} />}</span>
         <span className="fr-card__sock-name">{label}</span>
         {unit && <span className="fr-card__sock-type">{unit}</span>}
-        {empty && <span className="fr-card__empty"><EmptyField kind={empty.kind} shown={empty.shown} /></span>}
+        {empty?.shown && empty.kind !== "required" && <span className="fr-card__empty"><EmptyField kind={empty.kind} shown={empty.shown} /></span>}
       </div>
       {doc && <div className="fr-card__sock-doc">{doc}</div>}
     </div>

@@ -162,8 +162,8 @@ export function FolderPage({ folder, accentStyle, onCard }: {
       </header>
       {story && (
         <div className="fr-fold__story">
-          {story.shape && <div className="fr-fold__shape">{story.shape()}</div>}
           <p className="fr-card__desc fr-fold__lede">{story.lede}</p>
+          {story.shape && <div className="fr-fold__shape">{story.shape()}</div>}
         </div>
       )}
       <div className="fr-fold__groups">

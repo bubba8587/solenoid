@@ -397,8 +397,8 @@
 }
 
 /* ─── Reference: the Add menu's navigator beside a card's page ─────────────── */
-/* The page wears its card's own color (--node-accent, as the card on the canvas does): a header band at the card's
-   header tint, filled active picks, accent captions and formula names. */
+/* The page wears its card's own color (--node-accent, as the card on the canvas does): one rule under the title,
+   the captions, the picked rows and the formula that answers the picked operation. */
 
 .fr-cards {
   flex: 1 1 auto;
@@ -426,12 +426,11 @@
   background: var(--surface);
 }
 
-/* The landing page */
 
 
 /* A card's page */
 .fr-card { --pad: 28px; }
-.fr-card__back { display: none; }
+.fr-card .fr-card__back { display: none; }
 .fr-card__head {
   padding: 18px var(--pad) 12px;
   border-bottom: 2px solid var(--node-accent, var(--accent));
@@ -472,8 +471,8 @@
   max-width: 760px;
   margin: 0;
   padding: 16px var(--pad) 0;
-  font-size: 13.5px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.55;
   color: var(--text);
   text-wrap-style: pretty;
 }
@@ -534,7 +533,7 @@
   margin: 0 -8px;
   border-radius: 4px;
 }
-.fr-card__fx:hover { background: var(--surface-raised); }
+
 .fr-card__fx-code {
   padding: 0;
   border: 0;
@@ -545,8 +544,8 @@
   overflow-wrap: anywhere;
 }
 .fr-card__fx-code code { color: var(--text-bright); }
-.fr-card__fx--on { background: color-mix(in srgb, var(--node-accent, var(--accent)) 18%, transparent); }
-.fr-card__fx--on .fr-card__fx-code code { color: var(--node-accent, var(--accent)); font-weight: 600; }
+
+.fr-card__fx--on .fr-card__fx-code code { color: var(--node-accent, var(--accent)); font-weight: 700; }
 .fr-card__fx-copied { font-size: 11px; color: var(--sol-ok); font-weight: 600; }
 .fr-card__fx-note {
   grid-column: 1 / -1;
@@ -573,26 +572,20 @@
   cursor: pointer;
 }
 .fr-card__link:hover { text-decoration: underline; }
+.fr-card__link { color: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-ink), var(--text)); }
 
 /* Narrow: the navigator and the page take turns, and the rail drops under the page. */
 @media (max-width: 980px) {
   .fr-card__body { grid-template-columns: minmax(0, 1fr); }
+  /* The operation and mode lead, as a card hoists its op above the inputs it shapes. */
+  .fr-card__rail { order: -1; }
 }
 @media (max-width: 720px) {
   .fr-cards { grid-template-columns: 1fr; }
   .fr-cards--page .fr-nav { display: none; }
   .fr-cards:not(.fr-cards--page) .fr-page { display: none; }
   .fr-card { --pad: 16px; }
-  .fr-card__back {
-    display: block;
-    padding: 10px var(--pad) 8px;
-    border: 0;
-    background: none;
-    color: var(--text);
-    font: inherit;
-    font-size: 13px;
-    cursor: pointer;
-  }
+  .fr-card .fr-card__back { display: flex; margin: 10px var(--pad) 0; }
 }
 
 /* The landing: a folder per block, each in its cards' color */
@@ -641,29 +634,23 @@
   cursor: pointer;
 }
 .fr-land__card:hover { color: var(--node-accent, var(--accent)); text-decoration: underline; }
-.fr-land__more { color: var(--node-accent, var(--accent)); font-weight: 600; }
-.fr-page__legend { margin-top: 26px; max-width: 560px; }
+.fr-land__more { color: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-ink), var(--text)); font-weight: 600; white-space: nowrap; }
+
 
 /* The reused pieces, sized for the page: the input card's edit button, the Settings switch, the card's own field. */
 .fr-card__add { display: inline-block; width: auto; margin: 0 0 0 auto; padding: 5px 18px; font-size: 12px; }
-.fr-card__pack-link {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-}
-.fr-card__pack-link:hover { color: var(--node-accent, var(--accent)); text-decoration: underline; }
+
+
 .fr-card__empty { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
 .fr-card__field { flex: none; width: 84px; pointer-events: none; }
 .fr-card__ops-list { display: flex; flex-direction: column; margin: 0 -8px; font-size: 12px; }
-.fr-land__count { font-size: 11px; font-weight: 400; color: var(--text-dim); }
+
 :root[data-theme="light"] .fr-land__head { box-shadow: inset 0 -1px 0 var(--node-accent-dark, var(--border)); }
 
 /* The navigator's top row inside a folder is that folder, drawn as the Navigator draws a group's row
-   (OutlinePanel.css): its color at 24% as the fill and 55% as a 1px inset edge, the name in semibold. */
-.fr-nav__list .solenoid-add-menu__item--back {
+   (OutlinePanel.tsx's group fill and --group-edge: the color at 24% and 55%), the name in semibold. */
+.fr-nav__list .solenoid-add-menu__item--back,
+.fr-card__back.solenoid-add-menu__item--back {
   justify-content: flex-start;
   gap: 8px;
   margin-bottom: 4px;
@@ -674,7 +661,8 @@
   color: var(--text-bright);
   font-weight: 600;
 }
-.fr-nav__list .solenoid-add-menu__item--back:hover {
+.fr-nav__list .solenoid-add-menu__item--back:hover,
+.fr-card__back.solenoid-add-menu__item--back:hover {
   background: color-mix(in srgb, var(--node-accent, var(--border-strong)) 24%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--node-accent, var(--border-strong)) 55%, transparent), inset 0 0 0 100vmax rgba(255, 255, 255, 0.08);
 }
@@ -686,15 +674,9 @@
   color: var(--node-accent, var(--accent));
 }
 .fr-fold__icon .solenoid-socket, .fr-fold__icon > * { transform: scale(1.6); transform-origin: center; }
-.fr-fold__story {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 18px 32px;
-  padding: 18px var(--pad) 4px;
-}
-.fr-fold__shape { flex: none; }
-.fr-fold__lede { flex: 1 1 320px; max-width: 620px; padding: 0; }
+.fr-fold__story { padding: 16px var(--pad) 4px; }
+.fr-fold__lede { max-width: 720px; padding: 0; }
+.fr-fold__shape { margin-top: 14px; }
 .fr-fold__value { display: inline-flex; align-items: center; gap: 6px; }
 .fr-fold__sock { display: inline-flex; }
 .fr-fold__unit { color: var(--node-accent, var(--accent)); }
@@ -740,6 +722,27 @@
 .fr-fold__grid--nested .fr-fold__cell { min-height: 18px; padding: 1px 6px; font-size: 11px; }
 .fr-fold__pair { display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: flex-start; }
 .fr-fold__caption { margin-top: 6px; max-width: 300px; font-size: 12px; color: var(--text-dim); text-wrap-style: pretty; }
-.fr-fold__groups { padding: 0 var(--pad) 40px; columns: 2 300px; column-gap: 36px; }
+.fr-fold__groups { padding: 4px var(--pad) 40px; columns: 2 300px; column-gap: 36px; }
+.fr-fold__groups > .fr-card__section:first-child { margin-top: 16px; }
 .fr-fold__groups .fr-card__section { break-inside: avoid; }
 .fr-fold__cards { display: flex; flex-wrap: wrap; gap: 2px 12px; }
+
+/* A picked row wears its card's color, not the app's (DESIGN.md § Nearest-Accent Rule), at the Add menu's wash. */
+.fr-cards .solenoid-add-menu__item--active,
+.fr-cards .solenoid-add-menu__item--active:hover { background: color-mix(in srgb, var(--node-accent, var(--accent)) 22%, transparent); }
+
+.fr-card__crumb-part { display: inline-flex; align-items: center; gap: 6px; }
+.fr-card__crumb-sep { color: var(--text-muted); }
+.fr-card__crumb-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.fr-card__crumb-link:hover { color: var(--node-accent, var(--accent)); text-decoration: underline; }
+
+/* The page names a card's operations and pack, so the navigator drops the Add menu's marks for them. */
+.fr-nav .solenoid-add-menu__ops-mark,
+.fr-nav .solenoid-add-menu__pack-dot { display: none; }
