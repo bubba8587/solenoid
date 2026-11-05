@@ -571,7 +571,9 @@ html.hdr-case-proper .fr-land__head > span { text-transform: capitalize; }
   text-transform: uppercase;
   color: var(--accent);
 }
-.fr-xl__arrow { display: block; justify-self: center; }
+/* EXCEL and its arrow span the name and spacer columns, the arrow centered in the gap before SOLENOID. */
+.fr-xl__from { grid-column: 1 / 3; display: flex; align-items: center; margin-right: -12px; }
+.fr-xl__arrow { display: block; margin: 0 auto; }
 .fr-xl__scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 28px 40px; }
 .fr-xl__group { max-width: 640px; }
 /* Each section's caption rides the top of the list while its rows scroll under it. */

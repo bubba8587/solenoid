@@ -122,7 +122,7 @@ export function ExcelCoverage() {
             {counts.map((c) => <span key={c.key}><i className={`fr-xl__dot fr-xl__dot--${c.key}`} />{c.n} {c.label}</span>)}
           </div>
           <div className="fr-xl__cols-head" aria-hidden="true">
-            <span>Excel</span><ChunkyArrow /><span>Solenoid</span>
+            <span className="fr-xl__from">Excel<ChunkyArrow /></span><span>Solenoid</span>
           </div>
         </div>
         <div className="fr-xl__scroll" ref={scrollRef} onScroll={spy}>
