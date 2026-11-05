@@ -582,3 +582,51 @@ button.fr-card__op:disabled { cursor: default; }
 .fr-page__legend { margin-top: 22px; }
 .fr-page__legend-row { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
 .fr-page__legend-row .fr-card__empty { margin-left: 0; min-width: 72px; text-align: center; }
+.fr-card__fx-code {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: copy;
+}
+.fr-card__fx-code:hover code { text-decoration: underline; text-decoration-color: var(--text-muted); text-underline-offset: 3px; }
+button.fr-card__fx-via {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+button.fr-card__fx-via:hover { color: var(--accent); }
+.fr-card__fx-copied { color: var(--accent); }
+.fr-xref {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--text-muted);
+  text-underline-offset: 3px;
+}
+.fr-xref:hover { color: var(--accent); text-decoration-color: var(--accent); }
+.fr-card__retrace {
+  margin-bottom: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.fr-card__retrace:hover { color: var(--accent); }
+.fr-card__turn-on {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.fr-card__turn-on:hover { border-color: var(--accent); color: var(--text-bright); }

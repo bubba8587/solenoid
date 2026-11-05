@@ -177,9 +177,13 @@ export function searchLeaves(leaves: LeafWithContext[], query: string): NodeCata
     if (score !== null) scored.push({ leaf: lc.leaf, score });
   }
   scored.sort((a, b) => b.score - a.score);
+  // A strong hit leaves the stray letter-by-letter matches far below it (MEDIANSMOOTH also "found" Truncate Date at
+  // 1% of its score); a weak best match, as from a typo, keeps everything.
+  const floor = (scored[0]?.score ?? 0) * 0.04;
   const placed = new Set<string>();
   const out: NodeCatalogEntry[] = [];
-  for (const { leaf } of scored) {
+  for (const { leaf, score } of scored) {
+    if (score < floor) break;
     const key = leaf.places ?? leaf.type;
     if (placed.has(key)) continue;
     placed.add(key);

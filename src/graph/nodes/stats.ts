@@ -531,6 +531,8 @@ export const INTERPOLATE_MODE_META: Record<InterpolateMode, { label: string; tit
 
 
 export class InterpolateNode extends GraphNode {
+  /** The modes the card switches between; the Reference offers them as chips. */
+  static modeMeta = INTERPOLATE_MODE_META;
   static socketDocs: Record<string, string> = {
     ys: "In LIST mode pairs with Known Xs by position (a pair blank on either side is dropped); in GRID mode one Y coordinate per row, unwired means 1, 2, 3…",
     new_xs: "A query outside the known range clamps to the nearest end. Nothing extrapolates.",

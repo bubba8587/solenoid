@@ -237,6 +237,12 @@ function typeIndex(): Map<string, string> {
   return _typeIndex;
 }
 
+/** The catalog type a saved node's class and op stand for, as `catalogTypeOf` reads a live one. */
+export function catalogTypeFor(ctor: string, op?: unknown): string | null {
+  const idx = typeIndex();
+  return idx.get(`${ctor}::${typeof op === "string" ? op : ""}`) ?? idx.get(`${ctor}::`) ?? null;
+}
+
 export function catalogTypeOf(node: object): string | null {
   const idx = typeIndex();
   const ctor = (node as { constructor: { name: string } }).constructor.name;

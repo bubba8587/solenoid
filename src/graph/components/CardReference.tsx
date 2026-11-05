@@ -1,12 +1,14 @@
 // [[B16]] oneFormulaSurface, [[D96]] emptySlotShowsItsValue, [[C73]] inspectorIsStatic
 // The Reference: the Add menu's own tree and search on the left, a card's page on the right, built from what the card
 // and the catalog already declare. Nothing here is hand-kept.
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { frStore } from "../frStore";
 import { buildCardReference, type CardRef } from "../functionReference";
 import { addNodeFrom, buildCatalog } from "../catalogUtils";
 import { flattenLeaves, searchLeaves } from "../catalogSearch";
 import { formulaHomes } from "../formulaCards";
+import { examplesUsing } from "../cardExamples";
+import { documentStore } from "../documentStore";
 import { allPacks, packsStore } from "../packs";
 import { DrillMenu, LeafRow, drillStackTo, type NodeCatalogEntry } from "../AddNodeMenu";
 import { IS_COARSE } from "../coarse";
@@ -90,8 +92,32 @@ export function CardReference() {
     [pack, leaves],
   );
 
-  const pick = (leaf: NodeCatalogEntry) => { setStartOp(null); setPicked(leaf); };
+  // Pages reached by a link inside a page, so Back retraces them.
+  const [trail, setTrail] = useState<NodeCatalogEntry[]>([]);
+  const pick = (leaf: NodeCatalogEntry) => { setStartOp(null); setTrail([]); setPicked(leaf); };
+  const follow = (leaf: NodeCatalogEntry) => {
+    if (picked) setTrail([...trail, picked]);
+    setStartOp(null);
+    setPicked(leaf);
+    setStack(drillStackTo(catalog, cardTypeOf(leaf)) ?? stack);
+  };
+  const back = () => { setStartOp(null); setPicked(trail[trail.length - 1] ?? null); setTrail(trail.slice(0, -1)); };
+  // A name in a page's prose that has a page: a formula ("MMULT") or a card label ("Frame Filter").
+  const byLabel = useMemo(() => {
+    const m = new Map<string, NodeCatalogEntry>();
+    for (const l of leaves) if (!l.leaf.type.includes("__") && !m.has(l.leaf.label.toLowerCase())) m.set(l.leaf.label.toLowerCase(), l.leaf);
+    return m;
+  }, [leaves]);
+  const resolve = (text: string): NodeCatalogEntry | null => {
+    const name = text.replace(/^=/, "").replace(/\(.*$/, "").trim();
+    const home = formulaHomes().get(name.toUpperCase());
+    if (home) return leaves.find((l) => l.leaf.type === home.type)?.leaf ?? null;
+    return byLabel.get(name.toLowerCase()) ?? null;
+  };
   const card = selected ? byType.get(selected) ?? null : null;
+  // Each page opens at its top, not where the last one was scrolled to.
+  const pageRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => { pageRef.current?.scrollTo({ top: 0 }); }, [picked]);
 
   return (
     <div className={`fr-cards${card ? " fr-cards--page" : ""}`}>
@@ -140,9 +166,17 @@ export function CardReference() {
           )}
         </div>
       </nav>
-      <section className="fr-page">
+      <section className="fr-page" ref={pageRef}>
         {card ? (
-          <CardPage key={`${picked!.type}#${startOp ?? ""}`} card={card} leaf={picked!} startOp={startOp} packName={packName} onBack={() => setPicked(null)} />
+          <CardPage
+            key={`${picked!.type}#${startOp ?? ""}`}
+            card={card} leaf={picked!} startOp={startOp} packName={packName}
+            onBack={() => setPicked(null)}
+            backTo={trail.length ? byType.get(cardTypeOf(trail[trail.length - 1]))?.label ?? null : null}
+            onRetrace={back}
+            resolve={resolve}
+            onFollow={follow}
+          />
         ) : (
           <div className="fr-page__intro">
             <p>Every card, with the formulas that do the same job, its fields and what an empty one does, and where it comes from in Excel, numpy, scipy or R.</p>
@@ -163,16 +197,25 @@ export function CardReference() {
   );
 }
 
-function CardPage({ card, leaf, startOp, packName, onBack }: {
+type ModeMeta = Record<string, { label: string; title?: string }>;
+
+function CardPage({ card, leaf, startOp, packName, onBack, backTo, onRetrace, resolve, onFollow }: {
   card: CardRef; leaf: NodeCatalogEntry; startOp: string | null; packName: Map<string, string>; onBack: () => void;
+  backTo: string | null; onRetrace: () => void;
+  resolve: (text: string) => NodeCatalogEntry | null; onFollow: (leaf: NodeCatalogEntry) => void;
 }) {
   useSyncExternalStore(packsStore.subscribe, packsStore.version);
-  // A card with ops shows the one picked; its chips switch it.
+  // A card with ops shows the one picked, and one with modes (List / Grid) the mode picked; chips switch both.
   const [opPick, setOpPick] = useState<string | null>(startOp);
-  const make = useMemo(
-    () => (opPick && card.createOp ? () => card.createOp!(opPick) : leaf.create),
-    [opPick, card, leaf],
-  );
+  const [modePick, setModePick] = useState<string | null>(null);
+  const make = useMemo(() => {
+    const base = opPick && card.createOp ? () => card.createOp!(opPick) : leaf.create;
+    if (!modePick) return base;
+    return () => {
+      const n = base() as { op?: string; constructor: new (init: object) => unknown };
+      return new n.constructor({ ...(n.op ? { op: n.op } : {}), mode: modePick });
+    };
+  }, [opPick, modePick, card, leaf]);
   // A fresh card, as the Add menu would drop it: its sockets and empty fields are the page's Inputs and Outputs.
   const node = useMemo(() => {
     try { return make() as GraphNode; } catch { return null; }
@@ -184,10 +227,36 @@ function CardPage({ card, leaf, startOp, packName, onBack }: {
   const preset = node as { locked?: boolean; expr?: string; varDescriptions?: Record<string, string>; varUnits?: Record<string, string> } | null;
   const ownFormula = preset?.locked && preset.expr ? preset.expr : null;
   const packOff = card.packs.length > 0 && !card.packs.some((p) => packsStore.isActive(p));
+  const examples = useMemo(() => examplesUsing(card.type), [card]);
+  const modeMeta = (node?.constructor as { modeMeta?: ModeMeta } | undefined)?.modeMeta;
+  const mode = (node as { mode?: string } | null)?.mode;
+
+  // Code spans in the prose that name a formula or card become links to its page.
+  const descRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    for (const el of descRef.current?.querySelectorAll("code") ?? []) {
+      const target = resolve(el.textContent ?? "");
+      if (target && cardTypeOf(target) !== card.type) el.classList.add("fr-xref");
+    }
+  }, [card, resolve]);
+  const onDescClick = (e: React.MouseEvent) => {
+    const el = (e.target as HTMLElement).closest("code.fr-xref");
+    const target = el && resolve(el.textContent ?? "");
+    if (target) onFollow(target);
+  };
+
+  const [copied, setCopied] = useState<string | null>(null);
+  const copy = (text: string) => {
+    void navigator.clipboard?.writeText(text).then(() => {
+      setCopied(text);
+      window.setTimeout(() => setCopied((c) => (c === text ? null : c)), 1200);
+    }).catch(() => {});
+  };
 
   return (
     <article className="fr-card">
       <button type="button" className="fr-card__back" onClick={onBack}>‹ Cards</button>
+      {backTo && <button type="button" className="fr-card__retrace" onClick={onRetrace}>‹ {backTo}</button>}
       <header className="fr-card__head">
         <h2 className="fr-card__title">{card.label}</h2>
         <button
@@ -202,37 +271,43 @@ function CardPage({ card, leaf, startOp, packName, onBack }: {
           ? <>{card.packs.map((p) => packName.get(p) ?? p).join(", ")} pack{card.path.length > 2 ? ` ▸ ${card.path.slice(2).join(" ▸ ")}` : ""}</>
           : card.path.join(" ▸ ")}
         {card.path[0] !== "Packs" && card.packs.length > 0 && <>{" · "}{card.packs.map((p) => packName.get(p) ?? p).join(", ")} pack</>}
-        {packOff && <span className="fr-card__off"> · off, turn it on in Settings</span>}
+        {packOff && (
+          <>
+            <span className="fr-card__off"> · off</span>
+            <button type="button" className="fr-card__turn-on" onClick={() => packsStore.toggle(card.packs[0])}>Turn on</button>
+          </>
+        )}
       </div>
-      {card.description && <p className="fr-card__desc" dangerouslySetInnerHTML={{ __html: descriptionHtml(card.description) }} />}
+      {card.description && (
+        <p ref={descRef} className="fr-card__desc" onClick={onDescClick} dangerouslySetInnerHTML={{ __html: descriptionHtml(card.description) }} />
+      )}
 
       {(ownFormula || card.excel.length > 0 || card.formulas.length > 0 || card.operators.length > 0) && (
         <Section title="Formulas">
-          {ownFormula && (
-            <div className="fr-card__fx">
-              <code>{ownFormula}</code>
-              <span className="fr-card__fx-meta">this card’s formula</span>
-            </div>
-          )}
-          {card.operators.map((o) => (
-            <div key={o} className="fr-card__fx">
-              <code>{o}</code>
-              <span className="fr-card__fx-meta">operator</span>
-            </div>
-          ))}
+          {ownFormula && <FxRow text={ownFormula} meta="this card’s formula" copied={copied} onCopy={copy} />}
+          {card.operators.map((o) => <FxRow key={o} text={o} meta="operator" copied={copied} onCopy={copy} />)}
           {card.excel.map((e) => (
-            <div key={e.name} className="fr-card__fx">
-              <code>{e.syntax.replace(/^=/, "")}</code>
-              <span className="fr-card__fx-meta">Excel{e.parity ? "" : " · differs"}</span>
-              {(e.note || !e.parity) && <div className="fr-card__fx-note">{e.note ?? "Answers differ from Excel’s in some cases."}</div>}
-            </div>
+            <FxRow key={e.name} text={e.syntax.replace(/^=/, "")} meta={`Excel${e.parity ? "" : " · differs"}`} copied={copied} onCopy={copy}
+              note={e.note || !e.parity ? e.note ?? "Answers differ from Excel’s in some cases." : undefined} />
           ))}
-          {card.formulas.map((f) => (
-            <div key={f.name} className={`fr-card__fx${f.via && f.via === opLabel ? " fr-card__fx--on" : ""}`}>
-              <code>{f.name}({f.signature})</code>
-              {f.via && <span className="fr-card__fx-meta">{f.via}</span>}
-            </div>
-          ))}
+          {card.formulas.map((f) => {
+            const viaOp = card.createOp ? card.ops.find((o) => o.label === f.via)?.op : undefined;
+            return (
+              <FxRow key={f.name} text={`${f.name}(${f.signature})`} meta={f.via} on={!!f.via && f.via === opLabel}
+                copied={copied} onCopy={copy} onMeta={viaOp ? () => setOpPick(viaOp) : undefined} />
+            );
+          })}
+        </Section>
+      )}
+
+      {modeMeta && (
+        <Section title="Modes">
+          <div className="fr-card__ops">
+            {Object.entries(modeMeta).map(([m, meta]) => (
+              <button key={m} type="button" className={`fr-card__op${m === mode ? " fr-card__op--on" : ""}`}
+                title={meta.title} onClick={() => setModePick(m)}>{meta.label}</button>
+            ))}
+          </div>
         </Section>
       )}
 
@@ -272,6 +347,17 @@ function CardPage({ card, leaf, startOp, packName, onBack }: {
         </Section>
       )}
 
+      {examples.length > 0 && (
+        <Section title="See it in an example">
+          <div className="fr-card__ops">
+            {examples.slice(0, 8).map((ex) => (
+              <button key={ex.id} type="button" className="fr-card__op" title="Open this example in a new tab"
+                onClick={() => { frStore.close(); void documentStore.newFromTemplate(ex.id); }}>{ex.label}</button>
+            ))}
+          </div>
+        </Section>
+      )}
+
       {card.libs.filter((l) => l !== "Excel").length > 0 && (
         <Section title="Also known from">
           <div className="fr-card__ops">
@@ -280,6 +366,26 @@ function CardPage({ card, leaf, startOp, packName, onBack }: {
         </Section>
       )}
     </article>
+  );
+}
+
+/** A formula line: the code copies on click; the op name beside it switches the page to that op. */
+function FxRow({ text, meta, note, on, copied, onCopy, onMeta }: {
+  text: string; meta?: string; note?: string; on?: boolean;
+  copied: string | null; onCopy: (t: string) => void; onMeta?: () => void;
+}) {
+  return (
+    <div className={`fr-card__fx${on ? " fr-card__fx--on" : ""}`}>
+      <button type="button" className="fr-card__fx-code" onClick={() => onCopy(text)} title="Copy">
+        <code>{text}</code>
+      </button>
+      {copied === text
+        ? <span className="fr-card__fx-meta fr-card__fx-copied">Copied</span>
+        : meta && (onMeta
+          ? <button type="button" className="fr-card__fx-meta fr-card__fx-via" onClick={onMeta} title="Show the card set to this op">{meta}</button>
+          : <span className="fr-card__fx-meta">{meta}</span>)}
+      {note && <div className="fr-card__fx-note">{note}</div>}
+    </div>
   );
 }
 

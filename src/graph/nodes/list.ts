@@ -415,6 +415,8 @@ export const REVERSE_MODE_META: Record<ShapeMode, { label: string; title: string
 };
 
 export class ReverseNode extends GraphNode {
+  /** The modes the card switches between; the Reference offers them as chips. */
+  static modeMeta = REVERSE_MODE_META;
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: [this.mode === "grid" ? "grid" : "list"], combine: "single" }];
   label: string;
   mode: ShapeMode;
@@ -610,6 +612,8 @@ export const CONVOLVE_MODE_META: Record<ShapeMode, { label: string; title: strin
 };
 
 export class ConvolveNode extends GraphNode {
+  /** The modes the card switches between; the Reference offers them as chips. */
+  static modeMeta = CONVOLVE_MODE_META;
   static socketDocs: Record<string, string> = {
     a: "A blank counts as 0.",
     b: "The weights slid along A. On a grid, a small table: a 3 × 3 of 1/9 is a box blur, 1, 0, −1 across a row finds edges.",
@@ -695,6 +699,8 @@ export const TRAPZ_MODE_META: Record<ShapeMode, { label: string; title: string }
 };
 
 export class TrapzNode extends GraphNode {
+  /** The modes the card switches between; the Reference offers them as chips. */
+  static modeMeta = TRAPZ_MODE_META;
   static inputRoles = rolesFrom("TRAPZ", { dx: 1, dy: 2 });
   static socketDocs: Record<string, string> = {
     list: "Every value must be a number: a gap is #VALUE!, never skipped.",
@@ -1245,6 +1251,8 @@ export const DIFF_AXIS_META: Record<"down" | "across", { label: string; title: s
 };
 
 export class DiffNode extends GraphNode {
+  /** The modes the card switches between; the Reference offers them as chips. */
+  static modeMeta = DIFF_MODE_META;
   static socketDocs: Record<string, string> = {
     result: "Δ and % are one element shorter (change from the element before); ∇ and ∇² are the same length. On a grid, Δ and % are one row or column shorter along the chosen axis, and ∇² takes both axes at once.",
     grid: "A table of numbers. Down and Across ∇ grids are a Vector Field's two components.",
@@ -1649,6 +1657,8 @@ export const RANDARRAY_MODE_META: Record<ShapeMode, { label: string; title: stri
 };
 
 export class RandArrayNode extends GraphNode {
+  /** The modes the card switches between; the Reference offers them as chips. */
+  static modeMeta = RANDARRAY_MODE_META;
   static inputRoles = rolesFrom("RANDARRAY", { count: 0, rows: 0, cols: 1, min: 2, max: 3 });
   static socketDocs: Record<string, string> = {
     list: "Draws hold until a recalculation. A new Min or Max rescales the same draws rather than rerolling.",
@@ -1900,6 +1910,8 @@ export const SMOOTH_MODE_META: Record<ShapeMode, { label: string; title: string 
 };
 
 export class SmoothNode extends GraphNode {
+  /** The modes the card switches between; the Reference offers them as chips. */
+  static modeMeta = SMOOTH_MODE_META;
   static inputRoles = { window: setting(LEFT_OUT, "5"), order: setting(LEFT_OUT, "2"), frac: setting(LEFT_OUT, "0.67"), sigma: setting(LEFT_OUT, "1"), size: setting(LEFT_OUT, "3") };
   static socketDocs: Record<string, string> = {
     list: "Blank and error cells are skipped by the fits and stay blank in the result.",
@@ -1985,6 +1997,8 @@ export const FIND_PEAKS_MODE_META: Record<ShapeMode, { label: string; title: str
 };
 
 export class FindPeaksNode extends GraphNode {
+  /** The modes the card switches between; the Reference offers them as chips. */
+  static modeMeta = FIND_PEAKS_MODE_META;
   static inputRoles = { height: setting(LEFT_OUT, "none"), distance: setting(LEFT_OUT, "none"), prominence: setting(LEFT_OUT, "none") };
   static socketDocs: Record<string, string> = {
     result: "One row per local maximum that passes every filter: Position (1-based) and Height; on a grid, Row, Column and Height.",
