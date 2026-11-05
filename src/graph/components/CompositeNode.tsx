@@ -170,7 +170,7 @@ function DataTableEditor({ node }: { node: CompositeNodeType }) {
         <div key={p.id} className="solenoid-node__field-row solenoid-composite__row">
           <span className="solenoid-node__field-label" title={p.label}>{p.label}</span>
           <input
-            className="solenoid-node__inline-input"
+            className="solenoid-node__inline-input sol-placeholder-example"
             defaultValue={valuesToCsv(node.dataTableValues[p.id])}
             placeholder="for example, 1, 2, 3"
             onBlur={(e) => { node.setDataTableValues(p.id, parseCsvValues(e.target.value)); recompute(); }}
@@ -419,12 +419,12 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodePr
         </div>
         <div className="solenoid-node__field-row solenoid-composite__row">
           <span className="solenoid-node__field-label">Tolerance</span>
-          <InlineNumberField value={gs?.tolerance ?? 0} placeholder="1e-7" onChange={(v) => { node.setGoalSeek({ tolerance: v && v > 0 ? v : undefined }); recompute(); }} />
+          <InlineNumberField value={gs?.tolerance} placeholder="1e-7" onChange={(v) => { node.setGoalSeek({ tolerance: v && v > 0 ? v : undefined }); recompute(); }} />
         </div>
         <div className="solenoid-node__field-row solenoid-composite__row">
           <span className="solenoid-node__field-label">Bounds</span>
-          <InlineNumberField value={gs?.boundsLo ?? undefined} placeholder="lo" onChange={(v) => { node.setGoalSeek({ boundsLo: v ?? undefined }); recompute(); }} />
-          <InlineNumberField value={gs?.boundsHi ?? undefined} placeholder="hi" onChange={(v) => { node.setGoalSeek({ boundsHi: v ?? undefined }); recompute(); }} />
+          <InlineNumberField value={gs?.boundsLo ?? undefined} placeholder="[none]" onChange={(v) => { node.setGoalSeek({ boundsLo: v ?? undefined }); recompute(); }} />
+          <InlineNumberField value={gs?.boundsHi ?? undefined} placeholder="[none]" onChange={(v) => { node.setGoalSeek({ boundsHi: v ?? undefined }); recompute(); }} />
         </div>
       </CardSection>
       {result != null && node.outputs[outputId] && (

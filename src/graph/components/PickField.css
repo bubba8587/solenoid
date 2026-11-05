@@ -24,6 +24,7 @@
 }
 .sol-pick:disabled { cursor: default; opacity: 0.6; }
 .sol-pick--empty .sol-pick__text { color: var(--text-dim); }
+.sol-pick--empty.sol-pick--example .sol-pick__text { font-style: italic; }
 .sol-pick__text {
   flex: 1 1 auto;
   min-width: 0;

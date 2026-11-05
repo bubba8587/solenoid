@@ -4,9 +4,11 @@ import "./PickField.css";
 
 const stop = (e: React.SyntheticEvent) => e.stopPropagation();
 
-export function PickField({ value, placeholder, missing = false, title, disabled = false, onPick }: {
+export function PickField({ value, placeholder, example = false, missing = false, title, disabled = false, onPick }: {
   value: string;
   placeholder: string;
+  /** The placeholder is an Example, a prompt the card computes nothing from, set in italics ([[D96]] emptySlotShowsItsValue). */
+  example?: boolean;
   /** The pick no longer lists: it still shows, marked, so the selection isn't silently lost. */
   missing?: boolean;
   title?: string;
@@ -17,7 +19,7 @@ export function PickField({ value, placeholder, missing = false, title, disabled
   return (
     <button
       type="button"
-      className={`sol-pick${value ? "" : " sol-pick--empty"}`}
+      className={`sol-pick${value ? "" : " sol-pick--empty"}${example ? " sol-pick--example" : ""}`}
       title={title ?? value}
       disabled={disabled}
       onClick={(e) => { e.stopPropagation(); onPick(e.currentTarget); }}

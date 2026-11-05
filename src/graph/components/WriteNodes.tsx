@@ -100,7 +100,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
         {!desktop && <div className="sol-conn__note">Writing files is available in the desktop app only.</div>}
         <div className="sol-conn__line">
           <input
-            className="sol-conn__url"
+            className="sol-conn__url sol-placeholder-example"
             type="text"
             value={path}
             placeholder={`…/output.${ext}`}
@@ -245,6 +245,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
             <PickField
               value={[d.subfolder, d.stringLiterals?.path].filter(Boolean).join("/")}
               placeholder="Browse the vault for a note…"
+              example
               title="Choose a vault note to write to"
               disabled={!vaultFs}
               onPick={(from) => void chooseFile({
@@ -271,7 +272,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
             {stamp && <div className="sol-conn__note" title="Stub note this write adds a solenoid: link to">+ {stubRelPath(documentStore.currentName())}</div>}
             <PickField
               value={subfolder}
-              placeholder="Vault root"
+              placeholder="[vault root]"
               title="The folder the note is written in"
               disabled={!vaultFs}
               onPick={(from) => void chooseFile({

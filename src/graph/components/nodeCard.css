@@ -836,6 +836,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   color: var(--text-dim);
   opacity: 0.6;
 }
+.sol-placeholder-example::placeholder,
 .solenoid-node__io-row--example .solenoid-node__inline-input::placeholder,
 .solenoid-node__io-row--example .solenoid-node__quoted-input::placeholder {
   font-style: italic;

@@ -467,7 +467,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
             <input
               type="text"
-              className="solenoid-node__inline-input solenoid-fc__pattern"
+              className="solenoid-node__inline-input solenoid-fc__pattern sol-placeholder-example"
               value={patternField.draft}
               placeholder="pattern, for example YYYY-MM-DD"
               onChange={(e) => patternField.setDraft(e.target.value)}
@@ -630,7 +630,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
             <input
               type="text"
-              className="solenoid-node__inline-input solenoid-fc__pattern"
+              className="solenoid-node__inline-input solenoid-fc__pattern sol-placeholder-example"
               value={patternField.draft}
               placeholder='format, for example "0.00"'
               onChange={(e) => patternField.setDraft(e.target.value)}
@@ -761,7 +761,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
             <input
               type="text"
-              className="solenoid-node__inline-input solenoid-fc__pattern"
+              className="solenoid-node__inline-input solenoid-fc__pattern sol-placeholder-example"
               value={unitField.draft}
               placeholder="unit, for example psi"
               onChange={(e) => unitField.setDraft(e.target.value)}

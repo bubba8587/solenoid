@@ -133,7 +133,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
     <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <input
-          className="sol-conn__url"
+          className="sol-conn__url sol-placeholder-example"
           type="text"
           value={url}
           placeholder="https://…/data.csv"
@@ -173,7 +173,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
     <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <input
-          className="sol-conn__url"
+          className="sol-conn__url sol-placeholder-example"
           type="text"
           value={url}
           placeholder="https://…/page.html"
@@ -226,7 +226,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
     <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <input
-          className="sol-conn__url"
+          className="sol-conn__url sol-placeholder-example"
           type="text"
           value={url}
           placeholder="https://…/page.html"
@@ -238,7 +238,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
           onMouseDown={(e) => e.stopPropagation()}
         />
         <input
-          className="sol-conn__url"
+          className="sol-conn__url sol-placeholder-example"
           type="text"
           value={query}
           placeholder='XPath, for example //h2/a'
@@ -304,6 +304,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
           <PickField
             value={name}
             placeholder="Pick a file…"
+            example
             missing={name !== "" && !files.includes(name)}
             title={name ? `${name}: choose another file` : "Choose a CSV or Parquet file in the data folder"}
             onPick={(from) => void chooseFile({
@@ -393,7 +394,7 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
           </LazySelect>
         )}
         <input
-          className="sol-conn__url"
+          className="sol-conn__url sol-placeholder-example"
           type="text"
           value={input}
           placeholder={preset.placeholder}
@@ -572,14 +573,14 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
         <label className="sol-conn__field">
           Year
           <input
-            className="sol-conn__num" type="number" value={year} placeholder="This year"
+            className="sol-conn__num" type="number" value={year} placeholder="[this year]"
             onChange={(e) => setYear(e.target.value)} onBlur={commitYear}
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
             onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
           />
         </label>
         <input
-          className="sol-conn__url" type="text" value={region} placeholder="Region, for example US-CA (optional)"
+          className="sol-conn__url sol-placeholder-example" type="text" value={region} placeholder="Region, for example US-CA (optional)"
           spellCheck={false}
           onChange={(e) => setRegion(e.target.value)} onBlur={commitRegion}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
@@ -810,7 +811,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
             </div>
             <PickField
               value={folder}
-              placeholder="Whole vault"
+              placeholder="[whole vault]"
               missing={folder !== "" && !folders.includes(folder)}
               disabled={connected.has("folder")}
               title={connected.has("folder") ? "Driven by the Folder cable" : "Choose a vault folder"}
@@ -830,7 +831,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
             <label className="sol-conn__field" title="Only notes whose name matches. * stands for anything.">
               Filter
               <input
-                className="sol-conn__url" style={FIELD_INPUT} type="text" value={connected.has("glob") ? "" : glob}
+                className="sol-conn__url sol-placeholder-example" style={FIELD_INPUT} type="text" value={connected.has("glob") ? "" : glob}
                 placeholder={connected.has("glob") ? "Driven by the cable" : "2026-*"}
                 spellCheck={false} disabled={connected.has("glob")}
                 onChange={(e) => setGlob(e.target.value)}
@@ -842,7 +843,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
             <label className="sol-conn__field" title="Reads a date out of each note's name. Blank detects the format.">
               Date in name
               <input
-                className="sol-conn__url" style={FIELD_INPUT} type="text" value={nameFormat} placeholder="auto" spellCheck={false}
+                className="sol-conn__url" style={FIELD_INPUT} type="text" value={nameFormat} placeholder="[auto]" spellCheck={false}
                 onChange={(e) => setNameFormat(e.target.value)}
                 onBlur={(e) => commitField(e.target.value, data.nameFormat, setNameFormat, (v) => { data.nameFormat = v; })}
                 onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
@@ -922,7 +923,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
       {provider === "calendar" && <InlineInputs node={data} emit={emit} />}
       <div className="sol-conn">
         <input
-          className="sol-conn__url"
+          className="sol-conn__url sol-placeholder-example"
           type="password"
           value={token}
           placeholder="API token"

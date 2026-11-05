@@ -304,7 +304,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
 
         <div className="solenoid-svgpick__controls" onPointerDown={stopDragStart} onMouseDown={stopDragStart}>
           <input
-            className="solenoid-svgpick__url"
+            className="solenoid-svgpick__url sol-placeholder-example"
             value={urlField.draft}
             placeholder="https://…svg"
             spellCheck={false}

@@ -24,7 +24,7 @@ function LiteralField({ node, field, placeholder }: { node: QrCodeNodeType; fiel
   }
   return (
     <input
-      className="sol-conn__url" type="text" value={val} placeholder={placeholder} spellCheck={false}
+      className="sol-conn__url sol-placeholder-example" type="text" value={val} placeholder={placeholder} spellCheck={false}
       onChange={(e) => setVal(e.target.value)} onBlur={commit}
       onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
       onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}

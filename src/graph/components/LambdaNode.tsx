@@ -37,7 +37,7 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
       <div className="solenoid-node__io-row solenoid-lambda__params-row">
         <span className="solenoid-node__io-label">λ(</span>
         <input
-          className="solenoid-node__inline-input solenoid-lambda__params"
+          className="solenoid-node__inline-input solenoid-lambda__params sol-placeholder-example"
           style={{ width: `calc(${(params || "x, y").length + 1}ch + 14px)` }}
           value={params}
           placeholder="x, y"

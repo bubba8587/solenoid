@@ -146,7 +146,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
 
           <div className="solenoid-image__controls" onPointerDown={stopDragStart} onMouseDown={stopDragStart}>
             <input
-              className="solenoid-image__url"
+              className="solenoid-image__url sol-placeholder-example"
               value={urlField.draft}
               placeholder="https://image-url…"
               spellCheck={false}

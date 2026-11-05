@@ -313,7 +313,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
         <div ref={noteBodyRef} className="solenoid-note__content">
           {editing ? (
             <textarea
-              className="solenoid-note__body nowheel"
+              className="solenoid-note__body nowheel sol-placeholder-example"
               value={body}
               placeholder="Markdown note…"
               spellCheck={false}

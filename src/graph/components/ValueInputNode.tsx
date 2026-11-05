@@ -309,7 +309,7 @@ function CustomUnitRow({ node, pick }: { node: ValueInputNodeType; pick: (set: (
     <div className="solenoid-node__field-row">
       <input
         type="text"
-        className="solenoid-node__inline-input"
+        className="solenoid-node__inline-input sol-placeholder-example"
         value={field.draft}
         placeholder="unit, for example psi"
         onChange={(e) => field.setDraft(e.target.value)}
