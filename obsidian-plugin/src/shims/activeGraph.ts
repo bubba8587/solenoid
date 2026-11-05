@@ -9,3 +9,7 @@ export function getOwningEditor(_nodeId: string): GraphEditor<Schemes> | null {
 export function getOwningView(_nodeId: string): null {
   return null;
 }
+
+export function getActiveView(): null {
+  return null;
+}
