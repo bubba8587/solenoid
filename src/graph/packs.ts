@@ -12,6 +12,7 @@ import { SETS_PACK } from "./packs/sets";
 import { EARTHSKY_PACK } from "./packs/earthsky";
 import { CHEMISTRY_PACK } from "./packs/chemistry";
 import { SCIENTIFIC_PACK } from "./packs/scientific";
+import { SIGNALS_PACK } from "./packs/signals";
 import { DATA_SCIENCE_PACK } from "./packs/datascience";
 import type { Pack, PackPlacement } from "./packs/packShared";
 
@@ -23,6 +24,7 @@ export const BUILTIN_PACKS: Pack[] = [
   GEOMETRY_PACK,
   TIMESAVERS_PACK,
   SCIENTIFIC_PACK,
+  SIGNALS_PACK,
   DATA_SCIENCE_PACK,
   ELECTRICITY_PACK,
   ELECTROMAGNETISM_PACK,

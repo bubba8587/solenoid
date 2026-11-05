@@ -54,7 +54,7 @@ export const SEARCH_SAMPLES: SearchSample[] = [
   s("Retired Excel name", "SUMIF", "sumifs"),
   s("Retired Excel name", "STDEVP", "reduce-stdev*"),
   s("Keyword (alternate spelling)", "flatten", ["reshape-tocol", "reshape-torow"], 2),
-  s("Pack card keyword", "savitzky-golay", "list-smooth*", 1, "Scientific"),
+  s("Pack card keyword", "savitzky-golay", "list-smooth*", 1, "Signals & Grids"),
   s("Pack card keyword", "k-means", "kmeans*", 1, "Data Science"),
   s("Keyword (alternate spelling)", "kanban", "record__op-board"),
   s("Keyword (plain words for a function)", "uppercase", "text-upper"),

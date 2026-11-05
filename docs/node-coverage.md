@@ -623,6 +623,7 @@ The built-in set. Geometry and Common Excel Timesavers ship on; the rest ship of
   - **Molar Mass**: a formula parser. `formula = segment (('·' | '.' | '*') segment)*`, `segment = count? unit+`, `unit = (element | '(' unit+ ')' | '[' unit+ ']') count?`. Counts may be decimal, a hydrate segment may open with a multiplier (CuSO4·5H2O), and an unknown two-letter symbol retries as one letter. A bad formula is `#VALUE!` naming the problem.
   - Moles ↔ Mass and pH ↔ [H⁺] are Equation presets.
 - **Data Science**: K-Means, PCA, Logistic Regression and the nonparametric hypothesis tests (Kruskal–Wallis, Mann–Whitney, Wilcoxon, Fisher exact, KS) as pack placements; the mainstream tests (z, t, F, chi-squared, ANOVA, proportion, binomial) stay core.
-- **Scientific Computing**: Spectrum, Smooth, Find Peaks, Convolve, ODE Integrate, Solve, Eigen, Polynomial Roots, Fit Distribution and Decompose as pack placements. The pack placements' catalog type strings never change, because saves and formula names key on them.
+- **Signals & Grids**: Spectrum, Smooth, Find Peaks, Connected Regions and Convolve, each working on a series and (but Spectrum) a grid, as pack placements.
+- **Scientific Computing**: ODE Integrate, Solve, Eigen, Polynomial Roots, Fit Distribution and Decompose as pack placements. The pack placements' catalog type strings never change, because saves and formula names key on them.
 
 Composite-shaped pack ideas are planned, not built: `docs/pack-composite-plans.md`.

@@ -8,7 +8,7 @@
       "y": 0,
       "init": {
         "label": "Pack",
-        "body": "# Scientific Computing\n\n- Polynomial Roots\n- ODE Integrate\n- Spectrum (FFT)\n- Solve A\u00b7x = b",
+        "body": "# Scientific Computing\n\n- Polynomial Roots\n- ODE Integrate\n- Eigen\n- Solve A\u00b7x = b",
         "color": "slate",
         "width": 280,
         "height": 150
