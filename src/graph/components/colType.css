@@ -1,5 +1,5 @@
-/* The type button: a column's type in the Frame and Cube popups, and a wildcard slot's keyed kind on a card. A click
-   cycles it. */
+/* The type button: a column's type in the Frame and Cube popups, and a wildcard slot's kind button on a card (neutral
+   there, `nodeCard.css`). A click cycles it. */
 .sol-coltype {
   flex: 0 0 auto;
   width: 18px;

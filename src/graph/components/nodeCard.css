@@ -922,7 +922,8 @@ body.solenoid-scrubbing * {
   flex: 1 1 auto;
   min-width: 0;
 }
-/* A keyed wildcard slot: its field, then the kind button (`sol-coltype`). */
+/* A keyed wildcard slot: its field, then the kind button (`sol-coltype`), neutral: only the op picker spends the
+   accent in a card's body (DESIGN.md § Op pickers). */
 .solenoid-node__keyed {
   flex: 1 1 auto;
   min-width: 0;
@@ -930,7 +931,8 @@ body.solenoid-scrubbing * {
   align-items: center;
   gap: 3px;
 }
-.solenoid-node__keyed > .sol-coltype { width: 16px; height: 16px; }
+.solenoid-node__keyed > .sol-coltype { width: 16px; height: 16px; color: var(--text); }
+.solenoid-node__keyed > .sol-coltype:hover { border-color: var(--text-dim); }
 .solenoid-node__quoted--inline .solenoid-node__quoted-field {
   flex: 1 1 auto;
   min-width: 0;

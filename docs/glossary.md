@@ -92,6 +92,11 @@ cables (the author, 2026-10-25).
 - **Fill**: the opt-in node to treat `null` as a real value.
   (`nodes/list.ts` `FillNode`)
 
+- **Empty kind** ([[D96]] emptySlotShowsItsValue): what a card field or formula slot is when nothing is in it.
+  A **Fallback** is a value the card computes with, muted and upright; a **Behavior** is something it does, a word in
+  brackets (`[all]`); an **Example** is an italic hint the card computes nothing from; **Required** shows nothing and
+  errors. A **default** is the value a fresh card ships in the field, which a person can clear.
+
 ## Format & units
 
 - **Format Controller (FC)**: a node that locks a value's number format and sets a unit, but
@@ -329,3 +334,7 @@ Geometry (offsets, z-index, reflow) is `tree/specs/canvas/layout-chrome.md`; thi
 - **Reference**: the tabbed overlay (Ctrl+/). `FunctionReference.tsx` · `.fr-panel`.
 - **Inspector**: the right-dock node detail panel ((i) in the top bar). `InspectorPanel.tsx` ·
   `inspectorStore.ts` · `html.sol-inspector-docked`.
+- **Kind button**: the small type button beside a card's wildcard field (`#`, `Aa`, the calendar, the checkbox); a
+  click cycles the kind its keyed text is read as. Neutral, never the card's accent. `KeyedField` in `inlineInput.tsx`
+  · `.solenoid-node__keyed > .sol-coltype`. Value Input's type button looks the same but is the card's op (`OpCycle`,
+  in the accent).
