@@ -232,7 +232,9 @@ describe("Value Input outside dates", () => {
     expect(run("number", "4", "pct")).toBeDefined();
     expect(run("number", "5", "nope")).toBe(5);
     expect(run("string", "  hi  ")).toBe("  hi  ");
-    expect(run("string", "")).toBe("");
+    // Nothing typed is nothing, so ISBLANK downstream is TRUE; spaces stay text (docs/p7-walk.md).
+    expect(run("string", "")).toBeNull();
+    expect(run("string", " ")).toBe(" ");
     expect(run("logical", " TRUE ")).toBe(true);
     expect(isSolError(run("logical", "yes"))).toBe(true); // the card keeps its type, as a Number card does
     expect(run("logical", "true")).toBe(true);

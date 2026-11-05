@@ -127,6 +127,10 @@ Out of scope, waiting: a cable carrying a blank; the formula variables (`x`), wh
   a formula drawn read-only shows exactly what was typed (truth while editing, render what's proper). The value is only
   shown, never written into the formula's text. Only slots that are opened show one (`ROUND(2.6, )`, `SQRT()`), never a
   left-off trailing argument (`LOG(8)`).
+- **Where someone typed nothing, the value is nothing** (the author's option B, 2026-11-05): Value Input's Text with
+  nothing typed sends a blank, not empty text, so ISBLANK downstream is TRUE and it shows as any blank does. Text with
+  only spaces is still text. Empty text `""` from elsewhere (a formula's `IF(c, x, "")`) stays a value: ISBLANK FALSE,
+  ISTEXT TRUE, shown as "(empty)". Whether `""` becomes the same as blank everywhere (option A) is left open.
 - A test of a value reads an empty slot as an empty cell: `ISNUMBER()` is FALSE, `ISBLANK()` TRUE (its kind, not 0).
 - Later: the muted value offered as a suggestion while typing an argument, a comma skipping it.
 

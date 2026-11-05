@@ -98,6 +98,8 @@ fn fc_number(n: f64, unit: &str, custom: &str) -> V {
 fn value_input(c: &mut Call) -> Answer {
     let value = c.field_str("value", "").to_string();
     let out = match c.field_str("op", "number") {
+        // Nothing typed is nothing, not empty text: a blank downstream (ISBLANK is TRUE). Spaces are text.
+        "string" if value.is_empty() => V::Null,
         "string" => V::str(&value),
         "logical" => {
             // The card keeps its type: TRUE or FALSE reads, blank is FALSE, anything else is #VALUE!.
