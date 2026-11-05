@@ -194,7 +194,6 @@ export class WriteTasksNode extends GraphNode {
     keys: "The fields to send, by column name. Blank sends every column.",
     plan: "One row per input row: path, title, the action and the fields to send. Preview marks the rows that would not change.",
   };
-  static fieldPlaceholders: Record<string, string> = { keys: "all" };
   label: string;
   stringLiterals: Record<string, string> = { keys: "" };
   enabled = false;

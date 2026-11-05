@@ -1,6 +1,7 @@
 // [[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue
 import { argRole, LEFT_OUT, type InputRole } from "./inputRoles";
 import { FORMULA_SIGNATURES } from "./formulaSignatureTable";
+import { coreEmptyField } from "./engineWasm";
 
 interface PackSlotMeta { signature?: string; emptySlotsLeftOut?: boolean; emptySlotShown?: string }
 // Pack functions, handed in by formulaSignatures.ts: importing the packs here would close a cycle.
@@ -82,6 +83,9 @@ function paramType(name: string, i: number): "number" | "text" | "logical" {
   return "number";
 }
 
+/** A Behavior's word as it shows: in brackets, since it names what happens rather than a value. */
+const behavior = (word: string): string => `[${word}]`;
+
 const show = (v: unknown): string | null =>
   v === "" || v === null ? null : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v);
 
@@ -92,27 +96,39 @@ export function emptySlotReading(name: string, i: number): EmptySlotReading {
   if (override) {
     if (override.value !== LEFT_OUT) return { value: override.value, shown: show(override.value) };
     const param = paramName(up, i);
-    return { value: LEFT_OUT, shown: LEFT_OUT_BY_FN[up]?.[i] ?? (param ? LEFT_OUT_BY_PARAM[param] : undefined) ?? "default" };
+    return { value: LEFT_OUT, shown: behavior(LEFT_OUT_BY_FN[up]?.[i] ?? (param ? LEFT_OUT_BY_PARAM[param] : undefined) ?? "default") };
   }
   const role = argRole(up, i);
   if (role?.kind === "setting") {
     if (role.blank !== LEFT_OUT) return { value: role.blank, shown: show(role.blank) };
     const param = paramName(up, i);
-    return { value: LEFT_OUT, shown: LEFT_OUT_BY_FN[up]?.[i] ?? (param ? LEFT_OUT_BY_PARAM[param] : undefined) ?? "default" };
+    return { value: LEFT_OUT, shown: behavior(LEFT_OUT_BY_FN[up]?.[i] ?? (param ? LEFT_OUT_BY_PARAM[param] : undefined) ?? "default") };
   }
-  if (role?.kind === "picks") return { value: LEFT_OUT, shown: role.required ? null : "all" };
+  if (role?.kind === "picks") return { value: LEFT_OUT, shown: role.required ? null : behavior("all") };
   if (role?.kind === "required") return { value: null, shown: null };
   const pack = packMeta(up);
-  if (pack?.emptySlotsLeftOut) return { value: LEFT_OUT, shown: pack.emptySlotShown ?? "solve" };
+  if (pack?.emptySlotsLeftOut) return { value: LEFT_OUT, shown: behavior(pack.emptySlotShown ?? "solve") };
   const type = paramType(up, i);
   const value = type === "text" ? "" : type === "logical" ? false : 0;
   return { value, shown: show(value) };
 }
 
-/** A card's empty setting field shows what it reads as; data and required fields show nothing ([[D96]] emptySlotShowsItsValue). */
-export function fieldPlaceholder(role: InputRole | undefined, key: string): string | undefined {
+/** What a card's empty field shows, and which kind it is ([[D96]] emptySlotShowsItsValue): the core's declaration,
+ *  else a setting's role (its blank a Fallback, left out a Behavior). `undefined` where the field declares nothing. */
+export interface EmptyFieldShown {
+  kind: "fallback" | "behavior" | "example" | "required";
+  shown: string | undefined;
+}
+
+export function emptyFieldShown(cardClass: string, key: string, role: InputRole | undefined): EmptyFieldShown | undefined {
+  const declared = coreEmptyField(cardClass, key);
+  if (declared) return { kind: declared.kind, shown: declared.shown ?? undefined };
+  if (role?.kind === "required") return { kind: "required", shown: undefined };
   if (role?.kind !== "setting") return undefined;
-  if (role.from) return emptySlotReading(role.from[0], role.from[1]).shown ?? "";
-  if (role.blank !== LEFT_OUT) return show(role.blank) ?? "";
-  return role.word ?? LEFT_OUT_BY_PARAM[key] ?? "default";
+  if (role.from) {
+    const r = emptySlotReading(role.from[0], role.from[1]);
+    return { kind: r.value === LEFT_OUT ? "behavior" : "fallback", shown: r.shown ?? undefined };
+  }
+  if (role.blank !== LEFT_OUT) return { kind: "fallback", shown: show(role.blank) ?? undefined };
+  return { kind: "behavior", shown: behavior(role.word ?? LEFT_OUT_BY_PARAM[key] ?? "default") };
 }

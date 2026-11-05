@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { FUNCTION_ARITY } from "../../src/graph/excelFunctions";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { emptySlotReading, fieldPlaceholder } from "../../src/graph/emptySlots";
+import { emptySlotReading, emptyFieldShown } from "../../src/graph/emptySlots";
 import { rolesFrom, setting, required, LEFT_OUT } from "../../src/graph/inputRoles";
 
 const ev = (src: string, env: Record<string, unknown> = {}) => compileEvaluator(src)!(env);
@@ -47,12 +47,12 @@ describe("an empty slot reads as its parameter's Excel blank", () => {
     expect((ev("XLOOKUP(9, a, b, )", { a: [1, 2, 3], b: [10, 20, 30] }) as { code?: string }).code).toBe("#N/A");
   });
 
-  it("shows the reading, or a word for a left-out default, and nothing for blank text", () => {
+  it("shows the reading, or a bracketed word for a left-out default, and nothing for blank text", () => {
     expect(emptySlotReading("POWER", 1).shown).toBe("0");
     expect(emptySlotReading("CONCAT", 1).shown).toBeNull();
     expect(emptySlotReading("TEXTJOIN", 1).shown).toBe("TRUE");
-    expect(emptySlotReading("XLOOKUP", 3).shown).toBe("none");
-    expect(emptySlotReading("TAKE", 1).shown).toBe("all");
+    expect(emptySlotReading("XLOOKUP", 3).shown).toBe("[none]");
+    expect(emptySlotReading("TAKE", 1).shown).toBe("[all]");
   });
 });
 
@@ -63,22 +63,28 @@ describe("the highlighter shows an empty slot's reading ([[D96]] emptySlotShowsI
     expect(highlightFormula("POWER(2,)")).toContain('<span class="fx-ghost-inline">0</span>');
     expect(highlightFormula('TEXTJOIN(",",,"a")')).toContain(">TRUE<");
     expect(highlightFormula('CONCAT("a",,"b")')).not.toContain("fx-ghost");
-    expect(highlightFormula("TAKE(m,,2)")).toContain(">all<");
+    expect(highlightFormula("TAKE(m,,2)")).toContain(">[all]<");
     expect(highlightFormula("IF(c,SUM(1,),)")).toMatch(/SUM.*fx-ghost-inline">0<.*fx-ghost-inline">0</);
     expect(highlightFormula("PI()")).not.toContain("fx-ghost");
     expect(highlightFormula("(a, b)")).not.toContain("fx-ghost");
   });
 });
 
-describe("a card's empty setting field shows what it reads as ([[D96]] emptySlotShowsItsValue)", () => {
-  it("from its formula twin, its own blank, or its word; data and required fields show nothing", () => {
+describe("a card's empty field shows what it reads as, by its kind ([[D96]] emptySlotShowsItsValue)", () => {
+  it("a setting's role: its blank a Fallback, left out a Behavior in brackets, required nothing", () => {
     const take = rolesFrom("TAKE", { rows: 1 });
-    expect(fieldPlaceholder(take.rows, "rows")).toBe("all");
-    expect(fieldPlaceholder(rolesFrom("ROUND", { digits: 1 }).digits, "digits")).toBe("0");
-    expect(fieldPlaceholder(rolesFrom("TEXTJOIN", { delimiter: 0 }).delimiter, "delimiter")).toBe("");
-    expect(fieldPlaceholder(setting(10), "rows")).toBe("10");
-    expect(fieldPlaceholder(setting(LEFT_OUT, "end"), "to")).toBe("end");
-    expect(fieldPlaceholder(required, "k")).toBeUndefined();
-    expect(fieldPlaceholder(undefined, "x")).toBeUndefined();
+    expect(emptyFieldShown("TakeNode", "rows", take.rows)).toEqual({ kind: "behavior", shown: "[all]" });
+    expect(emptyFieldShown("RoundNNode", "digits", rolesFrom("ROUND", { digits: 1 }).digits)).toEqual({ kind: "fallback", shown: "0" });
+    expect(emptyFieldShown("TextJoinNode", "delimiter", rolesFrom("TEXTJOIN", { delimiter: 0 }).delimiter)).toEqual({ kind: "fallback", shown: undefined });
+    expect(emptyFieldShown("X", "rows", setting(10))).toEqual({ kind: "fallback", shown: "10" });
+    expect(emptyFieldShown("X", "to", setting(LEFT_OUT, "end"))).toEqual({ kind: "behavior", shown: "[end]" });
+    expect(emptyFieldShown("X", "k", required)).toEqual({ kind: "required", shown: undefined });
+    expect(emptyFieldShown("X", "x", undefined)).toBeUndefined();
+  });
+
+  it("the core's declaration: an Example, a Behavior or a Fallback", () => {
+    expect(emptyFieldShown("MolarMassNode", "formula", undefined)).toEqual({ kind: "example", shown: "H2O" });
+    expect(emptyFieldShown("XLookupNode", "returnColumn", undefined)).toEqual({ kind: "behavior", shown: "[all]" });
+    expect(emptyFieldShown("CastNode", "decimal_sep", undefined)).toEqual({ kind: "fallback", shown: "." });
   });
 });

@@ -1743,7 +1743,6 @@ export type LookupDirection = "rows" | "columns";
 
 /** Rows: the lookup searches a column and returns a row's cell. Columns: it searches a row and returns a column. */
 export class XLookupNode extends GraphNode {
-  static fieldPlaceholders: Record<string, string> = { returnColumn: "all", inRow: "names", returnRow: "all" };
   static socketDocs: Record<string, string> = {
     lookup: "Matching follows the In column's type: text ignores case, and a number or date column parses the lookup text. =, ≤ and ≥ take the equal or closest key, < and > the closest strictly past it; contains, starts with and the rest take the first row that passes, as Filter's tests do. Is blank and not blank ignore it.",
     returnColumn: "Blank returns the whole matched row.",

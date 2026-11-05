@@ -407,7 +407,6 @@ export class SwitchNode extends GraphNode {
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["When", "Then"];
   readonly pairPlaceholders = ["Case", "Output"] as const;
-  static fieldPlaceholders: Record<string, string> = { expr: "Value" };
   width = 180;
   height = 404;
 

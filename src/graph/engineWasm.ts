@@ -2,7 +2,7 @@
 // The one WebAssembly module: the graph engine and the core it links (`crates/solenoid-graph`, `crates/solenoid-core`),
 // answering the core's commands in-process. A trap anywhere drops the instance and brings a fresh one
 // (tree/specs/computation/graph-core.md § Traps). `npm run build:wasm` regenerates `engineWasm/`.
-import init, { initSync, __wbg_reset, setPanicHandler, display_settings, fmt_scalar, fmt_annotated, fmt_date, card_is_hex_color, card_link_href, card_image_src, read_decimal, read_logical, read_date, literal_field, region_keys, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, engine_infer_bin, card_keep, card_forget, card_kept_count, card_unstage, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_graph.js";
+import init, { initSync, __wbg_reset, setPanicHandler, display_settings, fmt_scalar, fmt_annotated, fmt_date, card_is_hex_color, card_link_href, card_image_src, read_decimal, read_logical, read_date, literal_field, empty_field, region_keys, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, engine_infer_bin, card_keep, card_forget, card_kept_count, card_unstage, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_graph.js";
 import { toSolError } from "./errorValue";
 import type { ColumnUnit } from "./unitValue";
 import type { FormatAnnotation } from "./formatAnnotationStore";
@@ -102,6 +102,12 @@ export function coreReadLogical(text: string): number | undefined {
 /** The field a card's unwired input `key` on `rung` shows, by the core's one table (`nodes/fields.rs`). */
 export function coreLiteralField(cardClass: string, key: string, rung: string, keptAsText: boolean): string {
   return literal_field(cardClass, key, rung, keptAsText);
+}
+
+/** A card's declared kind for its empty field and what it shows (`nodes::fields::Empty`), where it declares one. */
+export function coreEmptyField(cardClass: string, key: string): { kind: "fallback" | "behavior" | "example" | "required"; shown: string | null } | undefined {
+  const json = empty_field(cardClass, key);
+  return json ? JSON.parse(json) : undefined;
 }
 
 /** A date's day as a Frame Input Date cell reads the text: NaN when it isn't a date, undefined for blank. */

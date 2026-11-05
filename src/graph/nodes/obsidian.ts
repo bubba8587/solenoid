@@ -93,7 +93,6 @@ export class WriteObsidianNode extends GraphNode {
     keys: "The columns to write, by name. Blank writes every column but path; a listed column is added even where it's blank.",
     plan: "One row per note and property: the current value, the value to write, and what Run would do. Empty for a Note.",
   };
-  static fieldPlaceholders: Record<string, string> = { keys: "all" };
   static frameHints: Record<string, FrameHint> = {
     rows: { columns: [
       { name: "path", type: "string", cells: ["Projects/Alpha.md", "Projects/Beta.md", "Projects/Gamma.md"] },

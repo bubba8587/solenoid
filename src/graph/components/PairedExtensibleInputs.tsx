@@ -105,7 +105,7 @@ export function PairedExtensibleInputs({
     if (!input) return null;
     const isConn = connected.has(key);
     return (
-      <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={input.socket}>
+      <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={input.socket} example={!!placeholder}>
         <span className="solenoid-node__io-label">{label}</span>
         {isConn ? (
           <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>

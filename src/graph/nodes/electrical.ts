@@ -26,7 +26,6 @@ export class ParallelCombineNode extends GraphNode {
 export class ESeriesNode extends GraphNode {
   label: string;
   op: ESeriesOp;
-  static fieldPlaceholders: Record<string, string> = { value: "4600" };
   literals: Record<string, number> = {};
   cachedNearest: number | SolError | null = null;
   cachedError: number | SolError | null = null;
@@ -48,7 +47,6 @@ export class ESeriesNode extends GraphNode {
 }
 export class AwgNode extends GraphNode {
   label: string;
-  static fieldPlaceholders: Record<string, string> = { gauge: "12" };
   literals: Record<string, number> = {};
   cachedDiameter: number | SolError | null = null;
   cachedArea: number | SolError | null = null;

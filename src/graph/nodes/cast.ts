@@ -43,7 +43,6 @@ const CAST_OP_INPUTS: Record<CastOp, readonly { key: string; label: string }[]> 
 
 export class CastNode extends GraphNode {
   /** What an empty separator field reads as, shown as its placeholder ([[D96]] emptySlotShowsItsValue). */
-  static fieldPlaceholders: Record<string, string> = { decimal_sep: ".", group_sep: "," };
   static socketDocs: Record<string, string> = {
     value: "A date keeps its date type, so casting it to text formats it as a date.",
     format: "An Excel format code like 0.00, 0.0%, #,##0 or yyyy-mm-dd, read as TEXT reads it. Blank is the plain text.",

@@ -1,10 +1,11 @@
-// [[C28]] literalsIffEditable, [[C10]] socketLattice
+// [[C28]] literalsIffEditable, [[C10]] socketLattice, [[D96]] emptySlotShowsItsValue
 //! The one field an unwired input shows, by its card, its key and its declared rung: the canvas draws it
 //! (`literalFieldOf` asks here over wasm), a body reads the input through it (`Call::unwired`), and a load drops what
 //! it doesn't read (`pruneLiterals`). One rule, so a value can't sit in a map the card doesn't show
 //! (`tree/specs/documents/inline-literal-maps.md` § One field per input).
 
-use super::{decode, Call};
+use super::{decode, err, Call};
+use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
 use serde_json::{Map, Value as Json};
 use std::rc::Rc;
@@ -50,6 +51,70 @@ const ROWS: &[(&str, &str, Field)] = &[
     // Coalesce's Else rows: a typed number is a constant.
     ("FillNode", "e", Field::Number),
 ];
+
+/// What an empty field reads as and shows (`tree/specs/documents/inline-literal-maps.md` § What an empty field is).
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Empty {
+    /// The card computes with this value, shown muted.
+    Fallback(Fill),
+    /// The card does what the word names (`[all]`); the body reads the field as left out.
+    Behavior(&'static str),
+    /// A hint, shown muted in italics; the card computes nothing from it, so a blank here may blank the card.
+    Example(&'static str),
+    /// Nothing shown; the card answers a named error.
+    Required,
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Fill {
+    Num(f64),
+    Bool(bool),
+    Text(&'static str),
+}
+
+/// Each declared field's kind: `(card, key, kind)`, a key matching itself or a numbered row of it. Settings declare
+/// theirs through their role (`inputRoles`), shared with the formulas.
+const EMPTY: &[(&str, &str, Empty)] = &[
+    ("AlertNode", "value", Empty::Example("50")),
+    ("AntoineNode", "t", Empty::Example("25")),
+    ("AwgNode", "gauge", Empty::Example("12")),
+    ("BaseConvertNode", "value", Empty::Fallback(Fill::Num(0.0))),
+    ("CastNode", "decimal_sep", Empty::Fallback(Fill::Text("."))),
+    // No group separator when the decimal one is a comma, else a comma.
+    ("CastNode", "group_sep", Empty::Behavior("auto")),
+    ("ColebrookNode", "re", Empty::Example("100000")),
+    ("ColebrookNode", "rr", Empty::Example("0.0001")),
+    ("DollarNode", "dollar", Empty::Fallback(Fill::Num(0.0))),
+    ("EmSpectrumNode", "freq", Empty::Example("5e14")),
+    ("ESeriesNode", "value", Empty::Example("4600")),
+    ("HrZonesNode", "age", Empty::Example("30")),
+    ("MolarMassNode", "formula", Empty::Example("H2O")),
+    ("SwitchNode", "expr", Empty::Example("Value")),
+    ("WriteObsidianNode", "keys", Empty::Behavior("all")),
+    ("WriteTasksNode", "keys", Empty::Behavior("all")),
+    ("XLookupNode", "returnColumn", Empty::Behavior("all")),
+    ("XLookupNode", "inRow", Empty::Behavior("names")),
+    ("XLookupNode", "returnRow", Empty::Behavior("all")),
+];
+
+/// A `class` card's declared kind for its empty field `key`, where it declares one.
+pub fn empty_of(class: &str, key: &str) -> Option<Empty> {
+    EMPTY.iter().find(|(c, row, _)| *c == class && is_row(key, row)).map(|&(_, _, e)| e)
+}
+
+impl Empty {
+    /// The kind's name and what the field shows: `None` for a Fallback of empty text and for Required.
+    pub fn shown(self) -> (&'static str, Option<String>) {
+        match self {
+            Empty::Fallback(Fill::Num(n)) => ("fallback", Some(crate::jsnum::number_to_string(n))),
+            Empty::Fallback(Fill::Bool(b)) => ("fallback", Some(if b { "TRUE" } else { "FALSE" }.into())),
+            Empty::Fallback(Fill::Text(t)) => ("fallback", (!t.is_empty()).then(|| t.to_string())),
+            Empty::Behavior(w) => ("behavior", Some(format!("[{w}]"))),
+            Empty::Example(h) => ("example", Some(h.to_string())),
+            Empty::Required => ("required", None),
+        }
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Field {
@@ -171,6 +236,21 @@ impl Call {
                 v => v,
             };
         }
+        let v = self.field_value(key);
+        let empty = matches!(v, V::Undef) || matches!(&v, V::Str(t) if t.is_empty());
+        match (empty, empty_of(&self.class, key)) {
+            (true, Some(Empty::Fallback(Fill::Num(n)))) => V::Num(n),
+            (true, Some(Empty::Fallback(Fill::Bool(b)))) => V::Bool(b),
+            (true, Some(Empty::Fallback(Fill::Text(t)))) => V::str(t),
+            (true, Some(Empty::Required)) => {
+                err(ErrorCode::Syntax, format!("{} is empty, and it has no default", self.label(key)))
+            }
+            _ => v,
+        }
+    }
+
+    /// What the field holds, before its empty kind applies.
+    fn field_value(&self, key: &str) -> V {
         match self.literal_field(key) {
             Field::Number => match self.saved.number(key) {
                 V::Num(n) => V::Num(n),
@@ -235,5 +315,16 @@ mod tests {
         assert_eq!(field_of("ExpressionNode", "rate", "anydata", false), Field::Number);
         assert_eq!(field_of("LambdaNode", "rate", "anylist", false), Field::Number);
         assert_eq!(field_of("ContainsNode", "list", "anylist", false), Field::None);
+    }
+
+    #[test]
+    fn an_empty_field_declares_its_kind() {
+        assert_eq!(empty_of("MolarMassNode", "formula").map(Empty::shown), Some(("example", Some("H2O".into()))));
+        assert_eq!(empty_of("XLookupNode", "returnColumn").map(Empty::shown), Some(("behavior", Some("[all]".into()))));
+        assert_eq!(empty_of("DollarNode", "dollar").map(Empty::shown), Some(("fallback", Some("0".into()))));
+        assert_eq!(Empty::Fallback(Fill::Text("")).shown(), ("fallback", None));
+        assert_eq!(Empty::Fallback(Fill::Bool(false)).shown(), ("fallback", Some("FALSE".into())));
+        assert_eq!(Empty::Required.shown(), ("required", None));
+        assert_eq!(empty_of("RoundNNode", "value"), None);
     }
 }

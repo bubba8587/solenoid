@@ -17,7 +17,7 @@ import { ColumnPickerField, ColumnListField } from "./ColumnPickerField";
 import { columnPickersOf } from "../nodes/columnPickerHook";
 import { stopDragStart } from "../coarse";
 import { usePendingDraft } from "../draftFlush";
-import { fieldPlaceholder } from "../emptySlots";
+import { emptyFieldShown } from "../emptySlots";
 import { rolesOf } from "../nodes/shared";
 import { DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import { COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
@@ -235,7 +235,7 @@ export function useNumberScrub(
 export function InlineNumberField({
   value,
   onChange,
-  placeholder = "0",
+  placeholder,
 }: {
   value: number | undefined;
   onChange: (v: number | undefined) => void;
@@ -528,7 +528,6 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
   const literals = (node.literals ??= {});
   const roles = rolesOf(node as unknown as Parameters<typeof rolesOf>[0]);
-  const ownPlaceholders = (node.constructor as { fieldPlaceholders?: Record<string, string> }).fieldPlaceholders;
   const suggestId = suggest ? `sol-suggest-${node.id}` : undefined;
   const suggestOptions = suggest ? Array.from(new Set(Object.values(suggest).flat())) : [];
 
@@ -592,10 +591,11 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
         // One field per input, the one the core reads ([[C28]] literalsIffEditable).
         const field: DrawnField = cableOnlyKeys?.has(key) ? "none" : drawnFieldOf(node, key);
         const label = labelFor ? labelFor(key, i) : (input.label || key);
-        const placeholder = ownPlaceholders?.[key] ?? fieldPlaceholder(roles?.[key], key);
+        const empty = emptyFieldShown(node.constructor.name, key, roles?.[key]);
+        const placeholder = empty?.shown;
         const isConn = connected.has(key);
         return (
-          <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={socket}>
+          <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={socket} example={empty?.kind === "example"}>
             {mathLabelKeys?.has(key)
               ? <MathLabel text={label} />
               : <span className="solenoid-node__io-label" title={titleFor?.(key)}>{label}</span>}

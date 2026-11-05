@@ -162,7 +162,6 @@ export class BaseConvertNode extends GraphNode {
   static inputRoles = { from: required, to: required };
   label: string;
   cachedResult: number | null = null;
-  static fieldPlaceholders: Record<string, string> = { value: "1010" };
   literals: Record<string, number> = { from: 2, to: 10 };
   width = 180; height = 235;
 

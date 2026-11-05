@@ -62,7 +62,7 @@ export function useRowSocketTop(ref: React.RefObject<HTMLElement | null>): numbe
 }
 
 export function MeasuredSocketRow({
-  side, socketKey, nodeId, emit, payload, children, hero = false,
+  side, socketKey, nodeId, emit, payload, children, hero = false, example = false,
 }: {
   side: Side;
   socketKey: string;
@@ -72,6 +72,8 @@ export function MeasuredSocketRow({
   children: ReactNode;
   /** A tall box: drops the fixed 22px row height so it can't overlap its neighbors. */
   hero?: boolean;
+  /** The empty field's placeholder is an Example, set in italics ([[D96]] emptySlotShowsItsValue). */
+  example?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const top = useRowSocketTop(ref);
@@ -84,7 +86,7 @@ export function MeasuredSocketRow({
     frameHintStore.open({ kind: "example", hint, anchor: { left: r.left, right: r.right, centerY: r.top + r.height / 2 } });
   };
   return (
-    <div ref={ref} onPointerUp={rowHintTap} className={"solenoid-node__io-row" + (side === "output" ? " solenoid-node__io-row--output" : "") + (hero ? " solenoid-node__io-row--hero" : "")}>
+    <div ref={ref} onPointerUp={rowHintTap} className={"solenoid-node__io-row" + (side === "output" ? " solenoid-node__io-row--output" : "") + (hero ? " solenoid-node__io-row--hero" : "") + (example ? " solenoid-node__io-row--example" : "")}>
       {top !== undefined && (
         <NodeSocket
           side={side}

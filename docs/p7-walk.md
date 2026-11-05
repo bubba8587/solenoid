@@ -66,6 +66,26 @@ are told apart by shape:
    unless a judgement call says otherwise; Examples and Behaviors where they fit; the italics split.
 2. The formula side: where a card's Fallback isn't Excel's empty value, the formula's empty slot shows and reads it.
 
+### Step 1 so far
+
+Built: the declaration ([[inline-literal-maps#What an empty field is]], under [[D96]] emptySlotShowsItsValue, rewritten
+to the scheme), the worklist (`tests/fixtures/empty-field-worklist.json`: 467 fields to declare), italics on Examples
+only (the formula's empty slots included), and a Behavior's word in brackets everywhere (`[all]`, `[none]`).
+
+The first batch moved the old `fieldPlaceholders` into the declaration, each kind matching what the card already
+answered, so no answer changed:
+
+- Examples: Molar Mass, HR Zones, Antoine, Alert, EM Spectrum, E-Series, AWG, Colebrook, Switch's Value.
+- Behaviors: XLookup's Return and In Row (`[all]`, `[names]`), both Write cards' Keys (`[all]`), Cast's group
+  separator (`[auto]`: none when the decimal separator is a comma, else a comma).
+- Fallbacks: Cast's decimal separator (`.`), and **Dollar's Dollar and Base Convert's Value (`0`), which showed an
+  example (1.02, 1010) but computed 0**. They show 0 now; either could become an Example (the card answering blank)
+  instead: the author's call.
+- A number field that declares nothing no longer shows a stock muted `0` it never computed with.
+
+Not swept yet: placeholders drawn by a card's own component rather than the shared row host (they are upright now,
+as every placeholder is unless marked an Example).
+
 ## Open questions
 
 - **Does a card read `_` as Excel's empty argument (0, FALSE, "")?** Reframed by the placeholder scheme: a card
@@ -84,7 +104,7 @@ are told apart by shape:
 Every built-in card input with a field, each class counted once, the pack calculators (Formula cards) left out: 571.
 A card has three different things called a default:
 
-1. **A value in the field when the card is dropped** ([[inline-literal-maps#Defaults are real values; examples are placeholders]]).
+1. **A value in the field when the card is dropped** ([[inline-literal-maps#Defaults]]).
    Number fields that are data: 167 start filled, 65 empty, 10 with a muted placeholder. Settings: 43 of 54 number
    settings start filled. The empty data fields mostly mean something empty: the unknown on the solver cards
    (Equation, TVM, Triangle Solver), "auto" on Chart Builder's bounds and styles. Text fields start empty (150).

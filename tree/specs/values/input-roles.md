@@ -141,11 +141,11 @@ Tests:
 
 - **The formula editor** draws it after the slot's spaces as CSS content that takes room, so the formula spaces out around it on one line. The editor draws its own highlighted text (`FormulaEditor`, an editable box rather than a textarea under a mirror), so the reading is never part of the text and the caret steps over it.
 - **A read-only formula** (a card's formula line) draws it inline.
-- **A card's empty setting field** shows its declared blank as the field's placeholder (`fieldPlaceholder` in `emptySlots.ts`; a card setting pointed at a formula with `rolesFrom` shows the formula slot's reading). Other fields keep the placeholder their label's `(default …)` or their field kind gives.
+- **A card's empty setting field** shows its declared blank as the field's placeholder, a Fallback, or its `LEFT_OUT` word as a Behavior in brackets (`emptyFieldShown` in `emptySlots.ts`; a card setting pointed at a formula with `rolesFrom` shows the formula slot's reading). Other fields show what they declare when empty ([[inline-literal-maps#What an empty field is]]).
 
-A `LEFT_OUT` reading shows a short word for the default it stands for, declared with the setting: `all` for a size that keeps the whole axis (TAKE, DROP, EXPAND), `1` where the default is the first (an instance or a start), `none` where nothing is applied, and the default value itself wherever one exists.
+A `LEFT_OUT` reading shows a short word in brackets for the default it stands for, a Behavior, declared with the setting: `[all]` for a size that keeps the whole axis (TAKE, DROP, EXPAND), `[1]` where the default is the first (an instance or a start), `[none]` where nothing is applied, and the default value itself wherever one exists. Placeholders are upright; italics are an Example's alone.
 
-Tests: `emptySlots.test.ts`: the reading or its word, and nothing for blank text; the highlighter's CSS content in the editor and text when read-only; and a card's empty setting field showing its formula twin's reading, its own blank or its word, with data and required fields showing nothing.
+Tests: `emptySlots.test.ts`: the reading or its bracketed word, and nothing for blank text; the highlighter's CSS content in the editor and text when read-only; and a card's empty field showing its kind: a setting's formula twin's reading, its own blank or its word, the core's declaration, and nothing for a required or undeclared field.
 
 ## Choosing a role
 

@@ -120,5 +120,5 @@
 /* An empty argument slot's reading, muted ([[D96]] emptySlotShowsItsValue). In the editor's mirror it takes no width, so the
    typed text and the caret above it never move; drawn read-only it sits in the text. */
 .fx-tokens .fx-ghost { user-select: none; }
-.fx-tokens .fx-ghost::after { content: attr(data-ghost); color: var(--text-dim); opacity: 0.6; font-style: italic; pointer-events: none; }
-.fx-tokens .fx-ghost-inline { color: var(--text-dim); opacity: 0.6; font-style: italic; }
+.fx-tokens .fx-ghost::after { content: attr(data-ghost); color: var(--text-dim); opacity: 0.6; pointer-events: none; }
+.fx-tokens .fx-ghost-inline { color: var(--text-dim); opacity: 0.6; }

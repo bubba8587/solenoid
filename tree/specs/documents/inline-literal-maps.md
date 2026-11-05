@@ -57,9 +57,31 @@ Tests: `seedsLiteralFields.test.ts`: every class's fresh defaults and every seed
 
 **Reopen if:** a card needs an unwired value that no field shows.
 
-## Defaults are real values; examples are placeholders
+## Defaults
 
-A class that initializes a map, such as `literals = { rate: 0.05, … }`, declares a starting value the card computes with, shown in its field. A default stays where it keeps a fresh card from answering an error straight away (the 0s and 1s a divisor, a count or a digits field needs). A value that only shows what to key in and isn't needed to avoid an error (IFS's outputs, SWITCH's cases, a calculator's sample input such as AWG's gauge 12 or Molar Mass's H2O) is a placeholder instead (`static fieldPlaceholders`, `pairPlaceholders`): muted text in the empty field that never reaches the answer. Where it is unclear which a value is, it stays a default.
+A class that initializes a map, such as `literals = { rate: 0.05, … }`, declares a starting value the card computes with, shown in its field: the field's **default**, which a person can clear. A default stays where it keeps a fresh card from answering an error straight away (the 0s and 1s a divisor, a count or a digits field needs). Once cleared, the field is empty and reads as its empty kind ([[#What an empty field is]]); a default usually matches the field's Fallback, but need not.
+
+## What an empty field is
+
+([[D96]] emptySlotShowsItsValue.) Every field declares what it is when empty, as one of four kinds, and shows it in place:
+
+| Kind | The field shows | `Call::unwired` reads | The card |
+|---|---|---|---|
+| **Fallback** | the value, muted, upright | the value | computes with it |
+| **Behavior** | a word in brackets (`[all]`), muted, upright | `undefined`, as now | does what the word names: the body's own reading of the field left out |
+| **Example** | a hint, muted, in italics | `undefined`, as now | computes nothing from it, so a blank there may blank the card |
+| **Required** | nothing | `#SYNTAX!`: "*label* is empty, and it has no default" | answers that error |
+
+Where a field's kind lives:
+
+- **A setting** declares it through its role ([[input-roles#The roles]]), shared with the formulas: its blank is a Fallback, `LEFT_OUT` a Behavior shown as its word, required a Required.
+- **Every other field** declares it in the core's table (`EMPTY` in `nodes/fields.rs`, `empty_of(card class, key)`), keyed by card class and input, a key matching a numbered row of itself as `ROWS` does. `Call::unwired` applies it when the field holds nothing (no saved value, or empty text), so every body reads the same Fallback the field shows.
+- **The canvas** asks one function (`emptyFieldShown` in `emptySlots.ts`): the core's declaration over wasm (`coreEmptyField`), else the setting's role. The row host draws `shown` as the field's placeholder and marks the row `solenoid-node__io-row--example` for an Example, which alone sets the placeholder in italics (`nodeCard.css`). The paired rows (IFS's and SWITCH's cases and outputs, `pairPlaceholders`) are Examples.
+- **A field that declares nothing** shows no placeholder and reads `undefined`, which a body may turn into any answer. These are the worklist: `tests/fixtures/empty-field-worklist.json`.
+
+A value a body computes from when a field is empty, which the field doesn't show (a default argument to `Call::read_num`), is the Fallback that field hasn't declared yet.
+
+Tests: `emptyFieldKinds.test.ts`: every catalog card's fields, a formula's variables aside, declare a kind or sit on the worklist, which only shrinks; `emptySlots.test.ts`: what `emptyFieldShown` gives for each kind; `fields.rs`'s own test pins the table's shown text.
 
 ## Which field a row edits
 

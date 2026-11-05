@@ -250,6 +250,19 @@ pub fn literal_field(class: &str, key: &str, rung: &str, kept_as_text: bool) -> 
     crate::nodes::fields::field_of(class, key, rung, kept_as_text).name().to_string()
 }
 
+/// A card's declared kind for its empty field `key` and what it shows, as `kind` and `shown` JSON; empty text where it
+/// declares none (`nodes::fields::Empty`).
+#[wasm_bindgen]
+pub fn empty_field(class: &str, key: &str) -> String {
+    match crate::nodes::fields::empty_of(class, key) {
+        Some(e) => {
+            let (kind, shown) = e.shown();
+            serde_json::json!({ "kind": kind, "shown": shown }).to_string()
+        }
+        None => String::new(),
+    }
+}
+
 /// Text as a date's day, as a Frame Input Date cell reads it: NaN when it doesn't read as one, `undefined` for blank.
 #[wasm_bindgen]
 pub fn read_date(text: &str) -> Option<f64> {
