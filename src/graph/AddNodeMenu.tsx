@@ -246,7 +246,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
 
 // ─── Drill-down list (phone): one level at a time, a back row on top ────
 
-function LeafRow({ leaf, half, active, dim, onSelect, onMouseEnter, rowRef }: {
+export function LeafRow({ leaf, half, active, dim, onSelect, onMouseEnter, rowRef }: {
   leaf: NodeCatalogEntry; half?: Half; active?: boolean; dim: boolean;
   onSelect: () => void; onMouseEnter?: () => void; rowRef?: React.Ref<HTMLDivElement>;
 }) {
@@ -268,14 +268,16 @@ function LeafRow({ leaf, half, active, dim, onSelect, onMouseEnter, rowRef }: {
   );
 }
 
-/** No hover and no resting highlight: a finger has no hover, so nothing lights until it lands. */
-function DrillMenu({ entries, stack, onPush, onPop, onSelect, isDim }: {
+/** No hover and no resting highlight: a finger has no hover, so nothing lights until it lands. The Reference's navigator
+ *  reuses it, lighting the card it shows (`activeType`). */
+export function DrillMenu({ entries, stack, onPush, onPop, onSelect, isDim, activeType }: {
   entries: CatalogEntry[];
   stack: number[];
   onPush: (i: number) => void;
   onPop: () => void;
   onSelect: (leaf: NodeCatalogEntry) => void;
   isDim: (leaf: NodeCatalogEntry) => boolean;
+  activeType?: string;
 }) {
   let items = toRenderItems(entries);
   let parent: CatalogCategory | null = null;
@@ -305,7 +307,7 @@ function DrillMenu({ entries, stack, onPush, onPop, onSelect, isDim }: {
         </div>
         </Fragment>
       ) : (
-        <LeafRow key={`leaf:${it.entry.type}`} leaf={it.entry} half={it.half} dim={isDim(it.entry)} onSelect={() => onSelect(it.entry)} />
+        <LeafRow key={`leaf:${it.entry.type}`} leaf={it.entry} half={it.half} active={activeType === it.entry.type} dim={isDim(it.entry)} onSelect={() => onSelect(it.entry)} />
       ))}
     </>
   );

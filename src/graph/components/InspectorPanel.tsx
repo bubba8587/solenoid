@@ -6,6 +6,7 @@ import { reportStore } from "../reportStore";
 import { getActiveEditor } from "../activeGraph";
 import { describeNode, nodeName, nodeDisplayName, catalogTypeOf } from "../catalogUtils";
 import { buildFunctionReference, type FnRefRow } from "../functionReference";
+import { frStore } from "../frStore";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
 import { socketDocFor } from "../socketDocs";
 import { frameHintFor } from "../frameHint";
@@ -132,6 +133,11 @@ export function InspectorPanel() {
               <div className="inspector-crumb">
                 {location.join(" \u25b8 ")}{packs.length > 0 ? ` \u00b7 ${packs.join(", ")} pack` : ""}
               </div>
+            )}
+            {catalogType && (
+              <button type="button" className="inspector-ref-link" onClick={() => frStore.openCard(catalogType.split("__")[0])}>
+                Open in Reference ›
+              </button>
             )}
             {description && <p className="inspector-desc" dangerouslySetInnerHTML={{ __html: descriptionHtml(description) }} />}
 

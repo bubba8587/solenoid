@@ -9,6 +9,9 @@ import { allPacks } from "./packs";
 import type {
   CatalogEntry, NodeCatalogEntry, ExcelEquiv,
 } from "./AddNodeMenu";
+import { formulasOfCard } from "./formulaCards";
+import { signatureFor } from "./formulaSignatures";
+import { NODE_OPS, type OpEntryDecl } from "./nodeOps";
 
 export interface FnRefRow {
   excel: string | null;        // null = a Solenoid-native node (no Excel function)
@@ -37,6 +40,7 @@ interface LeafInfo {
   packs: string[];
   parity: boolean;
   excel?: ExcelEquiv[];
+  create: () => unknown;
 }
 
 
@@ -52,6 +56,7 @@ function indexCatalog(): Map<string, LeafInfo> {
       packs: leaf.packs ?? [],
       parity: leaf.parity ?? true,
       excel: leaf.excel,
+      create: leaf.create,
     });
   };
   const walk = (entries: CatalogEntry[], path: string[]) => {
@@ -158,4 +163,39 @@ export function libraryTags(row: Pick<FnRefRow, "excel" | "description" | "keywo
   for (const [tag, re] of LIB_PATTERNS) if (re.test(text)) tags.push(tag);
   if (row.excel !== null || /\bExcel\b/.test(text)) tags.push("Excel");
   return tags;
+}
+
+/** One card as the Reference shows it: what it is, every formula that reaches it, and its ops. */
+export interface CardRef {
+  type: string;
+  label: string;
+  description?: string;
+  keywords?: string;
+  /** Add-menu path, top level first. */
+  path: string[];
+  packs: string[];
+  excel: { name: string; syntax: string; parity: boolean; note?: string }[];
+  formulas: { name: string; signature: string; via?: string }[];
+  ops: OpEntryDecl[];
+  libs: LibraryTag[];
+  create: () => unknown;
+}
+
+/** Every card in the catalog, packs included whether on or off, in Add-menu order. */
+export function buildCardReference(): CardRef[] {
+  const cards: CardRef[] = [];
+  for (const [type, info] of indexCatalog()) {
+    const excel = (info.excel ?? []).map((e) => ({ name: e.excel, syntax: e.syntax, parity: e.parity ?? info.parity, note: e.note }));
+    const excelNames = new Set(excel.map((e) => e.name.toUpperCase()));
+    const formulas = formulasOfCard(type)
+      .filter((f) => !excelNames.has(f.name))
+      .map((f) => ({ ...f, signature: signatureFor(f.name) ?? "" }));
+    const ops = NODE_OPS.find((d) => d.type === type)?.ops ?? [];
+    const libs = libraryTags({ excel: excel.length ? excel[0].name : null, description: info.description, keywords: info.keywords });
+    cards.push({
+      type, label: info.label, description: info.description, keywords: info.keywords, path: info.path, packs: info.packs,
+      excel, formulas, ops, libs, create: info.create,
+    });
+  }
+  return cards;
 }

@@ -6,6 +6,12 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-05: Signals & Grids pack, the card-first Reference; cloud session)
+- **Signals & Grids pack** (`packs/signals.ts`, off by default): Spectrum, Smooth, Find Peaks, Connected Regions, Convolve; Scientific keeps the solvers and fits. Settings: a pack's name opens its cards in the Reference, only the switch toggles it (`PackRow`, `frStore.openPack`).
+- **The Reference is card-first** (`CardReference.tsx`): the Add menu's `DrillMenu` and search on the left, a card's page on the right (formulas with signatures and the op answering each, ops, inputs with their empty-field kind, outputs, libraries). The Excel parity table is its own tab (`ExcelCoverage.tsx`). The Inspector links in with Open in Reference (`frStore.openCard`).
+- **`formulaCards.ts` is the one home of formula → card**: Excel names, op `fx`, labels, then `FORMULA_CARD_HOMES`; `formulaNodeCoverage.test.ts` checks every function has a live card and no hand entry is shadowed.
+- Example lists in seeds and site graphs are one comma-separated entry; pack thumbnails run the app's Tidy before the shot (`site-shots.mjs`, `tidy`).
+
 ### SESSION DIGEST (2026-11-05: P7, what an empty card field is; cloud session)
 - **Every card field declares what it is when empty** ([[D96]] emptySlotShowsItsValue, rewritten at the author's direction; [[inline-literal-maps#What an empty field is]]): a Fallback (muted, upright, computed with), a Behavior (`[word]`), an Example (italic, the card answers blank) or Required. The core's table (`EMPTY`, `EMPTY_BY_OP`, `SOLVERS` in `nodes/fields.rs`) and settings' roles hold it; `Call::unwired` applies it; `emptyFieldShown` draws it. `read_num` and its hidden defaults are gone; `emptyFieldKinds.test.ts` fails an undeclared field.
 - **A formula's empty slot reads its card's Fallback** where Excel's empty value would error (`CARD_FALLBACK_SLOT`, the call table's `blanks`), and every card is held to its formula twin's empty reading.

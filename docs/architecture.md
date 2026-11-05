@@ -296,7 +296,8 @@ idle is always the real DOM. There is no third renderer; do not build one.
 | `nodeCatalog.ts` | The Add-menu category tree (`NODE_CATALOG`) |
 | `catalogUtils.ts`, `catalogValidator.ts` | `buildCatalog` (pack insertion, dedup, prune) + dev-time consistency check |
 | `nodeExcel.ts`, `excelToCatalog.ts` | Excel equivalence metadata (single source of truth) + derived maps; `EXCEL_GAP` parity list |
-| `functionReference.ts`, `frStore.ts` | Function Reference overlay data (generated from the catalog) |
+| `functionReference.ts`, `frStore.ts` | Function Reference overlay data (generated from the catalog): a page per card, and the Excel coverage rows |
+| `formulaCards.ts` | Which card each formula function belongs to (Excel names, op formula names, labels, `FORMULA_CARD_HOMES`) |
 | `packs.ts`, `fcExtensions.ts` | Pack framework (registry/activation store, placements, `NODE_PACK_TAGS` derived from per-pack tags, FC unit/format contributions); the pack definitions themselves live in `packs/` (its own section below) |
 | `AddNodeMenu.tsx`, `addMenuStore.ts`, `fuzzy.ts`, `catalogSearch.ts` (+`.test.ts`) | Right-click add menu + search; `catalogSearch.ts` extracts the scoring (per query word over label/description/Excel names/category path/keywords, one-edit typo tolerance via `fuzzy.ts`) plus the quick-wire drop filter, which memoizes each catalog type's socket signature so a drop doesn't re-`create()` every leaf |
 | `excelFunctions.ts` | The names the editor reads: each function's arity (`FUNCTION_ARITY`), the blocked and wrong-surface names, and the names the core resolves (`formulaFunctionNames`, `isFunctionName`, `packFunctionNames`, from `engine_function_names`) |

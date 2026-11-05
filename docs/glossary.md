@@ -331,7 +331,7 @@ Geometry (offsets, z-index, reflow) is `tree/specs/canvas/layout-chrome.md`; thi
   wordmark, `.solenoid-menubar__wordmark`.)
 - **FC**: the **Format Controller** node. `FormatControllerNode.tsx` · `formatController.ts`;
   model `formatModel.ts`, flow `unitFlow.ts`.
-- **Reference**: the tabbed overlay (Ctrl+/). `FunctionReference.tsx` · `.fr-panel`.
+- **Reference**: the tabbed overlay (Ctrl+/). `FunctionReference.tsx` · `.fr-panel`. Its first tab is the card browser (`CardReference.tsx`: the Add menu's tree and search beside a card's page); Excel Coverage is the parity table (`ExcelCoverage.tsx`).
 - **Inspector**: the right-dock node detail panel ((i) in the top bar). `InspectorPanel.tsx` ·
   `inspectorStore.ts` · `html.sol-inspector-docked`.
 - **Kind button**: the small type button beside a card's wildcard field (`#`, `Aa`, the calendar, the checkbox); a

@@ -1,10 +1,10 @@
 import { createNotifier } from "./storeKit";
 
-export type FrTab = "reference" | "sockets" | "help" | "knap" | "notes";
+export type FrTab = "reference" | "excel" | "sockets" | "help" | "knap" | "notes";
 
 let _open = false;
 let _tab: FrTab = "reference";
-/** A Reference filter to show on the next open (a groupKey or "pack:<id>"), taken once by the panel. */
+/** What the Reference shows on its next open ("pack:<id>" or "card:<type>"), taken once by the panel. */
 let _focus: string | null = null;
 const { notify, subscribe, version } = createNotifier();
 
@@ -22,6 +22,13 @@ export const frStore = {
   /** Opens the Reference on one pack's cards and functions. */
   openPack(packId: string) {
     _focus = `pack:${packId}`;
+    _tab = "reference";
+    _open = true;
+    notify();
+  },
+  /** Opens the Reference on one card's page. */
+  openCard(type: string) {
+    _focus = `card:${type}`;
     _tab = "reference";
     _open = true;
     notify();
