@@ -7,6 +7,7 @@ type AngleDialProps = {
   step?: number;
   onChange: (degrees: number) => void;
   size?: number;
+  counterclockwise?: boolean;
 };
 
 function normalize(deg: number): number {
@@ -18,13 +19,17 @@ function snap(deg: number, step: number): number {
   return normalize(Math.round(deg / step) * step);
 }
 
-/** Screen-space angles: 0° is right, 90° is down. Pointer events stop propagation, or the canvas takes them as a node drag. */
+/** Screen-space angles by default: 0° is right, 90° is down, as a direction on the canvas turns. `counterclockwise`
+ *  turns the other way, 90° up, as a math angle does (the Angle Dial card). Pointer events stop propagation, or the
+ *  canvas takes them as a node drag. */
 export function AngleDial({
   value,
   step = 15,
   onChange,
   size = 30,
+  counterclockwise = false,
 }: AngleDialProps) {
+  const turn = counterclockwise ? -1 : 1;
   const ref = useRef<SVGSVGElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -38,11 +43,11 @@ export function AngleDial({
       const dx = clientX - cx;
       const dy = clientY - cy;
       if (dx === 0 && dy === 0) return;
-      const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
+      const deg = (Math.atan2(turn * dy, dx) * 180) / Math.PI;
       const next = snap(deg, step);
       if (next !== normalize(value)) onChange(next);
     },
-    [value, step, onChange],
+    [value, step, onChange, turn],
   );
 
   const onPointerDown = useCallback(
@@ -81,7 +86,7 @@ export function AngleDial({
   const needleR = innerR - 2;
   const rad = (value * Math.PI) / 180;
   const needleX = r + needleR * Math.cos(rad);
-  const needleY = r + needleR * Math.sin(rad);
+  const needleY = r + turn * needleR * Math.sin(rad);
 
   return (
     <svg
