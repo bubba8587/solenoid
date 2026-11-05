@@ -5,8 +5,8 @@ import { buildFunctionReference, type FnRefRow } from "../functionReference";
 import { EXCEL_SECTIONS, excelSection } from "../excelSections";
 import { buildCatalog } from "../catalogUtils";
 import { flattenLeaves } from "../catalogSearch";
-import { appThemeStore } from "../appTheme";
 import { IS_COARSE } from "../coarse";
+import { appThemeStore } from "../appTheme";
 import type { NodeCatalogEntry } from "../AddNodeMenu";
 import { accentVars, cardAccent } from "./CardReference";
 
@@ -69,24 +69,24 @@ export function ExcelCoverage() {
   return (
     <div className="fr-xl">
       <div className="fr-xl__head">
-        <input
-          className="solenoid-add-menu__search fr-xl__search"
-          placeholder="Search Excel functions…"
-          value={search}
-          spellCheck={false}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Escape" && search) { e.stopPropagation(); setSearch(""); } }}
-          // Touch must not pop the on-screen keyboard over the fresh panel.
-          autoFocus={!IS_COARSE}
-        />
-        <p className="fr-xl__sum">
-          Coming from Excel? Find a function where Excel files it, and open the card that does it here.
-        </p>
+        <div className="fr-xl__top">
+          <input
+            className="solenoid-add-menu__search fr-xl__search"
+            placeholder="Search Excel functions…"
+            value={search}
+            spellCheck={false}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Escape" && search) { e.stopPropagation(); setSearch(""); } }}
+            // Touch must not pop the on-screen keyboard over the fresh panel.
+            autoFocus={!IS_COARSE}
+          />
+          <div className="fr-xl__legend">
+            {counts.map((c) => <span key={c.key}><i className={`fr-xl__dot fr-xl__dot--${c.key}`} />{c.n} {c.label}</span>)}
+          </div>
+        </div>
+        <p className="fr-xl__sum">Coming from Excel? Find a function where Excel files it, and open the card that does it here.</p>
         <div className="fr-xl__cols-head" aria-hidden="true">
           <span>Excel</span><ChunkyArrow /><span>Solenoid</span>
-        </div>
-        <div className="fr-xl__legend">
-          {counts.map((c) => <span key={c.key}><i className={`fr-xl__dot fr-xl__dot--${c.key}`} />{c.n} {c.label}</span>)}
         </div>
       </div>
       <div className="fr-xl__scroll">
