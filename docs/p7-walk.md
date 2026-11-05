@@ -96,10 +96,10 @@ How each field got its kind:
   - Hidden values surfaced: Surface's levels (8), DDB's factor (2).
   - Behaviors: the solver cards (Equation, Triangle Solver, TVM) `[solve]`, Chart Builder's bounds and styles
     `[auto]`, Join's tolerance `[exact]`, Hypothesis Test's σ `[from sample]`, Shuffle's weights `[equal]`, List
-    Index's position `[all]`, Series' stop `[none]` and columns `[one]`, Binomial Range's high `[same as low]`, Fill's
+    Index's position `[all]`, Series' stop `[none]`, Binomial Range's high `[same as low]`, Fill's
     Else `[none]`, DROP's counts `[none]`.
   - Examples: KPI's value and prior, Gauge's value, EM Spectrum's wavelength, HR Zones' max and resting, Pipe
-    Roughness's diameter.
+    Roughness's diameter. SEQUENCE's columns are a Fallback of 1 (Excel's default), never a word.
   - Required: SEQUENCE's rows.
 - **Per op**: LOG's base 10, CEILING.MATH's and FLOOR.MATH's significance 1, DROP's counts `[none]`.
 - **Custom card components**: prompts (URLs, pickers, QR fields) are Examples in italics; Behaviors in brackets

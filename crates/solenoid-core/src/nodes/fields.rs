@@ -433,7 +433,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("ScheduleNode", "hours", Empty::Fallback(Fill::Num(8.0))),
     ("ScheduleNode", "weekend_code", Empty::Fallback(Fill::Num(1.0))),
     ("ScriptNode", "x", Empty::Fallback(Fill::Text(""))),
-    ("SeriesNode", "cols", Empty::Behavior("one")),
+    ("SeriesNode", "cols", Empty::Fallback(Fill::Num(1.0))),
     ("SeriesNode", "count", Empty::Required),
     ("SeriesNode", "end", Empty::Fallback(Fill::Num(1.0))),
     ("SeriesNode", "ratio", Empty::Fallback(Fill::Num(2.0))),
@@ -780,6 +780,16 @@ mod tests {
         assert_eq!(field_of("ExpressionNode", "rate", "anydata", false), Field::Number);
         assert_eq!(field_of("LambdaNode", "rate", "anylist", false), Field::Number);
         assert_eq!(field_of("ContainsNode", "list", "anylist", false), Field::None);
+    }
+
+    #[test]
+    fn a_behavior_is_never_a_value() {
+        let kinds = EMPTY.iter().map(|&(_, _, e)| e).chain(EMPTY_BY_OP.iter().map(|&(_, _, _, e)| e));
+        for e in kinds {
+            if let Empty::Behavior(w) = e {
+                assert!(w.parse::<f64>().is_err() && !["TRUE", "FALSE"].contains(&w), "a value as a Behavior: {w}");
+            }
+        }
     }
 
     #[test]
