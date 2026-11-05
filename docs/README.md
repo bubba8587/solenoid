@@ -94,6 +94,8 @@ is parked there.
   in `2.0-plan.md`, never here too.
 - **`1.6-plan.md`** — the 1.6 release plan (the author's cut 2026-11-04): three rounds, a
   desktop session, and what waits until after 1.6.
+- **`p7-walk.md`** — the author's P7 walk (card vs formula on each kind of nothing), one case at a
+  time: the rulings, the open questions and the evidence ledger; archives when P7 lands.
 - **`2.0-plan.md`** — the 2.0 release plan (PROPOSAL 2026-09-01): the arcs that change
   what a document is — pages, collaboration (accounts / cloud saves / multiplayer), the
   Excel transpiler, conditional formatting, canvas at scale, value-model extensions,
