@@ -673,7 +673,7 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
     "components/cablePrune.ts": "the helper itself",
     "nodes/composite.ts": "restoreInternal tears down the WHOLE internal graph before re-hydrating (undo restore) — a full clear, not an input-key prune",
     "components/ConnectionDialog.tsx": "deletes ONE user-selected cable (and its edit-replace predecessor) — not an input-key prune",
-    "components/InterpolateNode.tsx": "the List↔Grid variant switch swaps the ENTIRE socket set — prunes both directions (inputs AND outputs)",
+    "components/shapeMode.ts": "the List↔Grid switch (Interpolate, Smooth, Convolve, Integrate) swaps the ENTIRE socket set — prunes both directions (inputs AND outputs)",
     "components/expressionEdit.ts": "the Equation prune covers both directions (a variable owns an OUTPUT socket too); Expression/LAMBDA already use the helper",
   };
 

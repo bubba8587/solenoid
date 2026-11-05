@@ -30,7 +30,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "BinNode" => bin(c),
         "CombinationsNode" => combinations(c),
         "EwmaNode" => ewma(c),
-        "ConvolveNode" => two_lists(c, "CONVOLVE"),
+        "ConvolveNode" => convolve(c),
         "CrossNode" => two_lists(c, "CROSSPRODUCT"),
         "PolyfitNode" => polyfit(c),
         "TrapzNode" => trapz(c),
@@ -344,7 +344,12 @@ fn polyfit(c: &mut Call) -> Answer {
 
 fn trapz(c: &mut Call) -> Answer {
     let dx = or(setting(c, "dx"), V::Num(1.0));
-    let r = core_call("TRAPZ", &[list_in(c, "list"), dx]);
+    let r = if c.field_str("mode", "list") == "grid" {
+        let dy = or(setting(c, "dy"), V::Num(1.0));
+        core_call("TRAPZ", &[list_in(c, "grid"), dx, dy])
+    } else {
+        core_call("TRAPZ", &[list_in(c, "list"), dx])
+    };
     shown(c, "cachedResult", "result", r)
 }
 
@@ -590,16 +595,22 @@ fn spectrum(c: &mut Call) -> Answer {
 }
 
 fn smooth(c: &mut Call) -> Answer {
-    let arr = slot(c, "list");
+    let grid = c.field_str("mode", "list") == "grid";
+    let arr = slot(c, if grid { "grid" } else { "list" });
     let op = c.field_str("op", "savgol").to_string();
     let out = if nullish(&arr) {
         V::Null
+    } else if grid && (op == "savgol" || op == "lowess") {
+        err(ErrorCode::Value, "Savitzky–Golay and LOWESS smooth a list; a grid takes Gaussian, Mean or Median")
     } else if op == "savgol" {
         let (w, o) = (or(setting(c, "window"), V::Num(5.0)), or(setting(c, "order"), V::Num(2.0)));
         core_call("SAVGOL", &[arr, w, o])
     } else if op == "lowess" {
         let f = or(setting(c, "frac"), V::Num(0.67));
         core_call("LOWESS", &[arr, f])
+    } else if op == "mean" || op == "median" {
+        let size = or(setting(c, "size"), V::Num(3.0));
+        core_call(if op == "mean" { "MEANSMOOTH" } else { "MEDIANSMOOTH" }, &[arr, size])
     } else {
         let s = or(setting(c, "sigma"), V::Num(1.0));
         core_call("GAUSSIANSMOOTH", &[arr, s])
@@ -608,8 +619,21 @@ fn smooth(c: &mut Call) -> Answer {
         c.show("cachedList", empty());
         return Ok(vec![("result".into(), Cv::from(out))]);
     }
+    // A smoothed grid is in the grid's unit, as Interpolate's filled one is.
+    if grid
+        && matches!(out, V::List(_))
+        && let Some(u) = c.matrix_unit("grid").cloned()
+    {
+        c.set_matrix_unit("result", u);
+    }
     c.show("cachedList", or(out.clone(), empty()));
     Ok(vec![("result".into(), Cv::from(out))])
+}
+
+fn convolve(c: &mut Call) -> Answer {
+    let shape = V::str(c.field_str("form", "full"));
+    let r = core_call("CONVOLVE", &[list_in(c, "a"), list_in(c, "b"), shape]);
+    shown(c, "cachedList", "result", r)
 }
 
 /// A typed row's items, trimmed, the empty ones dropped.

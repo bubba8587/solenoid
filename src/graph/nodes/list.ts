@@ -8,7 +8,7 @@ import { dropInputCables } from "../components/cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
 import { cardShapeOnCore, type Shape } from "../frameShape";
 import type { Cell as AnyCell } from "./coerce";
-import { listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn, anyDataIn, adoptiveDataOut } from "./shared";
+import { listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableIn, tableOut, cubeAdoptIn, anyDataIn, adoptiveDataOut, type ShapeMode } from "./shared";
 import { rolesFrom, setting, LEFT_OUT, type InputRole } from "../inputRoles";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import type { FormatCarrySpec } from "./formatCarry";
@@ -576,21 +576,47 @@ export class EwmaNode extends GraphNode {
   }
 }
 
+export type ConvolveForm = "full" | "same" | "valid";
+export const CONVOLVE_FORM_META: Record<ConvolveForm, { label: string; title: string }> = {
+  full:  { label: "Full",  title: "Every overlap: one longer than A and B together, along each axis" },
+  same:  { label: "Same",  title: "The middle of the full answer, the size of A" },
+  valid: { label: "Valid", title: "Only where one input fits wholly inside the other" },
+};
+export const CONVOLVE_MODE_META: Record<ShapeMode, { label: string; title: string }> = {
+  list: { label: "List", title: "Convolve two lists" },
+  grid: { label: "Grid", title: "Slide a kernel grid over a table of numbers" },
+};
+
 export class ConvolveNode extends GraphNode {
+  static socketDocs: Record<string, string> = {
+    b: "The weights slid along A. On a grid, a small table: a 3 × 3 of 1/9 is a box blur, 1, 0, −1 across a row finds edges.",
+  };
   label: string;
-  cachedList: ListCell[] | SolError = [];
+  mode: ShapeMode;
+  form: ConvolveForm;
+  cachedList: ListCell[] | ListCell[][] | SolError = [];
   width = 180; height = 150;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; mode?: ShapeMode; form?: ConvolveForm }) {
     super("Convolve");
     this.label = init?.label ?? "Convolve";
-    this.addInput("a", listIn("A"));
-    this.addInput("b", listIn("B"));
-    this.addOutput("result", listOut("A ∗ B"));
+    this.mode = init?.mode === "grid" ? "grid" : "list";
+    this.form = init?.form && init.form in CONVOLVE_FORM_META ? init.form : "full";
+    this._rebuildSockets();
+  }
+
+  // Removes every socket, so callers prune all of this node's cables first (applyShapeMode).
+  _rebuildSockets(): void {
+    for (const key of Object.keys(this.inputs)) this.removeInput(key);
+    for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    const grid = this.mode === "grid";
+    this.addInput("a", grid ? tableIn("Grid") : listIn("A"));
+    this.addInput("b", grid ? tableIn("Kernel") : listIn("B"));
+    this.addOutput("result", grid ? tableOut("A ∗ B") : listOut("A ∗ B"));
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    return nodeOnCore(this, inputs) as { result: ListCell[] | SolError };
+    return nodeOnCore(this, inputs) as { result: ListCell[] | ListCell[][] | SolError };
   }
 }
 
@@ -639,19 +665,44 @@ export class PolyfitNode extends GraphNode {
   }
 }
 
+export const TRAPZ_MODE_META: Record<ShapeMode, { label: string; title: string }> = {
+  list: { label: "List", title: "The area under a curve through the points" },
+  grid: { label: "Grid", title: "The volume under a surface given as a table of heights" },
+};
+
 export class TrapzNode extends GraphNode {
-  static inputRoles = rolesFrom("TRAPZ", { dx: 1 });
+  static inputRoles = rolesFrom("TRAPZ", { dx: 1, dy: 2 });
   static socketDocs: Record<string, string> = {
-    result: "The area under the piecewise-linear curve through the points, at uniform spacing dx.",
+    result: "The area under the piecewise-linear curve through the points, at uniform spacing dx. On a grid, the volume under the surface: across each row at dx, then down the rows at dy.",
+    dx: "The spacing between neighboring points; on a grid, between columns.",
+    dy: "The spacing between one row and the next.",
   };
   label: string;
+  mode: ShapeMode;
   literals: Record<string, number> = { dx: 1 };
   cachedResult: number | ListCell | null = null;
   width = 180; height = 150;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; mode?: ShapeMode }) {
     super("Trapz");
     this.label = init?.label ?? "Integrate";
+    this.mode = init?.mode === "grid" ? "grid" : "list";
+    this._rebuildSockets();
+  }
+
+  // Removes every socket, so callers prune all of this node's cables first (applyShapeMode).
+  _rebuildSockets(): void {
+    for (const key of Object.keys(this.inputs)) this.removeInput(key);
+    for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    if (this.mode === "grid") {
+      this.literals.dy ??= 1;
+      this.addInput("grid", tableIn("Grid"));
+      this.addInput("dx", numIn("dx"));
+      this.addInput("dy", numIn("dy"));
+      this.addOutput("result", numOut("Volume"));
+      return;
+    }
+    delete this.literals.dy;
     this.addInput("list", listIn("List"));
     this.addInput("dx", numIn("dx"));
     this.addOutput("result", numOut("Area"));
@@ -1752,33 +1803,55 @@ export class SpectrumNode extends GraphNode {
 }
 
 // ─── SMOOTH ───────────────────────────────────────────────────────────────────
-export type SmoothOp = "savgol" | "lowess" | "gaussian";
-export const SMOOTH_OP_META: Record<SmoothOp, { label: string; fx: string; params: { key: string; label: string; def: number }[]; description: string }> = {
-  savgol:   { label: "Savitzky–Golay", fx: "SAVGOL", params: [{ key: "window", label: "Window", def: 5 }, { key: "order", label: "Order", def: 2 }], description: "Polynomial least-squares over a sliding window (odd width); keeps peak shape better than a moving average. scipy `savgol_filter`, R `signal::sgolayfilt`." },
-  lowess:   { label: "LOWESS",         fx: "LOWESS", params: [{ key: "frac", label: "Fraction", def: 0.67 }], description: "Locally weighted linear regression over the nearest fraction of points, three robust passes. statsmodels `lowess`, R `lowess` / `loess`." },
-  gaussian: { label: "Gaussian", fx: "GAUSSIANSMOOTH", params: [{ key: "sigma", label: "Sigma", def: 1 }], description: "Gaussian-weighted average, σ in samples, edges reflected. scipy `gaussian_filter1d`." },
+export type SmoothOp = "savgol" | "lowess" | "gaussian" | "mean" | "median";
+type SmoothParam = { key: string; label: string; def: number };
+const SIZE: SmoothParam = { key: "size", label: "Size", def: 3 };
+export const SMOOTH_OP_META: Record<SmoothOp, { label: string; fx: string; params: SmoothParam[]; grid: boolean; description: string }> = {
+  savgol:   { label: "Savitzky–Golay", fx: "SAVGOL", grid: false, params: [{ key: "window", label: "Window", def: 5 }, { key: "order", label: "Order", def: 2 }], description: "Polynomial least-squares over a sliding window (odd width); keeps peak shape better than a moving average. scipy `savgol_filter`, R `signal::sgolayfilt`." },
+  lowess:   { label: "LOWESS",         fx: "LOWESS", grid: false, params: [{ key: "frac", label: "Fraction", def: 0.67 }], description: "Locally weighted linear regression over the nearest fraction of points, three robust passes. statsmodels `lowess`, R `lowess` / `loess`." },
+  gaussian: { label: "Gaussian", fx: "GAUSSIANSMOOTH", grid: true, params: [{ key: "sigma", label: "Sigma", def: 1 }], description: "Gaussian-weighted average, σ in samples (in cells on a grid), edges reflected. scipy `gaussian_filter1d` / `gaussian_filter`, MATLAB `imgaussfilt`." },
+  mean:     { label: "Mean",     fx: "MEANSMOOTH",     grid: true, params: [SIZE], description: "The average over a centered window Size wide (Size × Size on a grid), edges reflected. scipy `uniform_filter`, MATLAB `movmean` / `smoothdata2`." },
+  median:   { label: "Median",   fx: "MEDIANSMOOTH",   grid: true, params: [SIZE], description: "The median over a centered window Size wide (Size × Size on a grid), edges reflected: clears lone spikes without blurring steps. scipy `median_filter` / `medfilt`, MATLAB `medfilt2`." },
+};
+export const SMOOTH_MODE_META: Record<ShapeMode, { label: string; title: string }> = {
+  list: { label: "List", title: "Smooth a series" },
+  grid: { label: "Grid", title: "Smooth a table of numbers over its rows and columns at once" },
 };
 
 export class SmoothNode extends GraphNode {
-  static inputRoles = { window: setting(LEFT_OUT, "5"), order: setting(LEFT_OUT, "2"), frac: setting(LEFT_OUT, "0.67"), sigma: setting(LEFT_OUT, "1") };
+  static inputRoles = { window: setting(LEFT_OUT, "5"), order: setting(LEFT_OUT, "2"), frac: setting(LEFT_OUT, "0.67"), sigma: setting(LEFT_OUT, "1"), size: setting(LEFT_OUT, "3") };
   static socketDocs: Record<string, string> = {
     list: "Blank and error cells are skipped by the fits and stay blank in the result.",
+    grid: "A table of numbers. Blank cells stay blank, and their neighbors average over the numbers present.",
     window: "Odd number of neighbours, larger than the order.",
     frac: "Share of the points in each local fit, 0–1; larger is smoother.",
+    size: "Odd window width: 3 takes one neighbor each side, a 3 × 3 block on a grid.",
   };
   label: string;
   op: SmoothOp;
+  mode: ShapeMode;
   literals: Record<string, number> = {};
-  cachedList: ListCell[] = [];
+  cachedList: ListCell[] | ListCell[][] = [];
   width = 190; height = 200;
 
-  constructor(init?: { label?: string; op?: SmoothOp }) {
+  constructor(init?: { label?: string; op?: SmoothOp; mode?: ShapeMode }) {
     super("Smooth");
-    this.op = init?.op ?? "savgol";
+    this.mode = init?.mode === "grid" ? "grid" : "list";
+    const op = init?.op && init.op in SMOOTH_OP_META ? init.op : "savgol";
+    this.op = this.mode === "grid" && !SMOOTH_OP_META[op].grid ? "gaussian" : op;
     this.label = init?.label ?? "";
-    this.addInput("list", listIn("List"));
-    for (const prm of SMOOTH_OP_META[this.op].params) { this.addInput(prm.key, numIn(prm.label)); this.literals[prm.key] = prm.def; }
-    this.addOutput("result", listOut("Smoothed"));
+    this._rebuildSockets();
+  }
+
+  // Removes every socket, so callers prune all of this node's cables first (applyShapeMode).
+  _rebuildSockets(): void {
+    for (const key of Object.keys(this.inputs)) this.removeInput(key);
+    for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    if (this.mode === "grid" && !SMOOTH_OP_META[this.op].grid) this.op = "gaussian";
+    const grid = this.mode === "grid";
+    this.addInput(grid ? "grid" : "list", grid ? tableIn("Grid") : listIn("List"));
+    for (const prm of SMOOTH_OP_META[this.op].params) { this.addInput(prm.key, numIn(prm.label)); this.literals[prm.key] ??= prm.def; }
+    this.addOutput("result", grid ? tableOut("Smoothed") : listOut("Smoothed"));
   }
 
   setOp(next: SmoothOp): string[] {
@@ -1792,7 +1865,7 @@ export class SmoothNode extends GraphNode {
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    return nodeOnCore(this, inputs) as { result: ListCell[] | SolError | null };
+    return nodeOnCore(this, inputs) as { result: ListCell[] | ListCell[][] | SolError | null };
   }
 }
 

@@ -73,6 +73,10 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
 32. **Hash / UUID / Base64** — LANDED 2026-08-23 (Hash card: SHA-256 / SHA-1 / MD5 / CRC-32 /
     FNV-1a, pure sync implementations pinned against hashlib; UUID source node (volatile);
     ENCODEBASE64 / DECODEBASE64 on the url-encode card; HASH / UUID formulas).
+33. **2-D filters** — LANDED 2026-11-05 (scipy `gaussian_filter` / `uniform_filter` /
+    `median_filter`, `signal.convolve2d`, `trapezoid` along each axis: Grid modes on Smooth,
+    Convolve and Integrate, not new cards; MEANSMOOTH / MEDIANSMOOTH, CONVOLVE's shape, TRAPZ's
+    dy; scipy-pinned). The rest of the 2-D survey is a backlog line.
 
 ## Tier 3 — out of character or already covered by composition (recorded so nobody re-asks)
 

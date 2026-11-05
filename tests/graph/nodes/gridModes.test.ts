@@ -1,0 +1,74 @@
+// [[B11]] maximalMerge, [[C17]] shareImpl
+// The Grid modes of Smooth, Convolve and Integrate: List mode keeps the sockets it always had, Grid mode swaps in a
+// table, the card answers what its formula answers, and the mode survives a save.
+import { describe, it, expect } from "vitest";
+import { SmoothNode, ConvolveNode, TrapzNode } from "../../../src/graph/nodes/list";
+import { extractInit } from "../../../src/graph/nodeInit";
+import { coreFunction } from "../coreFunction";
+import { inEditor, Src } from "../cardPasses";
+import { withMatrixUnit, matrixUnitOf } from "../../../src/graph/unitValue";
+
+const GRID = [[3, 1, 4, 1, 5], [9, 2, 6, 5, 3], [5, 8, 9, 7, 9], [3, 2, 3, 8, 4]];
+
+async function answer(node: SmoothNode | ConvolveNode | TrapzNode, wires: Record<string, unknown>) {
+  const ed = await inEditor(node as never);
+  for (const [key, value] of Object.entries(wires)) await ed.wire(new Src(value, "table"), key);
+  const r = await ed.pass("result");
+  ed.dispose();
+  return r;
+}
+
+describe("List mode keeps its sockets", () => {
+  it("as before Grid mode existed", () => {
+    expect(Object.keys(new SmoothNode().inputs)).toEqual(["list", "window", "order"]);
+    expect(Object.keys(new ConvolveNode().inputs)).toEqual(["a", "b"]);
+    expect(Object.keys(new TrapzNode().inputs)).toEqual(["list", "dx"]);
+  });
+});
+
+describe("Grid mode", () => {
+  it("swaps the list for a table and back", () => {
+    const n = new TrapzNode({ mode: "grid" });
+    expect(Object.keys(n.inputs)).toEqual(["grid", "dx", "dy"]);
+    expect(n.literals.dy).toBe(1);
+    n.mode = "list";
+    n._rebuildSockets();
+    expect(Object.keys(n.inputs)).toEqual(["list", "dx"]);
+    expect(n.literals.dy).toBeUndefined();
+  });
+
+  it("offers only the smoothers that work on a grid", () => {
+    expect(new SmoothNode({ op: "savgol", mode: "grid" }).op).toBe("gaussian");
+    expect(new SmoothNode({ op: "median", mode: "grid" }).op).toBe("median");
+    expect(Object.keys(new SmoothNode({ op: "mean", mode: "grid" }).inputs)).toEqual(["grid", "size"]);
+  });
+
+  it("smooths a grid as MEDIANSMOOTH does", async () => {
+    const card = await answer(new SmoothNode({ op: "median", mode: "grid" }), { grid: GRID });
+    expect(card).toEqual(coreFunction("MEDIANSMOOTH")!(GRID, 3));
+    expect((card as number[][])[3]).toEqual([3, 3, 7, 7, 7]);
+  });
+
+  it("smooths a grid in the grid's unit", async () => {
+    const km = withMatrixUnit(GRID.map((r) => [...r]), { dim: { length: 1 }, display: "km" });
+    expect(matrixUnitOf(await answer(new SmoothNode({ op: "gaussian", mode: "grid" }), { grid: km }))).toMatchObject({ display: "km" });
+  });
+
+  it("convolves a grid by a kernel, keeping the shape it's set to", async () => {
+    const kernel = [[1, 2], [0, -1], [1, 1]];
+    const card = await answer(new ConvolveNode({ mode: "grid", form: "valid" }), { a: GRID, b: kernel });
+    expect(card).toEqual([[13, 28, 24, 24], [14, 7, 16, 21]]);
+  });
+
+  it("integrates a grid at its dx and dy", async () => {
+    const n = new TrapzNode({ mode: "grid" });
+    n.literals = { dx: 0.5, dy: 2 };
+    expect(await answer(n, { grid: GRID })).toBe(63.25);
+  });
+
+  it("keeps its mode and shape through a save", () => {
+    expect(extractInit(new SmoothNode({ op: "mean", mode: "grid" }))).toMatchObject({ op: "mean", mode: "grid" });
+    expect(extractInit(new ConvolveNode({ mode: "grid", form: "same" }))).toMatchObject({ mode: "grid", form: "same" });
+    expect(new ConvolveNode({ form: "sideways" as never }).form).toBe("full");
+  });
+});

@@ -1,0 +1,6 @@
+{ "nodes": [
+  { "id": "e1", "type": "ExpressionNode", "init": { "label": "Noise", "expr": "RANDARRAY(30, 30)" } },
+  { "id": "s1", "type": "SmoothNode", "init": { "label": "Smooth", "op": "gaussian", "mode": "grid" }, "literals": { "sigma": 2 } },
+  { "id": "p1", "type": "SurfaceNode", "init": { "label": "Raw noise" } },
+  { "id": "p2", "type": "SurfaceNode", "init": { "label": "Gaussian σ = 2" } } ],
+  "cables": [ "e1.result -> p1.z", "e1.result -> s1.grid", "s1.result -> p2.z" ] }

@@ -1,0 +1,8 @@
+{ "nodes": [
+  { "id": "d1", "type": "ExpressionNode", "x": 0, "y": 0, "init": { "label": "Disc", "expr": "MAKEARRAY(40, 40, LAMBDA(r, c, IF((r - 20.5) ^ 2 + (c - 20.5) ^ 2 < 100, 1, 0)))" } },
+  { "id": "k1", "type": "ExpressionNode", "x": 0, "y": 330, "init": { "label": "Sobel kernel", "expr": "MAKEARRAY(3, 3, LAMBDA(r, c, (2 - c) * IF(r = 2, 2, 1)))" } },
+  { "id": "c1", "type": "ConvolveNode", "x": 420, "y": 120, "init": { "label": "Edges", "mode": "grid", "form": "same" } },
+  { "id": "t1", "type": "TrapzNode", "x": 420, "y": -260, "init": { "label": "Volume", "mode": "grid" } },
+  { "id": "p0", "type": "SurfaceNode", "x": 820, "y": -260, "init": { "label": "Disc", "op": "contour" } },
+  { "id": "p1", "type": "SurfaceNode", "x": 820, "y": 260, "init": { "label": "Left and right edges", "op": "contour" } } ],
+  "cables": [ "d1.result -> c1.a", "k1.result -> c1.b", "d1.result -> t1.grid", "d1.result -> p0.z", "c1.result -> p1.z" ] }

@@ -31,6 +31,9 @@ const POLICY: Record<string, Policy> = {
   SetCellNode: "carry",           // overwriting cells by address keeps the grid's unit
   InterpolateNode: "carry",       // grid mode fills blanks in the SAME unit (dynamic
                                   // socket, so the sweep can't see it — kept manually)
+  SmoothNode: "carry",            // Grid mode smooths in the grid's unit (a dynamic socket, kept here by hand)
+  ConvolveNode: "strip",          // Grid mode: a convolution multiplies the two grids' units — documented-strip
+  TrapzNode: "strip",             // Grid mode: a volume carries z·x·y — documented-strip
   StackNode: "carry-if-uniform",
   TableReshapeNode: "convert-to-matrix", // WRAPROWS/WRAPCOLS lift; TOCOL/TOROW drop (both checked below)
   TableMultNode: "strip",         // MMULT — dimensioned matrix products are out of scope (documented-strip)

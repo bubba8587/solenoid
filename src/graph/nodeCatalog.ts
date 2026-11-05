@@ -542,7 +542,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           ]},
           { type: "pair", children: [
             { type: "list-rle",       label: "Run Lengths",   description: "Compresses consecutive equal values into rows of value and run-length. R `rle` / run-length encoding.", create: () => new RleNode(), parity: false, keywords: "rle run length encoding compress consecutive runs streak count repeats groups" },
-            { type: "list-trapz",     label: "Integrate",     description: "Area under the curve through the points by the trapezoidal rule, at uniform spacing dx. The integral counterpart to `DIFF`'s gradient. `numpy.trapz`.", create: () => new TrapzNode(), parity: false, keywords: "integrate integral trapz trapezoidal area under curve auc cumulative numpy calculus" },
+            { type: "list-trapz",     label: "Integrate",     description: "Area under the curve through the points by the trapezoidal rule, at uniform spacing dx. Grid mode gives the volume under a surface of heights, at spacings dx and dy. The integral counterpart to `DIFF`'s gradient. `numpy.trapz`, scipy `trapezoid` along each axis.", create: () => new TrapzNode(), parity: false, keywords: "integrate integral trapz trapezoidal area under curve auc cumulative numpy calculus volume surface double integral dblquad trapz2d 2d grid" },
           ]},
         ],
       },

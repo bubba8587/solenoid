@@ -547,7 +547,7 @@ export class InterpolateNode extends GraphNode {
     this._rebuildSockets();
   }
 
-  // Removes every socket, so callers prune all of this node's cables first (applyInterpolateMode).
+  // Removes every socket, so callers prune all of this node's cables first (applyShapeMode).
   _rebuildSockets(): void {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);

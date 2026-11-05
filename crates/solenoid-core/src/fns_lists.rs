@@ -9,10 +9,11 @@ use std::rc::Rc;
 use crate::dists::{ln_gamma, norm_s_inv};
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{num_blank_zero, to_num, to_str, value_text, Thrown, V};
+use crate::grid_filters;
 use crate::jsnum::{lower_text, nan_max, nan_min, number_to_string, round_half_up, trim_space};
 use crate::sort::stable_sort_by;
 use crate::value_kinds::MAX_GENERATED;
-use libm::{atan2, cos, exp, log, sin};
+use libm::{atan2, cos, log, sin};
 
 /// The names this module answers.
 pub const NAMES: &[&str] = &[
@@ -48,6 +49,8 @@ pub const NAMES: &[&str] = &[
     "LINSPACE",
     "LOGRETURNS",
     "LOWESS",
+    "MEANSMOOTH",
+    "MEDIANSMOOTH",
     "NORM",
     "NORMALIZE",
     "NTHELEMENT",
@@ -511,8 +514,24 @@ fn answer(name: &str, a: &[V]) -> V {
             )
         }
         "TRAPZ" => {
-            let l = to_list(a0);
-            let dx = if blank(arg(a, 1)) { 1.0 } else { number(arg(a, 1)) };
+            let g = match grid_filters::read_grid("TRAPZ", a0) {
+                Ok(g) => g,
+                Err(e) => return e,
+            };
+            let dx = match grid_filters::param("TRAPZ", "dx", arg(a, 1), 1.0) {
+                Ok(x) => x,
+                Err(e) => return e,
+            };
+            if g.is_grid {
+                return match grid_filters::param("TRAPZ", "dy", arg(a, 2), 1.0) {
+                    Ok(dy) => grid_filters::trapz_grid(&g, dx, dy),
+                    Err(e) => e,
+                };
+            }
+            if !blank(arg(a, 2)) {
+                return value("TRAPZ: dy is for a grid; a list takes only dx");
+            }
+            let l = g.cells;
             if let Some(e) = first_error(&l) {
                 return e;
             }
@@ -532,27 +551,10 @@ fn answer(name: &str, a: &[V]) -> V {
             }
             V::Num(s)
         }
-        "CONVOLVE" => {
-            let (x, y) = (to_list(a0), to_list(arg(a, 1)));
-            if let Some(e) = first_error(&x).or_else(|| first_error(&y)) {
-                return e;
-            }
-            if x.iter().chain(y.iter()).any(crate::excel_functions::holds_text) {
-                return text_signal("CONVOLVE");
-            }
-            let fx: Vec<f64> = x.iter().map(|v| finite(v).unwrap_or(0.0)).collect();
-            let fy: Vec<f64> = y.iter().map(|v| finite(v).unwrap_or(0.0)).collect();
-            if fx.is_empty() || fy.is_empty() {
-                return list(Vec::new());
-            }
-            let mut out = vec![0.0; fx.len() + fy.len() - 1];
-            for i in 0..fx.len() {
-                for j in 0..fy.len() {
-                    out[i + j] += fx[i] * fy[j];
-                }
-            }
-            nums(out)
-        }
+        "CONVOLVE" => match (grid_filters::read_grid("CONVOLVE", a0), grid_filters::read_grid("CONVOLVE", arg(a, 1))) {
+            (Ok(x), Ok(y)) => grid_filters::convolve(&x, &y, arg(a, 2)),
+            (Err(e), _) | (_, Err(e)) => e,
+        },
         "RLE" => {
             let l = to_list(a0);
             let mut out = Vec::new();
@@ -712,7 +714,17 @@ fn answer(name: &str, a: &[V]) -> V {
         | "FILLDROP" | "COALESCE" => fill_list(name, &to_list(a0), a),
         "LOGRETURNS" | "CUMRETURNS" | "DRAWDOWN" => returns(name, &to_list(a0)),
         "FINDPEAKS" => find_peaks(&to_list(a0), arg(a, 1), arg(a, 2), arg(a, 3)),
-        "GAUSSIANSMOOTH" => gaussian_smooth(&to_list(a0), to_num(arg(a, 1))),
+        "GAUSSIANSMOOTH" | "MEANSMOOTH" | "MEDIANSMOOTH" => {
+            let (what, blank) = if name == "GAUSSIANSMOOTH" { ("sigma", 0.0) } else { ("size", 3.0) };
+            match (grid_filters::read_grid(name, a0), grid_filters::param(name, what, arg(a, 1), blank)) {
+                (Err(e), _) | (_, Err(e)) => e,
+                (Ok(g), Ok(p)) => match name {
+                    "GAUSSIANSMOOTH" => grid_filters::gaussian(&g, p),
+                    "MEANSMOOTH" => grid_filters::mean(&g, p),
+                    _ => grid_filters::median(&g, p),
+                },
+            }
+        }
         "LOWESS" => {
             let frac = if blank(arg(a, 1)) { 2.0 / 3.0 } else { to_num(arg(a, 1)) };
             list(lowess(&to_list(a0), frac, 3))
@@ -1258,58 +1270,6 @@ fn find_peaks(values: &[V], height: &V, distance: &V, prominence: &V) -> V {
         });
     }
     nums(out.into_iter().map(|p| p.0 as f64).collect())
-}
-
-fn gaussian_smooth(values: &[V], sigma: f64) -> V {
-    let n = values.len();
-    if n == 0 {
-        return list(Vec::new());
-    }
-    if !(sigma > 0.0) {
-        return list(
-            values.iter().map(|v| if is_sol(v) || finite(v).is_some() { v.clone() } else { V::Null }).collect(),
-        );
-    }
-    let r = (4.0 * sigma).ceil();
-    if (2.0 * r + 1.0) * n as f64 > 1e8 {
-        return domain("Sigma is too wide for this list: keep 8 × sigma × its length under 100 million");
-    }
-    let ri = r as i64;
-    let k: Vec<f64> = (-ri..=ri).map(|d| exp(-((d * d) as f64) / (2.0 * sigma * sigma))).collect();
-    let period = 2 * n as i64;
-    let reflect = |j: i64| {
-        let mut t = ((j % period) + period) % period;
-        if t >= n as i64 {
-            t = period - 1 - t;
-        }
-        t as usize
-    };
-    list(
-        values
-            .iter()
-            .enumerate()
-            .map(|(i, v)| {
-                if is_sol(v) {
-                    return v.clone();
-                }
-                if finite(v).is_none() {
-                    return V::Null;
-                }
-                let (mut num, mut den) = (0.0, 0.0);
-                for d in -ri..=ri {
-                    let Some(y) = finite(&values[reflect(i as i64 + d)]) else { continue };
-                    let w = k[(d + ri) as usize];
-                    num += w * y;
-                    den += w;
-                }
-                if den > 0.0 {
-                    V::Num(num / den)
-                } else {
-                    V::Null
-                }
-            })
-            .collect(),
-    )
 }
 
 pub(crate) fn mat_solve(a: &[Vec<f64>], b: &[f64]) -> Option<Vec<f64>> {

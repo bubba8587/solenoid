@@ -71,6 +71,10 @@ export const documentIn   = (label: string) => new GraphInput(documentSocket, la
 export const documentOut  = (label: string) => new GraphOutput(documentSocket, label);
 
 /** A result socket's family: what the card computed, or `auto` (the wildcard) before a run or for a mixed answer. */
+/** A card that works on a list or, by its Grid mode, on a table of numbers over both axes. */
+export type ShapeMode = "list" | "grid";
+export const SHAPE_MODES: readonly ShapeMode[] = ["list", "grid"];
+
 export type ResultType = "number" | "text" | "date" | "logical" | "auto";
 export type ResultDim = "scalar" | "combo" | "matrix";
 

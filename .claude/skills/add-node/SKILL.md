@@ -7,7 +7,7 @@ description: Add a new computation node to Solenoid (the node-graph app). Use wh
 
 A node is a class + a component + three registration lines + a catalog entry.
 The component is usually boilerplate (the node kit carries it), so the real
-work is the `data()` method, the tests, and the catalog copy.
+work is the Rust body, the field declarations, the tests, and the catalog copy.
 
 **Worked example:** the Color Blend node (2026-07-20, commit history) touches
 every step compactly — class in `input.ts`, hand-written component, kind
@@ -134,14 +134,37 @@ script when the component needs hand-writing anyway (op select, custom render).
   is shared with `textForm.ts`'s byte-identical writer — extend, don't reorder.
   The constructor must accept the same fields back (guard stale enum values
   from old saves — fall back, don't crash).
-- **Reading an input**: use `readInput(inputs.x, this.literals.x ?? default)`,
-  NEVER `inputs.x?.[0] ?? this.literals.x`. `??` can't tell "no cable" from "a
-  cable carrying blank", so it substitutes the card's value for the graph's
-  answer. Then decide what a wired blank DOES from the input's role —
-  propagate / skip / skip-the-check / fall back — per the table in
-  `tree/specs/values/value-semantics.md` "Reading an input". Pin both halves in a test
-  (wired blank AND unwired default); `nodes/readInputSweep.test.ts` fails on a
-  new `?? literal` read.
+- **Reading an input** happens in the Rust body: `slot` / `read_role` /
+  `Call::unwired` (`nodes/list.rs`, `nodes/scalar.rs`), never a cable's value
+  with the card's literal patched in. What a wired blank DOES follows the
+  input's role (propagate / skip / fall back), per
+  `tree/specs/values/value-semantics.md` § Reading an input.
+- **Every field declares what it is when empty** ([[D96]] emptySlotShowsItsValue,
+  `tree/specs/documents/inline-literal-maps.md` § What an empty field is): a
+  **Fallback** (a value, shown muted upright, that the card computes with), a
+  **Behavior** (`[word]` in brackets, upright), an **Example** (a muted italic
+  hint; the card computes nothing from it) or **Required** (nothing shown; a
+  named error). No hidden defaults: a value the body computes from when the
+  field is empty is that field's Fallback, shown. Fallback over Example by
+  default, 0 / FALSE / "" usually, another value where it reads better. Where it
+  goes:
+  - a **setting** declares it through its role: `static inputRoles` with
+    `rolesFrom("FN", { key: argIndex })` when the card has a formula twin (the
+    role then lives once in `ARG_ROLES`, `inputRoles.ts`, and the call table),
+    else `setting(value)` or `setting(LEFT_OUT, "word")` (the word a value-like
+    one shows, e.g. `"5"`);
+  - any other field is a row in `EMPTY` (or `EMPTY_BY_OP` when it differs per
+    op) in `crates/solenoid-core/src/nodes/fields.rs`, and the body reads it only
+    through `Call::unwired`.
+  `emptyFieldKinds.test.ts` fails a card leaf with an undeclared field, and a
+  Fallback that disagrees with the formula twin's empty slot. A field that only
+  appears after a mode switch isn't swept: declare it all the same.
+- **A mode that swaps the input shape** (a list vs a table) follows INTERPOLATE:
+  a `mode: ShapeMode` field, `_rebuildSockets()` building each mode's full set
+  (the existing mode's sockets unchanged), and the component calling
+  `applyShapeMode` (`components/shapeMode.ts`), which drops every cable first.
+  A grid that reaches a body takes `matrixArgs` in the call table, and a
+  dynamic matrix socket goes in `matrixUnitPolicy.test.ts` by hand.
 - **`literals` / `stringLiterals`**: declare the map on the class IFF the card
   edits those values inline — that declaration is the LOAD GATE (persistence
   restores the maps only onto declaring classes, so a save can't hardcode a
@@ -187,9 +210,16 @@ script when the component needs hand-writing anyway (op select, custom render).
 
 ## Verify
 
-`npx tsrs --noEmit` clean + `npx vitest run` green — the FULL suite, because
-the machine-checked sweeps (`socketConnect.test.ts`, `coerceInputs.test.ts`,
-`seeds.test.ts`) are what catch a wiring/declaration mistake. The node then
+`npx tsrs --noEmit` clean; the Rust checks and binaries per `CLAUDE.md` §
+Testing (`bash scripts/check-rust.sh core`, `cargo test --release --lib`,
+`--test nodes`, `--test conformance`; a moved answer is refrozen and each moved
+case checked against the change); `npm run build:wasm` once; then the `nodes`
+bucket (`node scripts/test-bucket.mjs nodes`) plus the buckets of whatever else
+the change touched. A new card or function crosses tiers (catalog, formulas,
+saves), so run the full `npx vitest run` once before pushing: the sweeps
+(`socketConnect`, `coerceInputs`, `seeds`, `emptyFieldKinds`,
+`formulaNodeCoverage`, `settingsAudit`) are what catch a declaration gap. A
+pack description edit also needs `node scripts/prerender-site.mjs`. The node then
 appears in the Add menu and the Function Reference (both generated from the
 catalog). The author eyeballs UI on their own dev environment — do NOT build
 render/screenshot tests (vitest env is `node`, no jsdom).

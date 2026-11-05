@@ -40,6 +40,7 @@ pub mod frame_backend;
 pub mod frame_fns;
 pub mod frame_ref;
 pub mod frame_verbs;
+pub mod grid_filters;
 pub mod hash_ops;
 pub mod jsnum;
 pub mod ladder;

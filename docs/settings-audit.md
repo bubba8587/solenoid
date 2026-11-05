@@ -70,6 +70,7 @@ argument; a value is the typed blank it reads as.
 | CLAMP | `min` → omitted; `max` → omitted |
 | COMBINATIONS | `k` → #SYNTAX! |
 | CONVERT | `from_unit` → #SYNTAX!; `to_unit` → #SYNTAX! |
+| CONVOLVE | `shape` → omitted |
 | COUPDAYBS | `frequency` → omitted; `basis` → omitted |
 | COUPDAYS | `frequency` → omitted; `basis` → omitted |
 | COUPDAYSNC | `frequency` → omitted; `basis` → omitted |
@@ -123,6 +124,8 @@ argument; a value is the typed blank it reads as.
 | LOGNORM.DIST | `cumulative` → false |
 | MAKEARRAY | `rows` → #SYNTAX!; `columns` → #SYNTAX! |
 | MDURATION | `frequency` → omitted; `basis` → omitted |
+| MEANSMOOTH | `size` → 3 |
+| MEDIANSMOOTH | `size` → 3 |
 | MID | `start` → #SYNTAX!; `count` → #SYNTAX! |
 | MROUND | `multiple` → #SYNTAX! |
 | MUNIT | `dimension` → #SYNTAX! |
@@ -202,7 +205,7 @@ argument; a value is the typed blank it reads as.
 | TOCOL | `ignore` → omitted; `scan_by_column` → omitted |
 | TOEPOCH | `unit` → omitted |
 | TOROW | `ignore` → omitted; `scan_by_column` → omitted |
-| TRAPZ | `dx` → omitted |
+| TRAPZ | `dx` → omitted; `dy` → omitted |
 | INTERPOLATE | `known_xs` → omitted; `new_xs` → omitted |
 | TREND | `const` → omitted |
 | TRIMMEAN | `percent` → 0 |

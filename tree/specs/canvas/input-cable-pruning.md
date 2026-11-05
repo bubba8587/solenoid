@@ -56,7 +56,7 @@ The sanctioned direct callers, each with a genuinely different shape:
 | `components/cablePrune.ts` | The helper itself. |
 | `nodes/composite.ts` | `restoreInternal` tears down the whole internal graph before rebuilding it on an undo restore. That is a full clear, not a prune by input key. |
 | `components/ConnectionDialog.tsx` | Deletes one user-selected cable (and, on an edit, the cable it replaces). |
-| `components/InterpolateNode.tsx` | The List / Grid variant switch swaps the entire socket set, so it prunes inputs and outputs together. |
+| `components/shapeMode.ts` | The List / Grid switch (Interpolate, Smooth, Convolve, Integrate) swaps the entire socket set, so it prunes inputs and outputs together. |
 | `components/expressionEdit.ts` | The Equation prune covers both directions, because a variable owns an output socket too. Expression and LAMBDA already use the helper. |
 
 A new direct caller needs its reason added to that list in the test.
