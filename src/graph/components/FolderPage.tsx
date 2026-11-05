@@ -12,9 +12,21 @@ import { CubeDisplay } from "./CubeDisplay";
 import { TableDisplay } from "./TableDisplay";
 import { SocketComponent } from "./SocketComponent";
 import { TypeIcon, type TypeIconKind } from "./TypeIcon";
+import { ChevronLeftIcon } from "./Icons";
+import "../Settings.css";
 
 /** What a folder holds, said once, and the drawing of its shape. Folders without one show their cards alone. */
-const FOLDER_STORIES: Record<string, { lede: string; shape?: () => ReactNode; icon?: TypeIconKind | SolenoidSocket }> = {
+/** The Frame socket's mark, drawn large in outline: the socket's square-edged "F", its stroke heavier than the box's. */
+function FrameMark() {
+  return (
+    <svg viewBox="0 0 12 12" width="26" height="26" fill="none" stroke="currentColor" aria-hidden="true">
+      <rect x="0.75" y="0.75" width="10.5" height="10.5" rx="1.5" strokeWidth="1.1" />
+      <path d="M4.15 8.9 V3.9 H8.95 M4.15 6.2 H8.15" strokeWidth="1.5" strokeLinecap="butt" strokeLinejoin="miter" />
+    </svg>
+  );
+}
+
+const FOLDER_STORIES: Record<string, { lede: string; shape?: () => ReactNode; icon?: TypeIconKind | SolenoidSocket | "frame-mark" }> = {
   Numbers: {
     icon: "number",
     lede: "A number can carry a unit, set where the value starts. A calculation works out its result's unit: meters times meters is square meters, and adding meters to seconds is a #UNIT! error.",
@@ -31,7 +43,7 @@ const FOLDER_STORIES: Record<string, { lede: string; shape?: () => ReactNode; ic
     shape: () => <div className="fr-fold__box"><TableDisplay table={[[1, 2, 3], [4, 5, 6], [7, 8, 9]]} elem="number" /></div>,
   },
   Frames: {
-    icon: "frame",
+    icon: "frame-mark",
     lede: "A table with headers. Each column has a name and one type, so a column of dates stays dates and a column can carry its own unit. Formulas don't take Frames; Get Column and Split Frame take the pieces out. A Cube is a Frame whose cells can hold anything, a whole Frame included, so nested data stays nested.",
     shape: () => <FrameShapes />,
   },
@@ -87,10 +99,20 @@ function leavesOf(entries: CatalogEntry[]): NodeCatalogEntry[] {
     : (e as NodeCatalogEntry).hidden ? [] : [e as NodeCatalogEntry]);
 }
 
-export function FolderPage({ folder, accentStyle, onCard }: {
-  folder: CatalogCategory; accentStyle?: CSSProperties; onCard: (leaf: NodeCatalogEntry) => void;
+/** A description's first sentence, its code spans as plain text. */
+function firstSentence(text: string): string {
+  const plain = text.replace(/`/g, "");
+  const m = /^.*?[.!?](?=\s|$)/.exec(plain);
+  return m ? m[0] : plain;
+}
+
+/** A folder's page. A top-level folder (no `ancestors`) tells what its kind of value is; a sub-folder names the folders
+ *  above it, each opening its own page. */
+export function FolderPage({ folder, ancestors, accentStyle, onCard, onUp }: {
+  folder: CatalogCategory; ancestors: string[]; accentStyle?: CSSProperties;
+  onCard: (leaf: NodeCatalogEntry) => void; onUp: (depth: number) => void;
 }) {
-  const story = FOLDER_STORIES[folder.label];
+  const story = ancestors.length === 0 ? FOLDER_STORIES[folder.label] : undefined;
   // Cards directly in the folder first, then each sub-folder as a caption over its cards.
   const direct = folder.children.filter((e) => e.type !== "category");
   const subs = folder.children.filter((e): e is CatalogCategory => e.type === "category");
@@ -101,15 +123,29 @@ export function FolderPage({ folder, accentStyle, onCard }: {
   );
   return (
     <article className="fr-card fr-fold" style={accentStyle}>
+      <div className="solenoid-add-menu__item solenoid-add-menu__item--back fr-card__back" onClick={() => onUp(ancestors.length - 1)}>
+        <ChevronLeftIcon size={14} /><span>{ancestors[ancestors.length - 1] ?? "Cards"}</span>
+      </div>
       <header className="fr-card__head">
         <div className="fr-card__head-row">
           {story?.icon && (
-            <span className="fr-fold__icon" aria-hidden="true">
-              {story.icon instanceof SolenoidSocket ? <SocketComponent data={story.icon} /> : <TypeIcon type={story.icon} size={22} />}
+            <span className={`fr-fold__icon${story.icon instanceof SolenoidSocket ? " fr-fold__icon--socket" : ""}`} aria-hidden="true">
+              {story.icon instanceof SolenoidSocket ? <SocketComponent data={story.icon} />
+                : story.icon === "frame-mark" ? <FrameMark /> : <TypeIcon type={story.icon} size={22} />}
             </span>
           )}
           <h2 className="fr-card__title">{folder.label}</h2>
         </div>
+        {ancestors.length > 0 && (
+          <div className="fr-card__crumb">
+            {ancestors.map((a, i) => (
+              <span key={i} className="fr-card__crumb-part">
+                {i > 0 && <span className="fr-card__crumb-sep" aria-hidden="true">▸</span>}
+                <button type="button" className="fr-card__crumb-link" onClick={() => onUp(i)}>{a}</button>
+              </span>
+            ))}
+          </div>
+        )}
       </header>
       {story && (
         <div className="fr-fold__story">
@@ -117,6 +153,19 @@ export function FolderPage({ folder, accentStyle, onCard }: {
           {story.shape && <div className="fr-fold__shape">{story.shape()}</div>}
         </div>
       )}
+      {ancestors.length > 0 ? (
+        // A sub-folder lists its cards as Settings lists its rows: the name, and the first sentence of what it does.
+        <div className="fr-fold__rows">
+          {leavesOf(folder.children).map((c) => (
+            <button key={c.type} type="button" className="solenoid-settings__row fr-fold__row" onClick={() => onCard(c)}>
+              <span className="solenoid-settings__row-text">
+                <span className="solenoid-settings__row-label">{c.label}</span>
+                {c.description && <span className="solenoid-settings__row-help">{firstSentence(c.description)}</span>}
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : (
       <div className="fr-fold__groups">
         {direct.length > 0 && <section className="fr-card__section">{links(leavesOf(direct))}</section>}
         {subs.map((sub) => (
@@ -126,6 +175,7 @@ export function FolderPage({ folder, accentStyle, onCard }: {
           </section>
         ))}
       </div>
+      )}
     </article>
   );
 }

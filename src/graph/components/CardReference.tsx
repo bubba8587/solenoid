@@ -13,7 +13,7 @@ import { nodeAccent } from "../nodes/kind";
 import { contrastInk, darkenAccent } from "../palette";
 import { documentStore } from "../documentStore";
 import { allPacks } from "../packs";
-import { DrillMenu, LeafRow, drillStackTo, type NodeCatalogEntry, type CatalogEntry, type CatalogCategory, type CatalogPair } from "../AddNodeMenu";
+import { DrillMenu, LeafRow, drillStackTo, drillChain, type NodeCatalogEntry, type CatalogEntry, type CatalogCategory, type CatalogPair } from "../AddNodeMenu";
 import { IS_COARSE } from "../coarse";
 import { descriptionHtml } from "../descriptionMd";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
@@ -99,16 +99,10 @@ export function CardReference() {
   const pick = (leaf: NodeCatalogEntry) => { setStartOp(null); setTrail([]); setPicked(leaf); };
   // The navigator wears the open card's color, as the page does, or with no card open the open folder's.
   const navMode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
-  const openFolder = useMemo(() => {
-    let entries: CatalogEntry[] = catalog;
-    let folder: CatalogCategory | null = null;
-    for (const i of stack) {
-      const e = entries[i];
-      if (!e || e.type !== "category") break;
-      folder = e as CatalogCategory;
-      entries = folder.children;
-    }
-    return folder;
+  // The open folder and the folders above it, as the stack walks the catalog.
+  const { openFolder, ancestors } = useMemo(() => {
+    const chain = drillChain(catalog, stack);
+    return { openFolder: chain[chain.length - 1] ?? null, ancestors: chain.slice(0, -1).map((c) => c.label) };
   }, [catalog, stack]);
   const navAccent = useMemo(() => {
     if (picked) { try { return nodeAccent(picked.create() as GraphNode, navMode); } catch { /* fall through to the folder */ } }
@@ -135,8 +129,10 @@ export function CardReference() {
     return byLabel.get(name.toLowerCase()) ?? null;
   };
   const card = selected ? byType.get(selected) ?? null : null;
-  const topFolder = !q && !pack && stack.length ? catalog[stack[0]] : null;
-  // A crumb's folder: the navigator opens it, and the page shows that folder's top level.
+  const folderShown = !card && !q && !pack && !!openFolder;
+  // Moving through the folders closes the open card, so the folder's page shows.
+  const goFolders = (next: number[]) => { setStack(next); setPicked(null); setTrail([]); setStartOp(null); };
+  // A crumb's folder: the navigator opens it, and the page shows that folder.
   const openPath = (depth: number) => {
     if (!picked) return;
     const full = drillStackTo(catalog, cardTypeOf(picked)) ?? [];
@@ -146,10 +142,10 @@ export function CardReference() {
   };
   // Each page opens at its top, not where the last one was scrolled to.
   const pageRef = useRef<HTMLElement>(null);
-  useLayoutEffect(() => { pageRef.current?.scrollTo({ top: 0 }); }, [picked, topFolder]);
+  useLayoutEffect(() => { pageRef.current?.scrollTo({ top: 0 }); }, [picked, openFolder]);
 
   return (
-    <div className={`fr-cards${card ? " fr-cards--page" : ""}`}>
+    <div className={`fr-cards${card || folderShown ? " fr-cards--page" : ""}`}>
       <nav className="fr-nav">
         <input
           className="solenoid-add-menu__search fr-nav__search"
@@ -187,8 +183,8 @@ export function CardReference() {
             <DrillMenu
               entries={catalog}
               stack={stack}
-              onPush={(i) => setStack([...stack, i])}
-              onPop={() => setStack(stack.slice(0, -1))}
+              onPush={(i) => goFolders([...stack, i])}
+              onPop={() => goFolders(stack.slice(0, -1))}
               onSelect={pick}
               isDim={() => false}
               activeType={selected ?? undefined}
@@ -210,9 +206,11 @@ export function CardReference() {
             onFollow={follow}
           />
         ) : (
-          topFolder && topFolder.type === "category"
-            ? <FolderPage folder={topFolder as CatalogCategory} accentStyle={accentVars(folderAccent(leavesUnder(topFolder), navMode))} onCard={pick} />
-            : <Landing catalog={catalog} onCard={pick} onFolder={(i) => { setPack(null); setStack([i]); }} />
+          folderShown && openFolder
+            ? <FolderPage key={stack.join(".")} folder={openFolder} ancestors={ancestors}
+                accentStyle={accentVars(folderAccent(leavesUnder(openFolder), navMode))}
+                onCard={pick} onUp={(depth) => goFolders(stack.slice(0, depth + 1))} />
+            : <Landing catalog={catalog} onCard={pick} onFolder={(i) => { setPack(null); goFolders([i]); }} />
         )}
       </section>
     </div>

@@ -116,6 +116,19 @@ function toRenderItems(entries: CatalogEntry[]): RenderItem[] {
   return out;
 }
 
+/** The folders a drill stack opens, outermost first, read as the drill list counts its rows (a pair is two). */
+export function drillChain(entries: CatalogEntry[], stack: readonly number[]): CatalogCategory[] {
+  const chain: CatalogCategory[] = [];
+  let items = toRenderItems(entries);
+  for (const i of stack) {
+    const it = items[i];
+    if (!it || it.kind !== "category") break;
+    chain.push(it.entry);
+    items = toRenderItems(it.entry.children);
+  }
+  return chain;
+}
+
 /** The drill stack that opens the folder holding a card, or null when no folder does. */
 export function drillStackTo(entries: CatalogEntry[], type: string): number[] | null {
   const items = toRenderItems(entries);

@@ -673,7 +673,8 @@
   align-items: center;
   color: var(--node-accent, var(--accent));
 }
-.fr-fold__icon .solenoid-socket, .fr-fold__icon > * { transform: scale(1.6); transform-origin: center; }
+/* A socket glyph is drawn at 12px, so it scales up beside the title; a type icon is drawn at size. */
+.fr-fold__icon--socket > * { transform: scale(1.6); transform-origin: center; }
 .fr-fold__story { padding: 16px var(--pad) 4px; }
 .fr-fold__lede { max-width: 720px; padding: 0; }
 .fr-fold__shape { margin-top: 14px; }
@@ -705,3 +706,14 @@
 /* The page names a card's operations and pack, so the navigator drops the Add menu's marks for them. */
 .fr-nav .solenoid-add-menu__ops-mark,
 .fr-nav .solenoid-add-menu__pack-dot { display: none; }
+.fr-fold__rows { display: flex; flex-direction: column; max-width: 760px; padding: 8px var(--pad) 40px; }
+.fr-fold__row {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.fr-fold__row:hover .solenoid-settings__row-label { color: var(--node-accent, var(--accent)); }
