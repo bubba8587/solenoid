@@ -1,7 +1,8 @@
 // [[B16]] oneFormulaSurface
 // The Reference's card pages: every formula that reaches a card shows on it, with its signature.
 import { describe, it, expect } from "vitest";
-import { buildCardReference } from "../../src/graph/functionReference";
+import { buildCardReference, buildFunctionReference } from "../../src/graph/functionReference";
+import { excelSection } from "../../src/graph/excelSections";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
 
 initPackFormulas();
@@ -28,5 +29,12 @@ describe("a card's page", () => {
 
   it("covers pack cards whether their pack is on or off", () => {
     expect(card("grid-connected-regions").packs).toEqual(["signals"]);
+  });
+});
+
+describe("Excel Coverage", () => {
+  it("files every Excel function under one of Excel's sections", () => {
+    const unfiled = buildFunctionReference().filter((r) => r.excel !== null && !excelSection(r.excel)).map((r) => r.excel);
+    expect(unfiled).toEqual([]);
   });
 });

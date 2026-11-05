@@ -5,7 +5,6 @@
 import { isCategory, isPair } from "./catalogSearch";
 import { buildCatalog } from "./catalogUtils";
 import { EXCEL_GAP } from "./nodeExcel";
-import { allPacks } from "./packs";
 import type {
   CatalogEntry, NodeCatalogEntry, ExcelEquiv,
 } from "./AddNodeMenu";
@@ -22,14 +21,11 @@ export interface FnRefRow {
   catalogType: string | null;
   location: string[];          // Add-menu path; [] for Excel-only gap rows
   packs: string[];
-  dependency: boolean;         // a pack of this node is depended-on by another pack
   implemented: boolean;
   parity: boolean;
   oos: boolean;                // the concept has no place here
   superseded: boolean;         // a modern replacement covers it (the name is blocked)
   note?: string;
-  groupKey: string;
-  groupLabel: string;
 }
 
 interface LeafInfo {
@@ -70,30 +66,18 @@ function indexCatalog(): Map<string, LeafInfo> {
   return idx;
 }
 
-function dependedOnPacks(): Set<string> {
-  const s = new Set<string>();
-  for (const p of allPacks()) for (const d of p.dependsOn ?? []) s.add(d);
-  return s;
-}
-
 export function buildFunctionReference(): FnRefRow[] {
   const idx = indexCatalog();
-  const dependedOn = dependedOnPacks();
   const rows: FnRefRow[] = [];
   const emitted = new Set<string>();
-
-  const isDep = (packs: string[]) => packs.some((p) => dependedOn.has(p));
-  const topGroup = (path: string[]) => (path.length ? path[0] : "Docs & Files");
 
   const nodeRow = (
     excel: string | null, syntax: string, type: string, info: LeafInfo,
     parity: boolean, note?: string,
   ): FnRefRow => ({
     excel, syntax, nodeLabel: info.label, description: info.description, keywords: info.keywords, catalogType: type,
-    location: info.path, packs: info.packs, dependency: isDep(info.packs),
+    location: info.path, packs: info.packs,
     implemented: true, parity, oos: false, superseded: false, note,
-    groupKey: `cat:${topGroup(info.path)}`,
-    groupLabel: topGroup(info.path),
   });
 
   // 1. Node-backed rows straight from catalog metadata (`leaf.excel`).
@@ -109,9 +93,8 @@ export function buildFunctionReference(): FnRefRow[] {
     if (info.excel?.length) continue; // already emitted as Excel rows above
     rows.push({
       excel: null, syntax: "", nodeLabel: info.label, description: info.description, keywords: info.keywords, catalogType: type,
-      location: info.path, packs: info.packs, dependency: isDep(info.packs),
+      location: info.path, packs: info.packs,
       implemented: true, parity: true, oos: false, superseded: false,
-      groupKey: `cat:${topGroup(info.path)}`, groupLabel: topGroup(info.path),
     });
   }
 
@@ -122,24 +105,12 @@ export function buildFunctionReference(): FnRefRow[] {
     const superseded = g.superseded ?? false;
     rows.push({
       excel: g.excel, syntax: g.syntax, nodeLabel: null, catalogType: null,
-      location: [], packs: [], dependency: false, implemented: false,
+      location: [], packs: [], implemented: false,
       parity: false, oos: g.oos ?? false, superseded, note: g.note,
-      groupKey: superseded ? "superseded" : "gap",
-      groupLabel: superseded ? "Superseded" : "Out of scope",
     });
   }
 
   return rows;
-}
-
-export function fnRefGroups(rows: FnRefRow[]): { key: string; label: string }[] {
-  const seen = new Map<string, string>();
-  for (const r of rows) if (!seen.has(r.groupKey)) seen.set(r.groupKey, r.groupLabel);
-  const keys = [...seen.keys()];
-  // Catalog groups first (first-seen order), then superseded, then out of scope.
-  const rank = (k: string) => (k === "gap" ? 2 : k === "superseded" ? 1 : 0);
-  keys.sort((a, b) => rank(a) - rank(b));
-  return keys.map((k) => ({ key: k, label: seen.get(k)! }));
 }
 
 // Library tags derive from the catalog prose and keywords: a description citing `numpy.gradient` or `SQL OVER` tags the row.

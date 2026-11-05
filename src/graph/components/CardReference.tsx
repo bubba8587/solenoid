@@ -239,7 +239,7 @@ type ModeMeta = Record<string, { label: string; title?: string }>;
 
 /** A folder's color: the one most of its cards wear, so one stray card's color never stands for the folder. */
 const _cardAccent = new Map<string, string | null>();
-function cardAccent(c: NodeCatalogEntry, mode: "dark" | "light"): string | null {
+export function cardAccent(c: NodeCatalogEntry, mode: "dark" | "light"): string | null {
   const key = `${mode}:${c.type}`;
   if (!_cardAccent.has(key)) {
     let a: string | null = null;
@@ -248,7 +248,7 @@ function cardAccent(c: NodeCatalogEntry, mode: "dark" | "light"): string | null 
   }
   return _cardAccent.get(key)!;
 }
-function folderAccent(cards: NodeCatalogEntry[], mode: "dark" | "light"): string | null {
+export function folderAccent(cards: NodeCatalogEntry[], mode: "dark" | "light"): string | null {
   const count = new Map<string, number>();
   for (const c of cards) { const a = cardAccent(c, mode); if (a) count.set(a, (count.get(a) ?? 0) + 1); }
   let best: string | null = null;
@@ -257,7 +257,7 @@ function folderAccent(cards: NodeCatalogEntry[], mode: "dark" | "light"): string
 }
 
 /** The color vars a surface in that color publishes, as NodeCard does. */
-function accentVars(accent: string | null): React.CSSProperties | undefined {
+export function accentVars(accent: string | null): React.CSSProperties | undefined {
   return accent
     ? ({ "--node-accent": accent, "--node-accent-ink": contrastInk(accent), "--node-accent-dark": darkenAccent(accent) } as React.CSSProperties)
     : undefined;
