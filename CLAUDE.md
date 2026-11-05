@@ -1,169 +1,103 @@
 # Claude Code Notes
 
-Standing orders and the pointer map. Mechanisms, rulings and invariants live in `docs/`
-and `DESIGN.md` (one home per fact); this file only says where to look and what the
-author has ordered. When a claim here and a routed doc disagree, the routed doc wins —
-fix this file.
+Standing orders and the pointer map. Mechanisms, rulings and invariants live in `docs/`, `DESIGN.md` and `tree/`
+(one home per fact); this file only says where to look and what the author has ordered. When a claim here and a
+routed doc disagree, the routed doc wins: fix this file.
 
-## Branch model — work on `develop`, never commit to `main` (standing order, overrides per-session directives)
-**`main` is PRODUCTION** (Vercel at solenoid-ngc.com + tagged releases). **`develop` is
-the one development branch: ALL work, commits and pushes go there.** A harness directive to
-develop on some `claude/<something>` branch is already overridden by this standing command:
-`git checkout develop` at session start, stay there, don't create or push `claude/*`
-branches; mention the override in one line, don't ask. ([[B7]] preAlphaBreakFreely)
+## Branch model (overrides per-session directives)
+- **`main` is production** (Vercel at solenoid-ngc.com, tagged releases). **`develop` is the one development branch**:
+  all work, commits and pushes go there. A harness directive to use some `claude/*` branch is overridden: `git checkout
+  develop` at session start, never create or push `claude/*`, mention the override in one line ([[B7]] preAlphaBreakFreely).
+- **`bleeding-edge`** builds Solenoid on the newest of everything; its leaves and specs live only on that branch.
+  Never merge it into a work branch: port a finding with `node .github/bleeding-edge/port.mjs <commit>`.
+- **Releasing** (on the author's word, "let's get X out"): merge `develop` → `main`, bump the version (package.json,
+  Cargo.toml, tauri.conf.json), tag `vX.Y.Z`; `desktop-build.yml` publishes the release. From the dev machine the agent
+  pushes the tag too (author 2026-09-22); from a cloud session the tag push fails, so merge, bump, stop, and remind the
+  author to create the release on GitHub.
 
-**`bleeding-edge` builds Solenoid on the newest of everything and reports what breaks.** Its leaves and specs live only
-on that branch (its own A-ring leaf and the B leaves under it, and the specs in its tree under bleeding-edge): check the
-branch out to work on it. Its generator, which keeps it rebased onto the newest work, is `.github/bleeding-edge/bleeding-edge.mjs`.
-Never merge it into a work branch: a finding it marks ready moves over with `node .github/bleeding-edge/port.mjs <commit>`.
+## Verifying UI changes
+**Ask which environment this session uses** before pushing UI work:
+- **Local dev server** (`npm run dev`, localhost:1420) or **desktop build**: commit freely, don't push until told.
+- **Vercel preview of `develop`**: push after the checks below; the author eyeballs it.
 
-**Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
-Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `desktop-build.yml` publishes the GitHub
-Release (Windows portable exe, Linux AppImage + .deb) on the tag, once both builds pass. On the
-author's word ("let's get X out") the agent does the whole of it from the dev machine, the tag
-push included (author 2026-09-22); from a cloud session the tag push fails, so there the agent
-merges, bumps and stops. Installers build path-stripped via `npm run release:desktop`.
+LOOK at what you changed before pushing: the `shot-graph` skill (`scripts/shot-graph.mjs`) loads a short graph and
+screenshots it; `scripts/browser.mjs` drives the real app. With the dev server up, `.dev/current-graph.json` is the
+author's live canvas: read it before rebuilding a chain they describe. No component render tests (vitest runs in `node`).
 
-## Verifying UI changes — ASK which dev environment this session uses (FIRST)
-- **Local dev server** (`npm run dev`, localhost:1420): commit freely, do NOT push — the author
-  verifies via HMR; hold pushes until told otherwise.
-- **Vercel preview of `develop`**: keep `tsrs` and the test buckets you touched green (§ Testing in a session), push to `develop`, they eyeball.
-- **Desktop build** (`npm run tauri build` / `release:desktop`): commit freely, hold pushes.
+## Testing: run what the change touches, let CI run the rest (author 2026-11-04)
+Pick by layer, not by habit. CI (`Test`, `Engine test`) and the author's machine run everything; check GitHub after a
+push and fix what it finds.
+- **TypeScript:** `npx tsrs`, the test files you touched, then their bucket(s): `node scripts/test-bucket.mjs <domain>`
+  (`--list` shows them; `tests/buckets.mjs` files every test). The full `npx vitest run` only for a change that crosses
+  tiers, once per push, not after every follow-up fix.
+- **Rust:** `bash scripts/check-rust.sh <crate>` before any push. Then the binaries for what changed:
+  `cargo test --release --lib` for inline tests, `--test nodes` for card bodies, `--test conformance` for anything a
+  formula reads or answers (empty slots, function bodies). A change to `crates/*/src` needs `npm run build:wasm` before a
+  push (the stamp test hashes the source), and a moved answer is refrozen, not edited
+  (`tree/specs/computation/rust-core.md`; `FREEZE_NATIVE=<suite>` for conformance).
+- **Docs and tree:** `python3 tools/dte.py validate --as <ring>` after a tree or spec edit; `node scripts/prerender-site.mjs`
+  after site copy (a landing page, a seed label, a pack description), committing `prerender/`.
 
-**The author's live graph is readable:** with the dev server running, every autosave mirrors the
-current document to `.dev/current-graph.json` (ignored; `vite.config.ts` devGraphMirror). Read it
-before rebuilding a chain the author describes — it IS their canvas.
+## Environment
+- **Tag pushes fail from a cloud session**; branch pushes work. Don't hunt for a workaround.
+- **Never `pkill -f` / `pgrep -f` a pattern on your own command line**: it kills your shell. Restart the dev server by
+  PID: `node scripts/dev-up.mjs --stop | --restart` (also after editing `src/` when a script sees a null editor).
+- **Disk is a fixed ~40 GB allowance.** Build Rust only to the release targets `build:wasm` and `cargo test --release`
+  use; remove merged worktrees; `df -h /` before a big build. **Don't build `src-tauri`** unless the author asks for
+  something desktop-specific.
+- **Never run `npm run build:wasm:opt` or `wasm-opt`** (author's order): plain `npm run build:wasm` only.
+- Linux, no bare `python`: run `python3 tools/dte.py …`.
 
-Browser screenshotting IS sanctioned when visual verification is relevant and necessary. To see a graph fast, use the `shot-graph` skill (`scripts/shot-graph.mjs`): a short graph JSON in, a cropped PNG + every node's text out. Drive the real app with puppeteer-core (`scripts/browser.mjs`) + the preinstalled Chromium and LOOK at what you changed before pushing; the
-author still eyeballs the final result. Component render TESTS stay out (the vitest env is
-`node`); reserve tests for logic. When unsure which environment is active, ask rather than push.
+## Project
+Solenoid: a visual computation graph, a node-based "Excel alternative" for data tables. React 19 + Vite + Tauri, with
+React Flow as the view. The graph model and dataflow engine run in Rust on netcore-rs (`crates/solenoid-graph`), and
+formulas, functions and table verbs on Solenoid's own Rust core (`crates/solenoid-core`), in WebAssembly ([[C130]]
+rustCore). The Rust is the spec: a TypeScript copy is deleted once the core covers it ([[D99]] rustIsSpec).
 
-## Environment constraints
-- **Tag pushes fail from a cloud/container session** (`send-pack: unexpected disconnect`);
-  branch pushes are fine. Don't retry or hunt for a workaround: push the branch, then remind the author to go to Github and create a release manually. 
-- **Never `pkill -f` / `pgrep -f` with a pattern that's on your own command line** (`[v]ite` still matches a
-  shell whose command also says `vitest`): it kills your shell (exit 144). The dev server stops and restarts by
-  PID: `node scripts/dev-up.mjs --stop | --restart`. Restart it after editing `src/` when a script that imports
-  app modules (site-shots, shot-graph) sees a null editor: hot reload handed it a second copy of the module.
-- **The container's disk is a fixed allowance (about 40 GB), and a full disk crashes builds.** Keep Rust builds to the
-  release targets `npm run build:wasm` and the crates' `cargo test --release` use, plus `scripts/check-rust.sh`'s one
-  shared directory; don't leave another build (`src-tauri/target` after a port, a profile, a debug build) lying around.
-  Remove an agent's worktree as soon as its work is merged (`git worktree remove`), and check `df -h /` before a
-  step that builds a lot.
-  **Don't build the desktop shell (`src-tauri`) unless the author asks for something desktop-specific**: in the
-  Vercel workflow nothing needs it, and its build directory runs to gigabytes (`port.mjs` checks it only with `--desktop`).
-- **Before pushing Rust, run `bash scripts/check-rust.sh <crate>`** for the crates you changed (`core`, `graph`, `schedule`, `parquet`; none named is all four): fmt and clippy as CI runs them, wasm and the dev profile included. Add `--test` only when the change is risky enough to want the whole crate's tests here.
-- **Never run `npm run build:wasm:opt` or install/run `wasm-opt`** (author's order): it costs half an hour. After a
-  change to `crates/solenoid-core` or `crates/solenoid-graph`, rebuild with plain `npm run build:wasm`; the stamp
-  test checks the source, not the optimization. Optimizing is the author's call at release time.
-- **The dev machine is Linux** (X11). There is no bare `python`: every `python tools/dte.py …` in
-  the docs runs as `python3 tools/dte.py …`. Cargo builds land in `~/.cargo-target`; puppeteer
-  scripts find the browser through `scripts/browser.mjs`. Debug desktop builds wear a bug-badged
-  icon (`scripts/debug-icon.mjs`).
+**Pre-alpha, break freely ([[B7]] preAlphaBreakFreely):** one user. No shims, aliases, migrations or deprecation paths:
+make the clean change, update seeds and tests, prune what's outdated.
 
-## Testing in a session — run what's relevant, let CI run the rest (author 2026-11-04)
-Iterate fast: in a session, test only the layer you changed, and let GitHub (`Test`, `Engine test`) and the author's
-machine run everything. Check GitHub after a push and fix what it finds.
-- **TypeScript:** `npx tsrs`, the test files you touched, then the bucket(s) around them:
-  `node scripts/test-bucket.mjs <domain|tier>` (`--list` shows them; `tests/buckets.mjs` files every test). A change to
-  a core domain (engine, values, formulas, frames, documents) runs that domain; the full `npx vitest run` is for a
-  change that crosses tiers, or when asked.
-- **Rust:** the test binaries for what you changed (`cargo test --release --test <name>` in the crate, or `--lib` for
-  inline tests), not the crate's whole suite. A change to `crates/*/src` needs `npm run build:wasm` before a push (the
-  stamp test), and a changed answer needs its fixture refrozen (`tree/specs/computation/rust-core.md`).
-- **Always before a push:** whatever the change's own checks are (`python3 tools/dte.py validate --as <ring>` after a
-  tree or spec edit, `node scripts/prerender-site.mjs` after site copy).
+## Docs map: read before touching code
+- **Start:** `docs/mental-model.md` (how it runs), `docs/README.md` (the index and the **code → spec routing table**:
+  grep your file there before editing), `docs/glossary.md` (the invented vocabulary and the author's chrome names).
+- **`DESIGN.md` before any UI or visual change, strings included** (§7 Voice covers help, descriptions, tooltips).
+- **The decision tree** (`tree/decisions/`, `docs/dte.md`) is the normative spec; the agent protocol is
+  `dte-rules/PROTOCOL.md` (read once per session). **Session start: `python3 tools/dte.py outbox`** and process every
+  item. **Ask the author your ring** before the first leaf-governed task; until answered work at C, subagents at C or
+  deeper. Read the governing leaf and spec before changing sockets, names or value handling (`dte.py find`, `show`,
+  `blast`); cite leaves as `[[ID]] name`. A new mechanism lands its rule before its code; prefer extending a leaf to
+  adding one.
+- **Specs** (`tree/specs/`, indexed by `docs/subsystem-invariants.md`): read a subsystem's spec in full before touching
+  it. Three floor specs govern whole classes of files: `tree/specs/floors/components.md`, `tree/specs/floors/node-classes.md`,
+  `tree/specs/floors/stores.md`. Bars and overlays: `tree/specs/canvas/layout-chrome.md`. Before writing a `data()`:
+  `tree/specs/values/value-semantics.md` § Reading an input; before changing an answer that differs from Excel:
+  `tree/specs/computation/excel-divergences.md`.
+- **Queue:** `docs/backlog.md` (open items only), the release plans (`docs/1.6-plan.md`, `docs/2.0-plan.md`),
+  `docs/deferrals.md`, `docs/dev-notes.md` (open problems, session digests). Finished docs live in `docs/archive/`.
+- **Comments are the last resort** (`tree/specs/floors/engineering.md` § Comments): read it before writing comment prose.
+- Adding a node: the `add-node` skill; `nodeCatalog.ts` is the source of truth. The demo video: the `demo-video` skill.
 
-## Project: Solenoid
-Visual computation graph — a node-based "Excel alternative" for data tables. React 19 + Vite +
-Tauri. The view is **React Flow**; the headless graph model and the dataflow engine run in Rust on netcore-rs, Solenoid's port of rete kept as its own library (`crates/solenoid-graph`, [[C130]] rustCore; `tree/specs/computation/graph-core.md`): TypeScript holds the model through `GraphEditor` (`graphEditor.ts`), and node classes are `GraphNode`s (`graphModel.ts`). Formulas, functions and table verbs run on Solenoid's own Rust core (`crates/solenoid-core`), in WebAssembly on the web and desktop alike ([[C130]] rustCore). The Rust is the spec and each TypeScript copy is deleted once the core covers it, its answers frozen into fixtures first ([[D99]] rustIsSpec; the routine is `tree/specs/computation/rust-core.md`).
+## Doc maintenance: reconcile, don't append
+When wrapping up: extend the session's digest in `docs/dev-notes.md` (sweep old ones to the archive), delete landed
+lines from `docs/backlog.md` after checking them against the code, update the spec or coverage doc a change touched.
+Write outcomes, not narratives: what stands, where it's enforced, what would reopen it. History goes to git.
 
-### Docs map — read before touching code
-Start: `docs/mental-model.md` (how it RUNS, end to end), `docs/README.md` (the index + the
-**Code → spec routing table**: grep your file there before editing), `docs/glossary.md` (the
-invented vocabulary + the author's names for the on-screen chrome).
-- **`DESIGN.md` — READ BEFORE ANY UI/VISUAL CHANGE, and "UI change" includes STRINGS** (§7
-  Voice governs help markdown, catalog descriptions, tooltips, empty states).
-- **The decision tree (`tree/decisions/`, `docs/dte.md`) — the NORMATIVE spec and the relapse guard.**
-  The agent protocol is the vendored `dte-rules/PROTOCOL.md` (read it once per session). **Ask the
-  author your ring** before the first leaf-governed task; until answered work at C, and subagents are
-  always C or deeper (`docs/dte.md` § Solenoid's rings); `docs/dte.md` carries only Solenoid's differences and rings.
-  A leaf is a choice a person could weigh, written in plain words (a MUST is fine when it is
-  that kind of choice); how the code carries it out (call order, wrappers, internal formats)
-  is spec content (`docs/dte.md` § What is a leaf and what is a spec). A new mechanism lands
-  its rule before its code, and a rule's exceptions live under that rule, each naming what
-  would remove it (`docs/dte.md` § Solenoid practice). "Leaf" is the author's word; "node" means an app node. Read the
-  governing leaf and spec before changing sockets, names or value handling (`python tools/dte.py find <name>`, `show <ID>`, `blast <ID>`); cite it as
-  `[[<ID>]] name` in comments and commits; run `python tools/dte.py validate --as <your ring>` before you finish.
-  **Session start: `python tools/dte.py outbox`** and process every item (docs/dte.md § Outbox) — the
-  author edits the tree from Obsidian and those edits reach you only this way.
-- **`tree/specs/` — the mechanics, one spec per subsystem, grouped in folders; `tree/` is one Obsidian vault with `tree/decisions/`** (`docs/subsystem-invariants.md` is the index).
-  Three FLOOR specs carry a `covers:` glob and govern whole classes of files: every component is built
-  to `tree/specs/floors/components.md`, every node class and op module to `tree/specs/floors/node-classes.md`, every store to
-  `tree/specs/floors/stores.md`; a file cites only what is specific to it.
-  Read the spec IN FULL before touching its subsystem: **Compute pass**, **Formula language**, **Computed columns**, **Frame verbs**, **Save format**, **React Flow surface contract** (anything on the canvas — what RF owns, groups
-  as sub-flows, cables, sockets, overlays, boundaries), Pointer gestures (with
-  `tree/specs/canvas/touch-gestures.md` as the gesture inventory), Cable routing, Group expand push, Group
-  collapse, Standoffs, Tidy, Conduit faces / resizable-content nodes, Input-cable pruning, Add
-  menu, Socket lattice, Type propagation, Unit flow, Error values, Alerts, Addressable model,
-  Live connections, Load performance, Per-doc autosave, Inline literal maps, Composite drill-in,
-  HTML-in-Canvas.
-- **`tree/specs/canvas/layout-chrome.md`** — read before adding/moving any bar or floating overlay.
-- Reference: `docs/socket-reference.md` (every socket variant), `tree/specs/values/format-model.md` (FC
-  controls), `tree/specs/values/value-semantics.md` ("Reading an input" — before writing a `data()`),
-  `tree/specs/computation/excel-divergences.md` (before changing a function whose answer differs from Excel),
-  `docs/node-coverage.md` (node inventory + the node-design rules), `docs/architecture.md` (file
-  map), `docs/pack-architecture.md`, `docs/out-of-scope.md`.
-- Queue: `docs/backlog.md` (OPEN items only), the release plan
-  `docs/2.0-plan.md` (proposals until the author promotes an item), `docs/deferrals.md`
-  (parked, no plan), `docs/dev-notes.md` (open
-  problems + latest digests). Finished docs: `docs/archive/` (nothing live is parked there —
-  `docsPointers.test.ts`).
-- **Comments are the LAST-RESORT home**; the default outcome for an existing comment is deletion.
-  The policy is `tree/specs/floors/engineering.md` § Comments. Read it before writing comment prose.
-- Adding a node: the `add-node` skill / `scripts/new-node.mjs`; `nodeCatalog.ts` is the source
-  of truth (Add menu + Function Reference generate from it).
-- The demo video is generated: the `demo-video` skill (`scripts/demo-video/`) re-films it after UI changes.
-
-### Pre-alpha — break freely ([[B7]])
-One user (the author): break old saves, old code, legacy names. No shims, aliases, migration
-maps or deprecation paths — make the clean change and update the seed JSONs + tests. Aggressively prune outdated and unneeded things.
-
-### Doc maintenance — RECONCILE, don't append
-When wrapping up (or asked to "update the docs"), in order:
-1. **Digest in `docs/dev-notes.md`** — extend the current session's digest; sweep digested
-   sessions to `docs/archive/dev-notes-history.md`. Per-item detail goes in commit messages.
-2. **Reconcile `docs/backlog.md`** — verify landed items against the CODE and DELETE their
-   lines. Add new follow-ups. Keep items terse.
-3. Update the subsystem/coverage/architecture doc if a mechanism or the file map changed. A doc
-   whose job is DONE moves to `docs/archive/` (and its row to `docs/archive/README.md`).
-"Reconcile" = verify each claim against current code, not just record what you touched.
-
-**Write OUTCOMES, not narratives.** Stale narrative reads as current truth and every duplicated
-restatement is a place a spec can be contradicted. A doc entry states what STANDS, where it is
-enforced, and what would reopen it; build history goes to git. Never duplicate a spec's content
-into this file or another doc — point at it. Deletion is the default for anything historical,
-superseded, or restating what a test already pins.
-
-### Reflexes (each one is a pointer, not the rule)
-- Components never call `node.data()` (`tree/specs/floors/components.md`). Edits commit on Enter/blur
-  via `useDraftCommit` ([[B19]] spreadsheetHabits). In-place socket retype must reconcile
-  (`tree/specs/values/type-propagation-on-in-place-socket-retype.md`). Prune departing sockets' cables before removing them
+## Reflexes (each a pointer, not the rule)
+- Components never call `node.data()` (`tree/specs/floors/components.md`); edits commit on Enter or blur via `useDraftCommit`
+  ([[B19]] spreadsheetHabits). An in-place socket retype reconciles
+  (`tree/specs/values/type-propagation-on-in-place-socket-retype.md`); departing sockets' cables are pruned first
   (`tree/specs/canvas/input-cable-pruning.md`).
-- After a node dedup/merge or an output-socket rename: `seeds.test.ts`, `nodeOps.test.ts`,
-  `formulaNodeCoverage.test.ts` beside the parity/catalog suites ([[B11]] maximalMerge).
-- Formula-authoring gotcha: `e`/`pi`/`tau`/`phi` are constants, not variable names. Default date
-  format is `DD-MMM-YYYY` ([[C44]] dateSerials). Units are authored only by the FC / Convert
-  ([[C25]] firstClassUnits). Frames/cubes never enter formulas ([[C15]] matricesInFormulas).
-- Several agents on this repo at once: one test run at a time, a one-line claim in
-  `docs/agent-coordination.md`, the Lead merges (the protocol is that file). Solo session: claim nothing.
-- An audit that finds defensible but worse behavior fixes it by default; leaving it takes a stated reason.
-- A free speedup (no behavior or look change) is taken without asking (author 2026-11-03).
-- **Measuring speed? Time the path the app runs, and find it before you bench** (it was missed twice): a whole pass through the engine, `tests/graph/passBench.test.ts` (`engine.pass` + `landed`), not a card's `data()`, `nodeOnCore` or `compileEvaluator` called from JS, which direct cards skip (`tree/specs/computation/graph-core.md` § Direct calls). Before blaming a crossing, read the spec for what already avoids it. Compare against an older build by running the same graph there, and say which path a number measured.
-- Writing a loop over rows, a sort, a cache or a chart? `tree/specs/floors/engineering.md` § Performance first ([[C120]] linearWork): nothing whole-table per row, comparators only compare, a cache names every input, drawing stops at the screen.
-- Changed a site page's copy (`src/graph/landing/`, a seed label, a pack description)? Regenerate the crawler snapshots yourself: `node scripts/prerender-site.mjs`, then commit `prerender/` (`prerender.test.ts` fails until you do).
-- A black screen: every render is boundaried — ask for the copied error text first, don't hunt
-  blind (`tree/specs/canvas/react-flow-surface-contract.md`).
+- A card's empty field declares what it is (Fallback, Behavior, Example, Required) and a body reads it only through
+  `Call::unwired` ([[D96]] emptySlotShowsItsValue).
+- After a node merge or an output-socket rename: `seeds.test.ts`, `nodeOps.test.ts`, `formulaNodeCoverage.test.ts`
+  ([[B11]] maximalMerge).
+- Formula gotchas: `e`, `pi`, `tau`, `phi` are constants; default date format `DD-MMM-YYYY` ([[C44]] dateSerials);
+  units come from the FC or Convert ([[C25]] firstClassUnits).
+- An audit that finds defensible but worse behavior fixes it by default. A free speedup is taken without asking.
+- **Measuring speed:** time the path the app runs (`tests/graph/passBench.test.ts`), not a card's `data()` called from
+  JS; say which path a number measured. Loops, sorts and caches: `tree/specs/floors/engineering.md` § Performance ([[C120]] linearWork).
+- Several agents at once: one test run at a time, a claim in `docs/agent-coordination.md`. Solo: claim nothing.
+- A black screen: ask for the copied error text first (`tree/specs/canvas/react-flow-surface-contract.md`).
 
-### Commit style
-Short imperative summary, blank line, brief body if needed — match the existing log.
+## Commit style
+Short imperative summary, blank line, brief body if needed; match the existing log.
