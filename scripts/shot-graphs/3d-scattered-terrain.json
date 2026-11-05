@@ -1,0 +1,123 @@
+{
+ "nodes": [
+  {
+   "id": "x",
+   "type": "TableInputNode",
+   "x": 0,
+   "y": 0,
+   "init": {
+    "label": "Xs",
+    "tableText": "1, 9, 5, 2, 8, 5, 1, 9, 3, 7, 5, 6"
+   }
+  },
+  {
+   "id": "y",
+   "type": "TableInputNode",
+   "x": 0,
+   "y": 260,
+   "init": {
+    "label": "Ys",
+    "tableText": "1, 1, 5, 8, 8, 2, 5, 5, 3, 7, 9, 4"
+   }
+  },
+  {
+   "id": "z",
+   "type": "TableInputNode",
+   "x": 0,
+   "y": 520,
+   "init": {
+    "label": "Heights",
+    "tableText": "3, 1, 9, 2, 6, 4, 2, 5, 7, 8, 3, 6"
+   }
+  },
+  {
+   "id": "i1",
+   "type": "InterpolateNode",
+   "x": 420,
+   "y": -40,
+   "init": {
+    "label": "IDW",
+    "mode": "points"
+   },
+   "stringLiterals": {
+    "gx": "0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0",
+    "gy": "0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0"
+   }
+  },
+  {
+   "id": "i2",
+   "type": "InterpolateNode",
+   "x": 420,
+   "y": 420,
+   "init": {
+    "label": "Nearest",
+    "mode": "points",
+    "method": "nearest"
+   },
+   "stringLiterals": {
+    "gx": "0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0",
+    "gy": "0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0"
+   }
+  },
+  {
+   "id": "p1",
+   "type": "SurfaceNode",
+   "x": 840,
+   "y": -120,
+   "init": {
+    "label": "Surface 1",
+    "yaw": 35,
+    "pitch": 35
+   }
+  },
+  {
+   "id": "p2",
+   "type": "SurfaceNode",
+   "x": 840,
+   "y": 440,
+   "init": {
+    "label": "Surface 2",
+    "yaw": 35,
+    "pitch": 35
+   }
+  },
+  {
+   "id": "d_p1",
+   "type": "DisplayNode",
+   "x": 1220,
+   "y": -160,
+   "init": {
+    "label": "Inverse-distance terrain"
+   },
+   "size": {
+    "w": 660,
+    "h": 620
+   }
+  },
+  {
+   "id": "d_p2",
+   "type": "DisplayNode",
+   "x": 1920,
+   "y": -160,
+   "init": {
+    "label": "Nearest-point terrain"
+   },
+   "size": {
+    "w": 660,
+    "h": 620
+   }
+  }
+ ],
+ "cables": [
+  "x.table -> i1.xs",
+  "y.table -> i1.ys",
+  "z.table -> i1.zs",
+  "x.table -> i2.xs",
+  "y.table -> i2.ys",
+  "z.table -> i2.zs",
+  "i1.result -> p1.z",
+  "i2.result -> p2.z",
+  "p1.chart -> d_p1.in",
+  "p2.chart -> d_p2.in"
+ ]
+}

@@ -1,0 +1,91 @@
+{
+ "nodes": [
+  {
+   "id": "a",
+   "type": "SeriesNode",
+   "x": 0,
+   "y": 0,
+   "init": {
+    "label": "Angles",
+    "op": "linspace"
+   },
+   "literals": {
+    "start": 0,
+    "end": 3.1416,
+    "count": 10
+   }
+  },
+  {
+   "id": "s",
+   "type": "MathFXNode",
+   "x": 0,
+   "y": 300,
+   "init": {
+    "label": "SIN",
+    "op": "sin"
+   }
+  },
+  {
+   "id": "b",
+   "type": "TableOuterNode",
+   "x": 380,
+   "y": 0,
+   "init": {
+    "label": "One hill"
+   }
+  },
+  {
+   "id": "w",
+   "type": "TableInputNode",
+   "x": 380,
+   "y": 420,
+   "init": {
+    "label": "Hill heights",
+    "tableText": "1, 0.3, 0.7\n0.4, 1.4, 0.4\n0.8, 0.2, 1"
+   }
+  },
+  {
+   "id": "k",
+   "type": "TableMultNode",
+   "x": 760,
+   "y": 200,
+   "init": {
+    "label": "Tile with KRON",
+    "op": "kron"
+   }
+  },
+  {
+   "id": "p",
+   "type": "SurfaceNode",
+   "x": 1180,
+   "y": -120,
+   "init": {
+    "label": "Surface",
+    "yaw": 40,
+    "pitch": 38
+   }
+  },
+  {
+   "id": "d_p",
+   "type": "DisplayNode",
+   "x": 1560,
+   "y": -160,
+   "init": {
+    "label": "A range of hills"
+   },
+   "size": {
+    "w": 660,
+    "h": 620
+   }
+  }
+ ],
+ "cables": [
+  "a.list -> s.in",
+  "s.result -> b.a",
+  "s.result -> b.b",
+  "w.table -> k.a",
+  "b.result -> k.b",
+  "k.result -> p.z",
+  "p.chart -> d_p.in"
+ ]
+}
