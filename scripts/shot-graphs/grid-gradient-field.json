@@ -1,7 +1,90 @@
-{ "nodes": [
-  { "id": "h1", "type": "ExpressionNode", "x": 0, "y": 0, "init": { "label": "Hill and dip", "expr": "MAKEARRAY(16, 16, LAMBDA(r, c, EXP(-((r - 5) ^ 2 + (c - 5) ^ 2) / 12) - EXP(-((r - 11) ^ 2 + (c - 11) ^ 2) / 12)))" } },
-  { "id": "s1", "type": "SurfaceNode", "x": 420, "y": -380, "init": { "label": "Surface", "op": "contour" } },
-  { "id": "dx", "type": "DiffNode", "x": 420, "y": 120, "init": { "label": "Slope across", "op": "gradient", "mode": "grid", "byCol": true } },
-  { "id": "dy", "type": "DiffNode", "x": 420, "y": 520, "init": { "label": "Slope down", "op": "gradient", "mode": "grid" } },
-  { "id": "q1", "type": "QuiverNode", "x": 840, "y": 120, "init": { "label": "Gradient field" } } ],
-  "cables": [ "h1.result -> s1.z", "h1.result -> dx.grid", "h1.result -> dy.grid", "dx.result -> q1.u", "dy.result -> q1.v" ] }
+{
+ "nodes": [
+  {
+   "id": "x",
+   "type": "SeriesNode",
+   "x": 0,
+   "y": 0,
+   "init": {
+    "label": "Angles",
+    "op": "linspace"
+   },
+   "literals": {
+    "start": 0,
+    "end": 6.28,
+    "count": 16
+   }
+  },
+  {
+   "id": "s",
+   "type": "MathFXNode",
+   "x": 380,
+   "y": 0,
+   "init": {
+    "label": "SIN",
+    "op": "sin"
+   }
+  },
+  {
+   "id": "o",
+   "type": "TableOuterNode",
+   "x": 760,
+   "y": 0,
+   "init": {
+    "label": "Egg crate"
+   }
+  },
+  {
+   "id": "p",
+   "type": "SurfaceNode",
+   "x": 1140,
+   "y": -460,
+   "init": {
+    "label": "Surface",
+    "op": "contour"
+   }
+  },
+  {
+   "id": "dx",
+   "type": "DiffNode",
+   "x": 1140,
+   "y": 140,
+   "init": {
+    "label": "Slope across",
+    "op": "gradient",
+    "mode": "grid",
+    "byCol": true
+   }
+  },
+  {
+   "id": "dy",
+   "type": "DiffNode",
+   "x": 1140,
+   "y": 560,
+   "init": {
+    "label": "Slope down",
+    "op": "gradient",
+    "mode": "grid"
+   }
+  },
+  {
+   "id": "q",
+   "type": "QuiverNode",
+   "x": 1540,
+   "y": 140,
+   "init": {
+    "label": "Gradient field"
+   }
+  }
+ ],
+ "cables": [
+  "x.list -> s.in",
+  "s.result -> o.a",
+  "s.result -> o.b",
+  "o.result -> p.z",
+  "o.result -> dx.grid",
+  "o.result -> dy.grid",
+  "dx.result -> q.u",
+  "dy.result -> q.v"
+ ]
+}

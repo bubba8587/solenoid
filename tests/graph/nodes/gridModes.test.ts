@@ -2,7 +2,7 @@
 // The Grid modes of Smooth, Convolve and Integrate: List mode keeps the sockets it always had, Grid mode swaps in a
 // table, the card answers what its formula answers, and the mode survives a save.
 import { describe, it, expect } from "vitest";
-import { SmoothNode, ConvolveNode, TrapzNode, DiffNode } from "../../../src/graph/nodes/list";
+import { SmoothNode, ConvolveNode, TrapzNode, DiffNode, RandArrayNode } from "../../../src/graph/nodes/list";
 import { extractInit } from "../../../src/graph/nodeInit";
 import { coreFunction } from "../coreFunction";
 import { inEditor, Src } from "../cardPasses";
@@ -24,6 +24,7 @@ describe("List mode keeps its sockets", () => {
     expect(Object.keys(new ConvolveNode().inputs)).toEqual(["a", "b"]);
     expect(Object.keys(new TrapzNode().inputs)).toEqual(["list", "dx"]);
     expect(Object.keys(new DiffNode().inputs)).toEqual(["list"]);
+    expect(Object.keys(new RandArrayNode().inputs)).toEqual(["count", "min", "max"]);
   });
 });
 
@@ -72,6 +73,16 @@ describe("Grid mode", () => {
     const across = await answer(new DiffNode({ op: "gradient", mode: "grid", byCol: true }), { grid: GRID }) as number[][];
     expect(across[0]).toEqual([-2, 0.5, 0, 0.5, 4]);
     expect(extractInit(new DiffNode({ op: "percent", mode: "grid", byCol: true }))).toMatchObject({ op: "percent", mode: "grid", byCol: true });
+  });
+
+  it("draws a Rows by Columns table, as RANDARRAY(rows, columns, min, max, whole_number) does", async () => {
+    const n = new RandArrayNode({ mode: "grid", integer: true });
+    n.literals = { rows: 3, cols: 4, min: 1, max: 6 };
+    const ed = await inEditor(n as never);
+    const t = await ed.pass("table") as number[][];
+    ed.dispose();
+    expect(t.length).toBe(3);
+    expect(t.every((r) => r.length === 4 && r.every((v) => Number.isInteger(v) && v >= 1 && v <= 6))).toBe(true);
   });
 
   it("keeps its mode and shape through a save", () => {

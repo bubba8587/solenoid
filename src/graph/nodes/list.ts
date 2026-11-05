@@ -1618,30 +1618,57 @@ export class AggregateNode extends GraphNode {
 
 // ─── RANDARRAY ────────────────────────────────────────────────────────────────
 
+export const RANDARRAY_MODE_META: Record<ShapeMode, { label: string; title: string }> = {
+  list: { label: "List", title: "Count draws in a list" },
+  grid: { label: "Grid", title: "A table of draws, Rows by Columns" },
+};
+
 export class RandArrayNode extends GraphNode {
-  static inputRoles = rolesFrom("RANDARRAY", { count: 0, min: 2, max: 3 });
+  static inputRoles = rolesFrom("RANDARRAY", { count: 0, rows: 0, cols: 1, min: 2, max: 3 });
   static socketDocs: Record<string, string> = {
     list: "Draws hold until a recalculation. A new Min or Max rescales the same draws rather than rerolling.",
+    table: "Draws hold until a recalculation. A new Min or Max rescales the same draws rather than rerolling.",
   };
 
   label: string;
+  mode: ShapeMode;
   integer = false;
-  cachedList: number[] | SolError | null = [];
-  literals: Record<string, number> = { count: 10 };
+  cachedList: number[] | number[][] | SolError | null = [];
+  literals: Record<string, number> = {};
   width = 180; height = 250;
 
-  constructor(init?: { label?: string; integer?: boolean }) {
+  constructor(init?: { label?: string; integer?: boolean; mode?: ShapeMode }) {
     super("RandArray");
     this.label = init?.label ?? "RANDARRAY";
     if (init?.integer != null) this.integer = init.integer;
-    this.addInput("count", numIn("Count"));
+    this.mode = init?.mode === "grid" ? "grid" : "list";
+    this._rebuildSockets();
+  }
+
+  // Removes every socket, so callers prune all of this node's cables first (applyShapeMode).
+  _rebuildSockets(): void {
+    for (const key of Object.keys(this.inputs)) this.removeInput(key);
+    for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    if (this.mode === "grid") {
+      delete this.literals.count;
+      this.literals.rows ??= 10;
+      this.literals.cols ??= 10;
+      this.addInput("rows", numIn("Rows"));
+      this.addInput("cols", numIn("Columns"));
+    } else {
+      delete this.literals.rows;
+      delete this.literals.cols;
+      this.literals.count ??= 10;
+      this.addInput("count", numIn("Count"));
+    }
     this.addInput("min",   numIn("Min"));
     this.addInput("max",   numIn("Max"));
-    this.addOutput("list", listOut("List"));
+    if (this.mode === "grid") this.addOutput("table", tableOut("Table"));
+    else this.addOutput("list", listOut("List"));
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    return nodeOnCore(this, inputs) as { list: number[] | SolError | null };
+    return nodeOnCore(this, inputs) as { list?: number[] | SolError | null; table?: number[][] | SolError | null };
   }
 }
 

@@ -2105,14 +2105,19 @@ fn sample(c: &mut Call, arr: Vec<V>) -> Answer {
 /// The RANDARRAY card: as many rolls as the count, held until the generation advances, scaled into Min and Max, so
 /// new bounds rescale the same draws. An error in Count, Min or Max is the answer, the first in that order.
 fn rand_array(c: &mut Call) -> Answer {
-    // A blank count, min or max is Excel's omitted reading: one value, from 0 to 1.
-    let count_raw = or(read_role(c, "count", &Role::Setting(V::Undef)), V::Num(1.0));
+    // A blank count, rows, columns, min or max is Excel's omitted reading: one value, from 0 to 1.
+    let grid = c.field_str("mode", "list") == "grid";
+    let out_key = if grid { "table" } else { "list" };
+    let count_raw = or(read_role(c, if grid { "rows" } else { "count" }, &Role::Setting(V::Undef)), V::Num(1.0));
+    let cols_raw = if grid { or(read_role(c, "cols", &Role::Setting(V::Undef)), V::Num(1.0)) } else { V::Num(1.0) };
     let lo = or(read_role(c, "min", &Role::Setting(V::Undef)), V::Num(0.0));
     let hi = or(read_role(c, "max", &Role::Setting(V::Undef)), V::Num(1.0));
     let whole = c.field("integer").and_then(serde_json::Value::as_bool).unwrap_or(false);
-    let read = crate::fns_random::array_count(js_number(&count_raw));
+    let read = crate::fns_random::array_count(js_number(&count_raw))
+        .and_then(|rows| crate::fns_random::array_count(js_number(&cols_raw)).map(|cols| rows * cols));
+    let cols = crate::fns_random::array_count(js_number(&cols_raw)).unwrap_or(1.0) as usize;
     let count = *read.as_ref().unwrap_or(&0.0);
-    let passed = [&count_raw, &lo, &hi].into_iter().find(|v| matches!(v, V::Err(_))).cloned();
+    let passed = [&count_raw, &cols_raw, &lo, &hi].into_iter().find(|v| matches!(v, V::Err(_))).cloned();
     // Min and Max are numbers (a logical as 1 or 0); text is never one ([[C10]] socketLattice).
     let (a, b) = (crate::excel_functions::to_num(&lo), crate::excel_functions::to_num(&hi));
     let bad = match read {
@@ -2135,23 +2140,28 @@ fn rand_array(c: &mut Call) -> Answer {
     };
     if let Some(e) = bad {
         c.show("cachedList", e.clone());
-        return Ok(vec![("list".into(), Cv::from(e))]);
+        return Ok(vec![(out_key.into(), Cv::from(e))]);
     }
     let rolls = c.rolls("rolls", count as usize, false);
-    let drawn = list(
-        rolls
-            .iter()
-            .map(|&r| {
-                if whole {
-                    V::Num(a.ceil() + (r * (b.floor() - a.ceil() + 1.0)).floor())
-                } else {
-                    V::Num(a + r * (b - a))
-                }
-            })
-            .collect(),
-    );
+    let cells: Vec<V> = rolls
+        .iter()
+        .map(|&r| {
+            if whole {
+                V::Num(a.ceil() + (r * (b.floor() - a.ceil() + 1.0)).floor())
+            } else {
+                V::Num(a + r * (b - a))
+            }
+        })
+        .collect();
+    let drawn = if grid && cols > 0 {
+        list(cells.chunks(cols).map(|row| list(row.to_vec())).collect())
+    } else if grid {
+        list(Vec::new())
+    } else {
+        list(cells)
+    };
     c.show("cachedList", drawn.clone());
-    Ok(vec![("list".into(), Cv::from(drawn))])
+    Ok(vec![(out_key.into(), Cv::from(drawn))])
 }
 
 #[cfg(test)]

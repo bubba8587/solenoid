@@ -459,7 +459,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             seriesLeaf("geometric"),
             seriesLeaf("fibonacci"),
           ]},
-          { type: "list-randarray", label: "RANDARRAY", description: "List of N random numbers between Min and Max. Excel: `RANDARRAY`.", create: () => new RandArrayNode(), parity: false },
+          { type: "list-randarray", label: "RANDARRAY", description: "Random numbers between Min and Max: a list of Count, or in Grid mode a table of Rows by Columns. Excel: `RANDARRAY`, numpy `random.uniform`.", create: () => new RandArrayNode(), parity: false, keywords: "random rand uniform noise grid table matrix rows columns numpy random" },
           { type: "list-combinations", label: "Combinations", description: "Every way to choose k items from the list, one row each: combinations (order-independent) or permutations. Python `itertools`.", create: () => new CombinationsNode(), parity: false, keywords: "combinations permutations itertools choose subsets arrangements nCk nPk pairs tuples pick sample without replacement" },
           seriesLeaf("sequence", { parity: false }),
         ],

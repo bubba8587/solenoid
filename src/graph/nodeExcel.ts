@@ -262,7 +262,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "list-filter": [{ excel: "FILTER", syntax: "=FILTER(array, include)", parity: false, note: "Conditions are AND/OR rows on the node. To filter by a parallel List, use Frame from Lists into Frame Filter." }],
   "group-by-frame": [{ excel: "GROUPBY", syntax: "=GROUPBY(row_fields, values, function)", parity: false, note: "Groups a table's rows by key columns. For a key list and a parallel value list, Group Lists is the quick version." }],
   "list-index": [{ excel: "INDEX", syntax: "=INDEX(array, row, [col])", parity: true, note: "A blank or 0 Row returns the whole column, and a blank or 0 Column the whole row, as in Excel." }],
-  "list-randarray": [{ excel: "RANDARRAY", syntax: "=RANDARRAY(count,[min],[max],[integer])", parity: false, note: "Returns a List, with one Count in place of rows and columns. Integer is supported, and it re-rolls on F9. A Count of 0 is an empty list; Excel answers #CALC!." }],
+  "list-randarray": [{ excel: "RANDARRAY", syntax: "=RANDARRAY([rows],[columns],[min],[max],[whole_number])", parity: false, note: "List mode draws Count values as a list, Excel's one column; Grid mode takes Rows and Columns. Integer is the whole_number flag, and it re-rolls on F9. A count of 0 is empty; Excel answers #CALC!." }],
   "list-sequence": [{ excel: "SEQUENCE", syntax: "=SEQUENCE(rows, cols, start, step)", parity: false, note: "Zero rows or columns give an empty list, where Excel gives #CALC!." }],
   "list-sort": [
     { excel: "SORT", syntax: "=SORT(array, sort_index, order)", parity: false, note: "Solenoid sorts 1D lists only; Excel can sort multi-column ranges" },
