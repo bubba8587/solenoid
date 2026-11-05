@@ -1,6 +1,6 @@
 // [[C98]] paletteMirrorsMenubar
 import { SearchField } from "./components/SearchField";
-import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useFocusTrap } from "./components/useFocusTrap";
 import { useEscapeToClose } from "./components/useEscapeToClose";
 import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from "./settingsStore";
@@ -59,10 +59,25 @@ function Row({ label, help, on, onToggle, disabled, disabledNote }: {
 }
 
 /** A pack: its name and blurb open its entries in the Function Reference; only the switch turns it on or off. */
+// The pack a link elsewhere (the Reference) opened Settings on: its group unfolds and its row scrolls into view.
+let _focusPack: string | null = null;
+
+/** Opens Settings on one pack's row. */
+export function openPackSettings(packId: string): void {
+  _focusPack = packId;
+  settingsPanel.open();
+}
+
 function PackRow({ pack }: { pack: Pack }) {
   const show = () => { settingsPanel.close(); frStore.openPack(pack.id); };
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (_focusPack !== pack.id) return;
+    _focusPack = null;
+    ref.current?.scrollIntoView({ block: "center" });
+  }, [pack.id]);
   return (
-    <div className="solenoid-settings__row solenoid-settings__row--pack">
+    <div ref={ref} className="solenoid-settings__row solenoid-settings__row--pack">
       <button type="button" className="solenoid-settings__row-text solenoid-settings__pack-link" onClick={show}
         title={`Show what ${pack.name} adds, in the Function Reference`}>
         <span className="solenoid-settings__row-label">{pack.name}<span className="solenoid-settings__pack-arrow" aria-hidden="true"> ›</span></span>
@@ -324,7 +339,7 @@ function PacksSection() {
       {grouped.map((g) => {
         const onCount = g.packs.filter((p) => packsStore.isActive(p.id)).length;
         return (
-          <details key={g.name} className="solenoid-settings__acc">
+          <details key={g.name} className="solenoid-settings__acc" open={g.packs.some((p) => p.id === _focusPack) || undefined}>
             <summary className="solenoid-settings__acc-head">
               <span className="solenoid-settings__acc-chevron" aria-hidden="true">
                 <svg width="10" height="10" viewBox="0 0 10 10"><path d="M3 1.5 L7 5 L3 8.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>

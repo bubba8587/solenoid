@@ -646,7 +646,15 @@
 
 /* The reused pieces, sized for the page: the input card's edit button, the Settings switch, the card's own field. */
 .fr-card__add { display: inline-block; width: auto; margin: 0 0 0 auto; padding: 5px 18px; font-size: 12px; }
-.fr-card__pack-switch { display: inline-flex; align-items: center; gap: 8px; color: var(--text-dim); }
+.fr-card__pack-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.fr-card__pack-link:hover { color: var(--node-accent, var(--accent)); text-decoration: underline; }
 .fr-card__empty { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
 .fr-card__field { flex: none; width: 84px; pointer-events: none; }
 .fr-card__ops-list { display: flex; flex-direction: column; margin: 0 -8px; font-size: 12px; }

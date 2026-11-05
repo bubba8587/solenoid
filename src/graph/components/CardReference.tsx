@@ -12,7 +12,7 @@ import { appThemeStore } from "../appTheme";
 import { nodeAccent } from "../nodes/kind";
 import { contrastInk, darkenAccent } from "../palette";
 import { documentStore } from "../documentStore";
-import { allPacks, packsStore } from "../packs";
+import { allPacks } from "../packs";
 import { DrillMenu, LeafRow, drillStackTo, type NodeCatalogEntry, type CatalogEntry, type CatalogCategory, type CatalogPair } from "../AddNodeMenu";
 import { IS_COARSE } from "../coarse";
 import { descriptionHtml } from "../descriptionMd";
@@ -23,7 +23,7 @@ import { emptyFieldShown, type EmptyFieldShown } from "../emptySlots";
 import { SocketComponent } from "./SocketComponent";
 import { SegToggle } from "./SegToggle";
 import { ChevronLeftIcon } from "./Icons";
-import "../Settings.css";
+import { openPackSettings } from "../Settings";
 import "./nodeCard.css";
 import type { GraphNode } from "../graphModel";
 
@@ -264,7 +264,6 @@ function CardPage({ card, leaf, startOp, packName, onBack, backTo, onRetrace, re
   backTo: string | null; onRetrace: () => void;
   resolve: (text: string) => NodeCatalogEntry | null; onFollow: (leaf: NodeCatalogEntry) => void;
 }) {
-  useSyncExternalStore(packsStore.subscribe, packsStore.version);
   // A card with ops shows the one picked, and one with modes (List / Grid) the mode picked; chips switch both.
   const [opPick, setOpPick] = useState<string | null>(startOp);
   const [modePick, setModePick] = useState<string | null>(null);
@@ -286,7 +285,6 @@ function CardPage({ card, leaf, startOp, packName, onBack, backTo, onRetrace, re
   // A locked Expression or Equation is its formula: Geometry's Circle Area is `PI() * r^2`.
   const preset = node as { locked?: boolean; expr?: string; varDescriptions?: Record<string, string>; varUnits?: Record<string, string> } | null;
   const ownFormula = preset?.locked && preset.expr ? preset.expr : null;
-  const packOff = card.packs.length > 0 && !card.packs.some((p) => packsStore.isActive(p));
   const examples = useMemo(() => examplesUsing(card.type), [card]);
   // The card's own color, as its header wears it on the canvas (DESIGN.md § Nearest-Accent Rule).
   const themeMode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
@@ -333,21 +331,10 @@ function CardPage({ card, leaf, startOp, packName, onBack, backTo, onRetrace, re
             onClick={() => { void addNodeFrom(make); frStore.close(); }}>Add to Canvas</button>
         </div>
         <div className="fr-card__crumb">
-          <span>{where}</span>
-          {card.packs.length > 0 && (
-            <span className="fr-card__pack-switch">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={!packOff}
-                aria-label={`${packName.get(card.packs[0]) ?? card.packs[0]} pack`}
-                className={`solenoid-settings__switch${packOff ? "" : " solenoid-settings__switch--on"}`}
-                onClick={() => packsStore.toggle(card.packs[0])}
-              >
-                <span className="solenoid-settings__knob" />
-              </button>
-            </span>
-          )}
+          {card.packs.length > 0
+            ? <button type="button" className="fr-card__pack-link" title="Open this pack in Settings"
+                onClick={() => { frStore.close(); openPackSettings(card.packs[0]); }}>{where} ›</button>
+            : <span>{where}</span>}
         </div>
       </header>
 
