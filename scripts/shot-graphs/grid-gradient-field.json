@@ -1,0 +1,7 @@
+{ "nodes": [
+  { "id": "h1", "type": "ExpressionNode", "x": 0, "y": 0, "init": { "label": "Hill and dip", "expr": "MAKEARRAY(16, 16, LAMBDA(r, c, EXP(-((r - 5) ^ 2 + (c - 5) ^ 2) / 12) - EXP(-((r - 11) ^ 2 + (c - 11) ^ 2) / 12)))" } },
+  { "id": "s1", "type": "SurfaceNode", "x": 420, "y": -380, "init": { "label": "Surface", "op": "contour" } },
+  { "id": "dx", "type": "DiffNode", "x": 420, "y": 120, "init": { "label": "Slope across", "op": "gradient", "mode": "grid", "byCol": true } },
+  { "id": "dy", "type": "DiffNode", "x": 420, "y": 520, "init": { "label": "Slope down", "op": "gradient", "mode": "grid" } },
+  { "id": "q1", "type": "QuiverNode", "x": 840, "y": 120, "init": { "label": "Gradient field" } } ],
+  "cables": [ "h1.result -> s1.z", "h1.result -> dx.grid", "h1.result -> dy.grid", "dx.result -> q1.u", "dy.result -> q1.v" ] }

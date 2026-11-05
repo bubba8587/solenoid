@@ -43,7 +43,7 @@ const FORMULA_NODE_ALIAS: Record<string, string> = {
   POLYROOTS: "Polynomial Roots node",
   SAVGOL: "Smooth node (Savitzky–Golay op)", LOWESS: "Smooth node (LOWESS op)", GAUSSIANSMOOTH: "Smooth node (Gaussian op)",
   MEANSMOOTH: "Smooth node (Mean op)", MEDIANSMOOTH: "Smooth node (Median op)",
-  LOGRETURNS: "Returns node (log op)", CUMRETURNS: "Returns node (cumulative op)", DRAWDOWN: "Returns node (drawdown op)",
+  LOGRETURNS: "Returns node (log op)", SIMPLERETURNS: "Returns node (simple op)", CUMRETURNS: "Returns node (cumulative op)", DRAWDOWN: "Returns node (drawdown op)",
   MAXDRAWDOWN: "Returns node (max drawdown op)", CAGR: "Returns node (CAGR op)", VOLATILITY: "Returns node (volatility op)",
   SHARPE: "Returns node (Sharpe op)", SORTINO: "Returns node (Sortino op)",
   SOLVE: "Solve A·x = b node", EIGENVALUES: "Eigen (symmetric) node", EIGENVECTORS: "Eigen (symmetric) node", SPECTRUM: "Spectrum (FFT) node",

@@ -95,3 +95,55 @@ fn a_one_column_table_smooths_as_its_list() {
     let col: Vec<f64> = grid("MEDIANSMOOTH(col, 3)").into_iter().flatten().collect();
     assert_eq!(col, as_list);
 }
+
+/// numpy's `diff`, `diff / a[:-1]` and `gradient`, along axis 0 (down each column) and axis 1 (`by_col`, across).
+#[test]
+fn differences_and_gradients_run_along_either_axis_as_numpy_does() {
+    let close = |src: &str, want: Vec<Vec<f64>>| {
+        let got = grid(src);
+        assert_eq!(got.len(), want.len(), "{src}");
+        for (g, w) in got.iter().flatten().zip(want.iter().flatten()) {
+            assert!((g - w).abs() < 1e-12, "{src}: {got:?}");
+        }
+    };
+    close(
+        "DIFF(g)",
+        vec![vec![6.0, 1.0, 2.0, 4.0, -2.0], vec![-4.0, 6.0, 3.0, 2.0, 6.0], vec![-2.0, -6.0, -6.0, 1.0, -5.0]],
+    );
+    close(
+        "DIFF(g, TRUE)",
+        vec![
+            vec![-2.0, 3.0, -3.0, 4.0],
+            vec![-7.0, 4.0, -1.0, -2.0],
+            vec![3.0, 1.0, -2.0, 2.0],
+            vec![-1.0, 1.0, 5.0, -4.0],
+        ],
+    );
+    close(
+        "PCTCHANGE(g)",
+        vec![
+            vec![2.0, 1.0, 0.5, 4.0, -0.4],
+            vec![-0.4444444444444444, 3.0, 0.5, 0.4, 2.0],
+            vec![-0.4, -0.75, -0.6666666666666666, 0.14285714285714285, -0.5555555555555556],
+        ],
+    );
+    close(
+        "GRADIENT(g)",
+        vec![
+            vec![6.0, 1.0, 2.0, 4.0, -2.0],
+            vec![1.0, 3.5, 2.5, 3.0, 2.0],
+            vec![-3.0, 0.0, -1.5, 1.5, 0.5],
+            vec![-2.0, -6.0, -6.0, 1.0, -5.0],
+        ],
+    );
+    close(
+        "GRADIENT(g, TRUE)",
+        vec![
+            vec![-2.0, 0.5, 0.0, 0.5, 4.0],
+            vec![-7.0, -1.5, 1.5, -1.5, -2.0],
+            vec![3.0, 2.0, -0.5, 0.0, 2.0],
+            vec![-1.0, 0.0, 3.0, 0.5, -4.0],
+        ],
+    );
+    assert_eq!(code("GRADIENT(g, \"a\")"), "#VALUE!");
+}

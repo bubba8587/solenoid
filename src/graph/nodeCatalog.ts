@@ -528,7 +528,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Transform", description: "Element-wise transforms: differences, rolling aggregates, rescaling, binning, shifting.",
         children: [
           { type: "pair", children: [
-            { type: "list-diff",       label: "DIFF",       description: "Change between consecutive values: absolute, percent, or the length-keeping central gradient. numpy `diff` / `gradient`, pandas `pct_change`.", create: () => new DiffNode(), keywords: "difference diff delta change percent pct_change growth rate return consecutive derivative gradient slope numpy" },
+            { type: "list-diff",       label: "DIFF",       description: "Change between consecutive values: absolute, percent, or the length-keeping central gradient. Grid mode works down the rows or across the columns of a table of numbers. numpy `diff` / `gradient`, pandas `pct_change`, MATLAB `gradient`.", create: () => new DiffNode(), keywords: "difference diff delta change percent pct_change growth rate return consecutive derivative gradient slope numpy 2d grid axis surface slope map partial derivative" },
             { type: "list-running", label: "Running", description: "One aggregate per element over everything so far, or the last N with a window: `SUM`, `AVERAGE`, `MIN`, `MAX`, `MEDIAN`, `PRODUCT`, `STDEV`.", create: () => new RunningNode(), keywords: "running total cumulative rolling moving average sliding window prefix sum accumulate expanding cumsum min max median product stdev" },
           ]},
           { type: "pair", children: [

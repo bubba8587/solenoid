@@ -62,6 +62,7 @@ pub const NAMES: &[&str] = &[
     "RUNNING",
     "SAVGOL",
     "SHIFT",
+    "SIMPLERETURNS",
     "SLICE",
     "SPARKLINE",
     "SPECTRUM",
@@ -380,30 +381,16 @@ fn answer(name: &str, a: &[V]) -> V {
             }
             list(out)
         }
-        "DIFF" | "PCTCHANGE" => {
-            let l = to_list(a0);
-            let pct = name == "PCTCHANGE";
-            list(
-                (1..l.len().max(1))
-                    .map(|i| {
-                        let (v, prev) = (&l[i], &l[i - 1]);
-                        if is_sol(v) {
-                            return v.clone();
-                        }
-                        if is_sol(prev) {
-                            return prev.clone();
-                        }
-                        if matches!(v, V::Null) || matches!(prev, V::Null) {
-                            return V::Null;
-                        }
-                        if pct && matches!(prev, V::Num(p) if *p == 0.0) {
-                            return V::err(sol_error(ErrorCode::DivZero, "Percent change from zero is undefined"));
-                        }
-                        let d = number(v) - number(prev);
-                        V::Num(if pct { d / number(prev) } else { d })
-                    })
-                    .collect(),
-            )
+        "DIFF" | "PCTCHANGE" | "GRADIENT" => {
+            let g = match grid_filters::read_grid(name, a0) {
+                Ok(g) => g,
+                Err(e) => return e,
+            };
+            let line = |l: &[V]| if name == "GRADIENT" { gradient(l) } else { Ok(differences(l, name == "PCTCHANGE")) };
+            if !g.is_grid {
+                return line(&g.cells).map_or_else(|e| e, list);
+            }
+            grid_filters::along(&g, is_true(arg(a, 1)), line)
         }
         "NORMALIZE" | "ZSCORE" => {
             let l = to_list(a0);
@@ -461,34 +448,6 @@ fn answer(name: &str, a: &[V]) -> V {
             )
         }
         "COMBINATIONS" | "PERMUTATIONS" => combinations_of(&to_list(a0), number(arg(a, 1)), name == "COMBINATIONS"),
-        "GRADIENT" => {
-            let l = to_list(a0);
-            if let Some(e) = first_error(&l) {
-                return e;
-            }
-            let n = l.len();
-            if n < 2 {
-                return list(l.iter().map(|_| V::Null).collect());
-            }
-            let num = |i: usize| finite(&l[i]);
-            list(
-                (0..n)
-                    .map(|i| {
-                        let (x, y, h) = if i == 0 {
-                            (num(0), num(1), 1.0)
-                        } else if i == n - 1 {
-                            (num(n - 2), num(n - 1), 1.0)
-                        } else {
-                            (num(i - 1), num(i + 1), 2.0)
-                        };
-                        match (x, y) {
-                            (Some(x), Some(y)) => V::Num((y - x) / h),
-                            _ => V::Null,
-                        }
-                    })
-                    .collect(),
-            )
-        }
         "EWMA" => {
             let l = to_list(a0);
             if let Some(e) = first_error(&l) {
@@ -712,7 +671,7 @@ fn answer(name: &str, a: &[V]) -> V {
         }
         "FILLVALUE" | "FILLFORWARD" | "FILLBACKWARD" | "FILLMEAN" | "FILLMEDIAN" | "FILLMODE" | "FILLINTERPOLATE"
         | "FILLDROP" | "COALESCE" => fill_list(name, &to_list(a0), a),
-        "LOGRETURNS" | "CUMRETURNS" | "DRAWDOWN" => returns(name, &to_list(a0)),
+        "LOGRETURNS" | "SIMPLERETURNS" | "CUMRETURNS" | "DRAWDOWN" => returns(name, &to_list(a0)),
         "FINDPEAKS" => find_peaks(&to_list(a0), arg(a, 1), arg(a, 2), arg(a, 3)),
         "GAUSSIANSMOOTH" | "MEANSMOOTH" | "MEDIANSMOOTH" => {
             let (what, blank) = if name == "GAUSSIANSMOOTH" { ("sigma", 0.0) } else { ("size", 3.0) };
@@ -1142,7 +1101,7 @@ fn fill_list(op: &str, arr: &[V], a: &[V]) -> V {
 
 fn returns(op: &str, s: &[V]) -> V {
     match op {
-        "LOGRETURNS" => list(
+        "LOGRETURNS" | "SIMPLERETURNS" => list(
             (0..s.len())
                 .map(|i| {
                     let b = &s[i];
@@ -1153,7 +1112,9 @@ fn returns(op: &str, s: &[V]) -> V {
                         return V::Null;
                     }
                     match (finite(&s[i - 1]), finite(b)) {
-                        (Some(a), Some(b)) if a != 0.0 => V::Num(log(b / a)),
+                        (Some(a), Some(b)) if a != 0.0 => {
+                            V::Num(if op == "LOGRETURNS" { log(b / a) } else { b / a - 1.0 })
+                        }
                         _ => V::Null,
                     }
                 })
@@ -1589,6 +1550,62 @@ fn hypot(x: f64, y: f64) -> f64 {
         sum = preliminary;
     }
     sum.sqrt() * max
+}
+
+/// DIFF and PCTCHANGE over one line: each value's change from the one before, one shorter.
+fn differences(l: &[V], pct: bool) -> Vec<V> {
+    (1..l.len().max(1))
+        .map(|i| {
+            let (v, prev) = (&l[i], &l[i - 1]);
+            if is_sol(v) {
+                return v.clone();
+            }
+            if is_sol(prev) {
+                return prev.clone();
+            }
+            if matches!(v, V::Null) || matches!(prev, V::Null) {
+                return V::Null;
+            }
+            if matches!(v, V::Str(_)) || matches!(prev, V::Str(_)) {
+                return V::err(sol_error(ErrorCode::Value, "A change needs two numbers, not text"));
+            }
+            if pct && matches!(prev, V::Num(p) if *p == 0.0) {
+                return V::err(sol_error(ErrorCode::DivZero, "Percent change from zero is undefined"));
+            }
+            let d = number(v) - number(prev);
+            V::Num(if pct { d / number(prev) } else { d })
+        })
+        .collect()
+}
+
+/// GRADIENT over one line: central differences inside, one-sided at the ends, the same length; an error answers.
+fn gradient(l: &[V]) -> Result<Vec<V>, V> {
+    if let Some(e) = first_error(l) {
+        return Err(e);
+    }
+    let n = l.len();
+    if n < 2 {
+        return Ok(l.iter().map(|_| V::Null).collect());
+    }
+    if l.iter().any(|v| matches!(v, V::Str(_))) {
+        return Err(V::err(sol_error(ErrorCode::Value, "GRADIENT reads numbers, not text")));
+    }
+    let num = |i: usize| finite(&l[i]);
+    Ok((0..n)
+        .map(|i| {
+            let (x, y, h) = if i == 0 {
+                (num(0), num(1), 1.0)
+            } else if i == n - 1 {
+                (num(n - 2), num(n - 1), 1.0)
+            } else {
+                (num(i - 1), num(i + 1), 2.0)
+            };
+            match (x, y) {
+                (Some(x), Some(y)) => V::Num((y - x) / h),
+                _ => V::Null,
+            }
+        })
+        .collect())
 }
 
 /// A signal is numbers by position, so text in one is #VALUE!, never a 0 that shifts what follows ([[C10]]

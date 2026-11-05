@@ -3,7 +3,7 @@
 //! does, and a money answer carries that currency.
 
 use super::kit::{core_call, guard_finite};
-use super::stats::{finite_num, first, js_num, nullish, or, read_role, Role};
+use super::stats::{first, js_num, nullish, or, read_role, Role};
 use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
@@ -589,24 +589,6 @@ fn bond_pricing(c: &mut Call) -> Answer {
 }
 
 /// `b / a − 1` per period, the first blank, an error kept where it stands.
-fn simple_returns(prices: &V) -> V {
-    let ps = super::stats::items(prices);
-    list(
-        (0..ps.len())
-            .map(|i| {
-                let b = &ps[i];
-                if b.is_sol_error() {
-                    return b.clone();
-                }
-                match (i.checked_sub(1).and_then(|j| finite_num(&ps[j])), finite_num(b)) {
-                    (Some(a), Some(b)) if a != 0.0 => V::Num(b / a - 1.0),
-                    _ => V::Null,
-                }
-            })
-            .collect(),
-    )
-}
-
 fn returns(c: &mut Call) -> Answer {
     let op = c.field_str("op", "log").to_string();
     let arr = first(c, "list");
@@ -616,7 +598,7 @@ fn returns(c: &mut Call) -> Answer {
         return answer(c, V::Null);
     }
     let result = match op.as_str() {
-        "simple" => simple_returns(&arr),
+        "simple" => core_call("SIMPLERETURNS", &[arr]),
         "log" => core_call("LOGRETURNS", &[arr]),
         "cumulative" => core_call("CUMRETURNS", &[arr]),
         "drawdown" => core_call("DRAWDOWN", &[arr]),

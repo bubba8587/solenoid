@@ -84,7 +84,7 @@
       "y": 6126,
       "init": {
         "label": "DIFF (% mode)",
-        "mode": "percent"
+        "op": "percent"
       }
     },
     {

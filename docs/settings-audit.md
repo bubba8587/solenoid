@@ -87,6 +87,7 @@ argument; a value is the typed blank it reads as.
 | DEC2HEX | `places` → omitted |
 | DEC2OCT | `places` → omitted |
 | DECIMAL | `radix` → #SYNTAX! |
+| DIFF | `by_col` → false |
 | DISC | `basis` → omitted |
 | DOLLAR | `decimals` → omitted |
 | DROP | `rows` → omitted; `columns` → omitted |
@@ -107,6 +108,7 @@ argument; a value is the typed blank it reads as.
 | GAMMA.DIST | `cumulative` → false |
 | GEOMETRIC | `start` → #SYNTAX!; `count` → #SYNTAX! |
 | GESTEP | `step` → omitted |
+| GRADIENT | `by_col` → false |
 | GROWTH | `const` → omitted |
 | HEX2BIN | `places` → omitted |
 | HEX2OCT | `places` → omitted |
@@ -145,6 +147,7 @@ argument; a value is the typed blank it reads as.
 | PADLEFT | `length` → #SYNTAX! |
 | PADRIGHT | `length` → #SYNTAX! |
 | PADTEXT | `width` → #SYNTAX!; `side` → omitted; `fill` → omitted |
+| PCTCHANGE | `by_col` → false |
 | PERCENTILE | `k` → #SYNTAX! |
 | PERCENTILE.EXC | `k` → #SYNTAX! |
 | PERCENTILE.INC | `k` → #SYNTAX! |

@@ -2,7 +2,7 @@
 // The Grid modes of Smooth, Convolve and Integrate: List mode keeps the sockets it always had, Grid mode swaps in a
 // table, the card answers what its formula answers, and the mode survives a save.
 import { describe, it, expect } from "vitest";
-import { SmoothNode, ConvolveNode, TrapzNode } from "../../../src/graph/nodes/list";
+import { SmoothNode, ConvolveNode, TrapzNode, DiffNode } from "../../../src/graph/nodes/list";
 import { extractInit } from "../../../src/graph/nodeInit";
 import { coreFunction } from "../coreFunction";
 import { inEditor, Src } from "../cardPasses";
@@ -10,7 +10,7 @@ import { withMatrixUnit, matrixUnitOf } from "../../../src/graph/unitValue";
 
 const GRID = [[3, 1, 4, 1, 5], [9, 2, 6, 5, 3], [5, 8, 9, 7, 9], [3, 2, 3, 8, 4]];
 
-async function answer(node: SmoothNode | ConvolveNode | TrapzNode, wires: Record<string, unknown>) {
+async function answer(node: SmoothNode | ConvolveNode | TrapzNode | DiffNode, wires: Record<string, unknown>) {
   const ed = await inEditor(node as never);
   for (const [key, value] of Object.entries(wires)) await ed.wire(new Src(value, "table"), key);
   const r = await ed.pass("result");
@@ -23,6 +23,7 @@ describe("List mode keeps its sockets", () => {
     expect(Object.keys(new SmoothNode().inputs)).toEqual(["list", "window", "order"]);
     expect(Object.keys(new ConvolveNode().inputs)).toEqual(["a", "b"]);
     expect(Object.keys(new TrapzNode().inputs)).toEqual(["list", "dx"]);
+    expect(Object.keys(new DiffNode().inputs)).toEqual(["list"]);
   });
 });
 
@@ -64,6 +65,13 @@ describe("Grid mode", () => {
     const n = new TrapzNode({ mode: "grid" });
     n.literals = { dx: 0.5, dy: 2 };
     expect(await answer(n, { grid: GRID })).toBe(63.25);
+  });
+
+  it("takes differences and slopes down the rows or across the columns, as numpy's axis 0 and 1", async () => {
+    expect(await answer(new DiffNode({ mode: "grid" }), { grid: GRID })).toEqual([[6, 1, 2, 4, -2], [-4, 6, 3, 2, 6], [-2, -6, -6, 1, -5]]);
+    const across = await answer(new DiffNode({ op: "gradient", mode: "grid", byCol: true }), { grid: GRID }) as number[][];
+    expect(across[0]).toEqual([-2, 0.5, 0, 0.5, 4]);
+    expect(extractInit(new DiffNode({ op: "percent", mode: "grid", byCol: true }))).toMatchObject({ op: "percent", mode: "grid", byCol: true });
   });
 
   it("keeps its mode and shape through a save", () => {

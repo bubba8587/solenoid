@@ -31,6 +31,7 @@ const POLICY: Record<string, Policy> = {
   SetCellNode: "carry",           // overwriting cells by address keeps the grid's unit
   InterpolateNode: "carry",       // grid mode fills blanks in the SAME unit (dynamic
                                   // socket, so the sweep can't see it — kept manually)
+  DiffNode: "carry",              // Grid mode: a change or a slope is in the grid's unit; % is a plain ratio
   SmoothNode: "carry",            // Grid mode smooths in the grid's unit (a dynamic socket, kept here by hand)
   ConvolveNode: "strip",          // Grid mode: a convolution multiplies the two grids' units — documented-strip
   TrapzNode: "strip",             // Grid mode: a volume carries z·x·y — documented-strip

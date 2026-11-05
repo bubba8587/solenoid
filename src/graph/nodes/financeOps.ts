@@ -22,7 +22,7 @@ export type ReturnsOp = "log" | "simple" | "cumulative" | "drawdown" | "maxdrawd
 export type ReturnsInput = "prices" | "returns";
 export const RETURNS_OP_META: Record<ReturnsOp, { label: string; fx: string; takes: ReturnsInput; scalar: boolean; needs: ("rf" | "periods")[]; description: string }> = {
   log:         { label: "Log returns",       fx: "LOGRETURNS",  takes: "prices",  scalar: false, needs: [],               description: "`ln(pₜ / pₜ₋₁)` per period; the first is blank. `numpy.diff(log(p))`, quantmod `dailyReturn` with `type = log`." },
-  simple:      { label: "Simple returns",    fx: "PCTCHANGE",   takes: "prices",  scalar: false, needs: [],               description: "`pₜ / pₜ₋₁ − 1` per period; the first is blank. pandas `pct_change`, quantmod `dailyReturn`." },
+  simple:      { label: "Simple returns",    fx: "SIMPLERETURNS", takes: "prices",  scalar: false, needs: [],               description: "`pₜ / pₜ₋₁ − 1` per period; the first is blank. pandas `pct_change`, quantmod `dailyReturn`." },
   cumulative:  { label: "Cumulative return", fx: "CUMRETURNS",  takes: "returns", scalar: false, needs: [],               description: "Compounded growth so far: `Π(1 + r) − 1` per period. `(1 + r).cumprod() − 1`, PerformanceAnalytics `Return.cumulative`." },
   drawdown:    { label: "Drawdown",          fx: "DRAWDOWN",    takes: "prices",  scalar: false, needs: [],               description: "Fall from the running peak per period: `pₜ / max(p₀…pₜ) − 1`, zero at a new high. PerformanceAnalytics `Drawdowns`." },
   maxdrawdown: { label: "Max drawdown",      fx: "MAXDRAWDOWN", takes: "prices",  scalar: true,  needs: [],               description: "The deepest peak-to-trough fall, as a negative fraction. PerformanceAnalytics `maxDrawdown`." },

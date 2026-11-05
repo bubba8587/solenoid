@@ -336,6 +336,27 @@ pub fn convolve(a: &Grid, b: &Grid, shape: &V) -> V {
     shape_as(out.collect(), cols, is_grid)
 }
 
+/// A 1-D body run along one axis of a grid: down each column, or across each row when `across`; the lines it answers
+/// are put back as a grid. The first line that fails answers for the whole.
+pub fn along(g: &Grid, across: bool, line: impl Fn(&[V]) -> Result<Vec<V>, V>) -> V {
+    let (n, len) = if across { (g.rows, g.cols) } else { (g.cols, g.rows) };
+    let mut lines = Vec::with_capacity(n);
+    for k in 0..n {
+        let cells: Vec<V> = (0..len).map(|t| if across { g.at(k, t) } else { g.at(t, k) }).cloned().collect();
+        match line(&cells) {
+            Ok(out) => lines.push(out),
+            Err(e) => return e,
+        }
+    }
+    let out_len = lines.first().map_or(0, Vec::len);
+    let cells: Vec<V> = if across {
+        lines.into_iter().flatten().collect()
+    } else {
+        (0..out_len).flat_map(|t| lines.iter().map(move |l| l[t].clone())).collect()
+    };
+    shape_as(cells, if across { out_len } else { n }, true)
+}
+
 /// TRAPZ over a grid: the volume under the surface, by the trapezoidal rule across each row at `dx` and then down the
 /// row totals at `dy`. Every cell must be a number.
 pub fn trapz_grid(g: &Grid, dx: f64, dy: f64) -> V {

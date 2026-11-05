@@ -455,12 +455,25 @@ fn running(c: &mut Call) -> Answer {
 }
 
 fn diff(c: &mut Call) -> Answer {
-    let name = match c.field_str("mode", "delta") {
+    let name = match c.field_str("op", "delta") {
         "percent" => "PCTCHANGE",
         "gradient" => "GRADIENT",
         _ => "DIFF",
     };
-    let r = core_call(name, &[list_in(c, "list")]);
+    let r = if c.field_str("mode", "list") == "grid" {
+        let across = c.field("byCol").and_then(|v| v.as_bool()).unwrap_or(false);
+        let r = core_call(name, &[list_in(c, "grid"), V::Bool(across)]);
+        // A change or a slope is in the grid's unit; a percent change is a plain ratio.
+        if name != "PCTCHANGE"
+            && matches!(r, V::List(_))
+            && let Some(u) = c.matrix_unit("grid").cloned()
+        {
+            c.set_matrix_unit("result", u);
+        }
+        r
+    } else {
+        core_call(name, &[list_in(c, "list")])
+    };
     shown(c, "cachedList", "result", r)
 }
 

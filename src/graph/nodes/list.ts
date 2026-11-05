@@ -1203,36 +1203,63 @@ export class RunningNode extends GraphNode {
   }
 }
 
-export type DiffMode = "delta" | "percent" | "gradient";
-const DIFF_OUTPUT_LABEL: Record<DiffMode, string> = { delta: "Differences", percent: "Change", gradient: "Gradient" };
+export type DiffOp = "delta" | "percent" | "gradient";
+const DIFF_OUTPUT_LABEL: Record<DiffOp, string> = { delta: "Differences", percent: "Change", gradient: "Gradient" };
+/** `label` is the toggle's glyph; `name` the op's row in search. */
+export const DIFF_OP_META: Record<DiffOp, { label: string; name: string; fx: string; keywords: string; title: string }> = {
+  delta:    { label: "Δ", name: "Difference",     fx: "DIFF",      keywords: "diff delta change numpy diff", title: "Absolute difference: list[i] − list[i−1]" },
+  percent:  { label: "%", name: "Percent Change", fx: "PCTCHANGE", keywords: "pct_change percent growth rate return", title: "Percent change: (list[i] − list[i−1]) / list[i−1] (pandas pct_change)" },
+  gradient: { label: "∇", name: "Gradient",       fx: "GRADIENT",  keywords: "gradient slope derivative numpy gradient", title: "Gradient: central-difference slope at each point, same length as the input (numpy.gradient)" },
+};
+export const DIFF_MODE_META: Record<ShapeMode, { label: string; title: string }> = {
+  list: { label: "List", title: "Changes along a list" },
+  grid: { label: "Grid", title: "Changes along one axis of a table of numbers" },
+};
+export const DIFF_AXIS_META: Record<"down" | "across", { label: string; title: string }> = {
+  down:   { label: "Down",   title: "From each row to the next, down every column (numpy axis 0)" },
+  across: { label: "Across", title: "From each column to the next, along every row (numpy axis 1)" },
+};
 
 export class DiffNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    result: "Δ and % are one element shorter (change from the element before); ∇ is the same length, the central-difference slope at each point.",
+    result: "Δ and % are one element shorter (change from the element before); ∇ is the same length, the central-difference slope at each point. On a grid, one row or column shorter along the chosen axis.",
+    grid: "A table of numbers. Down and Across ∇ grids are a Vector Field's two components.",
   };
 
   label: string;
-  mode: DiffMode = "delta";
-  cachedList: ListCell[] | SolError = [];
+  op: DiffOp = "delta";
+  mode: ShapeMode;
+  byCol = false;
+  cachedList: ListCell[] | ListCell[][] | SolError = [];
   width = 180;
   height = 150;
 
-  constructor(init?: { label?: string; mode?: DiffMode }) {
+  constructor(init?: { label?: string; op?: DiffOp; mode?: ShapeMode; byCol?: boolean }) {
     super("Diff");
     this.label = init?.label ?? "DIFF";
-    if (init?.mode) this.mode = init.mode;
-    this.addInput("list",   listIn("List"));
-    this.addOutput("result", listOut(DIFF_OUTPUT_LABEL[this.mode]));
+    if (init?.op && init.op in DIFF_OP_META) this.op = init.op;
+    this.mode = init?.mode === "grid" ? "grid" : "list";
+    this.byCol = init?.byCol === true;
+    this._rebuildSockets();
   }
 
-  setMode(next: DiffMode): void {
-    this.mode = next;
+  // Removes every socket, so callers prune all of this node's cables first (applyShapeMode).
+  _rebuildSockets(): void {
+    for (const key of Object.keys(this.inputs)) this.removeInput(key);
+    for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    const grid = this.mode === "grid";
+    this.addInput(grid ? "grid" : "list", grid ? tableIn("Grid") : listIn("List"));
+    this.addOutput("result", grid ? tableOut(DIFF_OUTPUT_LABEL[this.op]) : listOut(DIFF_OUTPUT_LABEL[this.op]));
+  }
+
+  setOp(next: DiffOp): void {
+    this.op = next;
     const out = this.outputs.result;
     if (out) out.label = DIFF_OUTPUT_LABEL[next];
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    return nodeOnCore(this, inputs) as { result: ListCell[] | SolError };
+    return nodeOnCore(this, inputs) as { result: ListCell[] | ListCell[][] | SolError };
   }
 }
 
