@@ -107,7 +107,7 @@ function paramType(name: string, i: number): "number" | "text" | "logical" {
 
 /** A left-out default's word as it shows: a value as itself (a Fallback), anything else in brackets (a Behavior), since
  *  it names what happens rather than a value. */
-const VALUE_WORD = /^(-?\d[\d.]*(e-?\d+)?|TRUE|FALSE|#N\/A|1, 2, 3…)$/;
+const VALUE_WORD = /^(-?\d[\d.]*(e-?\d+)?|TRUE|FALSE|#N\/A)$/;
 const behavior = (word: string): string => (VALUE_WORD.test(word) ? word : `[${word}]`);
 
 const show = (v: unknown): string | null =>
