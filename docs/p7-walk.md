@@ -49,15 +49,28 @@ are told apart by shape:
 - The formula side keeps Excel's reading of `_` (case 1). A card's Fallback lives on the card, not in `ARG_ROLES`,
   except where a setting's declared blank already serves both surfaces.
 
+## Assigning kinds (the author, 2026-11-05)
+
+- **Fallback over Example by default**, as Excel reads an empty argument; judgement calls where a field reads better
+  otherwise.
+- **0 / FALSE / "" is the typical Fallback**, and another value is fine where it is better to use (quality of life),
+  again by judgement: MOD's divisor at 1 rather than 0, say.
+- **A Fallback that isn't Excel's empty value makes the formula diverge**: `MOD(5, )` is `#DIV/0!` in Excel, but
+  the card's empty divisor would read 1. The formula's empty slot then shows and reads that Fallback (a muted `1`)
+  so the two surfaces agree and the divergence is visible. That is the second step, after the card side.
+
+## Steps
+
+1. The card side: every field declares its kind, and a test fails for any field that declares none (the
+   worklist). The hidden code defaults become Fallbacks at their current values; data fields get 0 / FALSE / ""
+   unless a judgement call says otherwise; Examples and Behaviors where they fit; the italics split.
+2. The formula side: where a card's Fallback isn't Excel's empty value, the formula's empty slot shows and reads it.
+
 ## Open questions
 
 - **Does a card read `_` as Excel's empty argument (0, FALSE, "")?** Reframed by the placeholder scheme: a card
   reads `_` as its field's kind says. Whether a field's Fallback should be Excel's empty-argument value is decided
   field by field; the ledger below keeps the evidence.
-- **Data fields: Fallback 0 / FALSE / "" first, or Example first?** The author's starting rule (2026-11-05): data
-  fields typically get Excel's empty value as their Fallback, settings get the Fallback each needs, and Examples and
-  Behaviors are used where they fit better or where no Fallback is needed to keep the card from erroring. Which
-  wins when a field could be either (ROUND's Number) is open.
 
 ## Evidence ledger: a card reading `_` as Excel's empty argument
 
