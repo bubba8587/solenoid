@@ -18,6 +18,7 @@ specs and this file archives.
 | # | Case | Formula | Card | Author's ruling (date) |
 |---|------|---------|------|------------------------|
 | 1 | ROUND, Number `_`, Digits 2 | `ROUND(_, 2)` = 0 (reads as `ROUND(0, 2)`) | `#OVERFLOW!` | Formula: 0 makes sense, for now. Card: `#OVERFLOW!` doesn't make sense (`#VALUE!` would read better). Whether a card reads `_` as 0 / FALSE / "" is open: not ruled out, needs the evidence to stack up (2026-11-05). |
+| 2 | ROUND, Number 2.6, Digits `_` | `ROUND(2.6, _)` = 3 (reads as `ROUND(2.6, 0)`) | 3 | Both right; Excel answers 3 too (2026-11-05). |
 
 ## Open questions
 
@@ -29,6 +30,7 @@ specs and this file archives.
 | From case | Points | Note |
 |-----------|--------|------|
 | 1 | neutral | Why the card says `#OVERFLOW!`: an empty number field reads as undefined (`Call::unwired` in `crates/solenoid-core/src/nodes/fields.rs` answers `V::Undef`), which is neither a blank nor a number. ROUND computes on it, gets not-a-number, and the non-finite guard labels that `#OVERFLOW!`. The arithmetic card takes the same path to `#DOMAIN!`. The error code is an accident of that path, not a choice. |
+| 2 | weak for | The card agrees with Excel, but not by reading `_` as Excel's empty argument: ROUND's Digits is a setting (`inputRoles` on `RoundNNode`, [[D86]] blankRoles), and an empty setting falls back to its default, which happens to be 0. Where a setting's default is Excel's empty-argument value, the two readings give the same answer. |
 
 ## Probe
 
