@@ -9,6 +9,7 @@ import { IS_COARSE } from "../coarse";
 import { appThemeStore } from "../appTheme";
 import type { NodeCatalogEntry } from "../AddNodeMenu";
 import { accentVars, cardAccent } from "./CardReference";
+import { EqualIcon, TriangleAlertIcon } from "./Icons";
 
 /** A heavy square-cut arrow, as the Frame mark is drawn: butt ends, mitred point. */
 function ChunkyArrow() {
@@ -24,7 +25,21 @@ function ChunkyArrow() {
 const MORE_FUNCTIONS = "Statistical";
 
 /** One Excel function: the cards that answer it, or the newer function that replaced it, or why it has no card. */
-interface XlEntry { name: string; cards: NodeCatalogEntry[]; use?: { text: string; card?: NodeCatalogEntry } }
+interface XlEntry {
+  name: string; cards: NodeCatalogEntry[]; use?: { text: string; card?: NodeCatalogEntry };
+  /** Whether every card answering it gives Excel's answer; a difference is told on the card's page. */
+  same?: boolean;
+}
+
+/** A row's parity mark, leading the row: = where the card answers as Excel does, ⚠ where it differs. */
+function ParityMark({ same }: { same: boolean }) {
+  return (
+    <span className={`fr-xl__parity fr-xl__parity--${same ? "same" : "differs"}`} role="img"
+      aria-label={same ? "Same as Excel" : "Differs from Excel: the card's page says how"}>
+      {same ? <EqualIcon size={14} strokeWidth={2.2} /> : <TriangleAlertIcon size={13} />}
+    </span>
+  );
+}
 
 /** For someone coming from Excel: its functions under its own sections, A to Z, each opening the card that does it. */
 export function ExcelCoverage() {
@@ -38,6 +53,7 @@ export function ExcelCoverage() {
       const e = byName.get(r.excel) ?? { name: r.excel, cards: [] };
       const card = r.catalogType ? leaf.get(r.catalogType) : undefined;
       if (card && !e.cards.includes(card)) e.cards.push(card);
+      if (card) e.same = (e.same ?? true) && r.parity;
       byName.set(r.excel, e);
     }
     // A replaced function points at its replacement, by the card that answers it when the note names one.
@@ -119,10 +135,12 @@ export function ExcelCoverage() {
         <div className="fr-xl__head">
           <p className="fr-xl__sum">Coming from Excel? Find a function where Excel files it, and open the card that does it here.</p>
           <div className="fr-xl__legend">
-            {counts.map((c) => <span key={c.key}><i className={`fr-xl__dot fr-xl__dot--${c.key}`} />{c.n} {c.label}</span>)}
+            {counts.map((c) => (
+              <span key={c.key}>{c.key === "yes" || c.key === "no" ? <ParityMark same={c.key === "yes"} /> : null}{c.n} {c.label}</span>
+            ))}
           </div>
           <div className="fr-xl__cols-head" aria-hidden="true">
-            <span className="fr-xl__from">Excel<ChunkyArrow /></span><span>Solenoid</span>
+            <span /><span className="fr-xl__from">Excel<ChunkyArrow /></span><span>Solenoid</span>
           </div>
         </div>
         <div className="fr-xl__scroll" ref={scrollRef} onScroll={spy}>
@@ -135,8 +153,8 @@ export function ExcelCoverage() {
                 // A function one card answers opens it from anywhere on its row.
                 <div key={e.name} className={`fr-xl__row${e.cards.length ? "" : " fr-xl__row--none"}${e.cards.length === 1 ? " fr-xl__row--go" : ""}`}
                   onClick={e.cards.length === 1 ? () => open(e.cards[0]) : undefined}>
+                  {e.cards.length ? <ParityMark same={!!e.same} /> : <span />}
                   <span className="fr-xl__name">{e.name}</span>
-                  <span />
                   <span className="fr-xl__to" onClick={(ev) => ev.stopPropagation()}>
                     {e.cards.length ? e.cards.map(cardLink)
                       : e.use ? <>use {e.use.card ? cardLink(e.use.card) : e.use.text}</>
