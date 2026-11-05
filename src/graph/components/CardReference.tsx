@@ -306,9 +306,15 @@ function Landing({ catalog, onCard, onFolder }: {
 
   return (
     <div className="fr-land">
+      <div className="fr-land__caption">Core Functions</div>
       {blocks(folders)}
-      {packs.length > 0 && <div className="fr-land__divider" role="separator" />}
-      {blocks(packs)}
+      {packs.length > 0 && (
+        <>
+          <div className="fr-land__divider" role="separator" />
+          <div className="fr-land__caption">Optional Packs</div>
+          {blocks(packs)}
+        </>
+      )}
     </div>
   );
 }
