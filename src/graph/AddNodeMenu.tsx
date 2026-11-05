@@ -13,7 +13,8 @@ import { SOCKET_COLORS, type SocketDataType } from "./sockets";
 
 /** A row takes its kind's color as a card of that kind shows it: the current palette, adjusted for light mode. */
 const leafAccent = (kind: NodeKind): string => themeAccent(NODE_KIND_ACCENTS[kind], appThemeStore.getMode());
-import { ChevronRightIcon, ChevronLeftIcon } from "./components/Icons";
+import { ChevronRightIcon, ChevronLeftIcon, BookIcon } from "./components/Icons";
+import { frStore } from "./frStore";
 
 function leafHighlight(leaf: NodeCatalogEntry): { className: string; style?: CSSProperties } {
   // One type tints the row like a kind accent, in that type's socket color; several make the flag.
@@ -522,6 +523,21 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
     }
   }
 
+  // The book opens the Reference on the row that's lit (the result or the leaf the keys or the mouse are on), else on
+  // its landing; the menu closes, as it does when a pick is made.
+  const openReference = () => {
+    let leaf: NodeCatalogEntry | null = null;
+    if (searching) leaf = results[activeIndex] ?? null;
+    else {
+      const items = levelItemsAt(entries, treePath);
+      const it = items[treePath[treePath.length - 1] ?? 0];
+      if (it?.kind === "leaf") leaf = it.entry;
+    }
+    onClose();
+    if (leaf) frStore.openCard(leaf.type);
+    else { frStore.close(); frStore.open("reference"); }
+  };
+
   // Portaled to <body>: inside a composite drill-in the surface sits in the drill-in backdrop's stacking context (z 4), which
   // put the menu under the floating pills (z 5); out here its own z-index (200) holds against everything but the dialogs.
   return createPortal(
@@ -533,7 +549,17 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
         : { left: pos.left, top: pos.top, visibility: pos.visible ? "visible" : "hidden" }}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <div className="solenoid-add-menu__heading">Add node</div>
+      <div className="solenoid-add-menu__heading">
+        <span>Add node</span>
+        <button
+          type="button"
+          className="solenoid-add-menu__ref"
+          title="Reference"
+          aria-label="Reference"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); openReference(); }}
+        ><BookIcon size={12} strokeWidth={1.6} /></button>
+      </div>
       <div className="solenoid-add-menu__panel">
         <div className="solenoid-add-menu__scroll" ref={scrollRef}>
         <input

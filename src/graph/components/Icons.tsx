@@ -24,6 +24,13 @@ const Svg = ({ size = 14, strokeWidth = 1.6, style, children }: IconProps & { ch
 
 export const ChevronRightIcon = (p: IconProps) => <Svg {...p}><path d="m9 18 6-6-6-6" /></Svg>;
 export const ChevronLeftIcon = (p: IconProps) => <Svg {...p}><path d="m15 18-6-6 6-6" /></Svg>;
+/** Lucide "book-open" (ISC): the Reference. */
+export const BookIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </Svg>
+);
 export const ChevronDownIcon = (p: IconProps) => <Svg {...p}><path d="m6 9 6 6 6-6" /></Svg>;
 export const PlayIcon = (p: IconProps) => <Svg {...p}><path d="M6 3 20 12 6 21z" /></Svg>;
 /** "link": a chain, for anything that follows cables. */

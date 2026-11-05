@@ -225,7 +225,8 @@ export function CardReference() {
           folderShown && openFolder
             ? <FolderPage key={stack.join(".")} folder={openFolder} ancestors={ancestors}
                 accentStyle={accentVars(folderAccent(leavesOf([openFolder]), navMode))}
-                onCard={pick} onUp={(depth) => goFolders(stack.slice(0, depth + 1))} />
+                onCard={pick} onUp={(depth) => goFolders(stack.slice(0, depth + 1))}
+                cardOf={(type) => leaves.find((l) => l.leaf.type === type)?.leaf ?? null} />
             : <Landing catalog={catalog} onCard={pick} onFolder={(i) => { setPack(null); goFolders([i]); }} />
         )}
       </section>

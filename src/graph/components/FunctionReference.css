@@ -766,3 +766,7 @@
   /* A long list of operations follows the inputs. */
   .fr-card__rail--long { order: 0; }
 }
+
+/* A top-level folder's way in: the cards to start with, as links in the copy. */
+.fr-fold__start { margin: 14px 0 0; font-size: 13px; color: var(--text); }
+.fr-fold__start-link { color: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-ink), var(--text)); font-weight: 600; }
