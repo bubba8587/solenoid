@@ -8,10 +8,12 @@ import { addNodeFrom, buildCatalog } from "../catalogUtils";
 import { flattenLeaves, searchLeaves } from "../catalogSearch";
 import { formulaHomes } from "../formulaCards";
 import { examplesUsing } from "../cardExamples";
-import { tagsOf } from "../catalogTags";
+import { appThemeStore } from "../appTheme";
+import { nodeAccent } from "../nodes/kind";
+import { contrastInk } from "../palette";
 import { documentStore } from "../documentStore";
 import { allPacks, packsStore } from "../packs";
-import { DrillMenu, LeafRow, drillStackTo, type NodeCatalogEntry } from "../AddNodeMenu";
+import { DrillMenu, LeafRow, drillStackTo, type NodeCatalogEntry, type CatalogEntry, type CatalogCategory, type CatalogPair } from "../AddNodeMenu";
 import { IS_COARSE } from "../coarse";
 import { descriptionHtml } from "../descriptionMd";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
@@ -19,11 +21,17 @@ import { socketDocFor } from "../socketDocs";
 import { rolesOf } from "../nodes/shared";
 import { emptyFieldShown, type EmptyFieldShown } from "../emptySlots";
 import { SocketComponent } from "./SocketComponent";
+import { SegToggle } from "./SegToggle";
+import { ChevronLeftIcon } from "./Icons";
+import "../Settings.css";
+import "./nodeCard.css";
 import type { GraphNode } from "../graphModel";
 
 /** An op or formula row's leaf ("list-smooth__op-gaussian") belongs to its host card. */
 const cardTypeOf = (leaf: NodeCatalogEntry) => leaf.type.split("__")[0];
 
+// What an empty field does, as the card draws it: the field itself, its placeholder upright for a Fallback, in brackets
+// for a Behavior, italic for an Example, and blank for Required.
 const EMPTY_KIND: Record<EmptyFieldShown["kind"], { name: string; means: string }> = {
   fallback: { name: "Fallback", means: "Left empty, the card computes with this value." },
   behavior: { name: "Behavior", means: "Left empty, the card does this instead." },
@@ -138,12 +146,13 @@ export function CardReference() {
           // Touch must not pop the on-screen keyboard over the fresh panel.
           autoFocus={!IS_COARSE}
         />
-        {pack && !q && (
-          <button type="button" className="fr-nav__chip" onClick={() => setPack(null)} title="Show every card">
-            {packName.get(pack) ?? pack}<span aria-hidden="true"> ×</span>
-          </button>
-        )}
         <div className="solenoid-add-menu__scroll fr-nav__list">
+          {pack && !q && (
+            <div className="solenoid-add-menu__item solenoid-add-menu__item--back" onClick={() => setPack(null)} title="Show every card">
+              <ChevronLeftIcon size={14} />
+              <span>{packName.get(pack) ?? pack} pack</span>
+            </div>
+          )}
           {q ? (
             results.length === 0
               ? <div className="solenoid-add-menu__empty">Nothing matches “{q}”.</div>
@@ -179,19 +188,7 @@ export function CardReference() {
             onFollow={follow}
           />
         ) : (
-          <div className="fr-page__intro">
-            <p>Every card, with the formulas that do the same job, its fields and what an empty one does, and where it comes from in Excel, numpy, scipy or R.</p>
-            <p>Browse the folders as in the Add menu, or search by a card’s name or any formula name.</p>
-            <div className="fr-page__legend">
-              <div className="fr-card__label">What an empty field does</div>
-              {(Object.keys(EMPTY_KIND) as EmptyFieldShown["kind"][]).map((k) => (
-                <div key={k} className="fr-page__legend-row">
-                  <span className={`fr-card__empty fr-card__empty--${k}`}>{EMPTY_KIND[k].name}</span>
-                  <span>{EMPTY_KIND[k].means}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <Landing catalog={catalog} onCard={pick} onFolder={(i) => setStack([i])} />
         )}
       </section>
     </div>
@@ -199,6 +196,51 @@ export function CardReference() {
 }
 
 type ModeMeta = Record<string, { label: string; title?: string }>;
+
+/** The cards under a folder, Add-menu order, pairs flattened. */
+function leavesUnder(e: CatalogEntry): NodeCatalogEntry[] {
+  if (e.type === "category") return (e as CatalogCategory).children.flatMap(leavesUnder);
+  if (e.type === "pair") return (e as CatalogPair).children.filter((c) => !c.hidden);
+  return (e as NodeCatalogEntry).hidden ? [] : [e as NodeCatalogEntry];
+}
+
+/** The landing: every top-level folder in its cards' color, with its count and first cards, then the legend. */
+function Landing({ catalog, onCard, onFolder }: {
+  catalog: CatalogEntry[]; onCard: (leaf: NodeCatalogEntry) => void; onFolder: (i: number) => void;
+}) {
+  const themeMode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
+  const folders = useMemo(() => catalog.flatMap((e, i) => {
+    if (e.type !== "category") return [];
+    const cards = leavesUnder(e);
+    if (!cards.length) return [];
+    let accent: string | null = null;
+    try { accent = nodeAccent(cards[0].create() as GraphNode, themeMode); } catch { /* a card that fails to build leaves the folder uncolored */ }
+    return [{ i, label: (e as CatalogCategory).label, cards, accent }];
+  }), [catalog, themeMode]);
+
+  return (
+    <div className="fr-land">
+      <div className="fr-land__grid">
+        {folders.map((f) => (
+          <section key={f.label} className="fr-land__folder"
+            style={f.accent ? ({ "--node-accent": f.accent, "--node-accent-ink": contrastInk(f.accent) } as React.CSSProperties) : undefined}>
+            <button type="button" className="fr-land__head" onClick={() => onFolder(f.i)} title="Open this folder">
+              <span>{f.label}</span><span className="fr-land__count">{f.cards.length}</span>
+            </button>
+            <div className="fr-land__cards">
+              {f.cards.slice(0, 9).map((c) => (
+                <button key={c.type} type="button" className="fr-land__card" onClick={() => onCard(c)}>{c.label}</button>
+              ))}
+              {f.cards.length > 9 && (
+                <button type="button" className="fr-land__more" onClick={() => onFolder(f.i)}>{f.cards.length - 9} more ›</button>
+              )}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function CardPage({ card, leaf, startOp, packName, onBack, backTo, onRetrace, resolve, onFollow }: {
   card: CardRef; leaf: NodeCatalogEntry; startOp: string | null; packName: Map<string, string>; onBack: () => void;
@@ -229,6 +271,9 @@ function CardPage({ card, leaf, startOp, packName, onBack, backTo, onRetrace, re
   const ownFormula = preset?.locked && preset.expr ? preset.expr : null;
   const packOff = card.packs.length > 0 && !card.packs.some((p) => packsStore.isActive(p));
   const examples = useMemo(() => examplesUsing(card.type), [card]);
+  // The card's own color, as its header wears it on the canvas (DESIGN.md § Nearest-Accent Rule).
+  const themeMode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
+  const accent = useMemo(() => { try { return node ? nodeAccent(node, themeMode) : null; } catch { return null; } }, [node, themeMode]);
   const modeMeta = (node?.constructor as { modeMeta?: ModeMeta } | undefined)?.modeMeta;
   const mode = (node as { mode?: string } | null)?.mode;
 
@@ -254,142 +299,144 @@ function CardPage({ card, leaf, startOp, packName, onBack, backTo, onRetrace, re
     }).catch(() => {});
   };
 
+  const hasFormulas = !!ownFormula || card.excel.length > 0 || card.formulas.length > 0 || card.operators.length > 0;
+  const where = card.path[0] === "Packs"
+    ? `${card.packs.map((p) => packName.get(p) ?? p).join(", ")} pack${card.path.length > 2 ? ` ▸ ${card.path.slice(2).join(" ▸ ")}` : ""}`
+    : `${card.path.join(" ▸ ")}${card.packs.length ? ` · ${card.packs.map((p) => packName.get(p) ?? p).join(", ")} pack` : ""}`;
+  const hasRail = !!modeMeta || card.ops.length > 0 || examples.length > 0;
+
   return (
-    <article className="fr-card">
+    <article className="fr-card" style={accent ? ({ "--node-accent": accent, "--node-accent-ink": contrastInk(accent) } as React.CSSProperties) : undefined}>
       <button type="button" className="fr-card__back" onClick={onBack}>‹ Cards</button>
-      {backTo && <button type="button" className="fr-card__retrace" onClick={onRetrace}>‹ {backTo}</button>}
       <header className="fr-card__head">
-        <h2 className="fr-card__title">{card.label}</h2>
-        <button
-          type="button"
-          className="fr-card__add"
-          title="Drop this card on the canvas"
-          onClick={() => { void addNodeFrom(make); frStore.close(); }}
-        >+ Add to canvas</button>
+        {backTo && <button type="button" className="fr-card__retrace" onClick={onRetrace}>‹ {backTo}</button>}
+        <div className="fr-card__head-row">
+          <h2 className="fr-card__title">{card.label}</h2>
+          <button type="button" className="solenoid-node__open-btn fr-card__add" title="Drop this card on the canvas"
+            onClick={() => { void addNodeFrom(make); frStore.close(); }}>Add to Canvas</button>
+        </div>
+        <div className="fr-card__crumb">
+          <span>{where}</span>
+          {card.packs.length > 0 && (
+            <span className="fr-card__pack-switch">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!packOff}
+                aria-label={`${packName.get(card.packs[0]) ?? card.packs[0]} pack`}
+                className={`solenoid-settings__switch${packOff ? "" : " solenoid-settings__switch--on"}`}
+                onClick={() => packsStore.toggle(card.packs[0])}
+              >
+                <span className="solenoid-settings__knob" />
+              </button>
+            </span>
+          )}
+        </div>
       </header>
-      <div className="fr-card__crumb">
-        {card.path[0] === "Packs"
-          ? <>{card.packs.map((p) => packName.get(p) ?? p).join(", ")} pack{card.path.length > 2 ? ` ▸ ${card.path.slice(2).join(" ▸ ")}` : ""}</>
-          : card.path.join(" ▸ ")}
-        {card.path[0] !== "Packs" && card.packs.length > 0 && <>{" · "}{card.packs.map((p) => packName.get(p) ?? p).join(", ")} pack</>}
-        {packOff && (
-          <>
-            <span className="fr-card__off"> · off</span>
-            <button type="button" className="fr-card__turn-on" onClick={() => packsStore.toggle(card.packs[0])}>Turn on</button>
-          </>
-        )}
-      </div>
-      {tagsOf(card.type).length > 0 && (
-        <div className="fr-card__tags">Also called {tagsOf(card.type).join(", ")}</div>
-      )}
+
       {card.description && (
         <p ref={descRef} className="fr-card__desc" onClick={onDescClick} dangerouslySetInnerHTML={{ __html: descriptionHtml(card.description) }} />
       )}
 
-      {(ownFormula || card.excel.length > 0 || card.formulas.length > 0 || card.operators.length > 0) && (
-        <Section title="Formulas">
-          {ownFormula && <FxRow text={ownFormula} meta="this card’s formula" copied={copied} onCopy={copy} />}
-          {card.operators.map((o) => <FxRow key={o} text={o} meta="operator" copied={copied} onCopy={copy} />)}
-          {card.excel.map((e) => (
-            <FxRow key={e.name} text={e.syntax.replace(/^=/, "")} meta={`Excel${e.parity ? "" : " · differs"}`} copied={copied} onCopy={copy}
-              note={e.note || !e.parity ? e.note ?? "Answers differ from Excel’s in some cases." : undefined} />
-          ))}
-          {card.formulas.map((f) => {
-            const viaOp = card.createOp ? card.ops.find((o) => o.label === f.via)?.op : undefined;
-            return (
-              <FxRow key={f.name} text={`${f.name}(${f.signature})`} meta={f.via} on={!!f.via && f.via === opLabel}
-                copied={copied} onCopy={copy} onMeta={viaOp ? () => setOpPick(viaOp) : undefined} />
-            );
-          })}
-        </Section>
-      )}
+      <div className={`fr-card__body${hasRail ? "" : " fr-card__body--solo"}`}>
+        <div className="fr-card__main">
+          {node && Object.keys(node.inputs).length > 0 && (
+            <Section title="Inputs">
+              {Object.entries(node.inputs).map(([key, input]) => {
+                const empty = emptyFieldShown(node.constructor.name, key, roles?.[key], op);
+                return (
+                  <SocketLine key={key} node={node} sockKey={key} label={input?.label ?? key} socket={input?.socket}
+                    empty={empty} doc={preset?.varDescriptions?.[key]} unit={preset?.varUnits?.[key]} />
+                );
+              })}
+            </Section>
+          )}
+          {node && Object.keys(node.outputs).length > 0 && (
+            <Section title="Outputs">
+              {Object.entries(node.outputs).map(([key, output]) => (
+                <SocketLine key={key} node={node} sockKey={key} label={output?.label ?? key} socket={output?.socket} />
+              ))}
+            </Section>
+          )}
+          {hasFormulas && (
+            <Section title="Formulas">
+              {ownFormula && <FxRow text={ownFormula} copied={copied} onCopy={copy} />}
+              {card.operators.map((o) => <FxRow key={o} text={o} copied={copied} onCopy={copy} />)}
+              {card.excel.map((e) => (
+                <FxRow key={e.name} text={e.syntax.replace(/^=/, "")} copied={copied} onCopy={copy} note={e.note} />
+              ))}
+              {card.formulas.map((f) => (
+                <FxRow key={f.name} text={`${f.name}(${f.signature})`} on={!!f.via && f.via === opLabel} copied={copied} onCopy={copy} />
+              ))}
+            </Section>
+          )}
+        </div>
 
-      {modeMeta && (
-        <Section title="Modes">
-          <div className="fr-card__ops">
-            {Object.entries(modeMeta).map(([m, meta]) => (
-              <button key={m} type="button" className={`fr-card__op${m === mode ? " fr-card__op--on" : ""}`}
-                title={meta.title} onClick={() => setModePick(m)}>{meta.label}</button>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {card.ops.length > 0 && (
-        <Section title="Ops">
-          <div className="fr-card__ops">
-            {card.ops.map((o) => (
-              <button
-                key={o.op}
-                type="button"
-                className={`fr-card__op${o.op === op ? " fr-card__op--on" : ""}`}
-                disabled={!card.createOp}
-                onClick={() => setOpPick(o.op)}
-                title="Show the card set to this op"
-              >{o.label}</button>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {node && Object.keys(node.inputs).length > 0 && (
-        <Section title="Inputs">
-          {Object.entries(node.inputs).map(([key, input]) => {
-            const empty = emptyFieldShown(node.constructor.name, key, roles?.[key], op);
-            return (
-              <SocketLine key={key} node={node} sockKey={key} label={input?.label ?? key} socket={input?.socket}
-                empty={empty} doc={preset?.varDescriptions?.[key]} unit={preset?.varUnits?.[key]} />
-            );
-          })}
-        </Section>
-      )}
-      {node && Object.keys(node.outputs).length > 0 && (
-        <Section title="Outputs">
-          {Object.entries(node.outputs).map(([key, output]) => (
-            <SocketLine key={key} node={node} sockKey={key} label={output?.label ?? key} socket={output?.socket} />
-          ))}
-        </Section>
-      )}
-
-      {examples.length > 0 && (
-        <Section title="See it in an example">
-          <div className="fr-card__ops">
-            {examples.slice(0, 8).map((ex) => (
-              <button key={ex.id} type="button" className="fr-card__op" title="Open this example in a new tab"
-                onClick={() => { frStore.close(); void documentStore.newFromTemplate(ex.id); }}>{ex.label}</button>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {card.libs.filter((l) => l !== "Excel").length > 0 && (
-        <Section title="Also known from">
-          <div className="fr-card__ops">
-            {card.libs.filter((l) => l !== "Excel").map((l) => <span key={l} className="fr-card__op">{l}</span>)}
-          </div>
-        </Section>
-      )}
+        {hasRail && (
+          <aside className="fr-card__rail">
+            {modeMeta && (
+              <Section title="Mode">
+                <SegToggle
+                  value={mode ?? Object.keys(modeMeta)[0]}
+                  onChange={(m) => setModePick(m)}
+                  options={Object.entries(modeMeta).map(([m, meta]) => ({ value: m, label: meta.label, title: meta.title }))}
+                />
+              </Section>
+            )}
+            {card.ops.length > 0 && (
+              <Section title="Operations">
+                <div className="fr-card__ops-list">
+                  {card.ops.map((o) => (
+                    <div key={o.op}
+                      className={`solenoid-add-menu__item${o.op === op ? " solenoid-add-menu__item--active" : ""}`}
+                      onClick={card.createOp ? () => setOpPick(o.op) : undefined}
+                      title={card.createOp ? "Show the card set to this operation" : undefined}>{o.label}</div>
+                  ))}
+                </div>
+              </Section>
+            )}
+            {examples.length > 0 && (
+              <Section title="Examples">
+                <div className="fr-card__links">
+                  {examples.slice(0, 8).map((ex) => (
+                    <button key={ex.id} type="button" className="fr-card__link" title="Open this example in a new tab"
+                      onClick={() => { frStore.close(); void documentStore.newFromTemplate(ex.id); }}>{ex.label} ›</button>
+                  ))}
+                </div>
+              </Section>
+            )}
+          </aside>
+        )}
+      </div>
     </article>
   );
 }
 
-/** A formula line: the code copies on click; the op name beside it switches the page to that op. */
-function FxRow({ text, meta, note, on, copied, onCopy, onMeta }: {
-  text: string; meta?: string; note?: string; on?: boolean;
-  copied: string | null; onCopy: (t: string) => void; onMeta?: () => void;
+/** A formula line; the code copies on click. */
+function FxRow({ text, note, on, copied, onCopy }: {
+  text: string; note?: string; on?: boolean; copied: string | null; onCopy: (t: string) => void;
 }) {
   return (
     <div className={`fr-card__fx${on ? " fr-card__fx--on" : ""}`}>
       <button type="button" className="fr-card__fx-code" onClick={() => onCopy(text)} title="Copy">
         <code>{text}</code>
       </button>
-      {copied === text
-        ? <span className="fr-card__fx-meta fr-card__fx-copied">Copied</span>
-        : meta && (onMeta
-          ? <button type="button" className="fr-card__fx-meta fr-card__fx-via" onClick={onMeta} title="Show the card set to this op">{meta}</button>
-          : <span className="fr-card__fx-meta">{meta}</span>)}
+      {copied === text && <span className="fr-card__fx-copied">Copied</span>}
       {note && <div className="fr-card__fx-note">{note}</div>}
     </div>
+  );
+}
+
+/** An empty field as the card draws it: the card's own inline input, its placeholder styled by kind. */
+function EmptyField({ kind, shown }: { kind: EmptyFieldShown["kind"]; shown?: string }) {
+  return (
+    <input
+      readOnly
+      tabIndex={-1}
+      className={`solenoid-node__inline-input fr-card__field${kind === "example" ? " sol-placeholder-example" : ""}`}
+      placeholder={kind === "required" ? "" : shown ?? ""}
+      aria-label={EMPTY_KIND[kind].name}
+    />
   );
 }
 
@@ -397,7 +444,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <section className="fr-card__section">
       <div className="fr-card__label">{title}</div>
-      {children}
+      <div className="fr-card__section-body">{children}</div>
     </section>
   );
 }
@@ -410,15 +457,10 @@ function SocketLine({ node, sockKey, label, socket, empty, doc: given, unit }: {
   return (
     <div className="fr-card__sock">
       <div className="fr-card__sock-row">
-        <span className="fr-card__sock-dot">{socket instanceof SolenoidSocket && <SocketComponent data={socket} />}</span>
+        <span className="fr-card__sock-dot" title={t ? SOCKET_TYPE_LABELS[t] : undefined}>{socket instanceof SolenoidSocket && <SocketComponent data={socket} />}</span>
         <span className="fr-card__sock-name">{label}</span>
-        <span className="fr-card__sock-type">{t ? SOCKET_TYPE_LABELS[t] : ""}{unit ? ` · ${unit}` : ""}</span>
-        {empty && (
-          <span className={`fr-card__empty fr-card__empty--${empty.kind}`} title={EMPTY_KIND[empty.kind].means}>
-            {EMPTY_KIND[empty.kind].name}
-            {empty.shown ? ` · ${empty.shown}` : empty.kind === "fallback" ? " · empty" : ""}
-          </span>
-        )}
+        {unit && <span className="fr-card__sock-type">{unit}</span>}
+        {empty && <span className="fr-card__empty"><EmptyField kind={empty.kind} shown={empty.shown} /></span>}
       </div>
       {doc && <div className="fr-card__sock-doc">{doc}</div>}
     </div>
