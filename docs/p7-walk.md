@@ -12,6 +12,8 @@ specs and this file archives.
 - **`x`** stays the formula variable whose socket on the Formula card has nothing wired. It is a different kind of
   nothing from `_` and is walked separately.
 - A one-argument call with nothing in it (`ABS()`) is "no argument", not `_`, and is parked.
+- **Scope for now: the unwired, empty field only.** A cable carrying a blank is out of scope until the author
+  reopens it; no rule here covers it.
 
 ## Rulings
 
@@ -43,8 +45,6 @@ are told apart by shape:
 - Italics are reserved for Examples. Today every card field's placeholder is italic
   (`.solenoid-node__inline-input::placeholder` and `.solenoid-node__quoted-input::placeholder` in `nodeCard.css`), and
   so is a formula's empty-slot reading (`.fx-ghost` in `FormulaEditor.css`). Fallbacks and Behaviors lose the italic.
-- **A Fallback is what an empty field reads as, never a cable carrying a blank.** A wired blank stays blank
-  ([[C24]] arraySemantics: nothing turns it into zero).
 - A formula's empty-slot reading (the muted `0` in `ROUND(2.6, )`) is a Fallback, so it loses the italic too.
 - The formula side keeps Excel's reading of `_` (case 1). A card's Fallback lives on the card, not in `ARG_ROLES`,
   except where a setting's declared blank already serves both surfaces.
