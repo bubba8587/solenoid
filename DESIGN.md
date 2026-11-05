@@ -324,6 +324,8 @@ the node catalog: teased counts, the slogan phrases, conventional-affordance nar
 asides, and the em-dash ban over every shipped string, seeds included. The rest stays a human
 call. No-trailing-parenthetical is enforced over catalog descriptions, socket docs and Excel notes
 only; help and seed prose need a sweep before it can cover them.
+A card **label's** parenthetical is deliberate and stays (author 2026-11-05): "Chart (Recharts)", "DATE (Build)",
+"Spectrum (FFT)", "Growth Rate (CAGR)" name the variant or the familiar term, so a review doesn't count them as jargon.
 
 - **A control's own action is a verb, and that is not "imperative tone."** "Cycle Number / Text /
   Date / Boolean", "Open the Problems panel", "Drill in", "Rename" are correct on a button, chip
