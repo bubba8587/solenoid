@@ -10,7 +10,7 @@ import { formulaHomes } from "../formulaCards";
 import { examplesUsing } from "../cardExamples";
 import { appThemeStore } from "../appTheme";
 import { nodeAccent } from "../nodes/kind";
-import { contrastInk } from "../palette";
+import { contrastInk, darkenAccent } from "../palette";
 import { documentStore } from "../documentStore";
 import { allPacks, packsStore } from "../packs";
 import { DrillMenu, LeafRow, drillStackTo, type NodeCatalogEntry, type CatalogEntry, type CatalogCategory, type CatalogPair } from "../AddNodeMenu";
@@ -223,7 +223,7 @@ function Landing({ catalog, onCard, onFolder }: {
       <div className="fr-land__grid">
         {folders.map((f) => (
           <section key={f.label} className="fr-land__folder"
-            style={f.accent ? ({ "--node-accent": f.accent, "--node-accent-ink": contrastInk(f.accent) } as React.CSSProperties) : undefined}>
+            style={f.accent ? ({ "--node-accent": f.accent, "--node-accent-ink": contrastInk(f.accent), "--node-accent-dark": darkenAccent(f.accent) } as React.CSSProperties) : undefined}>
             <button type="button" className="fr-land__head" onClick={() => onFolder(f.i)} title="Open this folder">
               <span>{f.label}</span><span className="fr-land__count">{f.cards.length}</span>
             </button>

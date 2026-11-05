@@ -173,6 +173,14 @@ its members), and glows, shadows and rings.
 
 **The Sibling Rule.** Array and matrix socket colors are never free choices. A list is a darker, desaturated shade of its scalar; a table/matrix is a punchier, deeper, slightly hue-shifted shade. Introduce a new typed color only as a systematic sibling, never an arbitrary new hue.
 
+**The Tinted-Box Rule (author 2026-11-05).** A strong colored border is never drawn around an untinted inside. A box with
+a full-strength border all the way round tints its whole inside to match, as a Note (`--note-bg`), a group body or a
+colored dashboard box does. A block with a header and a body is drawn the way a node card is (`CardFrame`): the header
+tinted at `--header-tint` and capped in the color on its top three sides, the body in a neutral 1px border
+(`--border`, stepping to `--border-strong` on hover) with a neutral divider under the header (the color's dark shade in
+light theme). A colored border around a neutral body, or a colored box of rows nested inside another surface, reads as
+an alarm; one colored rule under a title is the light touch when a page only needs to say whose it is.
+
 **The Accent-Mix Ladder.** Every accent-derived shade is a `color-mix` of the surface's accent at a NAMED rung — never an ad-hoc percentage. The rungs live as CSS vars in `App.css`; the mix target is chosen by role at the use site:
 - `--mix-hairline` (30%) toward a border color — tinted hairlines (markdown table edges, strip separators).
 - `--mix-edge` (45%) toward `--border` — a structural edge on a field or bar.
