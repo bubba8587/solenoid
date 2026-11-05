@@ -234,7 +234,7 @@ describe("Value Input outside dates", () => {
     expect(run("string", "  hi  ")).toBe("  hi  ");
     expect(run("string", "")).toBe("");
     expect(run("logical", " TRUE ")).toBe(true);
-    expect(run("logical", "yes")).toBe(false);
+    expect(isSolError(run("logical", "yes"))).toBe(true); // the card keeps its type, as a Number card does
     expect(run("logical", "true")).toBe(true);
   });
 });
