@@ -38,11 +38,13 @@ function onUp() {
 
 /** Replaces the UA resize corner, whose bright glyph no CSS retires (`::-webkit-resizer` paints behind it). Sizes are live DOM, never persisted.
  *  `both` also drags the card's width sideways; `onResize` tells a field that sizes itself to its text which height the user dragged to, so its next grow keeps it. */
-export function FieldResizeGrip({ targetRef, onResize, axes = "y", minHeight = MIN_FIELD_H }: {
+export function FieldResizeGrip({ targetRef, onResize, axes = "y", minHeight = MIN_FIELD_H, zoomed = true }: {
   targetRef: RefObject<HTMLElement | null>;
   onResize?: (h: number) => void;
   axes?: "y" | "both";
   minHeight?: number;
+  /** The field sits on the canvas, so a drag reads through its zoom; a popup's field is unscaled. */
+  zoomed?: boolean;
 }) {
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     // The grip vetoes the card drag and the pan ([[C93]] gestureByPointerType).
@@ -51,7 +53,7 @@ export function FieldResizeGrip({ targetRef, onResize, axes = "y", minHeight = M
     const el = targetRef.current;
     if (!el) return;
     e.currentTarget.setPointerCapture?.(e.pointerId);
-    const k = getActiveView()?.transform.k || 1;
+    const k = zoomed ? getActiveView()?.transform.k || 1 : 1;
     const card = axes === "both" ? el.closest<HTMLElement>(".solenoid-node") : null;
     active = {
       sx: e.clientX, sy: e.clientY, k,

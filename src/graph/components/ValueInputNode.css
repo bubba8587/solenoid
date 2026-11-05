@@ -15,11 +15,11 @@
   flex: 1 1 auto;
   min-width: 0;
 }
-/* As tall as the field it types, so the two read as one control. */
+/* A square as tall as a one-line field, at the top beside a taller one. */
 .solenoid-valin__entry > .solenoid-valin__type {
   width: 24px;
-  height: auto;
-  min-height: 24px;
+  height: 24px;
+  align-self: flex-start;
   font-size: 11px;
 }
 /* A date's picker (and the formats note) ride inside its field's right edge, so the type button stays the only chip

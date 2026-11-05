@@ -7,6 +7,7 @@ import { getOwningEditor } from "../activeGraph";
 import { nodeDisplayName } from "../catalogUtils";
 import "./commentsPanel.css";
 import { CloseIcon } from "./CloseIcon";
+import { FieldResizeGrip } from "./FieldResizeGrip";
 
 // Lucide "message-square".
 const CommentSvg = ({ size = 14 }: { size?: number }) => (
@@ -18,6 +19,7 @@ const CommentSvg = ({ size = 14 }: { size?: number }) => (
 function ComposeRow({ nodeId, onAdded }: { nodeId: string; onAdded: () => void }) {
   const [text, setText] = useState("");
   const author = useSyncExternalStore(commentAuthorStore.subscribe, commentAuthorStore.get);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   function submit() {
     if (text.trim() === "") return;
@@ -28,18 +30,22 @@ function ComposeRow({ nodeId, onAdded }: { nodeId: string; onAdded: () => void }
 
   return (
     <div className="solenoid-comment-compose">
-      <textarea
-        className="solenoid-comment-compose__input"
-        value={text}
-        placeholder="Add a comment…"
-        rows={2}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); }
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-      />
+      <div className="solenoid-field-resizable">
+        <textarea
+          ref={inputRef}
+          className="solenoid-comment-compose__input"
+          value={text}
+          placeholder="Add a comment…"
+          rows={2}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); }
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        />
+        <FieldResizeGrip targetRef={inputRef} zoomed={false} minHeight={40} />
+      </div>
       <button type="button" className="solenoid-comment-compose__btn" onClick={submit} disabled={text.trim() === ""}>
         Post
       </button>

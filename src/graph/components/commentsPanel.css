@@ -147,7 +147,9 @@
   gap: 4px;
 }
 .solenoid-comment-compose__input {
-  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
   min-height: 40px;
   background: var(--surface-sunken, var(--overlay-bg));
   border: var(--overlay-border-width) solid var(--overlay-border);

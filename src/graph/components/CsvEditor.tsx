@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { csvFieldSpans } from "../csv";
+import { FieldResizeGrip } from "./FieldResizeGrip";
 
 /** Computed columns' values are marked by a mirror painted behind the transparent textarea, since a textarea can't style part of its text; the table ignores marked text, so the next build reads the computed values again. */
 export function CsvEditor({ value, onChange, onFocus, onBlur, readOnly, markedCols, firstBodyRow, error }: {
@@ -69,14 +70,17 @@ export function CsvEditor({ value, onChange, onFocus, onBlur, readOnly, markedCo
 
   return (
     <>
-      {marked ? (
-        <div className="table-popup__csvwrap">
-          <div ref={mirrorRef} className="table-popup__csvmirror" aria-hidden="true">
-            <div ref={innerRef} className="table-popup__csvmirror-inner">{mirror}</div>
+      <div className="solenoid-field-resizable">
+        {marked ? (
+          <div className="table-popup__csvwrap">
+            <div ref={mirrorRef} className="table-popup__csvmirror" aria-hidden="true">
+              <div ref={innerRef} className="table-popup__csvmirror-inner">{mirror}</div>
+            </div>
+            {textarea}
           </div>
-          {textarea}
-        </div>
-      ) : textarea}
+        ) : textarea}
+        <FieldResizeGrip targetRef={taRef} zoomed={false} />
+      </div>
       {error && <div className="table-popup__csverror" role="alert">{error}</div>}
     </>
   );

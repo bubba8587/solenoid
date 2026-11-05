@@ -931,7 +931,7 @@ body.solenoid-scrubbing * {
   align-items: center;
   gap: 3px;
 }
-.solenoid-node__keyed > .sol-coltype { width: 16px; height: 16px; color: var(--text); }
+.solenoid-node__keyed > .sol-coltype { width: 18px; height: 18px; color: var(--text); }
 .solenoid-node__keyed > .sol-coltype:hover { border-color: var(--text-dim); }
 .solenoid-node__quoted--inline .solenoid-node__quoted-field {
   flex: 1 1 auto;
@@ -1374,19 +1374,20 @@ body.solenoid-scrubbing * {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-dim);
-  opacity: 0.5;
+  /* A square of the field's own background, a little see-through, so the glyph reads over a scrollbar beneath it. */
+  background: color-mix(in srgb, var(--surface-sunken) 85%, transparent);
+  border-radius: 4px;
+  color: color-mix(in srgb, var(--text-dim) 60%, transparent);
   cursor: ns-resize;
 }
 .solenoid-field-resize--both {
   cursor: nwse-resize;
 }
 .solenoid-field-resize:hover {
-  opacity: 0.9;
   color: var(--node-accent, var(--accent));
 }
 @media (pointer: coarse) {
-  .solenoid-field-resize { right: 0; bottom: 0; padding: 7px; opacity: 0.7; }
+  .solenoid-field-resize { right: 0; bottom: 0; padding: 7px; }
 }
 .solenoid-layout-field {
   position: relative;
