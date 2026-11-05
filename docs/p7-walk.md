@@ -32,6 +32,24 @@ specs and this file archives.
 | 1 | neutral | Why the card says `#OVERFLOW!`: an empty number field reads as undefined (`Call::unwired` in `crates/solenoid-core/src/nodes/fields.rs` answers `V::Undef`), which is neither a blank nor a number. ROUND computes on it, gets not-a-number, and the non-finite guard labels that `#OVERFLOW!`. The arithmetic card takes the same path to `#DOMAIN!`. The error code is an accident of that path, not a choice. |
 | 2 | weak for | The card agrees with Excel, but not by reading `_` as Excel's empty argument: ROUND's Digits is a setting (`inputRoles` on `RoundNNode`, [[D86]] blankRoles), and an empty setting falls back to its default, which happens to be 0. Where a setting's default is Excel's empty-argument value, the two readings give the same answer. |
 
+## Background: what a card's "default" is today (counted 2026-11-05)
+
+Every built-in card input with a field, each class counted once, the pack calculators (Formula cards) left out: 571.
+A card has three different things called a default:
+
+1. **A value in the field when the card is dropped** ([[inline-literal-maps#Defaults are real values; examples are placeholders]]).
+   Number fields that are data: 167 start filled, 65 empty, 10 with a muted placeholder. Settings: 43 of 54 number
+   settings start filled. The empty data fields mostly mean something empty: the unknown on the solver cards
+   (Equation, TVM, Triangle Solver), "auto" on Chart Builder's bounds and styles. Text fields start empty (150).
+   So `_` is rarely a fresh card's state; it is a field someone cleared.
+2. **A setting's declared blank** (`ARG_ROLES`, [[input-roles]]): only the 58 inputs declared setting or required.
+   It is what an emptied setting reads as. A data input has none.
+3. **A number in the card's Rust body** (`Call::read_num(key, dflt)`): 77 reads, 48 of them 0, the rest other values
+   (a rate of 0.1, a par of 1000, a year of 2024, UNICHAR's code 65). An emptied field computes from a value the card
+   doesn't show.
+
+An emptied data field falls to (3) where the body has one, else to undefined (case 1's accidental error).
+
 ## Probe
 
 Answers come from a real engine pass (`tests/graph/cardPasses.ts` `inEditor`) for the card and `compileEvaluator`
