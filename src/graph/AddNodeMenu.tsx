@@ -116,6 +116,19 @@ function toRenderItems(entries: CatalogEntry[]): RenderItem[] {
   return out;
 }
 
+/** The drill stack that opens a folder named by its path of labels, or null when no folder has that path. */
+export function drillStackToFolder(entries: CatalogEntry[], labels: readonly string[]): number[] | null {
+  const stack: number[] = [];
+  let items = toRenderItems(entries);
+  for (const label of labels) {
+    const i = items.findIndex((it) => it.kind === "category" && it.entry.label === label);
+    if (i < 0) return null;
+    stack.push(i);
+    items = toRenderItems((items[i].entry as CatalogCategory).children);
+  }
+  return stack;
+}
+
 /** The folders a drill stack opens, outermost first, read as the drill list counts its rows (a pair is two). */
 export function drillChain(entries: CatalogEntry[], stack: readonly number[]): CatalogCategory[] {
   const chain: CatalogCategory[] = [];

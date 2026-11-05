@@ -109,13 +109,16 @@ export function formulasOfCard(type: string): { name: string; via?: string }[] {
   return out;
 }
 
-/** Cards a formula reaches by an operator rather than a function name. */
-export const CARD_OPERATORS: Record<string, string[]> = {
-  "arith-add": ["a + b"],
-  "arith-sub": ["a - b"],
-  "arith-mul": ["a * b"],
-  "arith-div": ["a / b"],
-  "arith-pow": ["a ^ b"],
-  "text-concat": ["a & b"],
-  comparison: ["a = b", "a <> b", "a < b", "a <= b", "a > b", "a >= b"],
+/** Cards a formula reaches by an operator rather than a function name, with the operation each one is. */
+export const CARD_OPERATORS: Record<string, { text: string; op?: string }[]> = {
+  "arith-add": [{ text: "a + b" }],
+  "arith-sub": [{ text: "a - b" }],
+  "arith-mul": [{ text: "a * b" }],
+  "arith-div": [{ text: "a / b" }],
+  "arith-pow": [{ text: "a ^ b" }],
+  "text-concat": [{ text: "a & b" }],
+  comparison: [
+    { text: "a = b", op: "eq" }, { text: "a <> b", op: "neq" }, { text: "a < b", op: "lt" },
+    { text: "a <= b", op: "lte" }, { text: "a > b", op: "gt" }, { text: "a >= b", op: "gte" },
+  ],
 };

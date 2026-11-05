@@ -177,8 +177,8 @@ export interface CardRef {
   excel: { name: string; syntax: string; parity: boolean; note?: string }[];
   formulas: { name: string; signature: string; via?: string }[];
   ops: OpEntryDecl[];
-  /** Operators a formula reaches it by: `a + b`. */
-  operators: string[];
+  /** Operators a formula reaches it by (`a + b`), each with the operation it is. */
+  operators: { text: string; op?: string }[];
   libs: LibraryTag[];
   create: () => unknown;
   /** The card set to one of its ops, for a card with ops. */

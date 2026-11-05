@@ -13,7 +13,7 @@ import { nodeAccent } from "../nodes/kind";
 import { contrastInk, darkenAccent } from "../palette";
 import { documentStore } from "../documentStore";
 import { allPacks } from "../packs";
-import { DrillMenu, LeafRow, drillStackTo, drillChain, type NodeCatalogEntry, type CatalogEntry, type CatalogCategory, type CatalogPair } from "../AddNodeMenu";
+import { DrillMenu, LeafRow, drillStackTo, drillStackToFolder, drillChain, type NodeCatalogEntry, type CatalogEntry, type CatalogCategory } from "../AddNodeMenu";
 import { IS_COARSE } from "../coarse";
 import { descriptionHtml } from "../descriptionMd";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
@@ -22,9 +22,9 @@ import { rolesOf } from "../nodes/shared";
 import { emptyFieldShown, type EmptyFieldShown } from "../emptySlots";
 import { SocketComponent } from "./SocketComponent";
 import { SegToggle } from "./SegToggle";
-import { ChevronLeftIcon } from "./Icons";
+import { ChevronLeftIcon, ChevronRightIcon } from "./Icons";
 import { openPackSettings } from "../Settings";
-import { FolderPage } from "./FolderPage";
+import { FolderPage, leavesOf } from "./FolderPage";
 import "./nodeCard.css";
 import type { GraphNode } from "../graphModel";
 
@@ -57,8 +57,11 @@ export function CardReference() {
     setQuery("");
     if (focus.startsWith("pack:")) {
       const id = focus.slice(5);
-      setPack(id);
-      setPicked(leaves.find((l) => !l.leaf.type.includes("__") && (l.leaf.packs ?? []).includes(id))?.leaf ?? null);
+      // A pack opens on its own folder's page; one with no folder of its own lists its cards instead.
+      const folder = drillStackToFolder(catalog, ["Packs", packName.get(id) ?? id]);
+      setPicked(null);
+      setTrail([]);
+      if (folder) { setPack(null); setStack(folder); } else setPack(id);
     } else if (focus.startsWith("card:")) {
       // An op's own type ("list-smooth__op-gaussian") opens the card in that op.
       const [type, op] = focus.slice(5).split("#");
@@ -69,7 +72,7 @@ export function CardReference() {
       // The folder list opens where the card lives, as the Add menu would show it.
       setStack(drillStackTo(catalog, base) ?? []);
     }
-  }, [ver, leaves, catalog]);
+  }, [ver, leaves, catalog, packName]);
 
   const q = query.trim();
   const results = useMemo(() => {
@@ -96,7 +99,9 @@ export function CardReference() {
 
   // Pages reached by a link inside a page, so Back retraces them.
   const [trail, setTrail] = useState<NodeCatalogEntry[]>([]);
-  const pick = (leaf: NodeCatalogEntry) => { setStartOp(null); setTrail([]); setPicked(leaf); };
+  // Whatever opens a card, the navigator follows it to the card's folder.
+  const stackFor = (leaf: NodeCatalogEntry, fallback: number[]) => drillStackTo(catalog, cardTypeOf(leaf)) ?? fallback;
+  const pick = (leaf: NodeCatalogEntry) => { setStartOp(null); setTrail([]); setPicked(leaf); if (!pack) setStack(stackFor(leaf, stack)); };
   // The navigator wears the open card's color, as the page does, or with no card open the open folder's.
   const navMode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
   // The open folder and the folders above it, as the stack walks the catalog.
@@ -104,18 +109,26 @@ export function CardReference() {
     const chain = drillChain(catalog, stack);
     return { openFolder: chain[chain.length - 1] ?? null, ancestors: chain.slice(0, -1).map((c) => c.label) };
   }, [catalog, stack]);
+  // The open card's page reports the color it wears, set to whatever operation is picked there.
+  const [pageAccent, setPageAccent] = useState<string | null>(null);
   const navAccent = useMemo(() => {
-    if (picked) { try { return nodeAccent(picked.create() as GraphNode, navMode); } catch { /* fall through to the folder */ } }
+    if (picked) return pageAccent;
     if (pack) return folderAccent(packCards, navMode);
-    return openFolder ? folderAccent(leavesUnder(openFolder), navMode) : null;
-  }, [picked, pack, packCards, openFolder, navMode]);
+    return openFolder ? folderAccent(leavesOf([openFolder]), navMode) : null;
+  }, [picked, pageAccent, pack, packCards, openFolder, navMode]);
   const follow = (leaf: NodeCatalogEntry) => {
     if (picked) setTrail([...trail, picked]);
     setStartOp(null);
     setPicked(leaf);
-    setStack(drillStackTo(catalog, cardTypeOf(leaf)) ?? stack);
+    setStack(stackFor(leaf, stack));
   };
-  const back = () => { setStartOp(null); setPicked(trail[trail.length - 1] ?? null); setTrail(trail.slice(0, -1)); };
+  const back = () => {
+    const to = trail[trail.length - 1] ?? null;
+    setStartOp(null);
+    setPicked(to);
+    setTrail(trail.slice(0, -1));
+    if (to) setStack(stackFor(to, stack));
+  };
   // A name in a page's prose that has a page: a formula ("MMULT") or a card label ("Frame Filter").
   const byLabel = useMemo(() => {
     const m = new Map<string, NodeCatalogEntry>();
@@ -124,6 +137,8 @@ export function CardReference() {
   }, [leaves]);
   const resolve = (text: string): NodeCatalogEntry | null => {
     const name = text.replace(/^=/, "").replace(/\(.*$/, "").trim();
+    // A literal names a value, not a card to read about.
+    if (/^(TRUE|FALSE)$/i.test(name)) return null;
     const home = formulaHomes().get(name.toUpperCase());
     if (home) return leaves.find((l) => l.leaf.type === home.type)?.leaf ?? null;
     return byLabel.get(name.toLowerCase()) ?? null;
@@ -164,7 +179,7 @@ export function CardReference() {
         />
         <div className="solenoid-add-menu__scroll fr-nav__list" style={accentVars(navAccent)}>
           {pack && !q && (
-            <div className="solenoid-add-menu__item solenoid-add-menu__item--back" onClick={() => setPack(null)} title="Show every card">
+            <div className="solenoid-add-menu__item solenoid-add-menu__item--back" onClick={() => { setPack(null); if (picked) setStack(stackFor(picked, [])); }}>
               <ChevronLeftIcon size={14} />
               <span>{packName.get(pack) ?? pack} pack</span>
             </div>
@@ -173,7 +188,7 @@ export function CardReference() {
             results.length === 0
               ? <div className="solenoid-add-menu__empty">Nothing matches “{q}”.</div>
               : results.map((leaf, i) => (
-                <LeafRow key={leaf.type} leaf={leaf} active={i === active} dim={false} onSelect={() => { setActive(i); pick(leaf); }} />
+                <LeafRow key={leaf.type} leaf={leaf} active={picked ? picked.type === leaf.type : i === active} dim={false} onSelect={() => { setActive(i); pick(leaf); }} />
               ))
           ) : pack ? (
             packCards.map((leaf) => (
@@ -198,7 +213,8 @@ export function CardReference() {
             key={`${picked!.type}#${startOp ?? ""}`}
             card={card} leaf={picked!} startOp={startOp} packName={packName}
             onBack={() => setPicked(null)}
-            backLabel={openFolder?.label ?? "Cards"}
+            backLabel={openFolder?.label ?? "All Cards"}
+            onAccent={setPageAccent}
             onPath={openPath}
             backTo={trail.length ? byType.get(cardTypeOf(trail[trail.length - 1]))?.label ?? null : null}
             onRetrace={back}
@@ -208,7 +224,7 @@ export function CardReference() {
         ) : (
           folderShown && openFolder
             ? <FolderPage key={stack.join(".")} folder={openFolder} ancestors={ancestors}
-                accentStyle={accentVars(folderAccent(leavesUnder(openFolder), navMode))}
+                accentStyle={accentVars(folderAccent(leavesOf([openFolder]), navMode))}
                 onCard={pick} onUp={(depth) => goFolders(stack.slice(0, depth + 1))} />
             : <Landing catalog={catalog} onCard={pick} onFolder={(i) => { setPack(null); goFolders([i]); }} />
         )}
@@ -219,12 +235,6 @@ export function CardReference() {
 
 type ModeMeta = Record<string, { label: string; title?: string }>;
 
-/** The cards under a folder, Add-menu order, pairs flattened. */
-function leavesUnder(e: CatalogEntry): NodeCatalogEntry[] {
-  if (e.type === "category") return (e as CatalogCategory).children.flatMap(leavesUnder);
-  if (e.type === "pair") return (e as CatalogPair).children.filter((c) => !c.hidden);
-  return (e as NodeCatalogEntry).hidden ? [] : [e as NodeCatalogEntry];
-}
 
 /** A folder's color: the one most of its cards wear, so one stray card's color never stands for the folder. */
 const _cardAccent = new Map<string, string | null>();
@@ -259,7 +269,7 @@ function Landing({ catalog, onCard, onFolder }: {
   const themeMode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
   const folders = useMemo(() => catalog.flatMap((e, i) => {
     if (e.type !== "category") return [];
-    const cards = leavesUnder(e);
+    const cards = leavesOf([e]);
     if (!cards.length) return [];
     return [{ i, label: (e as CatalogCategory).label, cards, accent: folderAccent(cards, themeMode) }];
   }), [catalog, themeMode]);
@@ -270,7 +280,7 @@ function Landing({ catalog, onCard, onFolder }: {
         {folders.map((f) => (
           <section key={f.label} className="fr-land__folder"
             style={accentVars(f.accent)}>
-            <button type="button" className="fr-land__head" onClick={() => onFolder(f.i)} title="Open this folder">
+            <button type="button" className="fr-land__head" onClick={() => onFolder(f.i)}>
               <span>{f.label}</span>
             </button>
             <div className="fr-land__cards">
@@ -288,9 +298,9 @@ function Landing({ catalog, onCard, onFolder }: {
   );
 }
 
-function CardPage({ card, leaf, startOp, packName, onBack, backLabel, onPath, backTo, onRetrace, resolve, onFollow }: {
+function CardPage({ card, leaf, startOp, packName, onBack, backLabel, onPath, onAccent, backTo, onRetrace, resolve, onFollow }: {
   card: CardRef; leaf: NodeCatalogEntry; startOp: string | null; packName: Map<string, string>; onBack: () => void;
-  backLabel: string; onPath: (depth: number) => void;
+  backLabel: string; onPath: (depth: number) => void; onAccent: (accent: string | null) => void;
   backTo: string | null; onRetrace: () => void;
   resolve: (text: string) => NodeCatalogEntry | null; onFollow: (leaf: NodeCatalogEntry) => void;
 }) {
@@ -319,6 +329,7 @@ function CardPage({ card, leaf, startOp, packName, onBack, backLabel, onPath, ba
   // The card's own color, as its header wears it on the canvas (DESIGN.md § Nearest-Accent Rule).
   const themeMode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
   const accent = useMemo(() => { try { return node ? nodeAccent(node, themeMode) : null; } catch { return null; } }, [node, themeMode]);
+  useEffect(() => { onAccent(accent); }, [accent, onAccent]);
   const modeMeta = (node?.constructor as { modeMeta?: ModeMeta } | undefined)?.modeMeta;
   const mode = (node as { mode?: string } | null)?.mode;
 
@@ -345,36 +356,54 @@ function CardPage({ card, leaf, startOp, packName, onBack, backLabel, onPath, ba
   };
 
   const hasFormulas = !!ownFormula || card.excel.length > 0 || card.formulas.length > 0 || card.operators.length > 0;
-  const description = useMemo(() => proseOf(card.description, hasFormulas, [ownFormula, ...card.operators]), [card, hasFormulas, ownFormula]);
+  const description = useMemo(() => proseOf(card.description, hasFormulas, [ownFormula, ...card.operators.map((o) => o.text)]), [card, hasFormulas, ownFormula]);
+  // The Excel names the picked operation answers to ("Distributions: Normal" is NORM.DIST), so its row lights.
+  const opNames = useMemo(() => {
+    const e = card.ops.find((o) => o.op === op);
+    return new Set(`${e?.fx ?? ""} ${e?.keywords ?? ""}`.split(/[\s,/]+/).filter(Boolean).map((n) => n.toUpperCase()));
+  }, [card, op]);
+  // A note several formulas share is said once, under them.
+  const sharedNotes = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const e of card.excel) if (e.note) n.set(e.note, (n.get(e.note) ?? 0) + 1);
+    return [...n].filter(([, c]) => c > 1).map(([t]) => t);
+  }, [card]);
   // The folders: each opens in the navigator. A pack card's path starts at its pack, which links to Settings instead.
   const inPack = card.path[0] === "Packs";
   const folders = inPack ? card.path.slice(2) : card.path;
   const packLabel = card.packs.length ? `${card.packs.map((p) => packName.get(p) ?? p).join(", ")} pack` : null;
   // Examples alone don't earn a column: they join the main one.
   const hasRail = !!modeMeta || card.ops.length > 0;
+  // A long list of operations follows the inputs on a phone instead of pushing them off the screen.
+  const longOps = card.ops.length > 6;
 
   return (
-    <article className="fr-card" style={accentVars(accent)}>
+    <article className={`fr-card${hasRail ? "" : " fr-card--solo"}`} style={accentVars(accent)}>
       <div className="solenoid-add-menu__item solenoid-add-menu__item--back fr-card__back" onClick={onBack}>
         <ChevronLeftIcon size={14} /><span>{backLabel}</span>
       </div>
       <header className="fr-card__head">
-        {backTo && <button type="button" className="fr-card__retrace" onClick={onRetrace}>‹ {backTo}</button>}
         <div className="fr-card__head-row">
           <h2 className="fr-card__title">{card.label}</h2>
           <button type="button" className="solenoid-node__open-btn fr-card__add" title="Drop this card on the canvas"
             onClick={() => { void addNodeFrom(make); frStore.close(); }}>Add to Canvas</button>
         </div>
         <div className="fr-card__crumb">
-          {inPack && packLabel && <PackLink id={card.packs[0]} label={packLabel} />}
-          {folders.map((f, i) => (
+          {backTo && (
+            <button type="button" className="fr-card__crumb-link fr-card__retrace" onClick={onRetrace}>
+              <ChevronLeftIcon size={12} />{backTo}
+            </button>
+          )}
+          {(inPack ? ["", ...folders] : folders).map((f, i) => (
             <span key={i} className="fr-card__crumb-part">
-              {(i > 0 || inPack) && <span className="fr-card__crumb-sep" aria-hidden="true">▸</span>}
-              <button type="button" className="fr-card__crumb-link" onClick={() => onPath(inPack ? i + 2 : i)}>{f}</button>
+              {i > 0 && <span className="fr-card__crumb-sep" aria-hidden="true"><ChevronRightIcon size={10} /></span>}
+              {inPack && i === 0
+                ? <button type="button" className="fr-card__crumb-link" onClick={() => onPath(1)}>{card.path[1]}</button>
+                : <button type="button" className="fr-card__crumb-link" onClick={() => onPath(inPack ? i + 1 : i)}>{f}</button>}
             </span>
           ))}
-          {!inPack && packLabel && <><span className="fr-card__crumb-sep" aria-hidden="true">·</span><PackLink id={card.packs[0]} label={packLabel} /></>}
         </div>
+        {packLabel && <PackLink id={card.packs[0]} label={packLabel} />}
       </header>
 
       {description && (
@@ -404,19 +433,21 @@ function CardPage({ card, leaf, startOp, packName, onBack, backLabel, onPath, ba
           {hasFormulas && (
             <Section title="Formulas">
               {ownFormula && <FxRow text={ownFormula} copied={copied} onCopy={copy} />}
-              {card.operators.map((o) => <FxRow key={o} text={o} copied={copied} onCopy={copy} />)}
+              {card.operators.map((o) => <FxRow key={o.text} text={o.text} on={!!o.op && o.op === op} copied={copied} onCopy={copy} />)}
               {card.excel.map((e) => (
-                <FxRow key={e.name} text={e.syntax.replace(/^=/, "")} copied={copied} onCopy={copy} note={e.note} />
+                <FxRow key={e.name} text={e.syntax.replace(/^=/, "")} on={opNames.has(e.name.toUpperCase())} copied={copied} onCopy={copy}
+                  note={e.note && !sharedNotes.includes(e.note) ? e.note : undefined} />
               ))}
               {card.formulas.map((f) => (
                 <FxRow key={f.name} text={`${f.name}(${f.signature})`} on={!!f.via && f.via === opLabel} copied={copied} onCopy={copy} />
               ))}
+              {sharedNotes.map((n) => <div key={n} className="fr-card__fx-note fr-card__fx-note--shared">{n}</div>)}
             </Section>
           )}
             {examples.length > 0 && (
             <Section title="Examples">
               <div className="fr-card__links">
-                {examples.slice(0, 8).map((ex) => (
+                {examples.slice(0, 4).map((ex) => (
                   <button key={ex.id} type="button" className="fr-card__link" title="Open this example in a new tab"
                     onClick={() => { frStore.close(); void documentStore.newFromTemplate(ex.id); }}>{ex.label}&nbsp;›</button>
                 ))}
@@ -426,7 +457,7 @@ function CardPage({ card, leaf, startOp, packName, onBack, backLabel, onPath, ba
         </div>
 
         {hasRail && (
-          <aside className="fr-card__rail">
+          <aside className={`fr-card__rail${longOps ? " fr-card__rail--long" : ""}`}>
             {modeMeta && (
               <Section title="Mode">
                 <SegToggle
@@ -458,8 +489,10 @@ function CardPage({ card, leaf, startOp, packName, onBack, backLabel, onPath, ba
 /** A card's pack, linking to its row in Settings, where it turns on and off. */
 function PackLink({ id, label }: { id: string; label: string }) {
   return (
-    <button type="button" className="fr-card__crumb-link" title="Open this pack in Settings"
-      onClick={() => { frStore.close(); openPackSettings(id); }}>{label}</button>
+    <div className="fr-card__pack">
+      <button type="button" className="fr-card__crumb-link" title="Open this pack in Settings"
+        onClick={() => { frStore.close(); openPackSettings(id); }}>{label} in Settings<ChevronRightIcon size={10} /></button>
+    </div>
   );
 }
 
@@ -467,7 +500,8 @@ function PackLink({ id, label }: { id: string; label: string }) {
  *  section lists them, an "(in Excel you'd write …)" aside, and a description that is only the card's formula. */
 function proseOf(text: string | undefined, hasFormulas: boolean, formulas: (string | null)[]): string | null {
   if (!text) return null;
-  let t = text.replace(/\s*\(in Excel you'd write [^)]*\)/i, "");
+  // A closing "(in Excel you'd write =PI()*r^2)" or "(=2*PI()*r)" restates the formula row; it runs to the last ")".
+  let t = text.replace(/\s*\((?:in Excel you'd write\s*)?=.*\)\s*\.?\s*$/i, ".").replace(/\.\.$/, ".");
   if (hasFormulas) t = t.replace(/\s*(?:Excel|Formulas):[^]*$/, "");
   t = t.trim();
   const bare = (x: string) => x.replace(/[`\s.]/g, "").replace(/[−]/g, "-").replace(/[×]/g, "*").toLowerCase();
@@ -507,7 +541,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <section className="fr-card__section">
       <div className="fr-card__label">{title}</div>
-      <div className="fr-card__section-body">{children}</div>
+      {children}
     </section>
   );
 }

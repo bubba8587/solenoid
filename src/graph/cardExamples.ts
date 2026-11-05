@@ -9,7 +9,8 @@ let _index: Map<string, SeedId[]> | null = null;
 export function examplesUsing(type: string): { id: SeedId; label: string }[] {
   if (!_index) {
     _index = new Map();
-    for (const id of SEED_GROUPS.flatMap((g) => g.ids)) {
+    // The release notes document what changed, so they don't stand as an example of any one card.
+    for (const id of SEED_GROUPS.flatMap((g) => g.ids).filter((id) => id !== "whats-new")) {
       const nodes = (SEEDS[id].graph as { nodes?: { type?: string; init?: { op?: unknown } }[] }).nodes ?? [];
       const types = new Set<string>();
       for (const n of nodes) {

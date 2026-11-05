@@ -12,10 +12,11 @@ import { CubeDisplay } from "./CubeDisplay";
 import { TableDisplay } from "./TableDisplay";
 import { SocketComponent } from "./SocketComponent";
 import { TypeIcon, type TypeIconKind } from "./TypeIcon";
-import { ChevronLeftIcon } from "./Icons";
+import { ChevronLeftIcon, ChevronRightIcon } from "./Icons";
+import { frStore } from "../frStore";
+import { settingsPanel } from "../settingsStore";
 import "../Settings.css";
 
-/** What a folder holds, said once, and the drawing of its shape. Folders without one show their cards alone. */
 /** The Frame socket's mark, drawn large in outline: the socket's square-edged "F", its stroke heavier than the box's. */
 function FrameMark() {
   return (
@@ -26,7 +27,16 @@ function FrameMark() {
   );
 }
 
-const FOLDER_STORIES: Record<string, { lede: string; shape?: () => ReactNode; icon?: TypeIconKind | SolenoidSocket | "frame-mark" }> = {
+/** A type icon wears its socket's color, as the Socket Legend draws it; a socket glyph carries its own. */
+const ICON_COLOR: Partial<Record<TypeIconKind | "frame-mark", string>> = {
+  number: "var(--sock-number)", string: "var(--sock-string)", date: "var(--sock-date)",
+  logical: "var(--sock-logical)", "frame-mark": "var(--sock-frame)",
+};
+
+/** What a folder holds, said once, and a real value of its kind. Folders without one show their cards alone. */
+const FOLDER_STORIES: Record<string, {
+  lede: string; shape?: () => ReactNode; icon?: TypeIconKind | SolenoidSocket | "frame-mark"; settings?: boolean;
+}> = {
   Numbers: {
     icon: "number",
     lede: "A number can carry a unit, set where the value starts. A calculation works out its result's unit: meters times meters is square meters, and adding meters to seconds is a #UNIT! error.",
@@ -50,6 +60,11 @@ const FOLDER_STORIES: Record<string, { lede: string; shape?: () => ReactNode; ic
   Logic: {
     icon: "logical",
     lede: "TRUE and FALSE, plus unknown when an answer can't be told: TRUE OR unknown is TRUE, and FALSE OR unknown stays unknown. In arithmetic TRUE counts as 1 and FALSE as 0.",
+    shape: () => box(true),
+  },
+  Packs: {
+    lede: "A pack adds cards and formulas for one subject, such as geometry, circuits or health. Packs turn on and off in Settings.",
+    settings: true,
   },
   Text: {
     icon: "string",
@@ -93,7 +108,7 @@ function FrameShapes() {
 }
 
 /** The cards under a folder, Add-menu order, pairs flattened. */
-function leavesOf(entries: CatalogEntry[]): NodeCatalogEntry[] {
+export function leavesOf(entries: CatalogEntry[]): NodeCatalogEntry[] {
   return entries.flatMap((e) => e.type === "category" ? leavesOf((e as CatalogCategory).children)
     : e.type === "pair" ? (e as CatalogPair).children.filter((c) => !c.hidden)
     : (e as NodeCatalogEntry).hidden ? [] : [e as NodeCatalogEntry]);
@@ -129,7 +144,8 @@ export function FolderPage({ folder, ancestors, accentStyle, onCard, onUp }: {
       <header className="fr-card__head">
         <div className="fr-card__head-row">
           {story?.icon && (
-            <span className={`fr-fold__icon${story.icon instanceof SolenoidSocket ? " fr-fold__icon--socket" : ""}`} aria-hidden="true">
+            <span className={`fr-fold__icon${story.icon instanceof SolenoidSocket ? " fr-fold__icon--socket" : ""}`} aria-hidden="true"
+              style={story.icon instanceof SolenoidSocket ? undefined : { color: ICON_COLOR[story.icon] }}>
               {story.icon instanceof SolenoidSocket ? <SocketComponent data={story.icon} />
                 : story.icon === "frame-mark" ? <FrameMark /> : <TypeIcon type={story.icon} size={22} />}
             </span>
@@ -150,6 +166,11 @@ export function FolderPage({ folder, ancestors, accentStyle, onCard, onUp }: {
       {story && (
         <div className="fr-fold__story">
           <p className="fr-card__desc fr-fold__lede">{story.lede}</p>
+          {story.settings && (
+            <button type="button" className="fr-card__crumb-link fr-fold__settings" onClick={() => { frStore.close(); settingsPanel.open(); }}>
+              Settings<ChevronRightIcon size={10} />
+            </button>
+          )}
           {story.shape && <div className="fr-fold__shape">{story.shape()}</div>}
         </div>
       )}
@@ -167,7 +188,9 @@ export function FolderPage({ folder, ancestors, accentStyle, onCard, onUp }: {
         </div>
       ) : (
       <div className="fr-fold__groups">
-        {direct.length > 0 && <section className="fr-card__section">{links(leavesOf(direct))}</section>}
+        {direct.length > 0 && (
+          <section className="fr-card__section"><div className="fr-card__label">{folder.label}</div>{links(leavesOf(direct))}</section>
+        )}
         {subs.map((sub) => (
           <section key={sub.label} className="fr-card__section">
             <div className="fr-card__label">{sub.label}</div>
