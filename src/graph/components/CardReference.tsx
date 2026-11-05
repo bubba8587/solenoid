@@ -104,6 +104,13 @@ export function CardReference() {
   // Pages reached by a link inside a page, so Back retraces them.
   const [trail, setTrail] = useState<NodeCatalogEntry[]>([]);
   const pick = (leaf: NodeCatalogEntry) => { setStartOp(null); setTrail([]); setPicked(leaf); };
+  // The open folder's color, worn by the navigator's top row as the landing's folder header wears it.
+  const navMode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
+  const navAccent = useMemo(() => {
+    if (pack) return folderAccent(packCards, navMode);
+    const top = stack.length ? catalog[stack[0]] : null;
+    return top ? folderAccent(leavesUnder(top), navMode) : null;
+  }, [pack, packCards, stack, catalog, navMode]);
   const follow = (leaf: NodeCatalogEntry) => {
     if (picked) setTrail([...trail, picked]);
     setStartOp(null);
@@ -146,7 +153,7 @@ export function CardReference() {
           // Touch must not pop the on-screen keyboard over the fresh panel.
           autoFocus={!IS_COARSE}
         />
-        <div className="solenoid-add-menu__scroll fr-nav__list">
+        <div className="solenoid-add-menu__scroll fr-nav__list" style={accentVars(navAccent)}>
           {pack && !q && (
             <div className="solenoid-add-menu__item solenoid-add-menu__item--back" onClick={() => setPack(null)} title="Show every card">
               <ChevronLeftIcon size={14} />
@@ -204,6 +211,18 @@ function leavesUnder(e: CatalogEntry): NodeCatalogEntry[] {
   return (e as NodeCatalogEntry).hidden ? [] : [e as NodeCatalogEntry];
 }
 
+/** A folder's color: its first card's, as that card's header wears it. */
+function folderAccent(cards: NodeCatalogEntry[], mode: "dark" | "light"): string | null {
+  try { return cards[0] ? nodeAccent(cards[0].create() as GraphNode, mode) : null; } catch { return null; }
+}
+
+/** The color vars a surface in that color publishes, as NodeCard does. */
+function accentVars(accent: string | null): React.CSSProperties | undefined {
+  return accent
+    ? ({ "--node-accent": accent, "--node-accent-ink": contrastInk(accent), "--node-accent-dark": darkenAccent(accent) } as React.CSSProperties)
+    : undefined;
+}
+
 /** The landing: every top-level folder in its cards' color, with its count and first cards, then the legend. */
 function Landing({ catalog, onCard, onFolder }: {
   catalog: CatalogEntry[]; onCard: (leaf: NodeCatalogEntry) => void; onFolder: (i: number) => void;
@@ -213,9 +232,7 @@ function Landing({ catalog, onCard, onFolder }: {
     if (e.type !== "category") return [];
     const cards = leavesUnder(e);
     if (!cards.length) return [];
-    let accent: string | null = null;
-    try { accent = nodeAccent(cards[0].create() as GraphNode, themeMode); } catch { /* a card that fails to build leaves the folder uncolored */ }
-    return [{ i, label: (e as CatalogCategory).label, cards, accent }];
+    return [{ i, label: (e as CatalogCategory).label, cards, accent: folderAccent(cards, themeMode) }];
   }), [catalog, themeMode]);
 
   return (
@@ -223,7 +240,7 @@ function Landing({ catalog, onCard, onFolder }: {
       <div className="fr-land__grid">
         {folders.map((f) => (
           <section key={f.label} className="fr-land__folder"
-            style={f.accent ? ({ "--node-accent": f.accent, "--node-accent-ink": contrastInk(f.accent), "--node-accent-dark": darkenAccent(f.accent) } as React.CSSProperties) : undefined}>
+            style={accentVars(f.accent)}>
             <button type="button" className="fr-land__head" onClick={() => onFolder(f.i)} title="Open this folder">
               <span>{f.label}</span><span className="fr-land__count">{f.cards.length}</span>
             </button>

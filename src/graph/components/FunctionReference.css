@@ -596,7 +596,7 @@
 }
 
 /* The landing: a folder per block, each in its cards' color */
-.fr-land { padding: 22px 28px 40px; }
+.fr-land { min-height: 100%; box-sizing: border-box; padding: 22px 28px 40px; background: var(--canvas-bg); }
 .fr-land__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -652,3 +652,21 @@
 .fr-card__ops-list { display: flex; flex-direction: column; margin: 0 -8px; font-size: 12px; }
 .fr-land__count { font-size: 11px; font-weight: 400; color: var(--text-dim); }
 :root[data-theme="light"] .fr-land__head { box-shadow: inset 0 -1px 0 var(--node-accent-dark, var(--border)); }
+
+/* The navigator's top row inside a folder is that folder, drawn as the Navigator draws a group's row
+   (OutlinePanel.css): its color at 24% as the fill and 55% as a 1px inset edge, the name in semibold. */
+.fr-nav__list .solenoid-add-menu__item--back {
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
+  padding-left: 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--node-accent, var(--border-strong)) 24%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--node-accent, var(--border-strong)) 55%, transparent);
+  color: var(--text-bright);
+  font-weight: 600;
+}
+.fr-nav__list .solenoid-add-menu__item--back:hover {
+  background: color-mix(in srgb, var(--node-accent, var(--border-strong)) 24%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--node-accent, var(--border-strong)) 55%, transparent), inset 0 0 0 100vmax rgba(255, 255, 255, 0.08);
+}
