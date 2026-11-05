@@ -15,6 +15,9 @@ const UNCOMPARED: Record<string, string> = {
   "sumifs": "takes a table and column pickers, not the function's ranges",
   "gcd-lcm": "pairs two lists item by item, where GCD folds every argument into one answer",
   "lcm": "pairs two lists item by item, where LCM folds every argument into one answer",
+  "cx-unpack": "answers Real, Imag, |z| and arg(z) on four outputs at once, one per function",
+  "cast:TEXT": "Cast's Format takes text; TEXT reads a number there as its format code",
+  "z-test:Z.TEST": "the card reads a σ of 0 as left out and uses the sample's spread, where Z.TEST(…, 0) has none (Excel's #DIV/0!)",
   "date-diff-days:DAYS": "the card reads its start before its end, where DAYS takes the end first",
 };
 
@@ -62,9 +65,14 @@ describe("cards answer as their formula twins", () => {
       data: (inputs: Record<string, unknown[]>) => unknown;
     };
     // A distribution's right tail and two tails are its card's RT and 2T forms (F.DIST.RT is the F op in RT).
-    if (node.form !== undefined && name.endsWith(".RT")) node.form = "rt";
-    if (node.form !== undefined && name.endsWith(".2T")) node.form = "2t";
-    const keys = Object.keys(node.inputs ?? {});
+    // An inverse is its card's INV, INV RT or INV 2T form, which swaps the first input for the probability.
+    const setForm = (node as { setForm?: (f: string) => void }).setForm?.bind(node);
+    const inv = /\.INV(\.RT|\.2T)?$/.exec(name);
+    if (setForm && inv) setForm(inv[1] === ".RT" ? "invrt" : inv[1] === ".2T" ? "inv2t" : "inv");
+    else if (node.form !== undefined && name.endsWith(".RT")) node.form = "rt";
+    else if (node.form !== undefined && name.endsWith(".2T")) node.form = "2t";
+    // A card that orders its inputs itself (a form swaps one in) says so; otherwise they read in the order added.
+    const keys = (node as { inputKeys?: string[] }).inputKeys ?? Object.keys(node.inputs ?? {});
     const syntax = NODE_EXCEL[type].find((e) => e.syntax?.includes(`${name}(`))!.syntax!;
     const args = /\(([^)]*)\)/.exec(syntax)![1].split(",").map((s) => s.trim()).filter((s) => s && !s.startsWith("["));
     if (keys.length !== args.length) return; // inputs and arguments don't line up one to one: nothing to compare

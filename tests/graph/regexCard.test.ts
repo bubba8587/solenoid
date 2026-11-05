@@ -13,16 +13,16 @@ const run = (op: RegexOp, text: unknown, pattern: string, opts: { replacement?: 
 
 describe("the Regex card", () => {
   it("matches case unless told not to, as case_sensitivity 0 and 1", () => {
-    expect(run("test", "Hello", "hello")).toBe(0);
-    expect(run("test", "Hello", "hello", { matchCase: false })).toBe(1);
-    expect(run("test", "Hello", "(?i)hello")).toBe(1);
+    expect(run("test", "Hello", "hello")).toBe(false);
+    expect(run("test", "Hello", "hello", { matchCase: false })).toBe(true);
+    expect(run("test", "Hello", "(?i)hello")).toBe(true);
   });
 
   it("takes (?m) and (?s) inline", () => {
-    expect(run("test", "a\nb", "^b$")).toBe(0);
-    expect(run("test", "a\nb", "(?m)^b$")).toBe(1);
-    expect(run("test", "a\nb", "a.b")).toBe(0);
-    expect(run("test", "a\nb", "(?s)a.b")).toBe(1);
+    expect(run("test", "a\nb", "^b$")).toBe(false);
+    expect(run("test", "a\nb", "(?m)^b$")).toBe(true);
+    expect(run("test", "a\nb", "a.b")).toBe(false);
+    expect(run("test", "a\nb", "(?s)a.b")).toBe(true);
   });
 
   it("extracts and replaces as REGEXEXTRACT and REGEXREPLACE do", () => {

@@ -333,6 +333,12 @@ fn dates() {
         ("WORKDAY.INTL(DATE(2012, 1, 1), 30, 0)", E),
         ("NETWORKDAYS.INTL(DATE(2006, 1, 1), DATE(2006, 1, 31))", N(22.0, 0.0)),
         ("NETWORKDAYS.INTL(DATE(2006, 2, 28), DATE(2006, 1, 31))", N(-21.0, 0.0)),
+        ("COUPDAYS(DATE(2011, 1, 25), DATE(2011, 11, 15), 2, 1)", N(181.0, 0.0)),
+        ("COUPDAYBS(DATE(2011, 1, 25), DATE(2011, 11, 15), 2, 1)", N(71.0, 0.0)),
+        ("COUPDAYSNC(DATE(2011, 1, 25), DATE(2011, 11, 15), 2, 1)", N(110.0, 0.0)),
+        // Every coupon argument truncates before it's checked: a frequency of 1.5 is annual.
+        ("COUPDAYS(DATE(2011, 1, 25), DATE(2011, 11, 15), 1.5, 0.1)", N(360.0, 0.0)),
+        ("COUPDAYS(DATE(2011, 1, 25), DATE(2011, 11, 15), 3, 0)", E),
         ("DATEDIF(DATE(2001, 1, 1), DATE(2003, 1, 1), \"Y\")", N(2.0, 0.0)),
         ("DATEDIF(DATE(2001, 6, 1), DATE(2002, 8, 15), \"D\")", N(440.0, 0.0)),
         ("DATEDIF(DATE(2001, 6, 1), DATE(2002, 8, 15), \"YD\")", N(75.0, 0.0)),

@@ -545,7 +545,10 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                 V::Num(n) if (0.0..4000.0).contains(&n) && (0.0..=4.0).contains(&form) => {
                     V::str(&roman_text(n.trunc() as u32, form as u32))
                 }
-                V::Num(_) => VALUE,
+                V::Num(n) if !(0.0..4000.0).contains(&n) => {
+                    V::err(sol_error(ErrorCode::Value, "ROMAN takes a number from 0 to 3999"))
+                }
+                V::Num(_) => V::err(sol_error(ErrorCode::Value, "ROMAN takes a form from 0 to 4")),
                 e => e,
             }
         }

@@ -5,7 +5,7 @@
 use super::kit::{broadcast_err, core_call};
 use super::Cv;
 use super::{err, list, Answer, Call};
-use crate::error_value::{sol_error, ErrorCode};
+use crate::error_value::ErrorCode;
 use crate::excel_functions::{num_blank_zero, value_text, V};
 use crate::jsnum::trim_space;
 
@@ -324,75 +324,11 @@ fn text_split(c: &mut Call) -> Answer {
     done(c, "cachedResult", r)
 }
 
-const ROMAN: [(f64, &str); 13] = [
-    (1000.0, "M"),
-    (900.0, "CM"),
-    (500.0, "D"),
-    (400.0, "CD"),
-    (100.0, "C"),
-    (90.0, "XC"),
-    (50.0, "L"),
-    (40.0, "XL"),
-    (10.0, "X"),
-    (9.0, "IX"),
-    (5.0, "V"),
-    (4.0, "IV"),
-    (1.0, "I"),
-];
-
-fn roman(raw: &V) -> V {
-    let n = js_floor(raw);
-    if n < 1.0 || n > 3999.0 {
-        return err(ErrorCode::Value, "ROMAN is defined only for 1–3999");
-    }
-    let mut out = String::new();
-    let mut rem = n;
-    for (v, s) in ROMAN {
-        while rem >= v {
-            out.push_str(s);
-            rem -= v;
-        }
-    }
-    V::str(&out)
-}
-
-/// The Arabic reading, from the right.
-fn arabic(raw: &V) -> V {
-    let V::Str(s) = raw else {
-        return V::err(sol_error(ErrorCode::Value, "ARABIC needs text"));
-    };
-    let upper = s.to_uppercase();
-    let text = crate::jsnum::trim_space(&upper);
-    if text.is_empty() {
-        return V::Null;
-    }
-    let (mut out, mut prev) = (0.0, 0.0);
-    for ch in text.chars().rev() {
-        let v = match ch {
-            'M' => 1000.0,
-            'D' => 500.0,
-            'C' => 100.0,
-            'L' => 50.0,
-            'X' => 10.0,
-            'V' => 5.0,
-            'I' => 1.0,
-            _ => return err(ErrorCode::Value, format!("\"{text}\" is not a valid Roman numeral")),
-        };
-        if v < prev {
-            out -= v;
-        } else {
-            out += v;
-            prev = v;
-        }
-    }
-    V::Num(out)
-}
-
 fn roman_arabic(c: &mut Call) -> Answer {
     let r = if c.field_str("op", "roman") == "roman" {
-        broadcast_err(&[c.read("number")], |o| roman(o[0]))
+        broadcast_err(&[c.read("number")], |o| core_call("ROMAN", &[o[0].clone()]))
     } else {
-        broadcast_err(&[str_val(c, "text")], |o| arabic(o[0]))
+        broadcast_err(&[str_val(c, "text")], |o| core_call("ARABIC", &[o[0].clone()]))
     };
     done(c, "cachedResult", r)
 }
@@ -497,7 +433,7 @@ fn regex_apply(op: &str, re: &fancy_regex::Regex, t: &str, replacement: &str, oc
     use crate::excel_regex as rx;
     let none = || err(ErrorCode::NotAvailable, "No match");
     Ok(match op {
-        "test" => V::Num(if rx::test(re, t)? { 1.0 } else { 0.0 }),
+        "test" => V::Bool(rx::test(re, t)?),
         "extract" => rx::first(re, t)?.map_or_else(none, |m| V::str(&t[m.range])),
         "extract_all" => {
             let all = rx::all(re, t)?;

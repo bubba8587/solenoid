@@ -50,6 +50,17 @@ Excel has no dates before 1 January 1900: it refuses a negative date in TEXT, ED
 
 Tests: `dates_before_1900.rs` (solenoid-core).
 
+## The parity mark
+
+A function's `parity` in `nodeExcel.ts` (Excel Coverage's = or ⚠, author 2026-11-05) says whether someone typing it as they would in Excel gets Excel's answer. **Parity** (`true`): every input Excel accepts gives Excel's answer, read through Solenoid's types. These differences don't count against it:
+
+- **Type, not math.** The value lives in Solenoid's own type: a complex number is a Complex value where Excel holds text like `"3+4i"`, a date is a Date where Excel holds a serial.
+- **How a refusal reads.** On an input Excel refuses, any refusal is parity: a different error code (`#DOMAIN!` for `#NUM!`, `#TYPE!` for `#VALUE!`), or a blank where Excel errors.
+- **A superset.** Solenoid also answers inputs Excel refuses (CHAR past 255, DATEVALUE's extra forms), and answers Excel's own inputs as Excel does.
+- **The card's shape, carefully.** A card may gather its arguments differently (one List for Excel's separate arguments) when the formula still takes Excel's arguments and answers as Excel does. It does not cover a card or formula that leaves out one of Excel's arguments or options: that is a difference.
+
+**Differs** (`false`, with a `note` saying how): an input Excel accepts gives a different answer, or one of Excel's arguments, options or modes is missing (a day-count basis, a match mode, a flag). Every `false` carries its note; the card's page shows it. A flag is evidence: `true` arms `cardFormulaTwins.test.ts` for the pair, and a claim of Excel's answer is pinned in `excel_doc_sweep.rs` or `formulaDivergence.test.ts`.
+
 ## Excel's answer, pinned
 
 **MUST:** where Formula.js gave a different answer from Excel, Solenoid gives Excel's, backed by the same implementation as the card ([[C17]] shareImpl), and a test pins it. No vendor update reaches the core, so the evidence lives in the suite, with the per-name reasons below.
@@ -130,6 +141,7 @@ RANK, TRIMMEAN and PERCENTRANK are the functions the Rank & Percentile and Trim 
 - **WEEKDAY, WEEKNUM** take every Excel return type, read as the day the week starts on: WEEKDAY 1 to 3 and 11 to 17, WEEKNUM 1, 2, 11 to 17 and 21 (ISO). Any other code is `#DOMAIN!` (Excel's `#NUM!`). The Week Info card passes its code through. Pinned in `excel_doc_sweep.rs`.
 - **TIME** truncates each part and wraps at 24 hours, as Excel does; a total below zero, or an hour past 32767, is `#DOMAIN!` (Excel's `#NUM!`). The Time card calls it with its fields as given.
 - **EDATE** drops the start's time of day and truncates the months, as Excel does; the Date Add card passes both as given. `fx_edate` (`excel_functions.rs`) moves the start's day by whole months, on the calendar with no time zone (`date_serial::civil`, as YEARFRAC, the coupon days and DATEDIF's days do), so the machine's zone and daylight saving never move it, (the count truncated, as Excel does, where Formula.js `parseInt`ed its text), clamping to the month's last day, and rounds back to a serial on the day, since the result is date-only. A count that carries the date past the calendar is `#DOMAIN!`.
+- **COUPDAYS** shares the coupon kernel with its siblings (`coupon_value`, `finance_ops.rs`), as the Coupon card does: every argument truncates before it's checked, so a frequency of 1.5 is annual, as in Excel.
 - **WORKDAY.INTL, NETWORKDAYS.INTL**: an undefined numeric weekend code is `#DOMAIN!` (Excel's `#NUM!`), a malformed mask `#VALUE!`.
 - **WORKDAY, WORKDAY.INTL** never reach Formula.js, which walks one day at a time (a count of 1e9 hangs) and takes only the numeric weekend codes. Both run `add_workdays` (`date_ops.rs`), which the Workdays node calls through them: it jumps whole weeks, then walks the remainder, and an answer outside the years 1 to 9999 is `#DOMAIN!` (Excel: `#NUM!`). WORKDAY.INTL also takes Excel's seven-character mask of `0` and `1`, Monday first, where 1 is a day off; an all-ones mask, any other string or an undefined code is `#VALUE!`.
 - **NETWORKDAYS, NETWORKDAYS.INTL** never reach Formula.js, which miscounts a reversed span and a date carrying a time of day. Both run `network_days` (`date_ops.rs`), which the Workdays node calls through them: it counts calendar days, whatever the times, and a reversed span is the negation of the forward count. The weekend argument reads as WORKDAY.INTL's does, so an undefined code is `#VALUE!` on the card and in the formula.

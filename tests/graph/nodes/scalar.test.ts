@@ -96,9 +96,9 @@ describe("Combinatorics and Bessel cards compute through the formula's kernels (
     expect(bessel("bessely", 2.5, 1)).toBeCloseTo(0.1459181, 6);
     expect(bessel("besselj", 1.9, 2)).toBeCloseTo(0.3299257, 6);
   });
-  it("a fractional order truncates and a negative one is blank, as the formula", () => {
+  it("a fractional order truncates and a negative one is refused, as the formula", () => {
     expect(bessel("besselj", 1.9, 2.7)).toBe(bessel("besselj", 1.9, 2));
-    expect(bessel("besselj", 1.9, -1)).toBeNull();
+    expect(bessel("besselj", 1.9, -1)).toMatchObject({ code: "#DOMAIN!" });
   });
 });
 

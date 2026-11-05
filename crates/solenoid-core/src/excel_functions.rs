@@ -5848,7 +5848,7 @@ fn regex_call(name: &str, a: &[V]) -> V {
     };
     let t = text.as_str();
     let answer = match name {
-        "REGEXTEST" => rx::test(&re, t).map(|b| V::Num(if b { 1.0 } else { 0.0 })),
+        "REGEXTEST" => rx::test(&re, t).map(V::Bool),
         // Excel answers #N/A where nothing matches.
         "REGEXEXTRACT" if mode == 0.0 => rx::first(&re, t).map(|m| match m {
             Some(m) => V::str(&t[m.range]),
@@ -6178,6 +6178,7 @@ const FINANCE_WHOLE: &[&str] =
 /// The rest of the finance functions `finance_function` answers.
 const FINANCE: &[&str] = &[
     "COUPDAYBS",
+    "COUPDAYS",
     "COUPDAYSNC",
     "COUPNCD",
     "COUPPCD",
@@ -6288,9 +6289,10 @@ fn finance_function(name: &str, a: &[V]) -> Result<V, Thrown> {
     let n = |i: usize| to_num(arg(a, i));
     let o = |i: usize, d: f64| opt_num(arg(a, i), d);
     Ok(match name {
-        "COUPDAYBS" | "COUPDAYSNC" | "COUPNCD" | "COUPPCD" | "COUPNUM" => {
+        "COUPDAYBS" | "COUPDAYS" | "COUPDAYSNC" | "COUPNCD" | "COUPPCD" | "COUPNUM" => {
             let op = match name {
                 "COUPDAYBS" => CouponOp::Coupdaybs,
+                "COUPDAYS" => CouponOp::Coupdays,
                 "COUPDAYSNC" => CouponOp::Coupdaysnc,
                 "COUPNCD" => CouponOp::Coupncd,
                 "COUPPCD" => CouponOp::Couppcd,

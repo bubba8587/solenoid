@@ -198,7 +198,6 @@ pub const NAMES: &[&str] = &[
     "KSTEST",
     "CONFIDENCE.T",
     "ACCRINT",
-    "COUPDAYS",
     "DISC",
     "PRICEDISC",
 ];
@@ -213,7 +212,6 @@ fn opt(r: Option<f64>) -> V {
 
 pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
     Ok(match name {
-        "COUPDAYS" => coupdays(a)?,
         "DISC" | "PRICEDISC" => discounted(name, a)?,
         _ => answer(name, a),
     })
@@ -935,46 +933,6 @@ fn datedif_days(start: f64, end: f64) -> Result<f64, Thrown> {
         return Err(not_a_function("getFullYear"));
     }
     Ok(date_to_serial(civil::start_of_day(end)) - date_to_serial(civil::start_of_day(start)))
-}
-
-fn last_coupon_before(settlement: f64, maturity: f64, frequency: f64) -> f64 {
-    let mut date = civil::set_full_year(maturity, civil::get_full_year(settlement));
-    if date < settlement {
-        date = civil::set_full_year(date, civil::get_full_year(date) + 1.0);
-    }
-    while date > settlement {
-        date = civil::set_month(date, civil::get_month(date) + -12.0 / frequency);
-    }
-    date
-}
-
-fn coupdays(a: &[V]) -> Result<V, Thrown> {
-    if [2, 3].iter().any(|&i| holds_text(arg(a, i))) {
-        return Ok(V::Fx(FxError::Value));
-    }
-    let basis = valid_basis(arg(a, 3));
-    let frequency = valid_frequency(arg(a, 2));
-    let (settlement, maturity) = match (parse_date(arg(a, 0)), parse_date(arg(a, 1))) {
-        (FxDate::Date(s), FxDate::Date(m)) => (s, m),
-        _ => return Ok(V::Fx(FxError::Value)),
-    };
-    let (Some(basis), Some(frequency)) = (basis, frequency) else { return Ok(V::Fx(FxError::Num)) };
-    if settlement >= maturity {
-        return Ok(V::Fx(FxError::Num));
-    }
-    if basis == 1.0 {
-        // `parseDate` of an Invalid Date is an Error, which has no Date methods.
-        if maturity.is_nan() {
-            return Err(not_a_function("date.setFullYear"));
-        }
-        let date = last_coupon_before(settlement, maturity, frequency);
-        if date.is_nan() {
-            return Err(not_a_function("nextDate.getMonth"));
-        }
-        let next = civil::set_month(date, civil::get_month(date) + 12.0 / frequency);
-        return Ok(V::Num(datedif_days(date, next)?));
-    }
-    Ok(V::Num(if basis == 3.0 { 365.0 } else { 360.0 } / frequency))
 }
 
 /// The days in month `m` (from 0) of year `y`.

@@ -110,9 +110,9 @@ describe("generators overflow loudly", () => {
 
 describe("REGEX* take Excel's documented arguments", () => {
   it("REGEXTEST third argument is case_sensitivity (1 = insensitive), not a JS flag string", () => {
-    expect(ev('REGEXTEST("Apple", "apple", 1)')).toBe(1);
-    expect(ev('REGEXTEST("Apple", "apple", 0)')).toBe(0);
-    expect(ev('REGEXTEST("Apple", "apple")')).toBe(0);
+    expect(ev('REGEXTEST("Apple", "apple", 1)')).toBe(true);
+    expect(ev('REGEXTEST("Apple", "apple", 0)')).toBe(false);
+    expect(ev('REGEXTEST("Apple", "apple")')).toBe(false);
     const bad = ev('REGEXTEST("Apple", "apple", 7)');
     expect(isSolError(bad) && bad.code).toBe("#VALUE!");
   });

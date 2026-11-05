@@ -392,7 +392,8 @@ impl CouponOp {
 }
 
 pub fn coupon_value(op: CouponOp, settle_serial: f64, maturity_serial: f64, freq: f64, basis: f64) -> Fin {
-    let (f, b) = (round_half_up(freq), round_half_up(basis));
+    // Every argument truncates before it's checked, as Excel's do: a frequency of 1.5 is annual.
+    let (f, b) = (freq.trunc(), basis.trunc());
     if !settle_serial.is_finite() || !maturity_serial.is_finite() {
         return Fin::Null;
     }

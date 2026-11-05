@@ -92,7 +92,7 @@ describe("text functions: formula matches node", () => {
   it("REGEXTEST / REGEXEXTRACT / REGEXREPLACE", () => {
     const test = new RegexNode({ op: "test" });
     expect(ev('REGEXTEST("abc123", "\\d+")')).toBe(test.data({ text: ["abc123"], pattern: ["\\d+"] }).result);
-    expect(ev('REGEXTEST("abc123", "\\d+")')).toBe(1);
+    expect(ev('REGEXTEST("abc123", "\\d+")')).toBe(true);
     expect(ev('REGEXEXTRACT("abc123def", "\\d+")')).toBe("123");
     expect(ev('REGEXEXTRACT("a1b2", "\\d", 1)')).toEqual(["1", "2"]);
     expect(ev('REGEXREPLACE("a1b2", "\\d", "#")')).toBe("a#b#");

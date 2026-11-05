@@ -394,9 +394,16 @@ fn bessel(c: &mut Call) -> Answer {
     let result = if matches!(x, V::Null) {
         V::Null
     } else {
+        // The formula's answer, its refusals included ([[C17]] shareImpl), read as the formula's boundary reads it:
+        // no value is #DOMAIN!, an infinite one #OVERFLOW!.
         match core_call(&op, &[x, n]) {
-            V::Num(r) if r.is_finite() => V::Num(r),
-            _ => V::Null,
+            V::Num(r) if r.is_nan() => {
+                V::err(crate::error_value::sol_error(ErrorCode::Domain, format!("{op} has no value there")))
+            }
+            V::Num(r) if r.is_infinite() => {
+                V::err(crate::error_value::sol_error(ErrorCode::Overflow, format!("{op} has no finite value there")))
+            }
+            v => v,
         }
     };
     c.show("cachedResult", result.clone());
