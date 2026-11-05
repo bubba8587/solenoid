@@ -1,5 +1,5 @@
 // [[C51]] formulaNaming
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { frStore } from "../frStore";
 import { buildFunctionReference, type FnRefRow } from "../functionReference";
 import { EXCEL_SECTIONS, excelSection } from "../excelSections";
@@ -19,6 +19,9 @@ function ChunkyArrow() {
     </svg>
   );
 }
+
+/** Where Excel's ribbon folds the rest under More Functions, the navigator draws its divider. */
+const MORE_FUNCTIONS = "Statistical";
 
 /** One Excel function: the cards that answer it, or the newer function that replaced it, or why it has no card. */
 interface XlEntry { name: string; cards: NodeCatalogEntry[]; use?: { text: string; card?: NodeCatalogEntry } }
@@ -61,59 +64,89 @@ export function ExcelCoverage() {
 
   const q = search.trim().toUpperCase();
   const shown = q ? entries.filter((e) => e.name.includes(q)) : entries;
+  const bySection = EXCEL_SECTIONS.map((s) => ({ s, list: shown.filter((e) => excelSection(e.name) === s) })).filter((g) => g.list.length);
   const open = (c: NodeCatalogEntry) => frStore.openCard(c.type);
   const cardLink = (c: NodeCatalogEntry) => (
     <button key={c.type} type="button" className="fr-xl__card" style={accentVars(cardAccent(c, mode))} onClick={() => open(c)}>{c.label}</button>
   );
 
+  // The navigator follows the scroll: the lit section is the one under the pinned header.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [lit, setLit] = useState<string | null>(null);
+  const spy = () => {
+    const box = scrollRef.current;
+    if (!box) return;
+    let cur: string | null = null;
+    for (const el of box.querySelectorAll<HTMLElement>("[data-section]")) if (el.offsetTop - box.offsetTop <= box.scrollTop + 8) cur = el.dataset.section!;
+    setLit(cur ?? bySection[0]?.s ?? null);
+  };
+  useEffect(spy, [q]);
+  const jump = (s: string) => {
+    const box = scrollRef.current;
+    const el = box?.querySelector<HTMLElement>(`[data-section="${s}"]`);
+    if (box && el) box.scrollTo({ top: el.offsetTop - box.offsetTop });
+  };
+
   return (
-    <div className="fr-xl">
-      <div className="fr-xl__head">
-        <div className="fr-xl__top">
-          <input
-            className="solenoid-add-menu__search fr-xl__search"
-            placeholder="Search Excel functions…"
-            value={search}
-            spellCheck={false}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Escape" && search) { e.stopPropagation(); setSearch(""); } }}
-            // Touch must not pop the on-screen keyboard over the fresh panel.
-            autoFocus={!IS_COARSE}
-          />
+    <div className="fr-cards fr-xl">
+      <nav className="fr-nav">
+        <input
+          className="solenoid-add-menu__search fr-nav__search"
+          placeholder="Search Excel functions…"
+          value={search}
+          spellCheck={false}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Escape" && search) { e.stopPropagation(); setSearch(""); } }}
+          // Touch must not pop the on-screen keyboard over the fresh panel.
+          autoFocus={!IS_COARSE}
+        />
+        <div className="solenoid-add-menu__scroll fr-nav__list fr-xl__nav">
+          {EXCEL_SECTIONS.map((s) => {
+            const n = bySection.find((g) => g.s === s)?.list.length ?? 0;
+            return (
+              <Fragment key={s}>
+                {s === MORE_FUNCTIONS && <div className="solenoid-add-menu__divider" role="separator" />}
+                <div className={`solenoid-add-menu__item${lit === s ? " solenoid-add-menu__item--active" : ""}${n ? "" : " solenoid-add-menu__item--incompatible"}`}
+                  onClick={() => n && jump(s)}>
+                  <span>{s}</span><span className="fr-xl__count">{n}</span>
+                </div>
+              </Fragment>
+            );
+          })}
+        </div>
+      </nav>
+      <div className="fr-xl__page">
+        <div className="fr-xl__head">
+          <p className="fr-xl__sum">Coming from Excel? Find a function where Excel files it, and open the card that does it here.</p>
           <div className="fr-xl__legend">
             {counts.map((c) => <span key={c.key}><i className={`fr-xl__dot fr-xl__dot--${c.key}`} />{c.n} {c.label}</span>)}
           </div>
+          <div className="fr-xl__cols-head" aria-hidden="true">
+            <span>Excel</span><ChunkyArrow /><span>Solenoid</span>
+          </div>
         </div>
-        <p className="fr-xl__sum">Coming from Excel? Find a function where Excel files it, and open the card that does it here.</p>
-        <div className="fr-xl__cols-head" aria-hidden="true">
-          <span>Excel</span><ChunkyArrow /><span>Solenoid</span>
-        </div>
-      </div>
-      <div className="fr-xl__scroll">
-        {shown.length === 0 ? (
-          <div className="fr-empty">No Excel function matches “{search}”</div>
-        ) : EXCEL_SECTIONS.map((s) => {
-          const list = shown.filter((e) => excelSection(e.name) === s);
-          if (!list.length) return null;
-          return (
-            <section key={s} className="fr-xl__group">
+        <div className="fr-xl__scroll" ref={scrollRef} onScroll={spy}>
+          {bySection.length === 0 ? (
+            <div className="fr-empty">No Excel function matches “{search}”</div>
+          ) : bySection.map(({ s, list }) => (
+            <section key={s} className="fr-xl__group" data-section={s}>
               <div className="fr-card__label fr-xl__caption">{s}</div>
-              <div className="fr-xl__cols">
-                {list.map((e) => (
-                  <div key={e.name} className={`fr-xl__row${e.cards.length ? "" : " fr-xl__row--none"}`}>
-                    <span className="fr-xl__name">{e.name}</span>
-                    <span />
-                    <span className="fr-xl__to">
-                      {e.cards.length ? e.cards.map(cardLink)
-                        : e.use ? <>use {e.use.card ? cardLink(e.use.card) : e.use.text}</>
-                        : "—"}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              {list.map((e) => (
+                // A function one card answers opens it from anywhere on its row.
+                <div key={e.name} className={`fr-xl__row${e.cards.length ? "" : " fr-xl__row--none"}${e.cards.length === 1 ? " fr-xl__row--go" : ""}`}
+                  onClick={e.cards.length === 1 ? () => open(e.cards[0]) : undefined}>
+                  <span className="fr-xl__name">{e.name}</span>
+                  <span />
+                  <span className="fr-xl__to" onClick={(ev) => ev.stopPropagation()}>
+                    {e.cards.length ? e.cards.map(cardLink)
+                      : e.use ? <>use {e.use.card ? cardLink(e.use.card) : e.use.text}</>
+                      : "—"}
+                  </span>
+                </div>
+              ))}
             </section>
-          );
-        })}
+          ))}
+        </div>
       </div>
     </div>
   );

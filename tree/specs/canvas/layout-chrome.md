@@ -184,7 +184,7 @@ The minimap and the socket legend are `display: none` on mobile (`mobile.css`), 
 - **The Add menu** is compact enough that a standard 12-item menu renders without scrolling (rows of about 30px), capped at `92vw` and `min(86dvh, 448px)` so an open from the ➕ never runs off the screen.
 - **The docked Conduit toolbar** pins 12px from the left, lifted `39px` over the bottom bar.
 - **The table editor pop-up** caps its scroll area at `48dvh`, so the on-screen keyboard leaves the active row visible.
-- **The Function Reference** panel is `92vw` by `88dvh`, leaving a tappable backdrop margin on every side. Its tabs scroll sideways with a 52px reserve on the right for the pinned 40px close chip; the Reference shows its card list and a card's page in turn, the page with a ‹ Cards link back; on Excel Coverage the frozen EXCEL ➜ SOLENOID pane's legend wraps and the rows narrow their Excel column to 120px.
+- **The Function Reference** panel is `92vw` by `88dvh`, leaving a tappable backdrop margin on every side. Its tabs scroll sideways with a 52px reserve on the right for the pinned 40px close chip; the Reference shows its card list and a card's page in turn, the page with a ‹ Cards link back; Excel Coverage shares the Reference's navigator (search over Excel's sections, lit as the list scrolls); on a phone only its search shows, and the rows narrow their Excel column to 120px.
 - **Settings** rows carrying a wide control (a text input, the palette stack) stack the control full width under the text, with the palette's swatches left-aligned; below 540px the shortcuts grid is one column.
 - Node chrome, the Connection dialog and the Settings and Shortcuts overlays get finger-sized versions of their small buttons and switches.
 
