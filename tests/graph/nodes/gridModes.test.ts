@@ -3,7 +3,8 @@
 // table, the card answers what its formula answers, and the mode survives a save.
 import { describe, it, expect } from "vitest";
 import { SmoothNode, ConvolveNode, TrapzNode, DiffNode, RandArrayNode, FindPeaksNode, ConnectedRegionsNode } from "../../../src/graph/nodes/list";
-import { InterpolateNode } from "../../../src/graph/nodeClasses";
+import { InterpolateNode, TableMultNode, MatEigenNode, MatDetNode, TableTransposeNode } from "../../../src/graph/nodeClasses";
+import { ReverseNode } from "../../../src/graph/nodes/list";
 import { extractInit } from "../../../src/graph/nodeInit";
 import { coreFunction } from "../coreFunction";
 import { inEditor, Src } from "../cardPasses";
@@ -37,7 +38,9 @@ describe("Grid mode", () => {
     n.mode = "list";
     n._rebuildSockets();
     expect(Object.keys(n.inputs)).toEqual(["list", "dx"]);
-    expect(n.literals.dy).toBeUndefined();
+    n.mode = "grid";
+    n._rebuildSockets();
+    expect(n.literals.dy).toBe(1); // a round trip keeps what was typed
   });
 
   it("offers only the smoothers that work on a grid", () => {
@@ -107,6 +110,24 @@ describe("Grid mode", () => {
     n.stringLiterals = { gx: "0, 2", gy: "0, 2" };
     const t = await answer(n, { xs: [0, 2, 0, 2], ys: [0, 0, 2, 2], zs: [1, 2, 3, 4] });
     expect(t).toEqual([[1, 2], [3, 4]]);
+  });
+
+  it("flips a grid down or across, and turns it a quarter at a time", async () => {
+    const r = [[1, 2, 3], [4, 5, 6]];
+    expect(await answer(new ReverseNode({ mode: "grid" }), { grid: r })).toEqual([[4, 5, 6], [1, 2, 3]]);
+    expect(await answer(new ReverseNode({ mode: "grid", byCol: true }), { grid: r })).toEqual([[3, 2, 1], [6, 5, 4]]);
+    expect(await answer(new TableTransposeNode({ op: "rot90" }), { matrix: r })).toEqual([[3, 6], [2, 5], [1, 4]]);
+    expect(Object.keys(new TableTransposeNode().inputs)).toEqual(["matrix"]);
+  });
+
+  it("takes a Kronecker product, a pseudo-inverse and singular values on the matrix cards", async () => {
+    expect(await answer(new TableMultNode({ op: "kron" }), { a: [[1, 2]], b: [[1], [10]] })).toEqual([[1, 2], [10, 20]]);
+    const p = await answer(new MatDetNode({ op: "pinv" }), { matrix: [[2, 0], [0, 4], [0, 0]] }) as number[][];
+    expect(p.map((row) => row.map((x) => +x.toFixed(12)))).toEqual([[0.5, 0, 0], [0, 0.25, 0]]);
+    const ed = await inEditor(new MatEigenNode({ op: "svd" }) as never);
+    await ed.wire(new Src([[3, 0], [0, 4]], "table"), "matrix");
+    expect(await ed.pass("values")).toEqual([4, 3]);
+    ed.dispose();
   });
 
   it("keeps its mode and shape through a save", () => {

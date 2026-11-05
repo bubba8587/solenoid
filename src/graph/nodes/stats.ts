@@ -562,6 +562,7 @@ export class InterpolateNode extends GraphNode {
   _rebuildSockets(): void {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    this.cachedResult = null;
     if (this.mode === "points") {
       this.stringLiterals.gx ??= "";
       this.stringLiterals.gy ??= "";

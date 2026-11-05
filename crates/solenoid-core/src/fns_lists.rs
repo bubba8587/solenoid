@@ -359,11 +359,18 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
 fn answer(name: &str, a: &[V]) -> V {
     let a0 = arg(a, 0);
     match name {
-        "REVERSE" => {
-            let mut l = to_list(a0);
-            l.reverse();
-            list(l)
-        }
+        "REVERSE" => match grid_filters::read_grid(name, a0) {
+            Err(e) => e,
+            Ok(g) if g.is_grid && is_true(arg(a, 1)) => {
+                g.shaped(g.cells.chunks(g.cols.max(1)).flat_map(|r| r.iter().rev().cloned()).collect())
+            }
+            Ok(g) if g.is_grid => g.shaped(g.cells.chunks(g.cols.max(1)).rev().flatten().cloned().collect()),
+            Ok(g) => {
+                let mut l = g.cells;
+                l.reverse();
+                list(l)
+            }
+        },
         "SLICE" => {
             let l = to_list(a0);
             let start = nan_max(0.0, round_half_up(number(arg(a, 1))) - 1.0);

@@ -181,7 +181,9 @@ argument; a value is the typed blank it reads as.
 | REPEAT | `count` → #SYNTAX! |
 | REPLACE | `start` → #SYNTAX!; `count` → #SYNTAX! |
 | REPT | `count` → #SYNTAX! |
+| REVERSE | `by_col` → false |
 | RIGHT | `count` → omitted |
+| ROT90 | `turns` → 1 |
 | ROUND | `digits` → 0 |
 | ROUNDDOWN | `digits` → 0 |
 | ROUNDUP | `digits` → 0 |

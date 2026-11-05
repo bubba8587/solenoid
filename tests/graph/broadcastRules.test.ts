@@ -122,7 +122,7 @@ describe("aggregates flatten row-major; their 1-D prep applies unchanged", () =>
 
 describe("the [[C15]] matricesInFormulas containment rule", () => {
   it("a 1-D whole-list native refuses a matrix honestly (#SHAPE!)", () => {
-    const r = ev("REVERSE(x)", { x: M22 });
+    const r = ev("SHIFT(x, 1)", { x: M22 });
     expect((r as { code: string }).code).toBe("#SHAPE!");
   });
 

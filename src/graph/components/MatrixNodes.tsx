@@ -1,12 +1,12 @@
 import type {
   MatDetNode as MatDetNodeType, MatDetOp,
-  TableMultNode as TableMultNodeType,
+  TableMultNode as TableMultNodeType, TableMultOp,
   TableUnitNode as TableUnitNodeType,
   TableDiagNode as TableDiagNodeType,
   TableOuterNode as TableOuterNodeType,
   MatSolveNode as MatSolveNodeType,
-  MatEigenNode as MatEigenNodeType,
-  TableTransposeNode as TableTransposeNodeType,
+  MatEigenNode as MatEigenNodeType, MatEigenOp,
+  TableTransposeNode as TableTransposeNodeType, TableTransposeOp,
   StackNode as StackNodeType, StackOp,
   TableReshapeNode as TableReshapeNodeType, TableReshapeOp,
   TableSelectNode as TableSelectNodeType, TableSelectOp,
@@ -16,7 +16,7 @@ import type {
 } from "../nodeClasses";
 import { dropInputCables } from "./cablePrune";
 import {
-  MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TAKEDROP_OP_META, STACK_OP_META,
+  MAT_DET_OP_META, TABLE_MULT_OP_META, MAT_EIGEN_OP_META, TABLE_TRANSPOSE_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TAKEDROP_OP_META, STACK_OP_META,
 } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";
@@ -52,7 +52,7 @@ export function MatDetComponent({ data, emit }: NodeProps<MatDetNodeType>) {
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={(o) => void pickOp(o)} options={MAT_DET_OPS} />
-      {op === "minverse"
+      {op === "minverse" || op === "pinv"
         ? <TableDisplay table={data.cachedMatrix} label={nodeDisplayName(data)} elem="number" />
         : <ValueDisplay value={data.cachedScalar} />}
     </NodeShell>
@@ -68,10 +68,21 @@ export function MatSolveComponent({ data, emit }: NodeProps<MatSolveNodeType>) {
   );
 }
 
+const MAT_EIGEN_OPS = (Object.keys(MAT_EIGEN_OP_META) as MatEigenOp[]).map((op) => ({
+  value: op, label: MAT_EIGEN_OP_META[op].label, title: MAT_EIGEN_OP_META[op].description,
+}));
+
 export function MatEigenComponent({ data, emit }: NodeProps<MatEigenNodeType>) {
   const valuesOut = data.outputs.values, vectorsOut = data.outputs.vectors;
+  const [op, setOpField] = useNodeField(data, "op");
+  async function pickOp(next: MatEigenOp) {
+    data.setOp(next);
+    await getOwningView(data.id)?.rerenderNode(data.id);
+    setOpField(next);
+  }
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
+      <OpSelect value={op} onChange={(o) => void pickOp(o)} options={MAT_EIGEN_OPS} />
       <InlineInputs node={data} emit={emit} />
       {valuesOut && (
         <MeasuredSocketRow hero side="output" socketKey="values" nodeId={data.id} emit={emit} payload={valuesOut.socket}>
@@ -87,9 +98,15 @@ export function MatEigenComponent({ data, emit }: NodeProps<MatEigenNodeType>) {
   );
 }
 
+const TABLE_MULT_OPS = (Object.keys(TABLE_MULT_OP_META) as TableMultOp[]).map((op) => ({
+  value: op, label: TABLE_MULT_OP_META[op].label, title: TABLE_MULT_OP_META[op].description,
+}));
+
 export function TableMultComponent({ data, emit }: NodeProps<TableMultNodeType>) {
+  const [op, setOp] = useNodeField(data, "op");
   return (
     <NodeShell node={data} emit={emit}>
+      <OpSelect value={op} onChange={setOp} options={TABLE_MULT_OPS} />
       <InlineInputs node={data} emit={emit} />
       <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} elem="number" />
     </NodeShell>
@@ -122,9 +139,22 @@ export function TableOuterComponent({ data, emit }: NodeProps<TableOuterNodeType
   );
 }
 
+const TABLE_TRANSPOSE_OPS = (Object.keys(TABLE_TRANSPOSE_OP_META) as TableTransposeOp[]).map((op) => ({
+  value: op, label: TABLE_TRANSPOSE_OP_META[op].label, title: TABLE_TRANSPOSE_OP_META[op].description,
+}));
+
 export function TableTransposeComponent({ data, emit }: NodeProps<TableTransposeNodeType>) {
+  const [op, setOpField] = useNodeField(data, "op");
+  async function pickOp(next: TableTransposeOp) {
+    if (next === data.op) return;
+    if (next === "transpose") await dropInputCables(data.id, ["turns"]);
+    data.setOp(next);
+    await getOwningView(data.id)?.rerenderNode(data.id);
+    setOpField(next);
+  }
   return (
     <NodeShell node={data} emit={emit}>
+      <OpSelect value={op} onChange={(o) => void pickOp(o)} options={TABLE_TRANSPOSE_OPS} />
       <InlineInputs node={data} emit={emit} />
       <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} elem="number" />
     </NodeShell>

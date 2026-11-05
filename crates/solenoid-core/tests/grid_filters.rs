@@ -235,3 +235,65 @@ fn regions_number_the_patches_as_scipy_does() {
         ]
     );
 }
+
+/// numpy's `linalg.svd` (values), `linalg.pinv`, `kron`, `rot90` and `flipud` / `fliplr`.
+#[test]
+fn the_matrix_extras_answer_what_numpy_answers() {
+    let mut env = Env::default();
+    env.insert(
+        "a".into(),
+        V::List(Rc::new(vec![
+            row(&[3.0, 1.0, 4.0]),
+            row(&[1.0, 5.0, 9.0]),
+            row(&[2.0, 6.0, 5.0]),
+            row(&[3.0, 5.0, 8.0]),
+        ])),
+    );
+    env.insert("p".into(), V::List(Rc::new(vec![row(&[1.0, 2.0]), row(&[3.0, 4.0])])));
+    env.insert("q".into(), V::List(Rc::new(vec![row(&[0.0, 5.0]), row(&[6.0, 7.0])])));
+    env.insert("r".into(), V::List(Rc::new(vec![row(&[1.0, 2.0, 3.0]), row(&[4.0, 5.0, 6.0])])));
+    let flat = |src: &str| -> Vec<f64> {
+        fn walk(v: &V, out: &mut Vec<f64>) {
+            match v {
+                V::List(l) => l.iter().for_each(|x| walk(x, out)),
+                V::Num(n) => out.push(*n),
+                other => panic!("{other:?}"),
+            }
+        }
+        let mut out = Vec::new();
+        walk(&formula(src, env.clone()).expect("parses"), &mut out);
+        out
+    };
+    let close = |got: Vec<f64>, want: &[f64]| {
+        assert_eq!(got.len(), want.len());
+        for (g, w) in got.iter().zip(want) {
+            assert!((g - w).abs() < 1e-9 * w.abs().max(1.0), "{got:?} vs {want:?}");
+        }
+    };
+    close(flat("SVD(a)"), &[16.786882920978197, 2.925369635238475, 2.3754524399775314]);
+    close(
+        flat("PINV(a)"),
+        &[
+            0.2658730158730161,
+            -0.2486772486772489,
+            0.08465608465608461,
+            0.09391534391534397,
+            -0.1388888888888888,
+            -0.07407407407407408,
+            0.2592592592592593,
+            -0.009259259259259262,
+            0.03174603174603173,
+            0.16931216931216939,
+            -0.16402116402116407,
+            0.021164021164021187,
+        ],
+    );
+    assert_eq!(
+        flat("KRON(p, q)"),
+        vec![0.0, 5.0, 0.0, 10.0, 6.0, 7.0, 12.0, 14.0, 0.0, 15.0, 0.0, 20.0, 18.0, 21.0, 24.0, 28.0]
+    );
+    assert_eq!(flat("ROT90(r)"), vec![3.0, 6.0, 2.0, 5.0, 1.0, 4.0]);
+    assert_eq!(flat("ROT90(r, -1)"), vec![4.0, 1.0, 5.0, 2.0, 6.0, 3.0]);
+    assert_eq!(flat("REVERSE(r)"), vec![4.0, 5.0, 6.0, 1.0, 2.0, 3.0]);
+    assert_eq!(flat("REVERSE(r, TRUE)"), vec![3.0, 2.0, 1.0, 6.0, 5.0, 4.0]);
+}

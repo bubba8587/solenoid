@@ -510,7 +510,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "list-fill",  label: "Fill", keywords: "coalesce fill missing null impute interpolate", description: "Handles missing cells: a constant, forward/back-fill, mean/median/mode, interpolate, drop, or coalesce lists in order like SQL `COALESCE`.", accent: "list", create: () => new FillNode() },
           { type: "pair", children: [
             { type: "list-sort",    label: "List Sort", description: "Sorts a table's rows by one column, or with Columns its columns by one row; a list is one row, so Columns sorts its items. Add sort keys to sort by other lists, like names by their scores, each with its own order. Excel: `SORT` / `SORTBY`.", keywords: "ascending descending order by key", create: () => new SortNode() },
-            { type: "list-reverse", label: "REVERSE", description: "Reverses the order of the list", create: () => new ReverseNode() },
+            { type: "list-reverse", label: "REVERSE", description: "Reverses the order of a list. Grid mode reverses a table's rows, or each row. numpy `flipud` / `fliplr`, MATLAB `flip`.", create: () => new ReverseNode(), keywords: "reverse flip flipud fliplr mirror upside down backwards grid table" },
           ]},
           { type: "pair", children: [
             { type: "list-slice", label: "SLICE",  description: "Sublist from Start to End, 1-based inclusive. Leave End blank to run to the end.", create: () => new SliceNode() },
@@ -646,17 +646,17 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Matrix math", description: "Linear algebra: multiply, invert, determinant, identity.",
         children: [
-          { type: "table-mult",      label: "MMULT",     description: "Matrix multiply: A (m×n) × B (n×p) → result (m×p). Excel: `MMULT`.",                                    create: () => new TableMultNode(),                   parity: false },
+          { type: "table-mult",      label: "MMULT",     description: "Matrix multiply: A (m×n) × B (n×p) → result (m×p), or the Kronecker product of any two tables. Excel: `MMULT`, numpy `kron`.",                                    create: () => new TableMultNode(),                   parity: false },
           { type: "pair", children: [matDetLeaf("mdeterm"), matDetLeaf("minverse")] },
           { type: "pair", children: [matDetLeaf("trace"), matDetLeaf("rank")] },
-          matDetLeaf("norm"),
+          { type: "pair", children: [matDetLeaf("norm"), matDetLeaf("pinv")] },
           { type: "table-unit",      label: "MUNIT",     description: "n×n identity matrix: diagonal 1s, rest 0s, or blanks (nulls) so the off-diagonal stays out of sums. Excel: `MUNIT`.",                                             create: () => new TableUnitNode(),                   parity: false },
           { type: "table-diag",      label: "DIAGONAL",  description: "Turns a list into a square matrix's diagonal, the rest 0s or blanks (nulls, out of sums). `numpy.diag`.",                                              create: () => new TableDiagNode(),                   parity: false },
           { type: "pair", children: [
             { type: "table-outer",     label: "OUTER",     description: "Outer product of two lists: the matrix of every product a×b. `numpy.outer`.",                                                                          create: () => new TableOuterNode(),                  parity: false },
             { type: "vector-cross",    label: "Cross Product", description: "Cross product of two 3-D vectors: the vector perpendicular to both. `numpy.cross`.",                                                          create: () => new CrossNode(),                       parity: false, keywords: "cross product vector perpendicular normal 3d numpy physics torque" },
           ]},
-          { type: "table-transpose", label: "TRANSPOSE", description: "Flips rows and columns of a table. Excel: `TRANSPOSE`.",                                                    create: () => new TableTransposeNode(),              parity: false },
+          { type: "table-transpose", label: "TRANSPOSE", description: "Flips rows and columns of a table, or turns it a quarter at a time. Excel: `TRANSPOSE`, numpy `rot90`.",                                                    create: () => new TableTransposeNode(),              parity: false },
         ],
       },
       { type: "table-info",  label: "Table Size", description: "Number of rows and number of columns in a table. Excel: `ROWS` / `COLUMNS`.", create: () => new TableInfoNode(), parity: false, keywords: "rows columns count size dimensions" },

@@ -85,11 +85,12 @@ export class TableInputNode extends GraphNode {
 
 // ─── MDETERM / MINVERSE ───────────────────────────────────────────────────────
 
-export type MatDetOp = "mdeterm" | "minverse" | "trace" | "rank" | "norm";
+export type MatDetOp = "mdeterm" | "minverse" | "pinv" | "trace" | "rank" | "norm";
 
 export const MAT_DET_OP_META = {
   mdeterm:  { label: "MDETERM",  description: "Determinant of a square matrix. Excel: `MDETERM`." },
   minverse: { label: "MINVERSE", description: "Inverse of a square matrix: result × input = identity. Excel: `MINVERSE`." },
+  pinv:     { label: "PINV",     description: "Moore–Penrose pseudo-inverse of a matrix of any shape: the least-squares inverse, which equals MINVERSE when that exists. numpy `linalg.pinv`, MATLAB `pinv`." },
   trace:    { label: "TRACE",    description: "Sum of the main diagonal. numpy `trace`, R `sum(diag(m))`." },
   rank:     { label: "MATRIXRANK", description: "Rank: the number of linearly independent rows (Gaussian elimination with a tolerance). numpy `matrix_rank`, R `qr(m)$rank`." },
   norm:     { label: "NORM",     description: "Frobenius norm: √Σ every cell squared (`numpy.linalg.norm` default, R `norm(m, \"F\")`). Excel: `SQRT(SUMSQ(range))`." },
@@ -98,7 +99,7 @@ const MAT_DET_SCALAR: ReadonlySet<MatDetOp> = new Set(["mdeterm", "trace", "rank
 
 export class MatDetNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    matrix: "The matrix must be square, with every cell filled.",
+    matrix: "Every cell filled; square for MDETERM, MINVERSE and TRACE, any shape for PINV, MATRIXRANK and NORM.",
   };
 
   label: string;
@@ -112,7 +113,7 @@ export class MatDetNode extends GraphNode {
     this.op    = init?.op    ?? "mdeterm";
     this.label = init?.label ?? "";
     this.addInput("matrix", tableIn("Matrix"));
-    this.addOutput("result", MAT_DET_SCALAR.has(this.op) ? numOut(MAT_DET_OP_META[this.op].label) : tableOut("Inverse"));
+    this.addOutput("result", MAT_DET_SCALAR.has(this.op) ? numOut(MAT_DET_OP_META[this.op].label) : tableOut(this.op === "pinv" ? "Pseudo-inverse" : "Inverse"));
   }
 
   /** Retypes in place and fires no connection event, so the component follows with retypeOutputCables. */
@@ -121,7 +122,7 @@ export class MatDetNode extends GraphNode {
     this.op = next;
     const out = this.outputs.result;
     if (!out) return;
-    const spec = MAT_DET_SCALAR.has(next) ? numOut(MAT_DET_OP_META[next].label) : tableOut("Inverse");
+    const spec = MAT_DET_SCALAR.has(next) ? numOut(MAT_DET_OP_META[next].label) : tableOut(next === "pinv" ? "Pseudo-inverse" : "Inverse");
     out.socket = spec.socket;
     out.label = spec.label;
   }
@@ -133,17 +134,25 @@ export class MatDetNode extends GraphNode {
 
 // ─── MMULT ────────────────────────────────────────────────────────────────────
 
+export type TableMultOp = "mmult" | "kron";
+export const TABLE_MULT_OP_META: Record<TableMultOp, { label: string; fx: string; description: string }> = {
+  mmult: { label: "MMULT", fx: "MMULT", description: "Matrix multiply: A (m×n) × B (n×p) → result (m×p). Excel: `MMULT`." },
+  kron:  { label: "KRON",  fx: "KRON",  description: "Kronecker product: every cell of A times the whole of B, laid out as blocks, (m·p)×(n·q). numpy `kron`, MATLAB `kron`." },
+};
+
 export class TableMultNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    b: "Its row count must equal A's column count.",
+    b: "For MMULT its row count must equal A's column count; KRON takes any shapes.",
   };
 
   label: string;
+  op: TableMultOp;
   cachedResult: Mat | SolError | null = null;
   width = 180; height = 210;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; op?: TableMultOp }) {
     super("TableMult");
+    this.op = init?.op === "kron" ? "kron" : "mmult";
     this.label = init?.label ?? "MMULT";
     this.addInput("a", tableIn("A"));
     this.addInput("b", tableIn("B"));
@@ -220,17 +229,42 @@ export class TableOuterNode extends GraphNode {
 
 // ─── TRANSPOSE ────────────────────────────────────────────────────────────────
 
+export type TableTransposeOp = "transpose" | "rot90";
+export const TABLE_TRANSPOSE_OP_META: Record<TableTransposeOp, { label: string; fx: string; description: string }> = {
+  transpose: { label: "TRANSPOSE",  fx: "TRANSPOSE", description: "Flips rows and columns of a table. Excel: `TRANSPOSE`." },
+  rot90:     { label: "Rotate 90°", fx: "ROT90",     description: "Turns a table a quarter turn counterclockwise, Turns times (negative turns clockwise). numpy `rot90`, MATLAB `rot90`." },
+};
+
 export class TableTransposeNode extends GraphNode {
+  static inputRoles = rolesFrom("ROT90", { turns: 1 });
+  static socketDocs: Record<string, string> = {
+    turns: "Quarter turns counterclockwise; negative turns clockwise.",
+  };
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
   label: string;
+  op: TableTransposeOp;
+  literals: Record<string, number> = {};
   cachedResult: CellMat | null = null;
   width = 180; height = 180;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; op?: TableTransposeOp }) {
     super("TableTranspose");
+    this.op = init?.op === "rot90" ? "rot90" : "transpose";
     this.label = init?.label ?? "TRANSPOSE";
     this.addInput("matrix", adoptiveTableIn("Matrix"));
-    this.addOutput("result", adoptiveTableOut("Transposed"));
+    if (this.op === "rot90") this.addInput("turns", numIn("Turns"));
+    this.addOutput("result", adoptiveTableOut(this.op === "rot90" ? "Rotated" : "Transposed"));
+  }
+
+  /** The departing input keys, for the caller to prune first. */
+  setOp(next: TableTransposeOp): string[] {
+    if (next === this.op) return [];
+    this.op = next;
+    if (next === "rot90" && !this.inputs.turns) this.addInput("turns", numIn("Turns"));
+    const gone = next === "transpose" && this.inputs.turns ? ["turns"] : [];
+    for (const k of gone) this.removeInput(k);
+    if (this.outputs.result) this.outputs.result.label = next === "rot90" ? "Rotated" : "Transposed";
+    return gone;
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
@@ -583,23 +617,37 @@ export class MatSolveNode extends GraphNode {
 }
 
 // ─── EIGEN (symmetric) ────────────────────────────────────────────────────────
+export type MatEigenOp = "eigen" | "svd";
+export const MAT_EIGEN_OP_META: Record<MatEigenOp, { label: string; fx: string; values: string; vectors: string; description: string }> = {
+  eigen: { label: "Eigen", fx: "EIGENVALUES", values: "Eigenvalues", vectors: "Eigenvectors", description: "Eigenvalues and unit eigenvectors of a square, symmetric matrix, largest first. numpy `linalg.eigh`, R `eigen`." },
+  svd:   { label: "SVD",   fx: "SVD",         values: "Singular values", vectors: "Right singular vectors", description: "Singular values of any matrix, largest first, and the right singular vectors as columns. numpy `linalg.svd`, MATLAB `svd`." },
+};
+
 export class MatEigenNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    matrix: "Square and SYMMETRIC (a covariance or correlation matrix, a Laplacian…); a non-symmetric matrix is #SHAPE!.",
-    values: "Eigenvalues, largest first.",
-    vectors: "Unit eigenvectors as COLUMNS, in the same order; the largest-magnitude entry of each is made positive.",
+    matrix: "Eigen: square and SYMMETRIC (a covariance or correlation matrix, a Laplacian…), else #SHAPE!. SVD: any shape.",
+    values: "Largest first.",
+    vectors: "Unit vectors as COLUMNS, in the same order; the largest-magnitude entry of each is made positive.",
   };
   label: string;
+  op: MatEigenOp;
   cachedValues: number[] | SolError | null = null;
   cachedVectors: Mat | SolError | null = null;
   width = 190; height = 175;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; op?: MatEigenOp }) {
     super("MatEigen");
+    this.op = init?.op === "svd" ? "svd" : "eigen";
     this.label = init?.label ?? "Eigen (symmetric)";
     this.addInput("matrix", tableIn("Matrix"));
-    this.addOutput("values", numListOut("Eigenvalues"));
-    this.addOutput("vectors", tableOut("Eigenvectors"));
+    this.addOutput("values", numListOut(MAT_EIGEN_OP_META[this.op].values));
+    this.addOutput("vectors", tableOut(MAT_EIGEN_OP_META[this.op].vectors));
+  }
+
+  setOp(next: MatEigenOp): void {
+    this.op = next;
+    if (this.outputs.values) this.outputs.values.label = MAT_EIGEN_OP_META[next].values;
+    if (this.outputs.vectors) this.outputs.vectors.label = MAT_EIGEN_OP_META[next].vectors;
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {

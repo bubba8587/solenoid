@@ -123,7 +123,7 @@ fn grid(rows: impl Iterator<Item = Vec<V>>) -> V {
 
 fn mat_det(c: &mut Call) -> Answer {
     let op = c.field_str("op", "mdeterm").to_string();
-    let scalar = op != "minverse";
+    let scalar = op != "minverse" && op != "pinv";
     let done = |c: &mut Call, r: V| {
         c.show("cachedScalar", if scalar { r.clone() } else { V::Null });
         c.show("cachedMatrix", if scalar { V::Null } else { r.clone() });
@@ -138,7 +138,7 @@ fn mat_det(c: &mut Call) -> Answer {
         Ok(m) => m,
         Err(e) => return done(c, e),
     };
-    let sized = op != "rank" && op != "norm";
+    let sized = op != "rank" && op != "norm" && op != "pinv";
     let n = rows_of(&m).len();
     if sized && n != width(&m) {
         return done(c, err(ErrorCode::Shape, "Matrix must be square"));
@@ -152,6 +152,7 @@ fn mat_det(c: &mut Call) -> Answer {
     } else {
         let name = match op.as_str() {
             "minverse" => "MINVERSE",
+            "pinv" => "PINV",
             "trace" => "TRACE",
             "rank" => "MATRIXRANK",
             "norm" => "NORM",
@@ -169,7 +170,7 @@ fn table_mult(c: &mut Call) -> Answer {
     };
     let r = match (numeric(&ra), numeric(&rb)) {
         (Err(e), _) | (_, Err(e)) => e,
-        (Ok(a), Ok(b)) => core_call("MMULT", &[a, b]),
+        (Ok(a), Ok(b)) => core_call(if c.field_str("op", "mmult") == "kron" { "KRON" } else { "MMULT" }, &[a, b]),
     };
     c.show("cachedResult", r.clone());
     Ok(vec![("result".into(), Cv::from(r))])
@@ -281,6 +282,14 @@ fn mat_eigen(c: &mut Call) -> Answer {
         Ok(m) => m,
         Err(e) => return done(c, e.clone(), e),
     };
+    if c.field_str("op", "eigen") == "svd" {
+        let values = core_call("SVD", std::slice::from_ref(&m));
+        if values.is_sol_error() {
+            return done(c, values.clone(), values);
+        }
+        let vectors = crate::fns_matrix::right_singular_vectors(&m);
+        return done(c, values, vectors);
+    }
     let values = core_call("EIGENVALUES", std::slice::from_ref(&m));
     if let V::Err(e) = &values {
         let e = if e.code == ErrorCode::Shape {
@@ -735,6 +744,10 @@ fn table_transpose(c: &mut Call) -> Answer {
         return result(c, V::Null, None);
     };
     let unit = table_unit_of(c, "matrix");
+    if c.field_str("op", "transpose") == "rot90" {
+        let turns = read_role(c, "turns", &Role::Setting(V::Num(1.0)));
+        return result(c, core_call("ROT90", &[matrix_v(&m), turns]), unit);
+    }
     result(c, core_call("TRANSPOSE", &[matrix_v(&m)]), unit)
 }
 

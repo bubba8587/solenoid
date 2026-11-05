@@ -284,7 +284,12 @@ fn sort(c: &mut Call) -> Answer {
 }
 
 fn reverse(c: &mut Call) -> Answer {
-    let r = core_call("REVERSE", &[list_in(c, "list")]);
+    let r = if c.field_str("mode", "list") == "grid" {
+        let across = c.field("byCol").and_then(|v| v.as_bool()).unwrap_or(false);
+        core_call("REVERSE", &[list_in(c, "grid"), V::Bool(across)])
+    } else {
+        core_call("REVERSE", &[list_in(c, "list")])
+    };
     shown(c, "cachedList", "result", r)
 }
 

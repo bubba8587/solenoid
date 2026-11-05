@@ -203,6 +203,8 @@ export const ARG_ROLES: Record<string, ArgRoles> = {
   PCTCHANGE: { 1: setting(false) },
   GRADIENT: { 1: setting(false) },
   GRIDDATA: { 5: setting(LEFT_OUT, "idw") },
+  REVERSE: { 1: setting(false) },
+  ROT90: { 1: setting(1) },
   CONNECTEDREGIONS: { 1: setting(false) },
   MEANSMOOTH: { 1: setting(3) },
   MEDIANSMOOTH: { 1: setting(3) },

@@ -32,6 +32,10 @@ pub const NAMES: &[&str] = &[
     "TRACE",
     "EIGENVALUES",
     "EIGENVECTORS",
+    "SVD",
+    "PINV",
+    "KRON",
+    "ROT90",
     "SOLVE",
     "MATRIXRANK",
     "CROSSPRODUCT",
@@ -535,6 +539,24 @@ fn solve_linear(a: &NumMat, b: &[f64]) -> Option<Vec<f64>> {
         }
     }
     Some(m.iter().enumerate().map(|(i, row)| row[n] / row[i]).collect())
+}
+
+/// The right singular vectors as columns, by the eigenvectors of AᵀA, for the Eigen card's SVD op.
+pub(crate) fn right_singular_vectors(v: &V) -> V {
+    let m = match num_mat(v) {
+        Ok(m) => m,
+        Err(Stop::Answer(e)) => return e,
+        Err(Stop::Thrown(t)) => return V::err(t.0),
+    };
+    let cols = mat_cols(&m);
+    let at: NumMat = (0..cols).map(|j| m.iter().map(|r| r[j]).collect()).collect();
+    match mat_mul(&at, &m).and_then(|g| mat_eigh(&g, 1e-14)) {
+        Some((_, vectors)) => {
+            let k = m.len().min(cols);
+            num_mat_v(vectors.into_iter().map(|row| row.into_iter().take(k).collect()).collect())
+        }
+        None => err(ErrorCode::Shape, "SVD needs a matrix"),
+    }
 }
 
 pub(crate) fn mat_eigh(m: &NumMat, tol: f64) -> Option<(Vec<f64>, NumMat)> {
@@ -1374,6 +1396,63 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                 Some(x) => nums_v(x),
                 None => err(ErrorCode::DivZero, "A is singular, so the system has no unique solution"),
             }
+        }
+        "SVD" | "PINV" => {
+            let m = tri!(num_mat(arg(a, 0)));
+            let (rows, cols) = (m.len(), mat_cols(&m));
+            if rows == 0 || cols == 0 {
+                return Ok(list(Vec::new()));
+            }
+            // The singular values are the square roots of AᵀA's eigenvalues, its eigenvectors the right singular vectors.
+            let at: NumMat = (0..cols).map(|j| m.iter().map(|r| r[j]).collect()).collect();
+            let Some(gram) = mat_mul(&at, &m) else {
+                return Ok(err(ErrorCode::Shape, format!("{name} needs a matrix")));
+            };
+            let Some((lambda, v)) = mat_eigh(&gram, 1e-14) else {
+                return Ok(err(ErrorCode::Domain, format!("{name} could not decompose this matrix")));
+            };
+            if name == "SVD" {
+                return Ok(nums_v(lambda.iter().take(rows.min(cols)).map(|l| js_max(*l, 0.0).sqrt()).collect()));
+            }
+            // A singular value under a millionth of the largest counts as zero: its square is below the solver's noise.
+            let top = lambda.first().copied().unwrap_or(0.0);
+            let mut core = vec![vec![0.0; cols]; cols];
+            for (k, l) in lambda.iter().enumerate() {
+                if *l > top * 1e-12 && *l > 0.0 {
+                    for i in 0..cols {
+                        for j in 0..cols {
+                            core[i][j] += v[i][k] * v[j][k] / l;
+                        }
+                    }
+                }
+            }
+            mat_mul(&core, &at).map_or_else(|| err(ErrorCode::Shape, "PINV needs a matrix"), num_mat_v)
+        }
+        "KRON" => {
+            let (x, y) = (tri!(num_mat(arg(a, 0))), tri!(num_mat(arg(a, 1))));
+            let (xr, xc, yr, yc) = (x.len(), mat_cols(&x), y.len(), mat_cols(&y));
+            if (xr * xc * yr * yc) as f64 > MAX_GENERATED {
+                return Ok(err(ErrorCode::Overflow, "KRON's answer would pass the 1,000,000 element limit"));
+            }
+            num_mat_v(
+                (0..xr * yr).map(|i| (0..xc * yc).map(|j| x[i / yr][j / yc] * y[i % yr][j % yc]).collect()).collect(),
+            )
+        }
+        "ROT90" => {
+            let Some(m) = tri!(to_matrix(arg(a, 0))) else { return Ok(V::Null) };
+            let turns = arg(a, 1);
+            let k = if nullish(turns) { 1.0 } else { num_blank_zero(turns) };
+            if !k.is_finite() || k.fract() != 0.0 {
+                return Ok(err(ErrorCode::Value, "ROT90's turns is a whole number"));
+            }
+            let mut out = m;
+            for _ in 0..(k.rem_euclid(4.0) as usize) {
+                let (r, c) = (out.len(), mat_cols(&out));
+                out = (0..c)
+                    .map(|i| (0..r).map(|j| out[j].get(c - 1 - i).cloned().unwrap_or(V::Undef)).collect())
+                    .collect();
+            }
+            mat_v(out)
         }
         "EIGENVALUES" | "EIGENVECTORS" => {
             let m = tri!(num_mat(arg(a, 0)));

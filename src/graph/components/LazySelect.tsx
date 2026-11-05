@@ -39,7 +39,8 @@ export function LazySelect({
       {...rest}
       ref={ref}
       value={value}
-      style={minWidth != null ? { ...style, minWidth } : style}
+      // A re-measure runs without the old floor, or a select whose options shrank could never narrow.
+      style={minWidth != null && !needMeasure ? { ...style, minWidth } : style}
       onPointerEnter={(e) => { setHot(true); onPointerEnter?.(e); }}
       onFocus={(e) => { setHot(true); onFocus?.(e); }}
       onBlur={(e) => { setHot(false); onBlur?.(e); }}

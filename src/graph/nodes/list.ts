@@ -8,7 +8,7 @@ import { dropInputCables } from "../components/cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
 import { cardShapeOnCore, type Shape } from "../frameShape";
 import type { Cell as AnyCell } from "./coerce";
-import { listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableIn, tableOut, cubeAdoptIn, anyDataIn, adoptiveDataOut, type ShapeMode } from "./shared";
+import { listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableIn, tableOut, adoptiveTableIn, adoptiveTableOut, cubeAdoptIn, anyDataIn, adoptiveDataOut, type ShapeMode } from "./shared";
 import { rolesFrom, setting, LEFT_OUT, type InputRole } from "../inputRoles";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import type { FormatCarrySpec } from "./formatCarry";
@@ -409,16 +409,38 @@ export class SortNode extends GraphNode {
   }
 }
 
+export const REVERSE_MODE_META: Record<ShapeMode, { label: string; title: string }> = {
+  list: { label: "List", title: "Reverse a list" },
+  grid: { label: "Grid", title: "Reverse a table's rows (Down) or each row (Across): numpy flipud and fliplr" },
+};
+
 export class ReverseNode extends GraphNode {
-  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: [this.mode === "grid" ? "grid" : "list"], combine: "single" }];
   label: string;
+  mode: ShapeMode;
+  byCol = false;
   cachedList: unknown[] = [];
   width = 180;
   height = 120;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; mode?: ShapeMode; byCol?: boolean }) {
     super("Reverse");
     this.label = init?.label ?? "REVERSE";
+    this.mode = init?.mode === "grid" ? "grid" : "list";
+    this.byCol = init?.byCol === true;
+    this._rebuildSockets();
+  }
+
+  // Removes every socket, so callers prune all of this node's cables first (applyShapeMode).
+  _rebuildSockets(): void {
+    for (const key of Object.keys(this.inputs)) this.removeInput(key);
+    for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    this.cachedList = [];
+    if (this.mode === "grid") {
+      this.addInput("grid", adoptiveTableIn("Grid"));
+      this.addOutput("result", adoptiveTableOut("Reversed"));
+      return;
+    }
     this.addInput("list", adoptiveListIn("List"));
     this.addOutput("result", adoptiveListOut("Reversed"));
   }
@@ -610,6 +632,7 @@ export class ConvolveNode extends GraphNode {
   _rebuildSockets(): void {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    this.cachedList = [];
     const grid = this.mode === "grid";
     this.addInput("a", grid ? tableIn("Grid") : listIn("A"));
     this.addInput("b", grid ? tableIn("Kernel") : listIn("B"));
@@ -697,6 +720,7 @@ export class TrapzNode extends GraphNode {
   _rebuildSockets(): void {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    this.cachedResult = null;
     if (this.mode === "grid") {
       this.literals.dy ??= 1;
       this.addInput("grid", tableIn("Grid"));
@@ -705,7 +729,6 @@ export class TrapzNode extends GraphNode {
       this.addOutput("result", numOut("Volume"));
       return;
     }
-    delete this.literals.dy;
     this.addInput("list", listIn("List"));
     this.addInput("dx", numIn("dx"));
     this.addOutput("result", numOut("Area"));
@@ -1248,6 +1271,7 @@ export class DiffNode extends GraphNode {
   _rebuildSockets(): void {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    this.cachedList = [];
     const grid = this.mode === "grid";
     this.addInput(grid ? "grid" : "list", grid ? tableIn("Grid") : listIn("List"));
     this.addOutput("result", grid ? tableOut(DIFF_OUTPUT_LABEL[this.op]) : listOut(DIFF_OUTPUT_LABEL[this.op]));
@@ -1650,15 +1674,14 @@ export class RandArrayNode extends GraphNode {
   _rebuildSockets(): void {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    this.cachedList = [];
+    // Each mode's typed values stay put, so a round trip keeps what was typed.
     if (this.mode === "grid") {
-      delete this.literals.count;
       this.literals.rows ??= 10;
       this.literals.cols ??= 10;
       this.addInput("rows", numIn("Rows"));
       this.addInput("cols", numIn("Columns"));
     } else {
-      delete this.literals.rows;
-      delete this.literals.cols;
       this.literals.count ??= 10;
       this.addInput("count", numIn("Count"));
     }
@@ -1908,6 +1931,7 @@ export class SmoothNode extends GraphNode {
   _rebuildSockets(): void {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    this.cachedList = [];
     if (this.mode === "grid" && !SMOOTH_OP_META[this.op].grid) this.op = "gaussian";
     const grid = this.mode === "grid";
     this.addInput(grid ? "grid" : "list", grid ? tableIn("Grid") : listIn("List"));
@@ -1986,6 +2010,7 @@ export class FindPeaksNode extends GraphNode {
   _rebuildSockets(): void {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    this.cachedResult = null;
     if (this.mode === "grid") {
       this.addInput("grid", tableIn("Grid"));
       this.addInput("height", numIn("Min height"));
