@@ -111,6 +111,8 @@ export function InspectorPanel() {
   const excel = frRows.filter((r) => r.excel !== null);
   const location = frRows[0]?.location ?? [];
   const packs = frRows[0]?.packs ?? [];
+  const op = (node as { op?: unknown } | null)?.op;
+  const nodeOp = typeof op === "string" ? op : undefined;
 
   return (
     <div className="inspector-panel" onPointerDown={(e) => e.stopPropagation()}>
@@ -135,7 +137,7 @@ export function InspectorPanel() {
               </div>
             )}
             {catalogType && (
-              <button type="button" className="inspector-ref-link" onClick={() => frStore.openCard(catalogType.split("__")[0])}>
+              <button type="button" className="inspector-ref-link" onClick={() => frStore.openCard(catalogType, nodeOp)}>
                 Open in Reference ›
               </button>
             )}

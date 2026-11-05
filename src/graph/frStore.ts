@@ -26,9 +26,9 @@ export const frStore = {
     _open = true;
     notify();
   },
-  /** Opens the Reference on one card's page. */
-  openCard(type: string) {
-    _focus = `card:${type}`;
+  /** Opens the Reference on one card's page, set to `op` when given. */
+  openCard(type: string, op?: string) {
+    _focus = `card:${type}${op ? `#${op}` : ""}`;
     _tab = "reference";
     _open = true;
     notify();

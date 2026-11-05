@@ -570,3 +570,15 @@
     cursor: pointer;
   }
 }
+button.fr-card__op { background: none; font: inherit; font-size: 12px; cursor: pointer; }
+button.fr-card__op:hover:not(:disabled) { border-color: var(--accent); }
+button.fr-card__op:disabled { cursor: default; }
+.fr-card__op--on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text-bright);
+}
+.fr-card__fx--on code { color: var(--accent); }
+.fr-page__legend { margin-top: 22px; }
+.fr-page__legend-row { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
+.fr-page__legend-row .fr-card__empty { margin-left: 0; min-width: 72px; text-align: center; }

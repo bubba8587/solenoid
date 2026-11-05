@@ -270,13 +270,17 @@ export { nodeTypeName };
 
 export async function addNodeByCatalogType(catalogType: string): Promise<boolean> {
   const entry = FLAT_CATALOG.get(catalogType);
-  if (!entry) return false;
+  return entry ? addNodeFrom(entry.create) : false;
+}
+
+/** Drops a card built by `create` at the view's center and selects it. */
+export async function addNodeFrom(create: () => unknown): Promise<boolean> {
   const editor = getActiveEditor();
   const view = getActiveView();
   if (!editor || !view) return false;
 
   // Cast through unknown: this file deliberately imports no node classes.
-  const node = entry.create() as unknown as { id: string; width?: number; height?: number; constructor: { name: string }; hydrate?: (reg: Map<string, NodeCtor>) => Promise<void> };
+  const node = create() as unknown as { id: string; width?: number; height?: number; constructor: { name: string }; hydrate?: (reg: Map<string, NodeCtor>) => Promise<void> };
   // A pre-seeded composite must hydrate before the first recompute.
   if (node.hydrate) await node.hydrate(ctorRegistry());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

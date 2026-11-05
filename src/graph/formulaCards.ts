@@ -28,6 +28,7 @@ export const FORMULA_CARD_HOMES: Record<string, FormulaHome> = {
   TOEPOCH: { type: "date-epoch-to" },
   GRIDDATA: { type: "interpolate", via: "Points mode" },
   HISTOGRAM2D: { type: "histogram", via: "2-D mode" },
+  ISBOOLEAN: { type: "is-test", via: "ISBOOLEAN" },
   ISOUTLIER: { type: "list-outliers" },
   KRUSKAL: { type: "kruskal-test" },
   KSTEST: { type: "ks-test" },
@@ -81,14 +82,16 @@ export function formulaHomes(): Map<string, FormulaHome> {
     }
   };
   walk(buildCatalog(false));
+  const names = [...Object.keys(FUNCTION_ARITY), ...packFormulaNames()].map((n) => n.toUpperCase());
+  // An op's `fx` can be a display name with no function behind it (Drop Columns' KEEPCOLS): only real names count.
+  const real = new Set(names);
   for (const d of NODE_OPS) {
     for (const o of d.ops ?? []) {
       for (const f of (o.fx ?? "").split(/[\s,/]+/)) {
-        if (FX_NAME.test(f) && !homes.has(f)) homes.set(f, { type: d.type, via: o.label });
+        if (FX_NAME.test(f) && real.has(f) && !homes.has(f)) homes.set(f, { type: d.type, via: o.label });
       }
     }
   }
-  const names = [...Object.keys(FUNCTION_ARITY), ...packFormulaNames()].map((n) => n.toUpperCase());
   for (const name of names) {
     if (homes.has(name) || name in FRAME_SURFACE_NAMES) continue;
     const hand = FORMULA_CARD_HOMES[name];
@@ -105,3 +108,14 @@ export function formulasOfCard(type: string): { name: string; via?: string }[] {
   for (const [name, home] of formulaHomes()) if (home.type === type) out.push({ name, ...(home.via ? { via: home.via } : {}) });
   return out;
 }
+
+/** Cards a formula reaches by an operator rather than a function name. */
+export const CARD_OPERATORS: Record<string, string[]> = {
+  "arith-add": ["a + b"],
+  "arith-sub": ["a - b"],
+  "arith-mul": ["a * b"],
+  "arith-div": ["a / b"],
+  "arith-pow": ["a ^ b"],
+  "text-concat": ["a & b"],
+  comparison: ["a = b", "a <> b", "a < b", "a <= b", "a > b", "a >= b"],
+};

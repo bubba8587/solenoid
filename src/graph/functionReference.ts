@@ -9,7 +9,7 @@ import { allPacks } from "./packs";
 import type {
   CatalogEntry, NodeCatalogEntry, ExcelEquiv,
 } from "./AddNodeMenu";
-import { formulasOfCard } from "./formulaCards";
+import { formulasOfCard, CARD_OPERATORS } from "./formulaCards";
 import { signatureFor } from "./formulaSignatures";
 import { NODE_OPS, type OpEntryDecl } from "./nodeOps";
 
@@ -177,8 +177,12 @@ export interface CardRef {
   excel: { name: string; syntax: string; parity: boolean; note?: string }[];
   formulas: { name: string; signature: string; via?: string }[];
   ops: OpEntryDecl[];
+  /** Operators a formula reaches it by: `a + b`. */
+  operators: string[];
   libs: LibraryTag[];
   create: () => unknown;
+  /** The card set to one of its ops, for a card with ops. */
+  createOp?: (op: string) => unknown;
 }
 
 /** Every card in the catalog, packs included whether on or off, in Add-menu order. */
@@ -190,11 +194,13 @@ export function buildCardReference(): CardRef[] {
     const formulas = formulasOfCard(type)
       .filter((f) => !excelNames.has(f.name))
       .map((f) => ({ ...f, signature: signatureFor(f.name) ?? "" }));
-    const ops = NODE_OPS.find((d) => d.type === type)?.ops ?? [];
+    const decl = NODE_OPS.find((d) => d.type === type);
+    const ops = decl?.ops ?? [];
     const libs = libraryTags({ excel: excel.length ? excel[0].name : null, description: info.description, keywords: info.keywords });
     cards.push({
       type, label: info.label, description: info.description, keywords: info.keywords, path: info.path, packs: info.packs,
-      excel, formulas, ops, libs, create: info.create,
+      excel, formulas, ops, operators: CARD_OPERATORS[type] ?? [], libs, create: info.create,
+      ...(decl?.create ? { createOp: decl.create } : {}),
     });
   }
   return cards;

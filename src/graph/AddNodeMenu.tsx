@@ -116,6 +116,19 @@ function toRenderItems(entries: CatalogEntry[]): RenderItem[] {
   return out;
 }
 
+/** The drill stack that opens the folder holding a card, or null when no folder does. */
+export function drillStackTo(entries: CatalogEntry[], type: string): number[] | null {
+  const items = toRenderItems(entries);
+  for (const [i, it] of items.entries()) {
+    if (it.kind === "leaf" && it.entry.type === type) return [];
+    if (it.kind === "category") {
+      const inner = drillStackTo(it.entry.children, type);
+      if (inner) return [i, ...inner];
+    }
+  }
+  return null;
+}
+
 function levelItemsAt(entries: CatalogEntry[], path: number[]): RenderItem[] {
   let items = toRenderItems(entries);
   for (let d = 0; d < path.length - 1; d++) {

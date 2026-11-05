@@ -4,11 +4,11 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { frStore } from "../frStore";
 import { buildCardReference, type CardRef } from "../functionReference";
-import { addNodeByCatalogType, buildCatalog } from "../catalogUtils";
+import { addNodeFrom, buildCatalog } from "../catalogUtils";
 import { flattenLeaves, searchLeaves } from "../catalogSearch";
 import { formulaHomes } from "../formulaCards";
 import { allPacks, packsStore } from "../packs";
-import { DrillMenu, LeafRow, type NodeCatalogEntry } from "../AddNodeMenu";
+import { DrillMenu, LeafRow, drillStackTo, type NodeCatalogEntry } from "../AddNodeMenu";
 import { IS_COARSE } from "../coarse";
 import { descriptionHtml } from "../descriptionMd";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
@@ -21,11 +21,11 @@ import type { GraphNode } from "../graphModel";
 /** An op or formula row's leaf ("list-smooth__op-gaussian") belongs to its host card. */
 const cardTypeOf = (leaf: NodeCatalogEntry) => leaf.type.split("__")[0];
 
-const EMPTY_KIND: Record<EmptyFieldShown["kind"], string> = {
-  fallback: "Fallback",
-  behavior: "Behavior",
-  example: "Example",
-  required: "Required",
+const EMPTY_KIND: Record<EmptyFieldShown["kind"], { name: string; means: string }> = {
+  fallback: { name: "Fallback", means: "Left empty, the card computes with this value." },
+  behavior: { name: "Behavior", means: "Left empty, the card does this instead." },
+  example: { name: "Example", means: "A hint only: the card computes nothing from it, so type a value." },
+  required: { name: "Required", means: "Left empty, the card shows an error until it gets a value." },
 };
 
 export function CardReference() {
@@ -37,7 +37,12 @@ export function CardReference() {
 
   const [query, setQuery] = useState("");
   const [stack, setStack] = useState<number[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
+  // The row picked: an op's row ("Smooth: Gaussian") opens the card in that op.
+  const [picked, setPicked] = useState<NodeCatalogEntry | null>(null);
+  const [active, setActive] = useState(0);
+  // The op a card opened from the Inspector is set to.
+  const [startOp, setStartOp] = useState<string | null>(null);
+  const selected = picked ? cardTypeOf(picked) : null;
   const [pack, setPack] = useState<string | null>(null);
 
   // Settings opens a pack here, and the Inspector or the Excel table a card.
@@ -49,12 +54,18 @@ export function CardReference() {
     if (focus.startsWith("pack:")) {
       const id = focus.slice(5);
       setPack(id);
-      setSelected(cards.find((c) => c.packs.includes(id))?.type ?? null);
+      setPicked(leaves.find((l) => !l.leaf.type.includes("__") && (l.leaf.packs ?? []).includes(id))?.leaf ?? null);
     } else if (focus.startsWith("card:")) {
+      // An op's own type ("list-smooth__op-gaussian") opens the card in that op.
+      const [type, op] = focus.slice(5).split("#");
+      const base = type.split("__")[0];
       setPack(null);
-      setSelected(focus.slice(5));
+      setStartOp(op ?? null);
+      setPicked((leaves.find((l) => l.leaf.type === type) ?? leaves.find((l) => l.leaf.type === base))?.leaf ?? null);
+      // The folder list opens where the card lives, as the Add menu would show it.
+      setStack(drillStackTo(catalog, base) ?? []);
     }
-  }, [ver, cards]);
+  }, [ver, leaves, catalog]);
 
   const q = query.trim();
   const results = useMemo(() => {
@@ -72,13 +83,14 @@ export function CardReference() {
     const placed = new Set(found.map(cardTypeOf));
     return [...byFormula.filter((l) => !placed.has(cardTypeOf(l))), ...found];
   }, [q, leaves, byType]);
+  useEffect(() => setActive(0), [q]);
 
   const packCards = useMemo(
     () => (pack ? leaves.filter((l) => !l.leaf.type.includes("__") && (l.leaf.packs ?? []).includes(pack)).map((l) => l.leaf) : []),
     [pack, leaves],
   );
 
-  const pick = (leaf: NodeCatalogEntry) => setSelected(cardTypeOf(leaf));
+  const pick = (leaf: NodeCatalogEntry) => { setStartOp(null); setPicked(leaf); };
   const card = selected ? byType.get(selected) ?? null : null;
 
   return (
@@ -91,7 +103,9 @@ export function CardReference() {
           spellCheck={false}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && results[0]) pick(results[0]);
+            if (e.key === "ArrowDown" && results.length) { e.preventDefault(); const i = Math.min(active + 1, results.length - 1); setActive(i); pick(results[i]); }
+            else if (e.key === "ArrowUp" && results.length) { e.preventDefault(); const i = Math.max(active - 1, 0); setActive(i); pick(results[i]); }
+            else if (e.key === "Enter" && results[active]) pick(results[active]);
             else if (e.key === "Escape" && query) { e.stopPropagation(); setQuery(""); }
           }}
           // Touch must not pop the on-screen keyboard over the fresh panel.
@@ -106,8 +120,8 @@ export function CardReference() {
           {q ? (
             results.length === 0
               ? <div className="solenoid-add-menu__empty">Nothing matches “{q}”.</div>
-              : results.map((leaf) => (
-                <LeafRow key={leaf.type} leaf={leaf} active={selected === cardTypeOf(leaf)} dim={false} onSelect={() => pick(leaf)} />
+              : results.map((leaf, i) => (
+                <LeafRow key={leaf.type} leaf={leaf} active={picked ? picked.type === leaf.type : i === active} dim={false} onSelect={() => { setActive(i); pick(leaf); }} />
               ))
           ) : pack ? (
             packCards.map((leaf) => (
@@ -128,11 +142,20 @@ export function CardReference() {
       </nav>
       <section className="fr-page">
         {card ? (
-          <CardPage key={card.type} card={card} packName={packName} onBack={() => setSelected(null)} />
+          <CardPage key={`${picked!.type}#${startOp ?? ""}`} card={card} leaf={picked!} startOp={startOp} packName={packName} onBack={() => setPicked(null)} />
         ) : (
           <div className="fr-page__intro">
             <p>Every card, with the formulas that do the same job, its fields and what an empty one does, and where it comes from in Excel, numpy, scipy or R.</p>
             <p>Browse the folders as in the Add menu, or search by a card’s name or any formula name.</p>
+            <div className="fr-page__legend">
+              <div className="fr-card__label">What an empty field does</div>
+              {(Object.keys(EMPTY_KIND) as EmptyFieldShown["kind"][]).map((k) => (
+                <div key={k} className="fr-page__legend-row">
+                  <span className={`fr-card__empty fr-card__empty--${k}`}>{EMPTY_KIND[k].name}</span>
+                  <span>{EMPTY_KIND[k].means}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </section>
@@ -140,14 +163,26 @@ export function CardReference() {
   );
 }
 
-function CardPage({ card, packName, onBack }: { card: CardRef; packName: Map<string, string>; onBack: () => void }) {
+function CardPage({ card, leaf, startOp, packName, onBack }: {
+  card: CardRef; leaf: NodeCatalogEntry; startOp: string | null; packName: Map<string, string>; onBack: () => void;
+}) {
   useSyncExternalStore(packsStore.subscribe, packsStore.version);
+  // A card with ops shows the one picked; its chips switch it.
+  const [opPick, setOpPick] = useState<string | null>(startOp);
+  const make = useMemo(
+    () => (opPick && card.createOp ? () => card.createOp!(opPick) : leaf.create),
+    [opPick, card, leaf],
+  );
   // A fresh card, as the Add menu would drop it: its sockets and empty fields are the page's Inputs and Outputs.
   const node = useMemo(() => {
-    try { return card.create() as GraphNode; } catch { return null; }
-  }, [card]);
+    try { return make() as GraphNode; } catch { return null; }
+  }, [make]);
   const roles = node ? rolesOf(node) : undefined;
   const op = (node as { op?: string } | null)?.op;
+  const opLabel = card.ops.find((o) => o.op === op)?.label;
+  // A locked Expression or Equation is its formula: Geometry's Circle Area is `PI() * r^2`.
+  const preset = node as { locked?: boolean; expr?: string; varDescriptions?: Record<string, string>; varUnits?: Record<string, string> } | null;
+  const ownFormula = preset?.locked && preset.expr ? preset.expr : null;
   const packOff = card.packs.length > 0 && !card.packs.some((p) => packsStore.isActive(p));
 
   return (
@@ -159,7 +194,7 @@ function CardPage({ card, packName, onBack }: { card: CardRef; packName: Map<str
           type="button"
           className="fr-card__add"
           title="Drop this card on the canvas"
-          onClick={() => { void addNodeByCatalogType(card.type); frStore.close(); }}
+          onClick={() => { void addNodeFrom(make); frStore.close(); }}
         >+ Add to canvas</button>
       </header>
       <div className="fr-card__crumb">
@@ -171,8 +206,20 @@ function CardPage({ card, packName, onBack }: { card: CardRef; packName: Map<str
       </div>
       {card.description && <p className="fr-card__desc" dangerouslySetInnerHTML={{ __html: descriptionHtml(card.description) }} />}
 
-      {(card.excel.length > 0 || card.formulas.length > 0) && (
+      {(ownFormula || card.excel.length > 0 || card.formulas.length > 0 || card.operators.length > 0) && (
         <Section title="Formulas">
+          {ownFormula && (
+            <div className="fr-card__fx">
+              <code>{ownFormula}</code>
+              <span className="fr-card__fx-meta">this card’s formula</span>
+            </div>
+          )}
+          {card.operators.map((o) => (
+            <div key={o} className="fr-card__fx">
+              <code>{o}</code>
+              <span className="fr-card__fx-meta">operator</span>
+            </div>
+          ))}
           {card.excel.map((e) => (
             <div key={e.name} className="fr-card__fx">
               <code>{e.syntax.replace(/^=/, "")}</code>
@@ -181,7 +228,7 @@ function CardPage({ card, packName, onBack }: { card: CardRef; packName: Map<str
             </div>
           ))}
           {card.formulas.map((f) => (
-            <div key={f.name} className="fr-card__fx">
+            <div key={f.name} className={`fr-card__fx${f.via && f.via === opLabel ? " fr-card__fx--on" : ""}`}>
               <code>{f.name}({f.signature})</code>
               {f.via && <span className="fr-card__fx-meta">{f.via}</span>}
             </div>
@@ -193,9 +240,14 @@ function CardPage({ card, packName, onBack }: { card: CardRef; packName: Map<str
         <Section title="Ops">
           <div className="fr-card__ops">
             {card.ops.map((o) => (
-              <span key={o.op} className="fr-card__op">
-                {o.label}
-              </span>
+              <button
+                key={o.op}
+                type="button"
+                className={`fr-card__op${o.op === op ? " fr-card__op--on" : ""}`}
+                disabled={!card.createOp}
+                onClick={() => setOpPick(o.op)}
+                title="Show the card set to this op"
+              >{o.label}</button>
             ))}
           </div>
         </Section>
@@ -207,7 +259,7 @@ function CardPage({ card, packName, onBack }: { card: CardRef; packName: Map<str
             const empty = emptyFieldShown(node.constructor.name, key, roles?.[key], op);
             return (
               <SocketLine key={key} node={node} sockKey={key} label={input?.label ?? key} socket={input?.socket}
-                empty={empty} />
+                empty={empty} doc={preset?.varDescriptions?.[key]} unit={preset?.varUnits?.[key]} />
             );
           })}
         </Section>
@@ -240,20 +292,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function SocketLine({ node, sockKey, label, socket, empty }: {
-  node: GraphNode; sockKey: string; label: string; socket: unknown; empty?: EmptyFieldShown;
+function SocketLine({ node, sockKey, label, socket, empty, doc: given, unit }: {
+  node: GraphNode; sockKey: string; label: string; socket: unknown; empty?: EmptyFieldShown; doc?: string; unit?: string;
 }) {
   const t = socket instanceof SolenoidSocket ? socket.dataType : null;
-  const doc = socketDocFor(node, sockKey);
+  const doc = socketDocFor(node, sockKey) ?? given;
   return (
     <div className="fr-card__sock">
       <div className="fr-card__sock-row">
         <span className="fr-card__sock-dot">{socket instanceof SolenoidSocket && <SocketComponent data={socket} />}</span>
         <span className="fr-card__sock-name">{label}</span>
-        <span className="fr-card__sock-type">{t ? SOCKET_TYPE_LABELS[t] : ""}</span>
+        <span className="fr-card__sock-type">{t ? SOCKET_TYPE_LABELS[t] : ""}{unit ? ` · ${unit}` : ""}</span>
         {empty && (
-          <span className={`fr-card__empty fr-card__empty--${empty.kind}`} title="What this field does when it's empty">
-            {EMPTY_KIND[empty.kind]}{empty.shown ? ` · ${empty.shown}` : ""}
+          <span className={`fr-card__empty fr-card__empty--${empty.kind}`} title={EMPTY_KIND[empty.kind].means}>
+            {EMPTY_KIND[empty.kind].name}
+            {empty.shown ? ` · ${empty.shown}` : empty.kind === "fallback" ? " · empty" : ""}
           </span>
         )}
       </div>

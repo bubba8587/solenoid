@@ -4,7 +4,9 @@ import { measureParity, excelNamedGapNames, excelCoverage } from "../../src/grap
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
 
 // Gap A: a node's Excel name that gives #NAME? in a formula.
-const EXCEL_NAMED_GAP: string[] = [];
+// PIVOTBY answers a Frame (the cross-tab), which a formula can't return under the noFramesInFormulas cap; in a
+// formula the name points to the PIVOTBY card (FRAME_SURFACE_NAMES).
+const EXCEL_NAMED_GAP: string[] = ["PIVOTBY"];
 
 // Gap C: a dispatchable name with no node, no EXCEL_GAP entry, and no deliberate registration.
 const UNTRACKED_DISPATCHABLE: string[] = [];
