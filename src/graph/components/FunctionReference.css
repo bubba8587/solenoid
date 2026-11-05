@@ -772,17 +772,19 @@
 .fr-fold__start-link { color: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-ink), var(--text)); font-weight: 600; }
 
 /* Between the core folders and the packs: the Add menu's group divider, at the page's width. */
-.fr-land__divider { height: 1px; margin: 22px 0; background: var(--border); }
+.fr-land__divider { height: 1px; margin: 26px 0 22px; background: var(--border); }
 
-/* The landing's two group captions, as Settings captions its sections. */
+/* The landing's two group headings: the Reference is where cards are found, so they read as headings in the app's
+   accent, uppercase and tracked like a section caption, at a heading's size. */
 .fr-land__caption {
-  margin-bottom: 10px;
-  font-size: 11px;
-  font-weight: 600;
+  margin: 4px 0 12px;
+  font-size: 17px;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--accent);
 }
+:root[data-theme="light"] .fr-land__caption { color: color-mix(in srgb, var(--accent) var(--mix-ink), var(--text)); }
 
 /* A landing box's title reads as a node card's header title: its color's ink, uppercase and tracked, and following
    the header-case setting as the cards do. */
