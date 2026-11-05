@@ -2,9 +2,14 @@
 // A top-level folder's page in the Reference: what its kind of value is, drawn small, then its cards by sub-folder.
 import type { CSSProperties, ReactNode } from "react";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "../AddNodeMenu";
-import {
-  SolenoidSocket, numberSocket, numListSocket, tableSocket, frameSocket, cubeSocket, stringSocket, dateSocket,
-} from "../sockets";
+import { SolenoidSocket, numListSocket, tableSocket } from "../sockets";
+import { cubeFromColumns, type FrameValue } from "../frame";
+import { solDate } from "../dateValue";
+import { tagDim } from "../unitValue";
+import { ResultDisplay } from "./ResultDisplay";
+import { FrameDisplay } from "./FrameDisplay";
+import { CubeDisplay } from "./CubeDisplay";
+import { TableDisplay } from "./TableDisplay";
 import { SocketComponent } from "./SocketComponent";
 import { TypeIcon, type TypeIconKind } from "./TypeIcon";
 
@@ -13,21 +18,21 @@ const FOLDER_STORIES: Record<string, { lede: string; shape?: () => ReactNode; ic
   Numbers: {
     icon: "number",
     lede: "A number can carry a unit, set where the value starts. A calculation works out its result's unit: meters times meters is square meters, and adding meters to seconds is a #UNIT! error.",
-    shape: () => <ValueShape socket={numberSocket} value="2.41" unit="km" />,
+    shape: () => box(tagDim(2410, { length: 1 }, "km")),
   },
   Lists: {
     icon: numListSocket,
     lede: "An ordered run of values of one kind. A blank item is missing, not zero: totals skip it and it keeps its place.",
-    shape: () => <ListShape />,
+    shape: () => box([3, 6, 4, 8, 7]),
   },
   Tables: {
     icon: tableSocket,
     lede: "Rows of plain values, with no column names or types: the shape a formula's array takes. A table holds one kind of value and one unit throughout.",
-    shape: () => <GridShape />,
+    shape: () => <div className="fr-fold__box"><TableDisplay table={[[1, 2, 3], [4, 5, 6], [7, 8, 9]]} elem="number" /></div>,
   },
   Frames: {
     icon: "frame",
-    lede: "A table with headers. Each column has a name and one type, so a column of dates stays dates and a column can carry its own unit. Formulas don't take Frames; Get Column and Split Frame take the pieces out.",
+    lede: "A table with headers. Each column has a name and one type, so a column of dates stays dates and a column can carry its own unit. Formulas don't take Frames; Get Column and Split Frame take the pieces out. A Cube is a Frame whose cells can hold anything, a whole Frame included, so nested data stays nested.",
     shape: () => <FrameShapes />,
   },
   Logic: {
@@ -37,94 +42,40 @@ const FOLDER_STORIES: Record<string, { lede: string; shape?: () => ReactNode; ic
   Text: {
     icon: "string",
     lede: "Every text card works on one piece of text or, item by item, on a List of them.",
-    shape: () => <ValueShape socket={stringSocket} value="“Ada Lovelace”" />,
+    shape: () => box("Ada Lovelace"),
   },
   "Date & Time": {
     icon: "date",
     lede: "A date is its own kind of value. It shows as a date wherever it goes and does day math; a number becomes a date only through Cast.",
-    shape: () => <ValueShape socket={dateSocket} value="05-Nov-2026" />,
+    shape: () => box(solDate(46331)),
   },
 };
 
-const sock = (s: SolenoidSocket) => <span className="fr-fold__sock"><SocketComponent data={s} /></span>;
+// The kinds of value, shown by the same displays a card's result box uses, filled with small real values.
+const BILLS: FrameValue = {
+  __frame: true,
+  columns: [
+    { name: "Item", type: "string", values: ["Rent", "Power", "Water"] },
+    { name: "Due", type: "date", values: [46357, 46364, 46371] },
+    { name: "Amount", type: "number", values: [1200, 84, 31] },
+  ],
+};
+const readings = (a: number, b: number): FrameValue => ({
+  __frame: true,
+  columns: [{ name: "Meter", type: "string", values: ["A", "B"] }, { name: "kWh", type: "number", values: [a, b] }],
+});
+const METERS = cubeFromColumns([
+  { name: "Item", cells: ["Power", "Water"], type: "string" },
+  { name: "Readings", cells: [readings(212, 96), readings(14, 9)] },
+]);
 
-function ValueShape({ socket, value, unit }: { socket: SolenoidSocket; value: string; unit?: string }) {
-  return (
-    <div className="fr-fold__value">
-      <span className="fr-fold__cell">{value}{unit && <span className="fr-fold__unit"> {unit}</span>}</span>
-      {sock(socket)}
-    </div>
-  );
-}
-
-function ListShape() {
-  return (
-    <div className="fr-fold__value">
-      <span className="fr-fold__row">
-        {["3", "6", "", "8", "7"].map((v, i) => <span key={i} className={`fr-fold__cell${v ? "" : " fr-fold__cell--blank"}`}>{v}</span>)}
-      </span>
-      {sock(numListSocket)}
-    </div>
-  );
-}
-
-function GridShape() {
-  const rows = [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]];
-  return (
-    <div className="fr-fold__value">
-      <span className="fr-fold__grid" style={{ "--cols": 3 } as CSSProperties}>
-        {rows.flat().map((v, i) => <span key={i} className="fr-fold__cell">{v}</span>)}
-      </span>
-      {sock(tableSocket)}
-    </div>
-  );
-}
-
-const FRAME_COLS: { name: string; type: "string" | "date" | "number"; cells: string[] }[] = [
-  { name: "Item", type: "string", cells: ["Rent", "Power", "Water"] },
-  { name: "Due", type: "date", cells: ["01-Dec", "08-Dec", "15-Dec"] },
-  { name: "Amount", type: "number", cells: ["$1,200", "$84", "$31"] },
-];
-
-function FrameTable({ cols, nest }: { cols: typeof FRAME_COLS; nest?: number }) {
-  return (
-    <span className="fr-fold__grid fr-fold__grid--frame" style={{ "--cols": cols.length } as CSSProperties}>
-      {cols.map((c) => (
-        <span key={c.name} className="fr-fold__head"><TypeIcon type={c.type} size={11} />{c.name}</span>
-      ))}
-      {cols[0].cells.map((_, r) => cols.map((c, ci) => (
-        <span key={`${r}-${ci}`} className="fr-fold__cell">
-          {nest === r && ci === cols.length - 1 ? <NestedFrame /> : c.cells[r]}
-        </span>
-      )))}
-    </span>
-  );
-}
-
-function NestedFrame() {
-  return (
-    <span className="fr-fold__grid fr-fold__grid--frame fr-fold__grid--nested" style={{ "--cols": 2 } as CSSProperties}>
-      <span className="fr-fold__head">Meter</span><span className="fr-fold__head">kWh</span>
-      <span className="fr-fold__cell">A</span><span className="fr-fold__cell">212</span>
-      <span className="fr-fold__cell">B</span><span className="fr-fold__cell">96</span>
-    </span>
-  );
-}
+const box = (value: unknown, full = true) => <div className="fr-fold__box"><ResultDisplay value={value} full={full} /></div>;
 
 function FrameShapes() {
   return (
     <div className="fr-fold__pair">
-      <div>
-        <div className="fr-fold__value"><FrameTable cols={FRAME_COLS} />{sock(frameSocket)}</div>
-        <div className="fr-fold__caption">Frame</div>
-      </div>
-      <div>
-        <div className="fr-fold__value">
-          <FrameTable cols={[FRAME_COLS[0], { name: "Readings", type: "string", cells: ["", "", ""] }]} nest={1} />
-          {sock(cubeSocket)}
-        </div>
-        <div className="fr-fold__caption">Cube: any cell can hold a whole Frame, so nested data stays nested.</div>
-      </div>
+      <div className="fr-fold__box fr-fold__box--wide"><FrameDisplay frame={BILLS} /></div>
+      <div className="fr-fold__box fr-fold__box--wide"><CubeDisplay cube={METERS} /></div>
     </div>
   );
 }
