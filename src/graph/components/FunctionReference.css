@@ -770,3 +770,6 @@
 /* A top-level folder's way in: the cards to start with, as links in the copy. */
 .fr-fold__start { margin: 14px 0 0; font-size: 13px; color: var(--text); }
 .fr-fold__start-link { color: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-ink), var(--text)); font-weight: 600; }
+
+/* Between the core folders and the packs: the Add menu's group divider, at the page's width. */
+.fr-land__divider { height: 1px; margin: 22px 0; background: var(--border); }

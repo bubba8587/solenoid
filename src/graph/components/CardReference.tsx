@@ -227,7 +227,7 @@ export function CardReference() {
                 accentStyle={accentVars(folderAccent(leavesOf([openFolder]), navMode))}
                 onCard={pick} onUp={(depth) => goFolders(stack.slice(0, depth + 1))}
                 cardOf={(type) => leaves.find((l) => l.leaf.type === type)?.leaf ?? null} />
-            : <Landing catalog={catalog} onCard={pick} onFolder={(i) => { setPack(null); goFolders([i]); }} />
+            : <Landing catalog={catalog} onCard={pick} onFolder={(next) => { setPack(null); goFolders(next); }} />
         )}
       </section>
     </div>
@@ -265,36 +265,50 @@ function accentVars(accent: string | null): React.CSSProperties | undefined {
 
 /** The landing: every top-level folder in its cards' color, with its first cards. */
 function Landing({ catalog, onCard, onFolder }: {
-  catalog: CatalogEntry[]; onCard: (leaf: NodeCatalogEntry) => void; onFolder: (i: number) => void;
+  catalog: CatalogEntry[]; onCard: (leaf: NodeCatalogEntry) => void; onFolder: (stack: number[]) => void;
 }) {
   const themeMode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
-  const folders = useMemo(() => catalog.flatMap((e, i) => {
-    if (e.type !== "category") return [];
-    const cards = leavesOf([e]);
-    if (!cards.length) return [];
-    return [{ i, label: (e as CatalogCategory).label, cards, accent: folderAccent(cards, themeMode) }];
-  }), [catalog, themeMode]);
+  // The core folders, then each pack on its own below a divider: a pack is a folder under Packs.
+  const { folders, packs } = useMemo(() => {
+    const block = (e: CatalogCategory, stack: number[]) => {
+      const cards = leavesOf([e]);
+      return cards.length ? [{ stack, label: e.label, cards, accent: folderAccent(cards, themeMode) }] : [];
+    };
+    const folders = catalog.flatMap((e, i) => (e.type === "category" && (e as CatalogCategory).label !== "Packs" ? block(e as CatalogCategory, [i]) : []));
+    const packsFolder = catalog.find((e): e is CatalogCategory => e.type === "category" && (e as CatalogCategory).label === "Packs");
+    const packs = (packsFolder?.children ?? []).flatMap((e) => {
+      if (e.type !== "category") return [];
+      const stack = drillStackToFolder(catalog, ["Packs", (e as CatalogCategory).label]);
+      return stack ? block(e as CatalogCategory, stack) : [];
+    });
+    return { folders, packs };
+  }, [catalog, themeMode]);
+
+  const blocks = (list: typeof folders) => (
+    <div className="fr-land__grid">
+      {list.map((f) => (
+        <section key={f.label} className="fr-land__folder" style={accentVars(f.accent)}>
+          <button type="button" className="fr-land__head" onClick={() => onFolder(f.stack)}>
+            <span>{f.label}</span>
+          </button>
+          <div className="fr-land__cards">
+            {f.cards.slice(0, 9).map((c) => (
+              <button key={c.type} type="button" className="fr-land__card" onClick={() => onCard(c)}>{c.label}</button>
+            ))}
+            {f.cards.length > 9 && (
+              <button type="button" className="fr-land__more" onClick={() => onFolder(f.stack)}>{f.cards.length - 9}&nbsp;more&nbsp;›</button>
+            )}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
 
   return (
     <div className="fr-land">
-      <div className="fr-land__grid">
-        {folders.map((f) => (
-          <section key={f.label} className="fr-land__folder"
-            style={accentVars(f.accent)}>
-            <button type="button" className="fr-land__head" onClick={() => onFolder(f.i)}>
-              <span>{f.label}</span>
-            </button>
-            <div className="fr-land__cards">
-              {f.cards.slice(0, 9).map((c) => (
-                <button key={c.type} type="button" className="fr-land__card" onClick={() => onCard(c)}>{c.label}</button>
-              ))}
-              {f.cards.length > 9 && (
-                <button type="button" className="fr-land__more" onClick={() => onFolder(f.i)}>{f.cards.length - 9}&nbsp;more&nbsp;›</button>
-              )}
-            </div>
-          </section>
-        ))}
-      </div>
+      {blocks(folders)}
+      {packs.length > 0 && <div className="fr-land__divider" role="separator" />}
+      {blocks(packs)}
     </div>
   );
 }
