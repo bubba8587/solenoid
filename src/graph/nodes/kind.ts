@@ -326,10 +326,7 @@ export function nodeWide(node: GraphNode): boolean {
   });
 }
 
-export function nodeMedium(node: GraphNode): boolean {
-  return Object.values(node.outputs ?? {}).some((p) => {
-    const s = (p as { socket?: GraphSocket } | undefined)?.socket;
-    return s instanceof SolenoidSocket &&
-      (s.dataType === "date" || s.dataType === "datelist" || s.dataType === "datecombo");
-  });
+/** The 210px tier; no card uses it today. */
+export function nodeMedium(_node: GraphNode): boolean {
+  return false;
 }
