@@ -321,6 +321,7 @@
   color: var(--fr-link);
   font-family: inherit;
   font-size: 12px;
+  white-space: nowrap;
   cursor: pointer;
   padding: 1px 5px 1px 3px;
   text-align: left;
@@ -588,11 +589,13 @@
 /* The landing: a folder per block, each in its cards' color */
 .fr-land { min-height: 100%; box-sizing: border-box; padding: 22px 28px 40px; background: var(--canvas-bg); }
 .fr-land__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 12px;
-  /* Each box is as tall as its cards, never stretched to its row. */
-  align-items: start;
+  /* Masonry: boxes as tall as their cards, packed down each column with no ragged row gaps. */
+  columns: 230px;
+  column-gap: 12px;
+}
+.fr-land__grid > .fr-land__folder {
+  break-inside: avoid;
+  margin-bottom: 12px;
 }
 /* A folder draws as a node card does: a neutral body border, and its header capped in its color on three sides. */
 .fr-land__folder {
@@ -621,7 +624,7 @@
   cursor: pointer;
 }
 
-.fr-land__cards { display: flex; flex-wrap: wrap; gap: 2px 10px; padding: 8px 12px 10px; }
+.fr-land__cards { position: relative; display: flex; flex-wrap: wrap; gap: 2px 10px; padding: 8px 12px 10px; }
 .fr-land__card, .fr-land__more {
   padding: 1px 0;
   border: 0;
@@ -632,6 +635,7 @@
   cursor: pointer;
 }
 .fr-land__card:hover { color: var(--node-accent, var(--accent)); text-decoration: underline; }
+.fr-land__more--probe { position: absolute; visibility: hidden; pointer-events: none; }
 .fr-land__more { color: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-ink), var(--text)); font-weight: 600; white-space: nowrap; }
 
 

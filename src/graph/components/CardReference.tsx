@@ -164,7 +164,7 @@ export function CardReference() {
       <nav className="fr-nav">
         <input
           className="solenoid-add-menu__search fr-nav__search"
-          placeholder="Search cards and formulas…"
+          placeholder="Search Functions…"
           value={query}
           spellCheck={false}
           onChange={(e) => setQuery(e.target.value)}
@@ -263,6 +263,54 @@ function accentVars(accent: string | null): React.CSSProperties | undefined {
     : undefined;
 }
 
+/** A box's cards, as many of its first ones as fill LAND_LINES lines with "N more ›" closing the last, so every box comes
+ *  out one height whatever its labels' lengths. Measured off the real wrap: all cards lay out, then the fit is kept. */
+const LAND_LINES = 4;
+function LandCards({ cards, onCard, onMore }: {
+  cards: NodeCatalogEntry[]; onCard: (leaf: NodeCatalogEntry) => void; onMore: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const [fit, setFit] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (fit !== null || !ref.current) return;
+    const box = ref.current;
+    const items = [...box.querySelectorAll<HTMLElement>(".fr-land__card")];
+    const tops = [...new Set(items.map((el) => el.offsetTop))].sort((x, y) => x - y);
+    if (tops.length <= LAND_LINES) { setFit(cards.length); return; }
+    const lastTop = tops[LAND_LINES - 1];
+    let n = items.findIndex((el) => el.offsetTop > lastTop);
+    const right = parseFloat(getComputedStyle(box).paddingRight) || 0;
+    const room = box.clientWidth - right;
+    const gap = parseFloat(getComputedStyle(box).columnGap) || 0;
+    const more = moreRef.current?.offsetWidth ?? 0;
+    // Drop cards off the last line until the more link fits after them.
+    while (n > 1 && items[n - 1].offsetTop === lastTop && items[n - 1].offsetLeft + items[n - 1].offsetWidth + gap + more > room) n--;
+    setFit(n);
+  }, [fit, cards]);
+  useEffect(() => {
+    const box = ref.current;
+    if (!box || typeof ResizeObserver === "undefined") return;
+    let width = box.clientWidth;
+    const ro = new ResizeObserver(() => { if (box.clientWidth !== width) { width = box.clientWidth; setFit(null); } });
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, []);
+  const shown = fit ?? cards.length;
+  return (
+    <div ref={ref} className="fr-land__cards">
+      {cards.slice(0, shown).map((c) => (
+        <button key={c.type} type="button" className="fr-land__card" onClick={() => onCard(c)}>{c.label}</button>
+      ))}
+      {fit === null ? (
+        <button ref={moreRef} type="button" className="fr-land__more fr-land__more--probe" tabIndex={-1} aria-hidden="true">{cards.length}&nbsp;more&nbsp;›</button>
+      ) : fit < cards.length && (
+        <button type="button" className="fr-land__more" onClick={onMore}>{cards.length - fit}&nbsp;more&nbsp;›</button>
+      )}
+    </div>
+  );
+}
+
 /** The landing: every top-level folder in its cards' color, with its first cards. */
 function Landing({ catalog, onCard, onFolder }: {
   catalog: CatalogEntry[]; onCard: (leaf: NodeCatalogEntry) => void; onFolder: (stack: number[]) => void;
@@ -291,14 +339,7 @@ function Landing({ catalog, onCard, onFolder }: {
           <button type="button" className="fr-land__head" onClick={() => onFolder(f.stack)}>
             <span>{f.label}</span>
           </button>
-          <div className="fr-land__cards">
-            {f.cards.slice(0, 9).map((c) => (
-              <button key={c.type} type="button" className="fr-land__card" onClick={() => onCard(c)}>{c.label}</button>
-            ))}
-            {f.cards.length > 9 && (
-              <button type="button" className="fr-land__more" onClick={() => onFolder(f.stack)}>{f.cards.length - 9}&nbsp;more&nbsp;›</button>
-            )}
-          </div>
+          <LandCards cards={f.cards} onCard={onCard} onMore={() => onFolder(f.stack)} />
         </section>
       ))}
     </div>
