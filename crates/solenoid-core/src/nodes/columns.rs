@@ -1016,7 +1016,7 @@ fn computed_column(c: &mut Call) -> Answer {
         }
         None => Vec::new(),
     };
-    let side_raw = |c: &Call, p: &str| c.read_num(p, 0.0);
+    let side_raw = |c: &Call, p: &str| c.read_variable(p);
     let def = match &lam {
         Some(l) => lambda_definition(l),
         None => ast.clone().map(|a| Definition { ast: a, fns: Default::default() }),
@@ -1135,7 +1135,7 @@ fn on_ref(c: &mut Call, r: &Rc<crate::frame_ref::FrameRef>) -> Result<Option<Vec
     let free = |p: &str| !columns.contains(&p) && !RESERVED.contains(&p);
     let mut united = false;
     let mut side = |p: &str| {
-        let v = c.read_num(p, 0.0);
+        let v = c.read_variable(p);
         if crate::unit_dims::holds_unit(&v) {
             united = true;
         }
@@ -1166,7 +1166,7 @@ fn on_ref(c: &mut Call, r: &Rc<crate::frame_ref::FrameRef>) -> Result<Option<Vec
     let cells: Vec<V> = outcome.cells.iter().map(super::frames::card_cell).collect();
     let def = Some(Definition { ast: ast.clone(), fns: Default::default() });
     let table = frame_table(&schema.columns);
-    let side = |p: &str| c.read_num(p, 0.0);
+    let side = |p: &str| c.read_variable(p);
     let plan = match plan_column_units(def.as_ref(), &table, &[], &side, parse_column_unit_from_header(&name).1) {
         Ok(p) if p.shown && !p.rescales() => p,
         _ => return Ok(None),

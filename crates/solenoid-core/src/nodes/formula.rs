@@ -206,7 +206,7 @@ fn expression(c: &mut Call) -> Answer {
     let units = c.field("varUnits").and_then(Json::as_object).cloned().unwrap_or_default();
     let mut env = Env::default();
     for v in &names {
-        let raw = c.read_num(v, 0.0);
+        let raw = c.read_variable(v);
         let read = match units.get(v).and_then(Json::as_str) {
             Some(u) if !u.is_empty() => read_in_declared_unit(&raw, u),
             _ => raw,

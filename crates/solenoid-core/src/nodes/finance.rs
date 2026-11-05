@@ -196,7 +196,7 @@ fn money_card(c: &mut Call, name: &str, money: &[&str], money_out: bool, body: i
 
 fn bitwise(c: &mut Call) -> Answer {
     let op = c.field_str("op", "bitand").to_ascii_uppercase();
-    let (a, b) = (c.read_num("a", 0.0), c.read_num("b", 0.0));
+    let (a, b) = (c.read("a"), c.read("b"));
     if matches!(a, V::Null) || matches!(b, V::Null) {
         return answer(c, V::Null);
     }
@@ -223,8 +223,8 @@ fn depreciation(c: &mut Call, op: &str) -> V {
     let blank = |vs: &[&V]| vs.iter().any(|v| matches!(v, V::Null));
     let mut result = V::Null;
     if op == "vdb" {
-        let start = c.read_num("start", 0.0);
-        let end = c.read_num("end", 0.0);
+        let start = c.read("start");
+        let end = c.read("end");
         let factor = or(read_role(c, "factor", Role::Setting(V::Undef)), V::Num(2.0));
         if !blank(&[&cost, &salvage, &life, &start, &end, &factor]) {
             result = core_call("VDB", &[cost, salvage, life, start, end, factor]);
@@ -240,7 +240,7 @@ fn depreciation(c: &mut Call, op: &str) -> V {
                     "syd" => result = core_call("SYD", &[cost, salvage, life, per]),
                     "ddb" => result = core_call("DDB", &[cost, salvage, life, per, factor]),
                     "db" => {
-                        let month = c.read_num("month", 12.0);
+                        let month = c.read("month");
                         if !matches!(month, V::Null) {
                             result = core_call("DB", &[cost, salvage, life, per, month]);
                         }
@@ -257,7 +257,7 @@ fn depreciation(c: &mut Call, op: &str) -> V {
 }
 
 fn npv(c: &mut Call, dated: bool) -> V {
-    let rate = c.read_num("rate", 0.1);
+    let rate = c.read("rate");
     if dated {
         if matches!(rate, V::Null) {
             return V::Null;
@@ -302,8 +302,8 @@ fn irr(c: &mut Call, dated: bool) -> V {
 
 fn mirr(c: &mut Call) -> V {
     let flows = cash_prep(&first(c, "list"));
-    let fin_rate = c.read_num("finrate", 0.1);
-    let rein_rate = c.read_num("reinrate", 0.12);
+    let fin_rate = c.read("finrate");
+    let rein_rate = c.read("reinrate");
     let flows = match flows {
         Ok(f) => f,
         Err(e) => return e,
@@ -315,7 +315,7 @@ fn mirr(c: &mut Call) -> V {
 }
 
 fn fv_schedule(c: &mut Call) -> V {
-    let pv = c.read_num("pv", 1000.0);
+    let pv = c.read("pv");
     let rates = match cash_prep(&first(c, "schedule")) {
         Ok(r) => r,
         Err(e) => return e,
@@ -334,7 +334,7 @@ fn fv_schedule(c: &mut Call) -> V {
 }
 
 fn ispmt(c: &mut Call) -> V {
-    let vals = [c.read_num("rate", 0.0), c.read_num("per", 1.0), c.read_num("nper", 0.0), c.read_num("pv", 0.0)];
+    let vals = [c.read("rate"), c.read("per"), c.read("nper"), c.read("pv")];
     if vals.iter().any(|v| matches!(v, V::Null)) {
         return V::Null;
     }
@@ -350,8 +350,8 @@ fn ispmt(c: &mut Call) -> V {
 
 fn dollar(c: &mut Call) -> Answer {
     let de = c.field_str("op", "dollarde") == "dollarde";
-    let dollar = c.read_num("dollar", 0.0);
-    let fraction_raw = c.read_num("fraction", 32.0);
+    let dollar = c.read("dollar");
+    let fraction_raw = c.read("fraction");
     if matches!(dollar, V::Null) || matches!(fraction_raw, V::Null) {
         return answer(c, V::Null);
     }
@@ -471,8 +471,8 @@ fn accrued_interest(c: &mut Call, periodic: bool) -> V {
     if nullish(&is) || nullish(&ss) {
         return V::Null;
     }
-    let rate = c.read_num("rate", 0.06);
-    let par = c.read_num("par", 1000.0);
+    let rate = c.read("rate");
+    let par = c.read("par");
     let basis = read_role(c, "basis", Role::Setting(V::Num(0.0)));
     if matches!(rate, V::Null) || matches!(par, V::Null) {
         return V::Null;
@@ -489,11 +489,11 @@ fn payment_breakdown(c: &mut Call, op: &str) -> V {
     let ty = if c.field_str("paymentTiming", "end") == "beg" { 1.0 } else { 0.0 };
     if op == "ipmt" || op == "ppmt" {
         let vals = [
-            c.read_num("rate", 0.0),
-            c.read_num("per", 1.0),
-            c.read_num("nper", 0.0),
-            c.read_num("pv", 0.0),
-            c.read_num("fv", 0.0),
+            c.read("rate"),
+            c.read("per"),
+            c.read("nper"),
+            c.read("pv"),
+            c.read("fv"),
         ];
         if vals.iter().any(|v| matches!(v, V::Null)) {
             return V::Null;
@@ -527,11 +527,11 @@ fn payment_breakdown(c: &mut Call, op: &str) -> V {
         return if r.is_finite() { V::Num(r) } else { V::Null };
     }
     let vals = [
-        c.read_num("rate", 0.0),
-        c.read_num("nper", 0.0),
-        c.read_num("pv", 0.0),
-        c.read_num("start", 1.0),
-        c.read_num("end", 1.0),
+        c.read("rate"),
+        c.read("nper"),
+        c.read("pv"),
+        c.read("start"),
+        c.read("end"),
     ];
     if vals.iter().any(|v| matches!(v, V::Null)) {
         return V::Null;
@@ -548,8 +548,8 @@ fn duration(c: &mut Call) -> Answer {
     if nullish(&s) || nullish(&m) {
         return answer(c, V::Null);
     }
-    let coupon = c.read_num("coupon", 0.08);
-    let yld = c.read_num("yld", 0.09);
+    let coupon = c.read("coupon");
+    let yld = c.read("yld");
     let freq = read_role(c, "frequency", Role::Setting(V::Num(2.0)));
     let basis = read_role(c, "basis", Role::Setting(V::Num(0.0)));
     if matches!(coupon, V::Null) || matches!(yld, V::Null) {
@@ -566,14 +566,14 @@ fn bond_pricing(c: &mut Call) -> Answer {
     if nullish(&s) || nullish(&m) {
         return answer(c, V::Null);
     }
-    let rate = c.read_num("rate", 0.065);
-    let redemption = c.read_num("redemption", 100.0);
+    let rate = c.read("rate");
+    let redemption = c.read("redemption");
     let freq = read_role(c, "frequency", Role::Setting(V::Num(2.0)));
     if matches!(rate, V::Null) || matches!(redemption, V::Null) {
         return answer(c, V::Null);
     }
     let is_price = matches!(op.as_str(), "price" | "oddfprice" | "oddlprice");
-    let yp = if is_price { c.read_num("yld", 0.07) } else { c.read_num("pr", 97.5) };
+    let yp = if is_price { c.read("yld") } else { c.read("pr") };
     if matches!(yp, V::Null) {
         return answer(c, V::Null);
     }
@@ -622,8 +622,8 @@ fn simple_returns(prices: &V) -> V {
 fn returns(c: &mut Call) -> Answer {
     let op = c.field_str("op", "log").to_string();
     let arr = first(c, "list");
-    let rf = c.read_num("rf", 0.0);
-    let periods = c.read_num("periods", 1.0);
+    let rf = c.read("rf");
+    let periods = c.read("periods");
     if [&arr, &rf, &periods].iter().any(|v| matches!(v, V::Null)) {
         return answer(c, V::Null);
     }

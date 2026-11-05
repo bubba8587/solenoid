@@ -315,10 +315,11 @@ impl Call {
         self.read_input(key, self.unwired(key))
     }
 
-    /// Unwired, its field's value, else `dflt`; wired, the first cable's value.
-    pub fn read_num(&self, key: &str, dflt: f64) -> V {
+    /// A formula variable (Formula card, LAMBDA, a computed column's side variables): unwired and empty, 0. The
+    /// variables are their own kind of nothing, not yet walked (`docs/p7-walk.md` § Notation).
+    pub fn read_variable(&self, key: &str) -> V {
         let lit = match self.unwired(key) {
-            V::Undef | V::Null => V::Num(dflt),
+            V::Undef | V::Null => V::Num(0.0),
             v => v,
         };
         self.read_input(key, lit)

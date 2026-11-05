@@ -71,8 +71,8 @@ fn label(c: &Call) -> String {
 }
 
 fn complex_from(c: &mut Call) -> Answer {
-    let re = c.read_num("re", 0.0);
-    let im = c.read_num("im", 0.0);
+    let re = c.read("re");
+    let im = c.read("im");
     let z = broadcast_complex(&[re, im], |o| V::Cx(num(o[0]), num(o[1])));
     c.show("cachedResult", z.clone());
     Ok(vec![("z".into(), Cv::from(z))])
@@ -138,7 +138,7 @@ fn complex_binary(c: &mut Call) -> Answer {
 
 fn complex_power(c: &mut Call) -> Answer {
     let z = cx_op(&first(c, "z"), &label(c));
-    let n = c.read_num("n", 2.0);
+    let n = c.read("n");
     let result = broadcast_complex(&[z, n], |o| match o[1] {
         // `cx_pow` on a NaN exponent, which the formula refuses.
         V::Num(p) if p.is_nan() => match parts(o[0]) {

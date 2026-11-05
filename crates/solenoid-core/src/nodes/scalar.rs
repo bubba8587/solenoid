@@ -129,7 +129,7 @@ fn arithmetic(c: &mut Call) -> Answer {
 }
 
 fn base_convert(c: &mut Call) -> Answer {
-    let raw = c.read_num("value", 0.0);
+    let raw = c.read("value");
     let from_raw = read_role(c, "from", &Role::Required);
     let to_raw = read_role(c, "to", &Role::Required);
     let done = |c: &mut Call, shown: V, result: V| {
@@ -266,8 +266,8 @@ fn gcd(c: &mut Call) -> Answer {
 fn combinatorics(c: &mut Call) -> Answer {
     let op = c.field_str("op", "combin").to_string();
     let uses_k = op != "fact" && op != "factdouble";
-    let n = c.read_num("n", 0.0);
-    let k = if uses_k { c.read_num("k", 0.0) } else { V::Num(0.0) };
+    let n = c.read("n");
+    let k = if uses_k { c.read("k") } else { V::Num(0.0) };
     if matches!(n, V::Null) || matches!(k, V::Null) {
         c.show("cachedResult", V::Null);
         return Ok(vec![("result".into(), Cv::from(V::Null))]);
@@ -351,9 +351,9 @@ fn sum_product(c: &mut Call) -> Answer {
 }
 
 fn series_sum(c: &mut Call) -> Answer {
-    let x = c.read_num("x", 1.0);
-    let n = c.read_num("n", 0.0);
-    let m = c.read_num("m", 1.0);
+    let x = c.read("x");
+    let n = c.read("n");
+    let m = c.read("m");
     let coef = first(c, "coef");
     let result = match coef {
         V::List(cs) if !cs.is_empty() && ![&x, &n, &m].iter().any(|v| matches!(v, V::Null)) => {
@@ -389,7 +389,7 @@ fn multinomial(c: &mut Call) -> Answer {
 
 fn bessel(c: &mut Call) -> Answer {
     let op = c.field_str("op", "besselj").to_uppercase();
-    let x = c.read_num("x", 1.0);
+    let x = c.read("x");
     let n = read_role(c, "n", &Role::Setting(V::Num(0.0)));
     let result = if matches!(x, V::Null) {
         V::Null

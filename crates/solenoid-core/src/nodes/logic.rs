@@ -230,7 +230,7 @@ fn boolean_op(c: &mut Call) -> Answer {
         Op::Xor => "XOR",
         Op::Xnor => "XNOR",
     };
-    let operands: Vec<V> = keys_from(c, "a").iter().map(|k| c.read_num(k, 0.0)).collect();
+    let operands: Vec<V> = keys_from(c, "a").iter().map(|k| c.read(k)).collect();
     let result = broadcast_el(&operands, |xs| {
         // An item holding text answers as the op's formula answers it ([[C17]] shareImpl, [[D110]] logicRefusesText).
         if xs.iter().any(|x| super::list::is_text(x)) {
@@ -265,7 +265,7 @@ fn boolean_op(c: &mut Call) -> Answer {
 }
 
 fn not(c: &mut Call) -> Answer {
-    let v = c.read_num("in", 0.0);
+    let v = c.read("in");
     let result = broadcast_el(&[v], |o| tri(tri_bool(o[0]).map(|b| !b)));
     answer(c, "result", result)
 }

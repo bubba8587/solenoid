@@ -86,7 +86,7 @@ fn lambda(c: &mut Call) -> Answer {
     let mut names = variables(&ast);
     at_col_names(&ast, &mut names);
     let captured: Vec<String> = names.into_iter().filter(|n| !params.contains(n)).collect();
-    let units: Vec<V> = captured.iter().map(|v| c.read_num(v, 0.0)).collect();
+    let units: Vec<V> = captured.iter().map(|v| c.read_variable(v)).collect();
     // The body reads its captures unit-blind; a computed column reads their units ([[C25]] firstClassUnits).
     let env: Env = captured.iter().cloned().zip(units.iter().map(strip_unit_cells)).collect();
     let descriptions =

@@ -919,9 +919,9 @@ fn js_arith(v: &V) -> f64 {
     }
 }
 
-/// As `read_num`, a blank as `dflt` too.
+/// The input, with a wired blank read as `dflt`; an empty field reads its declared Fallback.
 fn read_or(c: &Call, key: &str, dflt: f64) -> V {
-    match c.read_num(key, dflt) {
+    match c.read(key) {
         V::Null | V::Undef => V::Num(dflt),
         v => v,
     }
@@ -1755,7 +1755,7 @@ fn earned_value_card(c: &mut Call) -> Answer {
 
 fn scan_lambda(c: &mut Call) -> Answer {
     use super::matrix::{body_done, fn_error, holds_unit_cell, lambda_done, resolve, result_cell};
-    let initial = c.read_num("initial", 0.0);
+    let initial = c.read("initial");
     let m = super::matrix::any_matrix(&super::list::slot(c, "table"));
     let body = match resolve(c, "acc + value", &["acc", "value", "step"]) {
         Ok(b) => b,
@@ -1826,7 +1826,7 @@ fn ode_integrate(c: &mut Call) -> Answer {
         }
     };
     c.show("cachedError", V::Null);
-    let (y0, t0, t1) = (c.read_num("y0", 1.0), c.read_num("t0", 0.0), c.read_num("t1", 1.0));
+    let (y0, t0, t1) = (c.read("y0"), c.read("t0"), c.read("t1"));
     let steps = read_role(c, "steps", &Role::Setting(V::Num(100.0)));
     if [&y0, &t0, &t1].iter().any(|v| matches!(v, V::Null)) {
         c.show("cachedResult", V::Null);

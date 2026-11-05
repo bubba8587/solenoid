@@ -263,7 +263,7 @@ fn amortization(c: &mut Call) -> Answer {
             return Ok(vec![("frame".into(), Cv::from(e))]);
         }
     };
-    let [rate, nper, pv, fv] = ["rate", "nper", "pv", "fv"].map(|k| c.read_num(k, 0.0));
+    let [rate, nper, pv, fv] = ["rate", "nper", "pv", "fv"].map(|k| c.read(k));
     if [&rate, &nper, &pv, &fv].iter().any(|v| matches!(v, V::Null)) {
         c.show("cachedResult", V::Null);
         return Ok(vec![("frame".into(), Cv::from(V::Null))]);
@@ -635,7 +635,7 @@ fn without_dates(f: &Frame) -> Frame {
 fn allocator(c: &mut Call) -> Answer {
     let Some(f) = frame_in(c, "categories") else { return shown_frame(c, "frame", V::Null) };
     let f = without_dates(&f);
-    let amount = super::list::or(c.read_num("amount", 0.0), V::Num(0.0));
+    let amount = super::list::or(c.read("amount"), V::Num(0.0));
     if amount.is_sol_error() {
         return shown_frame(c, "frame", amount);
     }
@@ -667,7 +667,7 @@ fn month_start() -> f64 {
 fn payoff_planner(c: &mut Call) -> Answer {
     let Some(f) = frame_in(c, "debts") else { return shown_frame(c, "frame", V::Null) };
     let f = without_dates(&f);
-    let extra = super::list::or(c.read_num("extra", 0.0), V::Num(0.0));
+    let extra = super::list::or(c.read("extra"), V::Num(0.0));
     let start = match c.wired("start") {
         None => Some(month_start()),
         Some(w) => match w.first() {
@@ -758,7 +758,7 @@ fn choice_ladder(c: &mut Call) -> Answer {
         Ok(vec![("frame".into(), frame), ("chart".into(), chart)])
     };
     let Some(f) = frame_in(c, "frame") else { return out(c, Cv::NULL, Cv::NULL) };
-    let close = super::list::or(c.read_num("close", 0.05), V::Num(0.0));
+    let close = super::list::or(c.read("close"), V::Num(0.0));
     let (w, l) = (frame_in(c, "weights").map(|w| to_core(&w)), frame_in(c, "limits").map(|l| to_core(&l)));
     let choices: Vec<String> = c
         .field("choices")
@@ -1959,7 +1959,7 @@ fn fallback_date(fb: &str) -> f64 {
 fn xlookup_across(c: &mut Call, cube: &Cube, lookup_raw: &V, fb: &str) -> Answer {
     let rows = cube_row_count(cube);
     let row_of = |c: &Call, key: &str| -> Result<Option<usize>, V> {
-        let n = super::kit::num(&c.read_num(key, 0.0));
+        let n = super::kit::num(&c.read(key));
         if !n.is_finite() || n == 0.0 {
             return Ok(None);
         }

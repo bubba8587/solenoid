@@ -483,7 +483,7 @@ fn expect(c: &mut Call) -> Answer {
     }
     let on = |k: &str| c.field(k).and_then(serde_json::Value::as_bool).unwrap_or(false);
     let (min, max) = if c.input_type("min") != Some("date") {
-        (c.read_num("min", 0.0), c.read_num("max", 100.0))
+        (c.read("min"), c.read("max"))
     } else if on("checkRange") {
         (date_bound(c, "min")?, date_bound(c, "max")?)
     } else {

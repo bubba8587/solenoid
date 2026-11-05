@@ -582,7 +582,7 @@ fn by_axis(c: &mut Call) -> Answer {
 }
 
 fn reduce_lambda(c: &mut Call) -> Answer {
-    let initial = c.read_num("initial", 0.0);
+    let initial = c.read("initial");
     let m = any_matrix(&slot(c, "table"));
     let body = match resolve(c, "acc + value", &["acc", "value", "step"]) {
         Ok(b) => b,
@@ -607,8 +607,8 @@ fn reduce_lambda(c: &mut Call) -> Answer {
 
 fn make_array(c: &mut Call) -> Answer {
     let count = |v: V| if matches!(v, V::Null) { 0.0 } else { num(&v).floor() };
-    let rows = count(c.read_num("rows", 0.0));
-    let cols = count(c.read_num("cols", 0.0));
+    let rows = count(c.read("rows"));
+    let cols = count(c.read("cols"));
     let body = match resolve(c, "row * col", &["row", "col"]) {
         Ok(b) => b,
         Err(e) => return fn_error(c, e),

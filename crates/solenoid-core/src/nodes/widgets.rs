@@ -872,7 +872,7 @@ fn cable_switch(c: &mut Call) -> Answer {
 
 fn rand_between(c: &mut Call) -> Answer {
     let roll = c.rolls("rawRoll", 1, false)[0];
-    let (b1, b2) = (c.read_num("bound1", 0.0), c.read_num("bound2", 1.0));
+    let (b1, b2) = (c.read("bound1"), c.read("bound2"));
     let out = match (&b1, &b2) {
         (V::Null, _) | (_, V::Null) => V::Null,
         (V::Err(_), _) => b1.clone(),

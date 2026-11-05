@@ -41,11 +41,11 @@ fn first(c: &Call, key: &str) -> V {
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     let result = match kind {
         "DateConstructNode" => {
-            let args = [c.read_num("year", 2024.0), c.read_num("month", 1.0), c.read_num("day", 1.0)];
+            let args = [c.read("year"), c.read("month"), c.read("day")];
             broadcast_err(&args, |o| core_call("DATE", &[o[0].clone(), o[1].clone(), o[2].clone()]))
         }
         "TimeConstructNode" => {
-            let args = [c.read_num("hour", 0.0), c.read_num("minute", 0.0), c.read_num("second", 0.0)];
+            let args = [c.read("hour"), c.read("minute"), c.read("second")];
             broadcast(&args, |o| core_call("TIME", &[o[0].clone(), o[1].clone(), o[2].clone()]))
         }
         "DatePartNode" => {
@@ -68,7 +68,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "TodayNowNode" => core_call(if c.field_str("op", "today") == "today" { "TODAY" } else { "NOW" }, &[]),
         "DateAddNode" => {
             let name = if c.field_str("op", "edate") == "edate" { "EDATE" } else { "EOMONTH" };
-            let args = [first(c, "start"), c.read_num("months", 0.0)];
+            let args = [first(c, "start"), c.read("months")];
             let floored = |v: &V| match v {
                 V::Date(n) => V::Date(n.floor()),
                 v => V::Num(js_floor(v)),
@@ -78,7 +78,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "WorkdaysNode" => workdays(c),
         "EpochNode" => {
             let from = c.field_str("op", "from") == "from";
-            let v = if from { c.read_num("value", 0.0) } else { first(c, "value") };
+            let v = if from { c.read("value") } else { first(c, "value") };
             let name = if from { "FROMEPOCH" } else { "TOEPOCH" };
             let unit = V::str(c.field_str("unit", "s"));
             broadcast(&[v], |o| core_call(name, &[o[0].clone(), unit.clone()]))
@@ -236,7 +236,7 @@ fn workdays(c: &Call) -> V {
     let hol = list(hol.into_iter().map(V::Date).collect());
     let workday = c.field_str("op", "workday") == "workday";
     let name = if workday { "WORKDAY.INTL" } else { "NETWORKDAYS.INTL" };
-    let x = if workday { c.read_num("days", 5.0) } else { first(c, "end") };
+    let x = if workday { c.read("days") } else { first(c, "end") };
     broadcast_err(&[first(c, "start"), x], |o| {
         core_call(name, &[o[0].clone(), o[1].clone(), V::Num(code), hol.clone()])
     })

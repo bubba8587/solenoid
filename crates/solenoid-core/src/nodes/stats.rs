@@ -375,9 +375,9 @@ fn fisher(c: &mut Call) -> Answer {
 
 fn confidence(c: &mut Call) -> Answer {
     let t = c.field_str("op", "norm") == "t";
-    let alpha = c.read_num("alpha", 0.05);
-    let stdev = c.read_num("stdev", 1.0);
-    let n_raw = c.read_num("n", 30.0);
+    let alpha = c.read("alpha");
+    let stdev = c.read("stdev");
+    let n_raw = c.read("n");
     if [&alpha, &stdev, &n_raw].iter().any(|x| matches!(x, V::Null)) {
         return answer(c, V::Null);
     }
@@ -399,13 +399,13 @@ fn binom_pmf(k: f64, n: f64, p: &V) -> Option<f64> {
 }
 
 fn binom_dist_range(c: &mut Call) -> Answer {
-    let n_raw = c.read_num("n", 10.0);
-    let p = c.read_num("p", 0.5);
+    let n_raw = c.read("n");
+    let p = c.read("p");
     if matches!(n_raw, V::Null) || matches!(p, V::Null) {
         return answer(c, V::Null);
     }
     let n = js_num(&n_raw).floor();
-    let lo_raw = c.read_num("lo", 0.0);
+    let lo_raw = c.read("lo");
     let hi_raw = c.read_input("hi", or(c.unwired("hi"), V::Num(n)));
     if matches!(lo_raw, V::Null) || matches!(hi_raw, V::Null) {
         return answer(c, V::Null);
@@ -436,8 +436,8 @@ fn binom_dist_range(c: &mut Call) -> Answer {
 fn prob(c: &mut Call) -> Answer {
     let range = first(c, "range");
     let probs = first(c, "probs");
-    let lo = c.read_num("lo", 0.0);
-    let hi = c.read_num("hi", 1.0);
+    let lo = c.read("lo");
+    let hi = c.read("hi");
     if matches!(lo, V::Null) || matches!(hi, V::Null) {
         return answer(c, V::Null);
     }
@@ -509,7 +509,7 @@ fn hypothesis_test(c: &mut Call) -> Answer {
             }
         }
         "proptest" => {
-            let args = [c.read_num("x1", 0.0), c.read_num("n1", 1.0), c.read_num("x2", 0.0), c.read_num("n2", 1.0)];
+            let args = [c.read("x1"), c.read("n1"), c.read("x2"), c.read("n2")];
             if args.iter().any(|v| matches!(v, V::Null)) {
                 V::Null
             } else {
@@ -517,7 +517,7 @@ fn hypothesis_test(c: &mut Call) -> Answer {
             }
         }
         "binomtest" => {
-            let args = [c.read_num("k", 0.0), c.read_num("n", 1.0), c.read_num("p0", 0.5)];
+            let args = [c.read("k"), c.read("n"), c.read("p0")];
             if args.iter().any(|v| matches!(v, V::Null)) {
                 V::Null
             } else {
@@ -525,7 +525,7 @@ fn hypothesis_test(c: &mut Call) -> Answer {
             }
         }
         "z" => {
-            let x = c.read_num("x", 0.0);
+            let x = c.read("x");
             let sigma = c.read("sigma");
             let xs: Option<Vec<f64>> = match &a {
                 V::List(l) => Some(l.iter().filter_map(finite_num).collect()),
@@ -872,7 +872,7 @@ fn distributions(c: &mut Call) -> Answer {
     let read = |c: &Call, k: &str| c.read(k);
     let ps: Vec<V> = params.iter().map(|k| read(c, k)).collect();
     let result = if form == "sample" {
-        let count = c.read_num("count", 100.0);
+        let count = c.read("count");
         if matches!(count, V::Null) || ps.iter().any(|v| matches!(v, V::Null)) {
             V::Null
         } else {

@@ -193,12 +193,12 @@ fn series(c: &mut Call) -> Answer {
         }
         "linspace" | "geometric" => {
             let start = required(c, "start");
-            let (key, dflt, name, fname) = if op == "linspace" {
-                ("end", 1.0, "Linspace", "LINSPACE")
+            let (key, name, fname) = if op == "linspace" {
+                ("end", "Linspace", "LINSPACE")
             } else {
-                ("ratio", 2.0, "Geometric", "GEOMETRIC")
+                ("ratio", "Geometric", "GEOMETRIC")
             };
-            let other = c.read_num(key, dflt);
+            let other = c.read(key);
             let n = required(c, "count");
             if let Some(e) = first_error(&[&start, &n]) {
                 e
@@ -221,7 +221,7 @@ fn series(c: &mut Call) -> Answer {
             }
         }
         _ => {
-            let v = c.read_num("value", 0.0);
+            let v = c.read("value");
             let n = required(c, "count");
             if n.is_sol_error() {
                 n
@@ -300,7 +300,7 @@ fn shift(c: &mut Call) -> Answer {
 fn bin(c: &mut Call) -> Answer {
     let arr = list_in(c, "list");
     let r = if c.field_str("mode", "breaks") == "quantiles" {
-        match c.read_num("n", 4.0) {
+        match c.read("n") {
             V::Null => empty(),
             n => core_call("NTILE", &[arr, n]),
         }
@@ -510,7 +510,7 @@ fn interleave(c: &mut Call) -> Answer {
 fn pad(c: &mut Call) -> Answer {
     let arr = list_in(c, "list");
     let n = required(c, "n");
-    let fill = c.read_num("fill", 0.0);
+    let fill = c.read("fill");
     if n.is_sol_error() {
         c.show("cachedList", V::Null);
         return Ok(vec![("result".into(), Cv::from(n))]);
@@ -548,7 +548,7 @@ fn fill(c: &mut Call) -> Answer {
     if !present(&arr) {
         return shown(c, "cachedList", "result", empty());
     }
-    let constant = c.read_num("value", 0.0);
+    let constant = c.read("value");
     let is_else = |k: &str| k.len() > 1 && k.starts_with('e') && k[1..].bytes().all(|b| b.is_ascii_digit());
     let fallbacks: Vec<V> = c
         .sockets
@@ -1353,12 +1353,14 @@ fn number_column(name: &str, values: Vec<V>) -> Column {
 fn outliers(c: &mut Call) -> Answer {
     let method = c.field_str("method", "z").to_string();
     let arr = slot(c, "list");
-    let dflt = match method.as_str() {
-        "iqr" => 1.5,
-        "mad" => 3.5,
-        _ => 3.0,
+    let t = match c.read("threshold") {
+        V::Undef => V::Num(match method.as_str() {
+            "iqr" => 1.5,
+            "mad" => 3.5,
+            _ => 3.0,
+        }),
+        t => t,
     };
-    let t = c.read_num("threshold", dflt);
     if nullish(&arr) || matches!(t, V::Null) {
         return shown(c, "cachedResult", "result", V::Null);
     }

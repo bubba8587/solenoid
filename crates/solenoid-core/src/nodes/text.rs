@@ -150,12 +150,12 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "RomanArabicNode" => roman_arabic(c),
         "FixedNode" => {
             let no_commas = V::Bool(c.field_str("noCommas", "commas") == "no_commas");
-            let args = [c.read_num("number", 0.0), left_out_as(setting(c, "decimals", V::Undef), 2.0)];
+            let args = [c.read("number"), left_out_as(setting(c, "decimals", V::Undef), 2.0)];
             let r = broadcast_err(&args, |o| core_call("FIXED", &[o[0].clone(), o[1].clone(), no_commas.clone()]));
             done(c, "cachedText", r)
         }
         "FormatDollarNode" => {
-            let args = [c.read_num("number", 0.0), left_out_as(setting(c, "decimals", V::Undef), 2.0)];
+            let args = [c.read("number"), left_out_as(setting(c, "decimals", V::Undef), 2.0)];
             let r = broadcast_err(&args, |o| core_call("DOLLAR", &[o[0].clone(), o[1].clone()]));
             done(c, "cachedText", r)
         }
@@ -303,7 +303,7 @@ fn rept(c: &mut Call) -> Answer {
 
 fn char_code(c: &mut Call) -> Answer {
     let r = if c.field_str("op", "char") == "char" {
-        broadcast_err(&[c.read_num("code", 65.0)], |o| core_call("CHAR", &[o[0].clone()]))
+        broadcast_err(&[c.read("code")], |o| core_call("CHAR", &[o[0].clone()]))
     } else {
         broadcast_err(&[str_val(c, "text")], |o| core_call("CODE", &[o[0].clone()]))
     };
@@ -408,7 +408,7 @@ fn arabic(raw: &V) -> V {
 
 fn roman_arabic(c: &mut Call) -> Answer {
     let r = if c.field_str("op", "roman") == "roman" {
-        broadcast_err(&[c.read_num("number", 1.0)], |o| roman(o[0]))
+        broadcast_err(&[c.read("number")], |o| roman(o[0]))
     } else {
         broadcast_err(&[str_val(c, "text")], |o| arabic(o[0]))
     };
