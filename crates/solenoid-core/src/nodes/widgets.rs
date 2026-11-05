@@ -99,7 +99,17 @@ fn value_input(c: &mut Call) -> Answer {
     let value = c.field_str("value", "").to_string();
     let out = match c.field_str("op", "number") {
         "string" => V::str(&value),
-        "logical" => V::Bool(trim_space(&value).eq_ignore_ascii_case("true")),
+        "logical" => {
+            // The card keeps its type: TRUE or FALSE reads, blank is FALSE, anything else is #VALUE!.
+            let t = trim_space(&value);
+            if t.is_empty() || t.eq_ignore_ascii_case("false") {
+                V::Bool(false)
+            } else if t.eq_ignore_ascii_case("true") {
+                V::Bool(true)
+            } else {
+                err(ErrorCode::Value, format!("\"{t}\" isn't TRUE or FALSE"))
+            }
+        }
         "number" => {
             let t = trim_space(&value);
             let n = if t.is_empty() { 0.0 } else { crate::value_kinds::decimal_from_text(t) };
@@ -134,18 +144,22 @@ fn value_input_date(c: &mut Call, value: &str) -> V {
     use crate::excel_criteria::{parse_date, DateReading};
     let text = trim_space(value).to_string();
     let allowed = matches!(c.field("relativeDates"), Some(Json::Bool(true)));
-    if !(allowed && crate::relative_date::is_relative(&text)) {
+    let relative = crate::relative_date::is_relative(&text);
+    if !(allowed && relative) {
         forget_relative(c);
         return match parse_date(&text) {
             DateReading::Serial(s) if s.is_finite() => V::Num(s.floor()),
             DateReading::Ambiguous(e) => V::err(e),
-            _ => V::Null,
+            // Blank stays blank, and so does a relative phrase while Settings turns them off ([[C44]] dateSerials);
+            // other text the card can't read as a date is #VALUE!, as a Number card's is.
+            _ if text.is_empty() || relative => V::Null,
+            _ => err(ErrorCode::Value, format!("\"{text}\" isn't a date")),
         };
     }
     let now = crate::excel_functions::clock_instant();
     let Some(serial) = crate::relative_date::relative_date(&text, now) else {
         forget_relative(c);
-        return V::Null;
+        return err(ErrorCode::Value, format!("\"{text}\" isn't a date this can read"));
     };
     let serial = serial.floor();
     let last_text = c.field("lastRelativeText").and_then(Json::as_str).map(str::to_string);

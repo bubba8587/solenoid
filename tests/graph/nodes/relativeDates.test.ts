@@ -5,6 +5,7 @@ import { parseDate, parseDateToSerial, isRelativeDateText } from "../../../src/g
 import { ValueInputNode } from "../../../src/graph/nodes/control";
 import { settingsStore } from "../../../src/graph/settingsStore";
 import { alertStore } from "../../../src/graph/alertStore";
+import { isSolError } from "../../../src/graph/errorValue";
 
 const d = (s: string) => parseDateToSerial(s);
 const wed = new Date(2026, 2, 18, 15, 0, 0); // Wed 18 Mar 2026, local
@@ -43,6 +44,11 @@ describe("Value Input's Date mode under the same opt-in", () => {
   it("off: a relative phrase is a blank", () => {
     settingsStore.set("relativeDates", false);
     expect(new ValueInputNode({ op: "date", value: "tomorrow" }).data().value).toBeNull();
+  });
+  it("on: a phrase it can't work out is #VALUE!, as other unreadable date text is", () => {
+    settingsStore.set("relativeDates", true);
+    const v = new ValueInputNode({ op: "date", value: "next blursday" }).data().value;
+    expect(isSolError(v) && v.code).toBe("#VALUE!");
   });
   it("on: it resolves, and alerts when the resolved day moves", () => {
     settingsStore.set("relativeDates", true);

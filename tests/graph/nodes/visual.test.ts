@@ -335,11 +335,20 @@ describe("histogram2d (numpy histogram2d)", () => {
 });
 
 describe("control nodes", () => {
+  it("a logical Value Input reads TRUE or FALSE and refuses other text", () => {
+    const logical = (value: string) => new ValueInputNode({ op: "logical", value }).data().value;
+    expect(logical("true")).toBe(true);
+    expect(logical("")).toBe(false);
+    const bad = logical("yes");
+    expect(isSolError(bad) && bad.code).toBe("#VALUE!");
+  });
   it("a date Value Input derives its date from the raw source text", () => {
     const date = (value?: string) => new ValueInputNode({ op: "date", value });
     expect(date("20-Mar-2026").data().value).toEqual(solDate(Math.floor(parseDate("20-Mar-2026") as number)));
     expect(date("").data()).toEqual({ value: null });
-    expect(date("not a date").data()).toEqual({ value: null });
+    // The card keeps its type: text it can't read as a date is #VALUE!, as a Number card's is.
+    const bad = date("not a date").data().value;
+    expect(isSolError(bad) && bad.code).toBe("#VALUE!");
     // default is today
     expect(date().data().value).toEqual(solDate(Math.floor(jsDateToSerial(new Date()))));
   });
