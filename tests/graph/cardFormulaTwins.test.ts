@@ -93,6 +93,6 @@ describe("cards answer as their formula twins", () => {
         misses.push(`${JSON.stringify(vals)}: card ${JSON.stringify(shape(card))}, formula ${JSON.stringify(shape(formula))}`);
       }
     }
-    expect(misses.slice(0, 3)).toEqual([]);
+    expect(misses.length, misses.slice(0, 3).join("\n")).toBe(0);
   });
 });
