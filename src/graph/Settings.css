@@ -112,6 +112,21 @@
   color: var(--text-muted);
 }
 
+.solenoid-settings__row--pack { cursor: default; }
+.solenoid-settings__pack-link {
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.solenoid-settings__pack-arrow { color: var(--text-dim); }
+.solenoid-settings__pack-link:hover .solenoid-settings__row-label,
+.solenoid-settings__pack-link:focus-visible .solenoid-settings__row-label { color: var(--accent); }
+.solenoid-settings__pack-link:hover .solenoid-settings__pack-arrow { color: var(--accent); }
+
 .solenoid-settings__acc { border-bottom: 1px solid var(--border-subtle); }
 .solenoid-settings__acc:last-of-type { border-bottom: none; }
 .solenoid-settings__acc-head {

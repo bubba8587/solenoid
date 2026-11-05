@@ -1,5 +1,5 @@
 // [[C51]] formulaNaming
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { frStore } from "../frStore";
 import { buildFunctionReference, fnRefGroups, type FnRefRow , libraryTags, LIBRARY_TAGS, type LibraryTag } from "../functionReference";
 import { addNodeByCatalogType } from "../catalogUtils";
@@ -38,6 +38,13 @@ export function FunctionReference() {
   }, []);
 
   useEscapeToClose(() => frStore.close(), open);
+
+  // A pack opened from Settings shows only its own entries.
+  const ver = useSyncExternalStore(frStore.subscribe, frStore.version);
+  useEffect(() => {
+    const focus = frStore.takeFocus();
+    if (focus) { setCategory(focus); setSearch(""); setLib("All"); }
+  }, [ver]);
 
   if (!open) return null;
 

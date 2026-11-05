@@ -22,17 +22,11 @@
       "init": {
         "label": "Coefficients",
         "valueKeys": [
-          "v0",
-          "v1",
-          "v2",
-          "v3"
+          "v0"
         ]
       },
       "stringLiterals": {
-        "v0": "1",
-        "v1": "0",
-        "v2": "-7",
-        "v3": "6"
+        "v0": "1, 0, -7, 6"
       }
     },
     {

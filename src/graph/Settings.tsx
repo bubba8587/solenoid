@@ -7,7 +7,8 @@ import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from
 import { apiKeyStore } from "./apiKeyStore";
 import { AI_PROVIDER, AI_ENABLED } from "./aiKey";
 import { isMobile } from "./coarse";
-import { packsStore, allPacks, loadCustomPacks, customPacksFolder, PACK_GROUP_ORDER } from "./packs";
+import { frStore } from "./frStore";
+import { packsStore, allPacks, type Pack, loadCustomPacks, customPacksFolder, PACK_GROUP_ORDER } from "./packs";
 import { isDesktop, isAndroidApp, pickFolderDialog, openInFileManager, folderLabel } from "./fileBridge";
 import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette";
 import { appThemeStore } from "./appTheme";
@@ -54,6 +55,21 @@ function Row({ label, help, on, onToggle, disabled, disabledNote }: {
       </span>
       <Switch on={on} onClick={onToggle} label={label} disabled={disabled} />
     </label>
+  );
+}
+
+/** A pack: its name and blurb open its entries in the Function Reference; only the switch turns it on or off. */
+function PackRow({ pack }: { pack: Pack }) {
+  const show = () => { settingsPanel.close(); frStore.openPack(pack.id); };
+  return (
+    <div className="solenoid-settings__row solenoid-settings__row--pack">
+      <button type="button" className="solenoid-settings__row-text solenoid-settings__pack-link" onClick={show}
+        title={`Show what ${pack.name} adds, in the Function Reference`}>
+        <span className="solenoid-settings__row-label">{pack.name}<span className="solenoid-settings__pack-arrow" aria-hidden="true"> ›</span></span>
+        <span className="solenoid-settings__row-help">{pack.description}</span>
+      </button>
+      <Switch on={packsStore.isActive(pack.id)} onClick={() => packsStore.toggle(pack.id)} label={pack.name} />
+    </div>
   );
 }
 
@@ -318,13 +334,7 @@ function PacksSection() {
             </summary>
             <div className="solenoid-settings__acc-body">
               {g.packs.map((p) => (
-                <Row
-                  key={p.id}
-                  label={p.name}
-                  help={p.description}
-                  on={packsStore.isActive(p.id)}
-                  onToggle={() => packsStore.toggle(p.id)}
-                />
+                <PackRow key={p.id} pack={p} />
               ))}
             </div>
           </details>
@@ -339,7 +349,7 @@ function PacksSection() {
         </div>
       ) : (
         custom.map((p) => (
-          <Row key={p.id} label={p.name} help={p.description} on={packsStore.isActive(p.id)} onToggle={() => packsStore.toggle(p.id)} />
+          <PackRow key={p.id} pack={p} />
         ))
       )}
 
@@ -479,7 +489,7 @@ function SearchResults({ query }: { query: string }) {
       {packs.length > 0 && (
         <div className="solenoid-settings__section">
           <div className="solenoid-settings__section-title">Node Packs</div>
-          {packs.map((p) => <Row key={p.id} label={p.name} help={p.description} on={packsStore.isActive(p.id)} onToggle={() => packsStore.toggle(p.id)} />)}
+          {packs.map((p) => <PackRow key={p.id} pack={p} />)}
         </div>
       )}
       {fixed}

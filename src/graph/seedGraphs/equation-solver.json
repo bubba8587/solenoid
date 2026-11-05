@@ -488,15 +488,11 @@
       "init": {
         "label": "Distances km",
         "valueKeys": [
-          "v0",
-          "v1",
-          "v2"
+          "v0"
         ]
       },
       "stringLiterals": {
-        "v0": "100",
-        "v1": "200",
-        "v2": "300"
+        "v0": "100, 200, 300"
       }
     },
     {

@@ -251,15 +251,11 @@
       "init": {
         "label": "Row counts",
         "valueKeys": [
-          "v0",
-          "v1",
-          "v2"
+          "v0"
         ]
       },
       "stringLiterals": {
-        "v0": "4",
-        "v1": "4",
-        "v2": "36"
+        "v0": "4, 4, 36"
       }
     },
     {

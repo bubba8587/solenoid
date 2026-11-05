@@ -22,18 +22,12 @@
       "init": {
         "label": "Invited",
         "valueKeys": [
-          "v0",
-          "v1",
-          "v2",
-          "v3"
+          "v0"
         ],
         "dataType": "string"
       },
       "stringLiterals": {
-        "v0": "Ada",
-        "v1": "Grace",
-        "v2": "Alan",
-        "v3": "Edsger"
+        "v0": "Ada, Grace, Alan, Edsger"
       }
     },
     {
@@ -44,18 +38,12 @@
       "init": {
         "label": "Replied",
         "valueKeys": [
-          "v0",
-          "v1",
-          "v2",
-          "v3"
+          "v0"
         ],
         "dataType": "string"
       },
       "stringLiterals": {
-        "v0": "Grace",
-        "v1": "Edsger",
-        "v2": "Ada",
-        "v3": "Grace"
+        "v0": "Grace, Edsger, Ada, Grace"
       }
     },
     {
