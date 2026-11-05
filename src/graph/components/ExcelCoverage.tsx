@@ -31,7 +31,7 @@ interface XlEntry {
   same?: boolean;
 }
 
-/** A row's parity mark, leading the row: = where the card answers as Excel does, ⚠ where it differs. */
+/** A row's parity mark, closing the row: = where the card answers as Excel does, ⚠ where it differs. */
 function ParityMark({ same }: { same: boolean }) {
   return (
     <span className={`fr-xl__parity fr-xl__parity--${same ? "same" : "differs"}`} role="img"
@@ -140,7 +140,7 @@ export function ExcelCoverage() {
             ))}
           </div>
           <div className="fr-xl__cols-head" aria-hidden="true">
-            <span /><span className="fr-xl__from">Excel<ChunkyArrow /></span><span>Solenoid</span>
+            <span className="fr-xl__from">Excel<ChunkyArrow /></span><span>Solenoid</span>
           </div>
         </div>
         <div className="fr-xl__scroll" ref={scrollRef} onScroll={spy}>
@@ -153,13 +153,13 @@ export function ExcelCoverage() {
                 // A function one card answers opens it from anywhere on its row.
                 <div key={e.name} className={`fr-xl__row${e.cards.length ? "" : " fr-xl__row--none"}${e.cards.length === 1 ? " fr-xl__row--go" : ""}`}
                   onClick={e.cards.length === 1 ? () => open(e.cards[0]) : undefined}>
-                  {e.cards.length ? <ParityMark same={!!e.same} /> : <span />}
                   <span className="fr-xl__name">{e.name}</span>
                   <span className="fr-xl__to" onClick={(ev) => ev.stopPropagation()}>
                     {e.cards.length ? e.cards.map(cardLink)
                       : e.use ? <>use {e.use.card ? cardLink(e.use.card) : e.use.text}</>
                       : "—"}
                   </span>
+                  {e.cards.length ? <ParityMark same={!!e.same} /> : <span />}
                 </div>
               ))}
             </section>
