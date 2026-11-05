@@ -425,7 +425,7 @@ by category is `docs/node-coverage.md`, hand-maintained against
 One React component per node, mostly one-line `makeNodeComponent` calls
 (`standardNode.tsx`). Shared kit: `nodeKit.tsx` (NodeShell, ValueDisplay,
 OpSelect, InlineOutputRows), `NodeCard.tsx`, `NodeSocket.tsx`
-(MeasuredSocketRow), `SocketComponent.tsx`, `inlineInput.tsx`,
+(MeasuredSocketRow), `SocketComponent.tsx`, `inlineInput.tsx` (the input-row fields: `KeyedField`, `LogicalCheck`; which field a row gets is `literalFields.ts`, asking the core's `nodes/fields.rs`), `CollapsedCell.tsx` (a cell-collapse card's collapsed value cell), `colType.css` (the shared type button),
 `ExtensibleInputs.tsx` (flat variadic value rows, optional fixed `leadingKeys`),
 `PairedExtensibleInputs.tsx` (variadic input PAIRS — IFS/SWITCH — with optional
 fixed leading/trailing rows), `CardSection.tsx` (a captioned, optionally folding run of rows; its liquid fold is

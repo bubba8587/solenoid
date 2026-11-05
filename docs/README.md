@@ -168,7 +168,8 @@ results get retried and settled rulings relapse.
 | `nodeNameStore.ts` | [[B16]] oneFormulaSurface; `../tree/specs/documents/addressable-model.md` |
 | `persistence.ts`, `textForm.ts`, `crates/solenoid-graph/src/text_form.rs`, `graphValidate.ts`, `fileSession.ts` | [[B12]] losslessSaves; `../tree/specs/documents/save-format.md` (names: `../tree/specs/documents/addressable-model.md`) |
 | `documentStore.ts`, `documentStoreCore.ts` | [[B12]] losslessSaves; `../tree/specs/documents/per-doc-autosave-persistence.md` |
-| `persistence.ts` (load gate, literal maps) | [[C28]] literalsIffEditable; `../tree/specs/documents/inline-literal-maps.md` |
+| `persistence.ts` (load gate, literal maps), `literalFields.ts`, `crates/solenoid-core/src/nodes/fields.rs`, `components/inlineInput.tsx` (`KeyedField`, `LogicalCheck`), `ExtensibleInputs.tsx`, `PairedExtensibleInputs.tsx` | [[C28]] literalsIffEditable; `../tree/specs/documents/inline-literal-maps.md` (§ One field per input, § Wildcard slots) |
+| `components/CollapsedCell.tsx` + `.css`, `NodeShell cellCollapse` | `../tree/specs/floors/components.md` § Card chrome (Cell collapse) |
 | `flow/FlowCompositeOverlay.tsx`, `flow/drillStack.ts`, drill-in lifecycle | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` |
 | `sockets.ts`, `crates/solenoid-graph/src/lattice.rs`, `trueAnyAdopt.ts` | `../tree/specs/values/socket-lattice.md` (the spec); `socket-reference.md`; [[C10]] socketLattice |
 | `nodes/cube.ts` | [[C10]] socketLattice; `../tree/specs/values/socket-lattice.md` (the Cube is the recursive lattice supremum) |
