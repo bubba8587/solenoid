@@ -20,10 +20,39 @@ specs and this file archives.
 | 1 | ROUND, Number `_`, Digits 2 | `ROUND(_, 2)` = 0 (reads as `ROUND(0, 2)`) | `#OVERFLOW!` | Formula: 0 makes sense, for now. Card: `#OVERFLOW!` doesn't make sense (`#VALUE!` would read better). Whether a card reads `_` as 0 / FALSE / "" is open: not ruled out, needs the evidence to stack up (2026-11-05). |
 | 2 | ROUND, Number 2.6, Digits `_` | `ROUND(2.6, _)` = 3 (reads as `ROUND(2.6, 0)`) | 3 | Both right; Excel answers 3 too (2026-11-05). |
 
+## Placeholder scheme (the author, 2026-11-05, "for now")
+
+What a card's empty field (`_`) shows and does is one of three kinds, told apart by shape:
+
+| Kind | Shows | The card computes with | Example |
+|---|---|---|---|
+| **Fallback** | the value, muted, upright | that value | a rate field showing `0.1` |
+| **Behavior** | a word in brackets, muted, upright | the behavior | XLOOKUP's Return showing `[all]` |
+| **Example** | a hint, muted, *italic* | nothing: the card answers blank | Molar Mass's *H2O* |
+
+- A **default** is the value a fresh card ships in the field, which a person can clear. It usually matches the
+  field's fallback but need not.
+- **No hidden defaults:** a value the card's code computes from when a field is empty, which the field doesn't
+  show, is outlawed. Each becomes that field's Fallback. Today these are the `Call::read_num(key, dflt)` reads in
+  the Rust bodies (see Background).
+- **Fallbacks are used cautiously**: they exist so a wiped card doesn't answer a nonsense error.
+- **An Example is the field saying a blank here may blank the card.** It is used exactly where that is fine, as in
+  Molar Mass today.
+- Italics are reserved for Examples. Today every card field's placeholder is italic
+  (`.solenoid-node__inline-input::placeholder` and `.solenoid-node__quoted-input::placeholder` in `nodeCard.css`), and
+  so is a formula's empty-slot reading (`.fx-ghost` in `FormulaEditor.css`). Fallbacks and Behaviors lose the italic.
+- The formula side keeps Excel's reading of `_` (case 1). A card's Fallback lives on the card, not in `ARG_ROLES`,
+  except where a setting's declared blank already serves both surfaces.
+
 ## Open questions
 
-- **Does a card read `_` as Excel's empty argument (0, FALSE, "")?** Open. The evidence goes in the ledger below,
-  for and against, one case at a time.
+- **Does a card read `_` as Excel's empty argument (0, FALSE, "")?** Reframed by the placeholder scheme: a card
+  reads `_` as its field's kind says. Whether a field's Fallback should be Excel's empty-argument value is decided
+  field by field; the ledger below keeps the evidence.
+- **Must every field be one of the three kinds?** A field with no Fallback, Behavior or Example today shows nothing
+  (or the number field's stock muted `0`, which the card doesn't compute with) and answers by accident (case 1).
+- **A formula's empty-slot reading** (the muted `0` in `ROUND(2.6, )`) is a Fallback by the scheme, so upright:
+  confirm.
 
 ## Evidence ledger: a card reading `_` as Excel's empty argument
 
