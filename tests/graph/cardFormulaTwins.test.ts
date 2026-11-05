@@ -15,6 +15,7 @@ const UNCOMPARED: Record<string, string> = {
   "sumifs": "takes a table and column pickers, not the function's ranges",
   "gcd-lcm": "pairs two lists item by item, where GCD folds every argument into one answer",
   "lcm": "pairs two lists item by item, where LCM folds every argument into one answer",
+  "date-diff-days:DAYS": "the card reads its start before its end, where DAYS takes the end first",
 };
 
 /** A function whose op wears Solenoid's own name: ISLOGICAL is the Type Check card's ISBOOLEAN. */

@@ -80,21 +80,6 @@ pub(crate) fn js_floor(v: &V) -> f64 {
     num_blank_zero(v).floor()
 }
 
-/// `Math.max(a, b)`: NaN wins, and +0 beats -0.
-pub(crate) fn js_max(a: f64, b: f64) -> f64 {
-    if a.is_nan() || b.is_nan() {
-        f64::NAN
-    } else if a == b {
-        if a.is_sign_positive() {
-            a
-        } else {
-            b
-        }
-    } else {
-        a.max(b)
-    }
-}
-
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     Some(match kind {
         "UuidNode" => uuid(c),
@@ -287,17 +272,14 @@ fn substitute(c: &mut Call) -> Answer {
 
 fn text_replace(c: &mut Call) -> Answer {
     let args = [str_val(c, "text"), required(c, "start"), required(c, "num_chars"), str_val(c, "new_text")];
-    let r = broadcast_err(&args, |o| {
-        let s = js_max(1.0, js_floor(o[1]));
-        let n = js_max(0.0, js_floor(o[2]));
-        core_call("REPLACE", &[o[0].clone(), V::Num(s), V::Num(n), o[3].clone()])
-    });
+    // The numbers go as given: REPLACE truncates them and refuses a start below 1 or a negative count, as Excel does.
+    let r = broadcast_err(&args, |o| core_call("REPLACE", &[o[0].clone(), o[1].clone(), o[2].clone(), o[3].clone()]));
     done(c, "cachedText", r)
 }
 
 fn rept(c: &mut Call) -> Answer {
     let args = [str_val(c, "text"), required(c, "times")];
-    let r = broadcast_err(&args, |o| core_call("REPT", &[o[0].clone(), V::Num(js_max(0.0, js_floor(o[1])))]));
+    let r = broadcast_err(&args, |o| core_call("REPT", &[o[0].clone(), o[1].clone()]));
     done(c, "cachedText", r)
 }
 

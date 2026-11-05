@@ -21,9 +21,10 @@ describe("a formula never reads a number, date or logical out of text ([[C10]] s
     expect(code(ev('INDEX(x, "2")', { x }))).toBe("#VALUE!");
   });
 
-  it("a date function never reads date text", () => {
-    for (const src of ['EDATE("2024-01-31", 1)', 'YEAR("2024-01-01")', 'YEARFRAC("2024-01-01", "2024-06-01")', 'WORKDAY("2024-01-01", 5)'])
-      expect(code(ev(src))).toBe("#VALUE!");
+  it("a date function never reads date text: it needs a date", () => {
+    for (const src of ['EDATE("2024-01-31", 1)', 'YEAR("2024-01-01")', 'YEARFRAC("2024-01-01", "2024-06-01")', 'WORKDAY("2024-01-01", 5)', 'HOUR("3:30 PM")'])
+      expect(code(ev(src))).toBe("#TYPE!");
+    expect(ev('YEAR("2024-01-01")')).toMatchObject({ message: "YEAR needs a date" });
   });
 
   it("a condition or a TRUE/FALSE argument never reads the text TRUE", () => {
@@ -54,7 +55,7 @@ describe("a formula never reads a number, date or logical out of text ([[C10]] s
 
   it("ACCRINT reads its dates as dates, as every date argument does, and never date text", () => {
     expect(ev("ACCRINT(DATE(2008,3,1), DATE(2008,8,31), DATE(2008,5,1), 0.1, 1000, 2, 0)") as number).toBeCloseTo(16.666667, 6); // Excel's example
-    expect(code(ev('ACCRINT("2008-03-01", DATE(2008,8,31), DATE(2008,5,1), 0.1, 1000, 2, 0)'))).toBe("#VALUE!");
+    expect(code(ev('ACCRINT("2008-03-01", DATE(2008,8,31), DATE(2008,5,1), 0.1, 1000, 2, 0)'))).toBe("#TYPE!");
   });
 
   it("TEXT formats a number and leaves text as it is", () => {

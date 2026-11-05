@@ -1295,8 +1295,13 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             if nullish(n) {
                 return Ok(V::Null);
             }
-            let k = round_half_up(num_blank_zero(n));
-            if k < 1.0 || k.is_nan() {
+            // The size truncates, as Excel's does; 0 is the empty matrix, as SEQUENCE's zero rows are an empty list,
+            // and a negative size has none.
+            let k = num_blank_zero(n).trunc();
+            if k.is_nan() || k < 0.0 {
+                return Ok(V::err(sol_error(ErrorCode::Domain, "MUNIT needs a size of 0 or more")));
+            }
+            if k == 0.0 {
                 return Ok(list(vec![]));
             }
             if let Some(e) = cell_cap("MUNIT", k, k) {

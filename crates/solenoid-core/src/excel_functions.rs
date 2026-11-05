@@ -4301,20 +4301,31 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if n.is_nan() {
                 return value_err(name);
             }
-            let rt = opt_num(arg(a, 1), 1.0).floor();
+            let rt = opt_num(arg(a, 1), 1.0).trunc();
+            // Excel's return types name the day a week starts on (0 Sunday to 6 Saturday); WEEKDAY's 3 counts Monday as
+            // 0, and WEEKNUM's 21 is the ISO week.
+            let start = match (arm, rt as i64) {
+                (F::ISOWEEKNUM, _) => None,
+                (_, 1 | 17) => Some(0.0),
+                (_, 2 | 11) => Some(1.0),
+                (_, c @ 12..=16) => Some((c - 10) as f64),
+                (F::WEEKDAY, 3) => Some(1.0),
+                (F::WEEKNUM, 21) => None,
+                _ => {
+                    let range = if arm == F::WEEKDAY { "1 to 3 or 11 to 17" } else { "1, 2, 11 to 17 or 21" };
+                    return V::err(sol_error(ErrorCode::Domain, format!("{name} takes a return type of {range}")));
+                }
+            };
             let Some(ms) = serial_to_ms(n) else { return V::Num(f64::NAN) };
             let p = parts_of_ms(ms);
             let dow = p.weekday as f64;
-            V::Num(match arm {
-                F::WEEKDAY if rt == 2.0 => (dow + 6.0) % 7.0 + 1.0,
-                F::WEEKDAY if rt == 3.0 => (dow + 6.0) % 7.0,
-                F::WEEKDAY => dow + 1.0,
-                F::WEEKNUM => match date_utc(p.year as f64, 0.0, 1.0) {
+            V::Num(match (arm, start) {
+                (F::WEEKDAY, Some(s)) => (dow - s + 7.0) % 7.0 + if rt == 3.0 { 0.0 } else { 1.0 },
+                (F::WEEKNUM, Some(s)) => match date_utc(p.year as f64, 0.0, 1.0) {
                     None => f64::NAN,
                     Some(jan1) => {
                         let jan1_dow = parts_of_ms(jan1).weekday as f64;
-                        let start_off = if rt == 2.0 { (jan1_dow + 6.0) % 7.0 } else { jan1_dow };
-                        ((ms - jan1) / MS_PER_DAY).floor().add_week(start_off)
+                        ((ms - jan1) / MS_PER_DAY).floor().add_week((jan1_dow - s + 7.0) % 7.0)
                     }
                 },
                 _ => iso_week(ms),
@@ -4335,7 +4346,16 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if h.is_nan() || m.is_nan() || s.is_nan() {
                 return value_err("TIME");
             }
-            V::Num(((h * 3600.0 + m * 60.0 + s) % 86400.0) / 86400.0)
+            // Each part truncates, as Excel's do; a total below zero or an hour past Excel's 32767 has no time.
+            let (h, m, s) = (h.trunc(), m.trunc(), s.trunc());
+            let total = h * 3600.0 + m * 60.0 + s;
+            if total < 0.0 || h > 32767.0 {
+                return V::err(sol_error(
+                    ErrorCode::Domain,
+                    "TIME needs hours, minutes and seconds that add up to 0 or more",
+                ));
+            }
+            V::Num((total % 86400.0) / 86400.0)
         }
         F::PI => V::Num(std::f64::consts::PI),
         F::EXACT => {
@@ -4504,8 +4524,14 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 return value_err(name);
             }
             let Some(off) = off else {
+                // An undefined numeric code is Excel's #NUM!; a malformed mask its #VALUE!.
+                let code = if matches!(weekend, V::Str(_)) || to_num(weekend).is_nan() {
+                    ErrorCode::Value
+                } else {
+                    ErrorCode::Domain
+                };
                 return V::err(sol_error(
-                    ErrorCode::Value,
+                    code,
                     format!(
                         "{name} weekend must be a code (1 to 7, 11 to 17) or seven 0/1 characters with a working day"
                     ),
@@ -5752,7 +5778,8 @@ fn fx_edate(start: &V, months: &V) -> V {
         stored = crate::jsnum::nan_min(stored, dim);
     }
     date = crate::date_serial::civil::set_date(date, stored);
-    let serial = crate::jsnum::round_half_up(date / 86_400_000.0 + 25569.0);
+    // The answer is the day itself: a start's time of day is dropped, as Excel truncates it.
+    let serial = (date / 86_400_000.0 + 25569.0).floor();
     if !(crate::date_serial::FIRST_SERIAL..crate::date_serial::END_SERIAL).contains(&serial) {
         return V::err(sol_error(ErrorCode::Domain, "These months move the date past the calendar's range"));
     }

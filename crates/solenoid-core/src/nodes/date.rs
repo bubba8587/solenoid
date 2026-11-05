@@ -69,11 +69,8 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "DateAddNode" => {
             let name = if c.field_str("op", "edate") == "edate" { "EDATE" } else { "EOMONTH" };
             let args = [first(c, "start"), c.read("months")];
-            let floored = |v: &V| match v {
-                V::Date(n) => V::Date(n.floor()),
-                v => V::Num(js_floor(v)),
-            };
-            broadcast_err(&args, |o| core_call(name, &[floored(o[0]), V::Num(js_floor(o[1]))]))
+            // As given: EDATE and EOMONTH drop the start's time of day and truncate the months, as Excel does.
+            broadcast_err(&args, |o| core_call(name, &[o[0].clone(), o[1].clone()]))
         }
         "WorkdaysNode" => workdays(c),
         "EpochNode" => {

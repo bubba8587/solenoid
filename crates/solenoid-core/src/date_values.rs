@@ -309,6 +309,7 @@ impl After {
 pub fn concerns(name: &str, argv: &[V]) -> bool {
     matches!(class_of(name), Some(Class::Builds(_) | Class::BuildsLoose | Class::Reads(_)))
         || argv.iter().any(holds_date)
+        || (matches!(name, "HOUR" | "MINUTE" | "SECOND") && matches!(argv.first(), Some(V::Str(_))))
 }
 
 /// The arguments a call to `name` takes and what its answer becomes, or the error it answers instead
@@ -320,6 +321,21 @@ pub fn ready(name: &str, argv: Vec<V>) -> Result<(Vec<V>, After), V> {
     // The criteria family reads its dates as dates ([[D123]] typedCriteria).
     let criteria = crate::excel_criteria::is_criteria(name);
     let unwrapped = || if criteria { argv.clone() } else { argv.iter().map(unwrap).collect::<Vec<_>>() };
+    // Date text where a date belongs is refused, as a number there is: VALUE reads no date text either
+    // ([[excel-divergences#Deliberate differences from Excel]]).
+    let text_at = |at: At| argv.iter().enumerate().any(|(i, a)| at.has(i, n) && matches!(a, V::Str(_)));
+    let date_text = match class_of(name) {
+        Some(Class::Builds(at)) | Some(Class::Reads(at)) => text_at(at) && !plain_at(at),
+        Some(Class::ReadsLoose) => {
+            matches!(name, "HOUR" | "MINUTE" | "SECOND") && matches!(argv.first(), Some(V::Str(_)))
+        }
+        _ => false,
+    };
+    // An error or a blank argument answers first, as it would in the body.
+    let settled = argv.iter().any(|a| a.is_sol_error() || matches!(a, V::Fx(_) | V::Null | V::Undef));
+    if date_text && !settled {
+        return Err(refused(name, "needs a date"));
+    }
     match class_of(name) {
         Some(Class::Builds(at)) | Some(Class::Reads(at)) if plain_at(at) => {
             Err(refused(name, "takes a date there, not a number. Cast to Date or build it with DATE()"))
