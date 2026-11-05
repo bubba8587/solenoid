@@ -106,7 +106,7 @@ export function ExcelCoverage() {
                     <span className="fr-xl__to">
                       {e.cards.length ? e.cards.map(cardLink)
                         : e.use ? <>use {e.use.card ? cardLink(e.use.card) : e.use.text}</>
-                        : "not needed here"}
+                        : "—"}
                     </span>
                   </div>
                 ))}
