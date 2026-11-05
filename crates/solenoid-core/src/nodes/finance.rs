@@ -488,13 +488,7 @@ fn accrued_interest(c: &mut Call, periodic: bool) -> V {
 fn payment_breakdown(c: &mut Call, op: &str) -> V {
     let ty = if c.field_str("paymentTiming", "end") == "beg" { 1.0 } else { 0.0 };
     if op == "ipmt" || op == "ppmt" {
-        let vals = [
-            c.read("rate"),
-            c.read("per"),
-            c.read("nper"),
-            c.read("pv"),
-            c.read("fv"),
-        ];
+        let vals = [c.read("rate"), c.read("per"), c.read("nper"), c.read("pv"), c.read("fv")];
         if vals.iter().any(|v| matches!(v, V::Null)) {
             return V::Null;
         }
@@ -526,13 +520,7 @@ fn payment_breakdown(c: &mut Call, op: &str) -> V {
         let r = if op == "ipmt" { ipmt } else { pmt - ipmt };
         return if r.is_finite() { V::Num(r) } else { V::Null };
     }
-    let vals = [
-        c.read("rate"),
-        c.read("nper"),
-        c.read("pv"),
-        c.read("start"),
-        c.read("end"),
-    ];
+    let vals = [c.read("rate"), c.read("nper"), c.read("pv"), c.read("start"), c.read("end")];
     if vals.iter().any(|v| matches!(v, V::Null)) {
         return V::Null;
     }

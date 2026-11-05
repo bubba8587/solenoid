@@ -193,11 +193,8 @@ fn series(c: &mut Call) -> Answer {
         }
         "linspace" | "geometric" => {
             let start = required(c, "start");
-            let (key, name, fname) = if op == "linspace" {
-                ("end", "Linspace", "LINSPACE")
-            } else {
-                ("ratio", "Geometric", "GEOMETRIC")
-            };
+            let (key, name, fname) =
+                if op == "linspace" { ("end", "Linspace", "LINSPACE") } else { ("ratio", "Geometric", "GEOMETRIC") };
             let other = c.read(key);
             let n = required(c, "count");
             if let Some(e) = first_error(&[&start, &n]) {
