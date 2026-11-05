@@ -19,16 +19,16 @@ describe("Input Switch (CableSwitchNode)", () => {
     n.addValueInput(); // v2
     n.multiSelect = true;
     n.selectedKeys = ["v2", "v0"]; // deliberately out of order
-    n.titles = { v0: "A", v2: "C" };
+    n._sourceNames = { v0: "A", v2: "C" };
     const cube = n.data({ v0: [1], v1: [2], v2: [3] }).out as CubeValue;
     expect(cube.columns[0].cells).toEqual(["A", "C"]); // v0 before v2
     expect(cube.columns[1].cells).toEqual([1, 3]);
   });
 
 
-  it("titleFor falls back to a positional name", () => {
+  it("an input is named by its source card, else its place", () => {
     const n = new CableSwitchNode();
-    n.titles = { v0: "Named" };
+    n._sourceNames = { v0: "Named" };
     expect(n.titleFor("v0")).toBe("Named");
     expect(n.titleFor("v1")).toBe("Input 2");
   });
@@ -44,12 +44,10 @@ describe("Input Switch (CableSwitchNode)", () => {
     expect(n.syncOutputType()).toBe(false); // idempotent
   });
 
-  it("removeValueInput drops the slot's title and selection", () => {
+  it("removeValueInput drops the slot's selection", () => {
     const n = new CableSwitchNode();
-    n.titles = { v0: "A", v1: "B" };
     n.selectedKeys = ["v0", "v1"];
     n.removeValueInput("v1");
-    expect(n.titles).toEqual({ v0: "A" });
     expect(n.selectedKeys).toEqual(["v0"]);
   });
 
@@ -92,5 +90,25 @@ describe("Input Switch (CableSwitchNode)", () => {
     n.removeValueInput("v0");
     const cube = n.data({ v1: [10], v2: [20] }).out as CubeValue;
     expect(cube.columns[1].cells).toEqual([10, 20]);
+  });
+});
+
+describe("Input Switch names its inputs by their source cards ([[D22]] oneNamePerCard)", () => {
+  it("stamps each wired input with its source card's header name before a pass", async () => {
+    const { GraphEditor } = await import("../../../src/graph/graphEditor");
+    const { GraphConnection } = await import("../../../src/graph/graphModel");
+    const { ValueInputNode } = await import("../../../src/graph/nodes/control");
+    const { resolveSwitchNames } = await import("../../../src/graph/sourceNames");
+    const editor = new GraphEditor();
+    const sw = new CableSwitchNode();
+    const price = new ValueInputNode({ label: "Price" } as never);
+    const plain = new ValueInputNode();
+    for (const n of [sw, price, plain]) await editor.addNode(n as never);
+    await editor.addConnection(new GraphConnection(price, "value", sw, "v0") as never);
+    await editor.addConnection(new GraphConnection(plain, "value", sw, "v1") as never);
+    expect(resolveSwitchNames(editor as never)).toEqual([sw]);
+    expect(sw.titleFor("v0")).toBe("Price");
+    expect(sw.titleFor("v1")).toBe("Value Input");
+    expect(resolveSwitchNames(editor as never)).toEqual([]);
   });
 });

@@ -5,6 +5,7 @@ import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } from "../sockets";
 import { resolveTrigModes } from "../trigMode";
+import { resolveSwitchNames } from "../sourceNames";
 import { reconcileFcTypes, reconcileTypesAfterEdit } from "../fcReconcile";
 import { readTypeKeys } from "../settleFacts";
 import { getOwningView } from "../activeGraph";
@@ -755,6 +756,7 @@ export class CompositeNode extends GraphNode {
       if (m) m.goalTarget = port.id === gsTargetId ? (this.goalSeek?.target ?? null) : null;
     }
     resolveTrigModes(this.internalEditor);
+    resolveSwitchNames(this.internalEditor);
     const heavy = this.isHeavyMode();
     const fromHeavy = this._lastHeavy;
     this._lastHeavy = heavy;

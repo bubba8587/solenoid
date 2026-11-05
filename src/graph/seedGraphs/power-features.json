@@ -385,11 +385,7 @@
         "valueKeys": [
           "v0",
           "v1"
-        ],
-        "titles": {
-          "v0": "Plan A",
-          "v1": "Plan B"
-        }
+        ]
       }
     },
     {
@@ -443,11 +439,6 @@
           "v1",
           "v2"
         ],
-        "titles": {
-          "v0": "Plan A",
-          "v1": "Plan B",
-          "v2": "Plan C"
-        },
         "multiSelect": true,
         "selectedKeys": [
           "v0",

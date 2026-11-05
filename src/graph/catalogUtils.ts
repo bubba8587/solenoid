@@ -13,6 +13,7 @@ import { isCategory, isPair } from "./catalogSearch";
 // Cycle-safe: nodeCtorRegistry imports FLAT_CATALOG from here, but neither touches the other's exports at init.
 import { ctorRegistry, type NodeCtor } from "./nodeCtorRegistry";
 import { getActiveView, getActiveEditor } from "./activeGraph";
+import { setCatalogNamer } from "./sourceNames";
 
 
 
@@ -257,6 +258,8 @@ export function nodeName(node: object): string | null {
     null
   );
 }
+
+setCatalogNamer(nodeName);
 
 export function nodeDisplayName(node: object): string {
   const label = ((node as { label?: string }).label ?? "").trim();

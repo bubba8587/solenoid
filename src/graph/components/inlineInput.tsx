@@ -9,7 +9,6 @@ import { scheduleAutosave } from "../persistence";
 import { connectionVersionStore } from "../graphSignals";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
-import { nodeName } from "../catalogUtils";
 import { collapseStore } from "../collapseStore";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
@@ -18,6 +17,7 @@ import { columnPickersOf } from "../nodes/columnPickerHook";
 import { stopDragStart } from "../coarse";
 import { usePendingDraft } from "../draftFlush";
 import { emptyFieldShown } from "../emptySlots";
+import { cardName } from "../sourceNames";
 import { rolesOf } from "../nodes/shared";
 import { DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import { COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
@@ -51,13 +51,7 @@ export function useIncomingSources(nodeId: string): Map<string, IncomingSource> 
   for (const c of editor?.getConnections() ?? []) {
     if (c.target !== nodeId || typeof c.targetInput !== "string") continue;
     const src = editor?.getNode(c.source);
-    // An unlabeled source shows its catalog name ([[D22]] oneNamePerCard).
-    const srcLabel = (src as { label?: string } | undefined)?.label?.trim();
-    map.set(c.targetInput, {
-      sourceId: c.source,
-      sourceOutput: c.sourceOutput as string,
-      label: srcLabel || (src ? (nodeName(src) ?? "") : ""),
-    });
+    map.set(c.targetInput, { sourceId: c.source, sourceOutput: c.sourceOutput as string, label: cardName(src) });
   }
   return map;
 }

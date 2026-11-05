@@ -12,6 +12,7 @@ import { calcModeStore } from "./calcModeStore";
 import { session, nextGeneration, rebuild, openRebuildScope, closeRebuildScope, markTopoDirty, enterPass, exitPass } from "./passSession";
 import { compositePassStore } from "./compositeEditorStore";
 import { resolveTrigModes } from "./trigMode";
+import { resolveSwitchNames } from "./sourceNames";
 import { readTypeKeys } from "./settleFacts";
 import { reconcileTypesAfterEdit } from "./fcReconcile";
 import type { Schemes } from "./schemes";
@@ -174,6 +175,7 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   if (!_editor || !_engine || !_view) return;
   // Before the engine pull: MathFn.data() reads the resolved angle mode.
   resolveTrigModes(_editor);
+  resolveSwitchNames(_editor);
   const perf = perfEnabled();
   if (perf) beginPass();
   const ipc0 = perf ? ipcSnapshot() : null;

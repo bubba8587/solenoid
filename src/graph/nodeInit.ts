@@ -122,12 +122,6 @@ export function extractInit(src: GraphNode): Record<string, unknown> {
   if (n.fieldTypes && typeof n.fieldTypes === "object") {
     init.fieldTypes = { ...(n.fieldTypes as object) };
   }
-  if (n.titles && typeof n.titles === "object") {
-    const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
-    const entries = Object.entries(n.titles as Record<string, string>).filter(([k]) => k in liveInputs);
-    if (entries.length) init.titles = Object.fromEntries(entries);
-    else delete init.titles;
-  }
   if (Array.isArray(n.selectedKeys)) {
     const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
     const kept = (n.selectedKeys as string[]).filter((k) => k in liveInputs);

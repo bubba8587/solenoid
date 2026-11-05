@@ -15,7 +15,7 @@ import { isChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
 import { isSvgValue } from "../svgValue";
 import { isLambdaValue, formatLambda } from "../nodes/lambda";
-import { useDraftCommit } from "./inlineInput";
+import { useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -54,12 +54,14 @@ export function SwitchValue({ value, label, nodeId }: { value: unknown; label?: 
   return <ValueDisplay value={value as number | number[] | string | string[] | null} />;
 }
 
-// A separate component, so the title's useDraftCommit hook count stays stable as rows come and go.
-function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, checked, onSelect, onToggle, onRemove, canRemove }: {
+// An input's name is its source card's, as every wired row shows it; unwired, its place.
+function SwitchOptionRow({ data, emit, keyName, index, source, multiSelect, active, checked, onSelect, onToggle, onRemove, canRemove }: {
   data: CableSwitchNodeType;
   emit: NodeProps<CableSwitchNodeType>["emit"];
   keyName: string;
   index: number;
+  /** The source card's name, when wired. */
+  source: string | undefined;
   multiSelect: boolean;
   active: boolean;
   checked: boolean;
@@ -68,19 +70,6 @@ function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, chec
   onRemove: () => void;
   canRemove: boolean;
 }) {
-  const title = useDraftCommit<string>(
-    data.titles[keyName] ?? "",
-    (v) => v,
-    (t) => t,
-    (v) => {
-      if (v.trim()) data.titles[keyName] = v;
-      else delete data.titles[keyName];
-      // A title relabels the multi-select Cube's `name` column, so Many mode recomputes; One mode only re-renders.
-      data.edited();
-      if (data.multiSelect) void processGraph();
-      else void getOwningView(data.id)?.rerenderNode(data.id);
-    },
-  );
   const input = data.inputs[keyName];
   if (!input) return null;
   return (
@@ -107,17 +96,7 @@ function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, chec
           {index + 1}
         </button>
       )}
-      <input
-        type="text"
-        className="sol-switch__title"
-        value={title.draft}
-        placeholder={`Input ${index + 1}`}
-        onChange={(e) => title.setDraft(e.target.value)}
-        onBlur={title.onBlur}
-        onKeyDown={title.onKeyDown}
-        onPointerDown={stop}
-        onMouseDown={stop}
-      />
+      <span className={`sol-switch__title${source ? "" : " sol-switch__title--unwired"}`}>{source || `Input ${index + 1}`}</span>
       {canRemove && (
         <button
           type="button"
@@ -140,6 +119,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const keys = Object.keys(data.inputs);
   const selSet = new Set(selKeys);
+  const incoming = useIncomingSources(data.id);
 
   function select(i: number) {
     data.activeIndex = i;
@@ -218,6 +198,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
           emit={emit}
           keyName={key}
           index={i}
+          source={incoming.get(key)?.label}
           multiSelect={multi}
           active={i === selected}
           checked={selSet.has(key)}

@@ -835,7 +835,7 @@ fn cable_switch(c: &mut Call) -> Answer {
             Cv::NULL
         } else {
             let title = |i: usize, k: &str| {
-                let t = c.field("titles").and_then(|t| t.get(k)).and_then(Json::as_str).map_or("", trim_space);
+                let t = c.field("_sourceNames").and_then(|t| t.get(k)).and_then(Json::as_str).map_or("", trim_space);
                 if t.is_empty() {
                     format!("Input {}", i + 1)
                 } else {

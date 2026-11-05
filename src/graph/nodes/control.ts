@@ -25,7 +25,9 @@ export class CableSwitchNode extends GraphNode {
   label: string;
   /** Not named `selected`, which is GraphNode's selection flag. */
   activeIndex: number;
-  titles: Record<string, string>;
+  /** Each wired input's source card name, stamped before each pass (`resolveSwitchNames`); never saved. */
+  _sourceNames: Record<string, string> = {};
+  static coreFields = ["_sourceNames"];
   multiSelect: boolean;
   selectedKeys: string[];
   cachedValue: unknown = null;
@@ -34,11 +36,10 @@ export class CableSwitchNode extends GraphNode {
   readonly outSocket = new MutableSocket("trueany");
   width = 200; height = 220;
 
-  constructor(init?: { label?: string; activeIndex?: number; valueKeys?: string[]; titles?: Record<string, string>; multiSelect?: boolean; selectedKeys?: string[] }) {
+  constructor(init?: { label?: string; activeIndex?: number; valueKeys?: string[]; multiSelect?: boolean; selectedKeys?: string[] }) {
     super("CableSwitch");
     this.label = init?.label ?? "Input Switch";
     this.activeIndex = init?.activeIndex ?? 0;
-    this.titles = { ...(init?.titles ?? {}) };
     this.multiSelect = init?.multiSelect ?? false;
     this.selectedKeys = [...(init?.selectedKeys ?? [])];
     this.outSocket.setType(this.multiSelect ? "cube" : "trueany");
@@ -66,16 +67,15 @@ export class CableSwitchNode extends GraphNode {
     // `activeIndex` is positional, so removing a slot above the live one must shift it to follow the chosen slot.
     const idx = Object.keys(this.inputs).indexOf(key);
     this.removeInput(key);
-    delete this.titles[key];
     this.selectedKeys = this.selectedKeys.filter((k) => k !== key);
     if (idx >= 0 && idx < this.activeIndex) this.activeIndex -= 1;
     const n = Object.keys(this.inputs).length;
     this.activeIndex = n ? clamp(this.activeIndex, 0, n - 1) : 0;
   }
 
+  /** An input's name: its source card's, else its place ("Input 2"). */
   titleFor(key: string): string {
-    const t = (this.titles[key] ?? "").trim();
-    return t || `Input ${Object.keys(this.inputs).indexOf(key) + 1}`;
+    return this._sourceNames[key] || `Input ${Object.keys(this.inputs).indexOf(key) + 1}`;
   }
 
   passthrough(): PassthroughSpec[] {

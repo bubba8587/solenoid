@@ -207,7 +207,7 @@ describe("Input Switch", () => {
     expect(n.data({ v0: [1] }).out).toBeNull();
     expect(n.data({ v1: [frame(["a", "number", [1, 2]])] }).out).toEqual(frame(["a", "number", [1, 2]]));
     n.multiSelect = true;
-    n.titles = { v0: "  ", v1: "Second", v2: " Third " };
+    n._sourceNames = { v0: "  ", v1: "Second", v2: " Third " };
     n.selectedKeys = ["v2", "v0", "gone"];
     const out = n.data({ v0: [1], v2: [frame(["a", "number", [1]])] }).out as CubeValue;
     expect(out.columns[0].cells).toEqual(["Input 1", "Third"]);
