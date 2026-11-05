@@ -34,9 +34,21 @@ const EXCEL_EMPTY_SLOT: Record<string, Record<number, unknown>> = {
   XLOOKUP: { 3: LEFT_OUT },
 };
 
-/** Excel's reading for this empty slot when it isn't the parameter's usual one. */
+/** Where the function's card falls back to a value other than Excel's empty one, so the formula reads the card's
+ *  ([[D96]] emptySlotShowsItsValue): a value Excel's 0 would make an error. The core's call table (`blanks` in
+ *  `data/call_traits.json`) holds the same. */
+const CARD_FALLBACK_SLOT: Record<string, Record<number, unknown>> = {
+  "CONFIDENCE.NORM": { 0: 0.05, 1: 1, 2: 30 }, "CONFIDENCE.T": { 0: 0.05, 1: 1, 2: 30 }, SLN: { 2: 1 }, SYD: { 2: 1, 3: 1 },
+  DURATION: { 4: 2 }, MDURATION: { 4: 2 }, STANDARDIZE: { 2: 1 }, "CHISQ.DIST.RT": { 1: 10 }, "T.DIST.2T": { 1: 10 },
+  "T.DIST.RT": { 1: 10 }, "F.DIST.RT": { 1: 5, 2: 10 },
+};
+
+/** Excel's reading for this empty slot when it isn't the parameter's usual one, or the function's card's Fallback. */
 function emptySlotOverride(name: string, i: number): { value: unknown } | null {
-  const fn = EXCEL_EMPTY_SLOT[name.toUpperCase()];
+  const up = name.toUpperCase();
+  const card = CARD_FALLBACK_SLOT[up];
+  if (card && i in card) return { value: card[i] };
+  const fn = EXCEL_EMPTY_SLOT[up];
   return fn && i in fn ? { value: fn[i] } : null;
 }
 
@@ -54,7 +66,7 @@ const LEFT_OUT_BY_PARAM: Record<string, string> = {
 const LEFT_OUT_BY_FN: Record<string, Record<number, string>> = {
   TAKE: { 1: "all", 2: "all" }, DROP: { 1: "none", 2: "none" }, EXPAND: { 1: "same", 2: "same" },
   RANK: { 2: "0" }, "RANK.EQ": { 2: "0" }, "RANK.AVG": { 2: "0" }, TRUNC: { 1: "0" }, DOLLAR: { 1: "2" },
-  RANDARRAY: { 2: "0", 3: "1" }, TEXTSPLIT: { 1: "none", 2: "none" }, INTERPOLATE: { 1: "1, 2, 3…", 2: "1, 2, 3…" }, LEFT: { 1: "1" }, RIGHT: { 1: "1" }, WEEKDAY: { 1: "1" }, WEEKNUM: { 1: "1" },
+  RANDARRAY: { 2: "0", 3: "1" }, "CEILING.MATH": { 1: "1", 2: "0" }, "FLOOR.MATH": { 1: "1", 2: "0" }, GESTEP: { 1: "0" }, TEXTSPLIT: { 1: "none", 2: "none" }, INTERPOLATE: { 1: "1, 2, 3…", 2: "1, 2, 3…" }, LEFT: { 1: "1" }, RIGHT: { 1: "1" }, WEEKDAY: { 1: "1" }, WEEKNUM: { 1: "1" },
 };
 
 function baseName(param: string): string {
@@ -83,8 +95,10 @@ function paramType(name: string, i: number): "number" | "text" | "logical" {
   return "number";
 }
 
-/** A Behavior's word as it shows: in brackets, since it names what happens rather than a value. */
-const behavior = (word: string): string => `[${word}]`;
+/** A left-out default's word as it shows: a value as itself (a Fallback), anything else in brackets (a Behavior), since
+ *  it names what happens rather than a value. */
+const VALUE_WORD = /^(-?\d[\d.]*(e-?\d+)?|TRUE|FALSE|#N\/A|1, 2, 3…)$/;
+const behavior = (word: string): string => (VALUE_WORD.test(word) ? word : `[${word}]`);
 
 const show = (v: unknown): string | null =>
   v === "" || v === null ? null : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v);
@@ -120,15 +134,16 @@ export interface EmptyFieldShown {
   shown: string | undefined;
 }
 
-export function emptyFieldShown(cardClass: string, key: string, role: InputRole | undefined): EmptyFieldShown | undefined {
-  const declared = coreEmptyField(cardClass, key);
+export function emptyFieldShown(cardClass: string, key: string, role: InputRole | undefined, op = ""): EmptyFieldShown | undefined {
+  const declared = coreEmptyField(cardClass, op, key);
   if (declared) return { kind: declared.kind, shown: declared.shown ?? undefined };
   if (role?.kind === "required") return { kind: "required", shown: undefined };
   if (role?.kind !== "setting") return undefined;
   if (role.from) {
     const r = emptySlotReading(role.from[0], role.from[1]);
-    return { kind: r.value === LEFT_OUT ? "behavior" : "fallback", shown: r.shown ?? undefined };
+    return { kind: r.value === LEFT_OUT && !VALUE_WORD.test(r.shown ?? "") ? "behavior" : "fallback", shown: r.shown ?? undefined };
   }
   if (role.blank !== LEFT_OUT) return { kind: "fallback", shown: show(role.blank) ?? undefined };
-  return { kind: "behavior", shown: behavior(role.word ?? LEFT_OUT_BY_PARAM[key] ?? "default") };
+  const word = behavior(role.word ?? LEFT_OUT_BY_PARAM[key] ?? "default");
+  return { kind: VALUE_WORD.test(word) ? "fallback" : "behavior", shown: word };
 }

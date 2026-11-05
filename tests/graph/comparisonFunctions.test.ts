@@ -77,7 +77,7 @@ describe("BETWEEN(values, low, high) is the Between card", () => {
 });
 
 describe("an unwired Comparison or Between slot is read as the kind its button shows", () => {
-  it("keyed Text, Date and Number compare as their kinds, and nothing keyed is blank", () => {
+  it("keyed Text, Date and Number compare as their kinds, and nothing keyed reads its Fallback, 0 ([[D96]] emptySlotShowsItsValue)", () => {
     const cmp = new ComparisonNode({ op: "eq" });
     cmp.stringLiterals = { b: "APPLE" };
     cmp.literalKinds = { b: "string" };
@@ -85,7 +85,8 @@ describe("an unwired Comparison or Between slot is read as the kind its button s
     cmp.literalKinds = {};
     expect(code(cmp.data({ a: ["apple"] }).result)).toBe("#TYPE!");
     cmp.stringLiterals = {};
-    expect(cmp.data({ a: [5] }).result).toBeNull();
+    expect(cmp.data({ a: [5] }).result).toBe(false);
+    expect(cmp.data({ a: [0] }).result).toBe(true);
     const btw = new BetweenNode();
     btw.stringLiterals = { lo: "01-Jan-2026", hi: "31-Jan-2026" };
     btw.literalKinds = { lo: "date", hi: "date" };

@@ -1127,7 +1127,7 @@ fn aggregate(c: &mut Call) -> Answer {
 fn xmatch(c: &mut Call) -> Answer {
     let val = match c.wired("value") {
         Some([first, ..]) => first.clone(),
-        _ => or(c.keyed("value"), V::Null),
+        _ => or(c.unwired("value"), V::Null),
     };
     if matches!(val, V::Null) {
         return shown(c, "cachedResult", "result", V::Null);

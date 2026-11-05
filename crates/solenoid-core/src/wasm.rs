@@ -250,11 +250,11 @@ pub fn literal_field(class: &str, key: &str, rung: &str, kept_as_text: bool) -> 
     crate::nodes::fields::field_of(class, key, rung, kept_as_text).name().to_string()
 }
 
-/// A card's declared kind for its empty field `key` and what it shows, as `kind` and `shown` JSON; empty text where it
+/// A card's declared kind for its empty field `key` under its `op` and what it shows, as `kind` and `shown` JSON; empty text where it
 /// declares none (`nodes::fields::Empty`).
 #[wasm_bindgen]
-pub fn empty_field(class: &str, key: &str) -> String {
-    match crate::nodes::fields::empty_of(class, key) {
+pub fn empty_field(class: &str, op: &str, key: &str) -> String {
+    match crate::nodes::fields::empty_of(class, op, key) {
         Some(e) => {
             let (kind, shown) = e.shown();
             serde_json::json!({ "kind": kind, "shown": shown }).to_string()

@@ -79,7 +79,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("AccruedInterestNode", "par", Empty::Fallback(Fill::Num(1000.0))),
     ("AccruedInterestNode", "rate", Empty::Fallback(Fill::Num(0.06))),
     ("AddColumnNode", "name", Empty::Fallback(Fill::Text(""))),
-    ("AddIndexNode", "name", Empty::Fallback(Fill::Text(""))),
+    ("AddIndexNode", "name", Empty::Fallback(Fill::Text("Index"))),
     ("AlertNode", "high", Empty::Fallback(Fill::Num(100.0))),
     ("AlertNode", "low", Empty::Fallback(Fill::Num(0.0))),
     ("AlertNode", "match", Empty::Fallback(Fill::Text(""))),
@@ -98,9 +98,9 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("AwgNode", "gauge", Empty::Example("12")),
     ("BaseConvertNode", "value", Empty::Fallback(Fill::Num(0.0))),
     ("BesselNode", "x", Empty::Fallback(Fill::Num(1.0))),
-    ("BetweenNode", "hi", Empty::Fallback(Fill::Text(""))),
-    ("BetweenNode", "lo", Empty::Fallback(Fill::Text(""))),
-    ("BetweenNode", "value", Empty::Fallback(Fill::Text(""))),
+    ("BetweenNode", "hi", Empty::Fallback(Fill::Num(0.0))),
+    ("BetweenNode", "lo", Empty::Fallback(Fill::Num(0.0))),
+    ("BetweenNode", "value", Empty::Fallback(Fill::Num(0.0))),
     ("BinNode", "n", Empty::Fallback(Fill::Num(4.0))),
     ("BinomDistRangeNode", "hi", Empty::Behavior("same as low")),
     ("BinomDistRangeNode", "lo", Empty::Fallback(Fill::Num(0.0))),
@@ -128,7 +128,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("CastNode", "format", Empty::Fallback(Fill::Text(""))),
     // No group separator when the decimal one is a comma, else a comma.
     ("CastNode", "group_sep", Empty::Behavior("auto")),
-    ("CharCodeNode", "code", Empty::Fallback(Fill::Num(65.0))),
+    ("CharCodeNode", "code", Empty::Example("65")),
     ("CharCodeNode", "text", Empty::Fallback(Fill::Text(""))),
     ("ChartBuilderNode", "alpha", Empty::Behavior("auto")),
     ("ChartBuilderNode", "annot", Empty::Fallback(Fill::Text(""))),
@@ -199,8 +199,8 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("ColumnsNode", "columns", Empty::Fallback(Fill::Text(""))),
     ("CombinatoricsNode", "k", Empty::Fallback(Fill::Num(0.0))),
     ("CombinatoricsNode", "n", Empty::Fallback(Fill::Num(0.0))),
-    ("ComparisonNode", "a", Empty::Fallback(Fill::Text(""))),
-    ("ComparisonNode", "b", Empty::Fallback(Fill::Text(""))),
+    ("ComparisonNode", "a", Empty::Fallback(Fill::Num(0.0))),
+    ("ComparisonNode", "b", Empty::Fallback(Fill::Num(0.0))),
     ("ComplexFromNode", "im", Empty::Fallback(Fill::Num(0.0))),
     ("ComplexFromNode", "re", Empty::Fallback(Fill::Num(0.0))),
     ("ComplexPowerNode", "n", Empty::Fallback(Fill::Num(2.0))),
@@ -262,8 +262,8 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("DistributionsNode", "z", Empty::Fallback(Fill::Num(0.0))),
     ("DollarNode", "dollar", Empty::Fallback(Fill::Num(0.0))),
     ("DollarNode", "fraction", Empty::Fallback(Fill::Num(32.0))),
-    ("DurationNode", "coupon", Empty::Fallback(Fill::Num(0.08))),
-    ("DurationNode", "yld", Empty::Fallback(Fill::Num(0.09))),
+    ("DurationNode", "coupon", Empty::Fallback(Fill::Num(0.0))),
+    ("DurationNode", "yld", Empty::Fallback(Fill::Num(0.0))),
     ("ESeriesNode", "value", Empty::Example("4600")),
     ("EarnedValueNode", "cost", Empty::Fallback(Fill::Text(""))),
     ("EarnedValueNode", "holidays", Empty::Fallback(Fill::Text(""))),
@@ -322,8 +322,8 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("HypothesisTestNode", "x", Empty::Fallback(Fill::Num(0.0))),
     ("HypothesisTestNode", "x1", Empty::Fallback(Fill::Num(0.0))),
     ("HypothesisTestNode", "x2", Empty::Fallback(Fill::Num(0.0))),
-    ("IFErrorNode", "fallback", Empty::Fallback(Fill::Text(""))),
-    ("IFErrorNode", "value", Empty::Fallback(Fill::Text(""))),
+    ("IFErrorNode", "fallback", Empty::Fallback(Fill::Num(0.0))),
+    ("IFErrorNode", "value", Empty::Fallback(Fill::Num(0.0))),
     ("IRRNode", "dates", Empty::Fallback(Fill::Text(""))),
     ("IfNode", "cond", Empty::Fallback(Fill::Bool(false))),
     ("IfNode", "else", Empty::Fallback(Fill::Text(""))),
@@ -364,15 +364,15 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("MergeColumnsNode", "separator", Empty::Fallback(Fill::Text(""))),
     ("MergePlotsNode", "options", Empty::Fallback(Fill::Text(""))),
     ("MermaidNode", "source", Empty::Fallback(Fill::Text(""))),
-    ("MirrNode", "finrate", Empty::Fallback(Fill::Num(0.1))),
-    ("MirrNode", "reinrate", Empty::Fallback(Fill::Num(0.12))),
+    ("MirrNode", "finrate", Empty::Fallback(Fill::Num(0.0))),
+    ("MirrNode", "reinrate", Empty::Fallback(Fill::Num(0.0))),
     ("MolarMassNode", "formula", Empty::Example("H2O")),
     ("NPVNode", "dates", Empty::Fallback(Fill::Text(""))),
     ("NPVNode", "rate", Empty::Fallback(Fill::Num(0.1))),
     ("NestJoinNode", "key", Empty::Fallback(Fill::Text(""))),
     ("NestJoinNode", "name", Empty::Fallback(Fill::Text(""))),
     ("NestNode", "keys", Empty::Fallback(Fill::Text(""))),
-    ("NestNode", "nestedName", Empty::Fallback(Fill::Text(""))),
+    ("NestNode", "nestedName", Empty::Fallback(Fill::Text("items"))),
     ("NotNode", "in", Empty::Fallback(Fill::Num(0.0))),
     ("OdeIntegrateNode", "t0", Empty::Fallback(Fill::Num(0.0))),
     ("OdeIntegrateNode", "t1", Empty::Fallback(Fill::Num(1.0))),
@@ -441,9 +441,9 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("SeriesNode", "step", Empty::Fallback(Fill::Num(1.0))),
     ("SeriesNode", "stop", Empty::Behavior("none")),
     ("SeriesNode", "value", Empty::Fallback(Fill::Num(0.0))),
-    ("SeriesSumNode", "m", Empty::Fallback(Fill::Num(1.0))),
+    ("SeriesSumNode", "m", Empty::Fallback(Fill::Num(0.0))),
     ("SeriesSumNode", "n", Empty::Fallback(Fill::Num(0.0))),
-    ("SeriesSumNode", "x", Empty::Fallback(Fill::Num(1.0))),
+    ("SeriesSumNode", "x", Empty::Fallback(Fill::Num(0.0))),
     ("SetCellNode", "col0", Empty::Fallback(Fill::Num(1.0))),
     ("SetCellNode", "row0", Empty::Fallback(Fill::Num(1.0))),
     ("SetCellNode", "value0", Empty::Fallback(Fill::Text(""))),
@@ -534,15 +534,36 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("XMatchNode", "value", Empty::Fallback(Fill::Text(""))),
 ];
 
+/// Fields whose kind depends on the card's op: `(card, op, key, kind)`, ahead of `EMPTY`.
+const EMPTY_BY_OP: &[(&str, &str, &str, Empty)] = &[
+    ("MRoundNode", "down", "multiple", Empty::Fallback(Fill::Num(1.0))),
+    ("MRoundNode", "up", "multiple", Empty::Fallback(Fill::Num(1.0))),
+    ("TakeDropNode", "drop", "cols", Empty::Behavior("none")),
+    ("TakeDropNode", "drop", "rows", Empty::Behavior("none")),
+    ("TwoInputMathNode", "log", "b", Empty::Fallback(Fill::Num(10.0))),
+];
+
 /// The solver cards: an empty field is the unknown they solve for.
 const SOLVERS: &[&str] = &["EquationNode", "TriangleSolverNode", "TvmNode"];
 
-/// A `class` card's declared kind for its empty field `key`, where it declares one.
-pub fn empty_of(class: &str, key: &str) -> Option<Empty> {
+/// A `class` card's declared kind for its empty field `key` under `op`, where it declares one.
+pub fn empty_of(class: &str, op: &str, key: &str) -> Option<Empty> {
     if SOLVERS.contains(&class) {
         return Some(Empty::Behavior("solve"));
     }
-    EMPTY.iter().find(|(c, row, _)| *c == class && is_row(key, row)).map(|&(_, _, e)| e)
+    // An exact key wins over a numbered row of a shorter one (`df1` is its own field, not row 1 of `df`).
+    let by_op = |exact: bool| {
+        EMPTY_BY_OP
+            .iter()
+            .find(|(c, o, row, _)| *c == class && *o == op && if exact { key == *row } else { is_row(key, row) })
+    };
+    if let Some(&(_, _, _, e)) = by_op(true).or_else(|| by_op(false)) {
+        return Some(e);
+    }
+    let plain = |exact: bool| {
+        EMPTY.iter().find(|(c, row, _)| *c == class && if exact { key == *row } else { is_row(key, row) })
+    };
+    plain(true).or_else(|| plain(false)).map(|&(_, _, e)| e)
 }
 
 impl Empty {
@@ -681,7 +702,7 @@ impl Call {
         }
         let v = self.field_value(key);
         let empty = matches!(v, V::Undef) || matches!(&v, V::Str(t) if t.is_empty());
-        match (empty, empty_of(&self.class, key)) {
+        match (empty, empty_of(&self.class, self.field_str("op", ""), key)) {
             (true, Some(Empty::Fallback(Fill::Num(n)))) => V::Num(n),
             (true, Some(Empty::Fallback(Fill::Bool(b)))) => V::Bool(b),
             (true, Some(Empty::Fallback(Fill::Text(t)))) if !t.is_empty() => V::str(t),
@@ -728,8 +749,9 @@ impl Call {
     }
 
     /// A wildcard slot's keyed text, read as its kind the way a Frame Input cell of that type reads it ([[C58]]
-    /// tableInputRawText); `undefined` where nothing is keyed.
-    pub fn keyed(&self, key: &str) -> V {
+    /// tableInputRawText); `undefined` where nothing is keyed. A body reads the slot through `unwired`, which applies
+    /// its empty kind.
+    pub(super) fn keyed(&self, key: &str) -> V {
         match self.saved.raw_text(key) {
             Some(text) => super::list::keyed_value(self.keyed_kind(key), text),
             None => V::Undef,
@@ -762,14 +784,20 @@ mod tests {
 
     #[test]
     fn an_empty_field_declares_its_kind() {
-        assert_eq!(empty_of("MolarMassNode", "formula").map(Empty::shown), Some(("example", Some("H2O".into()))));
-        assert_eq!(empty_of("XLookupNode", "returnColumn").map(Empty::shown), Some(("behavior", Some("[all]".into()))));
-        assert_eq!(empty_of("DollarNode", "dollar").map(Empty::shown), Some(("fallback", Some("0".into()))));
+        assert_eq!(empty_of("MolarMassNode", "", "formula").map(Empty::shown), Some(("example", Some("H2O".into()))));
+        assert_eq!(
+            empty_of("XLookupNode", "", "returnColumn").map(Empty::shown),
+            Some(("behavior", Some("[all]".into())))
+        );
+        assert_eq!(empty_of("DollarNode", "", "dollar").map(Empty::shown), Some(("fallback", Some("0".into()))));
         assert_eq!(Empty::Fallback(Fill::Text("")).shown(), ("fallback", None));
         assert_eq!(Empty::Fallback(Fill::Bool(false)).shown(), ("fallback", Some("FALSE".into())));
         assert_eq!(Empty::Required.shown(), ("required", None));
-        assert_eq!(empty_of("RoundNNode", "value"), Some(Empty::Fallback(Fill::Num(0.0))));
-        assert_eq!(empty_of("TvmNode", "fv"), Some(Empty::Behavior("solve")));
-        assert_eq!(empty_of("NoSuchNode", "x"), None);
+        assert_eq!(empty_of("RoundNNode", "round", "value"), Some(Empty::Fallback(Fill::Num(0.0))));
+        assert_eq!(empty_of("TvmNode", "", "fv"), Some(Empty::Behavior("solve")));
+        assert_eq!(empty_of("NoSuchNode", "", "x"), None);
+        assert_eq!(empty_of("DistributionsNode", "f", "df1"), Some(Empty::Fallback(Fill::Num(5.0))));
+        assert_eq!(empty_of("TwoInputMathNode", "log", "b"), Some(Empty::Fallback(Fill::Num(10.0))));
+        assert_eq!(empty_of("TwoInputMathNode", "atan2", "b"), Some(Empty::Fallback(Fill::Num(0.0))));
     }
 }

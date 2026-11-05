@@ -66,25 +66,57 @@ are told apart by shape:
    unless a judgement call says otherwise; Examples and Behaviors where they fit; the italics split.
 2. The formula side: where a card's Fallback isn't Excel's empty value, the formula's empty slot shows and reads it.
 
-### Step 1 so far
+### Where steps 1 and 2 stand (2026-11-05)
 
-Built: the declaration ([[inline-literal-maps#What an empty field is]], under [[D96]] emptySlotShowsItsValue, rewritten
-to the scheme), the worklist (`tests/fixtures/empty-field-worklist.json`: 467 fields to declare), italics on Examples
-only (the formula's empty slots included), and a Behavior's word in brackets everywhere (`[all]`, `[none]`).
+Both are built ([[inline-literal-maps#What an empty field is]], [[D96]] emptySlotShowsItsValue). Every catalog card
+field declares its kind, and `emptyFieldKinds.test.ts` fails any that doesn't; a card with a formula twin reads an empty
+field as the formula reads that empty slot. No body reads an empty field any other way (`read_num` is gone). The frozen
+card answers (`card_bodies_answer_as_frozen`) are unchanged: what changes is what an emptied field reads.
 
-The first batch moved the old `fieldPlaceholders` into the declaration, each kind matching what the card already
-answered, so no answer changed:
+How each field got its kind:
 
-- Examples: Molar Mass, HR Zones, Antoine, Alert, EM Spectrum, E-Series, AWG, Colebrook, Switch's Value.
-- Behaviors: XLookup's Return and In Row (`[all]`, `[names]`), both Write cards' Keys (`[all]`), Cast's group
-  separator (`[auto]`: none when the decimal separator is a comma, else a comma).
-- Fallbacks: Cast's decimal separator (`.`), and **Dollar's Dollar and Base Convert's Value (`0`), which showed an
-  example (1.02, 1010) but computed 0**. They show 0 now; either could become an Example (the card answering blank)
-  instead: the author's call.
-- A number field that declares nothing no longer shows a stock muted `0` it never computed with.
+- **The old placeholders**, each matching what the card already answered: Examples (Molar Mass, HR Zones, Antoine,
+  Alert, EM Spectrum, E-Series, AWG, Colebrook, Switch's Value), Behaviors (XLookup's `[all]` and `[names]`, both Write
+  cards' `[all]`, Cast's group separator `[auto]`), Fallbacks (Cast's decimal separator `.`).
+- **The hidden code defaults** (96 reads) became Fallbacks at their values, but for these:
+  - judged sample values rather than quality of life, so 0: DURATION's coupon and yield, MIRR's two rates,
+    SERIESSUM's x and m; UNICHAR's code 65 became an Example (an emptied card answers blank);
+  - Outliers' threshold, which moves with the method (3, 1.5, 3.5): `[by method]`.
+- **Excel's empty value with no answer changed** (0, FALSE, empty text): 312 fields where the emptied card answered
+  the same either way.
+- **Judgement calls** (an emptied field's answer changes):
+  - 0 where empty answered a nonsense error or a blank: Arithmetic, the math functions, ROUND's Number, Clamp,
+    Two-input math, the distributions' x, mean, z, k and p, Fisher, Spell Number, Is Even/Odd, Is Close,
+    Depreciation's cost and salvage, ISA Atmosphere's altitude (sea level), Quadratic's b and c, and the wildcard slots
+    of Comparison, Between and IFERROR (Excel's 0; they read blank before).
+  - The card's own value where 0 would error: Quadratic's a (1), Standardize's σ (1), Depreciation's life and period
+    (1), the distributions' σ, degrees of freedom and shapes (their defaults), the discount securities' price,
+    redemption and investment, Series' step (1), Slider's max (100) and step (1), Set Cell's row and column (1), FX's
+    amount (1), Alert's high (100). SEQUENCE's start is 1, as in Excel.
+  - Hidden values surfaced: Surface's levels (8), DDB's factor (2).
+  - Behaviors: the solver cards (Equation, Triangle Solver, TVM) `[solve]`, Chart Builder's bounds and styles
+    `[auto]`, Join's tolerance `[exact]`, Hypothesis Test's σ `[from sample]`, Shuffle's weights `[equal]`, List
+    Index's position `[all]`, Series' stop `[none]` and columns `[one]`, Binomial Range's high `[same as low]`, Fill's
+    Else `[none]`, DROP's counts `[none]`.
+  - Examples: KPI's value and prior, Gauge's value, EM Spectrum's wavelength, HR Zones' max and resting, Pipe
+    Roughness's diameter.
+  - Required: SEQUENCE's rows.
+- **Per op**: LOG's base 10, CEILING.MATH's and FLOOR.MATH's significance 1, DROP's counts `[none]`.
+- **Custom card components**: prompts (URLs, pickers, QR fields) are Examples in italics; Behaviors in brackets
+  (`[this year]`, `[whole vault]`, `[auto]`, `[vault root]`, goal seek's `[none]` bounds). Goal seek's tolerance showed
+  0 while the solver used 1e-7; it shows `1e-7` now.
 
-Not swept yet: placeholders drawn by a card's own component rather than the shared row host (they are upright now,
-as every placeholder is unless marked an Example).
+**Step 2**, the formula following its card where Excel's empty value would error: CONFIDENCE.NORM and CONFIDENCE.T
+(α 0.05, σ 1, n 30), SLN's and SYD's life and period (1), DURATION's and MDURATION's frequency (2), STANDARDIZE's σ (1),
+the right-tailed distributions' degrees of freedom (CHISQ.DIST.RT, T.DIST.RT, T.DIST.2T 10; F.DIST.RT 5 and 10). Two
+wrong words fixed on the way: CEILING.MATH's and FLOOR.MATH's empty significance showed 3 (it reads 1), GESTEP's step 1
+(it reads 0). A left-out default that is a value shows as itself (`10`, `1`), not in brackets.
+
+For the author to look over: Dollar's and Base Convert's 0 (both used to show an example, 1.02 and 1010, and compute
+0; either could be an Example), and any judgement call above.
+
+Out of scope, waiting: a cable carrying a blank; the formula variables (`x`), which read 0 when empty through
+`Call::read_variable`.
 
 ## Open questions
 

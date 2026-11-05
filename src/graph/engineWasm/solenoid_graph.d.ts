@@ -242,10 +242,10 @@ export function directBodies(): string[];
 export function display_settings(number_decimals?: number | null, sci_above?: string | null): void;
 
 /**
- * A card's declared kind for its empty field `key` and what it shows, as `kind` and `shown` JSON; empty text where it
+ * A card's declared kind for its empty field `key` under its `op` and what it shows, as `kind` and `shown` JSON; empty text where it
  * declares none (`nodes::fields::Empty`).
  */
-export function empty_field(_class: string, key: string): string;
+export function empty_field(_class: string, op: string, key: string): string;
 
 /**
  * Stages `csvToFrame`'s typed columns for the `take_*` calls and answers their schema (`csv::frame_columnar`).
@@ -500,7 +500,7 @@ export interface InitOutput {
     readonly computeNode: (a: number, b: any, c: any, d: number) => void;
     readonly directBodies: (a: number) => void;
     readonly display_settings: (a: number, b: number, c: number, d: number) => void;
-    readonly empty_field: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly empty_field: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly engine_csv_frame: (a: number, b: number, c: number) => void;
     readonly engine_csv_rows: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly engine_infer_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
@@ -594,8 +594,8 @@ export interface InitOutput {
     readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly uid: (a: number) => void;
     readonly unnamedEdits: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_8336: (a: number, b: number, c: number, d: any) => void;
-    readonly __wasm_bindgen_func_elem_8338: (a: number, b: number, c: any, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8374: (a: number, b: number, c: number, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8376: (a: number, b: number, c: any, d: any) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;

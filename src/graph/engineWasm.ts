@@ -105,8 +105,8 @@ export function coreLiteralField(cardClass: string, key: string, rung: string, k
 }
 
 /** A card's declared kind for its empty field and what it shows (`nodes::fields::Empty`), where it declares one. */
-export function coreEmptyField(cardClass: string, key: string): { kind: "fallback" | "behavior" | "example" | "required"; shown: string | null } | undefined {
-  const json = empty_field(cardClass, key);
+export function coreEmptyField(cardClass: string, op: string, key: string): { kind: "fallback" | "behavior" | "example" | "required"; shown: string | null } | undefined {
+  const json = empty_field(cardClass, op, key);
   return json ? JSON.parse(json) : undefined;
 }
 

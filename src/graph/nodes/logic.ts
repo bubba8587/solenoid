@@ -37,7 +37,7 @@ export const COMPARISON_OP_META = {
 
 export class ComparisonNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    result: "A blank A or B gives a blank. Numbers, text, dates, logicals and units compare as IS, ABOVE and the rest do: kinds that differ are unequal and unordered (#TYPE!), and complex numbers are equal or not but have no order. Ordering different dimensions is #UNIT!; equal is FALSE, not equal TRUE. A plain number against a unit value is read in that value's display unit.",
+    result: "A blank cabled into A or B gives a blank; an empty field reads 0. Numbers, text, dates, logicals and units compare as IS, ABOVE and the rest do: kinds that differ are unequal and unordered (#TYPE!), and complex numbers are equal or not but have no order. Ordering different dimensions is #UNIT!; equal is FALSE, not equal TRUE. A plain number against a unit value is read in that value's display unit.",
   };
 
   /** Keeps UnitCell tags so the comparison runs on base-SI magnitudes and checks commensurability. */

@@ -143,7 +143,9 @@ Tests:
 - **A read-only formula** (a card's formula line) draws it inline.
 - **A card's empty setting field** shows its declared blank as the field's placeholder, a Fallback, or its `LEFT_OUT` word as a Behavior in brackets (`emptyFieldShown` in `emptySlots.ts`; a card setting pointed at a formula with `rolesFrom` shows the formula slot's reading). Other fields show what they declare when empty ([[inline-literal-maps#What an empty field is]]).
 
-A `LEFT_OUT` reading shows a short word in brackets for the default it stands for, a Behavior, declared with the setting: `[all]` for a size that keeps the whole axis (TAKE, DROP, EXPAND), `[1]` where the default is the first (an instance or a start), `[none]` where nothing is applied, and the default value itself wherever one exists. Placeholders are upright; italics are an Example's alone.
+A `LEFT_OUT` reading shows a short word for the default it stands for, declared with the setting: a value as itself (a Fallback, upright: `10`, `1`, `FALSE`), anything else in brackets (a Behavior), `[all]` for a size that keeps the whole axis (TAKE, EXPAND), `1` where the default is the first (an instance or a start), `[none]` where nothing is applied (DROP), and the default value itself wherever one exists.
+
+Where a function's card falls back to a value because Excel's empty one would make an error, the formula's empty slot reads that value instead (`CARD_FALLBACK_SLOT` in `emptySlots.ts`, and the same in the core's `blanks` in `data/call_traits.json`), so the card and the formula agree ([[D96]] emptySlotShowsItsValue). Placeholders are upright; italics are an Example's alone.
 
 Tests: `emptySlots.test.ts`: the reading or its bracketed word, and nothing for blank text; the highlighter's CSS content in the editor and text when read-only; and a card's empty field showing its kind: a setting's formula twin's reading, its own blank or its word, the core's declaration, and nothing for a required or undeclared field.
 

@@ -2324,7 +2324,7 @@ fn unnest(c: &mut Call) -> Answer {
 
 /// The keyed cell, else blank.
 fn literal_cell(c: &Call, key: &str) -> V {
-    match c.keyed(key) {
+    match c.unwired(key) {
         V::Undef => V::Null,
         v => v,
     }

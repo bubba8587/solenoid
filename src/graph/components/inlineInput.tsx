@@ -591,7 +591,7 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
         // One field per input, the one the core reads ([[C28]] literalsIffEditable).
         const field: DrawnField = cableOnlyKeys?.has(key) ? "none" : drawnFieldOf(node, key);
         const label = labelFor ? labelFor(key, i) : (input.label || key);
-        const empty = emptyFieldShown(node.constructor.name, key, roles?.[key]);
+        const empty = emptyFieldShown(node.constructor.name, key, roles?.[key], (node as { op?: string }).op);
         const placeholder = empty?.shown;
         const isConn = connected.has(key);
         return (
