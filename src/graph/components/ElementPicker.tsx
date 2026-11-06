@@ -62,8 +62,10 @@ export function ElementPicker() {
             if (e.key === "Enter" && best) { e.preventDefault(); pick(best.symbol); }
           }}
         />
+        {/* On a phone the detail sits above the table, full width: there is no hover, and a tap picks and stays open. */}
+        {shown && <ElementDetail e={shown} hue={hueOf(shown.category)} placement="above" />}
         <div className="el-picker__table" role="listbox" aria-label="Periodic table" onMouseLeave={() => setHovered(null)}>
-          {shown && <ElementDetail e={shown} hue={hueOf(shown.category)} />}
+          {shown && <ElementDetail e={shown} hue={hueOf(shown.category)} placement="gap" />}
           {ELEMENTS.map((e) => {
             const { row, col } = elementCell(e.n);
             return (
@@ -83,8 +85,8 @@ export function ElementPicker() {
             );
           })}
           {/* Where the f-block's two rows belong in the main body. */}
-          <span className="el-picker__gap" style={{ gridRow: 6, gridColumn: 3 }}>57–71</span>
-          <span className="el-picker__gap" style={{ gridRow: 7, gridColumn: 3 }}>89–103</span>
+          <span className="el-picker__gap" style={{ gridRow: 6, gridColumn: 3, "--el-hue": hueOf("Lanthanide") } as React.CSSProperties} title="Lanthanides, 57–71"><span>57–71</span></span>
+          <span className="el-picker__gap" style={{ gridRow: 7, gridColumn: 3, "--el-hue": hueOf("Actinide") } as React.CSSProperties} title="Actinides, 89–103"><span>89–103</span></span>
         </div>
         <ul className="el-picker__legend">
           {ELEMENT_CATEGORIES.map((c) => (
@@ -100,7 +102,7 @@ const num = (v: number | null, unit = "") => (v === null ? "–" : `${v}${unit}`
 
 /** The hovered element (or the current pick) in the table's empty top-middle, where a printed table puts its key:
  *  its tile, then every property the card's Elements frame carries. */
-function ElementDetail({ e, hue }: { e: ElementMeta; hue: string }) {
+function ElementDetail({ e, hue, placement }: { e: ElementMeta; hue: string; placement: "gap" | "above" }) {
   const facts: [string, string][] = [
     ["Config.", e.config],
     ["State", e.state],
@@ -119,7 +121,10 @@ function ElementDetail({ e, hue }: { e: ElementMeta; hue: string }) {
   const half = Math.ceil(facts.length / 2);
 
   return (
-    <div className="el-picker__detail" style={{ gridRow: "1 / 4", gridColumn: "3 / 13", "--el-hue": hue } as React.CSSProperties}>
+    <div
+      className={`el-picker__detail el-picker__detail--${placement}`}
+      style={{ ...(placement === "gap" ? { gridRow: "1 / 4", gridColumn: "3 / 13" } : {}), "--el-hue": hue } as React.CSSProperties}
+    >
       <div className="el-picker__detail-tile">
         <span className="el-picker__detail-z">{e.n}</span>
         <span className="el-picker__detail-symbol">{e.symbol}</span>

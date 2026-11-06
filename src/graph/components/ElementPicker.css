@@ -88,6 +88,8 @@
   white-space: nowrap;
 }
 
+/* Desktop shows the detail in the table's top gap; a phone shows it above the table. */
+.el-picker__detail--above { display: none !important; }
 .el-picker__detail {
   --el-hue: var(--border-strong);
   display: flex;
@@ -180,17 +182,43 @@
 }
 
 @media (max-width: 560px) {
-  .el-picker__detail { display: none; }
-  .el-picker__legend { max-width: none; }
+  .el-picker__body { padding: 10px 8px; gap: 8px; }
+  .el-picker__detail--gap { display: none; }
+  .el-picker__detail--above {
+    display: flex !important;
+    gap: 10px;
+    padding: 0;
+    align-items: stretch;
+  }
+  .el-picker__detail--above .el-picker__detail-tile { width: 92px; height: 92px; }
+  .el-picker__detail--above .el-picker__detail-symbol { top: 24%; font-size: 34px; }
+  .el-picker__detail--above .el-picker__detail-z,
+  .el-picker__detail--above .el-picker__detail-mass { font-size: 9.5px; }
+  .el-picker__detail--above .el-picker__detail-name { font-size: 11px; bottom: 5px; }
+  .el-picker__detail--above .el-picker__detail-facts { font-size: 10px; line-height: 13px; column-gap: 6px; align-content: start; }
+  /* A long configuration wraps rather than cutting off: the phone has the height. */
+  .el-picker__detail--above .el-picker__detail-facts dd { white-space: normal; overflow-wrap: anywhere; }
+  .el-picker__legend { max-width: none; font-size: 10px; gap: 3px 10px; }
+  /* Square cells as wide as the screen allows, edge to edge as on desktop. */
   .el-picker__table {
-    grid-template-columns: repeat(18, minmax(14px, 1fr));
-    grid-template-rows: repeat(7, 22px) 6px repeat(2, 22px);
-    gap: 2px;
+    --cell: calc((100vw - 52px) / 18);
+    grid-template-columns: repeat(18, var(--cell));
+    grid-template-rows: repeat(7, var(--cell)) 6px repeat(2, var(--cell));
     width: 100%;
   }
-  .el-picker__cell { font-size: 9px; }
+  .el-picker__cell { font-size: calc(var(--cell) * 0.46); }
   .el-picker__cell-z { display: none; }
   .el-picker__cell-symbol { padding-top: 0; }
+  /* The f-block markers: a dot in each series' color, the range in the title. */
+  .el-picker__gap > span { display: none; }
+  .el-picker__gap::before {
+    content: "";
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--el-hue);
+  }
 }
 
 /* The op-select field look minus the chevron: it opens the picker popup, not a native menu. */
