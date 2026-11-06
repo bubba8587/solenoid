@@ -2,6 +2,7 @@
 // Main-thread client of the Script sandbox (tree/specs/computation/script-sandbox.md): one worker, one call in it at a
 // time, the rest queued here. Without Workers the evaluator runs inline.
 import { invokeScript, SCRIPT_TIMEOUT_MS, type ScriptOutcome } from "./nodes/scriptRun";
+import { registerNodeForgetAll } from "./nodeStoreRegistry";
 
 type Req = { id: number; src: string; args: unknown[] };
 type Pending = { req: Req; resolve: (o: ScriptOutcome) => void };
@@ -17,6 +18,8 @@ function finish(outcome: ScriptOutcome): void {
   const { p } = running;
   running = null;
   p.resolve(outcome);
+  if (stale && worker) retire(worker);
+  stale = false;
   next();
 }
 
@@ -24,6 +27,19 @@ function retire(w: Worker): void {
   w.terminate();
   if (worker === w) worker = null;
 }
+
+/** Set while a call runs in a worker due to retire once it answers. */
+let stale = false;
+
+/** A newly loaded graph starts on a fresh worker, so nothing one document's scripts left in it (a handler of their own)
+ *  reaches the next's ([[B18]] safeToShare). */
+export function retireScriptWorker(): void {
+  if (!worker) return;
+  if (running) stale = true;
+  else retire(worker);
+}
+
+registerNodeForgetAll(retireScriptWorker);
 
 function spawn(): Worker {
   const w = new Worker(new URL("./scriptWorker.ts", import.meta.url), { type: "module" });

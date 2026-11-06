@@ -1,6 +1,6 @@
 // [[C66]] scriptNode
-// The Script sandbox: the worker drops every I/O door (network, storage, spawning) before the first call. `import()`
-// can't be removed; this guards against accidents, not a hostile author.
+// The Script sandbox: the worker drops every I/O door (network, storage, spawning) before the first call; its own CSP
+// stops `import()` ([[script-sandbox#The worker]]).
 import { invokeScript } from "./nodes/scriptRun";
 
 type Scope = {

@@ -33,3 +33,16 @@ describe("site page HTML", () => {
     }
   });
 });
+
+describe("the Script worker's own CSP ([[B18]] safeToShare, [[script-sandbox#The worker]])", () => {
+  it("vercel.json serves the worker's file with a CSP that loads nothing and still lets it compile scripts", () => {
+    const vercel = JSON.parse(readFileSync("vercel.json", "utf8")) as { headers?: { source: string; headers: { key: string; value: string }[] }[] };
+    const rule = vercel.headers?.find((h) => h.headers.some((x) => x.key === "Content-Security-Policy"));
+    expect(rule).toBeDefined();
+    // Vite names the worker's chunk after its module, `scriptWorker-<hash>.js`, beside the other assets.
+    expect(new RegExp(`^${rule!.source}$`).test("/assets/scriptWorker-VwnzVBUU.js")).toBe(true);
+    expect(readFileSync("src/graph/scriptExecutor.ts", "utf8")).toContain('new URL("./scriptWorker.ts", import.meta.url)');
+    const csp = rule!.headers.find((x) => x.key === "Content-Security-Policy")!.value;
+    expect(csp).toBe("default-src 'none'; script-src 'unsafe-eval'");
+  });
+});

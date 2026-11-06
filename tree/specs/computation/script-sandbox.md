@@ -125,8 +125,8 @@ Tests:
 
 ## The worker
 
-- One shared module worker, spawned on the first call. It holds one call at a time; the executor queues the rest and sends the next when the running call settles.
-- Before its first call, the worker deletes these names from its global scope and every object on its prototype chain: `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `WebTransport`, `RTCPeerConnection`, `importScripts`, `indexedDB`, `caches`, `BroadcastChannel`, `Worker`, `SharedWorker`, `Notification`, `navigator` and `postMessage`. It keeps a private handle to `postMessage` for its replies. `import()` is syntax and cannot be removed, so this is containment against accidents, not a security boundary; the author of a document wrote its scripts.
+- One shared module worker, spawned on the first call. It holds one call at a time; the executor queues the rest and sends the next when the running call settles. A newly loaded graph (a document opened, an undo) retires it, at once or when its running call answers (`retireScriptWorker`), so nothing a document's scripts left in the worker reaches the next document's.
+- Before its first call, the worker deletes these names from its global scope and every object on its prototype chain: `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `WebTransport`, `RTCPeerConnection`, `importScripts`, `indexedDB`, `caches`, `BroadcastChannel`, `Worker`, `SharedWorker`, `Notification`, `navigator` and `postMessage`. It keeps a private handle to `postMessage` for its replies. `import()` is syntax and cannot be removed: the worker's own Content-Security-Policy stops it, `default-src 'none'; script-src 'unsafe-eval'` (the worker file's response header, `vercel.json`; the desktop's CSP allows only its own scripts), so pressing Run never lets a script reach the network, which stays the network grant's. `siteMeta.test.ts` checks the header names the worker's file.
 - `scriptRun.ts` imports nothing from the app. It is the worker's whole bundle, with no React and no module that touches the DOM when loaded, and it is also the inline evaluator on hosts without Workers.
 
 ## The time limit
