@@ -49,132 +49,6 @@ pub const NAMES: &[&str] = &[
     "SETDISJOINT",
 ];
 
-const ELEMENT_NAMES: [&str; 118] = [
-    "Hydrogen",
-    "Helium",
-    "Lithium",
-    "Beryllium",
-    "Boron",
-    "Carbon",
-    "Nitrogen",
-    "Oxygen",
-    "Fluorine",
-    "Neon",
-    "Sodium",
-    "Magnesium",
-    "Aluminium",
-    "Silicon",
-    "Phosphorus",
-    "Sulfur",
-    "Chlorine",
-    "Argon",
-    "Potassium",
-    "Calcium",
-    "Scandium",
-    "Titanium",
-    "Vanadium",
-    "Chromium",
-    "Manganese",
-    "Iron",
-    "Cobalt",
-    "Nickel",
-    "Copper",
-    "Zinc",
-    "Gallium",
-    "Germanium",
-    "Arsenic",
-    "Selenium",
-    "Bromine",
-    "Krypton",
-    "Rubidium",
-    "Strontium",
-    "Yttrium",
-    "Zirconium",
-    "Niobium",
-    "Molybdenum",
-    "Technetium",
-    "Ruthenium",
-    "Rhodium",
-    "Palladium",
-    "Silver",
-    "Cadmium",
-    "Indium",
-    "Tin",
-    "Antimony",
-    "Tellurium",
-    "Iodine",
-    "Xenon",
-    "Caesium",
-    "Barium",
-    "Lanthanum",
-    "Cerium",
-    "Praseodymium",
-    "Neodymium",
-    "Promethium",
-    "Samarium",
-    "Europium",
-    "Gadolinium",
-    "Terbium",
-    "Dysprosium",
-    "Holmium",
-    "Erbium",
-    "Thulium",
-    "Ytterbium",
-    "Lutetium",
-    "Hafnium",
-    "Tantalum",
-    "Tungsten",
-    "Rhenium",
-    "Osmium",
-    "Iridium",
-    "Platinum",
-    "Gold",
-    "Mercury",
-    "Thallium",
-    "Lead",
-    "Bismuth",
-    "Polonium",
-    "Astatine",
-    "Radon",
-    "Francium",
-    "Radium",
-    "Actinium",
-    "Thorium",
-    "Protactinium",
-    "Uranium",
-    "Neptunium",
-    "Plutonium",
-    "Americium",
-    "Curium",
-    "Berkelium",
-    "Californium",
-    "Einsteinium",
-    "Fermium",
-    "Mendelevium",
-    "Nobelium",
-    "Lawrencium",
-    "Rutherfordium",
-    "Dubnium",
-    "Seaborgium",
-    "Bohrium",
-    "Hassium",
-    "Meitnerium",
-    "Darmstadtium",
-    "Roentgenium",
-    "Copernicium",
-    "Nihonium",
-    "Flerovium",
-    "Moscovium",
-    "Livermorium",
-    "Tennessine",
-    "Oganesson",
-];
-
-/// The period an atomic number sits in.
-fn period_of(n: f64) -> f64 {
-    [2.0, 10.0, 18.0, 36.0, 54.0, 86.0, 118.0].iter().position(|&last| n <= last).map_or(7.0, |p| (p + 1) as f64)
-}
-
 fn arg(a: &[V], i: usize) -> &V {
     a.get(i).unwrap_or(&V::Undef)
 }
@@ -514,24 +388,18 @@ pub fn call(name: &str, a: &[V]) -> V {
     }
 }
 
-/// `ELEMENT`: a number finds its element by atomic number, anything else by symbol.
+/// `ELEMENT`: an element by atomic number, symbol or name, and one of the Element card's properties (mass when left
+/// out), in that property's unit; a property nobody has measured is blank.
 fn element(el: &V, property: &V) -> V {
     if nullish(el) {
         return V::Null;
     }
-    let found = match el {
-        V::Num(n) => (*n >= 1.0 && *n <= 118.0 && n.fract() == 0.0).then(|| *n as usize - 1),
-        v => k::element(&value_text(v)).map(|(n, _)| n as usize - 1),
+    let Some(i) = crate::nodes::elements::find(el) else {
+        return err(ErrorCode::Name, format!("Unknown element \"{}\"", value_text(el)));
     };
-    let Some(i) = found else { return err(ErrorCode::Name, format!("Unknown element \"{}\"", value_text(el))) };
-    let (n, (symbol, mass)) = ((i + 1) as f64, k::ELEMENTS[i]);
     let p = lower_or(property, "mass");
-    match p.as_str() {
-        "mass" => V::Num(mass),
-        "number" => V::Num(n),
-        "name" => V::str(ELEMENT_NAMES[i]),
-        "symbol" => V::str(symbol),
-        "period" => V::Num(period_of(n)),
-        _ => err(ErrorCode::Value, format!("Unknown property \"{p}\". Use mass, number, name, symbol or period")),
-    }
+    crate::nodes::elements::property(&crate::nodes::elements::table()[i], &p).unwrap_or_else(|| {
+        let names: Vec<&str> = crate::nodes::elements::PROPERTIES.iter().map(|(k, _, _)| *k).collect();
+        err(ErrorCode::Value, format!("Unknown property \"{p}\". Use {}", names.join(", ")))
+    })
 }

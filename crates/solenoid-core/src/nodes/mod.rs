@@ -17,6 +17,7 @@ mod control;
 mod cube_source;
 mod date;
 mod docs;
+pub(crate) mod elements;
 pub mod fields;
 mod finance;
 mod formula;

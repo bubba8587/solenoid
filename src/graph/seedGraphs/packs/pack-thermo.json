@@ -168,7 +168,7 @@
       "type": "ExpressionNode",
       "init": {
         "label": "Dew Point",
-        "expr": "243.04\n* (LN(rh/100)+17.625*tc/(243.04+tc))\n/ (\n    17.625-LN(rh/100)\n    - 17.625*tc/(243.04+tc)\n  )",
+        "expr": "243.04\n* (LN(rh/100)+17.625*tc/(243.04+tc))\n/ (\n\t\t17.625-LN(rh/100)\n\t\t- 17.625*tc/(243.04+tc)\n\t)",
         "locked": true,
         "castTo": "none",
         "width": 220,

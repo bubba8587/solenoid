@@ -27,7 +27,7 @@
       "init": {
         "label": "Frequency (Hz)",
         "op": "number",
-        "value": "545000000000000",
+        "value": "5.45E+14",
         "format": "auto",
         "customPattern": "0.00",
         "decimalDigits": 2,

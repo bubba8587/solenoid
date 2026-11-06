@@ -26,7 +26,7 @@ describe("indentFormula", () => {
 
   it("opens a call too long for its own line, one argument a line, the closer at the opener's indent", () => {
     const out = indentFormula('IF(LEN(TRIM(some_text))=0,"empty",LEN(SUBSTITUTE(TRIM(some_text)," ","")))', 40);
-    expect(out).toBe('IF(\n  LEN(TRIM(some_text))=0,\n  "empty",\n  LEN(SUBSTITUTE(TRIM(some_text)," ",""))\n)');
+    expect(out).toBe('IF(\n\tLEN(TRIM(some_text))=0,\n\t"empty",\n\tLEN(SUBSTITUTE(TRIM(some_text)," ",""))\n)');
   });
 
   it("is idempotent", () => {

@@ -4,7 +4,11 @@
 // on its own line, one indent deeper, closing at the opening line's indent. Only line breaks and indentation change:
 // text inside a string, and every space within a line, is kept.
 
-export const FORMULA_INDENT = "  ";
+/** One level of indent: a tab, drawn two columns wide (the editor's tab-size). */
+export const FORMULA_INDENT = "\t";
+const TAB_COLS = 2;
+/** How many columns an indent takes on screen. */
+const cols = (indent: string) => indent.length + (TAB_COLS - 1) * (indent.split("\t").length - 1);
 /** Characters a line may hold before its groups break; sized for a card's formula field. */
 export const FORMULA_WIDTH = 40;
 
@@ -91,7 +95,7 @@ function split(items: Item[], ops: string): Item[][] {
 function layout(items: Item[], indent: string, width: number): string {
   items = trimItems(items);
   const text = flat(items);
-  if (indent.length + text.length <= width) return text;
+  if (cols(indent) + text.length <= width) return text;
   let pieces = split(items, "+-&");
   if (pieces.length === 1) pieces = split(items, "*/");
   if (pieces.length === 1) return groups(items, indent, width);
@@ -100,7 +104,7 @@ function layout(items: Item[], indent: string, width: number): string {
   for (const [k, piece] of pieces.entries()) {
     const raw = flat(piece).trim();
     const cur = lines[lines.length - 1];
-    if (cur !== undefined && !cur.includes("\n") && indent.length + cur.length + raw.length <= width) {
+    if (cur !== undefined && !cur.includes("\n") && cols(indent) + cur.length + raw.length <= width) {
       lines[lines.length - 1] = cur + raw;
       continue;
     }
@@ -125,7 +129,7 @@ function groups(items: Item[], indent: string, width: number): string {
   for (const it of items) {
     if (typeof it === "string") { out += it; continue; }
     const text = flat([it]);
-    if (indent.length + text.length <= width || it.open === "{" || (it.args.length === 1 && flat(it.args[0]).trim() === "")) {
+    if (cols(indent) + text.length <= width || it.open === "{" || (it.args.length === 1 && flat(it.args[0]).trim() === "")) {
       out += text;
       continue;
     }

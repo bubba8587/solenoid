@@ -1,8 +1,10 @@
-// [[C76]] formulaPackDefault, [[C25]] firstClassUnits
+// [[C76]] formulaPackDefault, [[C25]] firstClassUnits, [[C24]] arraySemantics
 
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { numOut, strIn } from "./shared";
+import { numOut, strIn, anyComboIn, numListOut, frameOut } from "./shared";
+import type { FrameValue } from "../frame";
+import { cardShapeOnCore, type Shape } from "../frameShape";
 import { type SolError } from "../errorValue";
 import { ELEMENTS, ELEMENT_BY_SYMBOL, type ElementMeta } from "./chemistryOps";
 import type { FormatAnnotation } from "../formatAnnotationStore";
@@ -43,22 +45,34 @@ export function searchElements(query: string): ElementMeta[] {
   return scored.sort((x, y) => x[0] - y[0] || x[1].n - y[1].n).map(([, e]) => e);
 }
 
+/** One element, or one per wired symbol, name or atomic number: its weight, its atomic number, and every property
+ *  as a row of the Elements frame ([[C24]] arraySemantics). */
 export class ElementNode extends GraphNode {
   label: string;
+  /** The card's own pick, read while nothing is wired. */
   symbol: string;
-  width = 220;
-  height = 170;
+  /** The row the tile shows, 0-based; view state. */
+  row = 0;
+  cachedResult: FrameValue | SolError | null = null;
+  width = 300;
+  height = 330;
 
   constructor(init?: { label?: string; symbol?: string }) {
     super("Element");
     this.symbol = init?.symbol && ELEMENT_BY_SYMBOL.has(init.symbol) ? init.symbol : "H";
     this.label = init?.label ?? "Element";
-    this.addOutput("mass", numOut("g/mol"));
-    this.addOutput("number", numOut("Z"));
+    this.addInput("symbol", anyComboIn("Element"));
+    this.addOutput("mass", numListOut("g/mol"));
+    this.addOutput("number", numListOut("Z"));
+    this.addOutput("elements", frameOut("Elements"));
+  }
+
+  frameShape(): Shape | null {
+    return cardShapeOnCore(this, "elements", {});
   }
 
   data(inputs: Record<string, unknown[] | undefined> = {}) {
-    return nodeOnCore(this, inputs) as { mass: number; number: number };
+    return nodeOnCore(this, inputs) as Record<string, unknown>;
   }
 
   annotationFor(outKey: string): FormatAnnotation | undefined {

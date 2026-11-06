@@ -268,6 +268,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("EarnedValueNode", "cost", Empty::Fallback(Fill::Text(""))),
     ("EarnedValueNode", "holidays", Empty::Fallback(Fill::Text(""))),
     ("EarnedValueNode", "weekend_code", Empty::Fallback(Fill::Num(1.0))),
+    ("ElementNode", "symbol", Empty::Behavior("the card's pick")),
     ("EmSpectrumNode", "freq", Empty::Example("5e14")),
     ("EmSpectrumNode", "wavelength", Empty::Example("6e-7")),
     ("EpochNode", "value", Empty::Fallback(Fill::Num(0.0))),

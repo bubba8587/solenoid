@@ -316,7 +316,7 @@ export function nodeXWide(node: GraphNode): boolean {
     node instanceof CalendarHeatmapNode || node instanceof HeatmapNode || node instanceof QuiverNode ||
     node instanceof RecordNode || node instanceof CardsNode || node instanceof TriangleSolverNode || node instanceof UnitCircleNode ||
     node instanceof CircleSolverNode || node instanceof RegularPolygonNode || node instanceof TwoPointsNode ||
-    node instanceof PolygonPointsNode || node instanceof SolidNode;
+    node instanceof PolygonPointsNode || node instanceof SolidNode || node instanceof ElementNode;
 }
 
 export function nodeWide(node: GraphNode): boolean {

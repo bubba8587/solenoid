@@ -15,7 +15,7 @@
         "collapsed": false,
         "width": 760,
         "height": 150,
-        "body": "**Molar Mass** reads a formula (H₂O is about 18 g/mol), and the **Moles ↔ Mass** equation turns 36 g of water into moles. **pH** is −log₁₀ of the hydrogen-ion concentration: 0.001 mol/L gives pH 3. **Dilution** and **half-life** below; the **Element** card looks up iron.",
+        "body": "**Molar Mass** reads a formula (H₂O is about 18 g/mol), and the **Moles ↔ Mass** equation turns 36 g of water into moles. **pH** is −log₁₀ of the hydrogen-ion concentration: 0.001 mol/L gives pH 3. **Dilution** and **half-life** below; the **Element** card looks up iron. At the bottom, one Element card reads the first 36 elements, and their **ionization energy** charted against atomic number climbs across each period and drops after every noble gas.",
         "fieldTypes": {}
       }
     },
@@ -137,8 +137,8 @@
       "type": "ElementNode",
       "init": {
         "label": "Element",
-        "width": 220,
-        "height": 170,
+        "width": 300,
+        "height": 330,
         "symbol": "Fe"
       }
     },
@@ -193,7 +193,7 @@
     {
       "id": "years",
       "x": 0,
-      "y": 1000,
+      "y": 1100,
       "type": "ExpressionNode",
       "init": {
         "label": "Years",
@@ -208,7 +208,7 @@
     {
       "id": "decayT",
       "x": 440,
-      "y": 1000,
+      "y": 1100,
       "type": "ExpressionNode",
       "init": {
         "label": "Decay Remaining",
@@ -231,7 +231,7 @@
     {
       "id": "decayFrame",
       "x": 880,
-      "y": 1000,
+      "y": 1100,
       "type": "FrameFromListsNode",
       "init": {
         "label": "Carbon-14 by year",
@@ -253,7 +253,7 @@
     {
       "id": "decayChart",
       "x": 1320,
-      "y": 1000,
+      "y": 1100,
       "type": "ChartNode",
       "init": {
         "label": "Half-life",
@@ -263,6 +263,85 @@
       },
       "stringLiterals": {
         "options": "title=Carbon-14: half gone every 5,730 years;xlabel=years;ylabel=% left"
+      }
+    },
+    {
+      "id": "zs",
+      "x": 0,
+      "y": 1440,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Atomic number",
+        "expr": "SEQUENCE(36)",
+        "locked": false,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "first",
+      "x": 440,
+      "y": 1440,
+      "type": "ElementNode",
+      "init": {
+        "label": "Elements 1–36",
+        "width": 300,
+        "height": 330,
+        "symbol": "H"
+      }
+    },
+    {
+      "id": "ie",
+      "x": 880,
+      "y": 1440,
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Ionization energy",
+        "readAs": "auto",
+        "width": 200,
+        "height": 205
+      },
+      "stringLiterals": {
+        "name": "Ionization energy"
+      }
+    },
+    {
+      "id": "ieFrame",
+      "x": 880,
+      "y": 1700,
+      "type": "FrameFromListsNode",
+      "init": {
+        "label": "By atomic number",
+        "width": 220,
+        "height": 240,
+        "valueKeys": [
+          "name0",
+          "vals0",
+          "name1",
+          "vals1"
+        ]
+      },
+      "literals": {},
+      "stringLiterals": {
+        "name0": "Z",
+        "name1": "kJ/mol"
+      }
+    },
+    {
+      "id": "ieChart",
+      "x": 1320,
+      "y": 1440,
+      "type": "ChartNode",
+      "init": {
+        "label": "Periodic trend",
+        "op": "line",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Ionization energy peaks at every noble gas;xlabel=Z;ylabel=kJ/mol"
       }
     }
   ],
@@ -307,6 +386,36 @@
       "source": "decayFrame",
       "sourceOutput": "frame",
       "target": "decayChart",
+      "targetInput": "values"
+    },
+    {
+      "source": "zs",
+      "sourceOutput": "result",
+      "target": "first",
+      "targetInput": "symbol"
+    },
+    {
+      "source": "first",
+      "sourceOutput": "elements",
+      "target": "ie",
+      "targetInput": "frame"
+    },
+    {
+      "source": "first",
+      "sourceOutput": "number",
+      "target": "ieFrame",
+      "targetInput": "vals0"
+    },
+    {
+      "source": "ie",
+      "sourceOutput": "values",
+      "target": "ieFrame",
+      "targetInput": "vals1"
+    },
+    {
+      "source": "ieFrame",
+      "sourceOutput": "frame",
+      "target": "ieChart",
       "targetInput": "values"
     }
   ]

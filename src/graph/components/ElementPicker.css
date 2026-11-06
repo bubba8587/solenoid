@@ -1,4 +1,5 @@
-/* Quiet Accent: cells are plain surfaces, and color marks only state (the current element and the best match). */
+/* Each cell is tinted by its category (a palette series slot, as a category chip is); the accent marks state: the
+   current element and the best match. */
 
 .el-picker__body {
   padding: 12px;
@@ -23,23 +24,46 @@
 
 .el-picker__table {
   display: grid;
-  grid-template-columns: repeat(18, 26px);
+  /* As large as the window allows, from 26px to 42px a cell. */
+  /* Whole pixels, so every shared border lands on one device pixel. */
+  --cell: clamp(26px, round(down, calc((100vw - 120px) / 18), 1px), 42px);
+  grid-template-columns: repeat(18, var(--cell));
   /* Row 8 is the deliberate gap between the main body and the f-block. */
-  grid-template-rows: repeat(7, 26px) 8px repeat(2, 26px);
-  gap: 2px;
+  grid-template-rows: repeat(7, var(--cell)) 10px repeat(2, var(--cell));
+  /* Square cells edge to edge, as a printed table: no gaps, no rounding. */
+  gap: 0;
 }
 
 .el-picker__cell {
+  --el-hue: var(--border-strong);
   font: inherit;
-  font-size: 11px;
+  position: relative;
+  font-size: 14px;
+  font-weight: 600;
   line-height: 1;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 3px;
+  color: var(--text-bright);
+  background: color-mix(in srgb, var(--el-hue) var(--header-tint), var(--surface));
+  border: 1px solid color-mix(in srgb, var(--el-hue) var(--mix-edge, 45%), var(--border));
+  border-radius: 0;
+  /* Neighbors share one border line instead of doubling it. */
+  margin: 0 -1px -1px 0;
   padding: 0;
   cursor: pointer;
 }
+.el-picker__cell-z {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 400;
+  /* Accent ink on a tinted fill (DESIGN.md § Accent-Mix Ladder), never a gray. */
+  color: color-mix(in srgb, var(--el-hue) var(--mix-ink, 55%), var(--text));
+}
+.el-picker__cell-symbol { display: block; padding-top: 8px; }
+.el-picker__cell:hover,
+.el-picker__cell--current,
+.el-picker__cell--best { z-index: 1; }
 .el-picker__cell:hover {
   border-color: var(--accent);
 }
@@ -48,20 +72,124 @@
 }
 .el-picker__cell--current {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 .el-picker__cell--best {
   outline: 2px solid var(--accent);
   outline-offset: -1px;
 }
 
+.el-picker__gap {
+  align-self: center;
+  justify-self: center;
+  font-size: 8px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.el-picker__detail {
+  --el-hue: var(--border-strong);
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  /* The tile sits flush in the gap's corner, on the cells' own border lines. */
+  padding: 0 6px 0 0;
+  min-width: 0;
+  pointer-events: none;
+}
+.el-picker__detail-tile {
+  position: relative;
+  flex: none;
+  /* The gap's full height: three rows of cells and their gaps. */
+  /* Three cells and the border they share with their neighbors, as the cells overlap by one. */
+  width: calc(3 * var(--cell) + 1px);
+  height: calc(3 * var(--cell) + 1px);
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--el-hue) var(--header-tint), var(--surface));
+  border: 1px solid var(--el-hue);
+  border-radius: 0;
+}
+.el-picker__detail-z,
+.el-picker__detail-mass {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  /* Accent ink on a tinted fill (DESIGN.md § Accent-Mix Ladder), never a gray. */
+  color: color-mix(in srgb, var(--el-hue) var(--mix-ink, 55%), var(--text));
+}
+.el-picker__detail-z { top: 6px; left: 8px; font-size: 11px; }
+.el-picker__detail-mass { top: 6px; right: 8px; font-size: 11px; }
+.el-picker__detail-name { position: absolute; left: 4px; right: 4px; bottom: 6px; text-align: center; font-size: 12px; color: var(--text); }
+.el-picker__detail-category {
+  display: block;
+  font-size: 9.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: color-mix(in srgb, var(--el-hue) var(--mix-ink, 55%), var(--text));
+}
+.el-picker__detail-symbol {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 22%;
+  font-size: calc(var(--cell) * 1.05);
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  color: var(--text-bright);
+}
+/* Two columns of label and value. */
+.el-picker__detail-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+  row-gap: 2px;
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 14px;
+  min-width: 0;
+  flex: 1;
+}
+/* The first column holds the long values (the configuration). */
+.el-picker__detail-facts:first-of-type { flex: 1.12; }
+.el-picker__detail-facts dt { color: var(--text-muted); white-space: nowrap; }
+.el-picker__detail-facts dd { margin: 0; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+.el-picker__legend {
+  /* The table's own width (18 cells and their gaps), so the legend wraps instead of widening the popup. */
+  max-width: calc(18 * clamp(26px, round(down, calc((100vw - 120px) / 18), 1px), 42px));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+.el-picker__legend li { display: flex; align-items: center; gap: 5px; }
+.el-picker__legend li::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--el-hue) var(--header-tint), var(--surface));
+  border: 1px solid var(--el-hue);
+}
+
 @media (max-width: 560px) {
+  .el-picker__detail { display: none; }
+  .el-picker__legend { max-width: none; }
   .el-picker__table {
     grid-template-columns: repeat(18, minmax(14px, 1fr));
     grid-template-rows: repeat(7, 22px) 6px repeat(2, 22px);
+    gap: 2px;
     width: 100%;
   }
   .el-picker__cell { font-size: 9px; }
+  .el-picker__cell-z { display: none; }
+  .el-picker__cell-symbol { padding-top: 0; }
 }
 
 /* The op-select field look minus the chevron: it opens the picker popup, not a native menu. */
