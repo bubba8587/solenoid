@@ -102,8 +102,27 @@ fn shuffled(r: &mut fastrand::Rng, xs: &[f64]) -> Vec<f64> {
 #[test]
 fn aggregates_survive_a_shuffle() {
     const FNS: &[&str] = &[
-        "SUM", "COUNT", "MIN", "MAX", "AVERAGE", "MEDIAN", "PRODUCT", "STDEV.S", "STDEV.P", "VAR.S", "VAR.P", "DEVSQ",
-        "AVEDEV", "GEOMEAN", "HARMEAN", "SKEW", "KURT", "SUMSQ", "MODE.SNGL", "GCD", "LCM",
+        "SUM",
+        "COUNT",
+        "MIN",
+        "MAX",
+        "AVERAGE",
+        "MEDIAN",
+        "PRODUCT",
+        "STDEV.S",
+        "STDEV.P",
+        "VAR.S",
+        "VAR.P",
+        "DEVSQ",
+        "AVEDEV",
+        "GEOMEAN",
+        "HARMEAN",
+        "SKEW",
+        "KURT",
+        "SUMSQ",
+        "MODE.SNGL",
+        "GCD",
+        "LCM",
     ];
     let mut r = fastrand::Rng::with_seed(7);
     let mut moved: Vec<String> = Vec::new();
@@ -118,11 +137,12 @@ fn aggregates_survive_a_shuffle() {
                 })
                 .collect();
             let one = formula(&format!("{f}(l)"), [("l".to_string(), list(&xs))].into_iter().collect());
-            let two = formula(&format!("{f}(l)"), [("l".to_string(), list(&shuffled(&mut r, &xs)))].into_iter().collect());
-            if let (Some(V::Num(a)), Some(V::Num(b))) = (one, two) {
-                if a != b {
-                    worst = worst.max(((a - b) / a.abs().max(1e-300)).abs());
-                }
+            let two =
+                formula(&format!("{f}(l)"), [("l".to_string(), list(&shuffled(&mut r, &xs)))].into_iter().collect());
+            if let (Some(V::Num(a)), Some(V::Num(b))) = (one, two)
+                && a != b
+            {
+                worst = worst.max(((a - b) / a.abs().max(1e-300)).abs());
             }
         }
         if worst > 0.0 {
@@ -141,10 +161,33 @@ fn aggregates_survive_a_shuffle() {
 #[test]
 fn division_and_rounding_conventions() {
     let rows = [
-        "MOD(-7, 3)", "MOD(7, -3)", "MOD(-7, -3)", "MOD(7.5, 2)", "MOD(-7.5, 2)", "QUOTIENT(-7, 3)", "QUOTIENT(7, -3)",
-        "INT(-2.5)", "TRUNC(-2.5)", "ROUND(-2.5, 0)", "ROUND(2.5, 0)", "ROUND(-0.5, 0)", "MROUND(-2.5, -1)",
-        "FLOOR.MATH(-2.5)", "CEILING.MATH(-2.5)", "EVEN(-1)", "ODD(-2)", "GCD(0, 0)", "LCM(0, 5)", "GCD(-4, 6)",
-        "MOD(5, 0)", "COMBIN(0, 0)", "FACT(0)", "0^0", "POWER(0, 0)", "PRODUCT()", "SUM()",
+        "MOD(-7, 3)",
+        "MOD(7, -3)",
+        "MOD(-7, -3)",
+        "MOD(7.5, 2)",
+        "MOD(-7.5, 2)",
+        "QUOTIENT(-7, 3)",
+        "QUOTIENT(7, -3)",
+        "INT(-2.5)",
+        "TRUNC(-2.5)",
+        "ROUND(-2.5, 0)",
+        "ROUND(2.5, 0)",
+        "ROUND(-0.5, 0)",
+        "MROUND(-2.5, -1)",
+        "FLOOR.MATH(-2.5)",
+        "CEILING.MATH(-2.5)",
+        "EVEN(-1)",
+        "ODD(-2)",
+        "GCD(0, 0)",
+        "LCM(0, 5)",
+        "GCD(-4, 6)",
+        "MOD(5, 0)",
+        "COMBIN(0, 0)",
+        "FACT(0)",
+        "0^0",
+        "POWER(0, 0)",
+        "PRODUCT()",
+        "SUM()",
     ];
     for src in rows {
         let got = formula(src, Env::default()).map_or("no parse".to_string(), |v| kind(&v));
@@ -288,13 +331,14 @@ fn matrix_functions_under_scaling() {
         let env: Env = [("m".to_string(), scaled(c)), ("b".to_string(), list(&b.map(|x| x * c)))].into_iter().collect();
         formula(src, env).and_then(|v| nums_of(&v))
     };
-    let base: Vec<(&str, Vec<f64>)> = ["MDETERM(m)", "MINVERSE(m)", "SOLVE(m, b)", "MATRIXRANK(m)", "PINV(m)", "EIGENVALUES(m)"]
-        .iter()
-        .map(|f| (*f, call(f, 1.0).expect("answers at scale 1")))
-        .collect();
+    let base: Vec<(&str, Vec<f64>)> =
+        ["MDETERM(m)", "MINVERSE(m)", "SOLVE(m, b)", "MATRIXRANK(m)", "PINV(m)", "EIGENVALUES(m)"]
+            .iter()
+            .map(|f| (*f, call(f, 1.0).expect("answers at scale 1")))
+            .collect();
     let mut table = Vec::new();
     for e in (-15..=15).step_by(3) {
-        let c = 10f64.powi(e);
+        let c = libm::pow(10.0, f64::from(e));
         let mut row = format!("c = 1e{e:+03}:");
         for (f, at1) in &base {
             let want: Vec<f64> = match *f {
@@ -328,7 +372,7 @@ fn matrix_functions_under_one_row_scaled() {
     let x1 = run("SOLVE(m, b)", 1.0).expect("solve");
     let mut first_fail = (None, None);
     for e in -15..=0 {
-        let c = 10f64.powi(e);
+        let c = libm::pow(10.0, f64::from(e));
         let det_ok = run("MDETERM(m)", c).is_some_and(|d| close_all(&d, &[det1 * c], 1e-9));
         let solve_ok = run("SOLVE(m, b)", c).is_some_and(|x| close_all(&x, &x1, 1e-9));
         if !det_ok && first_fail.0.is_none() {
@@ -338,7 +382,10 @@ fn matrix_functions_under_one_row_scaled() {
             first_fail.1 = Some(e);
         }
     }
-    println!("one row scaled down: MDETERM first fails at 1e{:?}, SOLVE first fails at 1e{:?}", first_fail.0, first_fail.1);
+    println!(
+        "one row scaled down: MDETERM first fails at 1e{:?}, SOLVE first fails at 1e{:?}",
+        first_fail.0, first_fail.1
+    );
 }
 
 /// Thread 8 (F8): one variable measured in other units (its column scaled by c): det scales by c, that unknown by 1/c.
@@ -348,15 +395,17 @@ fn matrix_functions_under_one_column_scaled() {
     let b = list(&[1.0, 2.0, 3.0]);
     let run = |src: &str, c: f64| {
         let m = V::List(Rc::new(a.iter().map(|r| list(&[r[0] * c, r[1], r[2]])).collect()));
-        formula(src, [("m".to_string(), m), ("b".to_string(), b.clone())].into_iter().collect()).and_then(|v| nums_of(&v))
+        formula(src, [("m".to_string(), m), ("b".to_string(), b.clone())].into_iter().collect())
+            .and_then(|v| nums_of(&v))
     };
     let det1 = run("MDETERM(m)", 1.0).expect("det")[0];
     let x1 = run("SOLVE(m, b)", 1.0).expect("solve");
     let inv1 = run("MINVERSE(m)", 1.0).expect("inverse");
     for e in [-6, -9, -11, -12, -13, -14, -15] {
-        let c = 10f64.powi(e);
+        let c = libm::pow(10.0, f64::from(e));
         let det = run("MDETERM(m)", c).is_some_and(|d| close_all(&d, &[det1 * c], 1e-9));
-        let solve = run("SOLVE(m, b)", c).is_some_and(|x| close_all(&x[1..], &x1[1..], 1e-9) && (x[0] * c - x1[0]).abs() < 1e-9);
+        let solve = run("SOLVE(m, b)", c)
+            .is_some_and(|x| close_all(&x[1..], &x1[1..], 1e-9) && (x[0] * c - x1[0]).abs() < 1e-9);
         let inv = run("MINVERSE(m)", c).is_some();
         println!("one column scaled by 1e{e}: MDETERM {det}  SOLVE {solve}  MINVERSE answers {inv}  (inverse at 1 had {} cells)", inv1.len());
     }
@@ -380,14 +429,16 @@ fn regression_under_scaled_x() {
         .collect();
         formula(src, env).and_then(|v| nums_of(&v))
     };
-    let at1: Vec<(&str, Vec<f64>)> = ["SLOPE(y, x)", "INTERCEPT(y, x)", "LINEST(y, x)", "TREND(y, x, nx)", "LINEST(y, xx)", "RSQ(y, x)"]
-        .iter()
-        .map(|f| (*f, run(f, 1.0).unwrap_or_default()))
-        .collect();
+    let at1: Vec<(&str, Vec<f64>)> =
+        ["SLOPE(y, x)", "INTERCEPT(y, x)", "LINEST(y, x)", "TREND(y, x, nx)", "LINEST(y, xx)", "RSQ(y, x)"]
+            .iter()
+            .map(|f| (*f, run(f, 1.0).unwrap_or_default()))
+            .collect();
     println!("at scale 1: {at1:?}");
-    let at1: Vec<_> = at1.into_iter().filter(|(f, v)| !v.is_empty() && (!f.starts_with("LINEST") || v.len() >= 2)).collect();
+    let at1: Vec<_> =
+        at1.into_iter().filter(|(f, v)| !v.is_empty() && (!f.starts_with("LINEST") || v.len() >= 2)).collect();
     for e in [-3, -6, -9, -12, -13, -14, -15, 6, 12] {
-        let c = 10f64.powi(e);
+        let c = libm::pow(10.0, f64::from(e));
         let mut row = format!("x scaled by 1e{e:+03}:");
         for (f, base) in &at1 {
             let want: Vec<f64> = match *f {
@@ -403,7 +454,6 @@ fn regression_under_scaled_x() {
     }
 }
 
-
 /// Thread 8 (F6, [[C47]] equationNode): the Equation card with every known scaled small. The sniff's tolerance has a
 /// floor of 1 (`jmax(&[1.0, ...])`), so tiny residuals may pass any shape as a polynomial.
 #[test]
@@ -411,8 +461,9 @@ fn equation_with_small_knowns() {
     use serde_json::json;
     let solve = |expr: &str, known: &[(&str, f64)], unknown: &str| -> String {
         let names: Vec<&str> = known.iter().map(|(n, _)| *n).chain([unknown]).collect();
-        let outputs: Vec<serde_json::Value> =
-            std::iter::once(json!(["holds", "logicalcombo"])).chain(names.iter().map(|n| json!([n, "numlist"]))).collect();
+        let outputs: Vec<serde_json::Value> = std::iter::once(json!(["holds", "logicalcombo"]))
+            .chain(names.iter().map(|n| json!([n, "numlist"])))
+            .collect();
         let args = json!({
             "kind": "EquationNode",
             "init": {"label": "Equation", "expr": expr, "locked": false},
@@ -443,11 +494,8 @@ fn equation_with_small_knowns() {
         );
     }
     // A real SI equation where the unknown appears twice: a diode with series resistance, solved for its current.
-    let diode = solve(
-        "I = Is * (EXP((V - I * R) / Vt) - 1)",
-        &[("Is", 1e-14), ("V", 0.6), ("R", 10.0), ("Vt", 0.02585)],
-        "I",
-    );
+    let diode =
+        solve("I = Is * (EXP((V - I * R) / Vt) - 1)", &[("Is", 1e-14), ("V", 0.6), ("R", 10.0), ("Vt", 0.02585)], "I");
     println!("diode with series resistance: I = {diode}");
     // Non-polynomial residuals where x appears more than once, so isolation can't take them.
     for k in [1.0, 1e-9, 1e-12, 1e-15] {
