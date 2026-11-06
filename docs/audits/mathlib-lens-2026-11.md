@@ -111,6 +111,20 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
   systems is Bekić's principle. Run-time types ([[C136]] typesKnownAfterCalc) and the `trueany` veto may break that.
 - Confluence: `coreSettle.test.ts`'s reverse-order run is an empirical Church–Rosser check (`Relation.church_rosser`,
   `Mathlib/Logic/Relation.lean`).
+- **Read** (pass 3, `settle.rs`): each adoption pass recomputes every port from what currently feeds it (it assigns,
+  it never joins with the old type), visiting cards in graph order. On a graph without loops that makes each port's
+  type a function of the ports upstream of it, so the answer is fixed by the wiring by induction on depth: order
+  independence there is a theorem, not luck, and monotonicity is not needed. Only the pass count depends on order:
+  one pass when the cards are listed with the wiring, one per card of the longest passthrough chain when listed
+  against it. Loops (the `#CIRC!` members) are the only place an answer could depend on order or fail to settle.
+- **Verified** (pass 3, `crates/solenoid-graph/tests/mathlib_lens_settle.rs`): a number source feeding a chain of
+  N passthroughs settles to `number` at every N when listed with the wiring; listed against it, it settles up to
+  N = 256 and leaves the tail `trueany` from N = 257. 256 is the real cap (8 rounds of 32 passes, since a round that
+  still changed starts another), not the 32 the spec names. Consequences: (1) a free speedup and a correctness fix
+  in one: visiting the cards in topological order (the engine already orders them for the pass) settles any graph
+  without loops in one pass, and leaves the caps guarding only loops; (2) socket-lattice req. 9's "at most 32 passes"
+  and "a chain of N passthroughs settles in at most N passes" should say 256 and "listed against the wiring". A
+  257-card backwards chain is not a real graph, but a large graph built bottom-up costs one pass per level today.
 - Kleene logic is the most-defined monotone extension of AND and OR when unknown sits below TRUE and FALSE. The same
   view gives some cycles a least fixed point (`x = x OR TRUE` is TRUE) and numeric loops a convergence condition
   (`ContractingWith`).
@@ -152,6 +166,16 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
   both MDETERM and MINVERSE. A matrix keyed in small units (a strain, a probability product, a currency in millions)
   can hit it. `det(cA) = cⁿ det(A)` is the law a fix would be tested against: a relative pivot test (against the
   column's or matrix's scale) for MINVERSE, and for MDETERM no test at all (a zero pivot means the determinant is 0).
+- **Scale sweep, verified** (pass 3, `matrix_functions_under_scaling`, `_one_row_scaled`, `_one_column_scaled`, a
+  well-conditioned symmetric 3×3, checked against each function's scaling law to 1e-9):
+  - uniform scaling c·A from 1e-12 to 1e15: every function keeps its law; at 1e-15, MDETERM, MINVERSE and SOLVE fail.
+    PINV, MATRIXRANK and EIGENVALUES keep their law at every scale (their cutoffs are relative to the matrix).
+  - one variable in other units (a column scaled by c): SOLVE fails from c = 1e-13 (its cutoff is an absolute 1e-12,
+    `solve_linear`), MDETERM and MINVERSE from 1e-15 (an absolute 1e-14).
+  - one equation in other units (a row scaled by c): partial pivoting rescues it until 1e-15.
+  - So the trouble is three functions, two absolute cutoffs. Coefficients typed in SI base units reach these scales
+    (picofarads, nanoseconds squared, Boltzmann's constant at 1.4e-23). The fix shape is the one MATRIXRANK already
+    uses (`tol * scale`), and the law sweep is the test that would hold it.
 - Read, not run: the MDETERM *card* answers 1 for a 0×0 matrix (`nodes/matrix.rs`, mathlib's convention), while the
   formula `MDETERM` of an empty list is `#SHAPE!`; whether a card can ever receive a 0×0 matrix is unchecked.
 - This is the pass's strongest result: a backlog-grade bug, not a research question. It belongs in `docs/backlog.md`
@@ -190,14 +214,13 @@ No test holds it yet: a candidate prototype (thread 2b).
 3. Extend the shuffle sweep (F4) to the frame verbs: Group By, Pivot, Rollup, Distinct, and the criteria aggregates.
 4. Classify every aggregate in `call_traits.json` by algebraic kind (F4).
 5. Audit P7 Fallbacks against the identity rule (F3).
-6. Read `settle.rs`: is adoption monotone? (F5)
+6. F5 follow-ups: loops. What does the settle do on a `#CIRC!` loop of passthroughs (does it oscillate, and does the
+   answer depend on order)? A probe in the same test file.
 7. The empty-aggregate rule (F3): the cards (Aggregate) and the frame verbs (Group By over an empty group, Rollup)
    over nothing; the formula functions are censused.
-8. F8 follow-ups: do PINV, the rank op, LINEST and the other solvers share an absolute tolerance? A scale sweep:
-   `MDETERM(c * A) = c^n * MDETERM(A)` and `MINVERSE(c * A) = MINVERSE(A) / c` over random A and c from 1e-12 to
-   1e12.
-9. Unread mathlib areas: distribution
-   parameterizations against `dists.rs`; variance conventions; regular expressions (`Mathlib/Computability`) against
+8. F8 follow-ups: LINEST, LOGEST, TREND, the Equation solver's linear path and the regression cards under the same
+   scale laws; whether the MDETERM and MINVERSE *cards* share `mat_det` (read says the card calls the formula kernel).
+9. Unread mathlib areas: distribution parameterizations against `dists.rs`; variance conventions; regular expressions (`Mathlib/Computability`) against
    `excel_regex.rs`; polynomial roots and `ring`; intervals (`Mathlib/Order/Interval`) for uncertain values.
 10. Cycles as least fixed points (F5), and tropical sensitivity for Schedule (F6).
 
@@ -213,3 +236,7 @@ No test holds it yet: a candidate prototype (thread 2b).
   `ExactSum` makes SUMSQ and DEVSQ order-free (F4); found MDETERM and MINVERSE answer `#DIV/0!` for singular
   matrices and, through an absolute pivot tolerance, for well-conditioned matrices of small or mixed-scale numbers
   (F8, new). Matrix conventions moved out of the unread list.
+- **Pass 3 (2026-11-06 09:40 UTC):** scale-law sweep over six matrix functions (F8: SOLVE, MDETERM, MINVERSE
+  break at 1e-13 to 1e-15 through absolute cutoffs; PINV, rank and eigenvalues hold), and the settle read plus a
+  native probe (F5: the answer is fixed by the wiring on graphs without loops; listed against the wiring, chains past
+  256 cards are left untyped; a topological visit order settles in one pass). Threads 6 and 8 rewritten.

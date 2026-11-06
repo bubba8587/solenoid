@@ -262,3 +262,102 @@ fn matrix_conventions() {
         }
     }
 }
+
+fn nums_of(v: &V) -> Option<Vec<f64>> {
+    match v {
+        V::Num(n) => Some(vec![*n]),
+        V::List(l) => l.iter().map(nums_of).collect::<Option<Vec<_>>>().map(|v| v.concat()),
+        _ => None,
+    }
+}
+
+fn close_all(a: &[f64], b: &[f64], tol: f64) -> bool {
+    let scale = b.iter().fold(0.0f64, |s, x| s.max(x.abs())).max(1e-300);
+    a.len() == b.len() && a.iter().zip(b).all(|(x, y)| (x - y).abs() <= tol * scale)
+}
+
+/// Thread 8 (F8): each matrix function under scaling, against the law it should keep
+/// (det(cA) = c^n det A, inv(cA) = inv(A) / c, solve(cA, cb) = solve(A, b), rank(cA) = rank A, eig(cA) = c eig A).
+#[test]
+fn matrix_functions_under_scaling() {
+    // A well-conditioned symmetric 3x3 (diagonally dominant), and a right-hand side.
+    let a = [[4.0, 1.0, 0.5], [1.0, 3.0, 0.25], [0.5, 0.25, 2.0]];
+    let b = [1.0, 2.0, 3.0];
+    let scaled = |c: f64| V::List(Rc::new(a.iter().map(|r| list(&r.map(|x| x * c))).collect()));
+    let call = |src: &str, c: f64| {
+        let env: Env = [("m".to_string(), scaled(c)), ("b".to_string(), list(&b.map(|x| x * c)))].into_iter().collect();
+        formula(src, env).and_then(|v| nums_of(&v))
+    };
+    let base: Vec<(&str, Vec<f64>)> = ["MDETERM(m)", "MINVERSE(m)", "SOLVE(m, b)", "MATRIXRANK(m)", "PINV(m)", "EIGENVALUES(m)"]
+        .iter()
+        .map(|f| (*f, call(f, 1.0).expect("answers at scale 1")))
+        .collect();
+    let mut table = Vec::new();
+    for e in (-15..=15).step_by(3) {
+        let c = 10f64.powi(e);
+        let mut row = format!("c = 1e{e:+03}:");
+        for (f, at1) in &base {
+            let want: Vec<f64> = match *f {
+                "MDETERM(m)" => vec![at1[0] * c * c * c],
+                "MINVERSE(m)" | "PINV(m)" => at1.iter().map(|x| x / c).collect(),
+                "EIGENVALUES(m)" => at1.iter().map(|x| x * c).collect(),
+                _ => at1.clone(),
+            };
+            let got = call(f, c);
+            let ok = got.as_ref().is_some_and(|g| close_all(g, &want, 1e-9));
+            row.push_str(&format!(" {}={}", f.split('(').next().unwrap_or(""), if ok { "ok" } else { "FAIL" }));
+        }
+        table.push(row);
+    }
+    println!("{}", table.join("\n"));
+}
+
+/// Thread 8 (F8): one equation written in other units (its row scaled by c). det scales by c, solve is unchanged.
+#[test]
+fn matrix_functions_under_one_row_scaled() {
+    let a = [[4.0, 1.0, 0.5], [1.0, 3.0, 0.25], [0.5, 0.25, 2.0]];
+    let b = [1.0, 2.0, 3.0];
+    let run = |src: &str, c: f64| {
+        let m = V::List(Rc::new(
+            a.iter().enumerate().map(|(i, r)| list(&r.map(|x| if i == 0 { x * c } else { x }))).collect(),
+        ));
+        let bs = list(&[b[0] * c, b[1], b[2]]);
+        formula(src, [("m".to_string(), m), ("b".to_string(), bs)].into_iter().collect()).and_then(|v| nums_of(&v))
+    };
+    let det1 = run("MDETERM(m)", 1.0).expect("det")[0];
+    let x1 = run("SOLVE(m, b)", 1.0).expect("solve");
+    let mut first_fail = (None, None);
+    for e in -15..=0 {
+        let c = 10f64.powi(e);
+        let det_ok = run("MDETERM(m)", c).is_some_and(|d| close_all(&d, &[det1 * c], 1e-9));
+        let solve_ok = run("SOLVE(m, b)", c).is_some_and(|x| close_all(&x, &x1, 1e-9));
+        if !det_ok && first_fail.0.is_none() {
+            first_fail.0 = Some(e);
+        }
+        if !solve_ok && first_fail.1.is_none() {
+            first_fail.1 = Some(e);
+        }
+    }
+    println!("one row scaled down: MDETERM first fails at 1e{:?}, SOLVE first fails at 1e{:?}", first_fail.0, first_fail.1);
+}
+
+/// Thread 8 (F8): one variable measured in other units (its column scaled by c): det scales by c, that unknown by 1/c.
+#[test]
+fn matrix_functions_under_one_column_scaled() {
+    let a = [[4.0, 1.0, 0.5], [1.0, 3.0, 0.25], [0.5, 0.25, 2.0]];
+    let b = list(&[1.0, 2.0, 3.0]);
+    let run = |src: &str, c: f64| {
+        let m = V::List(Rc::new(a.iter().map(|r| list(&[r[0] * c, r[1], r[2]])).collect()));
+        formula(src, [("m".to_string(), m), ("b".to_string(), b.clone())].into_iter().collect()).and_then(|v| nums_of(&v))
+    };
+    let det1 = run("MDETERM(m)", 1.0).expect("det")[0];
+    let x1 = run("SOLVE(m, b)", 1.0).expect("solve");
+    let inv1 = run("MINVERSE(m)", 1.0).expect("inverse");
+    for e in [-6, -9, -11, -12, -13, -14, -15] {
+        let c = 10f64.powi(e);
+        let det = run("MDETERM(m)", c).is_some_and(|d| close_all(&d, &[det1 * c], 1e-9));
+        let solve = run("SOLVE(m, b)", c).is_some_and(|x| close_all(&x[1..], &x1[1..], 1e-9) && (x[0] * c - x1[0]).abs() < 1e-9);
+        let inv = run("MINVERSE(m)", c).is_some();
+        println!("one column scaled by 1e{e}: MDETERM {det}  SOLVE {solve}  MINVERSE answers {inv}  (inverse at 1 had {} cells)", inv1.len());
+    }
+}
