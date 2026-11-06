@@ -561,7 +561,7 @@ function PipelineSteps({ node }: { node: CompositeNodeType }) {
   return (
     <div className="solenoid-pipeline">
       {steps.length === 0 && !fault && <div className="solenoid-node__text-empty">no steps</div>}
-      {steps.map((s, i) => (
+      {steps.length > 0 && <div className="solenoid-pipeline__list nowheel">{steps.map((s, i) => (
         <button
           key={s.id}
           type="button"
@@ -574,7 +574,7 @@ function PipelineSteps({ node }: { node: CompositeNodeType }) {
           <span className="solenoid-pipeline__num">{i + 1}</span>
           <span className="solenoid-pipeline__name">{nodeDisplayName(s)}</span>
         </button>
-      ))}
+      ))}</div>}
       {fault && <div className="solenoid-pipeline__fault">{faultText(fault)}</div>}
       {selected && (
         <CardSection label="Preview" collapsible defaultOpen={false}>

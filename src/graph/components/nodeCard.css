@@ -806,8 +806,18 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   gap: 1px;
   margin-top: 6px;
 }
+/* About seven steps, then the list scrolls inside the card (`nowheel` keeps the wheel off the canvas). */
+.solenoid-pipeline__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 216px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .solenoid-pipeline__step {
   display: flex;
+  flex: 0 0 auto;
   align-items: baseline;
   gap: 6px;
   width: 100%;
