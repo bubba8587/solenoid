@@ -331,7 +331,7 @@ export function nodeWide(node: GraphNode): boolean {
   });
 }
 
-/** The 210px tier: the date cards. */
+/** The 210px tier: the date cards, and Value Input keying a date, whose day-name and relative formats need the room. */
 export function nodeMedium(node: GraphNode): boolean {
-  return nodeKindOf(node) === "date";
+  return nodeKindOf(node) === "date" || (node instanceof ValueInputNode && node.op === "date");
 }
