@@ -2,9 +2,12 @@
 
 The What's New source for 1.6: marketing copy, ordered by how hard each thing sells. `[slide]` entries are the
 deck (`src/graph/whatsNewSlides.ts`, `WHATS_NEW_VERSION` 1.6); the rest
-can lead the GitHub notes or a post. The bar is `archive/release-notes-1.1.md`: a sell is something a user would
-go play with or download for. Every sentence has to pass "would anyone care?", so internals, fixes and parity
-work stay in `release-notes-1.6.md`, the plain changelog. 1.5's list is `archive/release-notes-features-1.5.md`.
+can lead the GitHub notes or a post. The bar (author 2026-07-08): a sell is something a user would go play with or
+download for, or that would earn a link click on social media; What's New is not a changelog, GitHub is. A `[slide]`
+is a genuine sell, shiny and playable; the notes body takes real sells that aren't slide-worthy alone (analysis
+features, quality of life), a benefit line each; non-sells that shipped are mentioned under the hood, never
+headlined. Every sentence has to pass "would anyone care?", so internals, fixes and parity work stay in
+`release-notes-1.6.md`, the plain changelog.
 
 Left out on purpose: the Choice Ladder, Gantt, Schedule and Earned Value (hidden for 1.6), Isolate (switched
 off), the Android build (not in 1.6) and the headless CLI (unpublished).

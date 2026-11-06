@@ -9,10 +9,10 @@ first.
 ## The short answer
 
 - **React Flow is the small part.** It is used by 20 files. The app has already replaced RF's `<Handle>`
-  (finding 3 in `canvas-frame-cost-findings.md`), its `<Background>` (`CanvasBacking`), its wheel zoom
+  (finding 3 in `../canvas-frame-cost-findings.md`), its `<Background>` (`CanvasBacking`), its wheel zoom
   (`installWheelZoom`), its box select (the lasso) and its arrow keys. What RF still owns is the node
   wrappers, the edge layer, sub-flow parenting, drag, selection and the camera
-  (`../tree/specs/canvas/react-flow-surface-contract.md` § What RF owns).
+  (`../../tree/specs/canvas/react-flow-surface-contract.md` § What RF owns).
 - **The cards are the big part.** About 104k lines of TypeScript outside tests, of which roughly 60k are
   UI (`components/` 37k, `nodes/` 19.5k, `flow/` 3.7k, plus the chrome in `src/graph/`). On top of that
   there are 17k lines of CSS and 383 `.tsx` components. Every card is DOM: text fields, the formula
@@ -36,14 +36,14 @@ first.
 ## What a GPU canvas would fix (the repo's own measurements)
 
 - **Pan and zoom cost scales with DOM elements on screen.** personal-finance at zoom 0.2 is about 3,000
-  elements and 20 ms paint per zoom step (`backlog.md`, "A zoom step re-records every card on screen").
+  elements and 20 ms paint per zoom step (`../backlog.md`, "A zoom step re-records every card on screen").
   On a GPU scene a camera change is one uniform; cards are instanced quads and atlas glyphs.
 - **Phones have a size knee.** Pan is the next limit and a card drag breaks down by about 616 nodes
-  (`../tree/specs/documents/graph-load-teardown-performance.md`), because a coarse-pointer viewport gets
-  no compositor layer (`../tree/specs/canvas/html-in-canvas.md` § The GPU texture budget).
+  (`../../tree/specs/documents/graph-load-teardown-performance.md`), because a coarse-pointer viewport gets
+  no compositor layer (`../../tree/specs/canvas/html-in-canvas.md` § The GPU texture budget).
 - **WebKitGTK on Linux rasterizes a layer at 1× and stretches it**, which is why nothing inside a card
   may become a GPU layer and why transitions are off inside the viewport on Linux
-  (`../tree/specs/canvas/layout-chrome.md` § The desktop window frame). A screen-space canvas outside the
+  (`../../tree/specs/canvas/layout-chrome.md` § The desktop window frame). A screen-space canvas outside the
   transformed viewport draws at device resolution itself and does not hit this. Confirm with
   `WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS=1` in the spike.
 - **The HTML-in-Canvas layer (about 1,800 lines, [[C42]] htmlInCanvasRenderer) exists to fake this:**
@@ -98,7 +98,7 @@ app already (`@fontsource-variable`), so loading them into the wasm side is a co
 ## What a complete GPU port collides with in the decision tree
 
 - **[[B1]] obsidianBet / [[C107]] obsidianPlugin.** The plugin reuses the app's chips and popup editors
-  inside Obsidian's DOM (`../tree/specs/integrations/obsidian-plugin.md`). A canvas UI leaves two
+  inside Obsidian's DOM (`../../tree/specs/integrations/obsidian-plugin.md`). A canvas UI leaves two
   choices: keep a React copy for the plugin (a second implementation, which [[D99]] rustIsSpec's own
   logic rejects) or mount small wasm canvases into Obsidian's property rows, themed from Obsidian's CSS
   variables. Dioxus keeps one implementation, since its web build is DOM and mounts into any element.
@@ -131,12 +131,12 @@ app already (`@fontsource-variable`), so loading them into the wasm side is a co
   from the same scene.
 - Cards stay React DOM in one transformed layer that follows the scene's camera. Below a zoom threshold
   the DOM cards unmount (or hide) and the canvas draws each card as a silhouette: header colour, title,
-  socket dots, the headline value. That is the surface contract's semantic zoom (`../tree/specs/canvas/react-flow-surface-contract.md` § Semantic zoom) made real, and it replaces the
+  socket dots, the headline value. That is the surface contract's semantic zoom (`../../tree/specs/canvas/react-flow-surface-contract.md` § Semantic zoom) made real, and it replaces the
   HTML-in-Canvas capture.
 - What it deletes: `@xyflow/react` and `@xyflow/system`, the HTML-in-Canvas files, the SVG edge layer,
   the minimap's per-card subscriptions, and the desktop pan-layer workarounds.
 - What it keeps: every card, the plugin, the website, IME, copy and paste, screen readers.
-- What it re-specs (all in `../tree/specs/canvas/`): the React Flow surface contract becomes a canvas
+- What it re-specs (all in `../../tree/specs/canvas/`): the React Flow surface contract becomes a canvas
   surface contract; the HTML-in-Canvas, cable-rendering, drawn-cable and gesture specs change owner.
 
 ### Step 2: the cards, if the whole UI goes Rust
@@ -194,9 +194,9 @@ borders, a preview grid, a chip). Static rendering only; no typing, hover or dra
     in about 750 lines; `gpui-component` ships one);
   - text wraps at different places (it breaks `2)` before the bracket where the browser doesn't).
 
-![The LAMBDA card in Chromium, Blitz and GPUI](assets/rust-gpu-ui/card-lambda.png)
+![The LAMBDA card in Chromium, Blitz and GPUI](../assets/rust-gpu-ui/card-lambda.png)
 
-![The Frame Input card in Chromium, Blitz and GPUI](assets/rust-gpu-ui/card-frame-input.png)
+![The Frame Input card in Chromium, Blitz and GPUI](../assets/rust-gpu-ui/card-frame-input.png)
 
 **What it means.** Whether the CSS has to be redone depends on the renderer, not on whether the
 components stay JavaScript. A renderer with a CSS engine (the browser, Blitz) keeps the 17k lines of
@@ -221,11 +221,11 @@ one-pixel shift doesn't count, but a few pixels of vertical drift does).
 | plus ellipsis, alignment, SVG text font, inline `<select>`, separated grid borders | 2.9% | 12 |
 | plus Chromium's form-control defaults in Blitz's UA sheet | 2.8% | 10 |
 
-![Chromium, stock Blitz and patched Blitz on six cards](assets/rust-gpu-ui/blitz-before-after.png)
+![Chromium, stock Blitz and patched Blitz on six cards](../assets/rust-gpu-ui/blitz-before-after.png)
 
 What stock Blitz got wrong, and what fixed each:
 
-- **Patched in Blitz** (about 300 added lines over 10 files, `assets/rust-gpu-ui/blitz-scratch.patch`,
+- **Patched in Blitz** (about 300 added lines over 10 files, `../assets/rust-gpu-ui/blitz-scratch.patch`,
   against Blitz main of 2026-10-24; a scratch test, not upstream-ready):
   - `var()` in SVG attributes (every socket's colors, the pie's slice outlines) is resolved from the
     element's custom properties when the SVG is serialized for the SVG renderer, as `currentColor` already was;
@@ -289,7 +289,7 @@ painter): its raster ran on a software Vulkan driver here, 65 to 110 ms that say
   appears to skip what is off screen).
 - **Far out, the cost moves to encoding.** Blitz keeps no layers between frames, so it rebuilds the scene
   for every element on screen each frame (about 9,300 at zoom 0.1), where Chromium pans one cached
-  layer (finding 1 of `canvas-frame-cost-findings.md`). With the Vello painter that is about 10 ms at 0.1,
+  layer (finding 1 of `../canvas-frame-cost-findings.md`). With the Vello painter that is about 10 ms at 0.1,
   level with `develop`; with the CPU painter it is 32 ms, over a 60 Hz frame.
 - **That far-zoom cost is what step 1 removes.** Drawn as silhouettes below a zoom threshold, a card is
   a handful of shapes instead of 60 elements, whichever renderer draws the cards.

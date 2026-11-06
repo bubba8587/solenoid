@@ -49,25 +49,21 @@ is parked there.
 - **`../tree/specs/floors/engineering.md`** — the cross-cutting code-hygiene rules: overrides on
   the declaration, generated name lists, one implementation per gating metric, `every` for
   completeness, the graph-free formula path, lazy heavy libraries.
-- **`upstream-formulajs.md`** — the subset of those divergences that are genuine
-  Formula.js bugs, written up as ready-to-paste upstream issues (author submits).
 - **`pack-architecture.md`** — the pack authoring guide (framework BUILT); the settled
   calls are [[B15]] leanCore and its children.
 - **`pack-composite-plans.md`** — queued composite-shaped pack nodes; the pack program
   is `archive/1.4-plan.md` E3 (Materials & Mechanical content) + `2.0-plan.md` Arc 7 (the
   composite pack shape + distribution).
 - **`release-notes-features.md`** — the curated selling list / What's-New source for
-  the release in progress (1.6; 1.5's is `archive/release-notes-features-1.5.md`).
+  the release in progress (1.6), with the bar for what earns a spot.
 - **`release-notes-1.6.md`** — the full draft GitHub release notes for 1.6, in 1.5's shape,
   for the author's copy edit; it archives when 1.6 ships.
-- **`grid-system.md`** — the (unbuilt) soft-grid design spec; parked in
-  `deferrals.md`.
 - **`android.md`** — the Android app: what is prepared, the first build on the author's
   machine, and what to check then.
 - **`out-of-scope.md`** — the standing NO list.
 - **`dte.md`** — decision provenance: the vendored DTE tool (`tools/dte.py`), Solenoid's
   ring map and everyday commands. Read before creating or changing a decision leaf;
-  `python tools/dte.py validate` must print `OK` before you finish.
+  `python3 tools/dte.py validate` must print `OK` before you finish.
 
 - **`google-style/`** — fetched text of the Google developer style guide (2026-08-18),
   the ARBITER for the UI-copy register experiment; overrides DESIGN.md §7 for that
@@ -77,25 +73,17 @@ is parked there.
 
 - **`backlog.md`** — OPEN items only; **the single source of truth for tasks.**
   Landed items get DELETED (git + digests are the record). 1.5 shipped 2026-10-08; the
-  1.6 cut (three rounds, the rest after 1.6) is `1.6-plan.md`, the 2.0 cut in `2.0-plan.md`, and items land here as the
+  1.6 cut (what is left, the rest after 1.6) is `1.6-plan.md`, the 2.0 cut in `2.0-plan.md`, and items land here as the
   author promotes them. The
   release tail lives here.
-- **`plans/`** — per-task execution plans for promoted backlog items, written so a
-  smaller model can do the routine work (index + protocol in `plans/README.md`).
-  A plan is deleted with its backlog line.
-- **`python-r-gap.md`** — the 2026-08-23 survey of numpy/pandas/scipy/R functions with no
-  Solenoid node (ranked; Tier 1 = build next). Delete a line when its node lands.
 - **`canvas-frame-cost-findings.md`** — the 2026-10 canvas frame-cost report: what a pan/zoom
   frame costs, the source-verified Chromium mechanisms, what shipped (desktop pan layer, socket
   handle), what was reverted or rejected, and the open candidates (cables, minimap).
-- **`rust-gpu-ui-findings.md`** — the 2026-10 survey of Rust GPU UI libraries against React Flow and
-  the DOM cards: what a GPU scene would fix, the framework landscape, the decision-tree collisions, and
-  the spike that would decide it (proposal; the author's call).
 - **`deferrals.md`** — the parked set WITHOUT a plan (reopen-only, trigger-gated,
   parked bugs and features), with the notes needed to reopen each. Planned items live
   in `2.0-plan.md`, never here too.
-- **`1.6-plan.md`** — the 1.6 release plan (the author's cut 2026-11-04): three rounds, a
-  desktop session, and what waits until after 1.6.
+- **`1.6-plan.md`** — the 1.6 release plan (the author's cut 2026-11-04): what is left before
+  the release, and what waits until after 1.6.
 - **`p7-walk.md`** — the author's P7 walk (card vs formula on each kind of nothing), one case at a
   time: the rulings, the open questions and the evidence ledger; archives when P7 lands.
 - **`2.0-plan.md`** — the 2.0 release plan (PROPOSAL 2026-09-01): the arcs that change
@@ -104,22 +92,14 @@ is parked there.
   packs, Gantt — plus the cross-cutting prerequisites (save-format freeze, trust on
   open, updater, the web-target decision) and the decisions it reopens.
 - **`v2.0/`** — the live plan bundles: 08 Excel transpiler, 10 decision sensitivity,
-  12 uncertain/money, 16 widget nodes (proposed for 1.4), 20 pages, 21 collaboration,
-  22 canvas at scale, 23 conditional formatting; 25 Gantt is BUILT (2026-09-12) and stays live as
-  the engine + figure spec. Built bundles are archived (05 units →
-  `archive/units-format-controller.md`; 17 matrix formulas, 18 parity corpus,
-  19 computed-column surface → `archive/`); see `v2.0/README.md`.
+  12 uncertain/money, 20 pages, 21 collaboration, 22 canvas at scale, 23 conditional
+  formatting, 24 Obsidian vault, 26 workspace tree; 25 Gantt is BUILT (2026-09-12) and stays live
+  as the engine + figure spec. 16 widget nodes is archived; the built bundles (05, 17, 18, 19)
+  are deleted; see `v2.0/README.md`.
 - **`dev-notes.md`** — session DIGESTS + open problems only; per-item history in
   `archive/dev-notes-history.md`.
-- **`review-plan.md`** — the 2026-09-27 bug-review plan: 44 blocks walking the commit history
-  back from head, checked against the tree and specs, each an agent's checklist. Review only;
-  a landed finding deletes its block, as a backlog line would.
 - **`settings-audit.md`** — the settings sweep's proposed roles for review ([[D86]] blankRoles); archived once
   the sweep lands.
-- **`audits/crate-audit-2026-10.md`** — the 2026-10-23 crate audit: each hand-written core module
-  against the crate that could replace it, compared bit for bit; the evidence for the backlog's crate items.
-- Shipped release views are archived: `archive/release-plan-1.1.md` (the 1.1 cut),
-  `archive/1.2-plan.md` (the 1.2 build queue, executed).
 
 ## Process
 
@@ -131,7 +111,7 @@ is parked there.
 
 The per-FILE version of the cheat-sheet below. Files listed here carry no prose comment
 pointers by design (`../tree/specs/floors/engineering.md` § Comments) — this table IS the pointer; the one line a
-file may carry is its `[[ID]]` citation, which `python tools/dte.py trace <file>` follows to the
+file may carry is its `[[ID]]` citation, which `python3 tools/dte.py trace <file>` follows to the
 governing leaves. Editing a listed file without reading its docs is how recorded negative
 results get retried and settled rulings relapse.
 

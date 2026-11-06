@@ -79,7 +79,7 @@ the original text even if inert."
    (`[@Price] * [@Qty]`, `SUM(Table1[Total])`) map onto tableRefSemantics (`@name` = this
    row, bare name = the column) — the transpiler's best-fidelity path; build it second,
    right after the arithmetic spike. Named ranges → node names; data-validation lists →
-   categorical columns (`../1.4-plan.md` B2).
+   categorical columns (`../archive/1.4-plan.md` B2).
 8. Fidelity report: per formula — mapped / redirected / fallback Expression / dropped — as
    a frame the user can filter, plus Problems entries. Parser dependency: an xlsx reader
    (SheetJS community edition or exceljs; license + bundle size are the gate; desktop-only

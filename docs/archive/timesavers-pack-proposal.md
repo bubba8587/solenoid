@@ -5,9 +5,8 @@ sequencing, sources) is in git history; most of the [F] formula-data batch shipp
 kept: the **[F]/[C]/[M] build-shape taxonomy** (§2 — the axis that decides cost), the
 **don't-duplicate ledger** (§3), and the **still-unbuilt rows** worth their weight (§4).
 
-Companion docs: `docs/pack-architecture.md` (the pack mechanism), `excel-pain-points.md`
-(same directory — function-level gaps), `packs.ts` (live pack definitions),
-`io-visual-control-node-proposal.md` (the sibling input/output/visual proposal).
+Companion docs: `docs/pack-architecture.md` (the pack mechanism), `packs.ts` (live pack
+definitions).
 
 ---
 
@@ -81,7 +80,7 @@ list-reducers, the duration trio, and the [M] composites:
 
 The **Conditional Aggregate (AND/OR)** node is the highest-leverage entry — it collapses the
 SUMIFS-is-AND-only pain + the `--(condition)` SUMPRODUCT trick into one node, answering
-`excel-pain-points.md` Part 2 §1; general enough to deserve **core** Aggregation placement.
+the Excel pain-point research (git history); general enough to deserve **core** Aggregation placement.
 (Solenoid's shipped SUMIFS node covers the AND-only case; the OR half is the remaining gap.)
 Multi-Criteria / multi-return are the real remaining XLOOKUP gaps — build as **core Lookup**,
 tag into Timesavers via `NODE_PACK_TAGS`.

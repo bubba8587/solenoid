@@ -64,7 +64,7 @@ refrigerants, linear algebra, signal processing, optimization). The plan is to b
 those from the desktop's fast compiled engine rather than rewrite the physics. So a
 reference pack is usually wiring up something that already exists, not writing it from
 scratch. This is also why these packs are desktop-only and never run in the browser
-version. See [compute-architecture.md](compute-architecture.md).
+version.
 
 ## Connection to the solver work
 

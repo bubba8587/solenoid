@@ -11,7 +11,7 @@ export function accentClass(slot: string): string {
   return `solenoid-accent-${slot}`;
 }
 
-export const ACCENT_SLOTS: readonly string[] = [...COLOR_PALETTE, NEUTRAL_WHITE, NEUTRAL_DARK];
+const ACCENT_SLOTS: readonly string[] = [...COLOR_PALETTE, NEUTRAL_WHITE, NEUTRAL_DARK];
 export const DEFAULT_ACCENT = "gold";
 export const isAccentSlot = (slot: unknown): slot is string => typeof slot === "string" && ACCENT_SLOTS.includes(slot);
 
@@ -70,11 +70,11 @@ function block(selector: string, tokens: Record<string, string>): string {
 const pick = (tokens: Record<string, string>, keep: (name: string) => boolean): Record<string, string> =>
   Object.fromEntries(Object.entries(tokens).filter(([name]) => keep(name)));
 
-export function paletteTokens(name: PaletteName, mode: ThemeMode): Record<string, string> {
+function paletteTokens(name: PaletteName, mode: ThemeMode): Record<string, string> {
   const chrome = new Set(CHROME.map(([sol]) => sol));
   return pick(lookTokens(name, DEFAULT_ACCENT, mode), (t) => !ACCENT_TOKENS.includes(t) && !(isAdaptive(name) && chrome.has(t)));
 }
-export function accentTokens(name: PaletteName, accent: string, mode: ThemeMode): Record<string, string> {
+function accentTokens(name: PaletteName, accent: string, mode: ThemeMode): Record<string, string> {
   const chrome = new Set(CHROME.map(([sol]) => sol));
   return pick(lookTokens(name, accent, mode), (t) => ACCENT_TOKENS.includes(t) || (isAdaptive(name) && chrome.has(t)));
 }

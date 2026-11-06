@@ -221,7 +221,7 @@ export function columnTypesOf(columns: FrameSourceColumn[]): ColumnTypes {
 }
 
 /** A Text cell writes what was typed ([[C58]] tableInputRawText); any other reads numbers and booleans. */
-export const scalarFromText = (text: string, asText = false): Scalar =>
+const scalarFromText = (text: string, asText = false): Scalar =>
   asText ? (text.trim() === "" ? null : text) : parseCellText(text) as Scalar;
 
 const sourceScalar = (before: unknown, text: string, asText = false): Scalar =>

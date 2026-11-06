@@ -2,13 +2,13 @@
 
 This repo tracks the *why* behind its code as a **DTE** (Decision Tree Engineering)
 tree. The tool is vendored at `tools/dte.py`
-(one file, stdlib Python 3.8+); run `python tools/dte.py --help`.
+(one file, stdlib Python 3.8+); run `python3 tools/dte.py --help`.
 
 **DTE's own rules are vendored, not duplicated here.** The canonical DTE spec, agent
 protocol, overview, adoption guide, walkthrough and a render of DTE's own tree live in
 `dte-rules/SPEC.md`, `dte-rules/PROTOCOL.md`, `dte-rules/README.md`, `dte-rules/ADOPTING.md`,
 `dte-rules/WALKTHROUGH.md` and `dte-rules/DECISIONS.md`, written by
-`python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules`, which also refreshes
+`python3 tools/dte.py vendor --from <a DTE checkout> --dir dte-rules`, which also refreshes
 `tools/dte.py` itself. The copy is plain upstream DTE 0.2: `tools/dte.py` is never patched here; a
 change the tool needs goes to the DTE repo and comes back by re-vendoring. Read them before
 creating or changing decisions. Do NOT re-create DTE's own format/protocol/usage decisions as
@@ -19,7 +19,7 @@ A/B/C, which are not Solenoid's rings below.)
 **The tree is the one home** (DTE A2 nothingUndecided, B39 vendoredRules). Solenoid's product calls live only as
 leaves, never in a separate rules document; code, tests and docs point at the leaf instead of
 restating it, and a doc that only restates decisions is deleted. A leaf's short name lives in
-its `aliases` (the first alias is the name), so `python tools/dte.py find shareImpl` finds it,
+its `aliases` (the first alias is the name), so `python3 tools/dte.py find shareImpl` finds it,
 a citation may read `[[<ID>]] shareImpl`, and the tool prints a leaf as `ID name: title`.
 
 `tests/graph/rules.test.ts` guards the leaves: every MUST is cited from a test or labels its
@@ -111,7 +111,7 @@ area, so a note carries everything the decision needs in plain words (author 202
 
 The inbox is how an agent hands a decision up to the author. The outbox is the other direction:
 whatever the author designates in Obsidian is a work list, and **every agent session starts with
-`python tools/dte.py outbox`** (validate prints `OUTBOX (n)` too). Three signals, no watcher, and
+`python3 tools/dte.py outbox`** (validate prints `OUTBOX (n)` too). Three signals, no watcher, and
 never a bare diff: an anonymous edit cannot be told from an agent's own unfinished work, and validate
 already lists changed leaves. An edit the author wants looked at gets a `#ask` beside it.
 
@@ -143,7 +143,7 @@ sets `authorized_by` to the author.
 - **C — the product calls under each strategy** and the roots of each family (socketLattice,
   arraySemantics, firstClassUnits, calcModes, shareImpl);
   **D, E — the calls that refine them**. How the code carries a call out is spec content, at any
-  ring. `python tools/dte.py tree --under B17` shows one family.
+  ring. `python3 tools/dte.py tree --under B17` shows one family.
   A rule that constrains a whole class of files (no component computes; a node's class name is
   its saved type) is NOT cited from every member: it lives in the class's floor spec
   (`tree/specs/floors/components.md`, `tree/specs/floors/node-classes.md`, `tree/specs/floors/stores.md`) whose header carries a
@@ -158,7 +158,7 @@ agent asks the author which ring it operates at, unless the author already said.
 answers, and in a run nobody watches (a scheduled routine), it works at C: it builds and fixes under
 leaves freely, and anything that would change a B leaf or above goes to the inbox
 (`tree/decisions/inbox/`) with the question in chat. Every subagent works at C or deeper, never
-the spawner's ring: `python tools/dte.py brief C` heads its instructions and `DTE_RING=C` is set in its
+the spawner's ring: `python3 tools/dte.py brief C` heads its instructions and `DTE_RING=C` is set in its
 environment, as `dte-rules/PROTOCOL.md` § Your ring says. `validate --as <ring>` runs at the ring
 actually held.
 
@@ -179,7 +179,7 @@ reversed independently.
 
 ## Coverage and the exclusion store (`.dtecoverage`)
 
-`python tools/dte.py coverage` is the adoption gauge, and 100% is the target. It is reachable
+`python3 tools/dte.py coverage` is the adoption gauge, and 100% is the target. It is reachable
 only because an artifact that cites nothing BECAUSE no decision governs it is listed in
 `.dtecoverage` under the reason it needs none: a `why:` line opens a group, the globs under it
 (`.dteignore` syntax) belong to it. Seven groups today: toolchain and CI configuration; licences
@@ -201,13 +201,13 @@ that a whole class of files needs no decision: say why in the `why:` line, and i
 
 ## Everyday use
 
-- Cite what you build: `python tools/dte.py cite <file> <ID>` (line-level by hand when a
+- Cite what you build: `python3 tools/dte.py cite <file> <ID>` (line-level by hand when a
   block's reason differs from the file's).
-- `python tools/dte.py trace <path>` — why does this file exist, up to the core?
-- `python tools/dte.py blast <ID>` — what does changing this decision touch?
-- `python tools/dte.py tree` — the index; `show <ID>` for one node; `coverage --check` — the gauge
+- `python3 tools/dte.py trace <path>` — why does this file exist, up to the core?
+- `python3 tools/dte.py blast <ID>` — what does changing this decision touch?
+- `python3 tools/dte.py tree` — the index; `show <ID>` for one node; `coverage --check` — the gauge
   (100%, pinned by `rules.test.ts`; `.dtecoverage` above holds what needs no citation).
-- Before you finish: `python tools/dte.py validate --as <ring>` must print `OK`.
+- Before you finish: `python3 tools/dte.py validate --as <ring>` must print `OK`.
 
 ## Feedback
 

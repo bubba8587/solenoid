@@ -192,10 +192,14 @@ the decision tree (`dte.md`).
 - **UI-scale toggle (Default / Larger)** — subsumes all per-panel resize asks; don't build
   per-panel resize. **Moveable / resizable / hideable toolbar chrome** is the same
   customization slice (`archive/1.4-plan.md` F3 HOLD; `tree/specs/canvas/layout-chrome.md` shows the cost).
-- **Cable collision avoidance** — spec: `archive/cable-routing.md` §2. Superseded by the
-  obstacle-router shape if the author accepts its license (`archive/1.4-plan.md` F1); delete this
-  entry when F1 lands.
-- **Grid system** — spec: `grid-system.md`.
+- **Cable collision avoidance** — two toggles on top of the chosen cable shape: **avoid nodes**
+  (cables route around card boxes instead of cutting through; ELK or a smart-edge router) and
+  **avoid cables** (cables sharing a direction run parallel and split late; an unavoidable crossing
+  draws a small bridge hop, the schematic convention). Straight + avoid nodes reads as a circuit
+  board, spline + avoid cables as data flowing side by side. Follow-up: per-cable shape and
+  avoidance overrides (shape is graph-wide today). Superseded by the obstacle-router shape if the
+  author accepts its license (`archive/1.4-plan.md` F1); delete this entry when F1 lands.
+- **Grid system** — spec: `archive/grid-system.md`.
 - **Floor-plan bridge (author 2026-09-03, "chew on it"; ruled: don't build a plan editor, in
   Solenoid or standalone).** The editing experience is the hard part and it is solved and
   free: openPlan3D (github.com/laanlabs/openPlan3D — MIT, three.js, client-side, walls with

@@ -199,7 +199,6 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
       if (bar.x < sl) tl.scrollLeft = Math.max(0, bar.x - 20);
       else if (bar.x + bar.w > sl + vw) tl.scrollLeft = bar.x + bar.w - vw + 20;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
 
   useEffect(() => {

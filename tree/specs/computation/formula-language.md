@@ -496,7 +496,7 @@ Tests:
 
 ## Broadcasting
 
-`map_cells(argv, cell)` is the one broadcaster for every element-wise surface: binary operators, unary minus and plus, percent, `IFERROR` and `IFNA`, and function broadcasting ([[#Broadcasting]]). It owns shape only; its `cell` callback owns the per-cell meaning. The rules, as the B-table in `docs/archive/17-matrix-formulas.md` Part 2 states them and `tests/graph/broadcastRules.test.ts` transcribes row by row:
+`map_cells(argv, cell)` is the one broadcaster for every element-wise surface: binary operators, unary minus and plus, percent, `IFERROR` and `IFNA`, and function broadcasting ([[#Broadcasting]]). It owns shape only; its `cell` callback owns the per-cell meaning. The rules, as the broadcast table below states them and `tests/graph/broadcastRules.test.ts` transcribes row by row:
 
 ```mermaid
 flowchart TD
@@ -515,6 +515,22 @@ flowchart TD
 - Rank 0: one call.
 - Rank 1: scalars repeat; lists zip to the longest length; a position past the end of a shorter list yields `null` for that cell without calling `cell` (B2 to B4).
 - Rank 2: the row count is the largest matrix row count. A list reads as one row and repeats down every row. A matrix with one row repeats down every row; a matrix whose every row has one cell repeats across every column. The column count is the largest of each matrix's width (1 for a single-column matrix) and each list's length. A cell any operand cannot supply is `null`, again without calling `cell` (B5 to B9).
+
+The broadcast table. `s` is a scalar, `L(n)` a list of n (a `1×n` row where orientation matters), `M(m×k)` a matrix; each row is one test case.
+
+| # | Left | Right | Result | Rule |
+|---|---|---|---|---|
+| B1 | `s` | `s` | `s` | one call |
+| B2 | `s` | `L(n)` | `L(n)` | the scalar repeats |
+| B3 | `L(n)` | `L(n)` | `L(n)` | element-wise zip |
+| B4 | `L(n)` | `L(p)`, n≠p | `L(max)` | zip to the longest, the short tail `null` |
+| B5 | `s` | `M(m×k)` | `M(m×k)` | the scalar repeats over every cell |
+| B6 | `L(k)` | `M(m×k)` | `M(m×k)` | the list is a row, repeated down the m rows |
+| B7 | `L(n)` | `M(m×k)`, n≠k | `M(m×max(n,k))` | width mismatch pads each row with `null` |
+| B8 | `M(m×k)` | `M(m×k)` | `M(m×k)` | cell by cell |
+| B9 | `M(m×k)` | `M(p×q)`, shapes differ | `M(max×max)` | a one-row or one-column matrix repeats along its singleton axis, then the rest pads with `null` |
+| B10 | `M(1×1)` | anything | as `s` | a 1×1 matrix collapses to its scalar |
+| B11 | `L(1)` | anything | as `s` | a one-item list collapses to its scalar |
 
 **MUST:** every element-wise surface goes through `map_cells`, and the broadcast table and `broadcastRules.test.ts` change together, so editing either one alone fails. Two broadcasters are how the same expression ends up answering differently depending on where it's typed, which is the drift the parity program exists to close. Tying the table to the test is the one-implementation rule for gating metrics ([[engineering#A gating metric has one implementation]]) applied to semantics.
 

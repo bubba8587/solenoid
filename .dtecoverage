@@ -54,12 +54,9 @@ PRODUCT.md
 
 why: queues, proposals and history keep their homes; an index points, it does not govern
 docs/deferrals.md
-docs/grid-system.md
 docs/pack-composite-plans.md
-docs/python-r-gap.md
 docs/release-notes-features.md
 docs/release-notes-1.6.md
-docs/upstream-formulajs.md
 docs/subsystem-invariants.md
 docs/archive
 docs/v2.0

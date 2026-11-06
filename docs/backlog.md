@@ -2,13 +2,9 @@
 
 **OPEN items only, kept terse.** When an item lands, DELETE its line — git history and
 the dev-notes digests are the record. **1.5.0 shipped 2026-10-08; the 1.6 cut is
-`1.6-plan.md`** (three rounds and a desktop session; everything else waits until after 1.6). The
+`1.6-plan.md`** (what is left before the release; everything else waits until after 1.6). The
 structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tree (`dte.md`).
-
-## Socket naming
-
-- **`anydata` and `trueany` as their own category** (author 2026-11-03): unlike the rank wildcards (`any`, `anycombo`, `anylist`, `anytable`, which lift a value to their rank or collapse a singleton), these two take a value at its own rank. The socket legend shows them as their own row under a working name, "As-is"; settle the category's name, then carry it through the socket reference, the glossary and the type names if the author wants them renamed.
 
 ## Leaves the code breaks
 
@@ -51,6 +47,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **A check for [[D73]] nodeCoversFormula**: a card marked `parity: false` skips every card-to-formula test, so nothing notices a card missing one of its formula's arguments (RANDARRAY's columns went unnoticed until 2026-11-05). `rolesFrom` maps only settings, so it can't tell; each card would declare the socket or field that covers each argument, and a test would fail a gap that isn't written into its Excel note.
 - [ ] **Finish the settings sweep** ([[D86]] blankRoles): the inputs `docs/settings-audit.md` § Not swept yet lists (column choices on table cards, an as-of Join's tolerance, the Slider's bounds) get their roles the way the swept ones did.
 - [ ] **Equation answers any type, and solver cards show only the solved output**: an unwired variable's output retypes to fit its answer, so `x^2 + 1 = 0` gives a complex answer instead of `#SOLVE!` (complex, text, date or logical). The Equation card then shows an output box only for the unwired variable (asked for 2026-10-07).
+- [ ] **A weighted pick on Shuffle / Take** (numpy's `np.random.choice(p=)`, the last open item of the 2026-08-23 Python and R survey): a weights input so a draw or sample favours some items; Distribution's `Sample` form already draws from a distribution.
 - [ ] **List Input keeps a typed blank** ([[C24]] arraySemantics): `1,,3` gives two numbers today, while `1,x,3` keeps three items and a wired blank stays in place. A typed gap should be a blank item.
 
 
@@ -80,8 +77,8 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] Regex recursion (`(?R)`, `(?1)`, `(?&name)`) and branch-reset groups (`(?|…)`): Excel runs both (author's Excel 2026-11-01), fancy-regex has neither, so they are `#VALUE!` naming the feature (`excel_regex.rs` `pcre2_lower`). Needs a PCRE2 engine in the wasm or a rewrite (a branch reset renumbers each alternative's groups onto one set, which `Found` would map back).
 - [ ] **chrono-node in Rust, as its own repository** (author 2026-11-01, the author sets it up): seed it from `relative_date.rs` and `fixtures/core/relative-dates.json.gz` as they stood before `relative_date.rs` moved to interim (git history), the fixture as its conformance suite. Solenoid moves to it only if it reads better than the patched interim.
 - [ ] **Type Check's ISNULL duplicates its ISBLANK** since ISBLANK tests per cell (2026-11-02); the author kept ISNULL for now. Dropping it breaks saves that use `isnull` ([[B7]] preAlphaBreakFreely) and renames the error table's "detect missing" (`tree/specs/values/error-values.md`).
-- [ ] **Dead CSS, by eye:** `node scripts/dead-css-classes.mjs` lists 66 classes nothing emits, among them library classes (`react-grid-*`) and BEM suffixes built at run time; each needs a look in the running app before it goes.
-- [ ] **Renumber the tree once it is ratified** (author 2026-10-30): `python tools/renumber_tree.py` closes each ring's id gaps (131 of 136 change today) and rewrites the `[[ID]]` citations; run it as a commit of its own, then hand-check the bare id mentions it lists outside `docs/archive/`.
+- [ ] **Dead CSS, by eye:** `node scripts/dead-css-classes.mjs` still lists classes nothing names in full. The confirmed dead ones went 2026-11-06; what is left is mostly library classes (`react-grid-*`) and names built at run time, but its BEM-suffix bucket was never checked one by one in the running app.
+- [ ] **Renumber the tree once it is ratified** (author 2026-10-30): `python3 tools/renumber_tree.py` closes each ring's id gaps (most ids change) and rewrites the `[[ID]]` citations; run it as a commit of its own, then hand-check the bare id mentions it lists outside `docs/archive/`.
 - [ ] **IronCalc as a test oracle**, tests only, never shipped: check PRICE, YIELD, the COUP functions, WORKDAY and their like against an engine built to match Excel. Today they're checked only against answers frozen from Formula.js, and no Excel runs in CI.
 - [ ] **Name the behind-the-scenes processes** in `docs/glossary.md`, as LayoutFx and VaultBridge are: the Pass (one recalculation), the Dimension Pass, the Type Settle, the Rebuild, the Error Guard, and candidates such as the Reader and the Formatter. "Plan" alone has five meanings today.
 - [ ] **A Frame embedded in a Report picks its view** (author 2026-10-28): the Dashboard box's Show as Cards (`FrameCards`, `DashboardOverlay.tsx`) offered on a Report embed too, kept per ref; the static webpage export needs its own cards markup.
@@ -121,13 +118,24 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 
 ## Release planning (author-run)
 
-- [ ] **Walk `2.0-plan.md`** (1.4.2 shipped 2026-09-22 with plugin 0.1.3; 1.4.1 was the first Windows + Linux release).
+- [ ] **Walk `2.0-plan.md`.**
 - [ ] **Ratify `out-of-scope.md`** (DRAFT since July, no ARR anywhere in it) — the deferral
   review's standing ask. Test 3 / §3 / §11 already read the author's 2026-09-01 order
   (collaboration IN); the rest is still the agent's inference awaiting the author's word.
-- [ ] **The ARR pass over the tree** (author-present; the author: waits for 1.4) — early in the
-  release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
+- [ ] **The ARR pass over the tree** (author-present) — early in a release, before the track
+  work adds rules: walk `python3 tools/dte.py tree` and ratify node by
   node (`docs/dte.md` § Solenoid practice; `archive/1.4-plan.md` D3).
+
+## From the 2026-09-27 bug review (each needs the author's call)
+- [ ] **Two locked groups that overlap stay overlapped, silently** ([[C112]] noOverlapsEver leaves them alone), and a layout action can make it (a locked group expanding onto another, Tidy inside one widening it onto a locked neighbour). Keep it silent; have `separateAll` return the leftover fixed pairs and raise an alert naming both; or clamp a locked group's growth into another locked box (an exception under D63).
+- [ ] **Nothing lists what a chart renderer reads**, so an option a renderer reads but the builder doesn't offer goes unnoticed (Merge Plots over XY reading `opts.alpha` was the one found, fixed 2026-10-05). A per-op `RENDERER_READS` table beside the targets, with `reads ⊆ keys` tested.
+- [ ] **A type switch through Obsidian's Update dialog loses data on Save** (`coerceYaml`, `yamlValue.ts`): a cube coerced to a list keeps only its first scalar per row, a frame to a list drops its column names, a matrix to a frame takes `Col1…`; Obsidian's dialog is the only warning, and the spec's "only a container in a frame cell is missing" understates it. Fix the sentence and accept; keep a container cell as its YAML text; or have Save refuse or warn.
+- [ ] **A computed column keeps a date only through some forms** (computed-columns: "anything else stays a number"): `@d + 1.5` and an IF chaining a date column read as dates; `MAX(@a,@b)`, `IF(c,@a,0)`, IFERROR, CHOOSE, IFS, `LET(x,@a,x+1)` and `DATE()+@a` read as numbers. Proposal: MIN/MAX/IFERROR/CHOOSE/IFS over all-date value arguments, LET passing a date, and DATE() read as dates.
+- [ ] **About 17 of 28 seeds have no value pinned** (`seedsCompute.test.ts` fails only on an unexpected error cell; 11 per-seed suites pin about 180 values): a golden snapshot per seed, regenerated on purpose, or pins on the showcase seeds only.
+- [ ] **`linux_webview.rs` turns off `AsyncOverflowScrolling` by name**: a renamed identifier in a WebKitGTK update fails silently. Log when no identifier matched, and set `bundle.linux.deb.depends: ["libwebkit2gtk-4.1-0 (>= 2.42)"]`.
+- [ ] **No written recovery for a failed release build**: a flaky run is "Re-run failed jobs" on the tag's run; a code fix is delete the tag, fix on develop, merge, re-tag. Write it beside the release paragraph in CLAUDE.md.
+- [ ] **A note edited in Obsidian shows no staleness until Refresh** (the vault watcher was dropped): an mtime check on window focus, a "file changed" badge from the existing `stat`, or keep manual refresh and say so on the card.
+- [ ] **On a phone (needs the rig's mobile emulation):** the table popup footer's touch targets, and the keyboard covering the Save row.
 
 ## Cubes and lists (author 2026-09-26)
 
@@ -142,10 +150,10 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 ## Sources
 
 - [ ] **CSV import, the full pass** (author 2026-11-06: production use leans on CSV, so value handling inside is finished first and import is then patched to match it). Since 2026-11-06 a number or date column keeps its stray cells as NaN with their text (`infer_text_column`, [[frame-verbs#Type inference]]), a stopgap: NaN is `#DOMAIN!` in SUM, so one `N/A` still breaks a column's total until the NaN walk (§ Value handling) decides how a NaN reads.
-- [ ] **Widget nodes Tier 2 (`v2.0/16`), post-1.4:** Air Quality/Pollen preset of Weather, Ticking Now timer.
+- [ ] **Widget nodes Tier 2 (`archive/16-widget-nodes.md`):** Air Quality/Pollen preset of Weather, Ticking Now timer.
 
 ## Obsidian + TaskNotes (author 2026-09-07: THE adoption bet — correct, great, useful)
-- **Solenoid Properties plugin: the app's type icons** (author 2026-11-03): its property type pickers use more of the family icons the app draws (`TypeIcon.tsx`: `#`, `Aa`, the calendar, the checkbox, the double-struck C, the Frame outline), as its Frame type already does.
+- [ ] **Solenoid Properties plugin: the app's type icons** (author 2026-11-03): its property type pickers use more of the family icons the app draws (`TypeIcon.tsx`: `#`, `Aa`, the calendar, the checkbox, the double-struck C, the Frame outline), as its Frame type already does.
 - [ ] **A daily-note source card**: outputs today's daily-note path from the user's Obsidian daily-notes settings, to wire into a vault-writing card. It replaces the removed `{{daily}}` shortcut, asked back as something wirable; its exact shape is open.
 - [ ] **A Note card shows a list property as a chip** ([[D87]] knapNotes): a bare `{{ items }}` holding a list or table prints raw text such as `[1,2,3]` on the card, where Obsidian with the plugin draws the chip.
 - [ ] **Plugin chips easy to tap on a phone**: a chip is 15 px tall in Obsidian's 41 px phone row. Keep the small look and give it a taller tap area (the `md` size overpowers a property row, `../tree/specs/integrations/obsidian-plugin.md`).
@@ -276,20 +284,20 @@ The site is five pages (`/about` is the landing page; `/` is the app) sharing `l
 
 ## DTE — decision provenance (`docs/dte.md`)
 
-The tree is the author's to ratify: 127 leaves, each a product call that follows from its parent; mechanics
+The tree is the author's to ratify: 124 leaves, each a product call that follows from its parent; mechanics
 live in specs.
 - [ ] **Author ratifies the tree, one leaf at a time** — A1, B1, B2, B3, B7, C80, D62 and E10 are ratified.
   New today and unseen by the author: B18 safeToShare, B19 spreadsheetHabits. Next: the rest of ring B, then C.
   Ratifying adds the ID to `OWNER_RATIFIED` in `rules.test.ts`.
 - [ ] **The outbox still lists A1, B1, B2, B3, B7 as ratified with no History line**: the author cleared those
   leaves' History by hand and will handle History themselves; leave them.
-- [ ] **81 inbox items** await the author (each says what ratifying it changes, with a lean); the 2026-10-26 backlog sweep moved every decision-gated item there.
+- [ ] **11 inbox items** await the author (each says what ratifying it changes, with a lean); the 2026-10-26 backlog sweep moved every decision-gated item there.
 - [ ] **Author places `tree/decisions/inbox/scope-boundary.md`** (proposed ring A); then `out-of-scope.md`'s 13
   categories become B leaves and that doc goes.
 - [ ] **C80 blankArgIsExcelBlank still hangs off A5** (author-ratified): its natural parent is [[B16]]
   oneFormulaSurface. The one skipped-ring finding left.
 - [ ] **Two author-held `*Where:*` lines remain** (B7, C80). The author deletes them or rules they stay.
-- [ ] **Optional:** `python tools/dte.py hook` (pre-commit validate) — not installed; `validate` is not in CI.
+- [ ] **Optional:** `python3 tools/dte.py hook` (pre-commit validate) — not installed; `validate` is not in CI.
 
 ## Formatting & units
 - [ ] **Socket labels lose their parentheses** (`../tree/specs/canvas/add-menu.md` states the rule): "T (K)", "(UTC)", "Marker size (px)" become "T" and so on, the unit moving to the Inspector's socket description; math notation stays. The lambda-argument hints ("Values (value)") are a written exception to the label rule, so moving them also deletes that exception.

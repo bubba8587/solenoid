@@ -170,7 +170,7 @@ Every broadcaster zips ragged lists to the longest, and a padded position is `nu
 
 The shared helper is `short_circuit` (`nodes/kit.rs`, the full rule); the Kleene logic family's `broadcast_el` checks errors only and feeds `null` to its own function. So a list cell behaves exactly like a scalar or a ragged pad: `[1, #DIV/0!, 3] + 10` keeps the error, and `[1, null, 3] + 10` gives `[11, null, 13]`. `broadcast_call` skips the null short-circuit for the predicates whose traits say `inspects_null` (ISBLANK, ISNUMBER…), which need to see the blank.
 
-**`guard_finite`** (the core's `value_kinds.rs`; `guardFinite` in `valueKinds.ts` for the frame backend) means a computation never yields a bare NaN or Infinity. Per result, and aware of its inputs:
+**`guard_finite`** (the core's `value_kinds.rs`) means a computation never yields a bare NaN or Infinity. Per result, and aware of its inputs:
 
 - NaN becomes `#DOMAIN!`;
 - ±Infinity from all-finite inputs becomes `#OVERFLOW!` (one code, which splits out Excel's #NUM!, ERROR.TYPE 6);
@@ -182,7 +182,7 @@ It runs at the producing op, so Expression's `tag_result` trusts it. The guarded
 
 Tests:
 
-- `broadcastContract.test.ts`: `readInput` (unwired falls back, a wired 0 wins, a wired `null` propagates); the formula broadcasters' per-cell rule for a call, unary minus and percent, with ISBLANK still seeing the blank; `guardFinite`'s three cases; and `2^5000`, `EXP(1000)` and `0^0` in a formula.
+- `broadcastContract.test.ts`: `readInput` (unwired falls back, a wired 0 wins, a wired `null` propagates); the formula broadcasters' per-cell rule for a call, unary minus and percent, with ISBLANK still seeing the blank; and `2^5000`, `EXP(1000)` and `0^0` in a formula.
 - `readInputSweep.test.ts`: the zero-floor ratchet across `nodes/*.ts`.
 
 ### Producers of each code
@@ -212,7 +212,7 @@ Detection and recovery form a 2 × 2 over missing (`null`) and error (`SolError`
 
 There is one kind of error, never two. With two notions, ISERROR and IFERROR would disagree about the same cell, and a not-a-number counted as an error in one place and as a number in another is a wrong answer nobody sees. These must hold across all of them:
 
-1. A tagged `SolError` is the only definition of an error, so ISERROR and IFERROR agree exactly (`isSolError`). A bare NaN is not an error; `guardFinite` classifies non-finite results first, so an untagged NaN never reaches these nodes.
+1. A tagged `SolError` is the only definition of an error, so ISERROR and IFERROR agree exactly (`isSolError`). A bare NaN is not an error; `guard_finite` classifies non-finite results first, so an untagged NaN never reaches these nodes.
 2. A `null` is not an error in any of them. It passes through IFERROR and IFNA, and it is what Fill targets. A real "not found" is a tagged `#N/A` (XLOOKUP, for one), not `null`.
 3. The `#N/A` test lives in one place, the `IFNA | ISNA` arm of `error_handler` (`crates/solenoid-core/src/excel_functions.rs`), shared by ISNA and IFNA so they can't drift.
 4. An error consumer reading a wired input that may be `null` uses `readInput`, never `inputs.x?.[0] ?? literal`, which treats a delivered `null` as absent and hides the missing cell.
@@ -315,7 +315,7 @@ The popup's Source and Formatted views, the Form view's fields, the cell affixes
 `runModelFuzz()` (`modelFuzz.ts`) looks for inputs a user could plausibly type that break the graph downstream. It perturbs every leaf source of the main graph, meaning a Slider Input or a number or text Value Input with nothing wired into it, through 120 samples each (`SAMPLES_PER_LEAF`), and scans the downstream cone (`downstreamClosure`) after each targeted recompute.
 
 - **Samples.** They come from a fixed-seed generator (`mulberry32(0x5EEDF022)`), so a run is reproducible, which is what makes a "no findings" result trustworthy. The type is never fuzzed. Numbers are always finite: a fixed set of edge values (0, ±1, ±0.0001, ±100, ±1e6, 1e-8), then random magnitudes from about 0.001 to about 1e6 with a random sign. Strings are a fixed set of awkward words (empty, whitespace, emoji, 200 characters, a newline, "50%", "1,234.56" and others), then random printable ASCII.
-- **What counts as bad.** A node is bad when a cached result field (`cachedResult`, `cachedValue`, `cachedString`, `cachedText`, `cachedList`, `cachedMatrix`, `cachedHeaders`, checked generically so no per-class list is needed) holds a tagged error, a leaked NaN (reported as `#VALUE!`) or an infinity (reported as `#OVERFLOW!`). `guardFinite` means a computation never yields a bare non-finite, and `null` is a legitimate missing value, never a defect. Lists, matrix rows and Frame columns are scanned under the bounded scan above (`sampledCellIndices`), since this runs on every downstream node for every sample. An Expect node is never a finding: the fuzzer feeds exactly the out-of-range values Expect exists to reject. Findings are deduplicated by node and code.
+- **What counts as bad.** A node is bad when a cached result field (`cachedResult`, `cachedValue`, `cachedString`, `cachedText`, `cachedList`, `cachedMatrix`, `cachedHeaders`, checked generically so no per-class list is needed) holds a tagged error, a leaked NaN (reported as `#VALUE!`) or an infinity (reported as `#OVERFLOW!`). `guard_finite` means a computation never yields a bare non-finite, and `null` is a legitimate missing value, never a defect. Lists, matrix rows and Frame columns are scanned under the bounded scan above (`sampledCellIndices`), since this runs on every downstream node for every sample. An Expect node is never a finding: the fuzzer feeds exactly the out-of-range values Expect exists to reject. Findings are deduplicated by node and code.
 - **The Clamp suggestion.** For a code a min or max bound can plausibly fix (`#VALUE!`, `#OVERFLOW!`, `#DOMAIN!`, `#DIV/0!`, `#CONV!`; structural codes such as `#REF!` or `#NAME?` are not), the finding suggests splicing a Clamp before the node's first number or number-list input. Across every clean sample the fuzzer records the range of values arriving on that input, and a non-degenerate finite range (min below max) seeds the Clamp's bounds; a single-point range would pin the value, so it seeds nothing. This is a heuristic: a Clamp imposes only min and max, so it cannot exclude a bad interior point.
 - **The run.** The whole sweep runs inside one compute bracket, so the compute curtain stays up between the per-sample passes, and inside the rebuild gate, which lets sampled passes run in manual-calc mode and keeps Alert and Expect from firing on samples. Each leaf's original value is restored, and recomputed, on every exit path.
 - **`insertClampBefore(nodeId, socketKey, bounds?)`** splices a Clamp onto the cable feeding that input (nothing when it is unwired), placed midway between the two cards and 60 units above, with the bounds written as its min and max literals. An unwired min or max input reads those literals, so the Clamp arrives configured rather than as a pass-through.

@@ -28,7 +28,7 @@ import { AmortizationNode, ReturnsNode } from "../../../src/graph/nodes/finance"
 import type { FrameValue } from "../../../src/graph/frame";
 import { isFrameValue } from "../../../src/graph/frame";
 
-// python-r-gap.md Tier 1: quantile bins, outliers, epoch, date truncation. Each formula
+// The Python and R survey's Tier 1: quantile bins, outliers, epoch, date truncation. Each formula
 // runs its node's kernel; values pinned against pandas / R / scipy conventions.
 const FIT_FAMILY_LABEL: Record<FitFamily, string> = {
   normal: "Normal", lognorm: "Lognormal", expon: "Exponential", gamma: "Gamma", weibull: "Weibull",

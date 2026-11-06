@@ -5,7 +5,7 @@
 > walk router in `cablePaths.ts` keys segments off socket positions and
 > compass headings, not grid lines — wiring it to a grid is a real design
 > question, not a toggle), and "double-click cable to insert a Conduit" became
-> the Insert-Conduit cable action. Coordinate with `backlog.md` → Grid system.
+> the Insert-Conduit cable action. Parked in `../deferrals.md` → Grid system.
 
 Captured from user direction. For later — implement once the node
 graph fundamentals are stable.
@@ -28,8 +28,8 @@ they wanted.
 - **Node placement** — newly added nodes (via right-click, drag-to-empty,
   double-click cable) spawn at the nearest grid intersection. Free-drag
   is not snapped by default; hold a modifier to snap while dragging.
-- **Straight-cable mode** — when the cable shape is "straight"
-  (see `archive/cable-routing.md`), cable segments run along grid lines and
+- **Straight-cable mode** — when the cable shape is "straight",
+  cable segments run along grid lines and
   turns happen at grid intersections.
 - **Diagonal-cable mode** — diagonals at 45° connect grid intersections
   to grid intersections.

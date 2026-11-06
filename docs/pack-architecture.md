@@ -5,7 +5,7 @@
 > example, and the **Composite** subgraph container (`nodes/composite.ts`). The settled calls
 > live in the decision tree: [[B15]] leanCore and its children [[C76]] formulaPackDefault, [[C77]] compositeIsSubgraph,
 > [[C78]] packLegibility and [[C79]] packActivationIsPresentation
-> (`python tools/dte.py tree --under B15`). This doc is the guide for authoring packs; the open
+> (`python3 tools/dte.py tree --under B15`). This doc is the guide for authoring packs; the open
 > pack work (more packs, distribution/deps, variant-switch reconcile, port aliasing) lives in
 > `backlog.md`.
 
@@ -24,8 +24,7 @@ metadata (name, description, socket names and units, Excel mapping if any) as pa
 reach for real node code only when the node needs a native library, root-finding or
 iteration, an embedded dataset to interpolate, or a custom widget. State, per node, which of
 the two it is; the custom-logic nodes are the short list that gets the scrutiny (see
-[reference-packs.md](archive/reference-packs.md) and
-[archive/compute-architecture.md](archive/compute-architecture.md) for the library-bound
+[reference-packs.md](archive/reference-packs.md) for the library-bound
 cases). A simple node that grows into several internal nodes becomes a composite
 ([[C77]] compositeIsSubgraph), never a Group.
 

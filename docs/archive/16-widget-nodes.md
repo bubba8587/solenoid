@@ -1,7 +1,7 @@
 # 16 — Everyday widget nodes (the throwaway-workbook / load-a-website layer)
 
 Scoped 2026-07-20 (author-directed brainstorm). **Status: SCOPED, not started —
-proposed for 1.4** (`../1.4-plan.md` Track C, item C1; ships with C2, the per-document
+proposed for 1.4** (`1.4-plan.md` Track C, item C1; ships with C2, the per-document
 network permission). The four author calls at the end of this doc are the gate.
 
 ## The lens

@@ -17,7 +17,7 @@ This is the one reference for the value model's special kinds: what each means, 
 | value | a real number, string, date, logical or complex | the normal case |
 | `null` | **missing**: no value was ever there | data, not a failure |
 | `SolError` | **failure**: a computation could not answer (a tagged code, one of 17, including `#OVERFLOW!` and the internal `#ERROR!` catch-all) | loud until caught |
-| `NaN` | **an undefined number that leaked**: neither an error nor missing | residue; a computation may not produce it (`guardFinite`) |
+| `NaN` | **an undefined number that leaked**: neither an error nor missing | residue; a computation may not produce it (`guard_finite`) |
 | `Infinity` | **a definable infinity**: declared on purpose (the Constant node) or derived from an infinite input | a first-class value |
 
 A **complex** value is the tagged object `{ __cx: true, re, im }` (tagSpecialScalars), never a bare `[re, im]` array. So `Array.isArray` never means "a complex number": an array is a 1-D list, or a matrix when its own elements are arrays (rank 2 is allowed by [[C15]] matricesInFormulas). `isCx` (`cxValue.ts`) is the one complex test.
@@ -63,7 +63,7 @@ Three distinctions carry the most weight:
 
 - **Errors are minted at the failure, with the specific code.** `#DIV/0!` at the divide; `#DOMAIN!` at a sqrt, log or pow domain failure; `#N/A` at not-found or no-match; `#SHAPE!` at coercion, and per row in a computed column (a list-shaped cell result, or an `@`-read of a mis-sized list, which is the deliberate loud failure for a bare column name in scalar position, [[C22]] rowFormulaRefs); `#CIRC!` at engine cache seeding; `#OVERFLOW!` at representation overflow. A raw NaN is never a failure signal.
 - **Fill's unwired pad is `null`** (first-class missing), not the `#N/A` Excel's EXPAND uses for an omitted `pad_with`. Wire the NA node into Fill to get Excel's form (`fill`, the core's `nodes/list.rs`).
-- **The non-finite guard** (the core's `guard_finite`, `value_kinds.rs`; `guardFinite` in `valueKinds.ts` for the frame backend's aggregates) applies to every numeric op:
+- **The non-finite guard** (the core's `guard_finite`, `value_kinds.rs`) applies to every numeric op:
   - a `NaN` result is `#DOMAIN!` (indeterminate: `(-8)^(1/3)`, `∞−∞`, `∞/∞`, `0×∞`, or a NaN input entering the op);
   - a `±Infinity` result from all-finite inputs is `#OVERFLOW!`;
   - a `±Infinity` result with an infinite input passes through, since it is definable.
@@ -86,7 +86,7 @@ flowchart LR
     d["dirty imported data"] --> nan
     bug["a UnitCell past the unit-blind<br>boundary (a bug: stripUnitCells<br>exists to stop it)"] --> nan
     nan --> show["shows NaN on a muted chip:<br>not an error, not #N/A, not blank;<br>ISERROR is FALSE, IFNA passes it"]
-    nan -->|"enters a numeric op"| dom["#DOMAIN! (guardFinite)"]
+    nan -->|"enters a numeric op"| dom["#DOMAIN! (guard_finite)"]
     op["a computation's own result"] -.->|"never NaN: a NaN result<br>is #DOMAIN!"| dom
 ```
 

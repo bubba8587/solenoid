@@ -41,7 +41,7 @@ mdbase 1.0 ([[C67]] mdbaseCeiling).
   Gaps this bundle closes: ISO datetimes land as strings; block-style nested objects (the
   shape TaskNotes writes `timeEntries` in) are not parsed.
 - **Decision Matrix** is the author's Bases-view plugin, math only (`../node-coverage.md`
-  § Decision support). **H6 Schedule** is specced in `../1.4-plan.md` § Scheduling slice,
+  § Decision support). **H6 Schedule** is specced in `../archive/1.4-plan.md` § Scheduling slice,
   gated on the Track H pick (`../backlog.md`).
 - **[[C44]] dateSerials**: a stored date is a fixed calendar day; relative
   phrases resolve only on a date Value Input under a setting, re-resolving each pass with an Alert

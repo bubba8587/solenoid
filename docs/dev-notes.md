@@ -6,6 +6,26 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-06: pre-1.6 cleanup sweep; cloud session)
+- **What went:** one-off probes nothing ran (chart-contact-sheet, heap, layout, undo-drift, gantt-shots, touch-pan,
+  formula-node-parity), the orphaned `relativeDateCorpus.ts`, `.impeccable/`, the bitmap fonts in `public/fonts/`, the
+  Unit Flow gallery thumbnails (`site-shots --thumbs` remakes them when P16 lands), three stray `assets/` files, the TS
+  `guardFinite` (the core's `guard_finite` is the spec), `triangleOps.ts` and four unused exports, about 30 CSS classes
+  nothing renders, all 52 `eslint-disable` comments (no eslint runs here), redundant per-file clippy allows, dated
+  "author's Excel" stamps in non-test Rust comments (the conformance tests hold the measurements), and 25 archive docs
+  plus review-plan, python-r-gap, upstream-formulajs, the crate audit and `docs/plans/`. Open boxes from review-plan
+  and python-r-gap moved to the backlog; 17-matrix-formulas' B-table moved into [[formula-language#Broadcasting]].
+- **Fixed on the way:** `package.json` had `test:core` twice (the cargo one stands; the TS tier is
+  `npm run test:bucket core`); `tests/buckets.mjs` lost the regex names an earlier rule always claims (no file moved
+  bucket); two stale `ISOLATED` entries left `vitest.config.ts`; 1.6-plan holds only what is left.
+- **Kept on purpose:** the perf probes an open backlog or deferral item names, `scripts/shot-graphs/`, the demo videos,
+  `docs/google-style/` (the author's call), `stillGranted` in `androidFolders.ts` (unused, but the Android grant check
+  it is for is new), the `__hcDiag` / `__hcProbe` diagnostics (`tree/specs/canvas/html-in-canvas.md` documents them), `build:wasm:opt`
+  (the author's release step).
+- **Open:** module headers over two lines (about 170 files, `tree/specs/floors/engineering.md` § Comments); `palette.ts`'s dated
+  OKLCH ruling wants a leaf or a DESIGN.md line; `.claude/settings.json` allows `npx tsx scripts/parity.ts` and
+  `npx tsc *`, both stale.
+
 ### SESSION DIGEST (2026-11-06: geometry figure cards, pack seeds and examples, pack constants, formula layout, the Element card; cloud session)
 - **Geometry figure cards** (the author 2026-11-06): Triangle Solver, Unit Circle, Circle Solver, Regular Polygon,
   Two Points, Polygon from Points and Solid. Each is a frame in (or its own keyed `frameText`), a frame out, one row per

@@ -179,7 +179,7 @@ mindmap
 |---|---|
 | `sockets.ts` | `SocketDataType` + `SOCKET_COLORS` (CSS vars, incl. blue = logical) and labels; `canConnect`/`areCompatible`/`adoptTypeForBase` and the rank and family helpers read the core's lattice tables (`lattice.rs`: `FAMILIES`, the element × dim lattice, derives every accept-set). Governing rule: enforce TYPE separation (Cast to cross families; only logical↔number bridges), allow DIMENSIONAL flow (scalar→list→matrix→frame); `anytable`/`frame` widen from lower rank. The wildcard ladder (wildcardLadder): `any` = untyped SCALAR, `anycombo` = 0-or-1-D, `anylist`/`anytable` = 1-D/2-D, `anydata` = rank ≤ 2 (matricesInFormulas), `trueany` = the adopt-anything supremum (hollow ring; `AdoptiveSocket`/`MutableSocket`, `isWildcardType`) |
 | `inputRoles.ts` | `ARG_ROLES`, the one declaration of which arguments are settings or picks and what a blank there reads as; `applyRole` / `apply_arg_roles` read it for cards (`readRole`) and formulas |
-| `valueKinds.ts` | First-class value-model kinds: `null` (missing), the logical and number coercions, `Tri` (three-valued logic's type; the logic is the core's, `kleene_and`/`kleene_or`), `UncertainNumber`, `guardFinite` |
+| `valueKinds.ts` | First-class value-model kinds: `null` (missing), the logical and number coercions, `Tri` (three-valued logic's type; the logic is the core's, `kleene_and`/`kleene_or`), `UncertainNumber` |
 | `errorValue.ts` | Tagged `SolError` values (Excel-style `#CODE!`), `SolErrorOrigin` (the FIRST mint site, so a chain of passthroughs still points at the true source), `registerErrorSink` (the seam the Problems panel taps; the guard reports `null` on a clean call so a relapse re-fires). The error guard itself is the graph core's input boundary (`boundary.rs`) |
 | `nodeStoreRegistry.ts` | The forget seam: any node-keyed module store (collapse, manual size, cable values, socket angles…) calls `registerNodeForget(fn)` once; `forgetNode(id)` runs from the `noderemoved` pipe AND the bulk-delete path (`canvasActions`), so a deleted node's entries don't leak — a new store never threads its own cleanup |
 | `flyToNode.ts` | Pan/zoom the viewport to center one or more nodes (expanding a collapsed host group first) — the shared "go to this node" action behind the pins HUD, alerts HUD, popup "Go to node" buttons, and Presentation's per-step camera fly |
@@ -571,17 +571,16 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `dte.md` | living | the decision tree how-to — every rule (MUST + enforcing test) and settled decision is a node under `tree/decisions/` |
 | `subsystem-invariants.md` | living | the index of every spec under `tree/specs/` (the mechanics, one per subsystem) |
 | `dev-notes.md` | living log | open problems + the latest session digests only (history in `archive/dev-notes-history.md`) |
-| `backlog.md` | living | OPEN items only — the 1.3 polish/patch queue (landed items are deleted) |
+| `backlog.md` | living | OPEN items only (landed items are deleted) |
 | `deferrals.md` | living | the deferred/parked/author-gated set, incl. Pushed-to-1.4/2.0 |
 | `2.0-plan.md` | living | the author-present flagships — release view over `v2.0/` |
 | `release-notes-features.md` | living | curated feature list — release-notes source + What's-New slide content |
 | `socket-reference.md` | living | every socket variant in plain English (connection lists machine-checked by `socketReference.test.ts`) |
-| `v2.0/` | living plans | the open build bundles — 08 transpiler, 10 sensitivity, 12 uncertain/money, 16 widgets |
+| `v2.0/` | living plans | the open build bundles — 08 transpiler, 10 sensitivity, 12 uncertain/money, 20 pages, 21 collaboration, 22 canvas at scale, 23 conditional formatting, 24 Obsidian vault, 25 Gantt, 26 workspace tree |
 | `node-coverage.md` | living | node inventory by category (`nodeCatalog.ts` is the real source) |
 | `pack-architecture.md` | authoring guide | building a pack node, input coercion, per-port promotion, restrictions (settled calls: [[B15]] leanCore) |
 | `pack-composite-plans.md` | plans (parked) | queued composite-shaped pack nodes |
 | `out-of-scope.md` | policy | the standing NO list |
-| `grid-system.md` | future spec | soft-snap grid; unimplemented |
 | `agent-coordination.md` | parallel-session board | the live claim list; the protocol is its node |
 | `archive/` | index | everything finished/inactive — see `archive/README.md` |
 
