@@ -1,7 +1,7 @@
 // [[C1]] demoVault, [[C103]] untrustedContentSeams
 import { readTextFile, readDir, writeTextFile, rename, readFile, writeFile, mkdir, exists, stat } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { join, dirname, documentDir } from "@tauri-apps/api/path";
+import { join, dirname, documentDir, homeDir } from "@tauri-apps/api/path";
 import { requestConfirm } from "./confirmStore";
 import { docMetaStore } from "./docMetaStore";
 import { demoVaultFs, isDemoVaultPath } from "./demoVault";
@@ -316,9 +316,14 @@ export function dirOfPath(path: string): Promise<string> {
   return fs().dirname(path);
 }
 
-/** The system's Documents folder (desktop). */
-export function documentsDir(): Promise<string> {
-  return documentDir();
+/** The system's Documents folder (desktop), or `Documents` under the home folder where the system names none (a
+ *  Linux without XDG user folders answers "unknown path"). */
+export async function documentsDir(): Promise<string> {
+  try {
+    return await documentDir();
+  } catch {
+    return join(await homeDir(), "Documents");
+  }
 }
 
 export function joinPath(...parts: string[]): Promise<string> {
