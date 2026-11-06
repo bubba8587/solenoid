@@ -1,107 +1,101 @@
 {
-  "date": "2026-11-01",
+  "date": "2026-11-06",
   "base": "develop",
-  "baseSha": "af2c5550bb4265eaee4404fff15f854a873d2f1f",
-  "fromSha": "9aa5a5d1a0626e99cf5ad27c776bc88d7a97e3a8",
+  "baseSha": "5bfe7621536cc824d4d6ae13c5ab0d6f3d9b754a",
+  "fromSha": "adce37018988d8807d409d03c9bf885e817b4968",
   "carried": [
     {
-      "sha": "a5d543798f57c05cb5055c3b2c223ac48605225f",
+      "sha": "1097726b74b223c5bc8c4ae98c6b317d5146c0e9",
       "subject": "Bleeding edge 2026-10-30: every dependency at its newest, on rust-port"
     },
     {
-      "sha": "89aeb962788cdf8a02d4a1417bc37de3096c6436",
-      "subject": "Edge: text-fit: the Dashboard half box's glyph-width estimate"
-    },
-    {
-      "sha": "8c6672d39ad67347071768610ae9efcbd1ad91d2",
+      "sha": "a2f0996e0fe95b1310089493be82e60da8d651ee",
       "subject": "Bleeding edge: the experiments ledger"
     },
     {
-      "sha": "de0267259faef5bd6cbbce64cb33324de8c5d269",
+      "sha": "3f1239c4e2fccb66699949b0ad77999d2196cc25",
       "subject": "Bleeding edge: its leaves and specs, on this branch only, and ready-to-port verdicts"
     },
     {
-      "sha": "a09e6120826e1a8a71315c8f05c165aede6505df",
+      "sha": "a8d23929f60b6fdd159b81c8a0c774b5b208b2c6",
       "subject": "Bleeding edge: uuids for its leaves, and the renumbering in its spec"
     },
     {
-      "sha": "8684c75889791b577118d2e153bc202e093ee365",
+      "sha": "0b3c2a972f5d0d4a29d5fa6255bcb694a9cda6fd",
       "subject": "Bleeding edge: four platform features ported to rust-port"
     },
     {
-      "sha": "0bab87f59bf379e9e5697b43e402e659c765dd5f",
+      "sha": "2f566a8bf6efb87524241d076b21698d5c6ed90c",
       "subject": "Bleeding edge: focusgroup ported too"
     },
     {
-      "sha": "30dec07c3883f48923c43afddcee20969eef067e",
+      "sha": "93d0fb50ae117f5e108b6418182f4255a68ccaf9",
       "subject": "Bleeding edge: a ready finding ports as it stands"
     },
     {
-      "sha": "4bd3103db91edc308718762264ab3ccdca979d04",
+      "sha": "985832a6e96e56bdc15bf2ade55491f69c9cd8d2",
       "subject": "Bleeding edge: the wasm-bindgen 0.2.130 port is on rust-port"
     },
     {
-      "sha": "638e730c835ed2e0d13a33075fbae390647de125",
+      "sha": "acc3b81cb13c174b7f41273dc8b1cddc724dd505",
       "subject": "Bleeding edge: a finding is one commit, ported with port.mjs"
     },
     {
-      "sha": "69be40c9cb309c01c70544a3efb07a063b5fd7f3",
+      "sha": "db68d7d4686baf7ada484b1a1f1a3a9f2bad36a5",
       "subject": "Bleeding edge 2026-10-31: dependencies to their newest"
     },
     {
-      "sha": "a96401a5671dc3a1d1de9f6183c5991d53e6d460",
+      "sha": "593e436072f8777666d4767f2713cefe63ffed54",
       "subject": "Bleeding edge: the report lists the toolchain that moved since the last run, with its release notes"
     },
     {
-      "sha": "f0f0a361830fc98a4600066d71a93e7d11bcbe1c",
+      "sha": "ab882e54d86392f7b5f8896b659e1ee2eaa141c3",
       "subject": "Bleeding edge: build with the newest stable Rust, not the work branches' pin"
     },
     {
-      "sha": "f4a9705d7060b4c4ada8bc3d79ecebea4700a5d8",
+      "sha": "aea8de9d9f80557ca55deba53f698f3799152fe9",
       "subject": "Bleeding edge: the toolchain and dependency features in use, from their release notes"
     },
     {
-      "sha": "df9e904040dc504cb49322042236d8b7ecbbfc09",
+      "sha": "db10784a2e0e0968cb221c15294ded8c438a8bf9",
       "subject": "B26 edgeReadsReleaseNotes: every bump on bleeding-edge is read through its release notes"
     },
     {
-      "sha": "480dadc9cc059e72f08523c918cd8d522056fd40",
+      "sha": "02daa666635b7e1d19c517523f666a5349806138",
       "subject": "Bleeding edge: the release notes read for the 23 dependencies ahead of rust-port"
-    }
-  ],
-  "dropped": [
-    {
-      "sha": "ead5bd68167be4362ff21561842b7cba2a0f85fb",
-      "subject": "Edge: Rust 2024 edition: let chains replace nested if-lets",
-      "files": [
-        "crates/solenoid-core/src/nodes/list.rs",
-        "crates/solenoid-graph/src/boundary.rs",
-        "crates/solenoid-graph/src/direct.rs",
-        "src/graph/engineWasm/solenoid_graph_bg.wasm",
-        "src/graph/engineWasm/source-stamp.txt"
-      ]
     },
     {
-      "sha": "ea43a26dde4334577b4ab9187a7870d8947ef65d",
-      "subject": "Bleeding edge: the Rust findings are ported; the port runs each touched crate's Rust checks",
-      "files": [
-        ".github/bleeding-edge/port.mjs"
-      ]
-    }
-  ],
-  "renumbered": [],
-  "ports": [
+      "sha": "ee83d23905f5c09a3537bfe6e0aa728abcb3b6b7",
+      "subject": "Bleeding edge report 2026-11-01: 0 failing checks, on develop"
+    },
     {
-      "sha": "89aeb962788cdf8a02d4a1417bc37de3096c6436",
-      "subject": "Edge: text-fit: the Dashboard half box's glyph-width estimate",
-      "ok": false,
-      "why": "Edge: text-fit: the Dashboard half box's glyph-width estimate\n\nA phone's half box sized its value from the character count (a glyph taken as 0.6 em, 130cqw over --chars), which misjudged commas and currency signs, so neighbors drew at different widths. text-fit: shrink sets the value at its largest size and shrinks it to 86% of the box by the text's own measure; --chars is gone from the three components that set it. A counting value pads to its final length with figure spaces, so it fits once and holds still.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01BJp3bVvDK9qNZ5oxC2FHcC\n\nPorted from bleeding-edge 89aeb9627.\nPORT_MSG\nAuthor identity unknown\n\n*** Please tell me who you are.\n\nRun\n\n  git config --global user.email \"you@example.com\"\n  git config --global user.name \"Your Name\"\n\nto set your account's default identity.\nOmit --global to set the identity only in this repository.\n\nfatal: empty ident name (for <runner@runnervm48cm3.t2lhhf2v0huelkhzvzbikqqxyh.dx.internal.cloudapp.net>) not allowed\n\n    at must (file:///home/runner/work/_temp/port.mjs:35:78)\n    at file:///home/runner/work/_temp/port.mjs:148:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)\n    at async node:internal/modules/esm/loader:647:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v24.22.1"
+      "sha": "a34aa3dc576f0d53c76ee7ebf415c90fef7f9cad",
+      "subject": "Bleeding edge analysis 2026-11-01"
+    },
+    {
+      "sha": "af16172856048a2339fa63f1cd59dc121b79522c",
+      "subject": "Bleeding edge 2026-11-02: dependencies to their newest"
+    },
+    {
+      "sha": "7309db5e3693ce2a8d7078d3e7e7aeeb5c7b0b9a",
+      "subject": "Bleeding edge 2026-11-03: dependencies to their newest"
+    },
+    {
+      "sha": "2833c05de3480687f9d56d15d67ee5c1feb0abce",
+      "subject": "Bleeding edge 2026-11-04: dependencies to their newest"
+    },
+    {
+      "sha": "8aef365207b3f1e97396c7732dca7d9aab6348cf",
+      "subject": "Bleeding edge 2026-11-05: dependencies to their newest"
     }
   ],
+  "dropped": [],
+  "renumbered": [],
+  "ports": [],
   "bumped": true,
   "toolchain": {
-    "node": "v24.22.1",
-    "npm": "11.19.1",
+    "node": "v26.13.0",
+    "npm": "11.20.0",
     "rust": "rustc 1.99.1 (58cf8f9c3 2026-10-13)"
   },
   "checks": [
@@ -109,7 +103,7 @@
       "name": "Engine module builds (npm run build:wasm)",
       "cmd": "npm run build:wasm",
       "ok": true,
-      "secs": 84,
+      "secs": 74,
       "log": ""
     },
     {
@@ -130,7 +124,7 @@
       "name": "Unit tests",
       "cmd": "npx vitest run",
       "ok": true,
-      "secs": 44,
+      "secs": 27,
       "log": ""
     },
     {
@@ -144,7 +138,7 @@
       "name": "Headless CLI build",
       "cmd": "npm run build:cli",
       "ok": true,
-      "secs": 2,
+      "secs": 1,
       "log": ""
     },
     {
@@ -158,70 +152,70 @@
       "name": "crates/solenoid-core: clippy",
       "cmd": "cargo clippy --manifest-path crates/solenoid-core/Cargo.toml --all-targets -- -D warnings",
       "ok": true,
-      "secs": 20,
+      "secs": 33,
       "log": ""
     },
     {
       "name": "crates/solenoid-core: tests",
       "cmd": "cargo test --manifest-path crates/solenoid-core/Cargo.toml",
       "ok": true,
-      "secs": 153,
+      "secs": 114,
       "log": ""
     },
     {
       "name": "crates/solenoid-graph: clippy",
       "cmd": "cargo clippy --manifest-path crates/solenoid-graph/Cargo.toml --all-targets -- -D warnings",
       "ok": true,
-      "secs": 18,
+      "secs": 34,
       "log": ""
     },
     {
       "name": "crates/solenoid-graph: tests",
       "cmd": "cargo test --manifest-path crates/solenoid-graph/Cargo.toml",
       "ok": true,
-      "secs": 36,
+      "secs": 102,
       "log": ""
     },
     {
       "name": "crates/solenoid-parquet: clippy",
       "cmd": "cargo clippy --manifest-path crates/solenoid-parquet/Cargo.toml --all-targets -- -D warnings",
       "ok": true,
-      "secs": 28,
+      "secs": 25,
       "log": ""
     },
     {
       "name": "crates/solenoid-parquet: tests",
       "cmd": "cargo test --manifest-path crates/solenoid-parquet/Cargo.toml",
       "ok": true,
-      "secs": 52,
+      "secs": 45,
       "log": ""
     },
     {
       "name": "crates/solenoid-schedule: clippy",
       "cmd": "cargo clippy --manifest-path crates/solenoid-schedule/Cargo.toml --all-targets -- -D warnings",
       "ok": true,
-      "secs": 3,
+      "secs": 2,
       "log": ""
     },
     {
       "name": "crates/solenoid-schedule: tests",
       "cmd": "cargo test --manifest-path crates/solenoid-schedule/Cargo.toml",
       "ok": true,
-      "secs": 4,
+      "secs": 3,
       "log": ""
     },
     {
       "name": "crates/solenoid-core: clippy (wasm)",
       "cmd": "cargo clippy --manifest-path crates/solenoid-core/Cargo.toml --target wasm32-unknown-unknown -- -D warnings",
       "ok": true,
-      "secs": 29,
+      "secs": 71,
       "log": ""
     },
     {
       "name": "Desktop shell compiles (src-tauri)",
       "cmd": "cargo check --manifest-path src-tauri/Cargo.toml",
       "ok": true,
-      "secs": 106,
+      "secs": 91,
       "log": ""
     }
   ],
@@ -237,21 +231,21 @@
       "name": "npm: fresh lockfile (newest transitive versions too)",
       "cmd": "npm install --no-audit --no-fund",
       "ok": true,
-      "secs": 20,
+      "secs": 18,
       "log": ""
     },
     {
       "name": "cargo: crates/solenoid-core manifest to the newest releases",
       "cmd": "cargo upgrade --incompatible allow --pinned allow --manifest-path crates/solenoid-core/Cargo.toml",
       "ok": true,
-      "secs": 1,
+      "secs": 2,
       "log": ""
     },
     {
       "name": "cargo: crates/solenoid-core lockfile",
       "cmd": "cargo update --manifest-path crates/solenoid-core/Cargo.toml",
       "ok": true,
-      "secs": 0,
+      "secs": 1,
       "log": ""
     },
     {
@@ -300,7 +294,7 @@
       "name": "cargo: src-tauri manifest to the newest releases",
       "cmd": "cargo upgrade --incompatible allow --pinned allow --manifest-path src-tauri/Cargo.toml",
       "ok": true,
-      "secs": 4,
+      "secs": 5,
       "log": ""
     },
     {
@@ -314,315 +308,135 @@
       "name": "wasm-bindgen-cli 0.2.130",
       "cmd": "cargo install --force --locked wasm-bindgen-cli --version 0.2.130",
       "ok": true,
-      "secs": 93,
+      "secs": 75,
       "log": ""
     }
   ],
   "changes": [
     {
       "eco": "npm",
-      "name": "@lezer/common",
-      "from": "1.5.4",
-      "to": "1.5.5",
+      "name": "@anthropic-ai/sdk",
+      "from": "1.5.0",
+      "to": "1.6.0",
       "direct": true,
       "major": false,
-      "notes": "https://www.npmjs.com/package/@lezer/common?activeTab=versions"
-    },
-    {
-      "eco": "npm",
-      "name": "@lezer/lr",
-      "from": "1.4.11",
-      "to": "1.4.12",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-android-arm-eabi",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-android-arm64",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-darwin-arm64",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-darwin-x64",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-freebsd-arm64",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-freebsd-x64",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-linux-arm-gnueabihf",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-linux-arm-musleabihf",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-linux-arm64-gnu",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-linux-arm64-musl",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-linux-loong64-gnu",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-linux-loong64-musl",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-linux-ppc64-gnu",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-linux-ppc64-musl",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-linux-riscv64-gnu",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-linux-riscv64-musl",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-linux-s390x-gnu",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-linux-x64-gnu",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-linux-x64-musl",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-openbsd-x64",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-openharmony-arm64",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-win32-arm64-msvc",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-win32-ia32-msvc",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-win32-x64-gnu",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@rollup/rollup-win32-x64-msvc",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "magic-string (in @vitest/mocker)",
-      "from": "1.4.5",
-      "to": null,
-      "direct": false,
-      "major": false
+      "notes": "https://github.com/anthropics/anthropic-sdk-typescript/releases"
     },
     {
       "eco": "npm",
       "name": "es-toolkit",
-      "from": "1.53.0",
-      "to": "1.53.1",
+      "from": "1.53.1",
+      "to": "1.53.2",
       "direct": false,
       "major": false
     },
     {
-      "eco": "npm",
-      "name": "magic-string",
-      "from": "0.30.21",
-      "to": "1.4.5",
+      "eco": "cargo",
+      "where": "crates/solenoid-core",
+      "name": "flate2",
+      "from": "1.1.10",
+      "to": "1.1.11",
       "direct": true,
-      "major": true,
-      "notes": "https://github.com/Rich-Harris/magic-string/releases"
+      "major": false,
+      "notes": "https://github.com/rust-lang/flate2-rs/releases"
     },
     {
-      "eco": "npm",
-      "name": "rollup",
-      "from": "4.66.0",
-      "to": "4.67.4",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "@types/estree (in rollup)",
-      "from": "1.0.9",
-      "to": null,
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "three",
-      "from": "0.186.1",
-      "to": "0.187.0",
+      "eco": "cargo",
+      "where": "crates/solenoid-graph",
+      "name": "flate2",
+      "from": "1.1.10",
+      "to": "1.1.11",
       "direct": true,
-      "major": true,
-      "notes": "https://github.com/mrdoob/three/releases"
+      "major": false,
+      "notes": "https://github.com/rust-lang/flate2-rs/releases"
     },
     {
-      "eco": "npm",
-      "name": "tinybench",
-      "from": "6.2.2",
-      "to": "6.2.3",
+      "eco": "cargo",
+      "where": "crates/solenoid-parquet",
+      "name": "brotli-decompressor",
+      "from": "6.2.0",
+      "to": "6.3.0",
       "direct": false,
       "major": false
     },
     {
-      "eco": "npm",
-      "name": "magic-string (in vitest)",
-      "from": "1.4.5",
-      "to": null,
+      "eco": "cargo",
+      "where": "crates/solenoid-parquet",
+      "name": "cc",
+      "from": "1.11.0",
+      "to": "1.11.1",
       "direct": false,
       "major": false
     },
     {
-      "eco": "npm",
-      "name": "ws",
-      "from": "8.22.0",
-      "to": "8.22.1",
+      "eco": "cargo",
+      "where": "crates/solenoid-parquet",
+      "name": "flate2",
+      "from": "1.1.10",
+      "to": "1.1.11",
       "direct": false,
       "major": false
     },
     {
-      "eco": "npm",
-      "name": "@rollup/rollup-android-x64",
-      "from": null,
-      "to": "4.67.4",
+      "eco": "cargo",
+      "where": "src-tauri",
+      "name": "brotli-decompressor",
+      "from": "6.2.0",
+      "to": "6.3.0",
       "direct": false,
       "major": false
     },
     {
-      "eco": "npm",
-      "name": "magic-string (in rollup-plugin-license)",
-      "from": null,
-      "to": "0.30.21",
+      "eco": "cargo",
+      "where": "src-tauri",
+      "name": "cc",
+      "from": "1.11.0",
+      "to": "1.11.1",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "cargo",
+      "where": "src-tauri",
+      "name": "flate2",
+      "from": "1.1.10",
+      "to": "1.1.11",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "cargo",
+      "where": "src-tauri",
+      "name": "serde_spanned",
+      "from": "0.6.9, 1.1.2",
+      "to": "0.6.9, 1.1.3",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "cargo",
+      "where": "src-tauri",
+      "name": "toml",
+      "from": "0.8.2, 1.2.0+spec-1.1.0",
+      "to": "0.8.2, 1.2.1+spec-1.1.0",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "cargo",
+      "where": "src-tauri",
+      "name": "toml_datetime",
+      "from": "0.6.3, 1.1.2+spec-1.1.0",
+      "to": "0.6.3, 1.1.3+spec-1.1.0",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "cargo",
+      "where": "src-tauri",
+      "name": "toml_edit",
+      "from": "0.19.15, 0.20.2, 0.25.18+spec-1.1.0",
+      "to": "0.19.15, 0.20.2, 0.25.19+spec-1.1.0",
       "direct": false,
       "major": false
     }
