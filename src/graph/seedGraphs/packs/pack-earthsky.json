@@ -26,7 +26,7 @@
       "type": "ExpressionNode",
       "init": {
         "label": "Great-Circle Distance",
-        "expr": "2*6371.0088*ASIN(SQRT(SIN((lat2-lat1)*PI()/360)^2+COS(lat1*PI()/180)*COS(lat2*PI()/180)*SIN((lon2-lon1)*PI()/360)^2))",
+        "expr": "2*6371.0088\n* ASIN(\n    SQRT(\n      SIN((lat2-lat1)*PI()/360)^2\n      + COS(lat1*PI()/180)\n        * COS(lat2*PI()/180)\n        * SIN((lon2-lon1)*PI()/360)^2\n    )\n  )",
         "locked": true,
         "castTo": "none",
         "width": 220,
@@ -52,7 +52,7 @@
       "type": "ExpressionNode",
       "init": {
         "label": "Initial Bearing",
-        "expr": "MOD(DEGREES(ATAN2(COS(lat1*PI()/180)*SIN(lat2*PI()/180)-SIN(lat1*PI()/180)*COS(lat2*PI()/180)*COS((lon2-lon1)*PI()/180),SIN((lon2-lon1)*PI()/180)*COS(lat2*PI()/180)))+360,360)",
+        "expr": "MOD(\n  DEGREES(\n      ATAN2(\n        COS(lat1*PI()/180)\n          * SIN(lat2*PI()/180)\n        - SIN(lat1*PI()/180)\n          * COS(lat2*PI()/180)\n          * COS((lon2-lon1)*PI()/180),\n        SIN((lon2-lon1)*PI()/180)\n        * COS(lat2*PI()/180)\n      )\n    )\n  + 360,\n  360\n)",
         "locked": true,
         "castTo": "none",
         "width": 220,

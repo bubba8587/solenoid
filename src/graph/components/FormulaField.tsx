@@ -1,4 +1,5 @@
 // [[C76]] formulaPackDefault (`locked`)
+import { flattenFormula } from "../formulaLayout";
 import { useMemo } from "react";
 import { highlightFormula } from "../formulaSyntax";
 import "./ExpressionNode.css";
@@ -18,7 +19,8 @@ const LOCK_TITLE = "Formula set by its pack and locked. Rename the title freely.
 
 export function FormulaField({ value, placeholder = "a * b + c …", locked, onOpen, noPrefix }: FormulaFieldProps) {
   // Syntax-highlighted, not typeset: it matches the formula bar and the popup's editor, and stays width-stable.
-  const highlightHtml = useMemo(() => (value.trim() ? highlightFormula(value) : null), [value]);
+  // The card's field is too narrow for a laid-out formula, so it flows as one line; the editor shows the layout.
+  const highlightHtml = useMemo(() => (value.trim() ? highlightFormula(flattenFormula(value)) : null), [value]);
 
   return (
     <div className="solenoid-expr__formula">

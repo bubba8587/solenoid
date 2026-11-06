@@ -123,7 +123,7 @@
       "type": "ExpressionNode",
       "init": {
         "label": "Count Words",
-        "expr": "IF(LEN(TRIM(t))=0,0,LEN(TRIM(t))-LEN(SUBSTITUTE(TRIM(t),\" \",\"\"))+1)",
+        "expr": "IF(\n  LEN(TRIM(t))=0,\n  0,\n  LEN(TRIM(t))\n  - LEN(SUBSTITUTE(TRIM(t),\" \",\"\"))+1\n)",
         "locked": true,
         "castTo": "none",
         "width": 220,

@@ -36,6 +36,7 @@ flowchart LR
 | `src/graph/formulaSignatures.ts` | Display-only argument hints per function name. |
 | `src/graph/formulaExtensions.ts` | Pack formula declarations and the advertised (autocomplete) name set. |
 | `src/graph/formulaSyntax.ts` | Editor highlighting, caret word, suggestions, enclosing-call detection. |
+| `src/graph/formulaLayout.ts` | Layout by parentheses (`indentFormula`) and the editor's indent for a new line (`indentAt`). |
 | `src/graph/lambdaValue.ts` | The `LambdaValue` shape and `isLambdaValue`. |
 | `src/graph/nodeExcel.ts` | `NODE_EXCEL` (catalog node type to its Excel equivalents, with `parity` and a note) and `EXCEL_GAP` (Excel functions with no node, flagged out of scope or superseded). The Function Reference and catalog read them; the evaluator does not. |
 | `src/graph/nodes/expression.ts` | The Expression node. |
@@ -809,10 +810,15 @@ The advertised set is re-read by identity on each call, never kept as a module c
 
 A hint is the function's contract, so it agrees with the function's arity, whether curated, a pack's or built from the arity: its unbracketed parameters are the minimum, and all its named parameters the maximum, unless a `…` tail makes it variadic, in which case the maximum exceeds the named ones. LAMBDA's hint, `parameter1, …, calculation`, shows the special form's common shape and is exempt; a body taken from Formula.js declares no arity and can't be checked.
 
+**Layout** (`formulaLayout.ts`). `indentFormula(src, width = 40)` lays a formula out by its parentheses so a long one reads: lines are first joined back into one (`flattenFormula`: a break beside a bracket or a comma vanishes, any other becomes one space; text inside a string is never touched). A formula that then fits its width comes back as it was. One that doesn't breaks first before its top-level binary `+`, `-` and `&`, then `*` and `/`, packing pieces onto a line while they fit; a piece that starts a line leads with its operator and one space, and its own continuation lines sit one indent (two spaces) in. A group too long for a line of its own opens: each argument on its own line one indent deeper, the closer back at the opening line's indent. A brace array and an empty call never open. A sign is never a break (after an operator, a bracket or a comma, or in an exponent like `1e-5`). Only line breaks and indentation change, so the formula computes the same; laying out a laid-out formula changes nothing.
+
+Every formula editor indents as you type (`FormulaEditor`): Enter starts the new line at one indent per bracket open before the caret (`indentAt`), and Enter right before a closer puts that closer on a line of its own at its opener's indent; a `)` or `}` typed on a blank line steps back to its opener's indent; Shift+Alt+F lays out the whole formula. A pack preset is laid out when the card is made (`formulaNode`), so a long preset arrives readable. A card's own formula field is too narrow for a layout, so it shows the formula joined into one flowing line (`FormulaField`); the layout shows in the popup's editor.
+
 **The parameter bar.** `enclosingCall(src, caret)` finds the innermost named call around the caret and the index of the argument the caret is in. It skips string literals and lets anonymous parentheses nest; commas count only on the innermost open group, so a named call's count already excludes an inner anonymous group's commas.
 
 Tests:
 
+- `formulaLayout.test.ts`: a formula that fits stays as typed; joining lines keeps strings; a long sum breaks before binary operators, never at a sign or an exponent; a long call opens one argument a line; layout is idempotent; every pack preset lays out without a change but whitespace; `indentAt` counts brackets outside strings.
 - `formulaSyntax.test.ts`: the highlighter loses no character, classes a function, an unknown call, a variable and a constant (a name is a function only in call position, and a dotted name is one token), and escapes HTML; `tokenAtCaret` finds the word at the caret; `suggestFor` ranks an exact prefix first, offers the card's variables and the constants, drops a fully typed non-function and keeps a function; a function suggestion carries its hint; `enclosingCall` finds the innermost call and the caret's argument, past strings and anonymous parentheses.
 - `formulaSignatures.test.ts`: every curated signature names a real function, no hint is a bare argument count, every hint agrees with its function's arity, and `genericSignature` and `signatureParams` write and split signatures.
 - `frameSurfaceNames.test.ts`: a Frame verb and a node-only verb show in the violet and carry their redirect in the hint.
