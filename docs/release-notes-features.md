@@ -37,6 +37,8 @@ off), the Android build (not in 1.6) and the headless CLI (unpublished).
 
 ## Also worth shouting about
 
+- **Pipeline: Power Query's applied steps, on the canvas.** Run a table through a chain of steps and the card
+  numbers them with their row counts. Click any step to see the table at that point.
 - **Click a chart to label your data.** Conditional Regions lets you click the areas a chart's lines carve
   out, and every point gets tagged with the one it lands in. 100,000 points in a fifth of a second, which
   is faster than you can say "which quadrant is this in".

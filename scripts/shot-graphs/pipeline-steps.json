@@ -1,0 +1,129 @@
+{
+ "nodes": [
+  {
+   "id": "f1",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Orders"
+   },
+   "frame": [
+    {
+     "name": "region",
+     "type": "string",
+     "cells": [
+      "West",
+      "East",
+      "West",
+      "North",
+      "East",
+      "West",
+      "South"
+     ]
+    },
+    {
+     "name": "units",
+     "cells": [
+      3,
+      5,
+      3,
+      2,
+      8,
+      1,
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "id": "p1",
+   "type": "CompositeNode",
+   "init": {
+    "label": "Pipeline",
+    "runMode": "pipeline",
+    "inputPorts": [
+     {
+      "id": "table",
+      "label": "Table",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "qin"
+     }
+    ],
+    "outputPorts": [
+     {
+      "id": "result",
+      "label": "Result",
+      "tier": "basic",
+      "internalNodeId": "qout"
+     }
+    ],
+    "internal": {
+     "nodes": [
+      {
+       "id": "qin",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Table"
+       },
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "d1",
+       "type": "DistinctNode",
+       "init": {
+        "label": "Distinct"
+       },
+       "x": 240,
+       "y": 0
+      },
+      {
+       "id": "h1",
+       "type": "HeadNode",
+       "init": {
+        "label": "First rows"
+       },
+       "literals": {
+        "rows": 3
+       },
+       "x": 480,
+       "y": 0
+      },
+      {
+       "id": "qout",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Result"
+       },
+       "x": 720,
+       "y": 0
+      }
+     ],
+     "connections": [
+      {
+       "source": "qin",
+       "sourceOutput": "value",
+       "target": "d1",
+       "targetInput": "frame"
+      },
+      {
+       "source": "d1",
+       "sourceOutput": "frame",
+       "target": "h1",
+       "targetInput": "frame"
+      },
+      {
+       "source": "h1",
+       "sourceOutput": "frame",
+       "target": "qout",
+       "targetInput": "value"
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "cables": [
+  "f1.frame -> p1.table"
+ ]
+}

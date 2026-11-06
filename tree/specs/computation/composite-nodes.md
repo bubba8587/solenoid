@@ -2,11 +2,11 @@
 aliases: ["Composite nodes"]
 tags: [spec, computation]
 ---
-<!-- [[C77]] compositeIsSubgraph, [[C23]] calcModes, [[C53]] queryIsCompositePreset, [[C35]] unknownViaPlaceholder, [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility, [[C79]] packActivationIsPresentation -->
+<!-- [[C77]] compositeIsSubgraph, [[C23]] calcModes, [[C53]] pipelineIsCompositePreset, [[C35]] unknownViaPlaceholder, [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility, [[C79]] packActivationIsPresentation -->
 
 # Spec: Composite nodes
 
-Serves [[C77]] compositeIsSubgraph, [[C23]] calcModes, [[C53]] queryIsCompositePreset and [[C35]] unknownViaPlaceholder, with [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility and [[C79]] packActivationIsPresentation. It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[C77]] compositeIsSubgraph, [[C23]] calcModes, [[C53]] pipelineIsCompositePreset and [[C35]] unknownViaPlaceholder, with [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility and [[C79]] packActivationIsPresentation. It covers what the system does and blocks, and the decision each behavior serves.
 
 This file owns the Composite card: its value model, its boundary ports and markers, every run mode, the heavy-mode hold, loops inside a composite, making a composite from a selection and unpacking it, how it saves and loads, and how edits inside it reach the outside. How the drill-in canvas mounts, leaves, undoes and substitutes the active graph is [[composite-drill-in-mount-lifecycle]]; this file only names the points where the drill-in calls into the composite. The outer pass that retargets an inner edit onto the owning card is [[compute-pass]]. The save shape of `init.internal` is also summarized in [[save-format]].
 
@@ -19,7 +19,7 @@ The code is `src/graph/nodes/composite.ts` (`CompositeNode`, `CompositeInputNode
 - **Port.** One entry of the boundary: a `CompositeInputPort` or `CompositeOutputPort` record on the composite. An exposed input port and every output port also exist as a socket on the card, keyed by the port id.
 - **Marker.** The node inside the subgraph that a port is bound to: a `CompositeInputNode` ("Composite Input") for an input port, a `CompositeOutputNode` ("Composite Output") for an output port. A port names its marker by `internalNodeId`.
 - **Seed.** An input marker's editable `defaultValue`, typed on the marker inside the drill-in.
-- **Run mode.** `runMode`, one of `single`, `manual`, `scenarios`, `data-table`, `simulation`, `goal-seek`, `montecarlo`, `by-row`.
+- **Run mode.** `runMode`, one of `single`, `manual`, `pipeline`, `scenarios`, `data-table`, `simulation`, `goal-seek`, `montecarlo`, `by-row`.
 - **Internal pass.** One `runPass`: inject every input marker's value, reset the internal engine, fetch every output marker. Every run mode is a number of internal passes.
 - **Heavy.** A mode configuration for which `isHeavyMode()` is true. A heavy composite holds its last result until Solve or Refresh.
 - **Drill-in.** The full-viewport canvas over the internal editor, opened with Edit contents.
@@ -40,6 +40,7 @@ mindmap
     run modes
       ["single: live"]
       ["manual: one pass on Refresh"]
+      ["pipeline: manual, one chain, its steps listed"]
       ["scenarios: one pass per scenario"]
       ["data-table: one pass per combination"]
       ["goal-seek: trials toward a target"]
@@ -168,8 +169,8 @@ Tests: `composite.test.ts`: the markers start as the hollow wildcard ring and ad
 1. An **Edit contents** button. On the main canvas it opens the drill-in at one level (`compositeEditorStore.open`); inside a drill-in it drills one level deeper (`drillInto`). The node context menu offers the same (Edit contents) plus Unpack composite.
 2. The exposed input rows (`InlineInputs`).
 3. The run controls (`CompositeRunControls`), shared with the drill-in:
-   - the run-mode dropdown, shown only when the composite has at least one port: Single run, Manual refresh, Scenarios, Data table, Simulation, Goal seek, Monte Carlo, By row;
-   - when heavy, a Solve button (a play icon; labeled Refresh with a refresh icon in `manual`) and a status dot: hollow orange "Stale", filled red "No solution" (goal-seek result is an error), filled "Up to date" otherwise. Solve calls `requestSolve(insideOnly)` and `processGraph(node.id)`;
+   - the run-mode dropdown, shown only when the composite has at least one port: Single run, Manual refresh, Pipeline, Scenarios, Data table, Simulation, Goal seek, Monte Carlo, By row;
+   - when heavy, a Solve button (a play icon; labeled Refresh with a refresh icon in `manual` and `pipeline`) and a status dot: hollow orange "Stale", filled red "No solution" (goal-seek result is an error), filled "Up to date" otherwise. Solve calls `requestSolve(insideOnly)` and `processGraph(node.id)`;
    - when heavy and it has solved since it was made or loaded, "last run" and the last solve's wall time beneath (`340 ms`, `1.24 s`), so the same work can be timed as it grows (the "Rust engine speed test" seed);
    - the mode's editor (below).
 4. One output box per output port: the label, then the value in a socket row that anchors that port's output socket, with a sparkline above a numeric series of two or more. Under goal-seek these boxes are suppressed; the goal-seek editor's Solution box carries the target port's socket instead.
@@ -209,22 +210,26 @@ Every run mode but Simulation is some number of these passes: one for Single and
 | `goal-seek` | `goalSeek` configured | `runGoalSeek` |
 | `montecarlo` | always | `runMonteCarlo` (one pass when no input is uncertain) |
 | `by-row` | always | `runByRow` (one pass when unset or no rows) |
-| anything else | | one pass (`single`, `manual`, and the unconfigured cases above) |
+| anything else | | one pass (`single`, `manual`, `pipeline`, and the unconfigured cases above) |
 
 Tests:
 
-- `composite.test.ts`: each run mode (Scenarios, Data Table with its axes' combinations first axis slowest, By-Row with its row semantics and its cap's one warning, Goal Seek with its bounds, seed and `#CONV!`, Monte Carlo with and without a number to sample around, Simulation, manual refresh and the Query preset), a mode switch into a heavy mode reading unsolved, and an error crossing the boundary acting as it would unpacked.
+- `composite.test.ts`: each run mode (Scenarios, Data Table with its axes' combinations first axis slowest, By-Row with its row semantics and its cap's one warning, Goal Seek with its bounds, seed and `#CONV!`, Monte Carlo with and without a number to sample around, Simulation, manual refresh, the Pipeline preset and its chain), a mode switch into a heavy mode reading unsolved, and an error crossing the boundary acting as it would unpacked.
 - `compositeSeed.test.ts`: every composite in the Composite Workbench seed answers its pinned values through a real editor, and a composite's saved bytes are stable across save, load and save.
 
 ### Single run
 
 One pass, fully live, on every outer pass that reaches the card.
 
-### Manual refresh and Query
+### Manual refresh and Pipeline
 
-One pass, identical to Single, but always heavy: it computes only on Refresh. `insideOnly` never applies in `manual`.
+One pass, identical to Single, but always heavy: it computes only on Refresh. `insideOnly` never applies in `manual` or `pipeline` (`refreshes()`).
 
-Query is this mode as a catalog preset, not a class ([[C53]] queryIsCompositePreset). The `query` catalog entry creates a `CompositeNode` labeled `Query`, `runMode: "manual"`, with one exposed basic input port `table` (label Table, marker `qin`) and one output port `result` (label Result, marker `qout`), and a pending internal snapshot of the two markers at (0, 0) and (420, 0) joined by a cable. The drill-in canvas is the steps view and the Frame verbs placed between the markers are the steps ([[frame-verbs]]). Every add path hydrates a created composite right after `create()`, because Query ships its internals as a pending snapshot.
+Pipeline is a run mode that computes as Manual refresh does, plus one chain and its step list, and a catalog preset, not a class ([[C53]] pipelineIsCompositePreset). The `pipeline` catalog entry creates a `CompositeNode` labeled `Pipeline` with `runMode: "pipeline"`, one exposed basic input port `table` (label Table, marker `qin`) and one output port `result` (label Result, marker `qout`), and a pending internal snapshot of the two markers at (0, 0) and (420, 0) joined by a cable. Every add path hydrates a created composite right after `create()`, because Pipeline ships its internals as a pending snapshot.
+
+**One chain.** `pipelineChain()` walks the internal cables from the first input port's marker to the first output port's marker: each card it reaches must feed exactly one card, and the walk ends at the Result marker. It answers the steps in order and the first fault, `{ kind, node }`: `unwired` (the Table marker feeds nothing), `dead-end` (a card feeds nothing), `branch` (a card feeds two or more), `cycle`, or `off-chain` (a card the walk never reached that isn't an input marker: side inputs come in through the Pipeline's own input ports, whose markers may feed any step). A fault leaves the pass as it is; the card names the card that breaks the chain.
+
+**The step list** (`PipelineSteps`, `CompositeNode.tsx`, shown in the `pipeline` run mode) reads the chain on every render: each step numbered, its display name, and the row count of its `cachedResult` when that is a Frame. A step's row toggles a preview of that table (`FrameDisplay`, which opens the full popup). The list only reads the graph: nothing on the card reorders, skips or adds a step.
 
 ### Scenarios
 

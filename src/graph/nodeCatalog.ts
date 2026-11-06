@@ -1,4 +1,4 @@
-// [[B16]] oneFormulaSurface, [[C53]] queryIsCompositePreset
+// [[B16]] oneFormulaSurface, [[C53]] pipelineIsCompositePreset
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DelayedPassNode, ValueInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
@@ -283,9 +283,9 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "group", label: "Node Group", description: "A container: drop it around nodes, or select them and press G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },
       { type: "pair", children: [
         { type: "composite", label: "Composite", description: "A reusable subgraph as one card with a typed boundary. Built inside via Edit contents, or from selected nodes with Ctrl+Shift+G.", create: () => new CompositeNode(), parity: false },
-        { type: "query", label: "Query", description: "A Composite shaped for data transformation: table in, verb chain inside, result out. Recomputes only on Refresh. Excel: Power Query.", create: () => new CompositeNode({
-          label: "Query",
-          runMode: "manual",
+        { type: "pipeline", label: "Pipeline", description: "A table runs through one chain of steps inside, numbered on the card with a preview of the table after each. Recomputes only on Refresh. Excel: Power Query.", create: () => new CompositeNode({
+          label: "Pipeline",
+          runMode: "pipeline",
           inputPorts: [{ id: "table", label: "Table", exposure: "exposed", tier: "basic", internalNodeId: "qin" }],
           outputPorts: [{ id: "result", label: "Result", tier: "basic", internalNodeId: "qout" }],
           internal: {
@@ -295,7 +295,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             ],
             connections: [{ source: "qin", sourceOutput: "value", target: "qout", targetInput: "value" }],
           },
-        }), parity: false, keywords: "power query get transform etl refresh manual steps applied pipeline shape clean data table verbs" },
+        }), parity: false, keywords: "power query query get transform etl refresh manual steps applied pipeline shape clean data table verbs" },
       ]},
       { type: "composite-input", label: "Composite Input", description: "Internal: a Composite's exposed-input boundary marker.", create: () => new CompositeInputNode(), parity: false, hidden: true },
       { type: "composite-output", label: "Composite Output", description: "Internal: a Composite's output boundary marker.", create: () => new CompositeOutputNode(), parity: false, hidden: true },

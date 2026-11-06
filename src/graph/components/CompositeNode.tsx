@@ -1,7 +1,7 @@
 // [[C77]] compositeIsSubgraph. Mechanics: tree/specs/canvas/composite-drill-in-mount-lifecycle.md.
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CompositeNode as CompositeNodeType, CompositeInputNode as CompositeInputNodeType, CompositeOutputNode as CompositeOutputNodeType, CompositeRunMode } from "../nodeClasses";
-import { CompositeInputNode, type CompositeStopOp } from "../nodes/composite";
+import { CompositeInputNode, type CompositeStopOp, type PipelineFault } from "../nodes/composite";
 import { isSolError } from "../errorValue";
 import { formatScalar } from "./format";
 import { isUncertain } from "../valueKinds";
@@ -17,7 +17,7 @@ import { compositeEditorStore } from "../compositeEditorStore";
 import { compositeStaleStore } from "../compositeStaleStore";
 import { connectionStore } from "../connectionStore";
 import { stopDragStart } from "../coarse";
-import { isFrameValue, isCubeValue } from "../frame";
+import { isFrameValue, isCubeValue, frameRowCount } from "../frame";
 import { isChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
 import { isSvgValue } from "../svgValue";
@@ -43,6 +43,7 @@ function CompositeBoundaryValue({ value, label }: { value: unknown; label: strin
 export const RUN_MODE_OPTIONS: OpOption<CompositeRunMode>[] = [
   { value: "single", label: "Single run" },
   { value: "manual", label: "Manual refresh" },
+  { value: "pipeline", label: "Pipeline" },
   { value: "scenarios", label: "Scenarios" },
   { value: "data-table", label: "Data table" },
   { value: "simulation", label: "Simulation" },
@@ -511,8 +512,8 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
             onPointerDown={stopDragStart}
             onMouseDown={stopDragStart}
           >
-            {runMode === "manual" ? <RefreshSvg /> : <SolveSvg />}
-            {runMode === "manual" ? "Refresh" : "Solve"}
+            {node.refreshes() ? <RefreshSvg /> : <SolveSvg />}
+            {node.refreshes() ? "Refresh" : "Solve"}
           </button>
           <StatusDot state={stale ? "stale" : failed ? "failed" : "ok"} />
         </div>
@@ -525,6 +526,7 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
           Waiting for permission
         </div>
       )}
+      {runMode === "pipeline" && <PipelineSteps node={node} />}
       {runMode === "scenarios" && <ScenarioTable node={node} />}
       {runMode === "data-table" && <DataTableEditor node={node} />}
       {runMode === "simulation" && <SimulationEditor node={node} />}
@@ -532,6 +534,61 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
       {runMode === "montecarlo" && <MonteCarloEditor node={node} />}
       {runMode === "by-row" && <ByRowEditor node={node} />}
     </>
+  );
+}
+
+function faultText(f: PipelineFault): string {
+  const name = nodeDisplayName(f.node);
+  switch (f.kind) {
+    case "unwired": return "The table feeds no step";
+    case "dead-end": return `${name} feeds no step`;
+    case "branch": return `${name} feeds two steps; a Pipeline is one chain`;
+    case "cycle": return `${name} loops back`;
+    case "off-chain": return `${name} is off the chain`;
+  }
+}
+
+function stepRows(v: unknown): string | null {
+  if (isFrameValue(v)) {
+    const n = v.__totalRows ?? frameRowCount(v);
+    return `${n.toLocaleString()} ${n === 1 ? "row" : "rows"}`;
+  }
+  return isSolError(v) ? v.code : null;
+}
+
+/** A Pipeline's steps read off its one chain ([[C53]] pipelineIsCompositePreset): numbered, each with its row count;
+ *  a step's row toggles a preview of its table. It only reads the graph. */
+function PipelineSteps({ node }: { node: CompositeNodeType }) {
+  useSyncExternalStore(compositeStaleStore.subscribe, compositeStaleStore.getVersion);
+  const [open, setOpen] = useState<string | null>(null);
+  if (!node.isHydrated) return null;
+  const { steps, fault } = node.pipelineChain();
+  const shown = steps.find((s) => s.id === open);
+  const result = (n: object) => (n as { cachedResult?: unknown }).cachedResult ?? null;
+  return (
+    <div className="solenoid-pipeline">
+      {steps.length === 0 && !fault && <div className="solenoid-node__text-empty">no steps</div>}
+      {steps.map((s, i) => (
+        <button
+          key={s.id}
+          type="button"
+          className={`solenoid-pipeline__step${s.id === open ? " solenoid-pipeline__step--open" : ""}`}
+          onClick={(e) => { e.stopPropagation(); setOpen(s.id === open ? null : s.id); }}
+          onPointerDown={stopDragStart}
+          onMouseDown={stopDragStart}
+        >
+          <span className="solenoid-pipeline__num">{i + 1}</span>
+          <span className="solenoid-pipeline__name">{nodeDisplayName(s)}</span>
+          <span className="solenoid-pipeline__rows">{stepRows(result(s))}</span>
+        </button>
+      ))}
+      {fault && <div className="solenoid-pipeline__fault">{faultText(fault)}</div>}
+      {shown && (
+        <div className="solenoid-pipeline__preview">
+          <CompositeBoundaryValue value={result(shown)} label={nodeDisplayName(shown)} />
+        </div>
+      )}
+    </div>
   );
 }
 

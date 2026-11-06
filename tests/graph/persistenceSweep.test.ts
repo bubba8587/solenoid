@@ -292,7 +292,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
 describe("[[B12]] losslessSaves — the size-owner set is exactly the declared list", () => {
   const SIZE_OWNERS = new Set([
     "note", "image", "svg", "import-obsidian",   // annotation surfaces — user-dragged frames
-    "composite", "query",                        // the composite card (query = its preset)
+    "composite", "pipeline",                     // the composite card (pipeline = its preset)
     "group",                                     // the group rectangle IS its size
     "report", "presentation", "session-history", // overlay/host cards with dragged bodies
   ]);

@@ -129,6 +129,7 @@ Charts and figures
 - Heavy charts stretch smoothly while resizing and redraw on release.
 
 Cards and canvas
+- Query is now Pipeline, a composite run mode: a table runs through one chain of steps inside, numbered on the card with each step's row count; a step's row previews its table. A branch or a stray card inside is named on the card.
 - New Delayed Pass card: a cable loop through it is allowed and steps once per recalculation.
 - Decision Matrix: deal-breakers, median fill for a missing score, Range normalization, chained decisions over a Cube.
 - Sensitivity: Flip points show the weight at which another option wins.
@@ -199,6 +200,7 @@ Heads up
 - Vector Field's first row is at the bottom.
 - The Choice Ladder, Gantt, Schedule and Earned Value are hidden from the Add menu and Examples; documents that use them still load.
 - Isolate, Isolate chain and Where used are switched off for now.
+- Query is renamed Pipeline. A saved Query loads as a Manual refresh composite; pick Pipeline in its run-mode menu for the step list.
 - "Draw a cable" is now "Draw an arrow".
 - The Rust engine setting is gone; there is only one engine.
 

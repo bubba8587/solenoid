@@ -15,6 +15,7 @@ import { loopMembers } from "../../../src/graph/graphCompute";
 import { alertStore } from "../../../src/graph/alertStore";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode, stopConditionMet, byRowValues, BY_ROW_MAX_ROWS } from "../../../src/graph/nodes/composite";
 import { frameFromCells, isFrameValue, frameRowCount, type FrameValue } from "../../../src/graph/frame";
+import { DistinctNode, HeadNode } from "../../../src/graph/nodes/frame";
 import { ValueInputNode } from "../../../src/graph/nodes/control";
 import { ArithmeticNode, MathFXNode } from "../../../src/graph/nodes/scalar";
 import { ComparisonNode, IFErrorNode } from "../../../src/graph/nodes/logic";
@@ -1312,9 +1313,9 @@ describe("CompositeNode Monte Carlo run mode", () => {
 // ─── Manual refresh ─────────────────────────────────────
 describe("CompositeNode manual refresh mode", () => {
   /** A manual-mode passthrough: one exposed input marker wired straight to one
-   *  output marker (the exact shape the Query preset ships). */
+   *  output marker (the exact shape the Pipeline preset ships). */
   async function makePassthrough() {
-    const c = new CompositeNode({ label: "Query", runMode: "manual" });
+    const c = new CompositeNode({ label: "Pipeline", runMode: "manual" });
     const inMarker = new CompositeInputNode({ label: "Table" });
     const outMarker = new CompositeOutputNode({ label: "Result" });
     await c.internalEditor.addNode(inMarker as unknown as Schemes["Node"]);
@@ -1444,11 +1445,12 @@ describe("CompositeNode manual refresh mode", () => {
   });
 });
 
-describe("Query catalog preset", () => {
+describe("Pipeline catalog preset ([[C53]] pipelineIsCompositePreset)", () => {
   it("hydrates into a manual-refresh Table→Result passthrough", async () => {
-    const entry = FLAT_CATALOG.get("query")!;
+    const entry = FLAT_CATALOG.get("pipeline")!;
     const q = entry.create() as CompositeNode;
-    expect(q.runMode).toBe("manual");
+    expect(q.runMode).toBe("pipeline");
+    expect(q.refreshes()).toBe(true);
     expect(q.isHydrated).toBe(false); // ships a pending snapshot — add paths hydrate
     await q.hydrate(ctorRegistry());
     // One exposed Table input, one Result output, wired straight through.
@@ -1456,10 +1458,54 @@ describe("Query catalog preset", () => {
     expect(q.outputPorts).toHaveLength(1);
     expect(q.inputs[q.inputPorts[0].id]).toBeDefined();
     expect(q.outputs[q.outputPorts[0].id]).toBeDefined();
+    expect(q.pipelineChain()).toEqual({ steps: [], fault: null });
     const frame = frameFromCells(["A", "B"], [[1, "x"], [2, "y"]]);
     q.requestSolve();
     const out = await q.data({ [q.inputPorts[0].id]: [frame] });
     expect(out[q.outputPorts[0].id]).toBe(frame);
+  });
+
+  /** Table → Distinct → Head → Result, with the straight-through cable removed. */
+  async function chained() {
+    const q = FLAT_CATALOG.get("pipeline")!.create() as CompositeNode;
+    await q.hydrate(ctorRegistry());
+    const ed = q.internalEditor;
+    for (const c of [...ed.getConnections()]) await ed.removeConnection(c.id);
+    const tin = ed.getNode(q.inputPorts[0].internalNodeId)!;
+    const tout = ed.getNode(q.outputPorts[0].internalNodeId)!;
+    const a = new DistinctNode(), b = new HeadNode();
+    for (const n of [a, b]) await ed.addNode(n as unknown as Schemes["Node"]);
+    await connect(ed, tin, "value", a, "frame");
+    await connect(ed, a, "frame", b, "frame");
+    await connect(ed, b, "frame", tout, "value");
+    return { q, ed, tin, tout, a, b };
+  }
+
+  it("lists its steps in chain order", async () => {
+    const { q, a, b } = await chained();
+    expect(q.pipelineChain()).toEqual({ steps: [a, b], fault: null });
+  });
+
+  it("names the card that branches, ends the chain or sits off it", async () => {
+    const { q, ed, a, b } = await chained();
+    const extra = new DistinctNode();
+    await ed.addNode(extra as unknown as Schemes["Node"]);
+    expect(q.pipelineChain().fault).toEqual({ kind: "off-chain", node: extra });
+    await connect(ed, a, "frame", extra, "frame");
+    expect(q.pipelineChain().fault).toEqual({ kind: "branch", node: a });
+    for (const c of ed.getConnections().filter((c) => c.source === b.id)) await ed.removeConnection(c.id);
+    for (const c of ed.getConnections().filter((c) => c.target === extra.id)) await ed.removeConnection(c.id);
+    expect(q.pipelineChain().fault).toEqual({ kind: "dead-end", node: b });
+  });
+
+  it("takes a step's other inputs through its own input ports", async () => {
+    const { q, ed, b } = await chained();
+    const rowsId = q.addInputPort({ label: "Rows", exposure: "exposed", tier: "basic", internalNodeId: "" });
+    const rows = new CompositeInputNode({ label: "Rows" });
+    await ed.addNode(rows as unknown as Schemes["Node"]);
+    q.inputPorts.find((p) => p.id === rowsId)!.internalNodeId = rows.id;
+    await connect(ed, rows, "value", b, "rows");
+    expect(q.pipelineChain().fault).toBeNull();
   });
 });
 

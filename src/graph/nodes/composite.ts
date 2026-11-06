@@ -68,7 +68,7 @@ export interface CompositeInternalSnapshot extends SideTables {
   connections: CompositeSavedConnection[];
 }
 
-export type CompositeRunMode = "single" | "manual" | "scenarios" | "data-table" | "simulation" | "goal-seek" | "montecarlo" | "by-row";
+export type CompositeRunMode = "single" | "manual" | "pipeline" | "scenarios" | "data-table" | "simulation" | "goal-seek" | "montecarlo" | "by-row";
 
 export interface CompositeGoalSeek {
   inputPortId: string;
@@ -87,6 +87,9 @@ export interface CompositeMonteCarlo {
 }
 
 export type CompositeStopOp = "gt" | "ge" | "lt" | "le" | "eq" | "ne";
+
+/** Where a Pipeline's chain breaks ([[C53]] pipelineIsCompositePreset). */
+export type PipelineFault = { kind: "unwired" | "dead-end" | "branch" | "cycle" | "off-chain"; node: GraphNode };
 
 export function byRowValues(v: unknown): unknown[] {
   if (v === null || v === undefined) return [];
@@ -411,6 +414,39 @@ export class CompositeNode extends GraphNode {
       targetInput: c.targetInput as string,
     }));
     return { nodes, connections, ...savedSideTables((id) => !!this.internalEditor.getNode(id), sid) };
+  }
+
+  /** The steps from the first input port's marker to the first output port's, in order, and the first card that
+   *  breaks the one chain ([[C53]] pipelineIsCompositePreset). Other input markers may feed any step. */
+  pipelineChain(): { steps: GraphNode[]; fault: PipelineFault | null } {
+    const steps: GraphNode[] = [];
+    const start = this.inputPorts[0] && this.internalEditor.getNode(this.inputPorts[0].internalNodeId);
+    const endId = this.outputPorts[0]?.internalNodeId;
+    if (!start || !endId) return { steps, fault: null };
+    const consumers = new Map<string, Set<string>>();
+    for (const c of this.internalEditor.getConnections()) {
+      let set = consumers.get(c.source);
+      if (!set) consumers.set(c.source, (set = new Set()));
+      set.add(c.target);
+    }
+    const seen = new Set<string>([start.id]);
+    let cur: GraphNode = start;
+    for (;;) {
+      const next = [...(consumers.get(cur.id) ?? [])];
+      if (next.length === 0) return { steps, fault: { kind: cur === start ? "unwired" : "dead-end", node: cur } };
+      if (next.length > 1) return { steps, fault: { kind: "branch", node: cur } };
+      if (next[0] === endId) break;
+      const n = this.internalEditor.getNode(next[0]);
+      if (!n) return { steps, fault: { kind: "dead-end", node: cur } };
+      if (seen.has(n.id)) return { steps, fault: { kind: "cycle", node: n } };
+      seen.add(n.id);
+      steps.push(n);
+      cur = n;
+    }
+    const off = this.internalEditor.getNodes().find(
+      (n) => !seen.has(n.id) && n.id !== endId && !(n instanceof CompositeInputNode) && !(n instanceof FormatControllerNode),
+    );
+    return { steps, fault: off ? { kind: "off-chain", node: off } : null };
   }
 
   savedInternalId(liveId: string): string {
@@ -773,7 +809,7 @@ export class CompositeNode extends GraphNode {
         this.cachedOutputs = outputs;
         // Key on the real inputs, not solveInputs, to match the hold branch.
         this.lastSolveKey = this.solveKey(inputs);
-        this.lastPassKey = this.runMode === "manual" && solveInputs === inputs ? this.passKey(inputs) : null;
+        this.lastPassKey = this.refreshes() && solveInputs === inputs ? this.passKey(inputs) : null;
         this.solveRequested = false;
         this.solveInsideOnly = false;
         this.unsettled = !settled || this.gatedInside();
@@ -845,8 +881,13 @@ export class CompositeNode extends GraphNode {
     return nestedNodeIds(this.internalEditor).some((id) => connectionStore.getState(id).status === "gated");
   }
 
+  /** Manual refresh, and Pipeline, which runs as it does ([[C53]] pipelineIsCompositePreset): one pass on Refresh. */
+  refreshes(): boolean {
+    return this.runMode === "manual" || this.runMode === "pipeline";
+  }
+
   isHeavyMode(): boolean {
-    if (this.runMode === "manual") return true;
+    if (this.refreshes()) return true;
     if (this.runMode === "simulation") return true;
     if (this.runMode === "scenarios") return this.scenarios.length > 0;
     if (this.runMode === "goal-seek") return !!this.goalSeek;
@@ -886,7 +927,7 @@ export class CompositeNode extends GraphNode {
 
   requestSolve(insideOnly = false): void {
     this.solveRequested = true;
-    this.solveInsideOnly = insideOnly && this.runMode !== "manual";
+    this.solveInsideOnly = insideOnly && !this.refreshes();
   }
 
   markInternalEdit(): void { this.internalEditSeq++; }
@@ -966,7 +1007,7 @@ export class CompositeNode extends GraphNode {
 
   private async runActiveMode(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     // A configured multi-run (every heavy mode but Manual refresh, which is one pass) runs its inside many times.
-    const multi = this.isHeavyMode() && this.runMode !== "manual";
+    const multi = this.isHeavyMode() && !this.refreshes();
     const outputs = multi
       ? await this.withInner("aroundMultiRun", () => this.runModePasses(inputs))
       : await this.runModePasses(inputs);
