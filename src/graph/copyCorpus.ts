@@ -102,7 +102,8 @@ function optStrings(line: string): { key: "label" | "title" | "description"; tex
   return out;
 }
 
-/** nodeCatalog and packs are skipped: their labels and descriptions are the catalog records. */
+/** nodeCatalog and packs are skipped: their labels and descriptions are the catalog records. The What's New
+ *  deck is marketing copy, held to looser rules (DESIGN.md section 7). */
 function walkCode(dir: string, acc: string[] = []): string[] {
   for (const name of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, name.name);
@@ -112,7 +113,7 @@ function walkCode(dir: string, acc: string[] = []): string[] {
     } else if (
       /\.tsx?$/.test(name.name) &&
       !/\.test\.tsx?$|\.d\.ts$/.test(name.name) &&
-      !["nodeCatalog.ts", "copyCorpus.ts"].includes(name.name)
+      !["nodeCatalog.ts", "copyCorpus.ts", "whatsNewSlides.ts"].includes(name.name)
     ) {
       acc.push(p);
     }

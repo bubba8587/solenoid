@@ -324,6 +324,12 @@ the node catalog: teased counts, the slogan phrases, conventional-affordance nar
 asides, and the em-dash ban over every shipped string, seeds included. The rest stays a human
 call. No-trailing-parenthetical is enforced over catalog descriptions, socket docs and Excel notes
 only; help and seed prose need a sweep before it can cover them.
+**Marketing copy is looser than UI copy** (author 2026-11-06). The What's New slides
+(`src/graph/whatsNewSlides.ts`), release posts and the selling list in `docs/release-notes-features.md` may be
+casual and funny: asides, second-person banter, a wink at the competition. The rules below are for the app's own
+UI. What still holds for marketing: no em dashes, American spelling, and every claim true and checkable. The
+UI-copy sweep skips `whatsNewSlides.ts`.
+
 A card **label's** parenthetical is deliberate and stays (author 2026-11-05): "Chart (Recharts)", "DATE (Build)",
 "Spectrum (FFT)", "Growth Rate (CAGR)" name the variant or the familiar term, so a review doesn't count them as jargon.
 
