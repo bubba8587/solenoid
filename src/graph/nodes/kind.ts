@@ -326,7 +326,7 @@ export function nodeWide(node: GraphNode): boolean {
   });
 }
 
-/** The 210px tier; no card uses it today. */
-export function nodeMedium(_node: GraphNode): boolean {
-  return false;
+/** The 210px tier: the date cards. */
+export function nodeMedium(node: GraphNode): boolean {
+  return nodeKindOf(node) === "date";
 }
