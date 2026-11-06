@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use crate::error_value::{ErrorCode, SolError};
 use crate::excel_formula::{Ast, BinOp, UnaryOp};
 use crate::finance_units::{finance_dim, finance_money};
-use crate::unit_value::{unit_error, READINGS_ADD, READINGS_FOLD, READINGS_SCALE};
+use crate::unit_value::{point_error, unit_error, READINGS_ADD, READINGS_FOLD, READINGS_SCALE};
 
 /// Exponents over the axes; an absent axis is 0 and a zero is never stored.
 pub type Dim = BTreeMap<String, f64>;
@@ -666,11 +666,11 @@ const PICK_SCALAR_FNS: &[&str] = &[
 ];
 
 fn aff_err() -> SolError {
-    unit_error(READINGS_SCALE)
+    point_error(READINGS_SCALE)
 }
 
 fn sum_err() -> SolError {
-    unit_error(READINGS_ADD)
+    point_error(READINGS_ADD)
 }
 
 fn is_literal(n: Option<&Ast>) -> bool {
@@ -735,7 +735,7 @@ fn aff_host(fn_: &str, args: &[Ast], host: &Host, lam: &Lam, scope: &AffScope) -
     let start = aff(if is_literal(args.first()) && elem.w != 0.0 { elem.w } else { acc.w }, false);
     let step = aff_apply(&lam.params, &lam.body, &[start, elem], scope)?;
     if (step.w - start.w).abs() > 1e-12 {
-        return Err(if step.w > 1.0 { sum_err() } else { unit_error(READINGS_FOLD) });
+        return Err(if step.w > 1.0 { sum_err() } else { point_error(READINGS_FOLD) });
     }
     Ok(aff(start.w, fn_ == "SCAN"))
 }

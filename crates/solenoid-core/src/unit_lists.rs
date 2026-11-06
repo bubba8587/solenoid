@@ -9,7 +9,7 @@ use crate::excel_functions::V;
 use crate::fns_lists::{running_plain, RunOp};
 use crate::jsnum::{compare_text, number_to_string, round_half_up};
 use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim, UnitCell};
-use crate::unit_value::{to_precision, unit_error, READINGS_ADD};
+use crate::unit_value::{point_error, to_precision, unit_error, READINGS_ADD};
 
 const BASE_DIMS: [(&str, &str); 10] = [
     ("length", "m"),
@@ -205,7 +205,7 @@ pub fn running(op: RunOp, arr: &[V], window: Option<f64>) -> V {
     };
     let is_affine = prep.display.as_ref().is_some_and(|d| affine(d));
     if is_affine && op == RunOp::Sum && arr.iter().filter(|c| matches!(c, V::Unit(u) if affine(u))).count() > 1 {
-        return V::err(unit_error(READINGS_ADD));
+        return V::err(point_error(READINGS_ADD));
     }
     let mut k = 0;
     let mags: Vec<V> = arr

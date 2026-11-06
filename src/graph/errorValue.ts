@@ -1,4 +1,4 @@
-// [[C24]], [[E9]] errorsKeepOrigin, [[C24]] arraySemantics
+// [[C24]], [[E9]] errorsKeepOrigin, [[C24]] arraySemantics, [[E20]] pointError
 
 export type SolErrorCode =
   | "#DIV/0!" | "#N/A"
@@ -7,6 +7,7 @@ export type SolErrorCode =
   | "#NAME?" | "#REF!" | "#CIRC!"
   | "#SOLVE!"
   | "#AMBIGUOUS!"
+  | "#POINT!"
   | "#ERROR!";
 
 const TAG = "__solError";
@@ -40,6 +41,7 @@ export const ERROR_EXPLANATIONS: Record<SolErrorCode, string> = {
   "#CIRC!":  "A circular dependency: the calculation feeds back into itself. Remove one cable in the cycle to break it.",
   "#SOLVE!": "The Equation node found no value that satisfies the equation. Check the known values, or rearrange the equation.",
   "#AMBIGUOUS!": "A date like 3/4/2026 could mean April 3 or March 4. Write the month as a name (3-Apr-2026) or use the ISO form (2026-04-03).",
+  "#POINT!": "A position, like a date or a °C reading, was used as an amount: added to another, scaled, or summed. Shift it by an amount, subtract two for the gap between them, or average them.",
   "#ERROR!": "The node failed unexpectedly. If it persists, it's likely a Solenoid bug worth reporting.",
 };
 

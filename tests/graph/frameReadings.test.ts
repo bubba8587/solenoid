@@ -28,7 +28,7 @@ describe("GROUPBY over readings", () => {
 
   it("a sum or product is #UNIT! in every group and carries no unit", () => {
     for (const name of ["sum", "product"]) {
-      expect(col(out, name).values.every((v) => isSolError(v) && v.code === "#UNIT!")).toBe(true);
+      expect(col(out, name).values.every((v) => isSolError(v) && v.code === "#POINT!")).toBe(true);
       expect(col(out, name).unit).toBeUndefined();
     }
     expect((col(out, "sum").values[0] as { message?: string }).message).toBe(READINGS_ADD);
@@ -77,7 +77,7 @@ describe("GROUPBY over readings", () => {
 describe("PIVOTBY over readings", () => {
   it("SUM is #UNIT!, AVERAGE stays °C", () => {
     const sum = pivotFrame(temps("degC"), { rowFields: ["k"], colFields: [], values: ["t"], funcs: ["sum"] } as never);
-    expect(sum.columns[1].values.every((v) => isSolError(v) && v.code === "#UNIT!")).toBe(true);
+    expect(sum.columns[1].values.every((v) => isSolError(v) && v.code === "#POINT!")).toBe(true);
     const avg = pivotFrame(temps("degC"), { rowFields: ["k"], colFields: [], values: ["t"], funcs: ["avg"] } as never);
     expect(avg.columns[1].values).toEqual([23, 30]);
     expect(avg.columns[1].unit?.display).toBe("degC");
@@ -95,7 +95,7 @@ describe("Window over readings", () => {
 
   it("the sums, share and pct_change are #UNIT! in every row", () => {
     for (const fn of ["cumsum", "rolling_sum", "group_sum", "share", "pct_change"]) {
-      expect(w(fn).values.every((v) => isSolError(v) && v.code === "#UNIT!"), fn).toBe(true);
+      expect(w(fn).values.every((v) => isSolError(v) && v.code === "#POINT!"), fn).toBe(true);
       expect(w(fn).unit, fn).toBeUndefined();
     }
   });
@@ -149,7 +149,7 @@ describe("Cube Rollup carries units", () => {
 
   it("readings have no rolled-up sum", () => {
     const c = rollup("sum", frame({ name: "t", type: "number", values: [20, 26], unit: unit("degC") }));
-    expect(isSolError(c.values[0]) && c.values[0].code).toBe("#UNIT!");
+    expect(isSolError(c.values[0]) && c.values[0].code).toBe("#POINT!");
   });
 });
 
@@ -169,7 +169,7 @@ describe("SUMIFS reads the column in its unit", () => {
 
   it("readings have no SUMIFS; AVERAGEIFS is a reading", () => {
     const sum = ifs("sumifs", temps("degC"));
-    expect(isSolError(sum) && sum.code).toBe("#UNIT!");
+    expect(isSolError(sum) && sum.code).toBe("#POINT!");
     const avg = ifs("averageifs", temps("degC")) as UnitCell;
     expect(avg.value).toBeCloseTo(23 + 273.15, 9);
     expect(avg.display).toBe("degC");
@@ -194,7 +194,7 @@ describe("a computed column over readings classifies as Expression does", () => 
     n.stringLiterals.name = "out";
     return col(n.data({ frame: [two] } as never).frame as FrameValue, "out").values;
   };
-  const refused = (vs: unknown[]) => vs.every((v) => isSolError(v) && v.code === "#UNIT!");
+  const refused = (vs: unknown[]) => vs.every((v) => isSolError(v) && v.code === "#POINT!");
 
   it("a sum of two readings, or a reading scaled, is #UNIT! in every row", () => {
     expect(refused(add("@lo + @hi"))).toBe(true);

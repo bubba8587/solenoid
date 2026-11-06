@@ -1008,7 +1008,7 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
     let reading =
         unit.and_then(|u| u.get("display")).and_then(Json::as_str).is_some_and(|d| !d.is_empty() && affine_display(d));
     if op == "sumifs" && reading {
-        return Ok(V::err(crate::unit_value::unit_error(crate::unit_value::READINGS_ADD)));
+        return Ok(V::err(crate::unit_value::point_error(crate::unit_value::READINGS_ADD)));
     }
     let tag = |n: f64| match unit {
         Some(u) => tag_cell_unit(&V::Num(n), u),

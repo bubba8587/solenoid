@@ -16,7 +16,7 @@ This is the one reference for the value model's special kinds: what each means, 
 |---|---|---|
 | value | a real number, string, date, logical or complex | the normal case |
 | `null` | **missing**: no value was ever there | data, not a failure |
-| `SolError` | **failure**: a computation could not answer (a tagged code, one of 16, including `#OVERFLOW!` and the internal `#ERROR!` catch-all) | loud until caught |
+| `SolError` | **failure**: a computation could not answer (a tagged code, one of 17, including `#OVERFLOW!` and the internal `#ERROR!` catch-all) | loud until caught |
 | `NaN` | **an undefined number that leaked**: neither an error nor missing | residue; a computation may not produce it (`guardFinite`) |
 | `Infinity` | **a definable infinity**: declared on purpose (the Constant node) or derived from an infinite input | a first-class value |
 
@@ -236,7 +236,7 @@ points: a point weighs 1, a difference or a plain number 0, `a + b` weighs 2, `(
 
 - weight 1 is a point (an **affine combination**: the midpoint, a weighted average);
 - weight 0 is a difference;
-- any other weight has no meaning and is refused.
+- any other weight has no meaning and is refused, with `#POINT!` for dates and readings alike ([[E20]] pointError).
 
 An expression whose weight is 1 or 0 gives the same answer whichever zero the scale uses, which is why exactly those two
 are allowed. The functions follow from it: an average, a min, a max or a median of points is a point; a spread is a
@@ -247,7 +247,7 @@ flowchart LR
     e["an expression over points"] --> w{"its point weight"}
     w -->|1| p["a point:<br>a date, a reading"]
     w -->|0| d["a difference:<br>days, a delta"]
-    w -->|"anything else"| r["refused:<br>#TYPE! for dates,<br>#UNIT! for readings"]
+    w -->|"anything else"| r["refused:<br>#POINT! for both"]
 ```
 
 **Where it is built.** Readings classify a whole formula by weight (`affine_weight`, [[unit-flow#Expression]]), so
@@ -280,7 +280,7 @@ Tests:
 ## Display
 
 - **`null`**: a scalar renders as the muted em dash; a cell in a list or Frame renders the word `null`, muted.
-- **`SolError`**: the red badge with its code. All 16 codes are in `errorValue.ts`, and `#OVERFLOW!` is toured in the error showcase seed.
+- **`SolError`**: the red badge with its code. All 17 codes are in `errorValue.ts`, and `#OVERFLOW!` is toured in the error showcase seed.
 - **`NaN`**: the literal `NaN`, shown quietly with a muted background tint (not error red, not chip-like) and a fixed structural tooltip. Never "N/A".
 - **`Infinity`**: the `∞` glyph (`-∞` when negative), in `formatScalar` and list previews (`format.ts`).
 

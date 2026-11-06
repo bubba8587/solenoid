@@ -7,7 +7,7 @@ use super::kit::{guard_finite, short_circuit};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
 use crate::unit_dims::{dim_div, dim_equal, dim_mul, dim_pow, is_dimensionless, Dim, UnitCell};
-use crate::unit_value::{unit_error, READINGS_ADD, READINGS_SCALE};
+use crate::unit_value::{point_error, unit_error, READINGS_ADD, READINGS_SCALE};
 use std::rc::Rc;
 
 pub use crate::unit_dims::dim_of;
@@ -157,7 +157,7 @@ pub fn arithmetic_cell(op: ArithOp, a: &V, b: &V) -> V {
         V::err(unit_error(""))
     };
     let readings = affine(a) && affine(b);
-    let refused = || any_affine.then(|| V::err(unit_error(READINGS_SCALE)));
+    let refused = || any_affine.then(|| V::err(point_error(READINGS_SCALE)));
     let carry = |rd: &Dim| -> Option<&UnitCell> {
         if ua.is_some() && dim_equal(rd, da) {
             ua
@@ -171,7 +171,7 @@ pub fn arithmetic_cell(op: ArithOp, a: &V, b: &V) -> V {
     match op {
         ArithOp::Add => {
             if readings {
-                V::err(unit_error(READINGS_ADD))
+                V::err(point_error(READINGS_ADD))
             } else {
                 combine(xc + yc)
             }

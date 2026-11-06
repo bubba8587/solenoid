@@ -2,7 +2,7 @@
 aliases: ["Error values"]
 tags: [spec, values]
 ---
-<!-- [[C24]] arraySemantics, [[E9]] errorsKeepOrigin, [[C25]] firstClassUnits -->
+<!-- [[C24]] arraySemantics, [[E9]] errorsKeepOrigin, [[C25]] firstClassUnits, [[E20]] pointError -->
 
 # Spec: Error values
 
@@ -33,7 +33,7 @@ Tests: `errorValue.test.ts` ("SolError tagging"): a tagged error round-trips thr
 
 The set is Excel-style `#CODE!`, but more specific than Excel's seven, following SQLSTATE class 22 and OpenFormula Err:5xx. `SolErrorCode` is the union.
 
-The sixteen codes, grouped here by what went wrong (the set itself is flat):
+The seventeen codes, grouped here by what went wrong (the set itself is flat):
 
 ```mermaid
 mindmap
@@ -49,6 +49,7 @@ mindmap
       ["#TYPE!"]
       ["#SHAPE!"]
       ["#UNIT!"]
+      ["#POINT!: a position as an amount"]
     nothing there
       ["#N/A"]
       ["#NAME?"]
@@ -73,6 +74,7 @@ mindmap
 | `#TYPE!` | the wrong element type for the op | Solenoid only; Excel folds it into #VALUE! |
 | `#SHAPE!` | a list or matrix dimension mismatch | no Excel scalar equivalent; nearest is #SPILL! |
 | `#UNIT!` | incommensurable units in an op: the same element type, the wrong dimension (the core's `unit_value.rs`) | Solenoid only |
+| `#POINT!` | a position (a date, a temperature reading) used as an amount: two added, one scaled, a sum of them ([[E20]] pointError; `point_error`, `point_refused`) | Solenoid only; Excel answers a number |
 | `#NAME?` | an unknown name | Excel; Err:525 |
 | `#REF!` | a dangling reference | Excel; Err:524 |
 | `#CIRC!` | a circular dependency | Err:522; Excel only warns |

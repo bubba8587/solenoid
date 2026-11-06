@@ -2,7 +2,7 @@
 aliases: ["Date values"]
 tags: [spec, values]
 ---
-<!-- [[D114]] dateIsAKind, [[D115]] datesArePoints, [[E19]] datesWeighAsPoints, [[C137]] datesNeverSerials, [[D119]] datesBefore1900 -->
+<!-- [[D114]] dateIsAKind, [[D115]] datesArePoints, [[E19]] datesWeighAsPoints, [[E20]] pointError, [[C137]] datesNeverSerials, [[D119]] datesBefore1900 -->
 
 # Spec: Date values
 
@@ -41,9 +41,9 @@ A date is a point kind and days its difference kind ([[value-semantics#Points an
 | Num | `+` | Date | Date |
 | Date | `-` | Date | Num (days) |
 | Date | `=` `<>` `<` `<=` `>` `>=` | Date | Bool |
-| Date | any other operator | anything | #TYPE! "A date can be shifted by days or compared with a date; Cast to Number for its serial" |
+| Date | any other operator | anything | #POINT! "A date can't be used with … Shift it by days, subtract two for the days between, or average them" ([[E20]] pointError) |
 | Date | any comparison | Num or Str | #TYPE! |
-| unary `-` or `%` | Date | | #TYPE! |
+| unary `-` or `%` | Date | | #POINT! |
 
 Tests: `properties.rs` (solenoid-core) `a_weighted_average_of_dates_is_a_date`; `fuzz_formulas.rs` (solenoid-core), whose `dates_through_every_operator_row` asks each row of this table of a date today and of a date before 1900 and checks the kind of the answer.
 
@@ -68,7 +68,7 @@ The classes:
 - **Text** (CONCAT, TEXTJOIN, LEN, LEFT, SUBSTITUTE, the regex and padding functions and kin) reads a date as its text.
 - **Moves** (IF, IFS, SWITCH, CHOOSE, IFERROR, IFNA, INDEX, TAKE, DROP, the reshapes and stacks, FILTER, the IS functions, TYPE, the LAMBDA helpers and kin) passes a date through as itself.
 - **Returns** (SORT, SORTBY, UNIQUE over their first; XLOOKUP over its return array; the set functions over all) compares by days and hands back dates where it was given dates; dates beside plain numbers there are #TYPE!.
-- **Unlisted:** SUM, PRODUCT, SUMPRODUCT and every function in no class answer #TYPE! "… takes no date. Cast to Number for its serial" for a date argument, so a new function can't let a serial out.
+- **Unlisted:** SUM, PRODUCT, SUMPRODUCT and every function in no class answer #POINT! "… takes no date. Cast to Number for its serial" for a date argument, so a new function can't let a serial out.
 
 A long list is read once per list, not once per row (`date_values.rs`), so a range function per row of a computed column stays linear ([[C120]] linearWork):
 
@@ -79,7 +79,7 @@ The table verbs (Group By, Pivot, Window, Rollup) and the SUMIFS card read a Dat
 
 - a min, max, mean, median or mode of dates is a date, and so is a running, rolling or per-group min, max or mean, and a lag;
 - a count, a rank and a difference are numbers;
-- a sum or product of dates is #TYPE!, and so are a running, rolling or per-group sum, a share and a percent change.
+- a sum or product of dates is #POINT!, and so are a running, rolling or per-group sum, a share and a percent change.
 
 Mixed kinds stay refused ([[C137]] datesNeverSerials): a list or table that would hold dates and another kind answers #TYPE!. The cases the tests hold:
 

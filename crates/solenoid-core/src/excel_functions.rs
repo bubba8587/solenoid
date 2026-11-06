@@ -6137,6 +6137,7 @@ fn error_type_num(code: ErrorCode) -> f64 {
         | ErrorCode::Circ
         | ErrorCode::Solve
         | ErrorCode::Ambiguous
+        | ErrorCode::Point
         | ErrorCode::Error => 3.0,
     }
 }

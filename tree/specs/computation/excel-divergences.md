@@ -2,7 +2,7 @@
 aliases: ["Excel divergences"]
 tags: [spec, computation]
 ---
-<!-- [[A5]] excelParity, [[B16]] oneFormulaSurface, [[C17]] shareImpl, [[C15]] matricesInFormulas, [[D115]] datesArePoints, [[D119]] datesBefore1900, [[E19]] datesWeighAsPoints, [[D125]] aggregatesOfNothing -->
+<!-- [[A5]] excelParity, [[B16]] oneFormulaSurface, [[C17]] shareImpl, [[C15]] matricesInFormulas, [[D115]] datesArePoints, [[D119]] datesBefore1900, [[E19]] datesWeighAsPoints, [[D125]] aggregatesOfNothing, [[E20]] pointError -->
 
 # Spec: Excel divergences
 
@@ -46,7 +46,7 @@ Tests: `properties.rs` (solenoid-core) `a_total_of_nothing_is_its_identity_or_bl
 
 ### Dates are points
 
-A date is its own kind of value, a point in time, never a number ([[D114]] dateIsAKind, [[D115]] datesArePoints, [[C137]] datesNeverSerials; the rules are [[date-values]]). Excel's date is a number with a format, so each of these answers where Solenoid's is `#TYPE!`:
+A date is its own kind of value, a point in time, never a number ([[D114]] dateIsAKind, [[D115]] datesArePoints, [[C137]] datesNeverSerials; the rules are [[date-values]]). Excel's date is a number with a format, so each of these answers where Solenoid refuses: arithmetic on a date and a date handed to a function of amounts with `#POINT!`, a date used as an amount ([[E20]] pointError), the rest with `#TYPE!`, a value of the wrong kind:
 
 - Arithmetic other than moving a date by days, measuring between two, or averaging them: `date * 2`, `date / 7`, `date ^ 2`, `date1 + date2` on its own, `5 - date`, `-date` and `date%`. A date plus or minus a number is still a date, a date minus a date a number of days, and a weighted average of dates (`(d1 + d2) / 2`) a date, as in Excel ([[E19]] datesWeighAsPoints).
 - A date compared with a number or text: `date = 46000`, `date < "x"`. Two dates compare as in Excel.

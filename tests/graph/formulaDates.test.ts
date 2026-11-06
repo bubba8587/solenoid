@@ -46,7 +46,7 @@ describe("a formula column that hands back a date is a date column", () => {
 
   it("a sum of dates, and a column mixing dates with numbers, are #TYPE! where a date would be ([[D115]] datesArePoints)", () => {
     const cells = (expr: string) => cubeOf([...typed, { name: "out", expr }], rows).columns.find((c) => c.name === "out")!.cells;
-    expect(cells("SUM(d)").every((v) => isSolError(v) && v.code === "#TYPE!")).toBe(true);
+    expect(cells("SUM(d)").every((v) => isSolError(v) && v.code === "#POINT!")).toBe(true);
     // Row B (n 5) takes its date, rows A and C their numbers.
     const mixed = cells("IF(@n > 2, @d, @n)");
     expect(isSolError(mixed[1]) && mixed[1].code).toBe("#TYPE!");

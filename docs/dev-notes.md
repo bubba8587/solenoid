@@ -31,6 +31,10 @@ specific item.
   The research list is empty. The author's calls landed too: [[E19]] datesWeighAsPoints (a refused date formula is
   weighed whole, then piece by piece, `by_point_weight`) and [[D125]] aggregatesOfNothing (MAX and MIN of nothing
   blank, PRODUCT 1, GCD 0, LCM 1). Date cards are back in the 210px tier (`nodeMedium`).
+- **`#POINT!`** ([[E20]] pointError, the author 2026-11-06): a position (a date, a °C or °F reading) used as an amount
+  is its own error, where it was `#TYPE!` for dates and `#UNIT!` for readings. `point_error` beside `unit_error`,
+  `point_refused` for dates; `#TYPE!` keeps wrong kinds, `#UNIT!` real unit clashes. Scheduling's dates come from
+  adding durations to dates, never dates to dates.
 - **Before pushing Rust, even a prototype test: `bash scripts/check-rust.sh <crate>`** (the crate bans `powi`, clippy
   runs with warnings as errors) and give a new test file a leaf citation, or coverage fails CI.
 

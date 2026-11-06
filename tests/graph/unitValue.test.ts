@@ -206,9 +206,9 @@ describe("affine temperatures (review pins)", () => {
   });
   it("two readings have no sum, and a reading has no remainder, as in a formula", () => {
     const code = (v: unknown) => (isSolError(v) ? v.code : null);
-    expect(code(arithmeticCell("add", degC(20), degC(30)))).toBe("#UNIT!");
+    expect(code(arithmeticCell("add", degC(20), degC(30)))).toBe("#POINT!");
     expect(code(arithmeticCell("add", degC(20), fromUnit(50, U("degF"), "degF")))).toBe("#UNIT!");
-    expect(code(arithmeticCell("mod", degC(20), 5))).toBe("#UNIT!");
+    expect(code(arithmeticCell("mod", degC(20), 5))).toBe("#POINT!");
     // A K value could be a reading or a change, so it never meets a °C reading ([[C25]] firstClassUnits).
     expect(code(arithmeticCell("add", degC(20), fromUnit(5, U("K"), "K")))).toBe("#UNIT!");
   });
@@ -216,9 +216,9 @@ describe("affine temperatures (review pins)", () => {
     const { ArithmeticNode } = await import("../../src/graph/nodes/scalar");
     const run = (op: string, a: unknown, b: unknown) =>
       new ArithmeticNode({ op: op as never }).data({ a: [a as never], b: [b as never] }).result;
-    expect((run("add", degC(20), degC(30)) as { code?: string }).code).toBe("#UNIT!");
+    expect((run("add", degC(20), degC(30)) as { code?: string }).code).toBe("#POINT!");
     const pair = run("add", [degC(20), degC(21)], degC(30)) as { code?: string }[];
-    expect(pair.map((c) => c.code)).toEqual(["#UNIT!", "#UNIT!"]);
+    expect(pair.map((c) => c.code)).toEqual(["#POINT!", "#POINT!"]);
     expect(magnitudeOf(run("sub", degC(30), degC(20)) as UnitCell)).toBeCloseTo(10, 9);
   });
   it("Aggregate follows the formula: a spread is a delta, readings have no sum", async () => {
@@ -227,7 +227,7 @@ describe("affine temperatures (review pins)", () => {
     const sd = agg("stdev", [degC(20), degC(30)]) as UnitCell;
     expect(sd.display).toBeUndefined();
     expect(magnitudeOf(sd)).toBeCloseTo(Math.SQRT2 * 5, 9); // 7.07 K, never −266 °C
-    expect((agg("sum", [degC(20), degC(30)]) as { code?: string }).code).toBe("#UNIT!");
+    expect((agg("sum", [degC(20), degC(30)]) as { code?: string }).code).toBe("#POINT!");
     const avg = agg("avg", [degC(20), degC(30)]) as UnitCell;
     expect(avg.display).toBe("degC");
     expect(magnitudeOf(avg)).toBeCloseTo(298.15, 9); // 25 °C is a reading

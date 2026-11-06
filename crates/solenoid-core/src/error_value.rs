@@ -23,6 +23,8 @@ spelled! {
         Circ = "#CIRC!",
         Solve = "#SOLVE!",
         Ambiguous = "#AMBIGUOUS!",
+        /// A position (a date, a temperature reading) used as an amount ([[E20]] pointError).
+        Point = "#POINT!",
         Error = "#ERROR!",
     }
 }

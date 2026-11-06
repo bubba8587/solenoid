@@ -289,6 +289,11 @@ fn refused(name: &str, why: &str) -> V {
     V::err(sol_error(ErrorCode::Type, format!("{name} {why}")))
 }
 
+/// A function handed a date it would read as an amount ([[E20]] pointError).
+fn refused_point(name: &str, why: &str) -> V {
+    V::err(sol_error(ErrorCode::Point, format!("{name} {why}")))
+}
+
 /// What to do with the answer once the body has run.
 pub enum After {
     AsIs,
@@ -345,7 +350,7 @@ pub fn ready(name: &str, argv: Vec<V>) -> Result<(Vec<V>, After), V> {
         Some(Class::Reads(_)) | Some(Class::ReadsLoose) | Some(Class::Counts) => Ok((unwrapped(), After::AsIs)),
         Some(Class::Keeps(at)) | Some(Class::KeepsIfs(at)) => {
             if matches!(class_of(name), Some(Class::Keeps(_))) && dates_off(at) {
-                return Err(refused(name, "takes no date there. Cast to Number for its serial"));
+                return Err(refused_point(name, "takes no date there. Cast to Number for its serial"));
             }
             if !argv.iter().enumerate().any(|(i, a)| at.has(i, n) && holds_date(a)) {
                 return Ok((unwrapped(), After::AsIs));
@@ -363,7 +368,7 @@ pub fn ready(name: &str, argv: Vec<V>) -> Result<(Vec<V>, After), V> {
         }
         Some(Class::SumsAt(at)) => {
             if argv.iter().enumerate().any(|(i, a)| at.has(i, n) && holds_date(a)) {
-                return Err(refused(name, "can't add dates. Cast to Number for the serials"));
+                return Err(refused_point(name, "can't add dates. Cast to Number for the serials"));
             }
             Ok((unwrapped(), After::AsIs))
         }
@@ -381,7 +386,7 @@ pub fn ready(name: &str, argv: Vec<V>) -> Result<(Vec<V>, After), V> {
                 _ => Ok((unwrapped(), After::AsIs)),
             }
         }
-        None => Err(refused(name, "takes no date. Cast to Number for its serial")),
+        None => Err(refused_point(name, "takes no date. Cast to Number for its serial")),
     }
 }
 
@@ -397,13 +402,14 @@ pub fn call<E>(name: &str, argv: Vec<V>, body: impl FnOnce(Vec<V>) -> Result<V, 
     }
 }
 
-/// The message every point refusal starts with, so a refused formula can be told from any other `#TYPE!`.
-const POINT_REFUSED: &str = "A date can be shifted by days";
+/// The message every operator's point refusal starts with, so the refusal a weighing can lift is told from the other
+/// `#POINT!`s (a SUM of dates stays one).
+const POINT_REFUSED: &str = "A date can't be used with";
 
 /// Whether `v` holds the refusal `point_refused` gives, at the top or in a cell.
 pub fn refuses_a_point(v: &V) -> bool {
     match v {
-        V::Err(e) => e.message.starts_with(POINT_REFUSED),
+        V::Err(e) => e.code == ErrorCode::Point && e.message.starts_with(POINT_REFUSED),
         V::List(items) => items.iter().any(refuses_a_point),
         _ => false,
     }
@@ -530,13 +536,11 @@ fn weighed(ast: &Ast, env: &crate::eval::Env) -> Option<V> {
     Some(if weight == 1 { days_as_dates(&out) } else { out })
 }
 
-/// A date can't be scaled, negated or added to a date ([[D115]] datesArePoints).
+/// A date can't be scaled, negated or added to a date ([[D115]] datesArePoints, [[E20]] pointError).
 pub fn point_refused(op: &str) -> V {
     V::err(sol_error(
-        ErrorCode::Type,
-        format!(
-            "A date can be shifted by days or compared with a date, not used with {op}. Cast to Number for its serial"
-        ),
+        ErrorCode::Point,
+        format!("A date can't be used with {op}. Shift it by days, subtract two for the days between, or average them"),
     ))
 }
 

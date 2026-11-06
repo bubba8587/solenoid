@@ -14,7 +14,7 @@ use crate::frame::{FrameCell, FrameColType};
 use crate::frame_verbs::FilterOp;
 use crate::jsnum::{number_to_string, round_half_up, trim_space};
 use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim, UnitCell};
-use crate::unit_value::{unit_error, READINGS_ADD};
+use crate::unit_value::{point_error, READINGS_ADD};
 use crate::value_kinds::MAX_GENERATED;
 use crate::value_kinds::{guard_finite as guard_cells, Logical};
 use std::rc::Rc;
@@ -1209,7 +1209,7 @@ fn aggregate(c: &mut Call) -> Answer {
         |u: &UnitCell| u.display.as_deref().is_some_and(|d| !d.is_empty()) && u.offset.is_some_and(|o| o != 0.0);
     let affine = prep.display.as_deref().is_some_and(is_affine);
     if affine && op == "sum" && values.iter().filter(|v| matches!(v, V::Unit(u) if is_affine(u))).count() > 1 {
-        return shown(c, "cachedResult", "result", V::err(unit_error(READINGS_ADD)));
+        return shown(c, "cachedResult", "result", V::err(point_error(READINGS_ADD)));
     }
     let nums = || list(prep.nums.iter().map(|&n| V::Num(n)).collect());
     let result = match op.as_str() {

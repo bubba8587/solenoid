@@ -93,10 +93,10 @@ describe("LAMBDA hosts carry units over a 1-D list (FC A4)", () => {
     const span = (by("MAX(values) - MIN(values)") as UnitCell[])[0];
     expect(span.display).toBeUndefined();
     expect(magnitudeOf(span)).toBeCloseTo(10, 9); // 10 K
-    expect((by("SUM(values)") as SolError).code).toBe("#UNIT!");
+    expect((by("SUM(values)") as SolError).code).toBe("#POINT!");
     const hi = new ReduceLambdaNode({ expr: "MAX(acc, value)" }).data({ initial: [-50], table: [list] }).result as UnitCell;
     expect(magnitudeOf(hi)).toBeCloseTo(303.15, 9); // 30 °C; the bare initial is a reading
-    expect((new ReduceLambdaNode({ expr: "acc + value" }).data({ initial: [0], table: [list] }).result as SolError).code).toBe("#UNIT!");
+    expect((new ReduceLambdaNode({ expr: "acc + value" }).data({ initial: [0], table: [list] }).result as SolError).code).toBe("#POINT!");
   });
 
 

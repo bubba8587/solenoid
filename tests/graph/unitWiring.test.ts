@@ -137,8 +137,8 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect(diff.display).toBeUndefined();
     expect(magnitudeOf(diff)).toBeCloseTo(10, 9); // 10 K
     expect(run("a > 25")).toBe(false);
-    expect((run("a * 2") as { code?: string }).code).toBe("#UNIT!");
-    expect((run("b / a") as { code?: string }).code).toBe("#UNIT!");
+    expect((run("a * 2") as { code?: string }).code).toBe("#POINT!");
+    expect((run("b / a") as { code?: string }).code).toBe("#POINT!");
     expect(run("(b - a) / (b - a)")).toBe(1);
   });
   it("°C is classified statically: volatile functions, MIN/AVERAGE, SUM and lists", async () => {
@@ -151,12 +151,12 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     for (let i = 0; i < 5; i++) expect((run("IF(RAND() < 2, a, b)") as UnitCell).display).toBe("degC");
     expect(displayMagnitudeOf(run("MIN(a, 25)") as UnitCell)).toBeCloseTo(20, 9);
     expect(displayMagnitudeOf(run("AVERAGE(a, b)") as UnitCell)).toBeCloseTo(25, 9);
-    expect(code(run("SUM(a, b)"))).toBe("#UNIT!");
-    expect(code(run("SQRT(a)"))).toBe("#UNIT!");
+    expect(code(run("SUM(a, b)"))).toBe("#POINT!");
+    expect(code(run("SQRT(a)"))).toBe("#POINT!");
     expect(displayMagnitudeOf(run("ROUND(a + 0.4, 0)") as UnitCell)).toBeCloseTo(20, 9);
     const list = [t20, t30];
     expect(displayMagnitudeOf(run("AVERAGE(a)", list) as UnitCell)).toBeCloseTo(25, 9);
-    expect(code(run("SUM(a)", list))).toBe("#UNIT!");
+    expect(code(run("SUM(a)", list))).toBe("#POINT!");
     expect(magnitudeOf(run("MAX(a) - MIN(a)", list) as UnitCell)).toBeCloseTo(10, 9); // 10 K
   });
   it("a wired plain number beside readings is a reading, as a literal is and as the Aggregate card reads it", async () => {
@@ -167,7 +167,7 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect(displayMagnitudeOf(run("MIN(a, n)") as UnitCell)).toBeCloseTo(5, 9);
     expect(displayMagnitudeOf(run("MEDIAN(a, b, n)") as UnitCell)).toBeCloseTo(20, 9);
     expect((run("IF(x, a, n)") as UnitCell).display).toBe("degC");
-    expect((run("a * n") as { code?: string }).code).toBe("#UNIT!"); // a scale must be a constant
+    expect((run("a * n") as { code?: string }).code).toBe("#POINT!"); // a scale must be a constant
     expect(displayMagnitudeOf(run("n + a") as UnitCell)).toBeCloseTo(25, 9); // under + it is still a delta
   });
   it("IFS and SWITCH carry their branches' unit, as IF does; a retired name keeps its #NAME? hint", async () => {
@@ -203,7 +203,7 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     const cold = run("IF(c, a, 0)", t20, false) as UnitCell;
     expect(cold.display).toBe("degC");
     expect(displayMagnitudeOf(cold)).toBeCloseTo(0, 9);
-    expect((run("IF(c, a, a - a)", t20, true) as { code?: string }).code).toBe("#UNIT!");
+    expect((run("IF(c, a, a - a)", t20, true) as { code?: string }).code).toBe("#POINT!");
     const mixed = new ExpressionNode({ expr: "IF(c, a, b)" }).data({ a: [km as never], b: [applyFcUnit(2, "s") as never], c: [true as never] }).result;
     expect(isUnitCell(mixed)).toBe(false);
   });
@@ -222,8 +222,8 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     const top = run("REDUCE(0, a, MAX)", temps) as UnitCell;
     expect(top.display).toBe("degC");
     expect(displayMagnitudeOf(top)).toBeCloseTo(30, 9);
-    expect(code(run("REDUCE(0, a, LAMBDA(acc, v, acc + v))", temps))).toBe("#UNIT!");
-    expect(code(run("MAX(MAP(a, LAMBDA(v, v * 2)))", temps))).toBe("#UNIT!");
+    expect(code(run("REDUCE(0, a, LAMBDA(acc, v, acc + v))", temps))).toBe("#POINT!");
+    expect(code(run("MAX(MAP(a, LAMBDA(v, v * 2)))", temps))).toBe("#POINT!");
     expect(displayMagnitudeOf(run("LAMBDA(x, x + 1)(a)", applyFcUnit(1, "km")) as UnitCell)).toBeCloseTo(2, 9);
   });
   it("a function outside the unit tables is loud on a unit, and plain beside one", async () => {
@@ -252,7 +252,7 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect(top.display).toBe("degC");
     expect(displayMagnitudeOf(top)).toBeCloseTo(30, 9);
     expect(displayMagnitudeOf(run('AVERAGEIF(a, ">0")', list) as UnitCell)).toBeCloseTo(25, 9);
-    expect(code(run('SUMIF(a, ">0")', list))).toBe("#UNIT!");
+    expect(code(run('SUMIF(a, ">0")', list))).toBe("#POINT!");
     const fl = [applyFcUnit(50, "degF"), applyFcUnit(68, "degF")];
     expect(magnitudeOf(run("VAR(a)", fl) as UnitCell)).toBeCloseTo(50, 9); // 162 °F² is 50 K²
     const kmList = [applyFcUnit(1, "km"), applyFcUnit(3, "km")];

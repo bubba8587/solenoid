@@ -31,20 +31,21 @@ const orders: FrameValue = {
 const typeOf = (f: FrameValue, name: string) => f.columns.find((c) => c.name === name)?.type;
 const cellsOf = (f: FrameValue, name: string) => f.columns.find((c) => c.name === name)?.values ?? [];
 const isTypeError = (v: unknown) => isSolError(v) && (v as { code: string }).code === "#TYPE!";
+const isPointError = (v: unknown) => isSolError(v) && (v as { code: string }).code === "#POINT!";
 
 describe("table verbs keep a date a date", () => {
   it("Group By: min, max, mean, median and mode of dates are dates; a count is a number; a sum is #TYPE!", () => {
     const out = groupByFrame(orders, ["rep"], (["min", "max", "avg", "median", "mode", "sum", "count"] as const).map((op) => ({ column: "due", op, as: op })));
     for (const op of ["min", "max", "avg", "median", "mode"]) expect(typeOf(out, op), op).toBe("date");
     expect(typeOf(out, "count")).toBe("number");
-    expect(cellsOf(out, "sum").every(isTypeError)).toBe(true);
+    expect(cellsOf(out, "sum").every(isPointError)).toBe(true);
   });
 
   it("Pivot: the same rule for each value column", () => {
     const out = pivotFrame(orders, { rowFields: ["rep"], colFields: [], values: ["due", "due"], funcs: ["max", "sum"] });
     const [, maxCol, sumCol] = out.columns;
     expect(maxCol.type).toBe("date");
-    expect(sumCol.values.every(isTypeError)).toBe(true);
+    expect(sumCol.values.every(isPointError)).toBe(true);
   });
 
   it("Window: running and rolling min, max and mean of dates are dates; a difference is a number; a sum or share is #TYPE!", () => {
@@ -55,7 +56,7 @@ describe("table verbs keep a date a date", () => {
       expect(typeOf(windowFrame(orders, { partitionBy: ["rep"], orderBy: "due", fn, column: "due", as: "w" }), "w"), fn).toBe("number");
     }
     for (const fn of ["cumsum", "rolling_sum", "group_sum", "share", "pct_change"] as const) {
-      expect(cellsOf(windowFrame(orders, { partitionBy: ["rep"], orderBy: "due", fn, column: "due", as: "w", n: 2 }), "w").every(isTypeError), fn).toBe(true);
+      expect(cellsOf(windowFrame(orders, { partitionBy: ["rep"], orderBy: "due", fn, column: "due", as: "w", n: 2 }), "w").every(isPointError), fn).toBe(true);
     }
   });
 });

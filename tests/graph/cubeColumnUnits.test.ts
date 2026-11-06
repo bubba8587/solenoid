@@ -26,6 +26,7 @@ const shown = (cells: CubeCell[]): unknown[] =>
 const displays = (cells: CubeCell[]) => cells.map((c) => (c as UnitCell).display);
 const dims = (cells: CubeCell[]) => cells.map((c) => (c as UnitCell).dim);
 const unitError = (cells: CubeCell[]) => cells.length > 0 && cells.every((v) => isSolError(v) && v.code === "#UNIT!");
+const pointError = (cells: CubeCell[]) => cells.length > 0 && cells.every((v) => isSolError(v) && v.code === "#POINT!");
 
 describe("a Cube's computed column infers its unit from its formula", () => {
   const sales = cube(col("price", [5, 2], "usd"), col("qty", [3, 4]));
@@ -51,7 +52,7 @@ describe("a Cube's computed column infers its unit from its formula", () => {
     const m = run(temps, "(@lo + @hi) / 2");
     expect(shown(m)).toEqual([23, 24]);
     expect(displays(m)).toEqual(["degC", "degC"]);
-    expect(unitError(run(temps, "@lo + @hi"))).toBe(true);
+    expect(pointError(run(temps, "@lo + @hi"))).toBe(true);
   });
 
   it("adding km to h is #UNIT! in every row", () => {

@@ -57,7 +57,7 @@ cables (the author, 2026-10-25).
   the keyboard; *typed* means a value has a type (a typed value, a typed socket). Write "keyed" for keyboard
   entry, so "typed" keeps one meaning. Older docs still say "typed literal" for a keyed one; fix it where you
   edit.
-- **SolError**: a tagged error value (`#DIV/0!`, `#SHAPE!`, `#TYPE!`, `#DOMAIN!`,
+- **SolError**: a tagged error value (`#DIV/0!`, `#SHAPE!`, `#TYPE!`, `#POINT!`, `#DOMAIN!`,
   `#OVERFLOW!`, `#CIRC!`, `#N/A`…) that propagates through the graph. One notion of
   error; `ISERROR` ⟺ `IFERROR`. (`errorValue.ts`)
 - **Missing / null**: a first-class "hole" in a list/frame: rendered `null`, *skipped* by
@@ -94,7 +94,7 @@ cables (the author, 2026-10-25).
   amount between two of them (days, a kelvin delta). Point − point is a difference, point ± difference is a point,
   nothing else. (`../tree/specs/values/value-semantics.md` § Points and differences; [[D115]] datesArePoints)
 - **Point weight**: the sum of an expression's coefficients on its points: 1 is a point (`(a + b) / 2`), 0 a
-  difference (`b - a`), anything else refused. (`affine_weight`, the core's `unit_dims.rs`)
+  difference (`b - a`), anything else refused with `#POINT!`. (`affine_weight`, the core's `unit_dims.rs`)
 - **Aggregate kind**: what a total can be built from: removable (SUM, COUNT), a pick (MIN, MAX), a summary (AVERAGE,
   VAR) or whole-list (MEDIAN). Decides which subtotals add up honestly.
   (`../tree/specs/computation/formula-language.md` § Scalar operators, "What a total can be built from")

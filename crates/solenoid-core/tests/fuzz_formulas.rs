@@ -196,15 +196,15 @@ fn dates_through_every_operator_row() {
         ("$ >= d", "bool"),
         ("$ < dl", "list of bool"),
         ("$ & \"\"", "text"),
-        ("$ * 2", "#TYPE!"),
-        ("$ / 2", "#TYPE!"),
-        ("$ ^ 2", "#TYPE!"),
-        ("$ + d", "#TYPE!"),
-        ("3 - $", "#TYPE!"),
+        ("$ * 2", "#POINT!"),
+        ("$ / 2", "#POINT!"),
+        ("$ ^ 2", "#POINT!"),
+        ("$ + d", "#POINT!"),
+        ("3 - $", "#POINT!"),
         ("$ = 5", "#TYPE!"),
         ("$ < \"x\"", "#TYPE!"),
-        ("-$", "#TYPE!"),
-        ("$%", "#TYPE!"),
+        ("-$", "#POINT!"),
+        ("$%", "#POINT!"),
     ]);
 }
 
@@ -244,7 +244,7 @@ fn dates_through_every_function_class() {
         ("RANK($, dl)", "num"),
         ("XMATCH($, dl)", "num"),
         // Sums.
-        ("SUMIFS(dl, nl, \">0\")", "#TYPE!"),
+        ("SUMIFS(dl, nl, \">0\")", "#POINT!"),
         // Text.
         ("LEN($)", "num"),
         ("CONCAT($, \"!\")", "text"),
@@ -256,9 +256,9 @@ fn dates_through_every_function_class() {
         ("SORT(dl)", "list of date"),
         ("XLOOKUP(2, nl, dl)", "date"),
         // In no class.
-        ("SUM($)", "#TYPE!"),
-        ("ABS($)", "#TYPE!"),
-        ("SQRT($)", "#TYPE!"),
+        ("SUM($)", "#POINT!"),
+        ("ABS($)", "#POINT!"),
+        ("SQRT($)", "#POINT!"),
     ]);
 }
 

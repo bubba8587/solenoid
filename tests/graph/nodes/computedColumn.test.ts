@@ -226,7 +226,7 @@ describe("ComputedColumnNode — side inputs, row, and the output type", () => {
     expect(getColumn(auto, "due")!.type).toBe("date"); // [[C118]]: a date + days is a date
     // A date can't be scaled ([[D115]] datesArePoints).
     const scaled = getColumn(run(named("@start * 1", "due"), due) as FrameValue, "due")!.values;
-    expect(scaled.every((v) => isSolError(v) && v.code === "#TYPE!")).toBe(true);
+    expect(scaled.every((v) => isSolError(v) && v.code === "#POINT!")).toBe(true);
     const typedNode = named("@start + 7", "due");
     typedNode.addAs = "date";
     const typed = run(typedNode, due) as FrameValue;
@@ -528,7 +528,7 @@ describe("Frame Input formula columns", () => {
     // Every row took its date branch, so the column is dates: its type is what it computed ([[C136]] typesKnownAfterCalc).
     expect(type("half")).toBe("date");
     expect(type("span")).toBe("number");
-    expect(getColumn(out, "scaled")!.values.every((v) => isSolError(v) && v.code === "#TYPE!")).toBe(true);
+    expect(getColumn(out, "scaled")!.values.every((v) => isSolError(v) && v.code === "#POINT!")).toBe(true);
     expect(getColumn(out, "span")!.values).toEqual([5, 7]);
   });
 

@@ -28,7 +28,7 @@ use crate::string_order::compare_strings;
 use crate::unit_catalog::fc_unit_to_unit;
 use crate::unit_dims::{dim_equal, dim_pow};
 use crate::unit_lists::format_dim;
-use crate::unit_value::{round_at_larger_term, unit_error, READINGS_ADD, READINGS_SCALE};
+use crate::unit_value::{round_at_larger_term, READINGS_ADD, READINGS_SCALE};
 use crate::value_kinds::{decimal_from_text, for_aggregate, guard_finite, logical_or_type_error, AggregatePrep};
 use crate::wire::{de_cell, encode_cell};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -1018,7 +1018,7 @@ fn reading_plan(unit: Option<&ColumnUnit>, refused: Option<&str>, delta: Option<
         }
         Some(scale) => {
             if let Some(r) = refused {
-                return ReadingPlan::Refuse(Rc::new(unit_error(r)));
+                return ReadingPlan::Refuse(Rc::new(crate::unit_value::point_error(r)));
             }
             match delta {
                 None => ReadingPlan::Identity,
@@ -1040,8 +1040,8 @@ pub(crate) fn agg_unit_plan(op: AggOp, unit: Option<&ColumnUnit>, ty: Option<Fra
 fn dates_plan(ty: Option<FrameColType>, refused: Option<&str>) -> Option<ReadingPlan> {
     (ty == Some(FrameColType::Date) && refused.is_some()).then(|| {
         ReadingPlan::Refuse(Rc::new(sol_error(
-            ErrorCode::Type,
-            "Dates don't add up or scale. Cast to Number for the serials",
+            ErrorCode::Point,
+            "Dates don't add up or scale. Average them, or subtract two for the days between",
         )))
     })
 }

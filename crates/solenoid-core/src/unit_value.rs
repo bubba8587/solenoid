@@ -35,6 +35,11 @@ pub fn cells_mix_temperatures<'a>(cells: impl IntoIterator<Item = &'a crate::uni
 
 pub const READINGS_FOLD: &str = "A fold over readings must answer a reading each step, like MAX(acc, value).";
 
+/// A position used as an amount: two readings added, one scaled, a sum of them ([[E20]] pointError).
+pub fn point_error(detail: &str) -> SolError {
+    sol_error(ErrorCode::Point, detail)
+}
+
 pub fn unit_error(detail: &str) -> SolError {
     sol_error(
         ErrorCode::Unit,

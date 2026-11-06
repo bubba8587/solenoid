@@ -1898,7 +1898,7 @@
    }
   },
   {
-   "name": "readings on an offset scale: sum and product are #UNIT! in every group, the averages and picks stay readings, count is plain",
+   "name": "readings on an offset scale: sum and product are #POINT! in every group, the averages and picks stay readings, count is plain",
    "frames": {
     "in": {
      "columns": [
@@ -1996,10 +1996,10 @@
       "type": "number",
       "values": [
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        }
       ]
      },
@@ -2008,10 +2008,10 @@
       "type": "number",
       "values": [
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        }
       ]
      },
@@ -2604,7 +2604,7 @@
       "type": "number",
       "values": [
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        }
       ]
      },

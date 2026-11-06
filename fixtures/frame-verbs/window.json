@@ -3641,7 +3641,7 @@
    }
   },
   {
-   "name": "readings: cumsum is #UNIT! in every row, since readings have no sum",
+   "name": "readings: cumsum is #POINT! in every row, since readings have no sum",
    "frames": {
     "in": {
      "columns": [
@@ -3744,19 +3744,19 @@
       "type": "number",
       "values": [
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        }
       ]
      }
@@ -3764,7 +3764,7 @@
    }
   },
   {
-   "name": "readings: rolling_sum is #UNIT! in every row, since readings have no sum",
+   "name": "readings: rolling_sum is #POINT! in every row, since readings have no sum",
    "frames": {
     "in": {
      "columns": [
@@ -3868,19 +3868,19 @@
       "type": "number",
       "values": [
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        }
       ]
      }
@@ -3888,7 +3888,7 @@
    }
   },
   {
-   "name": "readings: group_sum is #UNIT! in every row, since readings have no sum",
+   "name": "readings: group_sum is #POINT! in every row, since readings have no sum",
    "frames": {
     "in": {
      "columns": [
@@ -3991,19 +3991,19 @@
       "type": "number",
       "values": [
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        }
       ]
      }
@@ -4011,7 +4011,7 @@
    }
   },
   {
-   "name": "readings: share is #UNIT! in every row, since a reading can't be divided",
+   "name": "readings: share is #POINT! in every row, since a reading can't be divided",
    "frames": {
     "in": {
      "columns": [
@@ -4114,19 +4114,19 @@
       "type": "number",
       "values": [
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        }
       ]
      }
@@ -4134,7 +4134,7 @@
    }
   },
   {
-   "name": "readings: pct_change is #UNIT! in every row, since a reading can't be divided",
+   "name": "readings: pct_change is #POINT! in every row, since a reading can't be divided",
    "frames": {
     "in": {
      "columns": [
@@ -4237,19 +4237,19 @@
       "type": "number",
       "values": [
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        },
        {
-        "__err": "#UNIT!"
+        "__err": "#POINT!"
        }
       ]
      }
