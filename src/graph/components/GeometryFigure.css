@@ -113,31 +113,29 @@
   padding: 0;
 }
 
-/* A card's control row above its figure: an input's socket on the edge, then the card's control and its readout. */
-.solenoid-node__io-row.solenoid-geo__control {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  height: auto;
-  padding: 4px 0;
-}
-
 .solenoid-geo__dial--wired {
   opacity: 0.55;
   pointer-events: none;
 }
 
-/* A figure's readout: names and values in two columns. */
+/* A figure's readout, tucked in its top-right corner: names and values in two columns. */
 .solenoid-geo__readout {
+  position: absolute;
+  top: 6px;
+  right: 8px;
   display: grid;
   grid-template-columns: auto auto;
   column-gap: 5px;
-  font-size: 11px;
-  line-height: 15px;
+  font-size: 10px;
+  line-height: 13px;
+  pointer-events: none;
 }
 
+/* The Unit Circle's dial, tucked in the figure's top-left corner. */
 .solenoid-geo__dial {
+  position: absolute;
+  top: 6px;
+  left: 6px;
   line-height: 0;
 }
 

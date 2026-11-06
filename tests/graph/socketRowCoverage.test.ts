@@ -26,9 +26,9 @@ const SRC = path.resolve(__dirname, "../../src/graph");
 // a `position: relative` `.solenoid-note__field-row`, the socket's positioning context
 // (NoteNode.css) — one dot per row, the same non-stacking guarantee.
 // FigureCard (the geometry figure cards' shell, GeometryCards.tsx) renders InlineInputs, EquationOutRow and
-// FrameOutRow, and FrameOutRow / InputSocketRow (GeometryFigure.tsx) measure their own row's `top` as EquationOutRow does.
+// FrameOutRow, and FrameOutRow (GeometryFigure.tsx) measures their own row's `top` as EquationOutRow does.
 const ROW_RENDERERS =
-  /InlineInputs|InlineOutputRows|MeasuredSocketRow|CollapsedInputPill|ExtensibleInputs|PairedExtensibleInputs|EquationVarRow|EquationOutRow|ReportRefRow|FieldRow|FigureCard|FrameOutRow|InputSocketRow/;
+  /InlineInputs|InlineOutputRows|MeasuredSocketRow|CollapsedInputPill|ExtensibleInputs|PairedExtensibleInputs|EquationVarRow|EquationOutRow|ReportRefRow|FieldRow|FigureCard|FrameOutRow/;
 
 /** Cards that place their own dots and own the geometry, with the reason. */
 const SANCTIONED: Record<string, string> = {

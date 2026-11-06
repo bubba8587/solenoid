@@ -1,6 +1,6 @@
 // [[C25]]
 
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { GraphNode } from "../graphModel";
 import type { Emit } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
@@ -61,17 +61,23 @@ export function RowPager({ row, rows, onStep }: { row: number; rows: number; onS
   );
 }
 
-/** An input's row with no field: its socket on the card's edge beside whatever control the card puts there. */
-export function InputSocketRow({ node, socketKey, emit, className, children }: { node: GraphNode; socketKey: string; emit: Emit; className?: string; children: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const top = useRowTop(ref);
-  const port = node.inputs[socketKey];
-  return (
-    <div ref={ref} className={`solenoid-node__io-row solenoid-node__io-row--input solenoid-geo__control${className ? ` ${className}` : ""}`}>
-      {top !== undefined && port && <NodeSocket side="input" socketKey={socketKey} nodeId={node.id} emit={emit} payload={port.socket} top={top} />}
-      {children}
-    </div>
-  );
+/** The socket top that centers a dot on `ref`'s element wherever it sits in the card: its offset summed up to the
+ *  card's content box (the sockets' positioning context), so it holds under canvas zoom. */
+export function useAnchorTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
+  const [top, setTop] = useState<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    let el: HTMLElement | null = ref.current;
+    if (!el) return;
+    const half = el.offsetHeight / 2;
+    let y = 0;
+    while (el && !el.classList.contains("solenoid-node__content")) {
+      y += el.offsetTop;
+      el = el.offsetParent as HTMLElement | null;
+    }
+    const t = y + half - 6;
+    if (t !== top) setTop(t);
+  });
+  return top;
 }
 
 /** A frame output's row: its socket beside the Preview. */
