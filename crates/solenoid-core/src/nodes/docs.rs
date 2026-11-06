@@ -1,8 +1,7 @@
-//! The cards that watch, format and write up values: Display and Alert, Expect ([[D79]] effectsEdgeTriggered,
-//! [[C25]] firstClassUnits, [[C45]] excelComparisons), the Format Controller ([[C118]] formatTravelsWithValue
-//! formatTravelsWithValue), Template, Frame Input ([[B17]] typedValueModel, [[C25]] firstClassUnits) and
-//! Record ([[B11]] maximalMerge, [[C114]] cardsView). Alert and Expect show what fired (`alertKey`, `alertMessage`);
-//! raising the toast, a card's memo, its socket reconcile and a frame ref's read stay with the TS around these bodies.
+//! [[D79]] effectsEdgeTriggered, [[C25]] firstClassUnits, [[C45]] excelComparisons, [[C118]] formatTravelsWithValue,
+//! [[B17]] typedValueModel, [[B11]] maximalMerge, [[C114]] cardsView.
+//! The cards that watch, format and write up values: Display, Alert, Expect, the Format Controller, Template, Frame
+//! Input and Record (`tree/specs/computation/node-bodies.md` § What has moved, Documents).
 
 use super::columns::{
     called_names, computed_column_type, frame_table, lambda_with_captures, named_lambda, plan_column_units, Definition,

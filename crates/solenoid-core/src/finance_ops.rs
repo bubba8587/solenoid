@@ -1,7 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec, [[C17]] shareImpl, [[C24]] arraySemantics, [[C44]] dateSerials
-//! Coupon schedules and day counts, bond prices and yields, odd coupons,
-//! VDB, the accrual and discount securities, the IRR / XIRR root finder, and the scalar return-series ops. A JS
-//! `Date` is its time value, NaN for an Invalid Date, so its getters and comparisons read as JS reads them.
+//! Coupon schedules and day counts, bond prices and yields, odd coupons, VDB, the accrual and discount securities, the
+//! IRR / XIRR root finder and the scalar return-series ops; a JS `Date` is its time value, NaN for an Invalid Date.
 use crate::date_serial::{date_utc, parts_of_ms, MS_PER_DAY};
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::jsnum::{nan_max, nan_min, round_half_up};

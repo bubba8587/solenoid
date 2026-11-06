@@ -1,8 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! The function bodies first ported from Formula.js 4.6.1 that a formula reaches straight through (no internal
-//! registration over them): engineering, radix and statistics helpers. They read their arguments as Excel does
-//! (`parse_number`: text is #VALUE!, never a number, [[C10]] socketLattice), checked against Excel's documented answers
-//! (`tests/excel_examples.rs`).
+//! The bodies first ported from Formula.js 4.6.1 that a formula reaches directly: engineering, radix and statistics
+//! helpers, reading arguments as Excel does (`parse_number`, [[C10]] socketLattice), held to `tests/excel_examples.rs`.
 
 #![allow(clippy::excessive_precision, clippy::approx_constant)]
 

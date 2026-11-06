@@ -1,7 +1,6 @@
-//! [[D90]] cubeTypesAtDepth, [[C28]] literalsIffEditable: Cube Input's source text read into the cube its formula
-//! columns run over. The text is a JSON array of records, or `{ columns, rows, nested }` when a column carries a type
-//! or a formula, or a nested table a declaration; a record's keys are read in JavaScript's order, an array index
-//! first, since the Cube popup's editor reads the same text with `JSON.parse` (`parseCubeSource`).
+//! [[D90]] cubeTypesAtDepth, [[C28]] literalsIffEditable.
+//! Cube Input's source text read into the cube its formula columns run over, as the Cube popup's `parseCubeSource`
+//! reads it (`tree/specs/computation/frame-verbs.md` § The Cube value).
 
 use super::list::{frame_cell_of, infer_column, list_item_of};
 use super::{list, Column, Cube, CubeColumn, Cv, Frame};

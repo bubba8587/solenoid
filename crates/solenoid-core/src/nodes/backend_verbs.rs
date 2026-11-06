@@ -1,9 +1,6 @@
-//! [[B17]] typedValueModel, [[C48]] appendLadder. The frame cards whose verb reads whole frames at once or reads a
-//! ref's columns: Join, Append and Bind Columns run their verb on their inputs' frames (a ref's plan run first) and
-//! answer a ref planning nothing yet, or one frame passed on. Table Size counts a ref's rows without reading them.
-//! Slicer and PIVOTBY over a ref read its schema, then the columns they need. PIVOTBY runs on the core's pivot and
-//! keeps its layout beside the frame. A saved field the frame lacks is skipped, never dropped, so it returns when its
-//! column does.
+//! [[B17]] typedValueModel, [[C48]] appendLadder.
+//! The frame cards whose verb reads whole frames or a ref's columns: Join, Append, Bind Columns, Table Size, Slicer and
+//! PIVOTBY (`tree/specs/computation/node-bodies.md` § What has moved, Backend frame verbs).
 
 use super::frames::{card as first, core_cell, from_core, json_num, str_input, to_core, trimmed};
 use super::list::literal_items;

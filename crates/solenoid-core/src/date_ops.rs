@@ -1,12 +1,12 @@
 // [[C130]] rustCore, [[C44]] dateSerials
-//! The date arithmetic: DATEDIF, DAYS360, YEARFRAC, DATETRUNC, the epoch
-//! conversions and the working-day counts. A JS `Date` is its time value, None for an Invalid Date, whose getters
-//! read NaN.
+//! The date arithmetic: DATEDIF, DAYS360, YEARFRAC, DATETRUNC, the epoch conversions and the working-day counts
+//! (`tree/specs/computation/formula-language.md` § Date kernels).
 
 use crate::date_serial::{date_utc, days_from_civil, parts_of_ms, serial_to_ms, MS_PER_DAY};
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::jsnum::{nan_max as js_max, nan_min as js_min, round_half_up};
 
+/// A JS `Date` as its time value, None for an Invalid Date, whose getters read NaN.
 type Date = Option<f64>;
 
 /// The UTC getters: year, month (0-based), day, weekday; NaN for an Invalid Date.

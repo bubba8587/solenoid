@@ -1,6 +1,5 @@
-// Expression's unit wrapper ([[C25]] firstClassUnits, unit-flow § Expression): `ExpressionNode.data()` once its
-// inputs are read. The formula's dimension is checked, one shared linear display unit makes the formula run on the
-// numbers the user reads, a point weight classifies a formula over readings (°C), and the result is tagged again.
+// Expression's unit wrapper ([[C25]] firstClassUnits, unit-flow § Expression), `ExpressionNode.data()` once its inputs
+// are read: the dimension check, the display unit the formula runs in, the point weight and the result's unit.
 
 use std::collections::BTreeMap;
 use std::rc::Rc;

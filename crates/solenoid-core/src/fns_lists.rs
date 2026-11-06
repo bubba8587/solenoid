@@ -1,7 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! The list, set, series and signal bodies, the returns, and SPARKLINE's picture. A list cell arrives raw; a body reads
-//! it as a number with `num_blank_zero` (a blank as 0, a logical as 1 or 0, text never). The set functions compare a
-//! nested list by its items.
+//! The list, set, series and signal bodies, the returns, and SPARKLINE's picture
+//! (`tree/specs/computation/formula-language.md` § Lists).
 
 use std::collections::HashSet;
 use std::rc::Rc;

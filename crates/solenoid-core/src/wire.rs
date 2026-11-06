@@ -1,7 +1,6 @@
 // [[C130]] rustCore
-//! The wire format `frameBackend.ts` speaks to an engine (`encodeWireCell` / `decodeWireCell`):
-//! JSON cells, non-finite numbers as `{"__nf": …}`, errors as `{"__err": code, "ref"?}`. An error
-//! this engine makes also carries its message as `"msg"`, so it downloads with the oracle's text.
+//! The JSON cell wire `frameBackend.ts` speaks to an engine (`encodeWireCell` / `decodeWireCell`), non-finite numbers
+//! and errors tagged (`tree/specs/computation/frame-verbs.md` § The frame store).
 
 use std::rc::Rc;
 

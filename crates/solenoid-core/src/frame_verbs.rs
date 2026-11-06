@@ -1,8 +1,6 @@
-// [[C130]] rustCore
-//! The frame verbs the backend runs (every `FrameOp` but
-//! pivot, plus join, append, bindColumns and sampling).
-//! Each verb also decides the unit and format its columns carry ([[C25]] firstClassUnits, [[C118]] formatTravelsWithValue
-//! formatTravelsWithValue): a column that keeps its cells keeps them; the rest are below, verb by verb.
+// [[C130]] rustCore, [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue
+//! The frame verbs the backend runs (every `FrameOp` but pivot, plus join, append, bindColumns and sampling); each
+//! decides the unit and format its columns carry, noted verb by verb (`tree/specs/computation/frame-verbs.md`).
 
 use std::borrow::Cow;
 use std::cmp::Ordering;

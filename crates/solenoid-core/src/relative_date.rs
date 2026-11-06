@@ -1,8 +1,6 @@
 // [[C44]] dateSerials
-//! Relative date phrases ("today", "next friday", "in 3 days", "2 weeks ago"), read by interim (`crates/vendor/interim`,
-//! patched as its PATCHES.md says) at an instant, as the calendar day the phrase lands on in the host's zone. "next
-//! friday" is the Friday of next week and a bare "friday" the coming one (interim's UK reading). A phrase with a
-//! four-digit run is never relative (`is_relative`).
+//! Relative date phrases read by interim (`crates/vendor/interim`) at an instant, as the calendar day the phrase lands
+//! on in the host's zone (`tree/specs/computation/formula-language.md` § Date kernels, `parseDate`).
 
 use interim::{parse_date_string, Dialect};
 use jiff::{tz::TimeZone, Timestamp};

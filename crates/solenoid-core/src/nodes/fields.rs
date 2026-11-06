@@ -1,8 +1,6 @@
 // [[C28]] literalsIffEditable, [[C10]] socketLattice, [[D96]] emptySlotShowsItsValue
-//! The one field an unwired input shows, by its card, its key and its declared rung: the canvas draws it
-//! (`literalFieldOf` asks here over wasm), a body reads the input through it (`Call::unwired`), and a load drops what
-//! it doesn't read (`pruneLiterals`). One rule, so a value can't sit in a map the card doesn't show
-//! (`tree/specs/documents/inline-literal-maps.md` § One field per input).
+//! The one field an unwired input shows: the canvas draws it, a body reads the input through it (`Call::unwired`) and a
+//! load drops what it doesn't read (`tree/specs/documents/inline-literal-maps.md` § One field per input).
 
 use super::{decode, err, Call};
 use crate::error_value::ErrorCode;

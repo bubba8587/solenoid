@@ -1,10 +1,6 @@
 // [[C130]] rustCore, [[C44]] dateSerials
-//! The time zones a date reads: the host's local zone and IANA zones. An IANA zone is read from jiff's bundled tzdb
-//! (`jiff-tzdb`) in every build, with the names ICU takes beside it, so the browser and the desktop agree. The local
-//! zone is the host's: the JavaScript engine's in the wasm, UTC natively (desktop, `cargo test`).
-//!
-//! A date here is a JS time value: milliseconds since 1970 UTC, NaN for an Invalid Date. The local-time methods below
-//! follow V8's `Date.prototype` (LocalTime, then MakeDay / MakeTime, then UTC and TimeClip).
+//! The time zones a date reads (the host's local zone, and IANA zones from jiff's bundled tzdb) over a JS time value:
+//! ms since 1970 UTC, NaN for an Invalid Date, as V8's `Date` reads it (`tree/specs/computation/rust-core.md`).
 
 use crate::date_serial::{civil_from_days, days_from_civil};
 

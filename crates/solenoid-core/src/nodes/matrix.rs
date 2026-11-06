@@ -1,6 +1,6 @@
-//! [[C58]] tableInputRawText, [[C48]] appendLadder, [[B11]] maximalMerge, [[B14]] oneDesignSystem, [[C50]]
-//! lambdaBindsByName. The linear-algebra cards and the LAMBDA helpers over a
-//! table.
+//! [[C58]] tableInputRawText, [[C48]] appendLadder, [[B11]] maximalMerge, [[B14]] oneDesignSystem,
+//! [[C50]] lambdaBindsByName.
+//! The linear-algebra cards and the LAMBDA helpers over a table.
 
 use super::kit::{core_call, num};
 use super::list::{frame_cell_of, js_number, nullish, slot};

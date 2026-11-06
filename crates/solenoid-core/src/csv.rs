@@ -1,7 +1,6 @@
 // [[C103]] untrustedContentSeams, [[C130]] rustCore
-//! CSV text read and written by the `csv` crate, with Solenoid's layers on top: newlines normalized, the delimiter
-//! guess, the blank-line options and the typed columns read off text cells. Held to frozen answers by `tests/csv.rs`
-//! (`fixtures/core/csv-*.json.gz`, frozen by `tests/graph/coreCsv.test.ts`).
+//! CSV text on the `csv` crate with Solenoid's layers on top (`tree/specs/computation/frame-verbs.md` § Reading CSV
+//! text), held to the frozen `fixtures/core/csv-*.json.gz` by `tests/csv.rs`.
 
 use std::borrow::Cow;
 

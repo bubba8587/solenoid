@@ -1,7 +1,5 @@
-//! Sums rounded once, at the end: the exact total of the numbers added, to the nearest double, whatever order they come
-//! in (Shewchuk's partials, as Python's `math.fsum`), then snapped to 0 where the numbers as written cancel (`snap`). An
-//! order-free sum is what lets a criteria sum read a sorted run and a rolling sum slide, each answering as a fresh scan
-//! does ([[C120]] linearWork); `tree/specs/computation/formula-language.md` § Sums.
+//! Sums rounded once, at the end (Shewchuk's partials, as Python's `math.fsum`), then snapped to 0 where the numbers
+//! as written cancel (`snap`): order-free ([[C120]] linearWork, `tree/specs/computation/formula-language.md` § Sums).
 
 /// A running exact sum, held as non-overlapping partials, its infinities and NaNs counted beside them.
 #[derive(Clone, Debug, Default)]

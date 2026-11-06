@@ -1,8 +1,6 @@
 // [[C130]] rustCore, [[C24]] arraySemantics, [[C23]] calcModes
-//! A lazy frame (`tree/specs/computation/frame-verbs.md` § Lazy frames): a frame and a plan of verbs not yet run on
-//! it. A verb card extends the plan; the plan runs once, when something reads the frame, and its answer is kept with
-//! the ref, so a ref read by several cards runs once, and a ref extending another runs only its own ops on the other's
-//! answer. A ref holds its frames, so they go when nothing holds the ref.
+//! A lazy frame: a frame and a plan of verbs not yet run on it, run once when something reads it and kept with the ref
+//! (`tree/specs/computation/frame-verbs.md` § Lazy frames).
 
 use std::any::Any;
 use std::cell::{Cell, RefCell};
@@ -54,7 +52,7 @@ pub fn sketch() -> bool {
     SKETCH.with(Cell::get)
 }
 
-/// A frame and the verbs planned on it, as the cards wrote them.
+/// A frame and the verbs planned on it, as the cards wrote them; it holds its frames, so they go when nothing holds it.
 pub struct FrameRef {
     base: Rc<FrameValue>,
     plan: Vec<Json>,

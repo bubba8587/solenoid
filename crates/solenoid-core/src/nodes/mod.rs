@@ -1,8 +1,6 @@
-//! [[C130]] rustCore, [[D99]] rustIsSpec: the cards' bodies, each class's `data()`, on the core. A card keeps its
-//! TypeScript class (its sockets, its saved fields, its component); its body is one `engine_node` call that names the
-//! class and carries what a save holds, the socket types and the inputs as arrival coercion left them. The answer is
-//! the outputs, or the error the body threw, beside the fields the body sets on the card for its component.
-//! `tree/specs/computation/node-bodies.md` is the mechanism; `fixtures/core/nodes/` the answers each body is held to.
+//! [[C130]] rustCore, [[D99]] rustIsSpec.
+//! The cards' bodies, each class's `data()`, on the core: one `engine_node` call per body, answering its outputs or its
+//! error beside the fields it sets for its component (`tree/specs/computation/node-bodies.md`).
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::V;

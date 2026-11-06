@@ -22,9 +22,10 @@ specific item.
   `docs/google-style/` (the author's call), `stillGranted` in `androidFolders.ts` (unused, but the Android grant check
   it is for is new), the `__hcDiag` / `__hcProbe` diagnostics (`tree/specs/canvas/html-in-canvas.md` documents them), `build:wasm:opt`
   (the author's release step).
-- **Open:** module headers over two lines (about 170 files, `tree/specs/floors/engineering.md` § Comments); `palette.ts`'s dated
-  OKLCH ruling wants a leaf or a DESIGN.md line; `.claude/settings.json` allows `npx tsx scripts/parity.ts` and
-  `npx tsc *`, both stale.
+- **Module headers** are two lines at most in 82 files (`tree/specs/floors/engineering.md` § Comments): what the spec
+  already said went, a sentence about one item moved onto it, and noteHtml's network-gate rule moved into
+  `reports-and-notes.md`. The palette's OKLCh comment points at DESIGN.md, which holds the ruling.
+- **Open:** `.claude/settings.json` allows `npx tsx scripts/parity.ts` and `npx tsc *`, both stale.
 
 ### SESSION DIGEST (2026-11-06: geometry figure cards, pack seeds and examples, pack constants, formula layout, the Element card; cloud session)
 - **Geometry figure cards** (the author 2026-11-06): Triangle Solver, Unit Circle, Circle Solver, Regular Polygon,

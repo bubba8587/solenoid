@@ -1,8 +1,6 @@
 // [[B12]] losslessSaves, [[B16]] oneFormulaSurface, [[C130]] rustCore
-//! The text form a save passes through (`tree/specs/documents/save-format.md` § The text form): a line per node in
-//! dependency order (`Name: Type field=value lit:key=n str:key="t" input<-Source.output`), then `---` and a JSON
-//! sidecar of positions and side tables. The app names the nodes and owns the init field order (`textForm.ts`);
-//! everything else is here.
+//! The text form a save passes through (`tree/specs/documents/save-format.md` § The text form); the app names the nodes
+//! and owns the init field order (`textForm.ts`), everything else is here.
 
 use std::collections::{HashMap, HashSet};
 

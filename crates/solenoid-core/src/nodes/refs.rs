@@ -1,6 +1,6 @@
-//! [[C130]] rustCore. Lazy frames on a card's wire (`frame_ref.rs`, `tree/specs/computation/frame-verbs.md` § Lazy
-//! frames): a verb plans over a frame value by taking it into the core once per frame, and a reader reads a ref as a
-//! card's frame, its first rows as the card's preview, or one column.
+//! [[C130]] rustCore.
+//! Lazy frames on a card's wire: a verb plans over a frame value taken into the core once, and a reader reads a ref
+//! whole, as a preview or one column (`frame_ref.rs`, `tree/specs/computation/frame-verbs.md` § Lazy frames).
 
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};

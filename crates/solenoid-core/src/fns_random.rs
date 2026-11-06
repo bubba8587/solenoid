@@ -1,7 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! The random draws: Formula.js's RAND and RANDBETWEEN, and RANDARRAY, RANDDIST, SHUFFLE, RANDSAMPLE and UUID. Each draw is
-//! `Math.random()`'s kind, uniform over [0, 1) and fresh per call: the browser's own in wasm, a seeded generator
-//! natively. UUID's bytes come from `crypto.getRandomValues` where the browser has it.
+//! The random draws (RAND, RANDBETWEEN, RANDARRAY, RANDDIST, SHUFFLE, RANDSAMPLE, UUID), each `Math.random()`'s kind:
+//! uniform over [0, 1) and fresh per call, the browser's own in wasm and a seeded generator natively.
 
 use crate::dists::{bisection_inv, compute, Form};
 use crate::error_value::sol_error;

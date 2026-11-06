@@ -1,8 +1,6 @@
 // [[C130]] rustCore, [[C24]] arraySemantics, [[C10]] socketLattice, [[B17]] typedValueModel, [[C25]] firstClassUnits, [[E9]] errorsKeepOrigin, [[D86]] blankRoles
 //! The input boundary every node's `data()` call goes through (`tree/specs/computation/compute-pass.md` § The per-node
-//! wrappers): the error guard's short-circuit, the lazy frames' collect, the unit boundary, the rung's coercion and
-//! the typed list literals on the way in; the frame format stamp and the guard's origin tagging on the way out; a
-//! throw or a rejection read as the guard's error. The values are the app's JavaScript objects, walked in place.
+//! wrappers), on the way in and out; the values are the app's JavaScript objects, walked in place.
 
 use std::cell::RefCell;
 use std::rc::Rc;

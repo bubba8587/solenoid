@@ -1,8 +1,6 @@
 // [[C130]] rustCore
-//! Solenoid's graph: the canvas's nodes and cables in a netcore-rs editor
-//! (<https://github.com/bubba8587/netcore-rs>), its dataflow engine, and the compute pass's graph
-//! walks (`tree/specs/computation/graph-core.md`). It links `solenoid-core` and is the one
-//! WebAssembly module, so the engine calls a card's body in Rust.
+//! Solenoid's graph (`tree/specs/computation/graph-core.md`): the canvas's netcore-rs editor, its dataflow engine and
+//! the compute pass's walks; it links `solenoid-core` and is the one WebAssembly module.
 #![forbid(unsafe_code)]
 
 // Linked whole, so the core's own wasm entries (`engine_invoke` and the rest) are this module's too.

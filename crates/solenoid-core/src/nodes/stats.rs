@@ -1,6 +1,6 @@
-//! [[C130]] rustCore, [[B11]] maximalMerge, [[C17]] shareImpl. The stats cards' bodies: order statistics,
-//! correlation and regression, the hypothesis tests, interpolation and the fits. Most share their kernel with a
-//! formula function.
+//! [[C130]] rustCore, [[B11]] maximalMerge, [[C17]] shareImpl.
+//! The stats cards' bodies: order statistics, correlation and regression, the hypothesis tests, interpolation and the
+//! fits, most sharing their kernel with a formula function.
 
 use super::kit::{broadcast_err, core_call, num};
 use super::Cv;

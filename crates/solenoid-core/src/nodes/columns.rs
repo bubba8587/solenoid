@@ -1,9 +1,7 @@
-//! The computed columns: Computed Column ([[B17]] typedValueModel, [[C48]]) and Cube Input's formula columns
-//! ([[C10]] socketLattice, [[C28]] literalsIffEditable), with what they share with Frame Input: the unit plan
-//! ([[C25]] firstClassUnits), a Cube as a row formula reads it ([[C22]]
-//! rowFormulaRefs) and a column's type. Over a frame ref the formula runs on the plan's answer and only the new column
-//! is made, the rest of the frame shared (`on_ref`). A Cube Input's records are read by the card's TS: the text's key
-//! order is JS's.
+//! [[B17]] typedValueModel, [[C48]] appendLadder, [[C10]] socketLattice, [[C28]] literalsIffEditable,
+//! [[C25]] firstClassUnits, [[C22]] rowFormulaRefs.
+//! Computed Column and Cube Input's formula columns, with what they share with Frame Input: the unit plan, a Cube as a
+//! row formula reads it and a column's type (`tree/specs/computation/computed-columns.md`).
 
 use super::docs::{column_unit_parts, unit_err, UnitParts};
 use super::frames::{

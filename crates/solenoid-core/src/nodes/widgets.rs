@@ -1,8 +1,7 @@
-//! [[C28]] literalsIffEditable, [[C44]] dateSerials, [[C118]] formatTravelsWithValue, [[C23]] calcModes
-//! calcModes, [[C103]] untrustedContentSeams. The input widgets' bodies (Value Input,
-//! Slider, Color Picker and Blend, Angle Dial, XY Pad, Curve, Grid Painter, Point Plotter, Date Range, Constant, Input
-//! Switch), RAND over the roll its shell drew, and SVG Picker over the markup its shell scrubbed. Colours read as
-//! `colord` with its names plugin reads them.
+//! [[C28]] literalsIffEditable, [[C44]] dateSerials, [[C118]] formatTravelsWithValue, [[C23]] calcModes,
+//! [[C103]] untrustedContentSeams.
+//! The input widgets' bodies (Value Input, Slider, Color Picker and Blend, Angle Dial, XY Pad, Curve, Grid Painter,
+//! Point Plotter, Date Range, Constant, Input Switch), RAND over its shell's roll, SVG Picker over its scrubbed markup.
 
 use super::frames::{cube_from_columns, json_num};
 use super::values::{Column, CubeColumn, Frame};

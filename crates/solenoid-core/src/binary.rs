@@ -1,11 +1,6 @@
 // [[C130]] rustCore
-//! The columnar hand-off between JS and the engine, for the frames that cross in bulk (source,
-//! collect, column, preview). Every cell has a tag; numbers ride a dense `f64` buffer (so NaN,
-//! the infinities and -0 cross as themselves); text rides one string, cut by UTF-16 lengths.
-//! An error cell is its code and message in the text, its JS reference (or NaN) in the numbers; one that carries the
-//! node it started at ([[E9]] errorsKeepOrigin) has its own tag and the origin's node id, name and input slot after
-//! them, so a column with a few such errors still crosses as buffers.
-//! A column's unit and format ride in its schema entry.
+//! The columnar hand-off between JS and the engine for frames that cross in bulk (source, collect, column, preview): a
+//! tag per cell, numbers in a dense `f64` buffer, text in one string (`tree/specs/computation/frame-verbs.md`).
 
 use std::rc::Rc;
 
@@ -20,6 +15,7 @@ pub const TAG_NUM: u8 = 1;
 pub const TAG_STR: u8 = 2;
 pub const TAG_FALSE: u8 = 3;
 pub const TAG_TRUE: u8 = 4;
+/// An error: its code and message in the text, its JS reference (or NaN) in the numbers.
 pub const TAG_ERR: u8 = 5;
 /// An error with its origin: node id and name after the message.
 pub const TAG_ERR_AT: u8 = 6;
@@ -40,6 +36,8 @@ struct SchemaColumn {
     format: Option<Json>,
 }
 
+/// The buffers: `nums` carries NaN, the infinities and -0 as themselves, `strs` is cut by UTF-16 lengths, and a
+/// column's unit and format ride in its `schema` entry.
 #[derive(Default)]
 pub struct Columnar {
     pub schema: Vec<Json>,

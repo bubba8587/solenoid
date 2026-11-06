@@ -1,9 +1,6 @@
 // [[C130]] rustCore, [[C120]] linearWork
-//! How long the core's hot paths take at a large table's scale (800,000 rows, the Engine Speed Test seed's), native
-//! and optimized: `cargo bench --bench core` (`-- <name>` runs only the matching ones). Each case runs a few times and
-//! reports the fastest, since a background spike only ever adds time. Every formula run gets its own freshly built list,
-//! so the core's memo of a repeated call (`eval::formula`'s kept formulas) can't answer it. Numbers to compare across changes, not a gate:
-//! the engine ships as wasm, which runs slower, and `tests/graph/wasmEngineBench.test.ts` times that end to end.
+//! The core's hot paths timed natively at 800,000 rows (the Engine Speed Test seed's): `cargo bench --bench core`
+//! (`-- <name>` runs the matching ones). For comparing changes, not a gate: `wasmEngineBench.test.ts` times the wasm.
 
 use solenoid_core::eval::{formula, Env};
 use solenoid_core::excel_functions::V;
@@ -17,6 +14,7 @@ const RUNS: usize = 5;
 
 type Case<'a> = Box<dyn FnMut(usize) + 'a>;
 
+/// The fastest of `RUNS` runs, since a background spike only ever adds time.
 fn best(mut f: impl FnMut(usize)) -> Duration {
     (0..RUNS)
         .map(|i| {

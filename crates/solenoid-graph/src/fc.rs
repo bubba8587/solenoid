@@ -1,7 +1,6 @@
 // [[C25]] firstClassUnits, [[C130]] rustCore
-//! The Format Controller reconcile (`tree/specs/values/type-propagation-on-in-place-socket-retype.md`): each FC's type,
-//! from what it is docked on or wired to, and the from-unit a Convert ahead dictates to it; and each Convert's arrows.
-//! Each node's facts are the app's (`fcFacts.ts`); the order and the cables are the graph's.
+//! The Format Controller reconcile (`tree/specs/values/type-propagation-on-in-place-socket-retype.md`): each FC's type
+//! and dictated from-unit and each Convert's arrows, from the app's node facts (`fcFacts.ts`) and the graph's cables.
 
 use std::collections::{HashMap, HashSet};
 

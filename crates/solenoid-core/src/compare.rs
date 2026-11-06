@@ -1,7 +1,6 @@
 // [[D124]] comparisonFunctions, [[C45]] excelComparisons, [[C10]] socketLattice
-//! The one comparison: the operators `=` `<>` `<` `>` `<=` `>=`, the functions IS, ISNOT, ABOVE, BELOW, ATLEAST,
-//! ATMOST and BETWEEN, and the Comparison and Between cards all answer through `compare`
-//! (`tree/specs/computation/formula-language.md` § Scalar operators).
+//! The one comparison: the operators, IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST, BETWEEN and the Comparison and Between
+//! cards all answer through `compare` (`tree/specs/computation/formula-language.md` § Scalar operators).
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_formula::{same_to_15, BinOp};

@@ -1,6 +1,6 @@
-//! [[C130]] rustCore, [[B11]] maximalMerge, [[C25]] firstClassUnits. The finance cards' bodies:
-//! depreciation, cash flows, securities, coupons, bonds, payments and returns. A card reads its money as its formula
-//! does, and a money answer carries that currency.
+//! [[C130]] rustCore, [[B11]] maximalMerge, [[C25]] firstClassUnits.
+//! The finance cards' bodies (depreciation, cash flows, securities, coupons, bonds, payments, returns): a card reads
+//! its money as its formula does, and a money answer carries that currency.
 
 use super::kit::{core_call, guard_finite};
 use super::stats::{first, js_num, nullish, or, read_role, Role};

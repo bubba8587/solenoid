@@ -1,6 +1,5 @@
 // The LAMBDA folds' unit wrapper ([[C25]] firstClassUnits, unit-flow § LAMBDA hosts over a 1-D list): REDUCE, SCAN,
-// BYROW and BYCOL strip the cells to the display unit they share (else base SI), fold, and tag the result with the
-// formula's dimension once its formula resolves.
+// BYROW and BYCOL fold on the magnitudes in the cells' shared unit and tag the result with the formula's dimension.
 
 use std::rc::Rc;
 

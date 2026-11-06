@@ -1,8 +1,6 @@
-//! [[B17]] typedValueModel, [[C48]] appendLadder, [[C49]] filterOneJob. The lazy frame verbs
-//! and SUMIFS. A verb never runs on a frame: it reads its settings and extends its input's plan by one op
-//! (`frame_ref.rs`), in the shape the verbs read, which runs when something reads the frame; the card shows the
-//! answer's first rows (`refs::preview`). A Cube runs its verb on its cells here, the scalar columns through the core's
-//! frame verbs. Get Column and SUMIFS read cells: a ref's columns are read from its plan's answer.
+//! [[B17]] typedValueModel, [[C48]] appendLadder, [[C49]] filterOneJob.
+//! The lazy frame verbs and SUMIFS: a verb extends its input's plan by one op rather than run on a frame, and runs on
+//! a Cube's cells here (`tree/specs/computation/frame-verbs.md` § Lazy frames, `node-bodies.md` § What has moved).
 
 use super::frames::{
     affine_display, card as first, card_cell, core_cell, cube_from_columns, cube_row_count, cube_values, from_core,

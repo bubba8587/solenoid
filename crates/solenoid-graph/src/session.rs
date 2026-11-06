@@ -1,8 +1,6 @@
 // [[C23]] calcModes, [[D79]] effectsEdgeTriggered
-//! The compute pass's state between passes (`tree/specs/computation/compute-pass.md` § Entry order, § Calc modes and
-//! the dirty flag, § Volatile nodes and the recalc generation, § Rebuild scopes): the calc mode, the dirty flag, the
-//! force-exact depth, the recalc generation, the rebuild depth and its topology flag, and the single-flight flags with
-//! the rerun a pass in flight coalesces. The host calls the transitions and keeps the snapshot they answer.
+//! The compute pass's state between passes (`tree/specs/computation/compute-pass.md` § Entry order): calc mode, dirty
+//! flag, generation, rebuild depth and single flight; the host keeps the snapshot each transition answers.
 
 /// The calculation mode, per browser.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]

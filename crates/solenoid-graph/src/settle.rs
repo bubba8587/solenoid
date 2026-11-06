@@ -1,7 +1,6 @@
 // [[C10]] socketLattice, [[C130]] rustCore
-//! The Type Settle: Conduit lane typing and adoption, run to a joint fixpoint over the graph
-//! (`tree/specs/values/type-propagation-on-in-place-socket-retype.md`). Each node's facts are the app's
-//! (`settleFacts.ts`); the order and the cables are the graph's.
+//! The Type Settle (`tree/specs/values/type-propagation-on-in-place-socket-retype.md`): Conduit lane typing and
+//! adoption to a joint fixpoint, from the app's node facts (`settleFacts.ts`) and the graph's order and cables.
 
 use std::collections::{BTreeSet, HashMap};
 

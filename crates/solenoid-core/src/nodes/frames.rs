@@ -1,6 +1,7 @@
-//! [[B17]] typedValueModel, [[C48]] appendLadder, [[C10]] socketLattice, [[C28]] literalsIffEditable, [[B11]]
-//! maximalMerge, [[C17]] shareImpl. The bodies of the cards whose answer is a frame or a cube (the lazy verbs stay on
-//! the frame backend): a body reads its inputs, calls the core on its frame, and carries the units and formats back.
+//! [[B17]] typedValueModel, [[C48]] appendLadder, [[C10]] socketLattice, [[C28]] literalsIffEditable,
+//! [[B11]] maximalMerge, [[C17]] shareImpl.
+//! The bodies of the cards whose answer is a frame or a cube (the lazy verbs stay on the frame backend): a body reads
+//! its inputs, calls the core on its frame, and carries the units and formats back.
 
 use super::stats::{read_role, Role};
 use super::Cv;

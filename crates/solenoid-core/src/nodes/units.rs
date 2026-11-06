@@ -1,6 +1,5 @@
-//! A card's arithmetic on values with a unit ([[C25]] firstClassUnits). A cell carries its
-//! display unit's scale and offset across the wire, so a body reads them off the cell; a cell it makes in another
-//! cell's unit borrows that cell's.
+//! A card's arithmetic on values with a unit ([[C25]] firstClassUnits): a cell carries its display unit's scale and
+//! offset across the wire, so a body reads them off the cell, and a cell made in another's unit borrows that cell's.
 
 use super::err;
 use super::kit::{guard_finite, short_circuit};

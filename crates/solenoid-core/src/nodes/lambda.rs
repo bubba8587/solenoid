@@ -1,7 +1,6 @@
 //! [[C50]] lambdaBindsByName, [[C22]] rowFormulaRefs, [[C25]] firstClassUnits.
-//! The LAMBDA card, a body over its parameters that captures every other name it reads, wired or
-//! typed. Its value crosses back as its text and its captures (`values::serialize_lambda`), which the card's TS
-//! compiles into a callable LAMBDA.
+//! The LAMBDA card: a body over its parameters that captures every other name it reads, crossing back as its text and
+//! captures (`values::serialize_lambda`) for the card's TS to compile.
 
 use super::list::strip_unit_cells;
 use super::Cv;

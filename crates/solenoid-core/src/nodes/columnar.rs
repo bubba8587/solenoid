@@ -1,6 +1,6 @@
-//! [[C130]] rustCore, [[C120]] linearWork. A frame's or a list's cells on the card wire as the columnar hand-off
-//! carries them (`binary.rs`), where every cell is a number, text, a logical, a blank or an error (its origin too): a
-//! copy in place of JSON text. Anything else crosses as JSON (`values.rs`).
+//! [[C130]] rustCore, [[C120]] linearWork.
+//! A frame's or a list's cells on the card wire in the columnar hand-off (`binary.rs`) when every cell is flat, a copy
+//! in place of JSON text (`tree/specs/computation/node-bodies.md` § The call).
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;

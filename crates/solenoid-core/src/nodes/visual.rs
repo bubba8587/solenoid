@@ -1,6 +1,6 @@
-//! [[B11]] maximalMerge, [[C96]] chartOptionsAreMatplotlib, [[C100]] chartIsAValue. The figure
-//! cards, each answering its chart whole as `Cv::Json` (tagged as `nodeWire.ts` `jsonEnc` writes it), with the option
-//! reader, the XY reader and the frame-column readers they share.
+//! [[B11]] maximalMerge, [[C96]] chartOptionsAreMatplotlib, [[C100]] chartIsAValue.
+//! The figure cards, each answering its chart whole as `Cv::Json` (tagged as `nodeWire.ts` `jsonEnc` writes it), with
+//! the option reader, the XY reader and the frame-column readers they share.
 
 use super::scalar::{read_role, Role};
 use super::Cv;

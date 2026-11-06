@@ -1,6 +1,6 @@
-//! [[C69]] ganttPackages, [[D68]] importUnsupportedIsNamed. The plan-file readers (`solenoid_schedule`) in the JSON
-//! the app's import reads: a file's tasks in `PlanTask`'s shape (`src/graph/planTypes.ts`), and a cell's
-//! predecessor text.
+//! [[C69]] ganttPackages, [[D68]] importUnsupportedIsNamed.
+//! The plan-file readers (`solenoid_schedule`) in the JSON the app's import reads: a file's tasks in `PlanTask`'s shape
+//! (`src/graph/planTypes.ts`), and a cell's predecessor text.
 
 use serde_json::{json, Map, Value as Json};
 use solenoid_schedule::{

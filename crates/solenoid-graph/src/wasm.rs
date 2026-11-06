@@ -1,8 +1,6 @@
 // [[C130]] rustCore
-//! The WebAssembly entry: one `GraphCore` per editor, holding its graph (`model.rs`) with the nodes'
-//! and cables' JavaScript objects, the pipes `src/graph/graphEditor.ts` adds, and the dataflow
-//! engine `src/graph/dataflowEngine.ts` drives, which calls a direct card's body in Rust
-//! (`direct.rs`) and every other card's `data()` in JavaScript.
+//! The WebAssembly entry (`tree/specs/computation/graph-core.md`): one `GraphCore` per editor, holding its graph
+//! (`model.rs`), the pipes `graphEditor.ts` adds and the engine `dataflowEngine.ts` drives.
 
 use std::cell::{Cell, RefCell};
 use std::fmt;

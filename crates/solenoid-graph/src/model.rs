@@ -1,7 +1,6 @@
 // [[C130]] rustCore
-//! The graph model: a netcore-rs editor whose nodes are classic nodes (ports and their socket types)
-//! beside the host's own node object, its cables, the signals it sends the host's pipes, and the
-//! dataflow engine attached to it (`tree/specs/computation/graph-core.md` § The model).
+//! The graph model (`tree/specs/computation/graph-core.md` § The model): a netcore-rs editor of classic nodes beside
+//! the host's node objects, its cables, the signals it sends the host's pipes, and the dataflow engine attached to it.
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;

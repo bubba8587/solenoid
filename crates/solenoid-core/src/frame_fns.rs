@@ -1,7 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! The frame computations a node runs that no formula shares: each takes frames and plain arguments, and answers
-//! a frame, a value or both.
-//! `engine_frame_fn` reaches them.
+//! The frame computations a node runs that no formula shares, reached through `engine_frame_fn`: each takes frames
+//! and plain arguments and answers a frame, a value or both (`tree/specs/computation/rust-core.md`).
 
 use crate::excel_formula::cell_to_v;
 use std::collections::HashSet;

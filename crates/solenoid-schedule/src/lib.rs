@@ -1,7 +1,6 @@
 // [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[E10]] pickVsAggregateErrors
-//! Headless project scheduling: critical-path passes over a name-keyed task graph with working
-//! calendars, typed links, floors, ceilings, deadlines and diagnostics, in serial-day arithmetic, and the plan-file
-//! readers (Microsoft Project XML, GanttProject, Primavera XER). `README.md` is the contract.
+//! Headless project scheduling: critical-path passes over a name-keyed task graph in serial-day arithmetic, and the
+//! plan-file readers (Microsoft Project XML, GanttProject, Primavera XER). `README.md` is the contract.
 #![forbid(unsafe_code)]
 #![allow(clippy::needless_range_loop, reason = "the passes index the per-task arrays side by side")]
 

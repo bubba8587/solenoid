@@ -1,6 +1,5 @@
-//! What every card body leans on: a formula body called by name, the per-cell short circuit and non-finite guard,
-//! and the broadcasters that map a body over
-//! lists ([[C24]] arraySemantics).
+//! What every card body leans on: a formula body called by name, the per-cell short circuit and non-finite guard, and
+//! the broadcasters that map a body over lists ([[C24]] arraySemantics).
 
 use super::list;
 use crate::eval::Traits;

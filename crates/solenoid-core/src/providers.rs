@@ -1,7 +1,6 @@
 // [[C23]] calcModes, [[C25]] firstClassUnits, [[D99]] rustIsSpec
-//! The data providers' replies read into what their cards output: Open-Meteo's forecast, Nager.Date's public
-//! holidays and Frankfurter's rates. The cards fetch and cache the text; these read it. A malformed body reads as
-//! empty, never as an error.
+//! The data providers' replies (Open-Meteo, Nager.Date, Frankfurter) read into what their cards output; the cards fetch
+//! and cache the text (`tree/specs/computation/live-connections.md`).
 
 use std::rc::Rc;
 

@@ -1,7 +1,6 @@
 // [[B27]] computeAnswersToExcel, [[C130]] rustCore
-//! Regular expressions as Excel's REGEXTEST, REGEXEXTRACT and REGEXREPLACE read them: PCRE2's syntax (lookaround,
-//! backreferences, atomic groups, possessive quantifiers, inline `(?i)`, `(?m)`, `(?s)`, `(?x)`), run on fancy-regex
-//! over the text as Rust holds it. The Regex card, Data Validation's pattern check and TEMPLATE's tokens use it too.
+//! Regular expressions as Excel's REGEX functions read them (PCRE2's syntax) on fancy-regex, for formulas, the Regex
+//! card, Data Validation and TEMPLATE (`tree/specs/computation/formula-language.md` § Text kernels).
 
 use std::cell::RefCell;
 use std::collections::HashMap;

@@ -1,6 +1,7 @@
-//! [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing, [[C25]] firstClassUnits, [[C50]]
-//! lambdaBindsByName. The plan cards on the scheduling engine (`solenoid_schedule`): Schedule, Gantt (its view keys
-//! those of `@solenoid/gantt-layout`'s `payload.ts`) and Earned Value, and the LAMBDA hosts SCAN and ODE Integrate.
+//! [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing, [[C25]] firstClassUnits,
+//! [[C50]] lambdaBindsByName.
+//! The plan cards on the scheduling engine (`solenoid_schedule`): Schedule, Gantt (its view keys those of
+//! `@solenoid/gantt-layout`'s `payload.ts`) and Earned Value, and the LAMBDA hosts SCAN and ODE Integrate.
 
 use super::frames::{frame_v, json_num, tag_cell_unit, thrown};
 use super::list::{js_number, nullish, present, slot};

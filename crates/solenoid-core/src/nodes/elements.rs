@@ -1,8 +1,6 @@
-//! [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C25]] firstClassUnits, [[C24]] arraySemantics. The periodic
-//! table and the Element card. The data is PubChem's periodic table (public domain) with IUPAC conventional atomic
-//! weights, frozen in `data/elements.json`: ionization energy and electron affinity converted from eV to kJ/mol, an
-//! element with no stable isotope weighs its bracketed mass number, a property nobody has measured is blank, and
-//! "Ancient" discoveries have no year.
+//! [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C25]] firstClassUnits, [[C24]] arraySemantics.
+//! The periodic table and the Element card, from PubChem's periodic table with IUPAC conventional atomic weights,
+//! frozen in `data/elements.json` (`docs/node-coverage.md` § Packs, Element).
 
 use super::columns::unit_json;
 use super::frames::frame_v;
@@ -15,6 +13,8 @@ use crate::frame::FrameColType;
 use crate::unit_dims::Dim;
 use std::rc::Rc;
 
+/// One element as `data/elements.json` holds it: ionization energy and electron affinity in kJ/mol (from eV), a
+/// property nobody has measured blank, and an "Ancient" discovery no year.
 #[derive(serde::Deserialize)]
 pub(crate) struct Element {
     pub n: u32,
