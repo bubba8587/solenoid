@@ -70,6 +70,9 @@ reader to trust the spec's arithmetic.
   the graph crate's `tests/`), which cites the same name in its doc comment. A law over real numbers holds for doubles
   only to a tolerance; the test says which, and a law that floats break outright (PRODUCT's order) is stated as the
   exception, not dropped.
+- **Below mathlib.** A law about Lean's own integers lives in Lean core, which mathlib builds on (`Int.fmod_add_fdiv_mul`,
+  `src/Init/Data/Int/DivMod/Lemmas.lean` in `leanprover/lean4`); it is cited the same way, at the toolchain mathlib's
+  commit pins (v4.36.0-rc2).
 - **What it doesn't do.** Mathlib is never a dependency, and its vocabulary stays out of the app's strings
   (DESIGN.md §7). Its junk-value conventions (x/0 = 0) are mathlib's choice for proofs, not Solenoid's for answers: a
   citation borrows a law, never a convention.

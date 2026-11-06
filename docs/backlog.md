@@ -63,17 +63,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
   - INTERPOLATE's grid fill (`fill_grid`, `fns_lists.rs`) scans every known point per candidate corner; needs a spatial index.
 - [ ] **Text-reading calls the no-text-guessing sweep left for the author** ([[C10]] socketLattice): NAND, NOR and XNOR answer #TYPE! for text where AND, OR, XOR and NOT answer #VALUE! ([[D110]] logicRefusesText): one error for the family? And `COALESCE(list, "n/a")` drops a text (or logical) fallback, as `../tree/specs/computation/formula-language.md` § COALESCE says ("any other fallback is ignored"); a silent drop reads as a bug, so confirm it's wanted.
 
-## Found by the mathlib research (2026-11-06; probes and the research doc on the branch `research/mathlib-lens`)
-- [ ] **The logical, string and date matrix rungs don't shape what arrives** (`boundary.rs`, `coerce_value`): a scalar
-  or list wired straight into a `strtable`, `datetable` or `logicaltable` input arrives as a scalar or list, where
-  number's `table` widens it to a matrix (`../tree/specs/values/socket-lattice.md` § The shape of what connects; the path sweep in
-  `boundary_core.rs` leaves them out by name). Shape them as `table` does, or check every body on those inputs handles
-  all three ranks.
-- [ ] **Small**: unit exponents are `f64` compared exactly, so `a^0.1 * a^0.2 + a^0.3` over a length is `#UNIT!`
-  (`dim_equal`; low risk, halves are exact). MOD floors and QUOTIENT truncates, as Excel, so `3*QUOTIENT(-7,3) +
-  MOD(-7,3)` is −4: a line in either description that `INT(n/d)` is the quotient that pairs with MOD. PRODUCT's last
-  bits follow its values' order (the one aggregate left out of the shuffle law).
-
 ## JavaScript the core still imitates ([[B27]] computeAnswersToExcel, [[B7]] preAlphaBreakFreely)
 
 Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D99]] rustIsSpec). Checked in the live engine: the LOG and DATEVALUE examples below; the rest are read from the code, Excel's answers from its documentation.

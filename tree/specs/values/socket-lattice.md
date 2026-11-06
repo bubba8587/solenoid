@@ -80,22 +80,18 @@ preorder in mathlib's sense, the class Preorder in `Mathlib/Order/Defs/PartialOr
 compose, each a narrowing step after a widening one. Held by `widening_is_a_preorder_and_narrowing_does_not_compose`
 (`crates/solenoid-graph/tests/lattice.rs`), which also pins the seven narrowing edges by name.
 
-**Coercions agree along paths, with two exceptions.** Where a value can reach a type by two routes (a list into a
+**Coercions agree along paths, with one exception.** Where a value can reach a type by two routes (a list into a
 matrix and then a Frame, or straight into a Frame), arrival coercion gives the same value either way: both read a list
 as one row (req. 5). A conversion pair that disagreed would make a cable's answer depend on which passthroughs it ran
-through. A sweep of every widening chain A to B to C over sampled values finds two places where the routes differ:
-
-- **Through the bridge.** 5 through a logical socket is TRUE, and comes back as 1: the bridge is lossy, so logical and
-  number reach each other both ways without being the same type, and no route through it can agree with one around it.
-  That is the bridge working as designed.
-- **The other families' matrix rungs.** `logicaltable`, `strtable` and `datetable` pass a value through unshaped
-  ([[#Enforcement]]), so a scalar or a list wired straight in arrives as a scalar or a list, while
-  number's `table` rung widens both to a matrix. A body on one of those inputs can receive rank 0, 1 or 2 depending on
-  the route.
+through. The exception is a route **through the bridge**: 5 through a logical socket is TRUE, and comes back as 1. The
+bridge is lossy, so logical and number reach each other both ways without being the same type, and no route through
+it can agree with one around it. That is the bridge working as designed. Every family's matrix rung shapes what
+arrives as number's `table` does, so a scalar wired into a `strtable` input is a 1×1 matrix, as it would be through a
+list socket first ([[#Enforcement]]).
 
 A Frame on the way to a Cube also keeps its column types, which a value converted straight to a Cube has none of; only
-the metadata differs. Held by `coercions_agree_along_widening_paths` (`crates/solenoid-graph/tests/boundary_core.rs`), with the
-two exceptions and the metadata case left out by name.
+the metadata differs. Held by `coercions_agree_along_widening_paths` (`crates/solenoid-graph/tests/boundary_core.rs`),
+with the bridge and the metadata case left out by name.
 
 ## Constraints
 
@@ -249,7 +245,7 @@ Tests:
 
 The "Dimensional Flow" seed shows the lattice visually. The doc of every variant, `docs/socket-reference.md`, is parsed and held to the code rather than trusted as prose, so a lattice change fails with the line to fix.
 
-Adding an element family touches sites neither the compiler nor the sweep sees, since they are string-keyed: the arrival coercion's rank cases (a rung that falls through still connects, and the wrong rank shows up inside `data()`), the socket's glyph branches (an unlisted rung draws as a plain circle), the color variables and their palette rows, and the Format Controller's controls. `docs/socket-reference.md` section 10 lists them. The matrix rungs of logical, string, date and complex pass values through untouched, on the assumption that their producer already shaped them, so only the rank-1 rungs' coercion is checked. A widening cable is a producer that didn't: a scalar or list wired straight into one of those rungs arrives unshaped ([[#The shape of what connects]]).
+Adding an element family touches sites neither the compiler nor the sweep sees, since they are string-keyed: the arrival coercion's rank cases (a rung that falls through still connects, and the wrong rank shows up inside `data()`), the socket's glyph branches (an unlisted rung draws as a plain circle), the color variables and their palette rows, and the Format Controller's controls. `docs/socket-reference.md` section 10 lists them. Every family's matrix rung shapes what arrives into a matrix, as number's `table` does: a scalar is 1×1 and a list one row (`to_matrix`, both boundaries), so a body on a `strtable`, `datetable`, `logicaltable` or `complextable` input always receives rank 2 ([[#The shape of what connects]]).
 
 Tests:
 

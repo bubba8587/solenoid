@@ -396,10 +396,9 @@ fn many_distinct_errors_tag_in_linear_time_and_repeats_share_a_copy() {
 }
 
 /// Coercions agree along paths: a value taken through B on its way to C arrives as it would straight to C, for every
-/// widening chain A -> B -> C over sampled values. Two exceptions are pinned, both written in
+/// widening chain A -> B -> C over sampled values. One exception is pinned, written in
 /// `tree/specs/values/socket-lattice.md` § The shape of what connects: a route through the logical bridge (lossy: 5 is
-/// TRUE, then 1), and the logical, string and date matrix rungs, which pass a value through unshaped. A Frame on its
-/// way to a Cube keeps its column types, metadata only.
+/// TRUE, then 1). A Frame on its way to a Cube keeps its column types, metadata only.
 #[test]
 fn coercions_agree_along_widening_paths() {
     use solenoid_graph::lattice::{
@@ -454,7 +453,6 @@ fn coercions_agree_along_widening_paths() {
     let narrowing = |a: &str, b: &str| matches!((lattice_rank(a), lattice_rank(b)), (Some(x), Some(y)) if x > y);
     let widens = |a: &str, b: &str| can_connect(a, b) && !narrowing(a, b);
     let fam = |t: &str| element_family(t).map_or_else(|| t.to_string(), str::to_string);
-    let unshaped = |t: &str| matches!(t, "logicaltable" | "strtable" | "datetable");
     let (mut checked, mut bad) = (0, Vec::new());
     for (a, v) in &samples {
         let v = Cv::V(v.clone());
@@ -463,10 +461,7 @@ fn coercions_agree_along_widening_paths() {
                 if b == c || !(widens(a, b) && widens(b, c) && widens(a, c)) {
                     continue;
                 }
-                if (fam(b) == "logical") != (fam(a) == "logical")
-                    || unshaped(b)
-                    || unshaped(c)
-                    || (*b == "frame" && *c == "cube")
+                if (fam(b) == "logical") != (fam(a) == "logical") || (*b == "frame" && *c == "cube")
                 {
                     continue;
                 }

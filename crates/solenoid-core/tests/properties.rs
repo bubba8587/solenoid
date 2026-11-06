@@ -259,13 +259,14 @@ fn a_singular_matrix_has_determinant_zero() {
     }
 }
 
-/// mathlib `Multiset.sum`, `Multiset.prod`, `Multiset.sup`: a function of a multiset doesn't see order, so every
-/// order-free aggregate answers the same, bit for bit, however its list is shuffled. PRODUCT is the one left out: a
-/// floating product has no exact form, so its last bits follow the order.
+/// mathlib `List.Perm.sum_eq` and `List.Perm.prod_eq` (`Mathlib/Algebra/BigOperators/Group/List/Basic.lean`): a sum or
+/// product over a permuted list is the same, so every order-free aggregate answers the same, bit for bit, however its
+/// list is shuffled. Sums get there by summing exactly, PRODUCT by multiplying in sorted order.
 #[test]
 fn order_free_aggregates_survive_a_shuffle() {
     const FNS: &[&str] = &[
         "SUM",
+        "PRODUCT",
         "COUNT",
         "MIN",
         "MAX",
@@ -294,6 +295,7 @@ fn order_free_aggregates_survive_a_shuffle() {
                 .map(|_| match *f {
                     "GCD" | "LCM" => f64::from(r.u32(1..40)),
                     "GEOMEAN" | "HARMEAN" => f64::from(r.u32(1..10_000)) / 7.0,
+                    "PRODUCT" => f64::from(r.i32(-9_000..9_000)) / 4_096.0,
                     _ => f64::from(r.i32(-10_000..10_000)) / 7.0,
                 })
                 .collect();
@@ -350,5 +352,42 @@ fn an_equation_scaled_by_k_keeps_its_solutions() {
         let y: f64 =
             equation("Z = k * x * EXP(x) - 5 * k + 0 * x", &[("Z", 0.0), ("k", k)], "x").parse().expect("a number");
         assert!((y * libm::exp(y) - 5.0).abs() < 1e-9, "x·eˣ = 5 at k = {k:e} gave {y}");
+        let pole = equation("Z = k / (x - 3) + k / (x - 3)", &[("Z", 0.0), ("k", k)], "x");
+        assert!(pole.contains("No solution found"), "k/(x-3) + k/(x-3) = 0 has no root at any k = {k:e}: {pole}");
+    }
+}
+
+/// Dimensions multiply as an exponent group (mathlib's FreeAbelianGroup, `Mathlib/GroupTheory/FreeAbelianGroup.lean`)
+/// with rational powers, so a fraction's float spelling can't split one dimension in two: m^0.1 · m^0.2 is m^0.3.
+#[test]
+fn fractional_powers_of_a_unit_meet() {
+    use solenoid_core::unit_dims::{dim_equal, dim_mul, dim_pow, Dim};
+    let m: Dim = [("length".to_string(), 1.0)].into_iter().collect();
+    for (p, q) in [(0.1, 0.2), (1.0 / 3.0, 1.0 / 6.0), (0.25, 0.05), (0.7, 0.2)] {
+        assert!(dim_equal(&dim_mul(&dim_pow(&m, p), &dim_pow(&m, q)), &dim_pow(&m, p + q)), "m^{p} · m^{q}");
+    }
+    assert!(dim_equal(&dim_pow(&dim_pow(&m, 1.0 / 3.0), 3.0), &m), "(m^(1/3))^3 is m");
+}
+
+/// Lean core's `Int.fmod_add_fdiv_mul` and `Int.tmod_add_tdiv_mul` (`src/Init/Data/Int/DivMod/Lemmas.lean`): MOD is the
+/// floored remainder and pairs with INT(n/d); QUOTIENT is the truncated quotient and pairs with n − d·QUOTIENT(n, d).
+#[test]
+fn mod_and_quotient_keep_their_division_laws() {
+    let mut r = rng();
+    for _ in 0..cases() / 20 {
+        let (n, d) = (f64::from(r.i32(-1000..1000)), f64::from(r.i32(1..50)) * if r.bool() { 1.0 } else { -1.0 });
+        let num = |src: &str| match formula(
+            src,
+            [("n".to_string(), V::Num(n)), ("d".to_string(), V::Num(d))].into_iter().collect(),
+        ) {
+            Some(V::Num(x)) => x,
+            other => panic!("{src} at n = {n}, d = {d}: {other:?}"),
+        };
+        let (m, q) = (num("MOD(n, d)"), num("QUOTIENT(n, d)"));
+        assert_eq!(d * num("INT(n / d)") + m, n, "MOD({n}, {d}) = {m}");
+        assert!(m == 0.0 || (m > 0.0) == (d > 0.0), "MOD({n}, {d}) = {m} takes the divisor's sign");
+        assert_eq!(q, num("TRUNC(n / d)"), "QUOTIENT({n}, {d})");
+        let t = n - d * q;
+        assert!(t.abs() < d.abs() && (t == 0.0 || (t > 0.0) == (n > 0.0)), "n − d·QUOTIENT takes n's sign: {t}");
     }
 }

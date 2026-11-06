@@ -946,7 +946,7 @@ fn raw_aggregate(nums: &[f64], op: AggOp) -> Option<f64> {
         AggOp::Avg => Some(sum_of(nums) / nums.len() as f64),
         AggOp::Min => Some(nums[1..].iter().fold(nums[0], |a, &b| if b < a { b } else { a })),
         AggOp::Max => Some(nums[1..].iter().fold(nums[0], |a, &b| if b > a { b } else { a })),
-        AggOp::Product => Some(nums.iter().fold(1.0, |a, b| a * b)),
+        AggOp::Product => Some(crate::excel_functions::product_of(nums)),
         AggOp::Median => {
             let mut s = nums.to_vec();
             stable_sort_by(&mut s, |a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));

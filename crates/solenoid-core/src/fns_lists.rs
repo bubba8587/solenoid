@@ -268,19 +268,19 @@ pub fn running_plain(op: RunOp, arr: &[V], window: Option<f64>) -> Vec<V> {
                 if nums.is_empty() {
                     return if op == RunOp::Sum { V::Num(0.0) } else { V::Null };
                 }
-                let sum = || nums.iter().fold(0.0, |a, &b| a + b);
+                let sum = || crate::exact_sum::exact_sum(&nums);
                 V::Num(match op {
                     RunOp::Sum => sum(),
                     RunOp::Avg => sum() / nums.len() as f64,
                     RunOp::Min => iter_min(&nums),
                     RunOp::Max => iter_max(&nums),
-                    RunOp::Product => nums.iter().fold(1.0, |a, &b| a * b),
+                    RunOp::Product => crate::excel_functions::product_of(&nums),
                     RunOp::Stdev => {
                         if nums.len() < 2 {
                             return V::Null;
                         }
                         let m = sum() / nums.len() as f64;
-                        (nums.iter().fold(0.0, |s, &v| s + sq(v - m)) / (nums.len() - 1) as f64).sqrt()
+                        (crate::excel_functions::ssd(&nums, m) / (nums.len() - 1) as f64).sqrt()
                     }
                     RunOp::Median => {
                         let mut sorted = nums.clone();
@@ -292,7 +292,10 @@ pub fn running_plain(op: RunOp, arr: &[V], window: Option<f64>) -> Vec<V> {
             .collect();
     }
     let mut err: Option<V> = None;
-    let (mut count, mut sum, mut product, mut mn, mut mx) = (0usize, 0.0, 1.0, f64::INFINITY, f64::NEG_INFINITY);
+    let (mut count, mut product, mut mn, mut mx) = (0usize, 1.0, f64::INFINITY, f64::NEG_INFINITY);
+    let mut total = crate::exact_sum::ExactSum::default();
+    // The numbers as written beside them, so a running total snaps where SUM of that prefix would.
+    let mut written = crate::exact_sum::Written::default();
     let (mut mean, mut m2) = (0.0, 0.0);
     let mut sorted: Vec<f64> = Vec::new();
     arr.iter()
@@ -305,7 +308,8 @@ pub fn running_plain(op: RunOp, arr: &[V], window: Option<f64>) -> Vec<V> {
             }
             if let Some(v) = finite(v) {
                 count += 1;
-                sum += v;
+                total.add(v);
+                written.add(v);
                 product *= v;
                 if v < mn {
                     mn = v;
@@ -325,8 +329,8 @@ pub fn running_plain(op: RunOp, arr: &[V], window: Option<f64>) -> Vec<V> {
                 return if op == RunOp::Sum { V::Num(0.0) } else { V::Null };
             }
             V::Num(match op {
-                RunOp::Sum => sum,
-                RunOp::Avg => sum / count as f64,
+                RunOp::Sum => total.total_by(|| written.cancels()),
+                RunOp::Avg => total.total_by(|| written.cancels()) / count as f64,
                 RunOp::Min => mn,
                 RunOp::Max => mx,
                 RunOp::Product => product,

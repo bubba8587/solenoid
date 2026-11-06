@@ -513,7 +513,9 @@ fn coerce_value(rung: &str, keep_text: bool, a: &Arrived) -> R<Arrived> {
                 new(out)
             }
         }
-        "logicaltable" | "strtable" | "datetable" => new(cells()),
+        // Every family's matrix rung shapes what arrives as number's `table` does, so a scalar or a list wired straight in
+        // is the 1×1 or one-row matrix a passthrough route would make (socket-lattice.md § The shape of what connects).
+        "logicaltable" | "strtable" | "datetable" | "complextable" => new(to_matrix(&cells())),
         "complex" | "complexcombo" | "anydata" | "anycombo" => {
             let out = collapse(v.clone());
             if same_v(&out, v) || !matches!(v, V::List(_)) {

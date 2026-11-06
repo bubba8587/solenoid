@@ -667,6 +667,26 @@ pub(crate) fn ssd(a: &[f64], m: f64) -> f64 {
     terms_sum(a, |y| libm::pow(y - m, 2.0))
 }
 
+/// The product of `a` as a function of its values, not their order: multiplied in sorted order, so a shuffle can't move
+/// a bit (mathlib `List.Perm.prod_eq`), with the exponents carried apart (`frexp`, exact) so no partial product
+/// overflows or underflows on the way to a representable answer. A zero or a non-finite value decides the answer, and
+/// takes the plain sorted fold.
+pub(crate) fn product_of(a: &[f64]) -> f64 {
+    let mut xs = a.to_vec();
+    xs.sort_by(f64::total_cmp);
+    if xs.iter().any(|x| *x == 0.0 || !x.is_finite()) {
+        return xs.iter().fold(1.0, |p, x| p * x);
+    }
+    let (mut m, mut e) = (1.0f64, 0i64);
+    for x in xs {
+        let (fm, fe) = libm::frexp(x);
+        let (nm, ne) = libm::frexp(m * fm);
+        m = nm;
+        e += i64::from(fe) + i64::from(ne);
+    }
+    libm::ldexp(m, e.clamp(-4000, 4000) as i32)
+}
+
 /// The exact sum (`exact_sum`) of `f` over `a`, the one way an aggregate adds computed terms.
 pub(crate) fn terms_sum(a: &[f64], f: impl Fn(f64) -> f64) -> f64 {
     crate::exact_sum::exact_sum(&a.iter().map(|&x| f(x)).collect::<Vec<_>>())
@@ -739,7 +759,7 @@ pub(crate) fn aggregate(op: Stat, arr: &[f64]) -> V {
             Stat::Avg => V::Num(mean()),
             Stat::Min => V::Num(fold_min(arr)),
             Stat::Max => V::Num(fold_max(arr)),
-            Stat::Product => V::Num(arr.iter().fold(1.0, |a, b| a * b)),
+            Stat::Product => V::Num(product_of(arr)),
             Stat::Median => V::Num(median_of(arr)),
             Stat::Stdev => {
                 if n < 2 {

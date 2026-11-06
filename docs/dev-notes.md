@@ -25,6 +25,10 @@ specific item.
   The laws behind each are in the specs with their mathlib declarations (`../tree/specs/floors/engineering.md` § Laws come from mathlib, by
   name, pinned to mathlib `9c8f67d`) and held by `properties.rs` and the graph crate's `lattice.rs`, `settle.rs` and
   `boundary_core.rs`. Refrozen: MDETERM of a singular matrix (0 now), and last-digit moves of at most 7e-12 relative.
+  Then the rest: every family's matrix rung shapes what arrives (`to_matrix`); PRODUCT multiplies in sorted order
+  (`product_of`); running and rolling sums are exact and snap as SUM does; dimension exponents snap to small
+  fractions (`snap_exp`); MOD and QUOTIENT say which quotient MOD pairs with (Lean core's `Int.fmod_add_fdiv_mul`).
+  The research list is empty; the two inbox items wait on the author.
 - **Before pushing Rust, even a prototype test: `bash scripts/check-rust.sh <crate>`** (the crate bans `powi`, clippy
   runs with warnings as errors) and give a new test file a leaf citation, or coverage fails CI.
 

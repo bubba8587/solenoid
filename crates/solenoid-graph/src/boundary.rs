@@ -838,7 +838,7 @@ fn coerce_value(h: &BoundaryHost, rung: &str, keep_text: bool, v: &JsValue) -> R
         "logical" | "logicalcombo" | "string" | "date" | "strcombo" | "datecombo" => {
             scalar_or_throw(collapse(cells()?))
         }
-        "logicaltable" | "strtable" | "datetable" => cells(),
+        "logicaltable" | "strtable" | "datetable" | "complextable" => Ok(to_matrix(&cells()?)),
         "complex" | "complexcombo" | "anydata" | "anycombo" => Ok(collapse(v.clone())),
         "logicallist" | "strlist" | "datelist" | "complexlist" => {
             if nullish {

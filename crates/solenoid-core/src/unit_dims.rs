@@ -29,10 +29,24 @@ pub type OpResult = Result<Option<Op>, SolError>;
 
 pub type Codes = BTreeMap<String, String>;
 
+/// An exponent within 1e-9 of a fraction with a denominator up to 12 is that fraction, so exponents compare as the
+/// rationals they stand for: `m^0.1 · m^0.2` is `m^0.3` though 0.1 + 0.2 isn't 0.3 in binary. A dimension is an
+/// element of the free abelian group on its axes (mathlib's FreeAbelianGroup, `Mathlib/GroupTheory/FreeAbelianGroup.lean`)
+/// with rational powers; floats only carry it.
+fn snap_exp(p: f64) -> f64 {
+    (1..=12)
+        .map(f64::from)
+        .find_map(|q| {
+            let r = (p * q).round();
+            ((p * q - r).abs() <= 1e-9 * q).then(|| r / q)
+        })
+        .unwrap_or(p)
+}
+
 fn combine(a: &Dim, b: &Dim, f: impl Fn(f64, f64) -> f64) -> Dim {
     let mut out = Dim::new();
     for k in a.keys().chain(b.keys()) {
-        let v = f(a.get(k).copied().unwrap_or(0.0), b.get(k).copied().unwrap_or(0.0));
+        let v = snap_exp(f(a.get(k).copied().unwrap_or(0.0), b.get(k).copied().unwrap_or(0.0)));
         if v != 0.0 {
             out.insert(k.clone(), v);
         }
@@ -51,7 +65,7 @@ pub fn dim_div(a: &Dim, b: &Dim) -> Dim {
 pub fn dim_pow(a: &Dim, n: f64) -> Dim {
     a.iter()
         .filter_map(|(k, v)| {
-            let p = v * n;
+            let p = snap_exp(v * n);
             (p != 0.0).then(|| (k.clone(), p))
         })
         .collect()
