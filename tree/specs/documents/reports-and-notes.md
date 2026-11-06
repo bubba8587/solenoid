@@ -495,7 +495,7 @@ A body arrives in shared `.solenoid` files, so no rendered body is trusted. Each
 
 | Surface | Guard |
 |---|---|
-| Note card read view | `sanitizeNoteHtml` (`noteHtml.ts`, DOMPurify plus the network gate: without a grant, a foreign document's web images, video, audio and style `url(…)`s are held back, since loading one is a fetch) on every render. Checkboxes are re-enabled after sanitizing, on marked's own `<input>` elements only. |
+| Note card read view, and a text value shown as markdown | `sanitizeNoteHtml` (`noteHtml.ts`, DOMPurify plus the network gate: without a grant, a foreign document's web pictures, video and audio, an SVG picture's `href`, a `background`, and any style or `<style>` that can fetch are held back, since loading one is a fetch; which addresses count is [[live-connections#The network gate]]) on every render. Checkboxes are re-enabled after sanitizing, on marked's own `<input>` elements only. |
 | Report preview, Note panel, embedded document, Import Obsidian Note | `sanitizeNoteHtml` on the rendered HTML. |
 | Webpage export | each markdown segment passes DOMPurify; the title, embed names, chart labels and every frozen value pass `escapeHtml` after the render; an image source must be `http(s)` or `data:image`; an SVG value's markup passes `sanitizeSvg`. The palette accent is written into the stylesheet, so a palette override loaded from a file must be a `#rrggbb` hex (`palette.ts`). Chart SVG is serialized from the live canvas, where every SVG source was already sanitized at its seam (Pele with links and images off, the SVG Picker's class at intake). |
 | Source highlight | the source is HTML-escaped before any span is added. |
