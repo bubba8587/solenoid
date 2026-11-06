@@ -814,6 +814,11 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   max-height: 216px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* A Recess, as the card's value boxes are (DESIGN.md § Surfaces). */
+  padding: 2px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
 }
 .solenoid-pipeline__step {
   display: flex;
