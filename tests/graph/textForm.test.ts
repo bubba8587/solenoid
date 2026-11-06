@@ -414,3 +414,27 @@ describe("stacking order", () => {
     expect(readTextForm(text).nodes.map((n) => n.name)).toEqual(["A", "B"]);
   });
 });
+
+describe("text form: a save the core can't read is never an empty document", () => {
+  const g: SavedGraph = { v: 2, nodes: [
+    { id: "a", name: "note", type: "ValueInput", x: 0, y: 0, init: { mode: "text", text: "cut emoji \ud83d here" } },
+  ], connections: [] } as unknown as SavedGraph;
+
+  it("a lone surrogate in a text keeps the node, its text made well-formed", () => {
+    const back = readTextForm(writeTextForm(g));
+    expect(back.nodes).toHaveLength(1);
+    expect(JSON.stringify(back.nodes[0].init)).toContain("cut emoji � here");
+  });
+});
+
+describe("text form: a card someone else wrote keeps asking", () => {
+  it("the foreign mark survives a write and read ([[B18]] safeToShare)", () => {
+    const g = { v: 2, nodes: [
+      { id: "a", name: "theirs", type: "Script", x: 0, y: 0, init: {}, foreign: { scripts: true, network: true } },
+      { id: "b", name: "mine", type: "Script", x: 0, y: 0, init: {} },
+    ], connections: [] } as unknown as SavedGraph;
+    const back = readTextForm(writeTextForm(g));
+    expect(back.nodes.find((n) => n.name === "theirs")?.foreign).toEqual({ scripts: true, network: true });
+    expect(back.nodes.find((n) => n.name === "mine")?.foreign).toBeUndefined();
+  });
+});

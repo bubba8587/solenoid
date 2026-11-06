@@ -30,10 +30,14 @@ export function assignNames(nodes: SavedNode[]): Map<string, string> {
 
 const FIELD_ORDER = JSON.stringify([...INIT_FIELD_ORDER, ...INIT_EXTRA_FIELD_ORDER]);
 
+// JSON.stringify spells half a surrogate pair as `\udXXX`, which the core's JSON (Rust text) can't hold: it becomes U+FFFD.
+const LONE_SURROGATE = /(?<!\\)((?:\\\\)*)\\ud[89a-f][0-9a-f]{2}/g;
+
 /** The text a save passes through, written on the core (`text_form.rs`); the names are given here. */
 export function writeTextForm(g: SavedGraph): string {
   const idToName = assignNames(g.nodes);
-  return textFormWrite(JSON.stringify(g), JSON.stringify(g.nodes.map((n) => idToName.get(n.id))), FIELD_ORDER);
+  const json = JSON.stringify(g).replace(LONE_SURROGATE, "$1\\ufffd");
+  return fromCore(textFormWrite(json, JSON.stringify(g.nodes.map((n) => idToName.get(n.id))), FIELD_ORDER));
 }
 
 function fromCore(r: string): string {

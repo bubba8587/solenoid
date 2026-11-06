@@ -282,6 +282,9 @@ pub fn write(g: &Js, names: &[String], order: &[String]) -> String {
                 Js::Object(sections.as_object().cloned().unwrap_or_default()),
             );
         }
+        if let Some(foreign) = field(sn, "foreign").filter(|x| x.as_object().is_some_and(|o| !o.is_empty())) {
+            p.insert("foreign".into(), foreign.clone());
+        }
         positions.insert(name_of(id), Js::Object(p));
     }
 
@@ -618,6 +621,12 @@ pub fn read(text: &str, version: u32) -> Result<Js, String> {
                     "sections".into(),
                     Js::Object(sec.as_object().cloned().unwrap_or_default()),
                 );
+            }
+            if let Some(foreign) = pos
+                .and_then(|p| field(p, "foreign"))
+                .filter(|x| x.as_object().is_some_and(|o| !o.is_empty()))
+            {
+                sn.insert("foreign".into(), foreign.clone());
             }
             (l.name.clone(), Js::Object(sn))
         })

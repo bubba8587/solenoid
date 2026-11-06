@@ -259,10 +259,14 @@ pub fn lattice_tables() -> String {
     crate::lattice::tables_json()
 }
 
-/// A save's text form (`text_form::write`): the save, each node's name and the init field order, as JSON text.
+/// A save's text form (`text_form::write`): the save, each node's name and the init field order, as JSON text; or `!`
+/// and why the save can't be read, never the text of an empty document.
 #[wasm_bindgen(js_name = textFormWrite)]
 pub fn text_form_write(graph: &str, names: &str, order: &str) -> String {
-    let g = serde_json::from_str(graph).unwrap_or(serde_json::Value::Null);
+    let g: serde_json::Value = match serde_json::from_str(graph) {
+        Ok(g) => g,
+        Err(e) => return format!("!the save isn't readable JSON: {e}"),
+    };
     let strings = |t: &str| serde_json::from_str::<Vec<String>>(t).unwrap_or_default();
     crate::text_form::write(&g, &strings(names), &strings(order))
 }

@@ -65,7 +65,7 @@ mindmap
         ["id, type, name, x, y"]
         ["init: the node's saved fields"]
         ["literals, stringLiterals"]
-        ["size, collapsed, flipped, sections"]
+        ["size, collapsed, flipped, sections, foreign"]
       ["connections"]
     ["side tables: keyed to nodes"]
       standoffs
@@ -98,6 +98,7 @@ Seed files in `src/graph/seedGraphs/*.json` are `SavedGraph` objects plus menu-o
 | `collapsed` | `true`? | The card body is collapsed (`collapseStore`). Distinct from `init.collapsed`, which is a Group's own field. |
 | `flipped` | `true`? | Sockets mirrored left and right (`socketFlipStore`). |
 | `sections` | `{ [label]: boolean }`? | The card's `CardSection`s the user folded (`false`) or opened (`true`) by hand, keyed by section label (`sectionFoldStore`). A section with no entry follows its own default. |
+| `foreign` | `{ scripts?: true, network?: true }`? | A card copied out of a document someone else wrote, still waiting for the user to allow its scripts or its fetches (`foreignCardStore`, [[B18]] safeToShare). It travels through the text form like `sections`, so undo, autosave and a reopen keep it asking. |
 
 ### `SavedConnection`
 
@@ -167,7 +168,7 @@ Tests: `activeGraph.test.ts`: the action layer routes to the subgraph while dril
 
 `serializeGraph()` always reads the main graph through `getEditor()` and `getView()`, never the surface a Composite drill-in has made active ([[#Saving binds the main graph]]). It returns `null` when no editor exists. Otherwise it returns `readTextForm(writeTextForm(raw))` ([[#Every save passes through the text form]]), where `raw` is built by `buildRawSavedGraph`:
 
-- One `SavedNode` per editor node, in editor order. `name` comes from `nodeNameStore.ensure`, which assigns a default name if the node has none. `x` and `y` are the view position, rounded. `literals` and `stringLiterals` are copied when the node declares them (even when empty). `size`, `collapsed`, `flipped` and `sections` come from their stores.
+- One `SavedNode` per editor node, in editor order. `name` comes from `nodeNameStore.ensure`, which assigns a default name if the node has none. `x` and `y` are the view position, rounded. `literals` and `stringLiterals` are copied when the node declares them (even when empty). `size`, `collapsed`, `flipped`, `sections` and `foreign` come from their stores.
 - A `PlaceholderNode` is written as the node it stands for: `type` is its `missingType`, `init` is a copy of its `savedInit`, and its saved literal maps are copied back ([[C35]] unknownViaPlaceholder).
 - `connections` from the editor, then `standoffs`, `pins`, `comments`, `frameFormats` from their stores, keeping the entries whose nodes are all in the main editor (`savedSideTables`, which a composite's `snapshotInternal` also runs over its internal editor), `drawnCables` from its store, `palette`, `reportPalette`, `meta` from their stores, and `packs` from the active pack set. Empty lists are omitted.
 
@@ -251,7 +252,7 @@ Pretty JSON with a two-space indent (serde's `to_string_pretty`), followed by a 
 | Key | Content |
 |---|---|
 | `v` | The version. Read back as `CURRENT_SAVE_VERSION` when absent. |
-| `positions` | Object keyed by name, in stacking order (the `SavedGraph`'s node order, bottom to top), since the lines run in wiring order: `{ x, y, size?, collapsed?, flipped?, sections? }`. Read back, the nodes take this key order; when a node is missing here it reads at `(0, 0)` and the nodes keep the line order. |
+| `positions` | Object keyed by name, in stacking order (the `SavedGraph`'s node order, bottom to top), since the lines run in wiring order: `{ x, y, size?, collapsed?, flipped?, sections?, foreign? }`. Read back, the nodes take this key order; when a node is missing here it reads at `(0, 0)` and the nodes keep the line order. |
 | `standoffs` | As saved, with both `nodeId`s as names. |
 | `drawnCables` | As saved (no node references). |
 | `pins` | `{ nodeId, outputKey }` with `nodeId` as a name. |
@@ -381,7 +382,7 @@ flowchart TD
    - Unknown type: `new PlaceholderNode({ missingType, savedInit, savedLiterals, savedStringLiterals, inputKeys, outputKeys, label })`, where `label` is `init.label` when it is a string, else the type.
    - Record `savedId → freshId`. Every node is built with a fresh random id, so saved ids never survive a load.
    - `nodeNameStore.claim(freshId, name, type)`: a valid, unclaimed saved name is kept (and bumps that prefix's counter past it); otherwise a default name is assigned.
-   - Restore `size`, `collapsed`, `flipped` and `sections` into their stores.
+   - Restore `size`, `collapsed`, `flipped`, `sections` and `foreign` into their stores.
 6. **Add and position** the nodes to the editor in concurrent batches of 24.
 7. **Remap references** (`remapNodeRefs`) on every constructed node through the id map: `hostNodeId`; `members`, dropping any id that does not resolve to a live node; each Presentation step's `nodeIds`, likewise filtered. A Placeholder's `savedInit` (a copy of the saved `init`) is remapped the same way, so its references follow a rename of the node they name to the next save. The remap never writes into the `SavedGraph` it loads from, which may be a library document or a seed that loads again.
 8. **Reconnect**, in save order. A connection whose source or target does not resolve is skipped. A connection the editor refuses (incompatible sockets, duplicate) is skipped silently. Each successful connection fires `connectioncreated`.
