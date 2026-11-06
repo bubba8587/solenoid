@@ -30,7 +30,6 @@ const orders: FrameValue = {
 };
 const typeOf = (f: FrameValue, name: string) => f.columns.find((c) => c.name === name)?.type;
 const cellsOf = (f: FrameValue, name: string) => f.columns.find((c) => c.name === name)?.values ?? [];
-const isTypeError = (v: unknown) => isSolError(v) && (v as { code: string }).code === "#TYPE!";
 const isPointError = (v: unknown) => isSolError(v) && (v as { code: string }).code === "#POINT!";
 
 describe("table verbs keep a date a date", () => {

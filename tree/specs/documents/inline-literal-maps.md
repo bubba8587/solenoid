@@ -21,7 +21,7 @@ The governing convention: **a node class declares a literal map if and only if i
 
 When a load restores a saved node (`restoreLiterals` in `literalFields.ts`), it copies the saved `literals` and `stringLiterals` onto the new node only when the class already has that field as an object. A field the class does not declare is dropped.
 
-A wire-driven card declares neither map. The Equation family (Equation, TVM, Triangle Solver) is the main case: its variables are known only through cables, and `equation` (`crates/solenoid-core/src/nodes/formula.rs`) has no literal fallback. So a hand-written save or seed cannot plant a hardcoded known that the user can neither see nor edit on the card.
+A wire-driven card declares neither map. The Equation family (Equation, TVM) is the main case: its variables are known only through cables, and `equation` (`crates/solenoid-core/src/nodes/formula.rs`) has no literal fallback. So a hand-written save or seed cannot plant a hardcoded known that the user can neither see nor edit on the card.
 
 Tests: `persistenceSweep.test.ts`: for every catalog node, perturbed literals survive a construct cycle.
 
@@ -77,7 +77,7 @@ Where a field's kind lives:
 - **A setting** declares it through its role ([[input-roles#The roles]]), shared with the formulas: its blank is a Fallback, `LEFT_OUT` a Behavior shown as its word, required a Required.
 - **Every other field** declares it in the core's table (`EMPTY` in `nodes/fields.rs`, `empty_of(card class, op, key)`), keyed by card class and input, a key matching a numbered row of itself as `ROWS` does (an exact key wins: `df1` is its own field, not row 1 of `df`). A field whose meaning moves with the card's op declares per op in `EMPTY_BY_OP`, ahead of `EMPTY`: LOG's base falls back to 10 where the other two-input ops' B falls back to 0, CEILING.MATH's and FLOOR.MATH's significance to 1 where MROUND's is required, DROP's counts are `[none]` where TAKE's are `[all]`. `Call::unwired` applies it when the field holds nothing (no saved value, or empty text), so every body reads the same Fallback the field shows.
 - **The canvas** asks one function (`emptyFieldShown` in `emptySlots.ts`, with the card's op): the core's declaration over wasm (`coreEmptyField`), else the setting's role. The row host draws `shown` as the field's placeholder and marks the row `solenoid-node__io-row--example` for an Example, which alone sets the placeholder in italics (`nodeCard.css`). The paired rows (IFS's and SWITCH's cases and outputs, `pairPlaceholders`) are Examples.
-- **The solver cards** (Equation, Triangle Solver, TVM) declare every field `[solve]` at once (`SOLVERS`): an empty field is the unknown.
+- **The solver cards** (Equation, TVM) declare every field `[solve]` at once (`SOLVERS`): an empty field is the unknown.
 
 A body reads an empty field only through `Call::unwired`, so the value it computes from is the one declared; there is no reader that takes its own default. A formula's variables (Formula card, LAMBDA, a computed column) read 0 when empty through `Call::read_variable`, until the walk of that kind of nothing. A Fallback of empty text reads as nothing, as an empty field always has.
 

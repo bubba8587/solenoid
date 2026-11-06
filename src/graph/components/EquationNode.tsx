@@ -10,7 +10,7 @@ import type { DisplayValue } from "./valueDisplayFormat";
 import "./ExpressionNode.css";
 
 // Two sockets centered on the hero value box, not the row; the row must not become a positioning context.
-function useRowTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
+export function useRowTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
   const prev = useRef<number | undefined>(undefined);
   const [top, setTop] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {

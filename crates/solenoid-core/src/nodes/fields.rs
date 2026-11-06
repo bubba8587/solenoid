@@ -549,7 +549,7 @@ const EMPTY_BY_OP: &[(&str, &str, &str, Empty)] = &[
 ];
 
 /// The solver cards: an empty field is the unknown they solve for.
-const SOLVERS: &[&str] = &["EquationNode", "TriangleSolverNode", "TvmNode"];
+const SOLVERS: &[&str] = &["EquationNode", "TvmNode"];
 
 /// A `class` card's declared kind for its empty field `key` under `op`, where it declares one.
 pub fn empty_of(class: &str, op: &str, key: &str) -> Option<Empty> {

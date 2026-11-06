@@ -3,7 +3,7 @@
 //! card bodies (Electrical, Chemistry, Physics Constants, Astro, Thermo, Fluids, Health, EM Spectrum, Convert,
 //! Tornado and Triangle), with their kernels beside them.
 
-use super::units::{broadcast_unit, from_unit};
+use super::units::broadcast_unit;
 use super::values::{Column, Frame};
 use super::Cv;
 use super::{err, list, Answer, Call};
@@ -12,8 +12,8 @@ use crate::excel_functions::V;
 use crate::frame::FrameColType;
 use crate::jsnum::{nan_max, nan_min, round_half_up};
 use crate::unit_catalog::fc_unit_to_unit;
-use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim, UnitCell};
-use crate::unit_value::{round_at_larger_term, to_precision, unit_error};
+use crate::unit_dims::{dim_equal, dim_pow, Dim};
+use crate::unit_value::{to_precision, unit_error};
 use libm::{acos, asin, cos, exp, log, log10, pow, sin, tan};
 use serde_json::Value as Json;
 use std::f64::consts::PI;
@@ -1156,10 +1156,6 @@ const TRI_EPS: f64 = 1e-9;
 const D2R: f64 = PI / 180.0;
 const R2D: f64 = 180.0 / PI;
 
-fn is_angle(k: &str) -> bool {
-    k.chars().all(|ch| ch.is_ascii_uppercase())
-}
-
 /// A triangle's parts by `PART_KEYS` position, each given or not.
 pub(crate) type Parts = [Option<f64>; 6];
 
@@ -1339,207 +1335,147 @@ pub(crate) fn solve_given_parts(given: &Parts, cell_err: Option<V>) -> TriangleR
     )
 }
 
-/// A value as `jsonEnc` writes the card's plain-object field.
-fn tri_json(v: &V) -> Json {
-    match v {
-        V::Null | V::Undef => Json::Null,
-        V::Num(n) => tri_num(*n),
-        V::Bool(b) => Json::Bool(*b),
-        V::Str(s) => Json::String(s.to_string()),
-        V::Err(e) => serde_json::json!({ "__solError": true, "code": e.code, "message": e.message }),
-        V::List(items) => Json::Array(items.iter().map(tri_json).collect()),
-        V::Unit(u) => {
-            let mut o = serde_json::Map::new();
-            o.insert("__unitCell".into(), Json::Bool(true));
-            o.insert("value".into(), tri_num(u.value));
-            o.insert("dim".into(), Json::Object(u.dim.iter().map(|(k, x)| (k.clone(), tri_num(*x))).collect()));
-            if let Some(d) = &u.display {
-                o.insert("display".into(), Json::String(d.clone()));
-            }
-            Json::Object(o)
-        }
-        _ => Json::Null,
-    }
+/// The columns the card reads and writes, in order: the six parts, then what it derives.
+const TRIANGLE_COLUMNS: [&str; 8] = ["a", "b", "c", "A", "B", "C", "area", "perimeter"];
+
+/// The keyed table a fresh card holds: one 3-4-5 triangle to solve.
+pub(crate) const TRIANGLE_DEFAULT: &str = r#"[{"name":"a","cells":["3"]},{"name":"b","cells":["4"]},{"name":"c","cells":["5"]},{"name":"A","cells":[""]},{"name":"B","cells":[""]},{"name":"C","cells":[""]},{"name":"area","cells":[""]},{"name":"perimeter","cells":[""]}]"#;
+
+/// Two numbers that agree to the solver's precision.
+fn agrees(x: f64, y: f64) -> bool {
+    (x - y).abs() <= 1e-9 * x.abs().max(y.abs()).max(f64::MIN_POSITIVE)
 }
 
-fn tri_num(n: f64) -> Json {
-    if n.is_nan() {
-        return serde_json::json!({ "__nf": "nan" });
-    }
-    if n.is_infinite() {
-        return serde_json::json!({ "__nf": if n > 0.0 { "inf" } else { "-inf" } });
-    }
-    if n == 0.0 && n.is_sign_negative() {
-        return serde_json::json!({ "__nf": "-0" });
-    }
-    if n.fract() == 0.0 && n.abs() < 9_007_199_254_740_992.0 {
-        return Json::from(n as i64);
-    }
-    Json::from(n)
-}
-
-/// The one unit the sides solve in: the first united side's display unit, else its base unit.
-struct SideUnit {
-    unit: crate::unit_catalog::Unit,
-    id: Option<String>,
-}
-
-fn side_unit(read: &[V]) -> Result<Option<SideUnit>, V> {
-    let mut found: Option<SideUnit> = None;
-    for (k, v) in PART_KEYS.iter().zip(read) {
-        let cells: Vec<&V> = if let V::List(items) = v { items.iter().collect() } else { vec![v] };
-        for cell in cells {
-            let V::Unit(u) = cell else { continue };
-            if is_dimensionless(&u.dim) {
-                continue;
-            }
-            if is_angle(k) {
-                if !dim_equal(&u.dim, &Dim::from([("angle".to_string(), 1.0)])) {
-                    return Err(V::err(unit_error(&format!("{k} is an angle."))));
-                }
-                continue;
-            }
-            if let Some(f) = &found {
-                if !dim_equal(&f.unit.dim, &u.dim) {
-                    return Err(V::err(unit_error("The three sides must share one dimension.")));
-                }
-                continue;
-            }
-            let fc = u.display.as_deref().filter(|d| !d.is_empty()).and_then(fc_unit_to_unit);
-            if fc.as_ref().is_some_and(|f| f.offset.is_some_and(|o| o != 0.0)) {
-                return Err(V::err(unit_error("A side can't be on an offset scale.")));
-            }
-            found = Some(match fc {
-                Some(f) if dim_equal(&f.dim, &u.dim) => SideUnit { unit: f, id: u.display.clone() },
-                _ => SideUnit {
-                    unit: crate::unit_catalog::Unit { dim: u.dim.clone(), scale: 1.0, offset: None },
-                    id: None,
-                },
-            });
-        }
-    }
-    Ok(found)
-}
-
-/// A dimensioned angle in degrees, a side in the sides' unit, any other cell as it is.
-fn read_part(k: &str, cell: &V, su: Option<&SideUnit>) -> V {
-    let V::Unit(u) = cell else { return cell.clone() };
-    if is_dimensionless(&u.dim) {
-        return V::Num(u.value);
-    }
-    if is_angle(k) {
-        return V::Num(round_at_larger_term(u.value * R2D, u.value * R2D));
-    }
-    V::Num(su.map_or(u.value, |s| u.value / s.unit.scale))
-}
-
+/// Triangle Solver: one triangle per row of its frame, the wired one or its own keyed table. Each row's given parts
+/// solve the rest; a keyed area or perimeter is a check that `valid` reads. The output is the same frame with the
+/// eight columns filled, other columns kept; `valid` answers per row. Sides share one column unit, which the sides and
+/// the perimeter keep and the area squares.
 fn triangle_solver(c: &mut Call) -> Answer {
-    let read: Vec<V> = PART_KEYS.iter().map(|k| c.read_input(k, V::Null)).collect();
-    let su = match side_unit(&read) {
-        Ok(su) => su,
-        Err(e) => {
-            let keys = PART_KEYS.iter().copied().chain(["area", "perimeter", "valid"]);
-            let values: serde_json::Map<String, Json> = keys.clone().map(|k| (k.to_string(), tri_json(&e))).collect();
-            c.show("cachedValues", Cv::Json(Rc::new(Json::Object(values))));
-            for f in ["cachedArea", "cachedPerimeter", "cachedValid"] {
-                c.show(f, e.clone());
-            }
-            c.show("solvedKeys", list(Vec::new()));
-            return Ok(keys.map(|k| (k.to_string(), Cv::V(e.clone()))).collect());
+    let wired_error = match c.wired_card("triangles") {
+        Some([Cv::V(e), ..]) if e.is_sol_error() => Some(e.clone()),
+        _ => None,
+    };
+    if let Some(e) = wired_error {
+        c.show("cachedResult", e.clone());
+        c.show("cachedValid", e.clone());
+        return Ok(vec![("frame".into(), Cv::V(e.clone())), ("valid".into(), Cv::V(e))]);
+    }
+    let input: Frame = match c.wired_card("triangles") {
+        Some([Cv::Frame(f), ..]) => (**f).clone(),
+        Some([_, ..]) => Frame::default(),
+        _ => {
+            let source = super::docs::parse_frame_source(c.field_str("frameText", TRIANGLE_DEFAULT));
+            Frame { columns: source.iter().map(super::docs::derive_column).collect(), ..Frame::default() }
         }
     };
-    let raw: Vec<V> = PART_KEYS
+    let col = |name: &str| input.columns.iter().find(|col| col.name == name);
+    let rows = input.columns.iter().map(|c| c.values.len()).max().unwrap_or(0);
+    // The sides read in the first united side's unit, the angles in degrees: each column's factor into them.
+    let side_unit = ["a", "b", "c"].iter().find_map(|k| col(k).and_then(|c| c.unit.clone()));
+    let target = side_unit.as_ref().map(unit_of_json);
+    let deg = unit_of_json(&serde_json::json!({ "dim": { "angle": 1.0 }, "display": "deg" }));
+    let factors: Result<Vec<f64>, V> = PART_KEYS
         .iter()
-        .zip(&read)
-        .map(|(k, v)| match v {
-            V::List(items) => list(items.iter().map(|x| read_part(k, x, su.as_ref())).collect()),
-            v => read_part(k, v, su.as_ref()),
+        .map(|k| {
+            let into = if k.chars().all(char::is_uppercase) { Some(&deg) } else { target.as_ref() };
+            match (col(k).and_then(|c| c.unit.as_ref()).map(unit_of_json), into) {
+                (None, _) | (_, None) => Ok(1.0),
+                (Some((dim, scale)), Some((want, to))) if dim_equal(&dim, want) => Ok(scale / to),
+                (Some(_), Some(_)) if k.chars().all(char::is_uppercase) => {
+                    Err(V::err(unit_error(&format!("{k} is an angle."))))
+                }
+                _ => Err(V::err(unit_error("The three sides must share one dimension."))),
+            }
         })
         .collect();
-    let lens: Vec<usize> = raw.iter().filter_map(|v| if let V::List(l) = v { Some(l.len()) } else { None }).collect();
-    let (mut outs, values, solved): (Vec<V>, [V; 6], Vec<usize>) = if lens.is_empty() {
+    let (factors, unit_err) = match factors {
+        Ok(f) => (f, None),
+        Err(e) => (vec![1.0; 6], Some(e)),
+    };
+    let mut out: Vec<Vec<V>> = (0..8).map(|_| Vec::with_capacity(rows)).collect();
+    let mut valid: Vec<V> = Vec::with_capacity(rows);
+    let mut solved_by_row: Vec<V> = Vec::with_capacity(rows);
+    for i in 0..rows {
+        let cell = |name: &str| col(name).and_then(|c| c.values.get(i).cloned()).unwrap_or(V::Null);
         let mut given: Parts = [None; 6];
-        for k in 0..6 {
-            if let V::Num(n) = raw[k] {
-                given[k] = Some(n);
-            }
-        }
-        let r = solve_given_parts(&given, None);
-        let outs = r.values.iter().cloned().chain([r.area, r.perimeter, r.valid]).collect();
-        (outs, r.values, r.solved)
-    } else {
-        let len = lens.into_iter().max().unwrap_or(0);
-        let mut cols: Vec<Vec<V>> = (0..9).map(|_| Vec::with_capacity(len)).collect();
-        let mut first: Option<Vec<usize>> = None;
-        for i in 0..len {
-            let mut given: Parts = [None; 6];
-            let mut cell_err = None;
-            for k in 0..6 {
-                let cell = match &raw[k] {
-                    V::List(items) => {
-                        items.get(i).cloned().map_or(V::Null, |x| if matches!(x, V::Undef) { V::Null } else { x })
-                    }
-                    v => v.clone(),
-                };
-                match cell {
-                    e if e.is_sol_error() => {
-                        cell_err.get_or_insert(e);
-                    }
-                    V::Num(n) => given[k] = Some(n),
-                    _ => {}
+        let mut cell_err = unit_err.clone();
+        for (k, name) in PART_KEYS.iter().enumerate() {
+            match cell(name) {
+                e if e.is_sol_error() => {
+                    cell_err.get_or_insert(e);
+                }
+                V::Num(n) if factors[k] == 1.0 => given[k] = Some(n),
+                V::Num(n) => given[k] = Some(to_precision(n * factors[k], 15)),
+                V::Null => {}
+                V::Str(t) if t.trim().is_empty() => {}
+                _ => {
+                    cell_err.get_or_insert(err(ErrorCode::Value, format!("{name} must be a number.")));
                 }
             }
-            let r = solve_given_parts(&given, cell_err);
-            for (col, v) in cols.iter_mut().zip(r.values.iter().cloned().chain([r.area, r.perimeter, r.valid])) {
-                col.push(v);
-            }
-            first.get_or_insert(r.solved);
         }
-        let outs: Vec<V> = cols.into_iter().map(list).collect();
-        let values = std::array::from_fn(|k| outs[k].clone());
-        (outs, values, first.unwrap_or_default())
-    };
-    let mut shown_values = values;
-    if let Some(su) = &su {
-        // Sides and perimeter come back in the sides' unit, the area in its square.
-        let id = su.id.clone();
-        let sq_id = id.as_ref().map(|i| format!("{i}2"));
-        let area_dim = dim_pow(&su.unit.dim, 2.0);
-        let sq = sq_id.as_deref().and_then(fc_unit_to_unit).filter(|q| dim_equal(&q.dim, &area_dim));
-        let side = |v: &V| if let V::Num(n) = v { from_unit(*n, &su.unit, id.as_deref()) } else { v.clone() };
-        let area = |v: &V| match v {
-            V::Num(n) if !is_dimensionless(&area_dim) => V::Unit(Rc::new(UnitCell {
-                value: n * pow(su.unit.scale, 2.0),
-                dim: area_dim.clone(),
-                display: sq.as_ref().and(sq_id.clone()),
-                ratio: false,
-                scale: sq.as_ref().map(|q| q.scale),
-                offset: sq.as_ref().map(|q| q.offset.unwrap_or(0.0)),
-                unit_dim: sq.as_ref().map(|q| q.dim.clone()),
-            })),
-            V::Num(n) => V::Num(n * pow(su.unit.scale, 2.0)),
-            other => other.clone(),
-        };
-        let each = |v: &V, f: &dyn Fn(&V) -> V| {
-            if let V::List(items) = v {
-                list(items.iter().map(f).collect())
-            } else {
-                f(v)
-            }
-        };
-        for k in [0, 1, 2, 7] {
-            outs[k] = each(&outs[k], &side);
+        let r = solve_given_parts(&given, cell_err);
+        for (k, v) in r.values.iter().enumerate() {
+            out[k].push(v.clone());
         }
-        outs[6] = each(&outs[6], &area);
-        shown_values[..3].clone_from_slice(&outs[..3]);
+        out[6].push(r.area.clone());
+        out[7].push(r.perimeter.clone());
+        let checks = [("area", &r.area), ("perimeter", &r.perimeter)];
+        let holds = checks.iter().all(|(name, got)| match (cell(name), got) {
+            (V::Num(keyed), V::Num(solved)) => agrees(keyed, *solved),
+            _ => true,
+        });
+        valid.push(match r.valid {
+            V::Bool(true) if !holds => V::Bool(false),
+            v => v,
+        });
+        solved_by_row.push(list(r.solved.iter().map(|&k| V::Str(Rc::from(PART_KEYS[k]))).collect()));
     }
-    let values_json: serde_json::Map<String, Json> =
-        PART_KEYS.iter().zip(&shown_values).map(|(k, v)| (k.to_string(), tri_json(v))).collect();
-    c.show("cachedValues", Cv::Json(Rc::new(Json::Object(values_json))));
-    c.show("cachedArea", outs[6].clone());
-    c.show("cachedPerimeter", outs[7].clone());
-    c.show("cachedValid", outs[8].clone());
-    c.show("solvedKeys", list(solved.iter().map(|&k| V::str(PART_KEYS[k])).collect()));
-    let keys = PART_KEYS.iter().copied().chain(["area", "perimeter", "valid"]);
-    Ok(keys.zip(outs).map(|(k, v)| (k.to_string(), Cv::V(v))).collect())
+    let area_unit = side_unit.as_ref().and_then(|u| {
+        let dim: Dim = serde_json::from_value(u.get("dim")?.clone()).ok()?;
+        let sq = dim_pow(&dim, 2.0);
+        let id = u.get("display").and_then(Json::as_str).map(|d| format!("{d}2"));
+        let display = id.filter(|i| fc_unit_to_unit(i).is_some_and(|q| dim_equal(&q.dim, &sq)));
+        Some(super::columns::unit_json(&sq, display.as_deref()))
+    });
+    let mut columns: Vec<Column> = Vec::with_capacity(input.columns.len() + 8);
+    let mut placed = [false; 8];
+    for c0 in &input.columns {
+        match TRIANGLE_COLUMNS.iter().position(|k| *k == c0.name) {
+            Some(k) if !placed[k] => {
+                placed[k] = true;
+                columns
+                    .push(Column { values: std::mem::take(&mut out[k]), ..triangle_column(k, &side_unit, &area_unit) });
+            }
+            _ => columns.push(c0.clone()),
+        }
+    }
+    for k in 0..8 {
+        if !placed[k] {
+            columns.push(Column { values: std::mem::take(&mut out[k]), ..triangle_column(k, &side_unit, &area_unit) });
+        }
+    }
+    let frame = super::frames::frame_v(columns);
+    let valid = list(valid);
+    c.show("cachedResult", frame.clone());
+    c.show("cachedValid", valid.clone());
+    c.show("solvedByRow", list(solved_by_row));
+    Ok(vec![("frame".into(), frame), ("valid".into(), Cv::V(valid))])
+}
+
+/// A column unit (`{dim, display}`) as its dimension and its scale to base SI.
+fn unit_of_json(u: &Json) -> (Dim, f64) {
+    let dim: Dim = u.get("dim").and_then(|d| serde_json::from_value(d.clone()).ok()).unwrap_or_default();
+    let scale = u.get("display").and_then(Json::as_str).and_then(fc_unit_to_unit).map_or(1.0, |f| f.scale);
+    (dim, scale)
+}
+
+/// The k-th of the card's eight columns, empty: sides and the perimeter in the sides' unit, the area in its square, the
+/// angles in degrees.
+fn triangle_column(k: usize, side: &Option<Json>, area: &Option<Json>) -> Column {
+    let unit = match k {
+        0..=2 | 7 => side.clone(),
+        6 => area.clone(),
+        _ => Some(super::columns::unit_json(&Dim::from([("angle".to_string(), 1.0)]), Some("deg"))),
+    };
+    Column { unit, ..super::frames::num_column(TRIANGLE_COLUMNS[k], Vec::new()) }
 }

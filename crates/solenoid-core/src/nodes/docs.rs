@@ -860,7 +860,7 @@ fn template(c: &mut Call) -> Answer {
 // ─── Frame Input ────────────────────────────────────────────────────────────────
 
 /// `FrameSourceColumn`: a column as the text holds it.
-struct SourceColumn {
+pub(crate) struct SourceColumn {
     name: String,
     ty: FrameColType,
     cells: Vec<String>,
@@ -883,7 +883,7 @@ fn json_text(x: &Json, logical_upper: bool) -> String {
 
 /// The JSON columns a save writes, else CSV with a header row, each column's type read off its
 /// cells.
-fn parse_frame_source(text: &str) -> Vec<SourceColumn> {
+pub(crate) fn parse_frame_source(text: &str) -> Vec<SourceColumn> {
     let trimmed = trim_space(text);
     if trimmed.starts_with('[')
         && let Ok(Json::Array(raw)) = serde_json::from_str::<Json>(trimmed)
@@ -919,7 +919,7 @@ fn parse_frame_source(text: &str) -> Vec<SourceColumn> {
 }
 
 /// Each column's cells read as its type, the text kept as typed.
-fn derive_column(s: &SourceColumn) -> Column {
+pub(crate) fn derive_column(s: &SourceColumn) -> Column {
     Column {
         name: s.name.clone(),
         ty: s.ty,

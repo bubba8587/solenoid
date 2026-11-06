@@ -470,14 +470,9 @@ describe("per-output producer annotations (annotationFor) — Triangle degrees, 
     expect(r.outAnnotation(disp.id, "out")).toEqual(DEG);   // ° rides the passthrough
   });
 
-  it("the real nodes: Triangle angles carry °, Element mass carries g/mol, their siblings nothing", async () => {
-    const { TriangleSolverNode } = await import("../../src/graph/nodes/triangle");
+  // The Triangle Solver answers a frame now; its angle columns carry degrees as a column unit (geometry.test.ts).
+  it("the real node: Element mass carries g/mol, its siblings nothing", async () => {
     const { ElementNode } = await import("../../src/graph/nodes/chemistry");
-    const tri = new TriangleSolverNode();
-    expect(tri.annotationFor("A")?.unit).toBe("deg");
-    expect(tri.annotationFor("B")?.unit).toBe("deg");
-    expect(tri.annotationFor("a")).toBeUndefined();
-    expect(tri.annotationFor("area")).toBeUndefined();
     const el = new ElementNode();
     expect(el.annotationFor("mass")?.customUnit).toBe(" g/mol");
     expect(el.annotationFor("number")).toBeUndefined();

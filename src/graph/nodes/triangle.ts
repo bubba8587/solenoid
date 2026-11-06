@@ -2,44 +2,41 @@
 
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { numListIn, numListOut, logicalComboOut } from "./shared";
+import { frameIn, frameOut, logicalComboOut } from "./shared";
 import type { SolError } from "../errorValue";
-import { PART_KEYS } from "./triangleOps";
-import type { FormatAnnotation } from "../formatAnnotationStore";
-import type { UnitCell } from "../unitValue";
+import type { FrameValue } from "../frame";
+import { cardShapeOnCore, type Shape } from "../frameShape";
 
-type PartCell = number | SolError | null;
-type PartOut = PartCell | UnitCell | (PartCell | UnitCell)[];
+/** The keyed table a fresh card holds: one 3-4-5 triangle to solve (the core's `TRIANGLE_DEFAULT`). */
+export const TRIANGLE_DEFAULT = '[{"name":"a","cells":["3"]},{"name":"b","cells":["4"]},{"name":"c","cells":["5"]},{"name":"A","cells":[""]},{"name":"B","cells":[""]},{"name":"C","cells":[""]},{"name":"area","cells":[""]},{"name":"perimeter","cells":[""]}]';
 
+/** Solves one triangle per row of a frame: the wired frame, or the card's own keyed table when none is wired. */
 export class TriangleSolverNode extends GraphNode {
   label: string;
-  cachedValues: Record<string, PartOut> = {};
-  cachedArea: PartOut = null;
-  cachedPerimeter: PartOut = null;
+  /** The keyed table, as Frame Input keeps its own (`frameText`). */
+  frameText: string;
+  /** The row the figure shows, 0-based; view state. */
+  row = 0;
+  cachedResult: FrameValue | SolError | null = null;
   cachedValid: boolean | SolError | null | (boolean | SolError | null)[] = null;
-  solvedKeys: string[] = [];
-  width = 240;
-  height = 430;
+  /** For each row, the parts the solver worked out rather than read. */
+  solvedByRow: string[][] = [];
+  width = 340;
+  height = 640;
 
-  annotationFor(outKey: string): FormatAnnotation | undefined {
-    return outKey === "A" || outKey === "B" || outKey === "C"
-      ? { format: "auto", unit: "deg" }
-      : undefined;
-  }
-
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; frameText?: string }) {
     super("TriangleSolver");
     this.label = init?.label ?? "Triangle Solver";
-    for (const k of PART_KEYS) {
-      this.addInput(k, numListIn(k.toUpperCase() === k ? `${k} \u00b0` : k));
-      this.addOutput(k, numListOut(k.toUpperCase() === k ? `${k} \u00b0` : k));
-    }
-    this.addOutput("area", numListOut("Area"));
-    this.addOutput("perimeter", numListOut("Perimeter"));
+    this.frameText = init?.frameText ?? TRIANGLE_DEFAULT;
+    this.addInput("triangles", frameIn("Triangles"));
+    this.addOutput("frame", frameOut("Triangles"));
     this.addOutput("valid", logicalComboOut("Valid"));
   }
 
-  unitAware = true;
+  /** The eight columns, as the keyed table answers them; a wired frame's other columns ride along. */
+  frameShape(): Shape | null {
+    return cardShapeOnCore(this, "frame", {});
+  }
 
   data(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as Record<string, unknown>;

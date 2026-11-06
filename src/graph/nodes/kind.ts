@@ -6,6 +6,7 @@ import { themeAccent, socketVarHex, socketVarSlot, type PaletteSlot } from "../p
 import { ConstantNode, SliderInputNode, ColorPickerNode, ColorBlendNode, SaveTimesNode } from "./input";
 import { PhysicsConstantNode } from "./physicsConstants";
 import { ElementNode } from "./chemistry";
+import { TriangleSolverNode } from "./triangle";
 import { ConvertNode } from "./convert";
 import { CastNode } from "./cast";
 import { FormatControllerNode } from "./formatController";
@@ -311,7 +312,7 @@ export function nodeXWide(node: GraphNode): boolean {
     node instanceof HistogramNode || node instanceof SankeyNode || node instanceof ProportionNode ||
     node instanceof WaterfallNode || node instanceof CandlestickNode || node instanceof BoxplotNode ||
     node instanceof CalendarHeatmapNode || node instanceof HeatmapNode || node instanceof QuiverNode ||
-    node instanceof RecordNode || node instanceof CardsNode;
+    node instanceof RecordNode || node instanceof CardsNode || node instanceof TriangleSolverNode;
 }
 
 export function nodeWide(node: GraphNode): boolean {

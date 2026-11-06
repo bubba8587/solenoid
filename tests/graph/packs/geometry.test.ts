@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { GEOMETRY_CIRCLES, GEOMETRY_SOLIDS } from "../../../src/graph/packs/geometry";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { TriangleSolverNode } from "../../../src/graph/nodes/triangle";
+import { TriangleSolverNode, TRIANGLE_DEFAULT } from "../../../src/graph/nodes/triangle";
 import { isSolError, type SolError } from "../../../src/graph/errorValue";
-import { tagDim, type UnitCell } from "../../../src/graph/unitValue";
+import type { ColumnUnit } from "../../../src/graph/unitValue";
+import { parseFrameSource, frameSourceToText, type FrameValue } from "../../../src/graph/frame";
 
 const ALL = [...GEOMETRY_CIRCLES, ...GEOMETRY_SOLIDS];
 
@@ -58,13 +59,25 @@ describe("Geometry second-wave formulas", () => {
   });
 });
 
-type Given = Partial<Record<"a" | "b" | "c" | "A" | "B" | "C", number>>;
-type Solved = Record<"a" | "b" | "c" | "A" | "B" | "C" | "area" | "perimeter", number>;
+type Part = "a" | "b" | "c" | "A" | "B" | "C" | "area" | "perimeter";
+type Given = Partial<Record<Part, number>>;
+type Solved = Record<Part, number>;
 
-/** The card on one triangle: its answer, or the error every output carries. */
+const frameOf = (rows: Given[], units: Partial<Record<Part, ColumnUnit>> = {}): FrameValue => {
+  const names = [...new Set(rows.flatMap((r) => Object.keys(r)))] as Part[];
+  return {
+    __frame: true,
+    columns: names.map((name) => ({ name, type: "number", values: rows.map((r) => r[name] ?? null), ...(units[name] ? { unit: units[name] } : {}) })),
+  } as FrameValue;
+};
+const cellOf = (f: FrameValue, name: string, row = 0) => f.columns.find((c) => c.name === name)?.values[row];
+
+/** The card over a wired frame of one triangle: its solved row, or the error the row carries. */
 function solveTriangle(g: Given): Solved | SolError {
-  const out = new TriangleSolverNode().data(Object.fromEntries(Object.entries(g).map(([k, v]) => [k, [v]]))) as Record<string, unknown>;
-  return isSolError(out.area) ? out.area : (out as Solved);
+  const out = new TriangleSolverNode().data({ triangles: [frameOf([g])] }) as { frame: FrameValue };
+  const area = cellOf(out.frame, "area");
+  if (isSolError(area)) return area;
+  return Object.fromEntries(out.frame.columns.map((c) => [c.name, c.values[0]])) as Solved;
 }
 
 describe("Triangle Solver", () => {
@@ -98,13 +111,10 @@ describe("Triangle Solver", () => {
   });
 
   it("SSA: unique when the opposite side dominates; honest error when ambiguous", () => {
-    // a = 10 ≥ b = 6: unique.
     const t = solved({ a: 10, b: 6, A: 50 });
     expect(t.A + t.B + t.C).toBeCloseTo(180, 6);
-    // a = 5, b = 6, A = 50°: b·sinA ≈ 4.6 < a < b → two triangles fit.
     const amb = solveTriangle({ a: 5, b: 6, A: 50 });
     expect(isSolError(amb) && amb.code).toBe("#SOLVE!");
-    // b·sinA > a: no triangle at all.
     const none = solveTriangle({ a: 3, b: 6, A: 50 });
     expect(isSolError(none) && none.code).toBe("#DOMAIN!");
   });
@@ -116,48 +126,52 @@ describe("Triangle Solver", () => {
     expect(t.c).toBeCloseTo(7 * Math.sqrt(3), 9);
   });
 
-
-
-  it("an angle input in ANY angle unit reads in degrees", () => {
+  it("one triangle per row, Valid per row, other columns kept, the keyed table when nothing is wired", () => {
     const n = new TriangleSolverNode();
-    // An FC-tagged radian angle (base π/2) is a right angle, not 1.57°.
-    const right = tagDim(Math.PI / 2, { angle: 1 }, "rad");
-    const out = n.data({ a: [3], b: [4], C: [right] });
-    expect(out.c as number).toBeCloseTo(5, 9);
-    const deg90 = tagDim(Math.PI / 2, { angle: 1 }, "deg");
-    // The broadcast path reads each cell the same way.
-    const out3 = n.data({ a: [[3, 6]], b: [[4, 8]], C: [[right, deg90]] });
-    expect((out3.c as number[]).map((x) => Math.round(x))).toEqual([5, 10]);
+    const f = frameOf([{ a: 3, b: 4, c: 5 }, { a: 1, b: 1, c: 5 }]);
+    f.columns.push({ name: "label", type: "string", values: ["right", "broken"] });
+    const out = n.data({ triangles: [f] }) as { frame: FrameValue; valid: unknown[] };
+    expect(cellOf(out.frame, "C", 0)).toBeCloseTo(90, 9);
+    expect(out.valid[0]).toBe(true);
+    expect(out.valid[1]).not.toBe(true);
+    expect(cellOf(out.frame, "label", 1)).toBe("broken");
+    expect(out.frame.columns.map((c) => c.name)).toEqual(["a", "b", "c", "label", "A", "B", "C", "area", "perimeter"]);
+    const keyed = new TriangleSolverNode().data({}) as { frame: FrameValue };
+    expect(cellOf(keyed.frame, "area")).toBeCloseTo(6, 9);
   });
 
-  it("a degree-tagged angle reads as its whole degrees, with no float residue", () => {
-    const n = new TriangleSolverNode();
-    for (let deg = 1; deg < 179; deg++) {
-      const out = n.data({ a: [1], A: [tagDim((deg * Math.PI) / 180, { angle: 1 }, "deg")], B: [(180 - deg) / 2] });
-      expect(out.A).toBe(deg);
-    }
+  it("a part keyed into the fresh table's empty column is a number, and text in a part is #VALUE!", () => {
+    const cols = parseFrameSource(TRIANGLE_DEFAULT);
+    cols.find((c) => c.name === "C")!.cells[0] = "60";
+    const n = new TriangleSolverNode({ frameText: frameSourceToText(cols) });
+    expect((n.data({}) as { valid: unknown[] }).valid).toEqual([false]);
+    const f = frameOf([{ a: 3, b: 4 }]);
+    f.columns.push({ name: "C", type: "string", values: ["right"] });
+    const out = new TriangleSolverNode().data({ triangles: [f] }) as { frame: FrameValue };
+    expect((cellOf(out.frame, "c") as { code?: string }).code).toBe("#VALUE!");
   });
 
-  it("[[C25]] sides solve in one unit: a km side and a m side convert, answers come back in the first side's unit", () => {
+  it("a keyed area or perimeter is a check: Valid is FALSE where it disagrees", () => {
     const n = new TriangleSolverNode();
-    const km3 = tagDim(3000, { length: 1 }, "km");
-    const m4000 = tagDim(4000, { length: 1 }, "m");
-    const out = n.data({ a: [km3], b: [m4000], C: [90] });
-    const c = out.c as UnitCell;
-    expect(c.display).toBe("km");
-    expect(c.value).toBeCloseTo(5000, 6);
-    expect((out.perimeter as UnitCell).value).toBeCloseTo(12000, 6);
-    const area = out.area as UnitCell;
-    expect(area.dim).toEqual({ length: 2 });
-    expect(area.value).toBeCloseTo(6e6, 3);
-    // A bare side reads in the sides' unit: 3 km and 4 → 5 km.
-    expect((n.data({ a: [km3], b: [4], C: [90] }).c as UnitCell).value).toBeCloseTo(5000, 6);
-    // Two dimensions, or a length where an angle belongs, are #UNIT!.
-    const sec = tagDim(4, { time: 1 }, "s");
-    expect((n.data({ a: [km3], b: [sec], C: [90] }).c as { code?: string }).code).toBe("#UNIT!");
-    expect((n.data({ a: [3], b: [4], C: [km3] }).valid as { code?: string }).code).toBe("#UNIT!");
+    const out = n.data({ triangles: [frameOf([{ a: 3, b: 4, c: 5, area: 6 }, { a: 3, b: 4, c: 5, area: 7 }, { a: 3, b: 4, c: 5, perimeter: 12 }])] }) as { valid: unknown[] };
+    expect(out.valid).toEqual([true, false, true]);
   });
 
-
-
+  it("[[C25]] units ride the columns: sides convert into the first side's unit, angles into degrees, area squares", () => {
+    const n = new TriangleSolverNode();
+    const km = { dim: { length: 1 }, display: "km" };
+    const m = { dim: { length: 1 }, display: "m" };
+    const out = n.data({ triangles: [frameOf([{ a: 3, b: 4000, C: 90 }], { a: km, b: m })] }) as { frame: FrameValue };
+    expect(cellOf(out.frame, "c")).toBeCloseTo(5, 9);
+    expect(out.frame.columns.find((c) => c.name === "c")?.unit?.display).toBe("km");
+    expect(cellOf(out.frame, "perimeter")).toBeCloseTo(12, 9);
+    expect(out.frame.columns.find((c) => c.name === "area")?.unit?.dim).toEqual({ length: 2 });
+    expect(out.frame.columns.find((c) => c.name === "A")?.unit?.display).toBe("deg");
+    const rad = { dim: { angle: 1 }, display: "rad" };
+    const right = n.data({ triangles: [frameOf([{ a: 3, b: 4, C: Math.PI / 2 }], { C: rad })] }) as { frame: FrameValue };
+    expect(cellOf(right.frame, "c")).toBeCloseTo(5, 9);
+    const sec = { dim: { time: 1 }, display: "s" };
+    const bad = n.data({ triangles: [frameOf([{ a: 3, b: 4, C: 90 }], { a: km, b: sec })] }) as { frame: FrameValue };
+    expect((cellOf(bad.frame, "c") as { code?: string }).code).toBe("#UNIT!");
+  });
 });

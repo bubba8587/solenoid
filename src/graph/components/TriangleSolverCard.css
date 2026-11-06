@@ -1,0 +1,117 @@
+/* [[C25]] The Triangle Solver card (TriangleSolverCard.tsx): the figure is a Recess, as the card's value boxes are
+   (DESIGN.md § Surfaces), with the parts' labels on it and the row pager in its bottom-right corner. */
+
+.solenoid-tri__figure {
+  position: relative;
+  margin: 4px 0 6px;
+  padding-bottom: 24px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* The drawing and its labels share one box at the drawing's own aspect, so a label's percent is its point. */
+.solenoid-tri__stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 300 / 236;
+}
+
+.solenoid-tri__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.solenoid-tri__label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.solenoid-tri__letter {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.solenoid-tri__label--angle .solenoid-tri__letter {
+  color: var(--text);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.solenoid-tri__field {
+  min-width: 3ch;
+  padding: 1px 4px;
+  font: inherit;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--text);
+  text-align: right;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.solenoid-tri__field::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.solenoid-tri__field:focus {
+  outline: none;
+  border-color: var(--border-strong);
+}
+
+.solenoid-tri__value {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--text);
+}
+
+.solenoid-tri__label--solved .solenoid-tri__value {
+  color: var(--text-muted);
+}
+
+.solenoid-tri__deg {
+  color: var(--text-muted);
+  margin-left: -2px;
+}
+
+.solenoid-tri__empty {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  pointer-events: none;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.solenoid-tri__totals {
+  position: absolute;
+  left: 8px;
+  bottom: 5px;
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--text-dim);
+}
+
+.solenoid-tri__pager.solenoid-record__pager {
+  position: absolute;
+  right: 6px;
+  bottom: 2px;
+  margin: 0;
+}
+
+/* The Preview row grows with its table; an io-row is otherwise one 22px line. */
+.solenoid-node__io-row.solenoid-tri__preview {
+  display: block;
+  height: auto;
+  padding: 0;
+}
