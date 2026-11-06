@@ -37,7 +37,7 @@ specific item.
   adding durations to dates, never dates to dates.
 - **Triangle Solver is a frame card** (the author 2026-11-06): one frame in (`a, b, c, A, B, C, area, perimeter`), the
   same frame out with other columns kept, Valid per row. Unwired, it keys its own `frameText` (typed into the figure's
-  labels or the Preview); the default is JSON so its empty columns are number columns. XWide, the figure in a Recess,
+  labels; the Preview is the solved frame, read-only); the default is JSON so its empty columns are number columns. XWide, the figure in a Recess,
   the Record pager. Units ride the columns (angles `deg`). A keyed area or perimeter only checks; text in a part is
   `#VALUE!`. The old per-part sockets and `annotationFor` are gone; the `TRIANGLESOLVER` formula is unchanged.
 - **Before pushing Rust, even a prototype test: `bash scripts/check-rust.sh <crate>`** (the crate bans `powi`, clippy

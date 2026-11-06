@@ -88,7 +88,6 @@ function PartLabel({ part, at, keyed, solved, isSolved, editable, onCommit }: {
           value={draft}
           placeholder={shown}
           aria-label={angle ? `Angle ${part} in degrees` : `Side ${part}`}
-          title={isSolved ? "Solved from the other parts; type a value to give it" : "Given; clear it to solve for it"}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={onBlur}
           onKeyDown={onKeyDown}
@@ -140,7 +139,6 @@ export function TriangleSolverComponent({ data, emit }: NodeProps<TriangleSolver
   // With nothing solvable a stand-in triangle keeps all six fields on the figure to key into.
   const P = solvedP ?? corners(STAND_IN)!;
   const spots = labelSpots(P);
-  const area = numAt(out, "area", row), perimeter = numAt(out, "perimeter", row);
 
   const save = useCallback(async (columns: FrameSourceColumn[]) => {
     data.frameText = frameSourceToText(columns);
@@ -194,13 +192,6 @@ export function TriangleSolverComponent({ data, emit }: NodeProps<TriangleSolver
           />
         ))}
         </div>
-        {!solvedP && <div className="solenoid-tri__empty">{isSolError(data.cachedResult) ? "" : "Give three parts, at least one a side"}</div>}
-        {(area !== undefined || perimeter !== undefined) && (
-          <div className="solenoid-tri__totals">
-            {area !== undefined && <span>Area {formatScalar(area)}</span>}
-            {perimeter !== undefined && <span>Perimeter {formatScalar(perimeter)}</span>}
-          </div>
-        )}
         {rows > 1 && (
           <div className="solenoid-record__pager solenoid-tri__pager">
             <button type="button" className="solenoid-record__pager-btn" title="Previous row" disabled={row <= 0}
@@ -216,7 +207,6 @@ export function TriangleSolverComponent({ data, emit }: NodeProps<TriangleSolver
         <FrameDisplay
           frame={previewed(() => (out ?? (isSolError(data.cachedResult) ? data.cachedResult : null)))}
           label={nodeDisplayName(data)}
-          {...(wired ? {} : { source, onSaveSource: (cols: FrameSourceColumn[]) => void save(cols) })}
         />
       </FrameOutRow>
     </NodeShell>

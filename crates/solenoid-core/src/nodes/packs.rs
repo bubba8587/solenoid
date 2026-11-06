@@ -1392,6 +1392,13 @@ fn triangle_solver(c: &mut Call) -> Answer {
         Ok(f) => (f, None),
         Err(e) => (vec![1.0; 6], Some(e)),
     };
+    // A part is an amount: a date or logical column in one of the eight is refused, never read as its serial.
+    let kind_err = TRIANGLE_COLUMNS.iter().find_map(|k| match col(k).map(|c| c.ty) {
+        Some(FrameColType::Date) => Some(err(ErrorCode::Type, format!("{k} is a date column; a triangle's parts are numbers."))),
+        Some(FrameColType::Logical) => Some(err(ErrorCode::Type, format!("{k} is a logical column; a triangle's parts are numbers."))),
+        _ => None,
+    });
+    let unit_err = kind_err.or(unit_err);
     let mut out: Vec<Vec<V>> = (0..8).map(|_| Vec::with_capacity(rows)).collect();
     let mut valid: Vec<V> = Vec::with_capacity(rows);
     let mut solved_by_row: Vec<V> = Vec::with_capacity(rows);

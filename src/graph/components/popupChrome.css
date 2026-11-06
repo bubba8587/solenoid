@@ -302,3 +302,14 @@
 @media (prefers-reduced-motion: reduce) {
   .sol-skeleton__block { animation: none; }
 }
+
+/* A popup opens at least this tall, so a one-row table isn't a strip; the grip still sizes it freely after. */
+.sol-popup:not(.sol-popup--sized) {
+  display: flex;
+  flex-direction: column;
+  min-height: min(440px, 100%);
+}
+.sol-popup:not(.sol-popup--sized) .sol-popup__scroll,
+.sol-popup:not(.sol-popup--sized) .sol-popup__view {
+  flex: 1 1 auto;
+}
