@@ -1,5 +1,6 @@
 // [[B12]] losslessSaves, [[C86]] membershipByGesture, [[B18]] safeToShare
 import type { GraphEditor } from "./graphEditor";
+import { rebuildGroupMembership } from "./groupMembership";
 import { GraphConnection, GraphNode } from "./graphModel";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "./schemes";
 import { dockedNodeStore } from "./dockedNodeStore";
@@ -226,5 +227,7 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   } finally {
     scope.end();
   }
+  // The gate held the absorb pipe, so pasted groups tint their members here.
+  rebuildGroupMembership(editor);
   await scope.settle(new Set(toAdd.map((b) => b.clone.id)));
 }

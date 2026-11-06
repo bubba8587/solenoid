@@ -401,7 +401,7 @@ Tests:
 7. For each outgoing cable, separately: create a `CompositeOutputNode` labeled `<source label or class name> · <source output label or key>`, cable the member's output to it, place it 80 right of the member's right edge (member width, or 220 when unknown), add an output port, and cable that port to the outer target. One member output feeding two outer targets gives two ports.
 8. Settle internal types, add the composite to the outer editor, and move it to the origin. Close the scope and run its settle once (`bulkSettle()` on the main canvas, a full pass).
 
-The new composite is labeled `Composite`, in `single` mode, and returns its id.
+The new composite is labeled `Composite`, in `single` mode, and returns its id. A group that held a wrapped card holds the composite in its place (the first such group, as a card sits in one), and Unpack hands the composite's group its cards back (`swapMembers`), with group tints rebuilt after either.
 
 Tests: `compositeLogic.test.ts`: nothing selected returns null; a mixed selection collapses into one card and computes end to end; a selected host's docked FC goes along; a selection with no crossing cables makes a port-less composite; each member's position is kept relative to the box; an already selected Composite is left out.
 

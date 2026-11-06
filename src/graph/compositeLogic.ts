@@ -12,8 +12,21 @@ import { forgetNode } from "./nodeStoreRegistry";
 import { standoffStore } from "./standoffs";
 import { measuredBox } from "./nodeSize";
 import { getOwningEditor, editScopeFor } from "./activeGraph";
+import { rebuildGroupMembership } from "./groupMembership";
 
 type Editor = GraphEditor<Schemes>;
+
+/** The group holding any of `gone` holds `into` in their place: a wrapped card's group holds its composite, an
+ *  unpacked composite's group its cards. `first` keeps `into` to the first such group (a composite sits in one). */
+function swapMembers(editor: Editor, gone: ReadonlySet<string>, into: readonly string[], first: boolean): void {
+  let placed = false;
+  for (const g of editor.getNodes()) {
+    if (!(g instanceof GroupNode) || !g.members.some((m) => gone.has(m))) continue;
+    const kept = g.members.filter((m) => !gone.has(m));
+    g.members = first && placed ? kept : [...kept, ...into.filter((i) => !kept.includes(i))];
+    placed = true;
+  }
+}
 
 function nodeBox(view: View, id: string): { x: number; y: number; w: number; h: number } | null {
   return measuredBox(view, id, getOwningEditor(id) ?? undefined);
@@ -118,9 +131,11 @@ export async function createCompositeFromSelection(editor: Editor, view: View): 
     composite.settleInternalTypes();
     await editor.addNode(composite as SolenoidNode);
     await view.moveNode(composite.id, { x: minX, y: minY });
+    swapMembers(editor, selIds, [composite.id], true);
   } finally {
     scope.end();
   }
+  rebuildGroupMembership(editor);
 
   // beginGraphRebuild suppressed the per-cable settle, so run it once here.
   await scope.settle();
@@ -205,9 +220,11 @@ export async function unpackComposite(editor: Editor, view: View, compositeId: s
     }
 
     await editor.removeNode(compositeId);
+    swapMembers(editor, new Set([compositeId]), internalNodes.filter((n) => !markerIds.has(n.id)).map((n) => n.id), false);
   } finally {
     scope.end();
   }
+  rebuildGroupMembership(editor);
   // The gate held the pipe's forget; the members were relocated, only the composite is gone.
   forgetNode(compositeId);
   await scope.settle();

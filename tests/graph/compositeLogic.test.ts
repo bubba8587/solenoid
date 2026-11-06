@@ -237,3 +237,26 @@ describe("unpackComposite", () => {
     expect(dispOut.out).toBe(7);
   });
 });
+
+describe("a group keeps its cards through a wrap and an unpack ([[C86]] membershipByGesture)", async () => {
+  const { GroupNode } = await import("../../src/graph/nodes/group");
+  const { groupMembershipStore } = await import("../../src/graph/groupMembership");
+  it("a wrapped member's group holds the composite in its place; unpacking hands the group its cards back", async () => {
+    const { editor } = makeEditor();
+    const a = new ValueInputNode(), b = new ValueInputNode();
+    await editor.addNode(a as never);
+    await editor.addNode(b as never);
+    const g = new GroupNode({ members: [a.id, b.id], color: "accent" });
+    await editor.addNode(g as never);
+    const { view } = makeFakeView(new Map([[a.id, { x: 0, y: 0 }], [b.id, { x: 200, y: 0 }], [g.id, { x: -20, y: -20 }]]));
+    (a as unknown as { selected: boolean }).selected = true;
+    const cid = (await createCompositeFromSelection(editor, view))!;
+    expect(g.members).toEqual([b.id, cid]);
+    expect(groupMembershipStore.color(a.id)).toBeUndefined();
+    expect(groupMembershipStore.color(cid)).toBeDefined();
+    await unpackComposite(editor, view, cid);
+    expect(g.members).toEqual([b.id, a.id]);
+    expect(groupMembershipStore.color(a.id)).toBeDefined();
+    expect(groupMembershipStore.color(cid)).toBeUndefined();
+  });
+});

@@ -75,6 +75,19 @@ describe("copy", () => {
 });
 
 describe("paste", () => {
+  it("a pasted group tints its pasted members at once ([[C86]] membershipByGesture)", async () => {
+    const { groupMembershipStore } = await import("../../src/graph/groupMembership");
+    const a = await add(new DisplayNode());
+    const group = await add(new GroupNode({ members: [a.id], color: "accent" }));
+    group.selected = true;
+    copySelected();
+    await pasteClipboard(400, 400);
+    const pastedGroup = editor.getNodes().find((n) => n instanceof GroupNode && n.id !== group.id) as GroupNode;
+    expect(pastedGroup.members).toHaveLength(1);
+    expect(pastedGroup.members[0]).not.toBe(a.id);
+    expect(groupMembershipStore.color(pastedGroup.members[0])).toBeDefined();
+  });
+
   it("pastes a Missing placeholder as another placeholder for the same node", async () => {
     const ph = await add(new PlaceholderNode({
       missingType: "GoneNode", savedInit: { label: "Gone", op: "x" }, savedLiterals: { a: 2 },
