@@ -196,6 +196,20 @@ export function niceTicks(lo: number, hi: number, count = 5): number[] {
  *  the data's extremes rounded to two figures (recharts' nice ends) and the round ticks between them, since a 0–1
  *  axis's 0.25 is wider than either end, and over the round ticks of the data's own range, read by the axis's `fmt`.
  *  Plus recharts' 8 px of tick spacing and 14 for an axis title. */
+/** The right margin a plot needs so the x label centered on its right edge isn't cut off: half that label's width (at
+ *  the axes' 9px type, 5.8px a character as `valueAxisWidth` reads it), never under the usual 8. */
+export function edgeRoom(lastLabel: string, fs: number, base = 8): number {
+  return Math.max(base, Math.ceil((lastLabel.length * 5.8 * fs) / 2) + 2);
+}
+
+/** A category x axis's interval: every label when they fit side by side across `plotW`, else every k-th, the first
+ *  kept (a tick forced at every point ran five-digit labels into each other). */
+export function categoryInterval(labels: readonly string[], plotW: number, fs: number): number {
+  const widest = Math.max(1, ...labels.map((l) => l.length)) * 5.8 * fs + 6;
+  const per = plotW / Math.max(1, labels.length);
+  return per >= widest ? 0 : Math.ceil(widest / per) - 1;
+}
+
 export function valueAxisWidth(values: Iterable<unknown>, fs: number, titled = false, fmt: (n: number) => string = compactTick): number {
   let lo = 0, hi = 0, min = Infinity, max = -Infinity;
   for (const v of values) {

@@ -3,7 +3,7 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Cartesia
 import { type SyntheticEvent, type ComponentProps, useId, useMemo, useState, useSyncExternalStore, type ReactElement, type ReactNode, type PointerEvent, type MouseEvent } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, regionLabelColor, minMaxDecimate, refShape, thinXY, envelopeRows, type ChartShape, type ThinMode } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, edgeRoom, categoryInterval, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, regionLabelColor, minMaxDecimate, refShape, thinXY, envelopeRows, type ChartShape, type ThinMode } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { ChartValue, OverlayPayload, XYPayload, XYPoint, ChartRef } from "../chartValue";
 import type { RegionCuts, RegionPoint } from "../nodes/visual";
@@ -132,9 +132,14 @@ export function ChartView({
   const yFmt = valueTickFormat([...series.map((d) => d.v), opts?.ymin, opts?.ymax]);
   const yAxisW = axes ? valueAxisWidth([...series.map((d) => d.v), opts?.ymin, opts?.ymax], fs, !!yLabel, yFmt) : 0;
   const bottomM = axes ? (xLabel ? 18 : 4) : 2;
-  const margin = axes ? { top: PLOT_TOP, right: 8, bottom: bottomM, left: 0 } : { top: 2, right: 2, bottom: 2, left: 2 };
+  // A line or area puts its last point on the plot's right edge, its label centered there.
+  const rightM = op === "line" || op === "area" ? edgeRoom(tickFmt(series.length - 1), fs) : 8;
+  const margin = axes ? { top: PLOT_TOP, right: rightM, bottom: bottomM, left: 0 } : { top: 2, right: 2, bottom: 2, left: 2 };
   const catInterval = series.length <= ALL_TICKS_UPTO ? 0 : undefined;
-  const refCtx = { axis, fs, xLo: 0, xHi: Math.max(1, (labels?.length ?? series.length) - 1), pw: width - yAxisW - 8 };
+  const xInterval = series.length <= ALL_TICKS_UPTO
+    ? categoryInterval(series.map((d) => tickFmt(d.i)), width - yAxisW - margin.right, fs)
+    : undefined;
+  const refCtx = { axis, fs, xLo: 0, xHi: Math.max(1, (labels?.length ?? series.length) - 1), pw: width - yAxisW - margin.right };
   const refAt = snapAt(categoryAt(labels), series === given ? null : series.map((d) => d.i));
   const refEls = refMarks(refs, refAt, refCtx);
   const refElsSwap = refMarks(refs, refAt, { ...refCtx, swap: true });
@@ -144,7 +149,7 @@ export function ChartView({
     chart = (
       <LineChart width={width} height={chartH} data={series} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
-        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={xInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
         {axes && refEls}
         {TIP}
@@ -155,7 +160,7 @@ export function ChartView({
     chart = (
       <AreaChart width={width} height={chartH} data={series} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
-        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={xInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
         {axes && refEls}
         {TIP}
@@ -405,8 +410,11 @@ export function MultiSeriesView({
   const yDomain = yDomainOf(opts);
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
-  const margin = { top: axes ? PLOT_TOP : 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
+  const margin = { top: axes ? PLOT_TOP : 6, right: axes && (op === "line" || op === "area") ? edgeRoom(tickFmt(n - 1), fs) : 8, bottom: axes ? 4 : 2, left: 0 };
   const catInterval = n <= ALL_TICKS_UPTO ? 0 : undefined;
+  const xInterval = n <= ALL_TICKS_UPTO
+    ? categoryInterval(data.map((d) => tickFmt(d.i as number)), width - yAxisW - margin.right, fs)
+    : undefined;
   const catW = op === "bar" ? categoryAxisWidth(data.map((d) => tickFmt(d.i as number)), width, fs, !!yLabel) : 0;
   const legendInsetLeft = op === "radar" ? 0 : op === "bar" ? catW : yAxisW;
   const legendInsetRight = op === "radar" ? 0 : margin.right;
@@ -432,7 +440,7 @@ export function MultiSeriesView({
     chart = (
       <Container width={width} height={chartH} data={data} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
-        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={xInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
         {axes && refEls}
         {tip}
@@ -476,7 +484,7 @@ export function MultiSeriesView({
     chart = (
       <BarChart width={width} height={chartH} data={data} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
-        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={xInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
         {axes && refEls}
         {tip}
@@ -533,7 +541,9 @@ export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
   const titleH = title ? titleHeight(fs) : 0;
   const xLabel = opts?.xlabel ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fs, fill: axis } : undefined;
   const yLabel = opts?.ylabel ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fs, fill: axis } : undefined;
-  const margin = { top: PLOT_TOP, right: 8, bottom: xLabel ? 18 : 4, left: 0 };
+  // Lines and areas end on the plot's edge; a column or bar keeps its label inside its band.
+  const banded = series.some((s) => s.kind === "column" || s.kind === "bar");
+  const margin = { top: PLOT_TOP, right: banded ? 8 : edgeRoom(tickFmt((payload.labels?.length ?? n) - 1), fs), bottom: xLabel ? 18 : 4, left: 0 };
   const yFmt = valueTickFormat([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax]);
   const yAxisW = valueAxisWidth([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax], fs, !!yLabel, yFmt);
   const legendN = legendRows(series.map((s) => s.name), width - yAxisW - margin.right, fs, legendCap(height));
@@ -969,6 +979,8 @@ export function XYView({ payload, width, height, opts, fontScale, refs, under, o
     if (xDate) return formatDateSerial(n, byYear ? "YYYY" : "MMM YYYY");
     return axisTick(n);
   };
+  // The last x tick sits on the plot's right edge, its label centered there.
+  if (xTicks?.length) margin.right = edgeRoom(xFmt(xTicks[xTicks.length - 1]), fs, margin.right);
 
   const runs: { j: number; rows: XYRow[]; dots?: XYRow[] }[] = [];
   series.forEach((s, j) => {
