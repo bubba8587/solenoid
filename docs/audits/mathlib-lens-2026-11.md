@@ -125,6 +125,17 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
   without loops in one pass, and leaves the caps guarding only loops; (2) socket-lattice req. 9's "at most 32 passes"
   and "a chain of N passthroughs settles in at most N passes" should say 256 and "listed against the wiring". A
   257-card backwards chain is not a real graph, but a large graph built bottom-up costs one pass per level today.
+- **Loops, verified** (pass 4, `a_loop_through_an_agreeing_card`, `a_loop_of_passthroughs_alone`): an IF-like card
+  whose one branch is a number and whose other branch is its own output fed back through a passthrough has two
+  consistent typings, "all unknown" and "all number". The settle picks "all unknown" (`trueany`) in all three visit
+  orders tried, and a bare loop of two passthroughs stays `trueany` too. In order terms it computes the least fixed
+  point starting from unknown, the cautious answer, and the `trueany` veto in the vote is what keeps it there. That
+  is fine: loop members compute as `#CIRC!`, so there is no value whose type could be wrong.
+- **The widening preorder now has a native test** (pass 4, `widening_is_a_preorder_and_narrowing_does_not_compose`,
+  against `lattice.rs` itself rather than the fixture): over the 25 concrete types, `can_connect` is reflexive,
+  widening composes through every chain, the seven narrowing edges are exactly the combo-to-scalar ones, and
+  `list` to `numlist` to `number` connects hop by hop while `list` to `number` does not. Ready to move to develop
+  as the test socket-lattice § The shape of what connects says it lacks.
 - Kleene logic is the most-defined monotone extension of AND and OR when unknown sits below TRUE and FALSE. The same
   view gives some cycles a least fixed point (`x = x OR TRUE` is TRUE) and numeric loops a convergence condition
   (`ContractingWith`).
@@ -173,6 +184,9 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
   - one variable in other units (a column scaled by c): SOLVE fails from c = 1e-13 (its cutoff is an absolute 1e-12,
     `solve_linear`), MDETERM and MINVERSE from 1e-15 (an absolute 1e-14).
   - one equation in other units (a row scaled by c): partial pivoting rescues it until 1e-15.
+  - the regressions (pass 4, `regression_under_scaled_x`): SLOPE, INTERCEPT, LINEST, TREND and RSQ keep their laws
+    with x scaled anywhere from 1e-15 to 1e12; they center the data, so no cutoff is involved. LINEST is single-x
+    (`[slope, intercept, R²]`, as formula-language documents), so multiple regression has no case to probe.
   - So the trouble is three functions, two absolute cutoffs. Coefficients typed in SI base units reach these scales
     (picofarads, nanoseconds squared, Boltzmann's constant at 1.4e-23). The fix shape is the one MATRIXRANK already
     uses (`tol * scale`), and the law sweep is the test that would hold it.
@@ -210,16 +224,15 @@ No test holds it yet: a candidate prototype (thread 2b).
 ## Open threads (for the next passes)
 
 1. Prototype the F5 coercion-commutes sweep.
-2. A test holding the widening preorder and the non-composing narrowing edges (from the lattice fixture).
 3. Extend the shuffle sweep (F4) to the frame verbs: Group By, Pivot, Rollup, Distinct, and the criteria aggregates.
 4. Classify every aggregate in `call_traits.json` by algebraic kind (F4).
 5. Audit P7 Fallbacks against the identity rule (F3).
-6. F5 follow-ups: loops. What does the settle do on a `#CIRC!` loop of passthroughs (does it oscillate, and does the
-   answer depend on order)? A probe in the same test file.
+6. F5 follow-ups: a loop through a Conduit (the lane typing alternates with adoption); can it oscillate across the
+   8 rounds?
 7. The empty-aggregate rule (F3): the cards (Aggregate) and the frame verbs (Group By over an empty group, Rollup)
    over nothing; the formula functions are censused.
-8. F8 follow-ups: LINEST, LOGEST, TREND, the Equation solver's linear path and the regression cards under the same
-   scale laws; whether the MDETERM and MINVERSE *cards* share `mat_det` (read says the card calls the formula kernel).
+8. F8 follow-ups: the Equation solver's quadratic sniff and linear path under scaled knowns (its 1e-9 and 1e-12
+   tolerances are relative by spec; check), and whether the MDETERM and MINVERSE *cards* share `mat_det`.
 9. Unread mathlib areas: distribution parameterizations against `dists.rs`; variance conventions; regular expressions (`Mathlib/Computability`) against
    `excel_regex.rs`; polynomial roots and `ring`; intervals (`Mathlib/Order/Interval`) for uncertain values.
 10. Cycles as least fixed points (F5), and tropical sensitivity for Schedule (F6).
@@ -240,3 +253,6 @@ No test holds it yet: a candidate prototype (thread 2b).
   break at 1e-13 to 1e-15 through absolute cutoffs; PINV, rank and eigenvalues hold), and the settle read plus a
   native probe (F5: the answer is fixed by the wiring on graphs without loops; listed against the wiring, chains past
   256 cards are left untyped; a topological visit order settles in one pass). Threads 6 and 8 rewritten.
+- **Pass 4 (2026-11-06 10:40 UTC):** settle on loops (least fixed point, `trueany`, order-independent), the widening
+  preorder as a native test against `lattice.rs` (holds), and the regressions under scaled x (hold; only SOLVE,
+  MDETERM and MINVERSE break). Threads 2 closed; 6 and 8 rewritten.

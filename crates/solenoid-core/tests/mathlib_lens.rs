@@ -361,3 +361,45 @@ fn matrix_functions_under_one_column_scaled() {
         println!("one column scaled by 1e{e}: MDETERM {det}  SOLVE {solve}  MINVERSE answers {inv}  (inverse at 1 had {} cells)", inv1.len());
     }
 }
+
+/// Thread 8 (F8): regression under a change of units of x. Scaling x by c scales the slope by 1/c and keeps the
+/// intercept and the fitted values (TREND at the scaled new x).
+#[test]
+fn regression_under_scaled_x() {
+    let xs = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+    let ys = [2.1, 3.9, 6.2, 8.1, 9.8, 12.2];
+    let x2 = [1.0, 4.0, 9.0, 16.0, 25.0, 36.0];
+    let run = |src: &str, c: f64| {
+        let env: Env = [
+            ("y".to_string(), list(&ys)),
+            ("x".to_string(), list(&xs.map(|v| v * c))),
+            ("xx".to_string(), V::List(Rc::new(xs.iter().zip(&x2).map(|(a, b)| list(&[a * c, b * c * c])).collect()))),
+            ("nx".to_string(), list(&[7.0 * c])),
+        ]
+        .into_iter()
+        .collect();
+        formula(src, env).and_then(|v| nums_of(&v))
+    };
+    let at1: Vec<(&str, Vec<f64>)> = ["SLOPE(y, x)", "INTERCEPT(y, x)", "LINEST(y, x)", "TREND(y, x, nx)", "LINEST(y, xx)", "RSQ(y, x)"]
+        .iter()
+        .map(|f| (*f, run(f, 1.0).unwrap_or_default()))
+        .collect();
+    println!("at scale 1: {at1:?}");
+    let at1: Vec<_> = at1.into_iter().filter(|(f, v)| !v.is_empty() && (!f.starts_with("LINEST") || v.len() >= 2)).collect();
+    for e in [-3, -6, -9, -12, -13, -14, -15, 6, 12] {
+        let c = 10f64.powi(e);
+        let mut row = format!("x scaled by 1e{e:+03}:");
+        for (f, base) in &at1 {
+            let want: Vec<f64> = match *f {
+                "SLOPE(y, x)" => vec![base[0] / c],
+                "LINEST(y, x)" => vec![base[0] / c, base[1]],
+                "LINEST(y, xx)" => vec![base[0] / (c * c), base[1] / c, base[2]],
+                _ => base.clone(),
+            };
+            let ok = run(f, c).is_some_and(|g| g.len() >= want.len() && close_all(&g[..want.len()], &want, 1e-7));
+            row.push_str(&format!(" {}={}", f.split('(').next().unwrap_or(""), if ok { "ok" } else { "FAIL" }));
+        }
+        println!("{row}");
+    }
+}
+
