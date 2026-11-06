@@ -45,8 +45,9 @@
   background: color-mix(in srgb, var(--el-hue) var(--header-tint), var(--surface));
   border: 1px solid color-mix(in srgb, var(--el-hue) var(--mix-edge, 45%), var(--border));
   border-radius: 0;
-  /* Neighbors share one border line instead of doubling it. */
-  margin: 0 -1px -1px 0;
+  /* Each cell's border is drawn inside its own box, so two neighbors of different categories each keep their
+     color side by side; neither overlaps the other. */
+  box-sizing: border-box;
   padding: 0;
   cursor: pointer;
 }
@@ -101,9 +102,9 @@
   position: relative;
   flex: none;
   /* The gap's full height: three rows of cells and their gaps. */
-  /* Three cells and the border they share with their neighbors, as the cells overlap by one. */
-  width: calc(3 * var(--cell) + 1px);
-  height: calc(3 * var(--cell) + 1px);
+  /* Exactly three cells, its border inset as theirs is. */
+  width: calc(3 * var(--cell));
+  height: calc(3 * var(--cell));
   box-sizing: border-box;
   background: color-mix(in srgb, var(--el-hue) var(--header-tint), var(--surface));
   border: 1px solid var(--el-hue);
