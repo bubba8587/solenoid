@@ -12,6 +12,26 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
 
 ## Findings
 
+## Summary (the run stopped after pass 6, 2026-11-06)
+
+The author stopped the hourly run after six of eight passes. What matters, most important first; every item was run,
+not just read, and the backlog on develop (§ Found by the mathlib research) carries each bug:
+
+1. **MDETERM, MINVERSE and SOLVE break on small numbers** (F8): absolute cutoffs make a well-conditioned matrix of
+   small or mixed-scale numbers `#DIV/0!`, and MDETERM of a singular matrix is an error where the answer is 0.
+2. **The Equation card can solve a tiny equation wrong** (F8): `C = k*x*x*x` at k = 1e-15 answers 8 for a true 2.
+3. **The Type Settle's order** (F5): its answer is fixed by the wiring, but it visits cards in graph order, so a graph
+   built against its wiring costs a pass per level and a chain past 256 is left untyped. Topological order fixes both.
+4. **Dates and readings disagree on the midpoint** (F1): inbox `dates-weigh-as-points` on develop.
+5. **Empty aggregates** (F3): PRODUCT, MAX and MIN of nothing make up a 0; inbox `aggregates-of-nothing` on develop.
+6. **Sums of squares and the variance family depend on row order** (F4); `ExactSum` fixes SUMSQ and DEVSQ.
+7. **Coercions along paths** (F5): agree except through the lossy logical bridge and the unshaped logical, string and
+   date matrix rungs; the widening preorder holds, now with a native test.
+
+The spec vocabulary (points and differences, the shape of what connects, aggregate kinds) landed on develop and the
+specs now carry the corrections passes 3 and 6 found. Threads still open are below, for a later session.
+
+
 ### F1. Dates and temperature readings are both torsors, handled by two different rules
 
 - Mathlib: `AddTorsor` (`Mathlib/Algebra/Torsor/Defs.lean`): point − point is a difference, point + difference is a
@@ -295,3 +315,5 @@ No test holds it yet: a candidate prototype (thread 2b).
 - **Pass 6 (2026-11-06 12:45 UTC):** the coercion sweep over 405 widening paths (104 differ: 85 by the lossy bridge,
   10 metadata, 9 from the unshaped non-number matrix rungs), and the Equation's other layers (a tiny pole errors with
   the wrong message; exponentials and a real diode equation solve right). Threads 1 and 8 rewritten.
+- **Stopped (2026-11-06 13:10 UTC):** the author stopped the schedule after pass 6; the summary above stands in for
+  the overnight one, and the confirmed bugs moved to develop's backlog.
