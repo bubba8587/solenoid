@@ -34,7 +34,7 @@ const POLICY: Record<string, Policy> = {
   ConnectedRegionsNode: "na",             // patch numbers, never in the grid's unit
   FindPeaksNode: "na",           // Grid mode: positions out, a frame, no dimensioned matrix
   DiffNode: "carry",              // Grid mode: a change or a slope is in the grid's unit; % is a plain ratio
-  SmoothNode: "carry",            // Grid mode smooths in the grid's unit (a dynamic socket, kept here by hand)
+  SmoothNode: "carry",            // Grid mode smooths in the grid's unit, List mode in its items' (a dynamic socket, kept here by hand)
   ConvolveNode: "strip",          // Grid mode: a convolution multiplies the two grids' units — documented-strip
   TrapzNode: "strip",             // Grid mode: a volume carries z·x·y — documented-strip
   StackNode: "carry-if-uniform",

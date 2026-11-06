@@ -631,10 +631,45 @@ fn connected_regions(c: &mut Call) -> Answer {
     shown(c, "cachedResult", "result", r)
 }
 
+/// A list's one unit, and its items as base magnitudes: `None` for a list with no unit, `Err` where its items don't
+/// share a dimension (or mix a unit with plain numbers).
+fn uniform_unit(arr: &V) -> Result<Option<(V, Dim, UnitCell)>, V> {
+    let V::List(items) = arr else { return Ok(None) };
+    let Some(first) = items.iter().find_map(|v| if let V::Unit(u) = v { Some((**u).clone()) } else { None }) else {
+        return Ok(None);
+    };
+    let mut mags = Vec::with_capacity(items.len());
+    for v in items.iter() {
+        match v {
+            V::Unit(u) if dim_equal(&u.dim, &first.dim) => mags.push(V::Num(u.value)),
+            V::Null | V::Undef => mags.push(V::Null),
+            e if e.is_sol_error() => mags.push(e.clone()),
+            _ => return Err(err(ErrorCode::Unit, "Smooth needs every item of the list in one kind of unit")),
+        }
+    }
+    Ok(Some((list(mags), first.dim.clone(), first)))
+}
+
 fn smooth(c: &mut Call) -> Answer {
     let grid = c.field_str("mode", "list") == "grid";
-    let arr = slot(c, if grid { "grid" } else { "list" });
+    let mut arr = slot(c, if grid { "grid" } else { "list" });
     let op = c.field_str("op", "savgol").to_string();
+    // A list carries its unit on each item ([[unit-flow#One idea, a carrier per rank]]): every op is a weighted
+    // average with weights summing to 1, so it smooths the base magnitudes and the answer wears the list's unit.
+    let unit = if grid {
+        None
+    } else {
+        match uniform_unit(&arr) {
+            Ok(u) => u,
+            Err(e) => {
+                c.show("cachedList", empty());
+                return Ok(vec![("result".into(), Cv::from(e))]);
+            }
+        }
+    };
+    if let Some((mags, _, _)) = &unit {
+        arr = mags.clone();
+    }
     let out = if nullish(&arr) {
         V::Null
     } else if grid && (op == "savgol" || op == "lowess") {
@@ -656,6 +691,15 @@ fn smooth(c: &mut Call) -> Answer {
         c.show("cachedList", empty());
         return Ok(vec![("result".into(), Cv::from(out))]);
     }
+    let out = match (&unit, out) {
+        (Some((_, dim, first)), V::List(items)) => list(
+            items
+                .iter()
+                .map(|v| if let V::Num(n) = v { tag(*n, dim.clone(), Some(first)) } else { v.clone() })
+                .collect(),
+        ),
+        (_, out) => out,
+    };
     // A smoothed grid is in the grid's unit, as Interpolate's filled one is.
     if grid
         && matches!(out, V::List(_))

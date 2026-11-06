@@ -1912,6 +1912,8 @@ export const SMOOTH_MODE_META: Record<ShapeMode, { label: string; title: string 
 export class SmoothNode extends GraphNode {
   /** The modes the card switches between; the Reference offers them as chips. */
   static modeMeta = SMOOTH_MODE_META;
+  /** Receives UnitCell tags intact: a list's items smooth in their one unit, and the answer wears it. */
+  unitAware = true;
   static inputRoles = { window: setting(LEFT_OUT, "5"), order: setting(LEFT_OUT, "2"), frac: setting(LEFT_OUT, "0.67"), sigma: setting(LEFT_OUT, "1"), size: setting(LEFT_OUT, "3") };
   static socketDocs: Record<string, string> = {
     list: "Blank and error cells are skipped by the fits and stay blank in the result.",

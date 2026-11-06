@@ -8,13 +8,13 @@ import { ReverseNode } from "../../../src/graph/nodes/list";
 import { extractInit } from "../../../src/graph/nodeInit";
 import { coreFunction } from "../coreFunction";
 import { inEditor, Src } from "../cardPasses";
-import { withMatrixUnit, matrixUnitOf } from "../../../src/graph/unitValue";
+import { withMatrixUnit, matrixUnitOf, tagDim, isUnitCell, type UnitCell } from "../../../src/graph/unitValue";
 
 const GRID = [[3, 1, 4, 1, 5], [9, 2, 6, 5, 3], [5, 8, 9, 7, 9], [3, 2, 3, 8, 4]];
 
-async function answer(node: { outputs: Record<string, unknown> }, wires: Record<string, unknown>) {
+async function answer(node: { outputs: Record<string, unknown> }, wires: Record<string, unknown>, socket = "table") {
   const ed = await inEditor(node as never);
-  for (const [key, value] of Object.entries(wires)) await ed.wire(new Src(value, "table"), key);
+  for (const [key, value] of Object.entries(wires)) await ed.wire(new Src(value, socket), key);
   const r = await ed.pass("result");
   ed.dispose();
   return r;
@@ -58,6 +58,21 @@ describe("Grid mode", () => {
   it("smooths a grid in the grid's unit", async () => {
     const km = withMatrixUnit(GRID.map((r) => [...r]), { dim: { length: 1 }, display: "km" });
     expect(matrixUnitOf(await answer(new SmoothNode({ op: "gaussian", mode: "grid" }), { grid: km }))).toMatchObject({ display: "km" });
+  });
+
+  it("smooths a list in the list's unit, by every op", async () => {
+    const km = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3].map((n) => tagDim(n * 1000, { length: 1 }, "km"));
+    for (const op of ["savgol", "lowess", "mean", "median", "gaussian"] as const) {
+      const plain = await answer(new SmoothNode({ op }), { list: km.map((u) => (u as UnitCell).value / 1000) }, "list");
+      const out = (await answer(new SmoothNode({ op }), { list: km }, "list")) as UnitCell[];
+      expect(out.every((u) => isUnitCell(u) && u.display === "km"), op).toBe(true);
+      expect(out.map((u) => +(u.value / 1000).toPrecision(10)), op).toEqual((plain as number[]).map((n) => +n.toPrecision(10)));
+    }
+  });
+
+  it("refuses a list that mixes units with plain numbers", async () => {
+    const out = await answer(new SmoothNode({ op: "mean" }), { list: [tagDim(3000, { length: 1 }, "km"), 4, tagDim(5000, { length: 1 }, "km")] }, "list");
+    expect(out).toMatchObject({ code: "#UNIT!" });
   });
 
   it("convolves a grid by a kernel, keeping the shape it's set to", async () => {
