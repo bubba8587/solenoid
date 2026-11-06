@@ -17,6 +17,9 @@ import { ChartTitle, titleHeight } from "./chartTitle";
 import { iterMin, iterMax } from "../nodes/mathUtils";
 
 const LINE_DOT_R = 2;
+/** A line's marker: a solid dot in the series' color, as an XY chart's points are (Recharts' own is a white dot ringed
+ *  in the color). */
+const lineDot = (color: string, r: number, opacity = 1) => ({ r, fill: color, fillOpacity: opacity, stroke: "none" });
 const SCATTER_DOT_R = 3;
 const PLOT_TOP = 14;
 const ALL_TICKS_UPTO = 12;
@@ -145,7 +148,7 @@ export function ChartView({
         {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
         {axes && refEls}
         {TIP}
-        <Line dataKey="v" stroke={color} strokeOpacity={opts?.alpha ?? 1} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
+        <Line dataKey="v" stroke={color} strokeOpacity={opts?.alpha ?? 1} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? lineDot(color, dotR, opts?.alpha ?? 1) : false} />
       </LineChart>
     );
   } else if (op === "area") {
@@ -156,7 +159,7 @@ export function ChartView({
         {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
         {axes && refEls}
         {TIP}
-        <Area dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
+        <Area dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? lineDot(color, dotR) : false} />
       </AreaChart>
     );
   } else if (op === "bar") {
@@ -227,7 +230,7 @@ export function ChartView({
         <PolarRadiusAxis tick={false} axisLine={false} tickCount={4} domain={yDomain} />
         {TIP}
         {/* The palette, never `color`. */}
-        <Radar dataKey="v" stroke={paint(0)} fill={paint(0)} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
+        <Radar dataKey="v" stroke={paint(0)} fill={paint(0)} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? lineDot(paint(0), dotR) : false} />
       </RadarChart>
     );
   } else if (op === "radialbar") {
@@ -434,8 +437,8 @@ export function MultiSeriesView({
         {axes && refEls}
         {tip}
         {series.map((s, j) => op === "area"
-          ? <Area key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />
-          : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={markAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />)}
+          ? <Area key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, dim(j)) : false} isAnimationActive={false} />
+          : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={markAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, markAlpha * dim(j)) : false} isAnimationActive={false} />)}
       </Container>
     );
   } else if (op === "bar") {
@@ -466,7 +469,7 @@ export function MultiSeriesView({
         {/* Radial tick text would print rotated on the polygons. */}
         <PolarRadiusAxis tick={false} axisLine={false} tickCount={4} domain={radarNorm ? [0, 1] : yDomain} />
         {radarTip}
-        {series.map((s, j) => <Radar key={j} dataKey={key(j)} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />)}
+        {series.map((s, j) => <Radar key={j} dataKey={key(j)} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, dim(j)) : false} isAnimationActive={false} />)}
       </RadarChart>
     );
   } else {
@@ -560,10 +563,10 @@ export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
         const fillAlpha = (s.alpha ?? 0.25) * o;
         const lineDotR = s.markersize ?? LINE_DOT_R;
         if (s.kind === "line") {
-          return <Line key={j} dataKey={`s${j}`} name={s.name} stroke={c} strokeOpacity={(s.alpha ?? 1) * o} strokeWidth={lw} dot={s.marker ? { r: lineDotR } : false} isAnimationActive={false} />;
+          return <Line key={j} dataKey={`s${j}`} name={s.name} stroke={c} strokeOpacity={(s.alpha ?? 1) * o} strokeWidth={lw} dot={s.marker ? lineDot(c, lineDotR, (s.alpha ?? 1) * o) : false} isAnimationActive={false} />;
         }
         if (s.kind === "area") {
-          return <Area key={j} dataKey={`s${j}`} name={s.name} stroke={c} strokeOpacity={o} fill={c} fillOpacity={fillAlpha} strokeWidth={lw} dot={s.marker ? { r: lineDotR } : false} isAnimationActive={false} />;
+          return <Area key={j} dataKey={`s${j}`} name={s.name} stroke={c} strokeOpacity={o} fill={c} fillOpacity={fillAlpha} strokeWidth={lw} dot={s.marker ? lineDot(c, lineDotR, o) : false} isAnimationActive={false} />;
         }
         return <Bar key={j} dataKey={`s${j}`} name={s.name} fill={c} fillOpacity={(s.alpha ?? 1) * o} isAnimationActive={false} />;
       })}
