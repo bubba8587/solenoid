@@ -27,7 +27,7 @@ const ANCHORS = new Set(["n", "e", "s", "w", "ne", "nw", "se", "sw"]);
 /** Node types whose `body` is markdown prose the user reads on the canvas. */
 const PROSE_TYPES = new Set(["NoteNode", "ReportNode", "ImportObsidianNode", "PresentationNode"]);
 
-const seedModules = import.meta.glob("../../src/graph/seedGraphs/*.json", { eager: true }) as Record<
+const seedModules = import.meta.glob(["../../src/graph/seedGraphs/*.json", "../../src/graph/seedGraphs/packs/*.json"], { eager: true }) as Record<
   string, { default?: SavedGraph } & SavedGraph
 >;
 
@@ -49,7 +49,7 @@ function dataTypeOf(port: Port | undefined): string | null {
 describe("seed menu fields", () => {
   type MenuFields = { v?: unknown; label?: unknown; order?: unknown; group?: unknown };
   const entries = Object.entries(seedModules).map(([path, mod]) => ({
-    name: path.replace("./seedGraphs/", ""),
+    name: path.replace(/^.*seedGraphs\//, ""),
     m: (mod.default ?? mod) as MenuFields,
   }));
 

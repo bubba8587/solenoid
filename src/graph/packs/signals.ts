@@ -7,6 +7,7 @@ const PATH = ["Packs", "Signals & Grids"];
 
 export const SIGNALS_PACK: Pack = {
   id: "signals",
+  seed: "pack-signals",
   name: "Signals & Grids",
   description: "For a series of readings or a table of numbers like a height map: FFT spectrum, smoothing, peak finding, connected regions, and 1-D and 2-D convolution.",
   builtin: true,

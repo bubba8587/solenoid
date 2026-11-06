@@ -51,6 +51,7 @@ describe("a pack's formulas are the core's pack functions, one to one", () => {
 
 const FIXTURE: Pack = {
   id: "test-formula-pack",
+  seed: "",
   name: "Test Formula Pack",
   description: "Fixture for the formula seam.",
   builtin: true,

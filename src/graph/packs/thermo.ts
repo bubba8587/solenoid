@@ -75,6 +75,7 @@ export const THERMO_FORMULAS: FormulaPackEntry[] = [
 export const THERMO_PACK: Pack = {
   formulas: THERMO_PACK_FORMULAS,
   id: "thermo",
+  seed: "pack-thermo",
   group: "Science & Engineering",
   name: "Thermodynamics & Air",
   description: "Ideal gas, conduction, convection, radiation, R and U values, dew point, wet bulb, heat index, wind chill, standard atmosphere, vapor pressure.",

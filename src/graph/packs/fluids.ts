@@ -73,6 +73,7 @@ export const FLUIDS_FORMULAS: FormulaPackEntry[] = [
 export const FLUIDS_PACK: Pack = {
   formulas: FLUIDS_PACK_FORMULAS,
   id: "fluids",
+  seed: "pack-fluids",
   group: "Science & Engineering",
   name: "Fluid Mechanics",
   description: "Reynolds, Colebrook and Swamee–Jain friction, Darcy–Weisbach and Hazen–Williams losses, Bernoulli, pumps, settling, drag, sound speed. SI units.",

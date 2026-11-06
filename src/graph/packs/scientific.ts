@@ -10,6 +10,7 @@ const PATH = ["Packs", "Scientific Computing"];
 
 export const SCIENTIFIC_PACK: Pack = {
   id: "scientific",
+  seed: "pack-scientific",
   name: "Scientific Computing",
   description: "ODE integration, linear solve, eigenvalues and singular values, polynomial roots, distribution fitting, seasonal decomposition.",
   builtin: true,

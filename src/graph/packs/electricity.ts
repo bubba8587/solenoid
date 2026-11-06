@@ -109,6 +109,7 @@ function toSiPrefix(n: number): string {
 export const ELECTRICITY_PACK: Pack = {
   formulas: ELECTRICITY_PACK_FORMULAS,
   id: "electricity",
+  seed: "pack-electricity",
   group: "Science & Engineering",
   name: "Electricity & Circuits",
   description: "Ohm's law and power, dividers, reactance and resonance, RC and RL transients, decibels, resistor color codes, E-series values, AWG wire properties. SI units.",

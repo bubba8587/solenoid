@@ -22,6 +22,7 @@ const testEntry = (op: HypothesisTestOp, type: string, keywords: string): PackPl
 
 export const DATA_SCIENCE_PACK: Pack = {
   id: "datascience",
+  seed: "pack-datascience",
   name: "Data Science",
   description: "K-Means, PCA and logistic regression; Kruskal-Wallis, Mann-Whitney, Wilcoxon, Fisher exact and Kolmogorov-Smirnov tests.",
   builtin: true,

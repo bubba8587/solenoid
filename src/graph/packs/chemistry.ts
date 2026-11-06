@@ -52,6 +52,7 @@ export const CHEMISTRY_FORMULAS: FormulaPackEntry[] = [...CHEM_AMOUNTS, ...CHEM_
 export const CHEMISTRY_PACK: Pack = {
   formulas: CHEMISTRY_PACK_FORMULAS,
   id: "chemistry",
+  seed: "pack-chemistry",
   group: "Science & Engineering",
   name: "Chemistry Basics",
   description: "Periodic table, molar mass from a formula (hydrates too), moles, molarity, dilution, pH, Nernst, Arrhenius, Gibbs, Beer–Lambert, decay.",

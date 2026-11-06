@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore, type CSSPrope
 import { documentStore } from "../documentStore";
 import { recentDocsStore, recentDocs } from "../recentDocsStore";
 import { navigatorFiles } from "../outlineStore";
-import { SEEDS, SEED_GROUPS } from "../seeds";
+import { SEEDS, useSeedGroups } from "../seeds";
 import "./documentTitle.css";
 
 export function DocumentTitle() {
@@ -24,7 +24,8 @@ export function DocumentTitle() {
   const [draft, setDraft] = useState(name);
   const [menuOpen, setMenuOpen] = useState(false);
   // An accordion, one group open at a time, so a long list of seeds can't flood the menu.
-  const [openGroup, setOpenGroup] = useState<string | null>(SEED_GROUPS[0]?.head ?? null);
+  const seedGroups = useSeedGroups();
+  const [openGroup, setOpenGroup] = useState<string | null>(seedGroups[0]?.head ?? null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [rowDraft, setRowDraft] = useState("");
   // The menu is a popover: the top layer lifts it out of the app bar's stacking context, the caret is its invoker,
@@ -197,7 +198,7 @@ export function DocumentTitle() {
 
           <div className="solenoid-doctitle__sep" />
           <div className="solenoid-doctitle__section-head">New from example</div>
-          {SEED_GROUPS.map((group) => {
+          {seedGroups.map((group) => {
             const open = openGroup === group.head;
             return (
               <div key={group.head} className="solenoid-doctitle__docs">

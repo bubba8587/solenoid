@@ -1,0 +1,135 @@
+{
+  "v": 2,
+  "order": 5000,
+  "label": "Geometry: figures that solve themselves",
+  "group": "Packs",
+  "nodes": [
+    {
+      "id": "head",
+      "x": 0,
+      "y": 0,
+      "type": "NoteNode",
+      "init": {
+        "label": "Geometry",
+        "color": "amber",
+        "collapsed": false,
+        "width": 760,
+        "height": 150,
+        "body": "Every figure card here **solves**: give it enough parts and it works out the rest, drawn to scale. Type into a label on a figure to change it, or clear one to have it solved. Where two figures fit the parts (a chord with a radius fits a short and a long arc), the card says so instead of guessing. The Triangle Solver below reads three triangles from a table and steps through them.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "tris",
+      "x": 0,
+      "y": 200,
+      "type": "FrameInputNode",
+      "init": {
+        "label": "Triangles",
+        "frameText": "[{\"name\":\"a\",\"type\":\"number\",\"cells\":[\"3\",\"7\",\"\"]},{\"name\":\"b\",\"type\":\"number\",\"cells\":[\"4\",\"9\",\"8\"]},{\"name\":\"c\",\"type\":\"number\",\"cells\":[\"5\",\"\",\"\"]},{\"name\":\"A\",\"type\":\"number\",\"cells\":[\"\",\"\",\"40\"]},{\"name\":\"B\",\"type\":\"number\",\"cells\":[\"\",\"\",\"60\"]},{\"name\":\"C\",\"type\":\"number\",\"cells\":[\"\",\"50\",\"\"]}]",
+        "lambdaKeys": [],
+        "width": 240,
+        "height": 280,
+        "layoutHidden": false,
+        "cardLayoutHidden": false,
+        "valueKeys": []
+      },
+      "stringLiterals": {}
+    },
+    {
+      "id": "tri",
+      "x": 440,
+      "y": 200,
+      "type": "TriangleSolverNode",
+      "init": {
+        "label": "Triangle Solver",
+        "frameText": "[{\"name\":\"a\",\"cells\":[\"3\"]},{\"name\":\"b\",\"cells\":[\"4\"]},{\"name\":\"c\",\"cells\":[\"5\"]},{\"name\":\"A\",\"cells\":[\"\"]},{\"name\":\"B\",\"cells\":[\"\"]},{\"name\":\"C\",\"cells\":[\"\"]},{\"name\":\"area\",\"cells\":[\"\"]},{\"name\":\"perimeter\",\"cells\":[\"\"]}]",
+        "width": 340,
+        "height": 640
+      }
+    },
+    {
+      "id": "uc",
+      "x": 880,
+      "y": 200,
+      "type": "UnitCircleNode",
+      "init": {
+        "label": "Unit Circle",
+        "width": 340,
+        "height": 600
+      },
+      "literals": {
+        "angle": 30
+      }
+    },
+    {
+      "id": "circ",
+      "x": 1320,
+      "y": 200,
+      "type": "CircleSolverNode",
+      "init": {
+        "label": "Circle Solver",
+        "frameText": "[{\"name\":\"r\",\"cells\":[\"5\"]},{\"name\":\"d\",\"cells\":[\"\"]},{\"name\":\"circumference\",\"cells\":[\"\"]},{\"name\":\"area\",\"cells\":[\"\"]},{\"name\":\"angle\",\"cells\":[\"60\"]},{\"name\":\"arc\",\"cells\":[\"\"]},{\"name\":\"chord\",\"cells\":[\"\"]},{\"name\":\"sector\",\"cells\":[\"\"]},{\"name\":\"segment\",\"cells\":[\"\"]},{\"name\":\"height\",\"cells\":[\"\"]}]",
+        "width": 340,
+        "height": 640
+      }
+    },
+    {
+      "id": "solid",
+      "x": 0,
+      "y": 900,
+      "type": "SolidNode",
+      "init": {
+        "label": "Solid",
+        "op": "cone",
+        "frameText": "[{\"name\":\"r\",\"cells\":[\"3\"]},{\"name\":\"h\",\"cells\":[\"4\"]},{\"name\":\"d\",\"cells\":[\"\"]},{\"name\":\"slant\",\"cells\":[\"\"]},{\"name\":\"volume\",\"cells\":[\"\"]},{\"name\":\"lateral\",\"cells\":[\"\"]},{\"name\":\"surface\",\"cells\":[\"\"]}]",
+        "width": 340,
+        "height": 640
+      }
+    },
+    {
+      "id": "poly",
+      "x": 440,
+      "y": 900,
+      "type": "PolygonPointsNode",
+      "init": {
+        "label": "Polygon from Points",
+        "frameText": "[{\"name\":\"x\",\"cells\":[\"0\",\"4\",\"5\",\"2\",\"-1\"]},{\"name\":\"y\",\"cells\":[\"0\",\"0\",\"3\",\"5\",\"3\"]}]",
+        "width": 340,
+        "height": 640
+      }
+    },
+    {
+      "id": "pts",
+      "x": 880,
+      "y": 900,
+      "type": "TwoPointsNode",
+      "init": {
+        "label": "Two Points",
+        "frameText": "[{\"name\":\"x1\",\"cells\":[\"1\"]},{\"name\":\"y1\",\"cells\":[\"2\"]},{\"name\":\"x2\",\"cells\":[\"5\"]},{\"name\":\"y2\",\"cells\":[\"5\"]}]",
+        "width": 340,
+        "height": 640
+      }
+    },
+    {
+      "id": "ngon",
+      "x": 1320,
+      "y": 900,
+      "type": "RegularPolygonNode",
+      "init": {
+        "label": "Regular Polygon",
+        "frameText": "[{\"name\":\"n\",\"cells\":[\"6\"]},{\"name\":\"side\",\"cells\":[\"4\"]},{\"name\":\"circumradius\",\"cells\":[\"\"]},{\"name\":\"apothem\",\"cells\":[\"\"]},{\"name\":\"perimeter\",\"cells\":[\"\"]},{\"name\":\"area\",\"cells\":[\"\"]},{\"name\":\"interior\",\"cells\":[\"\"]},{\"name\":\"exterior\",\"cells\":[\"\"]}]",
+        "width": 340,
+        "height": 640
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "tris",
+      "sourceOutput": "frame",
+      "target": "tri",
+      "targetInput": "triangles"
+    }
+  ]
+}

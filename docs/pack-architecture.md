@@ -39,9 +39,9 @@ units right because the formula engine already understands them; custom code is 
 trust from a third party and often runs only on desktop, which is why it is the short list.
 
 A pack can also own a family of ordinary cards and their formulas. The Sets pack
-(`packs/sets.ts`, on by default) holds Comparison, Between, Sets, Is In and Tally with IS,
+(`packs/sets.ts`, on by default) holds Between, Sets, Is In and Tally with IS,
 ISNOT, ABOVE, BELOW, ATLEAST, ATMOST, BETWEEN, the SET functions, ISIN and TALLY
-([[D124]] comparisonFunctions): the cards keep their own node classes, the functions run in
+([[D124]] comparisonFunctions; the Comparison card itself is core): the cards keep their own node classes, the functions run in
 `fns_packs.rs`, and `setsFormulas.ts` declares them. A pack entry's NODE_EXCEL rows are merged
 as a core leaf's are (`buildCatalog`).
 
@@ -138,3 +138,12 @@ pack still ships with the app; leaving it out of the build is deliberately not d
 pack self-contained, enforced by structure) is a later tidy-up the pack/core wall is drawn for;
 level 3 (third-party packs loaded at runtime) is a safety project of its own ([[C79]]
 packActivationIsPresentation).
+
+## A pack's example seed
+
+Every pack names one example graph in `seed` (`src/graph/seedGraphs/packs/<seed>.json`, group `Packs`). The seed menus
+offer it while the pack is on (`seedGroups`, `useSeedGroups` in `seeds.ts`); any seed loads by id regardless, and a
+pack card's Reference page lists its pack's example. A pack's seed shows at least three of its own cards or functions
+and nothing from another pack (one it `dependsOn` aside), since that pack may be off. `packSeeds.test.ts` holds it
+through `tests/graph/packContent.ts`, which reads a pack's marks: the classes only it places, its formula presets, its
+formula functions and the core cards it claims. A default seed may use pack cards (the author 2026-11-06).

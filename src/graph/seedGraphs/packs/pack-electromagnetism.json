@@ -1,0 +1,181 @@
+{
+  "v": 2,
+  "order": 5060,
+  "label": "Electromagnetism: light, charge and fields",
+  "group": "Packs",
+  "nodes": [
+    {
+      "id": "head",
+      "x": 0,
+      "y": 0,
+      "type": "NoteNode",
+      "init": {
+        "label": "Electromagnetism",
+        "color": "amber",
+        "collapsed": false,
+        "width": 760,
+        "height": 150,
+        "body": "Green light oscillates about 545 trillion times a second. From that one number: its **wavelength** (the equation solves λ = c / f), its place in the **spectrum**, and the **energy** of one photon (E = hf). Below, the force between two point charges and the field around a current-carrying wire.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "f",
+      "x": 0,
+      "y": 220,
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Frequency (Hz)",
+        "op": "number",
+        "value": "545000000000000",
+        "format": "auto",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "textAlign": "right",
+        "textMarkdown": false,
+        "textMono": false,
+        "logicalStyle": "truefalse",
+        "grouping": true,
+        "negativeStyle": "minus",
+        "scaleMode": "none",
+        "width": 180,
+        "height": 140,
+        "chip": false
+      }
+    },
+    {
+      "id": "cc",
+      "x": 0,
+      "y": 420,
+      "type": "PhysicsConstantNode",
+      "init": {
+        "label": "",
+        "op": "c",
+        "width": 240,
+        "height": 110
+      }
+    },
+    {
+      "id": "wl",
+      "x": 440,
+      "y": 220,
+      "type": "EquationNode",
+      "init": {
+        "label": "Wavelength ↔ Frequency",
+        "expr": "lambda = 299792458 / f",
+        "locked": true,
+        "width": 240,
+        "height": 220,
+        "varDescriptions": {
+          "lambda": "Wavelength (m)",
+          "f": "Frequency (Hz)"
+        },
+        "varUnits": {
+          "lambda": "m",
+          "f": "Hz"
+        }
+      }
+    },
+    {
+      "id": "band",
+      "x": 880,
+      "y": 220,
+      "type": "EmSpectrumNode",
+      "init": {
+        "label": "EM Spectrum Band",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "pe",
+      "x": 1320,
+      "y": 220,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Photon Energy (Frequency)",
+        "expr": "6.62607015*10^-34*f",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varUnits": {
+          "f": "Hz"
+        }
+      },
+      "literals": {}
+    },
+    {
+      "id": "coul",
+      "x": 440,
+      "y": 620,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Coulomb Force",
+        "expr": "8.9875517923*10^9*q1*q2/r^2",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varUnits": {
+          "r": "m"
+        }
+      },
+      "literals": {
+        "q1": 0.000001,
+        "q2": -0.000002,
+        "r": 0.05
+      }
+    },
+    {
+      "id": "bw",
+      "x": 880,
+      "y": 620,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Straight-Wire Field",
+        "expr": "1.25663706212*10^-6*i/(2*PI()*r)",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varUnits": {
+          "i": "A",
+          "r": "m"
+        }
+      },
+      "literals": {
+        "i": 10,
+        "r": 0.02
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "f",
+      "sourceOutput": "value",
+      "target": "wl",
+      "targetInput": "f"
+    },
+    {
+      "source": "f",
+      "sourceOutput": "value",
+      "target": "band",
+      "targetInput": "freq"
+    },
+    {
+      "source": "f",
+      "sourceOutput": "value",
+      "target": "pe",
+      "targetInput": "f"
+    }
+  ]
+}

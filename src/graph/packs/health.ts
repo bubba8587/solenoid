@@ -84,6 +84,7 @@ export const HEALTH_FORMULAS: FormulaPackEntry[] = [
 export const HEALTH_PACK: Pack = {
   formulas: HEALTH_PACK_FORMULAS,
   id: "health",
+  seed: "pack-health",
   group: "Everyday",
   name: "Health & Fitness",
   description: "BMI, BSA, BMR and TDEE, body fat, heart-rate zones, VO₂max, ideal weight, creatinine clearance. Metric inputs. Estimates, not medical advice.",

@@ -68,6 +68,7 @@ export const TIMESAVER_FORMULAS: FormulaPackEntry[] = [
 
 export const TIMESAVERS_PACK: Pack = {
   id: "timesavers",
+  seed: "pack-timesavers",
   group: "Everyday",
   name: "Common Excel Timesavers",
   description: "Conveniences that aren't single Excel functions: weighted stats, list utilities, percent change, CAGR, text cleanup, date helpers, time zones, Spell Number, QR codes.",

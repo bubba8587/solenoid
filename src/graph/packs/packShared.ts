@@ -75,4 +75,6 @@ export interface Pack {
   formulas?: PackFormula[];
   units?: PackUnit[];
   formats?: PackFormat[];
+  /** The pack's example seed graph (`seedGraphs/packs/<seed>.json`), offered in the seed menus while the pack is on. */
+  seed: string;
 }

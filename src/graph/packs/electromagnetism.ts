@@ -83,6 +83,7 @@ export const EM_FORMULAS: FormulaPackEntry[] = [
 export const ELECTROMAGNETISM_PACK: Pack = {
   formulas: ELECTROMAGNETISM_PACK_FORMULAS,
   id: "electromagnetism",
+  seed: "pack-electromagnetism",
   group: "Science & Engineering",
   name: "Electromagnetism",
   description: "Coulomb, Lorentz, Faraday, capacitance and inductance from geometry, skin depth, spectrum bands, CODATA constants. Builds on Electricity & Circuits.",

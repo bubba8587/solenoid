@@ -1,0 +1,175 @@
+{
+  "v": 2,
+  "order": 5110,
+  "label": "Earth & Sky: distance, sun and moon",
+  "group": "Packs",
+  "nodes": [
+    {
+      "id": "head",
+      "x": 0,
+      "y": 0,
+      "type": "NoteNode",
+      "init": {
+        "label": "Earth & Sky",
+        "color": "amber",
+        "collapsed": false,
+        "width": 760,
+        "height": 150,
+        "body": "London to New York along the Earth's surface (the **great-circle** distance) and the compass bearing to set out on. For midsummer's day in London: where the **sun** stands, when it **rises and sets**, and the **moon's** phase.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "gc",
+      "x": 0,
+      "y": 200,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Great-Circle Distance",
+        "expr": "2*6371.0088*ASIN(SQRT(SIN((lat2-lat1)*PI()/360)^2+COS(lat1*PI()/180)*COS(lat2*PI()/180)*SIN((lon2-lon1)*PI()/360)^2))",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {
+        "lat1": 51.5074,
+        "lon1": -0.1278,
+        "lat2": 40.7128,
+        "lon2": -74.006
+      }
+    },
+    {
+      "id": "brg",
+      "x": 440,
+      "y": 200,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Initial Bearing",
+        "expr": "MOD(DEGREES(ATAN2(COS(lat1*PI()/180)*SIN(lat2*PI()/180)-SIN(lat1*PI()/180)*COS(lat2*PI()/180)*COS((lon2-lon1)*PI()/180),SIN((lon2-lon1)*PI()/180)*COS(lat2*PI()/180)))+360,360)",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {
+        "lat1": 51.5074,
+        "lon1": -0.1278,
+        "lat2": 40.7128,
+        "lon2": -74.006
+      }
+    },
+    {
+      "id": "hz",
+      "x": 880,
+      "y": 200,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Distance to Horizon",
+        "expr": "SQRT(2*6371008.8*h)/1000",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varUnits": {
+          "h": "m"
+        }
+      },
+      "literals": {
+        "h": 1.7
+      }
+    },
+    {
+      "id": "day",
+      "x": 0,
+      "y": 640,
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Date",
+        "op": "date",
+        "value": "21-Jun-2026",
+        "format": "auto",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "textAlign": "right",
+        "textMarkdown": false,
+        "textMono": false,
+        "logicalStyle": "truefalse",
+        "grouping": true,
+        "negativeStyle": "minus",
+        "scaleMode": "none",
+        "width": 180,
+        "height": 140,
+        "chip": false
+      }
+    },
+    {
+      "id": "sun",
+      "x": 440,
+      "y": 640,
+      "type": "SolarPositionNode",
+      "init": {
+        "label": "Sun Position",
+        "width": 220,
+        "height": 230
+      },
+      "literals": {
+        "lat": 51.5,
+        "lon": -0.13
+      }
+    },
+    {
+      "id": "rise",
+      "x": 880,
+      "y": 640,
+      "type": "SunriseSunsetNode",
+      "init": {
+        "label": "Sunrise / Sunset",
+        "width": 220,
+        "height": 220
+      },
+      "literals": {
+        "lat": 51.5,
+        "lon": -0.13
+      }
+    },
+    {
+      "id": "moon",
+      "x": 1320,
+      "y": 640,
+      "type": "MoonPhaseNode",
+      "init": {
+        "label": "Moon Phase",
+        "width": 210,
+        "height": 200
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "day",
+      "sourceOutput": "value",
+      "target": "sun",
+      "targetInput": "when"
+    },
+    {
+      "source": "day",
+      "sourceOutput": "value",
+      "target": "rise",
+      "targetInput": "when"
+    },
+    {
+      "source": "day",
+      "sourceOutput": "value",
+      "target": "moon",
+      "targetInput": "when"
+    }
+  ]
+}

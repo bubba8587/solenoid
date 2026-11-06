@@ -1,0 +1,280 @@
+{
+  "v": 2,
+  "order": 5080,
+  "label": "Fluids: water through a pipe",
+  "group": "Packs",
+  "nodes": [
+    {
+      "id": "head",
+      "x": 0,
+      "y": 0,
+      "type": "NoteNode",
+      "init": {
+        "label": "Fluid Mechanics",
+        "color": "amber",
+        "collapsed": false,
+        "width": 760,
+        "height": 150,
+        "body": "Water at 2 m/s through a 50 mm pipe, worked end to end. The **Reynolds number** says the flow is turbulent; the pipe's **roughness** (it reads the diameter in mm) and **Colebrook** give the friction factor; **Darcy–Weisbach** turns that into the pressure lost over 100 m of pipe. Change the velocity and watch every step follow.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "rho",
+      "x": 0,
+      "y": 220,
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Density (kg/m³)",
+        "op": "number",
+        "value": "998",
+        "format": "auto",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "textAlign": "right",
+        "textMarkdown": false,
+        "textMono": false,
+        "logicalStyle": "truefalse",
+        "grouping": true,
+        "negativeStyle": "minus",
+        "scaleMode": "none",
+        "width": 180,
+        "height": 140,
+        "chip": false
+      }
+    },
+    {
+      "id": "vel",
+      "x": 0,
+      "y": 400,
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Velocity (m/s)",
+        "op": "number",
+        "value": "2",
+        "format": "auto",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "textAlign": "right",
+        "textMarkdown": false,
+        "textMono": false,
+        "logicalStyle": "truefalse",
+        "grouping": true,
+        "negativeStyle": "minus",
+        "scaleMode": "none",
+        "width": 180,
+        "height": 140,
+        "chip": false
+      }
+    },
+    {
+      "id": "d",
+      "x": 0,
+      "y": 580,
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Diameter (m)",
+        "op": "number",
+        "value": "0.05",
+        "format": "auto",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "textAlign": "right",
+        "textMarkdown": false,
+        "textMono": false,
+        "logicalStyle": "truefalse",
+        "grouping": true,
+        "negativeStyle": "minus",
+        "scaleMode": "none",
+        "width": 180,
+        "height": 140,
+        "chip": false
+      }
+    },
+    {
+      "id": "mu",
+      "x": 0,
+      "y": 760,
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Viscosity (Pa·s)",
+        "op": "number",
+        "value": "0.001",
+        "format": "auto",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "textAlign": "right",
+        "textMarkdown": false,
+        "textMono": false,
+        "logicalStyle": "truefalse",
+        "grouping": true,
+        "negativeStyle": "minus",
+        "scaleMode": "none",
+        "width": 180,
+        "height": 140,
+        "chip": false
+      }
+    },
+    {
+      "id": "re",
+      "x": 440,
+      "y": 220,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Reynolds Number",
+        "expr": "rho*v*d/mu",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varUnits": {
+          "rho": "kg/m3",
+          "v": "m/s",
+          "d": "m",
+          "mu": "Pa·s"
+        }
+      },
+      "literals": {}
+    },
+    {
+      "id": "rough",
+      "x": 440,
+      "y": 640,
+      "type": "PipeRoughnessNode",
+      "init": {
+        "label": "Pipe Roughness",
+        "width": 220,
+        "height": 190,
+        "material": "steel"
+      },
+      "literals": {
+        "d": 50
+      }
+    },
+    {
+      "id": "cb",
+      "x": 880,
+      "y": 220,
+      "type": "ColebrookNode",
+      "init": {
+        "label": "Friction Factor (Colebrook)",
+        "width": 200,
+        "height": 170
+      },
+      "literals": {}
+    },
+    {
+      "id": "dp",
+      "x": 1320,
+      "y": 220,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Pressure Drop (Darcy–Weisbach)",
+        "expr": "f*(len/d)*rho*v^2/2",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varUnits": {
+          "len": "m",
+          "d": "m",
+          "rho": "kg/m3",
+          "v": "m/s"
+        }
+      },
+      "literals": {
+        "len": 100
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "rho",
+      "sourceOutput": "value",
+      "target": "re",
+      "targetInput": "rho"
+    },
+    {
+      "source": "vel",
+      "sourceOutput": "value",
+      "target": "re",
+      "targetInput": "v"
+    },
+    {
+      "source": "d",
+      "sourceOutput": "value",
+      "target": "re",
+      "targetInput": "d"
+    },
+    {
+      "source": "mu",
+      "sourceOutput": "value",
+      "target": "re",
+      "targetInput": "mu"
+    },
+    {
+      "source": "re",
+      "sourceOutput": "result",
+      "target": "cb",
+      "targetInput": "re"
+    },
+    {
+      "source": "rough",
+      "sourceOutput": "rel",
+      "target": "cb",
+      "targetInput": "rr"
+    },
+    {
+      "source": "cb",
+      "sourceOutput": "result",
+      "target": "dp",
+      "targetInput": "f"
+    },
+    {
+      "source": "d",
+      "sourceOutput": "value",
+      "target": "dp",
+      "targetInput": "d"
+    },
+    {
+      "source": "rho",
+      "sourceOutput": "value",
+      "target": "dp",
+      "targetInput": "rho"
+    },
+    {
+      "source": "vel",
+      "sourceOutput": "value",
+      "target": "dp",
+      "targetInput": "v"
+    }
+  ]
+}

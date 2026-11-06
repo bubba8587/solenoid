@@ -1,5 +1,5 @@
 // [[C51]] formulaNaming, [[D124]] comparisonFunctions
-import { BetweenNode, ComparisonNode, IsInNode, SetsNode, TallyNode } from "../nodeClasses";
+import { BetweenNode, IsInNode, SetsNode, TallyNode } from "../nodeClasses";
 import type { Pack } from "./packShared";
 import { SETS_PACK_FORMULAS } from "./setsFormulas";
 
@@ -8,22 +8,13 @@ const PATH = ["Packs", "Sets & Comparisons"];
 export const SETS_PACK: Pack = {
   formulas: SETS_PACK_FORMULAS,
   id: "sets",
+  seed: "pack-sets",
   group: "Everyday",
   name: "Sets & Comparisons",
-  description: "Tests and set operations on lists: Comparison (IS, ABOVE and the rest), Between, Sets, Is In (the ISNUMBER(MATCH()) idiom), Tally (value counts) and COUNT DISTINCT. Join's semi and anti modes cover tables.",
+  description: "Tests and set operations on lists: the comparison functions (IS, ABOVE and the rest), Between, Sets, Is In (the ISNUMBER(MATCH()) idiom), Tally (value counts) and COUNT DISTINCT. Join's semi and anti modes cover tables.",
   builtin: true,
   defaultActive: true,
   nodes: [
-    {
-      path: PATH,
-      entry: {
-        type: "comparison",
-        label: "Comparison",
-        description: "Compares two values (`=`, `≠`, `<`, `>`, `≤`, `≥`) and emits a logical `TRUE` or `FALSE`, item by item over a list. Formulas: `IS`, `ISNOT`, `ABOVE`, `BELOW`, `ATLEAST`, `ATMOST`.",
-        keywords: "compare equal greater less above below at least at most is isnot",
-        create: () => new ComparisonNode(),
-      },
-    },
     {
       path: PATH,
       entry: {

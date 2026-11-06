@@ -45,6 +45,7 @@ export const EARTHSKY_FORMULAS: FormulaPackEntry[] = [...EARTH_FORMULAS, ...ORBI
 export const EARTHSKY_PACK: Pack = {
   formulas: EARTHSKY_PACK_FORMULAS,
   id: "earthsky",
+  seed: "pack-earthsky",
   group: "Science & Engineering",
   name: "Earth & Sky",
   description: "Great-circle distance and bearing, gravity by latitude, horizon, Kepler orbits, escape velocity, NOAA sun position and rise/set, moon phase.",

@@ -1,0 +1,195 @@
+{
+  "v": 2,
+  "order": 5120,
+  "label": "Chemistry: from formula to moles",
+  "group": "Packs",
+  "nodes": [
+    {
+      "id": "head",
+      "x": 0,
+      "y": 0,
+      "type": "NoteNode",
+      "init": {
+        "label": "Chemistry Basics",
+        "color": "amber",
+        "collapsed": false,
+        "width": 760,
+        "height": 150,
+        "body": "**Molar Mass** reads a formula (H₂O is about 18 g/mol), and the **Moles ↔ Mass** equation turns 36 g of water into moles. **pH** is −log₁₀ of the hydrogen-ion concentration: 0.001 mol/L gives pH 3. **Dilution** and **half-life** below; the **Element** card looks up iron.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "mm",
+      "x": 0,
+      "y": 220,
+      "type": "MolarMassNode",
+      "init": {
+        "label": "Molar Mass",
+        "width": 210,
+        "height": 140
+      },
+      "stringLiterals": {
+        "formula": "H2O"
+      }
+    },
+    {
+      "id": "m",
+      "x": 0,
+      "y": 460,
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Mass (g)",
+        "op": "number",
+        "value": "36",
+        "format": "auto",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "textAlign": "right",
+        "textMarkdown": false,
+        "textMono": false,
+        "logicalStyle": "truefalse",
+        "grouping": true,
+        "negativeStyle": "minus",
+        "scaleMode": "none",
+        "width": 180,
+        "height": 140,
+        "chip": false
+      }
+    },
+    {
+      "id": "mol",
+      "x": 440,
+      "y": 220,
+      "type": "EquationNode",
+      "init": {
+        "label": "Moles ↔ Mass",
+        "expr": "n = m / mm",
+        "locked": true,
+        "width": 240,
+        "height": 220
+      }
+    },
+    {
+      "id": "h",
+      "x": 880,
+      "y": 220,
+      "type": "ValueInputNode",
+      "init": {
+        "label": "[H⁺] (mol/L)",
+        "op": "number",
+        "value": "0.001",
+        "format": "auto",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "textAlign": "right",
+        "textMarkdown": false,
+        "textMono": false,
+        "logicalStyle": "truefalse",
+        "grouping": true,
+        "negativeStyle": "minus",
+        "scaleMode": "none",
+        "width": 180,
+        "height": 140,
+        "chip": false
+      }
+    },
+    {
+      "id": "ph",
+      "x": 1320,
+      "y": 220,
+      "type": "EquationNode",
+      "init": {
+        "label": "pH ↔ [H⁺]",
+        "expr": "ph = -LOG10(h)",
+        "locked": true,
+        "width": 240,
+        "height": 220
+      }
+    },
+    {
+      "id": "fe",
+      "x": 0,
+      "y": 700,
+      "type": "ElementNode",
+      "init": {
+        "label": "Element",
+        "width": 220,
+        "height": 170,
+        "symbol": "Fe"
+      }
+    },
+    {
+      "id": "dil",
+      "x": 440,
+      "y": 700,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Dilution (C₂)",
+        "expr": "c1*v1/v2",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {
+        "c1": 2,
+        "v1": 0.05,
+        "v2": 0.5
+      }
+    },
+    {
+      "id": "decay",
+      "x": 880,
+      "y": 700,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Decay Remaining",
+        "expr": "n0*0.5^(t/thalf)",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {
+        "n0": 100,
+        "t": 11460,
+        "thalf": 5730
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "m",
+      "sourceOutput": "value",
+      "target": "mol",
+      "targetInput": "m"
+    },
+    {
+      "source": "mm",
+      "sourceOutput": "result",
+      "target": "mol",
+      "targetInput": "mm"
+    },
+    {
+      "source": "h",
+      "sourceOutput": "value",
+      "target": "ph",
+      "targetInput": "h"
+    }
+  ]
+}

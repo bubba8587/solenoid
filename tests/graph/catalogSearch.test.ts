@@ -122,6 +122,7 @@ describe("filterByCompatibleSocket — memoized socket signatures", () => {
 describe("Add menu — a disabled pack's node leaves leave the tree (packsStore drives buildCatalog)", () => {
   const NODE_FIXTURE: Pack = {
     id: "test-node-pack",
+    seed: "",
     name: "Test Node Pack",
     description: "Fixture.",
     builtin: true,

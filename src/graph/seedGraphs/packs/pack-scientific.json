@@ -1,0 +1,221 @@
+{
+  "v": 2,
+  "order": 5020,
+  "label": "Scientific: roots, systems, fits and seasons",
+  "group": "Packs",
+  "nodes": [
+    {
+      "id": "head",
+      "x": 0,
+      "y": 0,
+      "type": "NoteNode",
+      "init": {
+        "label": "Scientific Computing",
+        "color": "amber",
+        "collapsed": false,
+        "width": 760,
+        "height": 150,
+        "body": "Numerical methods as cards. **Polynomial Roots** finds where x³ − 6x² + 11x − 6 crosses zero (at 1, 2 and 3). **Solve** answers the system 2x + y = 3, x + 3y = 5. **Eigen** gives a symmetric matrix's eigenvalues. **Fit Distribution** ranks which distribution best explains a sample, and **Decompose** splits a seasonal series into trend, season and remainder.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "coeffs",
+      "x": 0,
+      "y": 220,
+      "type": "ListInputNode",
+      "init": {
+        "label": "Coefficients (x³ … x⁰)",
+        "dataType": "number",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "1, -6, 11, -6"
+      }
+    },
+    {
+      "id": "roots",
+      "x": 440,
+      "y": 220,
+      "type": "PolyRootsNode",
+      "init": {
+        "label": "Polynomial Roots",
+        "width": 210,
+        "height": 190
+      }
+    },
+    {
+      "id": "A",
+      "x": 0,
+      "y": 460,
+      "type": "TableInputNode",
+      "init": {
+        "label": "A",
+        "unit": "none",
+        "tableText": "2, 1\n1, 3",
+        "dataType": "number",
+        "width": 220,
+        "height": 250
+      }
+    },
+    {
+      "id": "b",
+      "x": 0,
+      "y": 680,
+      "type": "ListInputNode",
+      "init": {
+        "label": "b",
+        "dataType": "number",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "3, 5"
+      }
+    },
+    {
+      "id": "solve",
+      "x": 440,
+      "y": 520,
+      "type": "MatSolveNode",
+      "init": {
+        "label": "Solve A·x = b",
+        "width": 180,
+        "height": 170
+      }
+    },
+    {
+      "id": "S",
+      "x": 880,
+      "y": 220,
+      "type": "TableInputNode",
+      "init": {
+        "label": "Symmetric matrix",
+        "unit": "none",
+        "tableText": "2, 1, 0\n1, 2, 1\n0, 1, 2",
+        "dataType": "number",
+        "width": 220,
+        "height": 250
+      }
+    },
+    {
+      "id": "eig",
+      "x": 1320,
+      "y": 220,
+      "type": "MatEigenNode",
+      "init": {
+        "label": "Eigen (symmetric)",
+        "op": "eigen",
+        "width": 190,
+        "height": 175
+      }
+    },
+    {
+      "id": "sample",
+      "x": 880,
+      "y": 520,
+      "type": "ListInputNode",
+      "init": {
+        "label": "Sample",
+        "dataType": "number",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "5.0, 5.1, 4.9, 5.0, 5.2, 4.8, 5.0, 5.1, 4.9, 5.0, 5.3, 4.7, 5.0, 5.1, 4.9, 5.0, 5.4, 4.6, 5.0, 5.2, 4.8, 5.0, 5.1, 4.9"
+      }
+    },
+    {
+      "id": "fit",
+      "x": 1320,
+      "y": 520,
+      "type": "FitDistributionNode",
+      "init": {
+        "label": "Fit Distribution",
+        "width": 200,
+        "height": 190
+      }
+    },
+    {
+      "id": "sales",
+      "x": 0,
+      "y": 900,
+      "type": "ListInputNode",
+      "init": {
+        "label": "Quarterly sales",
+        "dataType": "number",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "12, 18, 25, 14, 15, 21, 29, 17, 18, 24, 33, 20, 21, 27, 36, 23"
+      }
+    },
+    {
+      "id": "dec",
+      "x": 440,
+      "y": 900,
+      "type": "DecomposeNode",
+      "init": {
+        "label": "Decompose",
+        "width": 200,
+        "height": 205,
+        "model": "additive"
+      },
+      "literals": {
+        "period": 4
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "coeffs",
+      "sourceOutput": "list",
+      "target": "roots",
+      "targetInput": "coeffs"
+    },
+    {
+      "source": "A",
+      "sourceOutput": "table",
+      "target": "solve",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "b",
+      "sourceOutput": "list",
+      "target": "solve",
+      "targetInput": "b"
+    },
+    {
+      "source": "S",
+      "sourceOutput": "table",
+      "target": "eig",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "sample",
+      "sourceOutput": "list",
+      "target": "fit",
+      "targetInput": "list"
+    },
+    {
+      "source": "sales",
+      "sourceOutput": "list",
+      "target": "dec",
+      "targetInput": "values"
+    }
+  ]
+}

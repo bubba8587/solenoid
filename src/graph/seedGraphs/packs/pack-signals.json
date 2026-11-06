@@ -1,0 +1,145 @@
+{
+  "v": 2,
+  "order": 5030,
+  "label": "Signals: a noisy wave, cleaned up",
+  "group": "Packs",
+  "nodes": [
+    {
+      "id": "head",
+      "x": 0,
+      "y": 0,
+      "type": "NoteNode",
+      "init": {
+        "label": "Signals & Grids",
+        "color": "amber",
+        "collapsed": false,
+        "width": 760,
+        "height": 150,
+        "body": "A signal built from two sine waves, 4 and 16 cycles across 64 samples. **Spectrum** shows both frequencies as peaks; **Smooth** irons out the faster wave; **Find Peaks** marks the slow wave's crests; **Convolve** runs a small averaging kernel along the signal, the same operation as a moving average.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "sig",
+      "x": 0,
+      "y": 220,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Signal",
+        "expr": "SIN(2*PI()*SEQUENCE(64)/16) + 0.4*SIN(2*PI()*SEQUENCE(64)/4)",
+        "locked": false,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "spec",
+      "x": 440,
+      "y": 220,
+      "type": "SpectrumNode",
+      "init": {
+        "label": "Spectrum (FFT)",
+        "width": 200,
+        "height": 160
+      },
+      "literals": {
+        "rate": 64
+      }
+    },
+    {
+      "id": "smooth",
+      "x": 440,
+      "y": 520,
+      "type": "SmoothNode",
+      "init": {
+        "label": "",
+        "op": "savgol",
+        "mode": "list",
+        "width": 190,
+        "height": 200
+      },
+      "literals": {
+        "window": 7,
+        "order": 2
+      }
+    },
+    {
+      "id": "peaks",
+      "x": 880,
+      "y": 520,
+      "type": "FindPeaksNode",
+      "init": {
+        "label": "Find Peaks",
+        "mode": "list",
+        "width": 190,
+        "height": 230
+      },
+      "literals": {}
+    },
+    {
+      "id": "kernel",
+      "x": 0,
+      "y": 820,
+      "type": "ListInputNode",
+      "init": {
+        "label": "Kernel",
+        "dataType": "number",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "0.25, 0.5, 0.25"
+      }
+    },
+    {
+      "id": "conv",
+      "x": 440,
+      "y": 820,
+      "type": "ConvolveNode",
+      "init": {
+        "label": "Convolve",
+        "form": "full",
+        "mode": "list",
+        "width": 180,
+        "height": 150
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "sig",
+      "sourceOutput": "result",
+      "target": "spec",
+      "targetInput": "list"
+    },
+    {
+      "source": "sig",
+      "sourceOutput": "result",
+      "target": "smooth",
+      "targetInput": "list"
+    },
+    {
+      "source": "smooth",
+      "sourceOutput": "result",
+      "target": "peaks",
+      "targetInput": "list"
+    },
+    {
+      "source": "sig",
+      "sourceOutput": "result",
+      "target": "conv",
+      "targetInput": "a"
+    },
+    {
+      "source": "kernel",
+      "sourceOutput": "list",
+      "target": "conv",
+      "targetInput": "b"
+    }
+  ]
+}

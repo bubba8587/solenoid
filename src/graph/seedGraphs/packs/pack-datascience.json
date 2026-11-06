@@ -1,0 +1,166 @@
+{
+  "v": 2,
+  "order": 5040,
+  "label": "Data science: clusters, components, a test",
+  "group": "Packs",
+  "nodes": [
+    {
+      "id": "head",
+      "x": 0,
+      "y": 0,
+      "type": "NoteNode",
+      "init": {
+        "label": "Data Science",
+        "color": "amber",
+        "collapsed": false,
+        "width": 760,
+        "height": 150,
+        "body": "Eight points in two clumps. **K-Means** with k = 2 finds the clumps without being told which point is which; **PCA** finds the direction the points spread along most. **Mann–Whitney U** and **KS** ask whether two samples could come from the same population, without assuming either is normal.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "pts",
+      "x": 0,
+      "y": 220,
+      "type": "FrameInputNode",
+      "init": {
+        "label": "Points",
+        "frameText": "[{\"name\":\"x\",\"type\":\"number\",\"cells\":[\"1\",\"1.4\",\"0.8\",\"1.2\",\"5.1\",\"5.6\",\"4.8\",\"5.3\"]},{\"name\":\"y\",\"type\":\"number\",\"cells\":[\"2.1\",\"1.7\",\"2.4\",\"1.9\",\"6.2\",\"5.8\",\"6.5\",\"6\"]}]",
+        "lambdaKeys": [],
+        "width": 240,
+        "height": 280,
+        "layoutHidden": false,
+        "cardLayoutHidden": false,
+        "valueKeys": []
+      },
+      "stringLiterals": {}
+    },
+    {
+      "id": "km",
+      "x": 440,
+      "y": 220,
+      "type": "KMeansNode",
+      "init": {
+        "label": "K-Means",
+        "width": 200,
+        "height": 190
+      },
+      "literals": {
+        "k": 2
+      }
+    },
+    {
+      "id": "pca",
+      "x": 880,
+      "y": 220,
+      "type": "PcaNode",
+      "init": {
+        "label": "PCA",
+        "width": 200,
+        "height": 215,
+        "standardize": false
+      }
+    },
+    {
+      "id": "a",
+      "x": 0,
+      "y": 640,
+      "type": "ListInputNode",
+      "init": {
+        "label": "Group A",
+        "dataType": "number",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "12, 15, 14, 10, 13, 11"
+      }
+    },
+    {
+      "id": "b2",
+      "x": 0,
+      "y": 860,
+      "type": "ListInputNode",
+      "init": {
+        "label": "Group B",
+        "dataType": "number",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "18, 21, 19, 22, 17, 20"
+      }
+    },
+    {
+      "id": "mw",
+      "x": 440,
+      "y": 640,
+      "type": "HypothesisTestNode",
+      "init": {
+        "label": "",
+        "op": "mannwhitney",
+        "width": 180,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "ks",
+      "x": 880,
+      "y": 640,
+      "type": "HypothesisTestNode",
+      "init": {
+        "label": "",
+        "op": "ks",
+        "width": 180,
+        "height": 210
+      },
+      "literals": {}
+    }
+  ],
+  "connections": [
+    {
+      "source": "pts",
+      "sourceOutput": "frame",
+      "target": "km",
+      "targetInput": "frame"
+    },
+    {
+      "source": "pts",
+      "sourceOutput": "frame",
+      "target": "pca",
+      "targetInput": "frame"
+    },
+    {
+      "source": "a",
+      "sourceOutput": "list",
+      "target": "mw",
+      "targetInput": "a"
+    },
+    {
+      "source": "b2",
+      "sourceOutput": "list",
+      "target": "mw",
+      "targetInput": "b"
+    },
+    {
+      "source": "a",
+      "sourceOutput": "list",
+      "target": "ks",
+      "targetInput": "a"
+    },
+    {
+      "source": "b2",
+      "sourceOutput": "list",
+      "target": "ks",
+      "targetInput": "b"
+    }
+  ]
+}

@@ -7,7 +7,7 @@ import {
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, WindowNode,
   ArithmeticNode, DisplayNode, MathFXNode,
   FormatControllerNode, ExpressionNode, ScriptNode, EquationNode, RegexNode, GroupListsNode,
-  ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
+  ClampNode, BooleanOpNode, NotNode, IfNode, ComparisonNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
   ListInputNode, AggregateNode, SeriesNode, SERIES_OP_META, type SeriesOp, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
   GCDNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
@@ -885,6 +885,12 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "choose",  label: "CHOOSE",        description: "Returns one of several values by a 1-based index. Excel: `CHOOSE`.", create: () => new ChooseNode() },
       { type: "switch",  label: "SWITCH",         description: "Matches a value against as many cases as you add and returns the matching result, or a default. Excel: `SWITCH`.", create: () => new SwitchNode() },
       { type: "ifs",     label: "IFS",            description: "Returns the value of the first true condition, like chained `IF`, plus an Otherwise fallback. Excel: `IFS`.", create: () => new IfsNode() },
+      {
+        type: "comparison", label: "Comparison",
+        description: "Compares two values (`=`, `≠`, `<`, `>`, `≤`, `≥`) and emits a logical `TRUE` or `FALSE`, item by item over a list. Formulas: `IS`, `ISNOT`, `ABOVE`, `BELOW`, `ATLEAST`, `ATMOST`.",
+        keywords: "compare equal greater less above below at least at most is isnot",
+        create: () => new ComparisonNode(),
+      },
       { type: "pair", children: [
         { type: "iferror", label: "IFERROR", description: "Returns Fallback when Value is an error. A blank is not an error and passes through. Excel: `IFERROR`.", create: () => new IFErrorNode() },
         { type: "ifna", label: "IFNA", description: "Returns Fallback only when Value is `#N/A`; other errors pass through. Excel: `IFNA`.", create: () => new IFErrorNode({ op: "ifna" }) },

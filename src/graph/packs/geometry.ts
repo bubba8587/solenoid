@@ -98,6 +98,7 @@ const DISTANCE_IDS = new Set(["geo-distance-3d", "geo-cuboid-diag"]);
 export const GEOMETRY_PACK: Pack = {
   formulas: GEOMETRY_PACK_FORMULAS,
   id: "geometry",
+  seed: "pack-geometry",
   group: "Everyday",
   name: "Geometry",
   description: "Geometric helpers: hypotenuse, the any-three-parts Triangle Solver, circles and arcs, solids.",

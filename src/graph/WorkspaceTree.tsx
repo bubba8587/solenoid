@@ -6,7 +6,7 @@ import { requestConfirm } from "./confirmStore";
 import { IS_COARSE } from "./coarse";
 import { useMenuClamp } from "./components/menuClamp";
 import { PREVIEW_WORKSPACE, isNavPreview } from "./workspacePreview";
-import { SEEDS, SEED_GROUPS } from "./seeds";
+import { SEEDS, seedGroups } from "./seeds";
 import {
   libraryRows, previewRows, revealKeys, rekeyExpanded, docFoldedKey, docKey, folderKey, treeKeyStep, typeAhead,
   PREVIEW_EXPANDED, type RowKind, type TreeRow, type TreeKey,
@@ -476,7 +476,7 @@ export const WorkspaceTree = memo(function WorkspaceTree({ outline }: { outline?
 export function filesAddMenu(openSub: (items: MenuItem[]) => void): MenuItem[] {
   const seedsOf = (ids: string[]): MenuItem[] =>
     ids.map((id) => ({ label: SEEDS[id].label, onClick: () => void documentStore.newFromTemplate(id, target.folder || undefined) }));
-  const groups: MenuItem[] = SEED_GROUPS.map((g) => ({ label: g.head, onClick: () => setTimeout(() => openSub(seedsOf(g.ids)), 0) }));
+  const groups: MenuItem[] = seedGroups().map((g) => ({ label: g.head, onClick: () => setTimeout(() => openSub(seedsOf(g.ids)), 0) }));
   return [
     { label: "New Document", onClick: () => treeActions.newDocument?.() },
     { label: "New Folder", onClick: () => treeActions.newFolder?.() },
