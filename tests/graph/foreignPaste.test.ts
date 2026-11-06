@@ -110,4 +110,23 @@ describe("an AI rewrite keeps each card's mark", async () => {
     expect(kept.nodes[0].foreign).toEqual({ scripts: true });
     expect(kept.nodes[1].foreign).toBeUndefined();
   });
+  const current = { v: 2, connections: [], nodes: [
+    { id: "a", name: "s", type: "ScriptNode", init: {}, x: 0, y: 0, foreign: { scripts: true as const } },
+    { id: "b", name: "t", type: "ScriptNode", init: {}, x: 0, y: 0 },
+  ] };
+  it("a rewrite's own say never clears a mark", () => {
+    const next = { v: 2, connections: [], nodes: [
+      { id: "s", name: "s", type: "ScriptNode", init: {}, x: 0, y: 0, foreign: { scripts: false } as never },
+    ] };
+    expect(keepCardTrust(current, next).nodes[0].foreign).toEqual({ scripts: true });
+  });
+  it("a renamed marked card still asks: every card of its type not named as the user's own", () => {
+    const next = { v: 2, connections: [], nodes: [
+      { id: "x", name: "fetch_rates", type: "ScriptNode", init: {}, x: 0, y: 0 },
+      { id: "t", name: "t", type: "ScriptNode", init: {}, x: 0, y: 0 },
+      { id: "n", name: "n", type: "ValueInput", init: {}, x: 0, y: 0 },
+    ] };
+    const kept = keepCardTrust(current, next);
+    expect(kept.nodes.map((n) => n.foreign)).toEqual([{ scripts: true }, undefined, undefined]);
+  });
 });

@@ -45,14 +45,39 @@ function fromCore(r: string): string {
   return r;
 }
 
-/** `next` (a rewrite read back from text, which carries no card marks) with each card someone else wrote still marked,
- *  matched by the name the text form gives it ([[B18]] safeToShare): a rewrite never clears what a card still asks. */
+type CardMark = NonNullable<SavedNode["foreign"]>;
+
+/** Both marks' asks: a mark only ever gains what it asks, never loses it to a rewrite's own say. */
+function joinMarks(a: CardMark | undefined, b: CardMark | undefined): CardMark {
+  return {
+    ...(a?.scripts === true || b?.scripts === true ? { scripts: true as const } : {}),
+    ...(a?.network === true || b?.network === true ? { network: true as const } : {}),
+  };
+}
+
+/** `next` (a rewrite read back from text) with each card someone else wrote still marked ([[B18]] safeToShare): a
+ *  rewrite never clears what a card still asks. Cards match by the name the text form gives them; where a marked
+ *  name is gone (the rewrite renamed it), every card of that type not named as one of the user's own asks too. */
 export function keepCardTrust(current: SavedGraph, next: SavedGraph): SavedGraph {
   const idToName = assignNames(current.nodes);
-  const marks = new Map<string, NonNullable<SavedNode["foreign"]>>();
-  for (const n of current.nodes) if (n.foreign) marks.set(idToName.get(n.id) ?? n.id, n.foreign);
+  const marks = new Map<string, CardMark>();
+  const byType = new Map<string, CardMark>();
+  const own = new Set<string>();
+  for (const n of current.nodes) {
+    const name = idToName.get(n.id) ?? n.id;
+    if (n.foreign && (n.foreign.scripts || n.foreign.network)) {
+      marks.set(name, n.foreign);
+      byType.set(n.type, joinMarks(byType.get(n.type), n.foreign));
+    } else own.add(name);
+  }
   if (marks.size === 0) return next;
-  return { ...next, nodes: next.nodes.map((n) => { const m = marks.get(n.name ?? n.id); return m ? { ...n, foreign: { ...m, ...n.foreign } } : n; }) };
+  const names = new Set(next.nodes.map((n) => n.name ?? n.id));
+  const lost = [...marks.keys()].some((k) => !names.has(k));
+  return { ...next, nodes: next.nodes.map((n) => {
+    const name = n.name ?? n.id;
+    const m = marks.get(name) ?? (lost && !own.has(name) ? byType.get(n.type) : undefined);
+    return m ? { ...n, foreign: joinMarks(n.foreign, m) } : n;
+  }) };
 }
 
 /** The save a text holds, read on the core (`text_form.rs`). */
