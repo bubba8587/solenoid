@@ -39,7 +39,7 @@ off), the Android build (not in 1.6) and the headless CLI (unpublished).
   fifth of a second.
 - **Grids and signals.** Smooth, Convolve, Integrate and Find Peaks now work on a whole grid of numbers,
   Interpolate turns scattered points into a surface, and Connected Regions finds the islands in a height
-  map. Turn on the Signals & Grids pack in Settings.
+  map. Turn on the Signals & Grids pack in Settings for the grid cards.
 - **XLookup, every way.** Look down or across, match on contains, starts with or nearest, and leave Return
   blank to get the whole row.
 - **Charts that annotate themselves.** Feed any chart a References table for target lines, marked points

@@ -36,10 +36,11 @@ Highlights
   - Create, rename, drag, duplicate and delete documents and folders; New from Example; full keyboard control; an unsaved-changes dot.
   - The globe toggle searches every document and opens the card it finds.
   - One shared file and folder picker that browses, searches and previews; desktop uses the system dialog.
-- Signals & Grids pack (off by default; turn it on in Settings).
+- Grids and signals.
   - Smooth (now with Mean and Median), Convolve, Integrate, DIFF (with a Laplacian) and Find Peaks take a grid as well as a list.
   - Interpolate spreads scattered x, y, z points onto a grid.
   - New Connected Regions card labels patches of touching cells.
+  - New Signals & Grids pack (off by default; turn it on in Settings) holds Spectrum, Smooth, Find Peaks, Convolve and Connected Regions.
   - New core functions: KRON, PINV, SVD, grid flips and rotation.
 
 Tables, Frames and Cubes
@@ -49,6 +50,8 @@ Tables, Frames and Cubes
 - Frame Input: new Card Layout beside Form Layout; with none written, the Form lays itself out from the data; each layout field has a Suggest button.
 - Cards is now its own card, tinted by a Color column. Record keeps Detail, Gallery, Board and List; Record Detail has a Filter field.
 - The Filter field is in the same place in every popup with rows; the Form view pages only through matching records.
+- Popup titles wrap; Pin and Go to Source moved to the overflow menu.
+- A Cube cell holding a single record drills in as a one-row table.
 - Popups open immediately on a placeholder and fill in when a big table is ready.
 - Resizing a large Frame popup is about 10 times smoother.
 - Frame popup: error cells show their code, arrow keys move the caret while editing, long column names wrap, date columns sort by date.
@@ -56,9 +59,16 @@ Tables, Frames and Cubes
 - CSV reads faster (a 50 MB file in about 1.7 s, was 4.1 s); written CSV quotes only where needed.
 - The summary footer counts errors per column.
 - Slicer shows TRUE and FALSE for a logical column.
+- Fixed: the Cards gallery crashing when the row count changes, and a Computed Column named as its own anchor.
 
 Formulas and functions
 - Text is never silently read as a number: "12" in a number argument is #VALUE!. Use VALUE, DATEVALUE or Cast.
+- Errors propagate through every function: `CONCAT(NA(), "a")` is #N/A.
+- Paired functions (CORREL, COVAR, SLOPE, SUMX2MY2 and the rest) refuse lists of different sizes, as in Excel.
+- Powers follow IEEE 754: `1^y` is 1, `0^0` is 1.
+- Text sorts by code point.
+- SERIESSUM takes a single coefficient.
+- The Aggregate card's COUNT DISTINCT and COUNTBLANK take any list, text included.
 - SUM, MIN, MAX, COUNT and SUMPRODUCT count TRUE as 1 and FALSE as 0 (`SUM(x > 5)` counts matches).
 - Aggregates, AND, OR and XOR answer an error for text.
 - IF, IFS, SWITCH and CHOOSE ignore an error in a branch not taken (`IF(@qty = 0, 0, @total / @qty)` gives 0); their cards match.
@@ -74,13 +84,13 @@ Formulas and functions
 - An empty formula argument uses the same default as the card's empty field (`CHISQ.DIST.RT(3, )` uses 10 degrees of freedom).
 - Correlation, Covariance and Regression are one card with nine ops, in Excel's Known Ys, Known Xs order.
 - Replace Values has Find's Aa toggle.
-- Shuffle has a Sample op (RANDSAMPLE) with weights.
+- Shuffle has a Sample op (RANDSAMPLE): weighted, with replacement.
 - RANDARRAY's card draws a Rows by Columns grid.
 - New SIMPLERETURNS beside LOGRETURNS.
 - Formula and LAMBDA cards: the Number/Text/Date toggle is replaced by an inline Cast; results keep their computed type.
 - A Script that reads Math.random or Date.now holds its answer until F9.
 - Errors from formulas and cards explain why in plain words.
-- Functions that could hang on an extreme argument now answer an error immediately.
+- Functions that could hang on an extreme argument now answer an error immediately; an Amortization past a million periods is #DOMAIN! instead of crashing the tab.
 
 Dates
 - DATEVALUE and typed dates read ISO date-times, "Mar 5", "March 2024", month names, ordinals and weekdays.
@@ -103,10 +113,14 @@ Charts and figures
 - XY charts: date x axes, log y scale, line breaks over wide gaps, responsive at 50,000 points (a resize step went from 10.7 s to 54 ms).
 - New Conditional Regions card: click the regions a Scatter, XY Line or Bubble chart's lines cut the plot into, and each point gets that region's TRUE/FALSE, label or value, with an optional distance-to-boundary margin (100,000 points in about 0.2 s).
 - Mermaid card: a starter template for all 32 diagram types; diagrams use the app's theme.
-- Calendar Heatmap counts dated rows per day.
+- Calendar Heatmap sums each day's values, counting a row with no number as 1.
 - Funnel labels each stage inside its band.
 - Sunrise / Sunset draws the sun's arc; Weather shows its condition.
 - KPI uses the input's number format.
+- Gauge Dial takes an Options input.
+- Legends wrap onto rows and take at most a quarter of the figure's height.
+- Date ticks fall on month or year starts.
+- A lone XY point draws as a dot.
 - Vector Field draws its first row at the bottom, lining up with Surface.
 - Heavy charts stretch smoothly while resizing and redraw on release.
 
@@ -118,6 +132,12 @@ Cards and canvas
 - Any-type fields (IF, IFS, SWITCH, Comparison) have a kind button for Number, Text, Date or Boolean.
 - Value Input's type button sits beside its field.
 - Value Input, Constant, Physics Constant and TODAY/NOW collapse to a value cell; a collapsed Boolean flips on a press.
+- Cards read a wired 0 or FALSE as a value, not as an empty input (fixes Rename, Weighted, Fill, FREQUENCY, Add Column and the hypothesis tests).
+- A Display grows with its content up to 560 px wide, then scrolls; resizing by hand goes past that.
+- Recalculate sits above the result on every card that has one; the Distributions card's Sample form has one too.
+- The socket legend shows type icons; list and matrix socket colors are evened out, and Boolean moved to blue.
+- The cable inspector's Shape row is gone.
+- Navigator: the Outline follows a drill-in and its search reaches cards inside composites; the panel is resizable on desktop; clicking the document name reveals it in Files.
 - Composite cards compute every card inside them, in every run mode and at any depth.
 - The Add menu is reorganized into four groups.
 - Search finds cards by everyday words ("mean", "mortgage", "dedupe", "pivot table").
@@ -125,7 +145,7 @@ Cards and canvas
 - Figure cards have an extra-wide width.
 - Spline cables no longer bulge backward.
 - The dot grid holds steady under a deep pinch.
-- Panning a zoomed-out canvas is much smoother.
+- Panning a zoomed-out canvas is much smoother on desktop.
 
 Phone
 - The ⋮ menu fits down to Help without scrolling.
@@ -135,6 +155,8 @@ Phone
 - On a locked canvas the ➕ becomes the lock.
 
 Obsidian and files
+- In manual calculation, edits are saved immediately instead of being lost on reload.
+- Import Obsidian Note says when its note is gone.
 - The Documents menu lists your five most recent documents.
 - Write Properties writes lists, matrices, Frames, Cubes and complex columns with the Solenoid Properties plugin's types, so they read back correctly.
 - Write to Obsidian and Write Tasks take Keys as a normal list input.
@@ -150,13 +172,17 @@ Safety
 - Local File can't read outside the data folder.
 - A Script's code doesn't run while its syntax is checked.
 - Dropping a file on the desktop window no longer widens what the app can read.
+- An AI rewrite can't strip a foreign document's trust flags.
 
 Heads up
 
 - Formulas no longer read numbers, dates or TRUE/FALSE out of text: numeric text in a number argument is #VALUE!, and aggregates answer an error for text. Use VALUE, DATEVALUE or Cast.
 - Dates are no longer numbers: `date * 2`, `date + date`, `SUM` of dates and `YEAR(46000)` are #TYPE!. Cast to Number gives the serial; Cast to Date or DATE goes back.
-- Too many arguments is #SYNTAX! instead of being dropped.
-- PRICE, YIELD and the ODD functions refuse a basis argument (they never used it).
+- Too many arguments is #SYNTAX! instead of being dropped. This includes arguments Solenoid doesn't support yet: GROUPBY's last five options, LINEST and LOGEST's const and stats, MAP past three arrays, and basis on PRICE, YIELD and the ODD functions.
+- Paired functions (CORREL, COVAR, SLOPE and kin) refuse lists of different sizes instead of pairing the overlap.
+- A Logical Value Input refuses text other than TRUE or FALSE; a Date Value Input refuses text it can't read.
+- An empty Text Value Input sends a blank, so ISBLANK downstream is TRUE.
+- Cast's targets are ops ("To Text" and so on); search finds "Cast: To Text".
 - MAP, BYROW, BYCOL, SCAN and MAKEARRAY answer #SHAPE! for a lambda that returns a list.
 - Correlation, Covariance and Regression merged into one card; the old cards don't load from older saves.
 - Spectrum, Smooth, Find Peaks and Convolve moved to the Signals & Grids pack, off by default.
@@ -173,7 +199,7 @@ Heads up
 Under the hood
 
 - The TypeScript engine, Formula.js, rete and Polars are gone. The graph runs on netcore-rs, a Rust port of rete; card bodies, formulas and table verbs run on Solenoid's own core, in WebAssembly on web and desktop.
-- The engine download is 6% smaller; the Linux package is 18 MB (was 24). [Check at release.]
+- The Linux package is 18 MB (was 24). [Re-measure against v1.5.0 at release, and add the engine download size only if it measured smaller.]
 - Excel's documented examples are pinned in the tests function by function, every card is checked against its formula, and a formula fuzzer covers dates and operators.
 - Memory is released when a document, composite or landing scene closes.
 - Time zones use one bundled database (tzdb 2026e) in the browser and on desktop.
