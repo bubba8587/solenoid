@@ -282,7 +282,9 @@ pub fn write(g: &Js, names: &[String], order: &[String]) -> String {
                 Js::Object(sections.as_object().cloned().unwrap_or_default()),
             );
         }
-        if let Some(foreign) = field(sn, "foreign").filter(|x| x.as_object().is_some_and(|o| !o.is_empty())) {
+        if let Some(foreign) =
+            field(sn, "foreign").filter(|x| x.as_object().is_some_and(|o| !o.is_empty()))
+        {
             p.insert("foreign".into(), foreign.clone());
         }
         positions.insert(name_of(id), Js::Object(p));

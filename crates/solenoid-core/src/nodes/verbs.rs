@@ -1000,7 +1000,9 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
     if let Some(e) = kept.iter().find(|v| matches!(v, V::Err(_))) {
         return Ok((*e).clone());
     }
-    let nums: Vec<f64> = kept.iter().filter_map(|v| if let V::Num(n) = v { Some(*n) } else { None }).collect();
+    // The numbers SUMIFS in a formula reads (`excel_criteria`), ±∞ and NaN aside, totalled the same way ([[C17]] shareImpl).
+    let nums: Vec<f64> =
+        kept.iter().filter_map(|v| if let V::Num(n) = v { n.is_finite().then_some(*n) } else { None }).collect();
     // The cells are as typed in the column's unit; readings have no sum, as SUMIFS in a formula ([[C25]]).
     let unit = vcol.unit.as_ref();
     let reading =
@@ -1012,7 +1014,7 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
         Some(u) => tag_cell_unit(&V::Num(n), u),
         None => V::Num(n),
     };
-    let sum = || nums.iter().fold(0.0, |a, b| a + b);
+    let sum = || crate::exact_sum::exact_sum(&nums);
     Ok(match op {
         "sumifs" => tag(sum()),
         "averageifs" if nums.is_empty() => V::Null,

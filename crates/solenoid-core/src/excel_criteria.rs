@@ -970,8 +970,8 @@ fn from_text(op: Op, rest: &str, written: bool, text: &str, holds: Holds, match_
     if rest.is_empty() {
         return plain(op, Value::Null);
     }
-    if rest == "TRUE" || rest == "FALSE" {
-        return plain(op, Value::Bool(rest == "TRUE"));
+    if rest.eq_ignore_ascii_case("TRUE") || rest.eq_ignore_ascii_case("FALSE") {
+        return plain(op, Value::Bool(rest.eq_ignore_ascii_case("TRUE")));
     }
     // Criterion text is never read as a date or a day's serial ([[D123]] typedCriteria): over dates, text that reads as
     // a number or a date is refused; over numbers, a date-shaped text is text.
@@ -1271,14 +1271,20 @@ impl Sorted {
         Sorted { nums: order.iter().map(|&i| key(i)).collect(), order }
     }
 
+    /// Where the cells equal to `x` start and end, as `criterion_matches` reads them: a number to 15 digits (a band
+    /// contiguous in sorted order), a date exactly.
+    fn band(&self, x: f64, to_15: bool) -> (usize, usize) {
+        let same = |v: f64| to_15 && crate::excel_formula::same_to_15(v, x);
+        (self.nums.partition_point(|&v| v < x && !same(v)), self.nums.partition_point(|&v| v <= x || same(v)))
+    }
+
     /// The run of sorted cells a comparison with a number other than ±∞ matches.
     fn run(&self, c: &Criterion) -> Option<Run> {
         let (Value::Num(x) | Value::Date(x)) = &c.value else { return None };
         if !x.is_finite() {
             return None;
         }
-        let below = self.nums.partition_point(|&v| v < *x);
-        let upto = self.nums.partition_point(|&v| v <= *x);
+        let (below, upto) = self.band(*x, matches!(c.value, Value::Num(_)));
         Some(match c.op {
             Op::Lt => Run::First(below),
             Op::Lte => Run::First(upto),
@@ -1494,17 +1500,18 @@ impl Tally {
     /// `criterion_matches` over the whole range, for a number or a plain text criterion. A number other than NaN
     /// compares with every number as `c - n` would; a blank, NaN or any other cell matches only `<>`.
     fn count(&self, c: &Criterion, total: usize) -> Option<usize> {
-        let below = |x: f64| self.sorted.nums.partition_point(|&v| v < x);
-        let upto = |x: f64| self.sorted.nums.partition_point(|&v| v <= x);
         let unlike = |equal: usize| total - self.errs - equal;
         match &c.value {
-            Value::Num(n) | Value::Date(n) if n.is_finite() => Some(match c.op {
-                Op::Eq => upto(*n) - below(*n),
-                Op::Neq => unlike(upto(*n) - below(*n)) - self.bools,
-                Op::Gt => self.sorted.nums.len() - upto(*n),
-                Op::Gte => self.sorted.nums.len() - below(*n),
-                Op::Lt => below(*n),
-                Op::Lte => upto(*n),
+            Value::Num(n) | Value::Date(n) if n.is_finite() => Some({
+                let (below, upto) = self.sorted.band(*n, matches!(c.value, Value::Num(_)));
+                match c.op {
+                    Op::Eq => upto - below,
+                    Op::Neq => unlike(upto - below) - self.bools,
+                    Op::Gt => self.sorted.nums.len() - upto,
+                    Op::Gte => self.sorted.nums.len() - below,
+                    Op::Lt => below,
+                    Op::Lte => upto,
+                }
             }),
             Value::Str(_) if c.wild.is_none() && matches!(c.op, Op::Eq | Op::Neq) => {
                 let equal = self.text_rows.get(&c.lowered).map_or_default(Vec::len);
@@ -1520,7 +1527,15 @@ impl Tally {
             return None;
         }
         let rows = match &c.value {
-            Value::Num(n) | Value::Date(n) if n.is_finite() => self.num_rows.get(&(n + 0.0).to_bits()),
+            Value::Num(n) | Value::Date(n) if n.is_finite() => {
+                let exact = self.num_rows.get(&(n + 0.0).to_bits());
+                // A number equal only to 15 digits has other bits: those rows aren't one list here, so the scan reads them.
+                let (below, upto) = self.sorted.band(*n, matches!(c.value, Value::Num(_)));
+                if upto - below != exact.map_or(0, Vec::len) {
+                    return None;
+                }
+                exact
+            }
             Value::Str(_) if c.wild.is_none() => self.text_rows.get(&c.lowered),
             _ => return None,
         };

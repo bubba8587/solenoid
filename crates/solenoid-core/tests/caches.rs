@@ -416,3 +416,73 @@ fn a_kept_column_extreme_answers_as_the_scan_does() {
         }
     }
 }
+
+/// A number equal to the criterion only to 15 digits (`0.1+0.2` beside 0.3) matches as the scan reads it, from a long
+/// range's second call on too: the sorted run, the one-pair count and the `=` row lists ([[A5]] excelParity).
+#[test]
+fn a_cached_criterion_reads_numbers_to_15_digits() {
+    use solenoid_core::eval::{formula, Env};
+    use solenoid_core::excel_functions::V;
+    use std::rc::Rc;
+    let n = 100;
+    let range: Vec<V> = (0..n)
+        .map(|i| match i % 5 {
+            0 => V::Num(0.1 + 0.2),
+            1 => V::Num(0.3),
+            2 => V::Num(0.29999999999999),
+            _ => V::Num((i % 7) as f64 * 0.1),
+        })
+        .collect();
+    let keys: Vec<V> = (0..n).map(|i| V::str(if i % 2 == 0 { "a" } else { "b" })).collect();
+    let vals: Vec<V> = (0..n).map(|i| V::Num(i as f64 + 1.0)).collect();
+    let formulas = [
+        "COUNTIF(range, crit)",
+        "COUNTIFS(range, crit)",
+        "SUMIFS(vals, range, crit)",
+        "SUMIFS(vals, keys, \"a\", range, crit)",
+        "SUMIFS(vals, range, crit, keys, \"b\")",
+        "COUNTIFS(keys, \"a\", range, crit)",
+        "SUMIFS(vals, range, \"=\"&crit)",
+    ];
+    let crits = ["0.3", "=0.3", "<>0.3", "<0.3", "<=0.3", ">0.3", ">=0.3"];
+    let call = |src: &str, range: &V, keys: &V, vals: &V, crit: &str| {
+        let env: Env = [
+            ("range".to_string(), range.clone()),
+            ("keys".to_string(), keys.clone()),
+            ("vals".to_string(), vals.clone()),
+            ("crit".to_string(), V::str(crit)),
+        ]
+        .into_iter()
+        .collect();
+        format!("{:?}", formula(src, env))
+    };
+    let (shared, shared_keys, shared_vals) =
+        (V::List(Rc::new(range.clone())), V::List(Rc::new(keys.clone())), V::List(Rc::new(vals.clone())));
+    for src in formulas {
+        for crit in crits {
+            let fresh = |v: &Vec<V>| V::List(Rc::new(v.clone()));
+            let scanned = call(src, &fresh(&range), &fresh(&keys), &fresh(&vals), crit);
+            call(src, &shared, &shared_keys, &shared_vals, crit);
+            assert_eq!(call(src, &shared, &shared_keys, &shared_vals, crit), scanned, "{src} {crit}");
+        }
+    }
+    // 0.1+0.2 and 0.3 match, and so does 3 × 0.1 among the rest; 0.29999999999999 differs in the 14th digit.
+    let expected = (0..n).filter(|i| i % 5 < 2 || (i % 5 > 2 && i % 7 == 3)).count();
+    let first = call("COUNTIF(range, \"=0.3\")", &V::List(Rc::new(range.clone())), &shared_keys, &shared_vals, "");
+    assert_eq!(first, format!("{:?}", formula(&expected.to_string(), Env::default())));
+}
+
+/// A logical criterion reads `true` and `TRUE` alike, as Excel's do ([[C45]] excelComparisons).
+#[test]
+fn a_logical_criterion_ignores_case() {
+    use solenoid_core::eval::{formula, Env};
+    use solenoid_core::excel_functions::V;
+    use std::rc::Rc;
+    let env = || -> Env {
+        [("r".to_string(), V::List(Rc::new(vec![V::Bool(true), V::Bool(false), V::Bool(true)])))].into_iter().collect()
+    };
+    let n = |src: &str| format!("{:?}", formula(src, env()));
+    assert_eq!(n("COUNTIF(r, \"true\")"), n("COUNTIF(r, \"TRUE\")"));
+    assert_eq!(n("COUNTIF(r, \"true\")"), format!("{:?}", formula("2", Env::default())));
+    assert_eq!(n("COUNTIF(r, \"<>false\")"), format!("{:?}", formula("2", Env::default())));
+}
