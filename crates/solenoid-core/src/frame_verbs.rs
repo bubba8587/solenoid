@@ -832,7 +832,7 @@ fn variance_of(nums: &[f64], sample: bool) -> Option<f64> {
         return None;
     }
     let mean = sum_of(nums) / n as f64;
-    let ss = nums.iter().fold(0.0, |a, b| a + (b - mean) * (b - mean));
+    let ss = crate::excel_functions::ssd(nums, mean);
     Some(ss / (if sample { n - 1 } else { n }) as f64)
 }
 

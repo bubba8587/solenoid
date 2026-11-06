@@ -460,7 +460,7 @@ fn sniff_quadratic(residual: &dyn Fn(f64) -> Option<f64>) -> Option<Quad> {
     for x in [2.5, -3.75, 17.0, -41.5] {
         let fx = probe(x)?;
         let pred = (a * x + b) * x + c;
-        let scale = jmax(&[1.0, fx.abs(), pred.abs(), (a * x * x).abs(), (b * x).abs(), c.abs()]);
+        let scale = jmax(&[fx.abs(), pred.abs(), (a * x * x).abs(), (b * x).abs(), c.abs()]);
         if (fx - pred).abs() > 1e-9 * scale {
             return None;
         }
@@ -502,7 +502,7 @@ fn solve_quadratic(q: &Quad) -> Roots {
 
 fn root_holds(q: &Quad, residual: &dyn Fn(f64) -> Option<f64>, x: f64) -> bool {
     let Some(f) = residual(x) else { return false };
-    f.abs() <= 1e-9 * jmax(&[1.0, (q.a * x * x).abs(), (q.b * x).abs(), q.c.abs()])
+    f.abs() <= 1e-9 * jmax(&[(q.a * x * x).abs(), (q.b * x).abs(), q.c.abs()])
 }
 
 fn solve_linear(q: &Quad) -> Option<f64> {
@@ -541,13 +541,13 @@ fn solve_numeric(residual: &dyn Fn(f64) -> Option<f64>) -> V {
             } else {
                 h = mid;
             }
-            if h - l <= 1e-12 * jmax(&[1.0, l.abs(), h.abs()]) {
+            if h - l <= 1e-12 * jmax(&[l.abs(), h.abs()]) {
                 break;
             }
         }
         let mid = (l + h) / 2.0;
         let fm = finite(residual(mid))?;
-        let scale = jmax(&[1.0, flo.abs(), fhi.abs()]);
+        let scale = jmax(&[flo.abs(), fhi.abs()]);
         (fm.abs() <= 1e-6 * scale).then_some(mid)
     };
     let domain_edge = |inside: f64, outside: f64| -> Option<(f64, f64)> {

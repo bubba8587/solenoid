@@ -661,8 +661,15 @@ pub(crate) fn sum(a: &[f64]) -> f64 {
     crate::exact_sum::exact_sum(a)
 }
 
+/// The sum of squared deviations from `m`, summed exactly (`exact_sum`), so it doesn't depend on the order of `a`: the
+/// spreads it feeds are functions of the values as a multiset (mathlib `Multiset.sum`; `tree/specs/computation/formula-language.md` § Sums).
 pub(crate) fn ssd(a: &[f64], m: f64) -> f64 {
-    a.iter().fold(0.0, |x, y| x + libm::pow(y - m, 2.0))
+    terms_sum(a, |y| libm::pow(y - m, 2.0))
+}
+
+/// The exact sum (`exact_sum`) of `f` over `a`, the one way an aggregate adds computed terms.
+pub(crate) fn terms_sum(a: &[f64], f: impl Fn(f64) -> f64) -> f64 {
+    crate::exact_sum::exact_sum(&a.iter().map(|&x| f(x)).collect::<Vec<_>>())
 }
 
 fn fold_min(arr: &[f64]) -> f64 {
@@ -754,20 +761,20 @@ pub(crate) fn aggregate(op: Stat, arr: &[f64]) -> V {
                 if arr.iter().any(|&v| v <= 0.0) {
                     V::err(sol_error(ErrorCode::Domain, "GEOMEAN needs every value > 0"))
                 } else {
-                    V::Num(libm::exp(arr.iter().fold(0.0, |a, &b| a + libm::log(b)) / n as f64))
+                    V::Num(libm::exp(terms_sum(arr, libm::log) / n as f64))
                 }
             }
             Stat::HarMean => {
                 if arr.iter().any(|&v| v <= 0.0) {
                     V::err(sol_error(ErrorCode::Domain, "HARMEAN needs every value > 0"))
                 } else {
-                    V::Num(n as f64 / arr.iter().fold(0.0, |a, &b| a + 1.0 / b))
+                    V::Num(n as f64 / terms_sum(arr, |b| 1.0 / b))
                 }
             }
             Stat::DevSq => V::Num(ssd(arr, mean())),
             Stat::AveDev => {
                 let m = mean();
-                V::Num(arr.iter().fold(0.0, |a, &b| a + (b - m).abs()) / n as f64)
+                V::Num(terms_sum(arr, |b| (b - m).abs()) / n as f64)
             }
             Stat::Skew | Stat::SkewP => {
                 let sample = op == Stat::Skew;
@@ -779,7 +786,7 @@ pub(crate) fn aggregate(op: Stat, arr: &[f64]) -> V {
                 if sd == 0.0 {
                     return V::Null;
                 }
-                let cubes = arr.iter().fold(0.0, |a, &b| a + libm::pow((b - m) / sd, 3.0));
+                let cubes = terms_sum(arr, |b| libm::pow((b - m) / sd, 3.0));
                 let nf = n as f64;
                 V::Num(if sample { (nf / ((nf - 1.0) * (nf - 2.0))) * cubes } else { cubes / nf })
             }
@@ -792,7 +799,7 @@ pub(crate) fn aggregate(op: Stat, arr: &[f64]) -> V {
                 if sd == 0.0 {
                     return V::Null;
                 }
-                let sum4 = arr.iter().fold(0.0, |a, &b| a + libm::pow((b - m) / sd, 4.0));
+                let sum4 = terms_sum(arr, |b| libm::pow((b - m) / sd, 4.0));
                 let nf = n as f64;
                 V::Num(
                     ((nf * (nf + 1.0)) / ((nf - 1.0) * (nf - 2.0) * (nf - 3.0))) * sum4
@@ -2589,8 +2596,7 @@ pub(crate) fn nums_of(args: &[V]) -> Vec<f64> {
 /// The sample variance; NaN under two values.
 pub(crate) fn sample_variance(xs: &[f64]) -> f64 {
     let n = xs.len() as f64;
-    let mean = xs.iter().fold(0.0, |s, x| s + x) / n;
-    xs.iter().fold(0.0, |s, x| s + (x - mean) * (x - mean)) / (n - 1.0)
+    ssd(xs, sum(xs) / n) / (n - 1.0)
 }
 
 /// TYPE: 1 a number (or a blank, as an empty cell is), 2 text, 4 a logical, 16 an error, 64 a list, 128 a LAMBDA.

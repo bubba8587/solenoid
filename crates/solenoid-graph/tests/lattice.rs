@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[D99]] rustIsSpec
+// [[C10]] socketLattice, [[D99]] rustIsSpec, [[C139]] mathlibLaws
 //! The lattice held to the frozen answers the TypeScript gave (`fixtures/core/lattice.json.gz`, written by
 //! `tests/graph/coreLattice.test.ts`).
 
@@ -58,5 +58,59 @@ fn every_pair_type_and_vote_answers_as_frozen() {
         bad.is_empty(),
         "{}",
         serde_json::to_string_pretty(&bad[..bad.len().min(5)]).unwrap()
+    );
+}
+
+/// mathlib `Preorder` (`Mathlib/Order/Defs/PartialOrder.lean`): widening is reflexive and transitive over the concrete
+/// types, so a chain of passthroughs reaches nothing a direct cable can't. It is a preorder, not a partial order (a
+/// list and its combo reach each other). The seven combo-to-scalar narrowing edges are checked steps and don't compose
+/// (`tree/specs/values/socket-lattice.md` § The shape of what connects).
+#[test]
+fn widening_is_a_preorder_and_narrowing_does_not_compose() {
+    use solenoid_graph::lattice::{is_wildcard_rung, TYPES};
+    let concrete: Vec<&str> = TYPES
+        .iter()
+        .copied()
+        .filter(|t| !is_wildcard_rung(t) && *t != "trueany")
+        .collect();
+    let narrowing = |a: &str, b: &str| matches!((lattice_rank(a), lattice_rank(b)), (Some(x), Some(y)) if x > y);
+    let widens = |a: &str, b: &str| can_connect(a, b) && !narrowing(a, b);
+    for a in &concrete {
+        assert!(can_connect(a, a), "{a} reaches itself");
+        for b in &concrete {
+            for c in &concrete {
+                assert!(
+                    !(widens(a, b) && widens(b, c)) || widens(a, c),
+                    "{a} -> {b} -> {c} doesn't compose"
+                );
+            }
+        }
+    }
+    let mut narrow: Vec<String> = concrete
+        .iter()
+        .flat_map(|a| {
+            concrete
+                .iter()
+                .filter(move |b| can_connect(a, b) && narrowing(a, b))
+                .map(move |b| format!("{a}->{b}"))
+        })
+        .collect();
+    narrow.sort();
+    assert_eq!(
+        narrow,
+        [
+            "complexcombo->complex",
+            "datecombo->date",
+            "logicalcombo->logical",
+            "logicalcombo->number",
+            "numlist->logical",
+            "numlist->number",
+            "strcombo->string"
+        ]
+    );
+    assert!(
+        can_connect("list", "numlist")
+            && can_connect("numlist", "number")
+            && !can_connect("list", "number")
     );
 }

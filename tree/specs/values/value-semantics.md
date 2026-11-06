@@ -2,7 +2,7 @@
 aliases: ["Value semantics"]
 tags: [spec, values]
 ---
-<!-- [[C24]] arraySemantics, [[D114]] dateIsAKind, [[D115]] datesArePoints, [[D86]] blankRoles, [[C45]] excelComparisons, [[B16]] oneFormulaSurface, [[C22]] rowFormulaRefs -->
+<!-- [[C24]] arraySemantics, [[D114]] dateIsAKind, [[D115]] datesArePoints, [[D86]] blankRoles, [[C45]] excelComparisons, [[B16]] oneFormulaSurface, [[C22]] rowFormulaRefs, [[C139]] mathlibLaws -->
 
 # Spec: Value semantics
 
@@ -256,10 +256,13 @@ flowchart LR
 while `(d1 + d2) / 2` is `#TYPE!` at the `+`. That is the one place the two kinds disagree; the inbox item
 `dates-weigh-as-points` asks whether dates should classify by weight too.
 
-The mathematical names, for a reader who wants the full theory: a point kind with its difference kind is a *torsor*
-(an affine space when the differences can be scaled), point weight 1 is an *affine combination* and weight 0 a
-*weighted difference* (in mathlib, AddTorsor, Finset.affineCombination and Finset.weightedVSub). None of these words
-belong in the app.
+The mathematical names, for a reader who wants the full theory ([[C139]] mathlibLaws, [[engineering#Laws come from mathlib, by name]]): a
+point kind with its difference kind is a *torsor* (the class AddTorsor, `Mathlib/Algebra/Torsor/Defs.lean`; an affine
+space when the differences can be scaled), point weight 1 is an *affine combination* (`Finset.affineCombination`) and
+weight 0 a *weighted difference* (`Finset.weightedVSub`), both in `Mathlib/LinearAlgebra/AffineSpace/Combination.lean`.
+The two laws behind "exactly those two": weights summing to 1 give a point that doesn't depend on where zero is
+(`Finset.weightedVSubOfPoint_vadd_eq_of_sum_eq_one`), and weights summing to 0 give a difference that doesn't either
+(`Finset.weightedVSubOfPoint_eq_of_sum_eq_zero`), same file. None of these words belong in the app.
 
 ## Boundaries and bridges
 

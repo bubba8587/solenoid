@@ -28,15 +28,18 @@ describe("each matrix name computes what its node computes", () => {
     expect(code(new TableMultNode().data({ a: [texty], b: [M] }).result)).toBe("#TYPE!");
   });
 
-  it("MDETERM / MINVERSE — value, #SHAPE! non-square, #DIV/0! singular", () => {
+  it("MDETERM / MINVERSE — value, #SHAPE! non-square; singular: MDETERM 0, MINVERSE #DIV/0!", () => {
     expect(ev("MDETERM(m)", { m: M })).toBe(new MatDetNode({ op: "mdeterm" }).data({ matrix: [M] }).result);
     expect(ev("MINVERSE(m)", { m: M })).toEqual(new MatDetNode({ op: "minverse" }).data({ matrix: [M] }).result);
     const rect = [[1, 2, 3], [4, 5, 6]];
     expect(code(ev("MDETERM(m)", { m: rect }))).toBe("#SHAPE!");
     expect(code(new MatDetNode({ op: "mdeterm" }).data({ matrix: [rect] }).result)).toBe("#SHAPE!");
     const singular = [[1, 2], [2, 4]];
-    expect(code(ev("MDETERM(m)", { m: singular }))).toBe("#DIV/0!");
-    expect(code(new MatDetNode({ op: "mdeterm" }).data({ matrix: [singular] }).result)).toBe("#DIV/0!");
+    // A determinant is defined for every square matrix: a singular one's is 0 (mathlib `Matrix.det_zero_of_row_eq`).
+    expect(ev("MDETERM(m)", { m: singular })).toBe(0);
+    expect(new MatDetNode({ op: "mdeterm" }).data({ matrix: [singular] }).result).toBe(0);
+    expect(code(ev("MINVERSE(m)", { m: singular }))).toBe("#DIV/0!");
+    expect(code(new MatDetNode({ op: "minverse" }).data({ matrix: [singular] }).result)).toBe("#DIV/0!");
   });
 
   it("TRANSPOSE — and a LIST transposes to a COLUMN, not an element-wise map", () => {

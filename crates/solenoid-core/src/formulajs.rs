@@ -411,17 +411,17 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             _ => VALUE,
         },
         "SUMSQ" => {
-            let mut sum = 0.0;
+            let mut squares = Vec::new();
             for v in a {
                 match v {
                     // Empty text is nothing typed ([[D109]] aggregatesRefuseText).
                     V::Str(t) if t.is_empty() => {}
                     V::Str(_) => return Ok(crate::excel_functions::value_err("SUMSQ")),
                     V::Fx(_) | V::Err(_) => return Ok(v.clone()),
-                    _ => sum += nums_of(std::slice::from_ref(v)).iter().fold(0.0, |s, x| s + x * x),
+                    _ => squares.extend(nums_of(std::slice::from_ref(v)).iter().map(|x| x * x)),
                 }
             }
-            V::Num(sum)
+            V::Num(crate::exact_sum::exact_sum(&squares))
         }
         "SUMPRODUCT" if a.iter().any(|v| matches!(v, V::Str(t) if !t.is_empty())) => {
             crate::excel_functions::value_err(name)

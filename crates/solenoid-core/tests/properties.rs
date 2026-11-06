@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec, [[rust-core#The Rust is the spec]]
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[C139]] mathlibLaws, [[rust-core#The Rust is the spec]]
 //! The laws between the core's answers over seeded random cases.
 
 use solenoid_core::date_serial::{civil_from_days, days_from_civil};
@@ -174,5 +174,181 @@ fn a_whole_number_prints_as_js_prints_it() {
             continue;
         }
         assert_eq!(number_to_string(x), ryu_js::Buffer::new().format(x), "{x:e}");
+    }
+}
+
+// ─── Laws mathlib proves, held over the core's answers (`tree/specs/floors/engineering.md` § Laws from mathlib) ──────
+
+fn nums_of(v: &V) -> Option<Vec<f64>> {
+    match v {
+        V::Num(n) => Some(vec![*n]),
+        V::List(l) => l.iter().map(nums_of).collect::<Option<Vec<_>>>().map(|v| v.concat()),
+        _ => None,
+    }
+}
+
+fn close_all(a: &[f64], b: &[f64], tol: f64) -> bool {
+    let scale = b.iter().fold(0.0f64, |s, x| s.max(x.abs())).max(1e-300);
+    a.len() == b.len() && a.iter().zip(b).all(|(x, y)| (x - y).abs() <= tol * scale)
+}
+
+fn with_matrix(src: &str, m: &[Vec<f64>], b: &[f64]) -> Option<Vec<f64>> {
+    let mat = V::List(m.iter().map(|r| list(r)).collect::<Vec<_>>().into());
+    formula(src, [("m".to_string(), mat), ("b".to_string(), list(b))].into_iter().collect()).and_then(|v| nums_of(&v))
+}
+
+/// A random well-conditioned n×n matrix: diagonally dominant, entries of mixed sign.
+fn dominant(r: &mut fastrand::Rng, n: usize) -> Vec<Vec<f64>> {
+    (0..n)
+        .map(|i| (0..n).map(|j| if i == j { f64::from(r.i32(20..40)) } else { f64::from(r.i32(-5..5)) }).collect())
+        .collect()
+}
+
+/// mathlib `Matrix.det_smul`, `Matrix.det_mul_row`, `Matrix.det_mul_column` and `Matrix.inv_smul`: scaling a matrix,
+/// one of its rows or one of its columns by c scales its determinant by cⁿ or c and its inverse by 1/c, so no scale
+/// makes an invertible matrix singular. SOLVE's answer is unchanged by an equation's units and scales by 1/c in a
+/// variable's.
+#[test]
+fn matrix_functions_keep_their_scaling_laws() {
+    let mut r = rng();
+    for _ in 0..cases() / 200 {
+        let n = r.usize(1..5);
+        let a = dominant(&mut r, n);
+        let b: Vec<f64> = (0..n).map(|_| f64::from(r.i32(-9..9))).collect();
+        let det = with_matrix("MDETERM(m)", &a, &b).expect("det")[0];
+        let inv = with_matrix("MINVERSE(m)", &a, &b).expect("inverse");
+        let x = with_matrix("SOLVE(m, b)", &a, &b).expect("solve");
+        let e = r.i32(-15..16);
+        let c = libm::pow(10.0, f64::from(e));
+        let all: Vec<Vec<f64>> = a.iter().map(|row| row.iter().map(|v| v * c).collect()).collect();
+        let got = with_matrix("MDETERM(m)", &all, &b);
+        assert!(got.as_ref().is_some_and(|d| close_all(d, &[det * libm::pow(c, n as f64)], 1e-9)), "det({c:e}·{a:?})");
+        let got = with_matrix("MINVERSE(m)", &all, &b);
+        let want: Vec<f64> = inv.iter().map(|v| v / c).collect();
+        assert!(got.as_ref().is_some_and(|g| close_all(g, &want, 1e-9)), "inv({c:e}·{a:?}) = {got:?}");
+        let k = r.usize(0..n);
+        let row: Vec<Vec<f64>> =
+            a.iter().enumerate().map(|(i, rw)| rw.iter().map(|v| if i == k { v * c } else { *v }).collect()).collect();
+        let rb: Vec<f64> = b.iter().enumerate().map(|(i, v)| if i == k { v * c } else { *v }).collect();
+        let got = with_matrix("MDETERM(m)", &row, &b);
+        assert!(got.as_ref().is_some_and(|d| close_all(d, &[det * c], 1e-9)), "det, row {k} of {a:?} by {c:e}");
+        let got = with_matrix("SOLVE(m, b)", &row, &rb);
+        assert!(got.as_ref().is_some_and(|g| close_all(g, &x, 1e-9)), "solve, equation {k} of {a:?} by {c:e}: {got:?}");
+        let col: Vec<Vec<f64>> =
+            a.iter().map(|rw| rw.iter().enumerate().map(|(j, v)| if j == k { v * c } else { *v }).collect()).collect();
+        let got = with_matrix("MDETERM(m)", &col, &b);
+        assert!(got.as_ref().is_some_and(|d| close_all(d, &[det * c], 1e-9)), "det, column {k} of {a:?} by {c:e}");
+        let got = with_matrix("SOLVE(m, b)", &col, &b)
+            .map(|g| g.iter().enumerate().map(|(j, v)| if j == k { v * c } else { *v }).collect::<Vec<_>>());
+        assert!(got.as_ref().is_some_and(|g| close_all(g, &x, 1e-9)), "solve, variable {k} of {a:?} by {c:e}: {got:?}");
+    }
+}
+
+/// mathlib `Matrix.det_zero_of_row_eq`: a matrix with a repeated row has determinant 0, an answer, not an error; and
+/// `Matrix.det_isEmpty` is the card's 1 for a 0×0 matrix.
+#[test]
+fn a_singular_matrix_has_determinant_zero() {
+    for m in [
+        vec![vec![1.0, 2.0], vec![1.0, 2.0]],
+        vec![vec![1.0, 2.0], vec![2.0, 4.0]],
+        vec![vec![0.0]],
+        vec![vec![0.0, 0.0], vec![3.0, 4.0]],
+    ] {
+        assert_eq!(with_matrix("MDETERM(m)", &m, &[]), Some(vec![0.0]), "MDETERM({m:?})");
+        assert!(with_matrix("MINVERSE(m)", &m, &[]).is_none(), "MINVERSE({m:?}) has no inverse");
+    }
+}
+
+/// mathlib `Multiset.sum`, `Multiset.prod`, `Multiset.sup`: a function of a multiset doesn't see order, so every
+/// order-free aggregate answers the same, bit for bit, however its list is shuffled. PRODUCT is the one left out: a
+/// floating product has no exact form, so its last bits follow the order.
+#[test]
+fn order_free_aggregates_survive_a_shuffle() {
+    const FNS: &[&str] = &[
+        "SUM",
+        "COUNT",
+        "MIN",
+        "MAX",
+        "AVERAGE",
+        "MEDIAN",
+        "MODE.SNGL",
+        "SUMSQ",
+        "DEVSQ",
+        "VAR.S",
+        "VAR.P",
+        "STDEV.S",
+        "STDEV.P",
+        "AVEDEV",
+        "GEOMEAN",
+        "HARMEAN",
+        "SKEW",
+        "SKEW.P",
+        "KURT",
+        "GCD",
+        "LCM",
+    ];
+    let mut r = rng();
+    for f in FNS {
+        for _ in 0..cases() / 200 {
+            let xs: Vec<f64> = (0..r.usize(4..30))
+                .map(|_| match *f {
+                    "GCD" | "LCM" => f64::from(r.u32(1..40)),
+                    "GEOMEAN" | "HARMEAN" => f64::from(r.u32(1..10_000)) / 7.0,
+                    _ => f64::from(r.i32(-10_000..10_000)) / 7.0,
+                })
+                .collect();
+            let mut ys = xs.clone();
+            r.shuffle(&mut ys);
+            let a = run(&format!("{f}(l)"), &xs);
+            let b = run(&format!("{f}(l)"), &ys);
+            match (&a, &b) {
+                (V::Num(p), V::Num(q)) => assert!(p.to_bits() == q.to_bits(), "{f}({xs:?}) = {p}, shuffled {q}"),
+                _ => assert_eq!(format!("{a:?}"), format!("{b:?}"), "{f}({xs:?})"),
+            }
+        }
+    }
+}
+
+/// The Equation card's answer for `unknown`, given `known`, as its reply prints it.
+fn equation(expr: &str, known: &[(&str, f64)], unknown: &str) -> String {
+    use serde_json::json;
+    let names: Vec<&str> = known.iter().map(|(n, _)| *n).chain([unknown]).collect();
+    let outputs: Vec<serde_json::Value> =
+        std::iter::once(json!(["holds", "logicalcombo"])).chain(names.iter().map(|n| json!([n, "numlist"]))).collect();
+    let args = json!({
+        "kind": "EquationNode",
+        "init": {"label": "Equation", "expr": expr, "locked": false},
+        "prior": {"cachedError": null, "cachedValues": {"__json": {}}, "cachedHolds": null, "solvedFor": null},
+        "clock": {"now": 46317.0},
+        "sockets": names.iter().map(|n| json!([n, "numlist", n])).collect::<Vec<_>>(),
+        "outputs": outputs,
+        "inputs": known.iter().map(|(n, v)| json!([n, [v]])).collect::<Vec<_>>(),
+    });
+    match solenoid_core::nodes::reply(&args).answer {
+        Some(Ok(outs)) => outs
+            .iter()
+            .find(|(k, _)| k == unknown)
+            .map_or("no output".into(), |(_, v)| solenoid_core::nodes::reply_json(v)),
+        other => format!("{other:?}"),
+    }
+}
+
+/// mathlib `mul_right_inj'`: for k ≠ 0, k·a = k·b exactly when a = b, so multiplying both sides of an equation by the
+/// same nonzero k changes none of its solutions, at any scale ([[C47]] equationNode). The tiny cubic is the case the
+/// solver's old tolerance floor of 1 got wrong (x = 8).
+#[test]
+fn an_equation_scaled_by_k_keeps_its_solutions() {
+    for e in [3, 0, -6, -12, -15, -20] {
+        let k = libm::pow(10.0, f64::from(e));
+        let x: f64 = equation("C = k * x * x * x", &[("C", 8.0 * k), ("k", k)], "x").parse().expect("a number");
+        assert!((x - 2.0).abs() < 1e-9, "C = k*x*x*x at k = {k:e} gave {x}");
+        let roots = equation("Z = k * (x * x - 5 * x + 6)", &[("Z", 0.0), ("k", k)], "x");
+        let v: serde_json::Value = serde_json::from_str(&roots).expect("json");
+        let got: Vec<f64> =
+            v["list"].as_array().expect("two roots").iter().filter_map(serde_json::Value::as_f64).collect();
+        assert!(close_all(&got, &[2.0, 3.0], 1e-9), "the quadratic at k = {k:e} gave {roots}");
+        let y: f64 =
+            equation("Z = k * x * EXP(x) - 5 * k + 0 * x", &[("Z", 0.0), ("k", k)], "x").parse().expect("a number");
+        assert!((y * libm::exp(y) - 5.0).abs() < 1e-9, "x·eˣ = 5 at k = {k:e} gave {y}");
     }
 }

@@ -18,6 +18,13 @@ specific item.
   of eight hourly passes run before the author stopped it. Its confirmed bugs are in the backlog, § Found by the mathlib
   research. Two choices wait in the inbox: `dates-weigh-as-points` (`(d1 + d2) / 2` is `#TYPE!` for dates but a
   reading for °C) and `aggregates-of-nothing` (MAX, MIN and PRODUCT of nothing make up a 0).
+- **The research landed** ([[C139]] mathlibLaws, made with the author 2026-11-06: mathlib is the reference for the laws Solenoid's math keeps): MDETERM has no singularity
+  cutoff (a singular matrix is 0, as Excel), MINVERSE and SOLVE decide singularity at any scale
+  (`singular_at_any_scale`) while computing as before; the Equation solver's tolerances are purely relative; the
+  spreads sum their terms exactly (`terms_sum`); the Type Settle visits cards in topological order (`visit_order`).
+  The laws behind each are in the specs with their mathlib declarations (`../tree/specs/floors/engineering.md` § Laws come from mathlib, by
+  name, pinned to mathlib `9c8f67d`) and held by `properties.rs` and the graph crate's `lattice.rs`, `settle.rs` and
+  `boundary_core.rs`. Refrozen: MDETERM of a singular matrix (0 now), and last-digit moves of at most 7e-12 relative.
 - **Before pushing Rust, even a prototype test: `bash scripts/check-rust.sh <crate>`** (the crate bans `powi`, clippy
   runs with warnings as errors) and give a new test file a leaf citation, or coverage fails CI.
 

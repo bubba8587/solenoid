@@ -276,6 +276,9 @@ fn mat_mul(a: &NumMat, b: &NumMat) -> Option<NumMat> {
     Some(r)
 }
 
+/// The determinant by LU with partial pivoting. A determinant is defined for every square matrix, so no cutoff decides
+/// "singular": a column with no nonzero pivot left makes it exactly 0, and a tiny one is a tiny determinant, so
+/// `det(cA) = cⁿ det(A)` holds at every scale (mathlib `Matrix.det_smul`; `tree/specs/computation/formula-language.md` § Matrix kernels).
 fn mat_det(m: &NumMat) -> Option<f64> {
     let n = m.len();
     if n != mat_cols(m) {
@@ -291,8 +294,8 @@ fn mat_det(m: &NumMat) -> Option<f64> {
                 max_r = r;
             }
         }
-        if max_val < 1e-14 {
-            return None;
+        if max_val == 0.0 {
+            return Some(0.0);
         }
         if max_r != i {
             a.swap(i, max_r);
@@ -312,9 +315,53 @@ fn mat_det(m: &NumMat) -> Option<f64> {
     Some(d)
 }
 
+/// The exponent that brings `x`'s magnitude into [0.5, 1) when `x` is scaled by 2 to it; 0 for 0 or a non-finite `x`.
+fn binade_exp(x: f64) -> i32 {
+    if x == 0.0 || !x.is_finite() {
+        0
+    } else {
+        -libm::frexp(x).1
+    }
+}
+
+/// Whether `m` is singular up to the units its rows and columns are written in: elimination with partial pivoting on
+/// `m` equilibrated by powers of two (each row's, then each column's, largest entry in [0.5, 1), which is exact), and a
+/// pivot under `tol` there. Only the verdict comes from here; the answer is computed on `m` itself, so a matrix that
+/// was invertible before answers exactly as it did, and `inv(cA) = inv(A) / c` holds at every scale c (mathlib
+/// `Matrix.inv_smul`).
+fn singular_at_any_scale(m: &NumMat, tol: f64) -> bool {
+    let n = mat_cols(m);
+    let r: Vec<i32> = m.iter().map(|row| binade_exp(row.iter().fold(0.0, |s, x| js_max(s, x.abs())))).collect();
+    let c: Vec<i32> = (0..n)
+        .map(|j| binade_exp(m.iter().zip(&r).fold(0.0, |s, (row, &e)| js_max(s, libm::ldexp(row[j].abs(), e)))))
+        .collect();
+    let mut b: NumMat = m
+        .iter()
+        .zip(&r)
+        .map(|(row, &er)| row.iter().zip(&c).map(|(x, &ec)| libm::ldexp(*x, er + ec)).collect())
+        .collect();
+    for i in 0..b.len().min(n) {
+        let piv = (i..b.len()).fold(i, |p, k| if b[k][i].abs() > b[p][i].abs() { k } else { p });
+        if !(b[piv][i].abs() >= tol) {
+            return true;
+        }
+        b.swap(i, piv);
+        for k in i + 1..b.len() {
+            let f = b[k][i] / b[i][i];
+            for j in i..n {
+                b[k][j] -= f * b[i][j];
+            }
+        }
+    }
+    false
+}
+
 fn mat_inverse(m: &NumMat) -> Option<NumMat> {
     let n = m.len();
     if n != mat_cols(m) {
+        return None;
+    }
+    if singular_at_any_scale(m, 1e-14) {
         return None;
     }
     let mut aug: NumMat = m
@@ -334,7 +381,7 @@ fn mat_inverse(m: &NumMat) -> Option<NumMat> {
                 max_r = r;
             }
         }
-        if max < 1e-14 {
+        if max == 0.0 {
             return None;
         }
         aug.swap(i, max_r);
@@ -505,9 +552,13 @@ fn mat_rank(m: &NumMat, tol: f64) -> f64 {
     rank as f64
 }
 
-/// Gauss-Jordan with partial pivoting.
+/// Gauss-Jordan with partial pivoting; whether a unique solution exists is `singular_at_any_scale`'s verdict, so a
+/// variable or an equation written in other units leaves it unchanged.
 fn solve_linear(a: &NumMat, b: &[f64]) -> Option<Vec<f64>> {
     let n = b.len();
+    if a.len() != n || singular_at_any_scale(a, 1e-12) {
+        return None;
+    }
     let mut m: NumMat = a
         .iter()
         .zip(b)
@@ -524,7 +575,7 @@ fn solve_linear(a: &NumMat, b: &[f64]) -> Option<Vec<f64>> {
                 piv = r;
             }
         }
-        if m[piv][col].abs() < 1e-12 {
+        if m[piv][col] == 0.0 {
             return None;
         }
         m.swap(col, piv);

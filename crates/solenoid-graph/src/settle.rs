@@ -137,6 +137,38 @@ struct Graph<'a> {
     /// Each node's place in the order, and the first cable into each input.
     at: HashMap<&'a str, usize>,
     feeds: HashMap<(&'a str, &'a str), &'a Cable>,
+    /// The cards in the order a pass visits them: every card after the cards feeding it, the members of a loop in
+    /// graph order at the end (`visit_order`).
+    order: Vec<usize>,
+}
+
+/// The cards with each one after every card that feeds it (Kahn's order, ties in graph order), then the cards a loop
+/// holds, in graph order. Each port's type is a function of the ports upstream of it, so one pass in this order settles
+/// a graph without loops; graph order needed a pass per card of the longest chain listed against the wiring
+/// (`tree/specs/values/socket-lattice.md` req. 9).
+fn visit_order(n: usize, at: &HashMap<&str, usize>, cables: &[Cable]) -> Vec<usize> {
+    let mut indeg = vec![0usize; n];
+    let mut next: Vec<Vec<usize>> = vec![Vec::new(); n];
+    for c in cables {
+        if let (Some(&s), Some(&t)) = (at.get(c.source.as_str()), at.get(c.target.as_str())) {
+            next[s].push(t);
+            indeg[t] += 1;
+        }
+    }
+    let mut ready: std::collections::BTreeSet<usize> = (0..n).filter(|&i| indeg[i] == 0).collect();
+    let mut order = Vec::with_capacity(n);
+    while let Some(i) = ready.pop_first() {
+        order.push(i);
+        for &t in &next[i] {
+            indeg[t] -= 1;
+            if indeg[t] == 0 {
+                ready.insert(t);
+            }
+        }
+    }
+    let placed: BTreeSet<usize> = order.iter().copied().collect();
+    order.extend((0..n).filter(|i| !placed.contains(i)));
+    order
 }
 
 impl Graph<'_> {
@@ -156,7 +188,7 @@ impl Graph<'_> {
 
 fn conduits_once(nodes: &mut [Node], g: &Graph) -> bool {
     let mut changed = false;
-    for i in 0..nodes.len() {
+    for &i in &g.order {
         let Some(lanes) = nodes[i].lanes.clone() else {
             continue;
         };
@@ -219,7 +251,7 @@ fn project(p: &Project, t: &str) -> String {
 
 fn adoption_once(nodes: &mut [Node], g: &Graph) -> BTreeSet<String> {
     let mut changed = BTreeSet::new();
-    for i in 0..nodes.len() {
+    for &i in &g.order {
         let id = nodes[i].id.clone();
         for k in 0..nodes[i].ins.len() {
             if nodes[i].ins[k].kind != Kind::Adoptive {
@@ -366,13 +398,15 @@ pub fn settle(nodes: &mut [Node], cables: &[Cable]) -> Settled {
             .entry((c.target.as_str(), c.target_input.as_str()))
             .or_insert(c);
     }
+    let at: HashMap<&str, usize> = ids
+        .iter()
+        .enumerate()
+        .map(|(i, id)| (id.as_str(), i))
+        .collect();
     let g = Graph {
         cables,
-        at: ids
-            .iter()
-            .enumerate()
-            .map(|(i, id)| (id.as_str(), i))
-            .collect(),
+        order: visit_order(ids.len(), &at, cables),
+        at,
         feeds,
     };
     let mut conduit_changed = false;

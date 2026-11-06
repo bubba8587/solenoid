@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[C10]] socketLattice, [[E9]] errorsKeepOrigin, [[graph-core#The input boundary]]
+// [[C130]] rustCore, [[C10]] socketLattice, [[E9]] errorsKeepOrigin, [[C139]] mathlibLaws, [[graph-core#The input boundary]]
 //! The boundary on core values against `fixtures/core/boundary-*.json.gz` (written by `coreBoundary.test.ts`).
 
 use std::io::Read;
@@ -393,4 +393,96 @@ fn many_distinct_errors_tag_in_linear_time_and_repeats_share_a_copy() {
     assert!(Rc::ptr_eq(first, again));
     assert!(!Rc::ptr_eq(first, other));
     assert_eq!(first.origin.as_ref().unwrap().node_id, "probe");
+}
+
+/// Coercions agree along paths: a value taken through B on its way to C arrives as it would straight to C, for every
+/// widening chain A -> B -> C over sampled values. Two exceptions are pinned, both written in
+/// `tree/specs/values/socket-lattice.md` § The shape of what connects: a route through the logical bridge (lossy: 5 is
+/// TRUE, then 1), and the logical, string and date matrix rungs, which pass a value through unshaped. A Frame on its
+/// way to a Cube keeps its column types, metadata only.
+#[test]
+fn coercions_agree_along_widening_paths() {
+    use solenoid_graph::lattice::{
+        can_connect, element_family, is_wildcard_rung, lattice_rank, TYPES,
+    };
+    let l = |xs: Vec<V>| V::List(Rc::new(xs));
+    let samples: Vec<(&str, V)> = vec![
+        ("number", V::Num(5.0)),
+        ("list", l(vec![V::Num(1.0), V::Num(2.0)])),
+        ("numlist", l(vec![V::Num(5.0)])),
+        ("numlist", l(vec![V::Num(1.0), V::Null, V::Num(3.0)])),
+        (
+            "table",
+            l(vec![
+                l(vec![V::Num(1.0), V::Num(2.0)]),
+                l(vec![V::Num(3.0), V::Num(4.0)]),
+            ]),
+        ),
+        ("logical", V::Bool(true)),
+        ("logicallist", l(vec![V::Bool(true), V::Bool(false)])),
+        ("string", V::str("a")),
+        ("strlist", l(vec![V::str("a"), V::str("b")])),
+        ("date", V::Date(45000.0)),
+        ("datelist", l(vec![V::Date(45000.0), V::Date(45001.0)])),
+        ("list", l(Vec::new())),
+    ];
+    let coerce = |rung: &str, v: &Cv| -> Option<Cv> {
+        let rung_of = |k: &str| (k == "a").then(|| rung.to_string());
+        coerce_all(
+            &Facts::default(),
+            &rung_of,
+            &[(
+                "a".to_string(),
+                vec![Arrived {
+                    v: v.clone(),
+                    munit: None,
+                }],
+            )],
+        )
+        .ok()
+        .map(|out| out[0].1[0].v.clone())
+    };
+    let concrete: Vec<&str> = TYPES
+        .iter()
+        .copied()
+        .filter(|t| {
+            !is_wildcard_rung(t)
+                && *t != "trueany"
+                && !matches!(*t, "lambda" | "chart" | "document")
+        })
+        .collect();
+    let narrowing = |a: &str, b: &str| matches!((lattice_rank(a), lattice_rank(b)), (Some(x), Some(y)) if x > y);
+    let widens = |a: &str, b: &str| can_connect(a, b) && !narrowing(a, b);
+    let fam = |t: &str| element_family(t).map_or_else(|| t.to_string(), str::to_string);
+    let unshaped = |t: &str| matches!(t, "logicaltable" | "strtable" | "datetable");
+    let (mut checked, mut bad) = (0, Vec::new());
+    for (a, v) in &samples {
+        let v = Cv::V(v.clone());
+        for b in &concrete {
+            for c in &concrete {
+                if b == c || !(widens(a, b) && widens(b, c) && widens(a, c)) {
+                    continue;
+                }
+                if (fam(b) == "logical") != (fam(a) == "logical")
+                    || unshaped(b)
+                    || unshaped(c)
+                    || (*b == "frame" && *c == "cube")
+                {
+                    continue;
+                }
+                let (Some(direct), Some(via)) = (coerce(c, &v), coerce(b, &v)) else {
+                    continue;
+                };
+                checked += 1;
+                let through = coerce(c, &via);
+                if through.as_ref().map(|t| format!("{t:?}")) != Some(format!("{direct:?}")) {
+                    bad.push(format!(
+                        "{a} {v:?}: via {b} to {c} is {through:?}, straight {direct:?}"
+                    ));
+                }
+            }
+        }
+    }
+    assert!(checked > 100, "{checked} paths");
+    assert!(bad.is_empty(), "{}", bad.join("\n"));
 }

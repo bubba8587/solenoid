@@ -2,11 +2,11 @@
 aliases: ["Engineering rules"]
 tags: [spec, floors]
 ---
-<!-- [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[C120]] linearWork -->
+<!-- [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[C120]] linearWork, [[C139]] mathlibLaws -->
 
 # Spec: Engineering rules
 
-Serves [[C17]] shareImpl, [[B2]] webTryDesktopFull and [[C120]] linearWork.
+Serves [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[C120]] linearWork and [[C139]] mathlibLaws.
 
 The cross-cutting code-hygiene rules. Unlike the other floors this spec has no `covers:` glob: each rule binds every file in the repo, source and tests alike, whenever the file does the thing the rule names. A file that relies on one cites the parent leaf it serves, or nothing.
 
@@ -51,6 +51,30 @@ The node-to-formula coverage figure divides by the in-scope cards, never the who
 **MUST:** a claim of the form "this node supports X" over a set of names is checked with `every`. `some` is allowed only where partial support is the deliberate, documented contract.
 
 `some` reports a node as covered while most of its names still fail. It once hid ten names (the seven B-suffixed text functions, `ERF.PRECISE`, `ERFC.PRECISE` and `VALUETOTEXT`), each declared against a real node while the formula surface answered `#NAME?`.
+
+### Laws come from mathlib, by name
+
+Serves [[C139]] mathlibLaws.
+
+Where an answer keeps a mathematical law (a determinant scales by cⁿ, a total doesn't see the order of its values, an
+equation's solutions survive a common factor), the spec states the law in one line and cites the mathlib declaration
+that proves it, and the test that holds it cites the same declaration. Mathlib (`leanprover-community/mathlib4`) is
+the machine-checked library of the Lean prover, so the citation says where the truth comes from instead of leaving a
+reader to trust the spec's arithmetic.
+
+- **The form.** The fully qualified name and its file, at mathlib commit `9c8f67d` (2026-11-06): `Matrix.det_smul`
+  (`Mathlib/LinearAlgebra/Matrix/Determinant/Basic.lean`). A name always carries its namespace (`Matrix.`, `List.`,
+  `Finset.`), so docsPointers, which holds every backticked code name in a spec to the code, reads it as someone
+  else's; a bare class name (Preorder, AddTorsor) is written as a word.
+- **The test.** A law a spec states this way is held by a sampled test (`crates/solenoid-core/tests/properties.rs`,
+  the graph crate's `tests/`), which cites the same name in its doc comment. A law over real numbers holds for doubles
+  only to a tolerance; the test says which, and a law that floats break outright (PRODUCT's order) is stated as the
+  exception, not dropped.
+- **What it doesn't do.** Mathlib is never a dependency, and its vocabulary stays out of the app's strings
+  (DESIGN.md §7). Its junk-value conventions (x/0 = 0) are mathlib's choice for proofs, not Solenoid's for answers: a
+  citation borrows a law, never a convention.
+- **Re-checking.** A cited name that mathlib renames or moves is found by grepping a fresh clone for the name; the
+  commit above is the one every citation was checked against.
 
 ## Module boundaries
 

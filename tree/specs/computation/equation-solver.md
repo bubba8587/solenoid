@@ -2,7 +2,7 @@
 aliases: ["Equation solver"]
 tags: [spec, computation]
 ---
-<!-- [[C47]] equationNode -->
+<!-- [[C47]] equationNode, [[C139]] mathlibLaws -->
 
 # Spec: Equation solver
 
@@ -47,7 +47,7 @@ flowchart LR
 ```
 
 - **Two or more unknowns:** the card shows "Wire in all but one variable".
-- **No unknowns:** the card checks whether the relation holds, and emits it on `holds`. Each side is evaluated and compared within a relative tolerance of 10⁻⁹ (`equals_within`), cell by cell for lists; a scalar broadcasts against a list and a ragged tail compares as null. With units, the check first compares the two sides' dimensions: different dimensions give `#UNIT!` "The two sides carry different units", and two different currencies give `#UNIT!` rather than holding by magnitude ([[C25]] firstClassUnits). An evaluation failure gives `#VALUE!`.
+- **No unknowns:** the card checks whether the relation holds, and emits it on `holds`. Each side is evaluated and compared within a relative tolerance of 10⁻⁹ (`equals_within`), absolute near zero so a cancellation that leaves 5.55E-17 still holds, the one tolerance in the solver that isn't purely relative, cell by cell for lists; a scalar broadcasts against a list and a ragged tail compares as null. With units, the check first compares the two sides' dimensions: different dimensions give `#UNIT!` "The two sides carry different units", and two different currencies give `#UNIT!` rather than holding by magnitude ([[C25]] firstClassUnits). An evaluation failure gives `#VALUE!`.
 
 Tests: `nodes/formula.rs` inline tests (solenoid-core): `equals_within` is relative, then absolute near zero.
 - **One unknown:** the card solves for it. The unknown's name is `solvedFor`, which the card uses for its accent highlight. An error on any known passes through as the answer; a blank known makes the answer null.
@@ -69,14 +69,14 @@ flowchart TD
 ```
 
 
-**1. Quadratic sniff** (scalar knowns only). `sniff_quadratic` probes the residual, `residual(x) = LHS(x) − RHS(x)`, at 0, 1 and −1 and fits a·x² + b·x + c exactly through those three points. It then checks the fit at 2.5, −3.75, 17 and −41.5; a miss beyond 10⁻⁹ of the local scale rejects it, which is what turns away square roots, trig and 1/x. When the fit holds, `solve_quadratic` returns the real roots:
+**1. Quadratic sniff** (scalar knowns only). `sniff_quadratic` probes the residual, `residual(x) = LHS(x) − RHS(x)`, at 0, 1 and −1 and fits a·x² + b·x + c exactly through those three points. It then checks the fit at 2.5, −3.75, 17 and −41.5; a miss beyond 10⁻⁹ of the local scale (the largest of the residual and the fit's terms at that probe, never a fixed floor) rejects it, which is what turns away square roots, trig and 1/x. When the fit holds, `solve_quadratic` returns the real roots:
 
 - both roots as an ascending list, computed in the numerically stable form;
 - one scalar for a double root (a discriminant within 10⁻¹² of zero, relative);
 - `#SOLVE!` "No real solution: the quadratic's discriminant is negative" for a negative discriminant, once numeric root-finding (layer 3) has also come up empty; a root it finds wins;
 - nothing when a is effectively zero (degree below 2), so solving falls through to the next layer, except for a line whose unknown appears more than once, which isolation can't take: that one solves exactly as −c/b (`solve_linear`) instead of by root-finding, so `p = r·u − f − c·u` gives 400, not 400.0000000001.
 
-Seven probes can't tell a polynomial from a piecewise form that matches one at those points (`MIN(x, 30)·x`, an `IF` that switches beyond 41.5), so every root, quadratic or linear, is put back into the residual (`root_holds`, 10⁻⁹ of the fit's term sizes at that root). A root that misses sends the whole equation to the later layers, which never claim more than they checked.
+Seven probes can't tell a polynomial from a piecewise form that matches one at those points (`MIN(x, 30)·x`, an `IF` that switches beyond 41.5), so every root, quadratic or linear, is put back into the residual (`root_holds`, 10⁻⁹ of the fit's term sizes at that root, with no fixed floor). A root that misses sends the whole equation to the later layers, which never claim more than they checked.
 
 This runs before symbolic isolation because isolation would take the principal square root and lose a root: x² = 36 must give [−6, 6], not 6.
 
@@ -93,12 +93,24 @@ Any other step (`ABS`, a function of several arguments) has no clean inverse, an
 **3. Numeric root-finding** (`solve_numeric`), the fallback when the unknown appears more than once or behind a step with no inverse. It works on scalar knowns only; with a list among the knowns it gives `#SHAPE!` "Numeric solving works on single values. With lists, this equation solves only where the algebra can be inverted". It uses no outside library: the residual is the compiled evaluator.
 
 1. Build a symmetric log grid: 0 and ±10ᵏ for k from −6 to 12, sorted.
-2. Walk the grid. A point where the residual is exactly 0 is a root. Between neighbors whose residuals change sign, bisect (up to 200 steps, until the bracket is within 10⁻¹² relative). A sign change can also be a pole, like 1/(x − 3) at 3, so the converged point counts as a root only when its residual is at most 10⁻⁶ times the largest of 1 and the two bracket ends' residuals: a true root drives the residual toward 0, while a pole's stays as large as the ends or larger. A non-finite residual during bisection abandons that bracket.
+2. Walk the grid. A point where the residual is exactly 0 is a root. Between neighbors whose residuals change sign, bisect (up to 200 steps, until the bracket is within 10⁻¹² of its ends' size). A sign change can also be a pole, like 1/(x − 3) at 3, so the converged point counts as a root only when its residual is at most 10⁻⁶ times the larger of the two bracket ends' residuals: a true root drives the residual toward 0, while a pole's stays as large as the ends or larger. A non-finite residual during bisection abandons that bracket.
 3. Where the residual turns finite or stops being finite between two grid points (`SQRT(x − 2)` below 2 is not, `SQRT(2 − x)` above 2 is not), find the domain's edge by bisection and bracket between the edge and the finite grid point, so a root near either end of a domain is not missed.
 4. Bisect every bracket, and return the root closest to zero. Taking the first bracket in ascending order would pick the most negative root; a TVM rate residual also crosses zero where 1 + r < 0, and −290% interest is never the intended answer.
 5. With no root found, return `#SOLVE!` "No solution found between ±10¹². The equation may have no real root here".
 
 Tests: `nodes/formula.rs` inline tests (solenoid-core): isolation solves each variable of a relation, inverts powers and functions, and declines a repeated or hidden unknown; the quadratic sniff accepts true quadratics and turns away the rest; the quadratic and linear roots; and the numeric fallback, a pole never being a root and a root beside a domain edge being found.
+
+## Every tolerance is relative
+
+Serves [[C139]] mathlibLaws. Multiplying both sides of a relation by the same nonzero k changes none of its solutions (mathlib `mul_right_inj'`: for
+k ≠ 0, k·a = k·b exactly when a = b; `Mathlib/Algebra/GroupWithZero/Defs.lean`), so no layer may answer differently for
+`C = k·x³` at k = 1 and at k = 10⁻¹⁵. Each test above measures against the size of the terms in front of it, never
+against a fixed 1: with a floor of 1, every residual of a tiny equation fell under 10⁻⁹ and a cubic passed as a line
+(`C = k·x·x·x` at k = 10⁻¹⁵ answered 8 for 2, 2026-11-06). The Check output's `equals_within` keeps its absolute
+floor near zero on purpose (above); it compares two finished values, not the solver's own steps.
+
+Tests: `properties.rs` (solenoid-core) `an_equation_scaled_by_k_keeps_its_solutions`: a cubic with the unknown three
+times, a quadratic and x·eˣ = 5, each at k from 10³ to 10⁻²⁰.
 
 ## Units
 
