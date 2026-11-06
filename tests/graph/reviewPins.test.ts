@@ -44,6 +44,12 @@ describe("File Link: which paths run rather than open", () => {
     for (const p of ["/home/me/go.sh", "app.desktop", "Tool-x86_64.AppImage", "t.appimage", "Go.command", "setup.run", "fw.bin", "/Applications/X.app", "tool.jar"]) expect(isExecutablePath(p)).toBe(true);
     for (const p of ["notes.md", "C:\\\\data\\\\plan.xlsx", "photo.jpg", "readme"]) expect(isExecutablePath(p)).toBe(false);
   });
+  it("the Windows launchers past .exe ask too, and a path on another computer is told apart ([[B18]] safeToShare)", async () => {
+    const { isExecutablePath, isNetworkPath } = await import("../../src/graph/fileBridge");
+    for (const p of ["a.cpl", "x.pif", "m.msc", "go.url", "s.scf", "h.chm", "t.SettingContent-ms", "addin.xll", "tool.py"]) expect(isExecutablePath(p), p).toBe(true);
+    for (const p of ["\\\\host\\share\\a.pdf", "//host/share/a.pdf"]) expect(isNetworkPath(p), p).toBe(true);
+    for (const p of ["C:\\\\data\\\\a.pdf", "/home/me/a.pdf", "a.pdf"]) expect(isNetworkPath(p), p).toBe(false);
+  });
 });
 
 describe("review pins: DROP, exponential fits, Slicer, aggregate guard", () => {

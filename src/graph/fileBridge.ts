@@ -487,7 +487,14 @@ export async function pickFileLinkDialog(): Promise<string | null> {
 const EXECUTABLE_EXT = new Set([
   "exe", "bat", "cmd", "com", "msi", "ps1", "vbs", "js", "jse", "wsf", "scr", "lnk", "hta", "reg",
   "sh", "bash", "zsh", "desktop", "appimage", "run", "bin", "command", "app", "jar",
+  "cpl", "pif", "msc", "url", "scf", "vbe", "wsh", "chm", "appref-ms", "library-ms", "settingcontent-ms", "xll",
+  "py", "pyw", "pl", "rb", "ps1xml", "psm1", "msp", "gadget", "inf", "action", "workflow", "csh", "ksh",
 ]);
+
+/** A path on another computer (`\\\\host\\share`, `//host/share`): opening one hands that computer the user's network login. */
+export function isNetworkPath(path: string): boolean {
+  return /^(\\\\|\/\/)[^\\/]/.test(path.trim());
+}
 
 export function isExecutablePath(path: string): boolean {
   const ext = baseNameOf(path).split(".").pop()?.toLowerCase() ?? "";
@@ -503,11 +510,10 @@ export async function openFilePath(path: string): Promise<void> {
     pushNotice("Opening a file in another app isn't available on Android yet.", "warn");
     return;
   }
-  if (isExecutablePath(path) || docMetaStore.isForeign()) {
-    const ok = await requestConfirm({
-      message: isExecutablePath(path) ? "This link runs a program. Open it?" : "This link came with a shared document. Open it?",
-      confirmLabel: "Open",
-    });
+  const runs = isExecutablePath(path), remote = isNetworkPath(path);
+  if (runs || remote || docMetaStore.isForeign()) {
+    const why = runs ? "This link runs a program" : remote ? "This link opens a file on another computer" : "This link came with a shared document";
+    const ok = await requestConfirm({ message: `${why}: ${remote ? path : baseNameOf(path)}. Open it?`, confirmLabel: "Open" });
     if (!ok) return;
   }
   try {
