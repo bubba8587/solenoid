@@ -95,6 +95,13 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] **A Python option for the Script card?** (open question for the author, 2026-10-31; [[C66]] scriptNode): JavaScript stays the default (no download, runs natively in the browser's sandboxed worker, and the Rust port gives no reason to change it). Python through Pyodide would suit spreadsheet and data users who know Python better than JS, at the cost of a large download loaded only when used, a slow first start and slower runs; as an option on the card or a pack, never a replacement. An embedded language (Rhai, Lua) would be sandboxed by construction but almost nobody knows one. A foreign document's scripts wait for a Run press whatever the language (`../tree/specs/computation/script-sandbox.md` § A document someone else wrote).
 
 ## Seeds (after the 2026-10-08 scalar input fold)
+- [ ] **A Chart fed a table plots nothing, silently** (found 2026-11-06 building the pack seeds): an HSTACK or other
+  table into Chart answers `values: [null…]` and draws an empty plot, where it should plot the table (first column x)
+  as it plots a frame, or say why it can't. The seeds route through Frame from Lists instead.
+- [ ] **Earth's radius is a number in two presets** (`es-haversine`, `es-horizon`): Physics Constant has no Earth
+  radius op, so these two keep their digits where every other preset cables a constant in
+  (`pack-architecture.md` § Physical constants). Add the op (with Earth's mass and standard gravity's neighbors) or
+  decide geodesy constants are a separate card.
 - [ ] **Bring the Unit Flow example back**: restore or rebuild it from `../backups/unit-flow.seed.json` and `../backups/unitFlowSeed.test.ts` (outside the repo) with Value Inputs; the test pinned unit-flow's captioned behaviors A to J.
 
 ## Performance (found 2026-10-06, not done)
@@ -311,10 +318,3 @@ live in specs.
 - [ ] **Optimize run mode for composites**, like Excel's Solver: the inputs that make a result as large or small as possible within constraints, no whole-number constraints. In, but not yet; how constraints are written is open.
 - [ ] **Pack cards convert wired units** ([[C25]] firstClassUnits): each physical input states its unit (Standard Atmosphere's altitude in meters), a wired value converts into it, a bare number is taken as in it, the wrong kind is `#UNIT!`, and answers carry units. Today "2 km" reads as 2 m and "5 GHz" as 5 Hz, and the cards disagree with their own formulas.
 - [ ] **Preset units, the rest** (`../tree/specs/values/unit-flow.md` § formula presets): coulomb, farad, mAh and bpm inputs still wait for units the app knows, and the presets' result units are the next step.
-
-- [ ] **LOW — variable definitions on every pack Expression** (author 2026-09-24): fill `varDescriptions` on each
-  pack formula entry (`packShared.ts`); the card already shows them. Only a handful of entries have them now (EM's
-  wavelength, a few Timesavers). Metadata only, DESIGN.md §7 voice; pairs well with the pack-units lead below.
-
-
-

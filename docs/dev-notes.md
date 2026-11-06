@@ -6,6 +6,41 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-06: geometry figure cards, pack seeds and examples, pack constants, formula layout, the Element card; cloud session)
+- **Geometry figure cards** (the author 2026-11-06): Triangle Solver, Unit Circle, Circle Solver, Regular Polygon,
+  Two Points, Polygon from Points and Solid. Each is a frame in (or its own keyed `frameText`), a frame out, one row per
+  figure with a unit per column; XWide, the figure in a Recess, the Record pager, the Preview. Rust in `nodes/geometry.rs`
+  (`FigureTable`, `Measure`), TypeScript in `GeometryFigure.tsx` and `GeometryCards.tsx` (`FigureCard`). A size the
+  solve didn't need is checked, a mirror pair is `#SOLVE!`, text in a part is `#VALUE!`. Unit Circle answers blank where
+  a function is undefined, says so in its card warning, and has exact values every 15°.
+- **Direction** (the author 2026-11-06): Solenoid should be broadly usable in education, STEM above all. The figure
+  cards (exact values, every part keyable, honest "two answers fit" errors) and the Element card are built that way.
+- **Every pack ships an example seed** (`Pack.seed`, `seedGraphs/packs/`, written by `scripts/gen-pack-seeds.test.ts`),
+  offered under Packs while the pack is on; each charts what it computes (`frameOf` + `chart`), but Geometry's figures
+  and Timesavers' QR code are already the visual. Comparison is core. **Seeds open as examples** (`SolDoc.seed`): out
+  of the file tree until changed and kept, "Discard changes?" on leaving an edited one (`requestChoice`).
+- **Pack constants are cards** ([[C76]] formulaPackDefault, `pack-architecture.md` § Physical constants): a preset
+  names a physical constant as a variable and declares it (`constants`); placing the card places a Physics Constant
+  cabled in (`companions`, `src/graph/companions.ts`, both placement paths). The variable is required (`varRequired`,
+  `nodes/formula.rs`): cut and untyped, it answers `#SYNTAX!` naming it, never a hidden CODATA copy. Physics Constant
+  is a core card the five physics packs tag. Empirical fit coefficients stay in their formulas.
+- **Every preset input has a description**, its name and unit and nothing else (author 2026-11-06); `packs.test.ts`
+  fails on a bare one.
+- **Formulas lay out by their parentheses** (`formulaLayout.ts`, [[formula-language#Editor support]]): tab indents,
+  Enter indents by the open brackets, a closer on a blank line dedents, Shift+Alt+F lays out the whole formula. Presets
+  arrive laid out; a card's narrow formula field shows one flowing line. The popup's editor has its own resize grip.
+- **The Element card is the periodic table** (`data/elements.json`: PubChem's properties, IUPAC weights;
+  `nodes/elements.rs`): a symbol, name or atomic number in, or a list of them; g/mol, Z and a 19-column Elements frame
+  out; `ELEMENT()` answers every property. The picker is an edge-to-edge table tinted by category (palette series
+  slots, inset borders) with a detail panel and legend.
+- **Smaller:** Blueprint and Orchard pull every color toward their home slot (a standing derivation); Value Input's date
+  mode takes the medium width; chart markers are solid dots in the series color.
+- **Open:** a Chart fed a table (not a frame) plots nothing, silently (`values: [null…]`), where it should plot or say
+  why. Earth's radius is still a number in the haversine and horizon presets (no Physics Constant op for it).
+- **Waiting on the author:** remove the 15 Geometry formula presets the figure cards cover; whether the comparison
+  functions (IS, ABOVE…) move to core with the Comparison card; an Example badge or Keep button in the title bar; record
+  the education direction as a leaf (which ring).
+
 ### SESSION DIGEST (2026-11-06: mathlib as a lens, the spec vocabulary and an overnight research run; cloud session)
 - **Spec vocabulary from mathlib** (develop 4b7b526, 9491962): `value-semantics` § Points and differences is the one
   home for point kinds (dates, °C/°F readings) and point weight; why the Kleene tables are forced; `socket-lattice`
@@ -35,29 +70,6 @@ specific item.
   is its own error, where it was `#TYPE!` for dates and `#UNIT!` for readings. `point_error` beside `unit_error`,
   `point_refused` for dates; `#TYPE!` keeps wrong kinds, `#UNIT!` real unit clashes. Scheduling's dates come from
   adding durations to dates, never dates to dates.
-- **Triangle Solver is a frame card** (the author 2026-11-06): one frame in (`a, b, c, A, B, C, area, perimeter`), the
-  same frame out with other columns kept, Valid per row. Unwired, it keys its own `frameText` (typed into the figure's
-  labels; the Preview is the solved frame, read-only); the default is JSON so its empty columns are number columns. XWide, the figure in a Recess,
-  the Record pager. Units ride the columns (angles `deg`). Area and perimeter solve where they fix one triangle (`sized_parts`), a mirror
-  or acute/obtuse pair is `#SOLVE!`, and a size the solve didn't need checks; text in a part is `#VALUE!`. Labels sit off
-  each side along its normal and off each vertex along its bisector, the triangle shrinking until they fit. The old per-part sockets and `annotationFor` are gone; `TRIANGLESOLVER` takes area and perimeter as arguments 7 and 8.
-- **Unit Circle** (the author 2026-11-06): the geometry pack's second figure card, an angle list in, a frame out (one row
-  per angle). The two cards share `GeometryFigure.tsx` (Recess, pager, Preview row, `shortNum` labels). Frames stay wide,
-  one row per item and one column per quantity, so each column keeps its own unit; the popup's Cards view reads a row as
-  a record.
-- **Circle Solver, Regular Polygon, Two Points** (the author 2026-11-06, "plan out and add interactive geometry nodes"):
-  the figure cards' Rust moved to `nodes/geometry.rs` with the shared `FigureTable` (read, units by `Measure`, answer);
-  the TypeScript to `GeometryFigure.tsx` (`useKeyedTable`, `FigureField`, `separate`).
-- **Polygon from Points and Solid** joined them (`FigureCard` in `GeometryCards.tsx` is the shared shell; `Measure`
-  gained Volume and Flag; `FigureTable::summary` builds a second frame in the same units).
-- **Visuals in the seeds** (the author 2026-11-06): every pack seed but Geometry's (its figures are the visual) and
-  Timesavers' (its QR code) charts something, mostly a curve through the pack's own card over a list of x values
-  (`frameOf` + `chart` in `gen-pack-seeds.test.ts`, Frame from Lists into a Chart); Famous math charts the Basel
-  partial sums, Computed columns heatmaps its temperature table, Apartment hunt draws each neighborhood as a radar.
-  Colebrook and Sun Position became element-wise to sweep. Open: a Chart fed a table (not a frame) plots nothing,
-  silently (`values: [null…]`), where it should plot or say why.
-- **Direction** (the author 2026-11-06): Solenoid should be broadly usable in education, STEM above all. The geometry
-  figure cards (exact values, every part keyable, honest "two answers fit" errors) are the first cards built that way.
 - **Before pushing Rust, even a prototype test: `bash scripts/check-rust.sh <crate>`** (the crate bans `powi`, clippy
   runs with warnings as errors) and give a new test file a leaf citation, or coverage fails CI.
 
@@ -69,23 +81,3 @@ specific item.
 - **CSV junk cells are NaN** (`infer_text_column`): missing markers and up to a tenth of other text keep a number or date column, their text in `raw`. A stopgap until the NaN walk; the full CSV pass is in the backlog.
 - **Query is Pipeline, a run mode** ([[C53]] pipelineIsCompositePreset, author 2026-11-06): computes as Manual refresh (`refreshes()`), plus `pipelineChain()` (one chain from the Table marker to the Result marker; side inputs through the Pipeline's own ports; the first fault named) and the read-only `PipelineSteps` list on the card, numbered, with a folded Preview of the selected step off its `cachedResult`. Nothing on the card edits the graph. Shot graph: `scripts/shot-graphs/pipeline-steps.json`.
 - **Freezing**: `bodies_over_values_with_a_unit`, `fold-units` and `tests/csv.rs` now refreeze under `FREEZE_NATIVE` like the other suites.
-
-### SESSION DIGEST (2026-11-05/06: Signals & Grids pack, the card-first Reference, Excel Coverage, the parity audit; cloud session)
-- **Signals & Grids pack** (`packs/signals.ts`, off by default): Spectrum, Smooth, Find Peaks, Connected Regions, Convolve; Scientific keeps the solvers and fits. Settings: a pack's name opens its cards in the Reference, only the switch toggles it (`PackRow`, `frStore.openPack`).
-- **The Reference is card-first** (`CardReference.tsx`): the Add menu's `DrillMenu` and search on the left, a card's page or a folder's page on the right. The landing is masonry (CSS columns): each top-level folder and pack as a box in its cards' color, filled to four lines of cards with "N more ›" measured off the real wrap (`LandCards`), under Core Functions and Optional Packs. Folder pages (`FolderPage.tsx`) say what Solenoid has there and the card to start with, drawn with real displays. The Inspector links in with Open in Reference (`frStore.openCard`); the Add menu's book icon opens the lit card.
-- **Excel Coverage is for someone coming from Excel** (`ExcelCoverage.tsx`): the Reference's navigator holding search and Excel's own sections (`excelSections.ts`, one name → section table; `cardReference.test.ts` files every name), rows A to Z under each, a frozen EXCEL ➜ SOLENOID pane with the parity counts, each row its card (in the card's accent) and a closing parity mark, = or ⚠ (read off `parity` in `nodeExcel.ts`). The notes live on the card pages, not here.
-- **Accent text on a neutral ground is the accent itself** (DESIGN.md § the Accent-Mix Ladder): `--mix-ink` is for labels on a tinted header only; the Reference's section labels, links and card names follow it.
-- **What parity means** ([[excel-divergences#The parity mark]], author 2026-11-05): every input Excel accepts gives Excel's answer through Solenoid's types. A value's type (Complex, Date), how a refusal reads, a superset, and a card gathering its arguments differently (carefully) don't count; a missing Excel option does. Every `parity: false` carries its note; a flag is evidence (`true` arms `cardFormulaTwins.test.ts` and `emptyFieldKinds.test.ts` for the pair). 326 of the 402 carded Excel functions are parity.
-- **The audit's fixes**, each pinned in `excel_doc_sweep.rs` or `excel_examples.rs`: WEEKDAY and WEEKNUM take every Excel return type; TIME truncates and refuses a negative total; EDATE drops the start's time; COUPDAYS shares the coupon kernel and every coupon argument truncates; REGEXTEST and the Regex card's Test answer TRUE/FALSE; date text in a date function is `#TYPE!` "YEAR needs a date"; WORKDAY.INTL's undefined code and a negative MUNIT are `#DOMAIN!`. The REPLACE, REPT, Date Add, Roman and Bessel cards pass their numbers to the formula as given and answer its refusals.
-- **A card's Fallback is what the formula's empty slot reads, with no exception** ([[input-roles#Placeholders]], author 2026-11-06): where Excel's empty value means something, the card's Fallback is that value (Bessel J/I's x, Complex Power's n, ROMAN, NPV's rate became 0); where it would error, the formula reads the card's (`CARD_FALLBACK_SLOT` in `emptySlots.ts`, `blanks` in `call_traits.json`). XIRR and XNPV's empty dates (the card's periodic schedule) are the two left, named in `EMPTY_PENDING`. An ongoing walk: a meaningful empty value means the Fallback was set wrong.
-- **Smooth keeps a list's unit** (the card is `unitAware`; its items smooth as base magnitudes and the answer wears the unit). **Vector Field draws the grid's first row at the bottom**, as the Surface does (the Heatmap keeps the top).
-- **`formulaCards.ts` is the one home of formula → card**; **search tags** (`catalogTags.ts`) rank a step above labels; example lists in seeds are one comma-separated entry; pack thumbnails run Tidy before the shot.
-
-### SESSION DIGEST (2026-11-05: P7, what an empty card field is; cloud session)
-- **Every card field declares what it is when empty** ([[D96]] emptySlotShowsItsValue, rewritten at the author's direction; [[inline-literal-maps#What an empty field is]]): a Fallback (muted, upright, computed with), a Behavior (`[word]`), an Example (italic, the card answers blank) or Required. The core's table (`EMPTY`, `EMPTY_BY_OP`, `SOLVERS` in `nodes/fields.rs`) and settings' roles hold it; `Call::unwired` applies it; `emptyFieldShown` draws it. `read_num` and its hidden defaults are gone; `emptyFieldKinds.test.ts` fails an undeclared field.
-- **A formula's empty slot reads its card's Fallback** where Excel's empty value would error (`CARD_FALLBACK_SLOT`, the call table's `blanks`), and every card is held to its formula twin's empty reading.
-- **The walk itself, its rulings and the judgement calls for the author to look over:** `docs/p7-walk.md`. Out of scope until reopened: a cable carrying a blank, the formula variables (`x`).
-- **Empty parentheses read as an empty first argument** (`SQRT()` is `SQRT(0)`, the call table's `needsArg`), a test of a value reads an empty slot as an empty cell, and **too many arguments is `#SYNTAX!`** (`maxArgs`, from the arity and signatures, audited against Excel's and the bodies'). The editor shows a slot's reading only while editing; read-only formulas and the typeset preview show what was typed.
-- **Value Input's Text with nothing typed sends a blank**; Input Switch names its rows by their source cards (`sourceNames.ts`, the `_sourceNames` stamp); the Angle Dial card turns counterclockwise; kind buttons are squares and neutral on a card; field resize grips sit on a square of the field's background and replace the browser's resizer in the comment box and CSV editor.
-- **2-D smoothing, convolution and integration** (scipy `ndimage` / `signal`, MATLAB `conv2` / `medfilt2`): Smooth gains Mean and Median ops (MEANSMOOTH, MEDIANSMOOTH) and a List / Grid mode; Convolve a List / Grid mode and a Full / Same / Valid shape (CONVOLVE's `[shape]`); Integrate a Grid mode, the volume under a surface (TRAPZ's `[dy]`). List mode keeps its sockets; the switch is INTERPOLATE's (`applyShapeMode`, `components/shapeMode.ts`). Kernels in `grid_filters.rs`, pinned against scipy 1.18 to 1e-12; a blank cell is skipped as astropy's normalized convolution skips it. A parameter given a list is now `#VALUE!` (a NaN read had passed GAUSSIANSMOOTH's input back unchanged). DIFF followed with a Grid mode, Down or Across (DIFF, PCTCHANGE and GRADIENT take `[by_col]`, numpy-pinned): its Δ / % / ∇ field is `op` now, and text in a change is `#VALUE!` where it read as NaN. RANDARRAY's card gained the same Grid mode, Rows by Columns (it had only a Count, passed by every check because its Excel row was `parity: false`; a [[D73]] check is a backlog line). Round two: DIFF's ∇² (LAPLACIAN, scipy `ndimage.laplace`), Find Peaks' Grid mode (FINDPEAKS on a grid: cells above every neighbor), INTERPOLATE's Points mode (GRIDDATA, idw or nearest, scipy `griddata`), the Connected Regions card (CONNECTEDREGIONS, scipy `ndimage.label`), each pinned against scipy. Round three: REVERSE's Grid mode (`by_col`, numpy flipud / fliplr), ROT90 on the TRANSPOSE card, KRON on MMULT, PINV beside MINVERSE and SVD on the Eigen card, numpy-pinned. A mode switch now flips the mode and rebuilds the sockets with no await between and clears the stale answer (a render in the gap drew a list in a table display), keeps each mode's typed values, and LazySelect re-measures without its old floor so a picker can narrow. Shot graphs: `scripts/shot-graphs/grid-*.json`, built from cards, no Expressions. The `add-node` skill now covers empty kinds and shape modes.
-- **Date-family cards dropped the 210px medium tier**; the tier stays, empty. **CLAUDE.md trimmed** to the orders and pointers, with testing chosen by layer and one wasm build per push.
