@@ -39,12 +39,15 @@ describe("Unit Circle", () => {
     expect(r.sin).toBeCloseTo(Math.sin(Math.PI / 12), 15);
     expect(r.tan).toBeCloseTo(2 - Math.sqrt(3), 14);
   });
-  it("on an axis: no quadrant, exact zeros, and the undefined ones are #DIV/0!", () => {
+  it("on an axis: exact zeros, and an undefined function is a blank, its exact form `undefined`", () => {
     const r = row(run(90));
     expect([r.sin, r.cos]).toEqual([1, 0]);
-    expect([code(r.tan), code(r.sec), r.cot, r.csc]).toEqual(["#DIV/0!", "#DIV/0!", 0, 1]);
-    expect(r["tan exact"]).toBeNull();
-    expect(code(row(run(180)).cot)).toBe("#DIV/0!");
+    expect([r.tan, r.sec, r.cot, r.csc]).toEqual([null, null, 0, 1]);
+    expect(r["tan exact"]).toBe("undefined");
+    expect(row(run(270))["tan exact"]).toBe("undefined");
+    const z = row(run(180));
+    expect([z.cot, z.csc, z.tan]).toEqual([null, null, 0]);
+    for (let deg = 0; deg < 360; deg += 15) expect(Object.values(row(run(deg))).some(isSolError), `${deg}°`).toBe(false);
   });
   it("an angle off the exact table has no exact forms", () => {
     const r = row(run(20));

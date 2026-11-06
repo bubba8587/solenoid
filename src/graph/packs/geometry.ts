@@ -120,7 +120,8 @@ export const GEOMETRY_PACK: Pack = {
       entry: {
         type: "geo-unit-circle",
         label: "Unit Circle",
-        description: "An angle on the unit circle, one row per angle: radians, its place in the first turn, quadrant, reference angle, the six trig functions and their exact values at multiples of 30° and 45°. A bare number is degrees.",
+        description: "An angle on the unit circle, one row per angle: radians, reference angle, the six trig functions and their exact values at every multiple of 15°. A bare number is degrees.",
+        warning: "This card suppresses errors on purpose: where a function is undefined (tan and sec at 90° and 270°, cot and csc at 0° and 180°) it answers a blank, not #DIV/0!, so turning the dial past an axis lights nothing up downstream.",
         keywords: "unit circle sine cosine tangent secant cosecant cotangent reference angle quadrant radians exact",
         create: () => new UnitCircleNode(),
       },

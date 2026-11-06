@@ -31,6 +31,7 @@ export interface FnRefRow {
 interface LeafInfo {
   label: string;
   description?: string;
+  warning?: string;
   keywords?: string;
   path: string[];
   packs: string[];
@@ -47,6 +48,7 @@ function indexCatalog(): Map<string, LeafInfo> {
     idx.set(leaf.type, {
       label: leaf.label,
       description: leaf.description,
+      warning: leaf.warning,
       keywords: leaf.keywords,
       path,
       packs: leaf.packs ?? [],
@@ -141,6 +143,7 @@ export interface CardRef {
   type: string;
   label: string;
   description?: string;
+  warning?: string;
   keywords?: string;
   /** Add-menu path, top level first. */
   path: string[];
@@ -169,7 +172,7 @@ export function buildCardReference(): CardRef[] {
     const ops = decl?.ops ?? [];
     const libs = libraryTags({ excel: excel.length ? excel[0].name : null, description: info.description, keywords: info.keywords });
     cards.push({
-      type, label: info.label, description: info.description, keywords: info.keywords, path: info.path, packs: info.packs,
+      type, label: info.label, description: info.description, warning: info.warning, keywords: info.keywords, path: info.path, packs: info.packs,
       excel, formulas, ops, operators: CARD_OPERATORS[type] ?? [], libs, create: info.create,
       ...(decl?.create ? { createOp: decl.create } : {}),
     });

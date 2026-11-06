@@ -688,7 +688,7 @@ const CIRCLE_COLUMNS: [&str; 12] = [
 ];
 
 /// A first-quadrant angle with exact values, every 15°: its sine and cosine, and its sine, cosine and tangent as
-/// written (90°'s tangent undefined, blank).
+/// written (90°'s tangent `undefined`).
 fn exact_reference(r: f64) -> Option<(f64, f64, &'static str, &'static str, &'static str)> {
     let (r2, r3, r6) = (std::f64::consts::SQRT_2, 3f64.sqrt(), 6f64.sqrt());
     let (lo, hi) = ((r6 - r2) / 4.0, (r6 + r2) / 4.0);
@@ -699,23 +699,26 @@ fn exact_reference(r: f64) -> Option<(f64, f64, &'static str, &'static str, &'st
         45.0 => (r2 / 2.0, r2 / 2.0, "√2/2", "√2/2", "1"),
         60.0 => (r3 / 2.0, 0.5, "√3/2", "1/2", "√3"),
         75.0 => (hi, lo, "(√6+√2)/4", "(√6-√2)/4", "2+√3"),
-        90.0 => (1.0, 0.0, "1", "0", ""),
+        90.0 => (1.0, 0.0, "1", "0", "undefined"),
         _ => return None,
     })
 }
 
-/// An exact form negated: zero stays itself, `2-√3` turns round to `√3-2`, anything else takes a minus sign.
+/// An exact form negated: zero and `undefined` stay themselves, `2-√3` turns round to `√3-2`, anything else takes a
+/// minus sign.
 fn negated(t: &str) -> String {
     match t {
-        "" | "0" => t.to_string(),
+        "0" | "undefined" => t.to_string(),
         "2-√3" => "√3-2".to_string(),
         "2+√3" => "-2-√3".to_string(),
         t => format!("-{t}"),
     }
 }
 
-/// One angle's row: the angle as given in degrees and radians, its reference angle, the six functions (undefined ones
-/// `#DIV/0!`, the axes exact), and the exact forms at every multiple of 15°.
+/// One angle's row: the angle as given in degrees and radians, its reference angle, the six functions (the axes exact,
+/// and where one is undefined, tan and sec at 90° and 270°, cot and csc at 0° and 180°, a blank: a dial turned past
+/// them lands there often, and nothing downstream should light up for it), and the exact forms at every multiple of
+/// 15°, where `tan exact` reads `undefined`.
 fn circle_row(deg: f64) -> [V; 12] {
     let standard = match to_precision(deg.rem_euclid(360.0), 12) {
         x if x >= 360.0 => 0.0,
@@ -734,22 +737,8 @@ fn circle_row(deg: f64) -> [V; 12] {
         Some((s, co, ..)) => (if sin_neg { -s } else { s }, if cos_neg { -co } else { co }),
         None => (sin(standard * D2R), cos(standard * D2R)),
     };
-    let at = number_to_string(standard);
-    let ratio = |num: f64, den: f64, name: &str| {
-        if den == 0.0 {
-            err(ErrorCode::DivZero, format!("{name} is undefined at {at}°"))
-        } else {
-            V::Num(num / den)
-        }
-    };
-    let signed = |t: &str, neg: bool| {
-        let t = if neg { negated(t) } else { t.to_string() };
-        if t.is_empty() {
-            V::Null
-        } else {
-            V::str(&t)
-        }
-    };
+    let ratio = |num: f64, den: f64| if den == 0.0 { V::Null } else { V::Num(num / den + 0.0) };
+    let signed = |t: &str, neg: bool| V::str(&if neg { negated(t) } else { t.to_string() });
     let (st, ct, tt) = match exact {
         Some((_, _, st, ct, tt)) => (signed(st, sin_neg), signed(ct, cos_neg), signed(tt, sin_neg != cos_neg)),
         None => (V::Null, V::Null, V::Null),
@@ -760,10 +749,10 @@ fn circle_row(deg: f64) -> [V; 12] {
         V::Num(reference),
         V::Num(s),
         V::Num(co),
-        ratio(s, co, "tan"),
-        ratio(1.0, s, "csc"),
-        ratio(1.0, co, "sec"),
-        ratio(co, s, "cot"),
+        ratio(s, co),
+        ratio(1.0, s),
+        ratio(1.0, co),
+        ratio(co, s),
         st,
         ct,
         tt,

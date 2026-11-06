@@ -38,6 +38,9 @@ export type NodeCatalogEntry = {
   type: string;
   label: string;
   description?: string;
+  /** Something a card does on purpose that a user would otherwise take for a fault (it answers a blank where its
+   *  math is undefined, say); the Reference and the menu's tooltip show it after the description. */
+  warning?: string;
   create: () => unknown;
   /** The node kind whose palette color tints the row, resolved when the menu draws so a palette switch reaches it. */
   accent?: NodeKind;
@@ -54,6 +57,10 @@ export type NodeCatalogEntry = {
   /** A generated row that places what another row places (the host, or `host__op-op`); search shows one of them. */
   places?: string;
 };
+
+/** A row's tooltip: its description, then its warning. */
+const tipOf = (e: { description?: string; warning?: string }) =>
+  [e.description && descriptionText(e.description), e.warning && `Warning: ${e.warning}`].filter(Boolean).join("\n\n") || undefined;
 
 export type ExcelEquiv = {
   excel: string;
@@ -243,7 +250,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
             <div
               ref={(el) => { anchorRefs.current[i] = el; }}
               className={`solenoid-add-menu__item solenoid-add-menu__item--category${onPath ? " solenoid-add-menu__item--active" : ""}${open ? " solenoid-add-menu__item--open" : ""}`}
-              title={it.entry.description && descriptionText(it.entry.description)}
+              title={tipOf(it.entry)}
               onMouseEnter={() => onHover([...prefix, i, 0])}
               // Submenus are DOM children of this div: without stopping the bubble, the outermost ancestor re-pins to the top.
               onClick={(e) => { e.stopPropagation(); onOpenCategory([...prefix, i]); }}
@@ -268,7 +275,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
             key={`leaf:${leaf.type}`}
             ref={active ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined}
             className={`solenoid-add-menu__item${halfClass(it.half)}${hl.className}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
-            title={leaf.description && descriptionText(leaf.description)}
+            title={tipOf(leaf)}
             style={hl.style}
             onMouseEnter={() => onHover([...prefix, i])}
             onClick={(e) => { e.stopPropagation(); onSelect(leaf); }}
@@ -295,7 +302,7 @@ export function LeafRow({ leaf, half, active, dim, onSelect, onMouseEnter, rowRe
     <div
       ref={rowRef}
       className={`solenoid-add-menu__item${halfClass(half)}${hl.className}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
-      title={leaf.description && descriptionText(leaf.description)}
+      title={tipOf(leaf)}
       style={hl.style}
       onMouseEnter={onMouseEnter}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}

@@ -471,6 +471,7 @@ function CardPage({ card, leaf, startOp, packName, onBack, backLabel, onPath, on
       {description && (
         <p ref={descRef} className="fr-card__desc" onClick={onDescClick} dangerouslySetInnerHTML={{ __html: descriptionHtml(description) }} />
       )}
+      {card.warning && <p className="fr-card__warning"><strong>Warning</strong> {card.warning}</p>}
 
       <div className={`fr-card__body${hasRail ? "" : " fr-card__body--solo"}`}>
         <div className="fr-card__main">
