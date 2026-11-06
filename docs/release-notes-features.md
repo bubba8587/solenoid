@@ -1,7 +1,7 @@
 # Solenoid 1.6: feature highlights (selling list)
 
 The What's New source for 1.6: marketing copy, ordered by how hard each thing sells. `[slide]` entries are the
-deck (`src/graph/whatsNewSlides.ts`, `WHATS_NEW_VERSION`, which still shows 1.5's eight until the author picks); the rest
+deck (`src/graph/whatsNewSlides.ts`, `WHATS_NEW_VERSION` 1.6); the rest
 can lead the GitHub notes or a post. The bar is `archive/release-notes-1.1.md`: a sell is something a user would
 go play with or download for. Every sentence has to pass "would anyone care?", so internals, fixes and parity
 work stay in `release-notes-1.6.md`, the plain changelog. 1.5's list is `archive/release-notes-features-1.5.md`.
