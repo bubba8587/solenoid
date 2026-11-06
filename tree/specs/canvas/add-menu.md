@@ -316,7 +316,7 @@ The Inspector ([[C73]] inspectorIsStatic) assembles a node's page from those hom
 ```mermaid
 flowchart LR
     n["the selected node"] --> t["its name<br>(nodeDisplayName)"]
-    n --> fr["its Function Reference rows:<br>each Excel name with its syntax,<br>parity and note, the description"]
+    n --> fr["its Reference page:<br>each Excel name with its syntax and note,<br>the description; its Excel Coverage<br>rows with their parity mark"]
     n --> sk["each socket: its label, its type's<br>plain name (SOCKET_TYPE_LABELS),<br>its socketDocs sentence, and an<br>example table (frameHints) on a<br>frame input"]
 ```
 
