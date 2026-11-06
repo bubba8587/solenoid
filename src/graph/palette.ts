@@ -284,7 +284,29 @@ const PEAR = {
   honey: "#9c6f0e", honeyBright: "#d99a17",
   quiet: "#8b8269", danger: "#bb4029",
 } as const;
-const ORCHARD: Record<PaletteSlot, string> = {
+/** A color's OKLab a/b: where its hue and chroma sit, apart from its lightness. */
+const okAb = ([, c, h]: [number, number, number]): [number, number] =>
+  [c * Math.cos((h * Math.PI) / 180), c * Math.sin((h * Math.PI) / 180)];
+
+/** `lch` moved the fraction `t` of the way in OKLab a/b toward `toward`, its lightness kept: a tint toward a hue. */
+function tintedToward(lch: [number, number, number], toward: [number, number], t: number): string {
+  const [a, b] = okAb(lch);
+  const [ta, tb] = [a + (toward[0] - a) * t, b + (toward[1] - b) * t];
+  return oklchToHex(lch[0], Math.hypot(ta, tb), (Math.atan2(tb, ta) * 180) / Math.PI);
+}
+
+/** A palette's own `anchor` slot pulls every slot the fraction `t` toward it (the slot itself stays): Orchard leans to
+ *  its lime, Blueprint to its blue, so each set reads as one scene. Gray takes `grayT`, so it stays a neutral. */
+function pulledToward(base: Record<PaletteSlot, string>, anchor: PaletteSlot, t: number, grayT: number): Record<PaletteSlot, string> {
+  const toward = okAb(hexToOklch(base[anchor]));
+  return Object.fromEntries(COLOR_PALETTE.map((slot) => [slot, slot === anchor ? base[slot]
+    : tintedToward(hexToOklch(base[slot]), toward, slot === "gray" ? grayT : t)])) as Record<PaletteSlot, string>;
+}
+/** How far Orchard and Blueprint lean toward their anchors; gray leans a third as far. */
+const ANCHOR_PULL = 0.1;
+const ANCHOR_GRAY_PULL = 0.03;
+
+const ORCHARD_BASE: Record<PaletteSlot, string> = {
   gold:      PEAR.honeyBright,
   amber:     PEAR.honey,
   lime:      PEAR.pearBright,
@@ -299,7 +321,9 @@ const ORCHARD: Record<PaletteSlot, string> = {
   purple:    "#9b5f95",
 };
 
-const BLUEPRINT: Record<PaletteSlot, string> = {
+const ORCHARD = pulledToward(ORCHARD_BASE, "lime", ANCHOR_PULL, ANCHOR_GRAY_PULL);
+
+const BLUEPRINT_BASE: Record<PaletteSlot, string> = {
   gold:      "#e8b84b",
   amber:     "#e08a4f",
   lime:      "#b9d05a",
@@ -313,6 +337,7 @@ const BLUEPRINT: Record<PaletteSlot, string> = {
   vermilion: "#e2604f",
   gray:      "#9aa8bd",
 };
+const BLUEPRINT = pulledToward(BLUEPRINT_BASE, "blue", ANCHOR_PULL, ANCHOR_GRAY_PULL);
 
 const NEON_STEP = 0.35;
 const NEON_MIN_LUM = 0.175;
@@ -382,15 +407,11 @@ const plasmaAt = (t: number): [number, number, number] => {
   return hexToOklch(`#${to(r)}${to(g)}${to(b)}`);
 };
 function dawnDuskPalette(): Record<PaletteSlot, string> {
-  const ab = ([, c, h]: [number, number, number]) => [c * Math.cos((h * Math.PI) / 180), c * Math.sin((h * Math.PI) / 180)];
-  const [ka, kb] = ab(plasmaAt(PLASMA_DUSK));
+  const dusk = okAb(plasmaAt(PLASMA_DUSK));
   const out = {} as Record<PaletteSlot, string>;
   for (const slot of COLOR_PALETTE) {
-    const lch = hexToOklch(PALETTE[slot]);
-    const [a, b] = ab(lch).map((x) => x * DD_SATURATION);
-    const t = slot === "gray" ? DD_GRAY_TINT : DD_TINT;
-    const [ta, tb] = [a + (ka - a) * t, b + (kb - b) * t];
-    out[slot] = oklchToHex(lch[0], Math.hypot(ta, tb), (Math.atan2(tb, ta) * 180) / Math.PI);
+    const [L, c, h] = hexToOklch(PALETTE[slot]);
+    out[slot] = tintedToward([L, c * DD_SATURATION, h], dusk, slot === "gray" ? DD_GRAY_TINT : DD_TINT);
   }
   return out;
 }
