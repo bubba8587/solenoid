@@ -556,14 +556,15 @@ function stepRows(v: unknown): string | null {
   return isSolError(v) ? v.code : null;
 }
 
-/** A Pipeline's steps read off its one chain ([[C53]] pipelineIsCompositePreset): numbered, each with its row count;
- *  a step's row toggles a preview of its table. It only reads the graph. */
+/** A Pipeline's steps read off its one chain ([[C53]] pipelineIsCompositePreset): numbered, each with its row count.
+ *  A step's row selects it (the first, until another is picked); the folded Preview shows the selected step's table.
+ *  It only reads the graph. */
 function PipelineSteps({ node }: { node: CompositeNodeType }) {
   useSyncExternalStore(compositeStaleStore.subscribe, compositeStaleStore.getVersion);
-  const [open, setOpen] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
   if (!node.isHydrated) return null;
   const { steps, fault } = node.pipelineChain();
-  const shown = steps.find((s) => s.id === open);
+  const selected = steps.find((s) => s.id === picked) ?? steps[0];
   const result = (n: object) => (n as { cachedResult?: unknown }).cachedResult ?? null;
   return (
     <div className="solenoid-pipeline">
@@ -572,8 +573,9 @@ function PipelineSteps({ node }: { node: CompositeNodeType }) {
         <button
           key={s.id}
           type="button"
-          className={`solenoid-pipeline__step${s.id === open ? " solenoid-pipeline__step--open" : ""}`}
-          onClick={(e) => { e.stopPropagation(); setOpen(s.id === open ? null : s.id); }}
+          aria-pressed={s === selected}
+          className={`solenoid-pipeline__step${s === selected ? " solenoid-pipeline__step--sel" : ""}`}
+          onClick={(e) => { e.stopPropagation(); setPicked(s.id); }}
           onPointerDown={stopDragStart}
           onMouseDown={stopDragStart}
         >
@@ -583,10 +585,10 @@ function PipelineSteps({ node }: { node: CompositeNodeType }) {
         </button>
       ))}
       {fault && <div className="solenoid-pipeline__fault">{faultText(fault)}</div>}
-      {shown && (
-        <div className="solenoid-pipeline__preview">
-          <CompositeBoundaryValue value={result(shown)} label={nodeDisplayName(shown)} />
-        </div>
+      {selected && (
+        <CardSection label="Preview" collapsible defaultOpen={false}>
+          <CompositeBoundaryValue value={result(selected)} label={nodeDisplayName(selected)} />
+        </CardSection>
       )}
     </div>
   );

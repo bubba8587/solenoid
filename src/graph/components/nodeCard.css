@@ -822,8 +822,18 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   cursor: pointer;
 }
 .solenoid-pipeline__step:hover { background: var(--btn-hover); }
-.solenoid-pipeline__step--open { background: var(--surface-sunken); }
-.solenoid-pipeline__step--open .solenoid-pipeline__num { color: var(--accent); }
+/* Selected as a Navigator row is, with a selected group's ring: the composite card's own accent is a neutral gray. */
+.solenoid-pipeline__step--sel,
+.solenoid-pipeline__step--sel:hover {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  color: var(--nav-ink, var(--accent));
+  font-weight: 600;
+}
+:root[data-theme="light"] .solenoid-pipeline__step--sel { color: color-mix(in srgb, var(--accent) 55%, var(--text)); }
+.solenoid-pipeline__step--sel .solenoid-pipeline__num,
+.solenoid-pipeline__step--sel .solenoid-pipeline__rows { color: inherit; }
+.solenoid-pipeline__num { color: var(--accent); }
 .solenoid-pipeline__num {
   flex: 0 0 auto;
   min-width: 14px;
@@ -850,7 +860,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   color: var(--sol-error);
   font-size: 11px;
 }
-.solenoid-pipeline__preview { margin-top: 4px; }
 
 .solenoid-composite__note {
   font-size: 10px;
