@@ -49,6 +49,7 @@ load-bearing core (noted below); the full originals are likewise in git history.
 - [`1.2-plan.md`](1.2-plan.md) — the executed 1.2 build queue (author-run release tail tracked in `../backlog.md`).
 - [`release-plan-1.1.md`](release-plan-1.1.md) — the shipped 1.1 release view, kept for the cut-process shape (readiness / checklist / decision structure).
 - [`release-notes-1.5.md`](release-notes-1.5.md) — the shipped 1.5 GitHub release notes (v1.5.0), kept as the shape for the next release's.
+- [`release-notes-features-1.5.md`](release-notes-features-1.5.md) — 1.5's selling list and slide picks, as it stood when the 1.6 list replaced it.
 - [`code-review-2026-08.md`](code-review-2026-08.md) — the 2026-08-09 adversarial code review, from before the Rust port; its findings landed or were superseded by the port.
 
 ### Dev-notes history
