@@ -214,8 +214,8 @@ Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item la
 - Skipped on purpose, reopen if the reason goes: `ResponsiveContainer` (we size every figure), `RechartsThemeProvider` and its themes (the palette themes charts), animation (`AnimationControllerProvider` and the rest; charts draw static), the shape primitives (`Cross`, `Curve`, `Dot`, `Polygon`, `Rectangle`, `Sector`, `Trapezoid`, `Surface`, `Layer`, `ZIndexLayer`) except as building blocks for the items above.
 
 ## Workspace tree (`v2.0/26-navigator-tree.md`, [[C132]] workspaceTree)
-- [ ] The author's five calls in bundle 26 § Questions gate the rest.
-- [ ] Desktop: the tree reads the Documents folder ([[D103]] folderOnDisk), rename and move on disk, the watcher with bundle 21 Stage 0, Reveal in file manager and Copy path in the row menu, a graph file extension.
+- [ ] Desktop: a new document is a file at once, Untitled in the selected folder, kept by autosave (the author, 2026-11-06; in 1.6's desktop session).
+- [ ] Desktop: the tree reads the Documents folder ([[D103]] folderOnDisk), rename and move on disk, the watcher with bundle 21 Stage 0, Reveal in file manager and Copy path in the row menu. Graph files stay `.json` (the author, 2026-11-06).
 - [ ] Pages and page folders as rows once bundle 20's model lands; drop outline rows on a page row; This page search scope; drop the `?navpreview=1` mock (`workspacePreview.ts`).
 - [ ] Row status beyond unsaved: changed on disk, a Problems count (needs problems kept per document).
 - [ ] Drag on touch (long-press to lift); today touch moves through Move to….

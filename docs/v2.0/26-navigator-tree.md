@@ -166,24 +166,16 @@ Built on `rust-port` with this bundle, inside the pane only:
 
 What the prototype does not do: no pages, no disk tree, and no drag on touch.
 
-## Questions for the author
+## The author's calls (2026-11-06)
 
-1. **Is a document one file or a folder?** The recommendation keeps one file per document with its
-   pages inside (the 2026-08-30 call). The alternative stores a document as a folder of page files
-   plus a small manifest, which makes the tree a plain file tree all the way down and diffs one page
-   at a time in git, at the cost of a document no longer being one thing to email or attach.
-2. **Do new documents become files right away on desktop?** Obsidian makes a file the moment a note
-   is created. Today a new document lives in the browser storage until the first Save. A real-folder
-   tree reads best when every row is a file, which means a new document is written into the selected
-   folder at once, named Untitled, and autosave writes the file.
-3. **Overlay or push** when the pane is open on desktop: it overlays the canvas today, which suits a
-   glance; a tree you work from all day suits a dock that pushes the canvas like the docked Report.
-   The lean: push while it is pinned open, overlay otherwise.
-4. **The graph file extension.** Files are `.json` today, so a folder reader can't tell a graph from
-   any other JSON. A distinct extension (`.solenoid`, or `.sol.json` to keep editors' JSON
-   highlighting) lets the tree list only graphs. The lean: `.sol.json`.
-5. **Page folders, or flat pages?** The recommendation allows page folders, since the same tree draws
-   them for free; flat pages are simpler if documents stay small.
+1. **A document is one file**, its pages inside it.
+2. **On desktop a new document is a file at once**, Untitled in the selected folder, kept by autosave. Not built yet
+   (backlog § Workspace tree).
+3. **The pane keeps overlaying the canvas**; no push dock.
+4. **Graph files stay `.json`.**
+5. **Page folders: skipped** until pages exist.
+
+Recorded in [[C132]] workspaceTree.
 
 ## Build order
 
