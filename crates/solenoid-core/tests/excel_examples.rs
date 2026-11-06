@@ -315,11 +315,14 @@ fn text_conditional_sections() {
     assert_eq!(text("TEXT(-5, \"[>10]0;[>0]0;-0\")"), "--5");
 }
 
-/// The author's Excel, 2026-11-01: PCRE2 syntax the engine must read as Excel does. 1 and 0 are REGEXTEST's TRUE and
-/// FALSE; recursion and branch reset aren't run yet (backlog), so they're left out.
+/// The author's Excel, 2026-11-01: PCRE2 syntax the engine must read as Excel does, REGEXTEST answering TRUE or FALSE;
+/// recursion and branch reset aren't run yet (backlog), so they're left out.
 #[test]
 fn regex_syntax_reads_as_excel() {
-    let n = |src: &str| num(src);
+    let n = |src: &str| match eval(src) {
+        V::Bool(b) => f64::from(u8::from(b)),
+        other => panic!("{src} answered {other:?}"),
+    };
     assert!(is_error("REGEXTEST(\"[\", \"[[]\")"));
     assert_eq!(n("REGEXTEST(\"&\", \"[a&&b]\")"), 0.0);
     assert_eq!(n("REGEXTEST(\"-\", \"[a--b]\")"), 0.0);
