@@ -90,7 +90,7 @@ import { ResultDisplay } from "./ResultDisplay";
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { ArrayChip } from "./ArrayChip";
 import { readChipPopupStyle } from "./chipStyle";
-import { NodeShell, ValueDisplay, OpSelect, ArgSelect, useNodeField, renderTextMarkdownHtml, type NodeProps, type OpOption } from "./nodeKit";
+import { NodeShell, ValueDisplay, OpSelect, ArgSelect, useNodeField, MarkdownDiv, type NodeProps, type OpOption } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { TypeIcon } from "./TypeIcon";
 import { CardSection, useRowsInUse } from "./CardSection";
@@ -965,10 +965,11 @@ export function ReconcileComponent({ data, emit }: NodeProps<ReconcileNodeType>)
         <MeasuredSocketRow hero side="output" socketKey="summary" nodeId={data.id} emit={emit} payload={summaryOut.socket}>
           {/* The markdown summary renders here; the raw markdown also flows out the socket. */}
           {data.cachedSummary ? (
-            <div
+            <MarkdownDiv
               className="solenoid-node__display-value solenoid-node__md"
               style={{ width: "100%", fontFamily: "var(--font-sans)", fontSize: 11.5, textAlign: "left", color: "var(--text)" }}
-              dangerouslySetInnerHTML={{ __html: renderTextMarkdownHtml(data.cachedSummary) }}
+              markdown={data.cachedSummary}
+              nodeId={data.id}
             />
           ) : (
             <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>

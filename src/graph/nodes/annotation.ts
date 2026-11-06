@@ -27,6 +27,7 @@ import type { NestedTables } from "../cubeTypes";
 import type { ImageValue } from "../imageValue";
 import { requestNetwork } from "../connectionStore";
 import type { SvgValue } from "../svgValue";
+import { isWebUrl } from "../webUrl";
 import {
   parseNoteFrontmatter,
   type FrontmatterFieldType,
@@ -316,7 +317,7 @@ export class ImageNode extends GraphNode {
   data(): { image: ImageValue | null } {
     const src = this.src;
     if (!src) return { image: null };
-    const held = /^\s*(?:https?:)?\/\//i.test(src) && !requestNetwork(this.id, this);
+    const held = isWebUrl(src) && !requestNetwork(this.id, this);
     return { image: { __image: true, src, height: this.height, alt: this.label, title: this.label, ...(held ? { held: true as const } : {}) } };
   }
 }

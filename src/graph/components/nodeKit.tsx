@@ -1,7 +1,7 @@
-import { useCallback, useState, useRef, type ReactNode, useLayoutEffect, useContext, useSyncExternalStore } from "react";
+import { useCallback, useState, useRef, type ReactNode, type HTMLAttributes, useLayoutEffect, useContext, useSyncExternalStore } from "react";
 import { datesAsSerials, type SolDate } from "../dateValue";
 import { marked } from "marked";
-import DOMPurify from "dompurify";
+import { sanitizeNoteHtml, useNetworkGrant } from "../noteHtml";
 import { copyText } from "../clipboard";
 import { commentStore, commentsPanelUi } from "../commentStore";
 import { settingsStore } from "../settingsStore";
@@ -57,9 +57,16 @@ function renderTextValue(s: string): ReactNode {
   );
 }
 
-// The string is untrusted (it arrives in shared .solenoid files), so it is sanitized before injection.
-export function renderTextMarkdownHtml(s: string): string {
-  return DOMPurify.sanitize(marked.parse(s, { async: false, gfm: true, breaks: true }) as string);
+// The string is untrusted (it arrives in shared .solenoid files): note markdown's sanitizer, which also holds its web
+// images until the document may fetch ([[B18]] safeToShare).
+export function renderTextMarkdownHtml(s: string, nodeId?: string): string {
+  return sanitizeNoteHtml(marked.parse(s, { async: false, gfm: true, breaks: true }) as string, nodeId);
+}
+
+/** A markdown value's box, drawn again when the network grant arrives. */
+export function MarkdownDiv({ markdown, nodeId, ...rest }: { markdown: string; nodeId?: string } & Omit<HTMLAttributes<HTMLDivElement>, "dangerouslySetInnerHTML" | "children">) {
+  useNetworkGrant(nodeId);
+  return <div {...rest} dangerouslySetInnerHTML={{ __html: renderTextMarkdownHtml(markdown, nodeId) }} />;
 }
 
 type Port = { socket: GraphSocket; label?: string };
@@ -637,7 +644,7 @@ export function ValueDisplay({
               <CategoryChip value={cased(value as string)} index={0} />
             ) : ann?.textMarkdown ? (
               // A <div> can't live inside the text <span>.
-              <div
+              <MarkdownDiv
                 className="solenoid-node__md"
                 style={{
                   width: "100%",
@@ -646,7 +653,8 @@ export function ValueDisplay({
                   fontStyle: ann.italic ? "italic" : undefined,
                   fontSize: ann.textScale ? `${ann.textScale}px` : undefined,
                 }}
-                dangerouslySetInnerHTML={{ __html: renderTextMarkdownHtml(cased(value as string)) }}
+                markdown={cased(value as string)}
+                nodeId={ctxNodeId ?? undefined}
               />
             ) : (
               <span style={{ fontFamily: "var(--font-sans)", ...(textStyle ?? {}) }}>

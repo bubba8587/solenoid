@@ -4,16 +4,16 @@
 import { useEffect, type CSSProperties } from "react";
 import { askNetwork } from "../connectionStore";
 import { useNetworkGrant } from "../noteHtml";
+import { isWebUrl } from "../webUrl";
 import "./WebImage.css";
 
-const REMOTE = /^\s*(?:https?:)?\/\//i;
 
 /** `nodeId` is the card the picture belongs to; `held` is an image value its card held ([[B18]] safeToShare). */
 export function WebImage({ src, alt, className, style, nodeId, held: valueHeld }: {
   src: string; alt: string; className?: string; style?: CSSProperties; nodeId?: string; held?: boolean;
 }) {
   const allowed = useNetworkGrant(nodeId);
-  const held = REMOTE.test(src) && (!allowed || valueHeld === true);
+  const held = isWebUrl(src) && (!allowed || valueHeld === true);
   useEffect(() => { if (held) askNetwork(`image:${src}`); }, [held, src]);
   if (held) {
     return (

@@ -19,10 +19,14 @@ import { appThemeStore } from "../appTheme";
 import { resolveColor } from "../palette";
 import { repaintSparkline, SPARK_SLOTS } from "../nodes/visualOps";
 import "./ArrayChip.css";
+import { WebImage } from "./WebImage";
+import { isWebUrl } from "../webUrl";
 
-/** A text cell holding a data:image picture ([[C103]] untrustedContentSeams); a sparkline paints in the active palette ([[D82]] sparklineCell). */
+/** A text cell holding a picture ([[C103]] untrustedContentSeams): a web one waits for the network grant ([[B18]]
+ *  safeToShare); a sparkline paints in the active palette ([[D82]] sparklineCell). */
 export function CellImage({ src, className = "sol-cell-img", alt = "" }: { src: string; className?: string; alt?: string }): ReactNode {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  if (isWebUrl(src)) return <WebImage className={className} src={src} alt={alt} />;
   const shown = repaintSparkline(src, {
     line: resolveColor(SPARK_SLOTS.line), pos: resolveColor(SPARK_SLOTS.pos), neg: resolveColor(SPARK_SLOTS.neg),
   });
