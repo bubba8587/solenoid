@@ -33,7 +33,7 @@ Tests:
 
 ## Arithmetic
 
-In `eval.rs` the operators match `Date` before numbers. Each row of the table is one case:
+A date is a point kind and days its difference kind ([[value-semantics#Points and differences]]). In `eval.rs` the operators match `Date` before numbers, each operator on its own, so a formula is not classified by its point weight as a reading's is: `(d1 + d2) / 2` is `#TYPE!` at the `+`, where the same formula over two readings is a reading. Each row of the table is one case:
 
 | Left | Op | Right | Answer |
 |---|---|---|---|

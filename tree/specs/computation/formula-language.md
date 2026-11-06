@@ -533,6 +533,15 @@ Tests:
 
 **Sums.** Every total of a list (SUM, AVERAGE, SUMIFS, AVERAGEIFS, AVERAGEIF, Group By, Pivot, Rollup and Window sums and means, running and rolling sums) is exact: the numbers' exact sum rounded once (`exact_sum.rs`), so it doesn't depend on their order, and SUM over a column, SUMIFS over the rows that match and a Group By of the same rows agree to the last digit. A total snaps to 0 only where the numbers as written (each read as the shortest decimal that gives it back) cancel exactly: `SUM(0.1, 0.2, -0.3)` is 0, while `SUM(1E+15, 0.3, -1E+15)` is 0.3 and `SUM(1E+297, -1E+297, -0.089061)` is -0.089061, where Excel's snap at each addition gives 0 for both. Being order-free is what lets a criteria sum read a sorted run of its range and a rolling sum slide a row at a time ([[C120]] linearWork). The statistics that sum computed terms (variance, skew, regression) keep their own arithmetic, over an exact mean.
 
+**What a total can be built from.** An aggregate is one of four kinds, by what its answer over a whole list can be built from. The kinds describe what is possible; how each aggregate is computed is its kernel's business.
+
+- **Removable totals** (SUM, COUNT): the total of two parts is the parts' totals added, and a value can be taken back out (`ExactSum::remove`). That is what lets a rolling sum slide a row at a time.
+- **Picks** (MIN, MAX): two parts combine (the max of the parts' maxes), and counting a value twice changes nothing, but nothing can be taken back out: when the max leaves a window, the next one has to be found.
+- **Summaries** (AVERAGE, VAR, STDEV and kin): the answer can be built from a few totals kept together (count, sum, sum of squares), so parts combine through those totals, never through their answers. An average of averages is not the average.
+- **Whole-list** (MEDIAN, PERCENTILE, MODE, RANK): the answer needs every value; parts don't combine.
+
+So a total assembled from subtotals (a Pivot's or a Rollup's) is right for the first two kinds, right only through the kept totals for the third, and computed afresh for the fourth. In mathematical terms the kinds are a commutative group, a semilattice, a monoid on the summary and no algebra at all; being order-free makes each a function of the values as a multiset (a list whose order doesn't matter).
+
 `op2(op, a, b)` runs per cell. Checks in order: an error in `a`, then in `b`, is the answer; a `null` on either side answers `null`; a complex operand goes to the complex table; a LAMBDA operand answers `#TYPE!` ("A LAMBDA isn't a value…"). Otherwise `apply_op` (`excel_formula.rs`) runs: logicals become 1 and 0 for the numeric operators and ordering, and:
 
 | Operator | Result |

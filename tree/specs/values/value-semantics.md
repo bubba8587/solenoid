@@ -2,7 +2,7 @@
 aliases: ["Value semantics"]
 tags: [spec, values]
 ---
-<!-- [[C24]] arraySemantics, [[D114]] dateIsAKind, [[D86]] blankRoles, [[C45]] excelComparisons, [[B16]] oneFormulaSurface, [[C22]] rowFormulaRefs -->
+<!-- [[C24]] arraySemantics, [[D114]] dateIsAKind, [[D115]] datesArePoints, [[D86]] blankRoles, [[C45]] excelComparisons, [[B16]] oneFormulaSurface, [[C22]] rowFormulaRefs -->
 
 # Spec: Value semantics
 
@@ -121,6 +121,13 @@ mindmap
 
 The one sanctioned divergence ([[C24]] arraySemantics): the formula `AND(x)` is a reduction, so it skips nulls as Excel does, while the BooleanOp node is element-wise and uses Kleene logic. Same word, two contexts, both correct. Any other disagreement between a node and a formula is a bug.
 
+**Why the Kleene tables are these tables.** Read `null` as "TRUE or FALSE, not known which". A Kleene answer is a
+truth value only when every way of filling in the unknowns gives that value, and `null` otherwise: `FALSE AND null`
+is FALSE because both fillings are FALSE, `TRUE AND null` is null because they differ. So a Kleene answer is never
+contradicted when the blank is later filled in, and it is the most an answer can say without guessing (in order
+theory, the most-defined monotone extension of the two-valued tables, with unknown below TRUE and FALSE). Any change
+to a table must keep that property.
+
 The Kleene family reads a wired logical as the real boolean the input boundary hands it as well as the 0 or 1 a number cable carries: `AND(FALSE, TRUE)` is FALSE and `NOT(FALSE)` is TRUE either way, and a wired blank still reads as unknown.
 
 Tests:
@@ -207,6 +214,52 @@ A value-to-cell `match` of its own, beside `FrameCell::of_scalar`, is allowed in
 One place, `nodes/list.rs`, makes a value's display text into a cell something then compares. No place keeps a local copy of `strict_equals`.
 
 Tests: `value_paths.rs` (solenoid-core): scans the core's source and fails a local `===` copy, a value-to-cell `match` or a display-text cell outside the places above.
+
+## Points and differences
+
+Two kinds are positions rather than amounts: a **date** ([[D115]] datesArePoints) and a **temperature reading** on an
+offset scale, °C or °F ([[C25]] firstClassUnits). Each is a **point kind**, paired with a **difference kind**: days for
+a date, a kelvin (or Δ°C, Δ°F) delta for a reading. The rules that hold for both:
+
+- point − point is a difference;
+- point + difference and point − difference are points;
+- difference ± difference, and a difference scaled by a number, are differences;
+- nothing else: a point is never added to a point, scaled, negated or raised to a power.
+
+A difference is an ordinary amount, so everything the value model does with numbers it does with differences. A point
+is not: its zero is arbitrary (30-Dec-1899, the freezing point of water), and an answer that changed when the zero moved
+would mean nothing.
+
+**Point weight.** An expression over points is classified by its **point weight**, the sum of its coefficients on the
+points: a point weighs 1, a difference or a plain number 0, `a + b` weighs 2, `(a + b) / 2` and `a + (b - a) / 2` weigh
+1, `b - a` weighs 0. The weight decides the kind:
+
+- weight 1 is a point (an **affine combination**: the midpoint, a weighted average);
+- weight 0 is a difference;
+- any other weight has no meaning and is refused.
+
+An expression whose weight is 1 or 0 gives the same answer whichever zero the scale uses, which is why exactly those two
+are allowed. The functions follow from it: an average, a min, a max or a median of points is a point; a spread is a
+difference; a sum of two or more points is refused.
+
+```mermaid
+flowchart LR
+    e["an expression over points"] --> w{"its point weight"}
+    w -->|1| p["a point:<br>a date, a reading"]
+    w -->|0| d["a difference:<br>days, a delta"]
+    w -->|"anything else"| r["refused:<br>#TYPE! for dates,<br>#UNIT! for readings"]
+```
+
+**Where it is built.** Readings classify a whole formula by weight (`affine_weight`,
+[[unit-flow#Expression]]), so `(a + b) / 2` over two readings is a reading. Dates check each operator alone (`date_op`,
+[[date-values#Arithmetic]]) and each function by its class, so `AVERAGE(d1, d2)` and `d1 + (d2 - d1) / 2` are dates
+while `(d1 + d2) / 2` is `#TYPE!` at the `+`. That is the one place the two kinds disagree; the inbox item
+`dates-weigh-as-points` asks whether dates should classify by weight too.
+
+The mathematical names, for a reader who wants the full theory: a point kind with its difference kind is a *torsor*
+(an affine space when the differences can be scaled), point weight 1 is an *affine combination* and weight 0 a
+*weighted difference* (mathlib's `AddTorsor`, `Finset.affineCombination`, `Finset.weightedVSub`). None of these words
+belong in the app.
 
 ## Boundaries and bridges
 

@@ -34,7 +34,7 @@ block-beta
     class h0,h1,h2,h3,h4,f1,f2,f3,f4,f5,f6,f7,f8,f9 head
 ```
 
-Within one family (number shown; string, date, complex and logical are the same), a value flows along the arrows, and through any chain of them:
+Within one family (number shown; string, date, complex and logical are the same), a value flows along the arrows, and through any chain of the solid ones; the dotted narrowing is one step and never part of a chain ([[#The shape of what connects]]):
 
 ```mermaid
 flowchart LR
@@ -59,6 +59,31 @@ flowchart LR
     cast["a Cast card"] -.->|"the only other way across"| str
 ```
 
+## The shape of what connects
+
+`accepts` mixes three kinds of edge, and only the first composes:
+
+- **Widening** (the solid arrows, and the logical and number bridge): an order on the concrete types. It is
+  reflexive (every type connects to itself) and transitive (if A reaches B and B reaches C, A reaches C), so a chain of
+  cables through passthroughs never reaches a type a direct cable couldn't. It is a preorder rather than a partial
+  order, because some distinct types reach each other both ways: a list and its family's combo, logical and number at
+  each rank, and `logicaltable` and `table`. "Lattice" is the name, not a claim that every two types have a join.
+- **Narrowing** (the dotted arrow: a combo, `numlist` included, into its family's scalar): a checked step. It connects
+  because a combo may hold one value, and the input boundary collapses that singleton or refuses the rest
+  (req. 4). Checked steps don't compose: `list` reaches `numlist` and `numlist` reaches `number`, but `list` does
+  not reach `number`.
+- **Wildcards**: a wildcard stands for an unknown type, so it connects to more than any one concrete type would, and
+  chains through one don't compose either (`anydata` reaches `any` through `number`, not directly).
+
+Checked against the lattice's frozen answers (`fixtures/core/lattice.json.gz`, 2026-11-06): over the 25 concrete types,
+with the seven narrowing edges removed, what connects is reflexive and transitive; with them, 11 chains fail to
+compose, each a narrowing step after a widening one. No test holds this yet.
+
+**Coercions agree along paths.** Where a value can reach a type by two routes (a list into a matrix and then a Frame,
+or straight into a Frame), arrival coercion gives the same value either way: here both read a list as one row (req.
+5). A conversion pair that disagreed would make a cable's answer depend on which passthroughs it ran through. This is
+spot-checked, not swept: a sweep would compare, for sampled values, every A to B to C coercion with A to C directly.
+
 ## Constraints
 
 - [[C10]] socketLattice: a value's type is part of its meaning, so a connection that would silently coerce is refused.
@@ -82,7 +107,7 @@ flowchart LR
 6. **Element-agnostic 2-D inputs use the grid socket** (`anyTableIn`), not the scalar-circle `any`: TRANSPOSE, HSTACK, CHOOSEROWS and CHOOSECOLS, reshape-flatten, and the MAP, BYROW and REDUCE values. `any` is the rank-0 wildcard (comparison values, CHOOSE and SWITCH rows, EXPAND's fill, fold seeds). Cast, Display and IS.TEST are `trueany`; Expression and computed-column variables are `anydata`; a LAMBDA's captured-variable inputs are `anylist`, so a matrix does not wire into a λ capture. Table Info is `frame`-typed, so anything of rank 2 or less widens in and it reports rows × columns.
 7. **The socket type is the only date signal.** A date serial is a number at runtime, so every "is this a date?" check goes through `isDateType`, and a port whose value is a date uses the date family. [[#Date-valued ports are date-typed]].
 8. **Adoption keeps rank on the rank-bearing wildcards.** When a cable lands on an adoptive input, `adoptTypeForBase` decides its type. An `anylist` or `anytable` base keeps its rank and adopts only the wired element family: a wider wire is taken as is, and a narrower one is lifted to the base's rank in the wired family. A family-less wire carries nothing to adopt, so the port keeps its base (and still refuses what its rung refuses), and the `any`, `anycombo` and `anydata` bases follow the same family-less rule. `trueany` adopts the wired type as is. An unwired adoptive input keeps its base, except a keyed wildcard slot whose kind was picked or whose text was keyed: it adopts that kind as a cable of it would ([[inline-literal-maps#Wildcard slots]]). `projectTypeToBase` is the output-side mirror (WRAPROWS widens, flatten narrows). The two give one answer for every type that can connect into a base; they differ only where the output side projects a rank-crossing reshape down (TOCOL: `strtable` in, `strlist` out), a pair no input connection can make. [[#The wildcard ladder keeps rank]].
-9. **Adoption never touches connections and is never saved.** The Type Settle (`settle.rs`) repeats the adoption pass until nothing changes, at most 32 passes: a chain of N passthroughs settles in at most N passes, and the cap guards a `#CIRC!` loop. It alternates it with Conduit lane typing, at most 8 rounds, until both settle together, because each can feed the other. One frame-shape walk serves every pass, since shape depends only on topology and literal config, which no pass changes. Each pass first sets every adoptive input (the wired output's type through `adoptTypeForBase`, or its `base` when unwired), then every passthrough output that is a `MutableSocket`, projected through `projectTypeToBase` when it is adoptive.
+9. **Adoption never touches connections and is never saved.** The Type Settle (`settle.rs`) repeats the adoption pass until nothing changes, at most 32 passes: a chain of N passthroughs settles in at most N passes, and the cap guards a `#CIRC!` loop. What it computes is a fixed point, a typing that one more pass leaves unchanged, and its answer must not depend on the order cards are visited in (the reverse-order run in `coreSettle.test.ts` holds that). The caps are guards, not derived bounds: a pass that only ever moved a port's type one way up a finite order would stop on its own within a bound computed from the graph, but nothing yet shows the adoption pass is one-way (the run-time types and the `trueany` veto are the cases to check), so the caps stay. It alternates it with Conduit lane typing, at most 8 rounds, until both settle together, because each can feed the other. One frame-shape walk serves every pass, since shape depends only on topology and literal config, which no pass changes. Each pass first sets every adoptive input (the wired output's type through `adoptTypeForBase`, or its `base` when unwired), then every passthrough output that is a `MutableSocket`, projected through `projectTypeToBase` when it is adoptive.
    - Output policy comes from the node's `passthrough()` declaration, the same single source unit flow reads.
    - When branches vote, an unwired source or one flagged `errorOnlyOutput` abstains: NA() is always a tagged error, which shows as an error under any type, so `IF(cond, num, NA())` keeps the number type. A branch votes its input socket's current type, and a `trueany` vote vetoes agreement: a branch wired to a source of unknowable type (XLOOKUP, Get Cell) is a real value that a typed agreement would format wrongly, so `IF(cond, XLOOKUP(…), date)` stays unknown until the run-time types below settle it. The projection context (the frame shape on an input, and whether an input is wired) is built lazily, since only an extraction out of a Frame asks for it.
    - A reshape that crosses rank adopts the element family at its own declared rank. [[#The wildcard ladder keeps rank]], [[type-propagation-on-in-place-socket-retype#A trueany output declares its passthrough]].

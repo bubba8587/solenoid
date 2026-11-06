@@ -87,6 +87,17 @@ cables (the author, 2026-10-25).
   wildcard left by the wiring takes the type of what it carried ([[C136]] typesKnownAfterCalc).
   Not the readouts: they only show what it decided. (the core's `settle.rs`, `trueAnyAdopt.ts`
   `settleWildcardTypes`, `settleFacts.ts`; `../tree/specs/values/socket-lattice.md` req. 9)
+- **Widening / narrowing**: the two kinds of socket edge. Widening (up in rank, and the logical ↔ number bridge)
+  composes through any chain of cables; narrowing (a combo into its scalar) is a checked step that collapses a
+  singleton or refuses, and never composes. (`../tree/specs/values/socket-lattice.md` § The shape of what connects)
+- **Point kind / difference kind**: a value that is a position, not an amount (a date, a °C or °F reading), and the
+  amount between two of them (days, a kelvin delta). Point − point is a difference, point ± difference is a point,
+  nothing else. (`../tree/specs/values/value-semantics.md` § Points and differences; [[D115]] datesArePoints)
+- **Point weight**: the sum of an expression's coefficients on its points: 1 is a point (`(a + b) / 2`), 0 a
+  difference (`b - a`), anything else refused. (`affine_weight`, the core's `unit_dims.rs`)
+- **Aggregate kind**: what a total can be built from: removable (SUM, COUNT), a pick (MIN, MAX), a summary (AVERAGE,
+  VAR) or whole-list (MEDIAN). Decides which subtotals add up honestly.
+  (`../tree/specs/computation/formula-language.md` § Scalar operators, "What a total can be built from")
 - **Cast**: the explicit node to change a value's type family (the required bridge the
   lattice won't do automatically). (`nodes/cast.ts`)
 - **Fill**: the opt-in node to treat `null` as a real value.
