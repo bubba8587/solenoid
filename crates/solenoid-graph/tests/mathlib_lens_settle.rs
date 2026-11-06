@@ -120,3 +120,92 @@ fn widening_is_a_preorder_and_narrowing_does_not_compose() {
     println!("{} concrete types; narrowing edges: {narrow:?}", concrete.len());
     assert!(can_connect("list", "numlist") && can_connect("numlist", "number") && !can_connect("list", "number"));
 }
+
+/// Thread 1 (F5): coercions agree along paths. For every widening chain A -> B -> C among the concrete types, a value
+/// of type A coerced to B and then to C must equal the value coerced straight to C.
+#[test]
+fn coercions_agree_along_widening_paths() {
+    use solenoid_core::excel_functions::V;
+    use solenoid_core::nodes::Cv;
+    use solenoid_graph::boundary_core::{coerce_all, Arrived, Facts};
+    use solenoid_graph::lattice::{can_connect, is_wildcard_rung, lattice_rank, TYPES};
+    use std::rc::Rc;
+    let l = |xs: Vec<V>| V::List(Rc::new(xs));
+    let samples: Vec<(&str, V)> = vec![
+        ("number", V::Num(5.0)),
+        ("list", l(vec![V::Num(1.0), V::Num(2.0)])),
+        ("numlist", l(vec![V::Num(5.0)])),
+        ("numlist", l(vec![V::Num(1.0), V::Null, V::Num(3.0)])),
+        ("table", l(vec![l(vec![V::Num(1.0), V::Num(2.0)]), l(vec![V::Num(3.0), V::Num(4.0)])])),
+        ("logical", V::Bool(true)),
+        ("logicallist", l(vec![V::Bool(true), V::Bool(false)])),
+        ("logicaltable", l(vec![l(vec![V::Bool(true)])])),
+        ("string", V::str("a")),
+        ("strlist", l(vec![V::str("a"), V::str("b")])),
+        ("strtable", l(vec![l(vec![V::str("a")])])),
+        ("date", V::Date(45000.0)),
+        ("datelist", l(vec![V::Date(45000.0), V::Date(45001.0)])),
+        ("list", l(Vec::new())),
+        ("number", V::Null),
+    ];
+    let coerce = |rung: &str, v: &Cv| -> String {
+        let rung_of = |k: &str| (k == "a").then(|| rung.to_string());
+        match coerce_all(&Facts::default(), &rung_of, &[("a".to_string(), vec![Arrived { v: v.clone(), munit: None }])]) {
+            Ok(out) => format!("{:?}", out[0].1[0].v),
+            Err(_) => "thrown".into(),
+        }
+    };
+    let coerce_cv = |rung: &str, v: &Cv| -> Option<Cv> {
+        let rung_of = |k: &str| (k == "a").then(|| rung.to_string());
+        coerce_all(&Facts::default(), &rung_of, &[("a".to_string(), vec![Arrived { v: v.clone(), munit: None }])])
+            .ok()
+            .map(|out| out[0].1[0].v.clone())
+    };
+    let concrete: Vec<&str> =
+        TYPES.iter().copied().filter(|t| !is_wildcard_rung(t) && *t != "trueany" && !matches!(*t, "lambda" | "chart" | "document")).collect();
+    let narrowing = |a: &str, b: &str| matches!((lattice_rank(a), lattice_rank(b)), (Some(x), Some(y)) if x > y);
+    let widens = |a: &str, b: &str| can_connect(a, b) && !narrowing(a, b);
+    let (mut checked, mut differ) = (0, Vec::new());
+    for (a, v) in &samples {
+        let v = Cv::V(v.clone());
+        for b in &concrete {
+            for c in &concrete {
+                if b == c || !(widens(a, b) && widens(b, c) && widens(a, c)) {
+                    continue;
+                }
+                let direct = coerce(c, &v);
+                let Some(via) = coerce_cv(b, &v) else { continue };
+                let through = coerce(c, &via);
+                checked += 1;
+                if direct != through {
+                    differ.push(format!("{a} {:?}: via {b} to {c} gives {through}, straight gives {direct}", v));
+                }
+            }
+        }
+    }
+    println!("{checked} paths checked, {} differ", differ.len());
+    let fam = |t: &str| solenoid_graph::lattice::element_family(t).unwrap_or(t).to_string();
+    let mut kinds: std::collections::BTreeMap<String, Vec<&String>> = Default::default();
+    for d in &differ {
+        let w: Vec<&str> = d.split_whitespace().collect();
+        let (a, b, c) = (w[0], w[w.iter().position(|x| *x == "via").unwrap() + 1], w[w.iter().position(|x| *x == "to").unwrap() + 1]);
+        let kind = if fam(b) != fam(a) && (fam(b) == "logical" || fam(a) == "logical") {
+            "crosses the logical bridge"
+        } else if ["logicaltable", "strtable", "datetable", "complextable"].contains(&c) || ["logicaltable", "strtable", "datetable", "complextable"].contains(&b) {
+            "a non-number matrix rung"
+        } else if c == "cube" && b == "frame" {
+            "frame to cube keeps the column type"
+        } else {
+            "other"
+        };
+        kinds.entry(kind.to_string()).or_default().push(d);
+    }
+    for (k, ds) in &kinds {
+        println!("{k}: {}", ds.len());
+        if k != "crosses the logical bridge" {
+            for d in ds.iter().take(8) {
+                println!("    {}", d.chars().take(230).collect::<String>());
+            }
+        }
+    }
+}

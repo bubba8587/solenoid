@@ -442,4 +442,20 @@ fn equation_with_small_knowns() {
             solve("Z = k * (x * x - 5 * x + 6)", &[("Z", 0.0), ("k", k)], "x"),
         );
     }
+    // A real SI equation where the unknown appears twice: a diode with series resistance, solved for its current.
+    let diode = solve(
+        "I = Is * (EXP((V - I * R) / Vt) - 1)",
+        &[("Is", 1e-14), ("V", 0.6), ("R", 10.0), ("Vt", 0.02585)],
+        "I",
+    );
+    println!("diode with series resistance: I = {diode}");
+    // Non-polynomial residuals where x appears more than once, so isolation can't take them.
+    for k in [1.0, 1e-9, 1e-12, 1e-15] {
+        println!(
+            "k = {k:e}: 0 = k/(x-3) + k/(x-3) (no root) -> {}   0 = k*EXP(x) - 2*k + 0*x (ln 2) -> {}   0 = k*x*x*x - 8*k (2) -> {}",
+            solve("Z = k / (x - 3) + k / (x - 3)", &[("Z", 0.0), ("k", k)], "x"),
+            solve("Z = k * EXP(x) - 2 * k + 0 * x", &[("Z", 0.0), ("k", k)], "x"),
+            solve("Z = k * x * x * x - 8 * k", &[("Z", 0.0), ("k", k)], "x"),
+        );
+    }
 }

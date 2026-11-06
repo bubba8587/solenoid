@@ -131,6 +131,21 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
   orders tried, and a bare loop of two passthroughs stays `trueany` too. In order terms it computes the least fixed
   point starting from unknown, the cautious answer, and the `trueany` veto in the vote is what keeps it there. That
   is fine: loop members compute as `#CIRC!`, so there is no value whose type could be wrong.
+- **Coercions along paths, verified** (pass 6, `coercions_agree_along_widening_paths`, `coerce_all` natively, 15
+  sample values, every widening chain A to B to C among the concrete types): of 405 paths, 301 agree and 104 don't.
+  None is unexplained:
+  - 85 cross the logical bridge: 5 through a logical socket is TRUE, then 1. The bridge is lossy, so logical and
+    number reach each other both ways without being the same type, and coercions through it can't agree. Expected
+    and by design; the spec should say the agreement holds for paths that don't cross the bridge.
+  - 10 differ only in metadata: through a Frame, a Cube's column keeps its type (`Number`); straight to a Cube it has
+    none. Harmless, and the Frame route is the better one.
+  - 9 are a real if minor incoherence: the matrix rungs of the logical, string and date families don't shape what
+    arrives (`logicaltable | strtable | datetable => cells()`, `boundary.rs`). A string wired into a `strtable` socket
+    arrives as a bare string, a list as a list, while number's `table` rung widens both to a matrix. So a body on such
+    an input can receive rank 0, 1 or 2 depending on the route. socket-lattice § Enforcement says those rungs pass
+    values through "since their producer already shaped them"; the sweep shows a widening cable is a producer that
+    didn't. The `socket-lattice` paragraph written on develop this session ("Coercions agree along paths ...
+    spot-checked") needs both refinements.
 - **The widening preorder now has a native test** (pass 4, `widening_is_a_preorder_and_narrowing_does_not_compose`,
   against `lattice.rs` itself rather than the fixture): over the 25 concrete types, `can_connect` is reflexive,
   widening composes through every chain, the seven narrowing edges are exactly the combo-to-scalar ones, and
@@ -200,6 +215,13 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
   the floor of 1 makes it absolute for small equations. The law a fix would be tested against: an equation's
   solutions don't change when both sides are multiplied by the same nonzero k. A quadratic with tiny k
   (`0 = k * (x*x - 5x + 6)`) still solves to 2 and 3, so only the "not a polynomial" check is fooled.
+- **The Equation's other layers** (pass 6, same test): a tiny pole equation `0 = k/(x-3) + k/(x-3)` with k ≤ 1e-12
+  answers the right outcome for the wrong reason, `#SOLVE!` "the quadratic's discriminant is negative" (the sniff
+  took it for a quadratic; at k = 1 it says "No solution found between ±10¹²"). A tiny exponential
+  (`0 = k*EXP(x) - 2k + 0*x`) solves to ln 2 at every k, because EXP's growth pushes a probe past the floor. A real SI
+  equation with the unknown twice, a diode with series resistance (`I = Is*(EXP((V - I*R)/Vt) - 1)`, Is = 1e-14),
+  solves to 0.000115080558, matching an independent bisection to 1e-12. So the floor bites only when every residual
+  at the probe points is below about 1e-9: tiny polynomial-looking or flat equations.
 - Read, not run: the MDETERM *card* answers 1 for a 0×0 matrix (`nodes/matrix.rs`, mathlib's convention), while the
   formula `MDETERM` of an empty list is `#SHAPE!`; whether a card can ever receive a 0×0 matrix is unchecked.
 - This is the pass's strongest result: a backlog-grade bug, not a research question. It belongs in `docs/backlog.md`
@@ -233,7 +255,6 @@ No test holds it yet: a candidate prototype (thread 2b).
 
 ## Open threads (for the next passes)
 
-1. Prototype the F5 coercion-commutes sweep.
 3. Extend the shuffle sweep (F4) to the frame verbs: Group By, Pivot, Rollup, Distinct, and the criteria aggregates.
 4. Classify every aggregate in `call_traits.json` by algebraic kind (F4).
 5. Audit P7 Fallbacks against the identity rule (F3).
@@ -241,8 +262,10 @@ No test holds it yet: a candidate prototype (thread 2b).
    8 rounds?
 7. The empty-aggregate rule (F3): the cards (Aggregate) and the frame verbs (Group By over an empty group, Rollup)
    over nothing; the formula functions are censused.
-8. F8 follow-ups: the Equation's numeric layer (its pole test "10⁻⁶ times the largest of 1 and the ends" has the same
-   floor of 1) on a tiny equation with a pole; whether the MDETERM and MINVERSE *cards* share `mat_det`.
+8. F8 follow-ups: whether the MDETERM and MINVERSE *cards* share `mat_det`; a list of every tolerance in the core
+   with a floor of 1 or an absolute cutoff (`1e-9`, `1e-12`, `1e-14` greps), each classed relative or absolute.
+1. F5 follow-up: which card bodies read a `strtable`, `datetable` or `logicaltable` input, and do they all handle a
+   scalar or a list arriving there?
 9. Unread mathlib areas: distribution parameterizations against `dists.rs`; variance conventions; regular expressions (`Mathlib/Computability`) against
    `excel_regex.rs`; polynomial roots and `ring`; intervals (`Mathlib/Order/Interval`) for uncertain values.
 10. Cycles as least fixed points (F5), and tropical sensitivity for Schedule (F6).
@@ -269,3 +292,6 @@ No test holds it yet: a candidate prototype (thread 2b).
 - **Pass 5 (2026-11-06 11:45 UTC):** drove the Equation card natively with scaled knowns: a silent wrong answer
   (x = 8 for a true 2) when every term is around 1e-15 and x appears more than once, from a tolerance floored at 1
   (F8). Thread 8 rewritten toward the numeric layer's pole test, which has the same floor.
+- **Pass 6 (2026-11-06 12:45 UTC):** the coercion sweep over 405 widening paths (104 differ: 85 by the lossy bridge,
+  10 metadata, 9 from the unshaped non-number matrix rungs), and the Equation's other layers (a tiny pole errors with
+  the wrong message; exponentials and a real diode equation solve right). Threads 1 and 8 rewritten.
