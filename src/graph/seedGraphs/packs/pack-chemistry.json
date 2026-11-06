@@ -170,6 +170,76 @@
         "t": 11460,
         "thalf": 5730
       }
+    },
+    {
+      "id": "years",
+      "x": 0,
+      "y": 1000,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Years",
+        "expr": "SEQUENCE(11, 1, 0, 2865)",
+        "locked": false,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "decayT",
+      "x": 440,
+      "y": 1000,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Decay Remaining",
+        "expr": "n0*0.5^(t/thalf)",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {
+        "n0": 100,
+        "thalf": 5730
+      }
+    },
+    {
+      "id": "decayFrame",
+      "x": 880,
+      "y": 1000,
+      "type": "FrameFromListsNode",
+      "init": {
+        "label": "Carbon-14 by year",
+        "width": 220,
+        "height": 240,
+        "valueKeys": [
+          "name0",
+          "vals0",
+          "name1",
+          "vals1"
+        ]
+      },
+      "literals": {},
+      "stringLiterals": {
+        "name0": "years",
+        "name1": "% left"
+      }
+    },
+    {
+      "id": "decayChart",
+      "x": 1320,
+      "y": 1000,
+      "type": "ChartNode",
+      "init": {
+        "label": "Half-life",
+        "op": "line",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Carbon-14: half gone every 5,730 years;xlabel=years;ylabel=% left"
+      }
     }
   ],
   "connections": [
@@ -190,6 +260,30 @@
       "sourceOutput": "value",
       "target": "ph",
       "targetInput": "h"
+    },
+    {
+      "source": "years",
+      "sourceOutput": "result",
+      "target": "decayT",
+      "targetInput": "t"
+    },
+    {
+      "source": "years",
+      "sourceOutput": "result",
+      "target": "decayFrame",
+      "targetInput": "vals0"
+    },
+    {
+      "source": "decayT",
+      "sourceOutput": "result",
+      "target": "decayFrame",
+      "targetInput": "vals1"
+    },
+    {
+      "source": "decayFrame",
+      "sourceOutput": "frame",
+      "target": "decayChart",
+      "targetInput": "values"
     }
   ]
 }

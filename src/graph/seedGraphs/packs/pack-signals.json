@@ -108,6 +108,105 @@
         "width": 180,
         "height": 150
       }
+    },
+    {
+      "id": "n",
+      "x": 880,
+      "y": 1000,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Sample",
+        "expr": "SEQUENCE(64)",
+        "locked": false,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "wave",
+      "x": 1320,
+      "y": 1000,
+      "type": "FrameFromListsNode",
+      "init": {
+        "label": "Raw and smoothed",
+        "width": 220,
+        "height": 240,
+        "valueKeys": [
+          "name0",
+          "vals0",
+          "name1",
+          "vals1",
+          "name2",
+          "vals2"
+        ]
+      },
+      "literals": {},
+      "stringLiterals": {
+        "name0": "sample",
+        "name1": "raw",
+        "name2": "smoothed"
+      }
+    },
+    {
+      "id": "waveChart",
+      "x": 1760,
+      "y": 1000,
+      "type": "ChartNode",
+      "init": {
+        "label": "Raw and smoothed",
+        "op": "line",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=The fast wave smoothed away;xlabel=sample"
+      }
+    },
+    {
+      "id": "half",
+      "x": 880,
+      "y": 220,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "The useful half",
+        "expr": "CHOOSECOLS(TAKE(s, 33), 1, 2)",
+        "locked": false,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "specFrame",
+      "x": 1320,
+      "y": 220,
+      "type": "BuildFrameNode",
+      "init": {
+        "label": "Spectrum",
+        "width": 200,
+        "height": 175
+      },
+      "stringLiterals": {
+        "headers": "cycles, magnitude"
+      }
+    },
+    {
+      "id": "specChart",
+      "x": 1760,
+      "y": 220,
+      "type": "ChartNode",
+      "init": {
+        "label": "Spectrum",
+        "op": "column",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Two frequencies, two peaks;xlabel=cycles per 64 samples;ylabel=magnitude"
+      }
     }
   ],
   "connections": [
@@ -140,6 +239,48 @@
       "sourceOutput": "list",
       "target": "conv",
       "targetInput": "b"
+    },
+    {
+      "source": "n",
+      "sourceOutput": "result",
+      "target": "wave",
+      "targetInput": "vals0"
+    },
+    {
+      "source": "sig",
+      "sourceOutput": "result",
+      "target": "wave",
+      "targetInput": "vals1"
+    },
+    {
+      "source": "smooth",
+      "sourceOutput": "result",
+      "target": "wave",
+      "targetInput": "vals2"
+    },
+    {
+      "source": "wave",
+      "sourceOutput": "frame",
+      "target": "waveChart",
+      "targetInput": "values"
+    },
+    {
+      "source": "spec",
+      "sourceOutput": "result",
+      "target": "half",
+      "targetInput": "s"
+    },
+    {
+      "source": "half",
+      "sourceOutput": "result",
+      "target": "specFrame",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "specFrame",
+      "sourceOutput": "frame",
+      "target": "specChart",
+      "targetInput": "values"
     }
   ]
 }

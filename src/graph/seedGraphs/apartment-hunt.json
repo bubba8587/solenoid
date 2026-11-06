@@ -81,6 +81,21 @@
         "normalize": "max",
         "detail": "summary"
       }
+    },
+    {
+      "id": "hoodRadar",
+      "x": 900,
+      "y": 40,
+      "type": "ChartNode",
+      "init": {
+        "label": "Each neighborhood's profile",
+        "op": "radar",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Scores across the criteria"
+      }
     }
   ],
   "connections": [
@@ -119,6 +134,12 @@
       "sourceOutput": "frame",
       "target": "dmChain",
       "targetInput": "weights"
+    },
+    {
+      "source": "hoods",
+      "sourceOutput": "frame",
+      "target": "hoodRadar",
+      "targetInput": "values"
     }
   ],
   "standoffs": []

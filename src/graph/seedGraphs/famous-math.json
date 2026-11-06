@@ -998,6 +998,36 @@
         "width": 1313,
         "height": 866
       }
+    },
+    {
+      "id": "basel_running",
+      "x": 2600,
+      "y": 1610,
+      "type": "RunningNode",
+      "init": {
+        "label": "Partial sums",
+        "width": 180,
+        "height": 218,
+        "agg": "sum"
+      },
+      "literals": {
+        "window": 0
+      }
+    },
+    {
+      "id": "basel_chart",
+      "x": 2880,
+      "y": 1610,
+      "type": "ChartNode",
+      "init": {
+        "label": "Creeping toward π²/6",
+        "op": "line",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Σ 1/k² creeping toward π²/6 ≈ 1.645;xlabel=terms;ylabel=partial sum"
+      }
     }
   ],
   "connections": [
@@ -1372,6 +1402,18 @@
       "sourceOutput": "out",
       "target": "fc_energy",
       "targetInput": "in"
+    },
+    {
+      "source": "ex_recip",
+      "sourceOutput": "result",
+      "target": "basel_running",
+      "targetInput": "list"
+    },
+    {
+      "source": "basel_running",
+      "sourceOutput": "result",
+      "target": "basel_chart",
+      "targetInput": "values"
     }
   ]
 }

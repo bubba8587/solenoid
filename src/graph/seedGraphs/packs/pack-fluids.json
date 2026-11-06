@@ -213,9 +213,195 @@
       "literals": {
         "len": 100
       }
+    },
+    {
+      "id": "vs",
+      "x": 0,
+      "y": 1000,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Velocities (m/s)",
+        "expr": "SEQUENCE(8, 1, 0.5, 0.5)",
+        "locked": false,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "re2",
+      "x": 440,
+      "y": 1000,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Reynolds Number",
+        "expr": "rho*v*d/mu",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varUnits": {
+          "rho": "kg/m3",
+          "v": "m/s",
+          "d": "m",
+          "mu": "Pa·s"
+        }
+      },
+      "literals": {}
+    },
+    {
+      "id": "cb2",
+      "x": 880,
+      "y": 1000,
+      "type": "ColebrookNode",
+      "init": {
+        "label": "Friction Factor (Colebrook)",
+        "width": 200,
+        "height": 170
+      },
+      "literals": {}
+    },
+    {
+      "id": "dp2",
+      "x": 1320,
+      "y": 1000,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Pressure Drop (Darcy–Weisbach)",
+        "expr": "f*(len/d)*rho*v^2/2",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varUnits": {
+          "len": "m",
+          "d": "m",
+          "rho": "kg/m3",
+          "v": "m/s"
+        }
+      },
+      "literals": {
+        "len": 100
+      }
+    },
+    {
+      "id": "sweep",
+      "x": 1760,
+      "y": 1000,
+      "type": "FrameFromListsNode",
+      "init": {
+        "label": "Pressure drop by velocity",
+        "width": 220,
+        "height": 240,
+        "valueKeys": [
+          "name0",
+          "vals0",
+          "name1",
+          "vals1"
+        ]
+      },
+      "literals": {},
+      "stringLiterals": {
+        "name0": "v (m/s)",
+        "name1": "Δp (Pa)"
+      }
+    },
+    {
+      "id": "sweepChart",
+      "x": 2200,
+      "y": 1000,
+      "type": "ChartNode",
+      "init": {
+        "label": "Faster costs more",
+        "op": "line",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Pressure drop over 100 m, about v²;xlabel=v (m/s);ylabel=Δp (Pa)"
+      }
     }
   ],
   "connections": [
+    {
+      "source": "rho",
+      "sourceOutput": "value",
+      "target": "re2",
+      "targetInput": "rho"
+    },
+    {
+      "source": "vs",
+      "sourceOutput": "result",
+      "target": "re2",
+      "targetInput": "v"
+    },
+    {
+      "source": "d",
+      "sourceOutput": "value",
+      "target": "re2",
+      "targetInput": "d"
+    },
+    {
+      "source": "mu",
+      "sourceOutput": "value",
+      "target": "re2",
+      "targetInput": "mu"
+    },
+    {
+      "source": "re2",
+      "sourceOutput": "result",
+      "target": "cb2",
+      "targetInput": "re"
+    },
+    {
+      "source": "rough",
+      "sourceOutput": "rel",
+      "target": "cb2",
+      "targetInput": "rr"
+    },
+    {
+      "source": "cb2",
+      "sourceOutput": "result",
+      "target": "dp2",
+      "targetInput": "f"
+    },
+    {
+      "source": "d",
+      "sourceOutput": "value",
+      "target": "dp2",
+      "targetInput": "d"
+    },
+    {
+      "source": "rho",
+      "sourceOutput": "value",
+      "target": "dp2",
+      "targetInput": "rho"
+    },
+    {
+      "source": "vs",
+      "sourceOutput": "result",
+      "target": "dp2",
+      "targetInput": "v"
+    },
+    {
+      "source": "vs",
+      "sourceOutput": "result",
+      "target": "sweep",
+      "targetInput": "vals0"
+    },
+    {
+      "source": "dp2",
+      "sourceOutput": "result",
+      "target": "sweep",
+      "targetInput": "vals1"
+    },
+    {
+      "source": "sweep",
+      "sourceOutput": "frame",
+      "target": "sweepChart",
+      "targetInput": "values"
+    },
     {
       "source": "rho",
       "sourceOutput": "value",

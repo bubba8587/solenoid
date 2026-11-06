@@ -178,6 +178,38 @@
       "literals": {
         "period": 4
       }
+    },
+    {
+      "id": "hist",
+      "x": 1760,
+      "y": 520,
+      "type": "HistogramNode",
+      "init": {
+        "label": "The sample's shape",
+        "mode": "1d",
+        "width": 300,
+        "height": 240
+      },
+      "literals": {
+        "bins": 8,
+        "ybins": 10
+      },
+      "stringLiterals": {}
+    },
+    {
+      "id": "decChart",
+      "x": 880,
+      "y": 900,
+      "type": "ChartNode",
+      "init": {
+        "label": "Trend, season, remainder",
+        "op": "line",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Quarterly sales, decomposed;xlabel=quarter"
+      }
     }
   ],
   "connections": [
@@ -215,6 +247,18 @@
       "source": "sales",
       "sourceOutput": "list",
       "target": "dec",
+      "targetInput": "values"
+    },
+    {
+      "source": "sample",
+      "sourceOutput": "list",
+      "target": "hist",
+      "targetInput": "values"
+    },
+    {
+      "source": "dec",
+      "sourceOutput": "decomposition",
+      "target": "decChart",
       "targetInput": "values"
     }
   ]

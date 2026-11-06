@@ -151,9 +151,30 @@
         "lo": "5",
         "hi": "15"
       }
+    },
+    {
+      "id": "tallyChart",
+      "x": 440,
+      "y": 980,
+      "type": "ChartNode",
+      "init": {
+        "label": "Votes counted",
+        "op": "column",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Red wins"
+      }
     }
   ],
   "connections": [
+    {
+      "source": "tally",
+      "sourceOutput": "frame",
+      "target": "tallyChart",
+      "targetInput": "values"
+    },
     {
       "source": "la",
       "sourceOutput": "list",

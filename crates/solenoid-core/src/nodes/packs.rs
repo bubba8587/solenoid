@@ -686,14 +686,24 @@ fn sun_inputs(c: &Call) -> Option<(f64, f64, f64)> {
     Some((when, lat, lon))
 }
 
+/// Sun Position, element-wise: a list of times (or of latitudes or longitudes) answers a position each.
 fn solar_position(c: &mut Call) -> Answer {
-    let [elevation, azimuth, declination] = match sun_inputs(c) {
-        None => [V::Null, V::Null, V::Null],
-        Some((when, lat, lon)) => match lat_lon_error(lat, lon) {
-            Some(e) => [e.clone(), e.clone(), e],
-            None => solar_position_of(when, lat, lon).map(V::Num),
-        },
+    let args = [first(c, "when"), c.read("lat"), c.read("lon")];
+    let part = |k: usize| {
+        super::kit::each(&args, |ops| {
+            if let Some(e) = ops.iter().find(|v| v.is_sol_error()) {
+                return (*e).clone();
+            }
+            match (super::kit::day(ops[0]), number(ops[1]), number(ops[2])) {
+                (Some(when), Some(lat), Some(lon)) => match lat_lon_error(lat, lon) {
+                    Some(e) => e,
+                    None => V::Num(solar_position_of(when, lat, lon)[k]),
+                },
+                _ => V::Null,
+            }
+        })
     };
+    let [elevation, azimuth, declination] = [part(0), part(1), part(2)];
     shown(
         c,
         &[
@@ -885,17 +895,17 @@ pub(crate) fn colebrook_f(re: f64, rr: f64) -> f64 {
     1.0 / (x * x)
 }
 
+/// Friction Factor (Colebrook), element-wise as `COLEBROOK` is: a list of Reynolds numbers answers one factor each.
 fn colebrook(c: &mut Call) -> Answer {
-    let re = c.read("re");
-    let rr = c.read("rr");
-    let result = match (number(&re), number(&rr)) {
+    let (re, rr) = (c.read("re"), c.read("rr"));
+    let result = super::kit::broadcast_err(&[re, rr], |ops| match (number(ops[0]), number(ops[1])) {
         (Some(re), Some(rr)) if re <= 0.0 || rr < 0.0 || rr >= 1.0 => {
             domain("Needs Re > 0 and relative roughness 0 ≤ ε/D < 1")
         }
         (Some(re), Some(_)) if re < 2300.0 => V::Num(64.0 / re),
         (Some(re), Some(rr)) => V::Num(colebrook_f(re, rr)),
         _ => V::Null,
-    };
+    });
     shown(c, &[("result", "cachedResult", Cv::V(result))])
 }
 

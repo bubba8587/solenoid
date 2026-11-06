@@ -224,6 +224,77 @@
       "literals": {
         "t": 80
       }
+    },
+    {
+      "id": "mins",
+      "x": 0,
+      "y": 1000,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Minutes",
+        "expr": "SEQUENCE(13, 1, 0, 5)",
+        "locked": false,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "coolT",
+      "x": 440,
+      "y": 1000,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Newton Cooling",
+        "expr": "ta+(t0-ta)*EXP(-kk*t)",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {
+        "ta": 20,
+        "t0": 90,
+        "kk": 0.05
+      }
+    },
+    {
+      "id": "coolFrame",
+      "x": 880,
+      "y": 1000,
+      "type": "FrameFromListsNode",
+      "init": {
+        "label": "Coffee by the minute",
+        "width": 220,
+        "height": 240,
+        "valueKeys": [
+          "name0",
+          "vals0",
+          "name1",
+          "vals1"
+        ]
+      },
+      "literals": {},
+      "stringLiterals": {
+        "name0": "minutes",
+        "name1": "°C"
+      }
+    },
+    {
+      "id": "coolChart",
+      "x": 1320,
+      "y": 1000,
+      "type": "ChartNode",
+      "init": {
+        "label": "Cooling curve",
+        "op": "line",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Coffee cooling toward the room's 20 °C;xlabel=minutes;ylabel=°C"
+      }
     }
   ],
   "connections": [
@@ -244,6 +315,30 @@
       "sourceOutput": "value",
       "target": "gas",
       "targetInput": "n"
+    },
+    {
+      "source": "mins",
+      "sourceOutput": "result",
+      "target": "coolT",
+      "targetInput": "t"
+    },
+    {
+      "source": "mins",
+      "sourceOutput": "result",
+      "target": "coolFrame",
+      "targetInput": "vals0"
+    },
+    {
+      "source": "coolT",
+      "sourceOutput": "result",
+      "target": "coolFrame",
+      "targetInput": "vals1"
+    },
+    {
+      "source": "coolFrame",
+      "sourceOutput": "frame",
+      "target": "coolChart",
+      "targetInput": "values"
     }
   ]
 }

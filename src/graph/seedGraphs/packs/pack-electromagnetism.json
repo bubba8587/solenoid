@@ -156,6 +156,79 @@
         "i": 10,
         "r": 0.02
       }
+    },
+    {
+      "id": "rr",
+      "x": 0,
+      "y": 940,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Distance (m)",
+        "expr": "SEQUENCE(10, 1, 0.02, 0.02)",
+        "locked": false,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "coulR",
+      "x": 440,
+      "y": 940,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Coulomb Force",
+        "expr": "8.9875517923*10^9*q1*q2/r^2",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varUnits": {
+          "r": "m"
+        }
+      },
+      "literals": {
+        "q1": 0.000001,
+        "q2": 0.000001
+      }
+    },
+    {
+      "id": "coulFrame",
+      "x": 880,
+      "y": 940,
+      "type": "FrameFromListsNode",
+      "init": {
+        "label": "Force by distance",
+        "width": 220,
+        "height": 240,
+        "valueKeys": [
+          "name0",
+          "vals0",
+          "name1",
+          "vals1"
+        ]
+      },
+      "literals": {},
+      "stringLiterals": {
+        "name0": "r (m)",
+        "name1": "F (N)"
+      }
+    },
+    {
+      "id": "coulChart",
+      "x": 1320,
+      "y": 940,
+      "type": "ChartNode",
+      "init": {
+        "label": "Inverse square",
+        "op": "line",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Twice as far, a quarter the force;xlabel=r (m);ylabel=F (N)"
+      }
     }
   ],
   "connections": [
@@ -176,6 +249,30 @@
       "sourceOutput": "value",
       "target": "pe",
       "targetInput": "f"
+    },
+    {
+      "source": "rr",
+      "sourceOutput": "result",
+      "target": "coulR",
+      "targetInput": "r"
+    },
+    {
+      "source": "rr",
+      "sourceOutput": "result",
+      "target": "coulFrame",
+      "targetInput": "vals0"
+    },
+    {
+      "source": "coulR",
+      "sourceOutput": "result",
+      "target": "coulFrame",
+      "targetInput": "vals1"
+    },
+    {
+      "source": "coulFrame",
+      "sourceOutput": "frame",
+      "target": "coulChart",
+      "targetInput": "values"
     }
   ]
 }

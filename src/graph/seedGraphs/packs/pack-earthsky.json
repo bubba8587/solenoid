@@ -150,6 +150,88 @@
         "width": 210,
         "height": 200
       }
+    },
+    {
+      "id": "hours",
+      "x": 0,
+      "y": 1000,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Hours",
+        "expr": "SEQUENCE(25, 1, 0, 1)",
+        "locked": false,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "times",
+      "x": 440,
+      "y": 1000,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Through the day",
+        "expr": "day + hours/24",
+        "locked": false,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "sunDay",
+      "x": 880,
+      "y": 1000,
+      "type": "SolarPositionNode",
+      "init": {
+        "label": "Sun Position",
+        "width": 220,
+        "height": 230
+      },
+      "literals": {
+        "lat": 51.5,
+        "lon": -0.13
+      }
+    },
+    {
+      "id": "sunFrame",
+      "x": 1320,
+      "y": 1000,
+      "type": "FrameFromListsNode",
+      "init": {
+        "label": "Sun by the hour",
+        "width": 220,
+        "height": 240,
+        "valueKeys": [
+          "name0",
+          "vals0",
+          "name1",
+          "vals1"
+        ]
+      },
+      "literals": {},
+      "stringLiterals": {
+        "name0": "hour (UTC)",
+        "name1": "elevation (°)"
+      }
+    },
+    {
+      "id": "sunChart",
+      "x": 1760,
+      "y": 1000,
+      "type": "ChartNode",
+      "init": {
+        "label": "The sun's arc",
+        "op": "line",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Midsummer in London: the sun's height;xlabel=hour (UTC);ylabel=degrees above the horizon"
+      }
     }
   ],
   "connections": [
@@ -170,6 +252,42 @@
       "sourceOutput": "value",
       "target": "moon",
       "targetInput": "when"
+    },
+    {
+      "source": "day",
+      "sourceOutput": "value",
+      "target": "times",
+      "targetInput": "day"
+    },
+    {
+      "source": "hours",
+      "sourceOutput": "result",
+      "target": "times",
+      "targetInput": "hours"
+    },
+    {
+      "source": "times",
+      "sourceOutput": "result",
+      "target": "sunDay",
+      "targetInput": "when"
+    },
+    {
+      "source": "hours",
+      "sourceOutput": "result",
+      "target": "sunFrame",
+      "targetInput": "vals0"
+    },
+    {
+      "source": "sunDay",
+      "sourceOutput": "elevation",
+      "target": "sunFrame",
+      "targetInput": "vals1"
+    },
+    {
+      "source": "sunFrame",
+      "sourceOutput": "frame",
+      "target": "sunChart",
+      "targetInput": "values"
     }
   ]
 }

@@ -157,9 +157,30 @@
       "literals": {
         "activity": 1.55
       }
+    },
+    {
+      "id": "zoneChart",
+      "x": 880,
+      "y": 220,
+      "type": "ChartNode",
+      "init": {
+        "label": "Training zones",
+        "op": "column",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Heart-rate zones;ylabel=bpm"
+      }
     }
   ],
   "connections": [
+    {
+      "source": "zones",
+      "sourceOutput": "zones",
+      "target": "zoneChart",
+      "targetInput": "values"
+    },
     {
       "source": "age",
       "sourceOutput": "value",

@@ -50,6 +50,12 @@ specific item.
   the TypeScript to `GeometryFigure.tsx` (`useKeyedTable`, `FigureField`, `separate`).
 - **Polygon from Points and Solid** joined them (`FigureCard` in `GeometryCards.tsx` is the shared shell; `Measure`
   gained Volume and Flag; `FigureTable::summary` builds a second frame in the same units).
+- **Visuals in the seeds** (the author 2026-11-06): every pack seed but Geometry's (its figures are the visual) and
+  Timesavers' (its QR code) charts something, mostly a curve through the pack's own card over a list of x values
+  (`frameOf` + `chart` in `gen-pack-seeds.test.ts`, Frame from Lists into a Chart); Famous math charts the Basel
+  partial sums, Computed columns heatmaps its temperature table, Apartment hunt draws each neighborhood as a radar.
+  Colebrook and Sun Position became element-wise to sweep. Open: a Chart fed a table (not a frame) plots nothing,
+  silently (`values: [null…]`), where it should plot or say why.
 - **Direction** (the author 2026-11-06): Solenoid should be broadly usable in education, STEM above all. The geometry
   figure cards (exact values, every part keyable, honest "two answers fit" errors) are the first cards built that way.
 - **Before pushing Rust, even a prototype test: `bash scripts/check-rust.sh <crate>`** (the crate bans `powi`, clippy

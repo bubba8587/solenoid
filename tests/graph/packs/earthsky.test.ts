@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { isSolDate, solDate } from "../../../src/graph/dateValue";
 import { EARTHSKY_FORMULAS } from "../../../src/graph/packs/earthsky";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { SunriseSunsetNode } from "../../../src/graph/nodes/astro";
+import { SunriseSunsetNode, SolarPositionNode } from "../../../src/graph/nodes/astro";
 import { coreFunction } from "../coreFunction";
 import { isSolError } from "../../../src/graph/errorValue";
 
@@ -152,5 +152,18 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
     expect(evalPackFormula('MOONPHASE(46000, "age")')).toBe(m.age);
     expect(m.age).toBeGreaterThanOrEqual(0);
     expect(m.age).toBeLessThan(29.6);
+  });
+});
+
+describe("Sun Position card", () => {
+  it("is element-wise over its times: a list of times answers the sun's path, each the single answer", () => {
+    const day = solDate(46193); // 21-Jun-2026
+    const times = [0, 6, 12, 18].map((h) => solDate(46193 + h / 24));
+    const one = (w: unknown) => new SolarPositionNode().data({ when: [w], lat: [51.5], lon: [-0.13] }) as { elevation: number };
+    const path = new SolarPositionNode().data({ when: [times], lat: [51.5], lon: [-0.13] }) as { elevation: number[]; azimuth: number[] };
+    expect(path.elevation).toHaveLength(4);
+    times.forEach((t, i) => expect(path.elevation[i]).toBe(one(t).elevation));
+    expect(Math.max(...path.elevation)).toBe(path.elevation[2]); // highest at noon UTC, near London's meridian
+    expect(typeof one(day).elevation).toBe("number");
   });
 });

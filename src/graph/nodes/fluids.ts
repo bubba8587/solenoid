@@ -2,27 +2,28 @@
 
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { numIn, numOut } from "./shared";
+import { numIn, numOut, numListIn, numListOut } from "./shared";
 import { type SolError } from "../errorValue";
 import { PIPE_ROUGHNESS } from "./fluidsOps";
 
 export class ColebrookNode extends GraphNode {
   label: string;
   literals: Record<string, number> = {};
-  cachedResult: number | SolError | null = null;
+  cachedResult: number | SolError | null | (number | SolError | null)[] = null;
   width = 200;
   height = 170;
 
   constructor(init?: { label?: string }) {
     super("Colebrook");
     this.label = init?.label ?? "Friction Factor (Colebrook)";
-    this.addInput("re", numIn("Re"));
-    this.addInput("rr", numIn("ε/D"));
-    this.addOutput("result", numOut("f"));
+    // Element-wise, as COLEBROOK is: a list of Reynolds numbers answers a friction factor each.
+    this.addInput("re", numListIn("Re"));
+    this.addInput("rr", numListIn("ε/D"));
+    this.addOutput("result", numListOut("f"));
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    return nodeOnCore(this, inputs) as { result: number | SolError | null };
+    return nodeOnCore(this, inputs) as { result: number | SolError | null | (number | SolError | null)[] };
   }
 }
 

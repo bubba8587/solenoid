@@ -2,31 +2,34 @@
 
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { numIn, numOut, dateIn, dateOut } from "./shared";
+import { numIn, numOut, dateIn, dateOut, dateComboIn, numListOut } from "./shared";
+
+type Answer = number | SolError | null | (number | SolError | null)[];
 import type { SolError } from "../errorValue";
 
 export class SolarPositionNode extends GraphNode {
   label: string;
   literals: Record<string, number> = { lat: 0, lon: 0 };
-  cachedElevation: number | SolError | null = null;
-  cachedAzimuth: number | SolError | null = null;
-  cachedDeclination: number | SolError | null = null;
+  cachedElevation: Answer = null;
+  cachedAzimuth: Answer = null;
+  cachedDeclination: Answer = null;
   width = 220;
   height = 230;
 
   constructor(init?: { label?: string }) {
     super("SolarPosition");
     this.label = init?.label ?? "Sun Position";
-    this.addInput("when", dateIn("Date & time (UTC)"));
+    // Element-wise: a list of times answers a position each (the sun's path through a day).
+    this.addInput("when", dateComboIn("Date & time (UTC)"));
     this.addInput("lat", numIn("Latitude °"));
     this.addInput("lon", numIn("Longitude °"));
-    this.addOutput("elevation", numOut("Elevation °"));
-    this.addOutput("azimuth", numOut("Azimuth °"));
-    this.addOutput("declination", numOut("Declination °"));
+    this.addOutput("elevation", numListOut("Elevation °"));
+    this.addOutput("azimuth", numListOut("Azimuth °"));
+    this.addOutput("declination", numListOut("Declination °"));
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    return nodeOnCore(this, inputs) as { elevation: number | SolError | null; azimuth: number | SolError | null; declination: number | SolError | null };
+    return nodeOnCore(this, inputs) as { elevation: Answer; azimuth: Answer; declination: Answer };
   }
 }
 

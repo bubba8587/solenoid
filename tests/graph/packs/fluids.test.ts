@@ -101,6 +101,14 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
     const bad = evalPackFormula("COLEBROOK(-5, 0)");
     expect(isSolError(bad) && bad.code).toBe("#DOMAIN!");
   });
+  it("the Colebrook card is element-wise, as COLEBROOK is: a list of Reynolds numbers answers a factor each", () => {
+    const res = [1000, 50000, 100000];
+    const r = new ColebrookNode().data({ re: [res], rr: [0.0001] }).result as unknown as number[];
+    expect(r).toHaveLength(3);
+    res.forEach((re, i) => expect(r[i]).toBe(evalPackFormula(`COLEBROOK(${re}, 0.0001)`)));
+    const mixed = new ColebrookNode().data({ re: [[100000, -5]], rr: [0.0001] }).result as unknown as unknown[];
+    expect(isSolError(mixed[1]) && (mixed[1] as { code: string }).code).toBe("#DOMAIN!");
+  });
   it("PIPEROUGHNESS looks up the material's absolute roughness in mm", () => {
     expect(evalPackFormula('PIPEROUGHNESS("steel")')).toBe(0.045);
     const bad = evalPackFormula('PIPEROUGHNESS("adamantium")');
