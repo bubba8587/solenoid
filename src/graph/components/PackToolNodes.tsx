@@ -51,3 +51,4 @@ export function PipeRoughnessComponent({ data, emit }: NodeProps<PipeRoughnessNo
 
 export { TriangleSolverComponent } from "./TriangleSolverCard";
 export { UnitCircleComponent } from "./UnitCircleCard";
+export { CircleSolverComponent, RegularPolygonComponent, TwoPointsComponent } from "./GeometryCards";

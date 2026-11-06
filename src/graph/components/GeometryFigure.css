@@ -36,6 +36,22 @@
   white-space: nowrap;
 }
 
+/* A label in a panel's flow rather than placed on the drawing. */
+.solenoid-geo__label.solenoid-geo__label--flow {
+  position: static;
+  transform: none;
+}
+
+/* A corner panel of fields the drawing has no place for (a whole circle's measures, a polygon's totals). */
+.solenoid-geo__panel {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .solenoid-geo__letter {
   color: var(--text-muted);
   font-style: italic;
@@ -97,23 +113,55 @@
   padding: 0;
 }
 
-/* A figure's readout, stacked in its top-left corner. */
-.solenoid-geo__readout {
-  position: absolute;
-  top: 6px;
-  left: 8px;
-  display: grid;
-  grid-template-columns: auto auto;
-  column-gap: 5px;
-  font-size: 10px;
-  line-height: 13px;
+/* A card's control row above its figure: an input's socket on the edge, then the card's control and its readout. */
+.solenoid-node__io-row.solenoid-geo__control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: auto;
+  padding: 4px 0;
+}
+
+.solenoid-geo__dial--wired {
+  opacity: 0.55;
   pointer-events: none;
 }
 
-/* The Unit Circle's mini Angle Dial, in the figure's top-right corner. */
+/* A figure's readout: names and values in two columns. */
+.solenoid-geo__readout {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 5px;
+  font-size: 11px;
+  line-height: 15px;
+}
+
 .solenoid-geo__dial {
-  position: absolute;
-  top: 6px;
-  right: 6px;
   line-height: 0;
+}
+
+/* Two Points' coordinates: P1's pair over P2's, in the panel. */
+.solenoid-geo__pair {
+  display: flex;
+  gap: 8px;
+}
+
+/* A draggable point. */
+.solenoid-geo__handle {
+  cursor: grab;
+}
+
+.solenoid-geo__handle:active {
+  cursor: grabbing;
+}
+
+/* Two Points' line, as an equation, in the figure's bottom-left corner. */
+.solenoid-geo__equation {
+  position: absolute;
+  left: 8px;
+  bottom: 5px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  color: var(--text-muted);
 }

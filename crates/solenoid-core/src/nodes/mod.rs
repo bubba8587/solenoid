@@ -21,6 +21,7 @@ pub mod fields;
 mod finance;
 mod formula;
 pub mod frames;
+pub(crate) mod geometry;
 mod kit;
 mod lambda;
 mod list;
@@ -394,6 +395,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| list::run(kind, c))
         .or_else(|| matrix::run(kind, c))
         .or_else(|| packs::run(kind, c))
+        .or_else(|| geometry::run(kind, c))
         .or_else(|| visual::run(kind, c))
         .or_else(|| widgets::run(kind, c))
         .or_else(|| frames::run(kind, c))
@@ -446,6 +448,7 @@ pub const DIRECT: &[&str] = &[
     "ChartNode",
     "ChoiceLadderNode",
     "ChooseNode",
+    "CircleSolverNode",
     "ClampNode",
     "ColebrookNode",
     "ColorBlendNode",
@@ -609,6 +612,7 @@ pub const DIRECT: &[&str] = &[
     "ReconcileNode",
     "ReduceLambdaNode",
     "RegexNode",
+    "RegularPolygonNode",
     "RenameNode",
     "ReplaceValuesNode",
     "ReptNode",
@@ -681,6 +685,7 @@ pub const DIRECT: &[&str] = &[
     "TruncateTextNode",
     "TvmNode",
     "TwoInputMathNode",
+    "TwoPointsNode",
     "UniqueNode",
     "UnitCircleNode",
     "UnnestNode",

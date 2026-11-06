@@ -7,6 +7,7 @@ use std::rc::Rc;
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{holds_text, num_blank_zero, value_text, V};
 use crate::jsnum::{lower_text, round_half_up, trim_space};
+use crate::nodes::geometry;
 use crate::nodes::packs as k;
 
 pub const NAMES: &[&str] = &[
@@ -492,7 +493,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             V::List(Rc::new(counts.into_iter().map(V::Num).collect()))
         }
         "TRIANGLESOLVER" => {
-            let mut given: k::Parts = [None; 6];
+            let mut given: geometry::Parts = [None; 6];
             for (i, g) in given.iter_mut().enumerate() {
                 if let V::Num(n) = arg(a, i)
                     && n.is_finite()
@@ -507,7 +508,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             if given.iter().all(Option::is_none) && size(6).is_none() && size(7).is_none() {
                 return V::Null;
             }
-            V::List(Rc::new(k::solve_given_parts(&given, size(6), size(7), None).values.to_vec()))
+            V::List(Rc::new(geometry::solve_given_parts(&given, size(6), size(7), None).values.to_vec()))
         }
         _ => err(ErrorCode::Name, format!("Unknown function {name}")),
     }

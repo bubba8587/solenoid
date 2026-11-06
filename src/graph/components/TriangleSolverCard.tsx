@@ -1,37 +1,26 @@
 // [[C25]], [[B19]] spreadsheetHabits
 
-import { useCallback, useMemo, useState } from "react";
 import type { TriangleSolverNode as TriangleSolverNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
-import { InlineInputs, useConnectedInputs, useDraftCommit, INVALID_DRAFT } from "./inlineInput";
+import { InlineInputs } from "./inlineInput";
 import { EquationOutRow } from "./EquationNode";
 import { FrameDisplay } from "./FrameDisplay";
-import { formatScalar } from "./format";
 import { iterMin, iterMax } from "../nodes/mathUtils";
 import { TRIANGLE_DEFAULT } from "../nodes/triangle";
-import { parseFrameSource, frameSourceToText, isFrameValue, frameRowCount, type FrameSourceColumn, type FrameValue } from "../frame";
 import { isSolError } from "../errorValue";
-import { processGraph } from "../process";
-import { scheduleAutosave } from "../persistence";
-import { getOwningEditor, getOwningView } from "../activeGraph";
-import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { nodeDisplayName } from "../catalogUtils";
 import { previewed } from "../listPreview";
 import type { DisplayValue } from "./valueDisplayFormat";
-import { FrameOutRow, RowPager, stop, shortNum, shortText, labelWidth, fieldWidth, LABEL_H, LABEL_DEG_W } from "./GeometryFigure";
+import {
+  FrameOutRow, RowPager, FigureField, useKeyedTable, numAt, fieldBox, clearance, shortNum, shortText,
+  FIG_W, FIG_H, type Pt, type Box,
+} from "./GeometryFigure";
 
 const PARTS = ["a", "b", "c", "A", "B", "C"] as const;
 type Part = (typeof PARTS)[number];
-const W = 300, H = 236, PADX = 12, PADY = 12;
-type Pt = { x: number; y: number };
+const W = FIG_W, H = FIG_H, PADX = 12, PADY = 12;
 
 const STAND_IN = { a: 5, c: 4, B: 62 };
-
-/** A cell of `frame`'s column `name` at `row`, as a number when it is one. */
-function numAt(frame: FrameValue | null, name: string, row: number): number | undefined {
-  const v = frame?.columns.find((c) => c.name === name)?.values[row];
-  return typeof v === "number" && Number.isFinite(v) ? v : undefined;
-}
 
 /** The triangle's corners in the figure's box, drawn to scale (B at the origin, C along the base), or null. */
 function corners(t: Partial<Record<Part, number>>, fill = 1): Record<"A" | "B" | "C", Pt> | null {
@@ -46,16 +35,8 @@ function corners(t: Partial<Record<Part, number>>, fill = 1): Record<"A" | "B" |
   return { A: px(raw.A), B: px(raw.B), C: px(raw.C) };
 }
 
-type Box = { w: number; h: number };
-
 /** A label's box in figure units: the letter, the field sized to its text, the degree mark on an angle. */
-function labelBox(part: Part, text: string): Box {
-  const angle = part === part.toUpperCase();
-  return { w: labelWidth(text.length) + (angle ? LABEL_DEG_W : 0), h: LABEL_H };
-}
-
-/** How far a box's center must sit from a line, along the unit normal (nx, ny), for the box to clear it by `gap`. */
-const clearance = (b: Box, nx: number, ny: number, gap: number) => gap + Math.abs(nx) * (b.w / 2) + Math.abs(ny) * (b.h / 2);
+const labelBox = (part: Part, text: string): Box => fieldBox(text, part === part.toUpperCase());
 
 type Corners = Record<"A" | "B" | "C", Pt>;
 
@@ -118,99 +99,20 @@ function fitFigure(shape: Partial<Record<Part, number>>, boxes: Record<Part, Box
   return last!;
 }
 
-/** One part's label on the figure: the letter, then its value, keyed into the shown row while no frame is wired. */
-function PartLabel({ part, at, keyed, solved, isSolved, editable, onCommit }: {
-  part: Part; at: Pt; keyed: string; solved: number | undefined; isSolved: boolean; editable: boolean;
-  onCommit: (part: Part, text: string) => void;
-}) {
-  const [focused, setFocused] = useState(false);
-  const full = solved === undefined ? "" : formatScalar(solved);
-  const short = solved === undefined ? "" : shortNum(solved);
-  const { draft, setDraft, onBlur, onKeyDown } = useDraftCommit(
-    keyed,
-    (v) => v,
-    (t) => (t.trim() === "" || Number.isFinite(Number(t.trim())) ? t.trim() : INVALID_DRAFT),
-    (v) => onCommit(part, v),
-  );
-  const angle = part === part.toUpperCase();
-  return (
-    <div
-      className={`solenoid-geo__label${angle ? " solenoid-geo__label--angle" : ""}${isSolved ? " solenoid-geo__label--solved" : ""}`}
-      style={{ left: `${(at.x / W) * 100}%`, top: `${(at.y / H) * 100}%` }}
-    >
-      <span className="solenoid-geo__letter">{part}</span>
-      {editable ? (
-        <input
-          className="solenoid-geo__field nodrag"
-          value={focused ? draft : shortText(draft)}
-          placeholder={focused ? full : short}
-          aria-label={angle ? `Angle ${part} in degrees` : `Side ${part}`}
-          onChange={(e) => setDraft(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => { setFocused(false); onBlur(); }}
-          onKeyDown={onKeyDown}
-          onPointerDown={stop}
-          onMouseDown={stop}
-          style={{ width: fieldWidth((focused ? draft || full : shortText(draft) || short).length) }}
-        />
-      ) : (
-        <span className="solenoid-geo__value">{short || "–"}</span>
-      )}
-      {angle && <span className="solenoid-geo__deg">°</span>}
-    </div>
-  );
-}
-
 /** The Triangle Solver card: the shown row's triangle drawn large, its parts keyable on the figure, a pager through the
  *  rows, Valid, and the solved frame's Preview. */
 export function TriangleSolverComponent({ data, emit }: NodeProps<TriangleSolverNodeType>) {
-  const wired = useConnectedInputs(data.id).has("triangles");
-  const source = useMemo(() => parseFrameSource(data.frameText || TRIANGLE_DEFAULT), [data.frameText]);
-  const out = isFrameValue(data.cachedResult) ? data.cachedResult : null;
-  const rows = out ? frameRowCount(out) : 0;
-  const [shownRow, setShownRow] = useState(data.row);
-  const row = Math.min(Math.max(0, shownRow), Math.max(0, rows - 1));
+  const { wired, out, rows, row, step, commitCells, keyedAt } = useKeyedTable(data, TRIANGLE_DEFAULT, "triangles");
   const solvedHere = new Set(data.solvedByRow[row] ?? []);
   const parts = Object.fromEntries(PARTS.map((k) => [k, numAt(out, k, row)])) as Partial<Record<Part, number>>;
   const solvedP = corners(parts);
   // With nothing solvable a stand-in triangle keeps all six fields on the figure to key into.
   const shape = solvedP ? parts : STAND_IN;
-  const keyedAt = (part: Part) => source.find((c) => c.name === part)?.cells[row] ?? "";
   const boxes = Object.fromEntries(PARTS.map((k) => {
     const v = parts[k];
-    return [k, labelBox(k, (wired ? "" : shortText(keyedAt(k))) || (v === undefined ? "" : shortNum(v)))];
+    return [k, labelBox(k, shortText(keyedAt(k)) || (v === undefined ? "" : shortNum(v)))];
   })) as Record<Part, Box>;
   const { P, spots } = fitFigure(shape, boxes);
-
-  const save = useCallback(async (columns: FrameSourceColumn[]) => {
-    data.frameText = frameSourceToText(columns);
-    const ed = getOwningEditor(data.id), view = getOwningView(data.id);
-    if (ed && view) reconcileTypesAfterEdit(ed, view);
-    scheduleAutosave();
-    data.edited();
-    await processGraph(data.id);
-  }, [data]);
-
-  const commitPart = useCallback((part: Part, text: string) => {
-    const cols = source.map((c) => ({ ...c, cells: [...c.cells] }));
-    let col = cols.find((c) => c.name === part);
-    if (!col) {
-      col = { name: part, type: "number", cells: [] };
-      cols.push(col);
-    }
-    col.type = "number";
-    const height = Math.max(row + 1, ...cols.map((c) => c.cells.length));
-    for (const c of cols) while (c.cells.length < height) c.cells.push("");
-    col.cells[row] = text;
-    void save(cols);
-  }, [source, row, save]);
-
-  // The row shown is view state: stepping redraws the figure and computes nothing.
-  const step = (d: number) => {
-    data.row = Math.min(Math.max(0, row + d), Math.max(0, rows - 1));
-    setShownRow(data.row);
-  };
-
   const valid = Array.isArray(data.cachedValid) ? (data.cachedValid[row] ?? null) : data.cachedValid;
 
   return (
@@ -218,20 +120,24 @@ export function TriangleSolverComponent({ data, emit }: NodeProps<TriangleSolver
       <InlineInputs node={data} emit={emit} />
       <div className="solenoid-geo__figure">
         <div className="solenoid-geo__stage">
-        <svg viewBox={`0 0 ${W} ${H}`} className="solenoid-geo__svg" aria-hidden="true">
-          <polygon
-            points={`${P.A.x},${P.A.y} ${P.B.x},${P.B.y} ${P.C.x},${P.C.y}`}
-            fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinejoin="round"
-            {...(solvedP ? {} : { strokeDasharray: "4 4", opacity: 0.6 })}
-          />
-        </svg>
-        {PARTS.map((k) => (
-          <PartLabel
-            key={`${k}:${row}`}
-            part={k} at={spots[k]} keyed={wired ? "" : keyedAt(k)} solved={parts[k]}
-            isSolved={solvedHere.has(k)} editable={!wired} onCommit={commitPart}
-          />
-        ))}
+          <svg viewBox={`0 0 ${W} ${H}`} className="solenoid-geo__svg" aria-hidden="true">
+            <polygon
+              points={`${P.A.x},${P.A.y} ${P.B.x},${P.B.y} ${P.C.x},${P.C.y}`}
+              fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinejoin="round"
+              {...(solvedP ? {} : { strokeDasharray: "4 4", opacity: 0.6 })}
+            />
+          </svg>
+          {PARTS.map((k) => {
+            const angle = k === k.toUpperCase();
+            return (
+              <FigureField
+                key={`${k}:${row}`}
+                name={k} at={spots[k]} keyed={keyedAt(k)} solved={parts[k]} isSolved={solvedHere.has(k)}
+                editable={!wired} onCommit={(t) => void commitCells({ [k]: t })}
+                suffix={angle ? "°" : undefined} strong={angle} ariaLabel={angle ? `Angle ${k} in degrees` : `Side ${k}`}
+              />
+            );
+          })}
         </div>
         <RowPager row={row} rows={rows} onStep={step} />
       </div>

@@ -133,6 +133,7 @@ const CORE = path.resolve(__dirname, "../../crates/solenoid-core/src");
 /** Where a view field's name appears in the core as something other than a saved field, and what it is there. */
 const VIEW_NAMES_ELSEWHERE: Record<string, { counts: Record<string, number>; why: string }> = {
   "nodes/text.rs": { counts: { width: 3 }, why: "the padding cards' width input" },
+  "nodes/geometry.rs": { counts: { height: 3 }, why: "the Circle Solver's height (sagitta) column" },
   "nodes/fields.rs": { counts: { color: 1 }, why: "Chart Builder's color input, declaring its empty kind" },
   "nodes/list.rs": { counts: { height: 2 }, why: "Find Peaks' height input, in its List and Grid modes" },
   "nodes/qr.rs": { counts: { height: 1 }, why: "a key of the image it makes" },

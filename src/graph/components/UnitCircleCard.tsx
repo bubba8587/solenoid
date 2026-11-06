@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { UnitCircleNode as UnitCircleNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
-import { InlineInputs, useConnectedInputs } from "./inlineInput";
+import { useConnectedInputs } from "./inlineInput";
 import { FrameDisplay } from "./FrameDisplay";
 import { AngleDial } from "../AngleDial";
 import { isFrameValue, frameRowCount, type FrameValue } from "../frame";
@@ -11,7 +11,7 @@ import { isSolError } from "../errorValue";
 import { processGraph } from "../process";
 import { nodeDisplayName } from "../catalogUtils";
 import { previewed } from "../listPreview";
-import { FrameOutRow, RowPager, stop, shortNum, labelWidth, LABEL_H } from "./GeometryFigure";
+import { FrameOutRow, InputSocketRow, RowPager, stop, shortNum, labelWidth, LABEL_H } from "./GeometryFigure";
 
 const W = 300, H = 236, R = 90;
 const CX = W / 2, CY = H / 2;
@@ -32,8 +32,8 @@ function Label({ text, x, y }: { text: string; x: number; y: number }) {
   );
 }
 
-/** The Unit Circle card: the shown row's angle on the circle with its sine and cosine legs, a mini dial for the card's
- *  own angle, a pager through the rows, and the frame's Preview. */
+/** The Unit Circle card: the angle's socket beside its dial (the card's own angle, or the shown row's when wired) and
+ *  the trig readout, the circle with the sine and cosine legs, a pager through the rows, and the frame's Preview. */
 export function UnitCircleComponent({ data, emit }: NodeProps<UnitCircleNodeType>) {
   const wired = useConnectedInputs(data.id).has("angle");
   const out = isFrameValue(data.cachedResult) ? data.cachedResult : null;
@@ -45,9 +45,9 @@ export function UnitCircleComponent({ data, emit }: NodeProps<UnitCircleNodeType
     setShownRow(data.row);
   };
 
-  const standard = numIn(cellAt(out, "standard", row));
   const s = numIn(cellAt(out, "sin", row)), co = numIn(cellAt(out, "cos", row));
   const given = numIn(cellAt(out, "degrees", row));
+  const standard = given === undefined ? undefined : ((given % 360) + 360) % 360;
   const exact = (name: string) => { const v = cellAt(out, name, row); return typeof v === "string" && v !== "" ? v : undefined; };
   const drawn = standard !== undefined && s !== undefined && co !== undefined;
   const px = CX + R * (co ?? 0), py = CY - R * (s ?? 0);
@@ -62,7 +62,7 @@ export function UnitCircleComponent({ data, emit }: NodeProps<UnitCircleNodeType
   const arcR = 18, rad = ((standard ?? 0) * Math.PI) / 180;
   const arc = standard ? `M ${CX + arcR} ${CY} A ${arcR} ${arcR} 0 ${standard > 180 ? 1 : 0} 0 ${CX + arcR * Math.cos(rad)} ${CY - arcR * Math.sin(rad)}` : null;
 
-  const dialValue = data.literals.angle ?? 0;
+  const dialValue = wired ? (standard ?? 0) : (data.literals.angle ?? 0);
   const turnDial = (deg: number) => {
     data.literals.angle = deg;
     void processGraph(data.id);
@@ -70,7 +70,19 @@ export function UnitCircleComponent({ data, emit }: NodeProps<UnitCircleNodeType
 
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} />
+      <InputSocketRow node={data} socketKey="angle" emit={emit}>
+        <div className={`solenoid-geo__dial${wired ? " solenoid-geo__dial--wired" : ""}`} onPointerDown={stop} onMouseDown={stop}>
+          <AngleDial value={dialValue} step={15} size={64} counterclockwise onChange={turnDial} />
+        </div>
+        {given !== undefined && drawn && (
+          <div className="solenoid-geo__readout">
+            <span className="solenoid-geo__letter">θ</span><span className="solenoid-geo__value">{shortNum(given)}°</span>
+            <span className="solenoid-geo__letter">sin θ</span><span className="solenoid-geo__value">{sinText}</span>
+            <span className="solenoid-geo__letter">cos θ</span><span className="solenoid-geo__value">{cosText}</span>
+            <span className="solenoid-geo__letter">tan θ</span><span className="solenoid-geo__value">{tanText}</span>
+          </div>
+        )}
+      </InputSocketRow>
       <div className="solenoid-geo__figure">
         <div className="solenoid-geo__stage">
           <svg viewBox={`0 0 ${W} ${H}`} className="solenoid-geo__svg" aria-hidden="true">
@@ -93,19 +105,6 @@ export function UnitCircleComponent({ data, emit }: NodeProps<UnitCircleNodeType
           {drawn && <Label text={cosText} x={cosLabel.x} y={cosLabel.y} />}
           {drawn && <Label text={sinText} x={sinLabel.x} y={sinLabel.y} />}
         </div>
-        {given !== undefined && drawn && (
-          <div className="solenoid-geo__readout">
-            <span className="solenoid-geo__letter">θ</span><span className="solenoid-geo__value">{shortNum(given)}°</span>
-            <span className="solenoid-geo__letter">sin θ</span><span className="solenoid-geo__value">{sinText}</span>
-            <span className="solenoid-geo__letter">cos θ</span><span className="solenoid-geo__value">{cosText}</span>
-            <span className="solenoid-geo__letter">tan θ</span><span className="solenoid-geo__value">{tanText}</span>
-          </div>
-        )}
-        {!wired && (
-          <div className="solenoid-geo__dial" onPointerDown={stop} onMouseDown={stop}>
-            <AngleDial value={dialValue} step={15} size={40} counterclockwise onChange={turnDial} />
-          </div>
-        )}
         <RowPager row={row} rows={rows} onStep={step} />
       </div>
       <FrameOutRow node={data} socketKey="circle" emit={emit}>

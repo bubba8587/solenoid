@@ -45,6 +45,10 @@ specific item.
   per angle). The two cards share `GeometryFigure.tsx` (Recess, pager, Preview row, `shortNum` labels). Frames stay wide,
   one row per item and one column per quantity, so each column keeps its own unit; the popup's Cards view reads a row as
   a record.
+- **Circle Solver, Regular Polygon, Two Points** (the author 2026-11-06, "plan out and add interactive geometry nodes"):
+  the figure cards' Rust moved to `nodes/geometry.rs` with the shared `FigureTable` (read, units by `Measure`, answer);
+  the TypeScript to `GeometryFigure.tsx` (`useKeyedTable`, `FigureField`, `separate`). Next candidates: Polygon from
+  Points (shoelace area, perimeter, centroid, draggable vertices) and a Solids solver.
 - **Before pushing Rust, even a prototype test: `bash scripts/check-rust.sh <crate>`** (the crate bans `powi`, clippy
   runs with warnings as errors) and give a new test file a leaf citation, or coverage fails CI.
 

@@ -2,7 +2,7 @@
 // Trig is in RADIANS, per the core Trigonometry convention.
 
 import type { NodeCatalogEntry } from "../AddNodeMenu";
-import { TwoInputMathNode, TWO_INPUT_MATH_OP_META, TriangleSolverNode, UnitCircleNode } from "../nodeClasses";
+import { TwoInputMathNode, TWO_INPUT_MATH_OP_META, TriangleSolverNode, UnitCircleNode, CircleSolverNode, RegularPolygonNode, TwoPointsNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { GEOMETRY_PACK_FORMULAS } from "./geometryFormulas";
 
@@ -123,6 +123,36 @@ export const GEOMETRY_PACK: Pack = {
         description: "An angle on the unit circle, one row per angle: radians, its place in the first turn, quadrant, reference angle, the six trig functions and their exact values at multiples of 30° and 45°. A bare number is degrees.",
         keywords: "unit circle sine cosine tangent secant cosecant cotangent reference angle quadrant radians exact",
         create: () => new UnitCircleNode(),
+      },
+    },
+    {
+      path: ["Packs", "Geometry"],
+      entry: {
+        type: "geo-circle-solver",
+        label: "Circle Solver",
+        description: "A circle and an arc of it per row: radius, diameter, circumference, area, central angle, arc length, chord, sector, segment and height, from any parts that fix them. Extra parts are checked; two arcs that both fit say so.",
+        keywords: "circle arc sector segment chord sagitta radius diameter circumference central angle solve",
+        create: () => new CircleSolverNode(),
+      },
+    },
+    {
+      path: ["Packs", "Geometry"],
+      entry: {
+        type: "geo-regular-polygon",
+        label: "Regular Polygon",
+        description: "A regular polygon per row: number of sides, side, circumradius, apothem, perimeter, area, interior and exterior angles, from n or an angle and one size, or from two sizes. Extra parts are checked.",
+        keywords: "regular polygon hexagon pentagon octagon apothem circumradius inradius interior exterior angle solve",
+        create: () => new RegularPolygonNode(),
+      },
+    },
+    {
+      path: ["Packs", "Geometry"],
+      entry: {
+        type: "geo-two-points",
+        label: "Two Points",
+        description: "Two points per row and the line through them: distance, run and rise, midpoint, slope, direction, both intercepts and the equation.",
+        keywords: "two points line slope distance midpoint intercept equation gradient coordinate",
+        create: () => new TwoPointsNode(),
       },
     },
     // Menu placement is by subject, but the arrays stay grouped by wave because the tests slice them that way.

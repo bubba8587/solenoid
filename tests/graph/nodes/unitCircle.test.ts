@@ -20,17 +20,27 @@ describe("Unit Circle", () => {
     expect(r.cos).toBeCloseTo(Math.sqrt(3) / 2, 15);
     expect(r.tan).toBeCloseTo(1 / Math.sqrt(3), 12);
     expect([r["sin exact"], r["cos exact"], r["tan exact"]]).toEqual(["1/2", "√3/2", "√3/3"]);
-    expect([r.quadrant, r.reference]).toEqual([1, 30]);
+    expect(r.reference).toBe(30);
+    expect(r.standard).toBeUndefined();
   });
-  it("one row per angle; quadrant, reference angle and the first turn", () => {
+  it("one row per angle, each with its reference angle", () => {
     const f = run([150, 210, 330, 405, -30]);
     expect(f.columns.find((c) => c.name === "reference")!.values).toEqual([30, 30, 30, 45, 30]);
-    expect(f.columns.find((c) => c.name === "quadrant")!.values).toEqual([2, 3, 4, 1, 4]);
-    expect(f.columns.find((c) => c.name === "standard")!.values).toEqual([150, 210, 330, 45, 330]);
+    expect(f.columns.find((c) => c.name === "sin exact")!.values).toEqual(["1/2", "-1/2", "-1/2", "√2/2", "-1/2"]);
+  });
+  it("every multiple of 15° is exact, signed by its quadrant", () => {
+    const exact = (deg: number) => { const r = row(run(deg)); return [r["sin exact"], r["cos exact"], r["tan exact"]]; };
+    expect(exact(15)).toEqual(["(√6-√2)/4", "(√6+√2)/4", "2-√3"]);
+    expect(exact(75)).toEqual(["(√6+√2)/4", "(√6-√2)/4", "2+√3"]);
+    expect(exact(165)).toEqual(["(√6-√2)/4", "-(√6+√2)/4", "√3-2"]);
+    expect(exact(255)).toEqual(["-(√6+√2)/4", "-(√6-√2)/4", "2+√3"]);
+    expect(exact(285)).toEqual(["-(√6+√2)/4", "(√6-√2)/4", "-2-√3"]);
+    const r = row(run(15));
+    expect(r.sin).toBeCloseTo(Math.sin(Math.PI / 12), 15);
+    expect(r.tan).toBeCloseTo(2 - Math.sqrt(3), 14);
   });
   it("on an axis: no quadrant, exact zeros, and the undefined ones are #DIV/0!", () => {
     const r = row(run(90));
-    expect(r.quadrant).toBeNull();
     expect([r.sin, r.cos]).toEqual([1, 0]);
     expect([code(r.tan), code(r.sec), r.cot, r.csc]).toEqual(["#DIV/0!", "#DIV/0!", 0, 1]);
     expect(r["tan exact"]).toBeNull();
@@ -44,7 +54,7 @@ describe("Unit Circle", () => {
   it("[[C25]] an angle's unit converts; another unit is #UNIT!; the columns carry deg and rad", () => {
     const rad = { __unitCell: true as const, value: Math.PI / 2, dim: { angle: 1 }, display: "rad" };
     const f = run(rad);
-    expect(row(f).standard).toBe(90);
+    expect(row(f).sin).toBe(1);
     expect(f.columns.find((c) => c.name === "degrees")!.unit?.display).toBe("deg");
     expect(f.columns.find((c) => c.name === "radians")!.unit?.display).toBe("rad");
     const m = { __unitCell: true as const, value: 2, dim: { length: 1 }, display: "m" };
