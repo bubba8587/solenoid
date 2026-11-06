@@ -52,5 +52,6 @@ export * from "./nodes/chemistry";
 export * from "./nodes/emSpectrum";
 export * from "./nodes/health";
 export * from "./nodes/triangle";
+export * from "./nodes/unitCircle";
 export * from "./nodes/tornado";
 export * from "./nodes/composite";

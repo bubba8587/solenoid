@@ -507,6 +507,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("TruncateTextNode", "text", Empty::Fallback(Fill::Text(""))),
     ("TwoInputMathNode", "a", Empty::Fallback(Fill::Num(0.0))),
     ("TwoInputMathNode", "b", Empty::Fallback(Fill::Num(0.0))),
+    ("UnitCircleNode", "angle", Empty::Fallback(Fill::Num(0.0))),
     ("UnnestNode", "column", Empty::Fallback(Fill::Text(""))),
     ("UnpivotNode", "idColumns", Empty::Fallback(Fill::Text(""))),
     ("UnpivotNode", "valueColumns", Empty::Fallback(Fill::Text(""))),

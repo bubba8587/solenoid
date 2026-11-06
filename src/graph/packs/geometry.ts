@@ -2,7 +2,7 @@
 // Trig is in RADIANS, per the core Trigonometry convention.
 
 import type { NodeCatalogEntry } from "../AddNodeMenu";
-import { TwoInputMathNode, TWO_INPUT_MATH_OP_META, TriangleSolverNode } from "../nodeClasses";
+import { TwoInputMathNode, TWO_INPUT_MATH_OP_META, TriangleSolverNode, UnitCircleNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { GEOMETRY_PACK_FORMULAS } from "./geometryFormulas";
 
@@ -113,6 +113,16 @@ export const GEOMETRY_PACK: Pack = {
         description: "Any three parts, one a side, solves the rest per row: sides, degrees, area, perimeter, drawn to scale. Extra parts are checked; an ambiguous SSA says so.",
         keywords: "triangle solve sides angles law sines cosines sss sas asa aas ssa",
         create: () => new TriangleSolverNode(),
+      },
+    },
+    {
+      path: ["Packs", "Geometry"],
+      entry: {
+        type: "geo-unit-circle",
+        label: "Unit Circle",
+        description: "An angle on the unit circle, one row per angle: radians, its place in the first turn, quadrant, reference angle, the six trig functions and their exact values at multiples of 30° and 45°. A bare number is degrees.",
+        keywords: "unit circle sine cosine tangent secant cosecant cotangent reference angle quadrant radians exact",
+        create: () => new UnitCircleNode(),
       },
     },
     // Menu placement is by subject, but the arrays stay grouped by wave because the tests slice them that way.

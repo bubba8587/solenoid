@@ -73,7 +73,7 @@ import {
   IsInNode, TallyNode,
   ReverseTextNode, SpellNumberNode,
   SolarPositionNode, SunriseSunsetNode, MoonPhaseNode,
-  ElementNode, MolarMassNode, ResistorCodeNode, EmSpectrumNode, HrZonesNode, PipeRoughnessNode, TriangleSolverNode,
+  ElementNode, MolarMassNode, ResistorCodeNode, EmSpectrumNode, HrZonesNode, PipeRoughnessNode, TriangleSolverNode, UnitCircleNode,
   PromoNode,
   PlaceholderNode,
   ExpectNode,
@@ -159,7 +159,7 @@ import {
   ExpectComponent,
   TornadoComponent,
 } from "./components";
-import { EmSpectrumComponent, HrZonesComponent, PipeRoughnessComponent, TriangleSolverComponent } from "./components/PackToolNodes";
+import { EmSpectrumComponent, HrZonesComponent, PipeRoughnessComponent, TriangleSolverComponent, UnitCircleComponent } from "./components/PackToolNodes";
 
 export type AnyNodeComponent = JSXElementConstructor<{
   data: GraphNode & { width?: number; height?: number };
@@ -488,6 +488,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [HrZonesNode,           comp(HrZonesComponent)],
   [PipeRoughnessNode,     comp(PipeRoughnessComponent)],
   [TriangleSolverNode,    comp(TriangleSolverComponent)],
+  [UnitCircleNode,        comp(UnitCircleComponent)],
   [MolarMassNode,         comp(MolarMassComponent)],
   [PromoNode,             comp(PromoComponent)],
   [PlaceholderNode,       comp(PlaceholderComponent)],

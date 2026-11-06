@@ -41,6 +41,10 @@ specific item.
   the Record pager. Units ride the columns (angles `deg`). Area and perimeter solve where they fix one triangle (`sized_parts`), a mirror
   or acute/obtuse pair is `#SOLVE!`, and a size the solve didn't need checks; text in a part is `#VALUE!`. Labels sit off
   each side along its normal and off each vertex along its bisector, the triangle shrinking until they fit. The old per-part sockets and `annotationFor` are gone; `TRIANGLESOLVER` takes area and perimeter as arguments 7 and 8.
+- **Unit Circle** (the author 2026-11-06): the geometry pack's second figure card, an angle list in, a frame out (one row
+  per angle). The two cards share `GeometryFigure.tsx` (Recess, pager, Preview row, `shortNum` labels). Frames stay wide,
+  one row per item and one column per quantity, so each column keeps its own unit; the popup's Cards view reads a row as
+  a record.
 - **Before pushing Rust, even a prototype test: `bash scripts/check-rust.sh <crate>`** (the crate bans `powi`, clippy
   runs with warnings as errors) and give a new test file a leaf citation, or coverage fails CI.
 

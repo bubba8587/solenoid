@@ -682,6 +682,7 @@ pub const DIRECT: &[&str] = &[
     "TvmNode",
     "TwoInputMathNode",
     "UniqueNode",
+    "UnitCircleNode",
     "UnnestNode",
     "UnpivotNode",
     "UrlEncodeNode",

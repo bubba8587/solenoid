@@ -10,7 +10,7 @@ use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
 use crate::frame::FrameColType;
-use crate::jsnum::{nan_max, nan_min, round_half_up};
+use crate::jsnum::{nan_max, nan_min, number_to_string, round_half_up};
 use crate::unit_catalog::fc_unit_to_unit;
 use crate::unit_dims::{dim_equal, dim_pow, Dim};
 use crate::unit_value::{to_precision, unit_error};
@@ -40,6 +40,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "ConvertNode" => convert(c),
         "TornadoNode" => tornado(c),
         "TriangleSolverNode" => triangle_solver(c),
+        "UnitCircleNode" => unit_circle(c),
         _ => return None,
     })
 }
@@ -1664,4 +1665,145 @@ fn triangle_column(k: usize, side: &Option<Json>, area: &Option<Json>) -> Column
         _ => Some(super::columns::unit_json(&Dim::from([("angle".to_string(), 1.0)]), Some("deg"))),
     };
     Column { unit, ..super::frames::num_column(TRIANGLE_COLUMNS[k], Vec::new()) }
+}
+
+// ─── The Unit Circle ────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// The card's columns, one row per angle.
+const CIRCLE_COLUMNS: [&str; 14] = [
+    "degrees",
+    "radians",
+    "standard",
+    "quadrant",
+    "reference",
+    "sin",
+    "cos",
+    "tan",
+    "csc",
+    "sec",
+    "cot",
+    "sin exact",
+    "cos exact",
+    "tan exact",
+];
+
+/// The angles of a turn with an exact sine and cosine: degrees, sine, cosine, and the three written exactly (an
+/// undefined tangent left blank).
+fn exact_at(standard: f64) -> Option<(f64, f64, &'static str, &'static str, &'static str)> {
+    let (h, r2, r3) = (0.5, std::f64::consts::SQRT_2 / 2.0, 3f64.sqrt() / 2.0);
+    let table: [(f64, f64, f64, &str, &str, &str); 16] = [
+        (0.0, 0.0, 1.0, "0", "1", "0"),
+        (30.0, h, r3, "1/2", "√3/2", "√3/3"),
+        (45.0, r2, r2, "√2/2", "√2/2", "1"),
+        (60.0, r3, h, "√3/2", "1/2", "√3"),
+        (90.0, 1.0, 0.0, "1", "0", ""),
+        (120.0, r3, -h, "√3/2", "-1/2", "-√3"),
+        (135.0, r2, -r2, "√2/2", "-√2/2", "-1"),
+        (150.0, h, -r3, "1/2", "-√3/2", "-√3/3"),
+        (180.0, 0.0, -1.0, "0", "-1", "0"),
+        (210.0, -h, -r3, "-1/2", "-√3/2", "√3/3"),
+        (225.0, -r2, -r2, "-√2/2", "-√2/2", "1"),
+        (240.0, -r3, -h, "-√3/2", "-1/2", "√3"),
+        (270.0, -1.0, 0.0, "-1", "0", ""),
+        (300.0, -r3, h, "-√3/2", "1/2", "-√3"),
+        (315.0, -r2, r2, "-√2/2", "√2/2", "-1"),
+        (330.0, -h, r3, "-1/2", "√3/2", "-√3/3"),
+    ];
+    table.iter().find(|row| row.0 == standard).map(|&(_, s, c, st, ct, tt)| (s, c, st, ct, tt))
+}
+
+/// One angle's row: the angle as given in degrees and radians, where it lands in the first turn, its quadrant (blank
+/// on an axis) and reference angle, the six functions (undefined ones `#DIV/0!`), and the exact forms where the angle
+/// has them.
+fn circle_row(deg: f64) -> [V; 14] {
+    let standard = match to_precision(deg.rem_euclid(360.0), 12) {
+        x if x >= 360.0 => 0.0,
+        x => x,
+    };
+    let exact = exact_at(standard);
+    let (s, co) = match exact {
+        Some((s, co, ..)) => (s, co),
+        None => (sin(standard * D2R), cos(standard * D2R)),
+    };
+    let on_axis = standard % 90.0 == 0.0;
+    let quadrant = if on_axis { V::Null } else { V::Num((standard / 90.0).floor() + 1.0) };
+    let reference = match standard {
+        x if x <= 90.0 => x,
+        x if x <= 180.0 => 180.0 - x,
+        x if x <= 270.0 => x - 180.0,
+        x => 360.0 - x,
+    };
+    let at = number_to_string(standard);
+    let ratio = |num: f64, den: f64, name: &str| {
+        if den == 0.0 {
+            err(ErrorCode::DivZero, format!("{name} is undefined at {at}°"))
+        } else {
+            V::Num(num / den)
+        }
+    };
+    let text = |t: Option<&str>| t.filter(|t| !t.is_empty()).map_or(V::Null, V::str);
+    [
+        V::Num(deg),
+        V::Num(deg * D2R),
+        V::Num(standard),
+        quadrant,
+        V::Num(reference),
+        V::Num(s),
+        V::Num(co),
+        ratio(s, co, "tan"),
+        ratio(1.0, s, "csc"),
+        ratio(1.0, co, "sec"),
+        ratio(co, s, "cot"),
+        text(exact.map(|e| e.2)),
+        text(exact.map(|e| e.3)),
+        text(exact.map(|e| e.4)),
+    ]
+}
+
+/// Unit Circle: one row per angle, the wired angles or the card's own. A bare number is degrees; an angle with a unit
+/// converts.
+fn unit_circle(c: &mut Call) -> Answer {
+    let given = c.read("angle");
+    let items: Vec<V> = match &given {
+        V::List(xs) => xs.to_vec(),
+        v => vec![v.clone()],
+    };
+    let angle: Dim = Dim::from([("angle".to_string(), 1.0)]);
+    let mut out: Vec<Vec<V>> = (0..14).map(|_| Vec::with_capacity(items.len())).collect();
+    for item in items {
+        let row = match item {
+            V::Num(d) if d.is_finite() => circle_row(d),
+            V::Unit(u) if dim_equal(&u.dim, &angle) => circle_row(to_precision(u.value * R2D, 15)),
+            V::Null | V::Undef => std::array::from_fn(|_| V::Null),
+            e if e.is_sol_error() => std::array::from_fn(|_| e.clone()),
+            other => {
+                let e = match other {
+                    V::Unit(_) => V::err(unit_error("The angle must be an angle.")),
+                    V::Date(_) => err(ErrorCode::Type, "An angle can't be a date."),
+                    V::Num(_) => err(ErrorCode::Domain, "The angle must be finite."),
+                    _ => err(ErrorCode::Value, "The angle must be a number."),
+                };
+                std::array::from_fn(|_| e.clone())
+            }
+        };
+        for (k, v) in row.into_iter().enumerate() {
+            out[k].push(v);
+        }
+    }
+    let deg = super::columns::unit_json(&angle, Some("deg"));
+    let rad = super::columns::unit_json(&angle, Some("rad"));
+    let columns = CIRCLE_COLUMNS
+        .iter()
+        .zip(out)
+        .enumerate()
+        .map(|(k, (name, values))| match k {
+            0 | 2 | 4 => Column { unit: Some(deg.clone()), ..super::frames::num_column(name, values) },
+            1 => Column { unit: Some(rad.clone()), ..super::frames::num_column(name, values) },
+            11..=13 => Column { ty: FrameColType::String, ..super::frames::num_column(name, values) },
+            _ => super::frames::num_column(name, values),
+        })
+        .collect();
+    let frame = super::frames::frame_v(columns);
+    c.show("cachedResult", frame.clone());
+    Ok(vec![("circle".into(), frame)])
 }
