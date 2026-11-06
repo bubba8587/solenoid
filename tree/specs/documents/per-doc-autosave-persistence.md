@@ -82,6 +82,26 @@ Tests:
 - `sourceInvariants.test.ts`: every `documentStore` method whose body loads a graph references `captureCurrent` and `isGraphRebuilding` or is sanctioned with its reason, and every sanctioned entry is still a real method that loads.
 - `documentStorePersist.test.ts`: a capture that throws returns false, raises one notice, and a swap verb stays put; a file the version gate refuses leaves no library entry and keeps the previous document current.
 
+## Examples
+
+A seed opened from the seed menus, an example link (`?seed=`), a card's Reference page or first run is an **example**
+(the author 2026-11-06): a document tagged `seed: { id, fingerprint }`, live and autosaved like any other, so a reload
+brings it back, but left out of the file tree and the Navigator's search (`list`, `searchable`). The file tree's own
+New from template makes a document at once (`asDocument`), since that is an explicit create in a folder.
+
+- **Changed** means the graph's fingerprint differs from the one taken when the load settled (`graphFingerprint`: the
+  graph without its save time and each card's auto-fitted `width` and `height`, which a card measures after it renders;
+  a size the user drags is `size`, and counts). The time alone can't tell: several seeds' cards re-measure on load.
+- **Leaving** it, every verb that puts another document on screen (open, new, new from template, import) first asks
+  `leaveExample`: an example as it opened is dropped once the switch is made; a changed one raises the dialog, Discard
+  changes, with Keep (it becomes a document), Discard (dropped) and Cancel (the verb stays put). Duplicate and Save As
+  keep the copy and drop the example; a file save keeps it.
+- **Restore** keeps an example left behind only if it was changed, then as a document, and drops it otherwise; the
+  current one stays an example.
+
+Tests: `documentExamples.test.ts`: outside the tree, left as opened without asking, Keep, Discard, Cancel, a file save
+keeping it, the tree's New from template, and what the fingerprint sees.
+
 ## Open drafts
 
 A text field's draft stays local until blur ([[B19]] spreadsheetHabits), so a capture could miss what the user typed. Every draft field registers with `draftFlush.ts` while its draft differs from the node (`usePendingDraft`: every `useDraftCommit` field, a Format Controller's custom pattern, the Note body, the Report overlay's source, the Record layout field). `flushDrafts()` commits each one as if it had blurred. `captureCurrent()` flushes first, so every swap verb (open, new, duplicate, import, reload) commits the draft into the outgoing document; a file save flushes before it serializes; `pagehide` flushes and captures when a draft or a pending autosave exists, and so does the desktop window's close request (`onCloseRequested`), because closing a Tauri window tears the webview down without a guaranteed `pagehide`. The close handler never throws, since a failed handler would leave the window unable to close; the window's `core:window:allow-destroy` permission lets the handler's close go through. The idle autosave timer alone captures with `keepDrafts`, because committing a field the user is still typing in would reconcile a half-typed Note frontmatter or Report template and prune its cables.

@@ -242,13 +242,14 @@ describe("[[B12]] losslessSaves — every transform returns new objects, never m
       ["renameFolder", () => core.renameFolder(core.moveDocument(lib, "a", "F/G"), "F", "H")],
       ["moveFolder", () => core.moveFolder(core.moveDocument(lib, "a", "F/G"), "F/G", "")],
       ["removeFolder", () => core.removeFolder(core.moveDocument(lib, "a", "F"), "F")],
+      ["keepDocument", () => core.keepDocument(deepFreeze({ ...lib, documents: lib.documents.map((d) => ({ ...d, seed: { id: "s", fingerprint: "0" } })) }), "a")],
     ];
     for (const [name, run] of calls) {
       expect(run, `${name} mutated a frozen SolDoc/DocLibrary in place — persist() will never write the change`).not.toThrow();
     }
     // The walk stays complete: a NEW exported transform must be added above.
     const fns = Object.entries(core).filter(([, v]) => typeof v === "function").map(([k]) => k);
-    const covered = new Set([...calls.map(([n]) => n), "emptyLibrary", "getCurrent", "uniqueName", "validateDoc", "validateLibrary", "normalizeFolder", "parentFolder", "allFolders", "documentsIn"]);
+    const covered = new Set([...calls.map(([n]) => n), "graphFingerprint", "seedEdited", "emptyLibrary", "getCurrent", "uniqueName", "validateDoc", "validateLibrary", "normalizeFolder", "parentFolder", "allFolders", "documentsIn"]);
     const missing = fns.filter((f) => !covered.has(f));
     expect(missing, `new documentStoreCore export(s) not covered by the immutableDocStore freeze walk: ${missing.join(", ")}`).toEqual([]);
   });

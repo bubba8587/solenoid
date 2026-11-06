@@ -35,6 +35,11 @@ export function ConfirmDialog() {
           >
             {pending.cancelLabel ?? "Cancel"}
           </button>
+          {pending.altLabel && (
+            <button type="button" className="solenoid-confirm__btn" onClick={() => answerConfirm("alt")}>
+              {pending.altLabel}
+            </button>
+          )}
           <button
             type="button"
             className="solenoid-confirm__btn solenoid-confirm__btn--primary"

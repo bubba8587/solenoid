@@ -6,27 +6,35 @@ export type ConfirmOptions = {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** A third answer between the two (Discard, beside Keep and Cancel); `requestChoice` reads it. */
+  altLabel?: string;
 };
 
-type Pending = ConfirmOptions & { resolve: (ok: boolean) => void };
+export type ConfirmChoice = "confirm" | "alt" | "cancel";
+type Pending = ConfirmOptions & { resolve: (choice: ConfirmChoice) => void };
 
 let _pending: Pending | null = null;
 const { notify, subscribe } = createNotifier();
 
 export function requestConfirm(opts: ConfirmOptions | string): Promise<boolean> {
   const options: ConfirmOptions = typeof opts === "string" ? { message: opts } : opts;
-  return new Promise<boolean>((resolve) => {
-    _pending?.resolve(false);
+  return requestChoice({ ...options, altLabel: undefined }).then((c) => c === "confirm");
+}
+
+/** A dialog with a third button (`altLabel`): which of the three the user answered; Escape and the overlay cancel. */
+export function requestChoice(options: ConfirmOptions): Promise<ConfirmChoice> {
+  return new Promise<ConfirmChoice>((resolve) => {
+    _pending?.resolve("cancel");
     _pending = { ...options, resolve };
     notify();
   });
 }
 
-export function answerConfirm(ok: boolean) {
+export function answerConfirm(answer: boolean | ConfirmChoice) {
   const p = _pending;
   _pending = null;
   notify();
-  p?.resolve(ok);
+  p?.resolve(answer === true ? "confirm" : answer === false ? "cancel" : answer);
 }
 
 export const confirmStore = {

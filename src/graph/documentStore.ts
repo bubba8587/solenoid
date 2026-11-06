@@ -6,6 +6,7 @@ import { isGraphRebuilding } from "./process";
 import { loadRevealStore } from "./loadReveal";
 import { chooseWriteSlot, chooseReadSlot, CURRENT_SAVE_VERSION } from "./persistenceCore";
 import { pushNotice, dismissNotice } from "./noticeStore";
+import { requestChoice } from "./confirmStore";
 import { saveTimeStore } from "./saveTimeStore";
 import { SEEDS, DEFAULT_SEED_ID, type SeedId } from "./seeds";
 import {
@@ -31,6 +32,9 @@ import {
   removeFolder,
   renameFolder,
   normalizeFolder,
+  keepDocument,
+  seedEdited,
+  graphFingerprint,
   type DocLibrary,
   type SolDoc,
 } from "./documentStoreCore";
@@ -221,6 +225,36 @@ function makeDoc(name: string, graph: SavedGraph, folder?: string): SolDoc {
   return { id: newId(), name: uniqueName(_lib, name), graph, updatedAt: Date.now(), ...(folder ? { folder } : {}) };
 }
 
+/** Before a verb puts another document on screen: an example left as it opened goes (`drop`, once the switch is
+ *  made); one the user changed asks first, Keep making it a document, Discard dropping it, Cancel staying. */
+async function leaveExample(): Promise<{ go: boolean; drop?: string }> {
+  const cur = getCurrent(_lib);
+  if (!cur?.seed) return { go: true };
+  if (!seedEdited(cur)) return { go: true, drop: cur.id };
+  const choice = await requestChoice({
+    message: `Discard changes to “${cur.name}”? It's an example, so your changes aren't saved unless you keep it as a document.`,
+    confirmLabel: "Keep",
+    altLabel: "Discard",
+    cancelLabel: "Cancel",
+  });
+  if (choice === "cancel") return { go: false };
+  if (choice === "confirm") {
+    _lib = keepDocument(_lib, cur.id);
+    persist();
+    notify();
+    return { go: true };
+  }
+  return { go: true, drop: cur.id };
+}
+
+/** The example left behind, gone once another document is current. */
+function dropExample(id: string | undefined): void {
+  if (!id || id === _lib.currentId || !_lib.documents.some((d) => d.id === id)) return;
+  _lib = removeDocument(_lib, id);
+  persist();
+  notify();
+}
+
 /** Loads the current document and adopts the loaded form, so a load's normalizing never reads as an edit. */
 async function loadCurrent(graph: SavedGraph): Promise<boolean> {
   if (!(await loadGraph(graph))) return false;
@@ -257,8 +291,9 @@ export const documentStore = {
   subscribe,
   version,
 
+  /** The file tree's documents: every one but an example not yet kept. */
   list(): DocMeta[] {
-    return _lib.documents.map((d) => ({
+    return _lib.documents.filter((d) => !d.seed).map((d) => ({
       id: d.id,
       name: d.name,
       updatedAt: d.updatedAt,
@@ -269,7 +304,7 @@ export const documentStore = {
   },
 
   /** Each document's name, folder and last captured graph, for the Navigator's Everywhere search; read, never kept. */
-  searchable: () => _lib.documents.map((d) => ({ id: d.id, name: d.name, folder: d.folder ?? "", graph: d.graph })),
+  searchable: () => _lib.documents.filter((d) => !d.seed).map((d) => ({ id: d.id, name: d.name, folder: d.folder ?? "", graph: d.graph })),
 
   /** Every folder path, sorted; a document's folder and its ancestors included. */
   folders: (): string[] => allFolders(_lib),
@@ -330,8 +365,22 @@ export const documentStore = {
   currentName: (): string => getCurrent(_lib)?.name ?? "Untitled",
   currentFilePath: (): string | null => getCurrent(_lib)?.filePath ?? null,
 
+  /** Is the open document an example not yet kept? */
+  currentIsExample: (): boolean => !!getCurrent(_lib)?.seed,
+  /** Has the open example been changed since it opened? */
+  currentExampleEdited: (): boolean => { const cur = getCurrent(_lib); return !!cur && seedEdited(cur); },
+
+  /** Keeps the open example as a document. */
+  keepCurrent(): void {
+    if (!_lib.currentId) return;
+    _lib = keepDocument(_lib, _lib.currentId);
+    persist();
+    notify();
+  },
+
   bindToPath(id: string, filePath: string, name?: string): void {
-    _lib = setDocPath(_lib, id, filePath, name);
+    // A file save is a keep: the example becomes a document.
+    _lib = setDocPath(keepDocument(_lib, id), id, filePath, name);
     persist();
     notify();
   },
@@ -350,6 +399,11 @@ export const documentStore = {
     const lib = readLibraryFromStorage();
     if (!lib || lib.documents.length === 0) return false;
     _lib = lib;
+    // An example left open elsewhere stays only if it was changed, then as a document: work is never lost.
+    for (const d of lib.documents) {
+      if (!d.seed || d.id === _lib.currentId) continue;
+      _lib = seedEdited(d) ? keepDocument(_lib, d.id) : removeDocument(_lib, d.id);
+    }
     persist();
     notify();
     await showCurrentSafe();
@@ -389,29 +443,50 @@ export const documentStore = {
   async newBlank(folder?: string): Promise<void> {
     if (isGraphRebuilding()) return;
     if (!this.captureCurrent()) return;
+    const leave = await leaveExample();
+    if (!leave.go) return;
     _lib = addDocument(_lib, makeDoc("Untitled", { ...EMPTY_GRAPH }, folder));
+    dropExample(leave.drop);
     persist();
     notify();
     await loadGraph({ ...EMPTY_GRAPH });
   },
 
-  async newFromTemplate(seedId: SeedId, folder?: string): Promise<void> {
+  /** Opens a seed. From the file tree (`asDocument`, into a folder) it is a document at once; from the seed menus, an
+   *  example link or first run it is an example: kept out of the file tree, dropped when left unchanged, and asked
+   *  about when left changed. */
+  async newFromTemplate(seedId: SeedId, folder?: string, opts?: { asDocument?: boolean }): Promise<void> {
     const seed = SEEDS[seedId];
     if (!seed) return;
     if (isGraphRebuilding()) return;
     if (!this.captureCurrent()) return;
-    _lib = addDocument(_lib, makeDoc(seed.label, seed.graph, folder));
+    const leave = await leaveExample();
+    if (!leave.go) return;
+    const doc = makeDoc(seed.label, seed.graph, folder);
+    if (!opts?.asDocument) doc.seed = { id: seedId, fingerprint: graphFingerprint(seed.graph) };
+    _lib = addDocument(_lib, doc);
+    dropExample(leave.drop);
     persist();
     notify();
-    await loadGraph(seed.graph);
+    // The load's normalized form is adopted, not an edit; the fingerprint is taken from it.
+    if (await loadCurrent(seed.graph)) {
+      const cur = getCurrent(_lib);
+      if (cur?.seed) {
+        _lib = { ..._lib, documents: _lib.documents.map((d) => (d.id === cur.id ? { ...d, seed: { id: seedId, fingerprint: graphFingerprint(d.graph) } } : d)) };
+        persist();
+      }
+    }
   },
 
   async open(id: string): Promise<void> {
     if (id === _lib.currentId) return;
     if (isGraphRebuilding()) return;
     if (!this.captureCurrent()) return;
+    const leave = await leaveExample();
+    if (!leave.go) return;
     const prevId = _lib.currentId;
     _lib = setCurrent(_lib, id);
+    dropExample(leave.drop);
     persist();
     notify();
     await showCurrentSafe(prevId);
@@ -421,7 +496,10 @@ export const documentStore = {
     if (isGraphRebuilding()) return;
     if (!this.captureCurrent()) return;
     const g = serializeGraph() ?? { ...EMPTY_GRAPH };
+    // Saving an example under a name keeps the copy; the example itself is done with.
+    const example = getCurrent(_lib)?.seed ? _lib.currentId ?? undefined : undefined;
     _lib = addDocument(_lib, makeDoc(name.trim() || "Untitled", g));
+    dropExample(example);
     persist();
     notify();
   },
@@ -443,6 +521,8 @@ export const documentStore = {
     if (!this.captureCurrent()) return;
     const prevId = _lib.currentId;
     _lib = duplicateDocument(_lib, id, newId(), uniqueName(_lib, `${src.name} copy`));
+    // A duplicated example lives on as the copy, a document.
+    if (src.seed) dropExample(src.id);
     persist();
     notify();
     await showCurrentSafe(prevId);
@@ -473,6 +553,8 @@ export const documentStore = {
       return;
     }
     if (!this.captureCurrent()) return;
+    const leave = await leaveExample();
+    if (!leave.go) return;
     const prevId = _lib.currentId;
     graph.meta = { ...graph.meta, foreign: true, networkAllowed: undefined, scriptsAllowed: undefined };
     const doc = makeDoc(name, graph);
@@ -484,6 +566,7 @@ export const documentStore = {
       doc.fileSavedAt = doc.updatedAt;
     }
     _lib = addDocument(_lib, doc);
+    dropExample(leave.drop);
     persist();
     notify();
     if (!(await loadCurrent(graph)) && prevId) {

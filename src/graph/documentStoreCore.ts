@@ -14,6 +14,9 @@ export interface SolDoc {
   fileSavedAt?: number;
   /** The folder path, `"Finance/2026"`; absent at the root. */
   folder?: string;
+  /** An example opened from the seed menus and not yet kept: which seed, and its graph's fingerprint as it loaded
+   *  (`graphFingerprint`), so a different one means the user changed it. The file tree leaves it out until kept. */
+  seed?: { id: string; fingerprint: string };
 }
 
 export interface DocLibrary {
@@ -238,7 +241,41 @@ export function validateDoc(data: unknown): SolDoc | null {
     ...(typeof dd.filePath === "string" ? { filePath: dd.filePath } : {}),
     ...(typeof dd.fileSavedAt === "number" ? { fileSavedAt: dd.fileSavedAt } : {}),
     ...(typeof dd.folder === "string" && normalizeFolder(dd.folder) ? { folder: normalizeFolder(dd.folder) } : {}),
+    ...(seedTag(dd.seed) ? { seed: seedTag(dd.seed)! } : {}),
   };
+}
+
+function seedTag(v: unknown): SolDoc["seed"] | null {
+  const t = v as { id?: unknown; fingerprint?: unknown } | null;
+  return t && typeof t.id === "string" && typeof t.fingerprint === "string" ? { id: t.id, fingerprint: t.fingerprint } : null;
+}
+
+/** A graph's fingerprint for telling an edit: everything but the save time and each card's auto-fitted `width` and
+ *  `height`, which a card measures after it renders (a size the user drags is `size`, and counts). FNV-1a, 32 bits. */
+export function graphFingerprint(g: SavedGraph): string {
+  const nodes = g.nodes.map((n) => {
+    const init = (n as { init?: Record<string, unknown> }).init;
+    if (!init) return n;
+    const { width: _w, height: _h, ...rest } = init;
+    return { ...n, init: rest };
+  });
+  const json = JSON.stringify({ ...g, savedAt: undefined, nodes });
+  let h = 0x811c9dc5;
+  for (let i = 0; i < json.length; i++) h = Math.imul(h ^ json.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(16);
+}
+
+/** An example the user changed since it opened. */
+export const seedEdited = (d: SolDoc): boolean => !!d.seed && graphFingerprint(d.graph) !== d.seed.fingerprint;
+
+/** The document kept: its seed tag dropped, so the file tree lists it like any other. */
+export function keepDocument(lib: DocLibrary, id: string): DocLibrary {
+  if (!lib.documents.some((d) => d.id === id && d.seed)) return lib;
+  return { ...lib, documents: lib.documents.map((d) => {
+    if (d.id !== id) return d;
+    const { seed: _seed, ...rest } = d;
+    return rest;
+  }) };
 }
 
 export function validateLibrary(data: unknown): DocLibrary | null {

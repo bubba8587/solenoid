@@ -475,7 +475,7 @@ export const WorkspaceTree = memo(function WorkspaceTree({ outline }: { outline?
 /** The Files section's + menu; new rows land in the folder last picked in the tree. `openSub` replaces the menu with a submenu. */
 export function filesAddMenu(openSub: (items: MenuItem[]) => void): MenuItem[] {
   const seedsOf = (ids: string[]): MenuItem[] =>
-    ids.map((id) => ({ label: SEEDS[id].label, onClick: () => void documentStore.newFromTemplate(id, target.folder || undefined) }));
+    ids.map((id) => ({ label: SEEDS[id].label, onClick: () => void documentStore.newFromTemplate(id, target.folder || undefined, { asDocument: true }) }));
   const groups: MenuItem[] = seedGroups().map((g) => ({ label: g.head, onClick: () => setTimeout(() => openSub(seedsOf(g.ids)), 0) }));
   return [
     { label: "New Document", onClick: () => treeActions.newDocument?.() },

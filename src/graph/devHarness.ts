@@ -9,6 +9,7 @@ import type { FormatAnnotation } from "./formatAnnotationStore";
 if (import.meta.env.DEV) {
   (window as unknown as { __spike: unknown }).__spike = {
     seed: (id: string) => documentStore.newFromTemplate(id),
+    example: () => ({ example: documentStore.currentIsExample(), edited: documentStore.currentExampleEdited(), tree: documentStore.list().length }),
     // "idle" once the reveal has played; the screenshot harness waits on it.
     revealPhase: () => loadRevealStore.phase(),
     zoomNode: async (label: string, k = 1.7, sx = 260, sy = 200) => {
