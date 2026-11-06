@@ -287,6 +287,12 @@ async function showCurrentSafe(revertTo?: string | null): Promise<void> {
 /** `unsaved`: bound to a file and edited since its last file save. */
 export interface DocMeta { id: string; name: string; updatedAt: number; current: boolean; folder: string; unsaved: boolean }
 
+/** One file whichever way its path is spelled: Windows paths compare without case or slash kind. */
+function samePath(a: string, b: string): boolean {
+  const norm = (p: string) => (/^[a-z]:[\\/]/i.test(p) || p.includes("\\") ? p.replace(/\\/g, "/").toLowerCase() : p);
+  return norm(a) === norm(b);
+}
+
 export const documentStore = {
   subscribe,
   version,
@@ -559,6 +565,9 @@ export const documentStore = {
       return;
     }
     if (!this.captureCurrent()) return;
+    // A file a document already keeps opens that document: a second copy bound to it would overwrite the first.
+    const bound = filePath ? _lib.documents.find((d) => d.filePath && samePath(d.filePath, filePath)) : undefined;
+    if (bound) { await this.open(bound.id); return; }
     const leave = await leaveExample();
     if (!leave.go) return;
     const prevId = _lib.currentId;
@@ -566,8 +575,10 @@ export const documentStore = {
     const doc = makeDoc(name, graph);
     if (filePath) doc.filePath = filePath;
     if (typeof graph.savedAt === "number") {
-      doc.fileSavedAt = graph.savedAt;
-      doc.updatedAt = graph.savedAt;
+      // Another machine's clock, or a file's claim: never later than now, or edits until then would read as saved.
+      const at = Math.min(graph.savedAt, Date.now());
+      doc.fileSavedAt = at;
+      doc.updatedAt = at;
     } else if (filePath) {
       doc.fileSavedAt = doc.updatedAt;
     }

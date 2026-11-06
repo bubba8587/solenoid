@@ -12,7 +12,7 @@ const _mem = new Map<string, string>();
   get length() { return _mem.size; },
 };
 
-const disk = { files: new Map<string, string>(), dirs: new Set<string>(), fail: false };
+const disk = { files: new Map<string, string>(), dirs: new Set<string>(), fail: false, onCheck: null as null | ((path: string) => boolean) };
 vi.mock("../../src/graph/fileBridge", async (orig) => ({
   ...(await orig<typeof import("../../src/graph/fileBridge")>()),
   isDesktop: () => true,
@@ -20,15 +20,17 @@ vi.mock("../../src/graph/fileBridge", async (orig) => ({
   documentsDir: async () => "/home/u/Documents",
   joinPath: async (...parts: string[]) => parts.join("/"),
   ensureDir: async (p: string) => { disk.dirs.add(p); },
-  pathExists: async (p: string) => disk.files.has(p),
+  pathExists: async (p: string) => { if (disk.onCheck?.(p)) disk.onCheck = null; return disk.files.has(p); },
   writeTextFilePath: async (p: string, text: string) => {
     if (disk.fail) throw new Error("read-only");
     disk.files.set(p, text);
   },
 }));
+const live: { g: unknown } = { g: { version: 1, nodes: [], connections: [] } };
 vi.mock("../../src/graph/persistence", async (orig) => ({
   ...(await orig<typeof import("../../src/graph/persistence")>()),
-  serializeGraph: () => ({ version: 1, nodes: [], connections: [] }),
+  serializeGraph: () => live.g,
+  loadGraph: async () => true,
 }));
 
 const { documentStore } = await import("../../src/graph/documentStore");
@@ -37,7 +39,7 @@ const { syncFiles, fileStem } = await import("../../src/graph/desktopDocs");
 
 const fileOf = (name: string) => documentStore.fileWork().find((d) => d.name === name)?.filePath;
 
-beforeEach(() => { disk.files.clear(); disk.dirs.clear(); disk.fail = false; });
+beforeEach(() => { disk.files.clear(); disk.dirs.clear(); disk.fail = false; disk.onCheck = null; });
 
 describe("every kept desktop document is a file", () => {
   it("a document gets <Documents>/Solenoid/<folder>/<name>.json, numbered past a taken name, and the setting keeps the root", async () => {
@@ -77,6 +79,32 @@ describe("every kept desktop document is a file", () => {
     expect(disk.files.has(path)).toBe(true);
   });
 
+  it("an edit made while the pass picks a new document's file name stays unsaved, and goes next pass", async () => {
+    settingsStore.set("docsFolder", "/data/docs");
+    live.g = { version: 1, nodes: [{ id: "a", type: "ConstantNode", x: 0, y: 0, init: {} }], connections: [] };
+    documentStore.saveAs("Fresh");
+    const id = documentStore.currentId()!;
+    let clock = Date.now() + 10_000;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => ++clock);
+    try {
+      // The edit lands while the pass is still finding the new document a free name.
+      disk.onCheck = (path) => {
+        if (!path.endsWith("/Fresh.json")) return false;
+        live.g = { version: 1, nodes: [{ id: "b", type: "ConstantNode", x: 0, y: 0, init: {} }], connections: [] };
+        documentStore.captureCurrent();
+        return true;
+      };
+      await syncFiles();
+      const after = documentStore.fileWork().find((d) => d.id === id)!;
+      expect(after.updatedAt).toBeGreaterThan(after.fileSavedAt ?? 0);
+      await syncFiles();
+      expect(disk.files.get(after.filePath!)).toContain('"b"');
+    } finally {
+      now.mockRestore();
+      live.g = { version: 1, nodes: [], connections: [] };
+    }
+  });
+
   it("a failed write leaves the document unbound and unsaved", async () => {
     settingsStore.set("docsFolder", "/data/docs");
     documentStore.saveAs("Stuck");
@@ -104,5 +132,10 @@ describe("fileStem", () => {
     expect(fileStem("plan.json")).toBe("plan");
     expect(fileStem("  ")).toBe("Untitled");
     expect(fileStem("..")).toBe("Untitled");
+    expect(fileStem(".plan")).toBe("plan");
+    expect(fileStem("notes.")).toBe("notes");
+    expect(fileStem("CON")).toBe("CON doc");
+    expect(fileStem("nul.txt")).toBe("nul.txt doc");
+    expect(fileStem("Console")).toBe("Console");
   });
 });

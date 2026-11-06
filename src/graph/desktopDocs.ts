@@ -20,10 +20,13 @@ async function root(): Promise<string> {
   return fallback;
 }
 
-/** A name a file can carry on every system: no separators or reserved characters, never empty. */
+/** A name a file can carry on every system: no separators or reserved characters, no leading dot (the desktop's file
+ *  scope refuses hidden names), no trailing dot or space (Windows drops them), no Windows device name, never empty. */
 export function fileStem(name: string): string {
-  const s = name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().replace(/\.json$/i, "").trim();
-  return s && s !== "." && s !== ".." ? s : "Untitled";
+  const s = name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().replace(/\.json$/i, "")
+    .replace(/^[.\s]+/, "").replace(/[.\s]+$/, "");
+  if (!s) return "Untitled";
+  return /^(con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])(\..*)?$/i.test(s) ? `${s} doc` : s;
 }
 
 /** Paths handed out this session, so two documents named alike never pick the same free name in one pass. */
@@ -49,7 +52,7 @@ let again = false;
 const failed = new Set<string>();
 
 /** One pass: each kept document without a file gets one, and each whose library copy is newer than its file is
- *  written. A document changed during its write is newer again and goes next pass. */
+ *  written. A document changed during its write is newer than the copy written and goes next pass. */
 export async function syncFiles(): Promise<void> {
   if (running) { again = true; return; }
   running = true;
@@ -60,10 +63,10 @@ export async function syncFiles(): Promise<void> {
       try {
         if (!d.filePath) fresh = await freshPath(d.folder, d.name);
         const path = d.filePath ?? fresh!;
-        const at = Date.now();
-        await writeTextFilePath(path, JSON.stringify({ ...d.graph, savedAt: at }, null, 2));
+        await writeTextFilePath(path, JSON.stringify({ ...d.graph, savedAt: Date.now() }, null, 2));
         if (fresh) documentStore.bindToPath(d.id, fresh);
-        documentStore.markFileSaved(d.id, at);
+        // Saved as of the copy written: an edit made while the pass awaited is newer and goes next pass.
+        documentStore.markFileSaved(d.id, d.updatedAt);
         failed.delete(d.id);
       } catch (e) {
         // A name claimed for a file that was never written is free again, so the retry takes it.

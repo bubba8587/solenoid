@@ -159,6 +159,29 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
     }
   });
 
+  it("a file stamped in the future is stamped now, so the next edit reads as unsaved", async () => {
+    const t0 = Date.now();
+    await documentStore.importAsDocument({ v: 2, nodes: [], connections: [], savedAt: t0 + 3_600_000 }, "Ahead", "/elsewhere/Ahead.json");
+    const doc = documentStore.list().find((m) => m.name === "Ahead")!;
+    const stored = docKeysFor(doc.id).map((k) => JSON.parse(_mem.get(k)!) as { doc?: { fileSavedAt?: number } });
+    expect(stored.some((s) => s.doc?.fileSavedAt !== undefined && s.doc.fileSavedAt <= Date.now())).toBe(true);
+  });
+
+  it("opening a file a document already keeps opens that document, however the path is spelled", async () => {
+    liveGraph.g = { v: 2, nodes: [], connections: [] };
+    try {
+      await documentStore.importAsDocument({ v: 2, nodes: [], connections: [] }, "Kept once", "C:\\Docs\\Kept once.json");
+      const kept = documentStore.list().find((m) => m.name === "Kept once")!;
+      documentStore.saveAs("Elsewhere");
+      const before = documentStore.list().length;
+      await documentStore.importAsDocument({ v: 2, nodes: [], connections: [] }, "Kept once", "c:/docs/KEPT ONCE.json");
+      expect(documentStore.list().length).toBe(before);
+      expect(documentStore.currentId()).toBe(kept.id);
+    } finally {
+      liveGraph.g = null;
+    }
+  });
+
   it("importAsDocument leaves the clocks fresh/blank for a file with no stamp (old saves)", async () => {
     const t0 = Date.now();
     await documentStore.importAsDocument({ v: 2, nodes: [], connections: [] }, "Unstamped");
