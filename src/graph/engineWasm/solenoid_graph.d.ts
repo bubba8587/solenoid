@@ -470,7 +470,8 @@ export function textFormLine(line: string): string;
 export function textFormRead(text: string, version: number): string;
 
 /**
- * A save's text form (`text_form::write`): the save, each node's name and the init field order, as JSON text.
+ * A save's text form (`text_form::write`): the save, each node's name and the init field order, as JSON text; or `!`
+ * and why the save can't be read, never the text of an empty document.
  */
 export function textFormWrite(graph: string, names: string, order: string): string;
 
@@ -594,8 +595,8 @@ export interface InitOutput {
     readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly uid: (a: number) => void;
     readonly unnamedEdits: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_8540: (a: number, b: number, c: number, d: any) => void;
-    readonly __wasm_bindgen_func_elem_8542: (a: number, b: number, c: any, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8522: (a: number, b: number, c: number, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8524: (a: number, b: number, c: any, d: any) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;
