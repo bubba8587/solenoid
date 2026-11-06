@@ -1,8 +1,5 @@
 // [[B16]] oneFormulaSurface, [[formula-language#Editor support]]
-// Formula layout by parentheses. A run that fits its line stays as typed. One that doesn't breaks first before its
-// top-level + - &, then * /, packing the pieces onto lines; a group too long for a line of its own puts each argument
-// on its own line, one indent deeper, closing at the opening line's indent. Only line breaks and indentation change:
-// text inside a string, and every space within a line, is kept.
+// Formula layout by parentheses, and the editor's indent for a new line: only line breaks and indentation change.
 
 /** One level of indent: a tab, drawn two columns wide (the editor's tab-size). */
 export const FORMULA_INDENT = "\t";

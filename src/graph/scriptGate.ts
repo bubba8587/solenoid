@@ -1,7 +1,6 @@
 // [[B18]] safeToShare, [[C103]] untrustedContentSeams
-// A foreign document's Script cards wait until the user lets its scripts run, granted per document as the network
-// is (connectionStore.ts). The worker already has no network (`script-sandbox.md`); this keeps a stranger's code from
-// running at all until asked.
+// A foreign document's Script cards wait until the user lets its scripts run, granted per document as the network is
+// (connectionStore.ts); the worker has no network already (`script-sandbox.md`), this keeps the code from running.
 import { docMetaStore } from "./docMetaStore";
 import { foreignCardStore } from "./foreignCardStore";
 import { pushNotice, dismissNotice } from "./noticeStore";

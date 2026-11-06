@@ -1,6 +1,5 @@
-// [[B14]] oneDesignSystem, [[B2]] webTryDesktopFull: the app's own file and folder picker, where the operating system's
-// dialog can't reach (the web, the demo vault). `chooseFile` opens it; mounted once in App. The model (tree, search,
-// previews, recent picks) is `filePickerModel.ts`.
+// [[B14]] oneDesignSystem, [[B2]] webTryDesktopFull: the app's own file and folder picker, where the OS dialog can't
+// reach (the web, the demo vault); `chooseFile` opens it, mounted once in App, over `filePickerModel.ts`.
 import { useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { filePicker, type FilePickerState } from "../filePickerStore";
 import { crumbsOf, entriesAt, indexOf, listed, noteHead, recentPicks, relist, rememberPick, ROW_CAP, search, treeOf, whenText, wholeLines, type Entry, type Match } from "../filePickerModel";

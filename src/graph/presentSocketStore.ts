@@ -1,7 +1,6 @@
 // [[A1]] visualGraphCalculator (module-singleton store, storeKit)
-// The sockets each card shows right now, wired or not. A card declares every socket it can have, but several show
-// only some (a Chart Builder's rows follow its target, a mode hides a socket), and layout must see the card as drawn.
-// Each rendered socket joins on mount and leaves on unmount; nothing here is saved, since the card redraws it.
+// The sockets each card shows right now, wired or not, since some show only part of what they declare and layout
+// must see the card as drawn. A rendered socket joins on mount and leaves on unmount; nothing here is saved.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

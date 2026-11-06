@@ -1,7 +1,5 @@
 // [[C103]] untrustedContentSeams, [[B18]] safeToShare
-// The one sanitizer for rendered note markdown (`reports-and-notes.md` § What is sanitized). While a foreign document
-// has no network grant, a web image (or video, audio, a style's `url(…)`) is held back, since loading it is a fetch
-// that tells the image's host the document was opened.
+// The one sanitizer for rendered note markdown, network gate included (`reports-and-notes.md` § What is sanitized).
 import DOMPurify from "dompurify";
 import { useSyncExternalStore } from "react";
 import { docMetaStore } from "./docMetaStore";

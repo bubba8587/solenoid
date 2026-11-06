@@ -1,7 +1,6 @@
 // [[C130]] rustCore
-// What a node class is built from: a node with keyed input and output ports, each holding a socket, and the cable
-// between two of them. While a node is in an editor its port changes are made in the graph core too
-// (tree/specs/computation/graph-core.md § The model), so `inputs` and `outputs` change only through these methods.
+// What a node class is built from: keyed ports holding sockets, and cables. In an editor a node's port changes reach
+// the core too (graph-core.md § The model), so its `inputs` and `outputs` change only here.
 import { uid } from "./engineWasm/solenoid_graph.js";
 
 /** A node's or cable's id, made by the graph core (netcore-rs's `getUID`: sixteen lowercase hex digits from eight

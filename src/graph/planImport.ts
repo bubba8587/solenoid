@@ -1,7 +1,6 @@
 // [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing
-// A plan file into the tasks cube the Schedule node reads; predecessor grammar (`3FS+2d`) resolves to task names
-// here, at the border, and never lives in a cell (tree/specs/computation/schedule-and-gantt.md). The readers are the
-// core's (`crates/solenoid-schedule`). Pure: no I/O, no graph model.
+// A plan file into the tasks cube the Schedule node reads (tree/specs/computation/schedule-and-gantt.md), through the
+// core's readers; predecessor grammar resolves to task names here and never lives in a cell. Pure: no I/O, no model.
 
 import { cubeFromColumns, type CubeValue, type CubeCell, type FrameValue } from "./frame";
 import { readPlanFile, parsePredecessors } from "./engineWasm/solenoid_graph.js";

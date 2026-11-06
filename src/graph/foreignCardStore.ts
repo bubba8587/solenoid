@@ -1,7 +1,6 @@
 // [[B18]] safeToShare, [[C103]] untrustedContentSeams
-// Cards someone else wrote, in a document that is otherwise the user's: a card copied out of a foreign document
-// keeps asking wherever it is pasted, until the user allows its scripts (scriptGate.ts) and its fetches
-// (connectionStore.ts). A foreign document asks for all its cards at once and marks none.
+// Cards someone else wrote: a foreign card keeps asking wherever it is pasted until the user allows its scripts
+// (scriptGate.ts) and fetches (connectionStore.ts); a foreign document asks for all its cards at once and marks none.
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 

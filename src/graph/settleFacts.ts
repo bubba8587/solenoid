@@ -1,7 +1,6 @@
 // [[C130]] rustCore, [[C10]] socketLattice
-// What the Type Settle reads from each node's JavaScript object (graph-core.md § Phase D): each socket's current type
-// and kind, the node's passthroughs as data, its Conduit lanes, and whether its output carries only errors. The
-// core holds the node order and the cables.
+// What the Type Settle reads from each node's JavaScript object (graph-core.md § Phase D): socket types and kinds,
+// passthroughs, Conduit lanes, and whether its output carries only errors; the core holds the order and the cables.
 import type { GraphEditor } from "./graphEditor";
 import type { GraphConnection, GraphNode } from "./graphModel";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, ValueTypedSocket, type SocketDataType } from "./sockets";

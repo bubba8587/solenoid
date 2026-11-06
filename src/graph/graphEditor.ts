@@ -1,7 +1,6 @@
 // [[C130]] rustCore
-// The editor: a handle over the graph core's netcore-rs editor, which holds the nodes, their ports and the cables
-// (`crates/solenoid-graph`, tree/specs/computation/graph-core.md § The model). The handle keeps each node's and cable's
-// JavaScript object by id, as the core's signals report them.
+// The editor: a handle over the graph core's netcore-rs editor (tree/specs/computation/graph-core.md § The model),
+// keeping each node's and cable's JavaScript object by id as the core's signals report them.
 import { GraphCore } from "./engineWasm/solenoid_graph.js";
 import { guarded, onCore, onWasmEngineReset, wasmEngineLoaded } from "./engineWasm";
 import type { DataflowEngine } from "./dataflowEngine";

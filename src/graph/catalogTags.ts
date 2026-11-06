@@ -1,7 +1,6 @@
 // [[B16]] oneFormulaSurface
-// Tags: the words people mean a card by, ranked as names in search (above a hidden op that happens to share the word),
-// unlike `keywords`, which are loose words that only help a match. A tag belongs to one card, and never repeats a
-// card's own label: "mean" is AVERAGE, though Fill has a Mean op and Color Blend averages colors.
+// Tags: the words people mean a card by, ranked as names in search, unlike loose `keywords`
+// (tree/specs/canvas/add-menu.md). A tag belongs to one card and never repeats its label.
 
 export const CARD_TAGS: Record<string, readonly string[]> = {
   // Numbers

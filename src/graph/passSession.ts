@@ -1,8 +1,6 @@
 // [[C23]] calcModes, [[C130]] rustCore
-// The compute pass's state between passes lives in the graph core (`crates/solenoid-graph/src/session.rs`): the calc
-// mode, the dirty flag, the force-exact depth, the recalc generation, the rebuild depth, the single-flight flags and
-// the rerun they coalesce. Each transition is the core's; this module keeps the snapshot it answers, which is what
-// the UI reads and what a trap's fresh instance takes back.
+// The compute pass's state between passes lives in the graph core (`crates/solenoid-graph/src/session.rs`); this
+// module keeps the snapshot each transition answers, which the UI reads and a trap's fresh instance takes back.
 import {
   sessionSnapshot, sessionRestore, sessionSetMode, sessionDirty, sessionForceExact, sessionNextGeneration,
   sessionRebuild, sessionRebuildScope, sessionMarkTopoDirty, sessionEnter, sessionExit,

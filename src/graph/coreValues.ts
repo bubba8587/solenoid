@@ -1,7 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-// Values across the boundary with the Rust core: what a JS value looks like to `eval.rs` `decode_value`, what the
-// core's reply (`frame_backend.rs` `call_reply`) looks like back, and the table that lets an error cell come back as
-// the very SolError that went in.
+// Values across the boundary with the Rust core: a JS value as `eval.rs` `decode_value` reads it, the core's reply
+// (`frame_backend.rs` `call_reply`) back, and the table that returns an error cell as the very SolError that went in.
 import { solError, isSolError, type SolError, type SolErrorCode, type SolErrorOrigin } from "./errorValue";
 import { isCx, cx } from "./cxValue";
 import { isLambdaValue } from "./lambdaValue";

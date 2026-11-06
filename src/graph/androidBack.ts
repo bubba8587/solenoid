@@ -1,6 +1,5 @@
-// [[B2]] webTryDesktopFull: Android's back gesture (docs/android.md). The app keeps no webview history, so by default
-// back closes the app wherever the user is; here it closes the topmost popup, menu or panel first, as Escape does, and
-// leaves the app only from the bare canvas.
+// [[B2]] webTryDesktopFull: Android's back gesture (docs/android.md) closes the topmost popup, menu or panel first, as
+// Escape does, and leaves the app only from the bare canvas.
 import { isAndroidApp } from "./fileBridge";
 import { escapeClosersOpen } from "./components/useEscapeToClose";
 import { openLayerCount } from "./components/escapeLayers";

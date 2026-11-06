@@ -1,7 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-// A card's body on the Rust core (`crates/solenoid-core/src/nodes/`): `data()` sends the class, what a save holds,
-// its sockets and its inputs, and takes back the outputs and the fields the body sets for the card's component.
-// The mechanism is tree/specs/computation/node-bodies.md.
+// A card's body on the Rust core (`crates/solenoid-core/src/nodes/`, tree/specs/computation/node-bodies.md): `data()`
+// sends the class, what a save holds, its sockets and inputs, and takes back the outputs and the fields the body sets.
 import type { GraphNode } from "./graphModel";
 import { callInit } from "./nodeInit";
 import { declaredTypeOf, AdoptiveSocket, type SocketDataType } from "./sockets";

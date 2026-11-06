@@ -1,9 +1,6 @@
 // [[C120]] linearWork, [[C130]] rustCore
-// A card's box draws a big list as a chip and its first rows, so a list a card body on the core made isn't taken whole
-// to draw it: a read made inside `previewed` (the standard boxes', `standardNode.tsx`) gets the first rows the core
-// keeps for the box, tagged with the list's length and how to take the whole of it; any other read gets the whole list.
-// A big frame is its first rows the same way. The chip counts by `listLength` (`frameRows`); the popup, a copy, an inline
-// list and a full table take `fullList` (graph-core.md § Direct calls).
+// A card's box draws a big list or frame as a chip and its first rows, so a read inside `previewed` gets the first
+// rows the core keeps and any other read gets the whole (graph-core.md § Direct calls).
 
 let depth = 0;
 const previews = new WeakMap<object, { total: number; width?: number; load: () => unknown; whole?: unknown }>();

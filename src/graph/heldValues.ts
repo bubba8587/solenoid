@@ -1,8 +1,6 @@
 // [[C130]] rustCore, [[C120]] linearWork
-// A big frame or list that crossed between JavaScript and the core, either way, is kept by the core under an id for as
-// long as its JavaScript object lives, so the same object crossing again sends the id alone (`nodes/columnar.rs`
-// `keep`). A value is never changed in place once a card made it, so an object's identity is its content. The core
-// forgets an id once the object is collected; a fresh instance after a trap starts with none.
+// A big frame or list that crossed to or from the core is kept there under an id while its JavaScript object lives
+// (`nodes/columnar.rs` `keep`); a value never changes in place once a card made it, so its identity is its content.
 import { onWasmEngineReset, wasmCardForget } from "./engineWasm";
 
 let ids = new WeakMap<object, number>();

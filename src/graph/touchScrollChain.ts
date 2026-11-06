@@ -1,6 +1,5 @@
-// [[B11]] maximalMerge: one scroll hand-off, for every outer scroller that wants it.
-// A browser keeps a touch scroll on the scroller it began in, so a box scrolled to its end mid-swipe stops and the
-// page under the finger never moves. This hands the rest of that swipe to the outer scroller.
+// [[B11]] maximalMerge: one scroll hand-off for every outer scroller. A browser keeps a touch scroll on the scroller it
+// began in, so a box scrolled to its end mid-swipe stops; this hands the rest of the swipe to the outer scroller.
 
 type Scroller = { scrollTop: number; scrollHeight: number; clientHeight: number };
 

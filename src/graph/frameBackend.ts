@@ -1,7 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-// The core's frames from TypeScript ([[frame-verbs#Lazy frames]]): a lazy frame is a core value
-// (`frame_ref.rs`) whose JavaScript form names it; a JavaScript reader reads it through the core. Beside it, the eager
-// frame tools the cards' TS calls, a CSV file's text as a frame, and the desktop's Parquet reader.
+// The core's frames from TypeScript ([[frame-verbs#Lazy frames]]): a lazy frame is a core value (`frame_ref.rs`) read
+// through the core; beside it, the cards' eager frame tools, CSV text as a frame, and the desktop's Parquet reader.
 import type { FrameValue, FrameColumn, FrameCell, FrameColType } from "./frame";
 import type { FrameOp, PivotSpec } from "./frameOps";
 import { setPivotLayout, type PivotLayout } from "./pivotLayout";
