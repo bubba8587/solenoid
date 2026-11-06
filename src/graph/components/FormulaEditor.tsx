@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { highlightFormula, tokenAtCaret, suggestFor, enclosingCall, type Suggestion } from "../formulaSyntax";
 import { signatureFor, signatureParams } from "../formulaSignatures";
 import { FORMULA_INDENT, indentAt, indentFormula } from "../formulaLayout";
+import { FieldResizeGrip } from "./FieldResizeGrip";
 import "./FormulaEditor.css";
 
 interface FormulaEditorProps {
@@ -256,6 +257,7 @@ export function FormulaEditor({
         onPointerDown={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
       />
+      <FieldResizeGrip targetRef={boxRef} zoomed={false} minHeight={40} />
       {menu && !readOnly && (
         <ul className="fx-editor__menu nowheel">
           {menu.items.map((it, i) => (
