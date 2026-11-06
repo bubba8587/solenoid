@@ -116,6 +116,8 @@ is parked there.
   a landed finding deletes its block, as a backlog line would.
 - **`settings-audit.md`** — the settings sweep's proposed roles for review ([[D86]] blankRoles); archived once
   the sweep lands.
+- **`audits/mathlib-lens-2026-11.md`** — research: what mathlib4 has already worked out that bears on Solenoid's
+  value model, engine and process; findings, open threads and the hourly pass log (branch `research/mathlib-lens`).
 - **`audits/crate-audit-2026-10.md`** — the 2026-10-23 crate audit: each hand-written core module
   against the crate that could replace it, compared bit for bit; the evidence for the backlog's crate items.
 - Shipped release views are archived: `archive/release-plan-1.1.md` (the 1.1 cut),
