@@ -19,12 +19,14 @@ export function ElementPicker() {
   };
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Reset only when the popup opens: a pick updates the state and must keep the search and the hover.
+  const open = state !== null;
   useEffect(() => {
-    if (!state) return;
+    if (!open) return;
     setQuery("");
     setHovered(null);
     inputRef.current?.focus();
-  }, [state]);
+  }, [open]);
 
   if (!state) return null;
 
@@ -33,9 +35,10 @@ export function ElementPicker() {
   const best = query.trim() ? matches[0] : undefined;
   const shown = ELEMENT_BY_SYMBOL.get(hovered ?? best?.symbol ?? state.symbol);
 
+  // A pick sets the card and stays open, the new element marked current; the close button or Escape closes.
   const pick = (sym: string) => {
     state.onPick(sym);
-    elementPicker.close();
+    elementPicker.open({ ...state, symbol: sym });
   };
 
   const cellClass = (e: ElementMeta) => {
