@@ -1,0 +1,325 @@
+{
+ "nodes": [
+  {
+   "id": "f1",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Orders"
+   },
+   "frame": [
+    {
+     "name": "region",
+     "type": "string",
+     "cells": [
+      "West",
+      "East",
+      "West",
+      "North",
+      "East",
+      "",
+      "South",
+      "West",
+      "East",
+      "North"
+     ]
+    },
+    {
+     "name": "units",
+     "cells": [
+      3,
+      5,
+      3,
+      2,
+      8,
+      1,
+      4,
+      7,
+      "",
+      6
+     ]
+    }
+   ]
+  },
+  {
+   "id": "v1",
+   "type": "ValueInputNode",
+   "init": {
+    "label": "Rows",
+    "value": "4"
+   }
+  },
+  {
+   "id": "p1",
+   "type": "CompositeNode",
+   "init": {
+    "label": "Order cleanup",
+    "runMode": "pipeline",
+    "inputPorts": [
+     {
+      "id": "table",
+      "label": "Table",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "qin"
+     },
+     {
+      "id": "rows",
+      "label": "Rows",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "qn"
+     }
+    ],
+    "outputPorts": [
+     {
+      "id": "result",
+      "label": "Result",
+      "tier": "basic",
+      "internalNodeId": "qout"
+     }
+    ],
+    "internal": {
+     "nodes": [
+      {
+       "id": "qin",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Table"
+       },
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "qn",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Rows"
+       },
+       "x": 0,
+       "y": 200
+      },
+      {
+       "id": "s1",
+       "type": "DropBlankRowsNode",
+       "init": {
+        "label": "Drop blank rows"
+       },
+       "x": 220,
+       "y": 0
+      },
+      {
+       "id": "s2",
+       "type": "FillBlanksNode",
+       "init": {
+        "label": "Fill blanks"
+       },
+       "x": 440,
+       "y": 0
+      },
+      {
+       "id": "s3",
+       "type": "DistinctNode",
+       "init": {
+        "label": "Distinct"
+       },
+       "x": 660,
+       "y": 0
+      },
+      {
+       "id": "s4",
+       "type": "ReplaceValuesNode",
+       "init": {
+        "label": "Shorten West"
+       },
+       "x": 880,
+       "y": 0,
+       "stringLiterals": {
+        "column": "region",
+        "find": "West",
+        "replace": "W"
+       }
+      },
+      {
+       "id": "s5",
+       "type": "RenameNode",
+       "init": {
+        "label": "Rename units → qty"
+       },
+       "x": 1100,
+       "y": 0,
+       "stringLiterals": {
+        "from": "units",
+        "to": "qty"
+       }
+      },
+      {
+       "id": "s6",
+       "type": "SortFrameNode",
+       "init": {
+        "label": "Sort by qty"
+       },
+       "x": 1320,
+       "y": 0,
+       "stringLiterals": {
+        "column": "qty"
+       }
+      },
+      {
+       "id": "s7",
+       "type": "AddIndexNode",
+       "init": {
+        "label": "Add index"
+       },
+       "x": 1540,
+       "y": 0
+      },
+      {
+       "id": "s8",
+       "type": "DistinctNode",
+       "init": {
+        "label": "Distinct again after the rename and the index were added"
+       },
+       "x": 1760,
+       "y": 0
+      },
+      {
+       "id": "s9",
+       "type": "FillBlanksNode",
+       "init": {
+        "label": "Fill blanks 2"
+       },
+       "x": 1980,
+       "y": 0
+      },
+      {
+       "id": "s10",
+       "type": "DropBlankRowsNode",
+       "init": {
+        "label": "Drop blank rows 2"
+       },
+       "x": 2200,
+       "y": 0
+      },
+      {
+       "id": "s11",
+       "type": "HeadNode",
+       "init": {
+        "label": "Top N"
+       },
+       "x": 2420,
+       "y": 0
+      },
+      {
+       "id": "s12",
+       "type": "DistinctNode",
+       "init": {
+        "label": "Final distinct"
+       },
+       "x": 2640,
+       "y": 0
+      },
+      {
+       "id": "qout",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Result"
+       },
+       "x": 2860,
+       "y": 0
+      }
+     ],
+     "connections": [
+      {
+       "source": "qin",
+       "sourceOutput": "value",
+       "target": "s1",
+       "targetInput": "frame"
+      },
+      {
+       "source": "s1",
+       "sourceOutput": "frame",
+       "target": "s2",
+       "targetInput": "frame"
+      },
+      {
+       "source": "s2",
+       "sourceOutput": "frame",
+       "target": "s3",
+       "targetInput": "frame"
+      },
+      {
+       "source": "s3",
+       "sourceOutput": "frame",
+       "target": "s4",
+       "targetInput": "frame"
+      },
+      {
+       "source": "s4",
+       "sourceOutput": "frame",
+       "target": "s5",
+       "targetInput": "frame"
+      },
+      {
+       "source": "s5",
+       "sourceOutput": "frame",
+       "target": "s6",
+       "targetInput": "frame"
+      },
+      {
+       "source": "s6",
+       "sourceOutput": "frame",
+       "target": "s7",
+       "targetInput": "frame"
+      },
+      {
+       "source": "s7",
+       "sourceOutput": "frame",
+       "target": "s8",
+       "targetInput": "frame"
+      },
+      {
+       "source": "s8",
+       "sourceOutput": "frame",
+       "target": "s9",
+       "targetInput": "frame"
+      },
+      {
+       "source": "s9",
+       "sourceOutput": "frame",
+       "target": "s10",
+       "targetInput": "frame"
+      },
+      {
+       "source": "s10",
+       "sourceOutput": "frame",
+       "target": "s11",
+       "targetInput": "frame"
+      },
+      {
+       "source": "s11",
+       "sourceOutput": "frame",
+       "target": "s12",
+       "targetInput": "frame"
+      },
+      {
+       "source": "s12",
+       "sourceOutput": "frame",
+       "target": "qout",
+       "targetInput": "value"
+      },
+      {
+       "source": "qn",
+       "sourceOutput": "value",
+       "target": "s11",
+       "targetInput": "rows"
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "cables": [
+  "f1.frame -> p1.table",
+  "v1.value -> p1.rows"
+ ]
+}
