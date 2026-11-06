@@ -607,8 +607,8 @@ fn num_of(v: &V) -> V {
     }
 }
 
-/// Two numbers Excel's comparisons read as one: equal to 15 significant digits (the author's Excel, 2026-11-02:
-/// `0.1+0.2=0.3` and `1E+15+0.4=1E+15` are TRUE, `0.1+0.2>0.3` FALSE). Exact equality answers first, and only a pair
+/// Two numbers Excel's comparisons read as one: equal to 15 significant digits
+/// (`0.1+0.2=0.3` and `1E+15+0.4=1E+15` are TRUE, `0.1+0.2>0.3` FALSE). Exact equality answers first, and only a pair
 /// already within 1e-14 of each other is rounded, so a comparison over a column stays cheap ([[C120]] linearWork).
 pub fn same_to_15(x: f64, y: f64) -> bool {
     if x == y {
@@ -621,7 +621,7 @@ pub fn same_to_15(x: f64, y: f64) -> bool {
 }
 
 /// `x + y` as Excel's last addition answers it: zero where the two cancel to 15 significant digits, so
-/// `0.1+0.2-0.3` is 0 and not 5.55E-17 (the author's Excel, 2026-11-02).
+/// `0.1+0.2-0.3` is 0 and not 5.55E-17.
 pub fn snapped_sum(x: f64, y: f64) -> f64 {
     let r = x + y;
     if r != 0.0 && same_to_15(x, -y) {

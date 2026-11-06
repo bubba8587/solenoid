@@ -70,11 +70,10 @@ export const chartOut     = (label: string) => new GraphOutput(chartSocket,  lab
 export const documentIn   = (label: string) => new GraphInput(documentSocket, label);
 export const documentOut  = (label: string) => new GraphOutput(documentSocket, label);
 
-/** A result socket's family: what the card computed, or `auto` (the wildcard) before a run or for a mixed answer. */
 /** A card that works on a list or, by its Grid mode, on a table of numbers over both axes. */
 export type ShapeMode = "list" | "grid";
-export const SHAPE_MODES: readonly ShapeMode[] = ["list", "grid"];
 
+/** A result socket's family: what the card computed, or `auto` (the wildcard) before a run or for a mixed answer. */
 export type ResultType = "number" | "text" | "date" | "logical" | "auto";
 export type ResultDim = "scalar" | "combo" | "matrix";
 
@@ -88,9 +87,6 @@ export const CAST_TO_META: Record<CastTo, { label: string; title: string }> = {
   date:    { label: "Date",    title: "Cast the result to dates, as the Cast card does. A number is read as a serial" },
   logical: { label: "Boolean", title: "Cast the result to TRUE/FALSE, as the Cast card does" },
 };
-
-export const isResultFamily = (f: string | undefined): f is Exclude<ResultType, "auto"> =>
-  f === "number" || f === "text" || f === "date" || f === "logical";
 
 const RESULT_SOCKETS: Record<ResultDim, Record<Exclude<ResultType, "auto">, GraphSocket>> = {
   scalar: { number: numberSocket,  text: stringSocket,   date: dateSocket,      logical: logicalSocket },
@@ -106,7 +102,7 @@ export function castResultSocket(dim: ResultDim, castTo: CastTo): GraphSocket {
   return resultSocket(dim, castTo === "none" ? "auto" : castTo);
 }
 
-export function resultSocket(dim: ResultDim, t: ResultType): GraphSocket {
+function resultSocket(dim: ResultDim, t: ResultType): GraphSocket {
   return t === "auto" ? new ValueTypedSocket(AUTO_RUNG[dim]) : RESULT_SOCKETS[dim][t];
 }
 

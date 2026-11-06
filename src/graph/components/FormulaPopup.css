@@ -73,31 +73,6 @@
   user-select: none;
 }
 
-.formula-popup__textarea {
-  flex: 1;
-  width: 0;
-  min-height: 30px;
-  max-height: 160px;
-  padding: 6px 8px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  color: var(--text);
-  resize: vertical;
-  box-sizing: border-box;
-}
-.formula-popup__textarea:focus {
-  outline: none;
-  border-color: var(--node-accent, var(--accent));
-}
-.formula-popup__textarea[readonly] {
-  color: var(--text-dim);
-  cursor: default;
-}
-
 .formula-popup__edit-row .fx-editor { flex: 1; min-width: 0; }
 .formula-popup__edit-row .fx-editor__input { min-height: 30px; max-height: 56vh; max-height: 56dvh; }
 

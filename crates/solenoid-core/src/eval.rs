@@ -603,7 +603,7 @@ const MEMO_SHAPERS: [&str; 6] = ["FILTER", "UNIQUE", "SORT", "SORTBY", "TAKE", "
 /// `BRANCH_SELECTORS`: the arguments that pick a branch. Only an error there is the call's answer; an error in a branch
 /// not taken isn't, as in Excel, so `IF(@qty = 0, 0, @total / @qty)` guards its division. IFS's conditions and SWITCH's
 /// cases are read by their bodies in order, which answer an error they reach before the match and nothing after it. COUNT and COUNTA take every error to their body,
-/// which skips it and counts it (the author's Excel, 2026-11-01).
+/// which skips it and counts it, as Excel does.
 fn branch_selector(name: &str) -> Option<fn(usize) -> bool> {
     match name {
         "IF" | "CHOOSE" | "SWITCH" => Some(|i| i == 0),
@@ -913,8 +913,8 @@ impl Eval<'_> {
             };
         }
         let body = lam.body.as_ref().expect("a LAMBDA has a body");
-        // A LAMBDA's body is a formula of its own: its last `+` or `-` snaps as a formula's does (the author's Excel,
-        // 2026-11-02: `LAMBDA(x, x-0.3)(0.1+0.2)` is 0).
+        // A LAMBDA's body is a formula of its own: its last `+` or `-` snaps as a formula's does
+        // (`LAMBDA(x, x-0.3)(0.1+0.2)` is 0).
         let outer = self.root.replace(&**body as *const Ast as usize);
         let out = self.lambda_body(lam, body, args);
         self.root.set(outer);

@@ -221,7 +221,6 @@ export function LiveGraph({ build, scenes }: { build?: (s: SurfaceStack) => Prom
   useEffect(() => {
     setEditorRefs(stack.editor, stack.engine, stack.view);
     void builds(() => activeBuild(stack).then(() => computeStack(stack, true)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stack]);
 
   const rebuild = (b: (s: SurfaceStack) => Promise<void>) =>

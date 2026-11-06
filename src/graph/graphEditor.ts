@@ -39,7 +39,7 @@ onWasmEngineReset(() => {
   }
 });
 
-/** What an editor's pipes hear, in rete's shape. */
+/** What an editor's pipes hear. */
 export type GraphSignal<S extends GraphSchemes> =
   | { type: "nodecreate" | "nodecreated" | "noderemove" | "noderemoved"; data: S["Node"] }
   | { type: "connectioncreate" | "connectioncreated" | "connectionremove" | "connectionremoved"; data: S["Connection"] }

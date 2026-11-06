@@ -794,7 +794,6 @@ function useHoverCanvas<L>(draw: (c: HTMLCanvasElement) => L | null, deps: unkno
   const layout = useRef<L | null>(null);
   useLayoutEffect(() => {
     if (faces && ref.current) layout.current = draw(ref.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, theme, faces]);
   return [ref, layout] as const;
 }

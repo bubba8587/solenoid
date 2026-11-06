@@ -97,7 +97,6 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     setTextAlignLocal(node.textAlign);
     setTextMdLocal(node.textMarkdown);
     setTextMonoLocal(node.textMono);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.socketDataType, node.unit, node.format, node.forwarding, node.lockedByConvert]);
 
   function syncNode() {

@@ -163,7 +163,7 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
     if (peekShown) setPeekShown(false);
     frameHintStore.close();
   };
-  useEffect(() => cancelHint, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => cancelHint, []);
   useLayoutEffect(() => presentSocketStore.mount(nodeId, side, socketKey), [nodeId, side, socketKey]);
 
   const resolvePeekValue = (): { value: unknown; nodeId: string; outKey: string } | null => {

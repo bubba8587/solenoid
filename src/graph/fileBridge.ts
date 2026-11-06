@@ -261,7 +261,6 @@ export async function readVaultFile(root: string, relPath: string): Promise<stri
   return fs().readTextFile(path);
 }
 
-/** Needs the `fs:allow-stat` capability; null off desktop or when the platform omits a time. */
 /** The first `chars` characters of a vault file, for a preview: a big file is never read whole where its provider can
  *  read a head. */
 export async function readVaultFileHead(root: string, relPath: string, chars: number): Promise<string> {
@@ -274,6 +273,7 @@ export async function readFileHead(folder: string, name: string, chars: number):
   return fs().readTextHead!(await fs().join(folder, ...name.split("/")), chars);
 }
 
+/** Needs the `fs:allow-stat` capability; null off desktop or when the platform omits a time. */
 export async function statVaultFile(root: string, relPath: string): Promise<{ mtimeMs: number | null; birthtimeMs: number | null } | null> {
   if (!canReadRoot(root) || !isInsideVault(relPath)) return null;
   try {

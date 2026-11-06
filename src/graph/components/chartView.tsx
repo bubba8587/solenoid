@@ -144,7 +144,6 @@ function useDrawTime(ms: { current: number }, deps: readonly unknown[]): void {
   const start = performance.now();
   useLayoutEffect(() => {
     requestAnimationFrame(() => requestAnimationFrame(() => { if (live.current) ms.current = performance.now() - start; }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
   useEffect(() => () => { live.current = false; }, []);
 }

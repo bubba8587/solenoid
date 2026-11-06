@@ -118,7 +118,6 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     paintedRef.current = [];
     hoverElRef.current = null;
     paint(selectedLayer, null, hoverColor);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, hovering]);
 
   // Debounced, so a color drag doesn't re-parse a big SVG per tick; the old url is revoked only once the new one exists.
@@ -141,7 +140,6 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
 
   useLayoutEffect(() => {
     paint(selectedLayer, hoverElRef.current, hoverColor);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLayer, hoverColor]);
 
   // Only inside the SVG: otherwise resolveLayer walks up into the node-card DOM and mis-picks.

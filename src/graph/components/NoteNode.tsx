@@ -173,7 +173,6 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
       },
       setDocDotTop,
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collapsed, fieldKeys.length, data.height, data.width, body]);
 
   const Grip = useFlowResizeGrip();
@@ -197,7 +196,6 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   const net = useNetworkGrant(data.id);
   const bodyHtml = useMemo(
     () => enableTaskCheckboxes(sanitizeNoteHtml(renderNoteMarkdown(renderBody || ""), data.id), rendered === body),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [renderBody, rendered, body, tex, net],
   );
   const renderedRef = useRef<HTMLDivElement>(null);

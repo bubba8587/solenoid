@@ -290,7 +290,6 @@ export async function addNodeFrom(create: () => unknown, companions?: () => Comp
   const node = create() as unknown as { id: string; width?: number; height?: number; constructor: { name: string }; hydrate?: (reg: Map<string, NodeCtor>) => Promise<void> };
   // A pre-seeded composite must hydrate before the first recompute.
   if (node.hydrate) await node.hydrate(ctorRegistry());
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await editor.addNode(node as any);
   nodeNameStore.ensure(node.id, node.constructor.name);
 
@@ -300,7 +299,6 @@ export async function addNodeFrom(create: () => unknown, companions?: () => Comp
   const cy = (rect.height / 2 - y) / k;
   const at = { x: cx - (node.width ?? 180) / 2, y: cy - (node.height ?? 160) / 2 };
   await view.moveNode(node.id, at);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (companions) await placeCompanions(editor, view, node as any, at, companions());
 
   await processGraph();

@@ -471,7 +471,6 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
       if (p.visible && left === p.left && top === p.top) return p;
       return { left, top, visible: true };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screenX, screenY, searching, results.length, treePath.length, drill]);
 
   useEffect(() => {

@@ -134,7 +134,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const net = useNetworkGrant(data.id);
   const bodyHtml = useMemo(
     () => sanitizeNoteHtml(renderNoteMarkdown(renderBody || ""), data.id),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [renderBody, tex, net],
   );
 

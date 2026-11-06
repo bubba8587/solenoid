@@ -101,7 +101,6 @@ export function SliderInputComponent({ data, emit }: NodeProps<SliderInputNodeTy
       }
     }, 1000 / hz);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, speed]);
 
   return (

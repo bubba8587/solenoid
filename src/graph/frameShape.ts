@@ -35,7 +35,7 @@ export function totalLabelledKeys(depth: number, nKeys: number): number {
 
 /** One row of plausible cells for `shape` (text, a number, TRUE, a date), for a card whose columns appear only once a
  *  row does: the card's own function run on it answers the columns it makes. */
-export function sampleRowOf(shape: Shape): FrameValue {
+function sampleRowOf(shape: Shape): FrameValue {
   const cell = (t: string) => (t === "string" ? "a" : t === "logical" ? true : t === "date" ? 45000 : 1);
   return { __frame: true, columns: shape.columns.map((c) => ({ name: c.name, type: c.type, values: [cell(c.type)] })) };
 }

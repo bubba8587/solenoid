@@ -393,15 +393,6 @@
   font-weight: 700;
 }
 
-.sol-landing__dimflow {
-  margin-top: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 14px 18px 10px;
-  box-shadow: var(--shadow-card);
-}
-
 /* ── Deep-feature rows (copy beside a scene, alternating) ── */
 .sol-landing__deep {
   display: grid;
@@ -457,25 +448,6 @@
   top: 0;
   left: 0;
   transform-origin: top left;
-}
-
-/* ── Cable board ── */
-.sol-board__dot,
-.sol-board__end {
-  position: absolute;
-  line-height: 0;
-}
-
-.sol-board__end {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sol-board__name {
-  font-size: 11.5px;
-  line-height: 1;
-  color: var(--text-dim);
 }
 
 /* ── Presenter scene: mini clusters + a flying camera frame ── */
@@ -721,10 +693,5 @@
   .sol-landing--anim .sol-cam__frame,
   .sol-landing--anim .sol-fnwall__track {
     animation: none;
-  }
-
-  .sol-landing--anim .sol-reveal .sol-pad__dot {
-    transform: none;
-    transition: none;
   }
 }

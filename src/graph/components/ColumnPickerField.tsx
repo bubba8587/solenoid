@@ -60,7 +60,6 @@ function useFeedColumns(nodeId: string, frameInput: string): string[] {
     const feed = editor.getConnections().find((c) => c.target === nodeId && c.targetInput === frameInput);
     if (!feed) return [];
     return columnNamesOf(makeFrameShapeResolver(editor).outShape(feed.source, feed.sourceOutput));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId, frameInput, connVersion, passVersion]);
 
   return columns;

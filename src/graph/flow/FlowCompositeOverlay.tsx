@@ -113,7 +113,6 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       const mainView = getView();
       if (mainView) syncSemanticZoomFor(mainView.transform.k);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comp, s]);
 
   useEffect(() => {

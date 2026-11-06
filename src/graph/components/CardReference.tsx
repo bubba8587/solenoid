@@ -248,7 +248,7 @@ export function cardAccent(c: NodeCatalogEntry, mode: "dark" | "light"): string 
   }
   return _cardAccent.get(key)!;
 }
-export function folderAccent(cards: NodeCatalogEntry[], mode: "dark" | "light"): string | null {
+function folderAccent(cards: NodeCatalogEntry[], mode: "dark" | "light"): string | null {
   const count = new Map<string, number>();
   for (const c of cards) { const a = cardAccent(c, mode); if (a) count.set(a, (count.get(a) ?? 0) + 1); }
   let best: string | null = null;

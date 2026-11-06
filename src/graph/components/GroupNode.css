@@ -186,8 +186,6 @@ html.hdr-case-proper .solenoid-group__label { letter-spacing: 0.1px; }
   box-shadow: 0 0 0 1.5px var(--surface);
   z-index: 2;
 }
-.solenoid-group__pill--left  { left: -5px; }
-.solenoid-group__pill--right { right: -5px; }
 .solenoid-group__empty {
   font-size: 11px;
   color: var(--text-dim);

@@ -67,7 +67,7 @@ export function checkScript(src: string): { error: string } | null {
   return null;
 }
 
-export function compileScript(src: string): { fn: Fn } | { error: string } {
+function compileScript(src: string): { fn: Fn } | { error: string } {
   const hit = compiled.get(src);
   if (hit) return { fn: hit };
   const head = scriptParams(src);

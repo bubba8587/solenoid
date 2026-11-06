@@ -30,7 +30,7 @@ function shown(r: unknown): unknown {
 
 /** The type an adoptive socket took up, where it differs from the one it was declared at. */
 /** Each input's row in a call: key, declared type, label, adopted type. */
-export function socketRows(node: GraphNode): unknown[] {
+function socketRows(node: GraphNode): unknown[] {
   return Object.entries(node.inputs).map(([k, input]) => [k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k, adopted(input?.socket)[0] ?? null]);
 }
 
@@ -186,6 +186,6 @@ export function nodeOnCore(node: GraphNode, inputs: Record<string, unknown[] | u
 type Watching = { coreWatched(): void };
 
 /** The field a class's `static coreWatch` names, if any. */
-export function coreWatchOf(node: GraphNode): string | undefined {
+function coreWatchOf(node: GraphNode): string | undefined {
   return (node.constructor as { coreWatch?: string }).coreWatch;
 }

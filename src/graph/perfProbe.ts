@@ -49,12 +49,10 @@ function dumpStats(): void {
   const ipc = [...ipcStats.entries()]
     .map(([command, s]) => ({ command, calls: s.calls, totalMs: +s.totalMs.toFixed(1), avgMs: +(s.totalMs / s.calls).toFixed(2), maxMs: +s.maxMs.toFixed(1), KB: +(s.bytes / 1024).toFixed(1) }))
     .sort((a, b) => b.totalMs - a.totalMs);
-  /* eslint-disable no-console */
   console.log(`[perf] node data() — cumulative (${nodes.length} nodes)`);
   console.table(nodes);
   console.log(`[perf] engine IPC — cumulative (${ipcCalls} calls, ${ipcMs.toFixed(0)}ms total)`);
   console.table(ipc);
-  /* eslint-enable no-console */
 }
 
 function resetStats(): void {

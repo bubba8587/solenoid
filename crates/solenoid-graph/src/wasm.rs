@@ -150,7 +150,7 @@ pub(crate) fn thrown(value: JsValue) -> Error {
 }
 
 /// What `data()` threw or rejected with; a `Cancelled` (an inner engine's, passed up) stays a
-/// cancellation, as rete-engine's `instanceof Cancelled` reads it.
+/// cancellation, read by `instanceof Cancelled`.
 fn rejected(cancelled: &Function, value: JsValue) -> Error {
     let is_cancelled = Reflect::get(cancelled, &JsValue::from_str("prototype"))
         .ok()

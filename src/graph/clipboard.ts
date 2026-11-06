@@ -7,9 +7,7 @@ export async function copyText(text: string): Promise<boolean> {
       await navigator.clipboard.writeText(text);
       return true;
     }
-  } catch {
-    // fall through to the legacy path
-  }
+  } catch { /* the execCommand path below */ }
   try {
     const ta = document.createElement("textarea");
     ta.value = text;

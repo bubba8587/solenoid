@@ -19,11 +19,9 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
 
   useEffect(() => {
     if (node.expr !== expr) setExpr(node.expr);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.expr]);
   useEffect(() => {
     if (node.params !== params) setParams(node.params);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.params]);
 
   // [[B19]] spreadsheetHabits: a per-keystroke commit would churn sockets.

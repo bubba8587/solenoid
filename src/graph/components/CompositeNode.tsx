@@ -308,7 +308,7 @@ function isNumericSeries(v: unknown): v is number[] {
 function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   const recompute = () => { void processGraph(node.id); };
-  useEffect(() => { if (!node.monteCarlo) { node.setMonteCarlo({}); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { if (!node.monteCarlo) { node.setMonteCarlo({}); } }, []);
   const mc = node.monteCarlo;
 
   if (exposed.length === 0) {
@@ -388,7 +388,6 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodePr
   const recompute = () => { void processGraph(node.id); };
   useEffect(() => {
     if (!node.goalSeek && exposed.length > 0 && outputs.length > 0) { node.setGoalSeek({}); recompute(); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (exposed.length === 0 || outputs.length === 0) {

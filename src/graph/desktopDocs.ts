@@ -7,7 +7,7 @@ import { isDesktop, isAndroidApp, ensureDir, pathExists, joinPath, writeTextFile
 import { pushNotice } from "./noticeStore";
 
 /** Desktop only: Android keeps documents in a folder the user granted, by its own rules. */
-export const diskBacked = (): boolean => isDesktop() && !isAndroidApp();
+const diskBacked = (): boolean => isDesktop() && !isAndroidApp();
 
 const DELAY = 800;
 
@@ -30,7 +30,7 @@ export function fileStem(name: string): string {
 const claimed = new Set<string>();
 
 /** `<root>/<folder>/<name>.json`, numbered past a name already taken (`Untitled 2.json`); the folder is created. */
-export async function freshPath(folder: string, name: string): Promise<string> {
+async function freshPath(folder: string, name: string): Promise<string> {
   const dir = await joinPath(await root(), ...folder.split("/").map((p) => p.trim()).filter(Boolean).map(fileStem));
   await ensureDir(dir);
   const stem = fileStem(name);

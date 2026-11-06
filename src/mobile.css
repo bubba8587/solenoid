@@ -224,7 +224,6 @@ html.is-mobile {
   /* ── Node chrome ── */
   .solenoid-segbtn { height: 30px; font-size: 11px; }
   .sol-switch__opt { width: 28px; height: 26px; font-size: 12px; }
-  .sol-switch__cycle { height: 30px; padding: 0 12px; }
   .solenoid-group__header { padding-left: 30px; }
   .solenoid-group__chevron { width: 22px; height: 22px; left: 4px; }
   .solenoid-group__tidy,
@@ -279,18 +278,6 @@ html.is-mobile {
     color: var(--text);
   }
   .fr-close svg { width: 20px; height: 20px; }
-
-  .fr-header-row1 { flex-wrap: wrap; }
-  .fr-search { flex: 1 1 100%; }
-  .fr-filters { margin-left: 0; }
-  .fr-select { padding: 7px 24px 7px 8px; flex-shrink: 0; }
-  /* The divider separates it from the filters on one row; wrapped onto its own line it is a stray rule. */
-  .fr-colcheck { padding-top: 6px; padding-bottom: 6px; padding-left: 2px; box-shadow: none; }
-  .fr-stats { display: none; }
-
-  .fr-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .fr-table col.col-note { width: 240px; }
-  .fr-sol-btn__add { opacity: 1; }
 }
 
 /* Narrow phones: the two-column shortcuts grid runs out of room. */

@@ -18,7 +18,7 @@ export const ARITHMETIC_OP_META = {
   div:      { label: "Divide",     carry: false, description: "`A ÷ B`. `#DIV/0!` when `B = 0`." },
   mod:      { label: "MOD",        carry: false, description: "Remainder of `A ÷ B`, with the sign of B: `MOD(-7, 3)` is 2. It pairs with `INT(A/B)`, not QUOTIENT. Excel: `MOD`." },
   quotient: { label: "QUOTIENT",   carry: false, description: "Integer part of `A ÷ B`, truncated toward zero: `QUOTIENT(-7, 3)` is -2. MOD's partner is `INT(A/B)`, not this. Excel: `QUOTIENT`." },
-  pow:      { label: "POWER",      carry: false, description: "A raised to the power B. `0^0 = 1` (JS/Python/Polars; Excel gives `#NUM!`). 0 to a negative power is `#DIV/0!`, and a result too large to represent is `#OVERFLOW!`. Excel: `POWER` / `A^B`." },
+  pow:      { label: "POWER",      carry: false, description: "A raised to the power B. `0^0 = 1`, as in JavaScript and Python (Excel gives `#NUM!`). 0 to a negative power is `#DIV/0!`, and a result too large to represent is `#OVERFLOW!`. Excel: `POWER` / `A^B`." },
 } satisfies Record<ArithmeticOp, { label: string; description: string; carry: boolean }>;
 
 export class ArithmeticNode extends GraphNode {

@@ -83,7 +83,7 @@ export function drawnFieldOf(node: LiteralFieldHost, key: string): DrawnField {
 }
 
 /** The maps a field keeps its value in. */
-export function mapsOfField(field: LiteralField): ReadonlyArray<"literals" | "stringLiterals"> {
+function mapsOfField(field: LiteralField): ReadonlyArray<"literals" | "stringLiterals"> {
   switch (field) {
     case "number": case "logical": return ["literals"];
     case "bound": return ["literals", "stringLiterals"];
@@ -112,7 +112,7 @@ export function restoreLiterals(node: object, saved: SavedLiterals): void {
 }
 
 /** Drops each saved literal its input's field doesn't read, so what a card computes from is what it shows. Run on load, after the card's inputs are rebuilt. */
-export function pruneLiterals(node: LiteralFieldHost & { literals?: Record<string, number> }): void {
+function pruneLiterals(node: LiteralFieldHost & { literals?: Record<string, number> }): void {
   for (const map of ["literals", "stringLiterals"] as const) {
     const m = node[map] as Record<string, unknown> | undefined;
     if (!m) continue;

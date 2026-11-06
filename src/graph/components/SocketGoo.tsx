@@ -137,7 +137,7 @@ export function SocketGoo({ nodeId, mode, drops, pillTop, pillColor, pillHeight 
     frame();
     return () => { cancelAnimationFrame(raf); cableEndMotion.clear(nodeId, drops.map((d) => d.key)); };
     // One run per mount; the fold remounts it for the next.
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <svg

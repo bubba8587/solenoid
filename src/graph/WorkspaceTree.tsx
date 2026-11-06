@@ -141,7 +141,6 @@ export const WorkspaceTree = memo(function WorkspaceTree({ outline }: { outline?
     const keys = revealKeys(current.folder);
     setExpanded((prev) => (keys.every((k) => prev.has(k)) ? prev : new Set([...prev, ...keys])));
     target.folder = current.folder;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, current?.folder]);
 
   const toggle = (key: string) => setExpanded((prev) => {

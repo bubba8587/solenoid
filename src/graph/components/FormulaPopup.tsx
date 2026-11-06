@@ -174,7 +174,6 @@ export function FormulaPopup() {
     setText(seed);
     textRef.current = seed;
     committedRef.current = seed;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId]);
 
   const varSuggestions = useMemo(() => extractVariables(text), [text]);

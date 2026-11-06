@@ -209,7 +209,6 @@ function DocumentEmbedBody({ value }: { value: DocumentValue }) {
     return substituteRefCodes(html, (name) => name in value.refs
       ? { html: escapeHtml(refPreview(value.refs[name], src ? resolveRefAnnotation(src, name) : undefined)) }
       : null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, tex, net]);
   return <span className="report-embed__body sol-md" dangerouslySetInnerHTML={{ __html: html }} />;
 }

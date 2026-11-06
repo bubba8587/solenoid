@@ -61,7 +61,6 @@ export function ReportOverlay() {
     setPreviewBody(node?.body ?? "");
     draftRef.current = node?.body ?? "";
     lastSyncRef.current = node?.body ?? "";
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId]);
   useEffect(() => {
     const t = setTimeout(() => setPreviewBody(body), 250);
@@ -72,7 +71,6 @@ export function ReportOverlay() {
   const previewSource = node ? node.templateSource(wiredTemplate ? node.activeSource() : previewBody) : "";
   const batch = useMemo<KnapBatch | null>(
     () => node?.records ? { records: node.records, pageName: node.pageName } : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [node, node?.records, node?.pageName, renderVersion],
   );
   const { text: rendered, errors: templateErrors, pages } = useKnapRender(previewSource, node?.templateVars ?? NO_VARS, renderVersion, batch);
@@ -112,7 +110,6 @@ export function ReportOverlay() {
   const net = useNetworkGrant(nodeId ?? undefined);
   const bodyHtml = useMemo(
     () => sanitizeNoteHtml(renderNoteMarkdown(previewText || ""), nodeId ?? undefined),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [previewText, tex, net],
   );
 
@@ -120,7 +117,6 @@ export function ReportOverlay() {
 
   const noteHtml = useMemo(
     () => note ? sanitizeNoteHtml(renderNoteMarkdown(parseNoteFrontmatter(note.body).body || ""), note.id) : "",
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [note, note?.body, tex, net],
   );
 

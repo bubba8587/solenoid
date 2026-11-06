@@ -17,7 +17,7 @@ export type TreeRow = {
 };
 export type RowDoc = { id: string; name: string; current: boolean; folder: string; unsaved?: boolean };
 
-export const nameCmp = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+const nameCmp = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
 export const folderKey = (path: string) => `f:${path}`;
 export const docKey = (id: string) => `d:${id}`;
 /** A document's row folds the outline under it in the one-tree layout; the key marks it folded, since it starts open. */

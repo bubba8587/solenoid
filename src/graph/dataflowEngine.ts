@@ -24,7 +24,7 @@ export type DataflowNode = {
 export class DataflowEngine<S extends GraphSchemes = Schemes> {
   editor?: GraphEditor<S>;
   /** Calls each node's `data()` as it is, where every other engine runs it through the input boundary
-   *  ([[compute-pass#The per-node wrappers]]): the bare rete-engine shape, for the engine's own tests. */
+   *  ([[compute-pass#The per-node wrappers]]): the bare engine, for its own tests. */
   readonly raw: boolean;
 
   constructor(opts?: { raw?: boolean }) {

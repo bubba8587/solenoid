@@ -17,34 +17,6 @@
   text-wrap-style: pretty;
 }
 
-/* ── Pipeline showcase node bits ── */
-.obs-node-chip {
-  display: inline-block;
-  padding: 1px 8px;
-  border-radius: 5px;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 11px;
-  background: var(--surface-sunken);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-dim);
-}
-
-.obs-node-run {
-  display: inline-block;
-  margin-top: 8px;
-  padding: 2px 12px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
-}
-
-.obs-node-dim {
-  color: var(--text-dim);
-}
-
 /* ── Round-trip flow band ── */
 .obs-flow-section {
   padding-bottom: 8px;
@@ -224,12 +196,6 @@
   white-space: pre;
 }
 
-.obs-arrow {
-  color: var(--text-dim);
-  font-size: 20px;
-  flex: 0 0 auto;
-}
-
 .obs-table {
   border-collapse: collapse;
   background: var(--surface);
@@ -390,9 +356,6 @@
   }
   .obs-illus {
     flex-direction: column;
-  }
-  .obs-arrow {
-    transform: rotate(90deg);
   }
   .obs-yaml {
     max-width: 100%;

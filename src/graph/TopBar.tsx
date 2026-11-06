@@ -224,11 +224,10 @@ export function TopBar() {
 
       <CableShapeSelector />
 
-      {/* Tablet only (no bottom bar there); BEFORE the art slot so a wrap keeps them
-          with the other tool pills. */}
+      {/* Tablet only (no bottom bar there); before the spacer so a wrap keeps them with the other tool pills. */}
       <TabletActions />
 
-      {/* Decorative art slot — fills the middle gap; empty for now. */}
+      {/* The spacer that pushes the app toolbar to the right edge. */}
       <div className="solenoid-topbar__art" />
 
       <AppToolbar />

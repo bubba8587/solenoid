@@ -42,7 +42,7 @@ export function errorFromCore(code: string, message: string, ref: number | undef
 export const toWellFormed = (s: string): string => (s as string & { toWellFormed(): string }).toWellFormed();
 
 /** A number or error as the core's cell reader takes it: non-finite numbers and errors tagged. */
-export function wireCell(v: unknown): unknown {
+function wireCell(v: unknown): unknown {
   if (typeof v === "number" && !Number.isFinite(v)) return { __nf: Number.isNaN(v) ? "nan" : v > 0 ? "inf" : "-inf" };
   if (typeof v === "number" && Object.is(v, -0)) return { __nf: "-0" };
   if (isSolError(v)) { const ref = errorRef(v); return { __err: v.code, msg: v.message, ...(ref === undefined ? {} : { ref }), ...(v.origin ? { origin: v.origin } : {}) }; }
@@ -137,7 +137,7 @@ export function engineClock(at: Date = new Date()): EngineClock {
 }
 
 /** What a call answers where the core trapped mid-call; a fresh instance is on its way ([[rust-core#Where it runs]]). */
-export const TRAPPED_MESSAGE = "The engine stopped while computing this; it restarted, so recalculate to try again";
+const TRAPPED_MESSAGE = "The engine stopped while computing this; it restarted, so recalculate to try again";
 
 const FX_CODE: Record<string, SolErrorCode> = {
   "#DIV/0!": "#DIV/0!", "#N/A": "#N/A", "#NAME?": "#NAME?",
@@ -145,7 +145,7 @@ const FX_CODE: Record<string, SolErrorCode> = {
 };
 
 /** An Excel error answer (`{fx}`, `#NUM!`) as the error a formula shows. */
-export function fxErrorToSol(e: Error): SolError {
+function fxErrorToSol(e: Error): SolError {
   const code = /#[A-Z0-9/?!.]+/.exec(e.message || String(e))?.[0] ?? "";
   return solError(FX_CODE[code] ?? "#VALUE!", "The formula produced an error");
 }

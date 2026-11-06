@@ -81,8 +81,7 @@ fn group_count(cs: &[char]) -> usize {
     n
 }
 
-/// PCRE2's syntax where Rust's reads it otherwise or not at all, rewritten for the engine (the author's Excel,
-/// 2026-11-01):
+/// PCRE2's syntax where Rust's reads it otherwise or not at all, rewritten for the engine:
 /// - `$` (without the m flag) matches at the end and also just before a newline that ends the text; Rust's only at the
 ///   end. Each `$` outside a class takes that newline too; under `(?m)` the line end it already matches covers it.
 /// - `\h` and `\H` are horizontal space and its opposite; `\Q…\E` quotes; `\0dd`, and `\ddd` past the pattern's group
@@ -264,7 +263,7 @@ pub fn test(re: &Regex, text: &str) -> Result<bool, String> {
     re.is_match(text).map_err(|e| run_error(&e))
 }
 
-/// A replacement for one match, as Excel's REGEXREPLACE reads it (the author's Excel, 2026-11-01): `$$` is a dollar;
+/// A replacement for one match, as Excel's REGEXREPLACE reads it: `$$` is a dollar;
 /// `$n`, `${n}` and `\n` a group by number, `$0` and `$&` the whole match; `${name}` and `$name` a group by name. A
 /// group that took no part is empty; a number or name the pattern has no group for is an error. Any other `$` or `\`
 /// stays as written.

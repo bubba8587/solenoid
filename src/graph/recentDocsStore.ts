@@ -4,7 +4,7 @@ import { createNotifier } from "./storeKit";
 const KEY = "solenoid.recentDocs";
 const KEPT = 12;
 /** How many recents the documents menu shows. */
-export const RECENTS_SHOWN = 5;
+const RECENTS_SHOWN = 5;
 
 /** `id` moved to the front, newest first, the list capped. */
 export function touchRecent(list: readonly string[], id: string): string[] {

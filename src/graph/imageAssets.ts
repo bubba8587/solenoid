@@ -70,7 +70,6 @@ export function bytesToDataUrl(bytes: Uint8Array, mime: string): string {
 
 export function sanitizeName(name: string, fallback = "image"): string {
   const base = name.split(/[/\\]/).pop() ?? "";
-  // eslint-disable-next-line no-control-regex
   const clean = base.replace(/[<>:"|?*\x00-\x1f]/g, "").trim();
   return clean || fallback;
 }

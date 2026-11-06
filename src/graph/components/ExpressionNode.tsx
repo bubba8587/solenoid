@@ -14,7 +14,6 @@ export function ExpressionComponent({ data: node, emit }: NodeProps<ExpressionNo
   // Resync when the node changes elsewhere — undo/redo, or the formula popup.
   useEffect(() => {
     if (node.expr !== expr) setExpr(node.expr);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.expr]);
 
   const lockBadge = node.locked ? (

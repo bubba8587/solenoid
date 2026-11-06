@@ -90,7 +90,6 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
       seg.push(`${seg.length ? "L" : "M"}${px},${Math.max(-4, Math.min(PAD_H + 4, py)).toFixed(1)}`);
     }
     return seg.join(" ");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pts, xmin, xmax, ymin, ymax]);
 
   const sampled = sampleCurve(data.pointsText, xmin, xmax, data.literals.samples ?? 32);

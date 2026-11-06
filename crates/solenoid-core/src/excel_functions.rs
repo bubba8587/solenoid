@@ -357,7 +357,7 @@ pub fn number_to_text(x: f64) -> String {
     let (m, e) = shortest.split_once('e').unwrap_or((&shortest, "0"));
     let exp: i32 = e.parse().unwrap_or(0);
     // A number below 1 is written whole while that takes at most 18 digits after the point, and in E form past that,
-    // as the author's Excel writes it (2026-11-02): 0.000123456789012345 and 1E-18 whole, 1.23456789012345E-05 and
+    // as Excel writes it: 0.000123456789012345 and 1E-18 whole, 1.23456789012345E-05 and
     // 1E-20 not. A negative one is read by the same count (unchecked).
     let small = mag != 0.0 && mag < 1.0 && {
         let digits = m.chars().filter(char::is_ascii_digit).count();
@@ -367,7 +367,7 @@ pub fn number_to_text(x: f64) -> String {
         let digits: String = m.chars().filter(char::is_ascii_digit).collect();
         return format!("{}0.{}{digits}", if v < 0.0 { "-" } else { "" }, "0".repeat((-exp - 1) as usize));
     }
-    // 1E+19 is written whole and 1E+20 as 1E+20, as the author's Excel writes them (2026-11-02).
+    // 1E+19 is written whole and 1E+20 as 1E+20, as Excel writes them.
     if mag >= 1e20 || small {
         let m = to_precision(m.parse::<f64>().unwrap_or(f64::NAN), 15);
         return format!("{}E{}{:02}", number_to_string(m), if exp < 0 { "-" } else { "+" }, exp.abs());
@@ -2782,7 +2782,6 @@ fn finite_opt(r: Option<f64>, inputs: &[f64]) -> V {
 }
 
 /// Over sorted numbers.
-#[allow(clippy::manual_range_contains)] // a NaN must pass these checks
 fn percentile(arr: &[f64], p: f64, exc: bool) -> V {
     let n = arr.len() as f64;
     if arr.is_empty() {
@@ -2801,7 +2800,6 @@ fn percentile(arr: &[f64], p: f64, exc: bool) -> V {
 }
 
 /// Over sorted numbers.
-#[allow(clippy::manual_range_contains)] // a NaN must pass these checks
 fn quartile(arr: &[f64], q: f64, exc: bool) -> V {
     let qi = q.trunc();
     if arr.is_empty() {

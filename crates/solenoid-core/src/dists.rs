@@ -1,7 +1,7 @@
 // [[C130]] rustCore
 //! The distribution kernels: series, continued fractions and bisections over V8's `Math`.
-// The constants' digits are as written; a range test has to let a NaN through.
-#![allow(clippy::excessive_precision, clippy::manual_range_contains)]
+// The constants' digits are as written.
+#![allow(clippy::excessive_precision)]
 
 use crate::jsnum::{nan_max, nan_min};
 use libm::{exp, log, pow, sin};

@@ -275,7 +275,7 @@ pub fn format_number(x: f64, code: &str) -> Result<String, FormatError> {
 }
 
 /// The section a number takes, and whether it keeps its own minus sign; none when no condition holds, which TEXT
-/// answers #VALUE! (the author's Excel, 2026-11-01: `TEXT(5, "[>10]0;[<0]0")`). A conditional section drops a
+/// answers #VALUE! (`TEXT(5, "[>10]0;[<0]0")`). A conditional section drops a
 /// negative number's sign as a second section does (`TEXT(-5, "[>10]0;[<0]-0")` is -5).
 fn pick<'a>(sections: &[&'a Section], x: f64) -> (Option<&'a Section>, bool) {
     let conditional = sections.iter().any(|s| s.cond.is_some());

@@ -41,7 +41,6 @@ export function FormulaBox({ node }: { node: FormulaNode }) {
 
   useEffect(() => {
     if (node.stringLiterals.formula !== val) setVal(node.stringLiterals.formula ?? "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.stringLiterals.formula]);
 
   if (lambdaSrc) {

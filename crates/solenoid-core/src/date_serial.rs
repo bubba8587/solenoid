@@ -192,8 +192,8 @@ mod tests {
 }
 
 /// A date as milliseconds of UTC read and set by its calendar fields, with no time zone: the date-only kernels of the
-/// functions ported from Formula.js (EDATE, YEARFRAC, the coupon days, DATEDIF's days), which once read the host's
-/// local wall clock, so a daylight-saving change or the machine's zone moved a date-only answer.
+/// functions ported from Formula.js (EDATE, YEARFRAC, the coupon days, DATEDIF's days), so neither a daylight-saving
+/// change nor the machine's zone moves a date-only answer.
 pub mod civil {
     use crate::zone::{make_date, make_day, make_time, time_clip};
 
@@ -241,12 +241,6 @@ pub mod civil {
 
     pub fn set_month(t: f64, m: f64) -> f64 {
         fields(t).map_or(f64::NAN, |l| time_clip(make_date(make_day(l.year, m, l.date), l.in_day)))
-    }
-
-    /// The same day in year `y`; no date counts from 1 Jan 1970.
-    pub fn set_full_year(t: f64, y: f64) -> f64 {
-        let l = fields(t).unwrap_or(Fields { year: 1970.0, month: 0.0, date: 1.0, in_day: 0.0 });
-        time_clip(make_date(make_day(y, l.month, l.date), l.in_day))
     }
 
     pub fn start_of_day(t: f64) -> f64 {

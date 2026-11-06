@@ -224,7 +224,6 @@ export const dateComboSocket = new SolenoidSocket("datecombo");
 export const tableSocket   = new SolenoidSocket("table");
 export const strTableSocket  = new SolenoidSocket("strtable");
 export const dateTableSocket = new SolenoidSocket("datetable");
-export const anyTableSocket  = new SolenoidSocket("anytable");
 export const anyComboSocket  = new SolenoidSocket("anycombo");
 export const stringSocket  = new SolenoidSocket("string");
 export const strListSocket = new SolenoidSocket("strlist");

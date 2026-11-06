@@ -199,7 +199,6 @@ function SceneInner({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stack]);
   return <FlowSurface stack={stack} hooks={hooks} />;
 }

@@ -39,7 +39,6 @@ export function ScriptComponent({ data: node, emit }: NodeProps<ScriptNodeType>)
     if (!el) return;
     const lines = node.expr.split("\n").length;
     el.style.height = `${Math.min(Math.max(lines * LINE_H + FIELD_CHROME, 64), FIELD_MAX_H)}px`;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function commit() {

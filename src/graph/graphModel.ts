@@ -6,7 +6,7 @@ import { uid } from "./engineWasm/solenoid_graph.js";
 
 /** A node's or cable's id, made by the graph core (netcore-rs's `getUID`: sixteen lowercase hex digits from eight
  *  random bytes), so nothing can be built before the module loads. */
-export function getUID(): string {
+function getUID(): string {
   return uid();
 }
 

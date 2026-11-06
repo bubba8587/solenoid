@@ -33,9 +33,9 @@ export function shortText(t: string): string {
  *  field's text and its 2px padding and border, and the degree mark. */
 const CHAR_W = 6.1;
 export const LABEL_H = 15;
-export const LABEL_DEG_W = 6;
+const LABEL_DEG_W = 6;
 export const labelWidth = (chars: number) => 9 + Math.max(2, chars) * CHAR_W + 6;
-export const fieldWidth = (chars: number) => `calc(${Math.max(2, chars)}ch + 6px)`;
+const fieldWidth = (chars: number) => `calc(${Math.max(2, chars)}ch + 6px)`;
 
 export const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
 

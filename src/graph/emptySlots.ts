@@ -29,7 +29,7 @@ const LOGICAL_PARAMS = new Set([
   "no_commas", "no_switch", "const",
 ]);
 
-/** Where Excel reads an empty slot apart from its parameter's type and its role (checked in Excel, 2026-10-05). */
+/** Where Excel reads an empty slot apart from its parameter's type and its role. */
 const EXCEL_EMPTY_SLOT: Record<string, Record<number, unknown>> = {
   TEXTJOIN: { 1: true },
   XLOOKUP: { 3: LEFT_OUT },

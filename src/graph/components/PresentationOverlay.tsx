@@ -38,7 +38,6 @@ function PresentationRunner({ nodeId }: { nodeId: string }) {
   useEffect(() => {
     const step = steps[idx];
     if (step && step.nodeIds.length) flyToNodes(step.nodeIds);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
 
   // No dep array, so each render's handler closes over the current idx.

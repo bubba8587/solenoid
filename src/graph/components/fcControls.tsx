@@ -14,7 +14,6 @@ import { stopDragStart } from "../coarse";
 
 // The FC's flow states (authored ← →, inherited → →, dictated ← ←): tree/specs/values/format-model.md.
 
-export type FcDir = "back" | "fwd" | null;
 export function FcArrow({ dir, title }: { dir: "back" | "fwd"; title?: string }) {
   return (
     <span

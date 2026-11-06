@@ -351,7 +351,6 @@ export function OutlinePanel() {
       }
     }
     return m;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connVersion, state]);
   const toggleConns = (id: string) =>
     setExpandedConns((prev) => {
@@ -437,7 +436,6 @@ export function OutlinePanel() {
   );
   const hits = useMemo(
     () => (everywhere && filters.size === 0 ? searchLibrary(documentStore.searchable(), documentStore.currentId(), query) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [everywhere, filters, query, libVersion],
   );
   const openHit = async (h: SearchHit) => {

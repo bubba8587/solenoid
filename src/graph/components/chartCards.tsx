@@ -115,7 +115,6 @@ function MasonryGallery({ count, track, className, layoutKey, tile }: {
     ro.observe(el);
     for (const t of tileRefs.current.slice(0, n)) if (t) ro.observe(t);
     return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [n, layoutKey]);
 
   const plan = planColumns(box?.w ?? 0, GALLERY_GAP, { ...track, items: n });

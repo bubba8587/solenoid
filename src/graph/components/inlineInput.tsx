@@ -68,7 +68,6 @@ export function useDraftCommit<T>(
 ) {
   const [draft, setDraft] = useState(() => toText(committed));
   const canceled = useRef(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setDraft(toText(committed)); }, [committed]);
   const commit = () => {
     const next = parse(draft);

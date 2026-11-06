@@ -25,37 +25,6 @@
   user-select: none;
 }
 
-.solenoid-expr__textarea {
-  flex: 1;
-  /* width: 0 lets flex-grow fill the remaining space */
-  width: 0;
-  /* Sized to content: JS auto-grows the textarea to its lines (capped), so a short
-     formula rests small. Wraps (soft-wrap) so a long one never scrolls sideways. */
-  min-height: 22px;
-  max-height: 96px;
-  padding: 2px 5px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 18px;
-  background: transparent;
-  border: 1px solid var(--node-accent, var(--accent));
-  border-radius: 4px;
-  color: var(--text);
-  resize: none;
-  overflow-y: hidden;
-  box-sizing: border-box;
-}
-
-.solenoid-expr__textarea:focus {
-  outline: none;
-  border-color: var(--node-accent, var(--accent));
-}
-
-.solenoid-expr__textarea::placeholder {
-  color: var(--border-strong);
-  font-style: italic;
-}
-
 .solenoid-expr__rendered {
   flex: 1;
   width: 0;
