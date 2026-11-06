@@ -65,14 +65,4 @@ export function uncertain(value: number, error: number, samples?: readonly numbe
   return samples ? { kind: "uncertain", value, error: e, samples } : { kind: "uncertain", value, error: e };
 }
 
-const DOMAIN_MESSAGE = "The result is undefined: an indeterminate operation such as ∞ − ∞, 0 × ∞, or a value outside the function's domain.";
-const OVERFLOW_MESSAGE = "The result is too large to represent. The true value exceeds the numeric range.";
-
-export function guardFinite(result: number, inputs: ReadonlyArray<unknown>): number | SolError {
-  if (Number.isFinite(result)) return result;
-  if (Number.isNaN(result)) return solError("#DOMAIN!", DOMAIN_MESSAGE);
-  const fromInfiniteInput = inputs.some((v) => v === Infinity || v === -Infinity);
-  return fromInfiniteInput ? result : solError("#OVERFLOW!", OVERFLOW_MESSAGE);
-}
-
 export type Tri = boolean | Missing;

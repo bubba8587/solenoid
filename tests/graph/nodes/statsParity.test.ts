@@ -3,8 +3,8 @@ import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { RankPercentileNode, CorrelNode, FisherNode, ModeNode } from "../../../src/graph/nodes/stats";
 import { isSolError } from "../../../src/graph/errorValue";
 
-// capabilityParity / [[C17]] shareImpl for the STATISTICS family (the A1 backing flip): every
-// formula below runs the statsOps kernel its node runs, so the two surfaces must agree
+// [[C17]] shareImpl for the STATISTICS family: every formula below and its Aggregate card run
+// on the same core body, so the two surfaces must agree
 // on value, blank and error alike. A new divergence fails here, not in a user's sheet.
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
@@ -15,7 +15,7 @@ const same = (a: unknown, b: unknown) => {
 };
 
 
-describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
+describe("statistics formulas == Aggregate node (one core body)", () => {
   it("a formula over several args flattens them into one sample", () => {
     expect(ev("AVERAGE(a, 10, b)", { a: [1, 2], b: [3] })).toBeCloseTo(4, 12);
   });

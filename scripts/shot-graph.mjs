@@ -68,7 +68,7 @@ try {
     });
   }
   if (opt.size) {
-    // The phone model, not just a touch viewport: a mobile UA and (pointer: coarse) before the app loads (as touch-pan-probe.mjs).
+    // The phone model, not just a touch viewport: a mobile UA and (pointer: coarse) before the app loads.
     await page.setUserAgent(
       "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
       { mobile: true, platform: "Android", platformVersion: "14", architecture: "", model: "Pixel 8", brands: [] },

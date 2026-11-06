@@ -15,7 +15,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:bucket": "node scripts/test-bucket.mjs",
-    "test:core": "node scripts/test-bucket.mjs core",
     "test:surface": "node scripts/test-bucket.mjs surface",
     "test:nodes": "node scripts/test-bucket.mjs nodes",
     "tauri": "tauri",

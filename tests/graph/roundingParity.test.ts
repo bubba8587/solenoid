@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { RoundNNode, type RoundNOp } from "../../src/graph/nodes/scalar";
 
-// The rounding family is backed "verify" (FAMILY_BACKING) — Excel's half-AWAY-from-zero
+// The rounding family follows Excel: Excel's half-AWAY-from-zero
 // rule differs from JS Math.round's half-UP, and the sign conventions (INT floors toward
 // −∞, TRUNC toward 0, EVEN/ODD away from 0) are exact, documented Excel behavior. These
 // are unambiguous rules, not golden numbers.

@@ -13,7 +13,6 @@ const ALL = ["tests/**/*.test.{ts,tsx}", "scripts/**/*.test.{ts,tsx}", "packages
 // assert a module's initial state (another file's import changes it).
 // sourceInvariants.test.ts fails a vi.mock file missing from this list.
 const ISOLATED = [
-  "tests/graph/coerceInputs.test.ts",
   "tests/graph/demoVault.test.ts",
   "tests/graph/importObsidianGone.test.ts",
   "tests/graph/documentStorePersist.test.ts",
@@ -22,7 +21,6 @@ const ISOLATED = [
   "tests/graph/fileSession.test.ts",
   "tests/graph/flow/flowHistory.test.ts",
   "tests/graph/importNoteRepick.test.ts",
-  "tests/graph/lazyChain.test.ts",
   "tests/graph/localFileRace.test.ts",
   "tests/graph/noteMarkdown.test.ts",
   "tests/graph/nodes/sink.test.ts",

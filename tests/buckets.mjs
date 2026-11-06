@@ -44,17 +44,17 @@ export const RULES = [
   ["formulas", /(^|\/)(excel\w*|formula\w*|blankArgIsExcelBlank|broadcast\w*|generatorCaps|spreadLimit|distributionFormula|criteriaFamily|comparisonFunctions|rangeLift|rangeRouting|rangeCallMemo|expressionMatrix|emptySlots|emptyFieldKinds|datetimeParity|timeZone|fuzzy|coreConformance|coreSurrogates|coreParseDate|coreLimits|caseContract|stringOrder|roundingParity|scientificCutoff|complexInvariants|dispatchThrow)\.test\./],
 
   // ── values: errors, dates, units, formats ──
-  ["values", /(^|\/)(error\w*|date\w*|datesNeverSerials|volatileDates|unit\w*|coreUnitCatalog|convertUnitLabels|cubeColumnUnits|valueKinds|formatModel|format\w*|fc\w*|coreFcReconcile|coreFcTag|noTextGuessing|noteFcPropagation|heldValues|coreAnnotations|coreDimLabels|pushWorldDockedFc|compositeFcSettle|tidyDisplayFcWidth)\.test\./],
+  ["values", /(^|\/)(error\w*|date\w*|datesNeverSerials|volatileDates|unit\w*|coreUnitCatalog|convertUnitLabels|valueKinds|formatModel|format\w*|fc\w*|coreFcReconcile|coreFcTag|noTextGuessing|heldValues|coreAnnotations|coreDimLabels|compositeFcSettle)\.test\./],
 
   // ── engine: the graph model, the pass, sockets and types ──
-  ["engine", /(^|\/)(graph\w*|dataflowEngine|process\w*|core\w*|dimension|settle|socket\w*|passthrough\w*|trueAnyAdopt|typesKnownAfterCalc|namedEdits|cardWireBinary|binaryBytes|perfScaling|passBench|wasmEngineBench|circularReset|clampSeeding|connectionRace|connectionStore|calcModeStore|composite\w*|closedCompositePrune|drillStackGate|isolate\w*|coerceInputs|baseView|domSync|liveCardUnmounted|renderMode|cablePendingReconnect|cableSettlePipe|cableValueStore|presentSocketStore|deleteSelectionScope|fcChainDelete)\.test\./],
+  ["engine", /(^|\/)(graph\w*|dataflowEngine|process\w*|core\w*|dimension|settle|socket\w*|passthrough\w*|trueAnyAdopt|typesKnownAfterCalc|namedEdits|cardWireBinary|binaryBytes|perfScaling|passBench|wasmEngineBench|circularReset|clampSeeding|connectionRace|connectionStore|calcModeStore|composite\w*|closedCompositePrune|coerceInputs|cableSettlePipe|cableValueStore)\.test\./],
 
   // ── canvas: layout, cables, gestures, the React Flow view ──
   ["canvas", /^tests\/graph\/(flow|components)\//],
   ["canvas", /(^|\/)(cable\w*|canvas\w*|group\w*|tidy\w*|layout\w*|standoff\w*|collapseStore|conduit\w*|hic\w*|zoomSettle|touch\w*|pointerGesture|drawnCablePath|pathPoints|selectionOps|lockedContextMenus|landscapePhoneScale|viewPresets|nodeSizeStore|flowPreview|gridKeyboard|modalGuard|fireMenuKey|selectChevron)\.test\./],
 
   // ── ui: stores, menus, search, popups, settings ──
-  ["ui", /(^|\/)(\w+Store|catalogSearch|searchSamples|nameSurfaces|tablePopupSuggest|tableEdit|tableSortFilter|helpSection|commentStore|problemsStore|pinStore|inspectorStore|settingsStore)\.test\./],
+  ["ui", /(^|\/)(\w+Store|catalogSearch|searchSamples|nameSurfaces|commentStore|problemsStore|pinStore|inspectorStore|settingsStore)\.test\./],
 ];
 
 /** The domain a test file belongs to, or `undefined` when no rule claims it. */

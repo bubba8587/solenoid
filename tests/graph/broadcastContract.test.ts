@@ -2,8 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { readInput } from "../../src/graph/nodes/shared";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { guardFinite } from "../../src/graph/valueKinds";
-import { solError, isSolError } from "../../src/graph/errorValue";
+import { solError } from "../../src/graph/errorValue";
 
 const e = solError("#DIV/0!", "boom");
 
@@ -58,35 +57,6 @@ describe("broadcastCall / unary / percent — formula-layer broadcasters", () =>
     expect(r[0]).toBe(0.5);
     expect(r[1]).toBe(null);
     expect(r[2]).toBe(e);
-  });
-});
-
-describe("guardFinite — a computation never yields a bare NaN/Infinity", () => {
-  it("NaN → #DOMAIN!", () => {
-    const r = guardFinite(NaN, [0, Infinity]);
-    expect(isSolError(r) && (r as { code: string }).code).toBe("#DOMAIN!");
-  });
-  it("±Inf from all-finite inputs → #OVERFLOW!", () => {
-    const r = guardFinite(Infinity, [1e308, 10]);
-    expect(isSolError(r) && (r as { code: string }).code).toBe("#OVERFLOW!");
-    const r2 = guardFinite(-Infinity, [5, 3]);
-    expect(isSolError(r2) && (r2 as { code: string }).code).toBe("#OVERFLOW!");
-  });
-  it("±Inf when an INPUT was already infinite → passes through", () => {
-    expect(guardFinite(Infinity, [Infinity, 5])).toBe(Infinity);
-    expect(guardFinite(-Infinity, [2, -Infinity])).toBe(-Infinity);
-  });
-  it("a finite result passes through unchanged", () => {
-    expect(guardFinite(42, [6, 7])).toBe(42);
-    expect(guardFinite(0, [0, 0])).toBe(0);
-  });
-
-
-  it("formula: 2^5000 → #OVERFLOW!, EXP(1000) → #OVERFLOW!, 0^0 → 1", () => {
-    const ev = (expr: string) => compileEvaluator(expr)!({});
-    expect(isSolError(ev("2 ^ 5000")) && (ev("2 ^ 5000") as { code: string }).code).toBe("#OVERFLOW!");
-    expect(isSolError(ev("EXP(1000)"))).toBe(true);
-    expect(ev("0 ^ 0")).toBe(1);
   });
 });
 

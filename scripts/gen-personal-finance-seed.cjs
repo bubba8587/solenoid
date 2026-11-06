@@ -5,7 +5,7 @@
 // it's authored in code (coordinates + auto-sized group rects) rather than by
 // hand. Run with:  node scripts/gen-personal-finance-seed.cjs
 // The data lives in demo-vault/Data/*.csv (read by the Local File nodes from the
-// demo vault when no data folder is set). After editing, `npx vitest run src/graph/seeds.test.ts`
+// demo vault when no data folder is set). After editing, `npx vitest run tests/graph/seeds.test.ts`
 // validates every node / socket / group against the real classes.
 //
 // Design notes:

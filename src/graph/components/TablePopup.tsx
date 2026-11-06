@@ -513,7 +513,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   const viewRowCache = new Map<number, string[]>();
   const viewRow = (r: number): string[] => { let v = viewRowCache.get(r); if (!v) { v = viewRowAt(r); viewRowCache.set(r, v); } return v; };
 
-  // An input has no intrinsic width, so measure: the mono advance is 27/42 em (the shipped .fnt metrics), plus 16px padding.
+  // An input has no intrinsic width, so measure: Atkinson Mono's advance is 27/42 em, plus 16px padding.
   const MONO_CH_PX = 12 * (27 / 42);
   const colMinWidths: Array<number | undefined> = [];
   for (let c = 0; c < viewCols; c++) {

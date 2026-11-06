@@ -20,7 +20,7 @@ import seed from "../../src/graph/seedGraphs/personal-finance.json";
 // and is the in-app `window.__solenoidPerf` probe's job. Pan/zoom cost is render-
 // only and not exercised here at all.
 //
-// Run:  npx vitest run src/graph/perfScaling.test.ts
+// Run:  npx vitest run tests/graph/perfScaling.test.ts
 // The graph is duplicated into N disconnected copies (scale 1/2/4) to see whether
 // compute scales linearly with TOTAL node count (the "whole graph recomputes"
 // hypothesis) — and to project where it crosses a 16ms frame budget.
@@ -111,7 +111,7 @@ function stats(samples: number[]) {
 
 // Benchmark, not a pass/fail test — 30 iters at 1x/2x/4x is slow and prints a table
 // nobody reads in a normal `npm test`. Gate it behind PERF so the default suite stays
-// fast; run with `PERF=1 npx vitest run src/graph/perfScaling.test.ts` when profiling.
+// fast; run with `PERF=1 npx vitest run tests/graph/perfScaling.test.ts` when profiling.
 describe.runIf(!!process.env.PERF)("personal-finance compute scaling", () => {
   it("times engine.reset + fetch-all at 1x / 2x / 4x / 8x node count", async () => {
     const WARMUP = 3;

@@ -16,7 +16,6 @@ index.html
 .mcp.json
 .dteignore
 .github
-.impeccable
 src/vite-env.d.ts
 tests/setup
 src-tauri/Cargo.toml
@@ -71,7 +70,6 @@ why: fixtures and sample data are inputs to tests and demos, not artifacts that 
 fixtures
 crates/solenoid-schedule/tests/corpus
 assets
-public/fonts
 tests/fixtures
 
 why: dev tooling serves the workflow; the decision, if any, is cited by the file it generates or drives
