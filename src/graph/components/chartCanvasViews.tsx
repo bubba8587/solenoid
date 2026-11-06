@@ -565,8 +565,10 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, o: ChartOptions
   if (maxMag === 0) maxMag = 1;
   const reach = Math.min(cw, ch) * 0.46;
 
+  // The grid's first row is at the bottom, as the Surface's contour draws it (matplotlib's `contour` and `quiver`):
+  // row index and a positive ΔY both run up the plot.
   for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) {
-    const cx = pad + (ix + 0.5) * cw, cy = pad + (iy + 0.5) * ch;
+    const cx = pad + (ix + 0.5) * cw, cy = pad + (ny - 1 - iy + 0.5) * ch;
     const u = p.u[iy]?.[ix], v = p.v[iy]?.[ix];
     if (u == null || v == null) {
       ctx.fillStyle = ink.border;
