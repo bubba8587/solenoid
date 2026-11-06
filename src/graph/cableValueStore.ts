@@ -6,7 +6,7 @@ import { createNotifier } from "./storeKit";
 import { registerNodeForgetAll } from "./nodeStoreRegistry";
 
 /** An engine whose passes the readouts show: the main canvas's, and a landing or static stage's while it computes. */
-export interface LandedSource {
+interface LandedSource {
   landed(nodeId: string, key: string): unknown;
 }
 

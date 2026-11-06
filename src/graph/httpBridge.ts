@@ -5,7 +5,7 @@ import { isDesktop } from "./fileBridge";
 /** Must stay a recognized tool UA: FRED's fredgraph.csv sits behind a WAF that drops browser, unknown and reqwest UAs. */
 const DATA_FETCH_UA = "curl/8.4.0";
 
-export interface FetchedText {
+interface FetchedText {
   text: string;
   contentType: string;
 }

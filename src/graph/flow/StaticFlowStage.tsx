@@ -31,7 +31,7 @@ type StageHandlers = {
   syncTopology(): void;
 };
 
-export type StaticStack = FlowModel & {
+type StaticStack = FlowModel & {
   view: FlowView;
   handlers: StageHandlers;
 };

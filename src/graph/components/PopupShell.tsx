@@ -26,7 +26,7 @@ export function popupCardVars(v: {
   return vars;
 }
 
-export type PopupFilter = { value: string; onChange: (next: string) => void; label?: string; count?: string };
+type PopupFilter = { value: string; onChange: (next: string) => void; label?: string; count?: string };
 
 /** Mount only while open: the capture-phase Escape hook lives as long as the shell. */
 export function PopupShell({

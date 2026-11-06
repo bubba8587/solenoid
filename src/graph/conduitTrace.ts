@@ -6,7 +6,7 @@ import type { GraphConnection, GraphNode, GraphSocket } from "./graphModel";
 
 type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
 
-export type TypedSource = {
+type TypedSource = {
   socket: GraphSocket | undefined;
   source: string;
   sourceOutput: string;
@@ -31,7 +31,7 @@ export interface ConduitPathEnd {
   key: string;
 }
 
-export interface ConduitPath {
+interface ConduitPath {
   connIds: string[];
   origin: ConduitPathEnd;
   terminals: ConduitPathEnd[];

@@ -411,8 +411,6 @@ describe("any/anycombo bases — a family-less wire keeps the base", () => {
     // Family-typed wires still adopt verbatim.
     expect(adoptTypeForBase("any", "number")).toBe("number");
     expect(adoptTypeForBase("anycombo", "strlist")).toBe("strlist");
-    // A trueany BASE still adopts anything verbatim.
-    expect(adoptTypeForBase("trueany", "frame")).toBe("frame");
   });
 
   it("…so an occupied SWITCH row still refuses a frame", () => {

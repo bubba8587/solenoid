@@ -4,7 +4,7 @@ import { isKnapNote, knapVariables, renderKnapNote, renderKnapUnits, KNAP_PROPER
 import { knapLivePreview } from "./knapLive";
 import type { PropertyKind } from "./yamlValue";
 
-export interface KnapHost extends Plugin {
+interface KnapHost extends Plugin {
   objectKind(key: string): PropertyKind | undefined;
   chip(el: HTMLElement, kind: PropertyKind, key: string, value: unknown, onChange: (next: unknown) => void, sourcePath?: string): ShadowRoot;
   release(el: Element): void;

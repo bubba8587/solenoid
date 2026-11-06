@@ -1,6 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! The Formula.js dotless and legacy statistics names, rounding aliases and a few leftovers. The legacy names are
-//! blocked on the formula surface (`LEGACY_ALIASES`): each body answers `#NAME?` naming its modern replacement.
+//! Formula.js's dotless and legacy statistics names, rounding aliases, ACCRINT, BESSEL and the extra hypothesis
+//! tests; a legacy name is blocked (`LEGACY_ALIASES`) and answers `#NAME?` naming its modern replacement.
 
 #![allow(clippy::excessive_precision)]
 

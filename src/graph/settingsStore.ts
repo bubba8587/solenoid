@@ -3,7 +3,7 @@
 import { createNotifier, createToggleStore } from "./storeKit";
 
 /** Display only: the stored label stays raw. */
-export type HeaderTitleCase = "as-typed" | "upper" | "proper";
+type HeaderTitleCase = "as-typed" | "upper" | "proper";
 
 const LS_KEY = "solenoid.settings";
 
@@ -91,7 +91,7 @@ export interface SettingField {
   /** No mobile counterpart: consumers must both gray the control and skip the behavior. */
   disabledOnMobile?: boolean;
 }
-export interface SettingsSection {
+interface SettingsSection {
   title: string;
   fields: SettingField[];
 }

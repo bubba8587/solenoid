@@ -6,7 +6,7 @@ import { cubeFromColumns, type CubeValue, type CubeCell, type FrameValue } from 
 import { readPlanFile, parsePredecessors } from "./engineWasm/solenoid_graph.js";
 import type { PlanTask, PlanDependency, CalendarSpec } from "./planTypes";
 
-export interface ImportedPlan {
+interface ImportedPlan {
   cube: CubeValue;
   start: number | null;
   calendar: CalendarSpec | null;

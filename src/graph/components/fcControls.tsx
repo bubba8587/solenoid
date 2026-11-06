@@ -40,7 +40,7 @@ const BASE_UNIT_GROUP_ORDER: string[] = [
 
 type FcOption = { id: string; label: string };
 
-export interface FcFormatOptions {
+interface FcFormatOptions {
   unitGroups: Map<string, FcOption[]>;
   unitGroupOrder: string[];
   packFormatGroups: Map<string, FcOption[]>;

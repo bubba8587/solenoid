@@ -55,7 +55,7 @@ import {
 } from "./nodeClasses";
 
 
-export type OpExposure = "collapsed" | "leaves";
+type OpExposure = "collapsed" | "leaves";
 
 interface NodeOpsBase {
   type: string;
@@ -68,7 +68,7 @@ interface NodeOpsBase {
   primaryRow?: boolean;
 }
 
-export type NodeOpsDecl = NodeOpsBase & (
+type NodeOpsDecl = NodeOpsBase & (
   | { ops: Array<OpEntryDecl>; create: (op: string) => unknown }
   | { ops?: undefined; create?: undefined }
 );

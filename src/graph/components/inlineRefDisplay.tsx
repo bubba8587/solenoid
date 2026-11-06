@@ -39,7 +39,7 @@ import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import { substituteRefCodes, escapeHtml } from "../noteInlineRefs";
 
 
-export interface RefValueHost {
+interface RefValueHost {
   refValue(key: string): unknown;
 }
 

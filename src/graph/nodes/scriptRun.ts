@@ -39,7 +39,7 @@ export function scriptIsVolatile(src: string): boolean {
   return VOLATILE_RE.test(src);
 }
 
-export type SolDateTag = { __solDate: unknown };
+type SolDateTag = { __solDate: unknown };
 export function isSolDateTag(v: unknown): v is SolDateTag {
   return typeof v === "object" && v !== null && "__solDate" in v;
 }

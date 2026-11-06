@@ -14,7 +14,7 @@ export function useCollapsed(nodeId: string): boolean {
 
 /** How a collapsed cell edits: the keyed text it opens, what commits it, and for a two-valued type a flip in place of
  *  the text. */
-export interface CellEdit {
+interface CellEdit {
   text: string;
   onCommit: (text: string) => void;
   flip?: () => void;

@@ -107,7 +107,7 @@ export function mergeNoteText(existing: string | null, md: string, mode: Obsidia
   return r.text;
 }
 
-export interface WriteVaultOptions {
+interface WriteVaultOptions {
   vault: string;
   subfolder: string;
   assetSubfolder: string;
@@ -117,7 +117,7 @@ export interface WriteVaultOptions {
   blockName?: string;
 }
 
-export interface WriteVaultResult {
+interface WriteVaultResult {
   file: string;
   assets: number;
   pages: number;

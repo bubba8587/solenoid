@@ -66,7 +66,7 @@ export const TriangleAlertIcon = (p: IconProps) => (
   </Svg>
 );
 
-export type ArrowDir = "up" | "down" | "left" | "right" | "up-left" | "up-right" | "down-left" | "down-right";
+type ArrowDir = "up" | "down" | "left" | "right" | "up-left" | "up-right" | "down-left" | "down-right";
 const ARROW: Record<ArrowDir, string> = {
   up: "m5 12 7-7 7 7M12 19V5",
   down: "M12 5v14m7-7-7 7-7-7",

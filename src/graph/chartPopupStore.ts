@@ -4,7 +4,7 @@ import type { ChartShape } from "./components/chartView";
 import type { ChartOptions } from "./nodes/chartOptions";
 import type { ChartValue } from "./chartValue";
 
-export interface ChartPopupState {
+interface ChartPopupState {
   title: string;
   /** When set, the series fields below are ignored. */
   value?: ChartValue;

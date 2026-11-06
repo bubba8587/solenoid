@@ -8,7 +8,7 @@ import { solError } from "./errorValue";
  *  when unset. */
 export type KeyedKind = "number" | "string" | "date" | "logical";
 
-export interface KeyedHost {
+interface KeyedHost {
   /** Each keyed wildcard slot's kind, where one was picked. */
   literalKinds?: Record<string, KeyedKind>;
   stringLiterals?: Record<string, string>;

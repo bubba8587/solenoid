@@ -10,7 +10,7 @@ export interface PropConstraint {
   max?: number;
 }
 
-export interface MdbaseType {
+interface MdbaseType {
   name: string;
   pathGlob: string;
   properties: TypeMap;

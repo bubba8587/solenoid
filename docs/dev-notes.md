@@ -24,7 +24,9 @@ specific item.
   (the author's release step).
 - **Module headers** are two lines at most in 82 files (`tree/specs/floors/engineering.md` § Comments): what the spec
   already said went, a sentence about one item moved onto it, and noteHtml's network-gate rule moved into
-  `reports-and-notes.md`. The palette's OKLCh comment points at DESIGN.md, which holds the ruling.
+  `tree/specs/documents/reports-and-notes.md`. The palette's OKLCh comment points at DESIGN.md, which holds the ruling.
+- **Also:** 203 types only their own file names are no longer exported (the packages' public API kept); the docs
+  pointer check now reads backticked `../` paths too; `.gitignore` lost two patterns nothing writes.
 - **Open:** `.claude/settings.json` allows `npx tsx scripts/parity.ts` and `npx tsc *`, both stale.
 
 ### SESSION DIGEST (2026-11-06: geometry figure cards, pack seeds and examples, pack constants, formula layout, the Element card; cloud session)

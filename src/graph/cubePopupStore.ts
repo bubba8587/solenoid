@@ -40,7 +40,7 @@ export type DrillView = (
   | { kind: "list"; label: string; items: unknown[]; path?: CubePath; /** The column's declared type, when the list came out of a typed column. */ type?: FrameColType }
 ) & { from?: CellRef; focus?: CellRef };
 
-export interface CubePopupState {
+interface CubePopupState {
   /** The last entry is the view shown. */
   stack: DrillView[];
   accent?: string;

@@ -40,7 +40,7 @@ export function regionLabelColor(colors: readonly string[], i: number): string {
   return colors[i % colors.length];
 }
 
-export type SeriesSpotlight = { index: number; name: string } | null;
+type SeriesSpotlight = { index: number; name: string } | null;
 
 /** The series a legend spotlight picks out now: the picked slot while it still holds the picked name, else the one
  *  series still wearing that name, else none. */

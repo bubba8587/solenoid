@@ -278,7 +278,7 @@ function findCycle(g: SavedGraph): string[] | null {
 }
 
 
-export interface TextValidation {
+interface TextValidation {
   issues: GraphIssue[];
   graph: SavedGraph | null;
 }

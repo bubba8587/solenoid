@@ -11,7 +11,7 @@ import { isolateStore } from "../isolateStore";
 import { SolenoidSocket } from "../sockets";
 import { restoreLiterals } from "../literalFields";
 
-export type SavedNodeLite = {
+type SavedNodeLite = {
   id: string;
   type: string;
   name?: string;
@@ -21,7 +21,7 @@ export type SavedNodeLite = {
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
 };
-export type SavedConnectionLite = {
+type SavedConnectionLite = {
   source: string;
   sourceOutput: string;
   target: string;
@@ -120,7 +120,7 @@ export function moveNode(m: FlowModel, id: string, position: { x: number; y: num
 }
 
 // RF-shaped without importing RF, so these stay testable in the node vitest env.
-export type RFNodeLite = {
+type RFNodeLite = {
   id: string;
   type: "sol";
   position: { x: number; y: number };
@@ -167,7 +167,7 @@ function nodeZIndex(node: SolenoidNode): number {
   if (node instanceof Nodes.ConduitNode) return -1;
   return 0;
 }
-export type RFEdgeLite = {
+type RFEdgeLite = {
   id: string;
   type: "cable";
   source: string;

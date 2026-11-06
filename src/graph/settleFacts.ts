@@ -11,7 +11,7 @@ import { ConduitNode, conduitInKey, conduitOutKey, CONDUIT_MAX_LANES } from "./n
 
 /** A socket: key, its type now, its declared base, and whether the settle may retype it: 0 fixed, 1 mutable, 2 adoptive,
  *  3 typed by its value; an adoptive input may add the type it shows unwired (a keyed slot's kind, `keyedRestType`). */
-export type SocketFact = [key: string, now: SocketDataType, base: SocketDataType, kind: 0 | 1 | 2 | 3, rest?: SocketDataType];
+type SocketFact = [key: string, now: SocketDataType, base: SocketDataType, kind: 0 | 1 | 2 | 3, rest?: SocketDataType];
 
 /** The outputs of these freshly computed cards whose type the value they carried may give, as the core's `readTypes`
  *  takes them: every passthrough output and every value-typed output, with its type now ([[D117]] emptyKeepsLastType). */
@@ -37,7 +37,7 @@ export interface ProjectFacts {
   tables: "trueany" | "combo";
 }
 
-export interface PassthroughFact {
+interface PassthroughFact {
   output: string;
   inputs: string[];
   combine: CombineMode;

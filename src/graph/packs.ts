@@ -46,7 +46,7 @@ export const NODE_PACK_TAGS: Record<string, string[]> = (() => {
 })();
 
 // Custom packs from the user data folder: not read yet (docs/backlog.md).
-export interface CustomPack extends Pack { source: string }
+interface CustomPack extends Pack { source: string }
 
 export function customPacksFolder(): string {
   return "<app data>/Solenoid/packs";
@@ -60,7 +60,7 @@ export function allPacks(): Pack[] {
   return [...BUILTIN_PACKS, ...loadCustomPacks()];
 }
 
-export interface PlacedPackNode {
+interface PlacedPackNode {
   packId: string;
   packName: string;
   placement: PackPlacement;

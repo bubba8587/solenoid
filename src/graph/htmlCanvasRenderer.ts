@@ -64,7 +64,7 @@ interface CableSpec {
   color: string;
 }
 
-export interface RendererStats {
+interface RendererStats {
   fps: number; drawMs: number; visible: number; total: number; built: number; mip: number;
   slow: number;
   failed: number;

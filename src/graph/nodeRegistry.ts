@@ -161,7 +161,7 @@ import {
 } from "./components";
 import { EmSpectrumComponent, HrZonesComponent, PipeRoughnessComponent, TriangleSolverComponent, UnitCircleComponent, CircleSolverComponent, RegularPolygonComponent, TwoPointsComponent, PolygonPointsComponent, SolidComponent } from "./components/PackToolNodes";
 
-export type AnyNodeComponent = JSXElementConstructor<{
+type AnyNodeComponent = JSXElementConstructor<{
   data: GraphNode & { width?: number; height?: number };
   emit: Emit;
 }>;

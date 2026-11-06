@@ -1,6 +1,6 @@
 // [[A1]] visualGraphCalculator (the module-singleton stores are app-wide state)
 
-export interface Notifier {
+interface Notifier {
   notify: () => void;
   subscribe: (listener: () => void) => () => void;
   version: () => number;
@@ -16,7 +16,7 @@ export function createNotifier(): Notifier {
   };
 }
 
-export interface ToggleStore {
+interface ToggleStore {
   get: () => boolean;
   set: (v: boolean) => void;
   open: () => void;
@@ -53,7 +53,7 @@ export function createSavedToggle(key: string): ToggleStore & { load: () => void
   };
 }
 
-export interface ValueStore<T> {
+interface ValueStore<T> {
   get: () => T | null;
   open: (value: T) => void;
   close: () => void;

@@ -194,7 +194,7 @@ export function toggleNodeCollapsed(nodeId: string): void {
   notifyGraphChanged();
 }
 
-export type StackMove = "front" | "forward" | "backward" | "back";
+type StackMove = "front" | "forward" | "backward" | "back";
 
 /** The bottom-to-top order after `move`: front and back take the selection past everything; forward and backward
  *  step each selected id past the nearest unselected one it `overlaps`, and leave it where it is when none does. */

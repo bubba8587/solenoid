@@ -15,7 +15,7 @@ export type TreeRow = {
   sample?: boolean;
   unsaved?: boolean;
 };
-export type RowDoc = { id: string; name: string; current: boolean; folder: string; unsaved?: boolean };
+type RowDoc = { id: string; name: string; current: boolean; folder: string; unsaved?: boolean };
 
 const nameCmp = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
 export const folderKey = (path: string) => `f:${path}`;

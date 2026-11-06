@@ -11,7 +11,7 @@ type AnyEditor = GraphEditor<{
   Connection: GraphConnection<GraphNode, GraphNode>;
 }>;
 
-export type FrameShapeResolver = {
+type FrameShapeResolver = {
   outShape: (nodeId: string, outKey: string) => Shape | null;
 };
 

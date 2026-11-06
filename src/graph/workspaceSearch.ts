@@ -2,7 +2,7 @@
 import { nodeTypeName } from "./nodeNamer";
 import { nodeName } from "./catalogUtils";
 
-export type SearchDoc = {
+type SearchDoc = {
   id: string;
   name: string;
   folder: string;

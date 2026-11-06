@@ -19,7 +19,7 @@ export type OddCouponOp = "oddfprice" | "oddfyield" | "oddlprice" | "oddlyield";
 // ─── Return-series math (pandas pct_change/cumprod, quantmod, PerformanceAnalytics) ───
 
 export type ReturnsOp = "log" | "simple" | "cumulative" | "drawdown" | "maxdrawdown" | "cagr" | "volatility" | "sharpe" | "sortino";
-export type ReturnsInput = "prices" | "returns";
+type ReturnsInput = "prices" | "returns";
 export const RETURNS_OP_META: Record<ReturnsOp, { label: string; fx: string; takes: ReturnsInput; scalar: boolean; needs: ("rf" | "periods")[]; description: string }> = {
   log:         { label: "Log returns",       fx: "LOGRETURNS",  takes: "prices",  scalar: false, needs: [],               description: "`ln(pₜ / pₜ₋₁)` per period; the first is blank. `numpy.diff(log(p))`, quantmod `dailyReturn` with `type = log`." },
   simple:      { label: "Simple returns",    fx: "SIMPLERETURNS", takes: "prices",  scalar: false, needs: [],               description: "`pₜ / pₜ₋₁ − 1` per period; the first is blank. pandas `pct_change`, quantmod `dailyReturn`." },

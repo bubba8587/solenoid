@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import type { KatexOptions } from "katex";
 
-export type TexRenderer = (latex: string, options?: KatexOptions) => string;
+type TexRenderer = (latex: string, options?: KatexOptions) => string;
 
 let cached: TexRenderer | null = null;
 let loading: Promise<TexRenderer> | null = null;

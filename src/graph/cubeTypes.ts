@@ -7,7 +7,7 @@ import type { CubePath } from "./literalEditors";
 /** One table's picks, a type per column. */
 export type ColumnTypes = Readonly<Record<string, FrameColType>>;
 /** One nested table's declarations: `frame` makes it a flat Frame, not a Cube; `types` are its columns' picks. */
-export interface NestedTable { frame?: true; types?: ColumnTypes }
+interface NestedTable { frame?: true; types?: ColumnTypes }
 /** Every nested table's declarations, keyed by its records path (`tableKey`): row and key down from the top, a list index where a list holds it. */
 export type NestedTables = Readonly<Record<string, NestedTable>>;
 

@@ -26,7 +26,7 @@ export interface VaultTypeSources {
   nested?: PluginNestedTables;
 }
 
-export interface VaultCubeOptions {
+interface VaultCubeOptions {
   nameFormat?: string;
   includeBody?: boolean;
 }

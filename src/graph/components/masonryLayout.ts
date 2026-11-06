@@ -1,11 +1,11 @@
 // [[B11]] maximalMerge
 
-export interface MasonryPlan {
+interface MasonryPlan {
   count: number;
   colWidth: number;
 }
 
-export interface MasonryPacked {
+interface MasonryPacked {
   slots: { col: number; y: number }[];
   height: number;
 }

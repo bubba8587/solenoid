@@ -163,7 +163,7 @@ export function socketMatrixShade(hex: string): string {
   return oklchShade(hex, MATRIX_LIGHTNESS, 1, MATRIX_HUE_SHIFT);
 }
 
-export type SocketVarKind = "scalar" | "array" | "matrix";
+type SocketVarKind = "scalar" | "array" | "matrix";
 export const SOCKET_VARS: { var: string; slot: PaletteSlot; kind: SocketVarKind }[] = [
   { var: "--sock-number",      slot: "gold",      kind: "scalar" },
   { var: "--sock-list",        slot: "gold",      kind: "array" },
@@ -435,7 +435,7 @@ export type ChromeKey =
   | "surface" | "surfaceSunken" | "surfaceRaised"
   | "border" | "borderStrong" | "borderSubtle"
   | "text" | "textBright" | "textDim" | "textMuted";
-export type ChromeRamp = Partial<Record<ChromeKey, string>>;
+type ChromeRamp = Partial<Record<ChromeKey, string>>;
 export type PaletteChrome = { dark: ChromeRamp; light: ChromeRamp };
 
 export const CHROME_VARS: { var: string; key: ChromeKey }[] = [

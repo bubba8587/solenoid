@@ -19,7 +19,7 @@ export type ColSummary = {
   unchecked: number | null;
 };
 
-export interface ColumnProfile {
+interface ColumnProfile {
   count: number; blank: number; error: number; distinct: number;
   mean: number | null; std: number | null; min: number | null;
   q25: number | null; median: number | null; q75: number | null; max: number | null;

@@ -63,7 +63,7 @@ export function makeExtensibleNodeComponent<N extends ShellNode & ExtensibleNode
   };
 }
 
-export type ToggleOptions<V extends string> = ReadonlyArray<{ value: V; label: string; title?: string }>;
+type ToggleOptions<V extends string> = ReadonlyArray<{ value: V; label: string; title?: string }>;
 
 /** `write` is the node's own setter when a mode relabels a socket; `table` renders the result as a grid instead of the value box. */
 export function makeToggleNodeComponent<N extends ShellNode & InlineNode, V extends string>(

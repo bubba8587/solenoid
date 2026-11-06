@@ -1,5 +1,5 @@
 // [[C42]] htmlInCanvasRenderer
-export interface AtlasItem {
+interface AtlasItem {
   id: string;
   /** Natural (padded) capture size in raster px. */
   w: number;
@@ -17,7 +17,7 @@ export interface AtlasPlacement {
   scale: number;
 }
 
-export interface AtlasLayout {
+interface AtlasLayout {
   placements: AtlasPlacement[];
   /** Ids that did not fit this round — raster them in a later paint. */
   unplaced: string[];

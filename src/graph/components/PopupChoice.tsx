@@ -2,7 +2,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { IS_COARSE } from "../coarse";
 
-export interface PopupChoiceOption<T extends string> { value: T; label: string; title?: string }
+interface PopupChoiceOption<T extends string> { value: T; label: string; title?: string }
 
 /** A popup's one-of-several pick: segments when they fit, else a dropdown in the same pill. */
 export function PopupChoice<T extends string>({ value, options, onChange, label, segmented, className }: {

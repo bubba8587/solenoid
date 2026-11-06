@@ -23,7 +23,7 @@ import "./nodeCard.css";
 import { dropInputCables } from "./cablePrune";
 
 /** N sockets per tuple sharing one remove button: a pair is the two-element case (Filter, SUMIFS, IFS), and Set Cell uses triplets. */
-export interface PairedExtensibleNode {
+interface PairedExtensibleNode {
   id: string;
   edited(): void;
   inputs: Record<string, { socket: GraphSocket; label?: string } | undefined>;

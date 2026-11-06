@@ -14,7 +14,7 @@ import { isPinching } from "./pointerGesture";
 
 export type LassoState = { points: Pt[]; mode: "touch" | "enclose" } | null;
 
-export interface LassoDeps {
+interface LassoDeps {
   container: HTMLElement;
   editorRef: MutableRefObject<GraphEditor<Schemes> | null>;
   viewRef: MutableRefObject<View | null>;

@@ -6,7 +6,7 @@ import type { View } from "./view";
 
 type NodeLike = { id: string; width?: number; height?: number };
 
-export type ZoomView = Pick<View, "position" | "nodeElement" | "measured" | "container" | "pan" | "zoom">;
+type ZoomView = Pick<View, "position" | "nodeElement" | "measured" | "container" | "pan" | "zoom">;
 
 const FRAME_PADDING = 0.1;
 

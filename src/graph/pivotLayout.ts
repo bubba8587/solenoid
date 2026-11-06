@@ -6,10 +6,10 @@ import { frameSidecar } from "./frameSidecar";
 import type { FormatAnnotation } from "./formatAnnotationStore";
 import { defaultCellText } from "./cellText";
 
-export type PivotItemKind = "leaf" | "sub" | "grand";
+type PivotItemKind = "leaf" | "sub" | "grand";
 
 /** One place on an axis: a leaf's whole tuple, a subtotal's prefix (`fill` long), or the grand total. */
-export interface PivotAxisItem {
+interface PivotAxisItem {
   kind: PivotItemKind;
   tuple: FrameCell[];
   fill: number;
@@ -18,7 +18,7 @@ export interface PivotAxisItem {
 }
 
 /** A Details column: the source column's own values, which `sources` index. */
-export interface PivotDetailColumn { name: string; type: FrameColType; values: readonly FrameCell[]; format?: FormatAnnotation }
+interface PivotDetailColumn { name: string; type: FrameColType; values: readonly FrameCell[]; format?: FormatAnnotation }
 
 /** How PIVOTBY laid its Frame out: one row item per output row, one column item per value column after the row keys. */
 export interface PivotLayout {
@@ -103,7 +103,7 @@ export function groupKey(prefix: readonly FrameCell[]): string {
   return JSON.stringify(prefix.map((c) => (isSolError(c) ? { e: c.code } : c)));
 }
 
-export interface PivotLabel { text: string; total?: boolean }
+interface PivotLabel { text: string; total?: boolean }
 
 export interface PivotBodyRow {
   kind: "header" | "leaf" | "sub" | "grand" | "blank" | "detail";
@@ -123,7 +123,7 @@ export interface PivotBodyRow {
   path: string[];
 }
 
-export interface PivotHeadCell {
+interface PivotHeadCell {
   text: string;
   colSpan: number;
   rowSpan: number;
@@ -132,7 +132,7 @@ export interface PivotHeadCell {
   role: "corner" | "field" | "item" | "total" | "value" | "caption";
 }
 
-export interface PivotModel {
+interface PivotModel {
   labelCols: number;
   head: PivotHeadCell[][];
   body: PivotBodyRow[];

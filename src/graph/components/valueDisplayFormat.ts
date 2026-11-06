@@ -41,7 +41,7 @@ export function resolveMatrixAnnotation(nodeId: string | null): FormatAnnotation
   return (nodeId ? frameFormatStore.get(nodeId, MATRIX_FORMAT_KEY) : undefined) ?? resolveDisplayAnnotation(nodeId);
 }
 
-export type RowCell = number | boolean | string | Cx | SolDate | SolError | null;
+type RowCell = number | boolean | string | Cx | SolDate | SolError | null;
 function formatRowCell(v: RowCell, ann?: FormatAnnotation): string {
   if (v === null) return "—";
   if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);

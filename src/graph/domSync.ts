@@ -21,7 +21,7 @@ export function holderSyncTransform(
   return holderTransform(presented);
 }
 
-export interface Affine2D { a: number; b: number; c: number; d: number; e: number; f: number }
+interface Affine2D { a: number; b: number; c: number; d: number; e: number; f: number }
 
 export function camFromDrawMatrix(
   m: Affine2D,

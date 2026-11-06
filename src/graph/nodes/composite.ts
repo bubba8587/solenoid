@@ -30,10 +30,10 @@ import { FormatControllerNode } from "./formatController";
 import { deriveMissingNodeSockets, remapNodeRefs, mapNodeRefs, type NodeRefs } from "../persistenceCore";
 import { restoreLiterals } from "../literalFields";
 
-export type PortTier = "basic" | "advanced";
-export type PortExposure = "hidden" | "exposed";
+type PortTier = "basic" | "advanced";
+type PortExposure = "hidden" | "exposed";
 
-export interface CompositeInputPort {
+interface CompositeInputPort {
   id: string;
   label: string;
   exposure: PortExposure;
@@ -42,7 +42,7 @@ export interface CompositeInputPort {
   default?: unknown;
 }
 
-export interface CompositeOutputPort {
+interface CompositeOutputPort {
   id: string;
   label: string;
   tier: PortTier;
@@ -56,7 +56,7 @@ export interface CompositeSavedNode extends SavedNodeBody {
   y?: number;
 }
 
-export interface CompositeSavedConnection {
+interface CompositeSavedConnection {
   source: string;
   sourceOutput: string;
   target: string;
@@ -70,7 +70,7 @@ export interface CompositeInternalSnapshot extends SideTables {
 
 export type CompositeRunMode = "single" | "manual" | "pipeline" | "scenarios" | "data-table" | "simulation" | "goal-seek" | "montecarlo" | "by-row";
 
-export interface CompositeGoalSeek {
+interface CompositeGoalSeek {
   inputPortId: string;
   outputPortId: string;
   target: number;
@@ -80,7 +80,7 @@ export interface CompositeGoalSeek {
   boundsHi?: number;
 }
 
-export interface CompositeMonteCarlo {
+interface CompositeMonteCarlo {
   samples: number;
   seed: number;
   correlations?: string;
@@ -137,13 +137,13 @@ export function stopConditionMet(raw: unknown, op: CompositeStopOp, value: numbe
   }
 }
 
-export interface CompositeScenario {
+interface CompositeScenario {
   id: string;
   name: string;
   overrides: Record<string, unknown>;
 }
 
-export type CompositeDataTableValues = Record<string, unknown[]>;
+type CompositeDataTableValues = Record<string, unknown[]>;
 
 export class CompositeInputNode extends GraphNode {
   static socketDocs: Record<string, string> = {

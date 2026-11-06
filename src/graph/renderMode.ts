@@ -5,7 +5,7 @@ import { supportsHtmlInCanvas } from "./htmlCanvasSupport";
 
 // "dom" is the universal default; "html" (HTML-in-Canvas) is selectable only under supportsHtmlInCanvas().
 
-export type RenderMode = "dom" | "html";
+type RenderMode = "dom" | "html";
 
 const LS_KEY = "solenoid.renderMode";
 

@@ -7,7 +7,7 @@ export interface Box { key: string; lane: number; row: number; x: number; y: num
 /** One drawn piece of the value flow. `link` carries it between cards and is drawn as a stroke along its centerline `d`, so a
  *  sideways run keeps its thickness; `shift` is the short straight run into a card's row, `trunk` runs beside a card and
  *  `turn` is the slice a card takes, all filled shapes. `need` marks an option taken first because the next one needs it. */
-export interface Piece {
+interface Piece {
   kind: "link" | "shift" | "trunk" | "turn" | "need";
   d: string;
   width: number;
@@ -15,7 +15,7 @@ export interface Piece {
   to: string;
 }
 
-export interface Metrics { cw: number; band: number; turn: number; laneGap: number; rowGap: number }
+interface Metrics { cw: number; band: number; turn: number; laneGap: number; rowGap: number }
 export const metricsFor = (fs: number): Metrics => ({ cw: Math.round(190 * fs), band: Math.round(96 * fs), turn: Math.round(26 * fs), laneGap: Math.round(18 * fs), rowGap: Math.round(54 * fs) });
 
 /** Where the band runs straight into a card's row (above its top), where its slice starts to turn, and where the slice enters its side. */

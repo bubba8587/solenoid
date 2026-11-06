@@ -15,7 +15,7 @@ export function isPair(e: CatalogEntry): e is CatalogPair {
   return e.type === "pair";
 }
 
-export type LeafWithContext = { leaf: NodeCatalogEntry; categoryPath: string[] };
+type LeafWithContext = { leaf: NodeCatalogEntry; categoryPath: string[] };
 
 export function flattenLeaves(entries: CatalogEntry[], ancestors: string[] = []): LeafWithContext[] {
   const out = flattenTree(entries, ancestors);

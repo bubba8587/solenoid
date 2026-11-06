@@ -12,7 +12,7 @@ export function setPackLookup(lookup: (name: string) => PackSlotMeta | undefined
 }
 
 /** What an empty argument slot reads as, and the placeholder it shows (null when its reading is ""). */
-export interface EmptySlotReading {
+interface EmptySlotReading {
   value: unknown;
   shown: string | null;
 }

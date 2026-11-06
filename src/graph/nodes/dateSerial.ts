@@ -26,7 +26,7 @@ export function wallClockSerial(now: Date = new Date(), dateOnly = false): numbe
   return ms / 86400000 + 25569;
 }
 
-export interface ParseDateOptions {
+interface ParseDateOptions {
   relative?: boolean;
   now?: Date;
 }

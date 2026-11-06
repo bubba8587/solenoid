@@ -105,7 +105,7 @@ export async function createGroupFromSelection(editor: Editor, view: View): Prom
   return group.id;
 }
 
-export type GroupGeom = { x: number; y: number; width: number; height: number };
+type GroupGeom = { x: number; y: number; width: number; height: number };
 
 export async function autofitGroupBox(
   editor: Editor, view: View, group: GroupNode,

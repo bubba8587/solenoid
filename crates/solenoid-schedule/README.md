@@ -227,7 +227,7 @@ five named ones and character references). A close tag that does not match its e
 ## Fixtures
 
 `tests/corpus/` holds hand-authored MSPDI files whose stored dates the engine reproduces in both modes, and
-`divergences.json` for any field it may not. `tests/files.rs` reads them, along with GanttProject and XER samples.
+`divergences.json` for any field it may not. `tests/files.rs` reads them, along with GanttProject and XER samples it writes inline.
 
 ## What was studied
 

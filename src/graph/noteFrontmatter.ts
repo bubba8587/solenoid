@@ -28,7 +28,7 @@ export type FrontmatterScalar = number | string | boolean | null;
 export type FrontmatterRow = { [key: string]: FrontmatterScalar | FrontmatterScalar[] | FrontmatterRow[] };
 export type FrontmatterValue = FrontmatterScalar | FrontmatterScalar[] | FrontmatterScalar[][] | FrontmatterRow[];
 
-export interface FrontmatterField {
+interface FrontmatterField {
   key: string;
   value: FrontmatterValue;
   guessed: FrontmatterFieldType;
@@ -36,7 +36,7 @@ export interface FrontmatterField {
   knapUnquoted?: true;
 }
 
-export interface ParsedFrontmatter {
+interface ParsedFrontmatter {
   fields: FrontmatterField[];
   body: string;
   hasBlock: boolean;

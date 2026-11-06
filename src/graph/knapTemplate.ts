@@ -69,7 +69,7 @@ export function extractKnapVariables(body: string): string[] {
   return [...first.entries()].sort((a, b) => a[1] - b[1]).map(([k]) => k);
 }
 
-export interface BareTag { name: string; from: number; to: number; highlight: boolean }
+interface BareTag { name: string; from: number; to: number; highlight: boolean }
 
 /** Each bare `{{ name }}` (or `{{ name | highlight }}`) on one of `names`, where no loop or `set` shadows it. */
 export function bareTags(body: string, names: readonly string[]): BareTag[] {
@@ -122,7 +122,7 @@ function templateLocals(body: string): Set<string> {
 
 const engine = createEngine({ filters: standardFilters });
 
-export interface KnapRender {
+interface KnapRender {
   output: string;
   errors: TemplateError[];
 }

@@ -1,7 +1,7 @@
 import { GraphNode } from "../graphModel";
 import { clamp } from "./mathUtils";
 
-export interface PresentationStep {
+interface PresentationStep {
   title: string;
   nodeIds: string[];
 }

@@ -4,7 +4,7 @@ import type { Schemes } from "../schemes";
 import type { View } from "../view";
 import { boundZoom, clampZoom } from "../viewPresets";
 
-export type FlowViewCallbacks = {
+type FlowViewCallbacks = {
   bumpNode(id: string): void;
   bumpConnections(): void;
   moveNode(id: string, pos: { x: number; y: number }): void;

@@ -18,7 +18,7 @@ const TIDY_ROWS: ReadonlyArray<{
 
 /** Writes straight to settingsStore, which both ELK call sites read at layout time. Clickaway close is owned by the
  *  opener in TopBar; Escape closes here. */
-export type TidyAction = { label: string; hint: string; icon: ReactNode; run: () => void };
+type TidyAction = { label: string; hint: string; icon: ReactNode; run: () => void };
 
 /** `actions` makes it the phone's shared Tidy dropdown, a top-bar menu like the ⋮ sheet: the actions are pill buttons in
  *  its heading, the options switch rows under it; picking an action runs it and closes. */

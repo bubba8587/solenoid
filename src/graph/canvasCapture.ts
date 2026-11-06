@@ -87,7 +87,7 @@ function serializeSvgWithComputedStyles(svgEl: SVGSVGElement): string {
   return clone.outerHTML;
 }
 
-export type ChartSvgProvider = () => string | null;
+type ChartSvgProvider = () => string | null;
 const chartSvgProviders = new Map<string, ChartSvgProvider>();
 
 export function registerChartSvgProvider(nodeId: string, provider: ChartSvgProvider): () => void {
@@ -99,7 +99,7 @@ function nodeChartSvgProvided(nodeId: string): string | null {
   return chartSvgProviders.get(nodeId)?.() ?? null;
 }
 
-export interface LegendEntry { color: string; label: string }
+interface LegendEntry { color: string; label: string }
 
 const xmlText = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 

@@ -24,7 +24,7 @@ import { type ColumnPickerSpec } from "./columnPickerHook";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 // obsidianWrite is imported lazily inside run(), because an eager import closes an init cycle through the node barrel.
 
-export type ObsidianWriteStatus = "idle" | "writing" | "previewing" | "ok" | "error";
+type ObsidianWriteStatus = "idle" | "writing" | "previewing" | "ok" | "error";
 export type WriteObsidianTarget = "auto" | "note" | "properties";
 
 export const OBSIDIAN_WRITE_MODE_OPTIONS: ReadonlyArray<{ value: ObsidianWriteMode; label: string; title: string }> = [

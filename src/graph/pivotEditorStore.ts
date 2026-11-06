@@ -2,7 +2,7 @@
 import { createValueStore } from "./storeKit";
 import type { PivotNode } from "./nodeClasses";
 
-export interface PivotEditorState {
+interface PivotEditorState {
   node: PivotNode;
   nodeId: string;
   title: string;

@@ -87,8 +87,8 @@ export class GraphOutput<S extends GraphSocket = GraphSocket> extends GraphPort<
   }
 }
 
-export type GraphInputs = { readonly [key: string]: GraphInput | undefined };
-export type GraphOutputs = { readonly [key: string]: GraphOutput | undefined };
+type GraphInputs = { readonly [key: string]: GraphInput | undefined };
+type GraphOutputs = { readonly [key: string]: GraphOutput | undefined };
 
 export class GraphNode {
   id = getUID();

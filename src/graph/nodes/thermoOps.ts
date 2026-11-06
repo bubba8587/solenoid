@@ -7,7 +7,7 @@ export type AntoineOp =
   | "water" | "ethanol" | "methanol" | "isopropanol"
   | "acetone" | "benzene" | "toluene" | "hexane" | "ammonia";
 
-export interface AntoineMeta { label: string; A: number; B: number; C: number; bp: number }
+interface AntoineMeta { label: string; A: number; B: number; C: number; bp: number }
 
 export const ANTOINE: Record<AntoineOp, AntoineMeta> = {
   water:       { label: "Water",       A: 8.07131, B: 1730.63,  C: 233.426, bp: 100.0 },

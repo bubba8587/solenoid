@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { hasKnapSyntax, knapErrorText, renderKnap, renderKnapPages, type KnapPage } from "../knapTemplate";
 
-export interface KnapPreview {
+interface KnapPreview {
   /** The rendered body — the body itself when it carries no template tag. A batch
    *  preview joins its pages, each under an italic `name.md` line. */
   text: string;

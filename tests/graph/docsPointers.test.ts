@@ -36,7 +36,7 @@ const scanned = [
 // Globs (`*`) are skipped; anchors/queries are stripped.
 function mdCitations(text: string): string[] {
   const out: string[] = [];
-  for (const re of [/`([A-Za-z0-9_][A-Za-z0-9_./-]*\.md)`/g, /\]\(([^)\s#]+\.md)\)/g]) {
+  for (const re of [/`([A-Za-z0-9_.][A-Za-z0-9_./-]*\.md)`/g, /\]\(([^)\s#]+\.md)\)/g]) {
     for (const m of text.matchAll(re)) out.push(m[1]);
   }
   return out.filter((t) => !t.includes("*"));

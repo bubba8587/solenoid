@@ -5,7 +5,7 @@ import type { FormatAnnotation } from "./formatAnnotationStore";
 import { isUnitCell } from "./unitValue";
 import { displayMagnitudeOf } from "./unitBridge";
 
-export interface LevelColumn {
+interface LevelColumn {
   name: string;
   /** The declared type, else the one the plain cells agree on, else text. */
   type: FrameColType;

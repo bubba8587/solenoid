@@ -34,13 +34,13 @@ function genericLabel(node: object): string {
   return displayNameOf(node);
 }
 
-export interface PillPos {
+interface PillPos {
   groupId: string;
   side: "left" | "right";
   index: number;
 }
 
-export interface InputPill {
+interface InputPill {
   nodeId: string;
   socketKey: string;
   index: number;

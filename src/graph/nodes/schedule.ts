@@ -10,7 +10,7 @@ import { hintFrame, cardShapeOnCore, type Shape } from "../frameShape";
 import type { FrameHint } from "../frameHint";
 
 
-export type ScheduleMode = "working" | "calendar";
+type ScheduleMode = "working" | "calendar";
 export type SchedulePrecision = "days" | "minutes";
 export type ScheduleProgress = "split" | "move";
 
@@ -18,7 +18,7 @@ export const SCHEDULE_PROGRESS_OPTIONS: ReadonlyArray<{ value: ScheduleProgress;
   { value: "split", label: "Split the rest", title: "A started task keeps its done part where it was; the unfinished part is a second piece after the status date" },
   { value: "move",  label: "Move the whole", title: "A started task moves as one piece so its unfinished part follows the status date" },
 ];
-export type ScheduleCriticalPaths = "one" | "many" | "longest";
+type ScheduleCriticalPaths = "one" | "many" | "longest";
 
 export const SCHEDULE_CRITICAL_OPTIONS: ReadonlyArray<{ value: ScheduleCriticalPaths; label: string; title: string }> = [
   { value: "one",  label: "One path",   title: "Float is measured against the project finish, so only the chain that drives it is critical" },

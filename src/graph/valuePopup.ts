@@ -82,7 +82,7 @@ export function accentFallbackVar(value: unknown): string | undefined {
   }
 }
 
-export interface PopupStyle {
+interface PopupStyle {
   label?: string;
   hostId?: string | null;
   accent?: string;

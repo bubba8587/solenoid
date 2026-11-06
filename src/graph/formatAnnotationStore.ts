@@ -82,7 +82,7 @@ export function applyFormatStyle(
   return coreFormatAnnotated(n, { format: style, customPattern, decimalDigits, decimalMode, grouping: useGrouping, unit: "none" } as FormatAnnotation);
 }
 
-export type UnitGroup =
+type UnitGroup =
   | "none"
   | "angle"
   | "length"
@@ -96,7 +96,7 @@ export type UnitGroup =
   | "currency"
   | "custom";
 
-export type UnitAnnotation = {
+type UnitAnnotation = {
   id: string;
   label: string;
   group: UnitGroup;

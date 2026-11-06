@@ -19,7 +19,7 @@ export const required: InputRole = { kind: "required" };
 export const picks = (opts: { required?: boolean } = {}): InputRole => ({ kind: "picks", required: opts.required ?? false });
 
 /** A function's roles by zero-based argument; `rest` covers every argument past the highest numbered one. */
-export type ArgRoles = { readonly [i: number]: InputRole; readonly rest?: InputRole };
+type ArgRoles = { readonly [i: number]: InputRole; readonly rest?: InputRole };
 
 /** The one declaration: formulas read it by argument, cards point their sockets at it (`rolesFrom`). */
 export const ARG_ROLES: Record<string, ArgRoles> = {

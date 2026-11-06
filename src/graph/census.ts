@@ -8,7 +8,7 @@ const frames = (n: number) =>
     step(n);
   });
 
-export interface CardCensusRow {
+interface CardCensusRow {
   type: string;
   root: string;          // the card root's tag.class
   total: number;         // every element in the card subtree

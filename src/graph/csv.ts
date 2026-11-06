@@ -31,7 +31,7 @@ export function parseCsvLine(line: string, opts: CsvOptions = {}): string[] {
 }
 
 /** Field offsets `[start, end)` with row and column, quotes included, for an editor that marks fields in place; never a parser. */
-export interface CsvFieldSpan { start: number; end: number; row: number; col: number }
+interface CsvFieldSpan { start: number; end: number; row: number; col: number }
 export function csvFieldSpans(text: string): CsvFieldSpan[] {
   const spans: CsvFieldSpan[] = [];
   let row = 0, col = 0, start = 0, quoted = false;

@@ -6,11 +6,11 @@ import { noteDateText, noteDateSerial } from "./nodes/dateSerial";
 import { parseNoteFrontmatter } from "./noteFrontmatter";
 import { extractInlineTags } from "./vaultCube";
 
-export type YamlScalarV = string | number | boolean | null;
-export type YamlRowV = YamlScalarV | YamlScalarV[] | Record<string, YamlRowV>[];
-export type YamlValue = YamlScalarV | YamlScalarV[] | YamlScalarV[][] | Record<string, YamlRowV>[];
+type YamlScalarV = string | number | boolean | null;
+type YamlRowV = YamlScalarV | YamlScalarV[] | Record<string, YamlRowV>[];
+type YamlValue = YamlScalarV | YamlScalarV[] | YamlScalarV[][] | Record<string, YamlRowV>[];
 
-export interface PatchResult { text: string; }
+interface PatchResult { text: string; }
 
 const FENCE = "---";
 
@@ -238,7 +238,7 @@ export function resolveBody(text: string, newBody: string): { action: "unchanged
   return { action: body.trim() === newBody.trim() ? "unchanged" : "update", before: bodySnippet(body) };
 }
 
-export type PlanAction = "pending" | "add" | "update" | "unchanged" | "unreadable" | "refused";
+type PlanAction = "pending" | "add" | "update" | "unchanged" | "unreadable" | "refused";
 
 export interface PlanRow {
   path: string;

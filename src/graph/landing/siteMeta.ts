@@ -1,7 +1,7 @@
 // [[B3]] sameNodeEverywhere
 export const SITE_ORIGIN = "https://solenoid-ngc.com";
 
-export interface SitePageMeta {
+interface SitePageMeta {
   path: string;
   title: string;
   description: string;

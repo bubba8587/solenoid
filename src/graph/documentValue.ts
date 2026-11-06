@@ -1,6 +1,6 @@
 // [[C68]] knapIsTheDocumentSyntax
 
-export type DocumentRefs = Record<string, unknown>;
+type DocumentRefs = Record<string, unknown>;
 
 export interface DocumentPage {
   name: string;

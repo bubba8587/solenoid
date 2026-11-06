@@ -206,7 +206,7 @@ function LandingStage({ stack, resetNonce }: { stack: SurfaceStack; resetNonce: 
   return <FlowSurface stack={stack} hooks={LANDING_HOOKS} />;
 }
 
-export type LiveScene = { label: string; build: (s: SurfaceStack) => Promise<void> };
+type LiveScene = { label: string; build: (s: SurfaceStack) => Promise<void> };
 
 export function LiveGraph({ build, scenes }: { build?: (s: SurfaceStack) => Promise<void>; scenes?: LiveScene[] }) {
   const stack = useMemo(makeLandingStack, []);

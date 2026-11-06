@@ -101,7 +101,7 @@ export function frontmatterToYaml(fm: Record<string, unknown>): string {
 }
 
 
-export type ObsidianBlock =
+type ObsidianBlock =
   | { kind: "md"; md: string; plain?: true }
   | { kind: "chart"; value: unknown };
 

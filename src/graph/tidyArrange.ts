@@ -24,7 +24,7 @@ import { scheduleAutosave } from "./persistence";
 import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
 const TIDY_CONFIRM_THRESHOLD = 12;
 
-export interface TidyDeps {
+interface TidyDeps {
   editor: GraphEditor<Schemes>;
   view: View;
   ensureElk: () => Promise<Elk | null>;
@@ -32,7 +32,7 @@ export interface TidyDeps {
   isDestroyed: () => boolean;
 }
 
-export type ArrangeFn = (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => Promise<void>;
+type ArrangeFn = (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => Promise<void>;
 
 function symmetricPortPreset(direction: TidyDirection, layerSplit = 0) {
   const down = direction === "down";
@@ -144,7 +144,7 @@ export function tidyLayerSplitFor(nodeCount: number, widthCap: TidyWidthCap): nu
   return widthCap > 0 ? Math.max(1, Math.ceil(nodeCount / widthCap)) : 0;
 }
 
-export type Elk = { layout(graph: unknown): Promise<ElkResult> };
+type Elk = { layout(graph: unknown): Promise<ElkResult> };
 type ElkResult = { children?: Array<{ id?: string; x?: number; y?: number }> };
 
 export function makeEnsureElk(isDestroyed: () => boolean): () => Promise<Elk | null> {

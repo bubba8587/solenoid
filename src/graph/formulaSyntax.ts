@@ -35,7 +35,7 @@ function identClass(word: string, isCall: boolean): string {
 
 /** Whether an empty slot's reading shows ([[D96]] emptySlotShowsItsValue): `editor` draws it as CSS content, so it
  *  takes room but never joins the editable text; `none` draws the formula as typed, for a formula shown read-only. */
-export type GhostMode = "editor" | "none";
+type GhostMode = "editor" | "none";
 
 export function highlightFormula(src: string, ghosts: GhostMode = "none"): string {
   let out = "";

@@ -519,7 +519,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "z-test": [{ excel: "Z.TEST", syntax: "=Z.TEST(array, μ, σ)", parity: true }],
 };
 
-export interface ExcelGapRow {
+interface ExcelGapRow {
   excel: string;
   syntax: string;
   oos?: boolean;        // the concept has no place here (cell refs, OLAP, locale byte semantics)

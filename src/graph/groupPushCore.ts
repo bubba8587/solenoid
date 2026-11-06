@@ -245,7 +245,7 @@ function separateUnits(units: Unit[], gap: number, pinned: ReadonlySet<string>):
 
 const rectOf = (b: PushBox): Rect => ({ x: b.x, y: b.y, w: b.w, h: b.h });
 
-export interface SeparateAllOpts {
+interface SeparateAllOpts {
   /** Boxes that move as one rigid unit (standoff clusters). */
   clusters?: ReadonlyArray<Iterable<string>>;
   /** Never move (position-locked groups). */

@@ -41,7 +41,7 @@ export function useConnectedInputs(nodeId: string): Set<string> {
   return set;
 }
 
-export type IncomingSource = { sourceId: string; sourceOutput: string; label: string };
+type IncomingSource = { sourceId: string; sourceOutput: string; label: string };
 
 /** Derived at render time because a source's label changes on rename, not only on connection changes. */
 export function useIncomingSources(nodeId: string): Map<string, IncomingSource> {
@@ -420,7 +420,7 @@ function KeyedInput({ value, onChange, placeholder }: { value: string; onChange:
   );
 }
 
-export interface AutoLiteralHost {
+interface AutoLiteralHost {
   /** Each keyed wildcard slot's kind, where it isn't Number ([[C10]] socketLattice). */
   literalKinds?: Record<string, KeyedKind>;
   stringLiterals?: Record<string, string>;

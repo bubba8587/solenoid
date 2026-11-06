@@ -33,7 +33,7 @@ import { canvasLockStore } from "./canvasLock";
 import { computeOverlayStore } from "./computeOverlayStore";
 import { documentStore } from "./documentStore";
 
-export interface CanvasKeyboardDeps {
+interface CanvasKeyboardDeps {
   editorRef: MutableRefObject<GraphEditor<Schemes> | null>;
   viewRef: MutableRefObject<View | null>;
   historyRef: MutableRefObject<{ undo(): Promise<unknown>; redo(): Promise<unknown> } | null>;

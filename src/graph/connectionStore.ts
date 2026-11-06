@@ -10,7 +10,7 @@ import { settingsStore } from "./settingsStore";
 import { pushNotice, dismissNotice } from "./noticeStore";
 import { foreignCardStore } from "./foreignCardStore";
 
-export type ConnectionStatus = "idle" | "loading" | "ok" | "error" | "gated";
+type ConnectionStatus = "idle" | "loading" | "ok" | "error" | "gated";
 
 export interface ConnectionState {
   status: ConnectionStatus;

@@ -11,7 +11,7 @@ export type PhysConstOp =
   // Physico-chemical
   | "na" | "kb" | "rgas" | "sigma" | "wien";
 
-export interface PhysConstMeta {
+interface PhysConstMeta {
   symbol: string;
   label: string;
   value: number;

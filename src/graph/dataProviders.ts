@@ -5,7 +5,7 @@ import { csvToFrame } from "./frameBackend";
 
 export type ProviderId = "fred" | "alphavantage";
 
-export type DataFeedOpts = { start?: string; end?: string; freq?: string };
+type DataFeedOpts = { start?: string; end?: string; freq?: string };
 
 export interface ProviderPreset {
   id: ProviderId;

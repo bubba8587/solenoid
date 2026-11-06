@@ -5,7 +5,7 @@ import { evaluateOnCore, callOnCore, toWellFormed } from "./coreValues";
 import { wasmInvokeSync, onCore } from "./engineWasm";
 
 // ─── AST ────────────────────────────────────────────────────────────────────
-export type Ast =
+type Ast =
   | { t: "num"; v: string }
   | { t: "str"; v: string }
   | { t: "bool"; v: boolean }
@@ -98,7 +98,7 @@ export function atColNames(expr: string): string[] {
   return [...out];
 }
 
-export type ExprEvaluator = (env: Record<string, unknown>) => unknown;
+type ExprEvaluator = (env: Record<string, unknown>) => unknown;
 
 /** A formula over named values, on the Rust core ([[D99]] rustIsSpec); null where it doesn't parse. */
 export function compileEvaluator(expr: string): ExprEvaluator | null {
@@ -256,7 +256,7 @@ function applyBin(op: string, l: number, r: number): number {
   }
 }
 
-export type FormulaStep = { latex: string };
+type FormulaStep = { latex: string };
 
 export function evaluateSteps(expr: string, vars: Record<string, number>): { steps: FormulaStep[]; value: number } | null {
   const ast = parseExpr(expr);

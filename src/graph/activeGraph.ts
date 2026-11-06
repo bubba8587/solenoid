@@ -20,7 +20,7 @@ export const MAIN_EDIT_SCOPE: EditScope = {
   settle: (renderOnly) => bulkSettle(renderOnly),
 };
 
-export interface ActiveGraph {
+interface ActiveGraph {
   editor: GraphEditor<Schemes>;
   view: View;
   /** Absent means the main canvas's gate and settle. */

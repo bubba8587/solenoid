@@ -45,7 +45,7 @@ export type GraphSignal<S extends GraphSchemes> =
   | { type: "clear" | "clearcancelled" | "cleared" };
 
 /** Returns the signal to go on, or nothing to stop the chain (cancelling a change a present-tense signal announces). */
-export type GraphPipe<S extends GraphSchemes> = (signal: GraphSignal<S>) => GraphSignal<S> | undefined | void;
+type GraphPipe<S extends GraphSchemes> = (signal: GraphSignal<S>) => GraphSignal<S> | undefined | void;
 
 /** A pipe in the chain, or the engine's place in it; `handle` is the core's. */
 type Piped = { run?(signal: GraphSignal<GraphSchemes>): unknown; engine?: true; handle?: number; removed?: boolean };

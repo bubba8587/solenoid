@@ -186,7 +186,7 @@ export class TaskNotesNode extends GraphNode {
 
 const DEMO_REFUSAL = "TaskNotes is showing the demo. Set a TaskNotes URL in Settings to write tasks.";
 
-export type WriteTasksStatus = "idle" | "previewing" | "writing" | "ok" | "error";
+type WriteTasksStatus = "idle" | "previewing" | "writing" | "ok" | "error";
 
 export class WriteTasksNode extends GraphNode {
   static socketDocs: Record<string, string> = {

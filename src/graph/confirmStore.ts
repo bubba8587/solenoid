@@ -2,7 +2,7 @@
 
 import { createNotifier } from "./storeKit";
 
-export type ConfirmOptions = {
+type ConfirmOptions = {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
@@ -10,7 +10,7 @@ export type ConfirmOptions = {
   altLabel?: string;
 };
 
-export type ConfirmChoice = "confirm" | "alt" | "cancel";
+type ConfirmChoice = "confirm" | "alt" | "cancel";
 type Pending = ConfirmOptions & { resolve: (choice: ConfirmChoice) => void };
 
 let _pending: Pending | null = null;

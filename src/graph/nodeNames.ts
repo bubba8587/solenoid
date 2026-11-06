@@ -71,7 +71,7 @@ export function findEndpoint(side: "output" | "input", nodeId: string, socketKey
   return listEndpoints(side).find((e) => e.nodeId === nodeId && e.socketKey === socketKey);
 }
 
-export type ConnRow = {
+type ConnRow = {
   id: string;
   dir: "in" | "out";          // relative to the queried node
   thisSocketLabel: string;    // the queried node's socket

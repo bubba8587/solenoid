@@ -609,7 +609,7 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, o: ChartOptions
 
 // ─── Contour ───────────────────────────────────────────────────────────────────
 
-export interface ContourLayout {
+interface ContourLayout {
   x0: number; x1: number; y0: number; y1: number;
   xmin: number; xmax: number; ymin: number; ymax: number;
 }

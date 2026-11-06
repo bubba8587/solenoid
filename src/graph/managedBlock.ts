@@ -1,6 +1,6 @@
 // [[B1]] obsidianBet
 
-export interface SpliceResult {
+interface SpliceResult {
   text: string;
   refused?: string;
 }

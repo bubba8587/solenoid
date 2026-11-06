@@ -128,7 +128,7 @@ export function PortSockets({
 // A Cx rides raw so a docked FC's style, precision and unit reach it in the display layer.
 export type OutputRowValue = number | boolean | string | Cx | SolDate | (number | boolean | string | Cx | SolError | null)[] | SolError | null;
 
-export type OutputRowDef = {
+type OutputRowDef = {
   key: string;
   label: string;
   value: OutputRowValue;

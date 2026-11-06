@@ -35,7 +35,7 @@ const MAX_ROWS = 1000;
 /** A group's source rows draw at most this many under it ([[C127]] pivotView). */
 const MAX_DETAIL_ROWS = 100;
 
-export interface PivotTotalsControl {
+interface PivotTotalsControl {
   totals: PivotTotals;
   setSubtotals: (mode: SubtotalMode) => void;
   setGrand: (mode: GrandMode) => void;

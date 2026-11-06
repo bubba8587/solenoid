@@ -6,7 +6,7 @@ import type { PassthroughSpec } from "./passthrough";
 import { nodeOnCore } from "../nodeOnCore";
 import { staysOffCore, raiseWatched } from "./display";
 
-export type ExpectCheck = "notNull" | "unique" | "range" | "regex" | "allowed";
+type ExpectCheck = "notNull" | "unique" | "range" | "regex" | "allowed";
 
 type ExpectInputs = Record<string, unknown[] | undefined>;
 

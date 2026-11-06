@@ -21,7 +21,7 @@ function walk(editor: AnyEditor): Walked {
   return JSON.parse(editor.core().annotate(JSON.stringify(annotationFacts(editor)))) as Walked;
 }
 
-export type AnnotationResolver = {
+type AnnotationResolver = {
   outAnnotation: (nodeId: string, outKey: string) => FormatAnnotation | undefined;
   inAnnotation: (nodeId: string, inKey: string) => FormatAnnotation | undefined;
   downstreamAnnotation: (nodeId: string, outKey: string) => FormatAnnotation | undefined;

@@ -18,7 +18,7 @@ export interface CardColumnInput {
   lists?: boolean;
 }
 
-export interface CardMeter { col: number; max: number }
+interface CardMeter { col: number; max: number }
 
 /** Column indices by the part of the card they fill; every column lands in exactly one part. */
 export interface CardPlan {

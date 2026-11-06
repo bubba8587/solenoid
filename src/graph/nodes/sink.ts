@@ -10,7 +10,7 @@ import { isFrameRef, readFrame, collectPreview, type FrameInput } from "../frame
 import { withExactPass } from "../process";
 import { isDesktop, writeTextFilePath, pickSaveFilePath } from "../fileBridge";
 
-export type SinkStatus = "idle" | "writing" | "ok" | "error";
+type SinkStatus = "idle" | "writing" | "ok" | "error";
 
 export function frameToCsvText(f: FrameValue): string {
   const rows = frameRowCount(f);

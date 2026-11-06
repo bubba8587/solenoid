@@ -9,7 +9,7 @@ import { buildCatalog } from "./catalogUtils";
 const HELP_DIR = "src/graph/help";
 const SEED_DIR = "src/graph/seedGraphs";
 
-export type CopyKind =
+type CopyKind =
   | "help-file"
   | "catalog-label"
   | "catalog-desc"

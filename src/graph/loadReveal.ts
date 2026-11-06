@@ -4,7 +4,7 @@
 import { createNotifier } from "./storeKit";
 import { clamp } from "./nodes/mathUtils";
 
-export type RevealPhase = "idle" | "building";
+type RevealPhase = "idle" | "building";
 
 const { notify, subscribe } = createNotifier();
 let _phase: RevealPhase = "idle";

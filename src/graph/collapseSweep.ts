@@ -20,7 +20,7 @@ const cx = (b: Box) => b.x + b.w / 2;
 const cy = (b: Box) => b.y + b.h / 2;
 const inside = (x: number, y: number, b: Box, slop: number) => x >= b.x - slop && x <= b.x + b.w + slop && y >= b.y - slop && y <= b.y + b.h + slop;
 
-export interface SweepRow {
+interface SweepRow {
   type: string;
   inputs: number;
   outputs: number;

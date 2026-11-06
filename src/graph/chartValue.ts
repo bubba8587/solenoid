@@ -86,7 +86,7 @@ export interface QuiverPayload {
   u: (number | null)[][];
   v: (number | null)[][];
 }
-export interface RecordField {
+interface RecordField {
   label: string;
   value: number | string | null;
   /** A number's column format, read by `recordNumberText` when drawn. */
@@ -121,7 +121,7 @@ export function recordLaneText(lane: { label: string; value?: number; format?: F
   return lane.value === undefined ? lane.label : recordNumberText(lane.value, lane.format);
 }
 
-export interface RecordDeck {
+interface RecordDeck {
   names: string[];
   types: CardColType[];
   formats: (FormatAnnotation | null)[];
@@ -151,7 +151,7 @@ export interface RecordPayload {
   /** Detail only: a filter holds, so `total` counts the matching records. */
   filtered?: boolean;
 }
-export interface OverlaySeries {
+interface OverlaySeries {
   name: string;
   kind: "line" | "area" | "column" | "bar";
   values: (number | null)[];
@@ -173,7 +173,7 @@ export interface XYPoint {
   c?: number | string;
   text?: string;
 }
-export interface XYSeries {
+interface XYSeries {
   name: string;
   /** In row order; null is a gap, where a connecting line breaks. */
   points: (XYPoint | null)[];
@@ -197,7 +197,7 @@ export interface XYPayload {
   names: { x?: string; y?: string; s?: string; c?: string; text?: string };
 }
 /** A point in the ladder: the set taken so far (option indexes) and the share of the flow that reaches it. */
-export interface LadderState { id: number; depth: number; share: number; taken: number[]; end: boolean }
+interface LadderState { id: number; depth: number; share: number; taken: number[]; end: boolean }
 /** A rung: taking `pick` from one state to the next with `share` of the flow. `close` is one side of a fork, `chosen` a
  *  fork the user settled, `required` an option taken first because the next one needs it. `struck` options are ruled out here. */
 export interface LadderEdge { from: number; to: number; pick: number; share: number; kind: "clear" | "close" | "chosen" | "passed" | "must" | "required" | "quota"; struck: number[]; conflicts: number[] }

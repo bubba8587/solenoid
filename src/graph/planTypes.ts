@@ -39,7 +39,7 @@ export interface PlanTask {
   row?: number;
 }
 
-export interface ScheduledTask {
+interface ScheduledTask {
   name: string;
   level: number;
   summary: boolean;

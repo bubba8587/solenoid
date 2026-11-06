@@ -117,7 +117,7 @@ export function buildFunctionReference(): FnRefRow[] {
 
 // Library tags derive from the catalog prose and keywords: a description citing `numpy.gradient` or `SQL OVER` tags the row.
 export const LIBRARY_TAGS = ["numpy", "pandas", "scipy", "R", "SQL", "Excel"] as const;
-export type LibraryTag = (typeof LIBRARY_TAGS)[number];
+type LibraryTag = (typeof LIBRARY_TAGS)[number];
 
 const LIB_PATTERNS: ReadonlyArray<[LibraryTag, RegExp]> = [
   ["numpy",  /\bnumpy\b|\bnp\.[a-z]/i],

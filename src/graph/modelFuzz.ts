@@ -120,7 +120,7 @@ function firstNumericInput(node: unknown): { socketKey: string; label: string } 
 
 interface SafeRange { min: number; max: number }
 
-export interface ClampSuggestion { socketKey: string; label: string; min?: number; max?: number }
+interface ClampSuggestion { socketKey: string; label: string; min?: number; max?: number }
 
 export function collectFinite(v: unknown): number[] {
   if (typeof v === "number") return Number.isFinite(v) ? [v] : [];
@@ -162,7 +162,7 @@ export function boundsFromSafeRange(range: SafeRange | undefined): { min: number
   return { min: range.min, max: range.max };
 }
 
-export interface FuzzRunSummary {
+interface FuzzRunSummary {
   leaves: number;
   samples: number;
   findings: number;

@@ -7,7 +7,7 @@ import { filePicker } from "./filePickerStore";
 import { pushNotice } from "./noticeStore";
 import { readChipPopupStyle } from "./components/chipStyle";
 
-export interface ChooseOptions {
+interface ChooseOptions {
   title: string;
   /** The folder the answer must sit in, and the dialog opens at. */
   root: string;

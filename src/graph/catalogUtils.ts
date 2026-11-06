@@ -167,7 +167,7 @@ function findParent(entries: CatalogEntry[], leaf: NodeCatalogEntry): CatalogEnt
   return null;
 }
 
-export type NodeClass = "core" | "matcher";
+type NodeClass = "core" | "matcher";
 export function classifyType(type: string): NodeClass {
   return (CATALOG_TO_EXCEL.get(type)?.length ?? 0) > 0 ? "matcher" : "core";
 }

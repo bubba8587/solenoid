@@ -6,7 +6,7 @@ export const EXCEL_SECTIONS = [
   "Financial", "Logical", "Text", "Date & Time", "Lookup & Reference", "Math & Trig",
   "Statistical", "Engineering", "Information", "Database", "Cube", "Web",
 ] as const;
-export type ExcelSection = (typeof EXCEL_SECTIONS)[number];
+type ExcelSection = (typeof EXCEL_SECTIONS)[number];
 
 const BY_SECTION: Record<ExcelSection, string> = {
   Financial: `ACCRINT ACCRINTM COUPDAYBS COUPDAYS COUPDAYSNC COUPNCD COUPNUM COUPPCD CUMIPMT CUMPRINC DB DDB DISC DOLLARDE

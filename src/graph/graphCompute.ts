@@ -8,7 +8,7 @@ type Editor = GraphEditor<Schemes>;
 type Engine = DataflowEngine<Schemes>;
 
 export type { NodeOutputs };
-export type PassValues = Map<string, NodeOutputs | null>;
+type PassValues = Map<string, NodeOutputs | null>;
 
 /** Every node on a cable cycle, from the editor's engine. */
 export function loopMembers(editor: Editor): Set<string> {

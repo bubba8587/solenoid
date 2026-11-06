@@ -38,12 +38,12 @@ export interface ChartOptions {
   origin?: HeatOrigin;
 }
 
-export type HeatOrigin = "upper" | "lower";
+type HeatOrigin = "upper" | "lower";
 export type LineStyle = "solid" | "dashed" | "dotted" | "dashdot" | "none";
-export type AspectMode = "auto" | "equal";
-export type AxisScale = "linear" | "log";
-export type PieLabelMode = "off" | "outside" | "inside";
-export type RadarScale = "axis" | "shared";
+type AspectMode = "auto" | "equal";
+type AxisScale = "linear" | "log";
+type PieLabelMode = "off" | "outside" | "inside";
+type RadarScale = "axis" | "shared";
 
 // Update these key lists whenever a renderer learns or drops an option.
 

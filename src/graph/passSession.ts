@@ -9,7 +9,7 @@ import { guarded, wasmEngineLoaded, whenWasmEngineLoads } from "./engineWasm";
 
 export type CalcMode = "auto" | "manual" | "sketch";
 
-export interface SessionSnapshot {
+interface SessionSnapshot {
   mode: CalcMode;
   dirty: boolean;
   forceExact: number;
@@ -20,7 +20,7 @@ export interface SessionSnapshot {
 }
 
 /** The rerun a finished pass owes the requests it coalesced. */
-export interface Rerun { force: boolean; exact: boolean; changed: string[] }
+interface Rerun { force: boolean; exact: boolean; changed: string[] }
 
 let _snap: SessionSnapshot = { mode: "auto", dirty: false, forceExact: 0, gen: 0, rebuilding: 0, topoDirty: false, passActive: false };
 

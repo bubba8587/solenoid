@@ -201,7 +201,7 @@ export function taskRecord(raw: Record<string, unknown>): TaskRecord {
   };
 }
 
-export interface TasksPage {
+interface TasksPage {
   tasks: TaskRecord[];
   total: number | null;
   hasMore: boolean;

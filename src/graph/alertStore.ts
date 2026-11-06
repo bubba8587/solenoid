@@ -11,7 +11,7 @@ const ALERT_TONE: Record<AlertKind, NoticeTone> = {
   critical: "error",
 };
 
-export interface AlertEvent {
+interface AlertEvent {
   id: number;
   nodeId: string;
   label: string;

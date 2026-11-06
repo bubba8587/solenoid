@@ -1,7 +1,7 @@
 // [[A1]] visualGraphCalculator (module-singleton store, storeKit)
 type Prefill = { nodeId: string; socketKey: string };
 
-export type ConnDialogReq = {
+type ConnDialogReq = {
   editId?: string;
   src?: Prefill;
   tgt?: Prefill;

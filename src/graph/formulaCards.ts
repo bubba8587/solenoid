@@ -10,7 +10,7 @@ import { packFormulaNames } from "./formulaExtensions";
 import { NODE_OPS } from "./nodeOps";
 import type { CatalogEntry } from "./AddNodeMenu";
 
-export interface FormulaHome {
+interface FormulaHome {
   /** The card's catalog type. */
   type: string;
   /** The op, mode or form on that card that answers the formula, as the card names it. */
