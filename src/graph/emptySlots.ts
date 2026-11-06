@@ -51,6 +51,10 @@ const CARD_FALLBACK_SLOT: Record<string, Record<number, unknown>> = {
   "CONFIDENCE.NORM": { 0: 0.05, 1: 1, 2: 30 }, "CONFIDENCE.T": { 0: 0.05, 1: 1, 2: 30 }, SLN: { 2: 1 }, SYD: { 2: 1, 3: 1 },
   DURATION: { 4: 2 }, MDURATION: { 4: 2 }, STANDARDIZE: { 2: 1 }, "CHISQ.DIST.RT": { 1: 10 }, "T.DIST.2T": { 1: 10 },
   "T.DIST.RT": { 1: 10 }, "F.DIST.RT": { 1: 5, 2: 10 },
+  "BETA.INV": { 1: 2, 2: 5 }, "CHISQ.INV": { 1: 10 }, "CHISQ.INV.RT": { 1: 10 }, "F.INV": { 1: 5, 2: 10 }, "F.INV.RT": { 1: 5, 2: 10 },
+  "GAMMA.INV": { 1: 2, 2: 5 }, "NORM.INV": { 2: 1 }, "T.INV": { 1: 10 }, "T.INV.2T": { 1: 10 }, BESSELK: { 0: 1 }, BESSELY: { 0: 1 },
+  ACCRINTM: { 2: 0.06, 3: 1000 }, TBILLYIELD: { 2: 97.5 }, YIELDMAT: { 4: 97.5 }, COUPDAYBS: { 2: 2 }, COUPDAYS: { 2: 2 },
+  COUPDAYSNC: { 2: 2 }, COUPNUM: { 2: 2 }, COUPNCD: { 2: 2 }, COUPPCD: { 2: 2 }, "Z.TEST": { 2: LEFT_OUT },
 };
 
 /** Excel's reading for this empty slot when it isn't the parameter's usual one, or the function's card's Fallback. */
@@ -76,7 +80,7 @@ const LEFT_OUT_BY_PARAM: Record<string, string> = {
 const LEFT_OUT_BY_FN: Record<string, Record<number, string>> = {
   TAKE: { 1: "all", 2: "all" }, DROP: { 1: "none", 2: "none" }, EXPAND: { 1: "same", 2: "same" },
   RANK: { 2: "0" }, "RANK.EQ": { 2: "0" }, "RANK.AVG": { 2: "0" }, TRUNC: { 1: "0" }, DOLLAR: { 1: "2" },
-  RANDARRAY: { 2: "0", 3: "1" }, "CEILING.MATH": { 1: "1", 2: "0" }, "FLOOR.MATH": { 1: "1", 2: "0" }, GESTEP: { 1: "0" }, TEXTSPLIT: { 1: "none", 2: "none" }, INTERPOLATE: { 1: "1, 2, 3…", 2: "1, 2, 3…" }, LEFT: { 1: "1" }, RIGHT: { 1: "1" }, WEEKDAY: { 1: "1" }, WEEKNUM: { 1: "1" },
+  RANDARRAY: { 2: "0", 3: "1" }, "Z.TEST": { 2: "from sample" }, "CEILING.MATH": { 1: "1", 2: "0" }, "FLOOR.MATH": { 1: "1", 2: "0" }, GESTEP: { 1: "0" }, TEXTSPLIT: { 1: "none", 2: "none" }, INTERPOLATE: { 1: "1, 2, 3…", 2: "1, 2, 3…" }, LEFT: { 1: "1" }, RIGHT: { 1: "1" }, WEEKDAY: { 1: "1" }, WEEKNUM: { 1: "1" },
 };
 
 function baseName(param: string): string {

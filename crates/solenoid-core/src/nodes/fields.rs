@@ -203,7 +203,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("ComparisonNode", "b", Empty::Fallback(Fill::Num(0.0))),
     ("ComplexFromNode", "im", Empty::Fallback(Fill::Num(0.0))),
     ("ComplexFromNode", "re", Empty::Fallback(Fill::Num(0.0))),
-    ("ComplexPowerNode", "n", Empty::Fallback(Fill::Num(2.0))),
+    ("ComplexPowerNode", "n", Empty::Fallback(Fill::Num(0.0))),
     ("ConcatNode", "v0", Empty::Fallback(Fill::Text(""))),
     ("ConcatNode", "v1", Empty::Fallback(Fill::Text(""))),
     ("ConcatNode", "v2", Empty::Fallback(Fill::Text(""))),
@@ -370,7 +370,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("MirrNode", "reinrate", Empty::Fallback(Fill::Num(0.0))),
     ("MolarMassNode", "formula", Empty::Example("H2O")),
     ("NPVNode", "dates", Empty::Fallback(Fill::Text(""))),
-    ("NPVNode", "rate", Empty::Fallback(Fill::Num(0.1))),
+    ("NPVNode", "rate", Empty::Fallback(Fill::Num(0.0))),
     ("NestJoinNode", "key", Empty::Fallback(Fill::Text(""))),
     ("NestJoinNode", "name", Empty::Fallback(Fill::Text(""))),
     ("NestNode", "keys", Empty::Fallback(Fill::Text(""))),
@@ -426,7 +426,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("ReturnsNode", "periods", Empty::Fallback(Fill::Num(1.0))),
     ("ReturnsNode", "rf", Empty::Fallback(Fill::Num(0.0))),
     ("ReverseTextNode", "text", Empty::Fallback(Fill::Text(""))),
-    ("RomanArabicNode", "number", Empty::Fallback(Fill::Num(1.0))),
+    ("RomanArabicNode", "number", Empty::Fallback(Fill::Num(0.0))),
     ("RomanArabicNode", "text", Empty::Fallback(Fill::Text(""))),
     ("RoundNNode", "value", Empty::Fallback(Fill::Num(0.0))),
     ("SankeyNode", "options", Empty::Fallback(Fill::Text(""))),
@@ -538,6 +538,9 @@ const EMPTY: &[(&str, &str, Empty)] = &[
 
 /// Fields whose kind depends on the card's op: `(card, op, key, kind)`, ahead of `EMPTY`.
 const EMPTY_BY_OP: &[(&str, &str, &str, Empty)] = &[
+    // J₀(0) and I₀(0) are answers, so an empty x is 0 there; K and Y have none at 0 and keep 1.
+    ("BesselNode", "besseli", "x", Empty::Fallback(Fill::Num(0.0))),
+    ("BesselNode", "besselj", "x", Empty::Fallback(Fill::Num(0.0))),
     ("MRoundNode", "down", "multiple", Empty::Fallback(Fill::Num(1.0))),
     ("MRoundNode", "up", "multiple", Empty::Fallback(Fill::Num(1.0))),
     ("TakeDropNode", "drop", "cols", Empty::Behavior("none")),

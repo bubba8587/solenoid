@@ -34,15 +34,12 @@ const TWINS_APART: Record<string, string> = {
   "QUARTILE.EXC": "the card's quart is QUARTILE.INC's too, where 0 is the minimum",
 };
 
-/** Card Fallbacks that aren't the formula's empty slot, armed when the 2026-11-05 parity audit marked their functions
- *  as Excel's. Which side moves is the author's pick, in the backlog ("Card-to-formula checks skip every
- *  `parity: false` row"); until then each is named here so a new one still fails. */
+/** A card's empty field the formula's empty slot can't read yet, each named so a new one still fails. The rule
+ *  (author 2026-11-06): a card's Fallback is what the formula's empty slot reads; where Excel's empty value means
+ *  something, the Fallback is that value instead. */
 const EMPTY_PENDING = new Set([
-  "ACCRINTM arg 3", "ACCRINTM arg 4", "BESSELI arg 1", "BESSELJ arg 1", "BESSELK arg 1", "BESSELY arg 1",
-  "COUPDAYBS arg 3", "COUPDAYS arg 3", "COUPDAYSNC arg 3", "IMPOWER arg 2", "BETA.INV arg 2", "BETA.INV arg 3",
-  "CHISQ.INV arg 2", "CHISQ.INV.RT arg 2", "F.INV arg 2", "F.INV arg 3", "F.INV.RT arg 2", "F.INV.RT arg 3",
-  "GAMMA.INV arg 2", "GAMMA.INV arg 3", "NORM.INV arg 3", "T.INV arg 2", "T.INV.2T arg 2", "TBILLYIELD arg 3",
-  "YIELDMAT arg 5", "ROMAN arg 1", "XIRR arg 2", "XNPV arg 1", "XNPV arg 3", "Z.TEST arg 3",
+  // The card reads empty dates as a periodic schedule (IRR, NPV), a behavior the formula has no slot for yet.
+  "XIRR arg 2", "XNPV arg 3",
 ]);
 
 it("a card's empty field reads as its formula twin's empty slot: a Fallback the same value, a Behavior left out", async () => {

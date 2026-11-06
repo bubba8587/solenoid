@@ -145,7 +145,7 @@ Tests:
 
 A `LEFT_OUT` reading shows a short word for the default it stands for, declared with the setting: a value as itself (a Fallback, upright: `10`, `1`, `FALSE`), anything else in brackets (a Behavior), `[all]` for a size that keeps the whole axis (TAKE, EXPAND), `1` where the default is the first (an instance or a start), `[none]` where nothing is applied (DROP), and the default value itself wherever one exists.
 
-Where a function's card falls back to a value because Excel's empty one would make an error, the formula's empty slot reads that value instead (`CARD_FALLBACK_SLOT` in `emptySlots.ts`, and the same in the core's `blanks` in `data/call_traits.json`), so the card and the formula agree ([[D96]] emptySlotShowsItsValue). Placeholders are upright; italics are an Example's alone.
+A card's Fallback is what the formula's empty slot reads, with no exception (author 2026-11-06). Where Excel's empty value means something (`BESSELJ(0, n)`, `IMPOWER(z, 0)`, `ROMAN(0)`, a rate of 0), the card's Fallback is that value; where it would make an error (a df of 0, a frequency of 0, a price of 0), the formula's empty slot reads the card's Fallback instead (`CARD_FALLBACK_SLOT` in `emptySlots.ts`, and the same in the core's `blanks` in `data/call_traits.json`), so the card and the formula agree ([[D96]] emptySlotShowsItsValue). Placeholders are upright; italics are an Example's alone.
 
 Tests: `emptySlots.test.ts`: the reading or its bracketed word, and nothing for blank text; the highlighter's CSS content in the editor and nothing when read-only; and a card's empty field showing its kind: a setting's formula twin's reading, its own blank or its word, the core's declaration, and nothing for a required or undeclared field.
 
