@@ -98,10 +98,24 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
 Worth borrowing: a counterexamples set (tests that fail if a rejected rule comes back, as `Counterexamples/` keeps
 proofs that tempting ideas are false), and search by type (Loogle, `exact?`): "what takes a Frame and gives a number".
 
+## Landed in the specs (develop 4b7b526, 2026-11-06)
+
+The vocabulary from F1, F3 (Kleene), F4 and F5 is now spec text: `value-semantics` § Points and differences (the one
+home for point kinds and point weight) and the Kleene paragraph, `socket-lattice` § The shape of what connects and the
+Type Settle as a fixed point, `unit-flow` (dimensions as exponent vectors, offset units as point scales, why snapping
+needs the read-back rounding), `formula-language` "What a total can be built from", glossary entries, and the inbox
+item `dates-weigh-as-points` for F1. A pass should build on those, not redo them.
+
+**New, verified against `fixtures/core/lattice.json.gz`:** over the 25 concrete socket types, `connects` minus the 7
+combo-to-scalar narrowing edges is reflexive and transitive (a preorder); with them, 11 chains fail to compose
+(`list` reaches `numlist`, `numlist` reaches `number`, `list` does not reach `number`). Wildcards don't compose either.
+No test holds it yet: a candidate prototype (thread 2b).
+
 ## Open threads (for the next passes)
 
 1. Run F1 as a test on the branch: `(d1 + d2) / 2` beside `(a + b) / 2` over °C.
 2. Prototype the F5 coercion-commutes sweep.
+   2b. A test holding the widening preorder and the non-composing narrowing edges (from the lattice fixture).
 3. Prototype the F4 shuffle sweep over the order-free verbs and aggregates.
 4. Classify every aggregate in `call_traits.json` by algebraic kind (F4).
 5. Audit P7 Fallbacks against the identity rule (F3).
@@ -116,3 +130,4 @@ proofs that tempting ideas are false), and search by type (Loogle, `exact?`): "w
 ## Pass log
 
 - **Pass 0 (2026-11-06, interactive):** the findings above, from the docs, the core's code and a read of mathlib.
+- **Spec pass (2026-11-06, interactive):** the definitions moved into the specs on develop; the lattice preorder check.
