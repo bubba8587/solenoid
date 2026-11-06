@@ -31,7 +31,7 @@ export const RULES = [
   ["integrations", /(^|\/)(obsidian\w*|note\w*|knap\w*|vault\w*|taskNotes\w*|demoVault|frontmatterPatch|importNoteRepick|importObsidianGone|localFileRace|filePickerModel|chooseFile|httpBridge|ipcBridge|script\w*|ai\w*|apiKeyStore|mailMergeSeed|planImport|pluginColumnTypes|managedBlock|csvSafety|svgSanitize|polyformIntegration)\.test\./],
 
   // ── documents: saves, the text form, seeds, the workspace ──
-  ["documents", /(^|\/)(persistence\w*|textForm\w*|coreTextForm|seeds\w*|packSeeds|documentExamples|\w+Seed|seedsCompute|pfSeedCheck|document\w*|saveTimeStore|fileSession|historyDigest|copyPasteSnapshot|foreignPaste|recentDocs|workspace\w*|relocationKeepsStores|filterPersistence|activeGraph|graphStub|sketchExport|textDiff|draftFlush)\.test\./],
+  ["documents", /(^|\/)(persistence\w*|textForm\w*|coreTextForm|seeds\w*|packSeeds|documentExamples|desktopDocs|\w+Seed|seedsCompute|pfSeedCheck|document\w*|saveTimeStore|fileSession|historyDigest|copyPasteSnapshot|foreignPaste|recentDocs|workspace\w*|relocationKeepsStores|filterPersistence|activeGraph|graphStub|sketchExport|textDiff|draftFlush)\.test\./],
 
   // ── named exceptions, above the broad rules below that would claim them by prefix ──
   ["ui", /(^|\/)(tableEdit|tableSortFilter|tablePopupSuggest)\.test\./],

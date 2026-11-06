@@ -16,6 +16,7 @@ import { flowHistory } from "./flowHistory";
 import { ctorRegistry } from "../nodeCtorRegistry";
 import { scheduleAutosave } from "../persistence";
 import { documentStore, ensureFirstDocument } from "../documentStore";
+import { startDesktopDocs } from "../desktopDocs";
 import { SEEDS } from "../seeds";
 import { paletteStore } from "../paletteStore";
 import { CommandPalette } from "../CommandPalette";
@@ -221,6 +222,8 @@ function FlowCanvasInner() {
         } else if (!restored) {
           await ensureFirstDocument();
         }
+        // Desktop: every kept document is a file, written through by autosave.
+        startDesktopDocs();
       })();
     }
   }, [s]);

@@ -306,6 +306,12 @@ export const documentStore = {
   /** Each document's name, folder and last captured graph, for the Navigator's Everywhere search; read, never kept. */
   searchable: () => _lib.documents.filter((d) => !d.seed).map((d) => ({ id: d.id, name: d.name, folder: d.folder ?? "", graph: d.graph })),
 
+  /** Each kept document's file state, for the desktop's one-file-per-document rule (`desktopDocs.ts`). */
+  fileWork: () => _lib.documents.filter((d) => !d.seed).map((d) => ({
+    id: d.id, name: d.name, folder: d.folder ?? "", graph: d.graph,
+    filePath: d.filePath, updatedAt: d.updatedAt, fileSavedAt: d.fileSavedAt,
+  })),
+
   /** Every folder path, sorted; a document's folder and its ancestors included. */
   folders: (): string[] => allFolders(_lib),
   documentsIn: (path: string): number => documentsIn(_lib, path).length,

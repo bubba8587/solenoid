@@ -18,6 +18,7 @@ const ISOLATED = [
   "tests/graph/importObsidianGone.test.ts",
   "tests/graph/documentStorePersist.test.ts",
   "tests/graph/documentExamples.test.ts",
+  "tests/graph/desktopDocs.test.ts",
   "tests/graph/fileSession.test.ts",
   "tests/graph/flow/flowHistory.test.ts",
   "tests/graph/importNoteRepick.test.ts",

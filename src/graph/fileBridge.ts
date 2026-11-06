@@ -1,7 +1,7 @@
 // [[C1]] demoVault, [[C103]] untrustedContentSeams
 import { readTextFile, readDir, writeTextFile, rename, readFile, writeFile, mkdir, exists, stat } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { join, dirname } from "@tauri-apps/api/path";
+import { join, dirname, documentDir } from "@tauri-apps/api/path";
 import { requestConfirm } from "./confirmStore";
 import { docMetaStore } from "./docMetaStore";
 import { demoVaultFs, isDemoVaultPath } from "./demoVault";
@@ -314,6 +314,11 @@ export async function writeTextFilePath(path: string, content: string): Promise<
 
 export function dirOfPath(path: string): Promise<string> {
   return fs().dirname(path);
+}
+
+/** The system's Documents folder (desktop). */
+export function documentsDir(): Promise<string> {
+  return documentDir();
 }
 
 export function joinPath(...parts: string[]): Promise<string> {
