@@ -126,6 +126,18 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
   work adds rules: walk `python3 tools/dte.py tree` and ratify node by
   node (`docs/dte.md` § Solenoid practice; `archive/1.4-plan.md` D3).
 
+## From the 2026-11-06 audit (each needs the author's call)
+- [ ] **Dates through the function classes** (`date_values.rs` `class_of`): PADLEFT/PADRIGHT and CONTAINS are classed Text, so a date list pads as text and CONTAINS matches a date against its display text; SETEQUAL/SETSUBSET/SETSUPERSET/SETDISJOINT have no class and refuse dates; Builds/Reads take a date where they read a number (`EDATE(d, DATE(1900,1,1))` adds 2 months, XNPV's values); XLOOKUP's numeric not-found re-stamps as a date (30-Dec-1899); DIFF and RUNNING have no class; Group Lists keys by `value_text` (times in one minute meet). Left for the formula test set.
+- [ ] **A date matches its serial in Counts/Returns** (XMATCH, ISIN, COUNTIF, XLOOKUP unwrap every argument): `tree/specs/values/value-semantics.md` says a date never keys as its serial, the Counts bullet says dates read as their days. Pick one.
+- [ ] **`&` drops a time's seconds** (`date_text` is `DD-MMM-YYYY HH:mm`), so `"<="&@t` misses the row's own timestamp; ISNUMBER(date) is FALSE while TYPE(date) is 1.
+- [ ] **The SUMIFS card's `<>` refuses a blank** (it runs `compile_filter`, Frame Filter's test) where SUMIFS in a formula and Excel pass it; `tree/specs/computation/formula-language.md` § Criteria still says the card reaches `criterion_matches`.
+- [ ] **A rolling or sorted-run sum stays wrong past an overflow** (`exact_sum.rs`: `remove` can't undo an infinity count): `rolling_sum` n=2 over `[1e308, 1e308, 1, 1]` answers ∞ then NaN.
+- [ ] **Local File takes a subfolder pick from the desktop dialog, then marks it missing** (`listLocalFiles` is top level only): refuse picks below the top level, or list recursively.
+- [ ] **Undo in a drill-in leaves an added port** (the drill-in history holds nodes and cables, not `inputPorts`/`outputPorts`): the card keeps a port to nothing, and a redo after leaving brings back a marker with no port.
+- [ ] **The desktop's local-network block matches host strings** (`capabilities/default.json`): `[::ffff:127.0.0.1]`, `[::]`, `fd00::/8`, `100.64.0.0/10`, `localhost.` and any name resolving to 127.0.0.1 get through once the network is allowed. Check the resolved address in Rust (a reqwest resolver).
+- [ ] **A File Link pasted from a foreign document carries no mark**, so it opens without the shared-document prompt (marks cover scripts and the network only).
+- [ ] **Check on the deploy:** `/assets/scriptWorker-*.js` carries `Content-Security-Policy: default-src 'none'; script-src 'unsafe-eval'` (`vercel.json`); `siteMeta.test.ts` checks the rule, not the served header.
+
 ## From the 2026-09-27 bug review (each needs the author's call)
 - [ ] **Two locked groups that overlap stay overlapped, silently** ([[C112]] noOverlapsEver leaves them alone), and a layout action can make it (a locked group expanding onto another, Tidy inside one widening it onto a locked neighbour). Keep it silent; have `separateAll` return the leftover fixed pairs and raise an alert naming both; or clamp a locked group's growth into another locked box (an exception under D63).
 - [ ] **Nothing lists what a chart renderer reads**, so an option a renderer reads but the builder doesn't offer goes unnoticed (Merge Plots over XY reading `opts.alpha` was the one found, fixed 2026-10-05). A per-op `RENDERER_READS` table beside the targets, with `reads ⊆ keys` tested.

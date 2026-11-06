@@ -6,6 +6,13 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-06: audit and bug hunt; cloud session)
+- **Saves:** a text holding half a surrogate pair made the core read the save as null, so every save, autosave and undo snapshot became an empty document; the writer spells such halves U+FFFD and `textFormWrite` answers an unreadable save with `!`. The per-card `foreign` mark rides the text form's positions table ([[save-format]]).
+- **Shared documents** ([[B18]] safeToShare): every picture path holds through `webUrl.ts` (the browser's URL parser decides what is the web); markdown text values use `sanitizeNoteHtml`; table-cell pictures go through `WebImage`; SVG `href`, `background`, `<style>`, `image-set()` and `@import` are held. An AI rewrite can't clear a mark (`keepCardTrust`). The Script worker's file is served with its own CSP (`vercel.json`) and a newly loaded graph retires the worker. File Link asks before UNC paths and more Windows launchers.
+- **Desktop documents:** a write-through marks the copy's own time, so a mid-pass edit stays unsaved; opening a file a document keeps opens that document; a future `savedAt` is capped at now; `fileStem` drops leading dots, trailing dots and Windows device names.
+- **Elsewhere:** binary reads/writes and Open go through the path's provider (Android granted folders, the demo vault); the file picker keeps its cursor through a background relist; Write to Obsidian refuses error cells and calls a value the note already holds unchanged; criteria fast paths read numbers to 15 digits as the scan does, a `"true"` criterion ignores case, and the SUMIFS card totals exactly; a wrapped group member's group holds the composite, and paste/unpack rebuild group tints.
+- **Open:** the author's calls are the backlog's 2026-11-06 audit section. The author is building a formula test set in another session; no new card/formula tests were added after that.
+
 ### SESSION DIGEST (2026-11-06: pre-1.6 cleanup sweep; cloud session)
 - **What went:** one-off probes nothing ran (chart-contact-sheet, heap, layout, undo-drift, gantt-shots, touch-pan,
   formula-node-parity), the orphaned `relativeDateCorpus.ts`, `.impeccable/`, the bitmap fonts in `public/fonts/`, the
