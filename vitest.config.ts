@@ -15,6 +15,7 @@ const ALL = ["tests/**/*.test.{ts,tsx}", "scripts/**/*.test.{ts,tsx}", "packages
 const ISOLATED = [
   "tests/graph/demoVault.test.ts",
   "tests/graph/importObsidianGone.test.ts",
+  "tests/graph/fileBridgeDispatch.test.ts",
   "tests/graph/documentStorePersist.test.ts",
   "tests/graph/documentExamples.test.ts",
   "tests/graph/desktopDocs.test.ts",

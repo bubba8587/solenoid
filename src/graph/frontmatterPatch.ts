@@ -1,10 +1,15 @@
 // [[C101]] onePatchPath
+import { parse as parseYaml } from "yaml";
 import { listLiteralItems } from "./listLiterals";
 import { yamlKey, yamlScalar } from "./obsidianMarkdown";
 import { isFrameValue, isCubeValue, type CubeCell, type CubeValue, type FrameColType, type FrameValue } from "./frame";
 import { noteDateText, noteDateSerial } from "./nodes/dateSerial";
 import { parseNoteFrontmatter } from "./noteFrontmatter";
 import { extractInlineTags } from "./vaultCube";
+import { isSolError, type SolError } from "./errorValue";
+import { isSolDate } from "./dateValue";
+import { isUnitCell } from "./unitValue";
+import { displayMagnitudeOf } from "./unitBridge";
 
 type YamlScalarV = string | number | boolean | null;
 type YamlRowV = YamlScalarV | YamlScalarV[] | Record<string, YamlRowV>[];
@@ -41,6 +46,10 @@ function scalarToYaml(cell: CubeCell, colType: FrameColType | undefined, noteNam
     }
     return cell;
   }
+  if (isSolDate(cell)) return Number.isFinite(cell.__date) ? noteDateText(cell.__date) : null;
+  // A number with a unit is written as it shows, in its own unit; an error never reaches here (`cellError`).
+  if (isUnitCell(cell)) return displayMagnitudeOf(cell);
+  if (isSolError(cell)) return cell.code;
   const s = String(cell);
   return noteNames.has(s) ? `[[${s}]]` : s;
 }
@@ -248,6 +257,8 @@ export interface PlanRow {
   before: string;
   action: PlanAction;
   reason?: string;
+  /** Why the value can't be written at all (an error in it): refused by every preview and skipped by Run. */
+  held?: string;
 }
 
 /** Whether a planned "add" is held back: every add when Add missing is off, and a blank one unless its key is listed,
@@ -278,6 +289,15 @@ export function displayValue(v: YamlValue): string {
   return renderScalar(v);
 }
 
+/** The first error anywhere in a cell: a value holding one is refused, never written as text into the note. */
+export function cellError(cell: unknown): SolError | null {
+  if (isSolError(cell)) return cell;
+  if (Array.isArray(cell)) { for (const c of cell) { const e = cellError(c); if (e) return e; } return null; }
+  if (isFrameValue(cell)) { for (const c of cell.columns) { const e = cellError(c.values); if (e) return e; } return null; }
+  if (isCubeValue(cell)) { for (const c of cell.columns) { const e = cellError(c.cells); if (e) return e; } return null; }
+  return null;
+}
+
 export function planPropertyWrites(cube: CubeValue, keysCsv: string, noteNames: ReadonlySet<string>): PlanRow[] {
   const pathCol = cube.columns.find((c) => c.name === "path");
   if (!pathCol) return [];
@@ -288,6 +308,11 @@ export function planPropertyWrites(cube: CubeValue, keysCsv: string, noteNames: 
     const p = pathCol.cells[i];
     if (typeof p !== "string" || p.trim() === "") continue;
     for (const c of cols) {
+      const err = cellError(c.cells[i]);
+      if (err) {
+        rows.push({ path: p, key: c.key, value: null, after: err.code, before: "", action: "refused", reason: `${err.code} can't be written`, held: `${err.code} can't be written` });
+        continue;
+      }
       const value = cellToYaml(c.cells[i] ?? null, c.type, noteNames);
       rows.push({ path: p, key: c.key, value, after: displayValue(value), before: "", action: "pending" });
     }
@@ -318,8 +343,16 @@ export function resolveKey(text: string, key: string, value: YamlValue): { actio
     ? span.rest.trim()
     : existing.slice(1).map((l) => l.trim()).filter(Boolean).join(", ");
   const rendered = renderKey(key, value, span.head);
-  const same = existing.length === rendered.length && existing.every((l, i) => l.trimEnd() === rendered[i]);
+  const same = (existing.length === rendered.length && existing.every((l, i) => l.trimEnd() === rendered[i]))
+    || (span.scalar && readsAs(span.rest, value));
   return { action: same ? "unchanged" : "update", before };
+}
+
+/** Whether a note's own scalar text reads back as `value`: Obsidian writes `url: https://x` and `title: Hi, there`
+ *  plain where this writer quotes, and the same value spelled another way is no change. */
+function readsAs(text: string, value: YamlValue): boolean {
+  if (value === null || typeof value === "object") return false;
+  try { return parseYaml(text) === value; } catch { return false; }
 }
 
 /** A day written over a note's date-and-time text keeps the time: the note's own text when it is the same moment, else midnight. */

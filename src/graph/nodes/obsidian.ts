@@ -341,6 +341,7 @@ export class WriteObsidianNode extends GraphNode {
         try { text = await readVaultFile(vault, p); }
         catch { for (const r of rows) { r.action = "unreadable"; r.before = ""; r.reason = undefined; } continue; }
         for (const r of rows) {
+          if (r.held) { r.action = "refused"; r.reason = r.held; continue; }
           if (r.key === NOTE_BODY) { const { action, before } = resolveBody(text, r.value as string); r.before = before; r.action = action; r.reason = undefined; continue; }
           r.value = keepDateTime(text, r.key, r.key === "tags" ? frontmatterTags(text, r.value) : r.value);
           r.after = displayValue(r.value);
@@ -378,6 +379,7 @@ export class WriteObsidianNode extends GraphNode {
         let touched = 0;
         let newBody: string | null = null;
         for (const r of rows) {
+          if (r.held) continue;
           if (r.key === NOTE_BODY) { if (resolveBody(text, r.value as string).action === "update") { newBody = r.value as string; touched++; } continue; }
           const value = keepDateTime(text, r.key, r.key === "tags" ? frontmatterTags(text, r.value) : r.value);
           const { action } = resolveKey(text, r.key, value);

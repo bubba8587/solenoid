@@ -3,7 +3,11 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey, setBody, resolveBody, frontmatterTags, keepDateTime, holdsAdd } from "../../src/graph/frontmatterPatch";
 import { notesToCube } from "../../src/graph/vaultCube";
-import type { CubeValue } from "../../src/graph/frame";
+import type { CubeCell, CubeValue } from "../../src/graph/frame";
+import { solError } from "../../src/graph/errorValue";
+import { solDate } from "../../src/graph/dateValue";
+import { fromUnit } from "../../src/graph/unitValue";
+import { fcUnitToUnit } from "../../src/graph/dimension";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 
 // [[C101]] onePatchPath, [[reports-and-notes#Write to Obsidian]]
@@ -312,5 +316,39 @@ describe("Add missing adds a blank property only for a listed key", () => {
     expect(holdsAdd(true, "status, due", "status", null)).toBe(false);
     expect(holdsAdd(true, "", "status", "open")).toBe(false);
     expect(holdsAdd(false, "status", "status", "open")).toBe(true);
+  });
+});
+
+describe("Write to Obsidian never writes a value as [object Object]", () => {
+  it("an error cell refuses its row, and the reason says why", () => {
+    const cube: CubeValue = { __cube: true, depth: 1, columns: [
+      { name: "path", cells: ["A.md", "B.md"], type: "string" },
+      { name: "ratio", cells: [0.5, solError("#DIV/0!", "x")], type: "number" },
+    ] };
+    const rows = planPropertyWrites(cube, "", NO_NAMES);
+    expect(rows.find((r) => r.path === "A.md")).toMatchObject({ value: 0.5, action: "pending" });
+    expect(rows.find((r) => r.path === "B.md")).toMatchObject({ action: "refused", held: "#DIV/0! can't be written" });
+    expect(rows.every((r) => !r.after.includes("object"))).toBe(true);
+  });
+  it("a number with a unit writes as it shows; a date in a list writes as a day", () => {
+    const km = fcUnitToUnit("km")!;
+    expect(cellToYaml(fromUnit(5, km, "km") as CubeCell, "number", NO_NAMES)).toBe(5);
+    expect(cellToYaml([solDate(parseDateToSerial("2026-11-15"))] as unknown as CubeCell, "string", NO_NAMES)).toEqual(["2026-11-15"]);
+  });
+});
+
+describe("resolveKey: a value the note already holds, spelled Obsidian's way, is unchanged", () => {
+  it("plain text this writer would quote reads back the same", () => {
+    const note = "---\nurl: https://example.com/a\ntitle: Hello, world\nlang: C#\nrank: 1st place\n---\n";
+    expect(resolveKey(note, "url", "https://example.com/a").action).toBe("unchanged");
+    expect(resolveKey(note, "title", "Hello, world").action).toBe("unchanged");
+    expect(resolveKey(note, "lang", "C#").action).toBe("unchanged");
+    expect(resolveKey(note, "rank", "1st place").action).toBe("unchanged");
+  });
+  it("text that only looks the same is still an update", () => {
+    const note = "---\nnote: a #b\nflag: true\nn: 007\n---\n";
+    expect(resolveKey(note, "note", "a #b").action).toBe("update");
+    expect(resolveKey(note, "flag", "true").action).toBe("update");
+    expect(resolveKey(note, "n", "007").action).toBe("update");
   });
 });
