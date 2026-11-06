@@ -25,7 +25,7 @@ const EXPECTED_ERRORS: Record<string, string[]> = {
   // H_conv2 raises #UNIT!, H_d2 is the Display showing it off (its label says so).
 };
 
-/** Seeds this loop can't fetch, each owned by a test that can. */
+/** Seeds this loop can't fetch, and the test that runs each one (or why none can offline). */
 const SKIPPED: Record<string, string> = {
   "null-and-logical":
     "the error-codes tour, incl. a #CIRC! loop — errorSeed.test.ts runs it with the cycle cache-seeding a plain fetch loop lacks",

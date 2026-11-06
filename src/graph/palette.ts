@@ -139,9 +139,7 @@ export const COLOR_PALETTE: PaletteSlot[] = [
   "gray", "vermilion", "violet", "pink", "sky", "teal",
 ];
 
-// A list's shade of its family's color is an HSV step, the default space (DESIGN.md §Tertiary): it only darkens, and it
-// reads alike in every family. A matrix's turns the hue, a large perceptual move, so it runs in OKLCH, the allowed
-// override: −11° of HSV hue turned gold into orange and barely moved purple (author 2026-11-03).
+// A list's shade is an HSV step and a matrix's an OKLCh one (DESIGN.md § Tertiary).
 const ARRAY_VALUE_SCALE = 0.85;
 const MATRIX_LIGHTNESS = 0.91;
 const MATRIX_HUE_SHIFT = -12;
