@@ -61,11 +61,22 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
   | PRODUCT | 0 | 1 | junk (Excel's answer) |
   | MAX, MIN | 0 | none (−∞ / +∞, mathlib's `WithBot` / `WithTop`) | junk (Excel's answer) |
 
+  **Census of every range function** (pass 2, `every_range_function_over_nothing`, one argument holding two blanks or
+  an empty list; functions that need a second argument answer `#VALUE!` and are left out):
+  - the identity, correctly: SUM, COUNT, COUNTA, SUMSQ, SUMPRODUCT (0), MULTINOMIAL (1), CONCAT and TEXTJOIN (`""`);
+  - an honest blank: about 45 statistics (AVERAGE, MEDIAN, the STDEV and VAR families, the percentiles and quartiles,
+    GEOMEAN, HARMEAN, SKEW, KURT, CORREL and the regression pairs, the rank tests);
+  - a made-up 0: PRODUCT, MAX, MIN;
+  - an error where an identity exists: AND (identity TRUE), OR and XOR (FALSE), all `#VALUE!` as in Excel; GCD
+    (identity 0) and LCM (1), `#VALUE!` (mathlib: `Finset.gcd ∅ = 0`, `Finset.lcm ∅ = 1`).
+
   PRODUCT, MAX and MIN over nothing make up a 0, the confident number the value model otherwise refuses. It also
   sits badly beside formula-language's own reason for `0^0 = 1` ("the empty product is 1"), while `PRODUCT()` is 0.
   A one-line rule would cover all of them: **over nothing, an aggregate answers its identity where it has one, and
   blank where it has none**, so PRODUCT is 1 and MAX and MIN are blank. That breaks Excel parity for three functions
-  ([[A5]] excelParity, [[A6]] divergeByDesign), so it is the author's call: proposed inbox item
+  ([[A5]] excelParity, [[A6]] divergeByDesign), so it is the author's call. Sized: three certain changes (PRODUCT to
+  1, MAX and MIN to blank) and five judgment calls (AND's vacuous TRUE may read worse to a user than an error;
+  GCD and LCM of nothing are rarely asked). Proposed inbox item
   `aggregates-of-nothing` (not written, since passes don't edit `tree/`).
 - Unverified aside: a Frame with no columns can't hold a row count (it lives on the columns); mathlib's
   `Matrix (Fin 5) (Fin 0)` keeps the 5.
@@ -85,7 +96,9 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
   SKEW by 6e-14 and KURT by 2e-12. Mathematically every one is a function of the multiset, so each move is float
   order, not meaning. Consequences: a Group By, a rolling window or a sorted criteria scan of these can disagree with
   a fresh formula in the last digits, which the spec promises only for the exact totals. SUMSQ and DEVSQ are sums and
-  could run through `ExactSum` as SUM does; the variance family could sum its squared deviations exactly over the
+  could run through `ExactSum` as SUM does (**verified feasible**, pass 2, `exact_sums_of_squares_are_order_free`:
+  over 4000 shuffled pairs, today's SUMSQ and DEVSQ disagreed with themselves 2119 times, the same sums through
+  `ExactSum` (DEVSQ over the exact mean) 0 times); the variance family could sum its squared deviations exactly over the
   exact mean it already takes; PRODUCT and the means of logs need a different trick (sorted or compensated), or an
   accepted tolerance. Not yet swept: the frame verbs (Group By, Pivot, Rollup, Distinct) under a row shuffle.
 
@@ -123,6 +136,27 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
 - Equation solver: the quadratic sniff guesses polynomiality by probing; a ring normalizer (mathlib's `ring`) decides
   it ([[C47]] equationNode). `root_holds` is already the answer-plus-cheap-check pattern of `linarith`/`polyrith`.
 
+### F8. Matrix conventions, and a scale bug in MDETERM and MINVERSE
+
+- Mathlib: the determinant is defined for every square matrix and is a polynomial in its entries: singular matrices
+  have determinant 0, the 0×0 matrix has determinant 1 (`Matrix.det_isEmpty`), and scaling a matrix by c scales the
+  determinant by cⁿ (`Matrix.det_smul`). The inverse of a singular matrix is 0 by convention
+  (`Matrix.nonsing_inv_apply_not_isUnit`), junk in our sense.
+- **Verified** (pass 2, `matrix_conventions`): MDETERM of a singular matrix (`[[1, 2], [2, 4]]`, `[[0]]`) is
+  `#DIV/0!` "Matrix is singular", where the determinant is 0 (Excel answers 0). The spec documents it
+  (formula-language § Matrices and dynamic arrays: "answer `#DIV/0!` for a singular one"), but it is not in
+  `excel-divergences.md`, and a determinant of 0 is an answer, not a division.
+- **Verified, and worse:** the pivot check is absolute (`max_val < 1e-14`, `mat_det` in `fns_matrix.rs`), so the
+  answer depends on the scale of the numbers. `MDETERM([[1e-15]])` is `#DIV/0!` (the determinant is 1e-15), and
+  the diagonal matrix of 1e-15 and 1e15, whose determinant is exactly 1 and whose inverse is exact, is `#DIV/0!` for
+  both MDETERM and MINVERSE. A matrix keyed in small units (a strain, a probability product, a currency in millions)
+  can hit it. `det(cA) = cⁿ det(A)` is the law a fix would be tested against: a relative pivot test (against the
+  column's or matrix's scale) for MINVERSE, and for MDETERM no test at all (a zero pivot means the determinant is 0).
+- Read, not run: the MDETERM *card* answers 1 for a 0×0 matrix (`nodes/matrix.rs`, mathlib's convention), while the
+  formula `MDETERM` of an empty list is `#SHAPE!`; whether a card can ever receive a 0×0 matrix is unchecked.
+- This is the pass's strongest result: a backlog-grade bug, not a research question. It belongs in `docs/backlog.md`
+  on develop once the author has seen it (passes don't touch develop).
+
 ### F7. DTE and mathlib
 
 | DTE / Solenoid | mathlib |
@@ -154,16 +188,18 @@ No test holds it yet: a candidate prototype (thread 2b).
 1. Prototype the F5 coercion-commutes sweep.
 2. A test holding the widening preorder and the non-composing narrowing edges (from the lattice fixture).
 3. Extend the shuffle sweep (F4) to the frame verbs: Group By, Pivot, Rollup, Distinct, and the criteria aggregates.
-   Also try `ExactSum` under SUMSQ and DEVSQ in the prototype and see whether they stop moving (F4).
 4. Classify every aggregate in `call_traits.json` by algebraic kind (F4).
 5. Audit P7 Fallbacks against the identity rule (F3).
 6. Read `settle.rs`: is adoption monotone? (F5)
-7. The empty-aggregate rule (F3): list every aggregate's answer over nothing (the cards too, and the frame verbs),
-   to size the proposal.
-8. Unread mathlib areas: matrix conventions (det, inverse, rank) against MDETERM/MINVERSE; distribution
+7. The empty-aggregate rule (F3): the cards (Aggregate) and the frame verbs (Group By over an empty group, Rollup)
+   over nothing; the formula functions are censused.
+8. F8 follow-ups: do PINV, the rank op, LINEST and the other solvers share an absolute tolerance? A scale sweep:
+   `MDETERM(c * A) = c^n * MDETERM(A)` and `MINVERSE(c * A) = MINVERSE(A) / c` over random A and c from 1e-12 to
+   1e12.
+9. Unread mathlib areas: distribution
    parameterizations against `dists.rs`; variance conventions; regular expressions (`Mathlib/Computability`) against
    `excel_regex.rs`; polynomial roots and `ring`; intervals (`Mathlib/Order/Interval`) for uncertain values.
-9. Cycles as least fixed points (F5), and tropical sensitivity for Schedule (F6).
+10. Cycles as least fixed points (F5), and tropical sensitivity for Schedule (F6).
 
 ## Pass log
 
@@ -173,3 +209,7 @@ No test holds it yet: a candidate prototype (thread 2b).
   (dates refuse the midpoint readings take), the F6 exponent case end to end, the shuffle sweep over 21 aggregates
   (9 order-free, 12 move in the last bits), division and rounding conventions (MOD and QUOTIENT break the division
   law), and empty aggregates (PRODUCT, MAX, MIN make up a 0). Old threads 1 and 7 closed and the list renumbered.
+- **Pass 2 (2026-11-06 08:40 UTC):** three more probes. Censused every range function over nothing (F3); showed
+  `ExactSum` makes SUMSQ and DEVSQ order-free (F4); found MDETERM and MINVERSE answer `#DIV/0!` for singular
+  matrices and, through an absolute pivot tolerance, for well-conditioned matrices of small or mixed-scale numbers
+  (F8, new). Matrix conventions moved out of the unread list.

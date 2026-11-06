@@ -156,3 +156,109 @@ fn division_and_rounding_conventions() {
         println!("over blanks {src:12} {got}");
     }
 }
+
+fn range_functions() -> Vec<String> {
+    let traits: serde_json::Value =
+        serde_json::from_str(include_str!("../data/call_traits.json")).expect("call traits");
+    let callable = solenoid_core::eval::function_names(true);
+    let mut out: Vec<String> = traits
+        .as_object()
+        .expect("object")
+        .iter()
+        .filter(|(k, v)| v["kind"] == "range" && callable.contains(k))
+        .map(|(k, _)| k.clone())
+        .collect();
+    out.sort();
+    out
+}
+
+fn short(v: &V) -> String {
+    match v {
+        V::Err(e) => format!("{:?}", e.code),
+        V::Num(n) => format!("{n}"),
+        V::Null => "blank".into(),
+        V::Bool(b) => format!("{b}"),
+        V::Str(s) => format!("{s:?}"),
+        V::List(l) => format!("list[{}]", l.len()),
+        other => format!("{other:?}").chars().take(30).collect(),
+    }
+}
+
+/// Thread 7 (F3): every range function over nothing: a list of two blanks and an empty list, one argument.
+#[test]
+fn every_range_function_over_nothing() {
+    let blanks = V::List(Rc::new(vec![V::Null, V::Null]));
+    let empty = V::List(Rc::new(Vec::new()));
+    let mut rows = Vec::new();
+    for f in range_functions() {
+        let a = formula(&format!("{f}(l)"), [("l".to_string(), blanks.clone())].into_iter().collect());
+        let b = formula(&format!("{f}(l)"), [("l".to_string(), empty.clone())].into_iter().collect());
+        let a = a.map_or("no parse".into(), |v| short(&v));
+        let b = b.map_or("no parse".into(), |v| short(&v));
+        rows.push(format!("{f:16} blanks: {a:10} empty: {b}"));
+    }
+    println!("{}", rows.join("\n"));
+}
+
+/// Thread 3b (F4): SUMSQ and DEVSQ through ExactSum become order-free.
+#[test]
+fn exact_sums_of_squares_are_order_free() {
+    use solenoid_core::exact_sum::ExactSum;
+    let sumsq = |xs: &[f64]| {
+        let mut s = ExactSum::default();
+        xs.iter().for_each(|x| s.add(x * x));
+        s.value()
+    };
+    let devsq = |xs: &[f64]| {
+        let mut s = ExactSum::default();
+        xs.iter().for_each(|&x| s.add(x));
+        let mean = s.value() / xs.len() as f64;
+        let mut d = ExactSum::default();
+        xs.iter().for_each(|x| d.add((x - mean) * (x - mean)));
+        d.value()
+    };
+    let mut r = fastrand::Rng::with_seed(7);
+    let (mut moved_now, mut moved_exact) = (0, 0);
+    for _ in 0..2000 {
+        let xs: Vec<f64> = (0..r.usize(4..30)).map(|_| f64::from(r.i32(-10_000..10_000)) / 7.0).collect();
+        let ys = shuffled(&mut r, &xs);
+        for (f, exact) in [("SUMSQ", &sumsq as &dyn Fn(&[f64]) -> f64), ("DEVSQ", &devsq)] {
+            let a = formula(&format!("{f}(l)"), [("l".to_string(), list(&xs))].into_iter().collect());
+            let b = formula(&format!("{f}(l)"), [("l".to_string(), list(&ys))].into_iter().collect());
+            if !matches!((a, b), (Some(V::Num(a)), Some(V::Num(b))) if a == b) {
+                moved_now += 1;
+            }
+            if exact(&xs) != exact(&ys) {
+                moved_exact += 1;
+            }
+        }
+    }
+    println!("of 4000 shuffled pairs: today's SUMSQ/DEVSQ moved {moved_now}, through ExactSum {moved_exact}");
+    assert_eq!(moved_exact, 0);
+}
+
+fn matrix(rows: &[&[f64]]) -> V {
+    V::List(Rc::new(rows.iter().map(|r| list(r)).collect()))
+}
+
+/// Thread 8: matrix conventions against mathlib's (`det_isEmpty` = 1, `nonsing_inv_apply_not_isUnit` = 0).
+#[test]
+fn matrix_conventions() {
+    let cases: [(&str, V); 8] = [
+        ("tiny one by one", matrix(&[&[1e-15]])),
+        ("tiny diagonal", matrix(&[&[1e-15, 0.0], &[0.0, 1e15]])),
+        ("singular", matrix(&[&[1.0, 2.0], &[2.0, 4.0]])),
+        ("near singular", matrix(&[&[1.0, 2.0], &[1.0, 2.0 + 1e-15]])),
+        ("one by one", matrix(&[&[5.0]])),
+        ("zero", matrix(&[&[0.0]])),
+        ("empty", V::List(Rc::new(Vec::new()))),
+        ("ragged", V::List(Rc::new(vec![list(&[1.0, 2.0]), list(&[3.0])]))),
+    ];
+    for (name, m) in cases {
+        let env: Env = [("m".to_string(), m)].into_iter().collect();
+        for f in ["MDETERM(m)", "MINVERSE(m)", "MMULT(m, m)", "TRANSPOSE(m)", "ROWS(m)"] {
+            let got = formula(f, env.clone()).map_or("no parse".into(), |v| short(&v));
+            println!("{name:14} {f:14} {got}");
+        }
+    }
+}
