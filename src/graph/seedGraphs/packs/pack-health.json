@@ -75,7 +75,10 @@
         "locked": true,
         "castTo": "none",
         "width": 220,
-        "height": 210
+        "height": 210,
+        "varDescriptions": {
+          "age": "Age (years)"
+        }
       },
       "literals": {}
     },
@@ -90,7 +93,12 @@
         "locked": true,
         "castTo": "none",
         "width": 220,
-        "height": 210
+        "height": 210,
+        "varDescriptions": {
+          "hrmax": "Maximum heart rate (bpm)",
+          "hrrest": "Resting heart rate (bpm)",
+          "intensity": "Intensity"
+        }
       },
       "literals": {
         "hrrest": 60,
@@ -109,6 +117,10 @@
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "w": "Body weight (kg)",
+          "h": "Height (m)"
+        },
         "varUnits": {
           "w": "kg",
           "h": "m"
@@ -131,6 +143,11 @@
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "w": "Body weight (kg)",
+          "hcm": "Height (cm)",
+          "age": "Age (years)"
+        },
         "varUnits": {
           "w": "kg",
           "hcm": "cm"
@@ -152,7 +169,11 @@
         "locked": true,
         "castTo": "none",
         "width": 220,
-        "height": 210
+        "height": 210,
+        "varDescriptions": {
+          "bmr": "Basal metabolic rate (kcal/day)",
+          "activity": "Activity factor"
+        }
       },
       "literals": {
         "activity": 1.55

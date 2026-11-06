@@ -30,7 +30,11 @@
         "locked": true,
         "castTo": "none",
         "width": 220,
-        "height": 210
+        "height": 210,
+        "varDescriptions": {
+          "before": "Starting value",
+          "after": "Ending value"
+        }
       },
       "literals": {
         "before": 80,
@@ -48,7 +52,12 @@
         "locked": true,
         "castTo": "none",
         "width": 220,
-        "height": 210
+        "height": 210,
+        "varDescriptions": {
+          "startval": "Starting value",
+          "endval": "Ending value",
+          "periods": "Number of periods"
+        }
       },
       "literals": {
         "startval": 10000,
@@ -67,7 +76,10 @@
         "locked": true,
         "castTo": "none",
         "width": 220,
-        "height": 210
+        "height": 210,
+        "varDescriptions": {
+          "n": "Number"
+        }
       },
       "literals": {
         "n": 23
@@ -115,7 +127,10 @@
         "locked": true,
         "castTo": "none",
         "width": 220,
-        "height": 210
+        "height": 210,
+        "varDescriptions": {
+          "t": "Text"
+        }
       },
       "literals": {}
     },

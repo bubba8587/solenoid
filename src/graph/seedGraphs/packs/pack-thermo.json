@@ -113,17 +113,30 @@
       }
     },
     {
+      "id": "rgas",
+      "x": 0,
+      "y": 760,
+      "type": "PhysicsConstantNode",
+      "init": {
+        "label": "",
+        "op": "rgas",
+        "width": 240,
+        "height": 110
+      }
+    },
+    {
       "id": "gas",
       "x": 440,
       "y": 220,
       "type": "EquationNode",
       "init": {
         "label": "Ideal Gas (pV = nRT)",
-        "expr": "p * vol = n * 8.314462618 * tk",
+        "expr": "p * vol = n * R * tk",
         "locked": true,
         "width": 240,
         "height": 220,
         "varDescriptions": {
+          "R": "Molar gas constant (J/(mol·K))",
           "p": "Pressure (Pa)",
           "vol": "Volume (m³)",
           "n": "Amount (mol)",
@@ -160,6 +173,10 @@
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "rh": "Relative humidity (%)",
+          "tc": "Air temperature (°C)"
+        },
         "varUnits": {
           "tc": "degC"
         }
@@ -181,6 +198,10 @@
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "tf": "Air temperature (°F)",
+          "rh": "Relative humidity (%)"
+        },
         "varUnits": {
           "tf": "degF"
         }
@@ -201,7 +222,13 @@
         "locked": true,
         "castTo": "none",
         "width": 220,
-        "height": 210
+        "height": 210,
+        "varDescriptions": {
+          "ta": "Ambient temperature",
+          "t0": "Starting temperature",
+          "kk": "Rate constant (1/s)",
+          "t": "Elapsed time (s)"
+        }
       },
       "literals": {
         "ta": 20,
@@ -251,7 +278,13 @@
         "locked": true,
         "castTo": "none",
         "width": 220,
-        "height": 210
+        "height": 210,
+        "varDescriptions": {
+          "ta": "Ambient temperature",
+          "t0": "Starting temperature",
+          "kk": "Rate constant (1/s)",
+          "t": "Elapsed time (s)"
+        }
       },
       "literals": {
         "ta": 20,
@@ -315,6 +348,12 @@
       "sourceOutput": "value",
       "target": "gas",
       "targetInput": "n"
+    },
+    {
+      "source": "rgas",
+      "sourceOutput": "value",
+      "target": "gas",
+      "targetInput": "R"
     },
     {
       "source": "mins",

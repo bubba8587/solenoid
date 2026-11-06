@@ -7,7 +7,7 @@ import {
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, WindowNode,
   ArithmeticNode, DisplayNode, MathFXNode,
   FormatControllerNode, ExpressionNode, ScriptNode, EquationNode, RegexNode, GroupListsNode,
-  ClampNode, BooleanOpNode, NotNode, IfNode, ComparisonNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
+  ClampNode, BooleanOpNode, NotNode, IfNode, ComparisonNode, ConduitNode, CastNode, ConstantNode, PhysicsConstantNode, MRoundNode,
   ListInputNode, AggregateNode, SeriesNode, SERIES_OP_META, type SeriesOp, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
   GCDNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
@@ -177,7 +177,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
         { type: "cx-from",       label: "COMPLEX",     description: "Builds a complex number from real and imaginary parts. Excel: `COMPLEX`.", accent: CX, create: () => new ComplexFromNode(), parity: false },
         { type: "lambda-make",   label: "LAMBDA",      description: "A reusable formula for MAP, BYROW, REDUCE and computed columns. Parameters fill in order, and any other variable becomes an input. Excel: `LAMBDA`.", accent: "lambda", create: () => new LambdaNode(), parity: false },
       ]},
-      { type: "constant",      label: "Constant",    description: "Predefined value: π, e, φ, ∞, 0, 1, true, false …", create: () => new ConstantNode() },
+      { type: "pair", children: [
+        { type: "constant",      label: "Constant",    description: "Predefined value: π, e, φ, ∞, 0, 1, true, false …", create: () => new ConstantNode() },
+        { type: "physics-constant", label: "Physics Constant", description: "CODATA 2018 physical constants: c, e, ε₀, µ₀, h, k_B, Nₐ, G… grouped by domain, SI units", keywords: "codata speed of light planck boltzmann avogadro permittivity permeability gravity gas", create: () => new PhysicsConstantNode() },
+      ]},
       { type: "pair", children: [
         { type: "randbetween", label: "RAND",        description: "Random float in [Bottom, Top]. Defaults to 0–1 (like Excel `RAND()`). Bottom and Top give a custom range.", create: () => new RandBetweenNode(), parity: false, keywords: "random" },
         { type: "na",          label: "NA",          description: "Outputs `#N/A`, which propagates through calculations like Excel. Catch it with `IFERROR` or `IFNA`.", create: () => new NaNode() },

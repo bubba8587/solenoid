@@ -5,39 +5,51 @@ import { SolarPositionNode, SunriseSunsetNode, MoonPhaseNode } from "../nodeClas
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { EARTHSKY_PACK_FORMULAS } from "./earthskyFormulas";
 
-const G = "6.6743*10^-11"; // CODATA gravitational constant
-
 const EARTH_FORMULAS: FormulaPackEntry[] = [
   { type: "es-haversine", label: "Great-Circle Distance", expr:
       "2*6371.0088*ASIN(SQRT(SIN((lat2-lat1)*PI()/360)^2+COS(lat1*PI()/180)*COS(lat2*PI()/180)*SIN((lon2-lon1)*PI()/360)^2))",
     description: "Shortest distance in km between two lat/lon points in degrees. The haversine formula on the mean-radius sphere",
-    keywords: "haversine gps distance nautical flight" },
+    keywords: "haversine gps distance nautical flight",
+    varDescriptions: { lat1: "Start latitude (°)", lon1: "Start longitude (°)", lat2: "End latitude (°)", lon2: "End longitude (°)" } },
   { type: "es-bearing", label: "Initial Bearing", expr:
       "MOD(DEGREES(ATAN2(COS(lat1*PI()/180)*SIN(lat2*PI()/180)-SIN(lat1*PI()/180)*COS(lat2*PI()/180)*COS((lon2-lon1)*PI()/180),SIN((lon2-lon1)*PI()/180)*COS(lat2*PI()/180)))+360,360)",
     description: "Compass bearing (° from north) to start a great-circle leg from point 1 to point 2, lat/lon in degrees",
-    keywords: "azimuth heading course navigation" },
+    keywords: "azimuth heading course navigation",
+    varDescriptions: { lat1: "Start latitude (°)", lon1: "Start longitude (°)", lat2: "End latitude (°)", lon2: "End longitude (°)" } },
   { type: "es-gravity", label: "Gravity at Latitude", expr:
       "9.780327*(1+0.0053024*SIN(lat*PI()/180)^2-0.0000058*SIN(2*lat*PI()/180)^2)-0.000003086*h",
     description: "Local gravity (m/s²): the 1980 International Gravity Formula at latitude lat (°) with the free-air correction for altitude h in meters",
-    keywords: "igf wgs84 gravitational acceleration", units: { h: "m" } },
+    keywords: "igf wgs84 gravitational acceleration",
+    varDescriptions: { lat: "Latitude (°)", h: "Altitude (m)" },
+    units: { h: "m" } },
   { type: "es-horizon", label: "Distance to Horizon", expr: "SQRT(2*6371008.8*h)/1000",
     description: "How far the horizon is (km) from an eye height h meters above the surface. Geometric, no refraction",
-    keywords: "visibility sea level lookout", units: { h: "m" } },
+    keywords: "visibility sea level lookout",
+    varDescriptions: { h: "Eye height (m)" },
+    units: { h: "m" } },
 ];
 
 const ORBIT_FORMULAS: FormulaPackEntry[] = [
-  { type: "es-escape-velocity", label: "Escape Velocity", expr: `SQRT(2*${G}*m/r)`,
+  { type: "es-escape-velocity", label: "Escape Velocity", expr: "SQRT(2*G*m/r)", constants: { G: "G" },
     description: "Speed to escape a body of mass m (kg) from radius r (m)   (v = √(2GM/r); Earth surface ≈ 11.2 km/s)",
-    keywords: "rocket delta v", units: { m: "kg", r: "m" } },
-  { type: "es-orbital-velocity", label: "Circular Orbital Velocity", expr: `SQRT(${G}*m/r)`,
+    keywords: "rocket delta v",
+    varDescriptions: { m: "Body mass (kg)", r: "Distance from center (m)" },
+    units: { m: "kg", r: "m" } },
+  { type: "es-orbital-velocity", label: "Circular Orbital Velocity", expr: "SQRT(G*m/r)", constants: { G: "G" },
     description: "Speed of a circular orbit of radius r (m) around mass m (kg)   (v = √(GM/r); LEO ≈ 7.8 km/s)",
-    keywords: "satellite leo", units: { m: "kg", r: "m" } },
-  { type: "es-orbital-period", label: "Orbital Period (Kepler)", expr: `2*PI()*SQRT(r^3/(${G}*m))`,
+    keywords: "satellite leo",
+    varDescriptions: { m: "Central mass (kg)", r: "Orbit radius (m)" },
+    units: { m: "kg", r: "m" } },
+  { type: "es-orbital-period", label: "Orbital Period (Kepler)", expr: "2*PI()*SQRT(r^3/(G*m))", constants: { G: "G" },
     description: "Period in seconds of an orbit with semi-major axis r (m) around mass m (kg)   (T = 2π√(a³/GM))",
-    keywords: "kepler third law satellite year", units: { m: "kg", r: "m" } },
-  { type: "es-schwarzschild", label: "Schwarzschild Radius", expr: `2*${G}*m/299792458^2`,
+    keywords: "kepler third law satellite year",
+    varDescriptions: { r: "Semi-major axis (m)", m: "Central mass (kg)" },
+    units: { m: "kg", r: "m" } },
+  { type: "es-schwarzschild", label: "Schwarzschild Radius", expr: "2*G*m/c^2", constants: { G: "G", c: "c" },
     description: "Event-horizon radius r = 2GM/c² of mass m (kg). The Sun's is about 3 km.",
-    keywords: "black hole relativity", units: { m: "kg" } },
+    keywords: "black hole relativity",
+    varDescriptions: { m: "Mass (kg)" },
+    units: { m: "kg" } },
 ];
 
 export const EARTHSKY_FORMULAS: FormulaPackEntry[] = [...EARTH_FORMULAS, ...ORBIT_FORMULAS];
@@ -46,6 +58,7 @@ export const EARTHSKY_PACK: Pack = {
   formulas: EARTHSKY_PACK_FORMULAS,
   id: "earthsky",
   seed: "pack-earthsky",
+  tags: ["physics-constant"],
   group: "Science & Engineering",
   name: "Earth & Sky",
   description: "Great-circle distance and bearing, gravity by latitude, horizon, Kepler orbits, escape velocity, NOAA sun position and rise/set, moon phase.",

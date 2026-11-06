@@ -25,7 +25,8 @@ describe("pack seeds", () => {
       const marks = marksIn(g);
       const own = new Set(marks.filter((m) => m.includes(` ${pack.id}: `)).map((m) => m.replace(/^[^:]*: /, "")));
       const allowed = new Set([pack.id, ...(pack.dependsOn ?? [])]);
-      const foreign = marks.filter((m) => !allowed.has(m.split(": ")[1]));
+      // A core card several packs claim (Physics Constant) is this pack's too when it claims it.
+      const foreign = marks.filter((m) => !allowed.has(m.split(": ")[1]) && !own.has(m.replace(/^[^:]*: /, "").replace(/^[^:]*: /, `${pack.id}: `)));
       expect(own.size, [...own].join(", ")).toBeGreaterThanOrEqual(3);
       expect(foreign).toEqual([]);
       expect(g.group).toBe("Packs");

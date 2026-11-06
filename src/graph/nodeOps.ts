@@ -245,7 +245,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "weighted-wavg", ctor: WeightedNode },
 
   { type: "elec-eseries", ctor: ESeriesNode },
-  { type: "em-constant", ctor: PhysicsConstantNode },
+  { type: "physics-constant", ctor: PhysicsConstantNode },
 ];
 
 const BY_TYPE = new Map(NODE_OPS.map((d) => [d.type, d]));

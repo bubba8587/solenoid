@@ -45,6 +45,18 @@ ISNOT, ABOVE, BELOW, ATLEAST, ATMOST, BETWEEN, the SET functions, ISIN and TALLY
 `fns_packs.rs`, and `setsFormulas.ts` declares them. A pack entry's NODE_EXCEL rows are merged
 as a core leaf's are (`buildCatalog`).
 
+### Physical constants are cards, not digits
+A preset never bakes a physical constant into its formula text. The constant is a named variable (`ke*q1*q2/r^2`), and
+the entry's `constants` maps it to a Physics Constant op (`constants: { ke: "ke" }`). Placing the card from the Add menu
+or the card reference also places that Physics Constant to its left, cabled into the variable (`companions` on the
+catalog entry, `src/graph/companions.ts`), so the constant shows on the canvas with its symbol, value and unit. An
+Expression preset also keys the CODATA value as the variable's literal, so it computes with the cable cut; an Equation
+preset solves for an unwired variable, so it needs the cable. An empirical fit coefficient (Heat Index, Magnus,
+Hazen–Williams) is part of its formula and stays a number. Physics Constant is a core card (Inputs, beside Constant)
+that each pack with such presets tags, so it shows whenever one of them is on. Every input of a preset carries a
+`varDescriptions` entry (a constant's is written for it); `packs.test.ts` fails on a bare one. A description is the
+quantity's name and its unit, `Density (kg/m³)`, never an explanation, a range or an example (author 2026-11-06).
+
 ### Input coercion — the default widens, opting out is one line
 A custom-logic node's `data()` receives every input already coerced to its socket's
 declared rank: a scalar widens into a `[scalar]` list, a list into a matrix, and so on

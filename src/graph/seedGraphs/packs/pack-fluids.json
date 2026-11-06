@@ -155,6 +155,12 @@
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "rho": "Density (kg/m³)",
+          "v": "Velocity (m/s)",
+          "d": "Diameter (m)",
+          "mu": "Dynamic viscosity (Pa·s)"
+        },
         "varUnits": {
           "rho": "kg/m3",
           "v": "m/s",
@@ -203,6 +209,13 @@
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "f": "Darcy friction factor",
+          "len": "Pipe length (m)",
+          "d": "Pipe diameter (m)",
+          "rho": "Density (kg/m³)",
+          "v": "Mean velocity (m/s)"
+        },
         "varUnits": {
           "len": "m",
           "d": "m",
@@ -241,6 +254,12 @@
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "rho": "Density (kg/m³)",
+          "v": "Velocity (m/s)",
+          "d": "Diameter (m)",
+          "mu": "Dynamic viscosity (Pa·s)"
+        },
         "varUnits": {
           "rho": "kg/m3",
           "v": "m/s",
@@ -274,6 +293,13 @@
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "f": "Darcy friction factor",
+          "len": "Pipe length (m)",
+          "d": "Pipe diameter (m)",
+          "rho": "Density (kg/m³)",
+          "v": "Mean velocity (m/s)"
+        },
         "varUnits": {
           "len": "m",
           "d": "m",

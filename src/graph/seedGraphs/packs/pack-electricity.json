@@ -116,6 +116,10 @@
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "v": "Voltage (V)",
+          "i": "Current (A)"
+        },
         "varUnits": {
           "v": "W/A",
           "i": "A"
@@ -135,6 +139,11 @@
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "vs": "Supply voltage (V)",
+          "vf": "LED forward voltage (V)",
+          "i": "Target LED current (A)"
+        },
         "varUnits": {
           "vs": "W/A",
           "vf": "W/A",
@@ -220,6 +229,10 @@
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "r": "Resistance (Ω)",
+          "c": "Capacitance (F)"
+        },
         "varUnits": {
           "r": "W/A^2"
         }
@@ -256,6 +269,12 @@
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "v0": "Source voltage (V)",
+          "t": "Time (s)",
+          "r": "Series resistance (Ω)",
+          "c": "Capacitance (F)"
+        },
         "varUnits": {
           "v0": "W/A",
           "t": "s",

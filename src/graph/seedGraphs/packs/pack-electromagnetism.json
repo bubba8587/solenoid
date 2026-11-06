@@ -63,17 +63,30 @@
       }
     },
     {
+      "id": "hh",
+      "x": 0,
+      "y": 580,
+      "type": "PhysicsConstantNode",
+      "init": {
+        "label": "",
+        "op": "h",
+        "width": 240,
+        "height": 110
+      }
+    },
+    {
       "id": "wl",
       "x": 440,
       "y": 220,
       "type": "EquationNode",
       "init": {
         "label": "Wavelength ↔ Frequency",
-        "expr": "lambda = 299792458 / f",
+        "expr": "lambda = c / f",
         "locked": true,
         "width": 240,
         "height": 220,
         "varDescriptions": {
+          "c": "Speed of light (m/s)",
           "lambda": "Wavelength (m)",
           "f": "Frequency (Hz)"
         },
@@ -102,16 +115,22 @@
       "type": "ExpressionNode",
       "init": {
         "label": "Photon Energy (Frequency)",
-        "expr": "6.62607015*10^-34*f",
+        "expr": "h*f",
         "locked": true,
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "h": "Planck constant (J·s)",
+          "f": "Frequency (Hz)"
+        },
         "varUnits": {
           "f": "Hz"
         }
       },
-      "literals": {}
+      "literals": {
+        "h": 6.62607015e-34
+      }
     },
     {
       "id": "coul",
@@ -120,16 +139,23 @@
       "type": "ExpressionNode",
       "init": {
         "label": "Coulomb Force",
-        "expr": "8.9875517923*10^9*q1*q2/r^2",
+        "expr": "ke*q1*q2/r^2",
         "locked": true,
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "ke": "Coulomb constant (N·m²/C²)",
+          "q1": "First charge (C)",
+          "q2": "Second charge (C)",
+          "r": "Distance (m)"
+        },
         "varUnits": {
           "r": "m"
         }
       },
       "literals": {
+        "ke": 8987551792.3,
         "q1": 0.000001,
         "q2": -0.000002,
         "r": 0.05
@@ -142,17 +168,23 @@
       "type": "ExpressionNode",
       "init": {
         "label": "Straight-Wire Field",
-        "expr": "1.25663706212*10^-6*i/(2*PI()*r)",
+        "expr": "mu0*i/(2*PI()*r)",
         "locked": true,
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "mu0": "Vacuum permeability (H/m)",
+          "i": "Current (A)",
+          "r": "Distance from the wire (m)"
+        },
         "varUnits": {
           "i": "A",
           "r": "m"
         }
       },
       "literals": {
+        "mu0": 0.00000125663706212,
         "i": 10,
         "r": 0.02
       }
@@ -179,16 +211,23 @@
       "type": "ExpressionNode",
       "init": {
         "label": "Coulomb Force",
-        "expr": "8.9875517923*10^9*q1*q2/r^2",
+        "expr": "ke*q1*q2/r^2",
         "locked": true,
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "ke": "Coulomb constant (N·m²/C²)",
+          "q1": "First charge (C)",
+          "q2": "Second charge (C)",
+          "r": "Distance (m)"
+        },
         "varUnits": {
           "r": "m"
         }
       },
       "literals": {
+        "ke": 8987551792.3,
         "q1": 0.000001,
         "q2": 0.000001
       }
@@ -239,6 +278,12 @@
       "targetInput": "f"
     },
     {
+      "source": "cc",
+      "sourceOutput": "value",
+      "target": "wl",
+      "targetInput": "c"
+    },
+    {
       "source": "f",
       "sourceOutput": "value",
       "target": "band",
@@ -249,6 +294,12 @@
       "sourceOutput": "value",
       "target": "pe",
       "targetInput": "f"
+    },
+    {
+      "source": "hh",
+      "sourceOutput": "value",
+      "target": "pe",
+      "targetInput": "h"
     },
     {
       "source": "rr",

@@ -7,7 +7,8 @@ import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { NODE_EXCEL } from "./nodeExcel";
 import { processGraph } from "./process";
 import { unselectAllNodes, selectNode } from "./canvasCommands";
-import type { NodeCatalogEntry, CatalogCategory, CatalogEntry } from "./AddNodeMenu";
+import type { NodeCatalogEntry, CatalogCategory, CatalogEntry, Companion } from "./AddNodeMenu";
+import { placeCompanions } from "./companions";
 import { nodeNameStore } from "./nodeNameStore";
 import { isCategory, isPair } from "./catalogSearch";
 // Cycle-safe: nodeCtorRegistry imports FLAT_CATALOG from here, but neither touches the other's exports at init.
@@ -276,11 +277,11 @@ export { nodeTypeName };
 
 export async function addNodeByCatalogType(catalogType: string): Promise<boolean> {
   const entry = FLAT_CATALOG.get(catalogType);
-  return entry ? addNodeFrom(entry.create) : false;
+  return entry ? addNodeFrom(entry.create, entry.companions) : false;
 }
 
-/** Drops a card built by `create` at the view's center and selects it. */
-export async function addNodeFrom(create: () => unknown): Promise<boolean> {
+/** Drops a card built by `create` at the view's center, with its companions, and selects it. */
+export async function addNodeFrom(create: () => unknown, companions?: () => Companion[]): Promise<boolean> {
   const editor = getActiveEditor();
   const view = getActiveView();
   if (!editor || !view) return false;
@@ -297,10 +298,10 @@ export async function addNodeFrom(create: () => unknown): Promise<boolean> {
   const rect = view.container.getBoundingClientRect();
   const cx = (rect.width / 2 - x) / k;
   const cy = (rect.height / 2 - y) / k;
-  await view.moveNode(node.id, {
-    x: cx - (node.width ?? 180) / 2,
-    y: cy - (node.height ?? 160) / 2,
-  });
+  const at = { x: cx - (node.width ?? 180) / 2, y: cy - (node.height ?? 160) / 2 };
+  await view.moveNode(node.id, at);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (companions) await placeCompanions(editor, view, node as any, at, companions());
 
   await processGraph();
 

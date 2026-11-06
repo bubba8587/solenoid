@@ -448,7 +448,7 @@ function CardPage({ card, leaf, startOp, packName, onBack, backLabel, onPath, on
         <div className="fr-card__head-row">
           <h2 className="fr-card__title">{card.label}</h2>
           <button type="button" className="solenoid-node__open-btn fr-card__add" title="Drop this card on the canvas"
-            onClick={() => { void addNodeFrom(make); frStore.close(); }}>Add to Canvas</button>
+            onClick={() => { void addNodeFrom(make, leaf.companions); frStore.close(); }}>Add to Canvas</button>
         </div>
         <div className="fr-card__crumb">
           {backTo && (

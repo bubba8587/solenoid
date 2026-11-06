@@ -4,7 +4,8 @@
 import { ExpressionNode, EquationNode } from "../nodeClasses";
 import { initPackFormulas } from "../formulaExtensions";
 import { compileEvaluator, parseFormula } from "../excelFormula";
-import type { FormulaPackEntry, Pack } from "./packShared";
+import { formulaNode, type FormulaPackEntry, type Pack } from "./packShared";
+import { PHYS_CONSTANTS } from "../nodes/physicsConstantsOps";
 
 /** Evaluates with every pack's FORMULA FUNCTIONS registered, mirroring how a typed
  *  Expression resolves them on canvas. */
@@ -20,8 +21,8 @@ export function evalFormula(
   e: FormulaPackEntry,
   inputs: Record<string, unknown>,
 ): unknown {
-  // Seed literals as the Add menu does, or an unprovided config variable reads 0 instead of its preset default.
-  const node = new ExpressionNode({ expr: e.expr, locked: true, literals: e.literals });
+  // Built as the Add menu builds it, so an unprovided config variable or constant reads its preset literal.
+  const node = formulaNode(e).create() as ExpressionNode;
   const env: Record<string, unknown[]> = {};
   for (const [k, v] of Object.entries(inputs)) env[k] = [v];
   return (node.data(env) as { result: unknown }).result;
@@ -34,6 +35,8 @@ export function evalEquation(
 ): Record<string, unknown> {
   const node = new EquationNode({ expr: e.expr, locked: true });
   const env: Record<string, unknown[]> = {};
+  // The Physics Constant the Add menu cables in, unless the test wires the variable itself.
+  for (const [k, op] of Object.entries(e.constants ?? {})) env[k] = [PHYS_CONSTANTS[op].value];
   for (const [k, v] of Object.entries(inputs)) env[k] = [v];
   return node.data(env);
 }

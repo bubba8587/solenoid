@@ -74,7 +74,12 @@
         "expr": "n = m / mm",
         "locked": true,
         "width": 240,
-        "height": 220
+        "height": 220,
+        "varDescriptions": {
+          "n": "Amount (mol)",
+          "m": "Mass (g)",
+          "mm": "Molar mass (g/mol)"
+        }
       }
     },
     {
@@ -118,7 +123,11 @@
         "expr": "ph = -LOG10(h)",
         "locked": true,
         "width": 240,
-        "height": 220
+        "height": 220,
+        "varDescriptions": {
+          "ph": "pH",
+          "h": "[H⁺] (mol/L)"
+        }
       }
     },
     {
@@ -144,7 +153,12 @@
         "locked": true,
         "castTo": "none",
         "width": 220,
-        "height": 210
+        "height": 210,
+        "varDescriptions": {
+          "c1": "Stock concentration",
+          "v1": "Stock volume",
+          "v2": "Final volume"
+        }
       },
       "literals": {
         "c1": 2,
@@ -163,7 +177,12 @@
         "locked": true,
         "castTo": "none",
         "width": 220,
-        "height": 210
+        "height": 210,
+        "varDescriptions": {
+          "n0": "Initial amount",
+          "t": "Elapsed time",
+          "thalf": "Half-life"
+        }
       },
       "literals": {
         "n0": 100,
@@ -197,7 +216,12 @@
         "locked": true,
         "castTo": "none",
         "width": 220,
-        "height": 210
+        "height": 210,
+        "varDescriptions": {
+          "n0": "Initial amount",
+          "t": "Elapsed time",
+          "thalf": "Half-life"
+        }
       },
       "literals": {
         "n0": 100,

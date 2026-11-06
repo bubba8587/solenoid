@@ -165,8 +165,8 @@ describe("[[C25]] firstClassUnits — a preset reads each input in its declared 
     const w = run("th-wind-chill", { tc: -10, v: 20 }) as number;
     expect(run("th-wind-chill", { tc: applyFcUnit(14, "degF"), v: applyFcUnit(20 / 3.6, "ms1") }) as number).toBeCloseTo(w, 6);
   });
-  it("the Equation preset reads tk in kelvin", () => {
-    const out = node("th-ideal-gas").data({ vol: [1], n: [1], tk: [applyFcUnit(0, "degC")] });
+  it("the Equation preset reads tk in kelvin, with R cabled in", () => {
+    const out = node("th-ideal-gas").data({ vol: [1], n: [1], R: [8.314462618], tk: [applyFcUnit(0, "degC")] });
     expect(out.p as number).toBeCloseTo(8.314462618 * 273.15, 6);
   });
 });

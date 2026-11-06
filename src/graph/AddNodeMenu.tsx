@@ -56,7 +56,12 @@ export type NodeCatalogEntry = {
   fx?: string[];
   /** A generated row that places what another row places (the host, or `host__op-op`); search shows one of them. */
   places?: string;
+  /** Cards placed with this one and cabled into it, such as a preset's physical constants ([[C76]] formulaPackDefault). */
+  companions?: () => Companion[];
 };
+
+/** A card placed beside another and cabled from its `output` into the other's `input`. */
+export type Companion = { node: unknown; output: string; input: string };
 
 /** A row's tooltip: its description, then its warning. */
 const tipOf = (e: { description?: string; warning?: string }) =>

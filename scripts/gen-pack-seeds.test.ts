@@ -192,6 +192,7 @@ const RECIPES: Recipe[] = [
       note("head", [0, 0], "Electromagnetism", "Green light oscillates about 545 trillion times a second. From that one number: its **wavelength** (the equation solves λ = c / f), its place in the **spectrum**, and the **energy** of one photon (E = hf). Below, the force between two point charges and the field around a current-carrying wire."),
       value("f", [c(0), 220], "Frequency (Hz)", 5.45e14),
       card("cc", [c(0), 420], "PhysicsConstantNode", { op: "c" }),
+      card("hh", [c(0), 580], "PhysicsConstantNode", { op: "h" }),
       preset("wl", [c(1), 220], "em-wavelength-frequency"),
       card("band", [c(2), 220], "EmSpectrumNode"),
       preset("pe", [c(3), 220], "em-photon-energy"),
@@ -203,7 +204,7 @@ const RECIPES: Recipe[] = [
       chart("coulChart", [c(3), 940], "Inverse square", "line", "title=Twice as far, a quarter the force;xlabel=r (m);ylabel=F (N)"),
     ],
     cables: [
-      "f.value -> wl.f", "f.value -> band.freq", "f.value -> pe.f",
+      "f.value -> wl.f", "cc.value -> wl.c", "f.value -> band.freq", "f.value -> pe.f", "hh.value -> pe.h",
       "rr.result -> coulR.r", "rr.result -> coulFrame.vals0", "coulR.result -> coulFrame.vals1", "coulFrame.frame -> coulChart.values",
     ],
   },
@@ -261,6 +262,7 @@ const RECIPES: Recipe[] = [
       value("p", [c(0), 220], "Pressure (Pa)", 101325),
       value("vol", [c(0), 400], "Volume (m³)", 0.0224),
       value("n", [c(0), 580], "Amount (mol)", 1),
+      card("rgas", [c(0), 760], "PhysicsConstantNode", { op: "rgas" }),
       preset("gas", [c(1), 220], "th-ideal-gas"),
       card("isa", [c(2), 220], "IsaAtmosphereNode", undefined, { lit: { alt: 3000 } }),
       preset("dew", [c(1), 700], "th-dew-point", { rh: 60, tc: 25 }),
@@ -273,7 +275,7 @@ const RECIPES: Recipe[] = [
       chart("coolChart", [c(3), 1000], "Cooling curve", "line", "title=Coffee cooling toward the room's 20 °C;xlabel=minutes;ylabel=°C"),
     ],
     cables: [
-      "p.value -> gas.p", "vol.value -> gas.vol", "n.value -> gas.n",
+      "p.value -> gas.p", "vol.value -> gas.vol", "n.value -> gas.n", "rgas.value -> gas.R",
       "mins.result -> coolT.t", "mins.result -> coolFrame.vals0", "coolT.result -> coolFrame.vals1", "coolFrame.frame -> coolChart.values",
     ],
   },

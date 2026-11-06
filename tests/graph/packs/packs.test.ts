@@ -24,6 +24,36 @@ describe("built-in packs", () => {
     expect(bad).toEqual([]);
   });
 
+  it("every input of a formula preset says what it is ([[C76]] formulaPackDefault)", () => {
+    const bare: string[] = [];
+    for (const p of BUILTIN_PACKS) {
+      for (const { entry } of p.nodes ?? []) {
+        const n = entry.create() as unknown as { locked?: boolean; varNames?: string[]; varDescriptions?: Record<string, string> };
+        if (!n.locked || !n.varNames) continue;
+        for (const v of n.varNames) if (!n.varDescriptions?.[v]?.trim()) bare.push(`${entry.type}: ${v}`);
+      }
+    }
+    expect(bare).toEqual([]);
+  });
+
+  it("a preset's physical constants arrive on a Physics Constant cabled into the variable", () => {
+    const bad: string[] = [];
+    for (const p of BUILTIN_PACKS) {
+      for (const { entry } of p.nodes ?? []) {
+        const host = entry.create() as unknown as { inputs: Record<string, unknown> };
+        for (const c of entry.companions?.() ?? []) {
+          const node = c.node as { constructor: { name: string }; outputs: Record<string, unknown> };
+          if (node.constructor.name !== "PhysicsConstantNode") bad.push(`${entry.type}: companion ${node.constructor.name}`);
+          if (!(c.output in node.outputs)) bad.push(`${entry.type}: no output ${c.output}`);
+          if (!(c.input in host.inputs)) bad.push(`${entry.type}: no input ${c.input}`);
+        }
+      }
+      // The card a pack's presets spawn shows in the Add menu whenever that pack is on.
+      if (p.nodes?.some(({ entry }) => entry.companions) && !p.tags?.includes("physics-constant")) bad.push(`${p.id}: does not tag physics-constant`);
+    }
+    expect(bad).toEqual([]);
+  });
+
   it("every pack sits in a listed group, so Settings and the Packs page both show it", () => {
     for (const p of BUILTIN_PACKS) expect(PACK_GROUP_ORDER, `pack ${p.id}`).toContain(p.group);
   });

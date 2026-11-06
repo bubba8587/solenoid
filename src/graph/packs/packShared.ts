@@ -3,8 +3,9 @@
 // <id>Formulas.ts imports only graph-free kernels ([[C17]] shareImpl).
 
 import type { NodeCatalogEntry, ExcelEquiv } from "../AddNodeMenu";
+import { PHYS_CONSTANTS, type PhysConstOp } from "../nodes/physicsConstantsOps";
 import type { PackUnit, PackFormat } from "../formatAnnotationStore";
-import { ExpressionNode, EquationNode } from "../nodeClasses";
+import { ExpressionNode, EquationNode, PhysicsConstantNode } from "../nodeClasses";
 
 /** A pack's formula function: the core carries its body (`fns_packs.rs`); the pack declares how the editor shows it. */
 export interface PackFormula {
@@ -33,9 +34,17 @@ export interface FormulaPackEntry {
   units?: Record<string, string>;
   /** Seeded literals; an unseeded variable defaults to 0. */
   literals?: Record<string, number>;
+  /** Variables that are physical constants: placing the card places a Physics Constant cabled into each. An
+   *  Expression also keys the value as the variable's literal, so it still computes with the cable cut. */
+  constants?: Record<string, PhysConstOp>;
 }
 
 export function formulaNode(e: FormulaPackEntry): NodeCatalogEntry {
+  const consts = Object.entries(e.constants ?? {});
+  const literals = consts.length ? { ...Object.fromEntries(consts.map(([v, op]) => [v, PHYS_CONSTANTS[op].value])), ...e.literals } : e.literals;
+  const descriptions = consts.length
+    ? { ...Object.fromEntries(consts.map(([v, op]) => [v, `${PHYS_CONSTANTS[op].label} (${PHYS_CONSTANTS[op].unit})`])), ...e.varDescriptions }
+    : e.varDescriptions;
   return {
     type: e.type,
     label: e.label,
@@ -44,8 +53,11 @@ export function formulaNode(e: FormulaPackEntry): NodeCatalogEntry {
     keywords: e.keywords,
     // No `accent`: the Add-menu highlight is reserved for key nodes.
     create: () => e.equation
-      ? new EquationNode({ label: e.label, expr: e.expr, locked: true, varDescriptions: e.varDescriptions, varUnits: e.units })
-      : new ExpressionNode({ label: e.label, expr: e.expr, locked: true, varDescriptions: e.varDescriptions, varUnits: e.units, literals: e.literals }),
+      ? new EquationNode({ label: e.label, expr: e.expr, locked: true, varDescriptions: descriptions, varUnits: e.units })
+      : new ExpressionNode({ label: e.label, expr: e.expr, locked: true, varDescriptions: descriptions, varUnits: e.units, literals }),
+    companions: consts.length
+      ? () => consts.map(([input, op]) => ({ node: new PhysicsConstantNode({ op }), output: "value", input }))
+      : undefined,
   };
 }
 

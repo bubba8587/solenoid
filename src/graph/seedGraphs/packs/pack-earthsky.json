@@ -30,7 +30,13 @@
         "locked": true,
         "castTo": "none",
         "width": 220,
-        "height": 210
+        "height": 210,
+        "varDescriptions": {
+          "lat1": "Start latitude (°)",
+          "lon1": "Start longitude (°)",
+          "lat2": "End latitude (°)",
+          "lon2": "End longitude (°)"
+        }
       },
       "literals": {
         "lat1": 51.5074,
@@ -50,7 +56,13 @@
         "locked": true,
         "castTo": "none",
         "width": 220,
-        "height": 210
+        "height": 210,
+        "varDescriptions": {
+          "lat1": "Start latitude (°)",
+          "lon1": "Start longitude (°)",
+          "lat2": "End latitude (°)",
+          "lon2": "End longitude (°)"
+        }
       },
       "literals": {
         "lat1": 51.5074,
@@ -71,6 +83,9 @@
         "castTo": "none",
         "width": 220,
         "height": 210,
+        "varDescriptions": {
+          "h": "Eye height (m)"
+        },
         "varUnits": {
           "h": "m"
         }

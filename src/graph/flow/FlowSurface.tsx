@@ -52,6 +52,7 @@ import { scheduleAutosave } from "../persistence";
 import { nodeNameStore } from "../nodeNameStore";
 import { syncSemanticZoomFor } from "../semanticZoomStore";
 import { buildCatalog } from "../catalogUtils";
+import { placeCompanions } from "../companions";
 import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
 import { addMenuRequest } from "../addMenuStore";
 import { packsStore } from "../packs";
@@ -776,6 +777,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       const pos = screenToFlowPosition({ x: menu.screenX, y: menu.screenY });
       const fromInput = menu.quickWire?.side === "input";
       await s.view.moveNode(node.id, { x: Math.round(pos.x), y: Math.round(pos.y) });
+      if (entry.companions) await placeCompanions(s.editor, s.view, node, pos, entry.companions());
       if (fromInput) {
         requestAnimationFrame(() => {
           const w = s.view.nodeElement(node.id)?.offsetWidth ?? 0;
