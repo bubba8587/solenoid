@@ -27,7 +27,11 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
 - Directions: dates reuse `affine_weight` (one rule, one home), or temperatures go operator-local. D115's own
   reopen condition (date − date as a duration with a unit) is the full torsor: dates over time durations, so
   `date + 3 h` works and `date + 5 m` is `#UNIT!`. Time of day is another torsor (unruled in `date-values`).
-- Status: read from code and tests, not yet run as a side-by-side test.
+- Status: **verified** (pass 1, `crates/solenoid-core/tests/mathlib_lens.rs` `midpoints_of_dates_and_readings`):
+  `(a + b) / 2` is `#TYPE!` over two dates and 25 °C over 20 °C and 30 °C; `a + (b - a) / 2` and `AVERAGE(a, b)` are
+  the midpoint for both; `a + b` and `a * 2` are refused for both. Side fact: a reading minus a reading comes back as
+  10 K with no display id, matching unit-flow's "Δ°C not built yet". The inbox item `dates-weigh-as-points` (on
+  develop) carries the choice.
 
 ### F2. Floor does not commute with conversions
 
@@ -47,6 +51,22 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
   the operation the field feeds (0 into a sum, 1 as a divisor); where nothing has an identity, the field wants to be a
   Behavior or Required. A 0 feeding MAX or SQRT is junk.
 - Solenoid's AVG([]) = null is better than mathlib's `Finset.expect` of empty (0) and than Excel.
+- **Empty aggregates, verified** (pass 1, `division_and_rounding_conventions`, over a list of two blanks and over
+  no arguments):
+
+  | Aggregate | Answer over nothing | The identity | Class |
+  |---|---|---|---|
+  | SUM, COUNT | 0 | 0 | identity (law-preserving) |
+  | AVERAGE, MEDIAN, GEOMEAN | blank | none | honest blank |
+  | PRODUCT | 0 | 1 | junk (Excel's answer) |
+  | MAX, MIN | 0 | none (−∞ / +∞, mathlib's `WithBot` / `WithTop`) | junk (Excel's answer) |
+
+  PRODUCT, MAX and MIN over nothing make up a 0, the confident number the value model otherwise refuses. It also
+  sits badly beside formula-language's own reason for `0^0 = 1` ("the empty product is 1"), while `PRODUCT()` is 0.
+  A one-line rule would cover all of them: **over nothing, an aggregate answers its identity where it has one, and
+  blank where it has none**, so PRODUCT is 1 and MAX and MIN are blank. That breaks Excel parity for three functions
+  ([[A5]] excelParity, [[A6]] divergeByDesign), so it is the author's call: proposed inbox item
+  `aggregates-of-nothing` (not written, since passes don't edit `tree/`).
 - Unverified aside: a Frame with no columns can't hold a row count (it lives on the columns); mathlib's
   `Matrix (Fin 5) (Fin 0)` keeps the 5.
 
@@ -59,6 +79,15 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
 - A declared kind per aggregate would say which PIVOTBY and Rollup totals are honest (an average of averages is not),
   which can update incrementally ([[C120]] linearWork) and which parallelize.
 - Test idea: mathlib's `Multiset` is a list up to permutation, so every order-free verb must survive a row shuffle.
+- **Shuffle sweep, verified for the formula aggregates** (pass 1, `aggregates_survive_a_shuffle`, 300 shuffles each,
+  exact equality): SUM, COUNT, MIN, MAX, AVERAGE, MEDIAN, MODE.SNGL, GCD and LCM never move. PRODUCT, SUMSQ, DEVSQ,
+  VAR.S, VAR.P, STDEV.S, STDEV.P, AVEDEV, GEOMEAN and HARMEAN move in the last bits (relative 3e-16 to 4e-15),
+  SKEW by 6e-14 and KURT by 2e-12. Mathematically every one is a function of the multiset, so each move is float
+  order, not meaning. Consequences: a Group By, a rolling window or a sorted criteria scan of these can disagree with
+  a fresh formula in the last digits, which the spec promises only for the exact totals. SUMSQ and DEVSQ are sums and
+  could run through `ExactSum` as SUM does; the variance family could sum its squared deviations exactly over the
+  exact mean it already takes; PRODUCT and the means of logs need a different trick (sorted or compensated), or an
+  accepted tolerance. Not yet swept: the frame verbs (Group By, Pivot, Rollup, Distinct) under a row shuffle.
 
 ### F5. The lattice and the Type Settle as order theory
 
@@ -75,8 +104,17 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
 
 ### F6. Smaller observations
 
-- Unit exponents are `f64` compared with `==` (`dim_equal`, `unit_dims.rs`): `m^0.1 · m^0.2 + m^0.3` would be `#UNIT!`.
-  Mathlib would use ℤ or ℚ. Low risk (halves are exact).
+- Unit exponents are `f64` compared with `==` (`dim_equal`, `unit_dims.rs`). **Verified** (pass 1,
+  `fractional_exponents_compare_exactly`): `m^0.1 · m^0.2` has exponent 0.30000000000000004, and the formula
+  `a^0.1 * a^0.2 + a^0.3` over a length is `#UNIT!` "Can't add values with different units", while
+  `a^0.5 * a^0.5 + a` and `SQRT(a) * SQRT(a) + a` work. Mathlib would use ℤ or ℚ; rational exponents (or rounding an
+  exponent to a small denominator) would close it. Low real-world risk.
+- **Division conventions** (pass 1, verified): MOD floors (sign of the divisor, mathlib's `Int.fmod`), QUOTIENT
+  truncates (`Int.tdiv`), as Excel. So the pair breaks the division law every mathlib pair keeps
+  (`Int.fdiv_add_fmod`: d·q + r = n): `3 * QUOTIENT(-7, 3) + MOD(-7, 3)` is −4, not −7. `INT(n / d)` is the quotient
+  that pairs with MOD. Parity keeps both as they are; the useful change is a hint in MOD's or QUOTIENT's description,
+  and a law test that pins which pairs hold. ROUND is half away from zero (Excel), where mathlib's `round` is half up.
+  GCD of a negative is `#DOMAIN!` (Excel's `#NUM!`); mathlib's `Int.gcd` takes absolute values.
 - Schedule's forward pass is max-plus (tropical) algebra (`Mathlib/Algebra/Tropical/Basic.lean`).
 - Run modes as functors and monads: By Row maps, Scenarios is the list monad, Monte Carlo binds in a probability monad
   (`PMF`, `Mathlib/Probability/ProbabilityMassFunction/Monad.lean`). For bundle 12's uncertain values: the value is a
@@ -113,21 +151,25 @@ No test holds it yet: a candidate prototype (thread 2b).
 
 ## Open threads (for the next passes)
 
-1. Run F1 as a test on the branch: `(d1 + d2) / 2` beside `(a + b) / 2` over °C.
-2. Prototype the F5 coercion-commutes sweep.
-   2b. A test holding the widening preorder and the non-composing narrowing edges (from the lattice fixture).
-3. Prototype the F4 shuffle sweep over the order-free verbs and aggregates.
+1. Prototype the F5 coercion-commutes sweep.
+2. A test holding the widening preorder and the non-composing narrowing edges (from the lattice fixture).
+3. Extend the shuffle sweep (F4) to the frame verbs: Group By, Pivot, Rollup, Distinct, and the criteria aggregates.
+   Also try `ExactSum` under SUMSQ and DEVSQ in the prototype and see whether they stop moving (F4).
 4. Classify every aggregate in `call_traits.json` by algebraic kind (F4).
 5. Audit P7 Fallbacks against the identity rule (F3).
 6. Read `settle.rs`: is adoption monotone? (F5)
-7. Demonstrate the F6 exponent case in a test.
+7. The empty-aggregate rule (F3): list every aggregate's answer over nothing (the cards too, and the frame verbs),
+   to size the proposal.
 8. Unread mathlib areas: matrix conventions (det, inverse, rank) against MDETERM/MINVERSE; distribution
-   parameterizations against `dists.rs`; variance conventions; GCD, LCM, MOD and QUOTIENT against `Int.emod`, `fmod`,
-   `tdiv`; regular expressions (`Mathlib/Computability`) against `excel_regex.rs`; polynomial roots and `ring`;
-   intervals (`Mathlib/Order/Interval`) for uncertain values.
+   parameterizations against `dists.rs`; variance conventions; regular expressions (`Mathlib/Computability`) against
+   `excel_regex.rs`; polynomial roots and `ring`; intervals (`Mathlib/Order/Interval`) for uncertain values.
 9. Cycles as least fixed points (F5), and tropical sensitivity for Schedule (F6).
 
 ## Pass log
 
 - **Pass 0 (2026-11-06, interactive):** the findings above, from the docs, the core's code and a read of mathlib.
 - **Spec pass (2026-11-06, interactive):** the definitions moved into the specs on develop; the lattice preorder check.
+- **Pass 1 (2026-11-06 07:40 UTC):** added `crates/solenoid-core/tests/mathlib_lens.rs` (4 probes, all pass). Verified F1
+  (dates refuse the midpoint readings take), the F6 exponent case end to end, the shuffle sweep over 21 aggregates
+  (9 order-free, 12 move in the last bits), division and rounding conventions (MOD and QUOTIENT break the division
+  law), and empty aggregates (PRODUCT, MAX, MIN make up a 0). Old threads 1 and 7 closed and the list renumbered.
