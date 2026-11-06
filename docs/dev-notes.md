@@ -40,6 +40,12 @@ specific item.
 - **Save is autosave done now** (author 2026-11-06, `saveNow`): Ctrl+S captures and says "Saved"; on an example it
   asks, then keeps it in the tree named in place (`treeRename.ts`); on desktop a file-bound document writes through.
   Save As is the export. No Keep button.
+- **The 1.6 desktop session** (the author 2026-11-06): the develop build's Linux AppImage runs headless here
+  (`Xvfb`, `xdotool`, a throwaway `HOME`; the cloud app can't start Actions runs, the author does, and artifacts download
+  through the GitHub tool). F2 verified, F1 landed (dot-dirs closed everywhere, local network refused, Parquet async and
+  capped; fs-to-picked-folders after 1.6), F12 landed (every kept desktop document a file, autosave writing through).
+  A local `npm run tauri build -- --no-bundle` (about 4 minutes once warm) tests `src-tauri` changes before a CI build;
+  it needs `libwebkit2gtk-4.1-dev` and friends, as `desktop-build.yml` installs them.
 - **Waiting on the author:** remove the 15 Geometry formula presets the figure cards cover; whether the comparison
   functions (IS, ABOVE…) move to core with the Comparison card; record the education direction as a leaf (which ring).
 
