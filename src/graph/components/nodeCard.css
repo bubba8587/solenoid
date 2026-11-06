@@ -822,15 +822,14 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   cursor: pointer;
 }
 .solenoid-pipeline__step:hover { background: var(--btn-hover); }
-/* Selected as a Navigator row is, with a selected group's ring: the composite card's own accent is a neutral gray. */
+/* Selected as a Navigator group row is: a ring and a tint in the card's own accent, so a step reads as part of its card. */
 .solenoid-pipeline__step--sel,
 .solenoid-pipeline__step--sel:hover {
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 2px var(--accent);
-  color: var(--nav-ink, var(--accent));
+  background: color-mix(in srgb, var(--node-accent, var(--border-strong)) 22%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--node-accent, var(--border-strong)) 70%, var(--text));
+  color: var(--text-bright);
   font-weight: 600;
 }
-:root[data-theme="light"] .solenoid-pipeline__step--sel { color: color-mix(in srgb, var(--accent) 55%, var(--text)); }
 .solenoid-pipeline__step--sel .solenoid-pipeline__num { color: inherit; }
 .solenoid-pipeline__num {
   flex: 0 0 auto;
