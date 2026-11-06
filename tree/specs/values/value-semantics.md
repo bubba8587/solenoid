@@ -253,9 +253,7 @@ flowchart LR
 **Where it is built.** Readings classify a whole formula by weight (`affine_weight`, [[unit-flow#Expression]]), so
 `(a + b) / 2` over two readings is a reading. Dates check each operator alone (`date_op`, [[date-values#Arithmetic]]),
 and a formula the operators refuse is then weighed ([[E19]] datesWeighAsPoints, `by_point_weight`): whole first, then
-each refused piece on its own, so `(d1 + d2) / 2` is a date and `YEAR((d1 + d2) / 2)` its year. The two kinds now
-answer alike; the Arithmetic card, which sees one operation, still refuses adding two dates, as it refuses adding two
-readings.
+each refused piece on its own, so `(d1 + d2) / 2` is a date and `YEAR((d1 + d2) / 2)` its year. The two kinds now answer alike.
 
 The mathematical names, for a reader who wants the full theory ([[C139]] mathlibLaws, [[engineering#Laws come from mathlib, by name]]): a
 point kind with its difference kind is a *torsor* (the class AddTorsor, `Mathlib/Algebra/Torsor/Defs.lean`; an affine
