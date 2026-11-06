@@ -15,10 +15,36 @@ import {
 } from "./fileBridge";
 import { bundleLocalImages } from "./imageAssets";
 import { pushNotice } from "./noticeStore";
+import { requestConfirm } from "./confirmStore";
+import { requestTreeRename } from "./treeRename";
 
 function suggestedName(): string {
   const n = documentStore.currentName().trim() || "Untitled";
   return /\.json$/i.test(n) ? n : `${n}.json`;
+}
+
+/** Save (Ctrl+S): autosave done now. An example not yet kept is saved to the file tree on a yes; a document bound to a
+ *  file on desktop also writes through to it. Save As (`saveToDisk({ forceDialog: true })`) is the export. */
+export async function saveNow(): Promise<void> {
+  const docId = documentStore.currentId();
+  if (!docId) return;
+  if (documentStore.currentIsExample()) {
+    const name = documentStore.currentName();
+    const ok = await requestConfirm({
+      message: `Save “${name}” to your documents? It's an example, so it isn't in your file tree until you save it.`,
+      confirmLabel: "Save",
+    });
+    if (!ok || documentStore.currentId() !== docId) return;
+    // captureCurrent flushes open drafts first.
+    documentStore.captureCurrent();
+    documentStore.keepCurrent();
+    pushNotice(`Saved “${name}” to your documents`, "info", 2500);
+    requestTreeRename(docId);
+    return;
+  }
+  if (isDesktop() && documentStore.currentFilePath()) return saveToDisk();
+  documentStore.captureCurrent();
+  pushNotice("Saved", "info", 1500);
 }
 
 // A save belongs to the document current when it began; a switch during one of its awaits abandons it rather than writing the other document.

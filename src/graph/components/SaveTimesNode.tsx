@@ -1,5 +1,5 @@
 import type { SaveTimesNode as SaveTimesNodeType } from "../nodeClasses";
-import { saveToDisk } from "../fileSession";
+import { saveNow } from "../fileSession";
 import { requestRecalc } from "../process";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
@@ -41,7 +41,7 @@ export function SaveTimesComponent({ data, emit }: NodeProps<SaveTimesNodeType>)
       <MeasuredSocketRow side="output" socketKey="filesave" nodeId={data.id} emit={emit} payload={data.outputs.filesave!.socket} hero>
         <div className="sol-savetimes__row">
           <ValueDisplay value={data.cachedFileSave} socketKey="filesave" />
-          <RowButton title="Save (Ctrl+S)" onClick={() => void saveToDisk().then(() => requestRecalc())}>
+          <RowButton title="Save (Ctrl+S)" onClick={() => void saveNow().then(() => requestRecalc())}>
             <SaveIcon size={12} />
           </RowButton>
         </div>

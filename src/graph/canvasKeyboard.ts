@@ -27,7 +27,7 @@ import { isolateSelection } from "./isolate";
 import { addMenuRequest } from "./addMenuStore";
 import { expandMoveSet, stackSelection } from "./selectionOps";
 import { scheduleAutosave } from "./persistence";
-import { saveToDisk, openFromDisk } from "./fileSession";
+import { saveToDisk, saveNow, openFromDisk } from "./fileSession";
 import { DOT_SPACING } from "./gridSnapStore";
 import { canvasLockStore } from "./canvasLock";
 import { computeOverlayStore } from "./computeOverlayStore";
@@ -226,7 +226,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       // e.key for the slash, because punctuation moves on non-US layouts; the letters below stay at fixed physical keys.
       if (e.key === "/") { frStore.toggle(); e.preventDefault(); return; }
       if (e.code === "Comma") { settingsPanel.toggle(); e.preventDefault(); return; }
-      if (e.code === "KeyS") { void saveToDisk({ forceDialog: e.shiftKey }); e.preventDefault(); return; }
+      if (e.code === "KeyS") { void (e.shiftKey ? saveToDisk({ forceDialog: true }) : saveNow()); e.preventDefault(); return; }
       if (e.code === "KeyO") { void openFromDisk(); e.preventDefault(); return; }
       if (e.code === "KeyL" && e.shiftKey) { void documentStore.reloadCurrent(); e.preventDefault(); return; }
       if (editable) return;

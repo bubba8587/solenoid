@@ -37,9 +37,11 @@ specific item.
   mode takes the medium width; chart markers are solid dots in the series color.
 - **Open:** a Chart fed a table (not a frame) plots nothing, silently (`values: [null…]`), where it should plot or say
   why. Earth's radius is still a number in the haversine and horizon presets (no Physics Constant op for it).
+- **Save is autosave done now** (author 2026-11-06, `saveNow`): Ctrl+S captures and says "Saved"; on an example it
+  asks, then keeps it in the tree named in place (`treeRename.ts`); on desktop a file-bound document writes through.
+  Save As is the export. No Keep button.
 - **Waiting on the author:** remove the 15 Geometry formula presets the figure cards cover; whether the comparison
-  functions (IS, ABOVE…) move to core with the Comparison card; an Example badge or Keep button in the title bar; record
-  the education direction as a leaf (which ring).
+  functions (IS, ABOVE…) move to core with the Comparison card; record the education direction as a leaf (which ring).
 
 ### SESSION DIGEST (2026-11-06: mathlib as a lens, the spec vocabulary and an overnight research run; cloud session)
 - **Spec vocabulary from mathlib** (develop 4b7b526, 9491962): `value-semantics` § Points and differences is the one

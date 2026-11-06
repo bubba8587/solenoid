@@ -1,6 +1,7 @@
 // [[C132]] workspaceTree. The Navigator's Files tree; workspace-tree.md.
 import { Fragment, memo, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type DragEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { onTreeRename } from "./treeRename";
 import { documentStore } from "./documentStore";
 import { requestConfirm } from "./confirmStore";
 import { IS_COARSE } from "./coarse";
@@ -192,6 +193,11 @@ export const WorkspaceTree = memo(function WorkspaceTree({ outline }: { outline?
     // newBlank stays put while a load runs or a capture fails; renaming then would land on the old document.
     if (id && id !== before) startRename({ kind: "doc", id }, documentStore.currentName());
   };
+  // Save keeping an example asks the tree to name it in place.
+  useEffect(() => onTreeRename((id) => {
+    const doc = documentStore.list().find((d) => d.id === id);
+    if (doc) startRename({ kind: "doc", id }, doc.name);
+  }), []);
   treeActions.newFolder = () => newFolderIn(target.folder);
   treeActions.newDocument = () => void newDocumentIn(target.folder);
 

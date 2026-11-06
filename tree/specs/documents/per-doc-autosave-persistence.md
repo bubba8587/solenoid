@@ -96,11 +96,14 @@ New from template makes a document at once (`asDocument`), since that is an expl
   `leaveExample`: an example as it opened is dropped once the switch is made; a changed one raises the dialog, Discard
   changes, with Keep (it becomes a document), Discard (dropped) and Cancel (the verb stays put). Duplicate and Save As
   keep the copy and drop the example; a file save keeps it.
+- **Save** (Ctrl+S) on an example asks "Save to your documents?", and a yes keeps it, its name ready to edit in the
+  file tree ([[save-format#Where documents are stored]]). There is no Keep button (author 2026-11-06): Save is how.
 - **Restore** keeps an example left behind only if it was changed, then as a document, and drops it otherwise; the
   current one stays an example.
 
 Tests: `documentExamples.test.ts`: outside the tree, left as opened without asking, Keep, Discard, Cancel, a file save
-keeping it, the tree's New from template, and what the fingerprint sees.
+keeping it, the tree's New from template, Save asking on an example and keeping it named in place (Cancel leaving it)
+and asking nothing on a document, and what the fingerprint sees.
 
 ## Open drafts
 

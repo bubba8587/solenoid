@@ -23,6 +23,8 @@ const { documentStore } = await import("../../src/graph/documentStore");
 const { confirmStore, answerConfirm } = await import("../../src/graph/confirmStore");
 const { graphFingerprint } = await import("../../src/graph/documentStoreCore");
 const { SEEDS } = await import("../../src/graph/seeds");
+const { saveNow } = await import("../../src/graph/fileSession");
+const { onTreeRename } = await import("../../src/graph/treeRename");
 
 const asLoaded = (id: string) => JSON.parse(JSON.stringify(SEEDS[id].graph));
 const names = () => documentStore.list().map((d) => d.name).sort();
@@ -105,6 +107,40 @@ describe("an example", () => {
     await documentStore.newFromTemplate("table-verbs", undefined, { asDocument: true });
     expect(documentStore.currentIsExample()).toBe(false);
     expect(names()).toContain(SEEDS["table-verbs"].label);
+  });
+});
+
+describe("Save is autosave done now ([[save-format#Where documents are stored]])", () => {
+  it("on an example asks, and a yes keeps it in the file tree, named in place", async () => {
+    await openExample("equation-solver");
+    const renamed: string[] = [];
+    const off = onTreeRename((id) => renamed.push(id));
+    const run = saveNow();
+    await Promise.resolve();
+    expect(confirmStore.get()?.confirmLabel).toBe("Save");
+    answerConfirm("confirm");
+    await run;
+    off();
+    expect(documentStore.currentIsExample()).toBe(false);
+    expect(names()).toContain(SEEDS["equation-solver"].label);
+    expect(renamed).toEqual([documentStore.currentId()]);
+  });
+
+  it("on an example, Cancel leaves it an example", async () => {
+    await openExample("equation-solver");
+    const run = saveNow();
+    await Promise.resolve();
+    answerConfirm("cancel");
+    await run;
+    expect(documentStore.currentIsExample()).toBe(true);
+  });
+
+  it("on a document asks nothing and captures the edit", async () => {
+    liveGraph.g = asLoaded("allocator");
+    edit();
+    await saveNow();
+    expect(confirmStore.get()).toBeNull();
+    expect(documentStore.searchable().find((d) => d.id === documentStore.currentId())?.graph).toEqual(liveGraph.g);
   });
 });
 

@@ -11,7 +11,7 @@ import { refreshAllConnections } from "./connectionStore";
 import { runModelFuzz } from "./modelFuzz";
 import { problemsPanelUi } from "./problemsStore";
 import { pushNotice } from "./noticeStore";
-import { saveToDisk, openFromDisk } from "./fileSession";
+import { saveToDisk, saveNow, openFromDisk } from "./fileSession";
 import { documentStore } from "./documentStore";
 import { inspectorStore } from "./inspectorStore";
 import { addMenuRequest } from "./addMenuStore";
@@ -66,7 +66,7 @@ export function buildMenus(): Menu[] {
         { label: "New Document", icon: "new", short: "New", onClick: () => void documentStore.newBlank() },
         { label: "Open…", icon: "open", short: "Open", shortcut: "Ctrl+O", onClick: () => void openFromDisk() },
         { sep: true },
-        { label: "Save", icon: "save", short: "Save", shortcut: "Ctrl+S", onClick: () => void saveToDisk() },
+        { label: "Save", icon: "save", short: "Save", shortcut: "Ctrl+S", onClick: () => void saveNow() },
         { label: "Save As…", icon: "saveAs", short: "Save As", shortcut: "Ctrl+Shift+S", onClick: () => void saveToDisk({ forceDialog: true }) },
         { sep: true },
         { label: "Document properties…", onClick: () => docPropertiesPanel.open() },

@@ -5,7 +5,7 @@ import { CableShapeSelector } from "./CableShapeSelector";
 import { AppToolbar } from "./AppToolbar";
 import { TabletActions } from "./TabletActions";
 import { autoArrange, cleanup } from "./canvasCommands";
-import { saveToDisk, openFromDisk } from "./fileSession";
+import { saveToDisk, saveNow, openFromDisk } from "./fileSession";
 import { mobileMenuStore } from "./mobileMenuStore";
 import { toggleChrome } from "./chromeToggle";
 import { DocumentTitle } from "./components/DocumentTitle";
@@ -112,7 +112,7 @@ export function TopBar() {
       <span className="solenoid-topbar__divider" />
 
       <div className="solenoid-topbar__group solenoid-topbar__group--file">
-        <button className="solenoid-nav__btn" title="Save (Ctrl+S)" aria-label="Save" onClick={() => void saveToDisk()}>
+        <button className="solenoid-nav__btn" title="Save (Ctrl+S)" aria-label="Save" onClick={() => void saveNow()}>
           <SaveIcon />
         </button>
         <button className="solenoid-nav__btn" title="Save As: save to a new file (Ctrl+Shift+S)" aria-label="Save As" onClick={() => void saveToDisk({ forceDialog: true })}>
