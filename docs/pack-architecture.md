@@ -49,9 +49,10 @@ as a core leaf's are (`buildCatalog`).
 A preset never bakes a physical constant into its formula text. The constant is a named variable (`ke*q1*q2/r^2`), and
 the entry's `constants` maps it to a Physics Constant op (`constants: { ke: "ke" }`). Placing the card from the Add menu
 or the card reference also places that Physics Constant to its left, cabled into the variable (`companions` on the
-catalog entry, `src/graph/companions.ts`), so the constant shows on the canvas with its symbol, value and unit. An
-Expression preset also keys the CODATA value as the variable's literal, so it computes with the cable cut; an Equation
-preset solves for an unwired variable, so it needs the cable. An empirical fit coefficient (Heat Index, Magnus,
+catalog entry, `src/graph/companions.ts`), so the constant shows on the canvas with its symbol, value and unit. No
+copy of the value hides in the card: an Expression preset marks the variable required (`varRequired`), so with the
+cable cut and nothing typed it answers `#SYNTAX!` naming it; an Equation preset solves for an unwired variable, so a
+cut cable there turns the constant into the unknown. An empirical fit coefficient (Heat Index, Magnus,
 Hazen–Williams) is part of its formula and stays a number. Physics Constant is a core card (Inputs, beside Constant)
 that each pack with such presets tags, so it shows whenever one of them is on. Every input of a preset carries a
 `varDescriptions` entry (a constant's is written for it); `packs.test.ts` fails on a bare one. A description is the

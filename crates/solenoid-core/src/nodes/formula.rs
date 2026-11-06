@@ -204,8 +204,18 @@ fn expression(c: &mut Call) -> Answer {
     };
     let names = variables(&ast);
     let units = c.field("varUnits").and_then(Json::as_object).cloned().unwrap_or_default();
+    let required: Vec<String> = c
+        .field("varRequired")
+        .and_then(Json::as_array)
+        .map(|a| a.iter().filter_map(Json::as_str).map(str::to_string).collect())
+        .unwrap_or_default();
     let mut env = Env::default();
     for v in &names {
+        // A variable with no default, neither wired nor typed, is the missing input, never a silent 0.
+        if required.contains(v) && c.wired(v).is_none() && matches!(c.unwired(v), V::Undef | V::Null) {
+            let e = err(ErrorCode::Syntax, format!("{} is blank, and it has no default", c.label(v)));
+            return expression_done(c, e, None, false);
+        }
         let raw = c.read_variable(v);
         let read = match units.get(v).and_then(Json::as_str) {
             Some(u) if !u.is_empty() => read_in_declared_unit(&raw, u),

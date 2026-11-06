@@ -36,7 +36,7 @@ export interface FormulaPackEntry {
   /** Seeded literals; an unseeded variable defaults to 0. */
   literals?: Record<string, number>;
   /** Variables that are physical constants: placing the card places a Physics Constant cabled into each. An
-   *  Expression also keys the value as the variable's literal, so it still computes with the cable cut. */
+   *  Expression marks them required, so a cut cable answers #SYNTAX! naming the constant, never a hidden copy. */
   constants?: Record<string, PhysConstOp>;
 }
 
@@ -44,7 +44,6 @@ export function formulaNode(e: FormulaPackEntry): NodeCatalogEntry {
   const consts = Object.entries(e.constants ?? {});
   // Laid out by its parentheses, as Shift+Alt+F would in the editor.
   const expr = indentFormula(e.expr);
-  const literals = consts.length ? { ...Object.fromEntries(consts.map(([v, op]) => [v, PHYS_CONSTANTS[op].value])), ...e.literals } : e.literals;
   const descriptions = consts.length
     ? { ...Object.fromEntries(consts.map(([v, op]) => [v, `${PHYS_CONSTANTS[op].label} (${PHYS_CONSTANTS[op].unit})`])), ...e.varDescriptions }
     : e.varDescriptions;
@@ -57,7 +56,7 @@ export function formulaNode(e: FormulaPackEntry): NodeCatalogEntry {
     // No `accent`: the Add-menu highlight is reserved for key nodes.
     create: () => e.equation
       ? new EquationNode({ label: e.label, expr, locked: true, varDescriptions: descriptions, varUnits: e.units })
-      : new ExpressionNode({ label: e.label, expr, locked: true, varDescriptions: descriptions, varUnits: e.units, literals }),
+      : new ExpressionNode({ label: e.label, expr, locked: true, varDescriptions: descriptions, varUnits: e.units, literals: e.literals, varRequired: consts.map(([v]) => v) }),
     companions: consts.length
       ? () => consts.map(([input, op]) => ({ node: new PhysicsConstantNode({ op }), output: "value", input }))
       : undefined,

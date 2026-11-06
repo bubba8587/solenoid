@@ -54,6 +54,18 @@ describe("built-in packs", () => {
     expect(bad).toEqual([]);
   });
 
+  it("a preset's constant has no default: cut its cable and the card names it, never computing with a hidden copy", () => {
+    const entry = BUILTIN_PACKS.flatMap((p) => p.nodes ?? []).find(({ entry: e }) => e.type === "em-coulomb-force")!.entry;
+    const node = entry.create() as unknown as { varRequired: string[]; literals: Record<string, number>; data: (i: Record<string, unknown[]>) => { result: unknown } };
+    expect(node.varRequired).toEqual(["ke"]);
+    expect(node.literals.ke).toBeUndefined();
+    const inputs = { q1: [1e-6], q2: [1e-6], r: [1] };
+    expect(node.data(inputs).result).toMatchObject({ code: "#SYNTAX!", message: "ke is blank, and it has no default" });
+    expect(node.data({ ...inputs, ke: [8.9875517923e9] }).result).toBeCloseTo(0.0089875517923, 12);
+    node.literals.ke = 9e9;
+    expect(node.data(inputs).result).toBeCloseTo(0.009, 12);
+  });
+
   it("every pack sits in a listed group, so Settings and the Packs page both show it", () => {
     for (const p of BUILTIN_PACKS) expect(PACK_GROUP_ORDER, `pack ${p.id}`).toContain(p.group);
   });
@@ -114,7 +126,10 @@ describe("[[C25]] firstClassUnits — physical presets read wired units in their
     const { formulaNode } = await import("../../../src/graph/packs/packShared");
     const entry = all.find((e) => e.type === type)!;
     const n = formulaNode(entry as never).create() as unknown as Runner;
+    const { PHYS_CONSTANTS } = await import("../../../src/graph/nodes/physicsConstantsOps");
     const ins: Record<string, unknown[]> = {};
+    // Its Physics Constants, cabled in as the Add menu does.
+    for (const [k, op] of Object.entries((entry as { constants?: Record<string, keyof typeof PHYS_CONSTANTS> }).constants ?? {})) ins[k] = [PHYS_CONSTANTS[op].value];
     for (const [k, v] of Object.entries(inputs)) ins[k] = [v];
     return n.data(ins).result;
   };

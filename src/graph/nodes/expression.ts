@@ -20,8 +20,10 @@ export class ExpressionNode extends GraphNode {
   varDescriptions: Record<string, string> = {};
   /** A preset's input units: the formula reads that variable's number in this unit ([[C25]] firstClassUnits). */
   varUnits: Record<string, string> = {};
+  /** Variables with no default: unwired and untyped, the card answers #SYNTAX! naming it (a preset's physical constants). */
+  varRequired: string[] = [];
 
-  constructor(init?: { label?: string; expr?: string; locked?: boolean; castTo?: CastTo; literals?: Record<string, number>; varDescriptions?: Record<string, string>; varUnits?: Record<string, string> }) {
+  constructor(init?: { label?: string; expr?: string; locked?: boolean; castTo?: CastTo; literals?: Record<string, number>; varDescriptions?: Record<string, string>; varUnits?: Record<string, string>; varRequired?: string[] }) {
     super("Expression");
     this.label = init?.label ?? "Expression";
     this.expr  = init?.expr  ?? "";
@@ -30,6 +32,7 @@ export class ExpressionNode extends GraphNode {
     if (init?.literals) this.literals = { ...init.literals };
     if (init?.varDescriptions) this.varDescriptions = { ...init.varDescriptions };
     if (init?.varUnits) this.varUnits = { ...init.varUnits };
+    if (init?.varRequired) this.varRequired = [...init.varRequired];
 
     this.addOutput("result", resultOut("Result", "combo", this.castTo === "none" ? "auto" : this.castTo));
     this._rebuild();

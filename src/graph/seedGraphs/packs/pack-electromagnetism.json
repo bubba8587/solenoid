@@ -126,11 +126,12 @@
         },
         "varUnits": {
           "f": "Hz"
-        }
+        },
+        "varRequired": [
+          "h"
+        ]
       },
-      "literals": {
-        "h": 6.62607015e-34
-      }
+      "literals": {}
     },
     {
       "id": "coul",
@@ -152,18 +153,44 @@
         },
         "varUnits": {
           "r": "m"
-        }
+        },
+        "varRequired": [
+          "ke"
+        ]
       },
       "literals": {
-        "ke": 8987551792.3,
         "q1": 0.000001,
         "q2": -0.000002,
         "r": 0.05
       }
     },
     {
-      "id": "bw",
+      "id": "ke",
+      "x": 0,
+      "y": 760,
+      "type": "PhysicsConstantNode",
+      "init": {
+        "label": "",
+        "op": "ke",
+        "width": 240,
+        "height": 110
+      }
+    },
+    {
+      "id": "mu0",
       "x": 880,
+      "y": 620,
+      "type": "PhysicsConstantNode",
+      "init": {
+        "label": "",
+        "op": "mu0",
+        "width": 240,
+        "height": 110
+      }
+    },
+    {
+      "id": "bw",
+      "x": 1320,
       "y": 620,
       "type": "ExpressionNode",
       "init": {
@@ -181,10 +208,12 @@
         "varUnits": {
           "i": "A",
           "r": "m"
-        }
+        },
+        "varRequired": [
+          "mu0"
+        ]
       },
       "literals": {
-        "mu0": 0.00000125663706212,
         "i": 10,
         "r": 0.02
       }
@@ -224,10 +253,12 @@
         },
         "varUnits": {
           "r": "m"
-        }
+        },
+        "varRequired": [
+          "ke"
+        ]
       },
       "literals": {
-        "ke": 8987551792.3,
         "q1": 0.000001,
         "q2": 0.000001
       }
@@ -300,6 +331,24 @@
       "sourceOutput": "value",
       "target": "pe",
       "targetInput": "h"
+    },
+    {
+      "source": "ke",
+      "sourceOutput": "value",
+      "target": "coul",
+      "targetInput": "ke"
+    },
+    {
+      "source": "ke",
+      "sourceOutput": "value",
+      "target": "coulR",
+      "targetInput": "ke"
+    },
+    {
+      "source": "mu0",
+      "sourceOutput": "value",
+      "target": "bw",
+      "targetInput": "mu0"
     },
     {
       "source": "rr",

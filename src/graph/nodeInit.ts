@@ -38,7 +38,7 @@ export const INIT_FIELD_ORDER = [
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [
-  "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "varUnits", "bindings",
+  "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "varUnits", "varRequired", "bindings",
   "keyOrder", "pivotView", "detailFields", "boxColors", "boxViews", "regionMarks", "regionLabels", "regionValues",
   "literalKinds",
 ] as const;
@@ -139,6 +139,12 @@ export function extractInit(src: GraphNode): Record<string, unknown> {
     const live = new Set((n.varNames as string[] | undefined) ?? []);
     const entries = Object.entries(n.varUnits as Record<string, string>).filter(([k, v]) => live.has(k) && v !== "");
     if (entries.length) init.varUnits = Object.fromEntries(entries);
+  }
+  if (Array.isArray(n.varRequired)) {
+    const live = new Set((n.varNames as string[] | undefined) ?? []);
+    const kept = (n.varRequired as string[]).filter((k) => live.has(k));
+    if (kept.length) init.varRequired = kept;
+    else delete init.varRequired;
   }
   if (n.bindings && typeof n.bindings === "object") {
     const live = new Set((n.defVars as string[] | undefined) ?? []);

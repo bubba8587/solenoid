@@ -197,7 +197,9 @@ const RECIPES: Recipe[] = [
       card("band", [c(2), 220], "EmSpectrumNode"),
       preset("pe", [c(3), 220], "em-photon-energy"),
       preset("coul", [c(1), 620], "em-coulomb-force", { q1: 1e-6, q2: -2e-6, r: 0.05 }),
-      preset("bw", [c(2), 620], "em-wire-field", { i: 10, r: 0.02 }),
+      card("ke", [c(0), 760], "PhysicsConstantNode", { op: "ke" }),
+      card("mu0", [c(2), 620], "PhysicsConstantNode", { op: "mu0" }),
+      preset("bw", [c(3), 620], "em-wire-field", { i: 10, r: 0.02 }),
       expr("rr", [c(0), 940], "Distance (m)", "SEQUENCE(10, 1, 0.02, 0.02)"),
       preset("coulR", [c(1), 940], "em-coulomb-force", { q1: 1e-6, q2: 1e-6 }),
       frameOf("coulFrame", [c(2), 940], "Force by distance", ["r (m)", "F (N)"]),
@@ -205,6 +207,7 @@ const RECIPES: Recipe[] = [
     ],
     cables: [
       "f.value -> wl.f", "cc.value -> wl.c", "f.value -> band.freq", "f.value -> pe.f", "hh.value -> pe.h",
+      "ke.value -> coul.ke", "ke.value -> coulR.ke", "mu0.value -> bw.mu0",
       "rr.result -> coulR.r", "rr.result -> coulFrame.vals0", "coulR.result -> coulFrame.vals1", "coulFrame.frame -> coulChart.values",
     ],
   },
@@ -381,6 +384,13 @@ it.skipIf(!process.env.GEN_PACK_SEEDS)("writes every pack's example seed", () =>
       if (!m) throw new Error(`bad cable ${cable}`);
       return { source: m[1], sourceOutput: m[2], target: m[3], targetInput: m[4] };
     });
+    // A preset's constant has no default: the recipe cables its Physics Constant in, as the Add menu does.
+    for (const s of r.nodes) {
+      const required = (s.cat && (FLAT_CATALOG.get(s.cat)?.companions?.() ?? []).map((c) => c.input)) || [];
+      for (const v of required) {
+        if (!connections.some((c) => c.target === s.id && c.targetInput === v)) throw new Error(`${r.pack}: ${s.id}.${v} has no constant cabled in`);
+      }
+    }
     const seed = { v: CURRENT_SAVE_VERSION, order: 5000 + i * 10, label: r.label, group: "Packs", nodes, connections };
     writeFileSync(`src/graph/seedGraphs/packs/${pack.seed}.json`, `${JSON.stringify(seed, null, 2)}\n`);
   });

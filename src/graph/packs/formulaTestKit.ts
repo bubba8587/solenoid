@@ -21,9 +21,11 @@ export function evalFormula(
   e: FormulaPackEntry,
   inputs: Record<string, unknown>,
 ): unknown {
-  // Built as the Add menu builds it, so an unprovided config variable or constant reads its preset literal.
+  // Built as the Add menu builds it, so an unprovided config variable reads its preset literal.
   const node = formulaNode(e).create() as ExpressionNode;
   const env: Record<string, unknown[]> = {};
+  // The Physics Constant the Add menu cables in, unless the test wires the variable itself.
+  for (const [k, op] of Object.entries(e.constants ?? {})) env[k] = [PHYS_CONSTANTS[op].value];
   for (const [k, v] of Object.entries(inputs)) env[k] = [v];
   return (node.data(env) as { result: unknown }).result;
 }
