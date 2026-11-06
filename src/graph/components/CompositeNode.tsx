@@ -17,7 +17,7 @@ import { compositeEditorStore } from "../compositeEditorStore";
 import { compositeStaleStore } from "../compositeStaleStore";
 import { connectionStore } from "../connectionStore";
 import { stopDragStart } from "../coarse";
-import { isFrameValue, isCubeValue, frameRowCount } from "../frame";
+import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
 import { isSvgValue } from "../svgValue";
@@ -548,15 +548,7 @@ function faultText(f: PipelineFault): string {
   }
 }
 
-function stepRows(v: unknown): string | null {
-  if (isFrameValue(v)) {
-    const n = v.__totalRows ?? frameRowCount(v);
-    return `${n.toLocaleString()} ${n === 1 ? "row" : "rows"}`;
-  }
-  return isSolError(v) ? v.code : null;
-}
-
-/** A Pipeline's steps read off its one chain ([[C53]] pipelineIsCompositePreset): numbered, each with its row count.
+/** A Pipeline's steps read off its one chain ([[C53]] pipelineIsCompositePreset), numbered.
  *  A step's row selects it (the first, until another is picked); the folded Preview shows the selected step's table.
  *  It only reads the graph. */
 function PipelineSteps({ node }: { node: CompositeNodeType }) {
@@ -581,7 +573,6 @@ function PipelineSteps({ node }: { node: CompositeNodeType }) {
         >
           <span className="solenoid-pipeline__num">{i + 1}</span>
           <span className="solenoid-pipeline__name">{nodeDisplayName(s)}</span>
-          <span className="solenoid-pipeline__rows">{stepRows(result(s))}</span>
         </button>
       ))}
       {fault && <div className="solenoid-pipeline__fault">{faultText(fault)}</div>}

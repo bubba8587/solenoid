@@ -129,7 +129,7 @@ Charts and figures
 - Heavy charts stretch smoothly while resizing and redraw on release.
 
 Cards and canvas
-- Query is now Pipeline, a composite run mode: a table runs through one chain of steps inside, numbered on the card with each step's row count; pick a step to see its table in the card's Preview section. A branch or a stray card inside is named on the card.
+- Query is now Pipeline, a composite run mode: a table runs through one chain of steps inside, numbered on the card; pick a step to see its table in the card's Preview section. A branch or a stray card inside is named on the card.
 - New Delayed Pass card: a cable loop through it is allowed and steps once per recalculation.
 - Decision Matrix: deal-breakers, median fill for a missing score, Range normalization, chained decisions over a Cube.
 - Sensitivity: Flip points show the weight at which another option wins.
