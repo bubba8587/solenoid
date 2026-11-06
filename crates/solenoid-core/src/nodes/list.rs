@@ -1152,6 +1152,12 @@ pub(crate) fn aggregate_formula(op: &str) -> Option<&'static str> {
         "skew" => "SKEW",
         "skew_p" => "SKEW.P",
         "kurt" => "KURT",
+        "ptp" => "PTP",
+        "iqr" => "IQR",
+        "mad" => "MAD",
+        "sem" => "SEM",
+        "cv" => "CV",
+        "rms" => "RMS",
         "count" => "COUNT",
         _ => return None,
     };

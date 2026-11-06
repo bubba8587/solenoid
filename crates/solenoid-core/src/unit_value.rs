@@ -6,6 +6,33 @@ use crate::error_value::{sol_error, ErrorCode, SolError};
 pub const READINGS_ADD: &str = "Temperature readings can't be added. Subtract two for a difference, or average them.";
 pub const READINGS_SCALE: &str =
     "Convert the temperature to kelvin first. An offset unit like °C can't take ×, ÷, mod or ^.";
+/// [[C25]] firstClassUnits: a K value could be a reading or a change, so two temperature scales never meet.
+pub const TEMPERATURES_MIX: &str = "Convert to one temperature unit first. K, °C and °F don't mix.";
+
+/// The temperature scale a value is shown in (kelvin when it shows none), or None for a value that is no temperature.
+pub fn temperature_scale<'a>(dim: &crate::unit_dims::Dim, display: Option<&'a str>) -> Option<&'a str> {
+    let only = dim.get("temperature") == Some(&1.0) && dim.iter().all(|(k, v)| k == "temperature" || *v == 0.0);
+    only.then(|| display.filter(|d| !d.is_empty()).unwrap_or("K"))
+}
+
+/// Whether the (dimension, display) pairs hold temperatures in two different scales ([[C25]] firstClassUnits).
+pub fn temperatures_mix<'a>(units: impl IntoIterator<Item = (&'a crate::unit_dims::Dim, Option<&'a str>)>) -> bool {
+    let mut first: Option<&str> = None;
+    for s in units.into_iter().filter_map(|(d, s)| temperature_scale(d, s)) {
+        match first {
+            None => first = Some(s),
+            Some(f) if f != s => return true,
+            _ => {}
+        }
+    }
+    false
+}
+
+/// [`temperatures_mix`] over unit cells.
+pub fn cells_mix_temperatures<'a>(cells: impl IntoIterator<Item = &'a crate::unit_dims::UnitCell>) -> bool {
+    temperatures_mix(cells.into_iter().map(|u| (&u.dim, u.display.as_deref())))
+}
+
 pub const READINGS_FOLD: &str = "A fold over readings must answer a reading each step, like MAX(acc, value).";
 
 pub fn unit_error(detail: &str) -> SolError {

@@ -144,6 +144,8 @@ fn family_cell(fam: Family, keep_text: bool, c: &V) -> Option<V> {
         V::Num(n) => (Some(*n), None, false),
         V::Bool(b) => (None, Some(*b), false),
         V::Str(s) if keep_text && !s.is_empty() => return None,
+        // Empty text is nothing typed: a total skips it as its formula does ([[D109]] aggregatesRefuseText).
+        V::Str(_) if keep_text => return Some(V::Null),
         V::Str(_) => (None, None, true),
         V::Cx(..) => (None, None, false),
         _ => return None,

@@ -6,6 +6,14 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-06: 1.6 release copy and the value-handling triage; cloud session)
+- **Marketing copy is looser than UI copy** (DESIGN.md §7, author 2026-11-06): the What's New deck lives in `src/graph/whatsNewSlides.ts`, which the UI-copy sweep skips; no em dashes, American spelling and true claims still hold. The 1.6 deck is in (`WHATS_NEW_VERSION` 1.6); `docs/release-notes-features.md` is its source, `docs/release-notes-1.6.md` the plain changelog.
+- **Empty text is nothing typed in a total** ([[D109]] aggregatesRefuseText): a card that answers text as its formula reads `""` as a blank at the port (`family_cell`, both boundaries), and SUMSQ and SUMPRODUCT skip it. PTP, IQR, MAD, SEM, CV and RMS refuse text in formulas, as their cards did.
+- **Two temperature scales never meet** ([[C25]] firstClassUnits): `temperatures_mix` (`unit_value.rs`) refuses K with °C or °C with °F on the Arithmetic card, in an aggregate or running list, in a formula whose inputs carry two scales (a list mixing scales mapped item by item doesn't count) and in a computed column. Δ°C is still owed: two °C readings subtract to K.
+- **AVERAGEIF(S) over nothing is blank**, as AVERAGE's is, in the formula and on the SUMIFS card.
+- **CSV junk cells are NaN** (`infer_text_column`): missing markers and up to a tenth of other text keep a number or date column, their text in `raw`. A stopgap until the NaN walk; the full CSV pass is in the backlog.
+- **Freezing**: `bodies_over_values_with_a_unit`, `fold-units` and `tests/csv.rs` now refreeze under `FREEZE_NATIVE` like the other suites.
+
 ### SESSION DIGEST (2026-11-05/06: Signals & Grids pack, the card-first Reference, Excel Coverage, the parity audit; cloud session)
 - **Signals & Grids pack** (`packs/signals.ts`, off by default): Spectrum, Smooth, Find Peaks, Connected Regions, Convolve; Scientific keeps the solvers and fits. Settings: a pack's name opens its cards in the Reference, only the switch toggles it (`PackRow`, `frStore.openPack`).
 - **The Reference is card-first** (`CardReference.tsx`): the Add menu's `DrillMenu` and search on the left, a card's page or a folder's page on the right. The landing is masonry (CSS columns): each top-level folder and pack as a box in its cards' color, filled to four lines of cards with "N more ›" measured off the real wrap (`LandCards`), under Core Functions and Optional Packs. Folder pages (`FolderPage.tsx`) say what Solenoid has there and the card to start with, drawn with real displays. The Inspector links in with Open in Reference (`frStore.openCard`); the Add menu's book icon opens the lit card.

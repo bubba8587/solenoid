@@ -1017,7 +1017,7 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
     let sum = || nums.iter().fold(0.0, |a, b| a + b);
     Ok(match op {
         "sumifs" => tag(sum()),
-        "averageifs" if nums.is_empty() => err(ErrorCode::DivZero, "No rows matched the criteria"),
+        "averageifs" if nums.is_empty() => V::Null,
         "averageifs" => tag(sum() / nums.len() as f64),
         "minifs" => {
             tag(if nums.is_empty() { 0.0 } else { nums.iter().fold(f64::INFINITY, |m, &v| if v < m { v } else { m }) })

@@ -516,6 +516,10 @@ fn family_cell(fam: Family, keep_text: bool, c: &JsValue) -> JsValue {
     if keep_text && c.as_string().is_some_and(|s| !s.is_empty()) {
         return c.clone();
     }
+    // Empty text is nothing typed: a total skips it as its formula does ([[D109]] aggregatesRefuseText).
+    if keep_text && text {
+        return JsValue::NULL;
+    }
     if num.is_none() && boolean.is_none() && !text && !is_cx(c) {
         return c.clone();
     }

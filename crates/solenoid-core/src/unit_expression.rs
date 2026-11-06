@@ -226,6 +226,22 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
             Err(e) => return Some(V::err(e)),
         };
     }
+    // Two inputs in two temperature scales meet in the formula; one list's own items, mapped item by item, don't.
+    let scales: Vec<String> = names
+        .iter()
+        .filter_map(|n| {
+            let cells = flat(&env[*n], 2);
+            let mut it = cells
+                .iter()
+                .filter_map(dimensioned)
+                .filter_map(|u| crate::unit_value::temperature_scale(&u.dim, u.display.as_deref()).map(str::to_string));
+            let first = it.next()?;
+            it.all(|s| s == first).then_some(first)
+        })
+        .collect();
+    if scales.iter().any(|s| *s != scales[0]) {
+        return Some(V::err(crate::unit_value::unit_error(crate::unit_value::TEMPERATURES_MIX)));
+    }
     let mut dr: Option<Dim> = None;
     let mut shown: Option<Shown> = None;
     if dims.values().any(|d| !is_dimensionless(d)) {

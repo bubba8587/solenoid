@@ -557,7 +557,7 @@ describe("classic lookups redirect to their current-Excel replacements ([[B16]] 
 
   it("COUNTIF / AVERAGEIF never read a numeric-STRING range as numbers ([[B17]] typedValueModel)", () => {
     expect((ev('COUNTIF(v, ">15")', { v: ["10", "9", "20"] }) as { code: string }).code).toBe("#TYPE!");
-    expect((ev('AVERAGEIF(k, "a", v)', { k: ["a", "a", "b"], v: ["10", "30", "20"] }) as { code: string }).code).toBe("#DIV/0!");
+    expect(ev('AVERAGEIF(k, "a", v)', { k: ["a", "a", "b"], v: ["10", "30", "20"] })).toBeNull();
   });
 
   it("MATCH → #NAME? 'Use XMATCH'", () => {

@@ -127,6 +127,11 @@ pub fn arithmetic_cell(op: ArithOp, a: &V, b: &V) -> V {
     let (x, y) = (magnitude_of(a), magnitude_of(b));
     let (ua, ub) = (shown(a), shown(b));
     let div_zero = || err(ErrorCode::DivZero, "Division by zero");
+    if let (V::Unit(ca), V::Unit(cb)) = (a, b)
+        && crate::unit_value::cells_mix_temperatures([ca.as_ref(), cb.as_ref()])
+    {
+        return V::err(unit_error(crate::unit_value::TEMPERATURES_MIX));
+    }
     if currency_mismatch(a, b) {
         let name = |u: Option<&UnitCell>| u.and_then(|u| u.display.clone()).unwrap_or_default();
         return V::err(unit_error(&format!(

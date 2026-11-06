@@ -123,6 +123,7 @@ There are four entry paths, and they do not infer the same way.
   4. every cell an unambiguous ISO date: date (cells become serials);
   5. otherwise string, with each cell trimmed.
 - An all-blank column is string.
+- CSV text (`infer_text_column`) also tolerates stray cells in a number or date column ([[C58]] tableInputRawText): a missing marker (`N/A`, `NaN`, `null`, `-`, an error code such as `#DIV/0!`) and up to a tenth of the filled cells of any other text read as NaN, the source text kept in the column's `raw`. A column of markers alone is string. `inferColumn` over values doesn't.
 - An error cell stays that error in any column type and takes no part in the inference.
 - `raw` keeps each cell's trimmed text, and an error's code.
 - The reading runs on the core (`nodes::infer_cells`, through `engine_infer_bin`): the cells cross in the columnar hand-off, the types and the read numbers, logicals and dates come back, and the text stays on the TypeScript side, since a text column's cells and every `raw` are the trimmed text it sent. A list or object cell crosses as its text, so it reads as that text would (a list of one number reads as that number).

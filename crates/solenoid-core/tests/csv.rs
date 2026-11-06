@@ -51,15 +51,48 @@ fn want_key(v: &Json) -> String {
         Json::Number(n) => format!("n:{}", n.as_f64().unwrap().to_bits()),
         Json::String(s) => format!("s:{s}"),
         Json::Object(o) if o.get("__nf").and_then(Json::as_str) == Some("-0") => format!("n:{}", (-0.0f64).to_bits()),
+        Json::Object(o) if o.get("__nf").and_then(Json::as_str) == Some("nan") => format!("n:{}", f64::NAN.to_bits()),
         other => format!("?{other}"),
     }
 }
 
+/// `want_key` read back into a frozen cell.
+fn key_json(k: &str) -> Json {
+    match k.split_once(':') {
+        Some(("s", t)) => Json::String(t.into()),
+        Some(("b", b)) => Json::Bool(b == "true"),
+        Some(("n", bits)) => {
+            let n = f64::from_bits(bits.parse().unwrap());
+            if n.is_nan() {
+                serde_json::json!({ "__nf": "nan" })
+            } else if n == 0.0 && n.is_sign_negative() {
+                serde_json::json!({ "__nf": "-0" })
+            } else {
+                serde_json::json!(n)
+            }
+        }
+        _ => Json::Null,
+    }
+}
+
+/// Under `FREEZE_NATIVE` naming the suite, its cases take the answers they now get.
+fn freeze(suite: &str, cases: &[Json]) -> bool {
+    if !std::env::var("FREEZE_NATIVE").is_ok_and(|s| s.split(',').any(|x| x == suite || x == "1")) {
+        return false;
+    }
+    let path = std::path::PathBuf::from(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+        .join(format!("../../fixtures/core/{suite}.json.gz"));
+    let mut gz = flate2::write::GzEncoder::new(std::fs::File::create(path).unwrap(), flate2::Compression::best());
+    std::io::Write::write_all(&mut gz, serde_json::to_string(cases).unwrap().as_bytes()).unwrap();
+    gz.finish().unwrap();
+    true
+}
+
 #[test]
 fn frames_as_frozen() {
-    let cases = load("csv-frames");
+    let mut cases = load("csv-frames");
     let mut bad = Vec::new();
-    for c in &cases {
+    for c in &mut cases {
         let (out, _) = frame_columnar(c["text"].as_str().unwrap());
         let mut strs = out.strs.as_str();
         let mut lens = out.lens.iter();
@@ -116,18 +149,26 @@ fn frames_as_frozen() {
             .collect();
         if got != want {
             bad.push(format!("{:?}\n  got  {got:?}\n  want {want:?}", c["text"]));
+            c["columns"] = got
+                .iter()
+                .map(|(name, ty, keys, raw)| {
+                    serde_json::json!({ "name": name, "type": ty, "values": keys.iter().map(|k| key_json(k)).collect::<Vec<_>>(), "raw": raw })
+                })
+                .collect();
         }
     }
-    report(&bad, cases.len());
+    if !freeze("csv-frames", &cases) {
+        report(&bad, cases.len());
+    }
 }
 
 #[test]
 fn sources_as_frozen() {
-    let cases = load("csv-sources");
+    let mut cases = load("csv-sources");
     let mut bad = Vec::new();
-    for c in &cases {
-        let text = c["text"].as_str().unwrap();
-        let got: Vec<(String, String, Vec<String>)> = source_columns(solenoid_core::jsnum::trim_space(text))
+    for c in &mut cases {
+        let text = c["text"].as_str().unwrap().to_string();
+        let got: Vec<(String, String, Vec<String>)> = source_columns(solenoid_core::jsnum::trim_space(&text))
             .into_iter()
             .map(|(n, t, cells)| (n, t.as_str().to_string(), cells))
             .collect();
@@ -141,9 +182,15 @@ fn sources_as_frozen() {
             .collect();
         if got != want {
             bad.push(format!("{text:?}\n  got  {got:?}\n  want {want:?}"));
+            c["columns"] = got
+                .iter()
+                .map(|(name, ty, cells)| serde_json::json!({ "name": name, "type": ty, "cells": cells }))
+                .collect();
         }
     }
-    report(&bad, cases.len());
+    if !freeze("csv-sources", &cases) {
+        report(&bad, cases.len());
+    }
 }
 
 #[test]
@@ -159,4 +206,19 @@ fn unparse_as_frozen() {
         }
     }
     report(&bad, cases.len());
+}
+
+#[test]
+fn a_number_column_reads_its_stray_cells_as_nan() {
+    let ty = |body: &str| source_columns(&format!("n\n{body}"))[0].1.as_str().to_string();
+    // Missing markers never make a column text; other text may be a tenth of the filled cells.
+    assert_eq!(ty("1\n2\nN/A\n-\n#DIV/0!\n"), "number");
+    assert_eq!(ty("1\n2\n3\n4\n5\n6\n7\n8\n9\nsee note\n"), "number");
+    assert_eq!(ty("1\n2\nsee note\n"), "string");
+    assert_eq!(ty("N/A\nnull\n"), "string");
+    assert_eq!(ty("2024-01-05\nN/A\n2024-02-01\n"), "date");
+    let (cols, _) = frame_columnar("n\n1\nN/A\n3\n");
+    assert_eq!(cols.tags[..3], [TAG_NUM, TAG_NUM, TAG_NUM]);
+    assert!(cols.nums[1].is_nan());
+    assert_eq!(cols.schema[1]["raw"], true, "the source text rides beside the column");
 }

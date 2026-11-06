@@ -15,9 +15,10 @@ describe("the Aggregate card answers text as its formula", () => {
     ["sum", "SUM"], ["avg", "AVERAGE"], ["min", "MIN"], ["max", "MAX"], ["median", "MEDIAN"], ["product", "PRODUCT"],
     ["stdev", "STDEV.S"], ["stdev_p", "STDEV.P"], ["var_s", "VAR.S"], ["var_p", "VAR.P"], ["geomean", "GEOMEAN"],
     ["harmean", "HARMEAN"], ["sumsq", "SUMSQ"], ["devsq", "DEVSQ"], ["avedev", "AVEDEV"], ["skew", "SKEW"],
-    ["skew_p", "SKEW.P"], ["kurt", "KURT"], ["count", "COUNT"],
+    ["skew_p", "SKEW.P"], ["kurt", "KURT"], ["ptp", "PTP"], ["iqr", "IQR"], ["mad", "MAD"], ["sem", "SEM"], ["cv", "CV"],
+    ["rms", "RMS"], ["count", "COUNT"],
   ];
-  const LISTS: unknown[][] = [[2, "a", 5, 7], [2, "2", 5], ["TRUE", 1, 2, 3], [1, 2, "a", { __solError: true, code: "#N/A", message: "x" }]];
+  const LISTS: unknown[][] = [[2, "a", 5, 7], [2, "2", 5], ["TRUE", 1, 2, 3], [2, "", 5, 7], [1, 2, "a", { __solError: true, code: "#N/A", message: "x" }]];
   it.each(OPS)("%s == %s", (op, fn) => {
     // COUNT leaves an error out where the card answers it: an error ruling, not a text one.
     for (const x of op === "count" ? LISTS.slice(0, 3) : LISTS) {
@@ -31,6 +32,9 @@ describe("the Aggregate card answers text as its formula", () => {
     expect(err(run("max"))).toBe("#TYPE! MAX can't order text among numbers; Cast it to a number first");
     expect(run("count")).toBe(1);
   });
+  it("empty text is nothing typed: the total skips it", () => {
+    expect(throughBoundary(new AggregateNode({ op: "sum" })).data({ list: [[2, "", 5]] }).result).toBe(7);
+  });
 });
 
 describe("Rank & Percentile answers text in its list as LARGE, SMALL, PERCENTILE and QUARTILE do", () => {
@@ -40,7 +44,7 @@ describe("Rank & Percentile answers text in its list as LARGE, SMALL, PERCENTILE
   ];
   it.each(OPS)("%s == %s", (op, fn, key) => {
     const at = key === "k" ? 1 : key === "p" ? 0.5 : 1;
-    for (const x of [[2, "a", 5, 7], [2, "5", 7]]) {
+    for (const x of [[2, "a", 5, 7], [2, "5", 7], [2, "", 5, 7]]) {
       const card = throughBoundary(new RankPercentileNode({ op })).data({ list: [x], [key]: [at] }).result;
       expect(err(card), JSON.stringify(x)).toBe(err(ev(`${fn}(x, ${at})`, { x })));
     }

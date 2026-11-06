@@ -258,13 +258,11 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     const kmList = [applyFcUnit(1, "km"), applyFcUnit(3, "km")];
     expect(displayMagnitudeOf(run("MEDIAN(SORT(a))", kmList) as UnitCell)).toBeCloseTo(2, 9);
   });
-  it("readings in different offset units still classify: °C + °F is #UNIT!", async () => {
+  it("readings in two offset units never meet: °C with °F is #UNIT! under any op", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
     const run = (expr: string) => new ExpressionNode({ expr })
       .data({ a: [applyFcUnit(20, "degC") as never], b: [applyFcUnit(68, "degF") as never] }).result;
-    expect((run("a + b") as { code?: string }).code).toBe("#UNIT!");
-    expect(magnitudeOf(run("b - a") as UnitCell)).toBeCloseTo(0, 9); // 68 °F is 20 °C
-    expect(magnitudeOf(run("(a + b) / 2") as UnitCell)).toBeCloseTo(293.15, 9);
+    for (const expr of ["a + b", "b - a", "(a + b) / 2"]) expect((run(expr) as { code?: string }).code, expr).toBe("#UNIT!");
   });
   it("inputs in different units still compute in base SI", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
@@ -335,5 +333,31 @@ describe("custom units — an opaque free-text unit is its own dimension", () =>
     expect(applyFcUnit(5, "custom", "")).toBe(5);
     expect(applyFcUnit(5, "custom", "   ")).toBe(5);
     expect(applyFcUnit(5, "custom", undefined)).toBe(5);
+  });
+});
+
+describe("two temperature scales never mix ([[C25]] firstClassUnits)", () => {
+  const unitCode = (v: unknown) => (isSolError(v) ? v.code : JSON.stringify(v));
+  const c20 = () => applyFcUnit(20, "degC"), k300 = () => applyFcUnit(300, "K"), f68 = () => applyFcUnit(68, "degF");
+  it("the Arithmetic card: K with °C, or °C with °F, under any op is #UNIT!", () => {
+    for (const op of ["add", "sub", "mul", "div"] as const) {
+      expect(unitCode(arithmeticCell(op, c20(), k300())), `${op} °C K`).toBe("#UNIT!");
+      expect(unitCode(arithmeticCell(op, c20(), f68())), `${op} °C °F`).toBe("#UNIT!");
+    }
+    expect(isUnitCell(arithmeticCell("sub", c20(), applyFcUnit(10, "degC")))).toBe(true);
+  });
+  it("a formula over two scales is #UNIT!, whatever it does with them", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    for (const expr of ["a + b", "a - b", "MAX(a, b)", "IF(TRUE, a, b)"]) {
+      const r = new ExpressionNode({ expr }).data({ a: [c20() as never], b: [k300() as never] }).result;
+      expect(unitCode(r), expr).toBe("#UNIT!");
+    }
+  });
+  it("the Aggregate card over a list mixing scales is #UNIT!", async () => {
+    const { AggregateNode } = await import("../../src/graph/nodes/list");
+    for (const op of ["sum", "avg", "max"] as const) {
+      const r = new AggregateNode({ op }).data({ list: [[c20(), f68()]] }).result;
+      expect(unitCode(r), op).toBe("#UNIT!");
+    }
   });
 });

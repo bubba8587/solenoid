@@ -112,3 +112,17 @@ fn unchanged() {
     // An error before the text is still the answer, as `NA() + "a"` is.
     assert_eq!(code("SUM(NA(), x)"), "#N/A");
 }
+
+#[test]
+fn the_spreads_refuse_text_as_the_card_does() {
+    for f in ["PTP", "IQR", "MAD", "SEM", "CV", "RMS"] {
+        assert_eq!(code(&format!("{f}(xs)")), "#VALUE!", "{f}");
+    }
+}
+
+#[test]
+fn empty_text_is_nothing_typed() {
+    assert_eq!(num(r#"SUM(2, "")"#), 2.0);
+    assert_eq!(num(r#"SUMSQ(2, "")"#), 4.0);
+    assert_eq!(num(r#"SUMPRODUCT(2, "")"#), 0.0);
+}

@@ -448,9 +448,9 @@ describe("SUMIFS — conditional aggregation over one frame ([[C49]] filterOneJo
     expect(allN.data({ frame: [frame()] }).result).toBeNull();
   });
 
-  it("empty matches follow Excel: AVERAGEIFS → #DIV/0!, MINIFS/MAXIFS → 0", () => {
+  it("empty matches: AVERAGEIFS is blank as AVERAGE is ([[C24]] arraySemantics), MINIFS/MAXIFS → 0 as in Excel", () => {
     const avg = mk("averageifs", [{ column: "region", op: "eq", value: "Mars" }]).data({ frame: [frame()] }).result;
-    expect(isSolError(avg) && avg.code).toBe("#DIV/0!");
+    expect(avg).toBeNull();
     expect(mk("minifs", [{ column: "region", op: "eq", value: "Mars" }]).data({ frame: [frame()] }).result).toBe(0);
   });
 

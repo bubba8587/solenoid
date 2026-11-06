@@ -679,6 +679,9 @@ pub(crate) fn plan_column_units(
             )));
     }
     let inputs: Vec<&United> = united.iter().map(|(_, u)| u).collect();
+    if crate::unit_value::temperatures_mix(inputs.iter().map(|u| (&u.dim, u.display.as_deref()))) {
+        return Err(unit_err(crate::unit_value::TEMPERATURES_MIX.to_string()));
+    }
     let first_display = inputs[0].display.clone();
     let shared_id = inputs.iter().all(|u| u.display == first_display).then_some(first_display).flatten();
     let shared = shared_id.as_deref().and_then(crate::unit_catalog::fc_unit_to_unit);

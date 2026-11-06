@@ -329,27 +329,62 @@ impl Typed {
     }
 }
 
-/// The one type every filled cell reads as (number, then logical, then an ISO date), text
-/// otherwise or when none is filled.
+/// A cell that marks a missing value rather than holding one: `N/A`, `NaN`, `null`, `-`, an error code such as
+/// `#DIV/0!`.
+fn missing_marker(s: &str) -> bool {
+    let t = trim_space(s).to_ascii_lowercase();
+    matches!(
+        t.as_str(),
+        "n/a" | "na" | "#n/a" | "nan" | "null" | "none" | "nil" | "missing" | "-" | "--" | "?" | "\u{2014}"
+    ) || (t.starts_with('#') && (t.ends_with('!') || t.ends_with('?')) && t.len() > 2)
+}
+
+/// The one type the filled cells read as (number, then logical, then an ISO date), text otherwise or when none is
+/// filled. A number or date column tolerates stray cells it can't read ([[C58]] tableInputRawText): missing markers
+/// (`N/A`, `-`, `#DIV/0!`) and up to a tenth of the filled cells of any other text, each read as NaN, its text kept
+/// as the column's `raw`.
 pub fn infer_text_column<'s>(cells: impl Iterator<Item = Option<&'s str>> + Clone) -> Typed {
     let blank = |c: Option<&str>| c.is_none_or(|s| trim_space(s).is_empty());
-    if cells.clone().all(blank) {
+    let filled = cells.clone().filter(|c| !blank(*c)).count();
+    if filled == 0 {
         return Typed::String;
     }
-    let read_all = |f: &dyn Fn(&str) -> Option<f64>| -> Option<Vec<Option<f64>>> {
-        cells.clone().map(|c| if blank(c) { Some(None) } else { f(c.unwrap_or("")).map(Some) }).collect()
+    let read_most = |f: &dyn Fn(&str) -> Option<f64>| -> Option<Vec<Option<f64>>> {
+        let (mut read, mut stray) = (0usize, 0usize);
+        let v: Vec<Option<f64>> = cells
+            .clone()
+            .map(|c| {
+                if blank(c) {
+                    return None;
+                }
+                let t = c.unwrap_or("");
+                match f(t) {
+                    Some(n) => {
+                        read += 1;
+                        Some(n)
+                    }
+                    None => {
+                        if !missing_marker(t) {
+                            stray += 1;
+                        }
+                        Some(f64::NAN)
+                    }
+                }
+            })
+            .collect();
+        (read > 0 && stray * 10 <= filled).then_some(v)
     };
     let number =
         |s: &str| short_integer(s).or_else(|| Some(crate::value_kinds::decimal_from_text(s)).filter(|n| n.is_finite()));
-    if let Some(v) = read_all(&number) {
-        return Typed::Number(v);
-    }
     let logical: Option<Vec<Option<bool>>> =
         cells.clone().map(|c| if blank(c) { Some(None) } else { logical_text(c.unwrap_or("")).map(Some) }).collect();
+    if let Some(v) = read_most(&number) {
+        return Typed::Number(v);
+    }
     if let Some(v) = logical {
         return Typed::Logical(v);
     }
-    if let Some(v) = read_all(&date_text_serial) {
+    if let Some(v) = read_most(&date_text_serial) {
         return Typed::Date(v);
     }
     Typed::String

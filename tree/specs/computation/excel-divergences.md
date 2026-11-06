@@ -26,7 +26,7 @@ Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because co
 - The TAKE / DROP card reads a count of 0 as "left out", keeping the whole axis; Excel's TAKE of 0 is `#CALC!`, and so is the formula's (`#DOMAIN!`).
 - XMATCH and XLOOKUP refuse wildcard and binary search modes.
 - Excel's `#NUM!` is split into `#DOMAIN!`, `#OVERFLOW!` and `#CONV!`; `ERROR.TYPE` still reports all three as 6. A percentile outside its domain, taking nothing or dropping everything, and an XIRR date before the first are `#DOMAIN!`.
-- A sample statistic with too few values (SKEW below 3, KURT below 4, SEM and CV below 2) is blank rather than `#DIV/0!` ([[C24]] arraySemantics), and so are AVERAGE and MEDIAN of no numbers and LARGE or SMALL with k past the count (Excel: `#DIV/0!`, `#NUM!`); STDEV.S and VAR.S of one value stay `#DIV/0!`, as in Excel, and so does AVERAGEIF(S) with no matching row.
+- A sample statistic with too few values (SKEW below 3, KURT below 4, SEM and CV below 2) is blank rather than `#DIV/0!` ([[C24]] arraySemantics), and so are AVERAGE and MEDIAN of no numbers, AVERAGEIF(S) with no matching row, and LARGE or SMALL with k past the count (Excel: `#DIV/0!`, `#NUM!`); STDEV.S and VAR.S of one value stay `#DIV/0!`, as in Excel.
 - LOG2 of a value at or below 0 is blank.
 - FORECAST.ETS uses its own parameter search, so its values are close to Excel's but not identical.
 

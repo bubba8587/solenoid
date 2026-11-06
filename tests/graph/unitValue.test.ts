@@ -209,8 +209,8 @@ describe("affine temperatures (review pins)", () => {
     expect(code(arithmeticCell("add", degC(20), degC(30)))).toBe("#UNIT!");
     expect(code(arithmeticCell("add", degC(20), fromUnit(50, U("degF"), "degF")))).toBe("#UNIT!");
     expect(code(arithmeticCell("mod", degC(20), 5))).toBe("#UNIT!");
-    const warm = arithmeticCell("add", degC(20), fromUnit(5, U("K"), "K")) as UnitCell;
-    expect(magnitudeOf(warm)).toBeCloseTo(298.15, 9); // a kelvin cell stays linear
+    // A K value could be a reading or a change, so it never meets a °C reading ([[C25]] firstClassUnits).
+    expect(code(arithmeticCell("add", degC(20), fromUnit(5, U("K"), "K")))).toBe("#UNIT!");
   });
   it("the Arithmetic card refuses two readings added, element-wise too", async () => {
     const { ArithmeticNode } = await import("../../src/graph/nodes/scalar");

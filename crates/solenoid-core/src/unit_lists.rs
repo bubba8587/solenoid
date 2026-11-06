@@ -115,6 +115,12 @@ pub(crate) struct Prep {
 /// (°C) is a reading, not a delta.
 pub(crate) fn for_aggregate_units(values: &[&V], bare_is_reading: bool) -> Result<Prep, SolError> {
     let present: Vec<&V> = values.iter().copied().filter(|v| !matches!(v, V::Null)).collect();
+    if crate::unit_value::cells_mix_temperatures(present.iter().filter_map(|v| match v {
+        V::Unit(u) => Some(u.as_ref()),
+        _ => None,
+    })) {
+        return Err(unit_error(crate::unit_value::TEMPERATURES_MIX));
+    }
     let mut dim: Option<Dim> = None;
     let mut display: Option<Rc<UnitCell>> = None;
     let mut currency: Option<&str> = None;

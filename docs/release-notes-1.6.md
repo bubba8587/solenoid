@@ -57,6 +57,7 @@ Tables, Frames and Cubes
 - Frame popup: error cells show their code, arrow keys move the caret while editing, long column names wrap, date columns sort by date.
 - Local File reads Parquet on desktop with a new reader; category columns read as values, an empty file keeps its column types.
 - CSV reads faster (a 50 MB file in about 1.7 s, was 4.1 s); written CSV quotes only where needed.
+- A CSV number or date column stays numbers when a few cells are N/A, -, #DIV/0! or other stray text; those cells read as NaN and keep their text.
 - The summary footer counts errors per column.
 - Slicer shows TRUE and FALSE for a logical column.
 - Fixed: the Cards gallery crashing when the row count changes, and a Computed Column named as its own anchor.
@@ -70,7 +71,9 @@ Formulas and functions
 - SERIESSUM takes a single coefficient.
 - The Aggregate card's COUNT DISTINCT and COUNTBLANK take any list, text included.
 - SUM, MIN, MAX, COUNT and SUMPRODUCT count TRUE as 1 and FALSE as 0 (`SUM(x > 5)` counts matches).
-- Aggregates, AND, OR and XOR answer an error for text.
+- Aggregates, AND, OR and XOR answer an error for text; PTP, IQR, MAD, SEM, CV and RMS do too, as their cards already did.
+- Empty text `""` counts as nothing in a total, on cards and in formulas: the Aggregate card over `2, ""` is 2, and `SUMSQ(2, "")` is 4.
+- AVERAGEIF and AVERAGEIFS with no matching row are blank, as AVERAGE of nothing is (Excel: #DIV/0!).
 - IF, IFS, SWITCH and CHOOSE ignore an error in a branch not taken (`IF(@qty = 0, 0, @total / @qty)` gives 0); their cards match.
 - Criteria take typed values: `">=" & DATE(…)` in SUMIFS or COUNTIFS compares as a date.
 - New functions IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST and BETWEEN.
@@ -107,6 +110,7 @@ Units
 - Table and Cube popups show each number with its column's unit; a toggle hides them.
 - Running adds mixed units correctly; REDUCE and SCAN keep their start value's unit; Smooth keeps a list's unit.
 - Convert-only units (yd, psi, knot) show their symbol.
+- Two temperature scales never mix: K with °C, or °C with °F, is #UNIT! on cards and in formulas, asking for a conversion.
 
 Charts and figures
 - A References table draws dashed lines, points and shaded bands on any chart with axes; Merge Plots keeps them.
@@ -189,6 +193,8 @@ Heads up
 - Cards split off from Record into its own card.
 - The Formula and LAMBDA cards' Number/Text/Date toggle became an inline Cast.
 - Input Switch names its rows by their source cards.
+- Mixing temperature scales is #UNIT!, including a K difference added to a °C reading (`20 °C + 5 K`). Convert to one scale first.
+- AVERAGEIF(S) with no matching row is blank instead of #DIV/0!.
 - Angle Dial turns counterclockwise with 90 pointing up, matching SIN and COS.
 - Vector Field's first row is at the bottom.
 - The Choice Ladder, Gantt, Schedule and Earned Value are hidden from the Add menu and Examples; documents that use them still load.

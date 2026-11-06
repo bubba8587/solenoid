@@ -55,7 +55,7 @@ describe("the *IFS family runs Excel's criteria grammar", () => {
 describe("numeric text in the ranges stays text ([[B17]] typedValueModel)", () => {
   it("never adds to a sum or an average, and never meets a number criterion", () => {
     expect(ev('SUMIFS(v, k, "a")', { k: ["a", "a", "b"], v: ["10", 5, "20"] })).toBe(5);
-    expect((ev('AVERAGEIF(k, "a", v)', { k: ["a", "a", "b"], v: ["10", "30", "20"] }) as { code: string }).code).toBe("#DIV/0!");
+    expect(ev('AVERAGEIF(k, "a", v)', { k: ["a", "a", "b"], v: ["10", "30", "20"] })).toBeNull(); // no numbers: blank, as AVERAGE
     expect(ev("COUNTIF(v, 20)", { v: ["20", 20, "20"] })).toBe(1);
   });
   it("a number ordering over a range holding text is #TYPE!, never an alphabetical match", () => {

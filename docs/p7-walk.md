@@ -36,12 +36,10 @@ author's terms, what's open, and what waits on the author. When P7 closes it arc
   test of a value reads an empty slot as an empty cell (`ISNUMBER()` FALSE, `ISBLANK()` TRUE).
 - **Too many arguments is `#SYNTAX!`**, as Excel refuses it.
 - **Empty text `""` is the same as having typed nothing**, and where someone typed nothing the value is nothing: Value
-  Input's Text with nothing typed sends a blank (option B). Spaces stay text.
+  Input's Text with nothing typed sends a blank (option B). Spaces stay text. A total skips it, card and formula alike ([[D109]] aggregatesRefuseText): the Aggregate card over `2, ""` is 2, as `SUM` is.
 
 ## Open
 
-- **Totals skip `""`** (case 4): the Aggregate card's `SUM` over `[2, ""]` is `#TYPE!` where the formula says 2.
-  Next to build.
 - **`""` the same as blank everywhere** (option A): would make `ISBLANK("")` TRUE, against Excel. Left open.
 - **A formula's empty text shown as the dash** rather than "(empty)": display only.
 - **List arguments**: formulas have no array literal (`{1, 2, 3}` doesn't parse), so a list slot's Fallback can't be a

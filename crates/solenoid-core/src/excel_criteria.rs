@@ -1174,7 +1174,8 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair
     match kind {
         Kind::Count => V::Num(count as f64),
         Kind::Sum => V::Num(total()),
-        Kind::Average if kept.is_empty() => V::err(sol_error(ErrorCode::DivZero, "No rows matched the criteria")),
+        // An average over nothing is blank, as AVERAGE's is ([[C24]] arraySemantics).
+        Kind::Average if kept.is_empty() => V::Null,
         Kind::Average => V::Num(total() / kept.len() as f64),
         Kind::Min => V::Num(kept.iter().copied().reduce(js_min).unwrap_or(0.0)),
         Kind::Max => V::Num(kept.iter().copied().reduce(js_max).unwrap_or(0.0)),
@@ -1441,7 +1442,7 @@ impl Rolled {
             Kind::Count => return None,
             Kind::Min => V::Num(or_zero(pick(&self.pre_min, &self.suf_min))),
             Kind::Max => V::Num(or_zero(pick(&self.pre_max, &self.suf_max))),
-            Kind::Average if n == 0 => V::err(sol_error(ErrorCode::DivZero, "No rows matched the criteria")),
+            Kind::Average if n == 0 => V::Null,
             Kind::Sum | Kind::Average => {
                 let total = if pre {
                     self.first(k)

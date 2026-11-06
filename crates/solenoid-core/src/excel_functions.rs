@@ -3482,8 +3482,8 @@ fn text_refused(name: &str, r: Option<&Refused>, a: &[V]) -> Option<V> {
 fn refuses_text(name: &str) -> Option<(ErrorCode, bool)> {
     Some(match name {
         "SUM" | "PRODUCT" | "AVERAGE" | "SUMSQ" | "SUMPRODUCT" | "GEOMEAN" | "HARMEAN" | "AVEDEV" | "DEVSQ"
-        | "SKEW" | "SKEW.P" | "KURT" | "STDEV" | "STDEV.S" | "STDEV.P" | "VAR" | "VAR.S" | "VAR.P" | "AND" | "OR"
-        | "XOR" => (ErrorCode::Value, false),
+        | "SKEW" | "SKEW.P" | "KURT" | "STDEV" | "STDEV.S" | "STDEV.P" | "VAR" | "VAR.S" | "VAR.P" | "PTP" | "IQR"
+        | "MAD" | "SEM" | "CV" | "RMS" | "AND" | "OR" | "XOR" => (ErrorCode::Value, false),
         "MIN" | "MAX" | "MEDIAN" => (ErrorCode::Type, false),
         "LARGE" | "SMALL" | "PERCENTILE" | "PERCENTILE.INC" | "PERCENTILE.EXC" | "QUARTILE" | "QUARTILE.INC"
         | "QUARTILE.EXC" => (ErrorCode::Type, true),

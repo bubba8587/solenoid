@@ -787,7 +787,7 @@ fn formula_trees() {
 #[test]
 fn bodies_over_values_with_a_unit() {
     for suite in ["unit-lists", "unit-running", "unit-shapers", "unit-filters"] {
-        check(suite, &load(suite), |c| {
+        check_or_freeze(suite, |c| {
             let Some(args) =
                 c["args"].as_array().unwrap().iter().map(|a| core_value(a, true)).collect::<Option<Vec<_>>>()
             else {
@@ -839,7 +839,7 @@ fn folds_over_values_with_a_unit() {
     let cases = load("fold-units");
     let has_initial = |c: &Json| c.get("initial").is_some_and(|i| !is_undef(i));
     // Through the cards' bodies, as `ReduceLambdaNode` and `ByAxisNode` send a call to `engine_node`.
-    check("fold-units", &cases, |c| {
+    check_or_freeze("fold-units", |c| {
         let reduce = c["kind"] == "reduce";
         let mut inputs = vec![("table", c["m"].clone())];
         if has_initial(c) {

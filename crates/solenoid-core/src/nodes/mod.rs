@@ -748,7 +748,7 @@ pub fn keeps_answer(kind: &str) -> bool {
 
 /// Whether text on the input `key` of a `kind` card on `op` reaches its body, which answers it as its formula does
 /// ([[C17]] shareImpl, [[D109]] aggregatesRefuseText, [[D110]] logicRefusesText). Elsewhere text on a number or
-/// logical port is the port's `#TYPE!`, and so is empty text here.
+/// logical port is the port's `#TYPE!`; empty text here reads as a blank.
 pub fn reads_text(kind: &str, op: &str, key: &str) -> bool {
     match kind {
         "AggregateNode" => key == "list" && list::aggregate_formula(if op.is_empty() { "sum" } else { op }).is_some(),
