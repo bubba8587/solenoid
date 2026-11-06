@@ -19,6 +19,7 @@ const UNCOMPARED: Record<string, string> = {
   "cast:TEXT": "Cast's Format takes text; TEXT reads a number there as its format code",
   "z-test:Z.TEST": "the card reads a σ of 0 as left out and uses the sample's spread, where Z.TEST(…, 0) has none (Excel's #DIV/0!)",
   "date-diff-days:DAYS": "the card reads its start before its end, where DAYS takes the end first",
+  "date-now:NOW": "reads the clock: the card and the formula are two reads moments apart",
 };
 
 /** A function whose op wears Solenoid's own name: ISLOGICAL is the Type Check card's ISBOOLEAN. */
