@@ -235,7 +235,7 @@ Tests:
 
 ### Reading Parquet
 
-Local File reads a `.parquet` file on desktop only, from `folder/name` joined as the CSV path joins it. The shell's `read_parquet` command (`src-tauri/src/ipc.rs`) reads it with Apache's `parquet` and `arrow` crates (`crates/solenoid-parquet`) and answers the frame as one buffer of the columnar hand-off (`read_bytes`, `Columnar::to_bytes`), which crosses IPC as bytes and the app reads as a plain frame (`readParquetFrame`, `binaryFromBytes`).
+Local File reads a `.parquet` file on desktop only, from `folder/name` joined as the CSV path joins it. The shell's `read_parquet` command (`src-tauri/src/ipc.rs`) reads it with Apache's `parquet` and `arrow` crates (`crates/solenoid-parquet`) and answers the frame as one buffer of the columnar hand-off (`read_bytes`, `Columnar::to_bytes`), which crosses IPC as bytes and the app reads as a plain frame (`readParquetFrame`, `binaryFromBytes`). The command is async and decodes on a blocking thread, and a file of more than `MAX_CELLS` (25 million) cells is `#VALUE!` from its footer's row count, before anything decodes (`read_capped`).
 
 - **Column types** are the file's own, narrowed to the frame's:
   - Boolean is logical;

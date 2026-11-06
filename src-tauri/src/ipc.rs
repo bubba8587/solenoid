@@ -21,11 +21,20 @@ impl From<solenoid_core::error_value::SolError> for IpcError {
 }
 
 /// Local File's Parquet read: the file's frame as the columnar hand-off's one buffer (`crates/solenoid-parquet`
-/// `read_bytes`), which crosses as bytes, not JSON.
+/// `read_bytes`, capped at `MAX_CELLS`), which crosses as bytes, not JSON. Async and on a blocking thread: a sync
+/// command runs on the main thread, and a large file decoding there froze the window.
 #[tauri::command]
-pub fn read_parquet(folder: String, name: String) -> Result<tauri::ipc::Response, IpcError> {
-    let path = solenoid_parquet::inside(std::path::Path::new(&folder), &name)?;
-    Ok(tauri::ipc::Response::new(solenoid_parquet::read_bytes(
-        &path,
-    )?))
+pub async fn read_parquet(folder: String, name: String) -> Result<tauri::ipc::Response, IpcError> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, IpcError> {
+        let path = solenoid_parquet::inside(std::path::Path::new(&folder), &name)?;
+        Ok(solenoid_parquet::read_bytes(&path)?)
+    })
+    .await
+    .map_err(|e| {
+        IpcError::from(solenoid_core::error_value::sol_error(
+            solenoid_core::error_value::ErrorCode::Error,
+            format!("The Parquet read stopped: {e}"),
+        ))
+    })?
+    .map(tauri::ipc::Response::new)
 }

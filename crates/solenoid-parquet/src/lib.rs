@@ -21,10 +21,18 @@ use solenoid_core::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
 /// Serial 1 is 1900-01-01, so the Unix epoch is serial 25569.
 const UNIX_EPOCH_SERIAL: f64 = 25569.0;
 
+/// The most cells `read` decodes: a frame this size already takes about a gigabyte in memory.
+pub const MAX_CELLS: u64 = 25_000_000;
+
 /// `folder/name` read whole: a Boolean column is logical, text is string, a `Date` or `Timestamp` is a date serial
 /// (a timestamp's time of day as the fraction), a dictionary its values' kind, and any other column a number column
 /// when every value casts to one. A column's kind comes from the schema, so an empty file keeps it.
 pub fn read(path: &Path) -> Result<FrameValue, SolError> {
+    read_capped(path, MAX_CELLS)
+}
+
+/// `read`, refusing (`#VALUE!`) a file of more than `max_cells` cells before it decodes any.
+pub fn read_capped(path: &Path, max_cells: u64) -> Result<FrameValue, SolError> {
     let file = File::open(path).map_err(|e| {
         sol_error(
             ErrorCode::Ref,
@@ -39,6 +47,18 @@ pub fn read(path: &Path) -> Result<FrameValue, SolError> {
     };
     let builder = ParquetRecordBatchReaderBuilder::try_new(file).map_err(|e| failed(&e))?;
     let schema = builder.schema().clone();
+    // The footer's row count, before anything decodes: a compressed file can expand far past its size on disk.
+    let rows = u64::try_from(builder.metadata().file_metadata().num_rows()).unwrap_or(0);
+    let cells = rows.saturating_mul(schema.fields().len() as u64);
+    if cells > max_cells {
+        return Err(sol_error(
+            ErrorCode::Value,
+            format!(
+                "The Parquet file holds {rows} rows of {} columns, {cells} cells; the most Local File reads is {max_cells}. Filter or split it first",
+                schema.fields().len()
+            ),
+        ));
+    }
     let mut cells: Vec<Vec<FrameCell>> = vec![Vec::new(); schema.fields().len()];
     let mut types = schema
         .fields()

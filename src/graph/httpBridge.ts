@@ -59,13 +59,27 @@ export class CorsLikelyError extends Error {
   }
 }
 
+/** The desktop's fetch (Tauri's HTTP plugin). Its scope refuses this computer and the local network
+ *  (`src-tauri/capabilities/default.json`), redirects included, so a shared document can't reach them; that refusal
+ *  reads as what it is. */
+async function desktopFetch(url: string, init: Parameters<typeof import("@tauri-apps/plugin-http").fetch>[1]): Promise<Response> {
+  const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
+  try {
+    return await tauriFetch(url, init);
+  } catch (e) {
+    if (/not allowed on the configured scope|UrlNotAllowed/i.test(String(e))) {
+      throw new Error("The desktop app doesn't fetch from this computer or the local network (localhost, 192.168.x and the like).");
+    }
+    throw e;
+  }
+}
+
 export async function fetchText(url: string, init?: { headers?: Record<string, string> }): Promise<FetchedText> {
   const extra = init?.headers ?? {};
   // Only absolute URLs take the Tauri path: its Rust client has no base origin, so a relative bundled asset fails there.
   const absolute = /^https?:\/\//i.test(url.trim());
   if (isDesktop() && absolute) {
-    const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
-    const res = await tauriFetch(url, { headers: { "User-Agent": DATA_FETCH_UA, ...extra } });
+    const res = await desktopFetch(url, { headers: { "User-Agent": DATA_FETCH_UA, ...extra } });
     if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
     return { text: await readCappedText(res), contentType: res.headers.get("content-type") ?? "" };
   }
@@ -87,8 +101,7 @@ export async function fetchJson(url: string, init: { method: "POST" | "PUT" | "D
   const absolute = /^https?:\/\//i.test(url.trim());
   let res: Response;
   if (isDesktop() && absolute) {
-    const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
-    res = await tauriFetch(url, { method: init.method, headers: { "User-Agent": DATA_FETCH_UA, ...headers }, body });
+    res = await desktopFetch(url, { method: init.method, headers: { "User-Agent": DATA_FETCH_UA, ...headers }, body });
   } else {
     res = await fetch(url, { method: init.method, headers, body });
   }

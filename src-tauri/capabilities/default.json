@@ -15,7 +15,11 @@
     "dialog:default",
     {
       "identifier": "http:default",
-      "allow": [{ "url": "http://*:*" }, { "url": "https://*:*" }]
+      "allow": [{ "url": "http://*:*" }, { "url": "https://*:*" }],
+      "deny": [
+        { "url": "(https?)://(localhost|[a-z0-9.-]*\\.localhost|127\\.[0-9.]+|10\\.[0-9.]+|192\\.168\\.[0-9.]+|169\\.254\\.[0-9.]+|172\\.(?:1[6-9]|2[0-9]|3[01])\\.[0-9.]+|0\\.0\\.0\\.0):*" },
+        { "url": "(https?)://[\\:\\:1]:*" }
+      ]
     },
     {
       "identifier": "fs:allow-read-text-file",

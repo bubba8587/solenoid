@@ -173,3 +173,26 @@ fn a_name_outside_the_folder_is_refused() {
     }
     std::fs::remove_dir_all(&root).ok();
 }
+
+#[test]
+fn a_file_past_the_cell_cap_is_refused_before_it_decodes() {
+    let path = write(
+        "capped",
+        vec![
+            (
+                "a",
+                Arc::new(Int64Array::from(vec![1, 2, 3, 4, 5])) as ArrayRef,
+            ),
+            (
+                "b",
+                Arc::new(Int64Array::from(vec![1, 2, 3, 4, 5])) as ArrayRef,
+            ),
+        ],
+    );
+    let refused = solenoid_parquet::read_capped(&path, 9).unwrap_err();
+    let fits = solenoid_parquet::read_capped(&path, 10);
+    std::fs::remove_file(&path).ok();
+    assert_eq!(refused.code.as_str(), "#VALUE!");
+    assert!(refused.message.contains("10 cells"), "{}", refused.message);
+    assert_eq!(fits.unwrap().columns.len(), 2);
+}

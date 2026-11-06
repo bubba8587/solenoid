@@ -36,7 +36,11 @@
   },
   "plugins": {
     "fs": {
-      "scopeDroppedPaths": false
+      "scopeDroppedPaths": false,
+      "requireLiteralLeadingDot": true
+    },
+    "http": {
+      "scopeRedirects": true
     }
   }
 }
