@@ -8,7 +8,7 @@ import { PhysicsConstantNode } from "./physicsConstants";
 import { ElementNode } from "./chemistry";
 import { TriangleSolverNode } from "./triangle";
 import { UnitCircleNode } from "./unitCircle";
-import { CircleSolverNode, RegularPolygonNode, TwoPointsNode } from "./geometryFigures";
+import { CircleSolverNode, RegularPolygonNode, TwoPointsNode, PolygonPointsNode, SolidNode } from "./geometryFigures";
 import { ConvertNode } from "./convert";
 import { CastNode } from "./cast";
 import { FormatControllerNode } from "./formatController";
@@ -315,7 +315,8 @@ export function nodeXWide(node: GraphNode): boolean {
     node instanceof WaterfallNode || node instanceof CandlestickNode || node instanceof BoxplotNode ||
     node instanceof CalendarHeatmapNode || node instanceof HeatmapNode || node instanceof QuiverNode ||
     node instanceof RecordNode || node instanceof CardsNode || node instanceof TriangleSolverNode || node instanceof UnitCircleNode ||
-    node instanceof CircleSolverNode || node instanceof RegularPolygonNode || node instanceof TwoPointsNode;
+    node instanceof CircleSolverNode || node instanceof RegularPolygonNode || node instanceof TwoPointsNode ||
+    node instanceof PolygonPointsNode || node instanceof SolidNode;
 }
 
 export function nodeWide(node: GraphNode): boolean {

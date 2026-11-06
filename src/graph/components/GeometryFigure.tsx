@@ -158,9 +158,16 @@ export function useKeyedTable(data: KeyedFigure, defaultText: string, socketKey:
     data.edited();
     await processGraph(data.id);
   }, [data]);
-  const commitCells = useCallback((cells: Record<string, string>) => {
+  /** The keyed table edited by `edit`, every column padded to one height first and after. */
+  const editTable = useCallback((edit: (cols: FrameSourceColumn[], height: number) => void) => {
     const cols = source.map((c) => ({ ...c, cells: [...c.cells] }));
-    const height = Math.max(row + 1, ...cols.map((c) => c.cells.length));
+    const pad = () => { const h = Math.max(0, ...cols.map((c) => c.cells.length)); for (const c of cols) while (c.cells.length < h) c.cells.push(""); return h; };
+    edit(cols, pad());
+    pad();
+    return save(cols);
+  }, [source, save]);
+  /** Cells keyed into row `at` (a new column joins as a number column). */
+  const commitRow = useCallback((at: number, cells: Record<string, string>) => editTable((cols) => {
     for (const [name, text] of Object.entries(cells)) {
       let col = cols.find((c) => c.name === name);
       if (!col) {
@@ -168,14 +175,19 @@ export function useKeyedTable(data: KeyedFigure, defaultText: string, socketKey:
         cols.push(col);
       }
       col.type = "number";
-      while (col.cells.length < height) col.cells.push("");
-      col.cells[row] = text;
+      while (col.cells.length <= at) col.cells.push("");
+      col.cells[at] = text;
     }
-    for (const c of cols) while (c.cells.length < height) c.cells.push("");
-    return save(cols);
-  }, [source, row, save]);
+  }), [editTable]);
+  const commitCells = useCallback((cells: Record<string, string>) => commitRow(row, cells), [commitRow, row]);
+  /** A row inserted at `at` holding `cells`, or row `at` removed. */
+  const insertRow = useCallback((at: number, cells: Record<string, string>) =>
+    editTable((cols) => { for (const c of cols) c.cells.splice(at, 0, cells[c.name] ?? ""); }), [editTable]);
+  const removeRow = useCallback((at: number) => editTable((cols) => { for (const c of cols) c.cells.splice(at, 1); }), [editTable]);
+  /** The whole keyed table replaced (a shape switch's fresh table). */
+  const replaceTable = useCallback((text: string) => save(parseFrameSource(text)), [save]);
   const keyedAt = (name: string) => (wired ? "" : source.find((c) => c.name === name)?.cells[row] ?? "");
-  return { wired, out, rows, row, step, commitCells, keyedAt };
+  return { wired, out, rows, row, step, commitCells, commitRow, insertRow, removeRow, replaceTable, keyedAt };
 }
 
 /** One keyable value on a figure: its name, then a field holding what was keyed (the solved value its placeholder),

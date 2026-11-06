@@ -5,6 +5,7 @@ import type { SocketDataType } from "./sockets";
 import { DIST_SPECS, DistributionsNode, type DistKey } from "./nodes/distribution";
 
 import { ChartNode, SparklineNode, SurfaceNode, ProportionNode, RecordNode, ConditionalRegionsNode } from "./nodes/visual";
+import { SolidNode, SOLID_OP_META } from "./nodes/geometryFigures";
 import { CHART_OP_META, SPARKLINE_OP_META, PROPORTION_OP_META, RECORD_OP_META, REGIONS_OP_META } from "./nodes/visual";
 import {
   FillNode, SetsNode, SumIfsNode, ShuffleNode,
@@ -109,6 +110,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "conditional-regions", ctor: ConditionalRegionsNode, ops: fromMeta(REGIONS_OP_META),
     create: (op) => new ConditionalRegionsNode({ op: op as never }) },
   { type: "surface", ctor: SurfaceNode },
+  { type: "geo-solid", ctor: SolidNode, ops: fromMeta(SOLID_OP_META),
+    create: (op) => new SolidNode({ op }) },
   { type: "distributions", ctor: DistributionsNode, ops: DIST_OPS,
     create: (op) => new DistributionsNode({ op: op as never }) },
 

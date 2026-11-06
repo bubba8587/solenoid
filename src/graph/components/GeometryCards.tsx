@@ -1,8 +1,8 @@
 // [[C25]], [[B19]] spreadsheetHabits
 
 import { useRef, useState, type ReactNode, type PointerEvent as ReactPointerEvent } from "react";
-import type { CircleSolverNode, RegularPolygonNode, TwoPointsNode } from "../nodeClasses";
-import { CIRCLE_DEFAULT, POLYGON_DEFAULT, POINTS_DEFAULT } from "../nodes/geometryFigures";
+import type { CircleSolverNode, RegularPolygonNode, TwoPointsNode, PolygonPointsNode } from "../nodeClasses";
+import { CIRCLE_DEFAULT, POLYGON_DEFAULT, POINTS_DEFAULT, VERTICES_DEFAULT } from "../nodes/geometryFigures";
 import { NodeShell, type NodeProps, type Emit } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { EquationOutRow } from "./EquationNode";
@@ -10,7 +10,7 @@ import { FrameDisplay } from "./FrameDisplay";
 import { isSolError } from "../errorValue";
 import { nodeDisplayName } from "../catalogUtils";
 import { previewed } from "../listPreview";
-import type { FrameValue } from "../frame";
+import { isFrameValue, type FrameValue } from "../frame";
 import type { GraphNode } from "../graphModel";
 import type { DisplayValue } from "./valueDisplayFormat";
 import {
@@ -20,26 +20,28 @@ import {
 
 type Table = ReturnType<typeof useKeyedTable>;
 
-/** The figure cards' shared shell: the table's socket row, the figure in its Recess with the pager, Valid for a
- *  solver, and the frame's Preview. */
-function FigureCard({ data, emit, table, valid, children }: {
-  data: GraphNode & { cachedResult: unknown; width: number; height: number }; emit: Emit; table: Table; valid?: unknown; children: ReactNode;
+/** The figure cards' shared shell: a control above (a shape picker), the table's socket row, the figure in its
+ *  Recess with the pager, Valid for a solver, and a Preview per frame output (the answer frame by default). */
+export function FigureCard({ data, emit, table, valid, header, frames, pager = true, children }: {
+  data: GraphNode & { cachedResult: unknown; width: number; height: number }; emit: Emit; table: Table; valid?: unknown;
+  header?: ReactNode; frames?: [string, unknown][]; pager?: boolean; children: ReactNode;
 }) {
   const shown = Array.isArray(valid) ? (valid[table.row] ?? null) : valid;
+  const outs = frames ?? [["frame", table.out ?? (isSolError(data.cachedResult) ? data.cachedResult : null)]];
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
+      {header}
       <InlineInputs node={data} emit={emit} />
       <div className="solenoid-geo__figure">
         <div className="solenoid-geo__stage">{children}</div>
-        <RowPager row={table.row} rows={table.rows} onStep={table.step} />
+        {pager && <RowPager row={table.row} rows={table.rows} onStep={table.step} />}
       </div>
       {valid !== undefined && <EquationOutRow node={data} emit={emit} socketKey="valid" label="Valid" value={shown as DisplayValue} />}
-      <FrameOutRow node={data} socketKey="frame" emit={emit}>
-        <FrameDisplay
-          frame={previewed(() => (table.out ?? (isSolError(data.cachedResult) ? data.cachedResult : null)) as FrameValue | null)}
-          label={nodeDisplayName(data)}
-        />
-      </FrameOutRow>
+      {outs.map(([key, frame]) => (
+        <FrameOutRow key={key} node={data} socketKey={key} emit={emit}>
+          <FrameDisplay frame={previewed(() => frame as FrameValue | null)} label={nodeDisplayName(data)} />
+        </FrameOutRow>
+      ))}
     </NodeShell>
   );
 }
@@ -244,9 +246,6 @@ export function TwoPointsComponent({ data, emit }: NodeProps<TwoPointsNode>) {
     <FigureField key={`${k}:${table.row}`} name={name} keyed={table.keyedAt(k)} solved={pts[k as keyof typeof pts]}
       isSolved={false} editable={!table.wired} onCommit={(t) => void table.commitCells({ [k]: t })} ariaLabel={k} />
   );
-  const xs: number[] = [], ys: number[] = [];
-  for (let g = Math.ceil(view.x0 / view.step) * view.step; g <= view.x1 + 1e-9; g += view.step) xs.push(g);
-  for (let g = Math.ceil(view.y0 / view.step) * view.step; g <= view.y1 + 1e-9; g += view.step) ys.push(g);
   // The line through the points, across the whole view.
   let line: [Pt, Pt] | null = null;
   if (have && (pts.x1 !== pts.x2 || pts.y1 !== pts.y2)) {
@@ -268,15 +267,7 @@ export function TwoPointsComponent({ data, emit }: NodeProps<TwoPointsNode>) {
   return (
     <FigureCard data={data} emit={emit} table={table}>
       <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="solenoid-geo__svg">
-        <g stroke="var(--border)" strokeWidth="1">
-          {xs.map((g) => { const a = toFig(g, view.y0), b = toFig(g, view.y1); return <line key={`x${g}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} />; })}
-          {ys.map((g) => { const a = toFig(view.x0, g), b = toFig(view.x1, g); return <line key={`y${g}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} />; })}
-        </g>
-        {view.x0 <= 0 && view.x1 >= 0 && (() => { const a = toFig(0, view.y0), b = toFig(0, view.y1); return <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="var(--border-strong)" strokeWidth="1.2" />; })()}
-        {view.y0 <= 0 && view.y1 >= 0 && (() => { const a = toFig(view.x0, 0), b = toFig(view.x1, 0); return <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="var(--border-strong)" strokeWidth="1.2" />; })()}
-        <clipPath id={`grid-${data.id}`}>
-          <rect x={toFig(view.x0, view.y1).x} y={toFig(view.x0, view.y1).y} width={(view.x1 - view.x0) * view.k} height={(view.y1 - view.y0) * view.k} />
-        </clipPath>
+        <GridLayer view={view} clipId={`grid-${data.id}`} />
         {line && <line x1={line[0].x} y1={line[0].y} x2={line[1].x} y2={line[1].y} stroke="var(--text-muted)" strokeWidth="1" strokeDasharray="4 3" clipPath={`url(#grid-${data.id})`} />}
         {P1 && P2 && (
           <>
@@ -310,6 +301,31 @@ export function TwoPointsComponent({ data, emit }: NodeProps<TwoPointsNode>) {
 
 type View = { x0: number; x1: number; y0: number; y1: number; k: number; ox: number; oy: number; step: number };
 
+const toFigOf = (view: View) => (x: number, y: number): Pt => ({ x: view.ox + x * view.k, y: view.oy - y * view.k });
+
+/** A coordinate grid over the view: its lines at the view's step, the axes where they show, and a clip to the grid's
+ *  box for what is drawn across it. */
+function GridLayer({ view, clipId }: { view: View; clipId: string }) {
+  const toFig = toFigOf(view);
+  const xs: number[] = [], ys: number[] = [];
+  for (let g = Math.ceil(view.x0 / view.step) * view.step; g <= view.x1 + 1e-9; g += view.step) xs.push(g);
+  for (let g = Math.ceil(view.y0 / view.step) * view.step; g <= view.y1 + 1e-9; g += view.step) ys.push(g);
+  const seg = (a: Pt, b: Pt, key: string, axis = false) => (
+    <line key={key} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={axis ? "var(--border-strong)" : "var(--border)"} strokeWidth={axis ? 1.2 : 1} />
+  );
+  return (
+    <>
+      {xs.map((g) => seg(toFig(g, view.y0), toFig(g, view.y1), `x${g}`))}
+      {ys.map((g) => seg(toFig(view.x0, g), toFig(view.x1, g), `y${g}`))}
+      {view.x0 <= 0 && view.x1 >= 0 && seg(toFig(0, view.y0), toFig(0, view.y1), "ax", true)}
+      {view.y0 <= 0 && view.y1 >= 0 && seg(toFig(view.x0, 0), toFig(view.x1, 0), "ay", true)}
+      <clipPath id={clipId}>
+        <rect x={toFig(view.x0, view.y1).x} y={toFig(view.x0, view.y1).y} width={(view.x1 - view.x0) * view.k} height={(view.y1 - view.y0) * view.k} />
+      </clipPath>
+    </>
+  );
+}
+
 /** The data window around the points, padded and square (one unit is the same length across and up), fitted to the
  *  figure under its coordinate panel. */
 function viewFor(xs: number[], ys: number[]): View {
@@ -328,3 +344,98 @@ function viewFor(xs: number[], ys: number[]): View {
 }
 
 const pctAt = (p: Pt) => ({ left: `${(p.x / W) * 100}%`, top: `${(p.y / H) * 100}%` });
+
+// ─── Polygon from Points ────────────────────────────────────────────────────────────────────────────────────────────
+
+/** The Polygon from Points card: the polygon on a grid with its centroid, each vertex numbered by its row. A vertex
+ *  drags; a double-click on an edge adds one there and on a vertex removes it (down to three). */
+export function PolygonPointsComponent({ data, emit }: NodeProps<PolygonPointsNode>) {
+  const table = useKeyedTable(data, VERTICES_DEFAULT, "vertices");
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [drag, setDrag] = useState<{ i: number; x: number; y: number; view: View } | null>(null);
+  const col = (name: string) => table.out?.columns.find((c) => c.name === name)?.values ?? [];
+  const xs = col("x"), ys = col("y");
+  const verts = xs.flatMap((x, i) => (typeof x === "number" && typeof ys[i] === "number" ? [{ i, x, y: ys[i] as number }] : []))
+    .map((v) => (drag?.i === v.i ? { ...v, x: drag.x, y: drag.y } : v));
+  const view = drag?.view ?? viewFor(verts.length ? verts.map((v) => v.x) : [0, 1], verts.length ? verts.map((v) => v.y) : [0, 1]);
+  const toFig = toFigOf(view);
+  const poly = isFrameValue(data.cachedPolygon) ? data.cachedPolygon : null;
+  const sum = (name: string) => poly?.columns.find((c) => c.name === name)?.values[0];
+  const cx = sum("centroid x"), cy = sum("centroid y");
+  const centroid = typeof cx === "number" && typeof cy === "number" ? toFig(cx, cy) : null;
+  const pts = verts.map((v) => ({ ...v, p: toFig(v.x, v.y) }));
+  const mid = centroid ?? { x: pts.reduce((a, v) => a + v.p.x, 0) / (pts.length || 1), y: pts.reduce((a, v) => a + v.p.y, 0) / (pts.length || 1) };
+  const editable = !table.wired;
+
+  const grab = (i: number, x: number, y: number) => (e: ReactPointerEvent<SVGCircleElement>) => {
+    if (!editable) return;
+    e.stopPropagation();
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDrag({ i, x, y, view });
+  };
+  const move = (e: ReactPointerEvent<SVGCircleElement>) => {
+    const m = drag && svgRef.current?.getScreenCTM();
+    if (!drag || !m) return;
+    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+    const snap = drag.view.step / 10, round = (v: number) => Number((Math.round(v / snap) * snap).toPrecision(12));
+    setDrag({ ...drag, x: round((p.x - drag.view.ox) / drag.view.k), y: round((drag.view.oy - p.y) / drag.view.k) });
+  };
+  const drop = () => {
+    if (!drag) return;
+    void table.commitRow(drag.i, { x: String(drag.x), y: String(drag.y) }).then(() => setDrag(null));
+  };
+  const addAfter = (k: number) => {
+    const a = verts[k], b = verts[(k + 1) % verts.length];
+    const round = (v: number) => Number(v.toPrecision(12));
+    void table.insertRow(a.i + 1, { x: String(round((a.x + b.x) / 2)), y: String(round((a.y + b.y) / 2)) });
+  };
+  const area = sum("area"), perimeter = sum("perimeter"), convex = sum("convex");
+  const show = (v: unknown) => (typeof v === "number" ? shortNum(v) : isSolError(v) ? v.code : "–");
+
+  return (
+    <FigureCard data={data} emit={emit} table={table} pager={false}
+      frames={[["vertices", table.out ?? (isSolError(data.cachedResult) ? data.cachedResult : null)], ["polygon", data.cachedPolygon]]}>
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="solenoid-geo__svg">
+        <GridLayer view={view} clipId={`grid-${data.id}`} />
+        {pts.length >= 2 && (
+          <polygon points={pts.map((v) => `${v.p.x},${v.p.y}`).join(" ")} fill="var(--node-accent)" fillOpacity="0.14"
+            stroke="var(--node-accent)" strokeWidth="2" strokeLinejoin="round" />
+        )}
+        {editable && pts.length >= 2 && pts.map((v, k) => {
+          const w = pts[(k + 1) % pts.length];
+          return <line key={`e${v.i}`} x1={v.p.x} y1={v.p.y} x2={w.p.x} y2={w.p.y} stroke="transparent" strokeWidth="10"
+            className="nodrag" onDoubleClick={(e) => { e.stopPropagation(); addAfter(k); }} />;
+        })}
+        {centroid && (
+          <g stroke="var(--text-muted)" strokeWidth="1.5">
+            <line x1={centroid.x - 4} y1={centroid.y} x2={centroid.x + 4} y2={centroid.y} />
+            <line x1={centroid.x} y1={centroid.y - 4} x2={centroid.x} y2={centroid.y + 4} />
+          </g>
+        )}
+        {pts.map((v) => (
+          <circle key={v.i} cx={v.p.x} cy={v.p.y} r={drag?.i === v.i ? 5.5 : 4.5} fill="var(--text)"
+            className={editable ? "solenoid-geo__handle nodrag" : undefined}
+            onPointerDown={grab(v.i, v.x, v.y)} onPointerMove={move} onPointerUp={drop} onMouseDown={stop}
+            onDoubleClick={(e) => { e.stopPropagation(); if (editable && verts.length > 3) void table.removeRow(v.i); }} />
+        ))}
+      </svg>
+      {pts.map((v) => {
+        const d = unit(v.p.x - mid.x, v.p.y - mid.y);
+        return (
+          <div key={`n${v.i}`} className="solenoid-geo__label" style={pctAt({ x: v.p.x + d.x * 11, y: v.p.y + d.y * 11 })}>
+            <span className="solenoid-geo__letter">{v.i + 1}</span>
+          </div>
+        );
+      })}
+      {poly && (
+        <div className="solenoid-geo__readout">
+          <span className="solenoid-geo__letter">area</span><span className="solenoid-geo__value">{show(area)}</span>
+          <span className="solenoid-geo__letter">perimeter</span><span className="solenoid-geo__value">{show(perimeter)}</span>
+          <span className="solenoid-geo__letter">centroid</span><span className="solenoid-geo__value">{typeof cx === "number" && typeof cy === "number" ? `(${shortNum(cx)}, ${shortNum(cy)})` : show(cx)}</span>
+          <span className="solenoid-geo__letter">convex</span><span className="solenoid-geo__value">{convex === true ? "yes" : convex === false ? "no" : "–"}</span>
+        </div>
+      )}
+    </FigureCard>
+  );
+}

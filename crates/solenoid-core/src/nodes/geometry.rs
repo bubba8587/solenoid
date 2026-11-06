@@ -24,6 +24,8 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "CircleSolverNode" => circle_solver(c),
         "RegularPolygonNode" => regular_polygon(c),
         "TwoPointsNode" => two_points(c),
+        "PolygonPointsNode" => polygon_points(c),
+        "SolidNode" => solid_solver(c),
         _ => return None,
     })
 }
@@ -449,8 +451,19 @@ pub(crate) enum Measure {
     Angle,
     /// A bare number (a count, a slope): no unit.
     Plain,
+    /// A volume, in that length unit cubed.
+    Volume,
     /// Text the card writes (an equation); it reads none.
     Text,
+    /// A logical the card writes (convex or not); it reads none.
+    Flag,
+}
+
+impl Measure {
+    /// A column the card only writes.
+    fn written(self) -> bool {
+        matches!(self, Measure::Text | Measure::Flag)
+    }
 }
 
 /// A figure card's input table: the wired frame or the card's own keyed one, each column's factor into the figure's
@@ -489,6 +502,7 @@ impl<'s> FigureTable<'s> {
             spec.iter().filter(|(_, m)| *m == Measure::Length).find_map(|(k, _)| col(k).and_then(|c| c.unit.clone()));
         let target = length_unit.as_ref().map(unit_of_json);
         let square = target.as_ref().map(|(dim, to)| (dim_pow(dim, 2.0), to * to));
+        let cube = target.as_ref().map(|(dim, to)| (dim_pow(dim, 3.0), to * to * to));
         let deg = unit_of_json(&super::columns::unit_json(&angle_dim(), Some("deg")));
         let factors: Result<Vec<f64>, V> = spec
             .iter()
@@ -496,8 +510,9 @@ impl<'s> FigureTable<'s> {
                 let into = match m {
                     Measure::Angle => Some(&deg),
                     Measure::Area => square.as_ref(),
+                    Measure::Volume => cube.as_ref(),
                     Measure::Length => target.as_ref(),
-                    Measure::Plain | Measure::Text => None,
+                    Measure::Plain | Measure::Text | Measure::Flag => None,
                 };
                 match (col(k).and_then(|c| c.unit.as_ref()).map(unit_of_json), into, m) {
                     (Some(_), _, Measure::Plain) => Err(V::err(unit_error(&format!("{k} takes no unit.")))),
@@ -506,6 +521,9 @@ impl<'s> FigureTable<'s> {
                     (Some(_), Some(_), Measure::Angle) => Err(V::err(unit_error(&format!("{k} is an angle.")))),
                     (Some(_), Some(_), Measure::Area) => {
                         Err(V::err(unit_error(&format!("{k} must be in the lengths' unit squared."))))
+                    }
+                    (Some(_), Some(_), Measure::Volume) => {
+                        Err(V::err(unit_error(&format!("{k} must be in the lengths' unit cubed."))))
                     }
                     _ => Err(V::err(unit_error(&format!("{lengths} must share one dimension.")))),
                 }
@@ -516,7 +534,7 @@ impl<'s> FigureTable<'s> {
             Err(e) => (vec![1.0; spec.len()], Some(e)),
         };
         // A part is an amount: a date or logical column among them is refused, never read as its serial.
-        let kind_err = spec.iter().filter(|(_, m)| *m != Measure::Text).find_map(|(k, _)| match col(k).map(|c| c.ty) {
+        let kind_err = spec.iter().filter(|(_, m)| !m.written()).find_map(|(k, _)| match col(k).map(|c| c.ty) {
             Some(FrameColType::Date) => Some(err(ErrorCode::Type, format!("{k} is a date column; it takes numbers."))),
             Some(FrameColType::Logical) => {
                 Some(err(ErrorCode::Type, format!("{k} is a logical column; it takes numbers.")))
@@ -534,7 +552,7 @@ impl<'s> FigureTable<'s> {
             .iter()
             .enumerate()
             .map(|(k, (name, m))| {
-                if *m == Measure::Text {
+                if m.written() {
                     return None;
                 }
                 let cell = self
@@ -563,44 +581,55 @@ impl<'s> FigureTable<'s> {
         (given, cell_err)
     }
 
+    /// The length unit raised to `power`, with its display where the catalog names one (`m2`, `cm3`).
+    fn unit_power(&self, power: f64) -> Option<Json> {
+        let u = self.length_unit.as_ref()?;
+        let dim: Dim = serde_json::from_value(u.get("dim")?.clone()).ok()?;
+        let raised = dim_pow(&dim, power);
+        let id = u.get("display").and_then(Json::as_str).map(|d| format!("{d}{power}"));
+        let display = id.filter(|i| fc_unit_to_unit(i).is_some_and(|q| dim_equal(&q.dim, &raised)));
+        Some(super::columns::unit_json(&raised, display.as_deref()))
+    }
+
+    /// A column of `values` named `name`, in its measure's unit.
+    fn column(&self, name: &str, m: Measure, values: Vec<V>) -> Column {
+        let base = super::frames::num_column(name, values);
+        match m {
+            Measure::Length => Column { unit: self.length_unit.clone(), ..base },
+            Measure::Area => Column { unit: self.unit_power(2.0), ..base },
+            Measure::Volume => Column { unit: self.unit_power(3.0), ..base },
+            Measure::Angle => Column { unit: Some(super::columns::unit_json(&angle_dim(), Some("deg"))), ..base },
+            Measure::Plain => base,
+            Measure::Text => Column { ty: FrameColType::String, ..base },
+            Measure::Flag => Column { ty: FrameColType::Logical, ..base },
+        }
+    }
+
     /// The input frame with the spec's columns filled from `out` (each in its measure's unit) in place, the rest kept,
     /// and any spec column the input lacked appended in the spec's order.
     pub(crate) fn answer(&self, mut out: Vec<Vec<V>>) -> Cv {
-        let area_unit = self.length_unit.as_ref().and_then(|u| {
-            let dim: Dim = serde_json::from_value(u.get("dim")?.clone()).ok()?;
-            let sq = dim_pow(&dim, 2.0);
-            let id = u.get("display").and_then(Json::as_str).map(|d| format!("{d}2"));
-            let display = id.filter(|i| fc_unit_to_unit(i).is_some_and(|q| dim_equal(&q.dim, &sq)));
-            Some(super::columns::unit_json(&sq, display.as_deref()))
-        });
-        let shaped = |k: usize, values: Vec<V>| {
-            let (name, m) = self.spec[k];
-            let base = super::frames::num_column(name, values);
-            match m {
-                Measure::Length => Column { unit: self.length_unit.clone(), ..base },
-                Measure::Area => Column { unit: area_unit.clone(), ..base },
-                Measure::Angle => Column { unit: Some(super::columns::unit_json(&angle_dim(), Some("deg"))), ..base },
-                Measure::Plain => base,
-                Measure::Text => Column { ty: FrameColType::String, ..base },
-            }
-        };
         let mut columns: Vec<Column> = Vec::with_capacity(self.input.columns.len() + self.spec.len());
         let mut placed = vec![false; self.spec.len()];
         for c0 in &self.input.columns {
             match self.spec.iter().position(|(k, _)| *k == c0.name) {
                 Some(k) if !placed[k] => {
                     placed[k] = true;
-                    columns.push(shaped(k, std::mem::take(&mut out[k])));
+                    columns.push(self.column(self.spec[k].0, self.spec[k].1, std::mem::take(&mut out[k])));
                 }
                 _ => columns.push(c0.clone()),
             }
         }
         for k in 0..self.spec.len() {
             if !placed[k] {
-                columns.push(shaped(k, std::mem::take(&mut out[k])));
+                columns.push(self.column(self.spec[k].0, self.spec[k].1, std::mem::take(&mut out[k])));
             }
         }
         super::frames::frame_v(columns)
+    }
+
+    /// A frame of its own, `spec`'s columns from `out`, in the table's units: a summary beside the answer.
+    pub(crate) fn summary(&self, spec: &[(&str, Measure)], out: Vec<Vec<V>>) -> Cv {
+        super::frames::frame_v(spec.iter().zip(out).map(|((name, m), values)| self.column(name, *m, values)).collect())
     }
 }
 
@@ -1265,4 +1294,396 @@ fn roots_on(g: &dyn Fn(f64) -> f64, lo: f64, hi: f64, scale: f64) -> Vec<f64> {
         }
     }
     roots
+}
+
+// ─── Polygon from Points ────────────────────────────────────────────────────────────────────────────────────────────
+
+/// The keyed table a fresh card holds: an irregular pentagon, one vertex per row.
+pub(crate) const VERTICES_DEFAULT: &str =
+    r#"[{"name":"x","cells":["0","4","5","2","-1"]},{"name":"y","cells":["0","0","3","5","3"]}]"#;
+
+/// The polygon's summary row.
+const POLYGON_SUMMARY: [(&str, Measure); 7] = [
+    ("vertices", Measure::Plain),
+    ("area", Measure::Area),
+    ("perimeter", Measure::Length),
+    ("centroid x", Measure::Length),
+    ("centroid y", Measure::Length),
+    ("convex", Measure::Flag),
+    ("orientation", Measure::Text),
+];
+
+/// Do segments ab and cd cross (touching counts)?
+fn segments_cross(a: (f64, f64), b: (f64, f64), c: (f64, f64), d: (f64, f64)) -> bool {
+    let orient = |p: (f64, f64), q: (f64, f64), r: (f64, f64)| (q.0 - p.0) * (r.1 - p.1) - (q.1 - p.1) * (r.0 - p.0);
+    let on = |p: (f64, f64), q: (f64, f64), r: (f64, f64)| {
+        r.0 >= p.0.min(q.0) && r.0 <= p.0.max(q.0) && r.1 >= p.1.min(q.1) && r.1 <= p.1.max(q.1)
+    };
+    let (d1, d2, d3, d4) = (orient(c, d, a), orient(c, d, b), orient(a, b, c), orient(a, b, d));
+    if ((d1 > 0.0 && d2 < 0.0) || (d1 < 0.0 && d2 > 0.0)) && ((d3 > 0.0 && d4 < 0.0) || (d3 < 0.0 && d4 > 0.0)) {
+        return true;
+    }
+    (d1 == 0.0 && on(c, d, a)) || (d2 == 0.0 && on(c, d, b)) || (d3 == 0.0 && on(a, b, c)) || (d4 == 0.0 && on(a, b, d))
+}
+
+/// Polygon from Points: the vertices in order, one per row (a row with neither coordinate is skipped), closed back to
+/// the first. Each vertex gets its edge to the next and its interior angle; the polygon row has the count, the
+/// shoelace area, the perimeter, the centroid, whether it is convex and which way it winds. Edges that cross make
+/// the area and centroid `#DOMAIN!`.
+fn polygon_points(c: &mut Call) -> Answer {
+    use Measure::*;
+    const SPEC: [(&str, Measure); 4] = [("x", Length), ("y", Length), ("edge", Length), ("angle", Angle)];
+    let t = match FigureTable::read(c, "vertices", VERTICES_DEFAULT, &SPEC, "The coordinates") {
+        Ok(t) => t,
+        Err(e) => {
+            c.show("cachedResult", e.clone());
+            c.show("cachedPolygon", e.clone());
+            return Ok(vec![("vertices".into(), Cv::V(e.clone())), ("polygon".into(), Cv::V(e))]);
+        }
+    };
+    let mut out: Vec<Vec<V>> = (0..4).map(|_| vec![V::Null; t.rows]).collect();
+    // The vertices in order, with the row each came from; the first bad row stops the polygon.
+    let mut pts: Vec<(f64, f64)> = Vec::new();
+    let mut at: Vec<usize> = Vec::new();
+    let mut bad: Option<V> = None;
+    for i in 0..t.rows {
+        let (g, cell_err) = t.row(i);
+        match (cell_err, g[0], g[1]) {
+            (Some(e), ..) => {
+                bad.get_or_insert(e);
+            }
+            (None, Some(x), Some(y)) => {
+                out[0][i] = V::Num(x);
+                out[1][i] = V::Num(y);
+                pts.push((x, y));
+                at.push(i);
+            }
+            (None, None, None) => {}
+            (None, x, y) => {
+                out[0][i] = x.map_or(V::Null, V::Num);
+                out[1][i] = y.map_or(V::Null, V::Num);
+                bad.get_or_insert(err(ErrorCode::Value, format!("Row {} has one coordinate", i + 1)));
+            }
+        }
+    }
+    let n = pts.len();
+    let summary: Vec<V> = if let Some(e) = bad {
+        for col in out.iter_mut().skip(2) {
+            for v in col.iter_mut() {
+                *v = e.clone();
+            }
+        }
+        vec![e; 7]
+    } else if n < 3 {
+        vec![V::Num(n as f64), V::Null, V::Null, V::Null, V::Null, V::Null, V::Null]
+    } else {
+        let next = |k: usize| pts[(k + 1) % n];
+        let prev = |k: usize| pts[(k + n - 1) % n];
+        let twice: f64 = (0..n).map(|k| pts[k].0 * next(k).1 - next(k).0 * pts[k].1).sum();
+        let ccw = twice >= 0.0;
+        let mut turns = (0, 0);
+        let mut perimeter = 0.0;
+        for k in 0..n {
+            let (p, q, r) = (prev(k), pts[k], next(k));
+            let edge = crate::excel_functions::hypot_all(&[r.0 - q.0, r.1 - q.1]);
+            perimeter += edge;
+            out[2][at[k]] = V::Num(edge);
+            let (u, v) = ((q.0 - p.0, q.1 - p.1), (r.0 - q.0, r.1 - q.1));
+            let cross = u.0 * v.1 - u.1 * v.0;
+            let dot = u.0 * v.0 + u.1 * v.1;
+            out[3][at[k]] = if (u.0 == 0.0 && u.1 == 0.0) || (v.0 == 0.0 && v.1 == 0.0) {
+                err(ErrorCode::DivZero, format!("Row {} repeats a neighbor", at[k] + 1))
+            } else {
+                // The turn at the vertex, counted the way the polygon winds; the interior angle is what it leaves.
+                let turn = libm::atan2(if ccw { cross } else { -cross }, dot) * R2D;
+                V::Num(180.0 - turn)
+            };
+            if cross > 0.0 {
+                turns.0 += 1;
+            } else if cross < 0.0 {
+                turns.1 += 1;
+            }
+        }
+        let simple = !(0..n)
+            .any(|a| (a + 2..n).any(|b| (a != 0 || b != n - 1) && segments_cross(pts[a], next(a), pts[b], next(b))));
+        let convex = simple && (turns.0 == 0 || turns.1 == 0);
+        let (area, cx, cy) = if simple && twice != 0.0 {
+            let (mut sx, mut sy) = (0.0, 0.0);
+            for k in 0..n {
+                let w = pts[k].0 * next(k).1 - next(k).0 * pts[k].1;
+                sx += (pts[k].0 + next(k).0) * w;
+                sy += (pts[k].1 + next(k).1) * w;
+            }
+            (V::Num(twice.abs() / 2.0), V::Num(sx / (3.0 * twice)), V::Num(sy / (3.0 * twice)))
+        } else if simple {
+            let e = err(ErrorCode::DivZero, "The vertices lie on one line");
+            (V::Num(0.0), e.clone(), e)
+        } else {
+            let e = err(ErrorCode::Domain, "The edges cross, so the polygon has no one area");
+            (e.clone(), e.clone(), e)
+        };
+        vec![
+            V::Num(n as f64),
+            area,
+            V::Num(perimeter),
+            cx,
+            cy,
+            V::Bool(convex),
+            V::str(if ccw { "counterclockwise" } else { "clockwise" }),
+        ]
+    };
+    let frame = t.answer(out);
+    let polygon = t.summary(&POLYGON_SUMMARY, summary.into_iter().map(|v| vec![v]).collect());
+    c.show("cachedResult", frame.clone());
+    c.show("cachedPolygon", polygon.clone());
+    Ok(vec![("vertices".into(), frame), ("polygon".into(), polygon)])
+}
+
+// ─── Solids ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// A solid the card solves: its columns (its dimensions first) and each part from the dimensions.
+struct Solid {
+    spec: &'static [(&'static str, Measure)],
+    /// How many of the leading columns are the dimensions the rest are worked from.
+    dims: usize,
+    part: fn(usize, &[f64]) -> f64,
+    default: &'static str,
+}
+
+fn sphere_part(k: usize, d: &[f64]) -> f64 {
+    let r = d[0];
+    [r, 2.0 * r, 4.0 / 3.0 * PI * r * r * r, 4.0 * PI * r * r][k]
+}
+fn cube_part(k: usize, d: &[f64]) -> f64 {
+    let s = d[0];
+    [s, s * std::f64::consts::SQRT_2, s * 3f64.sqrt(), s * s * s, 6.0 * s * s][k]
+}
+fn box_part(k: usize, d: &[f64]) -> f64 {
+    let (l, w, h) = (d[0], d[1], d[2]);
+    [l, w, h, crate::excel_functions::hypot_all(&[l, w, h]), l * w * h, 2.0 * (l * w + l * h + w * h)][k]
+}
+fn cylinder_part(k: usize, d: &[f64]) -> f64 {
+    let (r, h) = (d[0], d[1]);
+    [r, h, 2.0 * r, PI * r * r * h, 2.0 * PI * r * h, 2.0 * PI * r * (r + h)][k]
+}
+fn cone_part(k: usize, d: &[f64]) -> f64 {
+    let (r, h) = (d[0], d[1]);
+    let l = crate::excel_functions::hypot_all(&[r, h]);
+    [r, h, 2.0 * r, l, PI * r * r * h / 3.0, PI * r * l, PI * r * (r + l)][k]
+}
+fn pyramid_part(k: usize, d: &[f64]) -> f64 {
+    let (b, h) = (d[0], d[1]);
+    let slant = crate::excel_functions::hypot_all(&[h, b / 2.0]);
+    let edge = (h * h + b * b / 2.0).sqrt();
+    [b, h, slant, edge, b * b * h / 3.0, 2.0 * b * slant, b * b + 2.0 * b * slant][k]
+}
+
+/// The solid each shape names, by the card's `op`.
+fn solid_of(op: &str) -> Solid {
+    use Measure::*;
+    match op {
+        "cube" => Solid {
+            spec: &[
+                ("side", Length),
+                ("face diagonal", Length),
+                ("diagonal", Length),
+                ("volume", Volume),
+                ("surface", Area),
+            ],
+            dims: 1,
+            part: cube_part,
+            default: r#"[{"name":"side","cells":["3"]},{"name":"face diagonal","cells":[""]},{"name":"diagonal","cells":[""]},{"name":"volume","cells":[""]},{"name":"surface","cells":[""]}]"#,
+        },
+        "box" => Solid {
+            spec: &[
+                ("length", Length),
+                ("width", Length),
+                ("height", Length),
+                ("diagonal", Length),
+                ("volume", Volume),
+                ("surface", Area),
+            ],
+            dims: 3,
+            part: box_part,
+            default: r#"[{"name":"length","cells":["4"]},{"name":"width","cells":["3"]},{"name":"height","cells":["2"]},{"name":"diagonal","cells":[""]},{"name":"volume","cells":[""]},{"name":"surface","cells":[""]}]"#,
+        },
+        "cylinder" => Solid {
+            spec: &[
+                ("r", Length),
+                ("h", Length),
+                ("d", Length),
+                ("volume", Volume),
+                ("lateral", Area),
+                ("surface", Area),
+            ],
+            dims: 2,
+            part: cylinder_part,
+            default: r#"[{"name":"r","cells":["2"]},{"name":"h","cells":["5"]},{"name":"d","cells":[""]},{"name":"volume","cells":[""]},{"name":"lateral","cells":[""]},{"name":"surface","cells":[""]}]"#,
+        },
+        "cone" => Solid {
+            spec: &[
+                ("r", Length),
+                ("h", Length),
+                ("d", Length),
+                ("slant", Length),
+                ("volume", Volume),
+                ("lateral", Area),
+                ("surface", Area),
+            ],
+            dims: 2,
+            part: cone_part,
+            default: r#"[{"name":"r","cells":["3"]},{"name":"h","cells":["4"]},{"name":"d","cells":[""]},{"name":"slant","cells":[""]},{"name":"volume","cells":[""]},{"name":"lateral","cells":[""]},{"name":"surface","cells":[""]}]"#,
+        },
+        "pyramid" => Solid {
+            spec: &[
+                ("base", Length),
+                ("h", Length),
+                ("slant", Length),
+                ("edge", Length),
+                ("volume", Volume),
+                ("lateral", Area),
+                ("surface", Area),
+            ],
+            dims: 2,
+            part: pyramid_part,
+            default: r#"[{"name":"base","cells":["4"]},{"name":"h","cells":["3"]},{"name":"slant","cells":[""]},{"name":"edge","cells":[""]},{"name":"volume","cells":[""]},{"name":"lateral","cells":[""]},{"name":"surface","cells":[""]}]"#,
+        },
+        _ => Solid {
+            spec: &[("r", Length), ("d", Length), ("volume", Volume), ("surface", Area)],
+            dims: 1,
+            part: sphere_part,
+            default: r#"[{"name":"r","cells":["3"]},{"name":"d","cells":[""]},{"name":"volume","cells":[""]},{"name":"surface","cells":[""]}]"#,
+        },
+    }
+}
+
+/// The value of dimension `which` (the others as in `dims`) at which part `k` is `want`: every part grows with every
+/// dimension, so a bisection in log space over a wide bracket finds the one there is, or none.
+fn dim_for(solid: &Solid, dims: &[f64], which: usize, k: usize, want: f64) -> Option<f64> {
+    let at = |x: f64| {
+        let mut d = dims.to_vec();
+        d[which] = x;
+        (solid.part)(k, &d) - want
+    };
+    let (mut lo, mut hi) = (-60f64, 60f64);
+    if !(at(libm::exp(lo)) <= 0.0 && at(libm::exp(hi)) >= 0.0) {
+        return None;
+    }
+    for _ in 0..200 {
+        let m = 0.5 * (lo + hi);
+        if at(libm::exp(m)) < 0.0 {
+            lo = m;
+        } else {
+            hi = m;
+        }
+    }
+    Some(libm::exp(0.5 * (lo + hi)))
+}
+
+/// Does part `k` move with dimension `which`? (Every part grows with what it depends on, so a doubling shows it.)
+fn depends(solid: &Solid, k: usize, which: usize) -> bool {
+    let one = vec![1.0; solid.dims];
+    let mut two = one.clone();
+    two[which] = 2.0;
+    (solid.part)(k, &one) != (solid.part)(k, &two)
+}
+
+/// A row's dimensions from its given parts, `None` where they don't fix the solid, or the error that says why none
+/// fits or more than one does. Given dimensions are taken as they are; each one missing takes a given part: one
+/// missing is found directly, two by scanning the first and finding the second from one part, the other part's
+/// residual picking the fits.
+fn solve_solid(solid: &Solid, g: &[Option<f64>]) -> Result<Option<Vec<f64>>, V> {
+    for (k, v) in g.iter().enumerate() {
+        if let Some(x) = v
+            && !(*x > 0.0)
+        {
+            return Err(err(ErrorCode::Domain, format!("{} must be positive", solid.spec[k].0)));
+        }
+    }
+    let mut dims: Vec<f64> = (0..solid.dims).map(|k| g[k].unwrap_or(1.0)).collect();
+    let missing: Vec<usize> = (0..solid.dims).filter(|&k| g[k].is_none()).collect();
+    let parts: Vec<usize> = (solid.dims..solid.spec.len()).filter(|&k| g[k].is_some()).collect();
+    let no_fit = || Err(err(ErrorCode::Domain, format!("No {} fits those parts", solid.spec[0].0)));
+    let two_fit = || Err(err(ErrorCode::Solve, "Ambiguous: more than one solid fits. Give a dimension"));
+    if parts.len() < missing.len() {
+        return Ok(None);
+    }
+    match missing.as_slice() {
+        [] => {}
+        [m] => {
+            let Some(&p) = parts.iter().find(|&&p| depends(solid, p, *m)) else { return Ok(None) };
+            match dim_for(solid, &dims, *m, p, g[p].unwrap_or(f64::NAN)) {
+                Some(x) => dims[*m] = x,
+                None => return no_fit(),
+            }
+        }
+        [a, b] => {
+            // The second missing dimension comes from a part that moves with it; the other part judges each fit.
+            let Some(&p) = parts.iter().find(|&&p| depends(solid, p, *b)) else { return Ok(None) };
+            let Some(&q) = parts.iter().find(|&&q| q != p && depends(solid, q, *a)) else { return Ok(None) };
+            let (vp, vq) = (g[p].unwrap_or(f64::NAN), g[q].unwrap_or(f64::NAN));
+            // Scan the first missing dimension in log space; the second is the one that makes part p hold.
+            let with = |t: f64| {
+                let mut d = dims.clone();
+                d[*a] = libm::exp(t);
+                dim_for(solid, &d, *b, p, vp).map(|y| {
+                    d[*b] = y;
+                    d
+                })
+            };
+            let resid = |t: f64| with(t).map_or(f64::NAN, |d| (solid.part)(q, &d) / vq - 1.0);
+            let roots = roots_on(&resid, -30.0, 30.0, 1.0);
+            match roots.as_slice() {
+                [t] => dims = with(*t).unwrap_or(dims),
+                [] => return no_fit(),
+                _ => return two_fit(),
+            }
+        }
+        _ => return two_fit(),
+    }
+    Ok(Some(dims))
+}
+
+/// Solid: one solid of the card's shape per row (sphere, cube, box, cylinder, cone, square pyramid), its dimensions
+/// and every measure, from any parts that fix them; parts the solve didn't need are checks.
+fn solid_solver(c: &mut Call) -> Answer {
+    let solid = solid_of(c.field_str("op", "sphere"));
+    let t = match FigureTable::read(c, "solids", solid.default, solid.spec, "The lengths") {
+        Ok(t) => t,
+        Err(e) => return figure_error(c, &e, true),
+    };
+    let cols = solid.spec.len();
+    let mut out: Vec<Vec<V>> = (0..cols).map(|_| Vec::with_capacity(t.rows)).collect();
+    let mut valid = Vec::with_capacity(t.rows);
+    let mut solved = Vec::with_capacity(t.rows);
+    for i in 0..t.rows {
+        let (given, cell_err) = t.row(i);
+        let bad_cells = cell_err.is_some();
+        match cell_err.map_or_else(|| solve_solid(&solid, &given), Err) {
+            Ok(Some(dims)) => {
+                let got: Vec<f64> = (0..cols).map(|k| (solid.part)(k, &dims)).collect();
+                for k in 0..cols {
+                    out[k].push(V::Num(given[k].unwrap_or(got[k])));
+                }
+                valid.push(V::Bool(all_agree(&given, &got)));
+                solved.push(solved_names(solid.spec, &given, true));
+            }
+            Ok(None) => {
+                for k in 0..cols {
+                    out[k].push(given[k].map_or(V::Null, V::Num));
+                }
+                valid.push(V::Null);
+                solved.push(solved_names(solid.spec, &given, false));
+            }
+            Err(e) => {
+                for k in 0..cols {
+                    out[k].push(if bad_cells { e.clone() } else { given[k].map_or_else(|| e.clone(), V::Num) });
+                }
+                valid.push(if bad_cells { e.clone() } else { V::Bool(false) });
+                solved.push(solved_names(solid.spec, &given, false));
+            }
+        }
+    }
+    let frame = t.answer(out);
+    figure_answer(c, frame, Some(valid), Some(solved))
 }

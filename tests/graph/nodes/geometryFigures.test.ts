@@ -1,6 +1,6 @@
 // [[C25]]
 import { describe, it, expect } from "vitest";
-import { CircleSolverNode, RegularPolygonNode, TwoPointsNode } from "../../../src/graph/nodes/geometryFigures";
+import { CircleSolverNode, RegularPolygonNode, TwoPointsNode, PolygonPointsNode, SolidNode } from "../../../src/graph/nodes/geometryFigures";
 import { isSolError } from "../../../src/graph/errorValue";
 import type { FrameValue } from "../../../src/graph/frame";
 import type { ColumnUnit } from "../../../src/graph/unitValue";
@@ -120,5 +120,70 @@ describe("keyed tables", () => {
     expect((new CircleSolverNode().data({}) as { valid: unknown[] }).valid).toEqual([true]);
     expect((new RegularPolygonNode().data({}) as { valid: unknown[] }).valid).toEqual([true]);
     expect(cell((new TwoPointsNode().data({}) as { frame: FrameValue }).frame, "distance")).toBe(5);
+  });
+});
+
+describe("Polygon from Points", () => {
+  const poly = (rows: Row[]) => new PolygonPointsNode().data({ vertices: [frameOf(rows)] }) as { vertices: FrameValue; polygon: FrameValue };
+  const square = [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 2 }];
+  it("the shoelace area, perimeter, centroid; each vertex's edge and interior angle", () => {
+    const { vertices, polygon } = poly(square);
+    expect([cell(polygon, "vertices"), cell(polygon, "area"), cell(polygon, "perimeter")]).toEqual([4, 4, 8]);
+    expect([cell(polygon, "centroid x"), cell(polygon, "centroid y")]).toEqual([1, 1]);
+    expect([cell(polygon, "convex"), cell(polygon, "orientation")]).toEqual([true, "counterclockwise"]);
+    expect(vertices.columns.find((c) => c.name === "angle")!.values).toEqual([90, 90, 90, 90]);
+    expect(vertices.columns.find((c) => c.name === "edge")!.values).toEqual([2, 2, 2, 2]);
+  });
+  it("a clockwise or concave polygon keeps its interior angles; a reflex one is over 180°", () => {
+    const cw = poly([...square].reverse());
+    expect(cell(cw.polygon, "orientation")).toBe("clockwise");
+    expect(cell(cw.polygon, "area")).toBe(4);
+    expect(cw.vertices.columns.find((c) => c.name === "angle")!.values).toEqual([90, 90, 90, 90]);
+    const dart = poly([{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 2, y: 1 }, { x: 2, y: 4 }]);
+    expect(cell(dart.polygon, "convex")).toBe(false);
+    const angles = dart.vertices.columns.find((c) => c.name === "angle")!.values as number[];
+    expect(angles.reduce((a, b) => a + b, 0)).toBeCloseTo(360, 9);
+    expect(Math.max(...angles)).toBeGreaterThan(180);
+  });
+  it("crossing edges have no one area; blank rows are skipped; fewer than three vertices is no polygon", () => {
+    expect(code(cell(poly([{ x: 0, y: 0 }, { x: 2, y: 2 }, { x: 2, y: 0 }, { x: 0, y: 2 }]).polygon, "area"))).toBe("#DOMAIN!");
+    expect(cell(poly([...square, { x: null, y: null }]).polygon, "area")).toBe(4);
+    expect(cell(poly(square.slice(0, 2)).polygon, "area")).toBeNull();
+    expect(code(cell(poly([...square, { x: 1, y: null }]).polygon, "area"))).toBe("#VALUE!");
+  });
+});
+
+describe("Solid", () => {
+  const solid = (op: string, g: Row) => solve(new SolidNode({ op }), "solids", [g]);
+  it("each shape from its dimensions", () => {
+    expect(cell(solid("sphere", { r: 3 }).frame, "volume")).toBeCloseTo(36 * Math.PI, 12);
+    expect(cell(solid("cube", { side: 3 }).frame, "diagonal")).toBeCloseTo(3 * Math.sqrt(3), 12);
+    expect(cell(solid("box", { length: 4, width: 3, height: 2 }).frame, "surface")).toBe(52);
+    expect(cell(solid("cylinder", { r: 2, h: 5 }).frame, "lateral")).toBeCloseTo(20 * Math.PI, 12);
+    expect(cell(solid("cone", { r: 3, h: 4 }).frame, "slant")).toBe(5);
+    expect(cell(solid("pyramid", { base: 4, h: 3 }).frame, "volume")).toBe(16);
+  });
+  it("back from the measures: a sphere from its volume, a cone from slant and radius, a cylinder from volume and height", () => {
+    expect(cell(solid("sphere", { volume: 36 * Math.PI }).frame, "r")).toBeCloseTo(3, 9);
+    expect(cell(solid("cone", { r: 3, slant: 5 }).frame, "h")).toBeCloseTo(4, 9);
+    expect(cell(solid("cylinder", { volume: 20 * Math.PI, h: 5 }).frame, "r")).toBeCloseTo(2, 9);
+    expect(cell(solid("cube", { surface: 54 }).frame, "side")).toBeCloseTo(3, 9);
+    expect(cell(solid("box", { length: 4, width: 3, volume: 24 }).frame, "height")).toBeCloseTo(2, 9);
+  });
+  it("two measures with no dimension: one fit solves, two are #SOLVE!", () => {
+    const { frame, valid } = solid("cone", { volume: 12 * Math.PI, slant: 5 });
+    // r = 3, h = 4 fits, and so does a second cone with the same slant and volume.
+    expect(code(cell(frame, "r"))).toBe("#SOLVE!");
+    expect(valid).toEqual([false]);
+    const c = solid("cylinder", { d: 4, surface: 28 * Math.PI });
+    expect(cell(c.frame, "h")).toBeCloseTo(5, 9);
+  });
+  it("an extra part checks; a volume takes the lengths' unit cubed; a switch of shape is a new table", () => {
+    expect(solid("sphere", { r: 3, d: 6 }).valid).toEqual([true]);
+    expect(solid("sphere", { r: 3, d: 7 }).valid).toEqual([false]);
+    const cm = { dim: { length: 1 }, display: "cm" };
+    const { frame } = solve(new SolidNode({ op: "cube" }), "solids", [{ side: 2 }], { side: cm });
+    expect(frame.columns.find((c) => c.name === "volume")?.unit?.dim).toEqual({ length: 3 });
+    expect(cell((new SolidNode({ op: "box" }).data({}) as { frame: FrameValue }).frame, "volume")).toBe(24);
   });
 });

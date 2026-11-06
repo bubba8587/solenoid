@@ -73,7 +73,7 @@ import {
   IsInNode, TallyNode,
   ReverseTextNode, SpellNumberNode,
   SolarPositionNode, SunriseSunsetNode, MoonPhaseNode,
-  ElementNode, MolarMassNode, ResistorCodeNode, EmSpectrumNode, HrZonesNode, PipeRoughnessNode, TriangleSolverNode, UnitCircleNode, CircleSolverNode, RegularPolygonNode, TwoPointsNode,
+  ElementNode, MolarMassNode, ResistorCodeNode, EmSpectrumNode, HrZonesNode, PipeRoughnessNode, TriangleSolverNode, UnitCircleNode, CircleSolverNode, RegularPolygonNode, TwoPointsNode, PolygonPointsNode, SolidNode,
   PromoNode,
   PlaceholderNode,
   ExpectNode,
@@ -159,7 +159,7 @@ import {
   ExpectComponent,
   TornadoComponent,
 } from "./components";
-import { EmSpectrumComponent, HrZonesComponent, PipeRoughnessComponent, TriangleSolverComponent, UnitCircleComponent, CircleSolverComponent, RegularPolygonComponent, TwoPointsComponent } from "./components/PackToolNodes";
+import { EmSpectrumComponent, HrZonesComponent, PipeRoughnessComponent, TriangleSolverComponent, UnitCircleComponent, CircleSolverComponent, RegularPolygonComponent, TwoPointsComponent, PolygonPointsComponent, SolidComponent } from "./components/PackToolNodes";
 
 export type AnyNodeComponent = JSXElementConstructor<{
   data: GraphNode & { width?: number; height?: number };
@@ -492,6 +492,8 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [CircleSolverNode,      comp(CircleSolverComponent)],
   [RegularPolygonNode,    comp(RegularPolygonComponent)],
   [TwoPointsNode,         comp(TwoPointsComponent)],
+  [PolygonPointsNode,     comp(PolygonPointsComponent)],
+  [SolidNode,             comp(SolidComponent)],
   [MolarMassNode,         comp(MolarMassComponent)],
   [PromoNode,             comp(PromoComponent)],
   [PlaceholderNode,       comp(PlaceholderComponent)],

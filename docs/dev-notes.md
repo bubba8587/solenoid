@@ -47,8 +47,11 @@ specific item.
   a record.
 - **Circle Solver, Regular Polygon, Two Points** (the author 2026-11-06, "plan out and add interactive geometry nodes"):
   the figure cards' Rust moved to `nodes/geometry.rs` with the shared `FigureTable` (read, units by `Measure`, answer);
-  the TypeScript to `GeometryFigure.tsx` (`useKeyedTable`, `FigureField`, `separate`). Next candidates: Polygon from
-  Points (shoelace area, perimeter, centroid, draggable vertices) and a Solids solver.
+  the TypeScript to `GeometryFigure.tsx` (`useKeyedTable`, `FigureField`, `separate`).
+- **Polygon from Points and Solid** joined them (`FigureCard` in `GeometryCards.tsx` is the shared shell; `Measure`
+  gained Volume and Flag; `FigureTable::summary` builds a second frame in the same units).
+- **Direction** (the author 2026-11-06): Solenoid should be broadly usable in education, STEM above all. The geometry
+  figure cards (exact values, every part keyable, honest "two answers fit" errors) are the first cards built that way.
 - **Before pushing Rust, even a prototype test: `bash scripts/check-rust.sh <crate>`** (the crate bans `powi`, clippy
   runs with warnings as errors) and give a new test file a leaf citation, or coverage fails CI.
 

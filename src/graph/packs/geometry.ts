@@ -2,7 +2,7 @@
 // Trig is in RADIANS, per the core Trigonometry convention.
 
 import type { NodeCatalogEntry } from "../AddNodeMenu";
-import { TwoInputMathNode, TWO_INPUT_MATH_OP_META, TriangleSolverNode, UnitCircleNode, CircleSolverNode, RegularPolygonNode, TwoPointsNode } from "../nodeClasses";
+import { TwoInputMathNode, TWO_INPUT_MATH_OP_META, TriangleSolverNode, UnitCircleNode, CircleSolverNode, RegularPolygonNode, TwoPointsNode, PolygonPointsNode, SolidNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { GEOMETRY_PACK_FORMULAS } from "./geometryFormulas";
 
@@ -153,6 +153,26 @@ export const GEOMETRY_PACK: Pack = {
         description: "Two points per row and the line through them: distance, run and rise, midpoint, slope, direction, both intercepts and the equation.",
         keywords: "two points line slope distance midpoint intercept equation gradient coordinate",
         create: () => new TwoPointsNode(),
+      },
+    },
+    {
+      path: ["Packs", "Geometry"],
+      entry: {
+        type: "geo-polygon-points",
+        label: "Polygon from Points",
+        description: "A polygon from its vertices in order, one per row: each vertex's edge and interior angle, and the polygon's area (the shoelace formula), perimeter, centroid, convexity and winding. Edges that cross have no one area.",
+        keywords: "polygon shoelace vertices area perimeter centroid convex coordinates irregular",
+        create: () => new PolygonPointsNode(),
+      },
+    },
+    {
+      path: ["Packs", "Geometry"],
+      entry: {
+        type: "geo-solid",
+        label: "Solid",
+        description: "A sphere, cube, box, cylinder, cone or square pyramid per row: its dimensions, volume and surface areas, from any parts that fix them. Extra parts are checked; two solids that both fit say so.",
+        keywords: "solid volume surface area sphere cube box cuboid cylinder cone pyramid slant lateral 3d",
+        create: () => new SolidNode(),
       },
     },
     // Menu placement is by subject, but the arrays stay grouped by wave because the tests slice them that way.
