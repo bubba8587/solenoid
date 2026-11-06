@@ -339,13 +339,11 @@ export async function ensureDir(path: string): Promise<void> {
 }
 
 export function readBinaryFilePath(path: string): Promise<Uint8Array> {
-  if (_provider) return _provider.readBinary(path);
-  return readFile(path);
+  return fs().readBinary(path);
 }
 
 export function writeBinaryFilePath(path: string, bytes: Uint8Array): Promise<void> {
-  if (_provider) return _provider.writeBinary(path, bytes);
-  return writeFile(path, bytes);
+  return fs().writeBinary(path, bytes);
 }
 
 export async function pickSaveFilePath(suggestedName: string, extensions: string[]): Promise<string | null> {
@@ -413,7 +411,7 @@ export async function openTextFileDialog(): Promise<{ path: string | null; conte
     const res = isAndroidApp() ? await androidOpenFile("Open a document", ["json"]) : await open({ multiple: false, directory: false, filters: JSON_FILTER });
     const path = typeof res === "string" ? res : null;
     if (!path) return null;
-    return { path, content: await readTextFile(path) };
+    return { path, content: await fs().readTextFile(path) };
   }
   return openTextFileBrowser();
 }
