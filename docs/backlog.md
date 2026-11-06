@@ -63,6 +63,38 @@ the production minify, and its "esbuild options ignored" warning is expected.
   - INTERPOLATE's grid fill (`fill_grid`, `fns_lists.rs`) scans every known point per candidate corner; needs a spatial index.
 - [ ] **Text-reading calls the no-text-guessing sweep left for the author** ([[C10]] socketLattice): NAND, NOR and XNOR answer #TYPE! for text where AND, OR, XOR and NOT answer #VALUE! ([[D110]] logicRefusesText): one error for the family? And `COALESCE(list, "n/a")` drops a text (or logical) fallback, as `../tree/specs/computation/formula-language.md` § COALESCE says ("any other fallback is ignored"); a silent drop reads as a bug, so confirm it's wanted.
 
+## Found by the mathlib research (2026-11-06; probes and the research doc on the branch `research/mathlib-lens`)
+Each was run, not guessed; the branch's `crates/solenoid-core/tests/mathlib_lens.rs` and
+`crates/solenoid-graph/tests/mathlib_lens_settle.rs` reproduce them and become the tests when a fix lands.
+- [ ] **MDETERM, MINVERSE and SOLVE use absolute singularity cutoffs** (`mat_det` and the inverse at `1e-14`,
+  `solve_linear` at `1e-12`, `fns_matrix.rs`), so a well-conditioned matrix of small numbers errors:
+  `MDETERM([[1e-15]])`, and both functions on the diagonal of 1e-15 and 1e15 (determinant exactly 1), are `#DIV/0!`;
+  SOLVE fails once one column is scaled to 1e-13. MATRIXRANK's `tol * scale` is the shape of the fix; the test is the
+  scale law (det(cA) = cⁿ det A, inv(cA) = inv(A)/c, solve unchanged by a column's units). Also: MDETERM of a singular
+  matrix is `#DIV/0!` where its determinant is 0, as Excel answers ([[A5]] excelParity); `formula-language.md`
+  documents the error but `excel-divergences.md` doesn't list it.
+- [ ] **The Equation card solves a tiny equation wrong** ([[C47]] equationNode): `C = k*x*x*x` with k = 1e-15, C = 8e-15
+  answers x = 8 (true 2), because the quadratic sniff's and `root_holds`'s scale floor at 1 (`jmax(&[1.0, ...])`,
+  `nodes/formula.rs`) makes their 1e-9 test absolute, so a cubic with residuals under 1e-9 passes as a line. A tiny
+  pole equation errors with the wrong reason ("the quadratic's discriminant is negative"). The test: multiplying both
+  sides by k changes no solution.
+- [ ] **The Type Settle visits cards in graph order** (`settle.rs`): a graph listed against its wiring takes one pass per
+  card of its longest passthrough chain, and past 256 cards (8 rounds of 32) the tail is left `trueany`. Visiting in
+  topological order settles any graph without loops in one pass, a free speedup and the fix together.
+- [ ] **SUMSQ, DEVSQ and the variance family aren't order-free**: shuffled rows move SUMSQ and DEVSQ in 2119 of 4000
+  trials, the VAR/STDEV family, AVEDEV, GEOMEAN, HARMEAN and PRODUCT in the last bits, KURT by 2e-12. SUMSQ and DEVSQ
+  through `ExactSum` (DEVSQ over the exact mean) moved 0 times, so a Group By and a formula would agree.
+- [ ] **The logical, string and date matrix rungs don't shape what arrives** (`boundary.rs`, `coerce_value`): a scalar
+  or list wired straight into a `strtable`, `datetable` or `logicaltable` input arrives as a scalar or list, where
+  number's `table` widens it to a matrix (`socket-lattice.md` § The shape of what connects). Shape them as `table`
+  does, or check every body on those inputs handles all three ranks.
+- [ ] **Move the two structural tests over from the branch**: the widening preorder against `lattice.rs`
+  (`widening_is_a_preorder_and_narrowing_does_not_compose`) and the coercion-path sweep, with its two exceptions
+  pinned.
+- [ ] **Small**: unit exponents are `f64` compared exactly, so `a^0.1 * a^0.2 + a^0.3` over a length is `#UNIT!`
+  (`dim_equal`; low risk, halves are exact). MOD floors and QUOTIENT truncates, as Excel, so `3*QUOTIENT(-7,3) +
+  MOD(-7,3)` is −4: a line in either description that `INT(n/d)` is the quotient that pairs with MOD.
+
 ## JavaScript the core still imitates ([[B27]] computeAnswersToExcel, [[B7]] preAlphaBreakFreely)
 
 Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D99]] rustIsSpec). Checked in the live engine: the LOG and DATEVALUE examples below; the rest are read from the code, Excel's answers from its documentation.

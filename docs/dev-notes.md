@@ -6,6 +6,21 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-06: mathlib as a lens, the spec vocabulary and an overnight research run; cloud session)
+- **Spec vocabulary from mathlib** (develop 4b7b526, 9491962): `value-semantics` § Points and differences is the one
+  home for point kinds (dates, °C/°F readings) and point weight; why the Kleene tables are forced; `socket-lattice`
+  § The shape of what connects (widening is a preorder, narrowing and wildcards don't compose, coercions agree along
+  paths except through the bridge and the other families' matrix rungs) and the Type Settle's real cap (256 passes);
+  dimensions as exponent vectors; the four aggregate kinds (`formula-language`, "What a total can be built from");
+  glossary entries. Mathlib's names go in specs as words, never backticked (docsPointers holds backticked names to the
+  code).
+- **The research** lives on `research/mathlib-lens` (its research doc under `docs/audits/` and two probe test files), six
+  of eight hourly passes run before the author stopped it. Its confirmed bugs are in the backlog, § Found by the mathlib
+  research. Two choices wait in the inbox: `dates-weigh-as-points` (`(d1 + d2) / 2` is `#TYPE!` for dates but a
+  reading for °C) and `aggregates-of-nothing` (MAX, MIN and PRODUCT of nothing make up a 0).
+- **Before pushing Rust, even a prototype test: `bash scripts/check-rust.sh <crate>`** (the crate bans `powi`, clippy
+  runs with warnings as errors) and give a new test file a leaf citation, or coverage fails CI.
+
 ### SESSION DIGEST (2026-11-06: 1.6 release copy and the value-handling triage; cloud session)
 - **Marketing copy is looser than UI copy** (DESIGN.md §7, author 2026-11-06): the What's New deck lives in `src/graph/whatsNewSlides.ts`, which the UI-copy sweep skips; no em dashes, American spelling and true claims still hold. The 1.6 deck is in (`WHATS_NEW_VERSION` 1.6); `docs/release-notes-features.md` is its source, `docs/release-notes-1.6.md` the plain changelog.
 - **Empty text is nothing typed in a total** ([[D109]] aggregatesRefuseText): a card that answers text as its formula reads `""` as a blank at the port (`family_cell`, both boundaries), and SUMSQ and SUMPRODUCT skip it. PTP, IQR, MAD, SEM, CV and RMS refuse text in formulas, as their cards did.
