@@ -145,9 +145,8 @@ the decision tree (`dte.md`).
 ## Parked features (revisit only if the trigger returns)
 
 - **Known leads parked by the author (2026-10-05):**
-  - *Desktop window close:* verify on the next desktop build that the window still closes (Windows: overlay title bar
-    and Alt+F4; Linux: the app's own controls) now that a close listener flushes drafts (`core:window:allow-destroy`),
-    and that drafts survive it. The author is on mobile.
+  - *Desktop window close:* Linux verified 2026-11-06 (develop `2d1eeaa83`): the app's own close button closes the window
+    and a draft typed but not committed survives the relaunch. Windows (overlay title bar, Alt+F4) still unverified.
   - *Sketch sample aliasing:* the stride sample `floor(i × total / n)` (frame-verbs.md § Sketch mode, the core's
     `sample_frame`) aliases on periodic data; a fixed-seed well-mixed sample would fix it. *Sketch Run*
     (`withExactPass`) leaves the canvas on exact values until the next edit, and the table popup's Copy/Export CSV

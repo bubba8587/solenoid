@@ -5,6 +5,7 @@ import { elementCell, searchElements } from "../nodeClasses";
 import { ELEMENTS, ELEMENT_BY_SYMBOL, ELEMENT_CATEGORIES, type ElementMeta } from "../nodes/chemistryOps";
 import { useSeriesColors } from "./chartCore";
 import { PopupShell } from "./PopupShell";
+import { formatScalar } from "./format";
 import "./ElementPicker.css";
 
 /** The Element node's periodic-table picker; module store, mounted once in App. */
@@ -98,7 +99,8 @@ export function ElementPicker() {
   );
 }
 
-const num = (v: number | null, unit = "") => (v === null ? "–" : `${v}${unit}`);
+/** A property's number as every unformatted number shows ([[C118]] formatTravelsWithValue), blank where unmeasured. */
+const num = (v: number | null, unit = "") => (v === null ? "–" : `${formatScalar(v)}${unit}`);
 
 /** The hovered element (or the current pick) in the table's empty top-middle, where a printed table puts its key:
  *  its tile, then every property the card's Elements frame carries. */
