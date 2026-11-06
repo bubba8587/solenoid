@@ -258,7 +258,7 @@ while `(d1 + d2) / 2` is `#TYPE!` at the `+`. That is the one place the two kind
 
 The mathematical names, for a reader who wants the full theory: a point kind with its difference kind is a *torsor*
 (an affine space when the differences can be scaled), point weight 1 is an *affine combination* and weight 0 a
-*weighted difference* (mathlib's `AddTorsor`, `Finset.affineCombination`, `Finset.weightedVSub`). None of these words
+*weighted difference* (in mathlib, AddTorsor, Finset.affineCombination and Finset.weightedVSub). None of these words
 belong in the app.
 
 ## Boundaries and bridges
