@@ -16,6 +16,7 @@ pub fn date_text(serial: f64) -> String {
 }
 
 use crate::error_value::{sol_error, ErrorCode};
+use crate::excel_formula::Ast;
 use crate::excel_functions::V;
 use crate::value_kinds::Census;
 use std::rc::Rc;
@@ -394,6 +395,139 @@ pub fn call<E>(name: &str, argv: Vec<V>, body: impl FnOnce(Vec<V>) -> Result<V, 
         Ok((argv, after)) => body(argv).map(|v| after.apply(v)),
         Err(e) => Ok(e),
     }
+}
+
+/// The message every point refusal starts with, so a refused formula can be told from any other `#TYPE!`.
+const POINT_REFUSED: &str = "A date can be shifted by days";
+
+/// Whether `v` holds the refusal `point_refused` gives, at the top or in a cell.
+pub fn refuses_a_point(v: &V) -> bool {
+    match v {
+        V::Err(e) => e.message.starts_with(POINT_REFUSED),
+        V::List(items) => items.iter().any(refuses_a_point),
+        _ => false,
+    }
+}
+
+fn holds_a_date(v: &V) -> bool {
+    match v {
+        V::Date(_) => true,
+        V::List(items) => items.iter().any(holds_a_date),
+        _ => false,
+    }
+}
+
+fn dates_as_days(v: &V) -> V {
+    match v {
+        V::Date(d) => V::Num(*d),
+        V::List(items) => V::List(Rc::new(items.iter().map(dates_as_days).collect())),
+        other => other.clone(),
+    }
+}
+
+fn days_as_dates(v: &V) -> V {
+    match v {
+        V::Num(d) => V::Date(*d),
+        V::List(items) => V::List(Rc::new(items.iter().map(days_as_dates).collect())),
+        other => other.clone(),
+    }
+}
+
+/// A formula the operators refused, judged by point weight as a temperature reading's is ([[E19]] datesWeighAsPoints,
+/// `tree/specs/values/value-semantics.md` § Points and differences): with the dates its inputs hold as the points,
+/// weight 1 is a date and weight 0 a number of days. The whole formula first; failing that, each refused piece of it
+/// is resolved on its own and the rest evaluates as usual, so `YEAR((a + b) / 2)` reads the midpoint's year.
+/// `None` keeps the refusal.
+pub fn by_point_weight(ast: &Ast, env: &crate::eval::Env) -> Option<V> {
+    if let Some(v) = weighed(ast, env) {
+        return Some(v);
+    }
+    let mut binds = env.clone();
+    let (inner, changed) = resolve_inward(ast, env, &mut binds);
+    if !changed {
+        return None;
+    }
+    let out = crate::eval::Eval::default().run(&inner, &Rc::new(binds));
+    (!refuses_a_point(&out)).then_some(out)
+}
+
+/// `ast` with each child the operators refuse replaced by its weighed value (bound in `binds` under a name no formula
+/// can spell), or rewritten the same way inside; whether anything was replaced.
+fn resolve_inward(ast: &Ast, env: &crate::eval::Env, binds: &mut crate::eval::Env) -> (Ast, bool) {
+    let mut changed = false;
+    let mut child = |c: &Ast, binds: &mut crate::eval::Env| -> Ast {
+        if !refuses_a_point(&crate::eval::Eval::default().run(c, &Rc::new(env.clone()))) {
+            return c.clone();
+        }
+        if let Some(v) = weighed(c, env) {
+            let name = format!("\u{0}point{}", binds.len());
+            binds.insert(name.clone(), v);
+            changed = true;
+            return Ast::Name(name);
+        }
+        let (inner, did) = resolve_inward(c, env, binds);
+        changed |= did;
+        inner
+    };
+    let out = match ast {
+        Ast::Call { name, args } => {
+            Ast::Call { name: name.clone(), args: args.iter().map(|a| child(a, binds)).collect() }
+        }
+        Ast::Apply { func, args } => {
+            Ast::Apply { func: func.clone(), args: args.iter().map(|a| child(a, binds)).collect() }
+        }
+        Ast::Unary { op, arg } => Ast::Unary { op: *op, arg: Box::new(child(arg, binds)) },
+        Ast::Percent(arg) => Ast::Percent(Box::new(child(arg, binds))),
+        Ast::Bin { op, l, r } => {
+            let l = child(l, binds);
+            Ast::Bin { op: *op, l: Box::new(l), r: Box::new(child(r, binds)) }
+        }
+        other => other.clone(),
+    };
+    (out, changed)
+}
+
+/// `ast` with each name bound to a plain number written as that number.
+fn with_numbers_inlined(ast: &Ast, env: &crate::eval::Env) -> Ast {
+    let go = |a: &Ast| with_numbers_inlined(a, env);
+    match ast {
+        Ast::Name(n) => match env.get(n) {
+            Some(V::Num(x)) => Ast::Num(crate::jsnum::number_to_string(*x), *x),
+            _ => ast.clone(),
+        },
+        Ast::Call { name, args } => Ast::Call { name: name.clone(), args: args.iter().map(go).collect() },
+        Ast::Apply { func, args } => Ast::Apply { func: func.clone(), args: args.iter().map(go).collect() },
+        Ast::Unary { op, arg } => Ast::Unary { op: *op, arg: Box::new(go(arg)) },
+        Ast::Percent(arg) => Ast::Percent(Box::new(go(arg))),
+        Ast::Bin { op, l, r } => Ast::Bin { op: *op, l: Box::new(go(l)), r: Box::new(go(r)) },
+        other => other.clone(),
+    }
+}
+
+/// `ast` judged whole by its point weight: weight 1 a date, weight 0 a number of days, computed on the days and read
+/// back. `None` for another weight, a date the formula makes itself (`DATE`, `TODAY`), or a function that reads a date
+/// (`YEAR`), whose weight `affine_weight` won't vouch for.
+fn weighed(ast: &Ast, env: &crate::eval::Env) -> Option<V> {
+    let mut names: Vec<&String> = env.keys().collect();
+    names.sort();
+    let points: Vec<String> = names.iter().filter(|n| holds_a_date(&env[**n])).map(|n| (*n).clone()).collect();
+    if points.is_empty() {
+        return None;
+    }
+    let lists: Vec<String> = names.iter().filter(|n| matches!(env[**n], V::List(_))).map(|n| (*n).clone()).collect();
+    let bare: Vec<String> = names.iter().filter(|n| !points.contains(n)).map(|n| (*n).clone()).collect();
+    // A plain number an input holds is a constant for this answer, so `(1 - k) * a + k * b` weighs as its k says.
+    let weight = crate::unit_dims::affine_weight(
+        &with_numbers_inlined(ast, env),
+        &crate::unit_dims::AffScope::new(&points, &lists, &bare, &crate::unit_dims::NamedLambdas::new()),
+    )
+    .ok()?;
+    let days: crate::eval::Env = env.iter().map(|(k, v)| (k.clone(), dates_as_days(v))).collect();
+    let out = crate::eval::Eval::default().run(ast, &Rc::new(days));
+    if holds_a_date(&out) || refuses_a_point(&out) {
+        return None;
+    }
+    Some(if weight == 1 { days_as_dates(&out) } else { out })
 }
 
 /// A date can't be scaled, negated or added to a date ([[D115]] datesArePoints).

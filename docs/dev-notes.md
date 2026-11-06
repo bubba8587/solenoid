@@ -28,7 +28,9 @@ specific item.
   Then the rest: every family's matrix rung shapes what arrives (`to_matrix`); PRODUCT multiplies in sorted order
   (`product_of`); running and rolling sums are exact and snap as SUM does; dimension exponents snap to small
   fractions (`snap_exp`); MOD and QUOTIENT say which quotient MOD pairs with (Lean core's `Int.fmod_add_fdiv_mul`).
-  The research list is empty; the two inbox items wait on the author.
+  The research list is empty. The author's calls landed too: [[E19]] datesWeighAsPoints (a refused date formula is
+  weighed whole, then piece by piece, `by_point_weight`) and [[D125]] aggregatesOfNothing (MAX and MIN of nothing
+  blank, PRODUCT 1, GCD 0, LCM 1). Date cards are back in the 210px tier (`nodeMedium`).
 - **Before pushing Rust, even a prototype test: `bash scripts/check-rust.sh <crate>`** (the crate bans `powi`, clippy
   runs with warnings as errors) and give a new test file a leaf citation, or coverage fails CI.
 

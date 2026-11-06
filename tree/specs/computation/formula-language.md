@@ -449,6 +449,8 @@ Dropping nulls per array would shear a paired function's pairing, which is why `
 
 So `AND(x)` over `[TRUE, null, TRUE]` is TRUE: a reduction skips nulls, while the operators and element-wise functions propagate them. That is the one sanctioned node-versus-formula split ([[C24]] arraySemantics).
 
+**Over nothing**, an aggregate answers its operation's identity or blank ([[D125]] aggregatesOfNothing, [[excel-divergences#Totals of nothing]]): SUM and COUNT 0, PRODUCT 1 (mathlib `Finset.prod_empty`), GCD 0 and LCM 1 (`Finset.gcd_empty`, `Finset.lcm_empty`), CONCAT and TEXTJOIN empty text; MAX, MIN and the statistics blank (the max of nothing is no number, `List.maximum_nil`). AND, OR and XOR of nothing stay `#VALUE!`.
+
 **A degenerate range call answers what its node answers**, never a bare NaN ([[C24]] arraySemantics):
 
 - too little data is blank (SKEW below 3 values, KURT below 4, a T.TEST of two identical constant samples);

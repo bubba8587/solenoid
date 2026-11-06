@@ -2,7 +2,7 @@
 aliases: ["Excel divergences"]
 tags: [spec, computation]
 ---
-<!-- [[A5]] excelParity, [[B16]] oneFormulaSurface, [[C17]] shareImpl, [[C15]] matricesInFormulas, [[D115]] datesArePoints, [[D119]] datesBefore1900 -->
+<!-- [[A5]] excelParity, [[B16]] oneFormulaSurface, [[C17]] shareImpl, [[C15]] matricesInFormulas, [[D115]] datesArePoints, [[D119]] datesBefore1900, [[E19]] datesWeighAsPoints, [[D125]] aggregatesOfNothing -->
 
 # Spec: Excel divergences
 
@@ -32,11 +32,23 @@ Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because co
 
 Tests: `excelFormula.test.ts`: ERROR.TYPE reports the split errors as Excel's code; `formulaMatrix.test.ts`: EXPAND pads with blank, the formula and the EXPAND card alike; `formulaComplex.test.ts`: the IM* functions answer as the complex cards do.
 
+### Totals of nothing
+
+Over no values, an aggregate answers its operation's identity where one exists and blank where none does ([[D125]] aggregatesOfNothing; [[formula-language#Range functions]]). Excel answers 0 for all of these:
+
+- **MAX and MIN** of nothing are blank; the largest of nothing is no number.
+- **PRODUCT** of nothing is 1, the empty product (as `0^0` is 1).
+- **GCD** of nothing is 0 and **LCM** of nothing is 1, where Excel answers `#VALUE!`.
+
+SUM and COUNT of nothing are 0 and AVERAGE of nothing blank, as before. AND, OR and XOR of nothing stay `#VALUE!`, as in Excel.
+
+Tests: `properties.rs` (solenoid-core) `a_total_of_nothing_is_its_identity_or_blank`.
+
 ### Dates are points
 
 A date is its own kind of value, a point in time, never a number ([[D114]] dateIsAKind, [[D115]] datesArePoints, [[C137]] datesNeverSerials; the rules are [[date-values]]). Excel's date is a number with a format, so each of these answers where Solenoid's is `#TYPE!`:
 
-- Arithmetic other than moving a date by days or measuring between two: `date * 2`, `date / 7`, `date ^ 2`, `date1 + date2`, `5 - date`, `-date` and `date%`. A date plus or minus a number is still a date, and a date minus a date a number of days, as in Excel.
+- Arithmetic other than moving a date by days, measuring between two, or averaging them: `date * 2`, `date / 7`, `date ^ 2`, `date1 + date2` on its own, `5 - date`, `-date` and `date%`. A date plus or minus a number is still a date, a date minus a date a number of days, and a weighted average of dates (`(d1 + d2) / 2`) a date, as in Excel ([[E19]] datesWeighAsPoints).
 - A date compared with a number or text: `date = 46000`, `date < "x"`. Two dates compare as in Excel.
 - A function in no date class handed a date: `SUM(date)`, `ABS(date)`, `SQRT(date)`, SUMIFS adding a range of dates, and a sum, product or share of dates in the table verbs.
 - A number where a function reads a date: `YEAR(46000)`, `EDATE(46000, 1)`, and dates beside plain numbers in MIN, MAX, AVERAGE and the other functions that keep or spread dates. Cast to Number is the one way from a date to its serial, and Cast to Date or DATE the way back.

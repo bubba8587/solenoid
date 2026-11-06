@@ -250,11 +250,12 @@ flowchart LR
     w -->|"anything else"| r["refused:<br>#TYPE! for dates,<br>#UNIT! for readings"]
 ```
 
-**Where it is built.** Readings classify a whole formula by weight (`affine_weight`,
-[[unit-flow#Expression]]), so `(a + b) / 2` over two readings is a reading. Dates check each operator alone (`date_op`,
-[[date-values#Arithmetic]]) and each function by its class, so `AVERAGE(d1, d2)` and `d1 + (d2 - d1) / 2` are dates
-while `(d1 + d2) / 2` is `#TYPE!` at the `+`. That is the one place the two kinds disagree; the inbox item
-`dates-weigh-as-points` asks whether dates should classify by weight too.
+**Where it is built.** Readings classify a whole formula by weight (`affine_weight`, [[unit-flow#Expression]]), so
+`(a + b) / 2` over two readings is a reading. Dates check each operator alone (`date_op`, [[date-values#Arithmetic]]),
+and a formula the operators refuse is then weighed ([[E19]] datesWeighAsPoints, `by_point_weight`): whole first, then
+each refused piece on its own, so `(d1 + d2) / 2` is a date and `YEAR((d1 + d2) / 2)` its year. The two kinds now
+answer alike; the Arithmetic card, which sees one operation, still refuses adding two dates, as it refuses adding two
+readings.
 
 The mathematical names, for a reader who wants the full theory ([[C139]] mathlibLaws, [[engineering#Laws come from mathlib, by name]]): a
 point kind with its difference kind is a *torsor* (the class AddTorsor, `Mathlib/Algebra/Torsor/Defs.lean`; an affine

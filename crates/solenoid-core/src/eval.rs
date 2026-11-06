@@ -1981,7 +1981,13 @@ pub fn formula(src: &str, env: Env) -> Option<V> {
             c
         }
     };
-    Some(compiled.eval.run(&compiled.ast, &Rc::new(env)))
+    let out = compiled.eval.run(&compiled.ast, &Rc::new(env.clone()));
+    if crate::date_values::refuses_a_point(&out)
+        && let Some(by_weight) = crate::date_values::by_point_weight(&compiled.ast, &env)
+    {
+        return Some(by_weight);
+    }
+    Some(out)
 }
 
 /// The readied lists the kept formulas' evaluators hold, let go with the other kept lists.

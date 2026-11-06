@@ -2,7 +2,7 @@
 aliases: ["Date values"]
 tags: [spec, values]
 ---
-<!-- [[D114]] dateIsAKind, [[D115]] datesArePoints, [[C137]] datesNeverSerials, [[D119]] datesBefore1900 -->
+<!-- [[D114]] dateIsAKind, [[D115]] datesArePoints, [[E19]] datesWeighAsPoints, [[C137]] datesNeverSerials, [[D119]] datesBefore1900 -->
 
 # Spec: Date values
 
@@ -33,7 +33,7 @@ Tests:
 
 ## Arithmetic
 
-A date is a point kind and days its difference kind ([[value-semantics#Points and differences]]). In `eval.rs` the operators match `Date` before numbers, each operator on its own, so a formula is not classified by its point weight as a reading's is: `(d1 + d2) / 2` is `#TYPE!` at the `+`, where the same formula over two readings is a reading. Each row of the table is one case:
+A date is a point kind and days its difference kind ([[value-semantics#Points and differences]]). In `eval.rs` the operators match `Date` before numbers, each operator on its own. A formula the operators refuse is then weighed by point weight ([[E19]] datesWeighAsPoints, `by_point_weight`): the whole formula first, then each refused piece on its own, with the dates its inputs hold as the points and a plain number an input holds as a constant. Weight 1 is a date, weight 0 a number of days, anything else keeps the refusal: `(d1 + d2) / 2`, `(1 - k)·d1 + k·d2` and `YEAR((d1 + d2) / 2)` answer, `d1 + d2` alone and `(d1 + d2) / 3` don't, and a date the formula makes itself (`DATE`, `TODAY`) added to another stays refused. No formula that answered before changes. Each row of the table is one case:
 
 | Left | Op | Right | Answer |
 |---|---|---|---|
@@ -45,7 +45,7 @@ A date is a point kind and days its difference kind ([[value-semantics#Points an
 | Date | any comparison | Num or Str | #TYPE! |
 | unary `-` or `%` | Date | | #TYPE! |
 
-Tests: `fuzz_formulas.rs` (solenoid-core), whose `dates_through_every_operator_row` asks each row of this table of a date today and of a date before 1900 and checks the kind of the answer.
+Tests: `properties.rs` (solenoid-core) `a_weighted_average_of_dates_is_a_date`; `fuzz_formulas.rs` (solenoid-core), whose `dates_through_every_operator_row` asks each row of this table of a date today and of a date before 1900 and checks the kind of the answer.
 
 ## Functions
 

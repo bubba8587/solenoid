@@ -1534,8 +1534,10 @@ fn excel_percent_rank(s: &[f64], x: f64, sig: f64, exc: bool) -> V {
 
 fn gcd_lcm(gcd: bool, values: &[f64]) -> V {
     let name = if gcd { "GCD" } else { "LCM" };
+    // GCD of nothing is 0 and LCM of nothing is 1, the identities (mathlib `Finset.gcd_empty`, `Finset.lcm_empty`;
+    // [[D125]] aggregatesOfNothing).
     if values.is_empty() {
-        return V::err(sol_error(ErrorCode::Value, format!("{name} needs at least one number")));
+        return V::Num(if gcd { 0.0 } else { 1.0 });
     }
     let two53 = 9_007_199_254_740_992.0;
     let mut acc: f64 = if gcd { 0.0 } else { 1.0 };
@@ -3975,8 +3977,10 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                     _ => None,
                 })
                 .collect();
+            // The max of nothing has no value to be (mathlib `List.maximum_nil` is a new bottom, never a number), so it is
+            // blank, as AVERAGE of nothing is ([[D125]] aggregatesOfNothing).
             if nums.is_empty() {
-                return V::Num(0.0);
+                return V::Null;
             }
             aggregate(if arm == F::MIN { Stat::Min } else { Stat::Max }, &nums)
         }
@@ -4067,14 +4071,8 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
         F::STDEV_P => aggregate(Stat::StdevP, &nums_of(a)),
         F::VAR | F::VAR_S => aggregate(Stat::VarS, &nums_of(a)),
         F::VAR_P => aggregate(Stat::VarP, &nums_of(a)),
-        F::PRODUCT => {
-            let n = nums_of(a);
-            if n.is_empty() {
-                V::Num(0.0)
-            } else {
-                aggregate(Stat::Product, &n)
-            }
-        }
+        // The empty product is 1 (mathlib `Finset.prod_empty`; [[D125]] aggregatesOfNothing).
+        F::PRODUCT => aggregate(Stat::Product, &nums_of(a)),
         F::LEN => V::Num(utf16_len(&text_of(arg(a, 0))) as f64),
         F::CONCAT | F::CONCATENATE => V::str(&a.iter().map(to_str).collect::<String>()),
         F::MID => {

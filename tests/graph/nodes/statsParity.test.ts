@@ -104,11 +104,11 @@ describe("MODE / FISHER", () => {
     for (const f of ["MODE", "MODE.SNGL", "MODE.MULT", "PRODUCT"]) expect(code(ev(`${f}(x)`, { x: [1, NaN, 3] })), f).toBe("#DOMAIN!");
     expect(code(new ModeNode().data({ list: [[1, NaN, NaN, 3]] }).result)).toBe("#DOMAIN!");
   });
-  it("PRODUCT refuses text in a list, where Excel skips it ([[D109]] aggregatesRefuseText), and is 0 with no numbers", () => {
+  it("PRODUCT refuses text in a list, where Excel skips it ([[D109]] aggregatesRefuseText), and is 1 with no numbers ([[D125]] aggregatesOfNothing)", () => {
     const code = (v: unknown) => (isSolError(v) ? v.code : v);
     expect(code(ev("PRODUCT(x)", { x: [2, 3, null, "a"] }))).toBe("#VALUE!");
     expect(ev("PRODUCT(x)", { x: [2, 3, null] })).toBe(6);
-    expect(ev("PRODUCT(x)", { x: [null] })).toBe(0);
+    expect(ev("PRODUCT(x)", { x: [null] })).toBe(1);
   });
   it("FISHER / FISHERINV share the domain rule", () => {
     same(ev("FISHER(0.5)"), new FisherNode({ op: "fisher" }).data({ value: [0.5] }).result);

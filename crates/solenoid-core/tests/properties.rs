@@ -391,3 +391,60 @@ fn mod_and_quotient_keep_their_division_laws() {
         assert!(t.abs() < d.abs() && (t == 0.0 || (t > 0.0) == (n > 0.0)), "n − d·QUOTIENT takes n's sign: {t}");
     }
 }
+
+/// [[E19]] datesWeighAsPoints: a weighted average of dates is a date, whatever its weights, as long as they sum to 1,
+/// and a combination whose weights sum to 0 is a number of days (mathlib `Finset.weightedVSubOfPoint_vadd_eq_of_sum_eq_one`
+/// and `Finset.weightedVSubOfPoint_eq_of_sum_eq_zero`, `Mathlib/LinearAlgebra/AffineSpace/Combination.lean`). A refused
+/// piece is weighed on its own, so a function or a comparison over a midpoint reads it.
+#[test]
+fn a_weighted_average_of_dates_is_a_date() {
+    let mut r = rng();
+    for _ in 0..cases() / 100 {
+        let (a, b) = (f64::from(r.i32(-60_000..60_000)), f64::from(r.i32(-60_000..60_000)));
+        let k = f64::from(r.i32(1..8)) / 8.0;
+        let env: Env = [("a".to_string(), V::Date(a)), ("b".to_string(), V::Date(b)), ("k".to_string(), V::Num(k))]
+            .into_iter()
+            .collect();
+        let at = |src: &str| formula(src, env.clone()).expect("parses");
+        let want = a * (1.0 - k) + b * k;
+        assert!(matches!(at("(1 - k) * a + k * b"), V::Date(d) if (d - want).abs() < 1e-9), "(1-k)a + kb at k = {k}");
+        assert!(matches!(at("(a + b) / 2"), V::Date(d) if (d - (a + b) / 2.0).abs() < 1e-9));
+        assert!(matches!(at("(a + b) / 2 - a"), V::Num(d) if (d - (b - a) / 2.0).abs() < 1e-9));
+        let year = |src: &str| match at(src) {
+            V::Num(y) => y,
+            other => panic!("{src}: {other:?}"),
+        };
+        assert_eq!(year("YEAR((a + b) / 2)"), year("YEAR(a + (b - a) / 2)"));
+        for refused in ["a + b", "a * 2", "(a + b) / 3", "YEAR(a + b)"] {
+            assert!(matches!(at(refused), V::Err(_)), "{refused} stays refused");
+        }
+    }
+}
+
+/// [[D125]] aggregatesOfNothing: over nothing, a total is its operation's identity where one exists (mathlib
+/// `Finset.prod_empty`, `Mathlib/Algebra/BigOperators/Group/Finset/Defs.lean`; `Finset.gcd_empty`, `Finset.lcm_empty`,
+/// `Mathlib/Algebra/GCDMonoid/Finset.lean`), and blank where none does: the max of nothing is no number
+/// (`List.maximum_nil`, `Mathlib/Data/List/MinMax.lean`).
+#[test]
+fn a_total_of_nothing_is_its_identity_or_blank() {
+    let blanks = V::List(vec![V::Null, V::Null].into());
+    for (f, want) in [
+        ("SUM", Some(0.0)),
+        ("COUNT", Some(0.0)),
+        ("PRODUCT", Some(1.0)),
+        ("GCD", Some(0.0)),
+        ("LCM", Some(1.0)),
+        ("MAX", None),
+        ("MIN", None),
+        ("AVERAGE", None),
+        ("MEDIAN", None),
+    ] {
+        // Over a list of blanks; `F()` is an empty first argument, read as 0 (the P7 ruling), not nothing.
+        let src = format!("{f}(l)");
+        let got = formula(&src, [("l".to_string(), blanks.clone())].into_iter().collect()).expect("parses");
+        match want {
+            Some(w) => assert!(matches!(got, V::Num(n) if n == w), "{src} = {got:?}, want {w}"),
+            None => assert!(matches!(got, V::Null), "{src} = {got:?}, want blank"),
+        }
+    }
+}
