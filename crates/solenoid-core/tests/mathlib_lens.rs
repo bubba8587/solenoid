@@ -403,3 +403,43 @@ fn regression_under_scaled_x() {
     }
 }
 
+
+/// Thread 8 (F6, [[C47]] equationNode): the Equation card with every known scaled small. The sniff's tolerance has a
+/// floor of 1 (`jmax(&[1.0, ...])`), so tiny residuals may pass any shape as a polynomial.
+#[test]
+fn equation_with_small_knowns() {
+    use serde_json::json;
+    let solve = |expr: &str, known: &[(&str, f64)], unknown: &str| -> String {
+        let names: Vec<&str> = known.iter().map(|(n, _)| *n).chain([unknown]).collect();
+        let outputs: Vec<serde_json::Value> =
+            std::iter::once(json!(["holds", "logicalcombo"])).chain(names.iter().map(|n| json!([n, "numlist"]))).collect();
+        let args = json!({
+            "kind": "EquationNode",
+            "init": {"label": "Equation", "expr": expr, "locked": false},
+            "prior": {"cachedError": null, "cachedValues": {"__json": {}}, "cachedHolds": null, "solvedFor": null},
+            "ctx": {"settings": {}, "clock": {"now": 46317.0}, "gen": 2},
+            "clock": {"now": 46317.0},
+            "sockets": names.iter().map(|n| json!([n, "numlist", n])).collect::<Vec<_>>(),
+            "outputs": outputs,
+            "inputs": known.iter().map(|(n, v)| json!([n, [v]])).collect::<Vec<_>>(),
+        });
+        let r = solenoid_core::nodes::reply(&args);
+        match r.answer {
+            Some(Ok(outs)) => outs
+                .iter()
+                .find(|(k, _)| k == unknown)
+                .map_or("no output".into(), |(_, v)| solenoid_core::nodes::reply_json(v)),
+            Some(Err(e)) => format!("thrown {}", short(&e)),
+            None => "no body".into(),
+        }
+    };
+    for k in [1.0, 1e-6, 1e-9, 1e-12, 1e-15] {
+        let c = 8.0 * k;
+        println!(
+            "k = {k:e}: C = k*x*x*x -> x = {}   C = k*x^3 -> x = {}   0 = k*(x*x - 5*x + 6) -> x = {}",
+            solve("C = k * x * x * x", &[("C", c), ("k", k)], "x"),
+            solve("C = k * x^3", &[("C", c), ("k", k)], "x"),
+            solve("Z = k * (x * x - 5 * x + 6)", &[("Z", 0.0), ("k", k)], "x"),
+        );
+    }
+}

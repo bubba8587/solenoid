@@ -190,6 +190,16 @@ why `exact_sum.rs` and `roundAtLargerTerm` exist.
   - So the trouble is three functions, two absolute cutoffs. Coefficients typed in SI base units reach these scales
     (picofarads, nanoseconds squared, Boltzmann's constant at 1.4e-23). The fix shape is the one MATRIXRANK already
     uses (`tol * scale`), and the law sweep is the test that would hold it.
+- **The Equation card, verified wrong answer** (pass 5, `equation_with_small_knowns`, the card body through
+  `nodes::reply`, [[C47]] equationNode): `C = k * x * x * x` with k = 1e-15 and C = 8e-15 answers **x = 8**; the
+  answer is 2. At k = 1 down to 1e-12 it answers 2 (by bisection, 2.000000000000284), and `C = k * x^3`, where x
+  appears once and isolation inverts it, answers 2 at every k. The cause, read from `nodes/formula.rs`: the quadratic
+  sniff's tolerance and `root_holds` both floor their scale at 1 (`jmax(&[1.0, ...])`), so when every residual is
+  below about 1e-9 the cubic passes as a line, `solve_linear` gives −c/b = 8, and the plug-back check accepts a
+  residual of 5e-13 as zero. The spec's own words ("a miss beyond 10⁻⁹ of the local scale") intend a relative test;
+  the floor of 1 makes it absolute for small equations. The law a fix would be tested against: an equation's
+  solutions don't change when both sides are multiplied by the same nonzero k. A quadratic with tiny k
+  (`0 = k * (x*x - 5x + 6)`) still solves to 2 and 3, so only the "not a polynomial" check is fooled.
 - Read, not run: the MDETERM *card* answers 1 for a 0×0 matrix (`nodes/matrix.rs`, mathlib's convention), while the
   formula `MDETERM` of an empty list is `#SHAPE!`; whether a card can ever receive a 0×0 matrix is unchecked.
 - This is the pass's strongest result: a backlog-grade bug, not a research question. It belongs in `docs/backlog.md`
@@ -231,8 +241,8 @@ No test holds it yet: a candidate prototype (thread 2b).
    8 rounds?
 7. The empty-aggregate rule (F3): the cards (Aggregate) and the frame verbs (Group By over an empty group, Rollup)
    over nothing; the formula functions are censused.
-8. F8 follow-ups: the Equation solver's quadratic sniff and linear path under scaled knowns (its 1e-9 and 1e-12
-   tolerances are relative by spec; check), and whether the MDETERM and MINVERSE *cards* share `mat_det`.
+8. F8 follow-ups: the Equation's numeric layer (its pole test "10⁻⁶ times the largest of 1 and the ends" has the same
+   floor of 1) on a tiny equation with a pole; whether the MDETERM and MINVERSE *cards* share `mat_det`.
 9. Unread mathlib areas: distribution parameterizations against `dists.rs`; variance conventions; regular expressions (`Mathlib/Computability`) against
    `excel_regex.rs`; polynomial roots and `ring`; intervals (`Mathlib/Order/Interval`) for uncertain values.
 10. Cycles as least fixed points (F5), and tropical sensitivity for Schedule (F6).
@@ -256,3 +266,6 @@ No test holds it yet: a candidate prototype (thread 2b).
 - **Pass 4 (2026-11-06 10:40 UTC):** settle on loops (least fixed point, `trueany`, order-independent), the widening
   preorder as a native test against `lattice.rs` (holds), and the regressions under scaled x (hold; only SOLVE,
   MDETERM and MINVERSE break). Threads 2 closed; 6 and 8 rewritten.
+- **Pass 5 (2026-11-06 11:45 UTC):** drove the Equation card natively with scaled knowns: a silent wrong answer
+  (x = 8 for a true 2) when every term is around 1e-15 and x appears more than once, from a tolerance floored at 1
+  (F8). Thread 8 rewritten toward the numeric layer's pole test, which has the same floor.
