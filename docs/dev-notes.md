@@ -38,8 +38,9 @@ specific item.
 - **Triangle Solver is a frame card** (the author 2026-11-06): one frame in (`a, b, c, A, B, C, area, perimeter`), the
   same frame out with other columns kept, Valid per row. Unwired, it keys its own `frameText` (typed into the figure's
   labels; the Preview is the solved frame, read-only); the default is JSON so its empty columns are number columns. XWide, the figure in a Recess,
-  the Record pager. Units ride the columns (angles `deg`). A keyed area or perimeter only checks; text in a part is
-  `#VALUE!`. The old per-part sockets and `annotationFor` are gone; the `TRIANGLESOLVER` formula is unchanged.
+  the Record pager. Units ride the columns (angles `deg`). Area and perimeter solve where they fix one triangle (`sized_parts`), a mirror
+  or acute/obtuse pair is `#SOLVE!`, and a size the solve didn't need checks; text in a part is `#VALUE!`. Labels sit off
+  each side along its normal and off each vertex along its bisector, the triangle shrinking until they fit. The old per-part sockets and `annotationFor` are gone; `TRIANGLESOLVER` takes area and perimeter as arguments 7 and 8.
 - **Before pushing Rust, even a prototype test: `bash scripts/check-rust.sh <crate>`** (the crate bans `powi`, clippy
   runs with warnings as errors) and give a new test file a leaf citation, or coverage fails CI.
 

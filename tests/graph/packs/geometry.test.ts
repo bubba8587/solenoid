@@ -157,6 +157,36 @@ describe("Triangle Solver", () => {
     expect(out.valid).toEqual([true, false, true]);
   });
 
+  it("area and perimeter solve wherever they fix one triangle", () => {
+    const A = (Math.atan2(3, 4) * 180) / Math.PI, B = 90 - A;
+    const sides = (g: Given) => {
+      const t = solveTriangle(g);
+      if (isSolError(t)) return t.code;
+      return [t.a, t.b, t.c].map((x) => (x == null ? null : Number(x.toFixed(9))));
+    };
+    expect(sides({ A, B, area: 6 })).toEqual([3, 4, 5]);
+    expect(sides({ A, B, C: 90, perimeter: 12 })).toEqual([3, 4, 5]);
+    expect(sides({ a: 3, b: 4, perimeter: 12 })).toEqual([3, 4, 5]);
+    expect(sides({ a: 3, b: 4, area: 6 })).toEqual([3, 4, 5]);       // the included angle's sine is 1: right
+    expect(sides({ a: 3, b: 4, area: 5 })).toBe("#SOLVE!");          // an acute and an obtuse angle both fit
+    expect(sides({ a: 3, b: 4, area: 7 })).toBe("#DOMAIN!");         // past the right angle's area
+    expect(sides({ a: 3, C: 90, area: 6 })).toEqual([3, 4, 5]);      // C is between a and b
+    expect(sides({ a: 3, C: 90, perimeter: 12 })).toEqual([3, 4, 5]);
+    expect(sides({ a: 3, A, area: 6 })).toBe("#SOLVE!");             // the opposite angle: b and c swap
+    const eq = Math.sqrt(3);
+    expect(sides({ a: 2, A: 60, area: eq })).toEqual([2, 2, 2]);     // ...unless they are equal
+    expect(sides({ a: 2, A: 60, perimeter: 6 })).toEqual([2, 2, 2]);
+    expect(sides({ a: 2, area: eq, perimeter: 6 })).toEqual([2, 2, 2]);
+    expect(sides({ a: 3, area: 6, perimeter: 12 })).toBe("#SOLVE!");
+    expect(sides({ A: 60, area: eq, perimeter: 6 })).toEqual([2, 2, 2]);
+    expect(sides({ area: 6, perimeter: 12 })).toEqual([null, null, null]);
+    const n = new TriangleSolverNode();
+    const out = n.data({ triangles: [frameOf([{ A, B, area: 6, perimeter: 12 }, { A, B, area: 6, perimeter: 13 }])] }) as { valid: unknown[] };
+    expect(out.valid).toEqual([true, false]);                         // the size not used is a check
+    expect(n.solvedByRow[0]).toEqual(["a", "b", "c", "C"]);
+    expect((evalPackFormula("TRIANGLESOLVER(3, 4, , , , , , 12)") as number[])[2]).toBeCloseTo(5, 9);
+  });
+
   it("[[C25]] units ride the columns: sides convert into the first side's unit, angles into degrees, area squares", () => {
     const n = new TriangleSolverNode();
     const km = { dim: { length: 1 }, display: "km" };

@@ -1274,7 +1274,186 @@ pub(crate) struct TriangleResult {
     solved: Vec<usize>,
 }
 
-pub(crate) fn solve_given_parts(given: &Parts, cell_err: Option<V>) -> TriangleResult {
+/// The two numbers with this sum and product, when they are one number twice: two different ones are the same
+/// triangle's two adjacent sides either way round, a mirror pair with nothing to choose between them.
+fn equal_pair(sum: f64, prod: f64) -> Result<f64, V> {
+    let disc = sum * sum - 4.0 * prod;
+    let tol = TRI_EPS * sum * sum;
+    if !(disc >= -tol) {
+        Err(err(ErrorCode::Domain, "No triangle fits those parts"))
+    } else if disc <= tol {
+        Ok(sum / 2.0)
+    } else {
+        Err(err(ErrorCode::Solve, "Ambiguous: a triangle and its mirror image both fit. Give a different part"))
+    }
+}
+
+/// The parts with a side worked out from the area or the perimeter, where the parts alone don't fix a triangle and
+/// the size makes it one; `None` where even the size leaves it open.
+fn sized_parts(g: &Parts, area: Option<f64>, perimeter: Option<f64>) -> Option<Result<Parts, V>> {
+    let sides: Vec<usize> = (0..3).filter(|&k| g[k].is_some()).collect();
+    let angles: Vec<usize> = (3..6).filter(|&k| g[k].is_some()).collect();
+    let v = |k: usize| g[k].unwrap_or(f64::NAN);
+    if area.is_some_and(|k| !(k > 0.0)) {
+        return Some(Err(err(ErrorCode::Domain, "The area must be positive")));
+    }
+    if perimeter.is_some_and(|p| !(p > 0.0)) {
+        return Some(Err(err(ErrorCode::Domain, "The perimeter must be positive")));
+    }
+    let no_fit = || Some(Err(err(ErrorCode::Domain, "No triangle fits those parts")));
+    let mut t = *g;
+    match (sides.len(), angles.len()) {
+        // The angles fix the shape; the size scales a unit triangle of that shape.
+        (0, 2 | 3) => {
+            let mut unit: Parts = [None; 6];
+            unit[0] = Some(1.0);
+            unit[angles[0]] = g[angles[0]];
+            unit[angles[1]] = g[angles[1]];
+            let u = match solve_triangle(&unit) {
+                Ok(u) => u,
+                Err(e) => return Some(Err(e)),
+            };
+            t[0] = Some(match (area, perimeter) {
+                (Some(k), _) => (k / u.area).sqrt(),
+                (None, Some(p)) => p / u.perimeter,
+                _ => return None,
+            });
+        }
+        (2, 0) => {
+            let missing = 3 - sides[0] - sides[1];
+            let (x, y) = (v(sides[0]), v(sides[1]));
+            if let Some(p) = perimeter {
+                t[missing] = Some(p - x - y);
+            } else {
+                // The included angle's sine is 2K / xy: past 1 nothing fits, under 1 an acute and an obtuse angle do.
+                let sine = 2.0 * area? / (x * y);
+                if sine > 1.0 + TRI_EPS {
+                    return no_fit();
+                }
+                if sine < 1.0 - TRI_EPS {
+                    return Some(Err(err(
+                        ErrorCode::Solve,
+                        "Ambiguous: an acute and an obtuse triangle both fit. Give an angle",
+                    )));
+                }
+                t[missing + 3] = Some(90.0);
+            }
+        }
+        (1, 1) => {
+            let (x, y) = (sides[0], angles[0]);
+            let (xv, rad) = (v(x), v(y) * D2R);
+            if y - 3 != x {
+                // An adjacent angle: the area or the perimeter gives the angle's other side.
+                let z = 3 - x - (y - 3);
+                let zv = match (area, perimeter) {
+                    (Some(k), _) => 2.0 * k / (xv * sin(rad)),
+                    (None, Some(p)) => {
+                        let rest = p - xv;
+                        (rest * rest - xv * xv) / (2.0 * (rest - xv * cos(rad)))
+                    }
+                    _ => return None,
+                };
+                t[z] = Some(zv);
+            } else {
+                // The opposite angle: the other two sides' sum and product, so they are equal or a mirror pair.
+                let (sum, prod) = match (area, perimeter) {
+                    (Some(k), Some(p)) => (p - xv, 2.0 * k / sin(rad)),
+                    (Some(k), None) => {
+                        let prod = 2.0 * k / sin(rad);
+                        ((xv * xv + 2.0 * prod * (1.0 + cos(rad))).sqrt(), prod)
+                    }
+                    (None, Some(p)) => {
+                        let sum = p - xv;
+                        (sum, (sum * sum - xv * xv) / (2.0 * (1.0 + cos(rad))))
+                    }
+                    _ => return None,
+                };
+                let each = match equal_pair(sum, prod) {
+                    Ok(e) => e,
+                    Err(e) => return Some(Err(e)),
+                };
+                for k in (0..3).filter(|&k| k != x) {
+                    t[k] = Some(each);
+                }
+            }
+        }
+        // One side, the area and the perimeter: Heron's s - b and s - c sum to the side.
+        (1, 0) => {
+            let (Some(k), Some(p)) = (area, perimeter) else { return None };
+            let (x, half) = (v(sides[0]), p / 2.0);
+            if !(half > x) {
+                return no_fit();
+            }
+            let each = match equal_pair(x, k * k / (half * (half - x))) {
+                Ok(e) => half - e,
+                Err(e) => return Some(Err(e)),
+            };
+            for j in (0..3).filter(|&j| j != sides[0]) {
+                t[j] = Some(each);
+            }
+        }
+        // One angle, the area and the perimeter: the adjacent sides' product from the area, their sum from the
+        // perimeter by the cosine rule.
+        (0, 1) => {
+            let (Some(k), Some(p)) = (area, perimeter) else { return None };
+            let y = angles[0];
+            let rad = v(y) * D2R;
+            let prod = 2.0 * k / sin(rad);
+            let sum = (p * p + 2.0 * prod * (1.0 + cos(rad))) / (2.0 * p);
+            let each = match equal_pair(sum, prod) {
+                Ok(e) => e,
+                Err(e) => return Some(Err(e)),
+            };
+            t[y - 3] = Some(p - sum);
+            for j in (0..3).filter(|&j| j != y - 3) {
+                t[j] = Some(each);
+            }
+        }
+        _ => return None,
+    }
+    Some(Ok(t))
+}
+
+/// Six parts and an optional area and perimeter: the parts solve as they can, the size fills in where they can't, and
+/// whatever is left over is a check.
+pub(crate) fn solve_given_parts(
+    given: &Parts,
+    area: Option<f64>,
+    perimeter: Option<f64>,
+    cell_err: Option<V>,
+) -> TriangleResult {
+    if cell_err.is_none() {
+        let sides = (0..3).filter(|&k| given[k].is_some()).count();
+        let fixed = given.iter().flatten().count() >= 3 && sides > 0;
+        let sized =
+            if fixed || (area.is_none() && perimeter.is_none()) { None } else { sized_parts(given, area, perimeter) };
+        let mut r = match sized {
+            Some(Err(e)) => {
+                return TriangleResult {
+                    values: std::array::from_fn(|k| given[k].map_or_else(|| e.clone(), V::Num)),
+                    area: e.clone(),
+                    perimeter: e,
+                    valid: V::Bool(false),
+                    solved: Vec::new(),
+                }
+            }
+            Some(Ok(parts)) => solve_parts(&parts, None),
+            None => solve_parts(given, None),
+        };
+        if let (V::Num(got_area), V::Num(got_perimeter)) = (&r.area, &r.perimeter) {
+            r.solved = (0..6).filter(|&k| given[k].is_none()).collect();
+            let close =
+                |got: f64, want: Option<f64>| want.is_none_or(|w| (got - w).abs() <= 1e-6 * nan_max(1.0, w.abs()));
+            if matches!(r.valid, V::Bool(true)) && !(close(*got_area, area) && close(*got_perimeter, perimeter)) {
+                r.valid = V::Bool(false);
+            }
+        }
+        return r;
+    }
+    solve_parts(given, cell_err)
+}
+
+fn solve_parts(given: &Parts, cell_err: Option<V>) -> TriangleResult {
     let done = |values: [V; 6], area: V, perimeter: V, valid: V, solved: Vec<usize>| TriangleResult {
         values,
         area,
@@ -1341,11 +1520,6 @@ const TRIANGLE_COLUMNS: [&str; 8] = ["a", "b", "c", "A", "B", "C", "area", "peri
 /// The keyed table a fresh card holds: one 3-4-5 triangle to solve.
 pub(crate) const TRIANGLE_DEFAULT: &str = r#"[{"name":"a","cells":["3"]},{"name":"b","cells":["4"]},{"name":"c","cells":["5"]},{"name":"A","cells":[""]},{"name":"B","cells":[""]},{"name":"C","cells":[""]},{"name":"area","cells":[""]},{"name":"perimeter","cells":[""]}]"#;
 
-/// Two numbers that agree to the solver's precision.
-fn agrees(x: f64, y: f64) -> bool {
-    (x - y).abs() <= 1e-9 * x.abs().max(y.abs()).max(f64::MIN_POSITIVE)
-}
-
 /// Triangle Solver: one triangle per row of its frame, the wired one or its own keyed table. Each row's given parts
 /// solve the rest; a keyed area or perimeter is a check that `valid` reads. The output is the same frame with the
 /// eight columns filled, other columns kept; `valid` answers per row. Sides share one column unit, which the sides and
@@ -1374,23 +1548,31 @@ fn triangle_solver(c: &mut Call) -> Answer {
     let side_unit = ["a", "b", "c"].iter().find_map(|k| col(k).and_then(|c| c.unit.clone()));
     let target = side_unit.as_ref().map(unit_of_json);
     let deg = unit_of_json(&serde_json::json!({ "dim": { "angle": 1.0 }, "display": "deg" }));
-    let factors: Result<Vec<f64>, V> = PART_KEYS
+    let square = target.as_ref().map(|(dim, to)| (dim_pow(dim, 2.0), to * to));
+    let factors: Result<Vec<f64>, V> = TRIANGLE_COLUMNS
         .iter()
-        .map(|k| {
-            let into = if k.chars().all(char::is_uppercase) { Some(&deg) } else { target.as_ref() };
+        .enumerate()
+        .map(|(i, k)| {
+            let into = match i {
+                3..=5 => Some(&deg),
+                6 => square.as_ref(),
+                _ => target.as_ref(),
+            };
             match (col(k).and_then(|c| c.unit.as_ref()).map(unit_of_json), into) {
                 (None, _) | (_, None) => Ok(1.0),
                 (Some((dim, scale)), Some((want, to))) if dim_equal(&dim, want) => Ok(scale / to),
-                (Some(_), Some(_)) if k.chars().all(char::is_uppercase) => {
-                    Err(V::err(unit_error(&format!("{k} is an angle."))))
-                }
-                _ => Err(V::err(unit_error("The three sides must share one dimension."))),
+                (Some(_), Some(_)) => Err(V::err(unit_error(match i {
+                    3..=5 => "A, B and C are angles.",
+                    6 => "The area must be in the sides' unit squared.",
+                    7 => "The perimeter must be in the sides' unit.",
+                    _ => "The three sides must share one dimension.",
+                }))),
             }
         })
         .collect();
     let (factors, unit_err) = match factors {
         Ok(f) => (f, None),
-        Err(e) => (vec![1.0; 6], Some(e)),
+        Err(e) => (vec![1.0; 8], Some(e)),
     };
     // A part is an amount: a date or logical column in one of the eight is refused, never read as its serial.
     let kind_err = TRIANGLE_COLUMNS.iter().find_map(|k| match col(k).map(|c| c.ty) {
@@ -1408,9 +1590,9 @@ fn triangle_solver(c: &mut Call) -> Answer {
     let mut solved_by_row: Vec<V> = Vec::with_capacity(rows);
     for i in 0..rows {
         let cell = |name: &str| col(name).and_then(|c| c.values.get(i).cloned()).unwrap_or(V::Null);
-        let mut given: Parts = [None; 6];
+        let mut given = [None; 8];
         let mut cell_err = unit_err.clone();
-        for (k, name) in PART_KEYS.iter().enumerate() {
+        for (k, name) in TRIANGLE_COLUMNS.iter().enumerate() {
             match cell(name) {
                 e if e.is_sol_error() => {
                     cell_err.get_or_insert(e);
@@ -1424,21 +1606,14 @@ fn triangle_solver(c: &mut Call) -> Answer {
                 }
             }
         }
-        let r = solve_given_parts(&given, cell_err);
+        let parts: Parts = std::array::from_fn(|k| given[k]);
+        let r = solve_given_parts(&parts, given[6], given[7], cell_err);
         for (k, v) in r.values.iter().enumerate() {
             out[k].push(v.clone());
         }
         out[6].push(r.area.clone());
         out[7].push(r.perimeter.clone());
-        let checks = [("area", &r.area), ("perimeter", &r.perimeter)];
-        let holds = checks.iter().all(|(name, got)| match (cell(name), got) {
-            (V::Num(keyed), V::Num(solved)) => agrees(keyed, *solved),
-            _ => true,
-        });
-        valid.push(match r.valid {
-            V::Bool(true) if !holds => V::Bool(false),
-            v => v,
-        });
+        valid.push(r.valid);
         solved_by_row.push(list(r.solved.iter().map(|&k| V::Str(Rc::from(PART_KEYS[k]))).collect()));
     }
     let area_unit = side_unit.as_ref().and_then(|u| {

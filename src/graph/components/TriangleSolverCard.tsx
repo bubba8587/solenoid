@@ -23,7 +23,7 @@ import "./TriangleSolverCard.css";
 
 const PARTS = ["a", "b", "c", "A", "B", "C"] as const;
 type Part = (typeof PARTS)[number];
-const W = 300, H = 236, PADX = 56, PADY = 30;
+const W = 300, H = 236, PADX = 66, PADY = 38;
 type Pt = { x: number; y: number };
 
 const STAND_IN = { a: 5, c: 4, B: 62 };
@@ -37,30 +37,75 @@ function numAt(frame: FrameValue | null, name: string, row: number): number | un
 }
 
 /** The triangle's corners in the figure's box, drawn to scale (B at the origin, C along the base), or null. */
-function corners(t: Partial<Record<Part, number>>): Record<"A" | "B" | "C", Pt> | null {
+function corners(t: Partial<Record<Part, number>>, fill = 1): Record<"A" | "B" | "C", Pt> | null {
   const { a, c, B } = t;
   if (a === undefined || c === undefined || B === undefined) return null;
   const raw = { B: { x: 0, y: 0 }, C: { x: a, y: 0 }, A: { x: c * Math.cos((B * Math.PI) / 180), y: c * Math.sin((B * Math.PI) / 180) } };
   const xs = Object.values(raw).map((p) => p.x), ys = Object.values(raw).map((p) => p.y);
   const minX = iterMin(xs), minY = iterMin(ys), spanX = iterMax(xs) - minX, spanY = iterMax(ys) - minY;
   if (!(spanX > 0) || !Number.isFinite(spanX) || !Number.isFinite(spanY)) return null;
-  const scale = Math.min((W - 2 * PADX) / spanX, (H - 2 * PADY) / Math.max(spanY, spanX * 0.15));
+  const scale = fill * Math.min((W - 2 * PADX) / spanX, (H - 2 * PADY) / Math.max(spanY, spanX * 0.15));
   const px = (p: Pt) => ({ x: PADX + (p.x - minX) * scale + (W - 2 * PADX - spanX * scale) / 2, y: H - PADY - (p.y - minY) * scale - (H - 2 * PADY - spanY * scale) / 2 });
   return { A: px(raw.A), B: px(raw.B), C: px(raw.C) };
 }
 
-/** Where each part's label sits: a vertex's just outside its corner, a side's beside its midpoint. */
-function labelSpots(P: Record<"A" | "B" | "C", Pt>): Record<Part, Pt> {
+type Box = { w: number; h: number };
+
+/** A label's box in figure units: the letter, the field sized to its text, the degree mark on an angle. */
+function labelBox(part: Part, text: string): Box {
+  const angle = part === part.toUpperCase();
+  return { w: 14 + Math.max(3, text.length) * 6.7 + 10 + (angle ? 9 : 0), h: 18 };
+}
+
+/** How far a box's center must sit from a line, along the unit normal (nx, ny), for the box to clear it by `gap`. */
+const clearance = (b: Box, nx: number, ny: number, gap: number) => gap + Math.abs(nx) * (b.w / 2) + Math.abs(ny) * (b.h / 2);
+
+/** Where each label sits: a side's off its midpoint along the outward normal, a vertex's along its outward bisector,
+ *  each far enough that its box clears the lines, then overlapping boxes pushed apart and all kept in the figure. */
+function labelSpots(P: Record<"A" | "B" | "C", Pt>, boxes: Record<Part, Box>): { spots: Record<Part, Pt>; fits: boolean } {
   const g = { x: (P.A.x + P.B.x + P.C.x) / 3, y: (P.A.y + P.B.y + P.C.y) / 3 };
-  const away = (p: Pt, d: number) => {
-    const dx = p.x - g.x, dy = p.y - g.y, len = Math.hypot(dx, dy) || 1;
-    return { x: p.x + (dx / len) * d, y: p.y + (dy / len) * d };
+  const unit = (x: number, y: number) => { const l = Math.hypot(x, y) || 1; return { x: x / l, y: y / l }; };
+  const side = (part: Part, p: Pt, q: Pt): Pt => {
+    const m = { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
+    let n = unit(q.y - p.y, p.x - q.x);
+    if (n.x * (m.x - g.x) + n.y * (m.y - g.y) < 0) n = { x: -n.x, y: -n.y };
+    const d = clearance(boxes[part], n.x, n.y, 5);
+    return { x: m.x + n.x * d, y: m.y + n.y * d };
   };
-  const mid = (p: Pt, q: Pt) => away({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }, 16);
-  // A label is about 80 units wide and 16 tall, so its center keeps that far from the box's edges.
-  const inside = (p: Pt) => ({ x: Math.min(Math.max(p.x, 42), W - 42), y: Math.min(Math.max(p.y, 10), H - 10) });
-  const spots = { A: away(P.A, 20), B: away(P.B, 20), C: away(P.C, 20), a: mid(P.B, P.C), b: mid(P.A, P.C), c: mid(P.A, P.B) };
-  return Object.fromEntries(Object.entries(spots).map(([k, p]) => [k, inside(p)])) as Record<Part, Pt>;
+  const vertex = (part: "A" | "B" | "C", p: Pt, q: Pt, r: Pt): Pt => {
+    const u = unit(p.x - q.x, p.y - q.y), v = unit(p.x - r.x, p.y - r.y);
+    const n = unit(u.x + v.x, u.y + v.y);
+    const d = clearance(boxes[part], n.x, n.y, 6);
+    return { x: p.x + n.x * d, y: p.y + n.y * d };
+  };
+  const spots: Record<Part, Pt> = {
+    A: vertex("A", P.A, P.B, P.C), B: vertex("B", P.B, P.A, P.C), C: vertex("C", P.C, P.A, P.B),
+    a: side("a", P.B, P.C), b: side("b", P.A, P.C), c: side("c", P.A, P.B),
+  };
+  const inside = (k: Part) => {
+    const { w, h } = boxes[k], p = spots[k];
+    return p.x - w / 2 >= 1 && p.x + w / 2 <= W - 1 && p.y - h / 2 >= 1 && p.y + h / 2 <= H - 1;
+  };
+  const fits = PARTS.every(inside);
+  const keep = (k: Part) => {
+    const { w, h } = boxes[k], p = spots[k];
+    spots[k] = { x: Math.min(Math.max(p.x, w / 2 + 2), W - w / 2 - 2), y: Math.min(Math.max(p.y, h / 2 + 2), H - h / 2 - 2) };
+  };
+  for (let pass = 0; pass < 12; pass++) {
+    let moved = false;
+    for (let i = 0; i < PARTS.length; i++) for (let j = i + 1; j < PARTS.length; j++) {
+      const [ki, kj] = [PARTS[i], PARTS[j]], [p, q] = [spots[ki], spots[kj]];
+      const ox = (boxes[ki].w + boxes[kj].w) / 2 + 3 - Math.abs(p.x - q.x);
+      const oy = (boxes[ki].h + boxes[kj].h) / 2 + 2 - Math.abs(p.y - q.y);
+      if (ox <= 0 || oy <= 0) continue;
+      moved = true;
+      if (oy < ox) { const s = (q.y >= p.y ? 1 : -1) * oy / 2; spots[ki] = { ...p, y: p.y - s }; spots[kj] = { ...q, y: q.y + s }; }
+      else { const s = (q.x >= p.x ? 1 : -1) * ox / 2; spots[ki] = { ...p, x: p.x - s }; spots[kj] = { ...q, x: q.x + s }; }
+    }
+    PARTS.forEach(keep);
+    if (!moved) break;
+  }
+  return { spots, fits };
 }
 
 /** One part's label on the figure: the letter, then its value, keyed into the shown row while no frame is wired. */
@@ -137,8 +182,18 @@ export function TriangleSolverComponent({ data, emit }: NodeProps<TriangleSolver
   const parts = Object.fromEntries(PARTS.map((k) => [k, numAt(out, k, row)])) as Partial<Record<Part, number>>;
   const solvedP = corners(parts);
   // With nothing solvable a stand-in triangle keeps all six fields on the figure to key into.
-  const P = solvedP ?? corners(STAND_IN)!;
-  const spots = labelSpots(P);
+  const shape = solvedP ? parts : STAND_IN;
+  const keyedAt = (part: Part) => source.find((c) => c.name === part)?.cells[row] ?? "";
+  const boxes = Object.fromEntries(PARTS.map((k) => {
+    const v = parts[k];
+    return [k, labelBox(k, wired ? (v === undefined ? "" : formatScalar(v)) : keyedAt(k) || (v === undefined ? "" : formatScalar(v)))];
+  })) as Record<Part, Box>;
+  // The triangle shrinks until every label fits beside it, so none is pushed back over a line.
+  let P = corners(shape)!, { spots, fits } = labelSpots(P, boxes);
+  for (let fill = 0.9; !fits && fill > 0.45; fill -= 0.1) {
+    P = corners(shape, fill)!;
+    ({ spots, fits } = labelSpots(P, boxes));
+  }
 
   const save = useCallback(async (columns: FrameSourceColumn[]) => {
     data.frameText = frameSourceToText(columns);
@@ -169,7 +224,6 @@ export function TriangleSolverComponent({ data, emit }: NodeProps<TriangleSolver
     setShownRow(data.row);
   };
 
-  const keyedAt = (part: Part) => source.find((c) => c.name === part)?.cells[row] ?? "";
   const valid = Array.isArray(data.cachedValid) ? (data.cachedValid[row] ?? null) : data.cachedValid;
 
   return (

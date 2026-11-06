@@ -3,5 +3,5 @@
 import type { PackFormula } from "./packShared";
 
 export const GEOMETRY_PACK_FORMULAS: PackFormula[] = [
-  { name: "TRIANGLESOLVER", arity: [3, 6], signature: "a, b, c, A°, B°, C° — any 3 incl. a side; returns all six", emptySlotsLeftOut: true },
+  { name: "TRIANGLESOLVER", arity: [3, 8], signature: "a, b, c, [A°], [B°], [C°], [area], [perimeter]", emptySlotsLeftOut: true },
 ];

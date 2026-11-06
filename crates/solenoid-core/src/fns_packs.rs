@@ -242,7 +242,7 @@ const NUMBER_ARGS: &[(&str, &[usize])] = &[
     ("HEARTRATEZONES", &[0, 1]),
     ("STANDARDATMOSPHERE", &[0]),
     ("ANTOINE", &[1]),
-    ("TRIANGLESOLVER", &[0, 1, 2, 3, 4, 5]),
+    ("TRIANGLESOLVER", &[0, 1, 2, 3, 4, 5, 6, 7]),
 ];
 
 pub fn call(name: &str, a: &[V]) -> V {
@@ -500,10 +500,14 @@ pub fn call(name: &str, a: &[V]) -> V {
                     *g = Some(*n);
                 }
             }
-            if given.iter().all(Option::is_none) {
+            let size = |i: usize| match arg(a, i) {
+                V::Num(n) if n.is_finite() => Some(*n),
+                _ => None,
+            };
+            if given.iter().all(Option::is_none) && size(6).is_none() && size(7).is_none() {
                 return V::Null;
             }
-            V::List(Rc::new(k::solve_given_parts(&given, None).values.to_vec()))
+            V::List(Rc::new(k::solve_given_parts(&given, size(6), size(7), None).values.to_vec()))
         }
         _ => err(ErrorCode::Name, format!("Unknown function {name}")),
     }
