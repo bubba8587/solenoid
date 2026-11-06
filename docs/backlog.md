@@ -122,6 +122,10 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
   release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
   node (`docs/dte.md` § Solenoid practice; `archive/1.4-plan.md` D3).
 
+## Pipeline (author 2026-11-06, after 1.6)
+
+- [ ] **Query becomes Pipeline** (the industrial name, beside Solenoid, Conduit, Cable; `power query` stays a search keyword), still a Composite with an option, not a new class ([[B11]] maximalMerge; amend [[C53]] queryIsCompositePreset, whose "reopen if" this meets). Inside, the table runs through **one chain**: each step's table input fed by the step before; a step's other inputs (a Join's right table, a threshold) come in through the Pipeline's own input ports; a branch or a dead end is an error naming the step. The inside lays itself out left to right. The outer card shows the steps **numbered, read off the graph** (each card's settings as a one-line summary, its row count); a click previews that step's table or drills in to it. **The graph stays the source of truth** (author): no reorder, skip or add from the outer card; order is the cables'. Old Query saves break (pre-alpha).
+
 ## Cubes and lists (author 2026-09-26)
 
 - [ ] **A list read as a column** (the author, 2026-09-26): if TAKE/DROP ever need to count a list's items as rows,
