@@ -88,14 +88,32 @@ function PickerBody({ state }: { state: FilePickerState }) {
   const recentRows = useMemo((): Row[] => (searching || folder !== "" ? [] : recent.filter((p) => known.has(p)).map((p) => ({ key: `\u0000r${p}`, kind: folderMode ? "folder" : "file", path: p, name: nameOf(p), detail: parentOf(p) }))), [recent, known, searching, folder, folderMode]);
   const all = useMemo(() => [...recentRows, ...rows], [recentRows, rows]);
 
-  // Open on the current pick when there is one, else on the first row.
+  // Open on the current pick when there is one, else on the first row; a new folder or search starts at the top (or on
+  // the folder just left); a listing refreshed behind keeps the row under the cursor.
   const opened = useRef(false);
+  const view = useRef("");
+  const want = useRef<string | null>(null);
+  const atKey = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!tree) return;
-    const cur = !opened.current && state.current !== undefined ? all.findIndex((r) => r.path === state.current && !r.key.startsWith("\u0000r")) : -1;
-    opened.current = true;
-    setAt(cur >= 0 ? cur : 0);
-  }, [all, tree, state.current]);
+    const here = `${folder}\u0000${deferred}`;
+    const find = (key: string) => all.findIndex((r) => r.key === key);
+    if (!opened.current) {
+      opened.current = true;
+      view.current = here;
+      const cur = state.current !== undefined ? all.findIndex((r) => r.path === state.current && !r.key.startsWith("\u0000r")) : -1;
+      setAt(cur >= 0 ? cur : 0);
+    } else if (here !== view.current) {
+      view.current = here;
+      const back = want.current !== null ? find(want.current) : -1;
+      want.current = null;
+      setAt(back >= 0 ? back : 0);
+    } else {
+      const kept = atKey.current !== undefined ? find(atKey.current) : -1;
+      setAt((i) => (kept >= 0 ? kept : Math.max(0, Math.min(i, all.length - 1))));
+    }
+  }, [all, tree, folder, deferred, state.current]);
+  useEffect(() => { atKey.current = all[at]?.key; }, [all, at]);
 
   // Search first where there's a keyboard; a phone browses, so its keyboard stays down until the Filter is tapped.
   useEffect(() => { if (paths && !phone) bodyRef.current?.closest(".sol-popup")?.querySelector<HTMLInputElement>(".sol-popup__header input")?.focus(); }, [paths, phone]);
@@ -120,7 +138,7 @@ function PickerBody({ state }: { state: FilePickerState }) {
     else if (row.kind === "folder" && !(folderMode && (searching || row.key.startsWith("\u0000r")))) enter(row);
     else choose(row.path);
   };
-  const up = () => { if (!searching && folder) { const was = folder; setFolder(parentOf(folder)); setAt(Math.max(0, entriesAt(tree!, parentOf(was)).findIndex((e) => e.path === was) + (folderMode ? 1 : 0))); } };
+  const up = () => { if (!searching && folder) { want.current = folder; setFolder(parentOf(folder)); } };
 
   const onKey = (e: KeyboardEvent) => {
     const page = 8;
