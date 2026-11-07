@@ -33,7 +33,9 @@ native/solenoid-blitz/target/release/solenoid-blitz view .dev/scenes/personal-fi
 native/solenoid-gpui/target/release/solenoid-gpui .dev/scenes/personal-finance [--tile 6] [--lod]
 ```
 
-The Blitz viewer's title bar shows frames per second, the chunks drawn, and the CPU time of the frame's scene build;
+In the Blitz viewer the wheel zooms, a drag on a card moves it (cables follow), a drag elsewhere pans; F fits, 1 is
+100%, R toggles the far-zoom pictures, Esc quits. Its title bar shows frames per second, the chunks drawn, and the CPU
+time of the frame's scene build;
 `--animate` pans continuously so the frame rate is steady to read. `--tile N` stamps the graph N × N (zz-scratch-new-nodes
 at `--tile 4` is 3,856 real cards). Linux needs `libxkbcommon-x11-dev`, `libwayland-dev`, `libvulkan-dev` and the
 xcb dev packages to build GPUI; the native crates pin a vendored `xattr` (`native/vendor`, one-line libc fix).
@@ -75,8 +77,9 @@ may be stale; they are not the yardstick for this branch. The author judges spee
    display, is for the author's eye; `SOLENOID_NO_RASTER=1` turns the pictures off to judge pure vector.
 2. **Live, not a snapshot.** Both viewers draw a captured scene. The next step is feeding the renderer from the running
    app: re-record only the chunks a changed card touches (Blitz), or patch the display list (GPUI).
-3. **Input.** Card drag in the Blitz viewer (re-record the chunks under the card on drop, move its recording while
-   dragging); text entry and selection belong to whichever route survives.
+3. **Input.** Card drag works in the Blitz viewer (the live page moves the card, reroutes its cables with the app's
+   router, and re-records the touched chunks, about 5 ms a step); selection, sockets, cable drawing and text entry
+   belong to whichever route survives.
 4. **Fidelity gaps** above, and charts drawn to `<canvas>` in Blitz.
 5. **The web.** Vello runs on WebGPU and WebGL2 (`vello_hybrid`), so the retained scene could serve the browser too; not
    started.
