@@ -16,6 +16,12 @@ the UI stays TypeScript, so a merge needs a leaf first. Background: `archive/rus
 | Blitz + Vello | `native/solenoid-blitz` | Draws the app's real DOM and CSS with Blitz (Stylo, Taffy, Parley) into a **retained Vello scene**, then pans and zooms it on the GPU. Also a headless PNG shot and a CPU bench. |
 | Helpers | `native/shot.sh`, `native/interact.sh` | Screenshot a viewer with no display (Xvfb + openbox), or drive it with real wheel and drag events. |
 
+## Testing without building
+
+The **Fast render** workflow (`.github/workflows/fast-render.yml`) runs on every push to this branch: it exports fresh
+scenes from the app and builds both viewers for Linux, Windows and macOS. Each run's page on GitHub has one download per
+platform (`solenoid-fast-render-<OS>`) holding the viewers, the scenes, `run-blitz` / `run-gpui` scripts and a README.
+
 ## Running it
 
 ```
@@ -40,10 +46,11 @@ xcb dev packages to build GPUI; the native crates pin a vendored `xattr` (`nativ
 chunks, each a `vello::Scene` clipped to its square; a frame appends only the chunks in view under the camera's
 transform and Vello rasterizes on the GPU. Nothing is laid out, styled or re-encoded while panning or zooming, so the
 CPU cost of a frame follows what is on screen, not the size of the graph: 0.75 ms at 25% zoom over 3,856 cards here.
-Fidelity is the app's own CSS: what stock Blitz misses is flattened in the exported copy only (computed colors inline
-for `light-dark()`, `color-mix()` and `var()` in SVG; selects as spans; SVG geometry as attributes; the dot grid's
-`<pattern>` and the 4,000,000 px backing replaced). Still missing: CSS-mask icons (chevrons, copy glyphs), the dot grid,
-some select styling.
+Far out, each chunk draws as a cached picture of itself instead (below). Fidelity is the app's own CSS: what stock Blitz
+misses is flattened in the exported copy only. Colors are written as `rgba()` (stock Blitz drops `color(srgb …)`,
+`light-dark()`, `color-mix()` and `var()` in SVG paint); CSS-mask and SVG-background icons become inline svgs; selects,
+checkboxes and canvases become spans, drawn boxes and images; SVG geometry set by CSS becomes attributes. The page is
+see-through and the viewer paints the canvas color and dot grid under it. Still off: range sliders, small styling.
 
 **GPUI (immediate mode).** Draws the exported display list every frame. Close to Chromium card for card (paint order,
 clipping, icons, fonts, images), and the right shape for hand-built native cards later. But GPUI rebuilds every
@@ -62,11 +69,10 @@ may be stale; they are not the yardstick for this branch. The author judges spee
 
 ## Open, in order
 
-1. **Every card on screen at once.** At 5% zoom over 3,856 cards (about 160 chunks, 90,000 paths in one frame) Vello
-   on lavapipe renders nothing and reports no error. Needs a real GPU to tell a lavapipe limit from a Vello one
-   (`bump_estimate` and the adapter's full limits are already on). If it is Vello's, the fix is a far-zoom raster
-   cache: render each chunk to a texture once per zoom octave and draw textures when the visible path count passes a
-   budget.
+1. **Raster thresholds on real hardware.** Far out, chunks draw as pictures of themselves (1/4 resolution under 25%
+   zoom, 1/16 under 6.25%, made once per chunk on first need), which is what lets all 3,856 cards show at once; at
+   25% and above everything is vector. Whether 25% is the right line, and how sharp the pictures look on a real
+   display, is for the author's eye; `SOLENOID_NO_RASTER=1` turns the pictures off to judge pure vector.
 2. **Live, not a snapshot.** Both viewers draw a captured scene. The next step is feeding the renderer from the running
    app: re-record only the chunks a changed card touches (Blitz), or patch the display list (GPUI).
 3. **Input.** Card drag in the Blitz viewer (re-record the chunks under the card on drop, move its recording while

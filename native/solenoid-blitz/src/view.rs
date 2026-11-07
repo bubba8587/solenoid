@@ -28,6 +28,26 @@ struct Chunk {
     scene: Scene,
     /// The chunk's square in flow coordinates.
     rect: Rect,
+    /// The chunk rasterized at each cached scale (`RASTER`), made the first time a frame needs it.
+    cached: [Option<vello::peniko::ImageData>; 2],
+}
+
+/// Far out, a chunk draws as a picture of itself: rendered once at 1/4 (zoom under 25%) or 1/16 (under 6.25%) and
+/// sampled after, so a view of every card costs one image per chunk instead of every path.
+/// `SOLENOID_NO_RASTER=1` keeps vector drawing at every zoom.
+const RASTER: [f64; 2] = [0.25, 0.0625];
+
+fn raster_level(zoom: f64) -> Option<usize> {
+    if std::env::var_os("SOLENOID_NO_RASTER").is_some() {
+        return None;
+    }
+    if zoom >= RASTER[0] {
+        None
+    } else if zoom >= RASTER[1] {
+        Some(0)
+    } else {
+        Some(1)
+    }
 }
 
 /// Lays the page out over each chunk of the graph in turn (by moving the canvas's transform) and paints each into its
@@ -63,6 +83,7 @@ fn record(dir: &std::path::Path, tile: usize) -> (Vec<Chunk>, Color, usize) {
             one.push(Chunk {
                 scene,
                 rect: Rect::from_origin_size(at.to_point(), (CHUNK, CHUNK)),
+                cached: [None, None],
             });
         }
     }
@@ -77,6 +98,7 @@ fn record(dir: &std::path::Path, tile: usize) -> (Vec<Chunk>, Color, usize) {
                 chunks.push(Chunk {
                     scene,
                     rect: c.rect + d,
+                    cached: [None, None],
                 });
             }
         }
@@ -188,6 +210,45 @@ impl Gpu {
         self.target_view = Self::target(&self.device, self.config.width, self.config.height);
     }
 
+    /// Renders a chunk at `scale` into its own texture and hands it to Vello as an image.
+    fn raster(&mut self, scene: &Scene, scale: f64) -> vello::peniko::ImageData {
+        let side = (CHUNK * scale).ceil() as u32;
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("chunk raster"),
+            size: wgpu::Extent3d {
+                width: side,
+                height: side,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            usage: wgpu::TextureUsages::STORAGE_BINDING
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_SRC,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let mut scaled = Scene::new();
+        scaled.append(scene, Some(Affine::scale(scale)));
+        self.renderer
+            .render_to_texture(
+                &self.device,
+                &self.queue,
+                &scaled,
+                &view,
+                &RenderParams {
+                    base_color: Color::TRANSPARENT,
+                    width: side,
+                    height: side,
+                    antialiasing_method: AaConfig::Area,
+                },
+            )
+            .expect("render a chunk");
+        self.renderer.register_texture(texture)
+    }
+
     fn render(&mut self, scene: &Scene, base: Color) {
         let (w, h) = (self.config.width, self.config.height);
         self.renderer
@@ -274,12 +335,24 @@ impl Viewer {
             h,
         );
         self.drawn = 0;
-        for ch in &self.chunks {
-            if ch.rect.overlaps(view) {
-                let at = Affine::translate(ch.rect.origin().to_vec2());
-                self.frame.append(&ch.scene, Some(cam * at));
-                self.drawn += 1;
+        let level = raster_level(c.zoom);
+        for ch in &mut self.chunks {
+            if !ch.rect.overlaps(view) {
+                continue;
             }
+            let at = Affine::translate(ch.rect.origin().to_vec2());
+            match level {
+                None => self.frame.append(&ch.scene, Some(cam * at)),
+                Some(l) => {
+                    let scale = RASTER[l];
+                    let img = ch.cached[l].get_or_insert_with(|| gpu.raster(&ch.scene, scale));
+                    let brush = vello::peniko::ImageBrush::new(img.clone())
+                        .with_quality(vello::peniko::ImageQuality::Medium);
+                    self.frame
+                        .draw_image(&brush, cam * at * Affine::scale(1.0 / scale));
+                }
+            }
+            self.drawn += 1;
         }
         self.build += t0.elapsed();
         gpu.render(&self.frame, self.base);
@@ -289,11 +362,16 @@ impl Viewer {
             let fps = self.frames as f64 / el.as_secs_f64();
             let build = self.build.as_secs_f64() * 1000.0 / self.frames as f64;
             let title = format!(
-                "Solenoid (Blitz + Vello) · {} cards · zoom {:.0}% · {fps:.0} fps · {}/{} chunks · scene {build:.2} ms CPU",
+                "Solenoid (Blitz + Vello) · {} cards · zoom {:.0}% · {fps:.0} fps · {}/{} chunks{} · scene {build:.2} ms CPU",
                 self.cards,
                 self.camera.zoom * 100.0,
                 self.drawn,
-                self.chunks.len()
+                self.chunks.len(),
+                match raster_level(self.camera.zoom) {
+                    Some(0) => " (as 1/4 pictures)",
+                    Some(_) => " (as 1/16 pictures)",
+                    None => "",
+                }
             );
             window.set_title(&title);
             if std::env::var_os("SOLENOID_VIEW_LOG").is_some() {
