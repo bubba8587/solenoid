@@ -4,6 +4,9 @@
 //! card at full fidelity, and a frame's work follows what is on screen rather than the size of the graph.
 //!
 //! The window title shows frames per second, the chunks drawn, and the CPU time of the scene build.
+//!
+//! Wheel zooms; a drag on a card moves it, elsewhere pans; F fits the graph, 1 is 100%, R toggles the far-zoom
+//! pictures, Esc quits.
 
 use crate::{Camera, Canvas, scene_info};
 use anyrender::PaintScene;
@@ -37,8 +40,14 @@ struct Chunk {
 /// `SOLENOID_NO_RASTER=1` keeps vector drawing at every zoom.
 const RASTER: [f64; 2] = [0.25, 0.0625];
 
+thread_local! {
+    /// The R key's toggle, starting from `SOLENOID_NO_RASTER`.
+    static NO_RASTER: std::cell::Cell<bool> =
+        std::cell::Cell::new(std::env::var_os("SOLENOID_NO_RASTER").is_some());
+}
+
 fn raster_level(zoom: f64) -> Option<usize> {
-    if std::env::var_os("SOLENOID_NO_RASTER").is_some() {
+    if NO_RASTER.with(|n| n.get()) {
         return None;
     }
     if zoom >= RASTER[0] {
@@ -404,6 +413,43 @@ struct Viewer {
 }
 
 impl Viewer {
+    fn size(&self) -> (f64, f64) {
+        self.gpu
+            .as_ref()
+            .map(|g| (g.config.width as f64, g.config.height as f64))
+            .unwrap_or((1600.0, 1000.0))
+    }
+
+    /// The whole graph (every tile) in the window, 40 px in from the edges.
+    fn fit(&mut self) {
+        let (w, h) = self.size();
+        let b = self
+            .chunks
+            .iter()
+            .map(|c| c.rect)
+            .reduce(|a, r| a.union(r))
+            .unwrap_or_default();
+        let m = self.page.model.bounds();
+        let tiles = (self.chunks.len() / (self.page.nx * self.page.ny).max(1)).max(1) as f64;
+        // The chunk grid pads the graph; fit the cards' own bounds, scaled to the tiled extent.
+        let (bw, bh) = if tiles > 1.0 {
+            (b.width(), b.height())
+        } else {
+            (m.w as f64, m.h as f64)
+        };
+        let (bx, by) = if tiles > 1.0 {
+            (b.x0, b.y0)
+        } else {
+            (m.x as f64, m.y as f64)
+        };
+        let zoom = ((w - 80.0) / bw).min((h - 80.0) / bh).clamp(0.02, 8.0);
+        self.camera = Camera {
+            x: w / 2.0 - (bx + bw / 2.0) * zoom,
+            y: h / 2.0 - (by + bh / 2.0) * zoom,
+            zoom,
+        };
+    }
+
     fn to_flow(&self, p: (f64, f64)) -> solenoid_scene::Point {
         let c = self.camera;
         solenoid_scene::Point::new(((p.0 - c.x) / c.zoom) as f32, ((p.1 - c.y) / c.zoom) as f32)
@@ -550,6 +596,22 @@ impl ApplicationHandler for Viewer {
         };
         match event {
             WindowEvent::CloseRequested => el.exit(),
+            WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
+                use winit::keyboard::{Key, NamedKey};
+                match event.logical_key.as_ref() {
+                    Key::Named(NamedKey::Escape) => el.exit(),
+                    Key::Character("f") | Key::Character("F") => self.fit(),
+                    Key::Character("1") => {
+                        let (w, h) = self.size();
+                        self.zoom_at(w / 2.0, h / 2.0, 1.0 / self.camera.zoom);
+                    }
+                    Key::Character("r") | Key::Character("R") => {
+                        NO_RASTER.with(|n| n.set(!n.get()))
+                    }
+                    _ => return,
+                }
+                redraw(self);
+            }
             WindowEvent::Resized(size) => {
                 if let Some(gpu) = &mut self.gpu {
                     gpu.resize(size.width, size.height);

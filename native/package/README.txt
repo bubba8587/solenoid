@@ -3,8 +3,12 @@ Solenoid fast-render preview (branch blitz-gpui)
 Two native viewers of real Solenoid canvases, captured from the app (scenes/):
 
   solenoid-blitz   the app's own HTML and CSS, laid out by Blitz, drawn by Vello on the GPU.
-                   Pan: drag. Zoom: wheel. The title bar shows fps and the CPU cost of a frame.
-  solenoid-gpui    the same canvases as GPUI draws them (Zed's UI framework). Drag a card to move it.
+                   Wheel zooms. Drag a card to move it (its cables follow); drag elsewhere to pan.
+                   F fits the graph, 1 is 100%, R toggles the far-zoom pictures (vector vs cached), Esc quits.
+                   The title bar shows fps and the CPU cost of a frame.
+  solenoid-gpui    the same canvases as GPUI draws them (Zed's UI framework). Drag a card to move it;
+                   double-click the canvas to fit. Slower with many cards on screen (it redraws everything
+                   each frame); --lod draws far-out cards as outlines.
 
 Run (from this folder):
 
