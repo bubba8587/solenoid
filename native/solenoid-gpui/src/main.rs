@@ -574,7 +574,10 @@ fn paint_item(
             line_h,
             ..
         } => {
-            if LOD.with(|l| l.get()) && !lod::text_visible(*size, camera.zoom) {
+            // Under a pixel tall, text is invisible on any display: skip shaping it. `--lod` skips more.
+            if size * camera.zoom < 1.0
+                || (LOD.with(|l| l.get()) && !lod::text_visible(*size, camera.zoom))
+            {
                 return;
             }
             let lh = if *line_h > 0.0 {
