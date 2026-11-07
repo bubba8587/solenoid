@@ -2,7 +2,7 @@
 aliases: ["Function records"]
 tags: [spec, computation]
 ---
-<!-- [[C140]] functionRecords -->
+<!-- [[C140]] functionRecords; covers: scripts/function-records/*.ts, scripts/function-records/plans/*.ts -->
 
 # Spec: Function records
 
@@ -22,7 +22,7 @@ flowchart LR
 
 ## What a record holds
 
-A record is one file per function, `fixtures/functions/<NAME>.json`, where `<NAME>` is the function's name as a formula spells it (`STDEV.S.json`). The file is Cube Input text: a JSON array of records, so a Cube Input or the Cube popup reads it with no other code ([[frame-verbs#Frames and Cubes]]). Its columns are untyped and every answer is text, so a column never claims a type its cells don't share.
+A record is one file per function, `fixtures/functions/<NAME>.json`, where `<NAME>` is the function's name as a formula spells it (`STDEV.S.json`). Every name the core answers has a record: every name in the core's call table (`data/call_traits.json`) without a refusal, and every pack function. A function's family is the top-level Add menu group of the node its Function Reference row names, so TEXT and VALUE belong to Output and LEFT to Text; a function no node covers belongs to the family "Formula only". A family is the unit the work moves in: one workbook, one review. The file is Cube Input text: a JSON array of records, so a Cube Input or the Cube popup reads it with no other code ([[frame-verbs#Frames and Cubes]]). Its columns are untyped and every answer is text, so a column never claims a type its cells don't share.
 
 Each top-level row of a record is one group of cases, with these keys:
 
@@ -37,9 +37,12 @@ Each case row has these keys:
 - `env`: the names the formula reads, each `name=value` with the value written in Solenoid's answer form below, such as `b=blank:` or `xs=list:num:[1, 2, 3]`. Blank when the formula reads no name.
 - `excel`: Excel's answer, written as Excel's constant notation below. Blank until the importer writes it.
 - `ours`: Solenoid's answer, written in Solenoid's answer form below. Blank until the run writes it.
-- `truth`: which kind of truth settles the case (below).
+- `expect`: the answer a `rule` or `reference` case demands, written in Solenoid's answer form: the answer the cited leaf states, or the reference's answer. Blank for every other case, since an `excel` case's expectation is Excel's column.
+- `truth`: which kind of truth settles the case (below). Blank on a case still waiting for Excel's answer.
 - `verdict`: how the two answers relate (below). Blank until both answers are in.
 - `cite`: the leaf or spec anchor that explains a difference, or the backlog line of a known bug. Blank when the verdict is `same`.
+
+A case's formula is written in the syntax Excel and Solenoid share, since the same text becomes the workbook's live formula. Solenoid's formulas have no array literals, no error literals and no escaped quote ([[formula-language#Lexical grammar]]), so a list, a matrix and a text holding a `"` reach a formula through a name in `env`, and an error through a function that answers one (`NA()`, `1/0`). A name in `env` is never one of Solenoid's constants (`e`, `pi`, `tau`, `phi`). In the workbook, an `env` name is a defined name: a value is the constant it holds (`xs` refers to `={1,2,3}`), and a blank refers to a cell left empty.
 
 What a record does not store: the function's own facts that already have a declaration (its argument roles and empty-slot readings in the core's `data/call_traits.json`, its date class in `date_values.rs`, its unit class in [[unit-flow]], the family lists that name it, such as the aggregates that refuse text). The Function Reference renders those beside the record by reading the declarations, each under the leaf its declaration cites, so no fact is written twice ([[engineering#One declaration per fact]]).
 
@@ -82,7 +85,7 @@ Solenoid's column holds what a user of the app gets, as `kind:value`, in the kin
 | a blank | `blank:` |
 | a list | `list:`, its family's kind, and its items untagged: `list:num:[1, 2.5]`, `list:text:["a", "b,c"]`, `list:date:[2024-03-05, 2024-03-06]` |
 | a matrix | `table:`, its family's kind, and its rows, which may differ in length: `table:num:[[1, 2], [3]]` |
-| a complex number | `cx:` and the number as the complex functions write it, `cx:1.5-2.25i` |
+| a complex number | `cx:`, the real part, the imaginary part's sign and digits, and `i`, both parts written as a number is, never rounded the way the app shows a complex number (`format_cx` keeps four digits): `cx:1.5-2.25i`, `cx:0+1i`, `cx:3+0i` |
 | a value with a unit | `unit:`, the value in base SI, its dimension's symbol, and the unit it shows in when it has one: `unit:5000 m as km`; a pure ratio is `unit:5 ratio` |
 | a LAMBDA | `lambda:` and its formula, `lambda:LAMBDA(x, x+1)` |
 
@@ -151,10 +154,14 @@ Excel's answers come only from a workbook the author opens in Excel:
 - **Names Excel won't take.** A name that reads as a cell address (`p1`, `irr5`, since IRR is a column) or is `R` or `C` gets a leading underscore in the workbook only, and the record keeps the name as written.
 - **Spills.** A case whose answer may be an array is written so its spill can't run into the next row's case. The exact wrapper is set and checked by the workbook's calibration sheet before any answer is trusted.
 - **The calibration sheet.** Every generated workbook carries a first sheet of known cases (a number, a text, a logical, an error, a 1×3 array, a 2×2 array, a date). The importer checks them first, and refuses the workbook when one reads otherwise than expected, since then the wrapper, not the function, is what changed.
-- **The importer** is the only code that writes an `excel` answer. It refuses a workbook whose saved-by record (`docProps/app.xml`'s `Application`) is not Microsoft Excel, reads each answer cell's stored value and its whole spill, writes Excel's column, and sets `truth` to `excel`. A saved workbook is kept beside the records (`fixtures/functions/excel/<family>.xlsx`) so the import can be repeated.
+- **The importer** is the only code that writes an `excel` answer. It refuses a workbook whose saved-by record (`docProps/app.xml`'s `Application`) is not Microsoft Excel, reads each answer cell's stored value and its whole spill, writes Excel's column, and sets `truth` to `excel` on every case whose `truth` is blank. A `rule` or `reference` case keeps its truth: Excel's answer is written beside it for the reader, and its `expect` still settles it. A saved workbook is kept beside the records (`fixtures/functions/excel/<family>.xlsx`) so the import can be repeated.
 - **Volatile functions** (TODAY, NOW, RAND, RANDARRAY, RANDBETWEEN) answer differently on every recalculation, so their cases record a property (the kind, the range) under `rule`, never Excel's value.
 
-Cases harvested from IronCalc's workbooks and from the existing tests bring their formulas and inputs only. Excel's answers for them come from the same round trip, so every Excel answer in every record came from one saved workbook through one importer.
+Cases harvested from IronCalc's workbooks and from the existing tests bring their formulas and inputs only, plus `expect`, `truth` and `cite` where the source states a Solenoid rule. An IronCalc case's cell references become `env` names holding the referenced cells' values; a referenced cell whose number format is a date format holds a date, every other number a number. A case outside the shared syntax (a cross-sheet reference, a structured reference, a defined name the workbook keeps elsewhere) is not harvested, and the harvest ledger says why.
+
+## The harvest ledger
+
+The harvest writes `fixtures/functions/harvest.json`, the proof that nothing was left behind. For every source it read (a test file, a spec, a workbook) it lists the cases it moved, by function, and every mention of a function it did not move, with the reason: a check with no single answer (a property, a card answering as its formula), a case outside the shared syntax, a statement that is not an answer. A mention neither moved nor given a reason fails the harvest. The ledger names its sources so the migration can be reviewed; the records themselves don't. Excel's answers for them come from the same round trip, so every Excel answer in every record came from one saved workbook through one importer.
 
 ## Readiness
 
