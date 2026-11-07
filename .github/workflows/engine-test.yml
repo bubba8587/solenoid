@@ -66,6 +66,30 @@ jobs:
           cargo doc --manifest-path crates/solenoid-schedule/Cargo.toml --no-deps
           cargo test --manifest-path crates/solenoid-schedule/Cargo.toml
 
+  scene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "crates/solenoid-scene -> target"
+
+      - name: Scene lints, docs and tests
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+        run: |
+          cargo fmt --manifest-path crates/solenoid-scene/Cargo.toml --check
+          cargo clippy --manifest-path crates/solenoid-scene/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --manifest-path crates/solenoid-scene/Cargo.toml --target wasm32-unknown-unknown -- -D warnings
+          cargo doc --manifest-path crates/solenoid-scene/Cargo.toml --no-deps
+          cargo test --manifest-path crates/solenoid-scene/Cargo.toml
+
   core:
     runs-on: ubuntu-latest
     steps:

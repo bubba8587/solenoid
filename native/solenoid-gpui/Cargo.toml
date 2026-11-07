@@ -1,0 +1,16 @@
+[package]
+name = "solenoid-gpui"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[dependencies]
+gpui = "=0.2.2"
+solenoid-scene = { path = "../../crates/solenoid-scene" }
+serde_json = "1"
+env_logger = "0.11"
+
+# xattr 0.2.3 (gpui 0.2.2 -> zed-async-tar) names libc::ENOATTR, which libc 0.2.19x dropped on Linux; it was ENODATA.
+[patch.crates-io]
+xattr = { path = "../vendor/xattr" }

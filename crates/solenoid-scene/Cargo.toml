@@ -1,0 +1,12 @@
+[package]
+name = "solenoid-scene"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+rust-version = "1.99"
+description = "The canvas as data: cards, cables, groups and the camera, for renderers other than the DOM."
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
