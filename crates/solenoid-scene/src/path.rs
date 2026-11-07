@@ -118,6 +118,23 @@ impl Path {
         Path(segs)
     }
 
+    /// SVG path data (`M L Q C`, absolute), for putting a rerouted cable back into a DOM.
+    pub fn to_svg(&self) -> String {
+        let mut out = String::new();
+        for s in &self.0 {
+            let part = match *s {
+                Seg::Move { to } => format!("M {},{} ", to.x, to.y),
+                Seg::Line { to } => format!("L {},{} ", to.x, to.y),
+                Seg::Quad { c, to } => format!("Q {},{} {},{} ", c.x, c.y, to.x, to.y),
+                Seg::Cubic { c1, c2, to } => {
+                    format!("C {},{} {},{} {},{} ", c1.x, c1.y, c2.x, c2.y, to.x, to.y)
+                }
+            };
+            out.push_str(&part);
+        }
+        out.trim_end().to_string()
+    }
+
     pub fn translate(&self, d: Point) -> Path {
         Path(
             self.0
@@ -328,6 +345,7 @@ mod tests {
         let c = Path::parse_svg("M0,0 C 10,0 20,10 30,10 Q 40,10 40,20");
         assert!(matches!(c.0[1], Seg::Cubic { .. }));
         assert!(matches!(c.0[2], Seg::Quad { .. }));
+        assert_eq!(Path::parse_svg(&c.to_svg()), c);
         let r = Path::parse_svg("m 10 10 l 5 0 h 5 v 5 z");
         assert_eq!(r.0.last().unwrap().end(), Point::new(10.0, 10.0));
         assert_eq!(r.0[2].end(), Point::new(20.0, 10.0));

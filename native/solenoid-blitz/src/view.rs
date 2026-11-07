@@ -50,72 +50,171 @@ fn raster_level(zoom: f64) -> Option<usize> {
     }
 }
 
-/// Lays the page out over each chunk of the graph in turn (by moving the canvas's transform) and paints each into its
-/// own scene, clipped to its square. `tile` repeats the whole recording N × N.
-fn record(dir: &std::path::Path, tile: usize) -> (Vec<Chunk>, Color, usize) {
-    let json = std::fs::read_to_string(dir.join("scene.json")).expect("scene.json");
-    let s = solenoid_scene::Scene::from_json(&json).expect("a scene");
-    let b = s.bounds();
-    let origin = Vec2::new(b.x as f64 - PAD, b.y as f64 - PAD);
-    let (w, h) = (b.w as f64 + 2.0 * PAD, b.h as f64 + 2.0 * PAD);
-    let t0 = Instant::now();
-    let c = CHUNK as u32;
-    let mut canvas = Canvas::load(dir, c, c, 1.0);
-    let mut one = Vec::new();
-    let (nx, ny) = ((w / CHUNK).ceil() as usize, (h / CHUNK).ceil() as usize);
-    for cy in 0..ny {
-        for cx in 0..nx {
-            let at = origin + Vec2::new(cx as f64 * CHUNK, cy as f64 * CHUNK);
-            canvas.set_camera(Camera {
-                x: -at.x,
-                y: -at.y,
-                zoom: 1.0,
-            });
-            let mut scene = Scene::new();
-            {
-                let mut p = VelloScenePainter::new(&mut scene);
-                // Half a pixel past the square, so neighbouring chunks' antialiased edges don't leave a seam.
-                let square = Rect::new(-0.5, -0.5, CHUNK + 0.5, CHUNK + 0.5);
-                p.push_clip_layer(Fill::NonZero, Affine::IDENTITY, &square);
-                blitz_paint::paint_scene(&mut p, &mut canvas.doc, 1.0, c, c, 0, 0);
-                p.pop_layer();
-            }
-            one.push(Chunk {
-                scene,
-                rect: Rect::from_origin_size(at.to_point(), (CHUNK, CHUNK)),
+/// The live page: the Blitz document the chunks are painted from, kept so an edit can re-record the chunks it touches,
+/// and the scene model the hit tests and cable reroutes read.
+struct Page {
+    canvas: Canvas,
+    model: solenoid_scene::Scene,
+    /// Flow coordinates of the chunk grid's corner, and the grid's size.
+    origin: Vec2,
+    nx: usize,
+    ny: usize,
+}
+
+impl Page {
+    fn load(dir: &std::path::Path) -> Page {
+        let json = std::fs::read_to_string(dir.join("scene.json")).expect("scene.json");
+        let model = solenoid_scene::Scene::from_json(&json).expect("a scene");
+        let b = model.bounds();
+        let origin = Vec2::new(b.x as f64 - PAD, b.y as f64 - PAD);
+        let (w, h) = (b.w as f64 + 2.0 * PAD, b.h as f64 + 2.0 * PAD);
+        let canvas = Canvas::load(dir, CHUNK as u32, CHUNK as u32, 1.0);
+        Page {
+            canvas,
+            model,
+            origin,
+            nx: (w / CHUNK).ceil() as usize,
+            ny: (h / CHUNK).ceil() as usize,
+        }
+    }
+
+    fn chunk_rect(&self, i: usize) -> Rect {
+        let (cx, cy) = (i % self.nx, i / self.nx);
+        let at = self.origin + Vec2::new(cx as f64 * CHUNK, cy as f64 * CHUNK);
+        Rect::from_origin_size(at.to_point(), (CHUNK, CHUNK))
+    }
+
+    /// Lays the page out with chunk `i`'s square under the viewport and paints it, clipped to the square.
+    fn record_chunk(&mut self, i: usize) -> Scene {
+        let at = self.chunk_rect(i).origin();
+        self.canvas.set_camera(Camera {
+            x: -at.x,
+            y: -at.y,
+            zoom: 1.0,
+        });
+        let c = CHUNK as u32;
+        let mut scene = Scene::new();
+        {
+            let mut p = VelloScenePainter::new(&mut scene);
+            // Exactly the square: the frame places chunks on whole pixels, so neighbours meet without a seam or overlap.
+            let square = Rect::new(0.0, 0.0, CHUNK, CHUNK);
+            p.push_clip_layer(Fill::NonZero, Affine::IDENTITY, &square);
+            blitz_paint::paint_scene(&mut p, &mut self.canvas.doc, 1.0, c, c, 0, 0);
+            p.pop_layer();
+        }
+        scene
+    }
+
+    /// Every chunk; `tile` repeats the whole recording N × N (a still picture: tiled copies don't edit).
+    fn record(&mut self, tile: usize) -> Vec<Chunk> {
+        let t0 = Instant::now();
+        let one: Vec<Chunk> = (0..self.nx * self.ny)
+            .map(|i| Chunk {
+                scene: self.record_chunk(i),
+                rect: self.chunk_rect(i),
                 cached: [None, None],
-            });
-        }
-    }
-    let paths: u32 = one.iter().map(|c| c.scene.encoding().n_paths).sum();
-    let mut chunks = Vec::with_capacity(one.len() * tile * tile);
-    for row in 0..tile {
-        for col in 0..tile {
-            let d = Vec2::new(col as f64 * (w - PAD), row as f64 * (h - PAD));
-            for c in &one {
-                let mut scene = Scene::new();
-                scene.append(&c.scene, None);
-                chunks.push(Chunk {
-                    scene,
-                    rect: c.rect + d,
-                    cached: [None, None],
-                });
+            })
+            .collect();
+        let paths: u32 = one.iter().map(|c| c.scene.encoding().n_paths).sum();
+        let (w, h) = (self.nx as f64 * CHUNK, self.ny as f64 * CHUNK);
+        let mut chunks = Vec::with_capacity(one.len() * tile * tile);
+        for row in 0..tile {
+            for col in 0..tile {
+                let d = Vec2::new(col as f64 * (w - PAD), row as f64 * (h - PAD));
+                for c in &one {
+                    let mut scene = Scene::new();
+                    scene.append(&c.scene, None);
+                    chunks.push(Chunk {
+                        scene,
+                        rect: c.rect + d,
+                        cached: [None, None],
+                    });
+                }
             }
         }
+        eprintln!(
+            "recorded {} cards in {} chunks ({paths} paths) in {:?}; × {}",
+            self.model.cards.len(),
+            one.len(),
+            t0.elapsed(),
+            tile * tile
+        );
+        chunks
     }
-    eprintln!(
-        "recorded {} cards in {} chunks ({paths} paths) in {:?}; × {}",
-        s.cards.len(),
-        one.len(),
-        t0.elapsed(),
-        tile * tile
-    );
-    let [r, g, bl, _] = s.background.0;
-    (
-        chunks,
-        Color::from_rgb8(r, g, bl),
-        s.cards.len() * tile * tile,
-    )
+
+    /// Moves a card (and a group's members) by `d` flow pixels in the page, reroutes its cables, and returns the flow
+    /// box the change touched.
+    fn move_card(&mut self, id: &str, d: solenoid_scene::Point) -> Rect {
+        let before = self.footprint(id);
+        self.model.move_card(id, d);
+        let moved: Vec<(String, solenoid_scene::Rect)> = self
+            .model
+            .cards
+            .iter()
+            .filter(|c| c.moved)
+            .map(|c| (c.id.clone(), c.rect))
+            .collect();
+        let doc = &mut self.canvas.doc;
+        for (cid, r) in &moved {
+            let sel = format!(".react-flow__node[data-id=\"{cid}\"]");
+            if let Ok(Some(node)) = doc.query_selector(&sel) {
+                doc.set_style_property(
+                    node,
+                    "transform",
+                    &format!("translate({}px, {}px)", r.x, r.y),
+                );
+            }
+        }
+        let ids: std::collections::HashSet<&str> = moved.iter().map(|(i, _)| i.as_str()).collect();
+        let d_attr = blitz_dom::QualName::new(None, blitz_dom::ns!(), blitz_dom::local_name!("d"));
+        for cable in &self.model.cables {
+            if !ids.contains(cable.source.as_str()) && !ids.contains(cable.target.as_str()) {
+                continue;
+            }
+            let path = self.model.cable_path(cable).to_svg();
+            let sel = format!(".react-flow__edge[data-id=\"{}\"] path", cable.id);
+            if let Ok(nodes) = doc.query_selector_all(&sel) {
+                let mut m = doc.mutate();
+                for n in nodes {
+                    m.set_attribute(n, d_attr.clone(), &path);
+                }
+            }
+        }
+        let after = self.footprint(id);
+        before.union(after)
+    }
+
+    /// The flow box a card, its group's members and their cables cover.
+    fn footprint(&self, id: &str) -> Rect {
+        let m = &self.model;
+        let mut ids = vec![id.to_string()];
+        let mut i = 0;
+        while i < ids.len() {
+            for c in &m.cards {
+                if c.parent.as_deref() == Some(ids[i].as_str()) && !ids.contains(&c.id) {
+                    ids.push(c.id.clone());
+                }
+            }
+            i += 1;
+        }
+        let r = |r: solenoid_scene::Rect| {
+            Rect::new(r.x as f64, r.y as f64, r.right() as f64, r.bottom() as f64)
+        };
+        let mut b = m.card(id).map(|c| r(c.rect)).unwrap_or_default();
+        for cid in &ids {
+            if let Some(c) = m.card(cid) {
+                b = b.union(r(c.rect));
+            }
+        }
+        for cable in &m.cables {
+            if ids.contains(&cable.source) || ids.contains(&cable.target) {
+                if let Some(pb) = m.cable_path(cable).bounds() {
+                    b = b.union(r(pb));
+                }
+            }
+        }
+        b.inflate(24.0, 24.0)
+    }
 }
 
 /// The GPU side: a wgpu device with the adapter's own limits (a big graph's scene outgrows wgpu's defaults), the
@@ -285,6 +384,9 @@ impl Gpu {
 
 struct Viewer {
     info: crate::SceneInfo,
+    page: Page,
+    editable: bool,
+    held: Option<String>,
     chunks: Vec<Chunk>,
     base: Color,
     camera: Camera,
@@ -302,6 +404,31 @@ struct Viewer {
 }
 
 impl Viewer {
+    fn to_flow(&self, p: (f64, f64)) -> solenoid_scene::Point {
+        let c = self.camera;
+        solenoid_scene::Point::new(((p.0 - c.x) / c.zoom) as f32, ((p.1 - c.y) / c.zoom) as f32)
+    }
+
+    /// Drags a card by a screen delta: the page moves it and reroutes its cables, and the chunks it touched are
+    /// recorded again (their cached pictures dropped).
+    fn move_card(&mut self, id: &str, dx: f64, dy: f64) {
+        let t0 = Instant::now();
+        let z = self.camera.zoom;
+        let touched = self.page.move_card(
+            id,
+            solenoid_scene::Point::new((dx / z) as f32, (dy / z) as f32),
+        );
+        for i in 0..self.page.nx * self.page.ny {
+            if self.page.chunk_rect(i).overlaps(touched) {
+                self.chunks[i].scene = self.page.record_chunk(i);
+                self.chunks[i].cached = [None, None];
+            }
+        }
+        if std::env::var_os("SOLENOID_VIEW_LOG").is_some() {
+            eprintln!("moved {id}: {:?}", t0.elapsed());
+        }
+    }
+
     fn zoom_at(&mut self, ax: f64, ay: f64, factor: f64) {
         let c = &mut self.camera;
         let fx = (ax - c.x) / c.zoom;
@@ -325,7 +452,6 @@ impl Viewer {
             (w - c.x) / c.zoom,
             (h - c.y) / c.zoom,
         );
-        let cam = Affine::translate(Vec2::new(c.x, c.y)) * Affine::scale(c.zoom);
         self.frame.reset();
         crate::paint_backdrop(
             &mut VelloScenePainter::new(&mut self.frame),
@@ -340,16 +466,26 @@ impl Viewer {
             if !ch.rect.overlaps(view) {
                 continue;
             }
-            let at = Affine::translate(ch.rect.origin().to_vec2());
+            // The chunk's corners on whole screen pixels (a stretch under a pixel), so chunks tile the screen exactly.
+            let (x0, y0) = (
+                (c.x + ch.rect.x0 * c.zoom).round(),
+                (c.y + ch.rect.y0 * c.zoom).round(),
+            );
+            let (x1, y1) = (
+                (c.x + ch.rect.x1 * c.zoom).round(),
+                (c.y + ch.rect.y1 * c.zoom).round(),
+            );
+            let place = Affine::translate(Vec2::new(x0, y0))
+                * Affine::scale_non_uniform((x1 - x0) / CHUNK, (y1 - y0) / CHUNK);
             match level {
-                None => self.frame.append(&ch.scene, Some(cam * at)),
+                None => self.frame.append(&ch.scene, Some(place)),
                 Some(l) => {
                     let scale = RASTER[l];
                     let img = ch.cached[l].get_or_insert_with(|| gpu.raster(&ch.scene, scale));
                     let brush = vello::peniko::ImageBrush::new(img.clone())
                         .with_quality(vello::peniko::ImageQuality::Medium);
                     self.frame
-                        .draw_image(&brush, cam * at * Affine::scale(1.0 / scale));
+                        .draw_image(&brush, place * Affine::scale(1.0 / scale));
                 }
             }
             self.drawn += 1;
@@ -423,19 +559,38 @@ impl ApplicationHandler for Viewer {
             WindowEvent::RedrawRequested => self.draw(),
             WindowEvent::CursorMoved { position, .. } => {
                 if let Some((x, y)) = self.dragging {
-                    self.camera.x += position.x - x;
-                    self.camera.y += position.y - y;
+                    let (dx, dy) = (position.x - x, position.y - y);
+                    match self.held.clone() {
+                        Some(id) => self.move_card(&id, dx, dy),
+                        None => {
+                            self.camera.x += dx;
+                            self.camera.y += dy;
+                        }
+                    }
                     self.dragging = Some((position.x, position.y));
                     redraw(self);
                 }
                 self.cursor = (position.x, position.y);
             }
             WindowEvent::MouseInput { state, button, .. } => {
-                if matches!(
+                if !matches!(
                     button,
                     MouseButton::Left | MouseButton::Middle | MouseButton::Right
                 ) {
-                    self.dragging = (state == ElementState::Pressed).then_some(self.cursor);
+                    return;
+                }
+                if state == ElementState::Pressed {
+                    self.dragging = Some(self.cursor);
+                    // The left button on a card holds it; anywhere else pans.
+                    self.held = (button == MouseButton::Left && self.editable)
+                        .then(|| {
+                            let p = self.to_flow(self.cursor);
+                            self.page.model.card_at(p).map(|c| c.id.clone())
+                        })
+                        .flatten();
+                } else {
+                    self.dragging = None;
+                    self.held = None;
                 }
             }
             WindowEvent::MouseWheel { delta, .. } => {
@@ -453,15 +608,21 @@ impl ApplicationHandler for Viewer {
 
 pub fn run(dir: PathBuf, zoom: Option<f64>, tile: usize, animate: bool) {
     let info = scene_info(&dir);
-    let (chunks, base, cards) = record(&dir, tile);
+    let mut page = Page::load(&dir);
+    let chunks = page.record(tile);
+    let [r, g, b, _] = page.model.background.0;
+    let base = Color::from_rgb8(r, g, b);
+    let cards = page.model.cards.len() * tile * tile;
     let camera = match zoom {
         Some(z) => crate::centered(&info, z),
         None => info.camera,
     };
-    let _ = base;
     let event_loop = EventLoop::new().unwrap();
     let mut viewer = Viewer {
         info,
+        page,
+        editable: tile == 1,
+        held: None,
         chunks,
         base,
         camera,
