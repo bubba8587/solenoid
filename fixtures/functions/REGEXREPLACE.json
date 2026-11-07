@@ -1,299 +1,34 @@
 [
- {
-  "group": "Examples",
-  "axis": "examples",
-  "cite": [],
-  "cases": [
-   {
-    "formula": "REGEXREPLACE(\"foobar\", \"foo\\Kbar\", \"X\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"ab\", \"(?P<x>a)\", \"[${x}]\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"ab\", \"(?'x'a)\", \"[${x}]\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"a1b2\", \"\\d\", \"#\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\", 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\", 9)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"xaxa\", \"(?<=x)a\", \"#\", 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"ab ab\", \"a(?=b)\", \"#\", 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"cat cat\", \"^cat|\\bcat\", \"dog\", 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"cat cat\", \"^cat\", \"dog\", 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"a1 b2\", \"(\\w)(\\d)\", \"$2$1\", 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"a1 b2\", \"(?<l>\\w)(?<d>\\d)\", \"${d}${l}\", 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"a1 b2\", \"\\d\", \"[$0$$]\", 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\", 2.6)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\", -1)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\", -3)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\", -9)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\", 2.5)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"Ada Lovelace\", \"(\\w+) (?<last>\\w+)\", \"$2, $1\", 0)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"Ada Lovelace\", \"(\\w+) (?<last>\\w+)\", \"${last} $$1\", 0)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"Ada Lovelace\", \"(\\w+) (?<last>\\w+)\", \"$last!\", 0)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"abc\", \"(b)\", \"[$&]\", 0)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"abc\", \"(b)\", \"[\\1]\", 0)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"abc\", \"(b)\", \"[$2]\", 0)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"abc\", \"(b)\", \"[$10]\", 0)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"foo boo\", \"o\", \"0\", 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"foo boo\", \"o\", \"0\", -1)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXREPLACE(\"ab\", \"x*\", \"-\", 0)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   }
-  ]
- }
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"REGEXREPLACE(\"foobar\", \"foo\\Kbar\", \"X\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"ab\", \"(?P<x>a)\", \"[${x}]\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"ab\", \"(?'x'a)\", \"[${x}]\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"a1b2\", \"\\d\", \"#\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\", 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\", 9)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"xaxa\", \"(?<=x)a\", \"#\", 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"ab ab\", \"a(?=b)\", \"#\", 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"cat cat\", \"^cat|\\bcat\", \"dog\", 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"cat cat\", \"^cat\", \"dog\", 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"a1 b2\", \"(\\w)(\\d)\", \"$2$1\", 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"a1 b2\", \"(?<l>\\w)(?<d>\\d)\", \"${d}${l}\", 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"a1 b2\", \"\\d\", \"[$0$$]\", 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\", 2.6)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\", -1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\", -3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\", -9)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"a1b2c3\", \"\\d\", \"#\", 2.5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"Ada Lovelace\", \"(\\w+) (?<last>\\w+)\", \"$2, $1\", 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"Ada Lovelace\", \"(\\w+) (?<last>\\w+)\", \"${last} $$1\", 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"Ada Lovelace\", \"(\\w+) (?<last>\\w+)\", \"$last!\", 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"abc\", \"(b)\", \"[$&]\", 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"abc\", \"(b)\", \"[\\1]\", 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"abc\", \"(b)\", \"[$2]\", 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"abc\", \"(b)\", \"[$10]\", 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"foo boo\", \"o\", \"0\", 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"foo boo\", \"o\", \"0\", -1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(\"ab\", \"x*\", \"-\", 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXREPLACE(c_A3,\"([A-Z][a-z]+)([A-Z][a-z]+)\",\"$2, $1 $2\")","env":["c_A3=text:\"JamesBond\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
 ]

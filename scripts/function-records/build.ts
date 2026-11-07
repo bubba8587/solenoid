@@ -5,6 +5,7 @@ import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "n
 import { join, relative } from "node:path";
 import { buildFunctionReference } from "../../src/graph/functionReference";
 import { harvest, type Harvested, type Plan } from "./harvest.ts";
+import { harvestIronCalc } from "./ironcalc.ts";
 
 const ROOT = process.cwd();
 const OUT = join(ROOT, "fixtures/functions");
@@ -62,6 +63,15 @@ export function toRecord(fn: string, harvested: Harvested[], errors: string[]): 
   return [...groups.values()];
 }
 
+/** A record as text, one case to a line, so a diff names the cases that changed. */
+export function recordText(record: Group[]): string {
+  const groups = record.map((g) => {
+    const head = JSON.stringify({ group: g.group, axis: g.axis, cite: g.cite }).slice(0, -1);
+    return `${head}, "cases": [\n${g.cases.map((c) => `  ${JSON.stringify(c)}`).join(",\n")}\n]}`;
+  });
+  return `[\n${groups.join(",\n")}\n]\n`;
+}
+
 async function main() {
   const family = process.argv[2];
   if (!family) throw new Error("Usage: build.ts <Family>");
@@ -69,6 +79,13 @@ async function main() {
   const functions = familyFunctions(family);
   const plan: Plan = { ...planModule.plan, family, functions, sources: candidateSources() };
   const { cases, ledger } = harvest(plan, ROOT);
+  const ic = harvestIronCalc(ROOT, "fixtures/functions/sources/ironcalc/calc_tests", new Set(functions));
+  cases.push(...ic.cases);
+  const movedBy = new Map<string, number>();
+  for (const c of ic.cases) { const f = c.source.slice(0, c.source.indexOf(".xlsx:") + 5); movedBy.set(f, (movedBy.get(f) ?? 0) + 1); }
+  for (const f of new Set([...movedBy.keys(), ...Object.keys(ic.skipped)])) {
+    ledger.sources[f] = [{ line: 0, text: "(the workbook's formula cells)", moved: movedBy.get(f) ?? 0 }, ...(ic.skipped[f] ?? [])];
+  }
   const nothing = Object.entries(ledger.sources).filter(([, e]) => e.length === 0).map(([p]) => p);
   for (const p of nothing) delete ledger.sources[p];
   if (ledger.unaccounted.length || ledger.errors.length) {
@@ -87,11 +104,11 @@ async function main() {
     return;
   }
   mkdirSync(OUT, { recursive: true });
-  for (const [fn, record] of records) writeFileSync(join(OUT, `${fn}.json`), `${JSON.stringify(record, null, 1)}\n`);
+  for (const [fn, record] of records) writeFileSync(join(OUT, `${fn}.json`), recordText(record));
   const ledgerPath = join(OUT, "harvest.json");
   let all: Record<string, unknown> = {};
   try { all = JSON.parse(readFileSync(ledgerPath, "utf8")); } catch { /* the first family */ }
-  all[family] = { functions, cases: cases.length, sources: ledger.sources };
+  all[family] = { functions, cases: cases.length, ironcalcOtherFamilies: ic.otherFamilies, sources: ledger.sources };
   writeFileSync(ledgerPath, `${JSON.stringify(all, null, 1)}\n`);
   console.log(`${family}: ${functions.length} records, ${cases.length} cases from ${Object.keys(ledger.sources).length} sources -> ${relative(ROOT, OUT)}`);
 }

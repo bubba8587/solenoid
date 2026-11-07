@@ -1,49 +1,9 @@
 [
- {
-  "group": "Examples",
-  "axis": "examples",
-  "cite": [],
-  "cases": [
-   {
-    "formula": "CLEAN(CHAR(9) & \"Monthly report\" & CHAR(10))",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "CLEAN(5)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "CLEAN(TRUE)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "CLEAN(\"a\" & CHAR(1) & \"b\" & CHAR(31) & \"c\" & CHAR(127))",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   }
-  ]
- }
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"CLEAN(CHAR(9) & \"Monthly report\" & CHAR(10))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(\"a\" & CHAR(1) & \"b\" & CHAR(31) & \"c\" & CHAR(127))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(r_A1_A10)","env":["r_A1_A10=table:text:[[\"Hola\"], [\"Adios\"], [\"Vamos\"], [\"  A log text. \"], [blank], [#DIV/0!], [#N/A], [#NAME?], [\"ironcalc\"], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
 ]

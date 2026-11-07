@@ -1,69 +1,12 @@
 [
- {
-  "group": "Examples",
-  "axis": "examples",
-  "cite": [],
-  "cases": [
-   {
-    "formula": "REGEXEXTRACT(\"abc123def\", \"\\d+\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXEXTRACT(\"a1b2\", \"\\d\", 1)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXEXTRACT(\"2026-08-21\", \"(\\d+)-(\\d+)-(\\d+)\", 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXEXTRACT(\"a1b2\", \"\\d\", 3)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXEXTRACT(\"a1b2\", \"\\d\", 0)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REGEXEXTRACT(\"a1b2\", \"z\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   }
-  ]
- }
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"REGEXEXTRACT(\"abc123def\", \"\\d+\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXEXTRACT(\"a1b2\", \"\\d\", 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXEXTRACT(\"2026-08-21\", \"(\\d+)-(\\d+)-(\\d+)\", 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXEXTRACT(\"a1b2\", \"\\d\", 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXEXTRACT(\"a1b2\", \"\\d\", 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXEXTRACT(\"a1b2\", \"z\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXEXTRACT(c_A1, \"[A-Z][a-z]+\")","env":["c_A1=text:\"LonelyPlanet\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REGEXEXTRACT(c_A1, \"[A-Z][a-z]+\", 1)","env":["c_A1=text:\"LonelyPlanet\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
 ]

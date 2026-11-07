@@ -1,121 +1,15 @@
 [
- {
-  "group": "Examples",
-  "axis": "examples",
-  "cite": [],
-  "cases": [
-   {
-    "formula": "DOLLAR(1234.567, 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "DOLLAR(1234.567, -2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "DOLLAR(-1234.567, -2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "DOLLAR(-0.123, 4)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "DOLLAR(99.888)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "DOLLAR(0, 0.5)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "DOLLAR(-0.001, 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "DOLLAR(2, 2.9)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "DOLLAR(12345.678, -2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "DOLLAR(-1234.567, 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "DOLLAR(1234.567, d)",
-    "env": [
-     "d=blank:"
-    ],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   }
-  ]
- }
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"DOLLAR(1234.567, 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DOLLAR(1234.567, -2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DOLLAR(-1234.567, -2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DOLLAR(-0.123, 4)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DOLLAR(99.888)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DOLLAR(0, 0.5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DOLLAR(-0.001, 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DOLLAR(2, 2.9)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DOLLAR(12345.678, -2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DOLLAR(-1234.567, 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DOLLAR(1234.567, d)","env":["d=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
 ]

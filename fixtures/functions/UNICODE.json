@@ -1,41 +1,25 @@
 [
- {
-  "group": "Examples",
-  "axis": "examples",
-  "cite": [],
-  "cases": [
-   {
-    "formula": "UNICODE(\"😀\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "UNICODE(MID(t,3,1))",
-    "env": [
-     "t=text:\"a😀b\""
-    ],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "UNICODE(\"\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   }
-  ]
- }
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"UNICODE(\"😀\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(MID(t,3,1))","env":["t=text:\"a😀b\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(\"\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A2)","env":["c_A2=text:\" \""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A3)","env":["c_A3=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A4)","env":["c_A4=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A5)","env":["c_A5=text:\"T\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A6)","env":["c_A6=text:\"F\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A7)","env":["c_A7=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A8)","env":["c_A8=bool:FALSE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A9)","env":["c_A9=text:\"の\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A10)","env":["c_A10=text:\"ꬄ\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A11)","env":["c_A11=text:\"^\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A12)","env":["c_A12=text:\"ش\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A13)","env":["c_A13=text:\"صش \""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A14)","env":["c_A14=text:\"شغ\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A15)","env":["c_A15=num:160"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A18)","env":["c_A18=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A19)","env":["c_A19=err:#VALUE!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A20)","env":["c_A20=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNICODE(c_A21)","env":["c_A21=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
 ]

@@ -1,69 +1,22 @@
 [
- {
-  "group": "Examples",
-  "axis": "examples",
-  "cite": [],
-  "cases": [
-   {
-    "formula": "PROPER(\"this is a TITLE\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "PROPER(\"2-way street\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "PROPER(\"hello wORLD o'neil 2nd\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "PROPER(TRUE)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "PROPER(\"76BudGet\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "PROPER(\"o'neil 2nd\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   }
-  ]
- }
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"PROPER(\"this is a TITLE\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(\"2-way street\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(\"hello wORLD o'neil 2nd\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(\"76BudGet\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(\"o'neil 2nd\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(r_A1_A13)","env":["r_A1_A13=table:text:[[\"Hola\"], [\"Adios\"], [\"Vamos\"], [\"  A log text. \"], [blank], [#DIV/0!], [#N/A], [#NAME?], [\"ironcalc\"], [blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(c_A1)","env":["c_A1=text:\"democracy dies in the shadows\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(c_A2)","env":["c_A2=text:\"Comeback in broad day\r\nTo the same place, the same face, the same brute \""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(c_A3)","env":["c_A3=text:\"1 gentelman 3 links\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(c_A4)","env":["c_A4=text:\"三体\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(c_A5)","env":["c_A5=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(c_A6)","env":["c_A6=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(c_A7)","env":["c_A7=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(c_A8)","env":["c_A8=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(c_A9)","env":["c_A9=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(c_A10)","env":["c_A10=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PROPER(c_A11)","env":["c_A11=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
 ]

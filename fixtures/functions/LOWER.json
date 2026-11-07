@@ -1,29 +1,18 @@
 [
- {
-  "group": "Examples",
-  "axis": "examples",
-  "cite": [],
-  "cases": [
-   {
-    "formula": "LOWER(\"ÀBC Déf\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "LOWER(TRUE)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   }
-  ]
- }
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"LOWER(\"ÀBC Déf\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LOWER(TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LOWER(c_A2)","env":["c_A2=text:\"A wonderful world\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LOWER(c_A3)","env":["c_A3=text:\"Hello     \""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LOWER(c_A4)","env":["c_A4=text:\"園田 直子  \""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LOWER(c_A5)","env":["c_A5=num:123"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LOWER(c_A6)","env":["c_A6=text:\"123\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LOWER(c_A7)","env":["c_A7=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LOWER(c_A8)","env":["c_A8=text:\"#DIV/0!\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LOWER(c_A9)","env":["c_A9=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LOWER(c_A10)","env":["c_A10=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LOWER(ANCHORARRAY(c_A1))","env":["c_A1=text:\"Hi\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LOWER(k1)","env":["k1=table:text:[[\"Hi\", \"MAN\"], [\"YOU\", \"Rock\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LOWER(UPPER(TEXT(DATE(1996, 1, SEQUENCE(10)), \"ddd\")))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
 ]

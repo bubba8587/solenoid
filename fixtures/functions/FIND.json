@@ -1,99 +1,45 @@
 [
- {
-  "group": "Examples",
-  "axis": "examples",
-  "cite": [],
-  "cases": [
-   {
-    "formula": "FIND(\"m\", \"Miriam McGovern\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "FIND(\"M\", \"Miriam McGovern\", 3)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "FIND(\"\", \"abc\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "FIND(\"z\", \"abc\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "FIND(\"a\", \"abc\", 0)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "FIND(\".\", 0.1 + 0.2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "FIND(\"\",\"abc\",4)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "FIND(\"\",\"abc\",5)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "FIND(\"b\", \"😀b\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   }
-  ]
- }
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"FIND(\"m\", \"Miriam McGovern\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(\"M\", \"Miriam McGovern\", 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(\"\", \"abc\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(\"z\", \"abc\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(\"a\", \"abc\", 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(\".\", 0.1 + 0.2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(\"\",\"abc\",4)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(\"\",\"abc\",5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(\"b\", \"😀b\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(\"a\", r_A7_C7, NA())","env":["r_A7_C7=list:text:[\"abc\", \"def\", \"ghi\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A2,c_B2, c_C2)","env":["c_A2=text:\"Ana\"","c_B2=text:\"Banana\"","c_C2=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A3,c_B3, c_C3)","env":["c_A3=text:\"ana\"","c_B3=text:\"Banana\"","c_C3=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A4,c_B4, c_C4)","env":["c_A4=text:\"ana\"","c_B4=text:\"ana\"","c_C4=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A5,c_B5, c_C5)","env":["c_A5=text:\"ana\"","c_B5=text:\"ana\"","c_C5=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A6,c_B6, c_C6)","env":["c_A6=text:\"Pen\"","c_B6=text:\"Roger Penrose\"","c_C6=num:3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A7,c_B7, c_C7)","env":["c_A7=text:\"Y\"","c_B7=text:\"Y not Y yes\"","c_C7=num:3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A8,c_B8, c_C8)","env":["c_A8=text:\"Hola\"","c_B8=text:\"你好 Hola\"","c_C8=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A9,c_B9, c_C9)","env":["c_A9=text:\"国\"","c_B9=text:\"中国香港\"","c_C9=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A10,c_B10, c_C10)","env":["c_A10=text:\"Jude\"","c_B10=text:\"Hey Jude\"","c_C10=num:17"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A11,c_B11, c_C11)","env":["c_A11=num:2","c_B11=num:123","c_C11=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A12,c_B12, c_C12)","env":["c_A12=num:4","c_B12=text:\"123456\"","c_C12=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A13,c_B13, c_C13)","env":["c_A13=bool:TRUE","c_B13=num:3214","c_C13=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A14,c_B14, c_C14)","env":["c_A14=text:\"Hey\"","c_B14=text:\"Hey Jude\"","c_C14=num:0"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A15,c_B15, c_C15)","env":["c_A15=text:\"hey\"","c_B15=text:\"Ahey\"","c_C15=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A16,c_B16, c_C16)","env":["c_A16=text:\"hey\"","c_B16=text:\"Ahey\"","c_C16=num:3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A17,c_B17, c_C17)","env":["c_A17=bool:TRUE","c_B17=bool:TRUE","c_C17=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A18,c_B18, c_C18)","env":["c_A18=text:\"ns??i\"","c_B18=text:\"Einstein\"","c_C18=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A19,c_B19, c_C19)","env":["c_A19=text:\"国?港\"","c_B19=text:\"中国香港\"","c_C19=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A20,c_B20, c_C20)","env":["c_A20=text:\"ns*i\"","c_B20=text:\"Einstein\"","c_C20=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A21,c_B21, c_C21)","env":["c_A21=text:\"ns?i\"","c_B21=text:\"Einstein\"","c_C21=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A22,c_B22, c_C22)","env":["c_A22=text:\"*~?\"","c_B22=text:\"Late?\"","c_C22=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A23,c_B23, c_C23)","env":["c_A23=text:\"~?\"","c_B23=text:\"Late?\"","c_C23=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A24,c_B24, c_C24)","env":["c_A24=text:\"La?\"","c_B24=text:\"Late?\"","c_C24=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A25,c_B25, c_C25)","env":["c_A25=text:\"Lat???\"","c_B25=text:\"Late\"","c_C25=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A26,c_B26, c_C26)","env":["c_A26=text:\"~*\"","c_B26=text:\"Ho*la\"","c_C26=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A27,c_B27, c_C27)","env":["c_A27=text:\"h\"","c_B27=text:\"Hello\"","c_C27=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A28,c_B28, c_C28)","env":["c_A28=text:\"~~\"","c_B28=text:\"Hi ~Bang!\"","c_C28=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A29,c_B29, c_C29)","env":["c_A29=text:\"~\"","c_B29=text:\"Hi ~Bang!\"","c_C29=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A30,c_B30, c_C30)","env":["c_A30=text:\"~\"","c_B30=text:\"Hello\"","c_C30=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A31,c_B31, c_C31)","env":["c_A31=text:\"~d\"","c_B31=text:\"My dear\"","c_C31=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FIND(c_A32,c_B32, c_C32)","env":["c_A32=text:\"~~*\"","c_B32=text:\"Ho*la\"","c_C32=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
 ]

@@ -1,69 +1,28 @@
 [
- {
-  "group": "Examples",
-  "axis": "examples",
-  "cite": [],
-  "cases": [
-   {
-    "formula": "EXACT(\"Word\", \"word\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "EXACT(NA(), \"a\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "EXACT(0.1 + 0.2, 0.3)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "EXACT(\"a\", \"a\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "EXACT(\"a\", \"A\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "EXACT(0.1 + 0.2, \"0.3\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   }
-  ]
- }
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"EXACT(\"Word\", \"word\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(NA(), \"a\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(0.1 + 0.2, 0.3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(\"a\", \"a\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(\"a\", \"A\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(0.1 + 0.2, \"0.3\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(NA(), r_A6_C6)","env":["r_A6_C6=list:num:[1, #DIV/0!, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(r_A7_C7, NA())","env":["r_A7_C7=list:text:[\"abc\", \"def\", \"ghi\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(1/0, r_A7_C7)","env":["r_A7_C7=list:text:[\"abc\", \"def\", \"ghi\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(r_A1_C2, NA())","env":["r_A1_C2=table:num:[[1, 2, 3], [4, 5, 6]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(k1, r_A7_C7)","env":["k1=list:text:[\"abc\", \"x\"]","r_A7_C7=list:text:[\"abc\", \"def\", \"ghi\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(1/0, NA())","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(c_A2,c_B2)","env":["c_A2=blank:","c_B2=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(c_A3,c_B3)","env":["c_A3=bool:FALSE","c_B3=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(c_A4,c_B4)","env":["c_A4=num:1","c_B4=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(c_A5,c_B5)","env":["c_A5=text:\"Hwy\"","c_B5=text:\"HWY\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(c_A6,c_B6)","env":["c_A6=text:\"many\"","c_B6=text:\"many\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(c_A7,c_B7)","env":["c_A7=num:1","c_B7=text:\"1\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(c_A8,c_B8)","env":["c_A8=bool:TRUE","c_B8=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(c_A9,c_B9)","env":["c_A9=bool:TRUE","c_B9=text:\"TRUE\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(c_A10,c_B10)","env":["c_A10=err:#DIV/0!","c_B10=text:\"#DIV/0!\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(c_A11,c_B11)","env":["c_A11=text:\"e \"","c_B11=text:\"e\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXACT(c_A12,c_B12)","env":["c_A12=num:0.3333333333333333","c_B12=num:0.333333333333333"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"--EXACT(r_A1_A4, \"h\")","env":["r_A1_A4=table:text:[[\"h\"], [\"e\"], [\"h\"], [\"l\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
 ]

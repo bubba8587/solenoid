@@ -1,79 +1,15 @@
 [
- {
-  "group": "Examples",
-  "axis": "examples",
-  "cite": [],
-  "cases": [
-   {
-    "formula": "REPLACE(\"abcdefghijk\", 6, 5, \"*\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REPLACE(\"2009\", 3, 2, \"10\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REPLACE(\"abc\", 5, 1, \"x\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REPLACE(\"abc\", 0, 1, \"x\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REPLACE(\"abc\", 1, -1, \"x\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REPLACE(\"abcdef\", 2.7, 1, \"x\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REPLACE(\"😀x\", 2, 1, \"y\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   }
-  ]
- }
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"REPLACE(\"abcdefghijk\", 6, 5, \"*\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPLACE(\"2009\", 3, 2, \"10\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPLACE(\"abc\", 5, 1, \"x\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPLACE(\"abc\", 0, 1, \"x\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPLACE(\"abc\", 1, -1, \"x\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPLACE(\"abcdef\", 2.7, 1, \"x\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPLACE(\"😀x\", 2, 1, \"y\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPLACE(r_A7_C7, 1, 1, NA())","env":["r_A7_C7=list:text:[\"abc\", \"def\", \"ghi\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPLACE(\"abc\", \"NaN\", 1, \"x\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPLACE(r_A1_A7,2,1,\"single\")","env":["r_A1_A7=table:text:[[\"Banana\"], [\"Pienaple\"], [\"Pear\"], [blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPLACE(r_A1_A7,k1,2,\" * \")","env":["k1=list:num:[1, 2, 3]","r_A1_A7=table:text:[[\"Banana\"], [\"Pienaple\"], [\"Pear\"], [blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
 ]

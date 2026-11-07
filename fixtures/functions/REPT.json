@@ -1,79 +1,33 @@
 [
- {
-  "group": "Examples",
-  "axis": "examples",
-  "cite": [],
-  "cases": [
-   {
-    "formula": "REPT(\"*-\", 3)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REPT(\"ab\", 2.9)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REPT(1 / 3, 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REPT(\"a\", \"3\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REPT(\"a\", -1)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REPT(\"a\", 32768)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "REPT(\"a\", 32767)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   }
-  ]
- }
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"REPT(\"*-\", 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(\"ab\", 2.9)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(1 / 3, 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(\"a\", \"3\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(\"a\", -1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(\"a\", 32768)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(\"a\", 32767)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(r_A7_C7, NA())","env":["r_A7_C7=list:text:[\"abc\", \"def\", \"ghi\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(\"a\",32767)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(\"1\",53)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(\"0\",254)&\"1\"","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(\"0\",255)&\"1\"","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(r_A1_A8, 3)","env":["r_A1_A8=table:text:[[\"Banana\"], [\"Pienaple\"], [\"Pear\"], [blank], [blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(\"*\", SEQUENCE(3,5,2))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A2,c_B2)","env":["c_A2=text:\"Qwery\"","c_B2=num:3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A3,c_B3)","env":["c_A3=text:\"Qwery\"","c_B3=num:-1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A4,c_B4)","env":["c_A4=text:\"Qwery\"","c_B4=num:0"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A5,c_B5)","env":["c_A5=text:\"Qwery\"","c_B5=num:2.3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A6,c_B6)","env":["c_A6=text:\"Qwery\"","c_B6=num:0.2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A7,c_B7)","env":["c_A7=text:\"Qwery\"","c_B7=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A8,c_B8)","env":["c_A8=text:\"Qwery\"","c_B8=bool:FALSE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A9,c_B9)","env":["c_A9=text:\"Qwery\"","c_B9=num:1.999"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A10,c_B10)","env":["c_A10=blank:","c_B10=num:3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A11,c_B11)","env":["c_A11=text:\"Qwery\"","c_B11=text:\"hello\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A12,c_B12)","env":["c_A12=err:#N/A","c_B12=text:\"hello\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A13,c_B13)","env":["c_A13=text:\"Qwery\"","c_B13=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A14,c_B14)","env":["c_A14=num:123","c_B14=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A15,c_B15)","env":["c_A15=bool:TRUE","c_B15=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"REPT(c_A16,c_B16)","env":["c_A16=text:\"Hwllo\"","c_B16=num:123456789"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
 ]

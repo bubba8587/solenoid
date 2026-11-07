@@ -1,109 +1,48 @@
 [
- {
-  "group": "Examples",
-  "axis": "examples",
-  "cite": [],
-  "cases": [
-   {
-    "formula": "SUBSTITUTE(\"Quarter 1, 2008\", \"1\", \"2\", 1)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "SUBSTITUTE(\"Quarter 1, 2011\", \"1\", \"2\", 3)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "SUBSTITUTE(\"aaa\", \"a\", \"b\", 2)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "SUBSTITUTE(\"aaa\", \"a\", \"b\", 0)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "SUBSTITUTE(0.1 + 0.2, \".\", \",\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "SUBSTITUTE(\"aaa\", \"a\", \"b\", 1.5)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "SUBSTITUTE(\"aaa\", \"a\", \"b\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "SUBSTITUTE(\"abc\", \"\", \"x\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "SUBSTITUTE(\"aaa\", \"a\", \"b\", 2.7)",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "",
-    "truth": "",
-    "verdict": "",
-    "cite": ""
-   },
-   {
-    "formula": "SUBSTITUTE(DATE(2024, 3, 5), \"Mar\", \"M\")",
-    "env": [],
-    "excel": "",
-    "ours": "",
-    "expect": "text:\"05-M-2024\"",
-    "truth": "rule",
-    "verdict": "",
-    "cite": "[[date-values#Functions]]"
-   }
-  ]
- }
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"SUBSTITUTE(\"Quarter 1, 2008\", \"1\", \"2\", 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(\"Quarter 1, 2011\", \"1\", \"2\", 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(\"aaa\", \"a\", \"b\", 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(\"aaa\", \"a\", \"b\", 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(0.1 + 0.2, \".\", \",\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(\"aaa\", \"a\", \"b\", 1.5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(\"aaa\", \"a\", \"b\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(\"abc\", \"\", \"x\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(\"aaa\", \"a\", \"b\", 2.7)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(DATE(2024, 3, 5), \"Mar\", \"M\")","env":[],"excel":"","ours":"","expect":"text:\"05-M-2024\"","truth":"rule","verdict":"","cite":"[[date-values#Functions]]"},
+  {"formula":"SUBSTITUTE(r_A7_C7, \"a\", \"x\", NA())","env":["r_A7_C7=list:text:[\"abc\", \"def\", \"ghi\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(\"a-b-c\", \"-\", \"+\", \"NaN\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A2,c_B2,c_C2,c_D2)","env":["c_A2=text:\"My old fears\"","c_B2=text:\"old\"","c_C2=text:\"new\"","c_D2=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A2,c_B2,c_C2)","env":["c_A2=text:\"My old fears\"","c_B2=text:\"old\"","c_C2=text:\"new\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A3,c_B3,c_C3,c_D3)","env":["c_A3=text:\"My old, very old fears\"","c_B3=text:\"old\"","c_C3=text:\"new\"","c_D3=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A3,c_B3,c_C3)","env":["c_A3=text:\"My old, very old fears\"","c_B3=text:\"old\"","c_C3=text:\"new\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A4,c_B4,c_C4,c_D4)","env":["c_A4=text:\"My old, very old fears\"","c_B4=text:\"old\"","c_C4=text:\"new\"","c_D4=num:0"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A4,c_B4,c_C4)","env":["c_A4=text:\"My old, very old fears\"","c_B4=text:\"old\"","c_C4=text:\"new\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A5,c_B5,c_C5,c_D5)","env":["c_A5=text:\"My old, very old fears\"","c_B5=text:\"old\"","c_C5=text:\"new\"","c_D5=num:-1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A5,c_B5,c_C5)","env":["c_A5=text:\"My old, very old fears\"","c_B5=text:\"old\"","c_C5=text:\"new\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A6,c_B6,c_C6,c_D6)","env":["c_A6=text:\"My old, very old fears\"","c_B6=text:\"old\"","c_C6=text:\"new\"","c_D6=num:3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A6,c_B6,c_C6)","env":["c_A6=text:\"My old, very old fears\"","c_B6=text:\"old\"","c_C6=text:\"new\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A7,c_B7,c_C7,c_D7)","env":["c_A7=text:\"My old, very old fears\"","c_B7=text:\"OLD\"","c_C7=text:\"new\"","c_D7=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A7,c_B7,c_C7)","env":["c_A7=text:\"My old, very old fears\"","c_B7=text:\"OLD\"","c_C7=text:\"new\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A8,c_B8,c_C8,c_D8)","env":["c_A8=text:\"My old, very old fears\"","c_B8=text:\"old\"","c_C8=text:\"new\"","c_D8=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A8,c_B8,c_C8)","env":["c_A8=text:\"My old, very old fears\"","c_B8=text:\"old\"","c_C8=text:\"new\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A9,c_B9,c_C9,c_D9)","env":["c_A9=text:\"My old, very old fears\"","c_B9=blank:","c_C9=text:\"new\"","c_D9=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A9,c_B9,c_C9)","env":["c_A9=text:\"My old, very old fears\"","c_B9=blank:","c_C9=text:\"new\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A10,c_B10,c_C10,c_D10)","env":["c_A10=text:\"My old, very old fears\"","c_B10=blank:","c_C10=text:\"new\"","c_D10=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A10,c_B10,c_C10)","env":["c_A10=text:\"My old, very old fears\"","c_B10=blank:","c_C10=text:\"new\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A11,c_B11,c_C11,c_D11)","env":["c_A11=text:\"My old, very old fears\"","c_B11=text:\"old\"","c_C11=blank:","c_D11=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A11,c_B11,c_C11)","env":["c_A11=text:\"My old, very old fears\"","c_B11=text:\"old\"","c_C11=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A12,c_B12,c_C12,c_D12)","env":["c_A12=text:\"My old, very old fears\"","c_B12=text:\"old\"","c_C12=text:\"new\"","c_D12=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A12,c_B12,c_C12)","env":["c_A12=text:\"My old, very old fears\"","c_B12=text:\"old\"","c_C12=text:\"new\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A13,c_B13,c_C13,c_D13)","env":["c_A13=text:\"My old, very old fears\"","c_B13=text:\"old\"","c_C13=text:\"new\"","c_D13=text:\"qwerty\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A13,c_B13,c_C13)","env":["c_A13=text:\"My old, very old fears\"","c_B13=text:\"old\"","c_C13=text:\"new\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A14,c_B14,c_C14,c_D14)","env":["c_A14=text:\"My old, very old fears\"","c_B14=text:\"old\"","c_C14=text:\"new\"","c_D14=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A14,c_B14,c_C14)","env":["c_A14=text:\"My old, very old fears\"","c_B14=text:\"old\"","c_C14=text:\"new\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A15,c_B15,c_C15,c_D15)","env":["c_A15=text:\"My old, very old fears\"","c_B15=err:#DIV/0!","c_C15=text:\"new\"","c_D15=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A15,c_B15,c_C15)","env":["c_A15=text:\"My old, very old fears\"","c_B15=err:#DIV/0!","c_C15=text:\"new\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A16,c_B16,c_C16,c_D16)","env":["c_A16=blank:","c_B16=text:\"old\"","c_C16=text:\"new\"","c_D16=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A16,c_B16,c_C16)","env":["c_A16=blank:","c_B16=text:\"old\"","c_C16=text:\"new\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A17,c_B17,c_C17,c_D17)","env":["c_A17=num:123","c_B17=num:2","c_C17=text:\"qwerty\"","c_D17=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUBSTITUTE(c_A17,c_B17,c_C17)","env":["c_A17=num:123","c_B17=num:2","c_C17=text:\"qwerty\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
 ]

@@ -35,7 +35,8 @@
    "UNICODE",
    "UPPER"
   ],
-  "cases": 364,
+  "cases": 41690,
+  "ironcalcOtherFamilies": 31434,
   "sources": {
    "crates/solenoid-core/src/eval.rs": [
     {
@@ -2682,6 +2683,242 @@
      "text": "| dimensionless result, any arguments | COUNT, COUNTA, COUNTBLANK, COUNTIF(S), the IS tests, SIGN, LEN, EXACT, TEXT, FIXED, DOLLAR, CONCAT(ENATE), TEXTJOIN, AND, OR, NOT, XOR, ROWS, COLUMNS, MATCH, XM",
      "moved": 0,
      "why": "the unit class, which the Function Reference reads from unit-flow.md beside the record"
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/ENGINEERING/NUMBER_SYSTEMS.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 1
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/INFORMATION/FORMULATEXT.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 1
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/INFORMATION/error_broadcast.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 19
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/LOGICAL/NOT.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 3
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/MATH_AND_TRIGONOMETRY/ARABIC_ROMAN.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 40417
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/MATH_AND_TRIGONOMETRY/BASE_DECIMAL.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 3
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/MATH_AND_TRIGONOMETRY/MIN_MAX_extras.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 1
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/CHAR.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 257
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/CONCAT.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 14
+    },
+    {
+     "line": 0,
+     "text": "Sheet1!F4: =CONCAT(A4:C4)",
+     "moved": 0,
+     "why": "a range holding more than one kind (num, text), which a Solenoid list can't"
+    },
+    {
+     "line": 0,
+     "text": "Sheet1!F5: =CONCAT(A5:C5)",
+     "moved": 0,
+     "why": "a range holding more than one kind (num, text), which a Solenoid list can't"
+    },
+    {
+     "line": 0,
+     "text": "Sheet1!F8: =CONCAT(A8:C8)",
+     "moved": 0,
+     "why": "a range holding more than one kind (bool, text), which a Solenoid list can't"
+    },
+    {
+     "line": 0,
+     "text": "Sheet1!F9: =CONCAT(A9:C9)",
+     "moved": 0,
+     "why": "a range holding more than one kind (bool, text), which a Solenoid list can't"
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/CONCATENATE.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 20
+    },
+    {
+     "line": 0,
+     "text": "Sheet1!F4: =CONCAT(A4:C4)",
+     "moved": 0,
+     "why": "a range holding more than one kind (num, text, bool), which a Solenoid list can't"
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/ENCODEURL.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 59
+    },
+    {
+     "line": 0,
+     "text": "ENCODEURL!B52: =ENCODEURL(D:D)",
+     "moved": 0,
+     "why": "a whole-column reference"
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/EXACT.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 11
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/FIND_SEARCH.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 62
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/MID_LEFT_RIGHT_arrays.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 25
+    },
+    {
+     "line": 0,
+     "text": "Sheet1!A41: =REPLACE(\"abc\", {\"NaN\",2}, 1, \"x\")",
+     "moved": 0,
+     "why": "a array constant holding more than one kind (text, num), which a Solenoid list can't"
+    },
+    {
+     "line": 0,
+     "text": "Sheet2!E1: =REPLACE(A1:A8,2,1,B1:B8)",
+     "moved": 0,
+     "why": "a range holding more than one kind (text, num), which a Solenoid list can't"
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/MINUS_MINUS.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 1
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/PROPER.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 11
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/REGEX.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 6
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/REPT.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 15
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/STRING_HANDLING.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 144
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/SUBSTITUTE.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 32
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/TEXTBEFORE_TEXTAFTER.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 141
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/TEXTJOIN.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 39
+    },
+    {
+     "line": 0,
+     "text": "Sheet1!G5: =TEXTJOIN(A5,B5,C5:F5)",
+     "moved": 0,
+     "why": "a range holding more than one kind (text, bool, num), which a Solenoid list can't"
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/TEXTSPLIT.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 18
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/UNICODE.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 18
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/TEXT/UPPER_LOWER.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 7
+    }
+   ],
+   "fixtures/functions/sources/ironcalc/calc_tests/spill_operator.xlsx": [
+    {
+     "line": 0,
+     "text": "(the workbook's formula cells)",
+     "moved": 1
     }
    ]
   }
