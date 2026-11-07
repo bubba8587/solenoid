@@ -1,0 +1,81 @@
+[
+ {
+  "group": "Examples",
+  "axis": "examples",
+  "cite": [],
+  "cases": [
+   {
+    "formula": "MID(\"Fluid Flow\", 7, 20)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "MID(\"Fluid Flow\", 20, 5)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "MID(\"a😀b\", 3, 2)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "MID(\"abc\", 2, 0)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "MID(\"abc\", s, 1)",
+    "env": [
+     "s=blank:"
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "MID(\"abc\", 0, 1)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "MID(\"abc\", 1, -1)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   }
+  ]
+ }
+]

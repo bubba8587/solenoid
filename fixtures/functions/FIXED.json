@@ -1,0 +1,129 @@
+[
+ {
+  "group": "Examples",
+  "axis": "examples",
+  "cite": [],
+  "cases": [
+   {
+    "formula": "FIXED(1234.567, 1)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIXED(1234.567, -1)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIXED(-1234.567, -1, TRUE)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIXED(44.332)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIXED(12345.678, -2)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIXED(1234.567, 1, TRUE)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIXED(2.5, 0)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIXED(-2.5, 0)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIXED(1234.567, 0)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIXED(1234.567)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIXED(1.005, 2)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIXED(-0.001, 2)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   }
+  ]
+ }
+]

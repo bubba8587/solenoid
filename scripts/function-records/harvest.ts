@@ -35,6 +35,8 @@ export interface Plan {
   dispositions: Record<string, Disposition>;
   /** A whole file that holds no case for the family, and why (a list of names, a file about something else). */
   files: Record<string, string>;
+  /** Lines whose cases never name their function (a test calling the regex engine directly), written out by hand. */
+  unnamed: Record<string, Disposition>;
 }
 
 export interface LedgerEntry { line: number; text: string; moved: number; why?: string }
@@ -63,6 +65,8 @@ export function literalsOf(line: string, rust: boolean): string[] {
   const re = rust ? /"((?:[^"\\]|\\.)*)"/g : /"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'|`((?:[^`\\$]|\\.|\$(?!\{))*)`/g;
   for (const m of line.matchAll(re)) {
     const raw = m[1] ?? m[2] ?? m[3];
+    // A Rust `format!` string is a template whose `{…}` fill in later, never a formula as written.
+    if (rust && /format!\(\s*$/.test(line.slice(0, m.index))) continue;
     out.push(rust ? unescapeRust(raw) : unescapeJs(raw));
   }
   return out;
@@ -196,6 +200,7 @@ export function harvest(plan: Plan, root: string): { cases: Harvested[]; ledger:
       const entry: LedgerEntry = { line: n, text: text.trim().slice(0, 200), moved: 0 };
       const take = (c: Omit<Harvested, "source">) => {
         const env = c.env ?? [];
+        if (!isFormula(c.formula)) ledger.errors.push(`${key}: not a formula in the shared syntax: ${c.formula}`);
         const bound = new Set(env.map((e) => e.slice(0, e.indexOf("="))));
         for (const name of namesRead(c.formula)) if (!bound.has(name)) ledger.errors.push(`${key}: ${c.formula} reads ${name}, which nothing binds`);
         for (const e of env) {
@@ -205,7 +210,9 @@ export function harvest(plan: Plan, root: string): { cases: Harvested[]; ledger:
         if ((c.truth === "rule" || c.truth === "reference") && (!c.expect || !c.cite)) ledger.errors.push(`${key}: a ${c.truth} case needs expect and cite`);
         if (names.has(c.fn)) { cases.push({ ...c, env, source: key }); entry.moved++; }
       };
-      const lits = md ? [] : literalsOf(text, rust).filter((l) => mention.test(l) && /\(/.test(l) && isFormula(l));
+      // In a spec, a formula is an example in a code span.
+      const found = md ? [...text.matchAll(/`([^`]+)`/g)].map((m) => m[1]) : literalsOf(text, rust);
+      const lits = found.filter((l) => mention.test(l) && /\(/.test(l) && isFormula(l));
       lits.forEach((formula, j) => {
         const o = d?.literals?.[j] ?? {};
         if (o.drop) { entry.why = entry.why ? `${entry.why}; ${o.drop}` : o.drop; return; }
@@ -228,6 +235,21 @@ export function harvest(plan: Plan, root: string): { cases: Harvested[]; ledger:
       entries.push(entry);
     });
     ledger.sources[path] = entries;
+  }
+  for (const [key, d] of Object.entries(plan.unnamed)) {
+    const [path, ln] = [key.slice(0, key.lastIndexOf(":")), Number(key.slice(key.lastIndexOf(":") + 1))];
+    const text = readFileSync(`${root}/${path}`, "utf8").split("\n")[ln - 1];
+    if (text === undefined) { ledger.errors.push(`${key}: no such line`); continue; }
+    if (mention.test(text)) ledger.errors.push(`${key}: the line names a family function, so it belongs in dispositions`);
+    const entry: LedgerEntry = { line: ln, text: text.trim().slice(0, 200), moved: 0, why: d.why };
+    for (const c of d.cases ?? []) {
+      for (const name of namesRead(c.formula)) if (!(c.env ?? []).some((e) => e.startsWith(`${name}=`))) ledger.errors.push(`${key}: ${c.formula} reads ${name}, which nothing binds`);
+      if (!isFormula(c.formula)) ledger.errors.push(`${key}: not a formula in the shared syntax: ${c.formula}`);
+      if (names.has(c.fn)) { cases.push({ ...c, env: c.env ?? [], source: key }); entry.moved++; }
+      else ledger.errors.push(`${key}: ${c.fn} is not in the family`);
+    }
+    if (entry.moved === 0 && !entry.why) ledger.errors.push(`${key}: neither cases nor a reason`);
+    (ledger.sources[path] ??= []).push(entry);
   }
   for (const key of Object.keys(plan.dispositions)) if (!used.has(key)) ledger.errors.push(`${key}: a disposition for a line with no mention (moved or stale)`);
   return { cases, ledger };

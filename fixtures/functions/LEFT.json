@@ -1,0 +1,155 @@
+[
+ {
+  "group": "Examples",
+  "axis": "examples",
+  "cite": [],
+  "cases": [
+   {
+    "formula": "LEFT(\"Sale Price\", 4)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "LEFT(\"😀x\", 1)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "LEFT(12.5, 2)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "LEFT(t,2)&RIGHT(t,2)",
+    "env": [
+     "t=text:\"a😀b\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "LEFT(t,3)&MID(t,4,1)",
+    "env": [
+     "t=text:\"a😀b\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "LEFT(\"abc\", -1)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "LEFT(\"abc\", -0.5)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "LEFT(0.1 + 0.2, 5)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "LEFT(\"abc\",-1)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "LEFT(\"abc\", n)",
+    "env": [
+     "n=blank:"
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "LEFT(\"abc\", \"2\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "LEFT(0.1+0.2, 3)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "LEFT(TRUE, 2)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "LEFT(DATE(2024, 3, 5), 2)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "text:\"05\"",
+    "truth": "rule",
+    "verdict": "",
+    "cite": "[[date-values#Functions]]"
+   }
+  ]
+ }
+]

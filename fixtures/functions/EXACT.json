@@ -1,0 +1,69 @@
+[
+ {
+  "group": "Examples",
+  "axis": "examples",
+  "cite": [],
+  "cases": [
+   {
+    "formula": "EXACT(\"Word\", \"word\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "EXACT(NA(), \"a\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "EXACT(0.1 + 0.2, 0.3)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "EXACT(\"a\", \"a\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "EXACT(\"a\", \"A\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "EXACT(0.1 + 0.2, \"0.3\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   }
+  ]
+ }
+]

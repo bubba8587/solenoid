@@ -1,0 +1,99 @@
+[
+ {
+  "group": "Examples",
+  "axis": "examples",
+  "cite": [],
+  "cases": [
+   {
+    "formula": "FIND(\"m\", \"Miriam McGovern\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIND(\"M\", \"Miriam McGovern\", 3)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIND(\"\", \"abc\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIND(\"z\", \"abc\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIND(\"a\", \"abc\", 0)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIND(\".\", 0.1 + 0.2)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIND(\"\",\"abc\",4)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIND(\"\",\"abc\",5)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "FIND(\"b\", \"😀b\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   }
+  ]
+ }
+]

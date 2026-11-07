@@ -1,0 +1,59 @@
+[
+ {
+  "group": "Examples",
+  "axis": "examples",
+  "cite": [],
+  "cases": [
+   {
+    "formula": "CHAR(1114112)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "CHAR(128512)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "text:\"😀\"",
+    "truth": "rule",
+    "verdict": "",
+    "cite": "[[excel-divergences#Deliberate differences from Excel]]"
+   },
+   {
+    "formula": "CHAR(256)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "text:\"Ā\"",
+    "truth": "rule",
+    "verdict": "",
+    "cite": "[[excel-divergences#Deliberate differences from Excel]]"
+   },
+   {
+    "formula": "CHAR(0)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "CHAR(55296)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   }
+  ]
+ }
+]

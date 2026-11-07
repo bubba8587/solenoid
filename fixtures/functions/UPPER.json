@@ -1,0 +1,73 @@
+[
+ {
+  "group": "Examples",
+  "axis": "examples",
+  "cite": [],
+  "cases": [
+   {
+    "formula": "UPPER(NA())",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "UPPER(\"straße\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "UPPER(0.1 + 0.2)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "UPPER(name)",
+    "env": [
+     "name=list:text:[\"alice\", \"bob\", \"cara\"]"
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "UPPER(\"hi\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "UPPER(b)",
+    "env": [
+     "b=blank:"
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "blank:",
+    "truth": "rule",
+    "verdict": "",
+    "cite": "[[D86]] blankRoles"
+   }
+  ]
+ }
+]

@@ -1,0 +1,105 @@
+[
+ {
+  "group": "Examples",
+  "axis": "examples",
+  "cite": [],
+  "cases": [
+   {
+    "formula": "CONCAT(NA(), \"a\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "CONCAT(\"a\", , \"b\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "CONCAT(\"a\",,\"b\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "CONCAT(0.1 + 0.2, \" kg\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "CONCAT(1 / 3)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "CONCAT(xs)",
+    "env": [
+     "xs=list:[]"
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "text:\"\"",
+    "truth": "rule",
+    "verdict": "",
+    "cite": "[[D125]] aggregatesOfNothing"
+   },
+   {
+    "formula": "CONCAT(xs, \"!\")",
+    "env": [
+     "xs=list:text:[\"a\", \"b\"]"
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "CONCAT(DATE(2024, 3, 5))",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "text:\"05-Mar-2024\"",
+    "truth": "rule",
+    "verdict": "",
+    "cite": "[[date-values#Functions]]"
+   },
+   {
+    "formula": "CONCAT(b, \"b\")",
+    "env": [
+     "b=blank:"
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   }
+  ]
+ }
+]

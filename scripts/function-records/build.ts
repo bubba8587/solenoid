@@ -37,16 +37,27 @@ export function candidateSources(): string[] {
 interface Case { formula: string; env: string[]; excel: string; ours: string; expect: string; truth: string; verdict: string; cite: string }
 interface Group { group: string; axis: string; cite: string[]; cases: Case[] }
 
-export function toRecord(fn: string, harvested: Harvested[]): Group[] {
+/** One function's record. The same case from several sources is one case; their rule fields merge, and two sources
+ *  that state different ones for the same case are an error, never a silent pick. */
+export function toRecord(fn: string, harvested: Harvested[], errors: string[]): Group[] {
   const groups = new Map<string, Group>();
-  const seen = new Set<string>();
+  const seen = new Map<string, { c: Case; from: string }>();
   for (const h of harvested.filter((c) => c.fn === fn)) {
-    const key = `${h.formula}\u0000${h.env.join("\u0000")}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    const key = `${h.formula}\u0000${[...h.env].sort().join("\u0000")}`;
+    const prior = seen.get(key);
+    if (prior) {
+      for (const f of ["truth", "expect", "cite"] as const) {
+        const v = h[f] ?? "";
+        if (v && prior.c[f] && prior.c[f] !== v) errors.push(`${fn}: ${h.formula}: ${prior.from} says ${f} ${prior.c[f]}, ${h.source} says ${v}`);
+        else if (v) prior.c[f] = v;
+      }
+      continue;
+    }
     const name = h.group ?? "Examples";
     if (!groups.has(name)) groups.set(name, { group: name, axis: "examples", cite: [], cases: [] });
-    groups.get(name)!.cases.push({ formula: h.formula, env: h.env, excel: "", ours: "", expect: h.expect ?? "", truth: h.truth ?? "", verdict: "", cite: h.cite ?? "" });
+    const c: Case = { formula: h.formula, env: h.env, excel: "", ours: "", expect: h.expect ?? "", truth: h.truth ?? "", verdict: "", cite: h.cite ?? "" };
+    groups.get(name)!.cases.push(c);
+    seen.set(key, { c, from: h.source });
   }
   return [...groups.values()];
 }
@@ -67,8 +78,16 @@ async function main() {
     process.exitCode = 1;
     return;
   }
+  const mergeErrors: string[] = [];
+  const records = functions.map((fn) => [fn, toRecord(fn, cases, mergeErrors)] as const);
+  if (mergeErrors.length) {
+    for (const e of mergeErrors) console.log(`ERROR ${e}`);
+    console.log(`${mergeErrors.length} conflicting cases; nothing written`);
+    process.exitCode = 1;
+    return;
+  }
   mkdirSync(OUT, { recursive: true });
-  for (const fn of functions) writeFileSync(join(OUT, `${fn}.json`), `${JSON.stringify(toRecord(fn, cases), null, 1)}\n`);
+  for (const [fn, record] of records) writeFileSync(join(OUT, `${fn}.json`), `${JSON.stringify(record, null, 1)}\n`);
   const ledgerPath = join(OUT, "harvest.json");
   let all: Record<string, unknown> = {};
   try { all = JSON.parse(readFileSync(ledgerPath, "utf8")); } catch { /* the first family */ }

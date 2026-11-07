@@ -1,0 +1,121 @@
+[
+ {
+  "group": "Examples",
+  "axis": "examples",
+  "cite": [],
+  "cases": [
+   {
+    "formula": "TEXTAFTER(\"abc\", \"\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "blank:",
+    "truth": "rule",
+    "verdict": "",
+    "cite": "[[formula-language#Text kernels]]"
+   },
+   {
+    "formula": "TEXTAFTER(t, \"-\", 2)",
+    "env": [
+     "t=text:\"a-b-C-d\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTAFTER(t, \"-\", -1)",
+    "env": [
+     "t=text:\"a-b-C-d\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTAFTER(t, \"-\", 4)",
+    "env": [
+     "t=text:\"a-b-C-d\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "blank:",
+    "truth": "rule",
+    "verdict": "",
+    "cite": "[[formula-language#Text kernels]]"
+   },
+   {
+    "formula": "TEXTAFTER(t, \"x\", 1, 0, 0, \"none\")",
+    "env": [
+     "t=text:\"a-b-C-d\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTAFTER(t, \"-\", 0)",
+    "env": [
+     "t=text:\"a-b-C-d\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTAFTER(\"user@example.com\", \"@\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTAFTER(\"no delimiter here\", \"@\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "blank:",
+    "truth": "rule",
+    "verdict": "",
+    "cite": "[[formula-language#Text kernels]]"
+   },
+   {
+    "formula": "TEXTAFTER(\"a-b-c\", \"-\", 1, 0, 1)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTAFTER(\"a-b_c\", ds)",
+    "env": [
+     "ds=list:text:[\"_\", \"-\"]"
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": "backlog: TEXTAFTER, TEXTBEFORE and TEXTSPLIT read one delimiter, not Excel's array of them"
+   }
+  ]
+ }
+]

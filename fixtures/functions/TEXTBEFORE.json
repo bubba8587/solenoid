@@ -1,0 +1,79 @@
+[
+ {
+  "group": "Examples",
+  "axis": "examples",
+  "cite": [],
+  "cases": [
+   {
+    "formula": "TEXTBEFORE(t, \"-\", -2)",
+    "env": [
+     "t=text:\"a-b-C-d\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTBEFORE(t, \"c\", 1, 1)",
+    "env": [
+     "t=text:\"a-b-C-d\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTBEFORE(t, \"c\")",
+    "env": [
+     "t=text:\"a-b-C-d\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "blank:",
+    "truth": "rule",
+    "verdict": "",
+    "cite": "[[formula-language#Text kernels]]"
+   },
+   {
+    "formula": "TEXTBEFORE(t, \"-\", 4, 0, 1)",
+    "env": [
+     "t=text:\"a-b-C-d\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTBEFORE(\"user@example.com\", \"@\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTBEFORE(\"a-b_c\", ds)",
+    "env": [
+     "ds=list:text:[\"_\", \"-\"]"
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": "backlog: TEXTAFTER, TEXTBEFORE and TEXTSPLIT read one delimiter, not Excel's array of them"
+   }
+  ]
+ }
+]

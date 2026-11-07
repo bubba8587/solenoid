@@ -1,0 +1,109 @@
+[
+ {
+  "group": "Examples",
+  "axis": "examples",
+  "cite": [],
+  "cases": [
+   {
+    "formula": "SUBSTITUTE(\"Quarter 1, 2008\", \"1\", \"2\", 1)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "SUBSTITUTE(\"Quarter 1, 2011\", \"1\", \"2\", 3)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "SUBSTITUTE(\"aaa\", \"a\", \"b\", 2)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "SUBSTITUTE(\"aaa\", \"a\", \"b\", 0)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "SUBSTITUTE(0.1 + 0.2, \".\", \",\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "SUBSTITUTE(\"aaa\", \"a\", \"b\", 1.5)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "SUBSTITUTE(\"aaa\", \"a\", \"b\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "SUBSTITUTE(\"abc\", \"\", \"x\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "SUBSTITUTE(\"aaa\", \"a\", \"b\", 2.7)",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "SUBSTITUTE(DATE(2024, 3, 5), \"Mar\", \"M\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "text:\"05-M-2024\"",
+    "truth": "rule",
+    "verdict": "",
+    "cite": "[[date-values#Functions]]"
+   }
+  ]
+ }
+]

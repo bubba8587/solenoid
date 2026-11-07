@@ -1,0 +1,131 @@
+[
+ {
+  "group": "Examples",
+  "axis": "examples",
+  "cite": [],
+  "cases": [
+   {
+    "formula": "TEXTSPLIT(t, \",\")",
+    "env": [
+     "t=text:\"a,,b\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTSPLIT(t, \",\", , TRUE)",
+    "env": [
+     "t=text:\"a,,b\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTSPLIT(t, \",\", \";\")",
+    "env": [
+     "t=text:\"a,b;c\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTSPLIT(t, \",\", \";\", FALSE, 0, \"-\")",
+    "env": [
+     "t=text:\"a,b;c\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTSPLIT(t, \"X\", , , 1)",
+    "env": [
+     "t=text:\"axb\""
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTSPLIT(\"a;b\", , \";\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTSPLIT(\"a;b\", , )",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTSPLIT(\"a,b,c\", \",\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTSPLIT(\"a,b\", \",\", , , \"1\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTSPLIT(\"abc\", \"\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "TEXTSPLIT(\"a,b;c\", ds)",
+    "env": [
+     "ds=list:text:[\",\", \";\"]"
+    ],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": "backlog: TEXTAFTER, TEXTBEFORE and TEXTSPLIT read one delimiter, not Excel's array of them"
+   }
+  ]
+ }
+]

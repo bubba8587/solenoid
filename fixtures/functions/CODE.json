@@ -1,0 +1,39 @@
+[
+ {
+  "group": "Examples",
+  "axis": "examples",
+  "cite": [],
+  "cases": [
+   {
+    "formula": "CODE(\"é\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   },
+   {
+    "formula": "CODE(\"😀\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "num:128512",
+    "truth": "rule",
+    "verdict": "",
+    "cite": "[[excel-divergences#Deliberate differences from Excel]]"
+   },
+   {
+    "formula": "CODE(\"\")",
+    "env": [],
+    "excel": "",
+    "ours": "",
+    "expect": "",
+    "truth": "",
+    "verdict": "",
+    "cite": ""
+   }
+  ]
+ }
+]

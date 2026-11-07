@@ -1,0 +1,2689 @@
+{
+ "Text": {
+  "functions": [
+   "ARABIC",
+   "CHAR",
+   "CLEAN",
+   "CODE",
+   "CONCAT",
+   "CONCATENATE",
+   "DOLLAR",
+   "ENCODEURL",
+   "EXACT",
+   "FIND",
+   "FIXED",
+   "LEFT",
+   "LEN",
+   "LOWER",
+   "MID",
+   "PROPER",
+   "REGEXEXTRACT",
+   "REGEXREPLACE",
+   "REGEXTEST",
+   "REPLACE",
+   "REPT",
+   "RIGHT",
+   "ROMAN",
+   "SEARCH",
+   "SUBSTITUTE",
+   "TEXTAFTER",
+   "TEXTBEFORE",
+   "TEXTJOIN",
+   "TEXTSPLIT",
+   "TRIM",
+   "UNICHAR",
+   "UNICODE",
+   "UPPER"
+  ],
+  "cases": 364,
+  "sources": {
+   "crates/solenoid-core/src/eval.rs": [
+    {
+     "line": 2462,
+     "text": "12 => format!(\"LEN({x})\"),",
+     "moved": 0,
+     "why": "a random formula generator for the hoisting property, which stays a test"
+    },
+    {
+     "line": 2470,
+     "text": "20 => format!(\"TEXTJOIN(\\\",\\\", TRUE, {x})\"),",
+     "moved": 0,
+     "why": "a random formula generator for the hoisting property, which stays a test"
+    }
+   ],
+   "crates/solenoid-core/src/excel_regex.rs": [
+    {
+     "line": 373,
+     "text": "assert!(test(&re(r\"(?<=a)b\"), \"ab\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 374,
+     "text": "assert!(test(&re(r\"(a)\\1\"), \"aa\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 375,
+     "text": "assert!(test(&re(r\"^a++$\"), \"aaa\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 376,
+     "text": "assert!(test(&re(r\"(?>ab|a)c\"), \"abc\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 377,
+     "text": "assert!(test(&compile(\"ABC\", true).unwrap(), \"abc\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 378,
+     "text": "assert!(test(&re(\"(?i)abc\"), \"ABC\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 379,
+     "text": "assert!(compile(\"(\", false).is_err());",
+     "moved": 1
+    },
+    {
+     "line": 385,
+     "text": "assert_eq!(replace(&r, \"Ada Lovelace\", \"$2, $1\", 0.0).unwrap(), \"Lovelace, Ada\");",
+     "moved": 1
+    },
+    {
+     "line": 386,
+     "text": "assert_eq!(replace(&r, \"Ada Lovelace\", \"${last} $$1\", 0.0).unwrap(), \"Lovelace $1\");",
+     "moved": 1
+    },
+    {
+     "line": 387,
+     "text": "assert_eq!(replace(&r, \"Ada Lovelace\", \"$last!\", 0.0).unwrap(), \"Lovelace!\");",
+     "moved": 1
+    },
+    {
+     "line": 389,
+     "text": "assert_eq!(replace(&re(\"(b)\"), \"abc\", \"[$&]\", 0.0).unwrap(), \"a[b]c\");",
+     "moved": 1
+    },
+    {
+     "line": 390,
+     "text": "assert_eq!(replace(&re(\"(b)\"), \"abc\", \"[\\\\1]\", 0.0).unwrap(), \"a[b]c\");",
+     "moved": 1
+    },
+    {
+     "line": 391,
+     "text": "assert!(replace(&re(\"(b)\"), \"abc\", \"[$2]\", 0.0).is_err());",
+     "moved": 1
+    },
+    {
+     "line": 392,
+     "text": "assert!(replace(&re(\"(b)\"), \"abc\", \"[$10]\", 0.0).is_err());",
+     "moved": 1
+    },
+    {
+     "line": 393,
+     "text": "assert!(test(&re(\"a$\"), \"a\\n\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 394,
+     "text": "assert!(!test(&re(\"a$\"), \"a\\n\\n\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 395,
+     "text": "assert!(test(&re(\"[$]\"), \"$\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 397,
+     "text": "assert!(!test(&re(\"[]$]\"), \"?\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 398,
+     "text": "assert!(test(&re(\"[]$]\"), \"$\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 399,
+     "text": "assert!(!test(&re(\"[^]a]\"), \"a\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 400,
+     "text": "assert!(!test(&re(\"[[:alpha:]$]\"), \"|\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 401,
+     "text": "assert!(test(&re(\"[[:alpha:]$]\"), \"$\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 402,
+     "text": "assert!(test(&re(\"[[:alpha:]]\"), \"a1\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 404,
+     "text": "assert!(test(&re(r\"a\\hb\"), \"a b\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 405,
+     "text": "assert!(test(&re(r\"a\\hb\"), \"a\\u{A0}b\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 406,
+     "text": "assert!(!test(&re(r\"a\\Hb\"), \"a b\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 407,
+     "text": "assert!(test(&re(r\"a[\\h]b\"), \"a\\tb\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 408,
+     "text": "assert!(!test(&re(r\"a\\Q.\\Eb\"), \"axb\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 409,
+     "text": "assert!(test(&re(r\"a\\Q.\\Eb\"), \"a.b\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 410,
+     "text": "assert!(test(&re(r\"\\Q(a+\\E\"), \"x(a+\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 411,
+     "text": "assert!(test(&re(r\"\\101\"), \"A\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 412,
+     "text": "assert!(test(&re(r\"\\0101\"), \"\\u{8}1\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 413,
+     "text": "assert!(test(&re(r\"[\\101]\"), \"A\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 414,
+     "text": "assert!(test(&re(r\"(a)\\1\"), \"aa\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 415,
+     "text": "assert!(test(&re(r\"(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)\\10\"), \"abcdefghijj\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 416,
+     "text": "assert!(compile(r\"^(\\((?1)*\\))$\", false).unwrap_err().contains(\"Recursion\"));",
+     "moved": 1
+    },
+    {
+     "line": 417,
+     "text": "assert!(compile(r\"(?|(a)|(b))\", false).unwrap_err().contains(\"Branch-reset\"));",
+     "moved": 1
+    },
+    {
+     "line": 418,
+     "text": "assert!(test(&re(r\"(?<n>a)(?=b)(?<!c)\"), \"ab\").unwrap());",
+     "moved": 1
+    },
+    {
+     "line": 419,
+     "text": "assert!(compile(\"(\", false).unwrap_err().contains(\"position\"));",
+     "moved": 1
+    },
+    {
+     "line": 420,
+     "text": "assert!(!compile(\"$(\", false).unwrap_err().contains(\"position\"));",
+     "moved": 1
+    },
+    {
+     "line": 421,
+     "text": "assert_eq!(replace(&re(\"o\"), \"foo boo\", \"0\", 2.0).unwrap(), \"fo0 boo\");",
+     "moved": 1
+    },
+    {
+     "line": 422,
+     "text": "assert_eq!(replace(&re(\"o\"), \"foo boo\", \"0\", -1.0).unwrap(), \"foo bo0\");",
+     "moved": 1
+    },
+    {
+     "line": 423,
+     "text": "assert_eq!(replace(&re(\"x*\"), \"ab\", \"-\", 0.0).unwrap(), \"-a-b-\");",
+     "moved": 1
+    }
+   ],
+   "crates/solenoid-core/tests/caches.rs": [
+    {
+     "line": 40,
+     "text": "let got = cells(r#\"CONCAT(MAP(SEQUENCE(1),LAMBDA(x,MAX(xs))),\"|\",MAP(SEQUENCE(1),LAMBDA(y,SUM(xs))))\"#);",
+     "moved": 0,
+     "why": "a cache check: the answer pins MAP's range memo, not CONCAT, and stays a test"
+    },
+    {
+     "line": 46,
+     "text": "let got = cells(r#\"CONCAT(MAP(SEQUENCE(1),LAMBDA(x,POWER(5,))),\",\",MAP(SEQUENCE(1),LAMBDA(y,POWER(5,@n))))\"#);",
+     "moved": 0,
+     "why": "a cache check with a computed column's row reference, which stays a test"
+    }
+   ],
+   "crates/solenoid-core/tests/dates_before_1900.rs": [
+    {
+     "line": 223,
+     "text": "(\"LEN(a & \\\"\\\")\", Moves::Days),",
+     "moved": 0,
+     "why": "a sweep that moves dates 400 years back: a property, which stays a test"
+    },
+    {
+     "line": 224,
+     "text": "(\"CONCAT(TEXT(a, \\\"dd-mmm\\\"), \\\"!\\\")\", Moves::Days),",
+     "moved": 0,
+     "why": "a sweep that moves dates 400 years back: a property, which stays a test"
+    }
+   ],
+   "crates/solenoid-core/tests/excel_doc_sweep.rs": [
+    {
+     "line": 264,
+     "text": "(\"LEFT(\\\"Sale Price\\\", 4)\", T(\"Sale\")),",
+     "moved": 1
+    },
+    {
+     "line": 265,
+     "text": "(\"RIGHT(\\\"Sale Price\\\", 5)\", T(\"Price\")),",
+     "moved": 1
+    },
+    {
+     "line": 266,
+     "text": "(\"MID(\\\"Fluid Flow\\\", 7, 20)\", T(\"Flow\")),",
+     "moved": 1
+    },
+    {
+     "line": 267,
+     "text": "(\"MID(\\\"Fluid Flow\\\", 20, 5)\", T(\"\")),",
+     "moved": 1
+    },
+    {
+     "line": 268,
+     "text": "(\"FIND(\\\"m\\\", \\\"Miriam McGovern\\\")\", N(6.0, 0.0)),",
+     "moved": 1
+    },
+    {
+     "line": 269,
+     "text": "(\"FIND(\\\"M\\\", \\\"Miriam McGovern\\\", 3)\", N(8.0, 0.0)),",
+     "moved": 1
+    },
+    {
+     "line": 270,
+     "text": "(\"SEARCH(\\\"e\\\", \\\"Statements\\\", 6)\", N(7.0, 0.0)),",
+     "moved": 1
+    },
+    {
+     "line": 271,
+     "text": "(\"SUBSTITUTE(\\\"Quarter 1, 2008\\\", \\\"1\\\", \\\"2\\\", 1)\", T(\"Quarter 2, 2008\")),",
+     "moved": 1
+    },
+    {
+     "line": 272,
+     "text": "(\"SUBSTITUTE(\\\"Quarter 1, 2011\\\", \\\"1\\\", \\\"2\\\", 3)\", T(\"Quarter 1, 2012\")),",
+     "moved": 1
+    },
+    {
+     "line": 273,
+     "text": "(\"PROPER(\\\"this is a TITLE\\\")\", T(\"This Is A Title\")),",
+     "moved": 1
+    },
+    {
+     "line": 274,
+     "text": "(\"PROPER(\\\"2-way street\\\")\", T(\"2-Way Street\")),",
+     "moved": 1
+    },
+    {
+     "line": 275,
+     "text": "(\"REPT(\\\"*-\\\", 3)\", T(\"*-*-*-\")),",
+     "moved": 1
+    },
+    {
+     "line": 276,
+     "text": "(\"EXACT(\\\"Word\\\", \\\"word\\\")\", B(false)),",
+     "moved": 1
+    },
+    {
+     "line": 277,
+     "text": "(\"CLEAN(CHAR(9) & \\\"Monthly report\\\" & CHAR(10))\", T(\"Monthly report\")),",
+     "moved": 1
+    },
+    {
+     "line": 278,
+     "text": "(\"FIXED(1234.567, 1)\", T(\"1,234.6\")),",
+     "moved": 1
+    },
+    {
+     "line": 279,
+     "text": "(\"FIXED(1234.567, -1)\", T(\"1,230\")),",
+     "moved": 1
+    },
+    {
+     "line": 280,
+     "text": "(\"FIXED(-1234.567, -1, TRUE)\", T(\"-1230\")),",
+     "moved": 1
+    },
+    {
+     "line": 281,
+     "text": "(\"FIXED(44.332)\", T(\"44.33\")),",
+     "moved": 1
+    },
+    {
+     "line": 405,
+     "text": "(\"ARABIC(\\\"MMMM\\\")\", N(4000.0, 0.0)),",
+     "moved": 1
+    },
+    {
+     "line": 406,
+     "text": "(\"ARABIC(\\\"VV\\\")\", N(10.0, 0.0)),",
+     "moved": 1
+    },
+    {
+     "line": 407,
+     "text": "(\"ARABIC(\\\"IIII\\\")\", N(4.0, 0.0)),",
+     "moved": 1
+    }
+   ],
+   "crates/solenoid-core/tests/excel_examples.rs": [
+    {
+     "line": 96,
+     "text": "assert_eq!(text(&format!(\"ROMAN(499, {form})\")), *want);",
+     "moved": 5
+    },
+    {
+     "line": 97,
+     "text": "assert_eq!(num(&format!(\"ARABIC(\\\"{want}\\\")\")), 499.0);",
+     "moved": 5
+    },
+    {
+     "line": 99,
+     "text": "assert_eq!(text(\"ROMAN(499, TRUE)\"), \"CDXCIX\");",
+     "moved": 1
+    },
+    {
+     "line": 100,
+     "text": "assert_eq!(text(\"ROMAN(499, FALSE)\"), \"ID\");",
+     "moved": 1
+    },
+    {
+     "line": 101,
+     "text": "assert_eq!(text(\"ROMAN(1999)\"), \"MCMXCIX\");",
+     "moved": 1
+    },
+    {
+     "line": 102,
+     "text": "assert_eq!(text(\"ROMAN(3999)\"), \"MMMCMXCIX\");",
+     "moved": 1
+    },
+    {
+     "line": 103,
+     "text": "assert!(is_error(\"ROMAN(4000)\"));",
+     "moved": 1
+    },
+    {
+     "line": 104,
+     "text": "assert!(is_error(\"ROMAN(-1)\"));",
+     "moved": 1
+    },
+    {
+     "line": 105,
+     "text": "assert_eq!(num(\"ARABIC(\\\"LVII\\\")\"), 57.0);",
+     "moved": 1
+    },
+    {
+     "line": 106,
+     "text": "assert_eq!(num(\"ARABIC(\\\"mcmxii\\\")\"), 1912.0);",
+     "moved": 1
+    },
+    {
+     "line": 107,
+     "text": "assert_eq!(num(\"ARABIC(\\\"-IV\\\")\"), -4.0);",
+     "moved": 1
+    },
+    {
+     "line": 108,
+     "text": "assert_eq!(num(\"ARABIC(\\\"\\\")\"), 0.0);",
+     "moved": 1
+    },
+    {
+     "line": 109,
+     "text": "assert_eq!(num(\"ARABIC(\\\"VV\\\")\"), 10.0);",
+     "moved": 1
+    },
+    {
+     "line": 110,
+     "text": "assert!(is_error(\"ARABIC(\\\"ABC\\\")\"));",
+     "moved": 1
+    },
+    {
+     "line": 179,
+     "text": "assert_eq!(text(\"REPLACE(\\\"abcdefghijk\\\", 6, 5, \\\"*\\\")\"), \"abcde*k\");",
+     "moved": 1
+    },
+    {
+     "line": 180,
+     "text": "assert_eq!(text(\"REPLACE(\\\"2009\\\", 3, 2, \\\"10\\\")\"), \"2010\");",
+     "moved": 1
+    },
+    {
+     "line": 181,
+     "text": "assert_eq!(text(\"REPLACE(\\\"abc\\\", 5, 1, \\\"x\\\")\"), \"abcx\");",
+     "moved": 1
+    },
+    {
+     "line": 182,
+     "text": "assert!(is_error(\"REPLACE(\\\"abc\\\", 0, 1, \\\"x\\\")\"));",
+     "moved": 1
+    },
+    {
+     "line": 183,
+     "text": "assert!(is_error(\"REPLACE(\\\"abc\\\", 1, -1, \\\"x\\\")\"));",
+     "moved": 1
+    },
+    {
+     "line": 188,
+     "text": "assert_eq!(text(\"TRIM(\\\" First Quarter   Earnings \\\")\"), \"First Quarter Earnings\");",
+     "moved": 1
+    },
+    {
+     "line": 189,
+     "text": "assert_eq!(text(\"TRIM(CHAR(160) & \\\"a\\\")\"), \"\\u{A0}a\");",
+     "moved": 1
+    },
+    {
+     "line": 190,
+     "text": "assert_eq!(text(\"TRIM(\\\"a\\\" & CHAR(9) & \\\" b\\\")\"), \"a\\t b\");",
+     "moved": 1
+    },
+    {
+     "line": 195,
+     "text": "assert_eq!(text(\"DOLLAR(1234.567, 2)\"), \"$1,234.57\");",
+     "moved": 1
+    },
+    {
+     "line": 196,
+     "text": "assert_eq!(text(\"DOLLAR(1234.567, -2)\"), \"$1,200\");",
+     "moved": 1
+    },
+    {
+     "line": 197,
+     "text": "assert_eq!(text(\"DOLLAR(-1234.567, -2)\"), \"($1,200)\");",
+     "moved": 1
+    },
+    {
+     "line": 198,
+     "text": "assert_eq!(text(\"DOLLAR(-0.123, 4)\"), \"($0.1230)\");",
+     "moved": 1
+    },
+    {
+     "line": 199,
+     "text": "assert_eq!(text(\"DOLLAR(99.888)\"), \"$99.89\");",
+     "moved": 1
+    },
+    {
+     "line": 200,
+     "text": "assert_eq!(text(\"DOLLAR(0, 0.5)\"), \"$0\");",
+     "moved": 1
+    },
+    {
+     "line": 201,
+     "text": "assert_eq!(text(\"DOLLAR(-0.001, 2)\"), \"($0.00)\");",
+     "moved": 1
+    },
+    {
+     "line": 202,
+     "text": "assert_eq!(text(\"DOLLAR(2, 2.9)\"), \"$2.00\");",
+     "moved": 1
+    },
+    {
+     "line": 247,
+     "text": "for src in [\"CONCAT(NA(), \\\"a\\\")\", \"LEN(NA())\", \"UPPER(NA())\", \"EXACT(NA(), \\\"a\\\")\", \"ENCODEBASE64(NA())\"] {",
+     "moved": 4
+    },
+    {
+     "line": 270,
+     "text": "/// The author's Excel, 2026-11-01: UPPER keeps ß, and a cut never halves a character.",
+     "moved": 0,
+     "why": "the doc comment over the cases below it, which moved"
+    },
+    {
+     "line": 273,
+     "text": "assert_eq!(text(\"UPPER(\\\"straße\\\")\"), \"STRAßE\");",
+     "moved": 1
+    },
+    {
+     "line": 274,
+     "text": "assert_eq!(text(\"LEFT(\\\"😀x\\\", 1)\"), \"😀\");",
+     "moved": 1
+    },
+    {
+     "line": 275,
+     "text": "assert_eq!(text(\"RIGHT(\\\"x😀\\\", 1)\"), \"😀\");",
+     "moved": 1
+    },
+    {
+     "line": 276,
+     "text": "assert_eq!(text(\"MID(\\\"a😀b\\\", 3, 2)\"), \"😀b\");",
+     "moved": 1
+    },
+    {
+     "line": 277,
+     "text": "assert_eq!(num(\"LEN(\\\"😀\\\")\"), 2.0);",
+     "moved": 1
+    },
+    {
+     "line": 299,
+     "text": "assert_eq!(code(\"CONCAT(NA(), \\\"a\\\")\"), \"#N/A\");",
+     "moved": 1
+    },
+    {
+     "line": 318,
+     "text": "/// The author's Excel, 2026-11-01: PCRE2 syntax the engine must read as Excel does, REGEXTEST answering TRUE or FALSE;",
+     "moved": 0,
+     "why": "the doc comment over the cases below it, which moved"
+    },
+    {
+     "line": 326,
+     "text": "assert!(is_error(\"REGEXTEST(\\\"[\\\", \\\"[[]\\\")\"));",
+     "moved": 1
+    },
+    {
+     "line": 327,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"&\\\", \\\"[a&&b]\\\")\"), 0.0);",
+     "moved": 1
+    },
+    {
+     "line": 328,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"-\\\", \\\"[a--b]\\\")\"), 0.0);",
+     "moved": 1
+    },
+    {
+     "line": 329,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"~\\\", \\\"[a~~b]\\\")\"), 0.0);",
+     "moved": 1
+    },
+    {
+     "line": 330,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"a b\\\", \\\"a\\\\hb\\\")\"), 1.0);",
+     "moved": 1
+    },
+    {
+     "line": 331,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"a\\\" & CHAR(10) & \\\"b\\\", \\\"a\\\\Rb\\\")\"), 1.0);",
+     "moved": 1
+    },
+    {
+     "line": 332,
+     "text": "assert_eq!(text(\"REGEXREPLACE(\\\"foobar\\\", \\\"foo\\\\Kbar\\\", \\\"X\\\")\"), \"fooX\");",
+     "moved": 1
+    },
+    {
+     "line": 333,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"axb\\\", \\\"a\\\\Q.\\\\Eb\\\")\"), 0.0);",
+     "moved": 1
+    },
+    {
+     "line": 334,
+     "text": "assert_eq!(text(\"REGEXREPLACE(\\\"ab\\\", \\\"(?P<x>a)\\\", \\\"[${x}]\\\")\"), \"[a]b\");",
+     "moved": 1
+    },
+    {
+     "line": 335,
+     "text": "assert_eq!(text(\"REGEXREPLACE(\\\"ab\\\", \\\"(?'x'a)\\\", \\\"[${x}]\\\")\"), \"[a]b\");",
+     "moved": 1
+    },
+    {
+     "line": 336,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"A\\\", \\\"\\\\x{41}\\\")\"), 1.0);",
+     "moved": 1
+    },
+    {
+     "line": 337,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"A\\\", \\\"\\\\101\\\")\"), 1.0);",
+     "moved": 1
+    },
+    {
+     "line": 338,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"1\\\", \\\"[[:^alpha:]]\\\")\"), 1.0);",
+     "moved": 1
+    },
+    {
+     "line": 339,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"é\\\", \\\"^\\\\p{L}$\\\")\"), 1.0);",
+     "moved": 1
+    },
+    {
+     "line": 340,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"a\\\" & CHAR(10), \\\"a\\\\Z\\\")\"), 1.0);",
+     "moved": 1
+    },
+    {
+     "line": 341,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"a\\\" & CHAR(10), \\\"a\\\\z\\\")\"), 0.0);",
+     "moved": 1
+    },
+    {
+     "line": 342,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"a\\\" & CHAR(10) & \\\"b\\\", \\\"a.b\\\")\"), 0.0);",
+     "moved": 1
+    },
+    {
+     "line": 343,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"aB\\\", \\\"a(?i)b\\\")\"), 1.0);",
+     "moved": 1
+    },
+    {
+     "line": 344,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"é\\\", \\\"^\\\\w$\\\")\"), 1.0);",
+     "moved": 1
+    },
+    {
+     "line": 345,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"٣\\\", \\\"^\\\\d$\\\")\"), 1.0);",
+     "moved": 1
+    },
+    {
+     "line": 346,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"SS\\\", \\\"ß\\\", 1)\"), 0.0);",
+     "moved": 1
+    },
+    {
+     "line": 347,
+     "text": "assert_eq!(n(\"REGEXTEST(\\\"é\\\", \\\"\\\\bé\\\\b\\\")\"), 1.0);",
+     "moved": 1
+    },
+    {
+     "line": 365,
+     "text": "(\"LEN(0.1 + 0.2)\", 3.0),",
+     "moved": 1
+    },
+    {
+     "line": 373,
+     "text": "(\"FIND(\\\"\\\", \\\"abc\\\")\", 1.0),",
+     "moved": 1
+    },
+    {
+     "line": 374,
+     "text": "(\"SEARCH(\\\"a?c\\\", \\\"xabc\\\")\", 2.0),",
+     "moved": 1
+    },
+    {
+     "line": 375,
+     "text": "(\"CODE(\\\"é\\\")\", 233.0),",
+     "moved": 1
+    },
+    {
+     "line": 376,
+     "text": "(\"UNICODE(\\\"😀\\\")\", 128_512.0),",
+     "moved": 1
+    },
+    {
+     "line": 377,
+     "text": "(\"LEN(\\\"😀\\\")\", 2.0),",
+     "moved": 1
+    },
+    {
+     "line": 390,
+     "text": "(\"LEFT(12.5, 2)\", \"12\"),",
+     "moved": 1
+    },
+    {
+     "line": 392,
+     "text": "(\"PROPER(\\\"hello wORLD o'neil 2nd\\\")\", \"Hello World O'Neil 2Nd\"),",
+     "moved": 1
+    },
+    {
+     "line": 393,
+     "text": "(\"SUBSTITUTE(\\\"aaa\\\", \\\"a\\\", \\\"b\\\", 2)\", \"aba\"),",
+     "moved": 1
+    },
+    {
+     "line": 394,
+     "text": "(\"REPT(\\\"ab\\\", 2.9)\", \"abab\"),",
+     "moved": 1
+    },
+    {
+     "line": 401,
+     "text": "/// XMATCH and EXACT don't change; text turns scientific from 1E+20 and keeps 0.00001 whole.",
+     "moved": 0,
+     "why": "the doc comment over the cases below it, which moved"
+    },
+    {
+     "line": 417,
+     "text": "assert!(t(\"EXACT(0.1 + 0.2, 0.3)\"));",
+     "moved": 1
+    }
+   ],
+   "crates/solenoid-core/tests/fuzz_formulas.rs": [
+    {
+     "line": 249,
+     "text": "(\"LEN($)\", \"num\"),",
+     "moved": 0,
+     "why": "a sweep of every date class with a placeholder date: a property, which stays a test"
+    },
+    {
+     "line": 250,
+     "text": "(\"CONCAT($, \\\"!\\\")\", \"text\"),",
+     "moved": 0,
+     "why": "a sweep of every date class with a placeholder date: a property, which stays a test"
+    }
+   ],
+   "docs/backlog.md": [
+    {
+     "line": 42,
+     "text": "- [ ] **Cards that lack their formula's options** ([[D73]] nodeCoversFormula): WORKDAY and NETWORKDAYS take a weekend pattern like \"0000011\", CONCAT rows take a list, TEXTJOIN gets more than one text ",
+     "moved": 0,
+     "why": "a card's behavior, not the formula's; the card's own tests hold it"
+    },
+    {
+     "line": 43,
+     "text": "- [ ] **Merges under [[B11]] maximalMerge**: REDUCE with SCAN; Append with Bind Columns; FIXED with DOLLAR (DOLLAR adds the currency sign); Web Source, Import HTML and Import XML as one fetcher with a",
+     "moved": 0,
+     "why": "a planned merge of cards, no answer"
+    },
+    {
+     "line": 46,
+     "text": "- [ ] **Card-to-formula checks skip every `parity: false` row; they shouldn't** (author 2026-11-05: we own the whole formula surface, so `parity` is an Excel note only). `cardFormulaTwins.test.ts` and",
+     "moved": 0,
+     "why": "a planned change to the card-to-formula checks, no answer"
+    },
+    {
+     "line": 159,
+     "text": "LINEST and LOGEST's const and stats (their answer's shape first: Excel's is a row, or a 5 × 2 grid with stats); MAP past three arrays. TEXTAFTER, TEXTBEFORE and",
+     "moved": 0,
+     "why": "its cases are under formula-language.md § Text kernels (the delimiter arrays)"
+    },
+    {
+     "line": 160,
+     "text": "TEXTSPLIT read one delimiter, not Excel's array of them (formula-language § the text kernels). The reference (`fixtures/excelArity.ts`) covers the registered Excel names that declare an arity.",
+     "moved": 0,
+     "why": "its cases are under formula-language.md § Text kernels (the delimiter arrays)"
+    }
+   ],
+   "docs/node-coverage.md": [
+    {
+     "line": 34,
+     "text": "- **Element-wise operand**, paired with each element through a broadcaster: the family's combo, `numlist`, `strcombo`, `datecombo`, `logicalcombo` or `complexcombo`. An operand can be a per-element ve",
+     "moved": 0,
+     "why": "socket classes, no answer"
+    },
+    {
+     "line": 35,
+     "text": "- This covers Arithmetic's `a` and `b`; the secondary operands `RoundN.digits`, `Clamp.min` / `max`, `MRound.multiple` and `Gcd.b`; every date operand (DatePart, DateAdd, DateDiff, DATEDIF, WORKDAY, N",
+     "moved": 0,
+     "why": "socket classes, no answer"
+    },
+    {
+     "line": 38,
+     "text": "- **Structural control parameter** (a count, index, window size, polynomial or Bessel order, numeric base, mode or type flag): `number`, or a scalar `string`. It has no per-element meaning, so a list ",
+     "moved": 0,
+     "why": "socket classes, no answer"
+    },
+    {
+     "line": 95,
+     "text": "- **Already covered or out of character** (recorded so nobody re-asks): apply/map/reduce/scan → MAP / BYROW / REDUCE / SCAN; cut → Bin; scale → Normalize z; paste → CONCAT / TEXTJOIN; table/value_coun",
+     "moved": 0,
+     "why": "an inventory of what is covered, no answer"
+    },
+    {
+     "line": 122,
+     "text": "- Value Input (Text), case and trim transforms, CONCAT, TEXTJOIN / SPLIT, LEN, FIND / SEARCH, SUBSTITUTE / REPLACE, TEXTAFTER / BEFORE, **Regex** (REGEXTEST / EXTRACT / REPLACE), VALUE / NUMBERVALUE, ",
+     "moved": 0,
+     "why": "a list of the Text cards, no answer"
+    },
+    {
+     "line": 123,
+     "text": "- **Every element-wise text node broadcasts.** Operands are `strcombo` / `numlist`, and a wired list spills element-wise, Excel-array-formula style (`=UPPER(A1:A10)`). There is no separate Text Map (\"",
+     "moved": 0,
+     "why": "a card's behavior, not the formula's; the card's own tests hold it"
+    },
+    {
+     "line": 125,
+     "text": "- CONCAT / TEXTJOIN reduce a set to one string (Excel's CONCAT flattens an array rather than spilling).",
+     "moved": 0,
+     "why": "a card's behavior, not the formula's; the card's own tests hold it"
+    },
+    {
+     "line": 126,
+     "text": "- TEXTSPLIT and Text Filter already map 1-D to 1-D. Broadcasting would need a rank-2 result, and the lattice has no 1-D to 2-D edge for it.",
+     "moved": 0,
+     "why": "a card's behavior, not the formula's; the card's own tests hold it"
+    },
+    {
+     "line": 127,
+     "text": "- A separator or pattern that selects a mode (Cast's separators and format, Text Filter's pattern) stays a scalar, like the date family's basis and weekend code. A wired blank there is a setting left ",
+     "moved": 0,
+     "why": "a card's behavior, not the formula's; the card's own tests hold it"
+    },
+    {
+     "line": 130,
+     "text": "- **Text Transform**: UPPER, LOWER, TRIM, PROPER, CLEAN, UNACCENT and SLUGIFY. PROPER capitalizes after any non-letter, as Excel does.",
+     "moved": 0,
+     "why": "a card's behavior, not the formula's; the card's own tests hold it"
+    },
+    {
+     "line": 131,
+     "text": "- **CONCAT** skips a blank row rather than propagating it; **TEXTJOIN** ignores empties by default, matching the formula's fallback ([[C24]] arraySemantics).",
+     "moved": 0,
+     "why": "a card's behavior, not the formula's; the card's own tests hold it"
+    },
+    {
+     "line": 132,
+     "text": "- **LEFT / RIGHT / MID**: MID with a length of 0 is `\"\"`, as in Excel.",
+     "moved": 0,
+     "why": "the card's; the formula's case is MID(\"abc\", 2, 0), moved from formulaDivergence.test.ts"
+    },
+    {
+     "line": 133,
+     "text": "- **FIND / SEARCH**: an absent substring is `#VALUE!` \"Find text not found within the text\", per cell.",
+     "moved": 2
+    },
+    {
+     "line": 134,
+     "text": "- **SUBSTITUTE**: an instance of 1 or more replaces only that occurrence; blank or 0 replaces every one. Regex REPLACE's occurrence works the same way, like the REGEXREPLACE formula, and also takes -n",
+     "moved": 1,
+     "why": "the card's blank or 0 replacing every match is the card's own reading"
+    },
+    {
+     "line": 135,
+     "text": "- **TEXTAFTER / TEXTBEFORE**: an empty delimiter is a per-cell blank. **CHAR**: an out-of-range code point is a per-cell blank. **EXACT** emits a logical.",
+     "moved": 3
+    },
+    {
+     "line": 137,
+     "text": "- **FIXED / DOLLAR**: decimals truncate toward zero, default 2, and a negative count rounds left of the point: FIXED(12345.678, −2) = \"12,300\", DOLLAR gives \"$12,300\".",
+     "moved": 2
+    },
+    {
+     "line": 138,
+     "text": "- **ROMAN** spans 1–3999, else `#VALUE!`; **ARABIC** gives blank for empty text and `#VALUE!` for a non-Roman character.",
+     "moved": 6,
+     "why": "the card's blank for empty text is the card's own reading"
+    },
+    {
+     "line": 380,
+     "text": "- **Polyform:** a Number / Text / Date / Auto result-type selector on Expression, the LAMBDA helpers and LAMBDA lets them loop any Excel function over arrays of any element type (`UPPER(name)`, `first",
+     "moved": 0,
+     "why": "an Expression example, a polyform card's socket rule"
+    },
+    {
+     "line": 382,
+     "text": "**Script** (`ScriptNode`, `nodes/script.ts`, [[C66]] scriptNode; the bounded form of out-of-scope §4): a JavaScript function expression as a node. It is named Script, not Code, because CODE is the Exc",
+     "moved": 0,
+     "why": "explains the Script node's name, no answer"
+    }
+   ],
+   "tests/graph/blankArgIsExcelBlank.test.ts": [
+    {
+     "line": 10,
+     "text": "it(\"TEXTJOIN: an empty ignore_empty slot is TRUE, as Excel reads it; a blank value is FALSE and keeps the empties\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 11,
+     "text": "expect(ev('TEXTJOIN(\",\", , \"a\", \"\", \"b\")')).toBe(\"a,b\");",
+     "moved": 1
+    },
+    {
+     "line": 12,
+     "text": "expect(ev('TEXTJOIN(\",\", b, \"a\", \"\", \"b\")', { b: null })).toBe(\"a,,b\");",
+     "moved": 1
+    },
+    {
+     "line": 13,
+     "text": "expect(ev('TEXTJOIN(\",\", TRUE, \"a\", \"\", \"b\")')).toBe(\"a,b\");",
+     "moved": 1
+    },
+    {
+     "line": 14,
+     "text": "expect(ev('TEXTJOIN(\",\", FALSE, \"a\", \"\", \"b\")')).toBe(\"a,,b\");",
+     "moved": 1
+    }
+   ],
+   "tests/graph/broadcastRules.test.ts": [
+    {
+     "line": 141,
+     "text": "expect(callTraits(\"ROMAN\")!.known).toBe(false);",
+     "moved": 0,
+     "why": "checks the call table's flag, not an answer"
+    },
+    {
+     "line": 142,
+     "text": "const r = ev(\"ROMAN(x)\", { x: M22 });",
+     "moved": 1
+    },
+    {
+     "line": 147,
+     "text": "const r = ev(\"ROMAN(x)\", { x: [1, 2, 3] });",
+     "moved": 1
+    }
+   ],
+   "tests/graph/cardBatchBench.test.ts": [
+    {
+     "line": 0,
+     "text": "(the whole file)",
+     "moved": 0,
+     "why": "a benchmark of card bodies; it times, it answers nothing"
+    }
+   ],
+   "tests/graph/caseContract.test.ts": [
+    {
+     "line": 7,
+     "text": "// \"Match case\" / EXACT is the escape hatch), every IDENTITY op (join, group,",
+     "moved": 0,
+     "why": "a comment naming EXACT as the case-sensitive comparison; its cases are below"
+    },
+    {
+     "line": 24,
+     "text": "it(\"EXACT is the case-sensitive escape hatch\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 25,
+     "text": "expect(ev('EXACT(\"a\", \"A\")')).toBe(false);",
+     "moved": 1
+    },
+    {
+     "line": 26,
+     "text": "expect(ev('EXACT(\"a\", \"a\")')).toBe(true);",
+     "moved": 1
+    }
+   ],
+   "tests/graph/catalogSearch.test.ts": [
+    {
+     "line": 112,
+     "text": "it(\"quick-wire's dim set holds catalog leaf types: a number cable lights Arithmetic, not UPPER\", () => {",
+     "moved": 0,
+     "why": "a test title about the Add menu"
+    }
+   ],
+   "tests/graph/components/valueDisplayFormat.test.ts": [
+    {
+     "line": 53,
+     "text": "it(\"keeps an error cell's #CODE! — it must never render as an empty cell\", () => {",
+     "moved": 0,
+     "why": "#CODE! stands for any error code, not the function"
+    }
+   ],
+   "tests/graph/computedColumnPaths.test.ts": [
+    {
+     "line": 48,
+     "text": "\"SUM(@legs)\", \"@legs * 2\", \"COUNTA(@tags)\", \"@n + 1\", \"SUM(legs)\", \"@grid\", \"SUM(grid)\", \"@kids\", \"COUNTA(kids)\", \"UPPER(@tags)\",",
+     "moved": 0,
+     "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
+    }
+   ],
+   "tests/graph/coreConformance.test.ts": [
+    {
+     "line": 343,
+     "text": "const src = 'CONCAT(MAP(SEQUENCE(1),LAMBDA(x,MAX(xs))),\"|\",MAP(SEQUENCE(1),LAMBDA(y,SUM(xs))))';",
+     "moved": 0,
+     "why": "a cache check over a computed column: the answer pins MAP's range memo, and stays a test"
+    }
+   ],
+   "tests/graph/coreCsv.test.ts": [
+    {
+     "line": 0,
+     "text": "(the whole file)",
+     "moved": 0,
+     "why": "FIXED names a list of CSV cases, not the function"
+    }
+   ],
+   "tests/graph/coreSurrogates.test.ts": [
+    {
+     "line": 11,
+     "text": "expect(evaluateOnCore(\"LEFT(t,2)&RIGHT(t,2)\", { t })).toBe(\"a😀😀b\");",
+     "moved": 1
+    },
+    {
+     "line": 12,
+     "text": "expect(evaluateOnCore(\"UNICODE(MID(t,3,1))\", { t })).toBe(128512);",
+     "moved": 1
+    },
+    {
+     "line": 13,
+     "text": "expect(evaluateOnCore(\"LEFT(t,3)&MID(t,4,1)\", { t })).toBe(\"a😀b\");",
+     "moved": 1
+    }
+   ],
+   "tests/graph/coreTrap.test.ts": [
+    {
+     "line": 21,
+     "text": "expect(evaluateOnCore(\"SUM(xs) + LEN(t)\", { xs: [1, 2, 3], t: \"abc\" })).toBe(9);",
+     "moved": 0,
+     "why": "checks the core answers after recovering from traps: plumbing, which stays a test"
+    }
+   ],
+   "tests/graph/cubeInputFormulas.test.ts": [
+    {
+     "line": 31,
+     "text": "const cube = cubeOf([...typed, { name: \"sorted\", expr: \"SORT(@s)\" }, { name: \"up\", expr: \"UPPER(@t)\" }, { name: \"twice\", expr: \"@s * 2\" }], rows);",
+     "moved": 0,
+     "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
+    },
+    {
+     "line": 77,
+     "text": "const cube = cubeOf([{ name: \"a\" }, { name: \"b\", type: \"string\" }, { name: \"x\", expr: \"@a + 1\" }, { name: \"y\", expr: \"ISTEXT(@b)\" }, { name: \"z\", expr: \"LEN(@b)\" }],",
+     "moved": 0,
+     "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
+    },
+    {
+     "line": 102,
+     "text": "\"INDEX(s, ROW(), 2)\", \"MAX(n) - @n\", \"COUNTIF(n, \\\">0\\\")\", \"SUMPRODUCT(@s, @s)\", \"AVERAGE(@s)\", \"FILTER(@s, @s > 3)\", \"TEXTJOIN(\\\",\\\", TRUE, @t)\",",
+     "moved": 0,
+     "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
+    }
+   ],
+   "tests/graph/cubeNodes.test.ts": [
+    {
+     "line": 71,
+     "text": "it(\"currency keys carry the CODE — $5 never matches 5€ (no FX)\", () => {",
+     "moved": 0,
+     "why": "a currency CODE, not the function"
+    }
+   ],
+   "tests/graph/cubeRowVerbs.test.ts": [
+    {
+     "line": 193,
+     "text": "const up = compute(\"UPPER(@tags)\", \"up\");",
+     "moved": 0,
+     "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
+    }
+   ],
+   "tests/graph/dispatchThrow.test.ts": [
+    {
+     "line": 13,
+     "text": "expect(ev(\"ISERROR(ROMAN(1e12))\")).toBe(true);",
+     "moved": 0,
+     "why": "its case belongs to another family's function"
+    }
+   ],
+   "tests/graph/emptySlots.test.ts": [
+    {
+     "line": 44,
+     "text": "expect(ev('CONCAT(\"a\", , \"b\")')).toBe(\"ab\");",
+     "moved": 1
+    },
+    {
+     "line": 46,
+     "text": "expect(ev('TEXTJOIN(\",\", , \"a\", \"\", \"b\")')).toBe(\"a,b\");",
+     "moved": 1
+    },
+    {
+     "line": 52,
+     "text": "expect(emptySlotReading(\"CONCAT\", 1).shown).toBeNull();",
+     "moved": 0,
+     "why": "what the editor shows in an empty slot, not an answer (the answers are in blankArgIsExcelBlank.test.ts)"
+    },
+    {
+     "line": 53,
+     "text": "expect(emptySlotReading(\"TEXTJOIN\", 1).shown).toBe(\"TRUE\");",
+     "moved": 0,
+     "why": "what the editor shows in an empty slot, not an answer (the answers are in blankArgIsExcelBlank.test.ts)"
+    },
+    {
+     "line": 63,
+     "text": "expect(highlightFormula('TEXTJOIN(\",\",,\"a\")', \"editor\")).toContain('data-ghost=\"TRUE\"');",
+     "moved": 1
+    },
+    {
+     "line": 64,
+     "text": "expect(highlightFormula('CONCAT(\"a\",,\"b\")', \"editor\")).not.toContain(\"fx-ghost\");",
+     "moved": 1
+    },
+    {
+     "line": 112,
+     "text": "expect(emptyFieldShown(\"TextJoinNode\", \"delimiter\", rolesFrom(\"TEXTJOIN\", { delimiter: 0 }).delimiter)).toEqual({ kind: \"fallback\", shown: undefined });",
+     "moved": 0,
+     "why": "what the TEXTJOIN card shows in an empty field, not an answer"
+    }
+   ],
+   "tests/graph/excelArityParity.test.ts": [
+    {
+     "line": 56,
+     "text": "describe(\"TEXTSPLIT, TEXTAFTER and TEXTBEFORE take Excel's options\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 58,
+     "text": "it(\"TEXTAFTER / TEXTBEFORE: instance from either end, match_mode, match_end, if_not_found\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 60,
+     "text": "expect(ev(\"TEXTAFTER(t, \\\"-\\\", 2)\", { t })).toBe(\"C-d\");",
+     "moved": 1
+    },
+    {
+     "line": 61,
+     "text": "expect(ev(\"TEXTAFTER(t, \\\"-\\\", -1)\", { t })).toBe(\"d\");",
+     "moved": 1
+    },
+    {
+     "line": 62,
+     "text": "expect(ev(\"TEXTBEFORE(t, \\\"-\\\", -2)\", { t })).toBe(\"a-b\");",
+     "moved": 1
+    },
+    {
+     "line": 63,
+     "text": "expect(ev(\"TEXTBEFORE(t, \\\"c\\\", 1, 1)\", { t })).toBe(\"a-b-\");",
+     "moved": 1
+    },
+    {
+     "line": 64,
+     "text": "expect(ev(\"TEXTBEFORE(t, \\\"c\\\")\", { t })).toBeNull();",
+     "moved": 1
+    },
+    {
+     "line": 65,
+     "text": "expect(ev(\"TEXTAFTER(t, \\\"-\\\", 4)\", { t })).toBeNull();",
+     "moved": 1
+    },
+    {
+     "line": 66,
+     "text": "expect(ev(\"TEXTBEFORE(t, \\\"-\\\", 4, 0, 1)\", { t })).toBe(\"a-b-C-d\");",
+     "moved": 1
+    },
+    {
+     "line": 67,
+     "text": "expect(ev(\"TEXTAFTER(t, \\\"x\\\", 1, 0, 0, \\\"none\\\")\", { t })).toBe(\"none\");",
+     "moved": 1
+    },
+    {
+     "line": 68,
+     "text": "expect(ev(\"TEXTAFTER(t, \\\"-\\\", 0)\", { t })).toMatchObject({ code: \"#VALUE!\" });",
+     "moved": 1
+    },
+    {
+     "line": 70,
+     "text": "it(\"the TEXTAFTER / TEXTBEFORE card covers every argument and agrees with the formula ([[D73]] nodeCoversFormula)\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 76,
+     "text": "expect(card(\"after\", \"-\", 2)).toBe(ev(\"TEXTAFTER(t, \\\"-\\\", 2)\", { t }));",
+     "moved": 1
+    },
+    {
+     "line": 77,
+     "text": "expect(card(\"before\", \"-\", -2)).toBe(ev(\"TEXTBEFORE(t, \\\"-\\\", -2)\", { t }));",
+     "moved": 1
+    },
+    {
+     "line": 78,
+     "text": "expect(card(\"before\", \"c\", 1, { matchCase: false })).toBe(ev(\"TEXTBEFORE(t, \\\"c\\\", 1, 1)\", { t }));",
+     "moved": 1
+    },
+    {
+     "line": 79,
+     "text": "expect(card(\"before\", \"-\", 4, { matchEnd: true })).toBe(ev(\"TEXTBEFORE(t, \\\"-\\\", 4, 0, 1)\", { t }));",
+     "moved": 1
+    },
+    {
+     "line": 83,
+     "text": "it(\"TEXTSPLIT: a row delimiter answers a table padded with #N/A; ignore_empty drops empty parts\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 84,
+     "text": "expect(ev(\"TEXTSPLIT(t, \\\",\\\")\", { t: \"a,,b\" })).toEqual([\"a\", \"\", \"b\"]);",
+     "moved": 1
+    },
+    {
+     "line": 85,
+     "text": "expect(ev(\"TEXTSPLIT(t, \\\",\\\", , TRUE)\", { t: \"a,,b\" })).toEqual([\"a\", \"b\"]);",
+     "moved": 1
+    },
+    {
+     "line": 86,
+     "text": "const m = ev(\"TEXTSPLIT(t, \\\",\\\", \\\";\\\")\", { t: \"a,b;c\" }) as unknown[][];",
+     "moved": 1
+    },
+    {
+     "line": 89,
+     "text": "expect(ev(\"TEXTSPLIT(t, \\\",\\\", \\\";\\\", FALSE, 0, \\\"-\\\")\", { t: \"a,b;c\" })).toEqual([[\"a\", \"b\"], [\"c\", \"-\"]]);",
+     "moved": 1
+    },
+    {
+     "line": 90,
+     "text": "expect(ev(\"TEXTSPLIT(t, \\\"X\\\", , , 1)\", { t: \"axb\" })).toEqual([\"a\", \"b\"]);",
+     "moved": 1
+    }
+   ],
+   "tests/graph/excelChecked.test.ts": [
+    {
+     "line": 8,
+     "text": "[\"POWER(2, )\", 1], [\"IF(TRUE, , 5)\", 0], [\"AVERAGE(2, )\", 1], [\"MOD(5, )\", \"#DIV/0!\"], ['CONCAT(\"a\", , \"b\")', \"ab\"],",
+     "moved": 1
+    },
+    {
+     "line": 9,
+     "text": "['TEXTJOIN(\",\", , \"a\", \"\", \"b\")', \"a,b\"], [\"ROUND(2.5, )\", 3],",
+     "moved": 1
+    },
+    {
+     "line": 36,
+     "text": "it(\"TEXTSPLIT with a row delimiter alone answers one column\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 37,
+     "text": "expect(compileEvaluator('TEXTSPLIT(\"a;b\", , \";\")')!({})).toEqual([[\"a\"], [\"b\"]]);",
+     "moved": 1
+    },
+    {
+     "line": 38,
+     "text": "expect((compileEvaluator('TEXTSPLIT(\"a;b\", , )')!({}) as { code?: string }).code).toBe(\"#SYNTAX!\");",
+     "moved": 1
+    }
+   ],
+   "tests/graph/excelFormula.test.ts": [
+    {
+     "line": 314,
+     "text": "it(\"& / CONCAT / TEXTJOIN format numbers at 15 sig digits (no float noise)\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 316,
+     "text": "expect(ev('CONCAT(0.1 + 0.2, \" kg\")')).toBe(\"0.3 kg\");",
+     "moved": 1
+    },
+    {
+     "line": 317,
+     "text": "expect(ev('CONCATENATE(0.1 + 0.2, \" kg\")')).toBe(\"0.3 kg\");",
+     "moved": 1
+    },
+    {
+     "line": 318,
+     "text": "expect(ev('TEXTJOIN(\"-\", TRUE, 0.1 + 0.2, 3)')).toBe(\"0.3-3\");",
+     "moved": 1
+    },
+    {
+     "line": 378,
+     "text": "for (const f of [\"SQRT\", \"ABS\", \"ROUND\", \"UPPER\", \"IF\"]) {",
+     "moved": 0,
+     "why": "checks which functions take a whole range, not an answer"
+    },
+    {
+     "line": 430,
+     "text": "it(\"an error inside a list propagates out of SUM/MEDIAN/TEXTJOIN\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the line below"
+    },
+    {
+     "line": 431,
+     "text": "for (const expr of [\"SUM(x)\", \"MEDIAN(x)\", 'TEXTJOIN(\",\", TRUE, x)']) {",
+     "moved": 1
+    },
+    {
+     "line": 749,
+     "text": "expect(closeParens(`CONCAT(\"a)\", b`)).toBe(`CONCAT(\"a)\", b)`);",
+     "moved": 0,
+     "why": "the editor's closing of parentheses, not an answer"
+    },
+    {
+     "line": 754,
+     "text": "expect(closeParens(`LEN([Say \"hi\"]`)).toBe(`LEN([Say \"hi\"])`);",
+     "moved": 0,
+     "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
+    },
+    {
+     "line": 757,
+     "text": "expect(closeParens(`CONCAT(\"a `)).toBe(`CONCAT(\"a `);",
+     "moved": 0,
+     "why": "the editor's closing of parentheses, not an answer"
+    }
+   ],
+   "tests/graph/excelFunctions.test.ts": [
+    {
+     "line": 49,
+     "text": "it(\"LEN is string → number\", () => {",
+     "moved": 0,
+     "why": "the test's title; its case is the line below"
+    },
+    {
+     "line": 50,
+     "text": "expect(fn(\"LEN\")(\"hello\")).toBe(5);",
+     "moved": 1
+    },
+    {
+     "line": 99,
+     "text": "expect(compileEvaluator(\"LEN(s)\")!({ s: [\"a\", \"bcd\"] })).toEqual([1, 3]);",
+     "moved": 1
+    }
+   ],
+   "tests/graph/fcTextStylePick.test.ts": [
+    {
+     "line": 6,
+     "text": "it(\"picking Chip clears a letter case, so no hidden UPPER rides the annotation\", () => {",
+     "moved": 0,
+     "why": "an FC letter-case style named UPPER, not the function"
+    }
+   ],
+   "tests/graph/fixtures/excelArity.ts": [
+    {
+     "line": 0,
+     "text": "(the whole file)",
+     "moved": 0,
+     "why": "Excel's argument counts per function, which the arity check reads; no answers"
+    }
+   ],
+   "tests/graph/fixtures/excelNames.ts": [
+    {
+     "line": 0,
+     "text": "(the whole file)",
+     "moved": 0,
+     "why": "a list of Formula.js's function names, no answers"
+    }
+   ],
+   "tests/graph/formulaComplex.test.ts": [
+    {
+     "line": 161,
+     "text": "expect(code(ev(\"TEXTJOIN(x)\", { x: [Z] }))).toBe(\"#TYPE!\");",
+     "moved": 1
+    }
+   ],
+   "tests/graph/formulaDates.test.ts": [
+    {
+     "line": 61,
+     "text": "[\"CONCAT(@name, \\\": \\\", @d)\", \"A: 01-Sep-2026\"],",
+     "moved": 0,
+     "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
+    },
+    {
+     "line": 62,
+     "text": "[\"TEXTJOIN(\\\" \\\", TRUE, @name, @d + 1)\", \"A 02-Sep-2026\"],",
+     "moved": 0,
+     "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
+    }
+   ],
+   "tests/graph/formulaDivergence.test.ts": [
+    {
+     "line": 69,
+     "text": "describe(\"CLEAN reads a number or logical as text and drops codes 0 to 31 only (FX is wrong)\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 70,
+     "text": "it(\"as Excel, and the Text Transform card's CLEAN is the same function\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 71,
+     "text": "expect(call(\"CLEAN\", 5)).toBe(\"5\");",
+     "moved": 1
+    },
+    {
+     "line": 72,
+     "text": "expect(call(\"CLEAN\", true)).toBe(\"TRUE\");",
+     "moved": 1
+    },
+    {
+     "line": 73,
+     "text": "expect(call(\"CLEAN\", \"a\\u0001b\\u001fc\\u007f\")).toBe(\"abc\\u007f\");",
+     "moved": 1
+    },
+    {
+     "line": 156,
+     "text": "describe(\"LEFT, RIGHT, FIND and SEARCH refuse a negative count or a start below 1 (Excel)\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 159,
+     "text": "expect(code(call(\"LEFT\", \"abc\", -1))).toBe(\"#VALUE!\");",
+     "moved": 1
+    },
+    {
+     "line": 160,
+     "text": "expect(code(call(\"RIGHT\", \"abc\", -2))).toBe(\"#VALUE!\");",
+     "moved": 1
+    },
+    {
+     "line": 161,
+     "text": "expect(call(\"LEFT\", \"abc\", -0.5)).toBe(\"\");",
+     "moved": 1
+    },
+    {
+     "line": 162,
+     "text": "expect(code(call(\"FIND\", \"a\", \"abc\", 0))).toBe(\"#VALUE!\");",
+     "moved": 1
+    },
+    {
+     "line": 163,
+     "text": "expect(code(call(\"SEARCH\", \"A\", \"abc\", -1))).toBe(\"#VALUE!\");",
+     "moved": 1
+    },
+    {
+     "line": 224,
+     "text": "expect(str(call(\"UPPER\", 0.1 + 0.2))).toBe(\"0.3\");",
+     "moved": 1
+    },
+    {
+     "line": 225,
+     "text": "expect(str(call(\"LEFT\", 0.1 + 0.2, 5))).toBe(\"0.3\");",
+     "moved": 1
+    },
+    {
+     "line": 226,
+     "text": "expect(str(call(\"SUBSTITUTE\", 0.1 + 0.2, \".\", \",\"))).toBe(\"0,3\");",
+     "moved": 1
+    },
+    {
+     "line": 227,
+     "text": "expect(str(call(\"REPT\", 1 / 3, 2))).toBe(\"0.333333333333333\".repeat(2));",
+     "moved": 1
+    },
+    {
+     "line": 228,
+     "text": "expect(str(call(\"PROPER\", true))).toBe(\"True\");",
+     "moved": 1
+    },
+    {
+     "line": 229,
+     "text": "expect(num(call(\"FIND\", \".\", 0.1 + 0.2))).toBe(2);",
+     "moved": 1
+    },
+    {
+     "line": 230,
+     "text": "expect(num(call(\"LEN\", 0.1 + 0.2))).toBe(3);",
+     "moved": 1
+    },
+    {
+     "line": 231,
+     "text": "expect(call(\"EXACT\", 0.1 + 0.2, \"0.3\")).toBe(true);",
+     "moved": 1
+    },
+    {
+     "line": 235,
+     "text": "describe(\"PROPER, MID, REPT, CHAR, CODE, UNICHAR, UNICODE — the text cards' answers, Excel's answers (FX is wrong)\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 236,
+     "text": "it(\"PROPER capitalizes after any non-letter\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 237,
+     "text": "expect(call(\"PROPER\", \"76BudGet\")).toBe(\"76Budget\");",
+     "moved": 1
+    },
+    {
+     "line": 238,
+     "text": "expect(call(\"PROPER\", \"o'neil 2nd\")).toBe(\"O'Neil 2Nd\");",
+     "moved": 1
+    },
+    {
+     "line": 240,
+     "text": "it(\"MID of length 0 is empty, REPT truncates its count, UNICHAR and UNICODE cover the astral planes\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 241,
+     "text": "expect(call(\"MID\", \"abc\", 2, 0)).toBe(\"\");",
+     "moved": 1
+    },
+    {
+     "line": 242,
+     "text": "expect(call(\"REPT\", \"ab\", 2.9)).toBe(\"abab\");",
+     "moved": 1
+    },
+    {
+     "line": 243,
+     "text": "expect(call(\"UNICHAR\", 128512)).toBe(\"😀\");",
+     "moved": 1
+    },
+    {
+     "line": 244,
+     "text": "expect(call(\"UNICODE\", \"😀\")).toBe(128512);",
+     "moved": 1
+    },
+    {
+     "line": 245,
+     "text": "expect(call(\"CHAR\", 128512)).toBe(\"😀\");",
+     "moved": 1
+    },
+    {
+     "line": 246,
+     "text": "expect(call(\"CODE\", \"😀\")).toBe(128512);",
+     "moved": 1
+    },
+    {
+     "line": 280,
+     "text": "describe(\"DOLLAR — Excel's negative accounting form is ($…), FX prints $(…)\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 282,
+     "text": "expect(str(call(\"DOLLAR\", -1234.567, 2))).toBe(\"($1,234.57)\");",
+     "moved": 1
+    },
+    {
+     "line": 283,
+     "text": "expect(str(call(\"DOLLAR\", 1234.567, 2))).toBe(\"$1,234.57\");",
+     "moved": 1
+    },
+    {
+     "line": 284,
+     "text": "expect(str(call(\"DOLLAR\", 1234.567, -2))).toBe(\"$1,200\");",
+     "moved": 1
+    },
+    {
+     "line": 297,
+     "text": "describe(\"FIXED — drift guards, incl. half-away rounding\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 299,
+     "text": "expect(str(call(\"FIXED\", 1234.567, 1))).toBe(\"1,234.6\");",
+     "moved": 1
+    },
+    {
+     "line": 300,
+     "text": "expect(str(call(\"FIXED\", 1234.567, 1, true))).toBe(\"1234.6\");",
+     "moved": 1
+    },
+    {
+     "line": 301,
+     "text": "expect(str(call(\"FIXED\", 2.5, 0))).toBe(\"3\");",
+     "moved": 1
+    },
+    {
+     "line": 302,
+     "text": "expect(str(call(\"FIXED\", -2.5, 0))).toBe(\"-3\");",
+     "moved": 1
+    }
+   ],
+   "tests/graph/formulaExtensions.test.ts": [
+    {
+     "line": 32,
+     "text": "for (const core of [\"SUM\", \"XLOOKUP\", \"TEXTSPLIT\", \"PRICE\"]) expect(advertisedFunctionNames(), core).toContain(core);",
+     "moved": 0,
+     "why": "checks which names the editor offers, not an answer"
+    }
+   ],
+   "tests/graph/formulaLayout.test.ts": [
+    {
+     "line": 0,
+     "text": "(the whole file)",
+     "moved": 0,
+     "why": "formula text laid out for display, never evaluated"
+    }
+   ],
+   "tests/graph/formulaReviewFixes.test.ts": [
+    {
+     "line": 112,
+     "text": "it(\"REGEXTEST third argument is case_sensitivity (1 = insensitive), not a JS flag string\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 113,
+     "text": "expect(ev('REGEXTEST(\"Apple\", \"apple\", 1)')).toBe(true);",
+     "moved": 1
+    },
+    {
+     "line": 114,
+     "text": "expect(ev('REGEXTEST(\"Apple\", \"apple\", 0)')).toBe(false);",
+     "moved": 1
+    },
+    {
+     "line": 115,
+     "text": "expect(ev('REGEXTEST(\"Apple\", \"apple\")')).toBe(false);",
+     "moved": 1
+    },
+    {
+     "line": 116,
+     "text": "const bad = ev('REGEXTEST(\"Apple\", \"apple\", 7)');",
+     "moved": 1
+    }
+   ],
+   "tests/graph/formulaSignatures.test.ts": [
+    {
+     "line": 79,
+     "text": "expect(syntaxHint('CONCAT(\"{\", x, \"}\")')).toBeNull();",
+     "moved": 0,
+     "why": "the editor's syntax hint, not an answer"
+    }
+   ],
+   "tests/graph/formulaSyntax.test.ts": [
+    {
+     "line": 77,
+     "text": "expect(enclosingCall('TEXTJOIN(\",\", x', 'TEXTJOIN(\",\", x'.length))",
+     "moved": 0,
+     "why": "the editor's reading of the call under the cursor, not an answer"
+    },
+    {
+     "line": 78,
+     "text": ".toEqual({ name: \"TEXTJOIN\", argIndex: 1 });",
+     "moved": 0,
+     "why": "the editor's reading of the call under the cursor, not an answer"
+    }
+   ],
+   "tests/graph/formulaTier1.test.ts": [
+    {
+     "line": 71,
+     "text": "it(\"TEXTSPLIT\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 74,
+     "text": "expect(ev('TEXTSPLIT(\"a,b,c\", \",\")')).toEqual(fromNode);",
+     "moved": 1
+    },
+    {
+     "line": 78,
+     "text": "it(\"TEXTAFTER / TEXTBEFORE, including the not-found blank\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 81,
+     "text": "expect(ev('TEXTAFTER(\"user@example.com\", \"@\")')).toBe(after.data({ text: [\"user@example.com\"], delimiter: [\"@\"] }).result);",
+     "moved": 1
+    },
+    {
+     "line": 82,
+     "text": "expect(ev('TEXTBEFORE(\"user@example.com\", \"@\")')).toBe(before.data({ text: [\"user@example.com\"], delimiter: [\"@\"] }).result);",
+     "moved": 1
+    },
+    {
+     "line": 83,
+     "text": "expect(ev('TEXTAFTER(\"no delimiter here\", \"@\")')).toBeNull();",
+     "moved": 1
+    },
+    {
+     "line": 86,
+     "text": "it(\"ENCODEURL\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 88,
+     "text": "expect(ev('ENCODEURL(\"a b&c\")')).toBe(node.data({ text: [\"a b&c\"] }).result);",
+     "moved": 1
+    },
+    {
+     "line": 89,
+     "text": "expect(ev('ENCODEURL(\"a b&c\")')).toBe(\"a%20b%26c\");",
+     "moved": 1
+    },
+    {
+     "line": 92,
+     "text": "it(\"REGEXTEST / REGEXEXTRACT / REGEXREPLACE\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 94,
+     "text": "expect(ev('REGEXTEST(\"abc123\", \"\\\\d+\")')).toBe(test.data({ text: [\"abc123\"], pattern: [\"\\\\d+\"] }).result);",
+     "moved": 1
+    },
+    {
+     "line": 95,
+     "text": "expect(ev('REGEXTEST(\"abc123\", \"\\\\d+\")')).toBe(true);",
+     "moved": 1
+    },
+    {
+     "line": 96,
+     "text": "expect(ev('REGEXEXTRACT(\"abc123def\", \"\\\\d+\")')).toBe(\"123\");",
+     "moved": 1
+    },
+    {
+     "line": 97,
+     "text": "expect(ev('REGEXEXTRACT(\"a1b2\", \"\\\\d\", 1)')).toEqual([\"1\", \"2\"]);",
+     "moved": 1
+    },
+    {
+     "line": 98,
+     "text": "expect(ev('REGEXREPLACE(\"a1b2\", \"\\\\d\", \"#\")')).toBe(\"a#b#\");",
+     "moved": 1
+    },
+    {
+     "line": 101,
+     "text": "it(\"REGEXEXTRACT (groups) and REGEXREPLACE occurrence match the node\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 102,
+     "text": "// return_mode 2 = the first match's capture groups (the node's REGEXEXTRACT (groups) op)",
+     "moved": 0,
+     "why": "a comment on the cases below"
+    },
+    {
+     "line": 105,
+     "text": "expect(ev(`REGEXEXTRACT(\"2026-08-21\", \"${pat}\", 2)`))",
+     "moved": 1
+    },
+    {
+     "line": 107,
+     "text": "expect(ev(`REGEXEXTRACT(\"2026-08-21\", \"${pat}\", 2)`)).toEqual([\"2026\", \"08\", \"21\"]);",
+     "moved": 1
+    },
+    {
+     "line": 110,
+     "text": "expect(ev('REGEXREPLACE(\"a1b2c3\", \"\\\\d\", \"#\", 2)'))",
+     "moved": 1
+    },
+    {
+     "line": 112,
+     "text": "expect(ev('REGEXREPLACE(\"a1b2c3\", \"\\\\d\", \"#\", 2)')).toBe(\"a1b#c3\");",
+     "moved": 1
+    },
+    {
+     "line": 114,
+     "text": "expect(ev('REGEXREPLACE(\"a1b2c3\", \"\\\\d\", \"#\", 9)')).toBe(\"a1b2c3\");",
+     "moved": 1
+    },
+    {
+     "line": 115,
+     "text": "const badMode = ev('REGEXEXTRACT(\"a1b2\", \"\\\\d\", 3)');",
+     "moved": 1
+    },
+    {
+     "line": 119,
+     "text": ".toBe(ev('REGEXREPLACE(\"a1b2c3\", \"\\\\d\", \"#\")'));",
+     "moved": 1
+    },
+    {
+     "line": 123,
+     "text": "describe(\"REGEXREPLACE occurrence\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 129,
+     "text": "expect(ev('REGEXREPLACE(\"xaxa\", \"(?<=x)a\", \"#\", 2)')).toBe(\"xax#\");",
+     "moved": 1
+    },
+    {
+     "line": 130,
+     "text": "expect(ev('REGEXREPLACE(\"ab ab\", \"a(?=b)\", \"#\", 2)')).toBe(\"ab #b\");",
+     "moved": 1
+    },
+    {
+     "line": 131,
+     "text": "expect(ev('REGEXREPLACE(\"cat cat\", \"^cat|\\\\bcat\", \"dog\", 2)')).toBe(\"cat dog\");",
+     "moved": 1
+    },
+    {
+     "line": 132,
+     "text": "expect(ev('REGEXREPLACE(\"cat cat\", \"^cat\", \"dog\", 2)')).toBe(\"cat cat\");",
+     "moved": 1
+    },
+    {
+     "line": 136,
+     "text": "expect(ev('REGEXREPLACE(\"a1 b2\", \"(\\\\w)(\\\\d)\", \"$2$1\", 2)')).toBe(\"a1 2b\");",
+     "moved": 1
+    },
+    {
+     "line": 137,
+     "text": "expect(ev('REGEXREPLACE(\"a1 b2\", \"(?<l>\\\\w)(?<d>\\\\d)\", \"${d}${l}\", 2)')).toBe(\"a1 2b\");",
+     "moved": 1
+    },
+    {
+     "line": 138,
+     "text": "expect(ev('REGEXREPLACE(\"a1 b2\", \"\\\\d\", \"[$0$$]\", 2)')).toBe(\"a1 b[2$]\");",
+     "moved": 1
+    },
+    {
+     "line": 142,
+     "text": "expect(ev('REGEXREPLACE(\"a1b2c3\", \"\\\\d\", \"#\", 2.6)')).toBe(\"a1b#c3\");",
+     "moved": 1
+    },
+    {
+     "line": 144,
+     "text": "expect(ev('REGEXREPLACE(\"a1b2c3\", \"\\\\d\", \"#\", -1)')).toBe(\"a1b2c#\");",
+     "moved": 1
+    },
+    {
+     "line": 146,
+     "text": "expect(ev('REGEXREPLACE(\"a1b2c3\", \"\\\\d\", \"#\", -3)')).toBe(\"a#b2c3\");",
+     "moved": 1
+    },
+    {
+     "line": 147,
+     "text": "expect(ev('REGEXREPLACE(\"a1b2c3\", \"\\\\d\", \"#\", -9)')).toBe(\"a1b2c3\");",
+     "moved": 1
+    },
+    {
+     "line": 263,
+     "text": "it(\"FIND and SEARCH take an empty find_text one past the end, and no further\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 264,
+     "text": "expect(ev('FIND(\"\",\"abc\",4)')).toBe(4);",
+     "moved": 1
+    },
+    {
+     "line": 265,
+     "text": "expect(err('FIND(\"\",\"abc\",5)')).toBe(\"#VALUE!\");",
+     "moved": 1
+    },
+    {
+     "line": 266,
+     "text": "expect(err('SEARCH(\"\",\"abc\",5)')).toBe(\"#VALUE!\");",
+     "moved": 1
+    },
+    {
+     "line": 267,
+     "text": "expect(err('LEFT(\"abc\",-1)')).toBe(\"#VALUE!\");",
+     "moved": 1
+    },
+    {
+     "line": 269,
+     "text": "it(\"SEARCH reads Excel's wildcards: ? one character, * any run, ~ a literal\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 270,
+     "text": "expect(ev('SEARCH(\"a?c\",\"xabc\")')).toBe(2);",
+     "moved": 1
+    },
+    {
+     "line": 271,
+     "text": "expect(ev('SEARCH(\"B*D\",\"abcde\")')).toBe(2);",
+     "moved": 1
+    },
+    {
+     "line": 272,
+     "text": "expect(ev('SEARCH(\"~*\",\"a*b\")')).toBe(2);",
+     "moved": 1
+    },
+    {
+     "line": 273,
+     "text": "expect(ev('SEARCH(\"~?\",\"ab?\")')).toBe(3);",
+     "moved": 1
+    },
+    {
+     "line": 274,
+     "text": "expect(ev('SEARCH(\"a*\",\"bca\",2)')).toBe(3);",
+     "moved": 1
+    },
+    {
+     "line": 275,
+     "text": "expect(err('SEARCH(\"x?\",\"abx\")')).toBe(\"#VALUE!\");",
+     "moved": 1
+    },
+    {
+     "line": 276,
+     "text": "expect(ev('SEARCH(\"\",\"abc\",2)')).toBe(2);",
+     "moved": 1
+    }
+   ],
+   "tests/graph/graphValidate.test.ts": [
+    {
+     "line": 0,
+     "text": "(the whole file)",
+     "moved": 0,
+     "why": "CLEAN names a test graph, not the function"
+    }
+   ],
+   "tests/graph/groupPushCore.test.ts": [
+    {
+     "line": 0,
+     "text": "(the whole file)",
+     "moved": 0,
+     "why": "canvas layout: RIGHT and LEFT are edges, not the functions"
+    }
+   ],
+   "tests/graph/hicCableGeom.test.ts": [
+    {
+     "line": 0,
+     "text": "(the whole file)",
+     "moved": 0,
+     "why": "cable geometry: LEFT is a side, not the function"
+    }
+   ],
+   "tests/graph/inputRoles.test.ts": [
+    {
+     "line": 153,
+     "text": "expect(isSyntax(ev(\"MID(\\\"abc\\\", s, 1)\", { s: null }))).toBe(true);",
+     "moved": 1
+    },
+    {
+     "line": 156,
+     "text": "expect(ev(\"LEFT(\\\"abc\\\", n)\", { n: null })).toBe(\"a\");",
+     "moved": 1
+    }
+   ],
+   "tests/graph/layoutTidyIntegration.test.ts": [
+    {
+     "line": 0,
+     "text": "(the whole file)",
+     "moved": 0,
+     "why": "canvas layout: RIGHT is a direction, not the function"
+    }
+   ],
+   "tests/graph/literalEditors.test.ts": [
+    {
+     "line": 174,
+     "text": "const c = cube({ columns: [{ name: \"b\", expr: \"@a + 1\" }, { name: \"a\", expr: \"LEN(@name)\" }, { name: \"x\", expr: \"@y\" }, { name: \"y\", expr: \"@x\" }, { name: \"p\", expr: \"1 +\" }, { name: \"q\", expr: \"@nope",
+     "moved": 0,
+     "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
+    }
+   ],
+   "tests/graph/noTextGuessing.test.ts": [
+    {
+     "line": 18,
+     "text": "for (const src of ['ABS(\"5\")', 'ROUND(\"2.5\", 0)', 'SQRT(\"4\")', 'DATE(\"2024\", 1, 1)', 'REPT(\"a\", \"3\")', 'LEFT(\"abc\", \"2\")', 'PMT(\"0.1\", 2, 100)'])",
+     "moved": 2
+    },
+    {
+     "line": 112,
+     "text": "['XNPV(\"0.1\", c, d)', { c, d }], ['GCD(\"12\", 18)', {}], ['MULTINOMIAL(\"2\", 3)', {}], ['TEXTSPLIT(\"a,b\", \",\", , , \"1\")', {}],",
+     "moved": 1
+    }
+   ],
+   "tests/graph/nodes/composite.test.ts": [
+    {
+     "line": 317,
+     "text": "it(\"round-trips through extractInit — the EXACT path persistence.ts and paste use\", async () => {",
+     "moved": 0,
+     "why": "EXACT is prose, not the function"
+    }
+   ],
+   "tests/graph/nodes/computedColumn.test.ts": [
+    {
+     "line": 90,
+     "text": "const r = run(named('UPPER(@city) & \"!\"', \"shout\"), sales) as FrameValue;",
+     "moved": 0,
+     "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
+    },
+    {
+     "line": 296,
+     "text": "const r = run(named('IF(@qty > 2, UPPER(@city), LOWER(@city)) & \" #\" & TEXT(ROW(), \"0\")', \"tag\"), sales) as FrameValue;",
+     "moved": 0,
+     "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
+    },
+    {
+     "line": 549,
+     "text": "{ name: \"up\", type: \"number\", cells: [], expr: \"UPPER(@city)\", unit: \"usd\" },",
+     "moved": 0,
+     "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
+    }
+   ],
+   "tests/graph/nodes/polyform.test.ts": [
+    {
+     "line": 54,
+     "text": "const n = new ExpressionNode({ expr: \"UPPER(name)\", castTo: \"text\" });",
+     "moved": 0,
+     "why": "checks the Expression node's socket type, not an answer"
+    }
+   ],
+   "tests/graph/nodes/pythonRGap.test.ts": [
+    {
+     "line": 323,
+     "text": "it(\"KS two-sample EXACT: scipy ks_2samp(method=exact) — 0.16782134 on 10 vs 10, 0.05949591 on 40 vs 35\", () => {",
+     "moved": 0,
+     "why": "EXACT names scipy's method, not the function"
+    },
+    {
+     "line": 605,
+     "text": "// [[C120]] linearWork: a huge width answers at once, at Excel's text limit like REPT.",
+     "moved": 0,
+     "why": "a comment comparing a card's limit to REPT's"
+    }
+   ],
+   "tests/graph/nodes/text.test.ts": [
+    {
+     "line": 75,
+     "text": "// EXACT emits the first-class logical type (TRUE/FALSE), like Comparison / IS checks —",
+     "moved": 0,
+     "why": "a comment in the Text cards' tests"
+    },
+    {
+     "line": 76,
+     "text": "// not 1/0. FIND/SEARCH report a missing substring as #VALUE! (Excel + the formula path),",
+     "moved": 0,
+     "why": "a comment in the Text cards' tests"
+    },
+    {
+     "line": 79,
+     "text": "describe(\"EXACT — logical output\", () => {",
+     "moved": 0,
+     "why": "a describe title in the Text cards' tests"
+    },
+    {
+     "line": 96,
+     "text": "// UPPER/LEFT/SUBSTITUTE/REPLACE/… the way a list of numbers flows through ADD —",
+     "moved": 0,
+     "why": "a comment in the Text cards' tests"
+    },
+    {
+     "line": 97,
+     "text": "// Excel's array-formula behavior (`=UPPER(A1:A10)` spills).",
+     "moved": 0,
+     "why": "a comment in the Text cards' tests"
+    },
+    {
+     "line": 124,
+     "text": "// CONCAT / TEXTJOIN fold a set to ONE string (Excel's CONCAT flattens an array",
+     "moved": 0,
+     "why": "a comment in the Text cards' tests"
+    },
+    {
+     "line": 125,
+     "text": "// rather than spilling); TEXTSPLIT and Text Filter are already 1-D → 1-D, and",
+     "moved": 0,
+     "why": "a comment in the Text cards' tests"
+    },
+    {
+     "line": 136,
+     "text": "it(\"TEXTJOIN answers like the formula: blanks drop, logicals read TRUE, an error wins ([[C17]] shareImpl)\", () => {",
+     "moved": 0,
+     "why": "a card test's title: the TEXTJOIN card agrees with the formula, which stays a test"
+    },
+    {
+     "line": 137,
+     "text": "const fx = (ign: string, xs: unknown[]) => compileEvaluator(`TEXTJOIN(\",\", ${ign}, x)`)!({ x: xs });",
+     "moved": 0,
+     "why": "a template formula the TEXTJOIN card is compared with: a card test, which stays a test"
+    }
+   ],
+   "tests/graph/nodes/wiredNull.test.ts": [
+    {
+     "line": 23,
+     "text": "it(\"CONCAT: a wired blank contributes nothing, and does not fall back to its box\", () => {",
+     "moved": 0,
+     "why": "the CONCAT card's reading of a wired blank: a card test, which stays a test"
+    },
+    {
+     "line": 162,
+     "text": "it(\"DOLLAR and FIXED: a blank decimals is the default 2, item by item in a list\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 165,
+     "text": "expect(d.data({ number: [1234.567], decimals: blank }).result).toBe(ev(\"DOLLAR(1234.567, d)\", { d: null }));",
+     "moved": 1
+    },
+    {
+     "line": 167,
+     "text": "expect(f.data({ number: [1234.567], decimals: [[0, null] as unknown as number] }).result).toEqual([ev(\"FIXED(1234.567, 0)\"), ev(\"FIXED(1234.567)\")]);",
+     "moved": 2
+    }
+   ],
+   "tests/graph/packs/thermo.test.ts": [
+    {
+     "line": 30,
+     "text": "// The truth check is strict (relative 1e-9), so hand it the EXACT volume.",
+     "moved": 0,
+     "why": "EXACT is prose, not the function"
+    }
+   ],
+   "tests/graph/packs/timesavers.test.ts": [
+    {
+     "line": 39,
+     "text": "// NBSP (the web-paste killer) becomes a real space; TRIM strips the ends.",
+     "moved": 0,
+     "why": "a comment on a pack preset's test, which tests the preset"
+    },
+    {
+     "line": 41,
+     "text": "// CLEAN removes control characters outright (Excel semantics).",
+     "moved": 0,
+     "why": "a comment on a pack preset's test, which tests the preset"
+    }
+   ],
+   "tests/graph/passBench.test.ts": [
+    {
+     "line": 0,
+     "text": "(the whole file)",
+     "moved": 0,
+     "why": "a benchmark of card chains; it times, it answers nothing"
+    }
+   ],
+   "tests/graph/polyformIntegration.test.ts": [
+    {
+     "line": 57,
+     "text": "const expr = new ExpressionNode({ expr: \"UPPER(name)\" });",
+     "moved": 1
+    },
+    {
+     "line": 61,
+     "text": "// (no numeric coercion), and UPPER maps element-wise.",
+     "moved": 0,
+     "why": "a comment on the case above"
+    },
+    {
+     "line": 69,
+     "text": "const expr = new ExpressionNode({ expr: 'UPPER(\"hi\")' });",
+     "moved": 1
+    }
+   ],
+   "tests/graph/regexCard.test.ts": [
+    {
+     "line": 0,
+     "text": "(the whole file)",
+     "moved": 0,
+     "why": "the Regex card's own answers: a card test, which stays a test"
+    }
+   ],
+   "tests/graph/reviewPins.test.ts": [
+    {
+     "line": 147,
+     "text": "it(\"SUBSTITUTE truncates its instance like Excel\", () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 148,
+     "text": "expect(coreFunction(\"SUBSTITUTE\")!(\"aaa\", \"a\", \"b\", 1.5)).toBe(\"baa\");",
+     "moved": 1
+    },
+    {
+     "line": 149,
+     "text": "expect(coreFunction(\"SUBSTITUTE\")!(\"aaa\", \"a\", \"b\")).toBe(\"bbb\");",
+     "moved": 1
+    },
+    {
+     "line": 398,
+     "text": "it(\"CHAR and CODE are UNICHAR and UNICODE, the CHAR / CODE card's full-Unicode reading\", async () => {",
+     "moved": 0,
+     "why": "the test's title; its cases are the lines below"
+    },
+    {
+     "line": 399,
+     "text": "expect(await ev(\"CHAR(256)\")).toBe(\"Ā\");",
+     "moved": 1
+    },
+    {
+     "line": 400,
+     "text": "expect(await ev(\"CHAR(128512)\")).toBe(\"😀\");",
+     "moved": 1
+    },
+    {
+     "line": 401,
+     "text": "expect(await ev('CODE(\"😀\")')).toBe(128512);",
+     "moved": 1
+    },
+    {
+     "line": 402,
+     "text": "expect(code(await ev(\"CHAR(0)\"))).toBe(\"#VALUE!\");",
+     "moved": 1
+    },
+    {
+     "line": 403,
+     "text": "expect(code(await ev('CODE(\"\")'))).toBe(\"#VALUE!\");",
+     "moved": 1
+    }
+   ],
+   "tests/graph/textForm.test.ts": [
+    {
+     "line": 0,
+     "text": "(the whole file)",
+     "moved": 0,
+     "why": "FIXED POINT is prose, not the function"
+    }
+   ],
+   "tests/graph/tidyArrangeGroups.test.ts": [
+    {
+     "line": 0,
+     "text": "(the whole file)",
+     "moved": 0,
+     "why": "canvas layout: RIGHT and LEFT are directions, not the functions"
+    }
+   ],
+   "tests/graph/unitCurrencyPolicy.test.ts": [
+    {
+     "line": 26,
+     "text": "it(\"same-code currency still computes (the guard is the CODE, not the dimension)\", () => {",
+     "moved": 0,
+     "why": "a currency CODE, not the function"
+    }
+   ],
+   "tests/graph/unitFlowAnnotation.test.ts": [
+    {
+     "line": 211,
+     "text": "it(\"text: FC1 UPPER case → FC2 (—) carries UPPER downstream\", async () => {",
+     "moved": 0,
+     "why": "an FC letter-case style named UPPER, not the function"
+    }
+   ],
+   "tests/graph/wasmEngineBench.test.ts": [
+    {
+     "line": 95,
+     "text": "for (const expr of [\"@value / SUM(value)\", \"@value * 1.2 + @cat\", \"IF(@value > 0, ROUND(@value * 1.2, 2), 0)\", \"@key & \\\"-\\\" & UPPER(@key)\", \"IFERROR(LN(@value), 0) + MAX(@cat, 10)\", \"IF(@value > PERC",
+     "moved": 0,
+     "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share; a computed column's row or column reference, outside the syntax Excel and Solenoid share"
+    }
+   ],
+   "tree/specs/canvas/add-menu.md": [
+    {
+     "line": 238,
+     "text": "Tests: `catalogSearch.test.ts`: each leaf is instantiated once across repeated drops, a dragged Frame output genuinely narrows the catalog, and a number cable lights Arithmetic and not UPPER.",
+     "moved": 0,
+     "why": "names a catalog test, no answer"
+    }
+   ],
+   "tree/specs/canvas/auto-arrange-tidy.md": [
+    {
+     "line": 0,
+     "text": "(the whole file)",
+     "moved": 0,
+     "why": "canvas layout: RIGHT and DOWN are directions, not the functions"
+    }
+   ],
+   "tree/specs/computation/excel-divergences.md": [
+    {
+     "line": 24,
+     "text": "- CHAR and CODE are UNICHAR and UNICODE, the CHAR / CODE card's full-Unicode reading; Excel's stop at 255 and use the system code page.",
+     "moved": 2
+    },
+    {
+     "line": 71,
+     "text": "- **A superset.** Solenoid also answers inputs Excel refuses (CHAR past 255, DATEVALUE's extra forms), and answers Excel's own inputs as Excel does.",
+     "moved": 0,
+     "why": "the rule for the Function Reference's parity mark, no answer"
+    },
+    {
+     "line": 104,
+     "text": "- **CLEAN** drops character codes 0 to 31, as Excel's does, and reads a number or logical as its text: Formula.js threw on `CLEAN(5)`. The Text Transform card's CLEAN calls it, so the card no longer a",
+     "moved": 1
+    },
+    {
+     "line": 133,
+     "text": "- **CONCAT, CONCATENATE, TEXTJOIN** are owned so a number is written with `number_to_text` (15 significant digits) rather than Formula.js's formatting.",
+     "moved": 3
+    },
+    {
+     "line": 134,
+     "text": "- **SEARCH** is Solenoid's own: Formula.js matches `?`, `*` and `~` literally, where Excel reads them as wildcards (`wildcard_tokens` in `excel_criteria.rs`, shared with the criteria functions). Its s",
+     "moved": 0,
+     "why": "its claims are cases moved from formulaTier1.test.ts and excel_examples.rs (wildcards, start, empty find text)"
+    },
+    {
+     "line": 135,
+     "text": "- **Text functions.** LEFT, RIGHT, UPPER, LOWER, EXACT and FIND answer as Excel does (checked 2026-11-01): positions count UTF-16 units as Excel's do (`LEN(\"😀\")` is 2), a number reads through `number",
+     "moved": 9
+    },
+    {
+     "line": 137,
+     "text": "- **BASE, DECIMAL, ROMAN, ARABIC, PERMUTATIONA** are Excel's ([[B27]] computeAnswersToExcel), not Formula.js's, which ran on JavaScript's `parseInt` and `toString(radix)`. BASE truncates its number, r",
+     "moved": 2,
+     "why": "BASE, DECIMAL and PERMUTATIONA belong to the Numbers family"
+    },
+    {
+     "line": 138,
+     "text": "- **PROPER** runs `proper_case` (`excel_functions.rs`), which the Text Transform card calls too: a letter after any non-letter is capitalized and every other letter lowercased, Excel's rule, so `PROPE",
+     "moved": 1
+    },
+    {
+     "line": 139,
+     "text": "- **MID** of length 0 is `\"\"`, as in Excel; Formula.js answers an error. A start below 1 or a negative length is `#VALUE!`. The Text Slice card calls the same registration.",
+     "moved": 2
+    },
+    {
+     "line": 140,
+     "text": "- **REPT** (and the REPT card, which passes its count as given) truncates a fractional count (`REPT(\"ab\", 2.9)` is `abab`), refuses a negative one, and refuses a result past Excel's 32,767 characters,",
+     "moved": 4
+    },
+    {
+     "line": 141,
+     "text": "- **CHAR, CODE, UNICHAR, UNICODE** cover every code point (their arms in `excel_functions.rs`, which the CHAR / CODE card calls): `CHAR(128512)` is 😀 and `CODE(\"😀\")` is 128512. A code outside 1 to 1",
+     "moved": 6
+    },
+    {
+     "line": 142,
+     "text": "- **SUBSTITUTE** is owned: Formula.js replaces the (instance + 1)th match, while Excel truncates `instance` like every numeric argument and replaces that match. An instance below 1 is `#VALUE!`; an em",
+     "moved": 3
+    },
+    {
+     "line": 145,
+     "text": "- **DOLLAR**: Excel writes a negative in accounting form as `($1,234.57)`, the `$` inside the parentheses. Formula.js writes `$(1,234.57)`, and the override moves the `$`. A negative that rounds to ze",
+     "moved": 0,
+     "why": "its claims are cases moved from excel_examples.rs, formulaDivergence.test.ts and wiredNull.test.ts"
+    },
+    {
+     "line": 146,
+     "text": "- **FIXED, DOLLAR** round with `round_digits` first, so `FIXED(1.005, 2)` is \"1.01\" as in Excel; Formula.js's `toFixed` reads the binary 1.00499… and writes \"1.00\". A value that rounds to zero goes th",
+     "moved": 2
+    }
+   ],
+   "tree/specs/computation/formula-language.md": [
+    {
+     "line": 312,
+     "text": "8. **Error propagation.** The first top-level argument that is an error is the answer, a Formula.js-style one (`NA()`, a body's own `#VALUE!`) read as its `SolError` (`V::as_error`), so `CONCAT(NA(), ",
+     "moved": 1
+    },
+    {
+     "line": 337,
+     "text": "- **Too many arguments** is `#SYNTAX!` naming the function's most (\"ROUND takes at most 2 arguments\"), as Excel refuses the formula; the call table's `maxArgs` holds each bound, from the same arity an",
+     "moved": 0,
+     "why": "a formula Excel refuses to enter has no Excel answer; the grammar's own tests hold it"
+    },
+    {
+     "line": 343,
+     "text": "- `TEXTJOIN(\",\",,\"a\",\"\",\"b\")` is `a,b`: an empty `ignore_empty` slot is TRUE, as Excel reads it, while a blank value there is FALSE and keeps the empties (`a,,b`).",
+     "moved": 1
+    },
+    {
+     "line": 354,
+     "text": "- `blankArgIsExcelBlank.test.ts`: TEXTJOIN's empty slot and blank value, XMATCH and XLOOKUP's blank modes, a blank value into a scalar call against an empty slot, INDEX's blank position as the whole a",
+     "moved": 0,
+     "why": "names the tests that pin it; their cases moved"
+    },
+    {
+     "line": 433,
+     "text": "A function of kind `range` has a signature that takes a range: the aggregates (`SUM`, `AVERAGE`, `MIN`, `MAX`, `COUNT`, the STDEV and VAR families, `MEDIAN`, `LARGE`, `PERCENTILE`, `RANK` and the rest",
+     "moved": 0,
+     "why": "which functions take a whole range: routing, no answer"
+    },
+    {
+     "line": 453,
+     "text": "**Over nothing**, an aggregate answers its operation's identity or blank ([[D125]] aggregatesOfNothing, [[excel-divergences#Totals of nothing]]): SUM and COUNT 0, PRODUCT 1 (mathlib `Finset.prod_empty",
+     "moved": 2
+    },
+    {
+     "line": 583,
+     "text": "**Case** ([[C45]] excelComparisons). Every equality test and match ignores case, as Excel's `=` does: `=` and `<>`, the Comparison node's equality ops, lookup matches, the criteria family and the Filt",
+     "moved": 0,
+     "why": "the case rule for comparisons; EXACT's cases moved from caseContract.test.ts"
+    },
+    {
+     "line": 602,
+     "text": "- `excelFormula.test.ts`: the operator table (case-blind `=` that never crosses types, `#TYPE!` ordering across types and text by character code, `&` writing TRUE and FALSE, blanks and per-cell errors",
+     "moved": 0,
+     "why": "names the tests that pin it; their cases moved"
+    },
+    {
+     "line": 613,
+     "text": "**A formula never reads a number, date or logical out of text** ([[C10]] socketLattice). Only the explicit converters read text: VALUE, NUMBERVALUE, DATEVALUE and TIMEVALUE, and the functions whose wh",
+     "moved": 0,
+     "why": "the rule that only converters read text; ARABIC's cases are its own"
+    },
+    {
+     "line": 887,
+     "text": "- **TEXTJOIN(delimiter, ignore_empty, …)**: only FALSE or 0 keeps empty strings; an empty `ignore_empty` slot is TRUE, as Excel reads it, and a blank value there is FALSE (*Blank and omitted arguments",
+     "moved": 2,
+     "why": "its TEXTJOIN claims are cases moved from blankArgIsExcelBlank.test.ts"
+    },
+    {
+     "line": 889,
+     "text": "- **REGEXTEST, REGEXEXTRACT, REGEXREPLACE** take Excel's documented optional arguments. `case_sensitivity` is 0 (case-sensitive, the default) or 1 (case-insensitive); anything else is `#VALUE!`. REGEX",
+     "moved": 3,
+     "why": "its other claims are cases moved from formulaReviewFixes.test.ts, formulaTier1.test.ts and excel_regex.rs"
+    },
+    {
+     "line": 898,
+     "text": "- `formulaTier1.test.ts`: TEXTSPLIT, TEXTAFTER and TEXTBEFORE (the not-found blank included), ENCODEURL and the REGEX functions answer what their cards answer, REGEXEXTRACT's groups mode and REGEXREPL",
+     "moved": 0,
+     "why": "names the tests that pin it; their cases moved"
+    },
+    {
+     "line": 899,
+     "text": "- `formulaReviewFixes.test.ts`: REGEXTEST's third argument is `case_sensitivity`, and anything but 0 or 1 is `#VALUE!`.",
+     "moved": 0,
+     "why": "names the tests that pin it; their cases moved"
+    },
+    {
+     "line": 900,
+     "text": "- `blankArgIsExcelBlank.test.ts`: TEXTJOIN's empty `ignore_empty` slot and blank value.",
+     "moved": 0,
+     "why": "names the tests that pin it; their cases moved"
+    },
+    {
+     "line": 901,
+     "text": "- `excelFormula.test.ts`: TEXTJOIN, CONCAT and CONCATENATE write numbers at 15 significant digits.",
+     "moved": 0,
+     "why": "names the tests that pin it; their cases moved"
+    },
+    {
+     "line": 1114,
+     "text": "| `lookup_eq` | Excel's lookup equality: two strings compare case-insensitively (EXACT is the case-sensitive escape), everything else with `===`. |",
+     "moved": 0,
+     "why": "the lookup equality kernel; EXACT's cases are its own"
+    },
+    {
+     "line": 1375,
+     "text": "Each kernel works on one string; the text nodes and the text formulas broadcast it. The kernels below count code points; Excel's own text functions (LEN, LEFT, MID, RIGHT, FIND, SEARCH, REPLACE) count",
+     "moved": 3
+    },
+    {
+     "line": 1377,
+     "text": "- `split_text` (TEXTSPLIT(text, [col_delimiter], [row_delimiter], [ignore_empty], [match_mode], [pad_with])): an empty delimiter splits into characters. Without a row delimiter the answer is a list (o",
+     "moved": 2
+    },
+    {
+     "line": 1378,
+     "text": "- `text_after_before` (TEXTAFTER, TEXTBEFORE(text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found])): the text after or before the `instance_num`-th occurrence of the delimiter, c",
+     "moved": 5
+    },
+    {
+     "line": 1379,
+     "text": "- *Diverges:* Excel reads an array of delimiters in these three as \"any of them\"; here the delimiter is one text, and TEXTAFTER and TEXTBEFORE, being element-wise, pair a list of delimiters with the t",
+     "moved": 3
+    },
+    {
+     "line": 1380,
+     "text": "- ENCODEURL, DECODEURL, ENCODEBASE64, DECODEBASE64: a malformed escape, or text that is not base64, passes through unchanged.",
+     "moved": 0,
+     "why": "the decoders' rule; ENCODEURL never reads an escape"
+    },
+    {
+     "line": 1397,
+     "text": "- `formulaTier1.test.ts`: TEXTSPLIT, TEXTAFTER, TEXTBEFORE, ENCODEURL and the REGEX functions on the card and in a formula, and REGEXREPLACE's substitutions.",
+     "moved": 0,
+     "why": "names the tests that pin it; their cases moved"
+    }
+   ],
+   "tree/specs/computation/node-bodies.md": [
+    {
+     "line": 160,
+     "text": "| Text | Text Transform, Replace, Roman/Arabic, Pad, REPT, FIXED, Truncate, CHAR/CODE, DOLLAR, Wrap, TEXTJOIN, Reverse, LEN, Split, Spell Number, CONCAT, EXACT, Similarity, Slice, URL Encode, SUBSTITU",
+     "moved": 0,
+     "why": "a list of card bodies, no answer"
+    },
+    {
+     "line": 163,
+     "text": "| Finance | Bitwise, Depreciation, NPV, IRR, MIRR, FVSCHEDULE, ISPMT, DOLLAR, Discount Security, Coupon, Accrued Interest, Payment Breakdown, Duration, Bond Pricing, Returns | `nodes/finance.rs` |",
+     "moved": 0,
+     "why": "a list of card bodies, no answer"
+    },
+    {
+     "line": 170,
+     "text": "| Misc | Combinatorics, TEXTAFTER/TEXTBEFORE, INDEX, DATEVALUE/TIMEVALUE, Regex (every JS flag), Cast, Reconcile, Build Frame, Frame from Lists | their families' modules |",
+     "moved": 0,
+     "why": "a list of card bodies, no answer"
+    }
+   ],
+   "tree/specs/computation/rust-core.md": [
+    {
+     "line": 76,
+     "text": "The core is the only evaluator. A reading it doesn't make is an answer, never a hand-off: text outside the date reader's closed list of shapes is not a date (DATEVALUE answers an error, a criterion co",
+     "moved": 1
+    },
+    {
+     "line": 123,
+     "text": "- **A function call costs about 1,100 to 2,000 instructions a row** (`ABS(@value)` 1,140, `PROPER(@key)` 1,820, `ROUND(@value, 2)` 2,000), against about 490 for an operator (`@value * 1.2`), counted n",
+     "moved": 0,
+     "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
+    },
+    {
+     "line": 125,
+     "text": "- **Size.** The module a browser downloads is built with `wasm-opt -O3` (`scripts/build-wasm.mjs`) and holds every function body, the evaluator, the unit dimension algebra, V8's `Date.parse` and the U",
+     "moved": 0,
+     "why": "the wasm module's size, no answer"
+    },
+    {
+     "line": 127,
+     "text": "- **A card mapping a body over a list runs its loop on the core** ([[C120]] linearWork). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
+     "moved": 0,
+     "why": "card loops on the core, no answer"
+    }
+   ],
+   "tree/specs/computation/script-sandbox.md": [
+    {
+     "line": 13,
+     "text": "The node is named Script, not Code, because CODE is an Excel function ([[B16]] oneFormulaSurface). A script declares no result type, unlike Expression's Number / Text / Date / Auto switch: a JavaScrip",
+     "moved": 0,
+     "why": "explains the Script node's name, no answer"
+    }
+   ],
+   "tree/specs/documents/table-popup.md": [
+    {
+     "line": 121,
+     "text": "- **Error cells.** A cell whose text is an error code wears the shared `#CODE!` treatment (`sol-error-chip`) with that code's explanation as its tooltip. The test is membership in `ERROR_EXPLANATIONS`",
+     "moved": 0,
+     "why": "#CODE! stands for any error code"
+    }
+   ],
+   "tree/specs/floors/components.md": [
+    {
+     "line": 114,
+     "text": "- **What shows.** Null or an empty list shows a faded placeholder (default `—`), because an empty string has no line box and would collapse the card. An error shows the red `#CODE!` badge. An object v",
+     "moved": 0,
+     "why": "#CODE stands for any error code"
+    }
+   ],
+   "tree/specs/values/date-values.md": [
+    {
+     "line": 68,
+     "text": "- **Text** (CONCAT, TEXTJOIN, LEN, LEFT, SUBSTITUTE, the regex and padding functions and kin) reads a date as its text.",
+     "moved": 5
+    },
+    {
+     "line": 121,
+     "text": "- Turning a `Date` into text (`&`, CONCAT, TEXTJOIN, a template fill, a note write) formats it by the format travelling with it ([[C118]] formatTravelsWithValue), else `DD-MMM-YYYY` ([[C44]] dateSeria",
+     "moved": 0,
+     "why": "its cases are those of line 68 (a date read as its text)"
+    },
+    {
+     "line": 127,
+     "text": "- `formulaDates.test.ts`: a date a formula turns into text (`&`, CONCAT, TEXTJOIN) reads as `DD-MMM-YYYY`.",
+     "moved": 0,
+     "why": "names the tests that pin it; their cases moved"
+    }
+   ],
+   "tree/specs/values/error-values.md": [
+    {
+     "line": 34,
+     "text": "The set is Excel-style `#CODE!`, but more specific than Excel's seven, following SQLSTATE class 22 and OpenFormula Err:5xx. `SolErrorCode` is the union.",
+     "moved": 0,
+     "why": "#CODE! stands for any error code"
+    },
+    {
+     "line": 193,
+     "text": "- **stats:** zero variance in Correl, Standardize, Forecast or Regression → `#DIV/0!`; a Fisher or Percentile domain miss → `#DOMAIN!`; Rank, PercentRank or FIND finding nothing → `#N/A`.",
+     "moved": 1,
+     "why": "Rank and PercentRank belong to the Lists family"
+    }
+   ],
+   "tree/specs/values/format-model.md": [
+    {
+     "line": 98,
+     "text": "- While inheriting, the FC's own dependent rows collapse to the column row's muted hint: `← Decimal · 3 places` for a number, `← UPPER` or `← Yes / No` for text or logical (`describeInheritedStyle`, p",
+     "moved": 0,
+     "why": "an FC letter-case style named UPPER, not the function"
+    },
+    {
+     "line": 201,
+     "text": "- **Case** (`applyTextCase`): as-is, UPPER, lower or Proper. `textScale` multiplies the font size (1 is normal).",
+     "moved": 0,
+     "why": "an FC letter-case style named UPPER, not the function"
+    },
+    {
+     "line": 272,
+     "text": "- Without an FC, `dateFormatDisplay` turns a date output's serials into text. A serial with a time fraction, like `46000.5` or the one `NOW()` returns, becomes the date and time: `09-Dec-2025 12:00`. ",
+     "moved": 0,
+     "why": "a date's display, which belongs to the Date family"
+    }
+   ],
+   "tree/specs/values/input-roles.md": [
+    {
+     "line": 64,
+     "text": "A setting whose Excel blank is a value rather than an omission declares that value: TEXTJOIN's `ignore_empty` blank is FALSE, XMATCH's modes are 0, ROUND's digits are 0 ([[C80]] blankArgIsExcelBlank).",
+     "moved": 1
+    },
+    {
+     "line": 129,
+     "text": "**Where Excel reads an empty slot its own way** (checked in Excel 2026-10-05), a table beside the readings says so (`EXCEL_EMPTY_SLOT` in `emptySlots.ts`) and wins over the role: TEXTJOIN's empty `ign",
+     "moved": 1
+    },
+    {
+     "line": 136,
+     "text": "- `blankArgIsExcelBlank.test.ts`: TEXTJOIN's empty `ignore_empty` against a blank one, and the refused lookup names.",
+     "moved": 0,
+     "why": "names the tests that pin it; their cases moved"
+    },
+    {
+     "line": 148,
+     "text": "A card's Fallback is what the formula's empty slot reads, with no exception (author 2026-11-06). Where Excel's empty value means something (`BESSELJ(0, n)`, `IMPOWER(z, 0)`, `ROMAN(0)`, a rate of 0), ",
+     "moved": 1
+    },
+    {
+     "line": 164,
+     "text": "| an operand, the value computed on | data | propagates, per cell | `UPPER(blank)` is blank |",
+     "moved": 1
+    },
+    {
+     "line": 165,
+     "text": "| a member of a reduction | data | skipped, as SUM skips nulls ([[C24]] arraySemantics) | `CONCAT(blank, \"b\")` is `\"b\"` |",
+     "moved": 1
+    },
+    {
+     "line": 169,
+     "text": "| a mode selector: basis, type, method, delimiter, cumulative | setting | its default; with none, `#SYNTAX!` | `NORM.DIST(x, 0, 1, blank)` is the density (FALSE); the TEXTSPLIT card's blank delimiter ",
+     "moved": 0,
+     "why": "the TEXTSPLIT card's blank delimiter: a card's behavior"
+    },
+    {
+     "line": 193,
+     "text": "- A card with a formula twin reads a blank setting as the twin does: DDB's and VDB's factor is 2, DOLLAR's and FIXED's decimals are 2 item by item, and LOG's base and GESTEP's step are settings while ",
+     "moved": 0,
+     "why": "a card's behavior, not the formula's; the card's own tests hold it"
+    }
+   ],
+   "tree/specs/values/unit-flow.md": [
+    {
+     "line": 240,
+     "text": "| dimensionless result, any arguments | COUNT, COUNTA, COUNTBLANK, COUNTIF(S), the IS tests, SIGN, LEN, EXACT, TEXT, FIXED, DOLLAR, CONCAT(ENATE), TEXTJOIN, AND, OR, NOT, XOR, ROWS, COLUMNS, MATCH, XM",
+     "moved": 0,
+     "why": "the unit class, which the Function Reference reads from unit-flow.md beside the record"
+    }
+   ]
+  }
+ }
+}
