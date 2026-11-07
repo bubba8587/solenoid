@@ -135,7 +135,7 @@ for src in sys.argv[2:]:
         f.save(dst)
 `;
   try {
-    execFileSync("python3", ["-I", "-c", py, dir, ...want], { stdio: "inherit" });
+    execFileSync("python3", ["-c", py, dir, ...want], { stdio: "inherit" });
   } catch {
     console.warn("scene-export: fonts not converted (pip install fonttools brotli); renderers fall back to system fonts");
   }
