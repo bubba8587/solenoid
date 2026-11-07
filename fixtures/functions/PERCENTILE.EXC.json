@@ -1,0 +1,20 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"PERCENTILE.EXC(r_A1_A10,c_B2)","env":["c_B2=num:1","r_A1_A10=table:num:[[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A1_A10,c_B3)","env":["c_B3=num:2","r_A1_A10=table:num:[[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A1_A10,c_B4)","env":["c_B4=num:-1","r_A1_A10=table:num:[[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A1_A10,c_B5)","env":["c_B5=num:0.4","r_A1_A10=table:num:[[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A1_A10,c_B6)","env":["c_B6=num:0.7","r_A1_A10=table:num:[[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A1_A10,c_B7)","env":["c_B7=num:0.11","r_A1_A10=table:num:[[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A1_A10,c_B8)","env":["c_B8=num:0.912","r_A1_A10=table:num:[[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A1_A10,c_B9)","env":["c_B9=num:0.8","r_A1_A10=table:num:[[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A1_A10,c_B10)","env":["c_B10=num:12","r_A1_A10=table:num:[[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A14_A20,c_B14)","env":["c_B14=num:0.1","r_A14_A20=table:num:[[12], [-1], [7.5], [56], [12], [-4], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A14_A20,c_B15)","env":["c_B15=num:0.2","r_A14_A20=table:num:[[12], [-1], [7.5], [56], [12], [-4], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A14_A20,c_B16)","env":["c_B16=num:0.3","r_A14_A20=table:num:[[12], [-1], [7.5], [56], [12], [-4], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A14_A20,c_B17)","env":["c_B17=num:0.5","r_A14_A20=table:num:[[12], [-1], [7.5], [56], [12], [-4], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A14_A20,c_B18)","env":["c_B18=num:0.66","r_A14_A20=table:num:[[12], [-1], [7.5], [56], [12], [-4], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A14_A20,c_B19)","env":["c_B19=num:0.8","r_A14_A20=table:num:[[12], [-1], [7.5], [56], [12], [-4], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTILE.EXC(r_A14_A20,c_B20)","env":["c_B20=num:0.94","r_A14_A20=table:num:[[12], [-1], [7.5], [56], [12], [-4], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

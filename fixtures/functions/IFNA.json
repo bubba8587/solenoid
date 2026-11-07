@@ -1,0 +1,13 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"IFNA(SUMM(r_G4_G7), \"hidden\")","env":["r_G4_G7=table:num:[[100], [250], [80], [60]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IFNA(c_A2,c_B2)","env":["c_A2=num:0","c_B2=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IFNA(c_A3,c_B3)","env":["c_A3=err:#N/A","c_B3=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IFNA(c_A4,c_B4)","env":["c_A4=err:#DIV/0!","c_B4=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IFNA(c_A5,c_B5)","env":["c_A5=bool:TRUE","c_B5=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IFNA(c_A6,c_B6)","env":["c_A6=bool:FALSE","c_B6=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IFNA(c_A7,c_B7)","env":["c_A7=text:\"Hello\"","c_B7=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IFNA(c_A8,c_B8)","env":["c_A8=blank:","c_B8=text:\"empty\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IFNA(c_A9,c_B9)","env":["c_A9=err:#N/A","c_B9=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -1,0 +1,9 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"INTRATE(c_A2,c_B2,c_C2,c_D2,c_E2)","env":["c_A2=date:2027-02-15","c_B2=date:2027-05-15","c_C2=num:2000000","c_D2=num:2040000","c_E2=num:0"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INTRATE(c_A3,c_B3,c_C3,c_D3,c_E3)","env":["c_A3=date:2027-02-15","c_B3=date:2027-05-15","c_C3=num:2000001","c_D3=num:2040001.02","c_E3=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INTRATE(c_A4,c_B4,c_C4,c_D4,c_E4)","env":["c_A4=date:2027-02-15","c_B4=date:2027-05-15","c_C4=num:2000002","c_D4=num:2040002.04","c_E4=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INTRATE(c_A5,c_B5,c_C5,c_D5,c_E5)","env":["c_A5=date:2027-02-15","c_B5=date:2027-05-15","c_C5=num:2000003","c_D5=num:2040003.06","c_E5=num:3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INTRATE(c_A6,c_B6,c_C6,c_D6,c_E6)","env":["c_A6=date:2027-02-15","c_B6=date:2027-05-15","c_C6=num:2000004","c_D6=num:2040004.08","c_E6=num:4"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

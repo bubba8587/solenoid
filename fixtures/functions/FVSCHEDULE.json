@@ -1,0 +1,9 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"FVSCHEDULE(c_A2,r_B2_B4)","env":["c_A2=num:1","r_B2_B4=table:num:[[0.08], [0.12], [0.1]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FVSCHEDULE(120, k1)","env":["k1=list:num:[0.2, 0.4, 0.6, 0.8]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FVSCHEDULE(1, k1)","env":["k1=list:num:[0.09, 0.11, 0.1]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FVSCHEDULE(1000, 0.05)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FVSCHEDULE(1000, -1.5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

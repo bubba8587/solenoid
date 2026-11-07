@@ -1,0 +1,23 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"TRIMMEAN(5, 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(\"12345\", 0.2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_B2)","env":["c_B2=num:0.2","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_B3)","env":["c_B3=blank:","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_I3)","env":["c_I3=blank:","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_B4)","env":["c_B4=num:0","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_I4)","env":["c_I4=num:0","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_B5)","env":["c_B5=num:-1","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_I5)","env":["c_I5=num:-1","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_B6)","env":["c_B6=num:1","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_I6)","env":["c_I6=num:1","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_B7)","env":["c_B7=num:0.9","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_I7)","env":["c_I7=num:0.9","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_B8)","env":["c_B8=num:0.1","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_I8)","env":["c_I8=num:0.1","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_B9)","env":["c_B9=num:0.5","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_I9)","env":["c_I9=num:0.5","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_B10)","env":["c_B10=num:0.4","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIMMEAN(r_A2_A10,c_I10)","env":["c_I10=num:0.4","r_A2_A10=table:num:[[12.4], [5], [7.3], [-4], [0], [2.3], [4.3], [7], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

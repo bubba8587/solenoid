@@ -1,0 +1,8 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"WEIBULL.DIST(105, 20, 100, TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"WEIBULL.DIST(105, 20, 100, FALSE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"WEIBULL.DIST(c_A2,c_B2,c_C2,c_D2)","env":["c_A2=num:0.8","c_B2=num:1","c_C2=num:9","c_D2=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"WEIBULL.DIST(c_A3,c_B3,c_C3,c_D3)","env":["c_A3=num:0.4","c_B3=num:1","c_C3=num:9","c_D3=bool:FALSE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

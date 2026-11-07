@@ -1,0 +1,12 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"PHI(0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PHI(c_A2)","env":["c_A2=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PHI(c_A3)","env":["c_A3=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PHI(c_A4)","env":["c_A4=num:-3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PHI(c_A5)","env":["c_A5=num:2.3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PHI(c_A6)","env":["c_A6=num:4"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PHI(c_A7)","env":["c_A7=num:0"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PHI(c_A8)","env":["c_A8=num:3.45"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

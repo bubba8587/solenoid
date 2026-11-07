@@ -1,0 +1,18 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"DISC(c_A2,c_B2,c_C2,c_D2,c_E2)","env":["c_A2=num:39472","c_B2=num:39614","c_C2=num:97.975","c_D2=num:100","c_E2=num:0"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DISC(c_A3,c_B3,c_C3,c_D3,c_E3)","env":["c_A3=num:39472","c_B3=num:39614","c_C3=num:97.975","c_D3=num:100","c_E3=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DISC(c_A4,c_B4,c_C4,c_D4,c_E4)","env":["c_A4=num:39472","c_B4=num:39614","c_C4=num:97.975","c_D4=num:100","c_E4=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DISC(c_A5,c_B5,c_C5,c_D5,c_E5)","env":["c_A5=num:39472","c_B5=num:39614","c_C5=num:97.975","c_D5=num:100","c_E5=num:3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DISC(c_A6,c_B6,c_C6,c_D6,c_E6)","env":["c_A6=num:39472","c_B6=num:39614","c_C6=num:97.975","c_D6=num:100","c_E6=num:4"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DISC(c_A7,c_B7,c_C7,c_D7,c_E7)","env":["c_A7=num:39472","c_B7=num:39614","c_C7=num:97.975","c_D7=num:100","c_E7=num:5"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DISC(c_A8,c_B8,c_C8,c_D8,c_E8)","env":["c_A8=num:39472","c_B8=num:39614","c_C8=num:97.975","c_D8=num:100","c_E8=num:-1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DISC(c_A9,c_B9,c_C9,c_D9,c_E9)","env":["c_A9=num:39472","c_B9=num:39614","c_C9=num:97.975","c_D9=num:100","c_E9=num:2.4"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DISC(c_A10,c_B10,c_C10,c_D10)","env":["c_A10=num:39472","c_B10=num:39614","c_C10=num:97.975","c_D10=num:100"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DISC(c_A15,c_B15,c_C15,c_D15,c_E15)","env":["c_A15=num:46169","c_B15=num:48727","c_C15=num:12.5","c_D15=num:123","c_E15=num:0"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DISC(c_A16,c_B16,c_C16,c_D16,c_E16)","env":["c_A16=num:46170","c_B16=num:48728","c_C16=num:12.5","c_D16=num:123","c_E16=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DISC(c_A17,c_B17,c_C17,c_D17,c_E17)","env":["c_A17=num:46171","c_B17=num:48729","c_C17=num:12.5","c_D17=num:123","c_E17=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DISC(c_A18,c_B18,c_C18,c_D18,c_E18)","env":["c_A18=num:46172","c_B18=num:48730","c_C18=num:12.5","c_D18=num:123","c_E18=num:3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DISC(c_A19,c_B19,c_C19,c_D19,c_E19)","env":["c_A19=num:46173","c_B19=num:48731","c_C19=num:12.5","c_D19=num:123","c_E19=num:4"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

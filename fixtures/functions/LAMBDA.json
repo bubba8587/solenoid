@@ -1,0 +1,29 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"LAMBDA(x, IFERROR(x, 0))(NA())","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, IFERROR(x, 0))(1/0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, ISNA(x))(NA())","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, x-0.3)(0.1+0.2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(g,g(g))(LAMBDA(g,g(g)))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(g,k,IF(k=0,0,1+g(g,k-1)))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, x + e)(1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(e, e + 1)(5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, Tau, x + Tau)(1, 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, x, x + 1)(1, 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(v, v * 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, x + 1)(5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, LAMBDA(y, x + y))(2)(3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, x)(1, 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x,y, IF(ISOMITTED(y),\"Missing second argument\",x+y))(1,)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, ISREF(x))(c_K1)","env":["c_K1=text:\"text\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, ISREF(x))(5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, ISREF(x))(c_K1+1)","env":["c_K1=text:\"text\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(r, (r-AVERAGE(r))/SQRT(VAR.P(r)+0.00001))(r_K1_M1)","env":["r_K1_M1=list:[blank, blank, blank]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(r, (r-AVERAGE(r))/SQRT(VAR.P(r)+0.00001))(r_A1_C1)","env":["r_A1_C1=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x,y, SQRT(x*x+y*y))(3,4)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, MAX(x))(c_A2)","env":["c_A2=text:\"text\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, MAX(x))(\"h\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, MAX(x))(r_B1_B3*1)","env":["r_B1_B3=table:num:[[5], [30], [20]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LAMBDA(x, --x)(r_A1_A4=\"h\")","env":["r_A1_A4=table:text:[[\"h\"], [\"e\"], [\"h\"], [\"l\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

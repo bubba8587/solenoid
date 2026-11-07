@@ -1,0 +1,15 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"SERIESSUM(2, 1, 1, 5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SERIESSUM(2, 1, 1, SEQUENCE(3))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SERIESSUM(2, 1, 1, \"a\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SERIESSUM(2,0,1,k1)","env":["k1=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SERIESSUM(0,0,2,k1)","env":["k1=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SERIESSUM(0.5,1,2,k1)","env":["k1=list:num:[2, 2, 2]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SERIESSUM(c_A7,c_B7,c_C7,r_D9_D14)","env":["c_A7=num:1","c_B7=num:0","c_C7=num:1","r_D9_D14=table:num:[[1], [1], [0.5], [0.16666666666666666], [0.041666666666666664], [0.008333333333333333]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SERIESSUM(TRUE,c_B7,c_C7,r_D9_D14)","env":["c_B7=num:0","c_C7=num:1","r_D9_D14=table:num:[[1], [1], [0.5], [0.16666666666666666], [0.041666666666666664], [0.008333333333333333]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SERIESSUM(c_G6,c_B7,c_C7,r_D9_D14)","env":["c_B7=num:0","c_C7=num:1","c_G6=bool:TRUE","r_D9_D14=table:num:[[1], [1], [0.5], [0.16666666666666666], [0.041666666666666664], [0.008333333333333333]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SERIESSUM(0,c_B7,c_C7,r_D9_D14)","env":["c_B7=num:0","c_C7=num:1","r_D9_D14=table:num:[[1], [1], [0.5], [0.16666666666666666], [0.041666666666666664], [0.008333333333333333]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SERIESSUM(-1,0,2, k1)","env":["k1=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

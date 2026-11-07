@@ -1,0 +1,5 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"REDUCE(0,r_A1_C2, LAMBDA(x,y, SQRT(x*x+y*y)))","env":["r_A1_C2=table:num:[[34, 2, 3], [4, 5, 6]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

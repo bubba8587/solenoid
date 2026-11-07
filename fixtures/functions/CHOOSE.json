@@ -1,0 +1,28 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"CHOOSE(2, NA(), 5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(1, 5, 1/0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(2, 10, 20, 30)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(2, \"a\", \"b\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(4, 10, 20)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(2, c_A4, c_A5, c_A6, c_A7)","env":["c_A4=text:\"1st\"","c_A5=text:\"2nd\"","c_A6=text:\"3rd\"","c_A7=text:\"Finished\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(4, c_B4, c_B5, c_B6, c_B7)","env":["c_B4=text:\"Nails\"","c_B5=text:\"Screws\"","c_B6=text:\"Nuts\"","c_B7=text:\"Bolts\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(3,\"Wide\",115,\"world\",8)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(-1, c_A4)","env":["c_A4=text:\"1st\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(0, c_A4)","env":["c_A4=text:\"1st\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(1, c_A4)","env":["c_A4=text:\"1st\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(2, c_A4)","env":["c_A4=text:\"1st\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(\"test\", c_A4)","env":["c_A4=text:\"1st\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(FALSE, c_A4)","env":["c_A4=text:\"1st\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(TRUE, c_A4)","env":["c_A4=text:\"1st\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(c_G2, c_A4)","env":["c_A4=text:\"1st\"","c_G2=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(c_A27, c_A4, c_A5, c_A6)","env":["c_A27=num:1","c_A4=text:\"1st\"","c_A5=text:\"2nd\"","c_A6=text:\"3rd\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(c_A28, c_A4, c_A5, c_A6)","env":["c_A28=num:2","c_A4=text:\"1st\"","c_A5=text:\"2nd\"","c_A6=text:\"3rd\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(c_A29, c_A4, c_A5, c_A6)","env":["c_A29=num:3","c_A4=text:\"1st\"","c_A5=text:\"2nd\"","c_A6=text:\"3rd\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(1.1,c_A4,c_A5)","env":["c_A4=text:\"1st\"","c_A5=text:\"2nd\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(1.9,c_A4,c_A5)","env":["c_A4=text:\"1st\"","c_A5=text:\"2nd\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(1, 0, c_G2)","env":["c_G2=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(2, 0, c_G2)","env":["c_G2=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHOOSE(2, c_B40, \"Not a cycle\")","env":["c_B40=text:\"Not a cycle\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -1,0 +1,5 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"MAP(r_A1_C2,r_A5_C6,LAMBDA(x,y, x*y))","env":["r_A1_C2=table:num:[[34, 2, 3], [4, 5, 6]]","r_A5_C6=table:num:[[2, 12, 3], [3, 23, 4]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

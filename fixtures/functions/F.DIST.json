@@ -1,0 +1,11 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"F.DIST(15.2069, 6, 4, TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"F.DIST(15.2, 6, 4, TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"F.DIST(0, 2, 7, FALSE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"F.DIST(0, 5, 7, FALSE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"F.DIST(-1, 2, 7, TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"F.DIST(c_A2,c_B2,c_C2,c_D2)","env":["c_A2=num:0.8","c_B2=num:2.4","c_C2=num:3","c_D2=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"F.DIST(c_A3,c_B3,c_C3,c_D3)","env":["c_A3=num:0.7","c_B3=num:4","c_C3=num:2.4","c_D3=bool:FALSE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

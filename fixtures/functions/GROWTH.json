@@ -1,0 +1,9 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"GROWTH(r_A2_A6,r_B2_B6,r_C2_C4)","env":["r_A2_A6=table:num:[[0.2], [0.31], [0.4], [0.51], [0.7]]","r_B2_B6=table:num:[[1.1], [2.1], [3], [5.2], [7]]","r_C2_C4=table:num:[[8], [9], [11]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GROWTH(r_A2_A6,r_B2_B6,r_C2_C4,FALSE)","env":["r_A2_A6=table:num:[[0.2], [0.31], [0.4], [0.51], [0.7]]","r_B2_B6=table:num:[[1.1], [2.1], [3], [5.2], [7]]","r_C2_C4=table:num:[[8], [9], [11]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GROWTH(r_A2_A6)","env":["r_A2_A6=table:num:[[0.2], [0.31], [0.4], [0.51], [0.7]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GROWTH(r_A2_A6,r_B2_B6)","env":["r_A2_A6=table:num:[[0.2], [0.31], [0.4], [0.51], [0.7]]","r_B2_B6=table:num:[[1.1], [2.1], [3], [5.2], [7]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GROWTH(r_A2_A6,r_B2_B5)","env":["r_A2_A6=table:num:[[0.2], [0.31], [0.4], [0.51], [0.7]]","r_B2_B5=table:num:[[1.1], [2.1], [3], [5.2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

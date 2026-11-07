@@ -100,6 +100,7 @@ export const plan: Omit<Plan, "family" | "functions" | "sources"> = {
     "crates/solenoid-core/src/excel_regex.rs:423": { cases: [{ fn: "REGEXREPLACE", formula: "REGEXREPLACE(\"ab\", \"x*\", \"-\", 0)" }] },
   },
   dispositions: {
+    "docs/backlog.md:83": { why: "a backlog line about the records' mode groups, naming ROMAN as an example" },
     "tree/specs/computation/excel-divergences.md:135": { cases: [
       { fn: "LEFT", formula: 'LEFT(TRUE, 2)' },
       { fn: "LOWER", formula: 'LOWER("ÀBC Déf")' },
@@ -131,8 +132,8 @@ export const plan: Omit<Plan, "family" | "functions" | "sources"> = {
     "docs/backlog.md:42": { why: "a card's behavior, not the formula's; the card's own tests hold it" },
     "docs/backlog.md:43": { why: "a planned merge of cards, no answer" },
     "docs/backlog.md:46": { why: "a planned change to the card-to-formula checks, no answer" },
-    "docs/backlog.md:159": { why: "its cases are under formula-language.md § Text kernels (the delimiter arrays)" },
-    "docs/backlog.md:160": { why: "its cases are under formula-language.md § Text kernels (the delimiter arrays)" },
+    "docs/backlog.md:162": { why: "its cases are under formula-language.md § Text kernels (the delimiter arrays)" },
+    "docs/backlog.md:163": { why: "its cases are under formula-language.md § Text kernels (the delimiter arrays)" },
     "docs/node-coverage.md:34": { why: "socket classes, no answer" },
     "docs/node-coverage.md:35": { why: "socket classes, no answer" },
     "docs/node-coverage.md:38": { why: "socket classes, no answer" },

@@ -1,0 +1,9 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"STANDARDIZE(42, 40, 1.5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"STANDARDIZE(c_A2,c_B2,c_C2)","env":["c_A2=num:0.8","c_B2=num:1","c_C2=num:0.2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"STANDARDIZE(c_A3,c_B3,c_C3)","env":["c_A3=num:23","c_B3=num:12","c_C3=num:0.1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"STANDARDIZE(c_A4,c_B4,c_C4)","env":["c_A4=num:12.3","c_B4=num:12.2","c_C4=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"STANDARDIZE(c_A5,c_B5,c_C5)","env":["c_A5=num:7","c_B5=num:-1","c_C5=num:4"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -1,0 +1,7 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"EXPAND(e, 1e9, 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXPAND(r_A5_C6,6)","env":["r_A5_C6=table:num:[[1, 2, 3], [4, 5, 6]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"EXPAND(r_A5_C6,4,4,\"x\")","env":["r_A5_C6=table:num:[[1, 2, 3], [4, 5, 6]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

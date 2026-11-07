@@ -1,0 +1,22 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"AVERAGE(TRUE, 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(2, )","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(r_C2_C10)","env":["r_C2_C10=table:num:[[blank], [blank], [3], [blank], [blank], [2], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(r_D2_D10)","env":["r_D2_D10=table:text:[[\"One\"], [\"Two\"], [\"Three\"], [\"Four\"], [\"Five\"], [\"Six\"], [\"Seven\"], [\"Eight\"], [\"Nine\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(r_E2_E10)","env":["r_E2_E10=table:num:[[#N/A], [#NAME?], [-1000], [blank], [blank], [3.14], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(r_F2_F10)","env":["r_F2_F10=table:[[blank], [blank], [blank], [blank], [blank], [blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(c_N15 & c_O15)","env":["c_N15=text:\"4\"","c_O15=text:\"2\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(c_B2,c_B3,c_B4,c_B5,c_B6,c_B7,c_B8,c_B9,c_B10)","env":["c_B10=num:12","c_B2=num:1","c_B3=bool:FALSE","c_B4=num:0","c_B5=bool:TRUE","c_B6=text:\"Hola\"","c_B7=blank:","c_B8=num:3","c_B9=text:\"23\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(c_C2,c_C3,c_C4,c_C5,c_C6,c_C7,c_C8,c_C9,c_C10)","env":["c_C10=blank:","c_C2=blank:","c_C3=blank:","c_C4=num:3","c_C5=blank:","c_C6=blank:","c_C7=num:2","c_C8=blank:","c_C9=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(c_D2,c_D3,c_D4,c_D5,c_D6,c_D7,c_D8,c_D9,c_D10)","env":["c_D10=text:\"Nine\"","c_D2=text:\"One\"","c_D3=text:\"Two\"","c_D4=text:\"Three\"","c_D5=text:\"Four\"","c_D6=text:\"Five\"","c_D7=text:\"Six\"","c_D8=text:\"Seven\"","c_D9=text:\"Eight\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(c_E2,c_E3,c_E4,c_E5,c_E6,c_E7,c_E8,c_E9,c_E10)","env":["c_E10=blank:","c_E2=err:#N/A","c_E3=err:#NAME?","c_E4=num:-1000","c_E5=blank:","c_E6=blank:","c_E7=num:3.14","c_E8=blank:","c_E9=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(c_F2,c_F3,c_F4,c_F5,c_F6,c_F7,c_F8,c_F9,c_F10)","env":["c_F10=blank:","c_F2=blank:","c_F3=blank:","c_F4=blank:","c_F5=blank:","c_F6=blank:","c_F7=blank:","c_F8=blank:","c_F9=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(r_C2_C3,c_C4,r_C6_C9)","env":["c_C4=num:3","r_C2_C3=table:[[blank], [blank]]","r_C6_C9=table:num:[[blank], [2], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(21)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(\"Hola\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(1,2, TRUE, \"5\", \"CASE\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(1,2,\"5\", TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGE(r_Data_D2_D21)","env":["r_Data_D2_D21=table:num:[[10], [15], [20], [12], [18], [25], [8], [30], [22], [14], [16], [11], [28], [9], [19], [24], [13], [21], [17], [26]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

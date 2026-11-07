@@ -1,0 +1,9 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"CHISQ.DIST.RT(8, 5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST.RT(-1, 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST.RT(c_A2,c_B2)","env":["c_A2=num:12.3","c_B2=num:4"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST.RT(c_A3,c_B3)","env":["c_A3=num:8","c_B3=num:3.34"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST.RT(c_A4,c_B4)","env":["c_A4=num:12.3","c_B4=num:7.2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

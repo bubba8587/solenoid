@@ -1,0 +1,5 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"STDEV.P(c_A2,c_B2,c_C2,c_D2)","env":["c_A2=num:1","c_B2=num:1.2","c_C2=num:1.3","c_D2=num:0.7"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

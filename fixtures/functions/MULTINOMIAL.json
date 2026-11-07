@@ -1,0 +1,17 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"MULTINOMIAL(2, 3, 4)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MULTINOMIAL(\"2\", 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MULTINOMIAL(1,2,3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MULTINOMIAL(r_A3_A5,3)","env":["r_A3_A5=table:num:[[1], [2], [4]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MULTINOMIAL(0,2,3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MULTINOMIAL(-1,2,3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MULTINOMIAL(r_A12_A14)","env":["r_A12_A14=table:num:[[1], [2], [-3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MULTINOMIAL(k1)","env":["k1=list:num:[2, 5, 7]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MULTINOMIAL(k1)","env":["k1=list:num:[1, 0, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MULTINOMIAL(r_A16_A18)","env":["r_A16_A18=table:num:[[1], [blank], [5]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MULTINOMIAL(c_F19,2)","env":["c_F19=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MULTINOMIAL(r_A22_A25)","env":["r_A22_A25=table:num:[[1.7], [1.2], [3.4], [2.3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MULTINOMIAL(TRUE,1,2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

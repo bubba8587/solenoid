@@ -5,7 +5,7 @@ import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "n
 import { join, relative } from "node:path";
 import { familyFunctions } from "./families.ts";
 import { keyOf, readRecord, recordText, type Case, type Group } from "./records.ts";
-import { harvest, type Harvested, type Plan } from "./harvest.ts";
+import { harvest, type Harvested, type LedgerEntry, type Plan } from "./harvest.ts";
 import { harvestIronCalc } from "./ironcalc.ts";
 import { grid } from "./grid.ts";
 
@@ -56,12 +56,62 @@ export function toRecord(fn: string, harvested: Harvested[], errors: string[]): 
   return [...groups.values()];
 }
 
+type PlanPart = Omit<Plan, "family" | "functions" | "sources">;
+const EMPTY: PlanPart = { envs: {}, files: {}, dispositions: {}, unnamed: {}, baselines: {} };
+
+/** A family's plan, its own decisions over the ones every family shares; an empty one where none is written yet. */
+async function planFor(family: string): Promise<PlanPart> {
+  const own: PlanPart = await import(`./plans/${family.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.ts`).then((m) => m.plan).catch(() => EMPTY);
+  const common: Pick<PlanPart, "files"> = (await import("./plans/common.ts")).plan;
+  return { ...EMPTY, ...own, files: { ...common.files, ...own.files } };
+}
+
+/** Decisions whose lines only shifted: a key whose line no longer holds the text the last ledger recorded there moves
+ *  to the one line in the same file that holds exactly that text. Anything else stays where it is, for the build to
+ *  report as stale. */
+function relocate(plan: Plan, family: string): Array<[string, string]> {
+  let prior: Record<string, { sources?: Record<string, LedgerEntry[]> }> = {};
+  try { prior = JSON.parse(readFileSync(join(OUT, "harvest.json"), "utf8")); } catch { return []; }
+  const recorded = new Map<string, string>();
+  for (const [path, entries] of Object.entries(prior[family]?.sources ?? {})) for (const e of entries) if (e.line) recorded.set(`${path}:${e.line}`, e.text);
+  const out: Array<[string, string]> = [];
+  for (const table of [plan.dispositions, plan.unnamed]) {
+    for (const key of Object.keys(table)) {
+      const text = recorded.get(key);
+      if (text === undefined) continue;
+      const path = key.slice(0, key.lastIndexOf(":"));
+      const lines = readFileSync(join(ROOT, path), "utf8").split("\n").map((l) => l.trim().slice(0, 200));
+      const at = Number(key.slice(key.lastIndexOf(":") + 1));
+      if (lines[at - 1] === text) continue;
+      const hits = lines.flatMap((l, i) => (l === text ? [i + 1] : []));
+      if (hits.length !== 1 || table[`${path}:${hits[0]}`]) continue;
+      table[`${path}:${hits[0]}`] = table[key];
+      delete table[key];
+      out.push([key, `${path}:${hits[0]}`]);
+    }
+  }
+  return out;
+}
+
 async function main() {
   const family = process.argv[2];
-  if (!family) throw new Error("Usage: build.ts <Family>");
-  const planModule = await import(`./plans/${family.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.ts`);
+  const draft = process.argv.includes("--draft");
+  if (!family) throw new Error("Usage: build.ts <Family> [--draft]");
   const functions = familyFunctions(family);
-  const plan: Plan = { ...planModule.plan, family, functions, sources: candidateSources() };
+  if (!functions.length) throw new Error(`no family ${family}`);
+  const plan: Plan = { ...(await planFor(family)), family, functions, sources: candidateSources() };
+  const moves = relocate(plan, family);
+  if (moves.length) {
+    // The plan file says where each decision now sits, so the next build finds it by its key.
+    const file = join(ROOT, "scripts/function-records/plans", `${family.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.ts`);
+    let src = readFileSync(file, "utf8");
+    for (const [from, to] of moves) {
+      if (!src.includes(`"${from}"`)) throw new Error(`can't find the key ${from} in ${file}`);
+      src = src.replace(`"${from}"`, `"${to}"`);
+      console.log(`moved a decision: ${from} -> ${to}`);
+    }
+    writeFileSync(file, src);
+  }
   const { cases, ledger } = harvest(plan, ROOT);
   const ic = harvestIronCalc(ROOT, "fixtures/functions/sources/ironcalc/calc_tests", new Set(functions));
   cases.push(...ic.cases);
@@ -70,15 +120,17 @@ async function main() {
   for (const f of new Set([...movedBy.keys(), ...Object.keys(ic.skipped)])) {
     ledger.sources[f] = [{ line: 0, text: "(the workbook's formula cells)", moved: movedBy.get(f) ?? 0 }, ...(ic.skipped[f] ?? [])];
   }
+  const noBaseline: string[] = [];
   for (const fn of functions) {
     const b = plan.baselines[fn];
-    if (!b) { ledger.errors.push(`${fn}: no baseline, so no edge grid`); continue; }
+    if (!b) { noBaseline.push(fn); continue; }
     cases.push(...grid(fn, b.formula, b.env ?? [], ledger.errors));
   }
+  if (noBaseline.length && !draft) ledger.errors.push(`no baseline, so no edge grid: ${noBaseline.join(", ")}`);
   for (const fn of Object.keys(plan.baselines)) if (!functions.includes(fn)) ledger.errors.push(`${fn}: a baseline for a function outside the family`);
   const nothing = Object.entries(ledger.sources).filter(([, e]) => e.length === 0).map(([p]) => p);
   for (const p of nothing) delete ledger.sources[p];
-  if (ledger.unaccounted.length || ledger.errors.length) {
+  if (!draft && (ledger.unaccounted.length || ledger.errors.length)) {
     for (const u of ledger.unaccounted) console.log(`UNACCOUNTED ${u}`);
     for (const e of ledger.errors) console.log(`ERROR ${e}`);
     console.log(`${ledger.unaccounted.length} unaccounted, ${ledger.errors.length} errors; nothing written`);
@@ -111,9 +163,13 @@ async function main() {
   const ledgerPath = join(OUT, "harvest.json");
   let all: Record<string, unknown> = {};
   try { all = JSON.parse(readFileSync(ledgerPath, "utf8")); } catch { /* the first family */ }
-  all[family] = { functions, cases: cases.length, ironcalcOtherFamilies: ic.otherFamilies, sources: ledger.sources };
+  // A draft wrote what could be extracted; its open items are what keeps the family from being organized.
+  const open = draft && (ledger.unaccounted.length || ledger.errors.length || noBaseline.length)
+    ? { draft: true, unaccounted: ledger.unaccounted, problems: ledger.errors, noBaseline } : { draft: false };
+  all[family] = { ...open, functions, cases: cases.length, ironcalcOtherFamilies: ic.otherFamilies, sources: ledger.sources };
   writeFileSync(ledgerPath, `${JSON.stringify(all, null, 1)}\n`);
   console.log(`${family}: ${functions.length} records, ${cases.length} cases from ${Object.keys(ledger.sources).length} sources -> ${relative(ROOT, OUT)}`);
+  if ("draft" in open && open.draft) console.log(`  a draft: ${ledger.unaccounted.length} mentions undecided, ${ledger.errors.length} cases held back, ${noBaseline.length} functions without a baseline`);
 }
 
 await main();

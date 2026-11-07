@@ -1,0 +1,5 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"BYCOL(r_A1_C2, LAMBDA(x, SUM(x)))","env":["r_A1_C2=table:num:[[1, 2, 3], [4, 5, 6]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -1,0 +1,28 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"INDEX(VSTACK(1, 1/0), 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(SEQUENCE(5), 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(SEQUENCE(5), 3, 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(NOT(k1),2)","env":["k1=list:num:[0, 1, 2]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(NOT(k1),1)","env":["k1=table:num:[[0], [1], [2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(NOT(k1),2,2)","env":["k1=table:num:[[1, 0], [0, 1]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(NOT(k1),2)","env":["k1=list:num:[1, #N/A, 0]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(NOT(k1),1)","env":["k1=list:text:[\"TRUE\", \"x\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(k1,2)","env":["k1=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(k1,,)","env":["k1=list:num:[1, 2, 3, 4]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(k1,,1)","env":["k1=table:num:[[1, 2], [3, 4]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(k1,0,1)","env":["k1=table:num:[[1, 2, 3], [4, 5, 6]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(k1,-1,1)","env":["k1=table:num:[[1, 2, 3], [4, 5, 6]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(k1,1)","env":["k1=table:num:[[1, 2, 3], [4, 5, 6]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(TEXTSPLIT(\"1,2,3,4,5,6\",\",\"),3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(TEXTSPLIT(\"1,2,3;4,5,6\", \",\", \";\"),1,2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(k1,1,0,1)","env":["k1=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(k1,1,0,2)","env":["k1=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(r_A2_A9,c_D6)","env":["c_D6=num:4","r_A2_A9=table:text:[[\"Albania\"], [\"Indonesia\"], [\"India\"], [\"Germany\"], [\"Spain\"], [\"Venezuela\"], [\"Italy\"], [\"Francialy\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(r_A2_A9,c_D7)","env":["c_D7=num:8","r_A2_A9=table:text:[[\"Albania\"], [\"Indonesia\"], [\"India\"], [\"Germany\"], [\"Spain\"], [\"Venezuela\"], [\"Italy\"], [\"Francialy\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(ENCODEURL(r_A2_A4),2)","env":["r_A2_A4=table:text:[[\"http://contoso.sharepoint.com/Finance/Profit and Loss Statement.xlsx\"], [\"hello world\"], [\"abcxyz\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(r_Inputs_E2_E5,MATCH(\"East\",r_Inputs_D2_D5,0))","env":["r_Inputs_D2_D5=table:text:[[\"North\"], [\"South\"], [\"East\"], [\"West\"]]","r_Inputs_E2_E5=table:num:[[0.05], [0.04], [0.06], [0.03]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(r_Q1_Sales_A2_A4,2)","env":["r_Q1_Sales_A2_A4=table:text:[[\"Jan\"], [\"Feb\"], [\"Mar\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"INDEX(r_A1_D1,3)","env":["r_A1_D1=list:text:[\"A\", \"B\", \"C\", \"D\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

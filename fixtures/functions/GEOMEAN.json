@@ -1,0 +1,23 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"GEOMEAN(4, 5, 8, 7, 11, 4, 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(r_E2_E10)","env":["r_E2_E10=table:text:[[\"One\"], [\"Two\"], [\"Three\"], [\"Four\"], [\"Five\"], [\"Six\"], [\"Seven\"], [\"Eight\"], [\"Nine\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(r_G2_G10)","env":["r_G2_G10=table:[[blank], [blank], [blank], [blank], [blank], [blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(c_N15, c_O15)","env":["c_N15=text:\"4\"","c_O15=text:\"2\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(c_B2,c_B3,c_B4,c_B5,c_B6,c_B7,c_B8,c_B9,c_B10)","env":["c_B10=blank:","c_B2=num:2","c_B3=bool:TRUE","c_B4=text:\"57\"","c_B5=blank:","c_B6=blank:","c_B7=blank:","c_B8=blank:","c_B9=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(c_C2,c_C3,c_C4,c_C5,c_C6,c_C7,c_C8,c_C9,c_C10)","env":["c_C10=num:12","c_C2=num:1","c_C3=bool:FALSE","c_C4=num:0","c_C5=bool:TRUE","c_C6=text:\"Hola\"","c_C7=blank:","c_C8=num:3","c_C9=text:\"23\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(c_D2,c_D3,c_D4,c_D5,c_D6,c_D7,c_D8,c_D9,c_D10)","env":["c_D10=blank:","c_D2=num:-4","c_D3=blank:","c_D4=num:3","c_D5=blank:","c_D6=text:\"\"","c_D7=num:2","c_D8=blank:","c_D9=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(c_E2,c_E3,c_E4,c_E5,c_E6,c_E7,c_E8,c_E9,c_E10)","env":["c_E10=text:\"Nine\"","c_E2=text:\"One\"","c_E3=text:\"Two\"","c_E4=text:\"Three\"","c_E5=text:\"Four\"","c_E6=text:\"Five\"","c_E7=text:\"Six\"","c_E8=text:\"Seven\"","c_E9=text:\"Eight\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(c_F2,c_F3,c_F4,c_F5,c_F6,c_F7,c_F8,c_F9,c_F10)","env":["c_F10=blank:","c_F2=text:\"#N/A\"","c_F3=err:#NAME?","c_F4=num:-1000","c_F5=blank:","c_F6=text:\"\"","c_F7=num:3.14","c_F8=blank:","c_F9=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(c_G2,c_G3,c_G4,c_G5,c_G6,c_G7,c_G8,c_G9,c_G10)","env":["c_G10=blank:","c_G2=blank:","c_G3=blank:","c_G4=blank:","c_G5=blank:","c_G6=blank:","c_G7=blank:","c_G8=blank:","c_G9=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(r_B14_B22)","env":["r_B14_B22=table:num:[[blank], [blank], [2], [blank], [blank], [blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(r_E2_E3,c_E4,r_E6_E9)","env":["c_E4=text:\"Three\"","r_E2_E3=table:text:[[\"One\"], [\"Two\"]]","r_E6_E9=table:text:[[\"Five\"], [\"Six\"], [\"Seven\"], [\"Eight\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(r_G2_G3,c_G4,r_G6_G9)","env":["c_G4=blank:","r_G2_G3=table:[[blank], [blank]]","r_G6_G9=table:[[blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(\"47\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(21)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(3.5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(\"Hola\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(1,2, TRUE, \"5\", \"CASE\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"GEOMEAN(1,2,\"5\", TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

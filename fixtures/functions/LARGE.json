@@ -1,0 +1,10 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"LARGE(r_A1_A6,c_B1)","env":["c_B1=num:1","r_A1_A6=table:num:[[3], [4], [2], [4], [-5], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LARGE(r_A1_A6,c_B2)","env":["c_B2=num:2","r_A1_A6=table:num:[[3], [4], [2], [4], [-5], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LARGE(r_A1_A6,c_B3)","env":["c_B3=num:3","r_A1_A6=table:num:[[3], [4], [2], [4], [-5], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LARGE(r_A1_A6,c_B4)","env":["c_B4=num:3.4","r_A1_A6=table:num:[[3], [4], [2], [4], [-5], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LARGE(r_A1_A6,c_B5)","env":["c_B5=num:0","r_A1_A6=table:num:[[3], [4], [2], [4], [-5], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LARGE(r_A1_A6,c_B6)","env":["c_B6=num:10","r_A1_A6=table:num:[[3], [4], [2], [4], [-5], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -1,0 +1,5 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"SUMXMY2(r_A1_A5,r_B1_B5)","env":["r_A1_A5=table:num:[[1], [3], [3], [4], [5]]","r_B1_B5=table:num:[[4.4], [5], [6], [2], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

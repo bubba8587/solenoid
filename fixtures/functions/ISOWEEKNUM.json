@@ -1,0 +1,28 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"ISOWEEKNUM(DATE(1899,12,31))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(DATE(1900,1,1))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(DATE(1066,10,14))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(DATE(2012, 3, 9))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A2)","env":["c_A2=date:2026-01-01"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A3)","env":["c_A3=date:2026-01-07"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A4)","env":["c_A4=date:1995-07-23"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A5)","env":["c_A5=date:1970-01-01"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A6)","env":["c_A6=date:2027-06-03"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A7)","env":["c_A7=date:2024-02-29"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A8)","env":["c_A8=date:9999-12-31"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A9)","env":["c_A9=text:\"1/1/10000\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A10)","env":["c_A10=date:2025-01-10T16:30:00.000"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A11)","env":["c_A11=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A12)","env":["c_A12=err:#N/A"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A13)","env":["c_A13=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A14)","env":["c_A14=num:-1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A15)","env":["c_A15=num:444"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A16)","env":["c_A16=num:444.23"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A17)","env":["c_A17=text:\"444\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A18)","env":["c_A18=text:\"abc\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A19)","env":["c_A19=text:\"'2026-1-7\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A20)","env":["c_A20=text:\"\"\"07/01/2026\"\"\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ISOWEEKNUM(c_A21)","env":["c_A21=text:\"\"\" 07/01/2026 \"\"\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

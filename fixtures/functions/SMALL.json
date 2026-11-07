@@ -1,0 +1,18 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"SMALL(r_A1_A6,c_B1)","env":["c_B1=num:1","r_A1_A6=table:num:[[3], [4], [2], [4], [-5], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SMALL(r_A1_A6,c_B2)","env":["c_B2=num:2","r_A1_A6=table:num:[[3], [4], [2], [4], [-5], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SMALL(k1,1)","env":["k1=list:num:[1, 2, 3, -8]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SMALL(r_A1_A6,c_B3)","env":["c_B3=num:3","r_A1_A6=table:num:[[3], [4], [2], [4], [-5], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SMALL(3.4,1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SMALL(\"3.4\", 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SMALL(r_A1_A6,c_B4)","env":["c_B4=num:3.4","r_A1_A6=table:num:[[3], [4], [2], [4], [-5], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SMALL(TRUE, 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SMALL(\"Hello\", 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SMALL(r_A1_A6,c_B5)","env":["c_B5=num:0","r_A1_A6=table:num:[[3], [4], [2], [4], [-5], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SMALL(r_A1_A6,c_B6)","env":["c_B6=num:10","r_A1_A6=table:num:[[3], [4], [2], [4], [-5], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SMALL(c_I9,1)","env":["c_I9=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SMALL(c_J9,1)","env":["c_J9=text:\"Hello\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SMALL(c_K9,1)","env":["c_K9=text:\"13\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

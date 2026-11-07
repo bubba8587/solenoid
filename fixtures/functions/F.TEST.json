@@ -1,0 +1,7 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"F.TEST(r_A1_A5,r_B1_B5)","env":["r_A1_A5=table:num:[[1], [2], [3.3], [4.5], [-1]]","r_B1_B5=table:num:[[5], [6], [7], [2.4], [-2]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"F.TEST(k1,r_B1_B4)","env":["k1=list:num:[1, 2, 3, 4]","r_B1_B4=table:num:[[5], [6], [7], [2.4]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"F.TEST(r_A1_A3,k1)","env":["k1=table:num:[[2], [3], [7]]","r_A1_A3=table:num:[[1], [2], [3.3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -1,0 +1,10 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"SUMPRODUCT(r_A6_C6, r_A1_C1)","env":["r_A1_C1=list:num:[1, 2, 3]","r_A6_C6=list:num:[1, #DIV/0!, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUMPRODUCT(r_A2_A6,r_B2_B6)","env":["r_A2_A6=table:num:[[1], [3], [5], [2.3], [-2]]","r_B2_B6=table:num:[[2], [4], [6], [7.3], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUMPRODUCT(k1, k2)","env":["k1=list:num:[1, 2, 3]","k2=list:num:[4, -2, -4]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUMPRODUCT(--(r_A1_A4=\"h\"), r_B1_B4)","env":["r_A1_A4=table:text:[[\"h\"], [\"e\"], [\"h\"], [\"l\"]]","r_B1_B4=table:num:[[1], [2], [3], [4]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUMPRODUCT(--(r_A1_A4=\"h\"), --(r_B1_B4>1))","env":["r_A1_A4=table:text:[[\"h\"], [\"e\"], [\"h\"], [\"l\"]]","r_B1_B4=table:num:[[1], [2], [3], [4]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SUMPRODUCT(r_Data_C2_C21,r_Data_D2_D21)","env":["r_Data_C2_C21=table:num:[[12], [45], [67], [23], [89], [34], [56], [78], [15], [92], [41], [63], [27], [70], [38], [55], [81], [19], [48], [60]]","r_Data_D2_D21=table:num:[[10], [15], [20], [12], [18], [25], [8], [30], [22], [14], [16], [11], [28], [9], [19], [24], [13], [21], [17], [26]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -41,6 +41,11 @@ export const STORED_BY_HAND: Record<string, { prefix: string; calibration: { f: 
   CODE: { prefix: "", calibration: { f: 'CODE("A")', answer: "65" } },
   DOLLAR: { prefix: "", calibration: { f: "DOLLAR(1,2)", answer: '"$1.00"' } },
   FIXED: { prefix: "", calibration: { f: "FIXED(1,2)", answer: '"1.00"' } },
+  GEOMEAN: { prefix: "", calibration: { f: "GEOMEAN(2,8)", answer: "4" } },
+  MODE: { prefix: "", calibration: { f: "MODE(1,2,2)", answer: "2" } },
+  RANK: { prefix: "", calibration: { f: "RANK(2,_vcal3)", answer: "2" } },
+  VDB: { prefix: "", calibration: { f: "VDB(2400,300,10,0,1)", answer: "480" } },
+  RANDARRAY: { prefix: "_xlfn.", calibration: { f: "ROWS(_xlfn.RANDARRAY(2,3))", answer: "2" } },
 };
 
 // ─── Values Excel can be given ───────────────────────────────────────────────────
@@ -52,7 +57,8 @@ export function excelSerial(day: string, time?: string): number | null {
   const [y, m, d] = day.split("-").map(Number);
   const days = Date.UTC(y, m - 1, d) / DAY_MS;
   const jan1 = Date.UTC(1900, 0, 1) / DAY_MS;
-  if (days < jan1) return null;
+  // Excel's serial 0 (shown as 0 January 1900) is the day before its first, 31 December 1899.
+  if (days < jan1 - 1) return null;
   const serial = days < Date.UTC(1900, 2, 1) / DAY_MS ? days - jan1 + 1 : days - Date.UTC(1899, 11, 30) / DAY_MS;
   if (!time) return serial;
   const [h, mi, s] = time.split(":");
@@ -125,11 +131,12 @@ export function excelFormula(formula: string, rename: ReadonlyMap<string, string
     if (after.startsWith("(")) {
       const up = tok.toUpperCase();
       const pre = storage.get(up);
-      if (pre === undefined) throw new Error(`no Excel-saved workbook shows how Excel stores ${up}; add it by hand`);
+      if (pre === undefined) throw new Error(`calls ${up}, which no Excel-saved workbook shows`);
       out += pre + up;
     } else if (rename.has(tok)) out += rename.get(tok);
     else if (/^(TRUE|FALSE)$/i.test(tok)) out += tok.toUpperCase();
     else if (params.has(tok)) out += `_xlpm.${tok}`;
+    else if (/^(e|pi|tau|phi)$/i.test(tok)) throw new Error(`uses Solenoid's constant ${tok}, which Excel doesn't have`);
     else throw new Error(`${formula}: the name ${tok} is neither bound nor a parameter`);
   }
   return out;
@@ -138,6 +145,9 @@ export function excelFormula(formula: string, rename: ReadonlyMap<string, string
 // ─── The workbook ────────────────────────────────────────────────────────────────
 
 export interface RecordCase { formula: string; env: string[] }
+
+/** The functions whose answer changes on every recalculation: their cases record a property, never Excel's value. */
+const VOLATILE = /\b(TODAY|NOW|RAND|RANDARRAY|RANDBETWEEN)\s*\(/i;
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 /** Text as a cell's XML: control characters and a literal `_xHHHH_` written as Excel escapes them. */
@@ -175,6 +185,7 @@ export const CALIBRATION: ReadonlyArray<{ key: string; f: string; shape: string;
 const CALIBRATION_VALUES: ReadonlyArray<[string, CellValue[][]]> = [
   ["_vcal1", [[{ t: "s", v: "5" }]]],
   ["_vcal2", [[{ t: "s", v: "ab" }, { t: "s", v: "cd" }]]],
+  ["_vcal3", [[{ t: "n", v: "1" }, { t: "n", v: "2" }, { t: "n", v: "3" }]]],
 ];
 
 export interface Built { xlsx: Buffer; written: number; left: Array<{ fn: string; formula: string; why: string }> }
@@ -206,22 +217,29 @@ export function buildWorkbook(records: ReadonlyMap<string, RecordCase[]>, storag
   for (const [fn, cases] of records) {
     const rows: string[] = [header];
     for (const c of cases) {
+      // Check every binding and the formula first; only a case that will be written places its values.
       const rename = new Map<string, string>();
+      const fresh: Array<[string, string, CellValue[][]]> = [];
       let why: string | null = null;
       for (const e of c.env) {
         const name = e.slice(0, e.indexOf("="));
-        if (!names.has(e)) {
-          const cells = cellsOf(parseOurs(e.slice(e.indexOf("=") + 1)));
-          if (typeof cells === "string") { why = cells; break; }
-          names.set(e, `_v${names.size + 1}`);
-          place(names.get(e)!, cells);
-        }
-        rename.set(name, names.get(e)!);
+        if (names.has(e)) { rename.set(name, names.get(e)!); continue; }
+        const cells = cellsOf(parseOurs(e.slice(e.indexOf("=") + 1)));
+        if (typeof cells === "string") { why = cells; break; }
+        const id = `_v${names.size + fresh.length + 1}`;
+        fresh.push([e, id, cells]);
+        rename.set(name, id);
       }
+      let f = "";
+      const volatile = VOLATILE.exec(c.formula.replace(/"[^"]*"/g, '""'));
+      if (!why && volatile) why = `calls ${volatile[1].toUpperCase()}, which answers differently on every recalculation`;
+      if (!why) try { f = excelFormula(c.formula, rename, storage); } catch (err) { why = (err as Error).message; }
       if (why) { left.push({ fn, formula: c.formula, why }); continue; }
-      rows.push(caseRow(rows.length + 1, keyOf(c.formula, c.env), excelFormula(c.formula, rename, storage)));
+      for (const [e, id, cells] of fresh) { names.set(e, id); place(id, cells); }
+      rows.push(caseRow(rows.length + 1, keyOf(c.formula, c.env), f));
       written++;
     }
+    if (rows.length === 1) continue;
     sheets.push([fn, rows.join("")]);
   }
   sheets.splice(1, 0, ["Values", valueRows.join("")]);

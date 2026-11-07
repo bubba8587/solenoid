@@ -1,0 +1,6 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"CHISQ.INV.RT(0.05, 5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.INV.RT(c_G2,c_B2)","env":["c_B2=num:4","c_G2=num:0.015254394655769613"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

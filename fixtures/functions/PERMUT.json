@@ -1,0 +1,22 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"PERMUT(100, 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A2,c_B2)","env":["c_A2=num:1","c_B2=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A3,c_B3)","env":["c_A3=num:3","c_B3=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A4,c_B4)","env":["c_A4=num:3","c_B4=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A5,c_B5)","env":["c_A5=blank:","c_B5=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A6,c_B6)","env":["c_A6=num:12","c_B6=num:6"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A7,c_B7)","env":["c_A7=num:12","c_B7=num:5"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A8,c_B8)","env":["c_A8=num:12","c_B8=num:4"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A9,c_B9)","env":["c_A9=num:12.7","c_B9=num:4.6"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A10,c_B10)","env":["c_A10=num:3","c_B10=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A11,c_B11)","env":["c_A11=text:\"3\"","c_B11=text:\"1\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A12,c_B12)","env":["c_A12=num:3","c_B12=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A13,c_B13)","env":["c_A13=err:#DIV/0!","c_B13=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A14,c_B14)","env":["c_A14=num:-1","c_B14=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A15,c_B15)","env":["c_A15=num:2","c_B15=num:-1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A16,c_B16)","env":["c_A16=num:7","c_B16=num:5"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A17,c_B17)","env":["c_A17=num:7.7","c_B17=num:6.8"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERMUT(c_A18,c_B18)","env":["c_A18=num:4.5","c_B18=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

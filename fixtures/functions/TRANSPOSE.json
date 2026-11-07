@@ -1,0 +1,9 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"TRANSPOSE(r_A1_A4)","env":["r_A1_A4=table:text:[[\"a\"], [\"b\"], [\"c\"], [\"d\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRANSPOSE(k1)","env":["k1=list:num:[1, 2, 3, 4]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRANSPOSE(r_I1_L1)","env":["r_I1_L1=list:num:[1, 2, 3, 4]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRANSPOSE(k1)","env":["k1=table:num:[[1, 2, 3], [4, 5, 6]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRANSPOSE(ANCHORARRAY(c_E5))","env":["c_E5=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

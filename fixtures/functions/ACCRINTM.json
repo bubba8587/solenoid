@@ -1,0 +1,21 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"ACCRINTM(39539, 39614, 0.1, 1000, 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(DATE(2024,1,15), DATE(2024,3,15), 0.1, 1000, 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(DATE(2024,1,15), DATE(2024,3,15), 0.1, 1000, 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(DATE(2024,1,15), DATE(2024,3,15), 0.1, 1000, 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(DATE(2024,1,15), DATE(2024,3,15), 0.1, 1000, 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(DATE(2024,1,15), DATE(2024,3,15), 0.1, 1000, 4)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(DATE(2023,1,15), DATE(2023,3,31), 0.1, 1000, 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(DATE(2023,2,28), DATE(2023,6,15), 0.1, 1000, 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(DATE(2024,2,28), DATE(2024,3,1), 0.1, 1000, 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(DATE(2023,2,28), DATE(2023,3,1), 0.1, 1000, 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(DATE(2023,1,15), DATE(2023,3,31), 0.1, 1000, 4)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(DATE(2024,2,28), DATE(2024,6,15), 0.1, 1000, 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(DATE(2023,11,15), DATE(2024,3,15), 0.1, 1000, 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(39614, 39539, 0.1, 1000, 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(39539, 39614, 0, 1000, 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(39539, 39614, 0.1, 0, 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ACCRINTM(39539, 39614, 0.1, 1000, 5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

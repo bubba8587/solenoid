@@ -1,0 +1,13 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"PERCENTRANK.INC(r_A1_A10,7)","env":["r_A1_A10=table:num:[[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTRANK.INC(r_A1_A10, 5.12,6)","env":["r_A1_A10=table:num:[[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTRANK.INC(r_A14_A20,c_I14)","env":["c_I14=num:-4.1","r_A14_A20=table:num:[[12], [-1], [7.5], [56], [12], [-4], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTRANK.INC(r_A14_A20,c_I15)","env":["c_I15=num:-4","r_A14_A20=table:num:[[12], [-1], [7.5], [56], [12], [-4], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTRANK.INC(r_A14_A20,c_I16)","env":["c_I16=num:3","r_A14_A20=table:num:[[12], [-1], [7.5], [56], [12], [-4], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTRANK.INC(r_A14_A20,c_I17)","env":["c_I17=num:10.5","r_A14_A20=table:num:[[12], [-1], [7.5], [56], [12], [-4], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTRANK.INC(r_A14_A20,c_I18)","env":["c_I18=num:40","r_A14_A20=table:num:[[12], [-1], [7.5], [56], [12], [-4], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTRANK.INC(r_A14_A20,c_I19)","env":["c_I19=num:56","r_A14_A20=table:num:[[12], [-1], [7.5], [56], [12], [-4], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PERCENTRANK.INC(r_A14_A20,c_I20)","env":["c_I20=num:56.1","r_A14_A20=table:num:[[12], [-1], [7.5], [56], [12], [-4], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

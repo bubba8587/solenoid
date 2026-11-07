@@ -200,17 +200,24 @@ export function harvest(plan: Plan, root: string): { cases: Harvested[]; ledger:
       const d = plan.dispositions[key];
       if (d) used.add(key);
       const entry: LedgerEntry = { line: n, text: text.trim().slice(0, 200), moved: 0 };
+      let attempted = 0;
       const take = (c: Omit<Harvested, "source">) => {
+        if (!names.has(c.fn)) return; // another family's case; that family's harvest reads this line
+        attempted++;
         const env = c.env ?? [];
-        if (!isFormula(c.formula)) ledger.errors.push(`${key}: not a formula in the shared syntax: ${c.formula}`);
+        const problems: string[] = [];
+        if (!isFormula(c.formula)) problems.push(`not a formula in the shared syntax: ${c.formula}`);
         const bound = new Set(env.map((e) => e.slice(0, e.indexOf("="))));
-        for (const name of namesRead(c.formula)) if (!bound.has(name)) ledger.errors.push(`${key}: ${c.formula} reads ${name}, which nothing binds`);
+        for (const name of namesRead(c.formula)) if (!bound.has(name)) problems.push(`${c.formula} reads ${name}, which nothing binds`);
         for (const e of env) {
-          try { checkOurs(e.slice(e.indexOf("=") + 1)); } catch (err) { ledger.errors.push(`${key}: env ${e}: ${(err as Error).message}`); }
+          try { checkOurs(e.slice(e.indexOf("=") + 1)); } catch (err) { problems.push(`env ${e}: ${(err as Error).message}`); }
         }
-        if (c.expect) try { checkOurs(c.expect); } catch (err) { ledger.errors.push(`${key}: expect ${c.expect}: ${(err as Error).message}`); }
-        if ((c.truth === "rule" || c.truth === "reference") && (!c.expect || !c.cite)) ledger.errors.push(`${key}: a ${c.truth} case needs expect and cite`);
-        if (names.has(c.fn)) { cases.push({ ...c, env, source: key }); entry.moved++; }
+        if (c.expect) try { checkOurs(c.expect); } catch (err) { problems.push(`expect ${c.expect}: ${(err as Error).message}`); }
+        if ((c.truth === "rule" || c.truth === "reference") && (!c.expect || !c.cite)) problems.push(`a ${c.truth} case needs expect and cite`);
+        // A case with a problem is reported and kept out of the record, never written half right.
+        if (problems.length) { for (const p of problems) ledger.errors.push(`${key}: ${p}`); return; }
+        cases.push({ ...c, env, source: key });
+        entry.moved++;
       };
       // In a spec, a formula is an example in a code span.
       const found = md ? [...text.matchAll(/`([^`]+)`/g)].map((m) => m[1]) : literalsOf(text, rust);
@@ -231,7 +238,7 @@ export function harvest(plan: Plan, root: string): { cases: Harvested[]; ledger:
       if (d?.literals && d.literals.length !== lits.length) ledger.errors.push(`${key}: the disposition lists ${d.literals.length} literals, the line has ${lits.length}`);
       for (const c of d?.cases ?? []) take({ ...c, env: c.env ?? [] });
       if (d?.why) entry.why = entry.why ? `${entry.why}; ${d.why}` : d.why;
-      const otherFamily = lits.length > 0 && entry.moved === 0 && !entry.why;
+      const otherFamily = lits.length > 0 && attempted === 0 && !entry.why;
       if (otherFamily) entry.why = "its case belongs to another family's function";
       if (entry.moved === 0 && !entry.why) ledger.unaccounted.push(`${key}: ${entry.text}`);
       entries.push(entry);

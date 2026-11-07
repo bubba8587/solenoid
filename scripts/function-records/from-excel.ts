@@ -1,7 +1,7 @@
 // Reads Excel's answers back: `node scripts/vite-run.mjs scripts/function-records/from-excel.ts <Family>`, after the
 // author saved fixtures/functions/excel/<Family>.xlsx in Excel. The only code that writes an `excel` answer
 // (tree/specs/computation/function-records.md § Getting Excel's answers); it changes nothing unless every check passes.
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { readZip } from "./zip.ts";
 import { readBook, type Book, type Cell } from "./xlsx.ts";
@@ -39,31 +39,45 @@ function sheet(book: Book, name: string) {
   return s;
 }
 
-export function importFamily(root: string, family: string): { written: number; unchanged: number } {
-  const buf = readFileSync(join(root, RECORDS, "excel", `${family}.xlsx`));
+/** Every workbook the author saved for a family, in order: <slug>.xlsx, then <slug>.2.xlsx and on. */
+export function savedWorkbooks(root: string, family: string): string[] {
+  const stem = family.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const dir = join(root, RECORDS, "excel");
+  const round = (f: string) => Number(/\.(\d+)\.xlsx$/i.exec(f)?.[1] ?? 1);
+  return readdirSync(dir)
+    .filter((f) => new RegExp(`^${stem}(\\.\\d+)?\\.xlsx$`, "i").test(f))
+    .sort((a, b) => round(a) - round(b))
+    .map((f) => join(dir, f));
+}
+
+/** One saved workbook's answers into the family's records; throws, changing nothing, on any check that fails. */
+function importWorkbook(root: string, family: string, path: string): { written: number; unchanged: number } {
+  const buf = readFileSync(path);
   const app = /<Application>([^<]*)<\/Application>/.exec(readZip(buf).get("docProps/app.xml")?.toString("utf8") ?? "")?.[1] ?? "";
-  if (!/Excel/.test(app) || /Solenoid/.test(app)) throw new Error(`the workbook was last saved by ${JSON.stringify(app || "nothing that says")}, not Excel`);
+  if (!/Excel/.test(app) || /Solenoid/.test(app)) throw new Error(`${path}: last saved by ${JSON.stringify(app || "nothing that says")}, not Excel`);
   const book = readBook(buf);
   const cal = sheet(book, "Calibration");
   CALIBRATION.forEach((c, i) => {
     const got = excelAnswer(cal.cells.get(`B${i + 2}`), cal.cells.get(`C${i + 2}`));
     const shape = cal.cells.get(`C${i + 2}`)?.v;
-    if (got !== c.answer || shape !== c.shape) throw new Error(`calibration: ${c.key} reads ${got} (${shape}), expected ${c.answer} (${c.shape}); nothing imported`);
+    if (got !== c.answer || shape !== c.shape) throw new Error(`${path}: calibration: ${c.key} reads ${got} (${shape}), expected ${c.answer} (${c.shape}); nothing imported`);
   });
-  const updates: Array<[string, ReturnType<typeof readRecord> & object]> = [];
+  const updates: Array<[string, NonNullable<ReturnType<typeof readRecord>>]> = [];
   let written = 0, unchanged = 0;
   for (const fn of familyFunctions(family)) {
+    const s = book.sheets.find((x) => x.name === fn);
+    if (!s) continue; // a later round leaves out a function Excel had answered already
     const record = readRecord(root, fn);
     if (!record) throw new Error(`${fn} has no record`);
     const byKey = new Map(record.flatMap((g) => g.cases).map((c) => [keyOf(c.formula, c.env), c]));
-    const s = sheet(book, fn);
     for (let r = 2; s.cells.has(`A${r}`); r++) {
       const key = s.cells.get(`A${r}`)!.v!;
       const c = byKey.get(key);
-      if (!c) throw new Error(`${fn} row ${r}: a case the record no longer has (${key}); regenerate the workbook`);
+      if (!c) throw new Error(`${path}: ${fn} row ${r}: a case the record no longer has (${key})`);
       const ans = excelAnswer(s.cells.get(`B${r}`), s.cells.get(`C${r}`));
       checkExcel(ans);
       if (c.excel === ans) { unchanged++; continue; }
+      if (c.excel) throw new Error(`${path}: ${fn} row ${r}: Excel answered ${ans}, where an earlier round answered ${c.excel}`);
       c.excel = ans;
       if (!c.truth) c.truth = "excel";
       written++;
@@ -71,6 +85,14 @@ export function importFamily(root: string, family: string): { written: number; u
     updates.push([fn, record]);
   }
   for (const [fn, record] of updates) writeFileSync(join(root, RECORDS, `${fn}.json`), recordText(record));
+  return { written, unchanged };
+}
+
+export function importFamily(root: string, family: string): { written: number; unchanged: number } {
+  const files = savedWorkbooks(root, family);
+  if (!files.length) throw new Error(`no saved workbook for ${family}`);
+  let written = 0, unchanged = 0;
+  for (const f of files) { const r = importWorkbook(root, family, f); written += r.written; unchanged += r.unchanged; }
   return { written, unchanged };
 }
 
