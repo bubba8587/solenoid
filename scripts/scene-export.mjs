@@ -144,6 +144,28 @@ for src in sys.argv[2:]:
 // ---- runs in the page ----
 
 async function capture({ camera, W, H }) {
+  const bgOffset = (v, room) => {
+    // One axis of a computed background-position: "50%", "8px", "calc(100% - 8px)" (Chromium's "right 8px").
+    v = v.trim();
+    const calc = v.match(/^calc\(([\d.]+)%\s*([-+])\s*([\d.]+)px\)$/);
+    if (calc) return room * +calc[1] / 100 + (calc[2] === "-" ? -1 : 1) * +calc[3];
+    if (v.endsWith("%")) return room * parseFloat(v) / 100;
+    if (v.endsWith("px")) return parseFloat(v);
+      return room / 2;
+    };
+
+  // Top-level space-separated tokens of a CSS value, keeping calc(...) whole.
+  const axes = (v) => {
+    const out = []; let depth = 0, cur = "";
+    for (const ch of v) {
+      if (ch === "(") depth++;
+      if (ch === ")") depth--;
+      if (ch === " " && depth === 0) { if (cur) out.push(cur); cur = ""; } else cur += ch;
+    }
+    if (cur) out.push(cur);
+    return out;
+  };
+
   const { devRfStores } = await import("/src/graph/flow/devRfStores.ts");
   const { cableShapeStore } = await import("/src/graph/cableShape.tsx");
   const st = [...devRfStores][0].getState();
@@ -274,7 +296,9 @@ async function capture({ camera, W, H }) {
         }
         const tm = pcs.transform.match(/matrix\(([^,]+),\s*([^,]+)/);
         const rotate = tm ? Math.atan2(+tm[2], +tm[1]) * 180 / Math.PI : 0;
-        const rect = { x: x + (w - iw) / 2, y: y + (h - ih) / 2, w: iw, h: ih };
+        const pos = (useMask ? (pcs.maskPosition || pcs.webkitMaskPosition) : pcs.backgroundPosition) ?? "";
+        const [p0 = "50%", p1 = "50%"] = axes(pos.split(",")[0]);
+        const rect = { x: x + bgOffset(p0, w - iw), y: y + bgOffset(p1, h - ih), w: iw, h: ih };
         if (!visibleColor(color) || iw <= 0) continue;
         push(e, { t: "icon", rect, svg: svgIndex(src), color: withAlpha(color, o * parseFloat(pcs.opacity)), rotate });
       }
@@ -325,9 +349,17 @@ async function capture({ camera, W, H }) {
           if (e.tagName !== "g") skipChildren(walker, e);
           continue;
         }
-        const fill = cs.fill.startsWith("url(") ? cs.color : cs.fill;
+        // A gradient paint server reads as its first stop's color.
+        const paint = (v) => {
+          if (!v.startsWith("url(")) return v;
+          const id = v.match(/url\("?#([^")]+)"?\)/)?.[1];
+          const stop = id && document.getElementById(id)?.querySelector("stop");
+          return stop ? getComputedStyle(stop).stopColor : cs.color;
+        };
+        const fill = paint(cs.fill);
+        const strokePaint = paint(cs.stroke);
         const fillOk = fill && fill !== "none" && px(cs.fillOpacity) > 0;
-        const strokeOk = cs.stroke && cs.stroke !== "none" && !cs.stroke.startsWith("url(") && px(cs.strokeWidth) > 0;
+        const strokeOk = strokePaint && strokePaint !== "none" && px(cs.strokeWidth) > 0;
         if (!fillOk && !strokeOk) continue;
         const ctm = e.getScreenCTM();
         const scale = ctm ? Math.hypot(ctm.a, ctm.b) : 1;
@@ -341,7 +373,7 @@ async function capture({ camera, W, H }) {
           const inset = strokeW / 2;
           push(e, {
             t: "box", rect: e.tagName === "rect" ? r : { x: r.x + inset, y: r.y + inset, w: r.w - 2 * inset, h: r.h - 2 * inset },
-            fill: fillOk ? withAlpha(fill, fo) : "transparent", stroke: strokeOk ? withAlpha(cs.stroke, so) : "transparent",
+            fill: fillOk ? withAlpha(fill, fo) : "transparent", stroke: strokeOk ? withAlpha(strokePaint, so) : "transparent",
             stroke_w: strokeW, radius: e.tagName === "rect" ? rx : Math.max(0, rect.w / 2 - inset),
           });
           continue;
@@ -363,7 +395,7 @@ async function capture({ camera, W, H }) {
           prev = q;
         }
         if (/[zZ]\s*$/.test(d) || e.tagName === "polygon") segs.push({ op: "line", to: segs[0].to });
-        push(e, { t: "path", path: segs, fill: fillOk ? withAlpha(fill, fo) : "transparent", stroke: strokeOk ? withAlpha(cs.stroke, so) : "transparent", stroke_w: strokeW });
+        push(e, { t: "path", path: segs, fill: fillOk ? withAlpha(fill, fo) : "transparent", stroke: strokeOk ? withAlpha(strokePaint, so) : "transparent", stroke_w: strokeW });
         continue;
       }
 
@@ -504,7 +536,14 @@ async function capture({ camera, W, H }) {
     const rects = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
     if (!rects.length) return [];
     const full = textNode.textContent;
-    if (rects.length === 1) return [{ rect: rects[0], text: full.replace(/\s+/g, " ").trim() }];
+    if (rects.length === 1) {
+      // The box of the visible characters: a run's leading space belongs to the gap before it, not to the run.
+      const a = full.search(/\S/), b = full.length - (full.match(/\s*$/)?.[0].length ?? 0);
+      if (a < 0) return [];
+      if (a > 0 || b < full.length) { range.setStart(textNode, a); range.setEnd(textNode, b); }
+      const r = range.getBoundingClientRect();
+      return [{ rect: r.width ? r : rects[0], text: full.replace(/\s+/g, " ").trim() }];
+    }
     // Several lines: group characters by the line box they land in.
     const lines = [];
     let cur = null;
@@ -513,6 +552,7 @@ async function capture({ camera, W, H }) {
       range.setEnd(textNode, i + 1);
       const r = range.getClientRects()[0];
       if (!r || r.width === 0) { if (cur) cur.text += full[i]; continue; }
+      if ((!cur || Math.abs(r.top - cur.top) > r.height / 2) && /\s/.test(full[i])) continue;
       if (!cur || Math.abs(r.top - cur.top) > r.height / 2) {
         cur = { top: r.top, left: r.left, right: r.right, bottom: r.bottom, text: "" };
         lines.push(cur);
