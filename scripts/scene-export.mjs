@@ -2,7 +2,7 @@
 // (boxes, text runs, SVG shapes) taken from Chromium's layout at zoom 1, the cables as the app drew them, the camera and
 // the grid. Also writes the canvas's DOM and CSS as one HTML page for Blitz, and the app's fonts as TTF for GPUI.
 //   node scripts/scene-export.mjs <seed-id | graph.json> [--out dir] [--size 1600x1000] [--shape diagonal]
-// Writes <dir>/scene.json, <dir>/canvas.html and <dir>/fonts/*.ttf (dir defaults to .dev/scenes/<name>). Needs the dev
+// Writes <dir>/scene.json, <dir>/canvas.html, <dir>/chromium.png (the app at the scene's camera) and <dir>/fonts/*.ttf (dir defaults to .dev/scenes/<name>). Needs the dev
 // server (started if down) and python3 with fontTools + brotli for the fonts (skipped with a warning otherwise).
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -77,12 +77,23 @@ try {
   });
   await sleep(2500);
 
+  if (process.env.SCENE_LAYERS) await page.evaluate(() => { globalThis.__keepLayers = true; });
   const scene = await page.evaluate(capture, { camera, W, H });
   scene.name = name;
   writeFileSync(join(outDir, "scene.json"), JSON.stringify(scene));
 
   const html = await page.evaluate(captureHtml);
   writeFileSync(join(outDir, "canvas.html"), html);
+
+  // Chromium's own picture at the scene's camera, chrome hidden, for comparing a renderer against.
+  await page.evaluate(async (cam) => {
+    const { devRfStores } = await import("/src/graph/flow/devRfStores.ts");
+    await [...devRfStores][0].getState().panZoom.setViewport(cam);
+  }, camera);
+  await page.addStyleTag({ content: ".react-flow__panel, .solenoid-statusbar, .solenoid-menubar, .solenoid-hud-stack, .solenoid-topbar, .solenoid-apptools, .solenoid-nav, .react-flow__minimap { visibility: hidden !important; }" });
+  await sleep(1500);
+  const pane = await page.$(".react-flow");
+  await pane.screenshot({ path: join(outDir, "chromium.png") });
 
   const items = scene.cards.reduce((n, c) => n + c.items.length, 0);
   console.log(`scene ${name}: ${scene.cards.length} cards, ${items} items, ${scene.cables.length} cables -> ${outDir}`);
@@ -100,14 +111,28 @@ function exportFonts(dir) {
       if (f.includes("-latin-wght-")) want.push(join(fontRoot, fam, "files", f));
     }
   }
+  // Static instances of each variable font at the weights the app uses, named by family alone: GPUI matches fonts by
+  // family name and weight, and a variable font's default instance names itself by its default weight.
   const py = `
-import sys, os
+import sys, os, re
 from fontTools.ttLib import TTFont
+from fontTools.varLib import instancer
 out = sys.argv[1]
 for src in sys.argv[2:]:
-    dst = os.path.join(out, os.path.basename(src).replace('.woff2', '.ttf'))
-    if os.path.exists(dst): continue
-    f = TTFont(src); f.flavor = None; f.save(dst)
+    base = os.path.basename(src).replace('.woff2', '')
+    for w in (400, 500, 600, 700):
+        dst = os.path.join(out, f"{base}-{w}.ttf")
+        if os.path.exists(dst): continue
+        f = TTFont(src)
+        f.flavor = None
+        if 'fvar' in f:
+            f = instancer.instantiateVariableFont(f, {"wght": w}, updateFontNames=False)
+        fam = re.sub(r' (Thin|ExtraLight|Light|Regular|Medium|SemiBold|Bold|ExtraBold|Black)$', '', f['name'].getDebugName(1))
+        for rec in f['name'].names:
+            if rec.nameID in (1, 16):
+                rec.string = fam
+        f['OS/2'].usWeightClass = w
+        f.save(dst)
 `;
   try {
     execFileSync("python3", ["-I", "-c", py, dir, ...want], { stdio: "inherit" });
@@ -124,6 +149,12 @@ async function capture({ camera, W, H }) {
   const st = [...devRfStores][0].getState();
   const [tx, ty, k] = st.transform;
   const fonts = [];
+  const svgs = [];
+  const svgIndex = (src) => {
+    let i = svgs.indexOf(src);
+    if (i < 0) { svgs.push(src); i = svgs.length - 1; }
+    return i;
+  };
   const fontIndex = (fam) => {
     const first = fam.split(",")[0].trim().replace(/^["']|["']$/g, "");
     let i = fonts.indexOf(first);
@@ -136,7 +167,7 @@ async function capture({ camera, W, H }) {
   const ctx = document.createElement("canvas").getContext("2d");
   const rgb = (c) => {
     if (!c || c === "none") return "transparent";
-    if (/^(rgb|#)/.test(c) || c === "transparent") return c;
+    if (/^(rgb|#|color\(srgb )/.test(c) || c === "transparent") return c;
     ctx.fillStyle = "#000"; ctx.fillStyle = c;
     const v = ctx.fillStyle;
     return typeof v === "string" ? v : "transparent";
@@ -148,6 +179,11 @@ async function capture({ camera, W, H }) {
     if (m) {
       const p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
       return `rgba(${p[0]}, ${p[1]}, ${p[2]}, ${(p[3] ?? 1) * a})`;
+    }
+    const srgb = v.match(/^color\(srgb ([^)]+)\)$/);
+    if (srgb) {
+      const p = srgb[1].split(/[\s/]+/).filter(Boolean).map(Number);
+      return `color(srgb ${p[0]} ${p[1]} ${p[2]} / ${(p[3] ?? 1) * a})`;
     }
     if (/^#[0-9a-f]{6}$/i.test(v)) return `rgba(${parseInt(v.slice(1, 3), 16)}, ${parseInt(v.slice(3, 5), 16)}, ${parseInt(v.slice(5, 7), 16)}, ${a})`;
     return v;
@@ -186,6 +222,63 @@ async function capture({ camera, W, H }) {
     };
     const outside = (r, clip) => clip && (r.x >= clip.x + clip.w || r.y >= clip.y + clip.h || r.x + r.w <= clip.x || r.y + r.h <= clip.y);
 
+    // CSS paints positioned elements after in-flow ones, and by z-index among themselves; items carry that key so the
+    // card's list can be put in paint order (a header's absolutely placed chevron over the header's fill).
+    const layers = new Map();
+    const layerOf = (node) => {
+      let e = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+      if (layers.has(e)) return layers.get(e);
+      let key = 0;
+      for (let a = e; a && a !== root && a !== el; a = a.parentElement) {
+        const acs = getComputedStyle(a);
+        if (acs.position !== "static") {
+          const z = parseInt(acs.zIndex);
+          key = (Number.isFinite(z) ? z : 0) * 2 + 1;
+          break;
+        }
+      }
+      layers.set(e, key);
+      return key;
+    };
+    const push = (node, item) => {
+      item.layer = layerOf(node);
+      if (!("clip" in item)) item.clip = clipOf(node.nodeType === Node.TEXT_NODE ? node : node);
+      items.push(item);
+    };
+    // One-color SVG icons the CSS draws: a mask over a background color (chevrons, select arrows), on the element or
+    // its ::before / ::after, or an SVG background image.
+    const icons = (e, br, o) => {
+      for (const pseudo of [null, "::before", "::after"]) {
+        const pcs = getComputedStyle(e, pseudo);
+        if (pseudo && (pcs.content === "none" || pcs.display === "none")) continue;
+        const mask = pcs.maskImage && pcs.maskImage !== "none" ? pcs.maskImage : pcs.webkitMaskImage;
+        const useMask = mask && mask !== "none" && /svg/.test(mask);
+        const img = useMask ? mask : pcs.backgroundImage;
+        const m = img && img.match(/url\("?data:image\/svg\+xml(;base64)?,([^")]+)"?\)/);
+        if (!m) continue;
+        let src;
+        try { src = m[1] ? atob(m[2]) : decodeURIComponent(m[2]); } catch { continue; }
+        const color = useMask ? pcs.backgroundColor : (src.match(/(?:stroke|fill)=['"](#[0-9a-fA-F]{3,6}|rgb[^'"]+)['"]/)?.[1] ?? pcs.color);
+        let w = pseudo ? px(pcs.width) || br.width / k : br.width / k;
+        let h = pseudo ? px(pcs.height) || br.height / k : br.height / k;
+        const size = (useMask ? (pcs.maskSize || pcs.webkitMaskSize) : pcs.backgroundSize) ?? "";
+        const sm = size.match(/^([\d.]+)px(?:\s+([\d.]+)px)?/);
+        let iw = sm ? +sm[1] : Math.min(w, h), ih = sm ? +(sm[2] ?? sm[1]) : Math.min(w, h);
+        const box = toCard(br);
+        let x = box.x + (box.w - w) / 2, y = box.y + (box.h - h) / 2;
+        if (pseudo && pcs.position === "absolute") {
+          if (pcs.left !== "auto") x = box.x + px(pcs.left);
+          else if (pcs.right !== "auto") x = box.x + box.w - px(pcs.right) - w;
+          if (pcs.top !== "auto") y = box.y + px(pcs.top);
+          else if (pcs.bottom !== "auto") y = box.y + box.h - px(pcs.bottom) - h;
+        }
+        const tm = pcs.transform.match(/matrix\(([^,]+),\s*([^,]+)/);
+        const rotate = tm ? Math.atan2(+tm[2], +tm[1]) * 180 / Math.PI : 0;
+        const rect = { x: x + (w - iw) / 2, y: y + (h - ih) / 2, w: iw, h: ih };
+        if (!visibleColor(color) || iw <= 0) continue;
+        push(e, { t: "icon", rect, svg: svgIndex(src), color: withAlpha(color, o * parseFloat(pcs.opacity)), rotate });
+      }
+    };
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
     for (let node = walker.currentNode; node; node = walker.nextNode()) {
       if (node.nodeType === Node.TEXT_NODE) {
@@ -198,10 +291,15 @@ async function capture({ camera, W, H }) {
         if (o < 0.02) continue;
         const clip = clipOf(node);
         // One item per line box, as Chromium broke the lines, so no renderer wraps text its own way.
+        const tt = cs.textTransform;
+        const cased = (t) => tt === "uppercase" ? t.toUpperCase() : tt === "lowercase" ? t.toLowerCase()
+          : tt === "capitalize" ? t.replace(/\b\p{L}/gu, (m) => m.toUpperCase()) : t;
         for (const line of lineBoxes(node)) {
+          line.text = cased(line.text);
+          if (cs.textOverflow === "ellipsis" && clip) ellipsize(node, line, clip, er, k);
           const rect = toCard(line.rect);
           if (outside(rect, clip)) continue;
-          items.push({
+          push(node, {
             t: "text", rect, text: line.text, color: withAlpha(cs.color, o), size: px(cs.fontSize),
             weight: parseInt(cs.fontWeight) || 400, family: fontIndex(cs.fontFamily), italic: cs.fontStyle === "italic",
             align: "left", line_h: rect.h, clip,
@@ -241,7 +339,7 @@ async function capture({ camera, W, H }) {
           // Strokes straddle the outline; the box is the outline.
           const r = e.tagName === "rect" ? toCard(e.getBoundingClientRect()) : rect;
           const inset = strokeW / 2;
-          items.push({
+          push(e, {
             t: "box", rect: e.tagName === "rect" ? r : { x: r.x + inset, y: r.y + inset, w: r.w - 2 * inset, h: r.h - 2 * inset },
             fill: fillOk ? withAlpha(fill, fo) : "transparent", stroke: strokeOk ? withAlpha(cs.stroke, so) : "transparent",
             stroke_w: strokeW, radius: e.tagName === "rect" ? rx : Math.max(0, rect.w / 2 - inset),
@@ -265,7 +363,7 @@ async function capture({ camera, W, H }) {
           prev = q;
         }
         if (/[zZ]\s*$/.test(d) || e.tagName === "polygon") segs.push({ op: "line", to: segs[0].to });
-        items.push({ t: "path", path: segs, fill: fillOk ? withAlpha(fill, fo) : "transparent", stroke: strokeOk ? withAlpha(cs.stroke, so) : "transparent", stroke_w: strokeW });
+        push(e, { t: "path", path: segs, fill: fillOk ? withAlpha(fill, fo) : "transparent", stroke: strokeOk ? withAlpha(cs.stroke, so) : "transparent", stroke_w: strokeW });
         continue;
       }
 
@@ -276,7 +374,7 @@ async function capture({ camera, W, H }) {
             const c = document.createElement("canvas"); c.width = e.naturalWidth; c.height = e.naturalHeight;
             c.getContext("2d").drawImage(e, 0, 0); src = c.toDataURL("image/png");
           }
-          items.push({ t: "image", rect, src });
+          push(e, { t: "image", rect, src });
         } catch { /* a tainted canvas: nothing to draw */ }
         continue;
       }
@@ -292,9 +390,10 @@ async function capture({ camera, W, H }) {
       const shadowM = cs.boxShadow !== "none" ? cs.boxShadow.match(/^(rgba?\([^)]+\)|#\w+)\s+(-?[\d.]+)px\s+(-?[\d.]+)px\s+([\d.]+)px/) : null;
       const shadow = shadowM && !/inset/.test(cs.boxShadow) ? { color: withAlpha(shadowM[1], o), dx: +shadowM[2], dy: +shadowM[3], blur: +shadowM[4] } : null;
       if (fill || uniform || shadow) {
-        items.push({
+        push(e, {
           t: "box", rect, fill: fill ? withAlpha(fill, o) : "transparent",
           stroke: uniform ? withAlpha(bc[0], o) : "transparent", stroke_w: uniform ? bw[0] : 0, radius, shadow,
+          dashed: uniform && cs.borderTopStyle === "dashed",
         });
       }
       if (!uniform) {
@@ -306,8 +405,9 @@ async function capture({ camera, W, H }) {
           sides[2] && { x: rect.x, y: rect.y + rect.h - b, w: rect.w, h: b, c: bc[2] },
           sides[3] && { x: rect.x, y: rect.y, w: l, h: rect.h, c: bc[3] },
         ].filter(Boolean);
-        for (const s of boxes) items.push({ t: "box", rect: { x: s.x, y: s.y, w: s.w, h: s.h }, fill: withAlpha(s.c, o), stroke: "transparent", stroke_w: 0, radius: 0 });
+        for (const s of boxes) push(e, { t: "box", rect: { x: s.x, y: s.y, w: s.w, h: s.h }, fill: withAlpha(s.c, o), stroke: "transparent", stroke_w: 0, radius: 0 });
       }
+      icons(e, br, o);
       if (e.tagName === "INPUT" || e.tagName === "TEXTAREA" || e.tagName === "SELECT") {
         const type = e.getAttribute("type") ?? "";
         if (["checkbox", "radio", "range", "color", "file", "hidden"].includes(type)) continue;
@@ -319,7 +419,7 @@ async function capture({ camera, W, H }) {
         const fs = px(cs.fontSize);
         const lh = cs.lineHeight === "normal" ? fs * 1.2 : px(cs.lineHeight);
         const multi = e.tagName === "TEXTAREA";
-        items.push({
+        push(e, {
           t: "text", rect: { x: rect.x + pl, y: multi ? rect.y + px(cs.paddingTop) + bw[0] : rect.y + (rect.h - lh) / 2, w: Math.max(1, rect.w - pl - pr), h: multi ? rect.h - px(cs.paddingTop) - px(cs.paddingBottom) : lh },
           text: shown, color: withAlpha(color, o), size: fs, weight: parseInt(cs.fontWeight) || 400, family: fontIndex(cs.fontFamily),
           italic: cs.fontStyle === "italic", align: cs.textAlign === "right" || cs.textAlign === "end" ? "right" : cs.textAlign === "center" ? "center" : "left", line_h: lh,
@@ -343,6 +443,9 @@ async function capture({ camera, W, H }) {
     }
     // A member of a collapsed group stays in the DOM with nothing drawn.
     if (!items.length) continue;
+    // Paint order: by layer, stable, so DOM order holds within one.
+    items.sort((p, q) => p.layer - q.layer);
+    if (!globalThis.__keepLayers) for (const it of items) delete it.layer;
     const p = n.internals.positionAbsolute;
     cards.push({
       id, kind, title, type_name: typeName, accent,
@@ -370,11 +473,30 @@ async function capture({ camera, W, H }) {
   const backing = document.querySelector(".sol-canvas-backing");
   const dot = document.querySelector(".react-flow__viewport pattern circle, pattern circle");
   return {
-    version: 1, viewport: { x: W, y: H }, camera,
+    version: 1, viewport: { x: st.width, y: st.height }, camera,
     background: rgb(getComputedStyle(backing ?? pane).backgroundColor),
     grid: dot ? { gap: 24, radius: 1, color: rgb(getComputedStyle(dot).fill) } : null,
-    cable_shape: cableShapeStore.get(), fonts, cards, cables,
+    cable_shape: cableShapeStore.get(), fonts, cards, cables, svgs,
   };
+
+  function ellipsize(textNode, line, clip, er, k) {
+    // Chromium draws "…" where the text meets its box; cut the run at the last character that fits with it.
+    const right = er.left + (clip.x + clip.w) * k;
+    if (line.rect.right <= right + 0.5) return;
+    const range = document.createRange();
+    const full = textNode.textContent;
+    const room = right - k * 7;
+    let cut = 0;
+    for (let i = 0; i < full.length; i++) {
+      range.setStart(textNode, i);
+      range.setEnd(textNode, i + 1);
+      const r = range.getClientRects()[0];
+      if (r && r.right > room) break;
+      cut = i + 1;
+    }
+    line.text = full.slice(0, cut).replace(/\s+/g, " ").trimEnd() + "…";
+    line.rect = new DOMRect(line.rect.left, line.rect.top, right - line.rect.left, line.rect.height);
+  }
 
   function lineBoxes(textNode) {
     const range = document.createRange();

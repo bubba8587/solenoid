@@ -10,10 +10,11 @@
 #![forbid(unsafe_code)]
 
 use gpui::{
-    App, Application, BorderStyle, Bounds, BoxShadow, ContentMask, Context, Corners, Edges,
-    FontStyle, FontWeight, Hsla, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
-    PathBuilder, Pixels, Render, ScrollDelta, ScrollWheelEvent, SharedString, TextAlign, TextRun,
-    Window, WindowBounds, WindowOptions, canvas, div, font, point, prelude::*, px, quad, size,
+    App, Application, AssetSource, BorderStyle, Bounds, BoxShadow, ContentMask, Context, Corners,
+    Edges, FontStyle, FontWeight, Hsla, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
+    PathBuilder, Pixels, Radians, Render, ScrollDelta, ScrollWheelEvent, SharedString, TextAlign,
+    TextRun, TransformationMatrix, Window, WindowBounds, WindowOptions, canvas, div, font, point,
+    prelude::*, px, quad, size,
 };
 use solenoid_scene::lod::{self, Detail, Frame};
 use solenoid_scene::model::Align;
@@ -22,6 +23,24 @@ use std::cell::Cell;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
+
+const SVG_PREFIX: &str = "scene-svg/";
+
+/// Serves the scene's icon SVGs to GPUI's SVG renderer, which loads by path.
+struct SceneAssets(Vec<String>);
+
+impl AssetSource for SceneAssets {
+    fn load(&self, path: &str) -> gpui::Result<Option<std::borrow::Cow<'static, [u8]>>> {
+        Ok(path
+            .strip_prefix(SVG_PREFIX)
+            .and_then(|i| i.parse::<usize>().ok())
+            .and_then(|i| self.0.get(i))
+            .map(|s| s.clone().into_bytes().into()))
+    }
+    fn list(&self, _path: &str) -> gpui::Result<Vec<SharedString>> {
+        Ok(Vec::new())
+    }
+}
 
 fn hsla(c: Rgba) -> Hsla {
     gpui::rgba(c.to_u32()).into()
@@ -353,14 +372,17 @@ fn paint_silhouette(
         } else {
             Rgba::rgb(0xff, 0xff, 0xff)
         };
+        let style = TextStyle {
+            family: 0,
+            weight: 700,
+            italic: false,
+            size,
+            color: ink,
+        };
         paint_text(
             scene,
             &card.title,
-            0,
-            700,
-            false,
-            size,
-            ink,
+            style,
             Rect::new(r.x + 6.0, r.y, r.w - 12.0, hh),
             Align::Left,
             hh,
@@ -382,140 +404,175 @@ fn paint_items(
     cx: &mut App,
 ) {
     let o = card.rect.origin();
-    let to = |r: &Rect| camera.rect_to_screen(&r.offset(o));
     for item in &card.items {
-        match item {
-            Item::Box {
-                rect,
-                fill,
-                stroke,
-                stroke_w,
-                radius,
-                shadow,
-            } => {
-                let r = to(rect);
-                if r.w < 0.3 && r.h < 0.3 {
-                    continue;
-                }
-                let corner = px((radius * camera.zoom).min(r.w / 2.0).min(r.h / 2.0));
-                if let Some(s) = shadow
-                    && s.color.is_visible()
-                {
-                    window.paint_shadows(
-                        bounds(r),
-                        corner.into(),
-                        &[BoxShadow {
-                            color: hsla(s.color),
-                            offset: point(px(s.dx * camera.zoom), px(s.dy * camera.zoom)),
-                            blur_radius: px(s.blur * camera.zoom),
-                            spread_radius: px(0.0),
-                        }],
-                    );
-                }
-                let bw = if stroke.is_visible() {
-                    (stroke_w * camera.zoom).max(0.5)
-                } else {
-                    0.0
+        match item.clip() {
+            Some(c) => {
+                let mask = ContentMask {
+                    bounds: bounds(camera.rect_to_screen(&c.offset(o))),
                 };
-                if !fill.is_visible() && bw == 0.0 {
-                    continue;
-                }
-                window.paint_quad(quad(
-                    bounds(r),
-                    corner,
-                    hsla(*fill),
-                    Edges::all(px(bw)),
-                    hsla(*stroke),
-                    BorderStyle::Solid,
-                ));
+                window.with_content_mask(Some(mask), |w| paint_item(scene, item, o, camera, w, cx));
             }
-            Item::Text {
-                rect,
-                text,
-                color,
-                size,
-                weight,
-                family,
-                italic,
-                align,
-                line_h,
-                clip,
-            } => {
-                if !lod::text_visible(*size, camera.zoom) {
-                    continue;
-                }
-                let r = to(rect);
-                let lh = if *line_h > 0.0 {
-                    line_h * camera.zoom
-                } else {
-                    size * 1.2 * camera.zoom
-                };
-                let draw = |window: &mut Window, cx: &mut App| {
-                    paint_text(
-                        scene,
-                        text,
-                        *family,
-                        *weight,
-                        *italic,
-                        size * camera.zoom,
-                        *color,
-                        r,
-                        *align,
-                        lh,
-                        window,
-                        cx,
-                    )
-                };
-                match clip {
-                    Some(c) => window.with_content_mask(
-                        Some(ContentMask {
-                            bounds: bounds(to(c)),
-                        }),
-                        |w| draw(w, cx),
-                    ),
-                    None => draw(window, cx),
-                }
-            }
-            Item::Path {
-                path,
-                fill,
-                stroke,
-                stroke_w,
-            } => {
-                let p = path.translate(o);
-                if fill.is_visible() {
-                    fill_path(&p, camera, *fill, window);
-                }
-                if stroke.is_visible() && *stroke_w > 0.0 {
-                    stroke_path(
-                        &p,
-                        camera,
-                        (stroke_w * camera.zoom).max(0.5),
-                        *stroke,
-                        window,
-                    );
-                }
-            }
-            Item::Image { .. } => {}
+            None => paint_item(scene, item, o, camera, window, cx),
         }
     }
+}
+
+fn paint_item(
+    scene: &Scene,
+    item: &Item,
+    o: Point,
+    camera: &Camera,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let to = |r: &Rect| camera.rect_to_screen(&r.offset(o));
+    match item {
+        Item::Box {
+            rect,
+            fill,
+            stroke,
+            stroke_w,
+            radius,
+            shadow,
+            dashed,
+            ..
+        } => {
+            let r = to(rect);
+            if r.w < 0.3 && r.h < 0.3 {
+                return;
+            }
+            let corner = px((radius * camera.zoom).min(r.w / 2.0).min(r.h / 2.0));
+            if let Some(s) = shadow
+                && s.color.is_visible()
+            {
+                window.paint_shadows(
+                    bounds(r),
+                    corner.into(),
+                    &[BoxShadow {
+                        color: hsla(s.color),
+                        offset: point(px(s.dx * camera.zoom), px(s.dy * camera.zoom)),
+                        blur_radius: px(s.blur * camera.zoom),
+                        spread_radius: px(0.0),
+                    }],
+                );
+            }
+            let bw = if stroke.is_visible() {
+                (stroke_w * camera.zoom).max(0.5)
+            } else {
+                0.0
+            };
+            if !fill.is_visible() && bw == 0.0 {
+                return;
+            }
+            let style = if *dashed {
+                BorderStyle::Dashed
+            } else {
+                BorderStyle::Solid
+            };
+            window.paint_quad(quad(
+                bounds(r),
+                corner,
+                hsla(*fill),
+                Edges::all(px(bw)),
+                hsla(*stroke),
+                style,
+            ));
+        }
+        Item::Text {
+            rect,
+            text,
+            color,
+            size,
+            weight,
+            family,
+            italic,
+            align,
+            line_h,
+            ..
+        } => {
+            if !lod::text_visible(*size, camera.zoom) {
+                return;
+            }
+            let lh = if *line_h > 0.0 {
+                line_h * camera.zoom
+            } else {
+                size * 1.2 * camera.zoom
+            };
+            let style = TextStyle {
+                family: *family,
+                weight: *weight,
+                italic: *italic,
+                size: size * camera.zoom,
+                color: *color,
+            };
+            paint_text(scene, text, style, to(rect), *align, lh, window, cx);
+        }
+        Item::Path {
+            path,
+            fill,
+            stroke,
+            stroke_w,
+            ..
+        } => {
+            let p = path.translate(o);
+            if fill.is_visible() {
+                fill_path(&p, camera, *fill, window);
+            }
+            if stroke.is_visible() && *stroke_w > 0.0 {
+                stroke_path(
+                    &p,
+                    camera,
+                    (stroke_w * camera.zoom).max(0.5),
+                    *stroke,
+                    window,
+                );
+            }
+        }
+        Item::Image { .. } => {}
+        Item::Icon {
+            rect,
+            svg,
+            color,
+            rotate,
+            ..
+        } => {
+            let r = to(rect);
+            if r.w < 1.5 {
+                return;
+            }
+            let sf = window.scale_factor();
+            let c = r.center();
+            let m = TransformationMatrix::unit()
+                .translate(point(px(c.x).scale(sf), px(c.y).scale(sf)))
+                .rotate(Radians(rotate.to_radians()))
+                .translate(point(px(-c.x).scale(sf), px(-c.y).scale(sf)));
+            let path: SharedString = format!("{SVG_PREFIX}{svg}").into();
+            let _ = window.paint_svg(bounds(r), path, m, hsla(*color), cx);
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct TextStyle {
+    family: u16,
+    weight: u16,
+    italic: bool,
+    size: f32,
+    color: Rgba,
 }
 
 #[allow(clippy::too_many_arguments)]
 fn paint_text(
     scene: &Scene,
     text: &str,
-    fam: u16,
-    weight: u16,
-    italic: bool,
-    size: f32,
-    color: Rgba,
+    st: TextStyle,
     r: Rect,
     align: Align,
     line_h: f32,
     window: &mut Window,
     cx: &mut App,
 ) {
+    let (fam, weight, italic, size, color) = (st.family, st.weight, st.italic, st.size, st.color);
     let mut f = font(family(scene, fam));
     f.weight = FontWeight(weight as f32);
     f.style = if italic {
@@ -639,60 +696,63 @@ fn main() {
     }
     let viewport = scene.viewport;
 
-    Application::new().run(move |cx: &mut App| {
-        cx.text_system().add_fonts(fonts).expect("fonts");
-        let b = Bounds::centered(None, size(px(viewport.x), px(viewport.y)), cx);
-        cx.open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(b)),
-                titlebar: Some(gpui::TitlebarOptions {
-                    title: Some("Solenoid (GPUI)".into()),
+    let assets = SceneAssets(scene.svgs.clone());
+    Application::new()
+        .with_assets(assets)
+        .run(move |cx: &mut App| {
+            cx.text_system().add_fonts(fonts).expect("fonts");
+            let b = Bounds::centered(None, size(px(viewport.x), px(viewport.y)), cx);
+            cx.open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(b)),
+                    titlebar: Some(gpui::TitlebarOptions {
+                        title: Some("Solenoid (GPUI)".into()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
-                }),
-                ..Default::default()
-            },
-            move |_, cx| {
-                cx.new(|_| {
-                    let mut v = SceneView {
-                        camera: scene.camera,
-                        viewport,
-                        scene: Rc::new(scene),
-                        drag: None,
-                        last_paint: Rc::new(Cell::new((Duration::ZERO, 0))),
-                        bench: bench.then(|| Bench {
-                            zooms: vec![1.0, 0.5, 0.25, 0.1],
-                            step: 0,
-                            frame: 0,
-                            totals: [1.0, 0.5, 0.25, 0.1]
-                                .iter()
-                                .map(|&z| (z, Duration::ZERO, 0))
-                                .collect(),
-                        }),
-                        fitted: false,
-                    };
-                    if let Some(z) = zoom {
-                        let c = v.scene.bounds().center();
-                        v.camera = Camera {
-                            x: viewport.x / 2.0 - c.x * z,
-                            y: viewport.y / 2.0 - c.y * z,
-                            zoom: z,
+                },
+                move |_, cx| {
+                    cx.new(|_| {
+                        let mut v = SceneView {
+                            camera: scene.camera,
+                            viewport,
+                            scene: Rc::new(scene),
+                            drag: None,
+                            last_paint: Rc::new(Cell::new((Duration::ZERO, 0))),
+                            bench: bench.then(|| Bench {
+                                zooms: vec![1.0, 0.5, 0.25, 0.1],
+                                step: 0,
+                                frame: 0,
+                                totals: [1.0, 0.5, 0.25, 0.1]
+                                    .iter()
+                                    .map(|&z| (z, Duration::ZERO, 0))
+                                    .collect(),
+                            }),
+                            fitted: false,
                         };
-                        v.fitted = true;
-                    }
-                    v
+                        if let Some(z) = zoom {
+                            let c = v.scene.bounds().center();
+                            v.camera = Camera {
+                                x: viewport.x / 2.0 - c.x * z,
+                                y: viewport.y / 2.0 - c.y * z,
+                                zoom: z,
+                            };
+                            v.fitted = true;
+                        }
+                        v
+                    })
+                },
+            )
+            .unwrap();
+            cx.activate(true);
+            if let Some(ms) = exit_after {
+                cx.spawn(async move |cx| {
+                    cx.background_executor()
+                        .timer(Duration::from_millis(ms))
+                        .await;
+                    let _ = cx.update(|cx| cx.quit());
                 })
-            },
-        )
-        .unwrap();
-        cx.activate(true);
-        if let Some(ms) = exit_after {
-            cx.spawn(async move |cx| {
-                cx.background_executor()
-                    .timer(Duration::from_millis(ms))
-                    .await;
-                let _ = cx.update(|cx| cx.quit());
-            })
-            .detach();
-        }
-    });
+                .detach();
+            }
+        });
 }

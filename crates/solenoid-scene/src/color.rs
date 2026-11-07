@@ -58,6 +58,27 @@ impl Rgba {
         if let Some(hex) = s.strip_prefix('#') {
             return parse_hex(hex);
         }
+        if let Some(inner) = s
+            .strip_prefix("color(srgb ")
+            .and_then(|r| r.strip_suffix(')'))
+        {
+            // `color(srgb r g b / a)`, channels 0 to 1: what Chromium computes for `color-mix()`.
+            let nums: Vec<f32> = inner
+                .split(|c: char| c == '/' || c.is_whitespace())
+                .filter(|p| !p.is_empty())
+                .map(|p| p.parse::<f32>().ok())
+                .collect::<Option<_>>()?;
+            if nums.len() < 3 {
+                return None;
+            }
+            let ch = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+            return Some(Rgba([
+                ch(nums[0]),
+                ch(nums[1]),
+                ch(nums[2]),
+                ch(*nums.get(3).unwrap_or(&1.0)),
+            ]));
+        }
         let inner = s
             .strip_prefix("rgba(")
             .or_else(|| s.strip_prefix("rgb("))?
@@ -147,6 +168,14 @@ mod tests {
         assert_eq!(Rgba::parse("#f5b914"), Some(Rgba([0xf5, 0xb9, 0x14, 255])));
         assert_eq!(Rgba::parse("#fff8"), Some(Rgba([255, 255, 255, 0x88])));
         assert_eq!(Rgba::parse("transparent"), Some(Rgba::TRANSPARENT));
+        assert_eq!(
+            Rgba::parse("color(srgb 0.960784 0.72549 0.0784314 / 0.78)"),
+            Some(Rgba([245, 185, 20, 199]))
+        );
+        assert_eq!(
+            Rgba::parse("color(srgb 1 0 0)"),
+            Some(Rgba([255, 0, 0, 255]))
+        );
         assert_eq!(Rgba::parse("color-mix(in srgb, red, blue)"), None);
     }
 

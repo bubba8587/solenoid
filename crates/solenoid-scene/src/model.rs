@@ -35,6 +35,9 @@ pub struct Scene {
     pub fonts: Vec<String>,
     pub cards: Vec<Card>,
     pub cables: Vec<Cable>,
+    /// SVG sources the icon items point into, deduplicated.
+    #[serde(default)]
+    pub svgs: Vec<String>,
     #[serde(skip)]
     index: HashMap<String, usize>,
 }
@@ -110,6 +113,8 @@ pub enum Align {
     Right,
 }
 
+/// Every item may carry `clip`: the box of its nearest clipping ancestor in the card (an `overflow` box, or the
+/// `<svg>` a shape sits in), in card coordinates. A renderer masks the item to it.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "t", rename_all = "lowercase")]
 pub enum Item {
@@ -127,6 +132,10 @@ pub enum Item {
         /// Drop shadow color, when the element has one.
         #[serde(default)]
         shadow: Option<Shadow>,
+        #[serde(default)]
+        dashed: bool,
+        #[serde(default)]
+        clip: Option<Rect>,
     },
     /// One run of text laid out by Chromium in `rect` (a line box, or the whole block when it wrapped).
     Text {
@@ -144,7 +153,6 @@ pub enum Item {
         align: Align,
         #[serde(default)]
         line_h: f32,
-        /// The clipping box of the nearest `overflow` ancestor, where the text runs past it (an ellipsis in the app).
         #[serde(default)]
         clip: Option<Rect>,
     },
@@ -157,9 +165,27 @@ pub enum Item {
         stroke: Rgba,
         #[serde(default)]
         stroke_w: f32,
+        #[serde(default)]
+        clip: Option<Rect>,
     },
     /// A `<canvas>` or `<img>` the exporter could only capture as a picture (`data:` PNG).
-    Image { rect: Rect, src: String },
+    Image {
+        rect: Rect,
+        src: String,
+        #[serde(default)]
+        clip: Option<Rect>,
+    },
+    /// A one-color icon: an SVG (`Scene::svgs[svg]`) used as a CSS mask over a color, as the app's chevrons and
+    /// select arrows are. `rotate` is in degrees, about the center.
+    Icon {
+        rect: Rect,
+        svg: u32,
+        color: Rgba,
+        #[serde(default)]
+        rotate: f32,
+        #[serde(default)]
+        clip: Option<Rect>,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -287,6 +313,18 @@ impl Scene {
         let mut order: Vec<usize> = (0..self.cards.len()).collect();
         order.sort_by_key(|&i| (self.cards[i].kind != "group", self.cards[i].z));
         order
+    }
+}
+
+impl Item {
+    pub fn clip(&self) -> Option<Rect> {
+        match self {
+            Item::Box { clip, .. }
+            | Item::Text { clip, .. }
+            | Item::Path { clip, .. }
+            | Item::Image { clip, .. }
+            | Item::Icon { clip, .. } => *clip,
+        }
     }
 }
 
