@@ -675,6 +675,23 @@ function captureHtml() {
       } catch { /* a tainted canvas stays blank */ }
       return;
     }
+    // A range slider as a track, its filled part and a round thumb at the value, in the accent.
+    if (e.tagName === "INPUT" && e.type === "range") {
+      const min = parseFloat(e.min || "0"), max = parseFloat(e.max || "100"), v = parseFloat(e.value);
+      const f = max > min ? Math.min(1, Math.max(0, (v - min) / (max - min))) : 0;
+      const accent = toRgba(cs.accentColor && cs.accentColor !== "auto" ? cs.accentColor : getComputedStyle(e).getPropertyValue("--node-accent").trim() || getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "rgb(245, 185, 20)");
+      const w = parseFloat(cs.width) || 120, h = Math.max(parseFloat(cs.height) || 16, 12), thumb = 12;
+      const box = document.createElement("span");
+      for (const a of e.attributes) if (a.name === "class" || a.name === "title") box.setAttribute(a.name, a.value);
+      box.style.cssText = `display: inline-block; position: relative; box-sizing: border-box; width: ${w}px; height: ${h}px; margin: ${cs.margin}; flex: ${cs.flex}; vertical-align: middle; background: none; border: none;`;
+      const x = thumb / 2 + f * (w - thumb);
+      box.innerHTML = `<span style="position: absolute; left: ${thumb / 2}px; right: ${thumb / 2}px; top: ${h / 2 - 2}px; height: 4px; border-radius: 2px; background: rgba(154, 160, 166, 0.35);"></span>`
+        + `<span style="position: absolute; left: ${thumb / 2}px; width: ${x - thumb / 2}px; top: ${h / 2 - 2}px; height: 4px; border-radius: 2px; background: ${accent};"></span>`
+        + `<span style="position: absolute; left: ${x - thumb / 2}px; top: ${h / 2 - thumb / 2}px; width: ${thumb}px; height: ${thumb}px; border-radius: 50%; background: ${accent}; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);"></span>`;
+      c.replaceWith(box);
+      c.__replacement = box;
+      return;
+    }
     // A checkbox drawn as the browser draws it: a rounded box, filled with the accent and checked when on.
     if (e.tagName === "INPUT" && (e.type === "checkbox" || e.type === "radio")) {
       const box = document.createElement("span");
@@ -688,6 +705,27 @@ function captureHtml() {
       }
       c.replaceWith(box);
       c.__replacement = box;
+      return;
+    }
+    // A text-like input or a textarea as a box holding its value (or its placeholder, in the placeholder's color): stock
+    // Blitz leaves some input types blank, and nothing is typed into a picture.
+    if ((e.tagName === "INPUT" && !["checkbox", "radio", "range", "color", "file", "hidden", "button", "submit"].includes(e.type)) || e.tagName === "TEXTAREA") {
+      const multi = e.tagName === "TEXTAREA";
+      const span = document.createElement("span");
+      for (const a of e.attributes) if (a.name === "class" || a.name === "title" || a.name.startsWith("data-")) span.setAttribute(a.name, a.value);
+      const shown = e.value || e.placeholder || "";
+      span.textContent = e.type === "password" ? "•".repeat(e.value.length) : shown;
+      const color = e.value ? cs.color : getComputedStyle(e, "::placeholder").color;
+      const inner = parseFloat(cs.height) - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - parseFloat(cs.borderTopWidth) - parseFloat(cs.borderBottomWidth);
+      const keep = ["position", "left", "top", "right", "bottom", "margin", "flex", "align-self", "justify-self", "order", "grid-area", "z-index", "opacity",
+        "padding", "border-top", "border-right", "border-bottom", "border-left", "border-radius", "background-color", "background-image", "background-position",
+        "background-size", "background-repeat", "box-shadow", "font", "letter-spacing", "text-align", "text-transform", "font-variant-numeric"];
+      span.style.cssText = keep.map((k) => `${k}: ${toRgba(cs.getPropertyValue(k))};`).join(" ")
+        + ` display: ${cs.display === "inline" ? "inline-block" : cs.display === "flex" ? "block" : cs.display}; box-sizing: border-box; width: ${cs.width}; height: ${cs.height};`
+        + ` min-width: 0; overflow: hidden; color: ${toRgba(color)}; white-space: ${multi ? "pre-wrap" : "pre"}; text-overflow: ellipsis;`
+        + (multi ? ` line-height: ${cs.lineHeight};` : ` line-height: ${Math.max(0, inner)}px;`);
+      c.replaceWith(span);
+      c.__replacement = span;
       return;
     }
     if (e.tagName === "SELECT") {
