@@ -555,18 +555,72 @@ async function capture({ camera, W, H }) {
 function captureHtml() {
   // The canvas subtree with its ancestors' tags and classes (selectors depend on them), every stylesheet the page has,
   // and the root's theme attributes, as one static page Blitz can draw.
-  const vp = document.querySelector(".react-flow__viewport");
+  const live = document.querySelector(".react-flow__viewport");
+  // Flatten what a CSS engine short of Chromium may not resolve (light-dark(), color-mix(), var() in SVG paint):
+  // every element's computed colors go inline on a copy, which outranks the stylesheet rules and moves no layout. A
+  // <select> becomes a span of its chosen option's text, styled the same.
+  const vp = live.cloneNode(true);
+  const liveEls = [live, ...live.querySelectorAll("*")];
+  const copyEls = [vp, ...vp.querySelectorAll("*")];
+  const PROPS = ["color", "background-color", "border-top-color", "border-right-color", "border-bottom-color", "border-left-color", "outline-color"];
+  const SVG_PROPS = ["fill", "stroke", "stop-color"];
+  liveEls.forEach((e, i) => {
+    const c = copyEls[i];
+    const cs = getComputedStyle(e);
+    for (const p of e instanceof SVGElement ? SVG_PROPS : PROPS) {
+      const v = cs.getPropertyValue(p);
+      if (v && !v.startsWith("url(")) c.style.setProperty(p, v);
+    }
+    // The canvas backing is a 4,000,000 px square; its color goes on the page instead.
+    if (e.classList?.contains("sol-canvas-backing") && !e.classList.contains("sol-canvas-backing__dots")) {
+      c.remove();
+      return;
+    }
+    // The dot grid is an SVG <pattern>, which stock Blitz paints solid red; a repeating radial gradient of the same
+    // pitch draws the same dots.
+    if (e.classList?.contains("sol-canvas-backing__dots")) {
+      const dot = e.querySelector("circle");
+      const dc = dot ? getComputedStyle(dot).fill : "rgb(59, 59, 59)";
+      const pat = e.querySelector("pattern");
+      const pitch = pat ? parseFloat(pat.getAttribute("width")) : 24;
+      const r = dot ? parseFloat(dot.getAttribute("r")) : 1;
+      const div = document.createElement("div");
+      div.className = e.getAttribute("class");
+      div.style.cssText = `position: absolute; left: ${cs.left}; top: ${cs.top}; width: ${cs.width}; height: ${cs.height}; transform: ${cs.transform}; transform-origin: 0 0; pointer-events: none;`
+        + `background-image: radial-gradient(circle at ${r}px ${r}px, ${dc} ${r}px, transparent ${r + 0.5}px); background-size: ${pitch}px ${pitch}px; background-position: ${-r}px ${-r}px;`;
+      c.replaceWith(div);
+      return;
+    }
+    if (e.tagName === "SELECT") {
+      const span = document.createElement("span");
+      for (const a of e.attributes) span.setAttribute(a.name, a.value);
+      span.textContent = e.selectedOptions[0]?.textContent ?? "";
+      span.style.cssText = c.style.cssText;
+      span.style.display = cs.display === "inline" ? "inline-block" : cs.display;
+      span.style.width = cs.width; span.style.height = cs.height;
+      span.style.padding = cs.padding; span.style.border = `${cs.borderTopWidth} ${cs.borderTopStyle} ${cs.borderTopColor}`;
+      span.style.borderRadius = cs.borderRadius; span.style.font = cs.font; span.style.lineHeight = cs.height;
+      span.style.boxSizing = "border-box"; span.style.overflow = "hidden"; span.style.whiteSpace = "nowrap";
+      c.replaceWith(span);
+    }
+  });
   let inner = vp.outerHTML;
-  for (let e = vp.parentElement; e && e !== document.body; e = e.parentElement) {
-    const attrs = [...e.attributes].filter((a) => a.name === "class" || a.name === "style" || a.name.startsWith("data-")).map((a) => ` ${a.name}="${a.value.replace(/"/g, "&quot;")}"`).join("");
+  for (let e = live.parentElement; e && e !== document.body; e = e.parentElement) {
+    const acs = getComputedStyle(e);
+    const backing = document.querySelector(".sol-canvas-backing:not(.sol-canvas-backing__dots)");
+    const bg = e.classList.contains("react-flow") && backing ? getComputedStyle(backing).backgroundColor : acs.backgroundColor;
+    const flat = `background-color: ${bg}; color: ${acs.color};`;
+    const attrs = [...e.attributes].filter((a) => a.name === "class" || a.name === "id" || a.name.startsWith("data-")).map((a) => ` ${a.name}="${a.value.replace(/"/g, "&quot;")}"`).join("")
+      + ` style="${((e.getAttribute("style") ?? "") + ";" + flat).replace(/"/g, "&quot;")}"`;
     inner = `<${e.tagName.toLowerCase()}${attrs}>${inner}</${e.tagName.toLowerCase()}>`;
   }
   const css = [];
   for (const sheet of document.styleSheets) {
     try { for (const r of sheet.cssRules) css.push(r.cssText); } catch { /* cross-origin */ }
   }
-  const htmlAttrs = [...document.documentElement.attributes].map((a) => ` ${a.name}="${a.value.replace(/"/g, "&quot;")}"`).join("");
-  const bodyAttrs = [...document.body.attributes].map((a) => ` ${a.name}="${a.value.replace(/"/g, "&quot;")}"`).join("");
+  const rootFlat = (e) => ` style="${((e.getAttribute("style") ?? "") + `;background-color: ${getComputedStyle(e).backgroundColor}; color: ${getComputedStyle(e).color};`).replace(/"/g, "&quot;")}"`;
+  const htmlAttrs = [...document.documentElement.attributes].filter((a) => a.name !== "style").map((a) => ` ${a.name}="${a.value.replace(/"/g, "&quot;")}"`).join("") + rootFlat(document.documentElement);
+  const bodyAttrs = [...document.body.attributes].filter((a) => a.name !== "style").map((a) => ` ${a.name}="${a.value.replace(/"/g, "&quot;")}"`).join("") + rootFlat(document.body);
   const origin = location.origin;
   const style = css.join("\n").replace(/url\("?\/(?!\/)/g, `url("${origin}/`);
   return `<!doctype html><html${htmlAttrs}><head><meta charset="utf-8"><style>${style}</style></head><body${bodyAttrs}>${inner}</body></html>`;
