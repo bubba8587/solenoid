@@ -8,7 +8,6 @@
   {"formula":"REPT(\"a\", 32768)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"REPT(\"a\", 32767)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"REPT(r_A7_C7, NA())","env":["r_A7_C7=list:text:[\"abc\", \"def\", \"ghi\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
-  {"formula":"REPT(\"a\",32767)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"REPT(\"1\",53)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"REPT(\"0\",254)&\"1\"","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"REPT(\"0\",255)&\"1\"","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},

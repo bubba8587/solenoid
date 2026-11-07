@@ -5,7 +5,6 @@
   {"formula":"SEARCH(\"z\", \"abc\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"SEARCH(\"A\", \"abc\", -1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"SEARCH(\"\",\"abc\",5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
-  {"formula":"SEARCH(\"a?c\",\"xabc\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"SEARCH(\"B*D\",\"abcde\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"SEARCH(\"~*\",\"a*b\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"SEARCH(\"~?\",\"ab?\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},

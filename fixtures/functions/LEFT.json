@@ -8,7 +8,6 @@
   {"formula":"LEFT(\"abc\", -1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"LEFT(\"abc\", -0.5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"LEFT(0.1 + 0.2, 5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
-  {"formula":"LEFT(\"abc\",-1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"LEFT(\"abc\", n)","env":["n=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"LEFT(\"abc\", \"2\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"LEFT(0.1+0.2, 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},

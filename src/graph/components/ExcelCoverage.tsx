@@ -10,6 +10,7 @@ import { appThemeStore } from "../appTheme";
 import type { NodeCatalogEntry } from "../AddNodeMenu";
 import { accentVars, cardAccent } from "./CardReference";
 import { EqualIcon, TriangleAlertIcon } from "./Icons";
+import { hasFunctionRecord, openFunctionRecord } from "../functionRecords";
 
 /** A heavy square-cut arrow, as the Frame mark is drawn: butt ends, mitred point. */
 function ChunkyArrow() {
@@ -31,12 +32,23 @@ interface XlEntry {
   same?: boolean;
 }
 
-/** A row's parity mark, closing the row: = where the card answers as Excel does, ⚠ where it differs. */
-function ParityMark({ same }: { same: boolean }) {
+/** A row's parity mark, closing the row: = where the card answers as Excel does, ⚠ where it differs. Where the
+ *  function has a record, the mark opens the cases behind it ([[C140]] functionRecords). */
+function ParityMark({ same, name }: { same: boolean; name?: string }) {
+  const icon = same ? <EqualIcon size={14} strokeWidth={2.2} /> : <TriangleAlertIcon size={13} />;
+  const cls = `fr-xl__parity fr-xl__parity--${same ? "same" : "differs"}`;
+  if (name && hasFunctionRecord(name)) {
+    return (
+      <button type="button" className={`${cls} fr-xl__parity--cases`} title="Cases checked against Excel"
+        aria-label={`Open ${name}'s cases checked against Excel`}
+        onClick={(ev) => { ev.stopPropagation(); void openFunctionRecord(name); }}>
+        {icon}
+      </button>
+    );
+  }
   return (
-    <span className={`fr-xl__parity fr-xl__parity--${same ? "same" : "differs"}`} role="img"
-      aria-label={same ? "Same as Excel" : "Differs from Excel: the card's page says how"}>
-      {same ? <EqualIcon size={14} strokeWidth={2.2} /> : <TriangleAlertIcon size={13} />}
+    <span className={cls} role="img" aria-label={same ? "Same as Excel" : "Differs from Excel: the card's page says how"}>
+      {icon}
     </span>
   );
 }
@@ -159,7 +171,7 @@ export function ExcelCoverage() {
                       : e.use ? <>use {e.use.card ? cardLink(e.use.card) : e.use.text}</>
                       : "—"}
                   </span>
-                  {e.cards.length ? <ParityMark same={!!e.same} /> : <span />}
+                  {e.cards.length ? <ParityMark same={!!e.same} name={e.name} /> : <span />}
                 </div>
               ))}
             </section>

@@ -7,8 +7,10 @@ export interface Group { group: string; axis: string; cite: string[]; cases: Cas
 
 export const RECORDS = "fixtures/functions";
 
-/** A case's identity: its formula and its bindings, the bindings in order. */
-export const keyOf = (formula: string, env: readonly string[]) => JSON.stringify([formula, [...env].sort()]);
+/** A case's identity: its formula without the spaces between tokens, which mean nothing in the shared syntax (it has
+ *  no space operator), and its bindings in order. */
+export const keyOf = (formula: string, env: readonly string[]) =>
+  JSON.stringify([formula.replace(/"[^"]*"|\s+/g, (s) => (s.startsWith('"') ? s : "")), [...env].sort()]);
 
 export function readRecord(root: string, fn: string): Group[] | null {
   const p = join(root, RECORDS, `${fn}.json`);

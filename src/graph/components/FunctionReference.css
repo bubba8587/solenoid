@@ -572,6 +572,19 @@ html.hdr-case-proper .fr-land__head > span { text-transform: capitalize; }
 .fr-xl__parity { display: inline-flex; justify-self: center; align-self: center; }
 .fr-xl__parity--same { color: var(--sol-ok); }
 .fr-xl__parity--differs { color: var(--sol-warn); }
+/* A mark with a record behind it opens the cases: a round icon button, quiet until hovered. */
+.fr-xl__parity--cases {
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+.fr-xl__parity--cases:hover { background: var(--btn-hover); border-color: var(--border-strong); }
+.fr-xl__parity--cases:focus-visible { outline: none; border-color: var(--accent); }
 /* The frozen header pane: what each side of a row is, Excel's name pointing at Solenoid's card. */
 .fr-xl__cols-head {
   display: grid;

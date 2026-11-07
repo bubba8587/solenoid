@@ -46,6 +46,10 @@ Each case row has these keys:
 
 A case's formula is written in the syntax Excel and Solenoid share, since the same text becomes the workbook's live formula. Solenoid's formulas have no array literals, no error literals and no escaped quote ([[formula-language#Lexical grammar]]), so a list, a matrix and a text holding a `"` reach a formula through a name in `env`, and an error through a function that answers one (`NA()`, `1/0`). A name in `env` is never one of Solenoid's constants (`e`, `pi`, `tau`, `phi`). In the workbook, an `env` name is a defined name referring to cells that hold its value: a scalar one cell, a list a row of cells (a List is one row, [[D85]] columnsStayColumns), a matrix a block, a blank a cell left empty. The value sits in cells, never in a constant the name holds, because Excel reads a value in a cell differently from one typed into a formula (`SUM(A1)` with A1 holding the text "5" is 0, `SUM("5")` is 5), and a Solenoid value arriving from a card is the cell's case, as IronCalc's cases are.
 
+Two cases are one case when their formulas differ only in spaces between tokens, which the shared syntax gives no meaning, and their bindings match; the record keeps the spelling it saw first.
+
+The Function Reference's Excel Coverage tab opens a function's record from its row's parity mark, in the Cube popup and read-only (`functionRecords.ts`); a function without a record keeps a plain mark.
+
 What a record does not store: the function's own facts that already have a declaration (its argument roles and empty-slot readings in the core's `data/call_traits.json`, its date class in `date_values.rs`, its unit class in [[unit-flow]], the family lists that name it, such as the aggregates that refuse text). The Function Reference renders those beside the record by reading the declarations, each under the leaf its declaration cites, so no fact is written twice ([[engineering#One declaration per fact]]).
 
 ## The kinds of truth

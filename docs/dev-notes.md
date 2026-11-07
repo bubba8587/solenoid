@@ -6,6 +6,13 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-07: function records, the Text family organized; cloud session)
+- **Function records** ([[C140]] functionRecords, `tree/specs/computation/function-records.md`): one Cube-form record per function under `fixtures/functions/`, Excel's answer beside Solenoid's, a kind of truth, a verdict and a citation per case. Excel's answers come only from a workbook Excel saved, through `from-excel.ts`, which refuses anything else or a wrong calibration sheet.
+- **Text is organized**: 33 records, 43,771 cases (the old tests and specs, IronCalc's workbooks vendored under `fixtures/functions/sources/ironcalc`, the edge grid); `harvest.json` gives every mention a case or a reason. No answer is filled: the run waits until every family is organized.
+- **Traps the workbook handles**: bound values sit in cells, not constants (Excel reads them differently); every formula is a marked dynamic array (an unmarked one is intersected); Excel's `_xlfn.` prefixes come from Excel-saved files; arrays come back through ARRAYTOTEXT beside a shape cell.
+- **Viewer**: the Excel Coverage tab's parity mark opens a function's record in the Cube popup.
+- Develop was rewritten upstream mid-session; 50 Android commits no remote held were kept on the local branch `backup/android-local-2026-11-07` in the session's container only.
+
 ### SESSION DIGEST (2026-11-06: audit and bug hunt; cloud session)
 - **Saves:** a text holding half a surrogate pair made the core read the save as null, so every save, autosave and undo snapshot became an empty document; the writer spells such halves U+FFFD and `textFormWrite` answers an unreadable save with `!`. The per-card `foreign` mark rides the text form's positions table ([[save-format]]).
 - **Shared documents** ([[B18]] safeToShare): every picture path holds through `webUrl.ts` (the browser's URL parser decides what is the web); markdown text values use `sanitizeNoteHtml`; table-cell pictures go through `WebImage`; SVG `href`, `background`, `<style>`, `image-set()` and `@import` are held. An AI rewrite can't clear a mark (`keepCardTrust`). The Script worker's file is served with its own CSP (`vercel.json`) and a newly loaded graph retires the worker. File Link asks before UNC paths and more Windows launchers.
