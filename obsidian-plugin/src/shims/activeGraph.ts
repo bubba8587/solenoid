@@ -13,3 +13,7 @@ export function getOwningView(_nodeId: string): null {
 export function getActiveView(): null {
   return null;
 }
+
+export function allTopEditors(): GraphEditor<Schemes>[] {
+  return [];
+}
