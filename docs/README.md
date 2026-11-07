@@ -76,6 +76,8 @@ is parked there.
   1.6 cut (what is left, the rest after 1.6) is `1.6-plan.md`, the 2.0 cut in `2.0-plan.md`, and items land here as the
   author promotes them. The
   release tail lives here.
+- **`fast-render.md`** — the `blitz-gpui` branch only: the canvas drawn natively by GPUI and by Blitz into a retained
+  Vello scene, the exporter that feeds them, how to run them at thousands of cards, and what is open.
 - **`canvas-frame-cost-findings.md`** — the 2026-10 canvas frame-cost report: what a pan/zoom
   frame costs, the source-verified Chromium mechanisms, what shipped (desktop pan layer, socket
   handle), what was reverted or rejected, and the open candidates (cables, minimap).

@@ -6,6 +6,15 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-07: fast render on `blitz-gpui`; cloud session)
+- **Branch `blitz-gpui`** (author's order: renderer-only, "close enough", parallel development, tests off): the scene
+  crate, the exporter, a GPUI renderer and a Blitz renderer drawing a retained Vello scene; `fast-render.md` is the
+  home. Nothing in `src/` changed.
+- **What stands:** retained chunks make a frame's CPU cost follow the screen, not the graph (0.75 ms at 25% zoom over
+  3,856 cards); GPUI's immediate mode costs about 0.23 ms per full card per frame. No GPU in the cloud container, so no
+  frame rate measured here is real.
+- **Open:** all 3,856 cards in one frame renders blank on lavapipe; a live feed from the app instead of snapshots.
+
 ### SESSION DIGEST (2026-11-07: live multiplayer researched; cloud session)
 - **Bundle 27** (`v2.0/27-multiplayer.md`, plan-only) is bundle 21 Stage 3's new home: link rooms with no accounts, a
   Loro CRDT at the `serializeGraph` boundary keyed by room-only sync ids, tables as rows × columns × raw-text cells,
