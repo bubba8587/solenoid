@@ -308,6 +308,44 @@ impl Scene {
             .max_by_key(|c| (c.z, c.kind != "group"))
     }
 
+    /// `n × n` copies of the scene side by side, ids suffixed `~row.col`, for loading a renderer with thousands of real
+    /// cards. Each copy keeps its groups and cables.
+    pub fn tiled(&self, n: usize) -> Scene {
+        if n <= 1 {
+            return self.clone();
+        }
+        let b = self.bounds();
+        let (dx, dy) = (b.w + 200.0, b.h + 200.0);
+        let mut out = Scene {
+            cards: Vec::with_capacity(self.cards.len() * n * n),
+            cables: Vec::with_capacity(self.cables.len() * n * n),
+            ..self.clone()
+        };
+        for row in 0..n {
+            for col in 0..n {
+                let d = Point::new(col as f32 * dx, row as f32 * dy);
+                let sfx = |id: &str| format!("{id}~{row}.{col}");
+                for c in &self.cards {
+                    let mut c = c.clone();
+                    c.id = sfx(&c.id);
+                    c.parent = c.parent.as_deref().map(sfx);
+                    c.rect = c.rect.offset(d);
+                    out.cards.push(c);
+                }
+                for c in &self.cables {
+                    let mut c = c.clone();
+                    c.id = sfx(&c.id);
+                    c.source = sfx(&c.source);
+                    c.target = sfx(&c.target);
+                    c.path = c.path.translate(d);
+                    out.cables.push(c);
+                }
+            }
+        }
+        out.reindex();
+        out
+    }
+
     /// Cards in drawing order: groups first, then by stacking order, then as the app listed them.
     pub fn draw_order(&self) -> Vec<usize> {
         let mut order: Vec<usize> = (0..self.cards.len()).collect();
@@ -361,6 +399,18 @@ mod tests {
         assert_eq!(s.bounds(), Rect::new(0.0, 0.0, 700.0, 300.0));
         assert_eq!(s.card_at(Point::new(20.0, 20.0)).unwrap().id, "a");
         assert_eq!(s.card_at(Point::new(300.0, 200.0)).unwrap().id, "g");
+    }
+
+    #[test]
+    fn tiling_copies_cards_cables_and_groups() {
+        let s = tiny().tiled(3);
+        assert_eq!(s.cards.len(), 9 * 3);
+        assert_eq!(s.cables.len(), 9);
+        let a = s.card("a~2.1").unwrap();
+        assert_eq!(a.parent.as_deref(), Some("g~2.1"));
+        assert_eq!(a.rect.x, 10.0 + 900.0);
+        assert_eq!(a.rect.y, 10.0 + 2.0 * 500.0);
+        assert_eq!(s.cables[7].source, "a~2.1");
     }
 
     #[test]

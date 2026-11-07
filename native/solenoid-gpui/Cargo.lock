@@ -5124,9 +5124,12 @@ dependencies = [
 name = "solenoid-gpui"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "env_logger",
  "gpui",
+ "image",
  "serde_json",
+ "smallvec",
  "solenoid-scene",
 ]
 

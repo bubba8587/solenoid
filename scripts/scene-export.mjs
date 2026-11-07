@@ -571,6 +571,19 @@ function captureHtml() {
       const v = cs.getPropertyValue(p);
       if (v && !v.startsWith("url(")) c.style.setProperty(p, v);
     }
+    // SVG geometry set from CSS (the card frames' rects, an svg sized by its stylesheet) as attributes, which an SVG
+    // library reads where it ignores the CSS.
+    if (e.tagName === "rect" || e.tagName === "circle" || e.tagName === "ellipse") {
+      for (const a of ["x", "y", "width", "height", "rx", "ry", "cx", "cy", "r"]) {
+        const v = cs.getPropertyValue(a);
+        if (v && v.endsWith("px")) c.setAttribute(a, String(parseFloat(v)));
+      }
+    } else if (e.tagName === "svg") {
+      const r = e.getBoundingClientRect();
+      // The page is captured at zoom 1, so the box is the svg's own size.
+      if (!e.getAttribute("width") && r.width) c.setAttribute("width", String(r.width));
+      if (!e.getAttribute("height") && r.height) c.setAttribute("height", String(r.height));
+    }
     // The canvas backing is a 4,000,000 px square; its color goes on the page instead.
     if (e.classList?.contains("sol-canvas-backing") && !e.classList.contains("sol-canvas-backing__dots")) {
       c.remove();

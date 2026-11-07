@@ -33,6 +33,7 @@ pub fn detail(zoom: f32, screen_w: f32) -> Detail {
     }
 }
 
+/// Whether text of `size` is worth shaping at `zoom` when level of detail is on; full fidelity draws all of it.
 pub fn text_visible(size: f32, zoom: f32) -> bool {
     size * zoom >= MIN_TEXT_PX
 }
@@ -47,14 +48,30 @@ pub struct Frame {
 }
 
 impl Frame {
+    /// Every card in view at full detail (a card under 2 px is one rectangle, which is all it covers anyway).
     pub fn build(scene: &Scene, camera: &Camera, size: Point) -> Frame {
+        Frame::build_with(scene, camera, size, false)
+    }
+
+    /// As `build`, and with `lod` far-out cards step down to silhouettes and blocks ([`detail`]).
+    pub fn build_with(scene: &Scene, camera: &Camera, size: Point, lod: bool) -> Frame {
         // A margin so a socket or a shadow at the edge isn't clipped by the cull.
         let visible = camera.visible(size).inflate(24.0 / camera.zoom);
         let cards = scene
             .draw_order()
             .into_iter()
             .filter(|&i| scene.cards[i].rect.intersects(&visible))
-            .map(|i| (i, detail(camera.zoom, scene.cards[i].rect.w * camera.zoom)))
+            .map(|i| {
+                let w = scene.cards[i].rect.w * camera.zoom;
+                let d = if lod {
+                    detail(camera.zoom, w)
+                } else if w < 2.0 {
+                    Detail::Block
+                } else {
+                    Detail::Full
+                };
+                (i, d)
+            })
             .collect();
         let cables = scene
             .cables

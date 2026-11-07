@@ -2,7 +2,10 @@
 //! Solenoid's canvas drawn by GPUI (`docs/fast-render.md` § GPUI): a scene captured from the live app
 //! (`scripts/scene-export.mjs`) as boxes, text, paths and cables, panned, zoomed and dragged natively.
 //!
-//!   solenoid-gpui <scene-dir> [--zoom Z] [--bench] [--exit-after MS]
+//!   solenoid-gpui <scene-dir> [--zoom Z] [--tile N] [--lod] [--bench] [--exit-after MS]
+//!
+//! `--tile N` lays N × N copies of the scene side by side (thousands of real cards); `--lod` turns on far-zoom
+//! silhouettes (off by default: every card draws whole at every zoom).
 //!
 //! Wheel zooms about the cursor, a drag on a card moves it (and a group's members), a drag on the canvas pans, a
 //! double click on the canvas fits the graph. `--bench` pans and zooms through the findings doc's zoom levels and
@@ -12,9 +15,9 @@
 use gpui::{
     App, Application, AssetSource, BorderStyle, Bounds, BoxShadow, ContentMask, Context, Corners,
     Edges, FontStyle, FontWeight, Hsla, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
-    PathBuilder, Pixels, Radians, Render, ScrollDelta, ScrollWheelEvent, SharedString, TextAlign,
-    TextRun, TransformationMatrix, Window, WindowBounds, WindowOptions, canvas, div, font, point,
-    prelude::*, px, quad, size,
+    PathBuilder, Pixels, Radians, Render, RenderImage, ScrollDelta, ScrollWheelEvent, SharedString,
+    TextAlign, TextRun, TransformationMatrix, Window, WindowBounds, WindowOptions, canvas, div,
+    font, point, prelude::*, px, quad, size,
 };
 use solenoid_scene::lod::{self, Detail, Frame};
 use solenoid_scene::model::Align;
@@ -22,9 +25,57 @@ use solenoid_scene::{Camera, Item, Path, Point, Rect, Rgba, Scene, Seg};
 use std::cell::Cell;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 const SVG_PREFIX: &str = "scene-svg/";
+
+struct KindTimer(usize, Instant);
+impl Drop for KindTimer {
+    fn drop(&mut self) {
+        KIND_T.with(|k| k.borrow_mut()[self.0] += self.1.elapsed());
+    }
+}
+
+thread_local! {
+    static KIND_T: std::cell::RefCell<[Duration; 5]> = const { std::cell::RefCell::new([Duration::ZERO; 5]) };
+    /// `--lod`: far-out cards as silhouettes and small text skipped. Off, every card draws whole at every zoom.
+    static LOD: Cell<bool> = const { Cell::new(false) };
+    /// The scene's captured pictures (`data:` PNGs), decoded once, by their source.
+    static IMAGES: std::cell::RefCell<std::collections::HashMap<String, Arc<RenderImage>>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+fn load_images(scene: &Scene) {
+    use base64::Engine as _;
+    for card in &scene.cards {
+        for item in &card.items {
+            let Item::Image { src, .. } = item else {
+                continue;
+            };
+            if IMAGES.with(|m| m.borrow().contains_key(src)) {
+                continue;
+            }
+            let Some(b64) = src.split_once(";base64,").map(|(_, d)| d) else {
+                continue;
+            };
+            let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(b64) else {
+                continue;
+            };
+            let Ok(img) = image::load_from_memory(&bytes) else {
+                continue;
+            };
+            let mut rgba = img.to_rgba8();
+            // GPUI's image atlas is BGRA.
+            for p in rgba.pixels_mut() {
+                p.0.swap(0, 2);
+            }
+            let frame = image::Frame::new(rgba);
+            let ri = Arc::new(RenderImage::new(smallvec::smallvec![frame]));
+            IMAGES.with(|m| m.borrow_mut().insert(src.clone(), ri));
+        }
+    }
+}
 
 /// Serves the scene's icon SVGs to GPUI's SVG renderer, which loads by path.
 struct SceneAssets(Vec<String>);
@@ -276,14 +327,26 @@ fn paint_scene(
     if let Some(g) = scene.grid {
         paint_grid(g, camera, viewport, window);
     }
-    let frame = Frame::build(scene, camera, viewport);
+    let skip = std::env::var("SKIP").unwrap_or_default();
+    let t = Instant::now();
+    let frame = Frame::build_with(scene, camera, viewport, LOD.with(|l| l.get()));
+    let t_frame = t.elapsed();
+    let t = Instant::now();
     for &i in &frame.cables {
+        if skip.contains("cable") {
+            break;
+        }
         let c = &scene.cables[i];
         let path = scene.cable_path(c);
         let w = (c.width * camera.zoom).max(1.0);
         stroke_path(&path, camera, w, c.color.fade(c.opacity), window);
     }
+    let t_cables = t.elapsed();
+    let t = Instant::now();
     for &(i, detail) in &frame.cards {
+        if skip.contains("cards") {
+            break;
+        }
         let card = &scene.cards[i];
         let r = camera.rect_to_screen(&card.rect);
         match detail {
@@ -291,6 +354,18 @@ fn paint_scene(
             Detail::Silhouette => paint_silhouette(scene, card, r, camera, window, cx),
             Detail::Full => paint_items(scene, card, camera, window, cx),
         }
+    }
+    if std::env::var_os("SOLENOID_GPUI_DEBUG").is_some() {
+        let k = KIND_T.with(|k| std::mem::take(&mut *k.borrow_mut()));
+        eprintln!(
+            "frame {t_frame:?} cables {t_cables:?} cards {:?} [box {:?} text {:?} path {:?} image {:?} icon {:?}]",
+            t.elapsed(),
+            k[0],
+            k[1],
+            k[2],
+            k[3],
+            k[4]
+        );
     }
     frame.cards.len()
 }
@@ -405,6 +480,15 @@ fn paint_items(
 ) {
     let o = card.rect.origin();
     for item in &card.items {
+        let t0 = Instant::now();
+        let kind = match item {
+            Item::Box { .. } => 0,
+            Item::Text { .. } => 1,
+            Item::Path { .. } => 2,
+            Item::Image { .. } => 3,
+            Item::Icon { .. } => 4,
+        };
+        let _g = KindTimer(kind, t0);
         match item.clip() {
             Some(c) => {
                 let mask = ContentMask {
@@ -490,7 +574,7 @@ fn paint_item(
             line_h,
             ..
         } => {
-            if !lod::text_visible(*size, camera.zoom) {
+            if LOD.with(|l| l.get()) && !lod::text_visible(*size, camera.zoom) {
                 return;
             }
             let lh = if *line_h > 0.0 {
@@ -528,7 +612,11 @@ fn paint_item(
                 );
             }
         }
-        Item::Image { .. } => {}
+        Item::Image { rect, src, .. } => {
+            if let Some(img) = IMAGES.with(|m| m.borrow().get(src).cloned()) {
+                let _ = window.paint_image(bounds(to(rect)), px(0.0).into(), img, 0, false);
+            }
+        }
         Item::Icon {
             rect,
             svg,
@@ -670,7 +758,7 @@ fn main() {
             .cloned()
             .unwrap_or_else(|| {
                 eprintln!(
-                    "usage: solenoid-gpui <scene-dir> [--zoom Z] [--bench] [--exit-after MS]"
+                    "usage: solenoid-gpui <scene-dir> [--zoom Z] [--tile N] [--lod] [--bench] [--exit-after MS]"
                 );
                 std::process::exit(2);
             }),
@@ -685,7 +773,18 @@ fn main() {
     let zoom: Option<f32> = flag("--zoom").and_then(|z| z.parse().ok());
     let exit_after: Option<u64> = flag("--exit-after").and_then(|z| z.parse().ok());
     let json = std::fs::read_to_string(dir.join("scene.json")).expect("scene.json");
-    let scene = Scene::from_json(&json).expect("a scene");
+    let tile: usize = flag("--tile").and_then(|z| z.parse().ok()).unwrap_or(1);
+    let scene = Scene::from_json(&json).expect("a scene").tiled(tile);
+    LOD.with(|l| l.set(args.iter().any(|a| a == "--lod")));
+    load_images(&scene);
+    if tile > 1 {
+        eprintln!(
+            "tiled {tile}×{tile}: {} cards, {} items, {} cables",
+            scene.cards.len(),
+            scene.cards.iter().map(|c| c.items.len()).sum::<usize>(),
+            scene.cables.len()
+        );
+    }
     let mut fonts: Vec<std::borrow::Cow<'static, [u8]>> = Vec::new();
     if let Ok(rd) = std::fs::read_dir(dir.join("fonts")) {
         for e in rd.flatten() {

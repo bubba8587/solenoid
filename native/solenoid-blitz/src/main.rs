@@ -5,7 +5,9 @@
 //!
 //!   solenoid-blitz shot  <scene-dir> <out.png> [--zoom Z]   render one frame on the CPU (vello_cpu)
 //!   solenoid-blitz bench <scene-dir>                        pan and zoom at the findings doc's zoom levels, timed
-//!   solenoid-blitz view  <scene-dir>                        a window: wheel zooms, drag pans
+//!   solenoid-blitz view  <scene-dir> [--zoom Z] [--tile N] [--animate]
+//!                         a window over a retained Vello scene (`view.rs`): wheel zooms, drag pans; `--tile N`
+//!                         repeats the recorded graph N × N, `--animate` pans continuously, for judging frame rate
 #![forbid(unsafe_code)]
 
 mod view;
@@ -218,10 +220,11 @@ fn bench(dir: &Path) {
 }
 
 fn main() {
+    env_logger::init();
     let args: Vec<String> = std::env::args().skip(1).collect();
     let usage = || -> ! {
         eprintln!(
-            "usage: solenoid-blitz shot <scene-dir> <out.png> [--zoom Z] | bench <scene-dir> | view <scene-dir>"
+            "usage: solenoid-blitz shot <scene-dir> <out.png> [--zoom Z] | bench <scene-dir> | view <scene-dir> [--zoom Z] [--tile N] [--animate]"
         );
         std::process::exit(2)
     };
@@ -237,7 +240,12 @@ fn main() {
             shot(&PathBuf::from(&args[1]), &PathBuf::from(&args[2]), zoom)
         }
         Some("bench") if args.len() >= 2 => bench(&PathBuf::from(&args[1])),
-        Some("view") if args.len() >= 2 => view::run(PathBuf::from(&args[1]), zoom),
+        Some("view") if args.len() >= 2 => view::run(
+            PathBuf::from(&args[1]),
+            zoom,
+            flag("--tile").and_then(|t| t.parse().ok()).unwrap_or(1),
+            args.iter().any(|a| a == "--animate"),
+        ),
         _ => usage(),
     }
 }

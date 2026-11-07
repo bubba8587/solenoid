@@ -5,6 +5,8 @@ name: Test
 
 on:
   push:
+    # The renderer-only branch skips the app's suites (author 2026-11-07); its crates are checked locally.
+    branches-ignore: [blitz-gpui]
   pull_request:
   workflow_dispatch:
 
