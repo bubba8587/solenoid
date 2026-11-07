@@ -14,7 +14,8 @@ on:
 
 concurrency:
   group: fast-render-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer push queues behind a running build rather than cancelling it, so a finished download always exists.
+  cancel-in-progress: false
 
 jobs:
   scenes:
