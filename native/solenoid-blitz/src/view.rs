@@ -223,6 +223,7 @@ impl Gpu {
 }
 
 struct Viewer {
+    info: crate::SceneInfo,
     chunks: Vec<Chunk>,
     base: Color,
     camera: Camera,
@@ -265,6 +266,13 @@ impl Viewer {
         );
         let cam = Affine::translate(Vec2::new(c.x, c.y)) * Affine::scale(c.zoom);
         self.frame.reset();
+        crate::paint_backdrop(
+            &mut VelloScenePainter::new(&mut self.frame),
+            &self.info,
+            c,
+            w,
+            h,
+        );
         self.drawn = 0;
         for ch in &self.chunks {
             if ch.rect.overlaps(view) {
@@ -372,8 +380,10 @@ pub fn run(dir: PathBuf, zoom: Option<f64>, tile: usize, animate: bool) {
         Some(z) => crate::centered(&info, z),
         None => info.camera,
     };
+    let _ = base;
     let event_loop = EventLoop::new().unwrap();
     let mut viewer = Viewer {
+        info,
         chunks,
         base,
         camera,

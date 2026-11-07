@@ -13,6 +13,7 @@ blitz-traits = "=0.3.0-beta.4"
 vello = { version = "0.11", features = ["bump_estimate"] }
 winit = "0.30"
 pollster = "0.4"
+data-url = "0.3"
 env_logger = "0.11"
 anyrender = "0.14.0"
 anyrender_vello_cpu = "0.18.0"

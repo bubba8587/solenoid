@@ -3161,6 +3161,7 @@ dependencies = [
  "blitz-html",
  "blitz-paint",
  "blitz-traits",
+ "data-url",
  "env_logger",
  "parley",
  "png 0.17.16",

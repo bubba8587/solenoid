@@ -36,6 +36,61 @@ pub struct SceneInfo {
     pub height: u32,
     pub camera: Camera,
     pub center: (f64, f64),
+    pub background: [u8; 4],
+    /// The dot grid: pitch and radius in flow pixels, and color.
+    pub grid: Option<(f64, f64, [u8; 4])>,
+}
+
+/// The canvas under the page: its color and dot grid at the camera, in screen space. The grid thins (every 2nd, 4th …
+/// dot) once dots crowd closer than 12 px, and is one path, so it costs one fill whatever the zoom.
+pub fn paint_backdrop(
+    p: &mut impl anyrender::PaintScene,
+    info: &SceneInfo,
+    c: Camera,
+    w: f64,
+    h: f64,
+) {
+    use vello::kurbo::{Affine, BezPath, Circle, Rect, Shape};
+    use vello::peniko::{Color, Fill};
+    let [r, g, b, a] = info.background;
+    p.fill(
+        Fill::NonZero,
+        Affine::IDENTITY,
+        Color::from_rgba8(r, g, b, a),
+        None,
+        &Rect::new(0.0, 0.0, w, h),
+    );
+    let Some((pitch, radius, [r, g, b, a])) = info.grid else {
+        return;
+    };
+    let mut gap = pitch;
+    while gap * c.zoom < 12.0 {
+        gap *= 2.0;
+    }
+    let dot = (radius * c.zoom).clamp(0.75, 1.5);
+    let (x0, y0) = ((-c.x / c.zoom / gap).floor(), (-c.y / c.zoom / gap).floor());
+    let (x1, y1) = (
+        ((w - c.x) / c.zoom / gap).ceil(),
+        ((h - c.y) / c.zoom / gap).ceil(),
+    );
+    let mut path = BezPath::new();
+    let mut gy = y0;
+    while gy <= y1 {
+        let mut gx = x0;
+        while gx <= x1 {
+            let (sx, sy) = (gx * gap * c.zoom + c.x, gy * gap * c.zoom + c.y);
+            path.extend(Circle::new((sx, sy), dot).path_elements(0.1));
+            gx += 1.0;
+        }
+        gy += 1.0;
+    }
+    p.fill(
+        Fill::NonZero,
+        Affine::IDENTITY,
+        Color::from_rgba8(r, g, b, a),
+        None,
+        &path,
+    );
 }
 
 pub fn scene_info(dir: &Path) -> SceneInfo {
@@ -51,6 +106,10 @@ pub fn scene_info(dir: &Path) -> SceneInfo {
             zoom: scene.camera.zoom as f64,
         },
         center: (c.x as f64, c.y as f64),
+        background: scene.background.0,
+        grid: scene
+            .grid
+            .map(|g| (g.gap as f64, g.radius as f64, g.color.0)),
     }
 }
 
@@ -74,6 +133,33 @@ fn prepare_html(raw: &str) -> String {
         "Atkinson Hyperlegible Mono Variable",
         "Atkinson Hyperlegible Mono",
     )
+}
+
+/// Serves `data:` URLs (the pictures the exporter inlined: canvas cards, images) as they are asked for; nothing else is
+/// fetched, so the page never waits on a network.
+struct DataUris;
+
+impl blitz_traits::net::NetProvider for DataUris {
+    fn fetch(
+        &self,
+        _doc_id: usize,
+        request: blitz_traits::net::Request,
+        handler: Box<dyn blitz_traits::net::NetHandler>,
+    ) {
+        if request.url.scheme() != "data" {
+            return;
+        }
+        let Ok(url) = data_url::DataUrl::process(request.url.as_str()) else {
+            return;
+        };
+        let Ok((bytes, _)) = url.decode_to_vec() else {
+            return;
+        };
+        handler.bytes(
+            request.url.to_string(),
+            blitz_traits::net::Bytes::from(bytes),
+        );
+    }
 }
 
 fn font_context(dir: &Path) -> FontContext {
@@ -116,9 +202,11 @@ impl Canvas {
             )),
             font_ctx: Some(font_context(dir)),
             base_url: Some("http://localhost:1420/".to_string()),
+            net_provider: Some(Arc::new(DataUris)),
             ..Default::default()
         };
         let mut doc = HtmlDocument::from_html(&html, config).into_inner();
+        doc.handle_messages();
         doc.resolve(0.0);
         let viewport_node = doc
             .query_selector(".react-flow__viewport")
@@ -142,12 +230,18 @@ impl Canvas {
     }
 
     /// One frame as RGBA bytes.
-    pub fn render(&mut self, renderer: &mut VelloCpuImageRenderer, scale: f64) -> Vec<u8> {
+    pub fn render(
+        &mut self,
+        renderer: &mut VelloCpuImageRenderer,
+        scale: f64,
+        under: (&SceneInfo, Camera),
+    ) -> Vec<u8> {
         let (w, h) = (self.width, self.height);
         let mut buf = Vec::new();
         let doc = &mut self.doc;
         renderer.render_to_vec(
             |scene| {
+                paint_backdrop(scene, under.0, under.1, w as f64, h as f64);
                 blitz_paint::paint_scene(
                     scene,
                     doc,
@@ -185,10 +279,11 @@ fn shot(dir: &Path, out: &Path, zoom: Option<f64>) {
     let t0 = Instant::now();
     let mut canvas = Canvas::load(dir, info.width, info.height, 1.0);
     let loaded = t0.elapsed();
-    canvas.set_camera(zoom.map(|z| centered(&info, z)).unwrap_or(info.camera));
+    let cam = zoom.map(|z| centered(&info, z)).unwrap_or(info.camera);
+    canvas.set_camera(cam);
     let mut r = VelloCpuImageRenderer::new(info.width, info.height);
     let t1 = Instant::now();
-    let rgba = canvas.render(&mut r, 1.0);
+    let rgba = canvas.render(&mut r, 1.0, (&info, cam));
     eprintln!("load {:?}, frame {:?}", loaded, t1.elapsed());
     write_png(out, info.width, info.height, &rgba);
     println!("{}", out.display());
@@ -208,7 +303,7 @@ fn bench(dir: &Path) {
             let t0 = Instant::now();
             canvas.set_camera(cam);
             let t1 = Instant::now();
-            let _ = canvas.render(&mut r, 1.0);
+            let _ = canvas.render(&mut r, 1.0, (&info, cam));
             if i >= 3 {
                 layout += t1 - t0;
                 paint += t1.elapsed();

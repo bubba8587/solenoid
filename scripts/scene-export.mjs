@@ -254,7 +254,7 @@ async function capture({ camera, W, H }) {
         const mask = pcs.maskImage && pcs.maskImage !== "none" ? pcs.maskImage : pcs.webkitMaskImage;
         const useMask = mask && mask !== "none" && /svg/.test(mask);
         const img = useMask ? mask : pcs.backgroundImage;
-        const m = img && img.match(/url\("?data:image\/svg\+xml(;base64)?,([^")]+)"?\)/);
+        const m = img && img.match(/url\("?data:image\/svg\+xml(?:;charset=[\w-]+|;utf8)?(;base64)?,(.+?)"?\)(?:,|$)/);
         if (!m) continue;
         let src;
         try { src = m[1] ? atob(m[2]) : decodeURIComponent(m[2]); } catch { continue; }
@@ -553,8 +553,36 @@ async function capture({ camera, W, H }) {
 }
 
 function captureHtml() {
+  const bgOffset = (v, room) => {
+    // One axis of a computed background-position: "50%", "8px", "calc(100% - 8px)" (Chromium's "right 8px").
+    v = v.trim();
+    const calc = v.match(/^calc\(([\d.]+)%\s*([-+])\s*([\d.]+)px\)$/);
+    if (calc) return room * +calc[1] / 100 + (calc[2] === "-" ? -1 : 1) * +calc[3];
+    if (v.endsWith("%")) return room * parseFloat(v) / 100;
+    if (v.endsWith("px")) return parseFloat(v);
+      return room / 2;
+    };
+
+  // Top-level space-separated tokens of a CSS value, keeping calc(...) whole.
+  const axes = (v) => {
+    const out = []; let depth = 0, cur = "";
+    for (const ch of v) {
+      if (ch === "(") depth++;
+      if (ch === ")") depth--;
+      if (ch === " " && depth === 0) { if (cur) out.push(cur); cur = ""; } else cur += ch;
+    }
+    if (cur) out.push(cur);
+    return out;
+  };
+
   // The canvas subtree with its ancestors' tags and classes (selectors depend on them), every stylesheet the page has,
   // and the root's theme attributes, as one static page Blitz can draw.
+  // Chromium writes color-mix() results as color(srgb r g b / a), which other CSS engines may not parse: rgba() always.
+  const toRgba = (v) => v.replace(/color\(srgb ([-\d.e]+) ([-\d.e]+) ([-\d.e]+)(?: \/ ([-\d.e]+%?))?\)/g, (_, r, g, b, a) => {
+    const ch = (x) => Math.round(Math.min(1, Math.max(0, +x)) * 255);
+    const al = a === undefined ? 1 : a.endsWith("%") ? parseFloat(a) / 100 : +a;
+    return `rgba(${ch(r)}, ${ch(g)}, ${ch(b)}, ${al})`;
+  });
   const live = document.querySelector(".react-flow__viewport");
   // Flatten what a CSS engine short of Chromium may not resolve (light-dark(), color-mix(), var() in SVG paint):
   // every element's computed colors go inline on a copy, which outranks the stylesheet rules and moves no layout. A
@@ -569,7 +597,7 @@ function captureHtml() {
     const cs = getComputedStyle(e);
     for (const p of e instanceof SVGElement ? SVG_PROPS : PROPS) {
       const v = cs.getPropertyValue(p);
-      if (v && !v.startsWith("url(")) c.style.setProperty(p, v);
+      if (v && !v.startsWith("url(")) c.style.setProperty(p, toRgba(v));
     }
     // SVG geometry set from CSS (the card frames' rects, an svg sized by its stylesheet) as attributes, which an SVG
     // library reads where it ignores the CSS.
@@ -589,19 +617,37 @@ function captureHtml() {
       c.remove();
       return;
     }
-    // The dot grid is an SVG <pattern>, which stock Blitz paints solid red; a repeating radial gradient of the same
-    // pitch draws the same dots.
+    // The dot grid is the renderer's to draw (scene.json's grid); the page's own is an SVG <pattern> over 4,824 px.
     if (e.classList?.contains("sol-canvas-backing__dots")) {
-      const dot = e.querySelector("circle");
-      const dc = dot ? getComputedStyle(dot).fill : "rgb(59, 59, 59)";
-      const pat = e.querySelector("pattern");
-      const pitch = pat ? parseFloat(pat.getAttribute("width")) : 24;
-      const r = dot ? parseFloat(dot.getAttribute("r")) : 1;
-      const div = document.createElement("div");
-      div.className = e.getAttribute("class");
-      div.style.cssText = `position: absolute; left: ${cs.left}; top: ${cs.top}; width: ${cs.width}; height: ${cs.height}; transform: ${cs.transform}; transform-origin: 0 0; pointer-events: none;`
-        + `background-image: radial-gradient(circle at ${r}px ${r}px, ${dc} ${r}px, transparent ${r + 0.5}px); background-size: ${pitch}px ${pitch}px; background-position: ${-r}px ${-r}px;`;
-      c.replaceWith(div);
+      c.remove();
+      return;
+    }
+    // A <canvas> (heatmaps, the matrix card) as a picture of its pixels: a renderer without canvas draws the image.
+    if (e.tagName === "CANVAS") {
+      try {
+        const img = document.createElement("img");
+        for (const a of e.attributes) if (a.name !== "width" && a.name !== "height") img.setAttribute(a.name, a.value);
+        img.src = e.toDataURL("image/png");
+        img.style.cssText = c.style.cssText;
+        img.style.width = cs.width; img.style.height = cs.height; img.style.display = cs.display === "inline" ? "inline-block" : cs.display;
+        c.replaceWith(img);
+        c.__replacement = img;
+      } catch { /* a tainted canvas stays blank */ }
+      return;
+    }
+    // A checkbox drawn as the browser draws it: a rounded box, filled with the accent and checked when on.
+    if (e.tagName === "INPUT" && (e.type === "checkbox" || e.type === "radio")) {
+      const box = document.createElement("span");
+      for (const a of e.attributes) if (a.name === "class" || a.name === "title") box.setAttribute(a.name, a.value);
+      const accent = toRgba(cs.accentColor && cs.accentColor !== "auto" ? cs.accentColor : getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "rgb(245, 185, 20)");
+      const size = Math.min(parseFloat(cs.width) || 13, parseFloat(cs.height) || 13);
+      box.style.cssText = `display: inline-block; box-sizing: border-box; width: ${cs.width}; height: ${cs.height}; margin: ${cs.margin}; vertical-align: middle; flex: ${cs.flex};`
+        + `border-radius: ${e.type === "radio" ? "50%" : "3px"}; border: 1px solid ${e.checked ? accent : "rgba(154, 160, 166, 0.7)"}; background: ${e.checked ? accent : "transparent"}; position: relative;`;
+      if (e.checked && e.type === "checkbox") {
+        box.innerHTML = `<svg viewBox="0 0 12 12" width="${size}" height="${size}" style="position: absolute; left: -1px; top: -1px;"><path d="M2.5 6.2l2.4 2.4 4.6-5" fill="none" stroke="#1a1a1a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      }
+      c.replaceWith(box);
+      c.__replacement = box;
       return;
     }
     if (e.tagName === "SELECT") {
@@ -612,17 +658,91 @@ function captureHtml() {
       span.style.display = cs.display === "inline" ? "inline-block" : cs.display;
       span.style.width = cs.width; span.style.height = cs.height;
       span.style.padding = cs.padding; span.style.border = `${cs.borderTopWidth} ${cs.borderTopStyle} ${cs.borderTopColor}`;
-      span.style.borderRadius = cs.borderRadius; span.style.font = cs.font; span.style.lineHeight = cs.height;
+      span.style.borderRadius = cs.borderRadius; span.style.font = cs.font;
+      const inner = parseFloat(cs.height) - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - parseFloat(cs.borderTopWidth) - parseFloat(cs.borderBottomWidth);
+      span.style.lineHeight = `${Math.max(0, inner)}px`;
+      span.style.textOverflow = "ellipsis";
       span.style.boxSizing = "border-box"; span.style.overflow = "hidden"; span.style.whiteSpace = "nowrap";
       c.replaceWith(span);
+      c.__replacement = span;
+    }
+  });
+  // CSS-mask icons (chevrons, copy glyphs, select arrows) and SVG background images become real inline <svg>s placed
+  // where Chromium drew them; the masked box itself is switched off. A renderer without CSS masks draws them all.
+  const hideRules = [];
+  liveEls.forEach((e, i) => {
+    const c = copyEls[i].__replacement ?? copyEls[i];
+    if (c !== vp && !vp.contains(c)) return;
+    for (const pseudo of [null, "::before", "::after"]) {
+      const pcs = getComputedStyle(e, pseudo);
+      if (pseudo && (pcs.content === "none" || pcs.display === "none")) continue;
+      const mask = pcs.maskImage && pcs.maskImage !== "none" ? pcs.maskImage : pcs.webkitMaskImage;
+      const useMask = !!mask && mask !== "none" && /svg/.test(mask);
+      const img = useMask ? mask : pcs.backgroundImage;
+      const m = img && img.match(/url\("?data:image\/svg\+xml(?:;charset=[\w-]+|;utf8)?(;base64)?,(.+?)"?\)(?:,|$)/);
+      if (!m) continue;
+      let src;
+      try { src = m[1] ? atob(m[2]) : decodeURIComponent(m[2]); } catch { continue; }
+      const br = e.getBoundingClientRect();
+      if (!br.width && !br.height) continue;
+      const w = pseudo ? parseFloat(pcs.width) || br.width : br.width;
+      const h = pseudo ? parseFloat(pcs.height) || br.height : br.height;
+      const size = (useMask ? (pcs.maskSize || pcs.webkitMaskSize) : pcs.backgroundSize) ?? "";
+      const sm = size.match(/^([\d.]+)px(?:\s+([\d.]+)px)?/);
+      const iw = sm ? +sm[1] : Math.min(w, h), ih = sm ? +(sm[2] ?? sm[1]) : Math.min(w, h);
+      let x = br.left + (br.width - w) / 2, y = br.top + (br.height - h) / 2;
+      if (pseudo && pcs.position === "absolute") {
+        if (pcs.left !== "auto") x = br.left + parseFloat(pcs.left);
+        else if (pcs.right !== "auto") x = br.right - parseFloat(pcs.right) - w;
+        if (pcs.top !== "auto") y = br.top + parseFloat(pcs.top);
+        else if (pcs.bottom !== "auto") y = br.bottom - parseFloat(pcs.bottom) - h;
+      }
+      // Where a background image sits: its background-position, in px or percent of the free room.
+      const pos = (useMask ? (pcs.maskPosition || pcs.webkitMaskPosition) : pcs.backgroundPosition) ?? "";
+      const [px0 = "50%", py0 = "50%"] = axes(pos.split(",")[0]);
+      const ix = x + bgOffset(px0, w - iw);
+      const iy = y + bgOffset(py0, h - ih);
+      const color = useMask ? toRgba(pcs.backgroundColor) : null;
+      const doc = new DOMParser().parseFromString(src, "image/svg+xml");
+      const svg = doc.documentElement;
+      if (!svg || svg.tagName !== "svg") continue;
+      if (useMask) {
+        for (const n of svg.querySelectorAll("*")) {
+          for (const a of ["fill", "stroke"]) {
+            const v = n.getAttribute(a);
+            if (v && v !== "none") n.setAttribute(a, color);
+          }
+        }
+        if (!svg.getAttribute("fill") && ![...svg.querySelectorAll("[fill]")].length) svg.setAttribute("fill", color);
+      }
+      svg.setAttribute("width", String(iw));
+      svg.setAttribute("height", String(ih));
+      // Placed against the element's containing block for positioned children: its offset parent.
+      const op = e.offsetParent ?? e.parentElement;
+      const or = op.getBoundingClientRect();
+      const ocs = getComputedStyle(op);
+      const tm = pcs.transform.match(/matrix\(([^,]+),\s*([^,]+)/);
+      const rot = tm ? Math.atan2(+tm[2], +tm[1]) * 180 / Math.PI : 0;
+      const opacity = parseFloat(pcs.opacity);
+      const holder = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      for (const a of svg.attributes) holder.setAttribute(a.name, a.value);
+      holder.innerHTML = svg.innerHTML;
+      holder.setAttribute("style", `position: absolute; left: ${ix - or.left - parseFloat(ocs.borderLeftWidth)}px; top: ${iy - or.top - parseFloat(ocs.borderTopWidth)}px; `
+        + `width: ${iw}px; height: ${ih}px; pointer-events: none; overflow: visible;${rot ? ` transform: rotate(${rot}deg);` : ""}${opacity < 1 ? ` opacity: ${opacity};` : ""}`);
+      const isStatic = getComputedStyle(e).position === "static";
+      // A static element's absolutely placed child is placed against the offset parent; a positioned one against itself.
+      if (!isStatic) holder.style.left = `${ix - br.left - parseFloat(getComputedStyle(e).borderLeftWidth)}px`, holder.style.top = `${iy - br.top - parseFloat(getComputedStyle(e).borderTopWidth)}px`;
+      c.appendChild(holder);
+      const tag = `data-xi${pseudo ? pseudo.replace(/:/g, "") : "self"}`;
+      c.setAttribute(tag, "");
+      hideRules.push(`[${tag}]${pseudo ?? ""} { -webkit-mask: none !important; mask: none !important; background-image: none !important;${useMask ? " background-color: transparent !important;" : ""} }`);
     }
   });
   let inner = vp.outerHTML;
   for (let e = live.parentElement; e && e !== document.body; e = e.parentElement) {
     const acs = getComputedStyle(e);
-    const backing = document.querySelector(".sol-canvas-backing:not(.sol-canvas-backing__dots)");
-    const bg = e.classList.contains("react-flow") && backing ? getComputedStyle(backing).backgroundColor : acs.backgroundColor;
-    const flat = `background-color: ${bg}; color: ${acs.color};`;
+    // The page above the canvas is see-through: the renderer paints the canvas color and its dot grid under it.
+    const flat = `background-color: transparent; color: ${toRgba(acs.color)};`;
     const attrs = [...e.attributes].filter((a) => a.name === "class" || a.name === "id" || a.name.startsWith("data-")).map((a) => ` ${a.name}="${a.value.replace(/"/g, "&quot;")}"`).join("")
       + ` style="${((e.getAttribute("style") ?? "") + ";" + flat).replace(/"/g, "&quot;")}"`;
     inner = `<${e.tagName.toLowerCase()}${attrs}>${inner}</${e.tagName.toLowerCase()}>`;
@@ -631,10 +751,11 @@ function captureHtml() {
   for (const sheet of document.styleSheets) {
     try { for (const r of sheet.cssRules) css.push(r.cssText); } catch { /* cross-origin */ }
   }
-  const rootFlat = (e) => ` style="${((e.getAttribute("style") ?? "") + `;background-color: ${getComputedStyle(e).backgroundColor}; color: ${getComputedStyle(e).color};`).replace(/"/g, "&quot;")}"`;
+  const rootFlat = (e) => ` style="${((e.getAttribute("style") ?? "") + `;background-color: transparent; color: ${toRgba(getComputedStyle(e).color)};`).replace(/"/g, "&quot;")}"`;
   const htmlAttrs = [...document.documentElement.attributes].filter((a) => a.name !== "style").map((a) => ` ${a.name}="${a.value.replace(/"/g, "&quot;")}"`).join("") + rootFlat(document.documentElement);
   const bodyAttrs = [...document.body.attributes].filter((a) => a.name !== "style").map((a) => ` ${a.name}="${a.value.replace(/"/g, "&quot;")}"`).join("") + rootFlat(document.body);
   const origin = location.origin;
-  const style = css.join("\n").replace(/url\("?\/(?!\/)/g, `url("${origin}/`);
-  return `<!doctype html><html${htmlAttrs}><head><meta charset="utf-8"><style>${style}</style></head><body${bodyAttrs}>${inner}</body></html>`;
+  const style = toRgba(css.join("\n")).replace(/url\("?\/(?!\/)/g, `url("${origin}/`);
+  const hide = [...new Set(hideRules)].join("\n");
+  return `<!doctype html><html${htmlAttrs}><head><meta charset="utf-8"><style>${style}\n${hide}</style></head><body${bodyAttrs}>${inner}</body></html>`;
 }
