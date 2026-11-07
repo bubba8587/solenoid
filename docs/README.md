@@ -93,7 +93,7 @@ is parked there.
   open, updater, the web-target decision) and the decisions it reopens.
 - **`v2.0/`** — the live plan bundles: 08 Excel transpiler, 10 decision sensitivity,
   12 uncertain/money, 20 pages, 21 collaboration, 22 canvas at scale, 23 conditional
-  formatting, 24 Obsidian vault, 26 workspace tree; 25 Gantt is BUILT (2026-09-12) and stays live
+  formatting, 24 Obsidian vault, 26 workspace tree, 27 live multiplayer; 25 Gantt is BUILT (2026-09-12) and stays live
   as the engine + figure spec. 16 widget nodes is archived; the built bundles (05, 17, 18, 19)
   are deleted; see `v2.0/README.md`.
 - **`dev-notes.md`** — session DIGESTS + open problems only; per-item history in

@@ -6,6 +6,15 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-07: live multiplayer researched; cloud session)
+- **Bundle 27** (`v2.0/27-multiplayer.md`, plan-only) is bundle 21 Stage 3's new home: link rooms with no accounts, a
+  Loro CRDT at the `serializeGraph` boundary keyed by room-only sync ids, tables as rows × columns × raw-text cells,
+  an encrypted dumb relay on Durable Objects, every client computing. netcore-rs is untouched by design.
+- **Facts that steer it:** WebKitGTK (Linux desktop) has no `RTCPeerConnection` until about 2.56 (so no P2P-only
+  design); hosted PartyKit shut down 2026-10-23; y-sweet stalled after Jamsocket joined Modal.
+- **Step 1 stands alone:** `applyGraphDelta` would end the full `loadGraph` behind undo and the AI apply. Five author
+  calls wait at the bundle's end.
+
 ### SESSION DIGEST (2026-11-07: function records, the Text family organized; cloud session)
 - **Function records** ([[C140]] functionRecords, `tree/specs/computation/function-records.md`): one Cube-form record per function under `fixtures/functions/`, Excel's answer beside Solenoid's, a kind of truth, a verdict and a citation per case. Excel's answers come only from a workbook Excel saved, through `from-excel.ts`, which refuses anything else or a wrong calibration sheet.
 - **Text is organized**: 33 records, 43,771 cases (the old tests and specs, IronCalc's workbooks vendored under `fixtures/functions/sources/ironcalc`, the edge grid); `harvest.json` gives every mention a case or a reason. No answer is filled: the run waits until every family is organized.
