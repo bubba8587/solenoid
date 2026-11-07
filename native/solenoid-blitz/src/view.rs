@@ -207,10 +207,10 @@ impl Page {
             }
         }
         for cable in &m.cables {
-            if ids.contains(&cable.source) || ids.contains(&cable.target) {
-                if let Some(pb) = m.cable_path(cable).bounds() {
-                    b = b.union(r(pb));
-                }
+            if (ids.contains(&cable.source) || ids.contains(&cable.target))
+                && let Some(pb) = m.cable_path(cable).bounds()
+            {
+                b = b.union(r(pb));
             }
         }
         b.inflate(24.0, 24.0)
