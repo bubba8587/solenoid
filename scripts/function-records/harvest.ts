@@ -37,6 +37,8 @@ export interface Plan {
   files: Record<string, string>;
   /** Lines whose cases never name their function (a test calling the regex engine directly), written out by hand. */
   unnamed: Record<string, Disposition>;
+  /** Each function's baseline: one call it answers normally, every argument written out, with any names it reads. */
+  baselines: Record<string, { formula: string; env?: string[] }>;
 }
 
 export interface LedgerEntry { line: number; text: string; moved: number; why?: string }

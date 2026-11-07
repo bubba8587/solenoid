@@ -35,7 +35,7 @@
    "UNICODE",
    "UPPER"
   ],
-  "cases": 41690,
+  "cases": 43862,
   "ironcalcOtherFamilies": 31434,
   "sources": {
    "crates/solenoid-core/src/eval.rs": [

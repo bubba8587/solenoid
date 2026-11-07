@@ -48,5 +48,30 @@
   {"formula":"ENCODEURL(\"x\"&\"y z\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"ENCODEURL(ENCODEURL(\"a b\"))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"ENCODEURL(REPT(\" \",10923))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]},
+{"group":"1. text","axis":"argument","cite":[], "cases": [
+  {"formula":"ENCODEURL(0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(-1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(0.5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(1E+307)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(1E-307)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(\"abc\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(\"5\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(\" 5 \")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(\"TRUE\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(\"😀\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(FALSE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(DATE(2024, 3, 5))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(DATE(1900, 1, 1))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(DATE(2024, 3, 5) + TIME(12, 0, 0))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(p_blank)","env":["p_blank=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(NA())","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(1 / 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(p_nums)","env":["p_nums=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(p_texts)","env":["p_texts=list:text:[\"a\", \"b\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(p_bools)","env":["p_bools=list:bool:[TRUE, FALSE]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(p_table)","env":["p_table=table:num:[[1, 2], [3, 4]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(COMPLEX(1, 2))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEURL(p_unit)","env":["p_unit=unit:5000 m as km"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
 ]}
 ]

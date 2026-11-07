@@ -270,5 +270,31 @@
   {"formula":"CHAR(c_A255)","env":["c_A255=num:255"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"CHAR(c_A256)","env":["c_A256=num:256"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
   {"formula":"CHAR(c_A257)","env":["c_A257=num:257"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]},
+{"group":"1. code","axis":"argument","cite":[], "cases": [
+  {"formula":"CHAR(-1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(0.5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(1E+307)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(1E-307)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(\"\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(\"abc\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(\"5\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(\" 5 \")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(\"TRUE\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(\"😀\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(FALSE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(DATE(2024, 3, 5))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(DATE(1900, 1, 1))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(DATE(2024, 3, 5) + TIME(12, 0, 0))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(p_blank)","env":["p_blank=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(NA())","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(1 / 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(p_nums)","env":["p_nums=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(p_texts)","env":["p_texts=list:text:[\"a\", \"b\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(p_bools)","env":["p_bools=list:bool:[TRUE, FALSE]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(p_table)","env":["p_table=table:num:[[1, 2], [3, 4]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(COMPLEX(1, 2))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHAR(p_unit)","env":["p_unit=unit:5000 m as km"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
 ]}
 ]

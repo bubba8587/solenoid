@@ -3,19 +3,14 @@
 // blank, and writes the harvest ledger; it fails, writing nothing, while any mention is unaccounted for.
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { buildFunctionReference } from "../../src/graph/functionReference";
+import { familyFunctions } from "./families.ts";
+import { keyOf, readRecord, recordText, type Case, type Group } from "./records.ts";
 import { harvest, type Harvested, type Plan } from "./harvest.ts";
 import { harvestIronCalc } from "./ironcalc.ts";
+import { grid } from "./grid.ts";
 
 const ROOT = process.cwd();
 const OUT = join(ROOT, "fixtures/functions");
-
-/** A function's family: the top-level Add menu group of the node its Function Reference row names. */
-export function familyFunctions(family: string): string[] {
-  const out = new Set<string>();
-  for (const r of buildFunctionReference()) if (r.excel && r.location[0] === family) out.add(r.excel.toUpperCase());
-  return [...out].sort();
-}
 
 /** Every file a mention could sit in: the tests, the core's inline tests, the specs, and the two docs that state answers. */
 export function candidateSources(): string[] {
@@ -35,8 +30,6 @@ export function candidateSources(): string[] {
   return out.sort();
 }
 
-interface Case { formula: string; env: string[]; excel: string; ours: string; expect: string; truth: string; verdict: string; cite: string }
-interface Group { group: string; axis: string; cite: string[]; cases: Case[] }
 
 /** One function's record. The same case from several sources is one case; their rule fields merge, and two sources
  *  that state different ones for the same case are an error, never a silent pick. */
@@ -44,7 +37,7 @@ export function toRecord(fn: string, harvested: Harvested[], errors: string[]): 
   const groups = new Map<string, Group>();
   const seen = new Map<string, { c: Case; from: string }>();
   for (const h of harvested.filter((c) => c.fn === fn)) {
-    const key = `${h.formula}\u0000${[...h.env].sort().join("\u0000")}`;
+    const key = keyOf(h.formula, h.env);
     const prior = seen.get(key);
     if (prior) {
       for (const f of ["truth", "expect", "cite"] as const) {
@@ -55,21 +48,12 @@ export function toRecord(fn: string, harvested: Harvested[], errors: string[]): 
       continue;
     }
     const name = h.group ?? "Examples";
-    if (!groups.has(name)) groups.set(name, { group: name, axis: "examples", cite: [], cases: [] });
+    if (!groups.has(name)) groups.set(name, { group: name, axis: h.source.startsWith("grid:") ? "argument" : "examples", cite: [], cases: [] });
     const c: Case = { formula: h.formula, env: h.env, excel: "", ours: "", expect: h.expect ?? "", truth: h.truth ?? "", verdict: "", cite: h.cite ?? "" };
     groups.get(name)!.cases.push(c);
     seen.set(key, { c, from: h.source });
   }
   return [...groups.values()];
-}
-
-/** A record as text, one case to a line, so a diff names the cases that changed. */
-export function recordText(record: Group[]): string {
-  const groups = record.map((g) => {
-    const head = JSON.stringify({ group: g.group, axis: g.axis, cite: g.cite }).slice(0, -1);
-    return `${head}, "cases": [\n${g.cases.map((c) => `  ${JSON.stringify(c)}`).join(",\n")}\n]}`;
-  });
-  return `[\n${groups.join(",\n")}\n]\n`;
 }
 
 async function main() {
@@ -86,6 +70,12 @@ async function main() {
   for (const f of new Set([...movedBy.keys(), ...Object.keys(ic.skipped)])) {
     ledger.sources[f] = [{ line: 0, text: "(the workbook's formula cells)", moved: movedBy.get(f) ?? 0 }, ...(ic.skipped[f] ?? [])];
   }
+  for (const fn of functions) {
+    const b = plan.baselines[fn];
+    if (!b) { ledger.errors.push(`${fn}: no baseline, so no edge grid`); continue; }
+    cases.push(...grid(fn, b.formula, b.env ?? [], ledger.errors));
+  }
+  for (const fn of Object.keys(plan.baselines)) if (!functions.includes(fn)) ledger.errors.push(`${fn}: a baseline for a function outside the family`);
   const nothing = Object.entries(ledger.sources).filter(([, e]) => e.length === 0).map(([p]) => p);
   for (const p of nothing) delete ledger.sources[p];
   if (ledger.unaccounted.length || ledger.errors.length) {
@@ -103,8 +93,21 @@ async function main() {
     process.exitCode = 1;
     return;
   }
+  // A rebuild keeps what the round trip and the run wrote: Excel's and Solenoid's answers and the verdict, by case.
+  let kept = 0;
+  for (const [fn, record] of records) {
+    const prior = new Map((readRecord(ROOT, fn) ?? []).flatMap((g) => g.cases).map((c) => [keyOf(c.formula, c.env), c]));
+    for (const c of record.flatMap((g) => g.cases)) {
+      const p = prior.get(keyOf(c.formula, c.env));
+      if (!p) continue;
+      if (p.excel || p.ours || p.verdict) kept++;
+      c.excel = p.excel; c.ours = p.ours; c.verdict = p.verdict;
+      if (!c.truth && p.truth === "excel") c.truth = "excel";
+    }
+  }
   mkdirSync(OUT, { recursive: true });
   for (const [fn, record] of records) writeFileSync(join(OUT, `${fn}.json`), recordText(record));
+  if (kept) console.log(`${kept} cases kept their answers`);
   const ledgerPath = join(OUT, "harvest.json");
   let all: Record<string, unknown> = {};
   try { all = JSON.parse(readFileSync(ledgerPath, "utf8")); } catch { /* the first family */ }
