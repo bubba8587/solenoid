@@ -1,0 +1,90 @@
+name: Fast render
+
+# The blitz-gpui branch's native viewers, built for Linux, Windows and macOS with fresh scenes from the app, as one
+# download per platform (docs/fast-render.md).
+on:
+  push:
+    branches: [blitz-gpui]
+    paths:
+      - "native/**"
+      - "crates/solenoid-scene/**"
+      - "scripts/scene-export.mjs"
+      - ".github/workflows/fast-render.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: fast-render-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scenes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: pip install fonttools brotli
+      - name: Export scenes from the app
+        run: |
+          for s in getting-started power-features chart-showcase personal-finance zz-scratch-new-nodes; do
+            node scripts/scene-export.mjs "$s"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scenes
+          path: .dev/scenes
+          retention-days: 7
+
+  build:
+    needs: scenes
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            native/solenoid-blitz -> target
+            native/solenoid-gpui -> target
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvulkan-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
+            libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libx11-xcb-dev \
+            libfreetype-dev libfontconfig-dev libssl-dev pkg-config clang libasound2-dev
+      - name: Build the Blitz viewer
+        run: cargo build --release --manifest-path native/solenoid-blitz/Cargo.toml
+      - name: Build the GPUI viewer
+        id: gpui
+        continue-on-error: true
+        run: cargo build --release --manifest-path native/solenoid-gpui/Cargo.toml
+      - uses: actions/download-artifact@v4
+        with:
+          name: scenes
+          path: dist/scenes
+      - name: Package
+        shell: bash
+        run: |
+          ext=""; [ "$RUNNER_OS" = "Windows" ] && ext=".exe"
+          cp native/package/README.txt dist/
+          if [ "$RUNNER_OS" = "Windows" ]; then cp native/package/*.bat dist/; else cp native/package/*.sh dist/; fi
+          cp "native/solenoid-blitz/target/release/solenoid-blitz$ext" dist/
+          if [ -f "native/solenoid-gpui/target/release/solenoid-gpui$ext" ]; then
+            cp "native/solenoid-gpui/target/release/solenoid-gpui$ext" dist/
+          else
+            echo "The GPUI viewer did not build on $RUNNER_OS; see the workflow log." > dist/GPUI-NOT-BUILT.txt
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: solenoid-fast-render-${{ runner.os }}
+          path: dist
+          retention-days: 14
