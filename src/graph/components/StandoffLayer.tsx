@@ -1,6 +1,6 @@
 // [[C89]] standoffsSolveLast
 import { measuredSize } from "../nodeSize";
-import { memo, useSyncExternalStore } from "react";
+import { memo, useRef, useSyncExternalStore } from "react";
 import { useStore, type ReactFlowState } from "@xyflow/react";
 import { createPortal } from "react-dom";
 import {
@@ -72,7 +72,13 @@ function endsKey(st: ReactFlowState, s: Standoff): string {
 }
 
 const StandoffBar = memo(function StandoffBar({ s, selected }: { s: Standoff; selected: boolean }) {
-  useStore((st) => endsKey(st, s));
+  const ends = useRef<{ nodes: unknown; s: Standoff; key: string } | null>(null);
+  useStore((st) => {
+    const last = ends.current;
+    if (last && last.nodes === st.nodes && last.s === s) return last.key;
+    ends.current = { nodes: st.nodes, s, key: endsKey(st, s) };
+    return ends.current.key;
+  });
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   // Hidden endpoints (collapsed-group members) make the standoff dormant.
   if (groupCollapseStore.isNodeHidden(s.a.nodeId) || groupCollapseStore.isNodeHidden(s.b.nodeId)) {

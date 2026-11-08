@@ -70,13 +70,13 @@ Code: `process.ts`, `view.ts`, `flow/flowView.ts`.
 
 `process.ts` holds the live `_editor`, `_engine` and `_view`. `processGraph()` recomputes through the engine's `pass`; the view-less pass (`computeAll`, `graphCompute.ts`) serves the CLI and the tests ([[compute-pass#The model pass]]).
 
-`_view` is `flow/flowView.ts`, the one implementation of the `View` interface in `view.ts`. Model-side verbs become RF state through late-bound callbacks the surface supplies, and the surface writes back what RF reports: the viewport (from `onMove`), the pointer's canvas position, and each card's measured size (from `onNodesChange` dimension changes). The view offers:
+`_view` is `flow/flowView.ts`, the one implementation of the `View` interface in `view.ts`. Model-side verbs become RF state through late-bound callbacks the surface supplies, and the surface writes back what RF reports: the viewport (from `onMove`) and each card's measured size (from `onNodesChange` dimension changes). The view offers:
 
 ```mermaid
 flowchart LR
     model["the flow model:<br>GraphEditor + DataflowEngine"] -->|"verbs, through late-bound<br>callbacks (moveNode, rerender...)"| view["the View seam<br>(flowView.ts)"]
     view --> rf["React Flow state:<br>only a renderer"]
-    rf -->|"viewport, pointer,<br>measured card sizes"| view
+    rf -->|"viewport,<br>measured card sizes"| view
     view -->|"positions, camera,<br>sizes read back"| model
 ```
 
@@ -84,7 +84,7 @@ flowchart LR
 - `position(id)`, a live read of `node.position`, undefined for an id the view's editor doesn't hold; `hasNode(id)`, the "belongs to this surface" test;
 - `nodeElement(id)`, the live RF node wrapper, and `connectionElement(id)`, the live edge group;
 - the pane (`container`) and the transformed content element (`viewport`);
-- the camera: `transform`, `zoom` (set the scale, snapped to a zoom step, then add an offset to the pan: the anchored-zoom step), `pan`, `setCamera` (the whole transform as given, never snapped, for bringing back a saved camera), and `pointer`, the last pointer position in canvas coordinates;
+- the camera: `transform`, `zoom` (set the scale, snapped to a zoom step, then add an offset to the pan: the anchored-zoom step), `pan`, and `setCamera` (the whole transform as given, never snapped, for bringing back a saved camera). The view keeps no pointer position: converting one on every pointer move would cost a layout read per pan frame, so a caller converts the screen point it holds when it needs one (`screenToFlowPosition`);
 - `moveNode`, `rerenderNode`, `rerenderCables` and `onRender` (per-card re-render events, which the HTML-in-Canvas layer uses to re-capture);
 - `measured(id)`, RF's post-layout size with no DOM read, undefined until measured ([[auto-arrange-tidy#Size reads]]).
 
@@ -153,12 +153,13 @@ A Conduit gets the same treatment: its node box is a fixed 92 square around a mu
 
 ## What RF owns
 
-- **Delete, selection and right-click.** RF handles Delete and Backspace (`deleteKeyCode` plus `onBeforeDelete`), selection (`useOnSelectionChange`) and context-menu routing (`onNodeContextMenu`, `onEdgeContextMenu`, `onPaneContextMenu`). The app's commands run from those callbacks. Don't add a second window listener for any of them. `deleteKeyCode` is null while the canvas is locked or the host sets `noKeyboard`.
+- **Delete, selection and right-click.** RF handles Delete and Backspace (`deleteKeyCode` plus `onBeforeDelete`), selection (`mirrorSelection`) and context-menu routing (`onNodeContextMenu`, `onEdgeContextMenu`, `onPaneContextMenu`). The app's commands run from those callbacks. Don't add a second window listener for any of them. `deleteKeyCode` is null while the canvas is locked or the host sets `noKeyboard`.
 - **Settings that are off on purpose.** RF's own arrow-key move is off (`disableKeyboardA11y`), because the canvas keyboard nudges the selection on the dot grid, and RF's version needs a focused card and steps 5px. RF's box select is off (`selectionKeyCode={null}`), because shift-drag belongs to the lasso. Double-click zoom is off (`zoomOnDoubleClick={false}`, see [[touch-gestures]]). `zoomOnScroll` is off, because `installWheelZoom` is the one wheel path. `zIndexMode="manual"`.
 - **Locking.** A locked canvas passes `nodesDraggable`, `nodesConnectable` and `elementsSelectable` all false; the CSS half of locking is in [[pointer-gestures#Locking]].
 - **A node wrapper's inline `visibility`.** RF writes `visible` onto `.react-flow__node` after measuring, so any imperative visibility write there is silently overwritten. Per-node hide and show rides RF's `className` instead (`flowModel.nodeClassName` plus an `!important` rule in flow.css). Hiding the members of a collapsed group is the standing example ([[group-collapse]]). The surface re-stamps the classes whenever the collapse store notifies, because a collapse toggle changes no topology and `syncTopology` never runs for it.
 - **Stacking.** Each node's stacking is its RF `zIndex`, from `flowModel.nodeZIndex`: groups −2, Conduits −1, everything else 0 ([[#Stacking]]). Without it a group's body sits level with its members and takes their pointer events.
 - **Card sizes.** A grip resize (`resizing` set on the dimension change) stays out of RF state: the model sizes the card and RF only measures it. RF's own measures feed the DOM-free size source.
+  - **MUST:** the corner grip (`flow/FlowResizeGrip.tsx`) is RF's `NodeResizeControl` markup rendered by the app, driven by `XYResizer` from `@xyflow/system` with the changes RF's control sends, and no store subscription. RF's control subscribes every grip to the store for its auto-scale, which the grip turns off, so every camera frame ran one selector per grip for nothing; the same reasoning as [[#Sockets]]. It drops RF's branch for a child that grows its parent, since no card asks for that. **Reopen if** an RF upgrade changes its resize control, or a card needs a growing parent, a kept aspect ratio or a resize direction.
 
 ### Stacking
 
@@ -273,13 +274,15 @@ Why: folding the pixel ratio in was tried and measured worse. It made the switch
 
 ## Selection
 
-RF's selection is the selection. `useOnSelectionChange` mirrors it into the model's `selected` flags, which chrome and components read off the node payload, and into the cable store (`cableSelectionStore`, read by the Cable inspector, the delete verbs and the edge's selected color). The other direction holds too: a cable selected on the app side (its hit path, a run selection) is selected in RF, and the update keeps object identity so untouched edges skip re-rendering.
+RF's selection is the selection. `mirrorSelection` (`flow/selectionMirror.ts`) mirrors it into the model's `selected` flags, which chrome and components read off the node payload, and into the cable store (`cableSelectionStore`, read by the Cable inspector, the delete verbs and the edge's selected color). The other direction holds too: a cable selected on the app side (its hit path, a run selection) is selected in RF, and the update keeps object identity so untouched edges skip re-rendering.
 
 - Node and cable selection are mutually exclusive with each other in the chrome's verbs, and drawn-cable, standoff and isolate-endpoint selection are each exclusive with all the rest.
 - Every selection surface reaches only what the user can see ([[C52]] visibleSelection): Ctrl+A selects every node not hidden in a collapsed group and not receded by isolate, and creating a group from the selection skips hidden members. Collapsing a group drops its hidden members from the selection (`setGroupsCollapsed`), and entering isolate drops the receded cards (`isolate.ts`), so Delete, nudge and copy never act on an invisible card.
 - In touch-select mode (see [[pointer-gestures#Touch-select mode]]) RF's multi-selection flag is held and pane-drag panning yields to the lasso.
 
-Tests: `groupPushRecords.test.ts`: a member hidden by a collapse leaves the selection while a visible card stays.
+- The mirror is a store subscription, not RF's selection-change hook. RF's listener walks every node and edge on every store update, a camera frame included; the mirror scans only when RF is handed new `nodes` or `edges` arrays, which every selection change on this controlled flow does. **Reopen if** a selection can change in RF's lookups without a new array (an uncontrolled flow, an RF upgrade that selects internally).
+
+Tests: `groupPushRecords.test.ts`: a member hidden by a collapse leaves the selection while a visible card stays. `flow/selectionMirror.test.ts`: the selection reports at once and on each change, and an update that keeps both arrays (a camera move) never scans.
 
 ## Context menus
 

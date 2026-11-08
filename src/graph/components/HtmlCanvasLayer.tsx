@@ -1,5 +1,6 @@
 // [[C42]] htmlInCanvasRenderer
 import { memo, useEffect, useRef, useState } from "react";
+import { useStoreApi } from "@xyflow/react";
 import { useRenderMode } from "../renderMode";
 import { zoomSettleMs } from "../zoomSettle";
 import { IS_COARSE } from "../coarse";
@@ -24,6 +25,7 @@ import "./htmlCanvasLayer.css";
 
 const RENDERER_MIN_NODES = 100;
 const HOLD_ZOOM = 0.4;
+const WALK_SETTLE = 4;
 
 const graphDomWeight = (ed: GraphEditor<Schemes>): number => {
   let w = 0;
@@ -32,6 +34,7 @@ const graphDomWeight = (ed: GraphEditor<Schemes>): number => {
 };
 
 export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: { editor: GraphEditor<Schemes>; view: View }) {
+  const rf = useStoreApi();
   const mode = useRenderMode();
   const hostRef = useRef<HTMLDivElement>(null);
   const [domWeight, setDomWeight] = useState(() => graphDomWeight(editor));
@@ -69,6 +72,9 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
     const engine = new HtmlCanvasRenderer(host);
     engine.setTransformSource(() => view.transform);
     let built = false;
+    // Cards move and selection rings toggle only through a new RF `nodes` array; the walk runs a few frames past one, since React writes the ring class after it.
+    let walkFrames = WALK_SETTLE;
+    const unsubNodes = rf.subscribe((st, prev) => { if (st.nodes !== prev.nodes) walkFrames = WALK_SETTLE; });
     // Cached at build so the gesture-start position sync never forces layout with offsetLeft.
     const offsets = new Map<string, { dx: number; dy: number }>();
 
@@ -235,7 +241,7 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
     gesturing = true;
     const tryBuild = () => {
       if (built) return;
-      if (doBuild()) { built = true; enterGesture(); }
+      if (doBuild()) { built = true; walkFrames = WALK_SETTLE; enterGesture(); }
     };
     tryBuild();
     const retry = window.setInterval(() => { tryBuild(); if (built) clearInterval(retry); }, 120);
@@ -268,6 +274,7 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
     const arm = () => {
       clearTimeout(rebuildTimer);
       rebuildTimer = window.setTimeout(() => {
+        walkFrames = WALK_SETTLE;
         const ids = dirtyIds;
         dirtyIds = new Set();
         if (ids) {
@@ -335,25 +342,28 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
         let moved = t.k !== lastK || t.x !== lastX || t.y !== lastY;
         if (Number.isFinite(lastK) && t.k !== lastK) gestureZoomed = true;
         lastK = t.k; lastX = t.x; lastY = t.y;
-        const movedIds = new Set<string>();
-        // The live DOM class, not node.selected: the model runs ahead of React's class write and would clone before the ring lands.
-        const curSel = new Set<string>();
-        for (const node of editor.getNodes()) {
-          const off = offsets.get(node.id);
-          const pos = view.position(node.id);
-          if (off && pos && engine.setNodePosition(node.id, pos.x + off.dx, pos.y + off.dy)) movedIds.add(node.id);
-          const spec = specById.get(node.id);
-          if (spec && spec.el.className.includes("--selected")) curSel.add(node.id);
-        }
-        if (movedIds.size) { engine.relayoutCables(movedIds); moved = true; }
-        let selChanged = curSel.size !== lastSel.size;
-        if (!selChanged) for (const id of curSel) if (!lastSel.has(id)) { selChanged = true; break; }
-        if (selChanged) {
-          const changed: EngineNodeSpec[] = [];
-          for (const id of curSel) if (!lastSel.has(id)) { const s = specById.get(id); if (s) changed.push(s); }
-          for (const id of lastSel) if (!curSel.has(id)) { const s = specById.get(id); if (s) changed.push(s); }
-          if (changed.length) engine.updateNodes(changed);
-          lastSel = curSel;
+        if (walkFrames > 0) {
+          walkFrames--;
+          const movedIds = new Set<string>();
+          // The live DOM class, not node.selected: the model runs ahead of React's class write and would clone before the ring lands.
+          const curSel = new Set<string>();
+          for (const node of editor.getNodes()) {
+            const off = offsets.get(node.id);
+            const pos = view.position(node.id);
+            if (off && pos && engine.setNodePosition(node.id, pos.x + off.dx, pos.y + off.dy)) movedIds.add(node.id);
+            const spec = specById.get(node.id);
+            if (spec && spec.el.className.includes("--selected")) curSel.add(node.id);
+          }
+          if (movedIds.size) { engine.relayoutCables(movedIds); moved = true; walkFrames = WALK_SETTLE; }
+          let selChanged = curSel.size !== lastSel.size;
+          if (!selChanged) for (const id of curSel) if (!lastSel.has(id)) { selChanged = true; break; }
+          if (selChanged) {
+            const changed: EngineNodeSpec[] = [];
+            for (const id of curSel) if (!lastSel.has(id)) { const s = specById.get(id); if (s) changed.push(s); }
+            for (const id of lastSel) if (!curSel.has(id)) { const s = specById.get(id); if (s) changed.push(s); }
+            if (changed.length) engine.updateNodes(changed);
+            lastSel = curSel;
+          }
         }
         if (gesturing && !overlay) {
           const sync = holderSyncTransform(t, engine.getPresented());
@@ -384,6 +394,7 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
 
     return () => {
       cancelAnimationFrame(raf);
+      unsubNodes();
       clearInterval(retry);
       clearTimeout(rebuildTimer);
       clearTimeout(gestureTimer);
@@ -411,7 +422,7 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
       if (holderSynced) holder.style.transform = holderTransform(view.transform);
       engine.dispose();
     };
-  }, [active, editor, view]);
+  }, [active, editor, view, rf]);
 
   if (!active) return null;
   return <div ref={hostRef} className="solenoid-html-layer" />;

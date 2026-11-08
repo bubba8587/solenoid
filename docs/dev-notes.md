@@ -6,6 +6,18 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-08: per-frame camera work trimmed; cloud session)
+- A source read (no measuring) of what runs on every pan and zoom frame; four pieces of dead work went, each with its
+  rule in its spec: the selection mirror scans only on a new `nodes`/`edges` array (`flow/selectionMirror.ts`, not RF's
+  selection hook, which walked every node and edge per frame); the view keeps no canvas pointer position (nothing read
+  it, and it cost a layout read per pointer move); the corner grip drives `XYResizer` itself with no store subscription,
+  as the socket handle does; standoff bars and the HTML-in-Canvas frame loop skip their card walk while RF's `nodes`
+  array is unchanged. Findings 4 (cables) and 5 (minimap) of `canvas-frame-cost-findings.md` stay open by the author's call.
+- The HTML-in-Canvas change is unexercised in a browser (the mode needs a Chromium flag); the grip and selection were
+  checked on the live canvas.
+- The local `develop` here again held the 50 Android commits no remote holds; kept as `develop-stale-local` in this
+  container only.
+
 ### SESSION DIGEST (2026-11-07: live multiplayer researched; cloud session)
 - **Bundle 27** (`v2.0/27-multiplayer.md`, plan-only) is bundle 21 Stage 3's new home: link rooms with no accounts, a
   Loro CRDT at the `serializeGraph` boundary keyed by room-only sync ids, tables as rows × columns × raw-text cells,

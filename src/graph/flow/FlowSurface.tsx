@@ -11,7 +11,6 @@ import {
   useReactFlow,
   useStoreApi,
   useNodesInitialized,
-  useOnSelectionChange,
   type NodeChange,
   type EdgeChange,
   type Connection,
@@ -33,6 +32,7 @@ import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
 import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { FlowConnectionLine } from "./FlowConnectionLine";
 import { ViewportLayer } from "./ViewportLayer";
+import { mirrorSelection } from "./selectionMirror";
 import { CanvasBacking } from "./CanvasBacking";
 import { alignedViewport, createPanLayer, promotesPans } from "./panLayer";
 import { useIsMobile } from "../useDeviceMode";
@@ -502,20 +502,20 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const onEdgesChange = useCallback((changes: EdgeChange<SolFlowEdge>[]) => {
     setEdges((es) => applyEdgeChanges(changes, es));
   }, []);
-  const onSelectionChange = useCallback(
-    ({ nodes: sel, edges: selEdges }: { nodes: SolFlowNode[]; edges: SolFlowEdge[] }) => {
-      const ids = new Set(sel.map((n) => n.id));
-      for (const n of s.editor.getNodes()) (n as { selected?: boolean }).selected = ids.has(n.id);
-      cableSelectionStore.replaceAll(selEdges.map((e) => e.id));
-      if (ids.size > 0 || selEdges.length > 0) {
-        drawnCableStore.select(null);
-        standoffStore.select(null);
-        isoEndpointSelect.set(null);
-      }
-    },
-    [s],
+  useEffect(
+    () =>
+      mirrorSelection(storeApi, (nodeIds, edgeIds) => {
+        const ids = new Set(nodeIds);
+        for (const n of s.editor.getNodes()) (n as { selected?: boolean }).selected = ids.has(n.id);
+        cableSelectionStore.replaceAll(edgeIds);
+        if (ids.size > 0 || edgeIds.length > 0) {
+          drawnCableStore.select(null);
+          standoffStore.select(null);
+          isoEndpointSelect.set(null);
+        }
+      }),
+    [s, storeApi],
   );
-  useOnSelectionChange({ onChange: onSelectionChange });
   useEffect(
     () =>
       cableSelectionStore.subscribe(() => {
@@ -598,13 +598,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     },
     [s, panLayer],
   );
-  const onPointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      screenMouseRef.current = { x: e.clientX, y: e.clientY };
-      s.view.setPointer(screenToFlowPosition({ x: e.clientX, y: e.clientY }));
-    },
-    [s, screenToFlowPosition],
-  );
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    screenMouseRef.current = { x: e.clientX, y: e.clientY };
+  }, []);
 
   const onConnectStart = useCallback(
     (_e: unknown, params: { nodeId: string | null; handleId: string | null }) => {

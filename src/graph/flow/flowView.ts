@@ -14,14 +14,12 @@ type FlowViewCallbacks = {
 
 export type FlowView = View & {
   setTransform(t: { x: number; y: number; k: number }): void;
-  setPointer(p: { x: number; y: number }): void;
   setSize(id: string, size: { w: number; h: number }): void;
 };
 
 export function makeFlowView(editor: GraphEditor<Schemes>, cb: FlowViewCallbacks): FlowView {
   const sizes = new Map<string, { w: number; h: number }>();
   const transform = { x: 0, y: 0, k: 1 };
-  const pointer = { x: 0, y: 0 };
   const detached = document.createElement("div");
   const renderListeners = new Set<(id: string) => void>();
 
@@ -51,7 +49,6 @@ export function makeFlowView(editor: GraphEditor<Schemes>, cb: FlowViewCallbacks
       return cb.getContainer()?.querySelector<HTMLElement>(".react-flow__viewport") ?? detached;
     },
     transform,
-    pointer,
     async zoom(k, ox = 0, oy = 0) {
       transform.k = clampZoom(k);
       transform.x += ox;
@@ -93,10 +90,6 @@ export function makeFlowView(editor: GraphEditor<Schemes>, cb: FlowViewCallbacks
       transform.x = t.x;
       transform.y = t.y;
       transform.k = t.k;
-    },
-    setPointer(p) {
-      pointer.x = p.x;
-      pointer.y = p.y;
     },
     setSize(id, size) {
       sizes.set(id, size);

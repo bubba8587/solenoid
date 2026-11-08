@@ -16,6 +16,7 @@ Status of each finding at a glance:
 | 5 | The desktop minimap subscribes once per card | React Flow source, A/B | Candidate |
 | 6 | One CSS rule (`clip-path` on grouped cards' corner tag) makes Chrome re-record those cards on every zoom step | Chromium source, live desktop A/B | Not shipped: costs phones layerize, cause unproven |
 | 7 | Many card styles (shadows, filters, text, masks, the header clip, chevrons) | knockout tests | Ruled out |
+| 8 | Store subscribers doing camera-independent work (RF's selection listener, the grips, standoff bars, the canvas pointer, the HTML-in-Canvas walk) | source read, November 2026, not measured | **Shipped** (see the specs each change cites) |
 
 ## How it was measured
 
