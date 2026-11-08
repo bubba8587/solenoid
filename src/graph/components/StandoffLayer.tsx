@@ -1,7 +1,7 @@
 // [[standoffs#The solver runs last]]
 import { measuredSize } from "../nodeSize";
 import { memo, useRef, useSyncExternalStore } from "react";
-import { useStore, type ReactFlowState } from "@xyflow/react";
+import { useNodesStore, type NodesStore } from "@xyflow/react";
 import { createPortal } from "react-dom";
 import {
   standoffStore,
@@ -64,7 +64,7 @@ function liveBox(id: string): Box | null {
 }
 
 // Its two cards' boxes as one compared string, so a drag re-renders only the bars on what moved.
-function endsKey(st: ReactFlowState, s: Standoff): string {
+function endsKey(st: NodesStore, s: Standoff): string {
   return [s.a.nodeId, s.b.nodeId].map((id) => {
     const n = st.nodeLookup.get(id);
     return n ? `${n.internals.positionAbsolute.x},${n.internals.positionAbsolute.y},${n.measured.width},${n.measured.height}` : "";
@@ -73,7 +73,7 @@ function endsKey(st: ReactFlowState, s: Standoff): string {
 
 const StandoffBar = memo(function StandoffBar({ s, selected }: { s: Standoff; selected: boolean }) {
   const ends = useRef<{ nodes: unknown; s: Standoff; key: string } | null>(null);
-  useStore((st) => {
+  useNodesStore((st) => {
     const last = ends.current;
     if (last && last.nodes === st.nodes && last.s === s) return last.key;
     ends.current = { nodes: st.nodes, s, key: endsKey(st, s) };

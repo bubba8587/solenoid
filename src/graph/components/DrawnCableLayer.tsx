@@ -1,5 +1,5 @@
 import { memo, useCallback, useRef, useSyncExternalStore } from "react";
-import { useReactFlow, useStore } from "@xyflow/react";
+import { useReactFlow, useViewportStore } from "@xyflow/react";
 import {
   drawnCableStore, drawModeStore, commitDrawn,
   DRAWN_DEFAULT_SHAPE, DRAWN_DEFAULT_WIDTH, DRAWN_DEFAULT_COLOR,
@@ -261,7 +261,7 @@ export const DrawnCableLayer = memo(function DrawnCableLayer() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   useSyncExternalStore(drawModeStore.subscribe, drawModeStore.version);
   const { screenToFlowPosition } = useReactFlow();
-  const zoom = useStore((st) => st.transform[2]);
+  const zoom = useViewportStore((st) => st.transform[2]);
   const toFlow = useCallback(
     (screen: { x: number; y: number }) => screenToFlowPosition(screen),
     [screenToFlowPosition],

@@ -1,6 +1,6 @@
 // [[engineering#Performance]]. The canvas color and dot grid, under every card (react-flow-surface-contract § The dot grid).
 import { memo, useId } from "react";
-import { useStore, type ReactFlowState } from "@xyflow/react";
+import { useViewportStore, type ViewportStore } from "@xyflow/react";
 import { DOT_SPACING } from "../gridSnapStore";
 
 /** Half the backing's side in canvas units, a multiple of DOT_SPACING so a dot sits on every multiple of it. */
@@ -9,7 +9,7 @@ const SIDE = BACKING_SPAN * 2;
 
 /** The dots' window: CELL canvas units (a multiple of DOT_SPACING, at least a screen at this zoom), anchored on the cell
  *  under the screen's center, covering that cell and one on every side. A string, so a pan inside the cell re-renders nothing. */
-function dotsWindow(st: ReactFlowState): string {
+function dotsWindow(st: ViewportStore): string {
   const [x, y, k] = st.transform;
   const cell = DOT_SPACING * Math.max(1, Math.ceil(Math.max(st.width, st.height, 1) / k / DOT_SPACING));
   const ax = Math.floor((st.width / 2 - x) / k / cell) * cell;
@@ -24,7 +24,7 @@ function dotsWindow(st: ReactFlowState): string {
  *  a pinch at an unsnapped zoom then placed its dots half a pixel off, differently every frame. */
 export const CanvasBacking = memo(function CanvasBacking() {
   const id = `sol-dots-${useId()}`;
-  const [k, cell, ax, ay] = useStore(dotsWindow).split(" ").map(Number);
+  const [k, cell, ax, ay] = useViewportStore(dotsWindow).split(" ").map(Number);
   const side = 3 * cell * k;
   return (
     <>
