@@ -14,7 +14,7 @@ import { getCablePath, Position } from "../cablePaths";
 import { cableShapeStore } from "../cableShape";
 import "./isolateEndpoints.css";
 import { getOwningEditor } from "../activeGraph";
-import { useStore, type ReactFlowState } from "@xyflow/react";
+import { useNodesStore, type NodesStore } from "@xyflow/react";
 import type { GraphEditor } from "../graphEditor";
 import type { Schemes } from "../schemes";
 import type { View } from "../view";
@@ -48,7 +48,7 @@ function externalName(nodeId: string): string {
 }
 
 // The focus cards' boxes as one compared string, so a move or a resize redraws the terminals.
-function focusBoxesKey(st: ReactFlowState, focus: ReadonlySet<string> | null): string {
+function focusBoxesKey(st: NodesStore, focus: ReadonlySet<string> | null): string {
   if (!focus) return "";
   let key = "";
   for (const id of focus) {
@@ -66,7 +66,7 @@ export function IsolateEndpoints({ editor, view }: { editor: GraphEditor<Schemes
   const selected = isoEndpointSelect.get();
 
   const focus = isolateStore.get();
-  useStore((st) => focusBoxesKey(st, focus));
+  useNodesStore((st) => focusBoxesKey(st, focus));
 
   // Drag offsets are ephemeral and in canvas coords, applied over the auto-centered position.
   const [override, setOverride] = useState<{ entry: Pt; exit: Pt }>({ entry: { x: 0, y: 0 }, exit: { x: 0, y: 0 } });

@@ -1,6 +1,6 @@
 // [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator
 import { useCallback, useEffect, useRef } from "react";
-import { useNodeId, useStoreApi, type NodeChange } from "@xyflow/react";
+import { useNodeId, useReactFlowStoreApi, type NodeChange } from "@xyflow/react";
 import { XYResizer, type ResizeParams, type XYResizerInstance } from "@xyflow/system";
 import type { FlowResizeGripProps } from "../flowSurface";
 
@@ -12,7 +12,7 @@ export function FlowResizeGrip({
   className, style, minWidth = 10, minHeight = 10, onResizeStart, onResize, onResizeEnd, onDoubleClick, children,
 }: FlowResizeGripProps) {
   const nodeId = useNodeId();
-  const store = useStoreApi();
+  const { optionsStore, viewportStore, nodesStore } = useReactFlowStoreApi();
   const ref = useRef<HTMLDivElement>(null);
   const resizer = useRef<XYResizerInstance | null>(null);
   const latest = useRef({ onResizeStart, onResize, onResizeEnd });
@@ -39,8 +39,8 @@ export function FlowResizeGrip({
       domNode: el,
       nodeId,
       getStoreItems: () => {
-        const { nodeLookup, transform, snapGrid, snapToGrid, nodeOrigin, domNode } = store.getState();
-        return { nodeLookup, transform, snapGrid, snapToGrid, nodeOrigin, paneDomNode: domNode };
+        const { snapGrid, snapToGrid, nodeOrigin, domNode } = optionsStore.getState();
+        return { nodeLookup: nodesStore.getState().nodeLookup, transform: viewportStore.getState().transform, snapGrid, snapToGrid, nodeOrigin, paneDomNode: domNode };
       },
       onChange: (change, childChanges) => {
         const changes: NodeChange[] = [];
@@ -51,17 +51,17 @@ export function FlowResizeGrip({
           changes.push({ id: nodeId, type: "dimensions", resizing: true, setAttributes: true, dimensions: { width: change.width, height: change.height } });
         }
         for (const child of childChanges) changes.push({ ...child, type: "position" });
-        store.getState().triggerNodeChanges(changes);
+        optionsStore.getState().emitNodeChanges(changes);
       },
       onEnd: ({ width, height }) => {
-        store.getState().triggerNodeChanges([{ id: nodeId, type: "dimensions", resizing: false, dimensions: { width, height } }]);
+        optionsStore.getState().emitNodeChanges([{ id: nodeId, type: "dimensions", resizing: false, dimensions: { width, height } }]);
       },
     });
     return () => {
       resizer.current?.destroy();
       resizer.current = null;
     };
-  }, [nodeId, store]);
+  }, [nodeId, optionsStore, viewportStore, nodesStore]);
 
   useEffect(() => {
     resizer.current?.update({
@@ -74,7 +74,7 @@ export function FlowResizeGrip({
       onResizeEnd: end,
       shouldResize: undefined,
     });
-  }, [nodeId, store, minWidth, minHeight, start, resize, end]);
+  }, [nodeId, optionsStore, minWidth, minHeight, start, resize, end]);
 
   return (
     <div ref={ref} className={`react-flow__resize-control nodrag bottom right handle sol-rf-grip${className ? ` ${className}` : ""}`} style={style}>

@@ -198,7 +198,7 @@ function LandingStage({ stack, resetNonce }: { stack: SurfaceStack; resetNonce: 
     }
     const raf = requestAnimationFrame(() =>
       requestAnimationFrame(() => {
-        void fitView({ padding: 0.15, duration: 320 });
+        void fitView({ padding: "6.5%", duration: 320 });
       }),
     );
     return () => cancelAnimationFrame(raf);

@@ -1,5 +1,6 @@
 // [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator
 import { getNodesBounds, getViewportForBounds } from "@xyflow/react";
+import type { Padding } from "@xyflow/system";
 import { boundZoom, MIN_ZOOM } from "./viewPresets";
 import type { View } from "./view";
 // Never zooms in past 1; the zoom is exact, off the step grid, as every fit is. Collapsed-group callers: [[group-collapse#Camera targets across collapsed groups]].
@@ -8,7 +9,7 @@ type NodeLike = { id: string; width?: number; height?: number };
 
 type ZoomView = Pick<View, "position" | "nodeElement" | "measured" | "container" | "setCamera">;
 
-const FRAME_PADDING = 0.1;
+const FRAME_PADDING: Padding = "4.545%";
 
 /** The class default must never outrank RF's measure, or a collapsed card frames at its expanded height. */
 export function frameSize(surface: Pick<ZoomView, "measured" | "nodeElement">, node: NodeLike): { width: number; height: number } {
@@ -23,7 +24,7 @@ export function frameSize(surface: Pick<ZoomView, "measured" | "nodeElement">, n
 export async function zoomAt(
   surface: ZoomView,
   nodes: ReadonlyArray<NodeLike>,
-  params?: { padding?: number },
+  params?: { padding?: Padding },
 ): Promise<void> {
   const lites = nodes
     .map((node) => ({ node, position: surface.position(node.id) }))

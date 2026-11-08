@@ -1,9 +1,9 @@
 /* [[B3]] sameNodeEverywhere, [[C88]] collapsedGroupCard (.sol-member-hidden), [[components#The design system]] */
 
-/* flow.css loads after RF's stylesheet, so these override its `.react-flow__pane.draggable` rule. */
-.react-flow__pane.draggable { cursor: default; }
-.react-flow__pane.dragging { cursor: grabbing; }
-.solenoid-canvas--locked .react-flow__pane.draggable { cursor: grab; }
+/* RF's rules sit in the `xyflow` layer, so these unlayered ones win; its pane cursor is on `::before`. */
+.react-flow__pane.draggable::before { cursor: default; }
+.react-flow__pane.dragging::before { cursor: grabbing; }
+.solenoid-canvas--locked .react-flow__pane.draggable::before { cursor: grab; }
 
 .sol-rf-appcanvas {
   position: relative;

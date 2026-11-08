@@ -1,6 +1,6 @@
 // [[html-in-canvas]]
 import { memo, useEffect, useRef, useState } from "react";
-import { useStoreApi } from "@xyflow/react";
+import { useReactFlowStoreApi } from "@xyflow/react";
 import { useRenderMode } from "../renderMode";
 import { zoomSettleMs } from "../zoomSettle";
 import { HtmlCanvasRenderer, type EngineNodeSpec } from "../htmlCanvasRenderer";
@@ -37,7 +37,7 @@ const graphDomWeight = (ed: GraphEditor<Schemes>): number => {
 };
 
 export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: { editor: GraphEditor<Schemes>; view: View }) {
-  const rf = useStoreApi();
+  const { nodesStore: rf } = useReactFlowStoreApi();
   const mode = useRenderMode();
   const hostRef = useRef<HTMLDivElement>(null);
   const [domWeight, setDomWeight] = useState(() => graphDomWeight(editor));

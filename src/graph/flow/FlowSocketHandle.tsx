@@ -1,6 +1,6 @@
 // [[engineering#Performance]], [[B3]] sameNodeEverywhere
 import { useSyncExternalStore, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent } from "react";
-import { Position, useNodeId, useStoreApi, addEdge, type Connection } from "@xyflow/react";
+import { Position, useNodeId, useReactFlowStoreApi, addEdge, type Connection } from "@xyflow/react";
 import { XYHandle, isMouseEvent, getHostForElement } from "@xyflow/system";
 import { SocketComponent } from "../components/SocketComponent";
 import { SocketLitRing } from "../components/NodeSocket";
@@ -12,7 +12,7 @@ const IDLE_CLASSES = "connectable connectablestart connectableend connectionindi
 
 export function FlowSocketHandle({ side, socketKey, payload, shape, lit, flipped }: FlowSocketProps) {
   const nodeId = useNodeId();
-  const store = useStoreApi();
+  const { optionsStore: store, viewportStore, connectionStore, nodesStore, edgesStore } = useReactFlowStoreApi();
   const isValidTarget = useSyncExternalStore(litTargetStore.subscribe, () => litTargetStore.get() === litTargetStore.key(nodeId, socketKey));
   const visualSide = flipped ? (side === "input" ? "output" : "input") : side;
   const type = side === "input" ? "target" : "source";
@@ -23,8 +23,8 @@ export function FlowSocketHandle({ side, socketKey, payload, shape, lit, flipped
     const { defaultEdgeOptions, onConnect, hasDefaultEdges } = store.getState();
     const edgeParams = { ...defaultEdgeOptions, ...params };
     if (hasDefaultEdges) {
-      const { edges, setEdges, onError } = store.getState();
-      setEdges(addEdge(edgeParams, edges, { onError }));
+      const { setEdges, onError } = store.getState();
+      setEdges(addEdge(edgeParams, edgesStore.getState().edges, { onError }));
     }
     onConnect?.(edgeParams);
   };
@@ -40,8 +40,8 @@ export function FlowSocketHandle({ side, socketKey, payload, shape, lit, flipped
       connectionMode: s.connectionMode,
       connectionRadius: s.connectionRadius,
       domNode: s.domNode,
-      nodeLookup: s.nodeLookup,
-      lib: s.lib,
+      nodeLookup: nodesStore.getState().nodeLookup,
+      lib: "react",
       isTarget: type === "target",
       handleId: socketKey,
       nodeId,
@@ -53,19 +53,21 @@ export function FlowSocketHandle({ side, socketKey, payload, shape, lit, flipped
       updateConnection: s.updateConnection,
       onConnect: connect,
       isValidConnection: (...args) => store.getState().isValidConnection?.(...args) ?? true,
-      getTransform: () => store.getState().transform,
-      getFromHandle: () => store.getState().connection.fromHandle,
+      getTransform: () => viewportStore.getState().transform,
+      getFromHandle: () => connectionStore.getState().connection.fromHandle,
       autoPanSpeed: s.autoPanSpeed,
       dragThreshold: s.connectionDragThreshold,
     });
   };
 
   const onClick = (event: ReactMouseEvent<HTMLDivElement>) => {
-    const { onClickConnectStart, onClickConnectEnd, connectionClickStartHandle, connectionMode, isValidConnection, lib, rfId: flowId, nodeLookup, connection: connectionState, connectOnClick } = store.getState();
+    const { onClickConnectStart, onClickConnectEnd, updateConnectionClickStart, connectionMode, isValidConnection, rfId: flowId, connectOnClick } = store.getState();
+    const { connectionClickStartHandle, connection: connectionState } = connectionStore.getState();
+    const { nodeLookup } = nodesStore.getState();
     if (!connectOnClick || !nodeId) return;
     if (!connectionClickStartHandle) {
       onClickConnectStart?.(event.nativeEvent, { nodeId, handleId: socketKey, handleType: type });
-      store.setState({ connectionClickStartHandle: { nodeId, type, id: socketKey } });
+      updateConnectionClickStart({ nodeId, type, id: socketKey });
       return;
     }
     const { connection, isValid } = XYHandle.isValid(event.nativeEvent, {
@@ -77,7 +79,7 @@ export function FlowSocketHandle({ side, socketKey, payload, shape, lit, flipped
       isValidConnection,
       flowId,
       doc: getHostForElement(event.target as HTMLElement),
-      lib,
+      lib: "react",
       nodeLookup,
     });
     if (isValid && connection) connect(connection);
@@ -85,7 +87,7 @@ export function FlowSocketHandle({ side, socketKey, payload, shape, lit, flipped
     delete ended.inProgress;
     ended.toPosition = ended.toHandle ? ended.toHandle.position : null;
     onClickConnectEnd?.(event.nativeEvent, ended as never);
-    store.setState({ connectionClickStartHandle: null });
+    updateConnectionClickStart(null);
   };
 
   return (

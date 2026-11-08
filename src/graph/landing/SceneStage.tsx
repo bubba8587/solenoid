@@ -191,7 +191,7 @@ function SceneInner({
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           if (cancelled) return;
-          void fitView({ padding: 0.16, duration: 0 });
+          void fitView({ padding: "6.9%", duration: 0 });
           onReady();
         }),
       );

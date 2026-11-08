@@ -1,6 +1,6 @@
 // [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator
 import { memo, useEffect, useRef } from "react";
-import { useStoreApi } from "@xyflow/react";
+import { useReactFlowStoreApi } from "@xyflow/react";
 import type { NodeProps, Node } from "@xyflow/react";
 import { componentForNode } from "../nodeRegistry";
 import { withNodeBoundary } from "../components/ErrorBoundary";
@@ -18,7 +18,7 @@ export type SolFlowNode = Node<FlowNodeData, "sol">;
 
 const stubEmit = (() => {}) as unknown as Emit;
 
-type FlowStore = ReturnType<typeof useStoreApi>;
+type FlowStore = ReturnType<typeof useReactFlowStoreApi>["optionsStore"];
 type MeasureUpdates = Parameters<ReturnType<FlowStore["getState"]>["updateNodeInternals"]>[0];
 /** Re-measures queued per React Flow instance, flushed together in the next frame, so a pass that re-renders many
  *  cards costs React Flow one store update and React one commit, not one each. */
@@ -48,7 +48,7 @@ function SolNodeAdapterBase(props: NodeProps<SolFlowNode>) {
   const { id, data, selected } = props;
   // Components read selection off the node payload.
   (data.node as unknown as { selected?: boolean }).selected = !!selected;
-  const store = useStoreApi();
+  const store = useReactFlowStoreApi().optionsStore;
   // A version bump re-measures the card's handles only when its sockets were added, removed or reordered: a resize
   // already re-measures them (React Flow's own observer), and a new value with the same sockets moves none.
   const measured = useRef<string | null>(null);

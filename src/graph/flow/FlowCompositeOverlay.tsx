@@ -242,7 +242,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     return { tidy: arrangeFn, cleanup: makeCleanupFn(comp.internalEditor, s.view as unknown as View, arrangeFn) };
   }, [comp, s, repositionDockedTo]);
   const settleArrange = useCallback((fit = true) => {
-    if (fit) void fitView({ padding: 0.15, duration: 0 });
+    if (fit) void fitView({ padding: "6.5%", duration: 0 });
     void processGraph(recomputeTarget());
     scheduleAutosave();
     scheduleRecord(comp, s);

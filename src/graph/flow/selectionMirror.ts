@@ -12,6 +12,28 @@ type SelectionStore = {
   subscribe(listener: (state: SelectionState) => void): () => void;
 };
 
+type Readable<T> = { getState(): T; subscribe(listener: () => void): () => void };
+
+/** RF keeps nodes and edges in two stores; the mirror reads them as one. */
+export function rfSelectionSource(
+  nodes: Readable<Pick<SelectionState, "nodes" | "nodeLookup">>,
+  edges: Readable<Pick<SelectionState, "edges" | "edgeLookup">>,
+): SelectionStore {
+  const getState = (): SelectionState => {
+    const { nodes: n, nodeLookup } = nodes.getState();
+    const { edges: e, edgeLookup } = edges.getState();
+    return { nodes: n, edges: e, nodeLookup, edgeLookup };
+  };
+  return {
+    getState,
+    subscribe(listener) {
+      const offNodes = nodes.subscribe(() => listener(getState()));
+      const offEdges = edges.subscribe(() => listener(getState()));
+      return () => { offNodes(); offEdges(); };
+    },
+  };
+}
+
 function selectedIds(lookup: ReadonlyMap<string, Selectable>): string[] {
   const ids: string[] = [];
   for (const [id, item] of lookup) if (item.selected) ids.push(id);
