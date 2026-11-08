@@ -1,7 +1,7 @@
 // [[B11]] maximalMerge. Spec: [[react-flow-surface-contract#Ghost cables]].
 // No connection exists behind a ghost, so it can't be an RF edge; its endpoints come from RF's measured handle bounds.
 import { memo, useSyncExternalStore } from "react";
-import { useStore, type ReactFlowState } from "@xyflow/react";
+import { useNodesStore, type NodesStore } from "@xyflow/react";
 import { cablePendingStore, type PendingReconnect } from "../cableState";
 import { cableShapeStore } from "../cableShape";
 import { socketFlipStore } from "../socketFlipStore";
@@ -13,7 +13,7 @@ import "./pendingCableLayer.css";
 type Pt = { x: number; y: number };
 
 /** Null until measured, or when the node is not on this surface. */
-function handleCentre(s: ReactFlowState, nodeId: string, side: "source" | "target", key: string): Pt | null {
+function handleCentre(s: NodesStore, nodeId: string, side: "source" | "target", key: string): Pt | null {
   const n = s.nodeLookup.get(nodeId);
   const h = n?.internals.handleBounds?.[side]?.find((b) => b.id === key);
   if (!n || !h) return null;
@@ -28,7 +28,7 @@ function ghostColor(p: PendingReconnect): string {
 
 function PendingGhost({ p }: { p: PendingReconnect }) {
   // Endpoints as a value-compared pair so a drag of either node re-renders only this ghost.
-  const ends = useStore(
+  const ends = useNodesStore(
     (s) => {
       const a = handleCentre(s, p.source, "source", p.sourceOutput);
       const b = handleCentre(s, p.target, "target", p.targetInput);

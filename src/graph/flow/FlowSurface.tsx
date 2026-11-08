@@ -4,15 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import {
   ReactFlow,
   MiniMap,
-  applyNodeChanges,
-  applyEdgeChanges,
+  NodeChangeset,
+  type EdgeChangeset,
   getNodesBounds,
   getViewportForBounds,
   useReactFlow,
-  useStoreApi,
+  useReactFlowStoreApi,
   useNodesInitialized,
   type NodeChange,
-  type EdgeChange,
   type Connection,
   type IsValidConnection,
   type OnConnectEnd,
@@ -32,7 +31,7 @@ import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
 import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { FlowConnectionLine } from "./FlowConnectionLine";
 import { ViewportLayer } from "./ViewportLayer";
-import { mirrorSelection } from "./selectionMirror";
+import { mirrorSelection, rfSelectionSource } from "./selectionMirror";
 import { CanvasBacking } from "./CanvasBacking";
 import { alignedViewport, createPanLayer, promotesPans } from "./panLayer";
 import { useIsMobile } from "../useDeviceMode";
@@ -208,7 +207,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const wrapperRef = useRef<HTMLDivElement>(null);
   const screenMouseRef = useRef({ x: 0, y: 0 });
   const { setViewport, getViewport, screenToFlowPosition, getNodes } = useReactFlow();
-  const storeApi = useStoreApi();
+  const storeApi = useReactFlowStoreApi();
   useEffect(() => (import.meta.env.DEV ? registerDevRfStore(storeApi) : undefined), [storeApi]);
   const nodesInitialized = useNodesInitialized();
   const fitDoneRef = useRef(false);
@@ -216,7 +215,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     const el = wrapperRef.current;
     if (!nodesInitialized || fitDoneRef.current || !hooksRef.current.fitViewOnInit || !el) return;
     fitDoneRef.current = true;
-    const b = getNodesBounds(getNodes(), { nodeLookup: storeApi.getState().nodeLookup });
+    const b = getNodesBounds(getNodes(), { nodeLookup: storeApi.nodesStore.getState().nodeLookup });
     const w = el.clientWidth;
     const h = el.clientHeight;
     const zoom = boundZoom(getViewportForBounds(b, w, h, MIN_ZOOM, MAX_ZOOM, FIT_PADDING).zoom);
@@ -478,7 +477,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   }, [s]);
 
   const onNodesChange = useCallback(
-    (changes: NodeChange<SolFlowNode>[]) => {
+    (changeset: NodeChangeset<SolFlowNode>) => {
+      const changes = changeset.toArray();
       const moved = changes
         .filter((ch): ch is Extract<NodeChange<SolFlowNode>, { type: "position" }> => ch.type === "position" && !!ch.position)
         .sort((a, b) => Number(!(s.editor.getNode(a.id) instanceof GroupNode)) - Number(!(s.editor.getNode(b.id) instanceof GroupNode)));
@@ -495,16 +495,17 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       }
       // A grip resize (`resizing` set) stays out of RF state: the model sizes the card and RF only measures it.
       const applied = changes.filter((ch) => !(ch.type === "dimensions" && ch.resizing !== undefined));
-      setNodes((ns) => applyNodeChanges(applied, ns));
+      const apply = new NodeChangeset<SolFlowNode>(applied);
+      setNodes((ns) => apply.applyTo(ns));
     },
     [s],
   );
-  const onEdgesChange = useCallback((changes: EdgeChange<SolFlowEdge>[]) => {
-    setEdges((es) => applyEdgeChanges(changes, es));
+  const onEdgesChange = useCallback((changes: EdgeChangeset<SolFlowEdge>) => {
+    setEdges((es) => changes.applyTo(es));
   }, []);
   useEffect(
     () =>
-      mirrorSelection(storeApi, (nodeIds, edgeIds) => {
+      mirrorSelection(rfSelectionSource(storeApi.nodesStore, storeApi.edgesStore), (nodeIds, edgeIds) => {
         const ids = new Set(nodeIds);
         for (const n of s.editor.getNodes()) (n as { selected?: boolean }).selected = ids.has(n.id);
         cableSelectionStore.replaceAll(edgeIds);
@@ -820,8 +821,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const touchSelect = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
   useEffect(() => {
     if (!IS_COARSE) return;
-    storeApi.setState({ multiSelectionActive: touchSelect });
-    return () => storeApi.setState({ multiSelectionActive: false });
+    storeApi.optionsStore.setState({ multiSelectionActive: touchSelect });
+    return () => storeApi.optionsStore.setState({ multiSelectionActive: false });
   }, [storeApi, touchSelect]);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const themeMode = appThemeStore.getMode();
@@ -895,7 +896,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         maxZoom={MAX_ZOOM}
         snapToGrid={gridSnap}
         snapGrid={SNAP_GRID}
-        colorMode={themeMode}
+        forceColorMode={themeMode}
         proOptions={PRO_OPTIONS}
       >
         <ViewportLayer>

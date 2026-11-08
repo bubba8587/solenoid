@@ -49,12 +49,11 @@ function shown(el: Element, stop: Element): number {
 
 function rfBounds(nodeId: string): { zoom: number; source: Map<string, Box>; target: Map<string, Box> } | null {
   for (const store of devRfStores) {
-    const st = store.getState();
-    const n = st.nodeLookup.get(nodeId);
+    const n = store.nodesStore.getState().nodeLookup.get(nodeId);
     if (!n) continue;
     const toMap = (list: { id?: string | null; x: number; y: number; width: number; height: number }[] | null | undefined) =>
       new Map((list ?? []).map((b) => [b.id ?? "", { x: b.x, y: b.y, w: b.width, h: b.height }]));
-    return { zoom: st.transform[2], source: toMap(n.internals.handleBounds?.source), target: toMap(n.internals.handleBounds?.target) };
+    return { zoom: store.viewportStore.getState().transform[2], source: toMap(n.internals.handleBounds?.source), target: toMap(n.internals.handleBounds?.target) };
   }
   return null;
 }
