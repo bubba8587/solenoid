@@ -16,7 +16,7 @@ Each line is a leaf whose rule the code doesn't keep yet. The leaf carries an `*
 ## Dependency updates (walking them one at a time)
 
 Current state (2026-10-10): everything is on latest except what's held below.
-`@xyflow/system` stays an exact pin matching the version `@xyflow/react` pins (the socket handle calls its `XYHandle`); bump them together. `@tauri-apps/plugin-http` stays an exact pin matching the `tauri-plugin-http` crate in `Cargo.lock`;
+`@xyflow/system` stays an exact pin matching the version `@xyflow/react` pins (the socket handle calls its `XYHandle`, the corner grip its `XYResizer`); bump them together, and diff RF's `HandleComponent` and resize control against the app's copies first. `@tauri-apps/plugin-http` stays an exact pin matching the `tauri-plugin-http` crate in `Cargo.lock`;
 bump them together. `magic-string` stays on 0.30 (the plugin build's pin; 1.x is a new major).
 Vitest 5 transforms with Oxc, so the `esbuild: { keepNames: true }` in `vite.config.ts` serves only
 the production minify, and its "esbuild options ignored" warning is expected.
