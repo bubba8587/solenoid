@@ -13,6 +13,9 @@ specific item.
   it, and it cost a layout read per pointer move); the corner grip drives `XYResizer` itself with no store subscription,
   as the socket handle does; standoff bars and the HTML-in-Canvas frame loop skip their card walk while RF's `nodes`
   array is unchanged. Findings 4 (cables) and 5 (minimap) of `canvas-frame-cost-findings.md` stay open by the author's call.
+- React Flow 12.12.1 is on `develop` (handle and resize control unchanged, so the app's copies still match). RF
+  13.0.0-next.3 is ported on `bleeding-edge` as an `Edge:` commit: its split stores take every per-card and per-cable
+  selector off the camera, which is finding 4 solved upstream. Port it with `port.mjs` once 13.0 ships stable.
 - The HTML-in-Canvas change is unexercised in a browser (the mode needs a Chromium flag); the grip and selection were
   checked on the live canvas.
 - The local `develop` here again held the 50 Android commits no remote holds; kept as `develop-stale-local` in this
