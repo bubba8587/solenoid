@@ -127,6 +127,9 @@ Write outcomes, not narratives: what stands, where it's enforced, what would reo
 - Formula gotchas: `e`, `pi`, `tau`, `phi` are constants; default date format `DD-MMM-YYYY` ([[C44]] dateSerials);
   units come from the FC or Convert ([[C25]] firstClassUnits).
 - An audit that finds defensible but worse behavior fixes it by default. A free speedup is taken without asking.
+- **A change that moves an answer a saved graph already gives is the author's call**, and so is every backlog line
+  under a "needs the author's call" heading, however much it reads like a plain bug: try it, write what the try showed
+  on the backlog line, and leave the behavior as it was (INDEX's whole column, 2026-11-09).
 - **Measuring speed:** time the path the app runs (`tests/graph/passBench.test.ts`), not a card's `data()` called from
   JS; say which path a number measured. Loops, sorts and caches: `tree/specs/floors/engineering.md` § Performance ([[C120]] linearWork).
 - Several agents at once: one test run at a time, a claim in `docs/agent-coordination.md`. Solo: claim nothing.
