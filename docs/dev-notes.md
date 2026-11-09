@@ -23,7 +23,7 @@ specific item.
   `validate-graph --json` and `shot-graph` take the text form. The script launcher drains its output before exiting
   (a pipe cut anything past 64 KB).
 - **Every card setting's choices come off the types** (`scripts/setting-choices.mjs` → `src/graph/settingChoices.json`,
-  214 settings on 169 cards; `floors/node-classes.md`): the validator refuses a value outside them and the grounding
+  214 settings on 169 cards; `../tree/specs/floors/node-classes.md`): the validator refuses a value outside them and the grounding
   lists them. GROUPBY, Rollup and Group Lists' aggregator is `agg`, which both now say ([[C26]] opArgDistinct); the
   validator had checked it under `op`, a field those cards never read.
 - **The No-Overlap Pass runs inside a group** (`settleMemberOverlaps`), the box growing over a member pushed past an
