@@ -51,6 +51,11 @@ specific item.
 - The Properties card reads as a node card (author: its header was too weak): the fill was already the node header's
   tint; what it lacked was the node frame's 2px accent cap and the `--mix-ink` title the Reference's boxes and the
   cards carry. The body stroke is now neutral in dark, the accent's dark shade in light, as `nodeCard.css` draws it.
+- Phone sidebars and dialogs against the app's own (screenshots of the dev server's Navigator, Settings, menu sheet and
+  Reference, desktop and phone): a settings page's group headings are the app's section captions; desktop dialogs are
+  the app's dialog (panel hairline, divider under the header, 14px title) while menus and the palette keep the overlay
+  border; a phone dialog stays Obsidian's bottom sheet; Delete takes the callout ink rule (5.3:1); the phone drawer's
+  view picker marks the active view as the app's Navigator does, and its vault name is the brand mark.
 
 ### SESSION DIGEST (2026-11-08: per-frame camera work trimmed; cloud session)
 - A source read (no measuring) of what runs on every pan and zoom frame; four pieces of dead work went, each with its

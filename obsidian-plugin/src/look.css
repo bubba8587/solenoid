@@ -448,6 +448,15 @@ button.mod-cta {
   box-shadow: none;
   font-weight: 600;
 }
+/* A destructive button takes the error color, moved out of the band where neither ink reads, with the ink that does
+   (the callout title's rule). */
+button.mod-destructive,
+button.mod-warning {
+  --sol-btn-fill: oklch(from var(--sol-error)
+    calc(clamp(0, (l - 0.586) * 1000, 1) * max(l, 0.66) + (1 - clamp(0, (l - 0.586) * 1000, 1)) * min(l, 0.52)) c h);
+  background-color: var(--sol-btn-fill);
+  color: oklch(from var(--sol-btn-fill) clamp(0.2, (0.586 - l) * 1000, 1) 0 0);
+}
 
 .menu,
 .suggestion-container,
@@ -570,6 +579,7 @@ body:not(.is-phone) .workspace-leaf.mod-active .tree-item-self.has-focus {
 }
 
 .vertical-tab-header-group-title,
+.setting-item-heading .setting-item-name,
 .backlink-pane > .tree-item-self,
 .outgoing-link-pane > .tree-item-self,
 .search-results-info,
@@ -581,10 +591,27 @@ body:not(.is-phone) .workspace-leaf.mod-active .tree-item-self.has-focus {
   color: var(--sol-text-dim);
 }
 
-.workspace-drawer-vault-name {
+.workspace-drawer-vault-name,
+.workspace-drawer-header-name-text {
   color: var(--sol-ink-accent);
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+/* A phone drawer's view picker, as the app's phone Navigator marks its view (OutlinePanel.css, __switchbtn--on): the
+   active view on a soft accent wash, its name in the accent at 600, the others dim. */
+.workspace-drawer-tab-select .workspace-tab-header-inner,
+.workspace-drawer-tab-options-list .workspace-tab-header.is-active .workspace-tab-header-inner {
+  background-color: color-mix(in srgb, var(--sol-accent) var(--sol-wash), transparent);
+}
+.workspace-drawer-tab-select .workspace-tab-header-inner-title,
+.workspace-drawer-tab-select .workspace-tab-header-inner-icon,
+.workspace-drawer-tab-options-list .workspace-tab-header.is-active .workspace-tab-header-inner-title,
+.workspace-drawer-tab-options-list .workspace-tab-header.is-active .workspace-tab-header-inner-icon {
+  color: var(--sol-ink-accent);
+}
+.workspace-drawer-tab-options-list .workspace-tab-header:not(.is-active) .workspace-tab-header-inner-title {
+  color: var(--sol-text-dim);
 }
 
 .menu,
@@ -601,6 +628,23 @@ body:not(.is-phone) .workspace-leaf.mod-active .tree-item-self.has-focus {
 .suggestion-container,
 .graph-controls {
   border-radius: 6px;
+}
+/* A dialog is the app's (Settings.css): one panel hairline, 8px corners, a 14px title, and a full-width divider
+   under its header. The overlay border stays on what floats over the work: menus, the palette, popovers, notices.
+   A phone's dialog is Obsidian's bottom sheet, with a header of its own, and keeps it. */
+body:not(.is-phone) .modal {
+  border: 1px solid var(--sol-border);
+  border-radius: 8px;
+}
+body:not(.is-phone) .modal > .modal-header:has(> .modal-title:not(:empty)) {
+  margin: 0 calc(-1 * var(--size-4-4)) var(--size-4-3);
+  padding: 0 var(--size-4-4) var(--size-4-3);
+  border-bottom: 1px solid var(--sol-border);
+}
+body:not(.is-phone) .modal .modal-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sol-text-bright);
 }
 .status-bar {
   border-color: var(--sol-overlay-border);
