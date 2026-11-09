@@ -29,6 +29,7 @@
     "plugin:dev": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build --config obsidian-plugin/vite.config.ts --watch",
     "plugin:rig": "node scripts/obsidian-rig.mjs",
     "plugin:export": "node scripts/export-plugin-source.mjs",
+    "plugin:lint": "node scripts/lint-plugin.mjs",
     "run-graph": "node scripts/vite-run.mjs scripts/run-graph.ts",
     "build:cli": "vite build --config scripts/run-graph.vite.config.ts",
     "postbuild:cli": "node scripts/cli-smoke.mjs",
@@ -77,6 +78,8 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.2",
     "esbuild": "^0.28.2",
+    "eslint": "^9.39.5",
+    "eslint-plugin-obsidianmd": "^0.5.1",
     "estree-walker": "3.0.3",
     "magic-string": "0.30.21",
     "obsidian": "^1.14.4",
@@ -86,6 +89,7 @@
     "rollup-plugin-license": "^3.7.1",
     "three": "0.186.1",
     "tsrs": "0.20.1-ts7.1.0-beta",
+    "typescript-eslint": "^8.72.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.3"
   }

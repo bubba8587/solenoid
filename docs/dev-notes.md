@@ -13,6 +13,9 @@ specific item.
   of a foreign document carries `elsewhere`, which no Allow clears: its File Link asks and its fetches stay off the LAN.
 - **A type switch in Obsidian's Update dialog keeps every value**: a nested list or table becomes its JSON text where
   the new kind holds only scalars (`keptCell`, `yamlValue.ts`); only column names go, on a switch to a list or matrix.
+- **The plugin has its own engine module** (`build-wasm.mjs --plugin`, the `plugin` feature): main.js 1.8 MB, was 12.9.
+  **`npm run plugin:lint`** runs Obsidian's review config over the exported snapshot; it holds 0 errors (68 warnings
+  stand, each asking for an Obsidian-only global). 0.1.7 to 0.1.9 shipped today; tags and Actions runs stay the author's.
 - `src-tauri` compiles and tests here after `apt-get install libwebkit2gtk-4.1-dev libxdo-dev
   libayatana-appindicator3-dev librsvg2-dev` (clippy, `cargo test --lib`, shared check target); no AppImage was run.
 

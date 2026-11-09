@@ -3,7 +3,7 @@
 // answering the core's commands in-process. A trap anywhere drops the instance and brings a fresh one
 // (tree/specs/computation/graph-core.md § Traps). `npm run build:wasm` regenerates `engineWasm/`.
 import init, { initSync, __wbg_reset, setPanicHandler, display_settings, fmt_scalar, fmt_annotated, fmt_date, card_is_hex_color, card_link_href, card_image_src, read_decimal, read_logical, read_date, literal_field, empty_field, region_keys, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, engine_infer_bin, card_keep, card_forget, card_kept_count, card_unstage, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_graph.js";
-import { toSolError } from "./errorValue";
+import { toSolError, throwSol } from "./errorValue";
 import type { ColumnUnit } from "./unitValue";
 import type { FormatAnnotation } from "./formatAnnotationStore";
 
@@ -107,7 +107,7 @@ export function coreLiteralField(cardClass: string, key: string, rung: string, k
 /** A card's declared kind for its empty field and what it shows (`nodes::fields::Empty`), where it declares one. */
 export function coreEmptyField(cardClass: string, op: string, key: string): { kind: "fallback" | "behavior" | "example" | "required"; shown: string | null } | undefined {
   const json = empty_field(cardClass, op, key);
-  return json ? JSON.parse(json) : undefined;
+  return json ? (JSON.parse(json) as NonNullable<ReturnType<typeof coreEmptyField>>) : undefined;
 }
 
 /** A date's day as a Frame Input Date cell reads the text: NaN when it isn't a date, undefined for blank. */
@@ -171,7 +171,8 @@ export function guarded<T>(call: () => T, anyThrow = false): T {
 /** The module's promise, rejecting with `CoreTrap` if the module traps before it settles. */
 export function tracked<T>(start: () => Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const settle = (e: unknown) => { _pending.delete(settle); reject(e); };
+    // What a call throws: a SolError value (`throwSol`) or an Error, a `CoreTrap` among them.
+    const settle = (e: unknown) => { _pending.delete(settle); const reason = e as Error; reject(reason); };
     _pending.add(settle);
     try {
       guarded(start).then((v) => { _pending.delete(settle); resolve(v); }, settle);
@@ -195,7 +196,7 @@ const command = <T>(call: () => T): T => guarded(call, true);
 
 export function wasmInvokeSync<T>(name: string, args: Record<string, unknown> = {}): T {
   const reply = JSON.parse(command(() => engine_invoke(name, JSON.stringify(args)))) as { ok?: T; err?: unknown };
-  if ("err" in reply) throw toSolError(reply.err);
+  if ("err" in reply) throwSol(toSolError(reply.err));
   return reply.ok as T;
 }
 
@@ -215,7 +216,7 @@ export interface BinaryCells {
 
 export function wasmSourceBin(cells: BinaryCells): string {
   const reply = JSON.parse(command(() => engine_source_bin(JSON.stringify(cells.schema), cells.tags, cells.nums, cells.strs, cells.lens))) as { ok?: string; err?: unknown };
-  if ("err" in reply) throw toSolError(reply.err);
+  if ("err" in reply) throwSol(toSolError(reply.err));
   return reply.ok as string;
 }
 
@@ -223,7 +224,7 @@ export function wasmSourceBin(cells: BinaryCells): string {
 export function wasmReadBin(handle: string, column?: string, limit?: number): (BinaryCells & { rowCount: number }) | null {
   const reply = JSON.parse(command(() => engine_read_bin(handle, column, limit))) as
     { ok?: { columns: BinaryCells["schema"]; rowCount: number } | null; err?: unknown };
-  if ("err" in reply) throw toSolError(reply.err);
+  if ("err" in reply) throwSol(toSolError(reply.err));
   if (!reply.ok) return null;
   const ok = reply.ok;
   return command(() => ({ schema: ok.columns, rowCount: ok.rowCount, tags: take_tags(), nums: take_nums(), strs: take_strs(), lens: take_lens() }));
@@ -233,7 +234,7 @@ export function wasmReadBin(handle: string, column?: string, limit?: number): (B
  *  cells. */
 export function wasmCsvFrame(text: string): BinaryCells & { rowCount: number } {
   const reply = JSON.parse(command(() => engine_csv_frame(text))) as { ok?: { columns: BinaryCells["schema"]; rowCount: number }; err?: unknown };
-  if ("err" in reply) throw toSolError(reply.err);
+  if ("err" in reply) throwSol(toSolError(reply.err));
   const ok = reply.ok!;
   return command(() => ({ schema: ok.columns, rowCount: ok.rowCount, tags: take_tags(), nums: take_nums(), strs: take_strs(), lens: take_lens() }));
 }
@@ -242,7 +243,7 @@ export function wasmCsvFrame(text: string): BinaryCells & { rowCount: number } {
 export function wasmInferBin(cells: BinaryCells): BinaryCells {
   const reply = JSON.parse(command(() => engine_infer_bin(JSON.stringify(cells.schema), cells.tags, cells.nums, cells.strs, cells.lens))) as
     { ok?: BinaryCells["schema"]; err?: unknown };
-  if ("err" in reply) throw toSolError(reply.err);
+  if ("err" in reply) throwSol(toSolError(reply.err));
   const schema = reply.ok!;
   return command(() => ({ schema, tags: take_tags(), nums: take_nums(), strs: take_strs(), lens: take_lens() }));
 }
@@ -275,7 +276,7 @@ export function wasmCardUnstage(id: number): { kind: string; schema?: string; he
 /** The rows CSV text reads as (`csv::rows_columnar`). */
 export function wasmCsvRows(text: string, detect: boolean, keepBlank: boolean): string[][] {
   const reply = JSON.parse(command(() => engine_csv_rows(text, detect, keepBlank))) as { ok?: number; err?: unknown };
-  if ("err" in reply) throw toSolError(reply.err);
+  if ("err" in reply) throwSol(toSolError(reply.err));
   const { strs, lens, widths } = command(() => ({ widths: take_nums(), lens: take_lens(), strs: take_strs() }));
   const rows = new Array<string[]>(widths.length);
   let off = 0, li = 0;

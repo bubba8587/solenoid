@@ -115,7 +115,7 @@ function declaredTypeAt(edit: CubeEditBinding, path: CubePath, column?: string):
 /** What a typed cell reads as, printed: a record's cell as a Frame cell reads, a list or table item as List Input reads it. */
 function shownAs(type: ColType, value: unknown, item: boolean): string {
   const v = value == null ? null : item ? coerceListItem(type, value) : typedCubeCell(type, value as CubeCell);
-  return cubeCellToken(v as CubeCell, type);
+  return cubeCellToken(v, type);
 }
 
 const stop = (e: React.MouseEvent | React.PointerEvent) => e.stopPropagation();

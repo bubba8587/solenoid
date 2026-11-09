@@ -79,7 +79,7 @@ export function applyFormatStyle(
   decimalMode: DecimalMode = "places",
   useGrouping = true,
 ): string {
-  return coreFormatAnnotated(n, { format: style, customPattern, decimalDigits, decimalMode, grouping: useGrouping, unit: "none" } as FormatAnnotation);
+  return coreFormatAnnotated(n, { format: style, customPattern, decimalDigits, decimalMode, grouping: useGrouping, unit: "none" });
 }
 
 type UnitGroup =

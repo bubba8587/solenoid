@@ -1,5 +1,3 @@
-/* tslint:disable */
-/* eslint-disable */
 
 /**
  * One editor's graph and its dataflow engine.
@@ -10,7 +8,7 @@ export class GraphCore {
     /**
      * `false` when a `connectioncreate` pipe cancelled it.
      */
-    addConnection(object: any, id: string, source: string, source_output: string, target: string, target_input: string): boolean;
+    addConnection(object: unknown, id: string, source: string, source_output: string, target: string, target_input: string): boolean;
     /**
      * `false` when a `nodecreate` pipe cancelled it.
      */
@@ -20,7 +18,7 @@ export class GraphCore {
      * stop the chain (cancelling the change a present-tense signal announces), and what it
      * throws stops the chain and fails the edit. Returns the handle `removePipe` takes.
      */
-    addPipe(pipe: Function): number;
+    addPipe(pipe: (CallableFunction | NewableFunction)): number;
     /**
      * The run a cable belongs to (`conduit.rs`), as `{ connIds, origin: [node, output], terminals: [[node, input]],
      * conduits }`; `undefined` for a cable not here.
@@ -36,11 +34,11 @@ export class GraphCore {
      * The model pass (`computeAll`): what `changed` reaches cleared (every cache without it), the loops seeded,
      * every node fetched. A `Map` of each node's outputs, `null` for one a reset cancelled.
      */
-    computeAll(changed?: string | null): Promise<any>;
+    computeAll(changed?: string | null): Promise<unknown>;
     /**
      * The node computed on `inputs` (one list per input key) as the engine computes it, without its cache.
      */
-    compute(id: string, inputs: any): Promise<any>;
+    compute(id: string, inputs: unknown): Promise<unknown>;
     conduitPath(cable_id: string): string | undefined;
     connectionIds(): string[];
     downstreamClosure(id: string): string[];
@@ -48,15 +46,15 @@ export class GraphCore {
      * Every node's outputs in the editor's order, as a `Map`; `null` when `stop_on_cancel` and
      * a reset cancelled the pass. `on_node(id, outputs)` runs as each node lands.
      */
-    fetchAll(on_node: Function | null | undefined, stop_on_cancel: boolean): Promise<any>;
+    fetchAll(on_node: (CallableFunction | NewableFunction) | null | undefined, stop_on_cancel: boolean): Promise<unknown>;
     /**
      * The node's inputs, fetching every predecessor.
      */
-    fetchInputs(id: string): Promise<any>;
+    fetchInputs(id: string): Promise<unknown>;
     /**
      * The node's outputs, from the cache when present.
      */
-    fetch(id: string): Promise<any>;
+    fetch(id: string): Promise<unknown>;
     /**
      * Clears the node's cache alone, cancelling a run in flight.
      */
@@ -69,7 +67,7 @@ export class GraphCore {
     /**
      * The output `key` of node `id` as the last pass landed it; `undefined` before one did.
      */
-    landed(id: string, key: string): any;
+    landed(id: string, key: string): unknown;
     loopMembers(): string[];
     /**
      * Marks every composite holding `id` (at any depth) as edited inside; the outermost one's id, or `undefined`
@@ -89,7 +87,7 @@ export class GraphCore {
      * `cancelled` is the class of error a fetch cut short by a reset rejects with; `adopt(node, field)` makes the
      * object read a field the core holds for it (`GraphEditor.adopt`).
      */
-    constructor(cancelled: Function, adopt: Function);
+    constructor(cancelled: (CallableFunction | NewableFunction), adopt: (CallableFunction | NewableFunction));
     nodeIds(): string[];
     /**
      * The app's pass body (compute-pass.md § The pass body): `changed` retargeted to the composite holding it,
@@ -98,12 +96,12 @@ export class GraphCore {
      * outputs held for the cable readouts, the change test against what it landed before). The nodes to re-render, in
      * order; `null` when a reset cancelled the pass.
      */
-    pass(changed: string | null | undefined, render_only: string[] | null | undefined, topology: boolean): Promise<any>;
+    pass(changed: string | null | undefined, render_only: string[] | null | undefined, topology: boolean): Promise<unknown>;
     /**
      * The node's ports on one side as `[key, type]` pairs, in order; `undefined` for a node not
      * here.
      */
-    ports(id: string, output: boolean): Array<any> | undefined;
+    ports(id: string, output: boolean): Array<unknown> | undefined;
     /**
      * Reads the type of each `[id, output, type now]` in `keys` off the value the last pass landed there, keeping the
      * last reading where the value has nothing to read ([[D117]] emptyKeepsLastType). Whether the Type Settle should
@@ -145,7 +143,7 @@ export class GraphCore {
     /**
      * Gives the node `outputs` without running it, until something clears its cache.
      */
-    seed(id: string, outputs: any): void;
+    seed(id: string, outputs: unknown): void;
     /**
      * Gives the node exactly these ports, in order: a node's socket changes reach the core as one call.
      */
@@ -153,7 +151,7 @@ export class GraphCore {
     /**
      * JavaScript wrote a field the core holds for a direct card; `false` where it holds none for it.
      */
-    setShown(id: string, field: string, value: any): boolean;
+    setShown(id: string, field: string, value: unknown): boolean;
     /**
      * The Type Settle over this editor (`settle.rs`): `facts` is each node's, as `settleFacts.ts` writes them, and the
      * order and cables are the graph's. Answers `{ changes: [[id, "in" | "out", key, type]], conduitChanged, adopted }`.
@@ -163,11 +161,11 @@ export class GraphCore {
      * What a card's box shows of a field the core holds (`Val::preview_js`): `[first rows, length, table width]` for a big list,
      * `[value]` otherwise; `undefined` where it holds none.
      */
-    shownPreview(id: string, field: string): any;
+    shownPreview(id: string, field: string): unknown;
     /**
      * A field the core holds for a direct card (`cachedResult` and the rest); `undefined` where it holds none.
      */
-    shown(id: string, field: string): any;
+    shown(id: string, field: string): unknown;
     /**
      * The output an output's value comes from, through every Conduit lane: `[node, output]` (`conduit.rs`).
      */
@@ -228,7 +226,7 @@ export function card_unstage(id: number): string | undefined;
  * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
  * node.
  */
-export function computeNode(node: object, inputs: any, data?: Function | null): any;
+export function computeNode(node: object, inputs: unknown, data?: (CallableFunction | NewableFunction) | null): unknown;
 
 /**
  * The classes the engine calls in Rust (`nodes::DIRECT`), for `directBodies.test.ts`.
@@ -283,7 +281,7 @@ export function engine_source_bin(schema: string, tags: Uint8Array | number[], n
  */
 export function fcUnit(id: string): string;
 
-export function findCellError(v: any): any;
+export function findCellError(v: unknown): unknown;
 
 /**
  * A number as a format annotation (its JSON) shows it.
@@ -309,23 +307,23 @@ export function formatDim(dim: string): string;
  * A lazy frame's first `rows` rows with its row count and itself as their source (`collectPreview`); it throws the
  * error its plan answers.
  */
-export function frameRefPreview(v: any, rows: number): any;
+export function frameRefPreview(v: unknown, rows: number): unknown;
 
 /**
  * A lazy frame's whole frame for JavaScript (`readFrame`): the frame, or the error its plan answers.
  */
-export function frameRefRead(v: any): any;
+export function frameRefRead(v: unknown): unknown;
 
 /**
  * A frame (a lazy one, or a value) with one more op planned on it, the op as the verbs read it (a frame's format
  * picks).
  */
-export function frameRefThen(v: any, op: string): any;
+export function frameRefThen(v: unknown, op: string): unknown;
 
 /**
  * A lazy frame as a frozen case holds it (`refs::wire`), as JSON text; none where it isn't one the core holds.
  */
-export function frameRefWire(v: any): string | undefined;
+export function frameRefWire(v: unknown): string | undefined;
 
 /**
  * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
@@ -394,7 +392,7 @@ export function sessionEnter(changed: string | null | undefined, force: boolean)
 /**
  * The pass ended (`finished` when it didn't throw): the rerun it owes as `{ force, exact, changed }`, or `null`.
  */
-export function sessionExit(finished: boolean): any;
+export function sessionExit(finished: boolean): unknown;
 
 /**
  * Opens (`true`) or closes a force-exact bracket.
@@ -416,7 +414,7 @@ export function sessionRebuild(begin: boolean): boolean;
 /**
  * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
  */
-export function sessionRebuildScope(open: boolean): Array<any>;
+export function sessionRebuildScope(open: boolean): Array<unknown>;
 
 /**
  * A fresh instance (after a trap) takes back the state the host last saw; the coalesced rerun is gone.
@@ -448,7 +446,7 @@ export function setDirectCalls(on: boolean): void;
  * `handler(message)` runs when a panic starts, before the module traps, so the host can settle what was waiting on
  * it and instantiate the module afresh.
  */
-export function setPanicHandler(handler: Function): void;
+export function setPanicHandler(handler: (CallableFunction | NewableFunction)): void;
 
 export function take_lens(): Uint32Array;
 
@@ -498,7 +496,7 @@ export interface InitOutput {
     readonly card_kept_count: () => number;
     readonly card_link_href: (a: number, b: number, c: number) => void;
     readonly card_unstage: (a: number, b: number) => void;
-    readonly computeNode: (a: number, b: any, c: any, d: number) => void;
+    readonly computeNode: (a: number, b: unknown, c: unknown, d: number) => void;
     readonly directBodies: (a: number) => void;
     readonly display_settings: (a: number, b: number, c: number, d: number) => void;
     readonly empty_field: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
@@ -509,41 +507,41 @@ export interface InitOutput {
     readonly engine_read_bin: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly engine_source_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly fcUnit: (a: number, b: number, c: number) => void;
-    readonly findCellError: (a: any) => any;
+    readonly findCellError: (a: unknown) => unknown;
     readonly fmt_annotated: (a: number, b: number, c: number, d: number) => void;
     readonly fmt_date: (a: number, b: number, c: number, d: number) => void;
     readonly fmt_scalar: (a: number, b: number) => void;
     readonly formatDim: (a: number, b: number, c: number) => void;
-    readonly frameRefPreview: (a: number, b: any, c: number) => void;
-    readonly frameRefRead: (a: any) => any;
-    readonly frameRefThen: (a: any, b: number, c: number) => any;
-    readonly frameRefWire: (a: number, b: any) => void;
+    readonly frameRefPreview: (a: number, b: unknown, c: number) => void;
+    readonly frameRefRead: (a: unknown) => unknown;
+    readonly frameRefThen: (a: unknown, b: number, c: number) => unknown;
+    readonly frameRefWire: (a: number, b: unknown) => void;
     readonly graphTrap: () => void;
-    readonly graphcore_addConnection: (a: number, b: number, c: any, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
-    readonly graphcore_addNode: (a: number, b: number, c: number, d: number, e: any, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
-    readonly graphcore_addPipe: (a: number, b: any) => number;
+    readonly graphcore_addConnection: (a: number, b: number, c: unknown, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
+    readonly graphcore_addNode: (a: number, b: number, c: number, d: number, e: unknown, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
+    readonly graphcore_addPipe: (a: number, b: unknown) => number;
     readonly graphcore_annotate: (a: number, b: number, c: number, d: number) => void;
     readonly graphcore_clear: (a: number, b: number) => void;
-    readonly graphcore_compute: (a: number, b: number, c: number, d: any) => any;
-    readonly graphcore_computeAll: (a: number, b: number, c: number) => any;
+    readonly graphcore_compute: (a: number, b: number, c: number, d: unknown) => unknown;
+    readonly graphcore_computeAll: (a: number, b: number, c: number) => unknown;
     readonly graphcore_conduitPath: (a: number, b: number, c: number, d: number) => void;
     readonly graphcore_connectionIds: (a: number, b: number) => void;
     readonly graphcore_downstreamClosure: (a: number, b: number, c: number, d: number) => void;
-    readonly graphcore_fetch: (a: number, b: number, c: number) => any;
-    readonly graphcore_fetchAll: (a: number, b: number, c: number) => any;
-    readonly graphcore_fetchInputs: (a: number, b: number, c: number) => any;
+    readonly graphcore_fetch: (a: number, b: number, c: number) => unknown;
+    readonly graphcore_fetchAll: (a: number, b: number, c: number) => unknown;
+    readonly graphcore_fetchInputs: (a: number, b: number, c: number) => unknown;
     readonly graphcore_forget: (a: number, b: number, c: number) => void;
     readonly graphcore_invalidate: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly graphcore_isCached: (a: number, b: number, c: number) => number;
-    readonly graphcore_landed: (a: number, b: number, c: number, d: number, e: number) => any;
+    readonly graphcore_landed: (a: number, b: number, c: number, d: number, e: number) => unknown;
     readonly graphcore_loopMembers: (a: number, b: number) => void;
     readonly graphcore_markNested: (a: number, b: number, c: number, d: number) => void;
     readonly graphcore_named: (a: number, b: number, c: number) => number;
     readonly graphcore_nest: (a: number, b: number, c: number, d: number) => void;
-    readonly graphcore_new: (a: any, b: any) => number;
+    readonly graphcore_new: (a: unknown, b: unknown) => number;
     readonly graphcore_nodeIds: (a: number, b: number) => void;
-    readonly graphcore_pass: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
-    readonly graphcore_ports: (a: number, b: number, c: number, d: number) => any;
+    readonly graphcore_pass: (a: number, b: number, c: number, d: number, e: number, f: number) => unknown;
+    readonly graphcore_ports: (a: number, b: number, c: number, d: number) => unknown;
     readonly graphcore_readTypes: (a: number, b: number, c: number) => number;
     readonly graphcore_reconcileFcs: (a: number, b: number, c: number, d: number) => void;
     readonly graphcore_release: (a: number) => void;
@@ -552,13 +550,13 @@ export interface InitOutput {
     readonly graphcore_removePipe: (a: number, b: number) => number;
     readonly graphcore_reorderNodes: (a: number, b: number, c: number) => number;
     readonly graphcore_reset: (a: number, b: number, c: number, d: number) => void;
-    readonly graphcore_seed: (a: number, b: number, c: number, d: any) => void;
+    readonly graphcore_seed: (a: number, b: number, c: number, d: unknown) => void;
     readonly graphcore_seedLoops: (a: number, b: number, c: number, d: number) => void;
     readonly graphcore_setPorts: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => void;
-    readonly graphcore_setShown: (a: number, b: number, c: number, d: number, e: number, f: any) => number;
+    readonly graphcore_setShown: (a: number, b: number, c: number, d: number, e: number, f: unknown) => number;
     readonly graphcore_settleTypes: (a: number, b: number, c: number, d: number) => void;
-    readonly graphcore_shown: (a: number, b: number, c: number, d: number, e: number) => any;
-    readonly graphcore_shownPreview: (a: number, b: number, c: number, d: number, e: number) => any;
+    readonly graphcore_shown: (a: number, b: number, c: number, d: number, e: number) => unknown;
+    readonly graphcore_shownPreview: (a: number, b: number, c: number, d: number, e: number) => unknown;
     readonly graphcore_typedSource: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly graphcore_unnest: (a: number, b: number, c: number) => void;
     readonly graphcore_useEngine: (a: number, b: number, c: number) => void;
@@ -574,18 +572,18 @@ export interface InitOutput {
     readonly region_keys: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly sessionDirty: (a: number) => number;
     readonly sessionEnter: (a: number, b: number, c: number, d: number) => void;
-    readonly sessionExit: (a: number) => any;
+    readonly sessionExit: (a: number) => unknown;
     readonly sessionForceExact: (a: number) => void;
     readonly sessionMarkTopoDirty: () => void;
     readonly sessionNextGeneration: () => number;
     readonly sessionRebuild: (a: number) => number;
-    readonly sessionRebuildScope: (a: number) => any;
-    readonly sessionRestore: (a: any) => void;
+    readonly sessionRebuildScope: (a: number) => unknown;
+    readonly sessionRestore: (a: unknown) => void;
     readonly sessionSetMode: (a: number, b: number) => number;
-    readonly sessionSnapshot: () => any;
-    readonly setBoundaryHost: (a: number, b: any) => void;
+    readonly sessionSnapshot: () => unknown;
+    readonly setBoundaryHost: (a: number, b: unknown) => void;
     readonly setDirectCalls: (a: number) => void;
-    readonly setPanicHandler: (a: any) => void;
+    readonly setPanicHandler: (a: unknown) => void;
     readonly take_lens: (a: number) => void;
     readonly take_nums: (a: number) => void;
     readonly take_strs: (a: number) => void;
@@ -595,8 +593,8 @@ export interface InitOutput {
     readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly uid: (a: number) => void;
     readonly unnamedEdits: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_4868: (a: number, b: number, c: number, d: any) => void;
-    readonly __wasm_bindgen_func_elem_4885: (a: number, b: number, c: any, d: any) => void;
+    readonly __wasm_bindgen_func_elem_4868: (a: number, b: number, c: number, d: unknown) => void;
+    readonly __wasm_bindgen_func_elem_4885: (a: number, b: number, c: unknown, d: unknown) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;

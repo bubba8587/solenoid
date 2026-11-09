@@ -25,5 +25,6 @@
     }
   },
   "include": ["src", "tests", "packages", "obsidian-plugin/src"],
+  "exclude": ["obsidian-plugin/src/shims/engineGlue.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

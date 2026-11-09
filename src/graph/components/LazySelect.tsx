@@ -3,6 +3,7 @@ import {
   type ReactNode, type SelectHTMLAttributes,
 } from "react";
 import { measureThenWrite } from "./layoutBatch";
+import { textOf } from "../textOf";
 
 /** Options stay out of the DOM until hover or focus, which both precede the native picker, and never unmount while focused; the first render mounts them all to lock a min-width, since a max-content card is held wide by its widest option. */
 export function LazySelect({
@@ -67,7 +68,7 @@ function walkOptions(children: ReactNode, fn: (value: string, label: ReactNode) 
 
 function optionsSignature(children: ReactNode): string {
   let sig = "";
-  walkOptions(children, (value, label) => { sig += `${value}|${String(label)};`; });
+  walkOptions(children, (value, label) => { sig += `${value}|${textOf(label)};`; });
   return sig;
 }
 

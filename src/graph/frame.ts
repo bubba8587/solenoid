@@ -13,6 +13,7 @@ import { elementFamilyOf, type SocketDataType } from "./sockets";
 import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation } from "./formatAnnotationStore";
 import { typesAt, isFrameAt, type ColumnTypes, type NestedTables } from "./cubeTypes";
 import type { CubePath } from "./literalEditors";
+import { textOf } from "./textOf";
 
 export type FrameColType = "number" | "string" | "date" | "logical";
 
@@ -97,7 +98,7 @@ export function typedColumn(
     const c = dateSerialOf(cells[i]);
     if (c === null || c === undefined) { values.push(null); continue; }
     if (isSolError(c)) { values.push(c); continue; }
-    if (type === "string") { values.push(typeof c === "string" ? c : isSolDate(cells[i]) ? formatDateSerial(c as number, DEFAULT_DATE_FORMAT) : String(c)); continue; }
+    if (type === "string") { values.push(typeof c === "string" ? c : isSolDate(cells[i]) ? formatDateSerial(c as number, DEFAULT_DATE_FORMAT) : textOf(c)); continue; }
     if (type === "logical") { values.push(typeof c === "boolean" ? c : cellToBool(c)); continue; }
     values.push(typeof c === "number" ? c : (cellToNumber(c) ?? NaN));
   }
@@ -199,7 +200,7 @@ export function coerceListItem(type: FrameColType, v: unknown): FrameCell {
       if (typeof v === "string") return v;
       return typeof v === "number" || typeof v === "boolean" ? String(v) : null;
     case "logical":
-      return coerceLogical(v) as FrameCell;
+      return coerceLogical(v);
   }
 }
 
@@ -235,10 +236,10 @@ export function parseFrameSource(text: string): FrameSource {
           const type: FrameColType = c?.type === "string" ? "string" : c?.type === "date" ? "date"
             : c?.type === "logical" ? "logical" : "number";
           const cells = Array.isArray(c?.cells)
-            ? (c.cells as unknown[]).map((x) => (x == null ? "" : String(x)))
+            ? (c.cells as unknown[]).map((x) => (x == null ? "" : textOf(x)))
             : Array.isArray(c?.values)
               ? c.values.map((x) =>
-                  x == null ? "" : typeof x === "boolean" ? (x ? "TRUE" : "FALSE") : String(x))
+                  x == null ? "" : typeof x === "boolean" ? (x ? "TRUE" : "FALSE") : textOf(x))
               : [];
           const unit = typeof c?.unit === "string" && c.unit !== "" ? c.unit : undefined;
           const expr = typeof c?.expr === "string" && c.expr.trim() !== "" ? c.expr : undefined;
@@ -292,7 +293,7 @@ function cellRawText(c: unknown): string {
   if (c == null) return "";
   if (typeof c === "boolean") return c ? "TRUE" : "FALSE";
   if (isCx(c)) return assembleCx(c, (n) => (Number.isInteger(n) ? String(n) : n.toFixed(4).replace(/\.?0+$/, ""))).text;
-  return String(c).trim();
+  return textOf(c).trim();
 }
 
 /** Each column of the one type every filled cell reads as, text otherwise, its trimmed text kept as `raw`; a list of one unit keeps it. The types are read on the core in one call (`nodes::infer_cells`); a text column's cells are its trimmed text, which the core doesn't send back. */
@@ -376,7 +377,7 @@ export function frameCellFromRecords(records: ReadonlyArray<Record<string, unkno
 }
 
 function pickedCell(type: FrameColType, v: unknown): CubeCell {
-  return v == null ? null : coerceFrameCell(type, String(v));
+  return v == null ? null : coerceFrameCell(type, textOf(v));
 }
 
 const listItemAs = (type: FrameColType, x: unknown): CubeCell =>
