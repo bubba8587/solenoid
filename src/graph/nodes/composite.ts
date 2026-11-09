@@ -228,6 +228,8 @@ export class CompositeNode extends GraphNode {
   stopWhenOp: CompositeStopOp;
   stopWhenValue: number;
   byRowPortId: string;
+  /** By-Row runs as its inputs change, in place of holding until Solve. */
+  byRowLive: boolean;
   private lastByRowCapTotal: number | null = null;
   goalSeek: CompositeGoalSeek | null;
   monteCarlo: CompositeMonteCarlo | null;
@@ -272,6 +274,7 @@ export class CompositeNode extends GraphNode {
     stopWhenOp?: CompositeStopOp;
     stopWhenValue?: number;
     byRowPortId?: string;
+    byRowLive?: boolean;
     goalSeek?: CompositeGoalSeek;
     monteCarlo?: CompositeMonteCarlo;
   }) {
@@ -291,6 +294,7 @@ export class CompositeNode extends GraphNode {
     this.stopWhenOp = init?.stopWhenOp ?? "eq";
     this.stopWhenValue = init?.stopWhenValue ?? 1;
     this.byRowPortId = init?.byRowPortId ?? "";
+    this.byRowLive = init?.byRowLive === true;
     this.goalSeek = init?.goalSeek ? { ...init.goalSeek } : null;
     this.monteCarlo = init?.monteCarlo ? { ...init.monteCarlo } : null;
     this.internalEditor = new GraphEditor<Schemes>();
@@ -886,13 +890,23 @@ export class CompositeNode extends GraphNode {
     return this.runMode === "manual" || this.runMode === "pipeline";
   }
 
+  private byRowConfigured(): boolean {
+    return this.inputPorts.some((p) => p.id === this.byRowPortId);
+  }
+
+  /** Whether a run is many passes of the inside: every held multi-run, and By-Row set to run live. */
+  private runsMany(): boolean {
+    if (this.runMode === "by-row") return this.byRowConfigured();
+    return this.isHeavyMode() && !this.refreshes();
+  }
+
   isHeavyMode(): boolean {
     if (this.refreshes()) return true;
     if (this.runMode === "simulation") return true;
     if (this.runMode === "scenarios") return this.scenarios.length > 0;
     if (this.runMode === "goal-seek") return !!this.goalSeek;
     if (this.runMode === "montecarlo") return this.uncertainInputPorts().length > 0;
-    if (this.runMode === "by-row") return this.inputPorts.some((p) => p.id === this.byRowPortId);
+    if (this.runMode === "by-row") return !this.byRowLive && this.byRowConfigured();
     if (this.runMode === "data-table") {
       return this.inputPorts.some(
         (p) => p.exposure === "exposed" && (this.dataTableValues[p.id]?.length ?? 0) > 0,
@@ -1007,7 +1021,7 @@ export class CompositeNode extends GraphNode {
 
   private async runActiveMode(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     // A configured multi-run (every heavy mode but Manual refresh, which is one pass) runs its inside many times.
-    const multi = this.isHeavyMode() && !this.refreshes();
+    const multi = this.runsMany();
     const outputs = multi
       ? await this.withInner("aroundMultiRun", () => this.runModePasses(inputs))
       : await this.runModePasses(inputs);

@@ -40,6 +40,12 @@ specific item.
   `validate`, `run`. From inside a vault it reads a folder of notes, filters and groups it in half a second.
 - **A text-form line builds the rows it names** (`withImpliedRows`, `textFormRows.ts`): a filter's `condConfig` alone
   ran as the default `gt`, since a card read per-row settings only for the rows `valueKeys` named.
+- **By-Row runs live or on Solve** (`byRowLive`, the Composite's By-Row editor; `../tree/specs/computation/composite-nodes.md`
+  § By-Row): the author's answer to many things through one transform. A list of tables through a live By-Row
+  Composite comes out trimmed table by table.
+- **A new leaf is checked against the author's test by a hook** (`.claude/settings.json`: an agent reads `dte.md`
+  § What is a leaf and what is a spec and refuses a description or a restatement of the parent). D126, which only
+  described the folder read and applied [[B11]] maximalMerge, is retired.
 - **A cloud container can start hundreds of commits behind `develop`** (this one was 352 behind, a shallow clone): `git
   fetch origin develop` and compare before the first edit, or the first push is refused and the fixtures and wasm are
   redone on the new base.

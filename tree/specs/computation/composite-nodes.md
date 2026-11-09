@@ -249,9 +249,9 @@ Config: `dataTableValues: Record<portId, unknown[]>`. `setDataTableValues(port, 
 
 ### By-Row
 
-Config: `byRowPortId` (`""` = unset).
+Config: `byRowPortId` (`""` = unset), `byRowLive` (false).
 
-- Heavy when `byRowPortId` names an existing input port.
+- Heavy when `byRowPortId` names an existing input port and `byRowLive` is off. The editor's `On Solve` / `Live` toggle sets `byRowLive`: Live runs the passes again whenever the card recomputes, as Single does, so a list of tables fed to it (each file of a folder, say) comes out transformed with no Solve press; the cap below is what bounds it. `runsMany()` says a run is many passes whether it holds or not, so the cards inside compute once after the passes either way.
 - The iterated value is the port's normal value (wired, else seed, else default; a hidden port skips wired). `byRowValues(v)` splits it:
 
 | Value | Rows |
@@ -264,7 +264,7 @@ Config: `byRowPortId` (`""` = unset).
 
 - No rows, or an unknown port, runs one plain pass. Otherwise one pass per row with that row as the port's override; each output is an array, one entry per row.
 - Cap: `BY_ROW_MAX_ROWS = 500`. By-Row is the one heavy mode whose pass count comes from the data rather than a typed number, and every pass recomputes the whole inside, so a huge wired Frame would freeze the Solve; the cut-short series still looks plausible, so the cap warns loudly rather than dropping rows silently. Rows past it are dropped from the tail. When the total exceeds the cap, the composite fires a warning alert (Alerts HUD and toast) "`<name>`: By-Row ran the first 500 of `<total>` rows (the rest were skipped)", where name is the trimmed label or `Composite`. It fires only when the total differs from the last capped total (`lastByRowCapTotal`, transient) and never while a graph rebuild is open ([[D79]] effectsEdgeTriggered, [[alert-node-alerts-hud]]). A run under the cap resets the edge.
-- The editor is a "For each row of" picker over the exposed inputs, with `— none`; with none exposed it reads `— expose an input to iterate`.
+- The editor is a "For each" picker over the exposed inputs, with `— none`; with none exposed it reads `— expose an input to iterate`.
 
 ### Goal Seek
 

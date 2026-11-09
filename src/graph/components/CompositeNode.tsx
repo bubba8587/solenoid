@@ -246,6 +246,11 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
   );
 }
 
+const BY_ROW_RUN_OPTIONS: ReadonlyArray<{ value: "held" | "live"; label: string; title: string }> = [
+  { value: "held", label: "On Solve", title: "Runs when you press Solve" },
+  { value: "live", label: "Live", title: "Runs again whenever its inputs change" },
+];
+
 function ByRowEditor({ node }: { node: CompositeNodeType }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   if (exposed.length === 0) {
@@ -255,9 +260,14 @@ function ByRowEditor({ node }: { node: CompositeNodeType }) {
   return (
     <div className="solenoid-composite__editor">
       <div className="solenoid-node__field-row solenoid-composite__row">
-        <span className="solenoid-node__field-label">For each row of</span>
+        <span className="solenoid-node__field-label">For each</span>
         <ArgSelect value={node.byRowPortId} options={options} onChange={(v) => { node.byRowPortId = v; void processGraph(node.id); }} />
       </div>
+      <SegToggle<"held" | "live">
+        value={node.byRowLive ? "live" : "held"}
+        onChange={(v) => { node.byRowLive = v === "live"; node.edited(); void processGraph(node.id); }}
+        options={BY_ROW_RUN_OPTIONS}
+      />
     </div>
   );
 }
