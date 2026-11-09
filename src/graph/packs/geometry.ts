@@ -146,7 +146,7 @@ export const GEOMETRY_PACK: Pack = {
     {
       path: ["Packs", "Geometry"],
       entry: {
-        type: "geo-unit-circle",
+        type: "geo-unit-circle", added: "1.6",
         label: "Unit Circle",
         description: "An angle on the unit circle, one row per angle: radians, reference angle, the six trig functions and their exact values at every multiple of 15°. A bare number is degrees.",
         warning: "This card suppresses errors on purpose: where a function is undefined (tan and sec at 90° and 270°, cot and csc at 0° and 180°) it answers a blank, not #DIV/0!, so turning the dial past an axis lights nothing up downstream.",
@@ -157,7 +157,7 @@ export const GEOMETRY_PACK: Pack = {
     {
       path: ["Packs", "Geometry"],
       entry: {
-        type: "geo-circle-solver",
+        type: "geo-circle-solver", added: "1.6",
         label: "Circle Solver",
         description: "A circle and an arc of it per row: radius, diameter, circumference, area, central angle, arc length, chord, sector, segment and height, from any parts that fix them. Extra parts are checked; two arcs that both fit say so.",
         keywords: "circle arc sector segment chord sagitta radius diameter circumference central angle solve",
@@ -167,7 +167,7 @@ export const GEOMETRY_PACK: Pack = {
     {
       path: ["Packs", "Geometry"],
       entry: {
-        type: "geo-regular-polygon",
+        type: "geo-regular-polygon", added: "1.6",
         label: "Regular Polygon",
         description: "A regular polygon per row: number of sides, side, circumradius, apothem, perimeter, area, interior and exterior angles, from n or an angle and one size, or from two sizes. Extra parts are checked.",
         keywords: "regular polygon hexagon pentagon octagon apothem circumradius inradius interior exterior angle solve",
@@ -177,7 +177,7 @@ export const GEOMETRY_PACK: Pack = {
     {
       path: ["Packs", "Geometry"],
       entry: {
-        type: "geo-two-points",
+        type: "geo-two-points", added: "1.6",
         label: "Two Points",
         description: "Two points per row and the line through them: distance, run and rise, midpoint, slope, direction, both intercepts and the equation.",
         keywords: "two points line slope distance midpoint intercept equation gradient coordinate",
@@ -187,7 +187,7 @@ export const GEOMETRY_PACK: Pack = {
     {
       path: ["Packs", "Geometry"],
       entry: {
-        type: "geo-polygon-points",
+        type: "geo-polygon-points", added: "1.6",
         label: "Polygon from Points",
         description: "A polygon from its vertices in order, one per row: each vertex's edge and interior angle, and the polygon's area (the shoelace formula), perimeter, centroid, convexity and winding. Edges that cross have no one area.",
         keywords: "polygon shoelace vertices area perimeter centroid convex coordinates irregular",
@@ -197,7 +197,7 @@ export const GEOMETRY_PACK: Pack = {
     {
       path: ["Packs", "Geometry"],
       entry: {
-        type: "geo-solid",
+        type: "geo-solid", added: "1.6",
         label: "Solid",
         description: "A sphere, cube, box, cylinder, cone or square pyramid per row: its dimensions, volume and surface areas, from any parts that fix them. Extra parts are checked; two solids that both fit say so.",
         keywords: "solid volume surface area sphere cube box cuboid cylinder cone pyramid slant lateral 3d",

@@ -13,7 +13,7 @@ import { nodeAccent } from "../nodes/kind";
 import { contrastInk, darkenAccent } from "../palette";
 import { documentStore } from "../documentStore";
 import { allPacks } from "../packs";
-import { DrillMenu, LeafRow, drillStackTo, drillStackToFolder, drillChain, type NodeCatalogEntry, type CatalogEntry, type CatalogCategory } from "../AddNodeMenu";
+import { DrillMenu, LeafRow, drillStackTo, drillStackToFolder, drillChain, addedIn, type NodeCatalogEntry, type CatalogEntry, type CatalogCategory } from "../AddNodeMenu";
 import { IS_COARSE } from "../coarse";
 import { descriptionHtml } from "../descriptionMd";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
@@ -466,6 +466,7 @@ function CardPage({ card, leaf, startOp, packName, onBack, backLabel, onPath, on
           ))}
         </div>
         {packLabel && <PackLink id={card.packs[0]} label={packLabel} />}
+        <div className="fr-card__release">Added in {addedIn(leaf)}{leaf.updated && <>, updated in {leaf.updated}</>}</div>
       </header>
 
       {description && (

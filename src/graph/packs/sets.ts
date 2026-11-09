@@ -18,7 +18,7 @@ export const SETS_PACK: Pack = {
     {
       path: PATH,
       entry: {
-        type: "between",
+        type: "between", updated: "1.6",
         label: "Between",
         description: "`TRUE` when Low ≤ Value ≤ High (inclusive). R `between` / pandas `Series.between`. Formula: `BETWEEN`.",
         parity: false,

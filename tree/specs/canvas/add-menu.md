@@ -73,6 +73,7 @@ mindmap
 | `hiddenOps` | The family's ops with no leaf of their own, derived from `NODE_OPS` and never set by hand, so the `{ }` mark can never claim something the menu contradicts. |
 | `hideOpsMark` | Hides the `{ }` mark while keeping the ops in `hiddenOps` and in search. |
 | `excel` | The node's own Excel equivalents (`ExcelEquiv`: `excel`, `syntax`, and a `parity` and `note` that override the leaf's for that one function). The Function Reference generates from these; none means a Solenoid-native node. |
+| `added`, `updated` | The release that brought the card, and the latest that reworked it in a way worth telling a user (`Release`, `major.minor`). A card with no `added` came in 1.5 or earlier (`addedIn`); a release cut tags its new and reworked cards, and `catalogReleases.test.ts` holds that no card is reworked before it arrived. Nothing draws them yet. |
 | `keywords` | Space-separated search words, matched by search and never shown ([[#A row's name and its search words]]). |
 | tags | Not on the leaf: `CARD_TAGS` (`catalogTags.ts`) maps a type to the words people mean the card by ("mean" on AVERAGE), ranked as names a step above labels and op names. A tag belongs to one card, never repeats a card's label and is never a formula or Excel name (that name already has a row that shows it); `catalogTags.test.ts` holds all three and that each tag lists its card first. |
 | `fx` | The formula names the leaf answers to when the despaced label cannot be its name, because of punctuation or because one node splits into several functions. |

@@ -70,7 +70,7 @@ export const CHEMISTRY_PACK: Pack = {
     {
       path: ["Packs", "Chemistry"],
       entry: {
-        type: "ch-element",
+        type: "ch-element", updated: "1.6",
         label: "Element",
         description: "Periodic-table lookup: search by symbol, name, or number, or click the table itself → standard atomic weight in g/mol and atomic number. IUPAC values",
         keywords: "periodic table atomic weight number symbol",

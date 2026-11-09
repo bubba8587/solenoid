@@ -517,6 +517,7 @@
 .fr-card__crumb-sep { display: inline-flex; color: var(--text-muted); }
 .fr-card__retrace { display: inline-flex; align-items: center; gap: 2px; margin: 0 6px 0 0; color: var(--text-dim); }
 .fr-card__pack { margin-top: 3px; font-size: 12px; }
+.fr-card__release { margin-top: 3px; font-size: 12px; color: var(--text-dim); }
 .fr-card__pack .fr-card__crumb-link { display: inline-flex; align-items: center; gap: 4px; color: var(--text-dim); }
 
 /* A page with no rail keeps its header to the content's width. */

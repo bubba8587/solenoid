@@ -58,7 +58,15 @@ export type NodeCatalogEntry = {
   places?: string;
   /** Cards placed with this one and cabled into it, such as a preset's physical constants ([[C76]] formulaPackDefault). */
   companions?: () => Companion[];
+  /** The release that brought the card; none is 1.5 or earlier (`addedIn`). */
+  added?: Release;
+  /** The latest release that reworked it in a way worth telling a user. */
+  updated?: Release;
 };
+
+/** A Solenoid release, as `major.minor`. */
+export type Release = "1.5" | "1.6";
+export const addedIn = (e: Pick<NodeCatalogEntry, "added">): Release => e.added ?? "1.5";
 
 /** A card placed beside another and cabled from its `output` into the other's `input`. */
 export type Companion = { node: unknown; output: string; input: string };
