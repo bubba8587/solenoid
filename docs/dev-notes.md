@@ -64,6 +64,10 @@ specific item.
   its column separators (the header row sits in `.bases-view`, outside the table container the earlier fix targeted),
   a picked menu item's icon, a picked file's badge, the phone drawer picker's chevron. Re-scanned clean on desktop,
   settings (six tabs) and phone, both modes.
+- Weak tints (author): a scan for tinted fills under 40% of full strength without a strong edge, then the app's rule
+  (a wash gets a full edge, as a selected group row does; a header-tint fill reads alone). Picked rows, tags, quotes,
+  note tables and the active tab got full-strength edges (dark: the color; light: its 12%-darker shade,
+  `--sol-edge-shade`); idle tabs went neutral with their type's glyph; a base header got the Frame's 2px cap.
 
 ### SESSION DIGEST (2026-11-08: per-frame camera work trimmed; cloud session)
 - A source read (no measuring) of what runs on every pan and zoom frame; four pieces of dead work went, each with its

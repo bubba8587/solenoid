@@ -9,6 +9,7 @@ body {
   --sol-mix-emphasis: 60%;
   --sol-mix-glow: 28%;
   --sol-mix-ink: 55%;
+  --sol-full-accent: color-mix(in srgb, var(--sol-accent), #000 var(--sol-edge-shade));
 
   --font-interface-theme: "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
   --font-text-theme: "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
@@ -22,6 +23,8 @@ body {
 
 .theme-dark {
   --sol-header-tint: 22%;
+  /* A full-strength edge: the color itself on the dark workbench. */
+  --sol-edge-shade: 0%;
   /* A card's body stroke and header divider, as the app's node frame draws them: neutral on the dark workbench. */
   --sol-card-stroke: var(--sol-border);
   --sol-ink-pct: 100%;
@@ -51,6 +54,8 @@ body {
 
 .theme-light {
   --sol-header-tint: 52%;
+  /* In light a full-strength edge is the color's dark shade, as the node frame strokes it. */
+  --sol-edge-shade: 12%;
   /* In light the node frame's stroke and divider are the accent's dark shade. */
   --sol-card-stroke: var(--sol-edge);
   --sol-ink-pct: 0%;
@@ -232,13 +237,13 @@ body {
   --tag-color-hover: var(--sol-ink-string);
   --tag-background: color-mix(in srgb, var(--sol-string) var(--sol-wash), transparent);
   --tag-background-hover: color-mix(in srgb, var(--sol-string) calc(var(--sol-wash) + 8%), transparent);
-  --tag-border-color: color-mix(in srgb, var(--sol-string) var(--sol-mix-edge), var(--sol-border));
-  --tag-border-color-hover: color-mix(in srgb, var(--sol-string) var(--sol-mix-emphasis), var(--sol-border));
+  --tag-border-color: color-mix(in srgb, var(--sol-string), #000 var(--sol-edge-shade));
+  --tag-border-color-hover: color-mix(in srgb, var(--sol-string), #000 var(--sol-edge-shade));
   --tag-border-width: 1px;
   --tag-radius: 999px;
   --pill-color: var(--sol-ink-string);
   --pill-background: color-mix(in srgb, var(--sol-string) var(--sol-wash), transparent);
-  --pill-border-color: color-mix(in srgb, var(--sol-string) var(--sol-mix-edge), var(--sol-border));
+  --pill-border-color: color-mix(in srgb, var(--sol-string), #000 var(--sol-edge-shade));
   --pill-border-width: 1px;
   --pill-radius: 999px;
 
@@ -336,7 +341,11 @@ body {
   border: 2px solid transparent;
   border-bottom: none;
   border-radius: 6px 6px 0 0;
-  background-color: color-mix(in srgb, var(--sol-tab) 7%, var(--sol-app-bg));
+  /* An idle tab is neutral, never a faint wash of its color; its glyph carries the type. */
+  background-color: color-mix(in srgb, var(--sol-surface) 60%, var(--sol-app-bg));
+}
+.mod-root .workspace-tab-header:not(.is-active) .workspace-tab-header-inner-icon {
+  color: var(--sol-tab-ink);
 }
 .mod-root .workspace-tab-header .workspace-tab-header-inner::after {
   display: none;
@@ -346,7 +355,7 @@ body {
 }
 .mod-root .workspace-tab-header.is-active .workspace-tab-header-inner {
   background-color: color-mix(in srgb, var(--sol-tab) var(--sol-header-tint), var(--sol-surface));
-  border-color: color-mix(in srgb, var(--sol-tab) var(--sol-mix-emphasis), var(--sol-border));
+  border-color: color-mix(in srgb, var(--sol-tab), #000 var(--sol-edge-shade));
 }
 .mod-root .workspace-tab-header .workspace-tab-header-inner-title {
   font-size: 11px;
@@ -427,6 +436,11 @@ select.dropdown:focus {
   --table-border-color: var(--bases-table-border-color);
   --table-header-border-color: var(--bases-table-border-color);
 }
+/* The header band wears the node frame's 2px cap in the Frame's full color (the Properties card's cap, in the base's
+   own hue), so its tint never stands alone. */
+.bases-view .bases-thead {
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--sol-frame), #000 var(--sol-edge-shade));
+}
 /* The header row's sort chevron is the Frame's ink, as a header's glyphs are (the header row sits in the view, outside
    the table container). */
 .bases-view .bases-table-header-sort {
@@ -477,6 +491,14 @@ button.mod-warning {
 .menu-item.selected:not(.is-disabled) {
   background-color: color-mix(in srgb, var(--sol-accent) 16%, transparent);
   color: var(--sol-text-bright);
+}
+/* A picked row is the wash under a full accent edge, as the app edges a selected group row (OutlinePanel.css). */
+.tree-item-self.is-active,
+.suggestion-item.is-selected,
+.menu-item.selected:not(.is-disabled),
+.workspace-drawer-tab-select .workspace-tab-header-inner,
+.workspace-drawer-tab-options-list .workspace-tab-header.is-active .workspace-tab-header-inner {
+  box-shadow: inset 0 0 0 1px var(--sol-full-accent);
 }
 /* On an accent wash, nothing stays gray: the picked item's icon, and the picked file's type badge, take the accent. */
 .menu-item.selected:not(.is-disabled) .menu-item-icon,
@@ -725,7 +747,7 @@ body:not(.is-phone) .modal .modal-title {
 }
 
 .markdown-rendered blockquote {
-  border: 1px solid var(--sol-hairline);
+  border: 1px solid var(--sol-full-accent);
   border-radius: 8px;
   padding: var(--size-4-2) var(--size-4-4);
 }
@@ -842,7 +864,7 @@ kbd {
 .markdown-rendered table {
   border-collapse: separate;
   border-spacing: 0;
-  border: 1px solid var(--sol-edge);
+  border: 1px solid var(--sol-full-accent);
   border-radius: 8px;
   overflow: hidden;
 }
