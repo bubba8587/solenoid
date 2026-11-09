@@ -722,6 +722,16 @@ pub(crate) fn literal_items(csv: &str) -> Vec<String> {
     csv_line(csv).into_iter().map(|s| trim_space(&s).to_string()).filter(|s| !s.is_empty()).collect()
 }
 
+/// A List Input row's items, trimmed: a gap between commas is a blank item that holds its place ([[C24]]
+/// arraySemantics), and a trailing comma adds nothing.
+fn list_row_items(csv: &str) -> Vec<String> {
+    let mut items: Vec<String> = csv_line(csv).into_iter().map(|s| trim_space(&s).to_string()).collect();
+    while items.last().is_some_and(String::is_empty) {
+        items.pop();
+    }
+    items
+}
+
 /// The first CSV row of the text (comma-delimited, blank rows skipped), or one empty
 /// field.
 fn csv_line(text: &str) -> Vec<String> {
@@ -842,7 +852,7 @@ fn list_input(c: &mut Call) -> Answer {
             }
             _ => {
                 let text = c.csv_text(key).unwrap_or("").to_string();
-                for t in literal_items(&text) {
+                for t in list_row_items(&text) {
                     let item = frame_cell_of(&ty, &t);
                     // A date list's items are dates ([[D114]] dateIsAKind).
                     items.push(match item {

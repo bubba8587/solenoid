@@ -47,7 +47,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Finish the settings sweep** ([[D86]] blankRoles): the inputs `docs/settings-audit.md` § Not swept yet lists (column choices on table cards, an as-of Join's tolerance, the Slider's bounds) get their roles the way the swept ones did.
 - [ ] **Equation answers any type, and solver cards show only the solved output**: an unwired variable's output retypes to fit its answer, so `x^2 + 1 = 0` gives a complex answer instead of `#SOLVE!` (complex, text, date or logical). The Equation card then shows an output box only for the unwired variable (asked for 2026-10-07).
 - [ ] **A weighted pick on Shuffle / Take** (numpy's `np.random.choice(p=)`, the last open item of the 2026-08-23 Python and R survey): a weights input so a draw or sample favours some items; Distribution's `Sample` form already draws from a distribution.
-- [ ] **List Input keeps a typed blank** ([[C24]] arraySemantics): `1,,3` gives two numbers today, while `1,x,3` keeps three items and a wired blank stays in place. A typed gap should be a blank item.
 
 
 ## Rust core ([[D99]] rustIsSpec)
@@ -71,7 +70,6 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 
 ## Tooling
 - [ ] **Upstream the interim patches** (`crates/vendor/interim/PATCHES.md`, 11 of them): file each as a pull request on conradludgate/interim, the three bug fixes (1, 8, 10) first; drop each from the list as it lands, and once all have and a release carries them, depend on the release and delete the vendored copy.
-- [ ] **A signed count (`+3 days`, `-3 days`) never reaches the date reader** (found 2026-11-04): interim reads it (patch 7), but `is_relative` lets no phrase through without a word such as ago, next or in, so a date Value Input never treats it as relative. Let a signed count with a unit through the gate, or drop patch 7.
 - [ ] **Relative dates, left over from the move to interim:** "next friday" reads as the Friday of next week (interim's UK dialect, as chrono did); the US reading would make it the coming one, the author's call (`Dialect::Uk` in `relative_date.rs`). Still unread: "end of month", "next quarter", "tuesday next week", "in 3 business days".
 - [ ] Regex recursion (`(?R)`, `(?1)`, `(?&name)`) and branch-reset groups (`(?|…)`): Excel runs both (author's Excel 2026-11-01), fancy-regex has neither, so they are `#VALUE!` naming the feature (`excel_regex.rs` `pcre2_lower`). Needs a PCRE2 engine in the wasm or a rewrite (a branch reset renumbers each alternative's groups onto one set, which `Found` would map back).
 - [ ] **chrono-node in Rust, as its own repository** (author 2026-11-01, the author sets it up): seed it from `relative_date.rs` and `fixtures/core/relative-dates.json.gz` as they stood before `relative_date.rs` moved to interim (git history), the fixture as its conformance suite. Solenoid moves to it only if it reads better than the patched interim.
@@ -94,9 +92,6 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] **A Python option for the Script card?** (open question for the author, 2026-10-31; [[C66]] scriptNode): JavaScript stays the default (no download, runs natively in the browser's sandboxed worker, and the Rust port gives no reason to change it). Python through Pyodide would suit spreadsheet and data users who know Python better than JS, at the cost of a large download loaded only when used, a slow first start and slower runs; as an option on the card or a pack, never a replacement. An embedded language (Rhai, Lua) would be sandboxed by construction but almost nobody knows one. A foreign document's scripts wait for a Run press whatever the language (`../tree/specs/computation/script-sandbox.md` § A document someone else wrote).
 
 ## Seeds (after the 2026-10-08 scalar input fold)
-- [ ] **A Chart fed a table plots nothing, silently** (found 2026-11-06 building the pack seeds): an HSTACK or other
-  table into Chart answers `values: [null…]` and draws an empty plot, where it should plot the table (first column x)
-  as it plots a frame, or say why it can't. The seeds route through Frame from Lists instead.
 - [ ] **Earth's radius is a number in two presets** (`es-haversine`, `es-horizon`): Physics Constant has no Earth
   radius op, so these two keep their digits where every other preset cables a constant in
   (`pack-architecture.md` § Physical constants). Add the op (with Earth's mass and standard gravity's neighbors) or

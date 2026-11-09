@@ -65,11 +65,19 @@ fn the_gate() {
     }
 }
 
-/// The vendored interim's patch 7 (`crates/vendor/interim/PATCHES.md`): a signed count reads either way. The gate
-/// doesn't let a signed count through yet, so this calls the reader directly.
+/// The vendored interim's patch 7 (`crates/vendor/interim/PATCHES.md`): a signed count reads either way, and the
+/// gate lets one through with a day, week, month or year after it.
 #[test]
 fn a_signed_count_reads_forward_and_back() {
-    assert!(!is_relative("+3 days"));
+    for text in ["+3 days", "-3 days", "+1 week", "- 2 months", "+10years"] {
+        assert!(is_relative(text), "{text} is relative");
+    }
+    for text in ["-3", "+3", "-3 apples", "3 days", "+ days", "-1-2"] {
+        assert!(!is_relative(text), "{text} is not relative");
+    }
+    assert_eq!(day("+1 week").as_deref(), Some("2026-11-11"));
+    assert_eq!(day("- 2 months").as_deref(), Some("2026-09-04"));
+    assert_eq!(day("+10years").as_deref(), Some("2036-11-04"));
     assert_eq!(day("+3 days").as_deref(), Some("2026-11-07"));
     assert_eq!(day("-3 days").as_deref(), Some("2026-11-01"));
 }

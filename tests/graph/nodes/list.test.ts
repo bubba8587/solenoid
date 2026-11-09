@@ -45,6 +45,18 @@ describe("List Input (multi-type)", () => {
     n.stringLiterals["v0"] = "apple, pear, fig";
     expect(n.data({}).list).toEqual(["apple", "pear", "fig"]);
   });
+  it("a typed gap is a blank item that holds its place; a trailing comma adds nothing ([[C24]] arraySemantics)", () => {
+    const n = new ListInputNode();
+    n.stringLiterals["v0"] = "1,,3";
+    expect(n.data({}).list).toEqual([1, null, 3]);
+    n.stringLiterals["v0"] = ", 2, 3,";
+    expect(n.data({}).list).toEqual([null, 2, 3]);
+    n.stringLiterals["v0"] = " , ,";
+    expect(n.data({}).list).toEqual([]);
+    n.setDataType("string");
+    n.stringLiterals["v0"] = "a,,c";
+    expect(n.data({}).list).toEqual(["a", null, "c"]);
+  });
   it("setDataType is a no-op (returns false) when unchanged", () => {
     expect(new ListInputNode().setDataType("number")).toBe(false);
   });

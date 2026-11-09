@@ -42,7 +42,16 @@ const WORDS: &[&str] = &[
     "sun",
 ];
 
-/// Whether typed date text is a relative phrase: no four-digit run, and a relative word.
+/// A signed count of days, weeks, months or years: `+3 days`, `-2 weeks`.
+fn is_signed_count(lower: &str) -> bool {
+    let Some(rest) = lower.strip_prefix(['+', '-']) else { return false };
+    let rest = rest.trim_start();
+    let digits = rest.len() - rest.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+    let unit = rest[digits..].trim_start();
+    digits > 0 && ["day", "days", "week", "weeks", "month", "months", "year", "years"].contains(&unit)
+}
+
+/// Whether typed date text is a relative phrase: no four-digit run, and a relative word or a signed count.
 pub fn is_relative(text: &str) -> bool {
     let lower = text.trim().to_lowercase();
     let mut run = 0;
@@ -51,6 +60,9 @@ pub fn is_relative(text: &str) -> bool {
         if run == 4 {
             return false;
         }
+    }
+    if is_signed_count(&lower) {
+        return true;
     }
     let words: Vec<&str> = lower.split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).collect();
     words.iter().enumerate().any(|(i, w)| {
