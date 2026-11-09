@@ -4,7 +4,7 @@ import type { View } from "./view";
 import { GroupNode, ConduitNode } from "./nodeClasses";
 import { bumpStackOrder } from "./graphSignals";
 import { repositionDockedNodes, unselectAllNodes, selectNode } from "./canvasCommands";
-import { getActiveEditor as getEditor, getActiveView as getView, getOwningView } from "./activeGraph";
+import { getActiveEditor as getEditor, getActiveView as getView, getOwningEditor, getOwningView } from "./activeGraph";
 import { standoffStore, standoffClusters, settleStandoffs, liveStandoffs } from "./standoffs";
 import { groupCollapseStore } from "./groupCollapse";
 import { collapseStore } from "./collapseStore";
@@ -12,6 +12,7 @@ import { scheduleAutosave } from "./persistence";
 import { notifyGraphChanged } from "./process";
 import { settingsStore } from "./settingsStore";
 import { measuredBox, type NodeBox } from "./nodeSize";
+import { settleOverlaps, settleOverlapsAfterPaint } from "./groupPush";
 import type { Schemes } from "./schemes";
 import type { GraphEditor } from "./graphEditor";
 
@@ -77,8 +78,10 @@ async function applyMoves(editor: Editor, view: View, moves: Move[]): Promise<vo
   }
 }
 
-async function settle(): Promise<void> {
+/** How Align and Distribute end: the standoffs, then the No-Overlap Pass with the cards just placed holding still. */
+async function settle(editor: Editor, view: View, placed: readonly string[]): Promise<void> {
   if (!standoffStore.isEmpty()) settleStandoffs();
+  settleOverlaps(editor, view, new Set(placed));
   scheduleAutosave();
 }
 
@@ -142,7 +145,7 @@ export async function alignSelection(kind: AlignKind): Promise<void> {
     .filter((e): e is Placed => e.box != null);
   if (items.length < 2) return;
   await applyMoves(editor, view, alignDeltas(items, kind));
-  await settle();
+  await settle(editor, view, ids);
 }
 
 export async function distributeSelection(axis: "h" | "v"): Promise<void> {
@@ -154,7 +157,7 @@ export async function distributeSelection(axis: "h" | "v"): Promise<void> {
     .filter((e): e is Placed => e.box != null);
   if (items.length < 3) return;
   await applyMoves(editor, view, distributeDeltas(items, axis));
-  await settle();
+  await settle(editor, view, ids);
 }
 
 // `collapsible={false}` stamps `.solenoid-node--no-chevron`, the only signal readable outside the render tree.
@@ -177,20 +180,24 @@ export function collapseSelection(collapsed: boolean): void {
     }
   }
   if (!changed.length) return;
-  if (!collapsed) frontOnExpand(changed);
+  if (!collapsed) cardsExpanded(changed);
   notifyGraphChanged();
 }
 
-/** A card the user just expanded comes to the front, so it isn't stuck behind what it grew into (the `frontOnExpand` setting). */
-export function frontOnExpand(ids: readonly string[]): void {
+/** After the user expands cards: each comes to the front (the `frontOnExpand` setting), and once it has painted at
+ *  its full size the No-Overlap Pass moves what it grew into out from under it. */
+export function cardsExpanded(ids: readonly string[]): void {
   if (settingsStore.get("frontOnExpand")) stackSelection("front", ids);
+  const editor = getOwningEditor(ids[0]);
+  const view = getOwningView(ids[0]);
+  if (editor && view) settleOverlapsAfterPaint(editor, view, new Set(ids));
 }
 
 /** A card's chevron: flips the collapse, re-renders the card, and saves and records the change. */
 export function toggleNodeCollapsed(nodeId: string): void {
   collapseStore.toggle(nodeId);
   void getOwningView(nodeId)?.rerenderNode(nodeId);
-  if (!collapseStore.get(nodeId)) frontOnExpand([nodeId]);
+  if (!collapseStore.get(nodeId)) cardsExpanded([nodeId]);
   notifyGraphChanged();
 }
 
