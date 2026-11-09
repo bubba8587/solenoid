@@ -63,6 +63,9 @@ push and fix what it finds.
   not after each Rust edit; `git add` a new Rust file first (the stamp hashes `git ls-files`, so an untracked one
   is left out and CI's stamp check fails). A moved answer is refrozen, not edited
   (`tree/specs/computation/rust-core.md`; `FREEZE_NATIVE=<suite>` for conformance).
+- **A new file that tests find by listing a folder** (a seed, a fixture) isn't seen until the runner's cache goes:
+  `rm -rf node_modules/.vitest-cache`, or the suite passes here and fails in CI. A new seed also needs its thumbnails
+  (`node scripts/site-shots.mjs --thumbs <id>`) and the prerender below.
 - **Docs and tree:** `python3 tools/dte.py validate --as <ring>` after a tree or spec edit; `node scripts/prerender-site.mjs`
   after site copy (a landing page, a seed label, a pack description), committing `prerender/`.
 
