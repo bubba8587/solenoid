@@ -489,6 +489,7 @@ flowchart TD
 - **Config** on the card or in the drill-in's run controls calls `processGraph(node.id)`, retargeted the same way when the composite is nested.
 - **Ports.** + Input and + Output in the drill-in strip (on a phone, I and O beside the bottom bar's ➕) add a marker at the left or right edge of the view, labeled `Input N` or `Output N`, plus an exposed basic port or an output port, re-render the outer card when the parent is the main canvas, recompute and autosave.
 - **Leaving a level** reconciles ports whose marker is gone (removing their parent cables, with a notice), then `syncPortLabels()`, so a marker renamed inside renames the card's socket ([[composite-drill-in-mount-lifecycle]] § Leaving a level).
+- **Undo and redo inside** restore nodes and cables, not the port lists. A port whose marker an undo took away stays until the level is left (so a redo finds it again); a marker a step brings back with no port gets one, on the step and again on leaving (`adoptMarkerPorts`), so no marker is ever cut off from the card.
 
 Because every internal pass fully resets the internal engine, the subgraph is recomputed whenever the card's `data()` computes, and a held heavy card recomputes nothing.
 
@@ -498,7 +499,7 @@ Tests:
 
 - `composite.test.ts`: every card inside computes, in Single at two depths, after Scenarios and in Monte Carlo's no-number case; a drill-in edit to the subgraph flags a held composite stale.
 - `closedCompositePrune.test.ts`: a node inside a closed composite resolves to its internal editor, nested too, so its prune reaches its cables.
-- `compositeLeaveLevels.test.ts`: a port whose marker was deleted inside is dropped with the parent's cables on it.
+- `compositeLeaveLevels.test.ts`: a port whose marker was deleted inside is dropped with the parent's cables on it. A marker with no port gets one.
 - `compositeFcSettle.test.ts`: a `data()`-time prune in a closed composite re-types the FC.
 
 ## Packs

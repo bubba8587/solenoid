@@ -127,7 +127,6 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] **A date matches its serial in Counts/Returns** (XMATCH, ISIN, COUNTIF, XLOOKUP unwrap every argument): `tree/specs/values/value-semantics.md` says a date never keys as its serial, the Counts bullet says dates read as their days. Pick one.
 - [ ] **`&` drops a time's seconds** (`date_text` is `DD-MMM-YYYY HH:mm`), so `"<="&@t` misses the row's own timestamp; ISNUMBER(date) is FALSE while TYPE(date) is 1.
 - [ ] **The SUMIFS card's `<>` refuses a blank** (it runs `compile_filter`, Frame Filter's test) where SUMIFS in a formula and Excel pass it; `tree/specs/computation/formula-language.md` § Criteria still says the card reaches `criterion_matches`.
-- [ ] **Undo in a drill-in leaves an added port** (the drill-in history holds nodes and cables, not `inputPorts`/`outputPorts`): the card keeps a port to nothing, and a redo after leaving brings back a marker with no port.
 - [ ] **Check on the deploy:** `/assets/scriptWorker-*.js` carries `Content-Security-Policy: default-src 'none'; script-src 'unsafe-eval'` (`vercel.json`); `siteMeta.test.ts` checks the rule, not the served header.
 
 ## From the 2026-09-27 bug review (each needs the author's call)

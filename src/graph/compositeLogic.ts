@@ -232,6 +232,23 @@ export async function unpackComposite(editor: Editor, view: View, compositeId: s
 }
 
 /** Drops every port whose marker was deleted inside, with the parent's cables on it; run for each level a breadcrumb jump leaves. */
+/** Gives a port to every marker inside that has none: an undo or redo in the drill-in brings a marker back, and its
+ *  port may have gone when the level was last left. Returns how many it made. */
+export function adoptMarkerPorts(comp: CompositeNode): number {
+  let made = 0;
+  for (const n of comp.internalEditor.getNodes()) {
+    const label = ((n as { label?: string }).label ?? "").trim();
+    if (n instanceof CompositeInputNode && !comp.inputPorts.some((p) => p.internalNodeId === n.id)) {
+      comp.addInputPort({ label: label || "Input", internalNodeId: n.id, exposure: "exposed", tier: "basic" });
+      made++;
+    } else if (n instanceof CompositeOutputNode && !comp.outputPorts.some((p) => p.internalNodeId === n.id)) {
+      comp.addOutputPort({ label: label || "Output", internalNodeId: n.id, tier: "basic" });
+      made++;
+    }
+  }
+  return made;
+}
+
 export async function reconcileLeftPorts(
   comp: CompositeNode,
   parentEditor: Editor,
@@ -252,6 +269,7 @@ export async function reconcileLeftPorts(
     if (doomed.length > 0) { cables += doomed.length; ports++; }
     comp.removeOutputPort(p.id);
   }
+  adoptMarkerPorts(comp);
   comp.syncPortLabels();
   return { cables, ports };
 }
