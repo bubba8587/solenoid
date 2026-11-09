@@ -85,6 +85,7 @@ jobs:
           cargo fmt --manifest-path crates/solenoid-core/Cargo.toml --check
           cargo clippy --manifest-path crates/solenoid-core/Cargo.toml --all-targets -- -D warnings
           cargo clippy --manifest-path crates/solenoid-core/Cargo.toml --target wasm32-unknown-unknown -- -D warnings
+          cargo clippy --manifest-path crates/solenoid-core/Cargo.toml --target wasm32-unknown-unknown --features plugin -- -D warnings
 
       - name: Core tests
         run: cargo test --manifest-path crates/solenoid-core/Cargo.toml
@@ -108,6 +109,7 @@ jobs:
           cargo fmt --manifest-path crates/solenoid-graph/Cargo.toml --check
           cargo clippy --manifest-path crates/solenoid-graph/Cargo.toml --all-targets -- -D warnings
           cargo clippy --manifest-path crates/solenoid-graph/Cargo.toml --target wasm32-unknown-unknown -- -D warnings
+          cargo clippy --manifest-path crates/solenoid-graph/Cargo.toml --target wasm32-unknown-unknown --features plugin -- -D warnings
 
       - name: Graph core tests ([[C130]] rustCore)
         run: cargo test --manifest-path crates/solenoid-graph/Cargo.toml

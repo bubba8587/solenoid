@@ -25,7 +25,7 @@
     "android:dev": "node scripts/android-prep.mjs && tauri android dev",
     "android:build": "node scripts/android-prep.mjs && tauri android build --apk",
     "release:desktop": "node scripts/release-build.mjs",
-    "plugin:build": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build --config obsidian-plugin/vite.config.ts",
+    "plugin:build": "node scripts/build-wasm.mjs --plugin && VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build --config obsidian-plugin/vite.config.ts",
     "plugin:dev": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build --config obsidian-plugin/vite.config.ts --watch",
     "plugin:rig": "node scripts/obsidian-rig.mjs",
     "plugin:export": "node scripts/export-plugin-source.mjs",

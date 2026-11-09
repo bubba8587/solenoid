@@ -9,7 +9,9 @@ use wasm_bindgen::prelude::*;
 use crate::binary::{decode_frame, Columnar};
 use crate::error_value::{ErrorCode, SolError};
 use crate::frame::get_column;
-use crate::frame_backend::{get, invoke, register};
+#[cfg(not(feature = "plugin"))]
+use crate::frame_backend::invoke;
+use crate::frame_backend::{get, register};
 use crate::wire::error_to_wire;
 
 fn reply(r: Result<serde_json::Value, SolError>) -> String {
@@ -20,6 +22,7 @@ fn reply(r: Result<serde_json::Value, SolError>) -> String {
 }
 
 /// `{"ok": result}` or `{"err": {"__solError", code, message}}`, as JSON text.
+#[cfg(not(feature = "plugin"))]
 #[wasm_bindgen]
 pub fn engine_invoke(command: &str, args: &str) -> String {
     match serde_json::from_str(args) {
@@ -40,6 +43,19 @@ pub fn engine_invoke(command: &str, args: &str) -> String {
                 .expect("a card's reply serializes")
         ),
         Ok(parsed) => reply(invoke(command, &parsed)),
+        Err(e) => reply(Err(crate::error_value::sol_error(ErrorCode::Error, e.to_string()))),
+    }
+}
+
+/// The plugin's `engine_invoke`: the popups' commands only (`frame_backend::invoke_popup`), so the evaluator and the
+/// card bodies are left out of its module.
+#[cfg(feature = "plugin")]
+#[wasm_bindgen]
+pub fn engine_invoke(command: &str, args: &str) -> String {
+    match serde_json::from_str(args) {
+        Ok(parsed) => reply(crate::frame_backend::invoke_popup(command, &parsed).unwrap_or_else(|| {
+            Err(crate::error_value::sol_error(ErrorCode::Error, format!("unknown engine command \"{command}\"")))
+        })),
         Err(e) => reply(Err(crate::error_value::sol_error(ErrorCode::Error, e.to_string()))),
     }
 }

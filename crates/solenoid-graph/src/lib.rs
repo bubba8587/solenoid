@@ -7,11 +7,11 @@
 extern crate solenoid_core;
 
 pub mod annotate;
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(feature = "plugin")))]
 mod boundary;
 pub mod boundary_core;
 pub mod conduit;
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(feature = "plugin")))]
 mod direct;
 pub mod fc;
 pub mod lattice;
@@ -20,7 +20,9 @@ pub mod pass;
 pub mod session;
 pub mod settle;
 pub mod text_form;
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(feature = "plugin")))]
 mod value;
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(feature = "plugin")))]
 mod wasm;
+#[cfg(target_arch = "wasm32")]
+mod wasm_shared;

@@ -36,6 +36,8 @@ const SHIMMED: Record<string, string> = {
   [path.join(REPO, "src/graph/clipboard.ts")]: path.join(SHIMS, "clipboard.ts"),
   [path.join(REPO, "src/graph/mobileUa.ts")]: path.join(SHIMS, "mobileUa.ts"),
   [path.join(REPO, "src/graph/components/Markdown.tsx")]: path.join(SHIMS, "components/Markdown.tsx"),
+  // The plugin's own engine module, a twelfth of the app's (`build-wasm.mjs --plugin`).
+  [path.join(REPO, "src/graph/engineWasm/solenoid_graph.js")]: path.join(SHIMS, "engineGlue.js"),
 };
 const REACT_DOM_SHIM = path.join(SHIMS, "reactDom.ts");
 
@@ -64,9 +66,9 @@ function oneWasm(): Plugin {
   const swaps: Record<string, [string, string]> = {
     [path.join(REPO, "src/graph/engineWasm.ts")]: [
       `export const wasmUrl = new URL("./engineWasm/solenoid_graph_bg.wasm", import.meta.url);`,
-      `import __wasmDataUrl from "./engineWasm/solenoid_graph_bg.wasm?url";\nexport const wasmUrl = new URL(__wasmDataUrl);`,
+      `import __wasmDataUrl from "./engineWasmPlugin/solenoid_graph_bg.wasm?url";\nexport const wasmUrl = new URL(__wasmDataUrl);`,
     ],
-    [path.join(REPO, "src/graph/engineWasm/solenoid_graph.js")]: [
+    [path.join(REPO, "src/graph/engineWasmPlugin/solenoid_graph.js")]: [
       "module_or_path = new URL('solenoid_graph_bg.wasm', import.meta.url);",
       `throw new Error("loadWasmEngine passes the module");`,
     ],

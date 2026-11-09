@@ -58,3 +58,4 @@ __pycache__/
 
 # The Rust core (crates/solenoid-core)
 crates/*/target/
+src/graph/engineWasmPlugin/

@@ -173,73 +173,12 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             });
             Ok(Json::Null)
         }
-        // A fresh instance after a trap numbers its handles past the dead one's, so a handle JS still holds can't
-        // name another frame (`engineWasm.ts` `reinstantiate`).
-        "engine_handle_base" => {
-            let base = parse::<u64>(args, "base")?;
-            STORE.with(|s| s.borrow_mut().seq = base);
-            Ok(Json::Null)
-        }
-        "engine_forget" => {
-            crate::eval::forget_held(&parse::<Vec<u64>>(args, "ids")?);
-            Ok(Json::Null)
-        }
         // Aborts the instance from a frame holding 64 KB of stack, as a deep evaluation would, so the tests can show
         // a trap falls back and the module comes back (`coreTrap.test.ts`).
         "engine_trap" => {
             let frame = std::hint::black_box([0u8; 65_536]);
             panic!("engine_trap {}", frame[0])
         }
-        // Text read as a typed date input reads it ([[C58]] tableInputRawText): a serial, null when it isn't a date, or
-        // `{ambiguous: message}` for `#AMBIGUOUS!`. With `relative`, a relative phrase ([[C44]] dateSerials) reads at
-        // `now` (an instant, else the call's clock) in the host's zone: `{relative: serial}`, or `{relative: null}`.
-        "engine_parse_date"
-            if args.get("relative").and_then(Json::as_bool) == Some(true)
-                && crate::relative_date::is_relative(&parse::<String>(args, "text")?) =>
-        {
-            let text = parse::<String>(args, "text")?;
-            let now = args.get("now").and_then(Json::as_f64).unwrap_or_else(crate::excel_functions::clock_instant);
-            Ok(serde_json::json!({ "relative": crate::relative_date::relative_date(&text, now) }))
-        }
-        "engine_parse_date" => Ok(match crate::excel_criteria::parse_date(&parse::<String>(args, "text")?) {
-            crate::excel_criteria::DateReading::Serial(d) => Json::from(d),
-            crate::excel_criteria::DateReading::NotADate => Json::Null,
-            crate::excel_criteria::DateReading::Ambiguous(e) => serde_json::json!({ "ambiguous": e.message }),
-        }),
-        // The Cards view's plan for a table's columns (or, given `units`, the layout suggested from it), and a Record layout's placements ([[C114]] cardsView), as the
-        // Table popup draws them (`card_helpers.rs`).
-        "engine_plan_cards" => {
-            let cols = list_arg(args, "cols")?.unwrap_or_default();
-            let text = |c: &Json, k: &str| c.get(k).and_then(Json::as_str).unwrap_or("").to_string();
-            let texts = |c: &Json, k: &str| {
-                c.get(k)
-                    .and_then(Json::as_array)
-                    .map(|a| a.iter().map(|v| v.as_str().unwrap_or("").to_string()).collect())
-            };
-            let flag = |c: &Json, k: &str| c.get(k).and_then(Json::as_bool).unwrap_or(false);
-            let cols: Vec<crate::card_helpers::CardColumn> = cols
-                .iter()
-                .map(|c| crate::card_helpers::CardColumn {
-                    name: text(c, "name"),
-                    ty: text(c, "type"),
-                    cells: texts(c, "cells").unwrap_or_default(),
-                    shown: texts(c, "shown"),
-                    chip: flag(c, "chip"),
-                    nested: flag(c, "nested"),
-                    lists: flag(c, "lists"),
-                })
-                .collect();
-            match args.get("units").and_then(Json::as_u64) {
-                Some(units) => Ok(Json::from(crate::card_helpers::suggest_record_layout(&cols, units as usize))),
-                None => Ok(crate::card_helpers::plan_cards(&cols)),
-            }
-        }
-        "engine_record_layout" => Ok(Json::Array(
-            crate::card_helpers::parse_record_layout(&parse::<String>(args, "text")?)
-                .iter()
-                .map(|p| p.to_json())
-                .collect(),
-        )),
         "engine_formula_parse" => {
             Ok(parse_formula(&parse::<String>(args, "expr")?).map_or(Json::Null, |a| a.to_json()))
         }
@@ -419,9 +358,82 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let s = crate::frame_ref::take_stats();
             Ok(json!({ "runs": s.runs, "ops": s.ops, "taken": s.taken, "collects": s.collects }))
         }
-        other => crate::csv::invoke(other, args)
-            .ok_or_else(|| sol_error(ErrorCode::Error, format!("unknown engine command \"{other}\""))),
+        other => invoke_popup(other, args)
+            .unwrap_or_else(|| Err(sol_error(ErrorCode::Error, format!("unknown engine command \"{other}\"")))),
     }
+}
+
+/// The commands the table popups send, all the Obsidian plugin's module answers (the `plugin` feature): handles, dates,
+/// card layouts and CSV. `None` for any other.
+pub fn invoke_popup(command: &str, args: &Json) -> Option<Result<Json, SolError>> {
+    popup_command(command, args).transpose()
+}
+
+fn popup_command(command: &str, args: &Json) -> Result<Option<Json>, SolError> {
+    Ok(Some(match command {
+        // A fresh instance after a trap numbers its handles past the dead one's, so a handle JS still holds can't
+        // name another frame (`engineWasm.ts` `reinstantiate`).
+        "engine_handle_base" => {
+            let base = parse::<u64>(args, "base")?;
+            STORE.with(|s| s.borrow_mut().seq = base);
+            Ok(Json::Null)
+        }
+        "engine_forget" => {
+            crate::eval::forget_held(&parse::<Vec<u64>>(args, "ids")?);
+            Ok(Json::Null)
+        }
+        // Text read as a typed date input reads it ([[C58]] tableInputRawText): a serial, null when it isn't a date, or
+        // `{ambiguous: message}` for `#AMBIGUOUS!`. With `relative`, a relative phrase ([[C44]] dateSerials) reads at
+        // `now` (an instant, else the call's clock) in the host's zone: `{relative: serial}`, or `{relative: null}`.
+        "engine_parse_date"
+            if args.get("relative").and_then(Json::as_bool) == Some(true)
+                && crate::relative_date::is_relative(&parse::<String>(args, "text")?) =>
+        {
+            let text = parse::<String>(args, "text")?;
+            let now = args.get("now").and_then(Json::as_f64).unwrap_or_else(crate::excel_functions::clock_instant);
+            Ok(serde_json::json!({ "relative": crate::relative_date::relative_date(&text, now) }))
+        }
+        "engine_parse_date" => Ok(match crate::excel_criteria::parse_date(&parse::<String>(args, "text")?) {
+            crate::excel_criteria::DateReading::Serial(d) => Json::from(d),
+            crate::excel_criteria::DateReading::NotADate => Json::Null,
+            crate::excel_criteria::DateReading::Ambiguous(e) => serde_json::json!({ "ambiguous": e.message }),
+        }),
+        // The Cards view's plan for a table's columns (or, given `units`, the layout suggested from it), and a Record layout's placements ([[C114]] cardsView), as the
+        // Table popup draws them (`card_helpers.rs`).
+        "engine_plan_cards" => {
+            let cols = list_arg(args, "cols")?.unwrap_or_default();
+            let text = |c: &Json, k: &str| c.get(k).and_then(Json::as_str).unwrap_or("").to_string();
+            let texts = |c: &Json, k: &str| {
+                c.get(k)
+                    .and_then(Json::as_array)
+                    .map(|a| a.iter().map(|v| v.as_str().unwrap_or("").to_string()).collect())
+            };
+            let flag = |c: &Json, k: &str| c.get(k).and_then(Json::as_bool).unwrap_or(false);
+            let cols: Vec<crate::card_helpers::CardColumn> = cols
+                .iter()
+                .map(|c| crate::card_helpers::CardColumn {
+                    name: text(c, "name"),
+                    ty: text(c, "type"),
+                    cells: texts(c, "cells").unwrap_or_default(),
+                    shown: texts(c, "shown"),
+                    chip: flag(c, "chip"),
+                    nested: flag(c, "nested"),
+                    lists: flag(c, "lists"),
+                })
+                .collect();
+            match args.get("units").and_then(Json::as_u64) {
+                Some(units) => Ok(Json::from(crate::card_helpers::suggest_record_layout(&cols, units as usize))),
+                None => Ok(crate::card_helpers::plan_cards(&cols)),
+            }
+        }
+        "engine_record_layout" => Ok(Json::Array(
+            crate::card_helpers::parse_record_layout(&parse::<String>(args, "text")?)
+                .iter()
+                .map(|p| p.to_json())
+                .collect(),
+        )),
+        other => return Ok(crate::csv::invoke(other, args)),
+    }?))
 }
 
 /// What `engine_call` and `engine_eval` answer: a JS exception, or the value. It serializes straight to

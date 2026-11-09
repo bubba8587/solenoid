@@ -9,6 +9,10 @@ rust-version = "1.99"
 [lib]
 crate-type = ["rlib"]
 
+[features]
+# `engine_invoke` answers only the commands the Obsidian plugin's popups send (`frame_backend::invoke_popup`).
+plugin = []
+
 [dependencies]
 interim = { path = "../vendor/interim", default-features = false, features = ["jiff_0_2"] }
 # interim reads on jiff in UTC; the bundled zone database serves IANA zones in every build (zone.rs).
