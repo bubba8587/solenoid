@@ -1,4 +1,4 @@
-// [[D126]] folderAsOneTable
+// [[B11]] maximalMerge
 // A file name with a wildcard names every file it matches: `*` any run of characters inside one folder, `?` one
 // character, `**/` any depth of folders. Matching ignores case, as file pickers do.
 

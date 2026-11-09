@@ -17,6 +17,8 @@ interface DecisionNode {
   title: string;
   name: string | null;
   ratifiedBy: string;
+  authorizedBy: string;
+  date: string;
   sections: Record<string, string>;
   body: string;
 }
@@ -48,6 +50,8 @@ function readTree(): DecisionNode[] {
         title,
         name: alias ?? null,
         ratifiedBy: field("ratified_by"),
+        authorizedBy: field("authorized_by"),
+        date: field("date"),
         sections,
         body: fm[2],
       });
@@ -111,6 +115,15 @@ describe("the decision tree (tree/decisions/)", () => {
     const OWNER_RATIFIED: string[] = ["A1", "A5", "A6", "B1", "B2", "B3", "B7", "B20", "C17", "C80", "C88", "C114", "D62", "E10"]; // author-maintained; agents must not edit
     const ratified = nodes.filter((n) => n.ratifiedBy).map((n) => n.id);
     expect(ratified.sort()).toEqual([...OWNER_RATIFIED].sort());
+  });
+
+  // ─── The new-leaf guard ─────────────────────────────────────────────────────────────────────────────
+  // A leaf is a product decision, and the author holds those: an agent writes a new one only after asking in chat,
+  // and names who said yes (`dte new --authorized-by`). A description of how something works is a spec section, and
+  // a feature that only applies an existing leaf cites that leaf. Leaves dated before the guard are left as they are.
+  it("a leaf made since 2026-11-10 names who authorized it", () => {
+    const unauthorized = nodes.filter((n) => n.date >= "2026-11-10" && n.authorizedBy === "").map((n) => n.id);
+    expect(unauthorized).toEqual([]);
   });
 
   it("a `[[ID]] name` citation names the node it points at", () => {

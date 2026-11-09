@@ -258,7 +258,7 @@ export class ImportXmlNode extends GraphNode {
   }
 }
 
-/** Every file read and stacked into one table, a first column naming each row's file ([[D126]] folderAsOneTable):
+/** Every file read and stacked into one table, a first column naming each row's file ([[B11]] maximalMerge):
  *  columns meet by name as Append's do, and a file that doesn't read is named in `failed` while the rest load.
  *  Null once `stale` says a newer read took over. */
 async function readFilesAsOne(folder: string, files: string[], stale: () => boolean): Promise<{ frame: FrameValue | SolError; failed: string[] } | null> {

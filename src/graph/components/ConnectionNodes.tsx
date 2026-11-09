@@ -275,7 +275,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
   const folder = useSyncExternalStore(settingsStore.subscribe, getCsvFolder);
   const [files, setFiles] = useState<string[]>([]);
   const [name, setName] = useState(data.fileName);
-  // A name with a wildcard reads every file it matches as one table ([[D126]] folderAsOneTable).
+  // A name with a wildcard reads every file it matches as one table ([[B11]] maximalMerge).
   const [pattern, setPattern] = useState(isFilePattern(data.fileName) ? data.fileName : "");
   const desktop = isDesktop();
 

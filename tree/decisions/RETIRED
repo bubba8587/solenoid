@@ -187,3 +187,4 @@ C124	2026-10-30	reverted	-	Claude Opus 5.5	-	dealBreakers: Deal-breakers rule op
 C125	2026-10-30	reverted	-	Claude Opus 5.5	-	flipPoints: How close a call is shows as the weight at which another option would win
 C126	2026-10-30	reverted	-	Claude Opus 5.5	-	chainedDecisions: A choice that opens a further choice is scored with the best option it opens
 D121	2026-11-04	folded	C138	Claude	the author	hiddenUntilTheirPass: Choice Ladder, Gantt, Schedule and Earned Value stay out of the menus until their own pass
+D126	2026-11-09	reverted	-	Claude Fable 5.2	-	folderAsOneTable: A Local File name with a wildcard reads every matching file as one table

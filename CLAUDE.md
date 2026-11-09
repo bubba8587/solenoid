@@ -94,7 +94,9 @@ make the clean change, update seeds and tests, prune what's outdated.
   item. **Ask the author your ring** before the first leaf-governed task; until answered work at C, subagents at C or
   deeper. Read the governing leaf and spec before changing sockets, names or value handling (`dte.py find`, `show`,
   `blast`); cite leaves as `[[ID]] name`. A new mechanism lands its rule before its code; prefer extending a leaf to
-  adding one.
+  adding one. **A leaf is a product decision, never a description of how something works** (the author has had to
+  repeat this): before `dte new`, name the call and its opposite; if the text says what the code does, it is a spec
+  section, and a feature that only applies an existing leaf cites that leaf and adds none.
 - **Specs** (`tree/specs/`, indexed by `docs/subsystem-invariants.md`): read a subsystem's spec in full before touching
   it. Three floor specs govern whole classes of files: `tree/specs/floors/components.md`, `tree/specs/floors/node-classes.md`,
   `tree/specs/floors/stores.md`. Bars and overlays: `tree/specs/canvas/layout-chrome.md`. Before writing a `data()`:

@@ -1,4 +1,4 @@
-// [[D126]] folderAsOneTable
+// [[B11]] maximalMerge
 import { describe, it, expect, afterEach } from "vitest";
 import { matchFiles, isFilePattern, type DirEntry } from "../../src/graph/fileGlob";
 import { setFsProvider, type FsProvider } from "../../src/graph/fileBridge";

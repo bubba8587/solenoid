@@ -124,7 +124,7 @@ Tests:
 
 ## A folder as one table
 
-Serves [[D126]] folderAsOneTable. Local File's `fileName` is a file's name or a pattern over many: a name holding `*` or `?` is a pattern (`isFilePattern`, `fileGlob.ts`).
+Reading one file and reading a folder of them are one job, so they are one card ([[B11]] maximalMerge). Local File's `fileName` is a file's name or a pattern over many: a name holding `*` or `?` is a pattern (`isFilePattern`, `fileGlob.ts`).
 
 - **Matching** (`matchFiles`): the pattern is split at `/`; `*` is any run of characters inside one folder, `?` one character, and a `**` part stands for the folder itself and every folder under it, `GLOB_MAX_DEPTH` deep, hidden folders left out. Case is ignored. Only CSV and Parquet files count (`listLocalFilesMatching`), at most `GLOB_MAX_FILES` of them, read in name order with digits by value (`2026-2` before `2026-10`).
 - **Stacking** (`readFilesAsOne`, `nodes/connection.ts`): each file is read as Local File reads one, gains a first column `File` holding its path under the data folder (`Source file` where the file has a `File` column of its own), and the files are stacked by the Append card's own body, so columns meet by name and a file lacking one leaves blanks.

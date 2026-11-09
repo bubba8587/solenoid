@@ -32,7 +32,7 @@ specific item.
   SUM showed as 0.
 - **`CLAUDE.md` opens with what the project is for**, in the author's words of 2026-11-09 and a model's account of
   what holds.
-- **Local File reads a whole folder** ([[D126]] folderAsOneTable, new; `../tree/specs/computation/live-connections.md`
+- **Local File reads a whole folder** ([[B11]] maximalMerge; `../tree/specs/computation/live-connections.md`
   § A folder as one table): a name with `*` loads every matching CSV and Parquet file as one table with a File column,
   a file that doesn't read named under the status line. `run-graph --data <folder>` runs Local File headlessly. Untested
   in a desktop build.

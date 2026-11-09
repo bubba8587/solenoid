@@ -9,5 +9,19 @@
       "Bash(python3 tools/dte.py *)",
       "WebFetch(domain:raw.githubusercontent.com)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/leaf-gate.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
   }
 }
