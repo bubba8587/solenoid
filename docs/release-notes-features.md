@@ -18,6 +18,7 @@ off), the Android build (not in 1.6) and the headless CLI (unpublished).
 - **[slide] Dashboards.** Wire any number of charts, tables, numbers or documents to the new Dashboard card.
 - **[slide] Pivot view.** The PIVOTBY card now has familiar options for your reporting layouts.
 - **[slide] Pipeline.** A manual-refresh Composite card mode which lists its steps on the outer card. Useful for building Power Query-esque data transformations.
+- **[slide] New and refurbished cards.** Try out the Conditional Regions card, the new Geometry Solvers, & the comparison helper functions ABOVE/BELOW/etc.
 - **[slide] Revamped Function Reference.** The Function Reference (that book icon in the top-right of your screen) was bad before and now it's good. Check it out!
 - **[slide] Revamped Navigator.** The Navigator sidebar (open with N) now holds a traditional file tree.
 - **[slide] Mermaid → Pele.** Solenoid now uses Obsidian's Pele renderer for improved Mermaid diagrams.

@@ -20,6 +20,10 @@ export const SLIDES: Slide[] = [
     body: "A manual-refresh Composite card mode which lists its steps on the outer card. Useful for building Power Query-esque data transformations.",
   },
   {
+    title: "New and refurbished cards",
+    body: "Try out the Conditional Regions card, the new Geometry Solvers, & the comparison helper functions ABOVE/BELOW/etc.",
+  },
+  {
     title: "Revamped Function Reference",
     body: "The Function Reference (that book icon in the top-right of your screen) was bad before and now it's good. Check it out!",
   },
