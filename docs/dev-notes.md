@@ -8,7 +8,7 @@ specific item.
 
 ### SESSION DIGEST (2026-11-09c: open-latitude fixes after 1.6, the headless runner for agents; cloud session)
 - **Align, Distribute and a card opening end with the No-Overlap Pass** ([[C112]] noOverlapsEver; `selectionOps.ts`
-  `settle`, `cardsExpanded`), the cards just placed or opened holding still. Left: members of one group (backlog).
+  `settle`, `cardsExpanded`), the cards just placed or opened holding still.
 - **A Chart plots a table** (an HSTACK, a matrix) as the frame of its columns, one row as a list; it drew an empty plot
   (`nodes/visual.rs` `chart`, `chartTable.test.ts`). **List Input keeps a typed gap** (`1,,3`) as a blank item
   (`list_row_items`). **`+3 days` reads as a relative date** (`is_relative`'s signed count).
@@ -17,6 +17,21 @@ specific item.
 - **`run-graph` for agents and scripts**: it takes shot-graph's short form, `--set name=value` types into an input
   card, `--out name` prints only that card, `--formula` answers one formula; a card answers to its document name (the
   text form's `Name:`) or id before its label, and an unlabeled card's output is keyed by that name.
+- **One text file goes from an idea to checked answers and a picture** (the `build-graph` skill): `ai-grounding
+  --list` / `--card <words>` look a card up, `validate-graph` refuses what the app would drop or ignore, `run-graph`
+  prints plain JSON (ISO dates, a table as its rows; `--raw` the engine's values; [[C137]] datesNeverSerials),
+  `validate-graph --json` and `shot-graph` take the text form. The script launcher drains its output before exiting
+  (a pipe cut anything past 64 KB).
+- **Every card setting's choices come off the types** (`scripts/setting-choices.mjs` → `src/graph/settingChoices.json`,
+  214 settings on 169 cards; `floors/node-classes.md`): the validator refuses a value outside them and the grounding
+  lists them. GROUPBY, Rollup and Group Lists' aggregator is `agg`, which both now say ([[C26]] opArgDistinct); the
+  validator had checked it under `op`, a field those cards never read.
+- **The No-Overlap Pass runs inside a group** (`settleMemberOverlaps`), the box growing over a member pushed past an
+  edge: [[C112]] noOverlapsEver has no Unenforced bullet left.
+- **Get Column answers `#REF!` for a column the table lacks**, naming the columns it has; it answered a blank that a
+  SUM showed as 0.
+- **`CLAUDE.md` opens with what the project is for**, in the author's words of 2026-11-09 and a model's account of
+  what holds.
 - **A cloud container can start hundreds of commits behind `develop`** (this one was 352 behind, a shallow clone): `git
   fetch origin develop` and compare before the first edit, or the first push is refused and the fixtures and wasm are
   redone on the new base.
