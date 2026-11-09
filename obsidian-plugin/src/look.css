@@ -8,6 +8,7 @@ body {
   --sol-mix-edge: 45%;
   --sol-mix-emphasis: 60%;
   --sol-mix-glow: 28%;
+  --sol-mix-ink: 55%;
 
   --font-interface-theme: "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
   --font-text-theme: "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
@@ -21,6 +22,8 @@ body {
 
 .theme-dark {
   --sol-header-tint: 22%;
+  /* A card's body stroke and header divider, as the app's node frame draws them: neutral on the dark workbench. */
+  --sol-card-stroke: var(--sol-border);
   --sol-ink-pct: 100%;
   --sol-wash: 14%;
   --sol-ink-number: var(--sol-number);
@@ -48,6 +51,8 @@ body {
 
 .theme-light {
   --sol-header-tint: 52%;
+  /* In light the node frame's stroke and divider are the accent's dark shade. */
+  --sol-card-stroke: var(--sol-edge);
   --sol-ink-pct: 0%;
   --sol-wash: 38%;
   --sol-ink-number: var(--sol-text);
@@ -274,8 +279,9 @@ body {
   --bases-embed-border-radius: 8px;
   --bases-embed-border-color: color-mix(in srgb, var(--sol-frame) var(--sol-mix-edge), var(--sol-border));
 
-  --metadata-border-color: var(--sol-edge);
-  --metadata-border-width: 1px;
+  --metadata-border-color: var(--sol-card-stroke);
+  /* The card draws its stroke as an inset shadow, so the header's cap can paint over it as the node frame's does. */
+  --metadata-border-width: 0px;
   --metadata-border-radius: 8px;
   --metadata-background: var(--sol-surface);
   --metadata-divider-color: var(--sol-border-subtle);
@@ -813,13 +819,22 @@ kbd {
 .metadata-container {
   overflow: hidden;
   padding: 0 0 var(--size-4-2);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--sol-card-stroke);
 }
+/* A node card's header: the band at the header tint, under a 2px cap of the full accent round its top and sides, over
+   the card's divider (nodeCard.css: __frame-cap, __frame-divider). */
 .metadata-container .metadata-properties-heading {
   display: flex;
   margin: 0 0 var(--size-4-2);
   padding: var(--size-4-2) var(--size-4-3);
+  border-radius: 8px 8px 0 0;
   background-color: var(--sol-header-band);
-  border-bottom: 1px solid var(--sol-edge);
+  box-shadow:
+    inset 0 2px 0 var(--sol-accent),
+    inset 2px 0 0 var(--sol-accent),
+    inset -2px 0 0 var(--sol-accent),
+    inset 0 -1px 0 var(--sol-card-stroke);
 }
 /* Folded (by hand, or in a hover preview) the card is its header alone. */
 .metadata-container.is-collapsed {
@@ -827,10 +842,11 @@ kbd {
 }
 .metadata-container.is-collapsed .metadata-properties-heading {
   margin-bottom: 0;
-  border-bottom: none;
+  border-radius: 8px;
 }
+/* The header title in its accent's ink (DESIGN.md's Accent-Mix Ladder: --mix-ink, header titles). */
 .metadata-container .metadata-properties-title {
-  color: var(--sol-text-bright);
+  color: color-mix(in srgb, var(--sol-ink-accent) var(--sol-mix-ink), var(--sol-text-bright));
   font-weight: 600;
 }
 .metadata-container .metadata-content {

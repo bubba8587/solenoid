@@ -48,6 +48,9 @@ specific item.
   worked out from their header color (measured WCAG contrast over 9 palettes x 2 modes: 2.3:1 at worst before, 5.2:1
   after). The look has no `!important`; its 24 `:has()` are all direct-child anchored. Checked and left: Solarized's
   dim chrome text (3.3 to 4.5:1) is the palette's own design; a base's Cards view stays neutral.
+- The Properties card reads as a node card (author: its header was too weak): the fill was already the node header's
+  tint; what it lacked was the node frame's 2px accent cap and the `--mix-ink` title the Reference's boxes and the
+  cards carry. The body stroke is now neutral in dark, the accent's dark shade in light, as `nodeCard.css` draws it.
 
 ### SESSION DIGEST (2026-11-08: per-frame camera work trimmed; cloud session)
 - A source read (no measuring) of what runs on every pan and zoom frame; four pieces of dead work went, each with its
