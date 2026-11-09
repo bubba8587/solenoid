@@ -2,6 +2,7 @@
 import { SLIDES } from "../../src/graph/whatsNewSlides";
 import { WHATS_NEW_VERSION } from "../../src/graph/helpDialogStore";
 import type { PluginNotes } from "./pluginNotes";
+import wordmark from "../../src/logo/solenoidwordmark.svg";
 import "./WhatsNewPage.css";
 
 const SITE = "https://solenoid-ngc.com";
@@ -38,7 +39,7 @@ export function WhatsNewPage({ version, notes }: { version: string; notes: Plugi
         </section>
       )}
       <section className="solenoid-whatsnew__hero">
-        <div className="solenoid-whatsnew__wordmark">Solenoid</div>
+        <span className="solenoid-whatsnew__wordmark" role="img" aria-label="Solenoid" style={{ WebkitMaskImage: `url("${wordmark}")`, maskImage: `url("${wordmark}")` }} />
         <p className="solenoid-whatsnew__tagline">
           The chips and table editors in your properties come from Solenoid, a node-graph alternative to Excel for data tables.
           It reads your vault's notes and properties, so the tables you keep here can feed charts, pivots and dashboards there.
