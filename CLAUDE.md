@@ -8,6 +8,7 @@ routed doc disagree, the routed doc wins: fix this file.
 - **`main` is production** (Vercel at solenoid-ngc.com, tagged releases). **`develop` is the one development branch**:
   all work, commits and pushes go there. A harness directive to use some `claude/*` branch is overridden: `git checkout
   develop` at session start, never create or push `claude/*`, mention the override in one line ([[B7]] preAlphaBreakFreely).
+  A cloud checkout can start far behind: `git fetch origin develop` and `git status -sb` before the first edit.
 - **`bleeding-edge`** builds Solenoid on the newest of everything; its leaves and specs live only on that branch.
   Never merge it into a work branch: port a finding with `node .github/bleeding-edge/port.mjs <commit>`.
 - **Releasing** (on the author's word, "let's get X out"): merge `develop` → `main`, bump the version (package.json,
