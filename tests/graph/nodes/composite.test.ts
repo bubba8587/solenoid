@@ -13,7 +13,7 @@ import { throughBoundary } from "../boundaryKit";
 import { isUncertain } from "../../../src/graph/valueKinds";
 import { loopMembers } from "../../../src/graph/graphCompute";
 import { alertStore } from "../../../src/graph/alertStore";
-import { CompositeNode, CompositeInputNode, CompositeOutputNode, stopConditionMet, byRowValues, BY_ROW_MAX_ROWS } from "../../../src/graph/nodes/composite";
+import { CompositeNode, CompositeInputNode, CompositeOutputNode, stopConditionMet, byRowValues, seriesTypeOf, BY_ROW_MAX_ROWS } from "../../../src/graph/nodes/composite";
 import { frameFromCells, isFrameValue, frameRowCount, type FrameValue } from "../../../src/graph/frame";
 import { DistinctNode, HeadNode } from "../../../src/graph/nodes/frame";
 import { ValueInputNode } from "../../../src/graph/nodes/control";
@@ -888,8 +888,29 @@ describe("CompositeNode By-Row run mode", () => {
     c.byRowPortId = aId;
     const jan = frameFromCells(["Region", "Amt"], [["header junk", "0"], ["N", "1"], ["S", "2"]]);
     const feb = frameFromCells(["Region", "Amt"], [["header junk", "0"], ["E", "3"]]);
-    const out = (await c.data({ [aId]: [[jan, feb]] }))[outId] as FrameValue[];
-    expect(out.map((f) => f.columns[0].values)).toEqual([["N", "S"], ["E"]]);
+    // Tables, one per pass, answer as a Cube with a table in each row, and the socket says so.
+    const out = (await c.data({ [aId]: [[jan, feb]] }))[outId] as CubeValue;
+    expect(isCubeValue(out)).toBe(true);
+    expect(out.columns.map((col) => col.name)).toEqual(["Out"]);
+    expect((out.columns[0].cells as FrameValue[]).map((f) => f.columns[0].values)).toEqual([["N", "S"], ["E"]]);
+    expect((c.outputs[outId]!.socket as { dataType?: string }).dataType).toBe("cube");
+  });
+
+  it("types one value per pass as what it is: a number's list, a list's table, a table's Cube", () => {
+    expect([seriesTypeOf("number"), seriesTypeOf("string"), seriesTypeOf("date")]).toEqual(["list", "strlist", "datelist"]);
+    expect([seriesTypeOf("frame"), seriesTypeOf("cube")]).toEqual(["cube", "cube"]);
+    expect(seriesTypeOf("trueany")).toBe("trueany");
+  });
+
+  it("a By-Row over numbers is typed as their list, and a single run as the number", async () => {
+    const { c, aId, outId } = await makeDoubler();
+    c.byRowLive = true;
+    const type = () => (c.outputs[outId]!.socket as { dataType?: string }).dataType;
+    await c.data({ [aId]: [[1, 2, 3]] });
+    const perPass = type();
+    c.byRowPortId = "";
+    await c.data({ [aId]: [5] });
+    expect(seriesTypeOf(type() as never)).toBe(perPass);
   });
 
   it("with no port chosen, collapses to a single normal pass (scalar, not a series)", async () => {

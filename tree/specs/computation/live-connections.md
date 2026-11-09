@@ -133,11 +133,11 @@ Reading one file and reading a folder of them are one job, so they are one card 
 - **The card** shows the pattern in an `All matching` field under the file pick. Typing one replaces the picked file, picking a file replaces the pattern, and clearing the field clears only a pattern.
 - **Where it runs**: wherever a CSV reads, which is the desktop app, the demo vault and the headless runner (`run-graph --data <folder>`); a Parquet file needs the desktop's reader.
 
-- **The files one by one**: the `files` output is a Cube with a row per file read, its `File` and its `Table` (the file's own frame), empty for a single file. It is what a transform that runs once per file takes: a Composite set to By row, Live ([[composite-nodes#By-Row]]) gets one row a pass, unnests `Table` inside, and answers the list of transformed tables, which Append stacks from one socket ([[frame-verbs]]). Unnest on the whole Cube stacks the files as they are.
+- **The files one by one**: the `files` output is a Cube with a row per file read, its `File` and its `Table` (the file's own frame), empty for a single file. It is what a transform that runs once per file takes: a Composite set to By row, Live ([[composite-nodes#By-Row]]) gets one row a pass, unnests `Table` inside, and answers a Cube with a transformed table in each row, which Unnest stacks ([[frame-verbs#Nest and Unnest]]). Unnest on the `files` Cube itself stacks the files as they are.
 
 A pattern never yields a Plan: a folder of plan files has no one schedule.
 
-Tests: `localFolder.test.ts`: the matcher over a fake tree, the stacked table, a file that fails, nothing matching, and the files through a live By-Row Composite and Append.
+Tests: `localFolder.test.ts`: the matcher over a fake tree, the stacked table, a file that fails, nothing matching, and the files through a live By-Row Composite and Unnest.
 
 ## HTTP
 

@@ -955,7 +955,7 @@ Tests:
 
 ### append
 
-- **Function:** `append_frames(frames)`. Stacks frames in order, matching columns by name. A socket carrying a list of frames (a By-Row Composite's answer, one per pass) gives each of them in turn (`stack`, `nodes/backend_verbs.rs`), so one cable stacks them all.
+- **Function:** `append_frames(frames)`. Stacks frames in order, matching columns by name.
 - **Columns:** the union of names in first-seen order; a frame lacking a column contributes blanks for its rows.
 - **Types:** a name with different types in two frames is `#TYPE!` (`append: column "<n>" is <t1> in one frame and <t2> in another`); nothing is coerced.
 - **Units and formats:** a column keeps its unit and its format when every frame holding it agrees on them (the same unit, display included, and the same format), and loses whichever they disagree on; a frame holding the column with no unit disagrees with one that has a unit, and a frame lacking the column has no say.

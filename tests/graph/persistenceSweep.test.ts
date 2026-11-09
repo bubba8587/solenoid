@@ -220,6 +220,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     solveRequested: "run trigger", solveInsideOnly: "drill-in run scope (session)",
     aroundSolving: "solve context from the composite around (during a pass)", aroundMultiRun: "multi-run context from the composite around (during a pass)", unsettled: "last Solve outran its fetches (session)",
     lastByRowCapTotal: "By-Row cap-warning edge-detect state (session)",
+    adoptedSeries: "whether the Composite's output types were last adopted for one value per pass; found again on the first pass",
     lastRelativeText: "the relative phrase a date Value Input's body last read, read back for its shift alert (session)",
     lastRelativeSerial: "the day that phrase last landed on (session)",
     stale: "recomputed staleness", internalEditor: "the live internal editor and engine",

@@ -198,7 +198,7 @@ flowchart LR
 
 Every run mode but Simulation is some number of these passes: one for Single and Manual, one per scenario, Data Table combination, Monte Carlo draw or By-Row row, and one per value Goal Seek tries plus one at its solution. Simulation runs its loop round by round instead (§ Loops).
 
-`collectMultiple(inputs, overridesList)` runs one pass per overrides entry and returns, per output port, the array of that port's values in run order.
+`collectMultiple(inputs, overridesList)` runs one pass per overrides entry and returns, per output port, that port's values in run order: their list, or, where the passes answered tables (Frames or Cubes), a Cube of one column named for the port with a table in each row (`seriesValue`), which Unnest stacks. The output's socket says what it carries (`seriesTypeOf`, adopted in `adoptBoundaryTypes` while `answersSeries()` holds): a value's list, a list's table, a Cube for tables, and the inner type again in a single run. `data()` re-adopts whenever the answer switches between one value and one per pass, whichever control made the switch.
 
 `runActiveMode(inputs)` dispatches:
 

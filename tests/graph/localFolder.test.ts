@@ -9,7 +9,7 @@ import type { CubeValue, FrameValue } from "../../src/graph/frame";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import type { Schemes } from "../../src/graph/schemes";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../../src/graph/nodes/composite";
-import { AppendNode, HeadNode, UnnestNode } from "../../src/graph/nodes/frame";
+import { HeadNode, UnnestNode } from "../../src/graph/nodes/frame";
 import { isFrameRef, readFrame } from "../../src/graph/frameBackend";
 
 const TREE: Record<string, string> = {
@@ -115,11 +115,12 @@ describe("Local File over a pattern", () => {
     const inId = each.addInputPort({ label: "File", exposure: "exposed", tier: "basic", internalNodeId: row.id });
     const outId = each.addOutputPort({ label: "Trimmed", tier: "basic", internalNodeId: done.id });
     each.byRowPortId = inId;
-    const trimmed = (await each.data({ [inId]: [files] }))[outId] as unknown[];
-    expect(trimmed).toHaveLength(2);
+    const trimmed = (await each.data({ [inId]: [files] }))[outId] as CubeValue;
+    expect(trimmed.columns.map((c) => c.name)).toEqual(["Trimmed"]);
+    expect(trimmed.columns[0].cells).toHaveLength(2);
 
-    // Append takes the list on one socket and stacks it.
-    const stacked = (await (new AppendNode() as unknown as { data(i: Record<string, unknown[]>): Promise<{ frame: unknown }> }).data({ f0: [trimmed] })).frame;
+    // Unnest stacks the trimmed tables.
+    const stacked = (await (new UnnestNode() as unknown as { data(i: Record<string, unknown[]>): Promise<{ frame: unknown }> }).data({ cube: [trimmed], column: ["Trimmed"] })).frame;
     const frame = (isFrameRef(stacked) ? await readFrame(stacked) : stacked) as FrameValue;
     // One row from each file: the whole table's first row alone would be one row, not two.
     expect(frame.columns.map((c) => c.name)).toEqual(["File", "Day", "Region", "Amount", "Rep"]);
