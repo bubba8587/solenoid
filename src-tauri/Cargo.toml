@@ -29,7 +29,7 @@ tauri-plugin-opener = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 # The webview's fetches (`net.rs`): no browser CORS wall, and the resolved address checked before it connects.
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "charset"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls-tls", "http2", "charset"] }
 tokio = { version = "1", features = ["net"] }
 url = "2"
 serde = { version = "1", features = ["derive"] }
