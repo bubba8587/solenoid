@@ -1,7 +1,7 @@
 // [[B11]] maximalMerge
 import { describe, it, expect, afterEach } from "vitest";
 import { matchFiles, isFilePattern, type DirEntry } from "../../src/graph/fileGlob";
-import { setFsProvider, type FsProvider } from "../../src/graph/fileBridge";
+import { setFsProvider, listLocalFiles, type FsProvider } from "../../src/graph/fileBridge";
 import { settingsStore } from "../../src/graph/settingsStore";
 import { connectionStore } from "../../src/graph/connectionStore";
 import { LocalFileNode } from "../../src/graph/nodes/connection";
@@ -139,6 +139,14 @@ describe("Local File over a pattern", () => {
   it("a single file has no Files", async () => {
     const { out } = await read("accounts.csv");
     expect(out.files).toBeNull();
+  });
+
+  it("lists a file a folder down, so a pick there isn't marked missing", async () => {
+    setFsProvider(provider);
+    const listed = await listLocalFiles(ROOT);
+    expect(listed).toContain("monthly/old/2025-12.csv");
+    expect(listed).toContain("accounts.csv");
+    expect(listed).not.toContain("monthly/notes.txt");
   });
 
   it("says when nothing matches", async () => {

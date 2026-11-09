@@ -186,8 +186,10 @@ async function listFilesByExt(folder: string, extensions: string | string[]): Pr
     .sort((a, b) => a.localeCompare(b));
 }
 
+/** Every CSV and Parquet file under the data folder, its subfolders included, relative to it: what Local File can
+ *  pick, so a file a folder down lists as there. */
 export function listLocalFiles(folder: string): Promise<string[]> {
-  return listFilesByExt(folder, ["csv", "parquet"]);
+  return listLocalFilesMatching(folder, "**/*");
 }
 
 /** The CSV and Parquet files under the data folder a pattern names (`fileGlob.ts`), relative to it. */
