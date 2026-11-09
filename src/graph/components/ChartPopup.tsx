@@ -1,13 +1,17 @@
 // [[C100]] chartIsAValue
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
 import { chartPopup } from "../chartPopupStore";
 import { appThemeStore } from "../appTheme";
 import { formatAnnotationStore } from "../formatAnnotationStore";
 import { ChartView, ChartFigure } from "./chartView";
+import { PopupSkeleton, useAfterPaint } from "./PopupSkeleton";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { clamp } from "../nodes/mathUtils";
-import { recordNavTarget, stepRecordRow } from "./recordNav";
+import { recordNavTarget, recordFilterTarget, setRecordQuery, stepRecordRow } from "./recordNav";
+import { ganttMatching } from "./ganttFilter";
+import { ladderTarget, applyLadderAction } from "./ladderNav";
+import type { LadderAction } from "../nodes/ladderOps";
 import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
 
 const MAX_W = 1000;
@@ -24,6 +28,8 @@ function chartSize(maxH = MAX_H) {
 const FIG_PAD = 16;    // the figure region's inline padding, each side
 const CARD_CHROME = 40; // header height + the card's own top/bottom border
 
+const matchCount = (n: number | null) => (n === null ? undefined : `${n} ${n === 1 ? "match" : "matches"}`);
+
 export function ChartPopup() {
   const state = useSyncExternalStore(chartPopup.subscribe, chartPopup.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -33,7 +39,7 @@ export function ChartPopup() {
     : undefined;
   const figRef = useRef<HTMLDivElement>(null);
   const [{ w, h }, setFig] = useState(chartSize);
-  const [copied, setCopied] = useState(false);
+  const painted = useAfterPaint(state ? `${state.pinNodeId ?? ""}|${state.title}` : null);
   useLayoutEffect(() => {
     const el = figRef.current;
     if (!el) return;
@@ -46,7 +52,40 @@ export function ChartPopup() {
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [state]);
+  }, [state, painted]);
+
+  // One value per opened chart, so a resize doesn't hand the figure a new value and redraw a heavy one.
+  const shown = state?.value;
+  const figValue = useMemo(() => shown && {
+    ...shown,
+    title: undefined,
+    options: shown.options ? { ...shown.options, title: undefined } : shown.options,
+  }, [shown]);
+
+  // The header's Filter: a Record or Cards figure narrows its records on the core, a Gantt its task rows here. It lives
+  // while the popup shows this figure and clears when it closes.
+  const filterId = state?.value?.op === "record" && state.pinNodeId ? recordFilterTarget(state.pinNodeId) : null;
+  const [query, setQuery] = useState("");
+  const filterKey = state ? `${state.pinNodeId ?? ""}|${state.title}` : null;
+  useEffect(() => {
+    setQuery("");
+    if (!filterId) return;
+    return () => { void setRecordQuery(filterId, ""); };
+  }, [filterId, filterKey]);
+  const onFilter = (next: string) => {
+    setQuery(next);
+    if (!filterId || !state) return;
+    const s = state;
+    void setRecordQuery(filterId, next).then((fresh) => {
+      if (fresh && chartPopup.get()?.pinNodeId === s.pinNodeId) chartPopup.open({ ...chartPopup.get()!, value: fresh });
+    });
+  };
+
+  const ganttFiltered = useMemo(() => {
+    const p = figValue?.op === "gantt" && figValue.payload?.kind === "gantt" ? (figValue.payload as GanttPayload) : null;
+    return p && query.trim() ? ganttMatching(p, query) : null;
+  }, [figValue, query]);
+  const drawn = ganttFiltered && figValue ? { ...figValue, payload: ganttFiltered.payload } : figValue;
 
   // A hook before the early return. canvasKeyboard stands down under the overlay (modalGuard), so this is the only arrow handler.
   useEffect(() => {
@@ -70,16 +109,25 @@ export function ChartPopup() {
   if (!state) return null;
   const isGantt = state.value?.op === "gantt";
   const ganttPayload = isGantt && state.value?.payload?.kind === "gantt" ? (state.value.payload as GanttPayload) : null;
-  const initialCard = (() => { const f = chartSize(isGantt ? MAX_H_GANTT : MAX_H); return { w: f.w + FIG_PAD * 2, h: f.h + FIG_PAD * 2 + CARD_CHROME }; })();
+  // A ladder grows downward like a Gantt, so it opens as tall.
+  const isTall = isGantt || state.value?.op === "ladder";
+  const initialCard = (() => { const f = chartSize(isTall ? MAX_H_GANTT : MAX_H); return { w: f.w + FIG_PAD * 2, h: f.h + FIG_PAD * 2 + CARD_CHROME }; })();
   const cardStyle = popupCardVars(state);
+  const resizable = { min: isGantt ? { w: 520, h: 300 } : { w: 260, h: 200 }, initial: initialCard };
+  // Open at once: the shell (at its final size, which it takes only on mount) and a skeleton paint first, and the
+  // figure draws the frame after.
+  if (!painted) {
+    return (
+      <PopupShell title={state.title} onClose={() => chartPopup.close()} cardStyle={cardStyle} resizable={resizable}>
+        <PopupSkeleton />
+      </PopupShell>
+    );
+  }
 
   const copySvg = ganttPayload
     ? () => {
         const svg = ganttSvg(ganttPayload, { width: Math.round(w) });
-        void navigator.clipboard?.writeText(svg).then(() => {
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1200);
-        });
+        void navigator.clipboard?.writeText(svg);
       }
     : null;
 
@@ -92,30 +140,45 @@ export function ChartPopup() {
       }
     : undefined;
 
+  const ladderId = state.value?.op === "ladder" && state.pinNodeId ? ladderTarget(state.pinNodeId) : null;
+  const ladderAct = ladderId
+    ? (a: LadderAction) => {
+        void applyLadderAction(ladderId, a).then((fresh) => {
+          if (fresh) chartPopup.open({ ...state, value: fresh });
+        });
+      }
+    : undefined;
+
+  // A Record view other than Detail is a stack of boxes taller than the popup, not a drawing that scales: it scrolls
+  // from its top, where centering would push its first rows out of reach. Detail scrolls inside its own grid.
+  const stacked = figValue?.op === "record" && figValue.payload?.kind === "record" && figValue.payload.view !== "detail";
   return (
     <PopupShell
       title={state.title}
       onClose={() => chartPopup.close()}
       cardStyle={cardStyle}
-      headerExtra={state.series && <span className="table-popup__dims">{state.series.length} pts</span>}
-      headerActions={copySvg
-        ? <button type="button" className="sol-popup__action" onClick={copySvg}>{copied ? "Copied" : "Copy SVG"}</button>
+      filter={filterId || ganttPayload
+        ? {
+            value: query,
+            onChange: onFilter,
+            label: filterId ? "Filter records" : "Filter tasks",
+            count: matchCount(ganttFiltered ? ganttFiltered.matches : figValue?.payload?.kind === "record" ? figValue.payload.total : null),
+          }
         : undefined}
+      headerExtra={state.series && <span className="table-popup__dims">{state.series.length} pts</span>}
+      menuItems={copySvg ? [{ label: "Copy SVG", onClick: copySvg }] : []}
       pinNodeId={state.pinNodeId}
-      resizable={{ min: isGantt ? { w: 520, h: 300 } : { w: 260, h: 200 }, initial: initialCard }}
+      resizable={resizable}
     >
-      <div ref={figRef} className="sol-popup__scroll" style={{ padding: FIG_PAD, display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
-        {state.value ? (
+      <div ref={figRef} className="sol-popup__scroll" style={stacked ? { padding: FIG_PAD, overflow: "auto" } : { padding: FIG_PAD, display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
+        {drawn ? (
           <ChartFigure
-            value={{
-              ...state.value,
-              title: undefined,
-              options: state.value.options ? { ...state.value.options, title: undefined } : state.value.options,
-            }}
+            value={drawn}
             width={w}
             height={h}
             fontScale={fontScale}
             recordNav={recordStep}
+            ladderAction={ladderAct}
             virtualize={isGantt}
           />
         ) : !state.series || state.series.length === 0 ? (

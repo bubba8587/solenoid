@@ -1,9 +1,10 @@
 // [[A1]]
 import { describe, it, expect } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
+import { GraphEditor } from "../../../src/graph/graphEditor";
+import { GraphConnection } from "../../../src/graph/graphModel";
 import type { Schemes, SolenoidConnection } from "../../../src/graph/schemes";
 import { setEditorRefs } from "../../../src/graph/process";
-import { SliderInputNode, LambdaNode } from "../../../src/graph/rete-nodes";
+import { SliderInputNode, LambdaNode } from "../../../src/graph/nodeClasses";
 import { applyLambdaChange } from "../../../src/graph/components/expressionEdit";
 
 // Renaming a captured variable in a LAMBDA's expression must drop the cable
@@ -12,7 +13,7 @@ import { applyLambdaChange } from "../../../src/graph/components/expressionEdit"
 
 describe("lambda captured-variable rename", () => {
   it("drops the cable on the removed socket", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     // No engine/area: processGraph early-returns, applyLambdaChange's area
     // branch is skipped. Only topology is under test.
     setEditorRefs(editor, null as never, null as never);
@@ -24,7 +25,7 @@ describe("lambda captured-variable rename", () => {
 
     expect(Object.keys(lam.inputs)).toContain("rate");
     await editor.addConnection(
-      new ClassicPreset.Connection(slider, "value", lam, "rate") as SolenoidConnection,
+      new GraphConnection(slider, "value", lam, "rate") as SolenoidConnection,
     );
     expect(editor.getConnections()).toHaveLength(1);
 

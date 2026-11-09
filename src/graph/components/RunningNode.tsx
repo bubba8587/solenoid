@@ -1,5 +1,5 @@
-import { RUNNING_OP_META } from "../rete-nodes";
-import type { RunningNode as RunningNodeType, RunningOp } from "../rete-nodes";
+import { RUNNING_OP_META } from "../nodeClasses";
+import type { RunningNode as RunningNodeType, RunningOp } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 

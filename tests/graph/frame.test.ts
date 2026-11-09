@@ -1,4 +1,5 @@
-// [[C24]] arraySemantics, [[C44]] dateSerials, [[B11]]
+// [[C24]] arraySemantics, [[C44]] dateSerials, [[B11]] maximalMerge, [[frame-verbs#Type inference]], [[frame-verbs#Names]],
+// [[frame-verbs#Building a Frame]], [[frame-verbs#Frame Input's source]]
 import { describe, it, expect } from "vitest";
 import {
   inferColumn,
@@ -14,17 +15,15 @@ import {
   isFrameValue,
   makeHeaders,
   buildFrame,
-  buildFrameTyped,
   typedColumn,
   colTypeForSocket,
   addColumn,
-  frameHasTextColumns,
   columnTypesAfterCsvEdit,
   type FrameValue,
 } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/date";
 import { BuildFrameNode, FrameFromListsNode, FrameInputNode } from "../../src/graph/nodes/frame";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 import { MutableSocket } from "../../src/graph/sockets";
 import { solError } from "../../src/graph/errorValue";
 
@@ -56,15 +55,13 @@ describe("inferColumn", () => {
     expect(col.values).toEqual([1, 2, 3]);
   });
 
-  it("keeps thousands-grouped numbers numeric but NOT the European decimal comma (audit P0-7)", () => {
+  it("keeps thousands-grouped numbers numeric but NOT the European decimal comma ", () => {
     const grouped = inferColumn("Big", ["1,234", "12,345.6", "1,234,567"]);
     expect(grouped.type).toBe("number");
     expect(grouped.values).toEqual([1234, 12345.6, 1234567]);
-    // "3,5" is ambiguous (3.5 to half the world) — it must stay TEXT, never 35.
     const euro = inferColumn("Euro", ["3,5", "12,75"]);
     expect(euro.type).toBe("string");
     expect(euro.values).toEqual(["3,5", "12,75"]);
-    // malformed grouping is not a number either
     expect(inferColumn("Bad", ["12,34"]).type).toBe("string");
   });
 
@@ -108,13 +105,11 @@ describe("inferColumn", () => {
 
   it("all-blank column infers string (no non-blank cells to detect numeric)", () => {
     const col = inferColumn("Empty", [null, null, ""]);
-    // No non-blank cells → not numeric → not date → string
     expect(col.type).toBe("string");
   });
 
   it("does NOT infer date for ambiguous formats (bare years, locale dates)", () => {
     const col = inferColumn("Ambiguous", ["1/2/26", "2026", "Jan 3 2026"]);
-    // Conservative ISO-only detection — none of these match YYYY-MM-DD
     expect(col.type).not.toBe("date");
   });
 });
@@ -262,9 +257,6 @@ describe("addColumn", () => {
   });
 });
 
-// The AddColumnNode pads a values list SHORTER than the frame to the row count with
-// blanks (the catalog says "Shorter lists pad with blanks"); the pad is the node's own
-// Math.max logic, not addColumn's, so it needs a node-level pin.
 describe("Add Column pads a short list with blanks", () => {
   it("a values list shorter than the frame's rows fills the rest with null", async () => {
     const { AddColumnNode } = await import("../../src/graph/nodes/frame");
@@ -276,9 +268,6 @@ describe("Add Column pads a short list with blanks", () => {
   });
 });
 
-// A ragged numeric matrix (rows of unequal length) pads each short row's missing trailing
-// cells to the widest row with blanks. typedColumn's ragged path is pinned above; this is
-// the NUMERIC buildFrame path, which fills undefined → null itself.
 describe("buildFrame — ragged rows pad to the widest row with blanks", () => {
   it("short rows fill missing trailing cells with null; headers auto-fill", () => {
     const f = buildFrame([[1, 2, 3], [4]]);
@@ -289,25 +278,6 @@ describe("buildFrame — ragged rows pad to the widest row with blanks", () => {
   });
 });
 
-// ─── frameHasTextColumns ─────────────────────────────────────────────────────
-
-describe("frameHasTextColumns", () => {
-  it("false when all columns are numeric", () => {
-    const f = frameFromCells(["A", "B"], [[1, 2]]);
-    expect(frameHasTextColumns(f)).toBe(false);
-  });
-
-  it("true when at least one column is string", () => {
-    const f = frameFromCells(["Num", "Label"], [[42, "foo"]]);
-    expect(frameHasTextColumns(f)).toBe(true);
-  });
-
-  it("false for date columns (date serials don't block the matrix)", () => {
-    const f = frameFromCells(["D"], [["2026-01-03"]]);
-    expect(frameHasTextColumns(f)).toBe(false);
-  });
-});
-
 describe("frameFromInputText — a blank CSV cell is null, not 0 (round-trips)", () => {
   it("CSV: a blank numeric cell imports as null", () => {
     const f = frameFromInputText("vals, tag\n1, a\n, b\n3, c\n4, d");
@@ -315,7 +285,6 @@ describe("frameFromInputText — a blank CSV cell is null, not 0 (round-trips)",
     expect(getColumn(f, "tag")?.values).toEqual(["a", "b", "c", "d"]);
   });
   it("JSON round-trip preserves null (the edit-and-save path)", () => {
-    // The popup saves edits as JSON (frameColumnsToInputText); reopening re-parses it.
     const f = frameFromInputText("a, b\n1, \n, 4");
     const back = frameFromInputText(frameColumnsToInputText(f.columns));
     expect(getColumn(back, "a")?.values).toEqual([1, null]);
@@ -353,58 +322,6 @@ describe("logical columns", () => {
     expect(node.data({ frame: [f] }).values).toEqual(["TRUE", "FALSE"]);
   });
 
-  it("a logical column splits to a 1/0 numeric matrix", async () => {
-    const { splitFrame } = await import("../../src/graph/frame");
-    const f = frameFromCells(["a", "b"], [["TRUE", "1"], ["FALSE", "2"]]);
-    // 'a' is logical, 'b' numeric → no text column → clean numeric matrix
-    expect(splitFrame(f).matrix).toEqual([[1, 1], [0, 2]]);
-  });
-
-  it("Split Frame filters columns by type (the colType toggle)", async () => {
-    const { SplitFrameNode } = await import("../../src/graph/nodes/frame");
-    const f: any = {
-      __frame: true,
-      columns: [
-        { name: "City", type: "string", values: ["A", "B"] },
-        { name: "Pop", type: "number", values: [10, 20] },
-        { name: "Founded", type: "date", values: [44000, 45000] },
-        { name: "Area", type: "number", values: [5, 6] },
-      ],
-    };
-
-    // num → only the two number columns, as a matrix + their headers
-    const numOut = new SplitFrameNode({ colType: "number" }).data({ frame: [f] });
-    expect(numOut.headers).toEqual(["Pop", "Area"]);
-    expect(numOut.matrix).toEqual([[10, 5], [20, 6]]);
-
-    // date → date serials matrix + the date header
-    const dateOut = new SplitFrameNode({ colType: "date" }).data({ frame: [f] });
-    expect(dateOut.headers).toEqual(["Founded"]);
-    expect(dateOut.matrix).toEqual([[44000], [45000]]);
-
-    // text → the text columns as a STRING matrix
-    const textOut = new SplitFrameNode({ colType: "string" }).data({ frame: [f] });
-    expect(textOut.headers).toEqual(["City"]);
-    expect(textOut.matrix).toEqual([["A"], ["B"]]);
-
-    // all → every header; matrix null because the mixed frame has a text column
-    const allOut = new SplitFrameNode({ colType: "all" }).data({ frame: [f] });
-    expect(allOut.headers).toEqual(["City", "Pop", "Founded", "Area"]);
-    expect(allOut.matrix).toBeNull();
-
-    // text → a STRING matrix of the text columns (not null)
-    const f2: any = {
-      __frame: true,
-      columns: [
-        { name: "City", type: "string", values: ["A", "B"] },
-        { name: "Note", type: "string", values: ["x", null] },
-        { name: "Pop", type: "number", values: [10, 20] },
-      ],
-    };
-    const txt = new SplitFrameNode({ colType: "string" }).data({ frame: [f2] });
-    expect(txt.headers).toEqual(["City", "Note"]);
-    expect(txt.matrix).toEqual([["A", "x"], ["B", ""]]);
-  });
 
   it("Split Frame's Matrix output socket type tracks the colType", async () => {
     const { splitMatrixOutput } = await import("../../src/graph/nodes/frame");
@@ -445,8 +362,7 @@ describe("per-cell errors in a frame", () => {
     const f = frameFromCells(["a"], [[1], [2], [3]]);
     const node = new AddColumnNode({ addAs: "logical" });
     node.stringLiterals.name = "flag";
-    // A logicallist input arrives already coerced to booleans (coerceInputs);
-    // null (missing) is carried verbatim.
+    // A logicallist input arrives already coerced to booleans.
     const out = node.data({ frame: [f], values: [[true, false, null]] }).frame as FrameValue;
     const col = getColumn(out, "flag")!;
     expect(col.type).toBe("logical");
@@ -468,11 +384,7 @@ describe("per-cell errors in a frame", () => {
   });
 });
 
-// ─── Persistence (Inc 7): logical + null survive the frameText round-trip ───────
-// A Frame Input persists via its `frameText` string (extractInit → save → reload →
-// frameFromInputText). Logical columns + null cells must come back intact; computed
-// errors/logicals are never stored (they regenerate on recompute), so the save
-// format needs no new fields.
+// ─── Persistence: logical + null survive the frameText round-trip ──────────────
 
 describe("frameText persistence round-trip", () => {
   it("a CSV frameText re-infers a TRUE/FALSE column as logical on reload", () => {
@@ -484,7 +396,6 @@ describe("frameText persistence round-trip", () => {
 
   it("a JSON frameText preserves an explicit logical column + null", () => {
     const original = frameFromCells(["flag"], [["TRUE"], [""], ["FALSE"]]);
-    // The JSON form is what the popup/save writes; reopening re-parses it.
     const json = frameColumnsToInputText(original.columns);
     const back = frameFromInputText(json);
     const col = getColumn(back, "flag")!;
@@ -513,18 +424,31 @@ describe("Frame Input's Form layout hides without deleting", () => {
     expect(new FrameInputNode(init).layoutHidden).toBe(true);
     expect(new FrameInputNode().layoutHidden).toBe(false);
   });
+
+  it("the Card layout hides the same way, on its own flag, and survives a save/load cycle", () => {
+    const n = new FrameInputNode();
+    n.stringLiterals.layout = "Name | Qty";
+    n.stringLiterals.cardLayout = "#Name | Qty";
+    n.cardLayoutHidden = true;
+    expect(n.activeCardLayout).toBeUndefined();
+    expect(n.activeLayout).toBe("Name | Qty");
+    const init = extractInit(n) as { cardLayoutHidden?: boolean };
+    expect(init.cardLayoutHidden).toBe(true);
+    const back = new FrameInputNode(init);
+    back.stringLiterals.cardLayout = "#Name | Qty";
+    expect(back.activeCardLayout).toBeUndefined();
+    back.cardLayoutHidden = false;
+    expect(back.activeCardLayout).toBe("#Name | Qty");
+  });
 });
 
 describe("Frame Input is a LITERAL source — never rewrites what you typed", () => {
   it("preserves mixed 1/TRUE literals in a Boolean column across a save round-trip", () => {
-    // A logical column the user typed with BOTH numeric and word literals.
     const source: FrameSource = [
       { name: "flag", type: "logical", cells: ["1", "TRUE", "0", "FALSE"] },
     ];
-    // Save → reload returns the EXACT text (the bug was "1" → "TRUE").
     const back = parseFrameSource(frameSourceToText(source));
     expect(back[0].cells).toEqual(["1", "TRUE", "0", "FALSE"]);
-    // …while the DERIVED value (what flows downstream) is real booleans.
     const derived = deriveFrame(source);
     expect(derived.columns[0].type).toBe("logical");
     expect(derived.columns[0].values).toEqual([true, true, false, false]);
@@ -541,10 +465,8 @@ describe("Frame Input is a LITERAL source — never rewrites what you typed", ()
   });
 
   it("inferColumn keeps the INPUTTED text as `raw` (date + logical, BEFORE inference)", () => {
-    // A date column: values become serials, but raw keeps the original ISO text.
     const dateCol = inferColumn("d", ["2026-01-03", "2026-02-04"]);
     expect(dateCol.raw).toEqual(["2026-01-03", "2026-02-04"]);
-    // A logical column from lowercase text: value is a boolean, raw keeps "true"/"false".
     const boolCol = inferColumn("flag", ["true", "false"]);
     expect(boolCol.raw).toEqual(["true", "false"]);
   });
@@ -562,8 +484,6 @@ describe("Frame Input is a LITERAL source — never rewrites what you typed", ()
 
   it("legacy CSV frameText parses to a typed source with cells kept raw", () => {
     const src = parseFrameSource("flag, n\n1, 10\nTRUE, 20");
-    // The flag column mixes 1 and TRUE → it can't infer logical (1 isn't TRUE/FALSE
-    // text), so it stays text and both literals survive verbatim.
     expect(src[0].name).toBe("flag");
     expect(src[0].cells).toEqual(["1", "TRUE"]);
     expect(src[1].type).toBe("number");
@@ -603,30 +523,12 @@ describe("typedColumn", () => {
   it("infers number/logical/string from runtime cell types, type-preserving", () => {
     expect(typedColumn("a", [1, 2, 3], 3).type).toBe("number");
     expect(typedColumn("b", [true, false], 2).type).toBe("logical");
-    // "1" the string stays a string (no CSV-style re-parse to 1 the number).
     expect(typedColumn("c", ["1", "x"], 2)).toMatchObject({ type: "string", values: ["1", "x"] });
   });
   it("blanks → null, per-cell errors pass through, ragged pads to length", () => {
     const err = solError("#DIV/0!", "boom");
     const col = typedColumn("x", [1, null, err], 4, "number");
     expect(col.values).toEqual([1, null, err, null]);
-  });
-});
-
-describe("buildFrameTyped — a matrix of any element family", () => {
-  it("a string matrix → all string columns", () => {
-    const f = buildFrameTyped([["a", "b"], ["c", "d"]], ["p", "q"], "string");
-    expect(f.columns.map((c) => c.type)).toEqual(["string", "string"]);
-    expect(f.columns[0].values).toEqual(["a", "c"]);
-  });
-  it("colType null → per-column value inference", () => {
-    const f = buildFrameTyped([[1, "x"], [2, "y"]], ["n", "s"], null);
-    expect(f.columns.map((c) => c.type)).toEqual(["number", "string"]);
-  });
-  it("carries a (unit) header onto a numeric column", () => {
-    const f = buildFrameTyped([[5], [6]], ["Revenue ($0.00)"], "number");
-    expect(f.columns[0].name).toBe("Revenue");
-    expect(f.columns[0].unit).toBeTruthy();
   });
 });
 

@@ -16,7 +16,10 @@
 //   --type <css> <text>  focus the first match, select all, type the text
 //   --press <key>        press a key (Enter, Escape, Tab…) or a combo (Control+Shift+Equal)
 //   --drag <css> <dx> <dy>  press the first match's center, move by (dx, dy) screen px, release; prints each card's box before and after
+// --setting key=value opens with that app setting (Settings' key, JSON value): --setting wasmEngine=false.
 // --size 390x844 shoots a phone (mobile UA, coarse pointer, touch) instead of the 1600×1000 desktop; --click taps and --drag drags a finger there.
+// --insets 40,28 reports a status bar and a gesture bar of those heights through env(safe-area-inset-top/bottom), as
+// an edge-to-edge Android app's WebView does (docs/android.md): every surface must clear them.
 // Card formulas edit in the formula popup: --click .solenoid-expr__rendered, then --type .fx-editor__input.
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -36,16 +39,20 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--click-edge") opt.steps.push({ click: argv[++i], edge: true });
   else if (a === "--type") opt.steps.push({ type: argv[++i], text: argv[++i] });
   else if (a === "--press") opt.steps.push({ press: argv[++i] });
-  else if (a === "--drag") opt.steps.push({ drag: argv[++i], dx: Number(argv[++i]), dy: Number(argv[++i]) });
+  else if (a === "--drag" || a === "--drag-hold") opt.steps.push({ drag: argv[++i], dx: Number(argv[++i]), dy: Number(argv[++i]), hold: a === "--drag-hold" });
   else if (a === "--wait") opt.wait = Number(argv[++i]);
   else if (a === "--palette") opt.palette = argv[++i];
   else if (a === "--light") opt.light = true;
+  else if (a === "--setting") { const [k, v] = argv[++i].split("="); (opt.settings ??= {})[k] = JSON.parse(v); }
+  else if (a === "--local") { const [k, ...v] = argv[++i].split("="); (opt.local ??= {})[k] = v.join("="); }
   else if (a === "--full") opt.full = true;
   else if (a === "--size") { const [w, h] = argv[++i].split("x").map(Number); opt.size = { width: w, height: h }; }
+  else if (a === "--scale") opt.scale = Number(argv[++i]);
+  else if (a === "--insets") { const [top, bottom] = argv[++i].split(",").map(Number); opt.insets = { top, bottom }; }
   else if (a === "--popup") opt.steps.push({ popup: /^\d+$/.test(argv[i + 1] ?? "") ? Number(argv[++i]) : 1 });
   else opt.file = a;
 }
-if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy]… [--wait ms] [--palette name] [--light] [--full] [--size WxH]"); process.exit(2); }
+if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy] [--drag-hold css dx dy]… [--wait ms] [--palette name] [--light] [--setting key=value] [--full] [--size WxH] [--insets top,bottom] [--scale N]"); process.exit(2); }
 
 const graph = expand(JSON.parse(readFileSync(opt.file, "utf8")));
 execFileSync(process.execPath, [fileURLToPath(new URL("./dev-up.mjs", import.meta.url))], { stdio: "inherit" });
@@ -53,9 +60,15 @@ execFileSync(process.execPath, [fileURLToPath(new URL("./dev-up.mjs", import.met
 const browser = await puppeteer.launch({ executablePath: browserPath(), headless: true, args: ["--no-sandbox", "--window-size=1600,1000"] });
 try {
   const page = await browser.newPage();
-  await page.setViewport(opt.size ? { ...opt.size, isMobile: true, hasTouch: true } : { width: 1600, height: 1000 });
+  await page.setViewport({ ...(opt.size ? { ...opt.size, isMobile: true, hasTouch: true } : { width: 1600, height: 1000 }), deviceScaleFactor: opt.scale || 1 });
+  if (opt.insets) {
+    const { top, bottom } = opt.insets;
+    await (await page.createCDPSession()).send("Emulation.setSafeAreaInsetsOverride", {
+      insets: { top, topMax: top, bottom, bottomMax: bottom, left: 0, leftMax: 0, right: 0, rightMax: 0 },
+    });
+  }
   if (opt.size) {
-    // The phone model, not just a touch viewport: a mobile UA and (pointer: coarse) before the app loads (as touch-pan-probe.mjs).
+    // The phone model, not just a touch viewport: a mobile UA and (pointer: coarse) before the app loads.
     await page.setUserAgent(
       "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
       { mobile: true, platform: "Android", platformVersion: "14", architecture: "", model: "Pixel 8", brands: [] },
@@ -70,7 +83,7 @@ try {
   page.on("pageerror", (e) => console.log(`[pageerror] ${e.message}`));
   page.on("console", (m) => { if (m.type() === "error") console.log(`[console.error] ${m.text()}`); });
   const doc = { id: "shot", name: graph.label ?? "Shot", graph, updatedAt: Date.now() };
-  await page.evaluateOnNewDocument((doc, palette, light) => {
+  await page.evaluateOnNewDocument((doc, palette, light, settings, local) => {
     if (sessionStorage.getItem("shot-seeded")) return;
     sessionStorage.setItem("shot-seeded", "1");
     localStorage.clear();
@@ -78,9 +91,30 @@ try {
     localStorage.setItem(`solenoid.docs.doc.${doc.id}.a`, JSON.stringify({ seq: 2, doc }));
     if (palette) localStorage.setItem("solenoid.palette", palette);
     if (light) localStorage.setItem("solenoid.theme", JSON.stringify({ accent: "gold", mode: "light" }));
-  }, doc, opt.palette ?? null, !!opt.light);
-  await page.goto("http://localhost:1420", { waitUntil: "networkidle2", timeout: 90_000 });
-  await page.waitForSelector(".solenoid-node", { timeout: 30_000 });
+    if (settings) localStorage.setItem("solenoid.settings", JSON.stringify(settings));
+    for (const [k, v] of Object.entries(local ?? {})) localStorage.setItem(k, v);
+  }, doc, opt.palette ?? null, !!opt.light, opt.settings ?? null, opt.local ?? null);
+  const pageErrors = [];
+  page.on("pageerror", (e) => pageErrors.push(String(e?.message ?? e)));
+  page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") pageErrors.push(m.text()); });
+  // The app swaps a document it can't load for a seed, and a cold dev server reloads the page once while it
+  // optimizes; so check every node of the file is on the canvas, reseed and reload once, then fail loudly.
+  // The app gives nodes ids of its own, so the check is the card count.
+  const onCanvas = () => page.evaluate(() => document.querySelectorAll(".react-flow__node").length);
+  for (let attempt = 0; ; attempt++) {
+    await page.goto("http://localhost:1420", { waitUntil: "networkidle2", timeout: 90_000 });
+    await page.waitForSelector(".solenoid-node", { timeout: 30_000 });
+    await new Promise((r) => setTimeout(r, 300));
+    const shown = await onCanvas();
+    if (shown === graph.nodes.length) break;
+    if (attempt >= 1) {
+      console.error(`shot-graph: the canvas is not this graph: it shows ${shown} cards, the file has ${graph.nodes.length} (an unknown type, a bad init or a bad cable makes the app load a seed instead)`);
+      for (const e of pageErrors.slice(-10)) console.error("  page:", e.slice(0, 300));
+      await browser.close();
+      process.exit(1);
+    }
+    await page.evaluate(() => sessionStorage.removeItem("shot-seeded"));
+  }
   await page.click(".solenoid-nav__btn--fit").catch(() => {});
   await new Promise((r) => setTimeout(r, opt.wait));
 
@@ -88,6 +122,7 @@ try {
     const texts = await page.evaluate(() => [...document.querySelectorAll(".react-flow__node")]
       .map((n) => (n.innerText ?? "").replace(/\s*\n\s*/g, " | ").slice(0, 600)));
     for (const t of texts) console.log(t);
+    if (texts.some((t) => t.includes("node type isn’t available here"))) console.error("shot-graph: a node's type is unknown (check its class name)");
   };
   await printTexts();
 
@@ -125,12 +160,12 @@ try {
       if (opt.size) {
         await page.touchscreen.touchStart(x, y);
         for (let k = 1; k <= 10; k++) await page.touchscreen.touchMove(x + (step.dx * k) / 10, y + (step.dy * k) / 10);
-        await page.touchscreen.touchEnd();
+        if (!step.hold) await page.touchscreen.touchEnd();
       } else {
         await page.mouse.move(x, y);
         await page.mouse.down();
         for (let k = 1; k <= 10; k++) await page.mouse.move(x + (step.dx * k) / 10, y + (step.dy * k) / 10);
-        await page.mouse.up();
+        if (!step.hold) await page.mouse.up();
       }
       console.log("cards after drag: ", (await boxes()).join(" | "));
     }

@@ -14,16 +14,6 @@
   z-index: 100;
 }
 
-/* The container's padding box is the coordinate origin; pointer events pass through to its drag and double-click handlers. */
-.solenoid-minimap__canvas {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
 .solenoid-minimap__viewport {
   position: absolute;
   box-sizing: border-box;

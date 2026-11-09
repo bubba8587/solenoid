@@ -1,8 +1,12 @@
-// [[A1]] visualGraphCalculator, [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast, [[C85]] groupPushDeterministic
+// [[A1]] visualGraphCalculator, [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast, [[C85]] groupPushDeterministic,
+// [[auto-arrange-tidy#What Tidy guarantees]], [[auto-arrange-tidy#Building the ELK graph]], [[auto-arrange-tidy#Ports]],
+// [[auto-arrange-tidy#Flipped cards]], [[auto-arrange-tidy#Cards stay content-sized]], [[auto-arrange-tidy#Position-locked groups]],
+// [[auto-arrange-tidy#Growing a group]], [[auto-arrange-tidy#Cleanup]]
 import type { View } from "../../src/graph/view";
 import { ChartBuilderNode } from "../../src/graph/nodes/visual";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import type { Schemes } from "../../src/graph/schemes";
 import {
   makeArrangeFn, makeCleanupFn, makeEnsureElk, elkTidyLayout,
@@ -20,23 +24,6 @@ import { socketFlipStore } from "../../src/graph/socketFlipStore";
 import { presentSocketStore } from "../../src/graph/presentSocketStore";
 import { collapseStore } from "../../src/graph/collapseStore";
 import { nodeSizeStore } from "../../src/graph/nodeSizeStore";
-
-// ─── Headless Tidy/Cleanup harness ──────────────────────────────────────────────
-// The real arrangeFn is DOM-coupled: it measures node sizes off view.nodeViews
-// (offsetWidth/Height), stamps sizes back via view.resize, and moves nodes via
-// async view.translate. This harness runs the REAL makeArrangeFn / makeCleanupFn
-// against a real NodeEditor and a FAKE view whose views model exactly that DOM
-// contract (position + a measurable element whose size reflects resize stamps),
-// with elkjs running for real. It exists to pin the expanded-group invariants:
-//
-//   1. A global Tidy treats an expanded group as a rigid unit: members keep
-//      their offsets relative to the group box.
-//   2. Nothing (member or loose node) overlaps another node after the pass.
-//   3. Cleanup (tidy groups → autofit → collapse → top-level tidy) keeps every
-//      member riding its group.
-//
-// requestAnimationFrame is queued and flushed manually so the deferred FC
-// snap-back / standoff settle phases run deterministically.
 
 type Pos = { x: number; y: number };
 
@@ -62,9 +49,7 @@ type FakeViewHandle = View & { fakes: Map<string, FakeView> };
 
 function makeFakeView() {
   const nodeViews = new Map<string, FakeView>();
-  // `naturalFn` models a React-driven size (groups: expanded box vs compact
-  // collapsed card). When it changes what it reports (collapse flip → React
-  // rewrites the style attribute), any earlier view.resize stamp dies with it.
+  // `naturalFn` models a React-driven size; when it changes, React rewrites the style and any inline pin dies with it.
   const addView = (id: string, x: number, y: number, w: number, h: number, naturalFn?: () => { w: number; h: number }) => {
     let lastNatural = naturalFn ? naturalFn() : { w, h };
     const natural = () => {
@@ -137,11 +122,11 @@ function makeFakeView() {
 
 
 function connect(
-  editor: NodeEditor<Schemes>,
-  src: ClassicPreset.Node, srcOut: string, tgt: ClassicPreset.Node, tgtIn: string,
+  editor: GraphEditor<Schemes>,
+  src: GraphNode, srcOut: string, tgt: GraphNode, tgtIn: string,
 ) {
   return editor.addConnection(
-    new ClassicPreset.Connection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
+    new GraphConnection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
   );
 }
 
@@ -175,7 +160,7 @@ afterEach(() => {
 
 // Build the standard scene: src → [group: m1 → m2] → sink, group expanded.
 async function buildScene() {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   const { view, addView } = makeFakeView();
 
   const src = new ArithmeticNode({ op: "add" });
@@ -190,7 +175,7 @@ async function buildScene() {
 
   // Sizes: what the DOM would measure (node.width/height mirrors kept in sync,
   // the way NodeCard's ResizeObserver does).
-  const size = (n: ClassicPreset.Node & { width: number; height: number }, w: number, h: number) => {
+  const size = (n: GraphNode & { width: number; height: number }, w: number, h: number) => {
     n.width = w; n.height = h;
   };
   size(src as never, 180, 100);
@@ -344,7 +329,7 @@ describe("global Tidy with an expanded group (headless, real ELK + real arrangeF
 
 describe("global Tidy — two expanded groups + docked FC on a member", () => {
   async function buildTwoGroupScene() {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
 
     const src = new ArithmeticNode({ op: "add" });
@@ -430,9 +415,7 @@ describe("global Tidy — two expanded groups + docked FC on a member", () => {
         expect(overlaps(boxes[i], boxes[j]), `${boxes[i].id} ∩ ${boxes[j].id}`).toBe(false);
       }
     }
-    // No node left with a stamped, undropped height pin (a frozen card): the
-    // arrange stamps sizes via view.resize and MUST clear every pin it created
-    // on regular nodes (groups excluded — React owns their size).
+    // No card but a group (React owns its size) is left with a pinned height.
     for (const n of s.editor.getNodes()) {
       if (n instanceof GroupNode) continue;
       const v = s.view.fakes.get(n.id) as unknown as FakeView;
@@ -444,7 +427,7 @@ describe("global Tidy — two expanded groups + docked FC on a member", () => {
 
 describe("within-group Tidy (group Tidy button): grow → push → autofit", () => {
   it("members land inside the final box; a right-hand neighbor is pushed clear", { timeout: 20000 }, async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
 
     // A chain of three members crammed into a box that's too small for the
@@ -505,7 +488,7 @@ describe("within-group Tidy (group Tidy button): grow → push → autofit", () 
 
 describe("group Tidy then autofit is a fixed point", () => {
   it("a second and third cycle move nothing, even with fractional card heights", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const m1 = new ArithmeticNode({ op: "add" }), m2 = new ArithmeticNode({ op: "add" }), m3 = new ArithmeticNode({ op: "add" });
     for (const n of [m1, m2, m3]) await editor.addNode(n as never);
@@ -548,9 +531,7 @@ describe("Cleanup with an expanded group (headless)", () => {
     await run;
     await flushRafs();
 
-    // After cleanup the group is collapsed; members must sit inside the
-    // group's STORED (expanded) box at its final position, so a later expand
-    // shows them inside it.
+    // The group is collapsed; its members sit inside its stored (expanded) box.
     const gv = view.fakes.get(group.id)!;
     for (const id of [m1.id, m2.id]) {
       const v = view.fakes.get(id) as unknown as FakeView;
@@ -565,7 +546,7 @@ describe("Cleanup with an expanded group (headless)", () => {
 
 describe("Tidy hands ELK the sockets a card shows", () => {
   it("a Chart Builder reserves the rows its target shows, wired or not, not all of its fields", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const src = new ArithmeticNode({ op: "add" });
     const builder = new ChartBuilderNode({ target: "heatmap" });
@@ -594,7 +575,7 @@ describe("Tidy's ports sit at the real socket heights", () => {
   async function recordPorts(align: "balanced" | "sockets" | "center") {
     settingsStore.set("tidyAlign", align);
     settingsStore.set("tidyDirection", "right");
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const src = new ArithmeticNode({ op: "add" }), dst = new ArithmeticNode({ op: "add" });
     for (const n of [src, dst]) await editor.addNode(n as never);
@@ -632,7 +613,7 @@ describe("Tidy's ports sit at the real socket heights", () => {
 describe("Tidy packs disconnected cards (real ELK)", () => {
   it("lays nine unconnected cards out as a block, not a single tall column", async () => {
     settingsStore.set("tidyDirection", "right");
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const cards = Array.from({ length: 9 }, () => new ArithmeticNode({ op: "add" }));
     for (const [i, n] of cards.entries()) {
@@ -658,7 +639,7 @@ describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
 
   async function buildPair() {
     settingsStore.set("tidyDirection", "right");
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const a = new ArithmeticNode({ op: "add" });
     const b = new DisplayNode();
@@ -693,11 +674,10 @@ describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
     expect(view.fakes.get(b.id)!.position.x).toBeLessThan(view.fakes.get(a.id)!.position.x);
   });
 
-  // src → mid → sink, sink flipped: the flipped sink joins src's LAYER, so its
-  // within-layer order (not the edge reversal) decides above vs below.
+  // src → mid → sink, sink flipped.
   async function buildChain() {
     settingsStore.set("tidyDirection", "right");
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const src = new ArithmeticNode({ op: "add" });
     const mid = new ArithmeticNode({ op: "add" });
@@ -768,8 +748,6 @@ describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
     try {
       await arrangeFn({ skipConfirm: true });
       await flushRafs();
-      // The collapsed card must keep its compact width — the pin-drop skips the
-      // manual stamp (mirrors NodeCard dropping the manual size while collapsed).
       expect(view.fakes.get(b.id)!.stampedWidth).toBeNull();
       // A non-collapsed sized node still gets its manual width.
       nodeSizeStore.set(a.id, { w: 300, h: 100 });
@@ -785,7 +763,7 @@ describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
 
 describe("Tidy reserves a plain card's MEASURED box, not its declared size", () => {
   it("a card whose constructor height went stale does not overlap its neighbour", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const src = new ArithmeticNode({ op: "add" });
     const tall = new DisplayNode();

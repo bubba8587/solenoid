@@ -1,0 +1,75 @@
+{
+ "nodes": [
+  {
+   "id": "src",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Sales"
+   },
+   "frame": [
+    {
+     "name": "Region",
+     "type": "string",
+     "cells": [
+      "East",
+      "East",
+      "East",
+      "West",
+      "West",
+      "West"
+     ]
+    },
+    {
+     "name": "Category",
+     "type": "string",
+     "cells": [
+      "Tools",
+      "Toys",
+      "Tools",
+      "Toys",
+      "Tools",
+      "Toys"
+     ]
+    },
+    {
+     "name": "Revenue",
+     "type": "number",
+     "cells": [
+      "100",
+      "200",
+      "50",
+      "300",
+      "120",
+      "80"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "pv",
+   "type": "PivotNode",
+   "init": {
+    "label": "Pivot",
+    "agg": "sum",
+    "rowTotalDepth": 2
+   },
+   "stringLiterals": {
+    "rowFields": "Region, Category",
+    "colFields": "",
+    "values": "Revenue"
+   }
+  },
+  {
+   "id": "dash",
+   "type": "DashboardNode",
+   "init": {
+    "label": "Board",
+    "layout": "Sales pivot"
+   }
+  }
+ ],
+ "cables": [
+  "src.frame -> pv.frame",
+  "pv.frame -> dash.Sales pivot"
+ ]
+}

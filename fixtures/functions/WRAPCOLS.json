@@ -1,0 +1,7 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"WRAPCOLS(SEQUENCE(3), 1e12)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"WRAPCOLS(SEQUENCE(4), 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"WRAPCOLS(IF(1=0, k1),2)","env":["k1=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

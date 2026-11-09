@@ -1,4 +1,6 @@
-// [[C10]] socketLattice, [[B11]] maximalMerge, [[C107]] obsidianPlugin
+// [[C10]] socketLattice, [[B11]] maximalMerge, [[C107]] obsidianPlugin, [[obsidian-plugin#What Solenoid reads back]],
+// [[obsidian-plugin#The app reads the picks]]
+import { type SolDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { isFrameValue } from "../../src/graph/frame";
@@ -31,7 +33,7 @@ describe("a Note's frontmatter at every rank", () => {
     const n = note("at: 2026-09-02T18:00:00\nas: 2026-09-02T18:00:00", { as: "string" });
     const values = (n as unknown as { _fieldValues: Map<string, unknown> })._fieldValues;
     expect(n.fieldType("at")).toBe("date");
-    expect((values.get("at") as number) % 1).toBeCloseTo(0.75, 9);
+    expect((values.get("at") as SolDate).__date % 1).toBeCloseTo(0.75, 9);
     expect(values.get("as")).toBe("2026-09-02T18:00:00");
   });
 

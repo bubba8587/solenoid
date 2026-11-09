@@ -43,8 +43,8 @@ export default function DownloadPage() {
               <Reveal className="sol-get__card" delay={90}>
                 <h2>On your desktop</h2>
                 <p>
-                  The desktop app runs the relational verbs on a native Rust (Polars) engine for
-                  memory-heavy tables. The web build uses an identical in-process JS engine.
+                  The desktop app runs the same Rust engine as the web build, so a table gives the
+                  same answer in both. It adds the files on your disk and your Obsidian vaults.
                 </p>
                 <div className="sol-landing__actions">
                   <DownloadLink primary />
@@ -60,16 +60,12 @@ export default function DownloadPage() {
             <Reveal delay={90}>
               <ul className="sol-get__list">
                 <li>
-                  <strong>The native engine.</strong> Relational verbs run on Rust and Polars, for
-                  million-row tables the browser would struggle with.
-                </li>
-                <li>
                   <strong>Obsidian vaults.</strong> Point Solenoid at a vault folder to import and
                   write notes directly to it.
                 </li>
                 <li>
-                  <strong>Local files.</strong> Read a CSV from disk and write a table back out for
-                  Excel to open.
+                  <strong>Local files.</strong> Read a CSV or Parquet file from disk and write a table
+                  back out for Excel to open.
                 </li>
               </ul>
             </Reveal>

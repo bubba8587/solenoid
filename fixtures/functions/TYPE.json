@@ -1,0 +1,16 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"TYPE(1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TYPE(\"a\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TYPE(TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TYPE(1/0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TYPE(c_A2)","env":["c_A2=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TYPE(c_A3)","env":["c_A3=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TYPE(c_A4)","env":["c_A4=num:-3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TYPE(c_A5)","env":["c_A5=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TYPE(c_A6)","env":["c_A6=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TYPE(c_A11)","env":["c_A11=text:\"Hello\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TYPE(--TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TYPE(+\"3\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -4,7 +4,7 @@ import { IS_COARSE, IS_PHONE, deviceModeStore, isMobile, landscapePhoneScale } f
 import "./chromeZoom.css";
 
 // Roughly the browser's toolbar and the system bars, which a sideways screen still loses from its height.
-export const BROWSER_CHROME_H = 80;
+const BROWSER_CHROME_H = 80;
 
 /** The page scale a sideways phone lays out at, from its screen. */
 export function landscapeFit(): number {

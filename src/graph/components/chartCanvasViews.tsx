@@ -1,4 +1,5 @@
 // [[C100]] chartIsAValue
+import { themeColor } from "./themeColor";
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { appThemeStore } from "../appTheme";
 import { resolveColor, heightRampColor, divergingRampColor } from "../palette";
@@ -32,13 +33,13 @@ function setupCanvas(canvas: HTMLCanvasElement, W: number, H: number): Ctx | nul
 }
 
 function themeInk(canvas: HTMLCanvasElement) {
-  const cs = getComputedStyle(canvas);
-  const v = (name: string, fb: string) => cs.getPropertyValue(name).trim() || fb;
+  const v = (name: string, fb: string) => themeColor(name, fb, canvas);
   return {
     text: v("--text", "#ccc"),
     dim: v("--text-dim", "#888"),
     border: v("--border-strong", "#555"),
     sunken: v("--surface-sunken", "#2a2a2a"),
+    emptyCell: v("--chart-empty-cell", "#141414"),
     up: resolveColor("green"),
     down: resolveColor("vermilion"),
     accent: v("--accent", resolveColor("sky")),
@@ -257,14 +258,16 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, o: ChartOptio
   }
   const L = calendarLayout(p.days, p.values, W, H, fs, showCbar ? tickW : null);
   if (!L) return null;
-  const { byDay, start, end, gridStart, weeks, cell, gap, padL, padT, perBand } = L;
+  const { byDay, start, end, gridStart, weeks, cell, gap, padL, perBand } = L;
   const scale = heatScale(L.lo, L.hi, o);
+  // A day's cell: its own theme color, picked per mode in CSS, so nothing here guesses the mode from a color.
+  const cellBase = ink.emptyCell;
   // No cmap and no center keeps the accent, at an opacity by value over the empty-day color.
   const color = heatColorFn(o);
   const paint: Paint = o.cmap || o.center !== undefined
     ? (c, x, y, w, h, t) => { c.fillStyle = rgbCss(color(t)); c.fillRect(x, y, w, h); }
     : (c, x, y, w, h, t) => {
-      c.fillStyle = ink.sunken; c.fillRect(x, y, w, h);
+      c.fillStyle = cellBase; c.fillRect(x, y, w, h);
       c.fillStyle = ink.accent; c.globalAlpha = 0.16 + 0.84 * t; c.fillRect(x, y, w, h); c.globalAlpha = 1;
     };
 
@@ -272,7 +275,7 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, o: ChartOptio
   if (L.truncated) {
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
-    ctx.fillText(`last ${weeks} wk`, padL + perBand * cell, padT - 2);
+    ctx.fillText(`last ${weeks} wk`, padL + perBand * cell, L.noteY);
   }
   ctx.textAlign = "left";
   ctx.textBaseline = "bottom";
@@ -304,7 +307,7 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, o: ChartOptio
       if (day < start || day > end) continue;
       const { x, y } = calCellXY(L, w, r);
       const v = byDay.get(day);
-      if (v == null) { ctx.fillStyle = ink.sunken; ctx.fillRect(x, y, cell - gap, cell - gap); }
+      if (v == null) { ctx.fillStyle = cellBase; ctx.fillRect(x, y, cell - gap, cell - gap); }
       else paint(ctx, x, y, cell - gap, cell - gap, scale.t(v));
     }
   }
@@ -336,13 +339,13 @@ type Paint = (ctx: Ctx, x: number, y: number, w: number, h: number, t: number) =
 function drawColorbar(ctx: Ctx, ink: ReturnType<typeof themeInk>, box: { x: number; y: number; w: number; h: number; textX: number }, scale: HeatScale, paint: Paint, ticks: number[], lineH: number) {
   const { x, y, w, h, textX } = box;
   const span = scale.hi - scale.lo;
-  for (let i = 0; i < h; i++) {
-    const v = span > 0 ? scale.hi - (span * (i + 0.5)) / h : scale.lo;
-    paint(ctx, x, y + i, w, Math.min(1.5, h - i), scale.t(v));
+  // One whole-pixel row each, touching and never overlapping: an overlap paints a translucent fill twice, and a
+  // fractional edge antialiases, either of which shows as a hairline between the bar's segments.
+  const top = Math.round(y), rows = Math.max(1, Math.round(y + h) - top), left = Math.round(x), wide = Math.round(x + w) - left;
+  for (let i = 0; i < rows; i++) {
+    const v = span > 0 ? scale.hi - (span * (i + 0.5)) / rows : scale.lo;
+    paint(ctx, left, top + i, wide, 1, scale.t(v));
   }
-  ctx.strokeStyle = ink.border;
-  ctx.lineWidth = 0.5;
-  ctx.strokeRect(x, y, w, h);
   ctx.fillStyle = ink.dim;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
@@ -562,8 +565,10 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, o: ChartOptions
   if (maxMag === 0) maxMag = 1;
   const reach = Math.min(cw, ch) * 0.46;
 
+  // The grid's first row is at the bottom, as the Surface's contour draws it (matplotlib's `contour` and `quiver`):
+  // row index and a positive ΔY both run up the plot.
   for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) {
-    const cx = pad + (ix + 0.5) * cw, cy = pad + (iy + 0.5) * ch;
+    const cx = pad + (ix + 0.5) * cw, cy = pad + (ny - 1 - iy + 0.5) * ch;
     const u = p.u[iy]?.[ix], v = p.v[iy]?.[ix];
     if (u == null || v == null) {
       ctx.fillStyle = ink.border;
@@ -604,7 +609,7 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, o: ChartOptions
 
 // ─── Contour ───────────────────────────────────────────────────────────────────
 
-export interface ContourLayout {
+interface ContourLayout {
   x0: number; x1: number; y0: number; y1: number;
   xmin: number; xmax: number; ymin: number; ymax: number;
 }
@@ -789,7 +794,6 @@ function useHoverCanvas<L>(draw: (c: HTMLCanvasElement) => L | null, deps: unkno
   const layout = useRef<L | null>(null);
   useLayoutEffect(() => {
     if (faces && ref.current) layout.current = draw(ref.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, theme, faces]);
   return [ref, layout] as const;
 }

@@ -1,9 +1,9 @@
-// [[D54]] relativeDatesOptIn
+// [[C44]] dateSerials
 
 import { createNotifier, createToggleStore } from "./storeKit";
 
 /** Display only: the stored label stays raw. */
-export type HeaderTitleCase = "as-typed" | "upper" | "proper";
+type HeaderTitleCase = "as-typed" | "upper" | "proper";
 
 const LS_KEY = "solenoid.settings";
 
@@ -28,13 +28,13 @@ export interface Settings {
   obsidianAssetSubfolder: string;
   /** Empty means http://localhost:8080. The bearer token lives in apiKeyStore, never here. */
   taskNotesUrl: string;
-  /** Desktop: frame verbs run on the native Polars engine; off runs them on the JS oracle, as the web does. */
-  nativeEngine: boolean;
 
   minimapPosition: "bottom" | "top" | "hide";
   hideGridDots: boolean;
   tablePopupSummary: boolean;
   tablePopupFrozen: boolean;
+  /** The table and cube popups write each number's unit in its cell (`100 km`). */
+  tablePopupCellUnits: boolean;
 
   quickWire: boolean;
   semanticZoom: boolean;
@@ -42,9 +42,9 @@ export interface Settings {
   commandPaletteAlwaysOn: boolean;
   relativeDates: boolean;
   /** How many decimal places a number with no format shows; a string so the segment control stores it directly. */
-  numberDecimals: "2" | "3" | "4" | "6";
+  numberDecimals: number;
   /** The power of ten at which an unformatted number turns scientific; "off" never does. */
-  sciAbove: "6" | "9" | "12" | "off";
+  sciAbove: "3" | "6" | "9" | "12" | "off";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -57,7 +57,6 @@ export const DEFAULT_SETTINGS: Settings = {
   csvFolder: "",
   docsFolder: "",
   alwaysAllowNetwork: false,
-  nativeEngine: true,
   useDemoVault: true,
   obsidianVault: "",
   obsidianAssetSubfolder: "",
@@ -66,12 +65,13 @@ export const DEFAULT_SETTINGS: Settings = {
   hideGridDots: false,
   tablePopupSummary: true,
   tablePopupFrozen: true,
+  tablePopupCellUnits: true,
   quickWire: false,
   semanticZoom: false,
   headerTitleCase: "upper",
   commandPaletteAlwaysOn: false,
   relativeDates: false,
-  numberDecimals: "4",
+  numberDecimals: 4,
   sciAbove: "9",
 };
 
@@ -79,17 +79,19 @@ export interface SettingField {
   key: keyof Settings;
   label: string;
   help?: string;
-  type?: "boolean" | "folder" | "segment" | "text";
+  type?: "boolean" | "folder" | "segment" | "slider" | "text";
   /** What an empty field reads as; a function when it depends on another setting. */
   placeholder?: string | ((get: <K extends keyof Settings>(key: K) => Settings[K]) => string);
   options?: { value: string; label: string }[];
+  /** A slider's range and step. */
+  range?: { min: number; max: number; step: number };
+  /** How a slider shows its value; plain by default. */
+  show?: (value: number) => string;
   accordion?: string;
   /** No mobile counterpart: consumers must both gray the control and skip the behavior. */
   disabledOnMobile?: boolean;
-  /** Desktop app only: grayed on the web, where the behavior doesn't exist. */
-  desktopOnly?: boolean;
 }
-export interface SettingsSection {
+interface SettingsSection {
   title: string;
   fields: SettingField[];
 }
@@ -195,13 +197,9 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "numberDecimals",
         label: "Decimal places",
         help: "For numbers without a format. Trailing zeros are dropped.",
-        type: "segment",
-        options: [
-          { value: "2", label: "2" },
-          { value: "3", label: "3" },
-          { value: "4", label: "4" },
-          { value: "6", label: "6" },
-        ],
+        type: "slider",
+        range: { min: 0, max: 10, step: 1 },
+        show: (d) => d.toFixed(d),
       },
       {
         key: "sciAbove",
@@ -209,6 +207,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         help: "Numbers without a format this large or larger show in scientific notation.",
         type: "segment",
         options: [
+          { value: "3", label: "1K" },
           { value: "6", label: "1M" },
           { value: "9", label: "1B" },
           { value: "12", label: "1T" },
@@ -241,12 +240,6 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "relativeDates",
         label: "Relative dates",
         help: "A date Value Input can parse \"next Tuesday\". WARNING: this adds volatility!",
-      },
-      {
-        key: "nativeEngine",
-        label: "Polars engine",
-        help: "Runs table operations on Polars. Turn it off to compare results with the web app's engine. Changing it reloads the document.",
-        desktopOnly: true,
       },
       {
         key: "alwaysAllowNetwork",

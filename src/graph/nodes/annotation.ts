@@ -1,6 +1,7 @@
 // [[C68]]
-import { ClassicPreset } from "rete";
-import { sourceHasLayer } from "../svgLayer";
+import { solDate, type SolDate } from "../dateValue";
+import { GraphNode, GraphOutput } from "../graphModel";
+import { nodeOnCore } from "../nodeOnCore";
 import { sanitizeSvg } from "../svgSanitize";
 import {
   numberSocket, stringSocket, logicalSocket, dateSocket,
@@ -24,7 +25,9 @@ import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { ColumnPicks, PluginColumnTypes } from "../pluginColumnTypes";
 import type { NestedTables } from "../cubeTypes";
 import type { ImageValue } from "../imageValue";
+import { requestNetwork } from "../connectionStore";
 import type { SvgValue } from "../svgValue";
+import { isWebUrl } from "../webUrl";
 import {
   parseNoteFrontmatter,
   type FrontmatterFieldType,
@@ -33,7 +36,8 @@ import {
   type FrontmatterValue,
 } from "../noteFrontmatter";
 
-type EmittedValue = FrontmatterValue | FrameValue | CubeValue | SolError;
+/** A field's value: a date field's a `SolDate` ([[D114]] dateIsAKind). */
+type EmittedValue = FrontmatterValue | SolDate | (FrontmatterScalar | SolDate)[] | (FrontmatterScalar | SolDate)[][] | FrameValue | CubeValue | SolError;
 
 const KNAP_UNQUOTED = 'Knap vars in frontmatter require quoted "{{var}}" syntax';
 
@@ -71,7 +75,7 @@ function reshapePin(
 }
 
 /** A plain ISO date is still text here; the reader's `dateColumns` names the date columns. */
-/** Every cell crosses coerceFrameCell with its text kept as `raw`, so a type that cannot read a cell shows NaN over the text ([[D72]]). */
+/** Every cell crosses coerceFrameCell with its text kept as `raw`, so a type that cannot read a cell shows NaN over the text ([[C58]]). */
 function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = [], picks: ColumnPicks = {}): FrameValue {
   const names: string[] = [];
   for (const r of rows) for (const k of Object.keys(r)) if (!names.includes(k)) names.push(k);
@@ -117,14 +121,18 @@ function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateCo
   const base = elementFamilyOf(type) as FieldBase;
   const rank = latticeRank(type);
   const datesAsText = guessed !== undefined && elementFamilyOf(guessed) === "date" && (base === "string" || base === "complex");
-  const one = (e: unknown) => coerceScalar((datesAsText && typeof e === "number" ? noteDateText(e) : e) as FrontmatterScalar, base);
+  // A date field's value is a date ([[D114]] dateIsAKind).
+  const one = (e: unknown) => {
+    const v = coerceScalar((datesAsText && typeof e === "number" ? noteDateText(e) : e) as FrontmatterScalar, base);
+    return base === "date" && typeof v === "number" ? solDate(v) : v;
+  };
   const items: unknown[] = Array.isArray(value) ? value : value === null ? [] : [value];
   if (rank === 2) return items.map((row) => (Array.isArray(row) ? row : [row]).map(one));
   if (rank === 1) return items.flat().map(one);
   return one(items.flat()[0] ?? null);
 }
 
-export class NoteNode extends ClassicPreset.Node {
+export class NoteNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     document: "Carries the note's full text, frontmatter included and the template rendered, for a document sink such as Write to Obsidian.",
   };
@@ -210,12 +218,12 @@ export class NoteNode extends ClassicPreset.Node {
         removed.push(key);
       } else if (FIELD_SOCKETS[w.type] !== cur) {
         this.removeOutput(key);
-        this.addOutput(key, new ClassicPreset.Output(FIELD_SOCKETS[w.type], key));
+        this.addOutput(key, new GraphOutput(FIELD_SOCKETS[w.type], key));
         retyped.push({ key, type: w.type });
       }
     }
     for (const [key, w] of wanted) {
-      if (!this.outputs[key]) this.addOutput(key, new ClassicPreset.Output(FIELD_SOCKETS[w.type], key));
+      if (!this.outputs[key]) this.addOutput(key, new GraphOutput(FIELD_SOCKETS[w.type], key));
     }
 
     this._fieldKeys = [...wanted.keys()];
@@ -231,7 +239,7 @@ export class NoteNode extends ClassicPreset.Node {
 
   templateVariables(): Record<string, unknown> {
     const vars: Record<string, unknown> = {};
-    for (const [k, v] of this._fieldValues) vars[k] = toTemplateValue(v, this.fieldType(k));
+    for (const [k, v] of this._fieldValues) vars[k] = toTemplateValue(v);
     return vars;
   }
 
@@ -273,7 +281,7 @@ export class NoteNode extends ClassicPreset.Node {
     });
   }
 
-  /** Use from the UI: the error-guard wrapper calls firstInputError outside its try/catch, so data() with no args throws. */
+  /** The UI reads the fields here: `data()` is the engine's to call (tree/specs/floors/components.md). */
   fieldValues(): Record<string, EmittedValue> {
     const out: Record<string, EmittedValue> = {};
     for (const [k, v] of this._fieldValues) out[k] = v;
@@ -281,7 +289,7 @@ export class NoteNode extends ClassicPreset.Node {
   }
 }
 
-export class ImageNode extends ClassicPreset.Node {
+export class ImageNode extends GraphNode {
   url: string;
   dataUrl: string;
   fileName: string;
@@ -309,11 +317,12 @@ export class ImageNode extends ClassicPreset.Node {
   data(): { image: ImageValue | null } {
     const src = this.src;
     if (!src) return { image: null };
-    return { image: { __image: true, src, height: this.height, alt: this.label, title: this.label } };
+    const held = isWebUrl(src) && !requestNetwork(this.id, this);
+    return { image: { __image: true, src, height: this.height, alt: this.label, title: this.label, ...(held ? { held: true as const } : {}) } };
   }
 }
 
-export class FileLinkNode extends ClassicPreset.Node {
+export class FileLinkNode extends GraphNode {
   path: string;
   fileName: string;
   collapsed: boolean;
@@ -334,7 +343,7 @@ export class FileLinkNode extends ClassicPreset.Node {
 
 const DEFAULT_SVG_HOVER = "#4f9dff";
 
-export class SvgPickerNode extends ClassicPreset.Node {
+export class SvgPickerNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     layer: "Carries the clicked layer's name and stays blank until a shape is picked.",
   };
@@ -364,6 +373,10 @@ export class SvgPickerNode extends ClassicPreset.Node {
 
   private cleanSource = "";
 
+  /** The chart's height crosses under its own name: a frozen call leaves the card's layout fields out. */
+  static coreFields = ["chartHeight"];
+  get chartHeight(): number { return this.height; }
+
   /** Every path in (typed, fetched, loaded, pasted) is scrubbed here, before the markup leaves on a cable ([[C103]] untrustedContentSeams). */
   get source(): string {
     const raw = this.stringLiterals.source ?? "";
@@ -374,12 +387,13 @@ export class SvgPickerNode extends ClassicPreset.Node {
     return this.cleanSource;
   }
 
+  /** The markup is scrubbed here (`source`), in the browser; `body` reads it scrubbed. */
   data(): { chart: SvgValue | null; layer: string | null } {
-    const source = this.source;
-    const layer = this.selectedLayer && sourceHasLayer(source, this.selectedLayer) ? this.selectedLayer : null;
-    const chart: SvgValue | null = source
-      ? { __svg: true, source, selected: layer, hoverColor: this.hoverColor, height: this.height, title: this.label }
-      : null;
-    return { chart, layer };
+    void this.source;
+    return this.body();
+  }
+
+  body(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { chart: SvgValue | null; layer: string | null };
   }
 }

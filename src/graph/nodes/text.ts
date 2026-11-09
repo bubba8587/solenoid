@@ -1,64 +1,28 @@
-import { ClassicPreset } from "rete";
+import { GraphInput, GraphNode } from "../graphModel";
 import { stringSocket } from "../sockets";
 import {
-  strIn, strOut, strListIn, strListOut, anyListIn, anyComboOut,
+  strIn, strOut, strListIn, strListOut, anyComboIn, anyComboOut,
   strComboIn, strComboOut, numIn, numListIn, numListOut, logicalComboOut,
-  broadcastCells, readInput, readRole, leftOutAs, type CellResult, type BroadcastResult,
+  type CellResult, type BroadcastResult,
 } from "./shared";
-import { getRecalcGen } from "../process";
-import { hashText, uuidV4, type HashAlgorithm } from "./hashOps";
+import { type HashAlgorithm } from "./hashOps";
 export { HASH_ALGORITHM_META } from "./hashOps";
 export type { HashAlgorithm } from "./hashOps";
-import { solError, isSolError, type SolError } from "../errorValue";
-import { resolveExcelFunction } from "../excelFunctions";
-import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, regexOccurrence, safeRegex, reverseText, properCase, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters } from "./textOps";
+import { type SolError } from "../errorValue";
+import { nodeOnCore } from "../nodeOnCore";
 import { anyDataIn } from "./shared";
 import { rolesFrom, setting, required } from "../inputRoles";
 import { dropInputCables } from "../components/cablePrune";
 import { getOwningView } from "../activeGraph";
-import { SolenoidSocket } from "../sockets";
-import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
 import type { TextAfterBeforeOp, UrlEncodeOp, RegexOp, PadSide } from "./textOps";
 export type { PadSide } from "./textOps";
-export { splitText, textAfterBefore, urlEncode, regexApply } from "./textOps";
 export type { TextAfterBeforeOp, UrlEncodeOp, RegexOp } from "./textOps";
 
-// ─── Element-wise text: the `strcombo` (scalar-or-list) sockets ───────────────
-
-function strVal(
-  input: (string | string[])[] | undefined,
-  node: { stringLiterals?: Record<string, string> },
-  key: string,
-  def = "",
-): string | string[] | null {
-  return readInput(input, node.stringLiterals?.[key] ?? def);
-}
-
-function strScalar(
-  input: string[] | undefined,
-  node: { stringLiterals?: Record<string, string> },
-  key: string,
-  def = "",
-): string | null {
-  return readInput(input, node.stringLiterals?.[key] ?? def);
-}
-
 // ─── Promo (easter egg) ────────────────────────────────────────────────────────
-const PROMO_LINES = [
-  "Solenoid: wire it, don't write it. ⚡",
-  "Spreadsheets, but the formulas have shapes now.",
-  "No more =SUM(A1:A8). Just plug it in.",
-  "Every cell wishes it were a node.",
-  "Built with Excel envy and React. 🔌",
-  "If you can chart it, you can wire it.",
-  "Ctrl+Z is a love language.",
-];
 
-export class PromoNode extends ClassicPreset.Node {
+export class PromoNode extends GraphNode {
   label: string;
   cachedText: string | null = null;
-  private lastRollGen = -1;
-  private idx = Math.floor(Math.random() * PROMO_LINES.length);
   width = 220; height = 96;
 
   constructor(init?: { label?: string }) {
@@ -67,14 +31,8 @@ export class PromoNode extends ClassicPreset.Node {
     this.addOutput("value", strOut("Text"));
   }
 
-  data() {
-    const gen = getRecalcGen();
-    if (this.lastRollGen !== gen) {
-      this.idx = Math.floor(Math.random() * PROMO_LINES.length);
-      this.lastRollGen = gen;
-    }
-    this.cachedText = PROMO_LINES[this.idx];
-    return { value: this.cachedText };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { value: string };
   }
 }
 
@@ -92,19 +50,7 @@ export const TEXT_TRANSFORM_OP_META = {
   slugify:  { label: "SLUGIFY",  description: "URL / filename slug: accents stripped, lowercase, every non-alphanumeric run a hyphen. `python-slugify`, R `make_clean_names`." },
 } satisfies Record<TextTransformOp, { label: string; description: string }>;
 
-function applyTextTransform(op: TextTransformOp, text: string): string {
-  switch (op) {
-    case "upper": return resolveExcelFunction("UPPER")!(text) as string;
-    case "lower": return resolveExcelFunction("LOWER")!(text) as string;
-    case "trim":  return resolveExcelFunction("TRIM")!(text) as string;
-    case "proper": return properCase(text);
-    case "clean":  return text.replace(/[\x00-\x1F\x7F]/g, "");
-    case "unaccent": return unaccent(text);
-    case "slugify":  return slugify(text);
-  }
-}
-
-export class TextTransformNode extends ClassicPreset.Node {
+export class TextTransformNode extends GraphNode {
   label: string;
   op: TextTransformOp;
   cachedText: CellResult<string> = null;
@@ -119,13 +65,8 @@ export class TextTransformNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells(
-      (t: string) => applyTextTransform(this.op, t),
-      strVal(inputs.text, this, "text"),
-    );
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -137,7 +78,7 @@ export const PAD_SIDE_META = {
   center: { label: "Center", description: "Padding splits both sides, the odd character on the right. Python `center`, R `str_pad` `side = both`." },
 } satisfies Record<PadSide, { label: string; description: string }>;
 
-export class PadTextNode extends ClassicPreset.Node {
+export class PadTextNode extends GraphNode {
   static inputRoles = { ...rolesFrom("PADTEXT", { width: 1 }), fill: setting("") };
   static socketDocs: Record<string, string> = {
     width: "Target length in characters; text already that long passes through unchanged.",
@@ -160,17 +101,12 @@ export class PadTextNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: (string | string[])[]; width?: number[]; fill?: string[] }): { result: CellResult<string> } {
-    const w = readRole<number | SolError>(this, "width", inputs.width);
-    const fill = readRole<string>(this, "fill", inputs.fill);
-    if (isSolError(w)) { this.cachedText = w; return { result: w }; }
-    const result = broadcastCells((t: string) => padText(t, w, this.side, fill), strVal(inputs.text, this, "text"));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
-export class TruncateTextNode extends ClassicPreset.Node {
+export class TruncateTextNode extends GraphNode {
   static inputRoles = { ...rolesFrom("TRUNCATETEXT", { width: 1 }), ellipsis: setting("…") };
   static socketDocs: Record<string, string> = {
     width:    "Maximum length in characters, the ellipsis included.",
@@ -191,19 +127,14 @@ export class TruncateTextNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: (string | string[])[]; width?: number[]; ellipsis?: string[] }): { result: CellResult<string> } {
-    const w = readRole<number | SolError>(this, "width", inputs.width);
-    const e = readRole<string>(this, "ellipsis", inputs.ellipsis);
-    if (isSolError(w)) { this.cachedText = w; return { result: w }; }
-    const result = broadcastCells((t: string) => truncateText(t, w, e), strVal(inputs.text, this, "text"));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
 // ─── Wrap Text (no Excel equivalent; R str_wrap, Python textwrap.wrap) ─────────
 
-export class WrapTextNode extends ClassicPreset.Node {
+export class WrapTextNode extends GraphNode {
   static inputRoles = rolesFrom("WRAPTEXT", { width: 1 });
   static socketDocs: Record<string, string> = {
     width: "Maximum line length in characters; a single word longer than this still takes its own line.",
@@ -222,21 +153,14 @@ export class WrapTextNode extends ClassicPreset.Node {
     this.addOutput("result", strListOut("Lines"));
   }
 
-  data(inputs: { text?: string[]; width?: number[] }): { result: string[] | SolError | null } {
-    const text = strScalar(inputs.text, this, "text");
-    const w = readRole<number | SolError>(this, "width", inputs.width);
-    if (isSolError(w)) { this.cachedResult = null; return { result: w as never }; }
-    if (text === null) { this.cachedResult = null; return { result: null }; }
-    if (w < 1) { const e = solError("#DOMAIN!", "Width must be at least 1"); this.cachedResult = e; return { result: e }; }
-    const result = wrapText(text, w);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: string[] | SolError | null };
   }
 }
 
 // ─── LEN ──────────────────────────────────────────────────────────────────────
 
-export class TextLenNode extends ClassicPreset.Node {
+export class TextLenNode extends GraphNode {
   label: string;
   cachedResult: BroadcastResult = null;
   stringLiterals: Record<string, string> = { text: "" };
@@ -249,19 +173,14 @@ export class TextLenNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Length"));
   }
 
-  data(inputs: { text?: (string | string[])[] }): { result: BroadcastResult } {
-    const result = broadcastCells(
-      (t: string) => resolveExcelFunction("LEN")!(t) as number,
-      strVal(inputs.text, this, "text"),
-    );
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
 // ─── CONCAT ───────────────────────────────────────────────────────────────────
 
-export class ConcatNode extends ClassicPreset.Node {
+export class ConcatNode extends GraphNode {
   label: string;
   cachedText: string | null = null;
   stringLiterals: Record<string, string> = {};
@@ -282,7 +201,7 @@ export class ConcatNode extends ClassicPreset.Node {
   }
 
   private addInputWithKey(key: string): void {
-    this.addInput(key, new ClassicPreset.Input(this.valueSocket));
+    this.addInput(key, new GraphInput(this.valueSocket));
     const n = parseInt(key.replace(/^v/, ""), 10);
     if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
   }
@@ -298,12 +217,8 @@ export class ConcatNode extends ClassicPreset.Node {
     delete this.stringLiterals[key];
   }
 
-  data(inputs: Record<string, string[] | undefined>): { result: string } {
-    // Read through `readInput` before skipping blanks, or a wired blank revives the row's typed text.
-    const values = Object.keys(this.inputs).map((key) => readInput(inputs[key], this.stringLiterals[key] ?? "") ?? "");
-    const result = resolveExcelFunction("CONCAT")!(...values) as string;
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: string };
   }
 }
 
@@ -317,7 +232,7 @@ export const TEXT_SLICE_OP_META = {
   mid:   { label: "MID",   description: "Substring starting at position Start with length Len (1-based). Excel: `MID`." },
 } satisfies Record<TextSliceOp, { label: string; description: string }>;
 
-export class TextSliceNode extends ClassicPreset.Node {
+export class TextSliceNode extends GraphNode {
   static inputRoles = { n: setting(1), ...rolesFrom("MID", { start: 1, len: 2 }) };
   static socketDocs: Record<string, string> = {
     n: "Read by LEFT and RIGHT: the number of characters to take.",
@@ -343,29 +258,8 @@ export class TextSliceNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: {
-    text?: (string | string[])[];
-    n?: (number | number[])[];
-    start?: (number | number[])[];
-    len?: (number | number[])[];
-  }): { result: CellResult<string> } {
-    const text = strVal(inputs.text, this, "text");
-    // Only the chosen op's operands join the zip, or a list left in an unused box would spill.
-    const result = this.op === "mid"
-      ? broadcastCells((t: string, s: number, l: number) => {
-          return resolveExcelFunction("MID")!(t, s, l) as string | SolError;
-        },
-        text,
-        readRole<number | number[]>(this, "start", inputs.start),
-        readRole<number | number[]>(this, "len", inputs.len))
-      : broadcastCells((t: string, count: number) => {
-          const fn = this.op === "left" ? "LEFT" : "RIGHT";
-          return resolveExcelFunction(fn)!(t, count) as string | SolError;
-        },
-        text,
-        readRole<number | number[]>(this, "n", inputs.n));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -378,7 +272,7 @@ export const TEXT_FIND_OP_META = {
   search: { label: "SEARCH", description: "1-based position of `find_text` in `within_text` (case-insensitive; `?` matches one character, `*` any run, `~` before either matches it as typed). `#VALUE!` if not found. Excel: `SEARCH`." },
 } satisfies Record<TextFindOp, { label: string; description: string }>;
 
-export class TextFindNode extends ClassicPreset.Node {
+export class TextFindNode extends GraphNode {
   static inputRoles = { start: setting(1) };
   static socketDocs: Record<string, string> = {
     start: "Counting starts at 1. The position found is still measured from the start of the whole text.",
@@ -401,28 +295,14 @@ export class TextFindNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Position"));
   }
 
-  data(inputs: {
-    needle?: (string | string[])[];
-    haystack?: (string | string[])[];
-    start?: (number | number[])[];
-  }): { result: BroadcastResult } {
-    const result = broadcastCells((needle: string, haystack: string, s: number) => {
-      const raw = resolveExcelFunction(this.op === "find" ? "FIND" : "SEARCH")!(needle, haystack, s);
-      return raw instanceof Error
-        ? solError("#VALUE!", "Find text not found within the text")
-        : raw as number | SolError;
-    },
-      strVal(inputs.needle,   this, "needle"),
-      strVal(inputs.haystack, this, "haystack"),
-      readRole<number | number[]>(this, "start", inputs.start));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
 // ─── SUBSTITUTE ───────────────────────────────────────────────────────────────
 
-export class SubstituteNode extends ClassicPreset.Node {
+export class SubstituteNode extends GraphNode {
   static inputRoles = { instance: setting(0) };
   static socketDocs: Record<string, string> = {
     old_text: "Matches are case sensitive.",
@@ -445,33 +325,14 @@ export class SubstituteNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: {
-    text?: (string | string[])[];
-    old_text?: (string | string[])[];
-    new_text?: (string | string[])[];
-    instance?: (number | number[])[];
-  }): { result: CellResult<string> } {
-    // Call SUBSTITUTE directly, not through a hoisted alias, so the arg-parity scan sees the 4th argument.
-    const result = broadcastCells(
-      (text: string, oldText: string, newText: string, inst: number) => {
-        const n = Math.floor(inst);
-        return (n >= 1
-          ? resolveExcelFunction("SUBSTITUTE")!(text, oldText, newText, n)
-          : resolveExcelFunction("SUBSTITUTE")!(text, oldText, newText)) as string;
-      },
-      strVal(inputs.text,     this, "text"),
-      strVal(inputs.old_text, this, "old_text"),
-      strVal(inputs.new_text, this, "new_text"),
-      readRole<number | number[]>(this, "instance", inputs.instance),
-    );
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
 // ─── REPLACE ─────────────────────────────────────────────────────────────────
 
-export class TextReplaceNode extends ClassicPreset.Node {
+export class TextReplaceNode extends GraphNode {
   static inputRoles = rolesFrom("REPLACE", { start: 1, num_chars: 2 });
   static socketDocs: Record<string, string> = {
     start: "Position 1 is the first character.",
@@ -493,45 +354,14 @@ export class TextReplaceNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: {
-    text?: (string | string[])[];
-    start?: (number | number[])[];
-    num_chars?: (number | number[])[];
-    new_text?: (string | string[])[];
-  }): { result: CellResult<string> } {
-    const result = broadcastCells(
-      (text: string, s: number, n: number, newText: string) =>
-        resolveExcelFunction("REPLACE")!(
-          text, Math.max(1, Math.floor(s)), Math.max(0, Math.floor(n)), newText) as string,
-      strVal(inputs.text, this, "text"),
-      readRole<number | number[]>(this, "start", inputs.start),
-      readRole<number | number[]>(this, "num_chars", inputs.num_chars),
-      strVal(inputs.new_text, this, "new_text"),
-    );
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
-}
-
-// ─── Number formatting pattern (shared by Cast-to-text) ───────────────────────
-
-export function formatNumberPattern(v: number, format: string): string {
-  if (format === "" || format === "general") return String(v);
-  if (/^0(\.0+)?$/.test(format)) {
-    const decimals = (format.split(".")[1] ?? "").length;
-    return v.toFixed(decimals);
-  }
-  if (format.endsWith("%")) {
-    const inner = format.slice(0, -1);
-    const decimals = (inner.split(".")[1] ?? "").length;
-    return (v * 100).toFixed(decimals) + "%";
-  }
-  return String(v);
 }
 
 // ─── REPT ─────────────────────────────────────────────────────────────────────
 
-export class ReptNode extends ClassicPreset.Node {
+export class ReptNode extends GraphNode {
   static inputRoles = rolesFrom("REPT", { times: 1 });
   label: string;
   cachedText: CellResult<string> = null;
@@ -547,15 +377,8 @@ export class ReptNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: (string | string[])[]; times?: (number | number[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells(
-      (text: string, times: number) =>
-        resolveExcelFunction("REPT")!(text, Math.max(0, Math.floor(times))) as string,
-      strVal(inputs.text, this, "text"),
-      readRole<number | number[]>(this, "times", inputs.times),
-    );
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -563,7 +386,7 @@ export class ReptNode extends ClassicPreset.Node {
 
 export type CharCodeOp = "char" | "code";
 
-export class CharCodeNode extends ClassicPreset.Node {
+export class CharCodeNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     code: "Accepts the full Unicode range. Excel's CHAR stops at 255. A code below 1 or past 1114111 is #VALUE!.",
   };
@@ -588,12 +411,8 @@ export class CharCodeNode extends ClassicPreset.Node {
     }
   }
 
-  data(inputs: { code?: (number | number[])[]; text?: (string | string[])[] }): { result: CellResult<string | number> } {
-    const result: CellResult<string | number> = this.op === "char"
-      ? broadcastCells((c: number) => charFromCode(c), readInput(inputs.code, this.literals.code ?? 65))
-      : broadcastCells((t: string) => codeOfText(t), strVal(inputs.text, this, "text"));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string | number> };
   }
 }
 
@@ -606,7 +425,7 @@ export const TEXTJOIN_IGNORE_EMPTY_META: Record<TextJoinIgnoreEmpty, string> = {
   ignore:  "Ignore empty strings (1)",
 };
 
-export class TextJoinNode extends ClassicPreset.Node {
+export class TextJoinNode extends GraphNode {
   static inputRoles = rolesFrom("TEXTJOIN", { delimiter: 0 });
   label: string;
   ignoreEmpty: TextJoinIgnoreEmpty;
@@ -623,21 +442,14 @@ export class TextJoinNode extends ClassicPreset.Node {
     this.addOutput("result", strOut("Result"));
   }
 
-  data(inputs: { strings?: string[][]; delimiter?: string[] }): { result: string | SolError | null } {
-    const strings: string[] = inputs.strings?.[0] ?? [];
-    const delimiter = readRole<string>(this, "delimiter", inputs.delimiter);
-    // A reduction: the first error wins and blanks drop out, as in the formula ([[D51]] oneAnswerOneDivergence).
-    const err = (strings as unknown[]).find(isSolError);
-    const present = strings.filter((s) => s != null);
-    const result = err ?? resolveExcelFunction("TEXTJOIN")!(delimiter, this.ignoreEmpty === "ignore", present) as string | SolError;
-    this.cachedText = isSolError(result) ? null : result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: string | SolError | null };
   }
 }
 
 // ─── TEXTSPLIT ────────────────────────────────────────────────────────────────
 
-export class TextSplitNode extends ClassicPreset.Node {
+export class TextSplitNode extends GraphNode {
   // The card has no row delimiter, so a blank delimiter leaves nothing to split by.
   static inputRoles = { delimiter: required };
   static socketDocs: Record<string, string> = {
@@ -657,14 +469,8 @@ export class TextSplitNode extends ClassicPreset.Node {
     this.addOutput("result", strListOut("Parts"));
   }
 
-  data(inputs: { text?: string[]; delimiter?: string[] }): { result: string[] | null } {
-    const text      = strScalar(inputs.text,      this, "text");
-    const delimiter = readRole<string | SolError>(this, "delimiter", inputs.delimiter);
-    if (isSolError(delimiter)) { this.cachedResult = null; return { result: delimiter as never }; }
-    if (text === null) { this.cachedResult = null; return { result: null }; }
-    const result    = splitText(text, delimiter) as string[];
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: string[] | null };
   }
 }
 
@@ -675,7 +481,7 @@ export const TEXT_AFTER_BEFORE_OP_META = {
   before: { label: "TEXTBEFORE", description: "Text before an occurrence of the delimiter, counted from the start, or from the end when negative. Blank if not found. Excel: `TEXTBEFORE`." },
 } satisfies Record<TextAfterBeforeOp, { label: string; description: string }>;
 
-export class TextAfterBeforeNode extends ClassicPreset.Node {
+export class TextAfterBeforeNode extends GraphNode {
   static inputRoles = rolesFrom("TEXTAFTER", { instance: 2, if_not_found: 5 });
   static socketDocs: Record<string, string> = {
     instance: "Which occurrence: 1 is the first, 2 the second, -1 the last. Blank means 1.",
@@ -705,31 +511,14 @@ export class TextAfterBeforeNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: {
-    text?: (string | string[])[];
-    delimiter?: (string | string[])[];
-    instance?: number[];
-    if_not_found?: string[];
-  }): { result: CellResult<string> } {
-    const instance = readRole<number | SolError | undefined>(this, "instance", inputs.instance);
-    if (isSolError(instance)) { this.cachedText = instance; return { result: instance }; }
-    const ifNotFound = readRole<string | SolError | undefined>(this, "if_not_found", inputs.if_not_found);
-    if (isSolError(ifNotFound)) { this.cachedText = ifNotFound; return { result: ifNotFound }; }
-    const opts = { instance: instance ?? 1, caseless: !this.matchCase, matchEnd: this.matchEnd };
-    const result = broadcastCells((text: string, delimiter: string) => {
-      const r = textAfterBefore(this.op, text, delimiter, opts);
-      return r === null && ifNotFound !== undefined && ifNotFound !== "" ? ifNotFound : r;
-    },
-      strVal(inputs.text,      this, "text"),
-      strVal(inputs.delimiter, this, "delimiter"));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
 // ─── EXACT ────────────────────────────────────────────────────────────────────
 
-export class ExactNode extends ClassicPreset.Node {
+export class ExactNode extends GraphNode {
   label: string;
   cachedResult: CellResult<boolean> = null;
   stringLiterals: Record<string, string> = { a: "", b: "" };
@@ -743,22 +532,14 @@ export class ExactNode extends ClassicPreset.Node {
     this.addOutput("result", logicalComboOut("Result"));
   }
 
-  data(inputs: { a?: (string | string[])[]; b?: (string | string[])[] }): { result: CellResult<boolean> } {
-    const result = broadcastCells(
-      (a: string, b: string) => a === b,
-      strVal(inputs.a, this, "a"),
-      strVal(inputs.b, this, "b"),
-    );
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<boolean> };
   }
 }
 
 // ─── ENCODEURL / DECODEURL ────────────────────────────────────────────────────
 
-export const URL_ENCODE_LABEL: Record<UrlEncodeOp, string> = { encode: "ENCODEURL", decode: "DECODEURL", base64: "ENCODEBASE64", unbase64: "DECODEBASE64" };
-
-export class UrlEncodeNode extends ClassicPreset.Node {
+export class UrlEncodeNode extends GraphNode {
   label: string;
   op: UrlEncodeOp;
   cachedText: CellResult<string> = null;
@@ -773,21 +554,14 @@ export class UrlEncodeNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells((text: string) => urlEncode(this.op, text), strVal(inputs.text, this, "text"));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
 // ─── TEMPLATE ────────────────────────────────────────────────────────────────
 
-const TEMPLATE_FORMATTERS: TemplateFormatters = {
-  number: (v, spec) => String(resolveExcelFunction("TEXT")!(v, spec ?? "@")),
-  date: (v, spec) => formatDateSerial(v, spec ?? DEFAULT_DATE_FORMAT),
-};
-
-export class TemplateNode extends ClassicPreset.Node {
+export class TemplateNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     template: "{name} inserts the input of that name, and {name:0.00} formats it with an Excel TEXT code. {{ and }} print braces. Each new name adds an input.",
     result: "One string, or a list when any placeholder is fed a list, with the rest repeating.",
@@ -810,12 +584,20 @@ export class TemplateNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Text"));
   }
 
-  private _reconcile(needed: string[]): void {
-    const added = needed.filter((v) => !this.sideVars.includes(v));
-    const removed = this.sideVars.filter((v) => !needed.includes(v));
-    if (added.length === 0 && removed.length === 0) return;
-    this.sideVars = needed;
+  /** The placeholders' names when the body found them differ from `sideVars`, null while they stand. */
+  varsMove: string[] | null = null;
+
+  /** The inputs follow `varsMove` (`nodeOnCore`'s `coreWatch`), a departing input's cables pruned before it goes. */
+  static coreWatch = "varsMove";
+  coreWatched(): void {
+    const needed = this.varsMove;
+    if (needed === null) return;
     queueMicrotask(() => {
+      const added = needed.filter((v) => !this.sideVars.includes(v));
+      const removed = this.sideVars.filter((v) => !needed.includes(v));
+      if (added.length === 0 && removed.length === 0) return;
+      this.sideVars = [...needed];
+      this.edited();
       void (async () => {
         for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
         await dropInputCables(this.id, removed);
@@ -825,27 +607,14 @@ export class TemplateNode extends ClassicPreset.Node {
     });
   }
 
-  data(inputs: { template?: string[] } & Record<string, unknown[] | undefined>): { result: CellResult<string> } {
-    const template = strScalar(inputs.template, this, "template");
-    if (template === null) { this.cachedText = null; return { result: null }; }
-    const names = templatePlaceholders(template);
-    this._reconcile(names);
-    const isDate = (name: string) => {
-      const sock = this.inputs[name]?.socket;
-      return sock instanceof SolenoidSocket && sock.dataType.startsWith("date");
-    };
-    const value = (name: string): unknown => (this.sideVars.includes(name) || this.inputs[name] ? inputs[name]?.[0] ?? null : null);
-    const lens = names.map((n) => { const v = value(n); return Array.isArray(v) ? v.length : -1; }).filter((l) => l >= 0);
-    const render = (at: number | null) => renderTemplate(template, (n) => { const v = value(n); return at !== null && Array.isArray(v) ? v[at] ?? null : v; }, (v, n, spec) => templateFormat(v, spec, TEMPLATE_FORMATTERS, isDate(n)));
-    const result: CellResult<string> = lens.length === 0 ? render(null) : Array.from({ length: Math.max(...lens) }, (_, i) => render(i));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: CellResult<string> } {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
 // ─── HASH / UUID ─────────────────────────────────────────────────────────────
 
-export class HashNode extends ClassicPreset.Node {
+export class HashNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Lowercase hex of the UTF-8 text; the same text always hashes the same, so hashed keys still join.",
   };
@@ -863,18 +632,14 @@ export class HashNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Digest"));
   }
 
-  data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells((t: string) => hashText(t, this.algorithm), strVal(inputs.text, this, "text"));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
-export class UuidNode extends ClassicPreset.Node {
+export class UuidNode extends GraphNode {
   label: string;
   cachedText: string | null = null;
-  private lastGen = -1;
-  private generated = "";
   width = 260; height = 104;
 
   constructor(init?: { label?: string }) {
@@ -883,11 +648,8 @@ export class UuidNode extends ClassicPreset.Node {
     this.addOutput("result", strOut("UUID"));
   }
 
-  data(): { result: string } {
-    const gen = getRecalcGen();
-    if (this.lastGen !== gen) { this.generated = uuidV4(); this.lastGen = gen; }
-    this.cachedText = this.generated;
-    return { result: this.generated };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { result: string };
   }
 }
 
@@ -895,7 +657,7 @@ export class UuidNode extends ClassicPreset.Node {
 
 export type RomanArabicOp = "roman" | "arabic";
 
-export class RomanArabicNode extends ClassicPreset.Node {
+export class RomanArabicNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     number: "1 to 3999: Roman numerals cannot express values outside this range.",
   };
@@ -919,33 +681,8 @@ export class RomanArabicNode extends ClassicPreset.Node {
     }
   }
 
-  data(inputs: { number?: (number | number[])[]; text?: (string | string[])[] }): { result: CellResult<string | number> } {
-    const result: CellResult<string | number> = this.op === "roman"
-      ? broadcastCells((raw: number) => {
-          const n = Math.floor(raw);
-          if (n < 1 || n > 3999) return solError("#VALUE!", "ROMAN is defined only for 1–3999");
-          const vals = [1000,900,500,400,100,90,50,40,10,9,5,4,1];
-          const syms = ["M","CM","D","CD","C","XC","L","XL","X","IX","V","IV","I"];
-          let out = ""; let rem = n;
-          for (let i = 0; i < vals.length; i++) {
-            while (rem >= vals[i]) { out += syms[i]; rem -= vals[i]; }
-          }
-          return out;
-        }, readInput(inputs.number, this.literals.number ?? 1))
-      : broadcastCells((raw: string) => {
-          const text = raw.toUpperCase().trim();
-          if (!text) return null;
-          const map: Record<string, number> = { M:1000, D:500, C:100, L:50, X:10, V:5, I:1 };
-          let out = 0; let prev = 0;
-          for (let i = text.length - 1; i >= 0; i--) {
-            const v = map[text[i]];
-            if (v === undefined) return solError("#VALUE!", `"${text}" is not a valid Roman numeral`);
-            if (v < prev) out -= v; else { out += v; prev = v; }
-          }
-          return out;
-        }, strVal(inputs.text, this, "text"));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string | number> };
   }
 }
 
@@ -958,7 +695,7 @@ export const FIXED_NO_COMMAS_META: Record<FixedNoCommas, string> = {
   no_commas: "No thousand separators (1)",
 };
 
-export class FixedNode extends ClassicPreset.Node {
+export class FixedNode extends GraphNode {
   static inputRoles = rolesFrom("FIXED", { decimals: 1 });
   label: string;
   noCommas: FixedNoCommas;
@@ -975,99 +712,58 @@ export class FixedNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Text"));
   }
 
-  data(inputs: { number?: (number | number[])[]; decimals?: (number | number[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells(
-      (n: number, d: number) => resolveExcelFunction("FIXED")!(n, d, this.noCommas === "no_commas") as string,
-      readInput(inputs.number,   this.literals.number   ?? 0),
-      leftOutAs(readRole<number | (number | undefined)[] | undefined>(this, "decimals", inputs.decimals), 2),
-    );
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
-
 
 // ─── REGEX (REGEXTEST / REGEXEXTRACT / REGEXREPLACE) ─────────────────────────
 
 export const REGEX_OP_META: Record<RegexOp, { label: string; description: string }> = {
   test:           { label: "REGEXTEST",           description: "Returns `1` if text matches the pattern, else `0`, item by item on a List. Excel: `REGEXTEST`." },
-  extract:        { label: "REGEXEXTRACT",        description: "Returns the first match in the text, or empty text if none; a List gives a List of first matches. Excel: `REGEXEXTRACT`." },
+  extract:        { label: "REGEXEXTRACT",        description: "Returns the first match in the text, or `#N/A` if none; a List gives a List of first matches. Excel: `REGEXEXTRACT`." },
   extract_all:    { label: "REGEXEXTRACT (all)",    description: "Returns all matches found in a single string as a list. Excel: `REGEXEXTRACT` with `return_mode=1`." },
   extract_groups: { label: "REGEXEXTRACT (groups)", description: "Returns the first match's capture groups as a list. Excel: `REGEXEXTRACT` with `return_mode=2`." },
   replace:        { label: "REGEXREPLACE",        description: "Replaces regex matches with the replacement: all, or only the nth when Occurrence is set. A list broadcasts element-wise. Excel: `REGEXREPLACE`." },
 };
 
-
-export class RegexNode extends ClassicPreset.Node {
+export class RegexNode extends GraphNode {
   static inputRoles = { occurrence: setting(0) };
   static socketDocs: Record<string, string> = {
-    pattern: "Patterns follow JavaScript regular expression syntax. An invalid pattern gives a blank result.",
-    replacement: "Only the replace operation reads this input. $1 inserts the first capture group.",
+    pattern: "Patterns follow Excel's regular expressions (PCRE2): (?m) and (?s) go inline. An invalid pattern is #VALUE!.",
+    replacement: "Only the replace operation reads this input. $1 or ${1} inserts the first capture group, ${name} a named one, $$ a dollar sign.",
     occurrence: "Only REGEXREPLACE reads this. Blank or 0 replaces every match; n replaces only the nth, and -n the nth from the end.",
   };
 
   label: string;
   op: RegexOp;
+  /** Excel's case_sensitivity 0; off is 1, ignoring case. */
+  matchCase: boolean;
   cachedResult: number | number[] | string | string[] | null = null;
-  stringLiterals: Record<string, string> = { pattern: "", replacement: "", flags: "" };
+  stringLiterals: Record<string, string> = { pattern: "", replacement: "" };
   literals: Record<string, number> = { occurrence: 0 };
   width = 180; height = 253;
 
-  constructor(init?: { label?: string; op?: RegexOp }) {
+  constructor(init?: { label?: string; op?: RegexOp; matchCase?: boolean }) {
     super("Regex");
     this.op    = init?.op    ?? "test";
     this.label = init?.label ?? "";
-    this.addInput("text",        anyListIn("Text"));
+    this.matchCase = init?.matchCase ?? true;
+    this.addInput("text",        anyComboIn("Text"));
     this.addInput("pattern",     strIn("Pattern"));
     this.addInput("replacement", strIn("Replace with"));
     this.addInput("occurrence",  numListIn("Occurrence"));
     this.addOutput("result", anyComboOut("Result"));
   }
 
-  data(inputs: {
-    text?: unknown[];
-    pattern?: string[];
-    replacement?: string[];
-    occurrence?: (number | number[])[];
-  }): { result: number | number[] | string | string[] | null } {
-    const pattern = readInput(inputs.pattern, this.stringLiterals.pattern ?? "");
-    // Read only under the replace op, so a wired blank here never blanks a test or extract.
-    const replacement = this.op === "replace"
-      ? readInput(inputs.replacement, this.stringLiterals.replacement ?? "")
-      : "";
-    const occurrenceRaw = this.op === "replace" ? readRole<number>(this, "occurrence", inputs.occurrence) : 0;
-    if (pattern === null || replacement === null || occurrenceRaw === null) { this.cachedResult = null; return { result: null }; }
-    const flags       = this.stringLiterals.flags ?? "";
-    const occ = regexOccurrence(occurrenceRaw);
-
-    if (occ === null || !pattern || !safeRegex(pattern, flags)) { this.cachedResult = null; return { result: null }; }
-
-    const rawText = inputs.text === undefined ? "" : (inputs.text[0] ?? null);
-    const applyCell = (c: unknown): number | string | string[] | SolError | null =>
-      c == null ? null
-      : isSolError(c) ? c
-      : this.op === "replace" && occ !== 0
-        ? replaceNth(String(c), pattern, replacement, occ, flags)
-        : (regexApply(this.op, String(c), pattern, replacement, flags) as number | string | string[]);
-
-    let result: number | number[] | string | string[] | null;
-    if (rawText === null) {
-      result = null;
-    } else if (this.op === "extract_all" || this.op === "extract_groups") {
-      result = applyCell(Array.isArray(rawText) ? (rawText as unknown[])[0] : rawText) as string[];
-    } else if (Array.isArray(rawText)) {
-      result = (rawText as unknown[]).map(applyCell) as number[] | string[];
-    } else {
-      result = applyCell(rawText) as number | string;
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | number[] | string | string[] | null };
   }
 }
 
 // ─── DOLLAR (format number as currency string) ────────────────────────────────
 
-export class FormatDollarNode extends ClassicPreset.Node {
+export class FormatDollarNode extends GraphNode {
   static inputRoles = rolesFrom("DOLLAR", { decimals: 1 });
   label: string;
   cachedText: CellResult<string> = null;
@@ -1082,19 +778,14 @@ export class FormatDollarNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Currency text"));
   }
 
-  data(inputs: { number?: (number | number[])[]; decimals?: (number | number[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells((n: number, d: number) => resolveExcelFunction("DOLLAR")!(n, d) as string,
-      readInput(inputs.number,   this.literals.number   ?? 0),
-      leftOutAs(readRole<number | (number | undefined)[] | undefined>(this, "decimals", inputs.decimals), 2));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
-
 // ─── Reverse Text (Timesavers pack) ───────────────────────────────────────────
 
-export class ReverseTextNode extends ClassicPreset.Node {
+export class ReverseTextNode extends GraphNode {
   label: string;
   cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "" };
@@ -1107,23 +798,16 @@ export class ReverseTextNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Reversed"));
   }
 
-  data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells(
-      (t: string) => reverseText(t),
-      strVal(inputs.text, this, "text"),
-    );
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
 // ─── Spell Number (Timesavers pack) ───────────────────────────────────────────
-export { spellNumber } from "./textOps";
-import { spellNumber, ordinalText, textSimilarity, fuzzyBest, type SimilarityMethod } from "./textOps";
+import type { SimilarityMethod } from "./textOps";
 export type { SimilarityMethod } from "./textOps";
 
-
-export class SpellNumberNode extends ClassicPreset.Node {
+export class SpellNumberNode extends GraphNode {
   label: string;
   mode: "words" | "ordinal" = "words";
   cachedText: CellResult<string> = null;
@@ -1144,13 +828,8 @@ export class SpellNumberNode extends ClassicPreset.Node {
     if (out) out.label = next === "ordinal" ? "Ordinal" : "Words";
   }
 
-  data(inputs: { value?: (number | number[] | null)[] }): { result: CellResult<string> } {
-    const value = inputs.value === undefined || inputs.value.length === 0
-      ? this.literals.value
-      : inputs.value[0] ?? null;
-    const result = broadcastCells((v: number) => (this.mode === "ordinal" ? ordinalText(v) : spellNumber(v)), value);
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -1162,7 +841,7 @@ export const SIMILARITY_METHOD_META = {
   levenshtein:  { label: "Edit distance",       description: "The raw Levenshtein distance: how many inserts, deletes or substitutions turn one into the other." },
 } satisfies Record<SimilarityMethod, { label: string; description: string }>;
 
-export class TextSimilarityNode extends ClassicPreset.Node {
+export class TextSimilarityNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Case-sensitive. Run both sides through LOWER / Clean Whitespace first when case and spacing shouldn't count.",
   };
@@ -1181,14 +860,12 @@ export class TextSimilarityNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Similarity"));
   }
 
-  data(inputs: { a?: (string | string[])[]; b?: (string | string[])[] }): { result: BroadcastResult } {
-    const result = broadcastCells((a: string, b: string) => textSimilarity(a, b, this.method), strVal(inputs.a, this, "a"), strVal(inputs.b, this, "b"));
-    this.cachedResult = result as BroadcastResult;
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
-export class FuzzyMatchNode extends ClassicPreset.Node {
+export class FuzzyMatchNode extends GraphNode {
   static inputRoles = rolesFrom("FUZZYMATCH", { threshold: 2 });
   static socketDocs: Record<string, string> = {
     threshold: "0–1. A needle whose best candidate scores below it answers #N/A instead of a bad guess; 0 always picks the closest.",
@@ -1214,19 +891,7 @@ export class FuzzyMatchNode extends ClassicPreset.Node {
     this.addOutput("score", numListOut("Score"));
   }
 
-  data(inputs: { needle?: (string | string[])[]; candidates?: (string | null)[][]; threshold?: number[] }): { match: CellResult<string>; score: BroadcastResult } {
-    const needle = strVal(inputs.needle, this, "needle");
-    const cands = (inputs.candidates?.[0] ?? []).filter((v): v is string => typeof v === "string");
-    const threshold = readRole<number | undefined>(this, "threshold", inputs.threshold) ?? 0.6;
-    if (needle === null) { this.cachedMatch = null; this.cachedScore = null; return { match: null, score: null }; }
-    const pick = (n: string) => fuzzyBest(n, cands, this.method, threshold);
-    const na = () => solError("#N/A", "No candidate is similar enough");
-    const one = (n: string) => { const b = pick(n); return b ? b.text : na(); };
-    const sc = (n: string) => { const b = pick(n); return b ? b.score : na(); };
-    const match = Array.isArray(needle) ? needle.map(one) : one(needle);
-    const score = Array.isArray(needle) ? needle.map(sc) : sc(needle);
-    this.cachedMatch = match as CellResult<string>;
-    this.cachedScore = score as BroadcastResult;
-    return { match: this.cachedMatch, score: this.cachedScore };
+  data(inputs: Record<string, unknown[] | undefined>): { match: CellResult<string>; score: BroadcastResult } {
+    return nodeOnCore(this, inputs) as { match: CellResult<string>; score: BroadcastResult };
   }
 }

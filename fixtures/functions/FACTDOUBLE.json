@@ -1,0 +1,14 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"FACTDOUBLE(6)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FACTDOUBLE(7)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FACTDOUBLE(-1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FACTDOUBLE(c_A2)","env":["c_A2=num:0"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FACTDOUBLE(c_A3)","env":["c_A3=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FACTDOUBLE(c_A4)","env":["c_A4=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FACTDOUBLE(c_A5)","env":["c_A5=num:3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FACTDOUBLE(c_A6)","env":["c_A6=num:4.5"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FACTDOUBLE(c_A7)","env":["c_A7=num:7"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FACTDOUBLE(c_A8)","env":["c_A8=num:12"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

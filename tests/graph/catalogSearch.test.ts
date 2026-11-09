@@ -1,4 +1,5 @@
-// [[C79]]
+// [[C79]], [[add-menu#Scoring a row]], [[add-menu#The search rows]], [[add-menu#Two search fields, two weights]],
+// [[add-menu#Quick-wire filtering]], [[add-menu#Building the catalog]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { flattenLeaves, searchLeaves, filterByCompatibleSocket, quickWireCompatibleTypes } from "../../src/graph/catalogSearch";
 import { buildCatalog } from "../../src/graph/catalogUtils";
@@ -19,14 +20,11 @@ const types = (q: string, n = 5) => search(q).slice(0, n).map((l) => l.type);
 describe("Add-menu search — category + type + keywords are searchable", () => {
   it("'arithmetic' surfaces the Arithmetic-category leaves (was: nothing)", () => {
     const r = search("arithmetic");
-    // The Add/Subtract/Multiply/Divide leaves all live under the Arithmetic
-    // category; at least the core four should appear.
     const arithTypes = r.map((l) => l.type).filter((t) => t.startsWith("arith-"));
     expect(arithTypes).toEqual(expect.arrayContaining(["arith-add", "arith-mul", "arith-div"]));
   });
 
   it("'table input' ranks the Table input node #1", () => {
-    // Labeled "Table" under the "Input" category → label+category = "Table Input".
     expect(types("table input")[0]).toBe("table-input");
   });
 
@@ -40,23 +38,16 @@ describe("Add-menu search — category + type + keywords are searchable", () => 
   });
 
   it("an op-glyph label prefix doesn't demote the exact match ('add' → + Add first)", () => {
-    // "+ Add" only earned the word-start tier while "Add Column"/"Add Index"
-    // earned the prefix tier; the glyph-stripped label restores the exact tier.
     expect(types("add")[0]).toBe("arith-add");
     expect(types("subtract")[0]).toBe("arith-sub");
     expect(types("divide")[0]).toBe("arith-div");
   });
 
   it("Excel function names still match", () => {
-    // SUMPRODUCT is an Excel name carried via the catalog→excel map.
     expect(search("sumproduct").length).toBeGreaterThan(0);
   });
 });
 
-// Per-word scoring: each query word lands independently (subsequence of the wide
-// haystack, or one edit from a word the leaf answers to). A typo'd word must not
-// bury its target under scattered-subsequence noise from long descriptions.
-// (Author 2026-08-31: "frane input" surfaced nothing — Frame Input ranked 19th.)
 describe("Add-menu search — typo tolerance and word order", () => {
   it("'frane input' (one-letter typo) ranks Frame Input #1", () => {
     expect(types("frane input")[0]).toBe("frame-input");
@@ -71,9 +62,6 @@ describe("Add-menu search — typo tolerance and word order", () => {
   });
 });
 
-// TAKE / DROP folded onto one rank-preserving card (D6). Both ops keep a bare
-// Add-menu leaf (no "TAKE: Drop" colon row), and the family keywords carry the old
-// "list take" / "table take" spellings so either surface still finds the card.
 describe("TAKE / DROP — one card, two findable bare leaves", () => {
   it("'take' and 'drop' each surface their own bare leaf", () => {
     expect(search("take").some((l) => l.type === "takedrop")).toBe(true);
@@ -131,12 +119,10 @@ describe("filterByCompatibleSocket — memoized socket signatures", () => {
   });
 });
 
-// The Node Packs settings section toggles packsStore, and buildCatalog(true) reads it —
-// a deactivated pack's node leaves must leave the Add menu (its constructors stay
-// registered so saved graphs still load; only the menu placement is gated).
 describe("Add menu — a disabled pack's node leaves leave the tree (packsStore drives buildCatalog)", () => {
   const NODE_FIXTURE: Pack = {
     id: "test-node-pack",
+    seed: "",
     name: "Test Node Pack",
     description: "Fixture.",
     builtin: true,
@@ -164,10 +150,6 @@ describe("Add menu — a disabled pack's node leaves leave the tree (packsStore 
   });
 });
 
-// An op-selector family is ONE card; its ops may be exposed as separate leaves (Range,
-// LinSpace, … for Series). Typing the CARD's name must find every one of them, so each such
-// leaf carries the family name in its label or keywords. (Author 2026-08-25: "series" found
-// nothing — unacceptable; this pins it for every family.)
 describe("op leaves are findable by their family's name", () => {
   it("every catalog leaf of an op-selector family carries the family name in its label or keywords", () => {
     const instances = leaves.map(({ leaf }) => { try { return leaf.create(); } catch { return null; } });
@@ -178,13 +160,9 @@ describe("op leaves are findable by their family's name", () => {
       if (!family) continue;
       const fam = family.toLowerCase();
       const own = leaves.filter((_, i) => instances[i] instanceof decl.ctor);
-      // A family whose default name IS one of its op labels (a card called "ATAN2" with ops
-      // LOG / DELTA / GESTEP) has no separate name to search for — only a real card name
-      // (Series, Aggregate, Arithmetic…) must find its ops.
+      // A family named after one of its own ops has no separate name to search for.
       if (own.some(({ leaf }) => leaf.label.toLowerCase() === fam)) continue;
-      // A hidden-op row deliberately does NOT inherit its host's keywords (so sibling ops
-      // still discriminate); its label starts with the host's, so it is found through the
-      // host leaf — check the host's label + keywords for it.
+      // A hidden-op row is found through its host's label and keywords.
       const hostOf = (type: string) => leaves.find((l) => l.leaf.type === type.split("__op-")[0])?.leaf;
       for (const { leaf } of own) {
         const host = leaf.type.includes("__op-") ? hostOf(leaf.type) ?? leaf : leaf;

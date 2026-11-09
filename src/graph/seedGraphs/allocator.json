@@ -99,7 +99,7 @@
     {
       "id": "grp-pie",
       "type": "GroupNode",
-      "x": 845,
+      "x": 815,
       "y": 1079,
       "init": {
         "label": "Styled pie",
@@ -109,14 +109,14 @@
         ],
         "color": "purple",
         "collapsed": true,
-        "width": 501,
+        "width": 561,
         "height": 297
       }
     },
     {
       "id": "style",
       "type": "ChartBuilderNode",
-      "x": 869,
+      "x": 839,
       "y": 1137,
       "init": {
         "label": "Pie style",
@@ -133,8 +133,8 @@
     {
       "id": "chart",
       "type": "ChartNode",
-      "x": 1138,
-      "y": 1229,
+      "x": 1168,
+      "y": 1230,
       "init": {
         "label": "Allocation",
         "op": "pie"

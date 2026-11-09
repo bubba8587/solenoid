@@ -1,0 +1,107 @@
+{
+ "nodes": [
+  {
+   "id": "x",
+   "type": "SeriesNode",
+   "x": 0,
+   "y": 0,
+   "init": {
+    "label": "Angles",
+    "op": "linspace"
+   },
+   "literals": {
+    "start": 0,
+    "end": 12.56,
+    "count": 30
+   }
+  },
+  {
+   "id": "s",
+   "type": "MathFXNode",
+   "x": 0,
+   "y": 300,
+   "init": {
+    "label": "SIN",
+    "op": "sin"
+   }
+  },
+  {
+   "id": "o",
+   "type": "TableOuterNode",
+   "x": 380,
+   "y": 0,
+   "init": {
+    "label": "Egg crate"
+   }
+  },
+  {
+   "id": "l",
+   "type": "DiffNode",
+   "x": 380,
+   "y": 420,
+   "init": {
+    "label": "Curvature",
+    "op": "laplacian",
+    "mode": "grid"
+   }
+  },
+  {
+   "id": "p1",
+   "type": "SurfaceNode",
+   "x": 800,
+   "y": -120,
+   "init": {
+    "label": "Surface 1",
+    "yaw": 45,
+    "pitch": 35
+   }
+  },
+  {
+   "id": "p2",
+   "type": "SurfaceNode",
+   "x": 800,
+   "y": 440,
+   "init": {
+    "label": "Surface 2",
+    "yaw": 45,
+    "pitch": 35
+   }
+  },
+  {
+   "id": "d_p1",
+   "type": "DisplayNode",
+   "x": 1180,
+   "y": -160,
+   "init": {
+    "label": "Egg crate"
+   },
+   "size": {
+    "w": 660,
+    "h": 620
+   }
+  },
+  {
+   "id": "d_p2",
+   "type": "DisplayNode",
+   "x": 1880,
+   "y": -160,
+   "init": {
+    "label": "Its Laplacian: hills turn to bowls"
+   },
+   "size": {
+    "w": 660,
+    "h": 620
+   }
+  }
+ ],
+ "cables": [
+  "x.list -> s.in",
+  "s.result -> o.a",
+  "s.result -> o.b",
+  "o.result -> l.grid",
+  "o.result -> p1.z",
+  "l.result -> p2.z",
+  "p1.chart -> d_p1.in",
+  "p2.chart -> d_p2.in"
+ ]
+}

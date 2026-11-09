@@ -186,22 +186,6 @@ export const standoffStore = {
 };
 
 
-let _tick = 0;
-const _tickListeners = new Set<Listener>();
-
-export const standoffLayoutTick = {
-  version: () => _tick,
-  bump() {
-    _tick++;
-    for (const l of _tickListeners) l();
-  },
-  subscribe(l: Listener) {
-    _tickListeners.add(l);
-    return () => { _tickListeners.delete(l); };
-  },
-};
-
-
 /** `touching` limits the solve to the standoff clusters holding one of these ids: a forced lock snaps every slanted
  *  standoff it solves rigid, and a layout step must not snap clusters it never moved. */
 export type SettleOpts = { forceLock?: boolean; touching?: ReadonlySet<string> };

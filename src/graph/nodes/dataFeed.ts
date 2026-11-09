@@ -1,5 +1,5 @@
 // [[C28]] literalsIffEditable, [[C103]] untrustedContentSeams
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { frameOut } from "./shared";
 import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";
 import { fetchText } from "../httpBridge";
@@ -8,7 +8,7 @@ import { apiKeyStore } from "../apiKeyStore";
 import { getProvider, type ProviderId, type ProviderPreset } from "../dataProviders";
 
 
-export class DataFeedNode extends ClassicPreset.Node {
+export class DataFeedNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "The project file stores the series id, not the data. Refresh to re-pull.",
   };
@@ -76,7 +76,7 @@ export class DataFeedNode extends ClassicPreset.Node {
   private async fetchFrame(url: string, cacheKey: string): Promise<void> {
     connectionStore.setState(this.id, { status: "loading" });
     try {
-      const { text } = await fetchText(url);
+      const { text } = await fetchText(url, { from: this.id });
       if (this.inflightKey !== cacheKey) return;
       const frame = this.preset().parse(text);
       this.cachedResult = frame;

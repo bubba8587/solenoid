@@ -1,0 +1,24 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"SQRT()","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(4, 5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(1 / 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(\"4\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(-1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(c_A2)","env":["c_A2=num:-1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(c_A3)","env":["c_A3=num:-100"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(c_A4)","env":["c_A4=num:25"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(c_A5)","env":["c_A5=num:5"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(c_A6)","env":["c_A6=num:12.45"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(c_A7)","env":["c_A7=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(c_A8)","env":["c_A8=num:0"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(c_A9)","env":["c_A9=text:\"Hola\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(c_A10)","env":["c_A10=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(c_A11)","env":["c_A11=err:#N/A"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(c_A12)","env":["c_A12=num:99999999"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(c_A13)","env":["c_A13=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(c_A14)","env":["c_A14=bool:FALSE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SQRT(c_A15)","env":["c_A15=text:\"25\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

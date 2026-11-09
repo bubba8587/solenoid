@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { SankeyNode as SankeyNodeType } from "../rete-nodes";
+import type { SankeyNode as SankeyNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure } from "./chartView";
@@ -8,10 +8,11 @@ import { collapseStore } from "../collapseStore";
 import type { ChartValue } from "../chartValue";
 
 // Fills the wide card (240) minus body padding — same figure width as Chart.
-const W = 218;
 const H = 170;
 
 export function SankeyComponent({ data, emit }: NodeProps<SankeyNodeType>) {
+  // The figure fills the card, whatever width tier it wears.
+  const W = (data.width ?? 300) - 22;
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const p = data.cachedPayload;
   const has = !!p && p.values.some((v) => v > 0) && p.sources.length > 0;

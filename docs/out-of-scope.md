@@ -54,7 +54,10 @@ is a decade of work orthogonal to computation.
 pictures), and the report projection (scope #13) is a readable face of one document —
 never a multi-source enterprise dashboard. Live monitoring (scope #3) watches *your
 graph's values*, it does not become a BI portal.
-**Tell-tale creep:** "can we add drill-through / a dashboard grid / viewer seats?"
+**The author's word (2026-10-28):** a Dashboard node is in: one graph's values, charts and tables on a
+full-screen grid laid out by the Record layout text ([reports-and-notes](../tree/specs/documents/reports-and-notes.md) § Dashboards).
+Multi-source dashboards, drill-through and viewer seats stay out.
+**Tell-tale creep:** "can we add drill-through / viewer seats / a dashboard over another document?"
 
 ### 2. Being a database — Postgres, SQLite, DuckDB, Snowflake
 **Stay out because:** storage, indexing, concurrent writes, backup, and durability are
@@ -178,6 +181,13 @@ Already flagged at scope #13, restated as a standing rule: the report projection
 **arrangement of live blocks** (pins, notes, tables, charts). No rich-text engine, no
 comments-in-prose, no pagination beyond print CSS. If it needs a toolbar with fonts,
 it's out.
+
+### 14. Decision science beyond weighted choices — decision trees with chance, schedulers, solvers
+The decision nodes choose among known options: weighted scores,
+deal-breakers, limits, picks and chains whose later steps are known. Out: choices under chance (probability-weighted
+trees, expected value of information), planning across time periods (which quarter each project lands in, which
+semester each course), and nested ladders (several picks inside each pick of another ladder). Each needs a model
+the person can't check by eye; filter to one parent and run a ladder there instead.
 
 ---
 

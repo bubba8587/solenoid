@@ -1,4 +1,4 @@
-import type { QuadraticRootsNode as QuadraticRootsNodeType } from "../rete-nodes";
+import type { QuadraticRootsNode as QuadraticRootsNodeType } from "../nodeClasses";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 

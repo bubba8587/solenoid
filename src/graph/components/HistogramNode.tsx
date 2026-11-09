@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
-import { HISTOGRAM_MODE_META } from "../rete-nodes";
-import type { HistogramNode as HistogramNodeType, HistogramMode } from "../rete-nodes";
+import { HISTOGRAM_MODE_META } from "../nodeClasses";
+import type { HistogramNode as HistogramNodeType, HistogramMode } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure } from "./chartView";
@@ -15,10 +15,11 @@ const MODE_OPTIONS = (Object.keys(HISTOGRAM_MODE_META) as HistogramMode[]).map((
 }));
 
 // Fills the wide card (240) minus body padding.
-const W = 218;
 const H = 150;
 
 export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>) {
+  // The figure fills the card, whatever width tier it wears.
+  const W = (data.width ?? 300) - 22;
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const cv = data.cachedChart;
   const has = !!cv && (cv.op === "heatmap"
@@ -31,7 +32,7 @@ export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>)
     if (drop.length) await dropInputCables(data.id, drop);
     data.setMode(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   return (

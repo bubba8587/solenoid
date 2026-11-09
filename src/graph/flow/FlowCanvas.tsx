@@ -1,8 +1,8 @@
 // [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere, [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
-import { NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../graphEditor";
+import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes, SolenoidNode } from "../schemes";
 import { FlowSurfaceContext } from "../flowSurface";
 import { cableSelectionStore } from "../cableState";
@@ -13,11 +13,10 @@ import { setEditorRefs, setGraphChanged, processGraph, setBulkSettle, isGraphReb
 import { setUnselectAllNodes, setSelectNode, setDeleteSelected, setClearHistory, setAutoArrange, setCleanup, setRepositionDocked } from "../canvasCommands";
 import { setCtorRegistryProvider } from "../ctorProvider";
 import { flowHistory } from "./flowHistory";
-import { installInputCoercion } from "../coerceInputs";
-import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
 import { scheduleAutosave } from "../persistence";
 import { documentStore, ensureFirstDocument } from "../documentStore";
+import { startDesktopDocs } from "../desktopDocs";
 import { SEEDS } from "../seeds";
 import { paletteStore } from "../paletteStore";
 import { CommandPalette } from "../CommandPalette";
@@ -38,9 +37,10 @@ import { ComputeOverlay } from "../components/ComputeOverlay";
 import { IsolatePill } from "../components/IsolatePill";
 import { settingsStore } from "../settingsStore";
 import { useIsMobile } from "../useDeviceMode";
+import { useCoreReady } from "../coreReady";
 
 type Stack = {
-  editor: NodeEditor<Schemes>;
+  editor: GraphEditor<Schemes>;
   engine: DataflowEngine<Schemes>;
   view: FlowView;
   handlers: SurfaceHandlers;
@@ -53,12 +53,7 @@ type Stack = {
 let _stack: Stack | null = null;
 function getStack(): Stack {
   if (_stack) return _stack;
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const handlers = idleHandlers();
@@ -227,6 +222,8 @@ function FlowCanvasInner() {
         } else if (!restored) {
           await ensureFirstDocument();
         }
+        // Desktop: every kept document is a file, written through by autosave.
+        startDesktopDocs();
       })();
     }
   }, [s]);
@@ -258,6 +255,7 @@ function FlowCanvasInner() {
 }
 
 export function FlowCanvas() {
+  if (!useCoreReady()) return null;
   return (
     <ReactFlowProvider>
       {/* Node components under this provider render RF Handles. */}

@@ -1,12 +1,7 @@
-// [[B12]] losslessSaves
+// [[B12]] losslessSaves, [[per-doc-autosave-persistence#Two slots per pair]], [[per-doc-autosave-persistence#Restore]]
 import { describe, it, expect, vi } from "vitest";
 
-// Per-doc autosave keys (2026-07-05): each document persists under its own
-// two-slot pair plus a light index — an edit writes ONLY the changed doc, and
-// deleting a doc removes its keys. Exercised through the real documentStore
-// against an in-memory localStorage stub (vitest env is node). The store runs
-// editor-less here: serializeGraph() returns null, so doc graphs stay the
-// EMPTY_GRAPH they were created with — persistence shape is what's under test.
+// Editor-less, serializeGraph() returns null and documents keep their EMPTY_GRAPH.
 
 const _mem = new Map<string, string>();
 const localStorageStub = {
@@ -71,6 +66,35 @@ describe("per-doc autosave keys", () => {
     for (const name of before) expect(after).toContain(name);
   });
 
+  it("[[C132]] workspaceTree: folders, empty ones included, survive a restore", async () => {
+    documentStore.saveAs("Zeta");
+    const zeta = documentStore.list().find((m) => m.name === "Zeta")!;
+    const fin = documentStore.newFolder("", "Finance");
+    documentStore.moveToFolder(zeta.id, `${fin}/2026`);
+    documentStore.newFolder(fin, "Empty");
+    await documentStore.restore();
+    expect(documentStore.list().find((m) => m.id === zeta.id)?.folder).toBe("Finance/2026");
+    expect(documentStore.folders()).toEqual(expect.arrayContaining(["Finance", "Finance/2026", "Finance/Empty"]));
+    documentStore.renameFolder("Finance", "Money");
+    await documentStore.restore();
+    expect(documentStore.list().find((m) => m.id === zeta.id)?.folder).toBe("Money/2026");
+    expect(documentStore.folders()).not.toContain("Finance");
+  });
+
+  it("[[C132]] workspaceTree: a folder move cut off partway reads back whole, from the index", async () => {
+    documentStore.saveAs("Eta");
+    documentStore.saveAs("Theta");
+    const [eta, theta] = ["Eta", "Theta"].map((n) => documentStore.list().find((m) => m.name === n)!);
+    documentStore.moveToFolder(eta.id, "Old");
+    documentStore.moveToFolder(theta.id, "Old");
+    const thetaSlots = docKeysFor(theta.id).map((k) => [k, _mem.get(k)!] as const);
+    documentStore.renameFolder("Old", "New");
+    // Theta's slot write "failed": its storage still says Old, the index says New.
+    for (const [k, v] of thetaSlots) _mem.set(k, v);
+    await documentStore.restore();
+    expect(documentStore.list().filter((m) => m.id === eta.id || m.id === theta.id).map((m) => m.folder)).toEqual(["New", "New"]);
+  });
+
   it("restore() deletes the abandoned whole-library keys", async () => {
     _mem.set("solenoid.docs.lib.a", '{"seq":1,"lib":{}}');
     _mem.set("solenoid.docs.lib.b", '{"seq":2,"lib":{}}');
@@ -117,8 +141,7 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
     const doc = documentStore.list().find((m) => m.name === "Traveled")!;
     const stored = docKeysFor(doc.id).map((k) => JSON.parse(_mem.get(k)!) as { doc?: { fileSavedAt?: number; updatedAt?: number } });
     expect(stored.some((s) => s.doc?.fileSavedAt === 1786871100000)).toBe(true);
-    // The autosave clock (updatedAt) reads the file's stamp too — autosave is the
-    // primary save, so a traveled doc shows when its content was last saved.
+
     expect(stored.some((s) => s.doc?.updatedAt === 1786871100000)).toBe(true);
   });
 
@@ -131,6 +154,29 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
       liveGraph.g = { v: 2, nodes: [{ id: "n", type: "ConstantNode", x: 0, y: 0, init: {} }], connections: [], meta: { foreign: true } };
       documentStore.captureCurrent();
       expect(saveTimeStore.lastAutosaveAt()).toBeGreaterThan(1786871100000);
+    } finally {
+      liveGraph.g = null;
+    }
+  });
+
+  it("a file stamped in the future is stamped now, so the next edit reads as unsaved", async () => {
+    const t0 = Date.now();
+    await documentStore.importAsDocument({ v: 2, nodes: [], connections: [], savedAt: t0 + 3_600_000 }, "Ahead", "/elsewhere/Ahead.json");
+    const doc = documentStore.list().find((m) => m.name === "Ahead")!;
+    const stored = docKeysFor(doc.id).map((k) => JSON.parse(_mem.get(k)!) as { doc?: { fileSavedAt?: number } });
+    expect(stored.some((s) => s.doc?.fileSavedAt !== undefined && s.doc.fileSavedAt <= Date.now())).toBe(true);
+  });
+
+  it("opening a file a document already keeps opens that document, however the path is spelled", async () => {
+    liveGraph.g = { v: 2, nodes: [], connections: [] };
+    try {
+      await documentStore.importAsDocument({ v: 2, nodes: [], connections: [] }, "Kept once", "C:\\Docs\\Kept once.json");
+      const kept = documentStore.list().find((m) => m.name === "Kept once")!;
+      documentStore.saveAs("Elsewhere");
+      const before = documentStore.list().length;
+      await documentStore.importAsDocument({ v: 2, nodes: [], connections: [] }, "Kept once", "c:/docs/KEPT ONCE.json");
+      expect(documentStore.list().length).toBe(before);
+      expect(documentStore.currentId()).toBe(kept.id);
     } finally {
       liveGraph.g = null;
     }
@@ -156,21 +202,12 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
   });
 });
 
-// ─── [[B12]] losslessSaves — slot freshness is a PREFIX read, so `seq` must come first ────
-// readSlotSeq decides which slot is newer with /^\{"seq":(\d+)/ — a prefix
-// regex, deliberately not a parse (the doc blob is large). A payload whose
-// stringify puts any other key first reads as seq null: chooseWriteSlot(null,…)
-// collapses the rotation to always-overwrite-A and chooseReadSlot resurrects
-// the OLDER write — silent loss of the newest edit, with perfectly valid JSON
-// in both slots. This pins the coupling the writers currently honor by literal
-// key order alone.
+
 describe("[[B12]] losslessSaves — every written slot payload starts {\"seq\":N and seq strictly increases", () => {
   const slotKeys = () => [..._mem.keys()].filter((k) => /^solenoid\.docs\.(index|doc\.[^.]+)\.(a|b)$/.test(k));
 
   it("every slot payload the STORE wrote is prefix-readable", () => {
-    // The corrupt-slot restore test above plants "{not json" by hand — that
-    // fixture is exactly what this rule protects against and is not a store
-    // write; drop it before sweeping.
+    // The corrupt slot planted above is not a store write.
     for (const [k, v] of [..._mem]) if (v === "{not json") _mem.delete(k);
     documentStore.saveAs("SeqCheck");
     expect(slotKeys().length).toBeGreaterThan(0);

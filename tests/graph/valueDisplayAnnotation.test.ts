@@ -1,33 +1,32 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
-import type { NodeEditor as Ed } from "rete";
+import { GraphEditor, type GraphEditor as Ed } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import type { Schemes } from "../../src/graph/schemes";
 import { setEditorRefs } from "../../src/graph/process";
 import { formatAnnotationStore, type FormatAnnotation } from "../../src/graph/formatAnnotationStore";
 import { frameFormatStore, MATRIX_FORMAT_KEY } from "../../src/graph/frameFormatStore";
-import { resolveDisplayAnnotation, resolveMatrixAnnotation, formatListCell, annotationForValue } from "../../src/graph/components/valueDisplayFormat";
+import { resolveDisplayAnnotation, resolveMatrixAnnotation, formatListCell, annotationForValue, cardStyleAnnotation, unwrapUnitCells } from "../../src/graph/components/valueDisplayFormat";
+import { formatNumberWithAnnotation } from "../../src/graph/formatAnnotationStore";
+import { ConvertNode } from "../../src/graph/nodes/convert";
 import { formatTableCell } from "../../src/graph/components/TableDisplay";
 import { solError } from "../../src/graph/errorValue";
 import { fromUnit } from "../../src/graph/unitValue";
-import { UNITS } from "../../src/graph/dimension";
 import { formatScalar } from "../../src/graph/components/format";
+import { fcUnitToUnit } from "../../src/graph/dimension";
 
-// resolveDisplayAnnotation is the ONE question every value surface asks (nodeKit's
-// ValueDisplay + output rows, DisplayNode, TableDisplay, the pins, the cable
-// inspector, collapsed group readouts). Its three steps are pinned here; the walk
-// itself belongs to unitFlowAnnotation.test.ts.
+// [[format-model#Where the model is enforced]]
 
-type AnyEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
-const sock = new (class extends ClassicPreset.Socket {})("any");
+type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
+const sock = new (class extends GraphSocket {})("any");
 
 const usd: FormatAnnotation = { format: "decimal", decimalDigits: 2, decimalMode: "places", unit: "usd" };
 const eur: FormatAnnotation = { ...usd, unit: "eur" };
 const deg: FormatAnnotation = { format: "auto", unit: "deg" };
 
 function node(label: string, extra: Record<string, unknown> = {}) {
-  const n = new ClassicPreset.Node(label) as ClassicPreset.Node & Record<string, unknown>;
-  n.addInput("in", new ClassicPreset.Input(sock, "In"));
-  n.addOutput("out", new ClassicPreset.Output(sock, "Out"));
+  const n = new GraphNode(label) as GraphNode & Record<string, unknown>;
+  n.addInput("in", new GraphInput(sock, "In"));
+  n.addOutput("out", new GraphOutput(sock, "Out"));
   Object.assign(n, extra);
   return n;
 }
@@ -36,12 +35,12 @@ function passthrough(label: string) {
   n.passthrough = () => [{ output: "out", inputs: ["in"], combine: "single", pure: true }];
   return n;
 }
-const connect = (e: AnyEditor, s: ClassicPreset.Node, t: ClassicPreset.Node) =>
-  e.addConnection(new ClassicPreset.Connection(s as never, "out", t as never, "in") as never);
+const connect = (e: AnyEditor, s: GraphNode, t: GraphNode) =>
+  e.addConnection(new GraphConnection(s as never, "out", t as never, "in") as never);
 
 /** A fresh editor registered as the MAIN graph, which getOwningEditor resolves to. */
 function newEditor(): AnyEditor {
-  const editor = new NodeEditor() as unknown as AnyEditor;
+  const editor = new GraphEditor() as unknown as AnyEditor;
   setEditorRefs(editor as unknown as Ed<Schemes>, {} as never, {} as never);
   return editor;
 }
@@ -93,8 +92,8 @@ describe("resolveDisplayAnnotation — direct, then carried, then downstream", (
 
   it("`socketKey` keeps a multi-output card's boxes apart", async () => {
     const editor = newEditor();
-    const tri = new ClassicPreset.Node("Tri") as ClassicPreset.Node & Record<string, unknown>;
-    for (const k of ["a", "A"]) tri.addOutput(k, new ClassicPreset.Output(sock, k));
+    const tri = new GraphNode("Tri") as GraphNode & Record<string, unknown>;
+    for (const k of ["a", "A"]) tri.addOutput(k, new GraphOutput(sock, k));
     tri.annotationFor = (outKey: string) => (outKey === "A" ? deg : undefined);
     await editor.addNode(tri as never);
     expect(resolveDisplayAnnotation(tri.id, "A")?.unit).toBe("deg");
@@ -139,14 +138,13 @@ describe("formatListCell — the same annotation reaches every list cell", () =>
     expect(formatListCell(true, formatScalar)).toBe("TRUE");
     expect(formatListCell("ab", formatScalar, { ...places1, textCase: "upper" })).toBe("AB");
     // A dimensioned cell renders in its display unit at the annotation's precision.
-    expect(formatListCell(fromUnit(5000, UNITS.m, "km"), formatScalar, { ...places1, unit: "km" })).toBe("5.0 km");
+    expect(formatListCell(fromUnit(5000, fcUnitToUnit("m")!, "km"), formatScalar, { ...places1, unit: "km" })).toBe("5.0 km");
   });
 
   it("a CARRIED format (unit stripped) leaves the cell's own unit standing", () => {
-    // A format crossing a transform arrives with unit "none" ([[D41]] formatFlowsDownstream);
-    // the unit rides the VALUE, so the $ must survive — only the style is the ann's.
+    // A carried format's unit is "none"; the $ rides the value ([[C118]] formatTravelsWithValue).
     const carried: FormatAnnotation = { format: "decimal", decimalDigits: 2, decimalMode: "places", unit: "none", customUnit: "" };
-    const dollars = fromUnit(1000, UNITS["¤"], "usd");
+    const dollars = fromUnit(1000, fcUnitToUnit("usd")!, "usd");
     expect(annotationForValue(dollars, carried)?.unit).toBe("usd");
     expect(formatListCell(dollars, formatScalar, carried)).toBe("$1,000.00");
     // A list is read from its first dimensioned cell, and a unitless value is untouched.
@@ -173,5 +171,17 @@ describe("resolveMatrixAnnotation", () => {
     frameFormatStore.set(m.id, MATRIX_FORMAT_KEY, pick);
     expect(resolveMatrixAnnotation(m.id)).toEqual(pick);
     frameFormatStore.clear();
+  });
+});
+
+describe("a card's own format pick applies to a value with a unit ([[C25]] firstClassUnits)", () => {
+  const miles = new ConvertNode({ fromUnit: "km", toUnit: "mi" }).data({ in: [450] }).out;
+  it("Convert's Integer rounds 279.617 mi and keeps the unit", () => {
+    const ann = cardStyleAnnotation(miles, "integer")!;
+    expect(formatNumberWithAnnotation(unwrapUnitCells(miles, ann) as number, ann)).toBe("280 mi");
+  });
+  it("auto, or a plain number, leaves the box to its usual reading", () => {
+    expect(cardStyleAnnotation(miles, "auto")).toBeUndefined();
+    expect(cardStyleAnnotation(5, "integer")).toBeUndefined();
   });
 });

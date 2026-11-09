@@ -377,3 +377,15 @@
   font-size: 11px;
   color: var(--sol-error);
 }
+
+/* A web image a foreign document holds until it may fetch (`noteHtml.ts`): its alt text in a dashed box. */
+.sol-md img.sol-md__held-img {
+  display: inline-block;
+  min-width: 80px;
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+}

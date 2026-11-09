@@ -1,5 +1,5 @@
-import { SIMILARITY_METHOD_META } from "../rete-nodes";
-import type { TextSimilarityNode as TextSimilarityNodeType, FuzzyMatchNode as FuzzyMatchNodeType, SimilarityMethod } from "../rete-nodes";
+import { SIMILARITY_METHOD_META } from "../nodeClasses";
+import type { TextSimilarityNode as TextSimilarityNodeType, FuzzyMatchNode as FuzzyMatchNodeType, SimilarityMethod } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, ValueDisplay, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 

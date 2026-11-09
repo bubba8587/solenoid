@@ -6,9 +6,9 @@ tags: [spec, computation]
 
 # Spec: Alert node + Alerts HUD
 
-Serves [[D79]] effectsEdgeTriggered. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[D79]] effectsEdgeTriggered. It covers what the system does and blocks, and the decision each behavior serves.
 
-The **Alert** card watches a value and raises a notification when a condition is met. Each firing lands in two places: a toast, and the Alerts section of the HUD, the column of floating panels on the right edge of the screen. The card lives in `nodes/display.ts` (`AlertNode`) and `components/AlertNode.tsx`; the log is `alertStore.ts`; the column is `components/HudStack.tsx`.
+The **Alert** card watches a value and raises a notification when a condition is met. Each firing lands in two places: a toast, and the Alerts section of the HUD, the column of floating panels on the right edge of the screen. The Alert node lives in `nodes/display.ts` (`AlertNode`, which raises what its body says fires) and `components/AlertNode.tsx`, and its status, what fires and the message in its body (`alert` in `crates/solenoid-core/src/nodes/docs.rs`, [[node-bodies]]); the log is `alertStore.ts`; the column is `components/HudStack.tsx`.
 
 ## Modes
 
@@ -25,6 +25,11 @@ The card carries the full set of sockets at all times, and the component shows o
 
 An unwired socket falls back to the card's typed literal (defaults: `value` 50, `low` 0, `high` 100, `target` 0, `text` and `match` empty). A wired socket always wins, even when its cable carries a blank ([[D86]] blankRoles).
 
+Tests:
+
+- `alertNode.test.ts`: `condition` survives a save; `boolean` mode means a real true or 1, not any nonzero number; `equals` fires on a match; `text` fires when the text contains the match.
+- `wiredNull.test.ts`: in `range` mode a wired blank High makes the status null rather than reading the card's 100, while an unwired High uses the card's bound.
+
 ## The status output
 
 The `result` socket (labeled "Status") emits a number:
@@ -36,20 +41,39 @@ The `result` socket (labeled "Status") emits a number:
 
 A list input yields a list of statuses, one per element. A per-cell error or blank rides through as a non-alerting cell.
 
+Tests: `alertNode.test.ts`: a blank or error cell in a list is not alerting, and the list's message counts only the cells that are.
+
 The card's value box shows a neutral dot and word, never a pass or fail mark, because an Alert watches and notifies rather than judging. Calm reads "in range", "no match", "false" or "no match" by mode; met reads "below" or "above", "equal", "true" or "match". A list reads "all clear" or "some out". The met color is the theme's amber accent; calm is `--text-dim`.
 
 ## When it fires
 
-An Alert fires on a change of status, not on a boolean flip ([[D79]] effectsEdgeTriggered):
+An Alert fires on a change of status, not on a boolean flip ([[D79]] effectsEdgeTriggered). The body decides what fires; the TypeScript only raises it:
 
-1. A null status is unknown. It neither fires nor changes the remembered status.
-2. Otherwise the card builds a status key (`statusKey`: the number, or the list joined with commas) and compares it with the key it remembered from the last run (`lastStatusKey`).
-3. If the mode changed since the last run, the comparison is against `NO_STATUS` instead, since the old mode's status means nothing in the new one.
-4. The new key becomes the remembered one.
-5. While the graph is rebuilding (`isGraphRebuilding()`), nothing fires, so loading a document or a seed does not replay old alerts. The recompute that follows a rebuild still runs inside the rebuild scope.
-6. Otherwise the card fires when the status is alerting (any nonzero cell) and its key differs from the previous one.
+1. A null status is unknown. The body shows nothing new, so nothing fires and the remembered status stands.
+2. Otherwise the body shows the status key (`alertKey`: the mode and the status, the number or the list joined with commas) and, when the status is alerting (any nonzero cell), the message it fires (`alertMessage`, else null).
+3. The class names `alertKey` in `static coreWatch`, so the engine calls `coreWatched()` when a run changed it ([[graph-core]] § Direct calls). The mode is part of the key, so a mode change compares fresh: the old mode's status means nothing in the new one.
+4. `coreWatched()` raises `alertMessage` unless it is null or the graph is rebuilding (`isGraphRebuilding()`), so loading a document or a seed does not replay old alerts. The recompute that follows a rebuild still runs inside the rebuild scope, and still remembers its key.
 
-So in `range` mode, calm to LOW, calm to HIGH and LOW to HIGH (either way) all fire; LOW to LOW and HIGH to HIGH do not; returning to calm is silent. `lastStatusKey` starts at `NO_STATUS`, a sentinel that matches no real key, so a card born alerting, or switched into a condition that is already met, fires once.
+```mermaid
+flowchart TD
+    s["this run's status"] --> nul{"null (unknown)?"}
+    nul -->|yes| skip["nothing shown:<br>nothing fires, nothing remembered"]
+    nul -->|no| show["the body shows alertKey (mode and status)<br>and alertMessage (null when calm)"]
+    show --> chg{"alertKey changed?"}
+    chg -->|no| calm["silent"]
+    chg -->|yes| rb{"the graph rebuilding,<br>or no message?"}
+    rb -->|yes| quiet["nothing fires"]
+    rb -->|no| f["fireAlert: a HUD event<br>and a toast"]
+```
+
+So in `range` mode, calm to LOW, calm to HIGH and LOW to HIGH (either way) all fire; LOW to LOW and HIGH to HIGH do not; returning to calm is silent. A new card holds no key, so a card born alerting, or switched into a condition that is already met, fires once. Expect fires the same way, its key the set of failed checks (`nodes/quality.ts`, `expect` in `docs.rs`). That key is the kinds of check that failed, not which cells failed or how many: a different cell failing the same check does not fire again, a new kind of check joining the failures fires, and a recovery to no failures fires nothing and lets the next failure fire.
+
+Tests:
+
+- `alertNode.test.ts`: the engine's direct call fires on a change of status and not while the graph rebuilds; a card born out of range fires on its first run; calm to alert fires once, a held status stays silent and a return to calm re-arms; every change between Low and High fires; a mode switch into a condition already met fires once.
+- `quality.test.ts`: Expect fires only when the set of failing checks changes, from the engine's direct call too.
+- `connectionStore.test.ts`: a live connection's refresh changes the value reaching an Alert and its change of status fires.
+- `sourceInvariants.test.ts`: every node file that fires an alert names the `isGraphRebuilding` gate.
 
 ## Firing
 
@@ -58,14 +82,16 @@ So in `range` mode, calm to LOW, calm to HIGH and LOW to HIGH (either way) all f
 - it logs an event (`id`, `nodeId`, `label`, `kind`, `message`, `time`) to `alertStore`, newest first, capped at 50 events. The log is transient and never saved.
 - it raises a toast through `pushNotice` (`noticeStore`), with the tone mapped from the kind: `info` to info, `warning` to warn, `critical` to error. The Alert card always fires `warning`.
 
-The message is a neutral observation prefixed with the card's label (or "Alert" when the label is blank):
+The message, which the body writes, is a neutral observation prefixed with the card's label (or "Alert" when the label is blank):
 
 - range, one value: "Tank: 150 above 100" or "Tank: 3 below 10"; a list: "Tank: 2 below 10, 1 above 100";
 - equals: "Tank: equals 7";
 - boolean: "Tank: is true";
 - text: `Log: contains "error"`.
 
-Numbers print as every unformatted number does ([[D94]] oneNumberDisplay).
+Tests: `alertNode.test.ts`: the range message ("Temp: 150 above 100"), a list's message, and the text mode's message carrying the label.
+
+Numbers print as every unformatted number does ([[C118]] formatTravelsWithValue).
 
 `alertStore` registers `forget` and `forgetAll` with the node-store registry ([[stores#The rules]]): deleting an Alert card removes its events, and a whole-graph rebuild clears the log. Each event in the HUD has its own dismiss button (`alertStore.dismiss`).
 

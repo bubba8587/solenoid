@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import {
-  distinctRows, groupByFrame, joinFrames, passesFilter, replaceValues,
-} from "../../src/graph/frameVerbs";
+import { distinctRows, groupByFrame, joinFrames, passesFilter, replaceValues } from "./coreVerbs";
 import type { FrameValue } from "../../src/graph/frame";
 
 // [[C45]] excelComparisons pinned in ONE place: every COMPARISON is case-INsensitive (Excel's `=`;
@@ -68,7 +66,7 @@ describe("identity ops are case-sensitive (keys are identity)", () => {
 });
 
 describe("Replace Values keeps its described fine print", () => {
-  it("whole-cell is case-sensitive", () => {
+  it("text ignores case unless Aa is on", () => {
     const f: FrameValue = {
       __frame: true,
       columns: [
@@ -76,7 +74,11 @@ describe("Replace Values keeps its described fine print", () => {
         { name: "n", type: "number", values: [5, 50, null] },
       ],
     };
-    const s = replaceValues(f, "s", "US", "eu", "cell");
-    expect(s.columns[0].values).toEqual(["us", "eu", null]);
+    expect(replaceValues(f, "s", "US", "eu", "cell", true).columns[0].values).toEqual(["us", "eu", null]);
+    expect(replaceValues(f, "s", "US", "eu", "cell").columns[0].values).toEqual(["eu", "eu", null]);
+    const t: FrameValue = { __frame: true, columns: [{ name: "s", type: "string", values: ["Big BIG big", "Straße"] }] };
+    expect(replaceValues(t, "s", "big", "x", "substring").columns[0].values).toEqual(["x x x", "Straße"]);
+    expect(replaceValues(t, "s", "big", "x", "substring", true).columns[0].values).toEqual(["Big BIG x", "Straße"]);
+    expect(replaceValues(t, "s", "STRASSE", "x", "substring").columns[0].values).toEqual(["Big BIG big", "Straße"]);
   });
 });

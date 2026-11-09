@@ -159,40 +159,10 @@ public (publish/share only) or drop it. (e) Manual save vs auto-sync for v1.
 
 ## Stage 3 — Real-time multiplayer editing
 
-**The model.** The addressable model is the reason this is tractable (future-directions
-warned: "multiplayer before Bet 2 exists is misery; on a clean addressable model it's
-tractable" — Bet 2 shipped). The shared document is a CRDT (Yjs-class; Automerge is the
-alternative) shaped like the text form's semantics, not its bytes:
-- `nodes`: a map keyed by NAME → { type, init fields, literals, stringLiterals } (each field
-  a last-writer-wins register; `init` is JSON-plain by `../tree/specs/documents/save-format.md` § The capture is a fixed point, and plain JSON, so it serializes).
-- `connections`: a map keyed by `target/targetInput` (one cable per input — the key IS the
-  invariant) → { source, sourceOutput }.
-- `visual`: positions / sizes / collapsed / page per node (LWW registers; positions are the
-  hot path and merge trivially), plus the sidecar's other fields.
-- Composite internals: a nested sub-document per composite instance.
-**The client.** The rete editor + RF surface become a VIEW of the CRDT document: every local
-edit goes through the existing choke points (`flowModel.ts` edit verbs, `useDraftCommit`
-commits, `moveNode`) which write the CRDT; remote CRDT changes apply through the same verbs
-(the topology pipe already coalesces adds/removes into one commit; `syncTopology` preserves
-identity). The engine recomputes locally on every applied change — **every client computes**;
-purity makes results agree. The documented exceptions: volatile nodes (RAND — per-client
-rolls; a `seed` shared through the doc if agreement matters) and live connections (each
-client fetches; `fetchedAt` may differ). No server compute in v1.
-**Names under concurrency.** Two clients renaming to the same name, or both creating
-`Filter_2`: the CRDT keeps both entries; the client's uniqueness validator resolves the loser
-by suffix on apply and surfaces a notice. Name changes rewrite references (already true of a
-rename today); do it as one transaction.
-**Undo.** Per-user (Yjs `UndoManager` tracks origins) — the snapshot history (`flowHistory`)
-becomes a local view; the CRDT is the truth. Composite drill-in undo the same.
-**Awareness.** Cursors, selections, viewports (follow a person), active page (Bundle 20);
-node-level "being edited by" on the card (a badge state — 1.4's A0 vocabulary gains one).
-**Transport.** A WebSocket relay (Hocuspocus / y-sweet / PartyKit-class; self-hostable), auth
-by the Stage 1 token, one room per document; persistence of the CRDT state on the server
-plus a periodic text-form snapshot as a version (so Stage 1's versions and diffs keep working
-under multiplayer).
-**Desktop and web.** Both are clients; the desktop computes on Polars, the web on the JS
-oracle — same answers by corpus. An AI agent (the palette, or an external tool) is just
-another client — which is the #35 MCP port's live-session gap, closed for free.
+Re-planned 2026-11-07 in `27-multiplayer.md`, which is now its home: account-less rooms (the
+share link carries the room and its key), a Loro CRDT at the save boundary with tables synced
+cell by cell, an encrypted relay on Cloudflare Durable Objects, every client computing. It no
+longer waits on Stage 1 or 2.
 
 ## Trust on open (P2) — required before Stage 1 ships a share link
 
@@ -201,7 +171,7 @@ Source, Data Feed, CSV, the 1.4 widget nodes — with the desktop's CORS-free cu
 Script runs on compute in a worker whose sandbox is **containment, not a security boundary**
 (the I/O globals are deleted but `import()` is syntax and stays: a dynamic import of a URL
 from the worker is a network door), and Write sinks already load disarmed
-([[C38]] sinkRunButtonOnly — the precedent).
+([[B18]] safeToShare — the precedent).
 **Do.** (1) A document you did not author opens **restricted**: sources quiet (1.4's C2),
 Script nodes inert (they show their source and an "allow scripts" control; their outputs are
 a `#RESTRICTED!`-class SolError so nothing downstream is silently right), sinks disarmed as
@@ -220,8 +190,7 @@ document computes to the restricted errors and an allowed one to the real values
 3. Stage 1: provider pick → sign-in → cloud library + versions + diff → sharing roles →
    web open. Ship. Watch the support load before Stage 2.
 4. Stage 2: identity on comments → presence → branch-version merge → sign-off. Ship.
-5. Stage 3: CRDT schema + the flowModel bridge (headless, node-vitest-testable first — the
-   model builder runs without a view) → relay → awareness → per-user undo → composites.
+5. Stage 3: its own build order, `27-multiplayer.md` § Build order (independent of 1–4).
 
 ## Exit criteria (per stage)
 
@@ -231,8 +200,7 @@ document computes to the restricted errors and an allowed one to the real values
   via a share link, restore and diff versions.
 - **2:** two people take turns on one document with identified comments and a visible
   conflict copy when they collide.
-- **3:** two people move nodes and edit literals in the same document at once, see each
-  other's cursors, each undo their own work, and get identical computed values.
+- **3:** `27-multiplayer.md` § The bar.
 
 ## Open author calls
 

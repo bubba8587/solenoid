@@ -1,39 +1,27 @@
-// [[B16]]
+// [[B16]] oneFormulaSurface, [[formula-language#Excel names on nodes]]
 import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";
-import { formulaFunctionNames } from "../../src/graph/excelFormula";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
-import { FX_FUNCTION_NAMES, FRAME_SURFACE_NAMES } from "../../src/graph/excelFunctions";
+import { formulaFunctionNames, FRAME_SURFACE_NAMES } from "../../src/graph/excelFunctions";
+import { EXCEL_NAMES } from "./fixtures/excelNames";
 import { NODE_OPS } from "../../src/graph/nodeOps";
 import { despace } from "../../src/graph/formulaNodeParity";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
 
-// [[B16]] oneFormulaSurface: an ALL-CAPS (incl. dotted) leaf/op label claims a formula-callable
-// name; anything else is Title Case. The label is a card title ([[D22]] oneNamePerCard), so the case IS the
-// signal — an all-caps name a user can't call, or a Title-Case name that shadows a real Excel
-// function, both misreport what the node does.
-
-// Acronym proper-nouns + the Solenoid-only ISNULL op may stay all-caps though they don't dispatch.
 const ALLCAPS_ALLOW = new Set(["BMI", "TDEE", "SVG", "KPI", "ISNULL"]);
-// The flagship Convert leaf may stay Title Case though CONVERT dispatches.
 const TITLECASE_EXCEL_ALLOW = new Set(["CONVERT"]);
 
 const isCategory = (e: CatalogEntry): e is CatalogCategory => e.type === "category";
 const isPair = (e: CatalogEntry): e is CatalogPair => e.type === "pair";
-// One all-caps identifier token (a name a user could type): letters/digits/dots, no lowercase.
-// Tested on ORIGINAL casing — "ValueInput" (from "Value Input") is Title Case, not all-caps.
-// (despace() UPPERCASES, so it can't be used for the case test — strip spaces case-preserving.)
+// On the label as written: despace() uppercases, so "Value Input" would read as all-caps.
 const isAllCapsTok = (s: string) => /^[A-Z][A-Z0-9.]*$/.test(s);
 const strip = (s: string) => s.replace(/\s+/g, "");
-// An "X / Y" (or "X, Y") label enumerates several names — split and check each (case preserved).
 const tokens = (label: string) => label.split(/[/,]/).map((t) => strip(t)).filter(Boolean);
 
 describe("[[B16]] oneFormulaSurface — ALL CAPS ⟺ callable function name", () => {
   initPackFormulas();
-  // Excel + Solenoid dispatch, plus the refused frame verbs: a FRAME_SURFACE_NAMES key IS a real
-  // Excel function, and typing it redirects to the node that carries the name (GROUPBY, PIVOTBY).
   const callable = new Set([...formulaFunctionNames(), ...Object.keys(FRAME_SURFACE_NAMES)].map((n) => n.toUpperCase()));
-  const excel = new Set(FX_FUNCTION_NAMES.map((n) => n.toUpperCase())); // real Excel (Formula.js) names
+  const excel = EXCEL_NAMES; // real Excel names, as Formula.js listed them
 
   const leafLabels: string[] = [];
   const walk = (entries: CatalogEntry[]): void => {

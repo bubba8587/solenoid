@@ -1,115 +1,27 @@
 // [[B16]]
-import { ClassicPreset } from "rete";
-import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, readRole, numListIn, numListOut, numIn, numOut, listIn, readAsRole, leftOutAs, type BroadcastResult, type UnitOperand } from "./shared";
-import { rolesFrom, required, argRole } from "../inputRoles";
-import { lnGamma, roundDigits, gcdLcm } from "./mathUtils";
-import { solError, type SolError, isSolError } from "../errorValue";
-import { guardFinite, powerOf } from "../valueKinds";
+import { GraphNode } from "../graphModel";
+import { numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult } from "./shared";
+import { rolesFrom, required } from "../inputRoles";
+import { nodeOnCore } from "../nodeOnCore";
+import { type SolError } from "../errorValue";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import type { FormatCarrySpec } from "./formatCarry";
-import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, arithmeticCell, isUnitCell, fromUnit, type ArithmeticOp } from "../unitValue";
-import { fcUnitToUnit, displayMagnitudeOf } from "../unitBridge";
-import { type Dim, DIMENSIONLESS, dimEqual, dimPow, isDimensionless } from "../dimension";
-
-// ─── Bessel helpers ───────────────────────────────────────────────────────────
-
-const EULER_GAMMA = 0.5772156649015329;
-
-function _besselJ(x: number, n: number): number {
-  let sum = 0;
-  const h = x / 2;
-  for (let m = 0; m < 60; m++) {
-    const term = Math.pow(-1, m) * Math.pow(h, 2 * m + n) / Math.exp(lnGamma(m + 1) + lnGamma(m + n + 1));
-    sum += term;
-    if (Math.abs(term) < Math.abs(sum) * 1e-15) break;
-  }
-  return sum;
-}
-
-function _besselI(x: number, n: number): number {
-  let sum = 0;
-  const h = x / 2;
-  for (let m = 0; m < 60; m++) {
-    const term = Math.pow(h, 2 * m + n) / Math.exp(lnGamma(m + 1) + lnGamma(m + n + 1));
-    sum += term;
-    if (term < Math.abs(sum) * 1e-15) break;
-  }
-  return sum;
-}
-
-function _besselY0(x: number): number {
-  const j0 = _besselJ(x, 0);
-  let sum = 0;
-  let H = 0;
-  for (let m = 1; m < 60; m++) {
-    H += 1 / m;
-    const term = Math.pow(-1, m + 1) * H * Math.pow(x / 2, 2 * m) / Math.exp(2 * lnGamma(m + 1));
-    sum += term;
-  }
-  return (2 / Math.PI) * ((Math.log(x / 2) + EULER_GAMMA) * j0 + sum);
-}
-
-function _besselY(x: number, n: number): number {
-  if (x <= 0) return NaN;
-  if (n === 0) return _besselY0(x);
-  const y0 = _besselY0(x);
-  const j1 = _besselJ(x, 1);
-  let sum1 = 0; let H = 1;
-  for (let m = 1; m < 60; m++) {
-    H += 1 / (m + 1);
-    const h = x / 2;
-    const term = Math.pow(-1, m) * (H + 1 / (m + 1)) * Math.pow(h, 2 * m + 1) / Math.exp(lnGamma(m + 1) + lnGamma(m + 2));
-    sum1 += term;
-  }
-  const y1 = (2 / Math.PI) * ((Math.log(x / 2) + EULER_GAMMA) * j1 - 1 / x - sum1);
-  let yPrev = y0, yCur = y1;
-  for (let k = 1; k < n; k++) {
-    const yNext = (2 * k / x) * yCur - yPrev;
-    yPrev = yCur; yCur = yNext;
-  }
-  return yCur;
-}
-
-function _besselK0(x: number): number {
-  const i0 = _besselI(x, 0);
-  let sum = 0;
-  let H = 0;
-  for (let m = 0; m < 60; m++) {
-    if (m > 0) H += 1 / m;
-    const term = H * Math.pow(x / 2, 2 * m) / Math.exp(2 * lnGamma(m + 1));
-    sum += term;
-  }
-  return -(Math.log(x / 2) + EULER_GAMMA) * i0 + sum;
-}
-
-function _besselK(x: number, n: number): number {
-  if (x <= 0) return NaN;
-  if (n === 0) return _besselK0(x);
-  const k0 = _besselK0(x);
-  const k1 = (Math.PI / 2) * (_besselI(x, -1) - _besselI(x, 1));
-  let kPrev = k0, kCur = k1;
-  for (let k = 1; k < n; k++) {
-    const kNext = (2 * k / x) * kCur + kPrev;
-    kPrev = kCur; kCur = kNext;
-  }
-  return kCur;
-}
+import { type UnitCell, type ArithmeticOp } from "../unitValue";
+export type { ArithmeticOp } from "../unitValue";
 
 // ─── Arithmetic ──────────────────────────────────────────────────────────────
-
-export { arithmeticCell, type ArithmeticOp } from "../unitValue";
 
 export const ARITHMETIC_OP_META = {
   add:      { label: "Add",        carry: true,  description: "`A + B`" },
   sub:      { label: "Subtract"  , carry: true,  description: "`A − B`" },
   mul:      { label: "Multiply"  , carry: false, description: "`A × B`" },
   div:      { label: "Divide",     carry: false, description: "`A ÷ B`. `#DIV/0!` when `B = 0`." },
-  mod:      { label: "MOD",        carry: false, description: "Remainder of `A ÷ B`. Excel: `MOD`." },
-  quotient: { label: "QUOTIENT",   carry: false, description: "Integer part of `A ÷ B`, truncated toward zero. Excel: `QUOTIENT`." },
-  pow:      { label: "POWER",      carry: false, description: "A raised to the power B. `0^0 = 1` (JS/Python/Polars; Excel gives `#NUM!`). 0 to a negative power is `#DIV/0!`, and a result too large to represent is `#OVERFLOW!`. Excel: `POWER` / `A^B`." },
+  mod:      { label: "MOD",        carry: false, description: "Remainder of `A ÷ B`, with the sign of B: `MOD(-7, 3)` is 2. It pairs with `INT(A/B)`, not QUOTIENT. Excel: `MOD`." },
+  quotient: { label: "QUOTIENT",   carry: false, description: "Integer part of `A ÷ B`, truncated toward zero: `QUOTIENT(-7, 3)` is -2. MOD's partner is `INT(A/B)`, not this. Excel: `QUOTIENT`." },
+  pow:      { label: "POWER",      carry: false, description: "A raised to the power B. `0^0 = 1`, as in JavaScript and Python (Excel gives `#NUM!`). 0 to a negative power is `#DIV/0!`, and a result too large to represent is `#OVERFLOW!`. Excel: `POWER` / `A^B`." },
 } satisfies Record<ArithmeticOp, { label: string; description: string; carry: boolean }>;
 
-export class ArithmeticNode extends ClassicPreset.Node {
+export class ArithmeticNode extends GraphNode {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
@@ -133,33 +45,8 @@ export class ArithmeticNode extends ClassicPreset.Node {
     return ARITHMETIC_OP_META[this.op].carry ? [{ output: "result", inputs: ["a", "b"] }] : [];
   }
 
-  data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
-    const a = readInput(inputs.a, this.literals.a);
-    const b = readInput(inputs.b, this.literals.b);
-    const divZero = () => solError("#DIV/0!", "Division by zero");
-    let result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
-    if (a !== null && b !== null) {
-      if (anyDimensioned(a as UnitOperand | UnitOperand[], b as UnitOperand | UnitOperand[])) {
-        result = broadcastUnit((x, y) => arithmeticCell(this.op, x, y),
-          a as UnitOperand | UnitOperand[], b as UnitOperand | UnitOperand[]);
-      } else {
-        result = broadcastErr((x, y) => {
-          switch (this.op) {
-            case "add": return x + y;
-            case "sub": return x - y;
-            case "mul": return x * y;
-            case "div": return y === 0 ? divZero() : x / y;
-            // Excel MOD's sign follows the divisor and JS % the dividend, so use the floored form.
-            case "mod": return y === 0 ? divZero() : x - y * Math.floor(x / y);
-            case "pow":      return powerOf(x, y);
-            case "quotient": return y === 0 ? divZero() : Math.trunc(x / y);
-          }
-          return null;
-        }, a, b);
-      }
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null };
   }
 }
 
@@ -216,34 +103,17 @@ export const MATH_FN_OP_META = {
 } satisfies Record<MathFnOp, { label: string; description: string; group: string }>;
 
 // Only these show the angle-mode toggle; hyperbolic ops take and return plain reals.
-export const FORWARD_TRIG_OPS = new Set<MathFnOp>(["sin", "cos", "tan", "cot", "csc", "sec"]);
-export const INVERSE_TRIG_OPS = new Set<MathFnOp>(["asin", "acos", "atan", "acot"]);
+const FORWARD_TRIG_OPS = new Set<MathFnOp>(["sin", "cos", "tan", "cot", "csc", "sec"]);
+const INVERSE_TRIG_OPS = new Set<MathFnOp>(["asin", "acos", "atan", "acot"]);
 export function isTrigOp(op: MathFnOp): boolean {
   return FORWARD_TRIG_OPS.has(op) || INVERSE_TRIG_OPS.has(op);
 }
 
 export type AngleMode = "auto" | "rad" | "deg";
-const DEG2RAD = Math.PI / 180;
-const RAD2DEG = 180 / Math.PI;
 
 const MATHFN_PRESERVE = new Set<MathFnOp>(["abs", "trunc", "int", "even", "odd"]);
-const MATHFN_FORWARD_TRIG = FORWARD_TRIG_OPS;
 
-/** Returns the result dim, #UNIT! for a dimensioned argument the op cannot take, or "strip" for a dimensionless input. */
-export function mathFnResultDim(op: MathFnOp, dim: Dim): Dim | SolError | "strip" {
-  if (isDimensionless(dim)) return "strip";
-  if (MATHFN_PRESERVE.has(op)) return dim;
-  if (op === "sqrt") return dimPow(dim, 0.5);
-  if (op === "sqrtpi") return dimPow(dim, 0.5);
-  if (op === "sign") return DIMENSIONLESS;
-  if (MATHFN_FORWARD_TRIG.has(op)) {
-    return dimEqual(dim, { angle: 1 }) ? DIMENSIONLESS
-      : unitError(`${op.toUpperCase()} needs an angle or a plain number.`);
-  }
-  return unitError(`${op.toUpperCase()} needs a dimensionless argument.`);
-}
-
-export class MathFXNode extends ClassicPreset.Node {
+export class MathFXNode extends GraphNode {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
@@ -251,6 +121,7 @@ export class MathFXNode extends ClassicPreset.Node {
   angleMode: AngleMode;
   /** Stamped by resolveTrigModes each recompute; rad until then, matching Excel. */
   _resolvedAngleMode: "rad" | "deg" = "rad";
+  static coreFields = ["_resolvedAngleMode"];
   cachedResult: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
   literals: Record<string, number> = { in: 0 };
   width = 180;
@@ -280,111 +151,18 @@ export class MathFXNode extends ClassicPreset.Node {
     return MATHFN_PRESERVE.has(this.op) ? [{ output: "result", inputs: ["in"] }] : [];
   }
 
-  data(inputs: { in?: (number | number[])[] }) {
-    const input = readInput(inputs.in, this.literals.in);
-    const mode = this.effectiveAngleMode();
-    const fwdDeg = mode === "deg" && FORWARD_TRIG_OPS.has(this.op);
-    const invDeg = mode === "deg" && INVERSE_TRIG_OPS.has(this.op);
-    const domainErr = () => solError("#DOMAIN!", "Input is outside this function's domain");
-    const computeRaw = (x: number): number | null => {
-        switch (this.op) {
-          case "abs":   return Math.abs(x);
-          case "sqrt":  return x < 0 ? null : Math.sqrt(x);
-          case "log":   return x <= 0 ? null : Math.log(x);
-          case "sin":   return Math.sin(x);
-          case "cos":   return Math.cos(x);
-          case "tan":   return Math.tan(x);
-          case "tanh":  return Math.tanh(x);
-          case "sinh":  return Math.sinh(x);
-          case "cosh":  return Math.cosh(x);
-          case "asin":  return (x < -1 || x > 1) ? null : Math.asin(x);
-          case "acos":  return (x < -1 || x > 1) ? null : Math.acos(x);
-          case "atan":  return Math.atan(x);
-          case "exp":   return Math.exp(x);
-          case "log10": return x <= 0 ? null : Math.log10(x);
-          case "log2":  return x <= 0 ? null : Math.log2(x);
-          case "sign":  return Math.sign(x);
-          case "trunc": return Math.trunc(x);
-          case "int":     return Math.floor(x);
-          case "even":    return (x >= 0 ? 1 : -1) * 2 * Math.ceil(Math.abs(x) / 2);
-          case "odd": {
-            const c = Math.ceil(Math.abs(x));
-            return (x < 0 ? -1 : 1) * (c % 2 === 0 ? c + 1 : c);
-          }
-          case "sqrtpi":  return x < 0 ? null : Math.sqrt(x * Math.PI);
-          case "acosh":   return x < 1 ? null : Math.acosh(x);
-          case "asinh":   return Math.asinh(x);
-          case "atanh":   return (x <= -1 || x >= 1) ? null : Math.atanh(x);
-          case "cot":     return Math.tan(x) === 0 ? null : 1 / Math.tan(x);
-          case "csc":     return Math.sin(x) === 0 ? null : 1 / Math.sin(x);
-          case "sec":     return Math.cos(x) === 0 ? null : 1 / Math.cos(x);
-          case "acot":    return Math.PI / 2 - Math.atan(x);
-          case "coth":    return Math.sinh(x) === 0 ? null : Math.cosh(x) / Math.sinh(x);
-          case "csch":    return Math.sinh(x) === 0 ? null : 1 / Math.sinh(x);
-          case "sech":    return 1 / Math.cosh(x);
-          case "acoth":   return (x <= -1 || x >= 1) ? (Math.abs(x) === 1 ? null : Math.atanh(1 / x)) : null;
-          case "erf": {
-            const t = 1 / (1 + 0.3275911 * Math.abs(x));
-            const p = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
-            return (x < 0 ? -1 : 1) * (1 - p * Math.exp(-x * x));
-          }
-          case "erfc": {
-            const t = 1 / (1 + 0.3275911 * Math.abs(x));
-            const p = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
-            const e = (x < 0 ? -1 : 1) * (1 - p * Math.exp(-x * x));
-            return 1 - e;
-          }
-          case "gamma":   return x > 0 ? Math.exp(lnGamma(x)) : null;
-          case "gammaln": return x > 0 ? lnGamma(x) : null;
-        }
-        return null;
-    };
-    const compute = (x: number): number | null => {
-      const r = computeRaw(fwdDeg ? x * DEG2RAD : x);
-      return r !== null && invDeg ? r * RAD2DEG : r;
-    };
-    let result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
-    if (input !== null) {
-      if (anyDimensioned(input as UnitOperand | UnitOperand[])) {
-        // A UnitCell angle is already base radians and carries its own unit; a plain or dimensionless cell follows the node's angle mode, so one list can mix both.
-        result = broadcastUnit((cell) => {
-          const rd = mathFnResultDim(this.op, dimOf(cell));
-          if (typeof rd !== "string" && (rd as SolError).code) return rd as SolError;
-          const bare = !isUnitCell(cell) || rd === "strip";
-          // abs / int / even… act on the number the user reads (5 km, 20.5 °C), never
-          // its base-SI magnitude, and the reading keeps its display unit.
-          const shown = !bare && cell.display && MATHFN_PRESERVE.has(this.op) ? fcUnitToUnit(cell.display) : null;
-          if (shown && !bare && dimEqual(shown.dim, cell.dim)) {
-            const r = computeRaw(displayMagnitudeOf(cell));
-            return r === null ? domainErr() : fromUnit(r, shown, cell.display);
-          }
-          const x = magnitudeOf(cell);
-          const raw = computeRaw(bare && fwdDeg ? x * DEG2RAD : x);
-          if (raw === null) return domainErr();
-          const out = bare && invDeg ? raw * RAD2DEG : raw;
-          return rd === "strip" ? out : tagDim(out, rd as Dim);
-        }, input as UnitOperand | UnitOperand[]);
-      } else {
-        result = broadcastErr((x) => compute(x) ?? domainErr(), input);
-      }
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null };
   }
 }
 
 // ─── Base Convert ─────────────────────────────────────────────────────────────
 
-export const BASE_CONVERT_META = {
-  label: "Base Convert",
-  description: "Bases 2–36, digits 0–9 only: a digit outside the source base or a result needing letters is `null`. Excel: `DEC2BIN`, `BIN2DEC`, `BASE`, `DECIMAL`.",
-};
-
-export class BaseConvertNode extends ClassicPreset.Node {
+export class BaseConvertNode extends GraphNode {
   static inputRoles = { from: required, to: required };
   label: string;
   cachedResult: number | null = null;
-  literals: Record<string, number> = { value: 1010, from: 2, to: 10 };
+  literals: Record<string, number> = { from: 2, to: 10 };
   width = 180; height = 235;
 
   constructor(init?: { label?: string }) {
@@ -396,61 +174,14 @@ export class BaseConvertNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { value?: number[]; from?: number[]; to?: number[] }): { result: number | SolError | null } {
-    const rawVal = readInput(inputs.value, this.literals.value ?? 0);
-    const fromRaw = readRole<number | SolError>(this, "from", inputs.from);
-    const toRaw   = readRole<number | SolError>(this, "to", inputs.to);
-    if (isSolError(fromRaw)) { this.cachedResult = null; return { result: fromRaw }; }
-    if (isSolError(toRaw)) { this.cachedResult = null; return { result: toRaw }; }
-    if (rawVal === null) { this.cachedResult = null; return { result: null }; }
-    const from = Math.round(fromRaw);
-    const to   = Math.round(toRaw);
-
-    if (from < 2 || from > 36 || to < 2 || to > 36) {
-      this.cachedResult = null; return { result: null };
-    }
-
-    const intVal = Math.trunc(rawVal);
-    const sign   = intVal < 0 ? -1 : 1;
-    const absVal = Math.abs(intVal);
-
-    let decimal: number;
-    if (from === 10) {
-      decimal = absVal;
-    } else {
-      const str = absVal.toString();
-      let d = 0;
-      for (const ch of str) {
-        const digit = parseInt(ch, 10);
-        if (digit >= from) { this.cachedResult = null; return { result: null }; }
-        d = d * from + digit;
-      }
-      decimal = d;
-    }
-
-    let result: number;
-    if (to === 10) {
-      result = sign * decimal;
-    } else if (decimal === 0) {
-      result = 0;
-    } else {
-      let n = decimal;
-      const digitArr: number[] = [];
-      while (n > 0) { digitArr.unshift(n % to); n = Math.floor(n / to); }
-      if (digitArr.some(d => d > 9)) { this.cachedResult = null; return { result: null }; }
-      let r = 0;
-      for (const d of digitArr) r = r * 10 + d;
-      result = sign * r;
-    }
-
-    this.cachedResult = Number.isFinite(result) ? result : null;
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 
 // ─── Clamp ────────────────────────────────────────────────────────────────────
 
-export class ClampNode extends ClassicPreset.Node {
+export class ClampNode extends GraphNode {
   static inputRoles = rolesFrom("CLAMP", { min: 1, max: 2 });
   static socketDocs: Record<string, string> = {
     min: "Empty, there is no floor; a blank item in a list of bounds is no floor for that item.",
@@ -476,19 +207,8 @@ export class ClampNode extends ClassicPreset.Node {
     return [{ output: "result", inputs: ["value"] }];
   }
 
-  data(inputs: { value?: (number | number[])[]; min?: (number | number[])[]; max?: (number | number[])[] }) {
-    const value = readInput(inputs.value, this.literals.value);
-    // A blank bound, whole or one item of a list, is no bound there ([[D86]] blankRoles).
-    const bound = (v: unknown, open: number): number | number[] | null =>
-      v === undefined ? null : Array.isArray(v) ? v.map((x) => (x === undefined ? open : x)) : (v as number);
-    const min = bound(readRole(this, "min", inputs.min), -Infinity);
-    const max = bound(readRole(this, "max", inputs.max), Infinity);
-    if (value === null) { this.cachedResult = null; return { result: null }; }
-    let result: number | number[] = value;
-    if (min !== null) result = broadcast((v, mn) => Math.max(v, mn), result, min) as number | number[];
-    if (max !== null) result = broadcast((v, mx) => Math.min(v, mx), result, max) as number | number[];
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | number[] | null };
   }
 }
 
@@ -502,7 +222,7 @@ export const MROUND_OP_META = {
   down:    { label: "FLOOR",   description: "Round down to a multiple (toward −∞). Excel: `FLOOR.MATH`." },
 } satisfies Record<MRoundOp, { label: string; description: string }>;
 
-export class MRoundNode extends ClassicPreset.Node {
+export class MRoundNode extends GraphNode {
   static inputRoles = rolesFrom("MROUND", { multiple: 1 });
   static socketDocs: Record<string, string> = {
     multiple: "A multiple of zero gives zero rather than an error.",
@@ -528,24 +248,8 @@ export class MRoundNode extends ClassicPreset.Node {
     return [{ output: "result", inputs: ["value"] }];
   }
 
-  data(inputs: { value?: (number | number[])[]; multiple?: (number | number[])[] }) {
-    const value    = readInput(inputs.value,    this.literals.value);
-    const multiple = readRole<number | number[] | SolError>(this, "multiple", inputs.multiple);
-    const snap = this.op === "up" ? Math.ceil : this.op === "down" ? Math.floor : Math.round;
-    let result: BroadcastResult = null;
-    if (isSolError(multiple)) result = multiple;
-    else if (value !== null) {
-      result = broadcastErr((v, m) => {
-        if (m === 0) return 0;
-        // Only MROUND requires value and multiple to share a sign; CEILING and FLOOR do not.
-        if (this.op === "nearest" && v !== 0 && Math.sign(v) !== Math.sign(m)) {
-          return solError("#DOMAIN!", "MROUND needs the value and multiple to share a sign");
-        }
-        return snap(v / m) * m;
-      }, value, multiple);
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -559,7 +263,7 @@ export const ROUNDN_OP_META = {
   rounddown: { label: "ROUNDDOWN", description: "Rounds toward zero to N decimal places. Excel: `ROUNDDOWN`." },
 } satisfies Record<RoundNOp, { label: string; description: string }>;
 
-export class RoundNNode extends ClassicPreset.Node {
+export class RoundNNode extends GraphNode {
   static inputRoles = rolesFrom("ROUND", { digits: 1 });
   label: string;
   op: RoundNOp;
@@ -581,15 +285,8 @@ export class RoundNNode extends ClassicPreset.Node {
     return [{ output: "result", inputs: ["value"] }];
   }
 
-  data(inputs: { value?: (number | number[])[]; digits?: (number | number[])[] }) {
-    const value  = readInput(inputs.value, this.literals.value);
-    const digits = readRole<number | number[]>(this, "digits", inputs.digits);
-    let result: BroadcastResult = null;
-    if (value !== null) {
-      result = broadcast((v, d) => roundDigits(v, d, this.op), value, digits);
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -602,7 +299,7 @@ export const GCD_OP_META = {
   lcm: { label: "LCM", description: "Least common multiple of two integers. Excel: `LCM`." },
 } satisfies Record<GcdOp, { label: string; description: string }>;
 
-export class GCDNode extends ClassicPreset.Node {
+export class GCDNode extends GraphNode {
   label: string;
   op: GcdOp;
   cachedResult: BroadcastResult = null;
@@ -619,12 +316,8 @@ export class GCDNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
-    const a = readInput(inputs.a, this.literals.a);
-    const b = readInput(inputs.b, this.literals.b);
-    const result = broadcastErr((x, y) => gcdLcm(this.op, [x, y]), a, b);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -641,15 +334,7 @@ export const COMBINATORICS_OP_META = {
   permutationa: { label: "PERMUTATIONA", description: "`nᵏ`: ordered arrangements with repetition. Excel: `PERMUTATIONA`." },
 } satisfies Record<CombinatoricsOp, { label: string; description: string }>;
 
-function factorial(n: number): number {
-  if (n < 0) return NaN;
-  if (n === 0) return 1;
-  let r = 1;
-  for (let i = 2; i <= n; i++) r *= i;
-  return r;
-}
-
-export class CombinatoricsNode extends ClassicPreset.Node {
+export class CombinatoricsNode extends GraphNode {
   label: string;
   op: CombinatoricsOp;
   cachedResult: number | SolError | null = null;
@@ -666,66 +351,8 @@ export class CombinatoricsNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { n?: number[]; k?: number[] }): { result: number | SolError | null } {
-    // floor, not Excel's truncate, to match Formula.js and `=FACT(2.9)` over the non-negative domain.
-    // FACT and FACTDOUBLE never read k, so a wired blank k must not blank them.
-    const usesK = this.op !== "fact" && this.op !== "factdouble";
-    const nRaw = readInput(inputs.n, this.literals.n ?? 0);
-    if (nRaw === null) { this.cachedResult = null; return { result: null }; }
-    const n = Math.floor(nRaw);
-    let k = 0;
-    if (usesK) {
-      const kRaw = readInput(inputs.k, this.literals.k ?? 0);
-      if (kRaw === null) { this.cachedResult = null; return { result: null }; }
-      k = Math.floor(kRaw);
-    }
-    let result: number | null = null;
-    let domainOk = true;
-    switch (this.op) {
-      case "combin":
-        if (n >= 0 && k >= 0 && k <= n) result = factorial(n) / (factorial(k) * factorial(n - k));
-        else domainOk = false;
-        break;
-      case "combina":
-        // C(n+k−1, k) as a product, never a negative factorial: COMBINA(0,0) is 1 and COMBINA(0,k>0) is 0.
-        if (n >= 0 && k >= 0) {
-          if (n === 0) result = k === 0 ? 1 : 0;
-          else { let r = 1; for (let i = 1; i <= k; i++) r = r * (n + k - i) / i; result = r; }
-        } else domainOk = false;
-        break;
-      case "permut":
-        if (n >= 0 && k >= 0 && k <= n) result = factorial(n) / factorial(n - k);
-        else domainOk = false;
-        break;
-      case "permutationa":
-        if (n >= 0 && k >= 0) result = Math.pow(n, k);
-        else domainOk = false;
-        break;
-      case "fact":
-        if (n >= 0) result = factorial(n);
-        else domainOk = false;
-        break;
-      case "factdouble": {
-        if (n < -1) { domainOk = false; break; }
-        if (n === -1 || n === 0) { result = 1; break; }
-        let r = 1;
-        for (let i = n; i > 0; i -= 2) r *= i;
-        result = r;
-        break;
-      }
-    }
-    if (!domainOk) {
-      const err = solError("#DOMAIN!", "Combinatorics needs non-negative whole numbers with k ≤ n");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    if (result !== null && !Number.isFinite(result)) {
-      const err = solError("#OVERFLOW!", "The result is too large to represent. Reduce N");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 
@@ -741,7 +368,7 @@ export const TWO_INPUT_MATH_OP_META = {
   gestep:  { label: "GESTEP",  description: "`1` if `A ≥ B`, else `0`. Excel: `GESTEP`." },
 } satisfies Record<TwoInputMathOp, { label: string; description: string }>;
 
-export class TwoInputMathNode extends ClassicPreset.Node {
+export class TwoInputMathNode extends GraphNode {
   label: string;
   op: TwoInputMathOp;
   cachedResult: number | (number | SolError | null)[] | SolError | null = null;
@@ -758,28 +385,8 @@ export class TwoInputMathNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
-    const a = readInput(inputs.a, this.literals.a);
-    // LOG's base and GESTEP's step are settings; B is data under every other op.
-    const b = this.op === "log" ? leftOutAs(readAsRole<number | (number | undefined)[] | undefined>(this, "b", inputs.b, argRole("LOG", 1)!), 10)
-      : this.op === "gestep" ? leftOutAs(readAsRole<number | (number | undefined)[] | undefined>(this, "b", inputs.b, argRole("GESTEP", 1)!), 0)
-      : readInput(inputs.b, this.literals.b);
-    const domainErr = () => solError("#DOMAIN!", "LOG needs x > 0 and a base > 0, ≠ 1");
-    let result: number | (number | SolError | null)[] | SolError | null = null;
-    if (a !== null && b !== null) {
-      result = broadcastErr((x, y) => {
-        switch (this.op) {
-          case "atan2":  return Math.atan2(y, x); // Excel ATAN2(x_num, y_num)
-          case "hypot":  return Math.sqrt(x * x + y * y);
-          case "log":    return (x <= 0 || y <= 0 || y === 1) ? domainErr() : Math.log(x) / Math.log(y);
-          case "delta":  return Math.abs(x - y) < 1e-12 ? 1 : 0;
-          case "gestep": return x >= y ? 1 : 0;
-        }
-        return null;
-      }, a, b);
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | (number | SolError | null)[] | SolError | null };
   }
 }
 
@@ -794,7 +401,7 @@ export const SUM_PRODUCT_OP_META = {
   sumproduct: { label: "SUMPRODUCT", description: "Dot product `Σ(xi × yi)`. Excel: `SUMPRODUCT`." },
 } satisfies Record<SumProductOp, { label: string; description: string }>;
 
-export class SumProductNode extends ClassicPreset.Node {
+export class SumProductNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Lists of unequal length pair to the shorter one, and the extra values are ignored.",
   };
@@ -814,31 +421,14 @@ export class SumProductNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { x?: number[][]; y?: number[][] }) {
-    const xs = inputs.x?.[0] ?? null;
-    const ys = inputs.y?.[0] ?? null;
-    let result: number | null = null;
-    if (xs && ys && xs.length > 0 && ys.length > 0) {
-      const n = Math.min(xs.length, ys.length);
-      let acc = 0;
-      for (let i = 0; i < n; i++) {
-        switch (this.op) {
-          case "sumx2my2":  acc += xs[i] * xs[i] - ys[i] * ys[i]; break;
-          case "sumx2py2":  acc += xs[i] * xs[i] + ys[i] * ys[i]; break;
-          case "sumxmy2":   acc += (xs[i] - ys[i]) ** 2; break;
-          case "sumproduct": acc += xs[i] * ys[i]; break;
-        }
-      }
-      result = acc;
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | null };
   }
 }
 
 // ─── SERIESSUM ────────────────────────────────────────────────────────────────
 
-export class SeriesSumNode extends ClassicPreset.Node {
+export class SeriesSumNode extends GraphNode {
   label: string;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { x: 1, n: 0, m: 1 };
@@ -855,25 +445,14 @@ export class SeriesSumNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { x?: number[]; n?: number[]; m?: number[]; coef?: number[][] }) {
-    const x = readInput(inputs.x, this.literals.x ?? 1);
-    const n = readInput(inputs.n, this.literals.n ?? 0);
-    const m = readInput(inputs.m, this.literals.m ?? 1);
-    if (x === null || n === null || m === null) { this.cachedResult = null; return { result: null }; }
-    const coef = inputs.coef?.[0] ?? null;
-    if (!coef || coef.length === 0) { this.cachedResult = null; return { result: null }; }
-    let result = 0;
-    for (let i = 0; i < coef.length; i++) {
-      result += coef[i] * Math.pow(x, n + i * m);
-    }
-    this.cachedResult = guardFinite(result, [x, n, m, ...coef]);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 
 // ─── MULTINOMIAL ──────────────────────────────────────────────────────────────
 
-export class MultinomialNode extends ClassicPreset.Node {
+export class MultinomialNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     values: "The category counts n₁, n₂, …: the multinomial coefficient of their sum.",
   };
@@ -889,16 +468,8 @@ export class MultinomialNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { values?: number[][] }) {
-    const vals = inputs.values?.[0] ?? null;
-    if (!vals || vals.length === 0) { this.cachedResult = null; return { result: null }; }
-    const ns = vals.map(Math.round);
-    if (ns.some(v => v < 0)) { this.cachedResult = null; return { result: null }; }
-    const total = ns.reduce((s, v) => s + v, 0);
-    const lnResult = lnGamma(total + 1) - ns.reduce((s, v) => s + lnGamma(v + 1), 0);
-    const result = Math.round(Math.exp(lnResult));
-    this.cachedResult = guardFinite(result, vals);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 
@@ -913,10 +484,10 @@ export const BESSEL_OP_META = {
   besselk: { label: "BESSELK", description: "Modified Bessel function of the second kind, order n. x must be `> 0`. Excel: `BESSELK`." },
 } satisfies Record<BesselOp, { label: string; description: string }>;
 
-export class BesselNode extends ClassicPreset.Node {
+export class BesselNode extends GraphNode {
   static inputRoles = rolesFrom("BESSELJ", { n: 1 });
   static socketDocs: Record<string, string> = {
-    n: "Integer order, 0 or greater.",
+    n: "Order, 0 or greater; a fraction is truncated.",
   };
   label: string;
   op: BesselOp;
@@ -933,21 +504,8 @@ export class BesselNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { x?: number[]; n?: number[] }): { result: number | null } {
-    const x = readInput(inputs.x, this.literals.x ?? 1);
-    const nRaw = readRole<number>(this, "n", inputs.n);
-    if (x === null) { this.cachedResult = null; return { result: null }; }
-    const n = Math.max(0, Math.round(nRaw));
-    let result: number;
-    switch (this.op) {
-      case "besselj": result = _besselJ(x, n); break;
-      case "bessely": result = _besselY(x, n); break;
-      case "besseli": result = _besselI(x, n); break;
-      case "besselk": result = _besselK(x, n); break;
-    }
-    if (!Number.isFinite(result)) { this.cachedResult = null; return { result: null }; }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | null };
   }
 }
 

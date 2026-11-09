@@ -1,0 +1,285 @@
+{
+ "verb": "formats",
+ "cases": [
+  {
+   "name": "a format lays on its column by name; the cells stay as they are",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a,b",
+        null,
+        "c",
+        "d,e,f",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1.5,
+        null,
+        3,
+        null,
+        -2
+       ]
+      },
+      {
+       "name": "d",
+       "type": "date",
+       "values": [
+        45000,
+        null,
+        45292.5,
+        45001,
+        null
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "formats",
+    "formats": {
+     "v": {
+      "format": "decimal",
+      "unit": "none",
+      "decimalDigits": 1,
+      "decimalMode": "places"
+     }
+    }
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a,b",
+       null,
+       "c",
+       "d,e,f",
+       null
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1.5,
+       null,
+       3,
+       null,
+       -2
+      ],
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 1,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "d",
+      "type": "date",
+      "values": [
+       45000,
+       null,
+       45292.5,
+       45001,
+       null
+      ]
+     },
+     {
+      "name": "f",
+      "type": "logical",
+      "values": [
+       true,
+       null,
+       false,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a format replaces the column's own and keeps its unit; a name no column holds does nothing",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "b",
+        "a",
+        "b"
+       ],
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 2,
+        "decimalMode": "places"
+       }
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        2
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 1,
+        "decimalMode": "places"
+       }
+      },
+      {
+       "name": "w",
+       "type": "number",
+       "values": [
+        30,
+        10,
+        null
+       ],
+       "unit": {
+        "dim": {
+         "mass": 1
+        },
+        "display": "kg"
+       }
+      },
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        7,
+        8,
+        9
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "formats",
+    "formats": {
+     "d": {
+      "format": "decimal",
+      "unit": "none",
+      "decimalDigits": 2,
+      "decimalMode": "places"
+     },
+     "w": {
+      "format": "decimal",
+      "unit": "none",
+      "decimalDigits": 1,
+      "decimalMode": "places"
+     },
+     "gone": {
+      "format": "decimal",
+      "unit": "none",
+      "decimalDigits": 1,
+      "decimalMode": "places"
+     }
+    }
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "b",
+       "a",
+       "b"
+      ],
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 2,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       2
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      },
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 2,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       30,
+       10,
+       null
+      ],
+      "unit": {
+       "dim": {
+        "mass": 1
+       },
+       "display": "kg"
+      },
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 1,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       7,
+       8,
+       9
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

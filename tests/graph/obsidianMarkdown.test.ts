@@ -1,4 +1,4 @@
-// [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet, [[C24]] arraySemantics
+// [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet, [[C24]] arraySemantics, [[reports-and-notes#Write to Obsidian]]
 import { describe, it, expect } from "vitest";
 import {
   frontmatterToYaml, yamlScalar, frameToMarkdownTable, mermaidToMarkdown, mathToMarkdown, lambdaToMarkdown,
@@ -37,8 +37,7 @@ describe("frontmatterToYaml", () => {
     expect(yamlScalar("-item")).toBe("-item"); // plain '-' + non-space stays a plain scalar
   });
   it("a multi-line / tabbed string is quoted with the newline escaped (stays valid one-line YAML)", () => {
-    // The bug this guards: a raw newline spliced into a flow scalar corrupts the
-    // whole --- block (the second line reads as new YAML). Escape it instead.
+    // A raw newline in a flow scalar would end the line early, so it is escaped.
     expect(yamlScalar("line1\nline2")).toBe('"line1\\nline2"');
     expect(yamlScalar("a\tb")).toBe('"a\\tb"');
     expect(yamlScalar('has "quote"\nand nl')).toBe('"has \\"quote\\"\\nand nl"');

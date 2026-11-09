@@ -1,8 +1,7 @@
 // [[C51]] formulaNaming
-// Frankfurter (ECB reference rates, keyless, CORS-open). URL builds and parses are pure; the node owns fetch and cache.
-import { type Unit } from "./dimension";
-import { registerDisplayUnits } from "./unitBridge";
-import { parseDateToSerial } from "./nodes/dateSerial";
+// Frankfurter (ECB reference rates, keyless, CORS-open). The node owns fetch and cache; the core reads the reply.
+import { frameFnOnCore } from "./frameBackend";
+import type { FrameValue } from "./frame";
 
 export interface Currency { code: string; name: string; }
 
@@ -43,11 +42,6 @@ export const FX_CURRENCIES: Currency[] = CURRENCY_TSV.trim().split("\n").map((li
   return { code: line.slice(0, i), name: line.slice(i + 1) };
 });
 
-// Registered as currency display units so an authored code resolves at render; an unregistered id would fall back to
-// the base-SI symbol ([[C25]] firstClassUnits).
-const CURRENCY_UNIT: Unit = { dim: { currency: 1 }, scale: 1 };
-registerDisplayUnits(Object.fromEntries(FX_CURRENCIES.map((c) => [c.code.toLowerCase(), CURRENCY_UNIT])));
-
 export function fxLatestUrl(from: string, to: string): string {
   const f = encodeURIComponent(from.trim().toUpperCase());
   const t = encodeURIComponent(to.trim().toUpperCase());
@@ -63,14 +57,11 @@ export interface FxRate {
   rate: number | null;
 }
 
-/** A malformed body gives a null rate. */
+/** The reply read on the core (`providers.rs`); a malformed body gives a null rate. */
 export function parseFxRate(text: string, to: string): FxRate {
-  let data: unknown;
-  try { data = JSON.parse(text); } catch { return { date: "", serial: NaN, rate: null }; }
-  const o = (data ?? {}) as { date?: unknown; rates?: Record<string, unknown> };
-  const date = typeof o.date === "string" ? o.date : "";
-  const r = o.rates?.[to.trim().toUpperCase()];
-  return { date, serial: date ? parseDateToSerial(date) : NaN, rate: typeof r === "number" ? r : null };
+  const r = frameFnOnCore("fxRate", [], [text, to]);
+  const [date, serial, rate] = (r && !("frame" in r) ? r.value : ["", NaN, null]) as [string, number | null, number | null];
+  return { date, serial: serial ?? NaN, rate };
 }
 
 export function fxRangeUrl(from: string, to: string, start: string, end: string): string {
@@ -79,19 +70,13 @@ export function fxRangeUrl(from: string, to: string, start: string, end: string)
   return `https://api.frankfurter.dev/v1/${start}..${end}?base=${f}&symbols=${t}`;
 }
 
-export interface FxPoint { date: string; serial: number; rate: number; }
+/** A Date and a Rate column, by date, read on the core (`providers.rs`); a day with no rate gives no row. */
+export function parseFxSeries(text: string, to: string): FrameValue {
+  const r = frameFnOnCore("fxSeries", [], [text, to]);
+  return r && "frame" in r ? r.frame : fxSeriesFrame();
+}
 
-/** Sorted by date; days with no rate (weekends, holidays) and a malformed body give no rows, never null gaps. */
-export function parseFxSeries(text: string, to: string): FxPoint[] {
-  let data: unknown;
-  try { data = JSON.parse(text); } catch { return []; }
-  const rates = (data as { rates?: Record<string, unknown> } | null)?.rates;
-  if (!rates || typeof rates !== "object") return [];
-  const sym = to.trim().toUpperCase();
-  const out: FxPoint[] = [];
-  for (const [date, day] of Object.entries(rates)) {
-    const r = (day as Record<string, unknown> | null)?.[sym];
-    if (typeof r === "number") out.push({ date, serial: parseDateToSerial(date), rate: r });
-  }
-  return out.sort((a, b) => a.serial - b.serial);
+/** The history's empty frame, before any reply. */
+export function fxSeriesFrame(): FrameValue {
+  return { __frame: true, columns: [{ name: "Date", type: "date", values: [] }, { name: "Rate", type: "number", values: [] }] };
 }

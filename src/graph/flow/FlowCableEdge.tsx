@@ -21,14 +21,14 @@ import { touchSelectStore } from "../touchSelectStore";
 import { standoffStore } from "../standoffs";
 import { drawnCableStore } from "../drawnCables";
 import { settingsStore } from "../settingsStore";
-import { ConduitNode } from "../rete-nodes";
+import { ConduitNode } from "../nodeClasses";
 import { IS_COARSE, stopDragStart } from "../coarse";
 
 export type SolFlowEdge = Edge<Record<string, unknown>, "cable">;
 
 const DEFAULT_COLOR = SOCKET_COLORS.number;
 const SELECTED_COLOR = "var(--cable-selected)";
-const RIBBON_COLOR = "#8a909c";
+const RIBBON_COLOR = "var(--sock-any)";
 const RIBBON_WIDTH = 7.2;
 const RIBBON_SPLIT = 24;
 

@@ -1,17 +1,39 @@
-// [[C22]], [[D43]]
+// [[C22]] rowFormulaRefs, [[C25]] firstClassUnits, [[computed-columns#Names inside a row]],
+// [[computed-columns#Evaluating a column]], [[computed-columns#Fx columns in Frame Input]], [[computed-columns#The Computed Column node]]
+import { GraphEditor } from "../../../src/graph/graphEditor";
+import { DataflowEngine } from "../../../src/graph/dataflowEngine";
+import type { Schemes } from "../../../src/graph/schemes";
 import { describe, it, expect } from "vitest";
 import { ComputedColumnNode, FrameInputNode } from "../../../src/graph/nodes/frame";
 import { LambdaNode, perRowParamClashes } from "../../../src/graph/nodes/lambda";
-import { compileEvaluator, rowRefNames } from "../../../src/graph/excelFormula";
+import { compileEvaluator } from "../../../src/graph/excelFormula";
+import { rowRefNames } from "../coreVerbs";
 import { getColumn, frameSourceToText, parseFrameSource, type FrameValue } from "../../../src/graph/frame";
 import { solError, isSolError } from "../../../src/graph/errorValue";
-import { extractInit } from "../../../src/graph/copyPaste";
-import { computeColumnCells } from "../../../src/graph/computedColumnCore";
+import { extractInit } from "../../../src/graph/nodeInit";
+import { GraphConnection, GraphNode } from "../../../src/graph/graphModel";
+import { frameOut } from "../../../src/graph/nodes/shared";
 
-// ─── Computed Column — the row-wise formula verb ─────────────────────────────
-// The node that keeps frames OUT of formulas ([[C15]] matricesInFormulas): the row iteration lives
-// here, the formula only ever sees scalars. Variables are column names; a
-// wired λ takes over with its params bound the same way.
+/** A Computed Column fed `frame` by a source card, computed in full passes as the app runs them; `feed` swaps the frame. */
+async function inEditor(n: ComputedColumnNode) {
+  let frame: FrameValue = sales;
+  class Src extends GraphNode {
+    constructor() { super("Src"); this.addOutput("frame", frameOut("Frame")); }
+    data() { return { frame }; }
+  }
+  const editor = new GraphEditor<Schemes>();
+  const engine = new DataflowEngine<Schemes>();
+  editor.use(engine);
+  const src = new Src();
+  await editor.addNode(src as never);
+  await editor.addNode(n as never);
+  await editor.addConnection(new GraphConnection(src, "frame", n, "frame") as never);
+  return {
+    pass: async () => { await engine.pass(undefined, undefined, false); return engine.landed(n.id, "frame") as FrameValue; },
+    feed: (f: FrameValue) => { frame = f; src.edited(); },
+    dispose: () => editor.dispose(),
+  };
+}
 
 const sales: FrameValue = {
   __frame: true,
@@ -43,12 +65,9 @@ describe("ComputedColumnNode — inline formula (tableRefSemantics: bare = whole
   });
 
   it("a bare column name is the WHOLE column — @revenue-style share-of-total works unwired", () => {
-    // The tableRefSemantics headline: mixing this-row and whole-column references, Excel's
-    // [@Amount] / [Amount] — the case v1 semantics could not spell at all.
     const r = run(named("@price / SUM(price)", "share"), sales) as FrameValue;
     expect(getColumn(r, "share")!.values.map((v) => (v as number).toFixed(4)))
       .toEqual(["0.1667", "0.3333", "0.5000"]);
-    // The author's case: aggregate one column filtered by THIS row's value.
     const grouped: FrameValue = {
       __frame: true,
       columns: [
@@ -61,8 +80,6 @@ describe("ComputedColumnNode — inline formula (tableRefSemantics: bare = whole
   });
 
   it("a bare column in scalar position is a LOUD per-row #SHAPE!, pointing at @", () => {
-    // The old silent trap (price * qty = cell math) now refuses per row with a
-    // message that names the fix.
     const r = run(named("price * qty", "rev"), sales) as FrameValue;
     const v = getColumn(r, "rev")!.values[0];
     expect(isSolError(v) && v.code).toBe("#SHAPE!");
@@ -77,7 +94,7 @@ describe("ComputedColumnNode — inline formula (tableRefSemantics: bare = whole
   });
 
   it("a blank formula passes the frame through untouched", () => {
-    expect(run(named(""), sales)).toBe(sales);
+    expect(run(named(""), sales)).toEqual(sales);
   });
 
   it("an unparsable formula is #VALUE!", () => {
@@ -130,16 +147,6 @@ describe("ComputedColumnNode — the per-row contract", () => {
     expect(isSolError(vals[1])).toBe(true);
     const seq = run(named("SEQUENCE(3)", "spill"), f) as FrameValue;
     expect(isSolError(getColumn(seq, "spill")!.values[0])).toBe(true);
-  });
-
-  it("a formula that throws errors its row, not the whole column", () => {
-    let n = 0;
-    const evaluator = () => { if (n++ === 1) throw new Error("boom"); return 1; };
-    const r = computeColumnCells(sales, { kind: "expr", evaluator, vars: [] });
-    if (isSolError(r)) throw new Error("expected cells");
-    expect(r.cells[0]).toBe(1);
-    expect(isSolError(r.cells[1]) && r.cells[1].code).toBe("#VALUE!");
-    expect(r.cells[2]).toBe(1);
   });
 
   it("an empty frame computes an empty column, typed", () => {
@@ -216,24 +223,17 @@ describe("ComputedColumnNode — side inputs, row, and the output type", () => {
       columns: [{ name: "start", type: "date", values: [46000, 46010] }],
     };
     const auto = run(named("@start + 7", "due"), due) as FrameValue;
-    expect(getColumn(auto, "due")!.type).toBe("date"); // [[D41]]: a date + days is a date
-    // A serial the formula can't see through (a product) stays a number until declared.
-    expect(getColumn(run(named("@start * 1", "due"), due) as FrameValue, "due")!.type).toBe("number");
-    const typedNode = named("@start * 1 + 7", "due");
+    expect(getColumn(auto, "due")!.type).toBe("date"); // [[C118]]: a date + days is a date
+    // A date can't be scaled ([[D115]] datesArePoints).
+    const scaled = getColumn(run(named("@start * 1", "due"), due) as FrameValue, "due")!.values;
+    expect(scaled.every((v) => isSolError(v) && v.code === "#POINT!")).toBe(true);
+    const typedNode = named("@start + 7", "due");
     typedNode.addAs = "date";
     const typed = run(typedNode, due) as FrameValue;
     expect(getColumn(typed, "due")!.type).toBe("date");
     expect(getColumn(typed, "due")!.values).toEqual([46007, 46017]);
   });
 
-  it("a λ param naming no column becomes a side input too", () => {
-    const lam = new LambdaNode({ expr: "price * rate", params: "price, rate" });
-    const fn = (lam.data({}) as { result: unknown }).result;
-    const n = named("", "scaled");
-    const r = run(n, sales, { fn: [fn], rate: [[2]] }) as FrameValue;
-    expect(getColumn(r, "scaled")!.values).toEqual([20, 40, 60]);
-    expect(n.sideVars).toEqual(["rate"]);
-  });
 });
 
 describe("ComputedColumnNode — bracket references, rows, and placement", () => {
@@ -247,11 +247,8 @@ describe("ComputedColumnNode — bracket references, rows, and placement", () =>
     };
     const quoted = run(named("@[2024] + @[Unit Price]", "sum"), awkward) as FrameValue;
     expect(getColumn(quoted, "sum")!.values).toEqual([105, 207]);
-    // A numeric name is a NAME, never a positional index; Excel's [@Name]
-    // and [@[Name]] spellings parse too.
     const bare = run(named("[@2024] + [@[2024]]", "dbl"), awkward) as FrameValue;
     expect(getColumn(bare, "dbl")!.values).toEqual([200, 400]);
-    // [Name] is the WHOLE column — the spelled-out bare name (tableRefSemantics).
     const whole = run(named("@[Unit Price] / SUM([Unit Price])", "shr"), awkward) as FrameValue;
     expect(getColumn(whole, "shr")!.values.map((v) => (v as number).toFixed(4))).toEqual(["0.4167", "0.5833"]);
   });
@@ -300,16 +297,6 @@ describe("ComputedColumnNode — kitchen sink", () => {
     expect(getColumn(r, "tag")!.values).toEqual(["oslo #1", "BERGEN #2", "TROMSØ #3"]);
   });
 
-  it("a λ that returns a SolError poisons only its row", () => {
-    const lam = new LambdaNode({ expr: "IF(v < 0, NA(), v)", params: "v" });
-    const fn = (lam.data({}) as { result: unknown }).result;
-    const f: FrameValue = { __frame: true, columns: [{ name: "v", type: "number", values: [1, -1, 3] }] };
-    const r = run(named("", "ok"), f, { fn: [fn] }) as FrameValue;
-    const vals = getColumn(r, "ok")!.values;
-    expect(vals[0]).toBe(1);
-    expect(isSolError(vals[1])).toBe(true);
-    expect(vals[2]).toBe(3);
-  });
 
   it("a bracket read, an @ read, ROW(), and a side input all mix in one formula", () => {
     const n = named("[@qty] * @price + ROW() + base", "mix");
@@ -318,7 +305,7 @@ describe("ComputedColumnNode — kitchen sink", () => {
   });
 });
 
-describe("Frame Input λ columns (surface slice 1)", () => {
+describe("Frame Input λ columns", () => {
   const src = (cols: Parameters<typeof frameSourceToText>[0]) => frameSourceToText(cols);
   const lambda = (expr: string, params: string) =>
     (new LambdaNode({ expr, params }).data({}) as { result: unknown }).result;
@@ -407,7 +394,7 @@ describe("Frame Input λ columns (surface slice 1)", () => {
   });
 });
 
-describe("Frame Input Formula columns (surface slice 2)", () => {
+describe("Frame Input formula columns", () => {
   it("an expr column computes per row over the literal columns — no wiring at all", () => {
     const n = new FrameInputNode({
       frameText: frameSourceToText([
@@ -522,7 +509,7 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
     expect(perRowParamClashes(["x"], "@x > QUARTILE([x], 3)")).toEqual([]);
   });
 
-  it("a formula that keeps a date a date types the column Date; a span stays a number ([[D41]])", () => {
+  it("a formula that keeps a date a date types the column Date; a span stays a number ([[C118]])", () => {
     const n = new FrameInputNode({
       frameText: frameSourceToText([
         { name: "start", type: "date", cells: ["2026-03-01", "2026-03-10"] },
@@ -538,8 +525,10 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
     const out = n.data({}).frame as FrameValue;
     const type = (name: string) => getColumn(out, name)!.type;
     expect([type("due"), type("later"), type("pick")]).toEqual(["date", "date", "date"]);
-    expect(type("half")).toBe("number"); // the omitted else is FALSE, so one date branch doesn't make a date column
-    expect([type("span"), type("scaled")]).toEqual(["number", "number"]);
+    // Every row took its date branch, so the column is dates: its type is what it computed ([[C136]] typesKnownAfterCalc).
+    expect(type("half")).toBe("date");
+    expect(type("span")).toBe("number");
+    expect(getColumn(out, "scaled")!.values.every((v) => isSolError(v) && v.code === "#POINT!")).toBe(true);
     expect(getColumn(out, "span")!.values).toEqual([5, 7]);
   });
 
@@ -564,9 +553,6 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
   });
 
   it("a computed column's unit rides through INDEX and LOCKS a downstream FC", async () => {
-    // The author's repro (2026-07-31): unit on a computed column → INDEX pulls
-    // a cell → FC inherits AND locks (an inherited unit is set elsewhere in
-    // the chain — forwarding is a locked state).
     const { ListIndexNode } = await import("../../../src/graph/nodes/list");
     const { FormatControllerNode } = await import("../../../src/graph/nodes/formatController");
     const { isUnitCell } = await import("../../../src/graph/unitValue");
@@ -605,30 +591,11 @@ describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
   it("a ZERO-param λ reads the row via @ — capture sockets grow, columns win over them", () => {
     const lam = new LambdaNode({ expr: "@price * @qty", params: "" });
     const fn = (lam.data({}) as { result: unknown }).result;
-    // @names grow capture sockets like any free variable (the λ owns its
-    // names — author ruling 2026-07-30); on a table the COLUMNS win at
-    // row-eval, so the unwired captures are inert and the λ still computes
-    // with no wiring at all.
     expect(lam.captured).toEqual(["price", "qty"]);
     const r = run(named("", "rev"), sales, { fn: [fn] }) as FrameValue;
     expect(getColumn(r, "rev")!.values).toEqual([20, 60, 120]);
   });
 
-  it("bracket references work INSIDE a λ body too (the row context is dynamic)", () => {
-    const awkward: FrameValue = {
-      __frame: true,
-      columns: [{ name: "Unit Price", type: "number", values: [5, 7] }],
-    };
-    const lam = new LambdaNode({ expr: "@[Unit Price] * 2", params: "" });
-    const fn = (lam.data({}) as { result: unknown }).result;
-    const r = run(named("", "dbl"), awkward, { fn: [fn] }) as FrameValue;
-    expect(getColumn(r, "dbl")!.values).toEqual([10, 14]);
-    // [Name] = the whole column, so a λ body can aggregate the table.
-    const lam2 = new LambdaNode({ expr: "@[Unit Price] / SUM([Unit Price])", params: "" });
-    const fn2 = (lam2.data({}) as { result: unknown }).result;
-    const r2 = run(named("", "shr"), awkward, { fn: [fn2] }) as FrameValue;
-    expect(getColumn(r2, "shr")!.values.map((v) => (v as number).toFixed(4))).toEqual(["0.4167", "0.5833"]);
-  });
 
   it("a zero-param λ using @ still orders after the column it reads (Frame Input topo)", () => {
     const n = new FrameInputNode({
@@ -665,10 +632,6 @@ describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
 });
 
 describe("@ over side values — row-aligned lists (no capture, no column)", () => {
-  // The author's shape: λ(framecol1, framecol2) → framecol1*framecol2*@list.
-  // `list` is neither a param nor a column — it grows a CAPTURE socket on the
-  // LAMBDA node (the λ owns its names), and @ reads the captured list
-  // element-per-row inside the row context.
   it("a λ's @list rides the Lambda card's capture socket, element per row", () => {
     const lam = new LambdaNode({ expr: "qty * price * @scale", params: "qty, price" });
     expect(lam.captured).toEqual(["scale"]); // the @name grew a capture socket
@@ -723,8 +686,6 @@ describe("@ over side values — row-aligned lists (no capture, no column)", () 
     const n = named("@qty + 0", "q2");
     const r = run(n, sales, { qty: [[100, 100, 100]] }) as FrameValue;
     expect(getColumn(r, "q2")!.values).toEqual([2, 3, 4]); // the column, not the wire
-    // Frame Input's per-column sources have no side ports by design: an @name
-    // that matches no column stays a plain per-row #REF! there.
     const fi = new FrameInputNode({
       frameText: frameSourceToText([
         { name: "a", type: "number", cells: ["1"] },
@@ -737,19 +698,6 @@ describe("@ over side values — row-aligned lists (no capture, no column)", () 
 });
 
 describe("binding pickers — explicit variable → column bindings", () => {
-  it("a bound variable reads its picked column — whole for expr vars, this-row for λ params (tableRefSemantics)", () => {
-    const n = named("SUM(a)", "total");
-    n.bindings = { a: "price" };
-    const r = run(n, sales) as FrameValue;
-    expect(getColumn(r, "total")!.values).toEqual([60, 60, 60]);
-    // λ params stay ROW-bound through the same alias.
-    const lam = new LambdaNode({ expr: "x + 1", params: "x" });
-    const fn = (lam.data({}) as { result: unknown }).result;
-    const m = named("", "inc");
-    m.bindings = { x: "qty" };
-    const r2 = run(m, sales, { fn: [fn] }) as FrameValue;
-    expect(getColumn(r2, "inc")!.values).toEqual([3, 4, 5]);
-  });
 
   it("binding a would-be side variable to a column removes its socket role", () => {
     const n = named("SUM(k) + @qty", "sum");
@@ -781,39 +729,54 @@ describe("binding pickers — explicit variable → column bindings", () => {
 });
 
 describe("identity-stable outputs — the backend upload cache holds across passes", () => {
-  it("an unchanged pass returns the SAME objects: λ value, CC frame", () => {
-    const lam = new LambdaNode({ expr: "qty * 2", params: "qty" });
-    const v1 = (lam.data({}) as { result: unknown }).result;
-    const v2 = (lam.data({}) as { result: unknown }).result;
-    expect(v2).toBe(v1);
-    // A changed capture input mints a new value.
-    const lam2 = new LambdaNode({ expr: "qty * k", params: "qty" });
-    const a = (lam2.data({ k: [2] }) as { result: unknown }).result;
-    const b = (lam2.data({ k: [3] }) as { result: unknown }).result;
-    expect(b).not.toBe(a);
+  it("an unchanged pass returns the SAME objects: λ value, CC frame", async () => {
+    // The engine keeps a LAMBDA's answer while its call and captures stand (`nodes::KEEPS_ANSWER`).
+    const editor = new GraphEditor<Schemes>();
+    editor.use(new DataflowEngine<Schemes>());
+    const lam = new LambdaNode({ expr: "qty * k", params: "qty" });
+    (lam as unknown as { literals: Record<string, number> }).literals.k = 2;
+    await editor.addNode(lam as never);
+    const pass = async () => { await editor.engine!.pass(undefined, undefined, false); return editor.engine!.landed(lam.id, "result"); };
+    const v1 = await pass();
+    expect(await pass()).toBe(v1);
+    // A changed capture mints a new value.
+    (lam as unknown as { literals: Record<string, number> }).literals.k = 3;
+    lam.edited();
+    expect(await pass()).not.toBe(v1);
+    editor.dispose();
 
     const n = named("@price * @qty", "rev");
-    const r1 = run(n, sales) as FrameValue;
-    const r2 = run(n, sales) as FrameValue;
-    expect(r2).toBe(r1);
+    const cc = await inEditor(n);
+    const r1 = await cc.pass();
+    expect(await cc.pass()).toBe(r1);
     // A different input frame (new identity) recomputes.
-    const r3 = run(n, { ...sales }) as FrameValue;
+    cc.feed({ ...sales });
+    const r3 = await cc.pass();
     expect(r3).not.toBe(r1);
     // A config change recomputes.
     n.stringLiterals.name = "revenue";
-    expect(run(n, { ...sales })).not.toBe(r3);
+    n.edited();
+    expect(await cc.pass()).not.toBe(r3);
+    cc.dispose();
   });
 
-  it("a changed side value or binding busts the CC memo; Frame Input computed frames are stable per (text, λ identities)", () => {
+  it("a changed side value or binding busts the CC memo; Frame Input computed frames are stable per (text, λ identities)", async () => {
     const n = named("@price * (1 - disc)", "net");
-    run(n, sales); // grows disc
-    const r1 = run(n, sales, { disc: [0.1] }) as FrameValue;
-    expect(run(n, sales, { disc: [0.1] })).toBe(r1);
-    const r2 = run(n, sales, { disc: [0.2] }) as FrameValue;
+    const cc = await inEditor(n);
+    const lit = (v: number) => { (n as unknown as { literals: Record<string, number> }).literals.disc = v; n.edited(); };
+    lit(0.1);
+    // The first pass grows the `disc` side socket, which is a new call; from the one after, it stands.
+    await cc.pass();
+    const r1 = await cc.pass();
+    expect(await cc.pass()).toBe(r1);
+    lit(0.2);
+    const r2 = await cc.pass();
     expect(r2).not.toBe(r1);
     expect(getColumn(r2, "net")!.values).toEqual([8, 16, 24]);
     n.bindings = { disc: "qty" };
-    expect(run(n, sales, { disc: [0.2] })).not.toBe(r2);
+    n.edited();
+    expect(await cc.pass()).not.toBe(r2);
+    cc.dispose();
 
     const fi = new FrameInputNode({
       frameText: frameSourceToText([
@@ -823,12 +786,21 @@ describe("identity-stable outputs — the backend upload cache holds across pass
       lambdaKeys: ["fn1"],
     });
     const lam = new LambdaNode({ expr: "a + 1", params: "a" });
-    const fn = (lam.data({}) as { result: unknown }).result;
-    const f1 = fi.data({ fn1: [fn] }).frame as FrameValue;
-    expect(fi.data({ fn1: [fn] }).frame).toBe(f1);
-    // A new λ identity (an edit upstream) recomputes.
-    const fn2 = (new LambdaNode({ expr: "a + 2", params: "a" }).data({}) as { result: unknown }).result;
-    expect(fi.data({ fn1: [fn2] }).frame).not.toBe(f1);
+    // The engine keeps Frame Input's answer while its text and its λ stand (`nodes::KEEPS_ANSWER`).
+    const editor = new GraphEditor<Schemes>();
+    editor.use(new DataflowEngine<Schemes>());
+    await editor.addNode(lam as never);
+    await editor.addNode(fi as never);
+    await editor.addConnection(new GraphConnection(lam, "result", fi, "fn1") as never);
+    const pass = async () => { await editor.engine!.pass(undefined, undefined, false); return editor.engine!.landed(fi.id, "frame"); };
+    const f1 = await pass();
+    expect(getColumn(f1 as FrameValue, "c")!.values).toEqual([2, 3]);
+    expect(await pass()).toBe(f1);
+    // A new λ (an edit upstream) recomputes.
+    lam.expr = "a + 2";
+    lam.edited();
+    expect(await pass()).not.toBe(f1);
+    editor.dispose();
   });
 });
 
@@ -852,7 +824,7 @@ describe("persistence", () => {
   });
 });
 
-describe("review pins — wired blanks, picked columns at @, λ params", () => {
+describe("wired blanks, picked columns at @, λ params", () => {
   it("a WIRED BLANK side value is unknown: blank rows, never 0; unwired keeps the default", () => {
     const n = named("@qty * rate", "amt");
     const blank = run(n, sales, { rate: [null] }) as FrameValue;

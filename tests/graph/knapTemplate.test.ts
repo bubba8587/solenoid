@@ -1,4 +1,5 @@
-// [[C68]], [[D54]]
+// [[C68]], [[C44]] dateSerials, [[reports-and-notes#Rendering]]
+import { solDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import {
   hasKnapSyntax, extractKnapVariables, embedBareVariables, renderKnap, renderKnapPages, knapErrorText,
@@ -73,13 +74,12 @@ describe("toTemplateValue", () => {
     ]);
     expect(toTemplateValue(frame)).toEqual(frameToTemplateRows(frame));
   });
-  it("a date serial reads as ISO ONLY when the source socket says date; a bare number stays a number", () => {
+  it("a date reads as ISO; a bare number stays a number", () => {
     const s = serial("2026-03-01");
-    expect(toTemplateValue(s, "date")).toBe("2026-03-01");
-    expect(toTemplateValue(s + 0.5, "date")).toBe("2026-03-01T12:00:00");
-    expect(toTemplateValue(s, "number")).toBe(s);
+    expect(toTemplateValue(solDate(s))).toBe("2026-03-01");
+    expect(toTemplateValue(solDate(s + 0.5))).toBe("2026-03-01T12:00:00");
     expect(toTemplateValue(s)).toBe(s);
-    expect(toTemplateValue([s, null], "datelist")).toEqual(["2026-03-01", null]);
+    expect(toTemplateValue([solDate(s), null])).toEqual(["2026-03-01", null]);
   });
   it("scalars, lists, null and errors pass as plain data", () => {
     expect(toTemplateValue("t")).toBe("t");
@@ -143,8 +143,7 @@ describe("renderKnap keepUnknown (a Note's mode)", () => {
   });
 });
 
-// The Personal Finance advisor letter compares raw operands with >= / <= in
-// {% if %} verdicts, so pin that Knap supports both, including at equality.
+
 describe("renderKnap {% if %} comparisons", () => {
   it("supports >= and <= including the equal boundary", async () => {
     const at = async (body: string, vars: Record<string, unknown>) => (await renderKnap(body, vars)).output;

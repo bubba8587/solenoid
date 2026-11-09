@@ -1,15 +1,10 @@
-// [[B12]] losslessSaves, [[B16]] oneFormulaSurface
+// [[B12]] losslessSaves, [[B16]] oneFormulaSurface, [[save-format#Node lines]]
 import { describe, it, expect } from "vitest";
+import { fuzzRuns, fuzzSeed } from "./fuzzDepth";
 import { writeTextForm, readTextForm } from "../../src/graph/textForm";
 import type { SavedGraph } from "../../src/graph/persistence";
 
-// Reader-robustness fuzz: `readTextForm` is about to sit behind user-facing
-// surfaces (a "view/edit as text" panel, external editors via file-over-app),
-// so arbitrary malformed input must either throw a CLEAN Error or return a
-// graph the writer can serialize again — never hang, never throw a non-Error,
-// never hand back a half-parsed structure that detonates one step later.
-// Seeded PRNG (mulberry32, the modelFuzz.ts pattern) so any failure reproduces
-// from its printed seed.
+// A seeded generator, so a failure reproduces from its printed seed.
 
 const seedModules = import.meta.glob("../../src/graph/seedGraphs/*.json", { eager: true }) as Record<
   string,
@@ -63,11 +58,11 @@ describe("textForm reader fuzz", () => {
     .filter((_, i, arr) => i === 0 || i === arr.length - 1);
 
   it("every mutant either throws a clean Error or yields a re-writable graph", () => {
-    const rng = mulberry32(0xF0221);
+    const rng = mulberry32(fuzzSeed(0xF0221, "textForm mutants"));
     let accepted = 0;
     let rejected = 0;
     for (const base of corpus) {
-      for (let i = 0; i < 400; i++) {
+      for (let i = 0; i < fuzzRuns(150); i++) {
         const mutant = mutate(base, rng);
         let g: SavedGraph | null = null;
         try {

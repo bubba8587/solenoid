@@ -1,4 +1,4 @@
-// [[B16]]
+// [[B16]], [[add-menu#Where each name comes from]], [[add-menu#The search rows]]
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
@@ -31,21 +31,13 @@ describe("[[B16]] oneFormulaSurface — an Excel name a node answers to is a sea
 });
 
 describe("[[B16]] oneFormulaSurface — a description's 'Excel: X.' sign-off agrees with NODE_EXCEL", () => {
-  // The sign-off is a SECOND copy of the node's Excel names, whose one home is
-  // NODE_EXCEL[type] (or the op's fx). Every function name a sign-off states must
-  // resolve to this leaf's own Excel/formula names — else the card claims an
-  // equivalence the Inspector/search don't carry.
   const leaves = flattenLeaves(buildCatalog(false));
   const opFx = (type: string): string[] => {
     const decl = opsFor(type);
     return decl?.ops?.map((o) => (o.fx ?? despace(o.label)).toUpperCase()) ?? [];
   };
   const FUNC = /[A-Z][A-Z0-9]*(?:\.[A-Z0-9]+)*/g;
-  // A sign-off is an EQUIVALENCE CLAIM only when its tail is a plain list of function
-  // names (VSTACK, "COUNT / ROWS") — a period-terminated run of caps/dots/slashes/
-  // commas. A tail with parens, operators or lowercase prose ("MIN(MAX(x,min),max)",
-  // "MAX − MIN", "XLOOKUP or VLOOKUP") is an Excel CONSTRUCTION, explanatory not a
-  // claim, and is not pinned.
+  // A claim: a period-terminated run of caps, dots, slashes and commas.
   const CLAIM = /Excel:\s*([A-Z0-9][A-Z0-9. /,]*?)\.(?:\s|$)/g;
   const signoffNames = (desc: string): string[] => {
     const out: string[] = [];
@@ -74,8 +66,6 @@ describe("[[B16]] oneFormulaSurface — a description's 'Excel: X.' sign-off agr
 });
 
 describe("[[B16]] oneFormulaSurface — no surface derives a node's name from its class name", () => {
-  // The class name is internal (the save type key); the ONE fallback that reads it is
-  // nodeTypeName in catalogUtils.ts, and only for a node with no catalog entry.
   const SRC = path.join(__dirname, "../../src/graph");
   const walk = (dir: string, out: string[] = []): string[] => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {

@@ -1,0 +1,283 @@
+{
+  "v": 2,
+  "order": 5040,
+  "label": "Data science: clusters, components, a test",
+  "group": "Packs",
+  "nodes": [
+    {
+      "id": "head",
+      "x": 0,
+      "y": 0,
+      "type": "NoteNode",
+      "init": {
+        "label": "Data Science",
+        "color": "amber",
+        "collapsed": false,
+        "width": 760,
+        "height": 150,
+        "body": "Eight points in two clumps. **K-Means** with k = 2 finds the clumps without being told which point is which; **PCA** finds the direction the points spread along most. **Mann–Whitney U** and **KS** ask whether two samples could come from the same population, without assuming either is normal.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "xs",
+      "x": 0,
+      "y": 220,
+      "type": "ListInputNode",
+      "init": {
+        "label": "x",
+        "dataType": "number",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "1.0, 1.4, 0.8, 1.2, 5.1, 5.6, 4.8, 5.3"
+      }
+    },
+    {
+      "id": "ys",
+      "x": 0,
+      "y": 400,
+      "type": "ListInputNode",
+      "init": {
+        "label": "y",
+        "dataType": "number",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "2.1, 1.7, 2.4, 1.9, 6.2, 5.8, 6.5, 6.0"
+      }
+    },
+    {
+      "id": "pts",
+      "x": 440,
+      "y": 220,
+      "type": "FrameFromListsNode",
+      "init": {
+        "label": "Points",
+        "width": 220,
+        "height": 240,
+        "valueKeys": [
+          "name0",
+          "vals0",
+          "name1",
+          "vals1"
+        ]
+      },
+      "literals": {},
+      "stringLiterals": {
+        "name0": "x",
+        "name1": "y"
+      }
+    },
+    {
+      "id": "km",
+      "x": 880,
+      "y": 220,
+      "type": "KMeansNode",
+      "init": {
+        "label": "K-Means",
+        "width": 200,
+        "height": 190
+      },
+      "literals": {
+        "k": 2
+      }
+    },
+    {
+      "id": "pca",
+      "x": 880,
+      "y": 520,
+      "type": "PcaNode",
+      "init": {
+        "label": "PCA",
+        "width": 200,
+        "height": 215,
+        "standardize": false
+      }
+    },
+    {
+      "id": "clustered",
+      "x": 1320,
+      "y": 220,
+      "type": "FrameFromListsNode",
+      "init": {
+        "label": "Points by cluster",
+        "width": 220,
+        "height": 240,
+        "valueKeys": [
+          "name0",
+          "vals0",
+          "name1",
+          "vals1",
+          "name2",
+          "vals2"
+        ]
+      },
+      "literals": {},
+      "stringLiterals": {
+        "name0": "x",
+        "name1": "y",
+        "name2": "cluster"
+      }
+    },
+    {
+      "id": "scatter",
+      "x": 1760,
+      "y": 220,
+      "type": "ChartNode",
+      "init": {
+        "label": "Clusters",
+        "op": "scatter",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Two clumps, found;x=x;y=y;c=cluster"
+      }
+    },
+    {
+      "id": "a",
+      "x": 0,
+      "y": 860,
+      "type": "ListInputNode",
+      "init": {
+        "label": "Group A",
+        "dataType": "number",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "12, 15, 14, 10, 13, 11"
+      }
+    },
+    {
+      "id": "b2",
+      "x": 0,
+      "y": 1080,
+      "type": "ListInputNode",
+      "init": {
+        "label": "Group B",
+        "dataType": "number",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "18, 21, 19, 22, 17, 20"
+      }
+    },
+    {
+      "id": "mw",
+      "x": 440,
+      "y": 860,
+      "type": "HypothesisTestNode",
+      "init": {
+        "label": "",
+        "op": "mannwhitney",
+        "width": 180,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "ks",
+      "x": 880,
+      "y": 860,
+      "type": "HypothesisTestNode",
+      "init": {
+        "label": "",
+        "op": "ks",
+        "width": 180,
+        "height": 210
+      },
+      "literals": {}
+    }
+  ],
+  "connections": [
+    {
+      "source": "xs",
+      "sourceOutput": "list",
+      "target": "pts",
+      "targetInput": "vals0"
+    },
+    {
+      "source": "ys",
+      "sourceOutput": "list",
+      "target": "pts",
+      "targetInput": "vals1"
+    },
+    {
+      "source": "pts",
+      "sourceOutput": "frame",
+      "target": "km",
+      "targetInput": "frame"
+    },
+    {
+      "source": "pts",
+      "sourceOutput": "frame",
+      "target": "pca",
+      "targetInput": "frame"
+    },
+    {
+      "source": "xs",
+      "sourceOutput": "list",
+      "target": "clustered",
+      "targetInput": "vals0"
+    },
+    {
+      "source": "ys",
+      "sourceOutput": "list",
+      "target": "clustered",
+      "targetInput": "vals1"
+    },
+    {
+      "source": "km",
+      "sourceOutput": "labels",
+      "target": "clustered",
+      "targetInput": "vals2"
+    },
+    {
+      "source": "clustered",
+      "sourceOutput": "frame",
+      "target": "scatter",
+      "targetInput": "values"
+    },
+    {
+      "source": "a",
+      "sourceOutput": "list",
+      "target": "mw",
+      "targetInput": "a"
+    },
+    {
+      "source": "b2",
+      "sourceOutput": "list",
+      "target": "mw",
+      "targetInput": "b"
+    },
+    {
+      "source": "a",
+      "sourceOutput": "list",
+      "target": "ks",
+      "targetInput": "a"
+    },
+    {
+      "source": "b2",
+      "sourceOutput": "list",
+      "target": "ks",
+      "targetInput": "b"
+    }
+  ]
+}

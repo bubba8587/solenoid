@@ -72,6 +72,10 @@
   width: 240px;
 }
 
+.solenoid-node--xwide {
+  width: 340px;
+}
+
 .solenoid-node--geocode {
   width: 240px;
 }
@@ -79,6 +83,21 @@
 .solenoid-node.solenoid-node--display-grow {
   width: max-content;
   min-width: 180px;
+}
+/* Content sizes a Display up to this and no further; a hand resize goes past it. */
+.solenoid-node.solenoid-node--display-grow:not(.solenoid-node--sized) {
+  max-width: 560px;
+}
+/* As a hand-sized body does: the content box scrolls inside its own border. */
+.solenoid-node__body--capped {
+  max-height: 480px;
+}
+.solenoid-node__body--capped > :last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: auto;
 }
 
 .solenoid-node.solenoid-node--display-grow-scalar {
@@ -355,7 +374,12 @@
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  width: 44px;
+  /* As wide as its longest word, one word a line, so every hint ends 10px in from the edge however long its words. */
+  width: min-content;
+  /* A hint wider than the label's 44px reserve covers the label's end in the header's own tint, faded in, never printed over it. */
+  padding-left: 8px;
+  background: linear-gradient(to right, transparent,
+    color-mix(in srgb, var(--node-accent, var(--surface)) var(--header-tint), var(--surface)) 8px);
   white-space: normal;
   line-height: 1.25;
   text-align: right;
@@ -363,7 +387,8 @@
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 45%, var(--text));
+  /* The 65% lives in the ink, not the element, so the backing stays solid over the label. */
+  color: color-mix(in srgb, color-mix(in srgb, var(--node-accent, var(--text-dim)) 45%, var(--text)) 65%, transparent);
   opacity: 0;
   /* Hidden, not just transparent, so 300 resting hints cost no paint per pan frame; it flips after the fade-out. */
   visibility: hidden;
@@ -373,7 +398,7 @@
 }
 
 .solenoid-node:hover .solenoid-node__type-hint {
-  opacity: 0.65;
+  opacity: 1;
   visibility: visible;
   transition: opacity 200ms;
 }
@@ -725,6 +750,128 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   height: auto;
   padding: 0;
 }
+.solenoid-composite__edit { margin-bottom: 2px; }
+.solenoid-composite__solve {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.solenoid-composite__solve > .solenoid-node__recalc-btn { flex: 1 1 auto; }
+.solenoid-composite__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.solenoid-composite__editor > .solenoid-node__section { margin-top: 0; }
+.solenoid-composite__row { margin-top: 0; }
+.solenoid-composite__row > .solenoid-node__field-label {
+  flex: 0 0 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.solenoid-composite__row > .solenoid-node__inline-input,
+.solenoid-composite__row > .solenoid-composite__op + .solenoid-node__inline-input { flex: 1 1 0; }
+.solenoid-composite__op { flex: 0 0 52px; }
+.solenoid-composite__pm { flex: 0 0 auto; color: var(--text-muted); }
+.solenoid-composite__mc-input {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.solenoid-composite__grid {
+  display: grid;
+  gap: 4px;
+  align-items: center;
+}
+.solenoid-composite__colheads > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.solenoid-node__inline-input.solenoid-composite__text {
+  font-family: inherit;
+  text-align: left;
+}
+/* A Pipeline's steps ([[C53]] pipelineIsCompositePreset). */
+.solenoid-pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 6px;
+}
+/* About seven steps, then the list scrolls inside the card (`nowheel` keeps the wheel off the canvas). */
+.solenoid-pipeline__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 216px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* A Recess, as the card's value boxes are (DESIGN.md § Surfaces). */
+  padding: 2px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.solenoid-pipeline__step {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 4px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.solenoid-pipeline__step:hover { background: var(--btn-hover); }
+/* Selected as a Navigator group row is: a ring and a tint in the card's own accent, so a step reads as part of its card. */
+.solenoid-pipeline__step--sel,
+.solenoid-pipeline__step--sel:hover {
+  background: color-mix(in srgb, var(--node-accent, var(--border-strong)) 22%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--node-accent, var(--border-strong)) 70%, var(--text));
+  color: var(--text-bright);
+  font-weight: 600;
+}
+.solenoid-pipeline__step--sel .solenoid-pipeline__num { color: inherit; }
+.solenoid-pipeline__num {
+  flex: 0 0 auto;
+  min-width: 14px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-align: right;
+}
+.solenoid-pipeline__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.solenoid-pipeline__fault {
+  padding: 2px 4px;
+  color: var(--sol-error);
+  font-size: 11px;
+}
+
+.solenoid-composite__note {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
 
 
 .solenoid-node__inline-input {
@@ -750,11 +897,16 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   -webkit-appearance: none;
   margin: 0;
 }
-/* An empty field's placeholder is what it reads as ([[D96]] emptySlotShowsItsValue): muted, like a formula's empty slot. */
+/* An empty field's placeholder shows what it reads as, muted ([[D96]] emptySlotShowsItsValue); only an Example, which
+   the card computes nothing from, is italic. */
 .solenoid-node__inline-input::placeholder,
 .solenoid-node__quoted-input::placeholder {
   color: var(--text-dim);
   opacity: 0.6;
+}
+.sol-placeholder-example::placeholder,
+.solenoid-node__io-row--example .solenoid-node__inline-input::placeholder,
+.solenoid-node__io-row--example .solenoid-node__quoted-input::placeholder {
   font-style: italic;
 }
 .solenoid-node__inline-input:focus {
@@ -838,6 +990,17 @@ body.solenoid-scrubbing * {
   flex: 1 1 auto;
   min-width: 0;
 }
+/* A keyed wildcard slot: its field, then the kind button (`sol-coltype`), neutral: only the op picker spends the
+   accent in a card's body (DESIGN.md § Op pickers). */
+.solenoid-node__keyed {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.solenoid-node__keyed > .sol-coltype { width: 18px; height: 18px; color: var(--text); }
+.solenoid-node__keyed > .sol-coltype:hover { border-color: var(--text-dim); }
 .solenoid-node__quoted--inline .solenoid-node__quoted-field {
   flex: 1 1 auto;
   min-width: 0;
@@ -941,19 +1104,87 @@ body.solenoid-scrubbing * {
   color: var(--text);
 }
 
+/* One repeated group of rows (a Filter condition, a Sort key, a SUMIFS pair): its rows breathe, and a hairline with
+   room on both sides parts it from the next. */
 .solenoid-node__pair-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 7px;
+  margin-bottom: 7px;
   box-shadow: inset 0 -1px 0 var(--border);
-  margin-bottom: 3px;
 }
-.solenoid-node__pair-group:last-of-type {
+.solenoid-node__pair-group:not(:has(+ .solenoid-node__pair-group)) {
   box-shadow: none;
-  margin-bottom: 0;
+  padding-bottom: 0;
+}
+/* A group whose rule rides above it, carrying its remove button at the right end (`PairHead`: SWITCH, IFS, List and
+   Frame Filter, List Sort, SUMIFS). */
+.solenoid-node__pair-group--headed,
+.solenoid-node__pair-group--headed:not(:has(+ .solenoid-node__pair-group)) {
+  box-shadow: none;
+  padding-bottom: 0;
+  margin-bottom: 4px;
+}
+.solenoid-node__pair-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 14px;
+}
+.solenoid-node__pair-rule {
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--border);
 }
 
 .solenoid-node__section-divider {
   height: 1px;
   background: var(--border);
   margin: 4px 0;
+}
+
+/* The chart's own marks sit above the click target, so only the target takes the pointer. */
+.solenoid-node__regions svg * {
+  pointer-events: none;
+}
+
+.solenoid-node__regions svg .solenoid-node__regions-pick {
+  pointer-events: all;
+}
+
+/* Conditional Regions' Margin checkbox, beside the ≤ / < toggle. */
+.solenoid-node__regions-margin {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: 11px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* Conditional Regions on a list op: each item beside its region color. */
+.solenoid-node__region-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.solenoid-node__region-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.solenoid-node__region-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
 }
 
 .solenoid-node__output-value {
@@ -1211,22 +1442,43 @@ body.solenoid-scrubbing * {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-dim);
-  opacity: 0.5;
+  /* A square of the field's own background, a little see-through, so the glyph reads over a scrollbar beneath it. */
+  background: color-mix(in srgb, var(--surface-sunken) 85%, transparent);
+  border-radius: 4px;
+  color: color-mix(in srgb, var(--text-dim) 60%, transparent);
   cursor: ns-resize;
 }
 .solenoid-field-resize--both {
   cursor: nwse-resize;
 }
 .solenoid-field-resize:hover {
-  opacity: 0.9;
   color: var(--node-accent, var(--accent));
 }
 @media (pointer: coarse) {
-  .solenoid-field-resize { right: 0; bottom: 0; padding: 7px; opacity: 0.7; }
+  .solenoid-field-resize { right: 0; bottom: 0; padding: 7px; }
 }
 .solenoid-layout-field {
   position: relative;
+}
+.solenoid-layout-field + .solenoid-layout-field,
+.solenoid-layout-field + .solenoid-node__add-input { margin-top: 6px; }
+/* Inside an empty layout field, bottom-left, clear of the resize grip at bottom-right. */
+.solenoid-record-layout__suggest {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  z-index: 5;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.solenoid-record-layout__suggest:hover {
+  color: var(--text-bright);
+  background: var(--btn-hover);
 }
 .solenoid-layout-field__hide {
   position: absolute;
@@ -1260,6 +1512,14 @@ body.solenoid-scrubbing * {
   color: var(--text-muted);
   font-style: italic;
   cursor: default;
+}
+/* The Record card's figure: a stack of boxes that scrolls in its box rather than squashing (chart-figures.md § Sizing). */
+.solenoid-record__figure {
+  position: relative;
+  max-height: 260px;
+  margin-top: 4px;
+  overflow: auto;
+  scrollbar-gutter: stable;
 }
 .solenoid-record__pager {
   display: flex;
@@ -1296,6 +1556,15 @@ body.solenoid-scrubbing * {
   cursor: default;
 }
 .solenoid-mermaid {
+  --pele-bg: var(--surface);
+  --pele-fg: var(--text);
+  --pele-muted: var(--text-muted);
+  --pele-line: var(--text-muted);
+  --pele-surface: var(--surface);
+  --pele-surface-alt: var(--surface-sunken);
+  --pele-border: var(--border);
+  --pele-accent: var(--accent);
+  --pele-error: var(--sol-error);
   display: flex;
   justify-content: center;
   overflow: auto;
@@ -1303,7 +1572,7 @@ body.solenoid-scrubbing * {
   -webkit-user-select: none;
 }
 .solenoid-mermaid svg { max-width: 100%; height: auto; }
-/* Overrides mermaid's inline max-width, so the diagram fills a resized Display box. */
+/* Overrides the diagram's own size, so it fills a resized Display box. */
 .solenoid-node--sized .solenoid-mermaid { overflow: hidden; }
 .solenoid-node--sized .solenoid-mermaid svg {
   max-width: none !important;
@@ -1345,3 +1614,13 @@ body.solenoid-scrubbing * {
   border-color: var(--node-accent, var(--accent));
   color: var(--text);
 }
+
+/* A Constant's symbol (π, e) and a Physics Constant's unit in the card's accent, so each reads as a label beside the
+   value on the open box and on the tinted collapsed cell alike. The accent as it stands: --node-accent is already
+   themed (`themeAccent`), full strength on the dark canvas and dimmed in light, as the Slicer's and Cards' accent text. */
+.solenoid-const__symbol,
+.solenoid-const__unit {
+  color: var(--node-accent, var(--accent));
+}
+.solenoid-const__symbol { margin-right: 6px; }
+.solenoid-const__unit { margin-left: 6px; font-size: 0.85em; }

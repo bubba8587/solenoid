@@ -6,17 +6,35 @@ tags: [spec, canvas]
 
 # Spec: Composite drill-in mount lifecycle
 
-Serves [[C77]] compositeIsSubgraph. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C77]] compositeIsSubgraph. It covers what the system does and blocks, and the decision each behavior serves.
 
 A composite node holds a real subgraph in its own `internalEditor`. Opening it ("drilling in") shows that subgraph on a full canvas, `FlowCompositeOverlay`, which renders the same `FlowSurface` as the main canvas. This spec covers what lives for the life of the composite, what lives only while it is open, and how chrome follows whichever canvas is showing.
+
+Code: `FlowCompositeOverlay.tsx`, `flow/drillStack.ts`, `compositeEditorStore.ts`, `compositeLogic.ts`, `activeGraph.ts`.
 
 ## What lasts and what doesn't
 
 Two lifetimes, on purpose:
 
-- **The drill stack lasts as long as the composite.** `DrillStack` holds the level's flow view, its topology pipe and its snapshot history. It is created once per composite instance by `getDrillStack` (`flow/drillStack.ts`, with the history's `recordNow` and `scheduleRecord`) and cached on the node as `__flowDrill`. The pipe attaches to the long-lived `internalEditor`, and rete has no way to remove a pipe, so building a fresh stack on every open would pile up dead pipes.
-- **The React surface lasts only while open.** Closing unmounts the whole React tree, so every card component's effects stop with it. A timer inside a card in a closed composite (a Connection node's auto-refresh, for example) cannot keep running, because there are no per-view React roots left behind.
-- **A closed level's pipes stand down.** The stack's `open` flag is raised on mount and lowered on unmount, and `isRebuilding()` reads true while it is down, so the topology pipe, the cable-settle pipe and the group-absorb pipe all do nothing for a closed level. The surface's unmount also resets the stack's handlers to idle, so the stale flow view drives no dead React state. A closed composite then behaves exactly like one never opened: its own internal pipe settles cable types ([[composite-nodes]]), and a node leaving its editor while closed is a relocation (Unpack), whose store entries stay. `drillStackGate.test.ts` pins the gate: open, close, then edit and Unpack.
+- **The drill stack lasts as long as the composite.** `DrillStack` holds the level's flow view, its topology pipe and its snapshot history. It is created once per composite instance by `getDrillStack` (with the history's `recordNow` and `scheduleRecord`) and cached on the node as `__flowDrill`. Caching it keeps the level's undo history across a close and a reopen, and its pipe attaches to the long-lived `internalEditor` once.
+- **The React surface lasts only while open.** Closing unmounts the whole React tree, so every card component's effects stop with it: there are no per-view React roots left behind to keep a component's timer running. A card that must keep working while unmounted keeps that work out of its component, as a Connection node's auto-refresh lives in its store and runs from its `data()` ([[live-connections]]).
+- **A closed level's pipes stand down.** The stack's `open` flag is raised on mount and lowered on unmount, and `isRebuilding()` reads true while it is down, so the topology pipe, the cable-settle pipe and the group-absorb pipe all do nothing for a closed level. The surface's unmount also resets the stack's handlers to idle, so the stale flow view drives no dead React state.
+- **A closed composite behaves exactly like one never opened.** Its own internal pipe settles cable types ([[composite-nodes]]), and a node leaving its editor while closed is a relocation (Unpack), whose store entries stay.
+
+Tests:
+
+- `drillStackGate.test.ts`: open, an inner edit syncs and records; closed, it does neither, and a reopen records it; closed, a removal is a relocation that keeps the node's stores, while open it forgets; an Unpack after the level closed keeps the unpacked cards' stores and wakes nothing inside.
+- `liveCardUnmounted.test.ts`: a card inside a composite auto-refreshes on its cadence from its `data()`, and a deleted one stops.
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    Closed: closed (no React tree, its pipes stand down)
+    Open: open (the level is the active graph)
+    [*] --> Closed: the drill stack is made once per composite, history kept
+    Closed --> Open: mount: hydrate, place, sync, take the chrome slots
+    Open --> Closed: leave: reconcile ports, save positions, recompute
+```
 
 ## The topology pipe
 
@@ -51,6 +69,8 @@ Leaving a level (the breadcrumb, or Escape, which goes up one level) runs `leave
 - `leaveLevels` flushes the open level's pending undo record and saves its positions. Then, for every level the jump leaves, deepest first (a crumb two levels up leaves two), it reconciles that composite's ports against its parent editor (`reconcileLeftPorts`, `compositeLogic.ts`): any port whose marker node was deleted inside is removed, together with the parent's cables on it, and port labels resync. If any cables went, a warning notice per level says how many cables and ports were removed. Drilling deeper leaves no level, so a level passed over on the way down is reconciled when a jump finally leaves it.
 - `settleAfterLeave` re-renders the composite's card on the main canvas (when the parent is the main editor), recomputes from `stack[0]`, and schedules an autosave.
 
+Tests: `compositeLeaveLevels.test.ts`: `reconcileLeftPorts` drops a port whose marker was deleted inside, with the parent's cables on it, and keeps the rest.
+
 ## Undo inside a composite
 
 Snapshot undo is per composite and lives on the drill stack, so it survives closing and reopening by design.
@@ -62,17 +82,24 @@ Snapshot undo is per composite and lives on the drill stack, so it survives clos
 
 ## Deleting inside a level
 
-The drill-in deletes through the main canvas's verb, `deleteSelection`, with its own `DeleteScope` ([[react-flow-surface-contract]]): the same ghost splicing, Conduit ghosts, FC unsplice and host-takes-its-FCs.
+The drill-in deletes through the main canvas's verb, `deleteSelection`, with its own `DeleteScope` ([[react-flow-surface-contract]]), so it splices ghosts and Conduit ghosts the same way, unsplices a docked FC, and deletes a host's FCs with it.
 
 ## Bulk edits inside a level
 
 Delete, paste, Wrap as Composite and Unpack all run under the level's `EditScope` (`s.scope`): `begin` raises `s.rebuilding`, which holds the topology sync, the cable settle and group absorption; `settle` runs `settleCableChange` over the internal editor once; the queued topology sync then re-syncs React Flow and recomputes from `stack[0]`. None of them raises the main canvas's rebuild gate or runs its `bulkSettle`, which would recompute the whole main graph. It never deletes a boundary marker, since markers are the composite's ports, and it never touches the main canvas's drawn cables or standoffs; copy skips markers the same way.
 
-The topology pipe also carries the per-node settle, `settleNodeRemoved` (`canvasActions.ts`), the same one the main canvas's pipe runs ([[stores#The rules]]): outside the gate a `noderemoved` forgets the node's stores, rebuilds group membership, re-syncs collapse, and restores a deleted group's pushes. Under the gate it does nothing, because a gated removal may be a relocation: Wrap as Composite and Unpack move node objects between editors with their ids, so their docks, names and collapse state must survive. The gated edit forgets what it really removed: Delete forgets its deleted ids, Unpack forgets the composite, and an undo restore forgets every id it replaces, at every depth, inside `restoreInternal` (the restore re-hydrates under fresh ids and restores the entries from the snapshot, so a replaced id never returns).
+The topology pipe also carries the per-node settle, `settleNodeRemoved` (`canvasActions.ts`), the same one the main canvas's pipe runs ([[stores#The rules]]): outside the gate a `noderemoved` forgets the node's stores, rebuilds group membership, re-syncs collapse, and restores a deleted group's pushes. Under the gate it does nothing, because a gated removal may be a relocation: Wrap as Composite and Unpack move node objects between editors with their ids, so their docks, names and collapse state must survive. The gated edit forgets what it really removed: Delete forgets its deleted ids, Unpack forgets the composite, and an undo restore forgets every id it replaces, at every depth, inside `restoreInternal` (the restore re-hydrates under fresh ids and restores the entries from the snapshot, so a replaced id never returns). Deleting a composite for real forgets its inner cards at every depth.
+
+Tests:
+
+- `relocationKeepsStores.test.ts`: Wrap as Composite inside a drill-in keeps the wrapped nodes' docks, names and collapse state and Unpack forgets only the composite; deleting a composite for real forgets its inner cards at every depth; an ungated removal still forgets.
+- `copyPasteSnapshot.test.ts`: a paste inside a drill-in gates and settles through the drill-in's own scope, never the main canvas's.
 
 ## Document switches
 
-`rebuildGraph` (`persistence.ts`) calls `compositeEditorStore.close()` in its bulk reset, alongside `reportStore.close()` and `presentationStore.stop()`. A drill-in left open across a document switch would render a composite node that belongs to a dead graph.
+Code: `rebuildGraph` in `persistence.ts`.
+
+`rebuildGraph` calls `compositeEditorStore.close()` in its bulk reset, alongside `reportStore.close()` and `presentationStore.stop()`. A drill-in left open across a document switch would render a composite node that belongs to a dead graph.
 
 ## Shared behavior comes from shared modules
 
@@ -80,7 +107,9 @@ Anything the drill-in shares with the main canvas comes from the same module, ne
 
 ## The breadcrumb
 
-`compositeEditorStore.ts` keeps the drill-in stack as a list of composite node instances, not ids: a nested composite is not in the main editor, so an id alone could not find it. The stack gives two things:
+Code: `compositeEditorStore.ts`.
+
+`compositeEditorStore` keeps the drill-in stack as a list of composite node instances, not ids: a nested composite is not in the main editor, so an id alone could not find it. The stack gives two things:
 
 1. Recompute always targets `stack[0]`, the ancestor in the main editor, so an edit any number of levels deep ripples outward correctly.
 2. A level's parent editor is the internal editor of `stack[i-1]` (the main editor at level 0). That is the editor a level reconciles its ports against when it closes.
@@ -88,18 +117,33 @@ Anything the drill-in shares with the main canvas comes from the same module, ne
 ## Drill-in chrome
 
 - The drill-in's backdrop fills the region the main canvas occupies, above it and below the app chrome (header, status bar, the menu and Navigator), and is opaque, so drilling in swaps only the canvas surface while the app frame stays put.
-- The one drill-in-specific piece of chrome is the floating strip at the top left, below the app header and clear of the top-right menu: the breadcrumb (each crumb a quiet text button, the current one emphasized and inert) and the port-promotion buttons, on a sunken fill with an accent-tinted border as a state cue. Undo, delete, add, zoom and the rest are the real toolbar and keyboard pointed at the active graph.
+- The one drill-in-specific piece of chrome is the floating strip at the top left, below the app header and clear of the top-right menu: the breadcrumb (each crumb a quiet text button, the current one emphasized and inert) and the port-promotion buttons, on a sunken fill with an accent-tinted border as a state cue. A deep path wraps onto more lines rather than clipping, each separator kept with the crumb after it and each crumb truncated past its own cap; desktop wraps past 460px, a phone at the strip's width. Undo, delete, add, zoom and the rest are the real toolbar and keyboard pointed at the active graph.
 - The run-mode panel sits directly under the strip, because the top-right corner belongs to the Zoom pill and the Problems and Alerts HUDs. It mirrors the outer card's controls, and its head bar always shows the current run mode while the body folds.
-- While drilled in (`html.sol-drilled-in`) the main minimap hides and the drill-in's own shows; the Navigator stays folded, because its list still reads and acts on the main graph; and the covered main canvas stops painting (`visibility: hidden`, [[html-in-canvas#The GPU texture budget]]).
-- On mobile the strip clears both top rows and the notch, stops before the right-anchored Fit and Lock pill, and stacks the crumbs above the port buttons; the run panel moves to the bottom left just above the bottom pill and starts collapsed; and the drill-in minimap is off.
+- While drilled in (`html.sol-drilled-in`) the main minimap hides and the drill-in's own shows; the Navigator stays and lists the open level, backing out through `compositeEditorStore.drillTo`, which the mounted drill-in registers so the levels it leaves settle ([[outline-panel#Composites]]), with the strip and its run controls stepping right of the Navigator on desktop, of its open panel or of its collapsed pill (`--nav-pill-w`); and the covered main canvas stops painting (`visibility: hidden`, [[html-in-canvas#The GPU texture budget]]).
+- On mobile the strip hangs flush in the corner under the top rows (the bar's accent line above it, the screen's left edge beside it, so only its bottom and right edges show), stops before the right-anchored Fit and Lock pill and holds the crumbs with the run controls under them: the port buttons move to the bottom bar, as I and O on a tab hugging the ➕ (`MobileControls.tsx`), which reach the drill-in's adder through `compositeEditorStore.registerAddPort`; the run panel becomes the strip's second row, under a hairline, its header the crumbs' size, starting collapsed and unfolding inside the strip; and the drill-in minimap is off.
 
 ## The canvas-substitution seam
 
+Code: `activeGraph.ts`.
+
 `activeGraph.ts` is the extension point for any surface that takes over the canvas: the drill-in today, possibly a focus or scratch surface later.
 
-- On mount the surface calls `setActiveGraph({ editor, view, scope })`; on unmount, `setActiveGraph(null)`. `editScopeFor(editor)` gives a bulk edit the override's scope when it edits the override's editor, and the main canvas's otherwise. Subscribers (`subscribeActiveGraph`) are notified on each change, and `isSubgraphActive()` reports whether an override is set.
+- On mount the surface calls `setActiveGraph({ editor, view, scope })`; on unmount, `setActiveGraph(null)`. `editScopeFor(editor)` gives a bulk edit the override's scope when it edits the override's editor, and the main canvas's otherwise. Subscribers (`subscribeActiveGraph`) are notified on each change.
 - Chrome reads `getActiveEditor` / `getActiveView`, and per-node code reads `getOwningEditor` / `getOwningView`, never `getEditor`. Keyboard shortcuts, copy and paste, context menus, the command palette, Tidy, selection, zoom, fit, lock and the minimap then follow the surface with no further wiring.
 - `getEditor()` / `getView()` stay bound to the main graph, because persistence reads them; pointing them at the override would autosave the substituted surface over the document ([[save-format#Saving binds the main graph]]).
-- `getOwningEditor(id)` checks the override first, then the main editor, then any graph registered with `registerOwnedGraph`, then the internal editors of closed composites at any depth, so a node in a composite nobody has open (a `data()`-time prune, say) still finds its graph; only then does it fall back to the main editor. Owned graphs are locked auxiliary canvases (the landing scene cards) whose nodes need to resolve at render time but which are never the action target. Several can be live at once, so they are a set. `getOwningView` mirrors the first three steps and then returns null: no surface shows a node in a closed composite, and the main view would pan to, move or measure an id it doesn't hold. A caller that settles the model anyway passes the null on (`reconcileFcTypes` takes a null view and re-renders nothing).
+- `getOwningEditor(id)` is per node, not per surface. It checks, in order:
+  1. the override;
+  2. the main editor;
+  3. any graph registered with `registerOwnedGraph`;
+  4. the internal editors of closed composites at any depth (on an owned canvas too), so a node in a composite nobody has open (a `data()`-time prune, say) still finds its graph;
+  5. and only then falls back to the main editor.
+- **Owned graphs** are locked auxiliary canvases (the landing scene cards) whose nodes need to resolve at render time but which are never the action target. Several can be live at once, so they are a set.
+- `getOwningView` mirrors the first three steps and then returns null: no surface shows a node in a closed composite, and the main view would pan to, move or measure an id it doesn't hold. A main-graph node re-rendering behind an open drill-in therefore still reaches the main view, where `getActiveView` would give the drill-in's. A caller that settles the model anyway passes the null on (`reconcileFcTypes` takes a null view and re-renders nothing).
 
 Nested levels need no stack in `activeGraph.ts`, because drilling replaces rather than piles up: drilling deeper unmounts the current level (its cleanup clears the override) and mounts the deeper one (which sets it again). The breadcrumb lives in `compositeEditorStore`; `_override` holds only the current surface. Grow `_override` into a push and pop stack only if a feature ever needs two live action targets at once.
+
+Tests:
+
+- `activeGraph.test.ts`: main with no drill-in open, the action layer routed to the subgraph while drilled in, `getEditor` staying main throughout, `getOwningEditor` returning the graph that holds the node (a closed composite on an owned canvas included), `getOwningView` mirroring it, a bulk edit taking the drill-in's scope only for its own editor, the clear back to main on close, and a main-graph node retyping on its own surface while a drill-in is open.
+- `isolateActive.test.ts`: isolate targets the main selection with no drill-in open and the subgraph's while drilled in.
+- `documentSource.test.ts`: a document chip finds its Report or Note inside a drill-in, not only on the main canvas.

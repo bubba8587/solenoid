@@ -1,11 +1,12 @@
 // [[B11]], [[C103]] untrustedContentSeams, [[C1]] demoVault
-import { ClassicPreset } from "rete";
-import { frameOut, strListOut, strIn, numIn, numOut, numListIn, numListOut, strOut, dateOut, dateIn, dateListOut, cubeOut, readInput } from "./shared";
+import { dayOf } from "../dateValue";
+import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
+import { frameOut, strListOut, strIn, numIn, numOut, numListIn, numListOut, strOut, dateOut, dateIn, dateListOut, cubeOut, readInput, readTextInput } from "./shared";
 import { serialToJsDate } from "./dateSerial";
 import { geocodeUrl, parseGeocode, pickGeocodeMatch, type GeocodeMatch } from "../geocodeProvider";
 import { weatherUrl, parseWeather, type TempUnit, type WeatherResult } from "../weatherProvider";
-import { holidaysUrl, parseHolidays, filterHolidays, holidaysFrame, daysToNextHoliday, type Holiday } from "../holidaysProvider";
-import { fxLatestUrl, parseFxRate, fxRangeUrl, parseFxSeries, type FxRate, type FxPoint } from "../fxProvider";
+import { holidaysUrl, holidaysOnCore } from "../holidaysProvider";
+import { fxLatestUrl, parseFxRate, fxRangeUrl, parseFxSeries, fxSeriesFrame, type FxRate } from "../fxProvider";
 import { notesToCube, type VaultNote, type VaultTypeSources } from "../vaultCube";
 import { parseMdbaseCollection, mdbaseTypeFor, type MdbaseCollection } from "../mdbaseTypes";
 import { parseObsidianTypes } from "../obsidianTypes";
@@ -16,26 +17,17 @@ import { type TypeMap } from "../vaultTypes";
 import { applyFcUnit } from "../unitBridge";
 import { isUnitCell, magnitudeOf, unitError } from "../unitValue";
 import { dimEqual, isDimensionless } from "../dimension";
-import { type Shape } from "../frameShape";
+import { shapeOfFrameValue, type Shape } from "../frameShape";
 import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";
 import { isDesktop, hasFs, readFileText, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { fetchText } from "../httpBridge";
-import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, type FrameValue, type FrameColumn, type CubeValue } from "../frame";
-import { parseCsvRows } from "../csv";
-import { engineAvailable, ipcInvoke } from "../ipcBridge";
-import { readCsvFrame, dropFrameRef, collectPreview, nativeEngineOn, type FrameRef, type FrameHandle } from "../frameBackend";
+import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, type FrameValue, type CubeValue } from "../frame";
+import { readParquetFrame, csvToFrame } from "../frameBackend";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { planFileToPlan, csvPlanToCube } from "../planImport";
 
 // ─── External-data connection nodes ─────────────────────────────────────────────
-
-export function csvToFrame(text: string): FrameValue {
-  const rows = parseCsvRows(text, { detectDelimiter: true });
-  if (rows.length === 0) return { __frame: true, columns: [] };
-  const headers = rows[0].map((h) => h.trim());
-  return frameFromCells(headers, rows.slice(1));
-}
 
 export function jsonToFrame(text: string): FrameValue {
   const data = JSON.parse(text);
@@ -52,7 +44,7 @@ export function jsonToFrame(text: string): FrameValue {
   throw new Error("Unsupported JSON shape");
 }
 
-export function remoteTextToFrame(text: string, contentType: string, url: string): FrameValue {
+function remoteTextToFrame(text: string, contentType: string, url: string): FrameValue {
   const looksJson =
     /json/i.test(contentType) ||
     /\.json(\?|$)/i.test(url) ||
@@ -62,7 +54,7 @@ export function remoteTextToFrame(text: string, contentType: string, url: string
 
 // ─── WEB SOURCE ─────────────────────────────────────────────────────────────────
 
-export class WebSourceNode extends ClassicPreset.Node {
+export class WebSourceNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Rows are never saved into the project file. Reopening the document fetches from the URL again.",
   };
@@ -105,7 +97,7 @@ export class WebSourceNode extends ClassicPreset.Node {
     }
     connectionStore.setState(this.id, { status: "loading" });
     try {
-      const { text: body, contentType } = await fetchText(ref);
+      const { text: body, contentType } = await fetchText(ref, { from: this.id });
       if (this.inflightKey !== key) return { frame: this.cachedResult };
       const frame = remoteTextToFrame(body, contentType, ref);
       this.cachedResult = frame;
@@ -139,7 +131,7 @@ async function fetchParsed<T>(
   if (!requestNetwork(nodeId)) return null;
   connectionStore.setState(nodeId, { status: "loading" });
   try {
-    const { text, contentType } = await fetchText(url);
+    const { text, contentType } = await fetchText(url, { from: nodeId });
     const v = parse(text, contentType);
     const { rows, cols } = size(v);
     connectionStore.setState(nodeId, { status: "ok", rows, cols, fetchedAt: Date.now() });
@@ -150,7 +142,7 @@ async function fetchParsed<T>(
   }
 }
 
-export function htmlTableToFrame(html: string, index1: number): FrameValue {
+function htmlTableToFrame(html: string, index1: number): FrameValue {
   if (typeof DOMParser === "undefined") throw new Error("HTML parsing needs a browser environment.");
   const doc = new DOMParser().parseFromString(html, "text/html");
   const tables = doc.querySelectorAll("table");
@@ -165,7 +157,7 @@ export function htmlTableToFrame(html: string, index1: number): FrameValue {
   return frameFromCells(headers, body);
 }
 
-export function xpathToList(html: string, query: string): string[] {
+function xpathToList(html: string, query: string): string[] {
   if (typeof DOMParser === "undefined") throw new Error("XML parsing needs a browser environment.");
   const q = query.trim();
   if (q === "") return [];
@@ -181,7 +173,7 @@ export function xpathToList(html: string, query: string): string[] {
 
 // ─── IMPORT HTML (Nth table on a page → Frame) ──────────────────────────────────
 
-export class ImportHtmlNode extends ClassicPreset.Node {
+export class ImportHtmlNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "The first row becomes headers only when the page marks it as a header row.",
   };
@@ -225,7 +217,7 @@ export class ImportHtmlNode extends ClassicPreset.Node {
 
 // ─── IMPORT XML (XPath on a page → text list) ───────────────────────────────────
 
-export class ImportXmlNode extends ClassicPreset.Node {
+export class ImportXmlNode extends GraphNode {
   label: string;
   url: string;
   query: string;
@@ -265,7 +257,7 @@ export class ImportXmlNode extends ClassicPreset.Node {
 }
 
 // ─── LOCAL FILE (a file in the Settings target folder) ──────────────────────────
-export class LocalFileNode extends ClassicPreset.Node {
+export class LocalFileNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file. Empty for a Project XML, GanttProject or Primavera file, which reads as a Plan.",
     plan: "A project plan: Project XML, GanttProject, Primavera XER, or a CSV with Predecessors like 3FS+2d. Tasks nest as the outline. Empty otherwise.",
@@ -280,9 +272,7 @@ export class LocalFileNode extends ClassicPreset.Node {
 
   private lastKey: string | undefined;
   private inflightKey: string | undefined;
-  private inflight: Promise<{ frame: FrameValue | FrameRef | SolError | null; plan: CubeValue | null }> | undefined;
-  /** Owned by this node: drop it with `dropFrameRef` before replacing or clearing it. */
-  private ref: FrameRef | null = null;
+  private inflight: Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> | undefined;
 
   constructor(init?: { label?: string; fileName?: string; refreshMinutes?: number }) {
     super("LocalFile");
@@ -301,12 +291,12 @@ export class LocalFileNode extends ClassicPreset.Node {
     return /\.(xml|gan|xer)$/i.test(name);
   }
 
-  async data(): Promise<{ frame: FrameValue | FrameRef | SolError | null; plan: CubeValue | null }> {
+  async data(): Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const folder = getCsvFolder();
     const name = this.fileName.trim();
     const key = connectionStore.key(this.id, `${folder}\u0000${name}`);
-    if (key === this.lastKey) return { frame: this.ref ?? this.cachedResult, plan: this.cachedPlan };
+    if (key === this.lastKey) return { frame: this.cachedResult, plan: this.cachedPlan };
     if (this.inflightKey !== key || !this.inflight) {
       this.inflightKey = key;
       this.inflight = this.load(folder, name, key);
@@ -314,63 +304,43 @@ export class LocalFileNode extends ClassicPreset.Node {
     return this.inflight;
   }
 
-  private async load(folder: string, name: string, key: string): Promise<{ frame: FrameValue | FrameRef | SolError | null; plan: CubeValue | null }> {
+  private async load(folder: string, name: string, key: string): Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> {
     const parquet = LocalFileNode.isParquet(name);
     const stale = () => this.inflightKey !== key;
     const superseded = { frame: null, plan: null };
     this.cachedPlan = null;
     this.planNotes = [];
-    const fail = (message: string, status: "idle" | "error" = "error") => {
+    const fail = (message: string, status: "idle" | "error" = "error", err?: SolError) => {
       if (stale()) return superseded;
-      if (this.ref) { dropFrameRef(this.ref); this.ref = null; }
-      const out = status === "error" && parquet ? solError("#REF!", message) : null;
+      const out = status === "error" && parquet ? (err ?? solError("#REF!", message)) : null;
       this.cachedResult = out;
       this.lastKey = key;
       connectionStore.setState(this.id, { status, message });
       return { frame: out, plan: null };
     };
-    const adopt = (ref: FrameRef | null) => {
-      if (this.ref && this.ref !== ref) dropFrameRef(this.ref);
-      this.ref = ref;
-      this.lastKey = key;
-    };
-    if (parquet ? (!isDesktop() || !engineAvailable()) : (!isDesktop() && !isDemoVaultPath(folder))) {
-      return fail(parquet ? "Desktop app (native engine) only" : "Desktop app only");
+    if (parquet ? !isDesktop() : (!isDesktop() && !isDemoVaultPath(folder))) {
+      return fail("Desktop app only");
     }
     if (folder === "") return fail("Set a target folder in Settings", "idle");
     if (name === "") return fail("Pick a file", "idle");
+    if (!isInsideVault(name)) return fail("The file must be inside the data folder");
     connectionStore.setState(this.id, { status: "loading" });
     try {
-      if (parquet && !nativeEngineOn()) {
-        // The native engine reads the file, and its rows come over to the app's own engine.
-        const handle = await ipcInvoke<string>("engine_read_parquet", { folder, name });
-        const columns = await ipcInvoke<FrameColumn[]>("engine_collect", { handle }).finally(() => { void ipcInvoke("engine_drop", { handle }).catch(() => {}); });
-        if (stale()) return superseded;
-        const frame: FrameValue = { __frame: true, columns };
-        adopt(null);
-        this.cachedResult = frame;
-        connectionStore.setState(this.id, { status: "ok", rows: frameRowCount(frame), cols: columns.length, fetchedAt: Date.now() });
-        return { frame, plan: null };
-      }
       if (parquet) {
-        const handle = await ipcInvoke<string>("engine_read_parquet", { folder, name });
-        const ref: FrameRef = { __frameRef: handle as FrameHandle, __plan: [] };
-        if (stale()) { dropFrameRef(ref); return superseded; }
-        const preview = await collectPreview(ref);
-        if (stale()) { dropFrameRef(ref); return superseded; }
-        adopt(ref);
-        this.cachedResult = preview;
-        const rows = !preview || isSolError(preview) ? 0 : (preview.__totalRows ?? frameRowCount(preview));
-        const cols = !preview || isSolError(preview) ? 0 : preview.columns.length;
-        connectionStore.setState(this.id, { status: "ok", rows, cols, fetchedAt: Date.now() });
-        return { frame: ref, plan: null };
+        const frame = await readParquetFrame(folder, name);
+        if (isSolError(frame)) return fail(frame.message, "error", frame);
+        if (stale()) return superseded;
+        this.lastKey = key;
+        this.cachedResult = frame;
+        connectionStore.setState(this.id, { status: "ok", rows: frameRowCount(frame), cols: frame.columns.length, fetchedAt: Date.now() });
+        return { frame, plan: null };
       }
       if (LocalFileNode.isPlanFile(name)) {
         const text = await readFileText(folder, name);
         if (stale()) return superseded;
         const plan = planFileToPlan(text);
         if (!plan) throw new Error("Not a Project XML, GanttProject or Primavera file");
-        adopt(null);
+        this.lastKey = key;
         this.cachedResult = null;
         this.cachedPlan = plan.cube;
         this.planNotes = plan.unsupported;
@@ -380,15 +350,9 @@ export class LocalFileNode extends ClassicPreset.Node {
         });
         return { frame: null, plan: plan.cube };
       }
-      const frame = nativeEngineOn() && !isDemoVaultPath(folder)
-        ? await (async () => {
-            const r = await readCsvFrame(folder, name);
-            if (isSolError(r)) throw new Error(r.message);
-            return r;
-          })()
-        : csvToFrame(await readFileText(folder, name));
+      const frame = csvToFrame(await readFileText(folder, name));
       if (stale()) return superseded;
-      adopt(null);
+      this.lastKey = key;
       this.cachedResult = frame;
       this.cachedPlan = csvPlanToCube(frame);
       connectionStore.setState(this.id, {
@@ -405,7 +369,7 @@ export class LocalFileNode extends ClassicPreset.Node {
 }
 
 // ─── GEOCODE (place name → lat / lon / timezone) ────────────────────────────────
-export class GeocodeNode extends ClassicPreset.Node {
+export class GeocodeNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     place: "A place name, for example Boise or Paris.",
     timezone: "The IANA time zone name, for example America/Boise.",
@@ -466,7 +430,7 @@ export class GeocodeNode extends ClassicPreset.Node {
 }
 
 // ─── WEATHER (Open-Meteo forecast: a Daily frame + Now scalars) ─────────────────
-export class WeatherNode extends ClassicPreset.Node {
+export class WeatherNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     lat: "Latitude.",
     lon: "Longitude.",
@@ -498,11 +462,7 @@ export class WeatherNode extends ClassicPreset.Node {
   }
 
   frameShape(): Shape {
-    return { columns: [
-      { name: "Date", type: "date" }, { name: "Rain mm", type: "number" }, { name: "Rain %", type: "number" },
-      { name: "High", type: "number" }, { name: "Low", type: "number" }, { name: "ET₀ mm", type: "number" },
-      { name: "Condition", type: "string" },
-    ] };
+    return shapeOfFrameValue(parseWeather("{}", this.unit).daily);
   }
 
   data(inputs: { lat?: number[]; lon?: number[] }): { daily: FrameValue | null; temp: unknown; condition: string | null } {
@@ -547,7 +507,7 @@ export class WeatherNode extends ClassicPreset.Node {
 }
 
 // ─── HOLIDAYS (Nager.Date: a year's public holidays as a frame + a date list) ────
-export class HolidaysNode extends ClassicPreset.Node {
+export class HolidaysNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "One row per holiday: date, English name, local name.",
     dates: "Every holiday's date. Skipped by NETWORKDAYS and WORKDAY.",
@@ -559,7 +519,8 @@ export class HolidaysNode extends ClassicPreset.Node {
   year: number;
   refreshMinutes: number;
   width = 240; height = 250;
-  cached: Holiday[] | null = null;
+  /** The last reply's text, read afresh against the region on each pass. */
+  cached: string | null = null;
   private _lastKey: string | undefined;
 
   constructor(init?: { label?: string; country?: string; region?: string; year?: number; refreshMinutes?: number }) {
@@ -575,14 +536,17 @@ export class HolidaysNode extends ClassicPreset.Node {
   }
 
   frameShape(): Shape {
-    return { columns: [
-      { name: "Date", type: "date" }, { name: "Name", type: "string" }, { name: "Local", type: "string" },
-    ] };
+    return shapeOfFrameValue(holidaysOnCore("[]", "", 0).frame);
   }
 
   private static todaySerial(): number {
     const d = new Date();
     return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
+  }
+
+  /** The holidays that apply in the card's region, and the days to the next. */
+  applicable(): { frame: FrameValue; next: number | null } {
+    return holidaysOnCore(this.cached ?? "[]", this.region, HolidaysNode.todaySerial());
   }
 
   data(): { frame: FrameValue; dates: number[]; next: number | null } {
@@ -600,12 +564,8 @@ export class HolidaysNode extends ClassicPreset.Node {
         fetchInBackground(this.id, this.fetchHolidays(year, country));
       }
     }
-    const applicable = filterHolidays(this.cached ?? [], this.region);
-    return {
-      frame: holidaysFrame(applicable),
-      dates: applicable.map((h) => h.serial),
-      next: daysToNextHoliday(applicable, HolidaysNode.todaySerial()),
-    };
+    const { frame, next } = this.applicable();
+    return { frame, dates: (frame.columns[0]?.values ?? []) as number[], next };
   }
 
   private async fetchHolidays(year: number, country: string): Promise<void> {
@@ -614,10 +574,11 @@ export class HolidaysNode extends ClassicPreset.Node {
     try {
       const { text } = await fetchText(holidaysUrl(year, country));
       if (this._lastKey !== key) return;
-      this.cached = parseHolidays(text);
-      connectionStore.setState(this.id, this.cached.length === 0
+      this.cached = text;
+      const rows = frameRowCount(holidaysOnCore(text, "", 0).frame);
+      connectionStore.setState(this.id, rows === 0
         ? { status: "error", message: "No holidays" }
-        : { status: "ok", rows: this.cached.length, cols: 3, fetchedAt: Date.now() });
+        : { status: "ok", rows, cols: 3, fetchedAt: Date.now() });
     } catch (e) {
       if (this._lastKey !== key) return;
       this.cached = null;
@@ -650,7 +611,7 @@ function isoDaysFromNow(days: number): string {
   return new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 }
 
-/** The amount in the To currency, #UNIT! when it carries another currency than From ([[D47]] noMixCurrencies), an error passed on ([[D35]] errorInErrorOut); null waits for the rate. */
+/** The amount in the To currency, #UNIT! when it carries another currency than From ([[C25]] firstClassUnits), an error passed on ([[C24]] arraySemantics); null waits for the rate. */
 function convertAmount(amount: unknown, from: string, to: string, rate: number | null): unknown {
   if (amount == null || amount === "") return null;
   if (isSolError(amount)) return amount;
@@ -663,7 +624,7 @@ function convertAmount(amount: unknown, from: string, to: string, rate: number |
   return rate == null ? null : applyFcUnit(n * rate, to);
 }
 
-export class FxNode extends ClassicPreset.Node {
+export class FxNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     amount: "How much, in the From currency: one amount or a list.",
     from: "The currency to convert out of.",
@@ -684,7 +645,7 @@ export class FxNode extends ClassicPreset.Node {
   refreshMinutes: number;
   width = 240; height = 250;
   cached: FxRate | null = null;
-  cachedSeries: FxPoint[] | null = null;
+  cachedSeries: FrameValue | null = null;
   private _lastKey: string | undefined;
 
   constructor(init?: { label?: string; mode?: FxMode; refreshMinutes?: number }) {
@@ -697,7 +658,7 @@ export class FxNode extends ClassicPreset.Node {
     if (this.mode === "history") this.seedDefaultRange();
   }
 
-  private makeInput(key: string): ClassicPreset.Input<ClassicPreset.Socket> {
+  private makeInput(key: string): GraphInput<GraphSocket> {
     switch (key) {
       case "amount":    return numListIn("Amount");
       case "from":      return strIn("From");
@@ -706,7 +667,7 @@ export class FxNode extends ClassicPreset.Node {
       default:          return dateIn("To date");
     }
   }
-  private makeOutput(key: string): ClassicPreset.Output<ClassicPreset.Socket> {
+  private makeOutput(key: string): GraphOutput<GraphSocket> {
     switch (key) {
       case "converted": return numListOut("Converted");
       case "rate":      return numOut("Rate");
@@ -716,7 +677,7 @@ export class FxNode extends ClassicPreset.Node {
   }
 
   frameShape(): Shape {
-    return { columns: [{ name: "Date", type: "date" }, { name: "Rate", type: "number" }] };
+    return shapeOfFrameValue(fxSeriesFrame());
   }
 
   keysDroppedBySwitch(next: FxMode): { inputs: string[]; outputs: string[] } {
@@ -793,25 +754,18 @@ export class FxNode extends ClassicPreset.Node {
         fetchInBackground(this.id, this.fetchSeries(from, to, start, end));
       }
     }
-    return { frame: this.seriesFrame() };
+    return { frame: this.cachedSeries ?? fxSeriesFrame() };
   }
 
   private readDate(wired: unknown[] | undefined, literal: string | undefined, dayOffset: number): string {
     if (wired && wired.length > 0) {
-      const s = wired[0];
-      return typeof s === "number" && Number.isFinite(s) ? fxSerialToIso(s) : "";
+      const day = dayOf(wired[0]);
+      return day !== null ? fxSerialToIso(day) : "";
     }
     const iso = (literal ?? "").trim();
     return iso !== "" ? iso : isoDaysFromNow(dayOffset);
   }
 
-  private seriesFrame(): FrameValue {
-    const pts = this.cachedSeries ?? [];
-    return { __frame: true, columns: [
-      { name: "Date", type: "date", values: pts.map((p) => p.serial) },
-      { name: "Rate", type: "number", values: pts.map((p) => p.rate) },
-    ] };
-  }
 
   private async fetchRate(from: string, to: string): Promise<void> {
     const key = this._lastKey;
@@ -837,11 +791,12 @@ export class FxNode extends ClassicPreset.Node {
     try {
       const { text } = await fetchText(fxRangeUrl(from, to, start, end));
       if (this._lastKey !== key) return;
-      const pts = parseFxSeries(text, to);
-      this.cachedSeries = pts;
-      connectionStore.setState(this.id, pts.length === 0
+      const series = parseFxSeries(text, to);
+      this.cachedSeries = series;
+      const rows = frameRowCount(series);
+      connectionStore.setState(this.id, rows === 0
         ? { status: "error", message: `No ${from}→${to} history` }
-        : { status: "ok", rows: pts.length, cols: 2, fetchedAt: Date.now() });
+        : { status: "ok", rows, cols: 2, fetchedAt: Date.now() });
     } catch (e) {
       if (this._lastKey !== key) return;
       this.cachedSeries = null;
@@ -877,7 +832,7 @@ function mdbaseHintFor(collections: Map<string, MdbaseCollection>, folder: strin
   return mdbaseTypeFor(best.coll, collRel);
 }
 
-export class VaultFolderNode extends ClassicPreset.Node {
+export class VaultFolderNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     folder: "The vault subfolder to read. Blank reads the whole vault.",
     glob: "A file-name filter such as 2026-*. Blank keeps every note.",
@@ -910,8 +865,8 @@ export class VaultFolderNode extends ClassicPreset.Node {
 
   data(inputs?: { folder?: (string | null)[]; glob?: (string | null)[] }): { cube: CubeValue | null } {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
-    const folder = (readInput(inputs?.folder, this.folder) ?? "").trim().replace(/^\/+|\/+$/g, "");
-    const glob = (readInput(inputs?.glob, this.glob) ?? "").trim();
+    const folder = readTextInput(inputs?.folder, this.folder, "Folder").replace(/^\/+|\/+$/g, "");
+    const glob = readTextInput(inputs?.glob, this.glob, "Filter");
     const vault = getVaultRoot();
     const key = connectionStore.key(this.id, `${vault}\u0000${folder}\u0000${glob}\u0000${this.nameFormat}\u0000${this.includeBody ? 1 : 0}`);
     if (key !== this._lastKey) {

@@ -27,16 +27,18 @@ html.is-mobile {
   .solenoid-topbar .solenoid-nav__btn.solenoid-topbar__tidymenu-btn { width: auto; padding: 0 9px 0 11px; border-radius: 999px; }
   .solenoid-topbar__tidymenu-btn svg { flex: 0 0 auto; }
   .solenoid-topbar .solenoid-topbar__tidymenu-btn .solenoid-topbar__chev { width: 11px; height: 11px; }
-  .solenoid-topbar .solenoid-nav__btn { width: 34px; height: 34px; }
-  .solenoid-topbar .solenoid-nav__btn svg { width: 17px; height: 17px; }
+  .solenoid-topbar { --icon-size: 16px; }
+  .solenoid-topbar .solenoid-nav__btn { width: 32px; height: 32px; }
+  /* Every Row B icon is half its 32px button, desktop's ratio (14 in 28), and both even, so the glyph centers on whole pixels. */
+  .solenoid-topbar :is(.solenoid-nav__btn, .solenoid-topbar__icon, .solenoid-topbar__nav, .solenoid-apptools__btn) svg { width: 16px; height: 16px; }
   .solenoid-topbar__icon { display: flex; }
   .solenoid-topbar__nav {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     padding: 0;
     background: var(--btn-bg);
     border: 1px solid var(--btn-border);
@@ -48,20 +50,21 @@ html.is-mobile {
   .solenoid-topbar__nav:active { background: var(--btn-hover); }
 
   .solenoid-doctitle__menu {
+    top: calc(anchor(bottom) + 4px);
     left: 10px;
     right: 10px;
-    transform: none;
+    width: auto;
+    translate: none;
     min-width: 0;
     max-width: none;
   }
 
   .solenoid-apptools { gap: 2px; margin-left: auto; }
-  .solenoid-apptools__btn { width: 34px; height: 34px; }
+  .solenoid-apptools__btn { width: 32px; height: 32px; }
   .solenoid-apptools__palette { top: 40px; }
   .solenoid-apptools__theme { display: none; }
   .solenoid-apptools__palette-theme { display: flex; }
   .solenoid-apptools__pill .solenoid-apptools__paint { border-radius: 999px; }
-  .solenoid-apptools__btn svg { stroke-width: 2; }
 
   /* ── Row A: the menu bar as the accent strip ── */
   .solenoid-menubar {
@@ -106,51 +109,6 @@ html.is-mobile {
   .solenoid-menubar__center .solenoid-doctitle { max-width: 100%; }
   .solenoid-menubar__center .solenoid-doctitle__name,
   .solenoid-menubar__center .solenoid-doctitle__caret { max-width: none; }
-  .solenoid-menubar__sheet {
-    position: absolute;
-    top: calc(82px + env(safe-area-inset-top));
-    left: 8px;
-    width: max-content;
-    max-width: min(280px, 86vw);
-    max-height: calc(100vh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    max-height: calc(100dvh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    overflow-y: auto;
-    background: var(--surface);
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    box-shadow: var(--shadow-pop);
-    padding: 6px;
-  }
-  .solenoid-menubar__sheet-section + .solenoid-menubar__sheet-section {
-    border-top: 1px solid var(--panel-border);
-    margin-top: 4px;
-    padding-top: 6px;
-  }
-  .solenoid-menubar__sheet-heading {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    padding: 4px 10px 2px;
-  }
-  .solenoid-menubar__option { padding: 11px 10px; font-size: 14px; }
-  .solenoid-menubar__sheet .solenoid-menubar__shortcut { display: none; }
-
-  .solenoid-menubar__sheet-seed {
-    width: 100%;
-    max-width: none;
-    height: 40px;
-    margin: 2px 0 4px;
-    font-size: 14px;
-  }
-  .solenoid-menubar__sheet .solenoid-toolbar { padding: 2px 10px 6px; gap: 10px; justify-content: center; }
-  .solenoid-menubar__sheet .solenoid-toolbar__label { display: none; }
-  .solenoid-menubar__sheet .solenoid-toolbar__segment { padding: 8px 12px; }
-  .solenoid-menubar__sheet .solenoid-toolbar__icon { width: 20px; height: 18px; }
-  .solenoid-menubar__sheet .solenoid-toolbar__flow { padding: 8px 12px; }
-  .solenoid-menubar__sheet .solenoid-toolbar__flow-icon { width: 36px; height: 15px; }
-
   /* ── Web-demo notice ── */
   .solenoid-webdemo {
     top: calc(48px + env(safe-area-inset-top));
@@ -166,6 +124,8 @@ html.is-mobile {
     top: calc(92px + env(safe-area-inset-top));
     gap: 2px;
     padding: 3px;
+    /* A sideways swipe tucks it into the edge handle; the browser mustn't take the gesture. */
+    touch-action: none;
   }
   .solenoid-nav__btn--zoomin,
   .solenoid-nav__btn--zoomout,
@@ -213,19 +173,57 @@ html.is-mobile {
   /* ── Navigator ── */
   .solenoid-outline__open-pill { display: none; }
   .solenoid-outline {
-    top: calc(88px + env(safe-area-inset-top));
+    top: calc(92px + env(safe-area-inset-top));
     bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 27px);
     width: min(248px, 84vw);
   }
-  .solenoid-outline__collapse { width: 32px; height: 32px; font-size: 20px; }
-  .solenoid-outline__chip { height: 32px; font-size: 13px; }
-  .solenoid-outline__row { padding: 9px 8px; font-size: 14px; }
-  .solenoid-outline__search { height: 34px; font-size: 14px; }
+  /* The Settings sheet's scale: 13px text, 28px controls, rows about 29px tall. */
+  .solenoid-outline__collapse,
+  .solenoid-outline__collapse-all,
+  .solenoid-nav-sec__btn,
+  .solenoid-files__more { width: 28px; height: 28px; }
+  .solenoid-files__more { margin: -5px 0; }
+  .solenoid-nav-sec__toggle { height: 30px; }
+  .solenoid-outline__layout { height: 28px; padding: 0 10px; font-size: 12px; }
+  .solenoid-nav-sec__title { font-size: 13px; }
+  .solenoid-nav-sec__crumb, .solenoid-nav-sec__count { font-size: 12px; }
+  .solenoid-nav-sec__crumb { padding: 6px 4px; }
+  .solenoid-nav-sec--files.solenoid-nav-sec--open { flex: 1 1 auto; }
+  .solenoid-nav-sec--files.solenoid-nav-sec--open .solenoid-nav-sec__body { flex: 1 1 auto; }
+  .solenoid-files__rename { height: 26px; margin: -4px 0; font-size: 13px; }
+  .solenoid-files__menu { min-width: 180px; }
+  .solenoid-files__menu .sol-popup-menu__item { padding: 9px 12px; font-size: 13px; }
+  .solenoid-outline__search { font-size: 13px; }
+  .solenoid-outline__searchwrap .solenoid-outline__search { padding-right: 60px; }
+  .solenoid-outline__scope { width: 26px; height: 26px; }
+  .solenoid-outline__heading { font-size: 10.5px; }
+  .solenoid-outline__hitwhere { font-size: 11.5px; }
+  .solenoid-outline__row { padding-top: 6px; padding-bottom: 6px; font-size: 13px; }
+  /* Four things share the header's 228px: the switch, two 28px buttons and the gaps between, so the gaps stay small. */
+  .solenoid-outline__header { padding: 6px var(--nav-gutter); gap: 4px; }
+  .solenoid-outline__switchbtn { padding: 0 10px; }
+  .solenoid-outline__header > button { flex-shrink: 0; }
+  .solenoid-outline__search { margin: 6px var(--nav-gutter); height: 30px; }
+  /* A finger-sized target that hangs into the row's padding rather than growing the row. */
+  .solenoid-outline__plug { min-height: 26px; margin: -5px 0; padding: 0 6px 0 4px; gap: 4px; }
+  .solenoid-outline__plug svg { width: 13px; height: 13px; }
+  .solenoid-outline__plug-count { font-size: 11px; }
+  .solenoid-outline__conn { padding: 1px 4px; font-size: 12.5px; }
+  .solenoid-outline__conn-btn { width: 26px; height: 26px; }
+  /* As in the Add menu: a finger leaves a sticky :hover behind a tap, so only the press itself tints. */
+  .solenoid-outline__row:not(.solenoid-outline__row--sel):not(.solenoid-outline__row--group):hover { background: transparent; }
+  .solenoid-outline__row--sel:hover { background: var(--accent-soft); }
+  .solenoid-outline__row--group:hover { box-shadow: inset 0 0 0 1px var(--group-edge); }
+  .solenoid-outline__row--group.solenoid-outline__row--sel:hover { box-shadow: inset 0 0 0 2px var(--accent); }
+  .solenoid-outline__row:not(.solenoid-outline__row--group):active { background: var(--accent-soft); }
+  .solenoid-outline__plug:hover,
+  .solenoid-outline__conn:hover,
+  .solenoid-outline__conn-btn:hover { background: transparent; }
+  .solenoid-outline__plug:not(.solenoid-outline__plug--on):hover { color: var(--text-muted); }
 
   /* ── Node chrome ── */
   .solenoid-segbtn { height: 30px; font-size: 11px; }
   .sol-switch__opt { width: 28px; height: 26px; font-size: 12px; }
-  .sol-switch__cycle { height: 30px; padding: 0 12px; }
   .solenoid-group__header { padding-left: 30px; }
   .solenoid-group__chevron { width: 22px; height: 22px; left: 4px; }
   .solenoid-group__tidy,
@@ -242,7 +240,7 @@ html.is-mobile {
   .solenoid-conduit-toolbar__extend { padding: 8px 14px; font-size: 12px; }
 
   /* ── Table editor popup ── */
-  .table-popup__coltype { width: 26px; height: 26px; font-size: 12px; }
+  .sol-coltype { width: 26px; height: 26px; font-size: 12px; }
   .table-popup__view button { padding: 9px 14px; }
   .table-popup__btn { padding: 9px 14px; }
   .table-popup__grid-scroll,
@@ -280,18 +278,6 @@ html.is-mobile {
     color: var(--text);
   }
   .fr-close svg { width: 20px; height: 20px; }
-
-  .fr-header-row1 { flex-wrap: wrap; }
-  .fr-search { flex: 1 1 100%; }
-  .fr-filters { margin-left: 0; }
-  .fr-select { padding: 7px 8px; flex-shrink: 0; }
-  /* The divider separates it from the filters on one row; wrapped onto its own line it is a stray rule. */
-  .fr-colcheck { padding-top: 6px; padding-bottom: 6px; padding-left: 2px; box-shadow: none; }
-  .fr-stats { display: none; }
-
-  .fr-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .fr-table col.col-note { width: 240px; }
-  .fr-sol-btn__add { opacity: 1; }
 }
 
 /* Narrow phones: the two-column shortcuts grid runs out of room. */

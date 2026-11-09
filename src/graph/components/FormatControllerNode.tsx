@@ -1,7 +1,7 @@
 // [[C118]] formatTravelsWithValue (the popup lights controls off the model), [[C25]] firstClassUnits.
 import { useState, useEffect, useSyncExternalStore } from "react";
-import { FormatControllerNode } from "../rete-nodes";
-import type { FormatControllerNode as FormatControllerNodeType } from "../rete-nodes";
+import { reconcileFcs } from "../fcReconcile";
+import type { FormatControllerNode as FormatControllerNodeType } from "../nodeClasses";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES,
   LOGICAL_STYLE_LABELS, LAMBDA_VIEW_LABELS, CHART_FONT_SCALES,
@@ -97,18 +97,15 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     setTextAlignLocal(node.textAlign);
     setTextMdLocal(node.textMarkdown);
     setTextMonoLocal(node.textMono);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.socketDataType, node.unit, node.format, node.forwarding, node.lockedByConvert]);
 
   function syncNode() {
     const editor = getOwningEditor(node.id);
     if (editor) {
       // Every FC: a downstream forwarding FC's unit is locked to this one.
-      for (const n of editor.getNodes()) {
-        if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);
-      }
+      reconcileFcs(editor, null);
     }
-    void processGraph();
+    node.edited(); void processGraph();
   }
 
   function onFormatChange(f: FormatStyleId | "") {
@@ -469,7 +466,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
             <input
               type="text"
-              className="solenoid-node__inline-input solenoid-fc__pattern"
+              className="solenoid-node__inline-input solenoid-fc__pattern sol-placeholder-example"
               value={patternField.draft}
               placeholder="pattern, for example YYYY-MM-DD"
               onChange={(e) => patternField.setDraft(e.target.value)}
@@ -632,7 +629,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
             <input
               type="text"
-              className="solenoid-node__inline-input solenoid-fc__pattern"
+              className="solenoid-node__inline-input solenoid-fc__pattern sol-placeholder-example"
               value={patternField.draft}
               placeholder='format, for example "0.00"'
               onChange={(e) => patternField.setDraft(e.target.value)}
@@ -763,7 +760,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
             <input
               type="text"
-              className="solenoid-node__inline-input solenoid-fc__pattern"
+              className="solenoid-node__inline-input solenoid-fc__pattern sol-placeholder-example"
               value={unitField.draft}
               placeholder="unit, for example psi"
               onChange={(e) => unitField.setDraft(e.target.value)}

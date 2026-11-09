@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere
+// [[B3]] sameNodeEverywhere, [[table-popup#Editing a cell]]
 import { describe, it, expect } from "vitest";
 import { gridKeyOf, nextCell, stepListSel, type GridKey } from "../../src/graph/components/gridKeyboard";
 

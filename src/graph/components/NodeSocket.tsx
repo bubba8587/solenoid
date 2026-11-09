@@ -1,7 +1,7 @@
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore, useRef, useState, useLayoutEffect, useEffect, type ReactNode } from "react";
 import { presentSocketStore } from "../presentSocketStore";
-import type { ClassicPreset } from "rete";
+import type { GraphSocket } from "../graphModel";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
 import { socketFlipStore } from "../socketFlipStore";
 import { useFlowSocket } from "../flowSurface";
@@ -12,6 +12,7 @@ import { cableValueStore } from "../cableValueStore";
 import { getOwningEditor } from "../activeGraph";
 import { cubeTransform, CUBE_FILL_PATH } from "./cubeGlyph";
 import { SocketComponent, LIST_TYPES, TABLE_TYPES, COMBO_COLORS } from "./SocketComponent";
+import { measureThenWrite } from "./layoutBatch";
 
 // Hover intent, so a cable drag crossing sockets never flashes hints.
 const HINT_DELAY_MS = 300;
@@ -36,35 +37,43 @@ type Props = {
   socketKey: string;
   nodeId: string;
   emit?: Emit;
-  payload: ClassicPreset.Socket;
+  payload: GraphSocket;
   top?: number;
   className?: string;
 };
 
-/** A socket top centered on `ref`'s row, re-measured after every render. */
+/** A socket top centered on `ref`'s row, re-measured after every render, in the commit's one batch of reads. */
 export function useRowSocketTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
   const prev = useRef<number | undefined>(undefined);
   const [top, setTop] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const t = el.offsetTop + el.offsetHeight / 2 - 6;
-    if (prev.current !== t) { prev.current = t; setTop(t); }
+    measureThenWrite(
+      prev,
+      () => {
+        const el = ref.current;
+        return el ? el.offsetTop + el.offsetHeight / 2 - 6 : undefined;
+      },
+      (t) => {
+        if (t !== undefined && prev.current !== t) { prev.current = t; setTop(t); }
+      },
+    );
   });
   return top;
 }
 
 export function MeasuredSocketRow({
-  side, socketKey, nodeId, emit, payload, children, hero = false,
+  side, socketKey, nodeId, emit, payload, children, hero = false, example = false,
 }: {
   side: Side;
   socketKey: string;
   nodeId: string;
   emit?: Emit;
-  payload: ClassicPreset.Socket;
+  payload: GraphSocket;
   children: ReactNode;
   /** A tall box: drops the fixed 22px row height so it can't overlap its neighbors. */
   hero?: boolean;
+  /** The empty field's placeholder is an Example, set in italics ([[D96]] emptySlotShowsItsValue). */
+  example?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const top = useRowSocketTop(ref);
@@ -77,7 +86,7 @@ export function MeasuredSocketRow({
     frameHintStore.open({ kind: "example", hint, anchor: { left: r.left, right: r.right, centerY: r.top + r.height / 2 } });
   };
   return (
-    <div ref={ref} onPointerUp={rowHintTap} className={"solenoid-node__io-row" + (side === "output" ? " solenoid-node__io-row--output" : "") + (hero ? " solenoid-node__io-row--hero" : "")}>
+    <div ref={ref} onPointerUp={rowHintTap} className={"solenoid-node__io-row" + (side === "output" ? " solenoid-node__io-row--output" : "") + (hero ? " solenoid-node__io-row--hero" : "") + (example ? " solenoid-node__io-row--example" : "")}>
       {top !== undefined && (
         <NodeSocket
           side={side}
@@ -154,15 +163,15 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
     if (peekShown) setPeekShown(false);
     frameHintStore.close();
   };
-  useEffect(() => cancelHint, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => cancelHint, []);
   useLayoutEffect(() => presentSocketStore.mount(nodeId, side, socketKey), [nodeId, side, socketKey]);
 
-  const resolvePeekValue = (): { value: unknown; nodeId: string } | null => {
-    if (side === "output") return { value: cableValueStore.get(nodeId, socketKey), nodeId };
+  const resolvePeekValue = (): { value: unknown; nodeId: string; outKey: string } | null => {
+    if (side === "output") return { value: cableValueStore.get(nodeId, socketKey), nodeId, outKey: socketKey };
     const conn = getOwningEditor(nodeId)?.getConnections()
       .find((c) => c.target === nodeId && c.targetInput === socketKey);
     if (!conn) return null;
-    return { value: cableValueStore.get(conn.source, conn.sourceOutput), nodeId: conn.source };
+    return { value: cableValueStore.get(conn.source, conn.sourceOutput), nodeId: conn.source, outKey: conn.sourceOutput as string };
   };
 
   const hintEnter = (e: React.PointerEvent) => {
@@ -176,7 +185,7 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
       hintTimer.current = null;
       const r = el.getBoundingClientRect();
       const anchor = { left: r.left, right: r.right, centerY: r.top + r.height / 2 };
-      if (willValue) frameHintStore.open({ kind: "value", value: peek!.value, nodeId: peek!.nodeId, anchor });
+      if (willValue) frameHintStore.open({ kind: "value", value: peek!.value, nodeId: peek!.nodeId, outKey: peek!.outKey, anchor });
       else frameHintStore.open({ kind: "example", hint: hint!, anchor });
       setPeekShown(true);
     }, willValue ? PEEK_DELAY_MS : HINT_DELAY_MS);

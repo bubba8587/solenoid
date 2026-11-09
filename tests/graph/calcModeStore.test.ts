@@ -1,10 +1,6 @@
-// [[C23]] calcModes
+// [[C23]] calcModes, [[compute-pass#Calc modes and the dirty flag]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { calcModeStore } from "../../src/graph/calcModeStore";
-
-// The manual/auto gate processGraph short-circuits on — shipped in 1.0 with
-// zero direct coverage (v1.0 audit, quality). The mode × dirty transition
-// matrix, pinned.
 
 beforeEach(() => {
   calcModeStore.setMode("auto"); // also clears dirty

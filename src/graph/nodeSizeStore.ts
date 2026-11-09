@@ -3,7 +3,7 @@
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
-export type NodeSize = { w: number; h: number };
+type NodeSize = { w: number; h: number };
 
 const _sizes = new Map<string, NodeSize>();
 // Per-node minimum from the node's current content type; the grip clamps to it so a Display can't shrink its content into uselessness.

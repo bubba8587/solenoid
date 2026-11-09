@@ -1,30 +1,16 @@
-// [[C44]], [[B11]], [[C17]] shareImpl, [[D41]] formatFlowsDownstream
-import { ClassicPreset } from "rete";
-import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, readRole, BASIS_DOC, readAsRole, type BroadcastResult } from "./shared";
-import { setting, argRole } from "../inputRoles";
-import { isSolError, solError, type SolError } from "../errorValue";
-import { convertZone, worldClockRows, worldClockFrame } from "../timeZone";
+// [[C44]] dateSerials, [[B11]], [[C17]] shareImpl, [[C118]] formatTravelsWithValue
+import { GraphNode } from "../graphModel";
+import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, BASIS_DOC, type BroadcastResult } from "./shared";
+import { setting } from "../inputRoles";
+import { type SolError } from "../errorValue";
+import { nodeOnCore } from "../nodeOnCore";
 import { type FrameValue } from "../frame";
-import { type Shape } from "../frameShape";
-import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./dateSerial";
+import { cardShapeOnCore, type Shape } from "../frameShape";
 import type { FormatCarrySpec } from "./formatCarry";
 import type { FormatAnnotation } from "../formatAnnotationStore";
-import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, epochToSerial, serialToEpoch, dateTrunc, addWorkdays, networkDays, weekendDays, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
+import { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
-export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
-
-/** `+1e-9` absorbs float drift from the serial↔ms round trip. */
-function dayKey(serial: number): number {
-  return Math.floor(serial + 1e-9);
-}
-
-function holidaySet(holidays?: (number | null)[]): Set<number> {
-  const s = new Set<number>();
-  if (holidays) for (const h of holidays) if (typeof h === "number" && Number.isFinite(h)) s.add(dayKey(h));
-  return s;
-}
-
-
+export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, readDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
 
 // ─── TODAY / NOW ──────────────────────────────────────────────────────────────
 
@@ -35,7 +21,7 @@ export const TODAY_NOW_OP_META = {
   now:   { label: "NOW",   description: "Current date + time as a serial. The fractional part encodes time of day. Excel: `NOW`." },
 } satisfies Record<TodayNowOp, { label: string; description: string }>;
 
-export class TodayNowNode extends ClassicPreset.Node {
+export class TodayNowNode extends GraphNode {
   label: string;
   op: TodayNowOp;
   cachedResult: number | null = null;
@@ -48,16 +34,14 @@ export class TodayNowNode extends ClassicPreset.Node {
     this.addOutput("result", dateOut("Date"));
   }
 
-  data() {
-    const serial = wallClockSerial(new Date(), this.op === "today");
-    this.cachedResult = serial;
-    return { result: serial };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { result: number };
   }
 }
 
 // ─── DATE ─────────────────────────────────────────────────────────────────────
 
-export class DateConstructNode extends ClassicPreset.Node {
+export class DateConstructNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     year: "The year is taken as written: 26 means the year 26, not 1926.",
   };
@@ -76,19 +60,14 @@ export class DateConstructNode extends ClassicPreset.Node {
     this.addOutput("result", dateComboOut("Date"));
   }
 
-  data(inputs: { year?: (number | number[])[]; month?: (number | number[])[]; day?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcastErr(dateFromParts,
-      readInput(inputs.year,  this.literals.year  ?? 2024),
-      readInput(inputs.month, this.literals.month ?? 1),
-      readInput(inputs.day,   this.literals.day   ?? 1));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
 // ─── TIME ─────────────────────────────────────────────────────────────────────
 
-export class TimeConstructNode extends ClassicPreset.Node {
+export class TimeConstructNode extends GraphNode {
   label: string;
   literals: Record<string, number> = { hour: 12, minute: 0, second: 0 };
   cachedResult: BroadcastResult = null;
@@ -103,13 +82,8 @@ export class TimeConstructNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Time fraction"));
   }
 
-  data(inputs: { hour?: (number | number[])[]; minute?: (number | number[])[]; second?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcast(timeFraction,
-      readInput(inputs.hour,   this.literals.hour   ?? 0),
-      readInput(inputs.minute, this.literals.minute ?? 0),
-      readInput(inputs.second, this.literals.second ?? 0));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -122,7 +96,7 @@ export const DATE_TIME_VALUE_OP_META = {
   time: { label: "TIMEVALUE", description: "Parses a time string such as `\"14:30:00\"` into a fraction of a day, 0 to 1. Excel: `TIMEVALUE`." },
 } satisfies Record<DateTimeValueOp, { label: string; description: string }>;
 
-export class DateTimeValueNode extends ClassicPreset.Node {
+export class DateTimeValueNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     text: "A date with a four-digit year: ISO, day-first numeric, an ordinal, or a month name. A numeric date that reads both ways, 3/4/2026, is #AMBIGUOUS!; write the month as a name.",
   };
@@ -151,12 +125,8 @@ export class DateTimeValueNode extends ClassicPreset.Node {
     out.label  = spec.label;
   }
 
-  data(inputs: { text?: string[] }): { result: number | SolError | null } {
-    const text = (readInput(inputs.text, this.stringLiterals.text ?? "") ?? "").trim();
-    if (!text) { this.cachedResult = null; return { result: null }; }
-    const result = this.op === "date" ? parseDateOnly(text) : parseTimeOfDay(text);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 
@@ -173,7 +143,7 @@ export const DATE_PART_OP_META = {
   second: { label: "SECOND", description: "Second 0–59 from a date+time serial. Excel: `SECOND`." },
 } satisfies Record<DatePartOp, { label: string; description: string }>;
 
-export class DatePartNode extends ClassicPreset.Node {
+export class DatePartNode extends GraphNode {
   label: string;
   op: DatePartOp;
   cachedResult: BroadcastResult = null;
@@ -187,20 +157,8 @@ export class DatePartNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Number"));
   }
 
-  data(inputs: { date?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcast((serial) => {
-      const d = serialToJsDate(serial);
-      switch (this.op) {
-        case "year":   return d.getUTCFullYear();
-        case "month":  return d.getUTCMonth() + 1;
-        case "day":    return d.getUTCDate();
-        case "hour":   return d.getUTCHours();
-        case "minute": return d.getUTCMinutes();
-        case "second": return d.getUTCSeconds();
-      }
-    }, inputs.date?.[0] ?? null);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -212,7 +170,7 @@ export const WEEK_INFO_OP_META = {
   isoweeknum: { label: "ISOWEEKNUM", description: "ISO 8601 week number: the week containing the first Thursday, Monday start. `return_type` is ignored. Excel: `ISOWEEKNUM`." },
 } satisfies Record<WeekInfoOp, { label: string; description: string }>;
 
-export class WeekInfoNode extends ClassicPreset.Node {
+export class WeekInfoNode extends GraphNode {
   static inputRoles = { return_type: setting(1) };
   label: string;
   op: WeekInfoOp;
@@ -229,12 +187,8 @@ export class WeekInfoNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Number"));
   }
 
-  data(inputs: { date?: (number | number[])[]; return_type?: number[] }): { result: BroadcastResult } {
-    const rtRaw = readRole<number>(this, "return_type", inputs.return_type);
-    const rt = Math.floor(rtRaw);
-    const result = broadcast((serial) => weekInfo(this.op, serial, rt), inputs.date?.[0] ?? null);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -251,7 +205,7 @@ export const DATE_DIFF_OP_META = {
   yd:       { label: "Days ignoring years",   description: "Days past the last whole year. Excel: `DATEDIF \"YD\"`." },
 } satisfies Record<DateDiffOp, { label: string; description: string }>;
 
-export class DateDiffNode extends ClassicPreset.Node {
+export class DateDiffNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     basis: BASIS_DOC,
   };
@@ -281,16 +235,8 @@ export class DateDiffNode extends ClassicPreset.Node {
     return true;
   }
 
-  data(inputs: { start?: (number | number[])[]; end?: (number | number[])[]; basis?: number[] }): { result: BroadcastResult } {
-    let basis = 0;
-    if (dateDiffNeedsBasis(this.op)) {
-      const basisRaw = readAsRole<number | SolError | undefined>(this, "basis", inputs.basis, argRole(this.op === "days360" ? "DAYS360" : "YEARFRAC", 2)!);
-      if (isSolError(basisRaw)) { this.cachedResult = basisRaw; return { result: basisRaw }; }
-      basis = Math.trunc(basisRaw ?? 0);
-    }
-    const result = broadcastErr((s, e) => dateDiff(this.op, s, e, basis), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -303,7 +249,7 @@ export const DATE_ADD_OP_META = {
   eomonth: { label: "EOMONTH", description: "Last day of month N months before/after start. Excel: `EOMONTH`." },
 } satisfies Record<DateAddOp, { label: string; description: string }>;
 
-export class DateAddNode extends ClassicPreset.Node {
+export class DateAddNode extends GraphNode {
   label: string;
   op: DateAddOp;
   literals: Record<string, number> = { months: 1 };
@@ -323,20 +269,8 @@ export class DateAddNode extends ClassicPreset.Node {
     return [{ output: "result", inputs: ["start"] }];
   }
 
-  data(inputs: { start?: (number | number[])[]; months?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcast((s, rawM) => {
-    const d = serialToJsDate(s);
-    const m = Math.floor(rawM);
-    const y  = d.getUTCFullYear();
-    const mo = d.getUTCMonth() + m;
-    const lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
-    const serial = this.op === "edate"
-      ? jsDateToSerial(new Date(Date.UTC(y, mo, Math.min(d.getUTCDate(), lastDay))))
-      : jsDateToSerial(new Date(Date.UTC(y, mo + 1, 0)));
-    return serial;
-    }, inputs.start?.[0] ?? null, readInput(inputs.months, this.literals.months ?? 0));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -349,7 +283,7 @@ export const WORKDAYS_OP_META = {
   networkdays: { label: "NETWORKDAYS", description: "Counts the working days between Start and End, skipping weekends and an optional Holidays list. `weekend_code` uses Excel's numbers (1 is Sat+Sun, then 2–7 and 11–17); the 7-character weekend string isn't supported. Excel: `NETWORKDAYS`, `NETWORKDAYS.INTL`." },
 } satisfies Record<WorkdaysOp, { label: string; description: string }>;
 
-export class WorkdaysNode extends ClassicPreset.Node {
+export class WorkdaysNode extends GraphNode {
   static inputRoles = { weekend_code: setting(1) };
   static socketDocs: Record<string, string> = {
     holidays: "Each holiday covers its whole calendar day. Any time of day in the entry is ignored.",
@@ -404,47 +338,27 @@ export class WorkdaysNode extends ClassicPreset.Node {
       if (out) { out.socket = numListOut("Working days").socket; out.label = "Working days"; }
     }
     // Re-insert the shared tail so the second input stays beside Start.
-    const inputs = this.inputs as Record<string, unknown>;
-    for (const k of ["weekend_code", "holidays"]) {
-      const v = inputs[k];
-      delete inputs[k];
-      inputs[k] = v;
-    }
+    for (const k of ["weekend_code", "holidays"]) this.moveInputLast(k);
     this.seedLiterals();
   }
 
-  data(inputs: { start?: (number | number[])[]; days?: (number | number[])[]; end?: (number | number[])[]; weekend_code?: number[]; holidays?: (number | null)[][] }): { result: BroadcastResult } {
-    const codeRaw = readRole<number>(this, "weekend_code", inputs.weekend_code);
-    const off  = weekendDays(Math.floor(codeRaw));
-    if (!off) {
-      this.cachedResult = solError("#VALUE!", "Weekend must be a code: 1 to 7, or 11 to 17");
-      return { result: this.cachedResult };
-    }
-    const hol  = holidaySet(inputs.holidays?.[0]);
-    const result = this.op === "workday"
-      ? broadcastErr((s, n) => addWorkdays(s, n, off, hol), inputs.start?.[0] ?? null, readInput(inputs.days, this.literals.days ?? 5))
-      : broadcast((s, e) => networkDays(s, e, off, hol), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
 // ─── Epoch (Unix time ↔ date) ─────────────────────────────────────────────────
-export type EpochOp = "from" | "to";
-export const EPOCH_OP_META = {
-  from: { label: "Epoch → Date", description: "Unix time (seconds or milliseconds since `1970-01-01` UTC) → a date. pandas `to_datetime`, R `as.POSIXct`." },
-  to:   { label: "Date → Epoch", description: "A date → Unix time in seconds or milliseconds. pandas `astype(int64)`, R `as.numeric`." },
-} satisfies Record<EpochOp, { label: string; description: string }>;
+type EpochOp = "from" | "to";
 export const EPOCH_UNIT_OPTIONS: ReadonlyArray<{ value: EpochUnit; label: string; title: string }> = [
   { value: "s",  label: "s",  title: "Seconds since 1970-01-01 UTC (the Unix convention; 10 digits today)" },
   { value: "ms", label: "ms", title: "Milliseconds since 1970-01-01 UTC (JavaScript's Date.now(); 13 digits today)" },
 ];
 
-export class EpochNode extends ClassicPreset.Node {
+export class EpochNode extends GraphNode {
   label: string;
   op: EpochOp;
   unit: EpochUnit = "s";
-  literals: Record<string, number> = { value: 0 };
+  literals: Record<string, number> = {};
   cachedResult: BroadcastResult = null;
   width = 190; height = 170;
 
@@ -453,15 +367,12 @@ export class EpochNode extends ClassicPreset.Node {
     this.op = init?.op ?? "from";
     this.label = init?.label ?? "";
     if (init?.unit) this.unit = init.unit;
-    if (this.op === "from") { this.addInput("value", numListIn("Epoch")); this.addOutput("result", dateComboOut("Date")); }
+    if (this.op === "from") { this.literals.value = 0; this.addInput("value", numListIn("Epoch")); this.addOutput("result", dateComboOut("Date")); }
     else { this.addInput("value", dateComboIn("Date")); this.addOutput("result", numListOut("Epoch")); }
   }
 
-  data(inputs: { value?: (number | number[])[] }): { result: BroadcastResult } {
-    const v = this.op === "from" ? readInput(inputs.value, this.literals.value ?? 0) : (inputs.value?.[0] ?? null);
-    const result = broadcast((x) => (this.op === "from" ? epochToSerial(x, this.unit) : serialToEpoch(x, this.unit)), v);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -475,7 +386,7 @@ export const DATE_TRUNC_UNIT_META = {
   year:     { label: "Year",        description: "January 1st." },
 } satisfies Record<DateTruncUnit, { label: string; description: string }>;
 
-export class DateTruncNode extends ClassicPreset.Node {
+export class DateTruncNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Floor: the start of the period the date falls in. Ceiling: the start of the next period, though a date already on the boundary stays put.",
   };
@@ -494,16 +405,14 @@ export class DateTruncNode extends ClassicPreset.Node {
     this.addOutput("result", dateComboOut("Date"));
   }
 
-  data(inputs: { date?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcast((s) => dateTrunc(s, this.unit, this.ceiling), inputs.date?.[0] ?? null);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
 // ─── TIME ZONE CONVERT ────────────────────────────────────────────────────────
 
-export class TimeZoneConvertNode extends ClassicPreset.Node {
+export class TimeZoneConvertNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     datetime: "The date and time to convert.",
     from: "The zone the date/time is in now, an IANA name like America/New_York.",
@@ -528,25 +437,14 @@ export class TimeZoneConvertNode extends ClassicPreset.Node {
     return outKey === "result" ? { format: "datetime", unit: "none" } : undefined;
   }
 
-  data(inputs: { datetime?: number[]; from?: string[]; to?: string[] }): { result: number | SolError | null } {
-    const serial = readInput(inputs.datetime, NaN);
-    const from = readInput(inputs.from, this.stringLiterals.from ?? "");
-    const to = readInput(inputs.to, this.stringLiterals.to ?? "");
-    if (typeof serial !== "number" || !Number.isFinite(serial)
-        || typeof from !== "string" || from.trim() === ""
-        || typeof to !== "string" || to.trim() === "") {
-      this.cachedResult = null;
-      return { result: null };
-    }
-    const result = convertZone(serial, from, to);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 
 // ─── WORLD CLOCK ──────────────────────────────────────────────────────────────
 
-export class WorldClockNode extends ClassicPreset.Node {
+export class WorldClockNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     zones: "One IANA zone per entry, like America/New_York or Asia/Tokyo.",
     clock: "A row per zone: the place and its current local time.",
@@ -563,14 +461,11 @@ export class WorldClockNode extends ClassicPreset.Node {
     this.addOutput("clock", frameOut("World Clock"));
   }
 
-  frameShape(): Shape {
-    return { columns: [{ name: "Place", type: "string" }, { name: "Local", type: "string" }] };
+  frameShape(): Shape | null {
+    return cardShapeOnCore(this, "clock", {});
   }
 
-  data(inputs: { zones?: string[][] }): { clock: FrameValue } {
-    const zones = inputs.zones?.[0] ?? [];
-    const frame = worldClockFrame(worldClockRows(zones, Date.now()));
-    this.cachedResult = frame;
-    return { clock: frame };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { clock: FrameValue };
   }
 }

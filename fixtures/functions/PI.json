@@ -1,0 +1,12 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"PI()","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PI()/2","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PI() - 0.000000000001","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PI()/2 - 0.000000000001","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PI()/2 + 0.000000000001","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"2*PI()","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PI()/4","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PI()/6","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

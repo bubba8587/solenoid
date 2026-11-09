@@ -1,12 +1,12 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { presentationStore } from "../presentationStore";
-import { getEditor } from "../process";
+import { getOwningEditor } from "../activeGraph";
 import { flyToNodes } from "../flyToNode";
 import type { PresentationNode } from "../nodes/presentation";
 import { CloseIcon } from "./CloseIcon";
 import "./PresentationOverlay.css";
 
-// The canvas itself is the slide (tree/specs/canvas/layout-chrome.md § Presenting).
+// The canvas itself is the slide ([[layout-chrome#Push or overlay: how the pieces interact]], Presenting).
 
 export function PresentationOverlay() {
   useSyncExternalStore(presentationStore.subscribe, presentationStore.version);
@@ -16,7 +16,7 @@ export function PresentationOverlay() {
 }
 
 function PresentationRunner({ nodeId }: { nodeId: string }) {
-  const node = getEditor()?.getNode(nodeId) as PresentationNode | undefined;
+  const node = getOwningEditor(nodeId)?.getNode(nodeId) as PresentationNode | undefined;
   const steps = node?.steps ?? [];
   const [idx, setIdx] = useState(0);
 
@@ -38,7 +38,6 @@ function PresentationRunner({ nodeId }: { nodeId: string }) {
   useEffect(() => {
     const step = steps[idx];
     if (step && step.nodeIds.length) flyToNodes(step.nodeIds);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
 
   // No dep array, so each render's handler closes over the current idx.

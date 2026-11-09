@@ -6,22 +6,28 @@ tags: [spec, computation]
 
 # Spec: Bordered-grid fill
 
-Serves [[C102]] gridFillThenForecast. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C102]] gridFillThenForecast. It covers what the system does and blocks, and the decision each behavior serves.
 
-Grid fill is the Interpolate card's `grid` mode and the matrix form of the `INTERPOLATE` formula. It takes a table of Z values with some cells blank and returns the same table with the blanks filled. Each column has an X coordinate and each row a Y coordinate, and a cell's value is treated as a height at that (X, Y) point. The code is `gridAxes` and `fillGrid` in `nodes/mathUtils.ts`, with the forecast surface in `nodes/surfaceFit.ts`; `stats.test.ts` pins the behavior.
+Grid fill is the Interpolate card's `grid` mode and the matrix form of the `INTERPOLATE` formula. It takes a table of Z values with some cells blank and returns the same table with the blanks filled. Each column has an X coordinate and each row a Y coordinate, and a cell's value is treated as a height at that (X, Y) point. The code is `fill_grid` and `fit_surface` in `crates/solenoid-core/src/fns_lists.rs`, with the card's axes read by `grid_axis` in `nodes/stats.rs`; the frozen fixtures and `stats.test.ts` pin the behavior.
 
 ## Inputs and coordinates
 
-The coordinates ride beside the table, never inside it: the card has three inputs, `z` (Table), `xs` (one X per column) and `ys` (one Y per row), and the output `result` (Filled). The formula form is `INTERPOLATE(table, xs, ys, forecast)`, chosen over the list form when the first argument is a matrix. `gridAxes` normalizes the inputs:
+The coordinates ride beside the table, never inside it: the card has three inputs, `z` (Table), `xs` (one X per column) and `ys` (one Y per row), and the output `result` (Filled). The formula form is `INTERPOLATE(table, xs, ys, forecast)`, chosen over the list form when the first argument is a matrix: the Interpolate node is one node with a List/Grid mode, so it is one formula name whose form is picked by the first argument's rank, not a second registration ([[B16]] oneFormulaSurface). `grid_mode` (`fns_lists.rs`) normalizes the inputs:
 
 - The table becomes a rectangle as wide as its longest row. A cell that is not a finite number (a blank, an error, text) becomes blank.
 - An empty table, or one with no columns, gives a null result.
-- An unwired axis counts 1, 2, 3 and so on, the 1-based index. In the formula form, an omitted or blank axis argument counts the same way.
+- An unwired axis counts 1, 2, 3 and so on, the 1-based index. In the formula form, an omitted or blank axis argument counts the same way, because a blank argument evaluates to null and a formula has no wired blank to carry; so `INTERPOLATE(t, , , FALSE)` reaches the forecast flag alone.
 - A wired axis whose cable carries a blank leaves the shape unknown, so the whole result is null.
 - A wired axis must hold exactly one finite number per column (Xs) or row (Ys). A count mismatch is `#SHAPE!` ("Xs has 3 values for 4 columns"); a non-finite entry is `#VALUE!`.
 - A table that arrives as an error passes the error through.
 
-Filling keeps every cell in the input table's unit (`carryMatrixUnit`).
+Filling keeps every cell in the input table's unit (`carryMatrixUnit`, in the card's TypeScript shell).
+
+Tests:
+
+- `stats.test.ts`: grid mode's sockets (a Z table and optional Xs and Ys in, one table out) and the list/grid socket swap, an errored or non-finite cell read as a blank, unwired axes counting 1, 2, 3, a wired blank axis giving null, an axis of the wrong length (`#SHAPE!`) or with a non-finite value (`#VALUE!`), and `forecast` defaulting on and surviving a save.
+- `formulaMatrix.test.ts`: `INTERPOLATE` with a matrix first argument gives the card's grid fill cell for cell, the forecast flag is the last argument, omitted or blank axes count as unwired ones, a list first argument still runs the list form, and a wrong-length axis is `#SHAPE!`.
+- `matrixUnitPolicy.test.ts`: the Interpolate card carries its table's unit.
 
 ## The two passes
 
@@ -34,11 +40,15 @@ The known cells are the ones holding numbers. The **coarse grid** is the set of 
 3. Try every box formed by one line from each side, nearest lines first. Skip a box when any of its four corners is blank, and skip it when it is contested (below). The first box that survives wins, so the closest box with four known corners fills the cell. Widening past blank corners is what lets a run of holes interpolate across the missing samples; the query always stays inside the box, so this is still interpolation.
 4. Fill the cell by true bilinear interpolation of the four corners, the same answer as MATLAB `interp2` or SciPy `RegularGridInterpolator` with `"linear"`: interpolate along X on the top and bottom edges, then along Y between them. When the box has zero width or height, that direction's weight is 0.
 
-**Pass 2, forecast.** With `forecast` on, the default, every cell pass 1 left blank fills from a smooth surface fitted through all the known points (`fitSurface`). This covers scattered gaps and extrapolates past the data with a linear trend at the edges. A surface value that is not finite leaves the cell blank. With `forecast` off, only cells pass 1 enclosed are filled and every other blank stays null; a lookup table does not extrapolate.
+**Pass 2, forecast.** With `forecast` on, the default, every cell pass 1 left blank fills from a smooth surface fitted through all the known points (`fit_surface`). This covers scattered gaps and extrapolates past the data with a linear trend at the edges. A surface value that is not finite leaves the cell blank. With `forecast` off, only cells pass 1 enclosed are filled and every other blank stays null; a lookup table does not extrapolate.
+
+Tests: `stats.test.ts`: a new blank row and column fill by bilinear blending (Z = x + y everywhere), a hole in a complete grid fills across it, a blank edge row or column forecasts from the trend and stays blank with `forecast` off, a cell pass 1 can't enclose stays blank with `forecast` off and fills from the surface with it on, and a cell nothing known can reach stays blank.
 
 ## The widening cap
 
 `WIDEN = 4` bounds the box search. Without it, scattered data (a diagonal, for one) rejects every candidate box, and the four nested loops try every combination of lines, O(lines⁴) per cell, which takes seconds on a modest grid, so the cap is load-bearing. Four lines still cross runs of several consecutive holes, and anything sparser is scattered data, which the surface handles anyway.
+
+Tests: `stats.test.ts`: a 100,000-row table fills.
 
 ## Contested boxes
 
@@ -47,12 +57,14 @@ A box is **contested** when some known point other than its four corners sits in
 - **A full box** (two different rows and two different columns) is contested by any known point inside it or exactly on its edge.
 - **A degenerate box** is a segment on one row (when the query row is itself a coarse row) or on one column. It is contested only by a known point on that same row or column strictly between its two ends. Known data on other rows or columns does not contest a segment.
 
-The effect is that edges defer to the surface: an uncontested segment along the table's border fills as a straight line between its two known ends, while interior cells whose boxes hold data curve with the surface. The failure this rule prevents: on a sine-shaped diagonal, the only box with four known corners was the grid's four zero corners, so every blank filled a flat zero with the whole diagonal inside that box. The contested rule is the author's ruling.
+The effect is that edges defer to the surface: an uncontested segment along the table's border fills as a straight line between its two known ends, while interior cells whose boxes hold data curve with the surface. The failure this rule prevents: on a sine-shaped diagonal, the only box with four known corners was the grid's four zero corners, so every blank filled a flat zero with the whole diagonal inside that box.
+
+Tests: `stats.test.ts`: on a sine diagonal with zero corners every blank fills and the cells beside the diagonal sit between the corners and the diagonal, not at zero; a blank between two knowns on a row interpolates along the row even when other rows carry data.
 
 ## The forecast surface
 
-`fitSurface(points)` returns a function of (x, y), or nothing when there are no points.
+`fit_surface(points)` returns a function of (x, y), or nothing when there are no points.
 
 1. Scale x and y to 0 to 1 over the points' range, for numerical stability. An axis with no spread scales to 0.
-2. With 3 to 220 points (`TPS_MAX_POINTS`), fit a thin-plate spline: exact through every point, with kernel r²·log r and an affine term a₀ + a₁x + a₂y, solved by Gauss-Jordan elimination with partial pivoting. Past 220 points the O(n³) solve is not worth it.
+2. With 3 to 220 points (`fit_surface`, `fns_lists.rs`), fit a thin-plate spline: exact through every point, with kernel r²·log r and an affine term a₀ + a₁x + a₂y, solved by Gauss-Jordan elimination with partial pivoting. Past 220 points the O(n³) solve is not worth it.
 3. With fewer than 3 points, more than 220, or a singular system (collinear points), fall back to a least-squares plane. The slope terms are regularized by 10⁻⁶ times the matrix trace plus one, so the plane always solves; if it still cannot, the surface is flat at the mean of the known values.

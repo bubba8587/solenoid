@@ -8,7 +8,9 @@ High · Wide. **Written:** 2026-09-01, plan-only.
 
 One save file. Tabs are canvas PAGES of it. Pages reference each other's nodes. Explicitly
 NOT concurrently-loaded library documents with cross-document links — that fork was weighed
-and rejected. The library (`documentStore`, the doc switcher in `MenuBar`) stays what it is: a
+and rejected. (2026-10-29: the library becomes a folder tree and the pages a tree inside each
+document, both in the Navigator, [[C132]] workspaceTree, bundle 26; values between documents
+stay out.) The library (`documentStore`, the doc switcher in `MenuBar`) stays what it is: a
 list of separate documents; the tab strip becomes the page strip of the OPEN document.
 
 ## The decision to make first: one engine, or one per page
@@ -16,7 +18,7 @@ list of separate documents; the tab strip becomes the page strip of the OPEN doc
 The audit named it: one-doc-one-file means a SINGLE editor/engine can plausibly serve all
 pages. **Recommend: one editor, one engine, pages as view scopes.**
 - FOR: cross-page references are then REAL connections (no bridge machinery, no second
-  recompute path — `../tree/specs/computation/compute-pass.md` § The targeted pass equals the full pass holds untouched); `nodeNameStore`'s one flat
+  recompute path — `../../tree/specs/computation/compute-pass.md` § The targeted pass equals the full pass holds untouched); `nodeNameStore`'s one flat
   per-document namespace is exactly right (a name is unique in the document, which is what a
   cross-page reference needs); `forgetAllNodes()` wiping node-keyed stores on document switch
   stays correct; save/load stays one `rebuildGraph`; undo stays one snapshot history.
@@ -34,7 +36,7 @@ pages. **Recommend: one editor, one engine, pages as view scopes.**
   VISUAL state → it lives in the text form's sidecar block beside `positions`, never inline in
   the per-node line (`tree/specs/documents/addressable-model.md`). New top-level `pages:
   [{id, name, order}]` in `SavedGraph` — add to BOTH `writeTextForm` and `readTextForm`
-  (`../tree/specs/documents/save-format.md` § Every save passes through the text form) or it is silently dropped on every save.
+  (`../../tree/specs/documents/save-format.md` § Every save passes through the text form) or it is silently dropped on every save.
 - **Groups, standoffs, docked FCs, conduits are single-page**: a group's members share its
   page (moving a group moves its page); a standoff between two pages is refused; a docked FC
   lives on its host's page. Enforce in the edit verbs (`flowModel.ts` `moveNode`/`connect`
@@ -43,8 +45,8 @@ pages. **Recommend: one editor, one engine, pages as view scopes.**
   surface, a cross-page cable renders as a **portal stub** at each end: an exit stub on the
   source page (the socket's cable ends in a labeled chip naming the target page + node) and
   an entry stub on the target page. Clicking a stub flies to the other end (page switch +
-  `flyToNode`). The archived Portal idea (`../archive/isolate-pin-multiview-scoping.md`) is
-  this, with the "named store" replaced by a real connection.
+  `flyToNode`). This is the old Portal idea (a named store read on another view), with the
+  store replaced by a real connection.
 - **Composites are orthogonal**: a drill-in substitutes the surface (`activeGraph.ts`); a
   composite's internal graph has no pages (one canvas), and a composite instance sits on one
   page like any node.
@@ -71,16 +73,15 @@ pages. **Recommend: one editor, one engine, pages as view scopes.**
   Pins, Alerts, Comments panels list the page beside the node and fly across pages. Report and
   Presentation references are name-addressed already and work unchanged; Presentation steps
   gain the page implicitly from the node.
-- **The page strip**: a `tree/specs/canvas/layout-chrome.md` decision — recommend the strip lives in the top
-  bar's middle gap on desktop (the empty div the art slot was reserved for — the author
-  decides which wins) and as a row in the mobile menu bar; rename inline, reorder by drag,
-  add/close with the usual guards (closing a page with nodes asks; nodes move to a page, never
+- **No page strip: pages are rows in the Navigator's tree** ([[C132]] workspaceTree; the pane is
+  bundle 26, `26-navigator-tree.md`). Rename inline, reorder by drag, page folders, add and
+  delete with the usual guards (deleting a page with nodes asks; nodes move to a page, never
   vanish). Mermaid/Report/Note nodes are pages' citizens like any other.
 
 ## Text form and AI
 
 - Line grammar unchanged (a page is not a node); the sidecar gains `page` per node and the
-  `pages` list. The AI palette's whole-document rewrite (aiWholeDocRewrite) carries pages
+  `pages` list. The AI palette's whole-document rewrite (B13 aiInScope) carries pages
   through the sidecar untouched; the grounding spec (`aiGrounding.ts`) states the page field.
 - The strict validator (`graphValidate.ts`): unknown page id → repair-grade issue (assign to
   the first page), duplicate page names → issue.
@@ -92,7 +93,7 @@ pages. **Recommend: one editor, one engine, pages as view scopes.**
 2. Projection filter + stubs + camera-per-page; `syncTopology` identity across switches
    (perf probe at 200 nodes).
 3. Edit-verb guards (single-page groups/standoffs/docks); paste onto the active page.
-4. The page strip (desktop + mobile), rename/reorder/add/close, `tree/specs/canvas/layout-chrome.md` row.
+4. The page rows in the Navigator's tree (bundle 26 build step 3).
 5. Page-scoped Tidy/Cleanup/fit/isolate/lasso; `flyToNode` page switch; panels show pages.
 6. Validator + grounding; a seed with two pages and a cross-page reference; What's-New.
 

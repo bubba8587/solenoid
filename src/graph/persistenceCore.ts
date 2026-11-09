@@ -2,7 +2,7 @@
 
 export const CURRENT_SAVE_VERSION = 2;
 
-export type ValidationResult = { ok: true } | { ok: false; reason: string };
+type ValidationResult = { ok: true } | { ok: false; reason: string };
 
 const fail = (reason: string): ValidationResult => ({ ok: false, reason });
 
@@ -41,7 +41,7 @@ export function validateSavedGraph(data: unknown): ValidationResult {
 }
 
 
-export interface SavedConnectionLike {
+interface SavedConnectionLike {
   source: string;
   sourceOutput: string;
   target: string;

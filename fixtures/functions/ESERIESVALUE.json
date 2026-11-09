@@ -1,0 +1,7 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"ESERIESVALUE(4700)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ESERIESVALUE(5000, \"E12\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ESERIESVALUE(-5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

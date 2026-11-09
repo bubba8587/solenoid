@@ -37,6 +37,7 @@ export function AngleDialComponent({ data, emit }: NodeProps<AngleDialNode>) {
             step={data.step}
             onChange={commit}
             size={72}
+            counterclockwise
           />
         </div>
         <div className="angle-dial-node__input-row">

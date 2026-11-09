@@ -9,6 +9,8 @@ export interface ImageValue {
   height: number;
   alt?: string;
   title?: string;
+  /** A web picture whose card may not fetch yet ([[B18]] safeToShare): every view shows it held. */
+  held?: true;
 }
 
 export function isImageValue(v: unknown): v is ImageValue {

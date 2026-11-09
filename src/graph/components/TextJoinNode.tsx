@@ -1,5 +1,5 @@
-import { TEXTJOIN_IGNORE_EMPTY_META } from "../rete-nodes";
-import type { TextJoinNode as TextJoinNodeType, TextJoinIgnoreEmpty } from "../rete-nodes";
+import { TEXTJOIN_IGNORE_EMPTY_META } from "../nodeClasses";
+import type { TextJoinNode as TextJoinNodeType, TextJoinIgnoreEmpty } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 

@@ -1,14 +1,14 @@
 // [[C25]]
 import { describe, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
-import * as Nodes from "../../src/graph/rete-nodes";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
+import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards, solError } from "../../src/graph/errorValue";
+import { solError } from "../../src/graph/errorValue";
 import { loopMembers } from "../../src/graph/graphCompute";
-import { csvToFrame } from "../../src/graph/nodes/connection";
+import { csvToFrame } from "../../src/graph/frameBackend";
 import { connectionStore } from "../../src/graph/connectionStore";
 import seed from "../../src/graph/seedGraphs/personal-finance.json";
 
@@ -20,7 +20,7 @@ import seed from "../../src/graph/seedGraphs/personal-finance.json";
 // and is the in-app `window.__solenoidPerf` probe's job. Pan/zoom cost is render-
 // only and not exercised here at all.
 //
-// Run:  npx vitest run src/graph/perfScaling.test.ts
+// Run:  npx vitest run tests/graph/perfScaling.test.ts
 // The graph is duplicated into N disconnected copies (scale 1/2/4) to see whether
 // compute scales linearly with TOTAL node count (the "whole graph recomputes"
 // hypothesis) — and to project where it crosses a 16ms frame budget.
@@ -31,7 +31,7 @@ type SavedNode = {
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
 };
-type AnyNode = ClassicPreset.Node & {
+type AnyNode = GraphNode & {
   outputs: Record<string, unknown>;
   cachedResult?: unknown;
   lastKey?: string;
@@ -55,12 +55,7 @@ const NodeCtors = Nodes as unknown as Record<string, new (i?: Record<string, unk
  *  islands. WebSource nodes are pre-seeded from the local CSV so data() returns the
  *  real frame synchronously (no network in a headless run). */
 async function buildGraph(copies: number) {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
 
@@ -84,7 +79,7 @@ async function buildGraph(copies: number) {
       const s = byId.get(cn.source), t = byId.get(cn.target);
       if (!s || !t) continue;
       await editor.addConnection(
-        new ClassicPreset.Connection(s, cn.sourceOutput, t, cn.targetInput) as Schemes["Connection"],
+        new GraphConnection(s, cn.sourceOutput, t, cn.targetInput) as Schemes["Connection"],
       );
     }
   }
@@ -96,17 +91,15 @@ async function buildGraph(copies: number) {
     const node = editor.getNode(id) as unknown as AnyNode;
     const outs: Record<string, unknown> = {};
     for (const k of Object.keys(node.outputs)) outs[k] = circ;
-    engine.cache.add(id, Object.assign(Promise.resolve(outs), { cancel() {} }));
+    engine.seed(id, outs);
   }
   return { editor, engine };
 }
 
 /** One compute tick: exactly what processGraph does before it renders. */
-async function computeTick(editor: NodeEditor<Schemes>, engine: DataflowEngine<Schemes>) {
+async function computeTick(engine: DataflowEngine<Schemes>) {
   engine.reset();
-  for (const node of editor.getNodes()) {
-    await engine.fetch(node.id);
-  }
+  await engine.fetchAll();
 }
 
 function stats(samples: number[]) {
@@ -118,22 +111,25 @@ function stats(samples: number[]) {
 
 // Benchmark, not a pass/fail test — 30 iters at 1x/2x/4x is slow and prints a table
 // nobody reads in a normal `npm test`. Gate it behind PERF so the default suite stays
-// fast; run with `PERF=1 npx vitest run src/graph/perfScaling.test.ts` when profiling.
+// fast; run with `PERF=1 npx vitest run tests/graph/perfScaling.test.ts` when profiling.
 describe.runIf(!!process.env.PERF)("personal-finance compute scaling", () => {
-  it("times engine.reset + fetch-all at 1x / 2x / 4x node count", async () => {
+  it("times engine.reset + fetch-all at 1x / 2x / 4x / 8x node count", async () => {
     const WARMUP = 3;
     const ITERS = 30;
     const rows: string[] = [];
+    const builds: string[] = [];
     rows.push("scale  nodes  conns   min    median   mean    p95     max    ms/node");
-    for (const copies of [1, 2, 4]) {
+    for (const copies of [1, 2, 4, 8]) {
+      const b0 = performance.now();
       const { editor, engine } = await buildGraph(copies);
+      builds.push(`${copies}x build ${(performance.now() - b0).toFixed(1)} ms`);
       const nodes = editor.getNodes().length;
       const conns = editor.getConnections().length;
-      for (let i = 0; i < WARMUP; i++) await computeTick(editor, engine);
+      for (let i = 0; i < WARMUP; i++) await computeTick(engine);
       const samples: number[] = [];
       for (let i = 0; i < ITERS; i++) {
         const t0 = performance.now();
-        await computeTick(editor, engine);
+        await computeTick(engine);
         samples.push(performance.now() - t0);
       }
       const r = stats(samples);
@@ -147,6 +143,6 @@ describe.runIf(!!process.env.PERF)("personal-finance compute scaling", () => {
     }
     // eslint-disable-next-line no-console
     console.log("\n[perf] compute phase (engine.reset + fetch-all), ms over " +
-      `${ITERS} iters after ${WARMUP} warmup:\n` + rows.join("\n") + "\n");
-  });
+      `${ITERS} iters after ${WARMUP} warmup:\n` + rows.join("\n") + "\n" + builds.join("\n") + "\n");
+  }, 120_000);
 });

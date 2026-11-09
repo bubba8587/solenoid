@@ -32,7 +32,7 @@ const REPORT_SUBJECT = "Bleeding edge report";
 // Files a dependency bump touches. On a rebase conflict in these alone, package.json merges (the base's file, each
 // dependency both sides list at the newer of the two versions); the others take the base's copy, which the install and
 // `cargo upgrade` below bring forward again.
-const DEP_FILE = /(^|\/)(package\.json|package-lock\.json|Cargo\.toml|Cargo\.lock)$/;
+const DEP_FILE = /(^|\/)(package\.json|package-lock\.json|Cargo\.toml|Cargo\.lock|rust-toolchain\.toml)$/;
 // Files built rather than written: a conflict in them takes the base's copy, and the checks below rebuild them.
 const GENERATED = /^src\/graph\/engineWasm\/|^prerender\//;
 const FINDING = /^(Edge|Fix): /;
@@ -219,6 +219,11 @@ if (!step("npm: fresh lockfile (newest transitive versions too)", "npm install -
   peerNote = "The plain install failed (usually a peer range the newest versions don't satisfy), so this ran with --legacy-peer-deps.";
   step("npm: fresh lockfile, ignoring peer ranges", "npm install --no-audit --no-fund --legacy-peer-deps");
 }
+// Work branches pin their Rust (rust-toolchain.toml); this branch builds with the newest stable instead.
+if (existsSync("rust-toolchain.toml")) {
+  writeFileSync("rust-toolchain.toml", readFileSync("rust-toolchain.toml", "utf8").replace(/^channel = .*$/m, 'channel = "stable"'));
+  step("rust: the newest stable toolchain", "rustup update stable");
+}
 for (const d of CRATES) {
   step(`cargo: ${d} manifest to the newest releases`, `cargo upgrade --incompatible allow --pinned allow --manifest-path ${d}/Cargo.toml`);
   step(`cargo: ${d} lockfile`, `cargo update --manifest-path ${d}/Cargo.toml`);
@@ -227,7 +232,7 @@ for (const d of CRATES) {
 const after = { npm: npmLock(), npmDirect: npmDirect(), cargo: Object.fromEntries(CRATES.map((d) => [d, cargoLock(d)])) };
 const date = new Date().toISOString().slice(0, 10);
 // Only what moved today becomes a commit; an unchanged day adds none.
-sh(`git add -- package.json package-lock.json ${CRATES.map((d) => `${d}/Cargo.toml ${d}/Cargo.lock`).join(" ")}`, { quiet: true });
+sh(`git add -- package.json package-lock.json rust-toolchain.toml ${CRATES.map((d) => `${d}/Cargo.toml ${d}/Cargo.lock`).join(" ")}`, { quiet: true });
 const bumped = !sh("git diff --cached --quiet", { quiet: true }).ok;
 if (bumped) must(`git ${BOT} commit --quiet -m 'Bleeding edge ${date}: dependencies to their newest'`);
 

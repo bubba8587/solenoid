@@ -6,3 +6,20 @@
 *.ico binary
 *.icns binary
 *.mp4 binary
+
+# GitHub's language bar (Linguist) counts the product, not what's copied in, built or testing it.
+# Vendored: the regex crate patched in under crates/vendor, and DTE's tool, vendored from its own repository.
+crates/vendor/** linguist-vendored
+tools/dte.py linguist-vendored
+# Generated: the wasm-bindgen glue (`npm run build:wasm`), the crawler snapshots (`prerender-site.mjs`) and the
+# core's unit table (`gen-convert-units.mjs`).
+src/graph/engineWasm/** linguist-generated
+prerender/** linguist-generated
+crates/solenoid-core/src/convert_units.rs linguist-generated
+# Tests and benches aren't the product: the TS suite alone outweighs the app's TS, so they'd bury the port to Rust.
+# Rust's are left out alike (inline #[cfg(test)] modules still count).
+tests/** linguist-detectable=false
+*.test.ts linguist-detectable=false
+crates/*/tests/** linguist-detectable=false
+crates/*/benches/** linguist-detectable=false
+crates/*/src/tests.rs linguist-detectable=false

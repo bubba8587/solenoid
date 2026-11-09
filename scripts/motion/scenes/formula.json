@@ -1,0 +1,420 @@
+{
+ "graph": {
+  "nodes": [
+   {
+    "id": "price",
+    "type": "ValueInputNode",
+    "x": 0,
+    "y": 0,
+    "init": {
+     "label": "Unit price",
+     "op": "number",
+     "value": "250",
+     "width": 180
+    },
+    "sections": {
+     "Format": false
+    }
+   },
+   {
+    "id": "qty",
+    "type": "ValueInputNode",
+    "x": 0,
+    "y": 175,
+    "init": {
+     "label": "Quantity",
+     "op": "number",
+     "value": "4",
+     "width": 180
+    },
+    "sections": {
+     "Format": false
+    }
+   },
+   {
+    "id": "disc",
+    "type": "ValueInputNode",
+    "x": 0,
+    "y": 350,
+    "init": {
+     "label": "Discount",
+     "op": "number",
+     "value": "0.15",
+     "width": 180
+    },
+    "sections": {
+     "Format": false
+    }
+   },
+   {
+    "id": "tot",
+    "type": "ExpressionNode",
+    "x": 300,
+    "y": 150,
+    "init": {
+     "label": "Order total",
+     "expr": ""
+    }
+   }
+  ],
+  "cables": []
+ },
+ "states": [
+  {
+   "name": "g0",
+   "cables": []
+  },
+  {
+   "name": "g1",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "p"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g2",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "pr"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g3",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "pri"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g4",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "pric"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g5",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g7",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price *"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g9",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * q"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g10",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * qt"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g11",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * qty"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g13",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * qty *"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g15",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * qty * ("
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g16",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * qty * (1"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g18",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * qty * (1 -"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g20",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * qty * (1 - d"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g21",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * qty * (1 - di"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g22",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * qty * (1 - dis"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g23",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * qty * (1 - disc"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "g24",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * qty * (1 - disc)"
+     }
+    }
+   },
+   "cables": []
+  },
+  {
+   "name": "w1",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * qty * (1 - disc)"
+     }
+    }
+   },
+   "cables": [
+    "price.value -> tot.price"
+   ]
+  },
+  {
+   "name": "w2",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * qty * (1 - disc)"
+     }
+    }
+   },
+   "cables": [
+    "price.value -> tot.price",
+    "qty.value -> tot.qty"
+   ]
+  },
+  {
+   "name": "w3",
+   "set": {
+    "tot": {
+     "init": {
+      "expr": "price * qty * (1 - disc)"
+     }
+    }
+   },
+   "cables": [
+    "price.value -> tot.price",
+    "qty.value -> tot.qty",
+    "disc.value -> tot.disc"
+   ]
+  }
+ ],
+ "sheet": {
+  "x": -560,
+  "y": 120,
+  "cols": [
+   40,
+   150,
+   110
+  ],
+  "letters": [
+   "A",
+   "B"
+  ],
+  "rowH": 32,
+  "size": 15,
+  "rows": [
+   [
+    "Unit price",
+    "250"
+   ],
+   [
+    "Quantity",
+    "4"
+   ],
+   [
+    "Discount",
+    "15%"
+   ],
+   [
+    "Order total",
+    ""
+   ]
+  ],
+  "states": [
+   {
+    "name": "x0",
+    "select": "B4",
+    "formula": ""
+   },
+   {
+    "name": "x1",
+    "formula": "=",
+    "edit": true
+   },
+   {
+    "name": "x2",
+    "formula": "=B",
+    "edit": true
+   },
+   {
+    "name": "x3",
+    "formula": "=B1",
+    "edit": true
+   },
+   {
+    "name": "x4",
+    "formula": "=B1*",
+    "edit": true
+   },
+   {
+    "name": "x5",
+    "formula": "=B1*B",
+    "edit": true
+   },
+   {
+    "name": "x6",
+    "formula": "=B1*B2",
+    "edit": true
+   },
+   {
+    "name": "x7",
+    "formula": "=B1*B2*",
+    "edit": true
+   },
+   {
+    "name": "x8",
+    "formula": "=B1*B2*(",
+    "edit": true
+   },
+   {
+    "name": "x9",
+    "formula": "=B1*B2*(1",
+    "edit": true
+   },
+   {
+    "name": "x10",
+    "formula": "=B1*B2*(1-",
+    "edit": true
+   },
+   {
+    "name": "x11",
+    "formula": "=B1*B2*(1-B",
+    "edit": true
+   },
+   {
+    "name": "x12",
+    "formula": "=B1*B2*(1-B3",
+    "edit": true
+   },
+   {
+    "name": "x13",
+    "formula": "=B1*B2*(1-B3)",
+    "edit": true
+   },
+   {
+    "name": "xdone",
+    "edit": false,
+    "cells": {
+     "B4": "850"
+    }
+   }
+  ]
+ }
+}

@@ -7,15 +7,16 @@ import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { NODE_EXCEL } from "./nodeExcel";
 import { processGraph } from "./process";
 import { unselectAllNodes, selectNode } from "./canvasCommands";
-import type { NodeCatalogEntry, CatalogCategory, CatalogPair, CatalogEntry } from "./AddNodeMenu";
+import type { NodeCatalogEntry, CatalogCategory, CatalogEntry, Companion } from "./AddNodeMenu";
+import { placeCompanions } from "./companions";
 import { nodeNameStore } from "./nodeNameStore";
+import { isCategory, isPair } from "./catalogSearch";
 // Cycle-safe: nodeCtorRegistry imports FLAT_CATALOG from here, but neither touches the other's exports at init.
 import { ctorRegistry, type NodeCtor } from "./nodeCtorRegistry";
 import { getActiveView, getActiveEditor } from "./activeGraph";
+import { setCatalogNamer } from "./sourceNames";
 
 
-function isCategory(e: CatalogEntry): e is CatalogCategory { return e.type === "category"; }
-function isPair(e: CatalogEntry): e is CatalogPair { return e.type === "pair"; }
 
 function flattenCatalog(
   entries: CatalogEntry[],
@@ -105,12 +106,6 @@ export function buildCatalog(activeOnly: boolean): CatalogEntry[] {
     if (leaf) leaf.packs = [...(leaf.packs ?? []), ...packIds];
   }
 
-  // A pack node may already carry `excel` inline on its entry; merge, don't clobber.
-  for (const [type, equivs] of Object.entries(NODE_EXCEL)) {
-    const leaf = byType.get(type);
-    if (leaf) leaf.excel = [...(leaf.excel ?? []), ...equivs];
-  }
-
   for (const { packId, placement } of packPlacements({ activeOnly })) {
     const existing = byType.get(placement.entry.type);
     if (existing) {
@@ -126,6 +121,12 @@ export function buildCatalog(activeOnly: boolean): CatalogEntry[] {
     const leaf: NodeCatalogEntry = { ...placement.entry, packs: [packId] };
     cat.children.push(leaf);
     byType.set(leaf.type, leaf);
+  }
+
+  // Pack nodes too. A pack node may already carry `excel` inline on its entry; merge, don't clobber.
+  for (const [type, equivs] of Object.entries(NODE_EXCEL)) {
+    const leaf = byType.get(type);
+    if (leaf) leaf.excel = [...(leaf.excel ?? []), ...equivs];
   }
 
   applyNodeOps(root, byType);
@@ -166,7 +167,7 @@ function findParent(entries: CatalogEntry[], leaf: NodeCatalogEntry): CatalogEnt
   return null;
 }
 
-export type NodeClass = "core" | "matcher";
+type NodeClass = "core" | "matcher";
 export function classifyType(type: string): NodeClass {
   return (CATALOG_TO_EXCEL.get(type)?.length ?? 0) > 0 ? "matcher" : "core";
 }
@@ -237,6 +238,12 @@ function typeIndex(): Map<string, string> {
   return _typeIndex;
 }
 
+/** The catalog type a saved node's class and op stand for, as `catalogTypeOf` reads a live one. */
+export function catalogTypeFor(ctor: string, op?: unknown): string | null {
+  const idx = typeIndex();
+  return idx.get(`${ctor}::${typeof op === "string" ? op : ""}`) ?? idx.get(`${ctor}::`) ?? null;
+}
+
 export function catalogTypeOf(node: object): string | null {
   const idx = typeIndex();
   const ctor = (node as { constructor: { name: string } }).constructor.name;
@@ -259,6 +266,8 @@ export function nodeName(node: object): string | null {
   );
 }
 
+setCatalogNamer(nodeName);
+
 export function nodeDisplayName(node: object): string {
   const label = ((node as { label?: string }).label ?? "").trim();
   return label || nodeName(node) || nodeTypeName(node as { constructor: { name: string } });
@@ -268,16 +277,19 @@ export { nodeTypeName };
 
 export async function addNodeByCatalogType(catalogType: string): Promise<boolean> {
   const entry = FLAT_CATALOG.get(catalogType);
-  if (!entry) return false;
+  return entry ? addNodeFrom(entry.create, entry.companions) : false;
+}
+
+/** Drops a card built by `create` at the view's center, with its companions, and selects it. */
+export async function addNodeFrom(create: () => unknown, companions?: () => Companion[]): Promise<boolean> {
   const editor = getActiveEditor();
   const view = getActiveView();
   if (!editor || !view) return false;
 
   // Cast through unknown: this file deliberately imports no node classes.
-  const node = entry.create() as unknown as { id: string; width?: number; height?: number; constructor: { name: string }; hydrate?: (reg: Map<string, NodeCtor>) => Promise<void> };
+  const node = create() as unknown as { id: string; width?: number; height?: number; constructor: { name: string }; hydrate?: (reg: Map<string, NodeCtor>) => Promise<void> };
   // A pre-seeded composite must hydrate before the first recompute.
   if (node.hydrate) await node.hydrate(ctorRegistry());
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await editor.addNode(node as any);
   nodeNameStore.ensure(node.id, node.constructor.name);
 
@@ -285,10 +297,9 @@ export async function addNodeByCatalogType(catalogType: string): Promise<boolean
   const rect = view.container.getBoundingClientRect();
   const cx = (rect.width / 2 - x) / k;
   const cy = (rect.height / 2 - y) / k;
-  await view.moveNode(node.id, {
-    x: cx - (node.width ?? 180) / 2,
-    y: cy - (node.height ?? 160) / 2,
-  });
+  const at = { x: cx - (node.width ?? 180) / 2, y: cy - (node.height ?? 160) / 2 };
+  await view.moveNode(node.id, at);
+  if (companions) await placeCompanions(editor, view, node as any, at, companions());
 
   await processGraph();
 

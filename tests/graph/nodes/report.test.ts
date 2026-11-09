@@ -1,7 +1,8 @@
 // [[C68]], [[C24]]
 import { describe, it, expect } from "vitest";
 import { ReportNode } from "../../../src/graph/nodes/report";
-import { installErrorGuards, isSolError, solError, type SolError } from "../../../src/graph/errorValue";
+import { isSolError, solError, type SolError } from "../../../src/graph/errorValue";
+import { throughBoundary } from "../boundaryKit";
 import { isDocumentValue, type DocumentValue } from "../../../src/graph/documentValue";
 
 const body = (out: { document: DocumentValue | SolError }) => (out.document as DocumentValue).body;
@@ -34,9 +35,9 @@ describe("ReportNode — inputs from the template", () => {
     expect(n.refValue("total")).toBe(42);
   });
 
-  it("is safe to call the installErrorGuards-wrapped data() with no inputs (independent lanes)", () => {
+  it("is safe to call the boundary-run data() with no inputs (independent lanes)", () => {
     const n = new ReportNode({ body: "{{ x }}" });
-    installErrorGuards(n);
+    throughBoundary(n);
     expect(() => (n.data as () => unknown)()).not.toThrow();
   });
 });

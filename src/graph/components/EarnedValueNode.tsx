@@ -1,16 +1,18 @@
 import { useSyncExternalStore } from "react";
-import type { EarnedValueNode as EarnedValueNodeType } from "../rete-nodes";
+import type { EarnedValueNode as EarnedValueNodeType } from "../nodeClasses";
 import { NodeShell, InlineOutputRows, type NodeProps, type OutputRowValue } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { FrameDisplay } from "./FrameDisplay";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { nodeDisplayName } from "../catalogUtils";
 import { isSolError } from "../errorValue";
+import { APP_LOCALE } from "../locale";
 import { isUnitCell } from "../unitValue";
 import { displayMagnitudeOf } from "../unitBridge";
 import { CardSection, useRowsInUse } from "./CardSection";
 import { EARNED_VALUE_DEFAULT_LITERALS } from "../nodes/earnedValue";
 import { collapseStore } from "../collapseStore";
+import { previewed } from "../listPreview";
 
 // A ratio reads to two places; an index of 1.0 is on plan. Blank when undefined (a 0 denominator).
 function ratioText(v: OutputRowValue): OutputRowValue {
@@ -20,7 +22,7 @@ function ratioText(v: OutputRowValue): OutputRowValue {
 function moneyText(v: OutputRowValue): OutputRowValue {
   if (isSolError(v) || v == null) return v as OutputRowValue;
   const n = isUnitCell(v) ? displayMagnitudeOf(v) : v;
-  return typeof n === "number" ? Math.round(n).toLocaleString() : v;
+  return typeof n === "number" ? Math.round(n).toLocaleString(APP_LOCALE) : v;
 }
 
 const CALENDAR_KEYS = ["holidays", "weekend_code"];
@@ -40,7 +42,7 @@ export function EarnedValueComponent({ data, emit }: NodeProps<EarnedValueNodeTy
       {frameOut && (
         <MeasuredSocketRow hero side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
           <div style={{ width: "100%" }}>
-            <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+            <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
           </div>
         </MeasuredSocketRow>
       )}

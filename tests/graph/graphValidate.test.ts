@@ -1,10 +1,6 @@
-// [[B12]] losslessSaves
-// The strict validating reader (graphValidate.ts): every silently-repaired
-// load condition must surface as a repair-grade issue, and — just as load-
-// bearing — nothing a real save contains may false-positive. The seed sweep at
-// the bottom is that guard: every shipped seed, validated both as JSON and
-// through its text form, must come back clean.
+// [[B12]] losslessSaves, [[save-format#The strict validator]]
 
+import type { GraphNode } from "../../src/graph/graphModel";
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -101,6 +97,12 @@ describe("validateGraph — semantics", () => {
     expect(issue?.message).toContain("silently drop");
   });
 
+  it("flags an inline literal in a map its input's field doesn't read", () => {
+    const { issues } = validateText(`A: KpiNode lit:options=1\n---\n{}`);
+    const issue = issues.find((i) => i.message.includes("lit:options"));
+    expect(issue?.message).toContain("field is text");
+  });
+
   it("flags a double-wired single-cable input", () => {
     // The grammar keeps only one `in<-` key per token map, so the double wire
     // is built straight on a SavedGraph.
@@ -191,19 +193,16 @@ describe("formatIssues", () => {
 });
 
 // ─── The false-positive guards ──────────────────────────────────────────────────
-// Every Add-menu leaf, saved exactly as its factory constructs it, must
-// validate clean — this is what makes the validator's checks (init keys, op
-// vocabulary, literal declarations) safe to enforce across the whole surface.
 
 describe("catalog sweep", () => {
   it("every catalog leaf validates clean as a single-node save", async () => {
     const { FLAT_CATALOG } = await import("../../src/graph/catalogUtils");
-    const { extractInit } = await import("../../src/graph/copyPaste");
+    const { extractInit } = await import("../../src/graph/nodeInit");
     const bad: string[] = [];
     for (const [type, leaf] of FLAT_CATALOG) {
       let inst;
       try {
-        inst = leaf.create() as import("rete").ClassicPreset.Node;
+        inst = leaf.create() as GraphNode;
       } catch {
         continue;
       }

@@ -1,9 +1,9 @@
-// [[C28]], [[B12]] losslessSaves, [[C38]], [[C10]] socketLattice
+// [[C28]], [[C138]] addMenuReachesAll, [[B12]] losslessSaves, [[B18]] safeToShare, [[C10]] socketLattice, [[socket-lattice#Each port owns its socket instance]], [[socket-lattice#Date-valued ports are date-typed]], [[type-propagation-on-in-place-socket-retype#A trueany output declares its passthrough]]
 import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 import { NODE_COMPONENTS, componentForNode } from "../../src/graph/nodeRegistry";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 import { MutableSocket, SolenoidSocket, isDateType, isWildcardRung } from "../../src/graph/sockets";
 import { getPassthrough } from "../../src/graph/nodes/passthrough";
 
@@ -80,13 +80,13 @@ describe("catalog ↔ registry consistency", () => {
     expect([...new Set(bad)], `class names that look mangled or malformed: ${[...new Set(bad)].join(", ")}`).toEqual([]);
   });
 
-  // [[C38]] sinkRunButtonOnly's persistence half: an external-effect arm flag must never
+  // [[B18]] safeToShare's persistence half: an external-effect arm flag must never
   // round-trip — every load (save reopen, paste, placeholder restore) starts
   // disarmed, so opening a shared file can never write to YOUR disk. The two
   // sink families pin this per-class (sink.test.ts / obsidian.test.ts); this is
   // the catalog-wide quantifier, so a FUTURE sink whose author whitelists the
   // flag (or names it `enabled` on a new node) fails here by name.
-  it("no catalog class persists an `enabled` arm flag, and none constructs armed ([[C38]] sinkRunButtonOnly)", () => {
+  it("no catalog class persists an `enabled` arm flag, and none constructs armed ([[B18]] safeToShare)", () => {
     const offenders: string[] = [];
     for (const entry of FLAT_CATALOG.values()) {
       let inst: Record<string, unknown> & object;
@@ -98,13 +98,7 @@ describe("catalog ↔ registry consistency", () => {
     expect(offenders, offenders.join("\n  ")).toEqual([]);
   });
 
-  // [[C10]] socketLattice: an adopting port OWNS its socket instance — the class doc says it
-  // outright ("One instance per port, never shared — a retype must not leak
-  // across cards"). A module-level shared MutableSocket means wiring a date into
-  // one card retypes ANOTHER card's port; that card then coerces under the wrong
-  // type and answers a plausible number (the Input Switch's old shared
-  // valueSocket). Two instances of every class: no MutableSocket may appear in
-  // both.
+
   it("no two instances of a class share a mutable socket ([[C10]] socketLattice)", () => {
     const offenders: string[] = [];
     for (const [type, entry] of FLAT_CATALOG.entries()) {
@@ -120,20 +114,13 @@ describe("catalog ↔ registry consistency", () => {
     expect(offenders, `classes sharing a MutableSocket across instances — adoption leaks between cards:\n  ${offenders.join("\n  ")}`).toEqual([]);
   });
 
-  // [[C10]] socketLattice: a class with a `trueany` OUTPUT either declares passthrough() (so
-  // the four derived-type consumers — adoption, unit flow, the display walk,
-  // coerceInputs' keep-tags boundary — can resolve it) or is sanctioned with the
-  // reason its type resolves another way. An undeclared forwarder's output stays
-  // trueany forever: a downstream FC can't key a family, so a date serial
-  // renders as its raw number — everything connects, nothing errors, the format
-  // is just silently wrong.
+
   const TRUEANY_OUT_SANCTIONED: Record<string, string> = {
     NaNode: "the deliberate #N/A producer — its output IS the error (errorOnlyOutput), no type to forward",
     ConduitNode: "lane types resolve through conduitTrace, the conduit's own resolution system",
     FormatControllerNode: "the FC is the RESOLVER — fcReconcile drives its sockets",
     CompositeNode: "boundary port adoption runs in the composite's own sync pass",
     CompositeInputNode: "a composite boundary marker — typed by the composite's sync pass",
-    XLookupNode: "a genuinely unknowable producer — the result type depends on the looked-up data",
     UnnestNode: "result rank depends on the input's nesting depth (a Frame at depth 1, a Cube at depth >=2)",
   };
   it("every class with a trueany output declares passthrough() (or is sanctioned, with a reason) ([[C10]] socketLattice)", () => {
@@ -225,22 +212,10 @@ describe("catalog ↔ registry consistency", () => {
   });
 });
 
-// A port that HOLDS a date is typed as one — per [[C10]] socketLattice. Swept over
-// the whole catalog because the convention is only worth anything if it is total: it
-// already held on all 60-odd date ports in the finance and date families, and the two
-// that broke it (XIRR/XNPV `dates`, typed numlist and labelled "Date serials") were
-// invisible precisely because everything around them was right.
+
 describe("date-valued ports are typed date", () => {
   it("no catalog port whose label names a date sits on a non-date socket", () => {
-    // Anchored to the END of the label so a numeric port that merely mentions time
-    // ("Start period", "Coupon rate", "Days") is not swept in. A port whose label ends
-    // in "date"/"dates" is claiming to carry one.
-    //
-    // WILDCARD rungs are exempt, and the exemption is the point of the rule rather
-    // than a hole in it: the defect is a port that COMMITS to a concrete non-date type
-    // while carrying a date. A wildcard has committed to nothing — a formula-preset
-    // node ("ROUNDUP(MONTH(date)/3,0)") names its free variables as ports, so `date`
-    // there is an expression variable on the generic socket, not a mistyped date port.
+
     const CLAIMS_DATE = /\bdates?$/i;
     const broken: string[] = [];
     for (const [type, entry] of FLAT_CATALOG.entries()) {

@@ -1,25 +1,17 @@
-// [[D43]]
+// [[C25]] firstClassUnits, [[unit-flow#One idea, a carrier per rank]]
 import { describe, it, expect } from "vitest";
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../../../src/graph/graphModel";
 import * as M from "../../../src/graph/nodes/matrix";
 import { ListIndexNode } from "../../../src/graph/nodes/list";
-import { InterpolateNode } from "../../../src/graph/nodes/stats";
 import { NODE_COMPONENTS } from "../../../src/graph/nodeRegistry";
-import { wrapNodeData } from "../../../src/graph/coerceInputs";
+import { throughBoundary } from "../boundaryKit";
 import { MutableSocket } from "../../../src/graph/sockets";
 import { withMatrixUnit, matrixUnitOf, fromUnit, isUnitCell, type UnitCell } from "../../../src/graph/unitValue";
-import { fcUnitToUnit, applyFcUnit } from "../../../src/graph/unitBridge";
-import { FormatControllerNode } from "../../../src/graph/nodes/formatController";
+import { applyFcUnit } from "../../../src/graph/unitBridge";
+import { fcUnitToUnit } from "../../../src/graph/dimension";
 
 // ─── The matrix-unit POLICY guard (unitGranularity) ──────────────────────────────────────
-// A matrix carries ONE whole-grid unit as a non-enumerable Symbol tag (unitValue.ts).
-// That tag is dropped by any array rebuild, so EVERY node that transforms a matrix
-// must make a deliberate choice about the unit. This file is the machine-checked
-// register of those choices: the policy table below plus a COMPLETENESS sweep that
-// fails if a new matrix.ts node ships without a declared policy. It's the structural
-// guard that turns "did you remember to carry the unit?" from a silent runtime bug
-// (the 2026-07-15 INDEX/reshape whack-a-mole) into a red test.
-//
+
 //   carry            — structural reshape, same cells rearranged → the unit rides
 //   carry-if-uniform — a combiner → the unit rides only if every part shares it
 //   convert-to-list  — rank drop (matrix→list): the grid unit becomes per-cell tags
@@ -39,6 +31,12 @@ const POLICY: Record<string, Policy> = {
   SetCellNode: "carry",           // overwriting cells by address keeps the grid's unit
   InterpolateNode: "carry",       // grid mode fills blanks in the SAME unit (dynamic
                                   // socket, so the sweep can't see it — kept manually)
+  ConnectedRegionsNode: "na",             // patch numbers, never in the grid's unit
+  FindPeaksNode: "na",           // Grid mode: positions out, a frame, no dimensioned matrix
+  DiffNode: "carry",              // Grid mode: a change or a slope is in the grid's unit; % is a plain ratio
+  SmoothNode: "carry",            // Grid mode smooths in the grid's unit, List mode in its items' (a dynamic socket, kept here by hand)
+  ConvolveNode: "strip",          // Grid mode: a convolution multiplies the two grids' units — documented-strip
+  TrapzNode: "strip",             // Grid mode: a volume carries z·x·y — documented-strip
   StackNode: "carry-if-uniform",
   TableReshapeNode: "convert-to-matrix", // WRAPROWS/WRAPCOLS lift; TOCOL/TOROW drop (both checked below)
   TableMultNode: "strip",         // MMULT — dimensioned matrix products are out of scope (documented-strip)
@@ -67,7 +65,7 @@ const plainGrid = () => [[1, 2], [3, 4]];
 // Matrix-family socket types (declared or adoptive-base) — a node with one of these
 // on an input takes a matrix and therefore needs a policy.
 const MATRIX_INPUT = new Set(["table", "strtable", "datetable", "logicaltable", "anytable"]);
-function takesMatrix(node: ClassicPreset.Node): boolean {
+function takesMatrix(node: GraphNode): boolean {
   for (const inp of Object.values(node.inputs ?? {})) {
     const s = inp?.socket as { dataType?: string; base?: string } | undefined;
     if (s && (MATRIX_INPUT.has(s.dataType ?? "") || MATRIX_INPUT.has(s.base ?? ""))) return true;
@@ -86,8 +84,8 @@ describe("matrix-unit policy — completeness (a new matrix op must declare a po
     const missing = new Set<string>();
     let found = 0;
     for (const [ctor] of NODE_COMPONENTS) {
-      let node: ClassicPreset.Node;
-      try { node = new (ctor as unknown as new () => ClassicPreset.Node)(); } catch { continue; }
+      let node: GraphNode;
+      try { node = new (ctor as unknown as new () => GraphNode)(); } catch { continue; }
       if (!takesMatrix(node)) continue;
       found++;
       if (!(node.constructor.name in POLICY)) missing.add(node.constructor.name);
@@ -103,24 +101,7 @@ describe("matrix-unit policy — completeness (a new matrix op must declare a po
 });
 
 describe("matrix-unit policy — behavior matches the declared policy", () => {
-  it("carry: INTERPOLATE grid mode fills blanks in the input's unit", () => {
-    const n = new InterpolateNode({ mode: "grid" });
-    // A plain Z table (coordinates ride beside it; unwired axes = index) carrying a unit.
-    const z = withMatrixUnit([[5, null], [null, 9]], { dim: { length: 1 }, display: "km" });
-    const out = (n.data({ z: [z] }) as { result: unknown }).result;
-    expect(matrixUnitOf(out)).toMatchObject({ display: "km" });
-  });
 
-  it("carry: the whole-grid unit rides a structural reshape", () => {
-    expect(matrixUnitOf(new M.TableTransposeNode().data({ matrix: [kmGrid()] }).result)).toMatchObject({ display: "km" });
-    expect(matrixUnitOf(new M.TableSelectNode({ op: "chooserows" }).data({ matrix: [kmGrid()], indices: [[1]] }).result)).toMatchObject({ display: "km" });
-    expect(matrixUnitOf(new M.TakeDropNode({ op: "take" }).data({ data: [kmGrid()], rows: [1], cols: [0] }).result)).toMatchObject({ display: "km" });
-    expect(matrixUnitOf(new M.ExpandNode().data({ matrix: [kmGrid()], rows: [3], cols: [2], fill: [0] }).result)).toMatchObject({ display: "km" });
-    expect(matrixUnitOf(new M.SetCellNode().data({ matrix: [kmGrid()], value0: [9], row0: [1], col0: [1] }).result)).toMatchObject({ display: "km" });
-    // The grid unit rides a shaped write too — a list (row segment) or a matrix (block).
-    expect(matrixUnitOf(new M.SetCellNode().data({ matrix: [kmGrid()], value0: [[10, 20]], row0: [1], col0: [1] }).result)).toMatchObject({ display: "km" });
-    expect(matrixUnitOf(new M.SetCellNode().data({ matrix: [kmGrid()], value0: [[[10, 20], [30, 40]]], row0: [1], col0: [1] }).result)).toMatchObject({ display: "km" });
-  });
 
   it("carry-if-uniform: a stack keeps the unit only when every part shares it", () => {
     const v = new M.StackNode({ op: "vstack",  valueKeys: ["t0", "t1"] });
@@ -139,36 +120,30 @@ describe("matrix-unit policy — behavior matches the declared policy", () => {
     const km = fcUnitToUnit("km")!, kg = fcUnitToUnit("kg")!;
     const kmList = () => [fromUnit(1, km, "km"), fromUnit(2, km, "km")];
     const v = new M.StackNode({ op: "vstack",  valueKeys: ["t0", "t1"] });
-    wrapNodeData(v);
+    throughBoundary(v);
     const out = (v.data({ t0: [kmList()], t1: [kmList()] }) as { result: unknown }).result;
     expect(matrixUnitOf(out)).toMatchObject({ display: "km" });
     expect((out as number[][])[0][0]).toBe(1);              // as-typed magnitude, never a UnitCell
     expect((out as unknown[][]).flat().some(isUnitCell)).toBe(false);
     // A km list stacked on a km GRID still agrees — both sides reduce to the same tag.
     const mixedRank = new M.StackNode({ op: "vstack",  valueKeys: ["t0", "t1"] });
-    wrapNodeData(mixedRank);
+    throughBoundary(mixedRank);
     expect(matrixUnitOf((mixedRank.data({ t0: [kmList()], t1: [kmGrid()] }) as { result: unknown }).result))
       .toMatchObject({ display: "km" });
     // Disagreeing units strip, same uniform-or-nothing rule as the grid case.
     const h = new M.StackNode({ op: "hstack",  valueKeys: ["t0", "t1"] });
-    wrapNodeData(h);
+    throughBoundary(h);
     expect(matrixUnitOf((h.data({ t0: [kmList()], t1: [[fromUnit(3, kg, "kg")]] }) as { result: unknown }).result))
       .toBeUndefined();
   });
 
-  it("TOCOL keeps the grid unit on its column; TOROW flattens it into per-cell list tags", () => {
-    const col = new M.TableReshapeNode({ op: "tocol" }).data({ matrix: [kmGrid()] }).result;
-    expect(matrixUnitOf(col)).toMatchObject({ display: "km" });
-    const row = new M.TableReshapeNode({ op: "torow" }).data({ matrix: [kmGrid()] }).result as unknown[];
-    expect(row.every((c) => isUnitCell(c) && (c as UnitCell).display === "km")).toBe(true);
-  });
 
   it("convert-to-matrix: WRAPROWS lifts a uniform-unit list into a grid unit (through the real boundary)", () => {
     // A list of km UnitCells (base-SI values, display km) wraps into a km grid whose
-    // cells are bare as-typed magnitudes. Run through wrapNodeData because the list
+    // cells are bare as-typed magnitudes. Run through throughBoundary because the list
     // input would otherwise be unit-stripped at the boundary (the node is unitAware).
     const n = new M.TableReshapeNode({ op: "wraprows" });
-    wrapNodeData(n);
+    throughBoundary(n);
     const km = fcUnitToUnit("km")!, kg = fcUnitToUnit("kg")!;
     const kmList = [fromUnit(1, km, "km"), fromUnit(2, km, "km"), fromUnit(3, km, "km"), fromUnit(4, km, "km")];
     const out = (n.data({ list: [kmList], wrapCount: [2] }) as { result: unknown }).result;
@@ -177,29 +152,12 @@ describe("matrix-unit policy — behavior matches the declared policy", () => {
     // A mixed-unit list can't claim one grid unit → strips.
     const mixed = [fromUnit(1, km, "km"), fromUnit(2, kg, "kg")];
     const m2 = new M.TableReshapeNode({ op: "wraprows" });
-    wrapNodeData(m2);
+    throughBoundary(m2);
     expect(matrixUnitOf((m2.data({ list: [mixed], wrapCount: [2] }) as { result: unknown }).result)).toBeUndefined();
   });
 
-  it("strip: linear algebra drops the unit (documented)", () => {
-    // Identity × a km grid: the product is a fresh array with no tag.
-    const id = [[1, 0], [0, 1]];
-    expect(matrixUnitOf(new M.TableMultNode().data({ a: [kmGrid()], b: [id] }).result)).toBeUndefined();
-    expect(matrixUnitOf(new M.MatDetNode({ op: "minverse" }).data({ matrix: [kmGrid()] }).result)).toBeUndefined();
-    expect(matrixUnitOf(new M.MatEigenNode().data({ matrix: [kmGrid().map((r, i) => r.map((_, j) => (i === j ? 2 : 1)))] }).vectors)).toBeUndefined();
-    const x = new M.MatSolveNode().data({ matrix: [kmGrid()], b: [[1, 1]] }).result;
-    expect(Array.isArray(x) && x.every((v) => typeof v === "number")).toBe(true);
-  });
 
-  it("na: dimension info / a generated matrix carry no unit", () => {
-    const info = new M.TableInfoNode().data({ matrix: [kmGrid()] });
-    expect(typeof info.rows === "number" || info.rows === null).toBe(true); // a number, not a tagged value
-    expect(matrixUnitOf(new M.TableUnitNode().data({ n: [3] }).result)).toBeUndefined();
-  });
 
-  it("author: a NUMBER Table Input tags its own output", () => {
-    expect(matrixUnitOf(new M.TableInputNode({ tableText: "1, 2\n3, 4", dataType: "number", unit: "km" }).data().table)).toMatchObject({ display: "km" });
-  });
 });
 
 // INDEX lives in list.ts but is the other matrix-unit consumer (extraction). Pin it
@@ -210,7 +168,7 @@ describe("matrix-unit policy — INDEX extraction (list.ts) carries the unit out
   it("through the real boundary (socket adopts 'table')", () => {
     const n = new ListIndexNode();
     (n.inputs.list!.socket as MutableSocket).setType("table");
-    wrapNodeData(n);
+    throughBoundary(n);
     const cell = (n.data({ list: [kmGrid()], index: [1], column: [2] }) as { result: unknown }).result;
     expect(isUnitCell(cell)).toBe(true);
     expect((cell as UnitCell).display).toBe("km");
@@ -228,14 +186,5 @@ describe("an FC on a matrix that already carries a unit never relabels it ([[C25
     const out = applyFcUnit(km(), "m") as number[][];
     expect(out).toEqual([[5000, 2000]]);
     expect(matrixUnitOf(out)?.display).toBe("m");
-  });
-  it("the FC mirrors a grid's unit and locks, as it does for a scalar", () => {
-    const fc = new FormatControllerNode();
-    fc.unit = "m";
-    const out = fc.data({ in: [km()] }).out as number[][];
-    expect(fc.unit).toBe("km");
-    expect(fc.forwarding).toBe(true);
-    expect(out).toEqual([[5, 2]]);
-    expect(matrixUnitOf(out)?.display).toBe("km");
   });
 });

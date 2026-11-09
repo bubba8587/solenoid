@@ -19,4 +19,4 @@ Tags go in the `tags` property or inline in the body. Typing your name into `rat
 
 **Never.** Rename or delete a leaf file, or change `id`, `parents`, `status`. Those go through the tool.
 
-**Agent side.** `python tools/dte.py outbox` lists what you left, `--done <ID or note>` clears it, `validate` prints the count. Details: `docs/dte.md`.
+**Agent side.** `python3 tools/dte.py outbox` lists what you left, `--done <ID or note>` clears it, `validate` prints the count. Details: `docs/dte.md`.

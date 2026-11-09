@@ -58,7 +58,7 @@ function insertItems(axis: EditAxis): MenuItem[] {
     ];
   }
   const n = axis.target.length;
-  const lo = Math.min(...axis.target), hi = Math.max(...axis.target);
+  const lo = axis.target.reduce((m, x) => Math.min(m, x), Infinity), hi = axis.target.reduce((m, x) => Math.max(m, x), -Infinity);
   const what = n > 1 ? plural(axis.noun, n) : axis.noun;
   return [
     { label: `${what} ${axis.sides[0]}`, onClick: () => axis.insert(lo, n), shortcut: "Ctrl+Shift+=" },
@@ -102,7 +102,7 @@ function useOutsideClose(open: boolean, ref: React.RefObject<HTMLElement | null>
 
 function MenuList({ items, className, style, heading }: { items: MenuItem[]; className: string; style?: React.CSSProperties; heading?: ReactNode }) {
   return (
-    <div className={className} role="menu" style={style}>
+    <div className={className} role="menu" focusgroup="menu block" style={style}>
       {heading}
       {items.map((it, i) => (
         <button key={i} type="button" role="menuitem" className="sol-popup-menu__item" disabled={it.disabled} onClick={it.onClick}>{it.label}</button>
@@ -174,7 +174,7 @@ export function TableContextMenu({ at, row, col, onClose }: { at: { x: number; y
   const { insert, remove } = editMenuItems(row, col);
   const wrap = (it: MenuItem): MenuItem => ({ ...it, onClick: () => { onClose(); it.onClick(); } });
   return (
-    <div ref={ref} className="sol-popup-menu__list sol-popup-menu__list--at" role="menu" style={{ left: pos.x, top: pos.y }} onContextMenu={(e) => e.preventDefault()}>
+    <div ref={ref} className="sol-popup-menu__list sol-popup-menu__list--at" role="menu" focusgroup="menu block" style={{ left: pos.x, top: pos.y }} onContextMenu={(e) => e.preventDefault()}>
       <div className="sol-popup-menu__heading">Insert</div>
       {insert.map((it, i) => <button key={`i${i}`} type="button" role="menuitem" className="sol-popup-menu__item" onClick={wrap(it).onClick}>{it.label}{it.shortcut && <span className="sol-popup-menu__shortcut">{it.shortcut}</span>}</button>)}
       <div className="sol-popup-menu__sep" />
@@ -207,7 +207,7 @@ export function useEditShortcuts(): (row: EditAxis | undefined, col: EditAxis | 
       if (!axis || axis.target.length === 0) return;
       e.preventDefault();
       e.stopPropagation();
-      if (insert) axis.insert(Math.min(...axis.target), axis.target.length);
+      if (insert) axis.insert(axis.target.reduce((m, x) => Math.min(m, x), Infinity), axis.target.length);
       else if (axis.canEmpty || axis.target.length < axis.total) axis.remove([...axis.target]);
     };
     window.addEventListener("keydown", onKey, true);

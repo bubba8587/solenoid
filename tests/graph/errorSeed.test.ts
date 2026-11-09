@@ -1,20 +1,14 @@
-// [[C25]]
+// [[C25]] firstClassUnits, [[error-values#Enforcement]]
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
-import * as Nodes from "../../src/graph/rete-nodes";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
+import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards, isSolError, type SolError } from "../../src/graph/errorValue";
+import { isSolError, type SolError } from "../../src/graph/errorValue";
 import { computeAll } from "../../src/graph/graphCompute";
 import seed from "../../src/graph/seedGraphs/null-and-logical.json";
 
-// Loads the "Errors, Null & Logic" seed (the error-codes tour merged into it,
-// 2026-07-08 — the c_*/d_* cluster ids are preserved) and runs it through a real editor +
-// DataflowEngine with the SAME wrappers + cycle handling Canvas/processGraph use,
-// then checks that every ISERROR cluster lights up with the code its row promises.
-// A wrong socket key or a producer that quietly returns null shows up here as a
-// blank (null seenError) instead of in the running app.
 
 type SavedNode = {
   id: string; type: string;
@@ -22,7 +16,7 @@ type SavedNode = {
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
 };
-type AnyNode = ClassicPreset.Node & {
+type AnyNode = GraphNode & {
   outputs: Record<string, unknown>;
   seenError?: SolError | null;
   cachedValue?: unknown;
@@ -36,12 +30,7 @@ const EXPECTED: Record<string, string> = {
 
 describe("errors-null-logic seed (error-codes tour)", () => {
   it("every ISERROR cluster reports the code its row demonstrates", async () => {
-    const editor = new NodeEditor<Schemes>();
-    installInputCoercion(editor);
-    editor.addPipe((ctx) => {
-      if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-      return ctx;
-    });
+    const editor = new GraphEditor<Schemes>();
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
 
@@ -58,7 +47,7 @@ describe("errors-null-logic seed (error-codes tour)", () => {
     for (const c of seed.connections) {
       const src = byId.get(c.source)!, tgt = byId.get(c.target)!;
       await editor.addConnection(
-        new ClassicPreset.Connection(src, c.sourceOutput, tgt, c.targetInput) as Schemes["Connection"],
+        new GraphConnection(src, c.sourceOutput, tgt, c.targetInput) as Schemes["Connection"],
       );
     }
 

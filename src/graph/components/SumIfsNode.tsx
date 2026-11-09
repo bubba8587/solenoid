@@ -1,12 +1,13 @@
 import { useState, useSyncExternalStore } from "react";
 import { collapseStore } from "../collapseStore";
 import { CollapsedInputPill } from "./CollapsedInputPill";
-import type { SumIfsNode as SumIfsNodeType, CondAggOp } from "../rete-nodes";
-import { COND_AGG_OP_META } from "../rete-nodes";
-import type { FilterCondConfig } from "../frameVerbs";
+import type { SumIfsNode as SumIfsNodeType, CondAggOp } from "../nodeClasses";
+import { COND_AGG_OP_META } from "../nodeClasses";
+import type { FilterCondConfig } from "../frameOps";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
-import { getOwningView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
+import { retypeOutputCables } from "../fcReconcile";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
 import { NodeShell, OpSelect, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -14,6 +15,7 @@ import { MeasuredSocketRow } from "./NodeSocket";
 import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS, VALUELESS_OPS } from "./FrameNodes";
 import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
+import { PairHead } from "./PairedExtensibleInputs";
 
 const OPS = (Object.keys(COND_AGG_OP_META) as CondAggOp[]).map((op) => ({
   value: op,
@@ -22,7 +24,16 @@ const OPS = (Object.keys(COND_AGG_OP_META) as CondAggOp[]).map((op) => ({
 
 export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
   const connected = useConnectedInputs(data.id);
-  const [op, setOp] = useNodeField(data, "op");
+  const [op, setOpField] = useNodeField(data, "op");
+  async function pickOp(next: CondAggOp) {
+    if (next === data.op) return;
+    const outputChanged = data.setOp(next);
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
+    if (outputChanged && editor && view) await retypeOutputCables(editor, view, data.id, "result");
+    if (view) await view.rerenderNode(data.id);
+    setOpField(next);
+  }
   const [match, setMatch] = useNodeField(data, "match");
   const [cfg, setCfg] = useState<Record<string, FilterCondConfig>>(() => ({ ...data.condConfig }));
   const strLiterals = (data.stringLiterals ??= {});
@@ -34,17 +45,17 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
     const next = { ...rowCfg(id), ...patch };
     setCfg((c) => ({ ...c, [id]: next }));
     data.condConfig[id] = next;
-    void processGraph();
+    data.edited(); void processGraph();
   };
   const setStr = (key: string, v: string) => {
     strLiterals[key] = v;
-    void processGraph();
+    data.edited(); void processGraph();
   };
 
   async function addPair() {
     data.addValuePair();
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   async function removePair(colKey: string, valKey: string) {
@@ -52,7 +63,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
     data.removeValuePair(colKey);
     await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   return (
@@ -62,7 +73,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
         <CollapsedInputPill node={data} emit={emit} keys={["frame", ...(op !== "countifs" ? ["values"] : []), ...pairs.flat()]} />
       ) : (<>
       <InlineInputs node={data} emit={emit} keys={["frame"]} />
-      <OpSelect value={op} onChange={setOp} options={OPS} />
+      <OpSelect value={op} onChange={(o) => void pickOp(o)} options={OPS} />
       {op !== "countifs" && (
         <MeasuredSocketRow side="input" socketKey="values" nodeId={data.id} emit={emit} payload={data.inputs.values!.socket}>
           <span className="solenoid-node__io-label">Values</span>
@@ -77,23 +88,14 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
         const id = colKey.slice(6);
         const c = rowCfg(id);
         return (
-          <div key={colKey} className="solenoid-node__pair-group">
+          <div key={colKey} className="solenoid-node__pair-group solenoid-node__pair-group--headed">
+            {pairs.length > 1 && <PairHead title="Remove this criterion" onRemove={() => void removePair(colKey, valKey)} />}
             <MeasuredSocketRow side="input" socketKey={colKey} nodeId={data.id} emit={emit} payload={data.inputs[colKey]!.socket}>
               <span className="solenoid-node__io-label">Column{pairs.length > 1 ? ` ${i + 1}` : ""}</span>
               {connected.has(colKey) ? (
                 <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
               ) : (
                 <InlineTextField value={strLiterals[colKey]} onChange={(v) => setStr(colKey, v)} />
-              )}
-              {pairs.length > 1 && (
-                <button
-                  type="button"
-                  className="solenoid-node__row-remove"
-                  title="Remove this criterion"
-                  onClick={(e) => { e.stopPropagation(); void removePair(colKey, valKey); }}
-                >
-                  ×
-                </button>
               )}
             </MeasuredSocketRow>
             <ArgSelect value={c.op} options={FILTER_OP_OPTIONS} onChange={(next) => updateCfg(id, { op: next })} />

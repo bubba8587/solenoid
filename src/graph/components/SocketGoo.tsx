@@ -1,4 +1,5 @@
 // [[B14]] oneDesignSystem (DESIGN.md § Card sections, the fold's liquid merge)
+import { clamp } from "../nodes/mathUtils";
 import { useId, useLayoutEffect, useRef } from "react";
 import { socketRingColor } from "./SocketComponent";
 import { cableEndMotion } from "../cableEndMotion";
@@ -22,7 +23,6 @@ const PAD = 24; // room for the blur and the wobble past the drops' extent
 const MERGE_MS = 560;
 const SPLIT_MS = 620;
 
-const clamp01 = (t: number) => (t < 0 ? 0 : t > 1 ? 1 : t);
 const easeInCubic = (t: number) => t * t * t;
 const easeOutBack = (t: number) => { const c = 1.9; return 1 + (c + 1) * (t - 1) ** 3 + c * (t - 1) ** 2; };
 // A damped wobble for jelly settling: 0 at t=0 and t=1, a few decaying swings between.
@@ -81,7 +81,7 @@ export function SocketGoo({ nodeId, mode, drops, pillTop, pillColor, pillHeight 
       }
     };
     const frame = () => {
-      const t = clamp01((performance.now() - start) / total);
+      const t = clamp((performance.now() - start) / total, 0, 1);
       let absorbed = 0;
       const ends: [string, number][] = [];
       drops.forEach((d, i) => {
@@ -91,7 +91,7 @@ export function SocketGoo({ nodeId, mode, drops, pillTop, pillColor, pillHeight 
         const rowCy = d.top + R;
         if (mode === "merge") {
           // Each drop falls up into the caption, accelerating, stretched along its path by its speed.
-          const local = clamp01((t - i * stagger) / 0.62);
+          const local = clamp((t - i * stagger) / 0.62, 0, 1);
           const p = easeInCubic(local);
           const speed = 3 * local * local; // d/dt of t³
           const cy = rowCy + (pillCy - rowCy) * p;
@@ -104,29 +104,29 @@ export function SocketGoo({ nodeId, mode, drops, pillTop, pillColor, pillHeight 
           absorbed += p;
         } else {
           // Each drop buds off the pill and springs to its row, overshooting and stretched while it moves fast.
-          const local = clamp01((t - i * stagger) / 0.78);
+          const local = clamp((t - i * stagger) / 0.78, 0, 1);
           const p = easeOutBack(local);
           const cy = pillCy + (rowCy - pillCy) * p;
-          const speed = Math.abs(easeOutBack(clamp01(local + 0.02)) - p) * 50;
+          const speed = Math.abs(easeOutBack(clamp(local + 0.02, 0, 1)) - p) * 50;
           const stretch = Math.min(0.8, speed * 0.3);
-          const grow = 0.55 + 0.45 * clamp01(local * 1.6);
+          const grow = 0.55 + 0.45 * clamp(local * 1.6, 0, 1);
           set("cy", String(cy - y0));
           ends.push([d.key, cy - y0]);
           set("rx", String(R * grow / (1 + stretch * 0.5)));
           set("ry", String(R * grow * (1 + stretch)));
-          absorbed += 1 - clamp01(local * 1.4);
+          absorbed += 1 - clamp(local * 1.4, 0, 1);
         }
       });
       const share = n > 0 ? absorbed / n : 1;
       if (mode === "merge") {
         // The pill swells as the drops arrive, then wobbles like jelly as it settles.
-        const settle = clamp01((t - 0.62) / 0.38);
+        const settle = clamp((t - 0.62) / 0.38, 0, 1);
         const h = (R * 2 + (pillHeight - R * 2) * share) * (share > 0.05 ? 1 : share * 20) * (1 + 0.18 * wobble(settle));
         const w = R * 2 * (1 - 0.12 * wobble(settle));
         setPill(h, w);
       } else {
         // The pill gives up its liquid: it bulges as the drops pull, then drains to nothing.
-        const h = pillHeight * share * (1 + 0.15 * Math.sin(clamp01(t / 0.35) * Math.PI));
+        const h = pillHeight * share * (1 + 0.15 * Math.sin(clamp(t / 0.35, 0, 1) * Math.PI));
         setPill(h, R * 2 * (0.7 + 0.3 * share));
       }
       carryCables(ends);
@@ -137,7 +137,7 @@ export function SocketGoo({ nodeId, mode, drops, pillTop, pillColor, pillHeight 
     frame();
     return () => { cancelAnimationFrame(raf); cableEndMotion.clear(nodeId, drops.map((d) => d.key)); };
     // One run per mount; the fold remounts it for the next.
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <svg

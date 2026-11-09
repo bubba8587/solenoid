@@ -1,19 +1,21 @@
 // [[C15]] matricesInFormulas, [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { setCells } from "../../src/graph/nodes/matrixOps";
+import { SetCellNode } from "../../src/graph/nodes/matrix";
 import { coerceScriptResult } from "../../src/graph/nodes/scriptCoerce";
-import { pivotFrame } from "../../src/graph/frameVerbs";
+import { pivotFrame } from "./coreVerbs";
 
-// A call takes about 125k arguments, so a kernel that spreads a list into one throws past that.
+// A call takes about 125k arguments, so JavaScript that spreads a list into one throws past that. The kernels run in
+// Rust now; what these hold is each path a long value crosses between JavaScript and the core: a formula's nested
+// column and flat list, a wide row, a frame, a card's table input, a script's answer.
 const N = 150_000;
 const ev = (expr: string, env: Record<string, unknown>) => compileEvaluator(expr)!(env);
 const list = Array.from({ length: N }, (_, i) => i);
 const col = list.map((v) => [v]);
 
 describe("kernels take a list longer than a call's argument limit", () => {
-  it("MAP and BYCOL over a long column", () => {
-    const mapped = ev("MAP(x, LAMBDA(v, v + 1))", { x: col }) as number[][];
+  it("a long column into a formula and back, and BYCOL over it", () => {
+    const mapped = ev("x + 1", { x: col }) as number[][];
     expect(mapped.length).toBe(N);
     expect(mapped[N - 1]).toEqual([N]);
     expect(ev("BYCOL(x, LAMBDA(c, COUNT(c)))", { x: col })).toEqual([N]);
@@ -29,7 +31,7 @@ describe("kernels take a list longer than a call's argument limit", () => {
   });
 
   it("Set Cells writing a long block", () => {
-    const out = setCells(col.map(() => [null]), [{ r: 1, c: 1, v: col }]) as number[][];
+    const out = new SetCellNode().data({ matrix: [col.map(() => [null])], value0: [col], row0: [1], col0: [1] }).result as number[][];
     expect(out[N - 1]).toEqual([N - 1]);
   });
 
@@ -44,6 +46,6 @@ describe("kernels take a list longer than a call's argument limit", () => {
 
   it("a script returning many rows", () => {
     const r = coerceScriptResult(col);
-    expect((r.value as number[][]).length).toBe(N);
+    expect((r as number[][]).length).toBe(N);
   });
 });

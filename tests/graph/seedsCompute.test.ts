@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
-import * as Nodes from "../../src/graph/rete-nodes";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
+import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards, isSolError } from "../../src/graph/errorValue";
+import { isSolError } from "../../src/graph/errorValue";
 import { SEEDS } from "../../src/graph/seeds";
 
 // Every seed, run through a real editor + DataflowEngine: no node may compute an
@@ -25,7 +25,7 @@ const EXPECTED_ERRORS: Record<string, string[]> = {
   // H_conv2 raises #UNIT!, H_d2 is the Display showing it off (its label says so).
 };
 
-/** Seeds this loop can't fetch, each owned by a test that can. */
+/** Seeds this loop can't fetch, and the test that runs each one (or why none can offline). */
 const SKIPPED: Record<string, string> = {
   "null-and-logical":
     "the error-codes tour, incl. a #CIRC! loop — errorSeed.test.ts runs it with the cycle cache-seeding a plain fetch loop lacks",
@@ -44,15 +44,13 @@ type SavedNode = {
 type SavedConn = { source: string; sourceOutput: string; target: string; targetInput: string };
 
 async function buildSeed(graph: { nodes: SavedNode[]; connections: SavedConn[] }) {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
 
-  const byId = new Map<string, ClassicPreset.Node>();
+  const byId = new Map<string, GraphNode>();
   for (const sn of graph.nodes) {
-    const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => ClassicPreset.Node>)[sn.type];
+    const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => GraphNode>)[sn.type];
     if (typeof Ctor !== "function") continue;   // seeds.test.ts owns "every type constructs"
     const node = new Ctor({ ...sn.init });
     const anyNode = node as unknown as Record<string, unknown>;
@@ -67,7 +65,7 @@ async function buildSeed(graph: { nodes: SavedNode[]; connections: SavedConn[] }
     if (!s || !t) continue;                     // seeds.test.ts owns connection validity
     try {
       await editor.addConnection(
-        new ClassicPreset.Connection(s, c.sourceOutput, t, c.targetInput) as Schemes["Connection"],
+        new GraphConnection(s, c.sourceOutput, t, c.targetInput) as Schemes["Connection"],
       );
     } catch { /* incompatible pair — seeds.test.ts reports it with better detail */ }
   }

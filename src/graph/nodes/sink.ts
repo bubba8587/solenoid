@@ -1,6 +1,6 @@
-// [[C38]] sinkRunButtonOnly, [[C103]] untrustedContentSeams, [[B11]] maximalMerge, [[C26]] opArgDistinct, [[B2]] webTryDesktopFull
-import { ClassicPreset } from "rete";
-import Papa from "papaparse";
+// [[B18]] safeToShare, [[C103]] untrustedContentSeams, [[B11]] maximalMerge, [[C26]] opArgDistinct, [[B2]] webTryDesktopFull
+import { GraphNode } from "../graphModel";
+import { unparseCsv } from "../csv";
 import { neutralizeFormulaCell } from "../csvSafety";
 import { frameIn, strIn } from "./shared";
 import { frameRowCount, formatFrameCell, type FrameCell, type FrameColType, type FrameValue } from "../frame";
@@ -10,7 +10,7 @@ import { isFrameRef, readFrame, collectPreview, type FrameInput } from "../frame
 import { withExactPass } from "../process";
 import { isDesktop, writeTextFilePath, pickSaveFilePath } from "../fileBridge";
 
-export type SinkStatus = "idle" | "writing" | "ok" | "error";
+type SinkStatus = "idle" | "writing" | "ok" | "error";
 
 export function frameToCsvText(f: FrameValue): string {
   const rows = frameRowCount(f);
@@ -18,10 +18,10 @@ export function frameToCsvText(f: FrameValue): string {
   const data = Array.from({ length: rows }, (_, i) =>
     f.columns.map((c) => {
       const shown = formatFrameCell(c.type, c.values[i] ?? null) ?? "";
-      return c.type === "string" && typeof shown === "string" ? neutralizeFormulaCell(shown) : shown;
+      return c.type === "string" && typeof shown === "string" ? neutralizeFormulaCell(shown) : String(shown);
     }),
   );
-  return Papa.unparse({ fields, data });
+  return unparseCsv(fields, data);
 }
 
 function cellToJsonValue(type: FrameColType, v: FrameCell): unknown {
@@ -45,7 +45,7 @@ export function frameToJsonText(f: FrameValue): string {
 
 export type WriteFormat = "csv" | "json" | "text";
 
-export class WriteFileNode extends ClassicPreset.Node {
+export class WriteFileNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     in: "A frame, written as CSV or JSON, or in Text mode the text as-is. Only Run writes; the node loads disarmed.",
   };

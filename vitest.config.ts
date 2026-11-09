@@ -13,18 +13,20 @@ const ALL = ["tests/**/*.test.{ts,tsx}", "scripts/**/*.test.{ts,tsx}", "packages
 // assert a module's initial state (another file's import changes it).
 // sourceInvariants.test.ts fails a vi.mock file missing from this list.
 const ISOLATED = [
-  "tests/graph/coerceInputs.test.ts",
   "tests/graph/demoVault.test.ts",
+  "tests/graph/importObsidianGone.test.ts",
+  "tests/graph/fileBridgeDispatch.test.ts",
+  "tests/graph/httpBridge.test.ts",
   "tests/graph/documentStorePersist.test.ts",
+  "tests/graph/documentExamples.test.ts",
+  "tests/graph/desktopDocs.test.ts",
   "tests/graph/fileSession.test.ts",
   "tests/graph/flow/flowHistory.test.ts",
   "tests/graph/importNoteRepick.test.ts",
-  "tests/graph/lazyChain.test.ts",
   "tests/graph/localFileRace.test.ts",
   "tests/graph/noteMarkdown.test.ts",
   "tests/graph/nodes/sink.test.ts",
   "tests/graph/obsidianWriteBatch.test.ts",
-  "tests/graph/polarsBackend.test.ts",
   "tests/graph/saveTimeStore.test.ts",
   "tests/graph/sketchExport.test.ts",
 ];
@@ -32,7 +34,6 @@ const ISOLATED = [
 export default defineConfig({
   resolve: {
     alias: {
-      "@solenoid/schedule-engine": path.resolve("packages/schedule-engine/src/index.ts"),
       "@solenoid/gantt-layout": path.resolve("packages/gantt-layout/src/index.ts"),
       "@solenoid/gantt-react": path.resolve("packages/gantt-react/src/index.ts"),
     },
@@ -41,14 +42,15 @@ export default defineConfig({
   test: {
     environment: "node",
     maxWorkers: 4,
-    // Transformed modules persist across runs (in node_modules/.vite), so a rerun skips most transforms.
-    fsModuleCache: true,
+    // A dozen tests take 1 to 3 s alone and pass 5 s on a loaded machine (a Rust build beside the run, a busy CI
+    // runner); 20 s still fails a real hang.
+    testTimeout: 20_000,
     // Re-importing the node catalog per file was most of the run, so files share each
     // worker's module cache; tests/setup/sharedWorker.ts undoes a file's global edits.
     // A file that mocks a module would leak the mock, so it runs isolated.
     projects: [
-      { extends: true, test: { name: "shared", isolate: false, setupFiles: ["tests/setup/sharedWorker.ts"], include: ALL, exclude: ISOLATED } },
-      { extends: true, test: { name: "isolated", include: ISOLATED } },
+      { extends: true, test: { name: "shared", isolate: false, setupFiles: ["tests/setup/graphEngine.ts", "tests/setup/sharedWorker.ts", "tests/setup/nodeRecorder.ts"], include: ALL, exclude: ISOLATED } },
+      { extends: true, test: { name: "isolated", setupFiles: ["tests/setup/graphEngine.ts", "tests/setup/nodeRecorder.ts"], include: ISOLATED } },
     ],
   },
 });

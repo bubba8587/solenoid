@@ -3,8 +3,8 @@
 // plus a sidecar (<out>.orig.json); `apply` writes back only the changed strings, and skips and reports
 // anything stale or ambiguous. The corpus is src/graph/copyCorpus.ts, shared with uiCopy.test.ts.
 // Records are framed `@@@ <id>` ... `@@@ end`; a text line starting with `@@@` is escaped with a backslash.
-//   npx tsx scripts/copy-inventory.ts extract [out.md]
-//   npx tsx scripts/copy-inventory.ts apply   [out.md]
+//   node scripts/vite-run.mjs scripts/copy-inventory.ts extract [out.md]
+//   node scripts/vite-run.mjs scripts/copy-inventory.ts apply   [out.md]
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -39,7 +39,7 @@ export function renderInventory(records: CopyRecord[]): string {
   const lines: string[] = [
     "# Solenoid copy inventory",
     `# ${records.length} strings. Edit text INSIDE records; everything outside is ignored.`,
-    "# Do not edit @@@ lines. Apply edits back with: npx tsx scripts/copy-inventory.ts apply",
+    "# Do not edit @@@ lines. Apply edits back with: node scripts/vite-run.mjs scripts/copy-inventory.ts apply",
     "",
   ];
   for (const kind of SECTION_ORDER) {

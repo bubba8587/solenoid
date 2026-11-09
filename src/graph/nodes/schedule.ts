@@ -1,15 +1,16 @@
 // [[C69]], [[C70]], [[C71]]
-import { ClassicPreset } from "rete";
-import { cubeIn, cubeOut, dateIn, dateOut, strOut, dateListIn, numIn, frameIn, frameOut, readInput } from "./shared";
-import { isSolError, type SolError } from "../errorValue";
-import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../frame";
-import { scheduleTasks } from "../scheduleCpm";
-import type { ScheduleOutput } from "@solenoid/schedule-engine";
-import type { Shape } from "../frameShape";
+import { GraphNode } from "../graphModel";
+import { cubeIn, cubeOut, dateIn, dateOut, strOut, dateListIn, numIn, frameIn, frameOut } from "./shared";
+import { type SolError } from "../errorValue";
+import type { SolDate } from "../dateValue";
+import { frameToCube, type CubeValue, type FrameValue } from "../frame";
+import { nodeOnCore } from "../nodeOnCore";
+import type { ScheduleOutput } from "../planTypes";
+import { hintFrame, cardShapeOnCore, type Shape } from "../frameShape";
 import type { FrameHint } from "../frameHint";
 
 
-export type ScheduleMode = "working" | "calendar";
+type ScheduleMode = "working" | "calendar";
 export type SchedulePrecision = "days" | "minutes";
 export type ScheduleProgress = "split" | "move";
 
@@ -17,7 +18,7 @@ export const SCHEDULE_PROGRESS_OPTIONS: ReadonlyArray<{ value: ScheduleProgress;
   { value: "split", label: "Split the rest", title: "A started task keeps its done part where it was; the unfinished part is a second piece after the status date" },
   { value: "move",  label: "Move the whole", title: "A started task moves as one piece so its unfinished part follows the status date" },
 ];
-export type ScheduleCriticalPaths = "one" | "many" | "longest";
+type ScheduleCriticalPaths = "one" | "many" | "longest";
 
 export const SCHEDULE_CRITICAL_OPTIONS: ReadonlyArray<{ value: ScheduleCriticalPaths; label: string; title: string }> = [
   { value: "one",  label: "One path",   title: "Float is measured against the project finish, so only the chain that drives it is critical" },
@@ -35,14 +36,9 @@ export const SCHEDULE_MODE_OPTIONS: ReadonlyArray<{ value: ScheduleMode; label: 
   { value: "calendar", label: "Calendar days", title: "Durations count every day" },
 ];
 
-export function todaySerial(): number {
-  const d = new Date();
-  return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
-}
-
 export const SCHEDULE_DEFAULT_LITERALS: Readonly<Record<string, number>> = { weekend_code: 1, hours: 8 };
 
-export class ScheduleNode extends ClassicPreset.Node {
+export class ScheduleNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     tasks: "One row per task: Task, Duration in days (blank or 0 is a milestone) and Predecessors, the tasks it waits on. A Tasks cell holding a table makes the row a summary. Start, Finish, Deadline, Complete, Manual, Project and the calendar columns are optional; Help lists them under Plans.",
     start: "The project start. Unwired, the schedule starts today.",
@@ -66,7 +62,7 @@ export class ScheduleNode extends ClassicPreset.Node {
   literals: Record<string, number> = { ...SCHEDULE_DEFAULT_LITERALS };
   stringLiterals: Record<string, string> = {};
   cachedResult: CubeValue | SolError | null = null;
-  cachedFinish: number | SolError | null = null;
+  cachedFinish: SolDate | SolError | null = null;
   cachedGantt: string | SolError | null = null;
   cachedMspdi: string | SolError | null = null;
   cachedDiagnostics: FrameValue | SolError | null = null;
@@ -84,7 +80,11 @@ export class ScheduleNode extends ClassicPreset.Node {
 
   frameShape(outKey: string): Shape | null {
     if (outKey !== "diagnostics") return null;
-    return { columns: [{ name: "Check", type: "string" }, { name: "Task", type: "string" }, { name: "Detail", type: "string" }] };
+    const tasks = frameToCube({ __frame: true, columns: [
+      { name: "Task", type: "string", values: ["Plumbing", "Electrical", "Drywall", "Paint"] },
+      { name: "Duration", type: "number", values: [3, 2, 4, 2] },
+    ] });
+    return cardShapeOnCore(this, "diagnostics", { tasks: [tasks], links: [hintFrame(ScheduleNode.frameHints.links)] });
   }
 
   constructor(init?: { label?: string; mode?: ScheduleMode; precision?: SchedulePrecision; criticalPaths?: ScheduleCriticalPaths; progress?: ScheduleProgress }) {
@@ -108,37 +108,10 @@ export class ScheduleNode extends ClassicPreset.Node {
     this.addOutput("mspdi", strOut("Project XML"));
   }
 
-  data(inputs: {
-    tasks?: (CubeValue | null)[]; links?: (FrameValue | null)[]; start?: (number | null)[]; holidays?: (number | null)[][];
-    weekend_code?: number[]; status?: (number | null)[]; hours?: number[];
-  }) {
-    const tasks = inputs.tasks?.[0] ?? null;
-    const start = inputs.start ? inputs.start[0] : todaySerial();
-    const empty = { cube: null, finish: null, diagnostics: null, gantt: null, mspdi: null };
-    if (!isCubeValue(tasks) || start == null || !Number.isFinite(start)) {
-      this.cachedResult = null; this.cachedFinish = null; this.cachedGantt = null; this.cachedDiagnostics = null; this.cachedOutput = null; this.cachedMspdi = null;
-      return empty;
-    }
-    const weekendCode = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1) ?? 1;
-    const hoursPerDay = readInput(inputs.hours, this.literals.hours ?? 8) ?? 8;
-    const statusDate = inputs.status ? inputs.status[0] : null;
-    const links = isFrameValue(inputs.links?.[0]) ? inputs.links![0] : null;
-    try {
-      const r = scheduleTasks(tasks, {
-        start, workingDays: this.mode === "working", weekendCode, holidays: inputs.holidays?.[0],
-        statusDate: statusDate != null && Number.isFinite(statusDate) ? statusDate : null, hoursPerDay,
-        precision: this.precision, progress: this.progress,
-        multipleCriticalPaths: this.criticalPaths === "many", longestPath: this.criticalPaths === "longest",
-        links,
-      });
-      this.cachedResult = r.cube; this.cachedFinish = r.projectFinish; this.cachedGantt = r.gantt; this.cachedDiagnostics = r.diagnostics; this.cachedOutput = r.output;
-      this.cachedMspdi = r.mspdi;
-      return { cube: r.cube, finish: r.projectFinish, diagnostics: r.diagnostics, gantt: r.gantt, mspdi: r.mspdi };
-    } catch (e) {
-      const err = isSolError(e) ? e : null;
-      if (!err) throw e;
-      this.cachedResult = err; this.cachedFinish = err; this.cachedGantt = err; this.cachedDiagnostics = err; this.cachedOutput = null; this.cachedMspdi = err;
-      return { cube: err, finish: err, diagnostics: err, gantt: err, mspdi: err };
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as {
+      cube: CubeValue | SolError | null; finish: SolDate | SolError | null; diagnostics: FrameValue | SolError | null;
+      gantt: string | SolError | null; mspdi: string | SolError | null;
+    };
   }
 }

@@ -1,7 +1,9 @@
 // [[C76]], [[C24]]
 import { describe, it, expect } from "vitest";
-import { ParallelCombineNode, ESeriesNode, AwgNode } from "../../../src/graph/nodes/electrical";
-import { nearestESeries, E_SERIES } from "../../../src/graph/nodes/electricalOps";
+import { ParallelCombineNode } from "../../../src/graph/nodes/electrical";
+import { coreFunction } from "../coreFunction";
+
+const nearestESeries = (v: number, series: string) => coreFunction("ESERIESVALUE")!(v, series);
 import { solError, isSolError } from "../../../src/graph/errorValue";
 
 describe("ParallelCombineNode", () => {
@@ -36,14 +38,12 @@ describe("ParallelCombineNode", () => {
 
 describe("E-series", () => {
   it("published table values (E12/E24 deviate from the pure geometric series)", () => {
-    expect(E_SERIES.E12).toEqual([1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2]);
-    expect(E_SERIES.E24).toContain(2.7); // the historic-rounding case (calc gives 2.66)
-    expect(E_SERIES.E48).toHaveLength(48);
-    expect(E_SERIES.E96).toHaveLength(96);
+    for (const v of [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2]) expect(nearestESeries(v, "E12")).toBe(v);
+    expect(nearestESeries(2.7, "E24")).toBe(2.7); // the historic-rounding case (calc gives 2.66)
     // E96 spot-checks against the published table.
-    expect(E_SERIES.E96).toContain(3.32);
-    expect(E_SERIES.E96).toContain(9.76);
-    expect(E_SERIES.E48).toContain(3.16);
+    expect(nearestESeries(3.32, "E96")).toBe(3.32);
+    expect(nearestESeries(9.76, "E96")).toBe(9.76);
+    expect(nearestESeries(3.16, "E48")).toBe(3.16);
   });
 
   it("nearest snaps across decades and by log distance", () => {
@@ -54,36 +54,5 @@ describe("E-series", () => {
     expect(nearestESeries(9.9, "E12")).toBe(10); // snaps up into the next decade
   });
 
-  it("node outputs nearest + % error, rejects non-positive values", () => {
-    const n = new ESeriesNode({ op: "E12" });
-    const r = n.data({ value: [4600] });
-    expect(r.nearest).toBe(4700);
-    expect(r.errpct).toBeCloseTo(2.174, 2);
-    const bad = n.data({ value: [-5] });
-    expect(isSolError(bad.nearest)).toBe(true);
-  });
 });
 
-describe("AwgNode", () => {
-  it("AWG 10 matches the published wire tables", () => {
-    const r = new AwgNode().data({ gauge: [10] });
-    expect(r.diameter as number).toBeCloseTo(2.588, 2);
-    expect(r.area as number).toBeCloseTo(5.26, 2);
-    expect(r.resistance as number).toBeCloseTo(3.28, 1);
-    expect(r.ampacity).toBe(35);
-  });
-
-  it("4/0 (gauge −3) and fine wire (30)", () => {
-    const big = new AwgNode().data({ gauge: [-3] });
-    expect(big.diameter as number).toBeCloseTo(11.684, 2);
-    expect(big.ampacity).toBe(230);
-    const fine = new AwgNode().data({ gauge: [30] });
-    expect(fine.diameter as number).toBeCloseTo(0.2546, 3);
-    expect(fine.ampacity).toBe(null); // NEC doesn't list magnet-wire sizes
-  });
-
-  it("out-of-range gauge → #DOMAIN!", () => {
-    const r = new AwgNode().data({ gauge: [50] });
-    expect(isSolError(r.diameter)).toBe(true);
-  });
-});

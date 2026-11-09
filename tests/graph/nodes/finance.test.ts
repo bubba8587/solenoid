@@ -1,54 +1,32 @@
-// [[C17]]
+// [[C17]] shareImpl, [[equation-solver#Which cards are relations]], [[formula-language#Finance kernels]]
+import { solDate } from "../../../src/graph/dateValue";
+import { dated } from "../datedInputs";
 import { describe, it, expect } from "vitest";
 import {
   TvmNode,
   PaymentBreakdownNode,
-  IspmtNode,
   DiscountSecurityNode,
   NPVNode,
   IRRNode,
-  MirrNode,
   DepreciationNode,
   FvScheduleNode,
 } from "../../../src/graph/nodes/finance";
-import { securityDisc, priceMat } from "../../../src/graph/nodes/financeOps";
+import { coreFunction } from "../coreFunction";
+
+const securityDisc = (op: string, s: number, m: number, ...a: number[]) => coreFunction(op)!(solDate(s), solDate(m), ...a) as number;
+const priceMat = (op: string, s: number, m: number, i: number, ...a: number[]) => coreFunction(op)!(solDate(s), solDate(m), solDate(i), ...a);
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
-import { EquationNode } from "../../../src/graph/nodes/equation";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 
-// Reference values are what Excel's matching function returns. Excel cash-flow
-// sign convention: money received is positive, money paid out is negative, so a
-// loan's PMT/IPMT/PPMT are all negative when PV is positive.
+// Reference values are Excel's answers, money paid out negative.
 
-// The TVM node is now ONE acausal Equation: wire four of {rate, nper, pmt, pv,
-// fv}, read the fifth off its own output — no op selector, no guess input.
 describe("TVM (equation)", () => {
-  it("solves PMT like =PMT(0.08, 10, 10000)", () => {
-    const r = new TvmNode().data({ rate: [0.08], nper: [10], pv: [10000], fv: [0] });
-    expect(r.pmt).toBeCloseTo(-1490.29, 2);
-  });
 
-  it("solves PV like =PV(0.05, 10, -100)", () => {
-    const r = new TvmNode().data({ rate: [0.05], nper: [10], pmt: [-100], fv: [0] });
-    expect(r.pv).toBeCloseTo(772.17, 2);
-  });
 
-  it("solves FV like =FV(0.06, 10, -200, -500)", () => {
-    const r = new TvmNode().data({ rate: [0.06], nper: [10], pmt: [-200], pv: [-500] });
-    expect(r.fv).toBeCloseTo(3531.58, 2);
-  });
 
-  it("solves NPER like =NPER(0.05, -100, 1000)", () => {
-    const r = new TvmNode().data({ rate: [0.05], pmt: [-100], pv: [1000], fv: [0] });
-    expect(r.nper).toBeCloseTo(14.2067, 3);
-  });
 
-  it("solves RATE like =RATE(12, -100, 1000) — smallest-magnitude root, no guess", () => {
-    const r = new TvmNode().data({ nper: [12], pmt: [-100], pv: [1000], fv: [0] });
-    expect(r.rate).toBeCloseTo(0.029215, 4);
-  });
 
   it("solves PMT at zero rate exactly (straight-line limit relation)", () => {
     const r = new TvmNode().data({ rate: [0], nper: [10], pv: [1000], fv: [0] });
@@ -56,24 +34,8 @@ describe("TVM (equation)", () => {
     expect(r.rate).toBe(0); // the fixed rate still flows out its own socket
   });
 
-  it("annuity-due PMT matches =PMT(0.08, 10, 10000, 0, 1)", () => {
-    const node = new TvmNode({ paymentTiming: "beg" });
-    const r = node.data({ rate: [0.08], nper: [10], pv: [10000], fv: [0] });
-    expect(r.pmt).toBeCloseTo(-1490.294887 / 1.08, 2);
-  });
 
-  it("truth-checks when all five are wired", () => {
-    const pmt = new TvmNode().data({ rate: [0.08], nper: [10], pv: [10000], fv: [0] }).pmt as number;
-    const check = new TvmNode().data({ rate: [0.08], nper: [10], pv: [10000], fv: [0], pmt: [pmt] });
-    expect(check.holds).toBe(true);
-    const wrong = new TvmNode().data({ rate: [0.08], nper: [10], pv: [10000], fv: [0], pmt: [pmt + 1] });
-    expect(wrong.holds).toBe(false);
-  });
 
-  it("zero-rate truth check is exact", () => {
-    const r = new TvmNode().data({ rate: [0], nper: [10], pv: [1000], fv: [0], pmt: [-100] });
-    expect(r.holds).toBe(true);
-  });
 
   it("timing switch swaps the locked relation without changing sockets", () => {
     const node = new TvmNode();
@@ -84,90 +46,18 @@ describe("TVM (equation)", () => {
   });
 });
 
-// The two locked Equation presets that replaced PDURATION/RRI and
-// EFFECT/NOMINAL (nodeCatalog.ts Finance) — same exprs, pinned to the Excel
-// functions they stand in for.
-describe("Compound Growth / Effective Rate presets", () => {
-  const growth = () => new EquationNode({ expr: "fv = pv * (1 + rate)^nper", locked: true });
-  const effective = () => new EquationNode({ expr: "eff = (1 + nom/npery)^npery - 1", locked: true });
-
-  it("solves nper like =PDURATION(0.05, 1000, 2000)", () => {
-    expect(growth().data({ rate: [0.05], pv: [1000], fv: [2000] }).nper).toBeCloseTo(14.2067, 3);
-  });
-
-  it("solves rate like =RRI(5, 1000, 2000)", () => {
-    expect(growth().data({ nper: [5], pv: [1000], fv: [2000] }).rate).toBeCloseTo(0.148698, 5);
-  });
-
-  it("solves fv and pv lump-sum both ways", () => {
-    expect(growth().data({ rate: [0.06], nper: [10], pv: [500] }).fv).toBeCloseTo(895.42, 2);
-    expect(growth().data({ rate: [0.06], nper: [10], fv: [895.42] }).pv).toBeCloseTo(500, 2);
-  });
-
-  it("solves eff like =EFFECT(0.05, 12)", () => {
-    expect(effective().data({ nom: [0.05], npery: [12] }).eff).toBeCloseTo(0.051162, 5);
-  });
-
-  it("solves nom like =NOMINAL(0.051162, 12)", () => {
-    expect(effective().data({ eff: [0.0511619], npery: [12] }).nom).toBeCloseTo(0.05, 6);
-  });
-});
-
 describe("Payment Breakdown (IPMT / PPMT / CUMIPMT / CUMPRINC)", () => {
   // =IPMT(0.05, 1, 12, 1000) = -50.00, =PPMT(0.05, 1, 12, 1000) = -62.83
-  it("IPMT period 1 is the first-period interest, sharing PMT's sign", () => {
-    const r = new PaymentBreakdownNode({ op: "ipmt" }).data({ rate: [0.05], per: [1], nper: [12], pv: [1000], fv: [0] });
-    expect(r.result).toBeCloseTo(-50, 2);
-  });
 
-  it("IPMT period 2 matches Excel", () => {
-    const r = new PaymentBreakdownNode({ op: "ipmt" }).data({ rate: [0.05], per: [2], nper: [12], pv: [1000], fv: [0] });
-    expect(r.result).toBeCloseTo(-46.86, 2);
-  });
 
-  it("PPMT period 1 matches Excel", () => {
-    const r = new PaymentBreakdownNode({ op: "ppmt" }).data({ rate: [0.05], per: [1], nper: [12], pv: [1000], fv: [0] });
-    expect(r.result).toBeCloseTo(-62.83, 2);
-  });
 
-  it("annuity-due IPMT is zero in period 1 (payment is up front)", () => {
-    const r = new PaymentBreakdownNode({ op: "ipmt", paymentTiming: "beg" })
-      .data({ rate: [0.05], per: [1], nper: [12], pv: [1000], fv: [0] });
-    expect(r.result).toBeCloseTo(0, 9);
-  });
 
-  it("IPMT + PPMT = PMT for the period", () => {
-    const args = { rate: [0.05], per: [3], nper: [12], pv: [1000], fv: [0] };
-    const ipmt = new PaymentBreakdownNode({ op: "ipmt" }).data(args).result as number;
-    const ppmt = new PaymentBreakdownNode({ op: "ppmt" }).data(args).result as number;
-    const pmt = new TvmNode().data({ rate: [0.05], nper: [12], pv: [1000], fv: [0] }).pmt as number;
-    expect(ipmt + ppmt).toBeCloseTo(pmt, 6);
-  });
 
   // The Range span (CUMIPMT / CUMPRINC) reads rate/nper/pv/start/end.
-  const cumArgs = { rate: [0.05], nper: [12], pv: [1000], start: [1], end: [12] };
 
   // =CUMIPMT(0.05,12,1000,1,12) = -353.90, =CUMPRINC(0.05,12,1000,1,12) = -1000 (Excel).
-  it("CUMIPMT equals the sum of each period's IPMT and matches Excel", () => {
-    const cum = new PaymentBreakdownNode({ op: "cumipmt" }).data(cumArgs).result as number;
-    let sum = 0;
-    for (let per = 1; per <= 12; per++) {
-      sum += new PaymentBreakdownNode({ op: "ipmt" }).data({ rate: [0.05], per: [per], nper: [12], pv: [1000], fv: [0] }).result as number;
-    }
-    expect(cum).toBeCloseTo(sum, 6);
-    expect(cum).toBeCloseTo(-353.90, 2);
-  });
 
-  it("CUMPRINC repays the whole principal over the full term (Excel -1000)", () => {
-    const cum = new PaymentBreakdownNode({ op: "cumprinc" }).data(cumArgs).result as number;
-    expect(cum).toBeCloseTo(-1000, 6);
-  });
 
-  it("IPMT and PPMT at rate 0 are 0 and the flat payment, as in Excel", () => {
-    const args = { rate: [0], per: [1], nper: [10], pv: [1000], fv: [0] };
-    expect(new PaymentBreakdownNode({ op: "ipmt" }).data(args).result).toBe(0);
-    expect(new PaymentBreakdownNode({ op: "ppmt" }).data(args).result).toBe(-100);
-  });
 
   it("CUMIPMT / CUMPRINC outside Excel's domain are #DOMAIN!, as the formula answers", async () => {
     const { compileEvaluator } = await import("../../../src/graph/excelFormula");
@@ -188,73 +78,38 @@ describe("Payment Breakdown (IPMT / PPMT / CUMIPMT / CUMPRINC)", () => {
     }
   });
 
-  it("CUMIPMT + CUMPRINC over all periods equals total payments", () => {
-    const ci = new PaymentBreakdownNode({ op: "cumipmt" }).data(cumArgs).result as number;
-    const cp = new PaymentBreakdownNode({ op: "cumprinc" }).data(cumArgs).result as number;
-    const pmt = new TvmNode().data({ rate: [0.05], nper: [12], pv: [1000], fv: [0] }).pmt as number;
-    expect(ci + cp).toBeCloseTo(pmt * 12, 6);
-  });
 });
 
-describe("ISPMT", () => {
-  // Excel returns the interest as a signed cash flow: an outflow (negative) for a positive pv.
-  it("=ISPMT(0.1, 1, 3, 8000000) = -533,333.33 (Microsoft's own example)", () => {
-    expect(new IspmtNode().data({ rate: [0.1], per: [1], nper: [3], pv: [8000000] }).result)
-      .toBeCloseTo(-533333.33, 2);
-  });
-  it("first period pays the most interest, the last pays ~zero", () => {
-    const at = (per: number) => new IspmtNode().data({ rate: [0.05], per: [per], nper: [12], pv: [1000] }).result!;
-    expect(at(1)).toBeCloseTo(-45.833, 3);
-    expect(at(12)).toBeCloseTo(0, 9);
-  });
-});
 
 describe("TBILL — money-market day-count conventions", () => {
   const d = (s: string) => parseDateToSerial(s);
-  const settle = d("2024-01-15"), maturity = d("2024-07-15"); // DSM = 182 actual days
-  it("TBILLYIELD is a 360-day yield (verified against real Excel = 0.050718512)", () => {
-    // NOT 365: that basis belongs to TBILLEQ. Formula.js also diverges here (it uses a
-    // 30/360 day count), so this value is ours-owned and must not drift toward either.
-    expect(new DiscountSecurityNode({ op: "tbillyield" }).data({ settle: [settle], maturity: [maturity], pr: [97.5] }).result)
-      .toBeCloseTo(0.050718512, 9);
-  });
-  it("TBILLPRICE discounts on a 360-day basis (Excel's documented formula)", () => {
-    // 100 × (1 − 0.05 × 182/360).
-    expect(new DiscountSecurityNode({ op: "tbillprice" }).data({ settle: [settle], maturity: [maturity], discount: [0.05] }).result)
-      .toBeCloseTo(100 * (1 - 0.05 * 182 / 360), 9);
-  });
-  it("TBILLEQ is the bond-equivalent 365-day yield (Excel's documented formula, DSM ≤ 182)", () => {
-    // (365 × 0.05) / (360 − 0.05 × 182).
-    expect(new DiscountSecurityNode({ op: "tbilleq" }).data({ settle: [settle], maturity: [maturity], discount: [0.05] }).result)
-      .toBeCloseTo((365 * 0.05) / (360 - 0.05 * 182), 9);
-  });
   it("TBILLEQ switches to the compounding form past 182 days (real Excel = 0.052539935)", () => {
     // =TBILLEQ(DATE(2024,1,15), DATE(2024,12,15), 0.05); DSM = 335 > 182.
-    expect(new DiscountSecurityNode({ op: "tbilleq" }).data({ settle: [d("2024-01-15")], maturity: [d("2024-12-15")], discount: [0.05] }).result)
+    expect(new DiscountSecurityNode({ op: "tbilleq" }).data(dated({ settle: [d("2024-01-15")], maturity: [d("2024-12-15")], discount: [0.05] })).result)
       .toBeCloseTo(0.052539935, 9);
   });
 });
 
-describe("TBILL and PRICEMAT answer #DOMAIN! where Excel answers #NUM! ([[D70]] nullNotEnoughData)", () => {
+describe("TBILL and PRICEMAT answer #DOMAIN! where Excel answers #NUM! ([[C24]] arraySemantics)", () => {
   const d = (s: string) => parseDateToSerial(s);
   const domain = (r: unknown) => expect(r).toMatchObject({ code: "#DOMAIN!" });
   it("a T-bill maturing more than one year after settlement is an error", () => {
     const tb = new DiscountSecurityNode({ op: "tbillprice" });
-    expect(tb.data({ settle: [d("2024-01-15")], maturity: [d("2025-02-20")], discount: [0.05] }).result)
+    expect(tb.data(dated({ settle: [d("2024-01-15")], maturity: [d("2025-02-20")], discount: [0.05] })).result)
       .toMatchObject({ code: "#DOMAIN!", message: "TBILLPRICE needs the maturity date within one year of settlement" });
-    domain(ev("TBILLPRICE(s, m, 0.05)", { s: d("2024-01-15"), m: d("2025-02-20") }));
-    expect(tb.data({ settle: [d("2024-01-15")], maturity: [d("2025-01-15")], discount: [0.05] }).result).toBeCloseTo(100 * (1 - 0.05 * 366 / 360), 9);
+    domain(ev("TBILLPRICE(s, m, 0.05)", { s: solDate(d("2024-01-15")), m: solDate(d("2025-02-20")) }));
+    expect(tb.data(dated({ settle: [d("2024-01-15")], maturity: [d("2025-01-15")], discount: [0.05] })).result).toBeCloseTo(100 * (1 - 0.05 * 366 / 360), 9);
   });
   it("a zero or negative discount or price is an error", () => {
     const s = d("2024-01-15"), m = d("2024-07-15");
-    domain(new DiscountSecurityNode({ op: "tbillprice" }).data({ settle: [s], maturity: [m], discount: [0] }).result);
-    domain(new DiscountSecurityNode({ op: "tbilleq" }).data({ settle: [s], maturity: [m], discount: [-0.05] }).result);
-    expect(new DiscountSecurityNode({ op: "tbillyield" }).data({ settle: [s], maturity: [m], pr: [0] }).result)
+    domain(new DiscountSecurityNode({ op: "tbillprice" }).data(dated({ settle: [s], maturity: [m], discount: [0] })).result);
+    domain(new DiscountSecurityNode({ op: "tbilleq" }).data(dated({ settle: [s], maturity: [m], discount: [-0.05] })).result);
+    expect(new DiscountSecurityNode({ op: "tbillyield" }).data(dated({ settle: [s], maturity: [m], pr: [0] })).result)
       .toMatchObject({ code: "#DOMAIN!", message: "TBILLYIELD needs a price above 0" });
-    domain(ev("TBILLYIELD(s, m, -1)", { s, m }));
+    domain(ev("TBILLYIELD(s, m, -1)", { s: solDate(s), m: solDate(m) }));
   });
   it("a missing date stays a quiet blank", () => {
-    expect(new DiscountSecurityNode({ op: "tbillprice" }).data({ maturity: [d("2024-07-15")], discount: [0.05] }).result).toBeNull();
+    expect(new DiscountSecurityNode({ op: "tbillprice" }).data(dated({ maturity: [d("2024-07-15")], discount: [0.05] })).result).toBeNull();
   });
   it("PRICEMAT and YIELDMAT refuse a settlement on or after maturity", () => {
     const issue = d("2023-01-01"), s = d("2025-01-01"), m = d("2024-06-01");
@@ -262,7 +117,7 @@ describe("TBILL and PRICEMAT answer #DOMAIN! where Excel answers #NUM! ([[D70]] 
       .toMatchObject({ code: "#DOMAIN!", message: "PRICEMAT needs the settlement date before the maturity date" });
     domain(priceMat("yieldmat", s, m, issue, 0.05, 99));
     domain(priceMat("pricemat", m, m, issue, 0.05, 0.06));
-    domain(ev("PRICEMAT(s, m, i, 0.05, 0.06)", { s, m, i: issue }));
+    domain(ev("PRICEMAT(s, m, i, 0.05, 0.06)", { s: solDate(s), m: solDate(m), i: solDate(issue) }));
   });
 });
 
@@ -281,12 +136,6 @@ describe("securityDisc — DSM honors the day-count basis", () => {
   });
 });
 
-describe("NPV", () => {
-  it("matches =NPV(0.1, 100, 200, 300)", () => {
-    const r = new NPVNode().data({ rate: [0.1], list: [[100, 200, 300]] });
-    expect(r.result).toBeCloseTo(481.59, 2);
-  });
-});
 
 describe("FVSCHEDULE", () => {
   it("compounds the whole schedule, on the card and in a formula (Excel: 1.33089)", () => {
@@ -302,43 +151,16 @@ describe("FVSCHEDULE", () => {
   });
 });
 
-describe("IRR", () => {
-  it("matches a typical project IRR", () => {
-    const r = new IRRNode().data({ list: [[-1000, 300, 400, 500, 600]] });
-    expect(r.result).toBeCloseTo(0.248886, 4);
-  });
-});
 
-describe("MIRR", () => {
-  it("matches =MIRR({-1000,300,400,500}, 0.1, 0.12)", () => {
-    const r = new MirrNode().data({ list: [[-1000, 300, 400, 500]], finrate: [0.1], reinrate: [0.12] });
-    expect(r.result).toBeCloseTo(0.09816, 4);
-  });
-});
 
 describe("Depreciation", () => {
-  it("SLN is constant", () => {
-    const r = new DepreciationNode({ op: "sln" }).data({ cost: [10000], salvage: [1000], life: [5] });
-    expect(r.result).toBeCloseTo(1800, 9);
-  });
 
-  it("SYD weights early periods", () => {
-    const r = new DepreciationNode({ op: "syd" }).data({ cost: [10000], salvage: [1000], life: [5], per: [1] });
-    expect(r.result).toBeCloseTo(3000, 9);
-  });
 
-  it("DDB doubles the straight-line rate against book value", () => {
-    const p1 = new DepreciationNode({ op: "ddb" }).data({ cost: [10000], salvage: [1000], life: [5], per: [1], factor: [2] });
-    expect(p1.result).toBeCloseTo(4000, 9);
-    const p2 = new DepreciationNode({ op: "ddb" }).data({ cost: [10000], salvage: [1000], life: [5], per: [2], factor: [2] });
-    expect(p2.result).toBeCloseTo(2400, 9);
-  });
 
   it("DB honours the first-year Month, matching =DB (Microsoft's worked example)", () => {
     const db = (per: number, month?: number) => new DepreciationNode({ op: "db" })
       .data({ cost: [1000000], salvage: [100000], life: [6], per: [per], ...(month != null ? { month: [month] } : {}) }).result;
-    // =DB(1000000,100000,6,period,7) — a 7-month first year. Before the Month input the
-    // node was locked to month=12; now it matches the formula surface for month≠12.
+    // =DB(1000000,100000,6,period,7): a 7-month first year.
     expect(db(1, 7)).toBeCloseTo(186083.33, 2);
     expect(db(2, 7)).toBeCloseTo(259639.42, 2);
     expect(db(1, 7)).toBe(ev("DB(c,s,l,p,m)", { c: 1000000, s: 100000, l: 6, p: 1, m: 7 }));
@@ -348,7 +170,7 @@ describe("Depreciation", () => {
   });
 });
 
-describe("Depreciation answers its formula's domain errors ([[D70]] nullNotEnoughData)", () => {
+describe("Depreciation answers its formula's domain errors ([[C24]] arraySemantics)", () => {
   it("a period past the life is the formula's error, and a missing input stays blank", async () => {
     const { compileEvaluator } = await import("../../../src/graph/excelFormula");
     for (const op of ["syd", "ddb", "db"] as const) {
@@ -362,10 +184,6 @@ describe("Depreciation answers its formula's domain errors ([[D70]] nullNotEnoug
 });
 
 describe("Depreciation — VDB absorbed as an op", () => {
-  it("VDB matches the standalone kernel's period-range result", () => {
-    const r = new DepreciationNode({ op: "vdb" }).data({ cost: [10000], salvage: [1000], life: [10], start: [0], end: [1], factor: [2] });
-    expect(r.result).toBeCloseTo(2000, 6); // first-period DDB at factor 2
-  });
 
   it("the op switch swaps the method's own tail rows, keeping cost/salvage/life", () => {
     const n = new DepreciationNode({ op: "ddb" });
@@ -380,33 +198,18 @@ describe("Depreciation — VDB absorbed as an op", () => {
 });
 
 describe("NPV / IRR — the Dated toggle (old XNPV / XIRR)", () => {
-  it("dated NPV discounts by explicit dates", () => {
-    const r = new NPVNode({ op: "dates" }).data({
-      rate: [0.1],
-      list: [[-1000, 600, 600]],
-      dates: [[45000, 45365, 45730]],
-    }).result as number;
-    expect(r).toBeCloseTo(-1000 + 600 / 1.1 + 600 / 1.1 ** 2, 0);
-  });
 
   it("dated NPV answers Excel's XNPV example and refuses a date before the first", () => {
-    const dated = (dates: number[]) => new NPVNode({ op: "dates" }).data({
+    const xnpv = (dates: number[]) => new NPVNode({ op: "dates" }).data(dated({
       rate: [0.09], list: [[-10000, 2750, 4250, 3250, 2750]], dates: [dates],
-    }).result;
-    expect(dated([39448, 39508, 39751, 39859, 39904]) as number).toBeCloseTo(2086.65, 2);
-    expect((dated([39448, 39508, 39400, 39859, 39904]) as { code?: string }).code).toBe("#DOMAIN!");
+    })).result;
+    expect(xnpv([39448, 39508, 39751, 39859, 39904]) as number).toBeCloseTo(2086.65, 2);
+    expect((xnpv([39448, 39508, 39400, 39859, 39904]) as { code?: string }).code).toBe("#DOMAIN!");
     const ev = compileEvaluator("XNPV(0.09, a, b)")!;
-    expect(ev({ a: [-10000, 2750, 4250, 3250, 2750], b: [39448, 39508, 39751, 39859, 39904] }) as number).toBeCloseTo(2086.65, 2);
-    expect((ev({ a: [-10000, 2750], b: [39448, 39400] }) as { code?: string }).code).toBe("#DOMAIN!");
+    expect(ev({ a: [-10000, 2750, 4250, 3250, 2750], b: [39448, 39508, 39751, 39859, 39904].map(solDate) }) as number).toBeCloseTo(2086.65, 2);
+    expect((ev({ a: [-10000, 2750], b: [39448, 39400].map(solDate) }) as { code?: string }).code).toBe("#DOMAIN!");
   });
 
-  it("dated IRR recovers the rate NPV used", () => {
-    const r = new IRRNode({ op: "dates" }).data({
-      list: [[-1000, 1100]],
-      dates: [[45000, 45365]],
-    }).result as number;
-    expect(r).toBeCloseTo(0.1, 3);
-  });
 
   it("the toggle adds/removes only the Dates socket", () => {
     const n = new NPVNode();

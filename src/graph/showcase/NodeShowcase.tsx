@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SolenoidNode } from "../schemes";
 import { makeStaticStack, StaticFlowStage } from "../flow/StaticFlowStage";
+import { useCoreReady } from "../coreReady";
 import { FLAT_CATALOG } from "../catalogUtils";
 import { setEditorRefs, processGraph } from "../process";
 import { nodeNameStore } from "../nodeNameStore";
@@ -11,6 +12,7 @@ import { TablePopup } from "../components/TablePopup";
 import { CubePopup } from "../components/CubePopup";
 import { ChartPopup } from "../components/ChartPopup";
 import { ElementPicker } from "../components/ElementPicker";
+import { FilePicker } from "../components/FilePicker";
 import { PivotEditorPopup } from "../components/PivotEditorPopup";
 import "./NodeShowcase.css";
 
@@ -18,6 +20,11 @@ import "./NodeShowcase.css";
 const PAD = 48;
 
 export default function NodeShowcase({ initialType }: { initialType: string }) {
+  if (!useCoreReady()) return null;
+  return <LoadedShowcase initialType={initialType} />;
+}
+
+function LoadedShowcase({ initialType }: { initialType: string }) {
   const entries = useMemo(
     () => [...FLAT_CATALOG.values()].filter((e) => !e.hidden),
     [],
@@ -29,6 +36,7 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
   const [zoom, setZoom] = useState(1);
   const listRef = useRef<HTMLDivElement>(null);
   const stack = useMemo(makeStaticStack, []);
+  useEffect(() => () => stack.editor.dispose(), [stack]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -158,6 +166,7 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
       <CubePopup />
       <ChartPopup />
       <ElementPicker />
+      <FilePicker />
       <PivotEditorPopup />
     </div>
   );

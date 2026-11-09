@@ -1,4 +1,4 @@
-import { ReverseTextNode as ReverseTextNodeType, SpellNumberNode as SpellNumberNodeType } from "../rete-nodes";
+import { ReverseTextNode as ReverseTextNodeType, SpellNumberNode as SpellNumberNodeType } from "../nodeClasses";
 import { makeNodeComponent, makeToggleNodeComponent } from "./standardNode";
 
 export const ReverseTextComponent = makeNodeComponent<ReverseTextNodeType>((n) => n.cachedText);

@@ -1,10 +1,9 @@
-// [[D93]] oneTextReading, [[B11]] maximalMerge, [[C26]] opArgDistinct (the type toggle is an argument)
+// [[C58]] tableInputRawText, [[B11]] maximalMerge, [[C26]] opArgDistinct (the type toggle is an argument)
 import { useEffect, useState, type ReactNode } from "react";
-import type { ListInputNode as ListInputNodeType, ListElemType } from "../rete-nodes";
+import type { ListInputNode as ListInputNodeType, ListElemType } from "../nodeClasses";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
-import { retypeOutputCables } from "../fcReconcile";
-import { SolenoidSocket, canConnect } from "../sockets";
+import { retypeInputCables, retypeOutputCables } from "../fcReconcile";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -18,24 +17,20 @@ const TYPE_OPTIONS: ReadonlyArray<{ value: ListElemType; label: ReactNode; title
   { value: "logical", label: <TypeIcon type="logical" />, title: "Boolean list: TRUE or FALSE" },
 ];
 
-export async function applyListType(node: ListInputNodeType, dt: ListElemType): Promise<void> {
+async function applyListType(node: ListInputNodeType, dt: ListElemType): Promise<void> {
   if (!node.setDataType(dt)) return;
   // Active graph: a List Input inside a drill-in retypes its own graph's cables.
   const editor = getOwningEditor(node.id);
   const view = getOwningView(node.id);
   if (editor && view) {
     // The row input sockets were retyped too, and retypeOutputCables only walks outputs.
-    const inType = (node.valueSocket as SolenoidSocket).dataType;
-    for (const c of [...editor.getConnections()]) {
-      if (c.target !== node.id) continue;
-      const outSock = editor.getNode(c.source)?.outputs?.[c.sourceOutput]?.socket;
-      const outType = outSock instanceof SolenoidSocket ? outSock.dataType : undefined;
-      if (!outType || !canConnect(outType, inType)) await editor.removeConnection(c.id);
+    for (const key of new Set(editor.getConnections().filter((c) => c.target === node.id).map((c) => c.targetInput))) {
+      await retypeInputCables(editor, view, node.id, key);
     }
     await retypeOutputCables(editor, view, node.id, "list");
   }
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>) {

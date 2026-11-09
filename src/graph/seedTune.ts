@@ -2,13 +2,14 @@
 // Console-only: group fit and a whole-canvas Tidy measure painted DOM, so they need the live app. scripts/tune-seeds.mjs
 // patches the returned geometry in place, not as a re-export, which would rewrite every hand-authored id.
 import { SEEDS, clearAndLoadSeed } from "./seeds";
-import { getEditor, getView } from "./process";
+import { getEditor, getView, graphBusy, graphSettled } from "./process";
 import { autoArrange } from "./canvasCommands";
-import { GroupNode } from "./rete-nodes";
+import { GroupNode } from "./nodeClasses";
 import { autofitGroupWithHistory } from "./groupLogic";
 import { setGroupsCollapsed } from "./groupPush";
 import { standoffStore, settleStandoffs } from "./standoffs";
 import { getLastLoadIdMap } from "./persistence";
+import { hasInflightConnections } from "./connectionStore";
 
 interface TunedNodeGeometry {
   x: number;
@@ -17,17 +18,41 @@ interface TunedNodeGeometry {
   height?: number;
 }
 
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const frames = (n: number) =>
   new Promise<void>((r) => {
     const step = (left: number) => (left <= 0 ? r() : requestAnimationFrame(() => step(left - 1)));
     step(n);
   });
 
+/** Every card's painted size, as one string to compare frame to frame. */
+const cardSizes = () =>
+  [...document.querySelectorAll<HTMLElement>(".react-flow__node")].map((n) => `${n.offsetWidth}x${n.offsetHeight}`).join(",");
+
+/** Resolves once no card of `ids` is loading (a geocode, a forecast, a vault read: each grows its card when it lands,
+ *  which no pass announces), no pass runs, and no card has changed size for `quietMs` and `quietFrames` both (an
+ *  embed or a lazy figure renders a frame or two late, and frames come slower on a busy machine); or at `capMs`. A load
+ *  of a card outside `ids`, left over from a graph already torn down, is not waited on. */
+const settled = (ids: readonly string[], quietMs = 300, quietFrames = 10, capMs = 4000) =>
+  new Promise<void>((r) => {
+    const end = performance.now() + capMs;
+    let last = cardSizes(), since = performance.now(), still = 0;
+    const step = () => {
+      const now = cardSizes(), t = performance.now();
+      if (now !== last || hasInflightConnections(ids) || graphBusy()) { last = now; since = t; still = 0; } else still++;
+      if ((t - since >= quietMs && still >= quietFrames) || t > end) r();
+      else requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+
 /** Collapsed groups are expanded around the pass so each box wraps REAL member
  *  sizes; the geometry comes back keyed by the seed file's node ids. */
 async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> {
   if (!SEEDS[id]) throw new Error(`unknown seed "${id}"`);
+  // The page's last pass (the startup seed's, the last tune's) finishes before this seed replaces the graph, and the
+  // fonts are in, since text sets a card's size.
+  await graphSettled();
+  await document.fonts.ready;
   const ok = await clearAndLoadSeed(id);
   if (!ok) throw new Error(`seed "${id}" failed to load`);
   const editor = getEditor();
@@ -37,8 +62,8 @@ async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> 
 
   // Async values (CSV fetches, chart renders) grow cards, and tidy must measure
   // the settled sizes.
-  await sleep(2500);
-  await frames(2);
+  await graphSettled();
+  await settled(editor.getNodes().map((n) => n.id));
 
   // Per group first, so each box wraps real painted member sizes before the whole-canvas pass moves it as a unit.
   const groups = editor.getNodes().filter((n): n is GroupNode => n instanceof GroupNode);
@@ -88,9 +113,7 @@ async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> 
 
 declare global {
   interface Window {
-    __solenoidSeedIds?: () => string[];
     __solenoidTuneSeed?: (id: string) => Promise<Record<string, TunedNodeGeometry>>;
   }
 }
-window.__solenoidSeedIds = () => Object.keys(SEEDS);
 window.__solenoidTuneSeed = tuneSeed;

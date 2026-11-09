@@ -1,4 +1,4 @@
-// [[C119]] landscapePhoneIsTablet
+// [[C119]] landscapePhoneIsTablet, [[layout-chrome#Phones in landscape]]
 import { describe, it, expect } from "vitest";
 import { landscapePhoneScale } from "../../src/graph/coarse";
 

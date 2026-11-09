@@ -1,4 +1,5 @@
 // [[C98]] paletteMirrorsMenubar
+import { ISOLATE_ON } from "./isolateStore";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { fieldScore } from "./fuzzy";
 import { apiKeyStore } from "./apiKeyStore";
@@ -8,9 +9,10 @@ import { revealAddedNodes } from "./aiReveal";
 import { diffLines, hasChanges, type DiffLine } from "./textDiff";
 import { serializeGraph, loadGraph, type SavedGraph } from "./persistence";
 import { CURRENT_SAVE_VERSION } from "./persistenceCore";
-import { writeTextForm, readTextForm } from "./textForm";
+import { writeTextForm, readTextForm, keepCardTrust } from "./textForm";
 import { commandRecents } from "./commandRecents";
 import { paletteStore } from "./paletteStore";
+import { docMetaStore } from "./docMetaStore";
 import { alignSelection, distributeSelection, collapseSelection } from "./selectionOps";
 import { buildMenus, fireMenuKey, type MenuItem } from "./menuModel";
 import "./CommandPalette.css";
@@ -53,7 +55,7 @@ function buildCommands(): PaletteItem[] {
     .filter((it): it is Extract<MenuItem, { label: string }> => !("sep" in it) && !it.disabled && !!it.onClick)
     .map((it) => ({ label: it.label, shortcut: it.shortcut, run: it.onClick! }));
   const extra: { label: string; shortcut?: string; run: () => void }[] = [
-    { label: "Isolate selection", shortcut: "I", run: () => fireMenuKey("KeyI") },
+    ...(ISOLATE_ON ? [{ label: "Isolate selection", shortcut: "I", run: () => fireMenuKey("KeyI") }] : []),
     { label: "Expand or collapse groups", shortcut: "E", run: () => fireMenuKey("KeyE") },
     { label: "Align left", run: () => void alignSelection("left") },
     { label: "Align right", run: () => void alignSelection("right") },
@@ -111,7 +113,9 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
       return;
     }
     const before = new Set(readTextForm(aiState.base).nodes.map((n) => n.name ?? n.id));
-    const graph = readTextForm(aiState.newText);
+    const current = serializeGraph();
+    const graph = current ? keepCardTrust(current, readTextForm(aiState.newText)) : readTextForm(aiState.newText);
+    graph.meta = docMetaStore.keepTrust(graph.meta);
     const ok = await loadGraph(graph);
     if (!aliveRef.current) return;
     if (!ok) {

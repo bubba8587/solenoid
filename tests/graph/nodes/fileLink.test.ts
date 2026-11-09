@@ -1,7 +1,7 @@
 // [[C68]], [[C86]] membershipByGesture
 import { describe, it, expect } from "vitest";
 import { FileLinkNode } from "../../../src/graph/nodes/annotation";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 
 describe("FileLinkNode", () => {
   // The value-carrying round-trip below is the real guard: persistenceSweep's

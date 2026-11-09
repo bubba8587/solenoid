@@ -1,140 +1,150 @@
-// [[D51]], [[D36]] nullSkippedNotZero (aggregators skip null)
-import { ClassicPreset } from "rete";
-import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
+// [[C24]] arraySemantics
+import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
+import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, trueAnySocket, AdoptiveSocket, ValueTypedSocket, type SocketDataType } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
-import { type SolError } from "../errorValue";
-import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
+import { solError, isSolError, type SolError } from "../errorValue";
+import { listLiteralText } from "../listLiterals";
 import { applyRole, type InputRole } from "../inputRoles";
-import { type UnitCell, isUnitCell, magnitudeOf, tagDim, tagRatio } from "../unitValue";
-import { dimOf } from "../unitValue";
+import { dimOf, magnitudeOf } from "../unitValue";
 
 export const BASIS_DOC = "Day-count basis: 0 = US 30/360, 1 = actual/actual, 2 = actual/360, 3 = actual/365, 4 = European 30/360.";
 
-export const numIn      = (label: string) => new ClassicPreset.Input(numberSocket, label);
-export const listIn     = (label: string) => new ClassicPreset.Input(listSocket, label);
-export const numListIn  = (label: string) => new ClassicPreset.Input(numListSocket, label);
-export const tableIn    = (label: string) => new ClassicPreset.Input(tableSocket, label);
-export const strTableIn = (label: string) => new ClassicPreset.Input(strTableSocket, label);
-export const dateTableIn= (label: string) => new ClassicPreset.Input(dateTableSocket, label);
-export const strIn      = (label: string) => new ClassicPreset.Input(stringSocket,  label);
-export const strListIn  = (label: string) => new ClassicPreset.Input(strListSocket, label);
-export const dateIn     = (label: string) => new ClassicPreset.Input(dateSocket,    label);
-export const dateListIn = (label: string) => new ClassicPreset.Input(dateListSocket,label);
-export const anyIn      = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("any"), label);
-export const trueAnyIn        = (label: string) => new ClassicPreset.Input(new AdoptiveSocket(), label);
-export const trueAnyOut       = (label: string) => new ClassicPreset.Output(new AdoptiveSocket(), label);
-export const adoptiveTableIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anytable"), label);
-export const adoptiveListIn   = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anylist"), label);
-export const adoptiveTableOut = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anytable"), label);
-export const adoptiveListOut  = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anylist"), label);
-export const adoptiveDataOut  = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anydata"), label);
+export const numIn      = (label: string) => new GraphInput(numberSocket, label);
+export const listIn     = (label: string) => new GraphInput(listSocket, label);
+export const numListIn  = (label: string) => new GraphInput(numListSocket, label);
+export const tableIn    = (label: string) => new GraphInput(tableSocket, label);
+export const strIn      = (label: string) => new GraphInput(stringSocket,  label);
+export const strListIn  = (label: string) => new GraphInput(strListSocket, label);
+export const dateIn     = (label: string) => new GraphInput(dateSocket,    label);
+export const dateListIn = (label: string) => new GraphInput(dateListSocket,label);
+export const anyIn      = (label: string) => new GraphInput(new AdoptiveSocket("any"), label);
+export const trueAnyIn        = (label: string) => new GraphInput(new AdoptiveSocket(), label);
+export const trueAnyOut       = (label: string) => new GraphOutput(new AdoptiveSocket(), label);
+export const adoptiveTableIn  = (label: string) => new GraphInput(new AdoptiveSocket("anytable"), label);
+export const adoptiveListIn   = (label: string) => new GraphInput(new AdoptiveSocket("anylist"), label);
+export const adoptiveTableOut = (label: string) => new GraphOutput(new AdoptiveSocket("anytable"), label);
+export const adoptiveListOut  = (label: string) => new GraphOutput(new AdoptiveSocket("anylist"), label);
+export const adoptiveDataOut  = (label: string) => new GraphOutput(new AdoptiveSocket("anydata"), label);
 /** Never adopts: only for a generative result no input types; an extraction uses `trueAnyOut` plus `passthrough()`. */
-export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(trueAnySocket, label);
-export const cubeAdoptIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("cube"), label);
-export const tableAdoptOut = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("frame"), label);
-export const anyTableIn = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anytable"), label);
-export const anyListIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anylist"), label);
-export const anyComboIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anycombo"), label);
-export const anyDataIn   = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anydata"), label);
-export const anyComboOut = (label: string) => new ClassicPreset.Output(anyComboSocket, label);
-export const numOut     = (label: string) => new ClassicPreset.Output(numberSocket,  label);
-export const listOut    = (label: string) => new ClassicPreset.Output(listSocket,    label);
-export const numListOut = (label: string) => new ClassicPreset.Output(numListSocket, label);
-export const tableOut   = (label: string) => new ClassicPreset.Output(tableSocket,   label);
-export const strTableOut = (label: string) => new ClassicPreset.Output(strTableSocket, label);
-export const dateTableOut= (label: string) => new ClassicPreset.Output(dateTableSocket,label);
-export const strOut     = (label: string) => new ClassicPreset.Output(stringSocket,  label);
-export const strListOut = (label: string) => new ClassicPreset.Output(strListSocket, label);
-export const dateOut      = (label: string) => new ClassicPreset.Output(dateSocket,    label);
-export const dateListOut  = (label: string) => new ClassicPreset.Output(dateListSocket,label);
-export const strComboIn   = (label: string) => new ClassicPreset.Input(strComboSocket,   label);
-export const strComboOut  = (label: string) => new ClassicPreset.Output(strComboSocket,  label);
-export const dateComboIn  = (label: string) => new ClassicPreset.Input(dateComboSocket,  label);
-export const dateComboOut = (label: string) => new ClassicPreset.Output(dateComboSocket, label);
-export const complexIn    = (label: string) => new ClassicPreset.Input(complexSocket,  label);
-export const complexOut   = (label: string) => new ClassicPreset.Output(complexSocket, label);
-export const complexListIn  = (label: string) => new ClassicPreset.Input(complexListSocket,  label);
-export const complexListOut = (label: string) => new ClassicPreset.Output(complexListSocket, label);
-export const complexComboIn  = (label: string) => new ClassicPreset.Input(complexComboSocket,  label);
-export const complexComboOut = (label: string) => new ClassicPreset.Output(complexComboSocket, label);
-export const complexTableIn  = (label: string) => new ClassicPreset.Input(complexTableSocket,  label);
-export const complexTableOut = (label: string) => new ClassicPreset.Output(complexTableSocket, label);
-export const logicalIn       = (label: string) => new ClassicPreset.Input(logicalSocket,  label);
-export const logicalOut      = (label: string) => new ClassicPreset.Output(logicalSocket, label);
-export const logicalListIn   = (label: string) => new ClassicPreset.Input(logicalListSocket,  label);
-export const logicalListOut  = (label: string) => new ClassicPreset.Output(logicalListSocket, label);
-export const logicalComboIn  = (label: string) => new ClassicPreset.Input(logicalComboSocket,  label);
-export const logicalComboOut = (label: string) => new ClassicPreset.Output(logicalComboSocket, label);
-export const logicalTableOut = (label: string) => new ClassicPreset.Output(logicalTableSocket, label);
-export const frameIn      = (label: string) => new ClassicPreset.Input(frameSocket,   label);
-export const frameOut     = (label: string) => new ClassicPreset.Output(frameSocket,  label);
-export const cubeIn       = (label: string) => new ClassicPreset.Input(cubeSocket,    label);
-export const cubeOut      = (label: string) => new ClassicPreset.Output(cubeSocket,   label);
-export const lambdaIn     = (label: string) => new ClassicPreset.Input(lambdaSocket,  label);
-export const lambdaOut    = (label: string) => new ClassicPreset.Output(lambdaSocket, label);
-export const chartIn      = (label: string) => new ClassicPreset.Input(chartSocket,   label);
-export const chartOut     = (label: string) => new ClassicPreset.Output(chartSocket,  label);
-export const documentIn   = (label: string) => new ClassicPreset.Input(documentSocket, label);
-export const documentOut  = (label: string) => new ClassicPreset.Output(documentSocket, label);
+export const staticTrueAnyOut = (label: string) => new GraphOutput(trueAnySocket, label);
+export const cubeAdoptIn  = (label: string) => new GraphInput(new AdoptiveSocket("cube"), label);
+export const tableAdoptOut = (label: string) => new GraphOutput(new AdoptiveSocket("frame"), label);
+export const anyTableIn = (label: string) => new GraphInput(new AdoptiveSocket("anytable"), label);
+export const anyListIn  = (label: string) => new GraphInput(new AdoptiveSocket("anylist"), label);
+export const anyComboIn  = (label: string) => new GraphInput(new AdoptiveSocket("anycombo"), label);
+export const anyDataIn   = (label: string) => new GraphInput(new AdoptiveSocket("anydata"), label);
+export const anyComboOut = (label: string) => new GraphOutput(anyComboSocket, label);
+export const numOut     = (label: string) => new GraphOutput(numberSocket,  label);
+export const listOut    = (label: string) => new GraphOutput(listSocket,    label);
+export const numListOut = (label: string) => new GraphOutput(numListSocket, label);
+export const tableOut   = (label: string) => new GraphOutput(tableSocket,   label);
+export const strTableOut = (label: string) => new GraphOutput(strTableSocket, label);
+export const dateTableOut= (label: string) => new GraphOutput(dateTableSocket,label);
+export const strOut     = (label: string) => new GraphOutput(stringSocket,  label);
+export const strListOut = (label: string) => new GraphOutput(strListSocket, label);
+export const dateOut      = (label: string) => new GraphOutput(dateSocket,    label);
+export const dateListOut  = (label: string) => new GraphOutput(dateListSocket,label);
+export const strComboIn   = (label: string) => new GraphInput(strComboSocket,   label);
+export const strComboOut  = (label: string) => new GraphOutput(strComboSocket,  label);
+export const dateComboIn  = (label: string) => new GraphInput(dateComboSocket,  label);
+export const dateComboOut = (label: string) => new GraphOutput(dateComboSocket, label);
+export const complexOut   = (label: string) => new GraphOutput(complexSocket, label);
+export const complexListOut = (label: string) => new GraphOutput(complexListSocket, label);
+export const complexComboIn  = (label: string) => new GraphInput(complexComboSocket,  label);
+export const complexComboOut = (label: string) => new GraphOutput(complexComboSocket, label);
+export const logicalIn       = (label: string) => new GraphInput(logicalSocket,  label);
+export const logicalOut      = (label: string) => new GraphOutput(logicalSocket, label);
+export const logicalListIn   = (label: string) => new GraphInput(logicalListSocket,  label);
+export const logicalListOut  = (label: string) => new GraphOutput(logicalListSocket, label);
+export const logicalComboIn  = (label: string) => new GraphInput(logicalComboSocket,  label);
+export const logicalComboOut = (label: string) => new GraphOutput(logicalComboSocket, label);
+export const logicalTableOut = (label: string) => new GraphOutput(logicalTableSocket, label);
+export const frameIn      = (label: string) => new GraphInput(frameSocket,   label);
+export const frameOut     = (label: string) => new GraphOutput(frameSocket,  label);
+export const cubeIn       = (label: string) => new GraphInput(cubeSocket,    label);
+export const cubeOut      = (label: string) => new GraphOutput(cubeSocket,   label);
+export const lambdaIn     = (label: string) => new GraphInput(lambdaSocket,  label);
+export const lambdaOut    = (label: string) => new GraphOutput(lambdaSocket, label);
+export const chartIn      = (label: string) => new GraphInput(chartSocket,   label);
+export const chartOut     = (label: string) => new GraphOutput(chartSocket,  label);
+export const documentIn   = (label: string) => new GraphInput(documentSocket, label);
+export const documentOut  = (label: string) => new GraphOutput(documentSocket, label);
 
-export type ResultType = "number" | "text" | "date" | "auto";
+/** A card that works on a list or, by its Grid mode, on a table of numbers over both axes. */
+export type ShapeMode = "list" | "grid";
+
+/** A result socket's family: what the card computed, or `auto` (the wildcard) before a run or for a mixed answer. */
+export type ResultType = "number" | "text" | "date" | "logical" | "auto";
 export type ResultDim = "scalar" | "combo" | "matrix";
 
-export const RESULT_TYPE_META: Record<ResultType, { label: string; title: string }> = {
-  number: { label: "Number", title: "The result is a number, the default" },
-  text:   { label: "Text",   title: "The result is text, like UPPER(x) or x & \" \" & y" },
-  date:   { label: "Date",   title: "The result is a date, like DATE(y,m,d) or EDATE(x,1)" },
-  auto:   { label: "Auto",   title: "The result takes whatever type the formula returns" },
+/** An InlineCast's pick on a card's result ([[D113]] inlineCast): ∅ keeps the computed type; the rest run Cast. */
+export type CastTo = "none" | "number" | "text" | "date" | "logical";
+
+export const CAST_TO_META: Record<CastTo, { label: string; title: string }> = {
+  none:    { label: "∅",       title: "No cast: the result keeps the type it computed" },
+  number:  { label: "Number",  title: "Cast the result to numbers, as the Cast card does. A date becomes its serial" },
+  text:    { label: "Text",    title: "Cast the result to text, as the Cast card does. A date reads as a date" },
+  date:    { label: "Date",    title: "Cast the result to dates, as the Cast card does. A number is read as a serial" },
+  logical: { label: "Boolean", title: "Cast the result to TRUE/FALSE, as the Cast card does" },
 };
 
-const RESULT_SOCKETS: Record<ResultDim, Record<ResultType, ClassicPreset.Socket>> = {
-  scalar: { number: numberSocket,  text: stringSocket,   date: dateSocket,        auto: anySocket },
-  combo:  { number: numListSocket, text: strComboSocket, date: dateComboSocket,   auto: anyComboSocket },
-  matrix: { number: tableSocket,   text: strTableSocket, date: dateTableSocket,   auto: anyTableSocket },
+const RESULT_SOCKETS: Record<ResultDim, Record<Exclude<ResultType, "auto">, GraphSocket>> = {
+  scalar: { number: numberSocket,  text: stringSocket,   date: dateSocket,      logical: logicalSocket },
+  combo:  { number: numListSocket, text: strComboSocket, date: dateComboSocket, logical: logicalComboSocket },
+  matrix: { number: tableSocket,   text: strTableSocket, date: dateTableSocket, logical: logicalTableSocket },
 };
 
-export function resultSocket(dim: ResultDim, t: ResultType): ClassicPreset.Socket {
-  return RESULT_SOCKETS[dim][t];
+/** The wildcard rung an Auto result declares at each dim, which the value it carries then types. */
+const AUTO_RUNG: Record<ResultDim, SocketDataType> = { scalar: "any", combo: "anycombo", matrix: "anytable" };
+
+/** The socket a result takes at `dim`: the InlineCast's pick, else one the value it carries types ([[D117]]). */
+export function castResultSocket(dim: ResultDim, castTo: CastTo): GraphSocket {
+  return resultSocket(dim, castTo === "none" ? "auto" : castTo);
 }
 
-export function resultOut(label: string, dim: ResultDim, t: ResultType): ClassicPreset.Output<ClassicPreset.Socket> {
-  return new ClassicPreset.Output(resultSocket(dim, t), label);
+function resultSocket(dim: ResultDim, t: ResultType): GraphSocket {
+  return t === "auto" ? new ValueTypedSocket(AUTO_RUNG[dim]) : RESULT_SOCKETS[dim][t];
 }
 
-/** Re-seats a fixed input after a grown row, so the live key order is the one a reload rebuilds. */
-export function keepInputLast(node: ClassicPreset.Node, key: string): void {
-  const input = node.inputs[key];
-  if (!input) return;
-  delete node.inputs[key];
-  node.inputs[key] = input;
+export function resultOut(label: string, dim: ResultDim, t: ResultType): GraphOutput<GraphSocket> {
+  return new GraphOutput(resultSocket(dim, t), label);
 }
 
 export function readInput<T>(wired: readonly T[] | undefined, literal: T): T | null {
   return wired === undefined || wired.length === 0 ? literal : (wired[0] ?? null);
 }
 
+/** A text input (a path, a folder, a pattern) read as `readInput` does and trimmed; a blank is "". Anything but text
+ *  throws `#TYPE!` "{label} takes text", which the error guard keeps as the card's answer ([[C10]] socketLattice). */
+export function readTextInput(wired: readonly unknown[] | undefined, literal: string, label: string): string {
+  const v = readInput(wired, literal);
+  if (v === null || v === undefined) return "";
+  if (typeof v !== "string") throw solError("#TYPE!", `${label} takes text`);
+  return v.trim();
+}
+
+/** A column-name list input as the CSV a literal stores: a wired list's items, else the typed literal. */
+export function keysCsv(wired: readonly unknown[] | undefined, literal: string): string | SolError {
+  const v = wired?.[0];
+  if (isSolError(v)) return v;
+  return Array.isArray(v) ? listLiteralText(v.flat().filter((x) => x !== null && x !== "").map(String)) : literal;
+}
+
 /** A card's input roles: its class's, or for a card whose roles change with its op (Series), the current op's. */
-export function rolesOf(node: ClassicPreset.Node): Record<string, InputRole> | undefined {
+export function rolesOf(node: GraphNode): Record<string, InputRole> | undefined {
   return (node as { currentInputRoles?: () => Record<string, InputRole> }).currentInputRoles?.()
     ?? (node.constructor as { inputRoles?: Record<string, InputRole> }).inputRoles;
 }
 
 /** A declared input read by its role ([[D86]] blankRoles): unwired, the typed value; wired, the cable's; a blank as the role reads it. */
-export function readRole<T = unknown>(node: ClassicPreset.Node, key: string, wired: readonly unknown[] | undefined): T {
+export function readRole<T = unknown>(node: GraphNode, key: string, wired: readonly unknown[] | undefined): T {
   const role = rolesOf(node)?.[key];
   if (!role) throw new Error(`${node.constructor.name}: no input role declared for "${key}"`);
   return readAsRole<T>(node, key, wired, role);
 }
 
-/** A setting read as left out takes the card's default, whole or item by item in a list ([[D86]] blankRoles). */
-export function leftOutAs<T>(v: T | readonly (T | undefined)[] | undefined, dflt: T): T | T[] {
-  if (v === undefined) return dflt;
-  // Array.isArray narrows a generic to any[], so the list is named for what it is.
-  return Array.isArray(v) ? (v as readonly (T | undefined)[]).map((x) => (x === undefined ? dflt : x)) : (v as T);
-}
-
 /** `readRole` with the role given, for a card whose roles change with its op (Series). */
-export function readAsRole<T = unknown>(node: ClassicPreset.Node, key: string, wired: readonly unknown[] | undefined, role: InputRole): T {
+function readAsRole<T = unknown>(node: GraphNode, key: string, wired: readonly unknown[] | undefined, role: InputRole): T {
   const n = node as { literals?: Record<string, unknown>; stringLiterals?: Record<string, unknown> };
   const literal = n.literals?.[key] ?? n.stringLiterals?.[key];
   const v = wired === undefined || wired.length === 0 ? literal : wired[0];
@@ -144,144 +154,6 @@ export function readAsRole<T = unknown>(node: ClassicPreset.Node, key: string, w
 export type CellResult<T> = T | (T | SolError | null)[] | SolError | null;
 
 export type BroadcastResult = CellResult<number>;
-
-export function broadcast(
-  fn: (...xs: number[]) => number | null,
-  ...args: Array<number | number[] | null>
-): BroadcastResult {
-  const lists = args.filter((a): a is number[] => Array.isArray(a));
-  if (lists.length === 0) {
-    const sc = cellShortCircuit(args);
-    if (sc !== COMPUTE) return sc;
-    const r = fn(...(args as number[]));
-    return r === null ? null : guardFinite(r, args);
-  }
-  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  const out: (number | SolError | null)[] = [];
-  for (let i = 0; i < len; i++) {
-    if (lists.some((l) => i >= l.length)) { out.push(null); continue; }
-    const ops = args.map((a) => (Array.isArray(a) ? a[i] : a));
-    const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) { out.push(sc); continue; }
-    const r = fn(...(ops as number[]));
-    out.push(r === null ? null : guardFinite(r, ops));
-  }
-  return out;
-}
-
-export function broadcastErr(
-  fn: (...xs: number[]) => number | SolError | null,
-  ...args: Array<number | number[] | null>
-): BroadcastResult {
-  const lists = args.filter((a): a is number[] => Array.isArray(a));
-  if (lists.length === 0) {
-    const sc = cellShortCircuit(args);
-    if (sc !== COMPUTE) return sc;
-    const r = fn(...(args as number[]));
-    return typeof r === "number" ? guardFinite(r, args) : r;
-  }
-  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  const out: (number | SolError | null)[] = [];
-  for (let i = 0; i < len; i++) {
-    if (lists.some((l) => i >= l.length)) { out.push(null); continue; }
-    const ops = args.map((a) => (Array.isArray(a) ? a[i] : a));
-    const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) { out.push(sc); continue; }
-    const r = fn(...(ops as number[]));
-    out.push(typeof r === "number" ? guardFinite(r, ops) : r);
-  }
-  return out;
-}
-
-// No array-shaped element: the list check is `Array.isArray`, so such an element needs its own broadcaster.
-type Cell = string | number | boolean;
-
-export function broadcastCells<A extends Cell, R extends Cell>(
-  fn: (a: A) => R | SolError | null,
-  a: A | A[] | null,
-): CellResult<R>;
-export function broadcastCells<A extends Cell, B extends Cell, R extends Cell>(
-  fn: (a: A, b: B) => R | SolError | null,
-  a: A | A[] | null, b: B | B[] | null,
-): CellResult<R>;
-export function broadcastCells<A extends Cell, B extends Cell, C extends Cell, R extends Cell>(
-  fn: (a: A, b: B, c: C) => R | SolError | null,
-  a: A | A[] | null, b: B | B[] | null, c: C | C[] | null,
-): CellResult<R>;
-export function broadcastCells<A extends Cell, B extends Cell, C extends Cell, D extends Cell, R extends Cell>(
-  fn: (a: A, b: B, c: C, d: D) => R | SolError | null,
-  a: A | A[] | null, b: B | B[] | null, c: C | C[] | null, d: D | D[] | null,
-): CellResult<R>;
-export function broadcastCells(
-  fn: (...xs: never[]) => Cell | SolError | null,
-  ...args: Array<Cell | Cell[] | null>
-): CellResult<Cell> {
-  const call = fn as (...xs: Cell[]) => Cell | SolError | null;
-  const lists = args.filter((a): a is Cell[] => Array.isArray(a));
-  if (lists.length === 0) {
-    const sc = cellShortCircuit(args);
-    if (sc !== COMPUTE) return sc;
-    const r = call(...(args as Cell[]));
-    return typeof r === "number" ? guardFinite(r, args) : r;
-  }
-  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  const out: (Cell | SolError | null)[] = [];
-  for (let i = 0; i < len; i++) {
-    if (lists.some((l) => i >= l.length)) { out.push(null); continue; }
-    const ops = args.map((a) => (Array.isArray(a) ? a[i] : a));
-    const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) { out.push(sc); continue; }
-    const r = call(...(ops as Cell[]));
-    out.push(typeof r === "number" ? guardFinite(r, ops) : r);
-  }
-  return out;
-}
-
-export type UnitOperand = number | UnitCell;
-export type BroadcastUnitResult =
-  number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null;
-
-function guardCell(r: number | UnitCell | SolError | null, inputs: ReadonlyArray<unknown>): number | UnitCell | SolError | null {
-  if (r === null || typeof r === "string") return r;
-  if (isUnitCell(r)) {
-    const g = guardFinite(r.value, inputs);
-    if (typeof g !== "number") return g;
-    // tagDim would collapse an empty-dim ratio cell to a bare number, so re-mint the ratio.
-    return r.ratio === true ? tagRatio(g) : tagDim(g, r.dim, r.display);
-  }
-  if (typeof r === "number") return guardFinite(r, inputs);
-  return r;
-}
-
-export function broadcastUnit(
-  fn: (...xs: UnitOperand[]) => number | UnitCell | SolError | null,
-  ...args: Array<UnitOperand | UnitOperand[] | null>
-): BroadcastUnitResult {
-  const lists = args.filter((a): a is UnitOperand[] => Array.isArray(a));
-  if (lists.length === 0) {
-    const sc = cellShortCircuit(args);
-    if (sc !== COMPUTE) return sc;
-    return guardCell(fn(...(args as UnitOperand[])), args);
-  }
-  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  const out: (number | UnitCell | SolError | null)[] = [];
-  for (let i = 0; i < len; i++) {
-    if (lists.some((l) => i >= l.length)) { out.push(null); continue; }
-    const ops = args.map((a) => (Array.isArray(a) ? a[i] : a)) as UnitOperand[];
-    const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) { out.push(sc); continue; }
-    out.push(guardCell(fn(...ops), ops));
-  }
-  return out;
-}
-
-export function anyDimensioned(...args: Array<UnitOperand | UnitOperand[] | null>): boolean {
-  for (const a of args) {
-    if (Array.isArray(a)) { if (a.some((c) => isUnitCell(c))) return true; }
-    else if (isUnitCell(a)) return true;
-  }
-  return false;
-}
 
 export { dimOf, magnitudeOf };
 

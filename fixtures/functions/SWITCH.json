@@ -1,0 +1,33 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"SWITCH(1, 2, NA(), 9)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(1, 2, 1/0, 9)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(1, NA(), 5, 1, 9)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(1, 1, 5, NA(), 9)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(NA(), 1, 5, 9)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(DATE(2023,3,2), DATE(2023,1,1), \"a\", DATE(2023,3,2), \"b\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_A2,1,\"Uno\", 2, \"Dos\", 3, \"Tres\")","env":["c_A2=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_A2,1,\"Uno\", 2, \"Dos\", 3, \"Tres\", \"-\")","env":["c_A2=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_H2, \"Monday\", 1, \"Tuesday\",2,\"WEDNESDAY\",3)","env":["c_H2=text:\"Monday\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_L2,1/0,\"INF\", \"FIN\")","env":["c_L2=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_A3,1,\"Uno\", 2, \"Dos\", 3, \"Tres\")","env":["c_A3=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_A3,1,\"Uno\", 2, \"Dos\", 3, \"Tres\", \"-\")","env":["c_A3=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_H3, \"Monday\", 1, \"Tuesday\",2,\"WEDNESDAY\",3)","env":["c_H3=text:\"Tuesday\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_A4,1,\"Uno\", 2, \"Dos\", 3, \"Tres\")","env":["c_A4=num:3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_A4,1,\"Uno\", 2, \"Dos\", 3, \"Tres\", \"-\")","env":["c_A4=num:3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_H4, \"Monday\", 1, \"Tuesday\",2,\"WEDNESDAY\",3)","env":["c_H4=text:\"Wednesday\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_A5,1,\"Uno\", 2, \"Dos\", 3, \"Tres\")","env":["c_A5=num:4"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_A5,1,\"Uno\", 2, \"Dos\", 3, \"Tres\", \"-\")","env":["c_A5=num:4"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_H5, \"Monday\", 1, \"Tuesday\",2,\"WEDNESDAY\",3)","env":["c_H5=text:\"Thursday\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_A6,1,\"Uno\", 2, \"Dos\", 3, \"Tres\")","env":["c_A6=num:5"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_A6,1,\"Uno\", 2, \"Dos\", 3, \"Tres\", \"-\")","env":["c_A6=num:5"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_H6, \"Monday\", 1, \"Tuesday\",2,\"WEDNESDAY\",3)","env":["c_H6=text:\"Friday\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_A7,1,\"Uno\", 2, \"Dos\", 3, \"Tres\")","env":["c_A7=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_A7,1,\"Uno\", 2, \"Dos\", 3, \"Tres\", \"-\")","env":["c_A7=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_H7, \"Monday\", 1, \"Tuesday\",2,\"WEDNESDAY\",3)","env":["c_H7=text:\"Saturday\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_A8,1,\"Uno\", 2, \"Dos\", 3, \"Tres\")","env":["c_A8=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_A8,1,\"Uno\", 2, \"Dos\", 3, \"Tres\", \"-\")","env":["c_A8=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_H8, \"Monday\", 1, \"Tuesday\",2,\"WEDNESDAY\",3)","env":["c_H8=text:\"Sunday\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"SWITCH(c_H9, \"Monday\", 1, \"Tuesday\",2,\"WEDNESDAY\",3)","env":["c_H9=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

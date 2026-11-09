@@ -1,0 +1,13 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"AVERAGEIF(r_B2_B10,c_D2)","env":["c_D2=num:5","r_B2_B10=table:num:[[3], [4], [5], [6], [-3], [12], [#DIV/0!], [#N/A], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGEIF(r_B2_B10,c_D3)","env":["c_D3=num:-10","r_B2_B10=table:num:[[3], [4], [5], [6], [-3], [12], [#DIV/0!], [#N/A], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGEIF(r_B2_B10,c_D4)","env":["c_D4=text:\">0\"","r_B2_B10=table:num:[[3], [4], [5], [6], [-3], [12], [#DIV/0!], [#N/A], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGEIF(r_B2_B10,c_D5)","env":["c_D5=text:\"<5\"","r_B2_B10=table:num:[[3], [4], [5], [6], [-3], [12], [#DIV/0!], [#N/A], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGEIF(r_B2_B10,c_D6)","env":["c_D6=err:#N/A","r_B2_B10=table:num:[[3], [4], [5], [6], [-3], [12], [#DIV/0!], [#N/A], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGEIF(r_B2_B10,c_D7)","env":["c_D7=blank:","r_B2_B10=table:num:[[3], [4], [5], [6], [-3], [12], [#DIV/0!], [#N/A], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGEIF(r_B2_B10,c_D8)","env":["c_D8=blank:","r_B2_B10=table:num:[[3], [4], [5], [6], [-3], [12], [#DIV/0!], [#N/A], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGEIF(r_B2_B10,c_D9)","env":["c_D9=blank:","r_B2_B10=table:num:[[3], [4], [5], [6], [-3], [12], [#DIV/0!], [#N/A], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVERAGEIF(r_Data_A2_A21,\"East\",r_Data_C2_C21)","env":["r_Data_A2_A21=table:text:[[\"North\"], [\"South\"], [\"East\"], [\"West\"], [\"North\"], [\"South\"], [\"East\"], [\"West\"], [\"North\"], [\"South\"], [\"East\"], [\"West\"], [\"North\"], [\"South\"], [\"East\"], [\"West\"], [\"North\"], [\"South\"], [\"East\"], [\"West\"]]","r_Data_C2_C21=table:num:[[12], [45], [67], [23], [89], [34], [56], [78], [15], [92], [41], [63], [27], [70], [38], [55], [81], [19], [48], [60]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -1,0 +1,22 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"XMATCH(0.3, VSTACK(0.1, 0.1 + 0.2, 0.5))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(c_C2,r_A2_A7)","env":["c_C2=text:\"Spain\"","r_A2_A7=table:text:[[\"Albania\"], [\"Indonesia\"], [\"India\"], [\"Germany\"], [\"Spain\"], [\"Venezuela\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(\"Ind*\",r_A2_A7,2)","env":["r_A2_A7=table:text:[[\"Albania\"], [\"Indonesia\"], [\"India\"], [\"Germany\"], [\"Spain\"], [\"Venezuela\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(\"Ind*\",r_A2_A7,2,-1)","env":["r_A2_A7=table:text:[[\"Albania\"], [\"Indonesia\"], [\"India\"], [\"Germany\"], [\"Spain\"], [\"Venezuela\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(\"[A-Z][a-z]+y\",r_A2_A9,3,1)","env":["r_A2_A9=table:text:[[\"Albania\"], [\"Indonesia\"], [\"India\"], [\"Germany\"], [\"Spain\"], [\"Venezuela\"], [\"Italy\"], [\"Francialy\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(\"[A-Z][a-z]+y\",r_A2_A9,3,-1)","env":["r_A2_A9=table:text:[[\"Albania\"], [\"Indonesia\"], [\"India\"], [\"Germany\"], [\"Spain\"], [\"Venezuela\"], [\"Italy\"], [\"Francialy\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(42,r_A14_A15,3)","env":["r_A14_A15=table:text:[[\"apple\"], [\"bannana\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(\"banana\",k1)","env":["k1=list:text:[\"apple\", \"banana\", \"cherry\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(\"ban*\",k1,2)","env":["k1=list:text:[\"apple\", \"banana\", \"cherry\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(30,k1)","env":["k1=list:num:[10, 20, 30, 40, 50]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(30,k1)","env":["k1=table:num:[[10], [20], [30], [40], [50]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(35,k1,1)","env":["k1=list:num:[10, 20, 30, 40, 50]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(35,k1,-1)","env":["k1=list:num:[10, 20, 30, 40, 50]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(20,k1,0,-1)","env":["k1=list:num:[10, 20, 20, 30]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(25,k1,1,2)","env":["k1=list:num:[10, 20, 30, 40, 50]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(25,k1,-1,-2)","env":["k1=list:num:[50, 40, 30, 20, 10]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(99,k1)","env":["k1=list:num:[10, 20, 30]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"XMATCH(2,k1)","env":["k1=table:num:[[1, 2], [3, 4]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

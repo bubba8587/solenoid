@@ -19,7 +19,7 @@ export const required: InputRole = { kind: "required" };
 export const picks = (opts: { required?: boolean } = {}): InputRole => ({ kind: "picks", required: opts.required ?? false });
 
 /** A function's roles by zero-based argument; `rest` covers every argument past the highest numbered one. */
-export type ArgRoles = { readonly [i: number]: InputRole; readonly rest?: InputRole };
+type ArgRoles = { readonly [i: number]: InputRole; readonly rest?: InputRole };
 
 /** The one declaration: formulas read it by argument, cards point their sockets at it (`rolesFrom`). */
 export const ARG_ROLES: Record<string, ArgRoles> = {
@@ -134,6 +134,7 @@ export const ARG_ROLES: Record<string, ArgRoles> = {
   TOROW: { 1: setting(LEFT_OUT), 2: setting(LEFT_OUT) },
   SEQUENCE: { 0: required, 1: setting(LEFT_OUT), 2: setting(LEFT_OUT), 3: setting(LEFT_OUT) },
   RANDARRAY: { 0: setting(LEFT_OUT), 1: setting(LEFT_OUT), 2: setting(LEFT_OUT), 3: setting(LEFT_OUT), 4: setting(LEFT_OUT) },
+  RANDSAMPLE: { 1: setting(LEFT_OUT) },
   FILTER: { 2: setting(LEFT_OUT) },
   MAKEARRAY: { 0: required, 1: required },
   SLICE: { 1: required, 2: setting(LEFT_OUT) },
@@ -196,7 +197,17 @@ export const ARG_ROLES: Record<string, ArgRoles> = {
   NETWORKDAYS: { 2: setting(LEFT_OUT) },
   WORKDAY: { 2: setting(LEFT_OUT) },
   EWMA: { 1: required },
-  TRAPZ: { 1: setting(LEFT_OUT) },
+  TRAPZ: { 1: setting(LEFT_OUT), 2: setting(LEFT_OUT) },
+  CONVOLVE: { 2: setting(LEFT_OUT, "full") },
+  DIFF: { 1: setting(false) },
+  PCTCHANGE: { 1: setting(false) },
+  GRADIENT: { 1: setting(false) },
+  GRIDDATA: { 5: setting(LEFT_OUT, "idw") },
+  REVERSE: { 1: setting(false) },
+  ROT90: { 1: setting(1) },
+  CONNECTEDREGIONS: { 1: setting(false) },
+  MEANSMOOTH: { 1: setting(3) },
+  MEDIANSMOOTH: { 1: setting(3) },
   MUNIT: { 0: required },
   QUARTILE: { 1: setting(0) },
   "QUARTILE.INC": { 1: setting(0) },
@@ -251,7 +262,8 @@ export function applyRole(role: InputRole, v: unknown, label: string): unknown {
     case "required": return isList(v) ? v.map((x) => applyRole(role, x, label)) : (v ?? noDefault(label));
     case "picks": {
       let out: unknown = v;
-      if (isTable(v)) out = v.map((r) => r.map((x) => x ?? solError("#SYNTAX!", `A position in ${label} is blank`)));
+      const blank = (x: unknown) => x ?? solError("#SYNTAX!", `A position in ${label} is blank`);
+      if (isTable(v)) out = v.map((r) => (isList(r) ? r.map(blank) : blank(r)));
       else if (isList(v)) { const kept = v.filter((x) => x != null); out = kept.length ? kept : LEFT_OUT; }
       else if (v == null) out = LEFT_OUT;
       return out === LEFT_OUT && role.required ? noDefault(label) : out;
@@ -259,21 +271,3 @@ export function applyRole(role: InputRole, v: unknown, label: string): unknown {
   }
 }
 
-/**
- * A formula's arguments read by their roles. `settled[i]` marks a slot the null rule must not blank the answer on:
- * a slot left empty, or one with a role. A variadic `required` picks group errors only when every one is left out.
- */
-export function applyArgRoles(name: string, emptySlots: readonly boolean[], argv: unknown[]): { argv: unknown[]; settled: readonly boolean[] } {
-  if (!ARG_ROLES[name]) return { argv, settled: emptySlots };
-  const settled = [...emptySlots];
-  const label = (i: number) => `${name}: argument ${i + 1}`;
-  const out = argv.map((v, i) => {
-    const role = argRole(name, i);
-    if (!role) return v;
-    settled[i] = true;
-    return role.kind === "picks" ? applyRole({ ...role, required: false }, v, label(i)) : applyRole(role, v, label(i));
-  });
-  const group = out.map((_, i) => i).filter((i) => { const r = argRole(name, i); return r?.kind === "picks" && r.required; });
-  if (group.length && group.every((i) => out[i] === LEFT_OUT)) out[group[0]] = solError("#SYNTAX!", `${name}: no positions given, and they have no default`);
-  return { argv: out, settled };
-}

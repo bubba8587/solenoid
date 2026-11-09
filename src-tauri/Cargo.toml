@@ -1,9 +1,12 @@
 [package]
 name = "solenoid"
-version = "1.5.0"
+version = "1.6.0"
+rust-version = "1.99"
 description = "Solenoid — a local-first node graph for wiring live data into personal computation"
 authors = ["Solenoid"]
-edition = "2021"
+edition = "2024"
+license = "MIT"
+publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -25,36 +28,26 @@ tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-opener = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
-# Native HTTP so Web Source can fetch arbitrary URLs (no browser CORS wall).
-tauri-plugin-http = "2"
+# The webview's fetches (`net.rs`): no browser CORS wall, and the resolved address checked before it connects.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "charset"] }
+tokio = { version = "1", features = ["net"] }
+url = "2"
+serde = { version = "1", features = ["derive"] }
+# float_roundtrip: serde_json's default float parse can land one ulp off; a cell crossing IPC must arrive exact.
+# preserve_order: an object keeps its keys in the order they were written, as a save does.
+serde_json = { version = "1", features = ["float_roundtrip", "preserve_order"] }
+# Local File's Parquet reader, on the core's frame ([[C130]] rustCore).
+solenoid-core = { path = "../crates/solenoid-core" }
+solenoid-parquet = { path = "../crates/solenoid-parquet" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-util", "net"] }
+
 # Custom window frame: a transparent overlay titlebar with native Snap support, so
 # the frame is HTML/CSS we control (themed to the accent) instead of the OS caption.
+# Desktop only: a phone has no window frame (docs/android.md).
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-decorum = "1"
-serde = { version = "1", features = ["derive"] }
-# float_roundtrip: serde_json's DEFAULT float parse is lossy (fast path, can
-# land one ulp off) — a JS cell crossing the IPC then differs from the value
-# the oracle computed with, which the parity corpus catches as byte drift.
-# The wire must round-trip doubles exactly.
-serde_json = { version = "1", features = ["float_roundtrip"] }
-# WS2 — the native relational engine. Lazy frames behind opaque handles; only a
-# preview/column materializes. Lean feature set: lazy plans + string predicates +
-# asof_join (the Join node's "as-of" `how`, nearest-match on a sorted key) + csv
-# (the native CSV reader — desktop CSV import bypasses the JS Papa Parse +
-# inference entirely, reading straight off disk into a DataFrame) + parquet
-# (the native Parquet source, same file->engine principle). `dtype-date` +
-# `dtype-datetime` ride along with parquet: a Parquet file's own Date/Datetime
-# logical columns need those to read as such at all (without them Polars can't
-# even represent a Date-typed column, `AnyValue::Date` doesn't exist in the
-# build) — needed for "typed columns arrive intact, no inference step" to hold
-# for date columns too, not just numeric/string ones. `product` (the group-by
-# PRODUCT aggregate — gated off by default, panics at runtime without it:
-# "activate 'product' feature").
-polars = { version = "0.46", default-features = false, features = ["lazy", "strings", "asof_join", "semi_anti_join", "csv", "parquet", "dtype-date", "dtype-datetime", "product", "cum_agg", "rank", "rolling_window", "diff", "regex", "cross_join"] }
-# `FunctionOptions`/`ApplyOptions`/`FunctionFlags` (the custom per-group-scalar
-# GROUP-BY UDF for MODE, `engine.rs`'s `mode_expr`) aren't re-exported through
-# `polars::prelude` — Cargo unifies this to the SAME 0.46.x already pulled in by
-# `polars`/`polars-lazy`, so this doesn't add a second copy of the dependency.
-polars-plan = { version = "0.46", default-features = false }
 
 # linux_webview.rs; already in the dep tree via wry.
 [target.'cfg(target_os = "linux")'.dependencies]

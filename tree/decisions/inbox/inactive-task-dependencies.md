@@ -1,5 +1,5 @@
 ---
-title: A task that waits on an inactive task skips that dependency
+title: "A Schedule task that waits on a switched-off task schedules as if that link weren't there, with a note"
 proposed_ring: D
 ask: human
 date: 2026-09-24
@@ -8,15 +8,14 @@ parents:
 ---
 ## Decision
 
-When a task depends on a task whose Active is false, the dependency is dropped (the waiting task schedules as if it weren't there), instead of erroring.
+When a task depends on a task whose Active is off, the link is dropped: the waiting task schedules as if it weren't there, and its row gets a note naming the dropped link. Today, switching off a task that others wait on makes the whole Schedule show an error ("which is not a task").
 
 ## Why
 
-Today deactivating a task others wait on errors "which is not a task", and a test pins that. **Owner's call:** drop the link silently, drop it with a notice, or keep the error?
+Switching a task off is how you try what-ifs, and the error blocks that.
 
 ## What ratifying means
 
-- **Drop silently:** switching a task's Active off lets everything that waited on it schedule as if the link weren't there.
-- **Drop with a notice:** same schedule, plus a per-row note naming the dropped link.
-- **Keep the error:** today's behavior. The whole schedule errors until you remove the link by hand.
-- **Lean:** drop with a notice. Deactivating a task is how you try what-ifs, and an error blocks that.
+- **Lean:** Ratify.
+- **Ratify:** Switching a task's Active off lets everything after it reschedule, with a note on each affected row.
+- **Reject:** The error stays until you remove the link by hand. The other option drops the link silently, with no note.

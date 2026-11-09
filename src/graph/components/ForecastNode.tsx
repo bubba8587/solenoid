@@ -1,4 +1,4 @@
-import type { ForecastNode, ForecastOp } from "../rete-nodes";
+import type { ForecastNode, ForecastOp } from "../nodeClasses";
 import { makeToggleNodeComponent } from "./standardNode";
 
 export const ForecastComponent = makeToggleNodeComponent<ForecastNode, ForecastOp>(

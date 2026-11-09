@@ -1,0 +1,9 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"HYPGEOM.DIST(1, 4, 8, 20, TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"HYPGEOM.DIST(1, 4, 8, 20, FALSE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"HYPGEOM.DIST(1e400, 5, 1e400, 1e400, TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"HYPGEOM.DIST(c_A2,c_B2,c_C2,c_D2,c_E2)","env":["c_A2=num:1.8","c_B2=num:4.2","c_C2=num:8.2","c_D2=num:22","c_E2=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"HYPGEOM.DIST(c_A3,c_B3,c_C3,c_D3,c_E3)","env":["c_A3=num:1.8","c_B3=num:4.2","c_C3=num:8.2","c_D3=num:18.34","c_E3=bool:FALSE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

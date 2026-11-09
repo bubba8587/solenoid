@@ -1,4 +1,6 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import type * as React from "react";
+import { useEscapeLayer } from "./escapeLayers";
 import { createPortal } from "react-dom";
 import { stepListSel } from "./gridKeyboard";
 import { tokenAtCaret } from "../formulaSyntax";
@@ -8,7 +10,7 @@ import { InfoIcon } from "./Icons";
 import { TypeIcon } from "./TypeIcon";
 import { closeParens } from "../closeParens";
 
-type ColType = "number" | "string" | "date" | "logical";
+export type ColType = "number" | "string" | "date" | "logical";
 export const COLTYPE_ORDER: ColType[] = ["number", "string", "date", "logical"];
 export const COLTYPE_NAME: Record<ColType, string> = { number: "Number", string: "Text", date: "Date", logical: "Boolean" };
 
@@ -61,11 +63,17 @@ const stopAll = {
 };
 
 /** `picked`: this node made a pick for the column, so the button earns the accent. */
-export function ColumnFormatButton({ picked, children }: { picked: boolean; children: ReactNode }) {
+export function ColumnFormatButton({ picked, children, title = "Column format", buttonClassName = "table-popup__fmtbtn" }: {
+  picked: boolean;
+  children: ReactNode;
+  title?: string;
+  buttonClassName?: string;
+}) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(open, () => setOpen(false), [btnRef, panelRef]);
+  useEscapeLayer(open, () => setOpen(false));
   const style = useHangUnder(open, btnRef, panelRef, "right");
 
   return (
@@ -73,18 +81,14 @@ export function ColumnFormatButton({ picked, children }: { picked: boolean; chil
       <button
         type="button"
         ref={btnRef}
-        className={`table-popup__fmtbtn${picked ? " table-popup__fmtbtn--picked" : ""}`}
-        title="Column format"
-        aria-label="Column format"
+        className={`${buttonClassName}${picked ? " table-popup__fmtbtn--picked" : ""}`}
+        title={title}
+        aria-label={title}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
       >
         <PaintbrushIcon size={12} />
-        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor"
-             strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <polyline points="1.5,3 4,5.5 6.5,3" />
-        </svg>
       </button>
       {open && createPortal(
         <div ref={panelRef} className="table-popup__fmtpanel" style={style} {...stopAll}>
@@ -245,5 +249,69 @@ export function ColumnExprField({ value, lambdaOptions, onDraft, onCommit, onRev
         document.body,
       )}
     </div>
+  );
+}
+
+/** A one-line text field that wraps and grows to fit its text rather than scrolling sideways: Enter commits by
+ *  blurring, and a pasted line break reads as a space, so its value stays one line of text. */
+export function AutoGrowField({ value, className, cols, placeholder, inputMode, onChange, onFocus, onBlur, onKeyDown, onMouseDown }: {
+  value: string;
+  className: string;
+  cols?: number;
+  placeholder?: string;
+  inputMode?: "text" | "decimal";
+  onChange: (v: string) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onMouseDown?: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      className={className}
+      value={value}
+      rows={1}
+      cols={cols}
+      placeholder={placeholder}
+      inputMode={inputMode}
+      spellCheck={false}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      onMouseDown={onMouseDown}
+      onKeyDown={(e) => {
+        onKeyDown?.(e);
+        if (e.defaultPrevented) return;
+        if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.blur(); }
+      }}
+      onChange={(e) => onChange(e.target.value.replace(/[\r\n]+/g, " "))}
+    />
+  );
+}
+
+/** An editable column name that wraps onto a second line when it is long, rather than widening its column. */
+export function HeaderNameField({ value, placeholder, onChange, onFocus, onBlur, onKeyDown, onMouseDown }: {
+  value: string;
+  placeholder: string;
+  onChange: (v: string) => void;
+  onFocus: () => void;
+  onBlur?: () => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onMouseDown: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
+}) {
+  return (
+    <AutoGrowField
+      className="table-popup__input table-popup__input--text table-popup__colhead-input"
+      value={value}
+      cols={Math.min(16, Math.max(3, value.length + 1))}
+      {...{ placeholder, onChange, onFocus, onBlur, onKeyDown, onMouseDown }}
+    />
   );
 }

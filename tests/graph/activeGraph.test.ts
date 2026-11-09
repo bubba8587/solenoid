@@ -1,12 +1,11 @@
-// [[B12]] losslessSaves
+// [[B12]] losslessSaves, [[composite-drill-in-mount-lifecycle#The canvas-substitution seam]], [[save-format#Saving binds the main graph]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import type { NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
 import type { Schemes } from "../../src/graph/schemes";
 import { setEditorRefs, getEditor } from "../../src/graph/process";
 import {
   setActiveGraph,
-  isSubgraphActive,
   getActiveEditor,
   getOwningEditor,
   getOwningView,
@@ -15,16 +14,10 @@ import {
   MAIN_EDIT_SCOPE,
 } from "../../src/graph/activeGraph";
 
-// The action layer (keyboard, copy/paste, right-click, in-node socket/row edits)
-// resolves through getActive*/getOwningEditor so a Composite drill-in is first-class.
-// The CARDINAL SAFETY INVARIANT: persistence/serialize read process.ts getEditor()
-// DIRECTLY — those must ALWAYS see the MAIN graph, never the drill-in override, or
-// an autosave while drilled in would write the subgraph OVER the document. This test
-// locks that split at the resolver boundary.
 
-function fakeEditor(ids: string[]): NodeEditor<Schemes> {
+function fakeEditor(ids: string[]): GraphEditor<Schemes> {
   const nodes = new Map(ids.map((id) => [id, { id }]));
-  return { getNode: (id: string) => nodes.get(id), getNodes: () => [...nodes.values()] } as unknown as NodeEditor<Schemes>;
+  return { getNode: (id: string) => nodes.get(id), getNodes: () => [...nodes.values()] } as unknown as GraphEditor<Schemes>;
 }
 const fakeView = {} as unknown as View;
 const subView = { sub: true } as unknown as View;
@@ -41,14 +34,12 @@ afterEach(() => setActiveGraph(null));
 
 describe("activeGraph resolver", () => {
   it("defaults to main with no drill-in open", () => {
-    expect(isSubgraphActive()).toBe(false);
     expect(getActiveEditor()).toBe(main);
     expect(getOwningEditor("m1")).toBe(main);
   });
 
   it("routes the ACTION layer to the subgraph while drilled in", () => {
     setActiveGraph({ editor: sub, view: fakeView });
-    expect(isSubgraphActive()).toBe(true);
     expect(getActiveEditor()).toBe(sub);
   });
 
@@ -66,7 +57,7 @@ describe("activeGraph resolver", () => {
   it("a node in a closed composite on an owned canvas resolves to that composite's editor, not main", () => {
     const inner = fakeEditor(["deep"]);
     const scene = fakeEditor(["c1"]);
-    (scene.getNode("c1") as unknown as { internalEditor: NodeEditor<Schemes> }).internalEditor = inner;
+    (scene.getNode("c1") as unknown as { internalEditor: GraphEditor<Schemes> }).internalEditor = inner;
     const off = registerOwnedGraph({ editor: scene, view: fakeView });
     try { expect(getOwningEditor("deep")).toBe(inner); } finally { off(); }
     expect(getOwningEditor("deep")).toBe(main);
@@ -76,8 +67,7 @@ describe("activeGraph resolver", () => {
     expect(getOwningView("m1")).toBe(fakeView); // no drill-in → main view
     setActiveGraph({ editor: sub, view: subView });
     expect(getOwningView("s1")).toBe(subView); // internal node → drill-in view
-    // A MAIN node re-rendering BEHIND an open drill-in must still hit the main
-    // view (getActiveView() would wrongly return the drill-in here).
+    // A main node re-rendering behind an open drill-in.
     expect(getOwningView("m1")).toBe(fakeView);
     setActiveGraph(null);
     expect(getOwningView("s1")).toBeNull(); // no surface shows it, so no view may pan to or move it
@@ -94,30 +84,26 @@ describe("activeGraph resolver", () => {
   it("clears back to main on close", () => {
     setActiveGraph({ editor: sub, view: fakeView });
     setActiveGraph(null);
-    expect(isSubgraphActive()).toBe(false);
     expect(getActiveEditor()).toBe(main);
     expect(getOwningEditor("s1")).toBe(main); // sub no longer owns anything resolvable
   });
 });
 
 describe("a main-graph node retypes on its own surface while a drill-in is open ([[B11]] maximalMerge)", () => {
-  it("SEQUENCE and Expression swap their result socket and re-render on the main view", async () => {
+  it("SEQUENCE swaps its result socket and re-renders on the main view", async () => {
     const { SeriesNode } = await import("../../src/graph/nodes/list");
-    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
     const seq = new SeriesNode({ op: "sequence" });
-    const expr = new ExpressionNode({ expr: "SEQUENCE(2, 2)" });
     const rerendered: string[] = [];
     const mainView = { rerenderNode: async (id: string) => { rerendered.push(id); } } as unknown as View;
     const drillView = { rerenderNode: async () => { throw new Error("the drill-in view must not be touched"); } } as unknown as View;
-    const owner = { getNode: (id: string) => (id === seq.id ? seq : id === expr.id ? expr : undefined), getNodes: () => [seq, expr], getConnections: () => [] } as unknown as NodeEditor<Schemes>;
+    const owner = new GraphEditor<Schemes>();
+    await owner.addNode(seq as never);
     setEditorRefs(owner, {} as never, mainView);
     setActiveGraph({ editor: sub, view: drillView });
     seq.literals.count = 2; seq.literals.cols = 2;
     seq.data({});
-    expr.data({});
     await new Promise((r) => setTimeout(r, 0));
     expect(seq.outputs.list!.socket.name).toBe("table");
-    expect(String(expr.outputs.result!.socket.name)).toMatch(/table/);
-    expect(rerendered.sort()).toEqual([seq.id, expr.id].sort());
+    expect(rerendered).toEqual([seq.id]);
   });
 });

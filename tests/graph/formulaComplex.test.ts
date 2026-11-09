@@ -1,7 +1,7 @@
-// [[C15]] matricesInFormulas
+// [[C15]] matricesInFormulas, [[C17]] shareImpl, [[C24]] arraySemantics, [[formula-language#Complex numbers]], [[formula-language#The dispatch ladder]], [[formula-language#Scalar operators]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { cx, isCx, parseCx, formatCx, formatCxDisplay, type Cx } from "../../src/graph/cxValue";
+import { cx, isCx, parseCx, formatCxDisplay, type Cx } from "../../src/graph/cxValue";
 import {
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode,
   ComplexPowerNode, QuadraticRootsNode,
@@ -10,25 +10,12 @@ import {
 } from "../../src/graph/nodes/complex";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 
-// ─── [[C15]] matricesInFormulas amendment tranche: complex numbers in formulas (2026-07-28) ──────────
-// The IM* family owned over tagged Cx ([[C24]] arraySemantics) — before this, complex ALREADY
-// flowed into formulas (complexcombo → anydata connects) and every surface
-// handled it as garbage: operators concatenated "[object Object]", the IM* names
-// worked on Formula.js text complexes while refusing the graph's own tagged
-// values. Three contracts pinned here:
-//   1. [[C17]] shareImpl — each IM* registration runs the node family's kernel, so identical
-//      inputs give identical outputs on both surfaces;
-//   2. operators on a Cx answer typed errors / structural equality / formatted
-//      text — never coercion garbage;
-//   3. containment — a Cx reaches a dispatch only through a cxArgs registration
-//      (Formula.js and the Number()-coercing internals never see one).
-
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const code = (v: unknown) => (isSolError(v) ? (v as SolError).code : v);
 const Z = cx(3, 4);
 const W = cx(1, -2);
 
-describe("parseCx — Excel's text grammar, formatCx round-trip", () => {
+describe("parseCx — Excel's text grammar, round-tripping the & text form", () => {
   it("reads every Excel form", () => {
     expect(parseCx("3+4i")).toEqual(cx(3, 4));
     expect(parseCx("3-4j")).toEqual(cx(3, -4));
@@ -39,9 +26,9 @@ describe("parseCx — Excel's text grammar, formatCx round-trip", () => {
     expect(parseCx("42")).toEqual(cx(42, 0));
     expect(parseCx("1e3+2.5e-1i")).toEqual(cx(1000, 0.25));
   });
-  it("round-trips formatCx's spaced output", () => {
+  it("round-trips the spaced text & makes", () => {
     for (const z of [cx(3, 4), cx(-1.5, -0.25), cx(0, 7), cx(2, 0), cx(0, 0)]) {
-      expect(parseCx(formatCx(z))).toEqual(z);
+      expect(parseCx(ev('z & ""', { z }) as string)).toEqual(z);
     }
   });
   it("refuses non-complex text", () => {
@@ -52,7 +39,7 @@ describe("parseCx — Excel's text grammar, formatCx round-trip", () => {
 });
 
 describe("formatCxDisplay — always both parts (the display form)", () => {
-  it("keeps a zero component visible where formatCx drops it", () => {
+  it("keeps a zero component visible where the & text form drops it", () => {
     // The value box / readouts read a + bi even when a part is 0.
     expect(formatCxDisplay(cx(23, 0))).toBe("23 + 0i");
     expect(formatCxDisplay(cx(0, 4))).toBe("0 + 4i");
@@ -60,8 +47,8 @@ describe("formatCxDisplay — always both parts (the display form)", () => {
     expect(formatCxDisplay(cx(0, 1))).toBe("0 + i");
     expect(formatCxDisplay(cx(3, 2))).toBe("3 + 2i");
     // The Excel/coercion form still drops the zero part.
-    expect(formatCx(cx(23, 0))).toBe("23");
-    expect(formatCx(cx(0, 4))).toBe("4i");
+    expect(ev('z & ""', { z: cx(23, 0) })).toBe("23");
+    expect(ev('z & ""', { z: cx(0, 4) })).toBe("4i");
   });
   it("round-trips through parseCx despite the shown zero part", () => {
     for (const z of [cx(23, 0), cx(0, 4), cx(0, -4), cx(3, 2)]) {
@@ -139,7 +126,7 @@ describe("Excel's representations coerce IN (never OUT)", () => {
 });
 
 describe("operators on a Cx — typed, never coercion garbage", () => {
-  it("arithmetic answers #TYPE! naming the IM* family (was '[object Object]1')", () => {
+  it("arithmetic answers #TYPE! naming the IM* family", () => {
     for (const expr of ["z + 1", "1 - z", "z * z", "z / 2", "z ^ 2"]) {
       const r = ev(expr, { z: Z });
       expect(code(r), expr).toBe("#TYPE!");
@@ -159,7 +146,7 @@ describe("operators on a Cx — typed, never coercion garbage", () => {
     // Like 5 = "5": FALSE, not an error — even for a mathematically-equal real.
     expect(ev("z = 3", { z: cx(3, 0) })).toBe(false);
   });
-  it("& renders through formatCx, and broadcasts", () => {
+  it("& renders a + bi, and broadcasts", () => {
     expect(ev('z & " V"', { z: Z })).toBe("3 + 4i V");
     expect(ev('"z is " & z', { z: cx(0, -1) })).toBe("z is -i");
     expect(ev('z & ""', { z: [cx(1, 1), cx(2, 0)] })).toEqual(["1 + i", "2"]);

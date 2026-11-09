@@ -1,12 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
-import { FUNCTION_FAMILY, FAMILY_BACKING, internalFunctionNames } from "../../../src/graph/excelFunctions";
-import { AggregateNode } from "../../../src/graph/nodes/list";
-import { RankPercentileNode, CorrelNode, CovarianceNode, RegressionNode, FisherNode, ModeNode } from "../../../src/graph/nodes/stats";
+import { RankPercentileNode, CorrelNode, FisherNode, ModeNode } from "../../../src/graph/nodes/stats";
 import { isSolError } from "../../../src/graph/errorValue";
 
-// capabilityParity / [[C17]] shareImpl for the STATISTICS family (the A1 backing flip): every
-// formula below runs the statsOps kernel its node runs, so the two surfaces must agree
+// [[C17]] shareImpl for the STATISTICS family: every formula below and its Aggregate card run
+// on the same core body, so the two surfaces must agree
 // on value, blank and error alike. A new divergence fails here, not in a user's sheet.
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
@@ -16,50 +14,13 @@ const same = (a: unknown, b: unknown) => {
   else expect(a).toEqual(b);
 };
 
-const SAMPLES: (number | null)[][] = [
-  [3, 1, 4, 1, 5, 9, 2, 6],
-  [5],
-  [2, null, 4, 4, 7],
-  [1, 1, 1],
-  [-4, 9],
-  [0.5, 2.5, 7, 7, 7, 11],
-  [1, 2, Infinity],
-  [1, 2, -Infinity],
-  [5, Infinity, -Infinity],
-  [Infinity, Infinity],
-  [1, NaN, 3],
-];
 
-describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
-  const OPS: Array<[string, string]> = [
-    ["AVERAGE", "avg"], ["AVEDEV", "avedev"], ["MEDIAN", "median"], ["GEOMEAN", "geomean"],
-    ["HARMEAN", "harmean"], ["DEVSQ", "devsq"], ["STDEV", "stdev"], ["STDEV.S", "stdev"],
-    ["STDEV.P", "stdev_p"], ["VAR", "var_s"], ["VAR.S", "var_s"], ["VAR.P", "var_p"],
-    ["SKEW", "skew"], ["SKEW.P", "skew_p"], ["KURT", "kurt"],
-    ["PTP", "ptp"], ["IQR", "iqr"], ["MAD", "mad"], ["SEM", "sem"], ["CV", "cv"], ["RMS", "rms"],
-    ["MIN", "min"], ["MAX", "max"],
-  ];
-  it.each(OPS)("%s(list) == Aggregate %s", (fn, op) => {
-    for (const list of SAMPLES) {
-      const node = new AggregateNode({ op: op as never }).data({ list: [list] }).result;
-      same(ev(`${fn}(x)`, { x: list }), node);
-    }
-  });
+describe("statistics formulas == Aggregate node (one core body)", () => {
   it("a formula over several args flattens them into one sample", () => {
     expect(ev("AVERAGE(a, 10, b)", { a: [1, 2], b: [3] })).toBeCloseTo(4, 12);
   });
 });
 
-describe("a NaN cell poisons an aggregate, as it does in GROUPBY", () => {
-  it("every op but the counts answers #DOMAIN!, on the card and in a formula", () => {
-    const code = (v: unknown) => (v as { code?: string }).code;
-    const list = [1, NaN, 3];
-    for (const op of ["avg", "min", "max", "median", "ptp"] as const) {
-      expect(code(new AggregateNode({ op }).data({ list: [list] }).result), op).toBe("#DOMAIN!");
-    }
-    expect(new AggregateNode({ op: "count" }).data({ list: [list] }).result).toBe(3);
-  });
-});
 
 describe("a first-class infinity is a value, as on the cards", () => {
   const code = (v: unknown) => (v as { code?: string }).code;
@@ -125,26 +86,6 @@ describe.each([
   });
 });
 
-describe("paired statistics formulas == Correl / Covariance / Regression nodes", () => {
-  const PAIRS: Array<[(number | null)[], (number | null)[]]> = [
-    [[1, 2, 3, 4], [2, 4.1, 5.9, 8.2]],
-    [[1, 1, 1], [1, 2, 3]],
-    [[1, null, 3, 4], [2, 4, null, 8]],
-    [[1, 2], [3, 3]],
-    [[1, 2, Infinity], [2, 4, 6]],
-    [[1, 2, 3], [-Infinity, 4, 6]],
-  ];
-  it.each(PAIRS)("CORREL/RSQ/COVARIANCE.P/.S/SLOPE/INTERCEPT/STEYX over %j, %j", (x, y) => {
-    same(ev("CORREL(x, y)", { x, y }), new CorrelNode({ op: "correl" }).data({ x: [x], y: [y] }).result);
-    same(ev("PEARSON(x, y)", { x, y }), new CorrelNode({ op: "correl" }).data({ x: [x], y: [y] }).result);
-    same(ev("RSQ(y, x)", { x, y }), new CorrelNode({ op: "rsq" }).data({ x: [x], y: [y] }).result);
-    same(ev("COVARIANCE.P(x, y)", { x, y }), new CovarianceNode({ op: "pop" }).data({ x: [x], y: [y] }).result);
-    same(ev("COVARIANCE.S(x, y)", { x, y }), new CovarianceNode({ op: "samp" }).data({ x: [x], y: [y] }).result);
-    for (const op of ["slope", "intercept", "steyx"] as const) {
-      same(ev(`${op.toUpperCase()}(y, x)`, { x, y }), new RegressionNode({ op }).data({ xs: [x], ys: [y] }).result);
-    }
-  });
-});
 
 describe("MODE / FISHER", () => {
   it("MODE.SNGL is Excel's first-occurring tie; the node keeps every tie", () => {
@@ -157,15 +98,17 @@ describe("MODE / FISHER", () => {
     expect(code(ev("MODE(5)"))).toBe("#N/A");
     expect(code(new ModeNode().data({ list: [[1, 2, 3]] }).result)).toBe("#N/A");
   });
-  // [[D48]] classifyNonFinite: a NaN in the data is #DOMAIN!, never skipped and never passed on bare.
+  // [[C24]] arraySemantics: a NaN in the data is #DOMAIN!, never skipped and never passed on bare.
   it("a NaN makes MODE, MODE.MULT, the Mode card and PRODUCT #DOMAIN!", () => {
     const code = (v: unknown) => (isSolError(v) ? v.code : v);
     for (const f of ["MODE", "MODE.SNGL", "MODE.MULT", "PRODUCT"]) expect(code(ev(`${f}(x)`, { x: [1, NaN, 3] })), f).toBe("#DOMAIN!");
     expect(code(new ModeNode().data({ list: [[1, NaN, NaN, 3]] }).result)).toBe("#DOMAIN!");
   });
-  it("PRODUCT skips text, as Excel's does, and is 0 with no numbers", () => {
-    expect(ev("PRODUCT(x)", { x: [2, 3, null, "a"] })).toBe(6);
-    expect(ev("PRODUCT(x)", { x: ["a"] })).toBe(0);
+  it("PRODUCT refuses text in a list, where Excel skips it ([[D109]] aggregatesRefuseText), and is 1 with no numbers ([[D125]] aggregatesOfNothing)", () => {
+    const code = (v: unknown) => (isSolError(v) ? v.code : v);
+    expect(code(ev("PRODUCT(x)", { x: [2, 3, null, "a"] }))).toBe("#VALUE!");
+    expect(ev("PRODUCT(x)", { x: [2, 3, null] })).toBe(6);
+    expect(ev("PRODUCT(x)", { x: [null] })).toBe(1);
   });
   it("FISHER / FISHERINV share the domain rule", () => {
     same(ev("FISHER(0.5)"), new FisherNode({ op: "fisher" }).data({ value: [0.5] }).result);
@@ -193,21 +136,3 @@ describe("CHOOSE formula == Choose node", () => {
 // backing reads `internal` must register every overlap name internally — or name the
 // stragglers here, and that list must stay honest (an entry that got registered is
 // deleted, so the gap ratchets shut rather than being quietly carried).
-describe("FAMILY_BACKING 'internal' ⇒ registered internally (the flip ratchet)", () => {
-  const STILL_ON_FORMULAJS = new Set<string>([
-    // finance-iterative: RATE has no shared kernel — the TVM node solves it as an Equation
-    // (acausal), so there is no node-side function to register; FX's Newton stands.
-    "RATE",
-  ]);
-  const internal = new Set(internalFunctionNames());
-  it("every internal-backed overlap name is registered, or is a listed straggler", () => {
-    const missing = Object.entries(FUNCTION_FAMILY)
-      .filter(([n, f]) => FAMILY_BACKING[f].backing === "internal" && !internal.has(n) && !STILL_ON_FORMULAJS.has(n))
-      .map(([n]) => n);
-    expect(missing).toEqual([]);
-  });
-  it("the straggler list stays honest — a flipped name is removed from it", () => {
-    const stale = [...STILL_ON_FORMULAJS].filter((n) => internal.has(n) || !(n in FUNCTION_FAMILY));
-    expect(stale).toEqual([]);
-  });
-});

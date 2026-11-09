@@ -1,4 +1,4 @@
-// [[C42]]
+// [[C42]] htmlInCanvasRenderer, [[html-in-canvas#Capture]]
 import { describe, expect, it } from "vitest";
 import { ATLAS_GUTTER, packAtlas } from "../../src/graph/rasterAtlas";
 

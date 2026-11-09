@@ -23,7 +23,9 @@ run(process.execPath, [path.join(root, "node_modules", "@tauri-apps", "cli", "ta
 const meta = run("cargo", ["metadata", "--format-version", "1", "--no-deps", "--manifest-path", path.join("src-tauri", "Cargo.toml")], { encoding: "utf8", maxBuffer: 1 << 26 });
 const exe = path.join(JSON.parse(meta.stdout).target_directory, "release", WIN ? "solenoid.exe" : "solenoid");
 const bin = fs.readFileSync(exe);
-const leaks = [home, os.userInfo().username].filter((s) => bin.includes(s));
+// The username only as a path segment: a bare word like "root" turns up in any bundle.
+const user = os.userInfo().username;
+const leaks = [home, `/${user}/`, `\\${user}\\`].filter((s) => bin.includes(s));
 if (leaks.length) {
   console.error(`release-build: ${exe} still contains a local path or username (${leaks.length} pattern(s) matched). Do not ship it.`);
   process.exit(1);

@@ -1,5 +1,5 @@
-import type { MathFXNode as MathFXNodeType, MathFnOp, AngleMode } from "../rete-nodes";
-import { MATH_FN_OP_META, isTrigOp } from "../rete-nodes";
+import type { MathFXNode as MathFXNodeType, MathFnOp, AngleMode } from "../nodeClasses";
+import { MATH_FN_OP_META, isTrigOp } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";

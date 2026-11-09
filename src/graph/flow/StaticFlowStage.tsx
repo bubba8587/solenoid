@@ -6,8 +6,8 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../graphEditor";
+import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes } from "../schemes";
 import { FlowSurfaceContext, registerFlowSocket, registerFlowResizeGrip } from "../flowSurface";
 import { FlowSocketHandle } from "./FlowSocketHandle";
@@ -16,8 +16,6 @@ import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
 import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { toFlowNodes, toFlowEdges, toFlowPosition, type FlowModel } from "./flowModel";
 import { makeFlowView, type FlowView } from "./flowView";
-import { installInputCoercion } from "../coerceInputs";
-import { installErrorGuards } from "../errorValue";
 import "./flow.css";
 
 registerFlowSocket(FlowSocketHandle);
@@ -33,18 +31,13 @@ type StageHandlers = {
   syncTopology(): void;
 };
 
-export type StaticStack = FlowModel & {
+type StaticStack = FlowModel & {
   view: FlowView;
   handlers: StageHandlers;
 };
 
 export function makeStaticStack(): StaticStack {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const handlers: StageHandlers = {

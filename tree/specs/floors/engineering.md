@@ -2,11 +2,11 @@
 aliases: ["Engineering rules"]
 tags: [spec, floors]
 ---
-<!-- [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[C120]] linearWork -->
+<!-- [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[C120]] linearWork, [[C139]] mathlibLaws -->
 
 # Spec: Engineering rules
 
-Serves [[C17]] shareImpl, [[B2]] webTryDesktopFull and [[C120]] linearWork.
+Serves [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[C120]] linearWork and [[C139]] mathlibLaws.
 
 The cross-cutting code-hygiene rules. Unlike the other floors this spec has no `covers:` glob: each rule binds every file in the repo, source and tests alike, whenever the file does the thing the rule names. A file that relies on one cites the parent leaf it serves, or nothing.
 
@@ -28,11 +28,13 @@ A separate map is a second place that must be kept in step, sitting away from th
 
 **MUST:** when code keeps a list of names that share some trait (which functions take a whole range, which ops a card offers), the list is generated from wherever that trait is declared. If it truly can't be generated, a test checks what each listed name does, not just that the name is on the list.
 
-A typed-in list breaks without a sound: leave a name off and nothing errors, the name just behaves differently. Ten functions (`T.TEST`, `F.TEST`, `Z.TEST`, `CHISQ.TEST`, `SUMX2MY2`, `SUMX2PY2`, `SUMXMY2`, `MODE.SNGL`, `PROB`, `SERIESSUM`) were once missing from `RANGE_FUNCTIONS`, so each ran once per cell and gave a believable wrong answer. A test that compares the list against a second typed-in list proves nothing, since both can be wrong together; a test that `T.TEST` returns one number, not four, is a real check.
+A typed-in list breaks without a sound: leave a name off and nothing errors, the name just behaves differently. Ten functions (`T.TEST`, `F.TEST`, `Z.TEST`, `CHISQ.TEST`, `SUMX2MY2`, `SUMX2PY2`, `SUMXMY2`, `MODE.SNGL`, `PROB`, `SERIESSUM`) were once missing from the range functions, so each ran once per cell and gave a believable wrong answer. A test that compares the list against a second typed-in list proves nothing, since both can be wrong together; a test that `T.TEST` returns one number, not four, is a real check.
 
-*Exception:* `RANGE_FUNCTIONS` (`excelFormula.ts`) is typed by hand for the Formula.js functions, because Formula.js publishes no signatures to generate it from. `rangeRouting.test.ts` checks what each of those functions returns. **Removed by:** a signature table for Formula.js.
+*Exception:* the routing of the functions taken from Formula.js (`kind` and `scalar` in the core's `data/call_traits.json`) was typed by hand, because Formula.js published no signatures to generate it from. `rangeRouting.test.ts` checks what each of those functions returns. **Removed by:** generating the call table from the bodies' own signatures.
 
 *Exception:* `ShortcutsOverlay.tsx` keeps its own copy of the key bindings, because it only displays them. **Removed by:** the overlay reading the bindings table.
+
+Tests: `rangeRouting.test.ts`: what each hand-routed function does.
 
 ## Checks
 
@@ -42,7 +44,7 @@ A typed-in list breaks without a sound: leave a name off and nothing errors, the
 
 A report that measures differently from its test is how a ratchet stops ratcheting without anyone noticing. The report once matched a card by its host's label and listed nine registered `FILL*` functions as a gap, and a gap computed as `!inFormula` let `SCAN` drop out of a gap it was still in. A metric that folds two questions together also lets an improvement on one hide a regression on the other. The parity measurement is the worked case ([[formula-language#Parity measurement]]).
 
-The node-to-formula coverage figure divides by the in-scope cards, never the whole catalog. This is the author's ruling: sliders, notes, sinks and chrome were never candidates for a formula name, so a whole-catalog denominator understates coverage and answers a different question. The excluded population is reported on its own line.
+The node-to-formula coverage figure divides by the in-scope cards, never the whole catalog. Sliders, notes, sinks and chrome were never candidates for a formula name, so a whole-catalog denominator understates coverage and answers a different question. The excluded population is reported on its own line.
 
 ### Completeness checks use every
 
@@ -50,23 +52,67 @@ The node-to-formula coverage figure divides by the in-scope cards, never the who
 
 `some` reports a node as covered while most of its names still fail. It once hid ten names (the seven B-suffixed text functions, `ERF.PRECISE`, `ERFC.PRECISE` and `VALUETOTEXT`), each declared against a real node while the formula surface answered `#NAME?`.
 
+### Laws come from mathlib, by name
+
+Serves [[C139]] mathlibLaws.
+
+Where an answer keeps a mathematical law (a determinant scales by cⁿ, a total doesn't see the order of its values, an
+equation's solutions survive a common factor), the spec states the law in one line and cites the mathlib declaration
+that proves it, and the test that holds it cites the same declaration. Mathlib (`leanprover-community/mathlib4`) is
+the machine-checked library of the Lean prover, so the citation says where the truth comes from instead of leaving a
+reader to trust the spec's arithmetic.
+
+- **The form.** The fully qualified name and its file, at mathlib commit `9c8f67d` (2026-11-06): `Matrix.det_smul`
+  (`Mathlib/LinearAlgebra/Matrix/Determinant/Basic.lean`). A name always carries its namespace (`Matrix.`, `List.`,
+  `Finset.`), so docsPointers, which holds every backticked code name in a spec to the code, reads it as someone
+  else's; a bare class name (Preorder, AddTorsor) is written as a word.
+- **The test.** A law a spec states this way is held by a sampled test (`crates/solenoid-core/tests/properties.rs`,
+  the graph crate's `tests/`), which cites the same name in its doc comment. A law over real numbers holds for doubles
+  only to a tolerance; the test says which, and a law that floats break outright (PRODUCT's order) is stated as the
+  exception, not dropped.
+- **Below mathlib.** A law about Lean's own integers lives in Lean core, which mathlib builds on (`Int.fmod_add_fdiv_mul`,
+  `src/Init/Data/Int/DivMod/Lemmas.lean` in `leanprover/lean4`); it is cited the same way, at the toolchain mathlib's
+  commit pins (v4.36.0-rc2).
+- **What it doesn't do.** Mathlib is never a dependency, and its vocabulary stays out of the app's strings
+  (DESIGN.md §7). Its junk-value conventions (x/0 = 0) are mathlib's choice for proofs, not Solenoid's for answers: a
+  citation borrows a law, never a convention.
+- **Re-checking.** A cited name that mathlib renames or moves is found by grepping a fresh clone for the name; the
+  commit above is the one every citation was checked against.
+
 ## Module boundaries
 
-### The formula path is rete-free
+### The formula path is graph-free
 
-**MUST:** a module the formula path imports never pulls in rete, the socket lattice or the Frame model, and this holds for every module in the [[C17]] shareImpl seam, including the next one written. A new shared module states the constraint in its header the way `dateSerial.ts`, `convertUnits.ts` and `listOps.ts` do. `formulaPathIsReteFree.test.ts` pins it.
+**MUST:** a module the formula path imports never pulls in the graph model (`graphModel.ts`, `graphEditor.ts`), the socket lattice or the Frame model, and this holds for every module in the [[C17]] shareImpl seam, including the next one written. A new shared module states the constraint in its header the way `nodes/dateSerial.ts` does. `formulaPathIsGraphFree.test.ts` pins it.
 
-**MUST (what to extract):** share only what both surfaces can hold. A formula holds neither Frames nor Cubes ([[formula-language#The dispatch ladder]]), so a node kernel that also handles them doesn't move whole. The Frame and Cube half stays node-side and calls the shared core, and a helper that would drag in rete arrives as an argument instead of an import. The pattern is `indexAccess.ts` plus the Frame and Cube branch in `nodes/list.ts`, with `tagFrameCellUnit` passed into `indexInto`.
+**MUST (what to extract):** share only what both surfaces can hold. A formula holds neither Frames nor Cubes ([[formula-language#The dispatch ladder]]), so a node kernel that also handles them doesn't move whole. The Frame and Cube half stays node-side and calls the shared core, and a helper that would drag in the graph model arrives as an argument instead of an import. The pattern is the core's `index_into`, shared by INDEX and the INDEX card, which adds its Frame and Cube branch and the unit tagging around it (`nodes/list.rs`).
 
-The headless formula path (`run-graph` and the evaluator) shouldn't have to load the editor. While the rule was only a convention it broke three times: `excelFunctions` reached rete through `nodes/date.ts` and `nodes/convert.ts` until the serial helpers and the unit table were extracted, and `indexAccess.ts` was first created by lifting the INDEX node's `data()` whole, which imported `frame.ts`. That is why the rule binds the moment a module is created, and says what not to extract.
+The headless formula path (`run-graph` and the evaluator) shouldn't have to load the editor. While the rule was only a convention it broke three times: `excelFunctions` reached the graph model through `nodes/date.ts` and `nodes/convert.ts` until the serial helpers and the unit table were extracted, and the INDEX kernel was first created by lifting the INDEX node's `data()` whole, which imported `frame.ts`. That is why the rule binds the moment a module is created, and says what not to extract.
 
-Two modules look like pure value code but reach rete, and are the usual traps: `frame.ts` (through `sockets.ts`) and `unitColumn.ts` (through `unitBridge.ts` → `formatAnnotationStore.ts` → `nodes/date.ts`).
+```mermaid
+flowchart LR
+    subgraph free["the formula path: graph-free"]
+        ev["the evaluator,<br>run-graph"] --> shared["shared kernels<br>(the core; dateSerial.ts,<br>convertUnits.ts)"]
+    end
+    subgraph graph["the graph side"]
+        card["a card's data()"] --> shared
+        card --> fr["its Frame and Cube<br>branches"]
+        gm["graphModel.ts, graphEditor.ts,<br>sockets, the Frame model"]
+    end
+    shared -.->|"never imports"| gm
+```
+
+Two modules look like pure value code but reach the graph model, and are the usual traps: `frame.ts` (through `sockets.ts`) and `unitColumn.ts` (through `formatAnnotationStore.ts` → `formatModel.ts` → `sockets.ts`).
+
+Tests: `formulaPathIsGraphFree.test.ts`: walks the relative imports from the formula path's roots (`excelFormula.ts`, `excelFunctions.ts` and every pack's `*Formulas.ts`) and fails on any module that imports the graph model, the editor, the engine or `sockets.ts`. A type-only import doesn't count, since only a value import loads a module at run time.
 
 ### Heavy libraries load lazily
 
-recharts is one lazy chunk. Every renderer that uses recharts lives in `components/chartRender.tsx`, and nothing the app imports statically may import it. `chartView.tsx`, which every card imports, stays free of recharts and loads the chunk behind `lazy` and `Suspense`. The other heavy figure and layout libraries follow the same rule: `mermaid` (MermaidView) and `elkjs` (Tidy) are reached only by dynamic import, never a static `from`. A source sweep enforces it: exactly one file under `src/` imports from `recharts`, and that file is `components/chartRender.tsx`.
+recharts is one lazy chunk. Every renderer that uses recharts lives in `components/chartRender.tsx`, and nothing the app imports statically may import it. `chartView.tsx`, which every card imports, stays free of recharts and loads the chunk behind `lazy` and `Suspense`. The other heavy figure and layout libraries follow the same rule: `pele` (MermaidView) and `elkjs` (Tidy) are reached only by dynamic import, never a static `from`. 
 
 recharts is the largest optional dependency, and most documents never draw a chart. On the web ([[B2]] webTryDesktopFull) the first load is the product's first impression, and one static import anywhere in the card tree drags the whole library into the main bundle. Reopen if charts become a core surface that most documents use, or the canvas figure views replace recharts.
+
+Tests: `sourceInvariants.test.ts`: exactly one file under `src/` imports from `recharts`, `components/chartRender.tsx`, and nothing imports `pele` or `elkjs` statically.
 
 ## Comments
 
@@ -86,27 +132,29 @@ Serves [[C120]] linearWork. Each rule names the shape that broke it, since every
 
 **MUST:** inside a loop over rows or cells, no call walks the whole table or list again: no `filter`, `find`, `indexOf`, `includes`, `slice` or aggregate over the collection being looped, and no `JSON.stringify` of a row to make a key. Work that doesn't depend on the row is done once before the loop.
 
-- *Hoist what is the same on every row.* A filter's needle is folded and parsed once (`compileFilter`), a formula call's name, blank slots and routing are resolved once per call site and per function (`callPlan`, `callRefusal`, `nameTraits`), and a plain computed column builds its environment once.
-- *A whole-column call answers once per column.* `SUM(price)` inside a per-row formula re-summed 100k values on every row (about 20 minutes at 100k rows) until `memoRangeCall` answered repeat calls with identical arguments from the last result.
+- *Hoist what is the same on every row.* A filter's needle is folded and parsed once (`compile_filter`), a formula call's name, blank slots and routing are resolved once per call site (`Site`, `eval.rs`), and a plain computed column builds its environment once.
+- *A whole-column call answers once per column.* `SUM(price)` inside a per-row formula re-summed 100k values on every row (about 20 minutes at 100k rows) until the range memo (`Memo`, `eval.rs`) answered repeat calls with identical arguments from the last result.
 - *Count with a sort, not a scan.* Rank normalization counted smaller values with a `filter` per row (33 s at 20k rows); it now sorts once and binary-searches.
-- *A shared total is computed once per span.* A percent-of pivot re-summed its denominator for every body cell (154 s at 100k rows); `denominator` keeps one sum per row span and column span.
-- *Key rows on the raw cell.* A one-column group, distinct or partition keys a `Map` on the cell itself (`rowKeyer`; `Map`'s SameValueZero groups exactly as `encodeCell` does), and the engine keys on `CellKey`. Several columns may still join a JSON key.
+- *A shared total is computed once per span.* A percent-of pivot re-summed its denominator for every body cell (154 s at 100k rows); `denominators` (`frame_verbs.rs`) keeps one sum per row span and column span.
+- *Key rows on the raw cell.* A one-column group, distinct or partition keys on the cell itself (`CellKey`, which groups as SameValueZero does, exactly as `encode_cell`). Several columns may still join a JSON key.
+
+Tests: `rangeCallMemo.test.ts`: a range function over a whole column answers per row, re-reads the column on the next run, and stays linear in the rows; `errorValue.test.ts`: many distinct errors tag in linear time.
 
 ### Sorting compares precomputed keys
 
-**MUST:** a comparator only compares. Each row's sort key is derived once into an array before `sort`, and blanks and errors are split out first rather than tested inside the comparator. One shared `Intl.Collator` stands in for `localeCompare` with options. `sortedIndexOrder`, the window ORDER BY and the popup's `sortedOrder` follow it; a pivot's value sort scores each row once.
+**MUST:** a comparator only compares. Each row's sort key is derived once into an array before `sort`, and blanks and errors are split out first rather than tested inside the comparator. One shared `Intl.Collator` stands in for `localeCompare` with options. `sorted_index_order`, the window ORDER BY and the popup's `sortedOrder` follow it; a pivot's value sort scores each row once.
 
 ### A cache names everything its answer depends on
 
-**MUST:** a cache keys on the identity of values that never change in place, or on a generation that every input bumps (`registryGeneration()` for anything resolved through the function registry, `displaySettingsKey()` for number formatting). If every input of the cached answer can't be named, there is no cache.
+**MUST:** a cache keys on the identity of values that never change in place, or on a generation that every input bumps (the range memo compares its arguments by identity, `same` in `eval.rs`; `displaySettingsKey()` keys number formatting). If every input of the cached answer can't be named, there is no cache.
 
 Values on cables are never changed in place once a node returns them, which is what makes identity a key: `WeakMap`s keyed by a list, a column's `values` or a call site hold the date and unit display copies, the chip color index (`categoryColorIndexOf`) and the range-call memo. Two caches were left out on this rule: the table popup's filter depends on more display state than can be listed, and sharing one capture between undo and autosave would need an edit counter every mutation bumps, without which a store-only edit between the two timers could be dropped from the save.
 
-The one exception runs the other way: a typed input reaches its node as a fresh copy (`familyCells`), because a node may reorder or splice what it is given. **Removed by:** an audit that no node changes an input in place.
+The one exception runs the other way: a typed input reaches its node as a fresh copy (`family_cells`), because a node may reorder or splice what it is given. **Removed by:** an audit that no node changes an input in place.
 
 ### Drawing stops at the screen
 
-**MUST:** a view converts and draws only what it shows. The engine's preview takes its rows before converting them (`preview_of`); a card scans only the columns it draws; a Line or Area series denser than its pixels draws its envelope (`minMaxDecimate`, [[chart-figures]]). A data structure that serves undo or a save shares what didn't change rather than copying it (the undo history's per-node strings, [[react-flow-surface-contract#Undo history]]).
+**MUST:** a view converts and draws only what it shows. The engine's preview takes its rows before converting them (`preview_of`); a card scans only the columns it draws; a chart series denser than its pixels draws only the points that change the picture, and a figure of thousands of points stretches its last drawing while it is resized and redraws once the resize settles ([[chart-figures#The recharts figures]]). A data structure that serves undo or a save shares what didn't change rather than copying it (the undo history's per-node strings, [[react-flow-surface-contract#Undo history]]).
 
 ### No spread of a collection into a call
 
@@ -114,5 +162,5 @@ The one exception runs the other way: a typed input reaches its node as a fresh 
 
 ### A speed-up proves the answer didn't move
 
-**MUST:** a change made for speed shows the old and new outputs agree, through the shared fixture corpus ([[frame-verbs]]) or a test that compares the fast path against the plain one (the engine's `streamed_values_match_the_cell_path`), and its commit states a before-and-after measurement at a size that shows the difference. A performance test that pins a time bound sets it loose enough for a slow CI machine and tight enough that the quadratic version fails (`rangeCallMemo.test.ts`: 20k rows under 2 s).
+**MUST:** a change made for speed shows the old and new outputs agree, through the shared fixture corpus ([[frame-verbs]]) or a test that compares the fast path against the plain one, and its commit states a before-and-after measurement at a size that shows the difference. A performance test that pins a time bound sets it loose enough for a slow CI machine and tight enough that the quadratic version fails (`rangeCallMemo.test.ts`: 20k rows under 2 s).
 

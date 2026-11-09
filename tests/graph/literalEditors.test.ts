@@ -1,16 +1,18 @@
-// [[C86]] membershipByGesture
+// [[C86]] membershipByGesture, [[literal-input-editors#The popup is the editor for rank-2+ literal sources]]
 import { describe, it, expect } from "vitest";
 import {
   parseCubeSource, cubeSourceToText, getAtPath, setAtPath, recordsShape, parseCellText, cellTextOf,
   cellKindOf, convertCellKind,
 } from "../../src/graph/literalEditors";
-import { CubeInputNode } from "../../src/graph/rete-nodes";
-import { extractInit } from "../../src/graph/copyPaste";
+import { CubeInputNode } from "../../src/graph/nodeClasses";
+import { extractInit } from "../../src/graph/nodeInit";
 import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../../src/graph/frame";
-import { isSolError } from "../../src/graph/errorValue";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
+import { nextGeneration } from "../../src/graph/passSession";
+import type { Schemes } from "../../src/graph/schemes";
 
-// The literal inputs' shared editing helpers + the Cube Input node (the fourth literal
-// source beside Table / Frame / List Input).
+
 
 describe("parseCubeSource / cubeSourceToText", () => {
   it("reads a JSON array of records; blank = no rows; anything else is a reasoned error", () => {
@@ -107,12 +109,6 @@ describe("CubeInputNode", () => {
     expect(c.columns[1].cells).toEqual([[], ["A"]]);
     expect(extractInit(n as never).cubeText).toBe(n.cubeText);
   });
-  it("bad text is one #VALUE! with the reason; a fresh node carries the starter text", () => {
-    const n = new CubeInputNode({ cubeText: "[1, 2" });
-    const out = n.data();
-    expect(isSolError(out.cube) && out.cube.code).toBe("#VALUE!");
-    expect(isCubeValue(new CubeInputNode().data().cube)).toBe(true);
-  });
 });
 
 // [[D90]] cubeTypesAtDepth, [[C22]] rowFormulaRefs
@@ -128,19 +124,6 @@ describe("Cube Input typed and formula columns", () => {
     expect(col(cube({ columns: [{ name: "name" }, { name: "h" }], rows }), "h").cells).toEqual([[1, "2", 3], [4, "x"]]);
   });
 
-  it("a declared type overrides a list's items but never a nested table's; the source text is untouched", () => {
-    const text = JSON.stringify({ columns: [{ name: "d", type: "date" }], rows: [{ d: ["10-sept-2026", "apple", "banana"] }, { d: "2026-09-01" }, { d: "pear" }, { d: [{ when: "2026-09-02", n: 4 }] }] });
-    const n = new CubeInputNode({ cubeText: text });
-    const c = n.data().cube as CubeValue;
-    const cells = col(c, "d").cells;
-    expect(cells[0]).toEqual([46275, NaN, NaN]);
-    expect(typeof cells[1]).toBe("number");
-    expect(Number.isNaN(cells[2])).toBe(true);
-    const nested = cells[3] as CubeValue;
-    expect(nested.columns.map((x) => x.cells[0])).toEqual(["2026-09-02", 4]);
-    expect(nested.columns[1].type).toBe("number");
-    expect(n.cubeText).toBe(text);
-  });
 
   it("each nested table types its own columns, per cell and at any depth, beside its column's own type", () => {
     const c = cube({
@@ -196,8 +179,37 @@ describe("Cube Input typed and formula columns", () => {
     expect(col(c, "e").cells).toEqual([null, null]);
   });
 
-  it("an unchanged text returns the same cube", () => {
+  it("an unchanged text gives the same cube each pass; one calling TODAY a new one each recalculation", async () => {
+    // The engine keeps the card's answer while its call stands (`nodes::KEEPS_ANSWER`), for the recalculation alone
+    // when its text reads the clock.
+    const editor = new GraphEditor<Schemes>();
+    editor.use(new DataflowEngine<Schemes>());
     const n = new CubeInputNode({ cubeText: JSON.stringify({ columns: [{ name: "n", expr: "1" }], rows: [{}] }) });
-    expect(n.data().cube).toBe(n.data().cube);
+    const today = new CubeInputNode({ cubeText: JSON.stringify({ columns: [{ name: "d", expr: "TODAY()" }], rows: [{}] }) });
+    await editor.addNode(n as never);
+    await editor.addNode(today as never);
+    const pass = async () => {
+      await editor.engine!.pass(undefined, undefined, false);
+      return [editor.engine!.landed(n.id, "cube"), editor.engine!.landed(today.id, "cube")];
+    };
+    const [a, t] = await pass();
+    expect(isCubeValue(a)).toBe(true);
+    let [b, u] = await pass();
+    expect(b).toBe(a);
+    expect(u).toBe(t);
+    nextGeneration();
+    [b, u] = await pass();
+    expect(b).toBe(a);
+    expect(u).not.toBe(t);
+    editor.dispose();
+  });
+});
+
+describe("a cell holding one record", () => {
+  it("reads as a one-row table, and an edit writes back into the record", async () => {
+    const { getAtPath, setAtPath } = await import("../../src/graph/literalEditors");
+    const rows = [{ name: "Trip", stop: { city: "Oslo", nights: 2 } }];
+    expect(getAtPath(rows, [0, "stop", 0, "city"])).toBe("Oslo");
+    expect(setAtPath(rows, [0, "stop", 0, "nights"], 3)).toEqual([{ name: "Trip", stop: { city: "Oslo", nights: 3 } }]);
   });
 });

@@ -34,16 +34,16 @@ mdbase 1.0 ([[C67]] mdbaseCeiling).
   frontmatter keys as typed output sockets + a `document` output; manual Reload. **Write to
   Obsidian** (`obsidianMarkdown.ts` + `obsidianWrite.ts`): a Document → one overwritten `.md`
   (pipe tables, mermaid fences, `$$` math, rasterized chart PNGs, `![[asset]]` embeds),
-  Run-button only (`sinkRunButtonOnly`). Spec homes: `../node-coverage.md` § Connections and
+  Run-button only ([[B18]] safeToShare). Spec homes: `../node-coverage.md` § Connections and
   sinks / § Annotation, `../socket-reference.md` § `document`.
 - **Note frontmatter** → sockets (`noteFrontmatter.ts`, `FIELD_SOCKETS` in `annotation.ts`). A
   deliberate YAML subset: scalars, flow arrays, block lists, rows-of-inline-objects → a frame.
   Gaps this bundle closes: ISO datetimes land as strings; block-style nested objects (the
   shape TaskNotes writes `timeEntries` in) are not parsed.
 - **Decision Matrix** is the author's Bases-view plugin, math only (`../node-coverage.md`
-  § Decision support). **H6 Schedule** is specced in `../1.4-plan.md` § Scheduling slice,
+  § Decision support). **H6 Schedule** is specced in `../archive/1.4-plan.md` § Scheduling slice,
   gated on the Track H pick (`../backlog.md`).
-- **[[D54]] relativeDatesOptIn**: a stored date is a fixed calendar day; relative
+- **[[C44]] dateSerials**: a stored date is a fixed calendar day; relative
   phrases resolve only on a date Value Input under a setting, re-resolving each pass with an Alert
   when the day moves.
 - Constraints a vault feature meets: (1) the desktop fs allowlist
@@ -162,7 +162,7 @@ predicate / sort key over the scalar column, on the eager JS branch (`isCubeValu
 lazy path; Polars never sees a nested cell; no `FrameOp`, `oneVerbCorpus` untouched.
 Aggregating / reshaping verbs (GROUPBY, PIVOTBY, Join, Append, Add Column…) stay frame-only —
 Cube Rollup / Nest Join / Unnest own nested semantics. The only list→text join is **Write
-File** CSV mode (`", "`). Tests: `cubeRowVerbs.test.ts` (rows selected; nested cells identical
+File** CSV mode (`", "`). Answers: the frozen Filter, Sort and Get Row cases (`fixtures/core/nodes/`) (rows selected; nested cells identical
 by reference; `__cube` brand out).
 
 **B. Write Properties** (sink, Add → Connections; Run-button only). Input `cube` (a frame
@@ -284,11 +284,11 @@ and a per-node `vault` like A's.
 they emit nothing. The pure cores take files / responses as data; the runner supplies a
 provider: `run-graph <graph> --vault <path>` (Node `fs` → Vault Folder / Import Note),
 `--tasknotes <url>` (Node `fetch`), and `--run <node name>` arms and runs ONE named sink — the
-Run button's headless equivalent (`sinkRunButtonOnly` gains that clause). Makes an
+Run button's headless equivalent (B18 safeToShare's Run-button clause gains it). Makes an
 Obsidian-triggered recompute real without a listener (a `tasknotes-workflows` step or a Shell
 Commands hotkey), and lets `vaultCube.test.ts` run the real node over `fixtures/vault/`.
 
-**R. Relative dates, on top of `relativeDatesOptIn`.** Nothing here stores a relative date.
+**R. Relative dates, on top of the relative-date opt-in ([[C44]] dateSerials).** Nothing here stores a relative date.
 - **R1 One template grammar, Obsidian's:** `{{date}}`, `{{date:FORMAT}}` (moment tokens =
   Solenoid's `formatDateSerial` set), offsets `{{date+7d}}` / `{{date-1w}}` /
   `{{date+1m:YYYY-MM}}` (ours), `{{name}}`, `{{doc}}`; `{{today}}` is an alias of `{{date}}`.
@@ -328,7 +328,7 @@ stats (Range, Stddev, Earliest/Latest, Checked/Unchecked) — `../backlog.md`, n
 | Node | Kind · menu | In | Out | Init (persisted) | Pure core · test |
 |---|---|---|---|---|---|
 | Vault Folder | connection · Connections | — | `cube` ("Notes") | vault, folder, glob, includeBody, nameFormat, refreshMinutes | `vaultCube.ts`, `mdbaseTypes.ts`, `obsidianTypes.ts`, `dailyNotesConfig.ts` · `vaultCube.test.ts` over `fixtures/vault/` |
-| Filter / Sort / Head / Distinct / Get Row (exist) | passthrough | table input → `cubeIn` | adopts: cube in → cube out | Filter: `contains` / `contains any` / `contains all` / `is empty` | `selectCubeRows` in `frame.ts` · `cubeRowVerbs.test.ts` |
+| Filter / Sort / Head / Distinct / Get Row (exist) | passthrough | table input → `cubeIn` | adopts: cube in → cube out | Filter: `contains` / `contains any` / `contains all` / `is empty` | `selectCubeRows` in `frame.ts` · `fixtures/core/nodes/` |
 | Get Column / Decision Matrix / H6 (exist) | — | table input → `cubeIn` | unchanged (list / ranking frame / the cube + 4 columns) | — | same test file |
 | Write Properties | sink · Connections | `cube` (frame widens) | `plan` frame | vault, keys, addMissing, stamp, writeBase | `frontmatterPatch.ts` · `frontmatterPatch.test.ts` (untouched bytes identical; cube → vault → cube equal) |
 | Write to Obsidian (exists) | sink | `document`, `path` (str) | — | + mode, subfolder | `managedBlock.ts` · `obsidianWriteModes.test.ts` |
@@ -359,10 +359,10 @@ step.
 
 ## Rules touched (cite in commits)
 
-`sinkRunButtonOnly` (every writer; J adds "or the CLI's explicit `--run <name>`"),
+B18 safeToShare's Run button (every writer; J adds "or the CLI's explicit `--run <name>`"),
 components compute nothing (`../../tree/specs/floors/components.md` § The rules; Preview is a pure plan over the cached cube + reads), `retypeReconciles`
 avoided (one `cube` output; A′'s adoption is derived state, never persisted), input-cable pruning
-untouched, `relativeDatesOptIn` untouched (R), a new **[[C101]] onePatchPath**
+untouched, the relative-date opt-in untouched (R), a new **[[C101]] onePatchPath**
 (`frontmatterPatch.ts` is the only writer of a note's YAML; `obsidianWrite.ts` writes whole
 documents). The fs allowlist gains `.yaml`/`.yml` read (one capability line, noted in
 `../architecture.md`'s desktop section).

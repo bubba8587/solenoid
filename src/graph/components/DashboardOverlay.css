@@ -1,0 +1,374 @@
+/* Mechanics: tree/specs/documents/reports-and-notes.md § Dashboards. The header reuses the Report window's. */
+.dashboard-overlay {
+  position: fixed;
+  top: var(--chrome-top, 66px);
+  bottom: var(--chrome-bottom, 19px);
+  left: 0;
+  right: 0;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  background: var(--canvas-bg);
+}
+html.sol-dashboard-open .sol-rf-appcanvas { visibility: hidden; }
+/* The canvas color is a shade under every card so cards lift off it; on a board of boxes that step reads as too
+   much contrast in dark mode, so the ground sits most of the way up to the boxes' surface. */
+html[data-theme="dark"] .dashboard-overlay { background: color-mix(in srgb, var(--surface) 65%, var(--canvas-bg)); }
+html.is-mobile .dashboard-overlay { top: var(--dash-top, 0px); bottom: 0; }
+html.is-mobile .dashboard-overlay .report-header { padding: 8px 12px; }
+/* The accent bar shows over a phone's board; its document switcher would open under the board, so it goes. */
+html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden; }
+
+.dashboard-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  grid-auto-rows: minmax(160px, 1fr);
+  gap: 12px;
+  padding: 12px;
+}
+
+.dashboard-box {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.dashboard-box__label {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  padding: 8px 8px 0 14px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dashboard-box__value {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  /* Sizes the big figures to the box (cq units). Over .sol-md's reading column: its auto margins would shrink the box to its content. */
+  container-type: size;
+  max-width: none;
+  margin: 0;
+}
+
+/* A lone value is the box's figure: centered by auto margins, which never clip one taller than the box as
+   justify-content would, and scaled to the box between a floor and a cap. */
+.dashboard-box__value > .solenoid-ref-inline,
+.dashboard-box__value > .dashboard-box__hint {
+  margin: auto;
+  text-align: center;
+  line-height: 1.05;
+}
+.dashboard-box__value > .solenoid-ref-inline,
+.dashboard-box__error > .solenoid-ref-inline,
+.dashboard-box .sol-kpi__value {
+  font-family: var(--font-sans);
+  font-size: clamp(20px, min(40cqh, 13cqw), 84px);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.dashboard-box__value > .solenoid-ref-inline--text,
+.dashboard-box__value > .solenoid-ref-inline--list,
+.dashboard-box__value > .dashboard-box__hint {
+  font-family: var(--font-sans);
+  font-size: clamp(18px, min(22cqh, 7cqw), 40px);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.dashboard-box__hint { color: var(--text-muted); font-weight: 400 !important; }
+.dashboard-box__error { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 90%; text-align: center; }
+.dashboard-box__errmsg { color: var(--text-dim); font-size: 12px; line-height: 1.4; text-wrap-style: balance; }
+.dashboard-box__errlink {
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.dashboard-box__errlink:hover { background: var(--btn-hover); border-color: var(--border-strong); color: var(--text); }
+.dashboard-box .sol-kpi { flex: 1 1 auto; gap: 8px; }
+.dashboard-box .sol-kpi__delta { font-size: clamp(11px, min(7cqh, 8cqw), 18px); white-space: nowrap; }
+
+/* The box's label is the figure's title, so the figure's own caption would repeat it. */
+.dashboard-box .solenoid-ref-figure__title { display: none; }
+/* A figure takes the box and fits what is left: a chart measures it, a diagram or picture scales into it. A document,
+   a table or a cube keeps its own height instead, so the box scrolls it. */
+.dashboard-box__value > .solenoid-ref-figure { flex: 1 1 auto; min-height: 0; margin: 0; display: flex; flex-direction: column; }
+.dashboard-box__value > .solenoid-ref-figure:has(> .report-embed__body, > .solenoid-table-display) { flex: 0 0 auto; display: block; }
+.dashboard-box__value .solenoid-ref-chartbody { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.dashboard-box__value .report-embed__body > :first-child { margin-top: 0; }
+/* A diagram scales to its box, keeping its shape, as in a resized Display. */
+.dashboard-box__value > .solenoid-ref-figure > .solenoid-mermaid { flex: 1 1 auto; min-height: 0; overflow: hidden; align-items: center; }
+.dashboard-box__value > .solenoid-ref-figure > .solenoid-mermaid svg { width: 100%; height: 100%; max-height: 100%; }
+/* A table or cube is the box's whole content, so it drops the sunken well a card value sits in: the box is its frame. */
+.dashboard-box__value .solenoid-table-display { background: none; border: none; padding: 0 !important; }
+.dashboard-box__value .solenoid-table-display__grid { margin-top: 0; }
+/* A Frame shown as cards: the popup's one 460 px column becomes a grid across the box, scrolling in the box and,
+   at its end, handing the scroll on to the board (the popup's overscroll contain would keep it). */
+.dashboard-box__value > .table-cards-wrap { flex: 1 1 auto; min-height: 0; max-height: none; margin: 0; overscroll-behavior: auto; }
+.dashboard-box .table-cards__bar { max-width: none; background: transparent; }
+.dashboard-box .table-cards {
+  max-width: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  align-items: start;
+}
+
+.dashboard-crumb { color: var(--text-dim); font-weight: 400; }
+.dashboard-box__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.dashboard-box__rename {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 22px;
+  padding: 0 6px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+  outline: none;
+}
+
+/* A box tint is user-authored color (DESIGN.md § The Quiet Accent Rule), drawn as a Group draws its own. */
+.dashboard-box--tinted {
+  border: 2px solid var(--box-border);
+  background: linear-gradient(var(--box-fill), var(--box-fill)), var(--surface);
+}
+.dashboard-box--tinted .dashboard-box__label {
+  min-height: 30px;
+  padding: 0 6px 0 12px;
+  background: var(--box-color);
+  color: var(--box-ink);
+}
+.dashboard-box--tinted .dashboard-box__dots { color: inherit; }
+.dashboard-box--tinted .dashboard-box__dots:hover { background: rgba(255, 255, 255, 0.2); border-color: transparent; color: inherit; }
+.dashboard-box--tinted .dashboard-box__value { padding-top: 10px; }
+
+/* The box's ⋯ menu shows on hover or while open; a touch screen has no hover, so it stays. */
+.dashboard-box__menu { position: relative; flex-shrink: 0; opacity: 0; transition: opacity 120ms; }
+.dashboard-box:hover .dashboard-box__menu,
+.dashboard-box__menu:focus-within { opacity: 1; }
+@media (hover: none) { .dashboard-box__menu { opacity: 1; } }
+.dashboard-box__dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.dashboard-box__dots:hover { background: var(--btn-hover); border-color: var(--border); color: var(--text); }
+.dashboard-box__pop {
+  position: fixed;
+  z-index: 9100;
+  min-width: 180px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--overlay-bg, var(--surface));
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+.dashboard-box__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.dashboard-box__item:hover { background: var(--btn-hover); }
+.dashboard-box__item--danger:hover { color: var(--sol-error); }
+.dashboard-box__swatches {
+  padding: 6px 4px;
+  margin: 2px 0;
+  box-shadow: inset 0 1px 0 var(--border), inset 0 -1px 0 var(--border);
+}
+
+/* Edit mode: the boxes are their snapshots, dragged and resized over the grid's empty cells. */
+.dashboard-edit {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.dashboard-edit__cell {
+  position: absolute;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+.dashboard-box--edit { cursor: grab; user-select: none; }
+.dashboard-box--edit.react-draggable-dragging { cursor: grabbing; box-shadow: var(--overlay-shadow); }
+.dashboard-box__frozen { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; pointer-events: none; }
+.dashboard-box__frozen > .dashboard-box__value { position: absolute; box-sizing: border-box; transform-origin: 0 0; }
+.dashboard-edit .react-grid-placeholder {
+  background: var(--accent);
+  opacity: 0.15;
+  border-radius: 8px;
+}
+.dashboard-box--edit .dashboard-box__label svg { color: var(--text-muted); flex-shrink: 0; }
+/* Touch: the label bar is the drag handle, taller for a finger; the box's body still pans the grid; the corner handle
+   is a finger-sized target. The browser's own gestures are off where a drag starts, so it never takes the touch. */
+@media (pointer: coarse) {
+  .dashboard-edit .react-grid-item { touch-action: pan-x pan-y; }
+  .dashboard-box--edit .dashboard-box__label { min-height: 40px; touch-action: none; cursor: grab; }
+  .dashboard-edit .react-grid-item > .react-resizable-handle-se { width: 44px; height: 44px; touch-action: none; }
+  .dashboard-edit .react-grid-item > .react-resizable-handle-se::after { right: 8px; bottom: 8px; width: 12px; height: 12px; border-width: 0 3px 3px 0; }
+}
+.dashboard-edit .react-grid-item > .react-resizable-handle { background-image: none; opacity: 1; }
+.dashboard-edit .react-grid-item > .react-resizable-handle::after { border-color: var(--text-muted); }
+.dashboard-edit .react-grid-item > .react-resizable-handle-e,
+.dashboard-edit .react-grid-item > .react-resizable-handle-s { opacity: 0; }
+
+.dashboard-edit-btn { display: inline-flex; align-items: center; gap: 6px; }
+.dashboard-done { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.dashboard-done:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); filter: brightness(1.08); }
+.dashboard-cols { display: inline-flex; align-items: center; gap: 6px; color: var(--text-dim); font-size: 11.5px; }
+.dashboard-cols__n { min-width: 14px; text-align: center; color: var(--text); font-family: var(--font-mono); }
+.dashboard-step {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text);
+  cursor: pointer;
+}
+.dashboard-step:hover:not(:disabled) { background: var(--btn-hover); border-color: var(--border-strong); }
+.dashboard-step:disabled { opacity: 0.4; cursor: default; }
+
+.dashboard-empty {
+  margin: auto;
+  color: var(--text-muted);
+}
+
+/* Narrow screens stack the boxes in layout order, sized to their content: a phone has no room for the layout's
+   columns, though two compact neighbors share a row. The box has no fixed height there, so the figures size by width alone. */
+@media (max-width: 640px) {
+  .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; grid-auto-rows: max-content; gap: 8px; padding: 8px; }
+  .dashboard-box__label { padding: 6px 4px 0 10px; }
+  .dashboard-box__value { padding: 4px 10px 8px; }
+  .dashboard-box .sol-kpi { padding: 4px 0; gap: 4px; }
+  .dashboard-box { grid-row: auto !important; grid-column: 1 / -1 !important; min-height: 140px; }
+  /* Two compact neighbors share a row (halfWidth). */
+  .dashboard-box--half { grid-column: auto / span 1 !important; min-height: 96px; }
+  /* A half box's value fills its width: a glyph runs about 0.6 em, so 130cqw over the character count leaves a margin. */
+  .dashboard-box--half .dashboard-box__value > .solenoid-ref-inline,
+  .dashboard-box--half .sol-kpi__value { font-size: clamp(20px, calc(130cqw / var(--chars, 6)), 52px); }
+  .dashboard-box--half .dashboard-box__value > .solenoid-ref-inline--text { font-size: clamp(16px, calc(140cqw / var(--chars, 8)), 34px); }
+  .dashboard-box__value { container-type: inline-size; }
+  .dashboard-box:not(.dashboard-box--half):has(.solenoid-ref-chartbody):not(:has(.sol-kpi)) { min-height: 300px; }
+  /* A document, table or cards grow with their content up to a tall cap, so one that still scrolls has room for a
+     thumb, and a short one stays short. */
+  .dashboard-box:has(.report-embed__body, .solenoid-table-display, .table-cards-wrap) .dashboard-box__value { flex: 0 0 auto; max-height: min(480px, 65vh); }
+  /* A diagram scales to the box's width, so a tall one would take the whole screen. */
+  .dashboard-box__value > .solenoid-ref-figure > .solenoid-mermaid svg { max-height: 360px; }
+  .dashboard-edit-btn { display: none; }
+}
+
+/* Motion. A box's content animates in the board's intro window (the board opening, a box expanded or returned from,
+   edit mode closing), every box at once, each kind in its own way. Only inside that window: a chart that rebuilds its
+   shapes on a later recompute (a Record paged elsewhere on the board) just shows them. CountUp (DashboardOverlay.tsx) counts a number to its value on the same
+   clock. Reduced motion shows everything at rest. */
+@property --dash-sweep { syntax: "<angle>"; inherits: false; initial-value: 180deg; }
+.dashboard-overlay {
+  --dash-in: 900ms;
+  --dash-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes dash-rise { from { opacity: 0; transform: translateY(8px); } }
+@keyframes dash-fade { from { opacity: 0; } }
+@keyframes dash-grow-y { from { transform: scaleY(0); } }
+@keyframes dash-grow-x { from { transform: scaleX(0); } }
+@keyframes dash-pop { from { opacity: 0; transform: scale(0.6); } }
+@keyframes dash-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes dash-sweep { from { --dash-sweep: 0deg; } to { --dash-sweep: 180deg; } }
+@keyframes dash-settle { from { opacity: 0; transform: scale(1.08); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Text, lists, hints, documents, diagrams and record cards rise into place. */
+  .dashboard-overlay--intro .dashboard-box__value > .solenoid-ref-inline--text,
+  .dashboard-overlay--intro .dashboard-box__value > .solenoid-ref-inline--list,
+  .dashboard-overlay--intro .dashboard-box__value > .dashboard-box__hint,
+  .dashboard-overlay--intro .dashboard-box__value .report-embed__body,
+  .dashboard-overlay--intro .dashboard-box__value .sol-record-card,
+  .dashboard-overlay--intro .dashboard-box .sol-kpi__value { animation: dash-rise var(--dash-in) var(--dash-ease) both; }
+  .dashboard-overlay--intro .dashboard-box .sol-kpi__delta { animation: dash-rise var(--dash-in) var(--dash-ease) 120ms both; }
+  .dashboard-overlay--intro .dashboard-box__value .solenoid-mermaid { animation: dash-fade var(--dash-in) var(--dash-ease) both; }
+  .dashboard-overlay--intro .dashboard-box__error { animation: dash-settle 560ms var(--dash-ease) both; }
+
+  /* Lines and areas draw from the left; bars grow from their baseline; slices and cells pop out of their centers. */
+  .dashboard-overlay--intro .dashboard-box .recharts-line,
+  .dashboard-overlay--intro .dashboard-box .recharts-area { animation: dash-wipe var(--dash-in) var(--dash-ease) both; }
+  .dashboard-overlay--intro .dashboard-box .recharts-bar-rectangle {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: dash-grow-y var(--dash-in) var(--dash-ease) both;
+  }
+  .dashboard-overlay--intro .dashboard-box .recharts-funnel-trapezoid {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: dash-grow-x var(--dash-in) var(--dash-ease) both;
+  }
+  .dashboard-overlay--intro .dashboard-box .recharts-pie-sector,
+  .dashboard-overlay--intro .dashboard-box .recharts-treemap-depth-1 > g {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: dash-pop var(--dash-in) var(--dash-ease) both;
+  }
+  /* The gauge's arc sweeps from its left end, revealed by a turning conic mask centered on the dial. */
+  .dashboard-overlay--intro .dashboard-box .recharts-wrapper:has(.recharts-radial-bar-sectors) {
+    -webkit-mask-image: conic-gradient(from 270deg at 50% 50%, #000 var(--dash-sweep), transparent 0);
+    mask-image: conic-gradient(from 270deg at 50% 50%, #000 var(--dash-sweep), transparent 0);
+    animation: dash-sweep var(--dash-in) var(--dash-ease) both;
+  }
+
+  /* Table rows and cards cascade in, 20 ms apart, the cascade held inside the window. */
+  .dashboard-overlay--intro .dashboard-box__value .solenoid-table-display tbody tr,
+  .dashboard-overlay--intro .dashboard-box__value .table-cards > * {
+    animation: dash-rise 560ms var(--dash-ease) both;
+    animation-delay: min(calc((sibling-index() - 1) * 20ms), 180ms);
+  }
+}
+/* Edit mode's snapshots are clones of the boxes' markup; they stay frozen rather than playing the motion again. */
+.dashboard-box--edit *,
+.dashboard-box--edit .recharts-wrapper { animation: none !important; }

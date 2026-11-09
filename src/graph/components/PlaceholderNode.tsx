@@ -1,5 +1,5 @@
 import { NodeShell, PortSockets, type NodeProps } from "./nodeKit";
-import type { PlaceholderNode } from "../rete-nodes";
+import type { PlaceholderNode } from "../nodeClasses";
 import "./placeholderNode.css";
 
 // The synthesized input sockets keep the preserved cables attached and visible.

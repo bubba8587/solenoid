@@ -1,0 +1,190 @@
+// [[C130]] rustCore, [[D99]] rustIsSpec
+// A card's body on the Rust core (`crates/solenoid-core/src/nodes/`, tree/specs/computation/node-bodies.md): `data()`
+// sends the class, what a save holds, its sockets and inputs, and takes back the outputs and the fields the body sets.
+import type { GraphNode } from "./graphModel";
+import { callInit } from "./nodeInit";
+import { declaredTypeOf, AdoptiveSocket, type SocketDataType } from "./sockets";
+import { parseListLiteral } from "./listLiterals";
+import { frameFormatStore } from "./frameFormatStore";
+import { engineClock } from "./coreValues";
+import { nodeWire, nodeCallWire, readNodeReply, jsonDec, jsonEnc, jsonText } from "./nodeWire";
+import { withMatrixUnit, type ColumnUnit } from "./unitValue";
+import { wasmInvokeSync, CoreTrap } from "./engineWasm";
+import { forgetCollected } from "./heldValues";
+import { solError } from "./errorValue";
+
+type Reply = { out?: Record<string, unknown>; thrown?: unknown; none?: true; display: Record<string, unknown>; matrixUnits?: Record<string, unknown> };
+
+function read(r: unknown): unknown {
+  const v = readNodeReply(r);
+  if (!v) throw solError("#VALUE!", "The card's answer can't be read back");
+  return v.value;
+}
+
+function shown(r: unknown): unknown {
+  const o = r as { undef?: true } | null;
+  if (o && typeof o === "object" && o.undef === true) return undefined;
+  return read(r);
+}
+
+/** The type an adoptive socket took up, where it differs from the one it was declared at. */
+/** Each input's row in a call: key, declared type, label, adopted type. */
+function socketRows(node: GraphNode): unknown[] {
+  return Object.entries(node.inputs).map(([k, input]) => [k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k, adopted(input?.socket)[0] ?? null]);
+}
+
+export function adopted(socket: unknown): string[] {
+  const now = (socket as { dataType?: string } | undefined)?.dataType;
+  return socket instanceof AdoptiveSocket && now !== undefined && now !== socket.base ? [now] : [];
+}
+
+/** What a save holds but its view fields, and the run-time fields the class names in `static coreFields` (a resolved mode no save keeps). */
+export function coreInit(node: GraphNode): Record<string, unknown> {
+  const init = callInit(node);
+  const fields = (node.constructor as { coreFields?: readonly string[] }).coreFields;
+  for (const f of fields ?? []) init[f] = (node as unknown as Record<string, unknown>)[f];
+  return init;
+}
+
+const CACHED = ["cachedResult", "cachedValue", "cachedList", "cachedChart", "cachedPayload"] as const;
+
+/** The rungs an unwired input takes a typed list literal on (`boundary_core.rs` `takes_literal`). */
+const LITERAL_RUNGS: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist", "numlist"]);
+
+/** A direct card's call as the core keeps it (graph-core.md § Direct calls): what a save holds, its sockets, the
+ *  boundary's keys and flags, its typed list literals read, the cached fields it has and its frame format picks. Its
+ *  `static coreFields` come per call (`coreFieldsOf`). `[stamp, JSON text as jsonEnc writes it]`, or `null` when the
+ *  text is the one the core read under `stamp`. */
+export function coreHeader(node: GraphNode, stamp: number): [number, string] | null {
+  const n = node as unknown as {
+    literals?: unknown; stringLiterals?: Record<string, unknown>; rawInputs?: Iterable<string>; noWidenInputs?: Iterable<string>;
+    ownsListLiterals?: boolean; passthrough?: () => { inputs?: string[] }[];
+  } & Record<string, unknown>;
+  const lits = n.stringLiterals;
+  const lists: [string, unknown][] = [];
+  if (!n.ownsListLiterals && lits && typeof lits === "object") {
+    for (const k in node.inputs) {
+      const rung = node.inputs[k]?.socket.name;
+      const text = lits[k];
+      if (!rung || typeof text !== "string" || text.trim() === "") continue;
+      if (!LITERAL_RUNGS.has(rung)) continue;
+      const w = nodeWire(parseListLiteral(text, rung as SocketDataType));
+      if (w !== undefined) lists.push([k, w]);
+    }
+  }
+  const picks = frameFormatStore.forNode(node.id);
+  const sockets = socketRows(node);
+  const watch = coreWatchOf(node);
+  const text = jsonText({
+    kind: node.constructor.name,
+    label: node.label || node.constructor.name,
+    init: callInit(node),
+    coreFields: (node.constructor as { coreFields?: readonly string[] }).coreFields ?? [],
+    ...(watch !== undefined ? { watch } : {}),
+    ...(n.literals ? { literals: n.literals } : {}),
+    ...(lits ? { stringLiterals: lits } : {}),
+    sockets,
+    passthrough: typeof n.passthrough === "function" ? n.passthrough().flatMap((s) => s.inputs ?? []) : [],
+    raw: [...(n.rawInputs ?? [])],
+    noWiden: [...(n.noWidenInputs ?? [])],
+    ownsListLiterals: n.ownsListLiterals === true,
+    lists,
+    has: CACHED.filter((f) => f in n),
+    ...(picks.size ? { picks: Object.fromEntries(picks) } : {}),
+  });
+  // The core already holds this text, under the stamp it passed: nothing crosses.
+  const last = lastHeader.get(node);
+  if (last && last.stamp === stamp && last.text === text) return null;
+  const made = { stamp: ++headerStamp, text };
+  lastHeader.set(node, made);
+  return [made.stamp, text];
+}
+
+const lastHeader = new WeakMap<GraphNode, { stamp: number; text: string }>();
+let headerStamp = 0;
+
+/** The run-time fields a direct card's class names in `static coreFields`, as of this call. JSON text. */
+export function coreFieldsOf(node: GraphNode, names: readonly string[]): string {
+  const n = node as unknown as Record<string, unknown>;
+  return jsonText(Object.fromEntries(names.map((f) => [f, n[f]])));
+}
+
+function invoke(node: GraphNode, inputs: Record<string, unknown[] | undefined>): Reply {
+  const n = node as unknown as { literals?: unknown; stringLiterals?: unknown };
+  forgetCollected();
+  const wired: [string, unknown[]][] = [];
+  for (const [k, arr] of Object.entries(inputs)) {
+    if (!Array.isArray(arr)) continue;
+    const w = arr.map(nodeCallWire);
+    if (w.includes(undefined)) throw solError("#VALUE!", `${node.label || node.constructor.name}: an input holds a value the card can't read`);
+    wired.push([k, w]);
+  }
+  let reply: Reply;
+  try {
+    reply = wasmInvokeSync<Reply>("engine_node", {
+      kind: node.constructor.name,
+      init: jsonEnc(coreInit(node)),
+      ...(n.literals ? { literals: jsonEnc(n.literals) } : {}),
+      ...(n.stringLiterals ? { stringLiterals: jsonEnc(n.stringLiterals) } : {}),
+      sockets: socketRows(node),
+      inputs: wired,
+      clock: engineClock(),
+    });
+  } catch (e) {
+    if (e instanceof CoreTrap) throw solError("#ERROR!", "The engine stopped while computing this card; it restarted, so recalculate to try again");
+    throw e;
+  }
+  if (reply.none) throw new Error(`${node.constructor.name} has no body on the core`);
+  return reply;
+}
+
+function outputs(reply: Reply, inputs: Record<string, unknown[] | undefined>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(reply.out ?? {})) {
+    // An output that is one of the inputs as it came is that very object (`Outs` in nodes/mod.rs).
+    const from = (v as { input?: [string, number] } | null)?.input;
+    out[k] = Array.isArray(from) ? inputs[from[0]]?.[from[1]] : read(v);
+  }
+  return out;
+}
+
+/** The card's outputs as its body on the core answers them over `inputs`, the card itself untouched: what it shows
+ *  stays as it was. Null where the body throws. */
+export function cardOutputsOnCore(node: GraphNode, inputs: Record<string, unknown[] | undefined>): Record<string, unknown> | null {
+  const reply = invoke(node, inputs);
+  return "thrown" in reply ? null : outputs(reply, inputs);
+}
+
+/** The card's outputs as its body on the core answers them; an error the body throws is thrown, for the error guard. */
+export function nodeOnCore(node: GraphNode, inputs: Record<string, unknown[] | undefined>): Record<string, unknown> {
+  const n = node as unknown as Record<string, unknown>;
+  const watch = coreWatchOf(node);
+  const before = watch === undefined ? undefined : n[watch];
+  const reply = invoke(node, inputs);
+  if ("thrown" in reply) {
+    for (const [field, v] of Object.entries(reply.display)) n[field] = shown(v);
+    if (watch !== undefined && n[watch] !== before) (node as unknown as Watching).coreWatched();
+    throw read(reply.thrown);
+  }
+  const out = outputs(reply, inputs);
+  // A field that is an output itself comes back as that output, the same object, as the TS body set it.
+  for (const [field, v] of Object.entries(reply.display)) {
+    const o = v as { output?: string } | null;
+    n[field] = o && typeof o === "object" && typeof o.output === "string" ? out[o.output] : shown(v);
+  }
+  for (const [k, u] of Object.entries(reply.matrixUnits ?? {})) {
+    const unit = jsonDec(u) as ColumnUnit;
+    if (k.startsWith("display:")) withMatrixUnit(n[k.slice("display:".length)], unit);
+    else withMatrixUnit(out[k], unit);
+  }
+  if (watch !== undefined && n[watch] !== before) (node as unknown as Watching).coreWatched();
+  return out;
+}
+
+/** A class whose `static coreWatch` names a field its body sets: `coreWatched()` runs after a body that changed it. */
+type Watching = { coreWatched(): void };
+
+/** The field a class's `static coreWatch` names, if any. */
+function coreWatchOf(node: GraphNode): string | undefined {
+  return (node.constructor as { coreWatch?: string }).coreWatch;
+}

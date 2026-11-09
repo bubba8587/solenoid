@@ -83,8 +83,8 @@
     {
       "id": "schedule",
       "type": "ScheduleNode",
-      "x": 1015,
-      "y": 269,
+      "x": 1018,
+      "y": 225,
       "init": {
         "label": "Schedule",
         "mode": "working"
@@ -93,8 +93,8 @@
     {
       "id": "gantt",
       "type": "MermaidNode",
-      "x": 1359,
-      "y": 607,
+      "x": 1362,
+      "y": 563,
       "init": {
         "label": "Gantt"
       },
@@ -105,8 +105,8 @@
     {
       "id": "finishDisplay",
       "type": "DisplayNode",
-      "x": 1359,
-      "y": 483,
+      "x": 1362,
+      "y": 439,
       "init": {
         "label": "Project finish"
       }
@@ -147,15 +147,15 @@
         ],
         "color": "sky",
         "collapsed": false,
-        "width": 2093,
-        "height": 859
+        "width": 2096,
+        "height": 927
       }
     },
     {
       "id": "ganttFigure",
       "type": "GanttNode",
-      "x": 1359,
-      "y": 203,
+      "x": 1362,
+      "y": 159,
       "init": {
         "label": "Gantt figure"
       },
@@ -166,8 +166,8 @@
     {
       "id": "ganttDisplay",
       "type": "DisplayNode",
-      "x": 1688,
-      "y": 155,
+      "x": 1691,
+      "y": 111,
       "size": {
         "w": 700,
         "h": 360

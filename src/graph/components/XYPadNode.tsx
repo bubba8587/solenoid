@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import type { XYPadNode as XYPadNodeType } from "../rete-nodes";
+import type { XYPadNode as XYPadNodeType } from "../nodeClasses";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { processGraph } from "../process";
 const PAD = 140;

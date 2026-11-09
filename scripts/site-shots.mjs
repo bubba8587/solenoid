@@ -195,6 +195,14 @@ async function runShot(browser, shot) {
       });
       await sleep(1200);
     }
+    if (shot.tidy) {
+      // The app's own Tidy, so a hand-placed pack graph gets the canvas's spacing.
+      await page.evaluate(async () => {
+        const { autoArrange } = await import("/src/graph/canvasCommands.ts");
+        await autoArrange({ skipConfirm: true });
+      });
+      await sleep(1500);
+    }
     if (shot.fitGroups) {
       // A hand-placed graph gives its groups rough boxes; wrap each around its painted members as the app's group fit does.
       await page.evaluate(async () => {
@@ -306,6 +314,7 @@ async function runThumbs(browser, only) {
             : existsSync(join(ROOT, "scripts", "site-shots", "packs", `${id}.json`)) ? { graph: `packs/${id}.json` }
             : { graph: { nodes: [] }, build: { pack: id } }),
           expand: focus.expand,
+          tidy: kind === "packs",
           frame: { labels: focus.labels ?? [], pad: 24, maxK: kind === "packs" ? 1.6 : 0.9 },
         });
         execFileSync("convert", [join(RAW, `${name}.png`), "-resize", "640x360^", "-gravity", "center", "-extent", "640x360",

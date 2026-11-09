@@ -163,19 +163,8 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   text-wrap-style: pretty;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
-}
-.sol-card:not(.sol-card--folded) .sol-card__prose p {
-  display: block;
-  -webkit-line-clamp: unset;
-  line-clamp: none;
 }
 .sol-card__nan { color: var(--text-muted); font-style: italic; }
-.sol-card--opens { cursor: pointer; }
 .sol-card__link {
   color: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-ink, 55%), var(--text));
   text-decoration: underline;
@@ -225,18 +214,6 @@
   border-radius: 2px;
   background: var(--node-accent, var(--accent));
 }
-.sol-card__fields {
-  align-self: flex-start;
-  margin: -2px 0 0;
-  padding: 0;
-  font: inherit;
-  font-size: calc(11px * var(--chart-fscale, 1));
-  color: var(--text-dim);
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-.sol-card__fields:hover { color: var(--node-accent, var(--accent)); }
 .sol-card__pic {
   display: block;
   width: 36px;
@@ -258,4 +235,54 @@
   .sol-card__title { font-size: 15px; }
   .sol-card__stat dd,
   .sol-card__prose p { font-size: 13px; }
+}
+
+/* An authored card layout's body: tiles placed on the layout's grid. */
+.sol-card__grid {
+  display: grid;
+  gap: 6px 12px;
+  margin: 0;
+  padding-top: 8px;
+  box-shadow: inset 0 1px 0 var(--border);
+}
+.sol-card__stat--prose dd { font-family: var(--font-sans); line-height: 1.45; }
+.sol-card__chips--inline { display: flex; flex-wrap: wrap; gap: 4px; padding: 0; }
+.sol-card__hint { color: var(--text-dim); font-style: italic; }
+.sol-card__headstat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex: 0 0 auto;
+  max-width: 45%;
+  text-align: right;
+}
+.sol-card__headstat-value {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: calc(13px * var(--chart-fscale, 1));
+  color: var(--text-bright);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A card in a user-picked color (Record: Cards' Color column), worn as a Group or a Dashboard box wears one: a solid
+   header band with contrast ink, the border in the color, the body washed with it (boxTint.ts). */
+.sol-card--tinted,
+.sol-card--tinted:hover {
+  padding-top: 0;
+  border-color: var(--box-border);
+  background: linear-gradient(var(--box-fill), var(--box-fill)), var(--surface-sunken);
+}
+.sol-card--tinted > .sol-card__head {
+  margin: 0 -12px;
+  padding: 8px 12px;
+  border-radius: 5px 5px 0 0;
+  background: var(--box-color);
+  color: var(--box-ink);
+}
+.sol-card--tinted > .sol-card__head :is(.sol-card__title, .sol-card__key, .sol-card__hero-value, .sol-card__edit) { color: var(--box-ink); }
+.sol-card--tinted > .sol-card__head :is(.sol-card__sub, .sol-card__label, .sol-card__meta, .sol-card__title--none) {
+  color: color-mix(in srgb, var(--box-ink) 78%, var(--box-color));
 }

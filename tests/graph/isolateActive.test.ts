@@ -1,28 +1,24 @@
-// [[A1]], [[B3]]
+// [[A1]], [[B3]], [[C135]] isolateOff, [[react-flow-surface-contract#Isolate]], [[composite-drill-in-mount-lifecycle#The canvas-substitution seam]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "../../src/graph/graphEditor";
 import type { Schemes } from "../../src/graph/schemes";
 import { setEditorRefs } from "../../src/graph/process";
 import { setActiveGraph } from "../../src/graph/activeGraph";
-import { isolateStore } from "../../src/graph/isolateStore";
+import { isolateStore, ISOLATE_ON } from "../../src/graph/isolateStore";
 import { isolateSelection, isolateNodes } from "../../src/graph/isolate";
 import { swapSelectionSlots } from "../../src/graph/canvasCommands";
 
-// Isolate resolves through the ACTIVE editor so the focus-set works inside a
-// composite drill-in too (the drill-in node cards read the same global
-// isolateStore). This locks that the entry points read getActiveEditor(), not
-// getEditor() (main). See activeGraph.test.ts for the persistence-side split.
 
 type FakeNode = { id: string; selected?: boolean };
 
-function fakeEditor(nodes: FakeNode[]): NodeEditor<Schemes> {
+function fakeEditor(nodes: FakeNode[]): GraphEditor<Schemes> {
   const map = new Map(nodes.map((n) => [n.id, n]));
   return {
     getNode: (id: string) => map.get(id),
     getNodes: () => nodes,
     getConnections: () => [],
-  } as unknown as NodeEditor<Schemes>;
+  } as unknown as GraphEditor<Schemes>;
 }
 const fakeView = {} as unknown as View;
 
@@ -39,7 +35,15 @@ afterEach(() => {
   isolateStore.exit();
 });
 
-describe("isolate resolves through the active graph", () => {
+describe("switched off, nothing enters an isolate view ([[C135]] isolateOff)", () => {
+  it.skipIf(ISOLATE_ON)("the selection, a node set and a chain all leave the canvas whole", () => {
+    expect(isolateSelection()).toBe(false);
+    expect(isolateNodes(["m2"])).toBe(false);
+    expect(isolateStore.isActive()).toBe(false);
+  });
+});
+
+describe.runIf(ISOLATE_ON)("isolate resolves through the active graph", () => {
   it("isolates the MAIN selection when no drill-in is open", () => {
     expect(isolateSelection()).toBe(true);
     expect([...(isolateStore.get() ?? [])]).toEqual(["m1"]);
@@ -62,7 +66,7 @@ describe("isolate resolves through the active graph", () => {
   });
 });
 
-describe("isolate and the selection ([[C52]] visibleSelection)", () => {
+describe.runIf(ISOLATE_ON)("isolate and the selection ([[C52]] visibleSelection)", () => {
   it("a receded card leaves the selection; a focused one stays", () => {
     const nodes: FakeNode[] = [{ id: "a", selected: true }, { id: "b", selected: true }];
     const ed = fakeEditor(nodes);

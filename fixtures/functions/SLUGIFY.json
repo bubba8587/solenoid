@@ -1,0 +1,5 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"SLUGIFY(\"Hello World\", \"_\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

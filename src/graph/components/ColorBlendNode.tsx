@@ -1,5 +1,5 @@
-import { BLEND_MODE_META } from "../rete-nodes";
-import type { ColorBlendNode as ColorBlendNodeType, BlendMode } from "../rete-nodes";
+import { BLEND_MODE_META } from "../nodeClasses";
+import type { ColorBlendNode as ColorBlendNodeType, BlendMode } from "../nodeClasses";
 import { isSolError } from "../errorValue";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps } from "./nodeKit";

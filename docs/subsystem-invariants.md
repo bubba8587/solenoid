@@ -2,6 +2,10 @@
 
 The index of `../tree/specs/`, grouped by the folders the specs live in. Each spec states what its subsystem does, in enough detail to rebuild it, and names the decision leaves it serves on its first line. Read the whole spec before changing its subsystem. This page only points; it never holds mechanics.
 
+## Start here
+
+`../tree/specs/user-surfaces.md` maps the four places a person works (the main canvas, a composite's inner canvas, the Report overlay and Dashboard board, the object popups), how they connect, and which spec below owns each piece.
+
 ## Floors
 
 Three specs govern whole classes of files through a `covers:` glob in their header. A file the glob matches is built to that spec and cites nothing class-wide itself.
@@ -12,21 +16,25 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | `../tree/specs/floors/node-classes.md` | every node class and op module |
 | `../tree/specs/floors/stores.md` | every module-singleton store |
 | `../tree/specs/floors/engineering.md` | cross-cutting code-hygiene rules (no `covers:` glob; each rule binds every file that does what it names) |
+| `../tree/specs/floors/spec-prose.md` | how spec sentences are written (no `covers:` glob) |
 
 ## Computation
 
 | Spec | Subsystem | Main code |
 |---|---|---|
-| `../tree/specs/computation/compute-pass.md` | the recompute pass, calc modes, the per-node wrappers and arrival coercion | `graphCompute.ts`, `process.ts`, `coerceInputs.ts`, `nodeRegistry.ts` |
+| `../tree/specs/computation/compute-pass.md` | the recompute pass, calc modes, the per-node wrappers and arrival coercion | `graphCompute.ts`, `process.ts`, `passSession.ts`, `nodeBoundary.ts`, `listLiterals.ts`, `nodeRegistry.ts`, `crates/solenoid-graph/src/boundary.rs` |
 | `../tree/specs/computation/formula-language.md` | the formula grammar, operators, name resolution, dispatch, broadcasting, LAMBDA, Expression | `excelFormula.ts`, `excelFunctions.ts`, `formulaSignatures.ts` |
-| `../tree/specs/computation/formulajs-divergences.md` | why each `registerInternal` override exists | `excelFunctions.ts` |
-| `../tree/specs/computation/computed-columns.md` | per-row formulas on a Frame: Fx columns and the Computed Column node | `computedColumnCore.ts`, `nodes/frame.ts` |
-| `../tree/specs/computation/frame-verbs.md` | the Frame value, lazy frames, the JS / Polars backend seam, every relational verb | `frame.ts`, `frameVerbs.ts`, `frameBackend.ts`, `src-tauri/src/engine.rs` |
+| `../tree/specs/computation/excel-divergences.md` | where Solenoid answers otherwise than Excel, and where it answers as Excel where Formula.js did not, and why | `crates/solenoid-core/src/excel_functions.rs`, `fns_*.rs` |
+| `../tree/specs/computation/function-records.md` | one record per function: its cases, Excel's answers beside Solenoid's, the edge grid, the Excel round trip, readiness | `fixtures/functions/` (not built yet) |
+| `../tree/specs/computation/computed-columns.md` | per-row formulas on a Frame: Fx columns and the Computed Column node | `crates/solenoid-core/src/nodes/columns.rs`, `nodes/frame.ts` |
+| `../tree/specs/computation/graph-core.md` | the dataflow engine and the graph walks on netcore-rs, in the one wasm module with the core: hosting the JS nodes, calling the cards on the core directly, errors and `Cancelled`, traps | `crates/solenoid-graph/`, `dataflowEngine.ts`, `engineWasm.ts` |
+| `../tree/specs/computation/rust-core.md` | the Rust core in wasm: the port rule, what it carries, why nothing falls back, the rebase routine | `crates/solenoid-core/`, `engineWasm.ts`, `frameBackend.ts` |
+| `../tree/specs/computation/frame-verbs.md` | the Frame value, lazy frames, the backend seam, every relational verb | `frame.ts`, `frameOps.ts`, `frameBackend.ts`, `crates/solenoid-core/src/frame_verbs.rs` |
 | `../tree/specs/computation/composite-nodes.md` | composite nodes: ports, run modes, the heavy-mode hold, loops, save and load | `nodes/composite.ts`, `components/CompositeNode.tsx` |
 | `../tree/specs/computation/chart-figures.md` | the values on the `chart` socket, the figure nodes, the options string, rendering | `nodes/visual.ts`, `nodes/chartOptions.ts`, `chartRender.tsx` |
-| `../tree/specs/computation/schedule-and-gantt.md` | the tasks cube, the Schedule and Gantt nodes, plan import, the Gantt figure, dates and precision | `scheduleCpm.ts`, `nodes/schedule.ts`, `nodes/gantt.ts`, `ganttPayload.ts`, `planImport.ts`, `packages/schedule-engine`, `packages/gantt-layout`, `packages/gantt-react` |
-| `../tree/specs/computation/equation-solver.md` | solving a relation for any one variable | `equationSolve.ts` |
-| `../tree/specs/computation/bordered-grid-fill.md` | filling blank cells in a bordered grid | `mathUtils.ts` `fillBorderedGrid` |
+| `../tree/specs/computation/schedule-and-gantt.md` | the tasks cube, the Schedule and Gantt nodes, plan import, the Gantt figure, dates and precision | `nodes/schedule.ts`, `nodes/gantt.ts`, `crates/solenoid-core/src/nodes/sched.rs`, `crates/solenoid-schedule`, `crates/solenoid-core/src/plan_files.rs`, `planImport.ts`, `packages/gantt-layout`, `packages/gantt-react` |
+| `../tree/specs/computation/equation-solver.md` | solving a relation for any one variable | `nodes/equation.ts`, `crates/solenoid-core/src/nodes/formula.rs` |
+| `../tree/specs/computation/bordered-grid-fill.md` | filling blank cells in a bordered grid | `fns_lists.rs` `fill_grid` |
 | `../tree/specs/computation/script-sandbox.md` | running Script code in a worker | `scriptWorker.ts`, `scriptExecutor.ts`, `nodes/scriptRun.ts` |
 | `../tree/specs/computation/live-connections.md` | fetched data: caching, refresh, the network gate | `connectionStore.ts`, `nodes/connection.ts`, `httpBridge.ts` |
 | `../tree/specs/computation/alert-node-alerts-hud.md` | the Alert node and the Alerts HUD | `nodes/display.ts`, `alertStore.ts`, `AlertLayer.tsx` |
@@ -37,6 +45,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 |---|---|---|
 | `../tree/specs/values/socket-lattice.md` | which sockets connect, and the wildcard ladder | `sockets.ts` |
 | `../tree/specs/values/type-propagation-on-in-place-socket-retype.md` | reconciling downstream when a socket retypes in place | `fcReconcile.ts` |
+| `../tree/specs/values/date-values.md` | dates as a value kind: representation, arithmetic, function classes, display | `date_values.rs`, `dateValue.ts` |
 | `../tree/specs/values/unit-flow.md` | units on values and formats flowing downstream | `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts` |
 | `../tree/specs/values/error-values.md` | error codes, propagation and display | `errorValue.ts` |
 | `../tree/specs/values/value-semantics.md` | null, NaN, infinity and errors per context, and reading an input (wired blank vs literal) | every `data()` |
@@ -49,9 +58,10 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 |---|---|---|
 | `../tree/specs/documents/save-format.md` | the saved document, the text form, loading | `persistence.ts`, `textForm.ts`, `graphValidate.ts` |
 | `../tree/specs/documents/table-popup.md` | the Table popup: modes, editing, write-back, the Form view, copy and export | `components/TablePopup.tsx`, `tablePopupStore.ts` |
-| `../tree/specs/documents/reports-and-notes.md` | Notes, Reports and Knap: the body syntax, rendering, mail merge, vault writes, export | `knapTemplate.ts`, `templateValue.ts`, `nodes/report.ts`, `nodes/annotation.ts` |
+| `../tree/specs/documents/reports-and-notes.md` | Notes, Reports, Dashboards and Knap: the body syntax, the shared value renderer, mail merge, vault writes, export, the Dashboard's layout, board, boxes and edit mode | `knapTemplate.ts`, `templateValue.ts`, `nodes/report.ts`, `nodes/annotation.ts`, `nodes/dashboard.ts`, `DashboardOverlay.tsx`, `inlineRefDisplay.tsx` |
 | `../tree/specs/documents/addressable-model.md` | node names and name-addressed references | `nodeNameStore.ts`, `nodeNaming.ts` |
 | `../tree/specs/documents/per-doc-autosave-persistence.md` | per-document autosave slots | `documentStore.ts` |
+| `../tree/specs/documents/workspace-tree.md` | the Navigator's tree of folders, documents and pages (planned; prototyped in the pane) | `WorkspaceTree.tsx` |
 | `../tree/specs/documents/inline-literal-maps.md` | values edited on a card, and which classes restore them | node classes, `persistence.ts` |
 | `../tree/specs/documents/literal-input-editors.md` | the table popup as the editor for literal sources | `TablePopup.tsx`, `columnHeadControls.tsx` |
 | `../tree/specs/documents/graph-load-teardown-performance.md` | building and tearing down a large graph | `persistence.ts` `rebuildGraph`, `flow/FlowCanvas.tsx` |
@@ -85,3 +95,4 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | Spec | Subsystem | Main code |
 |---|---|---|
 | `../tree/specs/integrations/obsidian-plugin.md` | Solenoid Properties, the Obsidian plugin | `obsidian-plugin/` |
+| `../tree/specs/integrations/vault-bridge.md` | VaultBridge: the cards and processes between a document and a vault | `vaultCube.ts`, `obsidianWrite.ts`, `frontmatterPatch.ts`, `taskNotesApi.ts` |

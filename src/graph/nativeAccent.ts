@@ -1,5 +1,5 @@
 // [[B14]] oneDesignSystem
-import { isDesktop } from "./fileBridge";
+import { isDesktop, isAndroidApp } from "./fileBridge";
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim());
@@ -11,7 +11,7 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
 }
 
 export function syncNativeAccent(hex: string): void {
-  if (!isDesktop()) return;
+  if (!isDesktop() || isAndroidApp()) return;
   const rgb = hexToRgb(hex);
   if (!rgb) return;
   void import("@tauri-apps/api/core")

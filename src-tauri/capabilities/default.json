@@ -3,6 +3,7 @@
   "identifier": "default",
   "description": "Capability for the main window",
   "windows": ["main"],
+  "platforms": ["linux", "macOS", "windows"],
   "permissions": [
     "core:default",
     "opener:default",
@@ -12,10 +13,6 @@
       "allow": [{ "url": "obsidian://**" }]
     },
     "dialog:default",
-    {
-      "identifier": "http:default",
-      "allow": [{ "url": "http://*:*" }, { "url": "https://*:*" }]
-    },
     {
       "identifier": "fs:allow-read-text-file",
       "allow": [

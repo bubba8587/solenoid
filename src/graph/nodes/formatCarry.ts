@@ -1,4 +1,4 @@
-// [[D41]] formatFlowsDownstream, [[C25]] firstClassUnits
+// [[C118]] formatTravelsWithValue, [[C25]] firstClassUnits
 // Duck-typed on purpose: this module imports no node classes, so the resolver and the nodes share it without a cycle.
 
 export interface FormatCarrySpec {
@@ -11,7 +11,7 @@ export interface FormatCarrySpec {
 
 interface HasFormatCarry { formatCarry(): FormatCarrySpec[]; }
 
-export function getFormatCarry(n: unknown): FormatCarrySpec[] {
+function getFormatCarry(n: unknown): FormatCarrySpec[] {
   const f = (n as Partial<HasFormatCarry> | null)?.formatCarry;
   return typeof f === "function" ? f.call(n) : [];
 }

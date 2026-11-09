@@ -1,4 +1,4 @@
-// [[C52]] visibleSelection
+// [[C52]] visibleSelection, [[react-flow-surface-contract#Isolate]]
 import { describe, it, expect } from "vitest";
 import { boundaryCrossings } from "../../src/graph/isolateBoundary";
 

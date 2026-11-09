@@ -1,14 +1,14 @@
 ---
-aliases: ["Reports and Notes"]
+aliases: ["Reports and Notes", "Dashboards"]
 tags: [spec, documents]
 ---
 <!-- [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet, [[C101]] onePatchPath, [[C103]] untrustedContentSeams -->
 
-# Spec: Reports, Notes and the Knap template layer
+# Spec: Reports, Notes, Dashboards and the Knap template layer
 
-Serves [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet, [[C101]] onePatchPath and [[C103]] untrustedContentSeams. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet, [[C101]] onePatchPath and [[C103]] untrustedContentSeams. It covers what the system does and blocks, and the decision each behavior serves.
 
-Two node classes hold markdown documents. A **Note** (`NoteNode`, `nodes/annotation.ts`) is a pure source: its frontmatter keys become typed output sockets and it mints no inputs. A **Report** (`ReportNode`, `nodes/report.ts`) is a pure sink for values: its template variables mint inputs, and it emits one rendered document. Both bodies are **Knap** templates. Knap is Obsidian's template language (the `knap` npm package, version 0.6.0), and `knapTemplate.ts` is the only module that calls it. Both nodes emit a **DocumentValue** on a `document` output, which Write to Obsidian, the Document chip and a Report's own inputs consume.
+Two node classes hold markdown documents. A **Note** (`NoteNode`, `nodes/annotation.ts`) is a pure source: its frontmatter keys become typed output sockets and it mints no inputs. A **Report** (`ReportNode`, `nodes/report.ts`) is a pure sink for values: its template variables mint inputs, and it emits one rendered document. Both bodies are **Knap** templates. Knap is Obsidian's template language (the `knap` npm package, version 0.6.0), and `knapTemplate.ts` is the only module that renders with it (the overlay's Filters list reads the package's `standardFilterMetadata`). Both nodes emit a **DocumentValue** on a `document` output, which Write to Obsidian, the Document chip and a Report's own inputs consume. A **Dashboard** is the Report's sibling without the text: the same bones (inputs minted from what the author writes, values drawn by one shared renderer, a full-size window) laid out as a grid of boxes ([[#Dashboards]]).
 
 ## The DocumentValue
 
@@ -24,7 +24,22 @@ Two node classes hold markdown documents. A **Note** (`NoteNode`, `nodes/annotat
 | `pages` | `[{ name, body }]`, one per record, present only on a mail merge. |
 | `total` | The record count, present only when it exceeds `pages.length` (the merge hit the page cap). |
 
+```mermaid
+mindmap
+  root(("a DocumentValue"))
+    ["body: rendered markdown,<br>internal =name spans kept"]
+    ["refs: name to value,<br>for those spans"]
+    ["source: the raw Knap text"]
+    ["sourceId: the producing node"]
+    ["a mail merge only"]
+      ["pages: name and body,<br>one per record"]
+      ["total: the true count<br>past the page cap"]
+    ["frontmatter: no producer sets it"]
+```
+
 A batch document's `body` is its page bodies joined by `PAGE_SEPARATOR` (`"\n\n---\n\n"`), for a consumer that reads one document.
+
+Tests: `documentValue.test.ts`: the DocumentValue's shape (a Report carries no frontmatter key); the `document` socket's connection rules are in `socketReference.test.ts`.
 
 ## What an author types
 
@@ -55,9 +70,22 @@ In a Report, a **bare tag** is exactly `{{ name }}` (optional inner spaces) or `
 
 The rewrite walks tags left to right. A `{# … #}` comment is passed through verbatim before anything else matches, so a commented-out block never affects scope. A `{% for x in … %}` pushes `x` onto a shadow stack and `{% endfor %}` pops it; a `{% set n = … %}` adds `n` to a set of shadowed names from that point on. A bare tag is left for Knap when its name is shadowed or is not an input; a tag with any other filter, a path or an expression is never a bare tag. The input list is the Report's variable inputs, plus `template` when a template is wired and `records` when records are wired.
 
-After the rewrite the body goes through Knap. Knap copies a backtick code span through untouched, so the spans survive the render. Each consumer then resolves them by kind: `inlineRefDisplay.tsx` on screen, `obsidianMarkdown.ts` at write, `reportExport.ts` at export. `noteInlineRefs.ts` holds the span grammar (`` /`=([A-Za-z_][A-Za-z0-9_]*)!?`/ ``) and `extractInlineRefs`, which lists span names in first-seen order. `obsidianMarkdown.ts` and `inlineRefDisplay.tsx` repeat the grammar locally; `obsidianMarkdown.test.ts` checks that the write copy agrees.
+```mermaid
+flowchart LR
+    tag["a bare tag {{ name }}<br>naming a Report input"] -->|"embedBareVariables"| span["the internal span =name<br>(=name! with | highlight)"]
+    span --> knap["Knap renders the body,<br>copying code spans as they are"]
+    knap --> res{"each consumer resolves<br>the span by kind"}
+    res --> screen["on screen:<br>inlineRefDisplay.tsx"]
+    res --> write["Write to Obsidian:<br>obsidianMarkdown.ts"]
+    res --> exp["the webpage export:<br>reportExport.ts"]
+    other["any other use of a name:<br>a path, a filter, an expression"] --> data["Knap reads the<br>value's data form"]
+```
+
+After the rewrite the body goes through Knap. Knap copies a backtick code span through untouched, so the spans survive the render. Each consumer then resolves them by kind: `inlineRefDisplay.tsx` on screen, `obsidianMarkdown.ts` at write, `reportExport.ts` at export. The span grammar is `` /`=([A-Za-z_][A-Za-z0-9_]*)!?`/ ``: `obsidianMarkdown.ts` reads it in the markdown, and `noteInlineRefs.ts`'s `substituteRefCodes` reads the rendered `<code>` form for the screen and the export. `inlineRefDisplay.tsx` repeats the identifier grammar locally; `obsidianMarkdown.test.ts` checks that the write copy agrees.
 
 A bare tag embeds the value as the canvas shows it. Any other use of a name reads the value's **data form**.
+
+Tests: `noteInlineRefs.test.ts`: `substituteRefCodes` finds every span in source order and ignores a plain code span and a bare `=`; `obsidianMarkdown.test.ts`: the write copy of the span grammar agrees.
 
 ### The data form
 
@@ -85,6 +113,14 @@ A date serial becomes `YYYY-MM-DD` when whole and `YYYY-MM-DDTHH:mm:ss` when it 
 `renderKnap(body, variables, { keepUnknown })` never throws. It returns `{ output, errors }`; when any error exists the output is `""`. Each error carries a line and column, and `knapErrorText` formats them as one `line:column message` line each. A render error makes the node's `document` output a `#SYNTAX!` error value whose message is that text; the card and overlay previews show the same lines in place of the rendered body.
 
 **keepUnknown** is the Note's mode. Before the render, every `{{ … }}` tag whose leading identifier is neither a known variable nor a template-local (any `for` iterator, `loop` or `set` name anywhere in the body) is replaced by an index sentinel, and restored verbatim after. Bare, dotted and filtered tags on an unknown name all survive as literal text, so a template Note reads as a template on the canvas and writes to the vault with its tags intact. The leading identifier is the first variable the tag reads, found by Knap's own parser, so an operator (`{{ not done }}` leads with `done`) or a literal keyword (`{{ true }}`) is never taken for one, and a tag that reads no variable (`{{ "{" }}`) is not parked. The template-locals are collected over the whole body, ignoring scope, so a Note that loops over a frontmatter list never parks its own iterator. An `if` or `for` on an unknown name still renders empty, as Knap does, because a block region cannot be parked without evaluating it. A Report renders without keepUnknown.
+
+The Knap render is the one asynchronous `data()` in the document family, and the engine and the input boundary await it.
+
+Tests:
+
+- `knapEngine.test.ts`: through the real engine and the input boundary, a Note's render is awaited, its bare tags arrive as spans and an embedded Note arrives rendered.
+- `knapTemplate.test.ts`: the Knap language as the templates use it (`>=` and `<=` at equality, the newline after a block tag dropped), and the engine edges the help's Gotchas list, so a `knap` bump that fixes or breaks one fails and the help follows.
+- `knapTemplateScope.test.ts`: a template's loop iterators, `loop` and `set` names render and are never parked as unknown tags, an iterator sharing a wired name is not rewritten inside its loop, and two records that render one page name get distinct names.
 
 ## Notes
 
@@ -120,7 +156,24 @@ The field types are a subset of the socket data types with identical names, so t
 
 A non-scalar item inside an otherwise scalar sequence is kept as its YAML text. In a row, a plain ISO date or date-time stays as the text written; the column's type decides what it becomes. The date shapes are `noteDateSerial` in `nodes/dateSerial.ts`, and dates are written back by `noteDateText` (the day, or the day and time when it has one); the plugin reads and writes with the same pair.
 
-A **frame** field builds a Frame (`rowsToFrame`). Columns are the row keys in first-appearance order, a missing key is a null cell, a list cell keeps its first scalar and a nested table cell becomes null. A column's type is the plugin's pick when present, else `date` when every present cell in that column read as an ISO date (`dateColumns`), else `logical` or `number` when every present cell is one, else `string` (`guessNoteColumnType` in `frame.ts`, which the Obsidian plugin also guesses with). Every cell passes through `coerceFrameCell` with its source text kept as `raw`, so a cell the type cannot read shows NaN over its text ([[D72]] pluginSaveWritesSourceText). A **cube** field is built by `recordsToCube`, which keeps a list value as a list cell. The row shape, `{ name: value }`, is the Script node's, so what one emits the other reads.
+A **frame** field builds a Frame (`rowsToFrame`). Columns are the row keys in first-appearance order, a missing key is a null cell, a list cell keeps its first scalar and a nested table cell becomes null. A column's type is the plugin's pick when present, else `date` when every present cell in that column read as an ISO date (`dateColumns`), else `logical` or `number` when every present cell is one, else `string` (`guessNoteColumnType` in `frame.ts`, which the Obsidian plugin also guesses with). Every cell passes through `coerceFrameCell` with its source text kept as `raw`, so a cell the type cannot read shows NaN over its text ([[C58]] tableInputRawText). A **cube** field is built by `recordsToCube`, which keeps a list value as a list cell. The row shape, `{ name: value }`, is the Script node's, so what one emits the other reads.
+
+```mermaid
+flowchart TD
+    txt["the Note's text"] --> fence{"a --- block at the top,<br>with a closing ---?"}
+    fence -->|no| body1["all of it is the body"]
+    fence -->|yes| yaml["parse the YAML between"]
+    fence -->|yes| body2["the body: after the<br>closing fence"]
+    yaml --> key["each key"]
+    key --> guess["its type guessed from the value<br>(or a type pin, reshaped<br>onto that rank)"]
+    guess --> sock["an output socket of that type<br>(syncFields adds, retypes, removes)"]
+```
+
+Tests:
+
+- `noteFrontmatter.test.ts`: each YAML shape and the socket it makes, what Obsidian's Properties editor writes back, a column's type deciding what its text becomes, and YAML's infinity reading as ∞.
+- `noteFrontmatterCube.test.ts`: a row list whose values include a list is a Cube, so a list is never a string inside a cell.
+- `noteNodeRanks.test.ts`: the socket for every rank, a matrix and complex text included.
 
 ### Type pins
 
@@ -130,7 +183,9 @@ A **frame** field builds a Frame (`rowsToFrame`). Columns are the row keys in fi
 
 `syncFields()` reconciles the output sockets to the parsed fields and returns `{ removed, retyped }`. A vanished key's output is removed; a key whose socket type changed has its output removed and re-added under the same key; new keys are added. The `document` output (and a subclass's reserved outputs) is never touched. The node has no editor handle, so the caller cleans up cables: `dropStrandedFrontmatterCables` removes every cable from a removed key, and keeps a retyped key's cable only when `canConnect(newType, targetInputType)` still holds. After a retype the caller re-adapts downstream Format Controllers (`reconcileFcTypes`), because a pure retype fires no connection event.
 
-The body is a local draft while the textarea has focus and reaches the node on blur; the card reconciles then and after a type pick, never per keystroke ([[C95]] commitOnEnter). A blur whose body equals the last reconciled body does nothing.
+The body is a local draft while the textarea has focus and reaches the node on blur; the card reconciles then and after a type pick, never per keystroke ([[B19]] spreadsheetHabits). A blur whose body equals the last reconciled body does nothing.
+
+Tests: `noteFrontmatterSync.test.ts`: a retype judges each cable by the input's declared rung, keeping one into an adoptive input that adopted the old type; `noteFcPropagation.test.ts`: a retype re-adapts the Format Controllers downstream ([[type-propagation-on-in-place-socket-retype]]); `noteNodeRanks.test.ts`: a pin reshaped onto the value's rank.
 
 ### Knap in a Note
 
@@ -182,6 +237,20 @@ During `data()`, when the active source's variables differ from the current ones
 7. Otherwise go async. If the template source has Knap syntax, render the throwaway Note first, so an unwired variable defaults to the field's rendered value rather than its tag text. Convert every present variable with `toTemplateValue` (a lazy frame reference is read in full first). With a template wired, the `template` variable is the raw source text.
 8. With records wired, convert them to rows (a Frame or Cube becomes rows; anything that is not an array of plain objects contributes nothing), bind them as the `records` variable, and run the mail merge. Without records, render once.
 
+```mermaid
+flowchart TD
+    r["read template and records"] --> rec["reconcile the variable inputs<br>to the active source"]
+    rec --> def["a template wired: its<br>frontmatter gives defaults"]
+    def --> vars["each variable: wired value,<br>else default; absent ones left out"]
+    vars --> bare["rewrite the bare tags"]
+    bare --> knapq{"records wired, or<br>Knap syntax left?"}
+    knapq -->|no| sync["the document, synchronously"]
+    knapq -->|yes| conv["async: convert the variables<br>to template values"]
+    conv --> merge{"records wired?"}
+    merge -->|yes| pages["a mail merge:<br>one page per record, up to 500"]
+    merge -->|no| once["render once"]
+```
+
 A render or page-name error yields `#SYNTAX!` on `document`. `templateVars` (the data form of every input as of the last compute) and `pages` stay on the node for the overlay and the export. `renderedBody()` re-renders the current source against the last compute's variables for the webpage export; errors render as empty.
 
 ### Mail merge
@@ -196,6 +265,8 @@ A render or page-name error yields `#SYNTAX!` on `document`. `templateVars` (the
 
 The document carries `pages`, the joined body, and `total` when truncated. `batchTruncation(total)` returns `{ truncated, shown, total }` for the callers that say "500 of N": the overlay's stepper and Write to Obsidian.
 
+Tests: `mailMergeSeed.test.ts`: the Mail Merge seed, the worked example of the two fixed inputs (a template Note wired into Template, its tags the inputs and its frontmatter the defaults; a ledger wired into Records, one page per row named by the page name), each page keeping its frontmatter, and the batch reaching Write to Obsidian.
+
 ### The Report card
 
 The card (`ReportNode.tsx`) is an anchor, not an editor. It shows the Template row, the Records row, a divider, one row per variable input (label plus the ref preview described below, formatted by an attached Format Controller), a divider, and a hero box. The hero is the Document chip, which opens the overlay, or the error code when `document` is an error; clicking an error with an origin flies to the node that minted it. Collapsed, every input converges on one pill (`CollapsedInputPill`) so cables survive.
@@ -204,11 +275,14 @@ The card (`ReportNode.tsx`) is an anchor, not an editor. It shows the Template r
 
 `InlineRefBody` renders a Report preview. It sets the sanitized HTML imperatively, finds every `<code>` element whose text matches `^=name!?$`, replaces it with an empty `<span>`, and portals an `InlineRefValue` into each. React never owns the parsed HTML, so re-renders do not orphan the portals. Each `InlineRefValue` subscribes to the cable-value store and re-renders only when its own `refValue(name)` changes.
 
+`InlineRefValue` is the one renderer both surfaces draw values with: the Report's preview places it in the text, a Dashboard places one per box ([[#A box]]) with `rich` (a Frame's 25 scrolling rows) and `fill` (a chart sized to its container, uncapped). Either way it knows the node feeding the ref, and through it: a Record's pager and a Choice Ladder's actions step that node, as a Display's do; a KPI card draws in its Value input's format (`valueFormat`); and a document's own spans resolve each value through the Report that made the document (its `sourceId`), so that Report's Format Controllers apply wherever the document is shown.
+
 The formatting annotation for a span is the Format Controller docked on that Report input, else one reachable upstream through passthroughs (`resolveRefAnnotation`). A Frame embed reads per-column formats from the node feeding the input, not from the Report.
 
 | Value kind | Rendered as |
 |---|---|
 | number | `formatNumberWithAnnotation` when an annotation exists, else `formatScalar` |
+| date | `formatNumberWithAnnotation` on its serial when an annotation exists, else `DD-MMM-YYYY`; the card rows and the webpage export read the same |
 | text | the annotation's text case, else as is |
 | logical | the annotation's logical style |
 | complex | complex formatting, with the annotation when there is one |
@@ -229,6 +303,8 @@ In the Report overlay every figure kind (chart, Mermaid, picture, SVG, Frame, Cu
 
 `refPreview` is the short text form that the card rows and the webpage export use: the inline text forms above, and for a figure the value's title, the selected layer (SVG) or the kind word (`chart`, `diagram`, `image`, `svg`, `frame`, `cube`, `document`).
 
+Tests: `reportShowcaseSeed.test.ts`: the Report Showcase seed renders each embed path end to end through a bare tag (a scalar, an inline Frame table, a chart, a LAMBDA as a KaTeX equation, a Mermaid diagram, an embedded Note), and the mail-merge Report renders one page per record.
+
 ## The markdown renderer
 
 `renderNoteMarkdown` (`noteMarkdown.ts`) renders all Note-shaped text: Note cards, the overlay, a document embed and the webpage export. It is its own `marked` instance (GFM, single newlines as line breaks), so help prose and catalog descriptions (`Markdown.tsx`, `descriptionMd.ts`) are unaffected, and an error code in a description is never a tag. It returns unsanitized HTML, and every caller sanitizes. Before parsing, outside fenced code, it removes `%% comments %%` (a comment alone on its line takes the line with it) and trailing ` ^block-id` markers. Extensions:
@@ -243,6 +319,8 @@ In the Report overlay every figure kind (chart, Mermaid, picture, SVG, Frame, Cu
 
 KaTeX loads lazily (`katexLoader.ts`): `useKatexRender` starts the load, `useKatexReady` only listens, and a site re-renders when the chunk lands. In the app KaTeX renders HTML output only, with no MathML copy; the webpage export renders MathML only.
 
+Tests: `noteMarkdown.test.ts`: Obsidian's inline forms (wikilinks with their alias, heading and embed forms, tags and what isn't one); `noteTaskToggle.test.ts`: the Nth rendered checkbox ticks its own line; `knapHighlight.test.ts`: the editor's highlighting keeps every character and marks the tag and markdown tokens.
+
 ## The overlay
 
 `ReportOverlay.tsx` is the editing surface. `reportStore` holds which node is open and whether the panel is docked. While one is open and docked, the root element carries `html.sol-report-docked` (see [[layout-chrome]]). Closing clears the dock. The Document chip opens whichever Report or Note produced a document, in whichever graph holds it (`documentSource.ts`), a composite's inside included; the overlay resolves the open id the same way and shows nothing, with Esc idle, when it finds no such node.
@@ -251,20 +329,20 @@ Opened on a **Note**, the panel is read-only: the title, the dock and close butt
 
 Opened on a **Report**:
 
-- **Source pane.** A transparent textarea over a highlighted backdrop (`knapHighlight.ts`: markdown structure plus Knap tokens inside every tag, every character preserved and escaped first). Typing keeps a local draft ([[C95]] commitOnEnter). The draft reaches `node.body`, with an autosave and a socket reconcile, on blur, on close (Escape, the close button, a backdrop click) and on switching to the Preview tab; inserting an embed commits it at once. With a template wired, the pane shows the template's highlighted source read-only, under "Template from the wired Note. Edit it there."
+- **Source pane.** A transparent textarea over a highlighted backdrop (`knapHighlight.ts`: markdown structure plus Knap tokens inside every tag, every character preserved and escaped first). Typing keeps a local draft ([[B19]] spreadsheetHabits). The draft reaches `node.body`, with an autosave and a socket reconcile, on blur, on close (Escape, the close button, a backdrop click) and on switching to the Preview tab; inserting an embed commits it at once. With a template wired, the pane shows the template's highlighted source read-only, under "Template from the wired Note. Edit it there."
 - **Preview pane.** Renders `templateSource(draft)` against the last compute's `templateVars`, 250 ms after the last keystroke. It renders from a debounced copy of the draft because re-parsing on every keystroke would remount the whole pane, jumping the scroll and remounting embeds. The previous render stays up while the next one settles. Errors replace the preview with their `line:column` lines.
 - **Embed Note.** Lists every Note in the graph. Picking one inserts `{{ <name> }}` as its own paragraph at the caret (the Note's addressable name, minted if missing), mints the input, and wires the Note's `document` output to it.
 - **Filters.** A searchable list of every standard filter with its example; a click inserts ` | <example>` at the caret.
 - **Export.** The webpage export, when the site chrome allows it.
 - **Dock.** Toggles a right-side docked panel (440 px, `--report-dock-w`) with no backdrop. Docked, a small Draft/Preview toggle replaces the side-by-side split; on mobile, a full-width tab bar does the same. The Dock button shows on desktop only, since on a narrow screen the report is already full-screen. Docked, the canvas area narrows by the dock width, and the viewport-fixed nav pill, HUD column, socket legend and command palette shift left with it.
 
-**Layout.** On desktop the overlay sits under the app bar, which stays usable, and the panel fills the remaining height. At a viewport width of 760 px or less the side-by-side split becomes Draft and Preview tabs, decided by width alone, never by device detection. An image or SVG embed with nothing loaded shows a quiet inline hint ("no image attached", "no SVG loaded"), not an error. A Frame embed never scrolls vertically, so its chip stays in view; a wide one scrolls sideways.
+**Layout.** On desktop, the overlay is positioned beneath the Header and fills the remaining height of the canvas. At a viewport width of 760 px or less the side-by-side split becomes Draft and Preview tabs, decided by width alone, never by device detection. An image or SVG embed with nothing loaded shows a quiet inline hint ("no image attached", "no SVG loaded"), not an error. A Frame embed never scrolls vertically, so its chip stays in view; a wide one scrolls sideways.
 
 Embed Note and Filters are disabled while a template is wired. With records wired, the preview shows one page at a time. A header row holds a stepper (`‹`, `name.md`, `i / N`, `›`), "first N of M" when the merge was capped, and the **Page name** field, which commits on blur or Enter and recomputes the graph.
 
 ## Write to Obsidian
 
-Write to Obsidian's Note target takes a DocumentValue on `in` and writes markdown that Obsidian renders natively, never HTML. It acts only from its Run button and loads disarmed ([[C38]] sinkRunButtonOnly). Run refuses, with a status message, when the node is disarmed, the vault is the read-only demo vault, the app has no filesystem (web), no vault folder is set, the note has no name, the input is an error (the message is its code) or the input is not a document. The Properties target (rows to frontmatter) is a separate behavior of the same sink and is not covered here.
+Write to Obsidian's Note target takes a DocumentValue on `in` and writes markdown that Obsidian renders natively, never HTML. It acts only from its Run button and loads disarmed ([[B18]] safeToShare). Run refuses, with a status message, when the node is disarmed, the vault is the read-only demo vault, the app has no filesystem (web), no vault folder is set, the note has no name, the input is an error (the message is its code) or the input is not a document. The Properties target (rows to frontmatter) is a separate behavior of the same sink and is not covered here.
 
 **Target.** The `path` input or literal names the note; a leading `folder/` prepends to the node's subfolder and a trailing `.md` is dropped. A blank name falls back to the node's label, then `note`. Path segments that are empty, `.` or `..` are dropped, so a write cannot leave the vault. File names pass through `sanitizeName` (the last path segment, with `<>:"|?*` and control characters removed). Preview reports the action it would take (Create, Overwrite, Append to, Rewrite the block in) with a character count.
 
@@ -293,17 +371,19 @@ Assets are named `<note name>-<ref name>.<ext>` with `#`, `^`, `[`, `]` and `|` 
 
 A note that does not exist yet is written as the markdown (wrapped in markers for `block`). In `block` mode the writer's addressable name keys the pair, so two writers own two blocks; the markers are Obsidian comments, hidden in reading view. An unclosed code fence runs to the end of the note.
 
-**Patching an existing note's frontmatter** ([[C101]] onePatchPath). `frontmatterPatch.ts` is the one writer of a note's YAML: it patches the raw text line by line and never parses and reserializes, so every byte the write did not target stays identical, and what it writes uses Obsidian's block style. Write Properties, the stamp and every other note write go through it. `frontmatterPatch.test.ts` proves untouched bytes identical and a cube round-trip unchanged. Reading stays permissive: any spelling Obsidian or a person writes still parses (`noteFrontmatter.ts`).
+**Patching an existing note's frontmatter** ([[C101]] onePatchPath). `frontmatterPatch.ts` is the one writer of a note's YAML: it patches the raw text line by line and never parses and reserializes, so every byte the write did not target stays identical, and what it writes uses Obsidian's block style. Write Properties, the stamp and every other note write go through it. `frontmatterPatch.test.ts` proves untouched bytes identical and a cube round-trip unchanged. A key whose note text already reads back as the value (`url: https://x`, which the writer would quote) is unchanged and is not rewritten (`readsAs`). A cell holding an error is refused at planning (`cellError`, the row's `held` reason) and never written; a number with a unit writes as it shows, in its own unit, and a date anywhere in a cell as its day. Reading stays permissive: any spelling Obsidian or a person writes still parses (`noteFrontmatter.ts`).
 
 **Frontmatter YAML** (`frontmatterToYaml` in `obsidianMarkdown.ts`; `yamlScalar` is shared with `frontmatterPatch.ts`). The block is `---`-fenced with a trailing newline, keys in insertion order, and empty when there are no keys. A list is a block sequence (`key: []` when empty). A scalar is written bare unless YAML would misread it:
 
-- null is empty, a finite number is bare, ∞ and −∞ are YAML's `.inf` and `-.inf`, which the note reader reads back as ∞ ([[D48]] classifyNonFinite; `.nan` reads blank), NaN is quoted, and a logical is `true` or `false`;
+- null is empty, a finite number is bare, ∞ and −∞ are YAML's `.inf` and `-.inf`, which the note reader reads back as ∞ ([[C24]] arraySemantics; `.nan` reads blank), NaN is quoted, and a logical is `true` or `false`;
 - text is quoted when it is empty, has surrounding whitespace, contains any of `:#[]{}",` or a newline or tab, reads as `true`, `false`, `null`, `yes`, `no`, `on` or `off` in any case, starts like a YAML number (an optional sign, then a digit or a dot and a digit: `+1`, `-.5`), starts with a YAML indicator (`*&!|>%@'` or a backtick, or `~`), is a bare or space-followed `-` or `?`, or is an infinity or NaN word (`.inf`, `-.inf`, `.nan`, any case); a test reads every such value back through the `yaml` package;
 - quoted text is a double-quoted scalar with backslash, quote, newline, carriage return and tab escaped, so a multi-line value stays valid on one line; text holding a character YAML calls non-printable (a C0 or C1 control other than tab and line breaks) is quoted with it escaped as `\xNN`, since js-yaml refuses a block that holds one raw.
 
 A key is quoted by the same rules as text, so a key YAML would read as anything but itself (`007`, `1.50`, `null`, `~`, `yes`) reads back as typed, and `<<` is always quoted, since js-yaml takes a bare one as a merge key and refuses the block.
 
 **Stamp.** When `stamp` is on and exactly one note was written, the note's frontmatter gains a `solenoid:` link to a `Solenoid/<doc>` stub note through `patchFrontmatter` ([[C101]] onePatchPath), and the stub note is merged. Stamping never fails the write. This is the only frontmatter write on the document path; a Note's own frontmatter reaches the vault as the text of its body.
+
+Tests: `frontmatterPatch.test.ts`: untouched bytes stay identical, and a cube round-trips through a note unchanged; `managedBlock.test.ts`: a block between markers is appended once and replaced in place after, each name owning its own; `obsidianMarkdown.test.ts`: values written as YAML, quoted where a plain scalar would misread and never splitting a line.
 
 ## Webpage export
 
@@ -319,20 +399,113 @@ The overlay's Export button writes one self-contained `.html` file (`reportExpor
 
 The file name is the label with every character other than word characters, spaces and hyphens removed, plus `.html`; `report.html` when nothing survives. A failure raises an error notice.
 
+Tests: `reportExport.test.ts`: a Frame's format picks in the export, the Charts section taking only the sources wired into the Report (and into its embedded Notes), and the stylesheet identical when no report palette is declared, taking the brand accent once one is. The page assembly itself runs DOMPurify, which needs a real DOM the test environment doesn't have, so the branding is tested in the stylesheet builder.
+
+## Dashboards
+
+A **Dashboard** (`DashboardNode`, `nodes/dashboard.ts`) is a pure sink that shows its inputs as boxes on a full-canvas grid. It persists `label`, `layout`, `collapsed`, `boxColors` and `boxViews` (the last two through `extractInit`), and has no outputs. What it shares with the Report: its card rows (`ReportRefRow`), its window header, and every value drawn through [[#On-screen rendering of the span]].
+
+### The layout text
+
+The layout is the Record figure's grammar (`parseRecordLayout`, [[chart-figures#The Record figure]]), the same text Frame Input's Form view reads: a line per grid row, names split by `|`, `Name*N` spanning N columns, a repeated name merging its cells into one box, `.` a gap, `Name: hint` giving the text an empty box shows. The text is the one source of truth: the card's layout field (`RecordLayoutField`, committed on blur, [[B19]] spreadsheetHabits) and the board's edit mode both write it, and every change lands through `commitDashboardLayout`. A repeated name anywhere merges, so every box needs a name of its own.
+
+```mermaid
+flowchart LR
+    text["the layout text"] -->|"parseRecordLayout"| placed["placements:<br>row, col, spans, hint"]
+    placed --> inputs["one trueany input<br>per name"]
+    placed --> grid["the board's grid"]
+    grid -->|"Edit Layout:<br>drag, resize"| rgl["react-grid-layout<br>over snapshots"]
+    rgl -->|"Done: writeRecordLayout"| text
+    card["the card's field"] --> text
+```
+
+`writeRecordLayout` (`recordLayout.ts`) is the parser's inverse for non-overlapping boxes: a line per row, a run as `Name*N`, gaps as `.`, a box's hint and title mark on its first cell. Tests hold that its text parses back to the same placements.
+
+### Inputs
+
+Every placed name is one `trueany` input named exactly as the layout spells it, spaces included, in reading order. The constructor mints them from the saved layout, so a saved cable finds its socket at load. `setLayout` drops the cables of departing names before removing their sockets ([[input-cable-pruning#The ordering rule]]), adds the new names, carries a renamed box's cable, color and view to its new name (a rename map, new name → old), and drops a removed box's. `DashboardNode` is in the graph core's `SEES_ERRORS`, so an error reaches its box as a value. `refValue(name)` is the wired value, `null` for a wired blank, and `undefined` while unwired.
+
+### The card
+
+`DashboardNode.tsx`: an Open Dashboard button, the layout field, and one row per name with the Report card's preview. A row whose figure is titled like the row shows the figure's kind instead (`chart`), so no row reads its name twice; this holds on the Report card too. Collapsed, every input converges on one pill.
+
+### The board
+
+`DashboardOverlay.tsx`, with its open state in `dashboardStore.ts`. It covers the canvas between `--chrome-top` and `--chrome-bottom` (on mobile, everything under the accent bar, measured into `--dash-top` since the bar holds the notch inset; the bar keeps its logo and hides its document switcher, which would open under the board), and the canvas under it stops painting while it is open (`html.sol-dashboard-open`, [[html-in-canvas#The GPU texture budget]]), a drill-in's included. In dark mode its ground sits 65% of the way from the canvas color to the box surface, so boxes do not stand out as hard as cards on the canvas. The header carries the board's title (and the expanded box's name after it), Refresh All Connections (`refreshAllConnections`, the top bar's command), Edit Layout, and Close. Esc closes, after first closing an open menu, rename, expanded box or edit.
+
+Rows share the board's height with a 160 px floor, and the grid scrolls past that. At 640 px wide or less the boxes stack in reading order, one per row, sized to their content, except that two compact neighbors (a number, a blank, short text of 24 characters or less, or a widget figure: a KPI card or a gauge) share a row, sized to their content, each value scaled by its length to fill the box's width; a lone compact box keeps its row; the gaps and the box padding tighten; a box holding a chart other than a KPI card is at least 300 px high. A document, table or cards box grows with its content up to 480 px (or 65% of the screen), so one that still scrolls inside has room for a thumb, and a diagram stops at 360 px high. Edit Layout is hidden. A box scrolled to its end hands the rest of the scroll to the board: a new wheel turn or swipe does so by itself, and a swipe already under way does through `installTouchScrollChain` (`touchScrollChain.ts`), since the browser keeps a swipe on the scroller it began in.
+
+### A box
+
+A box is a grid placement, its name as the label, its value drawn by the shared renderer (`InlineRefValue`) with `rich` (a Frame's 25 rows, scrolling) and `fill` (a chart measures the box's width and height, uncapped). The label is the figure's title, so the figure's own caption is hidden.
+
+- **A lone value** is the box's figure, centered and scaled to the box (container query units): a number, a KPI card's number, an error code or a date in the UI face at weight 750, 28 to 84 px; text, a list and a hint smaller, 18 to 40 px. Numbers take their format from a Format Controller, as everywhere; the box adds none.
+- **A PIVOTBY output** draws as the popup's Pivot view (`PivotFigure`, [[table-popup#The Pivot view]]) in the Pivot node's saved options, without the ribbon; a fold made here is the node's, as in the popup. A Report's expanded embed draws it the same way; a card's three-row preview stays a table.
+- **A chart, diagram or picture** fits the box, a diagram scaled keeping its shape. **A document, a table, a cube or a Frame's cards** keep their own height and the box scrolls them; a table or cube drops the sunken well it wears on a card, since the box is its frame.
+- **An error** shows its code, its message (else its explanation) and, when it knows its origin, a Caused by button that closes the board and flies to that node.
+- **Nothing wired** shows a muted dash, or the box's hint.
+- **Interactive figures** work as on a Display: a Record pages with its ‹ › buttons and a Choice Ladder takes its actions, both stepping the node feeding the box; a KPI card draws in its Value input's format.
+
+### Motion
+
+A box's content animates in the board's intro window: the board opening, a box expanded or returned from, edit mode closing. Every box moves at once, within about 900 ms, each kind in its own way (`DashboardOverlay.css` § Motion), under the overlay's `dashboard-overlay--intro` class, held for 1150 ms. Outside the window nothing replays: a chart rebuilt by a later recompute (a Record paged elsewhere on the board) just shows its shapes, while a number whose value changes still counts to the new one. It is the content that moves; the boxes themselves never fly in.
+
+| Content | Motion |
+|---|---|
+| A number | Counts up to its value (`CountUp`, ease-out), formatted every frame as the box shows it; a later change counts from the old value to the new. A date does not count. |
+| Text, a list, a hint, a document, a Record card, a KPI's value | Rises into place; a KPI's change follows a beat behind. |
+| A line or area chart | Draws from the left. |
+| Bars | Grow from their baseline. |
+| Funnel bands | Grow out from their middle. |
+| Pie slices, treemap cells | Pop out of their centers. |
+| The gauge | Its arc sweeps from the left end. |
+| Table rows, Frame cards | Cascade in, the cascade held inside the window. |
+| A diagram | Fades in. |
+| An error | Settles in. |
+
+Under reduced motion everything shows at rest, and a number shows its value at once. Edit mode's snapshots never animate.
+
+### The box menu
+
+A ⋯ menu on each label, shown on hover (always on a touch screen), rendered outside the box (on the page, above the board) so a box's clipping never cuts it:
+
+| Item | Does |
+|---|---|
+| Expand, Back to Board | Shows the box alone across the board; Back to Board (the same item there), Esc, the header's back button or a double-click on the label returns. A double-click on a label also expands. |
+| Show on Canvas | Closes the board and flies to the node feeding the box. |
+| Show as Cards / Table | On a box holding a Frame: the Table popup's Cards view, laid out as a grid across the box (`boxViews`). |
+| Color swatches, No Color | Tints the box as a Group is colored: a solid header bar in the palette slot's color with contrast ink, a 2 px border (darkened in light mode) and the Group's body wash, 8% dark and 14% light (`boxColors`, name → slot). |
+| Rename | Edits the name in the label; Enter or a click away commits, Esc cancels. Refused when blank, another box's name ignoring case, or holding the grammar's marks (`\|`, `*`, `:`, a leading `#`, a lone `.`). |
+| Remove | Writes the layout without the box. |
+
+### Edit mode
+
+Edit Layout swaps the grid for `react-grid-layout`. Each box shows a snapshot of its rendered contents (`snapshotOf`: the box's markup cloned, canvases as pictures, scaled to the box), so nothing re-renders or re-measures under a drag. Boxes drag anywhere and resize from the right, bottom or corner over dashed empty cells; Columns sets the grid's width (1 to 12). Each label carries a grip mark. On a touch screen ([[C93]] gestureByPointerType) a box moves only by its label bar, taller for a finger, so a swipe across its body still scrolls the grid, and it resizes by one 44 px corner handle; the browser's own gestures are off where a drag starts, so it never takes the touch mid-drag. Done writes the grid back as layout text; Cancel or Esc discards it.
+
+### Undo
+
+Each change on the board is one undo step. Layout changes are recorded when the graph recomputes, and color and view changes are recorded through `notifyGraphChanged`. Ctrl+Z works with the board open and the board stays open: an undo reloads the graph under new node ids, so `dashboardStore` keeps the board's addressable name beside its id, resolves the name again (`openNodeId`), and skips the closes a rebuild sends.
+
+### The showcase
+
+`dashboard-showcase.json` (Charts & reports, beside the Report showcase) is a live model: monthly sales, channel shares, pipeline stages and an annual target feed formulas for the total, the margin, the last two months, the share of target and a status read from the margin. Its board shows formatted numbers, a KPI card, text, a line chart, a target gauge, a channel treemap, a deal funnel, the monthly table, a paged Record and a live Report.
+
 ## What is sanitized, and where
 
 A body arrives in shared `.solenoid` files, so no rendered body is trusted. Each guard sits at one seam ([[C103]] untrustedContentSeams).
 
 | Surface | Guard |
 |---|---|
-| Note card read view | `DOMPurify.sanitize` on every render. Checkboxes are re-enabled after sanitizing, on marked's own `<input>` elements only. |
-| Report preview, Note panel, embedded document | `DOMPurify.sanitize` on the rendered HTML. |
-| Webpage export | each markdown segment passes DOMPurify; the title, embed names, chart labels and every frozen value pass `escapeHtml` after the render; an image source must be `http(s)` or `data:image`; an SVG value's markup passes `sanitizeSvg`. The palette accent is written into the stylesheet, so a palette override loaded from a file must be a `#rrggbb` hex (`palette.ts`). Chart SVG is serialized from the live canvas, where every SVG source was already sanitized at its seam (Mermaid in strict mode, the SVG Picker's class at intake). |
+| Note card read view, and a text value shown as markdown | `sanitizeNoteHtml` (`noteHtml.ts`, DOMPurify plus the network gate: without a grant, a foreign document's web pictures, video and audio, an SVG picture's `href`, a `background`, and any style or `<style>` that can fetch are held back, since loading one is a fetch; which addresses count is [[live-connections#The network gate]]) on every render. Checkboxes are re-enabled after sanitizing, on marked's own `<input>` elements only. |
+| Report preview, Note panel, embedded document, Import Obsidian Note | `sanitizeNoteHtml` on the rendered HTML. |
+| Webpage export | each markdown segment passes DOMPurify; the title, embed names, chart labels and every frozen value pass `escapeHtml` after the render; an image source must be `http(s)` or `data:image`; an SVG value's markup passes `sanitizeSvg`. The palette accent is written into the stylesheet, so a palette override loaded from a file must be a `#rrggbb` hex (`palette.ts`). Chart SVG is serialized from the live canvas, where every SVG source was already sanitized at its seam (Pele with links and images off, the SVG Picker's class at intake). |
 | Source highlight | the source is HTML-escaped before any span is added. |
 | Links in rendered markdown | one capture-phase document click guard (`installExternalLinkGuard`, installed by `App.tsx`) opens `http(s)` links to another origin, and `mailto:` links, in the system browser (a new tab on web), and never navigates the app's webview. Same-origin, hash and relative links are left alone. |
-| File links | a file link opens in the OS only after a confirm when it would run a program or came with a foreign document (`fileBridge.openFilePath`), since a shared file can carry any path. |
+| File links | a file link opens in the OS only after a confirm when it would run a program or came with a foreign document or was pasted out of one (`fileBridge.openFilePath`, `writtenElsewhere`), since a shared file can carry any path. |
 | SVG | markup is sanitized once at intake, in the SVG Picker's class: its `source` getter scrubs whatever sits in `stringLiterals.source` and writes the clean text back, so typed, fetched, file-picked, loaded and pasted markup all pass the same guard before `data()` sends it down a cable (`svgSanitize.ts`). It must be clean everywhere it lands, because the picker and every `SvgFigure` downstream inline it into the live DOM (hit-testing needs real elements) and it persists in the document. A text pass, which works headless and is what the tests pin, removes scripting elements, `on*` handlers (quoted or bare), every external `href` or `xlink:href` (a `use` or `image` beacon, an anchor) while keeping a local `#fragment`, and `javascript:` or `data:text/html` in any value; ids, names, classes, paths and fills stay. DOMPurify's SVG profile then runs wherever a DOM exists, with `inkscape:label` added to its allowed attributes because it is inert text and the layer name the picker shows. An SVG embedded in a Report is already clean; the webpage export sanitizes it again, since the file leaves the app. |
 | KaTeX and the lambda syntax view | KaTeX output and `highlightFormula` output are the only unsanitized HTML inserted, both generated from the value rather than copied from it. |
 | Vault write | markdown only; `..` segments dropped; file names sanitized and made unique; asset names stripped of wikilink metacharacters; web image alt and URL escaped; a managed block refuses `%%` content; frame cells escape pipes and newlines. |
+
+Tests: `svgSanitize.test.ts`: the SVG Picker's intake strips scripts, handlers, `foreignObject`, external image and `use` references and `javascript:` URLs, keeps what the picker needs (ids, names, classes, paths, fills, a local `use`), and runs headless.
 
 The other two seams under [[C103]] live elsewhere: CSV formula-injection escaping on every export (`csvSafety.ts`, the popup's Copy and Export and the Write File sink; [[table-popup]]), and the per-document network gate (`docMetaStore.networkAllowed`, asked once per foreign document, which every fetch path asks; [[live-connections]]).

@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[D72]] pluginSaveWritesSourceText
+// [[C107]] obsidianPlugin, [[C58]] tableInputRawText
 import { parseDateToSerial, noteDateSerial, noteDateText } from "../../src/graph/nodes/dateSerial";
 import { parseCellText } from "../../src/graph/literalEditors";
 import { parseCx } from "../../src/graph/cxValue";
@@ -63,14 +63,16 @@ export function validateYaml(kind: PropertyKind, value: unknown): boolean {
 }
 
 const scalarOrNull = (v: unknown): Scalar => (isScalar(v) ? v : null);
+/** A container where the kind holds only scalars stays as its text, so a reshape never drops a value. */
+const keptCell = (v: unknown): Scalar => (v === undefined ? null : isScalar(v) ? v : JSON.stringify(v));
 const named = (cells: unknown[]): YamlRecord =>
-  Object.fromEntries(cells.map((v, j) => [`Col${j + 1}`, scalarOrNull(v)]));
+  Object.fromEntries(cells.map((v, j) => [`Col${j + 1}`, keptCell(v)]));
 
 export function coerceYaml(kind: PropertyKind, value: unknown): unknown {
   if (value === null || value === undefined || value === "") return kind.shape === "scalar" ? null : [];
   if (validateYaml(kind, value)) return value;
   const items = Array.isArray(value) ? value : [value];
-  const cell = (v: unknown): Scalar => (kind.shape === "scalar" && kind.family ? cellToYaml(rawCell(scalarOrNull(v)), kind.family) : scalarOrNull(v));
+  const cell = (v: unknown): Scalar => (kind.shape === "scalar" && kind.family ? cellToYaml(rawCell(scalarOrNull(v)), kind.family) : keptCell(v));
   const rowOf = (item: unknown): unknown[] =>
     Array.isArray(item) ? item : isPlainObject(item) ? Object.values(item) : [item];
   const flat = items.every(isScalar);
@@ -81,7 +83,7 @@ export function coerceYaml(kind: PropertyKind, value: unknown): unknown {
       if (flat) return [named(items)];
       return items.map((item) =>
         isPlainObject(item)
-          ? Object.fromEntries(Object.entries(item).map(([k, v]) => [k, scalarOrNull(v)]))
+          ? Object.fromEntries(Object.entries(item).map(([k, v]) => [k, keptCell(v)]))
           : named(rowOf(item)));
     }
     case "cube": return flat ? [named(items)] : items.map((item) => (isPlainObject(item) ? item : named(rowOf(item))));
@@ -220,8 +222,8 @@ export function columnTypesOf(columns: FrameSourceColumn[]): ColumnTypes {
   return types;
 }
 
-/** A Text cell writes what was typed ([[D72]] pluginSaveWritesSourceText); any other reads numbers and booleans. */
-export const scalarFromText = (text: string, asText = false): Scalar =>
+/** A Text cell writes what was typed ([[C58]] tableInputRawText); any other reads numbers and booleans. */
+const scalarFromText = (text: string, asText = false): Scalar =>
   asText ? (text.trim() === "" ? null : text) : parseCellText(text) as Scalar;
 
 const sourceScalar = (before: unknown, text: string, asText = false): Scalar =>

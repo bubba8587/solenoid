@@ -1,6 +1,7 @@
-// [[C24]] arraySemantics (nulls and errors in a column profile)
-import { describeColumn, type ColumnProfile } from "../frameVerbs";
-import { aggregate } from "../nodes/statsOps";
+// [[C24]] arraySemantics (nulls and errors in a column profile), [[D99]] rustIsSpec
+import { isSolError } from "../errorValue";
+import type { FrameCell } from "../frame";
+import { frameFnOnCore } from "../frameBackend";
 import { formatScalar } from "./format";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 
@@ -18,17 +19,28 @@ export type ColSummary = {
   unchecked: number | null;
 };
 
-/** One column's footer figures over every row. */
-export function summarizeColumn(values: readonly unknown[], type: FooterColType): ColSummary {
-  const profile = describeColumn(values, type);
-  let sum: number | null = null;
-  if (type === "number") {
-    const r = aggregate("sum", values.filter((v): v is number => typeof v === "number" && Number.isFinite(v)));
-    sum = typeof r === "number" ? r : null;
-  }
-  const checked = type === "logical" ? values.filter((v) => v === true).length : null;
-  const unchecked = type === "logical" ? values.filter((v) => v === false).length : null;
-  return { profile, sum, checked, unchecked };
+interface ColumnProfile {
+  count: number; blank: number; error: number; distinct: number;
+  mean: number | null; std: number | null; min: number | null;
+  q25: number | null; median: number | null; q75: number | null; max: number | null;
+}
+
+/** A cell as the core reads it; anything else in a column (a nested list, a record) counts as filled text. */
+const asCell = (v: unknown): FrameCell =>
+  v == null ? null : typeof v === "number" || typeof v === "string" || typeof v === "boolean" || isSolError(v) ? v : String(v);
+
+type ProfileRow = [number, number, number, number, ...(number | null)[]];
+
+/** Each column's footer figures over every row, from the core's `columnProfiles` (Describe's kernel). Null where the
+ *  core can't answer. */
+export function summarizeColumns(columns: readonly { values: readonly unknown[]; type: FooterColType }[]): ColSummary[] | null {
+  const frame = { __frame: true as const, columns: columns.map((c, i) => ({ name: String(i), type: c.type, values: c.values.map(asCell) })) };
+  const r = frameFnOnCore("columnProfiles", [frame]);
+  if (!r || !Array.isArray(r.value)) return null;
+  return (r.value as ProfileRow[]).map(([count, blank, error, distinct, mean, std, min, q25, median, q75, max, sum, checked, unchecked]) => ({
+    profile: { count, blank, error, distinct, mean, std, min, q25, median, q75, max },
+    sum, checked, unchecked,
+  }));
 }
 
 export const FOOTER_STAT_LABEL: Record<FooterStat, string> = {

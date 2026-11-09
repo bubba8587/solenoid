@@ -32,7 +32,7 @@ export const PLUGIN_URL = "https://community.obsidian.md/plugins/solenoid-proper
 export const HOME_HREF = SITE_PAGES.about.path;
 
 // The wordmark covers Home, so it stays out of this list.
-export const SITE_NAV: { href: string; label: string }[] = [
+const SITE_NAV: { href: string; label: string }[] = [
   { href: "/obsidian", label: "Obsidian" },
   { href: "/examples", label: "Examples" },
   { href: "/packs", label: "Packs" },
@@ -47,7 +47,7 @@ export function SiteThumb({ kind, id }: { kind: "examples" | "packs"; id: string
   );
 }
 
-export function ThemeToggle() {
+function ThemeToggle() {
   const mode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
   const dark = mode === "dark";
   return (

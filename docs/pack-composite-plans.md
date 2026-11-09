@@ -90,7 +90,7 @@ Lookup** primitive (1-D/2-D dataset interpolation) is the gating build for the
 table-driven half — it's also what steam tables (IAPWS region backup), matweb-
 style material properties, and thermocouple tables want. **DONE (2026-07-15): the
 `INTERPOLATE` node (`stats.ts`) ships both halves via a List/Grid dropdown — List =
-1-D `interpolateLinear` (hardness, pipe schedules); Grid = `fillBorderedGrid`, a
+1-D linear interpolation (hardness, pipe schedules); Grid = `fill_grid`, a
 coordinate-bordered lookup table (first row = X coords, first column = Y coords,
 blank interior cells filled) covering steam tables + thermocouple grids. Gate cleared;
 only the pack's datasets/presets remain.**

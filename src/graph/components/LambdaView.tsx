@@ -8,7 +8,7 @@ import type { LambdaView } from "../formatAnnotationStore";
 import "./FormulaEditor.css";
 import "./LambdaView.css";
 
-export function lambdaSourceText(v: LambdaValue): string {
+function lambdaSourceText(v: LambdaValue): string {
   const sig = `λ(${v.params.join(", ")})`;
   const expr = (v.expr ?? "").trim();
   return expr ? `${sig} = ${expr}` : sig;

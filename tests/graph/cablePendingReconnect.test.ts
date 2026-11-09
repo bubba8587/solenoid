@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[C10]] socketLattice
+// [[B3]] sameNodeEverywhere, [[C10]] socketLattice, [[react-flow-surface-contract#Ghost cables]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { cablePendingStore } from "../../src/graph/cableState";
 import { reattachPending } from "../../src/graph/cablePendingReconnect";

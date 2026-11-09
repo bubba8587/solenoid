@@ -1,6 +1,5 @@
-// Dev-only copy-edit freeze: Ctrl+Alt+E blocks the app, and a click edits a string's source form through Vite's
-// `/__copy-edit` (vite.config.ts). Enter or clickaway saves every place it appears; Escape reverts, Escape idle exits.
-// Listeners register once at module load (app boot), so their capture handlers run ahead of every later listener.
+// Dev-only copy-edit freeze (Ctrl+Alt+E): a click edits a string's source form through Vite's `/__copy-edit`. Listeners
+// register once at module load (app boot), so their capture handlers run ahead of every later listener.
 
 // `html` is the original rendered markup: restoring textContent instead would flatten markdown marks, and a
 // re-render that sees the same __html would not repaint it.
@@ -88,6 +87,7 @@ function beginEdit(el: HTMLElement): void {
     .catch(() => flash("Copy-edit endpoint unreachable"));
 }
 
+/** Saves the edit to every place the string appears, or reverts it; Enter and clickaway save, Escape reverts. */
 function endEdit(revert: boolean): void {
   lookupToken++;
   if (!editing) return;

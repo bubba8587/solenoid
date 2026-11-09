@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 import { columnFormatRow } from "../../src/graph/frameFormatStore";
 import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";
 

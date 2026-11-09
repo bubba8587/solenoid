@@ -1,6 +1,7 @@
 // [[B16]] oneFormulaSurface
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
-import { flattenLeaves, searchLeaves } from "./catalogSearch";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { flattenLeaves, isCategory, isPair, searchLeaves } from "./catalogSearch";
 import { IS_COARSE, deviceModeStore } from "./coarse";
 import { addMenuRequest } from "./addMenuStore";
 import { descriptionText } from "./descriptionMd";
@@ -12,7 +13,8 @@ import { SOCKET_COLORS, type SocketDataType } from "./sockets";
 
 /** A row takes its kind's color as a card of that kind shows it: the current palette, adjusted for light mode. */
 const leafAccent = (kind: NodeKind): string => themeAccent(NODE_KIND_ACCENTS[kind], appThemeStore.getMode());
-import { ChevronRightIcon, ChevronLeftIcon } from "./components/Icons";
+import { ChevronRightIcon, ChevronLeftIcon, BookIcon } from "./components/Icons";
+import { frStore } from "./frStore";
 
 function leafHighlight(leaf: NodeCatalogEntry): { className: string; style?: CSSProperties } {
   // One type tints the row like a kind accent, in that type's socket color; several make the flag.
@@ -36,6 +38,9 @@ export type NodeCatalogEntry = {
   type: string;
   label: string;
   description?: string;
+  /** Something a card does on purpose that a user would otherwise take for a fault (it answers a blank where its
+   *  math is undefined, say); the Reference and the menu's tooltip show it after the description. */
+  warning?: string;
   create: () => unknown;
   /** The node kind whose palette color tints the row, resolved when the menu draws so a palette switch reaches it. */
   accent?: NodeKind;
@@ -51,7 +56,24 @@ export type NodeCatalogEntry = {
   fx?: string[];
   /** A generated row that places what another row places (the host, or `host__op-op`); search shows one of them. */
   places?: string;
+  /** Cards placed with this one and cabled into it, such as a preset's physical constants ([[C76]] formulaPackDefault). */
+  companions?: () => Companion[];
+  /** The release that brought the card; none is 1.5 or earlier (`addedIn`). */
+  added?: Release;
+  /** The latest release that reworked it in a way worth telling a user. */
+  updated?: Release;
 };
+
+/** A Solenoid release, as `major.minor`. */
+export type Release = "1.5" | "1.6";
+export const addedIn = (e: Pick<NodeCatalogEntry, "added">): Release => e.added ?? "1.5";
+
+/** A card placed beside another and cabled from its `output` into the other's `input`. */
+export type Companion = { node: unknown; output: string; input: string };
+
+/** A row's tooltip: its description, then its warning. */
+const tipOf = (e: { description?: string; warning?: string }) =>
+  [e.description && descriptionText(e.description), e.warning && `Warning: ${e.warning}`].filter(Boolean).join("\n\n") || undefined;
 
 export type ExcelEquiv = {
   excel: string;
@@ -83,6 +105,8 @@ export type CatalogCategory = {
   label: string;
   description?: string;
   children: CatalogEntry[];
+  /** Opens a new group of the menu's top level: a thin divider draws above it. */
+  groupStart?: boolean;
 };
 
 export type CatalogPair = {
@@ -92,12 +116,6 @@ export type CatalogPair = {
 
 export type CatalogEntry = NodeCatalogEntry | CatalogCategory | CatalogPair;
 
-function isCategory(e: CatalogEntry): e is CatalogCategory {
-  return e.type === "category";
-}
-function isPair(e: CatalogEntry): e is CatalogPair {
-  return e.type === "pair";
-}
 
 // ─── Render/nav items ───────────────────────────────────────────────────
 type RenderItem =
@@ -117,6 +135,45 @@ function toRenderItems(entries: CatalogEntry[]): RenderItem[] {
     }
   }
   return out;
+}
+
+/** The drill stack that opens a folder named by its path of labels, or null when no folder has that path. */
+export function drillStackToFolder(entries: CatalogEntry[], labels: readonly string[]): number[] | null {
+  const stack: number[] = [];
+  let items = toRenderItems(entries);
+  for (const label of labels) {
+    const i = items.findIndex((it) => it.kind === "category" && it.entry.label === label);
+    if (i < 0) return null;
+    stack.push(i);
+    items = toRenderItems((items[i].entry as CatalogCategory).children);
+  }
+  return stack;
+}
+
+/** The folders a drill stack opens, outermost first, read as the drill list counts its rows (a pair is two). */
+export function drillChain(entries: CatalogEntry[], stack: readonly number[]): CatalogCategory[] {
+  const chain: CatalogCategory[] = [];
+  let items = toRenderItems(entries);
+  for (const i of stack) {
+    const it = items[i];
+    if (!it || it.kind !== "category") break;
+    chain.push(it.entry);
+    items = toRenderItems(it.entry.children);
+  }
+  return chain;
+}
+
+/** The drill stack that opens the folder holding a card, or null when no folder does. */
+export function drillStackTo(entries: CatalogEntry[], type: string): number[] | null {
+  const items = toRenderItems(entries);
+  for (const [i, it] of items.entries()) {
+    if (it.kind === "leaf" && it.entry.type === type) return [];
+    if (it.kind === "category") {
+      const inner = drillStackTo(it.entry.children, type);
+      if (inner) return [i, ...inner];
+    }
+  }
+  return null;
 }
 
 function levelItemsAt(entries: CatalogEntry[], path: number[]): RenderItem[] {
@@ -201,11 +258,12 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
         if (it.kind === "category") {
           const open = onPath && path.length > depth + 1;
           return (
+            <Fragment key={`cat:${it.entry.label}`}>
+            {it.entry.groupStart && <div className="solenoid-add-menu__divider" role="separator" />}
             <div
-              key={`cat:${it.entry.label}`}
               ref={(el) => { anchorRefs.current[i] = el; }}
               className={`solenoid-add-menu__item solenoid-add-menu__item--category${onPath ? " solenoid-add-menu__item--active" : ""}${open ? " solenoid-add-menu__item--open" : ""}`}
-              title={it.entry.description && descriptionText(it.entry.description)}
+              title={tipOf(it.entry)}
               onMouseEnter={() => onHover([...prefix, i, 0])}
               // Submenus are DOM children of this div: without stopping the bubble, the outermost ancestor re-pins to the top.
               onClick={(e) => { e.stopPropagation(); onOpenCategory([...prefix, i]); }}
@@ -218,6 +276,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
                 </Submenu>
               )}
             </div>
+            </Fragment>
           );
         }
         const leaf = it.entry;
@@ -229,7 +288,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
             key={`leaf:${leaf.type}`}
             ref={active ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined}
             className={`solenoid-add-menu__item${halfClass(it.half)}${hl.className}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
-            title={leaf.description && descriptionText(leaf.description)}
+            title={tipOf(leaf)}
             style={hl.style}
             onMouseEnter={() => onHover([...prefix, i])}
             onClick={(e) => { e.stopPropagation(); onSelect(leaf); }}
@@ -247,7 +306,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
 
 // ─── Drill-down list (phone): one level at a time, a back row on top ────
 
-function LeafRow({ leaf, half, active, dim, onSelect, onMouseEnter, rowRef }: {
+export function LeafRow({ leaf, half, active, dim, onSelect, onMouseEnter, rowRef }: {
   leaf: NodeCatalogEntry; half?: Half; active?: boolean; dim: boolean;
   onSelect: () => void; onMouseEnter?: () => void; rowRef?: React.Ref<HTMLDivElement>;
 }) {
@@ -256,7 +315,7 @@ function LeafRow({ leaf, half, active, dim, onSelect, onMouseEnter, rowRef }: {
     <div
       ref={rowRef}
       className={`solenoid-add-menu__item${halfClass(half)}${hl.className}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
-      title={leaf.description && descriptionText(leaf.description)}
+      title={tipOf(leaf)}
       style={hl.style}
       onMouseEnter={onMouseEnter}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
@@ -269,14 +328,16 @@ function LeafRow({ leaf, half, active, dim, onSelect, onMouseEnter, rowRef }: {
   );
 }
 
-/** No hover and no resting highlight: a finger has no hover, so nothing lights until it lands. */
-function DrillMenu({ entries, stack, onPush, onPop, onSelect, isDim }: {
+/** No hover and no resting highlight: a finger has no hover, so nothing lights until it lands. The Reference's navigator
+ *  reuses it, lighting the card it shows (`activeType`). */
+export function DrillMenu({ entries, stack, onPush, onPop, onSelect, isDim, activeType }: {
   entries: CatalogEntry[];
   stack: number[];
   onPush: (i: number) => void;
   onPop: () => void;
   onSelect: (leaf: NodeCatalogEntry) => void;
   isDim: (leaf: NodeCatalogEntry) => boolean;
+  activeType?: string;
 }) {
   let items = toRenderItems(entries);
   let parent: CatalogCategory | null = null;
@@ -295,16 +356,18 @@ function DrillMenu({ entries, stack, onPush, onPop, onSelect, isDim }: {
         </div>
       )}
       {items.map((it, i) => it.kind === "category" ? (
+        <Fragment key={`cat:${it.entry.label}`}>
+        {it.entry.groupStart && <div className="solenoid-add-menu__divider" role="separator" />}
         <div
-          key={`cat:${it.entry.label}`}
           className="solenoid-add-menu__item solenoid-add-menu__item--category"
           onClick={(e) => { e.stopPropagation(); onPush(i); }}
         >
           <span>{it.entry.label}</span>
           <span className="solenoid-add-menu__arrow"><ChevronRightIcon size={12} /></span>
         </div>
+        </Fragment>
       ) : (
-        <LeafRow key={`leaf:${it.entry.type}`} leaf={it.entry} half={it.half} dim={isDim(it.entry)} onSelect={() => onSelect(it.entry)} />
+        <LeafRow key={`leaf:${it.entry.type}`} leaf={it.entry} half={it.half} active={activeType === it.entry.type} dim={isDim(it.entry)} onSelect={() => onSelect(it.entry)} />
       ))}
     </>
   );
@@ -416,7 +479,6 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
       if (p.visible && left === p.left && top === p.top) return p;
       return { left, top, visible: true };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screenX, screenY, searching, results.length, treePath.length, drill]);
 
   useEffect(() => {
@@ -480,7 +542,24 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
     }
   }
 
-  return (
+  // The book opens the Reference on the row that's lit (the result or the leaf the keys or the mouse are on), else on
+  // its landing; the menu closes, as it does when a pick is made.
+  const openReference = () => {
+    let leaf: NodeCatalogEntry | null = null;
+    if (searching) leaf = results[activeIndex] ?? null;
+    else {
+      const items = levelItemsAt(entries, treePath);
+      const it = items[treePath[treePath.length - 1] ?? 0];
+      if (it?.kind === "leaf") leaf = it.entry;
+    }
+    onClose();
+    if (leaf) frStore.openCard(leaf.type);
+    else { frStore.close(); frStore.open("reference"); }
+  };
+
+  // Portaled to <body>: inside a composite drill-in the surface sits in the drill-in backdrop's stacking context (z 4), which
+  // put the menu under the floating pills (z 5); out here its own z-index (200) holds against everything but the dialogs.
+  return createPortal(
     <div
       ref={ref}
       className={`solenoid-add-menu${drill ? " solenoid-add-menu--sheet" : ""}`}
@@ -489,7 +568,17 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
         : { left: pos.left, top: pos.top, visibility: pos.visible ? "visible" : "hidden" }}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <div className="solenoid-add-menu__heading">Add node</div>
+      <div className="solenoid-add-menu__heading">
+        <span>Add node</span>
+        <button
+          type="button"
+          className="solenoid-add-menu__ref"
+          title="Reference"
+          aria-label="Reference"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); openReference(); }}
+        ><BookIcon size={12} strokeWidth={1.6} /></button>
+      </div>
       <div className="solenoid-add-menu__panel">
         <div className="solenoid-add-menu__scroll" ref={scrollRef}>
         <input
@@ -527,6 +616,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
         )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

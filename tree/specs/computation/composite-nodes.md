@@ -2,11 +2,11 @@
 aliases: ["Composite nodes"]
 tags: [spec, computation]
 ---
-<!-- [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve, [[C53]] queryIsCompositePreset, [[C35]] unknownViaPlaceholder, [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility, [[C79]] packActivationIsPresentation -->
+<!-- [[C77]] compositeIsSubgraph, [[C23]] calcModes, [[C53]] pipelineIsCompositePreset, [[C35]] unknownViaPlaceholder, [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility, [[C79]] packActivationIsPresentation -->
 
 # Spec: Composite nodes
 
-Serves [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve, [[C53]] queryIsCompositePreset and [[C35]] unknownViaPlaceholder, with [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility and [[C79]] packActivationIsPresentation. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C77]] compositeIsSubgraph, [[C23]] calcModes, [[C53]] pipelineIsCompositePreset and [[C35]] unknownViaPlaceholder, with [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility and [[C79]] packActivationIsPresentation. It covers what the system does and blocks, and the decision each behavior serves.
 
 This file owns the Composite card: its value model, its boundary ports and markers, every run mode, the heavy-mode hold, loops inside a composite, making a composite from a selection and unpacking it, how it saves and loads, and how edits inside it reach the outside. How the drill-in canvas mounts, leaves, undoes and substitutes the active graph is [[composite-drill-in-mount-lifecycle]]; this file only names the points where the drill-in calls into the composite. The outer pass that retargets an inner edit onto the owning card is [[compute-pass]]. The save shape of `init.internal` is also summarized in [[save-format]].
 
@@ -15,20 +15,60 @@ The code is `src/graph/nodes/composite.ts` (`CompositeNode`, `CompositeInputNode
 ## Terms
 
 - **Composite.** A card (`CompositeNode`, registry type `CompositeNode`) that holds a real subgraph and shows only a declared boundary.
-- **Internal editor and engine.** The composite's private `NodeEditor` (`internalEditor`) and `DataflowEngine` (`internalEngine`). Every member node lives in the internal editor and is computed only by the internal engine.
+- **Internal editor and engine.** The composite's private `GraphEditor` (`internalEditor`) and `DataflowEngine` (`internalEngine`). Every member node lives in the internal editor and is computed only by the internal engine.
 - **Port.** One entry of the boundary: a `CompositeInputPort` or `CompositeOutputPort` record on the composite. An exposed input port and every output port also exist as a socket on the card, keyed by the port id.
 - **Marker.** The node inside the subgraph that a port is bound to: a `CompositeInputNode` ("Composite Input") for an input port, a `CompositeOutputNode` ("Composite Output") for an output port. A port names its marker by `internalNodeId`.
 - **Seed.** An input marker's editable `defaultValue`, typed on the marker inside the drill-in.
-- **Run mode.** `runMode`, one of `single`, `manual`, `scenarios`, `data-table`, `simulation`, `goal-seek`, `montecarlo`, `by-row`.
+- **Run mode.** `runMode`, one of `single`, `manual`, `pipeline`, `scenarios`, `data-table`, `simulation`, `goal-seek`, `montecarlo`, `by-row`.
 - **Internal pass.** One `runPass`: inject every input marker's value, reset the internal engine, fetch every output marker. Every run mode is a number of internal passes.
 - **Heavy.** A mode configuration for which `isHeavyMode()` is true. A heavy composite holds its last result until Solve or Refresh.
 - **Drill-in.** The full-viewport canvas over the internal editor, opened with Edit contents.
+
+```mermaid
+mindmap
+  root(("a Composite"))
+    the card
+      ["input ports: exposed or hidden"]
+      ["output ports"]
+      ["runMode and its config"]
+      ["cachedOutputs: one value, or one per run"]
+    ["inside: never in the outer engine"]
+      ["internal editor and engine"]
+      ["Composite Input markers: a seed each"]
+      ["the member cards"]
+      ["Composite Output markers"]
+    run modes
+      ["single: live"]
+      ["manual: one pass on Refresh"]
+      ["pipeline: manual, one chain, its steps listed"]
+      ["scenarios: one pass per scenario"]
+      ["data-table: one pass per combination"]
+      ["goal-seek: trials toward a target"]
+      ["montecarlo: one pass per draw"]
+      ["by-row: one pass per input row"]
+      ["simulation: a loop, round by round"]
+```
 
 ## Value model
 
 A composite is a subgraph, not a Group variant ([[C77]] compositeIsSubgraph). The card has sockets and a `data()`; a Group has neither.
 
-- The constructor builds `internalEditor`, installs input coercion on it (`installInputCoercion`, so a member narrows its inputs exactly as on the main canvas), adds a pipe (below), then builds `internalEngine` and attaches it with `internalEditor.use(internalEngine)`. The error guard is not a pipe here: whoever adds a node to the internal editor calls `installErrorGuards(node)` directly after `addNode`, which puts the guard outside the coercion wrapper, the same order as the main canvas ([[compute-pass]] § wrappers).
+```mermaid
+flowchart LR
+    subgraph outer["the outer graph: one card"]
+        win["a wired input"] --> card["the Composite card"]
+        card --> wout["its output sockets"]
+    end
+    subgraph inner["inside: a private editor and engine"]
+        im["Composite Input<br>markers"] --> mem["the member cards"]
+        mem --> om["Composite Output<br>markers"]
+    end
+    card -.->|"each internal pass sets<br>the markers' values"| im
+    om -.->|"fetched: one value<br>per output port"| card
+```
+
+
+- The constructor builds `internalEditor`, adds a pipe (below), then builds `internalEngine` and attaches it with `internalEditor.use(internalEngine)`. Its engine runs every member through the same input boundary as the main canvas's, so a member narrows its inputs and is guarded exactly as there ([[compute-pass]] § The per-node wrappers).
 - Nothing inside the subgraph is registered with the outer engine, appears in the outer cache, or gets a value in `cableValueStore`. The outer engine sees one node, the card, whose `data()` returns one value per output port.
 - The composite's own cache of results is `cachedOutputs`, keyed by output port id. In a multi-run mode each value is an array with one entry per run, in run order.
 - The internal pipe reacts to `nodecreated`, `noderemoved`, `connectioncreated` and `connectionremoved`: each calls `markInternalEdit()` (bumps `internalEditSeq`), and a connection event outside `hydrate()` also calls `settleInternalTypes()`.
@@ -52,7 +92,7 @@ A composite is a subgraph, not a Group variant ([[C77]] compositeIsSubgraph). Th
 | `internalNodeId` | The live id of the `CompositeInputNode` this port feeds (its saved id in a save). |
 | `default` | Optional fallback value, below the marker's seed. Nothing in the app sets it yet except a saved or authored document. |
 
-An exposed port's card socket is an `AdoptiveSocket` with base `trueany`: unwired it is a wildcard, wired it adopts the concrete type of the cable through the outer type settle. Because an unwired wildcard input takes no inline literal on a Composite (the card declares no `autoLiterals`), the card shows each exposed input as a label row: the source's name when wired, nothing when not. The unwired value comes from inside, from the marker's seed.
+An exposed port's card socket is an `AdoptiveSocket` with base `trueany`: unwired it is a wildcard, wired it adopts the concrete type of the cable through the outer type settle. Because an unwired wildcard input takes no inline literal on a Composite (the core's field table gives it none, [[inline-literal-maps#One field per input]]), the card shows each exposed input as a label row: the source's name when wired, nothing when not. The unwired value comes from inside, from the marker's seed.
 
 `addInputPort(spec)` pushes the record and, for an exposed port, adds the socket; it returns the id. `removeInputPort(id)` requires the caller to have removed the card's cables into that socket first; it drops the record and socket, deletes that port's key from every scenario's overrides and from `dataTableValues`, clears `goalSeek` if the port was its driver, and clears `byRowPortId` if it was the By-Row port.
 
@@ -62,7 +102,19 @@ An exposed port's card socket is an `AdoptiveSocket` with base `trueany`: unwire
 
 ### The input value fallback order
 
-For each input port in one internal pass, the marker's `value` is the first of these that is not `undefined` (and, for the wired value and the seed, not `null` either, because the chain uses `??`):
+For each input port in one internal pass, the marker's `value` is the first of these that is present: an override that is not `undefined`, a wired input (one with a cable, so a wired blank is `null`, [[D86]] blankRoles), and then a seed and a default that are not `null` or `undefined`:
+
+```mermaid
+flowchart LR
+    o{"a run-mode override<br>for this port?"} -->|yes| ov["the override"]
+    o -->|no| w{"exposed, and a value<br>on the card input?"}
+    w -->|yes| wv["the wired value"]
+    w -->|no| s{"a seed on<br>the marker?"}
+    s -->|yes| sv["the seed"]
+    s -->|no| d{"a port default?"}
+    d -->|yes| dv["the default"]
+    d -->|no| nv["null"]
+```
 
 1. the run mode's override for this port id (a scenario cell, a Data Table value, a Monte Carlo draw, a goal-seek trial, a By-Row row);
 2. for an exposed port only, the first value on the card's wired input (`inputs[id][0]`);
@@ -78,6 +130,8 @@ A hidden port skips step 2. An override of `null` is used as `null`.
 - The markers' sockets are per-instance `MutableSocket`s, outside the `trueany` adoption fixpoint, and display only. At every `data()`, `syncMarkerSocketTypes()` sets each input marker's `value` output to the card input socket's current type, and each output marker's `value` input to the type of the internal socket that feeds it (`trueany` when unwired).
 - `adoptBoundaryTypes()` sets each output port's card socket to the `dataType` of the internal socket feeding its marker, or `trueany` when unwired or the marker is missing, and returns whether any type changed. Adoption never removes an outer cable.
 - `settleInternalTypes()` runs `reconcileFcTypes(internalEditor, null)` (wildcard types, Convert arrows, and every Format Controller's type and annotation, [[B11]] maximalMerge) and then `adoptBoundaryTypes()`. It runs at the end of `hydrate()`, after each internal connection change outside hydrate, and once at the end of make-from-selection. The main canvas's cable-change settle never reaches the internal editor, and a composite nobody has opened has no drill-in settle, so this is the settle a closed composite's cable change gets (a `data()`-time prune, say). Once opened, the drill-in's settle also runs, with a view to re-render ([[react-flow-surface-contract]]).
+
+Tests: `composite.test.ts`: a hidden port's `data()` resolves to its baked default; the shell's output adopts its type from inside (the wildcard ladder) and reverts to the placeholder when the feed goes; a composite rebuilt from its saved shape alone computes as before.
 
 ## The boundary markers
 
@@ -106,6 +160,8 @@ Rendering by kind (`CompositeBoundaryValue`, card and markers alike): a Frame, C
 
 Markers cannot be copied (copy skips them) or deleted from the drill-in (its delete excludes them). A port loses its marker only through drill-in undo restoring a snapshot from before the port existed; the port then dangles until the level is left and pruned ([[composite-drill-in-mount-lifecycle]] § Leaving a level).
 
+Tests: `composite.test.ts`: the markers start as the hollow wildcard ring and adopt the shell's input type and their internal source's; the input marker shows the value it carries; a Display dropped inside adopts its rings as on the outer canvas, through the internal pipe's settle.
+
 ## The card
 
 `CompositeComponent`, top to bottom:
@@ -113,8 +169,9 @@ Markers cannot be copied (copy skips them) or deleted from the drill-in (its del
 1. An **Edit contents** button. On the main canvas it opens the drill-in at one level (`compositeEditorStore.open`); inside a drill-in it drills one level deeper (`drillInto`). The node context menu offers the same (Edit contents) plus Unpack composite.
 2. The exposed input rows (`InlineInputs`).
 3. The run controls (`CompositeRunControls`), shared with the drill-in:
-   - the run-mode dropdown, shown only when the composite has at least one port: Single run, Manual refresh, Scenarios, Data table, Simulation, Goal seek, Monte Carlo, By row;
-   - when heavy, a Solve button (a play icon; labeled Refresh with a refresh icon in `manual`) and a status dot: hollow orange "Stale", filled red "No solution" (goal-seek result is an error), filled "Up to date" otherwise. Solve calls `requestSolve(insideOnly)` and `processGraph(node.id)`;
+   - the run-mode dropdown, shown only when the composite has at least one port: Single run, Manual refresh, Pipeline, Scenarios, Data table, Simulation, Goal seek, Monte Carlo, By row;
+   - when heavy, a Solve button (a play icon; labeled Refresh with a refresh icon in `manual` and `pipeline`) and a status dot: hollow orange "Stale", filled red "No solution" (goal-seek result is an error), filled "Up to date" otherwise. Solve calls `requestSolve(insideOnly)` and `processGraph(node.id)`;
+   - when heavy and it has solved since it was made or loaded, "last run" and the last solve's wall time beneath (`340 ms`, `1.24 s`), so the same work can be timed as it grows (the "Rust engine speed test" seed);
    - the mode's editor (below).
 4. One output box per output port: the label, then the value in a socket row that anchors that port's output socket, with a sparkline above a numeric series of two or more. Under goal-seek these boxes are suppressed; the goal-seek editor's Solution box carries the target port's socket instead.
 5. `no ports` when the composite has no ports.
@@ -127,10 +184,19 @@ Every mode is built from `runPass(inputs, overrides?)`:
 
 1. For each input port with a marker, set `marker.value` by the fallback order.
 2. `internalEngine.reset()`.
-3. Seed `#CIRC!` on the internal loop members (`seedLoopErrors` over `loopMembers(internalEditor)`), with the message "Part of a circular dependency: the calculation feeds itself. Switch the container to Simulation mode to run it as a feedback loop."
+3. Seed `#CIRC!` on the internal loop members (`internalEngine.seedLoops(message)`), with the message "Part of a circular dependency: the calculation feeds itself. Switch the container to Simulation mode to run it as a feedback loop."
 4. For each output port, `internalEngine.fetch(marker.id)` and take `.value ?? null`. A missing marker gives null; a fetch that throws gives null.
 
 Values that are `SolError`s travel through the subgraph like any other value; an internal error reaches the output as that error.
+
+```mermaid
+flowchart LR
+    a["set each input marker's value<br>by the fallback order"] --> b["reset the<br>internal engine"]
+    b --> c["seed #CIRC! on the<br>internal loop members"]
+    c --> d["fetch each output marker:<br>its value, or null"]
+```
+
+Every run mode but Simulation is some number of these passes: one for Single and Manual, one per scenario, Data Table combination, Monte Carlo draw or By-Row row, and one per value Goal Seek tries plus one at its solution. Simulation runs its loop round by round instead (§ Loops).
 
 `collectMultiple(inputs, overridesList)` runs one pass per overrides entry and returns, per output port, the array of that port's values in run order.
 
@@ -144,17 +210,26 @@ Values that are `SolError`s travel through the subgraph like any other value; an
 | `goal-seek` | `goalSeek` configured | `runGoalSeek` |
 | `montecarlo` | always | `runMonteCarlo` (one pass when no input is uncertain) |
 | `by-row` | always | `runByRow` (one pass when unset or no rows) |
-| anything else | | one pass (`single`, `manual`, and the unconfigured cases above) |
+| anything else | | one pass (`single`, `manual`, `pipeline`, and the unconfigured cases above) |
+
+Tests:
+
+- `composite.test.ts`: each run mode (Scenarios, Data Table with its axes' combinations first axis slowest, By-Row with its row semantics and its cap's one warning, Goal Seek with its bounds, seed and `#CONV!`, Monte Carlo with and without a number to sample around, Simulation, manual refresh, the Pipeline preset and its chain), a mode switch into a heavy mode reading unsolved, and an error crossing the boundary acting as it would unpacked.
+- `compositeSeed.test.ts`: every composite in the Composite Workbench seed answers its pinned values through a real editor, and a composite's saved bytes are stable across save, load and save.
 
 ### Single run
 
 One pass, fully live, on every outer pass that reaches the card.
 
-### Manual refresh and Query
+### Manual refresh and Pipeline
 
-One pass, identical to Single, but always heavy: it computes only on Refresh. `insideOnly` never applies in `manual`.
+One pass, identical to Single, but always heavy: it computes only on Refresh. `insideOnly` never applies in `manual` or `pipeline` (`refreshes()`).
 
-Query is this mode as a catalog preset, not a class ([[C53]] queryIsCompositePreset). The `query` catalog entry creates a `CompositeNode` labeled `Query`, `runMode: "manual"`, with one exposed basic input port `table` (label Table, marker `qin`) and one output port `result` (label Result, marker `qout`), and a pending internal snapshot of the two markers at (0, 0) and (420, 0) joined by a cable. The drill-in canvas is the steps view and the Frame verbs placed between the markers are the steps ([[frame-verbs]]). Every add path hydrates a created composite right after `create()`, because Query ships its internals as a pending snapshot.
+Pipeline is a run mode that computes as Manual refresh does, plus one chain and its step list, and a catalog preset, not a class ([[C53]] pipelineIsCompositePreset). The `pipeline` catalog entry creates a `CompositeNode` labeled `Pipeline` with `runMode: "pipeline"`, one exposed basic input port `table` (label Table, marker `qin`) and one output port `result` (label Result, marker `qout`), and a pending internal snapshot of the two markers at (0, 0) and (420, 0) joined by a cable. Every add path hydrates a created composite right after `create()`, because Pipeline ships its internals as a pending snapshot.
+
+**One chain.** `pipelineChain()` walks the internal cables from the first input port's marker to the first output port's marker: each card it reaches must feed exactly one card, and the walk ends at the Result marker. It answers the steps in order and the first fault, `{ kind, node }`: `unwired` (the Table marker feeds nothing), `dead-end` (a card feeds nothing), `branch` (a card feeds two or more), `cycle`, or `off-chain` (a card the walk never reached that isn't an input marker: side inputs come in through the Pipeline's own input ports, whose markers may feed any step). A fault leaves the pass as it is; the card names the card that breaks the chain.
+
+**The step list** (`PipelineSteps`, `CompositeNode.tsx`, shown in the `pipeline` run mode) reads the chain on every render: each step numbered with its display name, in a list that scrolls past about seven steps (216px, `nowheel`). A step's row selects it (the first step until another is picked; view state, not saved), drawn as a selected Navigator group row is, a ring and a tint, in the card's own accent. A folded **Preview** section (closed by default, its fold saved as any card section's) shows the selected step's table (`FrameDisplay`, which opens the full popup). The list only reads the graph: nothing on the card reorders, skips or adds a step.
 
 ### Scenarios
 
@@ -188,7 +263,7 @@ Config: `byRowPortId` (`""` = unset).
 | any other value | itself, as one row |
 
 - No rows, or an unknown port, runs one plain pass. Otherwise one pass per row with that row as the port's override; each output is an array, one entry per row.
-- Cap: `BY_ROW_MAX_ROWS = 500`. By-Row is the one heavy mode whose pass count comes from the data rather than a typed number, and every pass recomputes the whole inside, so a huge wired table would freeze the Solve; the cut-short series still looks plausible, so the cap warns loudly rather than dropping rows silently. Rows past it are dropped from the tail. When the total exceeds the cap, the composite fires a warning alert (Alerts HUD and toast) "`<name>`: By-Row ran the first 500 of `<total>` rows (the rest were skipped)", where name is the trimmed label or `Composite`. It fires only when the total differs from the last capped total (`lastByRowCapTotal`, transient) and never while a graph rebuild is open ([[D79]] effectsEdgeTriggered, [[alert-node-alerts-hud]]). A run under the cap resets the edge.
+- Cap: `BY_ROW_MAX_ROWS = 500`. By-Row is the one heavy mode whose pass count comes from the data rather than a typed number, and every pass recomputes the whole inside, so a huge wired Frame would freeze the Solve; the cut-short series still looks plausible, so the cap warns loudly rather than dropping rows silently. Rows past it are dropped from the tail. When the total exceeds the cap, the composite fires a warning alert (Alerts HUD and toast) "`<name>`: By-Row ran the first 500 of `<total>` rows (the rest were skipped)", where name is the trimmed label or `Composite`. It fires only when the total differs from the last capped total (`lastByRowCapTotal`, transient) and never while a graph rebuild is open ([[D79]] effectsEdgeTriggered, [[alert-node-alerts-hud]]). A run under the cap resets the edge.
 - The editor is a "For each row of" picker over the exposed inputs, with `— none`; with none exposed it reads `— expose an input to iterate`.
 
 ### Goal Seek
@@ -222,11 +297,10 @@ Config: `monteCarlo: { samples, seed, correlations? }` or null; the defaults are
 
 #### The uncertain number
 
-An uncertain number (`UncertainNumber`, `valueKinds.ts`) is `{ kind: "uncertain", value, error, samples?, dropped? }`: `value ± error`, with `error` a non-negative 1σ (`uncertain()` stores `|error|`). It is scoped to the composite subsystem and is not threaded through general graph arithmetic; a numeric consumer reads the central `value` (`uncertainCenter`, `coerceNumber`).
+An uncertain number (`UncertainNumber`, `valueKinds.ts`) is `{ kind: "uncertain", value, error, samples?, dropped? }`: `value ± error`, with `error` a non-negative 1σ (`uncertain()` stores `|error|`). It is scoped to the composite subsystem and is not threaded through general graph arithmetic; a numeric consumer reads the central `value` (`coerceNumber`).
 
 - `samples` holds the raw Monte Carlo draws behind a summary and powers the histogram. It is not part of the value's identity, so a hand-built `value ± error` omits it.
 - `dropped` counts the draws the summary could not use (an errored or blank pass), so the readout can say "200 of 500 draws" instead of a confident mean over a fraction.
-- The propagation ops (`addUncertain`, `subUncertain`, `mulUncertain`, `divUncertain`, each normalizing plain numbers through `asUncertain` with error 0) use first-order Gaussian propagation for independent variables, with no covariance term. A sum or difference adds the errors in quadrature. A product's error is `√((b·σa)² + (a·σb)²)` and a quotient's is `√((σa/b)² + (a·σb/b²)²)`, the forms that stay finite when a or b is 0; a zero denominator still gives ±Inf or NaN.
 
 ### Simulation
 
@@ -242,11 +316,11 @@ A cable cycle inside a composite is detected with the same `loopMembers` as the 
 
 **In Simulation**, `runSimulation(inputs)` resolves the cycle as bounded feedback:
 
-1. Set each input marker's value to the wired value (exposed ports) or the port default, else null. This path does not read the marker seed; the plain pass in step 2 does.
+1. Set each input marker's value by the fallback order, with no override.
 2. Reset the internal engine and clear `simLastSteps`. With no loop members, return one plain pass.
 3. For each loop member, gather its cables from non-member sources and fetch those sources once through the engine. They are upstream of the loop and do not change between rounds.
 4. Order the members as `internalEditor.getNodes()` lists them.
-5. Rounds: `steps = max(1, round(simulationSteps))`. In each round, each member in order gets its static inputs plus, for each cable from another member, that member's latest output in a shared `state` map; a member that has not produced yet contributes nothing, so that input is unwired on the first round. The member's guarded `data()` is called directly and its result replaces its entry in `state`. This is Gauss-Seidel stepping: a member later in the order sees this round's values, an earlier one the previous round's. After each round a snapshot of every member's output is appended to the series.
+5. Rounds: `steps = max(1, round(simulationSteps))`. In each round, each member in order gets its static inputs plus, for each cable from another member, that member's latest output in a shared `state` map; a member that has not produced yet contributes nothing, so that input is unwired on the first round. The member runs through `internalEngine.compute(id, inputs)` (its `data()` through the input boundary, without the cache) and its result replaces its entry in `state`. This is Gauss-Seidel stepping: a member later in the order sees this round's values, an earlier one the previous round's. After each round a snapshot of every member's output is appended to the series.
 6. Stop when: when `stopWhenPortId` names an output whose marker has an incoming cable, the condition is checked after each round, and the halting round is kept in the series. If the marker is fed straight from a member, the value is read from `state`; otherwise the internal engine is reset, every member's current output is seeded into its cache, and the feeding node is fetched. `stopConditionMet(raw, op, value)` reads a logical as 1 or 0 and any other value through `Number`; `null`, `undefined` and non-finite values never stop, so a missing or broken round never halts the run. The ops are `gt`, `ge`, `lt`, `le`, `eq`, `ne`.
 7. `simLastSteps` = rounds run. Fewer than `steps` means the condition stopped it.
 8. Seed every member's final output into the internal engine cache, so nodes downstream of the loop resolve through the normal pull.
@@ -254,9 +328,13 @@ A cable cycle inside a composite is detected with the same `loopMembers` as the 
 
 With a stop port set, `simulationSteps` becomes a cap and its label reads Max steps. The Stop when picker offers the output ports whose adopted socket type is `number`, `numlist`, `logical`, `logicalcombo`, `any`, `trueany` or unresolved, plus the current pick; the op picker shows ≥ ≤ > < = ≠. After a run with a stop port the editor reads "stopped at step N" or "ran all N steps (never met)".
 
+Tests: `composite.test.ts`: a Simulation over a two-node feedback loop compounds at its rate whichever node the sweep visits first, its first step reading the starting literal; the stop condition halts on a loop node or a downstream observer; the series is mirrored into the output marker's `cachedResult`.
+
 ## The heavy-mode hold
 
-A composite in a heavy configuration holds its result until the user asks for a solve, and never solves on load, paste, create or a switch into a heavy mode ([[D52]] compositesHoldUntilSolve). Solving on load would stall opening a document, and a held composite sits blank so the user can watch it compute when they press Solve. The plain Single mode stays fully live.
+A composite in a heavy configuration holds its result until the user asks for a solve, and never solves on load, paste, create or a switch into a heavy mode ([[C23]] calcModes). Solving on load would stall opening a document, and a held composite sits blank so the user can watch it compute when they press Solve. The plain Single mode stays fully live.
+
+**A Solve or Refresh runs everything inside it fresh** (`aroundSolving`): while a composite solves, each held composite inside it, at any depth, runs as though its own Solve were pressed, on its real inputs, and records that solve. A multi-run's passes therefore recompute a held composite inside on every run, as its changing inputs demand (timing only its own solves, so the store doesn't churn per pass). Without it a manual composite nested in another computed only when drilled into and refreshed on its own, and never while the one around it held. The context is a counter on each composite, raised by the composite directly around it for its own direct insides (`withInner`), never a module global: the engine fetches a card's inputs concurrently, so a held sibling elsewhere could otherwise read another card's solve as its own..
 
 Heavy means holding is the point, not only cost: Manual refresh runs one pass and is heavy anyway, because holding until Refresh is its whole job, while Monte Carlo is heavy only when some input actually varies.
 
@@ -279,19 +357,36 @@ Every `data(inputs)`:
 
 1. Bump `runSeq`, sync port labels and marker socket types, and stamp the markers (`externallyWired`, `goalDriver`, clear `solvedValue` on non-drivers, `modeNote`, `goalTarget`). Stamps are topology and config only, so they stay current on a held pass.
 2. Resolve trig angle modes over the internal editor (`resolveTrigModes`) before any internal pull, so an Auto-mode trig node inside reads its incoming unit instead of computing in radians.
-3. If the mode is heavy and differs from `_lastRunMode`, set `lastSolveKey = null`. Record the mode.
-4. Heavy, with `solveRequested`: run the mode on `{}` when `solveInsideOnly`, else on `inputs`. When a live card inside started a fetch, wait for the fetches of the cards inside (`whenConnectionsSettled(ids)`), and if any landed (`connectionStore.landedCount(ids)` moved) run the mode again, up to `SOLVE_FETCH_ROUNDS` (4) more times, so one Solve answers on fresh data and a chain of live cards lands one link per round. Store the outputs in `cachedOutputs`; set `lastSolveKey = solveKey(inputs)` (always the real inputs, computed after the run); clear both request flags; set `stale` only when the rounds ran out while fetches were still landing or a live card inside waits for the document's network permission (`unsettled`, a card on a cadence, a chain longer than the rounds, or `gatedInside()`), which keeps the composite stale until the next Solve; return the outputs. While `gatedInside()` holds, the run controls show "Waiting for permission" under Solve, with the connection cards' Settings ▸ Data hint, so a blank answer says why.
-5. Heavy, `lastSolveKey === null`: set every output key to null in `cachedOutputs` (the engine refuses a result missing a key), clear `goalSeekResult` and every marker's `solvedValue`, mark stale, and return those blanks.
+3. If the mode is heavy and differs from `_lastRunMode`, set `lastSolveKey = null`. Record the mode, and whether the last pass was heavy.
+4. Heavy, with `solveRequested`, or while the composite around this one is solving (`aroundSolving`, below): run the mode on `{}` when `solveInsideOnly` (and only for its own request), else on `inputs`. When a live card inside started a fetch, wait for the fetches of the cards inside (`whenConnectionsSettled(ids)`), and if any landed (`connectionStore.landedCount(ids)` moved) run the mode again, up to `SOLVE_FETCH_ROUNDS` (4) more times, so one Solve answers on fresh data and a chain of live cards lands one link per round. Store the outputs in `cachedOutputs`; set `lastSolveKey = solveKey(inputs)` (always the real inputs, computed after the run); clear both request flags; set `stale` only when the rounds ran out while fetches were still landing or a live card inside waits for the document's network permission (`unsettled`, a card on a cadence, a chain longer than the rounds, or `gatedInside()`), which keeps the composite stale until the next Solve; return the outputs. While `gatedInside()` holds, the run controls show "Waiting for permission" under Solve, with the connection cards' Settings ▸ Data hint, so a blank answer says why. Before 5 and 6, a held composite with a Solve or Refresh waiting somewhere inside it (`innerSolvePending()`, at any depth) runs one plain pass of its inside (and `computeTheRest`), so the request reaches its card, then clears every request still waiting inside it (a card on a loop or out of the pass's reach would otherwise keep the held one running on every pass); its own `cachedOutputs`, key and stale state are left as they were. A composite whose mode is live clears its own request on each pass, since it has nothing to hold.
+5. Heavy, `lastSolveKey === null`: set every output key to null in `cachedOutputs` (the engine refuses a result missing a key), clear `lastPassKey`, clear `goalSeekResult` and every marker's `solvedValue`, mark stale, and return those blanks.
 6. Heavy otherwise: `stale = unsettled || solveKey(inputs) !== lastSolveKey`; return `cachedOutputs` unchanged.
-7. Not heavy: run the mode on `inputs`, store and return; not stale.
+7. Not heavy: run the mode on `inputs`, store the outputs with their `passKey(inputs)` and return; not stale. One exception: on the first pass after a heavy mode, when `passKey(inputs)` equals `lastPassKey`, return `cachedOutputs` without running, since that pass already ran. `lastPassKey` is set by a Manual refresh solve on the real inputs and by every live pass, and cleared by any other solve and by the blanks of step 5. `passKey` is `solveKey`'s inputs, seeds, spreads, edits and live stamp without the run mode and its setup, plus the recalc generation (F9 moves it) and whether the pass samples (Sketch), so a switch from Manual to Single after a Refresh costs nothing while F9, an edit inside, new data or a new input still runs (at 800,000 rows the switch was 2 to 3 s of main thread, 2026-11-01).
 
-Each branch publishes the staleness to `compositeStaleStore` (a set of stale ids with a notifier; forgetting a node clears it). The run controls subscribe to it, because a held card's outputs do not change and the pass's changed-output render pruning would otherwise skip it.
+Each branch publishes the staleness to `compositeStaleStore` (a set of stale ids with a notifier; forgetting a node clears it), and step 4 the wall time of its rounds (`ran`, read by `lastRunMs`; not saved). The run controls subscribe to it, because a held card's outputs do not change and the pass's changed-output render pruning would otherwise skip it.
 
-`solveKey(inputs)` is the JSON of: the inputs, where a primitive counts by value and an object by a per-composite reference token (a new Frame object reads as a change even when equal, and nothing is deep-serialized); every input marker's seed; every marker's `[uncertainty, distribution]`; `internalEditSeq`; and `runMode`, `goalSeek`, `monteCarlo`, `scenarios`, `dataTableValues`, `simulationSteps`, `stopWhenPortId`, `stopWhenOp`, `stopWhenValue`, `byRowPortId`. Any change to these after a solve turns the dot stale; the held value stays until the next Solve.
+```mermaid
+flowchart TD
+    data["data(inputs)"] --> stamp["stamp the markers; resolve trig modes"]
+    stamp --> heavy{"heavy?"}
+    heavy -->|no| live["run the mode on inputs:<br>fresh outputs, not stale"]
+    heavy -->|yes| req{"Solve or Refresh<br>asked for?"}
+    req -->|yes| solve["run the mode (again while live<br>fetches inside land, up to 4 rounds);<br>store outputs and the solve key"]
+    req -->|no| ever{"ever solved?"}
+    ever -->|no| blank["every output blank, stale"]
+    ever -->|yes| held["the held outputs; stale<br>when the solve key changed"]
+```
+
+`solveKey(inputs)` is the JSON of: the inputs, where a primitive counts by value and an object by a per-composite reference token (a new Frame object reads as a change even when equal, and nothing is deep-serialized); every input marker's seed; every marker's `[uncertainty, distribution]`; `internalEditSeq`; the live-data stamp of the cards inside (`connectionStore.liveStamp`), so a landed fetch reads as a change; and `runMode`, `goalSeek`, `monteCarlo`, `scenarios`, `dataTableValues`, `simulationSteps`, `stopWhenPortId`, `stopWhenOp`, `stopWhenValue`, `byRowPortId`. Any change to these after a solve turns the dot stale; the held value stays until the next Solve.
 
 **Solve from inside.** `requestSolve(insideOnly)` sets `solveRequested` and sets `solveInsideOnly` to `insideOnly && runMode !== "manual"`. The drill-in's controls pass `insideOnly`, so a Solve there runs on empty inputs: every exposed port falls to its seed, and Monte Carlo means and the goal-seek start come from the seeds too. The key is still taken on the real inputs, so the card does not read stale right after.
 
-**Errors on the card.** The card and the output marker are in `SEES_ERRORS` ([[D35]] errorInErrorOut): an error on a wired input crosses into the subgraph through its marker like any other value, and each member's own guard applies there. So a catcher inside (IFERROR) catches it, an output whose lane never reads that input keeps its value, and an error that reaches an output marker is that port's value, as the same nodes unpacked would give ([[C77]] compositeIsSubgraph). A held heavy card keeps its held outputs and reads stale ([[error-values]]).
+**Errors on the card.** The card and the output marker are in `SEES_ERRORS` ([[C24]] arraySemantics): an error on a wired input crosses into the subgraph through its marker like any other value, and each member's own guard applies there. So a catcher inside (IFERROR) catches it, an output whose lane never reads that input keeps its value, and an error that reaches an output marker is that port's value, as the same nodes unpacked would give ([[C77]] compositeIsSubgraph). A held heavy card keeps its held outputs and reads stale ([[error-values]]).
+
+Tests:
+
+- `composite.test.ts`: a heavy composite reads blank and stale until Solve, holds and flags stale on an input change or an edit inside, and solves again on Solve; a fresh load starts unsolved; nested manual refresh holds in both directions three deep, a held sibling never reads another card's solve, and a request clears; a heavy composite with a live card waiting for permission.
+- `liveCardUnmounted.test.ts`: a live card inside a heavy composite turns it stale and its Solve waits for the fetch ([[live-connections#The cache key]]).
 
 ## Make a composite from a selection
 
@@ -302,11 +397,13 @@ Each branch publishes the staleness to `compositeStaleStore` (a set of stale ids
 3. The origin is the minimum x and y over the members' measured boxes.
 4. Classify every cable: internal (both ends members), incoming (target is a member), outgoing (source is a member).
 5. Inside the surface's edit scope (`editScopeFor`: the main canvas's rebuild gate, or an open drill-in's own): remove all three sets of cables from the outer editor; move each member instance (not a copy) from the outer editor into the new composite's internal editor, recording its position relative to the origin in `internalPositions`; re-add the internal cables inside. A member keeps its id, so its store entries (size, pins, comments, frame formats, and a standoff to another member) stay with it; a standoff between a member and a card left outside is removed, since a standoff binds two cards on one canvas ([[standoffs]]).
-6. For each incoming cable, separately: create a `CompositeInputNode` labeled `<target label or class name> · <target input label or key>`, add it and install its guard, cable it to the member's input, place it 220 left of the member, add an exposed basic input port on it, and cable the outer source to that port on the card. Two cables into the selection give two ports even from one source.
+6. For each incoming cable, separately: create a `CompositeInputNode` labeled `<target label or class name> · <target input label or key>`, add it, cable it to the member's input, place it 220 left of the member, add an exposed basic input port on it, and cable the outer source to that port on the card. Two cables into the selection give two ports even from one source.
 7. For each outgoing cable, separately: create a `CompositeOutputNode` labeled `<source label or class name> · <source output label or key>`, cable the member's output to it, place it 80 right of the member's right edge (member width, or 220 when unknown), add an output port, and cable that port to the outer target. One member output feeding two outer targets gives two ports.
 8. Settle internal types, add the composite to the outer editor, and move it to the origin. Close the scope and run its settle once (`bulkSettle()` on the main canvas, a full pass).
 
-The new composite is labeled `Composite`, in `single` mode, and returns its id.
+The new composite is labeled `Composite`, in `single` mode, and returns its id. A group that held a wrapped card holds the composite in its place (the first such group, as a card sits in one), and Unpack hands the composite's group its cards back (`swapMembers`), with group tints rebuilt after either.
+
+Tests: `compositeLogic.test.ts`: nothing selected returns null; a mixed selection collapses into one card and computes end to end; a selected host's docked FC goes along; a selection with no crossing cables makes a port-less composite; each member's position is kept relative to the box; an already selected Composite is left out.
 
 ## Unpack
 
@@ -321,6 +418,8 @@ The new composite is labeled `Composite`, in `single` mode, and returns its id.
 7. Remove the card, close the scope, and run its settle once.
 
 Any re-added cable the editor refuses is dropped silently. What only the boundary held is gone after unpack: marker seeds, port defaults, Monte Carlo spreads, the run mode and its config. An unwired input that relied on a seed arrives unwired.
+
+Tests: `compositeLogic.test.ts`: unpack restores the nodes, wiring and computation, and is a no-op on a card that is no composite.
 
 ## Save and load
 
@@ -338,8 +437,8 @@ The card saves through the generic `extractInit`, with no composite code in pers
 `snapshotInternal()` returns `{ nodes, connections, standoffs?, pins?, comments?, frameFormats? }`. Every id in it is a **saved id** (`savedInternalId`): the id the node was hydrated from, or its live id when it was added since, so a save → load → save writes the same bytes.
 
 - For a pending composite (loaded, never hydrated) it returns the pending snapshot untouched.
-- Each internal node becomes `{ id, type, init, literals?, stringLiterals?, size?, collapsed?, flipped?, x?, y? }`: `id` is its saved id and `x`/`y` come from `internalPositions` when recorded; everything else is `savedNodeBody(n)` (`savedNodeBody.ts`), the same per-node serializer the main save uses, so a field the main save gains the composite gains too (`compositeCardState.test.ts` fails if the two shapes diverge). A Composite Input's `init.value` is dropped, since it is the last injected input, not state.
-- **Names are not saved yet.** A card named inside a composite gets a fresh default name after a reload or a drill-in undo. Whether inner names are scoped to their composite or share the document's one namespace is pending with the author ([[composite-inner-names]]); the snapshot omits `name` until then.
+- Each internal node becomes `{ id, type, init, literals?, stringLiterals?, size?, collapsed?, flipped?, x?, y? }`: `id` is its saved id and `x`/`y` come from `internalPositions` when recorded; everything else is `savedNodeBody(n)` (`savedNodeBody.ts`), the same per-node serializer the main save uses, so a field the main save gains the composite gains too (the two shapes must not diverge). A Composite Input's `init.value` is dropped, since it is the last injected input, not state.
+- **Names belong to their composite** ([[C77]] compositeIsSubgraph). A name given to a card inside a composite is scoped to that composite, so it may repeat a name used on the main canvas or in another composite, and a formula inside finds its own composite's name first. A copied composite keeps working without renaming. *Not built yet:* inner names aren't saved, so a named inner card gets a fresh default name after a reload or a drill-in undo, and the snapshot omits `name` (`docs/backlog.md` § Packs).
 - A `PlaceholderNode` saves as its original type with its saved init and literal maps, never as a Placeholder ([[C35]] unknownViaPlaceholder).
 - The side tables are `savedSideTables` (`savedNodeBody.ts`) over the internal editor: every standoff, pin, comment and frame format whose nodes are all inner cards, under saved ids. The main save runs the same function over the main editor, so an entry is saved once, by the graph that holds its node, and travels wherever the snapshot goes: a save, a main or drill-in undo, a copy, a duplicate. A nested composite's inner entries ride in its own snapshot.
 - Each connection becomes `{ source, sourceOutput, target, targetInput }`, both ends as saved ids.
@@ -349,10 +448,10 @@ The constructor copies ports, scenarios, overrides, data-table lists and configs
 `hydrate(reg)` does nothing when nothing is pending. Otherwise, with `_hydrating` set:
 
 1. Find the saved nodes whose type is not in `reg`, and derive their socket keys from the saved connections (`deriveMissingNodeSockets`).
-2. For each saved node in order: an unknown type becomes a `PlaceholderNode` carrying `missingType`, the saved init and literal maps, the derived input and output keys, and the label from `init.label` or the type name; its outputs emit `#REF!`. A known type is constructed with a copy of its init, and its literal maps are restored only onto a class that declares them ([[C28]] literalsIffEditable); a nested composite is hydrated right there, since it computes inside this one's pass and would otherwise read null until drilled into. Restore its size, collapse and flip onto the new id (`restoreNodeState`, shared with the main load), add it to the internal editor, install its guard, record its saved position under its new id, and remember the saved id for the new one.
+2. For each saved node in order: an unknown type becomes a `PlaceholderNode` carrying `missingType`, the saved init and literal maps, the derived input and output keys, and the label from `init.label` or the type name; its outputs emit `#REF!`. A known type is constructed with a copy of its init, and its literal maps are restored only onto a class that declares them ([[C28]] literalsIffEditable); a nested composite is hydrated right there, since it computes inside this one's pass and would otherwise read null until drilled into. Restore its size, collapse and flip onto the new id (`restoreNodeState`, shared with the main load), add it to the internal editor, record its saved position under its new id, and remember the saved id for the new one.
 3. Re-add the saved connections between built nodes; a refused or dangling one is skipped.
-4. Restore the snapshot's side tables onto the new ids (`restoreSideTables`, shared with the main load; additive, and a comment whose id is taken, as on a second paste, gets a fresh one). Remap every port's `internalNodeId` from the saved id to the new id (rete mints fresh ids on construction). A port whose marker was not built keeps the stale id.
-5. Clear `_hydrating`, settle wildcard types, dock every internal Format Controller (`dockSelf`; one whose host is gone loads free, [[save-format]]), then run `settleInternalTypes()` once. Wildcards settle before the docks, as on the main load, or a docked FC adapts to the wildcard. So a drill-in's open and every undo restore (both hydrate) come up with docks and FC types settled.
+4. Restore the snapshot's side tables onto the new ids (`restoreSideTables`, shared with the main load; additive, and a comment whose id is taken, as on a second paste, gets a fresh one). Remap every port's `internalNodeId` from the saved id to the new id (every node gets a fresh id on construction). A port whose marker was not built keeps the stale id.
+5. Clear `_hydrating`, dock every internal Format Controller (`dockSelf`, which only registers the dock; one whose host is gone loads free, [[save-format]]), then run `settleInternalTypes()` once, whose reconcile settles the wildcards before it types the FCs. So a drill-in's open and every undo restore (both hydrate) come up with docks and FC types settled.
 
 Hydration happens on document load (after the outer cables, with the same registry), on add from the Add menu, on paste (each pasted composite clone), on drill-in open, and on unpack. A pack switched off still has its classes registered, so its nodes inside a composite construct normally ([[C79]] packActivationIsPresentation); only a type no build registers takes the Placeholder path. A formula pack node inside is a core Expression and always loads ([[C76]] formulaPackDefault).
 
@@ -360,21 +459,50 @@ Hydration happens on document load (after the outer cables, with the same regist
 
 Copy and paste treat a composite like any node: the clone is constructed from `extractInit`, so its `internal` snapshot rides along, and it is hydrated before it is added. Inside a drill-in, copy works on the internal editor and never copies markers. Saving always serializes the main graph, never the open drill-in ([[save-format#Saving binds the main graph]]). The save validator recurses into `init.internal`, prefixing its findings with "inside the composite" ([[save-format]]).
 
+Tests:
+
+- `compositeCardState.test.ts`: an inner card keeps its size, collapse and flip, in both save shapes.
+- `compositeInnerSideTables.test.ts`: an inner card's pins, comments, frame formats and standoffs travel with the composite.
+- `compositeNodeRefs.test.ts`: node references inside a composite survive save and load.
+- `compositeFcSettle.test.ts`: hydrate docks each internal FC and types it from its host, an undo restore does the same, and a saved host that is gone loads the FC free.
+
 ## Edits inside and how they reach the outside
 
 The drill-in is the main canvas's surface component over the internal editor ([[B3]] sameNodeEverywhere). What it changes flows out this way:
 
+```mermaid
+flowchart TD
+    edit["an edit inside the drill-in"] --> k{"what changed?"}
+    k -->|"a node or cable"| topo["the composite's pipe bumps<br>internalEditSeq, settles types"]
+    k -->|"a value, a seed, a spread"| val["processGraph(the inner id)"]
+    k -->|"card or run-control config"| cfg["processGraph(the card)"]
+    topo --> pass["a pass at the outermost composite<br>on the breadcrumb"]
+    val -->|"not in the main editor: mark the<br>nesting chain, retarget"| pass
+    cfg --> pass
+    pass --> recompute["the card's data() runs its<br>internal passes afresh<br>(a held heavy card recomputes nothing)"]
+```
+
+
 - **Topology** (a node or cable added or removed inside). The composite's own pipe bumps `internalEditSeq` and, for a cable, settles internal types and boundary adoption. The drill stack's pipe then runs `processGraph(stack[0].id)`, targeting the outermost composite on the breadcrumb, and schedules an autosave and an undo record.
-- **Values** (a field on an internal card, a marker seed, a Monte Carlo spread). The component calls `processGraph` with the internal node's id, or with no id. The outer pass does not find that id in the main editor, so it bumps `markInternalEdit()` on every composite in the nesting chain and retargets the pass at the outermost owner ([[compute-pass]] § Retarget into composites).
+- **Values** (a field on an internal card, a marker seed, a Monte Carlo spread). The component calls `processGraph` with the internal node's id, or with no id. The outer pass does not find that id in the main editor, so it bumps `markInternalEdit()` on every composite in the nesting chain and retargets the pass at the outermost owner ([[compute-pass#The pass body]], step 4).
 - **Config** on the card or in the drill-in's run controls calls `processGraph(node.id)`, retargeted the same way when the composite is nested.
-- **Ports.** + Input and + Output in the drill-in strip add a marker at the left or right edge of the view, labeled `Input N` or `Output N`, plus an exposed basic port or an output port, re-render the outer card when the parent is the main canvas, recompute and autosave.
+- **Ports.** + Input and + Output in the drill-in strip (on a phone, I and O beside the bottom bar's ➕) add a marker at the left or right edge of the view, labeled `Input N` or `Output N`, plus an exposed basic port or an output port, re-render the outer card when the parent is the main canvas, recompute and autosave.
 - **Leaving a level** reconciles ports whose marker is gone (removing their parent cables, with a notice), then `syncPortLabels()`, so a marker renamed inside renames the card's socket ([[composite-drill-in-mount-lifecycle]] § Leaving a level).
 
 Because every internal pass fully resets the internal engine, the subgraph is recomputed whenever the card's `data()` computes, and a held heavy card recomputes nothing.
 
+**Every card inside computes, in every mode** (`computeTheRest`): after `runActiveMode`'s passes, whatever the mode, each internal card no output pulled is fetched from the last pass's engine, as the main canvas computes every card. So a card wired to nothing (a loose Value Input, a Display, a nested composite with no ports yet and so everything inside it, at any depth) shows its value in the drill-in. The engine's cache already holds what the outputs pulled, so this costs only the cards they left out, and a multi-run (Scenarios, a data table, Monte Carlo, goal seek, By row) pays for it once, reading its last run, not per run. A held heavy card runs no passes and computes nothing, unless a Refresh waits on a composite inside it (§ The heavy-mode hold, step 4). During a multi-run's passes the composites inside skip their own `computeTheRest` (`aroundMultiRun`), so a loose card inside a nested composite (an alert, a write) never runs once per pass; once the run is over, its own fill reaches its direct loose cards and then each composite inside it fills its own from its last pass, at every depth (`computeTheRestAfterMultiRun`; a held one that never ran is left alone, having nothing to read). Monte Carlo with an uncertain input that isn't a number runs one plain pass before giving up, so the cards inside read this run's inputs, not what the engine kept from the last run. it holds in Single at two depths, after Scenarios (a port-less composite inside and one whose output the passes pull) and for Monte Carlo's no-number case.
+
+Tests:
+
+- `composite.test.ts`: every card inside computes, in Single at two depths, after Scenarios and in Monte Carlo's no-number case; a drill-in edit to the subgraph flags a held composite stale.
+- `closedCompositePrune.test.ts`: a node inside a closed composite resolves to its internal editor, nested too, so its prune reaches its cables.
+- `compositeLeaveLevels.test.ts`: a port whose marker was deleted inside is dropped with the parent's cables on it.
+- `compositeFcSettle.test.ts`: a `data()`-time prune in a closed composite re-types the FC.
+
 ## Packs
 
-A pack node that grows past one formula becomes a composite ([[C77]] compositeIsSubgraph, `docs/pack-architecture.md`). Two pieces of that shape exist as data only: `exposure: "hidden"` and `tier: "advanced"` are honored where noted above (a hidden port gets no card socket and skips the wired value; the tier is saved), but nothing in the app creates a hidden port, reads the tier, or lets a pack declare a composite. Every port the app creates is exposed and basic. Locked is the silent default and only promotable ports earn chrome ([[C78]] packLegibility); a composite card today has no lock state of its own. A simple pack node never hides extra nodes inside to enforce an input's limit; a limit is a setting on the input. A one-formula pack node is treated as a one-node composite, so growing it into a composite changes nothing about how it appears, how input limits attach, or how errors show.
+When a pack node needs more than one formula, it becomes a composite ([[C77]] compositeIsSubgraph, `docs/pack-architecture.md`). Composite ports have two settings that are stored but not used yet: `exposure: "hidden"` and `tier: "advanced"`. A hidden port gets no socket on the card and ignores any wired value, and a port's tier is saved with it. But nothing in the app creates a hidden port or reads the tier, and no pack can declare a composite yet. So every port the app creates is exposed and basic. When packs do lock their insides, locked will be the unmarked default, and only ports the user can promote will get a visual mark ([[C78]] packLegibility). For now, a composite card has no locked state at all. An input's limit, like a minimum value, is a setting on that input. A simple pack node never enforces a limit by hiding extra nodes inside itself. A one-formula pack node behaves like a composite with one node inside. So when it grows into a real composite, it looks the same, its input limits attach the same way, and its errors show the same way.
 
 ## Refused and not built
 

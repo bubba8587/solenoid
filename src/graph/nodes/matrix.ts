@@ -1,20 +1,16 @@
-// [[C58]], [[C48]], [[B11]]
-import { ClassicPreset } from "rete";
-import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, wrapCount, wrapCells, stackH, stackV, chooseAxis, expandMat, setCells, flattenCells, SKIP_BY_CODE, type SkipCells } from "./matrixOps";
-import { takeSlice, dropSlice } from "./listOps";
-import { numIn, numOut, listIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn, readInput, readRole } from "./shared";
+// [[C58]] tableInputRawText, [[C48]], [[B11]]
+import { GraphNode, GraphOutput } from "../graphModel";
+import { forgetKeyed, type KeyedKind } from "../literalFields";
+import { nodeOnCore } from "../nodeOnCore";
+import { SKIP_BY_CODE, type SkipCells } from "./matrixOps";
+import { numIn, numOut, listIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn } from "./shared";
 import { rolesFrom } from "../inputRoles";
-import { pickSlot, pairIdsFromKeys } from "./logic";
+import { pairIdsFromKeys } from "./logic";
 import type { PassthroughSpec } from "./passthrough";
-import { toAnyMatrix, matrixShape, type Cell } from "./coerce";
+import type { Cell } from "./coerce";
 import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
 import { parseCsvRows } from "../csv";
-import { solError, isSolError, type SolError } from "../errorValue";
-import { isFrameValue, frameRowCount, coerceFrameCell, type FrameValue } from "../frame";
-import { isFrameRef, collectPreview } from "../frameBackend";
-import { carryMatrixUnit, withMatrixUnit, matrixUnitOf, sharedMatrixUnit, isUnitCell } from "../unitValue";
-import { applyFcUnit } from "../unitBridge";
-import { taggedListFromMatrix, matrixCellsFromList } from "../unitColumn";
+import type { SolError } from "../errorValue";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -25,7 +21,7 @@ type CellMat = Cell[][];
 
 export type TableElemType = "number" | "string" | "date" | "logical";
 
-export const TABLE_ELEM_SOCKET = {
+const TABLE_ELEM_SOCKET = {
   number: tableSocket,
   string: strTableSocket,
   date: dateTableSocket,
@@ -53,11 +49,7 @@ export function rawCellsToText(cells: string[][]): string {
   return lines.length > 0 && lines[lines.length - 1] === "" ? text + "\n" : text;
 }
 
-export function deriveTable(cells: string[][], dt: TableElemType): CellMat {
-  return cells.map((row) => row.map((c) => coerceFrameCell(dt, c) as Cell));
-}
-
-export class TableInputNode extends ClassicPreset.Node {
+export class TableInputNode extends GraphNode {
   label: string;
   cachedResult: CellMat | null = null;
   tableText: string = "1, 0\n0, 1";
@@ -72,7 +64,7 @@ export class TableInputNode extends ClassicPreset.Node {
     if (init?.tableText != null) this.tableText = init.tableText;
     this.dataType = init?.dataType ?? "number";
     if (init?.unit != null) this.unit = init.unit;
-    this.addOutput("table", new ClassicPreset.Output(TABLE_ELEM_SOCKET[this.dataType], "Table"));
+    this.addOutput("table", new GraphOutput(TABLE_ELEM_SOCKET[this.dataType], "Table"));
   }
 
   rawCells(): string[][] { return tableRawCells(this.tableText); }
@@ -86,34 +78,28 @@ export class TableInputNode extends ClassicPreset.Node {
     return true;
   }
 
-  data() {
-    const cells = this.rawCells();
-    let result = cells.length ? deriveTable(cells, this.dataType) : null;
-    // applyFcUnit tags a copy of the outer array; the cells stay bare.
-    if (result && this.dataType === "number" && this.unit !== "none") {
-      result = applyFcUnit(result, this.unit) as CellMat;
-    }
-    this.cachedResult = result;
-    return { table: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { table: CellMat | null };
   }
 }
 
 // ─── MDETERM / MINVERSE ───────────────────────────────────────────────────────
 
-export type MatDetOp = "mdeterm" | "minverse" | "trace" | "rank" | "norm";
+export type MatDetOp = "mdeterm" | "minverse" | "pinv" | "trace" | "rank" | "norm";
 
 export const MAT_DET_OP_META = {
   mdeterm:  { label: "MDETERM",  description: "Determinant of a square matrix. Excel: `MDETERM`." },
   minverse: { label: "MINVERSE", description: "Inverse of a square matrix: result × input = identity. Excel: `MINVERSE`." },
+  pinv:     { label: "PINV",     description: "Moore–Penrose pseudo-inverse of a matrix of any shape: the least-squares inverse, which equals MINVERSE when that exists. numpy `linalg.pinv`, MATLAB `pinv`." },
   trace:    { label: "TRACE",    description: "Sum of the main diagonal. numpy `trace`, R `sum(diag(m))`." },
   rank:     { label: "MATRIXRANK", description: "Rank: the number of linearly independent rows (Gaussian elimination with a tolerance). numpy `matrix_rank`, R `qr(m)$rank`." },
   norm:     { label: "NORM",     description: "Frobenius norm: √Σ every cell squared (`numpy.linalg.norm` default, R `norm(m, \"F\")`). Excel: `SQRT(SUMSQ(range))`." },
 } satisfies Record<MatDetOp, { label: string; description: string }>;
 const MAT_DET_SCALAR: ReadonlySet<MatDetOp> = new Set(["mdeterm", "trace", "rank", "norm"]);
 
-export class MatDetNode extends ClassicPreset.Node {
+export class MatDetNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    matrix: "The matrix must be square, with every cell filled.",
+    matrix: "Every cell filled; square for MDETERM, MINVERSE and TRACE, any shape for PINV, MATRIXRANK and NORM.",
   };
 
   label: string;
@@ -127,7 +113,7 @@ export class MatDetNode extends ClassicPreset.Node {
     this.op    = init?.op    ?? "mdeterm";
     this.label = init?.label ?? "";
     this.addInput("matrix", tableIn("Matrix"));
-    this.addOutput("result", MAT_DET_SCALAR.has(this.op) ? numOut(MAT_DET_OP_META[this.op].label) : tableOut("Inverse"));
+    this.addOutput("result", MAT_DET_SCALAR.has(this.op) ? numOut(MAT_DET_OP_META[this.op].label) : tableOut(this.op === "pinv" ? "Pseudo-inverse" : "Inverse"));
   }
 
   /** Retypes in place and fires no connection event, so the component follows with retypeOutputCables. */
@@ -136,91 +122,51 @@ export class MatDetNode extends ClassicPreset.Node {
     this.op = next;
     const out = this.outputs.result;
     if (!out) return;
-    const spec = MAT_DET_SCALAR.has(next) ? numOut(MAT_DET_OP_META[next].label) : tableOut("Inverse");
+    const spec = MAT_DET_SCALAR.has(next) ? numOut(MAT_DET_OP_META[next].label) : tableOut(next === "pinv" ? "Pseudo-inverse" : "Inverse");
     out.socket = spec.socket;
     out.label = spec.label;
   }
 
-  data(inputs: { matrix?: CellMat[] }): { result: number | Mat | SolError | null } {
-    const raw = inputs.matrix?.[0] ?? null;
-    this.cachedScalar = null;
-    this.cachedMatrix = null;
-    if (!raw) return { result: null };
-    const m = asNumericMatrix(raw);
-    const scalar = MAT_DET_SCALAR.has(this.op);
-    if (isSolError(m)) {
-      if (scalar) this.cachedScalar = m; else this.cachedMatrix = m;
-      return { result: m };
-    }
-    if (this.op === "rank")  { const r = matRank(m);  this.cachedScalar = r; return { result: r }; }
-    if (this.op === "norm")  { const r = matNorm(m);  this.cachedScalar = r; return { result: r }; }
-    if (matRows(m) !== matCols(m)) {
-      const err = solError("#SHAPE!", "Matrix must be square");
-      if (scalar) this.cachedScalar = err; else this.cachedMatrix = err;
-      return { result: err };
-    }
-    if (this.op === "trace") { const r = matTrace(m); this.cachedScalar = r; return { result: r }; }
-    if (this.op === "mdeterm") {
-      const d = matDet(m);
-      if (d === null) {
-        const err = solError("#DIV/0!", "Matrix is singular");
-        this.cachedScalar = err;
-        return { result: err };
-      }
-      this.cachedScalar = d;
-      return { result: d };
-    } else {
-      const inv = matInverse(m);
-      if (inv === null) {
-        const err = solError("#DIV/0!", "Matrix is singular. It has no inverse");
-        this.cachedMatrix = err;
-        return { result: err };
-      }
-      this.cachedMatrix = inv;
-      return { result: inv };
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | Mat | SolError | null };
   }
 }
 
 // ─── MMULT ────────────────────────────────────────────────────────────────────
 
-export class TableMultNode extends ClassicPreset.Node {
+export type TableMultOp = "mmult" | "kron";
+export const TABLE_MULT_OP_META: Record<TableMultOp, { label: string; fx: string; description: string }> = {
+  mmult: { label: "MMULT", fx: "MMULT", description: "Matrix multiply: A (m×n) × B (n×p) → result (m×p). Excel: `MMULT`." },
+  kron:  { label: "KRON",  fx: "KRON",  description: "Kronecker product: every cell of A times the whole of B, laid out as blocks, (m·p)×(n·q). numpy `kron`, MATLAB `kron`." },
+};
+
+export class TableMultNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    b: "Its row count must equal A's column count.",
+    b: "For MMULT its row count must equal A's column count; KRON takes any shapes.",
   };
 
   label: string;
+  op: TableMultOp;
   cachedResult: Mat | SolError | null = null;
   width = 180; height = 210;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; op?: TableMultOp }) {
     super("TableMult");
+    this.op = init?.op === "kron" ? "kron" : "mmult";
     this.label = init?.label ?? "MMULT";
     this.addInput("a", tableIn("A"));
     this.addInput("b", tableIn("B"));
     this.addOutput("result", tableOut("A × B"));
   }
 
-  data(inputs: { a?: CellMat[]; b?: CellMat[] }): { result: Mat | SolError | null } {
-    const rawA = inputs.a?.[0] ?? null, rawB = inputs.b?.[0] ?? null;
-    if (!rawA || !rawB) { this.cachedResult = null; return { result: null }; }
-    const a = asNumericMatrix(rawA), b = asNumericMatrix(rawB);
-    if (isSolError(a)) { this.cachedResult = a; return { result: a }; }
-    if (isSolError(b)) { this.cachedResult = b; return { result: b }; }
-    const product = matMul(a, b);
-    if (product === null) {
-      const err = solError("#SHAPE!", "A's column count must equal B's row count");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    this.cachedResult = product;
-    return { result: product };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Mat | SolError | null };
   }
 }
 
 // ─── MUNIT ────────────────────────────────────────────────────────────────────
 
-export class TableUnitNode extends ClassicPreset.Node {
+export class TableUnitNode extends GraphNode {
   static inputRoles = rolesFrom("MUNIT", { n: 0 });
   label: string;
   cachedResult: Mat | SolError | null = null;
@@ -237,16 +183,13 @@ export class TableUnitNode extends ClassicPreset.Node {
     this.addOutput("result", tableOut("n×n identity"));
   }
 
-  data(inputs: { n?: number[] }) {
-    const n = readRole<number | SolError>(this, "n", inputs.n);
-    if (isSolError(n)) { this.cachedResult = n; return { result: n }; }
-    this.cachedResult = matUnit(n, this.offDiag === "blank" ? null : 0);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Mat | SolError | null };
   }
 }
 
 // ─── DIAGONAL ───────────────────────────────────────────────────────────────
-export class TableDiagNode extends ClassicPreset.Node {
+export class TableDiagNode extends GraphNode {
   label: string;
   cachedResult: Mat | SolError | null = null;
   offDiag: "zero" | "blank" = "zero";
@@ -260,16 +203,13 @@ export class TableDiagNode extends ClassicPreset.Node {
     this.addOutput("result", tableOut("Diagonal matrix"));
   }
 
-  data(inputs: { diag?: (number | null)[][] }) {
-    const values = inputs.diag?.[0] ?? null;
-    if (!values || values.length === 0) { this.cachedResult = null; return { result: null }; }
-    this.cachedResult = matDiag(values, this.offDiag === "blank" ? null : 0);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Mat | SolError | null };
   }
 }
 
 // ─── OUTER ────────────────────────────────────────────────────────────────────
-export class TableOuterNode extends ClassicPreset.Node {
+export class TableOuterNode extends GraphNode {
   label: string;
   cachedResult: Mat | SolError | null = null;
   width = 180; height = 200;
@@ -282,53 +222,57 @@ export class TableOuterNode extends ClassicPreset.Node {
     this.addOutput("result", tableOut("Outer product"));
   }
 
-  data(inputs: { a?: (number | null)[][]; b?: (number | null)[][] }) {
-    const a = inputs.a?.[0] ?? null;
-    const b = inputs.b?.[0] ?? null;
-    if (!a || !b || a.length === 0 || b.length === 0) { this.cachedResult = null; return { result: null }; }
-    this.cachedResult = outerProduct(a, b);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Mat | SolError | null };
   }
 }
 
 // ─── TRANSPOSE ────────────────────────────────────────────────────────────────
 
-export class TableTransposeNode extends ClassicPreset.Node {
+export type TableTransposeOp = "transpose" | "rot90";
+export const TABLE_TRANSPOSE_OP_META: Record<TableTransposeOp, { label: string; fx: string; description: string }> = {
+  transpose: { label: "TRANSPOSE",  fx: "TRANSPOSE", description: "Flips rows and columns of a table. Excel: `TRANSPOSE`." },
+  rot90:     { label: "Rotate 90°", fx: "ROT90",     description: "Turns a table a quarter turn counterclockwise, Turns times (negative turns clockwise). numpy `rot90`, MATLAB `rot90`." },
+};
+
+export class TableTransposeNode extends GraphNode {
+  static inputRoles = rolesFrom("ROT90", { turns: 1 });
+  static socketDocs: Record<string, string> = {
+    turns: "Quarter turns counterclockwise; negative turns clockwise.",
+  };
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
   label: string;
+  op: TableTransposeOp;
+  literals: Record<string, number> = {};
   cachedResult: CellMat | null = null;
   width = 180; height = 180;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; op?: TableTransposeOp }) {
     super("TableTranspose");
+    this.op = init?.op === "rot90" ? "rot90" : "transpose";
     this.label = init?.label ?? "TRANSPOSE";
     this.addInput("matrix", adoptiveTableIn("Matrix"));
-    this.addOutput("result", adoptiveTableOut("Transposed"));
+    if (this.op === "rot90") this.addInput("turns", numIn("Turns"));
+    this.addOutput("result", adoptiveTableOut(this.op === "rot90" ? "Rotated" : "Transposed"));
   }
 
-  data(inputs: { matrix?: unknown[] }) {
-    const m = toAnyMatrix(inputs.matrix?.[0]);
-    this.cachedResult = m ? carryMatrixUnit(matTranspose(m), m) : null;
-    return { result: this.cachedResult };
+  /** The departing input keys, for the caller to prune first. */
+  setOp(next: TableTransposeOp): string[] {
+    if (next === this.op) return [];
+    this.op = next;
+    if (next === "rot90" && !this.inputs.turns) this.addInput("turns", numIn("Turns"));
+    const gone = next === "transpose" && this.inputs.turns ? ["turns"] : [];
+    for (const k of gone) this.removeInput(k);
+    if (this.outputs.result) this.outputs.result.label = next === "rot90" ? "Rotated" : "Transposed";
+    return gone;
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellMat | SolError | null };
   }
 }
 
 // ─── HSTACK / VSTACK — the 2-D rungs of the append ladder ([[C48]] appendLadder) ───────────────
-
-function wrapPadCell(fill: unknown[] | undefined, what: string): Cell {
-  const v = (fill?.[0] ?? null) as Cell;
-  return v != null ? v : solError("#N/A", `Padded: the list doesn't fill the last ${what}`);
-}
-
-/** A matrix carries one whole-grid unit tag, never per-cell UnitCells, so reduce a widened list row to bare magnitudes plus their shared unit. */
-function demoteUnitCells(m: CellMat): CellMat {
-  if (!m.some((row) => row.some(isUnitCell))) return m;
-  const { mags, unit } = matrixCellsFromList(m.flat());
-  const bare: CellMat = [];
-  let i = 0;
-  for (const row of m) { bare.push(mags.slice(i, i + row.length) as Cell[]); i += row.length; }
-  return withMatrixUnit(bare, unit);
-}
 
 export type StackOp = "vstack" | "hstack";
 
@@ -337,8 +281,8 @@ export const STACK_OP_META = {
   hstack: { label: "HSTACK", description: "Concatenates tables side by side. A list counts as one row, so two lists make one long row. A shorter table pads down with `#N/A`. Excel: `HSTACK`." },
 } satisfies Record<StackOp, { label: string; description: string }>;
 
-export class StackNode extends ClassicPreset.Node {
-  /** Receives UnitCell tags so demoteUnitCells can lift a dimensioned list row to a grid unit. */
+export class StackNode extends GraphNode {
+  /** Receives UnitCell tags, so a dimensioned list row lifts to a grid unit. */
   unitAware = true;
   label: string;
   op: StackOp;
@@ -379,20 +323,8 @@ export class StackNode extends ClassicPreset.Node {
     this.removeInput(key);
   }
 
-  private matsOf(inputs: Record<string, unknown[] | undefined>): CellMat[] {
-    return this.valueInputKeys()
-      .map((k) => toAnyMatrix(inputs[k]?.[0]))
-      .filter((m): m is CellMat => !!m && m.length > 0)
-      .map(demoteUnitCells);
-  }
-
   data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
-    const mats = this.matsOf(inputs);
-    if (mats.length === 0) { this.cachedResult = null; return { result: null }; }
-    const out = (this.op === "vstack" ? stackV(mats) : stackH(mats)) as CellMat;
-    withMatrixUnit(out, sharedMatrixUnit(mats));
-    this.cachedResult = out;
-    return { result: out };
+    return nodeOnCore(this, inputs) as { result: CellMat | SolError | null };
   }
 }
 
@@ -407,7 +339,7 @@ export const TABLE_RESHAPE_OP_META = {
   torow:    { label: "TOROW",    description: "Lines a table's values up in one list, reading row by row. Excel: `TOROW`." },
 } satisfies Record<TableReshapeOp, { label: string; description: string }>;
 
-export class TableReshapeNode extends ClassicPreset.Node {
+export class TableReshapeNode extends GraphNode {
   static inputRoles = rolesFrom("WRAPROWS", { wrapCount: 1 });
   static socketDocs: Record<string, string> = {
     fill: "Pads the leftover cells. Unwired or blank pads with #N/A, like Excel's default.",
@@ -471,49 +403,8 @@ export class TableReshapeNode extends ClassicPreset.Node {
     return { outputChanged: spec.socket !== before };
   }
 
-  data(inputs: { list?: unknown[]; wrapCount?: number[]; fill?: unknown[]; matrix?: unknown[] }) {
-    this.cachedList = null;
-    this.cachedMatrix = null;
-    // Pads with the wired Fill, or Excel's #N/A when Fill is unwired or blank, the same rule as the formula surface's wrapPad.
-    if (this.op === "wraprows") {
-      const raw = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
-      const wRaw = readRole<number | SolError>(this, "wrapCount", inputs.wrapCount);
-      if (isSolError(wRaw)) return { result: wRaw };
-      if (!raw) return { result: null };
-      const w = wrapCount(wRaw, "WRAPROWS");
-      if (isSolError(w)) return { result: w };
-      const { mags: list, unit } = matrixCellsFromList(raw);
-      const pad = wrapPadCell(inputs.fill, "row");
-      const rows: CellMat = wrapCells(list as Cell[], w, "rows", () => pad);
-      withMatrixUnit(rows, unit);
-      this.cachedMatrix = rows;
-      return { result: rows };
-    } else if (this.op === "wrapcols") {
-      const raw = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
-      const wRaw = readRole<number | SolError>(this, "wrapCount", inputs.wrapCount);
-      if (isSolError(wRaw)) return { result: wRaw };
-      if (!raw) return { result: null };
-      const w = wrapCount(wRaw, "WRAPCOLS");
-      if (isSolError(w)) return { result: w };
-      const { mags: list, unit } = matrixCellsFromList(raw);
-      const pad = wrapPadCell(inputs.fill, "column");
-      const mat: CellMat = wrapCells(list as Cell[], w, "cols", () => pad);
-      withMatrixUnit(mat, unit);
-      this.cachedMatrix = mat;
-      return { result: mat };
-    } else if (this.op === "tocol") {
-      const m = toAnyMatrix(inputs.matrix?.[0]);
-      if (!m) return { result: null };
-      const col: CellMat = flattenCells(m, this.scanBy === "col", this.skipCells).map((x) => [x as Cell]);
-      withMatrixUnit(col, matrixUnitOf(m));
-      this.cachedMatrix = col;
-      return { result: col };
-    } else {
-      const m = toAnyMatrix(inputs.matrix?.[0]);
-      if (!m) return { result: null };
-      this.cachedList = taggedListFromMatrix(flattenCells(m, this.scanBy === "col", this.skipCells), matrixUnitOf(m)) as Cell[];
-      return { result: this.cachedList };
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellMat | Cell[] | SolError | null };
   }
 }
 
@@ -526,7 +417,7 @@ export const TABLE_SELECT_OP_META = {
   choosecols: { label: "CHOOSECOLS", description: "Selects columns from a table by 1-based index list. Excel: `CHOOSECOLS`." },
 } satisfies Record<TableSelectOp, { label: string; description: string }>;
 
-export class TableSelectNode extends ClassicPreset.Node {
+export class TableSelectNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     indices: "1-based. Negative indices count from the end. A zero or out-of-range index errors the whole result; a blank index is skipped.",
   };
@@ -547,14 +438,8 @@ export class TableSelectNode extends ClassicPreset.Node {
     this.addOutput("result", adoptiveTableOut("Result"));
   }
 
-  data(inputs: { matrix?: unknown[]; indices?: number[][] }): { result: CellMat | SolError | null } {
-    const m = toAnyMatrix(inputs.matrix?.[0]);
-    if (!m) { this.cachedResult = null; return { result: null }; }
-    const idx = readRole<number[] | number | SolError>(this, "indices", inputs.indices);
-    if (isSolError(idx)) { this.cachedResult = idx; return { result: idx }; }
-    const picked = chooseAxis(m, Array.isArray(idx) ? idx : [idx], this.op === "chooserows" ? "row" : "column");
-    this.cachedResult = isSolError(picked) ? picked : carryMatrixUnit(picked, m);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
+    return nodeOnCore(this, inputs) as { result: CellMat | SolError | null };
   }
 }
 
@@ -567,7 +452,7 @@ export const TAKEDROP_OP_META = {
   drop: { label: "DROP", description: "Removes rows or columns from the edges of a table or list: positive counts from the start, negative from the end, `0` removes none. A list is one row, so its items are columns. Excel: `DROP`." },
 } satisfies Record<TakeDropOp, { label: string; description: string }>;
 
-export class TakeDropNode extends ClassicPreset.Node {
+export class TakeDropNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     rows: "Positive counts from the start, negative from the end, 0 keeps all. A list is one row, so this keeps it whole.",
     cols: "Positive counts from the start, negative from the end, 0 keeps all. A list's items count as columns.",
@@ -591,36 +476,14 @@ export class TakeDropNode extends ClassicPreset.Node {
     this.addOutput("result", adoptiveDataOut("Result"));
   }
 
-  private slice<T>(arr: readonly T[], n: number): T[] {
-    return this.op === "take" ? takeSlice(arr, n) : dropSlice(arr, n);
-  }
-
-  data(inputs: { data?: unknown[]; rows?: number[]; cols?: number[] }): { result: unknown } {
-    const raw = inputs.data?.[0];
-    if (raw == null) { this.cachedResult = null; return { result: null }; }
-    const rRaw = readRole<number | undefined>(this, "rows", inputs.rows) ?? 0;
-    const cRaw = readRole<number | undefined>(this, "cols", inputs.cols) ?? 0;
-    const nRows = Math.round(rRaw);
-    const nCols = Math.round(cRaw);
-    const gone = (len: number, k: number) => this.op === "drop" && len > 0 && Math.abs(k) >= len;
-    // [[D85]] columnsStayColumns: a list is one row, so its items are columns; a list comes back as a list.
-    const isTable = Array.isArray(raw) && raw.length > 0 && Array.isArray(raw[0]);
-    const m = isTable ? (raw as CellMat) : [Array.isArray(raw) ? (raw as Cell[]) : [raw as Cell]];
-    if (gone(m.length, nRows) || gone(m[0].length, nCols)) {
-      const err = solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    const cut = this.slice(m, nRows).map((r) => [...this.slice(r, nCols)]);
-    const result = isTable ? carryMatrixUnit(cut, m) : (cut[0] ?? []);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
 
 // ─── EXPAND ───────────────────────────────────────────────────────────────────
 
-export class ExpandNode extends ClassicPreset.Node {
+export class ExpandNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     rows: "Target row count. 0 keeps the current count.",
     cols: "Target column count. 0 keeps the current count.",
@@ -642,21 +505,14 @@ export class ExpandNode extends ClassicPreset.Node {
     this.addOutput("result", adoptiveTableOut("Expanded"));
   }
 
-  data(inputs: { matrix?: unknown[]; rows?: number[]; cols?: number[]; fill?: unknown[] }): { result: CellMat | SolError | null } {
-    const m = toAnyMatrix(inputs.matrix?.[0]);
-    if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
-    const reqRRaw = readRole<number | undefined>(this, "rows", inputs.rows) ?? 0;
-    const reqCRaw = readRole<number | undefined>(this, "cols", inputs.cols) ?? 0;
-    const fill = (inputs.fill?.[0] ?? null) as Cell;
-    const result = expandMat(m, Math.round(reqRRaw), Math.round(reqCRaw), fill);
-    this.cachedResult = isSolError(result) ? result : (carryMatrixUnit(result, m), result);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
+    return nodeOnCore(this, inputs) as { result: CellMat | SolError | null };
   }
 }
 
 // ─── SET CELL ─────────────────────────────────────────────────────────────────
 
-export class SetCellNode extends ClassicPreset.Node {
+export class SetCellNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     row: "1-based.",
     col: "1-based.",
@@ -666,7 +522,7 @@ export class SetCellNode extends ClassicPreset.Node {
   cachedResult: CellMat | SolError | null = null;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {};
-  autoLiterals = true;
+  literalKinds: Record<string, KeyedKind> = {};
   nextPairId = 0;
   readonly pairLabels: string[] = ["Value", "Row", "Column"];
   width = 210; height = 300;
@@ -706,31 +562,18 @@ export class SetCellNode extends ClassicPreset.Node {
     const id = valueKey.slice(5);
     for (const k of [`value${id}`, `row${id}`, `col${id}`]) {
       this.removeInput(k);
-      delete this.literals[k];
-      delete this.stringLiterals[k];
+      forgetKeyed(this, k);
     }
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
-    const m = toAnyMatrix(inputs.matrix?.[0]);
-    if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
-    const writes: { r: number; c: number; v: Cell | Cell[] | Cell[][] }[] = [];
-    for (const [valueKey, rowKey, colKey] of this.valuePairKeys()) {
-      const r = readInput(inputs[rowKey], this.literals[rowKey] ?? null);
-      const c = readInput(inputs[colKey], this.literals[colKey] ?? null);
-      if (r === null || c === null) { this.cachedResult = null; return { result: null }; }
-      const v = pickSlot(this, inputs, valueKey) as Cell | Cell[] | Cell[][];
-      writes.push({ r: r as number, c: c as number, v });
-    }
-    const result = setCells(m, writes);
-    this.cachedResult = isSolError(result) ? result : (carryMatrixUnit(result, m), result);
-    return { result: this.cachedResult };
+    return nodeOnCore(this, inputs) as { result: CellMat | SolError | null };
   }
 }
 
 // ─── ROWS / COLUMNS ───────────────────────────────────────────────────────────
 
-export class TableInfoNode extends ClassicPreset.Node {
+export class TableInfoNode extends GraphNode {
   label: string;
   cachedRows: number | null = null;
   cachedCols: number | null = null;
@@ -744,31 +587,14 @@ export class TableInfoNode extends ClassicPreset.Node {
     this.addOutput("cols", numOut("COLUMNS"));
   }
 
-  data(inputs: { matrix?: unknown[] }) {
-    const input = inputs.matrix?.[0];
-    const ofFrame = (f: FrameValue) => {
-      this.cachedRows = f.__totalRows ?? frameRowCount(f);
-      this.cachedCols = f.columns.length;
-      return { rows: this.cachedRows, cols: this.cachedCols };
-    };
-    if (isFrameRef(input)) {
-      return (async () => {
-        const p = await collectPreview(input, 0);
-        if (!isFrameValue(p)) { this.cachedRows = null; this.cachedCols = null; return { rows: p, cols: p }; }
-        return ofFrame(p);
-      })() as unknown as { rows: number | null; cols: number | null };
-    }
-    // toAnyMatrix reads a Frame as 1×1, so report its real shape here.
-    if (isFrameValue(input)) return ofFrame(input);
-    const { rows, cols } = matrixShape(input);
-    this.cachedRows = rows;
-    this.cachedCols = cols;
-    return { rows, cols };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { rows: number | SolError | null; cols: number | SolError | null };
   }
 }
 
+
 // ─── SOLVE (A·x = b) ──────────────────────────────────────────────────────────
-export class MatSolveNode extends ClassicPreset.Node {
+export class MatSolveNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     matrix: "Square, every cell filled; singular is #DIV/0!.",
     b: "One value per row of A.",
@@ -785,54 +611,46 @@ export class MatSolveNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("x"));
   }
 
-  data(inputs: { matrix?: CellMat[]; b?: (number | null)[][] }): { result: number[] | SolError | null } {
-    const raw = inputs.matrix?.[0] ?? null, b = inputs.b?.[0] ?? null;
-    if (!raw || !b) { this.cachedResult = null; return { result: null }; }
-    const m = asNumericMatrix(raw);
-    if (isSolError(m)) { this.cachedResult = m; return { result: m }; }
-    if (b.some((v) => typeof v !== "number")) { this.cachedResult = null; return { result: null }; }
-    if (matRows(m) !== matCols(m) || b.length !== matRows(m)) {
-      const err = solError("#SHAPE!", "A must be square with one b per row");
-      this.cachedResult = err; return { result: err };
-    }
-    const x = matSolve(m, b as number[]);
-    const result = x ?? solError("#DIV/0!", "A is singular, so the system has no unique solution");
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number[] | SolError | null };
   }
 }
 
 // ─── EIGEN (symmetric) ────────────────────────────────────────────────────────
-export class MatEigenNode extends ClassicPreset.Node {
+export type MatEigenOp = "eigen" | "svd";
+export const MAT_EIGEN_OP_META: Record<MatEigenOp, { label: string; fx: string; values: string; vectors: string; description: string }> = {
+  eigen: { label: "Eigen", fx: "EIGENVALUES", values: "Eigenvalues", vectors: "Eigenvectors", description: "Eigenvalues and unit eigenvectors of a square, symmetric matrix, largest first. numpy `linalg.eigh`, R `eigen`." },
+  svd:   { label: "SVD",   fx: "SVD",         values: "Singular values", vectors: "Right singular vectors", description: "Singular values of any matrix, largest first, and the right singular vectors as columns. numpy `linalg.svd`, MATLAB `svd`." },
+};
+
+export class MatEigenNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    matrix: "Square and SYMMETRIC (a covariance or correlation matrix, a Laplacian…); a non-symmetric matrix is #SHAPE!.",
-    values: "Eigenvalues, largest first.",
-    vectors: "Unit eigenvectors as COLUMNS, in the same order; the largest-magnitude entry of each is made positive.",
+    matrix: "Eigen: square and SYMMETRIC (a covariance or correlation matrix, a Laplacian…), else #SHAPE!. SVD: any shape.",
+    values: "Largest first.",
+    vectors: "Unit vectors as COLUMNS, in the same order; the largest-magnitude entry of each is made positive.",
   };
   label: string;
+  op: MatEigenOp;
   cachedValues: number[] | SolError | null = null;
   cachedVectors: Mat | SolError | null = null;
   width = 190; height = 175;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; op?: MatEigenOp }) {
     super("MatEigen");
+    this.op = init?.op === "svd" ? "svd" : "eigen";
     this.label = init?.label ?? "Eigen (symmetric)";
     this.addInput("matrix", tableIn("Matrix"));
-    this.addOutput("values", numListOut("Eigenvalues"));
-    this.addOutput("vectors", tableOut("Eigenvectors"));
+    this.addOutput("values", numListOut(MAT_EIGEN_OP_META[this.op].values));
+    this.addOutput("vectors", tableOut(MAT_EIGEN_OP_META[this.op].vectors));
   }
 
-  data(inputs: { matrix?: CellMat[] }): { values: number[] | SolError | null; vectors: Mat | SolError | null } {
-    const raw = inputs.matrix?.[0] ?? null;
-    if (!raw) { this.cachedValues = null; this.cachedVectors = null; return { values: null, vectors: null }; }
-    const m = asNumericMatrix(raw);
-    if (isSolError(m)) { this.cachedValues = m; this.cachedVectors = m; return { values: m, vectors: m }; }
-    const e = matEigh(m);
-    if (!e) {
-      const err = solError("#SHAPE!", "Eigen needs a square, symmetric matrix");
-      this.cachedValues = err; this.cachedVectors = err; return { values: err, vectors: err };
-    }
-    this.cachedValues = e.values; this.cachedVectors = e.vectors;
-    return { values: e.values, vectors: e.vectors };
+  setOp(next: MatEigenOp): void {
+    this.op = next;
+    if (this.outputs.values) this.outputs.values.label = MAT_EIGEN_OP_META[next].values;
+    if (this.outputs.vectors) this.outputs.vectors.label = MAT_EIGEN_OP_META[next].vectors;
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { values: number[] | SolError | null; vectors: Mat | SolError | null };
   }
 }

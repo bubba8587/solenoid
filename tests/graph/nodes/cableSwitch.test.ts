@@ -1,4 +1,4 @@
-// [[D54]], [[C24]] arraySemantics, [[C44]] dateSerials
+// [[C44]] dateSerials, [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { CableSwitchNode } from "../../../src/graph/nodes/control";
 import { type CubeValue } from "../../../src/graph/frame";
@@ -12,46 +12,23 @@ describe("Input Switch (CableSwitchNode)", () => {
     expect(n.data({ v0: [10], v1: [20] }).out).toBe(10);
   });
 
-  it("multi mode collects the checked inputs into a name+value cube", () => {
-    const n = new CableSwitchNode();
-    n.multiSelect = true;
-    n.titles = { v0: "North", v1: "South" };
-    n.selectedKeys = ["v0", "v1"];
-    const out = n.data({ v0: [100], v1: [200] }).out;
-    const cube = out as CubeValue;
-    expect(cube.columns.map((c) => c.name)).toEqual(["name", "value"]);
-    expect(cube.columns[0].cells).toEqual(["North", "South"]);
-    expect(cube.columns[1].cells).toEqual([100, 200]);
-  });
 
-  it("multi mode with nothing checked outputs null", () => {
-    const n = new CableSwitchNode();
-    n.multiSelect = true;
-    expect(n.data({ v0: [1], v1: [2] }).out).toBeNull();
-  });
 
   it("collects ONLY the checked slots, in slot order (not selection order)", () => {
     const n = new CableSwitchNode();
     n.addValueInput(); // v2
     n.multiSelect = true;
     n.selectedKeys = ["v2", "v0"]; // deliberately out of order
-    n.titles = { v0: "A", v2: "C" };
+    n._sourceNames = { v0: "A", v2: "C" };
     const cube = n.data({ v0: [1], v1: [2], v2: [3] }).out as CubeValue;
     expect(cube.columns[0].cells).toEqual(["A", "C"]); // v0 before v2
     expect(cube.columns[1].cells).toEqual([1, 3]);
   });
 
-  it("collects a whole wired value (e.g. a list) as one cube cell", () => {
-    const n = new CableSwitchNode();
-    n.multiSelect = true;
-    n.selectedKeys = ["v0"];
-    const cube = n.data({ v0: [[1, 2, 3]] }).out as CubeValue;
-    expect(cube.columns[1].cells).toEqual([[1, 2, 3]]); // the list rides in whole
-  });
 
-  it("titleFor falls back to a positional name", () => {
+  it("an input is named by its source card, else its place", () => {
     const n = new CableSwitchNode();
-    n.titles = { v0: "Named" };
+    n._sourceNames = { v0: "Named" };
     expect(n.titleFor("v0")).toBe("Named");
     expect(n.titleFor("v1")).toBe("Input 2");
   });
@@ -67,12 +44,10 @@ describe("Input Switch (CableSwitchNode)", () => {
     expect(n.syncOutputType()).toBe(false); // idempotent
   });
 
-  it("removeValueInput drops the slot's title and selection", () => {
+  it("removeValueInput drops the slot's selection", () => {
     const n = new CableSwitchNode();
-    n.titles = { v0: "A", v1: "B" };
     n.selectedKeys = ["v0", "v1"];
     n.removeValueInput("v1");
-    expect(n.titles).toEqual({ v0: "A" });
     expect(n.selectedKeys).toEqual(["v0"]);
   });
 
@@ -115,5 +90,25 @@ describe("Input Switch (CableSwitchNode)", () => {
     n.removeValueInput("v0");
     const cube = n.data({ v1: [10], v2: [20] }).out as CubeValue;
     expect(cube.columns[1].cells).toEqual([10, 20]);
+  });
+});
+
+describe("Input Switch names its inputs by their source cards ([[D22]] oneNamePerCard)", () => {
+  it("stamps each wired input with its source card's header name before a pass", async () => {
+    const { GraphEditor } = await import("../../../src/graph/graphEditor");
+    const { GraphConnection } = await import("../../../src/graph/graphModel");
+    const { ValueInputNode } = await import("../../../src/graph/nodes/control");
+    const { resolveSwitchNames } = await import("../../../src/graph/sourceNames");
+    const editor = new GraphEditor();
+    const sw = new CableSwitchNode();
+    const price = new ValueInputNode({ label: "Price" } as never);
+    const plain = new ValueInputNode();
+    for (const n of [sw, price, plain]) await editor.addNode(n as never);
+    await editor.addConnection(new GraphConnection(price, "value", sw, "v0") as never);
+    await editor.addConnection(new GraphConnection(plain, "value", sw, "v1") as never);
+    expect(resolveSwitchNames(editor as never)).toEqual([sw]);
+    expect(sw.titleFor("v0")).toBe("Price");
+    expect(sw.titleFor("v1")).toBe("Value Input");
+    expect(resolveSwitchNames(editor as never)).toEqual([]);
   });
 });

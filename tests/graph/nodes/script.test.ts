@@ -1,19 +1,38 @@
-// [[C66]]
+// [[C66]] scriptNode, [[script-sandbox#The source]], [[script-sandbox#One call]], [[script-sandbox#The arguments]],
+// [[script-sandbox#The result]], [[C23]] calcModes
+import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { ScriptNode, DEFAULT_SCRIPT } from "../../../src/graph/nodes/script";
 import { scriptParams, toClonable, invokeScript, scriptIsVolatile } from "../../../src/graph/nodes/scriptRun";
 import { coerceScriptResult } from "../../../src/graph/nodes/scriptCoerce";
-import { wrapNodeData } from "../../../src/graph/coerceInputs";
+import { throughBoundary } from "../boundaryKit";
 import { isSolError, solError } from "../../../src/graph/errorValue";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import { pasteCopy } from "../fixtures/pasteCopy";
 import { jsDateToSerial } from "../../../src/graph/nodes/dateSerial";
+import type { View } from "../../../src/graph/view";
+import { GraphEditor } from "../../../src/graph/graphEditor";
+import { DataflowEngine } from "../../../src/graph/dataflowEngine";
+import type { Schemes } from "../../../src/graph/schemes";
+import { processGraph, requestRecalc, setEditorRefs } from "../../../src/graph/process";
 
 const code = (v: unknown) => (isSolError(v) ? v.code : v);
 
-async function run(expr: string, inputs: Record<string, unknown[]> = {}, init: { literals?: Record<string, number>; stringLiterals?: Record<string, string> } = {}) {
+/** A Script card alone in an editor, through a real pass: its result socket's type after the Type Settle. */
+async function passed(expr: string) {
+  const editor = new GraphEditor<Schemes>();
+  const engine = new DataflowEngine<Schemes>();
+  editor.use(engine);
+  setEditorRefs(editor, engine, { rerenderNode: async () => {}, rerenderCables: async () => {} } as unknown as View);
+  const node = new ScriptNode({ expr });
+  await editor.addNode(node as unknown as Schemes["Node"]);
+  await processGraph();
+  return { node, typed: () => (node.outputs.result!.socket as unknown as { dataType: string }).dataType };
+}
+
+async function run(expr: string, inputs: Record<string, unknown[]> = {}, init: { stringLiterals?: Record<string, string>; literalKinds?: Record<string, "number" | "string" | "date" | "logical"> } = {}) {
   const node = new ScriptNode({ expr, ...init });
-  wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
+  throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
   const out = await (node.data(inputs) as Promise<{ result: unknown }>);
   return { result: out.result, node };
 }
@@ -77,14 +96,27 @@ describe("ScriptNode.data — values in", () => {
     expect((await run("(x) => x === null", { x: [null] })).result).toBe(true);
     expect((await run("(x) => x === undefined")).result).toBe(true);
   });
-  it("an unwired parameter takes the typed literal, number or text", async () => {
-    expect((await run("(x) => x + 1", {}, { literals: { x: 41 } })).result).toBe(42);
-    expect((await run("(s) => s.toUpperCase()", {}, { stringLiterals: { s: "hi" } })).result).toBe("HI");
+  it("an unwired parameter takes the keyed literal, read as its slot's kind", async () => {
+    expect((await run("(x) => x + 1", {}, { stringLiterals: { x: "41" } })).result).toBe(42);
+    expect((await run("(s) => s.toUpperCase()", {}, { stringLiterals: { s: "hi" }, literalKinds: { s: "string" } })).result).toBe("HI");
+    expect((await run("(x) => x", {}, { stringLiterals: { x: "hi" } })).result).toMatchObject({ code: "#TYPE!" });
   });
   it("a per-cell error in any input propagates without running the script", async () => {
     const bad = solError("#DIV/0!", "x");
     const { result } = await run("(xs) => 1", { xs: [[1, bad, 3]] });
     expect(code(result)).toBe("#DIV/0!");
+  });
+});
+
+describe("a Script card's source runs only in the sandbox", () => {
+  it("building the card, as loading a document does, parses the source and never runs it", () => {
+    const g = globalThis as { __scriptRan?: number };
+    delete g.__scriptRan;
+    const n = new ScriptNode({ expr: "x => x, (globalThis.__scriptRan = 1), x => x" });
+    expect(g.__scriptRan).toBeUndefined();
+    expect(n.varNames).toEqual(["x"]);
+    new ScriptNode({ expr: "(x) => x)(globalThis.__scriptRan = 2" });
+    expect(g.__scriptRan).toBeUndefined();
   });
 });
 
@@ -100,30 +132,35 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
   it("values keep their own kinds; blanks and error cells pass through", async () => {
     expect((await run("() => [1, 2, 3]")).result).toEqual([1, 2, 3]);
     const d = new Date(Date.UTC(2026, 0, 15));
-    expect((await run("() => new Date(Date.UTC(2026, 0, 15))")).result).toBe(jsDateToSerial(d));
+    expect((await run("() => new Date(Date.UTC(2026, 0, 15))")).result).toEqual(solDate(jsDateToSerial(d)));
     const r = (await run("() => [0 / 0, null, 2]")).result as unknown[];
     expect(r.map(code)).toEqual(["#DOMAIN!", null, 2]);
   });
-  it("the result socket family follows the value (no toggle)", async () => {
-    expect((await run("() => 5")).node.lastResultFamily).toBe("number");
-    expect((await run("() => ['a', 'b']")).node.lastResultFamily).toBe("text");
-    expect((await run("() => new Date(Date.UTC(2026, 0, 1))")).node.lastResultFamily).toBe("date");
-    expect((await run("() => true")).node.lastResultFamily).toBe("auto"); // no boolean result socket
-    // A vote-less result keeps the settled family rather than flapping to auto.
-    const { node } = await run("() => 5");
-    await (node.data({}) as Promise<unknown>); // still 5 → number
-    node.expr = "() => []";
-    node._rebuild();
-    await (node.data({}) as Promise<unknown>);
-    expect(node.lastResultFamily).toBe("number");
+  it("the result socket takes the type of the value it carried, and keeps it through an empty answer ([[D117]])", async () => {
+    const { node, typed } = await passed("() => 5");
+    expect(typed()).toBe("numlist");
+    for (const [expr, want] of [
+      ["() => []", "numlist"],
+      ["() => ['a', 'b']", "strcombo"],
+      ["() => new Date(Date.UTC(2026, 0, 1))", "datecombo"],
+      ["() => true", "logicalcombo"],
+      ["() => [[1, 2], [3, 4]]", "table"],
+      ["() => [[true, false], [false, true]]", "logicaltable"],
+      ["() => [{ n: 1 }]", "frame"],
+      ["() => [{ region: 'EU', months: [1, 2] }]", "cube"],
+    ] as const) {
+      node.expr = expr;
+      node._rebuild();
+      node.edited();
+      await processGraph();
+      expect(typed(), expr).toBe(want);
+    }
   });
   it("Solenoid.date lifts a serial (or a list of them) to dates; a non-serial is #TYPE!", async () => {
-    const { result, node } = await run("(d) => Solenoid.date(d + 30)", { d: [46000] });
-    expect(result).toBe(46030);
-    expect(node.lastResultFamily).toBe("date");
+    const { result } = await run("(d) => Solenoid.date(d + 30)", { d: [46000] });
+    expect(result).toEqual(solDate(46030));
     const list = await run("(d) => Solenoid.date([d, d + 7])", { d: [46000] });
-    expect(list.result).toEqual([46000, 46007]);
-    expect(list.node.lastResultFamily).toBe("date");
+    expect(list.result).toEqual([solDate(46000), solDate(46007)]);
     expect(code((await run("() => Solenoid.date('soon')")).result)).toBe("#TYPE!");
   });
   it("containers are single-typed, uniformly: a mixed list OR mixed rows are #AMBIGUOUS!", async () => {
@@ -131,17 +168,14 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
     expect(code((await run("() => [['year', 1], [2, 3]]")).result)).toBe("#AMBIGUOUS!");
     const ok = await run("() => [[1, 2], [3, 4]]");
     expect(ok.result).toEqual([[1, 2], [3, 4]]);
-    expect(ok.node.lastResultFamily).toBe("number");
     // Homogeneous booleans are not "mixed" — they ride the wildcard whole.
-    expect((await run("() => [[true, false], [false, true]]")).node.lastResultFamily).toBe("auto");
   });
   it("{name: value} rows become a FRAME with typed columns; a single object is one row", async () => {
-    const { result, node } = await run("() => [{ n: 1, who: 'ada' }, { n: 2, who: 'lin' }]");
+    const { result } = await run("() => [{ n: 1, who: 'ada' }, { n: 2, who: 'lin' }]");
     const f = result as { __frame: true; columns: Array<{ name: string; type: string; values: unknown[] }> };
     expect(f.__frame).toBe(true);
     expect(f.columns.map((c) => [c.name, c.type])).toEqual([["n", "number"], ["who", "string"]]);
     expect(f.columns[1].values).toEqual(["ada", "lin"]);
-    expect(node.lastResultFamily).toBe("frame");
     // A missing key is a blank cell; a Date-valued column types as date.
     const g = (await run("() => [{ a: 1 }, { a: 2, b: new Date(Date.UTC(2026, 0, 1)) }]")).result as { columns: Array<{ name: string; type: string; values: unknown[] }> };
     expect(g.columns.map((c) => [c.name, c.type])).toEqual([["a", "number"], ["b", "date"]]);
@@ -155,12 +189,11 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
     expect(code((await run("() => [{ a: 1 }, 2]")).result)).toBe("#SHAPE!");
   });
   it("rows whose cells nest rows or lists become a CUBE", async () => {
-    const { result, node } = await run(
+    const { result } = await run(
       "() => [{ region: 'EU', months: [1, 2], detail: [{ m: 1, sales: 3 }] }]",
     );
     const c = result as { __cube: true; depth: number; columns: Array<{ name: string; cells: unknown[] }> };
     expect(c.__cube).toBe(true);
-    expect(node.lastResultFamily).toBe("cube");
     expect(c.columns.map((x) => x.name)).toEqual(["region", "months", "detail"]);
     expect(c.columns[1].cells[0]).toEqual([1, 2]);
     const detail = c.columns[2].cells[0] as { __frame: true; columns: Array<{ name: string }> };
@@ -178,11 +211,10 @@ describe("ScriptNode.data — frames and cubes in", () => {
     ],
   };
   it("a script can round-trip a frame: read rows, return transformed rows", async () => {
-    const { result, node } = await run("(f) => f.map((r) => ({ city: r.city, big: r.sales * 100 }))", { f: [frame] });
+    const { result } = await run("(f) => f.map((r) => ({ city: r.city, big: r.sales * 100 }))", { f: [frame] });
     const out = result as { __frame: true; columns: Array<{ name: string; type: string; values: unknown[] }> };
     expect(out.columns.map((c) => [c.name, c.type])).toEqual([["city", "string"], ["big", "number"]]);
     expect(out.columns[1].values).toEqual([1000, 700]);
-    expect(node.lastResultFamily).toBe("frame");
   });
   it("an error cell inside a frame propagates without running the script", async () => {
     const bad = {
@@ -233,14 +265,14 @@ describe("evaluator + coercer, standalone", () => {
     expect(await invokeScript("async (x) => x * 2", [2])).toEqual({ ok: true, value: 4 });
   });
   it("a BigInt outside the safe range is #OVERFLOW!; in range it is a number", () => {
-    expect(code(coerceScriptResult(2n ** 60n).value)).toBe("#OVERFLOW!");
-    expect(coerceScriptResult(7n)).toEqual({ value: 7, family: "number" });
+    expect(code(coerceScriptResult(2n ** 60n))).toBe("#OVERFLOW!");
+    expect(coerceScriptResult(7n)).toBe(7);
   });
 });
 
 describe("persistence", () => {
   it("extractInit round-trips source and both literal maps", () => {
-    const n = new ScriptNode({ expr: "(a, b) => a", literals: { a: 2 }, stringLiterals: { b: "q" } });
+    const n = new ScriptNode({ expr: "(a, b) => a", stringLiterals: { a: "2", b: "q" }, literalKinds: { b: "string" } });
     n.label = "Mine";
     const init = extractInit(n) as Record<string, unknown>;
     const back = new ScriptNode(init as ConstructorParameters<typeof ScriptNode>[0]);
@@ -251,12 +283,12 @@ describe("persistence", () => {
   });
 
   it("a parameter named like an init field keeps both through the paste path", async () => {
-    const n = new ScriptNode({ expr: "(label) => label", literals: { label: 7 } });
+    const n = new ScriptNode({ expr: "(label) => label", stringLiterals: { label: "7" } });
     n.label = "Mine";
     expect(extractInit(n).label).toBe("Mine");
     const back = await pasteCopy(n);
     expect(back.label).toBe("Mine");
-    expect(back.literals.label).toBe(7);
+    expect(back.stringLiterals.label).toBe("7");
   });
 });
 
@@ -272,5 +304,72 @@ describe("review pins: comments before the head; the inline path clones its argu
     const out = await executeScript("(xs) => { xs.push(9); return xs.length }", [xs]);
     expect(out.ok && out.value).toBe(4);
     expect(xs).toEqual([1, 2, 3]);
+  });
+});
+
+describe("a date goes into a script as a Date ([[C137]] datesNeverSerials)", () => {
+  it("a date column reads as Date objects, and passes back out as a date column", async () => {
+    const frame = { __frame: true, columns: [{ name: "due", type: "date", values: [46000] }, { name: "qty", type: "number", values: [3] }] };
+    const seen = await run("(rows) => rows.every((r) => r.due instanceof Date && typeof r.qty === 'number')", { rows: [frame] });
+    expect(seen.result).toBe(true);
+    const back = (await run("(rows) => rows", { rows: [frame] })).result as { columns: Array<{ type: string; values: unknown[] }> };
+    expect(back.columns.map((c) => [c.type, c.values[0]])).toEqual([["date", 46000], ["number", 3]]);
+  });
+
+  it("a date-typed input reads as a Date and comes back a date", async () => {
+    const node = new ScriptNode({ expr: "(d) => d" });
+    (node.inputs.d!.socket as unknown as { setType(t: string): void }).setType("date");
+    throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
+    const out = await (node.data({ d: [solDate(46000)] }) as Promise<{ result: unknown }>);
+    expect(out.result).toEqual(solDate(46000));
+  });
+});
+
+describe("a volatile Script holds its result until F9 ([[C23]] calcModes)", () => {
+  async function held(expr: string, stringLiterals: Record<string, string>) {
+    const editor = new GraphEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    setEditorRefs(editor, engine, { rerenderNode: async () => {}, rerenderCables: async () => {} } as unknown as View);
+    const node = new ScriptNode({ expr, stringLiterals });
+    await editor.addNode(node as unknown as Schemes["Node"]);
+    await processGraph();
+    return node;
+  }
+
+  it("keeps the draw through a plain recalculation with the same inputs", async () => {
+    const node = await held("(x) => x + Math.random()", { x: "1" });
+    const first = node.cachedResult;
+    expect(typeof first).toBe("number");
+    await processGraph(node.id);
+    expect(node.cachedResult).toBe(first);
+    await processGraph(undefined, undefined, { force: true });
+    expect(node.cachedResult).toBe(first);
+  });
+
+  it("draws anew on F9, which the Recalculate button sends", async () => {
+    const node = await held("(x) => x + Math.random()", { x: "1" });
+    const first = node.cachedResult;
+    await requestRecalc();
+    expect(node.cachedResult).not.toBe(first);
+    expect(Math.floor(node.cachedResult as number)).toBe(1);
+  });
+
+  it("runs again when an input or the code changes", async () => {
+    const node = await held("(x) => x + Math.random()", { x: "1" });
+    node.stringLiterals = { x: "5" };
+    await processGraph(node.id);
+    expect(Math.floor(node.cachedResult as number)).toBe(5);
+    node.expr = "(x) => x + 10 + Math.random()";
+    node._rebuild();
+    await processGraph(node.id);
+    expect(Math.floor(node.cachedResult as number)).toBe(15);
+  });
+
+  it("holds a clock reading the same way", async () => {
+    const node = await held("() => Date.now() + Math.random()", {});
+    const first = node.cachedResult;
+    await processGraph(node.id);
+    expect(node.cachedResult).toBe(first);
   });
 });

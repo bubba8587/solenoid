@@ -1,13 +1,13 @@
 // [[B13]] aiInScope
 
-import { ClassicPreset } from "rete";
+import { GraphNode } from "./graphModel";
 import { buildCatalog } from "./catalogUtils";
 import type { CatalogEntry, NodeCatalogEntry, CatalogCategory } from "./AddNodeMenu";
 import { SolenoidSocket, SOCKET_TYPE_LABELS, elementFamilyOf, latticeRank, type SocketDataType } from "./sockets";
-import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER, extractInit } from "./copyPaste";
+import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER, extractInit } from "./nodeInit";
 import { NODE_OPS } from "./nodeOps";
 import { opVocabByCtor } from "./opVocab";
-import type { FilterOp } from "./frameVerbs";
+import type { FilterOp } from "./frameOps";
 import type { FrameColType } from "./frame";
 
 // A Record over the union, so tsc keeps the condition-row op list complete.
@@ -58,9 +58,9 @@ export function buildGroundingSpec(): string {
         visit((e as { children: CatalogEntry[] }).children, path);
       } else {
         const leaf = e as NodeCatalogEntry;
-        let inst: ClassicPreset.Node;
+        let inst: GraphNode;
         try {
-          inst = leaf.create() as ClassicPreset.Node;
+          inst = leaf.create() as GraphNode;
         } catch {
           continue;
         }

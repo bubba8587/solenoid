@@ -1,14 +1,14 @@
 // [[C88]] collapsedGroupCard
 import { presentSocketKeys } from "./presentSocketStore";
 import type { View } from "./view";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
-import { GroupNode, DisplayNode, FormatControllerNode, ConduitNode } from "./rete-nodes";
+import { GroupNode, DisplayNode, FormatControllerNode, ConduitNode } from "./nodeClasses";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { createNotifier } from "./storeKit";
 import { displayNameOf } from "./nodeNamer";
 
-type Editor = NodeEditor<Schemes>;
+type Editor = GraphEditor<Schemes>;
 
 export interface RetainedTerminal {
   kind: "display" | "node";
@@ -34,13 +34,13 @@ function genericLabel(node: object): string {
   return displayNameOf(node);
 }
 
-export interface PillPos {
+interface PillPos {
   groupId: string;
   side: "left" | "right";
   index: number;
 }
 
-export interface InputPill {
+interface InputPill {
   nodeId: string;
   socketKey: string;
   index: number;

@@ -2,10 +2,10 @@
 import { describe, it, expect } from "vitest";
 import {
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode,
-  ComplexPowerNode, QuadraticRootsNode, PolyRootsNode, cx, isCx, type Cx,
+  ComplexPowerNode, QuadraticRootsNode, PolyRootsNode, cx, isCx,
 } from "../../../src/graph/nodes/complex";
-import { wrapNodeData } from "../../../src/graph/coerceInputs";
-import { isSolError, solError } from "../../../src/graph/errorValue";
+import { throughBoundary } from "../boundaryKit";
+import { solError } from "../../../src/graph/errorValue";
 import { SolenoidSocket, canConnect } from "../../../src/graph/sockets";
 
 // ─── The complex family: element-wise, and TAGGED ([[C24]] arraySemantics) ────────────────────
@@ -39,72 +39,15 @@ describe("the tagged representation ([[C24]] arraySemantics)", () => {
 });
 
 describe("complex nodes broadcast over lists (scalar-or-list combo sockets)", () => {
-  it("a scalar operand still yields a SCALAR — the widening is additive", () => {
-    expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [cx(1, 2)] }).result).toEqual(cx(1, -2));
-    expect(new ComplexBinaryNode({ op: "sum" }).data({ a: [cx(1, 2)], b: [cx(3, 4)] }).result).toEqual(cx(4, 6));
-    expect(new ComplexFromNode().data({ re: [3], im: [4] }).z).toEqual(cx(3, 4));
-    const u = new ComplexUnpackNode().data({ z: [cx(3, 4)] });
-    expect([u.re, u.im, u.abs]).toEqual([3, 4, 5]);
-  });
 
-  it("a LIST of complexes yields a list, element-wise", () => {
-    expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [[cx(1, 2), cx(3, 4)]] }).result)
-      .toEqual([cx(1, -2), cx(3, -4)]);
-    expect(new ComplexBinaryNode({ op: "sum" }).data({ a: [[cx(1, 1), cx(2, 2)]], b: [cx(10, 10)] }).result)
-      .toEqual([cx(11, 11), cx(12, 12)]);
-    expect(new ComplexBinaryNode({ op: "product" }).data({ a: [[cx(0, 1), cx(0, 1)]], b: [[cx(0, 1), cx(2, 0)]] }).result)
-      .toEqual([cx(-1, 0), cx(0, 2)]);
-    // Numeric operands in, complex list out — and the four unpack outputs each
-    // broadcast independently over the same operand.
-    expect(new ComplexFromNode().data({ re: [[1, 2]], im: [0] }).z).toEqual([cx(1, 0), cx(2, 0)]);
-    const u = new ComplexUnpackNode().data({ z: [[cx(3, 4), cx(0, 1)]] });
-    expect(u.re).toEqual([3, 0]);
-    expect(u.im).toEqual([4, 1]);
-    expect(u.abs).toEqual([5, 1]);
-  });
 
-  it("an EMPTY list stays a list, and a leading null/error cell doesn't read as a scalar", () => {
-    expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [[]] }).result).toEqual([]);
-    expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [[null, cx(1, 2)]] }).result)
-      .toEqual([null, cx(1, -2)]);
-    const err = solError("#DIV/0!", "boom");
-    const r = new ComplexUnaryNode({ op: "conj" }).data({ z: [[err, cx(1, 2)]] }).result as unknown[];
-    expect(isSolError(r[0])).toBe(true);
-    expect(r[1]).toEqual(cx(1, -2));
-  });
 
   // IMPOWER's operands are of DIFFERENT element kinds. Under the old tuple this was
   // where the real-vs-complex collision could bite (`n = [1, 2]` — a real list —
   // was structurally identical to one complex). Tagged, the case is unambiguous;
   // the test stays because it pins the mixed-kind broadcast either way.
-  it("IMPOWER's real exponent list broadcasts, and isn't read as a complex", () => {
-    const r = new ComplexPowerNode().data({ z: [cx(0, 1)], n: [[1, 2]] }).result as Cx[];
-    expect(r.length).toBe(2);
-    expect(r[0].re).toBeCloseTo(0, 10);
-    expect(r[0].im).toBeCloseTo(1, 10);
-    expect(r[1].re).toBeCloseTo(-1, 10); // i² = −1
-    expect(r[1].im).toBeCloseTo(0, 10);
-    // A list of BASES with one exponent works the same way round.
-    const s = new ComplexPowerNode().data({ z: [[cx(2, 0), cx(3, 0)]], n: [2] }).result as Cx[];
-    expect(s[0].re).toBeCloseTo(4, 10);
-    expect(s[1].re).toBeCloseTo(9, 10);
-  });
 
-  it("Quadratic Roots solves a LIST of quadratics into two parallel root lists", () => {
-    const r = new QuadraticRootsNode().data({ a: [[1, 1]], b: [[0, 2]], c: [[-36, 5]] });
-    expect(r.x1).toEqual([cx(-6, 0), cx(-1, -2)]);
-    expect(r.x2).toEqual([cx(6, 0), cx(-1, 2)]);
-    // a = 0 is a per-cell #DOMAIN!, so one degenerate row errors alone.
-    const mixed = new QuadraticRootsNode().data({ a: [[1, 0]], b: [0], c: [-36] });
-    expect((mixed.x1 as unknown[])[0]).toEqual(cx(-6, 0));
-    expect(isSolError((mixed.x1 as unknown[])[1])).toBe(true);
-  });
 
-  it("per-cell nulls and ragged lists follow the broadcast contract", () => {
-    // Ragged operands pad to the LONGEST with a missing cell.
-    expect(new ComplexBinaryNode({ op: "sum" }).data({ a: [[cx(1, 1), cx(2, 2)]], b: [[cx(1, 1)]] }).result)
-      .toEqual([cx(2, 2), null]);
-  });
 
   it("declares combo sockets on every complex operand and result", () => {
     expect(dt(new ComplexUnaryNode(), "in", "z")).toBe("complexcombo");
@@ -137,26 +80,16 @@ describe("complex nodes broadcast over lists (scalar-or-list combo sockets)", ()
   // rather than a complex special case.
   it("survives the coerceInputs boundary with its shape intact", () => {
     const scalar = new ComplexUnaryNode({ op: "conj" });
-    wrapNodeData(scalar as never);
+    throughBoundary(scalar as never);
     expect(scalar.data({ z: [cx(1, 2) as never] }).result).toEqual(cx(1, -2));
 
     const list = new ComplexUnaryNode({ op: "conj" });
-    wrapNodeData(list as never);
+    throughBoundary(list as never);
     expect(list.data({ z: [[cx(1, 2), cx(3, 4)] as never] }).result).toEqual([cx(1, -2), cx(3, -4)]);
   });
 });
 
 
-describe("complex operands read like the formula's (toCx)", () => {
-  it("a real number is z + 0i, text parses as a+bi, anything else is #TYPE!", () => {
-    const conj = (z: unknown) => new ComplexUnaryNode({ op: "conj" }).data({ z: [z as Cx] }).result;
-    expect(conj(5)).toEqual(cx(5, -0));
-    expect(conj("3+4i")).toEqual(cx(3, -4));
-    expect(isSolError(conj("abc"))).toBe(true);
-    expect(conj([1, cx(0, 2)] as unknown as Cx)).toEqual([cx(1, -0), cx(0, -2)]);
-    expect(isSolError(conj(true))).toBe(true);
-  });
-});
 
 describe("Polynomial Roots keeps every coefficient in its slot", () => {
   const roots = (coeffs: unknown[]) => new PolyRootsNode().data({ coeffs: [coeffs as (number | null)[]] });

@@ -1,9 +1,13 @@
-// [[C17]], [[D54]]
-// Must not import a module that reaches rete; chrono-node and errorValue are headless.
-import * as chrono from "chrono-node";
+// [[C17]], [[C44]] dateSerials
+// Must not import a module that reaches the graph model; errorValue and the core's loader are headless.
+import { wasmInvokeSync, coreFormatDate } from "../engineWasm";
 import { solError, isSolError, type SolError } from "../errorValue";
 
-// Serial 1 is 1900-01-01, so the Unix epoch is serial 25569.
+// Serial 0 is 30-Dec-1899, so the Unix epoch is serial 25569 and 01-Mar-1900 is 61, as in Excel ([[C44]] dateSerials).
+
+/** The serials of 01-Jan-0001 and of 01-Jan-10000: the calendar a date reads in, before 1900 too ([[D119]] datesBefore1900). */
+export const FIRST_SERIAL = -693593;
+export const END_SERIAL = 2958466;
 
 /** Rounded to the millisecond: `new Date` truncates, so 04:00 as a float serial would read 03:59:59.999. */
 export function serialToJsDate(serial: number): Date {
@@ -22,58 +26,36 @@ export function wallClockSerial(now: Date = new Date(), dateOnly = false): numbe
   return ms / 86400000 + 25569;
 }
 
-const NUMERIC_DMY = /^(\d{1,2})[-/.](\d{1,2})[-/.]\d{4}$/;
-const RELATIVE = /\b(today|tonight|tomorrow|yesterday|now|next|last|this|coming|upcoming|ago|from now|in \d|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\b/i;
-
-export function isRelativeDateText(s: string): boolean {
-  const t = s.trim();
-  return !/\d{4}/.test(t) && RELATIVE.test(t);
-}
-
-export interface ParseDateOptions {
+interface ParseDateOptions {
   relative?: boolean;
   now?: Date;
 }
 
+type CoreDate = number | null | { ambiguous: string } | { relative: number | null };
+
+/** Typed date text as a date entry reads it, and whether it read as a relative phrase ("next friday", [[C44]]
+ *  dateSerials), which only `relative` allows; the core reads both (`relative_date.rs`). */
+export function readDate(s: string, opts?: ParseDateOptions): { value: number | SolError; relative: boolean } {
+  const t = s.trim();
+  if (!t) return { value: NaN, relative: false };
+  const r = wasmInvokeSync<CoreDate>("engine_parse_date", {
+    text: t,
+    ...(opts?.relative ? { relative: true, now: (opts.now ?? new Date()).getTime() } : {}),
+  });
+  if (r !== null && typeof r === "object" && "relative" in r) {
+    return { value: typeof r.relative === "number" ? r.relative : NaN, relative: true };
+  }
+  return { value: r === null ? NaN : typeof r === "number" ? r : solError("#AMBIGUOUS!", r.ambiguous), relative: false };
+}
+
+/** Whether the text is a relative phrase, which a date entry reads only under Settings ▸ Relative dates. */
+export function isRelativeDateText(s: string): boolean {
+  return readDate(s, { relative: true }).relative;
+}
+
 /** Answers the serial, `#AMBIGUOUS!` when a numeric date reads as either D/M or M/D, or NaN when the text is not a date. */
 export function parseDate(s: string, opts?: ParseDateOptions): number | SolError {
-  const t = s.trim();
-  if (!t) return NaN;
-  if (isRelativeDateText(t)) {
-    if (!opts?.relative) return NaN;
-    const ref = opts.now ?? new Date();
-    const r = chrono.parse(t, ref, { forwardDate: !/\blast\b/i.test(t) })[0];
-    if (!r || r.index !== 0 || !/^[\s.,]*$/.test(t.slice(r.text.length))) return NaN;
-    return wallClockSerial(r.start.date(), true);
-  }
-  if (!/\d{4}/.test(t)) return NaN;
-  // ISO date-only goes through `new Date`, which reads it as UTC with no 0–99 century pivot (chrono pivots "0026").
-  const isoParts = /^[+-]?\d{4,6}-(\d{2})(?:-(\d{2}))?$/.exec(t);
-  if (isoParts) {
-    const iso = new Date(t);
-    // `new Date` rolls 2024-02-30 over to March 1; a day the month does not have is not a date.
-    const rolled = isoParts[2] !== undefined && iso.getUTCDate() !== +isoParts[2];
-    return Number.isNaN(iso.getTime()) || rolled || iso.getUTCMonth() + 1 !== +isoParts[1] ? NaN : iso.getTime() / 86400000 + 25569;
-  }
-  const num = NUMERIC_DMY.exec(t);
-  if (num) {
-    const a = +num[1], b = +num[2];
-    if (a <= 12 && b <= 12 && a !== b) {
-      return solError("#AMBIGUOUS!", `"${t}" could be day/month or month/day. Write the month as a name (3-Apr-2026) or use ISO (2026-04-03)`);
-    }
-  }
-  const r = chrono.parse(t, undefined, { forwardDate: false })[0];
-  if (!r || r.index !== 0) return NaN;
-  if (!/^[\s.,]*$/.test(t.slice(r.text.length))) return NaN;
-  const c = r.start;
-  if (!c.isCertain("day") || !c.isCertain("month") || !c.isCertain("year")) return NaN;
-  const d = c.date();
-  const ms = c.isCertain("timezoneOffset")
-    ? d.getTime()
-    : c.isCertain("hour")
-      ? Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds())
-      : Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
-  return ms / 86400000 + 25569;
+  return readDate(s, opts).value;
 }
 
 /** NaN for every failure, an ambiguous date included; a surface that reports `#AMBIGUOUS!` calls `parseDate`. */
@@ -105,43 +87,8 @@ export function noteDateText(serial: number): string {
 export const DEFAULT_DATE_FORMAT = "DD-MMM-YYYY";
 export const DEFAULT_DATETIME_FORMAT = "DD-MMM-YYYY HH:mm";
 
-const FORMAT_MONTHS = ["January","February","March","April","May","June",
-                       "July","August","September","October","November","December"];
-const FORMAT_DAYS   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
 export function formatDateSerial(serial: number, pattern: string): string {
-  if (!Number.isFinite(serial)) return String(serial);
-  const d = serialToJsDate(serial);
-  const YYYY = String(d.getUTCFullYear()).padStart(4, "0");
-  const MM   = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const DD   = String(d.getUTCDate()).padStart(2, "0");
-  const HH   = String(d.getUTCHours()).padStart(2, "0");
-  const mi   = String(d.getUTCMinutes()).padStart(2, "0");
-  const ss   = String(d.getUTCSeconds()).padStart(2, "0");
-  return pattern.replace(
-    /MMMM|MMM|MM|M|DDDD|DDD|DD|D|YYYY|YY|HH|hh|h|mm|ss|A|a/g,
-    (token) => {
-      switch (token) {
-        case "MMMM": return FORMAT_MONTHS[d.getUTCMonth()];
-        case "MMM":  return FORMAT_MONTHS[d.getUTCMonth()].slice(0, 3);
-        case "MM":   return MM;
-        case "M":    return String(d.getUTCMonth() + 1);
-        case "DDDD": return FORMAT_DAYS[d.getUTCDay()];
-        case "DDD":  return FORMAT_DAYS[d.getUTCDay()].slice(0, 3);
-        case "DD":   return DD;
-        case "D":    return String(d.getUTCDate());
-        case "YYYY": return YYYY;
-        case "YY":   return YYYY.slice(-2);
-        case "HH":   return HH;
-        case "hh":   return String(d.getUTCHours() % 12 || 12).padStart(2, "0");
-        case "h":    return String(d.getUTCHours() % 12 || 12);
-        case "mm":   return mi;
-        case "ss":   return ss;
-        case "A":    return d.getUTCHours() < 12 ? "AM" : "PM";
-        case "a":    return d.getUTCHours() < 12 ? "am" : "pm";
-        default:     return token;
-      }
-    }
-  );
+  return coreFormatDate(serial, pattern);
 }
 

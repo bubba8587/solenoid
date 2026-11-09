@@ -1,6 +1,6 @@
-// [[C95]] commitOnEnter
+// [[B19]] spreadsheetHabits
 import { useEffect, useRef, useState } from "react";
-import type { ImageNode as ImageNodeType } from "../rete-nodes";
+import type { ImageNode as ImageNodeType } from "../nodeClasses";
 import { scheduleAutosave } from "../persistence";
 import { processGraph } from "../process";
 import { hydrateImageAsset } from "../imageAssets";
@@ -8,6 +8,7 @@ import type { NodeProps } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { useDraftCommit, INVALID_DRAFT, useEditableLabel } from "./inlineInput";
 import { stopDragStart } from "../coarse";
+import { WebImage } from "./WebImage";
 import "./ImageNode.css";
 
 const MIN_H = 60;
@@ -129,7 +130,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
       {!collapsed && (
         <div className="solenoid-image__content">
           {src ? (
-            <img className="solenoid-image__img" src={src} alt={data.label || "image"} style={{ height }} draggable={false} />
+            <WebImage nodeId={data.id} className="solenoid-image__img" src={src} alt={data.label || "image"} style={{ height }} />
           ) : (
             <button
               type="button"
@@ -145,7 +146,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
 
           <div className="solenoid-image__controls" onPointerDown={stopDragStart} onMouseDown={stopDragStart}>
             <input
-              className="solenoid-image__url"
+              className="solenoid-image__url sol-placeholder-example"
               value={urlField.draft}
               placeholder="https://image-url…"
               spellCheck={false}

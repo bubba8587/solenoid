@@ -1,15 +1,14 @@
-// [[D86]]
+// [[D86]] blankRoles, [[input-roles#By the shape of the value]], [[input-roles#The declaration]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";
 import { readFileSync, readdirSync } from "fs";
 import { ARG_ROLES, applyRole, setting, required, picks, LEFT_OUT } from "../../src/graph/inputRoles";
-import { resolveExcelFunction, EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
+import { isFunctionName, FUNCTION_ARITY } from "../../src/graph/excelFunctions";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
-import { TakeDropNode, ExpandNode, TableSelectNode } from "../../src/graph/nodes/matrix";
+import { TableSelectNode } from "../../src/graph/nodes/matrix";
 import { RoundNNode } from "../../src/graph/nodes/scalar";
 import { ListIndexNode } from "../../src/graph/nodes/list";
-import { indexInto } from "../../src/graph/nodes/indexAccess";
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const blank = [null as unknown as number];
@@ -18,22 +17,56 @@ const m = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
 describe("[[D86]] blankRoles — data stays blank, a setting left blank is its default, a blank pick is dropped", () => {
   it("every declared function exists, and each declared argument is within its arity", () => {
     for (const [name, roles] of Object.entries(ARG_ROLES)) {
-      expect(resolveExcelFunction(name), name).not.toBeNull();
-      const max = EXCEL_IMPL_META[name]?.arity?.[1];
+      expect(isFunctionName(name), name).toBe(true);
+      const max = FUNCTION_ARITY[name]?.[1];
       for (const k of Object.keys(roles)) if (k !== "rest" && max !== undefined) expect(Number(k), name).toBeLessThan(max);
+    }
+  });
+
+  it("the core's call table holds the same roles, argument by argument", () => {
+
+    const table = JSON.parse(readFileSync("crates/solenoid-core/data/call_traits.json", "utf8")) as Record<string, { roles: unknown[] }>;
+    const coreRole = (name: string, i: number) => {
+      const r = table[name]?.roles ?? [];
+      const n = r.length;
+      return (i < n || n < 2 ? r[i] : r[(i - n) % 2 === 0 ? n - 2 : n - 1]) ?? null;
+    };
+    const asCore = (r: (typeof ARG_ROLES)[string][number] | undefined) =>
+      r === undefined ? null
+      : r.kind === "setting" ? { kind: "setting", blank: r.blank === LEFT_OUT ? { __undef: 1 } : r.blank }
+      : r.kind === "picks" ? { kind: "picks", required: r.required }
+      : { kind: r.kind };
+    const names = new Set([...Object.keys(ARG_ROLES), ...Object.keys(table).filter((n) => table[n].roles.some(Boolean))]);
+    for (const name of names) {
+      const roles = ARG_ROLES[name] ?? {};
+      const numbered = Object.keys(roles).filter((k) => k !== "rest").map(Number);
+      const top = Math.max(-1, ...numbered);
+      const span = Math.min(FUNCTION_ARITY[name]?.[1] ?? Infinity, Math.max(table[name]?.roles.length ?? 0, top + 1) + 2);
+      for (let i = 0; i < span; i++) {
+        const ts = roles[i] ?? (i > top ? roles.rest : undefined);
+        expect(coreRole(name, i), `${name} argument ${i}`).toEqual(asCore(ts));
+      }
     }
   });
 
   it("every card that declares roles reads each declared socket through readRole", () => {
     const dir = "src/graph/nodes";
     const src = readdirSync(dir).filter((f) => f.endsWith(".ts")).map((f) => readFileSync(`${dir}/${f}`, "utf8")).join("\n");
+
+    const rustDir = "crates/solenoid-core/src/nodes";
+    const rust = readdirSync(rustDir).filter((f) => f.endsWith(".rs")).map((f) => readFileSync(`${rustDir}/${f}`, "utf8")).join("\n");
     const seen = new Set<string>();
     for (const leaf of FLAT_CATALOG.values()) {
-      let cls: { name: string; inputRoles?: Record<string, unknown> };
+      let cls: { name: string; inputRoles?: Record<string, unknown>; prototype: { data?: () => unknown; body?: () => unknown } };
       try { cls = (leaf.create() as { constructor: typeof cls }).constructor; } catch { continue; }
       if (!cls?.inputRoles || seen.has(cls.name)) continue;
       seen.add(cls.name);
-      for (const key of Object.keys(cls.inputRoles)) expect(src, `${cls.name}.${key}`).toMatch(new RegExp(`readRole(<[^>]*>)?\\(this, "${key}"`));
+      // A lazy verb's data() is a shell around its body.
+      const onCore = String(cls.prototype.body ?? cls.prototype.data).includes("nodeOnCore");
+      for (const key of Object.keys(cls.inputRoles)) {
+        if (onCore) expect(rust, `${cls.name}.${key}`).toMatch(new RegExp(`\\b(read_role|setting|setting_or|required|required_picks|rounded_setting|role_value)\\(c, "${key}"`));
+        else expect(src, `${cls.name}.${key}`).toMatch(new RegExp(`readRole(<[^>]*>)?\\(this, "${key}"`));
+      }
     }
     expect(seen.size).toBeGreaterThan(0);
   });
@@ -61,19 +94,7 @@ describe("[[D86]] blankRoles — data stays blank, a setting left blank is its d
     expect(isSolError(grid[0][1]) && grid[0][1].code).toBe("#SYNTAX!");
   });
 
-  it("TAKE / DROP cards: a wired blank count keeps that axis instead of blanking the table", () => {
-    const take = new TakeDropNode({ op: "take" });
-    take.literals.rows = 1;
-    expect(take.data({ data: [m], rows: blank, cols: [2] }).result).toEqual([[1, 2], [4, 5], [7, 8]]);
-    const drop = new TakeDropNode({ op: "drop" });
-    expect(drop.data({ data: [m], rows: blank, cols: [1] }).result).toEqual([[2, 3], [5, 6], [8, 9]]);
-  });
 
-  it("EXPAND card: a wired blank size keeps the current size", () => {
-    const node = new ExpandNode();
-    node.literals.rows = 9;
-    expect(node.data({ matrix: [[[1, 2]]], rows: blank, cols: [3], fill: [0] }).result).toEqual([[1, 2, 0]]);
-  });
 
   it("ROUND: a blank digits setting is 0, whole or item by item, on the card, in a formula and per row", () => {
     const node = new RoundNNode();
@@ -95,11 +116,10 @@ describe("[[D86]] blankRoles — data stays blank, a setting left blank is its d
     expect(new ListIndexNode().data({ list: [x], index: [[3, null as unknown as number]] }).result).toEqual([30]);
   });
 
-  it("INDEX: an empty list of positions is the positions left out, on the card, in a formula and in the shared kernel", () => {
+  it("INDEX: an empty list of positions is the positions left out, on the card and in a formula", () => {
     expect(ev("INDEX(m, 0, c)", { m, c: [] })).toEqual(m);
     expect(new ListIndexNode().data({ list: [m], index: [0], column: [[]] }).result).toEqual(m);
-    expect(indexInto(m, 0, [])).toEqual(m);
-    expect(indexInto(m, [], 2)).toEqual([2, 5, 8]);
+    expect(ev("INDEX(m, r, 2)", { m, r: [] })).toEqual([2, 5, 8]);
   });
 
   it("CHOOSEROWS: the indices have no default, so blank is #SYNTAX!; a blank index is skipped", () => {

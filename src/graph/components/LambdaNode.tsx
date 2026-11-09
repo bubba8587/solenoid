@@ -1,6 +1,6 @@
-// [[C50]] lambdaBindsByName, [[C95]] commitOnEnter, [[C22]] rowFormulaRefs
+// [[C50]] lambdaBindsByName, [[B19]] spreadsheetHabits, [[C22]] rowFormulaRefs
 import { useState, useEffect } from "react";
-import type { LambdaNode as LambdaNodeType } from "../rete-nodes";
+import type { LambdaNode as LambdaNodeType } from "../nodeClasses";
 import { formatLambda, perRowParamClashes } from "../nodes/lambda";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
@@ -19,14 +19,12 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
 
   useEffect(() => {
     if (node.expr !== expr) setExpr(node.expr);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.expr]);
   useEffect(() => {
     if (node.params !== params) setParams(node.params);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.params]);
 
-  // [[C95]] commitOnEnter: a per-keystroke commit would churn sockets.
+  // [[B19]] spreadsheetHabits: a per-keystroke commit would churn sockets.
   async function commitParams() {
     if (params === node.params) return;
     await applyLambdaChange(node, { params });
@@ -37,7 +35,7 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
       <div className="solenoid-node__io-row solenoid-lambda__params-row">
         <span className="solenoid-node__io-label">λ(</span>
         <input
-          className="solenoid-node__inline-input solenoid-lambda__params"
+          className="solenoid-node__inline-input solenoid-lambda__params sol-placeholder-example"
           style={{ width: `calc(${(params || "x, y").length + 1}ch + 14px)` }}
           value={params}
           placeholder="x, y"

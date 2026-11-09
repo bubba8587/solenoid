@@ -6,17 +6,24 @@ tags: [spec, values]
 
 # Spec: Type propagation on in-place socket retype
 
-Serves [[B11]] maximalMerge through [[#Control-driven socket swaps]]. The static shape walk serves [[C10]] socketLattice (passthroughs forward the shape) and [[engineering#One declaration per fact]] (`frameShape()` and `columnPickers()` are each a node's one declaration). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B11]] maximalMerge through [[#Control-driven socket swaps]]. The static shape walk serves [[C10]] socketLattice (passthroughs forward the shape) and [[engineering#One declaration per fact]] (`frameShape()` and `columnPickers()` are each a node's one declaration). It covers what the system does and blocks, and the decision each behavior serves.
 
 ## The trap
 
-A Format Controller has no fixed type. It adopts the concrete type flowing into it, and picks a date format for a date type. `adaptTypeFromConnections` calls `concreteTypeOfOutput`, which walks upstream through passthrough wildcard sockets (all six family-less rungs, through `isWildcardRung`, since a rank with no family answers nothing) and reads the live socket `dataType`. That re-adaptation runs from the canvas's `connectioncreated` / `connectionremoved` pipe.
+A Format Controller has no fixed type. It adopts the concrete type flowing into it, and picks a date format for a date type. The core's FC reconcile (`fc.rs`, from the facts `fcFacts.ts` gathers) walks upstream through passthrough wildcard sockets (all six family-less rungs, `is_wildcard_rung`, since a rank with no family answers nothing) and reads each socket's type now. That re-adaptation runs from the canvas's `connectioncreated` / `connectionremoved` pipe.
 
-Several nodes change an output socket's type in place from a UI control: **Cast**'s target, the **LAMBDA** and **Expression** result type (`ResultTypeToggle`), **Get Column**'s read-as, and a **Note**'s frontmatter. An in-place retype fires no connection event, so without help the downstream FCs keep formatting by the old type. A date serial retyped to a number would still render as a date.
+Several nodes change an output socket's type in place from a UI control:
+
+- **Cast**'s op;
+- the **InlineCast** on the Formula card and the LAMBDA helpers (`InlineCast`);
+- **Get Column**'s read-as: Auto, the default, reads the column as its own type and its list adopts that family through `passthrough`, else from the values it carried; reading a date column as Number is `#TYPE!`, since only Cast makes a date a number ([[C137]] datesNeverSerials);
+- a **Note**'s frontmatter.
+
+An in-place retype fires no connection event, so without help the downstream FCs keep formatting by the old type. A date serial retyped to a number would still render as a date.
 
 ## Control-driven socket swaps
 
-Picking a different operation, mode or option on a node can change that node's own inputs and outputs on the spot: change the type an input or output takes, or add and remove input rows, instead of each variant needing a node of its own ([[B11]] maximalMerge). A family's variants live on one node, so a picker that changes what the node computes has to be able to change its sockets; otherwise every variant would need a node of its own. Cables plugged into an input that goes away are unplugged, and whatever reads a changed output is updated to match (the rule below, on in-place retypes). Nothing would reopen this short of giving up one node per family.
+Picking a different operation, mode or option on a node can change that node's own inputs and outputs on the spot: change the type an input or output takes, or add and remove input rows, instead of each variant needing a node of its own ([[B11]] maximalMerge). A family's variants live on one node, so a picker that changes what the node computes has to be able to change its sockets; otherwise every variant would need a node of its own. Cables plugged into an input that goes away are unplugged, and whatever reads a changed output is updated to match (the rule below, on in-place retypes). This would reopen only if a node family were split back into separate nodes.
 
 This is an established pattern; grep `setOp`, `setMode` and `keysDroppedBySwitch` before claiming a node can't retype on a mode. A swap can change an input socket, an output socket or both, and can add or remove whole input rows. It is separate from wildcard adoption (`trueAnyAdopt`), which the wiring drives and no field touches.
 
@@ -28,69 +35,105 @@ This is an established pattern; grep `setOp`, `setMode` and `keysDroppedBySwitch
 4. then `rerenderNode`,
 5. and after an output swap only, `retypeOutputCables`, because the swap fired no connection event. An input retyped in place (the socket stays, its type changes) is pruned by `retypeInputCables` instead of step 2, which keeps a cable the new type still accepts.
 
+```mermaid
+flowchart LR
+    pick["the user picks an op,<br>mode or option"] --> prune["dropInputCables on the<br>inputs the swap removes"]
+    prune --> set["setOp / setMode<br>changes the sockets"]
+    set --> rr["rerenderNode"]
+    rr --> out{"an output<br>swapped?"}
+    out -->|yes| rt["retypeOutputCables: keep the cables<br>that still fit, re-adapt the<br>Format Controllers downstream"]
+    out -->|no| done["done"]
+```
+
 **Examples:** `WorkdaysNode` (Days ↔ End-date input, date ↔ number output), `SettleNode` (people-frame ↔ ledger-cube input on its `mode`), `RecordNode` (Row and Group-by sockets per op), `ReturnsNode`, the finance nodes and `date.ts` (output family), `CableSwitchNode` (One ↔ Many output), `GetColumnNode`, `SplitFrameNode` and `AddColumnNode` (`setReadAs`, `setColType`, `setAddAs`, driven from `frameEdit.ts`), and `Expression`, `composite` and `formatController` (`setType`).
 
-## The result-type selector (`ResultTypeToggle`)
+## An input that follows another
 
-A polyform producer computes through a runtime-polymorphic lambda or formula, so its element type can't be inferred. The user declares it instead (`ResultType`: Number, Text, Date or Auto), and the output socket swaps at the node's own dimensionality (`ResultDim`). `resultSocket(dim, t)` is the one table, used both to build the port (`resultOut`) and to swap it in place:
+An input can take the kind of another input's settled type rather than its own cable's: Expect's Min and Max are `date` when the value it checks is a date (the In socket adopted a date rung) and `number` otherwise, so a date is bounded by dates ([[D120]] rangeBoundsTakeTheValuesKind). The wiring drives it, as it drives adoption, and no field does.
 
-| Dimensionality | Nodes | Number | Text | Date | Auto |
-|---|---|---|---|---|---|
-| `scalar` | REDUCE | `number` | `string` | `date` | `any` |
-| `combo` | Expression, BYROW, BYCOL | `numlist` | `strcombo` | `datecombo` | `anycombo` |
-| `matrix` | MAP, MAKEARRAY | `table` | `strtable` | `datetable` | `anytable` |
+**MUST:** a follower is a `MutableSocket` its class retypes in `settleFollowers()`, which answers the keys it retyped. `settleWildcardTypes` calls it on every node after applying the core's Type Settle, so it reads settled types, and names the card so its next call carries the new socket type ([[graph-core#Direct calls]]); `reconcileFcTypes` then drops each cable into a retyped follower that its new type no longer takes, as `retypeInputCables` does. The settle in the core never sees a follower: it is an input with no adoption. A follower's literal for each kind is kept apart (Expect's number bounds in `literals`, its date bounds as keyed text in `stringLiterals`, the core's date field for Expect), so the card keeps both as its value moves between kinds.
 
-The combo Auto rung is `anycombo`, not `any`: an Auto result is a list whenever a list variable broadcasts, and `any` would let it reach strict scalar inputs.
+Tests: `expect_date_bounds.rs` (solenoid-core): Expect's range check over date and number bounds, with the socket types the settle gives Min and Max ([[date-values#Cards]]).
+
+## The InlineCast
+
+Code: `InlineCast`
+
+A formula or LAMBDA card's result takes the type it computed, and its InlineCast casts it ([[D113]] inlineCast; [[formula-language]] § Result socket). The output socket swaps at the node's own dimensionality (`ResultDim`) to the cast's family, or under ∅ to the computed one (`castResultSocket`). `resultSocket(dim, t)` is the one table, used both to build the port (`resultOut`) and to swap it in place:
+
+| Dimensionality | Nodes | Number | Text | Date | Boolean | Untyped |
+|---|---|---|---|---|---|---|
+| `scalar` | REDUCE | `number` | `string` | `date` | `logical` | `any` |
+| `combo` | Expression, BYCOL | `numlist` | `strcombo` | `datecombo` | `logicalcombo` | `anycombo` |
+| `matrix` | MAP, BYROW, SCAN, MAKEARRAY | `table` | `strtable` | `datetable` | `logicaltable` | `anytable` |
+
+The untyped combo rung is `anycombo`, not `any`: an uncast result is a list whenever a list variable broadcasts, and `any` would let it reach strict scalar inputs.
 
 ## The rule: an in-place retype re-drives FC adaptation
 
-**MUST:** when a node changes the type of one of its own inputs or outputs in place, everything wired to it is updated to match, never left working by the old type. No wiring event fires in this case, so the node itself must see to it. A pick on a node may change its own sockets ([[#Control-driven socket swaps]]), and nothing downstream sees that change on its own: left alone, a downstream Format Controller keeps formatting by the old type and shows a wrong-looking value. The retypers include Cast's target, a LAMBDA table's result type, Get Column's read-as, a Note's frontmatter, List and Table Input element types, Add and Split Column, Cable Switch and Import from Obsidian; the completeness test (`sourceInvariants.test.ts`) owns the full list.
+**MUST:** when a node changes the type of one of its own inputs or outputs in place, everything wired to it is updated to match, never left working by the old type. No wiring event fires in this case, so the node itself must see to it. A pick on a node may change its own sockets ([[#Control-driven socket swaps]]), and nothing downstream sees that change on its own: left alone, a downstream Format Controller keeps formatting by the old type and shows a wrong-looking value. The retypers include Cast's op, a LAMBDA table's result type, Get Column's read-as, a Note's frontmatter, List and Table Input element types, Add and Split Column, Cable Switch and Import from Obsidian; the completeness test (`sourceInvariants.test.ts`) owns the full list.
 
 So any code that changes a socket's `dataType` in place must re-drive FC adaptation, through `fcReconcile.ts`:
 
 - **`reconcileFcTypes(editor, view)`** is the shared sweep. The canvas connection pipe calls it, and so does any manual retype. It doesn't recompute or bump the connection version; the caller owns `processGraph`. In order:
   1. `settleWildcardTypes` first, so the FCs resolve against settled types.
   2. Re-render every Conduit when lane types changed, and every node whose adoption changed, then rebuild the cables once rather than once per connection.
-  3. Refresh every Convert's unit arrows (`syncUnitArrows`) before the FCs, so the chain settles in one sweep.
-  4. For every FC: `adaptTypeFromConnections`, `refreshAnnotation`, re-render.
-  5. If any FC retyped, re-render the cables again on the next animation frame, since a retyped socket's cables stay detached until their paths recompute.
-- **`retypeOutputCables(editor, area, nodeId, outKey)`** runs after an output socket is swapped. It reads the new type off the already-swapped socket, keeps each outgoing cable the new type can still feed (an `any` input always survives, and so does same-family widening), drops only the ones that no longer fit, then calls `reconcileFcTypes`. An adoptive input is judged by its `base`, not the type it adopted from this very cable: a rank-2 result retyped onto a Display that adopted the rank-1 type keeps the cable and re-adopts ([[socket-lattice#The wildcard ladder keeps rank]]). Cast, `ResultTypeToggle` and Get Column use it. The Note's `commitFields` does the same for each retyped key.
+  3. `reconcileFcs`: one core call answers every FC's type (in graph order, each FC's new type seen by the ones after it) and the from-unit a Convert ahead dictates to it, and every Convert's unit arrows; each takes its answer, then every FC writes its annotation (`refreshAnnotation`) and re-renders.
+  4. If any FC retyped, re-render the cables again on the next animation frame, since a retyped socket's cables stay detached until their paths recompute.
+- **`retypeOutputCables(editor, area, nodeId, outKey)`** runs after an output socket is swapped. It reads the new type off the already-swapped socket, keeps each outgoing cable the new type can still feed (an `any` input always survives, and so does same-family widening), drops only the ones that no longer fit, then calls `reconcileFcTypes`. An adoptive input is judged by its `base`, not the type it adopted from this very cable: a rank-2 result retyped onto a Display that adopted the rank-1 type keeps the cable and re-adopts ([[socket-lattice#The wildcard ladder keeps rank]]). Cast, `InlineCast` and Get Column use it. The Note's `commitFields` does the same for each retyped key.
 
-`concreteTypeOfOutput` walks through wildcard passthroughs (a Display fed by a date reads as a date) but stops at a node with its own concrete output type. So a retype ends at the first node that types the value itself, like a math node that always outputs a number. That's correct, not a gap.
+The reconcile's upstream walk goes through wildcard passthroughs (a Display fed by a date reads as a date) but stops at a node with its own concrete output type. So a retype ends at the first node that types the value itself, like a math node that always outputs a number. That's correct, not a gap.
 
-## Passthrough is one declaration (`nodes/passthrough.ts`)
+An FC resolves the family it offers controls for the same way from every family-less rung: wired out into `anydata`, `anylist` or `anytable` it stays provisional exactly as it does into `trueany`, never resolving to the rung and offering no controls. A Frame, a LAMBDA or a chart carries no element family but is a resolved type with its own FC treatment (none, view-as, text scale), never provisional.
+
+Tests:
+
+- `fcReconcile.test.ts`: `retypeOutputCables` keeps a cable into an `any` input and drops an incompatible typed one, and keeps a cable whose adoptive target adopted the previous type; `retypeInputCables` keeps a cable the new input type still accepts; the FC's family resolution over every family-less rung.
+- `noteFcPropagation.test.ts`: a Note retyped from date to number re-adapts both a direct FC and one behind a passthrough.
+- `sourceInvariants.test.ts`: the completeness list of the retypers.
+
+## Passthrough is one declaration
+
+Code: `nodes/passthrough.ts`
 
 A node that forwards a value to an output (a selector, a pure passthrough, an element-agnostic reshape) declares it once through `passthrough(): PassthroughSpec[]`: `{ output, inputs (the value branches), combine: single | agree | active, selected?() (the data-aware branch), pure? }`. `inputs` lists only the value branches, never a selector's condition or Expect's min, max and pattern.
 
-`agreeTypes` encodes each branch as `null` when unwired (it casts no vote) or as its socket type. A wired branch whose type is `trueany` (statically unknowable) vetoes, so the result is `trueany`, because a typed agreement would format that value wrongly. No wired branch, or branches that differ, also give `trueany`. The socket pass and the display walk both call this one function, so they cannot diverge.
+The agreement vote (`agree_types`, `lattice.rs`) reads each branch as no vote when unwired or as its socket type. A wired branch whose type is `trueany` (statically unknowable) vetoes, so the result is `trueany`, because a typed agreement would format that value wrongly. No wired branch, or branches that differ, also give `trueany`. The display reads the settled socket, so it cannot diverge from it.
 
 **Who reads it:**
 
-- trueany type adoption: `trueAnyAdopt` `reconcileOnce`, through `resolvePassthroughType` with the `agree` rule;
-- unit flow: `unitFlow` reads `selected()` first, else combines over the inputs, and `pure` drives the downstream FC-segment walk;
+- trueany type adoption: the core's Type Settle (`settle.rs`), with the agreement vote;
+- unit flow: the core's annotation walk (`annotate.rs`, from `annotationFacts.ts`) reads `selected()` first, else combines over the inputs, and `pure` drives the downstream FC-segment walk;
 - the frame-shape resolver: `frameShapeResolver` `passthroughForOutput`, which column pickers and INDEX's frame projection depend on;
-- coerceInputs' keep-tags boundary: `unitAware || isPassthroughNode`;
-- `ValueDisplay`'s carried-annotation branch: `isPassthroughNode`;
-- the FC's `refreshAnnotation` check for a Convert ahead: `isPurePassthroughNode`.
+- the FC's `refreshAnnotation` check for a Convert ahead: `isPurePassthroughNode`;
+- the input boundary's keep-tags branch, which lets a passthrough's value keep its unit tags.
 
-The FC's own type-adapt walk doesn't read it: `concreteTypeOfOutput` walks upstream on socket `dataType` through `isWildcardRung`. One declaration exists because separate markers for type and for units drifted: Expect, CableSwitch and IFERROR once passed type but not units.
+The FC's own type-adapt walk doesn't read it: the reconcile walks upstream on socket types through `is_wildcard_rung`. One declaration exists because separate markers for type and for units drifted: Expect, CableSwitch and IFERROR once passed type but not units.
 
 **Who declares it:**
 
-- Display and Expect: pure, `single`.
-- IF, IFERROR, CHOOSE, SWITCH and IFS: `agree` over the value branches.
-- CableSwitch in One mode: `active`.
+- Display and Expect: pure, `single`. Expect forwards only `in`, never its check parameters.
+- IF, IFERROR, CHOOSE, SWITCH and IFS: `agree` over the value branches. IF's `selected()` is its data-aware branch, and a blank condition selects none, which is indeterminate.
+- CableSwitch in One mode: `active`. In Many mode it answers a Cube and is no passthrough.
+- Fill: Coalesce is `agree` over the List and its Else rows, IFERROR's missing-value twin; the impute modes fill from the List's own values, so they are `single` on it. Neither is pure, since cells change.
 - The element-preserving same-rank ops (Reverse, Slice, Take, Drop, Shuffle, NthElement, Pad, TRANSPOSE, CHOOSEROWS / COLS, table TAKE / DROP, EXPAND): `single`, with adoptive inputs and outputs so the output forwards the input's type.
 - The append ladder: `agree` over its extensible rows, re-read every pass so a new row is a value branch right away (Concat Lists in 1-D; VSTACK and HSTACK in 2-D).
 - The rank-crossing reshapes (WRAPROWS, WRAPCOLS, TOCOL, TOROW): `single`. `projectTypeToBase` lands the element family on the output's own rank.
-- **INDEX**, an extraction that forwards a value out of its container rather than the container: `single` plus a `project(t, ctx)` that drops the rank and keeps the element family. The combo rung means exactly "one cell or a whole axis, decided at runtime". `ctx` (`ProjectContext`) is what the projection may consult beyond the socket type: the static frame `Shape` arriving on an input (from `frameShapeResolver`, supplied by the adoption pass) and whether an input is wired. A Frame's socket carries no family, but each named column does, so a blank or 0 Column gives the whole row, still a `frame`; Column = c gives that column's family at the combo rung; and `trueany` appears only where the type really is unknown (a wired Column, an upstream shape that can't be resolved, a `dynamic` shape, an out-of-range index, a Cube cell).
-- A generative output (XLOOKUP's value-dependent result, MAP's formula-typed result, sources) declares nothing and stays static.
+- **INDEX**, an extraction that forwards a value out of its container rather than the container: `single` plus a `project(t, ctx)` that drops the rank and keeps the element family. The combo rung means exactly "one cell or a whole axis, decided at runtime", so an extracted date reaches both a scalar and a list date input, and an extraction never crosses families. `ctx` (`ProjectContext`) is what the projection may consult beyond the socket type: the static frame `Shape` arriving on an input (from `frameShapeResolver`, supplied by the adoption pass) and whether an input is wired. A Frame's socket carries no family, but each named column does, so a blank or 0 Column gives the whole row, still a `frame`; Column = c gives that column's family at the combo rung; and `trueany` appears only where the type really is unknown (a wired Column, an upstream shape that can't be resolved, a `dynamic` shape, an out-of-range index, a Cube cell).
+- A generative output (XLOOKUP's value-dependent result, MAP's formula-typed result, sources, a Boolean op or Comparison that makes a new logical) declares nothing and stays static.
 
-**Passthrough alone is the wrong tool when the forwarded value crosses a unit granularity** ([[D43]] unitByGranularity). Keeping tags would carry per-item `UnitCell`s into a matrix, which the model forbids. So the rank-crossing nodes (WRAPROWS, WRAPCOLS, and the stackers, whose `anytable` rows accept a list) are `unitAware = true` and reduce each input themselves: `matrixCellsFromList` gives bare magnitudes plus the one shared unit, tagged with `withMatrixUnit`. In coerceInputs, `unitAware` wins over the passthrough keep-tags branch, so the two work together.
+Tests: `passthroughSystem.test.ts` ("passthrough declarations"): each declarer's spec as listed, the append ladder's rows re-read each pass, the generative nodes declaring none, and INDEX's projection over a homogeneous container, an untyped wildcard, a Frame by column and a Cube by axis.
+
+**Passthrough alone is the wrong tool when the forwarded value crosses a unit granularity** ([[C25]] firstClassUnits). Keeping tags would carry per-item `UnitCell`s into a matrix, which the model forbids. So the rank-crossing nodes (WRAPROWS, WRAPCOLS, and the stackers, whose `anytable` rows accept a list) are `unitAware = true` and their bodies reduce each input themselves to bare magnitudes under the one shared unit, the table's unit beside its cells. At the input boundary `unitAware` wins over the passthrough keep-tags branch ([[compute-pass]] § Arrival coercion), so the two work together.
 
 ### A trueany output declares its passthrough
 
-**MUST:** a class with a `trueany` output either declares `passthrough()` or is listed with the reason its type resolves another way: the FC is the resolver, Conduit lanes resolve through `conduitTrace`, composite boundary ports sync in their own pass, and XLOOKUP and NA are unknowable. A forwarder that skips the declaration leaves its output `trueany` forever, so downstream FCs can't key a family and a date serial silently shows as its raw number.
+**MUST:** a class with a `trueany` output either declares `passthrough()` or is listed with the reason its type resolves another way: the FC is the resolver, Conduit lanes resolve through `conduitTrace`, composite boundary ports sync in their own pass, and NA is an error by design. A forwarder that skips the declaration leaves its output `trueany` forever, so downstream FCs can't key a family and a date serial silently shows as its raw number. Every passthrough output is retypeable, so the value it carried types it once the calculation has run ([[socket-lattice]] req. 9; [[C136]] typesKnownAfterCalc), and a passthrough whose branches vote (`agree`) also declares `selected`, the input the format walk and unit flow follow. *Exception:* the combiners (Concat Lists, Sets, Interleave, Stack) put every input into the output, so there is no taken branch and they declare no `selected`; inputs that would mix dates with another kind answer `#TYPE!` instead (`date_values::refuse_mixed`, [[C137]] datesNeverSerials), as do IF over a list of conditions, IFERROR over a list, and XLookup or INDEX picking columns of different kinds with a date among them. **Removed by:** a combiner that keeps one input's values whole.
+
+Tests:
+
+- `passthroughSystem.test.ts` ("every passthrough output can take the type of its value"): every passthrough output's socket is retypeable, and branches that vote declare `selected`.
+- `catalogRegistry.test.ts`: every class with a `trueany` output declares `passthrough()` or is sanctioned with its reason.
 
 ### Relays are transparent
 
@@ -98,75 +141,84 @@ The FC's own type-adapt walk doesn't read it: `concreteTypeOfOutput` walks upstr
 
 When a relay answered from its own untyped lane, downstream column pickers went empty and formula column references silently failed to resolve through a passthrough, with no error anywhere.
 
-Machine-checked by `passthroughSystem.test.ts`, `trueAnyAdopt.test.ts` and `matrixUnitPolicy.test.ts`.
+Tests:
 
-## Frame shape is declared per producer (`nodes/frameShapeHook.ts`)
+- `frameShapePassthrough.test.ts`: a Frame's static shape survives a Display, a Conduit lane and an IF with one branch wired.
+- `trueAnyAdopt.test.ts`: a type adopted down a chain of passthroughs reverts on disconnect.
+- `conduitTrace.test.ts`: a Conduit run resolves to its origin from any segment.
 
-A node that emits a Frame states its output columns once, through `frameShape(outKey, ctx)`. It computes them from the wired input shapes (`ctx.inputShape`) and its own literals on unwired sockets (`ctx.wired`), or returns `null` where only the data can settle the column set: a fetched document, a type inferred from cells, a matrix's width. A misconfigured verb throws the same `#REF!` or `#VALUE!` its run would, and the resolver swallows that to `null`. A rule that can't mirror its verb exactly declares nothing instead of a wrong name.
+## Frame shape is declared per producer
 
-### Static shape rules (`frameShape.ts`)
+Code: `nodes/frameShapeHook.ts`
 
-A `Shape` is `{ columns: { name, type }[], dynamic? }`. `dynamic` means the output's column count depends on the data: `columns` lists what is known ahead of running, and more may appear at compute time. `shapeOf(op, input)` is the static twin of `applyVerb` in `frameVerbs.ts`, with one arm per `FrameOp` kind, and its columns must be exactly what a real `preview()` reports. Nest, Unnest and Frame Lookup are not frame shapes and have no rule. A column a rule needs that the input lacks throws `#REF!` ("column … not found").
+A node that emits a Frame states its output columns once, through `frameShape(outKey, ctx)`. It computes them from the wired input shapes (`ctx.inputShape`) and its own literals on unwired sockets (`ctx.wired`), or returns `null` where only the data can settle the column set: a fetched document, a type inferred from cells, a matrix's width. A misconfigured verb throws the same `#REF!` or `#VALUE!` its run would, and the resolver swallows that to `null`. A rule that can't mirror its verb exactly declares nothing instead of a wrong name. A literal speaks only for an unwired socket: once a cable feeds a config input, the run reads the cable and the card's text says nothing about the columns, so the shape is unknown.
 
-| Verb | Output shape |
-|---|---|
-| select | the named columns, first occurrence only, in the order named |
-| drop | the input minus the named columns |
-| rename | renamed through the map, made unique by `makeHeaders` |
-| sort, distinct, head, filter, filterMulti, sliceRows | the input unchanged |
-| fillBlanks, replaceValues | the input unchanged, after checking the target columns exist |
-| groupBy | the key columns, then one column per aggregate named by its `as`; min and max keep the source column's type and every other aggregate is a number; names made unique |
-| unpivot | the id columns, a `string` variable column (`variableName`, default "variable") and a value column (`valueName`, default "value") typed like the first value column (number when none) |
-| pivot | the row-field columns only, flagged `dynamic`, since the cross-tab width depends on the data; no value field is `#VALUE!` |
-| window | the input without any column of the new name, plus the new column (`as`, else the function name): lag, lead, first and last take the value column's type, everything else a number |
+### Static shape rules
 
-Four verbs have their own entry points:
+Code: `frameShape.ts`
 
-- `shapeOfJoin(left, right, opts)` checks both keys, then gives the left columns only for semi and anti (a filter, not a widening join), otherwise the left columns followed by the right's non-key columns, names made unique. It mirrors `joinFrames`.
-- `shapeOfAppend(shapes)` is the union by name in first-seen order; a shared name with two different types is `#TYPE!`.
-- `shapeOfAddIndex(input, name)` puts one number column first (`name`, default "Index"), names made unique.
-- `shapeOfSplitColumn(input, column, delimiter)` drops the split column and flags `dynamic`, because the part count is the maximum across rows; an empty delimiter returns the input.
+A `Shape` is `{ columns: { name, type }[], dynamic? }`. `dynamic` means the output's column count depends on the data: `columns` lists what is known ahead of running, and more may appear at compute time. **A verb's shape is the verb itself** ([[graph-core#Phase D: the graph's derived state]]): `shapeOf(op, input)`, `shapeOfJoin`, `shapeOfAppend`, `shapeOfAddIndex` and `shapeOfSplitColumn` run the core's verb on an empty frame of the input's shape, so a shape is exactly what the verb answers and a verb that refuses the input (a missing column is `#REF!`, mixed value columns in an unpivot `#TYPE!`) throws, which the walk reads as unknown. Nest, Unnest and Frame Lookup are not frame shapes and have no rule. Two answers depend on rows an empty frame doesn't have, so the wrapper adds them:
+
+- a pivot is `dynamic` (its cross-tab columns come from the data), and its totals write a "Total" label into its leading row keys, which then run as text (`totalLabelledKeys`);
+- a split is `dynamic`, its part count being the most any row has.
+
+**A card's own shape is its body too.** A card whose output columns come from no verb asks the core for them: a frame function over one sample row of each input (`sampleShapeOnCore`), or the card's own body run dry over sample inputs (`cardShapeOnCore`, `cardOutputsOnCore`: the outputs only, nothing the card shows changes), or a data provider's reader over an empty reply (Weather, Holidays, Currency history, `providers.rs`). A column's name then lives once, in the Rust. The cards that still list columns by hand are Write to Obsidian and Write Tasks, whose previews are TypeScript ([[graph-core]] § Phase E, vault and files). Frozen in `fixtures/core/card-shapes.json.gz`.
 
 `shapeOfFrameValue(f)` reads a literal frame's shape. `emptyFrameOf(shape)` builds a zero-row frame, so a producer whose columns never depend on row data can declare its shape by running its own verb instead of keeping a second copy of the rule that could drift. `columnNamesOf(shape)` lists a shape's column names for the column picker: empty for an unknown shape, and the known columns for a `dynamic` one, with free text still open.
 
-`frameShapeResolver.ts` is only the walk: pure, with no engine call and no IPC, and `null` means unknown. It knows no node classes beyond the Conduit. `makeFrameShapeResolver(editor).outShape(nodeId, outKey)` indexes the connections by target once, memoizes per output and answers `null` on a cycle. Per output, in order:
+`frameShapeResolver.ts` is only the walk, and `null` means unknown; the rules it reaches run the core's verbs synchronously. It knows no node classes beyond the Conduit. `makeFrameShapeResolver(editor).outShape(nodeId, outKey)` indexes the connections by target once, memoizes per output and answers `null` on a cycle. Per output, in order:
 
-1. **A Conduit lane** `out_i` forwards `in_i` verbatim. It is named here because the Conduit declares no `passthrough()`; `conduitTrace` owns lane routing.
+1. **A Conduit lane** `out_i` forwards `in_i` verbatim. It is named here because the Conduit declares no `passthrough()`; the core's Type Settle owns lane typing (`settle.rs`), and `conduitTrace.ts` the run a cable belongs to.
 2. **A node with both a `passthrough()` and a `frameShape()`** runs its hook: it adds or reshapes columns while still forwarding the input's rank (Computed Column or Add Column over a Cube), so its own columns win over the forwarded shape.
 3. **A pure forwarder** (`passthrough()` only) flows the input shape, so a Frame routed through a Display, IF or Expect keeps its static shape for every verb downstream. `single` reads its one input; `active` reads the input at the clamped `activeIndex()` (the first when none); `agree` needs every wired branch to have the same column names and types in order, and is unknown otherwise or when nothing is wired.
 4. **Otherwise** the `frameShape()` hook, given `inputShape(key)` and `wired(key)`, or unknown for a node with neither declaration.
 
 Anything a rule throws becomes `null`, just as a bad config shows an error value at runtime rather than crashing.
 
-**Column pickers** use the same idea. A node whose string literal names a column of an incoming Frame declares it once through `columnPickers()` (`nodes/columnPickerHook.ts`): the literal's key and the Frame input it belongs to. The shared `ColumnPickerField`, rendered by `InlineInputs` for those keys, offers that Frame's static column names (`frameShapeResolver` → `columnNamesOf`) with a free-text fallback, and commits the same string literal, so the socket and literal model doesn't change. Declare it next to `frameShape()`. Sort, Join and Get Column use it.
+**Column pickers** use the same idea. A node whose string literal names a column of an incoming Frame declares it once through `columnPickers()` (`nodes/columnPickerHook.ts`): the literal's key and the Frame input it belongs to. The shared `ColumnPickerField`, rendered by `InlineInputs` for those keys, offers that Frame's static column names (`frameShapeResolver` → `columnNamesOf`) with a free-text fallback, and commits the same string literal, so the socket and literal model doesn't change. A String List input takes `ColumnListField` instead: the plain list field, suggesting the columns not yet named after what is already typed. Declare it next to `frameShape()`. Sort, Join and Get Column use it for one column; Write to Obsidian and Write Tasks for their Keys list.
 
-Machine-checked by `frameShapeCoverage.test.ts` (every catalog Frame output has a rule, forwards one, or is a named data-dependent producer) and `frameShapeRules.test.ts` (one case per rule).
+Without a declared shape a new Frame node ships silently unknown: every downstream column picker, INDEX projection and Conduit trace goes `trueany`, and nothing errors.
+
+Tests:
+
+- `frameShapeCoverage.test.ts`: every catalog Frame output has a rule, forwards one, or is a named data-dependent producer.
+- `frameShapeRules.test.ts`: one case per declared rule, the static columns exactly what the node's own run produces, and each config-driven rule going unknown once its config socket is wired.
+- `frameShapePassthrough.test.ts`: Frame producers (a Note's Frame frontmatter key, Decision Matrix) carry their column types into the static shape.
+- `coreCardShapes.test.ts`: a card's own static shape holds to its frozen answers, every card in each mode over each input shape.
+- `frameShape.test.ts`: `shapeOf` per verb, a missing column refused as the verb refuses it, and the row-only verbs never reshaping.
 
 ## Three derived-type systems, one settle point
 
-1. **Conduit lanes** (`conduitTrace.ts`). A Conduit's lane sockets are all wildcards (`trueany` until settled), so typing a leaving value by its JS value would be lossy (a date is a number, a Frame an object). `resolveTypedSource` traces each lane back through any chain of Conduits to its real source, so the type passes through unchanged; a depth cap of 16 keeps a Conduit loop (a `#CIRC!` graph) from trapping the walk. Each pass (`reconcileConduitTypesOnce`) mutates each lane's `MutableSocket` in place and reports whether any type changed, and an unwired lane reverts to `trueany`. `reconcileConduitTypes` repeats the pass until nothing changes, so a chain of Conduits settles in as many passes as it is deep; its cap of 32 passes sits well above any real chain and also bounds a `#CIRC!` loop. The caller owns re-rendering, recomputing and re-validating the downstream cables and FCs.
+1. **Conduit lanes** (`settle.rs`). A Conduit's lane sockets are all wildcards (`trueany` until settled), so typing a leaving value by its JS value would be lossy (a date is a number, a Frame an object). The settle traces each lane back through any chain of Conduits to its real source (`typed_source`, `conduit.rs`), so the type passes through unchanged; a depth cap of 16 keeps a Conduit loop (a `#CIRC!` graph) from trapping the walk. Each round retypes every lane until none changes, at most 32, and an unwired lane reverts to `trueany`.
 2. **FC adoption** (above).
-3. **trueany adoption** (`trueAnyAdopt.ts`). Every `AdoptiveSocket`, the marker subclass that `trueAnyIn` / `trueAnyOut` create per port, adopts the wired cable's type and goes back to its declared `base` when disconnected. The default base is `trueany`. A narrower base, `anytable` or `anylist` (`adoptiveTableIn` / `adoptiveListIn`, used by Build Frame and Frame from Lists to learn a matrix's or list's element family, `date` included), keeps the port restricted to that rung while it still adopts the concrete wired type.
+3. **trueany adoption** (`settle.rs`, over the facts `settleFacts.ts` gathers). Every `AdoptiveSocket`, the marker subclass that `trueAnyIn` / `trueAnyOut` create per port, adopts the wired cable's type and goes back to its declared `base` when disconnected. The default base is `trueany`. A narrower base, `anytable` or `anylist` (`adoptiveTableIn` / `adoptiveListIn`, used by Build Frame and Frame from Lists to learn a matrix's or list's element family, `date` included), keeps the port restricted to that rung while it still adopts the concrete wired type.
    - Inputs always adopt. Outputs adopt only where that's honest: Display, Expect and Input Switch in One mode pass through; IF, IFERROR, CHOOSE, SWITCH and IFS adopt when every wired branch agrees; INDEX projects its container's family onto its own rank, reading a Frame's per-column family off the static shape.
    - XLOOKUP's result is `staticTrueAnyOut`, the shared singleton that never changes, because a Cube cell's type varies by row.
    - The cube-family pair lets a row verb hand back the rank it received. `cubeAdoptIn` (base `cube`, which accepts a Frame or a Cube) with a `single` passthrough into `tableAdoptOut` gives a Frame out for a Frame in and a Cube out for a Cube in. The output's base is `frame`, not `cube`, so an unadopted output (a fresh node, or a static `validateText` check before adoption runs) reads as a Frame and still feeds a frame-only consumer (GROUPBY, Pivot, Join) as well as a cube one; a wired Cube adopts it to `cube`.
    - `anyTableIn` and `anyListIn` adopt only for display: acceptance is unchanged, and coercion treats the adopted type exactly like the base rung ([[compute-pass]]). `anyComboIn` accepts what `anyListIn` does but lets a scalar reach `data()` as a scalar, for a producer whose rank follows its input. `adoptiveDataOut` (base `anydata`) adopts the input's rank and element family together, so a same-rank op (TAKE, DROP) hands back a list for a list and a matrix for a matrix.
 
+```mermaid
+flowchart TD
+    ev["a cable change, a retype, a paste or a load"] --> settle["settleWildcardTypes:<br>Conduit lanes and trueany adoption<br>until both settle"]
+    settle --> conv["Convert arrows synced"]
+    conv --> fc["each Format Controller adapts<br>to its settled input type"]
+    fc --> cab["cables redrawn"]
+```
+
 **`settleWildcardTypes(editor)`** alternates the Conduit and trueany passes until both settle, and it is the one entry point. `reconcileFcTypes` and the load path (`persistence.ts`) both go through it, so the connection pipe, Note retypes, paste and load all settle the same way.
 
-**Order matters.** A one-shot consumer that caches a resolved type, like the FC dock loop on load, runs after the settle. `persistence.ts`'s rebuild tail is hydrate → settle → dock, pinned by `fcDockReload.test.ts`, which guards against a false Frame type on reload.
+**Order matters.** A one-shot consumer that caches a resolved type, like the FC dock loop on load, runs after the settle. `persistence.ts`'s rebuild tail is hydrate → settle → dock: docking only records each dock, and `reconcileFcTypes` settles the wildcard types before it types the FCs. Before the settle, a projected wildcard (INDEX pulling one cell out of a Frame) still reads as its upstream's raw `frame`, which a docked FC would adopt and keep.
 
 A socket type can also come from static config (INDEX's Column literal, and the frame shape every verb's literal config feeds). So the literal commit paths (`InlineInputs` set / setStr, `useNodeField`, the Frame Input source editor) call `reconcileTypesAfterEdit` (fcReconcile), which runs the settle and pays for the full FC reconcile only when a type actually changed (the reconcile settles again, a no-op fixpoint, and owns the renders).
 
 **Invariants:**
 
-- Adoption never drops cables. It is derived state; only an explicit user retype goes through `retypeOutputCables`. A cable adoption leaves ill-typed is not flagged on the canvas: it keeps delivering, and the consumer's coercion is the only check (text on a number port is `#TYPE!`, `coerceInputs.ts` `numericCells`; the other families pass the value through).
+- Adoption never drops cables. It is derived state; only an explicit user retype goes through `retypeOutputCables`. A cable adoption leaves ill-typed is not flagged on the canvas: it keeps delivering, and the consumer's coercion is the only check (text on a number port is `#TYPE!`, the input boundary's `family_cell`; the other families pass the value through).
 - Adopted types are never saved. They're worked out from the wiring on load.
 - An adopting port owns its socket instance, since a shared one would leak adoption between cards ([[socket-lattice#Each port owns its socket instance]]).
 - A drilled-into composite settles its inner editor itself (`composite.ts` `settleInternalTypes`: the same joint settle plus boundary adoption). The main canvas pipe never touches the inner editor.
 
-Machine-checked by `trueAnyAdopt.test.ts`.
+Tests:
 
-## Enforcement
-
-`noteFcPropagation.test.ts` (a Note retyped from date to number re-adapts both a direct FC and one behind a passthrough) and `fcReconcile.test.ts` (`retypeOutputCables` keeps a cable into an `any` input and drops an incompatible typed one).
+- `trueAnyAdopt.test.ts`: adoption and reverting, the cube-family pair, and the rank-bearing bases.
+- `fcDockReload.test.ts` ("docked FC survives a reload of the computed-column → INDEX chain"): docking types nothing, and on reload the docked FC adopts the cell's family, never the raw upstream Frame.

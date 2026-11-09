@@ -1,0 +1,35 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"CLEAN(CHAR(9) & \"Monthly report\" & CHAR(10))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(\"a\" & CHAR(1) & \"b\" & CHAR(31) & \"c\" & CHAR(127))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(r_A1_A10)","env":["r_A1_A10=table:text:[[\"Hola\"], [\"Adios\"], [\"Vamos\"], [\"  A log text. \"], [blank], [#DIV/0!], [#N/A], [#NAME?], [\"ironcalc\"], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]},
+{"group":"1. text","axis":"argument","cite":[], "cases": [
+  {"formula":"CLEAN(0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(-1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(0.5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(1E+307)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(1E-307)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(\"\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(\"abc\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(\"5\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(\" 5 \")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(\"TRUE\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(\"😀\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(FALSE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(DATE(2024, 3, 5))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(DATE(1900, 1, 1))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(DATE(2024, 3, 5) + TIME(12, 0, 0))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(p_blank)","env":["p_blank=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(NA())","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(1 / 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(p_nums)","env":["p_nums=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(p_texts)","env":["p_texts=list:text:[\"a\", \"b\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(p_bools)","env":["p_bools=list:bool:[TRUE, FALSE]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(p_table)","env":["p_table=table:num:[[1, 2], [3, 4]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(COMPLEX(1, 2))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CLEAN(p_unit)","env":["p_unit=unit:5000 m as km"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-cli
 *.local
 
 # Claude Code local state (keep .claude/skills tracked)
@@ -28,12 +29,10 @@ dist-ssr
 
 # Affinity Designer editor lock files
 *~lock~
-sample-data/
 
 # generated copy-rewrite working files (scripts/copy-inventory.ts)
 copy-inventory.md
 copy-inventory.md.orig.json
-/rf-*.png
 
 # Dev-server mirror of the document being edited (vite.config.ts devGraphMirror)
 .dev/
@@ -56,3 +55,6 @@ demo-vault/TaskNotes/
 tree/.obsidian/
 tree/decisions/.obsidian/
 __pycache__/
+
+# The Rust core (crates/solenoid-core)
+crates/*/target/

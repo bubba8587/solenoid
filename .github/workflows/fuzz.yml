@@ -1,0 +1,27 @@
+# The seeded fuzz loops at ten times their everyday count on fresh seeds (tests/graph/fuzzDepth.ts), weekly and on
+# demand. A failure prints the seed that found it; FUZZ_SEED=<seed> replays it locally.
+name: Deep fuzz
+
+on:
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Fuzz deep
+        run: npx vitest run --silent=false
+        env:
+          FUZZ: deep

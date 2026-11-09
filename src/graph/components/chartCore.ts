@@ -1,8 +1,12 @@
 // [[C100]] chartIsAValue, [[B2]] webTryDesktopFull
 // Must stay recharts-free: a helper imported from here must not drag recharts into the main bundle.
+import { themeColor } from "./themeColor";
 import { useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import { resolveColor, type PaletteSlot } from "../palette";
+import { dateTrunc, dateFromParts } from "../nodes/dateOps";
+import { serialToJsDate } from "../nodes/dateSerial";
+import type { ChartValue } from "../chartValue";
 
 export type ChartShape =
   | "line" | "area" | "bar" | "column"       // cartesian (axes-aware)
@@ -17,8 +21,7 @@ const SERIES_SLOTS: PaletteSlot[] = [
 // recharts writes colors as SVG attributes, where CSS var() doesn't resolve.
 export function useChartColors() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  const cs = getComputedStyle(document.documentElement);
-  const get = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback;
+  const get = (name: string, fallback: string) => themeColor(name, fallback);
   return {
     grid: get("--border-strong", "#3a3a3a"),
     axis: get("--text-dim", "#888"),
@@ -32,7 +35,12 @@ export function useSeriesColors(): string[] {
   return SERIES_SLOTS.map((slot) => resolveColor(slot));
 }
 
-export type SeriesSpotlight = { index: number; name: string } | null;
+/** The color of a Conditional Regions label at `i`, the categorical palette in turn. */
+export function regionLabelColor(colors: readonly string[], i: number): string {
+  return colors[i % colors.length];
+}
+
+type SeriesSpotlight = { index: number; name: string } | null;
 
 /** The series a legend spotlight picks out now: the picked slot while it still holds the picked name, else the one
  *  series still wearing that name, else none. */
@@ -124,6 +132,55 @@ export function valueTickFormat(values: Iterable<unknown>, ticks?: readonly numb
   return (n: number) => compactTick(n, s);
 }
 
+/** Ticks on a date axis from serial `lo` to `hi`, about `count` of them, on the calendar boundaries DATETRUNC uses:
+ *  the first of January every 1, 2, 5, 10, 20 or 50 years across three years or more, else the first of a month every
+ *  1, 2, 3 or 6 months. `byYear` tells the caller to label them with the year alone. */
+export function dateTicks(lo: number, hi: number, count: number): { ticks: number[]; byYear: boolean } {
+  if (!(hi > lo)) return { ticks: [lo], byYear: false };
+  const want = Math.max(2, count);
+  const years = (hi - lo) / 365.25;
+  const byYear = years >= 3;
+  const steps = byYear ? [1, 2, 5, 10, 20, 50] : [1, 2, 3, 6];
+  const span = byYear ? years : years * 12;
+  const step = steps.find((s) => span / s <= want) ?? steps[steps.length - 1];
+  const first = serialToJsDate(dateTrunc(lo, byYear ? "year" : "month", true));
+  let y = first.getUTCFullYear(), m = first.getUTCMonth();
+  // Align to the step so ticks land on round years (2020, 2025) or quarter and half-year starts.
+  if (byYear) y = Math.ceil(y / step) * step;
+  else { const k = Math.ceil((y * 12 + m) / step) * step; y = Math.floor(k / 12); m = k % 12; }
+  const ticks: number[] = [];
+  for (;;) {
+    const t = dateFromParts(y, m + 1, 1);
+    if (typeof t !== "number" || t > hi) break;
+    ticks.push(t);
+    if (byYear) y += step; else { m += step; y += Math.floor(m / 12); m %= 12; }
+  }
+  return { ticks, byYear };
+}
+
+/** How many rows a series legend takes across `width` px: each entry is an 8 px swatch, a 4 px gap and its text at
+ *  about 5.4 · fs px a character, entries 10 px apart. Rows are counted ahead of drawing so the plot can give up their
+ *  height without jumping, and are capped at `maxRows` so a small figure keeps its plot; entries past the cap are clipped. */
+export function legendRows(names: readonly string[], width: number, fs: number, maxRows = Infinity): number {
+  let rows = 1, used = 0;
+  for (const n of names) {
+    const w = 12 + n.length * 5.4 * fs;
+    if (used > 0 && used + 10 + w > width) { rows++; used = w; }
+    else used += (used > 0 ? 10 : 0) + w;
+  }
+  return Math.max(1, Math.min(rows, maxRows));
+}
+
+/** Log-axis ticks inside [lo, hi] (both above zero): 1, 2 and 5 of each decade, or only the 1s past four decades. */
+export function logTicks(lo: number, hi: number): number[] {
+  if (!(lo > 0) || !(hi >= lo)) return [];
+  const steps = Math.log10(hi / lo) > 4 ? [1] : [1, 2, 5];
+  const out: number[] = [];
+  for (let e = Math.floor(Math.log10(lo)); e <= Math.ceil(Math.log10(hi)); e++)
+    for (const m of steps) { const v = Number((m * 10 ** e).toPrecision(12)); if (v >= lo && v <= hi) out.push(v); }
+  return out;
+}
+
 /** Round-number ticks inside [lo, hi], about `count` of them. */
 export function niceTicks(lo: number, hi: number, count = 5): number[] {
   const raw = (hi - lo) / count;
@@ -139,6 +196,20 @@ export function niceTicks(lo: number, hi: number, count = 5): number[] {
  *  the data's extremes rounded to two figures (recharts' nice ends) and the round ticks between them, since a 0–1
  *  axis's 0.25 is wider than either end, and over the round ticks of the data's own range, read by the axis's `fmt`.
  *  Plus recharts' 8 px of tick spacing and 14 for an axis title. */
+/** The right margin a plot needs so the x label centered on its right edge isn't cut off: half that label's width (at
+ *  the axes' 9px type, 5.8px a character as `valueAxisWidth` reads it), never under the usual 8. */
+export function edgeRoom(lastLabel: string, fs: number, base = 8): number {
+  return Math.max(base, Math.ceil((lastLabel.length * 5.8 * fs) / 2) + 2);
+}
+
+/** A category x axis's interval: every label when they fit side by side across `plotW`, else every k-th, the first
+ *  kept (a tick forced at every point ran five-digit labels into each other). */
+export function categoryInterval(labels: readonly string[], plotW: number, fs: number): number {
+  const widest = Math.max(1, ...labels.map((l) => l.length)) * 5.8 * fs + 6;
+  const per = plotW / Math.max(1, labels.length);
+  return per >= widest ? 0 : Math.ceil(widest / per) - 1;
+}
+
 export function valueAxisWidth(values: Iterable<unknown>, fs: number, titled = false, fmt: (n: number) => string = compactTick): number {
   let lo = 0, hi = 0, min = Infinity, max = -Infinity;
   for (const v of values) {
@@ -183,6 +254,101 @@ export function minMaxDecimate<P extends { v: number }>(series: P[], buckets: nu
   return out;
 }
 
+/**
+ * The rows of several index-aligned series that keep each one's envelope on `buckets` spans: every span gives each
+ * series' lowest and highest row, topped up to two distinct rows per series, so every span gives the same count of
+ * distinct rows and a category axis keeps its spacing. A span
+ * where a series is blank gives a blank row for it, so a gap wider than a pixel stays a gap. Null when the series are
+ * not dense enough to thin.
+ */
+export function envelopeRows(series: readonly (readonly (number | null)[])[], n: number, buckets: number): number[] | null {
+  const k = series.length;
+  if (buckets < 1 || k === 0 || n <= buckets * k * 4) return null;
+  const out: number[] = [];
+  const picks: number[] = [];
+  for (let b = 0; b < buckets; b++) {
+    const lo = Math.floor((b * n) / buckets), hi = Math.floor(((b + 1) * n) / buckets);
+    picks.length = 0;
+    for (const vals of series) {
+      let min = -1, max = -1;
+      for (let r = lo; r < hi; r++) {
+        const v = vals[r];
+        if (v == null) continue;
+        if (min < 0 || v < (vals[min] as number)) min = r;
+        if (max < 0 || v > (vals[max] as number)) max = r;
+      }
+      if (min < 0) picks.push(lo, lo);
+      else picks.push(min, max);
+    }
+    // Distinct rows, topped up from the span's start where series share a pick, so no category repeats.
+    const set = new Set(picks);
+    for (let r = lo; set.size < picks.length && r < hi; r++) set.add(r);
+    for (const r of [...set].sort((a, b2) => a - b2)) out.push(r);
+  }
+  return out;
+}
+
+/** How a run of XY points thins: a markerless line by its pixel columns, a line with markers by its consecutive
+ *  pixel cells, scattered dots by every pixel cell. */
+export type ThinMode = "line" | "markers" | "dots";
+
+/**
+ * An XY run without the points no one could see. `px` and `py` map a point to the pixel it lands on (fractional is
+ * fine; the scale may be coarser than the axis's real one, never finer). A markerless line whose x only climbs or only
+ * falls keeps each pixel column's first, lowest, highest and last point, which draws the same strokes; otherwise
+ * (`markers`, or x that turns back) a streak of points in one pixel keeps its first and last. Dots keep the last point
+ * in each pixel, the one drawn on top. Point order is kept.
+ */
+export function thinXY<P extends { x: number; y: number }>(rows: readonly P[], px: (x: number) => number, py: (y: number) => number, mode: ThinMode): P[] {
+  const n = rows.length;
+  if (n < 3) return rows.slice();
+  const cell = (p: P) => `${Math.floor(px(p.x))},${Math.floor(py(p.y))}`;
+  if (mode === "dots") {
+    const seen = new Set<string>();
+    const keep: P[] = [];
+    for (let r = n - 1; r >= 0; r--) {
+      const c = cell(rows[r]);
+      if (seen.has(c)) continue;
+      seen.add(c);
+      keep.push(rows[r]);
+    }
+    return keep.reverse();
+  }
+  let up = true, down = true;
+  for (let r = 1; r < n && (up || down); r++) {
+    if (rows[r].x < rows[r - 1].x) up = false;
+    if (rows[r].x > rows[r - 1].x) down = false;
+  }
+  const out: P[] = [];
+  if (mode === "line" && (up || down)) {
+    let start = 0;
+    while (start < n) {
+      const col = Math.floor(px(rows[start].x));
+      let end = start + 1;
+      while (end < n && Math.floor(px(rows[end].x)) === col) end++;
+      let min = start, max = start;
+      for (let r = start + 1; r < end; r++) {
+        if (rows[r].y < rows[min].y) min = r;
+        if (rows[r].y > rows[max].y) max = r;
+      }
+      const picks = [start, min, max, end - 1].sort((a, b) => a - b);
+      picks.forEach((r, i) => { if (i === 0 || r !== picks[i - 1]) out.push(rows[r]); });
+      start = end;
+    }
+    return out;
+  }
+  let start = 0;
+  while (start < n) {
+    const c = cell(rows[start]);
+    let end = start + 1;
+    while (end < n && cell(rows[end]) === c) end++;
+    out.push(rows[start]);
+    if (end - 1 > start) out.push(rows[end - 1]);
+    start = end;
+  }
+  return out;
+}
+
 export function toSeries(v: unknown): { i: number; v: number }[] {
   if (v == null) return [];
   const arr: unknown[] = Array.isArray(v) ? v : [v];
@@ -199,4 +365,25 @@ export function partSlices(op: ChartShape, series: readonly { i: number; v: numb
   if (op === "pie") return series.filter((d) => d.v > 0);
   if (op === "funnel" || op === "radialbar") return series.filter((d) => d.v >= 0);
   return [...series];
+}
+
+/** What a reference row draws: any second end makes an area whose missing ends run to the plot's edges (a box when
+ *  both axes are bounded), an x and a y alone a point, otherwise a line across the plot. */
+export function refShape(r: { x?: unknown; x2?: unknown; y?: unknown; y2?: unknown }): "area" | "point" | "vline" | "hline" | null {
+  if (r.x2 !== undefined || r.y2 !== undefined) return "area";
+  if (r.x !== undefined && r.y !== undefined) return "point";
+  if (r.x !== undefined) return "vline";
+  return r.y !== undefined ? "hline" : null;
+}
+
+/** Past this many points a figure redraws once a resize settles, stretching its last drawing until then. */
+export const HEAVY_FIGURE_POINTS = 5000;
+
+/** The points a figure draws, counted from what it holds. */
+export function figurePoints(value: ChartValue): number {
+  const p = value.payload;
+  if (p?.kind === "xy") return p.series.reduce((m, s) => m + s.points.length, 0);
+  if (p?.kind === "overlay") return p.series.reduce((m, s) => m + s.values.length, 0);
+  if (value.series) return value.series.reduce((m, s) => m + s.values.length, 0);
+  return Array.isArray(value.values) ? value.values.length : 0;
 }

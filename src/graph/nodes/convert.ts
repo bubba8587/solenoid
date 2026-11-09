@@ -1,19 +1,16 @@
-// [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[C24]] arraySemantics
-import { ClassicPreset, type NodeEditor } from "rete";
-import { broadcastUnit, numListIn, numListOut, type UnitOperand } from "./shared";
+// [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue, [[C24]] arraySemantics
+import { GraphNode } from "../graphModel";
+import { numListIn, numListOut } from "./shared";
 import { isFcUnit, type FormatStyle } from "../formatAnnotationStore";
-import { registerDisplayUnits, fcUnitToUnit } from "../unitBridge";
-import { solError, type SolError } from "../errorValue";
-import { commensurable, dimEqual, formatDim, type Unit } from "../dimension";
-import { CONVERT_UNIT_DEFS, convertValue } from "./convertUnits";
-export { CONVERT_UNIT_DEFS, convertValue, CONVERT_CATEGORY_LABELS, type ConvertCategory, type ConvertUnitDef } from "./convertUnits";
-import { isUnitCell, fromUnit, withDisplay, unitError, type UnitCell } from "../unitValue";
+import { type SolError } from "../errorValue";
+import { nodeOnCore } from "../nodeOnCore";
+export { CONVERT_UNIT_DEFS, CONVERT_CATEGORY_LABELS, type ConvertCategory, type ConvertUnitDef } from "./convertUnits";
+import { type UnitCell } from "../unitValue";
 
 
-registerDisplayUnits(Object.fromEntries(Object.entries(CONVERT_UNIT_DEFS).map(([id, d]) => [id, d.dim])));
 
 
-export class ConvertNode extends ClassicPreset.Node {
+export class ConvertNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     in: "From applies only to plain numbers. A value with a unit keeps its magnitude and is relabeled when the dimensions match, #UNIT! when they differ.",
   };
@@ -46,45 +43,7 @@ export class ConvertNode extends ClassicPreset.Node {
     return isFcUnit(this.toUnit) ? this.toUnit : "none";
   }
 
-  syncUnitArrows(
-    editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>,
-  ): void {
-    let up = false, down = false;
-    for (const c of editor.getConnections()) {
-      if (c.target === this.id && c.targetInput === "in")    up = true;
-      if (c.source === this.id && c.sourceOutput === "out")  down = true;
-    }
-    this.imposesUp = up;
-    this.imposesDown = down;
-  }
-
-  data(inputs: { in?: unknown[] }): { out: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null } {
-    const x = (inputs.in?.[0] ?? null) as UnitOperand | UnitOperand[] | null;
-    this.cachedInput = x;
-    if (x === null) { this.cachedResult = null; return { out: null }; }
-    const from = CONVERT_UNIT_DEFS[this.fromUnit];
-    const to   = CONVERT_UNIT_DEFS[this.toUnit];
-    if (!from || !to || !commensurable(from.dim, to.dim)) {
-      const err = !from || !to
-        ? solError("#N/A", `Convert doesn't know the unit "${!from ? this.fromUnit : this.toUnit}"`)
-        : solError("#N/A", `Can't convert ${from.category} to ${to.category}: the units measure different things`);
-      this.cachedResult = err;
-      return { out: err };
-    }
-    const rangeErr = () => solError("#OVERFLOW!", "The converted value is too large to represent");
-    const toDim: Unit = to.dim;
-    const display = fcUnitToUnit(this.toUnit) ? this.toUnit : undefined;
-    const convertCell = (v: UnitOperand): number | UnitCell | SolError => {
-      if (isUnitCell(v)) {
-        if (dimEqual(v.dim, toDim.dim)) return display ? (withDisplay(v, display) as UnitCell) : v;
-        return unitError(`This value is ${formatDim(v.dim) || "a plain number"}, but Convert targets ${formatDim(toDim.dim) || "a plain number"}.`);
-      }
-      const conv = convertValue(v, this.fromUnit, this.toUnit);
-      if (conv === null) return rangeErr();
-      return fromUnit(conv, toDim, display);
-    };
-    const result = broadcastUnit(convertCell, x);
-    this.cachedResult = result;
-    return { out: result };
+  data(inputs: Record<string, unknown[] | undefined>): { out: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null } {
+    return nodeOnCore(this, inputs) as { out: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null };
   }
 }

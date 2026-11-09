@@ -1,6 +1,6 @@
-// [[C118]] formatTravelsWithValue, [[D41]] formatFlowsDownstream, [[C25]] firstClassUnits, [[C79]] packActivationIsPresentation
+// [[C118]] formatTravelsWithValue, [[C25]] firstClassUnits, [[C79]] packActivationIsPresentation
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type * as React from "react";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES, UNIT_ANNOTATIONS,
@@ -13,12 +13,6 @@ import { usePendingDraft } from "../draftFlush";
 import { stopDragStart } from "../coarse";
 
 // The FC's flow states (authored ← →, inherited → →, dictated ← ←): tree/specs/values/format-model.md.
-
-export type FcDir = "back" | "fwd" | null;
-export interface FcFlowState { left: FcDir; right: FcDir }
-
-export const FLOW_AUTHORED: FcFlowState = { left: "back", right: "fwd" };
-export const FLOW_INHERITED: FcFlowState = { left: "fwd", right: "fwd" };
 
 export function FcArrow({ dir, title }: { dir: "back" | "fwd"; title?: string }) {
   return (
@@ -38,26 +32,6 @@ export function FcArrow({ dir, title }: { dir: "back" | "fwd"; title?: string })
   );
 }
 
-/** A spacer stands in for a missing side, so a stack of these stays column-aligned. */
-export function FcFlow({ flow, backTitle, fwdTitle, children }: {
-  flow?: FcFlowState;
-  backTitle?: string;
-  fwdTitle?: string;
-  children: ReactNode;
-}) {
-  const arrow = (dir: FcDir, side: "left" | "right") =>
-    dir ? <FcArrow key={side} dir={dir} title={dir === "back" ? backTitle : fwdTitle} />
-        : <span aria-hidden="true" key={side} style={{ flex: "0 0 auto", width: 9 }} />;
-  // Layout lives in the consumer's `.sol-fcflow` CSS so it can differ by context.
-  return (
-    <span className="sol-fcflow">
-      {arrow(flow?.left ?? null, "left")}
-      {children}
-      {arrow(flow?.right ?? null, "right")}
-    </span>
-  );
-}
-
 // Pack groups append before "custom"; mirrors FormatControllerNode.
 const BASE_UNIT_GROUP_ORDER: string[] = [
   "none", "angle", "length", "mass", "temperature",
@@ -66,7 +40,7 @@ const BASE_UNIT_GROUP_ORDER: string[] = [
 
 type FcOption = { id: string; label: string };
 
-export interface FcFormatOptions {
+interface FcFormatOptions {
   unitGroups: Map<string, FcOption[]>;
   unitGroupOrder: string[];
   packFormatGroups: Map<string, FcOption[]>;
@@ -123,7 +97,7 @@ export function numberFormatOptions(packFormatGroups: Map<string, FcOption[]> = 
   );
 }
 
-export function unitOptions(opts: FcFormatOptions) {
+function unitOptions(opts: FcFormatOptions) {
   return (
     <>
       {opts.unitGroupOrder.map((group) => {
@@ -266,7 +240,7 @@ export function UnitSelect({ value, onChange, className, title, disabled }: {
   );
 }
 
-/** A Custom style's pattern, committed on Enter or blur ([[C95]] commitOnEnter); a blank entry keeps the pattern shown. */
+/** A Custom style's pattern, committed on Enter or blur ([[B19]] spreadsheetHabits); a blank entry keeps the pattern shown. */
 export function CustomPatternField({ value, date, onCommit, className }: {
   value: string;
   date: boolean;

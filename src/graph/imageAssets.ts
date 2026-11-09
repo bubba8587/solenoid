@@ -11,7 +11,7 @@ import {
 import { getEditor, getView, processGraph } from "./process";
 import { documentStore } from "./documentStore";
 
-export const IMAGES_DIR = "images";
+const IMAGES_DIR = "images";
 
 type ImageAssetNode = {
   id: string;
@@ -70,7 +70,6 @@ export function bytesToDataUrl(bytes: Uint8Array, mime: string): string {
 
 export function sanitizeName(name: string, fallback = "image"): string {
   const base = name.split(/[/\\]/).pop() ?? "";
-  // eslint-disable-next-line no-control-regex
   const clean = base.replace(/[<>:"|?*\x00-\x1f]/g, "").trim();
   return clean || fallback;
 }

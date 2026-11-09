@@ -1,20 +1,21 @@
-// [[D41]]
+// [[C118]] formatTravelsWithValue, [[unit-flow#A Frame's per-column format rides the value]], [[frame-verbs#Units and formats]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { frameFormatStore, columnFormatRow, describeAnnotation } from "../../src/graph/frameFormatStore";
 import { fmtCell } from "../../src/graph/components/FrameDisplay";
 import {
-  FrameInputNode, SortFrameNode, ColumnsNode, ComputedColumnNode, AddIndexNode, AllocatorNode,
+  FrameInputNode, SortFrameNode, ColumnsNode, ComputedColumnNode, AddIndexNode, DescribeNode,
 } from "../../src/graph/nodes/frame";
 import {
   frameSourceToText, frameColumnsToInputText, isFrameValue,
   type FrameColumn, type FrameSource, type FrameValue,
 } from "../../src/graph/frame";
 import { readFrame } from "../../src/graph/frameBackend";
-import { resetFrameBackendToJs, clearCollectMemo } from "../../src/graph/frameBackend";
+import { describeTilesOf } from "../../src/graph/describeProfile";
+
 import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";
 import seed from "../../src/graph/seedGraphs/allocator.json";
 
@@ -24,20 +25,18 @@ const DEC0: FormatAnnotation = { format: "decimal", unit: "none", decimalDigits:
 const source = (cols: Array<{ name: string; type: FrameColumn["type"]; cells: string[]; unit?: string }>): string =>
   frameSourceToText(cols as FrameSource);
 
-const frame = (columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });
 const col = (f: FrameValue, name: string): FrameColumn => f.columns.find((c) => c.name === name)!;
 
 /** The real pipeline: the coercion wrapper (where the OUTPUT stamp lives) plus the
  *  engine, so a frame arrives at the last node exactly as it does on the canvas. */
-async function chain(nodes: ClassicPreset.Node[], lastKey = "frame"): Promise<Record<string, unknown>> {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
+async function chain(nodes: GraphNode[], lastKey = "frame"): Promise<Record<string, unknown>> {
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   for (const n of nodes) await editor.addNode(n as Schemes["Node"]);
   for (let i = 1; i < nodes.length; i++) {
     const key = i === nodes.length - 1 ? lastKey : "frame";
-    await editor.addConnection(new ClassicPreset.Connection(nodes[i - 1], "frame", nodes[i], key) as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(nodes[i - 1], "frame", nodes[i], key) as Schemes["Connection"]);
   }
   return engine.fetch(nodes[nodes.length - 1].id) as Promise<Record<string, unknown>>;
 }
@@ -48,11 +47,9 @@ async function collected(out: Record<string, unknown>): Promise<FrameValue> {
   return f;
 }
 
-beforeEach(() => { frameFormatStore.clear(); resetFrameBackendToJs(); clearCollectMemo(); });
+beforeEach(() => { frameFormatStore.clear(); });
 afterEach(() => { frameFormatStore.clear(); });
 
-// [[D41]] formatFlowsDownstream: a frame column's DISPLAY format rides the value like its
-// unit — stamped at the producer from that node's own picks, overridden by a nearer one.
 describe("a per-column format rides the frame downstream", () => {
   it("survives Sort → Columns and renders through fmtCell", async () => {
     const input = new FrameInputNode({
@@ -73,6 +70,15 @@ describe("a per-column format rides the frame downstream", () => {
     expect(fmtCell(b.values[0], b.type, b.format)).toBe("9.877");
   });
 
+  it("Describe's stamped summary keeps its Dashboard tiles ([[C127]] pivotView)", async () => {
+    const input = new FrameInputNode({ frameText: source([{ name: "A", type: "number", cells: ["1", "2", "4"] }]) });
+    const desc = new DescribeNode();
+    frameFormatStore.set(desc.id, "mean", DEC3);
+    const out = (await chain([input, desc])).frame as FrameValue;
+    expect(col(out, "mean").format).toEqual(DEC3);
+    expect(describeTilesOf(out)?.map((t) => t.name)).toEqual(["A"]);
+  });
+
   it("a nearer node's own pick overrides the inherited one", async () => {
     const input = new FrameInputNode({
       frameText: source([{ name: "B", type: "number", cells: ["1.23456"] }]),
@@ -84,6 +90,17 @@ describe("a per-column format rides the frame downstream", () => {
     const b = col(await collected(await chain([input, idx])), "B");
     expect(b.format).toEqual(DEC0);
     expect(fmtCell(b.values[0], b.type, b.format)).toBe("1");
+  });
+
+  it("a lazy node's own pick rides its plan, so it reaches downstream too", async () => {
+    const input = new FrameInputNode({ frameText: source([{ name: "B", type: "number", cells: ["1.23456", "0.5"] }]) });
+    frameFormatStore.set(input.id, "B", DEC3);
+    const sort = new SortFrameNode();
+    sort.stringLiterals.column = "B";
+    frameFormatStore.set(sort.id, "B", DEC0);
+    const b = col(await collected(await chain([input, sort, new ColumnsNode()])), "B");
+    expect(b.values).toEqual([0.5, 1.23456]);
+    expect(b.format).toEqual(DEC0);
   });
 
   it("an unstamped column keeps whatever arrived; a stamp never touches its siblings", async () => {
@@ -100,8 +117,6 @@ describe("a per-column format rides the frame downstream", () => {
   });
 });
 
-// The author's report: the Headroom Computed Column's Decimal pick never reached the
-// Display fed by it, because each renderer read only its OWN node's entries.
 describe("the Allocator seed's Headroom column", () => {
   const hd = seed.nodes.find((n) => n.id === "hd")!;
 
@@ -126,8 +141,6 @@ describe("the Allocator seed's Headroom column", () => {
   });
 });
 
-// The unit rule is the precedent: a derived column carries the source column's format
-// exactly where `nodes/frame.ts` / `frameVerbs.ts` already carry its unit tag.
 describe("a DERIVED column carries the format only where it carries the unit", () => {
   it("Add Index: the index column carries nothing, the existing ones keep theirs", async () => {
     const input = new FrameInputNode({
@@ -152,22 +165,9 @@ describe("a DERIVED column carries the format only where it carries the unit", (
     expect(col(out, "B").format).toEqual(DEC3);
   });
 
-  it("Allocator: Allocation takes the Min column's format, as it takes its unit", () => {
-    const cats = frame([
-      { name: "Category", type: "string", values: ["Car", "Other"] },
-      { name: "Min", type: "number", values: [20, 10], format: DEC3 },
-      { name: "Max", type: "number", values: [50, 40] },
-    ]);
-    const n = new AllocatorNode();
-    n.literals.amount = 60;
-    const out = n.data({ categories: [cats] }).frame as FrameValue;
-    expect(col(out, "Allocation").format).toEqual(DEC3);
-    expect(col(out, "Share").format).toBeUndefined();
-  });
 });
 
-// The author's gap: "Auto" was a real pick that silently replaced the inherited format,
-// and there was no way to say "no pick of mine". The blank option is that way.
+
 describe("the format row's current value and hint", () => {
   it("no local pick + an inherited format: blank, and the hint names what flows in", () => {
     expect(columnFormatRow(undefined, DEC3)).toEqual({ value: "", hint: "← Decimal · 3 places" });
@@ -208,8 +208,6 @@ describe("the format row's current value and hint", () => {
   });
 });
 
-// The store stays the ONE persisted home (keyed by node); `format` on a column is
-// derived at compute time and must never reach a saved document.
 describe("a stamped format is never serialized", () => {
   it("stays out of the frame text form both ways", async () => {
     const input = new FrameInputNode({

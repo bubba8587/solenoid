@@ -1,5 +1,5 @@
 // [[C51]] formulaNaming.
-import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES } from "./excelFunctions";
+import { FUNCTION_ARITY, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES } from "./excelFunctions";
 import { packFormulaSignature } from "./formulaExtensions";
 
 import { FORMULA_SIGNATURES } from "./formulaSignatureTable";
@@ -26,8 +26,8 @@ export function signatureFor(name: string): string | null {
   if (sig !== undefined) return sig;
   const packSig = packFormulaSignature(up);
   if (packSig) return packSig;
-  const meta = EXCEL_IMPL_META[up];
-  if (meta?.arity) return genericSignature(meta.arity);
+  const arity = FUNCTION_ARITY[up];
+  if (arity) return genericSignature(arity);
   return null;
 }
 

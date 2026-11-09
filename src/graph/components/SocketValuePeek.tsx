@@ -18,7 +18,8 @@ import type { SvgValue } from "../svgValue";
 import type { LambdaValue } from "../nodes/lambda";
 
 /** Rendered by the Display's own value views ([[B3]] sameNodeEverywhere) in the producing node's format context; read-only, with Frames and tables as a head-5 preview and no chip. */
-export function SocketValuePeek({ value, nodeId }: { value: unknown; nodeId: string }) {
+/** `outKey` is the output peeked, whose type says how its cells read (a date output's serials as dates, [[C137]]). */
+export function SocketValuePeek({ value, nodeId, outKey }: { value: unknown; nodeId: string; outKey?: string }) {
   const kind = peekKindFor(value);
   let body: ReactNode;
   switch (kind) {
@@ -41,14 +42,14 @@ export function SocketValuePeek({ value, nodeId }: { value: unknown; nodeId: str
       body = <LambdaValueView value={value as LambdaValue} view={undefined} />;
       break;
     case "table":
-      body = <TableDisplay table={value as number[][]} full={false} peek elem={nodeOutputElemFamily(nodeId)} />;
+      body = <TableDisplay table={value as number[][]} full={false} peek elem={nodeOutputElemFamily(nodeId, outKey)} />;
       break;
     case "list":
     case "scalar":
     case "empty":
     case "error":
       // `full` renders a list inline, with no chip.
-      body = <ValueDisplay value={value as DisplayValue} full />;
+      body = <ValueDisplay value={value as DisplayValue} full socketKey={outKey} />;
       break;
     default: {
       const _exhaustive: never = kind;

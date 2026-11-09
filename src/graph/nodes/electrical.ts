@@ -1,11 +1,12 @@
 // [[C76]] formulaPackDefault, [[C79]] packActivationIsPresentation
 
-import { ClassicPreset } from "rete";
-import { listIn, numIn, numOut, readInput } from "./shared";
-import { solError, isSolError, type SolError } from "../errorValue";
-import { parallelCombine, nearestESeries, awgWire, decodeResistor, type ESeriesOp } from "./electricalOps";
+import { GraphNode } from "../graphModel";
+import { nodeOnCore } from "../nodeOnCore";
+import { listIn, numIn, numOut } from "./shared";
+import { type SolError } from "../errorValue";
+import { type ESeriesOp } from "./electricalOps";
 
-export class ParallelCombineNode extends ClassicPreset.Node {
+export class ParallelCombineNode extends GraphNode {
   label: string;
   cachedResult: number | SolError | null = null;
   width = 180;
@@ -18,16 +19,14 @@ export class ParallelCombineNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { list?: (number | null | SolError)[][] }) {
-    const result = parallelCombine(inputs.list?.[0] ?? []);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
-export class ESeriesNode extends ClassicPreset.Node {
+export class ESeriesNode extends GraphNode {
   label: string;
   op: ESeriesOp;
-  literals: Record<string, number> = { value: 4600 };
+  literals: Record<string, number> = {};
   cachedNearest: number | SolError | null = null;
   cachedError: number | SolError | null = null;
   width = 200;
@@ -42,26 +41,13 @@ export class ESeriesNode extends ClassicPreset.Node {
     this.addOutput("errpct", numOut("Error %"));
   }
 
-  data(inputs: { value?: (number | null)[] }) {
-    const v = readInput(inputs.value, this.literals.value);
-    let nearest: number | SolError | null = null;
-    let errpct: number | SolError | null = null;
-    if (typeof v === "number") {
-      if (v > 0 && Number.isFinite(v)) {
-        nearest = nearestESeries(v, this.op);
-        errpct = ((nearest - v) / v) * 100;
-      } else {
-        nearest = errpct = solError("#DOMAIN!", "A component value must be a positive number");
-      }
-    }
-    this.cachedNearest = nearest;
-    this.cachedError = errpct;
-    return { nearest, errpct };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { nearest: number | SolError | null; errpct: number | SolError | null };
   }
 }
-export class AwgNode extends ClassicPreset.Node {
+export class AwgNode extends GraphNode {
   label: string;
-  literals: Record<string, number> = { gauge: 12 };
+  literals: Record<string, number> = {};
   cachedDiameter: number | SolError | null = null;
   cachedArea: number | SolError | null = null;
   cachedResistance: number | SolError | null = null;
@@ -79,28 +65,11 @@ export class AwgNode extends ClassicPreset.Node {
     this.addOutput("ampacity", numOut("Ampacity A"));
   }
 
-  data(inputs: { gauge?: (number | null)[] }) {
-    const n = readInput(inputs.gauge, this.literals.gauge);
-    let diameter: number | SolError | null = null;
-    let area: number | SolError | null = null;
-    let resistance: number | SolError | null = null;
-    let ampacity: number | SolError | null = null;
-    if (typeof n === "number") {
-      const w = awgWire(n);
-      if (isSolError(w)) {
-        diameter = area = resistance = ampacity = w;
-      } else {
-        ({ diameter, area, resistance, ampacity } = w);
-      }
-    }
-    this.cachedDiameter = diameter;
-    this.cachedArea = area;
-    this.cachedResistance = resistance;
-    this.cachedAmpacity = ampacity;
-    return { diameter, area, resistance, ampacity };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { diameter: number | SolError | null; area: number | SolError | null; resistance: number | SolError | null; ampacity: number | SolError | null };
   }
 }
-export class ResistorCodeNode extends ClassicPreset.Node {
+export class ResistorCodeNode extends GraphNode {
   label: string;
   bands: "4" | "5";
   stringLiterals: Record<string, string> = { b1: "brown", b2: "black", b3: "black", mult: "red", tol: "gold" };
@@ -118,16 +87,7 @@ export class ResistorCodeNode extends ClassicPreset.Node {
     this.addOutput("tolerance", numOut("± %"));
   }
 
-  data() {
-    const L = this.stringLiterals;
-    const r = decodeResistor(L.b1, L.b2, L.b3, L.mult, L.tol, this.bands === "5");
-    if ("code" in (r as object)) {
-      this.cachedOhms = this.cachedTol = r as SolError;
-      return { ohms: r as SolError, tolerance: r as SolError };
-    }
-    const { ohms, tolerance } = r as { ohms: number; tolerance: number };
-    this.cachedOhms = ohms;
-    this.cachedTol = tolerance;
-    return { ohms, tolerance };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { ohms: number | SolError; tolerance: number | SolError };
   }
 }

@@ -1,211 +1,82 @@
 // [[B17]], [[C48]]
-import { ClassicPreset } from "rete";
-import { readInput, readRole, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { GraphNode } from "../graphModel";
+import { nodeOnCore } from "../nodeOnCore";
+import { chartOut, adoptiveListOut } from "./shared";
+import type { ChartValue } from "../chartValue";
+import { numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, trueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { setting, required, LEFT_OUT } from "../inputRoles";
-import { flatCubeToFrame, coerceFrameCell } from "../frame";
-import type { PassthroughSpec } from "./passthrough";
-import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, parseFormula, type ExprEvaluator, type Ast } from "../excelFormula";
-import { affineWeight, type Lam } from "../unitDimExpr";
-import { isLambdaValue, type LambdaValue } from "../lambdaValue";
-import { volatileStamp } from "../volatileDates";
-import { computeColumnCells, computeCubeColumnCells } from "../computedColumnCore";
-import { cubeRowTable, cubeCellsType } from "../cubeRows";
+import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import { dropInputCables } from "../components/cablePrune";
-import { getOwningEditor, getOwningView } from "../activeGraph";
-import { cableGhostStore } from "../cableState";
-import { readFilterValue, readConditionValue } from "./list";
+import { getOwningView } from "../activeGraph";
 import type { FrameHint } from "../frameHint";
-import { toAnyMatrix } from "./coerce";
-import { SolenoidSocket } from "../sockets";
-import { isSolError, solError, type SolError } from "../errorValue";
-import { logicalOrTypeError } from "../valueKinds";
-import { APP_LOCALE } from "../locale";
+import { SolenoidSocket, comboOfFamily, type SocketDataType } from "../sockets";
+import { solError, type SolError } from "../errorValue";
 import {
-  buildFrame, buildFrameTyped, typedColumn, colTypeForSocket,
-  splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
-  frameFromInputText, parseFrameSource, frameSourceToText, deriveFrame,
-  formatFrameCell, isCubeValue, isFrameValue, inferColumn, frameToCube,
-  selectCubeRows, cubeRowCount, frameFromRows, cubeFromColumns,
-  type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type FrameSourceColumn,
+  colTypeForSocket,
+  addColumn, makeHeaders,
+  frameFromInputText, parseFrameSource, frameSourceToText,
+  isFrameValue,
+  type FrameValue, type FrameColType,
 } from "../frame";
-import {
-  pivotFrame, nestFrame, unnestCube,
-  splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity, resolveDecisionWeights, allocateFrame,
-  mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows,
-  lookupCell, lookupRowIndex,
-  frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
-  VALUELESS_FILTER_OPS, LIST_FILTER_OPS,
-  sortCube, distinctCube, sliceCube, filterCube, selectCubeColumns, windowCube,
-  type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
-} from "../frameVerbs";
+import type { FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
 import { pairIdsFromKeys } from "./logic";
-import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
+import type { FilterCondConfig } from "../frameOps";
 import type { AllocateMode } from "./allocateOps";
-import { settleGroup, settleLedger, type Expense } from "./settleOps";
-import { payoffPlan, type PayoffOrder } from "./payoffOps";
-import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
-export type { WindowFn } from "../frameVerbs";
-export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, type FrameInput, type FrameRef } from "../frameBackend";
-import { bindColumns } from "../frameVerbs";
+import { WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameOps";
+export type { WindowFn } from "../frameOps";
+export type { CorrMethod } from "../frameOps";
+import { frameFnOnCore, bindSchema, type FrameRef } from "../frameBackend";
+import { getRecalcGen } from "../process";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
-  emptyFrameOf, totalLabelledKeys, type Shape, type ShapeColumn,
+  emptyFrameOf, totalLabelledKeys, sampleShapeOnCore, type Shape, type ShapeColumn,
 } from "../frameShape";
 import { csvList, type FrameShapeContext } from "./frameShapeHook";
 import type { ColumnPickerSpec } from "./columnPickerHook";
-import type { CubeValue, CubeCell, CubeColumn } from "../frame";
-import { type UnitCell, type ColumnUnit, isUnitCell, isAffineDisplay } from "../unitValue";
-import { tagFrameCellUnit, columnUnitFromSpec, parseColumnUnitFromHeader } from "../unitColumn";
+import type { CubeValue, CubeCell } from "../frame";
+import { type UnitCell } from "../unitValue";
+import { readPivotView, type PivotViewOptions } from "../pivotLayout";
+import { setDescribeTiles, type DescribeTile } from "../describeProfile";
 
-function runVerb<T>(fn: () => T): T | SolError {
-  try {
-    return fn();
-  } catch (e) {
-    return isSolError(e) ? e : solError("#ERROR!", e instanceof Error ? e.message : String(e));
-  }
+/** A frame computation's shape: the core answers it over no rows. */
+/** Sample inputs for a card whose columns don't depend on its input's: options to score, and people who paid. */
+const SAMPLE_OPTIONS: Shape = { columns: [{ name: "Option", type: "string" }, { name: "Score", type: "number" }] };
+const SAMPLE_PEOPLE: Shape = { columns: [{ name: "Person", type: "string" }, { name: "Paid", type: "number" }] };
+
+function shapeOnCore(name: string, inputs: readonly Shape[], args: unknown[] = []): Shape | null {
+  const r = frameFnOnCore(name, inputs.map(emptyFrameOf), args);
+  return r && "frame" in r ? shapeOfFrameValue(r.frame) : null;
 }
 
-// ─── Lazy verb-node output ──────────────────────────────────────────────────────
-export interface FrameVerbNode { _ref?: FrameRef | null; _gen?: number; cachedResult: FrameValue | CubeValue | SolError | null }
+/** What a frame verb answers: a lazy frame, a frame or a Cube value, an error, or nothing. */
+type FrameOut = FrameRef | FrameValue | CubeValue | SolError | null;
 
-// widenToFrame repeats coerceInputs' frame-socket widening, which the cube-adoptive port skips; keep the two identical.
-function widenToFrame(v: unknown): FrameValue {
-  if (Array.isArray(v)) return Array.isArray((v as unknown[])[0]) ? frameFromRows(v as unknown[][]) : frameFromRows([v as unknown[]]);
-  return frameFromRows([[v]]);
-}
-
-function rowVerbInput(v: unknown): FrameInput | CubeValue | null {
-  if (v == null) return null;
-  if (isCubeValue(v) || isFrameValue(v) || isFrameRef(v)) return v;
-  return widenToFrame(v);
-}
-
-function cubeToScalarFrame(cube: CubeValue): FrameValue {
-  const columns = cube.columns
-    .filter((c) => c.cells.every((cell) => !Array.isArray(cell) && !isFrameValue(cell) && !isCubeValue(cell)))
-    .map((c) => inferColumn(c.name, c.cells));
-  return { __frame: true, columns };
-}
-
-/** What the unit and date rules read of a row table: each column's name, type and unit. */
-type TypedColumns = { columns: ReadonlyArray<{ name: string; type: FrameColType; unit?: ColumnUnit }> };
-
-export function computedColumnType(
-  name: string, cells: readonly FrameCell[], f: TypedColumns, definition: string | undefined,
-  alias: Record<string, string | undefined> = {},
-): FrameColType {
-  const type = inferColumn(name, cells).type;
-  if (type !== "number" || !definition) return type;
-  const isDateName = (n: string) => f.columns.find((c) => c.name === (alias[n] ?? n))?.type === "date";
-  return exprYieldsDate(definition, isDateName) ? "date" : type;
-}
-
-/** A row formula over readings on an offset scale (°C) is classified as Expression's is
- *  ([[C25]] firstClassUnits): a sum of readings, or a reading scaled or divided, is #UNIT!.
- *  A wired λ is read through its body. The result's unit stays the authored one. */
-export function readingsRefusal(
-  definition: string | Ast, f: TypedColumns, alias: Record<string, string | undefined> = {},
-  lams: ReadonlyMap<string, unknown> = new Map(),
-): SolError | null {
-  const isReading = (n: string) => isAffineDisplay(f.columns.find((c) => c.name === (alias[n] ?? n))?.unit?.display);
-  if (!f.columns.some((c) => isAffineDisplay(c.unit?.display))) return null;
-  const ast = typeof definition === "string" ? parseFormula(definition) : definition;
-  if (!ast) return null;
-  const fns = new Map<string, Lam>();
-  for (const [name, lam] of lams) {
-    const body = isLambdaValue(lam) && lam.expr ? parseFormula(lam.expr) : null;
-    if (body) fns.set(name, { params: (lam as LambdaValue).params, body });
-  }
-  const names = new Set<string>();
-  const walk = (n: Ast): void => {
-    if (n.t === "name" || n.t === "atcol" || n.t === "wholecol") { if (isReading(n.name)) names.add(n.name); }
-    else if (n.t === "call") n.args.forEach(walk);
-    else if (n.t === "apply") { walk(n.fn); n.args.forEach(walk); }
-    else if (n.t === "unary" || n.t === "percent") walk(n.arg);
-    else if (n.t === "bin") { walk(n.l); walk(n.r); }
-  };
-  walk(ast);
-  for (const lam of fns.values()) walk(lam.body);
-  if (names.size === 0) return null;
-  const w = affineWeight(ast, names, names, fns);
-  return isSolError(w) ? w : null;
-}
-
-/** A bare λ column reads its parameters' columns row by row. */
-function bareLambdaCall(lam: LambdaValue): Ast {
-  return { t: "call", name: "λ", args: lam.params.map((name): Ast => ({ t: "atcol", name })) };
-}
-
-/** The cube twin of `addColumn`: a "Name (unit)" header tags the cells, and a replaced column keeps its place and format. */
-function cubeWithColumn(cube: CubeValue, name: string, cells: CubeCell[], type: FrameColType | undefined, after: string): CubeValue {
-  const { clean, unit } = parseColumnUnitFromHeader(name);
-  const tagged = unit && type === "number" ? cells.map((v) => tagFrameCellUnit(v, unit) as CubeCell) : cells;
-  const col: CubeColumn = { name: clean, cells: tagged, ...(type ? { type } : {}) };
-  const at = cube.columns.findIndex((c) => c.name === clean);
-  if (at >= 0) {
-    const cols = cube.columns.slice();
-    const format = cols[at].format;
-    cols[at] = format ? { ...col, format } : col;
-    return cubeFromColumns(cols);
-  }
-  const cols = [...cube.columns, col];
-  if (after) {
-    const a = cols.findIndex((c) => c.name === after);
-    if (a < 0) throw solError("#REF!", `No column "${after}" to place after`);
-    cols.splice(a + 1, 0, cols.pop()!);
-  }
-  return cubeFromColumns(cols);
-}
-
-/** Call before the verb's await; `emitFrame(this, beginPass(this), await …)` gets this from argument order. */
-export function beginPass(node: FrameVerbNode): number {
-  node._gen = (node._gen ?? 0) + 1;
-  return node._gen;
-}
-
-export async function passFrame(f: FrameInput): Promise<FrameRef | FrameValue | SolError> {
-  return isFrameRef(f) ? runFrameUnary(f, { kind: "drop", columns: [] }) : f;
-}
-
-export async function emitFrame(node: FrameVerbNode, gen: number, out: FrameRef | FrameValue | SolError | null): Promise<{ frame: FrameRef | FrameValue | SolError | null }> {
-  const stale = () => {
-    if (isFrameRef(out) && out !== node._ref) dropFrameRef(out);
-    return { frame: null };
-  };
-  if (gen !== node._gen) return stale();
-  const preview = await collectPreview(out);
-  if (gen !== node._gen) return stale();
-  if (node._ref && node._ref !== out) dropFrameRef(node._ref);
-  node._ref = isFrameRef(out) ? out : null;
-  node.cachedResult = preview;
-  return { frame: out };
-}
+type Inputs = Record<string, unknown[] | undefined>;
 
 // ─── FRAME INPUT ─────────────────────────────────────────────────────────────
 
 export const lambdaSocketName = (key: string): string => `λ${key.replace(/^fn/, "")}`;
 
-type CompiledColumnExpr = { evaluator: ExprEvaluator; vars: string[]; refs: string[] };
-
-export class FrameInputNode extends ClassicPreset.Node {
+export class FrameInputNode extends GraphNode {
   label: string;
   cachedResult: FrameValue | null = null;
   frameText: string;
-  /** Holds `layout`, the Form view's Record layout; this declaration is what lets load restore it. */
+  /** Holds `layout`, the Form view's Record layout, and `cardLayout`, the Cards view's; this declaration is what lets load restore them. */
   stringLiterals: Record<string, string> = {};
   /** Hiding keeps the text but makes it inert, so read `activeLayout`, never `stringLiterals.layout`. */
   layoutHidden: boolean;
+  /** The same for `cardLayout`: read `activeCardLayout`. */
+  cardLayoutHidden: boolean;
   lambdaKeys: string[] = [];
-  private _builtFrom: string | undefined;
   // Reserves the full default card (header, both add rows, the capped preview) so Tidy never stacks a neighbor into it.
   width = 240; height = 280;
 
-  constructor(init?: { label?: string; frameText?: string; lambdaKeys?: string[]; layoutHidden?: boolean }) {
+  constructor(init?: { label?: string; frameText?: string; lambdaKeys?: string[]; layoutHidden?: boolean; cardLayoutHidden?: boolean }) {
     super("FrameInput");
     this.label = init?.label ?? "Frame Input";
     this.frameText = init?.frameText ?? "A, B\n1, 2\n3, 4";
     this.layoutHidden = init?.layoutHidden ?? false;
+    this.cardLayoutHidden = init?.cardLayoutHidden ?? false;
     if (Array.isArray(init?.lambdaKeys)) this.lambdaKeys = init.lambdaKeys.filter((k) => typeof k === "string");
     for (const k of this.lambdaKeys) this.addInput(k, lambdaIn(lambdaSocketName(k)));
     this.addOutput("frame", frameOut("Frame"));
@@ -213,6 +84,10 @@ export class FrameInputNode extends ClassicPreset.Node {
 
   get activeLayout(): string | undefined {
     return this.layoutHidden ? undefined : this.stringLiterals.layout;
+  }
+
+  get activeCardLayout(): string | undefined {
+    return this.cardLayoutHidden ? undefined : this.stringLiterals.cardLayout;
   }
 
   addValueInput(): string {
@@ -233,10 +108,6 @@ export class FrameInputNode extends ClassicPreset.Node {
     }
   }
 
-  private _exprCache = new Map<string, CompiledColumnExpr | null>();
-
-  private _computedFrom: { text: string; lams: unknown[]; stamp: number } | null = null;
-
   private _parsed: { text: string; source: ReturnType<typeof parseFrameSource>; shape?: Shape } | null = null;
 
   private parsedSource() {
@@ -250,123 +121,13 @@ export class FrameInputNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[] | undefined> = {}) {
-    const source = this.parsedSource().source;
-    const isComputed = (c: FrameSourceColumn) => !!c.expr;
-    if (!source.some(isComputed)) {
-      if (!this.cachedResult || this._builtFrom !== this.frameText) {
-        this.cachedResult = frameFromInputText(this.frameText);
-        this._builtFrom = this.frameText;
-      }
-      return { frame: this.cachedResult };
-    }
-    const lams = this.lambdaKeys.map((k) => inputs[k]?.[0]);
-    const stamp = volatileStamp([this.frameText, ...lams.map((l) => (isLambdaValue(l) ? l.expr : ""))].join("\n"));
-    if (
-      this.cachedResult && this._computedFrom && this._computedFrom.text === this.frameText && this._computedFrom.stamp === stamp &&
-      this._computedFrom.lams.length === lams.length &&
-      this._computedFrom.lams.every((v, i) => Object.is(v, lams[i]))
-    ) {
-      return { frame: this.cachedResult };
-    }
-
-    const base = deriveFrame(source);
-    const frame: FrameValue = {
-      __frame: true,
-      columns: base.columns.map((col, i) =>
-        isComputed(source[i]) ? { name: col.name, type: "number" as FrameColType, values: [] } : col),
-    };
-    const nameToIdx = new Map(source.map((c, i) => [c.name, i] as const));
-    const remaining = new Set(source.map((c, i) => (isComputed(c) ? i : -1)).filter((i) => i >= 0));
-    const lamByName = new Map(this.lambdaKeys.map((k, j) => [lambdaSocketName(k), lams[j]] as const));
-    const compiled = new Map<string, CompiledColumnExpr | null>();
-    const exprAt = (i: number) => {
-      const text = source[i].expr!;
-      let entry = compiled.get(text);
-      if (entry === undefined) {
-        entry = this._exprCache.get(text);
-        if (entry === undefined) {
-          const evaluator = compileEvaluator(text);
-          const vars = evaluator ? extractVariables(text) : [];
-          entry = evaluator ? { evaluator, vars, refs: [...new Set([...vars, ...calledNames(text)])] } : null;
-        }
-        compiled.set(text, entry);
-      }
-      return entry;
-    };
-    const rowCount = () => frame.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
-    const fill = (i: number, cell: FrameCell) =>
-      (frame.columns[i] = { name: source[i].name, type: "number", values: Array(rowCount()).fill(cell) });
-
-    let progress = true;
-    while (progress && remaining.size > 0) {
-      progress = false;
-      for (const i of [...remaining]) {
-        const c = source[i];
-        const bare = lamByName.has(c.expr!.trim());
-        const ex = bare ? null : exprAt(i);
-        const used = bare ? [c.expr!.trim()] : (ex?.refs ?? []).filter((n) => lamByName.has(n) && !nameToIdx.has(n));
-        const usedLams = used.map((n) => lamByName.get(n)).filter(isLambdaValue);
-        const lam = bare ? (usedLams[0] ?? null) : null;
-        const deps = [
-          ...(lam ? lam.params : ex ? [...ex.vars, ...rowRefNames(c.expr!)] : []),
-          ...usedLams.flatMap((l) => [...(l.expr ? rowRefNames(l.expr) : []), ...(l.captured ?? [])]),
-        ];
-        if (deps.some((p) => { const d = nameToIdx.get(p); return d !== undefined && remaining.has(d); })) continue;
-        remaining.delete(i);
-        progress = true;
-        if (usedLams.length < used.length) {
-          fill(i, null);
-          continue;
-        }
-        if (!bare && !ex) { fill(i, solError("#VALUE!", "The formula does not parse")); continue; }
-        const refused = lam
-          ? readingsRefusal(bareLambdaCall(lam), frame, {}, new Map([["λ", lam]]))
-          : readingsRefusal(c.expr!, frame, {}, lamByName);
-        if (refused) { fill(i, refused); continue; }
-        const r = computeColumnCells(
-          frame,
-          lam
-            ? { kind: "lambda", lam }
-            : { kind: "expr", evaluator: ex!.evaluator, vars: [...ex!.vars, ...used.filter((n) => !ex!.vars.includes(n))] },
-          {
-            sideValue: (p, kind) => (!lam && lamByName.has(p)
-              ? lamByName.get(p)
-              : solError("#REF!", lam && kind === "var"
-                ? `No column "${p}" — a table λ's side values ride its captures`
-                : `No column "${p}"`)),
-          },
-        );
-        if (isSolError(r)) {
-          fill(i, r);
-        } else {
-          // Take only inferColumn's type: its constructed column coerces cells and would mangle per-row SolErrors.
-          const type = computedColumnType(c.name, r.cells, frame, lam ? lam.expr : c.expr);
-          frame.columns[i] = {
-            name: c.name, type, values: r.cells,
-            ...(type === "number" && c.unit ? { unit: columnUnitFromSpec(c.unit) ?? undefined } : {}),
-          };
-        }
-      }
-    }
-    if (remaining.size > 0) {
-      const cycle = [...remaining].map((i) => source[i].name).join(" → ");
-      const err = solError("#REF!", `Circular computed columns: ${cycle}`);
-      const n = rowCount();
-      for (const i of remaining) {
-        frame.columns[i] = { name: source[i].name, type: "number", values: Array(n).fill(err) };
-      }
-    }
-    this._exprCache = compiled;
-    this.cachedResult = frame;
-    this._builtFrom = undefined;
-    this._computedFrom = { text: this.frameText, lams, stamp };
-    return { frame };
+    return nodeOnCore(this, inputs) as { frame: FrameValue };
   }
 }
 
 // ─── DISTINCT ────────────────────────────────────────────────────────────────
 
-export class DistinctNode extends ClassicPreset.Node {
+export class DistinctNode extends GraphNode {
   label: string;
   cachedResult: FrameValue | CubeValue | SolError | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
@@ -381,10 +142,8 @@ export class DistinctNode extends ClassicPreset.Node {
 
   passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
 
-  async data(inputs: { frame?: unknown[] }) {
-    const f = rowVerbInput(inputs.frame?.[0] ?? null);
-    if (isCubeValue(f)) { const r = runVerb(() => distinctCube(f)); this.cachedResult = r; return { frame: r }; }
-    return emitFrame(this, beginPass(this), f != null ? await runFrameUnary(f, { kind: "distinct" }) : null);
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -399,7 +158,7 @@ export const HEAD_OP_META: Record<HeadOp, { label: string; description: string }
   range: { label: "Rows M–N",     description: "Keep rows M through N, 1-based inclusive." },
 };
 
-export class HeadNode extends ClassicPreset.Node {
+export class HeadNode extends GraphNode {
   static inputRoles = { rows: setting(10), to: setting(LEFT_OUT, "end") };
   static socketDocs: Record<string, string> = {
     rows: "First, Last, and Skip read this as a row count. Rows M–N reads it as the 1-based start row.",
@@ -425,16 +184,8 @@ export class HeadNode extends ClassicPreset.Node {
 
   passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
 
-  async data(inputs: { frame?: unknown[]; rows?: number[]; to?: number[] }) {
-    const f = rowVerbInput(inputs.frame?.[0] ?? null);
-    const n = readRole<number>(this, "rows", inputs.rows);
-    // A blank To runs to the end of the Rows count, as an unset one does.
-    const to = this.op === "range" ? readRole<number | undefined>(this, "to", inputs.to) ?? n : 0;
-    const gen = beginPass(this);
-    if (f == null) return emitFrame(this, gen, null);
-    if (isCubeValue(f)) { const r = runVerb(() => sliceCube(f, this.op, n, this.op === "range" ? to : undefined)); this.cachedResult = r; return { frame: r }; }
-    if (this.op === "first") return emitFrame(this, gen, await runFrameUnary(f, { kind: "head", n }));
-    return emitFrame(this, gen, await runFrameUnary(f, { kind: "sliceRows", mode: this.op, n, to: this.op === "range" ? to : undefined }));
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -442,7 +193,7 @@ export class HeadNode extends ClassicPreset.Node {
 
 export type FrameSortDir = "asc" | "desc";
 
-export class SortFrameNode extends ClassicPreset.Node {
+export class SortFrameNode extends GraphNode {
   label: string;
   dir: FrameSortDir;
   cachedResult: FrameValue | CubeValue | SolError | null = null;
@@ -463,20 +214,16 @@ export class SortFrameNode extends ClassicPreset.Node {
 
   columnPickers(): ColumnPickerSpec[] { return [{ key: "column", frameInput: "frame" }]; }
 
-  async data(inputs: { frame?: unknown[]; column?: string[] }) {
-    const f = rowVerbInput(inputs.frame?.[0] ?? null);
-    const col = readInput(inputs.column, this.stringLiterals.column ?? "");
-    if (f == null || col === null) return emitFrame(this, beginPass(this), null);
-    if (isCubeValue(f)) { const r = runVerb(() => col.trim() === "" ? f : sortCube(f, col.trim(), this.dir)); this.cachedResult = r; return { frame: r }; }
-    return emitFrame(this, beginPass(this), col.trim() === "" ? await passFrame(f) : await runFrameUnary(f, { kind: "sort", by: col.trim(), dir: this.dir }));
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
 // ─── FILTER FRAME ──────────────────────────────────────────────────────────────
 
-export type { FilterCondConfig } from "../frameVerbs";
+export type { FilterCondConfig } from "../frameOps";
 
-export class FilterFrameNode extends ClassicPreset.Node {
+export class FilterFrameNode extends GraphNode {
   label: string;
   combine: FilterCombine;
   /** Keyed by the pair id, the suffix of `column${id}`. */
@@ -486,9 +233,6 @@ export class FilterFrameNode extends ClassicPreset.Node {
   cachedResult: FrameValue | CubeValue | SolError | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = {};
-  _gen?: number;
-  _ref?: FrameRef | null;
-  _refDropped?: FrameRef | null;
   width = 210; height = 240;
 
   constructor(init?: {
@@ -547,55 +291,14 @@ export class FilterFrameNode extends ClassicPreset.Node {
     ];
   }
 
-  private publishDropped(gen: number, out: FrameRef | FrameValue | SolError | null): FrameRef | FrameValue | SolError | null {
-    if (gen !== this._gen) {
-      if (isFrameRef(out) && out !== this._refDropped) dropFrameRef(out);
-      return null;
-    }
-    if (this._refDropped && this._refDropped !== out) dropFrameRef(this._refDropped);
-    this._refDropped = isFrameRef(out) ? out : null;
-    return out;
-  }
-
-  async data(inputs: { frame?: unknown[]; [k: string]: unknown[] | undefined }) {
-    const f = rowVerbInput(inputs.frame?.[0] ?? null);
-    const gen = beginPass(this);
-    if (f == null) return { ...(await emitFrame(this, gen, null)), dropped: this.publishDropped(gen, null) };
-    const conditions: FilterCond[] = [];
-    for (const [colKey, valKey] of this.valuePairKeys()) {
-      const id = colKey.slice(6);
-      const colRaw = readConditionValue(inputs[colKey], this.stringLiterals[colKey]);
-      const cfg = this.condConfig[id];
-      const op = cfg?.op ?? "gt";
-      const val = readConditionValue(inputs[valKey], this.stringLiterals[valKey]);
-      const valueless = VALUELESS_FILTER_OPS.has(op);
-      const col = colRaw.trim();
-      if (col === "" || (!valueless && val.trim() === "")) continue;
-      conditions.push({ column: col, op, value: val as FrameCell, matchCase: cfg?.matchCase ?? false });
-    }
-    if (isCubeValue(f)) {
-      const kept = runVerb(() => filterCube(f, this.combine, conditions));
-      const dropped = runVerb(() => filterCube(f, this.combine, conditions, true));
-      this.cachedResult = kept;
-      return { frame: kept, dropped };
-    }
-    const listOp = conditions.find((c) => LIST_FILTER_OPS.has(c.op));
-    if (listOp) {
-      const err = solError("#SHAPE!", `${listOp.op} needs a list column. Connect a cube, not a frame`);
-      return { ...(await emitFrame(this, gen, err)), dropped: this.publishDropped(gen, err) };
-    }
-    if (conditions.length === 0) {
-      return { ...(await emitFrame(this, gen, await passFrame(f))), dropped: this.publishDropped(gen, null) };
-    }
-    const kept = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions });
-    const dropped = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions, complement: true });
-    return { ...(await emitFrame(this, gen, kept)), dropped: this.publishDropped(gen, dropped) };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut; dropped: FrameOut };
   }
 }
 
 // ─── JOIN ──────────────────────────────────────────────────────────────────────
 
-export class JoinNode extends ClassicPreset.Node {
+export class JoinNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     leftKey: "A blank or error key never matches any row, and the two key columns must share one type.",
     rightKey: "An empty name reuses the left key's name for the right frame.",
@@ -638,35 +341,12 @@ export class JoinNode extends ClassicPreset.Node {
     return [{ key: "leftKey", frameInput: "left" }, { key: "rightKey", frameInput: "right" }];
   }
 
-  async data(inputs: {
-    left?: (FrameInput | null)[]; right?: (FrameInput | null)[];
-    leftKey?: string[]; rightKey?: string[]; tolerance?: number[];
-  }) {
-    const left = inputs.left?.[0] ?? null;
-    const right = inputs.right?.[0] ?? null;
-    const lkRaw = readInput(inputs.leftKey, this.stringLiterals.leftKey ?? "");
-    const rkRaw = readInput(inputs.rightKey, this.stringLiterals.rightKey ?? "");
-    // Only the as-of join reads `tolerance`, so a wired blank must not blank the other joins.
-    const tolerance = this.how === "asof" ? readInput(inputs.tolerance, this.literals.tolerance) : undefined;
-    if (lkRaw === null || rkRaw === null || tolerance === null) {
-      return emitFrame(this, beginPass(this), null);
-    }
-    const lk = lkRaw.trim();
-    const rk = rkRaw.trim() || lk;
-    if (left == null || right == null || (lk === "" && this.how !== "cross")) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), await runFrameJoin(left, right, {
-      leftKey: lk, rightKey: rk, how: this.how,
-      asofDirection: this.asofDirection, asofTolerance: tolerance,
-    }));
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
 // ─── COLUMNS (KEEP / DROP) ───────────────────────────────────────────────────
-
-function readColumnList(wired: string[][] | undefined): string[] | null {
-  const v = readInput(wired, [] as string[]);
-  return v === null ? null : v.filter((c): c is string => typeof c === "string");
-}
 
 export type ColumnsOp = "keep" | "drop";
 
@@ -675,7 +355,7 @@ export const COLUMNS_OP_META: Record<ColumnsOp, { label: string; description: st
   drop: { label: "Drop", fx: "DROPCOLS", description: "Remove the named columns; the rest pass through." },
 };
 
-export class ColumnsNode extends ClassicPreset.Node {
+export class ColumnsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     columns: "Keep: an empty list passes the frame through unchanged, and a name the frame lacks is a #REF! error. Drop: names the frame lacks are ignored.",
   };
@@ -704,18 +384,8 @@ export class ColumnsNode extends ClassicPreset.Node {
     return shapeOf({ kind: "drop", columns: cols }, input);
   }
 
-  async data(inputs: { frame?: unknown[]; columns?: string[][] }) {
-    const f = rowVerbInput(inputs.frame?.[0] ?? null);
-    const cols = readColumnList(inputs.columns);
-    const gen = beginPass(this);
-    if (f == null || cols === null) return emitFrame(this, gen, null);
-    if (isCubeValue(f)) {
-      const r = runVerb(() => (this.op === "keep" && cols.length === 0 ? f : selectCubeColumns(f, cols, this.op === "drop" ? "drop" : "keep")));
-      this.cachedResult = r;
-      return { frame: r };
-    }
-    if (this.op === "drop") return emitFrame(this, gen, await runFrameUnary(f, { kind: "drop", columns: cols }));
-    return emitFrame(this, gen, cols.length ? await runFrameUnary(f, { kind: "select", columns: cols }) : await passFrame(f));
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -738,7 +408,7 @@ export const AGG_OP_META: Record<AggOp, { label: string; pivotOnly?: boolean }> 
   percentof: { label: "PERCENTOF", pivotOnly: true },
 };
 
-export class GroupByFrameNode extends ClassicPreset.Node {
+export class GroupByFrameNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     keys: "Groups keep first-seen row order, and blank key cells group together as their own group.",
   };
@@ -774,55 +444,14 @@ export class GroupByFrameNode extends ClassicPreset.Node {
 
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
 
-  async data(inputs: { frame?: (FrameInput | CubeValue | null)[]; keys?: string[][]; column?: string[] }) {
-    const raw = rowVerbInput(inputs.frame?.[0]);
-    const keys = readColumnList(inputs.keys);
-    const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
-    if (raw == null || colRaw === null || keys === null) return emitFrame(this, beginPass(this), null);
-    const col = colRaw.trim();
-    const flat = isCubeValue(raw) ? flatCubeToFrame(raw, keys.length && col ? [...keys, col] : "scalar") : raw;
-    if (isSolError(flat)) return emitFrame(this, beginPass(this), flat);
-    const f = flat;
-    if (!(keys.length && col)) return emitFrame(this, beginPass(this), await passFrame(f));
-    if (this.totalDepth !== 0) {
-      const mat = await readFrame(f);
-      if (mat == null || isSolError(mat)) return emitFrame(this, beginPass(this), mat);
-      const out = runVerb(() => pivotFrame(mat, {
-        rowFields: keys, colFields: [], values: [col], funcs: [this.agg],
-        rowTotalDepth: this.totalDepth,
-      }));
-      // A min or max of dates stays a date, as the plain groupBy's does (`shapeOf`).
-      if (!isSolError(out) && (this.agg === "min" || this.agg === "max") && getColumn(mat, col)?.type === "date") {
-        const last = out.columns.length - 1;
-        out.columns[last] = { ...out.columns[last], type: "date" };
-      }
-      return emitFrame(this, beginPass(this), out);
-    }
-    return emitFrame(this, beginPass(this),
-      await runFrameUnary(f, { kind: "groupBy", keys, aggs: [{ column: col, op: this.agg, as: col }] }));
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
 // ─── PIVOT / UNPIVOT ───────────────────────────────────────────────────────────
 
-// The one stringification for filter keys, so the editor's excluded keys match the cells.
-function pivotCellKey(v: FrameCell): string {
-  if (v == null) return "";
-  if (isSolError(v)) return v.code;
-  if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
-  return String(v);
-}
-function distinctKeys(values: readonly FrameCell[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const v of values) {
-    const k = pivotCellKey(v);
-    if (!seen.has(k)) { seen.add(k); out.push(k); if (out.length >= 200) break; }
-  }
-  return out;
-}
-
-export class PivotNode extends ClassicPreset.Node {
+export class PivotNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     filter: "One cell per source row, in order. Only rows where the mask is TRUE feed the pivot.",
   };
@@ -835,22 +464,28 @@ export class PivotNode extends ClassicPreset.Node {
   rowSort = 0;
   colSort = 0;
   relativeTo = 0;
-  // Per field, the value keys (`pivotCellKey`) to hide; ANDed with the wired `filter` mask.
+  // Per field, the value keys to hide; ANDed with the wired `filter` mask.
   filterExclude: Record<string, string[]> = {};
+  /** How the popup's Pivot view draws the output; display only. */
+  pivotView: PivotViewOptions;
+  /** Columns the Pivot view lists under each row group; display only ([[C127]] pivotView). */
+  detailFields: string[] = [];
   cachedResult: FrameValue | SolError | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   sourceColumns: { name: string; type: FrameColType; distinct: string[] }[] = [];
   stringLiterals: Record<string, string> = { rowFields: "", colFields: "", values: "" };
-  _gen?: number;
-  _ref?: FrameRef | null;
   width = 220; height = 300;
 
   constructor(init?: {
     label?: string; agg?: AggOp; funcs?: Record<string, AggOp>;
     rowTotalDepth?: number; colTotalDepth?: number; rowSort?: number; colSort?: number; relativeTo?: number;
     filterExclude?: Record<string, string[]>;
+    pivotView?: Partial<PivotViewOptions>;
+    detailFields?: string[];
   }) {
     super("Pivot");
+    this.pivotView = readPivotView(init?.pivotView);
+    if (Array.isArray(init?.detailFields)) this.detailFields = init.detailFields.filter((n): n is string => typeof n === "string" && n !== "");
     this.label = init?.label ?? "PIVOTBY";
     this.agg = init?.agg ?? "sum";
     if (init?.funcs) this.funcs = { ...init.funcs };
@@ -880,96 +515,12 @@ export class PivotNode extends ClassicPreset.Node {
     return shapeOf({ kind: "pivot", rowFields, colFields, values, funcs, rowTotalDepth: this.rowTotalDepth }, input);
   }
 
-  data(inputs: {
-    frame?: (FrameInput | CubeValue | null)[];
-    rowFields?: string[][]; colFields?: string[][]; values?: string[][];
-    filter?: (boolean | null)[][];
-  }) {
-    const raw = inputs.frame?.[0] ?? null;
-    const f = isCubeValue(raw) ? flatCubeToFrame(raw, "scalar") as FrameValue : raw;
-    if (!f) { this.cachedResult = null; this.sourceColumns = []; return { frame: null }; }
-    if (!isFrameRef(f)) {
-      this.sourceColumns = f.columns.map((c) => ({ name: c.name, type: c.type, distinct: distinctKeys(c.values) }));
-      // A value never takes the async branch, so this result is sync.
-      return this.computePivot(f, f, inputs) as { frame: FrameValue | SolError | null };
-    }
-    const gen = beginPass(this);
-    return (async () => {
-      const schema = await collectPreview(f, 0);
-      if (gen !== this._gen) return { frame: null };
-      if (schema == null || isSolError(schema)) { this.cachedResult = schema; this.sourceColumns = []; return { frame: schema }; }
-      const have = new Set(schema.columns.map((c) => c.name));
-      const wanted = new Set<string>();
-      for (const raw of [inputs.rowFields, inputs.colFields, inputs.values]) for (const n of readColumnList(raw) ?? []) if (have.has(n)) wanted.add(n);
-      for (const key of ["rowFields", "colFields", "values"] as const) for (const n of (this.stringLiterals[key] ?? "").split(",")) if (have.has(n.trim())) wanted.add(n.trim());
-      for (const n of Object.keys(this.filterExclude)) if (have.has(n)) wanted.add(n);
-      const cols = await materialize(Promise.all([...wanted].map((n) => readRefColumn(f, n))));
-      if (gen !== this._gen) return { frame: null };
-      if (isSolError(cols)) { this.cachedResult = cols; return { frame: cols }; }
-      const byName = new Map(cols.filter((c): c is FrameColumn => c != null).map((c) => [c.name, c]));
-      this.sourceColumns = schema.columns.map((c) => ({ name: c.name, type: c.type, distinct: byName.has(c.name) ? distinctKeys(byName.get(c.name)!.values) : [] }));
-      const slice: FrameValue = { __frame: true, columns: schema.columns.map((c) => byName.get(c.name) ?? { name: c.name, type: c.type, values: [] }) };
-      return this.computePivot(slice, f, inputs);
-    })() as unknown as { frame: FrameValue | SolError | null };
-  }
-
-  private computePivot(f: FrameValue, source: FrameInput, inputs: {
-    rowFields?: string[][]; colFields?: string[][]; values?: string[][];
-    filter?: (boolean | null)[][];
-  }): { frame: FrameInput | SolError | null } | Promise<{ frame: FrameInput | SolError | null }> {
-    const valid = new Set(f.columns.map((c) => c.name));
-    this.pruneFieldsTo(valid);
-    const rowRaw = readColumnList(inputs.rowFields);
-    const colRaw = readColumnList(inputs.colFields);
-    const valRaw = readColumnList(inputs.values);
-    if (rowRaw === null || colRaw === null || valRaw === null) { this.cachedResult = null; return { frame: null }; }
-    const rowFields = rowRaw.filter((n) => valid.has(n));
-    const colFields = colRaw.filter((n) => valid.has(n));
-    const values = valRaw.filter((n) => valid.has(n));
-    if (values.length === 0) {
-      if (isFrameRef(source)) return passFrame(source).then((out) => emitFrame(this, beginPass(this), out));
-      this.cachedResult = f; return { frame: f };
-    }
-    const funcs = values.map((name) => this.funcs[name] ?? this.agg);
-    const spec: PivotSpec = {
-      rowFields, colFields, values, funcs,
-      rowTotalDepth: this.rowTotalDepth, colTotalDepth: this.colTotalDepth,
-      rowSort: this.rowSort, colSort: this.colSort, relativeTo: this.relativeTo,
-      filter: this.combineFilter(f, inputs.filter?.[0]),
-    };
-    this.cachedResult = runVerb(() => pivotFrame(f, spec));
-    return { frame: this.cachedResult };
-  }
-
-  private pruneFieldsTo(valid: Set<string>): void {
-    for (const key of ["rowFields", "colFields", "values"] as const) {
-      const cur = this.stringLiterals[key] ?? "";
-      if (cur.trim() === "") continue;
-      const next = cur.split(",").map((s) => s.trim()).filter((n) => n !== "" && valid.has(n)).join(", ");
-      if (next !== cur) this.stringLiterals[key] = next;
-    }
-    for (const k of Object.keys(this.funcs)) if (!valid.has(k)) delete this.funcs[k];
-    for (const k of Object.keys(this.filterExclude)) if (!valid.has(k)) delete this.filterExclude[k];
-  }
-
-  private combineFilter(f: FrameValue, wired?: (boolean | null)[]): (boolean | null)[] | undefined {
-    const active = Object.entries(this.filterExclude).filter(([, ks]) => ks && ks.length > 0);
-    if (active.length === 0) return wired;
-    const sets = active.map(([name, ks]) => ({ set: new Set(ks), col: f.columns.find((c) => c.name === name) }));
-    const n = frameRowCount(f);
-    const mask: (boolean | null)[] = [];
-    for (let i = 0; i < n; i++) {
-      let keep = true;
-      for (const { set, col } of sets) {
-        if (col && set.has(pivotCellKey(col.values[i] ?? null))) { keep = false; break; }
-      }
-      mask.push(keep && (wired ? wired[i] === true : true));
-    }
-    return mask;
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
-export class UnpivotNode extends ClassicPreset.Node {
+export class UnpivotNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
   cachedResult: FrameValue | SolError | null = null;
@@ -992,18 +543,14 @@ export class UnpivotNode extends ClassicPreset.Node {
     return shapeOf({ kind: "unpivot", idColumns: csvList(this.stringLiterals.idColumns), valueColumns: vals }, input);
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; idColumns?: string[][]; valueColumns?: string[][] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const ids = readColumnList(inputs.idColumns);
-    const vals = readColumnList(inputs.valueColumns);
-    if (f == null || ids === null || vals === null) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), vals.length ? await runFrameUnary(f, { kind: "unpivot", idColumns: ids, valueColumns: vals }) : await passFrame(f));
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
 // ─── NEST / UNNEST (the flat ⟷ cube bridge) ───────────────────────────────────
 
-export class NestNode extends ClassicPreset.Node {
+export class NestNode extends GraphNode {
   label: string;
   cachedResult: CubeValue | SolError | null = null;
   stringLiterals: Record<string, string> = { nestedName: "items" };
@@ -1018,18 +565,12 @@ export class NestNode extends ClassicPreset.Node {
     this.addOutput("cube", cubeOut("Cube"));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; keys?: string[][]; nestedName?: string[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const keys = readColumnList(inputs.keys);
-    const nameRaw = readInput(inputs.nestedName, this.stringLiterals.nestedName ?? "items");
-    if (!f || keys === null || !keys.length || nameRaw === null) { this.cachedResult = null; return { cube: null }; }
-    const name = nameRaw.trim() || "items";
-    this.cachedResult = runVerb(() => nestFrame(f, keys, name));
-    return { cube: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>): { cube: CubeValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { cube: CubeValue | SolError | null };
   }
 }
 
-export class UnnestNode extends ClassicPreset.Node {
+export class UnnestNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "A parent row with an empty or missing nested table disappears from the output.",
   };
@@ -1047,19 +588,14 @@ export class UnnestNode extends ClassicPreset.Node {
     this.addOutput("frame", staticTrueAnyOut("Flat"));
   }
 
-  data(inputs: { cube?: (CubeValue | null)[]; column?: string[] }) {
-    const c = inputs.cube?.[0] ?? null;
-    const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
-    if (!c || colRaw === null || !colRaw.trim()) { this.cachedResult = null; return { frame: null }; }
-    const col = colRaw.trim();
-    this.cachedResult = runVerb(() => unnestCube(c, col));
-    return { frame: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | CubeValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | CubeValue | SolError | null };
   }
 }
 
 // ─── APPEND ────────────────────────────────────────────────────────────────────
 
-export class AppendNode extends ClassicPreset.Node {
+export class AppendNode extends GraphNode {
   label: string;
   cachedResult: FrameValue | SolError | null = null;
   nextInputId = 0;
@@ -1108,18 +644,14 @@ export class AppendNode extends ClassicPreset.Node {
     return shapes.length === 1 ? shapes[0] : shapeOfAppend(shapes);
   }
 
-  async data(inputs: Record<string, (FrameInput | null)[] | undefined>) {
-    const frames = this.valueInputKeys()
-      .map((k) => inputs[k]?.[0] ?? null)
-      .filter((f): f is FrameInput => f != null);
-    if (frames.length === 0) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), frames.length === 1 ? await passFrame(frames[0]) : await runFrameAppend(frames));
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
 // ─── BIND COLUMNS ──────────────────────────────────────────────────────────────
 
-export class BindColumnsNode extends ClassicPreset.Node {
+export class BindColumnsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Every column of every frame, left to right; a repeated name gets a 2, 3… suffix; a shorter frame pads down with blanks.",
   };
@@ -1168,21 +700,18 @@ export class BindColumnsNode extends ClassicPreset.Node {
     }
     if (shapes.length === 0) return null;
     if (shapes.length === 1) return shapes[0];
-    return shapeOfFrameValue(bindColumns(shapes.map(emptyFrameOf)));
+    const bound = bindSchema(shapes.map(emptyFrameOf));
+    return bound ? shapeOfFrameValue(bound) : null;
   }
 
-  async data(inputs: Record<string, (FrameInput | null)[] | undefined>) {
-    const frames = this.valueInputKeys()
-      .map((k) => inputs[k]?.[0] ?? null)
-      .filter((f): f is FrameInput => f != null);
-    if (frames.length === 0) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), frames.length === 1 ? await passFrame(frames[0]) : await runFrameBindColumns(frames));
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
 // ─── RENAME COLUMNS ────────────────────────────────────────────────────────────
 
-export class RenameNode extends ClassicPreset.Node {
+export class RenameNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
   cachedResult: FrameValue | SolError | null = null;
@@ -1207,23 +736,14 @@ export class RenameNode extends ClassicPreset.Node {
     return Object.keys(map).length ? shapeOf({ kind: "rename", map }, input) : input;
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; from?: string[][]; to?: string[][] }) {
-    const f = inputs.frame?.[0] ?? null;
-    // Read raw, not through readColumnList: `from` and `to` pair by index, so dropping a cell shifts the pairing.
-    const from = readInput(inputs.from, [] as string[]);
-    const to = readInput(inputs.to, [] as string[]);
-    if (f == null || from === null || to === null) return emitFrame(this, beginPass(this), null);
-    const map: Record<string, string> = {};
-    for (let i = 0; i < Math.min(from.length, to.length); i++) {
-      if (from[i] && to[i]) map[from[i]] = to[i];
-    }
-    return emitFrame(this, beginPass(this), Object.keys(map).length ? await runFrameUnary(f, { kind: "rename", map }) : await passFrame(f));
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
 // ─── SPLIT COLUMN / ADD INDEX (Power Query column ops) ──────────────────────────
 
-export class SplitColumnNode extends ClassicPreset.Node {
+export class SplitColumnNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     into: "Names for the split-out columns.",
   };
@@ -1251,20 +771,12 @@ export class SplitColumnNode extends ClassicPreset.Node {
     return shapeOfSplitColumn(input, column, this.stringLiterals.delimiter ?? "");
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; column?: string[]; delimiter?: string[]; into?: string[][] }) {
-    const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
-    const columnRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
-    const delimiter = readInput(inputs.delimiter, this.stringLiterals.delimiter ?? "");
-    const into = readColumnList(inputs.into);
-    if (columnRaw === null || delimiter === null || into === null) { this.cachedResult = null; return { frame: null }; }
-    const column = columnRaw.trim();
-    this.cachedResult = column ? runVerb(() => splitColumn(f, column, delimiter, into)) : f;
-    return { frame: this.cachedResult };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
-export class AddIndexNode extends ClassicPreset.Node {
+export class AddIndexNode extends GraphNode {
   static inputRoles = { start: setting(1) };
   label: string;
   cachedResult: FrameValue | SolError | null = null;
@@ -1287,21 +799,14 @@ export class AddIndexNode extends ClassicPreset.Node {
     return shapeOfAddIndex(input, this.stringLiterals.name || "Index");
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; start?: number[]; name?: string[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
-    const start = readRole<number>(this, "start", inputs.start);
-    const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "Index");
-    if (nameRaw === null) { this.cachedResult = null; return { frame: null }; }
-    const name = nameRaw.trim() || "Index";
-    this.cachedResult = runVerb(() => addIndexColumn(f, name, start));
-    return { frame: this.cachedResult };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
 export type FillDir = "down" | "up";
 
-export class FillBlanksNode extends ClassicPreset.Node {
+export class FillBlanksNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     columns: "Leave blank to fill every column.",
   };
@@ -1327,32 +832,30 @@ export class FillBlanksNode extends ClassicPreset.Node {
     return shapeOf({ kind: "fillBlanks", columns, dir: this.dir }, input);
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const colsRaw = readColumnList(inputs.columns);
-    if (f == null || colsRaw === null) return emitFrame(this, beginPass(this), null);
-    const columns = colsRaw.map((c) => c.trim()).filter(Boolean);
-    return emitFrame(this, beginPass(this), await runFrameUnary(f, { kind: "fillBlanks", columns, dir: this.dir }));
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
 export type ReplaceMode = "cell" | "substring";
 
-export class ReplaceValuesNode extends ClassicPreset.Node {
+export class ReplaceValuesNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     column: "Leave blank to replace across every column.",
   };
   label: string;
   mode: ReplaceMode;
+  /** Find's Aa: text matches case exactly; off, it ignores case as Filter's does. */
+  matchCase: boolean;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { column: "", find: "", replace: "" };
-  textLiterals = true;
   width = 200; height = 205;
 
-  constructor(init?: { label?: string; mode?: ReplaceMode }) {
+  constructor(init?: { label?: string; mode?: ReplaceMode; matchCase?: boolean }) {
     super("ReplaceValues");
     this.label = init?.label ?? "Replace Values";
     this.mode = init?.mode ?? "cell";
+    this.matchCase = init?.matchCase ?? false;
     this.addInput("frame", frameIn("Frame"));
     this.addInput("column", strIn("Column"));
     this.addInput("find", anyIn("Find"));
@@ -1365,21 +868,16 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
     if (!input || ctx.wired("column")) return null;
     return shapeOf({
       kind: "replaceValues", column: this.stringLiterals.column ?? "",
-      find: this.stringLiterals.find ?? "", replaceWith: this.stringLiterals.replace ?? "", mode: this.mode,
+      find: this.stringLiterals.find ?? "", replaceWith: this.stringLiterals.replace ?? "", mode: this.mode, matchCase: this.matchCase,
     }, input);
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; column?: string[]; find?: unknown[]; replace?: unknown[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const column = readInput(inputs.column, this.stringLiterals.column ?? "");
-    const find = readFilterValue(inputs.find, this.stringLiterals.find ?? "");
-    const replace = readFilterValue(inputs.replace, this.stringLiterals.replace ?? "");
-    if (f == null || column === null || find === null || replace === null) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), await runFrameUnary(f, { kind: "replaceValues", column, find, replaceWith: replace, mode: this.mode }));
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
-export class MergeColumnsNode extends ClassicPreset.Node {
+export class MergeColumnsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     name: "The merged column's name. Defaults to Merged.",
   };
@@ -1403,19 +901,11 @@ export class MergeColumnsNode extends ClassicPreset.Node {
     if (!input || ctx.wired("columns") || ctx.wired("name")) return null;
     const columns = csvList(this.stringLiterals.columns).map((c) => c.trim()).filter(Boolean);
     if (columns.length < 2) return input;
-    return shapeOfFrameValue(mergeColumns(emptyFrameOf(input), columns, "", this.stringLiterals.name ?? ""));
+    return shapeOf({ kind: "mergeColumns", columns, separator: "", name: this.stringLiterals.name ?? "" }, input);
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; columns?: string[][]; separator?: string[]; name?: string[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
-    const colsRaw = readColumnList(inputs.columns);
-    const separator = readInput(inputs.separator, this.stringLiterals.separator ?? "");
-    const name = readInput(inputs.name, this.stringLiterals.name ?? "");
-    if (colsRaw === null || separator === null || name === null) { this.cachedResult = null; return { frame: null }; }
-    const columns = colsRaw.map((c) => c.trim()).filter(Boolean);
-    this.cachedResult = columns.length < 2 ? f : runVerb(() => mergeColumns(f, columns, separator, name));
-    return { frame: this.cachedResult };
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -1426,7 +916,7 @@ export const HEADER_OP_META: Record<HeaderOp, { label: string; description: stri
   demote:  { label: "Demote headers", description: "Column names drop into a first row of text. Columns auto-name `Col1`, `Col2`…" },
 };
 
-export class HeadersNode extends ClassicPreset.Node {
+export class HeadersNode extends GraphNode {
   label: string;
   action: HeaderOp;
   cachedResult: FrameValue | SolError | null = null;
@@ -1444,14 +934,11 @@ export class HeadersNode extends ClassicPreset.Node {
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
     if (!input || this.action === "promote") return null;
-    return shapeOfFrameValue(demoteHeaders(emptyFrameOf(input)));
+    return shapeOnCore("demoteHeaders", [input]);
   }
 
-  data(inputs: { frame?: (FrameValue | null)[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => (this.action === "promote" ? promoteHeaders(f) : demoteHeaders(f)));
-    return { frame: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
   }
 }
 
@@ -1462,7 +949,7 @@ export const BLANK_ROW_OP_META: Record<BlankRowMode, { label: string; descriptio
   any: { label: "Any cell blank",  description: "Keep only complete rows." },
 };
 
-export class DropBlankRowsNode extends ClassicPreset.Node {
+export class DropBlankRowsNode extends GraphNode {
   label: string;
   mode: BlankRowMode;
   cachedResult: FrameValue | SolError | null = null;
@@ -1477,14 +964,13 @@ export class DropBlankRowsNode extends ClassicPreset.Node {
   }
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
-    return ctx.inputShape("frame");
+    const input = ctx.inputShape("frame");
+    return input && shapeOf({ kind: "dropBlankRows", mode: this.mode }, input);
   }
 
-  data(inputs: { frame?: (FrameValue | null)[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => dropBlankRows(f, this.mode));
-    return { frame: this.cachedResult };
+
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }
 
@@ -1492,16 +978,16 @@ export class DropBlankRowsNode extends ClassicPreset.Node {
 
 export type DecisionDetail = "summary" | "breakdown";
 
-export class DecisionMatrixNode extends ClassicPreset.Node {
+export class DecisionMatrixNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    frame: "Rows are options. Number and logical columns are the criteria, and the first text column names the options. Date columns are skipped.",
-    weights: "A row per criterion: name, Weight (negative when lower is better), optional Norm (Raw, ÷Max, Rank). A missing criterion weighs 1 at the default Norm.",
+    frame: "Rows are options. Number and logical columns are the criteria, and the first text column names the options. Date columns are skipped. A Cube's nested tables are further choices under each row, ranked with the same Weights; each row counts the best one inside as a criterion named after the nested column.",
+    weights: "A row per criterion: name, Weight (negative when lower is better), optional Norm (Raw, ÷Max, Range, Rank), and optional At least and At most, deal-breakers that rule an option out before weighing. A missing criterion weighs 1 at the default Norm.",
   };
 
   label: string;
   normalize: DecisionNormalize;
   detail: DecisionDetail;
-  cachedResult: FrameValue | SolError | null = null;
+  cachedResult: FrameValue | CubeValue | SolError | null = null;
   width = 240; height = 205;
 
   static frameHints: Record<string, FrameHint> = {
@@ -1523,46 +1009,43 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Decision Matrix";
     this.normalize = init?.normalize ?? "max";
     this.detail = init?.detail ?? "summary";
-    this.addInput("frame", cubeIn("Scores / Cube"));
+    this.addInput("frame", cubeAdoptIn("Scores / Cube"));
     this.addInput("weights", frameIn("Weights"));
-    this.addOutput("frame", frameOut("Ranking"));
+    this.addOutput("frame", tableAdoptOut("Ranking"));
   }
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
 
+  // A Cube in ranks its nested choices too, so a Cube comes out.
+  passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
+
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
-    if (!input) return null;
-    const label = input.columns.find((c) => c.type === "string");
-    const criteria = input.columns.filter((c) => c !== label && (c.type === "number" || c.type === "logical"));
-    if (criteria.length === 0) return null;
-    const cols: ShapeColumn[] = [{ name: label?.name ?? "Option", type: "string" }];
-    if (this.detail === "breakdown") for (const c of criteria) cols.push({ name: c.name, type: "number" });
-    cols.push({ name: "Score", type: "number" }, { name: "Rank", type: "number" });
-    const names = makeHeaders(cols.map((c) => c.name), cols.length);
-    return { columns: cols.map((c, i) => ({ name: names[i], type: c.type })), dynamic: input.dynamic };
+    const shape = input && sampleShapeOnCore("decisionMatrix", [input], [this.normalize, this.detail === "breakdown"]);
+    // Ruled out by and Filled in come and go with the data, so the shape is never the whole story.
+    return shape && { ...shape, dynamic: true };
   }
 
-  data(inputs: { frame?: unknown[]; weights?: (FrameValue | null)[] }) {
-    const raw = inputs.frame?.[0] ?? null;
-    if (raw == null) { this.cachedResult = null; return { frame: null }; }
-    const f = isCubeValue(raw) ? cubeToScalarFrame(raw) : (isFrameValue(raw) ? raw : widenToFrame(raw));
-    const { weights, normOverrides } = resolveDecisionWeights(inputs.weights?.[0] ?? null, decisionCriteria(f));
-    this.cachedResult = runVerb(() => decisionMatrix(f, weights, this.normalize, this.detail === "breakdown", normOverrides));
-    return { frame: this.cachedResult };
+
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | CubeValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | CubeValue | SolError | null };
   }
 }
 
 // ─── DECISION SENSITIVITY ───────────────────────────────────────────────────────
 
-export class DecisionSensitivityNode extends ClassicPreset.Node {
+export type SensitivityMode = "scenarios" | "flips";
+
+export class DecisionSensitivityNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     scores: "The options frame a Decision Matrix takes: rows are options, number columns criteria.",
-    scenarios: "The Decision Matrix weights frame widened to many scenarios: one row per Criterion, and a number column per scenario (its header names it) carrying that scenario's weight. An optional Norm column applies per criterion across every scenario; a criterion a scenario omits weighs 1.",
+    scenarios: "Scenarios: the Decision Matrix weights frame widened, one row per Criterion and a number column per scenario (its header names it) carrying that scenario's weight; an optional Norm column and At least / At most apply across every scenario, and a criterion a scenario omits weighs 1. Flip points: the Decision Matrix's own Weights table.",
+    cube: "Scenarios: a row per scenario with its Winner, Margin and full Ranking. Flip points: a row per criterion with the weight at which another option would win if the criterion mattered less, and if it mattered more, and which one; with no such weight, the winner stays and is named.",
   };
 
   label: string;
   normalize: DecisionNormalize;
-  cachedResult: CubeValue | SolError | null = null;
+  mode: SensitivityMode;
+  cachedResult: CubeValue | FrameValue | SolError | null = null;
   width = 220; height = 240;
 
   static frameHints: Record<string, FrameHint> = {
@@ -1575,21 +1058,98 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
     ] },
   };
 
-  constructor(init?: { label?: string; normalize?: DecisionNormalize }) {
+  // The mode swaps the output between a Cube of scenarios and a Frame of flip points.
+  static outputFor(mode: SensitivityMode) { return mode === "flips" ? frameOut("Flip points") : cubeOut("By scenario"); }
+  static inputLabel(mode: SensitivityMode) { return mode === "flips" ? "Weights" : "Scenarios"; }
+
+  constructor(init?: { label?: string; normalize?: DecisionNormalize; mode?: SensitivityMode }) {
     super("DecisionSensitivity");
     this.label = init?.label ?? "Sensitivity";
     this.normalize = init?.normalize ?? "max";
+    this.mode = init?.mode === "flips" ? "flips" : "scenarios";
     this.addInput("scores", frameIn("Scores"));
-    this.addInput("scenarios", frameIn("Scenarios"));
-    this.addOutput("cube", cubeOut("By scenario"));
+    this.addInput("scenarios", frameIn(DecisionSensitivityNode.inputLabel(this.mode)));
+    this.addOutput("cube", DecisionSensitivityNode.outputFor(this.mode));
   }
 
-  data(inputs: { scores?: (FrameValue | null)[]; scenarios?: (FrameValue | null)[] }) {
-    const scores = inputs.scores?.[0] ?? null;
-    const scenarios = inputs.scenarios?.[0] ?? null;
-    if (!scores || !scenarios) { this.cachedResult = null; return { cube: null }; }
-    this.cachedResult = runVerb(() => decisionSensitivity(scores, scenarios, this.normalize));
-    return { cube: this.cachedResult };
+  setMode(next: SensitivityMode): { outputChanged: boolean } {
+    if (next === this.mode) return { outputChanged: false };
+    this.mode = next;
+    const spec = DecisionSensitivityNode.outputFor(next);
+    this.outputs.cube!.socket = spec.socket;
+    this.outputs.cube!.label = spec.label;
+    this.inputs.scenarios!.label = DecisionSensitivityNode.inputLabel(next);
+    return { outputChanged: true };
+  }
+
+  frameShape(_outKey: string, _ctx: FrameShapeContext): Shape | null {
+    return this.mode === "flips" ? sampleShapeOnCore("flipPoints", [SAMPLE_OPTIONS], [this.normalize]) : null;
+  }
+
+
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { cube: CubeValue | FrameValue | SolError | null };
+  }
+}
+
+// ─── CHOICE LADDER ──────────────────────────────────────────────────────────────
+
+export class ChoiceLadderNode extends GraphNode {
+  static socketDocs: Record<string, string> = {
+    frame: "The Decision Matrix's options frame plus a cost column per limit, named as in Limits. Optional Requires and Excludes text columns list other options by name; optional Must and Never logical columns force an option in or out; options sharing a One of value exclude each other.",
+    limits: "A row per resource naming an Options column (a logical one counts TRUE as 1). At most caps it and At least sets a floor, like at least two vegetarian; with neither it is a rough cost, like political capital, that orders the ladder by value for what it costs.",
+    close: "Two options whose places differ by no more than this share of the larger fork the ladder. 0.05 or 5 both read as 5%.",
+    chart: "The ladder: value flows down and each rung takes what it serves. Click a card at a fork to take it.",
+  };
+
+  label: string;
+  normalize: DecisionNormalize;
+  /** The options taken at forks, by name in the order taken. */
+  choices: string[];
+  literals: Record<string, number> = { close: 0.05 };
+  cachedResult: FrameValue | SolError | null = null;
+  cachedChart: ChartValue | SolError | null = null;
+  width = 240; height = 230;
+
+  static frameHints: Record<string, FrameHint> = {
+    frame: { columns: [
+      { name: "Restaurant", type: "string", cells: ["Kato", "Lune", "Taqueria Sol"] },
+      { name: "Food", type: "number", cells: [9, 8, 8] },
+      { name: "Vibe", type: "number", cells: [7, 9, 5] },
+      { name: "Dollars", type: "number", cells: [160, 75, 18] },
+      { name: "Meals", type: "number", cells: [1, 1, 1] },
+      { name: "Hours", type: "number", cells: [2, 2, 1] },
+    ] },
+    weights: DecisionMatrixNode.frameHints.weights,
+    limits: { columns: [
+      { name: "Resource", type: "string", cells: ["Dollars", "Meals", "Hours"] },
+      { name: "At most", type: "number", cells: [450, 6, 10] },
+    ] },
+  };
+
+  constructor(init?: { label?: string; normalize?: DecisionNormalize; choices?: string[] }) {
+    super("ChoiceLadder");
+    this.label = init?.label ?? "Choice Ladder";
+    this.normalize = init?.normalize ?? "max";
+    this.choices = Array.isArray(init?.choices) ? init.choices.filter((c) => typeof c === "string") : [];
+    this.addInput("frame", frameIn("Options"));
+    this.addInput("weights", frameIn("Weights"));
+    this.addInput("limits", frameIn("Limits"));
+    this.addInput("close", numIn("Close within"));
+    this.addOutput("frame", frameOut("Plan"));
+    this.addOutput("chart", chartOut("Ladder"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    const shape = input && sampleShapeOnCore("choiceLadder", [input], [this.normalize, 0, [], false, false]);
+    // The cost columns follow, one per Limits row.
+    return shape && { ...shape, dynamic: true };
+  }
+
+
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | SolError | null; chart: ChartValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null; chart: ChartValue | SolError | null };
   }
 }
 
@@ -1600,7 +1160,7 @@ export const ALLOCATE_MODE_META = {
   minProportional: { label: "Min proportional", description: "The least spend that keeps each category in proportion to its weight while covering its floor." },
 } satisfies Record<AllocateMode, { label: string; description: string }>;
 
-export class AllocatorNode extends ClassicPreset.Node {
+export class AllocatorNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     categories: "Rows are categories: the first text column names them, min and max columns set the range, Weight or Value ranks them. Without one, equal weights.",
     amount: "The budget to spend under Fit budget, or the value target to reach under Min for target. Ignored by Min proportional.",
@@ -1632,19 +1192,16 @@ export class AllocatorNode extends ClassicPreset.Node {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("categories");
-    return input ? shapeOfFrameValue(allocateFrame(emptyFrameOf(input), this.mode, 0)) : null;
+    return input ? shapeOnCore("allocateFrame", [input], [this.mode, 0]) : null;
   }
 
-  data(inputs: { categories?: (FrameValue | null)[]; amount?: (number | null)[] }) {
-    const f = inputs.categories?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
-    const amount = readInput(inputs.amount, this.literals.amount ?? 0) ?? 0;
-    this.cachedResult = runVerb(() => allocateFrame(f, this.mode, amount));
-    return { frame: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
   }
 }
 
 // ─── PAYOFF PLANNER ─────────────────────────────────────────────────────────
+export type PayoffOrder = "avalanche" | "snowball";
 export type PayoffView = "summary" | "schedule";
 
 export const PAYOFF_ORDER_META = {
@@ -1652,7 +1209,7 @@ export const PAYOFF_ORDER_META = {
   snowball:  { label: "Snowball",  description: "Extra goes to the smallest balance first: the quickest first win." },
 } satisfies Record<PayoffOrder, { label: string; description: string }>;
 
-export class PayoffPlannerNode extends ClassicPreset.Node {
+export class PayoffPlannerNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     debts: "Rows are debts: a name, Balance, APR as 0.24 or 24, and Min, the minimum monthly payment. Balance's currency rides onto the result.",
     extra: "The extra paid every month on top of the minimums; it moves to the next debt as each one clears.",
@@ -1689,81 +1246,21 @@ export class PayoffPlannerNode extends ClassicPreset.Node {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("debts");
-    if (!input) return null;
-    if (this.mode === "summary") {
-      const name = input.columns.find((c) => c.type === "string")?.name ?? "Debt";
-      return { columns: [{ name, type: "string" }, { name: "Months", type: "number" }, { name: "Interest", type: "number" }, { name: "Payoff date", type: "date" }] };
-    }
-    return null; // Schedule has one column per debt row, so no static shape.
+    // Schedule has one column per debt row, so no static shape.
+    return input && this.mode === "summary" ? sampleShapeOnCore("payoffFrame", [input], [0, this.order, "summary", null]) : null;
   }
 
-  data(inputs: { debts?: (FrameValue | null)[]; extra?: (number | null)[]; start?: (number | null)[] }) {
-    const f = inputs.debts?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
-    const extra = readInput(inputs.extra, this.literals.extra ?? 0) ?? 0;
-    const start = inputs.start ? inputs.start[0] : localMonthStartSerial();
-    this.cachedResult = runVerb(() => payoffFrame(f, extra, this.order, this.mode, start));
-    return { frame: this.cachedResult };
+
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
   }
-}
-
-function localMonthStartSerial(): number {
-  const d = new Date();
-  return Date.UTC(d.getFullYear(), d.getMonth(), 1) / 86400000 + 25569;
-}
-
-/** As EDATE: a day past the target month's end lands on its last day. */
-function addMonthsSerial(start: number, months: number): number {
-  const d = new Date(Math.round((start - 25569) * 86400000));
-  const y = d.getUTCFullYear(), mo = d.getUTCMonth() + months;
-  const lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
-  return Math.floor(Date.UTC(y, mo, Math.min(d.getUTCDate(), lastDay)) / 86400000 + 25569);
-}
-
-export function payoffFrame(f: FrameValue, extra: number, order: PayoffOrder, view: PayoffView, start: number | null): FrameValue {
-  const byName = (...names: string[]) => { const set = new Set(names); return f.columns.find((c) => set.has(c.name.trim().toLowerCase())); };
-  const nameCol = f.columns.find((c) => c.type === "string");
-  const nums = f.columns.filter((c) => c.type === "number");
-  const balCol = byName("balance", "owed", "principal") ?? nums[0];
-  const aprCol = byName("apr", "rate", "interest") ?? nums.filter((c) => c !== balCol)[0];
-  const minCol = byName("min", "minimum", "min payment", "payment") ?? nums.filter((c) => c !== balCol && c !== aprCol)[0];
-  if (!balCol || !aprCol || !minCol) throw solError("#VALUE!", "Payoff Planner needs Balance, APR and Min payment number columns");
-  const rows = frameRowCount(f);
-  const num = (col: FrameColumn, i: number, what: string): number => {
-    const v = col.values[i];
-    if (isSolError(v)) throw v;
-    if (v == null) return 0;
-    if (typeof v !== "number" || !Number.isFinite(v)) throw solError("#VALUE!", `Payoff Planner: every ${what} must be a number`);
-    return v;
-  };
-  const debts = Array.from({ length: rows }, (_, i) => ({
-    name: String(nameCol?.values[i] ?? `Debt ${i + 1}`),
-    balance: num(balCol, i, "balance"), apr: num(aprCol, i, "APR"), min: num(minCol, i, "minimum payment"),
-  }));
-  let plan;
-  try { plan = payoffPlan(debts, extra, order); }
-  catch (e) { throw solError("#VALUE!", `Payoff Planner: ${e instanceof Error ? e.message : String(e)}`); }
-  const money = { ...(balCol.unit ? { unit: balCol.unit } : {}), ...(balCol.format ? { format: balCol.format } : {}) };
-  if (view === "schedule") {
-    const months = plan.schedule.length;
-    return { __frame: true, columns: [
-      { name: "Month", type: "number", values: Array.from({ length: months }, (_, m) => m) },
-      ...debts.map((d, j) => ({ name: d.name, type: "number" as const, values: plan.schedule.map((row) => row[j]), ...money })),
-    ] };
-  }
-  return { __frame: true, columns: [
-    { name: nameCol?.name ?? "Debt", type: "string", values: debts.map((d) => d.name) },
-    { name: "Months", type: "number", values: plan.perDebt.map((d) => d.months) },
-    { name: "Interest", type: "number", values: plan.perDebt.map((d) => d.interest), ...money },
-    { name: "Payoff date", type: "date", values: plan.perDebt.map((d) => (start == null ? null : addMonthsSerial(start, d.months))) },
-  ] };
 }
 
 // ─── GROUP COST SETTLE ──────────────────────────────────────────────────────
 export type SettleSplit = "equal" | "weighted";
 export type SettleMode = "totals" | "transactions";
 
-export class SettleNode extends ClassicPreset.Node {
+export class SettleNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     in: "Totals: a row per person, Paid and optional Share (blank is 1). Transactions: a row per expense, Amount, Paid by and For; blank For is everyone.",
     transfers: "The settle-up, and the node's main output: who pays whom in the fewest transfers, From · To · Amount. Amounts carry the Amount column's currency.",
@@ -1800,11 +1297,6 @@ export class SettleNode extends ClassicPreset.Node {
     return this.mode === "transactions" ? cubeIn("Ledger") : frameIn("People");
   }
 
-  private inGhosted(): boolean {
-    const c = getOwningEditor(this.id)?.getConnections().find((c) => c.target === this.id && c.targetInput === "in");
-    return !!c && cableGhostStore.isGhost(c.id);
-  }
-
   setMode(next: SettleMode): void {
     if (next === this.mode) return;
     this.mode = next;
@@ -1816,145 +1308,22 @@ export class SettleNode extends ClassicPreset.Node {
   }
 
   frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
-    if (outKey === "transfers") return { columns: [{ name: "From", type: "string" }, { name: "To", type: "string" }, { name: "Amount", type: "number" }] };
-    const name = this.mode === "totals"
-      ? (ctx.inputShape("in")?.columns.find((c) => c.type === "string")?.name ?? "Person")
-      : "Person";
-    return { columns: [{ name, type: "string" }, { name: "Paid", type: "number" }, { name: "Owes", type: "number" }, { name: "Owed", type: "number" }, { name: "Net", type: "number" }] };
+    const input = this.mode === "totals" ? ctx.inputShape("in") : null;
+    const both = sampleShapeOnCore("settleFrame", [input ?? SAMPLE_PEOPLE], [this.split]);
+    if (!both) return null;
+    // The core answers the transfers and the net table side by side, the transfers' three columns first.
+    return { columns: outKey === "transfers" ? both.columns.slice(0, 3) : both.columns.slice(3) };
   }
 
-  data(inputs: { in?: (FrameValue | CubeValue | null)[] }) {
-    const none = () => { this.cachedResult = null; this.cachedNet = null; return { transfers: null, net: null }; };
-    const emit = (r: { transfers: FrameValue; net: FrameValue } | SolError) => {
-      if (isSolError(r)) { this.cachedResult = r; this.cachedNet = r; return { transfers: r, net: r }; }
-      this.cachedResult = r.transfers; this.cachedNet = r.net;
-      return { transfers: r.transfers, net: r.net };
-    };
-    // A ghosted cable (left incompatible by a mode change) does not feed, so the card shows empty rather than a coercion #VALUE!.
-    const raw = this.inGhosted() ? null : (inputs.in?.[0] ?? null);
-    if (this.mode === "transactions") {
-      const cube = isCubeValue(raw) ? raw : isFrameValue(raw) ? frameToCube(raw) : null;
-      if (!cube) return none();
-      return emit(runVerb(() => settleLedgerCube(cube)));
-    }
-    const f = isFrameValue(raw) ? raw : isCubeValue(raw) ? cubeToScalarFrame(raw) : null;
-    if (!f) return none();
-    return emit(runVerb(() => settleFrame(f, this.split)));
+
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { transfers: FrameValue | SolError | null; net: FrameValue | SolError | null };
   }
-}
-
-export function settleLedgerCube(cube: CubeValue): { transfers: FrameValue; net: FrameValue } {
-  const norm = (s: string) => s.trim().toLowerCase();
-  const col = (...names: string[]) => { const set = new Set(names); return cube.columns.find((c) => set.has(norm(c.name))); };
-  const amountCol = col("amount", "cost", "total", "price", "spend");
-  const payerCol = col("paid by", "paidby", "payer", "paid", "by", "who paid", "from");
-  const forCol = col("for", "split", "split between", "participants", "shared", "shared by", "shared with", "with", "beneficiaries", "owed by");
-  if (!amountCol) throw solError("#VALUE!", "Group Cost Settle (Transactions) needs an Amount column");
-  if (!payerCol) throw solError("#VALUE!", "Group Cost Settle (Transactions) needs a Paid by column");
-
-  const canon = new Map<string, string>();
-  const person = (raw: string): string => { const k = norm(raw); const seen = canon.get(k); if (seen) return seen; canon.set(k, raw.trim()); return raw.trim(); };
-  const namesOf = (cell: CubeCell | undefined): string[] => {
-    if (cell == null) return [];
-    if (Array.isArray(cell)) return cell.flatMap(namesOf);
-    if (isUnitCell(cell) || isFrameValue(cell) || isCubeValue(cell)) return [];
-    return String(cell).split(/\s*,\s*/).map((x) => x.trim()).filter(Boolean).map(person);
-  };
-  const amountOf = (cell: CubeCell | undefined): number => {
-    if (isUnitCell(cell)) return Number.isFinite(cell.value) ? cell.value : 0;
-    if (typeof cell === "number") return Number.isFinite(cell) ? cell : 0;
-    if (typeof cell === "string") { const n = Number(cell.replace(/[,$£€\s]/g, "")); return Number.isFinite(n) ? n : 0; }
-    return 0;
-  };
-
-  const rows = cubeRowCount(cube);
-  const expenses: Expense[] = [];
-  for (let i = 0; i < rows; i++) {
-    const amount = amountOf(amountCol.cells[i]);
-    const payers = namesOf(payerCol.cells[i]);
-    if (payers.length === 0) continue;
-    const named = forCol ? namesOf(forCol.cells[i]) : [];
-    expenses.push({ amount, payers, beneficiaries: named.length ? named : null });
-  }
-  const r = settleLedger(expenses);
-  const unit = ledgerMoney(amountCol.cells);
-  const money = unit ? { unit } : {};
-  return {
-    transfers: { __frame: true, columns: [
-      { name: "From", type: "string", values: r.transfers.map((t) => t.from) },
-      { name: "To", type: "string", values: r.transfers.map((t) => t.to) },
-      { name: "Amount", type: "number", values: r.transfers.map((t) => t.amount), ...money },
-    ] },
-    net: settleNetFrame(r.people, r.paid, r.shares, money),
-  };
-}
-
-const r2 = (x: number) => Math.round(x * 100) / 100;
-
-function settleNetFrame(
-  names: string[], paidRaw: readonly number[], sharesRaw: readonly number[],
-  money: Partial<Pick<FrameColumn, "unit" | "format">>, personLabel = "Person",
-): FrameValue {
-  const paid = paidRaw.map(r2);
-  const net = sharesRaw.map(r2);
-  const owes: number[] = [];
-  const owed: number[] = [];
-  net.forEach((n, i) => {
-    const diff = r2(n - paid[i]);
-    owes.push(diff > 0 ? diff : 0);
-    owed.push(diff < 0 ? diff : 0);
-  });
-  return { __frame: true, columns: [
-    { name: personLabel, type: "string", values: names },
-    { name: "Paid", type: "number", values: paid, ...money },
-    { name: "Owes", type: "number", values: owes, ...money },
-    { name: "Owed", type: "number", values: owed, ...money },
-    { name: "Net", type: "number", values: net, ...money },
-  ] };
-}
-
-function ledgerMoney(cells: CubeCell[]): ColumnUnit | undefined {
-  for (const c of cells) if (isUnitCell(c)) return c.display ? { dim: c.dim, display: c.display } : { dim: c.dim };
-  return undefined;
-}
-
-export function settleFrame(f: FrameValue, split: SettleSplit): { transfers: FrameValue; net: FrameValue } {
-  const byName = (...names: string[]) => { const set = new Set(names); return f.columns.find((c) => set.has(c.name.trim().toLowerCase())); };
-  const nameCol = f.columns.find((c) => c.type === "string");
-  const nums = f.columns.filter((c) => c.type === "number");
-  const shareCol = byName("share", "weight", "shares");
-  const paidCol = byName("paid", "amount", "spent") ?? nums.find((c) => c !== shareCol);
-  if (!paidCol) throw solError("#VALUE!", "Group Cost Settle needs a Paid number column");
-  const rows = frameRowCount(f);
-  const people: { name: string; paid: number; share: number | null }[] = [];
-  const at = new Map<string, number>();
-  for (let i = 0; i < rows; i++) {
-    const paid = paidCol.values[i];
-    if (isSolError(paid)) throw paid;
-    const share = shareCol ? shareCol.values[i] : null;
-    const raw = String(nameCol?.values[i] ?? `Person ${i + 1}`).trim() || `Person ${i + 1}`;
-    const p = typeof paid === "number" && Number.isFinite(paid) ? paid : 0;
-    const s = typeof share === "number" && Number.isFinite(share) ? share : null;
-    const key = raw.toLowerCase();
-    const j = at.get(key);
-    if (j === undefined) { at.set(key, people.length); people.push({ name: raw, paid: p, share: s }); }
-    else { people[j].paid += p; if (s !== null) people[j].share = (people[j].share ?? 0) + s; }
-  }
-  const r = settleGroup(people, { weighted: split === "weighted" && !!shareCol });
-  const money = { ...(paidCol.unit ? { unit: paidCol.unit } : {}), ...(paidCol.format ? { format: paidCol.format } : {}) };
-  return {
-    transfers: { __frame: true, columns: [
-      { name: "From", type: "string", values: r.transfers.map((t) => t.from) },
-      { name: "To", type: "string", values: r.transfers.map((t) => t.to) },
-      { name: "Amount", type: "number", values: r.transfers.map((t) => t.amount), ...money },
-    ] },
-    net: settleNetFrame(people.map((p) => p.name), people.map((p) => p.paid), r.shares, money, nameCol?.name ?? "Person"),
-  };
 }
 
 // ─── RECONCILE ───────────────────────────────────────────────────────────────
 
-export class ReconcileNode extends ClassicPreset.Node {
+export class ReconcileNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     key: "Duplicate keys pair up in order. A row whose key is blank or an error cannot match and comes out as skipped.",
   };
@@ -1983,62 +1352,17 @@ export class ReconcileNode extends ClassicPreset.Node {
     const right = ctx.inputShape("right");
     const key = (this.stringLiterals.key ?? "").trim();
     if (!left || !right || !key || ctx.wired("key")) return null;
-    return shapeOfFrameValue(reconcileFrames(emptyFrameOf(left), emptyFrameOf(right), { leftKey: key, rightKey: key }).frame);
+    return shapeOnCore("reconcileFrames", [left, right], [key, key]);
   }
 
-  data(inputs: {
-    left?: (FrameValue | null)[]; right?: (FrameValue | null)[];
-    key?: string[]; priceColumn?: string[]; qtyColumn?: string[];
-  }) {
-    const left = inputs.left?.[0] ?? null;
-    const right = inputs.right?.[0] ?? null;
-    const keyRaw = readInput(inputs.key, this.stringLiterals.key ?? "");
-    const priceRaw = readInput(inputs.priceColumn, this.stringLiterals.priceColumn ?? "");
-    const qtyRaw = readInput(inputs.qtyColumn, this.stringLiterals.qtyColumn ?? "");
-    if (keyRaw === null || priceRaw === null || qtyRaw === null) {
-      this.cachedResult = null; this.cachedSummary = "";
-      return { frame: null, summary: "" };
-    }
-    const key = keyRaw.trim();
-    const priceColumn = priceRaw.trim() || undefined;
-    const qtyColumn = qtyRaw.trim() || undefined;
-    if (!left || !right || !key) {
-      this.cachedResult = null; this.cachedSummary = "";
-      return { frame: null, summary: "" };
-    }
-    const outcome = runVerb(() => reconcileFrames(left, right, { leftKey: key, rightKey: key, priceColumn, qtyColumn }));
-    if (isSolError(outcome)) {
-      this.cachedResult = outcome; this.cachedSummary = "";
-      return { frame: outcome, summary: outcome };
-    }
-    this.cachedResult = outcome.frame;
-    this.cachedSummary = summarizeReconcile(outcome.summary);
-    return { frame: outcome.frame, summary: this.cachedSummary };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null; summary: string | SolError };
   }
-}
-
-// Markdown without headings, so it reads as plain text in a hero box and still renders through a markdown Format Controller.
-function summarizeReconcile(s: ReconcileSummary): string {
-  const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString(APP_LOCALE) : n.toLocaleString(APP_LOCALE, { maximumFractionDigits: 2 }));
-  const parts = [`**${s.added}** added`, `**${s.removed}** removed`, `**${s.changed}** changed`, `**${s.unchanged}** unchanged`];
-  if (s.skipped > 0) parts.push(`**${s.skipped}** skipped`);
-  let out = parts.join(" · ");
-  if (s.addedColumns.length || s.removedColumns.length) {
-    const bits = [...s.addedColumns.map((n) => `+${n}`), ...s.removedColumns.map((n) => `−${n}`)];
-    out += `\n\n_Columns: ${bits.join(" · ")}._`;
-  }
-  if (s.pvm) {
-    const p = s.pvm;
-    const sign = (n: number) => (n >= 0 ? "+" : "");
-    out += `\n\n**Δ ${sign(p.delta)}${fmt(p.delta)}**: price ${sign(p.price)}${fmt(p.price)} · volume ${sign(p.volume)}${fmt(p.volume)} · mix ${sign(p.mix)}${fmt(p.mix)}`;
-    if (p.excluded > 0) out += `\n\n_PVM excludes ${p.excluded} row${p.excluded === 1 ? "" : "s"} with blank or errored price or qty._`;
-  }
-  return out;
 }
 
 // ─── BUILD FRAME ───────────────────────────────────────────────────────────────
 
-export class BuildFrameNode extends ClassicPreset.Node {
+export class BuildFrameNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
   cachedResult: FrameValue | null = null;
@@ -2052,36 +1376,14 @@ export class BuildFrameNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  // Identity-stable memo: a fresh FrameValue each pass would re-upload the frame to the backend.
-  private _builtFromMatrix: unknown;
-  private _builtFromHeaders: unknown;
-  private _builtFromType: unknown;
-
-  data(inputs: { matrix?: unknown[]; headers?: string[][] }) {
-    const rawMatrix = inputs.matrix?.[0];
-    const headers = inputs.headers?.[0];
-    // Part of the memo key: a cable retyped between date and number must rebuild.
-    const dt = this.inputs.matrix?.socket instanceof SolenoidSocket ? this.inputs.matrix.socket.dataType : undefined;
-    if (this.cachedResult && rawMatrix === this._builtFromMatrix && headers === this._builtFromHeaders && dt === this._builtFromType) {
-      return { frame: this.cachedResult };
-    }
-    const m = toAnyMatrix(rawMatrix);
-    if (!m || m.length === 0) { this.cachedResult = null; return { frame: null }; }
-    const known = colTypeForSocket(dt);
-    const allNumeric = known === null && m.every((row) => row.every((c) => c === null || isSolError(c) || typeof c === "number"));
-    this.cachedResult = known === "number" || allNumeric
-      ? buildFrame(m as number[][], headers)
-      : buildFrameTyped(m, headers, known);
-    this._builtFromMatrix = rawMatrix;
-    this._builtFromHeaders = headers;
-    this._builtFromType = dt;
-    return { frame: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | null };
   }
 }
 
 // ─── FRAME FROM LISTS ─────────────────────────────────────────────────────────
 
-export class FrameFromListsNode extends ClassicPreset.Node {
+export class FrameFromListsNode extends GraphNode {
   label: string;
   cachedResult: FrameValue | null = null;
   stringLiterals: Record<string, string> = {};
@@ -2089,9 +1391,6 @@ export class FrameFromListsNode extends ClassicPreset.Node {
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["Name", "Values"];
   width = 220; height = 240;
-
-  // Identity-stable memo: a fresh FrameValue each pass would re-upload the frame to the backend.
-  private _sig: unknown[] = [];
 
   constructor(init?: { label?: string; valueKeys?: string[] }) {
     super("FrameFromLists");
@@ -2143,33 +1442,8 @@ export class FrameFromListsNode extends ClassicPreset.Node {
     return { columns: cols.map((c, i) => ({ name: names[i], type: c.type })) };
   }
 
-  data(inputs: Record<string, unknown[]>) {
-    const cols: { name: string; cells: unknown[]; known: FrameColType | null }[] = [];
-    const sig: unknown[] = [];
-    for (const [nameK, valsK] of this.valuePairKeys()) {
-      const wired = inputs[valsK]?.[0];
-      if (wired === undefined || wired === null) continue;
-      const cells = Array.isArray(wired) ? wired : [wired];
-      const nameRaw = readInput(inputs[nameK] as string[] | undefined, this.stringLiterals[nameK] ?? "");
-      if (nameRaw === null) { this.cachedResult = null; this._sig = []; return { frame: null }; }
-      const name = String(nameRaw).trim();
-      const sock = this.inputs[valsK]?.socket;
-      const known = colTypeForSocket(sock instanceof SolenoidSocket ? sock.dataType : undefined);
-      cols.push({ name, cells, known });
-      sig.push(name, wired, known);
-    }
-    if (cols.length === 0) { this.cachedResult = null; this._sig = []; return { frame: null }; }
-    if (this.cachedResult && sig.length === this._sig.length && sig.every((v, i) => Object.is(v, this._sig[i]))) {
-      return { frame: this.cachedResult };
-    }
-    const length = Math.max(...cols.map((c) => c.cells.length));
-    const names = makeHeaders(cols.map((c) => c.name), cols.length);
-    this.cachedResult = {
-      __frame: true,
-      columns: cols.map((c, i) => typedColumn(names[i], c.cells, length, c.known)),
-    };
-    this._sig = sig;
-    return { frame: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | null };
   }
 }
 
@@ -2184,16 +1458,16 @@ export function splitMatrixOutput(colType: SplitColType) {
     : tableOut("Matrix");
 }
 
-export class SplitFrameNode extends ClassicPreset.Node {
+export class SplitFrameNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    matrix: "Under All, one text column blanks the whole matrix. Date cells ride as serials and booleans as 1 and 0.",
+    matrix: "Under All, one text or date column blanks the whole matrix; pick Text or Date to split those columns. Booleans ride as 1 and 0.",
   };
 
   label: string;
   colType: SplitColType;
   cachedMatrix: (number | string)[][] | null = null;
   cachedHeaders: string[] | null = null;
-  // True when the kept columns include text, so the Matrix output is null by design.
+  // True when All keeps a text or date column, so the Matrix output is null by design.
   cachedMixed = false;
   width = 230; height = 200;
 
@@ -2212,44 +1486,21 @@ export class SplitFrameNode extends ClassicPreset.Node {
     if (out) out.socket = splitMatrixOutput(next).socket;
   }
 
-  data(inputs: { frame?: (FrameValue | null)[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedMatrix = null; this.cachedHeaders = null; this.cachedMixed = false; return { matrix: null, headers: null }; }
-    const cols = this.colType === "all" ? f.columns : f.columns.filter((c) => c.type === this.colType);
-    const headers = cols.map((c) => c.name);
-
-    if (this.colType === "string") {
-      const rows = frameRowCount({ __frame: true, columns: cols });
-      const matrix: (number | string)[][] | null = cols.length
-        ? Array.from({ length: rows }, (_, i) =>
-            cols.map((c) => {
-              const v = c.values[i];
-              return typeof v === "string" ? v : isSolError(v) ? v.code : v == null ? "" : String(v);
-            }))
-        : null;
-      this.cachedMatrix = matrix;
-      this.cachedHeaders = headers;
-      this.cachedMixed = false;
-      return { matrix, headers };
-    }
-
-    const sub: FrameValue = { __frame: true, columns: cols };
-    const { matrix } = splitFrame(sub);
-    this.cachedMatrix = matrix;
-    this.cachedHeaders = headers;
-    this.cachedMixed = frameHasTextColumns(sub);
-    return { matrix, headers };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { matrix: (number | string)[][] | null; headers: string[] | null };
   }
 }
 
 // ─── GET COLUMN ────────────────────────────────────────────────────────────────
 
-export type GetColumnReadAs = "number" | "text" | "date" | "logical";
+export type GetColumnReadAs = "auto" | "number" | "text" | "date" | "logical";
 
-export function getColumnOutput(readAs: GetColumnReadAs) {
+/** Auto's list adopts the picked column's family (`passthrough`, else the values it carried); the others declare their own. */
+function getColumnOutput(readAs: GetColumnReadAs) {
   return readAs === "text" ? strListOut("Values")
     : readAs === "date" ? dateListOut("Values")
     : readAs === "logical" ? logicalListOut("Values")
+    : readAs === "auto" ? adoptiveListOut("Values")
     : listOut("Values");
 }
 
@@ -2260,7 +1511,7 @@ type GetColumnValues =
   | SolError
   | null;
 
-export class GetColumnNode extends ClassicPreset.Node {
+export class GetColumnNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     values: "Number and Date reads coerce rather than filter: a text cell parses or becomes NaN, a boolean becomes 1 or 0, and blanks stay blank.",
   };
@@ -2270,16 +1521,33 @@ export class GetColumnNode extends ClassicPreset.Node {
   cachedResult: (number | UnitCell | null | SolError)[] | string[] | (boolean | null | SolError)[] | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = { name: "" };
-  private _gen = 0;
   width = 200; height = 205;
 
   constructor(init?: { label?: string; readAs?: GetColumnReadAs }) {
     super("GetColumn");
     this.label = init?.label ?? "Get Column";
-    this.readAs = init?.readAs ?? "number";
-    this.addInput("frame", cubeIn("Table / Cube"));
+    // Auto reads a column as its own type, so a date column comes out as dates ([[C137]] datesNeverSerials).
+    this.readAs = init?.readAs ?? "auto";
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("name", strIn("Column"));
     this.addOutput("values", getColumnOutput(this.readAs));
+  }
+
+  /** On Auto, the output takes the named column's family where the shape is known, else the values it carried. */
+  passthrough(): PassthroughSpec[] {
+    if (this.readAs !== "auto") return [];
+    return [{
+      output: "values",
+      inputs: ["frame"],
+      combine: "single",
+      project: (ctx) => {
+        const name = ctx.wired("name") ? "" : (this.stringLiterals.name ?? "").trim();
+        const shape = name ? ctx.shapeOf("frame") : null;
+        const col = shape && !shape.dynamic ? shape.columns.find((c) => c.name === name) : undefined;
+        const fam: SocketDataType = col ? comboOfFamily(col.type) ?? "trueany" : "trueany";
+        return { frame: fam, cube: "trueany", tables: "trueany" };
+      },
+    }];
   }
 
   setReadAs(next: GetColumnReadAs): void {
@@ -2290,72 +1558,8 @@ export class GetColumnNode extends ClassicPreset.Node {
 
   columnPickers(): ColumnPickerSpec[] { return [{ key: "name", frameInput: "frame" }]; }
 
-  data(inputs: { frame?: unknown[]; name?: string[] }): { values: GetColumnValues } {
-    const gen = ++this._gen;
-    const f = inputs.frame?.[0] ?? null;
-    const name = readInput(inputs.name, this.stringLiterals.name ?? "");
-    if (!f || name === null || name.trim() === "") { this.cachedResult = null; return { values: null }; }
-    if (isCubeValue(f)) {
-      const cc = f.columns.find((c) => c.name === name);
-      if (!cc) { this.cachedResult = null; return { values: null }; }
-      for (const cell of cc.cells) {
-        if (Array.isArray(cell) || isFrameValue(cell) || isCubeValue(cell)) {
-          this.cachedResult = null;
-          return { values: solError("#SHAPE!", `"${name}" has list or table cells; Get Column reads a scalar column`) };
-        }
-      }
-      return { values: this.readColumn(inferColumn(name, cc.cells)) };
-    }
-    const fr: FrameInput = isFrameValue(f) || isFrameRef(f) ? f : widenToFrame(f);
-    // The engine awaits a promise-returning data(); the cast keeps the sync signature.
-    if (isFrameRef(fr)) {
-      return (async () => {
-        const col = await materialize(readRefColumn(fr, name));
-        if (gen !== this._gen) return { values: null };
-        if (isSolError(col)) { this.cachedResult = null; return { values: col }; }
-        if (!col) { this.cachedResult = null; return { values: null }; }
-        return { values: this.readColumn(col) };
-      })() as unknown as { values: GetColumnValues };
-    }
-    const col = getColumn(fr, name);
-    if (!col) { this.cachedResult = null; return { values: null }; }
-    return { values: this.readColumn(col) };
-  }
-
-  private readColumn(col: FrameColumn): GetColumnValues {
-    if (this.readAs === "text") {
-      // Format, don't String(): a date column must read as date text, not serials.
-      const out = col.values.map((v) => {
-        const c = formatFrameCell(col.type, v);
-        return c == null ? "" : String(c);
-      });
-      this.cachedResult = out;
-      return out;
-    }
-    if (this.readAs === "logical") {
-      // Shares coerceLogical with Cast to Boolean so the two parse identically.
-      const out = col.values.map((v) =>
-        v === null ? null : isSolError(v) ? v : logicalOrTypeError(v, `Get Column "${col.name}"`),
-      );
-      this.cachedResult = out;
-      return out;
-    }
-    const colUnit = this.readAs === "number" && col.unit ? col.unit : undefined;
-    const out = col.values.map((v) => {
-      if (v === null) return null; // blank stays null, not NaN
-      if (typeof v === "number") return colUnit ? (tagFrameCellUnit(v, colUnit) as number | UnitCell) : v;
-      if (typeof v === "boolean") return v ? 1 : 0;
-      if (isSolError(v)) return v;
-      if (typeof v === "string") {
-        // Text reads as a Frame cell of the read type does ([[D93]] oneTextReading).
-        const n = coerceFrameCell(this.readAs === "date" ? "date" : "number", v) as number | SolError | null;
-        if (n === null || isSolError(n)) return n;
-        return colUnit ? (tagFrameCellUnit(n, colUnit) as number | UnitCell) : n;
-      }
-      return NaN;
-    });
-    this.cachedResult = out;
-    return out;
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { values: GetColumnValues };
   }
 }
 
@@ -2363,18 +1567,18 @@ export class GetColumnNode extends ClassicPreset.Node {
 
 export type AddColumnAddAs = "number" | "text" | "date" | "logical";
 
-export function colTypeForAddAs(addAs: AddColumnAddAs): FrameColType {
+function colTypeForAddAs(addAs: AddColumnAddAs): FrameColType {
   return addAs === "text" ? "string" : addAs;
 }
 
-export function addColumnInput(addAs: AddColumnAddAs) {
+function addColumnInput(addAs: AddColumnAddAs) {
   return addAs === "text" ? strListIn("Values")
     : addAs === "date" ? dateListIn("Values")
     : addAs === "logical" ? logicalListIn("Values")
     : listIn("Values");
 }
 
-export class AddColumnNode extends ClassicPreset.Node {
+export class AddColumnNode extends GraphNode {
   label: string;
   addAs: AddColumnAddAs;
   cachedResult: FrameValue | CubeValue | null = null;
@@ -2407,21 +1611,8 @@ export class AddColumnNode extends ClassicPreset.Node {
     return shapeOfFrameValue(addColumn(emptyFrameOf(input), name, [], colTypeForAddAs(this.addAs)));
   }
 
-  data(inputs: { frame?: unknown[]; values?: FrameCell[][]; name?: string[] }) {
-    const rawF = inputs.frame?.[0] ?? null;
-    const isCube = isCubeValue(rawF);
-    const f: FrameValue | null = rawF == null ? null : isCube ? null : (isFrameValue(rawF) ? rawF : widenToFrame(rawF));
-    const values = inputs.values?.[0] ?? null;
-    const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
-    if ((!f && !isCube) || !values || nameRaw === null) { this.cachedResult = null; return { frame: null }; }
-    const name = nameRaw.trim() || "Col";
-    const colType = colTypeForAddAs(this.addAs);
-    const rows = Math.max(isCube ? cubeRowCount(rawF as CubeValue) : frameRowCount(f!), values.length);
-    const padded: FrameCell[] = Array.from({ length: rows }, (_, i) => (i < values.length ? values[i] : null));
-    this.cachedResult = isCube
-      ? cubeWithColumn(rawF as CubeValue, name, padded, colType, "")
-      : addColumn(f!, name, padded, colType);
-    return { frame: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | CubeValue | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | CubeValue | null };
   }
 }
 
@@ -2429,7 +1620,11 @@ export class AddColumnNode extends ClassicPreset.Node {
 
 export type ComputedColumnAs = "auto" | AddColumnAddAs;
 
-export class ComputedColumnNode extends ClassicPreset.Node {
+const COMPUTED_RESERVED = ["frame", "name", "fn", "after"];
+
+
+export class ComputedColumnNode extends GraphNode {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     after: "Empty appends the new column at the end. A column name inserts it immediately after that column. A replaced column keeps its place.",
   };
@@ -2446,10 +1641,6 @@ export class ComputedColumnNode extends ClassicPreset.Node {
   sourceColumns: string[] = [];
   defVars: string[] = [];
   width = 235; height = 290;
-  private _evaluator: ExprEvaluator | null = null;
-  private _vars: string[] = [];
-  private _rowRefs: string[] = [];
-  private _compiledFor: string | null = null;
 
   constructor(init?: { label?: string; expr?: string; addAs?: ComputedColumnAs; literals?: Record<string, number>; bindings?: Record<string, string>; sideVars?: string[] }) {
     super("ComputedColumn");
@@ -2471,13 +1662,15 @@ export class ComputedColumnNode extends ClassicPreset.Node {
 
   passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
 
-  /** Runs from data(), so socket changes wait for a microtask, and cables on a removed socket are pruned first. */
-  private _reconcileSideSockets(needed: string[]): void {
-    const current = this.sideVars;
-    const added = needed.filter((v) => !current.includes(v));
-    const removed = current.filter((v) => !needed.includes(v));
+  /** The side inputs grown to the body's `sideVars` (`nodeOnCore`'s `coreWatch`); the socket changes wait for a
+   *  microtask, and cables on a removed socket are pruned first. */
+  static coreWatch = "sideVars";
+  coreWatched(): void {
+    const needed = this.sideVars;
+    const grown = Object.keys(this.inputs).filter((k) => !COMPUTED_RESERVED.includes(k));
+    const added = needed.filter((v) => !grown.includes(v));
+    const removed = grown.filter((v) => !needed.includes(v));
     if (added.length === 0 && removed.length === 0) return;
-    this.sideVars = needed;
     queueMicrotask(() => {
       void (async () => {
         for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
@@ -2505,100 +1698,22 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     return shapeOfFrameValue({ __frame: true, columns: cols });
   }
 
-  data(inputs: { frame?: unknown[]; name?: string[]; after?: string[]; fn?: unknown[] } & Record<string, unknown[] | undefined>) {
-    const rawF = inputs.frame?.[0] ?? null;
-    const isCube = isCubeValue(rawF);
-    const f = rawF == null ? null : isCube ? cubeRowTable(rawF) : (isFrameValue(rawF) ? rawF : widenToFrame(rawF));
-    const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
-    const afterRaw = readInput(inputs.after, this.stringLiterals.after ?? "");
-    const lam = inputs.fn?.[0];
-    const out = (frame: FrameValue | CubeValue | SolError | null) => { this.cachedResult = frame; return { frame }; };
-    this.sourceColumns = isCube ? rawF.columns.map((c) => c.name) : (f ? f.columns.map((c) => c.name) : []);
-    if (!f || nameRaw === null) { this.defVars = []; this._reconcileSideSockets([]); return out(null); }
-    const name = nameRaw.trim() || "computed";
-    const after = (afterRaw ?? "").trim();
-
-    const wired = isLambdaValue(lam) ? lam : null;
-    if (!wired) {
-      if (this._compiledFor !== this.expr) {
-        this._evaluator = compileEvaluator(this.expr);
-        this._vars = this._evaluator ? extractVariables(this.expr) : [];
-        this._rowRefs = this._evaluator ? rowRefNames(this.expr) : [];
-        this._compiledFor = this.expr;
-      }
-      if (!this.expr.trim()) { this.defVars = []; this._reconcileSideSockets([]); return out(isCube ? rawF : (f as FrameValue)); }
-      if (!this._evaluator) { this.defVars = []; this._reconcileSideSockets([]); return out(solError("#VALUE!", "The formula does not parse")); }
-    }
-
-    const sideVals = this.sideVars.map((p) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0));
-    const bindJson = JSON.stringify(this.bindings);
-    const stamp = volatileStamp(wired ? wired.expr : this.expr);
-    const k = this._lastKey;
-    if (
-      this.cachedResult && !isSolError(this.cachedResult) && k &&
-      Object.is(k.f, rawF) && Object.is(k.lam, wired) && k.expr === this.expr && k.addAs === this.addAs &&
-      k.name === name && k.after === after && k.bindings === bindJson && k.stamp === stamp &&
-      k.sideVals.length === sideVals.length && k.sideVals.every((v, i) => Object.is(v, sideVals[i]))
-    ) {
-      return { frame: this.cachedResult };
-    }
-    const remember = (frame: FrameValue | CubeValue) => {
-      this._lastKey = { f: rawF, lam: wired, expr: this.expr, addAs: this.addAs, name, after, bindings: bindJson, sideVals, stamp };
-      return out(frame);
-    };
-
-    this.defVars = wired ? wired.params : this._vars;
-    const computed = (isCube ? computeCubeColumnCells : computeColumnCells)(
-      f,
-      wired ? { kind: "lambda", lam: wired } : { kind: "expr", evaluator: this._evaluator!, vars: this._vars },
-      {
-        reserved: ["frame", "name", "fn", "after"],
-        sideValue: (p) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0),
-        alias: this.bindings,
-        rowRefs: wired
-          ? (wired.expr ? rowRefNames(wired.expr).filter((p) => !(wired.captured ?? []).includes(p)) : [])
-          : this._rowRefs,
-      },
-    );
-    if (isSolError(computed)) { this._reconcileSideSockets([]); return out(computed); }
-    this._reconcileSideSockets(computed.sideVars);
-    const refused = wired
-      ? readingsRefusal(bareLambdaCall(wired), f, this.bindings, new Map([["λ", wired]]))
-      : readingsRefusal(this.expr, f, this.bindings);
-    const values: CubeCell[] = refused ? computed.cells.map(() => refused) : computed.cells;
-    const listType = isCube ? cubeCellsType(values) : null;
-    const colType: FrameColType = this.addAs !== "auto" ? colTypeForAddAs(this.addAs)
-      : listType ?? computedColumnType(name, values as FrameCell[], f, wired ? wired.expr : this.expr, this.bindings);
-
-    if (isCube) {
-      const cubeOut = runVerb(() => cubeWithColumn(rawF as CubeValue, name, values, colType, after));
-      return isSolError(cubeOut) ? out(cubeOut) : remember(cubeOut);
-    }
-
-    // Detect replacement by column count, which is exact and avoids repeating addColumn's `Name (unit)` parsing.
-    const frame = f as FrameValue;
-    const result = addColumn(frame, name, values as FrameCell[], colType);
-    const replacing = result.columns.length === f.columns.length;
-    if (after && !replacing) {
-      const anchorIdx = result.columns.findIndex((c) => c.name === after);
-      if (anchorIdx < 0) return out(solError("#REF!", `No column "${after}" to place after`));
-      const cols = [...result.columns];
-      const added = cols.pop()!;
-      cols.splice(anchorIdx + 1, 0, added);
-      return remember({ __frame: true, columns: cols });
-    }
-    return remember(result);
+  /** The bindings cross whole: a save keeps only the ones the formula's variables name, and `@x` is not one. The
+   *  recalculation lets a kept answer stand only until F9 or midnight, for a TODAY or NOW in the formula or a wired
+   *  LAMBDA (`KEEPS_ANSWER`). */
+  static coreFields = ["bindings", "recalcGen"] as const;
+  get recalcGen(): number {
+    return getRecalcGen();
   }
 
-  private _lastKey: {
-    f: unknown; lam: unknown; expr: string; addAs: ComputedColumnAs;
-    name: string; after: string; bindings: string; sideVals: unknown[]; stamp: number;
-  } | null = null;
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
+  }
 }
 
 // ─── GET ROW ────────────────────────────────────────────────────────────────────
 
-export class GetRowNode extends ClassicPreset.Node {
+export class GetRowNode extends GraphNode {
   static inputRoles = { index: required };
   label: string;
   cachedResult: FrameValue | CubeValue | null = null;
@@ -2617,107 +1732,115 @@ export class GetRowNode extends ClassicPreset.Node {
 
   passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
 
-  data(inputs: { frame?: unknown[]; index?: number[] }) {
-    const raw = inputs.frame?.[0] ?? null;
-    const idx1 = readRole<number | SolError>(this, "index", inputs.index);
-    if (isSolError(idx1)) { this.cachedResult = null; return { frame: idx1 }; }
-    if (raw == null) { this.cachedResult = null; return { frame: null }; }
-    const i = Math.round(idx1) - 1;
-    if (isCubeValue(raw)) {
-      if (i < 0 || i >= cubeRowCount(raw)) { this.cachedResult = null; return { frame: null }; }
-      const r = selectCubeRows(raw, [i]);
-      this.cachedResult = r;
-      return { frame: r };
-    }
-    const f = isFrameValue(raw) ? raw : widenToFrame(raw);
-    if (i < 0 || i >= frameRowCount(f)) { this.cachedResult = null; return { frame: null }; }
-    const columns: FrameColumn[] = f.columns.map((c) => ({
-      ...c, values: [c.values[i] ?? null], raw: c.raw ? [c.raw[i] ?? ""] : undefined,
-    }));
-    this.cachedResult = { __frame: true, columns };
-    return { frame: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | CubeValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | CubeValue | SolError | null };
   }
 }
 
 // ─── XLOOKUP ───────────────────────────────────────────────────────────────────
 
-export class XLookupNode extends ClassicPreset.Node {
+export type LookupDirection = "rows" | "columns";
+
+/** Rows: the lookup searches a column and returns a row's cell. Columns: it searches a row and returns a column. */
+export class XLookupNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    lookup: "Matching follows the In column's type: text ignores case, and a number or date column parses the lookup text.",
+    lookup: "Matching follows the In column's type: text ignores case, and a number or date column parses the lookup text. =, ≤ and ≥ take the equal or closest key, < and > the closest strictly past it; contains, starts with and the rest take the first row that passes, as Filter's tests do. Is blank and not blank ignore it.",
+    returnColumn: "Blank returns the whole matched row.",
+    inRow: "The row searched, counting from 1. Blank searches the column names.",
+    returnRow: "The row whose cell comes back from the matched column. Blank returns the whole column.",
   };
 
   label: string;
   matchMode: LookupMatchMode;
   searchMode: LookupSearchMode;
   cachedResult: CubeCell | null = null;
+  direction: LookupDirection;
   stringLiterals: Record<string, string> = { lookup: "", inColumn: "", returnColumn: "", ifNotFound: "" };
+  literals: Record<string, number> = {};
   // Skip rank widening so a scalar or bare list reaches the shape guard in data() instead of becoming a one-row cube.
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   width = 200; height = 350;
 
-  constructor(init?: { label?: string; matchMode?: LookupMatchMode; searchMode?: LookupSearchMode }) {
+  constructor(init?: { label?: string; matchMode?: LookupMatchMode; searchMode?: LookupSearchMode; direction?: LookupDirection }) {
     super("XLookup");
     this.label = init?.label ?? "XLOOKUP";
-    this.matchMode = init?.matchMode ?? "exact";
+    this.matchMode = init?.matchMode ?? "eq";
     this.searchMode = init?.searchMode ?? "first";
-    this.addInput("frame", cubeIn("Table / Cube"));
+    this.direction = init?.direction === "columns" ? "columns" : "rows";
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("lookup", strComboIn("Lookup"));
-    this.addInput("inColumn", strIn("In column"));
-    this.addInput("returnColumn", strIn("Return"));
+    for (const k of XLookupNode.axisKeys(this.direction)) this.addInput(k, XLookupNode.axisInput(k));
     this.addInput("ifNotFound", strIn("If not found"));
-    this.addOutput("value", staticTrueAnyOut("Value"));
+    this.addOutput("value", trueAnyOut("Value"));
   }
 
-  data(inputs: {
-    frame?: unknown[]; lookup?: (string | string[])[];
-    inColumn?: string[]; returnColumn?: string[]; ifNotFound?: string[];
-  }) {
-    const raw = inputs.frame?.[0] ?? null;
-    const lookupRaw = readInput(inputs.lookup, this.stringLiterals.lookup ?? "");
-    const inColRaw = readInput(inputs.inColumn, this.stringLiterals.inColumn ?? "");
-    const retColRaw = readInput(inputs.returnColumn, this.stringLiterals.returnColumn ?? "");
-    const fallbackRaw = readInput(inputs.ifNotFound, this.stringLiterals.ifNotFound ?? "");
-    if (lookupRaw === null || inColRaw === null || retColRaw === null || fallbackRaw === null) {
-      this.cachedResult = null; return { value: null };
+  /** The two sockets that say where to search and what comes back, per direction. */
+  static axisKeys(d: LookupDirection): [string, string] {
+    return d === "columns" ? ["inRow", "returnRow"] : ["inColumn", "returnColumn"];
+  }
+  static axisInput(key: string) {
+    switch (key) {
+      case "inRow": return numIn("In row");
+      case "returnRow": return numIn("Return row");
+      case "inColumn": return strIn("In column");
+      default: return strIn("Return");
     }
-    const inCol = inColRaw.trim();
-    const retCol = retColRaw.trim();
-    const scalarLookupBlank = !Array.isArray(lookupRaw) && lookupRaw.trim() === "";
-    if (raw == null || inCol === "" || retCol === "" || scalarLookupBlank) { this.cachedResult = null; return { value: null }; }
-    const tabular = isFrameValue(raw) || isCubeValue(raw) || (Array.isArray(raw) && Array.isArray((raw as unknown[])[0]));
-    if (!tabular) {
-      this.cachedResult = solError("#VALUE!", "XLOOKUP needs a table or Cube. Combine two Lists with Frame from Lists first.");
-      return { value: this.cachedResult };
+  }
+
+  /** Swaps the axis sockets; the caller prunes the departing ones' cables first. */
+  setDirection(next: LookupDirection): string[] {
+    if (next === this.direction) return [];
+    const departing = XLookupNode.axisKeys(this.direction);
+    for (const k of departing) { if (this.inputs[k]) this.removeInput(k); delete this.literals[k]; delete this.stringLiterals[k]; }
+    this.direction = next;
+    for (const k of XLookupNode.axisKeys(next)) {
+      if (!this.inputs[k]) this.addInput(k, XLookupNode.axisInput(k));
+      if (next === "rows") this.stringLiterals[k] = "";
     }
-    const src = asLookupSource(raw)!;
-    const srcCube = isCubeValue(src) ? src : frameToCube(src);
-    const wholeRow = retCol === "*";
-    const fb = fallbackRaw.trim();
-    const matchOne = (lookupValue: unknown): CubeCell | null => {
-      const lookup = lookupValue == null ? "" : String(lookupValue).trim();
-      if (lookup === "") return null;
-      let cell: CubeCell | undefined;
-      if (wholeRow) {
-        const idx = lookupRowIndex(srcCube, inCol, lookup, this.matchMode, this.searchMode);
-        cell = idx < 0 ? undefined : (isCubeValue(src) ? cubeRowAt(src, idx) : frameRowAt(src, idx));
-      } else {
-        cell = lookupCell(srcCube, inCol, retCol, lookup, this.matchMode, this.searchMode);
-      }
-      if (cell !== undefined) return cell;
-      if (fb === "") return solError("#N/A", "No row matched the lookup value");
-      const num = Number(fb);
-      return Number.isNaN(num) ? fb : num;
-    };
-    const result = runVerb<CubeCell | null>(() =>
-      Array.isArray(lookupRaw) ? lookupRaw.map(matchOne) : matchOne(lookupRaw),
-    );
-    this.cachedResult = result;
-    return { value: result };
+    return departing;
+  }
+
+  /** A blank Return is the whole row; a named one carries its column's family on the combo rung (a lookup list
+   *  gives a list), so a date column's serials show as dates ([[C44]] dateSerials). */
+  passthrough(): PassthroughSpec[] {
+    return [{
+      output: "value",
+      inputs: ["frame"],
+      combine: "single",
+      project: (ctx) => {
+        if (this.direction === "columns") return this.acrossProjection(ctx);
+        const ret = ctx.wired("returnColumn") ? null : (this.stringLiterals.returnColumn ?? "").trim();
+        const shape = ctx.shapeOf("frame");
+        const col = ret && shape && !shape.dynamic ? shape.columns.find((c) => c.name === ret) : undefined;
+        // A wired lookup may be a list, which returns a list of rows.
+        const oneRow = !ctx.wired("lookup");
+        return {
+          frame: ret === "" ? (oneRow ? "frame" : "trueany") : col ? comboOfFamily(col.type) ?? "trueany" : "trueany",
+          cube: ret === "" && oneRow ? "cube" : "trueany",
+          tables: "trueany",
+        };
+      },
+    }];
+  }
+
+  /** Across, a typed lookup naming a column of a known shape, searched among the names, gives that column's family:
+   *  its cell or the whole column, both on the combo rung. Anything else is only known at run time. */
+  private acrossProjection(ctx: ProjectContext): { frame: SocketDataType; cube: SocketDataType; tables: "trueany" } {
+    const byName = !ctx.wired("lookup") && !ctx.wired("inRow") && !this.literals.inRow;
+    const name = (this.stringLiterals.lookup ?? "").trim();
+    const shape = byName && name ? ctx.shapeOf("frame") : null;
+    // Names match as the core's lookup does, ignoring case.
+    const col = shape && !shape.dynamic ? shape.columns.find((c) => c.name.toLowerCase() === name.toLowerCase()) : undefined;
+    return { frame: col ? comboOfFamily(col.type) ?? "trueany" : "trueany", cube: "trueany", tables: "trueany" };
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { value: CubeCell | null } {
+    return nodeOnCore(this, inputs) as { value: CubeCell | null };
   }
 }
 
 // ─── DESCRIBE ──────────────────────────────────────────────────────────────────
-export class DescribeNode extends ClassicPreset.Node {
+export class DescribeNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "One output row per column: count / blank / distinct for every column; mean, std, min, quartiles, max for the number columns, with min and max for dates.",
   };
@@ -2733,14 +1856,20 @@ export class DescribeNode extends ClassicPreset.Node {
   }
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
-    return ctx.wired("frame") ? shapeOfFrameValue(describeFrame(emptyFrameOf({ columns: [] }))) : null;
+    return ctx.wired("frame") ? shapeOnCore("describeFrame", [{ columns: [] }]) : null;
   }
 
-  data(inputs: { frame?: (FrameValue | null)[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => describeFrame(f));
-    return { frame: this.cachedResult };
+  /** The Dashboard view's tiles, which the body shows beside its summary; they ride beside the frame ([[C127]] pivotView). */
+  describeTiles?: DescribeTile[];
+  static coreWatch = "describeTiles";
+  coreWatched(): void {
+    const tiles = this.describeTiles;
+    const out = this.cachedResult;
+    if (tiles && isFrameValue(out)) setDescribeTiles(out, tiles);
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
   }
 }
 
@@ -2752,7 +1881,7 @@ export const CORR_METHOD_META = {
   covariance: { label: "Covariance", description: "Sample covariance between every pair of number columns. `df.cov`, R `cov`." },
 } satisfies Record<CorrMethod, { label: string; description: string }>;
 
-export class CorrMatrixNode extends ClassicPreset.Node {
+export class CorrMatrixNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Each pair uses the rows where BOTH columns are present (pairwise complete), so a patchy frame still answers; a pair with no variance is a blank cell.",
   };
@@ -2771,32 +1900,17 @@ export class CorrMatrixNode extends ClassicPreset.Node {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
-    return input ? shapeOfFrameValue(correlationMatrix(emptyFrameOf(input), this.method)) : null;
+    return input ? shapeOnCore("correlationMatrix", [input], [this.method]) : null;
   }
 
-  data(inputs: { frame?: (FrameValue | null)[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => correlationMatrix(f, this.method));
-    return { frame: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
   }
 }
 
 // ─── K-MEANS / PCA / LOGISTIC ─────────────────────────────────────────────────
-import { kmeans, pca, logisticFit } from "./mlOps";
 
-function numericRows(f: FrameValue): { names: string[]; rows: number[][]; kept: number[]; total: number } {
-  const cols = f.columns.filter((c) => c.type === "number");
-  const total = frameRowCount(f);
-  const rows: number[][] = [], kept: number[] = [];
-  for (let r = 0; r < total; r++) {
-    const row = cols.map((c) => c.values[r]);
-    if (row.every((v) => typeof v === "number" && Number.isFinite(v))) { rows.push(row as number[]); kept.push(r); }
-  }
-  return { names: cols.map((c) => c.name), rows, kept, total };
-}
-
-export class KMeansNode extends ClassicPreset.Node {
+export class KMeansNode extends GraphNode {
   static inputRoles = { k: required };
   static socketDocs: Record<string, string> = {
     frame: "Every number column is a feature; rows with a blank get no cluster. Scale features first when their units differ, with Normalize.",
@@ -2819,30 +1933,12 @@ export class KMeansNode extends ClassicPreset.Node {
     this.addOutput("centers", frameOut("Centers"));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; k?: number[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const k = readRole<number | SolError>(this, "k", inputs.k);
-    const blank = () => { this.cachedLabels = null; this.cachedCenters = null; return { labels: null, centers: null }; };
-    if (isSolError(k)) { this.cachedLabels = null; this.cachedCenters = null; return { labels: k, centers: k }; }
-    if (!f) return blank();
-    const { names, rows, kept, total } = numericRows(f);
-    if (names.length === 0) { const e = solError("#VALUE!", "K-Means needs at least one number column"); this.cachedLabels = e; this.cachedCenters = null; return { labels: e, centers: null }; }
-    const r = kmeans(rows, k);
-    if (!r) return blank();
-    const labels: (number | null)[] = new Array(total).fill(null);
-    kept.forEach((row, i) => { labels[row] = r.labels[i]; });
-    const counts = r.centers.map((_, c) => r.labels.filter((l) => l === c + 1).length);
-    this.cachedLabels = labels;
-    this.cachedCenters = { __frame: true, columns: [
-      { name: "Cluster", type: "number", values: r.centers.map((_, c) => c + 1) },
-      ...names.map((nm, j) => ({ name: nm, type: "number" as const, values: r.centers.map((c) => c[j]) })),
-      { name: "Count", type: "number", values: counts },
-    ] };
-    return { labels, centers: this.cachedCenters };
+  data(inputs: Record<string, unknown[] | undefined>): { labels: (number | null)[] | SolError | null; centers: FrameValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { labels: (number | null)[] | SolError | null; centers: FrameValue | SolError | null };
   }
 }
 
-export class PcaNode extends ClassicPreset.Node {
+export class PcaNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Every number column is a feature; rows with a blank are left out of the fit and get blank scores.",
     scores: "The rows in the new axes: PC1, PC2, …, one column per feature, highest variance first.",
@@ -2866,31 +1962,12 @@ export class PcaNode extends ClassicPreset.Node {
     this.addOutput("explained", numListOut("Explained"));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const blank = () => { this.cachedScores = null; this.cachedLoadings = null; this.cachedExplained = null; return { scores: null, loadings: null, explained: null }; };
-    if (!f) return blank();
-    const { names, rows, kept, total } = numericRows(f);
-    if (names.length === 0) { const e = solError("#VALUE!", "PCA needs at least one number column"); this.cachedScores = e; this.cachedLoadings = null; this.cachedExplained = null; return { scores: e, loadings: null, explained: null }; }
-    const r = pca(rows, { standardize: this.standardize });
-    if (!r) return blank();
-    const pcNames = names.map((_, c) => `PC${c + 1}`);
-    const scores: FrameValue = { __frame: true, columns: pcNames.map((nm, c) => {
-      const values: (number | null)[] = new Array(total).fill(null);
-      kept.forEach((row, i) => { values[row] = r.scores[i][c]; });
-      return { name: nm, type: "number" as const, values };
-    }) };
-    this.cachedScores = scores;
-    this.cachedLoadings = { __frame: true, columns: [
-      { name: "Feature", type: "string", values: names },
-      ...pcNames.map((nm, c) => ({ name: nm, type: "number" as const, values: names.map((_, j) => r.loadings[j][c]) })),
-    ] };
-    this.cachedExplained = r.ratio;
-    return { scores, loadings: this.cachedLoadings, explained: this.cachedExplained };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { scores: FrameValue | SolError | null; loadings: FrameValue | null; explained: number[] | null };
   }
 }
 
-export class LogisticNode extends ClassicPreset.Node {
+export class LogisticNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "The target column is 0/1 (or TRUE/FALSE); every other number column is a feature. Rows with a blank are left out.",
     target: "Name of the 0/1 column to predict.",
@@ -2912,40 +1989,8 @@ export class LogisticNode extends ClassicPreset.Node {
     this.addOutput("probabilities", numListOut("Probabilities"));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; target?: string[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const target = readInput(inputs.target, this.stringLiterals.target ?? "");
-    const blank = (err: SolError | null = null) => { this.cachedCoefficients = err; this.cachedProbabilities = null; return { coefficients: err, probabilities: null }; };
-    if (!f || target === null) return blank();
-    const t = target.trim();
-    if (t === "") return blank();
-    const tcol = f.columns.find((c) => c.name === t);
-    if (!tcol) return blank(solError("#REF!", `Logistic Regression: no column "${t}"`));
-    const features = f.columns.filter((c) => c !== tcol && c.type === "number");
-    if (features.length === 0) return blank(solError("#VALUE!", "Logistic Regression needs at least one number column besides the target"));
-    const total = frameRowCount(f);
-    const X: number[][] = [], y: number[] = [], kept: number[] = [];
-    for (let r = 0; r < total; r++) {
-      const tv = tcol.values[r];
-      const yv = tv === true ? 1 : tv === false ? 0 : typeof tv === "number" && (tv === 0 || tv === 1) ? tv : null;
-      const row = features.map((c) => c.values[r]);
-      if (yv === null || !row.every((v) => typeof v === "number" && Number.isFinite(v))) continue;
-      X.push(row as number[]); y.push(yv); kept.push(r);
-    }
-    const fit = logisticFit(X, y);
-    if (!fit) return blank(solError("#DOMAIN!", "Logistic Regression: the target must take both values and there must be more rows than columns"));
-    const terms = ["(Intercept)", ...features.map((c) => c.name)];
-    this.cachedCoefficients = { __frame: true, columns: [
-      { name: "Term", type: "string", values: terms },
-      { name: "Coefficient", type: "number", values: fit.coefficients },
-      { name: "Std Error", type: "number", values: fit.stdErrors },
-      { name: "z", type: "number", values: fit.z },
-      { name: "p", type: "number", values: fit.pValues },
-    ] };
-    const probs: (number | null)[] = new Array(total).fill(null);
-    kept.forEach((row, i) => { probs[row] = fit.probabilities[i]; });
-    this.cachedProbabilities = probs;
-    return { coefficients: this.cachedCoefficients, probabilities: probs };
+  data(inputs: Record<string, unknown[] | undefined>): { coefficients: FrameValue | SolError | null; probabilities: (number | null)[] | null } {
+    return nodeOnCore(this, inputs) as { coefficients: FrameValue | SolError | null; probabilities: (number | null)[] | null };
   }
 }
 
@@ -2979,7 +2024,7 @@ export const WINDOW_FN_META = {
   last:         { label: "Last in group",     description: "The group's last Value on every row. SQL `LAST_VALUE`." },
 } satisfies Record<WindowFn, { label: string; description: string }>;
 
-export class WindowNode extends ClassicPreset.Node {
+export class WindowNode extends GraphNode {
   static inputRoles = { n: setting(3) };
   static socketDocs: Record<string, string> = {
     keys: "The partition: rows sharing these keys form a group. Leave it empty to treat the whole frame as one group.",
@@ -3029,30 +2074,7 @@ export class WindowNode extends ClassicPreset.Node {
 
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
 
-  async data(inputs: { frame?: (FrameInput | CubeValue | null)[]; keys?: string[][]; orderBy?: string[]; column?: string[]; n?: number[]; name?: string[] }) {
-    const f = rowVerbInput(inputs.frame?.[0]);
-    const keys = readColumnList(inputs.keys);
-    const orderBy = readInput(inputs.orderBy, this.stringLiterals.orderBy ?? "");
-    const column = readInput(inputs.column, this.stringLiterals.column ?? "");
-    const name = readInput(inputs.name, this.stringLiterals.name ?? "");
-    const n = readRole<number>(this, "n", inputs.n);
-    if (f == null || keys === null || orderBy === null || column === null || name === null) return emitFrame(this, beginPass(this), null);
-    if (WINDOW_FN_NEEDS_COLUMN.has(this.agg) && !column.trim()) {
-      if (isCubeValue(f)) { this.cachedResult = f; return { frame: f }; }
-      return emitFrame(this, beginPass(this), await passFrame(f));
-    }
-    const as = this.outColumnName(name, column);
-    if (isCubeValue(f)) {
-      const r = runVerb(() => windowCube(f, {
-        partitionBy: keys, orderBy: orderBy.trim() || undefined, orderDir: "asc", fn: this.agg,
-        column: column.trim() || undefined, as, n: WINDOW_FN_NEEDS_N.has(this.agg) ? n : undefined,
-      }));
-      this.cachedResult = r;
-      return { frame: r };
-    }
-    return emitFrame(this, beginPass(this), await runFrameUnary(f, {
-      kind: "window", partitionBy: keys, orderBy: orderBy.trim() || undefined, orderDir: "asc", fn: this.agg,
-      column: column.trim() || undefined, as, n: WINDOW_FN_NEEDS_N.has(this.agg) ? n : undefined,
-    }));
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut };
   }
 }

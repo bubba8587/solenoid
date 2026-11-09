@@ -1,22 +1,21 @@
-// [[C69]], [[C70]], [[C71]]
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing, [[schedule-and-gantt#Import at the border]]
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { planToCube, mspdiToPlan, isMspdiText, csvPlanToCube } from "../../src/graph/planImport";
-import { csvToFrame } from "../../src/graph/nodes/connection";
-import { scheduleTasks } from "../../src/graph/scheduleCpm";
+import { planToCube, planFileToPlan, csvPlanToCube } from "../../src/graph/planImport";
+import { csvToFrame } from "../../src/graph/frameBackend";
+import { scheduleTasks } from "./scheduleOnCard";
 import { formatDateSerial, parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import type { CubeValue } from "../../src/graph/frame";
 
 const iso = (s: unknown) => formatDateSerial(s as number, "YYYY-MM-DD");
 const col = (c: CubeValue, name: string) => c.columns.find((x) => x.name === name)!.cells;
-const XML = readFileSync(join(__dirname, "../../fixtures/schedule/authored-remodel.mspdi.xml"), "utf8");
+const XML = readFileSync(join(__dirname, "../../crates/solenoid-schedule/tests/corpus/authored-remodel.mspdi.xml"), "utf8");
 
 describe("plan import", () => {
   it("MSPDI → a nested cube the Schedule node reads back to the file's own dates", () => {
-    expect(isMspdiText(XML)).toBe(true);
-    expect(isMspdiText("<html>")).toBe(false);
-    const plan = mspdiToPlan(XML);
+    expect(planFileToPlan("<html>")).toBeNull();
+    const plan = planFileToPlan(XML)!;
     expect(plan.title).toBe("Kitchen remodel");
     expect(plan.cube.columns.map((c) => c.name)).toEqual(["Task", "Duration", "Predecessors", "Start", "Deadline", "Tasks"]);
     expect(col(plan.cube, "Task")).toEqual(["Demolition", "Rough-in", "Drywall", "Paint", "Cabinets", "Countertops", "Appliances", "Final inspection"]);

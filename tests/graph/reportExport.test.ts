@@ -1,10 +1,10 @@
-// [[C24]], [[C103]] untrustedContentSeams
+// [[C24]], [[C103]] untrustedContentSeams, [[reports-and-notes#Webpage export]]
 import { describe, it, expect } from "vitest";
 import { exportBodyHtml, exportFileName, buildExportCss, reportReferencedNodeIds } from "../../src/graph/reportExport";
 import { renderNoteMarkdown } from "../../src/graph/noteMarkdown";
 import { makeDocument } from "../../src/graph/documentValue";
 import { solError } from "../../src/graph/errorValue";
-import { wrapNodeData } from "../../src/graph/coerceInputs";
+import { throughBoundary } from "./boundaryKit";
 import { frameFormatStore } from "../../src/graph/frameFormatStore";
 
 const md = (m: string) => renderNoteMarkdown(m);
@@ -63,7 +63,7 @@ describe("exportBodyHtml freezes spans after the markdown render", () => {
     ] };
     // The source card's output carries its pick: the data wrapper stamps it onto the column.
     const src = { id: "export-src", data: (_inputs: Record<string, unknown[]>) => ({ result: frame }) };
-    wrapNodeData(src);
+    throughBoundary(src);
     frameFormatStore.set("export-src", "b", dec(2));
     try {
       const wired = (src.data({}) as { result: unknown }).result;
@@ -88,10 +88,7 @@ describe("exportBodyHtml freezes spans after the markdown render", () => {
   });
 });
 
-// Backlog "static export fidelity nits" — the exported Charts section takes only
-// report-referenced charts, not every on-canvas chart. The reference set is the
-// sources wired directly into the report's ref inputs (plus embedded Notes'),
-// computed by this pure helper; captureChartSvgs filters on it.
+
 describe("reportReferencedNodeIds", () => {
   const report = { id: "rep" };
   const noteIds = new Set(["note1"]);
@@ -126,12 +123,7 @@ describe("reportReferencedNodeIds", () => {
   });
 });
 
-// Bundle 13 #52 — the export must stay visually IDENTICAL for a document that
-// declares no report palette (colors-only branding is opt-in, never a default
-// behavior change), and pick up the brand accent once one is declared.
-// (buildReportExportHtml itself isn't unit-testable here — it calls DOMPurify,
-// which needs a real DOM and this project's vitest env is plain `node`; the
-// branding decision lives entirely in buildExportCss, tested directly.)
+
 describe("buildExportCss — colors-only branding", () => {
   it("uses the neutral title/rule color when not branded", () => {
     const css = buildExportCss(false, "#ff6a00");

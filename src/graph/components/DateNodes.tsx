@@ -14,11 +14,11 @@ import type {
   TimeZoneConvertNode as TimeZoneConvertNodeType,
   WorldClockNode as WorldClockNodeType,
   TodayNowOp, DateTimeValueOp, DatePartOp, WeekInfoOp, DateDiffOp, DateAddOp, WorkdaysOp,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import {
   TODAY_NOW_OP_META, DATE_TIME_VALUE_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META,
   DATE_DIFF_OP_META, DATE_ADD_OP_META, WORKDAYS_OP_META, dateDiffNeedsBasis,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { InlineInputs } from "./inlineInput";
@@ -28,6 +28,8 @@ import { FrameDisplay } from "./FrameDisplay";
 import { nodeDisplayName } from "../catalogUtils";
 import { dropInputCables } from "./cablePrune";
 import { IANA_ZONES } from "../timeZone";
+import { previewed } from "../listPreview";
+import { CollapsedCell, useCollapsed } from "./CollapsedCell";
 
 // Date nodes never format their own serials: ValueDisplay does it for any date-typed output socket.
 
@@ -40,11 +42,13 @@ export function TodayNowComponent({ data, emit }: NodeProps<TodayNowNodeType>) {
   function handleOp(next: TodayNowOp) {
     setOp(next);
   }
+  const collapsed = useCollapsed(data.id);
+  // Collapsed, the card is its value cell, read-only: the date or time it last read.
   return (
-    <NodeShell node={data} emit={emit}>
+    <NodeShell node={data} emit={emit} cellCollapse>
       <OpSelect value={op} onChange={handleOp} options={TODAY_NOW_OPS} />
-      <ValueDisplay value={data.cachedResult} />
       <RecalcButton title="Refresh to current date/time" />
+      {collapsed ? <CollapsedCell value={data.cachedResult} /> : <ValueDisplay value={data.cachedResult} />}
     </NodeShell>
   );
 }
@@ -220,7 +224,7 @@ export function WorldClockComponent({ data, emit }: NodeProps<WorldClockNodeType
   return (
     <NodeShell node={data} emit={emit} squareCollapse>
       <InlineInputs node={data} emit={emit} suggest={{ zones: IANA_ZONES }} />
-      {!collapsed && <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />}
+      {!collapsed && <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />}
       <div className="solenoid-node__collapsed-only solenoid-node__mini-value">
         {typeof time === "string" ? <>
           <span className="solenoid-node__mini-label">{String(place ?? "")}</span>

@@ -1867,7 +1867,7 @@
    "expectError": "#VALUE!"
   },
   {
-   "name": "explicit right key scale: a km right key matches an m left key",
+   "name": "unit keys: a km right key matches an m left key",
    "frames": {
     "left": {
      "columns": [
@@ -1877,7 +1877,13 @@
        "values": [
         5000,
         6000
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "m"
+       }
       },
       {
        "name": "tag",
@@ -1897,7 +1903,13 @@
        "values": [
         5,
         7
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       }
       },
       {
        "name": "v",
@@ -1914,8 +1926,7 @@
     "kind": "join",
     "leftKey": "dist",
     "rightKey": "km",
-    "how": "left",
-    "rightKeyScale": 1000
+    "how": "left"
    },
    "expect": {
     "columns": [
@@ -1925,7 +1936,13 @@
       "values": [
        5000,
        6000
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "m"
+      }
      },
      {
       "name": "tag",
@@ -1947,7 +1964,7 @@
    }
   },
   {
-   "name": "explicit right key offset: a Celsius right key matches a Kelvin left key",
+   "name": "unit keys: a Celsius right key matches a Kelvin left key",
    "frames": {
     "left": {
      "columns": [
@@ -1957,7 +1974,13 @@
        "values": [
         273.15,
         300
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "K"
+       }
       }
      ]
     },
@@ -1968,7 +1991,13 @@
        "type": "number",
        "values": [
         0
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "degC"
+       }
       },
       {
        "name": "v",
@@ -1984,9 +2013,7 @@
     "kind": "join",
     "leftKey": "k",
     "rightKey": "c",
-    "how": "inner",
-    "rightKeyScale": 1,
-    "rightKeyOffset": 273.15
+    "how": "inner"
    },
    "expect": {
     "columns": [
@@ -1995,7 +2022,13 @@
       "type": "number",
       "values": [
        273.15
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "K"
+      }
      },
      {
       "name": "v",
@@ -2008,7 +2041,7 @@
    }
   },
   {
-   "name": "unit keys: a right key in m reads in the left key's km (PolarsBackend.join's transform)",
+   "name": "unit keys: a right key in m reads in the left key's km",
    "frames": {
     "left": {
      "columns": [
@@ -2020,7 +2053,13 @@
         2.5,
         1.234,
         7
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       }
       },
       {
        "name": "tag",
@@ -2045,7 +2084,13 @@
         1234,
         9000,
         5000
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "m"
+       }
       },
       {
        "name": "tag",
@@ -2065,9 +2110,7 @@
     "kind": "join",
     "leftKey": "d",
     "rightKey": "dist",
-    "how": "inner",
-    "rightKeyScale": 0.001,
-    "rightKeyOffset": 0
+    "how": "inner"
    },
    "expect": {
     "columns": [
@@ -2079,7 +2122,13 @@
        5,
        2.5,
        1.234
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      }
      },
      {
       "name": "tag",
@@ -2115,7 +2164,13 @@
        "values": [
         5,
         3
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       }
       },
       {
        "name": "tag",
@@ -2136,7 +2191,13 @@
         5000,
         7000,
         null
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "m"
+       }
       },
       {
        "name": "tag",
@@ -2154,9 +2215,7 @@
     "kind": "join",
     "leftKey": "d",
     "rightKey": "dist",
-    "how": "right",
-    "rightKeyScale": 0.001,
-    "rightKeyOffset": 0
+    "how": "right"
    },
    "expect": {
     "columns": [
@@ -2167,7 +2226,13 @@
        5,
        7,
        null
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      }
      },
      {
       "name": "tag",
@@ -2203,7 +2268,13 @@
         100,
         0,
         -40
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "degC"
+       }
       },
       {
        "name": "tag",
@@ -2228,7 +2299,13 @@
         32,
         -40,
         50
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "degF"
+       }
       },
       {
        "name": "tag",
@@ -2248,9 +2325,7 @@
     "kind": "join",
     "leftKey": "d",
     "rightKey": "dist",
-    "how": "outer",
-    "rightKeyScale": 0.5555555555555556,
-    "rightKeyOffset": -17.77777777777777
+    "how": "outer"
    },
    "expect": {
     "columns": [
@@ -2263,7 +2338,13 @@
        0,
        -40,
        10
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "degC"
+      }
      },
      {
       "name": "tag",
@@ -2302,7 +2383,13 @@
         1,
         10,
         3.28083989501312
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "ft"
+       }
       },
       {
        "name": "tag",
@@ -2325,7 +2412,13 @@
         3.048,
         1,
         1e-300
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "m"
+       }
       },
       {
        "name": "tag",
@@ -2344,9 +2437,7 @@
     "kind": "join",
     "leftKey": "d",
     "rightKey": "dist",
-    "how": "outer",
-    "rightKeyScale": 3.280839895013123,
-    "rightKeyOffset": 0
+    "how": "outer"
    },
    "expect": {
     "columns": [
@@ -2358,7 +2449,13 @@
        10,
        3.28083989501312,
        3.28083989501312e-300
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "ft"
+      }
      },
      {
       "name": "tag",
@@ -2384,7 +2481,7 @@
    }
   },
   {
-   "name": "unit keys: as-of over a scaled right key",
+   "name": "unit keys: as-of over a right key in another unit",
    "frames": {
     "left": {
      "columns": [
@@ -2395,7 +2492,13 @@
         1,
         2.2,
         4
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       }
       },
       {
        "name": "tag",
@@ -2417,7 +2520,13 @@
         900,
         2000,
         3500
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "m"
+       }
       },
       {
        "name": "tag",
@@ -2437,9 +2546,7 @@
     "rightKey": "dist",
     "how": "asof",
     "asofDirection": "nearest",
-    "asofTolerance": 0.5,
-    "rightKeyScale": 0.001,
-    "rightKeyOffset": 0
+    "asofTolerance": 0.5
    },
    "expect": {
     "columns": [
@@ -2450,7 +2557,13 @@
        1,
        2.2,
        4
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      }
      },
      {
       "name": "tag",
@@ -2468,6 +2581,533 @@
        "R0",
        "R1",
        "R2"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "the left's columns and the right's but its key keep their units and formats",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "id",
+       "type": "number",
+       "values": [
+        1,
+        2
+       ],
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 1,
+        "decimalMode": "places"
+       }
+      },
+      {
+       "name": "w",
+       "type": "number",
+       "values": [
+        3,
+        4
+       ],
+       "unit": {
+        "dim": {
+         "mass": 1
+        },
+        "display": "kg"
+       }
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "id",
+       "type": "number",
+       "values": [
+        1
+       ],
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 2,
+        "decimalMode": "places"
+       }
+      },
+      {
+       "name": "len",
+       "type": "number",
+       "values": [
+        2
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 2,
+        "decimalMode": "places"
+       }
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "id",
+    "rightKey": "id",
+    "how": "inner"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "id",
+      "type": "number",
+      "values": [
+       1
+      ],
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 1,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       3
+      ],
+      "unit": {
+       "dim": {
+        "mass": 1
+       },
+       "display": "kg"
+      }
+     },
+     {
+      "name": "len",
+      "type": "number",
+      "values": [
+       2
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      },
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 2,
+       "decimalMode": "places"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a semi join keeps the left's units and formats",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        5,
+        6
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 1,
+        "decimalMode": "places"
+       }
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        5000
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "m"
+       }
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "d",
+    "rightKey": "d",
+    "how": "semi"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       5
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      },
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 1,
+       "decimalMode": "places"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "an anti join keeps the left's units and formats",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        5,
+        6
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 1,
+        "decimalMode": "places"
+       }
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        5000
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "m"
+       }
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "d",
+    "rightKey": "d",
+    "how": "anti"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       6
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      },
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 1,
+       "decimalMode": "places"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a cross join keeps every column's unit and format",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 1,
+        "decimalMode": "places"
+       }
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        2
+       ],
+       "unit": {
+        "dim": {
+         "mass": 1
+        },
+        "display": "kg"
+       }
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "",
+    "rightKey": "",
+    "how": "cross"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      },
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 1,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "d2",
+      "type": "number",
+      "values": [
+       2
+      ],
+      "unit": {
+       "dim": {
+        "mass": 1
+       },
+       "display": "kg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "unit keys: keys measuring different things are #UNIT!",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        5
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       }
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        5
+       ],
+       "unit": {
+        "dim": {
+         "mass": 1
+        },
+        "display": "kg"
+       }
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "d",
+    "rightKey": "d",
+    "how": "inner"
+   },
+   "expectError": "#UNIT!"
+  },
+  {
+   "name": "unit keys: money in two currencies is #UNIT!",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "p",
+       "type": "number",
+       "values": [
+        1
+       ],
+       "unit": {
+        "dim": {
+         "currency": 1
+        },
+        "display": "usd"
+       }
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "p",
+       "type": "number",
+       "values": [
+        1
+       ],
+       "unit": {
+        "dim": {
+         "currency": 1
+        },
+        "display": "eur"
+       }
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "p",
+    "rightKey": "p",
+    "how": "inner"
+   },
+   "expectError": "#UNIT!"
+  },
+  {
+   "name": "unit keys: a unit on one side only reads the keys as they are",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        5
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       }
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        5
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "d",
+    "rightKey": "d",
+    "how": "left"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       5
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      }
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1
       ]
      }
     ]

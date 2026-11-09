@@ -1,0 +1,93 @@
+{
+ "nodes": [
+  {
+   "id": "x",
+   "type": "TableInputNode",
+   "x": 0,
+   "y": 0,
+   "init": {
+    "label": "Xs",
+    "tableText": "1, 9, 5, 2, 8, 5, 1, 9"
+   }
+  },
+  {
+   "id": "y",
+   "type": "TableInputNode",
+   "x": 0,
+   "y": 300,
+   "init": {
+    "label": "Ys",
+    "tableText": "1, 1, 5, 8, 8, 2, 5, 5"
+   }
+  },
+  {
+   "id": "z",
+   "type": "TableInputNode",
+   "x": 0,
+   "y": 600,
+   "init": {
+    "label": "Heights",
+    "tableText": "3, 1, 8, 2, 6, 4, 2, 5"
+   }
+  },
+  {
+   "id": "i1",
+   "type": "InterpolateNode",
+   "x": 440,
+   "y": -60,
+   "init": {
+    "label": "IDW",
+    "mode": "points"
+   },
+   "stringLiterals": {
+    "gx": "0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0",
+    "gy": "0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0"
+   }
+  },
+  {
+   "id": "i2",
+   "type": "InterpolateNode",
+   "x": 440,
+   "y": 480,
+   "init": {
+    "label": "Nearest",
+    "mode": "points",
+    "method": "nearest"
+   },
+   "stringLiterals": {
+    "gx": "0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0",
+    "gy": "0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0"
+   }
+  },
+  {
+   "id": "p1",
+   "type": "SurfaceNode",
+   "x": 860,
+   "y": -60,
+   "init": {
+    "label": "Inverse distance",
+    "op": "contour"
+   }
+  },
+  {
+   "id": "p2",
+   "type": "SurfaceNode",
+   "x": 860,
+   "y": 480,
+   "init": {
+    "label": "Nearest point",
+    "op": "contour"
+   }
+  }
+ ],
+ "cables": [
+  "x.table -> i1.xs",
+  "y.table -> i1.ys",
+  "z.table -> i1.zs",
+  "x.table -> i2.xs",
+  "y.table -> i2.ys",
+  "z.table -> i2.zs",
+  "i1.result -> p1.z",
+  "i2.result -> p2.z"
+ ]
+}

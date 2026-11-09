@@ -119,17 +119,17 @@ describe("Record views read a cell as the Cards view does", () => {
 });
 
 describe("a board's number lanes", () => {
-  it("keep their number, so a Decimal places change shows on the heading without a recompute ([[D94]] oneNumberDisplay)", async () => {
+  it("keep their number, so a Decimal places change shows on the heading without a recompute ([[C118]] formatTravelsWithValue)", async () => {
     const f: FrameValue = { __frame: true, columns: [{ name: "Lane", type: "number", values: [1.23456, 1.23456, 2] }] };
     const rec = new RecordNode({ op: "board" });
     rec.stringLiterals.by = "Lane";
     const p = (await rec.data({ frame: [f] })).chart.payload as RecordPayload;
     expect(p.lanes?.map((l) => l.cards)).toEqual([[0, 1], [2]]);
     try {
-      settingsStore.set("numberDecimals", "2");
+      settingsStore.set("numberDecimals", 2);
       expect(p.lanes?.map(recordLaneText)).toEqual(["1.23", "2"]);
     } finally {
-      settingsStore.set("numberDecimals", "4");
+      settingsStore.set("numberDecimals", 4);
     }
     expect(recordLaneText(p.lanes![0])).toBe("1.2346");
   });

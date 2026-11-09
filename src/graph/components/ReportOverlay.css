@@ -2,7 +2,9 @@
 .report-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   z-index: 9000;
   display: flex;
   align-items: center;
@@ -23,7 +25,7 @@ html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--shadow-pop);
 }
 
 .report-header {
@@ -180,13 +182,6 @@ html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
 .report-preview__empty {
   color: var(--text-muted);
   font-size: 13px;
-}
-
-.report-embeds {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 18px;
 }
 .report-embed {
   display: block;
@@ -496,3 +491,11 @@ html.sol-report-docked .solenoid-cmdpalette {
 .report-filters__opt { display: flex; gap: 8px; align-items: baseline; width: 100%; text-align: left; }
 .report-filters__name { flex: 0 0 110px; font-weight: 600; }
 .report-filters__opt code { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Each scrolling pane is its own compositor layer, so scrolling doesn't re-rasterize the backdrop's blur every frame (as TablePopup.css's grid). */
+.report-source,
+.report-source--wired,
+.report-preview {
+  transform: translateZ(0);
+  contain: paint;
+}

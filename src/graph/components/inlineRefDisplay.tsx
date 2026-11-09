@@ -1,7 +1,9 @@
 // [[C68]] knapIsTheDocumentSyntax
+import { isSolDate } from "../dateValue";
 import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import DOMPurify from "dompurify";
+import { sanitizeNoteHtml, useNetworkGrant } from "../noteHtml";
+import { WebImage } from "./WebImage";
 
 import { cableValueStore } from "../cableValueStore";
 import { formatAnnotationStore, formatNumberWithAnnotation, formatCxWithAnnotation, applyLogicalStyle, applyTextCase, type FormatAnnotation, type LambdaView } from "../formatAnnotationStore";
@@ -24,16 +26,22 @@ import { SvgFigure } from "./SvgFigure";
 import { isLambdaValue, type LambdaValue } from "../nodes/lambda";
 import { lambdaToLatex } from "../excelFormula";
 import { FrameDisplay } from "./FrameDisplay";
+import { PivotFigure } from "./PivotFigure";
+import { pivotLayoutOf } from "../pivotLayout";
 import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure } from "./chartView";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { getOwningEditor } from "../activeGraph";
 import { renderNoteMarkdown } from "../noteMarkdown";
+import { recordNavTarget, stepRecordRow } from "./recordNav";
+import { ladderTarget, applyLadderAction } from "./ladderNav";
+import type { LadderAction } from "../nodes/ladderOps";
+import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import { substituteRefCodes, escapeHtml } from "../noteInlineRefs";
 
 
-export interface RefValueHost {
+interface RefValueHost {
   refValue(key: string): unknown;
 }
 
@@ -55,8 +63,12 @@ export function useRefAnnotation(nodeId: string, refKey: string): FormatAnnotati
 export function refPreview(value: unknown, ann: FormatAnnotation | undefined): string {
   if (value === null || value === undefined) return "—";
   if (isSolError(value)) return value.code;
+  if (isSolDate(value)) return ann ? formatNumberWithAnnotation(value.__date, ann) : formatDateSerial(value.__date, DEFAULT_DATE_FORMAT);
   if (typeof value === "boolean") return applyLogicalStyle(value, ann?.logicalStyle);
-  if (typeof value === "number") return ann ? formatNumberWithAnnotation(value, ann) : formatScalar(value);
+  if (typeof value === "number") {
+    if (ann) return formatNumberWithAnnotation(value, ann);
+    return formatScalar(value);
+  }
   if (typeof value === "string") return ann ? applyTextCase(value, ann.textCase) : value;
   if (isUnitCell(value)) {
     const a = annotationForValue(value, ann);
@@ -131,19 +143,24 @@ function LambdaFormula({ value, view }: { value: LambdaValue; view?: LambdaView 
   );
 }
 
-function ChartBody({ value, fontScale }: { value: ChartValue; fontScale?: number }) {
+/** `fill` takes the container's whole box, as a Dashboard's does; otherwise 200 px high and at most 640 wide. */
+/** `sourceId` is the node feeding the ref: a Record's pager and a Choice Ladder's actions step it, as on a Display. */
+function ChartBody({ value, fontScale, fill, sourceId }: { value: ChartValue; fontScale?: number; fill?: boolean; sourceId?: string }) {
+  const recordId = sourceId && value.op === "record" ? recordNavTarget(sourceId) : null;
+  const ladderId = sourceId && value.op === "ladder" ? ladderTarget(sourceId) : null;
   const ref = useRef<HTMLSpanElement>(null);
   const [w, setW] = useState(0);
+  const [h, setH] = useState(0);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const measure = () => setW(el.clientWidth);
+    const measure = () => { setW(el.clientWidth); setH(el.clientHeight); };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const width = Math.min(w, 640);
+  const width = fill ? w : Math.min(w, 640);
   const cardOp = value.op === "kpi" || value.op === "scale";
   return (
     <span className="solenoid-ref-chartbody" ref={ref}>
@@ -151,15 +168,18 @@ function ChartBody({ value, fontScale }: { value: ChartValue; fontScale?: number
         ? <ChartFigure
             value={{ ...value, title: undefined, options: value.options ? { ...value.options, title: undefined } : value.options }}
             width={width || 320}
-            height={200}
+            height={fill && h > 0 ? h : 200}
             fontScale={fontScale}
+            recordNav={recordId ? (delta: number) => { void stepRecordRow(recordId, delta); } : undefined}
+            valueFormat={sourceId && value.op === "kpi" ? resolveRefAnnotation(sourceId, "value") : undefined}
+            ladderAction={ladderId ? (a: LadderAction) => { void applyLadderAction(ladderId, a); } : undefined}
           />
         : null}
     </span>
   );
 }
 
-export function CollapsibleFigure({ title, children, defaultOpen = true }: {
+function CollapsibleFigure({ title, children, defaultOpen = true }: {
   title: string;
   children: ReactNode;
   defaultOpen?: boolean;
@@ -183,11 +203,15 @@ export function CollapsibleFigure({ title, children, defaultOpen = true }: {
 
 function DocumentEmbedBody({ value }: { value: DocumentValue }) {
   const tex = useKatexReady();
+  const net = useNetworkGrant(value.sourceId);
   const html = useMemo(() => {
-    const html = DOMPurify.sanitize(renderNoteMarkdown(parseNoteFrontmatter(value.body).body));
-    return substituteRefCodes(html, (name) => name in value.refs ? { html: escapeHtml(refPreview(value.refs[name], undefined)) } : null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, tex]);
+    const html = sanitizeNoteHtml(renderNoteMarkdown(parseNoteFrontmatter(value.body).body), value.sourceId);
+    // Each value as the producing Report shows it, by its Format Controller.
+    const src = value.sourceId;
+    return substituteRefCodes(html, (name) => name in value.refs
+      ? { html: escapeHtml(refPreview(value.refs[name], src ? resolveRefAnnotation(src, name) : undefined)) }
+      : null);
+  }, [value, tex, net]);
   return <span className="report-embed__body sol-md" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
@@ -197,12 +221,13 @@ function figureFor(
   rich: boolean,
   ann?: FormatAnnotation,
   frameNodeId?: string,
+  fill?: boolean,
 ): { title: string; caption: ReactNode; body: ReactNode } | null {
   if (isChartValue(value)) {
     return {
       title: value.title || refKey,
       caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
-      body: <ChartBody value={value} fontScale={ann?.chartFontScale} />,
+      body: <ChartBody value={value} fontScale={ann?.chartFontScale} fill={fill} sourceId={frameNodeId} />,
     };
   }
   if (isMermaidValue(value)) {
@@ -218,12 +243,12 @@ function figureFor(
       caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
       body: value.src
         ? (
-          <img
+          <WebImage
             className="solenoid-ref-image"
             src={value.src}
+            held={value.held}
             alt={value.alt || refKey}
             style={{ height: value.height, maxWidth: "100%", objectFit: "contain" }}
-            draggable={false}
           />
         )
         : <span className="report-embed-missing">no image attached</span>,
@@ -239,6 +264,8 @@ function figureFor(
     };
   }
   if (isFrameValue(value)) {
+    const pivot = rich ? pivotLayoutOf(value) : null;
+    if (pivot) return { title: refKey, caption: null, body: <PivotFigure frame={value} layout={pivot} sourceId={frameNodeId} /> };
     return {
       title: refKey,
       caption: null,
@@ -254,7 +281,9 @@ function figureFor(
   return null;
 }
 
-export function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nodeId: string; refKey: string; collapsible?: boolean; highlight?: boolean }) {
+/** `rich` draws a figure at full size (a Frame's 25 rows, scrolling); a collapsible figure is always rich. `fill`
+ *  sizes a chart to its container's box. */
+export function InlineRefValue({ nodeId, refKey, collapsible, rich, fill, highlight }: { nodeId: string; refKey: string; collapsible?: boolean; rich?: boolean; fill?: boolean; highlight?: boolean }) {
   const editor = getOwningEditor(nodeId);
   const node = editor?.getNode(nodeId) as unknown as RefValueHost | undefined;
   const value = useSyncExternalStore(cableValueStore.subscribe, () => node?.refValue(refKey));
@@ -262,7 +291,7 @@ export function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nod
 
   const srcNodeId = editor?.getConnections().find((c) => c.target === nodeId && c.targetInput === refKey)?.source;
 
-  const fig = figureFor(value, refKey, !!collapsible, ann, srcNodeId);
+  const fig = figureFor(value, refKey, !!(collapsible || rich), ann, srcNodeId, fill);
   if (fig) {
     return collapsible
       ? <CollapsibleFigure title={fig.title}>{fig.body}</CollapsibleFigure>
@@ -276,8 +305,9 @@ export function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nod
       </span>
     );
   }
+  const kind = typeof value === "string" ? " solenoid-ref-inline--text" : Array.isArray(value) ? " solenoid-ref-inline--list" : "";
   return (
-    <span className={`solenoid-ref-inline${highlight ? " solenoid-ref-inline--hl" : ""}`}>
+    <span className={`solenoid-ref-inline${kind}${highlight ? " solenoid-ref-inline--hl" : ""}`}>
       {refPreview(value, ann)}
     </span>
   );

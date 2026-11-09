@@ -8,7 +8,7 @@
       "y": 0,
       "init": {
         "label": "Pack",
-        "body": "# Scientific Computing\n\n- Polynomial Roots\n- ODE Integrate\n- Spectrum (FFT)\n- Solve A\u00b7x = b",
+        "body": "# Scientific Computing\n\n- Polynomial Roots\n- ODE Integrate\n- Eigen\n- Solve A\u00b7x = b",
         "color": "slate",
         "width": 280,
         "height": 150
@@ -22,17 +22,11 @@
       "init": {
         "label": "Coefficients",
         "valueKeys": [
-          "v0",
-          "v1",
-          "v2",
-          "v3"
+          "v0"
         ]
       },
       "stringLiterals": {
-        "v0": "1",
-        "v1": "0",
-        "v2": "-7",
-        "v3": "6"
+        "v0": "1, 0, -7, 6"
       }
     },
     {

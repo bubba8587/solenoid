@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[B12]] losslessSaves, [[per-doc-autosave-persistence#Change detection is object identity]]
 import { describe, it, expect } from "vitest";
 import {
   emptyLibrary,
@@ -210,14 +210,7 @@ describe("validateLibrary", () => {
   });
 });
 
-// ─── [[B12]] losslessSaves — transforms are structurally immutable ─────────────────────────
-// documentStore.persist() decides what to WRITE by object identity
-// (`_lastPersisted.get(id) === doc` skips the write), so a transform that
-// mutates a SolDoc in place still updates the screen but is silently NEVER
-// persisted — the edit vanishes on the next reload. Deep-freezing the input and
-// walking EVERY exported transform makes a new in-place write throw by name
-// (strict-mode assignment on a frozen object), with no hand-kept list of
-// transforms to maintain.
+// ─── [[per-doc-autosave-persistence#Change detection is object identity]] ──────────────────
 import * as core from "../../src/graph/documentStoreCore";
 
 function deepFreeze<T>(o: T): T {
@@ -244,13 +237,19 @@ describe("[[B12]] losslessSaves — every transform returns new objects, never m
       ["adoptLoadedGraph", () => adoptLoadedGraph(lib, { ...graph(), nodes: [{ id: "n", type: "ConstantNode", x: 0, y: 0, init: {} }] } as SavedGraph)],
       ["removeDocument", () => removeDocument(lib, "a")],
       ["duplicateDocument", () => duplicateDocument(lib, "a", "a2", "A copy")],
+      ["addFolder", () => core.addFolder(lib, "", "F")],
+      ["moveDocument", () => core.moveDocument(core.moveDocument(lib, "a", "F/G"), "a", "")],
+      ["renameFolder", () => core.renameFolder(core.moveDocument(lib, "a", "F/G"), "F", "H")],
+      ["moveFolder", () => core.moveFolder(core.moveDocument(lib, "a", "F/G"), "F/G", "")],
+      ["removeFolder", () => core.removeFolder(core.moveDocument(lib, "a", "F"), "F")],
+      ["keepDocument", () => core.keepDocument(deepFreeze({ ...lib, documents: lib.documents.map((d) => ({ ...d, seed: { id: "s", fingerprint: "0" } })) }), "a")],
     ];
     for (const [name, run] of calls) {
       expect(run, `${name} mutated a frozen SolDoc/DocLibrary in place — persist() will never write the change`).not.toThrow();
     }
     // The walk stays complete: a NEW exported transform must be added above.
     const fns = Object.entries(core).filter(([, v]) => typeof v === "function").map(([k]) => k);
-    const covered = new Set([...calls.map(([n]) => n), "emptyLibrary", "getCurrent", "uniqueName", "validateDoc", "validateLibrary"]);
+    const covered = new Set([...calls.map(([n]) => n), "graphFingerprint", "seedEdited", "emptyLibrary", "getCurrent", "uniqueName", "validateDoc", "validateLibrary", "normalizeFolder", "parentFolder", "allFolders", "documentsIn"]);
     const missing = fns.filter((f) => !covered.has(f));
     expect(missing, `new documentStoreCore export(s) not covered by the immutableDocStore freeze walk: ${missing.join(", ")}`).toEqual([]);
   });

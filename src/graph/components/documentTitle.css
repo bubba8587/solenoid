@@ -70,10 +70,21 @@
   background: color-mix(in srgb, var(--accent-ink) 18%, transparent);
 }
 
+/* The menu is a popover in the top layer, anchored under its own title (each instance names its anchor in --doc-anchor). */
+.solenoid-doctitle { anchor-name: var(--doc-anchor); }
 .solenoid-doctitle__menu {
-  /* Portaled to <body> (DocumentTitle.tsx) to escape the app bar's stacking context; top and left come from the trigger's rect. */
   position: fixed;
-  z-index: 200;
+  position-anchor: var(--doc-anchor);
+  inset: auto;
+  top: calc(anchor(bottom) + 5px);
+  left: anchor(center);
+  translate: -50% 0;
+  margin: 0;
+  /* Inside the title's subtree, so it sets the body's text back rather than inheriting the title's. */
+  color: var(--text);
+  font: 400 1rem var(--font-sans);
+  text-transform: none;
+  letter-spacing: normal;
   min-width: 240px;
   max-width: 320px;
   max-height: 70vh;
@@ -85,6 +96,11 @@
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
   padding: 6px;
 }
+/* An engine without anchor positioning (an older WebKitGTK in the Linux app) centers the menu in the window. */
+@supports not (anchor-name: --a) {
+  .solenoid-doctitle__menu { inset: 0; margin: auto; translate: none; height: fit-content; }
+}
+
 :root[data-theme="light"] .solenoid-doctitle__menu { box-shadow: 0 12px 36px rgba(20, 30, 50, 0.1); }
 
 .solenoid-doctitle__section-head {
@@ -208,7 +224,7 @@
 .solenoid-doctitle__doc-row:hover .solenoid-doctitle__doc-action,
 .solenoid-doctitle__doc-action:focus-visible { opacity: 1; }
 .solenoid-doctitle__doc-action:hover { background: color-mix(in srgb, var(--text) 14%, transparent); color: var(--text); }
-.solenoid-doctitle__doc-action--danger:hover { color: var(--sol-error); }
+.solenoid-doctitle__doc-action:disabled { visibility: hidden; }
 
 .solenoid-doctitle__action {
   display: block;

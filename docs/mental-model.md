@@ -9,21 +9,23 @@ summaries; the docs they point to are authoritative.
 
 The app is one React tree. **React Flow** (`@xyflow/react`) is the view. It renders every
 card, cable, the minimap and the viewport. `flow/FlowSurface.tsx` is the one surface,
-shared by the main canvas and the composite drill-in ([[B3]] sameNodeEverywhere). **rete
-core** (`NodeEditor` + `ClassicPreset`) plus `rete-engine` (`DataflowEngine`) is the
-headless model and compute spine, kept on purpose; no rete render package exists
-([[A1]] visualGraphCalculator).
+shared by the main canvas and the composite drill-in ([[B3]] sameNodeEverywhere). The
+headless model is the graph core's netcore-rs editor, in Rust: which nodes and cables exist and
+each node's ports. TypeScript holds it through `GraphEditor` (`graphEditor.ts`), node classes
+are `GraphNode`s (`graphModel.ts`), and the compute spine, `DataflowEngine`, runs on that same
+editor (`dataflowEngine.ts`, [[C130]] rustCore, `tree/specs/computation/graph-core.md`).
 
-- `flow/SolNodeAdapter.tsx` binds a rete node instance to its registered card component.
+- `flow/SolNodeAdapter.tsx` binds a node instance to its registered card component.
 - `flow/flowView.ts` is the one implementation of the `View` seam (`view.ts`), turning the
   model's camera, move and re-render verbs into React Flow state.
-- `graphCompute.ts` is the model-level compute pass, one definition shared by the app, the
-  composite engine, the CLI and the tests.
+- The pass has one definition, the engine's graph walks and loop seeding in the core.
+  `graphCompute.ts` runs it with no view (`computeAll`, for the CLI and the tests); the app
+  runs it through `engine.pass` (`process.ts`).
 - Cross-surface state lives in module-singleton stores (`storeKit.ts`, read through
   `useSyncExternalStore`). That's app-wide state, not a workaround; plain React context
   and props work everywhere too.
 
-The module singletons `_editor`, `_engine` and `_area` live in `process.ts`. A composite
+The module singletons `_editor`, `_engine` and `_view` live in `process.ts`. A composite
 drill-in doesn't open a new page. It swaps the active surface through the `activeGraph.ts`
 seam (`getActive*`, `getOwningEditor`), so the same chrome drives whichever canvas is on
 top. `getEditor()` and persistence always mean the main graph (`../tree/specs/documents/save-format.md` § Saving binds the main graph). The
@@ -38,16 +40,20 @@ The compute path, in order (the full mechanics, including every coercion rung, a
 1. **Commit.** Text edits commit on Enter or blur (`useDraftCommit`), never per keystroke;
    discrete picks apply immediately (DESIGN.md § Inputs). The committed value lands in the
    node's `literals` / `stringLiterals` map (values edited on the card) or its init fields,
-   then calls `processGraph()`.
-2. **processGraph** (`process.ts`) resets or targets the rete `DataflowEngine` and pulls
-   outputs. Manual calc mode stops here unless F9 forces a pass. Cycles are found up front
+   and the edit names its node as it asks for a pass (`processGraph(id)`, or `node.edited()`
+   before a full one), so the core reads that card's call afresh
+   (`../tree/specs/computation/graph-core.md` § Direct calls).
+2. **processGraph** (`process.ts`) asks the graph core's session whether to run (manual calc
+   mode stops here unless F9 forces a pass), then the engine's `pass` resets or targets the
+   cache and pulls outputs ([[C130]] rustCore). Cycles are found up front
    (Tarjan SCC) and pre-seeded as `#CIRC!`, so the engine never deadlocks. A topology change
    recomputes only the target's downstream closure.
-3. **Per node, the wrappers run first.** Every `data()` is wrapped at `nodecreated` in two
-   layers: `coerceInputs` inside, `installErrorGuards` outside.
+3. **Per node, the input boundary runs first.** The engine calls every card through it
+   (`crates/solenoid-graph/src/boundary.rs`, `boundary_core.rs` on core values): coercion
+   inside, the error guard outside.
    - The guard short-circuits: an error on any input becomes the output and `data()` never
-     runs. Nodes that must see errors (IFERROR, Display, figure sinks) register for raw
-     delivery.
+     runs. Nodes that must see errors (IFERROR, Display, figure sinks) are named for raw
+     delivery (`SEES_ERRORS`).
    - Coercion normalizes each arriving value to the socket's declared type: widening,
      singleton collapse, the logical ↔ number bridge, `#SHAPE!` on failure. It strips
      `UnitCell`s to display magnitudes unless the node is `unitAware` or a declared
@@ -56,11 +62,16 @@ The compute path, in order (the full mechanics, including every coercion rung, a
      `stringLiterals` key, coercion injects the parsed `stringLiterals` text on an unwired
      input. The general "unwired falls back to the literal" read is `readInput`, inside
      `data()`.
-4. **`data()` computes, pure.** It reads inputs through `readInput`: a wired null propagates,
-   and only an unwired slot falls back to the literal. Mixing those two up is the most common
+4. **The card's body computes, pure.** Nearly every body is Rust on the core
+   (`crates/solenoid-core/src/nodes/`, `../tree/specs/computation/node-bodies.md`): a direct
+   card's is called in Rust with no JavaScript between two such cards, a shell's (an upload, a
+   read, an alert) through its `data()` and `nodeOnCore`; Note and Report keep TypeScript
+   bodies. A body reads an input as `readInput` does (`read_input` in Rust): a wired null
+   propagates, and only an unwired slot falls back to the literal. Mixing those two up is the most common
    historical bug. Results carry the value model: first-class `null` (missing), per-cell
    `SolError`s, three-valued logic, and units as data on the value.
-5. **Render.** The node stashes its result (`cachedResult` and similar), the adapter bumps
+5. **Render.** The body stashes its result for the card (`cachedResult` and similar; a direct
+   card's live on the Rust node, read through accessors), the adapter bumps
    the card's version, and React Flow re-renders that card. Value boxes format through the
    display pipeline below. Components never call `data()` themselves (`../tree/specs/floors/components.md` § The rules); display logic that needs computation gets a pure extracted helper.
 
@@ -72,8 +83,9 @@ and values flow up in rank. The spec is `../tree/specs/values/socket-lattice.md`
 socketLattice).
 
 On top of that, derived types resolve again after every wiring or config change.
-`settleWildcardTypes` alternates two systems until both settle: trueany adoption (a
-hollow-ring port adopts the wired type) and Conduit lane tracing. FC adaptation then runs
+The Type Settle (`settle.rs`, called through `settleWildcardTypes`) alternates two systems
+until both settle: trueany adoption (a hollow-ring port adopts the wired type) and Conduit
+lane tracing. FC adaptation (`reconcileFcTypes`, `fc.rs`) then runs
 once downstream against the settled result (`../tree/specs/documents/save-format.md` load step 10). Derived types are
 never saved; they're worked out again on load. A node that retypes a socket in place
 (Cast's target, read-as, Note frontmatter) must call `reconcileFcTypes` or
@@ -84,18 +96,18 @@ never saved; they're worked out again on load. A node that retypes a socket in p
 
 (The Frame value, laziness, the backend seam and every verb's contract are `../tree/specs/computation/frame-verbs.md`.)
 
-Scalars, lists and matrices are plain JS values on cables. A Frame on a cable is usually a
-lazy `FrameRef`, a handle to a verb chain living in the engine behind the `FrameBackend`
-seam: `JsFrameBackend` on web (the pure `frameVerbs.ts` oracle) or `PolarsBackend` on
-desktop (native Rust, with verb chains fused into one round trip). Data materializes only
+A value on a cable is one shared cell in the core, holding the form its producer made (a core
+value or a JavaScript object) and the other form once a reader of that kind asks
+(`../tree/specs/computation/graph-core.md` § Direct calls). A Frame on a cable is usually a
+lazy frame, a verb chain held in the core and passed between the direct verb cards
+without crossing to JavaScript, on the web and desktop alike. Data materializes only
 at the boundary: `preview` (cards show the first N rows), `column` (the bridge to scalars and
-lists) and `collect`. A shared fixture corpus, run from both vitest and cargo, keeps the two
-backends identical. There is one definition per verb (`frameVerbs.ts`); node code never
-re-implements one ([[C16]] polarsEngine).
+lists) and `collect`. A fixture corpus, run from both vitest and cargo, pins every verb's answers. There is one
+definition per verb, the core's (`frame_verbs.rs`); node code never re-implements one ([[C130]] rustCore).
 
 Formulas stop at matrices: Frames and Cubes never enter them ([[C15]] matricesInFormulas).
 Per-row math on a Frame is a **computed column**, either Frame Input's **Fx** column or the
-Computed Column node, both running `computedColumnCore.ts`. Inside one, a bare name is the
+Computed Column node, both running on the core (`nodes/columns.rs`). Inside one, a bare name is the
 whole column and `@name` is this row's cell, as in Excel tables ([[C22]] rowFormulaRefs).
 
 ## What a value box shows
@@ -109,21 +121,22 @@ Display is a separate, read-side pipeline: the raw result, then type-default for
   ([[C25]] firstClassUnits).
 - An FC's number **format** is a display annotation, resolved by walking passthroughs in
   both directions and through transforms that keep the value's meaning
-  (`makeAnnotationResolver`, [[D41]] formatFlowsDownstream). The spec is
+  (`makeAnnotationResolver` over the core's walk, `annotate.rs`, [[C118]] formatTravelsWithValue). The spec is
   `../tree/specs/values/unit-flow.md`.
 - Errors render as the red `#CODE!` badge. A scalar null renders as a muted em dash; the
   word `null` appears only for list and Frame cells. NaN is quiet residue, never "N/A".
 
 ## Save, load, and the text form
 
-Every node has a stable, user-editable `name`. Rete `id`s are random and regenerated on
+Every node has a stable, user-editable `name`. Node `id`s are random and regenerated on
 load, so never save or compare ids across loads ([[B16]] oneFormulaSurface). The text form
-(`textForm.ts`: one node per line, name-addressed, in topological order, byte-stable
+(written and read by the core, `text_form.rs` through `textForm.ts`: one node per line, name-addressed, in topological order, byte-stable
 writes) is the canonical projection, and the JSON save derives from it (`../tree/specs/documents/save-format.md` § Every save passes through the text form
 saveViaTextForm).
 
 Load (`rebuildGraph`) constructs the nodes, remaps ids, restores state, then runs the
-ordered tail: hydrate, settle wildcard types, dock FCs. The strict validator
+ordered tail: hydrate composites, dock FCs, then settle wildcard types and adapt FCs
+(`reconcileFcTypes`), then a full pass. The strict validator
 (`graphValidate.ts`) is a separate gate for the AI palette and the CLI; the interactive
 loader stays permissive, loading an unknown type as a lossless Placeholder.
 
@@ -138,7 +151,7 @@ the slot rotation is `../tree/specs/documents/per-doc-autosave-persistence.md` �
   minimap, lasso, snapshot undo, copy and paste, single-key shortcuts (F9 calculates), the
   command palette, presenter mode, per-doc autosave with multiple documents, the Navigator,
   the HUD stack, semantic zoom, the HTML-in-Canvas gesture layer (a Setting; DOM is the
-  permanent default), and the AI palette ([[B13]] aiInScope, [[C55]] aiWholeDocRewrite).
+  permanent default), and the AI palette ([[B13]] aiInScope).
 - **Value model:** Frames, Cubes (recursive), matrices, lists and scalars; first-class
   null, logicals and `SolError`s; units by dimension with `#UNIT!` algebra; the FC, which
   sets units and display formats.
@@ -147,11 +160,11 @@ the slot rotation is `../tree/specs/documents/per-doc-autosave-persistence.md` �
   connections (Web Source, CSV, Data Feed).
 - **Nodes:** current-Excel function parity up to matrices ([[C15]] matricesInFormulas);
   Equation (solves for any one variable); computed columns; composites (drill-in, with run
-  modes including Monte Carlo and by-row; Query is a manual-mode preset, [[C53]]
-  queryIsCompositePreset); charts; Note (a pure source), Report (a pure sink) and Mermaid;
+  modes including Monte Carlo and by-row; Pipeline is a manual-mode preset of one chain, [[C53]]
+  pipelineIsCompositePreset); charts; Note (a pure source), Report (a pure sink) and Mermaid;
   about ten domain packs; and Placeholder for unknown types.
-- **Desktop:** the Tauri shell (Windows portable exe; Linux AppImage and .deb), native
-  Polars and the CSV reader, F12 devtools, the accent window border, and images bundled
+- **Desktop:** the Tauri shell (Windows portable exe; Linux AppImage and .deb), local files
+  (Parquet included), F12 devtools, the accent window border, and images bundled
   beside the document.
 
 The curated selling list is `release-notes-features.md`; the file map is `architecture.md`.
@@ -163,7 +176,7 @@ The curated selling list is `release-notes-features.md`; the file map is `archit
 - Anything visual: `DESIGN.md` first. Any gesture: `tree/specs/canvas/touch-gestures.md` is the inventory.
   Any bar or overlay: `tree/specs/canvas/layout-chrome.md`. Anything on the canvas surface:
   `../tree/specs/canvas/react-flow-surface-contract.md`.
-- Socket and type questions: the per-variant tables in `socket-reference.md`. A new node's
-  `data()`: `tree/specs/values/value-semantics.md` "Reading an input", deciding each input's role.
+- Socket and type questions: the per-variant tables in `socket-reference.md`. A new card's
+  body: `tree/specs/values/value-semantics.md` "Reading an input", deciding each input's role.
 - Trust tests over prose: `python3 tools/dte.py show <ID>` derives "enforced by" from the
   tests that cite a rule leaf, so a doc claim without a test is a claim to verify.

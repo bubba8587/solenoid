@@ -1,14 +1,13 @@
 // [[B3]] sameNodeEverywhere
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../graphEditor";
+import { GraphConnection, GraphNode } from "../graphModel";
+import { DataflowEngine } from "../dataflowEngine";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
 import { FlowSurfaceContext, FlowRevealContext } from "../flowSurface";
 import { FlowSurface, idleHandlers, type SurfaceStack, type SurfaceHooks } from "../flow/FlowSurface";
 import { makeFlowView } from "../flow/flowView";
-import { installInputCoercion } from "../coerceInputs";
-import { installErrorGuards } from "../errorValue";
 import { setEditorRefs, processGraph } from "../process";
 import { computeStack, latestOnlyQueue } from "./landingCompute";
 import { nodeNameStore } from "../nodeNameStore";
@@ -18,7 +17,7 @@ import { SurfaceNode, ChartNode } from "../nodes/visual";
 import { FrameInputNode, GroupByFrameNode, JoinNode } from "../nodes/frame";
 
 
-const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
+const asNode = (n: GraphNode) => n as unknown as SolenoidNode;
 
 const SURVEY_GRID = [
   "2,   , 6,   , 2",
@@ -29,12 +28,7 @@ const SURVEY_GRID = [
 ].join("\n");
 
 function makeLandingStack(): SurfaceStack {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const handlers = idleHandlers();
@@ -74,7 +68,7 @@ async function buildDemoGraph(s: SurfaceStack) {
   const surface = new SurfaceNode({ label: "Area" });
   const contour = new SurfaceNode({ op: "contour", label: "Contour" });
 
-  const at: [ClassicPreset.Node, number, number][] = [
+  const at: [GraphNode, number, number][] = [
     [survey, 20, 130],
     [interp, 380, 90],
     [surface, 740, 50],
@@ -86,14 +80,14 @@ async function buildDemoGraph(s: SurfaceStack) {
   }
   for (const [node, x, y] of at) await s.view.moveNode(node.id, { x, y });
 
-  const wire = (src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) =>
-    s.editor.addConnection(new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection);
+  const wire = (src: GraphNode, out: string, tgt: GraphNode, inp: string) =>
+    s.editor.addConnection(new GraphConnection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection);
   await wire(survey, "table", interp, "z");
   await wire(interp, "result", surface, "z");
   await wire(interp, "result", contour, "z");
 }
 
-async function place(s: SurfaceStack, at: [ClassicPreset.Node, number, number][]) {
+async function place(s: SurfaceStack, at: [GraphNode, number, number][]) {
   for (const [node] of at) {
     await s.editor.addNode(asNode(node));
     nodeNameStore.ensure(node.id, node.constructor.name);
@@ -101,8 +95,8 @@ async function place(s: SurfaceStack, at: [ClassicPreset.Node, number, number][]
   for (const [node, x, y] of at) await s.view.moveNode(node.id, { x, y });
 }
 const connect = (s: SurfaceStack) =>
-  (src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) =>
-    s.editor.addConnection(new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection);
+  (src: GraphNode, out: string, tgt: GraphNode, inp: string) =>
+    s.editor.addConnection(new GraphConnection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection);
 
 function makeRng(seed: number): () => number {
   let s = seed >>> 0;
@@ -212,10 +206,11 @@ function LandingStage({ stack, resetNonce }: { stack: SurfaceStack; resetNonce: 
   return <FlowSurface stack={stack} hooks={LANDING_HOOKS} />;
 }
 
-export type LiveScene = { label: string; build: (s: SurfaceStack) => Promise<void> };
+type LiveScene = { label: string; build: (s: SurfaceStack) => Promise<void> };
 
 export function LiveGraph({ build, scenes }: { build?: (s: SurfaceStack) => Promise<void>; scenes?: LiveScene[] }) {
   const stack = useMemo(makeLandingStack, []);
+  useEffect(() => () => stack.editor.dispose(), [stack]);
   const [resetNonce, setResetNonce] = useState(0);
   const [sceneIdx, setSceneIdx] = useState(0);
   const activeBuild = scenes ? scenes[sceneIdx].build : build!;
@@ -226,7 +221,6 @@ export function LiveGraph({ build, scenes }: { build?: (s: SurfaceStack) => Prom
   useEffect(() => {
     setEditorRefs(stack.editor, stack.engine, stack.view);
     void builds(() => activeBuild(stack).then(() => computeStack(stack, true)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stack]);
 
   const rebuild = (b: (s: SurfaceStack) => Promise<void>) =>
@@ -252,7 +246,7 @@ export function LiveGraph({ build, scenes }: { build?: (s: SurfaceStack) => Prom
         </FlowSurfaceContext.Provider>
       </ReactFlowProvider>
       {scenes && (
-        <div className="sol-landing__stage-scenes" role="tablist" aria-label="Example graphs">
+        <div className="sol-landing__stage-scenes" role="tablist" focusgroup="tablist inline" aria-label="Example graphs">
           {scenes.map((sc, i) => (
             <button
               key={sc.label}

@@ -1,7 +1,7 @@
 // [[C100]] chartIsAValue
 import { useSyncExternalStore, type ReactNode } from "react";
 import { collapseStore } from "../collapseStore";
-import type { ChartBuilderNode as ChartBuilderNodeType } from "../rete-nodes";
+import type { ChartBuilderNode as ChartBuilderNodeType } from "../nodeClasses";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, chartBuilderKeys, type ChartBuilderKey, type ChartTargetId } from "../nodes/chartOptions";
 import { COLORMAP_LIST } from "../colormaps";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps, type ShellNode, type Emit } from "./nodeKit";
@@ -31,7 +31,7 @@ function ToggleInputRow({ node, emit, socketKey, label }: {
   const on = isOnValue(node.stringLiterals[socketKey]);
   const set = (checked: boolean) => {
     node.stringLiterals[socketKey] = checked ? "on" : "off";
-    void processGraph();
+    node.edited(); void processGraph();
   };
   return (
     <MeasuredSocketRow side="input" socketKey={socketKey} nodeId={node.id} emit={emit} payload={port.socket}>
@@ -72,7 +72,7 @@ function SelectInputRow({ node, emit, socketKey, label, options, clearValue }: {
   const value = node.stringLiterals[socketKey] || clearValue || options[0].value;
   const set = (v: string) => {
     node.stringLiterals[socketKey] = v === clearValue ? "" : v;
-    void processGraph();
+    node.edited(); void processGraph();
   };
   return (
     <MeasuredSocketRow side="input" socketKey={socketKey} nodeId={node.id} emit={emit} payload={port.socket}>
@@ -88,7 +88,9 @@ function SelectInputRow({ node, emit, socketKey, label, options, clearValue }: {
   );
 }
 
-const TARGET_OPTS = CHART_TARGET_LIST.map((t) => ({ value: t.id, label: t.label, group: t.group }));
+const targetOpts = (current: string) => CHART_TARGET_LIST
+  .filter((t) => !t.hidden || t.id === current)
+  .map((t) => ({ value: t.id, label: t.label, group: t.group }));
 
 const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color", "x", "y", "s", "c", "annotate", "by", "fmt", "window", "columns"];
 
@@ -136,6 +138,13 @@ const SELECT_KEYS: readonly {
     options: [
       { value: "auto", label: "Fill the plot" },
       { value: "equal", label: "Equal x and y" },
+    ],
+  },
+  {
+    key: "yscale", label: "Y scale", clearValue: "linear",
+    options: [
+      { value: "linear", label: "Linear" },
+      { value: "log", label: "Log" },
     ],
   },
   {
@@ -206,15 +215,15 @@ const TARGET_DEFAULTS: Partial<Record<ChartTargetId, Partial<Record<ChartBuilder
   heatmap: { aspect: "equal" },
   histogram2d: { origin: "lower" },
 };
-const NUM_KEYS: readonly ChartBuilderKey[] = ["xmin", "xmax", "ymin", "ymax", "center", "vmin", "vmax", "linewidth", "markersize", "alpha", "fontsize"];
+const NUM_KEYS: readonly ChartBuilderKey[] = ["xmin", "xmax", "ymin", "ymax", "center", "vmin", "vmax", "linewidth", "markersize", "alpha", "fontsize", "maxgap"];
 
 // A target offering more rows than this folds its secondary ones into sections; a shorter card stays uncaptioned.
 const SECTIONED_ABOVE = 10;
 // Keys in no section (the title, axis labels, font size, a few one-figure settings) stay at the top.
 const SECTIONS: readonly { label: string; keys: readonly ChartBuilderKey[] }[] = [
   { label: "Columns", keys: ["x", "y", "s", "c", "annotate", "by"] },
-  { label: "Style", keys: ["color", "linestyle", "linewidth", "marker", "markersize", "alpha"] },
-  { label: "Axes", keys: ["grid", "aspect", "xmin", "xmax", "ymin", "ymax", "radarscale", "origin"] },
+  { label: "Style", keys: ["color", "linestyle", "linewidth", "marker", "markersize", "alpha", "maxgap"] },
+  { label: "Axes", keys: ["grid", "aspect", "yscale", "xmin", "xmax", "ymin", "ymax", "radarscale", "origin"] },
   { label: "Color scale", keys: ["cmap", "center", "vmin", "vmax", "cbar", "annot", "fmt"] },
   { label: "Timeline", keys: ["zoom", "tiers", "fit", "window", "columns", "collapse", "group_by"] },
   { label: "Shown", keys: ["critical", "baseline", "arrows", "today", "status", "weekends", "labels", "histogram", "minutes"] },
@@ -302,7 +311,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div style={{ padding: "2px 0 4px" }}>
-        <ArgSelect value={target} onChange={(t) => void pickTarget(t)} options={TARGET_OPTS} />
+        <ArgSelect value={target} onChange={(t) => void pickTarget(t)} options={targetOpts(target)} />
       </div>
       {collapsed ? (
         // Collapsed, one InlineInputs carries every shown input: the toggle and select rows would hide their sockets, and two groups would draw two pills.

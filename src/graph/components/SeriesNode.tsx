@@ -1,6 +1,6 @@
 // [[B11]] maximalMerge
-import { SERIES_OP_META } from "../rete-nodes";
-import type { SeriesNode as SeriesNodeType, SeriesOp } from "../rete-nodes";
+import { SERIES_OP_META } from "../nodeClasses";
+import type { SeriesNode as SeriesNodeType, SeriesOp } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";

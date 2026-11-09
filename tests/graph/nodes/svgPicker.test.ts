@@ -1,7 +1,7 @@
 // [[C68]], [[C86]] membershipByGesture, [[C103]] untrustedContentSeams
 import { describe, it, expect } from "vitest";
 import { SvgPickerNode } from "../../../src/graph/nodes/annotation";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import { isSvgValue } from "../../../src/graph/svgValue";
 import { chartSocket, stringSocket } from "../../../src/graph/sockets";
 

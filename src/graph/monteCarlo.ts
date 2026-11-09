@@ -1,11 +1,11 @@
-// [[D46]] freezeVolatilePerCalc
+// [[C23]] calcModes
 
 import { uncertain, type UncertainNumber } from "./valueKinds";
 import { stdNormCDF } from "./nodes/mathUtils";
 
 export type DistributionKind = "normal" | "uniform";
 
-export interface UncertaintySpec {
+interface UncertaintySpec {
   kind: DistributionKind;
   spread: number;
 }
@@ -69,7 +69,7 @@ export function histogram(samples: readonly number[], bins = 12): { counts: numb
 
 // ─── Correlated inputs ─────────────────────────────────────────────────────────
 
-export interface CorrelationPair { a: string; b: string; rho: number }
+interface CorrelationPair { a: string; b: string; rho: number }
 
 export function parseCorrelations(text: string): { pairs: CorrelationPair[]; rejected: string[] } {
   const pairs: CorrelationPair[] = [], rejected: string[] = [];

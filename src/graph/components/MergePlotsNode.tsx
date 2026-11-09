@@ -1,5 +1,5 @@
-import { useSyncExternalStore } from "react";
-import type { MergePlotsNode as MergePlotsNodeType } from "../rete-nodes";
+import { useMemo, useSyncExternalStore } from "react";
+import type { MergePlotsNode as MergePlotsNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { InlineInputs } from "./inlineInput";
@@ -14,10 +14,11 @@ import type { SolError } from "../errorValue";
 import { nodeDisplayName } from "../catalogUtils";
 
 // Fills the wide card (240) minus body padding, as Chart does.
-const W = 218;
 const H = 150;
 
 export function MergePlotsComponent({ data, emit }: NodeProps<MergePlotsNodeType>) {
+  // The figure fills the card, whatever width tier it wears.
+  const W = (data.width ?? 300) - 22;
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   // An FC on the chart output scales the figure's text (display only).
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
@@ -29,7 +30,8 @@ export function MergePlotsComponent({ data, emit }: NodeProps<MergePlotsNodeType
   const overlay = cached && isChartValue(cached) ? cached : null;
   const hasData = !!overlay && (overlay.payload?.kind === "overlay" || overlay.payload?.kind === "xy") && overlay.payload.series.length > 0;
   // The live card title tracks the node's name; the cable value keeps its own.
-  const cv: ChartValue | null = overlay ? { ...overlay, title: overlay.options.title || nodeDisplayName(data) } : null;
+  const name = nodeDisplayName(data);
+  const cv: ChartValue | null = useMemo(() => overlay && { ...overlay, title: overlay.options.title || name }, [overlay, name]);
 
   return (
     <NodeShell node={data} emit={emit}>

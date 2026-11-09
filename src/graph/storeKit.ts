@@ -1,6 +1,6 @@
 // [[A1]] visualGraphCalculator (the module-singleton stores are app-wide state)
 
-export interface Notifier {
+interface Notifier {
   notify: () => void;
   subscribe: (listener: () => void) => () => void;
   version: () => number;
@@ -16,7 +16,7 @@ export function createNotifier(): Notifier {
   };
 }
 
-export interface ToggleStore {
+interface ToggleStore {
   get: () => boolean;
   set: (v: boolean) => void;
   open: () => void;
@@ -38,7 +38,22 @@ export function createToggleStore(initial = false): ToggleStore {
   };
 }
 
-export interface ValueStore<T> {
+/** A toggle kept per viewer under `key` ("1" or "0"); `load` reads it back at startup. Storage can be missing or
+ *  throw (private mode, quota), and then the toggle lives in memory only. */
+export function createSavedToggle(key: string): ToggleStore & { load: () => void } {
+  const store = createToggleStore();
+  store.subscribe(() => {
+    try { localStorage.setItem(key, store.get() ? "1" : "0"); } catch { /* in memory only */ }
+  });
+  return {
+    ...store,
+    load: () => {
+      try { store.set(localStorage.getItem(key) === "1"); } catch { /* in memory only */ }
+    },
+  };
+}
+
+interface ValueStore<T> {
   get: () => T | null;
   open: (value: T) => void;
   close: () => void;

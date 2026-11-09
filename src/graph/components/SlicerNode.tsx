@@ -6,17 +6,21 @@ import { InlineInputs } from "./inlineInput";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
 import { formatScalar } from "./format";
+import { formatFrameCell, type FrameColType } from "../frame";
 import "./SlicerNode.css";
 import { stopDragStart } from "../coarse";
 
-function label(v: SlicerCell): string {
+/** A chip's text as its column shows it, so a date column's chips read as dates ([[C137]] datesNeverSerials). */
+function label(v: SlicerCell, type: FrameColType = "number"): string {
+  if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
+  if (typeof v === "number" && type === "date") return String(formatFrameCell("date", v) ?? "");
   return typeof v === "number" ? formatScalar(v) : v;
 }
 
 // These classes override the default frame "wide" tier by CSS specificity.
-function widthClass(vals: SlicerCell[]): string | undefined {
+function widthClass(vals: SlicerCell[], type: FrameColType): string | undefined {
   if (vals.length === 0) return undefined;
-  const maxLen = vals.reduce<number>((m, v) => Math.max(m, label(v).length), 0);
+  const maxLen = vals.reduce<number>((m, v) => Math.max(m, label(v, type).length), 0);
   const n = vals.length;
   if (maxLen > 18 || n > 30) return "solenoid-node--slicer-w3";
   if (maxLen > 9 || n > 10) return "solenoid-node--slicer-w2";
@@ -88,7 +92,7 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
   const selCount = allSelected ? uniqueVals.length : selected.length;
 
   return (
-    <NodeShell node={data} emit={emit} className={widthClass(uniqueVals)}>
+    <NodeShell node={data} emit={emit} className={widthClass(uniqueVals, data.cachedColumnType)}>
       <InlineInputs node={data} emit={emit} />
       <div className="solenoid-node__collapsed-only slicer-node__summary">
         {!hasFrame ? "No frame" : uniqueVals.length === 0 ? "No values" : `${selCount} of ${uniqueVals.length}`}
@@ -135,10 +139,10 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
               <button
                 key={String(v)}
                 className={`slicer-node__pill${isSelected(v) ? " slicer-node__pill--selected" : ""}`}
-                title={label(v)}
+                title={label(v, data.cachedColumnType)}
                 onClick={() => toggleValue(v)}
               >
-                {label(v)}
+                {label(v, data.cachedColumnType)}
               </button>
             ))
           )}

@@ -2,18 +2,19 @@
 // every node's outputs as JSON, keyed by label (else type, with a #n suffix on repeats). The strict
 // validator gates the run (--force skips it). Never calls initFrameBackend, so every frame verb runs
 // on the JS oracle with no Tauri dependency.
-//   npx tsx scripts/run-graph.ts <graph.json|graph.txt>
+//   npm run run-graph -- <graph.json|graph.txt>
+// `npm run build:cli` bundles it into dist-cli/ (run-graph.mjs + the engine's wasm), which needs only Node.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { promises as nodeFs } from "node:fs";
 import nodePath from "node:path";
 import { pathToFileURL } from "node:url";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
-import * as Nodes from "../src/graph/rete-nodes";
+import { GraphConnection, GraphNode } from "../src/graph/graphModel";
+import { DataflowEngine } from "../src/graph/dataflowEngine";
+import { GraphEditor } from "../src/graph/graphEditor";
+import { loadWasmEngineSync, wasmUrl } from "../src/graph/engineWasm";
+import * as Nodes from "../src/graph/nodeClasses";
 import type { Schemes } from "../src/graph/schemes";
-import { installInputCoercion } from "../src/graph/coerceInputs";
-import { installErrorGuards } from "../src/graph/errorValue";
 import { isFrameRef, readFrame } from "../src/graph/frameBackend";
 import { computeAll } from "../src/graph/graphCompute";
 import { validateGraph, validateText, formatIssues, hardIssues } from "../src/graph/graphValidate";
@@ -31,7 +32,7 @@ type SavedNode = {
 type SavedConnection = { source: string; sourceOutput: string; target: string; targetInput: string };
 type SavedGraph = { nodes: SavedNode[]; connections: SavedConnection[] };
 
-type NodeCtor = new (init?: Record<string, unknown>) => ClassicPreset.Node;
+type NodeCtor = new (init?: Record<string, unknown>) => GraphNode;
 
 async function resolveFrameRefs(v: unknown): Promise<unknown> {
   if (isFrameRef(v)) return readFrame(v);
@@ -68,16 +69,11 @@ export interface RunOptions {
 export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Record<string, unknown>> {
   if (opts.vault) { setFsProvider(nodeFsProvider); settingsStore.set("obsidianVault", opts.vault); }
   if (opts.tasknotes) settingsStore.set("taskNotesUrl", opts.tasknotes);
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
 
-  const byId = new Map<string, ClassicPreset.Node>();
+  const byId = new Map<string, GraphNode>();
   for (const sn of g.nodes) {
     const Ctor = (Nodes as unknown as Record<string, NodeCtor>)[sn.type];
     if (typeof Ctor !== "function") {
@@ -97,7 +93,7 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
       throw new Error(`Connection references an unknown node (${c.source} → ${c.target}).`);
     }
     await editor.addConnection(
-      new ClassicPreset.Connection(source, c.sourceOutput, target, c.targetInput) as Schemes["Connection"],
+      new GraphConnection(source, c.sourceOutput, target, c.targetInput) as Schemes["Connection"],
     );
   }
 
@@ -109,9 +105,9 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
   if (opts.run) {
     const want = opts.run.trim().toLowerCase();
     const sink = [...byId.values()].find((n) => ((n as unknown as { label?: string }).label ?? "").trim().toLowerCase() === want) as
-      (ClassicPreset.Node & { enabled?: boolean; run?: () => Promise<void>; status?: string; statusMessage?: string }) | undefined;
+      (GraphNode & { enabled?: boolean; run?: () => Promise<void>; status?: string; statusMessage?: string }) | undefined;
     if (!sink || typeof sink.run !== "function") throw new Error(`--run: no sink named "${opts.run}" in the graph.`);
-    sink.enabled = true; // [[C38]] sinkRunButtonOnly: this explicit flag is the Run button
+    sink.enabled = true; // [[B18]] safeToShare: this explicit flag is the Run button
     await sink.run();
     if (sink.status === "error") throw new Error(`--run ${opts.run}: ${sink.statusMessage ?? "failed"}`);
     console.error(`${opts.run}: ${sink.statusMessage ?? sink.status ?? "ran"}`);
@@ -131,6 +127,8 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
 }
 
 async function main() {
+  // Before validating: the validator builds every node to learn its type, and a node needs the engine.
+  loadWasmEngineSync(readFileSync(wasmUrl));
   const args = process.argv.slice(2);
   const force = args.includes("--force");
   const flag = (name: string): string | undefined => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
@@ -139,7 +137,7 @@ async function main() {
   for (const name of ["--vault", "--tasknotes", "--run"]) { const i = args.indexOf(name); if (i >= 0) { consumed.add(args[i]); if (args[i + 1]) consumed.add(args[i + 1]); } }
   const file = args.find((a) => !consumed.has(a));
   if (!file) {
-    console.error("Usage: npx tsx scripts/run-graph.ts <graph.json|graph.txt> [--force] [--vault <path>] [--tasknotes <url>] [--run <sink name>]");
+    console.error("Usage: npm run run-graph -- <graph.json|graph.txt> [--force] [--vault <path>] [--tasknotes <url>] [--run <sink name>]");
     process.exit(1);
   }
   const raw = readFileSync(file, "utf8");
@@ -166,9 +164,10 @@ async function main() {
   console.log(JSON.stringify(out, null, 2));
 }
 
-// pathToFileURL, not a `file://` template, so this matches a backslashed Windows argv[1].
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => {
+// pathToFileURL, not a `file://` template, so this matches a backslashed Windows argv[1]; realpath, so it matches
+// when launched through a symlink, as npm's bin links do.
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
+  await main().catch((e) => {
     console.error(e instanceof Error ? e.message : String(e));
     process.exit(1);
   });

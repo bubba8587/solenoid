@@ -1,4 +1,4 @@
-import type { ShiftNode } from "../rete-nodes";
+import type { ShiftNode } from "../nodeClasses";
 import { makeToggleNodeComponent } from "./standardNode";
 
 export const ShiftComponent = makeToggleNodeComponent<ShiftNode, ShiftNode["wrap"]>(

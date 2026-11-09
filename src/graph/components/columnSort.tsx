@@ -1,6 +1,7 @@
 // [[C59]] byteStringOrder (a UI list keeps natural order)
 import { useState } from "react";
 import { decimalFromText } from "../valueKinds";
+import { isSolDate } from "../dateValue";
 
 // A view control, not a transform: every consumer of a row index keeps using the source index, and `sortedOrder` returns source indices in display order.
 
@@ -58,8 +59,15 @@ export function remapSort(sort: ColumnSort, fn: (col: number) => number | null):
 /** `null` is nothing to sort on, and sinks to the bottom in both directions. */
 export type SortKey = string | number | null;
 
-export function sortKeyOf(v: unknown): SortKey {
+/** A cell's sort key, read by its column's one type where the popup knows it ([[D114]] dateIsAKind): a date (or a Date
+ *  column's packed number) by its day, a text column's cells always as text; with no type, by the value. */
+export function sortKeyOf(v: unknown, type?: string | null): SortKey {
   if (v === null || v === undefined) return null;
+  if (isSolDate(v)) return Number.isFinite(v.__date) ? v.__date : null;
+  if (typeof v === "string" && type && /^(string|text|str)/.test(type)) {
+    const t = v.trim();
+    return t === "" ? null : t;
+  }
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
   if (typeof v === "boolean") return v ? 1 : 0;
   if (typeof v === "string") {

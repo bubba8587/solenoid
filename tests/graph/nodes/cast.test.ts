@@ -1,19 +1,19 @@
 // [[B11]] maximalMerge, [[C24]]
+import { solDate } from "../../../src/graph/dateValue";
 import { describe, expect, it } from "vitest";
-import { CastNode, castOutput, parseCx, type CastTarget } from "../../../src/graph/nodes/cast";
+import { CastNode, castOutput, type CastOp } from "../../../src/graph/nodes/cast";
 import { cx } from "../../../src/graph/cxValue";
-import { formatNumberPattern } from "../../../src/graph/nodes/text";
 import { isSolError } from "../../../src/graph/errorValue";
 import { SolenoidSocket, isDateType } from "../../../src/graph/sockets";
 import { applyFcUnit } from "../../../src/graph/unitBridge";
-import { wrapNodeData } from "../../../src/graph/coerceInputs";
+import { throughBoundary } from "../boundaryKit";
 
 // No editor singleton in tests → sourceKind() is null, so complex INPUTS can't
 // be disambiguated here — those paths are typed by the live socket. Everything
 // else (parsing, formatting, list mapping) is pure and covered below.
 
-const cast = (target: CastTarget, value: unknown) => {
-  const n = new CastNode({ target });
+const cast = (op: CastOp, value: unknown) => {
+  const n = new CastNode({ op });
   return n.data({ value: [value] }).result;
 };
 
@@ -68,17 +68,10 @@ describe("Cast node", () => {
     expect(cast("text", "already text")).toBe("already text");
   });
 
-  // The number-format util still exists (used by Text nodes); Cast no longer
-  // exposes a format code, but the regression coverage stays.
-  it("formatNumberPattern formats decimals (old TEXT regex was double-escaped)", () => {
-    expect(formatNumberPattern(2.345, "0.00")).toBe("2.35");
-    expect(formatNumberPattern(5, "0")).toBe("5");
-    expect(formatNumberPattern(0.123, "0.0%")).toBe("12.3%");
-  });
 
-  it("casts to date serials", () => {
-    expect(cast("date", "1970-01-01")).toBe(25569); // JS epoch = Excel serial 25569
-    expect(cast("date", 45000)).toBe(45000);        // serials pass through
+  it("casts to dates ([[D114]] dateIsAKind)", () => {
+    expect(cast("date", "1970-01-01")).toEqual(solDate(25569)); // JS epoch = Excel serial 25569
+    expect(cast("date", 45000)).toEqual(solDate(45000));        // a number reads as its day
   });
 
   it("casts to logical (boolean) — text, number, and passthrough", () => {
@@ -132,39 +125,32 @@ describe("Cast node", () => {
   });
 
   it("parses complex text forms", () => {
-    expect(parseCx("3+4i")).toEqual(cx(3, 4));
-    expect(parseCx("3-4i")).toEqual(cx(3, -4));
-    expect(parseCx("-i")).toEqual(cx(0, -1));
-    expect(parseCx("i")).toEqual(cx(0, 1));
-    expect(parseCx("2.5")).toEqual(cx(2.5, 0));
-    expect(parseCx("5j")).toEqual(cx(0, 5));
-    expect(parseCx("1+j")).toEqual(cx(1, 1));
-    expect(parseCx("garbage")).toEqual(cx(NaN, NaN));
+    expect(cast("complex", ["3+4i", "3-4i", "-i", "i", "2.5", "5j", "1+j"]))
+      .toEqual([cx(3, 4), cx(3, -4), cx(0, -1), cx(0, 1), cx(2.5, 0), cx(0, 5), cx(1, 1)]);
+    expect(isSolError(cast("complex", "garbage"))).toBe(true);
   });
 
   it("passes null through and exposes lists as a structured value (chip, not a joined string)", () => {
-    const n = new CastNode({ target: "text" });
+    const n = new CastNode({ op: "text" });
     expect(n.data({ value: [null] }).result).toBeNull();
     n.data({ value: [[1, 2, 3]] });
     // ValueDisplay-compatible array → rendered as a chip, not "[1, 2, 3]".
     expect(n.cachedResult).toEqual(["1", "2", "3"]);
   });
 
-  it("keeps a date cast as numeric serials (ValueDisplay formats them — list → chip)", () => {
-    // Cast no longer pre-formats dates; the date socket drives display formatting
-    // in ValueDisplay (see valueDisplayFormat.test.ts), so a list stays a chip.
-    const n = new CastNode({ target: "date" });
+  it("answers dates as themselves, never pre-formatted text (ValueDisplay formats them — list → chip)", () => {
+    const n = new CastNode({ op: "date" });
     n.data({ value: [45000] });
-    expect(n.cachedResult).toBe(45000);
+    expect(n.cachedResult).toEqual(solDate(45000));
     n.data({ value: [[45000, 45001]] });
-    expect(n.cachedResult).toEqual([45000, 45001]);
+    expect(n.cachedResult).toEqual([solDate(45000), solDate(45001)]);
   });
 });
 
 describe("Cast keeps a value's unit where the target can hold it ([[C25]] firstClassUnits)", () => {
-  const through = (target: CastTarget, value: unknown) => {
-    const n = new CastNode({ target });
-    wrapNodeData(n as unknown as Parameters<typeof wrapNodeData>[0]);
+  const through = (op: CastOp, value: unknown) => {
+    const n = new CastNode({ op });
+    throughBoundary(n as unknown as Parameters<typeof throughBoundary>[0]);
     return n.data({ value: [value] }).result;
   };
   it("text names the unit the value reads in", () => {
@@ -175,5 +161,22 @@ describe("Cast keeps a value's unit where the target can hold it ([[C25]] firstC
   });
   it("a number is the value as it reads, with no unit", () => {
     expect(through("number", applyFcUnit(5, "km"))).toBe(5);
+  });
+});
+
+describe("Cast reads what the card is set to", () => {
+  const card = (op: CastOp, fields: Record<string, string>, source: string | null = null) => {
+    const n = new CastNode({ op });
+    n.stringLiterals = fields;
+    (n as unknown as { sourceKind: () => string | null }).sourceKind = () => source;
+    return n;
+  };
+  it("a number casts to text through Excel's format codes, as TEXT reads them", () => {
+    expect(card("text", { format: "0.000" }).data({ value: [[1, 2.5, -0.0005]] }).result).toEqual(["1.000", "2.500", "-0.001"]);
+    expect(card("text", { format: "0%" }).data({ value: [0.256] }).result).toBe("26%");
+    expect(card("text", { format: "general" }).data({ value: [1e21] }).result).toBe("1E+21");
+    expect(card("text", { format: "#,##0" }).data({ value: [1234] }).result).toBe("1,234");
+    expect(card("text", { format: "yyyy" }).data({ value: [45000] }).result).toBe("2023");
+    expect(card("text", { format: "0.00" }).data({ value: [applyFcUnit(1.5, "km")] }).result).toBe("1.50 km");
   });
 });

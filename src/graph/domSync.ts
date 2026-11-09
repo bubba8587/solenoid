@@ -1,5 +1,5 @@
 // [[C42]] htmlInCanvasRenderer
-// Mechanics: tree/specs/canvas/html-in-canvas.md (The DOM follows the presented camera).
+// Mechanics: [[html-in-canvas#Drawing and the camera]] (the DOM follows the presented camera).
 
 export interface CamXform { k: number; x: number; y: number }
 
@@ -21,7 +21,7 @@ export function holderSyncTransform(
   return holderTransform(presented);
 }
 
-export interface Affine2D { a: number; b: number; c: number; d: number; e: number; f: number }
+interface Affine2D { a: number; b: number; c: number; d: number; e: number; f: number }
 
 export function camFromDrawMatrix(
   m: Affine2D,

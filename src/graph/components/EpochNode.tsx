@@ -1,5 +1,5 @@
-import { EPOCH_UNIT_OPTIONS } from "../rete-nodes";
-import type { EpochNode as EpochNodeType } from "../rete-nodes";
+import { EPOCH_UNIT_OPTIONS } from "../nodeClasses";
+import type { EpochNode as EpochNodeType } from "../nodeClasses";
 import { makeToggleNodeComponent } from "./standardNode";
 
 export const EpochComponent = makeToggleNodeComponent<EpochNodeType, EpochNodeType["unit"]>(

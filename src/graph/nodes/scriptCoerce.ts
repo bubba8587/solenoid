@@ -1,10 +1,9 @@
 // [[C66]] scriptNode
 import { solError, isSolError, type SolError } from "../errorValue";
-import { jsDateToSerial } from "./dateSerial";
+import { jsDateToSerial, serialToJsDate } from "./dateSerial";
 import { isCx } from "../cxValue";
 import { isSolDateTag } from "./scriptRun";
-import type { ResultType } from "./shared";
-import type { ProducedFamily } from "./expression";
+import { isSolDate, solDate } from "../dateValue";
 import { isFrameValue, isCubeValue, frameRowCount, cubeFromColumns, type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type CubeValue, type CubeCell } from "../frame";
 import { readFrame, isFrameRef, type FrameInput } from "../frameBackend";
 import { isUnitCell } from "../unitValue";
@@ -29,12 +28,6 @@ function combine(a: Vote, b: Vote): Vote {
   if (a === null) return b;
   if (b === null) return a;
   return a === b ? a : "mixed";
-}
-
-function toSocketFamily(v: Vote): ResultType | null {
-  if (v === null || v === "mixed") return null;
-  if (v === "number" || v === "text" || v === "date") return v;
-  return "auto";
 }
 
 function coerceCell(c: unknown): { value: unknown; family: CellFamily | null } {
@@ -73,12 +66,26 @@ function isRowObject(v: unknown): v is Record<string, unknown> {
     && !("__unclonable" in v);
 }
 
+/** A date goes in as a JavaScript `Date`, never as its serial ([[C137]] datesNeverSerials); lists map through. */
+function asDate(v: unknown): unknown {
+  if (typeof v === "number") return Number.isFinite(v) ? serialToJsDate(v) : v;
+  if (Array.isArray(v)) return v.map(asDate);
+  return v;
+}
+
+/** Each date in a value as a JS `Date` ([[D114]] dateIsAKind). */
+function datesToJs(v: unknown): unknown {
+  if (isSolDate(v)) return Number.isFinite(v.__date) ? serialToJsDate(v.__date) : v.__date;
+  if (Array.isArray(v)) return v.map(datesToJs);
+  return v;
+}
+
 function frameToRows(f: FrameValue): Record<string, unknown>[] {
   const n = frameRowCount(f);
   const rows: Record<string, unknown>[] = [];
   for (let i = 0; i < n; i++) {
     const r: Record<string, unknown> = {};
-    for (const c of f.columns) r[c.name] = c.values[i] ?? null;
+    for (const c of f.columns) r[c.name] = c.type === "date" ? asDate(c.values[i] ?? null) : c.values[i] ?? null;
     rows.push(r);
   }
   return rows;
@@ -98,12 +105,16 @@ function cubeToRows(c: CubeValue): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = [];
   for (let i = 0; i < n; i++) {
     const r: Record<string, unknown> = {};
-    for (const col of c.columns) r[col.name] = cubeCellToJs(col.cells[i] ?? null);
+    for (const col of c.columns) {
+      const js = cubeCellToJs(col.cells[i] ?? null);
+      r[col.name] = col.type === "date" ? asDate(js) : js;
+    }
     rows.push(r);
   }
   return rows;
 }
 
+/** `dated`: the input's settled type is a date family, so its numbers are serials. */
 export async function scriptArgToJs(v: unknown): Promise<unknown> {
   if (isLambdaValue(v) || isChartValue(v) || isDocumentValue(v)) {
     const kind = isLambdaValue(v) ? "a lambda" : isChartValue(v) ? "a chart" : "a document";
@@ -116,7 +127,7 @@ export async function scriptArgToJs(v: unknown): Promise<unknown> {
     return frameToRows(full);
   }
   if (isCubeValue(v)) return cubeToRows(v);
-  return v;
+  return datesToJs(v);
 }
 
 const COL_TYPE: Record<Exclude<CellFamily, "complex">, FrameColType> = {
@@ -129,7 +140,7 @@ function rowKeys(rows: Record<string, unknown>[]): string[] {
   return names;
 }
 
-function buildFrame(rows: Record<string, unknown>[], names: string[]): { value: unknown; family: ProducedFamily | null } {
+function buildFrame(rows: Record<string, unknown>[], names: string[]): unknown {
   const columns: FrameColumn[] = [];
   for (const name of names) {
     let vote: Vote = null;
@@ -138,25 +149,25 @@ function buildFrame(rows: Record<string, unknown>[], names: string[]): { value: 
       const c = coerceCell(r[name]);
       if (!isSolError(c.value)) vote = combine(vote, c.family);
       if (c.family === "complex") {
-        return { value: solError("#TYPE!", `Column "${name}" holds complex numbers; a frame column is numbers, text, dates, or booleans`), family: null };
+        return solError("#TYPE!", `Column "${name}" holds complex numbers; a frame column is numbers, text, dates, or booleans`);
       }
       cells.push(c.value as FrameCell);
     }
     if (vote === "mixed") {
-      return { value: solError("#AMBIGUOUS!", `Column "${name}" mixes value types; a frame column is one type`), family: null };
+      return solError("#AMBIGUOUS!", `Column "${name}" mixes value types; a frame column is one type`);
     }
     const type: FrameColType = vote === null || vote === "complex" ? "string" : COL_TYPE[vote];
     columns.push({ name, type, values: cells });
   }
   const frame: FrameValue = { __frame: true, columns };
-  return { value: frame, family: "frame" };
+  return frame;
 }
 
 function cubeCellFromJs(v: unknown): CubeCell | SolError {
   if (Array.isArray(v)) {
     if (v.length > 0 && v.every(isRowObject)) {
       const nested = buildRows(v);
-      return isSolError(nested.value) ? (nested.value as SolError) : (nested.value as CubeCell);
+      return nested as SolError | CubeCell;
     }
     const cells: CubeCell[] = [];
     for (const c of v) {
@@ -167,68 +178,74 @@ function cubeCellFromJs(v: unknown): CubeCell | SolError {
   }
   if (isRowObject(v)) {
     const nested = buildRows([v]);
-    return isSolError(nested.value) ? (nested.value as SolError) : (nested.value as CubeCell);
+    return nested as SolError | CubeCell;
   }
   return coerceCell(v).value as CubeCell;
 }
 
-function buildCube(rows: Record<string, unknown>[], names: string[]): { value: unknown; family: ProducedFamily | null } {
+function buildCube(rows: Record<string, unknown>[], names: string[]): unknown {
   const cols: Array<{ name: string; cells: CubeCell[] }> = [];
   for (const name of names) {
     const cells: CubeCell[] = [];
     for (const r of rows) {
       const cell = cubeCellFromJs(r[name]);
       if (isSolError(cell) && (Array.isArray(r[name]) || isRowObject(r[name]))) {
-        return { value: cell, family: null };
+        return cell;
       }
       cells.push(cell as CubeCell);
     }
     cols.push({ name, cells });
   }
-  return { value: cubeFromColumns(cols), family: "cube" };
+  return cubeFromColumns(cols);
 }
 
-function buildRows(rows: Record<string, unknown>[]): { value: unknown; family: ProducedFamily | null } {
+function buildRows(rows: Record<string, unknown>[]): unknown {
   const names = rowKeys(rows);
   if (names.length === 0) {
-    return { value: solError("#SHAPE!", "Returned rows with no named values; give each row at least one {name: value}"), family: null };
+    return solError("#SHAPE!", "Returned rows with no named values; give each row at least one {name: value}");
   }
   const nests = rows.some((r) => names.some((k) => Array.isArray(r[k]) || isRowObject(r[k])));
   return nests ? buildCube(rows, names) : buildFrame(rows, names);
 }
 
-export function coerceScriptResult(v: unknown): { value: unknown; family: ProducedFamily | null } {
+/** A loose cell as it leaves the script: a date as a date ([[D114]] dateIsAKind); a table's cells stay as its columns hold them. */
+function looseCell(c: unknown): { value: unknown; family: CellFamily | null } {
+  const r = coerceCell(c);
+  return r.family === "date" && typeof r.value === "number" ? { value: solDate(r.value), family: "date" } : r;
+}
+
+export function coerceScriptResult(v: unknown): unknown {
   if (isRowObject(v)) return buildRows([v]);
   if (!Array.isArray(v)) {
-    const r = coerceCell(v);
-    return { value: r.value, family: toSocketFamily(r.family) };
+    const r = looseCell(v);
+    return r.value;
   }
-  if (v.length === 0) return { value: [], family: null };
+  if (v.length === 0) return [];
   const objRows = v.filter(isRowObject).length;
   if (objRows === v.length) return buildRows(v as Record<string, unknown>[]);
   if (objRows > 0) {
-    return { value: solError("#SHAPE!", "Returned {name: value} rows mixed with other values; a frame is rows of {name: value} only"), family: null };
+    return solError("#SHAPE!", "Returned {name: value} rows mixed with other values; a frame is rows of {name: value} only");
   }
   const rows = v.filter(Array.isArray).length;
   let vote: Vote = null;
   if (rows === 0) {
     const cells = v.map((c) => {
-      const r = coerceCell(c);
+      const r = looseCell(c);
       vote = combine(vote, r.family);
       return r.value;
     });
     if (vote === "mixed") {
-      return { value: solError("#AMBIGUOUS!", "Returned a list that mixes value types; a list is one type. For a mixed row, return {name: value} rows"), family: null };
+      return solError("#AMBIGUOUS!", "Returned a list that mixes value types; a list is one type. For a mixed row, return {name: value} rows");
     }
-    return { value: cells, family: toSocketFamily(vote) };
+    return cells;
   }
-  if (rows !== v.length) return { value: solError("#SHAPE!", "Returned values mixed with rows; return a list, or a list of rows"), family: null };
+  if (rows !== v.length) return solError("#SHAPE!", "Returned values mixed with rows; return a list, or a list of rows");
   const width = (v as unknown[][]).reduce((w, r) => Math.max(w, r.length), 0);
   const out: unknown[][] = [];
   for (const row of v as unknown[][]) {
-    if (row.some(Array.isArray)) return { value: solError("#SHAPE!", "Returned rows nested deeper than a table; return a list of rows"), family: null };
+    if (row.some(Array.isArray)) return solError("#SHAPE!", "Returned rows nested deeper than a table; return a list of rows");
     const cells = row.map((c) => {
-      const r = coerceCell(c);
+      const r = looseCell(c);
       vote = combine(vote, r.family);
       return r.value;
     });
@@ -236,7 +253,7 @@ export function coerceScriptResult(v: unknown): { value: unknown; family: Produc
     out.push(cells);
   }
   if (vote === "mixed") {
-    return { value: solError("#AMBIGUOUS!", "Returned rows that mix value types; a table is single-typed. For typed columns, return {name: value} rows"), family: null };
+    return solError("#AMBIGUOUS!", "Returned rows that mix value types; a table is single-typed. For typed columns, return {name: value} rows");
   }
-  return { value: out, family: toSocketFamily(vote) };
+  return out;
 }

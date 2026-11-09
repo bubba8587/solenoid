@@ -1,4 +1,4 @@
-// [[C42]]
+// [[C42]] htmlInCanvasRenderer, [[html-in-canvas#Drawing and the camera]]
 import { describe, expect, it } from "vitest";
 import {
   camFromDrawMatrix,

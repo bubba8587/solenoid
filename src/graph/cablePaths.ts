@@ -85,6 +85,9 @@ function entryDir(args: PathArgs): Pt {
   return { x: -out.x, y: -out.y };
 }
 
+/** The shortest a spline's control arm gets, so a cable still leaves its socket visibly along its direction. */
+const ARM_MIN = 40;
+
 function getAngleBezierPath(args: PathArgs): string {
   const dx = args.targetX - args.sourceX;
   const dy = args.targetY - args.sourceY;
@@ -94,11 +97,19 @@ function getAngleBezierPath(args: PathArgs): string {
   }
   const dS = exitDir(args);
   const dT = entryDir(args);
-  const arm = Math.max(40, dist * 0.4);
-  const c1x = args.sourceX + dS.x * arm;
-  const c1y = args.sourceY + dS.y * arm;
-  const c2x = args.targetX - dT.x * arm;
-  const c2y = args.targetY - dT.y * arm;
+  // Both arms share one length: the original max(ARM_MIN, 0.4 × distance), no longer than the farther way the cable
+  // travels along either socket's direction plus ARM_MIN. Equal arms longer than that travel make the cable double
+  // back; the ARM_MIN allowance keeps a visible lead out of each socket at the cost of a small bend-back where the
+  // cards are close sideways. With room sideways nothing changes; an end facing away travels far against its
+  // direction, so its loop keeps its full arms.
+  const travel = Math.max(Math.abs(dx * dS.x + dy * dS.y), Math.abs(dx * dT.x + dy * dT.y));
+  const arm = Math.max(ARM_MIN, Math.min(dist * 0.4, travel + ARM_MIN));
+  const armS = arm;
+  const armT = arm;
+  const c1x = args.sourceX + dS.x * armS;
+  const c1y = args.sourceY + dS.y * armS;
+  const c2x = args.targetX - dT.x * armT;
+  const c2y = args.targetY - dT.y * armT;
   return `M ${args.sourceX},${args.sourceY} C ${c1x},${c1y} ${c2x},${c2y} ${args.targetX},${args.targetY}`;
 }
 

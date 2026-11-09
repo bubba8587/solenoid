@@ -12,7 +12,9 @@ Some gestures exist only as a side effect of event plumbing. Long-press to add, 
 
 ## Device configurations
 
-The flags live in `coarse.ts`. Derive from them; never duplicate the tests.
+Code: `coarse.ts`.
+
+The flags live in `coarse.ts`. Derive from them; never duplicate the tests. A device is never both mobile and tablet, and never neither, because `isTablet()` is derived from `isMobile()` rather than sniffed.
 
 | Flag | Definition | Interaction model |
 |---|---|---|
@@ -21,19 +23,32 @@ The flags live in `coarse.ts`. Derive from them; never duplicate the tests.
 | `isMobile()` | `IS_PHONE` held in portrait, read live (mirrored to `html.is-mobile` by `main.tsx`; `useIsMobile()` in a render) | The mobile model: selection-gated nodes, the bottom action bar. |
 | `isTablet()` | `IS_COARSE` and not `isMobile()` | The desktop interaction model, with touch actions in the top bar; a phone turned sideways runs it ([[layout-chrome#Phones in landscape]]). |
 
+```mermaid
+flowchart TD
+    d["the device"] --> c{"pointer: coarse?<br>(IS_COARSE)"}
+    c -->|no| desk["desktop: mouse and pen"]
+    c -->|yes| ph{"a mobile user agent?<br>(IS_PHONE)"}
+    ph -->|no| tab["isTablet(): the desktop model,<br>touch actions in the top bar"]
+    ph -->|yes| por{"held in portrait?"}
+    por -->|yes| mob["isMobile(): selection-gated nodes,<br>the bottom action bar"]
+    por -->|"no: landscape"| tab
+```
+
 "Request desktop site" flips the user-agent test, and that is the user's way out of the mobile model. Never gate on coarseness alone something that must flip with it.
 
 ## Standing rules
 
 Breaking any of these breaks gestures silently.
 
-- **Pinch listens in capture, pan and drag in bubble.** `pointerGesture.ts` counts contacts from window-capture listeners, so no component's `stopPropagation` can hide a finger. `isPinching()` (two or more fingers; a mouse or pen never counts) is the only definition. Never count raw pointers, and never move pan or drag to capture: they are vetoable on purpose. `pointerGesture.test.ts` pins this.
-- **No palm rejection**, by the author's call: this is a precise editor, and nobody rests a palm on a node graph. A resting stylus is deliberately not half a pinch.
+- **Pinch listens in capture, pan and drag in bubble.** `pointerGesture.ts` counts contacts from window-capture listeners, so no component's `stopPropagation` can hide a finger. `isPinching()` (two or more fingers; a mouse or pen never counts) is the only definition. Never count raw pointers, and never move pan or drag to capture: they are vetoable on purpose ([[pointer-gestures#What counts as a finger: the census]]).
+- **No palm rejection**: this is a precise editor, and nobody rests a palm on a node graph. A resting stylus is deliberately not half a pinch.
 - **A finger never selects on pointerdown.** Selection lands through the tap's click, because a press can still become a pan or a pinch, and a pinch's click, up to 400 ms after its last finger lifts, is swallowed by `flowPinch`'s click guard. A one-finger drag on an unselected card pans (`flowTouchPan.ts`), and so does one on a cable, selected or not: React Flow marks a selectable cable `nopan`, and touch adjustment snaps nearby touches onto a cable's wide hit stroke, so without this a pan near a cable went nowhere. A tap on a cable still selects it.
-- **Mobile selection gating** (`socket.css`, under `html.is-mobile`). An unselected node, Conduit, group or note makes every descendant inert, so pan and pinch win; the card itself stays tappable, and that tap selects it. An expanded group is the one card whose box is not its target: its interior is canvas ([[react-flow-surface-contract#An open group's interior is working canvas]]), so only its header and edge bands take the tap. One exception: every socket is live while a cable is being dragged (`--cabling`). No grip is live on an unselected card (author 2026-10-07): touch adjustment snaps a nearby pan onto any live target inside a card.
+- **Mobile selection gating** (`socket.css`, under `html.is-mobile`). An unselected node, Conduit, group or note makes every descendant inert, so pan and pinch win; the card itself stays tappable, and that tap selects it. An expanded group is the one card whose box is not its target: its interior is canvas ([[react-flow-surface-contract#An open group's interior is working canvas]]), so only its header and edge bands take the tap. One exception: every socket is live while a cable is being dragged (`--cabling`). No grip is live on an unselected card: touch adjustment snaps a nearby pan onto any live target inside a card.
 - **Double-click never zooms.** Both surfaces pass `zoomOnDoubleClick={false}`. A cable double-click is detected from the click's `detail` count in `onClick` (`FlowCableEdge.tsx`), so the check runs before the single-click select toggle. A new "double-tap X" feature is a design smell here; prefer a tap or a long-press.
 - **`stopDragStart`** (`coarse.ts`). Read-only node chrome and single-line fields swallow `pointerdown` on desktop, so a click can't start a node drag, but let it bubble on mobile, so a pan can start over them. It is not for drag-interactive controls or textareas, which keep a hard stop.
 - **A cable drag blurs the focused field first** (`onConnectStart` in `FlowSurface`), so a mid-edit value commits before it is wired.
+
+Tests: `pointerGesture.test.ts`: the census and `isPinching`.
 
 ## The inventory
 
@@ -77,7 +92,11 @@ Other ways to add a node, none of them gestures: the mobile bar's ➕ button, th
 | Click or tap a cable | all | Select the cable; a ribbon selects as one entity. | `flow/FlowCableEdge.tsx` |
 | Double-click a cable | mouse | Select the whole run, through the click's `detail` count, not `onDoubleClick`. | `flow/FlowCableEdge.tsx` |
 
-### Drawn cables: the armed draw tool (`components/DrawnCableCapture.tsx`)
+Tests: `frameHint.test.ts`: the hint layer carries one payload at a time, an example hint or a value peek, and a new one replaces the last. The hints' own contract is [[node-classes]]'s.
+
+### Drawn cables: the armed draw tool
+
+Code: `components/DrawnCableCapture.tsx`.
 
 The tool is modal: while it is armed, a full-window sheet sits over the pane, and these gestures replace the canvas gestures above until it is disarmed. The sheet is a sibling of the pane, so it owns panning itself. Finishing disarms the tool and selects the new cable.
 
@@ -90,7 +109,9 @@ The tool is modal: while it is armed, a full-window sheet sits over the pane, an
 | Right-click | mouse | Finish. No click is raised, so it is handled on pointerdown. | `DrawnCableCapture.tsx` |
 | Undo, Finish and Cancel buttons | coarse | The touch way out, at the thumb end of the strip. Double-tap is not a finish gesture, and there is no Esc. | the hint strip |
 
-### Drawn cables: a finished cable (`components/DrawnCableLayer.tsx`)
+### Drawn cables: a finished cable
+
+Code: `components/DrawnCableLayer.tsx`.
 
 | Gesture | Config | Action | Where |
 |---|---|---|---|
@@ -107,9 +128,12 @@ The tool is modal: while it is armed, a full-window sheet sits over the pane, an
 
 | Gesture | Config | Action | Where |
 |---|---|---|---|
-| Touch action buttons | mobile: bottom bar; tablet: top bar | Palette, undo, redo, select mode, group, delete, and on mobile ➕. Each action has one definition shared by both bars, which differ only in placement and size: undo is a synthetic Ctrl+Z through the canvas key handler and group runs the same `G` shortcut. The palette's glyph is Lucide's terminal (`>_`), since its search covers finding a node too; select mode's glyph is a dashed marquee. | `touchActions.tsx` (drift-pinned by `touchActions.test.ts`) |
+| Touch action buttons | mobile: bottom bar; tablet: top bar | Palette, undo, redo, select mode, group, delete, and on mobile ➕. Each action has one definition shared by both bars, which differ only in placement and size: undo is a synthetic Ctrl+Z through the canvas key handler and group runs the same `G` shortcut. The palette's glyph is Lucide's terminal (`>_`), since its search covers finding a node too; select mode's glyph is a dashed marquee. | `touchActions.tsx` |
+| Swipe the nav pill right | mobile | Slides the pill (Fit, Lock, Fullscreen) off the right edge until only the handle on its left side shows, flat against the edge; a tap on the handle or a swipe left drags the real pill back out with it. The pill follows the finger once it moves 8px sideways, and a release 40px along finishes the move (short of that it springs back); a swipe never presses the button it started on. Kept per viewer (`solenoid.navTucked`). | `NavMenu.tsx`, `edgeTuck.tsx` |
 | Taps in pop-ups and overlays | all | Normal UI; `stopDragStart` guards chrome that sits over the canvas. | per component |
 
-## Enforcement
+**The two touch bars must not drift.** A tablet runs the desktop chrome and has no bottom bar, so it carries the phone's actions in its top bar, with the same handlers, icons and disabled logic. That stays true only while both bars (`MobileControls.tsx`, `TabletActions.tsx`) take every shared handler and glyph from `touchActions.tsx`. The failure is silent: a glyph redrawn or a handler retargeted in one bar still compiles and renders, and the two devices quietly disagree. The bottom bar's ➕ Add button is its one extra, and the one glyph it draws itself.
 
-`pointerGesture.test.ts` (the census and `isPinching`), `touchActions.test.ts` (the mobile and tablet action drift pin), `zoomSettle.test.ts` (the gesture-exit settle) and `frameHint.test.ts` (the hint contract). The inventory itself is not machine-checked: it is a map, kept true by updating it in the same change as the gesture.
+Tests: `touchActions.test.ts`: both bars import every shared action and glyph from `touchActions.tsx`, neither re-declares a shared handler, the bottom bar draws only the Add button's glyph and the top bar none, and a tablet is derived as coarse but not mobile.
+
+The inventory itself is not machine-checked: it is a map, kept true by updating it in the same change as the gesture.

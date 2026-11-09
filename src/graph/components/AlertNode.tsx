@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
-import type { AlertNode as AlertNodeType, AlertMode } from "../rete-nodes";
-import { ALERT_MODE_KEYS, isAlertMet } from "../rete-nodes";
+import type { AlertNode as AlertNodeType, AlertMode } from "../nodeClasses";
+import { ALERT_MODE_KEYS, isAlertMet } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";

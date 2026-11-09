@@ -4,11 +4,7 @@ import { frameShapeOf } from "../../src/graph/nodes/frameShapeHook";
 import { passthroughForOutput } from "../../src/graph/nodes/passthrough";
 import { ConduitNode } from "../../src/graph/nodes/conduit";
 
-// [[C10]] socketLattice. Frame SHAPE is declared once: a frame producer states its own output columns
-// (`frameShape()`), forwards them (`passthrough()`), or is named below as genuinely
-// data-dependent. Without this sweep a new frame node ships silently unknown — every
-// downstream column picker, INDEX projection and conduit trace goes `trueany`, and
-// nothing errors.
+// [[C10]] socketLattice, [[type-propagation-on-in-place-socket-retype#Frame shape is declared per producer]]
 
 /** Producers whose column set cannot be known without running the graph. */
 const DATA_DEPENDENT_FRAME_PRODUCERS: Record<string, string> = {

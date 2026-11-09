@@ -91,6 +91,18 @@
   /* Absorb the boxes' -1px overlap bleed past the last row/column. */
   padding: 0 1px 1px 0;
 }
+/* A record with no layout written: its boxes wrap into as many 150px-plus columns as fit. */
+.sol-record--flow {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--record-tile, 150px)), 1fr));
+}
+/* clamp=on caps a long value at three lines on every view, a card's notes included. */
+.sol-record-fig--clamp :is(.sol-record__value, .sol-card__prose p) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
 .sol-record__box {
   display: flex;
   flex-direction: column;
@@ -126,13 +138,6 @@
   font-size: calc(14px * var(--chart-fscale, 1));
   font-weight: 600;
 }
-.sol-record-gallery--clamp .sol-record__value {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
-}
 .sol-record__img {
   flex: 1;
   width: 100%;
@@ -149,13 +154,15 @@
   left: 0;
   min-width: 0;
 }
+/* Lanes keep a readable width and the board scrolls sideways past what fits. */
 .sol-record-board {
   display: flex;
   gap: 8px;
   align-items: flex-start;
+  overflow-x: auto;
 }
 .sol-record-lane {
-  flex: 1;
+  flex: 1 0 var(--record-lane, 180px);
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -168,10 +175,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Records wrap into columns at least the tile size wide, one column on a narrow host. */
 .sol-record-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--record-list, 220px)), 1fr));
+  gap: 8px 16px;
+  align-items: start;
 }
 .sol-record-list__item {
   min-width: 0;
@@ -227,17 +236,18 @@
   height: 100%;
 }
 .sol-record-card__grid {
-  /* Takes the height the pager leaves; inert on an auto-height host. */
+  /* Takes the height the pager leaves, and scrolls when the fields need more; inert on an auto-height host. */
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 .sol-record-card > .sol-record-figtitle,
 .sol-record-card > .sol-record-nav { flex: none; }
 /* On an auto-height host the 100% resolves to auto and the 1fr rows fall back to content. */
+/* A row stretches to share spare height but never shrinks below its field, so many fields scroll instead of squashing. */
 .sol-record-card__grid > .sol-record {
-  height: 100%;
-  grid-auto-rows: minmax(0, 1fr);
+  min-height: 100%;
+  grid-auto-rows: minmax(min-content, 1fr);
 }
 
 .sol-record-nav {
@@ -268,6 +278,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Detail's filter matched no record (the Form view's empty line). */
+.sol-record__empty {
+  padding: 12px 2px;
+  font-size: calc(12px * var(--chart-fscale, 1));
+  color: var(--text-dim);
+}
 .sol-record__more {
   margin-top: 4px;
   font-size: calc(10px * var(--chart-fscale, 1));

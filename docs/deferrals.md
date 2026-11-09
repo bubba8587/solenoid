@@ -69,8 +69,8 @@ the decision tree (`dte.md`).
   the one real change.
 - **Image as a real FrameColType** (author proposal with the Record node, 2026-08-18;
   evaluated and deferred). A first-class `image` column touches every layer that switches on
-  `FrameColType` — both FrameBackends and the cargo parity corpus, CSV read/write, coercion,
-  socket coloring, the popup editor — for a payload Polars cannot compute on. What the
+  `FrameColType` — the core's verbs and the verb corpus, CSV read/write, coercion,
+  socket coloring, the popup editor — for a payload no verb can compute on. What the
   proposal was FOR (a picture rendering inside a Record box) shipped without it:
   `recordImageSrc` detects `data:image/` and image-extension URLs in plain STRING cells at
   the display layer. Reopen only if images need to behave differently from strings inside
@@ -145,11 +145,10 @@ the decision tree (`dte.md`).
 ## Parked features (revisit only if the trigger returns)
 
 - **Known leads parked by the author (2026-10-05):**
-  - *Desktop window close:* verify on the next desktop build that the window still closes (Windows: overlay title bar
-    and Alt+F4; Linux: the app's own controls) now that a close listener flushes drafts (`core:window:allow-destroy`),
-    and that drafts survive it. The author is on mobile.
-  - *Sketch sample aliasing:* the stride sample `floor(i × total / n)` (frame-verbs.md § Sketch mode, `engine.rs`
-    verb_sample) aliases on periodic data; a fixed-seed well-mixed sample in both samplers would fix it. *Sketch Run*
+  - *Desktop window close:* Linux verified 2026-11-06 (develop `2d1eeaa83`): the app's own close button closes the window
+    and a draft typed but not committed survives the relaunch. Windows (overlay title bar, Alt+F4) still unverified.
+  - *Sketch sample aliasing:* the stride sample `floor(i × total / n)` (frame-verbs.md § Sketch mode, the core's
+    `sample_frame`) aliases on periodic data; a fixed-seed well-mixed sample would fix it. *Sketch Run*
     (`withExactPass`) leaves the canvas on exact values until the next edit, and the table popup's Copy/Export CSV
     export the sampled table it shows.
   - *Pack follow-ups:* inputs in units with no unit id (coulomb, farad, henry, tesla, weber, mAh, years, bpm) stay
@@ -193,10 +192,14 @@ the decision tree (`dte.md`).
 - **UI-scale toggle (Default / Larger)** — subsumes all per-panel resize asks; don't build
   per-panel resize. **Moveable / resizable / hideable toolbar chrome** is the same
   customization slice (`archive/1.4-plan.md` F3 HOLD; `tree/specs/canvas/layout-chrome.md` shows the cost).
-- **Cable collision avoidance** — spec: `archive/cable-routing.md` §2. Superseded by the
-  obstacle-router shape if the author accepts its license (`archive/1.4-plan.md` F1); delete this
-  entry when F1 lands.
-- **Grid system** — spec: `grid-system.md`.
+- **Cable collision avoidance** — two toggles on top of the chosen cable shape: **avoid nodes**
+  (cables route around card boxes instead of cutting through; ELK or a smart-edge router) and
+  **avoid cables** (cables sharing a direction run parallel and split late; an unavoidable crossing
+  draws a small bridge hop, the schematic convention). Straight + avoid nodes reads as a circuit
+  board, spline + avoid cables as data flowing side by side. Follow-up: per-cable shape and
+  avoidance overrides (shape is graph-wide today). Superseded by the obstacle-router shape if the
+  author accepts its license (`archive/1.4-plan.md` F1); delete this entry when F1 lands.
+- **Grid system** — spec: `archive/grid-system.md`.
 - **Floor-plan bridge (author 2026-09-03, "chew on it"; ruled: don't build a plan editor, in
   Solenoid or standalone).** The editing experience is the hard part and it is solved and
   free: openPlan3D (github.com/laanlabs/openPlan3D — MIT, three.js, client-side, walls with

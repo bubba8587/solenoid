@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream. Mechanics: tree/specs/values/unit-flow.md.
+// [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue. Mechanics: tree/specs/values/unit-flow.md.
 
 import { isCx, formatCxDisplay, type Cx } from "../cxValue";
 import { getOwningEditor } from "../activeGraph";
@@ -7,12 +7,14 @@ import { SolenoidSocket, isDateType, elementFamilyOf, type SocketDataType } from
 import type { ElemFamily } from "./ArrayChip";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/dateSerial";
 import { isSolError, type SolError } from "../errorValue";
+import { isSolDate, type SolDate } from "../dateValue";
 import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
-import { fcUnitToUnit } from "../unitBridge";
+import { fcUnitToUnit } from "../dimension";
+import { cellUnitAnnotation } from "../unitColumn";
 import { dimEqual } from "../dimension";
 import { formatScalar, displaySettingsKey } from "./format";
 import { frameFormatStore, MATRIX_FORMAT_KEY } from "../frameFormatStore";
-import { formatAnnotationStore, formatNumberWithAnnotation, formatCxWithAnnotation, applyTextCase, applyLogicalStyle, type FormatAnnotation } from "../formatAnnotationStore";
+import { formatAnnotationStore, formatNumberWithAnnotation, isDateStyle, formatCxWithAnnotation, applyTextCase, applyLogicalStyle, type FormatAnnotation, type FormatStyle } from "../formatAnnotationStore";
 
 export function resolveDisplayAnnotation(nodeId: string | null, socketKey?: string): FormatAnnotation | undefined {
   if (!nodeId) return undefined;
@@ -39,13 +41,14 @@ export function resolveMatrixAnnotation(nodeId: string | null): FormatAnnotation
   return (nodeId ? frameFormatStore.get(nodeId, MATRIX_FORMAT_KEY) : undefined) ?? resolveDisplayAnnotation(nodeId);
 }
 
-export type RowCell = number | boolean | string | Cx | SolError | null;
-export function formatRowCell(v: RowCell, ann?: FormatAnnotation): string {
+type RowCell = number | boolean | string | Cx | SolDate | SolError | null;
+function formatRowCell(v: RowCell, ann?: FormatAnnotation): string {
   if (v === null) return "—";
   if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
   if (typeof v === "string") return ann ? applyTextCase(v, ann.textCase) : v;
   if (isCx(v)) return ann ? formatCxWithAnnotation(v, ann) : formatCxDisplay(v);
   if (isSolError(v)) return v.code;
+  if (isSolDate(v)) return ann && isDateStyle(ann.format) ? formatNumberWithAnnotation(v.__date, ann) : fmtSerial(v.__date);
   return ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v);
 }
 
@@ -75,11 +78,12 @@ export type DisplayValue =
   | null;
 
 export function formatListCell(
-  v: number | string | boolean | null | SolError | UnitCell | Cx,
+  v: number | string | boolean | null | SolError | UnitCell | Cx | SolDate,
   fmtNum: (n: number) => string,
   ann?: FormatAnnotation,
 ): string {
   if (v === null) return "null";
+  if (isSolDate(v)) return ann && isDateStyle(ann.format) ? formatNumberWithAnnotation(v.__date, ann) : fmtSerial(v.__date);
   if (isUnitCell(v)) {
     const a = annotationForValue(v, ann);
     return a ? formatNumberWithAnnotation(displayMagnitude(v, a), a) : formatCellWithDisplay(v, fmtNum);
@@ -95,12 +99,19 @@ function annotationCarriesNoUnit(ann: FormatAnnotation): boolean {
   return ann.unit === "none" || (ann.unit === "custom" && !ann.customUnit);
 }
 
+/** A card's own style pick (Convert's format dropdowns) for a value that carries a unit; a plain number keeps the card's `render`. */
+export function cardStyleAnnotation(value: unknown, style: FormatStyle | undefined): FormatAnnotation | undefined {
+  if (!style || style === "auto") return undefined;
+  const united = isUnitCell(value) || (Array.isArray(value) && value.some((c) => isUnitCell(c)));
+  return united ? annotationForValue(value, { format: style, unit: "none" }) : undefined;
+}
+
 export function annotationForValue(value: unknown, ann: FormatAnnotation | undefined): FormatAnnotation | undefined {
   if (!ann || !annotationCarriesNoUnit(ann)) return ann;
   const cell = isUnitCell(value)
     ? value
     : Array.isArray(value) ? (value as unknown[]).find((c) => isUnitCell(c)) : undefined;
-  return cell?.display ? { ...ann, unit: cell.display, customUnit: "" } : ann;
+  return cell?.display ? { ...ann, ...cellUnitAnnotation(cell.display) } : ann;
 }
 
 
@@ -120,7 +131,7 @@ function formatCellWithDisplay(cell: UnitCell, fmtNum: (n: number) => string): s
     const u = fcUnitToUnit(cell.display);
     if (u && dimEqual(u.dim, cell.dim)) {
       const mag = (cell.value - (u.offset ?? 0)) / u.scale;
-      const ann = { format: "auto", unit: cell.display } as FormatAnnotation;
+      const ann = { format: "auto", ...cellUnitAnnotation(cell.display) } as FormatAnnotation;
       return formatNumberWithAnnotation(mag, ann);
     }
   }
@@ -166,10 +177,6 @@ function displayedType(nodeId: string, outKey?: string): SocketDataType | undefi
   const out = outKey ? node.outputs?.[outKey] : (node.outputs?.result ?? Object.values(node.outputs ?? {})[0]);
   const sock = out?.socket;
   return sock instanceof SolenoidSocket ? sock.dataType : undefined;
-}
-
-export function nodeOutputIsDate(nodeId: string | null): boolean {
-  return nodeOutputElemFamily(nodeId) === "date";
 }
 
 /** `undefined` (a wildcard or no family) is the only case where a caller may scan cells. */

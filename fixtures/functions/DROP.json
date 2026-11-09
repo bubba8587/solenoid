@@ -1,0 +1,13 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"DROP(r_A2_A8,2)","env":["r_A2_A8=table:text:[[\"Monday\"], [\"Tuesday\"], [\"Wednesday\"], [\"Thursday\"], [\"Friday\"], [\"Saturday\"], [\"Sunday\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DROP(r_A2_A8,-7)","env":["r_A2_A8=table:text:[[\"Monday\"], [\"Tuesday\"], [\"Wednesday\"], [\"Thursday\"], [\"Friday\"], [\"Saturday\"], [\"Sunday\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DROP(r_A2_A8,3.4)","env":["r_A2_A8=table:text:[[\"Monday\"], [\"Tuesday\"], [\"Wednesday\"], [\"Thursday\"], [\"Friday\"], [\"Saturday\"], [\"Sunday\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DROP(r_A2_A8,1200)","env":["r_A2_A8=table:text:[[\"Monday\"], [\"Tuesday\"], [\"Wednesday\"], [\"Thursday\"], [\"Friday\"], [\"Saturday\"], [\"Sunday\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DROP(r_A2_A8,7)","env":["r_A2_A8=table:text:[[\"Monday\"], [\"Tuesday\"], [\"Wednesday\"], [\"Thursday\"], [\"Friday\"], [\"Saturday\"], [\"Sunday\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DROP(r_A2_A8,6.2)","env":["r_A2_A8=table:text:[[\"Monday\"], [\"Tuesday\"], [\"Wednesday\"], [\"Thursday\"], [\"Friday\"], [\"Saturday\"], [\"Sunday\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DROP(r_A2_A8,1,1)","env":["r_A2_A8=table:text:[[\"Monday\"], [\"Tuesday\"], [\"Wednesday\"], [\"Thursday\"], [\"Friday\"], [\"Saturday\"], [\"Sunday\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DROP(r_A2_A8,-2)","env":["r_A2_A8=table:text:[[\"Monday\"], [\"Tuesday\"], [\"Wednesday\"], [\"Thursday\"], [\"Friday\"], [\"Saturday\"], [\"Sunday\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DROP(r_A13_I16, 3,6)","env":["r_A13_I16=table:text:[[\"January\", \"February\", \"March\", \"April\", \"May\", \"June\", \"July\", \"August\", \"September\"], [\"January\", \"February\", \"March\", \"April\", \"May\", \"June\", \"July\", \"August\", \"September\"], [\"January\", \"February\", \"March\", \"April\", \"May\", \"June\", \"July\", \"August\", \"September\"], [\"January\", \"February\", \"March\", \"April\", \"May\", \"June\", \"July\", \"August\", \"September\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

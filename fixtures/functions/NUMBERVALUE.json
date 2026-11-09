@@ -1,0 +1,31 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"NUMBERVALUE(\"2.500,27\", \",\", \".\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"3.5%\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"1.234,5\", \",\", \".\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"0x1F\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(c_A1)","env":["c_A1=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\" 3 000 \")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"3\"&CHAR(9)&\"000\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"3\"&CHAR(10)&\"000\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"3\"&CHAR(160)&\"000\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"1.234,5\",\",;\",\".;\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"1.000,5\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"1,000.5\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"1,0,0.5\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"1.5.5\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"1 000\",\".\",\"\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"1,5\",\",\",\",\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"1,5\",\"\",\"\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"9%%\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"9 %\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"%\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\" \")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\".5\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"5.\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"-1,000.5\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"1e3\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NUMBERVALUE(\"inf\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

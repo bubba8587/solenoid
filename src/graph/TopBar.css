@@ -35,22 +35,20 @@
   justify-content: center;
   flex: 0 0 auto;
   align-self: center;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 1px solid var(--btn-border);
   border-radius: 50%;
   appearance: none;
   -webkit-appearance: none;
   background: var(--btn-bg);
+  color: var(--text);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 .solenoid-topbar__icon:active { background: var(--btn-hover); }
 .solenoid-topbar__nav { display: none; }
-.solenoid-topbar__icon {
-  color: var(--text);
-}
 
 .solenoid-topbar__divider {
   align-self: stretch;
@@ -66,13 +64,6 @@
   display: flex;
   align-items: center;
   overflow: hidden;
-}
-
-.solenoid-topbar__art-svg {
-  display: block;
-  height: 100%;
-  width: 100%;
-  object-fit: contain;
 }
 
 .solenoid-topbar__group {
@@ -125,42 +116,15 @@
   padding: 0 8px 0 10px;
   gap: 3px;
 }
-.solenoid-tidy-options__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-.solenoid-tidy-options__action {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 8px;
-  background: none;
-  border: none;
-  border-radius: 5px;
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-}
-.solenoid-tidy-options__action:hover,
-.solenoid-tidy-options__action:active {
-  background: var(--accent-soft);
-}
-.solenoid-tidy-options__action-icon {
-  display: flex;
-  color: var(--text-dim);
-}
-.solenoid-tidy-options__action-hint {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.solenoid-tidy-options__row {
+/* Its menu starts flush under the bar's accent edge, as the ⋮ sheet does; the look is phonePanel.css. */
+.solenoid-tidy-menu {
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 0;
+  z-index: 20;
+  width: max-content;
+  padding: 0 6px 6px;
+}.solenoid-tidy-options__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -210,4 +174,11 @@ html.is-tablet .solenoid-topbar__group--tablet .solenoid-nav__btn::after {
   position: absolute;
   /* 28px button + 8px top and bottom = a 44px tap target, the platform minimum. */
   inset: -8px -2px;
+}
+
+/* Every icon in the bar at the chrome's line weight for its size, on desktop and the phone alike. The cable shape picker
+   is cable art, not an icon, so it keeps its own. */
+.solenoid-topbar svg:not(.solenoid-toolbar svg) :is(path, rect, circle, ellipse, line, polyline, polygon) {
+  vector-effect: non-scaling-stroke;
+  stroke-width: calc(var(--icon-size) * var(--icon-stroke-per-px));
 }

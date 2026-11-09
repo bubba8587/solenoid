@@ -1,21 +1,9 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[cable-rendering-knobs#Diagonal and straight: the walk router]], [[cable-rendering-knobs#Spline]],
+// [[react-flow-surface-contract#Cables]]
 import { describe, expect, it } from "vitest";
+import { fuzzRuns, fuzzSeed } from "./fuzzDepth";
 import { getCablePath, draggedCableArgs, Position } from "../../src/graph/cablePaths";
 
-// Property tests for the cable routers. The contract, checked over thousands
-// of random configurations per mode:
-//
-// diagonal (8 headings): every segment on a 45° multiple, every turn ≤45°.
-// straight (4 headings): every segment on a 90° multiple, turns are 90° —
-//   plus a "limited 45": at an off-grid stub junction (rotated connector arm)
-//   a turn ≤45° is allowed; nothing between 45° and 90° may appear.
-// both: the first/last segment leaves/enters along the socket's exact
-//   direction; the path starts and ends exactly on the sockets; the path is a
-//   continuous function of the endpoints (no flicker) away from the two
-//   documented discontinuities (near-touching collapse, head-on mirror line).
-// spline: a tangent-exact cubic — it must NOT collapse to a point-to-point
-//   line just because the sockets are axis-aligned; only true proximity
-//   collapses.
 
 type Pt = { x: number; y: number };
 type Mode = "diagonal" | "straight";
@@ -113,9 +101,7 @@ function checkInvariants(mode: Mode, c: Cfg) {
     expect(offGrid(a, grid), `heading seg ${i} ${label}`).toBeLessThan(TOL);
   }
 
-  // turns: diagonal — every turn ≤45 (off-grid stub junctions snap ≤22.5,
-  // which is under that). straight — turns are 90, with a limited ≤45 allowed
-  // (stub junctions of rotated arms); nothing in between may appear.
+  // turns: diagonal ≤45; straight 90, or ≤45 at an off-grid stub junction.
   for (let i = 1; i < pts.length - 1; i++) {
     const t = turnDeg(pts[i - 1], pts[i], pts[i + 1]);
     if (mode === "diagonal") {
@@ -192,10 +178,8 @@ function pathGap(a: Pt[], b: Pt[]): number {
   return worst;
 }
 
-// Sweeps chosen to cross walk-family boundaries: shallow→steep, in front →
-// behind, around a rotated source arm. Sweep lines stop short of exact
-// collinear head-on configs — the over/under loop choice on that line is the
-// one genuinely ambiguous (and documented) flip.
+// Sweeps crossing walk-family boundaries (shallow→steep, in front → behind, around a rotated source arm), stopping short
+// of the collinear head-on line.
 const SWEEPS: { sa: number | null; ta: number | null; from: Pt; to: Pt }[] = [
   { sa: null, ta: null, from: { x: 300, y: -250 }, to: { x: 300, y: 250 } },
   { sa: null, ta: null, from: { x: 300, y: 40 }, to: { x: -300, y: 40 } },
@@ -226,14 +210,10 @@ function checkContinuity(mode: Mode) {
         sa: sw.sa, ta: sw.ta,
       };
       const pts = route(mode, cfg);
-      // The straight-line collapse for near-touching sockets is the one
-      // documented discontinuity — don't measure across its boundary.
+      // Not measured across the near-touching collapse.
       const nearCollapse = Math.hypot(cfg.tx, cfg.ty) < STRAIGHT_THRESHOLD + 2;
       if (prev && !nearCollapse && pathGap(prev, pts) >= 10) {
-        // A large jump is sanctioned only as an equal-length topology swap:
-        // the router switches between two routes exactly where they cost the
-        // same (e.g. mirror loops around a behind-target). Anything else —
-        // the route length changing abruptly — is a routing bug.
+        // A large jump is allowed only as an equal-length route swap.
         const la = polyLen(prev), lb = polyLen(pts);
         expect(Math.abs(la - lb), `${mode} sweep ${JSON.stringify(sw)} step ${i} jumped between unequal routes (${la.toFixed(1)} vs ${lb.toFixed(1)})`)
           .toBeLessThan(Math.max(3, 0.02 * Math.max(la, lb)));
@@ -246,8 +226,8 @@ function checkContinuity(mode: Mode) {
 for (const mode of ["diagonal", "straight"] as Mode[]) {
   describe(`${mode} walk router`, () => {
     it("holds the turn/heading invariants over random configurations", () => {
-      const rnd = makeRng(0xC0FFEE);
-      for (let i = 0; i < 5000; i++) checkInvariants(mode, randomCfg(rnd));
+      const rnd = makeRng(fuzzSeed(0xC0FFEE, `${mode} walk router`));
+      for (let i = 0; i < fuzzRuns(1500); i++) checkInvariants(mode, randomCfg(rnd));
     });
 
     it("holds the invariants at close / aligned / behind edge cases", () => {
@@ -287,8 +267,7 @@ describe("spline", () => {
   }
 
   it("does not collapse for merely axis-aligned sockets (Conduit-below case)", () => {
-    // 0° conduit with a rotated conduit directly below: dx = 0 but the cable
-    // must still exit east as a curve, not become a point-to-point line.
+    // A 0° Conduit with a rotated Conduit directly below: dx = 0.
     const cu = parseCubic(spline({ sx: 0, sy: 0, tx: 0, ty: 250, sa: 0, ta: 270 }));
     expect(offGrid(cu!.exitDeg - 0, 360)).toBeLessThan(TOL);
     expect(offGrid(cu!.entryDeg - 270, 360)).toBeLessThan(TOL);
@@ -310,6 +289,62 @@ describe("spline", () => {
       expect(dist(cu!.start, { x: c.sx, y: c.sy })).toBeLessThan(0.01);
       expect(dist(cu!.end, { x: c.tx, y: c.ty })).toBeLessThan(0.01);
     }
+  });
+
+  it("bends back little or not at all with room sideways, and keeps a lead out of each socket", () => {
+    // The curve's sideways position, sampled: how far it doubles back, and how far it runs out before turning 20°.
+    const shape = (tx: number, ty: number) => {
+      const m = /C\s*([-\d.eE]+),([-\d.eE]+)\s+([-\d.eE]+),([-\d.eE]+)/.exec(spline({ sx: 0, sy: 0, tx, ty, sa: null, ta: null }))!;
+      const [a, b, c, d] = m.slice(1).map(parseFloat);
+      const at = (t: number) => { const u = 1 - t; return [3 * u * u * t * a + 3 * u * t * t * c + t ** 3 * tx, 3 * u * u * t * b + 3 * u * t * t * d + t ** 3 * ty]; };
+      let back = 0, hi = -Infinity, lead = 0, turned = false, prev = [0, 0];
+      for (let k = 1; k <= 2000; k++) {
+        const p = at(k / 2000);
+        hi = Math.max(hi, p[0]); back = Math.max(back, hi - p[0]);
+        if (!turned && Math.abs(Math.atan2(p[1] - prev[1], p[0] - prev[0])) > (20 * Math.PI) / 180) turned = true;
+        if (!turned) lead += Math.hypot(p[0] - prev[0], p[1] - prev[1]);
+        prev = p;
+      }
+      return { back, lead };
+    };
+    // Room sideways: no bend-back, and a lead of 30px or more.
+    for (const [tx, ty] of [[220, 150], [220, 400], [220, 600]]) {
+      const s = shape(tx, ty);
+      expect(s.back, `${tx},${ty}`).toBeLessThan(10);
+      expect(s.lead, `${tx},${ty}`).toBeGreaterThan(30);
+    }
+    // Close sideways: a small bend-back, far less than the uncapped arms' 50 to 70px.
+    for (const [tx, ty] of [[120, 600], [60, 500], [30, 400]]) expect(shape(tx, ty).back, `${tx},${ty}`).toBeLessThan(25);
+  });
+
+  it("holds across every pair of Conduit angles and a grid of positions: finite, tangent-exact, continuous, no longer arms than before", () => {
+    const angles = [0, 45, 90, 135, 180, 225, 270, 315];
+    const spots: Array<[number, number]> = [];
+    for (const tx of [-400, -150, -40, 0, 40, 150, 400]) for (const ty of [-600, -200, -30, 0, 30, 200, 600]) spots.push([tx, ty]);
+    const controls = (c: Cfg) => {
+      const m = /C\s*([-\d.eE]+),([-\d.eE]+)\s+([-\d.eE]+),([-\d.eE]+)/.exec(spline(c));
+      return m ? m.slice(1).map(parseFloat) : null;
+    };
+    const bad: string[] = [];
+    for (const sa of angles) for (const ta of angles) for (const [tx, ty] of spots) {
+      const c: Cfg = { sx: 0, sy: 0, tx, ty, sa, ta };
+      if (Math.hypot(tx, ty) < 15) continue;
+      const cu = parseCubic(spline(c));
+      const k = controls(c);
+      if (!cu || !k || k.some((v) => !Number.isFinite(v))) { bad.push(`no curve ${JSON.stringify(c)}`); continue; }
+      if (offGrid(cu.exitDeg - sa, 360) > TOL || offGrid(cu.entryDeg - ta, 360) > TOL) bad.push(`tangent ${JSON.stringify(c)}`);
+      // Arms never outgrow the old rule, max(40, 0.4 × distance).
+      const old = Math.max(40, Math.hypot(tx, ty) * 0.4);
+      const a1 = Math.hypot(k[0], k[1]), a2 = Math.hypot(k[2] - tx, k[3] - ty);
+      if (a1 > old + 1e-6 || a2 > old + 1e-6) bad.push(`longer arm ${JSON.stringify(c)}`);
+      // A half-pixel drag moves the control points by little: no jump anywhere on the grid.
+      for (const [ddx, ddy] of [[0.5, 0], [0, 0.5], [-0.5, 0], [0, -0.5]]) {
+        const k2 = controls({ ...c, tx: tx + ddx, ty: ty + ddy })!;
+        const jump = Math.max(...k.map((v, i) => Math.abs(v - k2[i])));
+        if (jump > 2) bad.push(`jump ${jump.toFixed(2)} ${JSON.stringify(c)} by ${ddx},${ddy}`);
+      }
+    }
+    expect(bad.slice(0, 10)).toEqual([]);
   });
 
   it("collapses to a straight line only when sockets nearly touch", () => {

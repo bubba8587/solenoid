@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[D41]] formatFlowsDownstream
+// [[C17]] shareImpl, [[C118]] formatTravelsWithValue, [[format-model#Rendering order]], [[format-model#Complex]], [[format-model#The annotation store]]
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyTextCase,
@@ -336,11 +336,7 @@ describe("formatMismatchStore", () => {
   });
 });
 
-// ─── Complex: the FC finally reaches a complex value ─────────────────────────
-// The popup half (reduced style list, precision, unit rows) gated correctly long
-// before any of it reached a render: the complex cards pre-formatted to a fixed
-// string in their own components, so the annotation had nothing to act on. These
-// pin the three ways a complex differs from a number.
+// ─── Complex ─────────────────────────────────────────────────────────────────
 describe("formatCxWithAnnotation", () => {
   const fcx = (re: number, im: number, o: Partial<FormatAnnotation> = {}) =>
     formatCxWithAnnotation(cx(re, im), ann(o));
@@ -366,8 +362,7 @@ describe("formatCxWithAnnotation", () => {
   });
 
   it("a style outside the complex list falls back to auto, never nonsense", () => {
-    // percent/fraction/integer are not offered on a complex socket, but an
-    // annotation can still carry one from before the socket was retyped.
+
     for (const format of ["percent", "fraction", "integer", "custom"] as const) {
       expect(fcx(3, 2, { format })).toBe("3 + 2i");
     }

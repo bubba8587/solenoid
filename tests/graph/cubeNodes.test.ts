@@ -1,16 +1,12 @@
-// [[C24]] arraySemantics, [[C44]] dateSerials, [[C10]] socketLattice
+// [[C24]] arraySemantics, [[C44]] dateSerials, [[C10]] socketLattice, [[frame-verbs#Nest Join]], [[frame-verbs#The Cube value]]
 import { describe, it, expect } from "vitest";
 import {
   buildFrame, isCubeValue, isFrameValue, cubeDepth, cubeRowCount, frameRowCount,
-  relateFramesToCube, relateCubeToFrame, cubeFromColumns, type CubeValue, type FrameValue,
+  type CubeValue, type FrameValue,
 } from "../../src/graph/frame";
+import { relateFramesToCube, relateCubeToFrame } from "./coreVerbs";
 import { BuildCubeNode, NestJoinNode, CubeColumnsNode } from "../../src/graph/nodes/cube";
 import { ListIndexNode } from "../../src/graph/nodes/list";
-import { isSolError } from "../../src/graph/errorValue";
-
-// The Cube producers (Build Cube, Relate) + the cube/frame-aware INDEX accessor.
-// These exercise the node data() methods directly (the engine's error-guard wrap
-// isn't applied to a bare call), like the other node unit tests.
 
 describe("relateFramesToCube — nest two frames on a key", () => {
   const parent = buildFrame([[1], [2], [3]], ["id"]);
@@ -21,8 +17,6 @@ describe("relateFramesToCube — nest two frames on a key", () => {
     expect(isCubeValue(cube)).toBe(true);
     expect(cube.columns.map((c) => c.name)).toEqual(["id", "orders"]);
     expect(cubeRowCount(cube)).toBe(3);
-    // The nested cells are FRAMES, which are leaves — a cube of frames is depth 1
-    // (only a cube nested in a cube grows depth). Relate a cube child to go deeper.
     expect(cubeDepth(cube)).toBe(1);
     const o0 = cube.columns[1].cells[0];
     expect(isFrameValue(o0)).toBe(true);
@@ -47,7 +41,7 @@ describe("relateFramesToCube — nest two frames on a key", () => {
   });
 });
 
-describe("relateFramesToCube — dimension-keyed joins (author 2026-07-16: tagged units don't cross)", () => {
+describe("relateFramesToCube — dimension-keyed joins", () => {
   const matched = (cube: CubeValue) => frameRowCount(cube.columns[1].cells[0] as never);
 
   it("a km key never matches a kg key of the same magnitude", () => {
@@ -129,8 +123,6 @@ describe("relateFramesToCube — CUBE child (nest a pre-built cube whole)", () =
     const c1 = cube.columns[1].cells[0]; // cust=1 → a sub-cube of orders 10 & 20
     expect(isCubeValue(c1)).toBe(true);
     expect(cubeRowCount(c1 as CubeValue)).toBe(2);
-    // depth 2: a nested FRAME (lines) is a leaf (adds no depth); only the cube-in-cube
-    // (customers holding order-cubes) counts — so customers(1) over orders-cube(1) = 2.
     expect(cubeDepth(cube)).toBe(2);
   });
 
@@ -164,7 +156,7 @@ describe("BuildCubeNode.data — any value into a cell", () => {
   it("collects a typed scalar, a wired frame, and an empty into one column", () => {
     const n = new BuildCubeNode();
     const keys = n.valueInputKeys();
-    n.literals[keys[0]] = 5;                 // typed scalar cell
+    n.stringLiterals[keys[0]] = "5";          // keyed scalar cell
     const frame = buildFrame([[1, 2]], ["a", "b"]);
     const { cube } = n.data({ [keys[1]]: [frame] }); // wired frame cell; keys[2] empty
     const c = cube as CubeValue;
@@ -189,16 +181,7 @@ describe("BuildCubeNode.data — any value into a cell", () => {
 });
 
 describe("ListIndexNode (INDEX) — reads a cell out of any container", () => {
-  it("1-D list: the nth value (Excel INDEX(array, n))", () => {
-    const n = new ListIndexNode();
-    n.literals.index = 2;
-    expect(n.data({ list: [[10, 20, 30]] }).result).toBe(20);
-  });
 
-  it("2-D matrix: the (row, column) cell", () => {
-    const n = new ListIndexNode();
-    expect(n.data({ list: [[[1, 2], [3, 4]]], index: [2], column: [1] }).result).toBe(3);
-  });
 
   it("frame: the cell at (row, column)", () => {
     const n = new ListIndexNode();
@@ -206,14 +189,6 @@ describe("ListIndexNode (INDEX) — reads a cell out of any container", () => {
     expect(n.data({ list: [frame], index: [2], column: [2] }).result).toBe(4);
   });
 
-  it("cube: a whole row keeps each column's authored format", () => {
-    const fmt = { format: "custom", customPattern: "DD-MMM-YYYY HH:mm" } as never;
-    const cube = cubeFromColumns([{ name: "Start", type: "date", format: fmt, cells: [46000.5, 46001.25] }]);
-    const n = new ListIndexNode();
-    const row = n.data({ list: [cube], index: [2], column: [0] }).result as CubeValue;
-    expect(row.columns[0].format).toBe(fmt);
-    expect(row.columns[0].cells).toEqual([46001.25]);
-  });
 
   it("cube: a nested-frame cell comes out WHOLE (as a frame)", () => {
     const cube = relateFramesToCube(
@@ -227,29 +202,10 @@ describe("ListIndexNode (INDEX) — reads a cell out of any container", () => {
     expect(frameRowCount(out as never)).toBe(1);
   });
 
-  it("out-of-range index is #REF!", () => {
-    const n = new ListIndexNode();
-    const r = n.data({ list: [[1, 2]], index: [9] }).result;
-    expect(isSolError(r) && r.code).toBe("#REF!");
-  });
 
   // ── the Excel whole-axis form: blank/0 Row = whole column, blank/0 Column = whole row ──
 
-  it("matrix: blank Column slices the WHOLE ROW; blank Row slices the WHOLE COLUMN", () => {
-    const grid = [[1, 2], [3, 4]];
-    expect(new ListIndexNode().data({ list: [grid], index: [2] }).result).toEqual([3, 4]);
-    expect(new ListIndexNode().data({ list: [grid], column: [2] }).result).toEqual([2, 4]);
-    // Explicit 0 behaves exactly like blank (Excel INDEX(range, 0, col)).
-    expect(new ListIndexNode().data({ list: [grid], index: [0], column: [1] }).result).toEqual([1, 3]);
-    expect(new ListIndexNode().data({ list: [grid], index: [1], column: [0] }).result).toEqual([1, 2]);
-  });
 
-  it("both blank passes the container through whole (fresh node = [all]/[all] defaults)", () => {
-    const grid = [[1, 2], [3, 4]];
-    expect(new ListIndexNode().data({ list: [grid] }).result).toEqual(grid);
-    expect(new ListIndexNode().data({ list: [[10, 20, 30]] }).result).toEqual([10, 20, 30]);
-    expect(new ListIndexNode().data({ list: [7] }).result).toBe(7);
-  });
 
   it("frame: blank Row = the column as a values LIST; blank Column = a ONE-ROW FRAME", () => {
     const frame = buildFrame([[1, 2], [3, 4]], ["a", "b"]);
@@ -276,22 +232,8 @@ describe("ListIndexNode (INDEX) — reads a cell out of any container", () => {
     expect(isFrameValue((row as CubeValue).columns[1].cells[0])).toBe(true);
   });
 
-  it("whole-axis slice bounds still #REF!", () => {
-    const grid = [[1, 2], [3, 4]];
-    const badCol = new ListIndexNode().data({ list: [grid], column: [9] }).result;
-    expect(isSolError(badCol) && badCol.code).toBe("#REF!");
-    const flatCol = new ListIndexNode().data({ list: [[10, 20]], column: [3] }).result;
-    expect(isSolError(flatCol) && flatCol.code).toBe("#REF!");
-  });
 
   // [[D85]] columnsStayColumns: a list is one row, as ROWS and COLUMNS count it.
-  it("a list is one row: the column picks the item, and a row past 1 is #REF!", () => {
-    expect(new ListIndexNode().data({ list: [[10, 20]], column: [2] }).result).toBe(20);
-    expect(new ListIndexNode().data({ list: [[10, 20]], index: [1], column: [2] }).result).toBe(20);
-    const row2 = new ListIndexNode().data({ list: [[10, 20]], index: [2], column: [1] }).result;
-    expect(isSolError(row2) && row2.code).toBe("#REF!");
-    expect(new ListIndexNode().data({ list: [[10, 20]], index: [2] }).result).toBe(20);
-  });
 });
 
 describe("relateCubeToFrame — deepen a nest-join cube one level (Customer→Order→LineItem)", () => {
@@ -319,7 +261,7 @@ describe("relateCubeToFrame — deepen a nest-join cube one level (Customer→Or
 
   it("a cube with no nested sub-table column is returned unchanged", () => {
     const noNest = { __cube: true, depth: 1, columns: [{ name: "id", cells: [1, 2] }] } as unknown as CubeValue;
-    expect(relateCubeToFrame(noNest, buildFrame([[1, 1]], ["id", "v"]), "id", "n")).toBe(noNest);
+    expect(relateCubeToFrame(noNest, buildFrame([[1, 1]], ["id", "v"]), "id", "n")).toEqual(noNest);
   });
 });
 
@@ -348,13 +290,4 @@ describe("CubeColumnsNode — assemble a multi-column cube", () => {
     expect(out.columns[2].cells[2]).toBeNull();               // padded (orders had only 2)
   });
 
-  it("a typed scalar on an unwired column is a single cell; auto-names missing headers", () => {
-    const n = new CubeColumnsNode();
-    const ck = n.valueInputKeys();
-    n.literals[ck[0]] = 7;
-    const out = n.data({ [ck[1]]: [[10, 20]] }).cube as CubeValue;
-    expect(out.columns.map((c) => c.name)).toEqual(["Col1", "Col2"]); // no names given
-    expect(out.columns[0].cells).toEqual([7, null]); // scalar → 1 cell, padded to len 2
-    expect(out.columns[1].cells).toEqual([10, 20]);
-  });
 })

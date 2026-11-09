@@ -1,5 +1,5 @@
-import { PAD_SIDE_META } from "../rete-nodes";
-import type { PadTextNode as PadTextNodeType, PadSide } from "../rete-nodes";
+import { PAD_SIDE_META } from "../nodeClasses";
+import type { PadTextNode as PadTextNodeType, PadSide } from "../nodeClasses";
 import { makeToggleNodeComponent } from "./standardNode";
 
 const SIDES = (Object.keys(PAD_SIDE_META) as PadSide[]).map((s) => ({

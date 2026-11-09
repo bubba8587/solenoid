@@ -1,0 +1,236 @@
+{
+  "v": 2,
+  "order": 5070,
+  "label": "Health: zones, BMI and daily energy",
+  "group": "Packs",
+  "nodes": [
+    {
+      "id": "head",
+      "x": 0,
+      "y": 0,
+      "type": "NoteNode",
+      "init": {
+        "label": "Health & Fitness",
+        "color": "amber",
+        "collapsed": false,
+        "width": 760,
+        "height": 150,
+        "body": "One age drives the heart-rate cards: **Max Heart Rate** (Tanaka's 208 − 0.7 × age), the **Karvonen** target at 70% effort, and the five training **zones**. **BMR** estimates the energy a body uses at rest, and **TDEE** scales it by activity. These are population formulas: a guide, not a diagnosis.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "age",
+      "x": 0,
+      "y": 220,
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Age (years)",
+        "op": "number",
+        "value": "35",
+        "format": "auto",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "textAlign": "right",
+        "textMarkdown": false,
+        "textMono": false,
+        "logicalStyle": "truefalse",
+        "grouping": true,
+        "negativeStyle": "minus",
+        "scaleMode": "none",
+        "width": 180,
+        "height": 140,
+        "chip": false
+      }
+    },
+    {
+      "id": "zones",
+      "x": 440,
+      "y": 220,
+      "type": "HrZonesNode",
+      "init": {
+        "label": "Heart-Rate Zones",
+        "width": 220,
+        "height": 190
+      },
+      "literals": {
+        "resting": 60
+      }
+    },
+    {
+      "id": "mhr",
+      "x": 440,
+      "y": 620,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Max Heart Rate (Tanaka)",
+        "expr": "208-0.7*age",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varDescriptions": {
+          "age": "Age (years)"
+        }
+      },
+      "literals": {}
+    },
+    {
+      "id": "karv",
+      "x": 880,
+      "y": 620,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Target Heart Rate (Karvonen)",
+        "expr": "(hrmax-hrrest)*intensity+hrrest",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varDescriptions": {
+          "hrmax": "Maximum heart rate (bpm)",
+          "hrrest": "Resting heart rate (bpm)",
+          "intensity": "Intensity"
+        }
+      },
+      "literals": {
+        "hrrest": 60,
+        "intensity": 0.7
+      }
+    },
+    {
+      "id": "bmi",
+      "x": 0,
+      "y": 900,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "BMI",
+        "expr": "w/h^2",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varDescriptions": {
+          "w": "Body weight (kg)",
+          "h": "Height (m)"
+        },
+        "varUnits": {
+          "w": "kg",
+          "h": "m"
+        }
+      },
+      "literals": {
+        "w": 70,
+        "h": 1.75
+      }
+    },
+    {
+      "id": "bmr",
+      "x": 440,
+      "y": 900,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "BMR (Women, Mifflin-St Jeor)",
+        "expr": "10*w+6.25*hcm-5*age-161",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varDescriptions": {
+          "w": "Body weight (kg)",
+          "hcm": "Height (cm)",
+          "age": "Age (years)"
+        },
+        "varUnits": {
+          "w": "kg",
+          "hcm": "cm"
+        }
+      },
+      "literals": {
+        "w": 62,
+        "hcm": 168
+      }
+    },
+    {
+      "id": "tdee",
+      "x": 880,
+      "y": 900,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "TDEE",
+        "expr": "bmr*activity",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varDescriptions": {
+          "bmr": "Basal metabolic rate (kcal/day)",
+          "activity": "Activity factor"
+        }
+      },
+      "literals": {
+        "activity": 1.55
+      }
+    },
+    {
+      "id": "zoneChart",
+      "x": 880,
+      "y": 220,
+      "type": "ChartNode",
+      "init": {
+        "label": "Training zones",
+        "op": "column",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Heart-rate zones;ylabel=bpm"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "zones",
+      "sourceOutput": "zones",
+      "target": "zoneChart",
+      "targetInput": "values"
+    },
+    {
+      "source": "age",
+      "sourceOutput": "value",
+      "target": "zones",
+      "targetInput": "age"
+    },
+    {
+      "source": "age",
+      "sourceOutput": "value",
+      "target": "mhr",
+      "targetInput": "age"
+    },
+    {
+      "source": "mhr",
+      "sourceOutput": "result",
+      "target": "karv",
+      "targetInput": "hrmax"
+    },
+    {
+      "source": "age",
+      "sourceOutput": "value",
+      "target": "bmr",
+      "targetInput": "age"
+    },
+    {
+      "source": "bmr",
+      "sourceOutput": "result",
+      "target": "tdee",
+      "targetInput": "bmr"
+    }
+  ]
+}

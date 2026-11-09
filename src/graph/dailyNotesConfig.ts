@@ -2,7 +2,7 @@
 // The core Daily notes plugin's config: gives a Vault Folder over the daily-notes folder its default `nameFormat`, so a
 // daily note's file name parses into the `date` column. Pure JSON.
 
-export interface DailyNotesConfig {
+interface DailyNotesConfig {
   /** Vault-relative; "" is the vault root. */
   folder: string;
   /** Moment tokens, in formatDateSerial's token set. */

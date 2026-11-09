@@ -6,7 +6,7 @@
 // times before the drag, as crossing cables does. Prints the drag time and the render count per
 // component over a 30-step drag (only fibers React reprocessed, the check React DevTools uses), then
 // screenshots the canvas mid-drag. A drag should render the dragged card's cables, React Flow's own
-// wrappers and nothing else ([[react-flow-surface-contract]] § Drag performance).
+// wrappers and nothing else ([[react-flow-surface-contract#Drag performance]]).
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";

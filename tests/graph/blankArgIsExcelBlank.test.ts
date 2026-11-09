@@ -1,4 +1,4 @@
-// [[C80]]
+// [[C80]] blankArgIsExcelBlank, [[input-roles#Left out]], [[input-roles#Empty slots]], [[formula-language#Blank and omitted arguments]], [[formula-language#Blocked and wrong-surface names]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";
@@ -30,7 +30,7 @@ describe("[[C80]] blankArgIsExcelBlank — a blank slot is Excel's typed blank, 
     expect(isSolError(ev("XLOOKUP(7, x, y, , 0, )", { x, y: ["a", "b", "c"] }))).toBe(true);
   });
 
-  it("a blank VALUE into a scalar call is a blank answer; an empty slot is still the function's to read ([[D36]] nullSkippedNotZero)", () => {
+  it("a blank VALUE into a scalar call is a blank answer; an empty slot is still the function's to read ([[C24]] arraySemantics)", () => {
     expect(ev("ABS(x)", { x: null })).toBeNull();
     expect(ev("NOT(x)", { x: null })).toBeNull();
     expect(ev("ROUND(x, 1)", { x: null })).toBeNull();

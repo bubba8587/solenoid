@@ -57,19 +57,14 @@
           "v0",
           "v1",
           "v2"
-        ],
-        "titles": {
-          "v0": "Hard",
-          "v1": "Wikipedia easy",
-          "v2": "Easy"
-        }
+        ]
       }
     },
     {
       "id": "solver",
       "type": "CompositeNode",
       "x": -588,
-      "y": 317,
+      "y": 318,
       "init": {
         "label": "Sudoku solver: drill in!",
         "runMode": "simulation",
@@ -331,8 +326,8 @@
               },
               "x": 340,
               "y": 760,
-              "literals": {
-                "b": 0
+              "stringLiterals": {
+                "b": "0"
               }
             },
             {
@@ -575,8 +570,8 @@
     {
       "id": "solDisp",
       "type": "DisplayNode",
-      "x": -256,
-      "y": 416,
+      "x": -257,
+      "y": 420,
       "init": {
         "label": "Solution"
       }
@@ -584,8 +579,8 @@
     {
       "id": "okDisp",
       "type": "DisplayNode",
-      "x": -256,
-      "y": 546,
+      "x": -257,
+      "y": 547,
       "init": {
         "label": "Solved"
       }

@@ -1,4 +1,4 @@
-import type { NormalizeNode, NormalizeMode } from "../rete-nodes";
+import type { NormalizeNode, NormalizeMode } from "../nodeClasses";
 import { makeToggleNodeComponent } from "./standardNode";
 
 export const NormalizeComponent = makeToggleNodeComponent<NormalizeNode, NormalizeMode>(

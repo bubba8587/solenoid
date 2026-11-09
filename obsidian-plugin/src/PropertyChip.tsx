@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[D72]] pluginSaveWritesSourceText, [[D90]] cubeTypesAtDepth
+// [[C107]] obsidianPlugin, [[C58]] tableInputRawText, [[D90]] cubeTypesAtDepth
 import { useRef, useState, useSyncExternalStore } from "react";
 import { ArrayChip, arrayAccentFor } from "../../src/graph/components/ArrayChip";
 import { themeVersion, tokenHex } from "./shadow";

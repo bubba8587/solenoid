@@ -1,8 +1,4 @@
-// [[B12]] losslessSaves, [[B13]]
-// The demo model behind the `demo` key: each stage's rewrite must be exactly
-// what a good real reply would be — validator-clean, correctly wired, placed
-// on the canvas — because it flows through the production pipeline unchanged.
-// The staged build is executed headlessly to the real numbers, not just parsed.
+// [[B12]] losslessSaves, [[B13]] aiInScope, [[command-palette#AI mode]]
 
 import { describe, it, expect, afterEach } from "vitest";
 import { demoReply, makeDemoFetch, DEMO_KEY } from "../../src/graph/aiDemo";

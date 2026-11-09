@@ -1,0 +1,5 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"SUNRISE(DATE(2024,1,1), \"51.5\", 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -1,15 +1,16 @@
-// [[B16]] oneFormulaSurface
+// [[B16]] oneFormulaSurface, [[formula-language#Lexical grammar]], [[formula-language#Syntax]], [[formula-language#Syntax hints]], [[formula-language#Names]], [[formula-language#Blocked and wrong-surface names]], [[formula-language#The dispatch ladder]], [[formula-language#Blank and omitted arguments]], [[formula-language#Range functions]], [[formula-language#Broadcasting]], [[formula-language#Scalar operators]], [[formula-language#Error-handling functions]], [[formula-language#Numeric and vendor boundaries]], [[formula-language#Static analyses]], [[formula-language#Rendering]]
+import { dateSerialOf } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import {
   extractVariables,
   compilePositional,
   compileEvaluator,
-  RANGE_FUNCTIONS,
   formulaToLatex,
   evaluateSteps,
-  formulaSyntaxHint,
 } from "../../src/graph/excelFormula";
+import { syntaxHint } from "./coreVerbs";
 import { closeParens } from "../../src/graph/closeParens";
+import { isRange } from "./callTraits";
 import { isSolError, solError } from "../../src/graph/errorValue";
 
 describe("extractVariables", () => {
@@ -51,10 +52,6 @@ describe("extractVariables", () => {
 });
 
 describe("compilePositional — positional binding over the one evaluation core", () => {
-  // compilePositional delegates evaluation to compileEvaluator (excelFormula.ts)
-  // and only binds args to paramNames by INDEX; scalar semantics are pinned once,
-  // in the compileEvaluator describe below. What is positional-specific is the
-  // binding order itself, and the constants/comparison surfaces its callers use.
   const evalF = (expr: string, params: string[], ...args: number[]) => {
     const fn = compilePositional(expr, params);
     if (!fn) throw new Error(`failed to compile: ${expr}`);
@@ -131,7 +128,6 @@ describe("formulaToLatex", () => {
     const tex = formulaToLatex('(0.1 + 0.2) & " kg"');
     expect(tex).toContain('\\text{" kg"}'); // literal quotes, space preserved
     expect(tex).not.toContain("textquotedbl");
-    // And KaTeX must actually accept it — the old \textquotedbl form threw/garbled.
     const katex = (await import("katex")).default;
     expect(() => katex.renderToString(tex!, { throwOnError: true })).not.toThrow();
   });
@@ -283,7 +279,7 @@ describe("evaluateSteps", () => {
     expect(falseResult!.value).toBe(0);
   });
 
-  it("shows its numbers as every unformatted number shows ([[D94]] oneNumberDisplay)", () => {
+  it("shows its numbers as every unformatted number shows ([[C118]] formatTravelsWithValue)", () => {
     const result = evaluateSteps("pi + 0", {});
     // 0 is a literal, pi is a constant; "pi + 0" emits one step, pi at the default 4 decimal places
     expect(result!.steps[0].latex).toContain("3.1416");
@@ -302,7 +298,6 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
     expect(compileEvaluator("")).toBeNull();
   });
 
-  // ── scalar parity with the codegen path (strict-superset) ──
   it("evaluates scalar arithmetic with Excel precedence", () => {
     expect(ev("a + b * c", { a: 2, b: 3, c: 4 })).toBe(14);
     expect(ev("(a + b) * c", { a: 2, b: 3, c: 4 })).toBe(20);
@@ -317,12 +312,10 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
   });
 
   it("& / CONCAT / TEXTJOIN format numbers at 15 sig digits (no float noise)", () => {
-    // The headline: 0.1+0.2 = 0.30000000000000004, but printed into text → "0.3".
     expect(ev('(0.1 + 0.2) & " kg"')).toBe("0.3 kg");
     expect(ev('CONCAT(0.1 + 0.2, " kg")')).toBe("0.3 kg");
     expect(ev('CONCATENATE(0.1 + 0.2, " kg")')).toBe("0.3 kg");
     expect(ev('TEXTJOIN("-", TRUE, 0.1 + 0.2, 3)')).toBe("0.3-3");
-    // A clean value is untouched; a boolean still renders TRUE/FALSE.
     expect(ev('42 & ""')).toBe("42");
     expect(ev('(1 = 1) & "!"')).toBe("TRUE!");
   });
@@ -332,7 +325,6 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
     expect(ev("MAX(a, b, c)", { a: 1, b: 9, c: 4 })).toBe(9);
   });
 
-  // ── element-wise broadcast (unchanged from the old broadcaster) ──
   it("broadcasts an operator element-wise over a list × scalar", () => {
     expect(ev("a * b", { a: [1, 2, 3], b: 10 })).toEqual([10, 20, 30]);
   });
@@ -341,11 +333,8 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
     expect(ev("SQRT(x)", { x: [4, 9, 16] })).toEqual([2, 3, 4]);
   });
 
-  it("zips ragged lists to the longest, padding with null (the settled P3 policy)", () => {
+  it("zips ragged lists to the longest, padding with null, and a one-item list broadcasts as its value", () => {
     expect(ev("a + b", { a: [1, 2, 3], b: [10, 20] })).toEqual([11, 22, null]);
-    // A LENGTH-1 list broadcasts — the other half of the same P3 ruling
-    // ("length-1 still broadcasts"), unbuilt until [[C15]] matricesInFormulas's mapCells and formerly
-    // pinned here as [11, null, null], i.e. the test enforced the gap.
     expect(ev("a + b", { a: [1], b: [10, 20, 30] })).toEqual([11, 21, 31]);
   });
 
@@ -353,7 +342,6 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
     expect(ev("MOD(a, b)", { a: [10, 20, 30], b: [3, 7] })).toEqual([1, 6, null]);
   });
 
-  // ── the headline: range functions aggregate a list (P1/P2) ──
   it("aggregates a list with a range function instead of mapping it", () => {
     expect(ev("SUM(x)", { x: [1, 2, 3, 4] })).toBe(10);
     expect(ev("AVERAGE(x)", { x: [2, 4, 6] })).toBe(4);
@@ -385,27 +373,21 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
 
   it("classifies the common aggregators as range functions", () => {
     for (const f of ["SUM", "AVERAGE", "MIN", "MAX", "COUNT", "MEDIAN", "STDEV", "AND", "OR"]) {
-      expect(RANGE_FUNCTIONS.has(f)).toBe(true);
+      expect(isRange(f)).toBe(true);
     }
-    // element-wise functions are NOT range functions
     for (const f of ["SQRT", "ABS", "ROUND", "UPPER", "IF"]) {
-      expect(RANGE_FUNCTIONS.has(f)).toBe(false);
+      expect(isRange(f)).toBe(false);
     }
   });
 
   it("classifies + aggregates the criteria/meta range functions", () => {
-    // SUMIF / SUBTOTAL / AGGREGATE are absent on purpose — [[C14]] currentExcelParity blocks
-    // them, and [[C14]] currentExcelParity strips a blocked spelling from RANGE_FUNCTIONS so it
-    // answers before its args are shaped.
     for (const f of ["SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF",
                      "AVERAGEIFS", "MAXIFS", "MINIFS"]) {
-      expect(RANGE_FUNCTIONS.has(f)).toBe(true);
+      expect(isRange(f)).toBe(true);
     }
-    // the range arg passes WHOLE (would be wrong if broadcast element-wise)
     expect(ev('COUNTIF(x, ">2")', { x: [1, 2, 3, 4] })).toBe(2);
   });
 
-  // ── in-formula errors (P5) — div0 is minted + propagates as a scalar ──
   it("tags scalar division by zero as #DIV/0!", () => {
     const r = ev("1 / 0");
     expect(isSolError(r) && r.code).toBe("#DIV/0!");
@@ -416,38 +398,28 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
   it("propagates a div-by-zero error up through a scalar chain", () => {
     const r = ev("1 / 0 + 5");
     expect(isSolError(r) && r.code).toBe("#DIV/0!");
-    const r2 = ev("SQRT(1 / 0)"); // our error surfaces rather than vanishing into NaN
+    const r2 = ev("SQRT(1 / 0)");
     expect(isSolError(r2) && r2.code).toBe("#DIV/0!");
   });
 
-  it("leaves a div-by-zero INSIDE a list as a non-scalar element (cleaned at the boundary)", () => {
-    // The evaluator yields an error element here; the host node maps it to NaN.
-    // What matters: the whole result is NOT a scalar SolError.
+  it("leaves a div-by-zero INSIDE a list as an element, not a scalar error", () => {
     const r = ev("1 / x", { x: [1, 0, 2] });
     expect(Array.isArray(r)).toBe(true);
   });
 
-  // The shared P5 boundary (excelFunctions.normalizeFxResult): a top-level Formula.js
-  // Error return becomes a tagged SolError, so EVERY formula host (not just Expression)
-  // surfaces it like #DIV/0! instead of leaking a raw Error object.
   it("maps a top-level Formula.js error return to a tagged SolError", () => {
-    const na = ev("NA()"); // FX returns an Error #N/A
+    const na = ev("NA()");
     expect(isSolError(na) && na.code).toBe("#N/A");
-    const dom = ev("ASIN(2)"); // FX returns an Error #NUM! → split to #DOMAIN!
+    const dom = ev("ASIN(2)");
     expect(isSolError(dom) && dom.code).toBe("#DOMAIN!");
   });
 
-  it("still lets Formula.js IFERROR catch an in-formula FX error (only the FINAL result is mapped)", () => {
-    // The normalization is at the TOP-level boundary only — an FX Error inside the
-    // formula still flows natively so Formula.js's own IFERROR catches it.
+  it("still lets IFERROR catch an in-formula Formula.js-style error (only the final result is mapped)", () => {
     expect(ev("IFERROR(NA(), 42)")).toBe(42);
   });
 });
 
-// ── v1.0 audit fixes: the range-arg null/error policy, the IFERROR family, and
-// the classic lookup functions (findings 2, 8, 9, 10, 28-formula-half) ──────────
-
-describe("range functions honor the aggregator policy (audit P0-2)", () => {
+describe("range functions honor the aggregator policy", () => {
   const ev = (expr: string, env: Record<string, unknown> = {}) => {
     const fn = compileEvaluator(expr);
     if (!fn) throw new Error(`failed to compile: ${expr}`);
@@ -464,7 +436,7 @@ describe("range functions honor the aggregator policy (audit P0-2)", () => {
 
   it("null (missing) is skipped, not treated as 0", () => {
     expect(ev("SUM(x)", { x: [1, null, 3] })).toBe(4);
-    expect(ev("MEDIAN(x)", { x: [1, null, 3] })).toBe(2); // was 1 (null→0)
+    expect(ev("MEDIAN(x)", { x: [1, null, 3] })).toBe(2);
     expect(ev("AVERAGE(x)", { x: [2, null, 4] })).toBe(3);
     expect(ev("MIN(x)", { x: [5, null, 7] })).toBe(5);
   });
@@ -475,7 +447,6 @@ describe("range functions honor the aggregator policy (audit P0-2)", () => {
   });
 
   it("paired ranges drop null rows PAIRWISE (alignment preserved)", () => {
-    // null at index 1 removes the pair (null, 20) — not a shifted zip
     expect(ev("SUMPRODUCT(a, b)", { a: [1, null, 3], b: [10, 20, 30] })).toBe(100);
   });
 
@@ -484,7 +455,7 @@ describe("range functions honor the aggregator policy (audit P0-2)", () => {
   });
 });
 
-describe("IFERROR family catches Solenoid-minted errors (audit finding 8)", () => {
+describe("IFERROR family catches Solenoid-minted errors", () => {
   const ev = (expr: string, env: Record<string, unknown> = {}) => {
     const fn = compileEvaluator(expr);
     if (!fn) throw new Error(`failed to compile: ${expr}`);
@@ -541,26 +512,26 @@ describe("IFERROR family catches Solenoid-minted errors (audit finding 8)", () =
   });
 });
 
-describe("NOW/TODAY return serials in formulas (audit finding 9)", () => {
+describe("NOW/TODAY return serials in formulas", () => {
   const ev = (expr: string) => {
     const fn = compileEvaluator(expr);
     if (!fn) throw new Error(`failed to compile: ${expr}`);
     return fn({});
   };
 
-  it("TODAY() is an integer serial and YEAR(TODAY()) works", () => {
-    const t = ev("TODAY()");
+  it("TODAY() is a whole day and YEAR(TODAY()) works", () => {
+    const t = dateSerialOf(ev("TODAY()"));
     expect(Number.isInteger(t)).toBe(true);
     expect(ev("YEAR(TODAY())")).toBe(new Date().getFullYear());
   });
 
-  it("NOW() is a number with a time fraction and NOW()+1 is numeric", () => {
-    const n = ev("NOW()");
-    expect(ev("NOW() + 1")).toBeCloseTo((n as number) + 1, 4);
+  it("NOW() is a date with a time of day, and NOW()+1 is the next day ([[D115]] datesArePoints)", () => {
+    const n = dateSerialOf(ev("NOW()")) as number;
+    expect(dateSerialOf(ev("NOW() + 1")) as number).toBeCloseTo(n + 1, 4);
   });
 });
 
-describe("classic lookups redirect to their current-Excel replacements ([[C14]] currentExcelParity)", () => {
+describe("classic lookups redirect to their current-Excel replacements ([[B16]] oneFormulaSurface)", () => {
   const ev = (expr: string, env: Record<string, unknown> = {}) => {
     const fn = compileEvaluator(expr);
     if (!fn) throw new Error(`failed to compile: ${expr}`);
@@ -576,22 +547,17 @@ describe("classic lookups redirect to their current-Excel replacements ([[C14]] 
   });
 
   it("SUMIF → #NAME? 'Use SUMIFS'", () => {
-    // Superseded like the lookup classics: SUMIFS covers it with one criteria row,
-    // and the library's SUMIF concatenated a numeric-string sum_range ("01030").
     const r = ev('SUMIF(k, "a", v)', { k: ["a", "b"], v: [1, 2] });
     expect(isSolError(r) && r.code).toBe("#NAME?");
     expect(isSolError(r) && r.message).toBe("Use SUMIFS");
-    // The plural stays, and the siblings are NOT blocked (they answer correctly).
     expect(ev('SUMIFS(v, k, "a")', { k: ["a", "b"], v: [1, 2] })).toBe(1);
     expect(ev('COUNTIF(k, "a")', { k: ["a", "b"] })).toBe(1);
     expect(ev('AVERAGEIF(k, "a", v)', { k: ["a", "b"], v: [1, 2] })).toBe(1);
   });
 
   it("COUNTIF / AVERAGEIF never read a numeric-STRING range as numbers ([[B17]] typedValueModel)", () => {
-    // Text digits are text: a number ordering over them is #TYPE!, nothing sums them,
-    // and never Formula.js's "10"+"30" → "1030".
     expect((ev('COUNTIF(v, ">15")', { v: ["10", "9", "20"] }) as { code: string }).code).toBe("#TYPE!");
-    expect((ev('AVERAGEIF(k, "a", v)', { k: ["a", "a", "b"], v: ["10", "30", "20"] }) as { code: string }).code).toBe("#DIV/0!");
+    expect(ev('AVERAGEIF(k, "a", v)', { k: ["a", "a", "b"], v: ["10", "30", "20"] })).toBeNull();
   });
 
   it("MATCH → #NAME? 'Use XMATCH'", () => {
@@ -604,10 +570,8 @@ describe("classic lookups redirect to their current-Excel replacements ([[C14]] 
     expect(ev("INDEX(x, 2)", { x: ["a", "b", "c"] })).toBe("b");
     const past = ev("INDEX(x, 9)", { x: [1, 2] });
     expect(isSolError(past) && past.code).toBe("#REF!");
-    // 0 is Excel's WHOLE-axis form, not an error — the node's rule, now shared.
     expect(ev("INDEX(x, 0)", { x: [1, 2] })).toEqual([1, 2]);
     expect(ev("INDEX(x, 1, 2)", { x: [1, 2] })).toBe(2);
-    // [[D85]] columnsStayColumns: a list is one row; TOCOL answers a column, so INDEX reads it by row.
     expect(ev("INDEX(x, 2, 1)", { x: [1, 2] })).toMatchObject({ code: "#REF!" });
     expect(ev("INDEX(TOCOL(x), 2, 1)", { x: [1, 2] })).toBe(2);
     expect(ev("INDEX(x, 1, 0)", { x: [1, 2] })).toEqual([1, 2]);
@@ -622,7 +586,7 @@ describe("classic lookups redirect to their current-Excel replacements ([[C14]] 
     const { XMatchNode } = await import("../../src/graph/nodes/list");
     const node = (value: number, array: number[], matchMode?: "exact" | "next_larger" | "next_smaller") => {
       const n = new XMatchNode(matchMode ? { matchMode } : undefined);
-      n.literals.value = value;
+      n.stringLiterals.value = String(value);
       return n.data({ array: [array] }).result;
     };
     expect(ev("XMATCH(7, x)", { x: [5, 7, 7] })).toEqual(node(7, [5, 7, 7]));            // 2 — first duplicate
@@ -636,7 +600,7 @@ describe("classic lookups redirect to their current-Excel replacements ([[C14]] 
     const { XMatchNode } = await import("../../src/graph/nodes/list");
     const node = (value: number, array: number[], searchMode: "first" | "last") => {
       const n = new XMatchNode({ searchMode });
-      n.literals.value = value;
+      n.stringLiterals.value = String(value);
       return n.data({ array: [array] }).result;
     };
     expect(ev("XMATCH(7, x, 0, -1)", { x: [5, 7, 7] })).toEqual(node(7, [5, 7, 7], "last"));
@@ -658,13 +622,15 @@ describe("classic lookups redirect to their current-Excel replacements ([[C14]] 
     }
   });
 
-  it("approximate match needs a numeric lookup value", () => {
-    const r = ev('XMATCH("pear", k, 1)', { k: ["apple", "pear"] });
+  it("approximate match reads text without case, in character-code order", () => {
+    expect(ev('XMATCH("Peach", k, 1)', { k: ["apple", "pear"] })).toBe(2);
+    expect(ev('XMATCH("Peach", k, -1)', { k: ["apple", "pear"] })).toBe(1);
+    const r = ev('XMATCH(TRUE, k, 1)', { k: ["apple", "pear"] });
     expect(isSolError(r) && r.code).toBe("#VALUE!");
   });
 });
 
-describe("P6 operator parity — the settled table (audit finding 26)", () => {
+describe("the operator table", () => {
   const ev = (expr: string, env: Record<string, unknown> = {}) => {
     const fn = compileEvaluator(expr);
     if (!fn) throw new Error(`failed to compile: ${expr}`);
@@ -674,10 +640,10 @@ describe("P6 operator parity — the settled table (audit finding 26)", () => {
   it("= / <> are type-strict with case-insensitive text", () => {
     expect(ev('a = "A"', { a: "a" })).toBe(true);
     expect(ev('a <> "A"', { a: "a" })).toBe(false);
-    expect(ev('a = "5"', { a: 5 })).toBe(false); // no cross-type coercion
+    expect(ev('a = "5"', { a: 5 })).toBe(false);
   });
 
-  it("cross-type ordering is #TYPE!, text orders by collation", () => {
+  it("cross-type ordering is #TYPE!, text orders by character code", () => {
     const r = ev('a < "b"', { a: 5 });
     expect(isSolError(r) && r.code).toBe("#TYPE!");
     expect(ev('a < b', { a: "apple", b: "banana" })).toBe(true);
@@ -706,7 +672,7 @@ describe("P6 operator parity — the settled table (audit finding 26)", () => {
   });
 });
 
-describe("TEXT formats date serials (audit finding 29)", () => {
+describe("TEXT formats date serials", () => {
   const ev = (expr: string, env: Record<string, unknown> = {}) => {
     const fn = compileEvaluator(expr);
     if (!fn) throw new Error(`failed to compile: ${expr}`);
@@ -721,12 +687,23 @@ describe("TEXT formats date serials (audit finding 29)", () => {
   });
 });
 
-describe("an empty argument slot reads as Excel's blank ([[C80]] blankArgIsExcelBlank, author 2026-10-05)", () => {
+describe("an empty argument slot reads as Excel's blank ([[C80]] blankArgIsExcelBlank)", () => {
   const ev = (expr: string, env: Record<string, unknown>) => {
     const fn = compileEvaluator(expr);
     if (!fn) throw new Error(`failed to compile: ${expr}`);
     return fn(env);
   };
+  it("an error in a branch not taken is not IF's, IFS's or CHOOSE's answer, as in Excel", () => {
+    const code = (v: unknown) => (isSolError(v) ? v.code : v);
+    expect(ev("IF(qty=0, 0, total/qty)", { qty: 0, total: 9 })).toBe(0);
+    expect(ev("IF(qty<>0, total/qty, 0)", { qty: 0, total: 9 })).toBe(0);
+    expect(ev("IFS(qty=0, 0, TRUE, total/qty)", { qty: 0, total: 9 })).toBe(0);
+    expect(ev("CHOOSE(1, 5, 1/0)", {})).toBe(5);
+    expect(ev("IF(xs=0, 0, 1/xs)", { xs: [0, 2, 4] })).toEqual([0, 0.5, 0.25]);
+    expect(code(ev("IF(1/0, 1, 2)", {}))).toBe("#DIV/0!");
+    expect(code(ev("IF(FALSE, 1, 1/0)", {}))).toBe("#DIV/0!");
+    expect((ev("IF(xs>0, 1, 1/0)", { xs: [0, 2] }) as unknown[]).map(code)).toEqual(["#DIV/0!", 1]);
+  });
   it("an empty middle IF branch is 0, as in Excel, not a syntax error", () => {
     expect(ev("IF(value=0,,value)", { value: 0 })).toBe(0);
     expect(ev("IF(value=0,,value)", { value: 7 })).toBe(7);
@@ -753,7 +730,7 @@ describe("type-honest operators and well-formed numbers", () => {
       const r = run(expr) as { code?: string };
       expect(r?.code, expr).toBe("#VALUE!");
     }
-    expect(run('"2" & 3')).toBe("23");  // & is the join
+    expect(run('"2" & 3')).toBe("23");
   });
 
   it("a malformed number is a syntax error, not NaN", () => {
@@ -781,8 +758,8 @@ describe("closeParens ([[C115]] closeParensOnCommit)", () => {
     expect(closeParens("SUM([Cost")).toBe("SUM([Cost");
   });
   it("names a ) that comes before its (", () => {
-    expect(formulaSyntaxHint(")a(")).toMatch(/comes before/);
-    expect(formulaSyntaxHint("SUM([Cost (draft])")).toBeNull();
+    expect(syntaxHint(")a(")).toMatch(/comes before/);
+    expect(syntaxHint("SUM([Cost (draft])")).toBeNull();
   });
   it("leaves balanced and over-closed formulas alone", () => {
     expect(closeParens("SUM(a)")).toBe("SUM(a)");

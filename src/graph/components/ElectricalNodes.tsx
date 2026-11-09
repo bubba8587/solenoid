@@ -4,7 +4,7 @@ import {
   ESeriesNode as ESeriesNodeType,
   AwgNode as AwgNodeType,
   ResistorCodeNode as ResistorCodeNodeType,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import { RESISTOR_DIGIT, RESISTOR_MULT, RESISTOR_TOL, type ESeriesOp } from "../nodes/electricalOps";
 import { NodeShell, OpSelect, ArgSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
@@ -99,7 +99,7 @@ export function ResistorCodeComponent({ data, emit }: NodeProps<ResistorCodeNode
   const set = (key: string, v: string) => {
     L[key] = v;
     bump((n) => n + 1);
-    void processGraph();
+    data.edited(); void processGraph();
   };
   const five = bandCount === "5";
   const bands = five ? [L.b1, L.b2, L.b3, L.mult, L.tol] : [L.b1, L.b2, L.mult, L.tol];

@@ -1,36 +1,33 @@
-// [[D54]], [[B11]] maximalMerge
-import { ClassicPreset } from "rete";
+// [[C44]] dateSerials, [[B11]] maximalMerge
+import { GraphInput, GraphNode, GraphOutput } from "../graphModel";
+import { nodeOnCore } from "../nodeOnCore";
 import { numberSocket, stringSocket, dateSocket, logicalSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
-import { frameIn, frameOut, dateOut, numOut, tableOut } from "./shared";
+import { frameIn, frameOut, dateOut, numOut, tableOut, numListIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { FrameShapeContext } from "./frameShapeHook";
-import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type CubeCell } from "../frame";
-import { runFrameUnary, collectPreview, isFrameRef, materialize, readRefColumn, type FrameRef } from "../frameBackend";
-import { beginPass, passFrame, emitFrame } from "./frame";
-import type { FilterCond } from "../frameVerbs";
+import type { FrameValue, FrameColType } from "../frame";
+import type { FrameRef } from "../frameBackend";
 import { jsDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
-import { isRelativeDateText } from "./dateSerial";
 import { settingsStore } from "../settingsStore";
-import { fireAlert } from "../alertStore";
-import { isGraphRebuilding } from "../process";
-import { isSolError, solError, type SolError } from "../errorValue";
+import { raiseWatched } from "./display";
+import type { SolError } from "../errorValue";
 import { isDateStyle, type FormatAnnotation, type FormatStyleId, type DecimalMode, type TextCase, type TextAlign, type LogicalStyle, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
-import { applyFcUnit } from "../unitBridge";
 import type { TableElemType } from "./matrix";
 import { clamp } from "./mathUtils";
-import { compareStrings } from "../stringOrder";
 
-export type SlicerCell = number | string;
+export type SlicerCell = number | string | boolean;
 
-export class CableSwitchNode extends ClassicPreset.Node {
+export class CableSwitchNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     out: "One mode routes the active input through unchanged, keeping its type and unit. Many mode collects the checked inputs into a cube of name and value rows.",
   };
   label: string;
-  /** Not named `selected`, which is rete's node-selection flag. */
+  /** Not named `selected`, which is GraphNode's selection flag. */
   activeIndex: number;
-  titles: Record<string, string>;
+  /** Each wired input's source card name, stamped before each pass (`resolveSwitchNames`); never saved. */
+  _sourceNames: Record<string, string> = {};
+  static coreFields = ["_sourceNames"];
   multiSelect: boolean;
   selectedKeys: string[];
   cachedValue: unknown = null;
@@ -39,15 +36,14 @@ export class CableSwitchNode extends ClassicPreset.Node {
   readonly outSocket = new MutableSocket("trueany");
   width = 200; height = 220;
 
-  constructor(init?: { label?: string; activeIndex?: number; valueKeys?: string[]; titles?: Record<string, string>; multiSelect?: boolean; selectedKeys?: string[] }) {
+  constructor(init?: { label?: string; activeIndex?: number; valueKeys?: string[]; multiSelect?: boolean; selectedKeys?: string[] }) {
     super("CableSwitch");
     this.label = init?.label ?? "Input Switch";
     this.activeIndex = init?.activeIndex ?? 0;
-    this.titles = { ...(init?.titles ?? {}) };
     this.multiSelect = init?.multiSelect ?? false;
     this.selectedKeys = [...(init?.selectedKeys ?? [])];
     this.outSocket.setType(this.multiSelect ? "cube" : "trueany");
-    this.addOutput("out", new ClassicPreset.Output(this.outSocket, "Out"));
+    this.addOutput("out", new GraphOutput(this.outSocket, "Out"));
     if (init?.valueKeys?.length) {
       for (const k of init.valueKeys) this.addInputWithKey(k);
     } else {
@@ -56,7 +52,7 @@ export class CableSwitchNode extends ClassicPreset.Node {
   }
 
   private addInputWithKey(key: string): void {
-    this.addInput(key, new ClassicPreset.Input(new AdoptiveSocket()));
+    this.addInput(key, new GraphInput(new AdoptiveSocket()));
     const n = parseInt(key.replace(/^v/, ""), 10);
     if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
   }
@@ -71,16 +67,15 @@ export class CableSwitchNode extends ClassicPreset.Node {
     // `activeIndex` is positional, so removing a slot above the live one must shift it to follow the chosen slot.
     const idx = Object.keys(this.inputs).indexOf(key);
     this.removeInput(key);
-    delete this.titles[key];
     this.selectedKeys = this.selectedKeys.filter((k) => k !== key);
     if (idx >= 0 && idx < this.activeIndex) this.activeIndex -= 1;
     const n = Object.keys(this.inputs).length;
     this.activeIndex = n ? clamp(this.activeIndex, 0, n - 1) : 0;
   }
 
+  /** An input's name: its source card's, else its place ("Input 2"). */
   titleFor(key: string): string {
-    const t = (this.titles[key] ?? "").trim();
-    return t || `Input ${Object.keys(this.inputs).indexOf(key) + 1}`;
+    return this._sourceNames[key] || `Input ${Object.keys(this.inputs).indexOf(key) + 1}`;
   }
 
   passthrough(): PassthroughSpec[] {
@@ -96,26 +91,83 @@ export class CableSwitchNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    const keys = Object.keys(this.inputs);
-    if (this.multiSelect) {
-      const chosen = keys.filter((k) => this.selectedKeys.includes(k));
-      if (chosen.length === 0) { this.cachedValue = null; return { out: null }; }
-      const cube = cubeFromColumns([
-        { name: "name", cells: chosen.map((k) => this.titleFor(k)) },
-        { name: "value", cells: chosen.map((k) => (inputs[k]?.[0] ?? null) as CubeCell) },
-      ]);
-      this.cachedValue = cube;
-      return { out: cube };
-    }
-    const idx = keys.length ? clamp(this.activeIndex, 0, keys.length - 1) : 0;
-    const key = keys[idx];
-    const v = key ? (inputs[key]?.[0] ?? null) : null;
-    this.cachedValue = v ?? null;
-    return { out: v ?? null };
+    return nodeOnCore(this, inputs) as { out: unknown };
   }
 }
 
-export class AngleDialNode extends ClassicPreset.Node {
+/** Hands on what In held at the end of the previous recalculation, so a cable cycle through it steps instead of
+ *  reading `#CIRC!` ([[D118]] delayedPass). The engine never fetches its input (`model.rs`, `Host::delayed`); the app
+ *  pass hands it the next value afterwards (`advanceDelayedPasses`). */
+export class DelayedPassNode extends GraphNode {
+  static socketDocs: Record<string, string> = {
+    out: "What In held at the end of the previous recalculation; Start before the first one and after Reset.",
+  };
+  label: string;
+  literals: Record<string, number> = { start: 0 };
+  /** The value it hands on this recalculation, `undefined` until the first step; not saved, so a reopened document
+   *  starts from Start. */
+  held: unknown = undefined;
+  /** Recalculations since it was added, opened or reset. */
+  stepCount = 0;
+  cachedValue: unknown = null;
+  readonly outSocket = new MutableSocket("trueany");
+  width = 200; height = 150;
+
+  constructor(init?: { label?: string }) {
+    super("DelayedPass");
+    this.label = init?.label ?? "Delayed Pass";
+    this.addInput("in", new GraphInput(new AdoptiveSocket(), "In"));
+    this.addInput("start", numListIn("Start"));
+    this.addOutput("out", new GraphOutput(this.outSocket, "Out"));
+  }
+
+  reset(): void {
+    this.held = undefined;
+    this.stepCount = 0;
+  }
+
+  passthrough(): PassthroughSpec[] {
+    return [{ output: "out", inputs: ["in"], combine: "single" }];
+  }
+
+  data(inputs: Record<string, unknown[] | undefined> = {}): { out: unknown } {
+    const out = this.held === undefined ? readInput(inputs.start, this.literals.start ?? 0) : this.held;
+    this.cachedValue = out;
+    return { out };
+  }
+}
+
+type DelayEditor = {
+  getNodes(): readonly unknown[];
+  getConnections(): readonly { source: string; sourceOutput: string; target: string; targetInput: string }[];
+};
+type DelayEngine = { fetch(id: string): Promise<Record<string, unknown>>; invalidate(id: string, keepCaches: boolean): unknown };
+
+/** After a recalculation: each Delayed Pass card takes what its input now holds, for the next one. Every source is read
+ *  before any card moves, so one card's new value can't leak into another's this step; a card whose value moved has
+ *  what it reaches cleared, so the next recalculation computes from it. */
+export async function advanceDelayedPasses(editor: DelayEditor, engine: DelayEngine): Promise<void> {
+  const cards = editor.getNodes().filter((n): n is DelayedPassNode => n instanceof DelayedPassNode);
+  if (!cards.length) return;
+  const conns = editor.getConnections();
+  const next = await Promise.all(cards.map(async (card) => {
+    const c = conns.find((x) => x.target === card.id && x.targetInput === "in");
+    if (!c) return undefined;
+    try {
+      return (await engine.fetch(c.source))[c.sourceOutput] ?? null;
+    } catch {
+      return card.held;
+    }
+  }));
+  cards.forEach((card, i) => {
+    card.stepCount += 1;
+    if (Object.is(next[i], card.held)) return;
+    card.held = next[i];
+    engine.invalidate(card.id, false);
+  });
+}
+
+export class AngleDialNode extends GraphNode {
   label: string;
   value: number;   // degrees, 0–359
   step: number;
@@ -127,39 +179,15 @@ export class AngleDialNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Angle Dial";
     this.value = init?.value ?? 0;
     this.step  = init?.step  ?? 15;
-    this.addOutput("value", new ClassicPreset.Output(numberSocket, "Degrees"));
+    this.addOutput("value", new GraphOutput(numberSocket, "Degrees"));
   }
 
-  data() {
-    return { value: this.value };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { value: number };
   }
 }
-
-type LastRelative = { text: string; serial: number } | null;
 
 const relativeDatesAllowed = (): boolean => settingsStore.get("relativeDates");
-
-/** A typed date's serial; a relative phrase ([[D54]] relativeDatesOptIn) alerts when it re-resolves to a new day. */
-function resolveDateText(
-  node: { id: string; label?: string },
-  raw: string,
-  last: LastRelative,
-): { result: number | SolError | null; last: LastRelative } {
-  const text = raw.trim();
-  const relative = isRelativeDateText(text) && relativeDatesAllowed();
-  const r = parseDate(text, relative ? { relative: true } : undefined);
-  if (isSolError(r)) return { result: r, last: null };
-  const serial = Number.isFinite(r) ? Math.floor(r) : null;
-  if (!relative || serial === null) return { result: serial, last: null };
-  if (last !== null && last.text === text && last.serial !== serial && !isGraphRebuilding()) {
-    const name = (node.label ?? "").trim() || "Value Input";
-    fireAlert({
-      nodeId: node.id, label: name, kind: "warning",
-      message: `${name}: "${text}" now resolves to ${formatDateSerial(serial, DEFAULT_DATE_FORMAT)} (was ${formatDateSerial(last.serial, DEFAULT_DATE_FORMAT)})`,
-    });
-  }
-  return { result: serial, last: { text, serial } };
-}
 
 export type ValueInputOp = TableElemType;
 
@@ -194,15 +222,14 @@ export function carryValueText(text: string, to: ValueInputOp): string {
     case "number":  return Number.isFinite(n) ? t : isTrue ? "1" : "0";
     case "logical": return isTrue || (Number.isFinite(n) && n !== 0) ? "TRUE" : "FALSE";
     case "date": {
-      const relative = isRelativeDateText(t) && relativeDatesAllowed();
-      const d = parseDate(t, relative ? { relative: true } : undefined);
+      const d = parseDate(t, relativeDatesAllowed() ? { relative: true } : undefined);
       return typeof d === "number" && Number.isFinite(d) ? text : todayText();
     }
   }
 }
 
 /** One typed value of any scalar type, with its display format and unit set on the card itself ([[C118]] formatTravelsWithValue). */
-export class ValueInputNode extends ClassicPreset.Node {
+export class ValueInputNode extends GraphNode {
   label: string;
   op: ValueInputOp;
   value: string;
@@ -227,7 +254,17 @@ export class ValueInputNode extends ClassicPreset.Node {
   width = 180;
   height = 140;
   cachedValue: unknown = null;
-  private lastRelative: LastRelative = null;
+  /** The relative phrase the body last read and its day ([[C44]] dateSerials), and the alert it shows when the same
+   *  phrase lands on a new day; the body sets them, and reads the first two back. */
+  lastRelativeText: string | null = null;
+  lastRelativeSerial: number | null = null;
+  alertKey: string | null = null;
+  alertMessage: string | null = null;
+  static coreFields = ["relativeDates", "lastRelativeText", "lastRelativeSerial"] as const;
+  /** Settings ▸ Relative dates, read by the body on every call. */
+  get relativeDates(): boolean {
+    return relativeDatesAllowed();
+  }
   /** What was typed under each op this session, so switching away and back restores it; only the shown op's text is saved ([[C28]] literalsIffEditable). */
   private entryByOp: Partial<Record<ValueInputOp, string>> = {};
 
@@ -277,7 +314,7 @@ export class ValueInputNode extends ClassicPreset.Node {
     this.grouping = init?.grouping ?? true;
     this.negativeStyle = init?.negativeStyle ?? "minus";
     this.scaleMode = init?.scaleMode ?? "none";
-    this.addOutput("value", new ClassicPreset.Output(valueSocketFor(this.op), "Value"));
+    this.addOutput("value", new GraphOutput(valueSocketFor(this.op), "Value"));
   }
 
   /** Swaps the output socket in place; the caller follows with `retypeOutputCables`. A type never used this session gets the text carried by meaning. */
@@ -322,34 +359,19 @@ export class ValueInputNode extends ClassicPreset.Node {
     };
   }
 
-  data(): { value: unknown } {
-    if (this.op !== "date") this.lastRelative = null;
-    this.cachedValue = this.compute();
-    return { value: this.cachedValue };
+  data(inputs: Record<string, unknown[] | undefined> = {}): { value: unknown } {
+    return nodeOnCore(this, inputs) as { value: unknown };
   }
 
-  private compute(): unknown {
-    switch (this.op) {
-      case "string":  return this.value;
-      case "logical": return /^true$/i.test(this.value.trim());
-      case "date": {
-        const r = resolveDateText(this, this.value, this.lastRelative);
-        this.lastRelative = r.last;
-        return r.result;
-      }
-      case "number": {
-        const t = this.value.trim();
-        const n = t === "" ? 0 : Number(t);
-        if (!Number.isFinite(n)) return solError("#VALUE!", `"${t}" isn't a number`);
-        return applyFcUnit(n, this.unit, this.customUnit);
-      }
-    }
+  static coreWatch = "alertKey";
+  coreWatched(): void {
+    raiseWatched(this, "Value Input");
   }
 }
 
-export class DateRangeNode extends ClassicPreset.Node {
+export class DateRangeNode extends GraphNode {
   label: string;
-  literals: Record<string, number>;
+  literals: Record<string, number | null>;
   width  = 190;
   height = 150;
 
@@ -362,15 +384,12 @@ export class DateRangeNode extends ClassicPreset.Node {
     this.addOutput("end",   dateOut("End"));
   }
 
-  data(): { start: number | null; end: number | null } {
-    let start = this.literals.start ?? 0;
-    let end = this.literals.end ?? 0;
-    if (start > 0 && end > 0 && start > end) [start, end] = [end, start];
-    return { start: start > 0 ? start : null, end: end > 0 ? end : null };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { start: number | null; end: number | null };
   }
 }
 
-export class XYPadNode extends ClassicPreset.Node {
+export class XYPadNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     x: "Normalized 0 to 1.",
     y: "Normalized 0 to 1.",
@@ -389,35 +408,12 @@ export class XYPadNode extends ClassicPreset.Node {
     this.addOutput("y", numOut("Y"));
   }
 
-  data(): { x: number; y: number } {
-    return { x: this.literals.fx ?? 0.5, y: this.literals.fy ?? 0.5 };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { x: number; y: number };
   }
 }
 
-function slicerUniques(values: readonly (FrameCell | null)[]): SlicerCell[] {
-  const uniq = [...new Set(values.filter((v): v is SlicerCell => v !== null && v !== ""))];
-  uniq.sort((a, b) => (typeof a === "number" && typeof b === "number" ? a - b : compareStrings(String(a), String(b))));
-  return uniq;
-}
-
-function filterFrameByMembership(frame: FrameValue, col: FrameColumn, sel: ReadonlySet<SlicerCell>): FrameValue {
-  const rows = frameRowCount(frame);
-  const keep: number[] = [];
-  for (let i = 0; i < rows; i++) {
-    const v = col.values[i];
-    if (v !== null && v !== undefined && sel.has(v as SlicerCell)) keep.push(i);
-  }
-  return {
-    __frame: true,
-    columns: frame.columns.map((c) => ({
-      ...c,
-      values: keep.map((i) => c.values[i] ?? null),
-      raw: c.raw ? keep.map((i) => c.raw![i] ?? "") : undefined,
-    })),
-  };
-}
-
-export class SlicerNode extends ClassicPreset.Node {
+export class SlicerNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "An empty selection passes every row through instead of none.",
   };
@@ -428,8 +424,6 @@ export class SlicerNode extends ClassicPreset.Node {
   cachedColumns: string[] = [];
   cachedColumnType: FrameColType = "number";
   cachedUniqueValues: SlicerCell[] = [];
-  _ref?: FrameRef | null;
-  _gen?: number;
   cachedResult: FrameValue | SolError | null = null;
   width  = 240;
   height = 240;
@@ -448,42 +442,8 @@ export class SlicerNode extends ClassicPreset.Node {
     return ctx.inputShape("frame");
   }
 
-  private async emitResult(gen: number, out: FrameRef | FrameValue | SolError | null): Promise<{ result: FrameRef | FrameValue | SolError | null }> {
-    const { frame } = await emitFrame(this, gen, out);
-    return { result: frame };
-  }
-
-  async data(inputs: { frame?: unknown[] }): Promise<{ result: FrameRef | FrameValue | SolError | null }> {
-    const raw = inputs.frame?.[0] ?? null;
-    const gen = beginPass(this);
-
-    if (isFrameRef(raw)) {
-      const schema = await collectPreview(raw, 0);
-      const colNames = isFrameValue(schema) ? schema.columns.map((c) => c.name) : [];
-      const colName = this.selectedColumn && colNames.includes(this.selectedColumn) ? this.selectedColumn : colNames[0] ?? "";
-      const col = colName
-        ? await materialize(readRefColumn(raw, colName))
-        : null;
-      // Write UI state only from the latest pass, or a stale one flickers the buttons.
-      if (gen === this._gen) {
-        this.cachedColumns = colNames;
-        if (col && !isSolError(col)) { this.cachedColumnType = col.type; this.cachedUniqueValues = slicerUniques(col.values); }
-        else this.cachedUniqueValues = [];
-      }
-      if (col && isSolError(col)) return this.emitResult(gen, col);
-      if (!colName || this.selectedValues.length === 0) return this.emitResult(gen, await passFrame(raw));
-      const conditions: FilterCond[] = this.selectedValues.map((v) => ({ column: colName, op: "eq", value: String(v), matchCase: true }));
-      return this.emitResult(gen, await runFrameUnary(raw, { kind: "filterMulti", combine: "or", conditions }));
-    }
-
-    const frame: FrameValue | null = isFrameValue(raw) ? raw : null;
-    this.cachedColumns = frame ? frame.columns.map((c) => c.name) : [];
-    if (!frame || frame.columns.length === 0) { this.cachedUniqueValues = []; return this.emitResult(gen, frame); }
-    const col = (this.selectedColumn ? getColumn(frame, this.selectedColumn) : null) ?? frame.columns[0];
-    this.cachedColumnType = col.type;
-    this.cachedUniqueValues = slicerUniques(col.values);
-    if (this.selectedValues.length === 0) return this.emitResult(gen, frame);
-    return this.emitResult(gen, filterFrameByMembership(frame, col, new Set(this.selectedValues)));
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: FrameRef | FrameValue | SolError | null };
   }
 }
 
@@ -514,7 +474,7 @@ export function pointsToFrame(pts: ReadonlyArray<readonly [number, number]>): Fr
   };
 }
 
-export class PointPlotterNode extends ClassicPreset.Node {
+export class PointPlotterNode extends GraphNode {
   label: string;
   pointsText = "";
   cachedResult: FrameValue | null = null;
@@ -536,10 +496,8 @@ export class PointPlotterNode extends ClassicPreset.Node {
     return shapeOfFrameValue(pointsToFrame([]));
   }
 
-  data(): { result: FrameValue } {
-    const frame = pointsToFrame(parsePoints(this.pointsText));
-    this.cachedResult = frame;
-    return { result: frame };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { result: FrameValue };
   }
 }
 
@@ -610,7 +568,7 @@ export function curveToFrame(xs: number[], values: number[]): FrameValue {
   };
 }
 
-export class CurveNode extends ClassicPreset.Node {
+export class CurveNode extends GraphNode {
   label: string;
   pointsText = "0, 0\n1, 1";
   cachedResult: FrameValue | null = null;
@@ -632,12 +590,8 @@ export class CurveNode extends ClassicPreset.Node {
     return shapeOfFrameValue(curveToFrame([], []));
   }
 
-  data(): { result: FrameValue } {
-    this.literals.samples = clamp(Math.round(this.literals.samples ?? 32), 2, 1000);
-    const { values, xs } = sampleCurve(this.pointsText, this.literals.xmin ?? 0, this.literals.xmax ?? 1, this.literals.samples);
-    const frame = curveToFrame(xs, values);
-    this.cachedResult = frame;
-    return { result: frame };
+  data(inputs: Record<string, unknown[] | undefined> = {}): { result: FrameValue } {
+    return nodeOnCore(this, inputs) as { result: FrameValue };
   }
 }
 
@@ -663,7 +617,7 @@ export function paintGridToText(grid: ReadonlyArray<ReadonlyArray<number | null>
 
 export const gridPainterDim = (v: number): number => clamp(Math.round(v), 1, 64);
 
-export class GridPainterNode extends ClassicPreset.Node {
+export class GridPainterNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Unpainted cells read as null, not zero.",
   };
@@ -683,11 +637,8 @@ export class GridPainterNode extends ClassicPreset.Node {
     this.addOutput("result", tableOut("Matrix"));
   }
 
-  data(): { result: (number | null)[][] } {
-    const rows = gridPainterDim(this.literals.rows ?? 6);
-    const cols = gridPainterDim(this.literals.cols ?? 8);
-    this.literals.rows = rows;
-    this.literals.cols = cols;
-    return { result: parsePaintGrid(this.tableText, rows, cols) };
+  /** The size is saved clamped, so it is written here before the body reads it. */
+  data(inputs: Record<string, unknown[] | undefined> = {}): { result: (number | null)[][] } {
+    return nodeOnCore(this, inputs) as { result: (number | null)[][] };
   }
 }

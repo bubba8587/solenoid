@@ -1,13 +1,16 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey, setBody, resolveBody, frontmatterTags, keepDateTime } from "../../src/graph/frontmatterPatch";
+import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey, setBody, resolveBody, frontmatterTags, keepDateTime, holdsAdd } from "../../src/graph/frontmatterPatch";
 import { notesToCube } from "../../src/graph/vaultCube";
-import type { CubeValue } from "../../src/graph/frame";
+import type { CubeCell, CubeValue } from "../../src/graph/frame";
+import { solError } from "../../src/graph/errorValue";
+import { solDate } from "../../src/graph/dateValue";
+import { fromUnit } from "../../src/graph/unitValue";
+import { fcUnitToUnit } from "../../src/graph/dimension";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 
-// Bundle 24 item B — the pure frontmatter line-patcher: untouched bytes stay identical,
-// and a cube round-trips through a note unchanged. [[C101]] onePatchPath: the ONE writer of a note's YAML.
+// [[C101]] onePatchPath, [[reports-and-notes#Write to Obsidian]]
 
 const NO_NAMES = new Set<string>();
 
@@ -42,6 +45,15 @@ describe("renderKey", () => {
     expect(renderKey("t", ["x", "y"])).toEqual(["t:", "  - x", "  - y"]);
     expect(renderKey("m", [{ k: 1, v: "z" }])).toEqual(["m:", "  - k: 1", "    v: z"]);
     expect(renderKey("m", [{ k: 1, after: ["a", "b"], none: [] }])).toEqual(["m:", "  - k: 1", "    after:", "      - a", "      - b", "    none: []"]);
+  });
+  it("a matrix is a sequence of sequences, as the Solenoid Properties matrix types spell it", () => {
+    expect(cellToYaml([[1, 2], [3, 4]], "number", NO_NAMES)).toEqual([[1, 2], [3, 4]]);
+    expect(renderKey("g", [[1, 2], [3]])).toEqual(["g:", "  - - 1", "    - 2", "  - - 3"]);
+    expect(renderKey("g", [[1], []])).toEqual(["g:", "  - - 1", "  - []"]);
+  });
+  it("rows nested in a row nest one level in", () => {
+    expect(renderKey("p", [{ phase: "A", tasks: [{ task: "x", hours: 6 }] }]))
+      .toEqual(["p:", "  - phase: A", "    tasks:", "      - task: x", "        hours: 6"]);
   });
   it("quotes an ambiguous scalar", () => {
     expect(renderKey("a", "1:2")).toEqual(['a: "1:2"']);
@@ -102,6 +114,28 @@ describe("round trip — a demo-vault note re-patched with its own values is unc
   });
 });
 
+describe("round trip — the Solenoid Properties shapes re-patch byte-identical", () => {
+  it("Property types: a matrix and a cube with nested rows reproduce as written", () => {
+    const VAULT = path.resolve(__dirname, "../../demo-vault");
+    const text = fs.readFileSync(path.join(VAULT, "Solenoid/Property types.md"), "utf8");
+    const tasks = (rows: [string, number][]) => ({ __frame: true as const, columns: [
+      { name: "task", type: "string" as const, values: rows.map((r) => r[0]) },
+      { name: "hours", type: "number" as const, values: rows.map((r) => r[1]) },
+    ] });
+    const phases = { __cube: true as const, depth: 2, columns: [
+      { name: "phase", type: "string" as const, cells: ["Demolition", "Install"] },
+      { name: "days", type: "number" as const, cells: [3, 8] },
+      { name: "crew", type: "string" as const, cells: [["Ana", "Ben"], ["Chidi"]] },
+      { name: "tasks", type: undefined, cells: [tasks([["Strip cabinets", 6], ["Haul debris", 4]]), tasks([["Hang cabinets", 20]])] },
+    ] } as unknown as CubeValue;
+    const { text: out } = patchFrontmatter(text, {
+      grid: cellToYaml([[1, 2, 3], [4, 5, 6]], "number", NO_NAMES),
+      phases: cellToYaml(phases, undefined, NO_NAMES),
+    });
+    expect(out).toBe(text);
+  });
+});
+
 describe("the write plan", () => {
   const cube: CubeValue = { __cube: true, depth: 1, columns: [
     { name: "path", cells: ["Projects/Kitchen remodel.md", "Notes/Deep Work.md"], type: "string" },
@@ -115,6 +149,8 @@ describe("the write plan", () => {
     expect(writableKeys(cube, "")).toEqual(["status", "priority", "due"]);
     expect(writableKeys(cube, "status, due")).toEqual(["status", "due"]);
     expect(writableKeys(cube, "status, nope")).toEqual(["status"]); // absent column dropped
+    const commaKey: CubeValue = { ...cube, columns: [...cube.columns, { name: "a, b", type: "string", cells: cube.columns[0].cells.map(() => "x") }] } as CubeValue;
+    expect(writableKeys(commaKey, '"a, b", status')).toEqual(["a, b", "status"]); // a quoted key keeps its comma
   });
 
   it("planPropertyWrites is one row per (note × key), dates formatted", () => {
@@ -269,5 +305,50 @@ describe("a Date & time property at midnight is written back as a date and time"
     expect(keepDateTime(note, "due", "2026-09-05")).toBe("2026-09-05T00:00:00");
     expect(keepDateTime(note, "when", ["2026-09-01", "2026-09-03"])).toEqual(["2026-09-01T00:00:00", "2026-09-03"]);
     expect(keepDateTime("---\ndue: 2026-09-02\n---\n", "due", "2026-09-05")).toBe("2026-09-05");
+  });
+});
+
+describe("Add missing adds a blank property only for a listed key", () => {
+  it("holds a blank add unless its key is listed, and every add when Add missing is off", () => {
+    expect(holdsAdd(true, "", "status", null)).toBe(true);
+    expect(holdsAdd(true, "", "status", "")).toBe(true);
+    expect(holdsAdd(true, "", "tags", [])).toBe(true);
+    expect(holdsAdd(true, "status, due", "status", null)).toBe(false);
+    expect(holdsAdd(true, "", "status", "open")).toBe(false);
+    expect(holdsAdd(false, "status", "status", "open")).toBe(true);
+  });
+});
+
+describe("Write to Obsidian never writes a value as [object Object]", () => {
+  it("an error cell refuses its row, and the reason says why", () => {
+    const cube: CubeValue = { __cube: true, depth: 1, columns: [
+      { name: "path", cells: ["A.md", "B.md"], type: "string" },
+      { name: "ratio", cells: [0.5, solError("#DIV/0!", "x")], type: "number" },
+    ] };
+    const rows = planPropertyWrites(cube, "", NO_NAMES);
+    expect(rows.find((r) => r.path === "A.md")).toMatchObject({ value: 0.5, action: "pending" });
+    expect(rows.find((r) => r.path === "B.md")).toMatchObject({ action: "refused", held: "#DIV/0! can't be written" });
+    expect(rows.every((r) => !r.after.includes("object"))).toBe(true);
+  });
+  it("a number with a unit writes as it shows; a date in a list writes as a day", () => {
+    const km = fcUnitToUnit("km")!;
+    expect(cellToYaml(fromUnit(5, km, "km") as CubeCell, "number", NO_NAMES)).toBe(5);
+    expect(cellToYaml([solDate(parseDateToSerial("2026-11-15"))] as unknown as CubeCell, "string", NO_NAMES)).toEqual(["2026-11-15"]);
+  });
+});
+
+describe("resolveKey: a value the note already holds, spelled Obsidian's way, is unchanged", () => {
+  it("plain text this writer would quote reads back the same", () => {
+    const note = "---\nurl: https://example.com/a\ntitle: Hello, world\nlang: C#\nrank: 1st place\n---\n";
+    expect(resolveKey(note, "url", "https://example.com/a").action).toBe("unchanged");
+    expect(resolveKey(note, "title", "Hello, world").action).toBe("unchanged");
+    expect(resolveKey(note, "lang", "C#").action).toBe("unchanged");
+    expect(resolveKey(note, "rank", "1st place").action).toBe("unchanged");
+  });
+  it("text that only looks the same is still an update", () => {
+    const note = "---\nnote: a #b\nflag: true\nn: 007\n---\n";
+    expect(resolveKey(note, "note", "a #b").action).toBe("update");
+    expect(resolveKey(note, "flag", "true").action).toBe("update");
+    expect(resolveKey(note, "n", "007").action).toBe("update");
   });
 });

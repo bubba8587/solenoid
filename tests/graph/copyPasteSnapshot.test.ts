@@ -1,10 +1,10 @@
-// [[B3]] sameNodeEverywhere, [[C52]] visibleSelection, [[D41]] formatFlowsDownstream
+// [[B3]] sameNodeEverywhere, [[C52]] visibleSelection, [[C118]] formatTravelsWithValue, [[react-flow-surface-contract#Copy and paste]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidConnection, SolenoidNode } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { setEditorRefs } from "../../src/graph/process";
 import { setSelectNode, setUnselectAllNodes } from "../../src/graph/canvasCommands";
 import { ValueInputNode } from "../../src/graph/nodes/control";
@@ -24,11 +24,10 @@ import { PlaceholderNode } from "../../src/graph/nodes/placeholder";
 import { savedNodeBody } from "../../src/graph/savedNodeBody";
 import { nodeNameStore } from "../../src/graph/nodeNameStore";
 
-let editor: NodeEditor<Schemes>;
+let editor: GraphEditor<Schemes>;
 
 beforeEach(() => {
-  editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
+  editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const view = {
@@ -52,7 +51,7 @@ async function add<T extends SolenoidNode>(n: T, x = 0, y = 0): Promise<T> {
 async function dockedPair() {
   const host = await add(new ValueInputNode({ value: "5" }));
   const sink = await add(new DisplayNode(), 300, 0);
-  await editor.addConnection(new ClassicPreset.Connection(host, "value", sink, "in") as SolenoidConnection);
+  await editor.addConnection(new GraphConnection(host, "value", sink, "in") as SolenoidConnection);
   const fc = await add(new FormatControllerNode({ hostNodeId: host.id, socketKey: "value", side: "output" }), 150, 0);
   fc.dockSelf(editor);
   await insertFcInline(editor, fc);
@@ -76,6 +75,19 @@ describe("copy", () => {
 });
 
 describe("paste", () => {
+  it("a pasted group tints its pasted members at once ([[C86]] membershipByGesture)", async () => {
+    const { groupMembershipStore } = await import("../../src/graph/groupMembership");
+    const a = await add(new DisplayNode());
+    const group = await add(new GroupNode({ members: [a.id], color: "accent" }));
+    group.selected = true;
+    copySelected();
+    await pasteClipboard(400, 400);
+    const pastedGroup = editor.getNodes().find((n) => n instanceof GroupNode && n.id !== group.id) as GroupNode;
+    expect(pastedGroup.members).toHaveLength(1);
+    expect(pastedGroup.members[0]).not.toBe(a.id);
+    expect(groupMembershipStore.color(pastedGroup.members[0])).toBeDefined();
+  });
+
   it("pastes a Missing placeholder as another placeholder for the same node", async () => {
     const ph = await add(new PlaceholderNode({
       missingType: "GoneNode", savedInit: { label: "Gone", op: "x" }, savedLiterals: { a: 2 },
@@ -146,7 +158,7 @@ describe("paste carries the card's own look", () => {
 
 describe("paste inside a drill-in", () => {
   it("gates and settles through the drill-in's own scope, never the main canvas's", async () => {
-    const drill = new NodeEditor<Schemes>();
+    const drill = new GraphEditor<Schemes>();
     const drillView = {
       position: (id: string) => drill.getNode(id)?.position,
       moveNode: async (id: string, p: { x: number; y: number }) => { const n = drill.getNode(id); if (n) n.position = { ...p }; },

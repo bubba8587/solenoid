@@ -1,10 +1,9 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[stores#Node-keyed stores in brief]]
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { nodeSizeStore } from "../../src/graph/nodeSizeStore";
 import { forgetAllNodes } from "../../src/graph/nodeStoreRegistry";
 
-// Node-scoped forget and cross-store cleanup live in nodeStoreRegistry.test.ts,
-// which drives this store for real.
+
 beforeEach(() => {
   forgetAllNodes();
   nodeSizeStore.clear();

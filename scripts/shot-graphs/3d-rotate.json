@@ -1,0 +1,121 @@
+{
+ "nodes": [
+  {
+   "id": "a",
+   "type": "SeriesNode",
+   "x": 0,
+   "y": 0,
+   "init": {
+    "label": "Ramp",
+    "op": "linspace"
+   },
+   "literals": {
+    "start": 0,
+    "end": 1,
+    "count": 20
+   }
+  },
+  {
+   "id": "t",
+   "type": "SeriesNode",
+   "x": 0,
+   "y": 300,
+   "init": {
+    "label": "Angles",
+    "op": "linspace"
+   },
+   "literals": {
+    "start": 0,
+    "end": 9.42,
+    "count": 20
+   }
+  },
+  {
+   "id": "s",
+   "type": "MathFXNode",
+   "x": 0,
+   "y": 600,
+   "init": {
+    "label": "SIN",
+    "op": "sin"
+   }
+  },
+  {
+   "id": "o",
+   "type": "TableOuterNode",
+   "x": 380,
+   "y": 200,
+   "init": {
+    "label": "Ramp × wave"
+   }
+  },
+  {
+   "id": "r",
+   "type": "TableTransposeNode",
+   "x": 380,
+   "y": 620,
+   "init": {
+    "label": "Rotate 90°",
+    "op": "rot90"
+   }
+  },
+  {
+   "id": "p1",
+   "type": "SurfaceNode",
+   "x": 800,
+   "y": -120,
+   "init": {
+    "label": "Surface 1",
+    "yaw": 40,
+    "pitch": 40
+   }
+  },
+  {
+   "id": "p2",
+   "type": "SurfaceNode",
+   "x": 800,
+   "y": 440,
+   "init": {
+    "label": "Surface 2",
+    "yaw": 40,
+    "pitch": 40
+   }
+  },
+  {
+   "id": "d_p1",
+   "type": "DisplayNode",
+   "x": 1180,
+   "y": -160,
+   "init": {
+    "label": "Original"
+   },
+   "size": {
+    "w": 660,
+    "h": 620
+   }
+  },
+  {
+   "id": "d_p2",
+   "type": "DisplayNode",
+   "x": 1880,
+   "y": -160,
+   "init": {
+    "label": "Rotated a quarter turn"
+   },
+   "size": {
+    "w": 660,
+    "h": 620
+   }
+  }
+ ],
+ "cables": [
+  "t.list -> s.in",
+  "a.list -> o.a",
+  "s.result -> o.b",
+  "o.result -> r.matrix",
+  "o.result -> p1.z",
+  "r.result -> p2.z",
+  "p1.chart -> d_p1.in",
+  "p2.chart -> d_p2.in"
+ ]
+}

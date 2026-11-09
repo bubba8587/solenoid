@@ -70,12 +70,19 @@
   background: color-mix(in srgb, var(--node-accent, var(--surface)) var(--header-tint), var(--surface));
 }
 
+/* Wraps to two lines, then ellipsizes, as a node card's title does; a zero basis keeps it from pushing the buttons onto a line of their own. */
 .sol-popup__title {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-word;
+  text-wrap-style: balance;
   font-size: 12px;
+  line-height: 1.3;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -99,41 +106,6 @@
   padding: 0;
 }
 .sol-popup__close:hover { color: color-mix(in srgb, var(--node-accent, var(--text)) 80%, var(--text)); }
-
-.sol-popup__action {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  height: 24px;
-  padding: 0 8px;
-  background: none;
-  border: none;
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
-  font-size: 12px;
-  line-height: 1;
-  cursor: pointer;
-}
-.sol-popup__action:hover { color: color-mix(in srgb, var(--node-accent, var(--text)) 80%, var(--text)); }
-
-.sol-popup__pin {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: none;
-  border: none;
-  border-radius: 4px;
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
-  cursor: pointer;
-  padding: 0;
-  opacity: 0.7;
-}
-.sol-popup__pin:hover {
-  opacity: 1;
-  color: color-mix(in srgb, var(--node-accent, var(--text)) 80%, var(--text));
-}
 
 .sol-popup-menu {
   position: relative;
@@ -191,12 +163,6 @@
   color: var(--text-dim);
   cursor: default;
 }
-.sol-popup__pin--on {
-  opacity: 1;
-  color: var(--node-accent, var(--accent));
-  background: color-mix(in srgb, var(--node-accent, var(--accent)) 16%, transparent);
-}
-
 /* ── Group membership ───────────────────────────────────────────────────────── */
 .sol-popup--grouped::after {
   border-width: 2px;
@@ -219,6 +185,16 @@
   background: var(--group-color-dark, var(--border-strong));
 }
 
+/* ── Phone fit ──────────────────────────────────────────────────────────────── */
+/* A phone: a popup that opts in (`fitNarrow`) is a column capped at the screen. Its view takes the height its content needs and shrinks to fit, so no view stops short of the screen on a cap of its own; an editor that wants the room (the CSV block) asks for the whole screen and shrinks. Placed before the resize rules, which win once the grip sizes the card. */
+@media (max-width: 640px) {
+  .sol-popup--fitnarrow { display: flex; flex-direction: column; }
+  :where(.sol-popup--fitnarrow > :not(.sol-popup__scroll, .sol-popup__view)) { flex: none; }
+  .sol-popup--fitnarrow .sol-popup__scroll { flex: 0 1 auto; min-height: 0; max-height: none; }
+  .sol-popup--fitnarrow .sol-popup__view { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  :where(.sol-popup--fitnarrow .sol-popup__view > :not(.sol-popup__scroll)) { flex: none; }
+}
+
 /* ── Resize ─────────────────────────────────────────────────────────────────── */
 .sol-popup--sized {
   display: flex;
@@ -229,6 +205,15 @@
   min-height: 0;
   max-height: none;
 }
+/* The one contract for a view's body: either it is the scroll region (`sol-popup__scroll`), or it is a `sol-popup__view` holding bars and one scroll region, which passes the card's spare height down to that region and shrinks before it draws under the footer. */
+.sol-popup--sized .sol-popup__view {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sol-popup--sized .sol-popup__view > :not(.sol-popup__scroll) { flex: none; }
 /* Above the group-membership triangle (z 5), which shares this corner. */
 .sol-popup__resize {
   position: absolute;
@@ -256,8 +241,7 @@
 
 @media (pointer: coarse) {
   .sol-popup__header { padding: 6px 6px 6px 12px; gap: 6px; }
-  .sol-popup__close,
-  .sol-popup__pin { width: 32px; height: 32px; }
+  .sol-popup__close { width: 32px; height: 32px; }
   .sol-popup__close { font-size: 24px; }
   .sol-popup__title { font-size: 13px; }
   .sol-popup-menu__trigger { width: 32px; height: 32px; }
@@ -286,4 +270,46 @@
   height: 1px;
   margin: 4px 2px;
   background: var(--border);
+}
+
+/* While a popup is being resized (PopupResizeGrip), the backdrop blur stops re-rasterizing behind it every step. */
+.sol-popup-resizing .sol-popup-overlay {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ── Loading skeleton (PopupSkeleton): the popup opens at once and shimmers until its body is drawn ── */
+.sol-skeleton {
+  padding: 14px;
+}
+.sol-skeleton__block {
+  display: block;
+  height: 200px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-sunken) 0%,
+    color-mix(in srgb, var(--text) 13%, var(--surface-sunken)) 50%,
+    var(--surface-sunken) 100%
+  );
+  background-size: 200% 100%;
+  animation: sol-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+@keyframes sol-skeleton-shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sol-skeleton__block { animation: none; }
+}
+
+/* A popup opens at least this tall, so a one-row table isn't a strip; the grip still sizes it freely after. */
+.sol-popup:not(.sol-popup--sized) {
+  display: flex;
+  flex-direction: column;
+  min-height: min(440px, 100%);
+}
+.sol-popup:not(.sol-popup--sized) .sol-popup__scroll,
+.sol-popup:not(.sol-popup--sized) .sol-popup__view {
+  flex: 1 1 auto;
 }

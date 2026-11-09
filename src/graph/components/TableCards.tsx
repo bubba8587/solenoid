@@ -1,4 +1,4 @@
-// [[C114]] cardsView
+// [[C114]] cardsView, [[D111]] cardLayouts
 import { useMemo, useState, type ReactNode } from "react";
 import { planCards, cardMatches, PROFILE_ROWS, type CardColType, type CardColumnInput } from "../cardLayout";
 import { type ColumnSort, type SortDir } from "./columnSort";
@@ -7,6 +7,7 @@ import { Markdown } from "./Markdown";
 import { helpSection } from "../helpSection";
 import helpMd from "../help/help.md?raw";
 import { AutoCard, cardChipColors } from "./AutoCard";
+import type { RecordPlacement } from "../recordLayout";
 import "./TableCards.css";
 
 const PAGE = 100;
@@ -14,8 +15,10 @@ const CARD_RULES = helpSection(helpMd, "Cards");
 
 /** `dataKey` changes whenever the cells or their shown text do; the plan, the chip colors and the row texts are cached on it. */
 export function TableCards({
-  names, types, computed, chipCols, nestedCols, listCols, rowCount, order, rawAt, shownRow, itemsAt, cellNodeAt, dataKey, sort, onSort, query, onEdit,
+  names, types, computed, chipCols, nestedCols, listCols, rowCount, order, rawAt, shownRow, itemsAt, cellNodeAt, dataKey, sort, onSort, query, onEdit, layout,
 }: {
+  /** An authored card layout ([[D111]] cardLayouts); none keeps the inferred cards. */
+  layout?: readonly RecordPlacement[];
   names: readonly string[];
   types: readonly CardColType[];
   computed: ReadonlySet<number>;
@@ -40,7 +43,6 @@ export function TableCards({
   const [limit, setLimit] = useState(PAGE);
   const [seenQuery, setSeenQuery] = useState(query);
   if (query !== seenQuery) { setSeenQuery(query); setLimit(PAGE); }
-  const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set());
   const [rulesOpen, setRulesOpen] = useState(false);
   const cols = names.length;
 
@@ -73,16 +75,12 @@ export function TableCards({
   const primary = sort[0];
   const dir: SortDir = primary?.dir ?? "asc";
 
-  const toggle = (r: number) => setOpen((s) => {
-    const next = new Set(s);
-    if (next.has(r)) next.delete(r); else next.add(r);
-    return next;
-  });
 
   const card = (r: number) => (
     <AutoCard
       key={r}
       plan={plan}
+      layout={layout}
       names={names}
       types={types}
       computed={computed}
@@ -92,10 +90,6 @@ export function TableCards({
       items={itemsAt ? (c) => itemsAt(r, c) : undefined}
       cellNode={cellNodeAt ? (c) => cellNodeAt(r, c) : undefined}
       rowNumber={r + 1}
-      fold
-      open={open.has(r)}
-      onToggle={() => toggle(r)}
-      toggleOnClick
       onEdit={onEdit ? () => onEdit(r) : undefined}
     />
   );

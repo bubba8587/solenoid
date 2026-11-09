@@ -1,0 +1,6 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"DEVSQ(4, 5, 8, 7, 11, 4, 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"DEVSQ(r_A1_B5)","env":["r_A1_B5=table:num:[[1, 2], [2, 3], [3, 2], [4, 3], [4, 1]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

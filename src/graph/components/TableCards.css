@@ -23,19 +23,26 @@
   background: var(--surface);
   box-sizing: border-box;
 }
+/* The app-standard chevron (.sol-pill-select's), sat in from the edge, never the native arrow pinned to it. */
 .table-cards__sort {
   flex: 0 1 auto;
   min-width: 0;
   max-width: 44%;
+  field-sizing: content;
   height: 28px;
-  padding: 0 6px;
+  padding: 0 26px 0 9px;
   font: inherit;
   font-size: 12px;
   color: var(--text);
-  background: var(--surface-sunken);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: var(--surface-sunken) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 9px center / 10px 6px;
   border: 1px solid var(--border);
   border-radius: 4px;
   outline: none;
+  text-overflow: ellipsis;
+  cursor: pointer;
 }
 .table-cards__sort:focus { border-color: var(--node-accent, var(--accent)); }
 .table-cards__dir {

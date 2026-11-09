@@ -3,9 +3,9 @@
 import type { View } from "./view";
 import { collapseStore } from "./collapseStore";
 import type { Schemes } from "./schemes";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 
-type Editor = NodeEditor<Schemes>;
+type Editor = GraphEditor<Schemes>;
 
 export type NodeBox = { x: number; y: number; w: number; h: number };
 

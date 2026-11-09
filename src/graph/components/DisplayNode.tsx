@@ -1,6 +1,6 @@
 // [[D86]] blankRoles
 import { useSyncExternalStore, useLayoutEffect, useRef, useState } from "react";
-import type { DisplayNode as DisplayNodeType } from "../rete-nodes";
+import type { DisplayNode as DisplayNodeType } from "../nodeClasses";
 import { formatWithUnit } from "../unitFormat";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { collapseStore } from "../collapseStore";
@@ -26,10 +26,12 @@ import { isLambdaValue } from "../nodes/lambda";
 import { LambdaValueView } from "./LambdaView";
 import { isSolError } from "../errorValue";
 import { recordNavTarget, stepRecordRow } from "./recordNav";
+import { ladderTarget, applyLadderAction } from "./ladderNav";
+import type { LadderAction } from "../nodes/ladderOps";
 import { nodeDisplayName } from "../catalogUtils";
 
 // Only for a definite size: measuring a content-driven card feeds back (chart size to card size) and oscillates.
-function MeasuredChart({ value, fontScale, recordNav }: { value: ChartValue; fontScale?: number; recordNav?: (delta: number) => void }) {
+function MeasuredChart({ value, fontScale, recordNav, ladderAction }: { value: ChartValue; fontScale?: number; recordNav?: (delta: number) => void; ladderAction?: (a: LadderAction) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 210, h: 130 });
   useLayoutEffect(() => {
@@ -46,8 +48,8 @@ function MeasuredChart({ value, fontScale, recordNav }: { value: ChartValue; fon
     return () => ro.disconnect();
   }, []);
   return (
-    <div ref={ref} style={{ width: "100%", height: "100%", overflow: "hidden" }}>
-      <ChartFigure value={value} width={size.w} height={size.h} fontScale={fontScale} recordNav={recordNav} />
+    <div ref={ref} className={value.op === "record" ? "nowheel" : undefined} style={{ width: "100%", height: "100%", overflow: value.op === "record" ? "auto" : "hidden" }}>
+      <ChartFigure value={value} width={size.w} height={size.h} fontScale={fontScale} recordNav={recordNav} ladderAction={ladderAction} />
     </div>
   );
 }
@@ -73,6 +75,8 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   const isError = isSolError(v);
   const recordId = isChartValue(v) && v.op === "record" ? recordNavTarget(data.id) : null;
   const recordStep = recordId ? (delta: number) => { void stepRecordRow(recordId, delta); } : undefined;
+  const ladderId = isChartValue(v) && v.op === "ladder" ? ladderTarget(data.id) : null;
+  const ladderAct = ladderId ? (a: LadderAction) => { void applyLadderAction(ladderId, a); } : undefined;
   const isFrame = isFrameValue(v);
   const isCube = isCubeValue(v);
   // Object-valued figures must not reach the number formatter, which calls .toFixed.
@@ -85,7 +89,8 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   const growScalar = full && !grow && !isError && !isLambda && v != null && !Array.isArray(v) && typeof v !== "object";
   const growClass = grow ? "solenoid-node--display-grow" : growScalar ? "solenoid-node--display-grow-scalar" : undefined;
 
-  const minSize = isChart ? { w: 230, h: 150 }
+  const minSize = isChart && v.op === "record" ? { w: 260, h: 180 }
+    : isChart ? { w: 230, h: 150 }
     : isMermaid ? { w: 200, h: 120 }
     : isSvg ? { w: 200, h: 120 }
     : (isFrame || isCube || isTable) ? { w: 200, h: 90 }
@@ -96,7 +101,9 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   }, [data.id, minSize.w, minSize.h]);
 
   // A sized body scrolls whatever overflows it (lists, text, lambda views), so only a figure that scales skips the wheel trap.
-  const figure = isChart || isSvg || isMermaid;
+  // A Record figure is a stack of cards, not a drawing that scales, so a tall one scrolls like a frame does.
+  const isRecord = isChart && v.op === "record";
+  const figure = (isChart && !isRecord) || isSvg || isMermaid;
 
   const popKind = popOutKindFor(v);
   const expandBadge = full && popKind !== null
@@ -104,7 +111,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
     : undefined;
 
   return (
-    <NodeShell node={data} emit={emit} className={growClass} nonScrollingBody={figure} cornerBadge={expandBadge} leading={<PortSockets node={data} emit={emit} side="input" />}>
+    <NodeShell node={data} emit={emit} className={growClass} nonScrollingBody={figure} cappedBody={grow} cornerBadge={expandBadge} leading={<PortSockets node={data} emit={emit} side="input" />}>
       {isError ? (
         <ValueDisplay value={v} full={full} />
       ) : isFrame ? (
@@ -117,8 +124,8 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
         ) : (
           <div style={{ position: "relative", width: sized ? "100%" : undefined, height: sized ? "100%" : undefined }}>
             {sized
-              ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} recordNav={recordStep} />
-              : <ChartFigure value={v} width={210} height={130} fontScale={ann?.chartFontScale} recordNav={recordStep} />}
+              ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} recordNav={recordStep} ladderAction={ladderAct} />
+              : <ChartFigure value={v} width={v.op === "record" ? 280 : 210} height={130} fontScale={ann?.chartFontScale} recordNav={recordStep} ladderAction={ladderAct} />}
             <ChartExpandButton value={v} op={v.op as ChartShape} axes series={[]} title={v.title || nodeDisplayName(data)} />
           </div>
         )

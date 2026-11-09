@@ -1,50 +1,57 @@
 // [[C51]] formulaNaming
 // Lab units throughout: grams, moles, liters, kelvin where absolute.
 
-import { ElementNode, MolarMassNode } from "../rete-nodes";
+import { ElementNode, MolarMassNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { CHEMISTRY_PACK_FORMULAS } from "./chemistryFormulas";
 
-const R_GAS = "8.314462618";
-const FARADAY = "96485.33212";
-
-export const CHEM_AMOUNTS: FormulaPackEntry[] = [
+const CHEM_AMOUNTS: FormulaPackEntry[] = [
   { type: "ch-moles-mass", label: "Moles ↔ Mass", expr: "n = m / mm", equation: true,
     description: "n = m/mm with any one unknown: moles from mass, mass from moles, or even the molar mass from both; wire a Molar Mass node into mm",
-    keywords: "amount substance stoichiometry grams moles molar" },
+    keywords: "amount substance stoichiometry grams moles molar",
+    varDescriptions: { n: "Amount (mol)", m: "Mass (g)", mm: "Molar mass (g/mol)" } },
   { type: "ch-molarity", label: "Molarity", expr: "n/v",
     description: "Concentration: moles n ÷ volume v (L) → mol/L",
-    keywords: "concentration molar", units: { n: "mol", v: "L" } },
+    keywords: "concentration molar",
+    varDescriptions: { n: "Amount (mol)", v: "Volume (L)" }, units: { n: "mol", v: "L" } },
   { type: "ch-dilution", label: "Dilution (C₂)", expr: "c1*v1/v2",
     description: "Concentration after dilution, C₁V₁ = C₂V₂ solved for C₂. Any consistent units.",
-    keywords: "c1v1 stock solution" },
+    keywords: "c1v1 stock solution",
+    varDescriptions: { c1: "Stock concentration", v1: "Stock volume", v2: "Final volume" } },
   { type: "ch-percent-yield", label: "Percent Yield", expr: "actual/theoretical*100",
-    description: "Reaction yield: actual ÷ theoretical amount × 100" },
+    description: "Reaction yield: actual ÷ theoretical amount × 100",
+    varDescriptions: { actual: "Actual yield", theoretical: "Theoretical yield" } },
 ];
 
-export const CHEM_EQUILIBRIA: FormulaPackEntry[] = [
+const CHEM_EQUILIBRIA: FormulaPackEntry[] = [
   { type: "ch-ph", label: "pH ↔ [H⁺]", expr: "ph = -LOG10(h)", equation: true,
     description: "pH = −log₁₀[H⁺], either way around: wire h (mol/L) to get the pH, or ph to get the concentration",
-    keywords: "acid base hydrogen concentration" },
-  { type: "ch-nernst", label: "Nernst Equation", expr: `e0-${R_GAS}*tk/(z*${FARADAY})*LN(q)`,
+    keywords: "acid base hydrogen concentration",
+    varDescriptions: { ph: "pH", h: "[H⁺] (mol/L)" } },
+  { type: "ch-nernst", label: "Nernst Equation", expr: "e0-R*tk/(z*F)*LN(q)", constants: { R: "rgas", F: "faraday" },
     description: "Cell potential E = E° − RT/zF·lnQ off standard conditions: standard potential e0 (V), temperature tk (K), electrons z, reaction quotient q.",
     keywords: "electrochemistry cell potential redox",
     varDescriptions: { e0: "Standard potential E° (V)", tk: "Temperature (K)", z: "Electrons transferred", q: "Reaction quotient Q" }, units: { tk: "K" } },
-  { type: "ch-arrhenius", label: "Arrhenius Rate", expr: `a*EXP(-ea/(${R_GAS}*tk))`,
+  { type: "ch-arrhenius", label: "Arrhenius Rate", expr: "a*EXP(-ea/(R*tk))", constants: { R: "rgas" },
     description: "Rate constant: pre-exponential a, activation energy ea (J/mol), temperature tk (K)   (k = A·e^(−Ea/RT))",
-    keywords: "kinetics activation energy", units: { tk: "K" } },
+    keywords: "kinetics activation energy",
+    varDescriptions: { a: "Pre-exponential factor A", ea: "Activation energy (J/mol)", tk: "Temperature (K)" }, units: { tk: "K" } },
   { type: "ch-gibbs", label: "Gibbs Free Energy", expr: "dh-tk*ds",
     description: "ΔG = ΔH − TΔS from enthalpy dh (J/mol), temperature tk (K), entropy ds (J/mol·K). Negative means spontaneous.",
-    keywords: "thermodynamics spontaneous", units: { tk: "K" } },
+    keywords: "thermodynamics spontaneous",
+    varDescriptions: { dh: "Enthalpy change ΔH (J/mol)", tk: "Temperature (K)", ds: "Entropy change ΔS (J/(mol·K))" }, units: { tk: "K" } },
   { type: "ch-beer-lambert", label: "Beer–Lambert Absorbance", expr: "eps*b*conc",
     description: "Absorbance A = εbc: molar absorptivity eps in L/mol·cm, path b in cm, concentration conc in mol/L.",
-    keywords: "spectroscopy absorbance cuvette", units: { b: "cm" } },
+    keywords: "spectroscopy absorbance cuvette",
+    varDescriptions: { eps: "Molar absorptivity (L/(mol·cm))", b: "Path length (cm)", conc: "Concentration (mol/L)" }, units: { b: "cm" } },
   { type: "ch-half-life", label: "Decay Remaining", expr: "n0*0.5^(t/thalf)",
     description: "Amount left after time t given half-life thalf (same time units)   (N = N₀·(½)^(t/t½))",
-    keywords: "radioactive exponential decay" },
+    keywords: "radioactive exponential decay",
+    varDescriptions: { n0: "Initial amount", t: "Elapsed time", thalf: "Half-life" } },
   { type: "ch-decay-constant", label: "Decay Constant", expr: "LN(2)/thalf",
     description: "Decay constant λ = ln2 / t½ from a half-life, in the same time unit.",
-    keywords: "radioactive lambda" },
+    keywords: "radioactive lambda",
+    varDescriptions: { thalf: "Half-life" } },
 ];
 
 export const CHEMISTRY_FORMULAS: FormulaPackEntry[] = [...CHEM_AMOUNTS, ...CHEM_EQUILIBRIA];
@@ -52,6 +59,8 @@ export const CHEMISTRY_FORMULAS: FormulaPackEntry[] = [...CHEM_AMOUNTS, ...CHEM_
 export const CHEMISTRY_PACK: Pack = {
   formulas: CHEMISTRY_PACK_FORMULAS,
   id: "chemistry",
+  seed: "pack-chemistry",
+  tags: ["physics-constant"],
   group: "Science & Engineering",
   name: "Chemistry Basics",
   description: "Periodic table, molar mass from a formula (hydrates too), moles, molarity, dilution, pH, Nernst, Arrhenius, Gibbs, Beer–Lambert, decay.",
@@ -61,7 +70,7 @@ export const CHEMISTRY_PACK: Pack = {
     {
       path: ["Packs", "Chemistry"],
       entry: {
-        type: "ch-element",
+        type: "ch-element", updated: "1.6",
         label: "Element",
         description: "Periodic-table lookup: search by symbol, name, or number, or click the table itself → standard atomic weight in g/mol and atomic number. IUPAC values",
         keywords: "periodic table atomic weight number symbol",

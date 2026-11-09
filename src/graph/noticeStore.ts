@@ -4,12 +4,12 @@ import { createNotifier } from "./storeKit";
 
 export type NoticeTone = "info" | "warn" | "error";
 
-export interface NoticeAction {
+interface NoticeAction {
   label: string;
   onClick: () => void;
 }
 
-export interface Notice {
+interface Notice {
   id: number;
   message: string;
   tone: NoticeTone;

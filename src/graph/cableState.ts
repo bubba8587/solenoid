@@ -128,7 +128,7 @@ export const socketHoverCableStore = {
   },
 };
 
-// A side set keyed by id, because rete copies and serializes the connection object opaquely.
+// A side set keyed by id, so the connection object stays as the save writes it.
 
 const _ghostIds = new Set<string>();
 const _ghostListeners = new Set<Listener>();

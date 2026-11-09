@@ -1,0 +1,6 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"RESISTORCOLORCODE(\"brown\", \"black\", \"red\", \"gold\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RESISTORCOLORCODE(\"brown\", \"black\", \"black\", \"red\", \"brown\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

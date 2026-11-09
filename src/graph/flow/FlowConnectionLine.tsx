@@ -7,7 +7,7 @@ import { cableAngleStore } from "../cableAngleStore";
 import { getOwningEditor } from "../activeGraph";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 
-const FALLBACK_COLOR = "#7a8296";
+const FALLBACK_COLOR = "var(--sock-any)";
 
 /** The socket a dragged cable would land on, published by the drag line so the sockets don't each watch React Flow's store, which every pan frame wakes. */
 let litTarget: string | null = null;

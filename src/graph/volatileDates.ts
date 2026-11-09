@@ -1,18 +1,12 @@
-// [[D46]] freezeVolatilePerCalc, [[C44]] dateSerials
+// [[C23]] calcModes, [[C44]] dateSerials
 // Midnight rollover: TODAY, NOW, the Today, Holidays and World Clock cards (the clock also ticks each minute), a Knap `'now' | date` and relative Date Inputs answer for the calendar day, so at each local midnight a
 // document holding any of them recomputes once. One timer, re-armed after each firing.
 
 import { isRelativeDateText } from "./nodes/dateSerial";
-import { getRecalcGen } from "./process";
 
 const VOLATILE_FN = /\b(TODAY|NOW)\s*\(/i;
 const KNAP_NOW = /["']now["']\s*\|\s*date\b/;
 const CLOCK_NODES = new Set(["TodayNowNode", "HolidaysNode", "WorldClockNode"]);
-
-/** A memo key part: the recalc generation when the formula text calls TODAY or NOW, else -1, so a cached answer refreshes on F9 and at midnight. */
-export function volatileStamp(text: string | undefined): number {
-  return text && VOLATILE_FN.test(text) ? getRecalcGen() : -1;
-}
 
 export function hasVolatileDates(nodes: readonly unknown[]): boolean {
   for (const n of nodes) {

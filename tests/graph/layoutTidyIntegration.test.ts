@@ -1,15 +1,9 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[auto-arrange-tidy#The three Tidy knobs]], [[auto-arrange-tidy#Building the ELK graph]]
 import { describe, it, expect } from "vitest";
 import ELK from "elkjs";
 import { ELK_ROOT_OPTIONS, tidyLayoutOptions, tidyLayerSplitFor, type TidyDirection, type TidyDensity, type TidyWidthCap } from "../../src/graph/tidyArrange";
 
-// ─── Tidy knob → ELK option contract ────────────────────────────────────────────
-// The REAL arrange path (makeArrangeFn over a fake area, standoff clusters and the
-// overlap backstop included) is driven headless by tidyArrangeGroups.test.ts. What
-// that suite doesn't pin is the knob mapping itself and ELK's behavior under it:
-// this file drives elkjs directly with the app's own root options (ELK_ROOT_OPTIONS,
-// the same constant elkTidyLayout spreads) + tidyLayoutOptions, and asserts the
-// width cap's layerUnzipping really wraps a fat layer without overlaps.
+// Drives elkjs directly with the app's own ELK_ROOT_OPTIONS and tidyLayoutOptions.
 
 const elk = new ELK();
 

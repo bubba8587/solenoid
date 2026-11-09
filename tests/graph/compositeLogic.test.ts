@@ -1,11 +1,10 @@
-// [[A1]], [[B3]], [[C25]]
+// [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere, [[C25]] firstClassUnits, [[composite-nodes#Make a composite from a selection]], [[composite-nodes#Unpack]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { createCompositeFromSelection, unpackComposite } from "../../src/graph/compositeLogic";
 import { CompositeNode } from "../../src/graph/nodes/composite";
 import { ValueInputNode } from "../../src/graph/nodes/control";
@@ -15,16 +14,11 @@ import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { insertFcInline } from "../../src/graph/fcDocking";
 import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 
-// A bare NodeEditor + DataflowEngine, wrapped exactly like Canvas wraps the
+// A bare GraphEditor + DataflowEngine, wrapped exactly like Canvas wraps the
 // real one (coercion inner, error guards outer) — mirrors errorIntegration.
 // test.ts's makeEditor(). No AreaPlugin/ReactPlugin: this env has no DOM.
 function makeEditor() {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   return { editor, engine };
@@ -50,11 +44,11 @@ function makeFakeView(positions: Map<string, { x: number; y: number }>) {
 }
 
 function connect(
-  editor: NodeEditor<Schemes>,
-  src: ClassicPreset.Node, srcOut: string, tgt: ClassicPreset.Node, tgtIn: string,
+  editor: GraphEditor<Schemes>,
+  src: GraphNode, srcOut: string, tgt: GraphNode, tgtIn: string,
 ) {
   return editor.addConnection(
-    new ClassicPreset.Connection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
+    new GraphConnection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
   );
 }
 
@@ -241,5 +235,28 @@ describe("unpackComposite", () => {
     engine.reset();
     const dispOut = await engine.fetch(disp.id) as { out: unknown };
     expect(dispOut.out).toBe(7);
+  });
+});
+
+describe("a group keeps its cards through a wrap and an unpack ([[C86]] membershipByGesture)", async () => {
+  const { GroupNode } = await import("../../src/graph/nodes/group");
+  const { groupMembershipStore } = await import("../../src/graph/groupMembership");
+  it("a wrapped member's group holds the composite in its place; unpacking hands the group its cards back", async () => {
+    const { editor } = makeEditor();
+    const a = new ValueInputNode(), b = new ValueInputNode();
+    await editor.addNode(a as never);
+    await editor.addNode(b as never);
+    const g = new GroupNode({ members: [a.id, b.id], color: "accent" });
+    await editor.addNode(g as never);
+    const { view } = makeFakeView(new Map([[a.id, { x: 0, y: 0 }], [b.id, { x: 200, y: 0 }], [g.id, { x: -20, y: -20 }]]));
+    (a as unknown as { selected: boolean }).selected = true;
+    const cid = (await createCompositeFromSelection(editor, view))!;
+    expect(g.members).toEqual([b.id, cid]);
+    expect(groupMembershipStore.color(a.id)).toBeUndefined();
+    expect(groupMembershipStore.color(cid)).toBeDefined();
+    await unpackComposite(editor, view, cid);
+    expect(g.members).toEqual([b.id, a.id]);
+    expect(groupMembershipStore.color(a.id)).toBeDefined();
+    expect(groupMembershipStore.color(cid)).toBeUndefined();
   });
 });

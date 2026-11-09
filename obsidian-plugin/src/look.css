@@ -8,6 +8,8 @@ body {
   --sol-mix-edge: 45%;
   --sol-mix-emphasis: 60%;
   --sol-mix-glow: 28%;
+  --sol-mix-ink: 55%;
+  --sol-full-accent: color-mix(in srgb, var(--sol-accent), #000 var(--sol-edge-shade));
 
   --font-interface-theme: "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
   --font-text-theme: "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
@@ -21,6 +23,10 @@ body {
 
 .theme-dark {
   --sol-header-tint: 22%;
+  /* A full-strength edge: the color itself on the dark workbench. */
+  --sol-edge-shade: 0%;
+  /* A card's body stroke and header divider, as the app's node frame draws them: neutral on the dark workbench. */
+  --sol-card-stroke: var(--sol-border);
   --sol-ink-pct: 100%;
   --sol-wash: 14%;
   --sol-ink-number: var(--sol-number);
@@ -48,6 +54,10 @@ body {
 
 .theme-light {
   --sol-header-tint: 52%;
+  /* In light a full-strength edge is the color's dark shade, as the node frame strokes it. */
+  --sol-edge-shade: 12%;
+  /* In light the node frame's stroke and divider are the accent's dark shade. */
+  --sol-card-stroke: var(--sol-edge);
   --sol-ink-pct: 0%;
   --sol-wash: 38%;
   --sol-ink-number: var(--sol-text);
@@ -137,6 +147,8 @@ body {
   --prompt-border-color: var(--sol-edge);
   --menu-background: var(--sol-surface);
   --menu-border-color: var(--sol-border-strong);
+  /* A list reads in the text color, as the Reference's navigator and card lists do; only captions are dim. */
+  --nav-item-color: var(--sol-text);
   --nav-item-color-active: var(--sol-ink-accent);
   --nav-item-background-active: color-mix(in srgb, var(--sol-accent) 16%, transparent);
   --nav-item-background-hover: var(--background-modifier-hover);
@@ -198,7 +210,7 @@ body {
   --blockquote-border-thickness: 0px;
   --blockquote-background-color: color-mix(in srgb, var(--sol-accent) 7%, var(--sol-raised));
   --blockquote-color: var(--sol-text);
-  --embed-background: var(--sol-sunken);
+  --embed-background: var(--sol-surface);
   --embed-border-start: 1px solid var(--sol-hairline);
   --embed-border-end: 1px solid var(--sol-hairline);
   --embed-border-top: 1px solid var(--sol-hairline);
@@ -227,13 +239,13 @@ body {
   --tag-color-hover: var(--sol-ink-string);
   --tag-background: color-mix(in srgb, var(--sol-string) var(--sol-wash), transparent);
   --tag-background-hover: color-mix(in srgb, var(--sol-string) calc(var(--sol-wash) + 8%), transparent);
-  --tag-border-color: color-mix(in srgb, var(--sol-string) var(--sol-mix-edge), var(--sol-border));
-  --tag-border-color-hover: color-mix(in srgb, var(--sol-string) var(--sol-mix-emphasis), var(--sol-border));
+  --tag-border-color: color-mix(in srgb, var(--sol-string), #000 var(--sol-edge-shade));
+  --tag-border-color-hover: color-mix(in srgb, var(--sol-string), #000 var(--sol-edge-shade));
   --tag-border-width: 1px;
   --tag-radius: 999px;
   --pill-color: var(--sol-ink-string);
   --pill-background: color-mix(in srgb, var(--sol-string) var(--sol-wash), transparent);
-  --pill-border-color: color-mix(in srgb, var(--sol-string) var(--sol-mix-edge), var(--sol-border));
+  --pill-border-color: color-mix(in srgb, var(--sol-string), #000 var(--sol-edge-shade));
   --pill-border-width: 1px;
   --pill-radius: 999px;
 
@@ -274,14 +286,16 @@ body {
   --bases-embed-border-radius: 8px;
   --bases-embed-border-color: color-mix(in srgb, var(--sol-frame) var(--sol-mix-edge), var(--sol-border));
 
-  --metadata-border-color: var(--sol-edge);
-  --metadata-border-width: 1px;
+  --metadata-border-color: var(--sol-card-stroke);
+  /* The card draws its stroke as an inset shadow, so the header's cap can paint over it as the node frame's does. */
+  --metadata-border-width: 0px;
   --metadata-border-radius: 8px;
   --metadata-background: var(--sol-surface);
   --metadata-divider-color: var(--sol-border-subtle);
   --metadata-divider-width: 1px;
   --metadata-gap: 0px;
   --metadata-label-text-color: var(--sol-text-dim);
+  --metadata-label-font-weight: 500;
   --metadata-input-text-color: var(--sol-text);
   --metadata-property-background-active: color-mix(in srgb, var(--sol-accent) 8%, transparent);
   --metadata-property-box-shadow-focus: 0 0 0 1px var(--sol-accent);
@@ -330,7 +344,11 @@ body {
   border: 2px solid transparent;
   border-bottom: none;
   border-radius: 6px 6px 0 0;
-  background-color: color-mix(in srgb, var(--sol-tab) 7%, var(--sol-app-bg));
+  /* An idle tab is neutral, never a faint wash of its color; its glyph carries the type. */
+  background-color: color-mix(in srgb, var(--sol-surface) 60%, var(--sol-app-bg));
+}
+.mod-root .workspace-tab-header:not(.is-active) .workspace-tab-header-inner-icon {
+  color: var(--sol-tab-ink);
 }
 .mod-root .workspace-tab-header .workspace-tab-header-inner::after {
   display: none;
@@ -340,7 +358,7 @@ body {
 }
 .mod-root .workspace-tab-header.is-active .workspace-tab-header-inner {
   background-color: color-mix(in srgb, var(--sol-tab) var(--sol-header-tint), var(--sol-surface));
-  border-color: color-mix(in srgb, var(--sol-tab) var(--sol-mix-emphasis), var(--sol-border));
+  border-color: color-mix(in srgb, var(--sol-tab), #000 var(--sol-edge-shade));
 }
 .mod-root .workspace-tab-header .workspace-tab-header-inner-title {
   font-size: 11px;
@@ -354,6 +372,13 @@ body {
   color: var(--sol-tab-ink);
 }
 
+.mod-left-split .workspace-tab-header,
+.mod-right-split .workspace-tab-header {
+  --tab-text-color-focused-active: var(--sol-ink-accent);
+  --tab-text-color-focused-active-current: var(--sol-ink-accent);
+}
+.mod-left-split .workspace-tab-header.is-active,
+.mod-right-split .workspace-tab-header.is-active,
 .mod-left-split .workspace-tab-header.is-active .workspace-tab-header-inner,
 .mod-right-split .workspace-tab-header.is-active .workspace-tab-header-inner {
   background: none;
@@ -408,6 +433,31 @@ select.dropdown:focus {
   box-shadow: none;
 }
 
+/* A base's grid draws with the note table's border variable, and its cells are fields that must not box. */
+.bases-view {
+  --sol-bases-head-ink: color-mix(in srgb, var(--sol-frame) var(--sol-mix-ink), var(--sol-text));
+  --table-border-color: var(--bases-table-border-color);
+  --table-header-border-color: var(--bases-table-border-color);
+}
+/* The header band wears the node frame's 2px cap in the Frame's full color (the Properties card's cap, in the base's
+   own hue), so its tint never stands alone. */
+.bases-view .bases-thead {
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--sol-frame), #000 var(--sol-edge-shade));
+}
+/* The header row's sort chevron is the Frame's ink, as a header's glyphs are (the header row sits in the view, outside
+   the table container). */
+.bases-view .bases-table-header-sort {
+  --icon-color: var(--sol-bases-head-ink);
+  --icon-color-hover: var(--sol-bases-head-ink);
+  color: var(--sol-bases-head-ink);
+}
+.bases-table-container input,
+.bases-table-container textarea {
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+}
+
 button:not(.clickable-icon):not(.mod-cta):not(.mod-warning) {
   background-color: var(--sol-sunken);
   border: 1px solid var(--sol-border);
@@ -423,6 +473,15 @@ button.mod-cta {
   box-shadow: none;
   font-weight: 600;
 }
+/* A destructive button takes the error color, moved out of the band where neither ink reads, with the ink that does
+   (the callout title's rule). */
+button.mod-destructive,
+button.mod-warning {
+  --sol-btn-fill: oklch(from var(--sol-error)
+    calc(clamp(0, (l - 0.586) * 1000, 1) * max(l, 0.66) + (1 - clamp(0, (l - 0.586) * 1000, 1)) * min(l, 0.52)) c h);
+  background-color: var(--sol-btn-fill);
+  color: oklch(from var(--sol-btn-fill) clamp(0.2, (0.586 - l) * 1000, 1) 0 0);
+}
 
 .menu,
 .suggestion-container,
@@ -436,25 +495,58 @@ button.mod-cta {
   background-color: color-mix(in srgb, var(--sol-accent) 16%, transparent);
   color: var(--sol-text-bright);
 }
+/* A picked row is the wash under a full accent edge, as the app edges a selected group row (OutlinePanel.css). */
+.tree-item-self.is-active,
+.suggestion-item.is-selected,
+.menu-item.selected:not(.is-disabled),
+.workspace-drawer-tab-select .workspace-tab-header-inner,
+.workspace-drawer-tab-options-list .workspace-tab-header.is-active .workspace-tab-header-inner {
+  box-shadow: inset 0 0 0 1px var(--sol-full-accent);
+}
+/* On an accent wash, nothing stays gray: the picked item's icon, and the picked file's type badge, take the accent. */
+.menu-item.selected:not(.is-disabled) .menu-item-icon,
+.suggestion-item.is-selected .suggestion-icon,
+.nav-file-title.is-active .nav-file-tag {
+  color: var(--sol-ink-accent);
+}
 
 /* ── Instrument chrome, after the app's own bars and floating windows ───────── */
 
+/* The line's color is the pane's, so the pane's resize handle carries it too. */
+.workspace-tabs {
+  --sol-line: var(--sol-accent);
+}
+.mod-root .workspace-tabs:has(> .workspace-tab-header-container .workspace-tab-header.is-active:is([data-type="bases"], [data-type="table"])) {
+  --sol-line: var(--sol-frame);
+}
+.mod-root .workspace-tabs:has(> .workspace-tab-header-container .workspace-tab-header.is-active[data-type="canvas"]) {
+  --sol-line: var(--sol-teal);
+}
+.mod-root .workspace-tabs:has(> .workspace-tab-header-container .workspace-tab-header.is-active:is([data-type="image"], [data-type="pdf"], [data-type="audio"], [data-type="video"])) {
+  --sol-line: var(--sol-complex);
+}
 .workspace-tabs.mod-top > .workspace-tab-header-container,
 .mod-root .workspace-tabs > .workspace-tab-header-container {
-  --sol-line: var(--sol-accent);
   position: relative;
   z-index: 1;
   border-bottom: 1px solid var(--sol-border);
   box-shadow: 0 2px 0 0 var(--sol-line);
 }
-.mod-root .workspace-tabs > .workspace-tab-header-container:has(.workspace-tab-header.is-active:is([data-type="bases"], [data-type="table"])) {
-  --sol-line: var(--sol-frame);
+/* Panes side by side: the divider between them carries the left pane's line across. */
+.mod-root .workspace-tabs > .workspace-leaf-resize-handle {
+  border-image: linear-gradient(to bottom,
+    var(--divider-color) var(--header-height),
+    var(--sol-line) var(--header-height) calc(var(--header-height) + 2px),
+    var(--divider-color) calc(var(--header-height) + 2px)) 1;
 }
-.mod-root .workspace-tabs > .workspace-tab-header-container:has(.workspace-tab-header.is-active[data-type="canvas"]) {
-  --sol-line: var(--sol-teal);
-}
-.mod-root .workspace-tabs > .workspace-tab-header-container:has(.workspace-tab-header.is-active:is([data-type="image"], [data-type="pdf"], [data-type="audio"], [data-type="video"])) {
-  --sol-line: var(--sol-complex);
+
+/* A sidebar's resize handle draws the divider over the top line; its border carries the line across. */
+.mod-left-split > .workspace-leaf-resize-handle,
+.mod-right-split > .workspace-leaf-resize-handle {
+  border-image: linear-gradient(to bottom,
+    var(--divider-color) var(--header-height),
+    var(--sol-accent) var(--header-height) calc(var(--header-height) + 2px),
+    var(--divider-color) calc(var(--header-height) + 2px)) 1;
 }
 
 .nav-header {
@@ -472,6 +564,28 @@ button.mod-cta {
 .nav-buttons-container .clickable-icon,
 .view-actions .clickable-icon {
   border-radius: 50%;
+}
+/* A phone runs the explorer's buttons the drawer's full width, which cuts the pill's rounded ends off at its edges:
+   it insets to the view picker's width below it, with a gap between. It floats over the end of the file list, and
+   Obsidian's floating nav clears its fill, so the list showed through: it keeps the pill's fill. */
+.is-mobile .workspace-drawer .nav-buttons-container {
+  box-sizing: border-box;
+  width: auto;
+  margin: 0 12px 6px;
+}
+.is-mobile.is-floating-nav .workspace-drawer .nav-buttons-container {
+  background-color: var(--sol-sunken);
+}
+/* Obsidian fades the list out with a gradient drawn inside the buttons, which painted over the pill's edge: the fade
+   sits above the pill instead, across the drawer. */
+.is-mobile.is-floating-nav .workspace-drawer .nav-buttons-container::after {
+  top: auto;
+  bottom: calc(100% + 1px);
+  left: -12px;
+  right: -12px;
+  width: auto;
+  height: 48px;
+  margin: 0;
 }
 /* The accent line paints over the bar's top 2px, so the bar takes them back as padding. */
 .view-header {
@@ -520,12 +634,15 @@ button.mod-cta {
   font-weight: 600;
 }
 .tree-item-self.has-active-menu,
-.tree-item-self.has-focus {
+.tree-item-self.has-focus,
+body:not(.is-phone) .workspace-leaf.mod-active .tree-item-self.has-focus {
   box-shadow: inset 0 0 0 1px var(--sol-accent);
 }
 
 .vertical-tab-header-group-title,
+.setting-item-heading .setting-item-name,
 .backlink-pane > .tree-item-self,
+.outgoing-link-pane > .tree-item-self,
 .search-results-info,
 .graph-control-section-header {
   font-size: 11px;
@@ -535,10 +652,31 @@ button.mod-cta {
   color: var(--sol-text-dim);
 }
 
-.workspace-drawer-vault-name {
+.workspace-drawer-vault-name,
+.workspace-drawer-header-name-text {
   color: var(--sol-ink-accent);
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+/* A phone drawer's view picker, as the app's phone Navigator marks its view (OutlinePanel.css, __switchbtn--on): the
+   active view on a soft accent wash, its name in the accent at 600, the others dim. */
+.workspace-drawer-tab-select .workspace-tab-header-inner,
+.workspace-drawer-tab-options-list .workspace-tab-header.is-active .workspace-tab-header-inner {
+  background-color: color-mix(in srgb, var(--sol-accent) var(--sol-wash), transparent);
+}
+.workspace-drawer-tab-select .workspace-tab-header-inner-title,
+.workspace-drawer-tab-select .workspace-tab-header-inner-icon,
+.workspace-drawer-tab-select .workspace-tab-header-inner-chevron,
+.workspace-drawer-tab-options-list .workspace-tab-header.is-active .workspace-tab-header-inner-title,
+.workspace-drawer-tab-options-list .workspace-tab-header.is-active .workspace-tab-header-inner-icon {
+  color: var(--sol-ink-accent);
+}
+.workspace-drawer-tab-select .workspace-tab-header-inner-chevron {
+  --icon-color: var(--sol-ink-accent);
+}
+.workspace-drawer-tab-options-list .workspace-tab-header:not(.is-active) .workspace-tab-header-inner-title {
+  color: var(--sol-text-dim);
 }
 
 .menu,
@@ -555,6 +693,23 @@ button.mod-cta {
 .suggestion-container,
 .graph-controls {
   border-radius: 6px;
+}
+/* A dialog is the app's (Settings.css): one panel hairline, 8px corners, a 14px title, and a full-width divider
+   under its header. The overlay border stays on what floats over the work: menus, the palette, popovers, notices.
+   A phone's dialog is Obsidian's bottom sheet, with a header of its own, and keeps it. */
+body:not(.is-phone) .modal {
+  border: 1px solid var(--sol-border);
+  border-radius: 8px;
+}
+body:not(.is-phone) .modal > .modal-header:has(> .modal-title:not(:empty)) {
+  margin: 0 calc(-1 * var(--size-4-4)) var(--size-4-3);
+  padding: 0 var(--size-4-4) var(--size-4-3);
+  border-bottom: 1px solid var(--sol-border);
+}
+body:not(.is-phone) .modal .modal-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sol-text-bright);
 }
 .status-bar {
   border-color: var(--sol-overlay-border);
@@ -595,7 +750,7 @@ button.mod-cta {
 }
 
 .markdown-rendered blockquote {
-  border: 1px solid var(--sol-hairline);
+  border: 1px solid var(--sol-full-accent);
   border-radius: 8px;
   padding: var(--size-4-2) var(--size-4-4);
 }
@@ -605,8 +760,13 @@ button.mod-cta {
 }
 
 .callout {
-  --callout-head: color-mix(in srgb, var(--callout-color) 86%, #000);
-  --callout-ink: #ffffff;
+  --callout-base: color-mix(in srgb, var(--callout-color) 86%, #000);
+  /* Black and white tie for contrast at OKLCH L 0.586 (Y 0.20), where neither reaches 4.5:1. A header near the tie
+     moves out of it along its own hue: one above it lightens to at least 0.66 and takes near-black ink, one below
+     darkens to at most 0.52 and takes white, so a title reads on every palette's color. */
+  --callout-head: oklch(from var(--callout-base)
+    calc(clamp(0, (l - 0.586) * 1000, 1) * max(l, 0.66) + (1 - clamp(0, (l - 0.586) * 1000, 1)) * min(l, 0.52)) c h);
+  --callout-ink: oklch(from var(--callout-head) clamp(0.2, (0.586 - l) * 1000, 1) 0 0);
   padding: 0;
   border: none;
   border-radius: 8px;
@@ -620,8 +780,7 @@ button.mod-cta {
   [data-callout="attention"], [data-callout="failure"], [data-callout="fail"], [data-callout="missing"],
   [data-callout="danger"], [data-callout="error"], [data-callout="bug"], [data-callout="quote"],
   [data-callout="cite"]) {
-  --callout-head: var(--callout-color);
-  --callout-ink: #1a1a1a;
+  --callout-base: var(--callout-color);
 }
 .callout-title {
   align-items: center;
@@ -670,6 +829,14 @@ button.mod-cta {
   mask: var(--sol-cable);
 }
 
+/* In Live Preview the line takes the room as padding: a margin in the editor throws off its cursor math. */
+.markdown-source-view.mod-cm6 .hr {
+  padding-block: 1.5em;
+}
+.markdown-source-view.mod-cm6 .hr hr {
+  margin: 0;
+}
+
 .markdown-rendered ul ul > li > .list-bullet::after,
 .cm-s-obsidian .HyperMD-list-line:not(.HyperMD-list-line-1) .list-bullet::after {
   border-radius: 1px;
@@ -678,6 +845,13 @@ button.mod-cta {
 .markdown-rendered pre {
   border: 1px solid var(--sol-border);
   border-radius: 8px;
+}
+/* A key is the app's: sunken, with a strong hairline, so it reads in light too. */
+kbd {
+  padding: 1px 5px;
+  background-color: var(--sol-sunken);
+  border: 1px solid var(--sol-border-strong);
+  border-radius: 4px;
 }
 .cm-s-obsidian .HyperMD-codeblock-bg {
   border-inline: 1px solid var(--sol-border);
@@ -693,7 +867,7 @@ button.mod-cta {
 .markdown-rendered table {
   border-collapse: separate;
   border-spacing: 0;
-  border: 1px solid var(--sol-edge);
+  border: 1px solid var(--sol-full-accent);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -717,6 +891,20 @@ button.mod-cta {
 .cm-s-obsidian span.cm-highlight {
   border-radius: 3px;
   color: var(--sol-text-bright);
+}
+
+/* A note is a page of boxes, as the Reference's landing is (FunctionReference.css: .fr-land on the canvas, its boxes on
+   the surface): the page takes the canvas, and the cards in it (Properties, tables, embeds) the surface, so they lift
+   off it as a node card lifts off the graph. */
+.workspace-leaf-content[data-type="markdown"] .view-content {
+  background-color: var(--sol-canvas);
+}
+.markdown-rendered table {
+  background-color: var(--sol-surface);
+}
+.metadata-container .metadata-property-key-input,
+.metadata-container .metadata-property-key {
+  font-weight: 500;
 }
 
 /* Obsidian nudges the panel 4px left for bare icons; a bordered card lines up by its edge. */
@@ -754,17 +942,49 @@ button.mod-cta {
 .metadata-container {
   overflow: hidden;
   padding: 0 0 var(--size-4-2);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--sol-card-stroke);
 }
+/* A node card's header: the band at the header tint, under a 2px cap of the full accent round its top and sides, over
+   the card's divider (nodeCard.css: __frame-cap, __frame-divider). */
 .metadata-container .metadata-properties-heading {
   display: flex;
   margin: 0 0 var(--size-4-2);
   padding: var(--size-4-2) var(--size-4-3);
+  border-radius: 8px 8px 0 0;
   background-color: var(--sol-header-band);
-  border-bottom: 1px solid var(--sol-edge);
+  box-shadow:
+    inset 0 2px 0 var(--sol-accent),
+    inset 2px 0 0 var(--sol-accent),
+    inset -2px 0 0 var(--sol-accent),
+    inset 0 -1px 0 var(--sol-card-stroke);
+}
+/* Folded (by hand, or in a hover preview) the card is its header alone. */
+.metadata-container.is-collapsed {
+  padding-bottom: 0;
+}
+.metadata-container.is-collapsed .metadata-properties-heading {
+  margin-bottom: 0;
+  border-radius: 8px;
+}
+/* The header title and its fold chevron in its accent's ink (DESIGN.md's Accent-Mix Ladder: --mix-ink, header titles
+   and chevrons). Obsidian colors the chevron through its collapse-icon variables. */
+.metadata-container .metadata-properties-heading {
+  /* The node header title's own formula (nodeCard.css): the accent 55% toward the text, in both modes. */
+  --sol-head-ink: color-mix(in srgb, var(--sol-accent) var(--sol-mix-ink), var(--sol-text));
+  --collapse-icon-color: var(--sol-head-ink);
+  --collapse-icon-color-collapsed: var(--sol-head-ink);
+  --nav-collapse-icon-color: var(--sol-head-ink);
+  --nav-collapse-icon-color-collapsed: var(--sol-head-ink);
 }
 .metadata-container .metadata-properties-title {
-  color: var(--sol-text-bright);
+  color: var(--sol-head-ink);
   font-weight: 600;
+  /* A card header's title, as the Reference's box titles set theirs (FunctionReference.css, .fr-land__head > span):
+     small, uppercase and tracked. Obsidian has no header-case setting, so it is always uppercase. */
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 .metadata-container .metadata-content {
   padding: 0 var(--size-4-2);

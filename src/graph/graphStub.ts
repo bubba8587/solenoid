@@ -2,7 +2,7 @@
 import { yamlScalar } from "./obsidianMarkdown";
 import { parseNoteFrontmatter, type FrontmatterRow } from "./noteFrontmatter";
 
-export interface StubWrite { node: string; target: string; }
+interface StubWrite { node: string; target: string; }
 
 export function sanitizeDocName(doc: string): string {
   const s = (doc || "").replace(/[\\/:*?"<>|#^[\]]/g, "-").trim();

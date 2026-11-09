@@ -1,9 +1,8 @@
 // [[B3]] sameNodeEverywhere, [[D62]] demoVaultResolution
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
-import { SocketDot, type SocketGlyph } from "../components/SocketLegend";
+import type { ReactNode } from "react";
 import { NODE_KIND_ACCENTS, type NodeKind } from "../nodes/shared";
-import { ClassicPreset } from "rete";
+import { GraphConnection, GraphNode } from "../graphModel";
 import type { SolenoidNode, SolenoidConnection } from "../schemes";
 import { nodeNameStore } from "../nodeNameStore";
 import { ArithmeticNode } from "../nodes/scalar";
@@ -22,19 +21,19 @@ import { ReportNode } from "../nodes/report";
 import { type SurfaceStack } from "../flow/FlowSurface";
 import { SceneStage } from "./SceneStage";
 
-const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
+const asNode = (n: GraphNode) => n as unknown as SolenoidNode;
 
 // ── Scene build helpers ──
-async function addNodes(s: SurfaceStack, nodes: ClassicPreset.Node[]): Promise<void> {
+async function addNodes(s: SurfaceStack, nodes: GraphNode[]): Promise<void> {
   for (const n of nodes) {
     await s.editor.addNode(asNode(n));
     nodeNameStore.ensure(n.id, n.constructor.name);
   }
 }
 
-function wire(s: SurfaceStack, src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) {
+function wire(s: SurfaceStack, src: GraphNode, out: string, tgt: GraphNode, inp: string) {
   return s.editor.addConnection(
-    new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection,
+    new GraphConnection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection,
   );
 }
 
@@ -88,7 +87,7 @@ export function Reveal({
 }
 
 // ── Diagram: a fixed-size plane scaled to fit its container ──
-export function Diagram({
+function Diagram({
   w,
   h,
   children,
@@ -125,78 +124,6 @@ export function Diagram({
   );
 }
 
-// ── Cables: the spline recipe (horizontal tangents at both sockets) ──
-function cableD(x1: number, y1: number, x2: number, y2: number) {
-  const dx = Math.max(46, Math.abs(x2 - x1) / 2);
-  return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
-}
-
-export function Cables({
-  w,
-  h,
-  runs,
-}: {
-  w: number;
-  h: number;
-  runs: { from: [number, number]; to: [number, number]; color: string }[];
-}) {
-  return (
-    <svg className="sol-diagram__cables" width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
-      {runs.map((r, i) => {
-        const d = cableD(r.from[0], r.from[1], r.to[0], r.to[1]);
-        return (
-          <g key={i}>
-            <path className="sol-cable" d={d} style={{ stroke: r.color }} />
-            <path
-              className="sol-cable__flow"
-              d={d}
-              style={{ stroke: r.color, animationDelay: `${(i * 0.45) % 1.6}s` }}
-            />
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-// ── MNode: the node-card recipe, static ──
-type Sock = { cy: number; side: "in" | "out"; glyph: SocketGlyph };
-
-export function MNode({
-  x,
-  y,
-  w = 180,
-  accent,
-  title,
-  socks = [],
-  children,
-  className = "",
-}: {
-  x: number;
-  y: number;
-  w?: number;
-  accent: string;
-  title: string;
-  socks?: Sock[];
-  children?: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`sol-mnode ${className}`}
-      style={{ left: x, top: y, width: w, "--node-accent": accent } as CSSProperties}
-    >
-      <div className="sol-mnode__header">{title}</div>
-      <div className="sol-mnode__body">{children}</div>
-      {socks.map((s, i) => (
-        <span key={i} className={`sol-mnode__sock sol-mnode__sock--${s.side}`} style={{ top: s.cy }}>
-          <SocketDot entry={s.glyph} />
-        </span>
-      ))}
-    </div>
-  );
-}
-
 // ─── Scene: the typed cable board (real nodes, computed once) ────────────────────
 export function CableBoardScene() {
   return (
@@ -210,7 +137,7 @@ export function CableBoardScene() {
         const date = new ValueInputNode({ label: "Date", op: "date" });
         const frame = new FrameInputNode({ label: "Frame", frameText: "a, b\n1, 2\n3, 4" });
         const SPAN = 240;
-        const pairs: [ClassicPreset.Node, string, number, number][] = [
+        const pairs: [GraphNode, string, number, number][] = [
           [num, "value", 0, 0],
           [list, "list", 0, 260],
           [date, "value", 660, 0],
@@ -452,7 +379,7 @@ export async function buildReportPipeline(s: SurfaceStack): Promise<void> {
   });
   const write = new WriteObsidianNode({ label: "Write to Obsidian", target: "note" });
   write.stringLiterals.path = "Weekly review";
-  const at: [ClassicPreset.Node, number, number][] = [
+  const at: [GraphNode, number, number][] = [
     [focus, 20, 40],
     [tasks, 20, 230],
     [report, 360, 110],

@@ -249,15 +249,14 @@ export default defineConfig(async () => ({
 
   // Preserve class / function names through minification. Node components
   // derive their human-readable type hint from `constructor.name` (see
-  // typeHint in nodeKit.tsx), AND `persistence.ts` writes `constructor.name`
-  // as the persisted node type; without this, the minifier mangles class
+  // typeHint in nodeKit.tsx), AND the saved node body (`savedNodeBody.ts`)
+  // writes `constructor.name` as the persisted node type; without this, the minifier mangles class
   // names to single letters and a production save reopens as garbage. Vite 8
   // defaults to the Oxc minifier, which has no keepNames equivalent, so pin
   // the esbuild minifier explicitly and keep its keepNames option.
   esbuild: { keepNames: true },
   resolve: {
     alias: {
-      "@solenoid/schedule-engine": path.resolve("packages/schedule-engine/src/index.ts"),
       "@solenoid/gantt-layout": path.resolve("packages/gantt-layout/src/index.ts"),
       "@solenoid/gantt-react": path.resolve("packages/gantt-react/src/index.ts"),
     },
@@ -274,8 +273,8 @@ export default defineConfig(async () => ({
         license({
           thirdParty: {
             includePrivate: false,
-            // Key by name@version, not name: ten packages resolve at TWO versions
-            // (mermaid nests its own marked/katex/d3-*), and the default keeps only
+            // Key by name@version, not name: a package can resolve at TWO versions
+            // (a dependency can nest its own copy of another), and the default keeps only
             // whichever it saw first — the file named versions we don't ship.
             multipleVersions: true,
             output: {

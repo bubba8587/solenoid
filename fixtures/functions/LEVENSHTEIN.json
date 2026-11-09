@@ -1,0 +1,5 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"LEVENSHTEIN(\"kitten\", \"sitting\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

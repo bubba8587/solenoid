@@ -1,6 +1,7 @@
 // [[C47]] equationNode
+import type { GraphSocket } from "../graphModel";
 import { useRef, useState, useLayoutEffect, type ReactNode } from "react";
-import type { EquationNode as EquationNodeType } from "../rete-nodes";
+import type { EquationNode as EquationNodeType } from "../nodeClasses";
 import { NodeShell, ValueDisplay, type NodeProps, type Emit } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { FormulaField } from "./FormulaField";
@@ -9,7 +10,7 @@ import type { DisplayValue } from "./valueDisplayFormat";
 import "./ExpressionNode.css";
 
 // Two sockets centered on the hero value box, not the row; the row must not become a positioning context.
-function useRowTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
+export function useRowTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
   const prev = useRef<number | undefined>(undefined);
   const [top, setTop] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {
@@ -24,8 +25,8 @@ function useRowTop(ref: React.RefObject<HTMLElement | null>): number | undefined
 
 interface AcausalRowNode {
   id: string;
-  inputs: Partial<Record<string, { socket: import("rete").ClassicPreset.Socket }>>;
-  outputs: Partial<Record<string, { socket: import("rete").ClassicPreset.Socket }>>;
+  inputs: Partial<Record<string, { socket: GraphSocket }>>;
+  outputs: Partial<Record<string, { socket: GraphSocket }>>;
 }
 
 // `--output` keeps the rows visible when collapsed.

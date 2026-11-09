@@ -1,17 +1,16 @@
+import { clamp } from "../nodes/mathUtils";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getCablePath, Position } from "../cablePaths";
 import { cableShapeStore } from "../cableShape";
 import { cableFlourishBridge } from "../cableFlourishStore";
+import { COLOR_PALETTE, resolveColor } from "../palette";
 
 // A cosmetic viewport-space overlay (pointer-events none), triggered by the NavMenu button or `window.__cableFlourish()`.
 
 const SVGNS = "http://www.w3.org/2000/svg";
 
-const PALETTE = [
-  "#56b4e9", "#e69f00", "#009e73", "#cc79a7",
-  "#f0e442", "#d55e00", "#0072b2", "#ec4899",
-];
+const FLOURISH_SLOTS = COLOR_PALETTE.filter((s) => s !== "gray");
 
 type Pt = { x: number; y: number };
 type Run = {
@@ -27,7 +26,6 @@ type Run = {
 
 const angleDeg = (from: Pt, to: Pt) => (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI;
 const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
-const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
 
 // The cardinal side a direction most points along — the router's no-angle-hint fallback.
 function posFromDir(dx: number, dy: number): Position {
@@ -89,7 +87,7 @@ function makeRun(id: number, w: number, h: number): Run {
 
   return {
     id,
-    color: PALETTE[Math.floor(Math.random() * PALETTE.length)],
+    color: resolveColor(FLOURISH_SLOTS[Math.floor(Math.random() * FLOURISH_SLOTS.length)]),
     waypoints,
     d,
     el,
@@ -161,7 +159,7 @@ export function CableFlourish() {
     >
       <defs>
           {runs.map((run) => {
-            const u = clamp01((now - run.start) / run.duration);
+            const u = clamp((now - run.start) / run.duration, 0, 1);
             const headLen = u * run.total;
             const trailLen = Math.min(180, run.total * 0.28);
             const fromLen = Math.max(0, headLen - trailLen);
@@ -182,7 +180,7 @@ export function CableFlourish() {
           })}
         </defs>
         {runs.map((run) => {
-          const u = clamp01((now - run.start) / run.duration);
+          const u = clamp((now - run.start) / run.duration, 0, 1);
           const headLen = u * run.total;
           const trailLen = Math.min(180, run.total * 0.28);
           const fromLen = Math.max(0, headLen - trailLen);

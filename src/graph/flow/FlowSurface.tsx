@@ -3,8 +3,6 @@ import { registerDevRfStore } from "./devRfStores";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   ReactFlow,
-  Background,
-  BackgroundVariant,
   MiniMap,
   applyNodeChanges,
   applyEdgeChanges,
@@ -13,7 +11,6 @@ import {
   useReactFlow,
   useStoreApi,
   useNodesInitialized,
-  useOnSelectionChange,
   type NodeChange,
   type EdgeChange,
   type Connection,
@@ -35,6 +32,9 @@ import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
 import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { FlowConnectionLine } from "./FlowConnectionLine";
 import { ViewportLayer } from "./ViewportLayer";
+import { mirrorSelection } from "./selectionMirror";
+import { CanvasBacking } from "./CanvasBacking";
+import { alignedViewport, createPanLayer, promotesPans } from "./panLayer";
 import { useIsMobile } from "../useDeviceMode";
 import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cableState";
 import { toFlowNodes, toFlowEdges, mergeFlowNodes, nodeClassName, toFlowPosition, fromFlowPosition, type FlowModel } from "./flowModel";
@@ -52,13 +52,16 @@ import { scheduleAutosave } from "../persistence";
 import { nodeNameStore } from "../nodeNameStore";
 import { syncSemanticZoomFor } from "../semanticZoomStore";
 import { buildCatalog } from "../catalogUtils";
+import { placeCompanions } from "../companions";
 import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
 import { addMenuRequest } from "../addMenuStore";
 import { packsStore } from "../packs";
-import { CompositeNode, GroupNode, FormatControllerNode } from "../rete-nodes";
+import { CompositeNode, GroupNode, FormatControllerNode } from "../nodeClasses";
+import { reconcileFcs } from "../fcReconcile";
 import { MIN_ZOOM, MAX_ZOOM, floorZoom } from "../viewPresets";
 import { gridSnapStore, DOT_SPACING } from "../gridSnapStore";
-import { isolateStore } from "../isolateStore";
+import { isolateStore, isoEndpointSelect } from "../isolateStore";
+import { IsolateEndpoints } from "../components/IsolateEndpoints";
 import {
   SocketContextMenu,
   CableContextMenu,
@@ -87,7 +90,7 @@ import { socketFlipStore } from "../socketFlipStore";
 import { modalOwnsKeyboard, keyUnderModal } from "../modalGuard";
 import { rebuildGroupMembership, groupMembershipStore } from "../groupMembership";
 import { syncGroupCollapse } from "../groupCollapse";
-import { isGraphRebuilding } from "../process";
+import { isGraphRebuilding, onGraphRebuildEnd } from "../process";
 import { installCableSettlePipe, rescanUnitMismatches, type CableSettleStack } from "../cableSettle";
 import { formatAnnotationStore } from "../formatAnnotationStore";
 import { canvasLockStore } from "../canvasLock";
@@ -128,9 +131,9 @@ const PRO_OPTIONS = { hideAttribution: false };
 const MINIMAP_STYLE = { width: 182, height: 105 };
 const DELETE_KEYS = ["Backspace", "Delete"];
 const DEFAULT_EDGE_OPTIONS = { type: "cable" as const, interactionWidth: 0 };
-const MINIMAP_MASK = "color-mix(in srgb, var(--overlay-bg) 72%, transparent)";
-const DOT_SIZE = 2;
-const DOT_OFFSET = DOT_SIZE / 2 - DOT_SPACING / 2;
+// The canvas outside the view, shaded so it reads against the minimap's own background (the overlay color), not only
+// where it crosses a card.
+const MINIMAP_MASK = "var(--minimap-mask)";
 
 export type SurfaceHandlers = {
   bumpNode(id: string): void;
@@ -161,7 +164,6 @@ export type SurfaceStack = FlowModel & {
   handlers: SurfaceHandlers;
   standoffSettle?: (pinned?: Set<string>, opts?: SettleOpts) => void;
   isRebuilding?: () => boolean;
-  absorbPipeInstalled?: boolean;
 } & CableSettleStack;
 
 export type SurfaceHooks = {
@@ -250,12 +252,25 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   }, []);
 
   useEffect(() => {
-    s.handlers.bumpNode = (id) =>
-      setNodes((ns) =>
-        ns.map((n) =>
-          n.id === id ? { ...n, data: { ...n.data, version: n.data.version + 1 } } : n,
-        ),
-      );
+    // An update to a card React Flow doesn't hold yet returns the same array, so it costs no commit; it can't be
+    // skipped up front, since a card just added is in the queued state before it is in the rendered one. While a
+    // rebuild runs, re-renders wait and land in one commit when it ends: a load's compute pass re-renders every card.
+    const bumpAll = (ids: Set<string>) =>
+      setNodes((ns) => {
+        if (!ns.some((n) => ids.has(n.id))) return ns;
+        return ns.map((n) => (ids.has(n.id) ? { ...n, data: { ...n.data, version: n.data.version + 1 } } : n));
+      });
+    const pendingBumps = new Set<string>();
+    const offRebuildEnd = onGraphRebuildEnd(() => {
+      if (pendingBumps.size === 0) return;
+      const ids = new Set(pendingBumps);
+      pendingBumps.clear();
+      bumpAll(ids);
+    });
+    s.handlers.bumpNode = (id) => {
+      if (isGraphRebuilding()) { pendingBumps.add(id); return; }
+      bumpAll(new Set([id]));
+    };
     s.handlers.bumpConnections = () => setEdges(toFlowEdges(s));
     s.handlers.bumpAllNodes = () =>
       setNodes((ns) => ns.map((n) => ({ ...n, data: { ...n.data, version: n.data.version + 1 } })));
@@ -293,14 +308,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       );
     syncTopology();
     // A drill stack outlives its surface; unmounted, its view must not drive dead React state.
-    return () => { Object.assign(s.handlers, idleHandlers()); };
+    return () => { offRebuildEnd(); Object.assign(s.handlers, idleHandlers()); };
   }, [s, setViewport, syncTopology]);
 
-  // editor.addPipe cannot be removed, so this pipe installs once per stack.
   useEffect(() => {
-    if (s.absorbPipeInstalled) return;
-    s.absorbPipeInstalled = true;
-    s.editor.addPipe((ctx) => {
+    const pipe = s.editor.addPipe((ctx) => {
       if ((ctx as { type?: string }).type === "nodecreated" && !isGraphRebuilding() && !s.isRebuilding?.()) {
         const newId = (ctx as unknown as { data: { id: string } }).data.id;
         requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -313,6 +325,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       }
       return ctx;
     });
+    return () => s.editor.removePipe(pipe);
   }, [s]);
 
   useEffect(() => installCableSettlePipe(s), [s]);
@@ -489,16 +502,20 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const onEdgesChange = useCallback((changes: EdgeChange<SolFlowEdge>[]) => {
     setEdges((es) => applyEdgeChanges(changes, es));
   }, []);
-  const onSelectionChange = useCallback(
-    ({ nodes: sel, edges: selEdges }: { nodes: SolFlowNode[]; edges: SolFlowEdge[] }) => {
-      const ids = new Set(sel.map((n) => n.id));
-      for (const n of s.editor.getNodes()) (n as { selected?: boolean }).selected = ids.has(n.id);
-      cableSelectionStore.replaceAll(selEdges.map((e) => e.id));
-      if (ids.size > 0 || selEdges.length > 0) drawnCableStore.select(null);
-    },
-    [s],
+  useEffect(
+    () =>
+      mirrorSelection(storeApi, (nodeIds, edgeIds) => {
+        const ids = new Set(nodeIds);
+        for (const n of s.editor.getNodes()) (n as { selected?: boolean }).selected = ids.has(n.id);
+        cableSelectionStore.replaceAll(edgeIds);
+        if (ids.size > 0 || edgeIds.length > 0) {
+          drawnCableStore.select(null);
+          standoffStore.select(null);
+          isoEndpointSelect.set(null);
+        }
+      }),
+    [s, storeApi],
   );
-  useOnSelectionChange({ onChange: onSelectionChange });
   useEffect(
     () =>
       cableSelectionStore.subscribe(() => {
@@ -541,21 +558,49 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const onPaneClick = useCallback(() => {
     cableSelectionStore.set(null);
     drawnCableStore.select(null);
+    isoEndpointSelect.set(null);
   }, []);
+  const panLayer = useMemo(
+    () => createPanLayer(() => wrapperRef.current?.querySelector<HTMLElement>(".react-flow__viewport")),
+    [],
+  );
+  useEffect(() => () => panLayer.end(), [panLayer]);
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    // Capture, so the camera is whole before d3 reads the press point the drag keeps under the pointer.
+    const align = (e: PointerEvent) => {
+      if (e.pointerType === "touch" || !(e.target as Element | null)?.classList?.contains("react-flow__pane") || !promotesPans()) return;
+      const next = alignedViewport(getViewport(), window.devicePixelRatio || 1);
+      if (next) void setViewport(next);
+    };
+    // A release always ends the layer, so no path that ends a pan without RF's end event can leave it promoted.
+    const release = () => panLayer.end();
+    el.addEventListener("pointerdown", align, true);
+    window.addEventListener("pointerup", release);
+    window.addEventListener("pointercancel", release);
+    return () => {
+      el.removeEventListener("pointerdown", align, true);
+      window.removeEventListener("pointerup", release);
+      window.removeEventListener("pointercancel", release);
+    };
+  }, [getViewport, setViewport, panLayer]);
+  const onMoveStart = useCallback(
+    (e: MouseEvent | TouchEvent | null, viewport: Viewport) => panLayer.start(e, viewport.zoom),
+    [panLayer],
+  );
+  const onMoveEnd = useCallback((e: MouseEvent | TouchEvent | null) => panLayer.end(e), [panLayer]);
   const onMove = useCallback(
     (_e: unknown, viewport: Viewport) => {
+      panLayer.move(viewport.zoom);
       s.view.setTransform({ x: viewport.x, y: viewport.y, k: viewport.zoom });
       syncSemanticZoomFor(viewport.zoom);
     },
-    [s],
+    [s, panLayer],
   );
-  const onPointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      screenMouseRef.current = { x: e.clientX, y: e.clientY };
-      s.view.setPointer(screenToFlowPosition({ x: e.clientX, y: e.clientY }));
-    },
-    [s, screenToFlowPosition],
-  );
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    screenMouseRef.current = { x: e.clientX, y: e.clientY };
+  }, []);
 
   const onConnectStart = useCallback(
     (_e: unknown, params: { nodeId: string | null; handleId: string | null }) => {
@@ -694,14 +739,17 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
               fc.socketKey = target.socketKey;
               fc.side = target.side;
               fc.dockSelf(s.editor);
+              reconcileFcs(s.editor, null);
               const dims = dockedRenderedDims(s.view, fc.id, fc.width, fc.height);
               const pos = computeDockedCanvasPos(s.view, el, fc.hostNodeId, fc.socketKey, fc.side, dims.w, dims.h);
               if (pos) await s.view.moveNode(fc.id, pos);
               await insertFcInline(s.editor, fc);
+              fc.edited();
               await processGraph();
             })();
           } else if (target) {
             fc.dockSelf(s.editor);
+            reconcileFcs(s.editor, null);
             const dims = dockedRenderedDims(s.view, fc.id, fc.width, fc.height);
             const pos = computeDockedCanvasPos(s.view, el, fc.hostNodeId, fc.socketKey, fc.side, dims.w, dims.h);
             if (pos) void s.view.moveNode(fc.id, pos);
@@ -725,6 +773,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       const pos = screenToFlowPosition({ x: menu.screenX, y: menu.screenY });
       const fromInput = menu.quickWire?.side === "input";
       await s.view.moveNode(node.id, { x: Math.round(pos.x), y: Math.round(pos.y) });
+      if (entry.companions) await placeCompanions(s.editor, s.view, node, pos, entry.companions());
       if (fromInput) {
         requestAnimationFrame(() => {
           const w = s.view.nodeElement(node.id)?.offsetWidth ?? 0;
@@ -832,7 +881,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         onNodeDragStop={onNodeDragStop}
+        onMoveStart={onMoveStart}
         onMove={onMove}
+        onMoveEnd={onMoveEnd}
         isValidConnection={isValidConnection}
         deleteKeyCode={locked || hooks.noKeyboard ? null : DELETE_KEYS}
         selectionKeyCode={null}
@@ -846,14 +897,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         colorMode={themeMode}
         proOptions={PRO_OPTIONS}
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={DOT_SPACING}
-          size={DOT_SIZE}
-          offset={DOT_OFFSET}
-          color="var(--canvas-dot)"
-          bgColor="var(--canvas-bg)"
-        />
+        <ViewportLayer>
+          <CanvasBacking />
+        </ViewportLayer>
         {hooks.standoffs && (
           <ViewportLayer>
             <StandoffLayer />
@@ -866,6 +912,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         )}
         <ViewportLayer>
           <PendingCableLayer />
+        </ViewportLayer>
+        <ViewportLayer>
+          <div className="solenoid-iso-ep-layer">
+            <IsolateEndpoints editor={s.editor} view={s.view} />
+          </div>
         </ViewportLayer>
         {/* Not mounted on a phone, where CSS hides it: mounted, it re-renders a rect per card every pan frame. */}
         {!mobile && <MiniMap<SolFlowNode>
@@ -953,8 +1004,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         >
           <polygon
             points={lasso.points.map((p) => `${p.x},${p.y}`).join(" ")}
-            fill={lasso.mode === "enclose" ? "rgba(86, 180, 233, 0.10)" : "rgba(255, 220, 0, 0.10)"}
-            stroke={lasso.mode === "enclose" ? "rgba(86, 180, 233, 0.9)" : "rgba(255, 220, 0, 0.95)"}
+            fill={`color-mix(in srgb, var(--lasso-${lasso.mode === "enclose" ? "enclose" : "touch"}) 10%, transparent)`}
+            stroke={`var(--lasso-${lasso.mode === "enclose" ? "enclose" : "touch"})`}
             strokeWidth={1.4}
             strokeDasharray={lasso.mode === "touch" ? "5 4" : undefined}
           />

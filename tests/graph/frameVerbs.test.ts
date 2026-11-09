@@ -1,6 +1,7 @@
-// [[C16]] polarsEngine, [[D49]]
+// [[C130]] rustCore, [[C10]] socketLattice, [[frame-verbs#Nulls, errors and non-finite numbers]], [[frame-verbs#filter and filterMulti]],
+// [[frame-verbs#groupBy]], [[frame-verbs#pivot]], [[frame-verbs#replaceValues]], [[frame-verbs#Nest and Unnest]], [[frame-verbs#Frame tidies]]
 import { describe, it, expect } from "vitest";
-import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows } from "../../src/graph/frameVerbs";
+import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows } from "./coreVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { isCubeValue, isFrameValue, cubeFromColumns, cubeDepth, cubeRowCount, type FrameValue, type FrameColumn } from "../../src/graph/frame";
 
@@ -13,13 +14,7 @@ const f: FrameValue = {
   ],
 };
 
-// The verb-semantics tests live in fixtures/frame-verbs (the parity corpus —
-// frameVerbCorpus.test.ts runs them here, cargo's corpus_cases runs the same
-// files through Polars). What remains below is ORACLE-ONLY behavior: per-cell
-// SolErrors can't ride the wire (the {"__err"} upload degrades them to null
-// engine-side), so their semantics are pinned here and nowhere else.
-
-describe("sort — error cells (oracle-only)", () => {
+describe("sort — error cells", () => {
   const s: FrameValue = {
     __frame: true,
     columns: [
@@ -34,7 +29,7 @@ describe("sort — error cells (oracle-only)", () => {
   });
 });
 
-describe("distinct — the cross-backend key contract (B-1a, re-cut 2026-08-22)", () => {
+describe("distinct — the key contract", () => {
   it("+∞, −∞ and NaN key apart from each other and from null", () => {
     const nf: FrameValue = {
       __frame: true,
@@ -43,7 +38,7 @@ describe("distinct — the cross-backend key contract (B-1a, re-cut 2026-08-22)"
     expect(distinctRows(nf).columns[0].values).toEqual([Infinity, -Infinity, NaN, null, 1]);
   });
 });
-describe("filter — error cells (oracle-only)", () => {
+describe("filter — error cells", () => {
   const t: FrameValue = {
     __frame: true,
     columns: [
@@ -54,6 +49,10 @@ describe("filter — error cells (oracle-only)", () => {
   it("an error cell fails every comparison, like null", () => {
     const out = filterRows(t, "qty", "gte", 5);
     expect(out.columns[0].values).toEqual([5, 12, 20]);
+  });
+  it("an error as the value is the filter's answer, whatever the column", () => {
+    const err = solError("#DIV/0!", "x");
+    for (const column of ["qty", "city"]) expect(() => filterRows(t, column, "gte", err)).toThrow(expect.objectContaining({ code: "#DIV/0!" }));
   });
   it("an error cell is present, not blank: isblank false, notblank true", () => {
     const blank = filterRows(t, "qty", "isblank", null);
@@ -66,7 +65,7 @@ describe("filter — error cells (oracle-only)", () => {
   });
 });
 
-describe("filterMulti — error cells (oracle-only)", () => {
+describe("filterMulti — error cells", () => {
   const t: FrameValue = {
     __frame: true,
     columns: [
@@ -110,14 +109,9 @@ describe("groupBy — error cells + the aggregate guard", () => {
     expect(isSolError(out.columns[2].values[1])).toBe(true);
     expect(out.columns[3].values).toEqual([2, 2]);           // present (non-null) cells per group
   });
-  // ── The aggregate non-finite guard (B-1b, decided 2026-07-02). The ENGINE
-  // guards identically since 2026-07-29 (guard_agg_expr, payload-NaN markers →
-  // the {"__err"} download form) — parity is pinned by the corpus's "the
-  // aggregate guard" cases in groupBy.json. Input-error PROPAGATION (the test
-  // above) stays oracle-only: uploads degrade error cells to null. ────────────
 });
 
-// [[D76]] textMinMax
+// [[C24]] arraySemantics
 describe("text min and max", () => {
   const t: FrameValue = {
     __frame: true,
@@ -210,7 +204,7 @@ describe("nest / unnest (flat ⟷ cube)", () => {
     expect(err.code).toBe("#REF!");
   });
 
-  // B8.1: a depth-2 cube (nested cells are CUBES) peels ONE level to a depth-1 cube.
+  // A depth-2 cube (nested cells are cubes) peels one level to a depth-1 cube.
   const orders1: FrameValue = { __frame: true, columns: [{ name: "sku", type: "string", values: ["a", "b"] }] };
   const orders2: FrameValue = { __frame: true, columns: [{ name: "sku", type: "string", values: ["z"] }] };
   const repN = cubeFromColumns([{ name: "rep", cells: ["Ann"], type: "string" }, { name: "orders", cells: [orders1] }]);
@@ -401,7 +395,7 @@ describe("splitColumn / addIndexColumn (Power Query column ops)", () => {
   });
 
   it("split on an empty delimiter is a no-op", () => {
-    expect(splitColumn(f, "name", "")).toBe(f);
+    expect(splitColumn(f, "name", "")).toEqual(f);
   });
 
   it("addIndex prepends a 1-based row-number column by default", () => {
@@ -416,10 +410,10 @@ describe("splitColumn / addIndexColumn (Power Query column ops)", () => {
   });
 });
 
-// ─── Timesaver cleanup verbs (2026-07-16) ───────────────────────────────────────
+// ─── Timesaver cleanup verbs ────────────────────────────────────────────────────
 
 describe("timesaver verbs", () => {
-  it("replaceValues: the shared match rule (parity with Rust lazy_replace_values)", () => {
+  it("replaceValues: the cell match rule", () => {
     const g: FrameValue = {
       __frame: true,
       columns: [
@@ -427,11 +421,8 @@ describe("timesaver verbs", () => {
         { name: "flag", type: "logical", values: [true, false, true] },
       ],
     };
-    // Number: numeric equality against the parsed find — "5.0" and "5" both hit 5;
-    // a non-numeric find hits no number cell.
     expect(replaceValues(g, "n", "5.0", "99", "cell").columns[0].values).toEqual([99, 20, null]);
     expect(replaceValues(g, "n", "five", "99", "cell").columns[0].values).toEqual([5, 20, null]);
-    // Boolean: "1"/"0" never match a boolean.
     expect(replaceValues(g, "flag", "1", "false", "cell").columns[1].values).toEqual([true, false, true]);
   });
 
@@ -492,18 +483,17 @@ describe("timesaver verbs", () => {
 
 });
 
-describe("[[D49]] textPredicateNeedsText — a text predicate reads a TEXT column, or errors", () => {
+describe("[[C10]] socketLattice — a text predicate reads a TEXT column, or errors", () => {
   const grab = (fn: () => unknown) => {
     try { fn(); } catch (e) { return e as { code?: string; message?: string }; }
     return null;
   };
-  it("[[D49]] textPredicateNeedsText: a text predicate on a non-string column is #TYPE!", () => {
+  it("[[C10]] socketLattice: a text predicate on a non-string column is #TYPE!", () => {
     for (const op of ["contains", "startsWith", "endsWith"] as const) {
       const err = grab(() => filterRows(f, "qty", op, "0"));
       expect(isSolError(err)).toBe(true);
       expect(err!.code).toBe("#TYPE!");
     }
-    // The message names the fix (Computed Column with TEXT, or Cast).
     const err = grab(() => filterRows(f, "qty", "contains", "0"));
     expect(err!.message).toContain('TEXT(@qty, "@")');
     expect(err!.message).toContain("Cast");
@@ -567,7 +557,7 @@ describe("column units ride the reshaping verbs (unitFlow, review pins)", () => 
     expect(out.columns[2].unit).toEqual(km);
   });
   it("Window keeps the unit on a running sum, not on a rank", async () => {
-    const { windowFrame } = await import("../../src/graph/frameVerbs");
+    const { windowFrame } = await import("./coreVerbs");
     const sum = windowFrame(src(), { partitionBy: [], fn: "cumsum", column: "Dist", as: "Run" });
     expect(sum.columns.find((c) => c.name === "Run")!.unit).toEqual(km);
     const rank = windowFrame(src(), { partitionBy: [], orderBy: "Dist", fn: "rank", as: "R" });
@@ -578,18 +568,18 @@ describe("column units ride the reshaping verbs (unitFlow, review pins)", () => 
 describe("sampleFrame (sketch mode's preview rows)", () => {
   const f: FrameValue = { __frame: true, columns: [{ name: "n", type: "number", values: Array.from({ length: 10 }, (_, i) => i) }] };
   it("takes n evenly spaced rows, first row included and in order", async () => {
-    const { sampleFrame } = await import("../../src/graph/frameVerbs");
+    const { sampleFrame } = await import("./coreVerbs");
     expect(sampleFrame(f, 5).columns[0].values).toEqual([0, 2, 4, 6, 8]);
     expect(sampleFrame(f, 3).columns[0].values).toEqual([0, 3, 6]);
   });
   it("hands back the frame itself when it is no longer than n, or n is not positive", async () => {
-    const { sampleFrame } = await import("../../src/graph/frameVerbs");
+    const { sampleFrame } = await import("./coreVerbs");
     expect(sampleFrame(f, 10)).toBe(f);
     expect(sampleFrame(f, 0)).toBe(f);
   });
 });
 
-describe("a logical column reads TRUE, FALSE or a number ([[D93]] oneTextReading)", () => {
+describe("a logical column reads TRUE, FALSE or a number ([[C58]] tableInputRawText)", () => {
   const f: FrameValue = { __frame: true, columns: [
     { name: "k", type: "string", values: ["a", "b", "c", "d"] },
     { name: "ok", type: "logical", values: [true, false, NaN, null] },

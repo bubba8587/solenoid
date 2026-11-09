@@ -1,5 +1,5 @@
-import type { IsTestNode as IsTestNodeType, IsTestOp } from "../rete-nodes";
-import { IS_TEST_OP_META } from "../rete-nodes";
+import type { IsTestNode as IsTestNodeType, IsTestOp } from "../nodeClasses";
+import { IS_TEST_OP_META } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { ERROR_EXPLANATIONS } from "../errorValue";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";

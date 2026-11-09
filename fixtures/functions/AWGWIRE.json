@@ -1,0 +1,12 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"AWGWIRE(\"12\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AWGWIRE(12)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AWGWIRE(12, \"ampacity\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AWGWIRE(12, \"sparkles\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AWGWIRE(14, \"ampacity\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AWGWIRE(16, \"ampacity\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AWGWIRE(18, \"ampacity\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AWGWIRE(50, \"ampacity\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

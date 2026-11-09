@@ -1,4 +1,4 @@
-// [[D94]] oneNumberDisplay
+// [[C118]] formatTravelsWithValue
 import { describe, it, expect, afterEach } from "vitest";
 import { formatScalar } from "../../src/graph/components/format";
 import { settingsStore } from "../../src/graph/settingsStore";
@@ -12,6 +12,9 @@ describe("the Scientific from setting", () => {
     expect(formatScalar(1_234_567_890)).toBe("1.2346e+9");
   });
   it("moves the cutoff, or turns it off", () => {
+    settingsStore.set("sciAbove", "3");
+    expect(formatScalar(999)).toBe("999");
+    expect(formatScalar(2500)).toBe("2.5e+3");
     settingsStore.set("sciAbove", "6");
     expect(formatScalar(2_500_000)).toBe("2.5e+6");
     settingsStore.set("sciAbove", "12");

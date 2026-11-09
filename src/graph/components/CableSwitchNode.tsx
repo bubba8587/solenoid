@@ -1,7 +1,7 @@
 // [[B11]] maximalMerge
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
+import type { CableSwitchNode as CableSwitchNodeType } from "../nodeClasses";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView, getOwningEditor } from "../activeGraph";
@@ -15,7 +15,7 @@ import { isChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
 import { isSvgValue } from "../svgValue";
 import { isLambdaValue, formatLambda } from "../nodes/lambda";
-import { useDraftCommit } from "./inlineInput";
+import { useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -40,7 +40,7 @@ function Chevron({ back }: { back?: boolean }) {
 }
 
 // Rendered by kind like Display, never stringified; figures and Cubes that would overflow the card show as a chip.
-function SwitchValue({ value, label, nodeId }: { value: unknown; label?: string; nodeId: string }) {
+export function SwitchValue({ value, label, nodeId }: { value: unknown; label?: string; nodeId: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} />;
   // A display-value box, so NodeCard measures it and centers the output socket on it.
   if (isCubeValue(value)) return <div className="solenoid-node__display-value solenoid-node__display-value--chip"><CubeChip value={value} label={label} size="sm" accent="var(--sock-cube)" /></div>;
@@ -54,12 +54,14 @@ function SwitchValue({ value, label, nodeId }: { value: unknown; label?: string;
   return <ValueDisplay value={value as number | number[] | string | string[] | null} />;
 }
 
-// A separate component, so the title's useDraftCommit hook count stays stable as rows come and go.
-function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, checked, onSelect, onToggle, onRemove, canRemove }: {
+// An input's name is its source card's, as every wired row shows it; unwired, its place.
+function SwitchOptionRow({ data, emit, keyName, index, source, multiSelect, active, checked, onSelect, onToggle, onRemove, canRemove }: {
   data: CableSwitchNodeType;
   emit: NodeProps<CableSwitchNodeType>["emit"];
   keyName: string;
   index: number;
+  /** The source card's name, when wired. */
+  source: string | undefined;
   multiSelect: boolean;
   active: boolean;
   checked: boolean;
@@ -68,18 +70,6 @@ function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, chec
   onRemove: () => void;
   canRemove: boolean;
 }) {
-  const title = useDraftCommit<string>(
-    data.titles[keyName] ?? "",
-    (v) => v,
-    (t) => t,
-    (v) => {
-      if (v.trim()) data.titles[keyName] = v;
-      else delete data.titles[keyName];
-      // A title relabels the multi-select Cube's `name` column, so Many mode recomputes; One mode only re-renders.
-      if (data.multiSelect) void processGraph();
-      else void getOwningView(data.id)?.rerenderNode(data.id);
-    },
-  );
   const input = data.inputs[keyName];
   if (!input) return null;
   return (
@@ -106,17 +96,7 @@ function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, chec
           {index + 1}
         </button>
       )}
-      <input
-        type="text"
-        className="sol-switch__title"
-        value={title.draft}
-        placeholder={`Input ${index + 1}`}
-        onChange={(e) => title.setDraft(e.target.value)}
-        onBlur={title.onBlur}
-        onKeyDown={title.onKeyDown}
-        onPointerDown={stop}
-        onMouseDown={stop}
-      />
+      <span className={`sol-switch__title${source ? "" : " sol-switch__title--unwired"}`}>{source || `Input ${index + 1}`}</span>
       {canRemove && (
         <button
           type="button"
@@ -139,6 +119,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const keys = Object.keys(data.inputs);
   const selSet = new Set(selKeys);
+  const incoming = useIncomingSources(data.id);
 
   function select(i: number) {
     data.activeIndex = i;
@@ -147,7 +128,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     const ed = getOwningEditor(data.id);
     const view = getOwningView(data.id);
     if (ed && view) reconcileTypesAfterEdit(ed, view);
-    void processGraph();
+    data.edited(); void processGraph();
   }
   function step(delta: number) {
     const next = Math.min(keys.length - 1, Math.max(0, data.activeIndex + delta));
@@ -166,19 +147,19 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
       await reconcilePendingOnRetype(ed, view, data.id, "out", before);
     }
     void view?.rerenderNode(data.id);
-    void processGraph();
+    data.edited(); void processGraph();
   }
   function toggleMulti(key: string) {
     const set = new Set(data.selectedKeys);
     if (set.has(key)) set.delete(key); else set.add(key);
     data.selectedKeys = [...set];
     setSelKeys(data.selectedKeys);
-    void processGraph();
+    data.edited(); void processGraph();
   }
   async function addRow() {
     data.addValueInput();
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
   async function removeRow(key: string) {
     await dropInputCables(data.id, [key]);
@@ -187,7 +168,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     setSelected(data.activeIndex);
     await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   if (collapsed) {
@@ -217,6 +198,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
           emit={emit}
           keyName={key}
           index={i}
+          source={incoming.get(key)?.label}
           multiSelect={multi}
           active={i === selected}
           checked={selSet.has(key)}

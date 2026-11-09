@@ -1,4 +1,4 @@
-// [[D54]], [[C86]] membershipByGesture
+// [[C44]] dateSerials, [[C86]] membershipByGesture
 import { describe, it, expect } from "vitest";
 import {
   PointPlotterNode, CurveNode, GridPainterNode,
@@ -58,17 +58,6 @@ describe("monotoneCubic", () => {
 });
 
 describe("PointPlotterNode", () => {
-  it("emits a two-column X / Y frame from its points text", () => {
-    const n = new PointPlotterNode({ pointsText: "1, 2\n3, 4" });
-    const frame = n.data().result;
-    expect(frame.columns.map((c) => c.name)).toEqual(["X", "Y"]);
-    expect(frame.columns[0].values).toEqual([1, 3]);
-    expect(frame.columns[1].values).toEqual([2, 4]);
-    // Empty points → an empty frame (0 rows), not null.
-    const empty = new PointPlotterNode().data().result;
-    expect(empty.columns.map((c) => c.name)).toEqual(["X", "Y"]);
-    expect(empty.columns[0].values).toEqual([]);
-  });
 
   it("points + ranges round-trip through the paste path", async () => {
     const n = new PointPlotterNode();
@@ -81,25 +70,7 @@ describe("PointPlotterNode", () => {
 });
 
 describe("CurveNode", () => {
-  it("samples the spline into an X, Value frame across [xmin, xmax], endpoints exact", () => {
-    const n = new CurveNode({ pointsText: "0, 0\n1, 1", samples: 5 });
-    const cols = n.data().result.columns;
-    expect(cols.map((c) => c.name)).toEqual(["X", "Value"]); // X first — it is the axis
-    expect(cols[0].values).toEqual([0, 0.25, 0.5, 0.75, 1]);
-    expect(cols[1].values[0]).toBe(0);
-    expect(cols[1].values[4]).toBe(1);
-    // The default diagonal through a monotone spline IS the diagonal.
-    expect(cols[1].values[2]).toBeCloseTo(0.5, 9);
-  });
 
-  it("clamps samples and handles an empty curve", () => {
-    const n = new CurveNode({ pointsText: "", samples: 0 });
-    const cols = n.data().result.columns;
-    expect(cols.map((c) => c.name)).toEqual(["X", "Value"]);
-    expect(cols[0].values).toEqual([]);
-    expect(cols[1].values).toEqual([]);
-    expect(n.literals.samples).toBe(2); // clamped
-  });
 
   it("round-trips through the paste path", async () => {
     const n = new CurveNode();

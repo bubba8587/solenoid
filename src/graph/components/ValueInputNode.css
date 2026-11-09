@@ -4,10 +4,43 @@
   text-align: center;
 }
 
-/* Against the body's 6px row gap: the type toggle stands a little apart from the field, Format hangs right under
-   the field it formats, and the result box sits a short step below Format. */
-.solenoid-valin__type {
-  margin-bottom: 4px;
+/* The entry field, then its type button on the right (`OpCycle`), the button level with the field's first line. Format
+   hangs right under the field it formats, and the result box sits a short step below Format. */
+.solenoid-valin__entry {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+.solenoid-valin__entry > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* A square as tall as a one-line field, at the top beside a taller one. */
+.solenoid-valin__entry > .solenoid-valin__type {
+  width: 24px;
+  height: 24px;
+  align-self: flex-start;
+  font-size: 11px;
+}
+/* A date's picker (and the formats note) ride inside its field's right edge, so the type button stays the only chip
+   beside the field and the card keeps its width. */
+.solenoid-valin__entry .solenoid-date-input {
+  gap: 0;
+}
+.solenoid-valin__entry .solenoid-date-input__picker {
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.solenoid-valin__entry .solenoid-date-input__picker:nth-of-type(1):not(:last-of-type) {
+  right: 21px;
+}
+.solenoid-valin__entry .solenoid-date-input > .solenoid-node__value-input {
+  padding-right: 24px;
+}
+.solenoid-valin__entry .solenoid-date-input:has(.solenoid-date-input__picker + .solenoid-date-input__picker) > .solenoid-node__value-input {
+  padding-right: 42px;
 }
 .solenoid-valin__format > .solenoid-node__section-caption {
   margin-top: -4px;

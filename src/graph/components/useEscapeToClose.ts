@@ -2,6 +2,12 @@
 import { useEffect, useRef } from "react";
 import { consumeEscape } from "./escapeLayers";
 
+let _open = 0;
+/** How many surfaces Escape would close now, for Android's back gesture (`androidBack.ts`). */
+export function escapeClosersOpen(): number {
+  return _open;
+}
+
 /** `onClose` is read through a ref, so an inline callback doesn't re-bind the listener; `capture: true` both registers on the capture phase and swallows the browser default. */
 export function useEscapeToClose(
   onClose: () => void,
@@ -13,6 +19,7 @@ export function useEscapeToClose(
   const capture = opts?.capture ?? false;
   useEffect(() => {
     if (!active) return;
+    _open++;
     const handler = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (consumeEscape()) { e.preventDefault(); e.stopImmediatePropagation(); return; }
@@ -20,6 +27,6 @@ export function useEscapeToClose(
       cb.current();
     };
     window.addEventListener("keydown", handler, capture);
-    return () => window.removeEventListener("keydown", handler, capture);
+    return () => { _open--; window.removeEventListener("keydown", handler, capture); };
   }, [active, capture]);
 }

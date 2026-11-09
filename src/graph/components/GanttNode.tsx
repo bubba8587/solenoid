@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
-import type { GanttNode as GanttNodeType } from "../rete-nodes";
+import type { GanttNode as GanttNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { ChartChip } from "./ChartChip";

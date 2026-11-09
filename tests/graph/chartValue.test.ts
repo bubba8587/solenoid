@@ -1,4 +1,4 @@
-// [[C100]] chartIsAValue
+// [[C100]] chartIsAValue, [[chart-figures#The values on the `chart` socket]]
 import { describe, it, expect } from "vitest";
 import { isChartValue, type ChartValue, type XYPayload } from "../../src/graph/chartValue";
 import { ChartNode } from "../../src/graph/nodes/visual";

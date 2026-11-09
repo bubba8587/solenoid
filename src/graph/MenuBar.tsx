@@ -8,7 +8,7 @@ import { mobileMenuStore } from "./mobileMenuStore";
 import { DocumentTitle } from "./components/DocumentTitle";
 import wordmark from "../logo/solenoidwordmark.svg";
 import { useEscapeToClose } from "./components/useEscapeToClose";
-import { CableShapeSelector } from "./CableShapeSelector";
+import { MobileMenuSheet } from "./MobileMenuSheet";
 import { useGridSnap } from "./gridSnapStore";
 import { buildMenus, type MenuItem } from "./menuModel";
 import { commandRecents } from "./commandRecents";
@@ -43,12 +43,12 @@ export function MenuBar() {
     return () => window.removeEventListener("pointerdown", onDown, true);
   }, [open, mobileOpen]);
 
-  const run = (it: MenuItem) => {
+  const run = (it: MenuItem, keepOpen = false) => {
     if ("sep" in it || it.disabled) return;
     commandRecents.record(it.label);
     it.onClick?.();
     setOpen(null);
-    mobileMenuStore.set(false);
+    if (!keepOpen) mobileMenuStore.set(false);
   };
 
   const renderOption = (it: MenuItem, j: number) =>
@@ -102,22 +102,7 @@ export function MenuBar() {
       </div>
       {OWN_WINDOW_CONTROLS && <WindowControls />}
 
-      {mobileOpen && (
-        <div className="solenoid-menubar__sheet">
-          {/* The top bar's cable controls are hidden on touch — this is their only
-              mobile home, on the same module stores as the desktop instance. */}
-          <div className="solenoid-menubar__sheet-section">
-            <div className="solenoid-menubar__sheet-heading">Cables</div>
-            <CableShapeSelector />
-          </div>
-          {menus.map((menu) => (
-            <div key={menu.label} className="solenoid-menubar__sheet-section">
-              <div className="solenoid-menubar__sheet-heading">{menu.label}</div>
-              {menu.items.map((it, j) => renderOption(it, j))}
-            </div>
-          ))}
-        </div>
-      )}
+      {mobileOpen && <MobileMenuSheet menus={menus} run={run} />}
     </div>
   );
 }

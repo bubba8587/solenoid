@@ -1,0 +1,16 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"CHISQ.DIST(0.5, 1, TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST(2, 3, FALSE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST(3, 4, TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST(3, 4, FALSE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST(0, 2, FALSE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST(0, 4, FALSE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST(0, 1, FALSE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST(-1, 2, TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST(-1, 2, FALSE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST(c_A2,c_B2,c_C2)","env":["c_A2=num:12.3","c_B2=num:4","c_C2=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST(c_A3,c_B3,c_C3)","env":["c_A3=num:8","c_B3=num:3.34","c_C3=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"CHISQ.DIST(c_A4,c_B4,c_C4)","env":["c_A4=num:12.3","c_B4=num:7.2","c_C4=bool:FALSE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

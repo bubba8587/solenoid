@@ -1,0 +1,9 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"MINVERSE(c_H12)","env":["c_H12=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MINVERSE(c_H13)","env":["c_H13=num:-1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MINVERSE(c_H14)","env":["c_H14=num:0"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MINVERSE(r_I20_J20)","env":["r_I20_J20=list:num:[1, 2]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MINVERSE(ANCHORARRAY(c_A21))","env":["c_A21=num:3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

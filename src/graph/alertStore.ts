@@ -5,13 +5,13 @@ import { pushNotice, type NoticeTone } from "./noticeStore";
 
 export type AlertKind = "info" | "warning" | "critical";
 
-export const ALERT_TONE: Record<AlertKind, NoticeTone> = {
+const ALERT_TONE: Record<AlertKind, NoticeTone> = {
   info: "info",
   warning: "warn",
   critical: "error",
 };
 
-export interface AlertEvent {
+interface AlertEvent {
   id: number;
   nodeId: string;
   label: string;

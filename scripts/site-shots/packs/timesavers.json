@@ -59,8 +59,7 @@
       "init": {
         "label": "Percent Change",
         "expr": "(after-before)/before",
-        "locked": true,
-        "resultAs": "number"
+        "locked": true
       },
       "literals": {
         "before": 80,

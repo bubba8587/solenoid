@@ -12,6 +12,7 @@ import * as path from "path";
 //  3. every archived doc is listed in docs/archive/README.md;
 //  4. every code file the README index cites exists in the repo;
 //  5. the routing table never sends live work into docs/archive.
+//  6. every code name a spec cites is a word somewhere in the code.
 
 const ROOT = path.resolve(__dirname, "../..");
 const DOCS = path.join(ROOT, "docs");
@@ -35,7 +36,7 @@ const scanned = [
 // Globs (`*`) are skipped; anchors/queries are stripped.
 function mdCitations(text: string): string[] {
   const out: string[] = [];
-  for (const re of [/`([A-Za-z0-9_][A-Za-z0-9_./-]*\.md)`/g, /\]\(([^)\s#]+\.md)\)/g]) {
+  for (const re of [/`([A-Za-z0-9_.][A-Za-z0-9_./-]*\.md)`/g, /\]\(([^)\s#]+\.md)\)/g]) {
     for (const m of text.matchAll(re)) out.push(m[1]);
   }
   return out.filter((t) => !t.includes("*"));
@@ -105,7 +106,7 @@ describe("README routing-table code citations exist", () => {
   const basenames = new Set<string>();
   const walk = (dir: string) => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (e.name === "node_modules" || e.name.startsWith(".")) continue;
+      if (e.name === "node_modules" || e.name === "target" || e.name.startsWith(".")) continue;
       const p = path.join(dir, e.name);
       if (e.isDirectory()) walk(p);
       else basenames.add(e.name);
@@ -115,6 +116,7 @@ describe("README routing-table code citations exist", () => {
   walk(path.join(ROOT, "tests"));
   walk(path.join(ROOT, "scripts"));
   walk(path.join(ROOT, "src-tauri", "src"));
+  walk(path.join(ROOT, "crates"));
 
   const readme = read(path.join(DOCS, "README.md"));
   const cited = new Set<string>();
@@ -162,5 +164,115 @@ describe("the tree/ vault's wikilinks resolve", () => {
       .map((m) => m[1].trim())
       .filter((t) => !targets.has(t));
     expect(dead).toEqual([]);
+  });
+});
+
+describe("a link to a note's heading names a heading the note has", () => {
+  // `[[graph-core#Direct calls]]` in a spec, a code file or a test points at one section; renaming the heading must
+  // move the links with it, or they point at nothing. Obsidian matches a heading ignoring case.
+  const TREE = path.join(ROOT, "tree");
+  const notes = new Map<string, string>();
+  const walkTree = (dir: string) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.name.startsWith(".")) continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walkTree(p);
+      else if (e.name.endsWith(".md")) {
+        notes.set(path.basename(p, ".md"), p);
+        const fm = read(p).match(/^---\n([\s\S]*?)\n---/);
+        for (const line of fm?.[1].match(/^(?:name|aliases):\s*(.+)$/gm) ?? []) {
+          const v = line.replace(/^(?:name|aliases):\s*/, "").replace(/^\[|\]$/g, "");
+          for (const a of v.split(",")) notes.set(a.trim().replace(/^"|"$/g, ""), p);
+        }
+      }
+    }
+  };
+  walkTree(TREE);
+  const norm = (h: string) => h.trim().replace(/\s+/g, " ").toLowerCase();
+  const headings = new Map<string, Set<string>>();
+  const headingsOf = (file: string) => {
+    let hs = headings.get(file);
+    if (!hs) {
+      hs = new Set((read(file).replace(/```[\s\S]*?```/g, "").match(/^#{1,6} .+$/gm) ?? []).map((h) => norm(h.replace(/^#+ /, ""))));
+      headings.set(file, hs);
+    }
+    return hs;
+  };
+  const sources: string[] = [];
+  const walkSrc = (dir: string) => {
+    if (!fs.existsSync(dir)) return;
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (["node_modules", "target", "dist", "pkg", "archive"].includes(e.name) || e.name.startsWith(".")) continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walkSrc(p);
+      else if (/\.(ts|tsx|rs|mjs|md)$/.test(e.name)) sources.push(p);
+    }
+  };
+  for (const d of ["tree", "src", "tests", "crates", "scripts", "docs"]) walkSrc(path.join(ROOT, d));
+  it("every [[note#Heading]] link resolves", () => {
+    const dead: string[] = [];
+    for (const f of sources) {
+      const text = f.endsWith(".md") ? read(f).replace(/```[\s\S]*?```/g, "") : read(f);
+      for (const m of text.matchAll(/\[\[([^\]|#]+)#([^\]|]+)(?:\|[^\]]*)?\]\]/g)) {
+        // In a note, a link inside a code span is code, not a link: an odd number of backticks before it on its line.
+        const lineStart = text.lastIndexOf("\n", m.index) + 1;
+        if (f.endsWith(".md") && (text.slice(lineStart, m.index).match(/`/g) ?? []).length % 2 === 1) continue;
+        const note = notes.get(m[1].trim());
+        if (!note) continue; // a dead note is the vault test's to report
+        if (!headingsOf(note).has(norm(m[2]))) dead.push(`${path.relative(ROOT, f)}: [[${m[1]}#${m[2]}]]`);
+      }
+    }
+    expect(dead).toEqual([]);
+  });
+});
+
+describe("the specs name code that exists", () => {
+  // A spec that names a deleted function sends a reader looking for nothing, and the Rust port renamed most of
+  // them. Every backticked camelCase, snake_case or CONSTANT name in the specs and the index docs must be a word
+  // somewhere in the code. Names that belong to someone else, or that a spec names to say they don't exist, are
+  // listed with why.
+  const NOT_OURS = new Set([
+    "getDiagonalPath", "getSmoothStepPath", "HandleComponent", "useConnection", // React Flow
+    "useReducer", "ElementImage", "WM_CLASS", "requireLiteralLeadingDot", // React, the browser, X11, Tauri's fs
+    "RegularGridInterpolator", "yaml_property", "row_num", // SciPy, a Knap filter, an Excel argument
+    "__content", "__body", // BEM suffixes of a class named in the same sentence
+    "globalGen", "nodeToken", // placeholders in a key's written form
+    "withAngleLeads", "MatrixValue", "columnFromCells", "WritePropertiesNode", "parent_id", // named as gone or rejected
+  ]);
+  const words = new Set<string>();
+  const walk = (dir: string) => {
+    if (!fs.existsSync(dir)) return;
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (["node_modules", "target", "dist", "pkg"].includes(e.name) || e.name.startsWith(".")) continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/\.(ts|tsx|rs|mjs|cjs|js|css|py|toml|json)$/.test(e.name) && fs.statSync(p).size < 2_000_000)
+        for (const w of read(p).match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []) words.add(w);
+    }
+  };
+  for (const d of ["src", "crates", "tests", "scripts", "tools", "src-tauri", "obsidian-plugin", "packages"]) walk(path.join(ROOT, d));
+  for (const f of ["vite.config.ts", "vitest.config.ts", "package.json"]) for (const w of read(path.join(ROOT, f)).match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []) words.add(w);
+
+  const specs: string[] = [];
+  const walkMd = (dir: string) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walkMd(p);
+      else if (e.name.endsWith(".md")) specs.push(p);
+    }
+  };
+  walkMd(path.join(ROOT, "tree", "specs"));
+  for (const f of ["glossary.md", "README.md", "architecture.md", "mental-model.md", "node-coverage.md", "subsystem-invariants.md"])
+    specs.push(path.join(DOCS, f));
+
+  it("every code name a spec cites is in the code", () => {
+    const dead = specs.flatMap((f) =>
+      [...read(f).matchAll(/`([A-Za-z_][A-Za-z0-9_]{5,})(?:\(\)`|`|\()/g)]
+        .map((m) => m[1])
+        .filter((n) => /[A-Z]/.test(n.slice(1)) || n.includes("_"))
+        .filter((n) => !words.has(n) && !NOT_OURS.has(n))
+        .map((n) => `${path.relative(ROOT, f)}: ${n}`),
+    );
+    expect([...new Set(dead)]).toEqual([]);
   });
 });

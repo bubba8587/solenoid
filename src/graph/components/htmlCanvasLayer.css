@@ -16,6 +16,11 @@
   visibility: hidden !important;
 }
 
+/* The canvas color and dots live in the viewport now, and the canvas draws cards over them, so they stay through the gesture. */
+.solenoid-html-hidden .sol-canvas-backing {
+  visibility: visible;
+}
+
 /* Muted by opacity, since the DOM must stay hit-testable, which visibility hidden is not. */
 .solenoid-html-muted .react-flow__node:not(.solenoid-hic-domonly):not(.solenoid-hic-live),
 .solenoid-html-muted .react-flow__edge:not(.solenoid-hic-domonly) {

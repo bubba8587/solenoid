@@ -1,27 +1,11 @@
 // [[A1]] visualGraphCalculator (module-singleton store, storeKit)
 import { useSyncExternalStore } from "react";
-import { createNotifier } from "./storeKit";
+import { createSavedToggle } from "./storeKit";
 
-
-const LS_KEY = "solenoid.cableFlow";
-
-let _on = false;
-const { notify, subscribe } = createNotifier();
-
-function persist() {
-  try { localStorage.setItem(LS_KEY, _on ? "1" : "0"); }
-  catch { /* private mode / quota — non-fatal */ }
-}
-
-export const cableFlowStore = {
-  get: (): boolean => _on,
-  toggle: () => { _on = !_on; persist(); notify(); },
-  subscribe,
-};
+export const cableFlowStore = createSavedToggle("solenoid.cableFlow");
 
 export function initCableFlow() {
-  try { _on = localStorage.getItem(LS_KEY) === "1"; }
-  catch { /* ignore */ }
+  cableFlowStore.load();
 }
 
 export function useCableFlow(): { flow: boolean; toggleFlow: () => void } {

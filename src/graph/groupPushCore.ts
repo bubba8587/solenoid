@@ -208,15 +208,6 @@ export function computeExpandPush(
   return disp;
 }
 
-/** Places boxes top-left first (pinned ones before all); each moves right or down until it clears every box placed before it. */
-export function separateOverlaps(
-  boxes: PushBox[],
-  gap = PUSH_GAP,
-  pinned: ReadonlySet<string> = new Set(),
-): Map<string, Disp> {
-  return separateUnits(boxes.map((b) => ({ ...b, parts: [{ x: b.x, y: b.y, w: b.w, h: b.h }] })), gap, pinned);
-}
-
 /** A unit moves as one, but only its parts collide: a cluster's bounding box is not an obstacle. */
 type Unit = PushBox & { parts: Rect[] };
 
@@ -254,7 +245,7 @@ function separateUnits(units: Unit[], gap: number, pinned: ReadonlySet<string>):
 
 const rectOf = (b: PushBox): Rect => ({ x: b.x, y: b.y, w: b.w, h: b.h });
 
-export interface SeparateAllOpts {
+interface SeparateAllOpts {
   /** Boxes that move as one rigid unit (standoff clusters). */
   clusters?: ReadonlyArray<Iterable<string>>;
   /** Never move (position-locked groups). */

@@ -1,14 +1,8 @@
-// [[B11]], [[A1]]
-// The distributions Formula.js LACKS (the T family, right-tail variants, GAMMA.DIST/INV)
-// are registered with OUR impls (excelFunctions.ts). This locks formula == the visual
-// dist NODE. As of 2026-08-23 both surfaces call the SAME shared kernels (mathUtils
-// tCDF/tPDF/chiSqCDF/fCDF/gammaCDF/gammaPDF) rather than separate hand-rolled copies, so
-// the agreement is structural — this test guards that nobody re-forks one surface.
+// [[B11]] maximalMerge, [[A1]] visualGraphCalculator, [[C17]] shareImpl, [[formula-language#Statistics]], [[formula-language#Distribution table]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { DistributionsNode } from "../../src/graph/nodes/distribution";
-import { sampleQuantile } from "../../src/graph/nodes/distributionOps";
-import { requestRecalc } from "../../src/graph/process";
+import { inEditor } from "./cardPasses";
 const dist = (op: string, form: string) =>
   new DistributionsNode({ op: op as never, form: form as never });
 describe("registered gap distributions match the NODES", () => {
@@ -35,10 +29,6 @@ describe("registered gap distributions match the NODES", () => {
   });
 });
 
-// A1 backing flip (2026-08-23): the names Formula.js DOES have now run the node's spec
-// table too (distributionOps.DIST_SPECS), in Excel's argument order. Pinned exact (same
-// kernel, same call) plus a few absolute anchors so a kernel regression can't hide
-// behind a shared mistake.
 describe("Formula.js-overlap distributions run the NODE's DIST_SPECS", () => {
   const ev = (e: string) => compileEvaluator(e)!({});
   const eq = (a: unknown, b: unknown) => expect(a).toBe(b);
@@ -88,7 +78,7 @@ describe("Formula.js-overlap distributions run the NODE's DIST_SPECS", () => {
     expect(ev("HYPGEOM.DIST(1, 4, 8, 20, FALSE)")).toBeCloseTo(0.363261094, 8);
     expect(ev("NEGBINOM.DIST(10, 5, 0.25, FALSE)")).toBeCloseTo(0.0550486603, 8);
   });
-  // [[D70]] nullNotEnoughData: a parameter outside the domain is a wrong input, Excel's #NUM!.
+  // [[C24]] arraySemantics: a parameter outside the domain is a wrong input, Excel's #NUM!.
   const domain = (v: unknown) => (v as { code?: string } | null)?.code;
   it("a domain refusal is #DOMAIN! on both surfaces, never a number", () => {
     expect(domain(ev("NORM.DIST(1, 0, -1, TRUE)"))).toBe("#DOMAIN!");
@@ -115,27 +105,19 @@ describe("Formula.js-overlap distributions run the NODE's DIST_SPECS", () => {
 describe("the `sample` form — N draws by inverse CDF, seeded per recalculation", () => {
   const ev = (e: string) => compileEvaluator(e)!({});
   const mean = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length;
-  it("sampleQuantile inverts every family (closed inverse, bisection, or a discrete walk)", () => {
-    expect(sampleQuantile("normal", 0.5, [10, 2])).toBeCloseTo(10, 9);
-    expect(sampleQuantile("expon", 1 - Math.exp(-1), [1])).toBeCloseTo(1, 6);     // F(1) = 1 − e⁻¹ → 1
-    expect(sampleQuantile("weibull", 1 - Math.exp(-1), [2, 3])).toBeCloseTo(3, 6); // scale 3 at F = 1 − e⁻¹
-    expect(sampleQuantile("poisson", 0.5, [3])).toBe(3);                          // median of Poisson(3)
-    expect(sampleQuantile("binom", 0.5, [10, 0.5])).toBe(5);
-    expect(sampleQuantile("normal", 0.5, [10, -1])).toBeNull();                   // invalid sd
-  });
   it("the node draws N values whose marginal matches; the same pass is stable, a recalc re-rolls", async () => {
     const n = dist("normal", "sample");
     expect(n.inputs.count).toBeDefined(); expect(n.inputs.x).toBeUndefined();
     n.literals.count = 4000; n.literals.mean = 50; n.literals.stdev = 5;
-    const a = n.data({}).result as number[];
+    const g = await inEditor(n);
+    const a = (await g.pass("result")) as number[];
     expect(a).toHaveLength(4000);
     expect(mean(a)).toBeCloseTo(50, 0);
     expect(Math.sqrt(mean(a.map((v) => (v - 50) ** 2)))).toBeCloseTo(5, 0);
-    const b = n.data({}).result as number[];
-    expect(b).toEqual(a);                      // same recalculation → the same draws
-    await requestRecalc();
-    const c = n.data({}).result as number[];
-    expect(c).not.toEqual(a);                  // F9 → a fresh stream
+    expect(await g.pass("result")).toEqual(a); // same recalculation → the same draws
+    g.recalc();
+    expect(await g.pass("result")).not.toEqual(a); // F9 → a fresh stream
+    g.dispose();
     // switching form back swaps the first socket to x again
     n.setForm("cdf");
     expect(n.inputs.x).toBeDefined(); expect(n.inputs.count).toBeUndefined();
@@ -148,5 +130,13 @@ describe("the `sample` form — N draws by inverse CDF, seeded per recalculation
     const u = ev("RANDDIST(\"normal\", 2000)") as number[]; // defaults: mean 0, sd 1
     expect(Math.abs(mean(u))).toBeLessThan(0.1);
     expect((ev("RANDDIST(\"cauchy\", 5)") as { code?: string }).code).toBe("#DOMAIN!");
+  });
+});
+
+describe("BINOM.INV and HYPGEOM.DIST refuse an infinite count", () => {
+  // Each summed NaN pmfs one step at a time and never reached the target.
+  it("answers #DOMAIN!, not a hang", () => {
+    expect(compileEvaluator("BINOM.INV(1e400, 0.5, 0.5)")!({})).toMatchObject({ code: "#DOMAIN!" });
+    expect(compileEvaluator("HYPGEOM.DIST(1e400, 5, 1e400, 1e400, TRUE)")!({})).toMatchObject({ code: "#DOMAIN!" });
   });
 });

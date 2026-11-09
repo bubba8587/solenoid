@@ -1,7 +1,7 @@
 // [[B11]] maximalMerge, [[C26]] opArgDistinct
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { SetsNode as SetNodeType, SetOpAll } from "../rete-nodes";
-import { SET_META, isSetRelationOp, adoptiveListOut, logicalOut } from "../rete-nodes";
+import type { SetsNode as SetNodeType, SetOpAll } from "../nodeClasses";
+import { SET_META, isSetRelationOp, adoptiveListOut, logicalOut } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { descriptionText } from "../descriptionMd";
 import { useKatexRender } from "./katexLoader";
@@ -20,7 +20,7 @@ const OPS: ReadonlyArray<OpOption<SetOpAll>> = (Object.keys(SET_META) as SetOpAl
 }));
 
 // An operation (list) and relation (logical) switch swaps the result socket in place and retypes downstream cables.
-export async function applySetOp(node: SetNodeType, op: SetOpAll): Promise<void> {
+async function applySetOp(node: SetNodeType, op: SetOpAll): Promise<void> {
   if (node.op === op) return;
   const crossed = isSetRelationOp(node.op) !== isSetRelationOp(op);
   node.op = op;
@@ -32,7 +32,7 @@ export async function applySetOp(node: SetNodeType, op: SetOpAll): Promise<void>
     if (editor && view) await retypeOutputCables(editor, view, node.id, "result");
     if (view) await view.rerenderNode(node.id);
   }
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 export function SetsComponent({ data, emit }: NodeProps<SetNodeType>) {

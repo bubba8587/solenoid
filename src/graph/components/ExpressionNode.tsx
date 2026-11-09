@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import type { ExpressionNode as ExpressionNodeType } from "../rete-nodes";
+import type { ExpressionNode as ExpressionNodeType } from "../nodeClasses";
 import type { SolError } from "../errorValue";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { FormulaField } from "./FormulaField";
-import { ResultTypeToggle } from "./ResultTypeToggle";
+import { InlineCast } from "./InlineCast";
 import { formulaPopup } from "../formulaPopupStore";
 import "./ExpressionNode.css";
 
@@ -14,7 +14,6 @@ export function ExpressionComponent({ data: node, emit }: NodeProps<ExpressionNo
   // Resync when the node changes elsewhere — undo/redo, or the formula popup.
   useEffect(() => {
     if (node.expr !== expr) setExpr(node.expr);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.expr]);
 
   const lockBadge = node.locked ? (
@@ -43,7 +42,7 @@ export function ExpressionComponent({ data: node, emit }: NodeProps<ExpressionNo
         emit={emit}
         titleFor={(k) => node.varDescriptions[k] || undefined}
       />
-      <ResultTypeToggle node={node} dim="combo" />
+      <InlineCast node={node} dim="combo" />
       <ValueDisplay value={node.cachedResult as number | number[] | string | string[] | SolError | null} />
     </NodeShell>
   );

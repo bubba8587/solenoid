@@ -2,11 +2,11 @@
 aliases: ["Compute pass and the input boundary"]
 tags: [spec, computation]
 ---
-<!-- [[C23]] calcModes, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D86]] blankRoles, [[C25]] firstClassUnits, [[D79]] effectsEdgeTriggered, [[C10]] socketLattice, [[C15]] matricesInFormulas, [[C17]] shareImpl -->
+<!-- [[C23]] calcModes, [[C24]] arraySemantics, [[D86]] blankRoles, [[C25]] firstClassUnits, [[D79]] effectsEdgeTriggered, [[C10]] socketLattice, [[C15]] matricesInFormulas, [[C17]] shareImpl -->
 
 # Spec: Compute pass and the input boundary
 
-Serves [[C23]] calcModes, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D86]] blankRoles, [[C25]] firstClassUnits, [[D79]] effectsEdgeTriggered, [[C10]] socketLattice, [[C15]] matricesInFormulas and [[C17]] shareImpl. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C23]] calcModes, [[C24]] arraySemantics, [[D86]] blankRoles, [[C25]] firstClassUnits, [[D79]] effectsEdgeTriggered, [[C10]] socketLattice, [[C15]] matricesInFormulas and [[C17]] shareImpl. It covers what the system does and blocks, and the decision each behavior serves.
 
 This file owns what happens from "something changed" to "every card shows its new value": how the engine is driven, which nodes a pass recomputes, the calc mode, volatile nodes, rebuild scopes, and what a value goes through between leaving one node's output and reaching the next node's `data()`. Which cables may connect at all is [[socket-lattice]] ([[C10]] socketLattice); this file starts once a cable exists. The error codes and their meaning are [[error-values]]; units on the value are [[unit-flow]]; the null and blank semantics a `data()` applies are [[value-semantics]].
 
@@ -16,36 +16,39 @@ This file owns what happens from "something changed" to "every card shows its ne
 - **Cone.** `downstreamClosure(editor, id)`: the node `id` plus every node reachable from it over outgoing cables.
 - **Loop members.** The nodes on a dependency cycle: every node with a self-cable, and every node in a strongly connected component of two or more nodes. Nodes merely downstream of a loop are not members.
 - **Rung.** A socket's declared `SocketDataType` (`number`, `list`, `numlist`, `table`, `frame`, `cube`, `anylist` and so on). Coercion works against the rung.
-- **Wrapper.** A function installed over a node's `data()` at `nodecreated`. Every node carries two: input coercion (inner) and the error guard (outer).
+- **The boundary.** What the engine runs every node's `data()` call through (`crates/solenoid-graph/src/boundary.rs`): the error guard around arrival coercion, around the call.
 
 ## The engine
 
-The model is a rete `NodeEditor`; the engine is a rete-engine `DataflowEngine` attached with `editor.use(engine)`. The app uses only `fetch`, `reset` and the public `cache`.
+The model is a `GraphEditor` (`graphEditor.ts`), a handle over the graph core's netcore-rs editor; the engine is the graph core's `DataflowEngine` (`dataflowEngine.ts`) attached with `editor.use(engine)`, both [[graph-core]]. The app uses `fetch`, `reset`, `seed` and the graph walks below.
 
-- **Registration.** The engine listens for `nodecreated` and registers a setup per node id; `noderemoved` unregisters it. A node's input and output key sets are read live (`Object.keys(node.inputs)`, `Object.keys(node.outputs)`) at every fetch, so a node that adds or removes sockets needs no re-registration.
-- **Pull.** `engine.fetch(id)` returns the node's outputs. If the cache holds an entry for `id`, that entry (a promise) is returned. Otherwise the engine creates a cancellable promise that first fetches the inputs, then calls `node.data(inputs)`, and stores it in the cache under `id` before it resolves. Fetching inputs means: take every connection whose target is `id` and whose `targetInput` is a current input key, fetch each source concurrently, and build `inputs[targetInput]` as an array holding `sourceOutputs[sourceOutput]` for each such cable, in the order `editor.getConnections()` lists them. An input with no cable has no key in `inputs` at all.
+- **The boundary.** Every engine runs each node's `data()` through the input boundary ([[#The per-node wrappers]]); `new DataflowEngine({ raw: true })` calls it as it is, the bare rete-engine shape the engine's own tests use. `engine.compute(id, inputs)` runs one node the same way without its cache (a composite's simulation steps), and `computeNode(node, inputs)` one node outside any editor (the tests, through `tests/graph/boundaryKit.ts`).
+- **Registration.** The engine runs on its editor's own core graph, so nothing is mirrored: a node's input and output key sets are the core's port sets at every fetch, kept current as the node changes its sockets ([[graph-core]] § The model), and a node that adds or removes sockets needs no re-registration.
+- **Pull.** `engine.fetch(id)` returns the node's outputs. If the cache holds an entry for `id`, that entry is returned. Otherwise the engine starts a cancellable run that first fetches the inputs, then calls `node.data(inputs)`, and caches it under `id` before it resolves. Fetching inputs means: take every connection whose target is `id` and whose `targetInput` is a current input key, fetch each source concurrently, and build `inputs[targetInput]` as an array holding `sourceOutputs[sourceOutput]` for each such cable, in the order the cables were added. An input with no cable has no key in `inputs` at all.
 - **Output completeness.** After `data()` resolves, the engine checks that the returned object has every current output key and throws a plain `Error` naming the missing ones otherwise. Every path in this file that builds outputs (the error guard, loop seeding) fills every output key.
-- **Cache and cancellation.** `engine.cache` maps node id to the promise. Deleting an entry (`cache.delete(id)`) calls that promise's `cancel()`; a cancelled fetch rejects with `Cancelled` at its next step. `engine.reset()` with no id deletes every entry. `engine.reset(id)` deletes `id` and recurses into each cable target with no visited set, so it overflows the stack on a cable cycle; nothing in the app calls it with an id.
+- **Cache and cancellation.** Clearing a node's cache entry cancels its run; a cancelled fetch rejects with `Cancelled` at its next step. `engine.reset()` clears every entry; `engine.seed(id, outputs)` stores a result the node's `data()` never computes.
 - **A node is computed at most once per pass.** Everything that fetches it in the same pass receives the same cached promise, so fan-out costs nothing extra.
 
-## The model pass (`graphCompute.ts`)
+## The model pass
 
-`graphCompute.ts` defines the pass with no view. Its pieces:
+Code: `graphCompute.ts`.
+
+`graphCompute.ts` defines the pass with no view; the graph walks run in the engine ([[graph-core]] § The graph walks and the pass), and `loopMembers(editor)` and `downstreamClosure(editor, id)` reach them through `engineOf(editor)`. Its pieces:
 
 | Function | Behavior |
 |---|---|
-| `loopMembers(editor)` | Builds adjacency from every connection (ignoring a target that is not a node in the editor), records self-cables separately, runs an iterative Tarjan SCC (no recursion, so a large graph cannot overflow the stack) and returns the self-loop nodes plus every member of each SCC of size two or more. |
-| `downstreamClosure(editor, startId)` | Breadth-first walk over outgoing connections from `startId`, with a visited set, so a cycle terminates. Returns the set including `startId`. |
-| `invalidate(editor, engine, changedId?, keepCaches?)` | No `changedId`: `engine.reset()` (skipped under `keepCaches`, for an additive pass), returns `null`. With one: computes the cone and deletes each member's cache entry by hand, returns the cone. |
-| `seedLoopErrors(editor, engine, loop, message?)` | For each loop member: builds one `#CIRC!` `SolError` (default message `CIRC_MESSAGE`), sets every output key to it, sets the node's `cachedResult`, `cachedValue` and `cachedList` to it where those properties exist, and stores an already resolved promise with a no-op `cancel` in the cache (`cache.add`, falling back to `cache.patch` when an entry exists). The member's `data()` never runs. |
-| `fetchAll(editor, engine, onNode?, { stopOnCancel? })` | Fetches every node in `editor.getNodes()` order, skipping a node removed while an earlier fetch awaited, calls `onNode` with each result, and collects a map of id to outputs. A fetch that rejects with `Cancelled` records `null`, or under `stopOnCancel` ends the pass and answers `null`; any other rejection propagates. |
-| `computeAll(editor, engine, changedId?)` | `clearCollectMemo`, `resolveTrigModes`, then `invalidate`, then `seedLoopErrors(loopMembers(...))`, then `fetchAll`. |
+| `loopMembers(editor)` / `engine.loopMembers()` | Builds adjacency from every connection (ignoring a target that is not a node in the editor), records self-cables separately, runs an iterative Tarjan SCC (no recursion, so a large graph cannot overflow the stack) and returns the self-loop nodes plus every member of each SCC of size two or more. |
+| `downstreamClosure(editor, startId)` / `engine.downstreamClosure(startId)` | Breadth-first walk over outgoing connections from `startId`, with a visited set, so a cycle terminates. Returns the set including `startId`. |
+| `engine.invalidate(changedId, keepCaches)` | No `changedId`: `engine.reset()` (skipped under `keepCaches`, for an additive pass), returns `null`. With one: computes the cone and deletes each member's cache entry by hand, returns the cone. |
+| `engine.seedLoops(message?)` | Computes the loop members and, for each: builds one `#CIRC!` `SolError` (the default message is "This node is part of a circular dependency: the calculation feeds back into itself"), sets every output key to it, sets the node's `cachedResult`, `cachedValue`, `cachedList` and `cachedChart` to it and `cachedPayload` to `null` where those properties exist, and seeds the outputs. The member's `data()` never runs. The app's pass seeds the same way from its loop set. |
+| `engine.fetchAll(onNode?, stopOnCancel)` | Fetches every node in `editor.getNodes()` order, skipping a node removed while an earlier fetch awaited, calls `onNode` with each result, and collects a map of id to outputs. A fetch that rejects with `Cancelled` records `null`, or under `stopOnCancel` ends the pass and answers `null`; any other rejection propagates. |
+| `computeAll(editor, engine, changedId?)` | `resolveTrigModes`, then the engine's `computeAll`: `invalidate`, `seedLoops`, `fetchAll`. |
 
-Seeding must happen after invalidation and before any fetch: the engine resolves inputs before calling `data()`, so fetching into a cycle would recurse forever. Because a member's cache entry is already resolved, every node downstream of a loop computes normally and shows the propagated `#CIRC!` through the error guard. Seeding only the members, never their descendants, is what makes a full and a targeted pass agree about cycles ([[#The targeted pass equals the full pass]]).
+Seeding must happen after invalidation and before any fetch: the engine resolves inputs before calling `data()`, so fetching into a cycle would recurse forever. Because a member's cache entry is already resolved, every node downstream of a loop computes normally and shows the propagated `#CIRC!` through the error guard. Seeding only the members, never their descendants, is what makes a full and a targeted pass agree about cycles ([[#The targeted pass equals the full pass]]). A cable added while the app's pass waits on an async card can close a loop the seeding never saw, so before each top-level fetch the pass re-seeds from a fresh loop set when a cable was added since it seeded; a node's fetch starts its whole upstream at once, so no fetch begins on an unseeded loop (`GraphCore::pass`, `circularReset.test.ts`).
 
 `resolveTrigModes(editor)` runs before every fetch because a trigonometric Math node in automatic angle mode reads its resolved mode during `data()` ([[unit-flow]], the one compute-time unit read).
 
-The headless runner (`scripts/run-graph.ts`) calls `computeAll`. The app's pass (`processGraph`) runs `invalidate` and `fetchAll` with its own bookkeeping, described below. A composite's private engine resets fully and fetches only its output markers, with the same `loopMembers` and `seedLoopErrors`.
+The headless runner (`scripts/run-graph.ts`) calls `computeAll`. The app's pass (`processGraph`) runs the engine's `pass`, the same pieces with its own bookkeeping, described below. A composite's private engine resets fully and fetches only its output markers, with the same `seedLoops`.
 
 ### The targeted pass equals the full pass
 
@@ -55,9 +58,17 @@ The headless runner (`scripts/run-graph.ts`) calls `computeAll`. The app's pass 
 
 Recomputing too much only wastes time. Recomputing too little is the dangerous half: a node left outside the set keeps showing its previous answer, with no error, beside fresh values ([[C23]] calcModes).
 
-## The app pass (`processGraph`)
+Tests:
 
-`process.ts` holds the main editor, engine and view (`setEditorRefs`, `getEditor`, `getEngine`, `getView`) and runs the app's pass:
+- `processTargeted.test.ts`: the cone holds the start and every transitive dependent across branches and joins, a mid-graph node's cone is itself and what it feeds, and the walk ends on a cycle.
+- `circularReset.test.ts`: closing a cycle with a live cable (the targeted topology pass) seeds `#CIRC!` on the members instead of overflowing the stack, pasting a loop (an additive pass) seeds its members, and a cable closing a loop while a slow card waits is seeded before the pass fetches into it.
+- `pass.rs` (solenoid-graph): the loop finder and the closure natively ([[graph-core#The graph walks and the pass]]).
+
+## The app pass
+
+Code: `processGraph` (`process.ts`).
+
+`process.ts` holds the main editor, engine and view (`setEditorRefs`, `getEditor`, `getEngine`, `getView`) and runs the app's pass. Its entry order's decisions and the state they keep (the gate, single flight, the coalesced rerun, the calc mode, the dirty flag, the generation, the rebuild depth) are the graph core's (`session.rs`, reached through `passSession.ts`, which caches the snapshot each transition answers); its body is the engine's `pass`. `process.ts` does what touches the view and the stores: the overlay, the cable values, the render, the hooks.
 
 ```ts
 processGraph(changedNodeId?: string, renderOnly?: Set<string>, opts?: { force?: boolean; topology?: boolean })
@@ -75,22 +86,57 @@ A targeted pass is correct only for a change whose effect flows solely through c
 
 ### Entry order
 
-1. **Calc-mode gate.** If the mode is manual, `opts.force` is not set and no rebuild scope is open, the call marks the graph dirty and returns without computing. This is the only gate that drops a pass ([[#Only the calc-mode gate skips a pass]]). A load, seed or paste runs inside a rebuild scope, so an opened document computes even in manual mode.
-2. **Single flight.** If a pass is already running, the call sets a rerun flag (and a forced-rerun flag when `opts.force` is set, and an exact-rerun flag when a `beginForceExact` bracket is open) and returns. Passes never nest: a nested pass would share and corrupt the per-pass state (the engine cache, the collect memo, the loop set). Components that call `processGraph` from a mount or render effect during a pass are the usual source.
-3. **Run.** Increments the compute-overlay counter (`beginCompute`), runs the pass body, clears the dirty flag on completion, and in a `finally` clears the in-flight flag and decrements the counter (`endCompute`). The overlay (`computeOverlayStore.ts`) is a "Computing…" curtain that blocks interaction, so a multi-second pass can't interleave with a pan, drag or add. It appears only once a pass has run for 150 ms (`REVEAL_DELAY`) and then stays at least 350 ms (`MIN_VISIBLE`) so it never flashes; a pass that ends before the reveal cancels it, and a new pass cancels a pending hide.
-4. **Drain.** If a rerun was requested, runs exactly one more full pass, `processGraph()` with `{ force: true }` when any coalesced request was forced (otherwise the manual-mode gate would swallow a coalesced F9), inside its own `beginForceExact` bracket when any was exact (the F9 caller's bracket has already closed by then, so sketch would otherwise sample the pass F9 asked for). A full pass is a superset of any targeted request that was coalesced, so the arguments of coalesced calls are dropped, except their changed node ids: an id inside a composite gets its nesting chain's `markInternalEdit()` before the rerun (step 2 of the pass below would otherwise never see it). A coalesced call returns at once, before the rerun, because a call awaited from inside the running pass (a render effect) would otherwise wait on its own pass. A caller outside the pass that must read the result of its call (the Tornado sweep) awaits `graphSettled()` after it, which resolves once no pass is running and no rerun is queued; nothing inside a pass may await it, for the same reason. The drain runs after the in-flight flag clears, so it never nests, and a component effect whose dependencies did not change fires nothing, so the drain cannot queue itself forever.
+```mermaid
+flowchart TD
+    call["processGraph(changed?, renderOnly?, opts?)"] --> name["name the changed node to the core"]
+    name --> gate{"manual mode, not forced,<br>no rebuild scope open?"}
+    gate -->|yes| dirty["mark dirty, signal the change<br>(autosave, history); no pass"]
+    gate -->|no| busy{"a pass already running?"}
+    busy -->|yes| rerun["record a rerun<br>(forced, exact, its node id); return"]
+    busy -->|no| run["overlay counter up, run the pass body,<br>clear dirty; finally: counter down"]
+    run --> drain{"a rerun was recorded?"}
+    drain -->|yes| full["exactly one more full pass"]
+    drain -->|no| done["done"]
+```
 
-### The pass body (`runGraphPass`)
+1. **Naming.** A `changedNodeId` is named to the core first ([[graph-core]] § Direct calls), so the full pass F9 or a coalesced rerun later runs reads that card's call afresh even though this call's own pass never ran.
+2. **Calc-mode gate.** If the mode is manual, `opts.force` is not set and no rebuild scope is open, the call marks the graph dirty, signals the graph changed (autosave and a history entry, as a finished pass would, so an edit made in manual mode is saved before the next F9), and returns without computing. This is the only gate that drops a pass ([[#Only the calc-mode gate skips a pass]]). A load, seed or paste runs inside a rebuild scope, so an opened document computes even in manual mode.
+3. **Single flight.** If a pass is already running, the call records a rerun (forced when `opts.force` is set, exact when a `beginForceExact` bracket is open, with its changed node id) and returns. Passes never nest: a nested pass would share and corrupt the per-pass state (the engine cache, the collect memo, the loop set). Components that call `processGraph` from a mount or render effect during a pass are the usual source.
+4. **Run.** Increments the compute-overlay counter (`beginCompute`), runs the pass body, clears the dirty flag on completion, and in a `finally` clears the in-flight flag and decrements the counter (`endCompute`). The overlay (`computeOverlayStore.ts`) is a "Computing…" curtain that blocks interaction, so a multi-second pass can't interleave with a pan, drag or add. It appears only once a pass has run for 150 ms (`REVEAL_DELAY`) and then stays at least 350 ms (`MIN_VISIBLE`) so it never flashes; a pass that ends before the reveal cancels it, and a new pass cancels a pending hide.
+5. **Drain.** If a rerun was requested, runs exactly one more full pass (a pass that throws leaves it to the next pass that finishes; a trap loses it), `processGraph()` with `{ force: true }` when any coalesced request was forced (otherwise the manual-mode gate would swallow a coalesced F9), inside its own `beginForceExact` bracket when any was exact (the F9 caller's bracket has already closed by then, so sketch would otherwise sample the pass F9 asked for). A full pass is a superset of any targeted request that was coalesced, so the arguments of coalesced calls are dropped, except their changed node ids: an id inside a composite gets its nesting chain's `markInternalEdit()` (`engine.markNested`) before the rerun (step 2 of the pass below would otherwise never see it). A coalesced call returns at once, before the rerun, because a call awaited from inside the running pass (a render effect) would otherwise wait on its own pass. A caller outside the pass that must read the result of its call (the Tornado sweep) awaits `graphSettled()` after it, which resolves once no pass is running and no rerun is queued; nothing inside a pass may await it, for the same reason. The drain runs after the in-flight flag clears, so it never nests, and a component effect whose dependencies did not change fires nothing, so the drain cannot queue itself forever.
+
+Tests: `processReentrancy.test.ts`: `graphSettled` waits out a coalesced rerun; a recompute fired during a pass's render runs no nested pass and settles as one rerun; a coalesced forced call stays forced, an F9 during a sketch pass still runs on full data, and an edit inside a composite during a pass still marks the composite on the rerun.
+
+### The pass body
+
+Code: `runGraphPass`.
+
+```mermaid
+flowchart TD
+    ts["TS: resolveTrigModes"] --> retarget["changed node inside a composite?<br>mark the chain, retarget to the outermost card"]
+    retarget --> inv{"which pass?"}
+    inv -->|full| reset["engine.reset()"]
+    inv -->|targeted| cone["drop the cone's cache entries"]
+    inv -->|additive| keep["drop nothing"]
+    reset --> loops["loop set: reused only by a plain targeted pass;<br>seed #CIRC! on its members"]
+    cone --> loops
+    keep --> loops
+    loops --> fetch["fetchAll in editor order;<br>the core compares each node's outputs"]
+    fetch --> bump["cable readouts re-read"]
+    bump --> render["re-render: full = every node,<br>additive = renderOnly, targeted = changed outputs"]
+    render --> hooks["composite drill-ins, then the<br>graph-changed hook (autosave, undo step)"]
+```
+
 
 1. Returns immediately if the editor, engine or view refs are unset.
-2. **Retarget into composites.** If `changedNodeId` is not a node of the main editor, the pass searches every composite's `internalEditor` (recursively, through nested composites) for it. On a hit, every composite on the nesting chain gets `markInternalEdit()` (an internal value edit fires no editor event, so this is how a composite holding a heavy result learns its subgraph changed), and `changedNodeId` becomes the outermost owning composite card, whose cache entry is the one that must go.
-3. `clearCollectMemo()` (see Lazy Frames).
-4. `resolveTrigModes(editor)`.
+2. `resolveTrigModes(editor)`, in TypeScript before the core's steps.
+3. (Lazy frames need no step: a ref's flush lives and dies with the ref, Lazy Frames below.)
+4. **Retarget into composites** (the core, as are 5 to 7 and the render set of 9). If `changedNodeId` is not a node of the main editor, the pass searches every composite's editor (recursively, through nested composites) for it; an editor knows each composite node's own editor core, registered (`nest`) when the node joins it. On a hit, every composite on the nesting chain gets `markInternalEdit()` (an internal value edit fires no editor event, so this is how a composite holding a heavy result learns its subgraph changed), and `changedNodeId` becomes the outermost owning composite card, whose cache entry is the one that must go.
 5. **Invalidate.** Targeted: compute the cone and delete each member's cache entry by hand, never `engine.reset(id)`. Full: `engine.reset()`. Additive: nothing.
-6. **Loop set.** A targeted pass without `topology` reuses the module's cached loop set (computing it once if absent); every other pass recomputes and caches it. An additive pass follows a paste, and pasted nodes can carry a loop of their own, so it never reuses the set: an unseeded loop would leave the pass waiting on itself forever. Then `seedLoopErrors` over that set.
-7. **Fetch** (`fetchAll` with `stopOnCancel`). For each node in `editor.getNodes()` order: skip it if it has left the editor since the list was taken (a node removed while an earlier fetch awaited), otherwise `await engine.fetch(id)`. On a targeted pass, before overwriting the stored value, it records the node as a sink when it has no output keys, and as changed when any output differs by identity (`!==`) from what `cableValueStore` holds for it. Then `cableValueStore.setNodeOutputs(id, outputs)`. A `Cancelled` rejection ends the pass silently (no render, no hooks); any other rejection propagates.
-8. `cableValueStore.bump()`: cable value readouts re-read. The store holds the latest value per output, keyed `nodeId:outputKey` (the colon makes the node-id prefix unambiguous for `forget`), and serves a combo socket's cable color, the fallback card's preview and the group readouts.
-9. **Render.** Full pass: every node. Additive: only the `renderOnly` set. Targeted: a node in the cone renders when its own outputs changed, or when it is a sink fed directly by a changed node. Nodes outside the cone never render. Object outputs are fresh references on each run, so the cutoff mostly prunes scalar chains. All selected nodes re-render concurrently through `view.rerenderNode`, which is safe because each card is its own React root.
+6. **Loop set.** A targeted pass without `topology` reuses the editor's cached loop set (computing it once if absent); every other pass recomputes and caches it. An additive pass follows a paste, and pasted nodes can carry a loop of their own, so it never reuses the set: an unseeded loop would leave the pass waiting on itself forever. Then seeding over that set (as `seedLoops` does).
+7. **Fetch** (`fetchAll` with `stopOnCancel`). For each node in `editor.getNodes()` order: skip it if it has left the editor since the list was taken (a node removed while an earlier fetch awaited), otherwise `await engine.fetch(id)`. Each landed node's outputs stay in the core, which compares them with what the node last landed (`!==` per output: a primitive by value, anything else by identity) and keeps them for the cable readouts ([[graph-core]] § Direct calls); no JavaScript runs per node. On a targeted pass the core records the node as a sink when it has no output keys, and as changed when an output differed. A `Cancelled` rejection ends the pass silently (no render, no hooks); any other rejection propagates.
+8. `cableValueStore.bump()`: cable value readouts re-read. The store reads each output as the last pass landed it in the core of the engine that ran it (`engine.landed`, converted when asked), and serves a combo socket's cable color, the fallback card's preview and the group readouts.
+9. **Render.** Full pass: every node. Additive: only the `renderOnly` set. Targeted: a node in the cone renders when its own outputs changed, or when it is a sink fed directly by a changed node. Nodes outside the cone never render. Object outputs are fresh references on each run, so the cutoff mostly prunes scalar chains. All selected nodes re-render through `view.rerenderNode`, which bumps the card's `version` in React Flow's node state (`FlowNodeData`); React batches the bumps.
 10. With `window.__solenoidPerf = true`, logs one line per pass: mode, node and cable counts, compute and render time, IPC calls, and the five slowest nodes over half a millisecond (per-node time comes from the error guard).
 11. `compositePassStore.notify()` (an open drill-in re-renders its internal cards), then the registered graph-changed hook (`setGraphChanged`; the canvas uses it to schedule an autosave and an undo step).
 
@@ -98,7 +144,7 @@ A targeted pass is correct only for a change whose effect flows solely through c
 
 | Trigger | Call |
 |---|---|
-| A value edit on a card (a committed field, a toggle, a pick) | `processGraph(node.id)`, or `processGraph()` where the edit changes more than values |
+| A value edit on a card (a committed field, a toggle, a pick) | `processGraph(node.id)`, or `node.edited()` then `processGraph()` where the edit changes more than values; either way the edit names its node, since a full pass reads only named cards' calls afresh ([[graph-core]] § Direct calls) |
 | A live cable created or removed (the canvas pipe, outside a rebuild scope) | FC type reconcile, then `processGraph(target, undefined, { topology: true })`, or a full topology pass when the target is gone |
 | A node added live | `processGraph(id, undefined, { topology: true })` |
 | Load or document switch | `processGraph()` at the end of the rebuild, still inside the rebuild scope |
@@ -110,26 +156,49 @@ A targeted pass is correct only for a change whose effect flows solely through c
 
 `bulkSettle(renderOnly?)` calls the settle the canvas registered with `setBulkSettle`: FC type reconcile, a connection-version bump, the FC unit-mismatch rescan, `processGraph(undefined, renderOnly)`, then the group-collapse sync. Its default before registration is a bare `processGraph(undefined, renderOnly)`.
 
-### The perf probe (`perfProbe.ts`)
+### The perf probe
+
+Code: `perfProbe.ts`.
 
 The probe is inert unless `window.__solenoidPerf = true`. The error guard then times each node's `data()` through promise settlement (`recordNode`, keyed by node id with its class name), so an async node's IPC round trip lands in its row, and `ipcBridge` times each engine IPC call (`recordIpc`, keyed by command, with a cheap payload-size estimate). `processGraph` clears the per-pass buffer at `beginPass()`, reads the slowest nodes with `passTopNodes(n)`, and takes an IPC delta from two `ipcSnapshot()`s. From the devtools console, `window.__solenoidStats()` prints the cumulative node and IPC tables, sorted by total time, and `window.__solenoidStatsReset()` clears them.
 
-## Calc modes and the dirty flag (`calcModeStore.ts`)
+## Calc modes and the dirty flag
 
-The store holds `mode: "auto" | "manual" | "sketch"`, a `dirty` boolean and a `forceExact` depth counter. It imports nothing but the notifier, so `process.ts` can import it one way.
+Code: `calcModeStore.ts`.
 
-- **Persistence.** The mode is per browser, not per document: read once at module load from `localStorage["solenoid.calcMode"]` (`"manual"` and `"sketch"` are recognized, anything else or a throwing accessor gives `"auto"`) and written on every change, with a write failure ignored so the mode lives on in memory.
+The graph core's session holds `mode: "auto" | "manual" | "sketch"`, a `dirty` boolean and a `forceExact` depth counter, and makes every transition below; `calcModeStore.ts` reads the cached snapshot, persists the mode and notifies subscribers. It imports nothing but the notifier and `passSession.ts`, so `process.ts` can import it one way.
+
+- **Persistence.** The mode is per browser, not per document: read once at module load (handed to the core when it loads) from `localStorage["solenoid.calcMode"]` (`"manual"` and `"sketch"` are recognized, anything else or a throwing accessor gives `"auto"`) and written on every change, with a write failure ignored so the mode lives on in memory.
 - `setMode(m)` returns `false` and does nothing when `m` is the current mode. Otherwise it sets the mode, clears `dirty` when `m` is `"auto"` or `"sketch"`, persists, notifies, and returns `true`. The store never runs a pass; the caller owes the catch-up recompute. The Calculate menu calls `requestRecalc()` when switching to Automatic or Sketch returns `true`, and nothing when switching to Manual.
 - `markDirty()` sets `dirty` (notifying only on a transition); `processGraph` calls it when the manual gate drops a pass. `clearDirty()` clears it (notifying only on a transition); every completed pass calls it.
 - `sketchActive()` is true when the mode is `"sketch"` and `forceExact` is 0. The frame layer checks it before running a verb: while it is true a large frame is sampled down to `SKETCH_SAMPLE_ROWS` (10,000) rows and additive results are scaled back up and stamped `__approx`. Outside the frame layer, sketch computes exactly like automatic.
 - `beginForceExact()` and `endForceExact()` bracket a pass that must run on full data while sketch stays selected. The bracket is a depth counter, not a boolean, so an overlapping second forced call can't clear the first one's bracket early. The counter never drops below zero.
 - The status bar shows, in manual mode only, a plain "Manual" label when the graph is current and an actionable "Calculate" button (running `requestRecalc()`) when `dirty` is set.
 
+```mermaid
+stateDiagram-v2
+    direction LR
+    Auto: auto or sketch
+    Clean: manual, clean
+    Dirty: manual, dirty
+    Auto --> Clean: switch to manual
+    Clean --> Dirty: an edit (no pass)
+    Dirty --> Clean: F9 (forced exact pass)
+    Clean --> Auto: switch back (catch-up pass)
+    Dirty --> Auto: switch back (dirty cleared, catch-up pass)
+```
+
 | State | Edit | F9 | Switch to auto or sketch | Switch to manual |
 |---|---|---|---|---|
 | auto or sketch | pass runs | forced exact pass, new generation | no-op if same mode, else catch-up pass | mode changes, no pass |
 | manual, clean | dirty set, no pass | forced exact pass, stays clean | dirty cleared, catch-up pass | no-op |
 | manual, dirty | stays dirty, no pass | forced exact pass, dirty cleared | dirty cleared, catch-up pass | no-op |
+
+Tests:
+
+- `calcModeStore.test.ts`: the mode and dirty-flag transitions, subscribers told on each transition and only then, and the version bumping with each notification.
+- `session.rs` (solenoid-graph): the session's transitions natively ([[graph-core#The session]]).
+- `namedEdits.test.ts`: an edit manual mode holds back is still read on F9's full pass, and every full pass a component asks for names its node first.
 
 ### Only the calc-mode gate skips a pass
 
@@ -139,23 +208,36 @@ The store holds `mode: "auto" | "manual" | "sketch"`, a `dirty` boolean and a `f
 
 ## Volatile nodes and the recalc generation
 
-`getRecalcGen()` returns a module-global integer that starts at 0 and only `requestRecalc()` increments. It is global so every "roll everything" entry point (F9, the menu, the status bar, the midnight rollover, the Save Times card) shares one clock.
+`getRecalcGen()` returns the session's generation, which starts at 0 and only `requestRecalc()` increments. It is global so every "roll everything" entry point (F9, the menu, the status bar, the midnight rollover, the Save Times card) shares one clock.
 
-A node whose `data()` draws random numbers keeps its raw draw and a `lastGen` field initialized to `-1`. In `data()` it reads `getRecalcGen()`; when that differs from `lastGen` (or the stored draws no longer match the input's length) it draws fresh raw values (uniforms in [0, 1)) and stores the generation. It then derives the output from the stored raws and the current inputs, so changing a bound rescales the same draw instead of rolling a new one ([[D46]] freezeVolatilePerCalc). Examples: RAND (`RandBetweenNode`), Shuffle, RANDARRAY, Promo, UUID and the Distribution node's sample form. Draws are not saved; a reload or a new instance rolls on its first pass.
+A card that draws random numbers draws in its body on the core and asks the call for its raw draws (uniforms in [0, 1), `Call::rolls`; UUID's text, `Call::drawn_text`). The engine holds each card's draws for the recalc generation they were drawn in (`Direct`, [[graph-core]] § Direct calls): within it the body gets the same ones, extended where it asks for more (RANDARRAY's longer count), or all drawn anew where it asks for a different count with `redraw` (Shuffle's keys, one per slot of its list); a new generation starts empty. The body derives the output from the raws and the current inputs, so changing a bound rescales the same draw instead of rolling a new one ([[C23]] calcModes). Outside the engine (a test calling `data()`, `nodeOnCore`) no one holds them: a body takes the draw a frozen call's `init` carries, else draws afresh.
 
-`sourceInvariants.test.ts` fails when a file under `nodes/` or `packs/` calls `Math.random()` without referencing `getRecalcGen`, apart from a sanctioned list with reasons (`nodes/composite.ts`, which mints ids, not values).
+Every volatile node shows a Recalculate button (`RecalcButton`) that draws again without a full F9. A Script node counts as volatile when its code draws random numbers or reads the clock (`scriptIsVolatile`): it shows the button, and holds its result between recalculations like the rest ([[C23]] calcModes; [[script-sandbox#The source]] has the scan and the hold).
 
-Volatile functions inside a formula (`RAND`, `RANDARRAY`, `SHUFFLE` and the sampling functions in `excelFunctions.ts`) draw fresh values on every evaluation, so an Expression holding one re-rolls whenever that Expression is recomputed.
+```mermaid
+flowchart LR
+    body["the body asks for n draws"] --> gen{"the engine holds draws<br>for this generation?"}
+    gen -->|yes| keep["the held ones, extended to n<br>(or drawn anew on redraw)"]
+    gen -->|no| draw["n fresh draws in [0, 1),<br>held for this generation"]
+    keep --> derive["the output from the draws<br>and the current inputs"]
+    draw --> derive
+```
 
-The midnight rollover (`volatileDates.ts`, armed once in `App.tsx`) sets one timer for a second past the next local midnight; when it fires, it calls `requestRecalc()` if the document holds a Today / Now card, a node whose `expr` or `frameText` contains `TODAY(` or `NOW(` (any case), or a date Value Input holding a relative date phrase, looking inside composites too, then re-arms. A World Clock also ticks each minute (`armMinuteTick`, armed beside it): a second timer, aligned to the minute, calls `processGraph` on each top-level card that holds one, so the clock and what it feeds recompute without rolling the rest of the document; Manual mode marks it dirty instead. TODAY and NOW read the local calendar, so their day turns at the same local midnight.
+Examples: RAND (`RandBetweenNode`), Shuffle, RANDARRAY, Promo, UUID and the Distribution node's sample form (its seed one draw). Draws are not saved; a reload, a new instance or a restarted module rolls on its first pass.
+
+Tests: `sourceInvariants.test.ts`: no TypeScript file under `nodes/` or `packs/` calls `Math.random()` without referencing `getRecalcGen`, apart from a sanctioned list with reasons (`nodes/composite.ts`, which mints ids, not values).
+
+Volatile functions inside a formula (`RAND`, `RANDARRAY`, `SHUFFLE` and the other draws in the core's `fns_random.rs`: RANDBETWEEN, RANDDIST, RANDSAMPLE, UUID) draw fresh values on every evaluation, so an Expression holding one re-rolls whenever that Expression is recomputed.
+
+The midnight rollover (`volatileDates.ts`, armed once in `App.tsx`) sets one timer for a second past the next local midnight; when it fires, it calls `requestRecalc()` if the document holds a Today / Now, Holidays or World Clock card, a node whose `expr`, `frameText` or `cubeText` calls `TODAY(` or `NOW(` (any case), a Knap body piping `'now' | date`, or a date input (a Value Input on its Date op, or a `date` literal) holding a relative date phrase, looking inside composites too (`hasVolatileDates`), then re-arms. A World Clock also ticks each minute (`armMinuteTick`, armed beside it): a second timer, aligned to the minute, calls `processGraph` on each top-level card that holds one, so the clock and what it feeds recompute without rolling the rest of the document; Manual mode marks it dirty instead. TODAY and NOW read the local calendar, so their day turns at the same local midnight.
 
 ## Rebuild scopes
 
 A rebuild scope marks the graph as being built or rewritten in bulk, as opposed to a person editing it.
 
-- `beginGraphRebuild()` increments a depth counter; `endGraphRebuild()` decrements it, never below zero; `isGraphRebuilding()` is true while the counter is above zero. Every opener pairs its `end` in a `finally`.
+- `beginGraphRebuild()` increments the session's depth counter; `endGraphRebuild()` decrements it, never below zero; `isGraphRebuilding()` is true while the counter is above zero. Every opener pairs its `end` in a `finally`.
 - Openers: document load and its rollback (`persistence.ts`), paste, bulk delete, composite create and unpack, the Tornado sweep, the model fuzzer, and undo and redo (through `withGraphRebuild`).
-- `withGraphRebuild(fn)` clears a module-level "topology dirty" flag, opens a scope, runs `fn`, closes the scope, and if a cable changed while the scope was open (the canvas pipe calls `markBulkTopoDirty()` instead of settling) runs one `bulkSettle()`. So an undo that only moved a node computes nothing. The flag is a single global, so `withGraphRebuild` does not nest.
+- `withGraphRebuild(fn)` clears the session's "topology dirty" flag, opens a scope, runs `fn`, closes the scope, and if a cable changed while the scope was open (the canvas pipe calls `markBulkTopoDirty()` instead of settling) runs one `bulkSettle()`. So an undo that only moved a node computes nothing. The flag is a single global, so `withGraphRebuild` does not nest.
 
 What an open scope suppresses:
 
@@ -165,6 +247,7 @@ What an open scope suppresses:
 | The per-cable settle (FC reconcile, mismatch rescan, targeted pass) on `connectioncreated` and `connectionremoved`; the dirty flag is marked instead | canvas cable pipe | per-cable settles are quadratic; one settle runs at the end |
 | The per-node forget sweep on `noderemoved` | canvas pipe | a rebuild runs `forgetAllNodes()` once |
 | Absorbing a newly created node into the group under it | `FlowSurface.tsx` | only a live creation is dropped into a group |
+| A card's re-render bump (held, then applied once when the outermost scope closes, `onGraphRebuildEnd`) | `FlowSurface.tsx` | the rebuild commits once |
 | The React Flow topology sync (retried each task until the scope closes) | `FlowCanvas.tsx` | the rebuild commits once |
 | Undo-history recording | `flowHistory.ts` | a load is not an undoable step |
 | Document operations (switch, create, fork and the rest) | `documentStore.ts` | they would race a half-built canvas |
@@ -177,26 +260,40 @@ What an open scope suppresses:
 
 The Tornado sweep opens a scope and `beginForceExact()` on purpose: its perturbation passes must run in manual mode, on full data, without raising real alerts.
 
+Tests: `connectionStore.test.ts`: `refreshConnection` never enters a rebuild scope ([[live-connections#The cache key]]).
+
 ## The per-node wrappers
 
-Every editor that computes (the main canvas stack in `FlowCanvas.tsx`, the headless `buildModel` in `flow/flowModel.ts`, `StaticFlowStage.tsx`, the landing stages, and each composite's internal editor) installs, in this order, before any node is added:
+Every engine that computes (the main canvas stack in `FlowCanvas.tsx`, the headless `buildModel` in `flow/flowModel.ts`, `StaticFlowStage.tsx`, the landing stages, and each composite's internal editor) runs each node's call through the input boundary in the graph core (`boundary.rs`): nothing is installed, and a node's `data` is its class's own. The chain is `guard → coercion → the node's own data()`: the guard sees the raw inputs, and anything coercion throws lands in the guard ([[C24]] arraySemantics).
 
-1. `installInputCoercion(editor)`: a pipe that calls `wrapNodeData(node)` on `nodecreated`.
-2. A pipe that calls `installErrorGuards(node)` on `nodecreated` (a composite calls `installErrorGuards` directly after each `addNode`, and on the boundary markers it creates, which gives the same order).
-3. `editor.use(engine)`.
+A node ported to Rust is called in Rust, and its boundary runs on core values (`boundary_core.rs`, [[graph-core]] § Direct calls). For every other card the values are the app's JavaScript objects; the core walks them in place, so a value that needs no change keeps its identity. It reads what each cell of an array is in one call per array (`cellKinds`), so a walk touches only the cells it changes. What only the app knows it asks of `nodeBoundary.ts` (`setBoundaryHost`, installed at load and again in a trap's fresh instance): collecting a lazy frame (`readFrame`), building a frame or cube from rows (`frameFromRows`, `toCube`), a unit cell's display magnitude, a matrix's unit tag, reading a typed list literal (`parseListLiteral`, `listLiterals.ts`), the frame format picks, a node's display name, the error sinks, the perf probe, and sending the node's port changes when its `data()` returns (it may change its own sockets while it computes). The frozen answers (`coreBoundary.test.ts`, `fixtures/core/boundary-*`) hold the coercion, the literals, the tagging and the reading of a throw to what the TypeScript wrappers answered.
 
-Each wrapper replaces `node.data` and is idempotent (`__coerced`, and a private symbol for the guard). Since coercion wraps first, the call chain is `guard → coercion → the node's own data()`. The guard therefore sees the raw inputs, and anything coercion throws lands in the guard ([[D35]] errorInErrorOut).
+```mermaid
+flowchart TD
+    raw["the raw inputs"] --> lazy["collect lazy frames<br>(unless the class is lazy)"]
+    lazy --> sc{"an input error,<br>class not in<br>SEES_ERRORS?"}
+    sc -->|yes| eo["error-out: that error,<br>tagged with this node, on every output"]
+    sc -->|no| unit["the unit boundary:<br>strip units unless kept"]
+    unit --> coerce["coerce each value to its rung<br>(raw, element only, or full)"]
+    coerce --> lit["inject typed list literals<br>on unwired list inputs"]
+    lit --> data["the node's data()"]
+    data -->|"throws, or answers nothing"| conv["#SHAPE! for a ShapeError,<br>else #ERROR!"] --> eo
+    data -->|answers| stamp["stamp frame formats"]
+    stamp --> tag["tag untagged errors<br>with this node as origin"]
+    tag --> sink["report to the error sinks"]
+    eo --> sink
+```
 
-## The error guard (`installErrorGuards`, `errorValue.ts`)
+## The error guard
 
 On each call with `inputs`:
 
-1. **Short-circuit.** Unless the node's constructor name is in `SEES_ERRORS` (`IFErrorNode`, `IsTestNode`, `ConduitNode`, `CableSwitchNode`, `DisplayNode`, `NoteNode`, `ReportNode`, `ChartNode`, `CompositeNode`, `CompositeOutputNode`), the guard scans each input array's top-level values for a `SolError` (`firstInputError`). On the first one found it returns error-out without calling `data()`. Errors inside a list, matrix or Frame cell do not short-circuit; the node handles those per cell.
-2. **Run.** Calls the wrapped `data(inputs)`. A synchronous throw, or a rejected promise, becomes error-out of the converted error: a thrown `SolError` is itself, an error whose `name` is `"ShapeError"` becomes `#SHAPE!` with its message, anything else becomes `#ERROR!` with the message "This node failed to compute: …".
+1. **Short-circuit.** Unless the node's constructor name is in `SEES_ERRORS` (`boundary.rs`; `IFErrorNode`, `IsTestNode`, the branch cards `IfNode`, `IfsNode`, `SwitchNode` and `ChooseNode`, `ConduitNode`, `CableSwitchNode`, `DisplayNode`, `NoteNode`, `ReportNode`, `DashboardNode`, `ChartNode`, `CompositeNode`, `CompositeOutputNode`; why each is listed is [[error-values#Nodes that see raw errors]]), the guard scans each input array's top-level values for a `SolError`. On the first one found it returns error-out without calling `data()`. Errors inside a list, matrix or Frame cell do not short-circuit; the node handles those per cell.
+2. **Run.** Coerces the inputs and calls `data()`. A synchronous throw, or a rejected promise, becomes error-out of the converted error: a thrown `SolError` is itself, an error whose `name` is `"ShapeError"` becomes `#SHAPE!` with its message, anything else becomes `#ERROR!` with the message "This node failed to compute: …". An answer of nothing (`undefined` or `null`, returned or resolved) is the same `#ERROR!`, "This node failed to compute: it returned no answer", at once or async alike.
 3. **Tag the result.** On success, every output value is passed through origin tagging: an untagged top-level `SolError` gets `origin: { nodeId, nodeName }`; untagged errors in a one-dimensional array's cells and in a Frame's column cells get the same, in a copy, one tagged error per distinct untagged error. An origin already present is never overwritten ([[E9]] errorsKeepOrigin). When nothing needed tagging the original object is returned. Then the result is reported to the error sinks.
-4. **Error-out.** Tags the error with this node as origin if it has none (with `inputSlot` set to the input key that carried it, when it came from an input), sets every current output key to the tagged error, sets `cachedResult` (and a figure card's `cachedChart`) to it and `cachedPayload` to `null` where the node has those properties, reports it to the sinks, and returns the outputs.
+4. **Error-out.** Tags the error with this node as origin if it has none (with `inputSlot` set to the input key that carried it when it came from an input, and no `inputSlot` key otherwise), sets every current output key to the tagged error, sets `cachedResult` (and a figure card's `cachedChart`) to it and `cachedPayload` to `null` where the node has those properties, reports it to the sinks, and returns the outputs.
 
-Error sinks (`registerErrorSink`; the Problems store registers one) receive at most one report per node per call: the first error found on the node's own outputs by `findCellError`, a bounded scan of the head and a stride sample of each container ([[error-values]], "Per-cell errors surface through a bounded scan"), or `null` when the outputs are clean, which re-arms the sink's edge detection. The Problems store (`problemsStore.ts`) is one such sink:
+Error sinks (`registerErrorSink` in `errorValue.ts`; the Problems store registers one) receive at most one report per node per call: the first error found on the node's own outputs by `findCellError`, a bounded scan of the head and a stride sample of each container ([[error-values]], "Per-cell errors surface through a bounded scan"), or `null` when the outputs are clean, which re-arms the sink's edge detection. The Problems store (`problemsStore.ts`) is one such sink:
 
 - It logs only at an error's origin node, since the sink fires for every relay and one failure wired to N nodes would otherwise log N rows. It logs nothing while a rebuild scope is open; the settle after a load runs outside the scope.
 - It is edge-detected per node: the same code on the same node logs once, and a clean report (`null`) clears only that detection state, not the history, so a later relapse logs again.
@@ -205,25 +302,42 @@ Error sinks (`registerErrorSink`; the Problems store registers one) receive at m
 
 With the perf probe on, the guard records each node's `data()` time, measured through promise settlement.
 
-## Arrival coercion (`wrapNodeData`, `coerceInputs.ts`)
+Tests:
+
+- `errorValue.test.ts`, `errorIntegration.test.ts`: the guard's short-circuit, the conversion of a throw, origin tagging, and a coercion `#SHAPE!` through a real engine.
+- `coreBoundary.test.ts`: a throw, a rejection or an answer of nothing read as the guard's error, and the origin tagging of what a node answers, frozen ([[graph-core#The input boundary]]).
+
+## Arrival coercion
 
 Coercion turns each arriving value into the shape of the rung the consuming socket declares, so `data()` is written against one shape per input. Acceptance (which cables may exist) is socket-driven and lives in [[socket-lattice]]; coercion is the runtime half and never crosses element families except by the one bridge ([[C10]] socketLattice).
 
 ### Per-call steps
 
-1. **Collect lazy Frames.** If the node's class is not in `LAZY_FRAME_NODES` and any input array holds a `FrameRef`, every ref is collected with `readFrame` (concurrently within an input) and the call becomes asynchronous. With no ref present the call stays synchronous. A lazy node receives the ref itself.
-2. **Unit boundary.** For each input key, unless units are kept for it, each arriving value goes through `stripUnitCells`, which replaces every `UnitCell` (at the top level or nested in arrays) with its display magnitude and returns the same reference when there are none ([[C25]] firstClassUnits). Frames and Cubes cross untouched: a Frame's unit is column metadata, and a Cube's cells keep their per-cell units so the table verbs carry them through. Units are kept on every input of a node with `unitAware = true`, and, for a node with a `passthrough()` declaration, on the inputs that declaration names (re-read each call, since it can depend on the current op). Whether the node is a passthrough is decided once, at wrap time. `unitAware` wins over the passthrough rule.
-3. **Pick the rung.** The rung is the socket's `dataType`, or for an `AdoptiveSocket` its `base`, never the concrete type it adopted to color the port. An input whose socket is not a `SolenoidSocket` passes unchanged.
+1. **Collect lazy Frames.** If the node's class is not in `LAZY_FRAME_NODES` (`boundary.rs`) and any input array holds a `FrameRef`, every ref is collected with `readFrame` (concurrently within an input) and the call becomes asynchronous. With no ref present the call stays synchronous. A lazy node receives the ref itself.
+2. **Unit boundary.** For each input key, unless units are kept for it, each arriving value goes through `stripUnitCells`, which replaces every `UnitCell` (at the top level or nested in arrays) with its display magnitude and returns the same reference when there are none ([[C25]] firstClassUnits). Frames and Cubes cross untouched: a Frame's unit is column metadata, and a Cube's cells keep their per-cell units so the Frame verbs carry them through. Units are kept on every input of a node with `unitAware = true`, and, for a node with a `passthrough()` declaration, on the inputs that declaration names (re-read each call, since it can depend on the current op). Whether the node is a passthrough is decided once, when it joins the editor. `unitAware` wins over the passthrough rule.
+3. **Pick the rung.** The rung is the port's type in the core: the socket's `dataType`, or for an `AdoptiveSocket` its `base`, never the concrete type it adopted to color the port ([[graph-core]] § The model). A type that is no rung passes the value unchanged.
 4. **Coerce.** A key in the node's `rawInputs` set passes unchanged. A key in `noWidenInputs` gets element coercion only (below). Every other key gets full coercion, applied to each value in the input array.
-5. **Inject typed list literals.** For each input key of the node whose coerced array is empty or absent (unwired), whose socket `dataType` is `strlist`, `datelist` or `logicallist` (or `numlist` when the node's `stringLiterals` has that key), and whose `stringLiterals[key]` is non-blank text: the input becomes `[parseListLiteral(text, dataType)]`. A wired cable always wins over the literal. A node with `ownsListLiterals` (List Input) skips this step and reads its own text, keeping it beside the values ([[D93]] oneTextReading).
+5. **Inject typed list literals.** For each input key of the node whose coerced array is empty or absent (unwired), whose socket `dataType` is `strlist`, `datelist` or `logicallist` (or `numlist` when the node's `stringLiterals` has that key), and whose `stringLiterals[key]` is non-blank text: the input becomes `[parseListLiteral(text, dataType)]`. A wired cable always wins over the literal. A node with `ownsListLiterals` (List Input) skips this step and reads its own text, keeping it beside the values ([[C58]] tableInputRawText).
 6. **Call** the node's own `data(coerced)`.
-7. **Stamp Frame formats.** On the result (after it resolves, for an async node), each output that is an eager `FrameValue` gets this node's per-column format picks from `frameFormatStore`: a column whose stored pick differs from its current `format` is shallow-copied with the pick; columns without a pick keep what arrived. A stamped column is a shallow copy, never a mutation, since the arriving frame is a cached value shared with every other consumer. The stamped frame is memoized on the input frame's identity and the store's version, so a frame that did not change keeps its identity across passes; the backend's upload cache and every node's own identity memo depend on that ([[D41]] formatFlowsDownstream, [[unit-flow]]).
+7. **Stamp Frame formats.** On the result (after it resolves, for an async node), each output that is an eager `FrameValue` gets this node's per-column format picks from `frameFormatStore` (`nodeBoundary.ts`'s `stamp`; a lazy frame takes them as one more step of its plan): a column whose stored pick differs from its current `format` is shallow-copied with the pick; columns without a pick keep what arrived. A stamped column is a shallow copy, never a mutation, since the arriving frame is a cached value shared with every other consumer. The stamped frame is memoized on the input frame's identity, the node and the store's version, so a frame that did not change keeps its identity across passes; the backend's upload cache and every node's own identity memo depend on that ([[C118]] formatTravelsWithValue, [[unit-flow]]).
 
-**Why the unit boundary is central** ([[C25]] firstClassUnits). A node that doesn't do unit math gets plain numbers, never values with units; only a node that says it does (`unitAware`, or the inputs its `passthrough()` names) sees them, so a new node that does unit math has to say so. Otherwise a value with a unit reaches a node that compares it as a plain number, and `5 km > 3` answers wrong. Stripping in one shared place rather than in each `data()` means a new node can't forget to; the cost is one flag per unit-math node. A node may also opt in to read units for its own purpose: the Triangle Solver is `unitAware` so it reads angle cells in degrees.
+**Why the unit boundary is central** ([[C25]] firstClassUnits). A node that doesn't do unit math gets plain numbers, never values with units; only a node that says it does (`unitAware`, or the inputs its `passthrough()` names) sees them, so a new node that does unit math has to say so. Otherwise a value with a unit reaches a node that compares it as a plain number, and `5 km > 3` answers wrong. Stripping in one shared place rather than in each `data()` means a new node can't forget to; the cost is one flag per unit-math node. Stripping is the fallback for a card that doesn't carry units yet, not the rule: every card is owed carrying ([[C25]] firstClassUnits), and the cards still stripping are tracked in the backlog.
 
 ### Full coercion, per rung
 
-Two cases come first on every rung: a `FrameRef` or a `SolError` passes through unchanged, and a value that is or directly contains a `UnitCell` (only possible on a kept-unit input) takes the unit-cell table below. Otherwise:
+```mermaid
+flowchart TD
+    v["a value arrives on a rung"] --> pass1{"a FrameRef or<br>a SolError?"}
+    pass1 -->|yes| asis["unchanged"]
+    pass1 -->|no| table{"a table?"}
+    table -->|"a Frame, on cube"| toc["toCube"]
+    table -->|"any other table"| asis2["unchanged; on a value rung<br>the body answers #VALUE!"]
+    table -->|no| unitq{"is or directly holds<br>a UnitCell (a value<br>with a unit)?"}
+    unitq -->|yes| ut["the unit-cell rules below"]
+    unitq -->|no| rung["the rung's row in the table below"]
+```
+
+Three cases come first on every rung: a `FrameRef` or a `SolError` passes through unchanged; a Frame or a Cube passes through unchanged, except that a Frame reaching `cube` becomes a Cube (`toCube`), so one reaching a value rung is the body's `#VALUE!` ("… takes a value or a list, not a table", `Call::value_of`; [[C15]] matricesInFormulas); and a value that is or directly contains a `UnitCell` (only possible on a kept-unit input) takes the unit-cell table below. Otherwise:
 
 | Rung | A scalar arrives | A one-element list | A longer list | A matrix | `null` |
 |---|---|---|---|---|---|
@@ -242,12 +356,12 @@ Two cases come first on every rung: a `FrameRef` or a `SolError` passes through 
 
 Details the table compresses:
 
-- **The logical and number bridge.** On the number-family rungs (`number`, `list`, `numlist`, `table`) every boolean, at any depth, becomes 1 or 0 before shaping. On the logical-family rungs every number, at any depth, becomes `value !== 0`, and `NaN` becomes `null` (unknown, not true). `null` passes both ways. This is the only cross-family conversion coercion performs ([[C10]] socketLattice). Any other family's value on a typed rung of the number, date, string or logical family (only a wildcard cable can land one there) is `#TYPE!` (`familyCells`): text or a complex where a number or a logical is expected, text, a logical or a complex where a date is expected (a date is a number at runtime, so a number passes), and anything but text where text is expected. It is a cell of the list or matrix, or, as a lone value on a scalar or combo rung, the node's result ([[B17]] typedValueModel). The complex family takes what it is given.
+- **The logical and number bridge.** On the number-family rungs (`number`, `list`, `numlist`, `table`) every boolean, at any depth, becomes 1 or 0 before shaping. On the logical-family rungs every number, at any depth, becomes `value !== 0`, and `NaN` becomes `null` (unknown, not true). `null` passes both ways. This is the only cross-family conversion coercion performs ([[C10]] socketLattice). Any other family's value on a typed rung of the number, date, string or logical family (only a wildcard cable can land one there) is `#TYPE!` (`family_cells`): text or a complex where a number or a logical is expected, text, a logical or a complex where a date is expected (a date is a number at runtime, so a number passes), and anything but text where text is expected. It is a cell of the list or matrix, or, as a lone value on a scalar or combo rung, the node's result ([[B17]] typedValueModel). The complex family takes what it is given. One exception: on an input `nodes::reads_text` (`nodes/mod.rs`) names for the card's class and op, non-empty text passes to the body, which answers it as its formula does ([[C17]] shareImpl, [[D109]] aggregatesRefuseText, [[D110]] logicRefusesText): the Aggregate card's list on an op whose formula refuses text or is COUNT, Rank & Percentile's list on Large, Small, Percentile and Quartile, Group Lists' values and the Boolean Op card's inputs. Empty text there is still `#TYPE!`. Both boundaries read it (`boundary.rs` from the node's `op`, `boundary_core.rs` from the call's `init.op`).
 - **Singleton collapse.** A one-element array becomes its element on the scalar and combo rungs listed above; the check is only the outer length, so a one-row matrix collapses to its row. A strict list rung keeps a one-element list and wraps a lone scalar, so a combo to list round trip is lossless. The complex scalar is a tagged object, not an array, so it never collapses apart.
-- **Widening.** A value only moves up in rank ([[C10]] socketLattice): a scalar or list widens into `table` as one row (CSV orientation; a column takes a Transpose), and into `frame` and `cube` the same way. Narrowing happens only where a combo or scalar rung collapses a singleton; a real narrowing failure throws `ShapeError`, which the guard renders as `#SHAPE!` ([[D35]] errorInErrorOut). An empty list reaching `number` is `#SHAPE!` ("Expected a single value, got 0"); reaching `list` or `table` it stays empty.
-- **The shape helpers** (`nodes/coerce.ts`). `toMatrix` only widens and never fails: a scalar is 1×1, a list one row, a matrix unchanged. `toList` wraps a scalar, flattens a 1×N or N×1 matrix and throws `ShapeError` on a real M×N table. `toScalar` flattens and throws `ShapeError` on more than one element. A scalar is any value that is not an array, so a value that reaches a rung through a wildcard (`trueany` accepts everything) is one value, never a list of its characters. `toAnyMatrix` is `toMatrix` for any element type. `matrixShape(v)` is the one row and column count that the Table Info node's outputs and the COLUMNS and ROWS formulas share ([[C17]] shareImpl): a list is one row, a scalar is 1×1, and a wired blank is unknown (`null`). A Frame has its own real shape, so the node handles it before calling this, and Frames never reach formulas. The error guard recognizes `ShapeError` by its `name`.
-- **Frame and Cube construction.** `frameFromRows(rows)` makes one column per position of the widest row, headers `Col1`, `Col2`, … and column types inferred from the cells. A `FrameValue` arriving at `frame` passes unchanged. `toCube` passes a Cube, converts a Frame with `frameToCube`, and builds from rows otherwise.
-- **Rungs without widening.** The typed matrix rungs other than `table` (`strtable`, `datetable`, `complextable`, `logicaltable`) and `anytable` do not widen at arrival; the node widens with `toAnyMatrix` itself. `any` does not collapse a singleton. `anycombo` and `anydata` get no element coercion and no widening, so a scalar stays a scalar; on `anydata` a matrix flows whole, because the formula evaluator owns the rank semantics ([[formula-language#Broadcasting]]).
+- **Widening.** A value only moves up in rank ([[C10]] socketLattice): a scalar or list widens into `table` as one row (CSV orientation; a column takes a Transpose), and into `frame` and `cube` the same way. Narrowing happens only where a combo or scalar rung collapses a singleton; a real narrowing failure throws `ShapeError`, which the guard renders as `#SHAPE!` ([[C24]] arraySemantics). An empty list reaching `number` is `#SHAPE!` ("Expected a single value, got 0"); reaching `list` or `table` it stays empty. A table whose first item is a row but some other item a value (`[[1, 2], 3]`) has no shape to narrow from: `#SHAPE!` "Expected a single value, got rows mixed with values" on `number`, "Expected a list, got rows mixed with values" on `list`.
+- **The shape helpers** (the graph core's `boundary.rs`, at arrival). `to_matrix` only widens and never fails: a scalar is 1×1, a list one row, a matrix unchanged. `to_list` wraps a scalar, flattens a 1×N or N×1 matrix and throws `ShapeError` on a real M×N table. `to_scalar` flattens and throws `ShapeError` on more than one element. A scalar is any value that is not an array, so a value that reaches a rung through a wildcard (`trueany` accepts everything) is one value, never a list of its characters. `to_any_matrix` is `to_matrix` for any element type. The one row and column count that the Table Info node's outputs and the COLUMNS and ROWS formulas share ([[C17]] shareImpl): a list is one row, a scalar is 1×1, and a wired blank is unknown (`null`). A Frame has its own real shape, so the node handles it before calling this, and Frames never reach formulas. The error guard recognizes `ShapeError` by its `name`.
+- **Frame and Cube construction.** `frameFromRows(rows)` makes one column per position of the widest row, headers `Col1`, `Col2`, … and column types inferred from the cells. A table arriving at `frame` passes unchanged. `toCube` passes a Cube, converts a Frame with `frameToCube`, and builds from rows otherwise.
+- **Rungs without widening.** The typed matrix rungs other than `table` (`strtable`, `datetable`, `complextable`, `logicaltable`) and `anytable` do not widen at arrival; the node widens with `to_any_matrix` itself. `any` does not collapse a singleton. `anycombo` and `anydata` get no element coercion and no widening, so a scalar stays a scalar; on `anydata` a matrix flows whole, because the formula evaluator owns the rank semantics ([[formula-language#Broadcasting]]).
 - **Why the strict list rungs wrap a lone value.** Without the wrap, a node's `for...of` over the input throws on a number and walks a string one character at a time.
 
 **Unit-cell coercion** (kept-unit inputs whose value is a `UnitCell` or an array directly holding one): shapes by rank without the numeric coercers, which would reject a cell object.
@@ -257,12 +371,19 @@ Details the table compresses:
 | `number` | a cell as is; a one-element array of a cell gives the cell; anything else is `#SHAPE!` |
 | `list`, `anylist` | a lone cell becomes `[cell]`; an array as is |
 | `numlist` | as is (a scalar cell stays scalar) |
-| `table` | `toAnyMatrix`: a cell is 1×1, a list is one row |
+| `table` | `to_any_matrix`: a cell is 1×1, a list is one row |
 | `frame` | a Frame as is, an array is one row, a cell is 1×1 |
 | `cube` | `toCube` |
 | any other rung | as is |
 
-### Element coercion only (`noWidenInputs`)
+Tests:
+
+- `coreBoundary.test.ts` freezes arrival on every rung (`fixtures/core/boundary-*`), full and element-only, units kept and stripped, and `boundary_core.rs` (solenoid-graph) holds the core's boundary to it.
+- `coerceInputs.test.ts`: the adoptive base rung, singleton collapse per family, the strict list rungs, and the `FrameRef` bridge for lazy and eager classes.
+
+### Element coercion only
+
+Code: `noWidenInputs`.
 
 For a key in `noWidenInputs` the value reaches `data()` at its natural rank. A `FrameRef`, a `SolError` or a unit-bearing value passes unchanged; otherwise, when the rung's element family is number, booleans become 1 or 0, and when it is logical, numbers become logicals (`NaN` to `null`). The socket and acceptance are unchanged. Expression keeps this set live by mutating it in place as its variables change.
 
@@ -270,9 +391,13 @@ For a key in `noWidenInputs` the value reaches `data()` at its natural rank. A `
 
 A key in `rawInputs` skips coercion entirely (the unit boundary and the lazy collect still apply). A polymorphic node uses it to branch on the runtime shape itself, for example a `cube` socket that must receive a Frame as a Frame rather than have `toCube` flatten its types. A broadcaster declares a combo rung instead of opting out.
 
-### Typed list literals (`parseListLiteral`)
+### Typed list literals
 
-The text is parsed as one CSV line (a quoted field keeps an embedded comma), each field trimmed, empty fields dropped (`listLiteralItems`). Each field is then read as a Frame cell of the rung's type (`coerceFrameCell`; [[D93]] oneTextReading): `numlist` and `list` as Number, `datelist` as Date, `logicallist` as Boolean; `strlist` keeps the fields as text. So a field the type can't read is NaN, a Boolean field reads only what `coerceLogical` reads, and an ambiguous date such as `02-03-2026` stays its `#AMBIGUOUS!` error, because it is a question to the user and a value would answer it silently. A field is never dropped, which would shift later positions. Literal maps are restored on load only onto classes that declare them ([[inline-literal-maps]]); `coerceInputs.test.ts` fails when a catalog node with a typeable list input does not declare `stringLiterals`.
+Code: `parseListLiteral`.
+
+The text is parsed as one CSV line (a quoted field keeps an embedded comma), each field trimmed, empty fields dropped (`listLiteralItems`). Each field is then read as a Frame cell of the rung's type (`coerceFrameCell`; [[C58]] tableInputRawText): `numlist` and `list` as Number, `datelist` as Date, `logicallist` as Boolean; `strlist` keeps the fields as text. So a field the type can't read is NaN, a Boolean field reads only what `coerceLogical` reads, and an ambiguous date such as `02-03-2026` stays its `#AMBIGUOUS!` error, because it is a question to the user and a value would answer it silently. A field is never dropped, which would shift later positions. Literal maps are restored on load only onto classes that declare them ([[inline-literal-maps]]), so a catalog node with a typeable list input must declare `stringLiterals`, or the typed text drops on reload.
+
+Tests: `coerceInputs.test.ts`: typed-literal injection, `noWidenInputs`, and every catalog node with a typeable list input declaring `stringLiterals`; `coreBoundary.test.ts` freezes the typed list literals on an unwired input.
 
 ## What `data()` receives
 
@@ -282,23 +407,30 @@ The text is parsed as one CSV line (a quoted field keeps an embedded comma), eac
 - A value never contains a `UnitCell` unless units are kept for that input.
 - A value is never a `FrameRef` unless the node is lazy. The collect runs before `rawInputs` is consulted, so a raw input on an eager node still receives a collected Frame.
 
+Tests: `broadcastContract.test.ts`: an unwired input reads the literal, a wired value wins even when it is 0, and a wired blank reaches the node rather than the literal.
+
 ## Lazy Frames and when they are collected
 
-A Frame on a cable is usually a `FrameRef`: a handle to a verb chain held by the frame backend ([[C16]] polarsEngine). The classes in `LAZY_FRAME_NODES` (matched by constructor name) receive refs uncollected: the relational verbs (Distinct, Head, Sort, Filter, Join, Columns, GROUPBY, Unpivot, Append, Bind Columns, Rename, Fill Blanks, Replace Values, Window) and the nodes that read through the cheap primitives (Get Column, SUMIFS, Table Info, Write File, Pivot, Slicer). `lazyChain.test.ts` pins the set. Every other node's inputs are collected to an eager `FrameValue` at arrival.
+A Frame on a cable is usually a lazy frame: a ref to a verb chain held in the core ([[frame-verbs#Lazy frames]], [[C130]] rustCore). The classes in `LAZY_FRAME_NODES` (matched by constructor name) receive refs uncollected: the relational verbs (Distinct, Head, Sort, Filter, Join, Columns, GROUPBY, Unpivot, Append, Bind Columns, Rename, Fill Blanks, Replace Values, Window, Drop Blank Rows, Add Index, Split Column, Merge Columns, Computed Column) and the nodes that read through a ref's schema, columns or preview (Get Column, SUMIFS, Table Info, Write File, Pivot, Slicer). Every other node's inputs are collected to a whole frame at arrival, in the core, once per ref (`value::collected`): a ref fanned out to several consumers is read once, and a pass whose inputs stand reads nothing again, since the verb cards keep their answers (`nodes::KEEPS_ANSWER`). A collect failure is the ref's error value; the boundary sends it out every output without running the node, and a class in `SEES_ERRORS` receives it as a value instead ([[C24]] arraySemantics).
 
-`readFrame(ref)` flushes the ref's pending plan to a handle (one backend round trip, rebased on the longest prefix already flushed this pass), collects it, applies the sketch scaling and the aggregate guard, and memoizes the resulting promise by the ref object. `clearCollectMemo()` at the start of each pass (the app's and `computeAll`) empties the flush and collect memos and drops the flushed handles, so a ref fanned out to several consumers materializes once per pass and never across passes. A collect failure resolves to a `SolError` value (`materialize`) rather than throwing. The coercion wrapper then throws it, so the error guard sends it out every output without running the node; a class in `SEES_ERRORS` receives it as a value instead ([[D35]] errorInErrorOut).
+Tests: `lazyChain.test.ts`: the lazy set, and what a verb chain driven through a real editor costs the frame layer (how often a frame is taken in, how many ops run, whether anything reads a frame whole).
 
 ## Composites
 
-A composite card owns a private `NodeEditor` and `DataflowEngine`, wrapped in the same order, and nothing inside it enters the outer engine or cache. Its pass writes each input port's value into its input marker, runs `internalEngine.reset()`, seeds `#CIRC!` on its internal loop members (with a message pointing at Simulation mode), and fetches only the output markers. Run modes and heavy-mode holding ([[D52]] compositesHoldUntilSolve) are [[composite-nodes]], and the drill-in is [[composite-drill-in-mount-lifecycle]]; this file only supplies the retargeting in the app pass above.
+A composite card owns a private `GraphEditor` and `DataflowEngine`, wrapped in the same order, and nothing inside it enters the outer engine or cache. Its pass writes each input port's value into its input marker, runs `internalEngine.reset()`, seeds `#CIRC!` on its internal loop members (with a message pointing at Simulation mode), and fetches the output markers, then, once its mode's passes are done, every other card inside ([[composite-nodes]] § Every card inside computes). Run modes and heavy-mode holding ([[C23]] calcModes) are [[composite-nodes]], and the drill-in is [[composite-drill-in-mount-lifecycle]]; this file only supplies the retargeting in the app pass above.
 
-## Enforcement
+## Delayed Pass
 
-- `processTargeted.test.ts`: the cone includes the start and every transitive dependent across branches and joins, and terminates on a cycle.
-- `circularReset.test.ts`: closing a cycle with a live cable, or pasting one, yields `#CIRC!` on the members instead of a stack overflow or a hung pass.
-- `processReentrancy.test.ts`: a recompute fired during a pass runs no nested pass and settles as one rerun; a coalesced forced call stays forced, a coalesced F9 in sketch mode stays exact, and a coalesced edit inside a composite still marks the composite.
-- `calcModeStore.test.ts`: the mode and dirty-flag transitions, notification on each transition only, and a missing `localStorage`.
-- `coerceInputs.test.ts`: typed-literal injection and declaration, the adoptive base rung, `noWidenInputs`, singleton collapse per family, strict list rungs, and the `FrameRef` bridge for lazy and eager classes.
-- `errorValue.test.ts`, `errorIntegration.test.ts`: the guard's short-circuit, conversion, origin tagging, and coercion `#SHAPE!` through a real engine.
-- `sourceInvariants.test.ts`: the `Math.random` and `getRecalcGen` scan.
-- `broadcastContract.test.ts`: the unwired and wired-blank read.
+A Delayed Pass card (`DelayedPassNode`, [[D118]] delayedPass) breaks a cable cycle by answering one recalculation late.
+
+- **The engine never fetches its `In`.** The graph core builds its engine with a per-node port selection (`model.rs`, `Host::delayed`): for a Delayed Pass card every input but `in` takes part, so a fetch never follows `In` and a cycle through it can't recurse. `Start` is an ordinary input.
+- **A cable into `In` is no edge to the loop finder** (`pass::loop_members`'s `delayed`, and `graphValidate.ts`'s `findCycle` for the text form), so the cycle's members are never seeded `#CIRC!`. A cable into `Start` that closes a cycle is still a loop.
+- **The card answers `held`**, or `Start` while `held` is `undefined` (before the first step and after Reset).
+- **After every app pass** (`runGraphPass`, after `engine.pass`), `advanceDelayedPasses` reads each card's `In` source through the engine (cached, so nothing recomputes), every source before any card moves, then sets each card's `held` and bumps its `stepCount`. A card whose `held` changed (`Object.is`) has its reach invalidated, so the next pass, targeted or full, computes from the new value. The canvas shows the step's answers until the next recalculation.
+- `held` and `stepCount` are run-time only; a reopened document starts from `Start`.
+- **Inside a composite** the card breaks the cycle the same way, but no composite run mode advances it yet, so it answers `Start`.
+
+Tests:
+
+- `nodes/delayedPass.test.ts`: a loop through a Delayed Pass card steps once per pass, full or targeted, with no `#CIRC!`; Reset returns it to Start; the text validator sees no cycle through it.
+- `pass.rs` (solenoid-graph): the loop finder's cut at `In`.

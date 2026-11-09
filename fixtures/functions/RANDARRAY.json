@@ -1,0 +1,12 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"RANDARRAY(1, 1, 1.2, 1.8, TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RANDARRAY(2, 3, 0, 10)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RANDARRAY(5,, 1, 6, TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RANDARRAY(-1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RANDARRAY(2, -1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RANDARRAY(2, 1, 5, 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RANDARRAY(2.9)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RANDARRAY(0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

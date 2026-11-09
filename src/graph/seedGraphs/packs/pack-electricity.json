@@ -1,0 +1,390 @@
+{
+  "v": 2,
+  "order": 5050,
+  "label": "Electricity: Ohm's law to the parts drawer",
+  "group": "Packs",
+  "nodes": [
+    {
+      "id": "head",
+      "x": 0,
+      "y": 0,
+      "type": "NoteNode",
+      "init": {
+        "label": "Electricity & Circuits",
+        "color": "amber",
+        "collapsed": false,
+        "width": 760,
+        "height": 150,
+        "body": "**Ohm's Law** is one equation that solves for whichever of V, I and R isn't wired: here 9 V across 330 Ω gives the current, which feeds **Power**. An LED needs a series resistor; **E-Series** rounds the exact value to one you can buy. **Parallel Combine** gives three resistors' combined resistance, and the **Resistor Color Code** card reads the bands.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "v",
+      "x": 0,
+      "y": 220,
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Voltage (V)",
+        "op": "number",
+        "value": "9",
+        "format": "auto",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "textAlign": "right",
+        "textMarkdown": false,
+        "textMono": false,
+        "logicalStyle": "truefalse",
+        "grouping": true,
+        "negativeStyle": "minus",
+        "scaleMode": "none",
+        "width": 180,
+        "height": 140,
+        "chip": false
+      }
+    },
+    {
+      "id": "r",
+      "x": 0,
+      "y": 420,
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Resistance (Ω)",
+        "op": "number",
+        "value": "330",
+        "format": "auto",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "textAlign": "right",
+        "textMarkdown": false,
+        "textMono": false,
+        "logicalStyle": "truefalse",
+        "grouping": true,
+        "negativeStyle": "minus",
+        "scaleMode": "none",
+        "width": 180,
+        "height": 140,
+        "chip": false
+      }
+    },
+    {
+      "id": "ohm",
+      "x": 440,
+      "y": 220,
+      "type": "EquationNode",
+      "init": {
+        "label": "Ohm's Law",
+        "expr": "v = i * r",
+        "locked": true,
+        "width": 240,
+        "height": 220,
+        "varDescriptions": {
+          "v": "Voltage (V)",
+          "i": "Current (A)",
+          "r": "Resistance (Ω)"
+        },
+        "varUnits": {
+          "v": "W/A",
+          "i": "A",
+          "r": "W/A^2"
+        }
+      }
+    },
+    {
+      "id": "pw",
+      "x": 880,
+      "y": 220,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Power (V·I)",
+        "expr": "v*i",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varDescriptions": {
+          "v": "Voltage (V)",
+          "i": "Current (A)"
+        },
+        "varUnits": {
+          "v": "W/A",
+          "i": "A"
+        }
+      },
+      "literals": {}
+    },
+    {
+      "id": "led",
+      "x": 0,
+      "y": 680,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "LED Series Resistor",
+        "expr": "(vs-vf)/i",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varDescriptions": {
+          "vs": "Supply voltage (V)",
+          "vf": "LED forward voltage (V)",
+          "i": "Target LED current (A)"
+        },
+        "varUnits": {
+          "vs": "W/A",
+          "vf": "W/A",
+          "i": "A"
+        }
+      },
+      "literals": {
+        "vs": 9,
+        "vf": 2,
+        "i": 0.02
+      }
+    },
+    {
+      "id": "es",
+      "x": 440,
+      "y": 680,
+      "type": "ESeriesNode",
+      "init": {
+        "label": "",
+        "op": "E24",
+        "width": 200,
+        "height": 190
+      },
+      "literals": {}
+    },
+    {
+      "id": "rs",
+      "x": 880,
+      "y": 680,
+      "type": "ListInputNode",
+      "init": {
+        "label": "Resistors (Ω)",
+        "dataType": "number",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "100, 220, 330"
+      }
+    },
+    {
+      "id": "par",
+      "x": 1320,
+      "y": 680,
+      "type": "ParallelCombineNode",
+      "init": {
+        "label": "Parallel Combine",
+        "width": 180,
+        "height": 140
+      }
+    },
+    {
+      "id": "bands",
+      "x": 1320,
+      "y": 220,
+      "type": "ResistorCodeNode",
+      "init": {
+        "label": "Resistor Color Code",
+        "width": 220,
+        "height": 230,
+        "bands": "4"
+      },
+      "stringLiterals": {
+        "b1": "brown",
+        "b2": "black",
+        "b3": "black",
+        "mult": "red",
+        "tol": "gold"
+      }
+    },
+    {
+      "id": "tau",
+      "x": 0,
+      "y": 940,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "RC Time Constant",
+        "expr": "r*c",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varDescriptions": {
+          "r": "Resistance (Ω)",
+          "c": "Capacitance (F)"
+        },
+        "varUnits": {
+          "r": "W/A^2"
+        }
+      },
+      "literals": {
+        "r": 10000,
+        "c": 0.0001
+      }
+    },
+    {
+      "id": "tt",
+      "x": 440,
+      "y": 940,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Time (s)",
+        "expr": "SEQUENCE(21, 1, 0, 0.25)",
+        "locked": false,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "charge",
+      "x": 880,
+      "y": 940,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Capacitor Charging",
+        "expr": "v0*(1-EXP(-t/(r*c)))",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varDescriptions": {
+          "v0": "Source voltage (V)",
+          "t": "Time (s)",
+          "r": "Series resistance (Ω)",
+          "c": "Capacitance (F)"
+        },
+        "varUnits": {
+          "v0": "W/A",
+          "t": "s",
+          "r": "W/A^2"
+        }
+      },
+      "literals": {
+        "v0": 9,
+        "r": 10000,
+        "c": 0.0001
+      }
+    },
+    {
+      "id": "chargeFrame",
+      "x": 1320,
+      "y": 940,
+      "type": "FrameFromListsNode",
+      "init": {
+        "label": "Charging curve",
+        "width": 220,
+        "height": 240,
+        "valueKeys": [
+          "name0",
+          "vals0",
+          "name1",
+          "vals1"
+        ]
+      },
+      "literals": {},
+      "stringLiterals": {
+        "name0": "t (s)",
+        "name1": "V"
+      }
+    },
+    {
+      "id": "chargeChart",
+      "x": 1760,
+      "y": 940,
+      "type": "ChartNode",
+      "init": {
+        "label": "Capacitor charging",
+        "op": "line",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Charging: 63% after one τ = RC = 1 s;xlabel=t (s);ylabel=V"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "v",
+      "sourceOutput": "value",
+      "target": "ohm",
+      "targetInput": "v"
+    },
+    {
+      "source": "r",
+      "sourceOutput": "value",
+      "target": "ohm",
+      "targetInput": "r"
+    },
+    {
+      "source": "v",
+      "sourceOutput": "value",
+      "target": "pw",
+      "targetInput": "v"
+    },
+    {
+      "source": "ohm",
+      "sourceOutput": "i",
+      "target": "pw",
+      "targetInput": "i"
+    },
+    {
+      "source": "led",
+      "sourceOutput": "result",
+      "target": "es",
+      "targetInput": "value"
+    },
+    {
+      "source": "rs",
+      "sourceOutput": "list",
+      "target": "par",
+      "targetInput": "list"
+    },
+    {
+      "source": "tt",
+      "sourceOutput": "result",
+      "target": "charge",
+      "targetInput": "t"
+    },
+    {
+      "source": "tt",
+      "sourceOutput": "result",
+      "target": "chargeFrame",
+      "targetInput": "vals0"
+    },
+    {
+      "source": "charge",
+      "sourceOutput": "result",
+      "target": "chargeFrame",
+      "targetInput": "vals1"
+    },
+    {
+      "source": "chargeFrame",
+      "sourceOutput": "frame",
+      "target": "chargeChart",
+      "targetInput": "values"
+    }
+  ]
+}

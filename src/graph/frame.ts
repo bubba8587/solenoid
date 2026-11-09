@@ -1,14 +1,16 @@
-// [[C24]] arraySemantics, [[C44]] dateSerials, [[D43]] unitByGranularity
-import { parseCsvRows } from "./csv";
-import { parseDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
+// [[C24]] arraySemantics, [[C44]] dateSerials, [[C25]] firstClassUnits
+import { isSolDate, dateSerialOf } from "./dateValue";
+import { wasmInvokeSync, wasmInferBin } from "./engineWasm";
+import { encodeBinary, decodeBinary } from "./binaryCells";
+import { parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { isSolError, solError, type SolError } from "./errorValue";
 import { coerceLogical, decimalFromText } from "./valueKinds";
-import { type ColumnUnit, type UnitCell, isUnitCell, roundAtLargerTerm } from "./unitValue";
-import { formatDim, dimEqual, type Dim } from "./dimension";
+import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";
+import { isCx, assembleCx } from "./cxValue";
 import { parseColumnUnitFromHeader, columnUnitFromSpec, tagFrameCellUnit, matrixCellsFromList } from "./unitColumn";
-import { displayMagnitudeOf, fcUnitToUnit } from "./unitBridge";
+import { displayMagnitudeOf } from "./unitBridge";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
-import { dateAnnotationPattern, type FormatAnnotation } from "./formatAnnotationStore";
+import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation } from "./formatAnnotationStore";
 import { typesAt, isFrameAt, type ColumnTypes, type NestedTables } from "./cubeTypes";
 import type { CubePath } from "./literalEditors";
 
@@ -30,7 +32,7 @@ export interface FrameValue {
   columns: FrameColumn[];
   __totalRows?: number;
   /** Structurally typed, not `FrameRef`, to avoid a frame ↔ frameBackend import cycle. */
-  __ref?: { readonly __frameRef: string };
+  __ref?: { readonly __frameRef: number };
   __approx?: { readonly factor: number };
 }
 
@@ -84,37 +86,22 @@ export function typedColumn(
   knownType?: FrameColType | null,
 ): FrameColumn {
   const present = cells.filter((c) => c !== null && c !== undefined && !isSolError(c));
+  // A column of date values is a Date column, its cells their serials ([[D114]] dateIsAKind).
   const type: FrameColType = knownType
-    ?? (present.length > 0 && present.every((c) => typeof c === "number") ? "number"
+    ?? (present.length > 0 && present.every(isSolDate) ? "date"
+      : present.length > 0 && present.every((c) => typeof c === "number") ? "number"
       : present.length > 0 && present.every((c) => typeof c === "boolean") ? "logical"
       : "string");
   const values: FrameCell[] = [];
   for (let i = 0; i < length; i++) {
-    const c = cells[i];
+    const c = dateSerialOf(cells[i]);
     if (c === null || c === undefined) { values.push(null); continue; }
     if (isSolError(c)) { values.push(c); continue; }
-    if (type === "string") { values.push(typeof c === "string" ? c : String(c)); continue; }
+    if (type === "string") { values.push(typeof c === "string" ? c : isSolDate(cells[i]) ? formatDateSerial(c as number, DEFAULT_DATE_FORMAT) : String(c)); continue; }
     if (type === "logical") { values.push(typeof c === "boolean" ? c : cellToBool(c)); continue; }
     values.push(typeof c === "number" ? c : (cellToNumber(c) ?? NaN));
   }
   return { name, type, values };
-}
-
-export function buildFrameTyped(
-  matrix: ReadonlyArray<ReadonlyArray<unknown>>,
-  names?: ReadonlyArray<string>,
-  colType?: FrameColType | null,
-): FrameValue {
-  const ncols = matrix.reduce((m, r) => Math.max(m, r.length), 0);
-  const parsed = (names ?? []).map((n) => parseColumnUnitFromHeader(n));
-  const cleanNames = (names ?? []).map((_, i) => parsed[i]?.clean ?? names![i]);
-  const headers = makeHeaders(cleanNames, ncols);
-  const columns: FrameColumn[] = headers.map((name, j) => {
-    const cells = matrix.map((row) => (j < row.length ? row[j] : null));
-    const col = typedColumn(name, cells, matrix.length, colType ?? undefined);
-    return parsed[j]?.unit && col.type === "number" ? { ...col, unit: parsed[j].unit } : col;
-  });
-  return { __frame: true, columns };
 }
 
 export function colTypeForSocket(dataType: string | undefined): FrameColType | null {
@@ -127,31 +114,11 @@ export function colTypeForSocket(dataType: string | undefined): FrameColType | n
   }
 }
 
-export function splitFrame(f: FrameValue): { matrix: number[][] | null; headers: string[] } {
-  const headers = f.columns.map((c) => c.name);
-  if (frameHasTextColumns(f)) return { matrix: null, headers };
-  const rows = frameRowCount(f);
-  const matrix: number[][] = Array.from({ length: rows }, (_, i) =>
-    f.columns.map((c) => {
-      const v = c.values[i];
-      if (typeof v === "number") return v;
-      if (typeof v === "boolean") return v ? 1 : 0;
-      return NaN;
-    }),
-  );
-  return { matrix, headers };
-}
-
-export function frameHasTextColumns(f: FrameValue): boolean {
-  return f.columns.some((c) => c.type === "string");
-}
-
 export function formatFrameCell(type: FrameColType, v: FrameCell, format?: FormatAnnotation): number | string | null {
   if (isSolError(v)) return v.code;
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
   if (type === "date" && typeof v === "number" && Number.isFinite(v)) {
-    const pattern = (format && dateAnnotationPattern(format)) || DEFAULT_DATE_FORMAT;
-    return formatDateSerial(v, pattern);
+    return formatNumberWithAnnotation(v, format && isDateStyle(format.format) ? format : ({ ...format, format: "date_dmy" } as FormatAnnotation));
   }
   return v;
 }
@@ -174,14 +141,19 @@ export function addColumn(
   name: string,
   values: FrameCell[],
   type: FrameColType = "number",
+  /** The new column's unit, in place of the one a `Name (unit)` header names; a replaced column drops its old unit. */
+  columnUnit?: ColumnUnit | null,
 ): FrameValue {
-  const { clean, unit } = parseColumnUnitFromHeader(name);
+  const { clean, unit: headerUnit } = parseColumnUnitFromHeader(name);
+  const unit = columnUnit === undefined ? headerUnit : columnUnit;
   const unitTag = unit && type === "number" ? { unit } : {};
   const existingIdx = f.columns.findIndex((c) => c.name === clean.trim());
   if (existingIdx >= 0) {
-    const columns = f.columns.map((c, i) =>
-      i === existingIdx ? { ...c, type, values, raw: undefined, ...unitTag } : c,
-    );
+    const columns = f.columns.map((c, i) => {
+      if (i !== existingIdx) return c;
+      const { unit: _old, ...rest } = c;
+      return { ...(columnUnit === undefined ? c : rest), type, values, raw: undefined, ...unitTag };
+    });
     return { __frame: true, columns };
   }
   const others = f.columns.map((c) => c.name);
@@ -211,7 +183,7 @@ export function coerceFrameCell(type: FrameColType, raw: string): FrameCell {
   return NaN;
 }
 
-/** A list item read as a type. Text reads as a Frame cell does, so what the type can't read is NaN ([[D93]] oneTextReading). Converts, never filters; the caller passes null and per-cell errors through. */
+/** A list item read as a type. Text reads as a Frame cell does, so what the type can't read is NaN ([[C58]] tableInputRawText). Converts, never filters; the caller passes null and per-cell errors through. */
 export function coerceListItem(type: FrameColType, v: unknown): FrameCell {
   if (typeof v === "string" && type !== "string") return coerceFrameCell(type, v);
   switch (type) {
@@ -252,15 +224,6 @@ export function frameSourceToText(source: FrameSource): string {
   })));
 }
 
-function inferColType(cells: ReadonlyArray<string>): FrameColType {
-  const nonBlank = cells.filter((c) => !isBlank(c));
-  if (nonBlank.length === 0) return "string";
-  if (nonBlank.every((c) => cellToNumber(c) !== null)) return "number";
-  if (nonBlank.every(isLogicalCell)) return "logical";
-  if (nonBlank.every((c) => dateCellSerial(c) !== null)) return "date";
-  return "string";
-}
-
 export function parseFrameSource(text: string): FrameSource {
   const trimmed = text.trim();
   if (trimmed.startsWith("[")) {
@@ -284,15 +247,7 @@ export function parseFrameSource(text: string): FrameSource {
       }
     } catch { /* malformed JSON falls through to the CSV reader */ }
   }
-  const rows = parseCsvRows(trimmed);
-  const headers = (rows[0] ?? []).map((h) => h.trim());
-  const body = rows.slice(1);
-  const ncols = Math.max(headers.length, body.reduce((m, r) => Math.max(m, r.length), 0));
-  const names = makeHeaders(headers, ncols);
-  return names.map((name, j) => {
-    const cells = body.map((r) => (r[j] ?? "").trim());
-    return { name, type: inferColType(cells), cells };
-  });
+  return wasmInvokeSync<FrameSource>("engine_csv_source", { text: trimmed });
 }
 
 export function frameColumnsToInputText(columns: ReadonlyArray<FrameColumn>): string {
@@ -301,19 +256,6 @@ export function frameColumnsToInputText(columns: ReadonlyArray<FrameColumn>): st
 
 export function frameFromInputText(text: string): FrameValue {
   return deriveFrame(parseFrameSource(text));
-}
-
-
-export function frameFromInput(headers: ReadonlyArray<string>, matrix: number[][]): FrameValue {
-  const bodyCols = matrix.reduce((m, r) => Math.max(m, r.length), 0);
-  const ncols = Math.max(headers.length, bodyCols);
-  const names = makeHeaders(headers, ncols);
-  const columns: FrameColumn[] = names.map((name, j) => ({
-    name,
-    type: "number",
-    values: matrix.map((row) => (row[j] === undefined ? null : row[j])),
-  }));
-  return { __frame: true, columns };
 }
 
 // ─── Type-inferring builders (CSV / JSON imports keep text) ─────────────────────
@@ -329,23 +271,6 @@ function cellToNumber(v: unknown): number | null {
   return null;
 }
 
-function isBlank(v: unknown): boolean {
-  return v === null || v === undefined || (typeof v === "string" && v.trim() === "");
-}
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/;
-function dateCellSerial(v: unknown): number | null {
-  if (typeof v !== "string" || !ISO_DATE.test(v.trim())) return null;
-  const serial = parseDateToSerial(v);
-  return Number.isFinite(serial) ? serial : null;
-}
-
-function isLogicalCell(v: unknown): boolean {
-  if (typeof v === "boolean") return true;
-  if (typeof v !== "string") return false;
-  const t = v.trim().toLowerCase();
-  return t === "true" || t === "false";
-}
 function cellToBool(v: unknown): boolean {
   if (typeof v === "boolean") return v;
   return String(v).trim().toLowerCase() === "true";
@@ -361,46 +286,37 @@ export function guessNoteColumnType(values: ReadonlyArray<unknown>, isDate: (v: 
   return "string";
 }
 
+/** A cell's text as Excel writes it (the core's `value_text`): TRUE or FALSE, an error's code, a complex number as `a + bi`, a blank as empty text. */
+function cellRawText(c: unknown): string {
+  if (isSolError(c)) return c.code;
+  if (c == null) return "";
+  if (typeof c === "boolean") return c ? "TRUE" : "FALSE";
+  if (isCx(c)) return assembleCx(c, (n) => (Number.isInteger(n) ? String(n) : n.toFixed(4).replace(/\.?0+$/, ""))).text;
+  return String(c).trim();
+}
+
+/** Each column of the one type every filled cell reads as, text otherwise, its trimmed text kept as `raw`; a list of one unit keeps it. The types are read on the core in one call (`nodes::infer_cells`); a text column's cells are its trimmed text, which the core doesn't send back. */
+export function inferColumns(cols: ReadonlyArray<{ name: string; cells: ReadonlyArray<unknown> }>): FrameColumn[] {
+  if (cols.length === 0) return [];
+  const units: (ColumnUnit | undefined)[] = [];
+  const raws: string[][] = [];
+  const columns = cols.map(({ name, cells }): FrameColumn => {
+    let unit: ColumnUnit | undefined;
+    if (cells.some(isUnitCell)) ({ mags: cells, unit } = matrixCellsFromList(cells));
+    units.push(unit);
+    raws.push(cells.map(cellRawText));
+    return { name, type: "string", values: cells as FrameCell[] };
+  });
+  return decodeBinary(wasmInferBin(encodeBinary({ __frame: true, columns }))).map(({ type, values }, j) => {
+    const name = cols[j].name;
+    const raw = raws[j], unit = units[j];
+    if (type === "string") values = raw.map((t, i) => (isSolError(columns[j].values[i]) ? columns[j].values[i] : t === "" ? null : t));
+    return { name, type, values, raw, ...(type === "number" && unit ? { unit } : {}) };
+  });
+}
+
 export function inferColumn(name: string, cells: ReadonlyArray<unknown>): FrameColumn {
-  let recovered: ColumnUnit | undefined;
-  if (cells.some(isUnitCell)) {
-    const { mags, unit } = matrixCellsFromList(cells);
-    cells = mags;
-    recovered = unit;
-  }
-  const raw = cells.map((c) => (isSolError(c) ? c.code : isBlank(c) ? "" : String(c).trim()));
-  const nonBlank = cells.filter((c) => !isBlank(c) && !isSolError(c));
-  const read = (fn: (c: unknown) => FrameCell): FrameCell[] =>
-    cells.map((c) => (isSolError(c) ? c : isBlank(c) ? null : fn(c)));
-  if (nonBlank.length > 0 && nonBlank.every((c) => typeof c === "boolean")) {
-    return { name, type: "logical", values: read((c) => c as boolean), raw };
-  }
-  const readAll = (fn: (c: unknown) => number | null): FrameCell[] | null => {
-    if (nonBlank.length === 0) return null;
-    const out = new Array<FrameCell>(cells.length);
-    for (let i = 0; i < cells.length; i++) {
-      const c = cells[i];
-      if (isSolError(c)) { out[i] = c; continue; }
-      if (isBlank(c)) { out[i] = null; continue; }
-      const v = fn(c);
-      if (v === null) return null;
-      out[i] = v;
-    }
-    return out;
-  };
-  const numbers = readAll(cellToNumber);
-  if (numbers) {
-    return { name, type: "number", values: numbers, raw, ...(recovered ? { unit: recovered } : {}) };
-  }
-  const logical = nonBlank.length > 0 && nonBlank.every(isLogicalCell);
-  if (logical) {
-    return { name, type: "logical", values: read(cellToBool), raw };
-  }
-  const dates = readAll(dateCellSerial);
-  if (dates) {
-    return { name, type: "date", values: dates, raw };
-  }
-  return { name, type: "string", values: read((c) => String(c).trim()), raw };
+  return inferColumns([{ name, cells }])[0];
 }
 
 /** From column `from` on, and for any column with no type of its own, each column the rows reach takes the type its cells read as; the others keep theirs. */
@@ -411,16 +327,16 @@ export function columnTypesAfterCsvEdit(
 ): FrameColType[] {
   const out = types.slice();
   const width = rows.reduce((m, r) => Math.max(m, r.length), 0);
-  for (let j = Math.max(0, Math.min(from, out.length)); j < width; j++) {
-    out[j] = inferColumn("", rows.map((r) => r[j] ?? "")).type;
-  }
+  const start = Math.max(0, Math.min(from, out.length));
+  const read = inferColumns(Array.from({ length: Math.max(0, width - start) }, (_, k) => ({ name: "", cells: rows.map((r) => r[start + k] ?? "") })));
+  read.forEach((c, k) => (out[start + k] = c.type));
   return out;
 }
 
 export function frameFromCells(headers: ReadonlyArray<string>, rows: ReadonlyArray<ReadonlyArray<unknown>>): FrameValue {
   const ncols = Math.max(headers.length, rows.reduce((m, r) => Math.max(m, r.length), 0));
   const names = makeHeaders(headers, ncols);
-  const columns = names.map((name, j) => inferColumn(name, rows.map((r) => r[j] ?? null)));
+  const columns = inferColumns(names.map((name, j) => ({ name, cells: rows.map((r) => r[j] ?? null) })));
   return { __frame: true, columns };
 }
 
@@ -433,7 +349,7 @@ function recordKeys(records: ReadonlyArray<Record<string, unknown>>): string[] {
 export function frameFromRecords(records: ReadonlyArray<Record<string, unknown>>): FrameValue {
   const keys = recordKeys(records);
   const names = makeHeaders(keys, keys.length);
-  const columns = keys.map((key, j) => inferColumn(names[j], records.map((r) => r[key])));
+  const columns = inferColumns(keys.map((key, j) => ({ name: names[j], cells: records.map((r) => r[key]) })));
   return { __frame: true, columns };
 }
 
@@ -445,10 +361,14 @@ const flatCell = (v: unknown): string | number | boolean | null =>
 export function frameCellFromRecords(records: ReadonlyArray<Record<string, unknown>>, picks: ColumnTypes = {}): FrameValue {
   const keys = recordKeys(records);
   const names = makeHeaders(keys, keys.length);
+  const cellsOf = keys.map((key) => records.map((r) => flatCell(r[key])));
+  const unpicked = keys.flatMap((key, j) => (picks[key] ? [] : [j]));
+  const inferred = inferColumns(unpicked.map((j) => ({ name: names[j], cells: cellsOf[j] })));
+  const inferredAt = new Map(unpicked.map((j, k) => [j, inferred[k]]));
   const columns = keys.map((key, j): FrameColumn => {
-    const cells = records.map((r) => flatCell(r[key]));
+    const cells = cellsOf[j];
     const type = picks[key];
-    if (!type) return inferColumn(names[j], cells);
+    if (!type) return inferredAt.get(j)!;
     const raw = cells.map((c) => (c == null ? "" : typeof c === "boolean" ? (c ? "TRUE" : "FALSE") : String(c)));
     return { name: names[j], type, values: raw.map((t, i) => (cells[i] == null ? null : coerceFrameCell(type, t))), raw };
   });
@@ -491,21 +411,24 @@ export function recordsToCube(
     if (typeof v === "object") return tableAt([v as Record<string, unknown>], at);
     return v as FrameCell;
   };
+  const cellsOf = keys.map((key) => records.map((r, i) => toCell(r[key], [...base, i, key])));
+  const guessed = keys.flatMap((key, j) => (!picks[key] && cellsOf[j].every((c) => c == null || typeof c !== "object") ? [j] : []));
+  const inferred = inferColumns(guessed.map((j) => ({ name: names[j], cells: cellsOf[j] })));
+  const guessedType = new Map(guessed.map((j, k) => [j, inferred[k].type]));
   return cubeFromColumns(keys.map((key, j) => {
-    const cells = records.map((r, i) => toCell(r[key], [...base, i, key]));
-    const scalarOnly = cells.every((c) => c == null || (typeof c !== "object"));
+    const cells = cellsOf[j];
     const pick = picks[key];
-    if (!scalarOnly) return pick ? { name: names[j], cells: cells.map((c) => typedCubeCell(pick, c)), type: pick } : { name: names[j], cells };
-    if (pick) return { name: names[j], cells: cells.map((c) => pickedCell(pick, c)), type: pick };
-    const inferred = inferColumn(names[j], cells);
-    return { name: names[j], cells, type: inferred.type };
+    const type = guessedType.get(j);
+    if (type) return { name: names[j], cells, type };
+    if (pick && cells.every((c) => c == null || typeof c !== "object")) return { name: names[j], cells: cells.map((c) => pickedCell(pick, c)), type: pick };
+    return pick ? { name: names[j], cells: cells.map((c) => typedCubeCell(pick, c)), type: pick } : { name: names[j], cells };
   }));
 }
 
 export function frameFromRows(rows: ReadonlyArray<ReadonlyArray<unknown>>, headers?: ReadonlyArray<string>): FrameValue {
   const ncols = rows.reduce((m, r) => Math.max(m, r.length), 0);
   const names = makeHeaders(headers ?? [], ncols);
-  const columns = names.map((name, j) => inferColumn(name, rows.map((r) => r[j])));
+  const columns = inferColumns(names.map((name, j) => ({ name, cells: rows.map((r) => r[j]) })));
   return { __frame: true, columns };
 }
 
@@ -542,7 +465,7 @@ function computeCubeDepth(columns: ReadonlyArray<CubeColumn>): number {
   return 1 + inner;
 }
 
-function makeCube(columns: CubeColumn[]): CubeValue {
+export function makeCube(columns: CubeColumn[]): CubeValue {
   return { __cube: true, columns, depth: computeCubeDepth(columns) };
 }
 
@@ -554,7 +477,7 @@ export function cubeRowCount(c: CubeValue): number {
   return c.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
 }
 
-export function cubeCellsFromColumn(col: FrameColumn): CubeCell[] {
+function cubeCellsFromColumn(col: FrameColumn): CubeCell[] {
   return col.unit
     ? col.values.map((v) => tagFrameCellUnit(v, col.unit!) as CubeCell)
     : [...col.values];
@@ -616,132 +539,13 @@ export function toCube(v: unknown): CubeValue {
   return cubeFromRows([[v as CubeCell]]);
 }
 
-// ─── Relate: nest two frames into a cube (the relational producer) ─────────────
-
-function dimKeyId(base: number, dim: Dim, display: string | undefined): string {
-  const cur = dimEqual(dim, { currency: 1 }) ? (display ?? "") : "";
-  const offset = (display ? fcUnitToUnit(display)?.offset : undefined) ?? 0;
-  const key = roundAtLargerTerm(base, Math.max(Math.abs(base - offset), Math.abs(offset)));
-  return `~u:${formatDim(dim)}${cur ? `:${cur}` : ""}:${String(key)}`;
-}
-
-function keyId(v: FrameCell | UnitCell): string {
-  if (v === null || v === undefined) return "~null";
-  if (typeof v === "boolean") return v ? "1" : "0";
-  if (isSolError(v)) return "~err:" + v.code;
-  if (isUnitCell(v)) return v.ratio ? String(v.value) : dimKeyId(v.value, v.dim, v.display);
-  return String(v);
-}
-
-function keyIdInColumn(v: FrameCell, unit: ColumnUnit | undefined): string {
-  if (unit && typeof v === "number" && Number.isFinite(v)) return keyId(tagFrameCellUnit(v, unit) as FrameCell | UnitCell);
-  return keyId(v);
-}
-
-function cellKeyId(cell: CubeCell, unit?: ColumnUnit): string | null {
-  if (cell === null || isSolError(cell)) return null;
-  if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return keyIdInColumn(cell, unit);
-  if (isUnitCell(cell)) return keyId(cell);
-  return null;
-}
-
-function subFrame(child: FrameValue, rowIdxs: number[]): FrameValue {
-  return {
-    __frame: true,
-    columns: child.columns.map((c) => ({
-      name: c.name,
-      type: c.type,
-      ...(c.unit ? { unit: c.unit } : {}),
-      ...(c.format ? { format: c.format } : {}),
-      values: rowIdxs.map((i) => c.values[i] ?? null),
-      ...(c.raw ? { raw: rowIdxs.map((i) => c.raw![i] ?? "") } : {}),
-    })),
-  };
-}
-
-export function selectCubeRows(cube: CubeValue, indices: readonly number[]): CubeValue {
-  return makeCube(cube.columns.map((c) => ({
-    name: c.name,
-    ...(c.type ? { type: c.type } : {}),
-    ...(c.format ? { format: c.format } : {}),
-    cells: indices.map((i) => c.cells[i] ?? null),
-  })));
-}
-
-function subCube(child: CubeValue, rowIdxs: number[]): CubeValue {
-  return selectCubeRows(child, rowIdxs);
-}
-
-export function relateFramesToCube(
-  parent: FrameValue,
-  child: FrameValue | CubeValue,
-  key: string,
-  nestedName: string,
-): CubeValue | null {
-  const pKey = getColumn(parent, key);
-  if (!pKey) return null;
-  const cKeyCol = isCubeValue(child) ? null : getColumn(child, key);
-  const cKeyCells: readonly CubeCell[] | null = isCubeValue(child)
-    ? (child.columns.find((c) => c.name === key)?.cells ?? null)
-    : (cKeyCol?.values ?? null);
-  if (!cKeyCells) return null;
-  const cRows = isCubeValue(child) ? cubeRowCount(child) : frameRowCount(child);
-
-  const childByKey = new Map<string, number[]>();
-  for (let i = 0; i < cRows; i++) {
-    const id = cellKeyId(cKeyCells[i] ?? null, cKeyCol?.unit);
-    if (id === null) continue;
-    const arr = childByKey.get(id);
-    if (arr) arr.push(i);
-    else childByKey.set(id, [i]);
-  }
-
-  const pRows = frameRowCount(parent);
-  const names = makeHeaders(
-    [...parent.columns.map((c) => c.name), nestedName.trim() || "items"],
-    parent.columns.length + 1,
-  );
-  const columns: CubeColumn[] = parent.columns.map((c, j) => {
-    const cells = cubeCellsFromColumn(c);
-    return { name: names[j], type: c.type, cells: Array.from({ length: pRows }, (_, i) => cells[i] ?? null) };
-  });
-  const nestedCells: CubeCell[] = Array.from({ length: pRows }, (_, i) => {
-    const idxs = childByKey.get(keyIdInColumn(pKey.values[i] ?? null, pKey.unit)) ?? [];
-    return isCubeValue(child) ? subCube(child, idxs) : subFrame(child, idxs);
-  });
-  columns.push({ name: names[parent.columns.length], cells: nestedCells });
-  return makeCube(columns);
-}
-
-export function relateCubeToFrame(parent: CubeValue, child: FrameValue | CubeValue, key: string, nestedName: string): CubeValue {
-  let nestedIdx = -1;
-  for (let j = 0; j < parent.columns.length; j++) {
-    if (parent.columns[j].cells.some((c) => isFrameValue(c) || isCubeValue(c))) { nestedIdx = j; break; }
-  }
-  if (nestedIdx < 0) return parent;
-  const newCells: CubeCell[] = parent.columns[nestedIdx].cells.map((cell) =>
-    isCubeValue(cell) ? relateCubeToFrame(cell, child, key, nestedName)
-    : isFrameValue(cell) ? (relateFramesToCube(cell, child, key, nestedName) ?? cell)
-    : cell,
-  );
-  return makeCube(parent.columns.map((c, j) => (j === nestedIdx ? { name: c.name, cells: newCells } : c)));
-}
-
-export function cubeColumnFromValue(value: unknown): CubeCell[] {
-  if (value == null) return [];
-  if (isCubeValue(value)) return [...(value.columns[0]?.cells ?? [])];
-  if (isFrameValue(value)) return [value];
-  if (Array.isArray(value)) return value as CubeCell[];
-  return [value as CubeCell];
-}
-
 export function frameFromColumnar(obj: Record<string, unknown>): FrameValue {
   const keys = Object.keys(obj);
   const names = makeHeaders(keys, keys.length);
-  const columns = keys.map((key, j) => {
+  const columns = inferColumns(keys.map((key, j) => {
     const v = obj[key];
-    return inferColumn(names[j], Array.isArray(v) ? v : [v]);
-  });
+    return { name: names[j], cells: Array.isArray(v) ? v : [v] };
+  }));
   return { __frame: true, columns };
 }
 

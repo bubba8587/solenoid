@@ -1,5 +1,5 @@
-import type { XMatchNode as XMatchNodeType, XMatchMatchMode, XMatchSearchMode } from "../rete-nodes";
-import { XMATCH_MATCH_MODE_META, XMATCH_SEARCH_MODE_META } from "../rete-nodes";
+import type { XMatchNode as XMatchNodeType, XMatchMatchMode, XMatchSearchMode } from "../nodeClasses";
+import { XMATCH_MATCH_MODE_META, XMATCH_SEARCH_MODE_META } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";

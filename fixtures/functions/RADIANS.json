@@ -1,0 +1,27 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"RADIANS(270)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A25)","env":["c_A25=num:2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A26)","env":["c_A26=num:180"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A27)","env":["c_A27=num:360"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A28)","env":["c_A28=num:18000"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A29)","env":["c_A29=num:0.00018"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A30)","env":["c_A30=num:-2"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A31)","env":["c_A31=num:90.5"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A32)","env":["c_A32=num:0"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A33)","env":["c_A33=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A34)","env":["c_A34=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A35)","env":["c_A35=err:#N/A"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A36)","env":["c_A36=text:\"3.1415\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A37)","env":["c_A37=text:\"abc\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A38)","env":["c_A38=text:\"Pi\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A39)","env":["c_A39=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A40)","env":["c_A40=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A41)","env":["c_A41=bool:FALSE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A42)","env":["c_A42=num:4"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A43)","env":["c_A43=num:0.006249999999999999"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(c_A44)","env":["c_A44=num:1.745"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(DEGREES(c_A45))","env":["c_A45=num:60"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RADIANS(DEGREES(PI())) - PI()","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

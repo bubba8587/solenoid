@@ -37,7 +37,7 @@ export function negativeApplies(style: FormatStyleId): boolean {
   return style !== "custom";
 }
 
-export type FcControls = {
+type FcControls = {
   numberStyle: boolean;
   complexStyle: boolean;
   precision: boolean;

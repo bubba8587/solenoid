@@ -1,10 +1,6 @@
-// [[C42]]
+// [[C42]] htmlInCanvasRenderer, [[html-in-canvas#The lifecycle]]
 import { describe, it, expect, afterEach } from "vitest";
 import { zoomSettleMs, DEFAULT_ZOOM_SETTLE_MS } from "../../src/graph/zoomSettle";
-
-// The console override is the whole point of the module (A/B a deployed preview with
-// no redeploy), so the guard around it is what's worth pinning: a garbage value must
-// fall back to the default rather than set a nonsense timer.
 
 const g = globalThis as { __zoomSettle?: unknown };
 

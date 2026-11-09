@@ -1,0 +1,8 @@
+// [[C130]] rustCore
+//! JS `<` on strings, which orders UTF-16 code units.
+
+use std::cmp::Ordering;
+
+pub fn compare_strings(a: &str, b: &str) -> Ordering {
+    crate::jsnum::compare_text(a, b)
+}

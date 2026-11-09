@@ -2,9 +2,9 @@
 
 Separately publishable MIT packages that live in this repo (npm workspaces; the app resolves
 them by alias in `tsconfig.json`, `vite.config.ts` and `vitest.config.ts`, so no install step
-changes). The extraction trigger is a second consumer. Plan: `docs/v2.0/25-gantt.md` § 7.
+changes). The extraction trigger is a second consumer. Plan: `docs/v2.0/25-gantt.md` § 7. The scheduling
+engine is the Rust crate `crates/solenoid-schedule`.
 
-- `schedule-engine` — the scheduling engine (calendars, graph, critical-path passes, diagnostics).
 - `gantt-layout` — pure geometry: payload + width → render frame; the standalone SVG serializer.
 - `gantt-react` — the React 19 figure over the layout.
 

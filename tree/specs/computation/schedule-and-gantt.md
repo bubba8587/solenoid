@@ -2,15 +2,15 @@
 aliases: ["Schedule and Gantt"]
 tags: [spec, computation]
 ---
-<!-- [[C70]] oneScheduleRule, [[C69]] ganttPackages, [[C71]] noBarEditing, [[C44]] dateSerials, [[D66]] daysMinutesModes, [[D68]] importUnsupportedIsNamed, [[E10]] pickVsAggregateErrors, [[C10]] socketLattice, [[C38]] sinkRunButtonOnly -->
+<!-- [[C70]] oneScheduleRule, [[C69]] ganttPackages, [[C71]] noBarEditing, [[C44]] dateSerials, [[D68]] importUnsupportedIsNamed, [[E10]] pickVsAggregateErrors, [[C10]] socketLattice, [[B18]] safeToShare -->
 
 # Spec: Schedule and Gantt
 
-Serves [[C70]] oneScheduleRule and [[C69]] ganttPackages. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C70]] oneScheduleRule and [[C69]] ganttPackages. It covers what the system does and blocks, and the decision each behavior serves.
 
-A plan in Solenoid is a table of tasks, one row per task, and the schedule is a pure function of that table. The Schedule node reads the table and appends the computed dates; the Gantt node reads the scheduled table and draws it. The figure never writes back ([[C71]] noBarEditing), so the table is the only thing a user edits.
+A plan in Solenoid is a Frame of tasks, one row per task (a Cube when tasks nest), and the schedule is a pure function of that plan. The Schedule node reads the plan and appends the computed dates; the Gantt node reads the scheduled plan and draws it. The figure never writes back ([[C71]] noBarEditing), so the plan is the only thing a user edits.
 
-Code: `src/graph/nodes/schedule.ts` (the Schedule node), `src/graph/scheduleCpm.ts` (reads the tasks cube into the engine's model and writes the computed columns back), `src/graph/nodes/gantt.ts` with `src/graph/ganttPayload.ts` (the Gantt node and its payload), `src/graph/planImport.ts` (plan files into the tasks cube, used by Local File in `nodes/connection.ts`). The engine and the figure are the three in-repo packages of [[C69]] ganttPackages, each with its own contract: `packages/schedule-engine/README.md` (the passes, the calendar, the file formats), `packages/gantt-layout/README.md` (the payload fields and the layout) and `packages/gantt-react/README.md` (the figure and its option keys). The Gantt node's place among the figure nodes, its option defaults, its popup and its export are in [[chart-figures]]. This spec does not restate them.
+Code: `src/graph/nodes/schedule.ts` and `src/graph/nodes/gantt.ts` (the node classes), `crates/solenoid-core/src/nodes/sched.rs` (their bodies: `schedule_card` reads the tasks cube into the engine's model and writes the computed columns back, `gantt_payload` builds the Gantt payload) over `crates/solenoid-schedule` (the engine and the file readers), `src/graph/planImport.ts` (plan files into the tasks cube through the crate's readers, called through `crates/solenoid-core/src/plan_files.rs`, used by Local File in `nodes/connection.ts`). The engine and the figure are the three separately publishable packages of [[C69]] ganttPackages, each with its own contract: `crates/solenoid-schedule/README.md` (the passes, the calendar, the file formats), `packages/gantt-layout/README.md` (the payload fields and the layout) and `packages/gantt-react/README.md` (the figure and its option keys). The Gantt node's place among the figure nodes, its option defaults, its popup and its export are in [[chart-figures]]. This spec does not restate them.
 
 The app consumes the three packages through `tsconfig.json` paths, the Vite alias and the vitest alias, never an install step, so `npm ci` and the desktop build are untouched. Each package carries its own `package.json` and LICENSE ([[C69]] ganttPackages). No GPL, EPL or commercial code enters them, and each README has a section on what was studied while building it. They are built here because no permissively licensed project had a real scheduling engine to adopt, and they sit in their own packages so their licenses stay clean and they can be published on their own later.
 
@@ -30,38 +30,63 @@ Columns are found by name, case-insensitive; the first alias in each row below t
 | Finish (`end`) | date, optional | A ceiling: caps the late finish. A task that cannot meet it shows negative float and nothing moves. |
 | Deadline (`due`) | date, optional | A flag. It caps the late dates and marks the task late; it never moves the task. |
 | Manual (`pinned`) | logical, optional | Pins Start and Finish (Start plus Duration when Finish is blank) and ignores the task's predecessors. The pinned task still drives its successors. |
-| Complete (`% complete`, `percent complete`, `done`, `progress`) | number, optional | 0 to 100. Drawn as the bar's fill. With a status date it drives the remaining work. A non-number reads as 0. |
+| Complete (`% complete`, `percent complete`, `done`, `progress`) | number, optional | 0 to 100. Drawn as the bar's fill. With a status date it drives the remaining work. A done checkbox reads TRUE as 100 and FALSE as 0; any other non-number reads as 0. |
 | Project (`section`, `group`) | text, optional | One Mermaid `section` and one figure band per value. |
 | ALAP (`as late as possible`, `late as possible`) | logical, optional | The task starts at its late start. |
 | Actual start (`started`, `started on`) | date, optional | The day work began; pins the early start. |
 | Elapsed | logical, optional | The duration counts every calendar day. |
 | Work (`effort`, `work (h)`, `hours of work`) and Units (`assignment`, `fte`) | number, optional | With no Duration, the duration is Work ÷ (Units × the task's hours per day) days. Units defaults to 1 and is at least 0.01. |
-| Weekend (`weekend code`), Hours (`hours per day`), Holidays (`days off`) | number, number, date list | The task's own calendar, layered over the project's. |
+| Weekend (`weekend code`), Hours (`hours per day`), Holidays (`days off`) | number, number, date list | The task's own calendar, layered over the project's. A Weekend code outside the `WORKDAY.INTL` table is `#VALUE!` naming the task. |
 | Active (`included`) | logical, optional | A row whose Active cell is set and false is left out of the schedule, and its computed cells are blank. |
-| Repeat (`occurrences`, `times`) and Every (`every (days)`, `interval`, `period`) | number, optional | A childless row with Repeat above 1 becomes a parent of that many occurrences, named `<Task> 1`, `<Task> 2` and so on, each starting Every calendar days (default 7) after the one before. The first occurrence takes the row's predecessors. |
+| Repeat (`occurrences`, `times`) and Every (`every (days)`, `interval`, `period`) | number, optional | A childless row with Repeat above 1 becomes a parent of that many occurrences, named `<Task> 1`, `<Task> 2` and so on, each starting Every calendar days (default 7) after the one before. The first occurrence takes the row's predecessors. A Repeat above 1,000 is `#OVERFLOW!` naming the cap. |
 | Anything else (color, notes, url, resource names) | passthrough | Never read by the engine. |
 
-Logical cells read true for `true`, a nonzero number, or the text `true`, `yes`, `y`, `1` or `on` (`readLogicalCell`, which the Gantt also reads its Summary, Critical, Late and Manual cells with). A date cell may be a serial or text; text that parses two ways or not at all is an error.
+Logical cells read true for `true`, a nonzero number, or the text `true`, `yes`, `y`, `1` or `on` (`read_logical`, `nodes/sched.rs`, which the Gantt also reads its Summary, Critical, Late and Manual cells with). A date cell may be a serial or text; text that parses two ways or not at all is an error.
 
 ### Predecessors
 
 A Predecessors cell takes one of three shapes:
 
+```mermaid
+mindmap
+  root(("a Predecessors cell"))
+    ["a list of task names"]
+      ["each a finish-to-start<br>(FS) link, lag 0"]
+    ["text"]
+      ["one task name, FS, lag 0"]
+    ["a nested table"]
+      ["Predecessor: the name"]
+      ["Type: FS, SS, FF or SF"]
+      ["Lag: working days,<br>negative for a lead"]
+      ["Elapsed: count calendar days"]
+```
+
 1. **A list of task names.** Each is a finish-to-start (FS) link with lag 0. This is the TaskNotes `blockedBy` shape.
 2. **Text.** The whole text is one task name, FS with lag 0. A Frame cannot hold a list, so a frame-only plan names one predecessor per cell.
-3. **A nested table** with a Predecessor (or Task) column and optional Type, Lag and Elapsed columns (`link` or `kind` for Type; `lead` or `offset` for Lag). Type is `FS`, `SS`, `FF` or `SF` (default `FS`); Lag is in working days on the successor's calendar, negative for a lead, and counts calendar days when Elapsed is true. An unknown type or a lag that is not a number is an error naming the task.
+3. **A nested Frame** with a Predecessor (or Task) column and optional Type, Lag and Elapsed columns (`link` or `kind` for Type; `lead` or `offset` for Lag). Type is `FS`, `SS`, `FF` or `SF` (default `FS`); Lag is in working days on the successor's calendar, negative for a lead, and counts calendar days when Elapsed is true. An unknown type or a lag that is not a number is an error naming the task.
 
 A predecessor is never a grammar string inside a cell. `3FS+2d` exists only at the import border, where row numbers resolve to names ([[#Link grammar stays at the border]]).
 
-The Schedule node's `links` socket takes the same dependencies as a flat Frame, one link per row: a Successor column (`task`, `to`), a Predecessor column (`predecessors`, `from`, `after`, `depends on`), and optional Type (`link`, `kind`) and Lag (`lead`, `offset`) columns. A row with a blank successor or predecessor is skipped. Its links are added to each task's Predecessors, and the output cube's Predecessors column carries the merged list (a level with no Predecessors column gains one), so a Gantt downstream draws them. A missing Successor or Predecessor column, a successor that is not in the plan, an unknown type or a non-numeric lag is an error. This flat form is what `Unnest` of the cube on Predecessors produces, and it is the shape of the import and export formats. So that Unnest reads the column whole, a Predecessors column the Schedule writes is one kind: name lists while every link is a plain FS with no lag, else a nested table in every row (`predecessorColumn`), its name column called Predecessor, so the unnested rows read as Task, Predecessor, Type and Lag.
+The Schedule node's `links` socket takes the same dependencies as a flat Frame, one link per row: a Successor column (`task`, `to`), a Predecessor column (`predecessors`, `from`, `after`, `depends on`), and optional Type (`link`, `kind`) and Lag (`lead`, `offset`) columns. A row with a blank successor or predecessor is skipped. Its links are added to each task's Predecessors, and the output cube's Predecessors column carries the merged list (a level with no Predecessors column gains one), so a Gantt downstream draws them. A missing Successor or Predecessor column, a successor that is not in the plan, an unknown type or a non-numeric lag is an error. This flat form is what `Unnest` of the cube on Predecessors produces, and it is the shape of the import and export formats. So that Unnest reads the column whole, a Predecessors column the Schedule writes is one kind: name lists while every link is a plain FS with no lag, else a nested Frame in every row (`predecessor_column`, `nodes/sched.rs`; an import builds its column the same way, `predecessorColumn` in `planImport.ts`), its name column called Predecessor, so the unnested rows read as Task, Predecessor, Type and Lag.
 
 ### Hierarchy
 
-Hierarchy is nesting. A parent row holding its children as a nested table is the work breakdown, at any depth, which Cube Input already edits (drill in on the breadcrumb, `Add Column`). The engine flattens the cube for the dependency graph. A parent's dates roll up from its children, and a link to a parent applies to every leaf beneath it. Because names are global, a dependency may name a task in any subtree.
+Hierarchy is nesting. A parent row holding its children as a nested Frame is the work breakdown, at any depth, which Cube Input already edits (drill in on the breadcrumb, `Add Column`). The engine flattens the cube for the dependency graph. A parent's dates roll up from its children, and a link to a parent applies to every leaf beneath it. Because names are global, a dependency may name a task in any subtree.
+
+```mermaid
+flowchart LR
+    plan["the plan: a Cube"] --> row["a parent row"]
+    row --> kids["its Tasks cell:<br>a nested table of children"]
+    kids --> grand["a child's own Tasks cell:<br>any depth"]
+    grand -.->|"dates roll up"| row
+    link["a link to the parent"] -.->|"applies to every<br>leaf beneath it"| grand
+```
 
 There is no `parent_id`, indent level or `1.2.3` WBS column in a plan. Those exist only in import formats (MSPDI `OutlineLevel`, XER's PROJWBS) and are converted to nesting in one pass. There is no `order` column: row order is the order, and Sort exists.
 
 A portfolio is a cube of projects, one row per project with its tasks nested. The composite by-row mode iterates a cube's rows (`byRowValues`), so a portfolio can be scheduled one project at a time.
+
+Tests: `scheduleCpm.test.ts`: a text Predecessors cell is one name, never split, matched trimmed and without regard to case, and a blank one is none; typed links nest as a Task, Type and Lag table and the nesting is the WBS; a plan mixing plain and typed links comes out as a table in every row, so Unnest reads it; a flat Links frame adds typed, lagged predecessors on top of the cells' own, the merged links land in the Predecessors column, and an unknown successor is `#VALUE!` naming it; a schedule unnested to a Links frame and fed back gives the same dates.
 
 ## The Schedule node
 
@@ -71,13 +96,26 @@ The Schedule node is in the Add menu's Plan category.
 |---|---|---|
 | `tasks` | cube | The tasks cube. Anything that is not a cube after coercion gives null on every output. |
 | `links` | frame | Optional flat dependencies, added to Predecessors. |
-| `start` | date | The project start. Unwired, it is today's local day (`todaySerial`). A wired value that is not a finite number gives null on every output. |
+| `start` | date | The project start. Unwired, it is today's local day (`TODAY` on the call's clock). A wired value that is not a finite number gives null on every output. |
 | `holidays` | date list | Days to skip alongside the weekend. Read only in Working days mode. The Holidays node feeds it. |
 | `weekend_code` | number | Excel's `WORKDAY.INTL` code: 1 is Saturday and Sunday (the default), 2 is Sunday and Monday, 11 to 17 a single day off. |
 | `status` | date | The status date. Work left on a started task is scheduled after it. Unwired, Complete only fills the bars. |
 | `hours` | number | Hours in a working day, default 8 (a value of 0 or less reads as 8). It converts hour durations and Work, and in Minutes mode it is the length of the working day from 08:00 (a day longer than 16 hours starts earlier, so it ends at midnight). |
 
-The calendar is not a new socket type and not a separate node. The Schedule node takes what the Workdays node takes, `weekend_code` and `holidays`, over the one working-day implementation the app shares.
+```mermaid
+flowchart LR
+    tasks["tasks: the plan cube"] --> s["Schedule"]
+    links["links: flat<br>dependencies"] --> s
+    cal["start, holidays,<br>weekend_code, hours"] --> s
+    st["status: the status date"] --> s
+    s --> cube["cube: the plan plus<br>computed columns"]
+    s --> fin["finish: the project finish"]
+    s --> diag["diagnostics: one<br>row per finding"]
+    s --> gantt["gantt: Mermaid source"]
+    s --> mspdi["mspdi: Microsoft Project XML"]
+```
+
+The calendar is not a new socket type and not a separate node. The Schedule node takes what the Workdays node takes, `weekend_code` and `holidays`, with the same `WORKDAY.INTL` codes. The scheduling crate carries its own copy of the code table (`weekend_days` in `crates/solenoid-schedule/src/calendar.rs`, so it stands alone) beside the core's (`date_ops.rs`); the two agree on every code. Schedule, Gantt and Earned Value refuse a code outside the table with the Workdays card's `#VALUE!` before the scheduler sees it, so the scheduler's fallback to Saturday and Sunday is never reached from a card.
 
 The card has four options, each persisted with the node:
 
@@ -100,11 +138,21 @@ The Tasks socket's doc is the column contract for the AI palette, since a cube i
 
 ### The one rule
 
-Every run recomputes the whole schedule from the table, and four visible columns carry one rule each ([[C70]] oneScheduleRule): Start is a floor, Finish is a ceiling, Deadline is a flag, and Manual is a pin. A gap between two tasks is a lag on the link between them. There are no constraint-type columns, no per-task scheduling mode and no project-wide shift switch. The passes that apply the rule are in the schedule-engine README.
+```mermaid
+mindmap
+  root(("one rule per column"))
+    ["Start: a floor,<br>no earlier than"]
+    ["Finish: a ceiling,<br>caps the late finish"]
+    ["Deadline: a flag,<br>never moves the task"]
+    ["Manual: a pin,<br>ignores predecessors"]
+```
+
+
+Every run recomputes the whole schedule from the plan, and four visible columns carry one rule each ([[C70]] oneScheduleRule): Start is a floor, Finish is a ceiling, Deadline is a flag, and Manual is a pin. A gap between two tasks is a lag on the link between them. There are no constraint-type columns, no per-task scheduling mode and no project-wide shift switch. The passes that apply the rule are in the scheduling crate's README.
 
 ### Computed columns
 
-The output is always a Cube, even when a Frame came in ([[C10]] socketLattice). Computed columns are appended after the input columns. Each level of the nesting gets its own:
+The output is always a Cube, even when the input object is a Frame ([[C10]] socketLattice). Computed columns are appended after the input columns. Each level of the nesting gets its own:
 
 | Column | Type | Meaning |
 |---|---|---|
@@ -128,13 +176,13 @@ Every error the Schedule node raises is one `#VALUE!` on every output, `diagnost
 
 - structural failures: a dependency loop, an unknown predecessor name, a duplicate name, a row with no name, and a Links frame that names a task not in the plan;
 - row faults: a Duration that is negative, not a number or a non-time unit, a date that parses two ways or not at all, and an unknown link type or non-numeric lag;
-- a table with no Task column ("Schedule needs a Task column (text) naming each task"), or with no Duration, Work or child column.
+- a plan with no Task column ("Schedule needs a Task column (text) naming each task"), or with no Duration, Work or child column.
 
 No task in a loop has a defined start, so nothing downstream of one does either. A constraint conflict is not an error: it shows as negative float, a Negative float diagnostic, and the Late flag.
 
 ### Diagnostics
 
-The checks are the DCMA assessment's that fit a table of tasks, under plain names. They run over leaf tasks and links:
+The checks are the DCMA assessment's that fit a plan of tasks, under plain names. They run over leaf tasks and links:
 
 | Check | When |
 |---|---|
@@ -153,32 +201,45 @@ The checks are the DCMA assessment's that fit a table of tasks, under plain name
 ### What is not a node
 
 - Checks are the `diagnostics` output, not a separate node ([[engineering#One declaration per fact]]).
-- A baseline is a second scheduled table (a pasted Frame or Cube Input, or a pinned value) wired into the Gantt's `baseline`, not a node that stamps a clock inside `data()`.
+- A baseline is a second scheduled plan (a pasted Frame or Cube Input, or a pinned value) wired into the Gantt's `baseline`, not a node that stamps a clock inside `data()`.
 - A work calendar is `weekend_code` and `holidays`, not a socket kind.
 - There is no Predecessors node; the cell is the predecessor list.
-- Reading a plan file is a format on Local File, not an Import Project node. Writing one is the `mspdi` output into a writer, which acts only from its Run button ([[C38]] sinkRunButtonOnly).
+- Reading a plan file is a format on Local File, not an Import Project node. Writing one is the `mspdi` output into a writer, which acts only from its Run button ([[B18]] safeToShare).
+
+Tests:
+
+- `scheduleCpm.test.ts`: the CPM pass over a cube (a diamond, a holiday inside a task, float on parallel branches, a closing milestone), two roots starting together, calendar mode counting weekends, a weekend start rolling to Monday, a blank duration as a milestone, errors naming the task (a cycle, an unknown predecessor, a bad duration, a duplicate), Work and Units setting a blank duration, an inactive row keeping its place with no dates and nothing waiting on it, recurring rows (`Repeat` past 1,000 is `#OVERFLOW!`), an unknown weekend code as an error on the card and the row, a done checkbox reading as 100% or 0%, an empty plan finishing on its start, a known column never read as the duration, the Active cell's blanks and faults, and a task's own Hours.
+- `nodes/schedule.test.ts`: the card takes a cube and a wired start and its three outputs agree; an unwired start is today and a wired blank schedules nothing; calendar mode, precision, Every path, Longest path, the weekend code and the status date reach the engine and survive a save.
+- `scheduleCards.test.ts`: the Schedule, Gantt and Earned Value cards over the plans their columns can hold, driven through their bodies so their frozen cases hold them.
+- The scheduling crate's `src/tests.rs` (solenoid-schedule): the engine, the rules, Minutes mode and the regressions.
 
 ## Import at the border
 
-Local File reads a Microsoft Project XML (MSPDI), GanttProject `.gan` or Primavera XER file (`planFileToPlan`) and emits its tasks as a tasks cube on the `plan` socket (`planToCube`); `frame` is blank, since a flat table could hold neither the nesting nor the links except as grammar text ([[#Link grammar stays at the border]]). A CSV whose Predecessors column (`predecessor`, `depends on`, `after`) uses the row-number grammar in every filled cell, Smartsheet's export, also comes out as a plan (`csvPlanToCube`): each token resolves through the row-to-name list to a task name. A CSV that is not a plan gives a null plan and stays a frame.
+Local File reads a Microsoft Project XML (MSPDI), GanttProject `.gan` or Primavera XER file (`planFileToPlan`) and emits its tasks as a tasks cube on the `plan` socket (`planToCube`); `frame` is blank, since a flat Frame could hold neither the nesting nor the links except as grammar text ([[#Link grammar stays at the border]]). A CSV whose Predecessors column (`predecessor`, `depends on`, `after`) uses the row-number grammar in every filled cell, Smartsheet's export, also comes out as a plan (`csvPlanToCube`): each token resolves through the row-to-name list to a task name. A CSV that is not a plan gives a null plan and stays a frame.
 
-In the cube, a task whose dependencies are all FS with lag 0 gets a list of names; any typed, lagged or elapsed dependency makes the cell a nested Task, Type, Lag (and Elapsed) table. Optional columns (Start, Finish, Deadline, Manual, Complete, Actual start, ALAP, Elapsed, Weekend, Hours, Holidays, Project, Tasks) appear only when some task uses them. A field the reader cannot model is named in `unsupported` and shown on the card as "Not carried over: …", never dropped and never a new column ([[D68]] importUnsupportedIsNamed). The per-format rules (link codes, constraint mapping, calendars) are in the schedule-engine README. The list of what an import must name is the correctness list in `docs/v2.0/25-gantt.md` § 3.2.
+In the cube, a task whose dependencies are all FS with lag 0 gets a list of names; any typed, lagged or elapsed dependency makes the cell a nested Frame of Task, Type, Lag (and Elapsed). Optional columns (Start, Finish, Deadline, Manual, Complete, Actual start, ALAP, Elapsed, Weekend, Hours, Holidays, Project, Tasks) appear only when some task uses them. A field the reader cannot model is named in `unsupported` and shown on the card as "Not carried over: …", never dropped and never a new column ([[D68]] importUnsupportedIsNamed). The per-format rules (link codes, constraint mapping, calendars) are in the scheduling crate's README. The list of what an import must name is the correctness list in `docs/v2.0/25-gantt.md` § 3.2.
 
 ### Link grammar stays at the border
 
-Inside the engine a predecessor is a structured record keyed by task name (`{task, type, lag}`). The `3FS+2d` link grammar, the vendors' integer link-type codes (MSPDI, .gan and XER each number them differently), and row numbers or UIDs are parsed at each importer and never become an internal key or a stored string. An importer is a parser to that one record shape, and an exporter renders from it. Three vendors number link types three different ways, and a row number breaks as soon as the table is sorted or filtered, while a name survives both; the author also ruled out lists stored as strings inside a cell ([[C70]] oneScheduleRule). **Reopen if:** a plan needs links to tasks that have no name; ids would then be minted, and they would still not be row numbers.
+Inside the engine a predecessor is a structured record keyed by task name (`{task, type, lag}`). The `3FS+2d` link grammar, the vendors' integer link-type codes (MSPDI, .gan and XER each number them differently), and row numbers or UIDs are parsed at each importer and never become an internal key or a stored string. An importer is a parser to that one record shape, and an exporter renders from it. Three vendors number link types three different ways, and a row number breaks as soon as the plan is sorted or filtered, while a name survives both; lists stored as strings inside a cell are ruled out too ([[C70]] oneScheduleRule). **Reopen if:** a plan needs links to tasks that have no name; ids would then be minted, and they would still not be row numbers.
+
+Tests:
+
+- `planImport.test.ts`: MSPDI becomes a nested cube the Schedule node reads back to the file's own dates; a Smartsheet-style CSV with row-number predecessors becomes a plan and a plain CSV does not; optional columns appear only when used.
+- `files.rs` (solenoid-schedule): the readers over the corpus in `tests/corpus/` and the GanttProject and XER samples, and the engine reproducing the dates a file stores.
+- `corePlanReaders.test.ts`: the readers against the frozen answers the TS readers gave (`fixtures/core/plan-readers.json.gz`).
 
 ## The Gantt figure
 
-The Gantt node reads a scheduled table and emits a `chart` value of kind `gantt`. Its sockets, its column reading and its title are in [[chart-figures]] § Gantt; its inputs are `schedule`, `baseline`, `holidays`, `weekend_code` (default 1), `status` and `options`. It computes no dates, and it reads the computed columns by name, so a Filter or Sort between Schedule and Gantt still draws.
+The Gantt node reads a scheduled plan and emits a `chart` value of kind `gantt`. Its sockets, its column reading and its title are in [[chart-figures]] § Gantt; its inputs are `schedule`, `baseline`, `holidays`, `weekend_code` (default 1), `status` and `options`. It computes no dates, and it reads the computed columns by name, so a Filter or Sort between Schedule and Gantt still draws.
 
 ### The payload is data
 
 The value's payload is data, not geometry: scheduled rows as serials, links, non-working spans, the critical, violated and late flags, the nesting and the view options. The figure lays itself out at the width it is given, because a precomputed pixel frame would be wrong at three of the four places a figure draws (the 240 pixel card, the resizable Display, the popup, the Report column). `gantt-layout` runs inside `ChartFigure` against the measured width, and the headless export is the same layout at a chosen width.
 
-`ganttPayloadFromSchedule` also decides these edges:
+`gantt_payload` also decides these edges:
 
-- A baseline is a second scheduled table joined to the plan by task name. A baseline that is not a plan draws no ghost bars.
+- A baseline is a second scheduled plan joined to the first by task name. A baseline that is not a plan draws no ghost bars.
 - A link is critical when it is the successor's Driving link and both ends are Critical. A link is violated only where the break is visible on the dates: on whole-day serials an FS successor that starts on its predecessor's finish day breaks the link, except for a milestone and in Minutes mode. A lead is never violated.
 - The shaded non-working spans and holidays extend 14 days beyond the plan on each side, so a padded window still reads right. The shading follows the Gantt's own `weekend_code` and `holidays`, which the same Holidays node can feed.
 - The view is in Minutes mode when any start or finish carries a clock fraction.
@@ -204,9 +265,18 @@ View options ride the `options` string and the Chart Builder's `gantt` target, w
 
 The webpage export and Write to Obsidian take a figure's SVG from a registered serializer. The Gantt registers `ganttSvg`, a second, pure renderer from payload to a standalone SVG string at a fixed width, which the popup's Copy SVG also uses ([[chart-figures]] § Exports). A PDF is the browser's print of the exported page; the app has no PDF path.
 
+Tests:
+
+- `ganttPayload.test.ts`: the payload flattens the WBS, carries the flags and links, shades from the calendar and parses the view keys; a milestone on its predecessor's finish day is no broken link; a baseline joins by name; a table without dates is `#VALUE!` naming the row; an unknown weekend code is refused; a row the Schedule left out is skipped with its subtree.
+- `nodes/gantt.test.ts`: a scheduled cube becomes a chart value of kind `gantt`; the Options string's title goes into the value and its view keys into the payload; the weekend literal feeds the shading; a wired Status date draws the status line.
+- `ganttBuilder.test.ts`: the Chart Builder offers every view key the figure parses, each round-trips, and the calendar layout narrows the set.
+- `ganttFilter.test.ts`: the popup's Filter keeps a match with its summaries and the links between kept tasks.
+- `packages/gantt-layout/src/*.test.ts`: the layout, the calendar, fit, the histogram, the features, the serials and the SVG export.
+- The frozen Gantt cases (`fixtures/core/nodes/GanttNode.json.gz`, [[node-bodies#Checks]]).
+
 ## The figure never writes
 
-There is no bar editing: edits happen in the table ([[C71]] noBarEditing). It is also the only rule that can be built. A chart value is flat JSON on a cable, the figure is drawn by a different node than the one that owns the literal, values carry no provenance, and a plan that arrives through Filter or Join has no literal at all. The editor is the Cube Input popup, which already has drill levels and commits on Enter or blur, and snapshot undo covers it. What is lost is one gesture (dragging from one bar to another to make a link); the Predecessors cell covers its function. If the author ever asks for editing on the chart, it comes back the way the Record node picks a record: the chart picks a task and another node follows that pick by name. The chart never edits the table.
+There is no bar editing: edits happen in the plan ([[C71]] noBarEditing). It is also the only rule that can be built. A chart value is flat JSON on a cable, the figure is drawn by a different node than the one that owns the literal, values carry no provenance, and a plan that arrives through Filter or Join has no literal at all. The editor is the Cube Input popup, which already has drill levels and commits on Enter or blur, and snapshot undo covers it. What is lost is one gesture (dragging from one bar to another to make a link); the Predecessors cell covers its function. If editing on the chart is ever wanted, it comes back the way the Record node picks a record: the chart picks a task and another node follows that pick by name. The chart never edits the plan.
 
 ## Dates and precision
 
@@ -216,13 +286,11 @@ Dates are Excel serials with a fractional day, zone-less local days. The engine 
 
 The schedule engine and the Gantt layout compute on day serials with integer arithmetic and never construct a JS `Date`. A serial converts once, at the border (import and display), and serials are never compared as floating-point numbers. Minutes mode works in whole minutes within the day, still on the serial. Every Gantt library surveyed has the daylight-saving off-by-an-hour class of bug, because it schedules with `Date`; integer serials can't have it. This is [[C44]] dateSerials applied where it matters most. **Reopen if:** a time-zone-aware schedule is wanted; the border would then grow a time zone, and the engine still wouldn't.
 
-Precision is an engine mode, chosen on the card, never a display snap ([[D66]] daysMinutesModes): rounding only what is shown would put two tasks on the same day and read as an overlap, so what is shown and what is computed stay the same. It is a mode of the whole schedule, not one of the per-task modes [[#The one rule]] leaves out, and a third precision would be a third mode.
+Precision is an engine mode, chosen on the card, never a display snap ([[C70]] oneScheduleRule): rounding only what is shown would put two tasks on the same day and read as an overlap, so what is shown and what is computed stay the same. It is a mode of the whole schedule, not one of the per-task modes [[#The one rule]] leaves out, and a third precision would be a third mode.
 
 - **Days** (the default) schedules whole working days. An FS link with lag 0 starts the successor on the next working day, and a finish is the last working day of the task, so `Finish − Start + 1 = Duration` holds on the cells, the `WORKDAY(Start, Duration − 1)` every Excel template computes.
 - **Minutes** schedules in working intervals of `hours` per day from 08:00 (with a lunch hour for a day of more than 4 and at most 8 hours), so an FS successor may start the same afternoon and a duration may be a fraction of a day.
 
 Finish is inclusive on the cell in both modes: a cell is the value, Get Column returns what the engine wrote, and there is no internal and display split. In Minutes mode a finish at midnight shows on the previous day, so a finish of 00:00 on a 24-hour calendar lands on the right day. The figure adds one day when it draws a bar's end.
 
-## Tests
-
-`packages/schedule-engine/src/*.test.ts` (the engine, the rules, Minutes mode, the file formats and the regression corpus in `fixtures/schedule/`), `packages/gantt-layout/src/*.test.ts`, `tests/graph/scheduleCpm.test.ts`, `tests/graph/nodes/schedule.test.ts`, `tests/graph/planImport.test.ts`, `tests/graph/ganttPayload.test.ts`, `tests/graph/nodes/gantt.test.ts` and `tests/graph/ganttBuilder.test.ts`.
+Tests: `nodes/schedule.test.ts`: in Minutes an FS successor starts the same afternoon, and the date columns carry the datetime format so their cells read with a time, while Days reads date-only.

@@ -1,20 +1,18 @@
-// [[B12]] losslessSaves, [[C28]] literalsIffEditable
+// [[B12]] losslessSaves, [[C28]] literalsIffEditable, [[save-format#Every save passes through the text form]], [[save-format#Node lines]]
 import { describe, it, expect } from "vitest";
 import { isDeepStrictEqual } from "node:util";
-import type { ClassicPreset } from "rete";
+import type { GraphNode } from "../../src/graph/graphModel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 import { writeTextForm, readTextForm } from "../../src/graph/textForm";
 import type { SavedGraph, SavedNode, SavedConnection } from "../../src/graph/persistence";
 import { CURRENT_SAVE_VERSION } from "../../src/graph/persistenceCore";
 
-// persistenceSweep.test.ts proves init is a fixed point through a constructor; this proves the FILE
-// carries it: every catalog node, every literal, and a cable on every socket survive the text form a
-// save passes through, and the node rebuilt from what comes back captures the same init.
+
 
 type AnyNode = Record<string, unknown>;
 
-function savedNodeOf(n: ClassicPreset.Node, id: string): SavedNode {
+function savedNodeOf(n: GraphNode, id: string): SavedNode {
   const a = n as unknown as AnyNode;
   const sn: SavedNode = { id, type: n.constructor.name, name: id, x: 0, y: 0, init: extractInit(n) };
   if (a.literals && typeof a.literals === "object") sn.literals = { ...(a.literals as Record<string, number>) };
@@ -22,8 +20,8 @@ function savedNodeOf(n: ClassicPreset.Node, id: string): SavedNode {
   return sn;
 }
 
-function rebuildFrom(n1: ClassicPreset.Node, sn: SavedNode): ClassicPreset.Node {
-  const Ctor = n1.constructor as new (init?: Record<string, unknown>) => ClassicPreset.Node;
+function rebuildFrom(n1: GraphNode, sn: SavedNode): GraphNode {
+  const Ctor = n1.constructor as new (init?: Record<string, unknown>) => GraphNode;
   const n2 = new Ctor({ ...sn.init });
   const b = n2 as unknown as AnyNode;
   if (sn.literals && typeof b.literals === "object") b.literals = { ...sn.literals };
@@ -33,7 +31,7 @@ function rebuildFrom(n1: ClassicPreset.Node, sn: SavedNode): ClassicPreset.Node 
 
 const nonEmpty = (m?: Record<string, unknown>) => (m && Object.keys(m).length > 0 ? m : undefined);
 
-function roundTrip(n: ClassicPreset.Node): string | null {
+function roundTrip(n: GraphNode): string | null {
   const sn = savedNodeOf(n, "Subject");
   const connections: SavedConnection[] = [
     ...Object.keys(n.inputs).map((k) => ({ source: "Up", sourceOutput: "out", target: "Subject", targetInput: k })),
@@ -70,8 +68,8 @@ describe("[[B12]] losslessSaves: every catalog node survives the text form with 
   it("default instances", () => {
     const broken: string[] = [];
     for (const [type, entry] of FLAT_CATALOG.entries()) {
-      let n: ClassicPreset.Node;
-      try { n = entry.create() as ClassicPreset.Node; } catch { continue; }
+      let n: GraphNode;
+      try { n = entry.create() as GraphNode; } catch { continue; }
       const why = roundTrip(n);
       if (why) broken.push(`${type}: ${why}`);
     }
@@ -81,8 +79,8 @@ describe("[[B12]] losslessSaves: every catalog node survives the text form with 
   it("a literal map the user emptied stays empty instead of reviving the class defaults", () => {
     const broken: string[] = [];
     for (const [type, entry] of FLAT_CATALOG.entries()) {
-      let n: ClassicPreset.Node;
-      try { n = entry.create() as ClassicPreset.Node; } catch { continue; }
+      let n: GraphNode;
+      try { n = entry.create() as GraphNode; } catch { continue; }
       const a = n as unknown as AnyNode;
       if (typeof a.literals !== "object" && typeof a.stringLiterals !== "object") continue;
       if (typeof a.literals === "object") a.literals = {};

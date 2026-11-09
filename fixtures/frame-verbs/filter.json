@@ -1183,6 +1183,27 @@
      }
     ]
    }
+  },
+  {
+   "name": "a text value against a logical column is #TYPE! over no rows too",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "flag",
+       "type": "logical",
+       "values": []
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "flag",
+    "op": "gte",
+    "value": "a"
+   },
+   "expectError": "#TYPE!"
   }
  ]
 }

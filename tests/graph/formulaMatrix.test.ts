@@ -1,20 +1,15 @@
+// [[C15]] matricesInFormulas, [[C17]] shareImpl, [[formula-language#Matrices and dynamic arrays]], [[formula-language#The dispatch ladder]], [[formula-language#Whole-list natives]], [[formula-language#Lists, columns and tables]], [[formula-language#Blocked and wrong-surface names]], [[formula-language#Statistics]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
+import { callTraits } from "./callTraits";
 import {
   MatDetNode, TableMultNode, TableTransposeNode, TableUnitNode, TableDiagNode, TableOuterNode, TableReshapeNode, TableInfoNode,
   StackNode, TableSelectNode, ExpandNode,
 } from "../../src/graph/nodes/matrix";
 import { SeriesNode } from "../../src/graph/nodes/list";
 import { InterpolateNode } from "../../src/graph/nodes/stats";
-import { setCells } from "../../src/graph/nodes/matrixOps";
+import { SetCellNode } from "../../src/graph/nodes/matrix";
 import { isSolError, solError, type SolError } from "../../src/graph/errorValue";
-
-// ─── [[C15]] matricesInFormulas tranche 1: the matrix core, node-equals-formula ([[C17]] shareImpl) ───────────────
-// Every matrix registration delegates to the same kernels the nodes run, so the
-// test that matters is equality against the NODE, not correctness in isolation —
-// the Tier 1/Tier 3 discipline at rank 2. Error CODES are part of the contract
-// (the node family's #TYPE!/#VALUE!/#SHAPE!/#DIV/0! taxonomy).
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const M = [[1, 2], [3, 4]];
@@ -33,15 +28,18 @@ describe("each matrix name computes what its node computes", () => {
     expect(code(new TableMultNode().data({ a: [texty], b: [M] }).result)).toBe("#TYPE!");
   });
 
-  it("MDETERM / MINVERSE — value, #SHAPE! non-square, #DIV/0! singular", () => {
+  it("MDETERM / MINVERSE — value, #SHAPE! non-square; singular: MDETERM 0, MINVERSE #DIV/0!", () => {
     expect(ev("MDETERM(m)", { m: M })).toBe(new MatDetNode({ op: "mdeterm" }).data({ matrix: [M] }).result);
     expect(ev("MINVERSE(m)", { m: M })).toEqual(new MatDetNode({ op: "minverse" }).data({ matrix: [M] }).result);
     const rect = [[1, 2, 3], [4, 5, 6]];
     expect(code(ev("MDETERM(m)", { m: rect }))).toBe("#SHAPE!");
     expect(code(new MatDetNode({ op: "mdeterm" }).data({ matrix: [rect] }).result)).toBe("#SHAPE!");
     const singular = [[1, 2], [2, 4]];
-    expect(code(ev("MDETERM(m)", { m: singular }))).toBe("#DIV/0!");
-    expect(code(new MatDetNode({ op: "mdeterm" }).data({ matrix: [singular] }).result)).toBe("#DIV/0!");
+    // A determinant is defined for every square matrix: a singular one's is 0 (mathlib `Matrix.det_zero_of_row_eq`).
+    expect(ev("MDETERM(m)", { m: singular })).toBe(0);
+    expect(new MatDetNode({ op: "mdeterm" }).data({ matrix: [singular] }).result).toBe(0);
+    expect(code(ev("MINVERSE(m)", { m: singular }))).toBe("#DIV/0!");
+    expect(code(new MatDetNode({ op: "minverse" }).data({ matrix: [singular] }).result)).toBe("#DIV/0!");
   });
 
   it("TRANSPOSE — and a LIST transposes to a COLUMN, not an element-wise map", () => {
@@ -53,16 +51,6 @@ describe("each matrix name computes what its node computes", () => {
     expect(ev("MUNIT(3)")).toEqual(new TableUnitNode().data({ n: [3] }).result);
   });
 
-  it("MUNIT off-diagonal blank fills nulls (stays out of counts), zero fills 0s", () => {
-    const zero = new TableUnitNode({ offDiag: "zero" }).data({ n: [3] }).result as (number | null)[][];
-    const blank = new TableUnitNode({ offDiag: "blank" }).data({ n: [3] }).result as (number | null)[][];
-    expect(zero[0]).toEqual([1, 0, 0]);
-    expect(blank[0]).toEqual([1, null, null]);
-    // The claim: a blank off-diagonal is ABSENT, not a zero — so aggregators skip it.
-    const present = (m: (number | null)[][]) => m.flat().filter((c) => c !== null).length;
-    expect(present(zero)).toBe(9);  // every cell is a value
-    expect(present(blank)).toBe(3); // only the three diagonal 1s count
-  });
 
   it("DIAGONAL node — a list becomes a square matrix's diagonal (numpy.diag); off-diagonal 0 or blank", () => {
     const zero = new TableDiagNode({ offDiag: "zero" }).data({ diag: [[2, 5, 7]] }).result as (number | null)[][];
@@ -128,11 +116,8 @@ describe("each matrix name computes what its node computes", () => {
   });
 });
 
-describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas's point)", () => {
-  it("MMULT is a matrix product, not the element-wise Hadamard the fallthrough gave", () => {
-    // Pre-tranche this answered [[{},{}],[{},{}]] — Formula.js MMULT mapped
-    // cell-wise. If this test ever sees a 2×2 of objects again, the meta lost
-    // its matrixArgs and the containment guard stopped routing.
+describe("a matrix reaches its function whole", () => {
+  it("MMULT is a matrix product, not an element-wise one", () => {
     const r = ev("MMULT(a, b)", { a: M, b: M }) as number[][];
     expect(r).toEqual([[7, 10], [15, 22]]);
   });
@@ -144,10 +129,6 @@ describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas'
   });
 
   it("COLUMNS / ROWS count the shape, sharing the TableInfo node's math ([[C17]] shareImpl)", () => {
-    // Pre-ownership these fell through to Formula.js element-wise, answering a
-    // same-shape array of #VALUE! even on a 1-D list. Now both surfaces call
-    // matrixShape: a list is a ROW here, so COLUMNS counts it and ROWS is 1; a
-    // scalar is 1x1; a wired blank stays unknown. Assert equality against the node.
     const info = (v: unknown) => new TableInfoNode().data({ matrix: [v] });
     for (const v of [[[1, 2, 3], [4, 5, 6]], [1, 2, 3], 9, [], null] as unknown[]) {
       expect(ev("COLUMNS(v)", { v })).toBe(info(v).cols);
@@ -164,7 +145,7 @@ describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas'
     // XSTACK: the node's op as a first argument; anything but v/h is #VALUE!.
     expect(ev('XSTACK("h", a, b)', { a, b })).toEqual(ev("HSTACK(a, b)", { a, b }));
     expect(ev('XSTACK("V", a, b)', { a, b })).toEqual(ev("VSTACK(a, b)", { a, b }));
-    expect(isSolError(ev('XSTACK("x", a, b)', { a, b }))).toBe(true);
+    expect(ev('XSTACK("x", a, b)', { a, b })).toMatchObject({ code: "#VALUE!", message: 'XSTACK axis must be "v" or "h"' });
     // A bare list is one ROW on both surfaces.
     expect(ev("VSTACK(u, u)", { u: [1, 2, 3] })).toEqual(new StackNode({ op: "vstack" }).data({ t0: [[1, 2, 3]], t1: [[1, 2, 3]] }).result);
     // Ragged inputs pad with #N/A (shape construction, [[C48]] appendLadder) — identical to the node.
@@ -175,11 +156,13 @@ describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas'
     expect(code(ev("CHOOSECOLS(a, 5)", { a }))).toBe("#VALUE!"); // out of range, both surfaces
     expect(code(new TableSelectNode({ op: "choosecols" }).data({ matrix: [a], indices: [[5]] }).result)).toBe("#VALUE!");
 
-    // EXPAND pads with first-class null (the author override of Excel's #N/A), and the
-    // node agrees because both call expandMat with the same omitted-Fill default.
+    // EXPAND pads with blank ([[excel-divergences#Deliberate differences from Excel]]), the card too.
     expect(ev("EXPAND(a, 3, 3)", { a })).toEqual(new ExpandNode().data({ matrix: [a], rows: [3], cols: [3] }).result);
     expect((ev("EXPAND(a, 3, 3)", { a }) as unknown[][])[2][2]).toBeNull();
     expect(code(ev("EXPAND(a, 1, 1)", { a }))).toBe("#VALUE!"); // shrink is refused, both surfaces
+    // An empty axis still costs a step per row, and an infinite count never ends: both meet the cell cap.
+    expect(code(ev("EXPAND(e, 1e9, 0)", { e: [[]] }))).toBe("#OVERFLOW!");
+    expect(code(ev("EXPAND(e, x, 0)", { e: [[]], x: Infinity }))).toBe("#OVERFLOW!");
   });
 
   it("the D* database family is BLOCKED like VLOOKUP/MATCH (superseded by Frame Filter)", () => {
@@ -190,13 +173,13 @@ describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas'
 
   it("every tranche registration declares the [[C15]] matricesInFormulas gate", () => {
     for (const name of ["TRANSPOSE", "MMULT", "MUNIT", "MDETERM", "MINVERSE", "WRAPROWS", "WRAPCOLS", "TOCOL", "TOROW", "SEQUENCE", "COLUMNS", "ROWS", "HSTACK", "VSTACK", "CHOOSECOLS", "CHOOSEROWS", "EXPAND"]) {
-      expect(EXCEL_IMPL_META[name]?.matrixArgs, `${name} lost matrixArgs`).toBe(true);
-      expect(EXCEL_IMPL_META[name]?.listArgs, `${name} lost listArgs (rank-1 args must arrive whole too)`).toBe(true);
+      expect(callTraits(name)?.matrixArgs, `${name} lost matrixArgs`).toBe(true);
+      expect(callTraits(name)?.kind, `${name} lost listArgs (rank-1 args must arrive whole too)`).toBe("whole");
     }
   });
 });
 
-describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, node-equals-formula", () => {
+describe("the array-returning functions compute what their cards compute", () => {
   it("UNIQUE / SORT / SORTBY match their nodes (incl. blanks-last)", async () => {
     const { UniqueNode, SortNode } = await import("../../src/graph/nodes/list");
     const x = [3, 1, 3, null, 2];
@@ -227,6 +210,12 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
     // Out-of-range wording is shared, not merely the code.
     expect(ev("INDEX(m, 9, 1)", { m: M })).toEqual(node(M, 9, 1));
     expect(code(ev("INDEX(m, 9, 1)", { m: M }))).toBe("#REF!");
+  });
+
+  it("INDEX reads a blank row in a table of positions as #SYNTAX! cells ([[D86]] blankRoles)", () => {
+    const t = ev("INDEX(v, p)", { v: [1, 2], p: [[1], null] }) as unknown[][];
+    expect(t[0]).toEqual([1]);
+    expect(code(t[1][0])).toBe("#SYNTAX!");
   });
 
   it("TAKE / DROP — one rank-preserving node equals the formula at every rank", async () => {
@@ -264,10 +253,6 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
   });
 
   it("FILTER by mask — Excel's include-array form", () => {
-    // The List Filter NODE is condition-ROW configured (per-row {op, matchCase}
-    // with wired comparison values) — a different mechanism from Excel's computed
-    // boolean mask, so [[C17]] shareImpl's node-equality doesn't apply term-for-term here; the
-    // shared ground is filterByMask (listOps), which this pins directly.
     const x = [1, 5, 2, 9];
     expect(ev("FILTER(x, x > 2)", { x })).toEqual([5, 9]);
     expect(ev("FILTER(x, m)", { x, m: [true, false, true, false] })).toEqual([1, 2]);
@@ -279,9 +264,10 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
 
   it("FILTER reads its include array as conditions, like IF ([[E10]] pickVsAggregateErrors)", () => {
     const x = [1, 5, 2, 9];
-    // Text other than TRUE/FALSE is not a condition: #VALUE!, not a silent FALSE.
+    // Text is not a condition, even "TRUE" ([[C10]] socketLattice): #VALUE!, not a silent FALSE.
     expect(code(ev("FILTER(x, m)", { x, m: [true, "yes", true, false] }))).toBe("#VALUE!");
-    expect(ev("FILTER(x, m)", { x, m: ["TRUE", "false", 1, 0] })).toEqual([1, 2]);
+    expect(code(ev("FILTER(x, m)", { x, m: ["TRUE", "false", 1, 0] }))).toBe("#VALUE!");
+    expect(ev("FILTER(x, m)", { x, m: [true, false, 1, 0] })).toEqual([1, 2]);
     // A blank include cell keeps nothing.
     expect(ev("FILTER(x, m)", { x, m: [true, null, true, false] })).toEqual([1, 2]);
     // The include array is read whole, so its error is the answer; a data error stays in its cell.
@@ -294,7 +280,7 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
   it("MODE.MULT and FREQUENCY are owned — no more element-wise garbage", () => {
     expect(ev("MODE.MULT(x)", { x: [1, 1, 2, 2, 3] })).toEqual([1, 2]);
     expect(ev("FREQUENCY(x, b)", { x: [1, 5, 9, 3], b: [4, 8] })).toEqual([2, 1, 1]);
-    // Pre-tranche: UNIQUE([3,1,3,2]) broadcast to [[3],[1],[3],[2]]. A list is one row, so its items dedupe by column.
+    // A list is one row, so its items dedupe by column.
     expect(ev("UNIQUE(x, TRUE)", { x: [3, 1, 3, 2] })).toEqual([3, 1, 2]);
   });
 
@@ -307,12 +293,8 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
   });
 });
 
-// ─── INTERPOLATE grid mode: the last name [[C15]] matricesInFormulas unblocked ([[C17]] shareImpl) ────────────────
-// The node is ONE node with a List/Grid mode toggle, so it is ONE formula name —
-// the arm is chosen by the first argument's RANK, not by a second registration
-// ([[B16]] oneFormulaSurface injectivity). Grid mode was parked behind the noFramesInFormulas cap; [[C15]] matricesInFormulas lifted it.
+// ─── INTERPOLATE grid mode: [[C15]] matricesInFormulas, [[C17]] shareImpl, [[bordered-grid-fill#Inputs and coordinates]] ───
 describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
-  // Grid mode is now INTERPOLATE(table, xs?, ys?, forecast?) — coordinates ride beside Z.
   const z = [[0, 10], [null, null], [20, 30]];
   const xs = [0, 10];
   const ys = [0, 10, 20];
@@ -331,8 +313,6 @@ describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
   it("omitted axes count 1, 2, 3…, matching the node with unwired axes", () => {
     const node = new InterpolateNode({ mode: "grid" });
     expect(ev("INTERPOLATE(t)", { t: z })).toEqual(node.data({ z: [z] }).result);
-    // A BLANK positional axis is omitted too (a blank arg evaluates to null; the formula
-    // surface has no wired-blank to propagate), so the forecast flag can be reached alone.
     const off = new InterpolateNode({ mode: "grid", forecast: false });
     expect(ev("INTERPOLATE(t, , , FALSE)", { t: z })).toEqual(off.data({ z: [z] }).result);
   });
@@ -355,9 +335,15 @@ describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
   });
 });
 
-// Set Cell has no formula (a variadic matrix writer has no clean signature) — the kernel
-// is exercised directly. Node-level unit carry + wired-blank roles live in the node test.
-describe("setCells kernel (Set Cell)", () => {
+// The card is driven with one Value/Row/Column triple per write.
+function setCells(m: unknown[][], writes: { r: unknown; c: unknown; v: unknown }[]): unknown {
+  const node = new SetCellNode({ valueKeys: writes.map((_, i) => `value${i}`) });
+  const inputs: Record<string, unknown[]> = { matrix: [m] };
+  writes.forEach((w, i) => { inputs[`value${i}`] = [w.v]; inputs[`row${i}`] = [w.r]; inputs[`col${i}`] = [w.c]; });
+  return node.data(inputs).result;
+}
+
+describe("Set Cell", () => {
   const m = (): (number | null)[][] => [[1, 2], [3, 4]];
 
   it("applies writes in row order — a later write wins on the same address", () => {
@@ -377,7 +363,7 @@ describe("setCells kernel (Set Cell)", () => {
     const badRow = setCells(m(), [{ r: Number("abc"), c: 1, v: 0 }]);
     expect((badRow as SolError).code).toBe("#VALUE!");
     expect((badRow as SolError).message).toBe("Row must be a number");
-    const badCol = setCells(m(), [{ r: 1, c: "x" as unknown as number, v: 0 }]);
+    const badCol = setCells(m(), [{ r: 1, c: "x", v: 0 }]);
     expect((badCol as SolError).code).toBe("#VALUE!");
     expect((badCol as SolError).message).toBe("Column must be a number");
   });

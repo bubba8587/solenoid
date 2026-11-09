@@ -1,13 +1,14 @@
 // [[C10]] socketLattice, [[C89]] standoffsSolveLast
 import type { View } from "./view";
-import { ClassicPreset, type NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
+import { GraphConnection } from "./graphModel";
 import type { Schemes, SolenoidNode } from "./schemes";
 import type { SocketContextTarget, CableContextTarget } from "./components";
 import type { Pt } from "./lasso";
 import {
   ConduitNode, FormatControllerNode, GroupNode,
   CONDUIT_MAX_LANES, conduitInKey, conduitOutKey, conduitGhostSpecs,
-} from "./rete-nodes";
+} from "./nodeClasses";
 import { ribbonForConnection } from "./ribbonCable";
 import { forgetNodeDeep } from "./nodeStoreRegistry";
 import { rebuildGroupMembership } from "./groupMembership";
@@ -29,10 +30,11 @@ import { scheduleAutosave } from "./persistence";
 import { processGraph } from "./process";
 import { MAIN_EDIT_SCOPE, type EditScope } from "./activeGraph";
 import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
+import { reconcileFcs } from "./fcReconcile";
 type SolenoidConnection = import("./schemes").SolenoidConnection;
 
 export async function insertConduitForCables(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View,
   container: HTMLElement,
   target: CableContextTarget,
@@ -131,7 +133,7 @@ export async function insertConduitForCables(
       }
       try {
         await editor.addConnection(
-          new ClassicPreset.Connection(src, lane.conns[0].sourceOutput, conduit, conduitInKey(i)) as SolenoidConnection,
+          new GraphConnection(src, lane.conns[0].sourceOutput, conduit, conduitInKey(i)) as SolenoidConnection,
         );
       } catch { /* incompatible — leave disconnected */ }
       for (const conn of lane.conns) {
@@ -139,7 +141,7 @@ export async function insertConduitForCables(
         if (!tgt) continue;
         try {
           await editor.addConnection(
-            new ClassicPreset.Connection(conduit, conduitOutKey(i), tgt, conn.targetInput) as SolenoidConnection,
+            new GraphConnection(conduit, conduitOutKey(i), tgt, conn.targetInput) as SolenoidConnection,
           );
         } catch { /* incompatible — leave disconnected */ }
       }
@@ -151,7 +153,7 @@ export async function insertConduitForCables(
 }
 
 export function linkStandoffBetween(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View,
   t: { aId: string; bId: string },
 ): void {
@@ -191,7 +193,7 @@ export function linkStandoffBetween(
  * Every surface's `noderemoved` settle ([[A1]] visualGraphCalculator). Under a rebuild gate a removal may be a
  * relocation (Wrap as Composite keeps the node and its stores), so the gated edit forgets what it really deleted.
  */
-export function settleNodeRemoved(editor: NodeEditor<Schemes>, view: View, node: SolenoidNode, gated: boolean): void {
+export function settleNodeRemoved(editor: GraphEditor<Schemes>, view: View, node: SolenoidNode, gated: boolean): void {
   if (gated) return;
   forgetNodeDeep(node);
   rebuildGroupMembership(editor);
@@ -207,20 +209,20 @@ export type DeleteScope = EditScope & {
   keeps?: (n: SolenoidNode) => boolean;
 };
 
-export const MAIN_DELETE_SCOPE: DeleteScope = { ...MAIN_EDIT_SCOPE, mainLayers: true };
+const MAIN_DELETE_SCOPE: DeleteScope = { ...MAIN_EDIT_SCOPE, mainLayers: true };
 
 const dockedFc = (n: SolenoidNode): n is FormatControllerNode & SolenoidNode =>
   n instanceof FormatControllerNode && !!n.hostNodeId;
 
 /** The selection plus every FC docked to a doomed node, at any depth: a docked FC is part of its host's entity. */
-export function deleteSet(editor: NodeEditor<Schemes>): Set<string> {
+function deleteSet(editor: GraphEditor<Schemes>): Set<string> {
   const ids = new Set(editor.getNodes().filter((n) => n.selected).map((n) => n.id));
   for (const id of ids) for (const d of dockedNodeStore.getDockedTo(id)) if (editor.getNode(d.id)) ids.add(d.id);
   return ids;
 }
 
 export async function deleteSelection(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View | null,
   scope: DeleteScope = MAIN_DELETE_SCOPE,
 ): Promise<void> {
@@ -289,7 +291,7 @@ export async function deleteSelection(
           const src = editor.getNode(s.source);
           const dst = editor.getNode(s.target);
           if (!src || !dst) continue;
-          const ghost = new ClassicPreset.Connection(src, s.sourceOutput, dst, s.targetInput) as SolenoidConnection;
+          const ghost = new GraphConnection(src, s.sourceOutput, dst, s.targetInput) as SolenoidConnection;
           await editor.addConnection(ghost);
           cableGhostStore.mark(ghost.id);
         }
@@ -315,7 +317,7 @@ export async function deleteSelection(
           await editor.removeConnection(incoming[0].id);
           await editor.removeConnection(outgoing[0].id);
           await editor.removeNode(node.id);
-          const ghost = new ClassicPreset.Connection(
+          const ghost = new GraphConnection(
             src,
             incoming[0].sourceOutput,
             dst,
@@ -344,7 +346,7 @@ export async function deleteSelection(
 }
 
 export async function deleteCables(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   target: CableContextTarget,
 ): Promise<void> {
   cableSelectionStore.clear();
@@ -356,13 +358,13 @@ export async function deleteCables(
 }
 
 /** An FC never docks onto another FC, from the socket menu or a drag. */
-export function canAttachFc(editor: NodeEditor<Schemes>, nodeId: string): boolean {
+export function canAttachFc(editor: GraphEditor<Schemes>, nodeId: string): boolean {
   const host = editor.getNode(nodeId);
   return !!host && !(host instanceof FormatControllerNode);
 }
 
 export async function attachFormatController(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View,
   container: HTMLElement,
   target: SocketContextTarget,
@@ -375,6 +377,7 @@ export async function attachFormatController(
   });
   await editor.addNode(fc as SolenoidNode);
   fc.dockSelf(editor); // needs the id addNode assigned; undocked, it lands at canvas (0,0)
+  reconcileFcs(editor, null);
   const pos = computeDockedCanvasPos(view, container, fc.hostNodeId, fc.socketKey, fc.side, fc.width, fc.height);
   if (pos) await view.moveNode(fc.id, pos);
   await insertFcInline(editor, fc);

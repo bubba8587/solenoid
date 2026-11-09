@@ -1,0 +1,9 @@
+{ "nodes": [
+  { "id": "t", "type": "TableInputNode", "x": 0, "y": 200, "init": { "label": "Grid", "tableText": "1, 2, 3\n4, 5, 6" } },
+  { "id": "k", "type": "TableInputNode", "x": 0, "y": 600, "init": { "label": "Block", "tableText": "1, 0\n0, 1" } },
+  { "id": "rot", "type": "TableTransposeNode", "x": 440, "y": -100, "init": { "label": "Rotate 90°", "op": "rot90" } },
+  { "id": "flip", "type": "ReverseNode", "x": 440, "y": 260, "init": { "label": "Flip across", "mode": "grid", "byCol": true } },
+  { "id": "kron", "type": "TableMultNode", "x": 440, "y": 620, "init": { "label": "KRON", "op": "kron" } },
+  { "id": "svd", "type": "MatEigenNode", "x": 880, "y": -100, "init": { "label": "SVD", "op": "svd" } },
+  { "id": "pinv", "type": "MatDetNode", "x": 880, "y": 400, "init": { "label": "PINV", "op": "pinv" } } ],
+  "cables": [ "t.table -> rot.matrix", "t.table -> flip.grid", "k.table -> kron.a", "t.table -> kron.b", "t.table -> svd.matrix", "t.table -> pinv.matrix" ] }

@@ -1,6 +1,6 @@
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore, type CSSProperties } from "react";
-import type { ClassicPreset } from "rete";
+import type { GraphSocket } from "../graphModel";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
 import { NodeSocket } from "./NodeSocket";
@@ -10,7 +10,7 @@ import "./nodeCard.css";
 
 type PillNode = {
   id: string;
-  inputs: Record<string, { socket: ClassicPreset.Socket } | undefined>;
+  inputs: Record<string, { socket: GraphSocket } | undefined>;
 };
 
 /** The sockets stay functional but hidden, stacked behind one pill; their dot flashes are suppressed in CSS, so the pill draws the highlight.

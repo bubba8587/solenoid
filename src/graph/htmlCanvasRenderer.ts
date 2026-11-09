@@ -30,7 +30,7 @@ const REF: number = 1;
 const MIP_MIN_PX = 6;
 const DEFAULT_QUALITY = 1.0;
 
-export function computeIdealMipLevel(scale: number, quality: number = DEFAULT_QUALITY, dpr: number = 1): number {
+function computeIdealMipLevel(scale: number, quality: number = DEFAULT_QUALITY, dpr: number = 1): number {
   const target = quality * scale * dpr;
   return Math.max(0, Math.floor(Math.log2(REF / Math.max(target, 1e-4))));
 }
@@ -64,7 +64,7 @@ interface CableSpec {
   color: string;
 }
 
-export interface RendererStats {
+interface RendererStats {
   fps: number; drawMs: number; visible: number; total: number; built: number; mip: number;
   slow: number;
   failed: number;
@@ -401,7 +401,6 @@ export class HtmlCanvasRenderer {
   }
 
   probe(): void {
-    // eslint-disable-next-line no-console
     const log = (...a: unknown[]) => console.info("[hc-probe]", ...a);
     const n = this.nodes[0];
     if (!n) { log("no nodes"); return; }
@@ -481,7 +480,6 @@ export class HtmlCanvasRenderer {
   private static logPathOnce(msg: string): void {
     if (HtmlCanvasRenderer.loggedPaths.has(msg)) return;
     HtmlCanvasRenderer.loggedPaths.add(msg);
-    // eslint-disable-next-line no-console
     console.info("[hc]", msg);
   }
 
@@ -500,7 +498,6 @@ export class HtmlCanvasRenderer {
       if (n.refImg && !diagLogged && (window as unknown as { __hcDiag?: boolean }).__hcDiag) {
         diagLogged = true;
         const clone = (n.refEl.firstElementChild?.firstElementChild ?? n.refEl.firstElementChild) as HTMLElement | null;
-        // eslint-disable-next-line no-console
         console.log("[hc-diag]", {
           id: n.id, w: n.w, h: n.h, PAD, dpr: this.dpr,
           imgW: n.refImg.width, imgH: n.refImg.height,
@@ -510,8 +507,7 @@ export class HtmlCanvasRenderer {
         const oEls = origCard.querySelectorAll<HTMLElement>("*");
         const cEls = clone ? clone.querySelectorAll<HTMLElement>("*") : null;
         if (!cEls || oEls.length !== cEls.length) {
-          // eslint-disable-next-line no-console
-          console.log(`[hc-pos] STRUCTURE MISMATCH — orig has ${oEls.length} descendants, clone has ${cEls?.length ?? 0}. The clone tree differs from the original (already our bug).`);
+          console.log(`[hc-pos] STRUCTURE MISMATCH — orig has ${oEls.length} descendants, clone has ${cEls?.length ?? 0}. The clone tree differs from the original.`);
         } else {
           const k = this.cam.scale || 1;
           const HTML_NS = "http://www.w3.org/1999/xhtml";
@@ -533,9 +529,7 @@ export class HtmlCanvasRenderer {
             maxTop = Math.max(maxTop, Math.abs(dTop)); maxLeft = Math.max(maxLeft, Math.abs(dLeft));
             maxW = Math.max(maxW, Math.abs(dW)); maxH = Math.max(maxH, Math.abs(dH));
           }
-          // eslint-disable-next-line no-console
           console.log(`[hc-pos] HTML (${htmlN}/${oEls.length}) SCREEN Δ (card-local CSS px, k=${k.toFixed(3)}) — max |top|=${maxTop.toFixed(2)} |left|=${maxLeft.toFixed(2)} |w|=${maxW.toFixed(2)} |h|=${maxH.toFixed(2)}. d_off≠0 or ctx set = positioning-context change (offset* blind spot).`);
-          // eslint-disable-next-line no-console
           console.table(rows);
         }
       }

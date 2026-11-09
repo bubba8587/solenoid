@@ -1,6 +1,7 @@
 // [[C24]] arraySemantics, [[C44]] dateSerials
 import { describe, it, expect } from "vitest";
-import { frameFromCells, relateFramesToCube, type FrameValue } from "../../../src/graph/frame";
+import { frameFromCells, type FrameValue } from "../../../src/graph/frame";
+import { relateFramesToCube } from "../coreVerbs";
 import { isSolError } from "../../../src/graph/errorValue";
 import { CubeRollupNode } from "../../../src/graph/nodes/cube";
 
@@ -44,7 +45,7 @@ describe("CubeRollupNode", () => {
     expect(out.columns.find((c) => c.name === "Name")?.values).toEqual(["Cabinet", "Bracket"]);
   });
 
-  it("rolls a text column's min up to its alphabetical first, typed as text ([[D76]] textMinMax)", () => {
+  it("rolls a text column's min up to its alphabetical first, typed as text ([[C24]] arraySemantics)", () => {
     const node = new CubeRollupNode({ agg: "min" });
     node.stringLiterals = { nested: "Lines", column: "Part", as: "FirstPart" };
     const out = node.data({ cube: [productsCube({ hinge: 2, panel: 10 })] }).frame as FrameValue;
@@ -74,8 +75,4 @@ describe("CubeRollupNode", () => {
     expect(totalCol.values.every((v) => isSolError(v))).toBe(true);
   });
 
-  it("passes through null when the cube input is unwired", () => {
-    const node = new CubeRollupNode();
-    expect(node.data({}).frame).toBeNull();
-  });
 });

@@ -1,10 +1,10 @@
 // [[B12]] losslessSaves
-import { ClassicPreset } from "rete";
+import { GraphNode } from "./graphModel";
 import { FLAT_CATALOG } from "./catalogUtils";
 
 // Derived by calling every catalog factory once, lazily, and cached.
 
-export type NodeCtor = new (init?: Record<string, unknown>) => ClassicPreset.Node;
+export type NodeCtor = new (init?: Record<string, unknown>) => GraphNode;
 
 let _ctorByName: Map<string, NodeCtor> | null = null;
 
@@ -13,7 +13,7 @@ export function ctorRegistry(): Map<string, NodeCtor> {
   const m = new Map<string, NodeCtor>();
   for (const entry of FLAT_CATALOG.values()) {
     try {
-      const inst = entry.create() as ClassicPreset.Node;
+      const inst = entry.create() as GraphNode;
       const ctor = inst.constructor as NodeCtor;
       if (!m.has(ctor.name)) m.set(ctor.name, ctor);
     } catch {

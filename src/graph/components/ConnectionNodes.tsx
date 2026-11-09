@@ -1,4 +1,4 @@
-// [[C95]] commitOnEnter, [[B11]] maximalMerge, [[B2]] webTryDesktopFull, [[D62]] demoVaultResolution. Fetch/cache mechanics: tree/specs/computation/live-connections.md.
+// [[B19]] spreadsheetHabits, [[B11]] maximalMerge, [[B2]] webTryDesktopFull, [[D62]] demoVaultResolution. Fetch/cache mechanics: tree/specs/computation/live-connections.md.
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { collapseStore } from "../collapseStore";
 import type React from "react";
@@ -15,12 +15,12 @@ import type {
   HolidaysNode as HolidaysNodeType,
   FxNode as FxNodeType,
   VaultFolderNode as VaultFolderNodeType,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import { processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
-import { hasFs, isDesktop, listLocalFiles, listVaultFolders, openExternal } from "../fileBridge";
+import { hasFs, isDesktop, listLocalFiles, listVaultFolders, listVaultMarkdownFiles, openExternal, readFileHead } from "../fileBridge";
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { apiKeyStore } from "../apiKeyStore";
@@ -29,23 +29,27 @@ import { FrameDisplay } from "./FrameDisplay";
 import { ArrayChip } from "./ArrayChip";
 import { CubeChip } from "./CubeChip";
 import { LazySelect } from "./LazySelect";
+import { PickField } from "./PickField";
+import { chooseFile } from "../chooseFile";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { RefreshIcon } from "./RefreshIcon";
+import { SkyIcon } from "./CardArt";
 import "./ConnectionNodes.css";
 import { stopDragStart } from "../coarse";
 import { nodeDisplayName } from "../catalogUtils";
 import { pickGeocodeMatch } from "../geocodeProvider";
-import { NAGER_COUNTRIES, filterHolidays, daysToNextHoliday } from "../holidaysProvider";
+import { NAGER_COUNTRIES } from "../holidaysProvider";
 import { FX_CURRENCIES } from "../fxProvider";
 import { frameRowCount, cubeRowCount } from "../frame";
 import { TASKNOTES_KEY_ID, TASKNOTES_PROVIDER_META, statsToFrame, type TaskNotesProvider } from "../taskNotesApi";
 import { dropInputCables, dropOutputCables } from "./cablePrune";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { getOwningView } from "../activeGraph";
-import { FX_MODE_META, type FxMode } from "../rete-nodes";
+import { FX_MODE_META, type FxMode } from "../nodeClasses";
+import { previewed } from "../listPreview";
 
 function statusText(s: ConnectionState): string {
   switch (s.status) {
@@ -122,14 +126,14 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
 
   function commit() {
     const next = url.trim();
-    if (next !== data.url) { data.url = next; void processGraph(); }
+    if (next !== data.url) { data.url = next; data.edited(); void processGraph(); }
   }
 
   return (
     <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <input
-          className="sol-conn__url"
+          className="sol-conn__url sol-placeholder-example"
           type="text"
           value={url}
           placeholder="https://…/data.csv"
@@ -142,7 +146,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
         />
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
         <RefreshIntervalField node={data} />
-        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+        <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
   );
@@ -161,7 +165,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
     const nextIdx = Math.max(1, Math.round(Number(idx) || 1));
     setIdx(String(nextIdx));
     if (nextUrl !== data.url || nextIdx !== data.tableIndex) {
-      data.url = nextUrl; data.tableIndex = nextIdx; void processGraph();
+      data.url = nextUrl; data.tableIndex = nextIdx; data.edited(); void processGraph();
     }
   }
 
@@ -169,7 +173,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
     <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <input
-          className="sol-conn__url"
+          className="sol-conn__url sol-placeholder-example"
           type="text"
           value={url}
           placeholder="https://…/page.html"
@@ -195,7 +199,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
           />
         </label>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+        <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
   );
@@ -213,7 +217,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
     const nextUrl = url.trim();
     const nextQuery = query;
     if (nextUrl !== data.url || nextQuery !== data.query) {
-      data.url = nextUrl; data.query = nextQuery; void processGraph();
+      data.url = nextUrl; data.query = nextQuery; data.edited(); void processGraph();
     }
   }
 
@@ -222,7 +226,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
     <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <input
-          className="sol-conn__url"
+          className="sol-conn__url sol-placeholder-example"
           type="text"
           value={url}
           placeholder="https://…/page.html"
@@ -234,7 +238,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
           onMouseDown={(e) => e.stopPropagation()}
         />
         <input
-          className="sol-conn__url"
+          className="sol-conn__url sol-placeholder-example"
           type="text"
           value={query}
           placeholder='XPath, for example //h2/a'
@@ -261,7 +265,6 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
 }
 
 // ─── CSV CONNECTION (local folder) ──────────────────────────────────────────────
-// A native <LazySelect> needs pointerdown and mousedown stopPropagation, or the node-drag re-render closes it mid-pick.
 
 export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>) {
   const folder = useSyncExternalStore(settingsStore.subscribe, getCsvFolder);
@@ -280,7 +283,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
   function pick(next: string) {
     setName(next);
     data.fileName = next;
-    void processGraph();
+    data.edited(); void processGraph();
   }
 
   function refresh() {
@@ -298,17 +301,25 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
         ) : !folder ? (
           <div className="sol-conn__note">No target folder set. Open Settings ▸ Data to choose one.</div>
         ) : (
-          <LazySelect
-            className="sol-conn__select"
+          <PickField
             value={name}
-            onChange={(e) => pick(e.target.value)}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <option value="">Pick a file…</option>
-            {name !== "" && !files.includes(name) && <option value={name}>{name} (missing)</option>}
-            {files.map((f) => <option key={f} value={f}>{f}</option>)}
-          </LazySelect>
+            placeholder="Pick a file…"
+            example
+            missing={name !== "" && !files.includes(name)}
+            title={name ? `${name}: choose another file` : "Choose a CSV or Parquet file in the data folder"}
+            onPick={(from) => void chooseFile({
+                from,
+              title: "Choose a file",
+              root: folder,
+              extensions: ["csv", "parquet"],
+              current: name || undefined,
+              list: () => listLocalFiles(folder),
+              readHead: (rel, chars) => readFileHead(folder, rel, chars),
+              rootLabel: "Data folder",
+              recentKey: "local-file",
+              empty: "No CSV or Parquet files in the data folder",
+            }).then((rel) => { if (rel) pick(rel); })}
+          />
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
         {desktop && folder && (
@@ -318,7 +329,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
       {frameOut && (
         <MeasuredSocketRow hero side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
           <div style={{ width: "100%" }}>
-            <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+            <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
           </div>
         </MeasuredSocketRow>
       )}
@@ -356,17 +367,17 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
     // Refinements are provider-specific, so a stale one would build a bad URL — reset them.
     data.stringLiterals.freq = ""; data.stringLiterals.start = ""; data.stringLiterals.end = "";
     setFreq(""); setStart(""); setEnd("");
-    void processGraph();
+    data.edited(); void processGraph();
   }
   function commitInput(next: string) {
     const v = next.trim();
     setInput(v);
-    if (v !== (data.stringLiterals.input ?? "")) { data.stringLiterals.input = v; void processGraph(); }
+    if (v !== (data.stringLiterals.input ?? "")) { data.stringLiterals.input = v; data.edited(); void processGraph(); }
   }
   function setParam(key: "freq" | "start" | "end", v: string) {
     data.stringLiterals[key] = v;
     if (key === "freq") setFreq(v); else if (key === "start") setStart(v); else setEnd(v);
-    void processGraph();
+    data.edited(); void processGraph();
   }
 
   return (
@@ -383,7 +394,7 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
           </LazySelect>
         )}
         <input
-          className="sol-conn__url"
+          className="sol-conn__url sol-placeholder-example"
           type="text"
           value={input}
           placeholder={preset.placeholder}
@@ -410,7 +421,7 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
         <RefreshIntervalField node={data} />
-        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+        <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
   );
@@ -432,7 +443,7 @@ export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
             className="sol-conn__select"
             value={data.pickedLabel || data.matches[0].label}
             title="Which match"
-            onChange={(e) => { data.pickedLabel = e.target.value; void processGraph(); }}
+            onChange={(e) => { data.pickedLabel = e.target.value; data.edited(); void processGraph(); }}
           >
             {data.matches.map((m2) => <option key={m2.label} value={m2.label}>{m2.label}</option>)}
           </LazySelect>
@@ -470,7 +481,7 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
     setPast(String(nPast)); setFwd(String(nFwd));
     if (nPast !== data.pastDays || nFwd !== data.forecastDays) {
       data.pastDays = nPast; data.forecastDays = nFwd;
-      void processGraph();
+      data.edited(); void processGraph();
     }
   }
   const numField = (label: string, val: string, set: (s: string) => void) => (
@@ -493,7 +504,7 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
         <SegToggle
           value={data.unit}
           options={WEATHER_UNIT_OPTIONS}
-          onChange={(u) => { data.unit = u; void processGraph(); }}
+          onChange={(u) => { data.unit = u; data.edited(); void processGraph(); }}
         />
       </div>
       <InlineInputs node={data} emit={emit} />
@@ -510,6 +521,7 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
           <span className="solenoid-node__output-value">{rows > 0 ? `${rows} days` : "—"}</span>
         </MeasuredSocketRow>
       )}
+      <SkyIcon condition={data.cached?.nowCondition || null} />
       <InlineOutputRows
         node={data}
         emit={emit}
@@ -523,11 +535,6 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
 }
 
 // ─── HOLIDAYS ──────────────────────────────────────────────────────────────────────
-function todaySerial(): number {
-  const d = new Date();
-  return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
-}
-
 export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the rows when a fetch lands
   const [year, setYear] = useState(data.year ? String(data.year) : "");
@@ -537,17 +544,17 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
   function commitYear() {
     const n = Math.max(0, Math.round(Number(year) || 0));
     setYear(n ? String(n) : "");
-    if (n !== data.year) { data.year = n; void processGraph(); }
+    if (n !== data.year) { data.year = n; data.edited(); void processGraph(); }
   }
   function commitRegion() {
     const next = region.trim();
     setRegion(next);
-    if (next !== data.region) { data.region = next; void processGraph(); }
+    if (next !== data.region) { data.region = next; data.edited(); void processGraph(); }
   }
 
-  const applicable = filterHolidays(data.cached ?? [], data.region);
-  const count = applicable.length;
-  const next = daysToNextHoliday(applicable, todaySerial());
+  const applicable = data.applicable();
+  const count = frameRowCount(applicable.frame);
+  const next = applicable.next;
   const frame = data.outputs.frame;
   const dates = data.outputs.dates;
 
@@ -558,7 +565,7 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
           className="sol-conn__select"
           value={data.country}
           title="Country"
-          onChange={(e) => { data.country = e.target.value; void processGraph(); }}
+          onChange={(e) => { data.country = e.target.value; data.edited(); void processGraph(); }}
         >
           <option value="">Pick a country…</option>
           {NAGER_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
@@ -566,14 +573,14 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
         <label className="sol-conn__field">
           Year
           <input
-            className="sol-conn__num" type="number" value={year} placeholder="This year"
+            className="sol-conn__num" type="number" value={year} placeholder="[this year]"
             onChange={(e) => setYear(e.target.value)} onBlur={commitYear}
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
             onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
           />
         </label>
         <input
-          className="sol-conn__url" type="text" value={region} placeholder="Region, for example US-CA (optional)"
+          className="sol-conn__url sol-placeholder-example" type="text" value={region} placeholder="Region, for example US-CA (optional)"
           spellCheck={false}
           onChange={(e) => setRegion(e.target.value)} onBlur={commitRegion}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
@@ -622,7 +629,7 @@ function CurrencyRow({ data, emit, socketKey, label }: {
           className="sol-conn__select"
           value={data.stringLiterals[socketKey] ?? ""}
           title={label}
-          onChange={(e) => { data.stringLiterals[socketKey] = e.target.value; void processGraph(); }}
+          onChange={(e) => { data.stringLiterals[socketKey] = e.target.value; data.edited(); void processGraph(); }}
           {...stopDrag}
         >
           <option value="">Pick…</option>
@@ -644,7 +651,7 @@ function FxDateRow({ data, emit, socketKey, label }: {
   useEffect(() => { setVal(data.stringLiterals[socketKey] ?? ""); }, [data.stringLiterals[socketKey]]);
   function commit() {
     const v = val.trim();
-    if (v !== (data.stringLiterals[socketKey] ?? "")) { data.stringLiterals[socketKey] = v; void processGraph(); }
+    if (v !== (data.stringLiterals[socketKey] ?? "")) { data.stringLiterals[socketKey] = v; data.edited(); void processGraph(); }
   }
   return (
     <MeasuredSocketRow side="input" socketKey={socketKey} nodeId={data.id} emit={emit} payload={socket}>
@@ -675,7 +682,7 @@ async function pickFxMode(data: FxNodeType, next: FxMode, set: (o: FxMode) => vo
   data.setMode(next);
   set(next);
   await getOwningView(data.id)?.rerenderNode(data.id);
-  await processGraph();
+  data.edited(); await processGraph();
 }
 
 export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
@@ -686,7 +693,7 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
   const rate = data.cached?.rate ?? null;
   // A preview off the typed amount; the socket carries the true, possibly wired, value.
   const preview = rate != null ? (data.literals.amount ?? 1) * rate : null;
-  const seriesRows = data.cachedSeries?.length ?? 0;
+  const seriesRows = data.cachedSeries ? frameRowCount(data.cachedSeries) : 0;
   const frame = data.outputs.frame;
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const inputKeys = mode === "spot" ? ["amount", "from", "to"] : ["from", "to", "from_date", "to_date"];
@@ -758,7 +765,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   }, [vault]);
   function pickFolder(next: string) {
     setFolder(next);
-    if (next !== data.folder) { data.folder = next; void processGraph(); }
+    if (next !== data.folder) { data.folder = next; data.edited(); void processGraph(); }
   }
   function refresh() {
     void listVaultFolders(vault).then(setFolders);
@@ -768,7 +775,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   function commitField(next: string, current: string, set: (v: string) => void, apply: (v: string) => void) {
     const v = next.trim();
     set(v);
-    if (v !== current) { apply(v); void processGraph(); }
+    if (v !== current) { apply(v); data.edited(); void processGraph(); }
   }
 
   const cube = data.cached;
@@ -802,24 +809,29 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 </button>
               )}
             </div>
-            <select
-                className="sol-conn__select"
-                style={{ width: "100%" }}
-                value={folder}
-                disabled={connected.has("folder")}
-                title={connected.has("folder") ? "Driven by the Folder cable" : undefined}
-                onChange={(e) => pickFolder(e.target.value)}
-                onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-              >
-                <option value="">Whole vault</option>
-                {/* A picked folder that no longer lists still shows, so the selection isn't silently lost. */}
-                {folder && !folders.includes(folder) && <option value={folder}>{folder}</option>}
-                {folders.map((f) => <option key={f} value={f}>{f}</option>)}
-              </select>
+            <PickField
+              value={folder}
+              placeholder="[whole vault]"
+              missing={folder !== "" && !folders.includes(folder)}
+              disabled={connected.has("folder")}
+              title={connected.has("folder") ? "Driven by the Folder cable" : "Choose a vault folder"}
+              onPick={(from) => void chooseFile({
+                from,
+                title: "Choose a vault folder",
+                root: vault,
+                kind: "folder",
+                current: folder || undefined,
+                rootLabel: "Whole vault",
+                list: () => listVaultFolders(vault),
+                files: () => listVaultMarkdownFiles(vault),
+                recentKey: "vault-folder",
+                blocked: vault.trim() === "" ? "Set the Obsidian vault folder in Settings." : undefined,
+              }).then((rel) => { if (rel !== null) pickFolder(rel); })}
+            />
             <label className="sol-conn__field" title="Only notes whose name matches. * stands for anything.">
               Filter
               <input
-                className="sol-conn__url" style={FIELD_INPUT} type="text" value={connected.has("glob") ? "" : glob}
+                className="sol-conn__url sol-placeholder-example" style={FIELD_INPUT} type="text" value={connected.has("glob") ? "" : glob}
                 placeholder={connected.has("glob") ? "Driven by the cable" : "2026-*"}
                 spellCheck={false} disabled={connected.has("glob")}
                 onChange={(e) => setGlob(e.target.value)}
@@ -831,7 +843,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
             <label className="sol-conn__field" title="Reads a date out of each note's name. Blank detects the format.">
               Date in name
               <input
-                className="sol-conn__url" style={FIELD_INPUT} type="text" value={nameFormat} placeholder="auto" spellCheck={false}
+                className="sol-conn__url" style={FIELD_INPUT} type="text" value={nameFormat} placeholder="[auto]" spellCheck={false}
                 onChange={(e) => setNameFormat(e.target.value)}
                 onBlur={(e) => commitField(e.target.value, data.nameFormat, setNameFormat, (v) => { data.nameFormat = v; })}
                 onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
@@ -841,7 +853,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
             <label className="sol-conn__field" title="Add a body column with each note's markdown">
               <input
                 type="checkbox" checked={data.includeBody}
-                onChange={(e) => { data.includeBody = e.target.checked; void processGraph(); }}
+                onChange={(e) => { data.includeBody = e.target.checked; data.edited(); void processGraph(); }}
                 onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
               />
               Include body
@@ -880,7 +892,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
     data.setProvider(next);
     setProvider(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
   function commitToken() {
     if (token.trim() !== apiKeyStore.get(TASKNOTES_KEY_ID)) {
@@ -911,7 +923,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
       {provider === "calendar" && <InlineInputs node={data} emit={emit} />}
       <div className="sol-conn">
         <input
-          className="sol-conn__url"
+          className="sol-conn__url sol-placeholder-example"
           type="password"
           value={token}
           placeholder="API token"

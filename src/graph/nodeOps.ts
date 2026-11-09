@@ -4,11 +4,12 @@ import type { NodeCatalogEntry } from "./AddNodeMenu";
 import type { SocketDataType } from "./sockets";
 import { DIST_SPECS, DistributionsNode, type DistKey } from "./nodes/distribution";
 
-import { ChartNode, SparklineNode, SurfaceNode, ProportionNode, RecordNode } from "./nodes/visual";
-import { CHART_OP_META, SPARKLINE_OP_META, PROPORTION_OP_META, RECORD_OP_META } from "./nodes/visual";
+import { ChartNode, SparklineNode, SurfaceNode, ProportionNode, RecordNode, ConditionalRegionsNode } from "./nodes/visual";
+import { SolidNode, SOLID_OP_META } from "./nodes/geometryFigures";
+import { CHART_OP_META, SPARKLINE_OP_META, PROPORTION_OP_META, RECORD_OP_META, REGIONS_OP_META } from "./nodes/visual";
 import {
-  FillNode, SetsNode, SumIfsNode,
-  FILL_OP_META, COND_AGG_OP_META,
+  FillNode, SetsNode, SumIfsNode, ShuffleNode,
+  FILL_OP_META, COND_AGG_OP_META, SHUFFLE_OP_META,
   SET_META, PAD_OP_META, PadNode,
   SeriesNode,
 } from "./nodes/list";
@@ -16,6 +17,7 @@ import { HeadNode, ColumnsNode, HEAD_OP_META, COLUMNS_OP_META } from "./nodes/fr
 import { RegexNode, REGEX_OP_META } from "./nodes/text";
 import { DATE_DIFF_OP_META, DateTimeValueNode, WorkdaysNode } from "./nodes/date";
 import { IFErrorNode } from "./nodes/logic";
+import { CastNode, CAST_OP_META } from "./nodes/cast";
 import { ValueInputNode, VALUE_INPUT_OP_META } from "./nodes/control";
 import { ByAxisNode, BY_AXIS_OP_META } from "./nodes/tableLambda";
 import { StackNode, STACK_OP_META } from "./nodes/matrix";
@@ -24,7 +26,7 @@ import {
   IsEvenOddNode, ComparisonNode, IsTestNode,
   PARITY_OP_META, COMPARISON_OP_META, IS_TEST_OP_META,
 } from "./nodes/logic";
-import { RegressionNode, CorrelNode, ForecastNode, LinestNode, REGRESSION_OP_META, CORREL_OP_META, FORECAST_OP_META, FIT_OP_META } from "./nodes/stats";
+import { CorrelNode, ForecastNode, LinestNode, CORREL_OP_META, FORECAST_OP_META, FIT_OP_META, type CorrelOp } from "./nodes/stats";
 import {
   TwoInputMathNode, GCDNode, RoundNNode,
   TWO_INPUT_MATH_OP_META, GCD_OP_META, ROUNDN_OP_META,
@@ -34,13 +36,13 @@ import {
   BesselNode, BitwiseNode,
   BondPricingNode, BOND_PRICING_META, BooleanOpNode, CharCodeNode, 
   CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
-  ConfidenceNode, ConstantNode, CouponNode, CovarianceNode,
-  DateAddNode, DateDiffNode, EpochNode, SmoothNode, SMOOTH_OP_META, type SmoothOp, ReturnsNode, RETURNS_OP_META, type ReturnsOp, DISCOUNT_SECURITY_META,
+  ConfidenceNode, ConstantNode, CouponNode,
+  DateAddNode, DateDiffNode, EpochNode, SmoothNode, SMOOTH_OP_META, type SmoothOp, DiffNode, DIFF_OP_META, type DiffOp, ReturnsNode, RETURNS_OP_META, type ReturnsOp, DISCOUNT_SECURITY_META,
   DatePartNode, DepreciationNode, DollarNode, DurationNode,
   ESeriesNode, 
   FisherNode,
   MRoundNode,
-  MatDetNode, MathFXNode, 
+  MatDetNode, MathFXNode, TableMultNode, TABLE_MULT_OP_META, type TableMultOp, MatEigenNode, MAT_EIGEN_OP_META, type MatEigenOp, TableTransposeNode, TABLE_TRANSPOSE_OP_META, type TableTransposeOp, 
   PhysicsConstantNode,
   DiscountSecurityNode, AccruedInterestNode, ACCRUED_INTEREST_OP_META,
   PaymentBreakdownNode, PAYMENT_BREAKDOWN_OP_META,
@@ -50,10 +52,10 @@ import {
   TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode,
   TodayNowNode, UrlEncodeNode, WeekInfoNode, 
   WeightedNode,
-} from "./rete-nodes";
+} from "./nodeClasses";
 
 
-export type OpExposure = "collapsed" | "leaves";
+type OpExposure = "collapsed" | "leaves";
 
 interface NodeOpsBase {
   type: string;
@@ -66,7 +68,7 @@ interface NodeOpsBase {
   primaryRow?: boolean;
 }
 
-export type NodeOpsDecl = NodeOpsBase & (
+type NodeOpsDecl = NodeOpsBase & (
   | { ops: Array<OpEntryDecl>; create: (op: string) => unknown }
   | { ops?: undefined; create?: undefined }
 );
@@ -90,6 +92,10 @@ const RANK_PERCENTILE_LEAF_OPS = [
   "large", "small", "rank-eq", "rank-avg", "percentile-inc", "quartile-inc", "percentrank-inc",
 ];
 
+const CORREL_LEAF_OPS = ["correl", "spearman", "kendall", "covariance-p", "covariance-s", "steyx"];
+/** The Correlation card's ops, split between its two Add-menu hosts so SLOPE and INTERCEPT sit under STEYX. */
+const correlOps = (ops: CorrelOp[]): OpEntryDecl[] => fromMeta(CORREL_OP_META).filter((o) => ops.includes(o.op as CorrelOp));
+
 export const NODE_OPS: NodeOpsDecl[] = [
   { type: "value-input", ctor: ValueInputNode, ops: fromMeta(VALUE_INPUT_OP_META),
     create: (op) => new ValueInputNode({ op: op as never }), primaryRow: true },
@@ -101,7 +107,11 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new ProportionNode({ op: op as never }) },
   { type: "record", ctor: RecordNode, ops: fromMeta(RECORD_OP_META),
     create: (op) => new RecordNode({ op: op as never }) },
+  { type: "conditional-regions", ctor: ConditionalRegionsNode, ops: fromMeta(REGIONS_OP_META),
+    create: (op) => new ConditionalRegionsNode({ op: op as never }) },
   { type: "surface", ctor: SurfaceNode },
+  { type: "geo-solid", ctor: SolidNode, ops: fromMeta(SOLID_OP_META),
+    create: (op) => new SolidNode({ op }) },
   { type: "distributions", ctor: DistributionsNode, ops: DIST_OPS,
     create: (op) => new DistributionsNode({ op: op as never }) },
 
@@ -125,8 +135,12 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new ColumnsNode({ op: op as never }), leafOps: ["keep", "drop"] },
   { type: "list-pad", ctor: PadNode, ops: fromMeta(PAD_OP_META),
     create: (op) => new PadNode({ op: op as never }) },
+  { type: "list-shuffle", ctor: ShuffleNode, ops: fromMeta(SHUFFLE_OP_META),
+    create: (op) => new ShuffleNode({ op: op as never }) },
   { type: "list-sets", ctor: SetsNode, ops: fromMeta(SET_META),
     create: (op) => new SetsNode({ op: op as never }) },
+  { type: "cast", ctor: CastNode, ops: fromMeta(CAST_OP_META),
+    create: (op) => new CastNode({ op: op as never }), primaryRow: true },
   { type: "iferror", ctor: IFErrorNode,
     ops: [{ op: "iferror", label: "IFERROR" }, { op: "ifna", label: "IFNA" }],
     create: (op) => new IFErrorNode({ op: op as never }), leafOps: ["iferror", "ifna"] },
@@ -134,10 +148,10 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new RegexNode({ op: op as never }) },
   { type: "sumifs", ctor: SumIfsNode, ops: fromMeta(COND_AGG_OP_META),
     create: (op) => new SumIfsNode({ op: op as never }) },
-  { type: "regression-steyx", ctor: RegressionNode, ops: fromMeta(REGRESSION_OP_META),
-    create: (op) => new RegressionNode({ op: op as never }) },
-  { type: "correl-correl", ctor: CorrelNode, ops: fromMeta(CORREL_OP_META),
-    create: (op) => new CorrelNode({ op: op as never }) },
+  { type: "correl-correl", ctor: CorrelNode, ops: correlOps(["correl", "rsq", "spearman", "kendall", "covariance-p", "covariance-s"]),
+    leafOps: CORREL_LEAF_OPS, create: (op) => new CorrelNode({ op: op as never }) },
+  { type: "regression-steyx", ctor: CorrelNode, ops: correlOps(["slope", "intercept", "steyx"]),
+    leafOps: CORREL_LEAF_OPS, create: (op) => new CorrelNode({ op: op as never }) },
   { type: "forecast", ctor: ForecastNode, ops: fromMeta(FORECAST_OP_META),
     create: (op) => new ForecastNode({ op: op as never }) },
   { type: "linest", ctor: LinestNode, ops: fromMeta(FIT_OP_META),
@@ -172,11 +186,13 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "confidence-norm", ctor: ConfidenceNode },
   { type: "constant", ctor: ConstantNode },
   { type: "coupon-coupdaybs", ctor: CouponNode },
-  { type: "cov-pop", ctor: CovarianceNode },
   { type: "date-add-edate", ctor: DateAddNode },
   { type: "date-epoch-from", ctor: EpochNode },
   { type: "returns", ctor: ReturnsNode, ops: fromMeta(RETURNS_OP_META),
     create: (op) => new ReturnsNode({ op: op as ReturnsOp }) },
+  { type: "list-diff", ctor: DiffNode,
+    ops: Object.entries(DIFF_OP_META).map(([op, m]) => ({ op, label: m.name, fx: m.fx, keywords: m.keywords })),
+    create: (op) => new DiffNode({ op: op as DiffOp }) },
   { type: "list-smooth", ctor: SmoothNode, ops: fromMeta(SMOOTH_OP_META),
     create: (op) => new SmoothNode({ op: op as SmoothOp }) },
   { type: "date-datedif", ctor: DateDiffNode, ops: fromMeta(DATE_DIFF_OP_META),
@@ -190,6 +206,9 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "fisher-fisher", ctor: FisherNode },
   { type: "math-ceiling", ctor: MRoundNode },
   { type: "matdet-mdeterm", ctor: MatDetNode },
+  { type: "table-mult", ctor: TableMultNode, ops: fromMeta(TABLE_MULT_OP_META), create: (op) => new TableMultNode({ op: op as TableMultOp }) },
+  { type: "mat-eigen", ctor: MatEigenNode, ops: fromMeta(MAT_EIGEN_OP_META), create: (op) => new MatEigenNode({ op: op as MatEigenOp }) },
+  { type: "table-transpose", ctor: TableTransposeNode, ops: fromMeta(TABLE_TRANSPOSE_OP_META), create: (op) => new TableTransposeNode({ op: op as TableTransposeOp }) },
   { type: "math-abs", ctor: MathFXNode },
   { type: "stat-percentile", ctor: RankPercentileNode,
     ops: [{ op: "percentile-inc", label: "PERCENTILE.INC" }, { op: "percentile-exc", label: "PERCENTILE.EXC" }],
@@ -226,7 +245,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "weighted-wavg", ctor: WeightedNode },
 
   { type: "elec-eseries", ctor: ESeriesNode },
-  { type: "em-constant", ctor: PhysicsConstantNode },
+  { type: "physics-constant", ctor: PhysicsConstantNode },
 ];
 
 const BY_TYPE = new Map(NODE_OPS.map((d) => [d.type, d]));
@@ -239,12 +258,12 @@ export function exposureOf(decl: NodeOpsDecl): OpExposure {
   return decl.expose ?? "collapsed";
 }
 
-export function opSearchLabel(hostLabel: string, opLabel: string): string {
+function opSearchLabel(hostLabel: string, opLabel: string): string {
   return `${hostLabel}: ${opLabel}`;
 }
 
 const _primaryOp = new Map<string, string | null>();
-export function primaryOpOf(host: NodeCatalogEntry): string | null {
+function primaryOpOf(host: NodeCatalogEntry): string | null {
   const hit = _primaryOp.get(host.type);
   if (hit !== undefined) return hit;
   let op: string | null = null;
@@ -267,7 +286,7 @@ export function hiddenOps(decl: NodeOpsDecl, host: NodeCatalogEntry): Array<{ op
 }
 
 /** "Excel → Card", or "Excel → Card: Op" when the Excel name is one op's formula name; the arrow tells it from an op row ("Card: Op"). */
-export function excelSearchLabel(name: string, hostLabel: string, opLabel?: string): string {
+function excelSearchLabel(name: string, hostLabel: string, opLabel?: string): string {
   return `${name} → ${opLabel ? opSearchLabel(hostLabel, opLabel) : hostLabel}`;
 }
 

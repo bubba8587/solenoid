@@ -1,6 +1,6 @@
 // [[B3]] sameNodeEverywhere
 import { getOwningEditor } from "./activeGraph";
-import { NoteNode, ReportNode } from "./rete-nodes";
+import { NoteNode, ReportNode } from "./nodeClasses";
 
 /** The Report or Note behind a document id, in whichever graph holds it (a composite's included). */
 export function documentSourceNode(nodeId: string | null | undefined): ReportNode | NoteNode | undefined {

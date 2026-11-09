@@ -12,12 +12,6 @@
   opacity: 1;
 }
 
-/* Clicks pass through at once: the reveal is non-interactive but must not block. */
-.solenoid-load-overlay--leaving {
-  opacity: 0;
-  pointer-events: none;
-}
-
 .solenoid-load-overlay__card {
   min-width: 220px;
   padding: 18px 20px 16px;
@@ -27,9 +21,6 @@
   border-radius: 8px;
   box-shadow: var(--overlay-shadow);
   transition: transform 260ms ease;
-}
-.solenoid-load-overlay--leaving .solenoid-load-overlay__card {
-  transform: translateY(-8px);
 }
 
 .solenoid-load-overlay__label {

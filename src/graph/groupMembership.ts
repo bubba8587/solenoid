@@ -1,13 +1,13 @@
 // [[C86]] membershipByGesture, [[A1]] visualGraphCalculator
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
-import { GroupNode } from "./rete-nodes";
+import { GroupNode } from "./nodeClasses";
 import { resolveColor, paletteStore } from "./palette";
 import { createNotifier } from "./storeKit";
 
 const _byNode = new Map<string, string>();
 // Ids each editor contributed, so a rebuild for one graph (a drill-in) never wipes another's memberships in this app-wide map.
-const _byEditor = new WeakMap<NodeEditor<Schemes>, Set<string>>();
+const _byEditor = new WeakMap<GraphEditor<Schemes>, Set<string>>();
 const { notify, subscribe, version } = createNotifier();
 // The map holds palette slots and `color` resolves them, so a palette change only has to redraw.
 paletteStore.subscribe(notify);
@@ -18,7 +18,7 @@ export const groupMembershipStore = {
   subscribe,
 };
 
-export function rebuildGroupMembership(editor: NodeEditor<Schemes>): void {
+export function rebuildGroupMembership(editor: GraphEditor<Schemes>): void {
   for (const id of _byEditor.get(editor) ?? []) _byNode.delete(id);
   const mine = new Set<string>();
   for (const g of editor.getNodes()) {

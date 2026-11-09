@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { ISOLATE_ON } from "./isolateStore";
 import { shortcutsStore } from "./shortcutsStore";
 import { useEscapeToClose } from "./components/useEscapeToClose";
 import "./ShortcutsOverlay.css";
@@ -15,7 +16,7 @@ const GROUPS: Group[] = [
       { keys: ["A"], label: "Add a node at the cursor" },
       { keys: ["G"], label: "Group the selection" },
       { keys: ["Ctrl", "Shift", "G"], label: "Make a composite from the selection" },
-      { keys: ["I"], label: "Toggle isolate on the selection" },
+      ...(ISOLATE_ON ? [{ keys: ["I"], label: "Toggle isolate on the selection" }] : []),
       { keys: ["T"], label: "Tidy: auto-arrange the selection, or all" },
       { keys: ["E"], label: "Expand or collapse groups, selected or all" },
       { keys: ["F"], label: "Autofit the group box to members, selected or all" },
@@ -52,7 +53,7 @@ const GROUPS: Group[] = [
       { keys: ["Drag"], label: "Pan the canvas" },
       { keys: ["Scroll"], label: "Zoom in / out" },
       { keys: ["Ctrl", "click"], label: "Toggle a node in the selection" },
-      { keys: ["Esc"], label: "Exit isolate" },
+      ...(ISOLATE_ON ? [{ keys: ["Esc"], label: "Exit isolate" }] : []),
     ],
   },
   {

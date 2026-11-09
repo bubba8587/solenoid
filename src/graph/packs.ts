@@ -12,6 +12,7 @@ import { SETS_PACK } from "./packs/sets";
 import { EARTHSKY_PACK } from "./packs/earthsky";
 import { CHEMISTRY_PACK } from "./packs/chemistry";
 import { SCIENTIFIC_PACK } from "./packs/scientific";
+import { SIGNALS_PACK } from "./packs/signals";
 import { DATA_SCIENCE_PACK } from "./packs/datascience";
 import type { Pack, PackPlacement } from "./packs/packShared";
 
@@ -23,6 +24,7 @@ export const BUILTIN_PACKS: Pack[] = [
   GEOMETRY_PACK,
   TIMESAVERS_PACK,
   SCIENTIFIC_PACK,
+  SIGNALS_PACK,
   DATA_SCIENCE_PACK,
   ELECTRICITY_PACK,
   ELECTROMAGNETISM_PACK,
@@ -44,7 +46,7 @@ export const NODE_PACK_TAGS: Record<string, string[]> = (() => {
 })();
 
 // Custom packs from the user data folder: not read yet (docs/backlog.md).
-export interface CustomPack extends Pack { source: string }
+interface CustomPack extends Pack { source: string }
 
 export function customPacksFolder(): string {
   return "<app data>/Solenoid/packs";
@@ -58,7 +60,7 @@ export function allPacks(): Pack[] {
   return [...BUILTIN_PACKS, ...loadCustomPacks()];
 }
 
-export interface PlacedPackNode {
+interface PlacedPackNode {
   packId: string;
   packName: string;
   placement: PackPlacement;

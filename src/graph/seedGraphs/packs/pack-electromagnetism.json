@@ -1,0 +1,378 @@
+{
+  "v": 2,
+  "order": 5060,
+  "label": "Electromagnetism: light, charge and fields",
+  "group": "Packs",
+  "nodes": [
+    {
+      "id": "head",
+      "x": 0,
+      "y": 0,
+      "type": "NoteNode",
+      "init": {
+        "label": "Electromagnetism",
+        "color": "amber",
+        "collapsed": false,
+        "width": 760,
+        "height": 150,
+        "body": "Green light oscillates about 545 trillion times a second. From that one number: its **wavelength** (the equation solves λ = c / f), its place in the **spectrum**, and the **energy** of one photon (E = hf). Below, the force between two point charges and the field around a current-carrying wire.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "f",
+      "x": 0,
+      "y": 220,
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Frequency (Hz)",
+        "op": "number",
+        "value": "5.45E+14",
+        "format": "auto",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "textAlign": "right",
+        "textMarkdown": false,
+        "textMono": false,
+        "logicalStyle": "truefalse",
+        "grouping": true,
+        "negativeStyle": "minus",
+        "scaleMode": "none",
+        "width": 180,
+        "height": 140,
+        "chip": false
+      }
+    },
+    {
+      "id": "cc",
+      "x": 0,
+      "y": 420,
+      "type": "PhysicsConstantNode",
+      "init": {
+        "label": "",
+        "op": "c",
+        "width": 240,
+        "height": 110
+      }
+    },
+    {
+      "id": "hh",
+      "x": 0,
+      "y": 580,
+      "type": "PhysicsConstantNode",
+      "init": {
+        "label": "",
+        "op": "h",
+        "width": 240,
+        "height": 110
+      }
+    },
+    {
+      "id": "wl",
+      "x": 440,
+      "y": 220,
+      "type": "EquationNode",
+      "init": {
+        "label": "Wavelength ↔ Frequency",
+        "expr": "lambda = c / f",
+        "locked": true,
+        "width": 240,
+        "height": 220,
+        "varDescriptions": {
+          "c": "Speed of light (m/s)",
+          "lambda": "Wavelength (m)",
+          "f": "Frequency (Hz)"
+        },
+        "varUnits": {
+          "lambda": "m",
+          "f": "Hz"
+        }
+      }
+    },
+    {
+      "id": "band",
+      "x": 880,
+      "y": 220,
+      "type": "EmSpectrumNode",
+      "init": {
+        "label": "EM Spectrum Band",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "pe",
+      "x": 1320,
+      "y": 220,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Photon Energy (Frequency)",
+        "expr": "h*f",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varDescriptions": {
+          "h": "Planck constant (J·s)",
+          "f": "Frequency (Hz)"
+        },
+        "varUnits": {
+          "f": "Hz"
+        },
+        "varRequired": [
+          "h"
+        ]
+      },
+      "literals": {}
+    },
+    {
+      "id": "coul",
+      "x": 440,
+      "y": 620,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Coulomb Force",
+        "expr": "ke*q1*q2/r^2",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varDescriptions": {
+          "ke": "Coulomb constant (N·m²/C²)",
+          "q1": "First charge (C)",
+          "q2": "Second charge (C)",
+          "r": "Distance (m)"
+        },
+        "varUnits": {
+          "r": "m"
+        },
+        "varRequired": [
+          "ke"
+        ]
+      },
+      "literals": {
+        "q1": 0.000001,
+        "q2": -0.000002,
+        "r": 0.05
+      }
+    },
+    {
+      "id": "ke",
+      "x": 0,
+      "y": 760,
+      "type": "PhysicsConstantNode",
+      "init": {
+        "label": "",
+        "op": "ke",
+        "width": 240,
+        "height": 110
+      }
+    },
+    {
+      "id": "mu0",
+      "x": 880,
+      "y": 620,
+      "type": "PhysicsConstantNode",
+      "init": {
+        "label": "",
+        "op": "mu0",
+        "width": 240,
+        "height": 110
+      }
+    },
+    {
+      "id": "bw",
+      "x": 1320,
+      "y": 620,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Straight-Wire Field",
+        "expr": "mu0*i/(2*PI()*r)",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varDescriptions": {
+          "mu0": "Vacuum permeability (H/m)",
+          "i": "Current (A)",
+          "r": "Distance from the wire (m)"
+        },
+        "varUnits": {
+          "i": "A",
+          "r": "m"
+        },
+        "varRequired": [
+          "mu0"
+        ]
+      },
+      "literals": {
+        "i": 10,
+        "r": 0.02
+      }
+    },
+    {
+      "id": "rr",
+      "x": 0,
+      "y": 940,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Distance (m)",
+        "expr": "SEQUENCE(10, 1, 0.02, 0.02)",
+        "locked": false,
+        "castTo": "none",
+        "width": 220,
+        "height": 210
+      },
+      "literals": {}
+    },
+    {
+      "id": "coulR",
+      "x": 440,
+      "y": 940,
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Coulomb Force",
+        "expr": "ke*q1*q2/r^2",
+        "locked": true,
+        "castTo": "none",
+        "width": 220,
+        "height": 210,
+        "varDescriptions": {
+          "ke": "Coulomb constant (N·m²/C²)",
+          "q1": "First charge (C)",
+          "q2": "Second charge (C)",
+          "r": "Distance (m)"
+        },
+        "varUnits": {
+          "r": "m"
+        },
+        "varRequired": [
+          "ke"
+        ]
+      },
+      "literals": {
+        "q1": 0.000001,
+        "q2": 0.000001
+      }
+    },
+    {
+      "id": "coulFrame",
+      "x": 880,
+      "y": 940,
+      "type": "FrameFromListsNode",
+      "init": {
+        "label": "Force by distance",
+        "width": 220,
+        "height": 240,
+        "valueKeys": [
+          "name0",
+          "vals0",
+          "name1",
+          "vals1"
+        ]
+      },
+      "literals": {},
+      "stringLiterals": {
+        "name0": "r (m)",
+        "name1": "F (N)"
+      }
+    },
+    {
+      "id": "coulChart",
+      "x": 1320,
+      "y": 940,
+      "type": "ChartNode",
+      "init": {
+        "label": "Inverse square",
+        "op": "line",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Twice as far, a quarter the force;xlabel=r (m);ylabel=F (N)"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "f",
+      "sourceOutput": "value",
+      "target": "wl",
+      "targetInput": "f"
+    },
+    {
+      "source": "cc",
+      "sourceOutput": "value",
+      "target": "wl",
+      "targetInput": "c"
+    },
+    {
+      "source": "f",
+      "sourceOutput": "value",
+      "target": "band",
+      "targetInput": "freq"
+    },
+    {
+      "source": "f",
+      "sourceOutput": "value",
+      "target": "pe",
+      "targetInput": "f"
+    },
+    {
+      "source": "hh",
+      "sourceOutput": "value",
+      "target": "pe",
+      "targetInput": "h"
+    },
+    {
+      "source": "ke",
+      "sourceOutput": "value",
+      "target": "coul",
+      "targetInput": "ke"
+    },
+    {
+      "source": "ke",
+      "sourceOutput": "value",
+      "target": "coulR",
+      "targetInput": "ke"
+    },
+    {
+      "source": "mu0",
+      "sourceOutput": "value",
+      "target": "bw",
+      "targetInput": "mu0"
+    },
+    {
+      "source": "rr",
+      "sourceOutput": "result",
+      "target": "coulR",
+      "targetInput": "r"
+    },
+    {
+      "source": "rr",
+      "sourceOutput": "result",
+      "target": "coulFrame",
+      "targetInput": "vals0"
+    },
+    {
+      "source": "coulR",
+      "sourceOutput": "result",
+      "target": "coulFrame",
+      "targetInput": "vals1"
+    },
+    {
+      "source": "coulFrame",
+      "sourceOutput": "frame",
+      "target": "coulChart",
+      "targetInput": "values"
+    }
+  ]
+}

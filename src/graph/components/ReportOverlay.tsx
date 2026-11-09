@@ -1,15 +1,16 @@
 // [[C68]] knapIsTheDocumentSyntax
+import { dropInputCables } from "./cablePrune";
 import { usePendingDraft } from "../draftFlush";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import DOMPurify from "dompurify";
-import { ClassicPreset } from "rete";
+import { sanitizeNoteHtml, useNetworkGrant } from "../noteHtml";
+import { GraphConnection } from "../graphModel";
 import { reportStore } from "../reportStore";
 import { siteChrome } from "../siteChrome";
 import { processGraph } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { documentSourceNode } from "../documentSource";
 import { scheduleAutosave } from "../persistence";
-import { NoteNode, ReportNode } from "../rete-nodes";
+import { NoteNode, ReportNode } from "../nodeClasses";
 import type { SolenoidConnection } from "../schemes";
 import { nodeDisplayNames } from "../nodeNames";
 import { nodeNameStore } from "../nodeNameStore";
@@ -50,7 +51,7 @@ export function ReportOverlay() {
   const embedPopRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(embedPickerOpen, () => setEmbedPickerOpen(false), [embedBtnRef, embedPopRef]);
 
-  // The draft lives here until a commit writes node.body ([[C95]] commitOnEnter); a ref, so any close path can commit it.
+  // The draft lives here until a commit writes node.body ([[B19]] spreadsheetHabits); a ref, so any close path can commit it.
   const draftRef = useRef(node?.body ?? "");
   const lastSyncRef = useRef(node?.body ?? "");
   // Debounced: re-parsing per keystroke remounted the whole preview (the scroll jumped, embeds re-mounted).
@@ -60,7 +61,6 @@ export function ReportOverlay() {
     setPreviewBody(node?.body ?? "");
     draftRef.current = node?.body ?? "";
     lastSyncRef.current = node?.body ?? "";
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId]);
   useEffect(() => {
     const t = setTimeout(() => setPreviewBody(body), 250);
@@ -71,7 +71,6 @@ export function ReportOverlay() {
   const previewSource = node ? node.templateSource(wiredTemplate ? node.activeSource() : previewBody) : "";
   const batch = useMemo<KnapBatch | null>(
     () => node?.records ? { records: node.records, pageName: node.pageName } : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [node, node?.records, node?.pageName, renderVersion],
   );
   const { text: rendered, errors: templateErrors, pages } = useKnapRender(previewSource, node?.templateVars ?? NO_VARS, renderVersion, batch);
@@ -108,18 +107,17 @@ export function ReportOverlay() {
   usePendingDraft(!!node && pageName !== node.pageName, () => void commitPageName());
 
   const tex = useKatexReady();
+  const net = useNetworkGrant(nodeId ?? undefined);
   const bodyHtml = useMemo(
-    () => DOMPurify.sanitize(renderNoteMarkdown(previewText || "")),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [previewText, tex],
+    () => sanitizeNoteHtml(renderNoteMarkdown(previewText || ""), nodeId ?? undefined),
+    [previewText, tex, net],
   );
 
   const sourceRef = useRef<HTMLTextAreaElement>(null);
 
   const noteHtml = useMemo(
-    () => note ? DOMPurify.sanitize(renderNoteMarkdown(parseNoteFrontmatter(note.body).body || "")) : "",
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [note, note?.body, tex],
+    () => note ? sanitizeNoteHtml(renderNoteMarkdown(parseNoteFrontmatter(note.body).body || ""), note.id) : "",
+    [note, note?.body, tex, net],
   );
 
   if (!opened) return null;
@@ -190,14 +188,7 @@ export function ReportOverlay() {
     node!.body = current;
     scheduleAutosave();
     const { removedInputs } = node!.syncRefs();
-    const ed = getOwningEditor(node!.id);
-    if (ed && removedInputs.length) {
-      for (const c of ed.getConnections()) {
-        if (c.target === node!.id && removedInputs.includes(c.targetInput)) {
-          await ed.removeConnection(c.id);
-        }
-      }
-    }
+    if (removedInputs.length) await dropInputCables(node!.id, removedInputs);
     await getOwningView(node!.id)?.rerenderNode(node!.id);
     await processGraph(node!.id);
     setRenderVersion((v) => v + 1);
@@ -235,7 +226,7 @@ export function ReportOverlay() {
     node!.syncRefs(); // mint the input now so the wire has a socket
     const ed = editor;
     if (ed && !ed.getConnections().some((c) => c.target === node!.id && c.targetInput === refName)) {
-      await ed.addConnection(new ClassicPreset.Connection(note, "document", node!, refName) as SolenoidConnection);
+      await ed.addConnection(new GraphConnection(note, "document", node!, refName) as SolenoidConnection);
     }
     lastSyncRef.current = node!.body;
     scheduleAutosave();
@@ -259,7 +250,7 @@ export function ReportOverlay() {
           <span className="report-title">{node.label?.trim() || "Report"}</span>
           <div className="report-header-actions">
             {docked && (
-              <div className="report-viewtoggle" role="tablist">
+              <div className="report-viewtoggle" role="tablist" focusgroup="tablist inline">
                 <button
                   type="button" role="tab" aria-selected={mobileTab === "draft"}
                   className={`report-viewtoggle__seg${mobileTab === "draft" ? " report-viewtoggle__seg--active" : ""}`}
@@ -353,7 +344,7 @@ export function ReportOverlay() {
           </div>
         </div>
 
-        <div className="report-tabs" role="tablist">
+        <div className="report-tabs" role="tablist" focusgroup="tablist inline">
           <button
             type="button"
             role="tab"

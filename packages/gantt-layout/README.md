@@ -13,7 +13,7 @@ is integer, so no timezone or DST can shift a column.
   bars)/`resource`/`units`), links (`FS|SS|FF|SF` with
   lag), non-working spans, holidays, today, status date, project span, per-task predecessor text,
   and the resolved view options. `finish` is inclusive (the last day the task occupies); the
-  figure adds one day when it draws a bar. The app's `schedule-engine` and `ganttPayload.ts` build
+  figure adds one day when it draws a bar. The app's scheduler (`crates/solenoid-schedule`) and `ganttPayload.ts` build
   this; nothing in this package parses dates (a `parseDate` is injected for window bounds).
 - `layoutGantt(payload, { width, height?, rowHeight?, scrollTop?, viewportHeight? })` →
   `RenderFrame` (`frame.ts`): scale tiers, rows, bars, links, shading, grid lines, today/status

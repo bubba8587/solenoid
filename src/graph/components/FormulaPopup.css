@@ -29,7 +29,7 @@
   justify-content: flex-start;
   min-height: 76px;
   padding: 16px 14px;
-  background: var(--border-subtle);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow-x: auto;
@@ -71,31 +71,6 @@
   color: color-mix(in srgb, var(--node-accent, var(--accent)) 70%, var(--text));
   line-height: 30px;
   user-select: none;
-}
-
-.formula-popup__textarea {
-  flex: 1;
-  width: 0;
-  min-height: 30px;
-  max-height: 160px;
-  padding: 6px 8px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  color: var(--text);
-  resize: vertical;
-  box-sizing: border-box;
-}
-.formula-popup__textarea:focus {
-  outline: none;
-  border-color: var(--node-accent, var(--accent));
-}
-.formula-popup__textarea[readonly] {
-  color: var(--text-dim);
-  cursor: default;
 }
 
 .formula-popup__edit-row .fx-editor { flex: 1; min-width: 0; }
@@ -206,7 +181,7 @@
   color: var(--text-dim);
 }
 
-/* Engine-disclosure note: the formula runs on Formula.js, not Solenoid's own nodes. */
+/* The note under the editor: what the formula surface reads. */
 .formula-popup__engine-note {
   margin-top: 10px;
   padding: 6px 8px;

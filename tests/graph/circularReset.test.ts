@@ -1,47 +1,27 @@
-// [[C23]] calcModes
+// [[C23]] calcModes, [[compute-pass#The model pass]], [[error-values#`#CIRC!` is engine-level, not a producer]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards, type SolError } from "../../src/graph/errorValue";
+import { type SolError } from "../../src/graph/errorValue";
 import { setEditorRefs, processGraph } from "../../src/graph/process";
 import { cableValueStore } from "../../src/graph/cableValueStore";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
 
-// Regression: closing a dependency loop must surface #CIRC!, not blow the stack.
-//
-// Canvas's connectioncreated pipe (Canvas.tsx ~2444, "audit finding 40") reacts to
-// a single new cable with a TARGETED pass: processGraph(cable.target, undefined,
-// { topology: true }). runGraphPass then calls `_engine.reset(changedNodeId)`
-// (process.ts:518) BEFORE the #CIRC! loop-seeding runs — and rete-engine 2.1.1's
-// DataflowEngine.reset(nodeId) walks outgoing connections RECURSIVELY with no
-// visited set, so the moment the new cable closes a cycle the reset chases it
-// around forever and throws "RangeError: Maximum call stack size exceeded".
-// The old (pre compile/fuse merge) pipe called the bare processGraph(), whose
-// full `_engine.reset()` is just cache.clear() — no recursion — and the seeding
-// then dead-ended the loop members with #CIRC!.
-//
-// This test drives the EXACT post-merge pipe call. It fails (RangeError) until
-// the targeted pass is made cycle-safe.
 
 function connect(
-  editor: NodeEditor<Schemes>,
-  src: ClassicPreset.Node, srcOut: string, tgt: ClassicPreset.Node, tgtIn: string,
+  editor: GraphEditor<Schemes>,
+  src: GraphNode, srcOut: string, tgt: GraphNode, tgtIn: string,
 ) {
   return editor.addConnection(
-    new ClassicPreset.Connection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
+    new GraphConnection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
   );
 }
 
 function makeGraph() {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);                  // same wrappers Canvas installs
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   // runGraphPass touches the view only via `area.rerenderNode(id)` — stub it.
@@ -60,13 +40,12 @@ describe("closing a cycle with a live cable (targeted topology pass)", () => {
     await connect(editor, a, "result", b, "a");
     await connect(editor, b, "result", a, "a"); // this cable CLOSES the loop
 
-    // Exactly what Canvas's connectioncreated pipe now does for the new cable
-    // (target = a): a targeted pass with the topology flag.
+    // The pass a new cable runs: targeted at its target, with the topology flag.
     await expect(
       processGraph(a.id, undefined, { topology: true }),
     ).resolves.not.toThrow();
 
-    // The loop members must carry the seeded #CIRC! error, like a full pass gives.
+
     for (const n of [a, b]) {
       const out = cableValueStore.get(n.id, "result");
       expect((out as SolError).code).toBe("#CIRC!");
@@ -92,6 +71,37 @@ describe("pasting a loop (additive pass)", () => {
     const settled = processGraph(undefined, new Set([a.id, b.id])).then(() => "settled");
     const timeout = new Promise((r) => setTimeout(() => r("hung"), 500));
     expect(await Promise.race([settled, timeout])).toBe("settled");
+    for (const n of [a, b]) expect((cableValueStore.get(n.id, "result") as SolError).code).toBe("#CIRC!");
+  });
+});
+
+// A card that answers after a moment, as a Script card in its Worker or a Web Source does.
+class Slow extends GraphNode {
+  constructor() {
+    super("slow");
+    this.addOutput("out", new GraphOutput(new GraphSocket("number")));
+  }
+  async data() {
+    await new Promise((r) => setTimeout(r, 5));
+    return { out: 1 };
+  }
+}
+
+describe("a cable that closes a loop while a pass waits", () => {
+  it("is seeded #CIRC! before the pass fetches into it, so the pass settles", async () => {
+    const { editor } = makeGraph();
+    const slow = new Slow();
+    const a = new ArithmeticNode({ op: "add" });
+    const b = new ArithmeticNode({ op: "add" });
+    for (const n of [slow, a, b]) await editor.addNode(n as unknown as Schemes["Node"]);
+    await connect(editor, slow, "out", a, "a");
+    await connect(editor, a, "result", b, "a");
+
+    const settled = processGraph().then(() => "settled");
+    await connect(editor, b, "result", a, "b"); // closes the loop while the slow card waits
+    const timeout = new Promise((r) => setTimeout(() => r("hung"), 1000));
+    expect(await Promise.race([settled, timeout])).toBe("settled");
+    await processGraph();
     for (const n of [a, b]) expect((cableValueStore.get(n.id, "result") as SolError).code).toBe("#CIRC!");
   });
 });

@@ -1,7 +1,8 @@
-// [[C16]] polarsEngine (a lazy frame ref, head-N preview)
+// [[C130]] rustCore (a lazy frame ref, head-N preview)
 import { useEffect, useState } from "react";
 import { tablePopup, type SourceCommitRefresh, type TablePopupState } from "../tablePopupStore";
 import { frameRowCount, isFrameValue, type FrameValue, type FrameSourceColumn } from "../frame";
+import { frameRows, fullList } from "../listPreview";
 import { collectPreview, type FrameRef } from "../frameBackend";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
@@ -18,7 +19,7 @@ export function FrameRefChip({ frameRef, label, size = "sm", accent }: {
     void collectPreview(frameRef).then((r) => { if (live && isFrameValue(r)) setValue(r); });
     return () => { live = false; };
   }, [frameRef]);
-  if (!value) return <span className="array-chip array-chip--placeholder" style={accent ? { color: accent } : undefined}>{label ? `${label}: ` : ""}table…</span>;
+  if (!value) return <span className="array-chip array-chip--placeholder" style={accent ? { color: accent } : undefined}>{label ? `${label}: ` : ""}Frame…</span>;
   return <FrameChip value={value} label={label} size={size} accent={accent} />;
 }
 
@@ -32,11 +33,12 @@ type FrameOpenProps = {
   onCommitSource?: (columns: FrameSourceColumn[]) => Promise<SourceCommitRefresh | null>;
   lambdaOptions?: string[];
   formLayout?: string;
+  cardLayout?: string;
   popupOverrides?: Partial<TablePopupState>;
 };
 
 /** What a frame chip's click opens: the grid editor for a source, else the value popup. `el` lends the popup its accent and group colors. */
-export function openFrameChipPopup(el: HTMLElement, { value, label, hostId, accent, source, onSaveSource, onCommitSource, lambdaOptions, formLayout, popupOverrides }: FrameOpenProps): void {
+export function openFrameChipPopup(el: HTMLElement, { value, label, hostId, accent, source, onSaveSource, onCommitSource, lambdaOptions, formLayout, cardLayout, popupOverrides }: FrameOpenProps): void {
   const st = readChipPopupStyle(el, "--sock-frame");
   if (!source || !onSaveSource) {
     void openFramePopup(value, {
@@ -64,6 +66,7 @@ export function openFrameChipPopup(el: HTMLElement, { value, label, hostId, acce
     groupColorDark: st.groupColorDark,
     pinNodeId: hostId ?? undefined,
     formLayout,
+    cardLayout,
     lambdaOptions: lambdaOptions ?? [],
     sourceExprs: source.map((c) => c.expr),
     computedCells: Array.from(
@@ -75,7 +78,7 @@ export function openFrameChipPopup(el: HTMLElement, { value, label, hostId, acce
   });
 }
 
-export function FrameChip({ value, label, size = "md", accent, source, onSaveSource, onCommitSource, pinNodeId, lambdaOptions, formLayout, popupOverrides }: {
+export function FrameChip({ value, label, size = "md", accent, source, onSaveSource, onCommitSource, pinNodeId, lambdaOptions, formLayout, cardLayout, popupOverrides }: {
   value: FrameValue;
   label?: string;
   size?: "sm" | "md";
@@ -86,11 +89,13 @@ export function FrameChip({ value, label, size = "md", accent, source, onSaveSou
   pinNodeId?: string;
   lambdaOptions?: string[];
   formLayout?: string;
+  cardLayout?: string;
   popupOverrides?: Partial<TablePopupState>;
 }) {
   const ctxHostId = useHostNodeId();
   const hostId = pinNodeId ?? ctxHostId;
-  const rows = frameRowCount(value);
+  // A big frame a card's box shows is its first rows (`listPreview.ts`): the chip counts the whole, the popup opens on it.
+  const rows = frameRows(value);
   const cols = value.columns.length;
   const totalRows = value.__totalRows ?? rows;
   const approx = value.__approx != null;
@@ -103,7 +108,7 @@ export function FrameChip({ value, label, size = "md", accent, source, onSaveSou
       title={`${approx ? "≈ " : ""}${totalRows}×${cols} frame${approx ? ", extrapolated from a sketch-mode sample" : ""}${computedCols ? `, ${computedCols} computed column${computedCols === 1 ? "" : "s"}` : ""}. ${onSaveSource ? "Edit" : "View"}.`}
       onClick={(e) => {
         e.stopPropagation();
-        openFrameChipPopup(e.currentTarget, { value, label, hostId, accent, source, onSaveSource, onCommitSource, lambdaOptions, formLayout, popupOverrides });
+        openFrameChipPopup(e.currentTarget, { value: fullList(value), label, hostId, accent, source, onSaveSource, onCommitSource, lambdaOptions, formLayout, cardLayout, popupOverrides });
       }}
       onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}

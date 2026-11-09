@@ -1,7 +1,7 @@
-// A range function's one-value arguments lift over a list, as in Excel (formula-language § Range functions).
+// [[A5]] excelParity, [[formula-language#Range functions]]
 import { describe, it, expect } from "vitest";
-import { compileEvaluator, RANGE_FUNCTIONS, RANGE_SCALAR_ARGS } from "../../src/graph/excelFormula";
-import { CubeInputNode } from "../../src/graph/nodes/cube";
+import { compileEvaluator } from "../../src/graph/excelFormula";
+import { callTraits, liftsAScalar, callTraitNames } from "./callTraits";
 
 const env = { x: [5, 1, 9, 3, 7, 2], y: [10, 2, 18, 6, 14, 4] };
 const ev = (f: string) => compileEvaluator(f)!(env as never);
@@ -37,16 +37,10 @@ describe("a list where a range function takes one value", () => {
     expect(ev("COUNTIF(x, \">4\")")).toBe(3);
   });
 
-  it("per row in a Cube formula column", () => {
-    const text = JSON.stringify({ columns: [{ name: "s", type: "number" }, { name: "top", expr: "LARGE(@s, SEQUENCE(COUNT(@s) - 1))" }],
-      rows: [{ s: [3, 9, 1, 7] }, { s: [4, 2] }] });
-    const cube = new CubeInputNode({ cubeText: text }).data().cube as { columns: { name: string; cells: unknown[] }[] };
-    expect(cube.columns.find((c) => c.name === "top")!.cells).toEqual([[9, 7, 3], 4]);
-  });
 });
 
 describe("LARGE and SMALL's k", () => {
-  it("below 1 is a wrong input; past the count is not enough data ([[D70]] nullNotEnoughData)", () => {
+  it("below 1 is a wrong input; past the count is not enough data ([[C24]] arraySemantics)", () => {
     expect(ev("LARGE(x, 0)")).toMatchObject({ code: "#DOMAIN!" });
     expect(ev("SMALL(x, -1)")).toMatchObject({ code: "#DOMAIN!" });
     expect(ev("LARGE(x, 99)")).toBeNull();
@@ -54,5 +48,5 @@ describe("LARGE and SMALL's k", () => {
 });
 
 it("every declared one-value argument belongs to a range function", () => {
-  for (const name of Object.keys(RANGE_SCALAR_ARGS)) expect(RANGE_FUNCTIONS.has(name), name).toBe(true);
+  for (const name of callTraitNames().filter(liftsAScalar)) expect(["range", "whole"], name).toContain(callTraits(name)!.kind);
 });

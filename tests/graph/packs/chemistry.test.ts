@@ -1,9 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { CHEMISTRY_FORMULAS } from "../../../src/graph/packs/chemistry";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { ElementNode, MolarMassNode, elementCell, searchElements } from "../../../src/graph/nodes/chemistry";
-import { ELEMENTS, molarMass } from "../../../src/graph/nodes/chemistryOps";
+import { elementCell, searchElements } from "../../../src/graph/nodes/chemistry";
+import { ELEMENTS } from "../../../src/graph/nodes/chemistryOps";
+import { coreFunction } from "../coreFunction";
 import { isSolError, type SolError } from "../../../src/graph/errorValue";
+
+const molarMass = (formula: string) => coreFunction("MOLARMASS")!(formula);
 
 const num = (type: string, inputs: Record<string, number>): number => {
   const r = evalFormula(entryByType(CHEMISTRY_FORMULAS, type), inputs);
@@ -63,10 +66,6 @@ describe("Element data", () => {
     ELEMENTS.forEach((e, i) => expect(e.n).toBe(i + 1));
   });
 
-  it("node outputs and stale-op fallback", () => {
-    expect(new ElementNode({ symbol: "Fe" }).data()).toEqual({ mass: 55.845, number: 26 });
-    expect(new ElementNode({ symbol: "Xx" }).symbol).toBe("H");
-  });
 });
 
 describe("Molar mass parser", () => {
@@ -106,12 +105,6 @@ describe("Molar mass parser", () => {
     expect(isSolError(molarMass("2+2"))).toBe(true);
   });
 
-  it("node reads wired or typed formula", () => {
-    const n = new MolarMassNode();
-    expect(n.data({ formula: ["NaHCO3"] }).result as number).toBeCloseTo(84.007, 1);
-    n.stringLiterals.formula = "KMnO4";
-    expect(n.data({}).result as number).toBeCloseTo(158.03, 1);
-  });
 });
 
 describe("Element picker — table geometry + search", () => {

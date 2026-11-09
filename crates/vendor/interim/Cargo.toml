@@ -1,0 +1,40 @@
+[package]
+name = "interim"
+version = "0.2.1"
+authors = ["Conrad Ludgate <conradludgate@gmail.com"]
+edition = "2021"
+description = "parses simple English dates, inspired by Linux date command, and forked from chrono-english"
+repository = "https://github.com/conradludgate/interim"
+readme = "README.md"
+license="MIT"
+rust-version = "1.81.0"
+
+[features]
+default = ["std"]
+# Compatibility feature; error reporting is available without std.
+std = []
+fancy-diagnostics = []
+chrono_0_4 = ["dep:chrono"]
+time_0_3 = ["dep:time"]
+jiff_0_1 = ["dep:jiff_0_1"]
+jiff_0_2 = ["dep:jiff_0_2"]
+
+[dependencies]
+time = { version = "0.3.9", default-features = false, optional = true }
+chrono = { version = "0.4.20", default-features = false, optional = true }
+jiff_0_1 = { package = "jiff", version = "0.1", default-features = false, optional = true }
+jiff_0_2 = { package = "jiff", version = "0.2", default-features = false, optional = true }
+logos = { version = "0.15.0", default-features = false, features = ["export_derive"] }
+
+[dev-dependencies]
+chrono = { version = "0.4.20", default-features = false, features = ["clock"] }
+time = { version = "0.3.9", default-features = false, features = ["formatting"] }
+
+jiff_0_1 = { package = "jiff", version = "0.1", features = ["std"] }
+jiff_0_2 = { package = "jiff", version = "0.2", features = ["std"] }
+chrono-tz = "0.10.0"
+
+# Properly document all features on docs.rs
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

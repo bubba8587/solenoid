@@ -1,11 +1,11 @@
 // [[C10]] socketLattice, [[B12]] losslessSaves
 import { describe, it, expect, beforeAll } from "vitest";
-import { ClassicPreset } from "rete";
-import * as Nodes from "../../src/graph/rete-nodes";
+import { GraphNode, GraphSocket } from "../../src/graph/graphModel";
+import * as Nodes from "../../src/graph/nodeClasses";
 import { SolenoidSocket, canConnect } from "../../src/graph/sockets";
 import { CURRENT_SAVE_VERSION } from "../../src/graph/persistenceCore";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 
 // Validates every seed graph against the REAL node classes: each saved type
 // resolves to a constructor, each connection lands on sockets that exist with
@@ -27,12 +27,12 @@ const ANCHORS = new Set(["n", "e", "s", "w", "ne", "nw", "se", "sw"]);
 /** Node types whose `body` is markdown prose the user reads on the canvas. */
 const PROSE_TYPES = new Set(["NoteNode", "ReportNode", "ImportObsidianNode", "PresentationNode"]);
 
-const seedModules = import.meta.glob("../../src/graph/seedGraphs/*.json", { eager: true }) as Record<
+const seedModules = import.meta.glob(["../../src/graph/seedGraphs/*.json", "../../src/graph/seedGraphs/packs/*.json"], { eager: true }) as Record<
   string, { default?: SavedGraph } & SavedGraph
 >;
 
-type Port = { socket?: ClassicPreset.Socket };
-type AnyNode = ClassicPreset.Node & {
+type Port = { socket?: GraphSocket };
+type AnyNode = GraphNode & {
   inputs: Record<string, Port | undefined>;
   outputs: Record<string, Port | undefined>;
 };
@@ -49,7 +49,7 @@ function dataTypeOf(port: Port | undefined): string | null {
 describe("seed menu fields", () => {
   type MenuFields = { v?: unknown; label?: unknown; order?: unknown; group?: unknown };
   const entries = Object.entries(seedModules).map(([path, mod]) => ({
-    name: path.replace("./seedGraphs/", ""),
+    name: path.replace(/^.*seedGraphs\//, ""),
     m: (mod.default ?? mod) as MenuFields,
   }));
 
@@ -101,13 +101,7 @@ for (const [path, mod] of Object.entries(seedModules)) {
       expect(unknownTypes, `unknown node types: ${unknownTypes.join(", ")}`).toEqual([]);
     });
 
-    // A seed may only author `literals` / `stringLiterals` where the user could
-    // have typed them: a class DECLARES the map iff its card edits it inline.
-    // A wire-driven card (the Equation family) declares neither, so authoring a
-    // literal there would plant a hardcoded known the user can't see or edit on
-    // the card — the "TVM fv: 0" bug. Load enforces the same rule (persistence
-    // restores literals only onto declaring classes); this catches the seed at
-    // authoring time instead of silently dropping it.
+    // [[inline-literal-maps#Seeds are checked when they are written]]
     it("authored literals land on inline-editable (declaring) classes only", () => {
       const problems: string[] = [];
       for (const sn of g.nodes) {

@@ -1,16 +1,15 @@
-// [[B12]] losslessSaves, [[C77]] compositeIsSubgraph, [[A1]] visualGraphCalculator
+// [[B12]] losslessSaves, [[C77]] compositeIsSubgraph, [[A1]] visualGraphCalculator, [[composite-nodes#Save and load]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidNode } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { setEditorRefs } from "../../src/graph/process";
 import { CompositeNode, type CompositeInternalSnapshot } from "../../src/graph/nodes/composite";
 import { ValueInputNode } from "../../src/graph/nodes/control";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 import { forgetAllNodes } from "../../src/graph/nodeStoreRegistry";
 import { nodeNameStore } from "../../src/graph/nodeNameStore";
 import { pinStore } from "../../src/graph/pinStore";
@@ -23,13 +22,12 @@ import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";
 
 const ANN = { format: "percent" } as FormatAnnotation;
 
-let editor: NodeEditor<Schemes>;
+let editor: GraphEditor<Schemes>;
 let view: View;
 
 beforeEach(() => {
   forgetAllNodes();
-  editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
+  editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const pos = new Map<string, { x: number; y: number }>();

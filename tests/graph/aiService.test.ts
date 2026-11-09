@@ -1,8 +1,5 @@
-// [[B13]], [[C55]], [[A1]] visualGraphCalculator
-// The palette's service layer, exercised against a FAKE transport: the
-// injected fetch returns hand-built Messages-API responses, so every branch —
-// answer, validated edit, repair round, exhausted repairs, refusal — runs
-// without a network or a real key. The validator inside is the real one.
+// [[B13]] aiInScope, [[A1]] visualGraphCalculator, [[command-palette#AI mode]]
+// The injected fetch returns hand-built Messages-API responses; the validator is the real one.
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { runAiPrompt } from "../../src/graph/aiService";

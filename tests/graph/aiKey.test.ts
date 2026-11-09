@@ -1,13 +1,7 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[command-palette#AI mode]]
 import { describe, it, expect, afterEach } from "vitest";
 import { apiKeyStore } from "../../src/graph/apiKeyStore";
 import { AI_PROVIDER, aiConnected } from "../../src/graph/aiKey";
-
-// `aiConnected()` is what reveals the command palette's sparkle. 1.3 ships with the
-// assistant OFF (`AI_ENABLED = false` — author, 2026-08-30): with the flag down the
-// whole surface stays hidden even when a key is stored. When the flag flips back on,
-// the pin to restore (git 2026-08 has it): connected is driven by the STORED KEY for
-// OUR provider and nothing else — no separate flag that drifts from the key present.
 
 afterEach(() => { apiKeyStore.remove(AI_PROVIDER); });
 

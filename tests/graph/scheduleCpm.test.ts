@@ -1,13 +1,12 @@
-// [[C69]], [[C70]], [[C71]]
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing, [[schedule-and-gantt#The tasks cube]], [[schedule-and-gantt#The Schedule node]]
 import { describe, it, expect } from "vitest";
-import { scheduleTasks } from "../../src/graph/scheduleCpm";
+import { scheduleTasks } from "./scheduleOnCard";
 import { parseDateToSerial, formatDateSerial } from "../../src/graph/nodes/dateSerial";
 import { isSolError } from "../../src/graph/errorValue";
+import { solDate } from "../../src/graph/dateValue";
 import { cubeFromColumns, isFrameValue, flatCubeToFrame, type CubeValue, type CubeCell, type FrameValue } from "../../src/graph/frame";
-import { unnestCube } from "../../src/graph/frameVerbs";
+import { unnestCube } from "./coreVerbs";
 
-// The tasks arrive as a CUBE: Predecessors is a list cell (zero or more names), never an
-// in-cell string list — the cube exists to eliminate those (author, 2026-09-07).
 
 const d = (iso: string) => parseDateToSerial(iso);
 const iso = (serial: unknown) => formatDateSerial(serial as number, "YYYY-MM-DD");
@@ -47,7 +46,7 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     ]);
     expect(col(r.cube, "Float")).toEqual([0, 0, 1, 0, 2, 0, 0, 0]);
     expect(col(r.cube, "Critical")).toEqual([true, true, false, true, false, true, true, true]);
-    expect(iso(r.projectFinish)).toBe("2026-01-27");
+    expect(r.projectFinish).toEqual(solDate(d("2026-01-27")));
     // Original columns first (Predecessors rewritten in its structured form), then the four appended.
     expect(r.cube.columns.map((x) => x.name).slice(0, 7)).toEqual(["Task", "Duration", "Predecessors", "Start", "Finish", "Float", "Critical"]);
     expect(r.cube.columns.map((x) => x.name).slice(7)).toEqual(["Free Float", "Early Start", "Early Finish", "Late Start", "Late Finish", "Driving", "Late"]);
@@ -222,10 +221,39 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     expect(iso(col(inner, "Start")[0])).toBe("2026-01-12");
   });
 
+  it("a Repeat above 1,000 is #OVERFLOW! naming the cap", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["Standup"], type: "string" },
+      { name: "Duration", cells: [0.5], type: "number" },
+      { name: "Repeat", cells: [1e9], type: "number" },
+    ]);
+    expect(() => scheduleTasks(c, { start: MON, workingDays: true })).toThrow(/"Standup".*the most is 1,000/);
+  });
+
+  it("a weekend code WORKDAY.INTL doesn't know is an error, on the card and on a row", () => {
+    expect(() => scheduleTasks(tasks([["A", 1, null]]), { start: MON, workingDays: true, weekendCode: 99 })).toThrow(/Weekend must be a code/);
+    const row = cubeFromColumns([
+      { name: "Task", cells: ["A"], type: "string" },
+      { name: "Duration", cells: [1], type: "number" },
+      { name: "Weekend", cells: [99], type: "number" },
+    ]);
+    expect(() => scheduleTasks(row, { start: MON, workingDays: true })).toThrow(/"A".*Weekend must be a code/);
+  });
+
+  it("a done checkbox in Complete reads TRUE as 100% and FALSE as 0%", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A", "B"], type: "string" },
+      { name: "Duration", cells: [1, 1], type: "number" },
+      { name: "Complete", cells: [true, false], type: "logical" },
+    ]);
+    const r = scheduleTasks(c, { start: MON, workingDays: true });
+    expect(r.output.tasks.map((t) => t.complete)).toEqual([100, 0]);
+  });
+
   it("an empty tasks cube schedules nothing and finishes on the start", () => {
     const r = scheduleTasks(tasks([]), { start: MON, workingDays: true });
     expect(col(r.cube, "Start")).toEqual([]);
-    expect(iso(r.projectFinish)).toBe("2026-01-05");
+    expect(r.projectFinish).toEqual(solDate(MON));
   });
 
   it("a flat Links frame adds typed, lagged predecessors on top of any in-cell ones", () => {

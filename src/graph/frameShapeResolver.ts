@@ -1,16 +1,17 @@
 // [[C10]] socketLattice
-import type { NodeEditor, ClassicPreset } from "rete";
+import type { GraphEditor } from "./graphEditor";
+import type { GraphConnection, GraphNode } from "./graphModel";
 import type { Shape } from "./frameShape";
 import { ConduitNode, conduitLaneOf, conduitInKey } from "./nodes/conduit";
 import { passthroughForOutput, type PassthroughSpec } from "./nodes/passthrough";
 import { frameShapeOf } from "./nodes/frameShapeHook";
 
-type AnyEditor = NodeEditor<{
-  Node: ClassicPreset.Node;
-  Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>;
+type AnyEditor = GraphEditor<{
+  Node: GraphNode;
+  Connection: GraphConnection<GraphNode, GraphNode>;
 }>;
 
-export type FrameShapeResolver = {
+type FrameShapeResolver = {
   outShape: (nodeId: string, outKey: string) => Shape | null;
 };
 

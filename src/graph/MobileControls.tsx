@@ -7,8 +7,10 @@ import { paletteStore } from "./paletteStore";
 import { useBottomChrome } from "./chromeBottom";
 import {
   fireUndo, fireGroup, useHasSelection,
-  CommandGlyph, UndoGlyph, RedoGlyph, SelectGlyph, DeleteGlyph, GroupGlyph,
+  CommandGlyph, UndoGlyph, RedoGlyph, SelectGlyph, DeleteGlyph, GroupGlyph, PortsTabShape, PortGlyph, LockGlyph,
 } from "./touchActions";
+import { compositeEditorStore } from "./compositeEditorStore";
+import { canvasLockStore } from "./canvasLock";
 import "./MobileControls.css";
 
 /** Buttons dim rather than disappear, so the bar never reflows. */
@@ -16,9 +18,33 @@ export function MobileControls() {
   // On desktop the poll would scan every node 5×/sec for an invisible control.
   const hasSelection = useHasSelection(useIsMobile());
   const selectMode = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
+  const drilled = useSyncExternalStore(compositeEditorStore.subscribe, compositeEditorStore.isOpen);
+  const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
+  const editable = hasSelection && !locked;
 
   // The phone menu docks under the top bars, so the on-screen keyboard doesn't cover its search field.
   const openAddMenu = () => addMenuRequest.toggle(window.innerWidth / 2, 96);
+
+  // A locked canvas takes no new cards: the ➕ becomes the lock, and a tap unlocks.
+  const addButton = locked ? (
+    <button
+      className="solenoid-mobile-bar__btn solenoid-mobile-bar__add"
+      aria-label="Unlock canvas"
+      onClick={() => canvasLockStore.toggle()}
+    >
+      <LockGlyph size={24} />
+    </button>
+  ) : (
+    <button
+      className="solenoid-mobile-bar__btn solenoid-mobile-bar__add"
+      aria-label="Add node"
+      onClick={openAddMenu}
+    >
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+        <path d="M12 5v14M5 12h14" />
+      </svg>
+    </button>
+  );
 
   // The bar's height includes its safe-area padding, so `--chrome-bottom` carries the inset too.
   const bottomRef = useBottomChrome<HTMLDivElement>();
@@ -28,21 +54,21 @@ export function MobileControls() {
       <button className="solenoid-mobile-bar__btn" aria-label="Command palette" onClick={() => paletteStore.open()}>
         <CommandGlyph size={20} />
       </button>
-      <button className="solenoid-mobile-bar__btn" aria-label="Undo" onClick={() => fireUndo(false)}>
+      <button className={"solenoid-mobile-bar__btn" + (locked ? " solenoid-mobile-bar__btn--dim" : "")} aria-label="Undo" aria-disabled={locked} onClick={() => { if (!locked) fireUndo(false); }}>
         <UndoGlyph size={22} />
       </button>
-      <button className="solenoid-mobile-bar__btn" aria-label="Redo" onClick={() => fireUndo(true)}>
+      <button className={"solenoid-mobile-bar__btn" + (locked ? " solenoid-mobile-bar__btn--dim" : "")} aria-label="Redo" aria-disabled={locked} onClick={() => { if (!locked) fireUndo(true); }}>
         <RedoGlyph size={22} />
       </button>
-      <button
-        className="solenoid-mobile-bar__btn solenoid-mobile-bar__add"
-        aria-label="Add node"
-        onClick={openAddMenu}
-      >
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      </button>
+      {drilled ? (
+        // Drilled into a composite: a tab hugging the ➕ adds an input port (I) or an output port (O).
+        <div className="solenoid-mobile-bar__ports">
+          <PortsTabShape />
+          <button className="solenoid-mobile-bar__port solenoid-mobile-bar__port--in" aria-label="Add input" onClick={() => compositeEditorStore.addPort("input")}><PortGlyph side="in" /></button>
+          {addButton}
+          <button className="solenoid-mobile-bar__port solenoid-mobile-bar__port--out" aria-label="Add output" onClick={() => compositeEditorStore.addPort("output")}><PortGlyph side="out" /></button>
+        </div>
+      ) : addButton}
       <button
         className={
           "solenoid-mobile-bar__btn solenoid-mobile-bar__select" +
@@ -57,11 +83,11 @@ export function MobileControls() {
       <button
         className={
           "solenoid-mobile-bar__btn solenoid-mobile-bar__delete" +
-          (hasSelection ? "" : " solenoid-mobile-bar__btn--dim")
+          (editable ? "" : " solenoid-mobile-bar__btn--dim")
         }
         aria-label="Delete selection"
-        aria-disabled={!hasSelection}
-        onClick={() => void deleteSelected()}
+        aria-disabled={!editable}
+        onClick={() => { if (!locked) void deleteSelected(); }}
       >
         <DeleteGlyph size={20} />
       </button>
@@ -69,11 +95,11 @@ export function MobileControls() {
           blocked by the poll. */}
       <button
         className={
-          "solenoid-mobile-bar__btn" + (hasSelection ? "" : " solenoid-mobile-bar__btn--dim")
+          "solenoid-mobile-bar__btn" + (editable ? "" : " solenoid-mobile-bar__btn--dim")
         }
         aria-label="Group selection"
-        aria-disabled={!hasSelection}
-        onClick={fireGroup}
+        aria-disabled={!editable}
+        onClick={() => { if (!locked) fireGroup(); }}
       >
         <GroupGlyph size={20} />
       </button>

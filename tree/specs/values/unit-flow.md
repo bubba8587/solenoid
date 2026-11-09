@@ -2,104 +2,171 @@
 aliases: ["Unit flow"]
 tags: [spec, values]
 ---
-<!-- [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D43]] unitByGranularity, [[D47]] noMixCurrencies -->
+<!-- [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue, [[E20]] pointError, [[C139]] mathlibLaws -->
 
 # Spec: Unit flow
 
-Serves [[C25]] firstClassUnits and its policies [[D41]] formatFlowsDownstream, [[D43]] unitByGranularity, [[D47]] noMixCurrencies. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C25]] firstClassUnits and [[C118]] formatTravelsWithValue. It covers what the system does and blocks, and the decision each behavior serves.
 
-There are two layers. **The unit is a property of the value**: it travels as data on the value itself. **The number format** (style, precision, negatives, K/M/B) is a separate display annotation that an FC locks onto its own segment and sends down the stream. Nothing walks the graph to propagate units; `makeAnnotationResolver` (pure, duck-typed, memoized, cycle-guarded) resolves the format, forward and back.
+There are two layers. **The unit is a property of the value**: it travels as data on the value itself. **The number format** (style, precision, negatives, K/M/B) is a separate display annotation that an FC locks onto its own segment and sends down the stream. Nothing walks the graph to propagate units; the core's annotation walk (`annotate.rs`, read through `makeAnnotationResolver`; memoized, cycle-guarded) resolves the format, forward and back.
+
+```mermaid
+flowchart LR
+    subgraph unit["The unit: data on the value"]
+        fc["a Format Controller (FC), Convert,<br>a column unit, a computed column,<br>Table Input"] -->|"sets it"| cell["the value: a UnitCell,<br>base SI plus a display id"]
+        cell -->|"rides through every card;<br>the algebra works it out again"| down["every value downstream"]
+    end
+    subgraph fmt["The format: a display annotation"]
+        fc2["an FC locks a style, precision,<br>negatives, K/M/B (thousands,<br>millions, billions)"] -->|"the resolver reads it,<br>forward and back"| boxes["the boxes on its segment"]
+    end
+```
 
 ## The unit on the value
 
 - **What it is.** A base-SI `UnitCell` (`unitValue.ts`) with an optional `display` id.
 - **Who sets it.** Only the value's origin:
-  - an FC, through `applyFcUnit` in `FormatControllerNode.data()`;
-  - Convert, in its `data()`;
-  - the column-unit surfaces, a `Name (unit)` header spec or the popup's per-column unit dropdown, stored as a `ColumnUnit` that computed columns carry too (`unitColumn.ts`);
+  - an FC, through `tag_fc_unit` in its body (the core's `format_controller`, `nodes/docs.rs`);
+  - Convert, in its body (`convert`, the core's `nodes/packs.rs`);
+  - the column-unit surfaces, a `Name (unit)` header spec or the popup's per-column unit dropdown, stored as a `ColumnUnit` (`unitColumn.ts`);
+  - a computed column, which works its unit out from its formula ([[#Computed columns]]);
   - Table Input's own unit picker (the `author` policy in `matrixUnitPolicy.test.ts`).
   The Number node is a plain literal source and sets nothing.
-- **How it travels.** The tag rides through anything that passes the value along. A transform works the dimension out again through the algebra (`tagDim`) and keeps an operand's `display` when the result's dimension matches it (`$5 + 2 = $7`, `2 × 3 m = 6 m`). A result whose dimension fits neither operand falls back to its derived-symbol form.
-- **Where it becomes text.** Cast to Text writes the unit into the text in the unit the value reads in (`5 km`, `$5`; `unitCellText` in `unitBridge.ts`), so a cast never drops it silently; Cast's other targets read the value as it shows, unit-blind.
+- **How it travels.** The tag rides through anything that passes the value along. A transform works the dimension out again through the algebra (`tag_dim`, the core's `unit_lists.rs`) and keeps an operand's `display` when the result's dimension matches it (`$5 + 2 = $7`, `2 × 3 m = 6 m`). A result whose dimension fits neither operand falls back to its derived-symbol form.
+- **Where it becomes text.** Cast to Text writes the unit into the text in the unit the value reads in (`5 km`, `$5`; `unit_cell_text` in `crates/solenoid-core/src/nodes/text.rs`), so a cast never drops it silently; Cast's other ops read the value as it shows, unit-blind.
 
-## Dimensions (`dimension.ts`)
+Tests: `unitWiring.test.ts`: units entering through the base-SI cell an FC authors, and through the formula and the cards; `convert.test.ts`: Convert tags its output.
 
-The foundation under every unit. It imports nothing from the editor, React or any node.
+## Dimensions
 
-- **A dimension** (`Dim`) is a map of exponents over the base axes, with an absent key meaning 0. The base axes (`BASE_DIMS`) are SI's seven (length, mass, time, current, temperature, amount, luminous) plus three first-class app axes: angle, currency and information.
-- **A custom unit** (a free-text FC unit) gets its own axis, `custom:<name>` (`customDim`), so it stays first-class in the algebra and is never a plain number: widgets per second never reads as Hz ([[C25]] firstClassUnits). The axis name is trimmed and lowercased, so two FCs that differ only in case add instead of raising `#UNIT!`; the typed casing survives on the annotation's display id. Every dimension operation folds over every axis present in either operand, so a custom axis is never dropped.
-- **A unit** (`Unit`) is a dimension plus its relation to base SI: a linear `scale` and, for temperatures only, an affine `offset`. An offset unit converts but can't be multiplied, divided or raised to a power: `unitMul`, `unitDiv` and `unitPow` answer `null`, which callers surface as `#UNIT!`.
-- **Commensurable** means the same dimension, so a conversion factor exists. `convert(value, a, b)` goes through base SI with both offsets and answers `null` when the units are incommensurable or the result is not finite; the caller turns that into `#UNIT!`.
-- **`UNITS`** is the one table of unit magnitudes, keyed by canonical symbol, with every `scale` relative to base SI; the Convert node's category table takes its factors from here. It holds the dimensionless `1` and `%` (0.01), length (m, in, ft, yd, mi), mass (g, kg, t, lb, oz, stone), time (s, min, h, day, wk, yr), A, mol, cd, angle (rad, deg, grad), temperature (K, and the affine degC, degF), information (bit, byte), currency (`¤`), and the derived Hz, N, Pa, J, W and the litre (`L_vol`). Derived units carry their full dimension so the algebra and the formatter recognize them.
-- **`parseUnit(expr)`** reads a unit expression ("m/s", "kg*m/s^2", "km/h", "m2"). A bare recognized symbol short-circuits, which keeps affine units that a product would reject. Otherwise the grammar is factors joined by `*` or `·`, with at most one `/` denominator; a factor is a symbol with an optional `^n` or trailing-digit power, resolved against `UNITS`, the litre (`L` or `l`), or one SI prefix (`SI_PREFIXES`, yotta to yocto, `u` and `µ` both micro, `da` tried first) on a linear base symbol. Anything unrecognized gives `null`.
-- **`formatDim(dim)`** is the display symbol: a named derived unit where one matches exactly (N, Pa, J, W, Hz, V, Ω, most specific first), otherwise a product of base symbols (m, kg, s, A, K, mol, cd, rad, ¤, bit), base axes first and then custom axes by name so the label is stable, with `^n` powers and one `/` for the negative exponents. A dimensionless value gives `""` and shows bare.
+Code: `unit_dims.rs`, `unit_catalog.rs`; `dimension.ts` in the app
 
-## Unit algebra (`unitValue.ts`)
+The foundation under every unit. The catalog, the parser and the labels are the core's; the app's `dimension.ts` holds the value shape (`Dim`, `Unit`), the cheap checks it runs while drawing (`dimEqual`, `isDimensionless`, `dimPow`), and memoized reads of the core (`fcUnitToUnit`, `formatDim`). It imports nothing from the editor, React or any node.
 
-The value-side model is small and strict. Every tagged value stores its magnitude in base SI.
+- **A dimension** (`Dim`) is a map of exponents over the base axes, with an absent key meaning 0. Dimensions form a group under multiplication: multiplying two quantities adds their exponents axis by axis, dividing subtracts them, a power multiplies them, and the dimensionless `{}` is the identity (in mathematical terms, an exponent vector: an element of the free abelian group on the axes, mathlib's FreeAbelianGroup, `Mathlib/GroupTheory/FreeAbelianGroup.lean`, carried as a finitely supported map like `Finsupp`, `Mathlib/Data/Finsupp/Defs.lean`, an absent axis being 0). The exponents are `f64`, snapped after every product, quotient and power to the nearest fraction with a denominator up to 12 when within 10⁻⁹ (`snap_exp`), so they compare as the rationals they stand for: `m^0.1 · m^0.2` is `m^0.3`, and `(m^(1/3))^3` is `m` (`properties.rs` `fractional_powers_of_a_unit_meet`). The base axes (`BASE_DIMS`) are SI's seven (length, mass, time, current, temperature, amount, luminous) plus three first-class app axes: angle, currency and information.
+- **A custom unit** (a free-text FC unit) gets its own axis, `custom:<name>`, so it stays first-class in the algebra and is never a plain number: widgets per second never reads as Hz ([[C25]] firstClassUnits). The axis name is trimmed and lowercased, so two FCs that differ only in case add instead of raising `#UNIT!`; the typed casing survives on the annotation's display id. Every dimension operation folds over every axis present in either operand, so a custom axis is never dropped.
+- **A unit** (`Unit`) is a dimension plus its relation to base SI: a linear `scale` and, for temperatures only, an affine `offset`. An offset unit converts but can't be multiplied, divided or raised to a power (`unit_mul` and its kin answer none), which callers surface as `#UNIT!`. A linear unit measures an amount; an offset unit is a scale for a point kind, its readings the points and kelvin deltas their differences ([[value-semantics#Points and differences]]).
+- **Commensurable** means the same dimension, so a conversion factor exists. A conversion goes through base SI with both offsets and answers `null` when the units are incommensurable or the result is not finite (the core's `convert_value`, `convert_units.rs`); the caller turns that into `#UNIT!`.
+- **The symbol table** (`unit_catalog.rs`) is the one table of unit magnitudes, keyed by canonical symbol, with every `scale` relative to base SI. It holds the dimensionless `1` and `%` (0.01), length (m, in, ft, yd, mi), mass (g, kg, t, lb, oz, stone), time (s, min, h, day, wk, yr), A, mol, cd, angle (rad, deg, grad), temperature (K, and the affine degC, degF), information (bit, byte), currency (`¤`), and the derived Hz, N, Pa, J, W and the litre (`L_vol`). Derived units carry their full dimension so the algebra and the formatter recognize them.
+- **`parse_unit(expr)`** reads a unit expression ("m/s", "kg*m/s^2", "km/h", "m2"). A bare recognized symbol short-circuits, which keeps affine units that a product would reject. Otherwise the grammar is factors joined by `*` or `·`, with at most one `/` denominator; a factor is a symbol with an optional `^n` or trailing-digit power, resolved against the symbol table, the litre (`L` or `l`), or one SI prefix (yotta to yocto, `u` and `µ` both micro, `da` tried first) on a linear base symbol. Anything unrecognized gives `null`.
+- **`format_dim(dim)`** (`unit_lists.rs`; the app's `formatDim`) is the display symbol: a named derived unit where one matches exactly (N, Pa, J, W, Hz, V, Ω, most specific first), otherwise a product of base symbols (m, kg, s, A, K, mol, cd, rad, ¤, bit), base axes first and then custom axes by name so the label is stable, with `^n` powers and one `/` for the negative exponents. A dimensionless value gives `""` and shows bare.
+
+Tests:
+
+- `coreUnitCatalog.test.ts`: every display unit id the app can name, as `fcUnitToUnit` resolves it, frozen for the core's catalog; `unit_catalog.rs` (solenoid-core) holds the core to it.
+- `unitWiring.test.ts`: two FCs whose custom units differ only in case add, and the typed casing still shows.
+
+## Unit algebra
+
+Code: `unitValue.ts`
+
+The value-side model is small and strict. Every tagged value stores its magnitude in base SI. `unitValue.ts` holds the cell's shape and its reads; the algebra is the core's (`nodes/units.rs`, `unit_lists.rs`).
 
 ### The cell
 
 - A `UnitCell` is `{ __unitCell: true, value, dim, display?, ratio? }`. `value` is always base SI; `display` is the unit id the value was authored to render in, and without one the value renders its dimension's derived symbol (`formatDim`: "m/s", "N").
-- A dimensionless quantity is never a `UnitCell`; it stays a bare `number`, so `isUnitCell` is a clean test. `tagDim(value, dim, display?)` is the one constructor, and every algebra result goes through it, so a dimensionless result always collapses to a bare number.
-- The one exception is a **pure ratio** (`10 m ÷ 2 m`), minted by `tagRatio` with an empty `dim` and `ratio: true`. It is known to be dimensionless, so an FC can't relabel it with a physical unit, and it renders as `5:1`. Bare ÷ bare stays a bare number.
-- `fromUnit(value, unit)` converts a named-unit magnitude to base SI and consumes any affine (temperature) offset there, so a stored value stays linear and `+` and `−` stay plain adds. Reading it back in the display unit (`displayMagnitudeOf`) rounds at the 15th significant digit of the conversion's larger term (`roundAtLargerTerm`), so 20 °F reads 20, not 19.999999999999954, and `a = 20` and INT answer as typed. `withDisplay` is the FC and Convert re-display path, a no-op on anything that isn't a cell.
-- `dimOf` answers dimensionless for `null`, a `SolError` or anything non-numeric; `magnitudeOf` answers `NaN` for anything non-numeric, which is safe because the caller's `cellShortCircuit` runs first.
+- A dimensionless quantity is never a `UnitCell`; it stays a bare `number`, so `isUnitCell` is a clean test. `tag_dim(value, dim, display)` (`unit_lists.rs`; `tagDim` in `unitValue.ts`) is the one constructor, and every algebra result goes through it, so a dimensionless result always collapses to a bare number.
+- The one exception is a **pure ratio** (`10 m ÷ 2 m`), minted by `tag_ratio` with an empty `dim` and `ratio: true`. It is known to be dimensionless, so an FC can't relabel it with a physical unit, and it renders as `5:1`. Bare ÷ bare stays a bare number.
+- `fromUnit(value, unit)` converts a named-unit magnitude to base SI and consumes any affine (temperature) offset there, so a stored value stays linear and `+` and `−` stay plain adds. Reading it back in the display unit (`displayMagnitudeOf`) rounds at the 15th significant digit of the conversion's larger term (`roundAtLargerTerm`), so 20 °F reads 20, not 19.999999999999954, and `a = 20` and INT answer as typed. The rounding is needed because a function that snaps to a whole number (INT, FLOOR, ROUND, a bin edge) does not commute with a conversion: a round trip a hair below 20 floors to 19, which is why INT reads the value after the read-back rounding, not the raw round trip. Mathlib shows the gap is structural, not a float accident ([[C139]] mathlibLaws): floor is the right adjoint of the integers' inclusion (`FloorRing.gc_coe_floor`, `Mathlib/Algebra/Order/Floor/Defs.lean`), and even an exact order-preserving map can move a floor by one (`Counterexamples/MapFloor.lean`, in mathlib's Counterexamples).
+- `dimOf` answers dimensionless for `null`, a `SolError` or anything non-numeric; `magnitudeOf` answers `NaN` for anything non-numeric, which is safe because the caller's per-cell contract runs first.
 
-### Combining two operands (`arithmeticCell`, `compareUnits`)
+Tests: `unitValue.test.ts`: the cell's reads, `tagDim`'s collapse to a bare number, and a pure ratio; `unitWiring.test.ts`: a ratio an FC can't relabel, and bare ÷ bare staying bare.
+
+### Combining two operands
+
+Code: `arithmetic_cell` (`nodes/units.rs`)
 
 The dimensional half of an element-wise op sees only present operands, since the per-cell contract ([[error-values]]) runs first. In order:
 
-1. **Different currency codes** give `#UNIT!` in every op, checked up front so no op below can forget it ([[D47]] noMixCurrencies).
-2. **A dimensionless operand adopts** the other side's display unit for `+`, `−` and `mod`: `adoptMagnitude` multiplies it by that unit's scale, never its affine offset, because the bare number is read as a delta. In a comparison it is read as a reading instead (`adoptReading`, offset included), so `25 °C > 30` is FALSE. `×` and `÷` keep the face value, since a bare factor is a factor (`$5 × 2 = $10`).
+```mermaid
+flowchart TD
+    op["a op b, both present"] --> cur{"two different<br>currency codes?"}
+    cur -->|yes| u1["#UNIT!"]
+    cur -->|no| which{"the op?"}
+    which -->|"+, −, mod"| same{"same dimension, or<br>one side bare?"}
+    same -->|no| u2["#UNIT!"]
+    same -->|yes| temp{"two temperature<br>readings?"}
+    temp -->|"subtract"| delta["a delta in K"]
+    temp -->|"add"| u3["#UNIT!"]
+    temp -->|no| keep["keeps the first<br>operand's display"]
+    which -->|"×, ÷, power"| aff{"an affine display<br>(°C, °F)?"}
+    aff -->|yes| u4["refused: convert<br>to kelvin first"]
+    aff -->|no| mul["dimensions multiply;<br>a display kept only if the<br>result stays in its dimension"]
+    which -->|"compare"| cmp{"two real dimensions<br>that differ?"}
+    cmp -->|yes| u5["#UNIT!"]
+    cmp -->|no| base["compare the<br>base magnitudes"]
+```
+
+1. **Different currency codes** give `#UNIT!` in every op, checked up front so no op below can forget it ([[C25]] firstClassUnits).
+2. **A dimensionless operand adopts** the other side's display unit for `+`, `−` and `mod`: `adopt_magnitude` (`nodes/units.rs`) multiplies it by that unit's scale, never its affine offset, because the bare number is read as a delta. In a comparison it is read as a reading instead (`adopt_reading`, offset included), so `25 °C > 30` is FALSE. `×` and `÷` keep the face value, since a bare factor is a factor (`$5 × 2 = $10`).
 3. **Add, subtract and mod** need equal dimensions, or one dimensionless side; otherwise `#UNIT!`. The result keeps `display` from the first operand that has one.
-4. **Two absolute temperatures** (an affine display such as °C or °F on both cells) subtract to a delta: `25 °C − 20 °C` is 5 K, never −268 °C, so the affine display drops and the base unit renders. Two readings have no sum, so `add` is `#UNIT!`, as `a + b` is in a formula. One absolute reading plus a bare delta keeps the reading (`20 °C + 5 = 25 °C`).
-5. **Multiply, divide, quotient, mod and power** are refused on an affine display ("Convert the temperature to kelvin first"), because an offset reading is not a magnitude. `×` and `÷` keep a display unit only when the result stays in an operand's dimension; `5 m × 3 s` fits neither and shows the derived symbol. A division that cancels the dimension between cells mints a pure ratio. Division or quotient by zero is `#DIV/0!`. An exponent must be dimensionless, or the result is `#UNIT!`.
+4. **Two absolute temperatures** (an affine display such as °C or °F on both cells) subtract to a delta, shown in its own difference unit: `25 °C − 20 °C` is 5 Δ°C, never 5 K and never −268 °C, and a Δ°C or Δ°F converts by scale alone ([[C25]] firstClassUnits). Not built yet: the result is 5 K today, which Convert and the Format Controller then read as a reading. Two readings have no sum, so `add` is `#POINT!` ([[E20]] pointError), as `a + b` is in a formula. One absolute reading plus a bare delta keeps the reading (`20 °C + 5 = 25 °C`). **Two different temperature units never mix** ([[C25]] firstClassUnits): K with °C, or °C with °F, under any operation is `#UNIT!`, "Convert to one temperature unit first", since a K value could be a reading or a change. That includes a K difference added back to a reading (`20 °C + 5 K`). Enforced by `temperatures_mix` (`unit_value.rs`): the Arithmetic card over two cells, an aggregate or running list (`for_aggregate_units`), a formula whose inputs carry two scales (one list mixing scales, mapped item by item, is not a meeting), and a computed column over two columns.
+5. **Multiply, divide, quotient, mod and power** are refused on an affine display with `#POINT!` ("Convert the temperature to kelvin first"), because an offset reading is not a magnitude. `×` and `÷` keep a display unit only when the result stays in an operand's dimension; `5 m × 3 s` fits neither and shows the derived symbol. A division that cancels the dimension between cells mints a pure ratio. Division or quotient by zero is `#DIV/0!`. An exponent must be dimensionless, or the result is `#UNIT!`.
 6. **Comparison** refuses two different real dimensions and two currency codes with `#UNIT!`, and otherwise hands the comparator the two base magnitudes, adopting as in step 2.
 
-The display-id resolvers (`setDisplayScaleResolver`, `setDisplayOffsetResolver`) start on `parseUnit` and are upgraded by `unitBridge.ts` at module load, so every display id the bridge knows resolves.
+A display id's scale, offset and dimension (`displayScale`, `displayOffset`, `displayDim`) are `fcUnitToUnit`'s, so every id the core knows resolves.
 
-### Reducing a list (`forAggregateUnits`)
+Tests:
 
-The unit-aware twin of `forAggregate`, run first by a list reducer:
+- `unitValue.test.ts`: each step on cells, with a bare number on either side adopting (`$5 + 2 = $7`) and a plain threshold compared against the magnitude.
+- `unitLattice.test.ts`: the `+`, `−` and compare contract over a cross-section of dimensions (dimensionless, four base dimensions and a speed): equal dimensions, or either side dimensionless.
+- `unitWiring.test.ts`: `×` keeps a bare factor's face value; temperatures through the cards and the formula.
+
+### Reducing a list
+
+Code: `for_aggregate_units` (`unit_lists.rs`)
+
+The unit-aware twin of `for_aggregate`, run first by a list reducer:
 
 1. A `SolError` anywhere returns that error; missing values are dropped.
 2. A first pass finds the list's one real dimension and its display; a second real dimension is `#UNIT!` ("Can't aggregate mixed units"), and two different explicit currency codes are `#UNIT!` too.
-3. A second pass reads the magnitudes, with each dimensionless cell adopting the list's display unit. Because the dimension is found before any magnitude is read, a leading bare number can adopt a unit that appears later in the list. A bare number adopts as a delta (`adoptMagnitude`), or as a reading (`adoptReading`) when the caller passes `bareIsReading`.
+3. A second pass reads the magnitudes, with each dimensionless cell adopting the list's display unit. Because the dimension is found before any magnitude is read, a leading bare number can adopt a unit that appears later in the list. A bare number adopts as a delta (`adopt_magnitude`), or as a reading (`adopt_reading`) when the caller asks for readings.
 
-The reducer re-tags its result with `tagDim` from the returned `dim` and `display`. Over an affine display the Aggregate node answers as a formula does: SUM of two or more readings is `#UNIT!` and its bare numbers are deltas (`[20 °C, 5]` sums to 25 °C); every other op reads a bare number as a reading (MIN of `[25 °C, 20]` is 20 °C); AVERAGE, MIN, MAX and MEDIAN are readings, and the spreads (STDEV, AVEDEV, PTP, IQR, MAD, SEM) are deltas in the base unit.
+The reducer re-tags its result with `tagDim` from the returned `dim` and `display`. Over an affine display the Aggregate node answers as a formula does: SUM of two or more readings is `#POINT!` and its bare numbers are deltas (`[20 °C, 5]` sums to 25 °C); every other op reads a bare number as a reading (MIN of `[25 °C, 20]` is 20 °C); AVERAGE, MIN, MAX and MEDIAN are readings, and the spreads (STDEV, AVEDEV, PTP, IQR, MAD, SEM) are deltas in the base unit.
 
-Running and RUNNING follow the same rule element by element (`running` in `listOps.ts`): the list's unit is checked once, each running result is re-tagged, a running PRODUCT's power grows with the count it has multiplied, and an error cell stays in its place as it does without units.
+Running and RUNNING follow the same rule element by element (`running` in the core's `unit_lists.rs`): the list's unit is checked once, each running result is re-tagged, a running PRODUCT's power grows with the count it has multiplied, and an error cell stays in its place as it does without units.
 
-The frame and cube verbs follow the same rule over a °C or °F column, on both engines (`aggUnitPlan` in `frameVerbs.ts`, [[frame-verbs]]): GROUPBY, PIVOTBY and Cube Rollup refuse a sum, product or share of readings as `#UNIT!` in every cell of that column, keep the averages and picks as readings, and turn the spreads into kelvin deltas (VAR a squared one); over a linear unit a spread keeps it and VAR squares it in base SI, as a formula's VAR does (a km column's variance is m²); Window refuses a running, rolling or group sum, a share and a percent change, and makes `diff` a delta. The SUMIFS card reads its Values column in that column's unit (a km column sums to km) and refuses a SUMIFS of readings; a Cube input keeps a column's unit when its cells share one (`flatCubeToFrame`).
+The frame and cube verbs follow the same rule over a °C or °F column, in the core, which carries each column's unit beside its cells ([[frame-verbs]]): GROUPBY, PIVOTBY and Cube Rollup refuse a sum, product or share of readings as `#POINT!` in every cell of that column, keep the averages and picks as readings, and turn the spreads into kelvin deltas (VAR a squared one); over a linear unit a spread keeps it and VAR squares it in base SI, as a formula's VAR does (a km column's variance is m²); Window refuses a running, rolling or group sum, a share and a percent change, and makes `diff` a delta. The SUMIFS card reads its Values column in that column's unit (a km column sums to km) and refuses a SUMIFS of readings; a Cube input keeps a column's unit when its cells share one (`flatCubeToFrame`).
+
+Tests:
+
+- `unitValue.test.ts`: a list reduced with a leading bare number adopting a later unit, read in the display unit an FC-authored cell carries, and a cell with no display keeping the face value.
+- `frameReadings.test.ts`: readings on an offset scale through the frame and cube verbs and the SUMIFS card, answering as a formula does, through the cards and the wasm build.
 
 ### Column and matrix units
 
 - A `ColumnUnit` is `{ dim, display? }`: one unit for a homogeneous Frame column, with the cells as bare magnitudes in that display unit (the derived form when `display` is absent). `sameColumnUnit` compares both fields.
-- A matrix carries one `ColumnUnit` for the whole grid under a non-enumerable Symbol property, so it is invisible to iteration and JSON. It is lossy by design: any fresh array drops it, so unit-aware matrix ops re-tag explicitly, and persistence comes from the producing node. `withMatrixUnit` sets the tag on the same array it returns (a dimensionless unit clears it), `carryMatrixUnit` copies a tag from a source onto a fresh array, and `sharedMatrixUnit` claims a unit only when every part carries the same one, since a km grid stacked on a mi or untagged grid has no honest unit.
+- A matrix carries one `ColumnUnit` for the whole grid under a non-enumerable Symbol property, so it is invisible to iteration and JSON. It is lossy by design: any fresh array drops it, so unit-aware matrix ops re-tag explicitly, and persistence comes from the producing node. `withMatrixUnit` sets the tag on the same array it returns (a dimensionless unit clears it), `carryMatrixUnit` copies a tag from a source onto a fresh array, and a stack (`stack`, the core's `nodes/matrix.rs`) claims a unit only when every part carries the same one, since a km grid stacked on a mi or untagged grid has no honest unit.
 - `columnUnitFromSpec(spec)` (`unitColumn.ts`) resolves a header or Format Controller unit spec to a `ColumnUnit`. A spec containing `$`, `€`, `£` or `¥` is that currency (`usd`, `eur`, `gbp`, `jpy`), so a format spec like `$0.00` means dollars. Otherwise the number-format characters (`0`, `#`, `,`, `.` and spaces) are stripped, and the remaining token, which keeps `/`, `^`, letters and `%` (`m/s`, `m^2`, `%`), must be a Format Controller unit id, or the spec names no unit and the result is null.
 - `parseColumnUnitFromHeader(header)` splits a trailing `(spec)` off a header; when the spec names no unit, the whole trimmed header stays the name.
 - `columnUnitLabel` shows the display id when it maps to a Format Controller unit, else the derived symbol of the dimension vector (`m/s`, `N`).
 - `tagFrameCellUnit` carries the display id into the `UnitCell`, because every currency shares one dimension axis and its identity is the id (`$` versus `€`). `matrixCellsFromList` strips the unit (returns none) when the tagged cells disagree.
 
+Tests: `unitColumn.test.ts`: `columnUnitFromSpec`, the header split and the labels; `unitValue.test.ts`: the matrix tag set and carried onto a fresh array; `joinUnits.test.ts`: a join reads the right key in the left key's unit.
+
 ### The unit-aware broadcaster
 
-`broadcastUnit` (`shared.ts`) is the dimensional twin of `broadcastErr`: its per-cell function sees raw `number | UnitCell` operands, and its plain-number path matches `broadcastErr` exactly, so an untagged graph is unaffected. Its `guardCell` applies `guardFinite` to a cell's magnitude (an overflowing dimensioned product still becomes `#OVERFLOW!`), keeps `display`, and keeps a ratio cell's ratio brand.
+`broadcast_unit` (`crates/solenoid-core/src/nodes/units.rs`) is the dimensional twin of `broadcast_err` (`nodes/kit.rs`): its per-cell function sees raw number or unit-cell operands, and its plain-number path matches `broadcast_err` exactly, so an untagged graph is unaffected. Its `guard_cell` applies `guard_finite` to a cell's magnitude (an overflowing dimensioned product still becomes `#OVERFLOW!`), keeps `display`, and keeps a ratio cell's ratio brand.
 
 ## Currency: the display code is the identity
 
-There are no exchange rates (`unitValue.ts` `currencyMismatch`). Every currency sits on the single `currency` base axis at scale 1 (unitBridge's DIRECT), so `$5` and `5€` store the same base magnitude, and a plain magnitude compare, add or aggregate would call them equal. So two currency cells with different explicit `display` codes are incommensurable:
+There are no exchange rates (`currency_mismatch`, the core's `nodes/units.rs`). Every currency sits on the single `currency` base axis at scale 1 (the direct table of `fc_unit_to_unit`, `unit_catalog.rs`), so `$5` and `5€` store the same base magnitude, and a plain magnitude compare, add or aggregate would call them equal. So two currency cells with different explicit `display` codes are incommensurable:
 
-- `compareUnits` (behind `ComparisonNode`, which is `unitAware`) returns `#UNIT!`. Equality then answers FALSE for `=` and TRUE for `≠`, and ordering (`<`, `>`) passes the `#UNIT!` on.
-- `arithmeticCell` has the guard up front, so every op errors, including multiply and divide, which would otherwise invent an exchange rate. `forAggregateUnits` returns `#UNIT!` too.
+- A comparison (`ComparisonNode`, which is `unitAware`) returns `#UNIT!`. Equality then answers FALSE for `=` and TRUE for `≠`, and ordering (`<`, `>`) passes the `#UNIT!` on.
+- `arithmetic_cell` has the guard up front, so every op errors, including multiply and divide, which would otherwise invent an exchange rate. `for_aggregate_units` returns `#UNIT!` too.
 - A currency cell with no code, such as a computed `currency` result, adopts the other side's code.
-- The guard lives once, up front in `arithmeticCell` (`unitValue.ts`), for all seven ops ([[D47]] noMixCurrencies, [[engineering#One declaration per fact]]). A new unit combinator registers in the policy sweep in `unitCurrencyPolicy.test.ts`.
+- The guard lives once, up front in `arithmetic_cell` (`nodes/units.rs`), for all seven ops ([[C25]] firstClassUnits, [[engineering#One declaration per fact]]). `+`, `−` and mod can't combine two codes, `×`, `÷` and quotient would make up an exchange rate (`$10 ÷ 5€` would mint a 2:1 ratio, which is a rate claim), and a currency exponent is wrong twice over. `$10 ÷ $5` is a real 2:1 ratio, since one currency cancels.
+- A formula sees codes through its dimensional pass ([[#Formula dimensions]]): its operators refuse a mismatch with the same `#UNIT!`, and a coded result carries its code. Codes drop at a function call, so SUM over two coded inputs still combines in a formula, where the node-side aggregators refuse it.
 
-Every other dimension works on plain magnitudes, since km and m already differ in scale. `ComparisonNode` being `unitAware` is also what makes `5 km = 5000 m` compare in base SI. A dimensionless operand adopts the other side's unit in a compare (`$5 > 1000` compares 5 with 1000), matching the additive rule. Machine-checked by `unitValue.test.ts` (the currency block) and `logic.test.ts` ("ComparisonNode is unit-aware").
+Every other dimension works on plain magnitudes, since km and m already differ in scale. `ComparisonNode` being `unitAware` is also what makes `5 km = 5000 m` compare in base SI. A dimensionless operand adopts the other side's unit in a compare (`$5 > 1000` compares 5 with 1000), matching the additive rule.
+
+Tests:
+
+- `unitCurrencyPolicy.test.ts`: the policy for every arithmetic op, with a completeness check that each op is listed, and the formula's operators over coded inputs. A new unit combinator registers here.
+- `unitValue.test.ts` (the currency block) and `logic.test.ts` ("ComparisonNode is unit-aware").
 
 ## One idea, a carrier per rank
 
-A unit attaches where values are guaranteed to match ([[D43]] unitByGranularity):
+A unit attaches where values are guaranteed to match ([[C25]] firstClassUnits):
 
 | Rank | Carrier | Cells |
 |---|---|---|
@@ -109,29 +176,51 @@ A unit attaches where values are guaranteed to match ([[D43]] unitByGranularity)
 | matrix | one `ColumnUnit` for the whole grid, as a non-enumerable Symbol tag (`unitValue.ts`) | as typed |
 | cube | per cell, like a list; a dimensioned cell is a base-SI `UnitCell` (`CubeCell` includes it) | base SI |
 
-`cubeCellsFromColumn` tags a Frame column into the Cube, and `inferColumn` recovers a uniform column unit on the way back (`cellToNumber` and `cellKeyId` read the display magnitude).
+`cubeCellsFromColumn` tags a Frame column into the Cube, and `inferColumn` recovers a uniform column unit on the way back (`cellToNumber` and `cell_key_id` read the display magnitude).
+
+```mermaid
+flowchart LR
+    subgraph si["stored in base SI"]
+        sc["scalar:<br>a UnitCell"]
+        li["list: a UnitCell<br>per cell"]
+        cu["cube: per cell"]
+    end
+    subgraph typed["stored as typed"]
+        fr["frame: a ColumnUnit<br>per column"]
+        ma["matrix: one ColumnUnit,<br>a Symbol tag on the grid"]
+    end
+    fr -->|"tagFrameCellUnit"| li
+    li -->|"displayMagnitudeOf,<br>matrixCellsFromList"| ma
+    fr -->|"cubeCellsFromColumn"| cu
+    cu -->|"inferColumn recovers<br>a uniform column unit"| fr
+```
+
 
 **Watch the storage split.** Scalar and list `UnitCell.value` is base SI, but frame and matrix cells are as typed, so crossing between them converts: `tagFrameCellUnit` goes from as-typed to a base `UnitCell`, and `displayMagnitudeOf` and `matrixCellsFromList` go from base to as-typed.
 
 **The matrix tag is lossy**, since any array rebuild drops the Symbol. So every matrix op declares a policy:
 
 - **carry**: structural reshapes.
-- **carry-if-uniform**: VSTACK and HSTACK (`sharedMatrixUnit`).
-- **convert**: rank changes cross carriers. TOCOL and TOROW go to a list (`taggedListFromMatrix`); WRAPROWS and WRAPCOLS come from a list (`matrixCellsFromList`).
+- **carry-if-uniform**: VSTACK and HSTACK (`stack`).
+- **convert**: rank changes cross carriers. TOCOL and TOROW go to a list; WRAPROWS and WRAPCOLS come from a list (`matrixCellsFromList`).
 - **strip**: MMULT, MDETERM, MINVERSE.
 - **na**, and **author** (Table Input).
 
-A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carried across `toMatrix` in `coerceValue`'s `table` case. `matrixUnitPolicy.test.ts` tests each policy and fails the build when a `matrix.ts` node takes a matrix without a declared policy. A `MatrixValue` wrapper was rejected ([[D43]]): the fragility is confined to rebuild sites, so a declared policy plus the guard beats churning the universal `toMatrix` and `toScalar` coercers.
+A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carried across arrival coercion's `table` case (`boundary.rs`). A `MatrixValue` wrapper was rejected ([[C25]] firstClassUnits): the fragility is confined to rebuild sites, so a declared policy plus the guard beats churning the universal arrival coercers.
 
-## Formula dimensions (`unitDimExpr.ts`)
+Tests: `matrixUnitPolicy.test.ts`: the register of each matrix node's policy, each policy tested, and a sweep that fails when a node takes a matrix without one. A node whose matrix input hides behind a wildcard or a dynamic socket (TAKE and DROP's `anydata`, Interpolate's grid mode) is listed by hand. `cubeColumnUnits.test.ts`: a Cube's units on its cells.
 
-`dimEval(ast, env, codes?)` is a second reading of a parsed formula (the numeric evaluator's `Ast`): it works out the dimension the result carries and never computes a value. `env` maps each named input to its dimension (an absent name is dimensionless); `codes` maps a pure-currency input to its display code, because a currency's identity is its code ([[D47]] noMixCurrencies) and the numeric evaluator can't see codes. It answers one of three things:
+## Formula dimensions
+
+Code: `unit_dims.rs`
+
+`dim_eval_with_code(ast, env, codes)` is a second reading of a parsed formula (the numeric evaluator's `Ast`): it works out the dimension the result carries and never computes a value. `env` maps each named input to its dimension (an absent name is dimensionless); `codes` maps a pure-currency input to its display code, because a currency's identity is its code ([[C25]] firstClassUnits) and the numeric evaluator can't see codes. It answers one of three things:
 
 - a `Dim`, the determined result dimension (`{}` is dimensionless);
 - a `SolError`, a real dimensional conflict (`#UNIT!`: meters plus seconds, SIN of a length, comparing incommensurable quantities, two currency codes);
 - `null`, indeterminate (a non-constant exponent, a LAMBDA call, IF branches in two different dimensions). The caller drops the unit rather than guessing; no error is raised.
 
-**Leaves.** Numbers, logicals, text, a blank argument, and `@`-row and whole-column references are dimensionless, since a Frame's unit lives on the column, not the cell ([[D43]] unitByGranularity); the affine pass alone reads a reading column's references as readings ([[computed-columns]] § Units). A name reads `env` and `codes`. Unary `±` and `%` keep the argument's dimension.
+**Leaves.** Numbers, logicals, text and a blank argument are dimensionless. A name, an `@`-row reference and a whole-column reference read `env` and `codes`, which a computed column fills from its columns' units, since a Frame's unit lives on the column, not the cell ([[C25]] firstClassUnits). A LAMBDA the formula calls by name (`fns`, a computed column's `λ1`) is read through its body, each parameter taking its argument's dimension. Unary `±` and `%` keep the argument's dimension.
 
 **Operators.**
 
@@ -139,7 +228,7 @@ A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carri
 |---|---|
 | `×`, `÷` | multiply or divide the dimensions; two different currency codes are `#UNIT!`, since a quotient would invent an exchange rate; a code carries only while the result stays in the coded operand's dimension |
 | `+`, `−` | equal dimensions keep them (and either code); a dimensionless side adopts the other side; two different real dimensions, or two codes, are `#UNIT!` |
-| `^` | a constant exponent (a pure-number subtree folded by `constNum`, such as `1/2`) raises the dimension; otherwise determinable only for a dimensionless base, else indeterminate |
+| `^` | a constant exponent (a pure-number subtree folded by `const_num`, such as `1/2`) raises the dimension; otherwise determinable only for a dimensionless base, else indeterminate |
 | `&` | dimensionless |
 | comparisons | dimensionless; `#UNIT!` only for two different real dimensions or two codes; an indeterminate side compares fine |
 
@@ -157,40 +246,98 @@ A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carri
 | lookups | XLOOKUP (the return array), VLOOKUP, HLOOKUP (the table), LOOKUP (the result vector, else the lookup vector) | the returned range's dimension; the key is compared, not carried |
 | SQRT | | halves the exponents |
 | POWER | | only the exponent's dimension is visible, not its value, so it is determinable only for a dimensionless base |
-| IF, IFS, SWITCH, IFERROR, IFNA, CHOOSE | | the answer is one of the branches (IF's then and else, IFS's values, SWITCH's results and default, IFERROR's value and fallback, CHOOSE's options): their shared dimension, a dimensionless branch adopting it as under `+` (`IF(c, a, 0)` keeps km), or indeterminate when two real dimensions disagree, not a conflict |
+| IF, IFS, SWITCH, IFERROR, IFNA, CHOOSE | | the answer is one of the branches (IF's then and else, IFS's values, SWITCH's results and default, IFERROR's value and fallback, CHOOSE's options): their shared dimension, a dimensionless branch adopting it as under `+` (`IF(c, a, 0)` keeps km), or indeterminate when two real dimensions disagree or a branch is indeterminate, not a conflict |
 | a LAMBDA host or application | MAP, BYROW, BYCOL, REDUCE, SCAN, MAKEARRAY, `LAMBDA(…)(…)` | the body's dimension, each parameter taking its argument's: an element's, a whole row's, or a plain index. A bare function name is the lambda that calls it (`REDUCE(0, a, MAX)`). A fold's accumulator adopts the element's dimension when it starts dimensionless, and a step that changes the accumulator's dimension is indeterminate (`REDUCE(1, a, LAMBDA(p, v, p * v))`) |
 | a name bound to a LAMBDA | | indeterminate, since the body is not visible |
-| any other function | | reads plain numbers: a dimensioned argument is `#UNIT!` rather than a silently dropped unit; all-dimensionless arguments give a dimensionless answer (`a + RAND() * 0` keeps °C) |
+| finance ([[C25]] firstClassUnits; `finance_money` in `finance_units.rs`) | PV, FV, PMT, IPMT, PPMT, CUMIPMT, CUMPRINC, ISPMT, NPV, XNPV, FVSCHEDULE, SLN, SYD, DB, DDB, VDB, ACCRINT, ACCRINTM, RECEIVED answer money; NPER, RATE, IRR, XIRR, MIRR, RRI, PDURATION, INTRATE answer a plain number | the money arguments (present and future value, payment, cash flows, cost, salvage, par, investment) share one currency, a plain one adopting it, and a money answer carries it with its code; every other argument is a plain number. A unit on a rate or a period count, money that isn't a currency, or two currencies is `#UNIT!`. The finance nodes read their inputs through the same table, so node and formula answer alike |
+| any other function | | a gap, not a rule ([[C25]] firstClassUnits): each function here is owed a class. Until it has one it reads plain numbers: a dimensioned argument is `#UNIT!` rather than a silently dropped unit; all-dimensionless arguments give a dimensionless answer (`a + RAND() * 0` keeps °C) |
 
-`dimEvalWithCode` returns the dimension with its code, for a caller whose top level is itself a combination, so no operator inside either side ever sees both codes. `formulaResultDim` folds a conflict into `null`; use `dimEval` when the conflict must surface as an error.
+`dim_eval_with_code` returns the dimension with its code, for a caller whose top level is itself a combination, so no operator inside either side ever sees both codes.
+
+Tests: `unitDims.test.ts`: the leaves, operators and function classes, with the retired spellings answering no dimension so the evaluator's `#NAME?` hint answers; `financeUnits.test.ts`: the finance functions carry the currency their money arguments share.
 
 ## Expression
 
-`dimEval` (`unitDimExpr.ts`) sets the result dimension. A dimensionless argument adopts, under `+` and in the dimension-preserving functions alike (ROUND's digits, MIN(5 km, 3)). When every united input reads in ONE linear display unit, the formula runs on the displayed numbers: `5 km + 3` is 8 km, `5 km > 3000` is FALSE and `5 km & "x"` is "5x", as on Arithmetic and Comparison. A result `k` powers of that unit converts back by scale^k. Mixed units or a derived form run on base SI. An affine unit (°C, °F) is classified statically (`affineWeight` in `unitDimExpr.ts`): each subexpression carries its point weight, the sum of its coefficients on the readings. A reading is 1, a difference or a bare number 0, and a reading scales only by a constant, so `(a + b) / 2` is 1 again. MIN, MAX, MEDIAN and AVERAGE keep their arguments' weight (a bare number beside readings is a reading, a literal or a wired plain number alike, as on the Aggregate card); the spreads and squared spreads (STDEV, AVEDEV, VAR, DEVSQ) need their arguments to agree and answer a difference; SUM adds them and refuses a list of readings, as SUMIF and SUMIFS do; ROUND and its kin, and the picks (LARGE, SORT), keep their first argument's; AVERAGEIF, MAXIFS and MINIFS keep their value range's; IF, IFS, SWITCH, IFERROR, IFNA and CHOOSE need their branches to agree, a literal or wired plain-number branch counting as a reading (`IF(c, a, 0)` is 0 °C when it picks the 0); a LAMBDA's parameters take their arguments' weights, inline or through a host, and a fold must answer its accumulator's kind each step (`REDUCE(0, a, MAX)` is a reading, `REDUCE(0, a, LAMBDA(p, v, p + v))` is `#UNIT!`); any other function of a reading is `#UNIT!`. The formula then runs once on the readings: weight 1 is a reading (`a + 5` is 25 °C), 0 a difference in the base unit (`b - a` is 10 K), anything else `#UNIT!` (`a * 2`, `b / a`, `SUM(a, b)`). The message names the cause: a weight a constant factor produced (`a * 2`, `a * 2 + b`) says a reading can't be scaled, any other weight above 1 (`a + b`) says readings can't be added. Readings in different offset units (°C and °F) run in base SI but are classified the same way, so `a + b` is `#UNIT!` there too. Machine-checked: `unitWiring.test.ts`.
+`dim_eval_with_code` (`unit_dims.rs`) sets the result dimension. A dimensionless argument adopts, under `+` and in the dimension-preserving functions alike (ROUND's digits, MIN(5 km, 3)).
 
-A formula preset may declare the unit a variable is read in (`units` on the pack entry, `varUnits` on the Expression or Equation node, `readInDeclaredUnit` in `unitBridge.ts`). That variable converts to the declared unit before anything above runs, a bare number is taken as already in it, and another dimension is `#UNIT!`; the variable is then dimensionless to `dimEval`. Proposed in the inbox item `preset-declared-units`; machine-checked by `thermo.test.ts`.
+**Which numbers the formula runs on:**
+
+- When every united input reads in one linear display unit, the formula runs on the displayed numbers: `5 km + 3` is 8 km, `5 km > 3000` is FALSE and `5 km & "x"` is "5x", as on Arithmetic and Comparison. A result `k` powers of that unit converts back by scale^k.
+- Mixed units or a derived form run on base SI.
+- A list input holding two dimensions is `#UNIT!` ("xs holds mixed units: m and s."), since the formula reads each variable in one; a bare number beside its united cells adopts their unit, as under `+`.
+- A list or table answer is re-tagged cell by cell.
+
+**Readings on an offset scale.** An affine unit (°C, °F) is classified statically (`affine_weight` in `unit_dims.rs`) by point weight, as [[value-semantics#Points and differences]] defines it: each subexpression carries the sum of its coefficients on the readings. A reading is 1, a difference or a bare number 0, and a reading scales only by a constant, so `(a + b) / 2` is 1 again. By function:
+
+- MIN, MAX, MEDIAN and AVERAGE keep their arguments' weight; a bare number beside readings is a reading, a literal or a wired plain number alike, as on the Aggregate card.
+- The spreads and squared spreads (STDEV, AVEDEV, VAR, DEVSQ) need their arguments to agree and answer a difference.
+- SUM adds the weights and refuses a list of readings, as SUMIF and SUMIFS do.
+- ROUND and its kin, and the picks (LARGE, SORT), keep their first argument's weight; AVERAGEIF, MAXIFS and MINIFS keep their value range's.
+- IF, IFS, SWITCH, IFERROR, IFNA and CHOOSE need their branches to agree, a literal or wired plain-number branch counting as a reading (`IF(c, a, 0)` is 0 °C when it picks the 0).
+- A LAMBDA's parameters take their arguments' weights, inline or through a host, and a fold must answer its accumulator's kind each step: `REDUCE(0, a, MAX)` is a reading, `REDUCE(0, a, LAMBDA(p, v, p + v))` is `#POINT!`.
+- Any other function of a reading is `#POINT!`.
+
+The formula then runs once on the readings, and the weight decides the answer:
+
+- weight 1 is a reading: `a + 5` is 25 °C;
+- weight 0 is a difference in the base unit: `b - a` is 10 K;
+- anything else is `#POINT!` (`a * 2`, `b / a`, `SUM(a, b)`). The message names the cause: a weight a constant factor produced (`a * 2`, `a * 2 + b`) says a reading can't be scaled, and any other weight above 1 (`a + b`) says readings can't be added.
+
+Readings in different offset units (°C and °F) never meet: any formula over both is `#UNIT!`, "Convert to one temperature unit first".
+
+**Declared units.** A formula preset may declare the unit a variable is read in (`units` on the pack entry, `varUnits` on the Expression or Equation node, `read_in_declared_unit` in the core's `nodes/formula.rs`). That variable converts to the declared unit before anything above runs, a bare number is taken as already in it, and another dimension is `#UNIT!`; the variable is then dimensionless to `dim_eval_with_code`. Proposed in the inbox item `preset-declared-units`.
+
+The Equation node derives the unknown's unit from the relation the same way: knowns wired in with units run the numeric engine on base-SI magnitudes, the solved variable is tagged with the dimension the isolated expression implies, and a graph with no units stays as it is.
+
+Tests:
+
+- `unitWiring.test.ts`: the formula reads a united input as the Arithmetic and Comparison cards do, and each case of readings above.
+- `thermo.test.ts` (packs): the declared units.
+- `equationUnits.test.ts`: the Equation's solved unit.
+
+## Computed columns
+
+A computed column with no authored unit takes the unit its formula works out, as Expression does ([[C25]] firstClassUnits; `plan_column_units` in `crates/solenoid-core/src/nodes/columns.rs`). A column holds one unit, so this is one `dim_eval_with_code` pass per column, never per row.
+
+- **Inputs.** Each name, `@` read and `[Name]` read of a column takes that column's `ColumnUnit` (a currency column also its code); a wired side value takes its cells' one dimension, and a side list mixing two is `#UNIT!`. The Computed Column node is `unitAware`, so a side value arrives with its unit. A LAMBDA's captured values count as side values: the LAMBDA card is `unitAware` and keeps them with their units on the value (`capturedValues`), its own body still reads them as the numbers they show, and the column hands them to the body in the magnitudes it runs on (`lambda_with_captures`, `nodes/columns.rs`). With no united input the column computes as plain numbers and carries only an authored unit.
+- **Indeterminate** (`POWER(@d, 2)`, `@d ^ @q`, IF branches in two dimensions): the unit drops and the column computes on the numbers the columns show, carrying only an authored unit, as with no united input.
+- **A conflict** (`@dist + @time` over km and h, `$` beside `€`) makes every cell of the column `#UNIT!`, as a column-level error is shown.
+- **Readings** on an offset scale are classified as on Expression (`affine_weight`): over °C `@hi - @lo` is a difference in K, `(@lo + @hi) / 2` is a °C reading, and `@lo + @hi` is `#POINT!`.
+- **Magnitudes.** When every united input reads in a linear display unit, the formula runs on the numbers the columns show (`@d + 1` over km is +1 km), and a second pass that treats each display unit as its own axis says which display units the answer is in: one unit to the first power keeps it (`@price * @qty` over `$` is `$`), a product or quotient keeps the FC unit with exactly that scale (`@dist / @time` over km and hr is km/h), and anything else converts to base SI with the derived symbol. Display units that can't share an axis (km beside mi under `+`), a derived form, or readings in two offset units run in base SI.
+- **An authored unit wins** (a `Name (unit)` name, or the Fx column's unit picker): the answer converts into it, a plain-number answer is tagged with it as typed, and an answer in another dimension, or another currency code, is `#UNIT!`.
+- **Replacing a column** sets the new unit, or none, never the replaced column's stale one.
+
+- **Cubes.** A Cube's computed column (the Computed Column node over a Cube, and a Cube Input Fx column) runs the same pass. A Cube carries its unit on its cells, so a column's unit is the one its cells share, a row's list items included (`cube_row_table`): cells in one display unit read as the numbers they show; cells in one dimension but two display units (km beside mi) read in base SI with only the dimension; cells in two dimensions make the column `#UNIT!` in every cell of a formula that reads it ("d holds mixed units: m and s."), while a formula that leaves it out computes. The result's unit is tagged onto each number of the new column, list items included, so a column of km lists doubled is km lists and `SUM(@legs)` is km.
+
+Tests: `computedColumnUnits.test.ts`: a computed column takes the unit its formula works out; `cubeColumnUnits.test.ts`: the same over a Cube, carried on its cells.
 
 ## LAMBDA hosts over a 1-D list
 
-REDUCE, BYROW and BYCOL strip tagged cells to plain magnitudes for the numeric fold: in the display unit the tagged cells share (so a bare `+ 1` means 1 km, and a result `k` powers of that unit converts back by scale^k), else in base SI. Over an affine unit the fold is classified as Expression is, with `values` a list of readings and REDUCE's `acc` and `value` both readings; REDUCE must answer a reading each step (`MAX(acc, value)`), so `acc + value` is `#UNIT!`. They run `dimEval` (`unitDimExpr.ts`) with the fold and aggregate variables bound to the element's dimension to get the result's dimension, and re-tag the result, keeping `display` when the dimension is unchanged. Mixed units or a clash inside the formula give `#UNIT!`, and a formula that yields a plain count (COUNT) strips to a plain number. MAP, MAKEARRAY and SCAN ignore units on matrices (`tableLambda.ts`).
+REDUCE, BYROW and BYCOL strip tagged cells to plain magnitudes for the numeric fold: in the display unit the tagged cells share (so a bare `+ 1` means 1 km, and a result `k` powers of that unit converts back by scale^k), else in base SI. Over an affine unit the fold is classified as Expression is, with `values` a list of readings and REDUCE's `acc` and `value` both readings; REDUCE must answer a reading each step (`MAX(acc, value)`), so `acc + value` is `#UNIT!`. They run `dim_eval_with_code` (`unit_dims.rs`) with the fold and aggregate variables bound to the element's dimension to get the result's dimension, and re-tag the result, keeping `display` when the dimension is unchanged. Mixed units or a clash inside the formula give `#UNIT!`, and a formula that yields a plain count (COUNT) strips to a plain number. REDUCE's initial value is the first accumulator, so its unit joins the list's: over a plain list it is the fold's unit and only `acc` carries it, `value` staying a plain number (`5 km` over `[1, 2]` with `acc + value` is 8 km, `$1000` over rates `[0.05, 0.03]` with `acc * (1 + value)` is $1,081.50), and in another dimension than the list it is `#UNIT!`. MAP, MAKEARRAY and SCAN ignore units on matrices (`map_table`, `make_array`, `scan_lambda`).
 
-## The display bridge (`unitBridge.ts`)
+Tests: `tableLambda.test.ts` and `unitWiring.test.ts`: units through the LAMBDA hosts.
 
-The bridge maps the FC's unit ids (`UNIT_ANNOTATIONS`, [[format-model]]) and every other registered display id onto the dimensional `Unit`s above.
+## The display bridge
 
-- **`fcUnitToUnit(id)`** resolves an id, memoized: `none`, `custom` and `""` are `null`; otherwise the first hit among `DIRECT`, `parseUnit` (through `PARSE_AS`) and the registered extras. `DIRECT` holds what `parseUnit` can't spell: the currencies (usd, eur, gbp, jpy, all on the single `currency` axis at scale 1, since there are no exchange rates), ha, ac and the US liquid gallon. `PARSE_AS` renames ids whose parse string differs (hr → h, ms1 → m/s, kmh → km/h, mph → mi/h, b → byte, kb / mb / gb / tb → kbyte / Mbyte / Gbyte / Tbyte, L and mL through the parser's litre case); any other id is its own parse string.
-- **`registerDisplayUnits(units)`** is the seam for display ids authored elsewhere (Convert's units, for one), so a `UnitCell.display` can hold any id a node sets while the bridge never imports `nodes/*`. It clears the memo, since an id may already be cached as unresolvable.
-- `fcUnitDim` is an id's dimension (dimensionless when unknown); `isDimensionalFcUnit` is true only for an id with a real dimension. `fcUnitIdForUnit(u)` finds the FC id for a `Unit`: an exact scale and offset match first, else the first id of the same dimension, else none (the value shows its derived symbol).
-- **`displayMagnitudeOf(cell)`** is a cell's magnitude in its own display unit (5 km gives 5, not 5000), or its base magnitude with no usable display. **`stripUnitCells(v)`** replaces every `UnitCell`, at the top level or nested in arrays, with that magnitude, and returns the same reference when nothing is dimensioned. It is the unit-blind boundary ([[compute-pass]], "Arrival coercion").
-- At module load the bridge upgrades `unitValue`'s scale and offset resolvers to `fcUnitToUnit`, so adoption knows the full FC table and not only the `dimension.ts` spellings. The bridge is on every compute path, so the upgrade always happens.
+Code: `fc_unit_to_unit` (`unit_catalog.rs`)
+
+The bridge maps the FC's unit ids (`UNIT_ANNOTATIONS`, [[format-model]]), Convert's units and the currency codes onto the dimensional `Unit`s above. The app reads it through `fcUnitToUnit(id)` (`dimension.ts`, memoized), frozen in `fixtures/core/unit-catalog.json.gz`.
+
+- **`fc_unit_to_unit(id)`** resolves an id: `none`, `custom` and `""` are none; otherwise the first hit among a direct table, the parser (through a rename table) and the registered ids. The direct table holds what the parser can't spell: usd, eur, gbp and jpy (all on the single `currency` axis at scale 1, since there are no exchange rates), ha, ac and the US liquid gallon. The rename table maps ids whose parse string differs (hr → h, ms1 → m/s, kmh → km/h, mph → mi/h, b → byte, kb / mb / gb / tb → kbyte / Mbyte / Gbyte / Tbyte); any other id is its own parse string. Then the currency codes Frankfurter lists, and Convert's units (`convert_units.rs`, generated from `convertUnits.ts`), so a `UnitCell.display` any node sets resolves.
+- The core's `fc_unit_id_for_unit` (`card_helpers.rs`) finds the FC id for a `Unit`: an exact scale and offset match first, else the first id of the same dimension, else none (the value shows its derived symbol).
+- **`displayMagnitudeOf(cell)`** is a cell's magnitude in its own display unit (5 km gives 5, not 5000), or its base magnitude with no usable display. **`stripUnitCells(v)`** replaces every `UnitCell`, at the top level or nested in arrays, with that magnitude, and returns the same reference when nothing is dimensioned. It is the unit-blind boundary ([[compute-pass]], "Arrival coercion"): a comparison, a threshold or a chart downstream of an FC computes on the number the user typed (5, not the base-SI 5000), while unit-aware nodes and pure passthroughs keep the tags.
+
+Tests: `unitCoercion.test.ts`: a `UnitCell` unwraps to its display magnitude at the boundary, and unit-aware nodes and passthroughs keep it; `convertUnitLabels.test.ts`: every Convert unit's label and annotation.
 
 ## Authoring a unit
 
 Two authors change a value's unit on purpose: the FC, through `applyFcUnit`, and Convert.
 
-### `applyFcUnit(value, fcUnitId, customUnit?)`
+### The FC's unit tag
 
-The value-side author, in `unitBridge.ts`. The third argument is the custom-name path; a two-argument call silently drops custom units.
+Code: `tag_fc_unit(value, id, customUnit, held)`
+
+The value-side author, the FC card's own rule (`nodes/docs.rs`); the app reaches it as `applyFcUnit(value, fcUnitId, customUnit?)` (`unitBridge.ts`), frozen in `fixtures/core/fc-tag.json.gz`. The third argument is the custom-name path; a two-argument call silently drops custom units. `held` is the unit a grid already carries.
 
 | Input | Result |
 |---|---|
@@ -198,54 +345,91 @@ The value-side author, in `unitBridge.ts`. The third argument is the custom-name
 | a dimensioned cell + a commensurable unit | re-display: the base stays, `display` changes |
 | a dimensioned cell + an incommensurable unit | `#UNIT!`. A real dimension clash is reported, never silently overwritten |
 | a pure ratio | `#UNIT!`. Its units canceled, so it can't be relabeled |
-| a non-blank **custom** name | an opaque `customDim` tag. Only `none` or a blank custom name passes through |
-| a numeric **matrix** | tagged through `withMatrixUnit` on a freshly `slice()`d outer array; never tag the shared cached array |
+| a non-blank **custom** name | an opaque `custom:<name>` tag. Only `none` or a blank custom name passes through, with any grid unit it holds |
+| a numeric **matrix** | takes the unit as its own grid unit, on a fresh value; the shared cached array is never tagged |
 | a numeric matrix that already carries a grid unit | the cell rules: an incommensurable unit is `#UNIT!`, a commensurable one re-displays by rescaling the as-typed cells. The FC mirrors and locks a grid's unit as it does a cell's |
 | text or a Frame | passes through, and any existing tag rides on |
 
-`null` and `SolError` values pass untouched. A custom free-text unit becomes a `customDim` axis with no display id, so `formatDim` renders the name. A value counts as a matrix when any element is an array, and it is tagged only when the first non-blank cell of its first row is a number.
+`null` and `SolError` values pass untouched. A custom free-text unit becomes a `custom:<name>` axis with no display id, so `format_dim` renders the name. A value counts as a matrix when any element is an array, and it is tagged only when the first non-blank cell of its first row is a number.
 
 Convert authors the same way: base-SI plus the target unit's display, and `#UNIT!` when an input that already has a dimension clashes with the target.
 
+Tests:
+
+- `coreFcTag.test.ts`: the tag's frozen cases, each row of the table above, built from unit ids so a case reads the same every run.
+- `unitFlowAnnotation.test.ts`: `applyFcUnit`'s value-changing cases, a grid tagged on a copy and a text matrix left alone.
+
 ### Convert
 
-Convert (`nodes/convert.ts`) is `unitAware` and works per cell through `broadcastUnit`. Its conversion math is `dimension.ts` ([[engineering#One declaration per fact]]); each unit's `category` only groups the dropdown.
+Convert (`nodes/convert.ts`, its body `convert` in `crates/solenoid-core/src/nodes/packs.rs`) is `unitAware` and works per cell through `broadcast_unit`. Its conversion math is the core's (`convert_units.rs`, [[engineering#One declaration per fact]]); each unit's `category` only groups the dropdown.
 
 - A from and to unit that measure different things, or a unit id Convert doesn't know, give one `#N/A` for the whole output, at every rank, never a `#UNIT!` in each cell. The clash comes from the node's own dropdowns, so it is the node's problem, not the data's: `#N/A` is what Excel's CONVERT answers and what IFNA and ISNA catch, while a `#UNIT!` per cell would blame the data for the pick ([[C25]] firstClassUnits). Every other unit clash stays `#UNIT!` at the cell. This reopens if Convert grows per-cell units (a mixed-unit list), when the clash becomes the cell's.
 - A dimensioned cell whose dimension matches the target is re-displayed in the target unit; a mismatched one is `#UNIT!`.
 - A plain number is read as the from-unit and converted; a result too large to represent is `#OVERFLOW!`.
 - Its `unit` getter answers the to-unit as an FC unit id (`none` when there is no FC twin), so an FC's `refreshAnnotation` treats Convert as a unit forwarder.
-- `syncUnitArrows` sets the imposing-arrow markers (`imposesUp`, `imposesDown`) from whether `in` and `out` are wired, not from whether an FC sits beside them.
+- The FC reconcile (`fc.rs`) sets the imposing-arrow markers (`imposesUp`, `imposesDown`) from whether `in` and `out` are wired, not from whether an FC sits beside them.
 
-**Every Convert unit id must be registered with the display bridge** (`unitBridge.ts`). Then a `UnitCell.display` that Convert set (yd, psi, km_h…) resolves at render time even with no FC-registry twin. Unregistered, the downstream value box shows the base-SI derived symbol and Convert loses control of the value's unit.
+**Convert and the FC share one id space**: a Convert unit the FC also lists carries the FC's id (`kmh`, `ms1`, `degC`, `L`, `oz`, `ac`), so a Convert's output reads in its target unit and an FC downstream mirrors it. **Every Convert unit id resolves through the display bridge** (`fc_unit_to_unit` reads `convert_units.rs`), so a `UnitCell.display` that Convert set (yd, psi…) resolves at render time even with no FC-registry twin. A Convert unit the bridge missed would show the base-SI derived symbol downstream, and Convert would lose control of the value's unit.
+
+Tests: `convert.test.ts`: Convert tags its output, the shared id space, and the whole-output `#N/A`; `unitCoercion.test.ts`: an FC after a Convert forwards the converted unit, and an FC feeding a Convert is dictated its from-unit.
 
 ## The format annotation
 
-### Per-node rule (`makeAnnotationResolver.compute`)
+### Per-node rule
+
+Code: `Walk::compute` (`annotate.rs`)
 
 For one output, the first rule that applies decides:
 
+```mermaid
+flowchart TD
+    o["one output"] --> r1{"Convert?"}
+    r1 -->|yes| d1["drops the format"]
+    r1 -->|no| r2{"a per-output producer<br>with one for this output?"}
+    r2 -->|yes| d2["its own format"]
+    r2 -->|no| r3{"an FC that inherits?"}
+    r3 -->|yes| d3["the arriving format<br>merged with its unit"]
+    r3 -->|no| r4{"an FC or a<br>node-level producer?"}
+    r4 -->|yes| d4["its own annotation"]
+    r4 -->|no| r5{"a passthrough or<br>a Conduit lane?"}
+    r5 -->|yes| d5["the format of the<br>branch it computed"]
+    r5 -->|no| d6["a transform: carries only<br>where the op keeps the meaning"]
+```
+
+
 1. **Convert** (duck-typed: string `fromUnit` and `toUnit`) drops the inherited format. It sets a new unit and rescales the number, so the old precision no longer fits. It is the one transform that drops.
-2. **A per-output producer** (`hasAnnotationFor`, `annotationFor(outKey)`) locks each output's own format, such as a Triangle angle's ° or an inverse-trig result in degrees. When it returns none for an output, the rule falls through to the transform carry below. So a Triangle side (a value-level unit, not a format) or Element Z carries no format (no `formatCarry`), while MathFn's abs and round still carry, which is how abs(−5%) stays a percent.
-3. **An FC that may inherit** (`resolveAnnotation`) merges the format arriving at its `in` with its own unit ([[format-model]], "Inheriting the format"); it wins wherever it is present.
-4. **An FC or node-level producer** (`hasAnnotation`) locks its own `annotation()`.
-5. **A passthrough** (`isPassthroughNode`, from the one `passthrough()` declaration; Display and the selectors) carries its input's format. The data-aware `selectedPassInput` picks the branch the node actually computed, so `IF(true, km, mi)` follows `then`. When the pick is undetermined, `passInputKeys` names the value branches and their annotations combine: every present one must share the same unit, format and custom unit, or the result is none. A passthrough with no value keys carries its first input's annotation.
+2. **A per-output producer** (`annotationFor(outKey)`) locks each output's own format, such as an inverse-trig result in degrees. When it returns none for an output, the rule falls through to the transform carry below. So Element Z carries no format (no `formatCarry`), while MathFn's abs and round still carry, which is how abs(−5%) stays a percent.
+3. **An FC that may inherit** (`resolveAnnotation`) merges the format arriving at its `in` with its own unit ([[format-model#Inheriting the format (`—`)]]); it wins wherever it is present.
+4. **An FC or node-level producer** locks its own `annotation()`.
+5. **A passthrough** (from the one `passthrough()` declaration; Display and the selectors) carries its input's format. The data-aware `selectedPassInput` picks the branch the node actually computed, so `IF(true, km, mi)` follows `then`. When the pick is undetermined, `passInputKeys` names the value branches and their annotations combine: every present one must share the same unit, format and custom unit, or the result is none. A passthrough with no value keys carries its first input's annotation.
 6. **A Conduit lane** `out_i` inherits `in_i`, duck-typed on `cachedLane`, on purpose with no `passthrough()` declaration.
-7. **Anything else is a transform** and carries the format only where the node declares that the op keeps the value's meaning. `carriedFormat` reads `formatCarryForOutput`, whose per-op map lives in the node's op table. An undeclared transform carries nothing, so multiply, divide, power, count, variance, product, rates, z-scores and finance outputs show plain. The output socket's declared element family must exist (a wildcard, a Frame or a lambda carries no format), and among the declared inputs the first one that is wired, annotated and of that same family wins; the copy has `unit: "none"` and no custom unit, because the unit is value-level ([[C25]] firstClassUnits). Two or more date-styled operands make a span (date − date, NETWORKDAYS) and carry nothing ([[D41]] formatFlowsDownstream). A spec marked `notDate` (a sum or a spread: SUM, STDEV, PTP, a running sum) carries a number or percent style but drops a date style; only a mean, min, max or median of dates is a date.
+7. **Anything else is a transform** and carries the format only where the node declares that the op keeps the value's meaning. The carry reads `formatCarryForOutput`, whose per-op map lives in the node's op table. An undeclared transform carries nothing, so multiply, divide, power, count, variance, product, rates, z-scores and finance outputs show plain. The output socket's declared element family must exist (a wildcard, a Frame or a lambda carries no format), and among the declared inputs the first one that is wired, annotated and of that same family wins; the copy has `unit: "none"` and no custom unit, because the unit is value-level ([[C25]] firstClassUnits). Two or more date-styled operands make a span (date − date, NETWORKDAYS) and carry nothing ([[C118]] formatTravelsWithValue). A spec marked `notDate` (a sum or a spread: SUM, STDEV, PTP, a running sum) carries a number or percent style but drops a date style; only a mean, min, max or median of dates is a date.
+
+Tests: `unitFlowAnnotation.test.ts`: each rule over mock sources, selectors, transforms with real socket types and Conduit lanes, and a per-output producer where only some outputs lock.
 
 ### What carries the format
 
-Which steps keep a value's meaning ([[D41]] formatFlowsDownstream):
+Which steps keep a value's meaning ([[C118]] formatTravelsWithValue):
 
 - **Carries:** add and subtract (5% + 3% is a percent, a date + days is a date); mean, min, max, standard deviation, moving windows and EWMA; ABS, ROUND, MROUND and clamp; EDATE and WORKDAY keep a date.
-- **Doesn't carry:** multiply, divide, power and MOD; count, variance and product; z-scores and correlation; every finance result (NPV, a rate, CAGR, Sharpe); a free-form Expression; date − date or NETWORKDAYS, which give a span, not a date; and a date style through a sum or a spread of dates. A change of kind, like number to text, carries nothing.
+- **Doesn't carry:** multiply, divide, power and MOD; count, variance and product; z-scores and correlation; every finance result's format (NPV, a rate, CAGR, Sharpe; a money result still carries its currency as a unit, [[C25]] firstClassUnits); a free-form Expression; date − date or NETWORKDAYS, which give a span, not a date; and a date style through a sum or a spread of dates. A change of kind, like number to text, carries nothing.
 - **Pass-through nodes** (Sort, Reverse, Slice, Filter, INDEX, TRANSPOSE) compute nothing new, so they forward the format unchanged.
 
 ### Both directions, bounded only upstream
 
+```mermaid
+flowchart LR
+    src["a box before the FC"] -->|cable| fc["the FC"]
+    fc -->|cable| after["the boxes after it"]
+    fc -.->|"format, back through<br>passthroughs only<br>(downstreamAnnotation)"| src
+    fc -.->|"format, on through passthroughs<br>and meaning-keeping transforms<br>until a nearer FC (inAnnotation)"| after
+```
+
 - **Downstream:** a box after the FC inherits through `inAnnotation`, walking back through passthroughs and through declared meaning-preserving transforms, with no limit until a nearer FC overrides.
 - **Upstream:** a box before a trailing FC, even several hops back, inherits through `downstreamAnnotation`, walking forward through pure passthroughs only and stopping at the first transform. A format chosen after a transform says nothing about the value before it.
 - Both are derived on read, so a box's own direct FC (`getForNode`) always wins, and two FCs in one segment don't overwrite each other.
+
+Tests: `unitFlowAnnotation.test.ts`: the format's direction rules.
 
 ### Who writes and who derives
 
@@ -254,33 +438,39 @@ Which steps keep a value's meaning ([[D41]] formatFlowsDownstream):
   - `lockedByConvert`: the Convert ahead dictates the FC's from-unit.
   - `forwarding`: the incoming value already carries a unit, so the dropdown mirrors it and locks. An inherited unit belongs to the value and was set elsewhere in the chain; Convert is the tool for changing it.
   - Only an FC on a value with no unit sets one freely.
-- **Reading:** a hero row's `ValueDisplay` names its `socketKey` and reads only that socket's annotation. `DisplayNode` reads `getForNode ?? inAnnotation("in") ?? downstreamAnnotation("out")`. A `UnitCell` with no annotation renders in its own `display` unit (`formatCellWithDisplay` in `valueDisplayFormat.ts`); an annotated one unwraps to the annotation's unit, which the FC keeps in sync with `display`.
+- **Reading:** a hero row's `ValueDisplay` names its `socketKey` and reads only that socket's annotation. `DisplayNode` reads `resolveDisplayAnnotation` ([[format-model]]): `getForNode`, else its output's `outAnnotation` (a passthrough's is its input's), else `downstreamAnnotation`. A `UnitCell` with no annotation renders in its own `display` unit (`formatCellWithDisplay` in `valueDisplayFormat.ts`); an annotated one unwraps to the annotation's unit, which the FC keeps in sync with `display`. A card's own style pick wins over the annotation for a value with a unit: Convert's In and Out format dropdowns (`cardStyle`, `cardStyleAnnotation`) style the value in its own unit, so Integer shows 280 mi, and on a plain number the card's `render` applies.
 
 ### The resolver
 
-`makeAnnotationResolver(editor)` is pure and duck-typed. It indexes the connections by source and by target once, since a per-hop scan would cost boxes × cables, memoizes each output, and answers none on a cycle.
+The walk runs in the core (`annotate.rs`, [[C130]] rustCore) over the core's cables. Each node's facts are what the walk reads from its JavaScript object (`annotationFacts.ts`): whether it is a Convert or an FC, what `annotationFor` gives per output, its own `annotation()`, whether it resolves and inherits, its passthrough's pick and value keys, its Conduit lanes, its format carries, and each port's element family. `resolve_all` answers every port and every node at once; each output is memoized, and a cycle answers none.
 
+- `makeAnnotationResolver(editor)` (`unitFlow.ts`) runs the walk on its first lookup and serves every later one from the answer.
 - `outAnnotation(nodeId, outKey)` applies the per-node rule; `inAnnotation(nodeId, inKey)` is the `outAnnotation` of the cable's source.
-- `downstreamAnnotation(nodeId, outKey)` follows the cables forward: the first consumer that is an FC answers (its `resolveAnnotation` or `annotation()`), a pure passthrough is walked through on each of its outputs, and anything else ends the walk.
+- `downstreamAnnotation(nodeId, outKey)` follows the cables forward: the first consumer that is an FC answers (its resolved or own annotation), a pure passthrough is walked through on each of its outputs, and anything else ends the walk.
+- `valueOrigin(nodeId)` is the popup's "Go to source" walk upstream, the same rule with a different payload. It steps through an FC by `in`, through a passthrough by its selected branch, or by its one connected value branch (none or several is ambiguous and stops there), or by its first connected input when it has no value keys (Display). It stops at Convert, at an undetermined selector, and at any transform or source, which is the origin.
 - `sharedAnnotationResolver(editor)` shares one resolver per editor for the current microtask and rebuilds it on the next. It can't be cached on the connection version, because annotations change on any pass; within one commit the graph is fixed.
-- `resolveValueOrigin(editor, nodeId)` is the popup's "Go to source" walk upstream, the same rule with a different payload. It steps through an FC by `in`, through a passthrough by its selected branch, or by its one connected value branch (none or several is ambiguous and stops there), or by its first connected input when it has no value keys (Display). It stops at Convert, at an undetermined selector, and at any transform or source, which is the origin.
+- The walk's answers are frozen over every seed graph three ways (`fixtures/core/annotations.json.gz`): as saved, with every third cable dropped, and in reverse node order.
+
+Tests: `coreAnnotations.test.ts`: once types settle, each output's annotation and the downstream FC that governs it, each input's annotation and each node's value origin, with the facts the walk reads; `annotate.rs` (solenoid-graph): the Rust walk held to those answers; `unitCoercion.test.ts`: the FC's lock states (forwarding, dictated by a Convert, never re-authoring an inherited unit).
 
 ## A Frame's per-column format rides the value
 
-`FrameColumn.format` flows downstream like `FrameColumn.unit`, not through the annotation resolver. The coercion wrapper's output step (`coerceInputs.ts` `wrapNodeData`, the one seam every node's `data()` result passes, a composite's inner editor included) stamps each emitted Frame with that node's own `frameFormatStore` picks, memoized on the Frame's identity so the backend's upload cache still hits.
+`FrameColumn.format` flows downstream like `FrameColumn.unit`, not through the annotation resolver. The input boundary's output step (the one seam every node's `data()` result passes, a composite's inner editor included; `nodeBoundary.ts` `stamp`) stamps each emitted Frame with that node's own `frameFormatStore` picks, memoized on the Frame's identity so the backend's upload cache still hits.
 
 - Verbs that spread columns carry it. A column a verb builds takes a source column's format only where it already takes the unit (nest, the Allocator's Allocation).
 - `frameFormatStore` is the one saved home, keyed by the node that picked. `format` is worked out on every compute and never saved.
 - Readers take the local pick first and the carried one second (`FrameDisplay.annFor`, the popup's format row).
-- Machine-checked by `frameColumnFormat.test.ts`.
+- A blank pick means "no pick of mine", so the carried format shows; Auto is a real pick that replaces it.
 
-## The one compute-time unit read (`trigMode.ts`)
+Tests: `frameColumnFormat.test.ts`: through the real coercion wrapper and engine, a column's format stamped at the producer and overridden by a nearer pick, carried where the verb carries the unit, never saved, and following a renamed column.
 
-A Math node's trig op in **Auto** angle mode computes in degrees when the value feeding it carries a `deg` format annotation, from a producer that emits bare degrees (Triangle Solver, inverse trig in degrees), read through `makeAnnotationResolver.inAnnotation`. An angle with a real dimension is already stored in base radians, so `MathFXNode`'s unit-aware path computes on its magnitude directly. Only a `deg` annotation switches the op to degrees; a `grad` annotation reads as radians, because the toggle offers no gradian mode and a Convert bridges it. `resolveTrigModes(editor)` runs from `processGraph` before the engine pull, stamps a transient `_resolvedAngleMode`, and returns only the nodes whose resolved mode changed. Machine-checked by `trigMode.test.ts`.
+## The one compute-time unit read
 
-## Enforcement
+Code: `trigMode.ts`
 
-`unitFlowAnnotation.test.ts` (the format direction rules and `applyFcUnit`'s value-changing cases), `convert.test.ts` (Convert tags its output) and `tableLambda.test.ts` (units through LAMBDA hosts).
+A Math node's trig op in **Auto** angle mode computes in degrees when the value feeding it carries a `deg` format annotation, from a producer that emits bare degrees (inverse trig in degrees); a Triangle Solver angle column carries the real `deg` unit instead, read through `makeAnnotationResolver.inAnnotation`. An angle with a real dimension is already stored in base radians, so `MathFXNode`'s unit-aware path computes on its magnitude directly. Only a `deg` annotation switches the op to degrees; a `grad` annotation reads as radians, because the toggle offers no gradian mode and a Convert bridges it. `resolveTrigModes(editor)` runs from `processGraph` before the engine pull, stamps a transient `_resolvedAngleMode`, and returns only the nodes whose resolved mode changed.
+
+Tests: `trigMode.test.ts`: Auto mode in degrees after a `deg` producer and in radians after a plain source, and a list whose radian-tagged, degree-tagged and bare cells each read their own way.
 
 ## Related
 

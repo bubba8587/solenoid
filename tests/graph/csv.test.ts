@@ -1,6 +1,6 @@
-// [[C103]] untrustedContentSeams
+// [[C103]] untrustedContentSeams, [[frame-verbs#Reading CSV text]]
 import { describe, it, expect } from "vitest";
-import { parseCsvLine, parseCsvRows, csvFieldSpans, joinCsvRows } from "../../src/graph/csv";
+import { parseCsvRows, csvFieldSpans, joinCsvRows } from "../../src/graph/csv";
 
 describe("csvFieldSpans", () => {
   const cut = (text: string) => csvFieldSpans(text).map((s) => [s.row, s.col, text.slice(s.start, s.end)]);
@@ -27,32 +27,6 @@ describe("csvFieldSpans", () => {
   });
 });
 
-describe("parseCsvLine", () => {
-  it("keeps an empty trailing field", () => {
-    expect(parseCsvLine("a,,c,")).toEqual(["a", "", "c", ""]);
-  });
-
-  it("treats a comma inside a quoted field as literal (the headline bug)", () => {
-    expect(parseCsvLine('"Smith, John",42')).toEqual(["Smith, John", "42"]);
-  });
-
-  it("unescapes a doubled quote inside a quoted field", () => {
-    expect(parseCsvLine('"He said ""hi""",x')).toEqual(['He said "hi"', "x"]);
-  });
-
-  it("leaves unquoted whitespace for the caller to trim", () => {
-    expect(parseCsvLine(" a , b ")).toEqual([" a ", " b "]);
-  });
-
-  it("returns a single field for a line with no commas", () => {
-    expect(parseCsvLine("solo")).toEqual(["solo"]);
-  });
-
-  it("returns one empty field for an empty line", () => {
-    expect(parseCsvLine("")).toEqual([""]);
-  });
-});
-
 describe("parseCsvRows", () => {
   it("parses multiple rows, dropping blank lines and CRLF", () => {
     expect(parseCsvRows("a,b\r\n1,2\r\n\r\n3,4\n")).toEqual([
@@ -66,7 +40,6 @@ describe("parseCsvRows", () => {
     expect(parseCsvRows("   \n  \n")).toEqual([]);
   });
 
-  // Capabilities the bare split(",") couldn't do — the reason for the library.
   it("keeps a newline embedded in a quoted field as one row", () => {
     expect(parseCsvRows('a,"line one\nline two",c')).toEqual([
       ["a", "line one\nline two", "c"],

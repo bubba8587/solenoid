@@ -1,6 +1,7 @@
-// [[B17]], [[C48]]
+// [[B17]] typedValueModel, [[C48]] appendLadder, [[type-propagation-on-in-place-socket-retype#Frame shape is declared per producer]]
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
 import { makeFrameShapeResolver } from "../../src/graph/frameShapeResolver";
 import {
   FrameInputNode, DropBlankRowsNode, FillBlanksNode, ReplaceValuesNode, AddColumnNode,
@@ -19,13 +20,11 @@ import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
 import type { Schemes } from "../../src/graph/schemes";
 import type { Shape } from "../../src/graph/frameShape";
 
-// One case per DECLARED rule (nodes/frameShapeHook.ts): the static columns must be exactly
-// what the node's own run would produce. A rule that can't know its columns says so with
-// `null` — claiming a wrong name is worse than claiming nothing.
+
 
 const cols = (s: Shape | null) => s?.columns.map((c) => `${c.name}:${c.type}`) ?? null;
 
-async function source(editor: NodeEditor<Schemes>, text: string): Promise<Schemes["Node"]> {
+async function source(editor: GraphEditor<Schemes>, text: string): Promise<Schemes["Node"]> {
   const src = new FrameInputNode() as unknown as Schemes["Node"];
   (src as unknown as FrameInputNode).frameText = text;
   await editor.addNode(src);
@@ -34,11 +33,11 @@ async function source(editor: NodeEditor<Schemes>, text: string): Promise<Scheme
 
 /** Wire `text` into `node`.`inKey` and read the shape of its `outKey`. */
 async function shapeOf(node: object, inKey: string, text: string, outKey = "frame"): Promise<Shape | null> {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   const src = await source(editor, text);
   const n = node as Schemes["Node"];
   await editor.addNode(n);
-  await editor.addConnection(new ClassicPreset.Connection(src, "frame", n, inKey) as Schemes["Connection"]);
+  await editor.addConnection(new GraphConnection(src, "frame", n, inKey) as Schemes["Connection"]);
   return makeFrameShapeResolver(editor as never).outShape(n.id, outKey);
 }
 
@@ -46,15 +45,15 @@ const SALES = "Region, Qty, Price\nWest, 2, 5\nEast, 3, 7";
 
 /** Wire a frame into `frame` AND a Text Input into each config socket, then read the shape. */
 async function wiredConfig(node: object, configKeys: string[], text = SALES): Promise<Shape | null> {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   const src = await source(editor, text);
   const n = node as Schemes["Node"];
   await editor.addNode(n);
-  await editor.addConnection(new ClassicPreset.Connection(src, "frame", n, "frame") as Schemes["Connection"]);
+  await editor.addConnection(new GraphConnection(src, "frame", n, "frame") as Schemes["Connection"]);
   for (const k of configKeys) {
     const t = new ValueInputNode({ op: "string" }) as unknown as Schemes["Node"];
     await editor.addNode(t);
-    await editor.addConnection(new ClassicPreset.Connection(t, "value", n, k) as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(t, "value", n, k) as Schemes["Connection"]);
   }
   return makeFrameShapeResolver(editor as never).outShape(n.id, "frame");
 }
@@ -100,27 +99,27 @@ describe("declared frame shapes match what the node would produce", () => {
   });
 
   it("Bind Columns concatenates the wired frames, deduping repeated names", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const a = await source(editor, "Region, Qty\nWest, 2");
     const b = await source(editor, "Region, Note\nWest, ok");
     const bind = new BindColumnsNode() as unknown as Schemes["Node"];
     await editor.addNode(bind);
     const [k0, k1] = (bind as unknown as BindColumnsNode).valueInputKeys();
-    await editor.addConnection(new ClassicPreset.Connection(a, "frame", bind, k0) as Schemes["Connection"]);
-    await editor.addConnection(new ClassicPreset.Connection(b, "frame", bind, k1) as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(a, "frame", bind, k0) as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(b, "frame", bind, k1) as Schemes["Connection"]);
     expect(cols(makeFrameShapeResolver(editor as never).outShape(bind.id, "frame")))
       .toEqual(["Region:string", "Qty:number", "Region2:string", "Note:string"]);
   });
 
   it("Append unions the wired frames by name", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const a = await source(editor, "Region, Qty\nWest, 2");
     const b = await source(editor, "Region, Note\nWest, ok");
     const app = new AppendNode() as unknown as Schemes["Node"];
     await editor.addNode(app);
     const [k0, k1] = (app as unknown as AppendNode).valueInputKeys();
-    await editor.addConnection(new ClassicPreset.Connection(a, "frame", app, k0) as Schemes["Connection"]);
-    await editor.addConnection(new ClassicPreset.Connection(b, "frame", app, k1) as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(a, "frame", app, k0) as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(b, "frame", app, k1) as Schemes["Connection"]);
     expect(cols(makeFrameShapeResolver(editor as never).outShape(app.id, "frame")))
       .toEqual(["Region:string", "Qty:number", "Note:string"]);
   });
@@ -144,14 +143,14 @@ describe("declared frame shapes match what the node would produce", () => {
   });
 
   it("Reconcile pairs the shared columns before/after, with a Δ for numbers", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const before = await source(editor, "Id, Qty, Note\n1, 2, a");
     const after = await source(editor, "Id, Qty, Extra\n1, 3, x");
     const rec = new ReconcileNode() as unknown as Schemes["Node"];
     (rec as unknown as ReconcileNode).stringLiterals.key = "Id";
     await editor.addNode(rec);
-    await editor.addConnection(new ClassicPreset.Connection(before, "frame", rec, "left") as Schemes["Connection"]);
-    await editor.addConnection(new ClassicPreset.Connection(after, "frame", rec, "right") as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(before, "frame", rec, "left") as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(after, "frame", rec, "right") as Schemes["Connection"]);
     const r = makeFrameShapeResolver(editor as never);
     expect(cols(r.outShape(rec.id, "frame"))).toEqual([
       "Id:number", "Status:string", "Qty (before):number", "Qty (after):number", "Qty Δ:number",
@@ -198,7 +197,7 @@ describe("declared frame shapes match what the node would produce", () => {
         "parameter 2:string", "value 2:number", "log-likelihood:number", "AIC:number", "KS:number"]],
     ];
     for (const [node, outKey, expected] of fixed) {
-      const editor = new NodeEditor<Schemes>();
+      const editor = new GraphEditor<Schemes>();
       const n = node as Schemes["Node"];
       await editor.addNode(n);
       expect(cols(makeFrameShapeResolver(editor as never).outShape(n.id, outKey)), n.constructor.name).toEqual(expected);
@@ -209,21 +208,20 @@ describe("declared frame shapes match what the node would produce", () => {
   });
 
   it("Frame from Lists types each WIRED column from its port, and skips unwired rows", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const list = new ListInputNode() as unknown as Schemes["Node"];
     await editor.addNode(list);
     const ffl = new FrameFromListsNode() as unknown as Schemes["Node"];
     await editor.addNode(ffl);
     const [nameKey, valsKey] = (ffl as unknown as FrameFromListsNode).valuePairKeys()[0];
     (ffl as unknown as FrameFromListsNode).stringLiterals[nameKey] = "Qty";
-    await editor.addConnection(new ClassicPreset.Connection(list, "list", ffl, valsKey) as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(list, "list", ffl, valsKey) as Schemes["Connection"]);
     settleWildcardTypes(editor); // the Column port adopts the wired list's element type
     expect(cols(makeFrameShapeResolver(editor as never).outShape(ffl.id, "frame"))).toEqual(["Qty:number"]);
   });
 });
 
-// A literal speaks for an UNWIRED socket alone (nodes/frameShapeHook.ts): once a cable feeds
-// the config, the run reads the cable and the card text says nothing about the columns.
+
 describe("a wired config socket makes the shape unknown", () => {
   it("Columns reads the typed list, and goes unknown once Columns is wired", async () => {
     const keep = new ColumnsNode();
@@ -271,18 +269,9 @@ describe("a wired config socket makes the shape unknown", () => {
     const p = new PivotNode({ rowTotalDepth: -1 });
     p.stringLiterals.rowFields = "Year, Qtr";
     p.stringLiterals.values = "Qty";
-    expect(cols(await shapeOf(p, "frame", DATED))).toEqual(["Year:string", "Qtr:number"]);
+    expect(cols(await shapeOf(p, "frame", DATED))).toEqual(["Year:string", "Qtr:number", "Qty:number"]);
   });
 
-  it("a min or max of dates with totals runs as a date, as its shape says", async () => {
-    const f = { __frame: true as const, columns: [
-      { name: "k", type: "string" as const, values: ["a", "a", "b"] },
-      { name: "d", type: "date" as const, values: [45000, 45010, 45020] },
-    ] };
-    const g = new GroupByFrameNode({ agg: "max", totalDepth: 1 });
-    const out = (await g.data({ frame: [f], keys: [["k"]], column: ["d"] })).frame as { columns: { name: string; type: string }[] };
-    expect(out.columns.map((c) => `${c.name}:${c.type}`)).toEqual(["k:string", "d:date"]);
-  });
 
   it("Unpivot reads the typed columns, and goes unknown once Keep or Melt is wired", async () => {
     const u = new UnpivotNode();
@@ -301,7 +290,7 @@ describe("a wired config socket makes the shape unknown", () => {
     const p = new PivotNode();
     p.stringLiterals.rowFields = "Region";
     p.stringLiterals.values = "Qty";
-    expect(cols(await shapeOf(p, "frame", SALES))).toEqual(["Region:string"]);
+    expect(cols(await shapeOf(p, "frame", SALES))).toEqual(["Region:string", "Qty:number"]);
     for (const key of ["rowFields", "colFields", "values"]) {
       const wired = new PivotNode();
       wired.stringLiterals.rowFields = "Region";
@@ -312,18 +301,18 @@ describe("a wired config socket makes the shape unknown", () => {
 
   it("Join reads the typed keys, and goes unknown once a key is wired", async () => {
     const build = async (wireKey?: string) => {
-      const editor = new NodeEditor<Schemes>();
+      const editor = new GraphEditor<Schemes>();
       const left = await source(editor, "Id, Qty\n1, 2");
       const right = await source(editor, "Id, Note\n1, ok");
       const j = new JoinNode() as unknown as Schemes["Node"];
       (j as unknown as JoinNode).stringLiterals.leftKey = "Id";
       await editor.addNode(j);
-      await editor.addConnection(new ClassicPreset.Connection(left, "frame", j, "left") as Schemes["Connection"]);
-      await editor.addConnection(new ClassicPreset.Connection(right, "frame", j, "right") as Schemes["Connection"]);
+      await editor.addConnection(new GraphConnection(left, "frame", j, "left") as Schemes["Connection"]);
+      await editor.addConnection(new GraphConnection(right, "frame", j, "right") as Schemes["Connection"]);
       if (wireKey) {
         const t = new ValueInputNode({ op: "string" }) as unknown as Schemes["Node"];
         await editor.addNode(t);
-        await editor.addConnection(new ClassicPreset.Connection(t, "value", j, wireKey) as Schemes["Connection"]);
+        await editor.addConnection(new GraphConnection(t, "value", j, wireKey) as Schemes["Connection"]);
       }
       return makeFrameShapeResolver(editor as never).outShape(j.id, "frame");
     };

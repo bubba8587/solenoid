@@ -1,6 +1,6 @@
 // [[C58]] tableInputRawText, [[B11]] maximalMerge
 import { useEffect, useState, type ReactNode } from "react";
-import type { TableInputNode as TableInputNodeType, TableElemType } from "../rete-nodes";
+import type { TableInputNode as TableInputNodeType, TableElemType } from "../nodeClasses";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
@@ -29,7 +29,7 @@ async function applyTableType(node: TableInputNodeType, dt: TableElemType): Prom
   const view = getOwningView(node.id);
   if (editor && view) await retypeOutputCables(editor, view, node.id, "table");
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType>) {

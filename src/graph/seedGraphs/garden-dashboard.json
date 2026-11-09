@@ -8,7 +8,7 @@
       "id": "geocode",
       "type": "GeocodeNode",
       "x": 49,
-      "y": 222,
+      "y": 214,
       "init": {
         "label": "Boise"
       },
@@ -47,7 +47,7 @@
       "id": "today",
       "type": "TodayNowNode",
       "x": 725,
-      "y": 405,
+      "y": 462,
       "init": {
         "label": "Today",
         "op": "today"
@@ -56,7 +56,7 @@
     {
       "id": "filterPast",
       "type": "FilterFrameNode",
-      "x": 1035,
+      "x": 1037,
       "y": 204,
       "init": {
         "label": "Days behind",
@@ -78,8 +78,8 @@
     {
       "id": "colPast",
       "type": "GetColumnNode",
-      "x": 1364,
-      "y": 296,
+      "x": 1366,
+      "y": 335,
       "init": {
         "label": "Rain (behind)",
         "readAs": "number"
@@ -91,8 +91,8 @@
     {
       "id": "aggPast",
       "type": "AggregateNode",
-      "x": 1693,
-      "y": 331,
+      "x": 1695,
+      "y": 368,
       "init": {
         "label": "Rain last 14 days",
         "op": "sum"
@@ -101,8 +101,8 @@
     {
       "id": "filterFuture",
       "type": "FilterFrameNode",
-      "x": 1035,
-      "y": 499,
+      "x": 1037,
+      "y": 574,
       "init": {
         "label": "Days ahead",
         "condConfig": {
@@ -123,8 +123,8 @@
     {
       "id": "colFuture",
       "type": "GetColumnNode",
-      "x": 1364,
-      "y": 591,
+      "x": 1366,
+      "y": 705,
       "init": {
         "label": "Rain (ahead)",
         "readAs": "number"
@@ -136,8 +136,8 @@
     {
       "id": "aggFuture",
       "type": "AggregateNode",
-      "x": 1693,
-      "y": 626,
+      "x": 1695,
+      "y": 738,
       "init": {
         "label": "Rain next 7 days",
         "op": "sum"
@@ -160,7 +160,7 @@
     {
       "id": "note-c",
       "type": "NoteNode",
-      "x": 2199,
+      "x": 2201,
       "y": 34,
       "init": {
         "label": "The dashboard",
@@ -174,8 +174,8 @@
     {
       "id": "report",
       "type": "ReportNode",
-      "x": 1980,
-      "y": 277,
+      "x": 1982,
+      "y": 274,
       "init": {
         "label": "Watering call",
         "width": 300,
@@ -186,7 +186,7 @@
     {
       "id": "alert",
       "type": "AlertNode",
-      "x": 1980,
+      "x": 1982,
       "y": 34,
       "init": {
         "label": "Water the garden?"
@@ -213,7 +213,7 @@
         "color": "sky",
         "collapsed": false,
         "width": 636,
-        "height": 624
+        "height": 682
       }
     },
     {
@@ -235,14 +235,14 @@
         ],
         "color": "amber",
         "collapsed": false,
-        "width": 1200,
-        "height": 828
+        "width": 1202,
+        "height": 954
       }
     },
     {
       "id": "grp-dash",
       "type": "GroupNode",
-      "x": 1956,
+      "x": 1958,
       "y": -24,
       "init": {
         "label": "The dashboard",
@@ -254,7 +254,7 @@
         "color": "green",
         "collapsed": false,
         "width": 612,
-        "height": 551
+        "height": 548
       }
     }
   ],

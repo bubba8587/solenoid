@@ -1,15 +1,21 @@
 // [[C101]] onePatchPath
+import { parse as parseYaml } from "yaml";
+import { listLiteralItems } from "./listLiterals";
 import { yamlKey, yamlScalar } from "./obsidianMarkdown";
 import { isFrameValue, isCubeValue, type CubeCell, type CubeValue, type FrameColType, type FrameValue } from "./frame";
 import { noteDateText, noteDateSerial } from "./nodes/dateSerial";
 import { parseNoteFrontmatter } from "./noteFrontmatter";
 import { extractInlineTags } from "./vaultCube";
+import { isSolError, type SolError } from "./errorValue";
+import { isSolDate } from "./dateValue";
+import { isUnitCell } from "./unitValue";
+import { displayMagnitudeOf } from "./unitBridge";
 
-export type YamlScalarV = string | number | boolean | null;
-export type YamlRowV = YamlScalarV | YamlScalarV[];
-export type YamlValue = YamlScalarV | YamlScalarV[] | Record<string, YamlRowV>[];
+type YamlScalarV = string | number | boolean | null;
+type YamlRowV = YamlScalarV | YamlScalarV[] | Record<string, YamlRowV>[];
+type YamlValue = YamlScalarV | YamlScalarV[] | YamlScalarV[][] | Record<string, YamlRowV>[];
 
-export interface PatchResult { text: string; }
+interface PatchResult { text: string; }
 
 const FENCE = "---";
 
@@ -24,6 +30,9 @@ export function cellToYaml(cell: CubeCell, colType: FrameColType | undefined, no
   if (cell === null || cell === undefined) return null;
   if (isFrameValue(cell)) return frameRows(cell.columns.map((c) => ({ name: c.name, cells: c.values as CubeCell[], type: c.type })), noteNames);
   if (isCubeValue(cell)) return frameRows(cell.columns.map((c) => ({ name: c.name, cells: c.cells, type: c.type })), noteNames);
+  if (Array.isArray(cell) && cell.some(Array.isArray)) {
+    return cell.map((r) => (Array.isArray(r) ? r : [r]).map((c) => scalarToYaml(c as CubeCell, colType, noteNames)));
+  }
   if (Array.isArray(cell)) return cell.map((c) => scalarToYaml(c as CubeCell, colType, noteNames)) as YamlScalarV[];
   return scalarToYaml(cell, colType, noteNames);
 }
@@ -37,6 +46,10 @@ function scalarToYaml(cell: CubeCell, colType: FrameColType | undefined, noteNam
     }
     return cell;
   }
+  if (isSolDate(cell)) return Number.isFinite(cell.__date) ? noteDateText(cell.__date) : null;
+  // A number with a unit is written as it shows, in its own unit; an error never reaches here (`cellError`).
+  if (isUnitCell(cell)) return displayMagnitudeOf(cell);
+  if (isSolError(cell)) return cell.code;
   const s = String(cell);
   return noteNames.has(s) ? `[[${s}]]` : s;
 }
@@ -49,38 +62,48 @@ function frameRows(cols: Col[], noteNames: ReadonlySet<string>): Record<string, 
     const row: Record<string, YamlRowV> = {};
     for (const c of cols) {
       const cell = c.cells[i] ?? null;
-      row[c.name] = Array.isArray(cell) ? cell.map((x) => scalarToYaml(x as CubeCell, c.type, noteNames)) : scalarToYaml(cell, c.type, noteNames);
+      row[c.name] = isFrameValue(cell) || isCubeValue(cell) ? cellToYaml(cell, c.type, noteNames) as Record<string, YamlRowV>[]
+        : Array.isArray(cell) ? cell.map((x) => scalarToYaml(x as CubeCell, c.type, noteNames))
+        : scalarToYaml(cell, c.type, noteNames);
     }
     rows.push(row);
   }
   return rows;
 }
 
-function isRows(v: YamlValue): v is Record<string, YamlRowV>[] {
-  return Array.isArray(v) && v.length > 0 && typeof v[0] === "object" && v[0] !== null;
+function isRows(v: YamlValue | YamlRowV): v is Record<string, YamlRowV>[] {
+  return Array.isArray(v) && v.length > 0 && typeof v[0] === "object" && v[0] !== null && !Array.isArray(v[0]);
+}
+
+function isMatrix(v: YamlValue): v is YamlScalarV[][] {
+  return Array.isArray(v) && v.length > 0 && Array.isArray(v[0]);
 }
 
 /** A blank value is written as Obsidian writes it, `key:` with nothing after. */
 const line = (head: string, v: YamlScalarV) => `${head} ${renderScalar(v)}`.trimEnd();
 
-function renderRow(row: Record<string, YamlRowV>): string[] {
-  const out: string[] = [];
-  for (const [k, val] of Object.entries(row)) {
-    const lead = out.length === 0 ? "  - " : "    ";
-    const key = yamlKey(k);
-    if (Array.isArray(val)) {
-      if (val.length === 0) { out.push(`${lead}${key}: []`); continue; }
-      out.push(`${lead}${key}:`, ...val.map((x) => line("      -", x)));
-    } else {
-      out.push(line(`${lead}${key}:`, val));
+/** Rows as `- k: v` items at `pad`; a list field nests under its key, and nested rows nest the same way one level in. */
+function renderRows(rows: Record<string, YamlRowV>[], pad: string): string[] {
+  return rows.flatMap((row) => {
+    const out: string[] = [];
+    for (const [k, val] of Object.entries(row)) {
+      const lead = out.length === 0 ? `${pad}- ` : `${pad}  `;
+      const key = yamlKey(k);
+      if (Array.isArray(val) && val.length === 0) out.push(`${lead}${key}: []`);
+      else if (isRows(val)) out.push(`${lead}${key}:`, ...renderRows(val, `${pad}    `));
+      else if (Array.isArray(val)) out.push(`${lead}${key}:`, ...(val as YamlScalarV[]).map((x) => line(`${pad}    -`, x)));
+      else out.push(line(`${lead}${key}:`, val));
     }
-  }
-  return out;
+    return out;
+  });
 }
 
 export function renderKey(rawKey: string, v: YamlValue, spelledAs?: string): string[] {
   const key = spelledAs ?? yamlKey(rawKey);
-  if (isRows(v)) return [`${key}:`, ...v.flatMap(renderRow)];
+  if (isRows(v)) return [`${key}:`, ...renderRows(v, "  ")];
+  if (isMatrix(v)) {
+    return [`${key}:`, ...v.flatMap((r) => r.length === 0 ? ["  - []"] : r.map((x, j) => line(j === 0 ? "  - -" : "    -", x)))];
+  }
   if (Array.isArray(v)) {
     if (v.length === 0) return [`${key}: []`];
     return [`${key}:`, ...(v as YamlScalarV[]).map((x) => line("  -", x))];
@@ -188,7 +211,7 @@ export function patchFrontmatter(text: string, patch: Record<string, YamlValue>)
 }
 
 
-export const BUILTIN_READONLY = new Set([
+const BUILTIN_READONLY = new Set([
   "path", "name", "folder", "ext", "size", "created", "modified", "links", "embeds", "date",
 ]);
 
@@ -224,7 +247,7 @@ export function resolveBody(text: string, newBody: string): { action: "unchanged
   return { action: body.trim() === newBody.trim() ? "unchanged" : "update", before: bodySnippet(body) };
 }
 
-export type PlanAction = "pending" | "add" | "update" | "unchanged" | "unreadable" | "refused";
+type PlanAction = "pending" | "add" | "update" | "unchanged" | "unreadable" | "refused";
 
 export interface PlanRow {
   path: string;
@@ -234,11 +257,21 @@ export interface PlanRow {
   before: string;
   action: PlanAction;
   reason?: string;
+  /** Why the value can't be written at all (an error in it): refused by every preview and skipped by Run. */
+  held?: string;
+}
+
+/** Whether a planned "add" is held back: every add when Add missing is off, and a blank one unless its key is listed,
+ *  so a folder-wide write never seeds an empty property the user didn't name. */
+export function holdsAdd(addMissing: boolean, keysCsv: string, key: string, value: YamlValue): boolean {
+  if (!addMissing) return true;
+  const blank = value === null || value === "" || (Array.isArray(value) && value.length === 0);
+  return blank && !listLiteralItems(keysCsv).includes(key);
 }
 
 export function writableKeys(cube: CubeValue, keysCsv: string): string[] {
   const present = new Set(cube.columns.map((c) => c.name));
-  const listed = keysCsv.split(",").map((s) => s.trim()).filter(Boolean);
+  const listed = listLiteralItems(keysCsv);
   if (listed.length > 0) return listed.filter((k) => present.has(k) && k !== "path" && k !== NOTE_BODY);
   return cube.columns.map((c) => c.name).filter((k) => k !== "path" && k !== NOTE_BODY && !BUILTIN_READONLY.has(k));
 }
@@ -250,9 +283,19 @@ export function displayValue(v: YamlValue): string {
   if (v === null) return "";
   if (Array.isArray(v)) {
     if (isRows(v)) return `${v.length} row${v.length === 1 ? "" : "s"}`;
+    if (isMatrix(v)) return `[${v.map((r) => `[${r.map(renderScalar).join(", ")}]`).join(", ")}]`;
     return `[${(v as YamlScalarV[]).map((x) => renderScalar(x)).join(", ")}]`;
   }
   return renderScalar(v);
+}
+
+/** The first error anywhere in a cell: a value holding one is refused, never written as text into the note. */
+export function cellError(cell: unknown): SolError | null {
+  if (isSolError(cell)) return cell;
+  if (Array.isArray(cell)) { for (const c of cell) { const e = cellError(c); if (e) return e; } return null; }
+  if (isFrameValue(cell)) { for (const c of cell.columns) { const e = cellError(c.values); if (e) return e; } return null; }
+  if (isCubeValue(cell)) { for (const c of cell.columns) { const e = cellError(c.cells); if (e) return e; } return null; }
+  return null;
 }
 
 export function planPropertyWrites(cube: CubeValue, keysCsv: string, noteNames: ReadonlySet<string>): PlanRow[] {
@@ -265,11 +308,16 @@ export function planPropertyWrites(cube: CubeValue, keysCsv: string, noteNames: 
     const p = pathCol.cells[i];
     if (typeof p !== "string" || p.trim() === "") continue;
     for (const c of cols) {
+      const err = cellError(c.cells[i]);
+      if (err) {
+        rows.push({ path: p, key: c.key, value: null, after: err.code, before: "", action: "refused", reason: `${err.code} can't be written`, held: `${err.code} can't be written` });
+        continue;
+      }
       const value = cellToYaml(c.cells[i] ?? null, c.type, noteNames);
       rows.push({ path: p, key: c.key, value, after: displayValue(value), before: "", action: "pending" });
     }
   }
-  const listed = keysCsv.split(",").map((s) => s.trim()).filter(Boolean);
+  const listed = listLiteralItems(keysCsv);
   const bodyCol = cube.columns.find((c) => c.name === NOTE_BODY);
   if (bodyCol && (listed.length === 0 || listed.includes(NOTE_BODY))) {
     for (let i = 0; i < pathCol.cells.length; i++) {
@@ -295,8 +343,16 @@ export function resolveKey(text: string, key: string, value: YamlValue): { actio
     ? span.rest.trim()
     : existing.slice(1).map((l) => l.trim()).filter(Boolean).join(", ");
   const rendered = renderKey(key, value, span.head);
-  const same = existing.length === rendered.length && existing.every((l, i) => l.trimEnd() === rendered[i]);
+  const same = (existing.length === rendered.length && existing.every((l, i) => l.trimEnd() === rendered[i]))
+    || (span.scalar && readsAs(span.rest, value));
   return { action: same ? "unchanged" : "update", before };
+}
+
+/** Whether a note's own scalar text reads back as `value`: Obsidian writes `url: https://x` and `title: Hi, there`
+ *  plain where this writer quotes, and the same value spelled another way is no change. */
+function readsAs(text: string, value: YamlValue): boolean {
+  if (value === null || typeof value === "object") return false;
+  try { return parseYaml(text) === value; } catch { return false; }
 }
 
 /** A day written over a note's date-and-time text keeps the time: the note's own text when it is the same moment, else midnight. */

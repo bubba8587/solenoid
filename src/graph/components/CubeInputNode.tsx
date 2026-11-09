@@ -1,12 +1,11 @@
-import type { CubeInputNode as CubeInputNodeType } from "../rete-nodes";
+import type { CubeInputNode as CubeInputNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { CubeDisplay } from "./CubeDisplay";
 import { processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { nodeDisplayName } from "../catalogUtils";
 import { parseCubeSource, cubeSourceToText, type CubeSource } from "../literalEditors";
-import { cubeFromSource } from "../nodes/cube";
-import type { CubeEditBinding } from "../cubePopupStore";
+import { cubePopup, type CubeEditBinding } from "../cubePopupStore";
 
 // [[C28]] literalsIffEditable
 export function CubeInputComponent({ data, emit }: NodeProps<CubeInputNodeType>) {
@@ -16,9 +15,10 @@ export function CubeInputComponent({ data, emit }: NodeProps<CubeInputNodeType>)
     save: (next) => {
       data.cubeText = cubeSourceToText(next);
       scheduleAutosave();
-      void processGraph();
+      // The popup shows the card's answer, which the pass recomputes.
+      data.edited(); void processGraph().then(() => cubePopup.refresh());
     },
-    cube: () => cubeFromSource(source()),
+    cube: () => data.cachedResult,
   };
   return (
     <NodeShell node={data} emit={emit}>

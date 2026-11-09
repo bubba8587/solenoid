@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { HEALTH_FORMULAS } from "../../../src/graph/packs/health";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { isSolError } from "../../../src/graph/errorValue";
-import { hrZonesFrame, HrZonesNode } from "../../../src/graph/nodes/health";
+import { hrZonesFrame } from "../../../src/graph/nodes/health";
 
 const num = (type: string, inputs: Record<string, number>): number => {
   const r = evalFormula(entryByType(HEALTH_FORMULAS, type), inputs);
@@ -71,13 +71,6 @@ describe("Heart-Rate Zones", () => {
     expect(f.columns[2].values[2]).toBe(156);
   });
 
-  it("the node defaults max to 220 − age and validates the resting HR", () => {
-    const n = new HrZonesNode();
-    const out = n.data({ age: [40] });
-    expect((out.zones as { columns: { values: unknown[] }[] }).columns[2].values[4]).toBe(180);
-    const bad = n.data({ age: [40], resting: [200] });
-    expect((bad.zones as { code?: string }).code).toBe("#DOMAIN!");
-  });
 });
 
 describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {

@@ -1,5 +1,5 @@
 // [[C17]] shareImpl, [[C25]] firstClassUnits
-import { convert as dimConvert, type Dim, type Unit } from "../dimension";
+import type { Dim, Unit } from "../dimension";
 
 export type ConvertCategory =
   | "angle" | "length" | "mass" | "temperature"
@@ -9,8 +9,6 @@ export interface ConvertUnitDef {
   label: string;
   excelCode: string;
   category: ConvertCategory;
-  toBase: (x: number) => number;
-  fromBase: (x: number) => number;
   /** The SI-scaled source of truth the Convert math actually runs through. */
   dim: Unit;
 }
@@ -32,11 +30,17 @@ function mkUnit(label: string, excelCode: string, category: Exclude<ConvertCateg
   const c = CATEGORY_DIM[category];
   return {
     label, excelCode, category,
-    toBase: (x) => x * factor,
-    fromBase: (x) => x / factor,
     dim: { dim: c.dim, scale: factor * c.baseScale },
   };
 }
+
+/** How a Convert unit the Format Controller doesn't list is written after a number: its symbol. */
+export const CONVERT_SYMBOLS: Readonly<Record<string, string>> = {
+  yd: "yd", stone: "st", tonne: "t", wk: "wk", yr: "yr", cm2: "cm²", in2: "in²", yd2: "yd²", mi2: "mi²",
+  tsp: "tsp", tbs: "tbsp", cup: "cup", floz: "fl oz", pt: "pt", qt: "qt", knot: "kn",
+  J: "J", kJ: "kJ", cal: "cal", kcal: "kcal", BTU: "BTU", Wh: "Wh", kWh: "kWh",
+  Pa: "Pa", kPa: "kPa", bar: "bar", atm: "atm", psi: "psi", mmHg: "mmHg",
+};
 
 export const CONVERT_CATEGORY_LABELS: Record<ConvertCategory, string> = {
   angle:       "Angle",
@@ -72,14 +76,14 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   kg:    mkUnit("Kilograms",    "kg",    "mass",   1000),
   mg:    mkUnit("Milligrams",   "mg",    "mass",   0.001),
   lb:    mkUnit("Pounds",       "lbm",   "mass",   453.59237),
-  oz_m:  mkUnit("Ounces",       "ozm",   "mass",   28.349523125),
+  oz:    mkUnit("Ounces",       "ozm",   "mass",   28.349523125),
   stone: mkUnit("Stone",        "stone", "mass",   6350.29318),
   tonne: mkUnit("Metric ton",   "t",     "mass",   1e6),
 
-  // Temperature is affine: toBase and fromBase work in Celsius, while `dim` works in kelvin for dimConvert.
-  C: { label: "Celsius",    excelCode: "C", category: "temperature", toBase: (x) => x,                 fromBase: (x) => x,               dim: { dim: { temperature: 1 }, scale: 1,     offset: 273.15 } },
-  F: { label: "Fahrenheit", excelCode: "F", category: "temperature", toBase: (x) => (x - 32) * 5 / 9, fromBase: (x) => x * 9 / 5 + 32,  dim: { dim: { temperature: 1 }, scale: 5 / 9, offset: 273.15 - (32 * 5) / 9 } },
-  K: { label: "Kelvin",     excelCode: "K", category: "temperature", toBase: (x) => x - 273.15,        fromBase: (x) => x + 273.15,      dim: { dim: { temperature: 1 }, scale: 1,     offset: 0 } },
+  // Temperature is affine: `dim` works in kelvin, with each scale's offset.
+  degC: { label: "Celsius", excelCode: "C", category: "temperature", dim: { dim: { temperature: 1 }, scale: 1,     offset: 273.15 } },
+  degF: { label: "Fahrenheit", excelCode: "F", category: "temperature", dim: { dim: { temperature: 1 }, scale: 5 / 9, offset: 273.15 - (32 * 5) / 9 } },
+  K:    { label: "Kelvin", excelCode: "K", category: "temperature", dim: { dim: { temperature: 1 }, scale: 1,     offset: 0 } },
 
   // Time (base: second)
   s:   mkUnit("Seconds", "sec", "time", 1),
@@ -98,11 +102,11 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   yd2:  mkUnit("Sq. yards",       "yd2",     "area", 0.83612736),
   mi2:  mkUnit("Sq. miles",       "mi2",     "area", 2589988.110336),
   ha:   mkUnit("Hectares",        "ha",      "area", 10000),
-  acre: mkUnit("Acres",           "uk_acre", "area", 4046.8564224),
+  ac:   mkUnit("Acres",           "uk_acre", "area", 4046.8564224),
 
   // Volume (base: liter)
-  l:    mkUnit("Liters",        "l",   "volume", 1),
-  ml:   mkUnit("Milliliters",   "ml",  "volume", 0.001),
+  L:    mkUnit("Liters",        "l",   "volume", 1),
+  mL:   mkUnit("Milliliters",   "ml",  "volume", 0.001),
   tsp:  mkUnit("Teaspoons",     "tsp", "volume", 0.00492892159375),
   tbs:  mkUnit("Tablespoons",   "tbs", "volume", 0.01478676478125),
   cup:  mkUnit("Cups",          "cup", "volume", 0.2365882365),
@@ -113,8 +117,8 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   m3:   mkUnit("Cubic meters",  "m3",  "volume", 1000),
 
   // Speed (base: m/s)
-  m_s:  mkUnit("m/s",    "m/s", "speed", 1),
-  km_h: mkUnit("km/h",   "m/h", "speed", 1 / 3.6),
+  ms1:  mkUnit("m/s",    "m/s", "speed", 1),
+  kmh:  mkUnit("km/h",   "km/h", "speed", 1 / 3.6),
   mph:  mkUnit("mph",    "mph", "speed", 0.44704),
   knot: mkUnit("Knots",  "kn",  "speed", 0.514444),
 
@@ -135,10 +139,3 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   psi:  mkUnit("PSI",           "psi",  "pressure", 6894.757293168),
   mmHg: mkUnit("mmHg",          "mmHg", "pressure", 133.322387415),
 };
-
-export function convertValue(x: number, fromKey: string, toKey: string): number | null {
-  const from = CONVERT_UNIT_DEFS[fromKey];
-  const to   = CONVERT_UNIT_DEFS[toKey];
-  if (!from || !to) return null;
-  return dimConvert(x, from.dim, to.dim);
-}

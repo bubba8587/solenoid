@@ -35,7 +35,7 @@ export function assetLinkTarget(relPath: string, vaultFiles: readonly string[]):
   return shared ? relPath : name;
 }
 
-export function imageMarkdown(alt: string, url: string): string {
+function imageMarkdown(alt: string, url: string): string {
   const a = alt.replace(/[\r\n]+/g, " ").replace(/([\\[\]])/g, "\\$1");
   const u = url.replace(/[ ()<>]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
   return `![${a}](${u})`;
@@ -107,7 +107,7 @@ export function mergeNoteText(existing: string | null, md: string, mode: Obsidia
   return r.text;
 }
 
-export interface WriteVaultOptions {
+interface WriteVaultOptions {
   vault: string;
   subfolder: string;
   assetSubfolder: string;
@@ -117,7 +117,7 @@ export interface WriteVaultOptions {
   blockName?: string;
 }
 
-export interface WriteVaultResult {
+interface WriteVaultResult {
   file: string;
   assets: number;
   pages: number;
@@ -176,7 +176,10 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
     const block = valueToObsidianBlock(value);
     if (block.kind === "md") {
       if (!block.plain || value == null) return block.md;
-      return refPreview(value, doc.sourceId ? resolveRefAnnotation(doc.sourceId, name) : undefined);
+      return refPreview(
+        value,
+        doc.sourceId ? resolveRefAnnotation(doc.sourceId, name) : undefined,
+      );
     }
     const srcId = opts.refSources.get(name);
     const markup = srcId ? nodeChartSvgString(srcId) : null;

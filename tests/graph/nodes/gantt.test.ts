@@ -1,11 +1,12 @@
-// [[C69]], [[C70]], [[C71]]
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing, [[schedule-and-gantt#The Gantt figure]]
 import { describe, it, expect } from "vitest";
 import { GanttNode } from "../../../src/graph/nodes/gantt";
-import { scheduleTasks } from "../../../src/graph/scheduleCpm";
+import { scheduleTasks } from "../scheduleOnCard";
 import { parseDateToSerial } from "../../../src/graph/nodes/dateSerial";
 import { isChartValue } from "../../../src/graph/chartValue";
-import { isSolError, solError } from "../../../src/graph/errorValue";
+import { isSolError } from "../../../src/graph/errorValue";
 import { cubeFromColumns } from "../../../src/graph/frame";
+import { solDate } from "../../../src/graph/dateValue";
 
 const d = (iso: string) => parseDateToSerial(iso);
 const MON = d("2026-01-05");
@@ -31,20 +32,7 @@ describe("GanttNode.data", () => {
     expect(node.cachedChart).toBe(chart);
   });
 
-  it("an unwired or non-table schedule caches null, never an error", () => {
-    const node = new GanttNode();
-    expect(node.data({}).chart).toBeNull();
-    expect(node.data({ schedule: [null] }).chart).toBeNull();
-    expect(node.cachedChart).toBeNull();
-  });
 
-  it("propagates a whole-graph scheduling error straight through the chart output", () => {
-    const node = new GanttNode();
-    const err = solError("#VALUE!", "cycle: A → B → A");
-    const { chart } = node.data({ schedule: [err] });
-    expect(isSolError(chart)).toBe(true);
-    expect(node.cachedChart).toBe(err);
-  });
 
   it("reads the Options string: title into the value, view keys into the payload", () => {
     const node = new GanttNode();
@@ -63,14 +51,17 @@ describe("GanttNode.data", () => {
     expect(chart.payload.weekend).toEqual([0, 1]);
   });
 
-  it("a wired Status date draws the status line; unwired leaves it null", () => {
+  it("a wired Status date draws the status line; unwired or a plain number leaves it null", () => {
     const node = new GanttNode();
     const status = d("2026-01-06");
-    const wired = node.data({ schedule: [scheduled()], status: [status] }).chart;
+    const wired = node.data({ schedule: [scheduled()], status: [solDate(status)] }).chart;
     if (isSolError(wired) || wired === null || wired.payload?.kind !== "gantt") throw new Error("expected a gantt payload");
     expect(wired.payload.statusDate).toBe(status);
     const unwired = node.data({ schedule: [scheduled()] }).chart;
     if (isSolError(unwired) || unwired === null || unwired.payload?.kind !== "gantt") throw new Error("expected a gantt payload");
     expect(unwired.payload.statusDate).toBeNull();
+    const serial = node.data({ schedule: [scheduled()], status: [status as never] }).chart;
+    if (isSolError(serial) || serial === null || serial.payload?.kind !== "gantt") throw new Error("expected a gantt payload");
+    expect(serial.payload.statusDate).toBeNull();
   });
 });

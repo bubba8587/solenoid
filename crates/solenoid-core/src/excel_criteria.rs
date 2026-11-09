@@ -1,0 +1,1618 @@
+// [[C130]] rustCore, [[D123]] typedCriteria
+//! COUNTIF-style criteria and the IFS aggregates: one criterion kernel, which the SUMIFS card's condition rows run too.
+
+use std::cmp::Ordering;
+use std::rc::Rc;
+
+use crate::error_value::{sol_error, ErrorCode, SolError};
+use crate::excel_functions::{value_text, V};
+use crate::jsnum::{is_space_char, lower_text, nan_max as js_max, nan_min as js_min, trim_space};
+use crate::string_order::compare_strings;
+use crate::value_kinds::decimal_from_text;
+
+/// `">="&value` in a criterion's place: the operator and the value as it is typed ([[D123]] typedCriteria).
+#[derive(Clone, Debug)]
+pub struct Joined {
+    pub op: Op,
+    pub value: V,
+}
+
+impl Joined {
+    /// The criterion as Excel would join it, for a message.
+    pub fn text(&self) -> String {
+        format!("{}{}", self.op.prefix(), value_text(&self.value))
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Op {
+    Eq,
+    Neq,
+    Gt,
+    Gte,
+    Lt,
+    Lte,
+}
+
+impl Op {
+    /// The prefix a criterion spells it with.
+    pub fn prefix(self) -> &'static str {
+        match self {
+            Op::Eq => "=",
+            Op::Neq => "<>",
+            Op::Gt => ">",
+            Op::Gte => ">=",
+            Op::Lt => "<",
+            Op::Lte => "<=",
+        }
+    }
+
+    /// The operator a criterion prefix spells, the whole text being the prefix.
+    pub fn of_prefix(p: &str) -> Option<Op> {
+        PREFIX.iter().find(|(t, _)| *t == p).map(|(_, o)| *o)
+    }
+
+    /// The SUMIFS card's op by its name; the text and blank tests are not criteria.
+    pub fn of_card(name: &str) -> Option<Op> {
+        Some(match name {
+            "eq" => Op::Eq,
+            "neq" => Op::Neq,
+            "gt" => Op::Gt,
+            "gte" => Op::Gte,
+            "lt" => Op::Lt,
+            "lte" => Op::Lte,
+            _ => return None,
+        })
+    }
+}
+
+/// `prefix & value` in a criterion's place, item by item over a list; an error is the answer.
+pub fn joined(op: Op, value: V) -> V {
+    match value {
+        V::List(items) => V::List(Rc::new(items.iter().map(|v| joined(op, v.clone())).collect())),
+        e @ (V::Err(_) | V::Fx(_)) => e,
+        value => V::Crit(Rc::new(Joined { op, value })),
+    }
+}
+
+/// Whether argument `i` of `name` is a criterion.
+pub fn criterion_slot(name: &str, i: usize) -> bool {
+    match name {
+        "SUMIFS" | "AVERAGEIFS" | "MINIFS" | "MAXIFS" => i >= 2 && i.is_multiple_of(2),
+        "COUNTIFS" => !i.is_multiple_of(2),
+        "COUNTIF" | "AVERAGEIF" => i == 1,
+        _ => false,
+    }
+}
+
+/// The criteria family, which reads dates in its ranges and criteria as dates.
+pub fn is_criteria(name: &str) -> bool {
+    matches!(name, "SUMIFS" | "AVERAGEIFS" | "MINIFS" | "MAXIFS" | "COUNTIFS" | "COUNTIF" | "AVERAGEIF")
+}
+
+enum Value {
+    Null,
+    Num(f64),
+    Date(f64),
+    Bool(bool),
+    Str(Rc<str>),
+}
+
+/// One unit of a wildcard pattern, matched over UTF-16 code units as a non-unicode JS regex does.
+#[derive(Clone, Copy)]
+enum Wild {
+    Unit(u16),
+    One,
+    Any,
+}
+
+struct Criterion {
+    op: Op,
+    value: Value,
+    wild: Option<Vec<Wild>>,
+    /// A text value lowered once, for the comparison every cell makes.
+    lowered: String,
+    /// Text compares as written: the SUMIFS card's Match case.
+    match_case: bool,
+}
+
+const PREFIX: [(&str, Op); 6] =
+    [("<>", Op::Neq), (">=", Op::Gte), ("<=", Op::Lte), ("=", Op::Eq), (">", Op::Gt), ("<", Op::Lt)];
+
+/// A wildcard pattern compiled: `?` one unit, `*` any run, `~` takes the next unit literally; and whether it has a
+/// wildcard.
+fn wildcard_tokens(pattern: &[u16]) -> (Vec<Wild>, bool) {
+    let (mut out, mut has_wild, mut i) = (Vec::with_capacity(pattern.len()), false, 0);
+    while i < pattern.len() {
+        let ch = pattern[i];
+        if ch == u16::from(b'~') && i + 1 < pattern.len() {
+            out.push(Wild::Unit(pattern[i + 1]));
+            i += 2;
+            continue;
+        }
+        if ch == u16::from(b'*') {
+            out.push(Wild::Any);
+            has_wild = true;
+        } else if ch == u16::from(b'?') {
+            out.push(Wild::One);
+            has_wild = true;
+        } else {
+            out.push(Wild::Unit(ch));
+        }
+        i += 1;
+    }
+    (out, has_wild)
+}
+
+/// None without a wildcard.
+fn wildcard_pattern(pattern: &[u16]) -> Option<Vec<Wild>> {
+    let (out, has_wild) = wildcard_tokens(pattern);
+    has_wild.then_some(out)
+}
+
+/// SEARCH's case-blind wildcard match: where the leftmost match starts.
+pub fn wild_search(find: &[u16], text: &[u16]) -> Option<usize> {
+    let (mut tokens, _) = wildcard_tokens(find);
+    tokens.push(Wild::Any);
+    (0..=text.len()).find(|&i| wild_matches(&tokens, &text[i..], false))
+}
+
+/// The `i` flag's Canonicalize without `u`: a unit's uppercase when that is one unit, unless it would carry a
+/// non-ASCII unit into ASCII.
+fn canonicalize(u: u16) -> u16 {
+    let Some(c) = char::from_u32(u32::from(u)) else {
+        return u;
+    };
+    let mut up = c.to_uppercase();
+    let (Some(first), None) = (up.next(), up.next()) else {
+        return u;
+    };
+    let cu = first as u32;
+    if cu > 0xFFFF || (u >= 128 && cu < 128) {
+        return u;
+    }
+    cu as u16
+}
+
+/// `^source$` with the `i` flag, as a glob: backtrack to the last `*` on a miss.
+fn wild_matches(pattern: &[Wild], text: &[u16], match_case: bool) -> bool {
+    let fold = |u: u16| if match_case { u } else { canonicalize(u) };
+    let (mut p, mut t) = (0, 0);
+    let mut star: Option<(usize, usize)> = None;
+    while t < text.len() {
+        match pattern.get(p) {
+            Some(Wild::Any) => {
+                star = Some((p, t));
+                p += 1;
+            }
+            Some(Wild::One) => {
+                p += 1;
+                t += 1;
+            }
+            Some(Wild::Unit(u)) if fold(*u) == fold(text[t]) => {
+                p += 1;
+                t += 1;
+            }
+            _ => match star {
+                Some((sp, st)) => {
+                    p = sp + 1;
+                    t = st + 1;
+                    star = Some((sp, st + 1));
+                }
+                None => return false,
+            },
+        }
+    }
+    pattern[p..].iter().all(|w| matches!(w, Wild::Any))
+}
+
+/// `s.replace(/~(.)/g, "$1")`: `.` stops at a line terminator.
+fn unescape(s: &str) -> Rc<str> {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '~'
+            && let Some(&n) = chars.peek()
+            && !matches!(n, '\n' | '\r' | '\u{2028}' | '\u{2029}')
+        {
+            out.push(n);
+            chars.next();
+            continue;
+        }
+        out.push(c);
+    }
+    Rc::from(out)
+}
+
+/// A criterion's text read as a date: a serial, NaN, or `#AMBIGUOUS!`.
+pub(crate) enum DateReading {
+    Serial(f64),
+    NotADate,
+    Ambiguous(SolError),
+}
+
+fn ascii_digits(s: &[u8]) -> bool {
+    s.iter().all(u8::is_ascii_digit)
+}
+
+/// `parseDate` (dateSerial.ts) up to its chrono-node step, with no relative reading.
+pub(crate) fn parse_date(s: &str) -> DateReading {
+    let t = trim_space(s);
+    let b = t.as_bytes();
+    // A relative phrase reads NaN without `relative`, as text with no four-digit run does: either way, not a date.
+    if !b.windows(4).any(ascii_digits) {
+        return DateReading::NotADate;
+    }
+    // ISO date-only, `YYYY-MM` or `YYYY-MM-DD`, with four to six year digits and an optional sign.
+    let (sign, unsigned) = match b.first() {
+        Some(b'+') => (1, &b[1..]),
+        Some(b'-') => (-1, &b[1..]),
+        _ => (0, b),
+    };
+    let year_len = unsigned.iter().take_while(|c| c.is_ascii_digit()).count();
+    let rest = &unsigned[year_len..];
+    let two = |r: &[u8]| r.len() >= 3 && r[0] == b'-' && ascii_digits(&r[1..3]);
+    if (4..=6).contains(&year_len) && two(rest) && (rest.len() == 3 || (rest.len() == 6 && two(&rest[3..]))) {
+        let num = |r: &[u8]| u32::from(r[1] - b'0') * 10 + u32::from(r[2] - b'0');
+        let digits = std::str::from_utf8(&unsigned[..year_len]).unwrap_or("0");
+        let y = digits.parse::<i64>().unwrap_or(0) * if sign < 0 { -1 } else { 1 };
+        let (m, d) = (num(rest), if rest.len() == 6 { num(&rest[3..]) } else { 1 });
+        let days = crate::date_serial::days_from_civil(y, m.clamp(1, 12), d.max(1));
+        // A month past 12 or a day the month doesn't have rolls over: not a date.
+        if !(1..=12).contains(&m) || crate::date_serial::civil_from_days(days) != (y, m, d) {
+            return DateReading::NotADate;
+        }
+        return DateReading::Serial(days as f64 + 25569.0);
+    }
+    if let Some((a, rest)) = split_num(b, 1, 2)
+        && let Some((bn, rest)) =
+            rest.split_first().filter(|(c, _)| matches!(c, b'-' | b'/' | b'.')).and_then(|(_, r)| split_num(r, 1, 2))
+        && let Some((_, year)) = rest.split_first().filter(|(c, _)| matches!(c, b'-' | b'/' | b'.'))
+        && year.len() == 4
+        && ascii_digits(year)
+        && a <= 12
+        && bn <= 12
+        && a != bn
+    {
+        return DateReading::Ambiguous(sol_error(
+                        ErrorCode::Ambiguous,
+                        format!(
+                            "\"{t}\" could be day/month or month/day. Write the month as a name (3-Apr-2026) or use ISO (2026-04-03)"
+                        ),
+                    ));
+    }
+    chrono_reading(t)
+}
+
+/// The shapes of chrono-node's reading the core carries; any other text is not a date.
+fn chrono_reading(t: &str) -> DateReading {
+    let b = t.as_bytes();
+    // A bare number, signed or with a fraction: no chrono parser reads digits alone.
+    let unsigned = b.strip_prefix(b"+").or_else(|| b.strip_prefix(b"-")).unwrap_or(b);
+    let (whole, frac) = match unsigned.iter().position(|&c| c == b'.') {
+        Some(i) => (&unsigned[..i], Some(&unsigned[i + 1..])),
+        None => (unsigned, None),
+    };
+    if !whole.is_empty() && ascii_digits(whole) && frac.is_none_or(|f| !f.is_empty() && ascii_digits(f)) {
+        return DateReading::NotADate;
+    }
+    if let Some(r) = iso_date_time(t)
+        .or_else(|| month_name_little_endian(t))
+        .or_else(|| month_name_middle_endian(t))
+        .or_else(|| year_month_day(t))
+        .or_else(|| slash_date_time(t))
+    {
+        return r;
+    }
+    // An ISO day then " and …": chrono reads the day alone, so text is left over.
+    if b.len() > 10
+        && b[10].is_ascii_whitespace()
+        && let DateReading::Serial(d) = parse_date(&t[..10])
+    {
+        let rest = t[10..].trim_start_matches(|c: char| c.is_ascii_whitespace());
+        if !d.is_nan()
+            && rest.len() > 3
+            && rest.get(..3).is_some_and(|w| w.eq_ignore_ascii_case("and"))
+            && rest.as_bytes()[3].is_ascii_whitespace()
+        {
+            return DateReading::NotADate;
+        }
+    }
+    DateReading::NotADate
+}
+
+/// chrono-node's ISOFormatParser (`YYYY-M-D`, then optionally `THH:MM[:SS[.ffff]]` and `Z` or `±HH[:][MM]`), or its
+/// date then a time expression after spaces or one comma, merged as ENMergeDateTimeRefiner does; then only
+/// `[\s.,]*`. With a zone the reading is that instant; without one, the wall clock it names in the local zone, read
+/// back as `parseDate` reads it (`Date.UTC` of the local fields). `None` for any other shape.
+fn iso_date_time(t: &str) -> Option<DateReading> {
+    let b = t.as_bytes();
+    let digits = |from: usize, max: usize| {
+        b.get(from..).map_or_default(|r| r.iter().take(max).take_while(|c| c.is_ascii_digit()).count())
+    };
+    let num = |r: std::ops::Range<usize>| f64::from(b[r].iter().fold(0u32, |a, c| a * 10 + u32::from(c - b'0')));
+    let word = |i: usize| b.get(i).is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_');
+    if digits(0, 5) != 4 || b.get(4) != Some(&b'-') {
+        return None;
+    }
+    let mn = digits(5, 3);
+    if !(1..=2).contains(&mn) || b.get(5 + mn) != Some(&b'-') {
+        return None;
+    }
+    let d0 = 6 + mn;
+    let dn = digits(d0, 3);
+    if !(1..=2).contains(&dn) {
+        return None;
+    }
+    let (year, month, day) = (num(0..4), num(5..5 + mn), num(d0..d0 + dn));
+    let mut i = d0 + dn;
+    // The clock (ms into the day) and the zone offset in minutes, where the text gives them.
+    let mut clock: Option<f64> = None;
+    let mut offset: Option<f64> = None;
+    if matches!(b.get(i), Some(b'T' | b't')) {
+        let hn = digits(i + 1, 3);
+        let m0 = i + 2 + hn;
+        let mn = digits(m0, 3);
+        if !(1..=2).contains(&hn) || b.get(i + 1 + hn) != Some(&b':') || !(1..=2).contains(&mn) {
+            return None;
+        }
+        let (h, mi) = (num(i + 1..i + 1 + hn), num(m0..m0 + mn));
+        i = m0 + mn;
+        let (mut s, mut ms) = (0.0, 0.0);
+        if b.get(i) == Some(&b':') {
+            let sn = digits(i + 1, 3);
+            if !(1..=2).contains(&sn) {
+                return None;
+            }
+            s = num(i + 1..i + 1 + sn);
+            i += 1 + sn;
+            if b.get(i) == Some(&b'.') && digits(i + 1, 5) > 0 {
+                let fnum = digits(i + 1, 5);
+                if fnum > 4 {
+                    return None;
+                }
+                // parseInt of the digits: `.5` is 5 ms.
+                ms = num(i + 1..i + 1 + fnum);
+                i += 1 + fnum;
+            }
+        }
+        if matches!(b.get(i), Some(b'Z' | b'z')) {
+            offset = Some(0.0);
+            i += 1;
+        } else if matches!(b.get(i), Some(b'+' | b'-')) && digits(i + 1, 2) == 2 {
+            let sign = if b[i] == b'-' { -1.0 } else { 1.0 };
+            let hours = sign * num(i + 1..i + 3) * 60.0;
+            i += 3;
+            let colon = usize::from(b.get(i) == Some(&b':'));
+            let om = if digits(i + colon, 2) == 2 {
+                let v = num(i + colon..i + colon + 2);
+                i += colon + 2;
+                v
+            } else {
+                0.0
+            };
+            // As chrono adds them: `-00:30` is +30, since -0 is not below 0.
+            offset = Some(if hours < 0.0 { hours - om } else { hours + om });
+        }
+        let c = ((h * 60.0 + mi) * 60.0 + s) * 1000.0 + ms;
+        // `isValidDate`: seconds and milliseconds may carry, but not into another minute, hour or day.
+        if !(c < 86_400_000.0 && (c / 3_600_000.0).floor() == h && (c % 3_600_000.0 / 60_000.0).floor() == mi) {
+            return None;
+        }
+        clock = Some(c);
+    }
+    if word(i) {
+        return None;
+    }
+    let tail = |s: &str| s.chars().all(|c| c == '.' || c == ',' || is_space_char(c));
+    let mut rest = &t[i..];
+    if clock.is_none() && !tail(rest) {
+        let gap = rest.trim_start_matches(is_space_char);
+        let gap =
+            gap.strip_prefix(',').or_else(|| gap.strip_prefix("at ")).unwrap_or(gap).trim_start_matches(is_space_char);
+        if gap.len() == rest.len() {
+            return None;
+        }
+        let (ms, after) = time_expression(gap)?;
+        if ms >= 86_400_000.0 {
+            return None;
+        }
+        clock = Some(ms);
+        rest = after;
+    }
+    if !tail(rest) || !(1.0..=12.0).contains(&month) || day < 1.0 {
+        return None;
+    }
+    let days = crate::date_serial::days_from_civil(year as i64, month as u32, day as u32);
+    // A day the month lacks fails `isValidDate`.
+    if crate::date_serial::civil_from_days(days).1 != month as u32 {
+        return None;
+    }
+    let ms = match (clock, offset) {
+        (Some(c), Some(off)) => days as f64 * 86_400_000.0 + c - off * 60_000.0,
+        // The wall clock as written, with no zone between: the same day on every machine.
+        (Some(c), None) => days as f64 * 86_400_000.0 + c,
+        (None, _) => days as f64 * 86_400_000.0,
+    };
+    Some(DateReading::Serial(ms / 86_400_000.0 + 25569.0))
+}
+
+const MONTHS: [(&str, u32); 24] = [
+    ("january", 1),
+    ("february", 2),
+    ("march", 3),
+    ("april", 4),
+    ("may", 5),
+    ("june", 6),
+    ("july", 7),
+    ("august", 8),
+    ("september", 9),
+    ("october", 10),
+    ("november", 11),
+    ("december", 12),
+    ("jan", 1),
+    ("feb", 2),
+    ("mar", 3),
+    ("apr", 4),
+    ("jun", 6),
+    ("jul", 7),
+    ("aug", 8),
+    ("sep", 9),
+    ("sept", 9),
+    ("oct", 10),
+    ("nov", 11),
+    ("dec", 12),
+];
+
+const WEEKDAYS: [&str; 18] = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sun",
+    "mon",
+    "tue",
+    "tues",
+    "wed",
+    "thu",
+    "thur",
+    "thurs",
+    "fri",
+    "sat",
+    "weds",
+];
+
+/// A month name from chrono's dictionary at the start of `b` (any case, an abbreviation may take a `.`), and the rest.
+fn month_word(b: &[u8]) -> Option<(u32, &[u8])> {
+    let n = b.iter().take_while(|c| c.is_ascii_alphabetic()).count();
+    let word = std::str::from_utf8(&b[..n]).ok()?.to_ascii_lowercase();
+    let month = MONTHS.iter().find(|(w, _)| *w == word)?.1;
+    let rest = &b[n..];
+    Some((month, if n <= 4 { rest.strip_prefix(b".").unwrap_or(rest) } else { rest }))
+}
+
+/// A day's ordinal suffix (`st`, `nd`, `rd`, `th`, any case), skipped.
+fn skip_ordinal(b: &[u8]) -> &[u8] {
+    match b {
+        [a, c, rest @ ..]
+            if matches!(
+                (a.to_ascii_lowercase(), c.to_ascii_lowercase()),
+                (b's', b't') | (b'n', b'd') | (b'r', b'd') | (b't', b'h')
+            ) && !rest.first().is_some_and(u8::is_ascii_alphanumeric) =>
+        {
+            rest
+        }
+        _ => b,
+    }
+}
+
+fn skip_spaces(b: &[u8]) -> &[u8] {
+    let n = b.iter().take_while(|c| c.is_ascii_whitespace()).count();
+    &b[n..]
+}
+
+/// The day number of a calendar date, or `None` when the month lacks the day or a part is out of range.
+fn civil_days(year: i64, month: u32, day: u32) -> Option<i64> {
+    if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+        return None;
+    }
+    let days = crate::date_serial::days_from_civil(year, month, day);
+    (crate::date_serial::civil_from_days(days).1 == month).then_some(days)
+}
+
+/// A date's day number then what follows it, as ENMergeDateTimeRefiner joins them: nothing but `[\s.,]*`, or spaces,
+/// one comma or `at`, then chrono's time expression, an optional zone (`Z`, `GMT`/`UTC`, `±HH[:]MM`), then only
+/// `[\s.,]*`. A wall clock with no zone is read as `parseDate` reads it (`Date.UTC` of the local fields).
+fn with_time(days: i64, after: &[u8]) -> Option<DateReading> {
+    let tail = |b: &[u8]| b.iter().all(|&c| c == b'.' || c == b',' || c.is_ascii_whitespace());
+    if tail(after) {
+        return Some(DateReading::Serial(days as f64 + 25569.0));
+    }
+    let gap = skip_spaces(after);
+    let gap = match gap {
+        [b',', rest @ ..] => skip_spaces(rest),
+        [a, t, w, rest @ ..]
+            if a.eq_ignore_ascii_case(&b'a') && t.eq_ignore_ascii_case(&b't') && w.is_ascii_whitespace() =>
+        {
+            skip_spaces(rest)
+        }
+        _ => gap,
+    };
+    if gap.len() == after.len() {
+        return None;
+    }
+    let (ms, rest) = time_expression(std::str::from_utf8(gap).ok()?)?;
+    if ms >= 86_400_000.0 {
+        return None;
+    }
+    let mut rest = rest.as_bytes();
+    let mut offset = None;
+    let zoned = skip_spaces(rest);
+    let named = zoned.get(..3).filter(|w| w.eq_ignore_ascii_case(b"gmt") || w.eq_ignore_ascii_case(b"utc"));
+    let z = if named.is_some() { &zoned[3..] } else { zoned };
+    if let [sign @ (b'+' | b'-'), h1, h2, more @ ..] = z {
+        if h1.is_ascii_digit() && h2.is_ascii_digit() {
+            let more = more.strip_prefix(b":").unwrap_or(more);
+            let (mins, more) = match more {
+                [m1, m2, r @ ..] if m1.is_ascii_digit() && m2.is_ascii_digit() => {
+                    (f64::from((m1 - b'0') * 10 + (m2 - b'0')), r)
+                }
+                _ => (0.0, more),
+            };
+            let total = f64::from((h1 - b'0') * 10 + (h2 - b'0')) * 60.0 + mins;
+            offset = Some(if *sign == b'-' { -total } else { total });
+            rest = more;
+        }
+    } else if named.is_some()
+        || matches!(zoned.first(), Some(b'Z' | b'z')) && !zoned.get(1).is_some_and(u8::is_ascii_alphanumeric)
+    {
+        offset = Some(0.0);
+        rest = if named.is_some() { z } else { &zoned[1..] };
+    }
+    if !tail(rest) {
+        return None;
+    }
+    let instant = days as f64 * 86_400_000.0 + ms - offset.unwrap_or(0.0) * 60_000.0;
+    Some(DateReading::Serial(instant / 86_400_000.0 + 25569.0))
+}
+
+/// chrono-node's `ENMonthNameLittleEndianParser`: a day of one or two digits with an optional ordinal and `of`, a
+/// month name, a four-digit year, each pair parted by `-`, `/` or spaces, then [`with_time`]. A day the month lacks is
+/// no date. None for anything else. A year below 1000 reads as a date before then shows (`04-Jul-0426`, [[D119]]
+/// datesBefore1900), where chrono takes years from 1000.
+fn month_name_little_endian(t: &str) -> Option<DateReading> {
+    let b = t.as_bytes();
+    let sep = |b: &[u8]| -> Option<usize> {
+        match b.first()? {
+            b'-' | b'/' => Some(1),
+            c if c.is_ascii_whitespace() => Some(b.len() - skip_spaces(b).len()),
+            _ => None,
+        }
+    };
+    let (day, rest) = split_num(b, 1, 2)?;
+    let ordinal = skip_ordinal(rest);
+    let rest = if ordinal.len() != rest.len() {
+        let after = skip_spaces(ordinal);
+        match after {
+            [o, f, w, r @ ..]
+                if o.eq_ignore_ascii_case(&b'o') && f.eq_ignore_ascii_case(&b'f') && w.is_ascii_whitespace() =>
+            {
+                &after[2..]
+            }
+            _ => ordinal,
+        }
+    } else {
+        rest
+    };
+    let rest = &rest[sep(rest)?..];
+    let (month, rest) = month_word(rest)?;
+    let rest = &rest[sep(rest)?..];
+    let (year, after) = split_num(rest, 4, 4)?;
+    if after.first().is_some_and(u8::is_ascii_alphanumeric) {
+        return None;
+    }
+    match civil_days(i64::from(year), month, day) {
+        Some(days) => with_time(days, after),
+        None => with_time(0, after).map(|_| DateReading::NotADate),
+    }
+}
+
+/// chrono-node's `ENMonthNameMiddleEndianParser`: an optional weekday (and comma), a month name, a day with an
+/// optional ordinal and comma, a four-digit year (below 1000 too, as above), then [`with_time`]. The weekday is not checked against
+/// the date, as chrono doesn't. None for anything else.
+fn month_name_middle_endian(t: &str) -> Option<DateReading> {
+    let mut b = t.as_bytes();
+    let n = b.iter().take_while(|c| c.is_ascii_alphabetic()).count();
+    let lead = std::str::from_utf8(&b[..n]).ok()?.to_ascii_lowercase();
+    if WEEKDAYS.contains(&lead.as_str()) {
+        let rest = &b[n..];
+        let rest = rest.strip_prefix(b".").unwrap_or(rest);
+        let rest = rest.strip_prefix(b",").unwrap_or(rest);
+        let spaced = skip_spaces(rest);
+        if spaced.len() == rest.len() {
+            return None;
+        }
+        b = spaced;
+    }
+    let (month, rest) = month_word(b)?;
+    let spaced = skip_spaces(rest);
+    if spaced.len() == rest.len() {
+        return None;
+    }
+    let (day, rest) = split_num(spaced, 1, 2)?;
+    let rest = skip_ordinal(rest);
+    let rest = rest.strip_prefix(b",").unwrap_or(rest);
+    let spaced = skip_spaces(rest);
+    if spaced.len() == rest.len() {
+        return None;
+    }
+    let (year, after) = split_num(spaced, 4, 4)?;
+    if after.first().is_some_and(u8::is_ascii_alphanumeric) {
+        return None;
+    }
+    match civil_days(i64::from(year), month, day) {
+        Some(days) => with_time(days, after),
+        None => with_time(0, after).map(|_| DateReading::NotADate),
+    }
+}
+
+/// chrono-node's `ENYearMonthDayParser` past ISO's own dash form: a four-digit year, then a month (number or name)
+/// and a day, parted by `/`, `.` or spaces, a month above 12 swapping with a day that fits; then [`with_time`].
+fn year_month_day(t: &str) -> Option<DateReading> {
+    let b = t.as_bytes();
+    let (year, rest) = split_num(b, 4, 4)?;
+    let sep = |b: &[u8]| -> Option<usize> {
+        match b.first()? {
+            b'/' | b'.' => Some(1),
+            c if c.is_ascii_whitespace() => Some(b.len() - skip_spaces(b).len()),
+            _ => None,
+        }
+    };
+    let rest = &rest[sep(rest)?..];
+    let (month, rest) = match month_word(rest) {
+        Some(m) => m,
+        None => split_num(rest, 1, 2)?,
+    };
+    let rest = &rest[sep(rest)?..];
+    let (day, after) = split_num(rest, 1, 2)?;
+    if after.first().is_some_and(u8::is_ascii_alphanumeric) {
+        return None;
+    }
+    let (month, day) = if month > 12 && (1..=12).contains(&day) { (day, month) } else { (month, day) };
+    match civil_days(i64::from(year), month, day) {
+        Some(days) => with_time(days, after),
+        None => with_time(0, after).map(|_| DateReading::NotADate),
+    }
+}
+
+/// chrono's SlashDateFormatParser (month first) with a four-digit year, then optionally its time expression after
+/// spaces or one comma, merged as ENMergeDateTimeRefiner does. `None` for any other shape.
+fn slash_date_time(t: &str) -> Option<DateReading> {
+    let b = t.as_bytes();
+    let part = |b: &[u8]| -> Option<(u32, usize)> {
+        let n = b.iter().take(2).take_while(|c| c.is_ascii_digit()).count();
+        (n > 0 && (n == 1 || b[0] <= b'3')).then(|| (b[..n].iter().fold(0, |a, c| a * 10 + u32::from(c - b'0')), n))
+    };
+    let sep = |i: usize| b.get(i).is_some_and(|c| matches!(c, b'/' | b'.' | b'-'));
+    let (first, n1) = part(b)?;
+    if !sep(n1) {
+        return None;
+    }
+    let (second, n2) = part(&b[n1 + 1..])?;
+    let y0 = n1 + 1 + n2;
+    if !sep(y0) {
+        return None;
+    }
+    let year_end = y0 + 1 + 4;
+    let year = b.get(y0 + 1..year_end).filter(|y| ascii_digits(y))?;
+    let year = year.iter().fold(0i64, |a, c| a * 10 + i64::from(c - b'0'));
+    let after = &t[year_end..];
+    if year < 100 || after.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_' || c == '/') {
+        return None;
+    }
+    let (mut month, mut day) = (first, second);
+    if month > 12 {
+        if !(1..=12).contains(&day) || month > 31 {
+            return None;
+        }
+        (month, day) = (day, month);
+    }
+    if month == 0 || day == 0 || day > 31 {
+        return None;
+    }
+    let days = crate::date_serial::days_from_civil(year, month, day);
+    if crate::date_serial::civil_from_days(days).1 != month {
+        return None;
+    }
+    let tail = |s: &str| s.chars().all(|c| c == '.' || c == ',' || is_space_char(c));
+    if !tail(after) && year_month_day_overtakes(&t[y0 + 1..], year_end) {
+        return None;
+    }
+    let read = with_time(days, after.as_bytes())?;
+    // A date that reads either way stays a question with a time after it, as it is without one.
+    if first <= 12 && second <= 12 && first != second {
+        return Some(DateReading::Ambiguous(sol_error(
+            ErrorCode::Ambiguous,
+            format!(
+                "\"{t}\" could be day/month or month/day. Write the month as a name (3-Apr-2026) or use ISO (2026-04-03)"
+            ),
+        )));
+    }
+    Some(read)
+}
+
+/// Whether ENYearMonthDayParser reads the year and the time after it (`2024 12.29`) as a day longer than the slash
+/// date, so OverlapRemovalRefiner keeps it instead.
+fn year_month_day_overtakes(s: &str, date_len: usize) -> bool {
+    let mut it = s.char_indices().skip(4);
+    let Some((_, c)) = it.next() else { return false };
+    if !(matches!(c, '-' | '.' | '/') || is_space_char(c)) {
+        return false;
+    }
+    let b = &s.as_bytes()[4 + c.len_utf8()..];
+    let run = |b: &[u8]| b.iter().take_while(|c| c.is_ascii_digit()).count();
+    let mn = run(b);
+    if !(1..=2).contains(&mn) {
+        return false;
+    }
+    let Some(sep) = s[s.len() - b.len() + mn..].chars().next() else { return false };
+    if !(matches!(sep, '-' | '.' | '/') || is_space_char(sep)) {
+        return false;
+    }
+    let d = &b[mn + sep.len_utf8()..];
+    let dn = run(d);
+    if !(1..=2).contains(&dn) || d.get(dn).is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_') {
+        return false;
+    }
+    let num = |b: &[u8]| b.iter().fold(0u32, |a, c| a * 10 + u32::from(c - b'0'));
+    let (month, day) = (num(&b[..mn]), num(&d[..dn]));
+    let day = if !(1..=12).contains(&month) && (1..=12).contains(&day) { month } else { day };
+    // Lengths in UTF-16 units: each separator is one.
+    (1..=31).contains(&day) && 4 + 1 + mn + 1 + dn > date_len
+}
+
+/// chrono's primary time expression (`H[.:]MM[:SS[.fff]] [am|pm]`) with no range after it, as milliseconds into the
+/// day, and the text after it.
+fn time_expression(s: &str) -> Option<(f64, &str)> {
+    let b = s.as_bytes();
+    let digits = |from: usize, max: usize| b[from..].iter().take(max).take_while(|c| c.is_ascii_digit()).count();
+    let num = |r: std::ops::Range<usize>| b[r].iter().fold(0u32, |a, c| a * 10 + u32::from(c - b'0'));
+    let hn = digits(0, 4);
+    if hn == 0 {
+        return None;
+    }
+    let mut i = hn;
+    let mut minute = None;
+    let mut second = None;
+    let mut milli = None;
+    if matches!(b.get(i), Some(b'.' | b':')) && digits(i + 1, 2) > 0 {
+        let mn = digits(i + 1, 2);
+        minute = Some((num(i + 1..i + 1 + mn), mn));
+        i += 1 + mn;
+        if b.get(i) == Some(&b':') && digits(i + 1, 2) == 2 {
+            second = Some(num(i + 1..i + 3));
+            i += 3;
+            if b.get(i) == Some(&b'.') && digits(i + 1, 6) > 0 {
+                let fnum = digits(i + 1, 6);
+                milli = Some(num(i + 1..i + 1 + fnum.min(3)));
+                i += 1 + fnum;
+            }
+        }
+    }
+    if b.get(i).is_some_and(u8::is_ascii_digit) {
+        return None;
+    }
+    let time_end = i;
+    let spaced = s[i..].trim_start_matches(is_space_char);
+    let low = spaced.get(..4).map(str::to_ascii_lowercase).unwrap_or_default();
+    let mark = if low == "a.m." || low == "p.m." {
+        Some((low.as_bytes()[0], 4))
+    } else {
+        match spaced.as_bytes() {
+            [c @ (b'a' | b'A' | b'p' | b'P'), b'm' | b'M', ..] => Some((c.to_ascii_lowercase(), 2)),
+            [c @ (b'a' | b'A' | b'p' | b'P'), ..] => Some((c.to_ascii_lowercase(), 1)),
+            _ => None,
+        }
+    };
+    let (ampm, rest) = match mark {
+        Some((c, n)) => (Some(c), &spaced[n..]),
+        None => (None, &s[time_end..]),
+    };
+    if rest.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_' || c == '/') {
+        return None;
+    }
+    // checkAndReturnWithoutFollowingPattern drops a lone digit, three or more bare digits, and `\d[ap]`.
+    if ampm.is_none() && (hn == 1 && minute.is_none() || hn >= 3 && minute.is_none()) {
+        return None;
+    }
+    if mark.is_some_and(|(_, n)| n == 1) && spaced.len() == s[time_end..].len() {
+        return None;
+    }
+    let mut hour = num(0..hn);
+    let mut min = 0;
+    if hour > 100 {
+        if minute.is_some() {
+            return None;
+        }
+        (hour, min) = (hour / 100, hour % 100);
+    }
+    if hour > 24 {
+        return None;
+    }
+    if let Some((m, n)) = minute {
+        if n == 1 && ampm.is_none() {
+            return None;
+        }
+        min = m;
+    }
+    if min >= 60 || second.is_some_and(|s| s >= 60) {
+        return None;
+    }
+    match ampm {
+        Some(_) if hour > 12 => return None,
+        Some(b'a') if hour == 12 => hour = 0,
+        Some(b'p') if hour != 12 => hour += 12,
+        _ => {}
+    }
+    // isValidDate turns hour 24 away.
+    if hour == 24 {
+        return None;
+    }
+    let ms = ((f64::from(hour) * 60.0 + f64::from(min)) * 60.0 + f64::from(second.unwrap_or(0))) * 1000.0
+        + f64::from(milli.unwrap_or(0));
+    Some((ms, rest))
+}
+
+/// A run of `min..=max` leading ASCII digits as a number, and the rest.
+fn split_num(b: &[u8], min: usize, max: usize) -> Option<(u32, &[u8])> {
+    let n = b.iter().take(max).take_while(|c| c.is_ascii_digit()).count();
+    if n < min || b.get(n).is_some_and(u8::is_ascii_digit) {
+        return None;
+    }
+    let v = b[..n].iter().fold(0u32, |acc, c| acc * 10 + u32::from(c - b'0'));
+    Some((v, &b[n..]))
+}
+
+enum Parsed {
+    Crit(Criterion),
+    Err(V),
+}
+
+/// `DATE(y,m,d)` for a day serial, as a message writes it.
+fn date_call(serial: f64) -> String {
+    let (y, m, d) = crate::date_serial::civil_from_days(serial.floor() as i64 - 25569);
+    format!("DATE({y},{m},{d})")
+}
+
+/// `#TYPE!` for a criterion that would read a date out of text or a number ([[D123]] typedCriteria): the message shows
+/// the joined form to write instead, the date itself where the text spelled one.
+fn needs_date(shown: &str, text: bool, op: Op, written: bool, date: Option<f64>) -> V {
+    let prefix = if written || op != Op::Eq { op.prefix() } else { "" };
+    let build = date.map_or_else(|| "DATE(year, month, day)".to_string(), date_call);
+    let (join, name) = if prefix.is_empty() {
+        (build, "a name holding a date".to_string())
+    } else {
+        (format!("\"{prefix}\"&{build}"), format!("join \"{prefix}\" to a name holding a date"))
+    };
+    let what = if text { "is text, which never reads as a date" } else { "is a number, and this range holds dates" };
+    V::err(sol_error(ErrorCode::Type, format!("{shown} {what}. Write {join}, or {name}")))
+}
+
+/// What a criterion's range holds, as its reading asks.
+#[derive(Clone, Copy, Default)]
+struct Holds {
+    num: bool,
+    text: bool,
+    date: bool,
+}
+
+fn parse_criterion(raw: &V, holds: Holds, match_case: bool) -> Parsed {
+    let plain = |op, value| Parsed::Crit(Criterion { op, value, wild: None, lowered: String::new(), match_case });
+    let refuse = |e: V| Parsed::Err(e);
+    // A number or a date as it is typed, against the range's kind: a date only with dates, a number never with them.
+    let typed = |op: Op, value: Value| -> Parsed {
+        let shown = || match raw {
+            V::Crit(j) => format!("\"{}\"&{}", j.op.prefix(), value_text(&j.value)),
+            other => value_text(other),
+        };
+        match value {
+            Value::Num(_) if holds.date => refuse(needs_date(&shown(), false, op, matches!(raw, V::Crit(_)), None)),
+            Value::Date(_) if holds.num || (holds.text && !holds.date) => refuse(V::err(sol_error(
+                ErrorCode::Type,
+                if holds.num {
+                    "A date criterion needs a range of dates, and this one holds numbers. Cast it to Date first"
+                } else {
+                    "A date criterion needs a range of dates, and this one holds text. Cast it to Date first"
+                },
+            ))),
+            Value::Num(_) if holds.text && !matches!(op, Op::Eq | Op::Neq) => refuse(V::err(sol_error(
+                ErrorCode::Type,
+                format!("{} compares numbers, but its range holds text. Cast the range to numbers first.", shown()),
+            ))),
+            v => plain(op, v),
+        }
+    };
+    let text = match raw {
+        V::Null | V::Undef => return plain(Op::Eq, Value::Null),
+        V::Num(n) => return typed(Op::Eq, Value::Num(*n)),
+        V::Date(d) => return typed(Op::Eq, Value::Date(*d)),
+        V::Bool(b) => return plain(Op::Eq, Value::Bool(*b)),
+        V::Err(_) | V::Fx(_) => return Parsed::Err(raw.clone()),
+        // `">="&value` keeps the value's type; joined text reads as Excel's criterion text.
+        V::Crit(j) => match &j.value {
+            V::Null | V::Undef => return plain(j.op, Value::Null),
+            V::Num(n) => return typed(j.op, Value::Num(*n)),
+            V::Date(d) => return typed(j.op, Value::Date(*d)),
+            V::Bool(b) => return plain(j.op, Value::Bool(*b)),
+            _ => j.text(),
+        },
+        other => value_text(other),
+    };
+    let (mut op, mut rest) = (Op::Eq, text.as_str());
+    let mut written = false;
+    for (p, o) in PREFIX {
+        if let Some(r) = text.strip_prefix(p) {
+            (op, rest, written) = (o, r, true);
+            break;
+        }
+    }
+    from_text(op, rest, written, &text, holds, match_case)
+}
+
+/// A criterion's text after its prefix, by Excel's grammar: a number over numbers, TRUE or FALSE, else text with
+/// wildcards. `text` is the whole criterion, for a message.
+fn from_text(op: Op, rest: &str, written: bool, text: &str, holds: Holds, match_case: bool) -> Parsed {
+    let plain = |op, value| Parsed::Crit(Criterion { op, value, wild: None, lowered: String::new(), match_case });
+    let refuse = |e: V| Parsed::Err(e);
+    if rest.is_empty() {
+        return plain(op, Value::Null);
+    }
+    if rest.eq_ignore_ascii_case("TRUE") || rest.eq_ignore_ascii_case("FALSE") {
+        return plain(op, Value::Bool(rest.eq_ignore_ascii_case("TRUE")));
+    }
+    // Criterion text is never read as a date or a day's serial ([[D123]] typedCriteria): over dates, text that reads as
+    // a number or a date is refused; over numbers, a date-shaped text is text.
+    if !holds.text && (holds.num || holds.date) {
+        let n = decimal_from_text(rest);
+        let shown = format!("\"{text}\"");
+        if holds.date {
+            if n.is_finite() {
+                return refuse(needs_date(&shown, true, op, written, None));
+            }
+            match parse_date(rest) {
+                DateReading::Serial(d) if d.is_finite() => {
+                    return refuse(needs_date(&shown, true, op, written, Some(d)))
+                }
+                DateReading::Ambiguous(_) => return refuse(needs_date(&shown, true, op, written, None)),
+                _ => {}
+            }
+        } else if n.is_finite() {
+            return plain(op, Value::Num(n));
+        }
+    }
+    if holds.text && !matches!(op, Op::Eq | Op::Neq) && decimal_from_text(rest).is_finite() {
+        return refuse(V::err(sol_error(
+            ErrorCode::Type,
+            format!("\"{text}\" compares numbers, but its range holds text. Cast the range to numbers first."),
+        )));
+    }
+    let wild =
+        if matches!(op, Op::Eq | Op::Neq) { wildcard_pattern(&rest.encode_utf16().collect::<Vec<_>>()) } else { None };
+    let text = unescape(rest);
+    let lowered = lower_text(&text).into_owned();
+    Parsed::Crit(Criterion { op, value: Value::Str(text), wild, lowered, match_case })
+}
+
+fn cmp(op: Op, c: f64) -> bool {
+    match op {
+        Op::Eq => c == 0.0,
+        Op::Neq => c != 0.0,
+        Op::Gt => c > 0.0,
+        Op::Gte => c >= 0.0,
+        Op::Lt => c < 0.0,
+        Op::Lte => c <= 0.0,
+    }
+}
+
+fn ord(o: Ordering) -> f64 {
+    match o {
+        Ordering::Less => -1.0,
+        Ordering::Equal => 0.0,
+        Ordering::Greater => 1.0,
+    }
+}
+
+fn criterion_matches(cell: &V, crit: &Criterion) -> bool {
+    if cell.is_sol_error() {
+        return false;
+    }
+    let blank = matches!(cell, V::Null | V::Undef) || matches!(cell, V::Str(s) if s.is_empty());
+    match &crit.value {
+        Value::Null => return if crit.op == Op::Neq { !blank } else { blank },
+        _ if blank => return crit.op == Op::Neq,
+        Value::Bool(b) => {
+            return matches!(cell, V::Bool(c) if cmp(crit.op, f64::from(u8::from(*c)) - f64::from(u8::from(*b))));
+        }
+        Value::Num(n) => {
+            return match cell {
+                V::Bool(_) => false,
+                // Excel's criteria read numbers equal to 15 digits as its `=` does.
+                V::Num(c) => cmp(crit.op, if crate::excel_formula::same_to_15(*c, *n) { 0.0 } else { c - n }),
+                _ => crit.op == Op::Neq,
+            };
+        }
+        Value::Date(d) => {
+            return match cell {
+                V::Bool(_) => false,
+                V::Date(c) => cmp(crit.op, c - d),
+                _ => crit.op == Op::Neq,
+            };
+        }
+        Value::Str(_) => {}
+    }
+    let (V::Str(s), Value::Str(t)) = (cell, &crit.value) else {
+        return crit.op == Op::Neq;
+    };
+    if let Some(w) = &crit.wild {
+        let hit = wild_matches(w, &s.encode_utf16().collect::<Vec<_>>(), crit.match_case);
+        return if crit.op == Op::Eq { hit } else { !hit };
+    }
+    if crit.match_case {
+        return match crit.op {
+            Op::Eq => **s == **t,
+            Op::Neq => **s != **t,
+            op => cmp(op, ord(compare_strings(s, t))),
+        };
+    }
+    let (a, b) = (lower_text(s), crit.lowered.as_str());
+    match crit.op {
+        Op::Eq => a == b,
+        Op::Neq => a != b,
+        op => cmp(op, ord(compare_strings(&a, b))),
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Kind {
+    Sum,
+    Count,
+    Average,
+    Min,
+    Max,
+}
+
+fn is_text(v: &V) -> bool {
+    matches!(v, V::Str(s) if !s.is_empty())
+}
+
+/// A list as its items, anything else as a one-item range.
+pub fn as_range(v: &V) -> Rc<Vec<V>> {
+    match v {
+        V::List(items) => items.clone(),
+        other => Rc::new(vec![other.clone()]),
+    }
+}
+
+pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair]) -> V {
+    if pairs.is_empty() {
+        return V::err(sol_error(ErrorCode::Value, "At least one criteria range and criterion is needed"));
+    }
+    let mut crits = Vec::with_capacity(pairs.len());
+    let facts: Vec<Rc<Facts>> = pairs.iter().map(|(range, _)| facts_of(range)).collect();
+    for ((_, raw), f) in pairs.iter().zip(&facts) {
+        match parse_criterion(raw, f.holds, false) {
+            Parsed::Crit(c) => crits.push(c),
+            Parsed::Err(e) => return e,
+        }
+    }
+    if let (Kind::Count, [(range, _)], [c], [f]) = (kind, pairs, &crits[..], &facts[..])
+        && let Some(n) = f.tally.as_ref().and_then(|t| t.count(c, range.len()))
+    {
+        return V::Num(n as f64);
+    }
+    // One comparison on a range of numbers matches a run of its sorted cells: the aggregate is read off the run
+    // ([[C120]] linearWork).
+    if let (Some(vals), [(range, _)], [c], [f]) = (values, pairs, &crits[..], &facts[..])
+        && vals.len() == range.len()
+        && let Some(t) = f.tally.as_ref()
+        && let Some(run) = t.sorted.run(c)
+        && let Some(r) = f.rolled(t, vals).answer(kind, run, vals)
+    {
+        return r;
+    }
+    // An `=` criterion beside one comparison (a per-group running total): the group's rows, sorted by the comparison's
+    // range, are read as one comparison's run is.
+    if let ([(ra, _), (rb, _)], [ca, cb], [fa, fb]) = (pairs, &crits[..], &facts[..])
+        && ra.len() == rb.len()
+        && values.is_none_or(|v| v.len() == ra.len())
+    {
+        for (fe, ce, rc, cc) in [(fa, ca, rb, cb), (fb, cb, ra, ca)] {
+            let Some(rows) = fe.tally.as_ref().and_then(|t| t.rows(ce)) else { continue };
+            let group = fe.group(rc, rows);
+            let Some(run) = group.sorted.run(cc) else { continue };
+            match values {
+                None => return V::Num(group.sorted.run_len(run) as f64),
+                Some(vals) => {
+                    if let Some(r) = rolled_in(&group.rolled, &group.sorted, vals).answer(kind, run, vals) {
+                        return r;
+                    }
+                }
+            }
+        }
+    }
+    let mut n = pairs.iter().map(|(r, _)| r.len()).min().unwrap_or(0);
+    if let Some(v) = values {
+        n = n.min(v.len());
+    }
+    // Where an `=` criterion's tally names its rows, only those can match; they go in row order, so a sum adds as the
+    // scan would ([[C120]] linearWork).
+    let narrowest =
+        facts.iter().zip(&crits).filter_map(|(f, c)| f.tally.as_ref()?.rows(c)).min_by_key(|rows| rows.len());
+    let candidates: Box<dyn Iterator<Item = usize>> = match narrowest {
+        Some(rows) => Box::new(rows.iter().copied().take_while(move |&i| i < n)),
+        None => Box::new(0..n),
+    };
+    let mut kept: Vec<f64> = Vec::new();
+    let mut count = 0usize;
+    for i in candidates {
+        if !pairs.iter().zip(&crits).all(|((r, _), c)| criterion_matches(&r[i], c)) {
+            continue;
+        }
+        count += 1;
+        let Some(values) = values else { continue };
+        match &values[i] {
+            e @ V::Err(_) => return e.clone(),
+            V::Num(x) | V::Date(x) if x.is_finite() => kept.push(*x),
+            _ => {}
+        }
+    }
+    // Rounded once, so a sorted run's sum (`Rolled`) answers the same ([[C120]] linearWork).
+    let total = || crate::exact_sum::exact_sum(&kept);
+    match kind {
+        Kind::Count => V::Num(count as f64),
+        Kind::Sum => V::Num(total()),
+        // An average over nothing is blank, as AVERAGE's is ([[C24]] arraySemantics).
+        Kind::Average if kept.is_empty() => V::Null,
+        Kind::Average => V::Num(total() / kept.len() as f64),
+        Kind::Min => V::Num(kept.iter().copied().reduce(js_min).unwrap_or(0.0)),
+        Kind::Max => V::Num(kept.iter().copied().reduce(js_max).unwrap_or(0.0)),
+    }
+}
+
+/// What every criterion on a range reads of it, kept by the range: a computed column counts each row in the same column
+/// ([[C120]] linearWork). The tally comes on the range's second call, so a single call doesn't sort what it reads once.
+struct Facts {
+    from: Rc<Vec<V>>,
+    holds: Holds,
+    tally: Option<Tally>,
+    /// The values ranges aggregated over this one, each rolled along its sorted cells.
+    rolled: std::cell::RefCell<Vec<Rc<Rolled>>>,
+    /// Where this range holds an `=` criterion's groups: each group's rows sorted by another range's numbers, by that
+    /// range, made as a group is asked for.
+    grouped: std::cell::RefCell<Vec<Rc<Grouped>>>,
+}
+
+impl Facts {
+    fn rolled(&self, t: &Tally, values: &Rc<Vec<V>>) -> Rc<Rolled> {
+        rolled_in(&self.rolled, &t.sorted, values)
+    }
+
+    /// The group whose rows are `rows` (an `=` criterion's, from this range's tally), sorted by `by`'s numbers.
+    fn group(&self, by: &Rc<Vec<V>>, rows: &[usize]) -> Rc<Group> {
+        let grouped = {
+            let mut g = self.grouped.borrow_mut();
+            match g.iter().find(|x| Rc::ptr_eq(&x.by, by)) {
+                Some(x) => x.clone(),
+                None => {
+                    if g.len() >= 4 {
+                        g.remove(0);
+                    }
+                    let x = Rc::new(Grouped { by: by.clone(), groups: Default::default() });
+                    g.push(x.clone());
+                    x
+                }
+            }
+        };
+        let key = rows.as_ptr() as usize;
+        let mut groups = grouped.groups.borrow_mut();
+        groups
+            .entry(key)
+            .or_insert_with(|| {
+                Rc::new(Group { sorted: Sorted::over(by, rows.iter().copied()), rolled: Default::default() })
+            })
+            .clone()
+    }
+}
+
+/// A values range rolled along `sorted`, kept in `kept` by the values range.
+fn rolled_in(kept: &std::cell::RefCell<Vec<Rc<Rolled>>>, sorted: &Sorted, values: &Rc<Vec<V>>) -> Rc<Rolled> {
+    let mut kept = kept.borrow_mut();
+    if let Some(r) = kept.iter().find(|r| Rc::ptr_eq(&r.values, values)) {
+        return r.clone();
+    }
+    if kept.len() >= 4 {
+        kept.remove(0);
+    }
+    let r = Rc::new(Rolled::of(sorted, values));
+    kept.push(r.clone());
+    r
+}
+
+/// An `=` criterion's groups, each sorted by `by` ([[C120]] linearWork): a per-group running total reads its group's
+/// run, not every row of the group.
+struct Grouped {
+    by: Rc<Vec<V>>,
+    /// By the group's row list, which the `=` range's tally holds while these do.
+    groups: std::cell::RefCell<rustc_hash::FxHashMap<usize, Rc<Group>>>,
+}
+
+struct Group {
+    sorted: Sorted,
+    rolled: std::cell::RefCell<Vec<Rc<Rolled>>>,
+}
+
+/// Some rows' number cells (NaN aside), sorted, rows of equal numbers in row order; and those rows in that order.
+struct Sorted {
+    nums: Vec<f64>,
+    order: Vec<usize>,
+}
+
+impl Sorted {
+    fn over(range: &[V], rows: impl IntoIterator<Item = usize>) -> Sorted {
+        let key = |i: usize| match range[i] {
+            V::Num(n) | V::Date(n) => n,
+            _ => f64::NAN,
+        };
+        let mut order: Vec<usize> = rows.into_iter().filter(|&i| !key(i).is_nan()).collect();
+        order.sort_by(|&a, &b| key(a).total_cmp(&key(b)));
+        Sorted { nums: order.iter().map(|&i| key(i)).collect(), order }
+    }
+
+    /// Where the cells equal to `x` start and end, as `criterion_matches` reads them: a number to 15 digits (a band
+    /// contiguous in sorted order), a date exactly.
+    fn band(&self, x: f64, to_15: bool) -> (usize, usize) {
+        let same = |v: f64| to_15 && crate::excel_formula::same_to_15(v, x);
+        (self.nums.partition_point(|&v| v < x && !same(v)), self.nums.partition_point(|&v| v <= x || same(v)))
+    }
+
+    /// The run of sorted cells a comparison with a number other than ±∞ matches.
+    fn run(&self, c: &Criterion) -> Option<Run> {
+        let (Value::Num(x) | Value::Date(x)) = &c.value else { return None };
+        if !x.is_finite() {
+            return None;
+        }
+        let (below, upto) = self.band(*x, matches!(c.value, Value::Num(_)));
+        Some(match c.op {
+            Op::Lt => Run::First(below),
+            Op::Lte => Run::First(upto),
+            Op::Gt => Run::From(upto),
+            Op::Gte => Run::From(below),
+            Op::Eq | Op::Neq => return None,
+        })
+    }
+
+    fn run_len(&self, run: Run) -> usize {
+        match run {
+            Run::First(k) => k,
+            Run::From(k) => self.order.len() - k,
+        }
+    }
+}
+
+/// Which of a range's sorted number cells a comparison matches: the first `k`, or all from the `k`th on.
+#[derive(Clone, Copy)]
+enum Run {
+    First(usize),
+    From(usize),
+}
+
+/// A values range read along a criteria range's sorted cells, from each end: what any run of them aggregates to, the
+/// same answer the scan gives. Index `k` of a `pre_` table covers the first `k` sorted cells, of a `suf_` table the
+/// cells from the `k`th on.
+struct Rolled {
+    values: Rc<Vec<V>>,
+    /// The first row in a run whose value is an error, `usize::MAX` where none is.
+    pre_err: Vec<usize>,
+    suf_err: Vec<usize>,
+    /// The finite values in a run: how many, and their least and greatest (NaN where none).
+    pre_n: Vec<usize>,
+    suf_n: Vec<usize>,
+    pre_min: Vec<f64>,
+    suf_min: Vec<f64>,
+    pre_max: Vec<f64>,
+    suf_max: Vec<f64>,
+    /// The exact sum of the finite values in the first `CHECKPOINT * j` sorted cells, by `j`, and over every cell: a
+    /// run's sum is a checkpoint and fewer than `CHECKPOINT` cells more, or the whole less that, rounded once as the
+    /// scan's is.
+    checkpoints: Vec<crate::exact_sum::ExactSum>,
+    whole: crate::exact_sum::ExactSum,
+    /// Each sorted cell's finite value, 0 where it has none (the scan skips it).
+    finite: Vec<f64>,
+    /// The same checkpoints as written (`Written`), made the first time a run's total is small enough to ask.
+    written: std::cell::OnceCell<(Vec<crate::exact_sum::Written>, crate::exact_sum::Written)>,
+}
+
+const CHECKPOINT: usize = 64;
+
+impl Rolled {
+    fn of(t: &Sorted, values: &Rc<Vec<V>>) -> Rolled {
+        let len = t.order.len();
+        let cell = |p: usize| &values[t.order[p]];
+        let finite = |p: usize| match cell(p) {
+            V::Num(x) | V::Date(x) if x.is_finite() => Some(*x),
+            _ => None,
+        };
+        let err = |p: usize| if matches!(cell(p), V::Err(_)) { t.order[p] } else { usize::MAX };
+        let both = |a: f64, b: f64, f: fn(f64, f64) -> f64| if a.is_nan() { b } else { f(a, b) };
+        let roll = |rev: bool| {
+            let mut e = vec![usize::MAX; len + 1];
+            let mut n = vec![0; len + 1];
+            let mut lo = vec![f64::NAN; len + 1];
+            let mut hi = vec![f64::NAN; len + 1];
+            let steps: Box<dyn Iterator<Item = usize>> = if rev { Box::new((0..len).rev()) } else { Box::new(0..len) };
+            for p in steps {
+                let (from, to) = if rev { (p + 1, p) } else { (p, p + 1) };
+                e[to] = e[from].min(err(p));
+                let x = finite(p);
+                n[to] = n[from] + usize::from(x.is_some());
+                lo[to] = x.map_or(lo[from], |x| both(lo[from], x, js_min));
+                hi[to] = x.map_or(hi[from], |x| both(hi[from], x, js_max));
+            }
+            (e, n, lo, hi)
+        };
+        let at: Vec<f64> = (0..len).map(|p| finite(p).unwrap_or(0.0)).collect();
+        let mut checkpoints = Vec::with_capacity(len / CHECKPOINT + 1);
+        let mut whole = crate::exact_sum::ExactSum::default();
+        for (p, &x) in at.iter().enumerate() {
+            if p % CHECKPOINT == 0 {
+                checkpoints.push(whole.clone());
+            }
+            whole.add(x);
+        }
+        let (pre_err, pre_n, pre_min, pre_max) = roll(false);
+        let (suf_err, suf_n, suf_min, suf_max) = roll(true);
+        Rolled {
+            values: values.clone(),
+            pre_err,
+            suf_err,
+            pre_n,
+            suf_n,
+            pre_min,
+            suf_min,
+            pre_max,
+            suf_max,
+            checkpoints,
+            whole,
+            finite: at,
+            written: std::cell::OnceCell::new(),
+        }
+    }
+
+    /// Whether a run's finite values cancel as written.
+    fn run_cancels(&self, k: usize, pre: bool) -> bool {
+        let (marks, whole) = self.written.get_or_init(|| {
+            let mut marks = Vec::with_capacity(self.checkpoints.len());
+            let mut w = crate::exact_sum::Written::default();
+            for (p, &x) in self.finite.iter().enumerate() {
+                if p % CHECKPOINT == 0 {
+                    marks.push(w.clone());
+                }
+                w.add(x);
+            }
+            (marks, w)
+        });
+        let j = k / CHECKPOINT;
+        let mut first = marks.get(j).cloned().unwrap_or_else(|| whole.clone());
+        if j < marks.len() {
+            self.finite[j * CHECKPOINT..k].iter().for_each(|&x| first.add(x));
+        }
+        if pre {
+            first.cancels()
+        } else {
+            let mut rest = whole.clone();
+            rest.merge(&first, true);
+            rest.cancels()
+        }
+    }
+
+    /// The exact sum of the first `k` sorted cells' finite values.
+    fn first(&self, k: usize) -> crate::exact_sum::ExactSum {
+        let j = k / CHECKPOINT;
+        match self.checkpoints.get(j) {
+            Some(c) => {
+                let mut s = c.clone();
+                self.finite[j * CHECKPOINT..k].iter().for_each(|&x| s.add(x));
+                s
+            }
+            None => self.whole.clone(),
+        }
+    }
+
+    /// The aggregate over a run, or None for a count, which the tally answers.
+    fn answer(&self, kind: Kind, run: Run, values: &[V]) -> Option<V> {
+        let (k, pre) = match run {
+            Run::First(k) => (k, true),
+            Run::From(k) => (k, false),
+        };
+        let pick = |a: &Vec<f64>, b: &Vec<f64>| if pre { a[k] } else { b[k] };
+        let err = if pre { self.pre_err[k] } else { self.suf_err[k] };
+        if err != usize::MAX {
+            return Some(values[err].clone());
+        }
+        let n = if pre { self.pre_n[k] } else { self.suf_n[k] };
+        let or_zero = |x: f64| if x.is_nan() { 0.0 } else { x };
+        Some(match kind {
+            Kind::Count => return None,
+            Kind::Min => V::Num(or_zero(pick(&self.pre_min, &self.suf_min))),
+            Kind::Max => V::Num(or_zero(pick(&self.pre_max, &self.suf_max))),
+            Kind::Average if n == 0 => V::Null,
+            Kind::Sum | Kind::Average => {
+                let total = if pre {
+                    self.first(k)
+                } else {
+                    let mut s = self.whole.clone();
+                    s.merge(&self.first(k), true);
+                    s
+                }
+                .total_by(|| self.run_cancels(k, pre));
+                V::Num(if kind == Kind::Sum { total } else { total / n as f64 })
+            }
+        })
+    }
+}
+
+/// A range's cells by what `criterion_matches` asks of them.
+struct Tally {
+    /// The numbers that aren't NaN, sorted.
+    sorted: Sorted,
+    /// The rows of each number other than NaN (-0 as 0), and of each text cell by its lowered text, in order.
+    num_rows: rustc_hash::FxHashMap<u64, Vec<usize>>,
+    text_rows: rustc_hash::FxHashMap<String, Vec<usize>>,
+    /// Cells no criterion matches: errors and logicals.
+    errs: usize,
+    bools: usize,
+}
+
+impl Tally {
+    fn of(range: &[V]) -> Tally {
+        let mut t = Tally {
+            sorted: Sorted::over(range, 0..range.len()),
+            num_rows: Default::default(),
+            text_rows: Default::default(),
+            errs: 0,
+            bools: 0,
+        };
+        for (i, v) in range.iter().enumerate() {
+            match v {
+                V::Num(n) | V::Date(n) if !n.is_nan() => t.num_rows.entry((n + 0.0).to_bits()).or_default().push(i),
+                V::Str(s) if !s.is_empty() => t.text_rows.entry(lower_text(s).into_owned()).or_default().push(i),
+                V::Err(_) => t.errs += 1,
+                V::Bool(_) => t.bools += 1,
+                _ => {}
+            }
+        }
+        t
+    }
+
+    /// `criterion_matches` over the whole range, for a number or a plain text criterion. A number other than NaN
+    /// compares with every number as `c - n` would; a blank, NaN or any other cell matches only `<>`.
+    fn count(&self, c: &Criterion, total: usize) -> Option<usize> {
+        let unlike = |equal: usize| total - self.errs - equal;
+        match &c.value {
+            Value::Num(n) | Value::Date(n) if n.is_finite() => Some({
+                let (below, upto) = self.sorted.band(*n, matches!(c.value, Value::Num(_)));
+                match c.op {
+                    Op::Eq => upto - below,
+                    Op::Neq => unlike(upto - below) - self.bools,
+                    Op::Gt => self.sorted.nums.len() - upto,
+                    Op::Gte => self.sorted.nums.len() - below,
+                    Op::Lt => below,
+                    Op::Lte => upto,
+                }
+            }),
+            Value::Str(_) if c.wild.is_none() && matches!(c.op, Op::Eq | Op::Neq) => {
+                let equal = self.text_rows.get(&c.lowered).map_or_default(Vec::len);
+                Some(if c.op == Op::Eq { equal } else { unlike(equal) })
+            }
+            _ => None,
+        }
+    }
+
+    /// The rows an `=` criterion on a number other than ±∞, or on plain text, can match: every other row fails it.
+    fn rows(&self, c: &Criterion) -> Option<&[usize]> {
+        if c.op != Op::Eq {
+            return None;
+        }
+        let rows = match &c.value {
+            Value::Num(n) | Value::Date(n) if n.is_finite() => {
+                let exact = self.num_rows.get(&(n + 0.0).to_bits());
+                // A number equal only to 15 digits has other bits: those rows aren't one list here, so the scan reads them.
+                let (below, upto) = self.sorted.band(*n, matches!(c.value, Value::Num(_)));
+                if upto - below != exact.map_or(0, Vec::len) {
+                    return None;
+                }
+                exact
+            }
+            Value::Str(_) if c.wild.is_none() => self.text_rows.get(&c.lowered),
+            _ => return None,
+        };
+        Some(rows.map_or(&[], Vec::as_slice))
+    }
+}
+
+thread_local! {
+    static FACTS: std::cell::RefCell<Vec<Rc<Facts>>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+pub(crate) fn forget_facts() {
+    FACTS.with(|c| c.borrow_mut().clear());
+}
+
+fn facts_of(range: &Rc<Vec<V>>) -> Rc<Facts> {
+    let read = |tally: bool| Facts {
+        from: range.clone(),
+        holds: holds_of(range),
+        tally: tally.then(|| Tally::of(range)),
+        rolled: Default::default(),
+        grouped: Default::default(),
+    };
+    if range.len() < 64 {
+        return Rc::new(read(false));
+    }
+    FACTS.with(|c| {
+        let mut c = c.borrow_mut();
+        match c.iter().position(|f| Rc::ptr_eq(&f.from, range)) {
+            Some(k) if c[k].tally.is_some() => c[k].clone(),
+            Some(k) => {
+                c[k] = Rc::new(read(true));
+                c[k].clone()
+            }
+            None => {
+                if c.len() >= 4 {
+                    c.remove(0);
+                }
+                let f = Rc::new(read(false));
+                c.push(f.clone());
+                f
+            }
+        }
+    })
+}
+
+fn holds_of(range: &[V]) -> Holds {
+    range.iter().fold(Holds::default(), |h, v| Holds {
+        num: h.num || matches!(v, V::Num(_)),
+        text: h.text || is_text(v),
+        date: h.date || matches!(v, V::Date(_)),
+    })
+}
+
+/// A SUMIFS card's condition row as the criterion kernel reads it: the op and its value joined, as `">"&value` in a
+/// formula, over the column's cells ([[D123]] typedCriteria). Its test, or the error the row answers.
+pub fn card_criterion(op: Op, value: &V, cells: &[V], match_case: bool) -> Result<impl Fn(&V) -> bool + use<>, V> {
+    let holds = holds_of(cells);
+    let parsed = match value {
+        e @ (V::Err(_) | V::Fx(_)) => return Err(e.clone()),
+        // Text is the row's own, so it never joins to its op: `<` and "=x" stay `<` "=x".
+        V::Str(t) => from_text(op, t, true, &format!("{}{t}", op.prefix()), holds, match_case),
+        V::Undef => parse_criterion(&joined(op, V::Null), holds, match_case),
+        v => parse_criterion(&joined(op, v.clone()), holds, match_case),
+    };
+    match parsed {
+        Parsed::Crit(c) => Ok(move |cell: &V| criterion_matches(cell, &c)),
+        Parsed::Err(e) => Err(e),
+    }
+}
+
+/// The arguments after the values as range, criterion pairs.
+pub type Pair = (Rc<Vec<V>>, V);
+
+pub fn ifs_pairs(rest: &[V]) -> Result<Vec<Pair>, V> {
+    if rest.is_empty() || !rest.len().is_multiple_of(2) {
+        return Err(V::err(sol_error(ErrorCode::Value, "Criteria come in range, criterion pairs")));
+    }
+    Ok(rest.chunks(2).map(|p| (as_range(&p[0]), p[1].clone())).collect())
+}

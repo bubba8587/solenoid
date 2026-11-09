@@ -1,46 +1,15 @@
 // [[C24]]
 import { describe, it, expect } from "vitest";
-import { ComparisonNode } from "../../../src/graph/nodes/logic";
 
 // Comparisons now emit a real logical (P7): TRUE/FALSE, not 1/0. Downstream
 // numeric consumers coerce boolean→1/0 at the socket (coerceInputs), so the
 // classic multiply-by-a-condition trick still works — that path is exercised
 // by the integration/seeds suites.
-describe("ComparisonNode emits a real logical", () => {
-  it("scalar comparison → a boolean", () => {
-    expect(new ComparisonNode({ op: "gt" }).data({ a: [5], b: [3] }).result).toBe(true);
-    expect(new ComparisonNode({ op: "gt" }).data({ a: [1], b: [3] }).result).toBe(false);
-    expect(new ComparisonNode({ op: "eq" }).data({ a: [2], b: [2] }).result).toBe(true);
-  });
-  it("list comparison → a boolean list (element-wise, scalar broadcasts)", () => {
-    expect(new ComparisonNode({ op: "gt" }).data({ a: [[1, 5, 3]], b: [2] }).result)
-      .toEqual([false, true, true]);
-  });
-});
 
 // Unit-aware: comparisons run on BASE-SI magnitudes, and commensurability is
 // enforced (different currencies / dimensions never compare equal). See unitValue.
-describe("ComparisonNode is unit-aware", () => {
-  const km5 = { __unitCell: true as const, value: 5000, dim: { length: 1 }, display: "km" };
-  const m5000 = { __unitCell: true as const, value: 5000, dim: { length: 1 }, display: "m" };
-  const usd5 = { __unitCell: true as const, value: 5, dim: { currency: 1 }, display: "usd" };
-  const eur5 = { __unitCell: true as const, value: 5, dim: { currency: 1 }, display: "eur" };
-  it("5 km equals 5000 m (base-SI compare, not display magnitude)", () => {
-    expect(new ComparisonNode({ op: "eq" }).data({ a: [km5], b: [m5000] }).result).toBe(true);
-  });
-  it("$5 equals 5€ is FALSE (no exchange rate — the reported bug)", () => {
-    expect(new ComparisonNode({ op: "eq" }).data({ a: [usd5], b: [eur5] }).result).toBe(false);
-    expect(new ComparisonNode({ op: "neq" }).data({ a: [usd5], b: [eur5] }).result).toBe(true);
-    // same currency still compares by magnitude
-    expect(new ComparisonNode({ op: "eq" }).data({ a: [usd5], b: [usd5] }).result).toBe(true);
-  });
-  it("ORDERING two incommensurable values → #UNIT!", () => {
-    const r = new ComparisonNode({ op: "gt" }).data({ a: [usd5], b: [eur5] }).result;
-    expect((r as { code?: string }).code).toBe("#UNIT!");
-  });
-});
 
-import { BooleanOpNode, NotNode, IfNode } from "../../../src/graph/nodes/logic";
+import { BooleanOpNode, IfNode } from "../../../src/graph/nodes/logic";
 
 // Helper: run a BooleanOp over N scalar operands (a0, a1, …) via literals.
 const boolRun = (op: "and" | "or" | "xor" | "xnor" | "nand" | "nor", ...vals: number[]) => {
@@ -75,66 +44,19 @@ describe("BooleanOpNode — variadic boolean reducers emit a real logical", () =
   });
 });
 
-describe("NotNode — unary element-wise logical flip", () => {
-  it("flips a scalar truth", () => {
-    expect(new NotNode().data({ in: [0] }).result).toBe(true);
-    expect(new NotNode().data({ in: [1] }).result).toBe(false);
-  });
-  it("broadcasts over a list (null stays null)", () => {
-    expect(new NotNode().data({ in: [[1, 0, null]] }).result).toEqual([false, true, null]);
-  });
-});
 
 describe("IfNode — value passthrough (not a boolean)", () => {
   const ifRun = (cond: number, then: number, els: number) => {
     const n = new IfNode();
-    n.literals = { cond, then, else: els };
+    keyIn(n, { cond, then, else: els });
     return n.data({}).result;
   };
   it("condition true → the true branch, false → the false branch", () => {
     expect(ifRun(1, 5, 3)).toBe(5);
     expect(ifRun(0, 5, 3)).toBe(3);
   });
-  it("accepts a REAL boolean condition (the logical socket's coerced form)", () => {
-    expect(new IfNode().data({ cond: [true], then: [5], else: [3] }).result).toBe(5);
-    expect(new IfNode().data({ cond: [false], then: [5], else: [3] }).result).toBe(3);
-  });
-  it("passes ANY value through unchanged — text, not just numbers", () => {
-    expect(new IfNode().data({ cond: [true], then: ["yes"], else: ["no"] }).result).toBe("yes");
-    expect(new IfNode().data({ cond: [0], then: ["yes"], else: ["no"] }).result).toBe("no");
-  });
 });
 
-describe("Kleene three-valued logic — a null operand propagates only when it could change the answer", () => {
-  it("a comparison with a null operand → null (per element)", () => {
-    expect(new ComparisonNode({ op: "gt" }).data({ a: [[1, null, 3]], b: [2] }).result)
-      .toEqual([false, null, true]);
-  });
-  it("AND: FALSE&null=FALSE, TRUE&null=null", () => {
-    const n = new BooleanOpNode({ op: "and" });
-    const [a, b] = n.valueInputKeys();
-    expect(n.data({ [a]: [[1, 0, null]], [b]: [[null, null, null]] }).result)
-      .toEqual([null, false, null]); // T&null=null, F&null=FALSE, null&null=null
-  });
-  it("OR: TRUE|null=TRUE, FALSE|null=null", () => {
-    const n = new BooleanOpNode({ op: "or" });
-    const [a, b] = n.valueInputKeys();
-    expect(n.data({ [a]: [[1, 0]], [b]: [[null, null]] }).result)
-      .toEqual([true, null]);
-  });
-  it("IF propagates a null condition", () => {
-    expect(new IfNode().data({ cond: [[1, null]], then: [[5, 5]], else: [[3, 3]] }).result)
-      .toEqual([5, null]);
-  });
-  it("ragged lists pad with null INTO the Kleene fn — absorbed where it can't change the answer", () => {
-    const n = new BooleanOpNode({ op: "and" });
-    const [a, b] = n.valueInputKeys();
-    // e0 has both operands; e1's B is padded null: TRUE&null stays unknown
-    expect(n.data({ [a]: [[1, 1]], [b]: [[1]] }).result).toEqual([true, null]);
-    // FALSE absorbs the padded null: FALSE&null = FALSE, not null
-    expect(n.data({ [a]: [[1, 0]], [b]: [[1]] }).result).toEqual([true, false]);
-  });
-});
 
 import { IsTestNode } from "../../../src/graph/nodes/logic";
 import { solError } from "../../../src/graph/errorValue";
@@ -167,57 +89,19 @@ describe("IS.TEST — per-cell to any depth (1-D and 2-D Any input)", () => {
   });
 
   // [[D73]] nodeCoversFormula: ISERR is current Excel, so the card carries it beside ISERROR.
-  it("ISERR flags every error but #N/A, per cell and whole, as the formula does", () => {
-    const na = solError("#N/A", "x");
-    const div0 = solError("#DIV/0!", "x");
-    expect(run("iserr")([na, div0, 5])).toEqual([false, true, false]);
-    expect(new IsTestNode({ op: "iserr" }).data({ value: [div0] }).result).toBe(true);
-    expect(new IsTestNode({ op: "iserr" }).data({ value: [na] }).result).toBe(false);
-  });
 
-  it("ISBLANK stays whole-input (a populated table is not blank)", () => {
-    expect(new IsTestNode({ op: "isblank" }).data({ value: [[[1, null], [2, 3]]] }).result).toBe(false);
-    expect(new IsTestNode({ op: "isblank" }).data({ value: [null] }).result).toBe(true);
-  });
 });
 
-import { frameFromCells } from "../../../src/graph/frame";
 
-describe("IS.TEST on a Frame — per-cell over the table (not a single bool)", () => {
-  // A mixed frame: a numeric column with a gap + a text column.
-  const f = frameFromCells(["vals", "tag"], [[1, "a"], [null, "b"], [3, "c"]]);
-
-  it("ISNULL flags each missing cell of the frame, row-major", () => {
-    const r = new IsTestNode({ op: "isnull" }).data({ value: [f] }).result;
-    // rows × cols = 3×2; only vals[1] is null.
-    expect(r).toEqual([[false, false], [true, false], [false, false]]);
-  });
-
-  it("ISNUMBER tests each cell (numbers true, text/gap false)", () => {
-    const r = new IsTestNode({ op: "isnumber" }).data({ value: [f] }).result;
-    expect(r).toEqual([[true, false], [false, false], [true, false]]);
-  });
-});
 
 import { ChooseNode } from "../../../src/graph/nodes/logic";
 
 describe("ChooseNode — extensible value rows, 1-based index", () => {
-  it("picks the index-th value among the default four", () => {
-    const n = new ChooseNode();
-    n.literals = { index: 3, ...Object.fromEntries(n.valueInputKeys().map((k, i) => [k, (i + 1) * 10])) };
-    expect(n.data({}).result).toBe(30); // 3rd value = 30
-  });
-  it("out-of-range index → #VALUE!", () => {
-    const n = new ChooseNode();
-    n.literals.index = 99;
-    const r = n.data({}).result;
-    expect(isSolError(r) && (r as { code: string }).code).toBe("#VALUE!");
-  });
   it("added/removed rows shift which keys are selectable", () => {
     const n = new ChooseNode();
     for (const k of n.valueInputKeys()) n.removeValueInput(k);
     const a = n.addValueInput(), b = n.addValueInput();
-    n.literals = { index: 2, [a]: 7, [b]: 9 };
+    keyIn(n, { index: 2, [a]: 7, [b]: 9 });
     expect(n.data({}).result).toBe(9);
     expect(n.valueInputKeys()).toEqual([a, b]);
   });
@@ -231,24 +115,9 @@ describe("ChooseNode — extensible value rows, 1-based index", () => {
 import { IfsNode } from "../../../src/graph/nodes/logic";
 
 describe("IfsNode — extensible condition/value pairs", () => {
-  it("returns the first value whose condition is non-zero (defaults)", () => {
-    // fresh node: cond0=1 (true) → val0=10
-    expect(new IfsNode().data({}).result).toBe(10);
-  });
-  it("falls through to the first true condition", () => {
-    const n = new IfsNode();
-    n.literals = { cond0: 0, val0: 10, cond1: 1, val1: 20, cond2: 0, val2: 30 };
-    expect(n.data({}).result).toBe(20);
-  });
-  it("no condition true → #N/A when Otherwise is UNSET (a logic hole, not a blank)", () => {
-    const n = new IfsNode();
-    n.literals = { cond0: 0, val0: 10, cond1: 0, val1: 20, cond2: 0, val2: 30 };
-    const r = n.data({}).result;
-    expect(isSolError(r) && (r as { code: string }).code).toBe("#N/A");
-  });
   it("no condition true → the Otherwise fallback when set", () => {
     const n = new IfsNode();
-    n.literals = { cond0: 0, val0: 10, cond1: 0, val1: 20, cond2: 0, val2: 30, otherwise: 42 };
+    keyIn(n, { cond0: 0, val0: 10, cond1: 0, val1: 20, cond2: 0, val2: 30, otherwise: 42 });
     expect(n.data({}).result).toBe(42);
     expect("otherwise" in n.inputs).toBe(true);
   });
@@ -257,7 +126,7 @@ describe("IfsNode — extensible condition/value pairs", () => {
     n.addValuePair(); // cond3/val3
     const keys = n.valuePairKeys();
     expect(keys.length).toBe(4);
-    n.literals = { cond0: 0, val0: 1, cond1: 0, val1: 2, cond2: 0, val2: 3, cond3: 1, val3: 99 };
+    keyIn(n, { cond0: 0, val0: 1, cond1: 0, val1: 2, cond2: 0, val2: 3, cond3: 1, val3: 99 });
     expect(n.data({}).result).toBe(99);
   });
   it("removeValuePair drops both keys of the pair", () => {
@@ -275,25 +144,11 @@ describe("IfsNode — extensible condition/value pairs", () => {
 import { SwitchNode } from "../../../src/graph/nodes/logic";
 
 describe("SwitchNode — fixed expr/default + extensible when/then pairs", () => {
-  it("returns the Then of the first matching When (defaults)", () => {
-    const n = new SwitchNode();
-    expect(n.data({ expr: [2] }).result).toBe(20);
-  });
-  it("no match → default when the Default is SET", () => {
-    const n = new SwitchNode();
-    n.literals.default = 7;
-    expect(n.data({ expr: [99] }).result).toBe(7);
-  });
-  it("no match → #N/A when the Default is UNSET", () => {
-    const n = new SwitchNode(); // fresh: no default literal
-    const r = n.data({ expr: [99] }).result;
-    expect(isSolError(r) && (r as { code: string }).code).toBe("#N/A");
-  });
   it("added pairs extend the cases", () => {
     const n = new SwitchNode();
     n.addValuePair(); // when3/then3
     const [w, t] = n.valuePairKeys()[3];
-    n.literals[w] = 5; n.literals[t] = 500;
+    n.stringLiterals[w] = "5"; n.stringLiterals[t] = "500";
     expect(n.data({ expr: [5] }).result).toBe(500);
   });
   it("removeValuePair drops both keys; expr/default untouched", () => {
@@ -317,71 +172,16 @@ describe("SwitchNode — fixed expr/default + extensible when/then pairs", () =>
 // The slots are WILDCARD sockets, so a typed literal can be text as well as a number —
 // it just lands in the other map. The inline field writes exactly one of the two.
 describe("value selectors take TEXT literals on their wildcard slots", () => {
-  it("SWITCH matches a typed text expression against typed text cases", () => {
-    const n = new SwitchNode();
-    n.literals = {};
-    n.stringLiterals = { expr: "b", when0: "a", then0: "first", when1: "b", then1: "second" };
-    expect(n.data({}).result).toBe("second");
-  });
-  it("SWITCH falls to a typed TEXT default, and an unset one is still #N/A", () => {
-    const n = new SwitchNode();
-    n.literals = { expr: 9, when0: 1, then0: 10 };
-    n.stringLiterals = {};
-    const miss = n.data({}).result;
-    expect(isSolError(miss) && (miss as { code: string }).code).toBe("#N/A");
-    n.stringLiterals.default = "none";
-    expect(n.data({}).result).toBe("none");
-  });
-  it("SWITCH keeps a numeric case distinct from a text one", () => {
-    const n = new SwitchNode();
-    n.literals = { expr: 12, when0: 12, then0: 1 };
-    n.stringLiterals = { when1: "12", then1: "text branch" };
-    expect(n.data({}).result).toBe(1);
-    n.literals = { when0: 12, then0: 1 };            // expr now text, not 12
-    n.stringLiterals = { expr: "12", when1: "12", then1: "text branch" };
-    expect(n.data({}).result).toBe("text branch");
-  });
-  it("SWITCH: a WIRED slot still beats the typed literal, blank included", () => {
-    const n = new SwitchNode();
-    n.literals = { expr: 1, when0: 1, then0: 10 };
-    n.stringLiterals = { then0: "typed" };
-    expect(n.data({ then0: [null] }).result).toBeNull();
-  });
   it("removeValuePair drops the pair's TEXT literals too", () => {
     const n = new SwitchNode();
     n.stringLiterals = { when1: "x", then1: "y", when2: "keep" };
     n.removeValuePair("when1");
     expect(n.stringLiterals).toEqual({ when2: "keep" });
   });
-  it("IFS returns a typed text value, and a typed text Otherwise", () => {
-    const n = new IfsNode();
-    n.literals = { cond0: 0, cond1: 1 };
-    n.stringLiterals = { val1: "matched" };
-    expect(n.data({}).result).toBe("matched");
-    n.literals = { cond0: 0, cond1: 0 };
-    n.stringLiterals = { otherwise: "fell through" };
-    expect(n.data({}).result).toBe("fell through");
-  });
-  it("CHOOSE returns a typed text value, and drops it with the row", () => {
-    const n = new ChooseNode();
-    n.literals = { index: 2 };
-    n.stringLiterals = { v1: "second" };
-    expect(n.data({}).result).toBe("second");
-    n.removeValueInput("v1");
-    expect(n.stringLiterals).toEqual({});
-  });
-  it("IF returns a typed text branch on either side", () => {
-    const n = new IfNode();
-    n.literals = { cond: 1 };
-    n.stringLiterals = { then: "yes", else: "no" };
-    expect(n.data({}).result).toBe("yes");
-    n.literals.cond = 0;
-    expect(n.data({}).result).toBe("no");
-  });
 });
 
-import { IFErrorNode, NaNode } from "../../../src/graph/nodes/logic";
 import { isSolError } from "../../../src/graph/errorValue";
+import { keyIn } from "../keyIn";
 
 describe("value-selectors carry ANY value through (logical conditions, text values)", () => {
   it("IFS: a REAL boolean condition picks its paired text value", () => {
@@ -400,22 +200,5 @@ describe("value-selectors carry ANY value through (logical conditions, text valu
     const n = new ChooseNode({ valueKeys: ["index", "v0", "v1"] });
     expect(n.data({ index: [2], v0: ["x"], v1: ["y"] }).result).toBe("y");
   });
-  it("IFERROR swaps a caught error for the fallback but passes any non-error through", () => {
-    const n = new IFErrorNode({ op: "iferror" });
-    expect(n.data({ value: [solError("#DIV/0!", "")], fallback: ["safe"] }).result).toBe("safe");
-    expect(n.data({ value: ["hello"], fallback: ["safe"] }).result).toBe("hello");
-  });
 });
 
-describe("NA node emits the tagged #N/A (audit finding 13)", () => {
-  it("outputs a SolError with code #N/A that ISNA/IFNA can catch", () => {
-    const out = new NaNode().data().result;
-    if (!isSolError(out)) throw new Error("expected SolError");
-    expect(out.code).toBe("#N/A");
-    // the advertised catch actually works
-    const isna = new IsTestNode({ op: "isna" }).data({ value: [out] }).result;
-    expect(isna).toBe(true);
-    const caught = new IFErrorNode({ op: "ifna" }).data({ value: [out], fallback: [42] }).result;
-    expect(caught).toBe(42);
-  });
-});

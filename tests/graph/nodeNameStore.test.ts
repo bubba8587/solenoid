@@ -1,4 +1,4 @@
-// [[B16]] oneFormulaSurface
+// [[B16]] oneFormulaSurface, [[addressable-model#Names and ids]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { nodeNameStore } from "../../src/graph/nodeNameStore";
 

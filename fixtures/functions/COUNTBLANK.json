@@ -1,0 +1,14 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"COUNTBLANK(r_C2_C10)","env":["r_C2_C10=table:[[blank], [blank], [blank], [blank], [blank], [blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"COUNTBLANK(r_D2_D10)","env":["r_D2_D10=table:text:[[\"One\"], [\"Two\"], [\"Three\"], [\"Four\"], [\"Five\"], [\"Six\"], [\"Seven\"], [\"Eight\"], [\"Nine\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"COUNTBLANK(r_E2_E10)","env":["r_E2_E10=table:num:[[#N/A], [#NAME?], [-1000], [blank], [blank], [3.14], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"COUNTBLANK(c_B2)","env":["c_B2=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"COUNTBLANK(c_C2)","env":["c_C2=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"COUNTBLANK(c_D2)","env":["c_D2=text:\"One\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"COUNTBLANK(c_E2)","env":["c_E2=err:#N/A"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"COUNTBLANK(c_F2)","env":["c_F2=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"COUNTBLANK(c_E6)","env":["c_E6=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"COUNTBLANK(r_Data_G2_G5)","env":["r_Data_G2_G5=table:[[blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

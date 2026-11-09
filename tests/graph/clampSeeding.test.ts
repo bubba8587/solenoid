@@ -1,7 +1,8 @@
 // [[C24]]
 import { describe, it, expect } from "vitest";
 import { collectFinite, extendSafeRange, boundsFromSafeRange, findLeaves } from "../../src/graph/modelFuzz";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
 import type { Schemes } from "../../src/graph/schemes";
 import { SliderInputNode } from "../../src/graph/nodes/input";
 import { ValueInputNode } from "../../src/graph/nodes/control";
@@ -63,18 +64,18 @@ describe("boundsFromSafeRange", () => {
 
 describe("model fuzz leaves", () => {
   it("a Slider with nothing wired in is a leaf even though it declares bound sockets", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const slider = new SliderInputNode();
     const num = new ValueInputNode();
     const bound = new SliderInputNode();
     for (const n of [slider, num, bound]) await editor.addNode(n as unknown as Schemes["Node"]);
-    await editor.addConnection(new ClassicPreset.Connection(num, "value" as never, bound, "min" as never) as unknown as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(num, "value" as never, bound, "min" as never) as unknown as Schemes["Connection"]);
     const ids = findLeaves(editor as never).map((l) => l.node.id).sort();
     expect(ids).toEqual([slider.id, num.id].sort());
   });
 
   it("takes a Number or Text Value Input, each as its kind, and skips Date and Boolean", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const num = new ValueInputNode({ op: "number" });
     const txt = new ValueInputNode({ op: "string" });
     const date = new ValueInputNode({ op: "date" });

@@ -1,11 +1,11 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault
 // Test-only.
 
-import { ExpressionNode, EquationNode } from "../rete-nodes";
-import { parseEquation } from "../equationSolve";
+import { ExpressionNode, EquationNode } from "../nodeClasses";
 import { initPackFormulas } from "../formulaExtensions";
-import { compileEvaluator } from "../excelFormula";
-import type { FormulaPackEntry, Pack } from "./packShared";
+import { compileEvaluator, parseFormula } from "../excelFormula";
+import { formulaNode, type FormulaPackEntry, type Pack } from "./packShared";
+import { PHYS_CONSTANTS } from "../nodes/physicsConstantsOps";
 
 /** Evaluates with every pack's FORMULA FUNCTIONS registered, mirroring how a typed
  *  Expression resolves them on canvas. */
@@ -19,11 +19,13 @@ export function evalPackFormula(expr: string, env: Record<string, unknown> = {})
 /** Evaluate one formula entry with the given variable values. */
 export function evalFormula(
   e: FormulaPackEntry,
-  inputs: Record<string, number | string | (number | string)[]>,
+  inputs: Record<string, unknown>,
 ): unknown {
-  // Seed literals as the Add menu does, or an unprovided config variable reads 0 instead of its preset default.
-  const node = new ExpressionNode({ expr: e.expr, locked: true, resultAs: e.resultAs, literals: e.literals });
+  // Built as the Add menu builds it, so an unprovided config variable reads its preset literal.
+  const node = formulaNode(e).create() as ExpressionNode;
   const env: Record<string, unknown[]> = {};
+  // The Physics Constant the Add menu cables in, unless the test wires the variable itself.
+  for (const [k, op] of Object.entries(e.constants ?? {})) env[k] = [PHYS_CONSTANTS[op].value];
   for (const [k, v] of Object.entries(inputs)) env[k] = [v];
   return (node.data(env) as { result: unknown }).result;
 }
@@ -35,6 +37,8 @@ export function evalEquation(
 ): Record<string, unknown> {
   const node = new EquationNode({ expr: e.expr, locked: true });
   const env: Record<string, unknown[]> = {};
+  // The Physics Constant the Add menu cables in, unless the test wires the variable itself.
+  for (const [k, op] of Object.entries(e.constants ?? {})) env[k] = [PHYS_CONSTANTS[op].value];
   for (const [k, v] of Object.entries(inputs)) env[k] = [v];
   return node.data(env);
 }
@@ -54,13 +58,12 @@ export function auditFormulaPack(entries: FormulaPackEntry[]): string[] {
     if (seen.has(e.type)) problems.push(`${e.type}: duplicate type id`);
     seen.add(e.type);
     if (e.equation) {
-      const parsed = parseEquation(e.expr);
-      if (parsed === null || typeof parsed === "string") {
-        problems.push(`${e.type}: equation does not parse: ${e.expr}${typeof parsed === "string" ? ` (${parsed})` : ""}`);
-      }
+      // Every variable wired, so the core only checks the equation and any error it leaves is the parse's.
+      const node = new EquationNode({ expr: e.expr, locked: true });
+      node.data(Object.fromEntries(node.varNames.map((v) => [v, [1]])));
+      if (node.cachedError) problems.push(`${e.type}: equation does not parse: ${e.expr} (${node.cachedError})`);
     } else {
-      const node = new ExpressionNode({ expr: e.expr, locked: true, resultAs: e.resultAs });
-      if (!node.evaluator) problems.push(`${e.type}: formula does not compile: ${e.expr}`);
+      if (!parseFormula(e.expr)) problems.push(`${e.type}: formula does not compile: ${e.expr}`);
     }
     if (!e.description) problems.push(`${e.type}: missing description`);
   }

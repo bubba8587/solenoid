@@ -1,12 +1,12 @@
 // [[B16]] oneFormulaSurface
+import { isCategory, isPair } from "./catalogSearch";
 import { buildCatalog } from "./catalogUtils";
-import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "./AddNodeMenu";
+import type { CatalogEntry, NodeCatalogEntry } from "./AddNodeMenu";
 import { NODE_EXCEL, EXCEL_GAP } from "./nodeExcel";
-import { formulaFunctionNames } from "./excelFormula";
-import { EXCEL_IMPL_META } from "./excelFunctions";
+import { FUNCTION_ARITY, formulaFunctionNames } from "./excelFunctions";
 import { opsFor } from "./nodeOps";
 
-export interface ParityRow {
+interface ParityRow {
   cat: string;
   type: string;
   label: string;
@@ -34,8 +34,6 @@ function isPresetFormula(leaf: NodeCatalogEntry): boolean {
   }
 }
 
-const isCategory = (e: CatalogEntry): e is CatalogCategory => e.type === "category";
-const isPair = (e: CatalogEntry): e is CatalogPair => e.type === "pair";
 
 function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formulaNames: Set<string>): void {
   for (const e of entries) {
@@ -59,7 +57,7 @@ function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formula
   }
 }
 
-export interface ParityMeasurement {
+interface ParityMeasurement {
   rows: ParityRow[];
   covered: ParityRow[];
   excelNamedGap: ParityRow[];
@@ -78,7 +76,7 @@ export function measureParity(): ParityMeasurement {
   for (const eqs of Object.values(NODE_EXCEL)) for (const x of eqs) nodeExcelNames.add(x.excel.toUpperCase());
   const gapNames = new Set(EXCEL_GAP.map((g) => g.excel.toUpperCase()));
   const noNode = formulaFunctionNames().filter((n) => !nodeExcelNames.has(n.toUpperCase()));
-  const registered = new Set(Object.keys(EXCEL_IMPL_META).map((n) => n.toUpperCase()));
+  const registered = new Set(Object.keys(FUNCTION_ARITY).map((n) => n.toUpperCase()));
 
   return {
     rows,

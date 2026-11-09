@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
-import * as Nodes from "../../src/graph/rete-nodes";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
+import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { CompositeNode } from "../../src/graph/nodes/composite";
 import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";
 import { loopMembers } from "../../src/graph/graphCompute";
@@ -25,25 +24,23 @@ type SavedNode = {
 };
 
 function buildEditor() {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   return { editor, engine };
 }
 
-async function loadSeed(editor: NodeEditor<Schemes>) {
-  const byId = new Map<string, ClassicPreset.Node>();
+async function loadSeed(editor: GraphEditor<Schemes>) {
+  const byId = new Map<string, GraphNode>();
   for (const sn of (seed.nodes as SavedNode[])) {
-    const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => ClassicPreset.Node>)[sn.type];
+    const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => GraphNode>)[sn.type];
     const node = new Ctor({ ...sn.init });
     const anyNode = node as unknown as Record<string, unknown>;
     if (sn.literals) anyNode.literals = { ...sn.literals };
     if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
     if (node instanceof CompositeNode) {
       await node.hydrate(ctorRegistry()); // persistence.ts does the same
-      // A heavy composite loads UNSOLVED ([[D52]] compositesHoldUntilSolve); arm the
+      // A heavy composite loads UNSOLVED ([[C23]] calcModes); arm the
       // Solve these value-pins expect (the light single-run container ignores it).
       node.requestSolve();
     }
@@ -52,7 +49,7 @@ async function loadSeed(editor: NodeEditor<Schemes>) {
   }
   for (const c of seed.connections) {
     await editor.addConnection(
-      new ClassicPreset.Connection(byId.get(c.source)!, c.sourceOutput, byId.get(c.target)!, c.targetInput) as Schemes["Connection"],
+      new GraphConnection(byId.get(c.source)!, c.sourceOutput, byId.get(c.target)!, c.targetInput) as Schemes["Connection"],
     );
   }
   return byId;
@@ -160,7 +157,7 @@ describe("Composite Workbench seed", () => {
 
 describe("a composite's saved bytes are stable across save → load → save", () => {
   it("every seed composite re-saves identically, its ports still finding their markers", async () => {
-    const { extractInit } = await import("../../src/graph/copyPaste");
+    const { extractInit } = await import("../../src/graph/nodeInit");
     const reg = ctorRegistry();
     const rebuild = async (init: Record<string, unknown>) => {
       const n = new CompositeNode({ ...init } as ConstructorParameters<typeof CompositeNode>[0]);

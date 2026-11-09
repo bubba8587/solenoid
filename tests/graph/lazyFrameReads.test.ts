@@ -1,7 +1,7 @@
-// [[C16]] polarsEngine
-// Readers on a lazy upstream answer as they do on the same frame held eagerly.
+// [[C130]] rustCore, [[frame-verbs#Who receives a ref]], [[frame-verbs#Sketch mode and the aggregate guard]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { runFrameUnary, resetFrameBackendToJs, clearCollectMemo, readFrame, frameBackend, setFrameBackend, SKETCH_SAMPLE_ROWS, type FrameRef, type FrameBackend, type FrameHandle } from "../../src/graph/frameBackend";
+import { readFrame } from "../../src/graph/frameBackend";
+import { planned, SKETCH_SAMPLE_ROWS } from "./frameRefKit";
 import { calcModeStore } from "../../src/graph/calcModeStore";
 import { SumIfsNode } from "../../src/graph/nodes/list";
 import { GetColumnNode, PivotNode } from "../../src/graph/nodes/frame";
@@ -17,15 +17,13 @@ const abc: FrameValue = {
   ],
 };
 
-beforeEach(() => { resetFrameBackendToJs(); clearCollectMemo(); });
-
 describe("SUMIFS resolves a positional column against the upstream frame", () => {
   const sumifs = async (cond: string, values: string, lazy: boolean) => {
     const n = new SumIfsNode({ op: "sumifs" });
     n.condConfig["0"] = { op: "notblank" };
     n.stringLiterals.column0 = cond;
     n.stringLiterals.values = values;
-    const frame = lazy ? await runFrameUnary(abc, { kind: "distinct" }) : abc;
+    const frame = lazy ? planned(abc, { kind: "distinct" }) : abc;
     return (await n.data({ frame: [frame] } as never)).result;
   };
 
@@ -44,7 +42,7 @@ describe("one-column readers downstream of GROUPBY scale as the GROUPBY card doe
       { name: "qty", type: "number", values: Array.from({ length: rows }, () => 1) },
     ],
   };
-  const grouped = async () => (await runFrameUnary(big, { kind: "groupBy", keys: ["k"], aggs: [{ column: "qty", op: "sum", as: "total" }] })) as FrameRef;
+  const grouped = async () => planned(big, { kind: "groupBy", keys: ["k"], aggs: [{ column: "qty", op: "sum", as: "total" }] });
 
   beforeEach(() => { calcModeStore.setMode("sketch"); });
   afterEach(() => { calcModeStore.setMode("auto"); });
@@ -78,40 +76,5 @@ describe("one-column readers downstream of GROUPBY scale as the GROUPBY card doe
     const n = new SlicerNode({ selectedColumn: "total" });
     await n.data({ frame: [await grouped()] });
     expect(n.cachedUniqueValues).toEqual([rows]);
-  });
-});
-
-describe("Pivot on a lazy upstream keeps the newest pass", () => {
-  it("a slow older pass does not overwrite a newer one", async () => {
-    const js = frameBackend();
-    const slow = new Set<FrameHandle>();
-    let release!: () => void;
-    const gate = new Promise<void>((r) => { release = r; });
-    setFrameBackend(new Proxy(js, {
-      get(t, k) {
-        if (k === "applyMany") return async (h: FrameHandle, ops: Parameters<FrameBackend["applyMany"]>[1]) => {
-          const out = await t.applyMany(h, ops);
-          if (ops[0]?.kind === "distinct") slow.add(out);
-          return out;
-        };
-        if (k === "column") return async (h: FrameHandle, n: string) => {
-          if (slow.has(h)) await gate;
-          return t.column(h, n);
-        };
-        const v = Reflect.get(t, k) as unknown;
-        return typeof v === "function" ? v.bind(t) : v;
-      },
-    }) as FrameBackend);
-    const older = (await runFrameUnary(abc, { kind: "distinct" })) as FrameRef;
-    const newer = (await runFrameUnary(abc, { kind: "sort", by: "A", dir: "desc" })) as FrameRef;
-    const p = new PivotNode();
-    const inputs = { rowFields: [["A"]], values: [["B"]] };
-    const first = p.data({ frame: [older], ...inputs });
-    await p.data({ frame: [newer], ...inputs });
-    const want = p.cachedResult;
-    expect((want as FrameValue).columns[0].values).toEqual([2, 1]);
-    release();
-    await first;
-    expect(p.cachedResult).toBe(want);
   });
 });

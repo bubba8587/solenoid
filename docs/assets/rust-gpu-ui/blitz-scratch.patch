@@ -1,0 +1,497 @@
+diff --git a/packages/blitz-dom/assets/default.css b/packages/blitz-dom/assets/default.css
+index ad76a97..b5d075a 100644
+--- a/packages/blitz-dom/assets/default.css
++++ b/packages/blitz-dom/assets/default.css
+@@ -80,6 +80,17 @@ textarea {
+     background-color: white;
+ }
+ 
++/* Chromium's UA values: text inputs pad 1px 2px; a range input has no padding, border or background. */
++input {
++    padding: 1px 2px;
++}
++input[type="range" i] {
++    padding: 0;
++    border: none;
++    margin: 2px;
++    background-color: transparent;
++}
++
+ input,
+ select,
+ button {
+diff --git a/packages/blitz-dom/src/document.rs b/packages/blitz-dom/src/document.rs
+index 7f2d189..b00264f 100644
+--- a/packages/blitz-dom/src/document.rs
++++ b/packages/blitz-dom/src/document.rs
+@@ -440,6 +440,7 @@ impl BaseDocument {
+ 
+         // Properties that were previously enabled by the `layout.unimplemented` pref
+         style_config::set_pref!("layout.css.appearance.enabled", true);
++        style_config::set_pref!("layout.css.text-overflow.enabled", true);
+         style_config::set_pref!("layout.css.backdrop-filter.enabled", true);
+         style_config::set_pref!("layout.css.contain.enabled", true);
+         style_config::set_pref!("layout.css.content.alt-text.enabled", true);
+diff --git a/packages/blitz-dom/src/layout/construct.rs b/packages/blitz-dom/src/layout/construct.rs
+index fc6901c..f9e1b33 100644
+--- a/packages/blitz-dom/src/layout/construct.rs
++++ b/packages/blitz-dom/src/layout/construct.rs
+@@ -448,6 +448,10 @@ fn collect_layout_children_with_wrap(
+                 return;
+             }
+         }
++        if tag_name == "select" {
++            create_text_editor(doc, container_node_id, false);
++            return;
++        }
+ 
+         #[cfg(feature = "svg")]
+         if matches!(tag_name, "svg") {
+@@ -862,16 +866,32 @@ fn create_text_editor(doc: &mut BaseDocument, input_element_id: NodeId, is_multi
+         .map(|s| stylo_to_parley::base_direction(s.clone_direction(), s.clone_unicode_bidi()))
+         .unwrap_or(parley::BaseDirection::Auto);
+ 
++    let is_select = node
++        .data
++        .downcast_element()
++        .is_some_and(|el| *el.name.local == *"select");
++    let mut showing_placeholder = false;
+     let initial_text = if is_multiline {
+         node.text_content()
++    } else if is_select {
++        selected_option_text(doc, input_element_id)
+     } else {
+-        node.attr(local_name!("value")).unwrap_or("").to_string()
++        let value = node.attr(local_name!("value")).unwrap_or("").to_string();
++        match node.attr(local_name!("placeholder")) {
++            Some(ph) if value.is_empty() && !ph.is_empty() => {
++                showing_placeholder = true;
++                ph.to_string()
++            }
++            _ => value,
++        }
+     };
++    let node = &mut doc.nodes[input_element_id];
+     let element = &mut node.data.downcast_element_mut().unwrap();
+     if !matches!(element.special_data, SpecialElementData::TextInput(_)) {
+         let mut text_input_data = TextInputData::new(is_multiline);
+         let editor = &mut text_input_data.editor;
+         editor.set_text(&initial_text);
++        text_input_data.showing_placeholder = showing_placeholder;
+         element.special_data = SpecialElementData::TextInput(text_input_data);
+     }
+ 
+@@ -908,6 +928,30 @@ fn create_text_editor(doc: &mut BaseDocument, input_element_id: NodeId, is_multi
+     editor.refresh_layout(&mut doc.font_ctx.lock().unwrap(), &mut doc.layout_ctx);
+ }
+ 
++/// The text a closed `<select>` shows: its selected option's, else its first option's.
++fn selected_option_text(doc: &BaseDocument, select_id: NodeId) -> String {
++    let mut first = None;
++    let mut selected = None;
++    let mut stack = vec![select_id];
++    while let Some(id) = stack.pop() {
++        let node = &doc.nodes[id];
++        if let Some(el) = node.data.downcast_element() {
++            if *el.name.local == *"option" {
++                let text = node.text_content().trim().to_string();
++                if el.has_attr(local_name!("selected")) && selected.is_none() {
++                    selected = Some(text.clone());
++                }
++                if first.is_none() {
++                    first = Some(text);
++                }
++                continue;
++            }
++        }
++        stack.extend(node.children.iter().rev().copied());
++    }
++    selected.or(first).unwrap_or_default()
++}
++
+ fn create_checkbox_input(doc: &mut BaseDocument, input_element_id: NodeId) {
+     let node = &mut doc.nodes[input_element_id];
+ 
+diff --git a/packages/blitz-dom/src/layout/mod.rs b/packages/blitz-dom/src/layout/mod.rs
+index b298972..b550a54 100644
+--- a/packages/blitz-dom/src/layout/mod.rs
++++ b/packages/blitz-dom/src/layout/mod.rs
+@@ -327,6 +327,23 @@ impl LayoutPassState<'_> {
+                     return output;
+                 }
+ 
++                if *element_data.name.local == *"select" {
++                    let text_width = element_data
++                        .text_input_data()
++                        .and_then(|input| input.editor.try_layout())
++                        .map(|layout| layout.full_width() / layout.scale())
++                        .unwrap_or(0.0);
++                    return compute_leaf_layout(
++                        inputs,
++                        &node.layout_style(),
++                        resolve_calc_value,
++                        |_known_size, _available_space| taffy::Size {
++                            width: text_width + 24.0,
++                            height: resolved_line_height.unwrap_or(16.0),
++                        },
++                    );
++                }
++
+                 if *element_data.name.local == *"input" {
+                     match element_data.attr(local_name!("type")) {
+                         // if the input type is hidden, hide it
+@@ -356,8 +373,9 @@ impl LayoutPassState<'_> {
+                                 },
+                             );
+                         }
+-                        None | Some("text" | "password" | "email" | "tel" | "url" | "search") => {
+-                            return compute_leaf_layout(
++                        None
++                        | Some("text" | "password" | "email" | "tel" | "url" | "search" | "number") => {
++                            let output = compute_leaf_layout(
+                                 inputs,
+                                 &node.layout_style(),
+                                 resolve_calc_value,
+@@ -370,6 +388,34 @@ impl LayoutPassState<'_> {
+                                     height: resolved_line_height.unwrap_or(16.0),
+                                 },
+                             );
++                            if inputs.run_mode == RunMode::PerformLayout {
++                                let pb = {
++                                    let style = node.layout_style();
++                                    style
++                                        .padding()
++                                        .resolve_or_zero(inputs.parent_size.width, resolve_calc_value)
++                                        + style
++                                            .border()
++                                            .resolve_or_zero(inputs.parent_size.width, resolve_calc_value)
++                                };
++                                let content_width =
++                                    (output.size.width - pb.horizontal_axis_sum()).max(0.0);
++                                let doc = &mut *self.doc;
++                                let scale = doc.viewport.scale();
++                                let node = &mut doc.nodes[dom_node_id(node_id)];
++                                if let Some(input) = node
++                                    .data
++                                    .downcast_element_mut()
++                                    .and_then(|el| el.text_input_data_mut())
++                                {
++                                    input.editor.set_width(Some(content_width * scale));
++                                    input.editor.refresh_layout(
++                                        &mut doc.font_ctx.lock().unwrap(),
++                                        &mut doc.layout_ctx,
++                                    );
++                                }
++                            }
++                            return output;
+                         }
+                         _ => {}
+                     }
+diff --git a/packages/blitz-dom/src/layout/replaced.rs b/packages/blitz-dom/src/layout/replaced.rs
+index d4c808f..153e0ca 100644
+--- a/packages/blitz-dom/src/layout/replaced.rs
++++ b/packages/blitz-dom/src/layout/replaced.rs
+@@ -445,4 +445,5 @@ pub(crate) fn is_inline_box_element(tag_name: &LocalName) -> bool {
+         || *tag_name == local_name!("input")
+         || *tag_name == local_name!("textarea")
+         || *tag_name == local_name!("button")
++        || *tag_name == local_name!("select")
+ }
+diff --git a/packages/blitz-dom/src/node/serialize.rs b/packages/blitz-dom/src/node/serialize.rs
+index d8919a7..49d09cd 100644
+--- a/packages/blitz-dom/src/node/serialize.rs
++++ b/packages/blitz-dom/src/node/serialize.rs
+@@ -180,12 +180,30 @@ impl Node {
+                     writer.push('"');
+                 }
+ 
++                if opts.resolve_current_color
++                    && nesting == 0
++                    && !data.attrs().iter().any(|attr| &*attr.name.local == "font-family")
++                {
++                    if let Some(styles) = self.primary_styles() {
++                        let family = styles.get_font().font_family.to_css_string();
++                        writer.push_str(" font-family=\"");
++                        encode_quoted_attribute_to_string(&family, writer);
++                        writer.push('"');
++                    }
++                }
+                 for attr in data.attrs() {
+                     writer.push(' ');
+                     write_attr_name(&attr.name, writer);
+                     writer.push_str("=\"");
+                     #[allow(clippy::unnecessary_unwrap)] // Convert to if-let chain once stabilised
+-                    if current_color.is_some() && attr.value.contains("currentColor") {
++                    let styles = self.primary_styles();
++                    if opts.resolve_current_color && attr.value.contains("var(--") && styles.is_some() {
++                        let mut value = resolve_vars(&attr.value, &styles.unwrap());
++                        if let Some(cc) = current_color.as_ref() {
++                            value = value.replace("currentColor", cc);
++                        }
++                        encode_quoted_attribute_to_string(&value, writer);
++                    } else if current_color.is_some() && attr.value.contains("currentColor") {
+                         let value = attr
+                             .value
+                             .replace("currentColor", current_color.as_ref().unwrap());
+@@ -224,3 +242,50 @@ impl Node {
+         }
+     }
+ }
++
++/// Substitutes `var(--name[, fallback])` in an SVG attribute with the element's computed custom
++/// property, since the SVG renderer only sees the serialized markup.
++fn resolve_vars(value: &str, style: &style::properties::ComputedValues) -> String {
++    let mut out = String::new();
++    let mut rest = value;
++    while let Some(i) = rest.find("var(--") {
++        out.push_str(&rest[..i]);
++        let after = &rest[i + 4..];
++        let mut depth = 1;
++        let mut end = None;
++        for (j, c) in after.char_indices() {
++            match c {
++                '(' => depth += 1,
++                ')' => {
++                    depth -= 1;
++                    if depth == 0 {
++                        end = Some(j);
++                        break;
++                    }
++                }
++                _ => {}
++            }
++        }
++        let Some(end) = end else {
++            out.push_str(&rest[i..]);
++            return out;
++        };
++        let inner = &after[..end];
++        let (name, fallback) = match inner.find(',') {
++            Some(k) => (inner[..k].trim(), Some(inner[k + 1..].trim())),
++            None => (inner.trim(), None),
++        };
++        let atom = style::Atom::from(name.trim_start_matches("--"));
++        let resolved = style
++            .custom_properties()
++            .get_for_cssom(&atom)
++            .and_then(|v| v.as_universal())
++            .map(|v| v.css_text().trim().to_string())
++            .filter(|v| !v.is_empty())
++            .or_else(|| fallback.map(|f| resolve_vars(f, style)));
++        out.push_str(resolved.as_deref().unwrap_or("none"));
++        rest = &after[end + 1..];
++    }
++    out.push_str(rest);
++    out
++}
+diff --git a/packages/blitz-dom/src/node/text.rs b/packages/blitz-dom/src/node/text.rs
+index 8c82208..c19b21c 100644
+--- a/packages/blitz-dom/src/node/text.rs
++++ b/packages/blitz-dom/src/node/text.rs
+@@ -72,6 +72,8 @@ pub struct TextInputData {
+     /// vertical offset. It is kept up to date so that the caret remains visible within the
+     /// input's content box.
+     pub scroll_offset: f32,
++    /// The editor holds the placeholder text, not a value (the input is empty).
++    pub showing_placeholder: bool,
+ }
+ 
+ // FIXME: Implement Clone for PlainEditor
+@@ -88,6 +90,7 @@ impl TextInputData {
+             editor,
+             is_multiline,
+             scroll_offset: 0.0,
++            showing_placeholder: false,
+         }
+     }
+ 
+diff --git a/packages/blitz-dom/src/util.rs b/packages/blitz-dom/src/util.rs
+index 18cb627..1e8f53f 100644
+--- a/packages/blitz-dom/src/util.rs
++++ b/packages/blitz-dom/src/util.rs
+@@ -47,6 +47,9 @@ use usvg::fontdb;
+ pub(crate) static FONT_DB: LazyLock<Arc<fontdb::Database>> = LazyLock::new(|| {
+     let mut db = fontdb::Database::new();
+     db.load_system_fonts();
++    if let Ok(dir) = std::env::var("BLITZ_APP_FONTS") {
++        db.load_fonts_dir(dir);
++    }
+     Arc::new(db)
+ });
+ 
+diff --git a/packages/blitz-paint/src/render.rs b/packages/blitz-paint/src/render.rs
+index 60d6c27..3c7537c 100644
+--- a/packages/blitz-paint/src/render.rs
++++ b/packages/blitz-paint/src/render.rs
+@@ -723,6 +723,16 @@ struct ElementCx<'dom, 'a> {
+     custom_widget_scene: Option<&'a Scene>,
+ }
+ 
++struct EllipsisPlan {
++    font: parley::FontData,
++    font_size: f32,
++    coords: Vec<i16>,
++    glyph: u32,
++    cut: f32,
++    baseline: f32,
++    color: Color,
++}
++
+ /// Converts parley BoundingBox into peniko Rect
+ fn convert_rect(rect: &parley::BoundingBox) -> kurbo::Rect {
+     peniko::kurbo::Rect::new(rect.x0, rect.y0, rect.x1, rect.y1)
+@@ -892,6 +902,14 @@ impl ElementCx<'_, '_> {
+             }
+ 
+             // Render text
++            let ellipsis = self.ellipsis_plan(&text_layout.layout);
++            if let Some(plan) = &ellipsis {
++                scene.push_clip_layer(
++                    Fill::NonZero,
++                    transform,
++                    &Rect::new(-1e6, -1e6, plan.cut as f64, 1e6),
++                );
++            }
+             let mut draw_text_context = self.context.draw_text_context.borrow_mut();
+             crate::text::stroke_text(
+                 scene,
+@@ -902,7 +920,82 @@ impl ElementCx<'_, '_> {
+                 self.node.id,
+                 &mut draw_text_context,
+             );
++            if let Some(plan) = ellipsis {
++                scene.pop_layer();
++                scene.draw_glyphs(
++                    &plan.font,
++                    plan.font_size,
++                    true,
++                    &plan.coords,
++                    kurbo::Vec2::default(),
++                    Fill::NonZero,
++                    &anyrender::Paint::from(plan.color),
++                    1.0,
++                    transform,
++                    None,
++                    std::iter::once(anyrender::Glyph {
++                        id: plan.glyph,
++                        x: plan.cut,
++                        y: plan.baseline,
++                    }),
++                );
++            }
++        }
++    }
++
++    /// `text-overflow: ellipsis` on a clipped box whose first line overflows it: where to cut the
++    /// text (after the last whole glyph that leaves room) and the "…" glyph to draw there.
++    fn ellipsis_plan(&self, layout: &parley::Layout<blitz_dom::node::TextBrush>) -> Option<EllipsisPlan> {
++        use parley::PositionedLayoutItem;
++        use skrifa::MetadataProvider as _;
++        use style::values::specified::text::TextOverflowSide;
++        if !matches!(self.style.get_text().text_overflow.second, TextOverflowSide::Ellipsis) {
++            return None;
++        }
++        if matches!(
++            self.style.get_box().overflow_x,
++            style::values::computed::Overflow::Visible
++        ) {
++            return None;
++        }
++        let avail = self.frame.content_box.width() as f32;
++        let line = layout.lines().next()?;
++        let mut first_run = None;
++        let mut ends = Vec::new();
++        for item in line.items() {
++            if let PositionedLayoutItem::GlyphRun(glyph_run) = item {
++                for glyph in glyph_run.positioned_glyphs() {
++                    ends.push(glyph.x + glyph.advance);
++                }
++                if first_run.is_none() {
++                    first_run = Some(glyph_run);
++                }
++            }
++        }
++        if ends.iter().copied().fold(0.0, f32::max) <= avail + 0.5 {
++            return None;
+         }
++        let glyph_run = first_run?;
++        let run = glyph_run.run();
++        let font = run.font().clone();
++        let font_size = run.font_size();
++        let font_ref = skrifa::FontRef::from_index(font.data.as_ref(), font.index).ok()?;
++        let glyph = font_ref.charmap().map('\u{2026}')?;
++        let advance = font_ref
++            .glyph_metrics(skrifa::instance::Size::new(font_size), skrifa::instance::LocationRef::default())
++            .advance_width(glyph)?;
++        let limit = avail - advance;
++        let cut = ends.iter().copied().filter(|end| *end <= limit).fold(0.0, f32::max);
++        let coords: &[i16] = bytemuck::cast_slice(run.normalized_coords());
++        Some(EllipsisPlan {
++            font,
++            font_size,
++            coords: coords.to_vec(),
++            glyph: glyph.to_u32(),
++            cut,
++            baseline: glyph_run.baseline(),
++            color: self.style.clone_color().as_srgb_color(),
++        })
+     }
+ 
+     fn draw_text_input_text(&self, scene: &mut impl PaintScene, pos: Point) {
+@@ -958,6 +1051,17 @@ impl ElementCx<'_, '_> {
+             }
+ 
+             // Render text
++            if input_data.showing_placeholder {
++                scene.push_layer(
++                    Fill::NonZero,
++                    peniko::Mix::Normal,
++                    0.5,
++                    Affine::IDENTITY,
++                    &Rect::new(-1e6, -1e6, 1e6, 1e6),
++                    None,
++                    None,
++                );
++            }
+             let mut draw_text_context = self.context.draw_text_context.borrow_mut();
+             crate::text::stroke_text(
+                 scene,
+@@ -968,6 +1072,9 @@ impl ElementCx<'_, '_> {
+                 self.node.id,
+                 &mut draw_text_context,
+             );
++            if input_data.showing_placeholder {
++                scene.pop_layer();
++            }
+         }
+     }
+ 
+diff --git a/packages/blitz-paint/src/render/form_controls.rs b/packages/blitz-paint/src/render/form_controls.rs
+index 2ec0b74..5a08c59 100644
+--- a/packages/blitz-paint/src/render/form_controls.rs
++++ b/packages/blitz-paint/src/render/form_controls.rs
+@@ -12,6 +12,24 @@ impl ElementCx<'_, '_> {
+         if self.node.local_name() != "input" {
+             return;
+         }
++        if self.node.attr(local_name!("type")) == Some("range") {
++            let num = |name, default: f64| {
++                self.node
++                    .attr(name)
++                    .and_then(|v| v.parse::<f64>().ok())
++                    .unwrap_or(default)
++            };
++            let min = num(local_name!("min"), 0.0);
++            let max = num(local_name!("max"), 100.0);
++            let value = num(local_name!("value"), (min + max) / 2.0);
++            let frac = if max > min { ((value - min) / (max - min)).clamp(0.0, 1.0) } else { 0.0 };
++            let bb = self.frame.border_box;
++            let r = 7.5 * self.scale;
++            let center = Point::new(bb.x0 + r + frac * (bb.width() - 2.0 * r), bb.center().y);
++            scene.fill(Fill::NonZero, self.transform, Color::from_rgba8(42, 42, 42, 255), None, &Circle::new(center, r));
++            scene.fill(Fill::NonZero, self.transform, Color::from_rgba8(255, 255, 255, 255), None, &Circle::new(center, r - 2.0 * self.scale));
++            return;
++        }
+         let Some(checked) = self.element.checkbox_input_checked() else {
+             return;
+         };

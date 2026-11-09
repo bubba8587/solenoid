@@ -1,0 +1,6 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"ENCODEBASE64(NA())","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ENCODEBASE64(\"abc\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

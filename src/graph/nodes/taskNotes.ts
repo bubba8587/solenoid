@@ -1,5 +1,7 @@
-// [[B11]], [[C38]] sinkRunButtonOnly, [[D62]] demoVaultResolution
-import { ClassicPreset } from "rete";
+// [[B11]], [[B18]] safeToShare, [[D62]] demoVaultResolution
+import { dayOf } from "../dateValue";
+import { listLiteralItems } from "../listLiterals";
+import { GraphNode } from "../graphModel";
 import { dateIn, cubeOut, frameOut } from "./shared";
 import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
@@ -14,7 +16,8 @@ import {
   planTaskWrites, taskPlanFrame, taskUrl, createTaskUrl, taskRecord, unwrap, cellToTaskField,
   type TaskNotesProvider, type TaskRecord, type TaskStats, type TaskWritePlanRow,
 } from "../taskNotesApi";
-import { cubeIn, frameOut as frameOutPort } from "./shared";
+import { cubeIn, frameOut as frameOutPort, strListIn, keysCsv } from "./shared";
+import { type ColumnPickerSpec } from "./columnPickerHook";
 import { fetchJson } from "../httpBridge";
 import { type Shape } from "../frameShape";
 import { withExactPass } from "../process";
@@ -37,7 +40,7 @@ function todaySerial(): number {
   return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
 }
 
-export class TaskNotesNode extends ClassicPreset.Node {
+export class TaskNotesNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     tasks: "One row per task. Projects, contexts, tags and blocked-by are lists; time entries and completed instances are nested tables.",
     from: "First day of the calendar window. Unwired, a year back.",
@@ -95,15 +98,15 @@ export class TaskNotesNode extends ClassicPreset.Node {
   private apiUrl(): string { return settingsStore.get("taskNotesUrl"); }
   private headers(): Record<string, string> { return authHeaders(apiKeyStore.get(TASKNOTES_KEY_ID)); }
 
-  data(inputs: { from?: (number | null)[]; to?: (number | null)[] }): Record<string, unknown> {
+  data(inputs: { from?: unknown[]; to?: unknown[] }): Record<string, unknown> {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     let from = 0, to = 0;
     let have = true;
     if (this.provider === "calendar") {
-      const f = inputs.from ? inputs.from[0] : todaySerial() - 365;
-      const t = inputs.to ? inputs.to[0] : todaySerial() + 365;
-      have = typeof f === "number" && typeof t === "number" && Number.isFinite(f) && Number.isFinite(t);
-      if (have) { from = Math.min(f as number, t as number); to = Math.max(f as number, t as number); }
+      const f = inputs.from ? dayOf(inputs.from[0]) : todaySerial() - 365;
+      const t = inputs.to ? dayOf(inputs.to[0]) : todaySerial() + 365;
+      have = f !== null && t !== null;
+      if (f !== null && t !== null) { from = Math.min(f, t); to = Math.max(f, t); }
     }
     const key = connectionStore.key(this.id, have ? `${this.provider}|${isDemoTaskNotes() ? "demo" : this.apiUrl()}|${from}|${to}` : "");
     if (key !== this._lastKey) {
@@ -152,7 +155,7 @@ export class TaskNotesNode extends ClassicPreset.Node {
         const all: TaskRecord[] = [];
         let offset = 0;
         for (;;) {
-          const { text } = await fetchText(tasksUrl(this.apiUrl(), offset, TASKS_PAGE), { headers: this.headers() });
+          const { text } = await fetchText(tasksUrl(this.apiUrl(), offset, TASKS_PAGE), { headers: this.headers(), from: this.id });
           const page = parseTasksPage(text, offset);
           all.push(...page.tasks);
           if (!page.hasMore || page.nextOffset === offset) break;
@@ -162,12 +165,12 @@ export class TaskNotesNode extends ClassicPreset.Node {
         this.cachedTasks = all;
         this.reportOk(all.length, tasksToCube(all).columns.length);
       } else if (provider === "calendar") {
-        const { text } = await fetchText(eventsUrl(this.apiUrl(), from, to), { headers: this.headers() });
+        const { text } = await fetchText(eventsUrl(this.apiUrl(), from, to), { headers: this.headers(), from: this.id });
         if (stale()) return;
         this.cachedEvents = parseEvents(text);
         this.reportOk(this.cachedEvents.columns[0].values.length, this.cachedEvents.columns.length);
       } else {
-        const { text } = await fetchText(statsUrl(this.apiUrl()), { headers: this.headers() });
+        const { text } = await fetchText(statsUrl(this.apiUrl()), { headers: this.headers(), from: this.id });
         if (stale()) return;
         this.cachedStats = parseStats(text);
         this.reportOk(this.cachedStats ? statsToFrame(this.cachedStats).columns[0].values.length : 0, EMPTY_STATS.columns.length);
@@ -183,11 +186,12 @@ export class TaskNotesNode extends ClassicPreset.Node {
 
 const DEMO_REFUSAL = "TaskNotes is showing the demo. Set a TaskNotes URL in Settings to write tasks.";
 
-export type WriteTasksStatus = "idle" | "previewing" | "writing" | "ok" | "error";
+type WriteTasksStatus = "idle" | "previewing" | "writing" | "ok" | "error";
 
-export class WriteTasksNode extends ClassicPreset.Node {
+export class WriteTasksNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     tasks: "A row with a path updates that task; a row without one creates a task from its title. Only Run writes; the node loads disarmed.",
+    keys: "The fields to send, by column name. Blank sends every column.",
     plan: "One row per input row: path, title, the action and the fields to send. Preview marks the rows that would not change.",
   };
   label: string;
@@ -212,20 +216,21 @@ export class WriteTasksNode extends ClassicPreset.Node {
     super("WriteTasks");
     this.label = init?.label ?? "Write Tasks";
     this.addInput("tasks", cubeIn("Rows"));
+    this.addInput("keys", strListIn("Keys"));
     this.addOutput("plan", frameOutPort("Plan"));
   }
 
-  private keys(): string[] {
-    return (this.stringLiterals.keys ?? "").split(",").map((k) => k.trim()).filter(Boolean);
-  }
+  columnPickers(): ColumnPickerSpec[] { return [{ key: "keys", frameInput: "tasks" }]; }
 
-  data(inputs: { tasks?: (CubeValue | SolError | null)[] }): { plan: FrameValue | SolError | null } {
+  data(inputs: { tasks?: (CubeValue | SolError | null)[]; keys?: unknown[] }): { plan: FrameValue | SolError | null } {
+    const keys = keysCsv(inputs.keys, this.stringLiterals.keys ?? "");
+    if (isSolError(keys)) { this.cachedPlan = keys; this.planRows = []; return { plan: keys }; }
     const raw = inputs.tasks?.[0] ?? null;
     if (raw !== this.cachedCube) this.resolved = new Map();
     this.cachedCube = raw;
     if (isSolError(raw)) { this.cachedPlan = raw; this.planRows = []; return { plan: raw }; }
     if (!isCubeValue(raw)) { this.cachedPlan = null; this.planRows = []; return { plan: null }; }
-    this.planRows = planTaskWrites(raw, this.keys());
+    this.planRows = planTaskWrites(raw, listLiteralItems(keys));
     this.cachedPlan = taskPlanFrame(this.planRows, this.resolved);
     return { plan: this.cachedPlan };
   }
@@ -245,7 +250,7 @@ export class WriteTasksNode extends ClassicPreset.Node {
         const r = this.planRows[i];
         if (r.action !== "update") continue;
         try {
-          const { text } = await fetchText(taskUrl(this.apiUrl(), r.path), { headers: this.headers() });
+          const { text } = await fetchText(taskUrl(this.apiUrl(), r.path), { headers: this.headers(), from: this.id });
           const current = taskRecord((unwrap(text) ?? {}) as Record<string, unknown>);
           const same = Object.entries(r.payload).every(([k, v]) => JSON.stringify(v) === JSON.stringify(currentField(current, k)));
           if (same) { resolved.set(i, "unchanged"); unchanged++; }
@@ -285,10 +290,10 @@ export class WriteTasksNode extends ClassicPreset.Node {
         if (r.action === "skip" || state === "unchanged" || state === "unreadable") continue;
         try {
           if (r.action === "create") {
-            await fetchJson(createTaskUrl(this.apiUrl()), { method: "POST", headers: this.headers(), body: r.payload });
+            await fetchJson(createTaskUrl(this.apiUrl()), { method: "POST", headers: this.headers(), body: r.payload, from: this.id });
             created++;
           } else {
-            await fetchJson(taskUrl(this.apiUrl(), r.path), { method: "PUT", headers: this.headers(), body: r.payload });
+            await fetchJson(taskUrl(this.apiUrl(), r.path), { method: "PUT", headers: this.headers(), body: r.payload, from: this.id });
             updated++;
           }
         } catch (e) {

@@ -1,17 +1,24 @@
-// [[D43]]
+// [[C25]] firstClassUnits, [[unit-flow#Unit algebra]], [[unit-flow#Currency: the display code is the identity]]
 import { describe, it, expect } from "vitest";
 import {
-  isUnitCell, dimOf, magnitudeOf, tagDim, fromUnit, unitLabelOf,
-  arithmeticCell, compareUnits,
-  forAggregateUnits, sameColumnUnit,
+  isUnitCell, dimOf, magnitudeOf, tagDim, fromUnit,
+  sameColumnUnit,
   matrixUnitOf, withMatrixUnit, carryMatrixUnit,
-  adoptMagnitude, type UnitCell,
+  type UnitCell,
 } from "../../src/graph/unitValue";
-import { parseUnit, isDimensionless, type Unit } from "../../src/graph/dimension";
+import { formatDim, type Unit } from "../../src/graph/dimension";
+import { arithmeticCell } from "./coreVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
+import { ComparisonNode, type ComparisonOp } from "../../src/graph/nodes/logic";
+import { AggregateNode } from "../../src/graph/nodes/list";
+import { fcUnitToUnit } from "../../src/graph/dimension";
+
+const unitLabelOf = (v: unknown) => formatDim(dimOf(v));
+const sum = (list: unknown[]) => new AggregateNode({ op: "sum" }).data({ list: [list] }).result;
+const compare = (op: ComparisonOp, a: unknown, b: unknown) => new ComparisonNode({ op }).data({ a: [a], b: [b] }).result;
 
 const U = (s: string): Unit => {
-  const p = parseUnit(s);
+  const p = fcUnitToUnit(s);
   if (!p) throw new Error(`unparseable unit: ${s}`);
   return p;
 };
@@ -62,113 +69,79 @@ describe("dimensional algebra at the ops", () => {
     expect(dimOf(r)).toEqual({ length: 1 });
   });
   it("a bare number ADOPTS the dimensioned side's unit (spreadsheet reading)", () => {
-    // author decision 2026-07-13: `$5 + 2 = $7` — a dimensionless operand takes the
-    // other's dimension (at base-SI scale) + keeps its display id, rather than #UNIT!.
+
     const r = arithmeticCell("add", cell(5, "m"), 2) as UnitCell;
     expect(isSolError(r)).toBe(false);
     expect(r.value).toBe(7);
     expect(r.dim).toEqual({ length: 1 });
-    // (display preservation through the real FC path is covered in unitCoercion.test.ts)
-    // symmetric: bare number on the left
+    // A bare number on the left adopts too.
     const l = arithmeticCell("sub", 10, cell(3, "m")) as UnitCell;
     expect(l.value).toBe(7);
     expect(l.dim).toEqual({ length: 1 });
   });
-  it("compareUnits returns base magnitudes when commensurable, else #UNIT!", () => {
-    const ok = compareUnits(cell(1, "km"), cell(900, "m"));
-    expect(ok).toEqual({ l: 1000, r: 900 }); // 1 km > 900 m
-    expect(isSolError(compareUnits(cell(1, "km"), cell(1, "s")))).toBe(true);
+  it("Comparison compares base magnitudes when commensurable, else #UNIT!", () => {
+    expect(compare("gt", cell(1, "km"), cell(900, "m"))).toBe(true); // 1 km > 900 m
+    expect(isSolError(compare("gt", cell(1, "km"), cell(1, "s")))).toBe(true);
   });
-  it("compareUnits lets a dimensionless operand ADOPT the other's unit ($5 vs 1000)", () => {
+  it("Comparison lets a dimensionless operand ADOPT the other's unit ($5 vs 1000)", () => {
     // a plain threshold compares against the magnitude, not #UNIT!
-    expect(compareUnits(cell(5, "m"), 3)).toEqual({ l: 5, r: 3 });
-    expect(compareUnits(1000, cell(5, "m"))).toEqual({ l: 1000, r: 5 });
+    expect(compare("gt", cell(5, "m"), 3)).toBe(true);
+    expect(compare("gt", 1000, cell(5, "m"))).toBe(true);
   });
 });
 
 describe("currency: no exchange rate → different codes are incommensurable", () => {
-  // Currency cells collapse onto the `currency` axis at scale 1, so a magnitude
-  // compare would call $5 == 5€. The display CODE is the real unit identity.
+
   const money = (value: number, code: string): UnitCell => ({ __unitCell: true, value, dim: { currency: 1 }, display: code });
-  it("compareUnits: $5 vs 5€ is #UNIT! (not equal-by-magnitude)", () => {
-    expect(isSolError(compareUnits(money(5, "usd"), money(5, "eur")))).toBe(true);
+  it("Comparison: $5 vs 5€ is #UNIT! (not equal-by-magnitude)", () => {
+    expect(isSolError(compare("gt", money(5, "usd"), money(5, "eur")))).toBe(true);
     // same code still compares by magnitude
-    expect(compareUnits(money(5, "usd"), money(3, "usd"))).toEqual({ l: 5, r: 3 });
+    expect(compare("gt", money(5, "usd"), money(3, "usd"))).toBe(true);
     // an unlabeled currency cell adopts (lenient) — computed currency has no code
     const bare: UnitCell = { __unitCell: true, value: 5, dim: { currency: 1 } };
-    expect(compareUnits(money(5, "usd"), bare)).toEqual({ l: 5, r: 5 });
+    expect(compare("eq", money(5, "usd"), bare)).toBe(true);
   });
-  it("forAggregateUnits: mixed currency codes → #UNIT!", () => {
-    const r = forAggregateUnits([money(5, "usd"), money(5, "eur")]);
-    expect(r.error && r.error.code).toBe("#UNIT!");
-    const same = forAggregateUnits([money(5, "usd"), money(2, "usd")]);
-    expect(same.error).toBeUndefined();
+  it("Aggregate: mixed currency codes → #UNIT!", () => {
+    expect((sum([money(5, "usd"), money(5, "eur")]) as { code?: string }).code).toBe("#UNIT!");
+    expect((sum([money(5, "usd"), money(2, "usd")]) as UnitCell).value).toBe(7);
   });
 });
 
-describe("aggregator prep (step 6)", () => {
+describe("Aggregate over tagged cells", () => {
   it("sums a same-dimension list, auto-converting km+m to base m", () => {
-    const r = forAggregateUnits([cell(1, "km"), cell(500, "m"), cell(500, "m")]);
-    expect(r.error).toBeUndefined();
-    if (!r.error) {
-      expect(r.dim).toEqual({ length: 1 });
-      expect(r.nums.reduce((a, b) => a + b, 0)).toBe(2000); // 1000+500+500
-    }
+    const r = sum([cell(1, "km"), cell(500, "m"), cell(500, "m")]) as UnitCell;
+    expect(r.dim).toEqual({ length: 1 });
+    expect(r.value).toBe(2000); // 1000+500+500
   });
   it("skips missing (null) cells", () => {
-    const r = forAggregateUnits([cell(1, "m"), null, cell(2, "m")]);
-    expect(r.error).toBeUndefined();
-    if (!r.error) expect(r.nums).toEqual([1, 2]);
+    expect((sum([cell(1, "m"), null, cell(2, "m")]) as UnitCell).value).toBe(3);
   });
   it("propagates a SolError anywhere in the list", () => {
     const err = solError("#DIV/0!", "x");
-    const r = forAggregateUnits([cell(1, "m"), err, cell(2, "m")]);
-    expect(r.error).toBe(err);
+    expect(sum([cell(1, "m"), err, cell(2, "m")])).toEqual(err);
   });
   it("two different REAL dimensions → #UNIT!", () => {
-    const r = forAggregateUnits([cell(1, "m"), cell(1, "s")]);
-    expect(r.error && r.error.code).toBe("#UNIT!");
+    expect((sum([cell(1, "m"), cell(1, "s")]) as { code?: string }).code).toBe("#UNIT!");
   });
   it("a bare number ADOPTS the list's unit (SUM(5 m, 2 m, 3) keeps length)", () => {
-    // author decision 2026-07-13: a dimensionless number adopts the op's unit.
-    // (display-carry through the real FC path is covered in unitCoercion.test.ts)
-    const r = forAggregateUnits([cell(5, "m"), cell(2, "m"), 3]);
-    expect(r.error).toBeUndefined();
-    if (!r.error) {
-      expect(r.dim).toEqual({ length: 1 });   // the bare 3 adopts length
-      expect(r.nums).toEqual([5, 2, 3]);
-    }
-    // symmetric: a leading bare number still adopts a later real dimension
-    const r2 = forAggregateUnits([3, cell(1, "m")]);
-    expect(r2.error).toBeUndefined();
-    if (!r2.error) expect(r2.dim).toEqual({ length: 1 });
+
+    const r = sum([cell(5, "m"), cell(2, "m"), 3]) as UnitCell;
+    expect(r.dim).toEqual({ length: 1 });   // the bare 3 adopts length
+    expect(r.value).toBe(10);
+    // A leading bare number still adopts a later real dimension.
+    expect((sum([3, cell(1, "m")]) as UnitCell).dim).toEqual({ length: 1 });
   });
 
   it("adoption reads the bare number in the list's DISPLAY unit (author 2026-07-16: SUM(5 km, 3) = 8 km)", () => {
-    // The bare 3 means 3 km → 3000 base-SI, not 3 meters. A LEADING bare number
-    // adopts the km discovered later (the two-pass scan).
-    // An FC-authored cell carries its display id — that's what the bare 3 reads in.
+    // The bare 3 reads in the km a later cell carries: 3000 in base SI.
     const km = (v: number) => fromUnit(v, U("km"), "km");
-    const r = forAggregateUnits([km(5), 3]);
-    expect(r.error).toBeUndefined();
-    if (!r.error) expect(r.nums).toEqual([5000, 3000]);
-    const lead = forAggregateUnits([3, km(5)]);
-    expect(lead.error).toBeUndefined();
-    if (!lead.error) expect(lead.nums).toEqual([3000, 5000]);
+    expect((sum([km(5), 3]) as UnitCell).value).toBe(8000);
+    expect((sum([3, km(5)]) as UnitCell).value).toBe(8000);
     // A display-LESS cell (no id to read the bare number in) keeps the face value.
-    const bare = forAggregateUnits([cell(5, "km"), 3]);
-    if (!bare.error) expect(bare.nums).toEqual([5000, 3]);
-    expect(adoptMagnitude(3, "km")).toBe(3000);
-    expect(adoptMagnitude(3, undefined)).toBe(3); // no display — face value
-    expect(adoptMagnitude(3, "definitely-not-a-unit")).toBe(3); // unresolvable — face value
+    expect((sum([cell(5, "km"), 3]) as UnitCell).value).toBe(5003);
   });
-  it("all-bare list stays dimensionless (behavior no-op for today's lists)", () => {
-    const r = forAggregateUnits([1, 2, 3]);
-    expect(r.error).toBeUndefined();
-    if (!r.error) {
-      expect(isDimensionless(r.dim)).toBe(true);
-      expect(r.nums).toEqual([1, 2, 3]);
-    }
+  it("an all-bare list stays a bare number", () => {
+    expect(sum([1, 2, 3])).toBe(6);
   });
 });
 
@@ -227,27 +200,25 @@ describe("affine temperatures (review pins)", () => {
     expect(isUnitCell(arithmeticCell("mul", fromUnit(20, U("K"), "K"), 2))).toBe(true); // kelvin is linear
   });
   it("a bare number compared with a reading is a reading: 25 °C > 30 is FALSE", () => {
-    const r = compareUnits(degC(25), 30) as { l: number; r: number };
-    expect(r.l > r.r).toBe(false);
-    expect(r.r).toBeCloseTo(303.15, 9);
-    const k = compareUnits(fromUnit(5, U("km"), "km"), 3000) as { l: number; r: number };
-    expect(k.l > k.r).toBe(false); // a linear unit is unchanged: 3000 km
+    expect(compare("gt", degC(25), 30)).toBe(false);
+    expect(compare("lt", degC(29.99), 30)).toBe(true);
+    expect(compare("gt", fromUnit(5, U("km"), "km"), 3000)).toBe(false); // a linear unit is unchanged: 3000 km
   });
   it("two readings have no sum, and a reading has no remainder, as in a formula", () => {
     const code = (v: unknown) => (isSolError(v) ? v.code : null);
-    expect(code(arithmeticCell("add", degC(20), degC(30)))).toBe("#UNIT!");
+    expect(code(arithmeticCell("add", degC(20), degC(30)))).toBe("#POINT!");
     expect(code(arithmeticCell("add", degC(20), fromUnit(50, U("degF"), "degF")))).toBe("#UNIT!");
-    expect(code(arithmeticCell("mod", degC(20), 5))).toBe("#UNIT!");
-    const warm = arithmeticCell("add", degC(20), fromUnit(5, U("K"), "K")) as UnitCell;
-    expect(magnitudeOf(warm)).toBeCloseTo(298.15, 9); // a kelvin cell stays linear
+    expect(code(arithmeticCell("mod", degC(20), 5))).toBe("#POINT!");
+    // A K value could be a reading or a change, so it never meets a °C reading ([[C25]] firstClassUnits).
+    expect(code(arithmeticCell("add", degC(20), fromUnit(5, U("K"), "K")))).toBe("#UNIT!");
   });
   it("the Arithmetic card refuses two readings added, element-wise too", async () => {
     const { ArithmeticNode } = await import("../../src/graph/nodes/scalar");
     const run = (op: string, a: unknown, b: unknown) =>
       new ArithmeticNode({ op: op as never }).data({ a: [a as never], b: [b as never] }).result;
-    expect((run("add", degC(20), degC(30)) as { code?: string }).code).toBe("#UNIT!");
+    expect((run("add", degC(20), degC(30)) as { code?: string }).code).toBe("#POINT!");
     const pair = run("add", [degC(20), degC(21)], degC(30)) as { code?: string }[];
-    expect(pair.map((c) => c.code)).toEqual(["#UNIT!", "#UNIT!"]);
+    expect(pair.map((c) => c.code)).toEqual(["#POINT!", "#POINT!"]);
     expect(magnitudeOf(run("sub", degC(30), degC(20)) as UnitCell)).toBeCloseTo(10, 9);
   });
   it("Aggregate follows the formula: a spread is a delta, readings have no sum", async () => {
@@ -256,7 +227,7 @@ describe("affine temperatures (review pins)", () => {
     const sd = agg("stdev", [degC(20), degC(30)]) as UnitCell;
     expect(sd.display).toBeUndefined();
     expect(magnitudeOf(sd)).toBeCloseTo(Math.SQRT2 * 5, 9); // 7.07 K, never −266 °C
-    expect((agg("sum", [degC(20), degC(30)]) as { code?: string }).code).toBe("#UNIT!");
+    expect((agg("sum", [degC(20), degC(30)]) as { code?: string }).code).toBe("#POINT!");
     const avg = agg("avg", [degC(20), degC(30)]) as UnitCell;
     expect(avg.display).toBe("degC");
     expect(magnitudeOf(avg)).toBeCloseTo(298.15, 9); // 25 °C is a reading

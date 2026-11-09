@@ -1,11 +1,10 @@
-// [[C25]]
+// [[C25]], [[reports-and-notes#On-screen rendering of the span]]
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
-import * as Nodes from "../../src/graph/rete-nodes";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
+import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { isChartValue } from "../../src/graph/chartValue";
 import { isMermaidValue } from "../../src/graph/mermaidValue";
 import { isLambdaValue } from "../../src/graph/nodes/lambda";
@@ -13,19 +12,12 @@ import { isFrameValue } from "../../src/graph/frame";
 import { isDocumentValue } from "../../src/graph/documentValue";
 import seed from "../../src/graph/seedGraphs/report-showcase.json";
 
-// The Report Showcase seed exercises every distinct Report embed render path
-// end to end, each a bare `{{ name }}`: a scalar ({{ total }}), an inline frame
-// table ({{ table }}), a chart figure ({{ fig }} -> a first-class chart value), a
-// lambda -> KaTeX equation ({{ model }}), a Mermaid diagram ({{ flow }} -> a
-// chart-family figure), and a Note embedded through the SAME tag, wired
-// document -> input.
+
 
 type SavedNode = { id: string; type: string; init?: Record<string, unknown>; literals?: Record<string, number>; stringLiterals?: Record<string, string> };
 
 function build() {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   return { editor, engine };
@@ -34,9 +26,9 @@ function build() {
 describe("Report Showcase seed", () => {
   it("resolves a scalar, a frame, a chart, a lambda, a diagram, and an embed", async () => {
     const { editor, engine } = build();
-    const byId = new Map<string, ClassicPreset.Node>();
+    const byId = new Map<string, GraphNode>();
     for (const sn of (seed.nodes as SavedNode[])) {
-      const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => ClassicPreset.Node>)[sn.type];
+      const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => GraphNode>)[sn.type];
       const node = new Ctor({ ...sn.init });
       const anyN = node as unknown as Record<string, unknown>;
       if (sn.literals) anyN.literals = { ...sn.literals };
@@ -45,7 +37,7 @@ describe("Report Showcase seed", () => {
       await editor.addNode(node as Schemes["Node"]);
     }
     for (const c of seed.connections) {
-      await editor.addConnection(new ClassicPreset.Connection(byId.get(c.source)!, c.sourceOutput, byId.get(c.target)!, c.targetInput) as Schemes["Connection"]);
+      await editor.addConnection(new GraphConnection(byId.get(c.source)!, c.sourceOutput, byId.get(c.target)!, c.targetInput) as Schemes["Connection"]);
     }
     const report = byId.get("report") as unknown as { refValue: (k: string) => unknown; body: string };
     for (const n of editor.getNodes()) await engine.fetch(n.id);

@@ -1,7 +1,7 @@
 // Dumps every catalog port grouped by socket type, the source data for docs/socket-reference.md:
 // regenerate after adding a node or retyping a port. A fresh node has adopted nothing, so an adoptive
 // port reports its declared base, which is what the doc lists.
-//   npx tsx scripts/socket-inventory.ts
+//   node scripts/vite-run.mjs scripts/socket-inventory.ts
 
 import { FLAT_CATALOG } from "../src/graph/catalogUtils";
 import { AdoptiveSocket, SolenoidSocket, canConnect, SOCKET_TYPE_LABELS, type SocketDataType } from "../src/graph/sockets";

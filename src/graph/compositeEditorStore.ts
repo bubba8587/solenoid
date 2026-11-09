@@ -6,6 +6,10 @@ import type { CompositeNode } from "./nodes/composite";
 
 let _stack: CompositeNode[] = [];
 const { notify, subscribe, version } = createNotifier();
+// The open drill-in's port adder, for chrome outside it (the phone's bottom bar); set while a drill-in is mounted.
+let _addPort: ((kind: "input" | "output") => void) | null = null;
+// The open drill-in's way back up, which settles the levels it leaves; the Navigator's crumbs call it.
+let _drillTo: ((i: number) => Promise<void>) | null = null;
 
 export const compositeEditorStore = {
   version,
@@ -35,6 +39,18 @@ export const compositeEditorStore = {
     _stack = [];
     notify();
   },
+  /** Returns the unregister, which clears the slot only while it still holds this adder. */
+  registerAddPort(fn: (kind: "input" | "output") => void): () => void {
+    _addPort = fn;
+    return () => { if (_addPort === fn) _addPort = null; };
+  },
+  addPort(kind: "input" | "output") { _addPort?.(kind); },
+  registerDrillTo(fn: (i: number) => Promise<void>): () => void {
+    _drillTo = fn;
+    return () => { if (_drillTo === fn) _drillTo = null; };
+  },
+  /** Back up to level `i` of the stack, -1 for the canvas, as the strip's crumbs do. */
+  async drillTo(i: number) { await _drillTo?.(i); },
 };
 
 // process.ts ticks this after every pass: the drill-in overlay re-renders its inner views on it, and config-derived readouts (column pickers) re-resolve.

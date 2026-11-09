@@ -1,11 +1,11 @@
-// [[B3]] sameNodeEverywhere, [[D41]] formatFlowsDownstream
+// [[B3]] sameNodeEverywhere, [[C118]] formatTravelsWithValue, [[react-flow-surface-contract#Deleting a selection]],
+// [[react-flow-surface-contract#Format Controller docking]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidConnection } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { setEditorRefs, processGraph } from "../../src/graph/process";
 import { ValueInputNode } from "../../src/graph/nodes/control";
 import { DisplayNode } from "../../src/graph/nodes/display";
@@ -17,23 +17,21 @@ import { cableGhostStore } from "../../src/graph/cableState";
 import { drawnCableStore } from "../../src/graph/drawnCables";
 
 function makeGraph() {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
-  const view = { rerenderNode: async () => {}, position: () => null, nodeElement: () => null, hasNode: () => false } as unknown as View;
+  const view = { rerenderNode: async () => {}, rerenderCables: async () => {}, position: () => null, nodeElement: () => null, hasNode: () => false } as unknown as View;
   setEditorRefs(editor, engine, view);
   return { editor, view };
 }
 
-async function hostWithTwoConsumers(editor: NodeEditor<Schemes>) {
+async function hostWithTwoConsumers(editor: GraphEditor<Schemes>) {
   const host = new ValueInputNode({ value: "7" });
   const a = new DisplayNode();
   const b = new DisplayNode();
   for (const n of [host, a, b]) await editor.addNode(n);
   for (const d of [a, b]) {
-    await editor.addConnection(new ClassicPreset.Connection(host, "value", d, "in") as SolenoidConnection);
+    await editor.addConnection(new GraphConnection(host, "value", d, "in") as SolenoidConnection);
   }
   const fc = new FormatControllerNode({ hostNodeId: host.id, socketKey: "value", side: "output" });
   await editor.addNode(fc);
@@ -42,7 +40,7 @@ async function hostWithTwoConsumers(editor: NodeEditor<Schemes>) {
   return { host, a, b, fc };
 }
 
-const wires = (editor: NodeEditor<Schemes>) =>
+const wires = (editor: GraphEditor<Schemes>) =>
   editor.getConnections().map((c) => `${c.source}.${c.sourceOutput}>${c.target}.${c.targetInput}`).sort();
 
 describe("deleting a docked FC unsplices it", () => {
@@ -65,8 +63,8 @@ describe("deleting a docked FC unsplices it", () => {
     const host = new DisplayNode();
     const sink = new DisplayNode();
     for (const n of [src, host, sink]) await editor.addNode(n);
-    await editor.addConnection(new ClassicPreset.Connection(src, "value", host, "in") as SolenoidConnection);
-    await editor.addConnection(new ClassicPreset.Connection(host, "out", sink, "in") as SolenoidConnection);
+    await editor.addConnection(new GraphConnection(src, "value", host, "in") as SolenoidConnection);
+    await editor.addConnection(new GraphConnection(host, "out", sink, "in") as SolenoidConnection);
     const fc = new FormatControllerNode({ hostNodeId: host.id, socketKey: "out", side: "output" });
     await editor.addNode(fc);
     fc.dockSelf(editor);

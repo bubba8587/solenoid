@@ -1,4 +1,4 @@
-import type { ComplexUnpackNode as ComplexUnpackNodeType } from "../rete-nodes";
+import type { ComplexUnpackNode as ComplexUnpackNodeType } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 

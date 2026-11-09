@@ -1,67 +1,12 @@
-import { polyRoots } from "./mathUtils";
-import { ClassicPreset } from "rete";
-import { numListIn, numListOut, listIn, complexComboIn, complexComboOut, complexListOut, readInput, type CellResult, type BroadcastResult } from "./shared";
-import { solError, isSolError, type SolError } from "../errorValue";
-import { cellShortCircuit, COMPUTE } from "../valueKinds";
-import {
-  cx, toCx, type Cx,
-  cxAdd, cxSub, cxMul, cxDiv, cxAbs, cxArg, cxExp, cxLn, cxLog10, cxLog2, cxPow,
-  cxSqrt, cxConj, cxSin, cxCos, cxTan, cxSinh, cxCosh, cxSec, cxCsc, cxCot,
-  cxSech, cxCsch, quadraticRoots,
-} from "../cxValue";
+import { GraphNode } from "../graphModel";
+import { numListIn, numListOut, listIn, complexComboIn, complexComboOut, complexListOut, type CellResult, type BroadcastResult } from "./shared";
+import type { SolError } from "../errorValue";
+import type { Cx } from "../cxValue";
+import { nodeOnCore } from "../nodeOnCore";
 
-export { cx, isCx, formatCx, type Cx } from "../cxValue";
+export { cx, isCx, type Cx } from "../cxValue";
 
-// No `guardFinite` here: the complex ops keep their own non-finite conventions (IMDIV by zero is cx(NaN, NaN)).
-
-type Operand<T> = { scalar: T | SolError | null; list: (T | SolError | null)[] | null };
-
-function cxOp(v: unknown, name: string): Operand<Cx> {
-  const one = (e: unknown): Cx | SolError | null => (e === null || e === undefined || isSolError(e) ? (e ?? null) as SolError | null : toCx(e, name));
-  return Array.isArray(v) ? { scalar: null, list: v.map(one) } : { scalar: one(v), list: null };
-}
-
-function numOp(v: number | (number | SolError | null)[] | SolError | null): Operand<number> {
-  return Array.isArray(v) ? { scalar: null, list: v } : { scalar: v, list: null };
-}
-
-function broadcastComplex<A, R>(
-  fn: (a: A) => R | SolError | null,
-  a: Operand<A>,
-): CellResult<R>;
-function broadcastComplex<A, B, R>(
-  fn: (a: A, b: B) => R | SolError | null,
-  a: Operand<A>, b: Operand<B>,
-): CellResult<R>;
-function broadcastComplex<A, B, C, R>(
-  fn: (a: A, b: B, c: C) => R | SolError | null,
-  a: Operand<A>, b: Operand<B>, c: Operand<C>,
-): CellResult<R>;
-function broadcastComplex(
-  fn: (...xs: never[]) => unknown,
-  ...args: Operand<unknown>[]
-): CellResult<unknown> {
-  const call = fn as (...xs: unknown[]) => unknown;
-  const lists = args.map((a) => a.list).filter((l): l is (unknown | SolError | null)[] => l !== null);
-  if (lists.length === 0) {
-    const vals = args.map((a) => a.scalar);
-    const sc = cellShortCircuit(vals);
-    if (sc !== COMPUTE) return sc;
-    return call(...vals) as CellResult<unknown>;
-  }
-  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  const out: (unknown | SolError | null)[] = [];
-  for (let i = 0; i < len; i++) {
-    if (lists.some((l) => i >= l.length)) { out.push(null); continue; }
-    const ops = args.map((a) => (a.list ? a.list[i] : a.scalar));
-    const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) { out.push(sc); continue; }
-    out.push(call(...ops));
-  }
-  return out;
-}
-
-export class ComplexFromNode extends ClassicPreset.Node {
+export class ComplexFromNode extends GraphNode {
   label: string;
   cachedResult: CellResult<Cx> = null;
   literals: Record<string, number> = { re: 0, im: 0 };
@@ -75,18 +20,12 @@ export class ComplexFromNode extends ClassicPreset.Node {
     this.addOutput("z", complexComboOut("z"));
   }
 
-  data(inputs: { re?: (number | number[])[]; im?: (number | number[])[] }): { z: CellResult<Cx> } {
-    const z = broadcastComplex(
-      (re: number, im: number): Cx => cx(re, im),
-      numOp(readInput(inputs.re, this.literals.re ?? 0)),
-      numOp(readInput(inputs.im, this.literals.im ?? 0)),
-    );
-    this.cachedResult = z;
-    return { z };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { z: CellResult<Cx> };
   }
 }
 
-export class ComplexUnpackNode extends ClassicPreset.Node {
+export class ComplexUnpackNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     arg: "The angle is in radians, between −π and π.",
   };
@@ -108,14 +47,8 @@ export class ComplexUnpackNode extends ClassicPreset.Node {
     this.addOutput("arg", numListOut("arg(z)"));
   }
 
-  data(inputs: { z?: (Cx | (Cx | SolError | null)[])[] }) {
-    const z = inputs.z?.[0] ?? null;
-    const part = (f: (c: Cx) => number) => broadcastComplex(f, cxOp(z, this.label));
-    this.cachedRe  = part((c) => c.re);
-    this.cachedIm  = part((c) => c.im);
-    this.cachedAbs = part(cxAbs);
-    this.cachedArg = part(cxArg);
-    return { re: this.cachedRe, im: this.cachedIm, abs: this.cachedAbs, arg: this.cachedArg };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { re: BroadcastResult; im: BroadcastResult; abs: BroadcastResult; arg: BroadcastResult };
   }
 }
 
@@ -143,7 +76,7 @@ export const COMPLEX_UNARY_OP_META: Record<ComplexUnaryOp, { label: string; desc
   csch:  { label: "IMCSCH",      description: "Hyperbolic cosecant of a complex number. Excel: `IMCSCH`." },
 };
 
-export class ComplexUnaryNode extends ClassicPreset.Node {
+export class ComplexUnaryNode extends GraphNode {
   label: string;
   op: ComplexUnaryOp;
   cachedResult: CellResult<Cx> = null;
@@ -157,29 +90,8 @@ export class ComplexUnaryNode extends ClassicPreset.Node {
     this.addOutput("result", complexComboOut("Result"));
   }
 
-  data(inputs: { z?: (Cx | (Cx | SolError | null)[])[] }): { result: CellResult<Cx> } {
-    const result = broadcastComplex((z: Cx): Cx => {
-      switch (this.op) {
-        case "conj":  return cxConj(z);
-        case "exp":   return cxExp(z);
-        case "ln":    return cxLn(z);
-        case "log10": return cxLog10(z);
-        case "log2":  return cxLog2(z);
-        case "sqrt":  return cxSqrt(z);
-        case "sin":   return cxSin(z);
-        case "cos":   return cxCos(z);
-        case "tan":   return cxTan(z);
-        case "cot":   return cxCot(z);
-        case "sec":   return cxSec(z);
-        case "csc":   return cxCsc(z);
-        case "sinh":  return cxSinh(z);
-        case "cosh":  return cxCosh(z);
-        case "sech":  return cxSech(z);
-        case "csch":  return cxCsch(z);
-      }
-    }, cxOp(inputs.z?.[0] ?? null, this.label));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<Cx> };
   }
 }
 
@@ -192,7 +104,7 @@ export const COMPLEX_BINARY_OP_META: Record<ComplexBinaryOp, { label: string; de
   div:     { label: "IMDIV",     description: "Quotient of two complex numbers. Excel: `IMDIV`." },
 };
 
-export class ComplexBinaryNode extends ClassicPreset.Node {
+export class ComplexBinaryNode extends GraphNode {
   label: string;
   op: ComplexBinaryOp;
   cachedResult: CellResult<Cx> = null;
@@ -207,26 +119,12 @@ export class ComplexBinaryNode extends ClassicPreset.Node {
     this.addOutput("result", complexComboOut("Result"));
   }
 
-  data(inputs: {
-    a?: (Cx | (Cx | SolError | null)[])[];
-    b?: (Cx | (Cx | SolError | null)[])[];
-  }): { result: CellResult<Cx> } {
-    const result = broadcastComplex((a: Cx, b: Cx): Cx => {
-      switch (this.op) {
-        case "sum":     return cxAdd(a, b);
-        case "sub":     return cxSub(a, b);
-        case "product": return cxMul(a, b);
-        case "div":     return cxDiv(a, b);
-      }
-    },
-      cxOp(inputs.a?.[0] ?? null, this.label),
-      cxOp(inputs.b?.[0] ?? null, this.label));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<Cx> };
   }
 }
 
-export class ComplexPowerNode extends ClassicPreset.Node {
+export class ComplexPowerNode extends GraphNode {
   label: string;
   cachedResult: CellResult<Cx> = null;
   literals: Record<string, number> = { n: 2 };
@@ -240,21 +138,12 @@ export class ComplexPowerNode extends ClassicPreset.Node {
     this.addOutput("result", complexComboOut("Result"));
   }
 
-  data(inputs: {
-    z?: (Cx | (Cx | SolError | null)[])[];
-    n?: (number | number[])[];
-  }): { result: CellResult<Cx> } {
-    const result = broadcastComplex(
-      (z: Cx, n: number) => cxPow(z, n),
-      cxOp(inputs.z?.[0] ?? null, this.label),
-      numOp(readInput(inputs.n, this.literals.n ?? 2)),
-    );
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<Cx> };
   }
 }
 
-export class PolyRootsNode extends ClassicPreset.Node {
+export class PolyRootsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     coeffs: "Highest degree first: 1, −6, 11, −6 is x³ − 6x² + 11x − 6. Leading zeros are ignored.",
     roots: "All roots as complex numbers, conjugate pairs included.",
@@ -273,26 +162,12 @@ export class PolyRootsNode extends ClassicPreset.Node {
     this.addOutput("real", numListOut("Real roots"));
   }
 
-  data(inputs: { coeffs?: (number | null | SolError)[][] }): { roots: Cx[] | SolError | null; real: number[] | null } {
-    const list = inputs.coeffs?.[0] ?? null;
-    if (list === null) { this.cachedRoots = null; this.cachedReal = null; return { roots: null, real: null }; }
-    // Positional: a coefficient's slot is its degree, so nothing is dropped. The first error wins; a blank leaves the polynomial unknown.
-    const err = list.find(isSolError);
-    if (err) { this.cachedRoots = err; this.cachedReal = null; return { roots: err, real: null }; }
-    if (list.some((v) => v === null)) { this.cachedRoots = null; this.cachedReal = null; return { roots: null, real: null }; }
-    if (!list.every((v) => typeof v === "number" && Number.isFinite(v))) {
-      const e = solError("#VALUE!", "Polynomial Roots needs a finite number in every coefficient");
-      this.cachedRoots = e; this.cachedReal = null; return { roots: e, real: null };
-    }
-    const rs = polyRoots(list as number[]);
-    if (rs === null) { const e = solError("#DOMAIN!", "Polynomial Roots needs at least one non-zero coefficient"); this.cachedRoots = e; this.cachedReal = null; return { roots: e, real: null }; }
-    this.cachedRoots = rs.map(([re, im]) => cx(re, im));
-    this.cachedReal = rs.filter(([, im]) => im === 0).map(([re]) => re).sort((x, y) => x - y);
-    return { roots: this.cachedRoots, real: this.cachedReal };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { roots: Cx[] | SolError | null; real: number[] | null };
   }
 }
 
-export class QuadraticRootsNode extends ClassicPreset.Node {
+export class QuadraticRootsNode extends GraphNode {
   label: string;
   literals: Record<string, number> = { a: 1, b: 0, c: 1 };
   cachedX1: CellResult<Cx> = null;
@@ -310,22 +185,7 @@ export class QuadraticRootsNode extends ClassicPreset.Node {
     this.addOutput("x2", complexComboOut("x₂"));
   }
 
-  data(inputs: {
-    a?: (number | number[] | null)[];
-    b?: (number | number[] | null)[];
-    c?: (number | number[] | null)[];
-  }): { x1: CellResult<Cx>; x2: CellResult<Cx> } {
-    const root = (which: 1 | 2) => broadcastComplex((a: number, b: number, c: number): Cx | SolError => {
-      const r = quadraticRoots(a, b, c);
-      return isSolError(r) ? r : r[which - 1];
-    },
-      numOp(readInput(inputs.a, this.literals.a)),
-      numOp(readInput(inputs.b, this.literals.b)),
-      numOp(readInput(inputs.c, this.literals.c)));
-    const x1 = root(1);
-    const x2 = root(2);
-    this.cachedX1 = x1;
-    this.cachedX2 = x2;
-    return { x1, x2 };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { x1: CellResult<Cx>; x2: CellResult<Cx> };
   }
 }

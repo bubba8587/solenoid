@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[html-in-canvas#Cables on the canvas]]
 import { describe, it, expect } from "vitest";
 import { parsePathPoints } from "../../src/graph/pathPoints";
 

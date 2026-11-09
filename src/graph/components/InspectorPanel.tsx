@@ -1,11 +1,12 @@
 // [[C73]] inspectorIsStatic
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import type { ClassicPreset } from "rete";
+import type { GraphNode, GraphSocket } from "../graphModel";
 import { inspectorStore } from "../inspectorStore";
 import { reportStore } from "../reportStore";
 import { getActiveEditor } from "../activeGraph";
 import { describeNode, nodeName, nodeDisplayName, catalogTypeOf } from "../catalogUtils";
 import { buildFunctionReference, type FnRefRow } from "../functionReference";
+import { frStore } from "../frStore";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
 import { socketDocFor } from "../socketDocs";
 import { frameHintFor } from "../frameHint";
@@ -33,12 +34,12 @@ function frRowsFor(catalogType: string | null): FnRefRow[] {
   return _frByType.get(catalogType) ?? [];
 }
 
-type AnyNode = ClassicPreset.Node & {
+type AnyNode = GraphNode & {
   label?: string;
   selected?: boolean;
 };
 
-function socketRow(node: AnyNode, key: string, port: { label?: string; socket?: ClassicPreset.Socket } | undefined): ReactNode {
+function socketRow(node: AnyNode, key: string, port: { label?: string; socket?: GraphSocket } | undefined): ReactNode {
   const t = port?.socket instanceof SolenoidSocket ? port.socket.dataType : null;
   const doc = socketDocFor(node, key);
   const hint = frameHintFor(node, key);
@@ -110,6 +111,8 @@ export function InspectorPanel() {
   const excel = frRows.filter((r) => r.excel !== null);
   const location = frRows[0]?.location ?? [];
   const packs = frRows[0]?.packs ?? [];
+  const op = (node as { op?: unknown } | null)?.op;
+  const nodeOp = typeof op === "string" ? op : undefined;
 
   return (
     <div className="inspector-panel" onPointerDown={(e) => e.stopPropagation()}>
@@ -132,6 +135,11 @@ export function InspectorPanel() {
               <div className="inspector-crumb">
                 {location.join(" \u25b8 ")}{packs.length > 0 ? ` \u00b7 ${packs.join(", ")} pack` : ""}
               </div>
+            )}
+            {catalogType && (
+              <button type="button" className="inspector-ref-link" onClick={() => frStore.openCard(catalogType, nodeOp)}>
+                Open in Reference ›
+              </button>
             )}
             {description && <p className="inspector-desc" dangerouslySetInnerHTML={{ __html: descriptionHtml(description) }} />}
 

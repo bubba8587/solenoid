@@ -1,10 +1,10 @@
-// [[C77]] compositeIsSubgraph, [[A1]] visualGraphCalculator
+// [[C77]] compositeIsSubgraph, [[A1]] visualGraphCalculator, [[composite-drill-in-mount-lifecycle#What lasts and what doesn't]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidConnection, SolenoidNode } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { setEditorRefs } from "../../src/graph/process";
 import { CompositeNode } from "../../src/graph/nodes/composite";
 import { ValueInputNode } from "../../src/graph/nodes/control";
@@ -15,14 +15,13 @@ import { pinStore } from "../../src/graph/pinStore";
 import { unpackComposite } from "../../src/graph/compositeLogic";
 import { getDrillStack, recordNow, type DrillStack } from "../../src/graph/flow/drillStack";
 
-let editor: NodeEditor<Schemes>;
+let editor: GraphEditor<Schemes>;
 let view: View;
 
 beforeEach(() => {
   vi.useFakeTimers();
   vi.stubGlobal("document", { createElement: () => ({}), querySelector: () => null });
-  editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
+  editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const pos = new Map<string, { x: number; y: number }>();
@@ -58,7 +57,7 @@ async function setup() {
   const s = getDrillStack(comp);
   const syncTopology = vi.fn();
   s.handlers.syncTopology = syncTopology;
-  const connect = () => comp.internalEditor.addConnection(new ClassicPreset.Connection(a, "value", b, "in") as SolenoidConnection);
+  const connect = () => comp.internalEditor.addConnection(new GraphConnection(a, "value", b, "in") as SolenoidConnection);
   return { comp, a, b, s, syncTopology, connect };
 }
 

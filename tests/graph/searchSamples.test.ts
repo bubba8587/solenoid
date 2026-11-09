@@ -1,4 +1,4 @@
-// [[B16]] oneFormulaSurface
+// [[B16]] oneFormulaSurface, [[add-menu#Search samples]]
 import fs from "node:fs";
 import { describe, it, expect } from "vitest";
 import { runSearchSamples } from "../../scripts/search-samples";

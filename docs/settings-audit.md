@@ -69,7 +69,9 @@ argument; a value is the typed blank it reads as.
 | CHOOSEROWS | `row1` → pick, none left = #SYNTAX!; the rest → pick, none left = #SYNTAX! |
 | CLAMP | `min` → omitted; `max` → omitted |
 | COMBINATIONS | `k` → #SYNTAX! |
+| CONNECTEDREGIONS | `diagonal` → false |
 | CONVERT | `from_unit` → #SYNTAX!; `to_unit` → #SYNTAX! |
+| CONVOLVE | `shape` → omitted |
 | COUPDAYBS | `frequency` → omitted; `basis` → omitted |
 | COUPDAYS | `frequency` → omitted; `basis` → omitted |
 | COUPDAYSNC | `frequency` → omitted; `basis` → omitted |
@@ -86,6 +88,7 @@ argument; a value is the typed blank it reads as.
 | DEC2HEX | `places` → omitted |
 | DEC2OCT | `places` → omitted |
 | DECIMAL | `radix` → #SYNTAX! |
+| DIFF | `by_col` → false |
 | DISC | `basis` → omitted |
 | DOLLAR | `decimals` → omitted |
 | DROP | `rows` → omitted; `columns` → omitted |
@@ -106,6 +109,8 @@ argument; a value is the typed blank it reads as.
 | GAMMA.DIST | `cumulative` → false |
 | GEOMETRIC | `start` → #SYNTAX!; `count` → #SYNTAX! |
 | GESTEP | `step` → omitted |
+| GRADIENT | `by_col` → false |
+| GRIDDATA | `method` → omitted |
 | GROWTH | `const` → omitted |
 | HEX2BIN | `places` → omitted |
 | HEX2OCT | `places` → omitted |
@@ -123,6 +128,8 @@ argument; a value is the typed blank it reads as.
 | LOGNORM.DIST | `cumulative` → false |
 | MAKEARRAY | `rows` → #SYNTAX!; `columns` → #SYNTAX! |
 | MDURATION | `frequency` → omitted; `basis` → omitted |
+| MEANSMOOTH | `size` → 3 |
+| MEDIANSMOOTH | `size` → 3 |
 | MID | `start` → #SYNTAX!; `count` → #SYNTAX! |
 | MROUND | `multiple` → #SYNTAX! |
 | MUNIT | `dimension` → #SYNTAX! |
@@ -142,6 +149,7 @@ argument; a value is the typed blank it reads as.
 | PADLEFT | `length` → #SYNTAX! |
 | PADRIGHT | `length` → #SYNTAX! |
 | PADTEXT | `width` → #SYNTAX!; `side` → omitted; `fill` → omitted |
+| PCTCHANGE | `by_col` → false |
 | PERCENTILE | `k` → #SYNTAX! |
 | PERCENTILE.EXC | `k` → #SYNTAX! |
 | PERCENTILE.INC | `k` → #SYNTAX! |
@@ -162,6 +170,7 @@ argument; a value is the typed blank it reads as.
 | QUARTILE.INC | `quart` → 0 |
 | RANDARRAY | `rows` → omitted; `columns` → omitted; `min` → omitted; `max` → omitted; `whole_number` → omitted |
 | RANDDIST | `n` → #SYNTAX! |
+| RANDSAMPLE | `count` → omitted |
 | RANGE | `start` → #SYNTAX!; `step` → omitted |
 | RANK | `order` → omitted |
 | RANK.AVG | `order` → omitted |
@@ -172,7 +181,9 @@ argument; a value is the typed blank it reads as.
 | REPEAT | `count` → #SYNTAX! |
 | REPLACE | `start` → #SYNTAX!; `count` → #SYNTAX! |
 | REPT | `count` → #SYNTAX! |
+| REVERSE | `by_col` → false |
 | RIGHT | `count` → omitted |
+| ROT90 | `turns` → 1 |
 | ROUND | `digits` → 0 |
 | ROUNDDOWN | `digits` → 0 |
 | ROUNDUP | `digits` → 0 |
@@ -201,7 +212,7 @@ argument; a value is the typed blank it reads as.
 | TOCOL | `ignore` → omitted; `scan_by_column` → omitted |
 | TOEPOCH | `unit` → omitted |
 | TOROW | `ignore` → omitted; `scan_by_column` → omitted |
-| TRAPZ | `dx` → omitted |
+| TRAPZ | `dx` → omitted; `dy` → omitted |
 | INTERPOLATE | `known_xs` → omitted; `new_xs` → omitted |
 | TREND | `const` → omitted |
 | TRIMMEAN | `percent` → 0 |

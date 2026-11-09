@@ -3,7 +3,7 @@
 import type { SavedGraph } from "./persistence";
 import { validateSavedGraph } from "./persistenceCore";
 
-export const CURRENT_LIBRARY_VERSION = 1;
+const CURRENT_LIBRARY_VERSION = 1;
 
 export interface SolDoc {
   id: string;
@@ -12,16 +12,23 @@ export interface SolDoc {
   updatedAt: number;
   filePath?: string;
   fileSavedAt?: number;
+  /** The folder path, `"Finance/2026"`; absent at the root. */
+  folder?: string;
+  /** An example opened from the seed menus and not yet kept: which seed, and its graph's fingerprint as it loaded
+   *  (`graphFingerprint`), so a different one means the user changed it. The file tree leaves it out until kept. */
+  seed?: { id: string; fingerprint: string };
 }
 
 export interface DocLibrary {
   v: number;
   documents: SolDoc[];
   currentId: string | null;
+  /** Folders the user made, kept so an empty one survives; a document's folder and its ancestors exist without a listing. */
+  folders?: string[];
 }
 
 export function emptyLibrary(): DocLibrary {
-  return { v: CURRENT_LIBRARY_VERSION, documents: [], currentId: null };
+  return { v: CURRENT_LIBRARY_VERSION, documents: [], currentId: null, folders: [] };
 }
 
 export function getCurrent(lib: DocLibrary): SolDoc | null {
@@ -114,8 +121,111 @@ export function removeDocument(lib: DocLibrary, id: string): DocLibrary {
 export function duplicateDocument(lib: DocLibrary, id: string, newId: string, newName: string): DocLibrary {
   const src = lib.documents.find((d) => d.id === id);
   if (!src) return lib;
-  const copy: SolDoc = { id: newId, name: newName, graph: src.graph, updatedAt: src.updatedAt };
+  const copy: SolDoc = { id: newId, name: newName, graph: src.graph, updatedAt: src.updatedAt, ...(src.folder ? { folder: src.folder } : {}) };
   return addDocument(lib, copy);
+}
+
+// ── Folders ([[C132]] workspaceTree; tree/specs/documents/workspace-tree.md § Where the tree comes from) ──
+
+/** Trimmed, empty segments dropped; `""` is the root. */
+export function normalizeFolder(path: string | undefined): string {
+  return (path ?? "").split("/").map((p) => p.trim()).filter(Boolean).join("/");
+}
+
+export function parentFolder(path: string): string {
+  const i = path.lastIndexOf("/");
+  return i < 0 ? "" : path.slice(0, i);
+}
+
+const within = (path: string, folder: string) => path === folder || path.startsWith(`${folder}/`);
+
+/** Every folder that exists: the listed ones, every document's folder, and all their ancestors; sorted. */
+export function allFolders(lib: DocLibrary): string[] {
+  const out = new Set<string>();
+  const add = (p: string) => { for (let f = p; f; f = parentFolder(f)) out.add(f); };
+  for (const f of lib.folders ?? []) add(f);
+  for (const d of lib.documents) if (d.folder) add(d.folder);
+  return [...out].sort();
+}
+
+function uniqueFolderName(lib: DocLibrary, parent: string, base: string, except?: string): string {
+  const taken = new Set(allFolders(lib).filter((f) => parentFolder(f) === parent && f !== except).map((f) => f.slice(parent ? parent.length + 1 : 0)));
+  if (!taken.has(base)) return base;
+  for (let i = 2; ; i++) if (!taken.has(`${base} ${i}`)) return `${base} ${i}`;
+}
+
+export function addFolder(lib: DocLibrary, parent: string, name: string): { lib: DocLibrary; path: string } {
+  const base = name.replace(/\//g, " ").trim() || "New folder";
+  const par = normalizeFolder(parent);
+  const leaf = uniqueFolderName(lib, par, base);
+  const path = par ? `${par}/${leaf}` : leaf;
+  return { lib: { ...lib, folders: [...(lib.folders ?? []), path] }, path };
+}
+
+/** Moves a document into `folder` (`""` for the root); a document already there is left as it was. */
+export function moveDocument(lib: DocLibrary, id: string, folder: string): DocLibrary {
+  const to = normalizeFolder(folder);
+  const src = lib.documents.find((d) => d.id === id);
+  if (!src || (src.folder ?? "") === to) return lib;
+  return {
+    ...lib,
+    documents: lib.documents.map((d) => {
+      if (d.id !== id) return d;
+      const { folder: _old, ...rest } = d;
+      return to ? { ...rest, folder: to } : rest;
+    }),
+  };
+}
+
+function rehome(lib: DocLibrary, from: string, to: string): DocLibrary {
+  const swap = (p: string) => (to + p.slice(from.length)).replace(/^\//, "");
+  return {
+    ...lib,
+    documents: lib.documents.map((d) => {
+      if (!d.folder || !within(d.folder, from)) return d;
+      const next = swap(d.folder);
+      const { folder: _old, ...rest } = d;
+      return next ? { ...rest, folder: next } : rest;
+    }),
+    folders: [...new Set((lib.folders ?? []).map((f) => (within(f, from) ? swap(f) : f)).filter(Boolean))],
+  };
+}
+
+/** Renames the last segment of `path`, carrying every folder and document under it along. */
+export function renameFolder(lib: DocLibrary, path: string, name: string): { lib: DocLibrary; path: string } {
+  const from = normalizeFolder(path);
+  const base = name.replace(/\//g, " ").trim();
+  if (!from || !base) return { lib, path: from };
+  const par = parentFolder(from);
+  const leaf = uniqueFolderName(lib, par, base, from);
+  const to = par ? `${par}/${leaf}` : leaf;
+  if (to === from) return { lib, path: from };
+  return { lib: rehome(lib, from, to), path: to };
+}
+
+/** Moves a folder under `parent`; a move into itself or its own subfolder is refused. */
+export function moveFolder(lib: DocLibrary, path: string, parent: string): { lib: DocLibrary; path: string } {
+  const from = normalizeFolder(path);
+  const par = normalizeFolder(parent);
+  if (!from || within(par, from) || parentFolder(from) === par) return { lib, path: from };
+  const leaf = uniqueFolderName(lib, par, from.slice(from.lastIndexOf("/") + 1));
+  const to = par ? `${par}/${leaf}` : leaf;
+  return { lib: rehome(lib, from, to), path: to };
+}
+
+/** The documents a folder holds, its subfolders' included. */
+export function documentsIn(lib: DocLibrary, path: string): SolDoc[] {
+  const f = normalizeFolder(path);
+  return f ? lib.documents.filter((d) => d.folder && within(d.folder, f)) : [];
+}
+
+/** Drops the folder and its subfolders from the listing and every document under them from the library. */
+export function removeFolder(lib: DocLibrary, path: string): DocLibrary {
+  const f = normalizeFolder(path);
+  if (!f) return lib;
+  let next: DocLibrary = { ...lib, folders: (lib.folders ?? []).filter((x) => !within(x, f)) };
+  for (const d of documentsIn(lib, f)) next = removeDocument(next, d.id);
+  return next;
 }
 
 export function validateDoc(data: unknown): SolDoc | null {
@@ -130,7 +240,42 @@ export function validateDoc(data: unknown): SolDoc | null {
     updatedAt: typeof dd.updatedAt === "number" ? dd.updatedAt : 0,
     ...(typeof dd.filePath === "string" ? { filePath: dd.filePath } : {}),
     ...(typeof dd.fileSavedAt === "number" ? { fileSavedAt: dd.fileSavedAt } : {}),
+    ...(typeof dd.folder === "string" && normalizeFolder(dd.folder) ? { folder: normalizeFolder(dd.folder) } : {}),
+    ...(seedTag(dd.seed) ? { seed: seedTag(dd.seed)! } : {}),
   };
+}
+
+function seedTag(v: unknown): SolDoc["seed"] | null {
+  const t = v as { id?: unknown; fingerprint?: unknown } | null;
+  return t && typeof t.id === "string" && typeof t.fingerprint === "string" ? { id: t.id, fingerprint: t.fingerprint } : null;
+}
+
+/** A graph's fingerprint for telling an edit: everything but the save time and each card's auto-fitted `width` and
+ *  `height`, which a card measures after it renders (a size the user drags is `size`, and counts). FNV-1a, 32 bits. */
+export function graphFingerprint(g: SavedGraph): string {
+  const nodes = g.nodes.map((n) => {
+    const init = (n as { init?: Record<string, unknown> }).init;
+    if (!init) return n;
+    const { width: _w, height: _h, ...rest } = init;
+    return { ...n, init: rest };
+  });
+  const json = JSON.stringify({ ...g, savedAt: undefined, nodes });
+  let h = 0x811c9dc5;
+  for (let i = 0; i < json.length; i++) h = Math.imul(h ^ json.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(16);
+}
+
+/** An example the user changed since it opened. */
+export const seedEdited = (d: SolDoc): boolean => !!d.seed && graphFingerprint(d.graph) !== d.seed.fingerprint;
+
+/** The document kept: its seed tag dropped, so the file tree lists it like any other. */
+export function keepDocument(lib: DocLibrary, id: string): DocLibrary {
+  if (!lib.documents.some((d) => d.id === id && d.seed)) return lib;
+  return { ...lib, documents: lib.documents.map((d) => {
+    if (d.id !== id) return d;
+    const { seed: _seed, ...rest } = d;
+    return rest;
+  }) };
 }
 
 export function validateLibrary(data: unknown): DocLibrary | null {
@@ -145,5 +290,8 @@ export function validateLibrary(data: unknown): DocLibrary | null {
   }
   const rawCurrent = typeof lib.currentId === "string" ? lib.currentId : null;
   const currentId = documents.some((d) => d.id === rawCurrent) ? rawCurrent : documents[0]?.id ?? null;
-  return { v: CURRENT_LIBRARY_VERSION, documents, currentId };
+  const folders = Array.isArray(lib.folders)
+    ? [...new Set(lib.folders.filter((f): f is string => typeof f === "string").map(normalizeFolder).filter(Boolean))]
+    : [];
+  return { v: CURRENT_LIBRARY_VERSION, documents, currentId, folders };
 }

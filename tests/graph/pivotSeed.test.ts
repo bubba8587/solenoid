@@ -1,12 +1,12 @@
 // [[C25]]
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
-import * as Nodes from "../../src/graph/rete-nodes";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
+import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import type { FrameValue, FrameCell } from "../../src/graph/frame";
+import { readFrame, type FrameInput } from "../../src/graph/frameBackend";
 import seed from "../fixtures/pivot-tables.json"; // the retired seed, kept as the Pivot fixture (2026-09-16)
 
 // Runs the "Pivot tables (one source, many views)" seed through a real editor +
@@ -23,15 +23,13 @@ type SavedNode = {
 
 describe("pivot-tables seed", () => {
   it("every pivot computes the cross-tab it claims", async () => {
-    const editor = new NodeEditor<Schemes>();
-    installInputCoercion(editor);
-    editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
+    const editor = new GraphEditor<Schemes>();
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
 
-    const byId = new Map<string, ClassicPreset.Node>();
+    const byId = new Map<string, GraphNode>();
     for (const sn of (seed.nodes as SavedNode[])) {
-      const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => ClassicPreset.Node>)[sn.type];
+      const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => GraphNode>)[sn.type];
       const node = new Ctor({ ...sn.init });
       const anyNode = node as unknown as Record<string, unknown>;
       if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
@@ -40,13 +38,13 @@ describe("pivot-tables seed", () => {
     }
     for (const c of seed.connections) {
       await editor.addConnection(
-        new ClassicPreset.Connection(byId.get(c.source)!, c.sourceOutput, byId.get(c.target)!, c.targetInput) as Schemes["Connection"],
+        new GraphConnection(byId.get(c.source)!, c.sourceOutput, byId.get(c.target)!, c.targetInput) as Schemes["Connection"],
       );
     }
 
     const frameOf = async (seedId: string) => {
       const out = (await engine.fetch(byId.get(seedId)!.id)) as Record<string, unknown>;
-      return out.frame as FrameValue;
+      return (await readFrame(out.frame as FrameInput)) as FrameValue;
     };
     const col = (f: FrameValue, name: string): FrameCell[] => {
       const c = f.columns.find((x) => x.name === name);

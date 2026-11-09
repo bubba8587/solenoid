@@ -1,6 +1,6 @@
-// [[C95]] commitOnEnter, [[B2]] webTryDesktopFull
+// [[B19]] spreadsheetHabits, [[B2]] webTryDesktopFull
 import { useEffect, useRef, useState } from "react";
-import type { FileLinkNode as FileLinkNodeType } from "../rete-nodes";
+import type { FileLinkNode as FileLinkNodeType } from "../nodeClasses";
 import { scheduleAutosave } from "../persistence";
 import { isDesktop, pickFileLinkDialog, openFilePath, baseNameOf } from "../fileBridge";
 import type { NodeProps } from "./nodeKit";
@@ -62,7 +62,7 @@ export function FileLinkComponent({ data }: NodeProps<FileLinkNodeType>) {
   }
 
   function open() {
-    if (desktop) { if (path) void openFilePath(path); return; }
+    if (desktop) { if (path) void openFilePath(path, data.id); return; }
     if (webFile) window.open((webUrl.current ??= URL.createObjectURL(webFile)), "_blank", "noopener,noreferrer");
   }
 

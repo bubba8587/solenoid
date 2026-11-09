@@ -2,8 +2,8 @@
 import { usePendingDraft } from "../draftFlush";
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import DOMPurify from "dompurify";
-import type { NoteNode as NoteNodeType } from "../rete-nodes";
+import { sanitizeNoteHtml, useNetworkGrant } from "../noteHtml";
+import type { NoteNode as NoteNodeType } from "../nodeClasses";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
 import { SwatchGrid } from "./SwatchGrid";
@@ -18,23 +18,25 @@ import { getOwningView, getOwningEditor } from "../activeGraph";
 import { reconcileFcTypes } from "../fcReconcile";
 import { scheduleAutosave } from "../persistence";
 import { standoffStore, settleStandoffs } from "../standoffs";
-import { SOCKET_COLORS, isDateType } from "../sockets";
+import { SOCKET_COLORS } from "../sockets";
+import { isSolDate, type SolDate } from "../dateValue";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
-import { parseNoteFrontmatter, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
+import { parseNoteFrontmatter, type FrontmatterFieldType, type FrontmatterValue, type FrontmatterScalar } from "../noteFrontmatter";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeDepth, type FrameValue, type CubeValue } from "../frame";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import type { NodeProps, Emit } from "./nodeKit";
-import type { ClassicPreset } from "rete";
+import type { GraphSocket } from "../graphModel";
 import { stopDragStart } from "../coarse";
 import "./Markdown.css";
 import "./NoteNode.css";
 import { renderNoteMarkdown, toggleTaskMarker } from "../noteMarkdown";
 import { useKatexReady } from "./katexLoader";
+import { measureThenWrite } from "./layoutBatch";
 
-type FieldValue = FrontmatterValue | FrameValue | CubeValue | SolError;
+type FieldValue = FrontmatterValue | SolDate | (FrontmatterScalar | SolDate)[] | (FrontmatterScalar | SolDate)[][] | FrameValue | CubeValue | SolError;
 
 const FIELD_TYPES_AT_RANK: FrontmatterFieldType[][] = [
   ["number", "string", "date", "logical", "complex"],
@@ -63,10 +65,10 @@ function previewValue(value: FieldValue, t: FrontmatterFieldType): string {
     if (!isCubeValue(value)) return "Cube";
     return `${cubeRowCount(value)}×${value.columns.length}×${cubeDepth(value)} Cube`;
   }
-  const one = (v: number | string | boolean | null): string => {
-    if (v === null) return "null";
+  const one = (v: unknown): string => {
+    if (v === null || v === undefined) return "null";
     if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
-    if (typeof v === "number" && isDateType(t)) return formatDateSerial(v, DEFAULT_DATE_FORMAT);
+    if (isSolDate(v)) return formatDateSerial(v.__date, DEFAULT_DATE_FORMAT);
     return String(v);
   };
   if (Array.isArray(value) && rankOfField(t) === 2) {
@@ -133,10 +135,10 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     await view?.rerenderNode(data.id);
     if (editor && view && retyped.length) reconcileFcTypes(editor, view);
     bumpConnectionVersion(); // re-route cables whose source row shifted
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
-  // The body stays a local draft while typing and reaches the node here ([[C95]] commitOnEnter).
+  // The body stays a local draft while typing and reaches the node here ([[B19]] spreadsheetHabits).
   async function commitBody() {
     if (body !== data.body) { data.body = body; scheduleAutosave(); }
     await commitFields();
@@ -162,10 +164,15 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   useLayoutEffect(() => {
     const bodyEl = noteBodyRef.current, rootEl = noteRootRef.current;
     if (!bodyEl || !rootEl) { setDocDotTop(undefined); return; }
-    let y = 0;
-    for (let el: HTMLElement | null = bodyEl; el && el !== rootEl; el = el.offsetParent as HTMLElement | null) y += el.offsetTop;
-    setDocDotTop(y + bodyEl.offsetHeight / 2 - 6);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    measureThenWrite(
+      noteBodyRef,
+      () => {
+        let y = 0;
+        for (let el: HTMLElement | null = bodyEl; el && el !== rootEl; el = el.offsetParent as HTMLElement | null) y += el.offsetTop;
+        return y + bodyEl.offsetHeight / 2 - 6;
+      },
+      setDocDotTop,
+    );
   }, [collapsed, fieldKeys.length, data.height, data.width, body]);
 
   const Grip = useFlowResizeGrip();
@@ -186,10 +193,10 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   const tex = useKatexReady();
+  const net = useNetworkGrant(data.id);
   const bodyHtml = useMemo(
-    () => enableTaskCheckboxes(DOMPurify.sanitize(renderNoteMarkdown(renderBody || "")), rendered === body),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [renderBody, rendered, body, tex],
+    () => enableTaskCheckboxes(sanitizeNoteHtml(renderNoteMarkdown(renderBody || ""), data.id), rendered === body),
+    [renderBody, rendered, body, tex, net],
   );
   const renderedRef = useRef<HTMLDivElement>(null);
   function onRenderedClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -212,7 +219,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     startEdit();
   }
 
-  // A bare setColor re-renders only rete's root, leaving the canvas renderer on the old color.
+  // A bare setColor re-renders only this component, leaving the canvas renderer on the old color.
   function pick(c: string) { setColor(c); data.color = c; void getOwningView(data.id)?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
@@ -304,14 +311,14 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
         <div ref={noteBodyRef} className="solenoid-note__content">
           {editing ? (
             <textarea
-              className="solenoid-note__body nowheel"
+              className="solenoid-note__body nowheel sol-placeholder-example"
               value={body}
               placeholder="Markdown note…"
               spellCheck={false}
               autoFocus
               onChange={(e) => setBody(e.target.value)}
               onBlur={() => { lastBlurRef.current = Date.now(); setEditing(false); void commitBody(); }}
-              // Not stopDragStart: while editing a tap must place the cursor, and rete's drag would close the keyboard.
+              // Not stopDragStart: while editing a tap must place the cursor, and the canvas's node drag would close the keyboard.
               onPointerDown={stop}
               onMouseDown={stop}
             />
@@ -357,7 +364,7 @@ export function FieldRow({
   fieldKey: string;
   type: FrontmatterFieldType;
   value: FieldValue;
-  socket: ClassicPreset.Socket;
+  socket: GraphSocket;
   onPickType: (t: FrontmatterFieldType) => void;
 }) {
   const [open, setOpen] = useState(false);

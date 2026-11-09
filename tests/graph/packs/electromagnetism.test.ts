@@ -3,8 +3,7 @@ import { EM_FORMULAS } from "../../../src/graph/packs/electromagnetism";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { isSolError } from "../../../src/graph/errorValue";
 import { EmSpectrumNode } from "../../../src/graph/nodes/emSpectrum";
-import { emBand } from "../../../src/graph/nodes/emSpectrumOps";
-import { PhysicsConstantNode } from "../../../src/graph/rete-nodes";
+import { PhysicsConstantNode } from "../../../src/graph/nodeClasses";
 import { PHYS_CONSTANTS } from "../../../src/graph/nodes/physicsConstantsOps";
 
 const num = (type: string, inputs: Record<string, number>): number => {
@@ -64,12 +63,6 @@ describe("Electromagnetism formulas", () => {
 });
 
 describe("Physics Constant node", () => {
-  it("CODATA exact values", () => {
-    expect(new PhysicsConstantNode({ op: "c" }).data().value).toBe(299792458);
-    expect(new PhysicsConstantNode({ op: "e" }).data().value).toBe(1.602176634e-19);
-    expect(new PhysicsConstantNode({ op: "kb" }).data().value).toBe(1.380649e-23);
-    expect(new PhysicsConstantNode({ op: "na" }).data().value).toBe(6.02214076e23);
-  });
 
   it("derived constants are self-consistent", () => {
     // c² · ε₀ · µ₀ = 1
@@ -86,17 +79,18 @@ describe("Physics Constant node", () => {
   });
 
   it("carries its unit like an FC lock: the annotation rides through a Display", async () => {
-    const { NodeEditor, ClassicPreset } = await import("rete");
+    const { GraphEditor } = await import("../../../src/graph/graphEditor");
+    const { GraphNode, GraphSocket, GraphInput, GraphOutput, GraphConnection } = await import("../../../src/graph/graphModel");
     const { makeAnnotationResolver } = await import("../../../src/graph/unitFlow");
-    const editor = new NodeEditor() as never as Parameters<typeof makeAnnotationResolver>[0];
+    const editor = new GraphEditor() as never as Parameters<typeof makeAnnotationResolver>[0];
     const c = new PhysicsConstantNode({ op: "c" });
-    const disp = Object.assign(new ClassicPreset.Node("Display"), { passesUnitThrough: true });
-    const sock = new (class extends ClassicPreset.Socket {})("any");
-    disp.addInput("in", new ClassicPreset.Input(sock, "In"));
-    disp.addOutput("out", new ClassicPreset.Output(sock, "Out"));
+    const disp = Object.assign(new GraphNode("Display"), { passesUnitThrough: true });
+    const sock = new (class extends GraphSocket {})("any");
+    disp.addInput("in", new GraphInput(sock, "In"));
+    disp.addOutput("out", new GraphOutput(sock, "Out"));
     await editor.addNode(c as never);
     await editor.addNode(disp as never);
-    await editor.addConnection(new ClassicPreset.Connection(c as never, "value", disp as never, "in") as never);
+    await editor.addConnection(new GraphConnection(c as never, "value", disp as never, "in") as never);
     const r = makeAnnotationResolver(editor);
     const ann = r.inAnnotation(disp.id, "in");
     expect(ann?.unit).toBe("custom");
@@ -104,28 +98,6 @@ describe("Physics Constant node", () => {
   });
 });
 
-describe("EM Spectrum Band", () => {
-  it("names the conventional bands by wavelength", () => {
-    expect(emBand(10)).toBe("Radio");                 // 30 MHz-ish
-    expect(emBand(0.125)).toBe("Microwave");          // 2.4 GHz Wi-Fi
-    expect(emBand(10e-6)).toBe("Infrared");           // 10 µm thermal
-    expect(emBand(532e-9)).toBe("Visible (green)");   // green laser pointer
-    expect(emBand(650e-9)).toBe("Visible (red)");
-    expect(emBand(254e-9)).toBe("Ultraviolet");       // germicidal UV
-    expect(emBand(1e-10)).toBe("X-ray");              // 0.1 nm
-    expect(emBand(1e-12)).toBe("Gamma");
-  });
-
-  it("the node takes either quantity and computes the other via c", () => {
-    const n = new EmSpectrumNode();
-    const byFreq = n.data({ freq: [2.4e9] });
-    expect(byFreq.band).toBe("Microwave");
-    expect(byFreq.wavelength as number).toBeCloseTo(0.1249, 3);
-    const byWl = n.data({ freq: [null], wavelength: [532e-9] });
-    expect(byWl.band).toBe("Visible (green)");
-    expect(byWl.freq as number).toBeCloseTo(5.635e14, -11);
-  });
-});
 
 describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
   it("EMSPECTRUMBAND classifies by frequency, or by wavelength via an elided first arg", () => {

@@ -1,7 +1,7 @@
 // [[C100]] chartIsAValue
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import type { ChartNode as ChartNodeType, ChartOp } from "../rete-nodes";
-import { CHART_OP_META } from "../rete-nodes";
+import type { ChartNode as ChartNodeType, ChartOp } from "../nodeClasses";
+import { CHART_OP_META } from "../nodeClasses";
 import { NodeShell, OpSelect, ArgSelect, type NodeProps, type OpOption } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { InlineInputs } from "./inlineInput";
@@ -17,7 +17,7 @@ import { nodeDisplayName } from "../catalogUtils";
 
 async function applyChartOp(node: ChartNodeType, newOp: ChartOp): Promise<void> {
   node.op = newOp;
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 const CHART_OPS = Object.keys(CHART_OP_META) as ChartOp[];
@@ -27,10 +27,11 @@ const OPS_BY_FAMILY: Record<string, ChartOp[]> = Object.fromEntries(
 );
 const FAMILY_OPTS: ReadonlyArray<OpOption<string>> = FAMILIES.map((value) => ({ value, label: value }));
 
-const W = 218;
 const H = 150;
 
 export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
+  // The figure fills the card, whatever width tier it wears.
+  const W = (data.width ?? 300) - 22;
   const [op, setOpState] = useState<ChartOp>(data.op);
   const setOp = useCallback((v: ChartOp) => { setOpState(v); void applyChartOp(data, v); }, [data]);
   const family = CHART_OP_META[op].group;
@@ -52,7 +53,8 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
     labels: data.cachedLabels ?? undefined,
     payload: data.cachedPayload ?? undefined,
     options: opts, title,
-  }), [op, data.cachedResult, data.cachedSeries, data.cachedLabels, data.cachedPayload, opts, title]);
+    ...(data.cachedRefs ? { refs: data.cachedRefs } : {}),
+  }), [op, data.cachedResult, data.cachedSeries, data.cachedLabels, data.cachedPayload, data.cachedRefs, opts, title]);
 
   const chartRef = useRef<HTMLDivElement>(null);
   const [valuesTop, setValuesTop] = useState<number | undefined>(undefined);
@@ -90,11 +92,11 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
         )}
       </div>
       <div className="solenoid-node__section-divider" />
-      {/* Collapsed, the leading `values` socket is gone, so it folds into this row. */}
+      {/* Collapsed, the leading `values` socket is gone, so it folds into this row. A figure with axes draws References. */}
       <InlineInputs
         node={data}
         emit={emit}
-        keys={collapsed ? ["values", "options"] : ["options"]}
+        keys={[...(collapsed ? ["values"] : []), ...(family === "Categorical" ? [] : ["references"]), "options"]}
       />
       {/* Collapsed, the hero box shows only the Chart chip. */}
       <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={cv} /></div>

@@ -1,0 +1,44 @@
+/* The type button: a column's type in the Frame and Cube popups, and a wildcard slot's kind button on a card (neutral
+   there, `nodeCard.css`). A click cycles it. */
+.sol-coltype {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--node-accent, var(--text));
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.sol-coltype:hover { border-color: var(--node-accent, var(--accent)); }
+/* An op picker in this shape (Value Input's type, `OpCycle`): the op accent, as an op toggle's lit segment. */
+.sol-coltype--op {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-hairline), color-mix(in srgb, var(--text) 10%, var(--surface-sunken)));
+  border-color: var(--node-accent, var(--accent));
+  color: var(--text);
+}
+.sol-coltype--fx,
+.sol-coltype--fx:hover {
+  font-size: 9px;
+  color: var(--surface);
+  background: var(--node-accent, var(--accent));
+  border-color: var(--node-accent, var(--accent));
+}
+
+@media (max-width: 640px) {
+  .sol-coltype {
+    box-sizing: border-box;
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+  .sol-coltype--fx { font-size: 10px; }
+}

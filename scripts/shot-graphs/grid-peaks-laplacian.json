@@ -1,0 +1,80 @@
+{
+ "nodes": [
+  {
+   "id": "x",
+   "type": "SeriesNode",
+   "x": 0,
+   "y": 0,
+   "init": {
+    "label": "Angles",
+    "op": "linspace"
+   },
+   "literals": {
+    "start": 0,
+    "end": 12.56,
+    "count": 24
+   }
+  },
+  {
+   "id": "s",
+   "type": "MathFXNode",
+   "x": 380,
+   "y": 0,
+   "init": {
+    "label": "SIN",
+    "op": "sin"
+   }
+  },
+  {
+   "id": "o",
+   "type": "TableOuterNode",
+   "x": 760,
+   "y": 0,
+   "init": {
+    "label": "Egg crate"
+   }
+  },
+  {
+   "id": "pk",
+   "type": "FindPeaksNode",
+   "x": 1140,
+   "y": -300,
+   "init": {
+    "label": "Peaks",
+    "mode": "grid"
+   },
+   "literals": {
+    "height": 0.5
+   }
+  },
+  {
+   "id": "lp",
+   "type": "DiffNode",
+   "x": 1140,
+   "y": 220,
+   "init": {
+    "label": "Curvature",
+    "op": "laplacian",
+    "mode": "grid"
+   }
+  },
+  {
+   "id": "p",
+   "type": "SurfaceNode",
+   "x": 1540,
+   "y": 220,
+   "init": {
+    "label": "Laplacian",
+    "op": "contour"
+   }
+  }
+ ],
+ "cables": [
+  "x.list -> s.in",
+  "s.result -> o.a",
+  "s.result -> o.b",
+  "o.result -> pk.grid",
+  "o.result -> lp.grid",
+  "lp.result -> p.z"
+ ]
+}

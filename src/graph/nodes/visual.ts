@@ -1,28 +1,21 @@
 // [[B11]]
-import { ClassicPreset } from "rete";
-import { readInput, readRole, keepInputLast, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
+import { GraphNode } from "../graphModel";
+import { nodeOnCore } from "../nodeOnCore";
+import { numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, frameOut, cubeAdoptIn, strListIn } from "./shared";
 import { setting, picks } from "../inputRoles";
-import { parseChartOptions, serializeChartOptions, chartBuilderKeys, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
-import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
-import { histogram2d, equalWidthBins, binCountError } from "./visualOps";
-export { histogram2d, type Histogram2d } from "./visualOps";
-import { isChartValue, recordNumberText } from "../chartValue";
-import { buildXY, sourceAsXY, XY_CHART_OPS, type XYOp } from "./xyPlot";
+import { chartBuilderKeys, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import type {
-  ChartValue, KpiPayload, ScalePayload, ProportionPayload, SankeyPayload, SurfacePayload,
-  ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, HeatmapPayload, QuiverPayload,
-  RecordPayload, RecordField, RecordSize, RecordDeck, OverlaySeries, OverlayPayload, XYPayload, XYSeries,
+  ChartValue, KpiPayload, ScalePayload, SankeyPayload, RecordPayload, XYPayload, ChartRef,
 } from "../chartValue";
-import { solError, type SolError } from "../errorValue";
-import { columnUnitLabel } from "../unitColumn";
+import type { SolError } from "../errorValue";
 import type { MermaidValue } from "../mermaidValue";
-import { readFrame, type FrameInput } from "../frameBackend";
+import type { FrameValue } from "../frame";
+import type { Shape } from "../frameShape";
+import type { FrameShapeContext } from "./frameShapeHook";
 import type { FrameHint } from "../frameHint";
-import { formatFrameCell, isFrameValue, isCubeValue, flatCubeToFrame, type FrameColumn } from "../frame";
-import { isSolError } from "../errorValue";
 import { parseRecordLayout, recordImageSrc, type RecordPlacement } from "../recordLayout";
-import { planCards, PROFILE_ROWS } from "../cardLayout";
-import { isDateStyle } from "../formatAnnotationStore";
+import { displayDecimals } from "../components/format";
+import { settingsStore } from "../settingsStore";
 
 import type { SparklineOp } from "./visualOps";
 export type { SparklineOp };
@@ -35,7 +28,7 @@ export const SPARKLINE_OP_META = {
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 
-export class SparklineNode extends ClassicPreset.Node {
+export class SparklineNode extends GraphNode {
   label: string;
   op: SparklineOp;
   chartOptions: ChartOptions = {};
@@ -52,20 +45,8 @@ export class SparklineNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { values?: (number | number[])[] }): { chart: ChartValue } {
-    const raw = inputs.values?.[0] ?? null;
-    this.cachedResult = raw;
-    const cells = (Array.isArray(raw) ? raw : raw == null ? [] : [raw]).map((x) => (typeof x === "number" && Number.isFinite(x) ? x : null));
-    const signed = this.op === "winloss" ? cells.map((n) => (n === null ? null : Math.sign(n))) : cells;
-    const chart: ChartValue = {
-      __chart: true,
-      op: this.op === "winloss" ? "column" : this.op,
-      values: signed.filter((n): n is number => n !== null),
-      series: [{ name: this.label || "Sparkline", values: signed }],
-      options: this.chartOptions,
-      title: this.label || "Sparkline",
-    };
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
 
@@ -90,10 +71,11 @@ export const CHART_OP_META = {
   funnel:    { label: "Funnel",   group: "Categorical" },
 } satisfies Record<ChartOp, { label: string; group: string }>;
 
-export class ChartNode extends ClassicPreset.Node {
+export class ChartNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    values: "A list plots by position; a frame's first column is x, later number columns are series. Radar: columns are spokes, rows polygons. Bubble: x, y, size. Scatter, XY Line and Bubble can pick columns by name in the options.",
+    values: "A list plots by position, so a date list has nothing to plot; a frame's first column is x, later number columns are series. Radar: columns are spokes, rows polygons. Bubble: x, y, size. Scatter, XY Line and Bubble can pick columns by name in the options.",
     options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. Scatter, XY Line and Bubble also read x, y, s (size), c (color), annotate and by as column names. Unknown keys are ignored.",
+    references: "Reference marks, one per row, read by column name: x alone is a dashed vertical line, y alone a horizontal one, x and y together a point. Add x2 or y2 for a shaded area: all four make a box, and a blank end runs to the edge of the plot. Label and color are optional. On a chart of categories, x names a category. Color takes a palette name or a CSS color.",
   };
 
   label: string;
@@ -103,11 +85,12 @@ export class ChartNode extends ClassicPreset.Node {
   cachedLabels: (string | number)[] | null = null;
   cachedPayload: XYPayload | null = null;
   cachedError: SolError | null = null;
+  cachedRefs: ChartRef[] | null = null;
   // Uncoerced, because coercion would widen a wired list into a single frame row.
   rawInputs: ReadonlySet<string> = new Set(["values"]);
   chartOptions: ChartOptions = {};
   stringLiterals: Record<string, string> = {};
-  width = 240;
+  width = 300;
   height = 240;
 
   static frameHints: Record<string, FrameHint> = {
@@ -116,6 +99,11 @@ export class ChartNode extends ClassicPreset.Node {
       { name: "Sales", type: "number", cells: [120, 145, 98] },
       { name: "Target", type: "number", cells: [130, 130, 130] },
     ] },
+    references: { columns: [
+      { name: "x", type: "date", cells: [44894, 44985, 45677] },
+      { name: "label", type: "string", cells: ["ChatGPT", "CHIPS funding", "DeepSeek-R1"] },
+      { name: "color", type: "string", cells: ["gray", "pink", "gray"] },
+    ] },
   };
 
   constructor(init?: { label?: string; op?: ChartOp }) {
@@ -123,81 +111,19 @@ export class ChartNode extends ClassicPreset.Node {
     this.label = init?.label ?? "";
     this.op = init?.op ?? "column";
     this.addInput("values", cubeAdoptIn("Data"));
+    this.addInput("references", frameIn("References"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { values?: unknown[]; options?: string[] }): { chart: ChartValue | SolError } {
-    const num = (c: unknown): number | null => (typeof c === "number" && Number.isFinite(c) ? c : null);
-    const raw0 = inputs.values?.[0] ?? null;
-    const flat = isCubeValue(raw0) ? flatCubeToFrame(raw0, "scalar") : raw0;
-    const raw = isSolError(flat) ? null : flat;
-    this.cachedLabels = null;
-    this.cachedSeries = null;
-    this.cachedPayload = null;
-    this.cachedError = null;
-    const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
-    const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
-    this.chartOptions = parseChartOptions(optStr);
-    let v: number | number[] | null = null;
-    if (XY_CHART_OPS.has(this.op)) {
-      const xy = buildXY(this.op as XYOp, raw, this.chartOptions);
-      if (isSolError(xy)) {
-        this.cachedResult = null;
-        this.cachedError = xy;
-        return { chart: xy };
-      }
-      this.cachedPayload = xy;
-      v = xy ? (xy.series[0].points.map((p) => p?.y ?? null) as unknown as number[]) : null;
-      const explicit = this.op === "bubble" || this.chartOptions.x !== undefined;
-      if (xy && explicit && this.chartOptions.xlabel === undefined && xy.names.x) this.chartOptions.xlabel = xy.names.x;
-      if (xy && (explicit || this.chartOptions.y !== undefined) && this.chartOptions.ylabel === undefined && xy.names.y) this.chartOptions.ylabel = xy.names.y;
-    } else if (isFrameValue(raw) && raw.columns.length > 0) {
-      const cols = raw.columns;
-      const asNums = (col: FrameColumn) => col.values.map(num);
-      if (this.op === "radar" && cols.length >= 2) {
-        const labelCol = cols[0];
-        const numCols = cols.slice(1).filter((c) => c.type === "number");
-        this.cachedLabels = numCols.map((c) => c.name);
-        const series = labelCol.values.map((cell, r) => ({
-          name: String(formatFrameCell(labelCol.type, cell) ?? `Row ${r + 1}`),
-          values: numCols.map((c) => num(c.values[r])),
-        }));
-        v = series.length > 0 ? (series[0].values as unknown as number[]) : null;
-        this.cachedSeries = series.length >= 2 ? series : null;
-      } else if (cols.length >= 2) {
-        this.cachedLabels = cols[0].values.map((c) => formatFrameCell(cols[0].type, c) ?? "");
-        const series = cols.slice(1).filter((c) => c.type === "number").map((c) => ({ name: c.name, values: asNums(c) }));
-        v = series.length > 0 ? (series[0].values as unknown as number[]) : null;
-        this.cachedSeries = series.length >= 2 ? series : null;
-      } else {
-        v = asNums(cols[0]) as unknown as number[];
-      }
-    } else if (Array.isArray(raw)) {
-      v = raw.map(num) as unknown as number[];
-    } else if (typeof raw === "number") {
-      v = num(raw);
-    }
-    this.cachedResult = v;
-    const chart: ChartValue = {
-      __chart: true,
-      op: this.op,
-      values: this.cachedResult,
-      series: this.cachedSeries ?? undefined,
-      labels: this.cachedLabels ?? undefined,
-      payload: this.cachedPayload ?? undefined,
-      options: this.chartOptions,
-      title: this.chartOptions.title || this.label || "Chart",
-    };
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue | SolError } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue | SolError };
   }
 }
 
 // ─── Merge Plots ──────────────────────────────────────────────────────────────
 
-export const PLANAR_CHART_OPS = new Set<ChartValue["op"]>(["line", "area", "column", "bar", "scatter", "xyline", "bubble"]);
-
-export class MergePlotsNode extends ClassicPreset.Node {
+export class MergePlotsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     options: "key=value pairs separated by semicolons, or a Chart Builder. Styles the merged plot's axes and title; each series keeps its own color and marker size.",
   };
@@ -207,7 +133,7 @@ export class MergePlotsNode extends ClassicPreset.Node {
   chartOptions: ChartOptions = {};
   stringLiterals: Record<string, string> = {};
   cachedChart: ChartValue | SolError | null = null;
-  width = 240;
+  width = 300;
   height = 240;
 
   constructor(init?: { label?: string; valueKeys?: string[] }) {
@@ -237,7 +163,7 @@ export class MergePlotsNode extends ClassicPreset.Node {
   addValueInput(): string {
     const key = `p${this.nextInputId}`;
     this.addPlotWithKey(key);
-    keepInputLast(this, "options");
+    this.moveInputLast("options");
     return key;
   }
 
@@ -246,122 +172,117 @@ export class MergePlotsNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue | SolError } {
-    // Only the keys the builder offers Merge Plots: each plot keeps its own color, marker size and alpha.
-    const parsed = parseChartOptions(readInput(inputs.options as string[] | undefined, this.stringLiterals.options ?? null));
-    const offered = new Set<string>(CHART_BUILDER_TARGETS.overlay.keys);
-    this.chartOptions = Object.fromEntries(Object.entries(parsed).filter(([k]) => offered.has(k))) as ChartOptions;
-    const sources: { cv: ChartValue; plotNo: number }[] = [];
-    let refusal: SolError | null = null;
-    this.plotKeys().forEach((key, i) => {
-      const cv = inputs[key]?.[0];
-      if (cv == null || !isChartValue(cv)) return;
-      if (!PLANAR_CHART_OPS.has(cv.op)) {
-        refusal ??= solError("#TYPE!", `Plot ${i + 1} is a ${cv.op} chart, which has no x/y plane to overlay`);
-        return;
-      }
-      sources.push({ cv, plotNo: i + 1 });
-    });
-    const payload = refusal ?? (sources.some(({ cv }) => cv.payload?.kind === "xy") ? mergeXY(sources) : mergeOverlay(sources));
-    if (isSolError(payload)) { this.cachedChart = payload; return { chart: payload }; }
-    const chart: ChartValue = {
-      __chart: true, op: "overlay", values: null, payload,
-      options: this.chartOptions, title: this.chartOptions.title || this.label || "Merged Plot",
-    };
-    this.cachedChart = chart;
-    return { chart };
+    return nodeOnCore(this, inputs) as { chart: ChartValue | SolError };
   }
 }
 
-/** Labelled series move onto the union of every source's labels (a label repeated within one source keeps a slot per repeat); an unlabelled one stays by position. */
-function mergeOverlay(sources: { cv: ChartValue }[]): OverlayPayload {
-  const labels: (string | number)[] = [];
-  const slots = new Map<string | number, number[]>();
-  const slotMaps = sources.map(({ cv }) => {
-    if (!cv.labels || cv.labels.length === 0) return null;
-    const seen = new Map<string | number, number>();
-    return cv.labels.map((l) => {
-      const k = seen.get(l) ?? 0;
-      seen.set(l, k + 1);
-      const at = slots.get(l) ?? [];
-      if (at.length <= k) { at.push(labels.length); labels.push(l); slots.set(l, at); }
-      return at[k];
-    });
-  });
-  const series: OverlaySeries[] = [];
-  sources.forEach(({ cv }, i) => {
-    const kind = cv.op as OverlaySeries["kind"];
-    const style = {
-      color: cv.options?.color || undefined,
-      markersize: cv.options?.markersize,
-      linewidth: cv.options?.linewidth,
-      alpha: cv.options?.alpha,
-      marker: cv.options?.marker,
-    };
-    const to = slotMaps[i];
-    const place = (values: (number | null)[]) => {
-      if (!to) return values;
-      const out: (number | null)[] = new Array(labels.length).fill(null);
-      values.forEach((v, j) => { if (j < to.length) out[to[j]] = v; });
-      return out;
-    };
-    if (cv.series && cv.series.length > 0) {
-      for (const s of cv.series) series.push({ name: s.name, kind, values: place(s.values), ...style });
-    } else if (Array.isArray(cv.values)) {
-      series.push({ name: cv.title ?? "", kind, values: place(cv.values), ...style });
-    } else if (typeof cv.values === "number") {
-      series.push({ name: cv.title ?? "", kind, values: place([cv.values]), ...style });
-    }
-  });
-  return { kind: "overlay", series, labels: labels.length > 0 ? labels : undefined };
-}
+// ─── Conditional Regions ──────────────────────────────────────────────────────
 
-/** Text x values are indices into their own plot's categories, so they move onto one shared list; text beside numbers has no one axis. */
-function mergeXY(sources: { cv: ChartValue; plotNo: number }[]): XYPayload | SolError {
-  const got: { plotNo: number; series: XYSeries[]; xcats?: string[] }[] = [];
-  for (const { cv, plotNo } of sources) {
-    const g = sourceAsXY(cv, plotNo);
-    if (isSolError(g)) return g;
-    if (g.series.some((s) => s.points.some((p) => p !== null))) got.push({ plotNo, ...g });
-  }
-  const textX = got.find((g) => g.xcats);
-  const numX = got.find((g) => !g.xcats);
-  if (textX && numX) {
-    return solError("#TYPE!", `Plot ${textX.plotNo} plots against text x values and plot ${numX.plotNo} against numbers, so they have no one x axis`);
-  }
-  const xcats: string[] = [];
-  const at = new Map<string, number>();
-  const series = got.flatMap((g) => {
-    if (!g.xcats) return g.series;
-    const to = g.xcats.map((c) => { if (!at.has(c)) { at.set(c, xcats.length); xcats.push(c); } return at.get(c)!; });
-    return g.series.map((s) => ({ ...s, points: s.points.map((p) => (p === null ? null : { ...p, x: to[p.x] ?? p.x })) }));
-  });
-  const axisName = (k: "x" | "y") => {
-    const all = sources.map(({ cv }) => (cv.payload?.kind === "xy" ? cv.payload.names[k] : undefined));
-    return all[0] !== undefined && all.every((n) => n === all[0]) ? all[0] : undefined;
+export type RegionsMode = "inclusive" | "strict";
+export const REGIONS_MODE_META = {
+  inclusive: { label: "≤", description: "A point on a line counts: it takes the regions it touches, TRUE or the label listed first where they disagree." },
+  strict:    { label: "<", description: "A point on a line counts for no region and comes out blank." },
+} satisfies Record<RegionsMode, { label: string; description: string }>;
+
+export type RegionsOp = "bool" | "text" | "num";
+export const REGIONS_OP_META = {
+  bool: { label: "True/False", keywords: "boolean true false in inside mask" },
+  text: { label: "Labels", keywords: "text label name category zone ifs" },
+  num:  { label: "Values", keywords: "number value rate score lookup tier" },
+} satisfies Record<RegionsOp, { label: string; keywords: string }>;
+
+/** One plotted point: x, y, its answer (a Text card's as the label's place in the list), and whether it sits on a line. */
+export type RegionPoint = [number, number, boolean | number | null, boolean];
+/** What cuts the plane: each series as x1, y1, x2, y2 runs, an open series' two ends carried on out of the plot as the
+ *  same runs, the vertical lines' x and the horizontal lines' y. */
+export interface RegionCuts { curves: number[][]; tails: number[][]; xs: number[]; ys: number[] }
+
+export class ConditionalRegionsNode extends GraphNode {
+  static socketDocs: Record<string, string> = {
+    chart: "A Scatter, XY Line or Bubble chart. Each series is a line, a scatter's points joined in order of x, and each References row with only x or only y is a straight line.",
+    points: "The first column is x and the second y. A row missing either comes out blank.",
+    labels: "The names a region can take, in order. Where regions with different labels meet, a point on the line takes the one listed first.",
+    values: "The numbers a region can take, in order. Where regions with different values meet, a point on the line takes the one listed first.",
+    result: "The points with an in column of TRUE, FALSE or blank, a label or value column of each region's item or a blank, and with Margin a margin column.",
   };
-  const names: XYPayload["names"] = {};
-  const nx = axisName("x"), ny = axisName("y");
-  if (nx) names.x = nx;
-  if (ny) names.y = ny;
-  return { kind: "xy", series, ...(textX ? { xcats } : {}), names };
+
+  label: string;
+  mode: RegionsMode;
+  op: RegionsOp;
+  regionMarks: Record<string, boolean>;
+  /** A Labels card's marks: each region's label by its place in the list. */
+  regionLabels: Record<string, number>;
+  /** A Values card's marks, the same way. */
+  regionValues: Record<string, number>;
+  /** Adds a margin column: each point's distance to the nearest line where the answer changes. */
+  margin: boolean;
+  stringLiterals: Record<string, string> = {};
+  cachedChart: ChartValue | null = null;
+  cachedLabels: string[] | null = null;
+  cachedCuts: RegionCuts | null = null;
+  cachedPoints: RegionPoint[] | null = null;
+  cachedError: SolError | null = null;
+  width = 300;
+  height = 280;
+
+  constructor(init?: {
+    label?: string; op?: RegionsOp; mode?: RegionsMode;
+    regionMarks?: Record<string, boolean>; regionLabels?: Record<string, number>; regionValues?: Record<string, number>;
+    margin?: boolean;
+  }) {
+    super("ConditionalRegions");
+    this.label = init?.label ?? "";
+    this.mode = init?.mode === "strict" ? "strict" : "inclusive";
+    this.op = init?.op === "text" || init?.op === "num" ? init.op : "bool";
+    this.regionMarks = { ...(init?.regionMarks ?? {}) };
+    this.regionLabels = { ...(init?.regionLabels ?? {}) };
+    this.regionValues = { ...(init?.regionValues ?? {}) };
+    this.margin = init?.margin === true;
+    this.addInput("chart", chartIn("Chart"));
+    this.addInput("points", frameIn("Points"));
+    this.addListInput();
+    this.addOutput("result", frameOut("Points"));
+  }
+
+  /** The list input the op answers from: Labels for Labels, Values for Values, none for True/False. */
+  listKey(op: RegionsOp = this.op): "labels" | "values" | null {
+    return op === "text" ? "labels" : op === "num" ? "values" : null;
+  }
+
+  private addListInput(): void {
+    const key = this.listKey();
+    if (key === "labels" && !this.inputs.labels) this.addInput("labels", strListIn("Labels"));
+    if (key === "values" && !this.inputs.values) {
+      this.stringLiterals.values ??= "";
+      this.addInput("values", numListIn("Values"));
+    }
+  }
+
+  /** Swaps the list input for the op's own, so the one leaving has its cables pruned first. */
+  setOp(next: RegionsOp): void {
+    const leaving = this.listKey();
+    this.op = next;
+    if (leaving && leaving !== this.listKey()) this.removeInput(leaving);
+    this.addListInput();
+  }
+
+  /** The points' x and y columns, then `in` or `label`; unknown until the points' shape is, or when a points column
+   *  already has that name. */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const [x, y] = ctx.inputShape("points")?.columns ?? [];
+    const third = this.op === "text" ? "label" : this.op === "num" ? "value" : "in";
+    const names = [third, ...(this.margin ? ["margin"] : [])];
+    if (!x || !y || names.includes(x.name) || names.includes(y.name)) return null;
+    const type = this.op === "text" ? "string" : this.op === "num" ? "number" : "logical";
+    return { columns: [x, y, { name: third, type }, ...(this.margin ? [{ name: "margin", type: "number" as const }] : [])] };
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { result: FrameValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { result: FrameValue | SolError | null };
+  }
 }
 
 // ─── Histogram ────────────────────────────────────────────────────────────────
-
-export function histogramBins(vals: (number | null)[], k: number): number[] | SolError {
-  const nums = vals.filter((x): x is number => typeof x === "number" && Number.isFinite(x));
-  const bad = binCountError(k);
-  if (bad) return bad;
-  const bins = clamp(Math.floor(k), 1, 100);
-  if (nums.length === 0) return [];
-  const min = iterMin(nums);
-  const max = iterMax(nums);
-  const counts = new Array<number>(bins).fill(0);
-  if (min === max) { counts[0] = nums.length; return counts; }
-  const { idx } = equalWidthBins(min, max, bins);
-  for (const x of nums) counts[idx(x)]++;
-  return counts;
-}
 
 export type HistogramMode = "1d" | "2d";
 export const HISTOGRAM_MODE_META = {
@@ -369,10 +290,7 @@ export const HISTOGRAM_MODE_META = {
   "2d": { label: "2-D", description: "Bin paired X and Y numbers into a grid, drawn as a density plot. numpy `histogram2d`." },
 } satisfies Record<HistogramMode, { label: string; description: string }>;
 
-const listOf = (raw: number | number[] | null | undefined): (number | null)[] =>
-  Array.isArray(raw) ? raw : raw == null ? [] : [raw];
-
-export class HistogramNode extends ClassicPreset.Node {
+export class HistogramNode extends GraphNode {
   static inputRoles = { bins: setting(10), ybins: setting(10) };
   label: string;
   mode: HistogramMode;
@@ -381,7 +299,7 @@ export class HistogramNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string> = {};
   cachedResult: number[] | null = null;
   cachedChart: ChartValue | null = null;
-  width = 240;
+  width = 300;
   height = 240;
 
   constructor(init?: { label?: string; mode?: HistogramMode }) {
@@ -425,35 +343,8 @@ export class HistogramNode extends ClassicPreset.Node {
     this.literals.ybins ??= 10;
   }
 
-  data(inputs: { values?: (number | number[])[]; bins?: number[]; y?: (number | number[])[]; ybins?: number[]; options?: string[] }): { chart: ChartValue | SolError } {
-    const xs = listOf(inputs.values?.[0] ?? null);
-    // Mirror to the card only when unwired: a wired value written into `literals` would be saved.
-    const kx = readRole<number>(this, "bins", inputs.bins);
-    if (inputs.bins?.[0] === undefined) this.literals.bins = kx;
-    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const title = this.chartOptions.title || this.label || "Histogram";
-
-    if (this.mode === "2d") {
-      const ys = listOf(inputs.y?.[0] ?? null);
-      const ky = readRole<number>(this, "ybins", inputs.ybins);
-      if (inputs.ybins?.[0] === undefined) this.literals.ybins = ky;
-      const h = histogram2d(xs, ys, kx, ky);
-      this.cachedResult = null;
-      if (isSolError(h)) { this.cachedChart = null; return { chart: h }; }
-      // matplotlib's hist2d: discrete bins filling the axes, y growing upward, each bin labeled by its lower edge.
-      const edge = (v: number) => String(Number(v.toPrecision(3)));
-      const payload: HeatmapPayload = { kind: "heatmap", z: h?.counts ?? [], rows: (h?.yEdges ?? []).map(edge), cols: (h?.xEdges ?? []).map(edge) };
-      const chart: ChartValue = { __chart: true, op: "heatmap", values: null, payload, options: { origin: "lower", aspect: "auto", ...this.chartOptions }, title };
-      this.cachedChart = h ? chart : null;
-      return { chart };
-    }
-
-    const counts = kx === null ? [] : histogramBins(xs, kx);
-    if (isSolError(counts)) { this.cachedResult = null; this.cachedChart = null; return { chart: counts }; }
-    this.cachedResult = counts;
-    const chart: ChartValue = { __chart: true, op: "column", values: counts, options: this.chartOptions, title };
-    this.cachedChart = chart;
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue | SolError } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue | SolError };
   }
 }
 
@@ -461,7 +352,7 @@ export class HistogramNode extends ClassicPreset.Node {
 
 const DEFAULT_MERMAID = "graph TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do this]\n  B -->|No| D[Do that]";
 
-export class MermaidNode extends ClassicPreset.Node {
+export class MermaidNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
   cachedSource = "";
@@ -476,27 +367,20 @@ export class MermaidNode extends ClassicPreset.Node {
     this.addOutput("diagram", chartOut("Diagram"));
   }
 
-  data(inputs: { source?: string[] }): { diagram: MermaidValue } {
-    const src = readInput(inputs.source, this.stringLiterals.source ?? "") ?? "";
-    this.cachedSource = src;
-    const diagram: MermaidValue = {
-      __mermaid: true,
-      source: src,
-      title: this.label || "Diagram",
-    };
-    return { diagram };
+  data(inputs: Record<string, unknown[] | undefined>): { diagram: MermaidValue } {
+    return nodeOnCore(this, inputs) as { diagram: MermaidValue };
   }
 }
 
 // ─── Gauge ─────────────────────────────────────────────────────────────────────
 export type GaugeStyle = "dial" | "bar";
-export const GAUGE_STYLE_META = {
+const GAUGE_STYLE_META = {
   dial: { label: "Dial" },
   bar:  { label: "Bar" },
 } satisfies Record<GaugeStyle, { label: string }>;
 export const GAUGE_STYLE_OPTIONS = Object.entries(GAUGE_STYLE_META).map(([value, m]) => ({ value: value as GaugeStyle, label: m.label }));
 
-export class GaugeNode extends ClassicPreset.Node {
+export class GaugeNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     value: "Dial reads it as a fraction of one, so 0.75 shows as 75 percent on a dial fixed at 0 to 100 percent; Bar plots it on the 0 to Max track.",
     target: "Bar only: the target tick on the track.",
@@ -518,56 +402,37 @@ export class GaugeNode extends ClassicPreset.Node {
     if (init?.mode === "bar") this.mode = "bar";
     this.addInput("value", numIn("Value"));
     if (this.mode === "bar") this.addBarInputs();
+    this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
   private addBarInputs(): void {
     this.addInput("target", numIn("Target"));
     this.addInput("max", numIn("Max"));
-    this.addInput("options", strIn("Options"));
   }
 
   keysDropped(next: GaugeStyle): string[] {
-    return next === "dial" && this.mode === "bar" ? ["target", "max", "options"] : [];
+    return next === "dial" && this.mode === "bar" ? ["target", "max"] : [];
   }
 
   setMode(next: GaugeStyle): void {
     if (next === this.mode) return;
     this.mode = next;
     if (next === "dial") {
-      for (const k of ["target", "max", "options"]) if (this.inputs[k]) this.removeInput(k);
+      for (const k of ["target", "max"]) if (this.inputs[k]) this.removeInput(k);
     } else {
       this.addBarInputs();
     }
   }
 
-  data(inputs: { value?: number[]; target?: number[]; max?: number[]; options?: string[] }): { chart: ChartValue } {
-    const value = readInput(inputs.value, this.literals.value ?? null);
-    if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
-    let payload: ScalePayload;
-    let title: string;
-    if (this.mode === "bar") {
-      const target = readInput(inputs.target, this.literals.target ?? null);
-      const max = readInput(inputs.max, this.literals.max ?? 100) ?? (this.literals.max ?? 100);
-      if (inputs.target?.[0] === undefined) this.literals.target = target ?? 0;
-      if (inputs.max?.[0] === undefined) this.literals.max = max;
-      this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-      payload = { kind: "scale", style: "bar", value, target, min: 0, max };
-      title = this.chartOptions.title || this.label || "Gauge";
-    } else {
-      this.chartOptions = {};
-      payload = { kind: "scale", style: "dial", value, target: null, min: 0, max: 1 };
-      title = this.label || "Gauge";
-    }
-    this.cachedPayload = payload;
-    return { chart: { __chart: true, op: "scale", values: value, payload, options: this.chartOptions, title } };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
 
-
 // ─── KPI / Stat card ──────────────────────────────────────────────────────────
 
-export class KpiNode extends ClassicPreset.Node {
+export class KpiNode extends GraphNode {
   label: string;
   literals: Record<string, number> = { value: 0, prev: 0, goodUp: 1 };
   stringLiterals: Record<string, string> = { unit: "" };
@@ -585,49 +450,10 @@ export class KpiNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { value?: number[]; prev?: number[]; options?: string[] }): { chart: ChartValue } {
-    const value = readInput(inputs.value, this.literals.value ?? null);
-    const prev = readInput(inputs.prev, this.literals.prev ?? null);
-    if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
-    if (inputs.prev?.[0] === undefined) this.literals.prev = prev ?? 0;
-    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const payload: KpiPayload = {
-      kind: "kpi",
-      value,
-      prev,
-      unit: this.stringLiterals.unit ?? "",
-      goodUp: (this.literals.goodUp ?? 1) !== 0,
-    };
-    this.cachedPayload = payload;
-    return {
-      chart: { __chart: true, op: "kpi", values: value, payload, options: this.chartOptions, title: this.chartOptions.title || this.label || "KPI" },
-    };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
-
-// ─── Frame-column readers (Treemap / Sankey) ────────────────────────────────────
-async function readFrameColumns(f: FrameInput | null): Promise<FrameColumn[]> {
-  if (f == null) return [];
-  const fv = await readFrame(f);
-  return isFrameValue(fv) ? fv.columns : [];
-}
-function colAsStrings(col: FrameColumn | undefined): string[] {
-  if (!col) return [];
-  return col.values.map((v) => {
-    const c = formatFrameCell(col.type, v);
-    return c == null ? "" : String(c);
-  });
-}
-function colAsNumbers(col: FrameColumn | undefined): (number | null)[] {
-  if (!col) return [];
-  return col.values.map((v) => {
-    const c = formatFrameCell(col.type, v);
-    if (typeof c === "number" && Number.isFinite(c)) return c;
-    if (typeof c === "string" && c.trim() !== "") { const n = Number(c); if (Number.isFinite(n)) return n; }
-    return null;
-  });
-}
-const knownOnly = (xs: (number | null)[]): number[] => xs.filter((x): x is number => x !== null);
 
 // ─── Proportion ─────────────────────────────────────────────────────────────────
 
@@ -638,13 +464,13 @@ export const PROPORTION_OP_META = {
 } satisfies Record<ProportionLayout, { label: string }>;
 export const PROPORTION_LAYOUT_OPTIONS = Object.entries(PROPORTION_OP_META).map(([value, m]) => ({ value: value as ProportionLayout, label: m.label }));
 
-export class ProportionNode extends ClassicPreset.Node {
+export class ProportionNode extends GraphNode {
   label: string;
   op: ProportionLayout = "treemap";
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
-  width = 240;
+  width = 300;
   height = 220;
 
   static frameHints: Record<string, FrameHint> = {
@@ -667,71 +493,20 @@ export class ProportionNode extends ClassicPreset.Node {
     this.op = next;
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
-    const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
-    const names = colAsStrings(cols[0]);
-    const values = colAsNumbers(cols[1] ?? cols[0]).map((x) => x ?? 0);
-    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const payload: ProportionPayload = { kind: "proportion", layout: this.op, names, values };
-    const chart: ChartValue = {
-      __chart: true, op: "proportion", values, payload,
-      options: this.chartOptions, title: this.chartOptions.title || this.label || "Proportion",
-    };
-    this.cachedChart = chart;
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
 
 // ─── Sankey ───────────────────────────────────────────────────────────────────
 
-export function mergeFlows(sources: string[], targets: string[], values: number[]): { sources: string[]; targets: string[]; values: number[] } {
-  const at = new Map<string, number>();
-  const out = { sources: [] as string[], targets: [] as string[], values: [] as number[] };
-  for (let i = 0; i < sources.length; i++) {
-    const key = `${sources[i] ?? ""}\u0000${targets[i] ?? ""}`;
-    const j = at.get(key);
-    if (j !== undefined) { out.values[j] += values[i] ?? 0; continue; }
-    at.set(key, out.values.length);
-    out.sources.push(sources[i] ?? "");
-    out.targets.push(targets[i] ?? "");
-    out.values.push(values[i] ?? 0);
-  }
-  return out;
-}
-
-export function acyclicFlows(sources: string[], targets: string[], values: number[]): { sources: string[]; targets: string[]; values: number[]; dropped: number } {
-  const out = { sources: [] as string[], targets: [] as string[], values: [] as number[], dropped: 0 };
-  const adj = new Map<string, Set<string>>();
-  const reaches = (from: string, to: string): boolean => {
-    const seen = new Set<string>();
-    const stack = [from];
-    while (stack.length) {
-      const n = stack.pop()!;
-      if (n === to) return true;
-      if (seen.has(n)) continue;
-      seen.add(n);
-      for (const m of adj.get(n) ?? []) stack.push(m);
-    }
-    return false;
-  };
-  for (let i = 0; i < sources.length; i++) {
-    const s = sources[i] ?? "", t = targets[i] ?? "", v = values[i] ?? 0;
-    if (!s || !t || s === t || !(v > 0)) { out.sources.push(s); out.targets.push(t); out.values.push(v); continue; }
-    if (reaches(t, s)) { out.dropped++; continue; }
-    if (!adj.has(s)) adj.set(s, new Set());
-    adj.get(s)!.add(t);
-    out.sources.push(s); out.targets.push(t); out.values.push(v);
-  }
-  return out;
-}
-
-export class SankeyNode extends ClassicPreset.Node {
+export class SankeyNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedPayload: SankeyPayload | null = null;
   droppedLoops = 0;
-  width = 260;
+  width = 300;
   height = 220;
 
   static frameHints: Record<string, FrameHint> = {
@@ -750,67 +525,14 @@ export class SankeyNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue | SolError }> {
-    const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
-    const raw = mergeFlows(colAsStrings(cols[0]), colAsStrings(cols[1]), colAsNumbers(cols[2]).map((x) => x ?? 0));
-    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const { sources, targets, values, dropped } = acyclicFlows(raw.sources, raw.targets, raw.values);
-    this.droppedLoops = dropped;
-    const drawable = sources.some((s, i) => !!s && !!targets[i] && s !== targets[i] && values[i] > 0);
-    if (dropped > 0 && !drawable) {
-      const err = solError("#SHAPE!", "The flows form a loop; a Sankey needs a direction");
-      this.cachedPayload = null;
-      return { chart: err };
-    }
-    const payload: SankeyPayload = { kind: "sankey", sources, targets, values };
-    this.cachedPayload = payload;
-    return {
-      chart: { __chart: true, op: "sankey", values, payload, options: this.chartOptions, title: this.chartOptions.title || this.label || "Sankey" },
-    };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue | SolError } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue | SolError };
   }
 }
 
 // ─── Heatmap ──────────────────────────────────────────────────────────────────
 
-/** The most rows, and the most columns, a Heatmap draws; the rest are cut and the payload says how many there were. */
-export const HEATMAP_MAX = 400;
-
-const indexNames = (n: number) => Array.from({ length: n }, (_, i) => String(i + 1));
-
-/** A frame's number columns become the heat columns; a first column that is not numbers names the rows. */
-export function heatmapFromColumns(cols: FrameColumn[]): Omit<HeatmapPayload, "kind"> {
-  const named = cols.length >= 2 && cols[0].type !== "number";
-  const data = (named ? cols.slice(1) : cols).filter((c) => c.type === "number");
-  const nRows = data.reduce((m, c) => Math.max(m, c.values.length), 0);
-  const cells = data.map(colAsRawNumbers);
-  const z = Array.from({ length: nRows }, (_, r) => cells.map((col) => col[r] ?? null));
-  const rows = named ? colAsStrings(cols[0]).slice(0, nRows) : indexNames(nRows);
-  while (rows.length < nRows) rows.push("");
-  return { z, rows, cols: data.map((c) => c.name) };
-}
-
-/** A plain table plots as it stands, rows and columns numbered; a list is one row. */
-export function heatmapFromTable(t: unknown[]): Omit<HeatmapPayload, "kind"> {
-  const grid = t.length > 0 && t.every(Array.isArray) ? (t as unknown[][]) : [t];
-  const nCols = grid.reduce((m, r) => Math.max(m, r.length), 0);
-  const z = grid.map((r) => Array.from({ length: nCols }, (_, c) => { const v = r[c]; return typeof v === "number" && Number.isFinite(v) ? v : null; }));
-  return { z, rows: indexNames(grid.length), cols: indexNames(nCols) };
-}
-
-export function clipHeatmap(h: Omit<HeatmapPayload, "kind">): HeatmapPayload {
-  const nR = h.z.length, nC = h.cols.length;
-  const payload: HeatmapPayload = {
-    kind: "heatmap",
-    z: nR > HEATMAP_MAX || nC > HEATMAP_MAX ? h.z.slice(0, HEATMAP_MAX).map((r) => r.slice(0, HEATMAP_MAX)) : h.z,
-    rows: h.rows.slice(0, HEATMAP_MAX),
-    cols: h.cols.slice(0, HEATMAP_MAX),
-  };
-  if (nR > HEATMAP_MAX) payload.totalRows = nR;
-  if (nC > HEATMAP_MAX) payload.totalCols = nC;
-  return payload;
-}
-
-export class HeatmapNode extends ClassicPreset.Node {
+export class HeatmapNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     values: "A frame's number columns are the heatmap's columns, and a first column of text or dates names the rows. A plain table plots as it stands.",
     options: "key=value pairs separated by semicolons, or a Chart Builder. Reads seaborn's heatmap names: cmap, center, vmin, vmax, annot, fmt, cbar, plus aspect and origin.",
@@ -821,7 +543,7 @@ export class HeatmapNode extends ClassicPreset.Node {
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
   rawInputs: ReadonlySet<string> = new Set(["values"]);
-  width = 280;
+  width = 300;
   height = 260;
 
   static frameHints: Record<string, FrameHint> = {
@@ -841,30 +563,12 @@ export class HeatmapNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  async data(inputs: { values?: unknown[]; options?: string[] }): Promise<{ chart: ChartValue }> {
-    const raw = inputs.values?.[0] ?? null;
-    let grid: Omit<HeatmapPayload, "kind"> = { z: [], rows: [], cols: [] };
-    if (Array.isArray(raw)) grid = heatmapFromTable(raw);
-    else if (isCubeValue(raw)) { const f = flatCubeToFrame(raw, "scalar"); if (isFrameValue(f)) grid = heatmapFromColumns(f.columns); }
-    else if (raw != null) grid = heatmapFromColumns(await readFrameColumns(raw as FrameInput));
-    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const chart: ChartValue = {
-      __chart: true, op: "heatmap", values: null, payload: clipHeatmap(grid),
-      options: this.chartOptions, title: this.chartOptions.title || this.label || "Heatmap",
-    };
-    this.cachedChart = chart;
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
 
 // ─── Surface (shaded 3-D plot) ──────────────────────────────────────────────────
-
-function surfaceAxes(zRaw: unknown, xsRaw: unknown, ysRaw: unknown): { xs: number[]; ys: number[]; z: (number | null)[][] } {
-  const axes = gridAxes(zRaw, xsRaw, ysRaw);
-  return axes != null && Array.isArray((axes as { z?: unknown }).z)
-    ? (axes as { xs: number[]; ys: number[]; z: (number | null)[][] })
-    : { xs: [], ys: [], z: [] };
-}
 
 export type SurfaceViewOp = "surface" | "contour";
 
@@ -873,7 +577,7 @@ export const SURFACE_VIEW_OP_META = {
   contour: { label: "Flat", description: "The same table drawn flat: filled height bands with iso-lines." },
 } satisfies Record<SurfaceViewOp, { label: string; description: string }>;
 
-export class SurfaceNode extends ClassicPreset.Node {
+export class SurfaceNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     xs: "One X coordinate per column; unwired means 1, 2, 3…",
     ys: "One Y coordinate per row; unwired means 1, 2, 3…",
@@ -917,52 +621,18 @@ export class SurfaceNode extends ClassicPreset.Node {
     } else if (this.inputs.levels) {
       this.removeInput("levels");
     }
-    keepInputLast(this, "options");
+    this.moveInputLast("options");
     this.height = next === "contour" ? 240 : 220;
   }
 
-  data(inputs: { z?: unknown[]; xs?: unknown[]; ys?: unknown[]; levels?: number[]; options?: string[] }): { chart: ChartValue } {
-    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const options = this.chartOptions;
-    const xsRaw = inputs.xs === undefined ? undefined : (inputs.xs[0] ?? null);
-    const ysRaw = inputs.ys === undefined ? undefined : (inputs.ys[0] ?? null);
-    const { xs, ys, z } = surfaceAxes(inputs.z?.[0] ?? null, xsRaw, ysRaw);
-    if (this.op === "contour") {
-      const levelsRaw = readInput(inputs.levels, this.literals.levels ?? 8);
-      const levels = levelsRaw === null ? 0 : clamp(Math.round(levelsRaw), 2, 24);
-      // Mirror only when unwired, so a wired value never overwrites the saved literal.
-      if (inputs.levels?.[0] === undefined && levelsRaw !== null) this.literals.levels = levels;
-      const payload: ContourPayload = { kind: "contour", xs, ys, z, levels };
-      const chart: ChartValue = { __chart: true, op: "contour", values: null, payload, options, title: options.title || this.label || "Contour" };
-      this.cachedChart = chart;
-      return { chart };
-    }
-    const payload: SurfacePayload = { kind: "surface", xs, ys, z, yaw: this.literals.yaw ?? 45, pitch: this.literals.pitch ?? 45 };
-    const chart: ChartValue = {
-      __chart: true, op: "surface", values: null, payload,
-      options, title: options.title || this.label || "Surface",
-    };
-    this.cachedChart = chart;
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
-}
-
-// ─── Column readers for the frame-fed figures ─────────────────────────────────
-function colAsRawNumbers(col: FrameColumn | undefined): (number | null)[] {
-  if (!col) return [];
-  return col.values.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
-}
-
-export function quantileSorted(sorted: number[], p: number): number {
-  if (sorted.length === 0) return NaN;
-  const idx = (sorted.length - 1) * clamp(p, 0, 1);
-  const lo = Math.floor(idx), hi = Math.ceil(idx);
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
 }
 
 // ─── Waterfall ────────────────────────────────────────────────────────────────
 
-export class WaterfallNode extends ClassicPreset.Node {
+export class WaterfallNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Each value is a signed change from the previous bar, and a computed Total bar is appended at the end.",
   };
@@ -971,7 +641,7 @@ export class WaterfallNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
-  width = 240;
+  width = 300;
   height = 220;
 
   static frameHints: Record<string, FrameHint> = {
@@ -989,24 +659,14 @@ export class WaterfallNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
-    const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
-    const names = colAsStrings(cols[0]);
-    const values = colAsNumbers(cols[1]);
-    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const payload: WaterfallPayload = { kind: "waterfall", names, values, total: true };
-    const chart: ChartValue = {
-      __chart: true, op: "waterfall", values: knownOnly(values), payload,
-      options: this.chartOptions, title: this.chartOptions.title || this.label || "Waterfall",
-    };
-    this.cachedChart = chart;
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
 
 // ─── Candlestick ──────────────────────────────────────────────────────────────
 
-export class CandlestickNode extends ClassicPreset.Node {
+export class CandlestickNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "The date column is optional. With exactly four columns all four read as open, high, low, close and rows are numbered instead.",
   };
@@ -1015,7 +675,7 @@ export class CandlestickNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | SolError | null = null;
-  width = 260;
+  width = 300;
   height = 220;
 
   static frameHints: Record<string, FrameHint> = {
@@ -1036,53 +696,14 @@ export class CandlestickNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue | SolError | null }> {
-    const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
-    if (cols.length === 0) { this.cachedChart = null; return { chart: null }; }
-    if (cols.length < 4) {
-      const err = solError("#SHAPE!", "Candlestick needs Open, High, Low and Close columns (a date column first is optional)");
-      this.cachedChart = err;
-      return { chart: err };
-    }
-    const hasDates = cols.length >= 5;
-    const o = colAsNumbers(cols[hasDates ? 1 : 0]);
-    const labels = hasDates ? colAsStrings(cols[0]) : o.map((_, i) => String(i + 1));
-    const payload: CandlePayload = {
-      kind: "candle",
-      labels,
-      open:  o,
-      high:  colAsNumbers(cols[hasDates ? 2 : 1]),
-      low:   colAsNumbers(cols[hasDates ? 3 : 2]),
-      close: colAsNumbers(cols[hasDates ? 4 : 3]),
-    };
-    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const chart: ChartValue = {
-      __chart: true, op: "candle", values: knownOnly(payload.close), payload,
-      options: this.chartOptions, title: this.chartOptions.title || this.label || "Candlestick",
-    };
-    this.cachedChart = chart;
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue | SolError | null };
   }
 }
 
 // ─── Boxplot ──────────────────────────────────────────────────────────────────
 
-export function boxplotStats(sample: (number | null)[]): { lo: number; q1: number; med: number; q3: number; hi: number; outliers: number[] } | null {
-  const nums = sample.filter((v): v is number => typeof v === "number" && Number.isFinite(v)).sort((a, b) => a - b);
-  if (nums.length === 0) return null;
-  const q1 = quantileSorted(nums, 0.25), med = quantileSorted(nums, 0.5), q3 = quantileSorted(nums, 0.75);
-  const iqr = q3 - q1;
-  const loFence = q1 - 1.5 * iqr, hiFence = q3 + 1.5 * iqr;
-  const inliers = nums.filter((v) => v >= loFence && v <= hiFence);
-  return {
-    lo: inliers.length ? inliers[0] : nums[0],
-    q1, med, q3,
-    hi: inliers.length ? inliers[inliers.length - 1] : nums[nums.length - 1],
-    outliers: nums.filter((v) => v < loFence || v > hiFence),
-  };
-}
-
-export class BoxplotNode extends ClassicPreset.Node {
+export class BoxplotNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     values: "Each numeric column draws as its own box and other columns are skipped. A plain list draws a single box.",
   };
@@ -1092,7 +713,7 @@ export class BoxplotNode extends ClassicPreset.Node {
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
   rawInputs: ReadonlySet<string> = new Set(["values"]);
-  width = 240;
+  width = 300;
   height = 220;
 
   static frameHints: Record<string, FrameHint> = {
@@ -1110,33 +731,14 @@ export class BoxplotNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  async data(inputs: { values?: unknown[]; options?: string[] }): Promise<{ chart: ChartValue }> {
-    const raw = inputs.values?.[0] ?? null;
-    const boxes: BoxplotPayload["boxes"] = [];
-    if (isFrameValue(raw)) {
-      for (const col of raw.columns) {
-        if (col.type !== "number") continue;
-        const s = boxplotStats(colAsRawNumbers(col));
-        if (s) boxes.push({ name: col.name, ...s });
-      }
-    } else if (Array.isArray(raw)) {
-      const s = boxplotStats(raw.map((v) => (typeof v === "number" ? v : null)));
-      if (s) boxes.push({ name: "", ...s });
-    }
-    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const payload: BoxplotPayload = { kind: "boxplot", boxes };
-    const chart: ChartValue = {
-      __chart: true, op: "boxplot", values: null, payload,
-      options: this.chartOptions, title: this.chartOptions.title || this.label || "Boxplot",
-    };
-    this.cachedChart = chart;
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
 
 // ─── Calendar heatmap ─────────────────────────────────────────────────────────
 
-export class CalendarHeatmapNode extends ClassicPreset.Node {
+export class CalendarHeatmapNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
@@ -1153,33 +755,14 @@ export class CalendarHeatmapNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string }) {
     super("CalendarHeatmap");
-    this.label = init?.label ?? "Calendar";
+    this.label = init?.label ?? "Calendar Heatmap";
     this.addInput("frame", frameIn("Date + Value"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
-    const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
-    const serials = colAsRawNumbers(cols[0]);
-    const vals = colAsRawNumbers(cols[1]);
-    const days: number[] = [], values: number[] = [];
-    for (let i = 0; i < serials.length; i++) {
-      const d = serials[i];
-      if (d == null) continue;
-      const val = vals[i];
-      if (val == null) continue;
-      days.push(Math.floor(d));
-      values.push(val);
-    }
-    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const payload: CalHeatPayload = { kind: "calheat", days, values };
-    const chart: ChartValue = {
-      __chart: true, op: "calheat", values, payload,
-      options: this.chartOptions, title: this.chartOptions.title || this.label || "Calendar",
-    };
-    this.cachedChart = chart;
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
 
@@ -1188,83 +771,24 @@ export class CalendarHeatmapNode extends ClassicPreset.Node {
 
 export { parseRecordLayout, recordImageSrc, type RecordPlacement };
 
-export type RecordOp = "detail" | "cards" | "gallery" | "board" | "list";
+export type RecordOp = "detail" | "gallery" | "board" | "list";
 
 export const RECORD_OP_META = {
   detail:  { label: "Detail", keywords: "single one record form pager" },
-  cards:   { label: "Cards", keywords: "card stack deck profile people contacts auto layout mobile" },
   gallery: { label: "Gallery" },
   board:   { label: "Board", keywords: "kanban lanes" },
   list:    { label: "List" },
 } satisfies Record<RecordOp, { label: string; keywords?: string }>;
 
-function readCardSize(optStr: string | null): RecordSize | undefined {
-  const m = optStr && /(?:^|;)\s*cardsize\s*=\s*([sml])\b/i.exec(optStr);
-  return m ? (m[1].toLowerCase() as RecordSize) : undefined;
-}
-function readClamp(optStr: string | null): boolean {
-  return !!optStr && /(?:^|;)\s*clamp\s*=\s*(on|true|yes|1)\b/i.test(optStr);
-}
+type RecordInputs = { frame?: unknown[]; rows?: unknown[]; by?: string[]; layout?: string[]; options?: string[] };
 
-export const RECORD_CARD_CAP = 60;
-
-/** A cell as every Record view shows it: a number column's number stays raw for `recordNumberText`, anything else is its formatted text. */
-function recordCell(col: FrameColumn, r: number): number | string | null {
-  const v = col.values[r] ?? null;
-  if (v === null) return null;
-  if (typeof v === "number" && col.type === "number") return v;
-  const f = formatFrameCell(col.type, v, col.format);
-  return f === null ? null : String(f);
-}
-
-function recordShownText(col: FrameColumn, r: number): string {
-  const v = recordCell(col, r);
-  return v === null ? "" : typeof v === "number" ? (col.format && !isDateStyle(col.format.format) ? recordNumberText(v, col.format) : String(v)) : v;
-}
-
-// [[C114]] cardsView: the plan reads every row up to PROFILE_ROWS, so the figure's cards match the Table popup's.
-function recordDeck(cols: FrameColumn[], drawn: readonly number[]): RecordDeck {
-  const total = cols[0]?.values.length ?? 0;
-  const profiled = Math.min(total, PROFILE_ROWS);
-  const rawText = (col: FrameColumn, r: number): string => {
-    const v = col.values[r] ?? null;
-    if (v === null) return "";
-    if (isSolError(v)) return v.code;
-    if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
-    return String(v);
-  };
-  const names = cols.map((c) => (c.unit ? `${c.name} (${columnUnitLabel(c.unit)})` : c.name));
-  const chipCols = cols.flatMap((c, i) => (c.type === "string" && c.format?.chip ? [i] : []));
-  const plan = planCards(cols.map((c, i) => ({
-    name: names[i],
-    type: c.type,
-    cells: Array.from({ length: profiled }, (_, r) => rawText(c, r)),
-    shown: Array.from({ length: profiled }, (_, r) => recordShownText(c, r)),
-    chip: chipCols.includes(i),
-  })));
-  const rows = drawn.map((r) => cols.map((c) => recordCell(c, r)));
-  return { names, types: cols.map((c) => c.type), formats: cols.map((c) => c.format ?? null), chipCols, plan, rows, rowNumbers: drawn.map((r) => r + 1) };
-}
-
-/** The 0-based rows `picks` names, in its order: 1-based, negative counts from the end (CHOOSEROWS), out of range dropped; no picks is every row. */
-export function recordRows(picked: unknown, total: number): number[] {
-  const want = typeof picked === "number" ? [picked] : Array.isArray(picked) ? picked : null;
-  if (!want) return Array.from({ length: total }, (_, i) => i);
-  return want.flatMap((p) => {
-    if (typeof p !== "number" || !Number.isFinite(p)) return [];
-    const n = Math.round(p);
-    const at = n < 0 ? total + n : n - 1;
-    return at >= 0 && at < total ? [at] : [];
-  });
-}
-
-export class RecordNode extends ClassicPreset.Node {
+export class RecordNode extends GraphNode {
   static inputRoles = { rows: picks() };
   static socketDocs: Record<string, string> = {
     rows: "Picks the records, 1-based, in order: 3, or 1, 3, 5; -1 is the last. Blank shows every record. Detail pages through the picks.",
     by: "Names the column whose values become the board's lanes. Blank or unmatched draws nothing.",
     layout: "A line per row, names split by |. Repeat to merge. Photo*2 spans two, #Name titles, Qty: 40 is placeholder, a dot is blank. Empty stacks columns.",
-    options: "title=Parts;fontsize=12;cardsize=l. Gallery and Cards tiles size s, m or l; clamp=on caps long values at three lines and folds a card past six fields.",
+    options: "title=Parts;fontsize=12;cardsize=l. Tiles size s, m or l: Gallery tiles, List columns, Board lanes and the columns a record with no layout wraps into. clamp=on caps long values at three lines.",
   };
 
   label: string;
@@ -1274,7 +798,7 @@ export class RecordNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string> = { rows: "" };
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
-  width = 240;
+  width = 300;
   height = 220;
 
   static frameHints: Record<string, FrameHint> = {
@@ -1292,7 +816,7 @@ export class RecordNode extends ClassicPreset.Node {
     this.addInput("frame", frameIn("Frame"));
     this.addInput("rows", numListIn("Rows"));
     if (this.op === "board") this.addInput("by", strIn("Group by"));
-    if (this.op !== "cards") this.addInput("layout", strIn("Layout"));
+    this.addInput("layout", strIn("Layout"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
@@ -1302,106 +826,69 @@ export class RecordNode extends ClassicPreset.Node {
     this.op = next;
     if (next === "board") { if (!this.inputs.by) this.addInput("by", strIn("Group by")); }
     else if (this.inputs.by) this.removeInput("by");
-    if (next !== "cards") { if (!this.inputs.layout) this.addInput("layout", strIn("Layout")); }
-    else if (this.inputs.layout) this.removeInput("layout");
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; rows?: unknown[]; by?: string[]; layout?: string[]; options?: string[] }): Promise<{ chart: ChartValue }> {
-    const fv = await readFrame(inputs.frame?.[0] ?? null);
-    const cols: FrameColumn[] = isFrameValue(fv) ? fv.columns : [];
-    const order = recordRows(readRole<unknown>(this, "rows", inputs.rows), cols[0]?.values.length ?? 0);
-    const total = order.length;
-    let index = 0;
-    if (this.op === "detail" && total > 0) {
-      index = clamp(Math.round(this.literals.page ?? 1), 1, total);
-      this.literals.page = index;
-    }
-    const layIn = this.op === "cards" ? null : readInput(inputs.layout, this.stringLiterals.layout ?? null);
-    const layStr = typeof layIn === "string" ? layIn : null;
-    const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
-    const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
-    this.chartOptions = parseChartOptions(optStr);
-    const size = readCardSize(optStr);
-    const clampTiles = readClamp(optStr);
+  /** The display settings a number nobody formatted shows by ([[C118]] formatTravelsWithValue), which the Cards plan reads. */
+  static coreFields = ["numberDisplay"] as const;
+  get numberDisplay(): { decimals: number; sciAbove: string } {
+    return { decimals: displayDecimals(), sciAbove: String(settingsStore.get("sciAbove")) };
+  }
 
-    const byIn = this.op === "board" ? readInput(inputs.by, this.stringLiterals.by ?? "") : "";
-    const byKey = typeof byIn === "string" ? byIn.trim().toLowerCase() : "";
-    const byCol = this.op === "board" ? (byKey ? cols.find((c) => c.name.trim().toLowerCase() === byKey) ?? null : null) : null;
+  /** Detail's pager keeps the page it lands on. */
+  data(inputs: RecordInputs): { chart: ChartValue } {
+    const out = nodeOnCore(this, inputs) as { chart: ChartValue };
+    const p = out.chart.payload as RecordPayload;
+    if (this.op === "detail" && p.total > 0) this.literals.page = p.index;
+    return out;
+  }
+}
 
-    const byName = new Map(cols.map((c) => [c.name.trim().toLowerCase(), c]));
-    const field = (name: string, col: FrameColumn | undefined, rowIdx: number | null, at: { row: number; col: number; rowSpan: number; colSpan: number; hint?: string; title?: boolean }): RecordField => {
-      const label = col
-        ? (col.unit ? `${col.name} (${columnUnitLabel(col.unit)})` : col.name)
-        : name;
-      const shown = col && rowIdx !== null ? recordCell(col, rowIdx) : null;
-      const image = typeof shown === "string" ? recordImageSrc(shown) : null;
-      const format = typeof shown === "number" && col?.format ? col.format : null;
-      const f: RecordField = { label, value: shown, ...(format ? { format } : {}), ...(image ? { image } : {}), ...(at.title ? { isTitle: true } : {}), row: at.row, col: at.col, rowSpan: at.rowSpan, colSpan: at.colSpan };
-      if (shown === null && at.hint) f.hint = at.hint;
-      return f;
-    };
-    const placed = layStr && layStr.trim() !== "" ? parseRecordLayout(layStr) : [];
-    const stackCols = cols.filter((c) => !(this.op === "board" && c === byCol));
-    const cardAt = (rowIdx: number | null): RecordField[] =>
-      placed.length > 0
-        ? placed.map((p) => field(p.name, byName.get(p.name.toLowerCase()), rowIdx, p))
-        : stackCols.map((c, i) => field(c.name, c, rowIdx, { row: i + 1, col: 1, rowSpan: 1, colSpan: 1 }));
-    const ncols = placed.length > 0 ? Math.max(...placed.map((p) => p.col + p.colSpan - 1)) : 1;
+/** Every picked record as an AutoCard in a masonry deck ([[C114]] cardsView); Record's other views stay on Record. */
+export class CardsNode extends GraphNode {
+  static inputRoles = { rows: picks() };
+  static socketDocs: Record<string, string> = {
+    rows: "Picks the records, 1-based, in order: 3, or 1, 3, 5; -1 is the last. Blank shows every record.",
+    layout: "A line per row, names split by |. Repeat to merge. Photo*2 spans two, #Name titles, Qty: 40 is placeholder, a dot is blank. Empty lays each card out from the data.",
+    options: "title=Parts;fontsize=12;cardsize=l;c=Status. Cards size s, m or l. c names the column whose color tints each card. clamp=on caps long values at three lines.",
+  };
 
-    let cards: RecordField[][] = [];
-    let lanes: RecordPayload["lanes"];
-    let more = 0;
-    let deck: RecordDeck | undefined;
-    const drawn = order.slice(0, RECORD_CARD_CAP);
-    if (this.op === "detail") {
-      cards = [cardAt(index >= 1 ? order[index - 1] : null)];
-    } else if (this.op === "cards") {
-      deck = recordDeck(cols, drawn);
-      more = total - drawn.length;
-    } else if (this.op === "gallery" || this.op === "list") {
-      cards = drawn.map((r) => cardAt(r));
-      more = total - drawn.length;
-    } else if (byCol) {
-      const laneList: NonNullable<RecordPayload["lanes"]> = [];
-      const laneOf = new Map<string, number>();
-      for (const r of drawn) {
-        const cell = recordCell(byCol, r);
-        const lane = typeof cell === "number" ? { label: "", value: cell, format: byCol.format } : { label: cell ?? "—" };
-        const key = typeof cell === "number" ? `#${cell}` : `$${lane.label}`;
-        let li = laneOf.get(key);
-        if (li === undefined) { li = laneList.length; laneOf.set(key, li); laneList.push({ ...lane, cards: [] }); }
-        laneList[li].cards.push(cards.length);
-        cards.push(cardAt(r));
-      }
-      lanes = laneList;
-      more = total - drawn.length;
-    }
+  label: string;
+  stringLiterals: Record<string, string> = { rows: "" };
+  chartOptions: ChartOptions = {};
+  cachedChart: ChartValue | null = null;
+  width = 300;
+  height = 260;
 
-    const payload: RecordPayload = {
-      kind: "record", view: this.op, cols: ncols, cards,
-      ...(deck ? { deck } : {}),
-      ...(lanes ? { lanes } : {}), ...(more > 0 ? { more } : {}),
-      ...(size ? { size } : {}),
-      ...(clampTiles ? { clamp: true } : {}),
-      index, total,
-    };
-    const chart: ChartValue = {
-      __chart: true, op: "record", values: null, payload,
-      options: this.chartOptions, title: this.chartOptions.title || this.label || "Record",
-    };
-    this.cachedChart = chart;
-    return { chart };
+  static frameHints: Record<string, FrameHint> = RecordNode.frameHints;
+
+  constructor(init?: { label?: string }) {
+    super("Cards");
+    this.label = init?.label ?? "Cards";
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("rows", numListIn("Rows"));
+    this.addInput("layout", strIn("Layout"));
+    this.addInput("options", strIn("Options"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  static coreFields = ["numberDisplay"] as const;
+  get numberDisplay(): { decimals: number; sciAbove: string } {
+    return { decimals: displayDecimals(), sciAbove: String(settingsStore.get("sciAbove")) };
+  }
+
+  data(inputs: RecordInputs): { chart: ChartValue } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
 
 // ─── Vector field (quiver) ────────────────────────────────────────────────────
 
-export class QuiverNode extends ClassicPreset.Node {
+export class QuiverNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
-  width = 240;
+  width = 300;
   height = 240;
 
   constructor(init?: { label?: string }) {
@@ -1413,24 +900,17 @@ export class QuiverNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { u?: (number | null)[][][]; v?: (number | null)[][][]; options?: string[] }): { chart: ChartValue } {
-    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const num = (x: unknown): number | null => (typeof x === "number" && Number.isFinite(x) ? x : null);
-    const norm = (m: unknown): (number | null)[][] =>
-      Array.isArray(m) ? m.map((r) => (Array.isArray(r) ? r.map(num) : [num(r)])) : [];
-    const payload: QuiverPayload = { kind: "quiver", u: norm(inputs.u?.[0]), v: norm(inputs.v?.[0]) };
-    const chart: ChartValue = { __chart: true, op: "quiver", values: null, payload, options: this.chartOptions, title: this.chartOptions.title || this.label || "Vector Field" };
-    this.cachedChart = chart;
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin"] as const;
-const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center"] as const;
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "yscale"] as const;
+const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center", "maxgap"] as const;
 
-export class ChartBuilderNode extends ClassicPreset.Node {
+export class ChartBuilderNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Feeds any figure's Options input. Only the fields given a value are included.",
   };
@@ -1484,6 +964,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("by",        strIn("Split by"));
     this.addInput("linestyle", strIn("Line style"));
     this.addInput("aspect",    strIn("Aspect"));
+    this.addInput("yscale",    strIn("Y scale"));
     this.addInput("cmap",      strIn("Colormap"));
     this.addInput("annot",     strIn("Cell values"));
     this.addInput("fmt",       strIn("Value format"));
@@ -1500,6 +981,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("vmin",      numIn("Color min"));
     this.addInput("vmax",      numIn("Color max"));
     this.addInput("center",    numIn("Color center"));
+    this.addInput("maxgap",    numIn("Break lines over x gaps"));
     this.addOutput("result", strOut("Options"));
   }
 
@@ -1511,66 +993,8 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.target = next;
   }
 
-  data(inputs: Record<string, unknown[]>) {
-    const str = (k: string) => readInput(inputs[k] as string[] | undefined, this.stringLiterals[k]) ?? undefined;
-    const num = (k: string) => readInput(inputs[k] as number[] | undefined, this.literals[k]) ?? undefined;
-    const out = serializeChartOptions({
-      title:     str("title"),
-      xlabel:    str("xlabel"),
-      ylabel:    str("ylabel"),
-      color:     str("color"),
-      grid:      str("grid"),
-      marker:    str("marker"),
-      pielabels: str("pielabels"),
-      radarscale: str("radarscale"),
-      zoom:      str("zoom"),
-      layout: str("layout"),
-      tiers: str("tiers"),
-      fit: str("fit"),
-      critical: str("critical"),
-      baseline: str("baseline"),
-      arrows: str("arrows"),
-      today: str("today"),
-      weekends: str("weekends"),
-      labels: str("labels"),
-      histogram: str("histogram"),
-      minutes: str("minutes"),
-      window: str("window"),
-      columns: str("columns"),
-      collapse: str("collapse"),
-      week: str("week"),
-      fiscal_start: str("fiscal_start"),
-      status: str("status"),
-      group_by: str("group_by"),
-      cardsize: str("cardsize"),
-      clamp: str("clamp"),
-      x: str("x"),
-      y: str("y"),
-      s: str("s"),
-      c: str("c"),
-      annotate: str("annotate"),
-      by: str("by"),
-      linestyle: str("linestyle"),
-      aspect: str("aspect"),
-      cmap: str("cmap"),
-      annot: str("annot"),
-      fmt: str("fmt"),
-      cbar: str("cbar"),
-      origin: str("origin"),
-      xmin:      num("xmin"),
-      xmax:      num("xmax"),
-      ymin:      num("ymin"),
-      ymax:      num("ymax"),
-      linewidth: num("linewidth"),
-      markersize: num("markersize"),
-      alpha:     num("alpha"),
-      fontsize:  num("fontsize"),
-      vmin:      num("vmin"),
-      vmax:      num("vmax"),
-      center:    num("center"),
-    });
-    this.cachedString = out;
-    return { result: out };
+  data(inputs: Record<string, unknown[] | undefined>): { result: string } {
+    return nodeOnCore(this, inputs) as { result: string };
   }
 }
 

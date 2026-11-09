@@ -2,7 +2,7 @@
 // matplotlib's colormaps by their matplotlib names, sampled at even steps and interpolated linearly in RGB.
 // `_r` reverses a map, as in matplotlib. The default (no cmap) is the palette's own ramp, which lives in palette.ts.
 
-export type ColormapFamily = "Perceptual" | "Sequential" | "Diverging";
+type ColormapFamily = "Perceptual" | "Sequential" | "Diverging";
 
 const MAPS: Record<string, { family: ColormapFamily; stops: string[] }> = {
   viridis: { family: "Perceptual", stops: ["#440154", "#482878", "#3e4989", "#31688e", "#26828e", "#1f9e89", "#35b779", "#6ece58", "#b5de2b", "#fde725"] },

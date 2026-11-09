@@ -63,7 +63,7 @@ export function landscapePhoneScale(width: number, usableHeight: number): number
 }
 
 /** Swallowed on desktop so a click can't start a node drag, left to bubble on mobile so a pan still works
- *  (tree/specs/canvas/pointer-gestures.md lists the controls that keep a hard stop). */
+ *  ([[pointer-gestures#Stopping a press inside a card]] lists the controls that keep a hard stop). */
 export const stopDragStart = (e: { stopPropagation: () => void }) => {
   if (!_mobile) e.stopPropagation();
 };

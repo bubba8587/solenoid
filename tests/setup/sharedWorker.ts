@@ -15,6 +15,7 @@ import { canvasLockStore } from "../../src/graph/canvasLock";
 import { tablePopup } from "../../src/graph/tablePopupStore";
 import { cubePopup } from "../../src/graph/cubePopupStore";
 
+
 const SNAPSHOT = Symbol.for("solenoid.test.globals");
 type Snap = Map<PropertyKey, PropertyDescriptor>;
 const g = globalThis as unknown as Record<PropertyKey, unknown> & { [SNAPSHOT]?: Snap };

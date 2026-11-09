@@ -1,10 +1,8 @@
-// [[D86]] blankRoles
+// [[D86]] blankRoles, [[input-roles#What each input kind does today]]
 import { it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { ARG_ROLES, type InputRole } from "../../src/graph/inputRoles";
 
-// docs/settings-audit.md is the author's review sheet for ARG_ROLES; its formula table must say what the code does
-// until the sheet is reviewed and archived (then this test goes with it).
 it("the settings audit's formula table matches ARG_ROLES, function by function", () => {
   const doc = readFileSync("docs/settings-audit.md", "utf8");
   const from = doc.indexOf("## Formula functions");

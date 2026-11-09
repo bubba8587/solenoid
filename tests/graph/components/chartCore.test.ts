@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue, [[B2]] webTryDesktopFull, [[C24]]
 import { describe, it, expect } from "vitest";
-import { axisTick, categoryAxisWidth, compactTick, valueAxisWidth, valueTickFormat, toSeries, partSlices, spotlightIndex } from "../../../src/graph/components/chartCore";
+import { axisTick, categoryAxisWidth, compactTick, valueAxisWidth, valueTickFormat, toSeries, partSlices, spotlightIndex, logTicks, legendRows, dateTicks } from "../../../src/graph/components/chartCore";
 import { solError } from "../../../src/graph/errorValue";
 
 describe("axisTick", () => {
@@ -124,5 +124,38 @@ describe("categoryAxisWidth", () => {
   });
   it("keeps room for an axis title", () => {
     expect(categoryAxisWidth(["a"], 300, 1, true)).toBe(32);
+  });
+});
+
+describe("logTicks", () => {
+  it("marks 1, 2 and 5 of each decade, and only the 1s past four decades", () => {
+    expect(logTicks(100, 10000)).toEqual([100, 200, 500, 1000, 2000, 5000, 10000]);
+    expect(logTicks(1, 1e6)).toEqual([1, 10, 100, 1000, 10000, 100000, 1e6]);
+    expect(logTicks(0, 10)).toEqual([]);
+  });
+});
+
+describe("legendRows", () => {
+  it("wraps entries onto as many rows as the width needs", () => {
+    const names = ["Alpha", "Beta", "Gamma", "Delta"];
+    expect(legendRows(names, 1000, 1)).toBe(1);
+    expect(legendRows(names, 90, 1)).toBe(2);
+    expect(legendRows(names, 10, 1)).toBe(4);
+    expect(legendRows([], 100, 1)).toBe(1);
+    expect(legendRows(names, 10, 1, 2)).toBe(2);
+  });
+});
+
+describe("dateTicks", () => {
+  const serial = (y: number, m: number, d = 1) => Date.UTC(y, m, d) / 86400000 + 25569;
+  it("ticks each year start, widening the step to fit", () => {
+    const span = dateTicks(serial(2014, 0), serial(2026, 9), 7);
+    expect(span.byYear).toBe(true);
+    expect(span.ticks).toEqual([2014, 2016, 2018, 2020, 2022, 2024, 2026].map((y) => serial(y, 0)));
+  });
+  it("ticks month starts under three years", () => {
+    const span = dateTicks(serial(2025, 0, 15), serial(2025, 6, 2), 12);
+    expect(span.byYear).toBe(false);
+    expect(span.ticks).toEqual([1, 2, 3, 4, 5, 6].map((m) => serial(2025, m)));
   });
 });

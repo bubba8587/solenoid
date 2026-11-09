@@ -1,0 +1,9 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"UNIQUE(r_A1_A13)","env":["r_A1_A13=table:text:[[\"Marie\"], [\"Random\"], [\"Elisa\"], [\"Marisa\"], [\"Marie\"], [\"Random\"], [blank], [blank], [blank], [blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNIQUE(r_A1_A12,,FALSE)","env":["r_A1_A12=table:text:[[\"Marie\"], [\"Random\"], [\"Elisa\"], [\"Marisa\"], [\"Marie\"], [\"Random\"], [blank], [blank], [blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNIQUE(r_A1_A15,,TRUE)","env":["r_A1_A15=table:text:[[\"Marie\"], [\"Random\"], [\"Elisa\"], [\"Marisa\"], [\"Marie\"], [\"Random\"], [blank], [blank], [blank], [blank], [blank], [blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNIQUE(r_A1_A15,)","env":["r_A1_A15=table:text:[[\"Marie\"], [\"Random\"], [\"Elisa\"], [\"Marisa\"], [\"Marie\"], [\"Random\"], [blank], [blank], [blank], [blank], [blank], [blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"UNIQUE(r_A1_A12,FALSE)","env":["r_A1_A12=table:text:[[\"Marie\"], [\"Random\"], [\"Elisa\"], [\"Marisa\"], [\"Marie\"], [\"Random\"], [blank], [blank], [blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

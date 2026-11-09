@@ -76,6 +76,11 @@ export const demoVaultFs: FsProvider = {
     if (content === undefined) throw new Error(`Not in the demo vault: ${relOf(path)}`);
     return content;
   },
+  async readTextHead(path, chars) {
+    const content = await readText(relOf(path));
+    if (content === undefined) throw new Error(`Not in the demo vault: ${relOf(path)}`);
+    return content.slice(0, chars);
+  },
   async readDir(path) {
     const keys = await listKeys();
     const base = relOf(path);
@@ -101,15 +106,12 @@ export const demoVaultFs: FsProvider = {
     for (const key of await listKeys()) if (key === rel || key.startsWith(prefix)) return true;
     return false;
   },
-  // eslint-disable-next-line @typescript-eslint/require-await
   async stat() {
     return { mtimeMs: null, birthtimeMs: null };
   },
-  // eslint-disable-next-line @typescript-eslint/require-await
   async join(...parts) {
     return parts.filter((p) => p !== "").join("/").replace(/\/{2,}/g, "/");
   },
-  // eslint-disable-next-line @typescript-eslint/require-await
   async dirname(path) {
     const i = path.lastIndexOf("/");
     return i === -1 ? path : path.slice(0, i);

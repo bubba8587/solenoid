@@ -1,159 +1,24 @@
 // [[B14]], [[C50]]
-import { ClassicPreset } from "rete";
-import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, readInput, type ResultType, type ResultDim } from "./shared";
-import { toAnyMatrix } from "./coerce";
-import { compilePositional, parseFormula, formulaSyntaxHint, extractVariables } from "../excelFormula";
-import { isLambdaValue, type LambdaValue } from "./lambda";
-import { solError, isSolError, type SolError, type SolErrorCode } from "../errorValue";
-import { guardFinite } from "../valueKinds";
-import { MAX_GENERATED } from "./listOps";
-import { isUnitCell, tagDim, magnitudeOf, unitError, fromUnit, READINGS_FOLD, type UnitCell } from "../unitValue";
-import { dimEval, affineWeight, type DimEnv } from "../unitDimExpr";
-import { type Dim, type Unit, dimEqual, dimPowerOf, isDimensionless } from "../dimension";
-import { fcUnitToUnit } from "../unitBridge";
+import { GraphNode } from "../graphModel";
+import { nodeOnCore } from "../nodeOnCore";
+import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, type CastTo, type ResultDim } from "./shared";
+import { type SolError } from "../errorValue";
+import type { UnitCell } from "../unitValue";
 
 // ─── 2D LAMBDA family: MAP / BYROW / BYCOL / MAKEARRAY / REDUCE / SCAN ─────────
 
 type Cell = number | string | boolean | null | SolError;
+
 type Mat = Cell[][];
-type LambdaFn = (...args: unknown[]) => unknown;
-
-export function compileLambda(expr: string, varNames: string[]): LambdaFn | null {
-  return compilePositional(expr, varNames) as LambdaFn | null;
-}
-
-/** `err` is the inline node message; `code` tags the propagating SolError. */
-export function resolveFn(
-  lam: unknown, inline: string | undefined,
-  fallback: string, varNames: string[], provided: number,
-  byName = false,
-): { fn: LambdaFn | null; err: string | null; code: SolErrorCode } {
-  if (isLambdaValue(lam)) {
-    if (byName) {
-      const unknown = lam.params.filter((p) => !varNames.includes(p));
-      if (unknown.length) {
-        return { fn: null, err: `Lambda param ${unknown.join(", ")} isn't one of this node's variables (${varNames.join(", ")})`, code: "#VALUE!" };
-      }
-      const base = lam.fn as LambdaFn;
-      const order = lam.params.map((p) => varNames.indexOf(p));
-      const byNameFn: LambdaFn = (...nodeArgs) => base(...order.map((i) => nodeArgs[i]));
-      return { fn: byNameFn, err: null, code: "#VALUE!" };
-    }
-    if (lam.params.length > provided) {
-      return { fn: null, err: `Lambda takes ${lam.params.length} values; this node passes ${provided}`, code: "#VALUE!" };
-    }
-    return { fn: lam.fn as LambdaFn, err: null, code: "#VALUE!" };
-  }
-  const src = inline && inline.trim() ? inline : fallback;
-  const fn = compileLambda(src, varNames);
-  if (!fn) return { fn: null, err: formulaSyntaxHint(src) ?? "Syntax error", code: "#SYNTAX!" };
-  const unknown = extractVariables(src).filter((v) => !varNames.includes(v));
-  if (unknown.length) {
-    return {
-      fn: null,
-      err: `Unknown name ${unknown.join(", ")} — this formula sees only (${varNames.join(", ")}). To use an outside value, put the formula in a LAMBDA node (extra names become inputs) and wire it into the Lambda socket`,
-      code: "#NAME?",
-    };
-  }
-  return { fn, err: null, code: "#SYNTAX!" };
-}
-
-/** Returns the tagged error downstream while cachedResult stays null, so the card keeps the richer inline message. */
-function fnError(err: string, code: SolErrorCode): { result: SolError } {
-  return { result: solError(code, err) };
-}
-
-function transpose<T>(m: T[][]): T[][] {
-  const cols = m[0]?.length ?? 0;
-  return Array.from({ length: cols }, (_, j) => m.map((row) => row[j]));
-}
-
-function cell(v: unknown): Cell {
-  if (isSolError(v)) return v;
-  if (typeof v === "string") return v;
-  if (typeof v === "boolean") return v;
-  return typeof v === "number" ? guardFinite(v, [v]) : null;
-}
-
-// ─── Unit carry over a 1-D list ───────────────────────────────────────────────
-// Only a widened 1-D list carries units; the matrix producers (MAP, MAKEARRAY, SCAN) are unit-agnostic.
-
-/** Null when nothing is tagged and #UNIT! when tagged cells disagree on dimension; the display survives only when every tagged cell agrees. */
-function elemUnitOf(m: Mat): { dim: Dim; display?: string } | null | SolError {
-  let dim: Dim | null = null;
-  let display: string | undefined;
-  let displaySet = false;
-  for (const row of m) for (const c of row) {
-    if (!isUnitCell(c)) continue;
-    const cell = c as unknown as UnitCell;
-    if (dim === null) dim = cell.dim;
-    else if (!dimEqual(dim, cell.dim)) return unitError("Can't fold a list with mixed units.");
-    if (!displaySet) { display = cell.display; displaySet = true; }
-    else if (display !== cell.display) display = undefined;
-  }
-  return dim === null ? null : { dim, display };
-}
-
-/** The linear display unit the tagged cells share, which the fold then runs in, so a bare
- *  `+ 1` means 1 km as it does on the Arithmetic card; null folds in base SI. */
-function foldUnit(elem: { dim: Dim; display?: string } | null): Unit | null {
-  const u = elem?.display ? fcUnitToUnit(elem.display) : null;
-  return u && dimEqual(u.dim, elem!.dim) ? u : null;
-}
-
-/** A base-SI magnitude as read in `u` (the reading, offset included). */
-const readIn = (base: number, u: Unit | null) => (u ? (base - (u.offset ?? 0)) / u.scale : base);
-
-function stripCells(m: Mat, u: Unit | null): Mat {
-  return m.map((row) => row.map((c) => (isUnitCell(c) ? readIn((c as unknown as UnitCell).value, u) : c)));
-}
-
-/** Over an affine unit (°C) the fold's point weight ([[C25]] firstClassUnits): 1 a reading,
- *  0 a difference; null over a linear unit. */
-function foldPoint(expr: string, u: Unit | null, points: string[], lists: string[]): 0 | 1 | SolError | null {
-  if (!u?.offset) return null;
-  const ast = parseFormula(expr);
-  return ast ? affineWeight(ast, new Set(points), new Set(lists)) : null;
-}
-
-/** `dimVars` take the element dim; every other variable is dimensionless. */
-function foldResultDim(expr: string, dimVars: string[], elemDim: Dim): Dim | SolError | null {
-  const ast = parseFormula(expr);
-  if (!ast) return null;
-  const env: DimEnv = {};
-  for (const v of dimVars) env[v] = elemDim;
-  const r = dimEval(ast, env);
-  return r;
-}
-
-function foldExpr(lam: unknown, inline: string | undefined, fallback: string): string {
-  if (isLambdaValue(lam)) return (lam as LambdaValue).expr || fallback;
-  return inline && inline.trim() ? inline : fallback;
-}
-
-function retagFold(
-  out: Cell,
-  dr: Dim | SolError | null,
-  elem: { dim: Dim; display?: string },
-  u: Unit | null,
-  point: 0 | 1 | null = null,
-): Cell | UnitCell {
-  if (typeof out !== "number" || dr === null || isSolError(dr) || isDimensionless(dr)) return out;
-  if (u && point === 1) return fromUnit(out, u, elem.display) as UnitCell;
-  if (u && point === 0) return tagDim(out * u.scale ** (dimPowerOf(dr, elem.dim) ?? 1), dr);
-  const display = dimEqual(dr, elem.dim) ? elem.display : undefined;
-  const k = u ? dimPowerOf(dr, elem.dim) : null;
-  if (u && k === null) return unitError("The fold's result unit can't be read back from the list's unit.");
-  return tagDim(u ? out * u.scale ** k! : out, dr, display);
-}
 
 // ─── MAP ────────────────────────────────────────────────────────────────────────
 
-export class MapTableNode extends ClassicPreset.Node {
+export class MapTableNode extends GraphNode {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
-  resultAs: ResultType;
+  /** The InlineCast's pick on the result ([[D113]] inlineCast). */
+  castTo: CastTo;
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
@@ -161,49 +26,20 @@ export class MapTableNode extends ClassicPreset.Node {
   width = 210;
   height = 270;
 
-  constructor(init?: { label?: string; expr?: string; resultAs?: ResultType }) {
+  constructor(init?: { label?: string; expr?: string; castTo?: CastTo }) {
     super("MapTable");
     this.label = init?.label ?? "MAP";
-    this.resultAs = init?.resultAs ?? "number";
+    this.castTo = init?.castTo ?? "none";
     this.stringLiterals = { formula: init?.expr ?? "value^2" };
     this.addInput("table", anyTableIn("Values (value)"));
     this.addInput("table2", anyTableIn("value2 (optional)"));
     this.addInput("table3", anyTableIn("value3 (optional)"));
     this.addInput("lambda", lambdaIn("Lambda"));
-    this.addOutput("result", resultOut("Mapped", "matrix", this.resultAs));
+    this.addOutput("result", resultOut("Mapped", "matrix", this.castTo === "none" ? "auto" : this.castTo));
   }
 
-  data(inputs: { table?: unknown[]; table2?: unknown[]; table3?: unknown[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
-    const m = toAnyMatrix(inputs.table?.[0]);
-    const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], this.stringLiterals.formula,
-      "value^2", ["value", "value2", "value3", "row", "col"], 5, true);
-    if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
-    if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    const extras: (Mat | null)[] = [toAnyMatrix(inputs.table2?.[0]), toAnyMatrix(inputs.table3?.[0])];
-    for (const e of extras) {
-      if (!e) continue;
-      const oneByOne = e.length === 1 && (e[0]?.length ?? 0) === 1;
-      if (!oneByOne && (e.length !== m.length || (e[0]?.length ?? 0) !== (m[0]?.length ?? 0))) {
-        const msg = `Shape mismatch: ${e.length}×${e[0]?.length ?? 0} vs ${m.length}×${m[0]?.length ?? 0}`;
-        this.cachedResult = null;
-        this.cachedError = msg;
-        return fnError(msg, "#SHAPE!");
-      }
-    }
-    const pick = (e: Mat | null, i: number, j: number): Cell =>
-      e ? (e.length === 1 && e[0].length === 1 ? e[0][0] : e[i][j]) : NaN;
-    try {
-      const out = m.map((row, i) =>
-        row.map((x, j) => cell(fn(x, pick(extras[0], i, j), pick(extras[1], i, j), i + 1, j + 1))));
-      this.cachedResult = out;
-      this.cachedError = null;
-      return { result: out };
-    } catch {
-      this.cachedResult = null;
-      this.cachedError = "Evaluation error";
-      return fnError("Evaluation error", "#VALUE!");
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Mat | SolError | null };
   }
 }
 
@@ -213,7 +49,7 @@ export type ByAxis = "row" | "col";
 export const BY_AXIS_OP_META: Record<ByAxis, { label: string }> = { row: { label: "BYROW" }, col: { label: "BYCOL" } };
 
 /** BYROW answers a one-column table beside the rows it came from, BYCOL a list ([[D85]] columnsStayColumns). */
-export class ByAxisNode extends ClassicPreset.Node {
+export class ByAxisNode extends GraphNode {
   static dimFor(op: ByAxis): ResultDim { return op === "row" ? "matrix" : "combo"; }
   static labelFor(op: ByAxis): string { return op === "row" ? "Per row" : "Per column"; }
   get resultDim(): ResultDim { return ByAxisNode.dimFor(this.op); }
@@ -222,7 +58,8 @@ export class ByAxisNode extends ClassicPreset.Node {
   unitAware = true;
   label: string;
   op: ByAxis;
-  resultAs: ResultType;
+  /** The InlineCast's pick on the result ([[D113]] inlineCast). */
+  castTo: CastTo;
   stringLiterals: Record<string, string>;
   cachedResult: (Cell | UnitCell)[] | (Cell | UnitCell)[][] | SolError | null = null;
   cachedError: string | null = null;
@@ -230,64 +67,35 @@ export class ByAxisNode extends ClassicPreset.Node {
   width = 210;
   height = 218;
 
-  constructor(init?: { label?: string; expr?: string; op?: ByAxis; resultAs?: ResultType }) {
+  constructor(init?: { label?: string; expr?: string; op?: ByAxis; castTo?: CastTo }) {
     super("ByAxis");
     this.op = init?.op ?? "row";
     this.label = init?.label ?? "";
-    this.resultAs = init?.resultAs ?? "number";
+    this.castTo = init?.castTo ?? "none";
     this.stringLiterals = { formula: init?.expr ?? "SUM(values)" };
     this.addInput("table", anyTableIn("Table"));
     this.addInput("lambda", lambdaIn("Lambda"));
-    this.addOutput("result", resultOut(ByAxisNode.labelFor(this.op), ByAxisNode.dimFor(this.op), this.resultAs));
+    this.addOutput("result", resultOut(ByAxisNode.labelFor(this.op), ByAxisNode.dimFor(this.op), this.castTo === "none" ? "auto" : this.castTo));
   }
 
   /** Retypes the output in place and fires no connection event, so the component follows with retypeOutputCables. */
   setOp(next: ByAxis): boolean {
     if (next === this.op) return false;
     this.op = next;
-    const spec = resultOut(ByAxisNode.labelFor(next), ByAxisNode.dimFor(next), this.resultAs);
+    const spec = resultOut(ByAxisNode.labelFor(next), ByAxisNode.dimFor(next), this.castTo === "none" ? "auto" : this.castTo);
     this.outputs.result!.socket = spec.socket;
     this.outputs.result!.label = spec.label;
     return true;
   }
 
-  data(inputs: { table?: unknown[]; lambda?: unknown[] }): { result: (Cell | UnitCell)[] | (Cell | UnitCell)[][] | SolError | null } {
-    const m = toAnyMatrix(inputs.table?.[0]);
-    const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], this.stringLiterals.formula,
-      "SUM(values)", ["values"], 1, true);
-    if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
-    if (!m || m.length === 0) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    const elem = elemUnitOf(m);
-    if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
-    const fu = foldUnit(elem);
-    const mm = elem ? stripCells(m, fu) : m;
-    try {
-      const vectors = this.op === "row" ? mm : transpose(mm);
-      let out: (Cell | UnitCell)[] = vectors.map((vec) => cell(fn(vec)));
-      if (elem) {
-        const expr = foldExpr(inputs.lambda?.[0], this.stringLiterals.formula, "SUM(values)");
-        const dr = foldResultDim(expr, ["values"], elem.dim);
-        if (isSolError(dr)) { this.cachedResult = dr; this.cachedError = null; return { result: dr }; }
-        const point = foldPoint(expr, fu, ["values"], ["values"]);
-        if (isSolError(point)) { this.cachedResult = point; this.cachedError = null; return { result: point }; }
-        out = out.map((c) => retagFold(c as Cell, dr, elem, fu, point));
-      }
-      const shaped = this.op === "row" ? out.map((c) => [c]) : out;
-      this.cachedResult = shaped;
-      this.cachedError = null;
-      return { result: shaped };
-    } catch {
-      this.cachedResult = null;
-      this.cachedError = "Evaluation error";
-      return fnError("Evaluation error", "#VALUE!");
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: (Cell | UnitCell)[] | (Cell | UnitCell)[][] | SolError | null };
   }
 }
 
 // ─── REDUCE ───────────────────────────────────────────────────────────────────────
 
-export class ReduceLambdaNode extends ClassicPreset.Node {
+export class ReduceLambdaNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     table: "Cells fold in row order, left to right across each row.",
   };
@@ -295,7 +103,8 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
-  resultAs: ResultType;
+  /** The InlineCast's pick on the result ([[D113]] inlineCast). */
+  castTo: CastTo;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string>;
   cachedResult: Cell | UnitCell | SolError | null = null;
@@ -304,60 +113,26 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
   width = 210;
   height = 246;
 
-  constructor(init?: { label?: string; expr?: string; resultAs?: ResultType; literals?: Record<string, number> }) {
+  constructor(init?: { label?: string; expr?: string; castTo?: CastTo; literals?: Record<string, number> }) {
     super("ReduceLambda");
     this.label = init?.label ?? "REDUCE";
-    this.resultAs = init?.resultAs ?? "number";
+    this.castTo = init?.castTo ?? "none";
     this.stringLiterals = { formula: init?.expr ?? "acc + value" };
     if (init?.literals) this.literals = { ...init.literals };
     this.addInput("initial", anyIn("Initial"));
     this.addInput("table", anyTableIn("Values"));
     this.addInput("lambda", lambdaIn("Lambda"));
-    this.addOutput("result", resultOut("Result", "scalar", this.resultAs));
+    this.addOutput("result", resultOut("Result", "scalar", this.castTo === "none" ? "auto" : this.castTo));
   }
 
-  data(inputs: { initial?: unknown[]; table?: unknown[]; lambda?: unknown[] }): { result: Cell | UnitCell | SolError | null } {
-    const initialRaw = readInput(inputs.initial as (unknown[] | undefined), this.literals.initial ?? 0);
-    const m = toAnyMatrix(inputs.table?.[0]);
-    const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], this.stringLiterals.formula,
-      "acc + value", ["acc", "value", "step"], 3, true);
-    if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
-    if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    const elem = elemUnitOf(m);
-    if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
-    const fu = foldUnit(elem);
-    const mm = elem ? stripCells(m, fu) : m;
-    const initial = isUnitCell(initialRaw) ? readIn(magnitudeOf(initialRaw), fu) : initialRaw;
-    try {
-      let acc: unknown = initial;
-      let i = 0;
-      for (const row of mm) for (const x of row) acc = fn(acc, x, ++i);
-      let out: Cell | UnitCell = cell(acc);
-      if (elem) {
-        const expr = foldExpr(inputs.lambda?.[0], this.stringLiterals.formula, "acc + value");
-        const dr = foldResultDim(expr, ["acc", "value"], elem.dim);
-        if (isSolError(dr)) { this.cachedResult = dr; this.cachedError = null; return { result: dr }; }
-        // The accumulator is a reading step after step only when each step answers one.
-        const point = foldPoint(expr, fu, ["acc", "value"], []);
-        const bad = isSolError(point) ? point : point === 0 ? unitError(READINGS_FOLD) : null;
-        if (bad) { this.cachedResult = bad; this.cachedError = null; return { result: bad }; }
-        out = retagFold(out as Cell, dr, elem, fu, point as 1 | null);
-      }
-      this.cachedResult = out;
-      this.cachedError = null;
-      return { result: out };
-    } catch {
-      this.cachedResult = null;
-      this.cachedError = "Evaluation error";
-      return fnError("Evaluation error", "#VALUE!");
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Cell | UnitCell | SolError | null };
   }
 }
 
 // ─── SCAN ───────────────────────────────────────────────────────────────────────
 
-export class ScanLambdaNode extends ClassicPreset.Node {
+export class ScanLambdaNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     table: "Cells fold in row order, left to right across each row.",
   };
@@ -365,7 +140,8 @@ export class ScanLambdaNode extends ClassicPreset.Node {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
-  resultAs: ResultType;
+  /** The InlineCast's pick on the result ([[D113]] inlineCast). */
+  castTo: CastTo;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
@@ -374,50 +150,31 @@ export class ScanLambdaNode extends ClassicPreset.Node {
   width = 210;
   height = 246;
 
-  constructor(init?: { label?: string; expr?: string; resultAs?: ResultType; literals?: Record<string, number> }) {
+  constructor(init?: { label?: string; expr?: string; castTo?: CastTo; literals?: Record<string, number> }) {
     super("ScanLambda");
     this.label = init?.label ?? "SCAN";
-    this.resultAs = init?.resultAs ?? "number";
+    this.castTo = init?.castTo ?? "none";
     this.stringLiterals = { formula: init?.expr ?? "acc + value" };
     if (init?.literals) this.literals = { ...init.literals };
     this.addInput("initial", anyIn("Initial"));
     this.addInput("table", anyTableIn("Values"));
     this.addInput("lambda", lambdaIn("Lambda"));
-    this.addOutput("result", resultOut("Scanned", "matrix", this.resultAs));
+    this.addOutput("result", resultOut("Scanned", "matrix", this.castTo === "none" ? "auto" : this.castTo));
   }
 
-  data(inputs: { initial?: unknown[]; table?: unknown[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
-    const initial = readInput(inputs.initial as (unknown[] | undefined), this.literals.initial ?? 0);
-    const m = toAnyMatrix(inputs.table?.[0]);
-    const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], this.stringLiterals.formula,
-      "acc + value", ["acc", "value", "step"], 3, true);
-    if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
-    if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    try {
-      let acc: unknown = initial;
-      let i = 0;
-      // The carried accumulator stays raw: normalizing it would flatten a valid intermediate to null.
-      const out: Mat = m.map((row) => row.map((x) => { acc = fn(acc, x, ++i); return cell(acc); }));
-      this.cachedResult = out;
-      this.cachedError = null;
-      return { result: out };
-    } catch {
-      this.cachedResult = null;
-      this.cachedError = "Evaluation error";
-      return fnError("Evaluation error", "#VALUE!");
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Mat | SolError | null };
   }
 }
 
 // ─── MAKEARRAY ────────────────────────────────────────────────────────────────────
 
-
-export class MakeArrayNode extends ClassicPreset.Node {
+export class MakeArrayNode extends GraphNode {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
-  resultAs: ResultType;
+  /** The InlineCast's pick on the result ([[D113]] inlineCast). */
+  castTo: CastTo;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
@@ -426,48 +183,19 @@ export class MakeArrayNode extends ClassicPreset.Node {
   width = 210;
   height = 246;
 
-  constructor(init?: { label?: string; expr?: string; resultAs?: ResultType; literals?: Record<string, number> }) {
+  constructor(init?: { label?: string; expr?: string; castTo?: CastTo; literals?: Record<string, number> }) {
     super("MakeArray");
     this.label = init?.label ?? "MAKEARRAY";
-    this.resultAs = init?.resultAs ?? "number";
+    this.castTo = init?.castTo ?? "none";
     this.stringLiterals = { formula: init?.expr ?? "row * col" };
     if (init?.literals) this.literals = { ...init.literals };
     this.addInput("rows", numIn("Rows"));
     this.addInput("cols", numIn("Cols"));
     this.addInput("lambda", lambdaIn("Lambda"));
-    this.addOutput("result", resultOut("Array", "matrix", this.resultAs));
+    this.addOutput("result", resultOut("Array", "matrix", this.castTo === "none" ? "auto" : this.castTo));
   }
 
-  data(inputs: { rows?: number[]; cols?: number[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
-    const rowsRaw = readInput(inputs.rows, this.literals.rows ?? 0);
-    const colsRaw = readInput(inputs.cols, this.literals.cols ?? 0);
-    const rows = rowsRaw === null ? 0 : Math.floor(rowsRaw);
-    const cols = colsRaw === null ? 0 : Math.floor(colsRaw);
-    const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], this.stringLiterals.formula,
-      "row * col", ["row", "col"], 2, true);
-    if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
-    if (rows < 1 || cols < 1) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    if (rows * cols > MAX_GENERATED) {
-      const msg = `MAKEARRAY count ${rows * cols} exceeds the ${MAX_GENERATED} element limit`;
-      this.cachedResult = null;
-      this.cachedError = msg;
-      return fnError(msg, "#OVERFLOW!");
-    }
-    try {
-      const out: Mat = [];
-      for (let i = 1; i <= rows; i++) {
-        const row: Cell[] = [];
-        for (let j = 1; j <= cols; j++) row.push(cell(fn(i, j)));
-        out.push(row);
-      }
-      this.cachedResult = out;
-      this.cachedError = null;
-      return { result: out };
-    } catch {
-      this.cachedResult = null;
-      this.cachedError = "Evaluation error";
-      return fnError("Evaluation error", "#VALUE!");
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Mat | SolError | null };
   }
 }

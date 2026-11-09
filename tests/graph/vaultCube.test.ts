@@ -1,4 +1,4 @@
-// [[C67]], [[C24]] arraySemantics, [[C44]] dateSerials
+// [[C67]], [[C24]] arraySemantics, [[C44]] dateSerials, [[obsidian-plugin#What Solenoid reads back]], [[obsidian-plugin#The app reads the picks]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -9,8 +9,7 @@ import { parseDailyNotesConfig } from "../../src/graph/dailyNotesConfig";
 import { isCubeValue, type CubeValue, type CubeColumn } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 
-// Bundle 24 item A — the Vault Folder reader's pure cores, over the checked-in demo vault
-// (the single-source fixture set). Reads files with node:fs; the node supplies these on desktop.
+// The Vault Folder reader's pure cores over the checked-in demo vault, read with node:fs.
 
 const VAULT = path.resolve(__dirname, "../../demo-vault");
 const read = (rel: string) => fs.readFileSync(path.join(VAULT, rel), "utf8");
@@ -285,7 +284,7 @@ describe("extractInlineTags", () => {
   });
 });
 
-// [[D93]] oneTextReading
+// [[C58]] tableInputRawText
 describe("a typed property reads its text as a Frame cell of that type does", () => {
   it("text the type can't read is NaN, never a blank; a typed list's items read the same way", () => {
     const notes: VaultNote[] = [

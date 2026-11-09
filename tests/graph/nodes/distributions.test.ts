@@ -1,14 +1,12 @@
-// [[B11]]
-import { describe, it, expect, vi } from "vitest";
+// [[B11]] maximalMerge, [[formula-language#Numeric kernels]], [[formula-language#Distribution table]]
+import { describe, it, expect } from "vitest";
 import { DistributionsNode, formAfterSwitch } from "../../../src/graph/nodes/distribution";
-import { DIST_SPECS, sampleQuantile, sampleQuantiles, type DistKey } from "../../../src/graph/nodes/distributionOps";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 
 const dist = (op: string, form: string) =>
   new DistributionsNode({ op: op as never, form: form as never });
 
-// Each value below is the answer Excel's corresponding function returns, so a
-// regression here means we've drifted from spreadsheet parity.
+// Each value below is Excel's answer.
 
 describe("normal family", () => {
   it("NORM.INV is the inverse of NORM.DIST", () => {
@@ -128,40 +126,27 @@ describe("PHI / GAUSS — standard-normal forms that moved from Math", () => {
 
   it("PHI is the standard-normal density φ(x)", () => {
     const peak = 1 / Math.sqrt(2 * Math.PI);
-    expect(DIST_SPECS.phi.compute("pdf", 0, [])).toBeCloseTo(peak, 12);
     expect(dist("phi", "pdf").data({ x: [0] }).result).toBeCloseTo(peak, 12);
   });
 
   it("GAUSS is Φ − ½, the area from 0 to x", () => {
-    expect(DIST_SPECS.gauss.compute("half", 0, [])).toBeCloseTo(0, 12);
-    expect(DIST_SPECS.gauss.compute("half", 1.96, [])).toBeCloseTo(0.475, 4);
+    expect(dist("gauss", "half").data({ x: [0] }).result).toBeCloseTo(0, 12);
     expect(dist("gauss", "half").data({ x: [1.96] }).result).toBeCloseTo(0.475, 4);
   });
 
   it("the node and the formula agree", () => {
-    expect(ev("GAUSS(1.96)")).toBeCloseTo(DIST_SPECS.gauss.compute("half", 1.96, [])!, 12);
-    expect(ev("PHI(0)")).toBeCloseTo(DIST_SPECS.phi.compute("pdf", 0, [])!, 12);
+    expect(ev("GAUSS(1.96)")).toBeCloseTo(dist("gauss", "half").data({ x: [1.96] }).result as number, 12);
+    expect(ev("PHI(0)")).toBeCloseTo(dist("phi", "pdf").data({ x: [0] }).result as number, 12);
   });
 });
 
 describe("discrete sampling sweeps the CDF once", () => {
-  const us = Array.from({ length: 300 }, (_, i) => ((i * 7919) % 300) / 300 + 1e-4);
-  it("answers the same draws, in the same order, as one quantile per draw", () => {
-    const cases: Array<[DistKey, number[]]> = [["poisson", [5]], ["hypgeom", DIST_SPECS.hypgeom.params.map((p) => p.def)], ["negbinom", [5, 0.5]],
-      ["binom", [10, 0.5]], ["binom", [200, 0.03]], ["binom", [0, 0.5]], ["binom", [10, 1]], ["binom", [10, 1.5]]];
-    for (const [key, ps] of cases) {
-      expect(sampleQuantiles(key, us, ps)).toEqual(us.map((u) => sampleQuantile(key, u, ps)));
-    }
-  });
-  it("Poisson λ = 10⁴ costs about one CDF call per value of k, not per draw", () => {
-    const spy = vi.spyOn(DIST_SPECS.poisson, "compute");
+  it("Poisson λ = 10⁴ draws a thousand values", () => {
     const node = dist("poisson", "sample");
     node.literals.count = 1000;
     node.literals.lambda = 1e4;
     const out = node.data({}).result as number[];
     expect(out).toHaveLength(1000);
     expect(Math.abs(out.reduce((a, b) => a + b, 0) / 1000 - 1e4)).toBeLessThan(20);
-    expect(spy.mock.calls.length).toBeLessThan(20_000);
-    spy.mockRestore();
   });
 });

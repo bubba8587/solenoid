@@ -1,14 +1,16 @@
-// [[C25]]
+// [[C25]] firstClassUnits, [[unit-flow#The unit on the value]], [[unit-flow#Expression]]
 import { describe, it, expect } from "vitest";
-import { ArithmeticNode, arithmeticCell } from "../../src/graph/nodes/scalar";
-import { fromUnit, isUnitCell, isRatio, magnitudeOf, unitLabelOf, formatUnitCell, type UnitCell } from "../../src/graph/unitValue";
-import { fcUnitToUnit, applyFcUnit } from "../../src/graph/unitBridge";
+import { ArithmeticNode } from "../../src/graph/nodes/scalar";
+import { arithmeticCell } from "./coreVerbs";
+import { fromUnit, isUnitCell, isRatio, magnitudeOf, dimOf, formatUnitCell, type UnitCell } from "../../src/graph/unitValue";
+import { applyFcUnit } from "../../src/graph/unitBridge";
+import { fcUnitToUnit } from "../../src/graph/dimension";
 import { isSolError } from "../../src/graph/errorValue";
-import { UNITS } from "../../src/graph/dimension";
+import { formatDim } from "../../src/graph/dimension";
 
-// Units enter a value through the Format Controller (the FC is value-mutating) or
-// Convert — NOT the Number node, which is a plain literal source. These tests drive
-// the algebra directly via `fromUnit` (the same base-SI cell an FC authors).
+const unitLabelOf = (v: unknown) => formatDim(dimOf(v));
+
+// `fromUnit` builds the same base-SI cell an FC authors.
 const cell = (v: number, unitId: string): UnitCell => {
   const u = fcUnitToUnit(unitId)!;
   const c = fromUnit(v, u);
@@ -71,16 +73,6 @@ describe("MathFn — dimensional signatures (avoid garbage + correct dims)", () 
     expect(magnitudeOf(r)).toBe(5);
     expect(unitLabelOf(r)).toBe("m");
   });
-  it("LOG of a dimensioned value is #UNIT!", async () => {
-    const { MathFXNode } = await import("../../src/graph/nodes/scalar");
-    const r = new MathFXNode({ op: "log" }).data({ in: [cell(5, "m")] as never }).result;
-    expect(isSolError(r)).toBe(true);
-    expect((r as { code: string }).code).toBe("#UNIT!");
-  });
-  it("SIGN of a dimensioned value is a plain number", async () => {
-    const { MathFXNode } = await import("../../src/graph/nodes/scalar");
-    expect(new MathFXNode({ op: "sign" }).data({ in: [cell(-5, "m")] as never }).result).toBe(-1);
-  });
 });
 
 describe("Expression — dimensional interpretation over the formula (step 3)", () => {
@@ -99,25 +91,21 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect(magnitudeOf(r)).toBe(6);
     expect(unitLabelOf(r)).toBe("N");
   });
-  it("d + t (incommensurable) is #UNIT!", async () => {
+  it("a table answer keeps its unit, as a list's does", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
-    const n = new ExpressionNode({ expr: "d + t" });
-    const r = n.data({ d: [cell(1, "m")], t: [cell(1, "s")] }).result;
-    expect(isSolError(r)).toBe(true);
-    expect((r as { code: string }).code).toBe("#UNIT!");
+    const n = new ExpressionNode({ expr: "xs * 2" });
+    const r = n.data({ xs: [[[cell(1, "m"), cell(2, "m")], [cell(3, "m"), cell(4, "m")]]] }).result as UnitCell[][];
+    expect(r.map((row) => row.map((c) => magnitudeOf(c)))).toEqual([[2, 4], [6, 8]]);
+    expect(r.flat().every((c) => unitLabelOf(c) === "m")).toBe(true);
   });
-  it("SIN of a length is #UNIT!", async () => {
+  it("a list mixing two units is #UNIT!, not read unit-blind", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
-    const n = new ExpressionNode({ expr: "SIN(d)" });
-    expect(isSolError(n.data({ d: [cell(1, "m")] }).result)).toBe(true);
+    const n = new ExpressionNode({ expr: "SUM(xs)" });
+    const r = n.data({ xs: [[cell(1, "km"), cell(5, "s")]] }).result;
+    expect(r).toMatchObject({ code: "#UNIT!", message: "xs holds mixed units: m and s." });
+    expect(magnitudeOf(n.data({ xs: [[cell(1, "m"), 5]] }).result)).toBe(6);
   });
-  it("plain-number formula is unchanged", async () => {
-    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
-    const n = new ExpressionNode({ expr: "a + b" });
-    expect(n.data({ a: [2], b: [3] }).result).toBe(5);
-  });
-  // [[C25]] firstClassUnits, [[B16]] oneFormulaSurface: the formula reads a united input
-  // as the Arithmetic and Comparison cards do, in its display unit.
+  // [[B16]] oneFormulaSurface
   it("a bare number adopts the display unit: 5 km + 3 is 8 km, and 5 km > 3000 is FALSE", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
     const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");
@@ -149,8 +137,8 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect(diff.display).toBeUndefined();
     expect(magnitudeOf(diff)).toBeCloseTo(10, 9); // 10 K
     expect(run("a > 25")).toBe(false);
-    expect((run("a * 2") as { code?: string }).code).toBe("#UNIT!");
-    expect((run("b / a") as { code?: string }).code).toBe("#UNIT!");
+    expect((run("a * 2") as { code?: string }).code).toBe("#POINT!");
+    expect((run("b / a") as { code?: string }).code).toBe("#POINT!");
     expect(run("(b - a) / (b - a)")).toBe(1);
   });
   it("°C is classified statically: volatile functions, MIN/AVERAGE, SUM and lists", async () => {
@@ -163,12 +151,12 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     for (let i = 0; i < 5; i++) expect((run("IF(RAND() < 2, a, b)") as UnitCell).display).toBe("degC");
     expect(displayMagnitudeOf(run("MIN(a, 25)") as UnitCell)).toBeCloseTo(20, 9);
     expect(displayMagnitudeOf(run("AVERAGE(a, b)") as UnitCell)).toBeCloseTo(25, 9);
-    expect(code(run("SUM(a, b)"))).toBe("#UNIT!");
-    expect(code(run("SQRT(a)"))).toBe("#UNIT!");
+    expect(code(run("SUM(a, b)"))).toBe("#POINT!");
+    expect(code(run("SQRT(a)"))).toBe("#POINT!");
     expect(displayMagnitudeOf(run("ROUND(a + 0.4, 0)") as UnitCell)).toBeCloseTo(20, 9);
     const list = [t20, t30];
     expect(displayMagnitudeOf(run("AVERAGE(a)", list) as UnitCell)).toBeCloseTo(25, 9);
-    expect(code(run("SUM(a)", list))).toBe("#UNIT!");
+    expect(code(run("SUM(a)", list))).toBe("#POINT!");
     expect(magnitudeOf(run("MAX(a) - MIN(a)", list) as UnitCell)).toBeCloseTo(10, 9); // 10 K
   });
   it("a wired plain number beside readings is a reading, as a literal is and as the Aggregate card reads it", async () => {
@@ -179,7 +167,7 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect(displayMagnitudeOf(run("MIN(a, n)") as UnitCell)).toBeCloseTo(5, 9);
     expect(displayMagnitudeOf(run("MEDIAN(a, b, n)") as UnitCell)).toBeCloseTo(20, 9);
     expect((run("IF(x, a, n)") as UnitCell).display).toBe("degC");
-    expect((run("a * n") as { code?: string }).code).toBe("#UNIT!"); // a scale must be a constant
+    expect((run("a * n") as { code?: string }).code).toBe("#POINT!"); // a scale must be a constant
     expect(displayMagnitudeOf(run("n + a") as UnitCell)).toBeCloseTo(25, 9); // under + it is still a delta
   });
   it("IFS and SWITCH carry their branches' unit, as IF does; a retired name keeps its #NAME? hint", async () => {
@@ -215,7 +203,7 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     const cold = run("IF(c, a, 0)", t20, false) as UnitCell;
     expect(cold.display).toBe("degC");
     expect(displayMagnitudeOf(cold)).toBeCloseTo(0, 9);
-    expect((run("IF(c, a, a - a)", t20, true) as { code?: string }).code).toBe("#UNIT!");
+    expect((run("IF(c, a, a - a)", t20, true) as { code?: string }).code).toBe("#POINT!");
     const mixed = new ExpressionNode({ expr: "IF(c, a, b)" }).data({ a: [km as never], b: [applyFcUnit(2, "s") as never], c: [true as never] }).result;
     expect(isUnitCell(mixed)).toBe(false);
   });
@@ -234,8 +222,8 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     const top = run("REDUCE(0, a, MAX)", temps) as UnitCell;
     expect(top.display).toBe("degC");
     expect(displayMagnitudeOf(top)).toBeCloseTo(30, 9);
-    expect(code(run("REDUCE(0, a, LAMBDA(acc, v, acc + v))", temps))).toBe("#UNIT!");
-    expect(code(run("MAX(MAP(a, LAMBDA(v, v * 2)))", temps))).toBe("#UNIT!");
+    expect(code(run("REDUCE(0, a, LAMBDA(acc, v, acc + v))", temps))).toBe("#POINT!");
+    expect(code(run("MAX(MAP(a, LAMBDA(v, v * 2)))", temps))).toBe("#POINT!");
     expect(displayMagnitudeOf(run("LAMBDA(x, x + 1)(a)", applyFcUnit(1, "km")) as UnitCell)).toBeCloseTo(2, 9);
   });
   it("a function outside the unit tables is loud on a unit, and plain beside one", async () => {
@@ -264,19 +252,17 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect(top.display).toBe("degC");
     expect(displayMagnitudeOf(top)).toBeCloseTo(30, 9);
     expect(displayMagnitudeOf(run('AVERAGEIF(a, ">0")', list) as UnitCell)).toBeCloseTo(25, 9);
-    expect(code(run('SUMIF(a, ">0")', list))).toBe("#UNIT!");
+    expect(code(run('SUMIF(a, ">0")', list))).toBe("#POINT!");
     const fl = [applyFcUnit(50, "degF"), applyFcUnit(68, "degF")];
     expect(magnitudeOf(run("VAR(a)", fl) as UnitCell)).toBeCloseTo(50, 9); // 162 °F² is 50 K²
     const kmList = [applyFcUnit(1, "km"), applyFcUnit(3, "km")];
     expect(displayMagnitudeOf(run("MEDIAN(SORT(a))", kmList) as UnitCell)).toBeCloseTo(2, 9);
   });
-  it("readings in different offset units still classify: °C + °F is #UNIT!", async () => {
+  it("readings in two offset units never meet: °C with °F is #UNIT! under any op", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
     const run = (expr: string) => new ExpressionNode({ expr })
       .data({ a: [applyFcUnit(20, "degC") as never], b: [applyFcUnit(68, "degF") as never] }).result;
-    expect((run("a + b") as { code?: string }).code).toBe("#UNIT!");
-    expect(magnitudeOf(run("b - a") as UnitCell)).toBeCloseTo(0, 9); // 68 °F is 20 °C
-    expect(magnitudeOf(run("(a + b) / 2") as UnitCell)).toBeCloseTo(293.15, 9);
+    for (const expr of ["a + b", "b - a", "(a + b) / 2"]) expect((run(expr) as { code?: string }).code, expr).toBe("#UNIT!");
   });
   it("inputs in different units still compute in base SI", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
@@ -287,7 +273,7 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
 
 describe("unit bridge", () => {
   it("resolves compound + prefixed FC ids", () => {
-    expect(fcUnitToUnit("mph")).toEqual(UNITS.mi && { dim: { length: 1, time: -1 }, scale: 1609.344 / 3600 });
+    expect(fcUnitToUnit("mph")).toEqual({ dim: { length: 1, time: -1 }, scale: 1609.344 / 3600 });
     expect(fcUnitToUnit("km")?.scale).toBe(1000);
     expect(fcUnitToUnit("none")).toBeNull();
   });
@@ -320,8 +306,7 @@ describe("custom units — an opaque free-text unit is its own dimension", () =>
   });
 
   it("custom axes are case-INSENSITIVE: Poop + poop adds (same quantity, one axis)", () => {
-    // Two FCs differing only in typed case must not #UNIT! against each other; the
-    // typed casing still shows through the display id.
+
     const a = applyFcUnit(2, "custom", "Poop");
     const b = applyFcUnit(3, "custom", "poop");
     const sum = arithmeticCell("add", a as never, b as never);
@@ -334,7 +319,7 @@ describe("custom units — an opaque free-text unit is its own dimension", () =>
     const sum = arithmeticCell("add", km5 as never, 3 as never);
     expect(magnitudeOf(sum)).toBe(8000); // base-SI meters — the 3 read as 3 km
     expect((sum as UnitCell).display).toBe("km"); // display id rides (unitLabelOf shows the derived dim symbol)
-    // × keeps the face value — a bare factor is a factor, not a length.
+
     expect(magnitudeOf(arithmeticCell("mul", km5 as never, 2 as never))).toBe(10000);
   });
 
@@ -348,5 +333,31 @@ describe("custom units — an opaque free-text unit is its own dimension", () =>
     expect(applyFcUnit(5, "custom", "")).toBe(5);
     expect(applyFcUnit(5, "custom", "   ")).toBe(5);
     expect(applyFcUnit(5, "custom", undefined)).toBe(5);
+  });
+});
+
+describe("two temperature scales never mix ([[C25]] firstClassUnits)", () => {
+  const unitCode = (v: unknown) => (isSolError(v) ? v.code : JSON.stringify(v));
+  const c20 = () => applyFcUnit(20, "degC"), k300 = () => applyFcUnit(300, "K"), f68 = () => applyFcUnit(68, "degF");
+  it("the Arithmetic card: K with °C, or °C with °F, under any op is #UNIT!", () => {
+    for (const op of ["add", "sub", "mul", "div"] as const) {
+      expect(unitCode(arithmeticCell(op, c20(), k300())), `${op} °C K`).toBe("#UNIT!");
+      expect(unitCode(arithmeticCell(op, c20(), f68())), `${op} °C °F`).toBe("#UNIT!");
+    }
+    expect(isUnitCell(arithmeticCell("sub", c20(), applyFcUnit(10, "degC")))).toBe(true);
+  });
+  it("a formula over two scales is #UNIT!, whatever it does with them", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    for (const expr of ["a + b", "a - b", "MAX(a, b)", "IF(TRUE, a, b)"]) {
+      const r = new ExpressionNode({ expr }).data({ a: [c20() as never], b: [k300() as never] }).result;
+      expect(unitCode(r), expr).toBe("#UNIT!");
+    }
+  });
+  it("the Aggregate card over a list mixing scales is #UNIT!", async () => {
+    const { AggregateNode } = await import("../../src/graph/nodes/list");
+    for (const op of ["sum", "avg", "max"] as const) {
+      const r = new AggregateNode({ op }).data({ list: [[c20(), f68()]] }).result;
+      expect(unitCode(r), op).toBe("#UNIT!");
+    }
   });
 });

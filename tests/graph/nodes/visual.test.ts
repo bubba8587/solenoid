@@ -1,11 +1,12 @@
 // [[B11]] maximalMerge
+import { solDate } from "../../../src/graph/dateValue";
 import { cellImageSrc } from "../../../src/graph/recordLayout";
 import { describe, it, expect } from "vitest";
 import {
-  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, SurfaceNode, histogramBins, histogram2d,
+  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, SurfaceNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, ProportionNode, QuiverNode,
-  boxplotStats, quantileSorted, HistogramNode, type Histogram2d,
-  RecordNode, recordRows, parseRecordLayout, recordImageSrc, HEATMAP_MAX,
+  HistogramNode,
+  RecordNode, CardsNode, parseRecordLayout, recordImageSrc,
 } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_FIELDS } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "../../../src/graph/nodes/chartOptions";
@@ -13,12 +14,12 @@ import type { XYPayload, BoxplotPayload, CandlePayload, ContourPayload, Waterfal
 import type { FrameValue, FrameColumn } from "../../../src/graph/frame";
 import { XYPadNode } from "../../../src/graph/nodes/control";
 import { ValueInputNode } from "../../../src/graph/nodes/control";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import { pasteCopy } from "../fixtures/pasteCopy";
 import { jsDateToSerial, parseDate } from "../../../src/graph/nodes/date";
 import type { ChartValue } from "../../../src/graph/chartValue";
 const draw = (n: ChartNode, inputs: Parameters<ChartNode["data"]>[0]) => n.data(inputs) as { chart: ChartValue };
-import { isSolError } from "../../../src/graph/errorValue";
+import { isSolError, type SolError } from "../../../src/graph/errorValue";
 import { isMermaidValue } from "../../../src/graph/mermaidValue";
 
 describe("visual nodes", () => {
@@ -232,17 +233,21 @@ describe("Chart Builder", () => {
   });
 });
 
-describe("histogramBins", () => {
+/** A 1-D Histogram's counts, or the error it draws, for these values and bin count. */
+const histogramBins = (vals: unknown[], k: number) => new HistogramNode().data({ values: [vals], bins: [k] }).chart;
+const counts = (vals: unknown[], k: number) => (histogramBins(vals, k) as ChartValue).values;
+
+describe("Histogram bins", () => {
   it("counts values into equal-width bins over the data's own range", () => {
     // 0..9 into 5 bins → pairs, with the max landing in the closed last bin
-    expect(histogramBins([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 5)).toEqual([2, 2, 2, 2, 2]);
-    expect(histogramBins([], 5)).toEqual([]);
-    expect(histogramBins([3, 3, 3], 4)).toEqual([3, 0, 0, 0]); // one spike, all in bin 0
+    expect(counts([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 5)).toEqual([2, 2, 2, 2, 2]);
+    expect(counts([], 5)).toEqual([]);
+    expect(counts([3, 3, 3], 4)).toEqual([3, 0, 0, 0]); // one spike, all in bin 0
   });
 
   it("a value on a bin's lower edge lands in that bin, however the division rounds", () => {
     const w = 0.3 / 7;
-    expect(histogramBins([0, 3 * w, 6 * w, 0.3], 7)).toEqual([1, 0, 0, 1, 0, 0, 2]);
+    expect(counts([0, 3 * w, 6 * w, 0.3], 7)).toEqual([1, 0, 0, 1, 0, 0, 2]);
     expect((histogram2d([0, 3 * w, 0.3], [0, 0, 0.3], 7, 1) as Histogram2d).counts[0]).toEqual([1, 0, 0, 1, 0, 0, 1]);
   });
 
@@ -251,11 +256,21 @@ describe("histogramBins", () => {
     // throws past ~125k args on min/max.
     const N = 200_000;
     const vals = Array.from({ length: N }, (_, i) => i);
-    const bins = histogramBins(vals, 10) as number[];
+    const bins = counts(vals, 10) as number[];
     expect(bins).toHaveLength(10);
     expect(bins.reduce((a, b) => a + b, 0)).toBe(N);
   });
 });
+
+type Histogram2d = { counts: number[][]; xEdges: number[]; yEdges: number[] };
+/** The 2-D Histogram card's grid and bin edges, null with no finite pair, or its error. */
+function histogram2d(xs: unknown[], ys: unknown[], kx: number, ky: number): Histogram2d | SolError | null {
+  const n = new HistogramNode({ mode: "2d" });
+  const chart = n.data({ values: [xs], y: [ys], bins: [kx], ybins: [ky] }).chart;
+  if (isSolError(chart)) return chart;
+  const p = (chart as ChartValue).payload as { z: number[][]; rows: string[]; cols: string[] };
+  return p.z.length ? { counts: p.z, xEdges: p.cols.map(Number), yEdges: p.rows.map(Number) } : null;
+}
 
 describe("histogram2d (numpy histogram2d)", () => {
   it("tallies paired samples into a y-bin × x-bin grid; last edge inclusive", () => {
@@ -279,12 +294,12 @@ describe("histogram2d (numpy histogram2d)", () => {
   });
 
   it("0, negative or non-numeric bins are #DOMAIN!, as in 1-D mode", async () => {
-    const { resolveExcelFunction } = await import("../../../src/graph/excelFunctions");
+    const { coreFunction } = await import("../coreFunction");
     for (const [kx, ky] of [[0, 2], [2, -1], [NaN, 2]]) {
       const h = histogram2d([0, 1], [0, 1], kx, ky);
       expect(isSolError(h) && h.code).toBe("#DOMAIN!");
     }
-    const f = resolveExcelFunction("HISTOGRAM2D")!([0, 1], [0, 1], 0, 2);
+    const f = coreFunction("HISTOGRAM2D")!([0, 1], [0, 1], 0, 2);
     expect(isSolError(f) && f.code).toBe("#DOMAIN!");
     const n = new HistogramNode();
     n.setMode("2d");
@@ -302,9 +317,9 @@ describe("histogram2d (numpy histogram2d)", () => {
   });
 
   it("HISTOGRAM2D answers the grid the node draws: a row per y bin", async () => {
-    const { resolveExcelFunction } = await import("../../../src/graph/excelFunctions");
+    const { coreFunction } = await import("../coreFunction");
     const xs = [0, 1, 2, 0, 2], ys = [0, 0, 0, 3, 3];
-    const f = resolveExcelFunction("HISTOGRAM2D")!(xs, ys, 3, 2);
+    const f = coreFunction("HISTOGRAM2D")!(xs, ys, 3, 2);
     expect(f).toEqual([[1, 1, 1], [1, 0, 1]]);
     const n = new HistogramNode();
     n.setMode("2d");
@@ -320,13 +335,22 @@ describe("histogram2d (numpy histogram2d)", () => {
 });
 
 describe("control nodes", () => {
-  it("a date Value Input derives its serial from the raw source text", () => {
+  it("a logical Value Input reads TRUE or FALSE and refuses other text", () => {
+    const logical = (value: string) => new ValueInputNode({ op: "logical", value }).data().value;
+    expect(logical("true")).toBe(true);
+    expect(logical("")).toBe(false);
+    const bad = logical("yes");
+    expect(isSolError(bad) && bad.code).toBe("#VALUE!");
+  });
+  it("a date Value Input derives its date from the raw source text", () => {
     const date = (value?: string) => new ValueInputNode({ op: "date", value });
-    expect(date("20-Mar-2026").data().value).toBe(Math.floor(parseDate("20-Mar-2026") as number));
+    expect(date("20-Mar-2026").data().value).toEqual(solDate(Math.floor(parseDate("20-Mar-2026") as number)));
     expect(date("").data()).toEqual({ value: null });
-    expect(date("not a date").data()).toEqual({ value: null });
-    // default is today's serial
-    expect(date().data().value).toBe(Math.floor(jsDateToSerial(new Date())));
+    // The card keeps its type: text it can't read as a date is #VALUE!, as a Number card's is.
+    const bad = date("not a date").data().value;
+    expect(isSolError(bad) && bad.code).toBe("#VALUE!");
+    // default is today
+    expect(date().data().value).toEqual(solDate(Math.floor(jsDateToSerial(new Date()))));
   });
   it("a date Value Input keeps the raw text verbatim and surfaces #AMBIGUOUS! instead of guessing", () => {
     const d = new ValueInputNode({ op: "date", value: "20-mar-2026" });
@@ -349,24 +373,26 @@ describe("control nodes", () => {
 const frame = (cols: Array<Pick<FrameColumn, "name" | "type" | "values">>): FrameValue =>
   ({ __frame: true, columns: cols as FrameColumn[] });
 
-describe("quantileSorted / boxplotStats", () => {
+describe("Boxplot statistics", () => {
+  const boxes = (sample: unknown[]) => ((new BoxplotNode().data({ values: [sample] }).chart as ChartValue).payload as BoxplotPayload).boxes;
+
   it("linear-interpolated quantiles (PERCENTILE.INC)", () => {
-    const s = [1, 2, 3, 4];
-    expect(quantileSorted(s, 0)).toBe(1);
-    expect(quantileSorted(s, 1)).toBe(4);
-    expect(quantileSorted(s, 0.5)).toBe(2.5);
-    expect(quantileSorted(s, 0.25)).toBeCloseTo(1.75, 12);
+    const [b] = boxes([1, 2, 3, 4]);
+    expect(b.lo).toBe(1);
+    expect(b.hi).toBe(4);
+    expect(b.med).toBe(2.5);
+    expect(b.q1).toBeCloseTo(1.75, 12);
   });
 
   it("five-number summary with Tukey whiskers + outliers", () => {
     // 1..9 plus a wild 100: IQR fences exclude it → outlier, whisker stops at 9.
-    const s = boxplotStats([1, 2, 3, 4, 5, 6, 7, 8, 9, 100])!;
+    const [s] = boxes([1, 2, 3, 4, 5, 6, 7, 8, 9, 100]);
     expect(s.med).toBeCloseTo(5.5, 12);
     expect(s.hi).toBe(9);
     expect(s.outliers).toEqual([100]);
-    expect(boxplotStats([null, null])).toBeNull();
+    expect(boxes([null, null])).toEqual([]);
     // Nulls are skipped, not zeroes.
-    expect(boxplotStats([null, 5, null])!.med).toBe(5);
+    expect(boxes([null, 5, null])[0].med).toBe(5);
   });
 });
 
@@ -441,6 +467,25 @@ describe("chart-wave nodes emit their payloads", () => {
     const p = (await n.data({ frame: [f] })).chart.payload as CalHeatPayload;
     expect(p.days).toEqual([45000, 45001]); // the null day drops WITH its value
     expect(p.values).toEqual([3, 5]);
+  });
+
+  it("Calendar Heatmap sums each day's rows, counts a row with no number as 1, and orders the days", async () => {
+    const n = new CalendarHeatmapNode();
+    expect(n.label).toBe("Calendar Heatmap");
+    const f = frame([
+      { name: "Day", type: "date", values: [45002.75, 45000, 45002.25, 45000] },
+      { name: "N", type: "number", values: [2, 3, null, 4] },
+    ]);
+    const p = (await n.data({ frame: [f] })).chart.payload as CalHeatPayload;
+    expect(p.days).toEqual([45000, 45002]);
+    expect(p.values).toEqual([7, 3]);
+    const entries = frame([
+      { name: "Day", type: "date", values: [45000, 45001, 45000] },
+      { name: "Title", type: "string", values: ["a", "b", "c"] },
+    ]);
+    const q = (await n.data({ frame: [entries] })).chart.payload as CalHeatPayload;
+    expect(q.days).toEqual([45000, 45001]);
+    expect(q.values).toEqual([2, 1]);
   });
 
   it("Proportion carries label/value pairs and defaults to the treemap layout", async () => {
@@ -653,17 +698,21 @@ describe("Record node", () => {
     board.stringLiterals.by = "Status";
     p = (await board.data({ frame: [f], rows: [[3, 1, 2]] })).chart.payload as RecordPayload;
     expect(p.lanes).toEqual([{ label: "Open", cards: [0, 1] }, { label: "Done", cards: [2] }]);
-    const cards = new RecordNode({ op: "cards" });
+    const cards = new CardsNode();
     p = (await cards.data({ frame: [f], rows: [[-1, 1]] })).chart.payload as RecordPayload;
     expect(p.deck?.rows.map((r) => r[0])).toEqual(["d", "a"]);
     expect(p.deck?.rowNumbers).toEqual([4, 1]);
   });
 
-  it("recordRows: 1-based picks in order, negatives from the end, junk and out of range dropped, none is every row", () => {
-    expect(recordRows(undefined, 3)).toEqual([0, 1, 2]);
-    expect(recordRows(2, 3)).toEqual([1]);
-    expect(recordRows([3, 1, 1], 3)).toEqual([2, 0, 0]);
-    expect(recordRows([-1, 0, 4, 2.4, "x"], 3)).toEqual([2, 1]);
+  it("Rows: 1-based picks in order, negatives from the end, junk and out of range dropped, none is every row", async () => {
+    const f = frame([{ name: "Item", type: "string", values: ["a", "b", "c"] }]);
+    const n = new CardsNode();
+    const picked = async (rows?: unknown) =>
+      ((await n.data({ frame: [f], ...(rows === undefined ? {} : { rows: [rows] }) })).chart.payload as RecordPayload).deck?.rowNumbers;
+    expect(await picked()).toEqual([1, 2, 3]);
+    expect(await picked(2)).toEqual([2]);
+    expect(await picked([3, 1, 1])).toEqual([3, 1, 1]);
+    expect(await picked([-1, 0, 4, 2.4, "x"])).toEqual([3, 2]);
   });
 
   it("a layout stands without a frame (draftable), and no inputs at all is empty", async () => {
@@ -723,25 +772,21 @@ describe("Record node", () => {
     expect(((await n.data({ frame: [f], by: [null as unknown as string] })).chart.payload as RecordPayload).cards).toEqual([]);
   });
 
-  it("setOp swaps the Group-by and Layout sockets with the view; Rows stays on every view", () => {
+  it("setOp swaps the Group-by socket with the view; Rows and Layout stay on every view", () => {
     const n = new RecordNode();
-    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
-    n.setOp("gallery");
     expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
     n.setOp("board");
     expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options", "by"]);
-    n.setOp("detail");
-    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
-    n.setOp("cards");
-    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "options"]);
-    n.setOp("list");
-    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "options", "layout"]);
-    expect(Object.keys(new RecordNode({ op: "cards" }).inputs)).toEqual(["frame", "rows", "options"]);
+    for (const op of ["detail", "list", "gallery"] as const) {
+      n.setOp(op);
+      expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
+    }
+    expect(Object.keys(new CardsNode().inputs)).toEqual(["frame", "rows", "layout", "options"]);
   });
 
   it("Cards plans the whole frame and ships the drawn rows, numbers raw and the rest as shown", async () => {
-    const n = new RecordNode({ op: "cards" });
-    n.stringLiterals.layout = "Price"; // Cards is never authored: a leftover layout is ignored
+    const n = new CardsNode();
+    n.stringLiterals.layout = "#Name | Price"; // a written layout rides along; the plan still reads every column
     const f: FrameValue = { __frame: true, columns: [
       { name: "Name", type: "string", values: Array.from({ length: 70 }, (_, i) => `Item ${i + 1}`) },
       { name: "Price", type: "number", values: Array.from({ length: 70 }, (_, i) => i + 0.5), format: { format: "decimal", unit: "none" } },
@@ -758,6 +803,10 @@ describe("Record node", () => {
     expect(deck.plan).toMatchObject({ title: 0, hero: 1, meta: 2, flags: [3] });
     expect(deck.rows[0]).toEqual(["Item 1", 0.5, "01-Jan-2026", "TRUE"]);
     expect(deck.formats[1]).toMatchObject({ format: "decimal" });
+    expect(deck.layout).toEqual([
+      { name: "Name", row: 1, col: 1, rowSpan: 1, colSpan: 1, title: true },
+      { name: "Price", row: 1, col: 2, rowSpan: 1, colSpan: 1 },
+    ]);
   });
 });
 
@@ -827,6 +876,7 @@ describe("figures: a blank cell is a gap, never a zero (review pins)", () => {
     expect(out.options).toMatchObject({ origin: "lower", aspect: "auto", cmap: "magma" });
   });
   it("Heatmap cuts a huge table to HEATMAP_MAX and says how big it was", async () => {
+    const HEATMAP_MAX = 400;
     const big = Array.from({ length: HEATMAP_MAX + 5 }, (_, r) => Array.from({ length: 3 }, (_, c) => r + c));
     const p = (await new HeatmapNode().data({ values: [big] })).chart.payload as HeatmapPayload;
     expect(p.z.length).toBe(HEATMAP_MAX);
@@ -834,15 +884,15 @@ describe("figures: a blank cell is a gap, never a zero (review pins)", () => {
     expect(p.totalRows).toBe(HEATMAP_MAX + 5);
     expect(p.totalCols).toBeUndefined();
   });
-  it("Calendar skips a day whose value is blank instead of painting 0", async () => {
+  it("Calendar Heatmap counts a dated row whose value is blank as 1, never 0", async () => {
     const n = new CalendarHeatmapNode();
     const f = frame([
       { name: "Day", type: "date", values: [46023, 46024, 46025] },
       { name: "N", type: "number", values: [3, null, 4] },
     ]);
     const p = (await n.data({ frame: [f] })).chart.payload as CalHeatPayload;
-    expect(p.days).toEqual([46023, 46025]);
-    expect(p.values).toEqual([3, 4]);
+    expect(p.days).toEqual([46023, 46024, 46025]);
+    expect(p.values).toEqual([3, 1, 4]);
   });
 });
 
@@ -857,13 +907,16 @@ describe("Sparkline blanks are gaps", () => {
 });
 
 describe("Sankey loops, Histogram bins, Date Range order (review pins)", () => {
-  it("acyclicFlows drops the links that close a loop and keeps the rest in order", async () => {
-    const { acyclicFlows, SankeyNode } = await import("../../../src/graph/nodes/visual");
-    const r = acyclicFlows(["A", "B", "B"], ["B", "A", "C"], [10, 5, 3]);
-    expect(r.sources).toEqual(["A", "B"]);
-    expect(r.targets).toEqual(["B", "C"]);
-    expect(r.dropped).toBe(1);
+  it("Sankey drops the links that close a loop and keeps the rest in order", async () => {
+    const { SankeyNode } = await import("../../../src/graph/nodes/visual");
     const n = new SankeyNode();
+    const r = (await n.data({ frame: [{ __frame: true, columns: [
+      { name: "From", type: "string", values: ["A", "B", "B"] }, { name: "To", type: "string", values: ["B", "A", "C"] },
+      { name: "Value", type: "number", values: [10, 5, 3] },
+    ] } as never] })).chart as { payload?: { sources: string[]; targets: string[] } };
+    expect(r.payload?.sources).toEqual(["A", "B"]);
+    expect(r.payload?.targets).toEqual(["B", "C"]);
+    expect(n.droppedLoops).toBe(1);
     const f = { __frame: true, columns: [
       { name: "From", type: "string", values: ["A", "B"] }, { name: "To", type: "string", values: ["B", "A"] }, { name: "Value", type: "number", values: [10, 5] },
     ] };
@@ -890,7 +943,7 @@ describe("Sankey loops, Histogram bins, Date Range order (review pins)", () => {
     expect(p.values).toEqual([1200, 300, 500]);
   });
 
-  it("histogramBins refuses a bins count below 1 or not a number", () => {
+  it("Histogram refuses a bins count below 1 or not a number", () => {
     const err = histogramBins([1, 2, 3], 0);
     expect((err as { code?: string }).code).toBe("#DOMAIN!");
     expect((histogramBins([1, 2, 3], NaN) as { code?: string }).code).toBe("#DOMAIN!");

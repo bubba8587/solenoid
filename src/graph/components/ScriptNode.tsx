@@ -1,6 +1,6 @@
-// [[C66]] scriptNode, [[C95]] commitOnEnter
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { ScriptNode as ScriptNodeType } from "../rete-nodes";
+// [[C66]] scriptNode, [[B19]] spreadsheetHabits
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { ScriptNode as ScriptNodeType } from "../nodeClasses";
 import type { SolError } from "../errorValue";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
@@ -11,6 +11,7 @@ import { applyScriptChange } from "./expressionEdit";
 import { JsEditor } from "./JsEditor";
 import { scriptPopup } from "../scriptPopupStore";
 import { stopDragStart } from "../coarse";
+import { scriptGate, allowScripts } from "../scriptGate";
 import "./ExpressionNode.css";
 import "./ScriptNode.css";
 
@@ -25,6 +26,8 @@ export function ScriptComponent({ data: node, emit }: NodeProps<ScriptNodeType>)
   const [draft, setDraft] = useState(node.expr);
   const [, forceUpdate] = useState(0);
   const canceled = useRef(false);
+  useSyncExternalStore(scriptGate.subscribe, scriptGate.version);
+  const waiting = scriptGate.waiting(node.id);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { setDraft(node.expr); }, [node.expr]);
@@ -36,7 +39,6 @@ export function ScriptComponent({ data: node, emit }: NodeProps<ScriptNodeType>)
     if (!el) return;
     const lines = node.expr.split("\n").length;
     el.style.height = `${Math.min(Math.max(lines * LINE_H + FIELD_CHROME, 64), FIELD_MAX_H)}px`;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function commit() {
@@ -77,13 +79,26 @@ export function ScriptComponent({ data: node, emit }: NodeProps<ScriptNodeType>)
         </button>
         <FieldResizeGrip targetRef={taRef} />
       </div>
+      {waiting && (
+        <div className="solenoid-script__waiting">
+          <span>Someone else wrote this script. It runs when you allow it.</span>
+          <button
+            type="button"
+            className="solenoid-script__allow"
+            title="Run every script in this document"
+            onPointerDown={stopDragStart}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); void allowScripts(); }}
+          >Run</button>
+        </div>
+      )}
       {node.cachedError && (
         <div className="solenoid-expr__error">{node.cachedError}</div>
       )}
       <InlineInputs node={node} emit={emit} />
       {/* No result-type toggle: the value types itself ([[C66]] scriptNode). */}
-      <ValueDisplay value={node.cachedResult as number | number[] | string | string[] | SolError | null} />
       {scriptIsVolatile(node.expr) && <RecalcButton title="Run the script again" />}
+      <ValueDisplay value={node.cachedResult as number | number[] | string | string[] | SolError | null} />
     </NodeShell>
   );
 }

@@ -1,21 +1,21 @@
 // [[C28]] literalsIffEditable
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
-import type { ClassicPreset } from "rete";
+import type { GraphSocket } from "../graphModel";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
-import { SolenoidSocket } from "../sockets";
+import { literalFieldOf } from "../literalFields";
 import {
   useConnectedInputs,
   useIncomingSources,
   InlineInputs,
   InlineNumberField,
   InlineTextField,
-  InlineAutoField,
-  takesAutoLiteral,
-  type AutoLiteral,
+  KeyedField,
+  LogicalCheck,
+  type KeyedKind,
 } from "./inlineInput";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
@@ -24,11 +24,12 @@ import { dropInputCables } from "./cablePrune";
 
 export interface ExtensibleNode {
   id: string;
-  inputs: Record<string, { socket: ClassicPreset.Socket; label?: string } | undefined>;
+  edited(): void;
+  inputs: Record<string, { socket: GraphSocket; label?: string } | undefined>;
   // Number rows bind to `literals`, string rows to `stringLiterals`.
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
-  autoLiterals?: boolean;
+  literalKinds?: Record<string, KeyedKind>;
   addValueInput: () => string;
   removeValueInput: (key: string) => void;
 }
@@ -57,27 +58,18 @@ export function ExtensibleInputs({
   async function setLiteral(key: string, v: number | undefined) {
     if (v === undefined) delete literals[key];
     else literals[key] = v;
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   async function setStr(key: string, v: string) {
     strLiterals[key] = v;
-    await processGraph();
-  }
-
-  async function setAuto(key: string, v: AutoLiteral) {
-    // Exactly one map holds a wildcard slot, so the reader never has to break a tie.
-    delete literals[key];
-    delete strLiterals[key];
-    if (typeof v === "number") literals[key] = v;
-    else if (typeof v === "string") strLiterals[key] = v;
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   async function addRow() {
     node.addValueInput();
     await getOwningView(node.id)?.rerenderNode(node.id);
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   async function removeRow(key: string) {
@@ -85,7 +77,7 @@ export function ExtensibleInputs({
     node.removeValueInput(key);
     await getOwningView(node.id)?.rerenderNode(node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   if (collapsed) {
@@ -118,12 +110,9 @@ export function ExtensibleInputs({
         const input = node.inputs[key];
         if (!input) return null;
         const isConn = connected.has(key);
-        const dt = input.socket instanceof SolenoidSocket ? input.socket.dataType : undefined;
-        const isTextField = dt === "string" || dt === "numlist" || dt === "strlist" || dt === "datelist" || dt === "logicallist";
-        // Container, logicalcombo, lambda and chart rows are wire-only, and so is a wildcard row unless the node opts into auto literals.
-        const isWildcard = dt === "any" || dt === "anydata" || dt === "trueany";
-        const isWireOnly = dt === "anylist" || dt === "anytable" || dt === "table" || dt === "frame" || dt === "cube" || dt === "logicalcombo" || dt === "lambda" || dt === "chart"
-          || (isWildcard && !takesAutoLiteral(node, dt));
+        // One field per input, the one the core reads; a wire-only row shows its number.
+        const field = literalFieldOf(node, key);
+        const isWireOnly = field === "none";
         return (
           <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={input.socket}>
             {isWireOnly ? (
@@ -134,12 +123,14 @@ export function ExtensibleInputs({
               )
             ) : isConn ? (
               <span className="solenoid-node__io-wired" style={{ flex: 1 }} title="Driven by an incoming cable">↩ wired</span>
-            ) : takesAutoLiteral(node, dt) ? (
-              <InlineAutoField num={literals[key]} text={strLiterals[key]} onChange={(v) => void setAuto(key, v)} />
-            ) : isTextField ? (
-              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
-            ) : (
+            ) : field === "keyed" ? (
+              <KeyedField node={node} slot={key} />
+            ) : field === "logical" ? (
+              <LogicalCheck checked={!!literals[key]} onToggle={() => void setLiteral(key, literals[key] ? 0 : 1)} />
+            ) : field === "number" ? (
               <InlineNumberField value={literals[key]} onChange={(v) => setLiteral(key, v)} />
+            ) : (
+              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
             )}
             {keys.length > minRows && (
               <button

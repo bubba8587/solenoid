@@ -1,11 +1,14 @@
 // [[C42]], [[B14]] oneDesignSystem
-import { ClassicPreset } from "rete";
+import { GraphNode, GraphSocket } from "../graphModel";
 import { type NodeKind, NODE_KIND_ACCENTS, NODE_KIND_SLOTS } from "./shared";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { themeAccent, socketVarHex, socketVarSlot, type PaletteSlot } from "../palette";
 import { ConstantNode, SliderInputNode, ColorPickerNode, ColorBlendNode, SaveTimesNode } from "./input";
 import { PhysicsConstantNode } from "./physicsConstants";
 import { ElementNode } from "./chemistry";
+import { TriangleSolverNode } from "./triangle";
+import { UnitCircleNode } from "./unitCircle";
+import { CircleSolverNode, RegularPolygonNode, TwoPointsNode, PolygonPointsNode, SolidNode } from "./geometryFigures";
 import { ConvertNode } from "./convert";
 import { CastNode } from "./cast";
 import { FormatControllerNode } from "./formatController";
@@ -23,15 +26,15 @@ import {
   UniqueNode, SetsNode, IsInNode, TallyNode,
   ConcatListsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
-  NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode,
+  NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, ConnectedRegionsNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode,
   ShuffleNode, NthElementNode, InterleaveNode,
   PadNode,
   FillNode,
 } from "./list";
 import {
   RankPercentileNode, CorrelNode,
-  StandardizeNode, CovarianceNode, FisherNode,
-  RegressionNode, ForecastNode, EtsForecastNode, DecomposeNode, OdeIntegrateNode, FitDistributionNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
+  StandardizeNode, FisherNode,
+  ForecastNode, EtsForecastNode, DecomposeNode, OdeIntegrateNode, FitDistributionNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
 } from "./stats";
 import { BitwiseNode, DepreciationNode, TvmNode, PaymentBreakdownNode, NPVNode, IRRNode, MirrNode, AmortizationNode, ReturnsNode } from "./finance";
 import { DisplayNode, AlertNode, RandBetweenNode } from "./display";
@@ -39,9 +42,9 @@ import { DistributionsNode } from "./distribution";
 import { ConduitNode } from "./conduit";
 import { FrameFromListsNode } from "./frame";
 import { ScheduleNode } from "./schedule";
-import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, AllocatorNode, SettleNode, PayoffPlannerNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode } from "./frame";
+import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, ChoiceLadderNode, AllocatorNode, SettleNode, PayoffPlannerNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode } from "./frame";
 import { CubeInputNode, BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode } from "./cube";
-import { WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode } from "./connection";
+import { WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode, GeocodeNode, WeatherNode, HolidaysNode, FxNode } from "./connection";
 import { DataFeedNode } from "./dataFeed";
 import { TaskNotesNode, WriteTasksNode } from "./taskNotes";
 import { WriteFileNode } from "./sink";
@@ -49,11 +52,12 @@ import { WriteObsidianNode } from "./obsidian";
 import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
 import { ReconcileNode } from "./frame";
-import { SlicerNode, CableSwitchNode, ValueInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
-import { SparklineNode, ChartNode, MergePlotsNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, KpiNode } from "./visual";
+import { SlicerNode, CableSwitchNode, DelayedPassNode, ValueInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
+import { SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, CardsNode, KpiNode } from "./visual";
 import { GanttNode } from "./gantt";
 import { NoteNode, ImageNode, FileLinkNode, SvgPickerNode } from "./annotation";
 import { ReportNode } from "./report";
+import { DashboardNode } from "./dashboard";
 import { QrCodeNode } from "./qr";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
@@ -81,17 +85,17 @@ import {
 
 // Runs at call time, so forward references are safe; never relies on constructor.name, which minification breaks.
 
-export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
+export function nodeKindOf(node: GraphNode): NodeKind {
   return explicitKindOf(node) ?? "math";
 }
 
-export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
+export function explicitKindOf(node: GraphNode): NodeKind | null {
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
-  if (node instanceof ReportNode) return "document";
-  if (node instanceof ValueInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof TaskNotesNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
-  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof GaugeNode || node instanceof HeatmapNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "chart";
+  if (node instanceof ReportNode || node instanceof DashboardNode) return "document";
+  if (node instanceof ValueInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof TaskNotesNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode || node instanceof GeocodeNode || node instanceof WeatherNode || node instanceof HolidaysNode || node instanceof FxNode) return "input";
+  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof ConditionalRegionsNode || node instanceof GaugeNode || node instanceof HeatmapNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "chart";
   if (node instanceof WaterfallNode || node instanceof CandlestickNode || node instanceof BoxplotNode || node instanceof CalendarHeatmapNode || node instanceof ProportionNode || node instanceof QuiverNode || node instanceof HistogramNode || node instanceof SankeyNode) return "chart";
-  if (node instanceof QrCodeNode || node instanceof KpiNode || node instanceof GanttNode || node instanceof ChartBuilderNode || node instanceof MermaidNode || node instanceof RecordNode) return "chart";
+  if (node instanceof QrCodeNode || node instanceof KpiNode || node instanceof GanttNode || node instanceof ChartBuilderNode || node instanceof MermaidNode || node instanceof RecordNode || node instanceof CardsNode) return "chart";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
   if (
     node instanceof ComplexFromNode || node instanceof ComplexUnpackNode ||
@@ -116,7 +120,7 @@ export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
     node instanceof ConcatListsNode || node instanceof RunningNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
     node instanceof NormalizeNode ||
-    node instanceof BinNode || node instanceof OutliersNode || node instanceof SmoothNode || node instanceof FindPeaksNode || node instanceof SpectrumNode || node instanceof ShiftNode || node instanceof CombinationsNode ||
+    node instanceof BinNode || node instanceof OutliersNode || node instanceof SmoothNode || node instanceof FindPeaksNode || node instanceof ConnectedRegionsNode || node instanceof SpectrumNode || node instanceof ShiftNode || node instanceof CombinationsNode ||
     node instanceof EwmaNode || node instanceof ConvolveNode || node instanceof CrossNode ||
     node instanceof PolyfitNode || node instanceof TrapzNode || node instanceof RleNode ||
     node instanceof ShuffleNode || node instanceof NthElementNode || node instanceof InterleaveNode ||
@@ -126,9 +130,9 @@ export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
   if (
     node instanceof RankPercentileNode || node instanceof CorrelNode ||
     node instanceof CombinatoricsNode || node instanceof TwoInputMathNode || node instanceof SumProductNode ||
-    node instanceof StandardizeNode || node instanceof CovarianceNode || node instanceof FisherNode ||
+    node instanceof StandardizeNode || node instanceof FisherNode ||
     node instanceof BitwiseNode || node instanceof DepreciationNode ||
-    node instanceof RegressionNode || node instanceof ForecastNode || node instanceof EtsForecastNode || node instanceof DecomposeNode || node instanceof OdeIntegrateNode || node instanceof FitDistributionNode || node instanceof ModeNode ||
+    node instanceof ForecastNode || node instanceof EtsForecastNode || node instanceof DecomposeNode || node instanceof OdeIntegrateNode || node instanceof FitDistributionNode || node instanceof ModeNode ||
     node instanceof TrimMeanNode || node instanceof FrequencyNode || node instanceof ConfidenceNode ||
     node instanceof SeriesSumNode || node instanceof MultinomialNode
   ) return "math";
@@ -145,7 +149,7 @@ export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
     node instanceof ChooseNode || node instanceof NaNode ||
     node instanceof AlertNode || node instanceof IfNode ||
     node instanceof SwitchNode || node instanceof IfsNode ||
-    node instanceof CableSwitchNode || node instanceof NoteNode ||
+    node instanceof CableSwitchNode || node instanceof DelayedPassNode || node instanceof NoteNode ||
     node instanceof ImageNode || node instanceof FileLinkNode ||
     node instanceof ExpectNode ||
     node instanceof WriteFileNode ||
@@ -216,6 +220,7 @@ export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
     node instanceof DescribeNode || node instanceof CorrMatrixNode || node instanceof KMeansNode || node instanceof PcaNode || node instanceof LogisticNode || node instanceof WindowNode ||
     node instanceof DecisionMatrixNode ||
     node instanceof DecisionSensitivityNode ||
+    node instanceof ChoiceLadderNode ||
     node instanceof AllocatorNode ||
     node instanceof SettleNode ||
     node instanceof PayoffPlannerNode ||
@@ -237,14 +242,14 @@ export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
 }
 
 // These recolor with their output socket, so every accent consumer (card, minimap, canvas snapshot) must read nodeAccent, never nodeKindOf.
-const SOCKET_DRIVEN_ACCENT = (node: ClassicPreset.Node): boolean =>
+const SOCKET_DRIVEN_ACCENT = (node: GraphNode): boolean =>
   node instanceof ListInputNode || node instanceof TableInputNode || node instanceof ValueInputNode || node instanceof FormatControllerNode ||
   // Set's output swaps between list and logical per op.
   node instanceof SetsNode;
 
 const NO_FAMILY_OUTPUTS = new Set(["number", "list", "numlist", "table", "any", "anylist", "anycombo", "anydata", "anytable", "trueany"]);
 
-function unfiledOutput(node: ClassicPreset.Node): SolenoidSocket | null {
+function unfiledOutput(node: GraphNode): SolenoidSocket | null {
   if (explicitKindOf(node) !== null) return null;
   const outs = Object.values(node.outputs ?? {});
   if (outs.length !== 1) return null;
@@ -253,7 +258,7 @@ function unfiledOutput(node: ClassicPreset.Node): SolenoidSocket | null {
 }
 
 /** Resolves the socket CSS vars a <canvas> cannot read, so the minimap and canvas snapshot paint the accent the card shows. */
-export function nodeAccent(node: ClassicPreset.Node, mode: "dark" | "light"): string {
+export function nodeAccent(node: GraphNode, mode: "dark" | "light"): string {
   const kindAccent = themeAccent(NODE_KIND_ACCENTS[nodeKindOf(node)], mode);
   const unfiled = unfiledOutput(node);
   if (unfiled) return socketVarHex(SOCKET_COLORS[unfiled.dataType], mode);
@@ -266,7 +271,7 @@ export function nodeAccent(node: ClassicPreset.Node, mode: "dark" | "light"): st
 }
 
 /** The palette slot of the color `nodeAccent` paints, for a surface that stores a slot (a group's color). */
-export function nodeAccentSlot(node: ClassicPreset.Node): PaletteSlot {
+export function nodeAccentSlot(node: GraphNode): PaletteSlot {
   const kindSlot = NODE_KIND_SLOTS[nodeKindOf(node)];
   const unfiled = unfiledOutput(node);
   if (unfiled) return socketVarSlot(SOCKET_COLORS[unfiled.dataType]) ?? kindSlot;
@@ -278,13 +283,13 @@ export function nodeAccentSlot(node: ClassicPreset.Node): PaletteSlot {
   return kindSlot;
 }
 
-export function nodeDomWeight(node: ClassicPreset.Node): number {
+export function nodeDomWeight(node: GraphNode): number {
   // An idle SVG Picker is one <img>; its inline SVG mounts only on hover, never during a pan or zoom.
   if (node instanceof SvgPickerNode) return 2;
   if (
-    node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof HistogramNode ||
+    node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof ConditionalRegionsNode || node instanceof HistogramNode ||
     node instanceof ProportionNode || node instanceof SankeyNode ||
-    node instanceof MermaidNode || node instanceof RecordNode || node instanceof HeatmapNode
+    node instanceof MermaidNode || node instanceof RecordNode || node instanceof CardsNode || node instanceof HeatmapNode
   ) return 10;
   if (node instanceof TornadoNode) return 6;
   if (
@@ -292,33 +297,41 @@ export function nodeDomWeight(node: ClassicPreset.Node): number {
     node instanceof ChartBuilderNode
   ) return 3;
   const grid = Object.values(node.outputs ?? {}).some((p) => {
-    const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;
+    const s = (p as { socket?: GraphSocket } | undefined)?.socket;
     return s instanceof SolenoidSocket && (s.dataType === "table" || s.dataType === "frame" || s.dataType === "cube");
   });
   if (grid) return 2;
   return 1;
 }
 
-export function nodeResizable(node: ClassicPreset.Node): boolean {
+export function nodeResizable(node: GraphNode): boolean {
   return node instanceof DisplayNode;
 }
 
-export function nodeWide(node: ClassicPreset.Node): boolean {
+/** The widest tier, 340px: cards that draw a chart or a deck of records in the card, where width is the figure's room. */
+export function nodeXWide(node: GraphNode): boolean {
+  return node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof ConditionalRegionsNode ||
+    node instanceof HistogramNode || node instanceof SankeyNode || node instanceof ProportionNode ||
+    node instanceof WaterfallNode || node instanceof CandlestickNode || node instanceof BoxplotNode ||
+    node instanceof CalendarHeatmapNode || node instanceof HeatmapNode || node instanceof QuiverNode ||
+    node instanceof RecordNode || node instanceof CardsNode || node instanceof TriangleSolverNode || node instanceof UnitCircleNode ||
+    node instanceof CircleSolverNode || node instanceof RegularPolygonNode || node instanceof TwoPointsNode ||
+    node instanceof PolygonPointsNode || node instanceof SolidNode || node instanceof ElementNode;
+}
+
+export function nodeWide(node: GraphNode): boolean {
   if (node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof PhysicsConstantNode) return true;
   if (node instanceof ExpressionNode || node instanceof ScriptNode || node instanceof EquationNode) return true;
-  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
+  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof ConditionalRegionsNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
   if (node instanceof ProportionNode || node instanceof SankeyNode || node instanceof HistogramNode || node instanceof ChartBuilderNode) return true;
   const ports = [...Object.values(node.inputs ?? {}), ...Object.values(node.outputs ?? {})];
   return ports.some((p) => {
-    const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;
+    const s = (p as { socket?: GraphSocket } | undefined)?.socket;
     return s instanceof SolenoidSocket && (s.dataType === "table" || s.dataType === "frame" || s.dataType === "cube" || s.dataType === "lambda");
   });
 }
 
-export function nodeMedium(node: ClassicPreset.Node): boolean {
-  return Object.values(node.outputs ?? {}).some((p) => {
-    const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;
-    return s instanceof SolenoidSocket &&
-      (s.dataType === "date" || s.dataType === "datelist" || s.dataType === "datecombo");
-  });
+/** The 210px tier: the date cards, and Value Input keying a date, whose day-name and relative formats need the room. */
+export function nodeMedium(node: GraphNode): boolean {
+  return nodeKindOf(node) === "date" || (node instanceof ValueInputNode && node.op === "date");
 }

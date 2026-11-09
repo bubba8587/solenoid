@@ -1,5 +1,7 @@
+/* A size container: the Pivot view and the header filter fit themselves to the popup, resized or not. Its width never comes from its content. */
 .table-popup {
   width: min(1100px, 94vw);
+  container: table-popup / inline-size;
 }
 
 .table-popup__dims {
@@ -27,7 +29,7 @@
   border-collapse: separate;
   border-spacing: 0;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .table-popup__grid thead th {
@@ -46,7 +48,7 @@
   background: var(--surface-sunken);
   color: var(--text-dim);
   font-weight: 500;
-  font-size: 11px;
+  font-size: 10px;
   text-align: center;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -103,7 +105,7 @@
   padding: 4px 8px;
   color: var(--text-bright);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
   text-align: right;
   outline: none;
 }
@@ -123,11 +125,11 @@
   white-space: nowrap;
   overflow: hidden;
 }
-/* Only wins specificity over the read-only rule; the look is `.sol-error-chip`'s, at the grid's 13px. */
+/* Only wins specificity over the read-only rule; the look is `.sol-error-chip`'s, at the grid's 12px. */
 .table-popup__input.sol-error-chip,
 .table-popup__input.sol-error-chip[readonly] {
   color: var(--sol-error);
-  font-size: 13px;
+  font-size: 12px;
 }
 .table-popup__input--text {
   text-align: left;
@@ -238,14 +240,30 @@
   pointer-events: none;
 }
 
+/* A long name wraps at word breaks onto a second line rather than widening its column; focused, it is one line again that scrolls inside the field. */
 .table-popup__colhead-input {
   min-width: 0;
   width: 100%;
+  display: block;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: normal;
+  line-height: 1.25;
+  max-height: calc(2 * 1.25em + 4px);
   padding: 2px 6px;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 11px;
   color: color-mix(in srgb, var(--node-accent, var(--text)) 70%, var(--text));
 }
+.table-popup__colhead-input:focus {
+  white-space: pre;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-height: calc(1.25em + 4px);
+  scrollbar-width: none;
+}
+.table-popup__colhead-input:focus::-webkit-scrollbar { display: none; }
 
 .table-popup__colhead-edit {
   display: flex;
@@ -254,40 +272,21 @@
 }
 .table-popup__colhead-field { position: relative; display: flex; flex: 1 1 auto; min-width: 0; }
 .table-popup__colhead-field--affix .table-popup__colhead-input { padding-right: 24px; }
-.table-popup__coltype {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--node-accent, var(--text));
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: 4px;
-  cursor: pointer;
-}
-.table-popup__coltype:hover { border-color: var(--node-accent, var(--accent)); }
 
+/* A long name wraps at word breaks onto a second line, then clips, so it never widens its column past 14em. */
 .table-popup__colhead-label {
   flex: 1 1 auto;
   min-width: 0;
+  max-width: 14em;
+  white-space: normal;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.table-popup__coltype--fx,
-.table-popup__coltype--fx:hover {
-  font-size: 10px;
-  color: var(--surface);
-  background: var(--node-accent, var(--accent));
-  border-color: var(--node-accent, var(--accent));
-}
 
 .table-popup__fmtbtn {
   flex: 0 0 auto;
@@ -330,8 +329,6 @@
   gap: 4px;
   min-width: 150px;
 }
-.table-popup__fmtpanel .sol-fcflow { display: flex; }
-.table-popup__fmtpanel .sol-fcflow .table-popup__fmtselect { flex: 1 1 auto; width: auto; min-width: 0; }
 .table-popup__lammenu {
   list-style: none;
   padding: 3px;
@@ -354,14 +351,14 @@
 }
 .table-popup__exprprefix {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-dim);
 }
 .table-popup__exprinput {
   flex: 1;
   min-width: 60px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 1px 3px;
@@ -412,11 +409,15 @@
 .table-popup__fmtpanel .table-popup__fmtselect {
   width: 100%;
   box-sizing: border-box;
-  padding: 2px 4px;
+  padding: 2px 20px 2px 4px;
   font-family: var(--font-sans);
   font-size: 11px;
   color: var(--text);
-  background: var(--surface);
+  /* The app-standard chevron (.solenoid-node__select), sat in from the edge, never the native arrow pinned to it. */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: var(--surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 7px center / 9px 5px;
   border: 1px solid var(--border-strong);
   border-radius: 4px;
   cursor: pointer;
@@ -461,17 +462,6 @@
 }
 .table-popup__matrix-fmt .table-popup__fmtselect { width: auto; min-width: 110px; }
 
-.sol-fcflow {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-.sol-fcflow .table-popup__fmtselect:disabled {
-  opacity: 0.65;
-  cursor: default;
-}
-
 /* ── CSV view ───────────────────────────────────────────────────────────────── */
 .table-popup__csv {
   display: block;
@@ -492,7 +482,7 @@
   line-height: 1.5;
   white-space: pre;
   overflow: auto;
-  resize: vertical;
+  resize: none;
   outline: none;
 }
 .table-popup__csv:focus { box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent)); }
@@ -559,28 +549,74 @@
   overflow: visible;
 }
 
+/* The popup's pill family: segments, a dropdown and a lone button share one height, border and fill. */
 .table-popup__view {
   display: inline-flex;
   flex-shrink: 0;
+  box-sizing: border-box;
+  height: 28px;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
   overflow: hidden;
 }
-.table-popup__view button {
+.table-popup__view button,
+.sol-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   font-size: 12px;
-  padding: 5px 11px;
+  padding: 0 11px;
+  white-space: nowrap;
   background: var(--surface);
   border: none;
   color: var(--text-dim);
   cursor: pointer;
 }
 .table-popup__view button + button { border-left: 1px solid var(--border-strong); }
-.table-popup__view button[aria-pressed="true"] {
+.table-popup__view button[aria-pressed="true"],
+.sol-pill-btn[aria-pressed="true"],
+.sol-pill-btn[aria-expanded="true"] {
   background: color-mix(in srgb, var(--node-accent, var(--accent)) 22%, var(--surface));
   color: var(--text);
 }
+.table-popup__view button:hover:not(:disabled),
+.sol-pill-btn:hover:not(:disabled) { color: var(--text); }
+.table-popup__view button:disabled,
+.sol-pill-btn:disabled { opacity: 0.45; cursor: default; }
+.sol-pill-btn {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  height: 28px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+}
+.sol-pill-btn--icon { width: 34px; padding: 0; }
+.sol-pill-select {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  /* As wide as the current choice, not the longest one, so the chevron sits by its label. */
+  field-sizing: content;
+  height: 28px;
+  max-width: 100%;
+  padding: 0 28px 0 11px;
+  font-size: 12px;
+  color: var(--text);
+  /* The app-standard chevron (.solenoid-node__select), sat in from the edge, never the native arrow pinned to it. */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: var(--surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 11px center / 10px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.sol-pill-select:focus-visible,
+.sol-pill-btn:focus-visible { outline: none; border-color: var(--node-accent, var(--accent)); }
 
-.table-popup__source-check {
+/* A popup's on-off option: the footer's Source, the Pivot ribbon's options. */
+.table-popup__source-check,
+.table-popup__check {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -591,11 +627,16 @@
   cursor: pointer;
   user-select: none;
 }
-.table-popup__source-check input {
+.table-popup__source-check input,
+.table-popup__check input {
   margin: 0;
   cursor: pointer;
   accent-color: var(--node-accent, var(--accent));
 }
+.table-popup__check { margin-right: 0; }
+.table-popup__check:has(input:checked) { color: var(--text); }
+.table-popup__check--off { opacity: 0.45; cursor: default; }
+.table-popup__check--off input { cursor: default; }
 
 .table-popup__dim-controls {
   display: flex;
@@ -625,16 +666,23 @@
 }
 
 
+/* Relative, so a sheet can open above it (the Pivot view's, on a phone). */
 .table-popup__footer {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+/* Everything but the actions wraps here; Done, or Cancel and Save, stay pinned to the right of the last line. */
+.table-popup__tools {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 0 14px 14px;
 }
-
-.table-popup__spacer { flex: 1 1 0; min-width: 0; }
-/* Cancel and Save wrap as one item, so Save is never stranded on its own line. */
 .table-popup__actions { display: flex; gap: 8px; flex: 0 0 auto; margin-left: auto; }
 
 .table-popup__btn {
@@ -661,11 +709,20 @@
 
 @media (pointer: coarse) {
   .table-popup__btn,
-  .table-popup__view button {
+  .table-popup__view button,
+  .sol-pill-btn,
+  .sol-pill-select {
     padding: 4px 7px;
     font-size: 11px;
   }
+  .table-popup__view,
+  .sol-pill-btn,
+  .sol-pill-select { height: 30px; }
+  .sol-pill-select { padding-right: 24px; background-position: right 9px center; }
+  .table-popup__view button { padding-top: 0; padding-bottom: 0; }
+  .sol-pill-btn--icon { width: 32px; padding: 0; }
   .table-popup__footer,
+  .table-popup__tools,
   .table-popup__dim-controls,
   .table-popup__actions {
     gap: 6px;
@@ -673,11 +730,16 @@
 }
 @media (pointer: coarse) and (max-width: 380px) {
   .table-popup__btn,
-  .table-popup__view button {
+  .table-popup__view button,
+  .sol-pill-btn,
+  .sol-pill-select {
     padding: 4px 6px;
     font-size: 10px;
   }
+  .table-popup__view button { padding-top: 0; padding-bottom: 0; }
+  .sol-pill-select { padding-right: 22px; background-position: right 8px center; }
   .table-popup__footer,
+  .table-popup__tools,
   .table-popup__dim-controls,
   .table-popup__actions {
     gap: 4px;
@@ -689,37 +751,32 @@
    on screen beat bigger targets, and the popup takes the height a phone has. */
 @media (max-width: 640px) {
   .table-popup { width: calc(100vw - 16px); }
-  .table-popup__grid-scroll { max-height: 60vh; max-height: 60dvh; margin: 8px; }
-  .table-popup__grid { font-size: 14px; }
+  .table-popup__grid-scroll { margin: 8px; }
+  .table-popup__grid { font-size: 13px; }
   .table-popup__input {
     min-width: 52px;
     padding: 8px 6px;
-    font-size: 14px;
+    font-size: 13px;
   }
   .table-popup__colhead,
-  .table-popup__rowhead { font-size: 12px; padding-top: 2px; padding-bottom: 2px; padding-left: 4px; }
+  .table-popup__rowhead { font-size: 11px; padding-top: 2px; padding-bottom: 2px; padding-left: 4px; }
   .table-popup__rowhead { padding-right: 4px; }
   .table-popup__rowhead { min-width: 22px; }
   .table-popup__colhead--name { min-width: 84px; padding-top: 3px; padding-bottom: 3px; padding-left: 4px; }
   .table-popup__colhead-edit { gap: 3px; }
-  .table-popup__coltype {
-    box-sizing: border-box;
-    width: 24px;
-    height: 24px;
-    font-size: 12px;
-  }
-  .table-popup__coltype--fx { font-size: 11px; }
-  /* The paintbrush alone says format; its chevron costs a column 10px. */
   .table-popup__fmtbtn { box-sizing: border-box; height: 24px; padding: 0 4px; }
-  .table-popup__fmtbtn > svg:last-child { display: none; }
   /* A header name is as wide as its text (the input's size), not the cell input's 52px floor, which is for values. */
   .table-popup__colhead-field { flex: 1 0 auto; }
-  .table-popup__colhead-input { min-width: 0; width: auto; flex: 1 0 auto; font-size: 13px; padding: 3px 4px; }
-  .table-popup__csv { font-size: 14px; margin: 8px; width: calc(100% - 16px); min-height: 40vh; min-height: 40dvh; }
+  .table-popup__colhead-input { min-width: 0; width: auto; flex: 1 0 auto; font-size: 12px; padding: 3px 4px; }
+  .table-popup__csv { font-size: 14px; margin: 8px; width: calc(100% - 16px); }
+  /* The CSV block is an editor: it asks for the whole screen and shrinks to what the header and footer leave. */
+  .sol-popup--fitnarrow .table-popup__csv { height: 100vh; height: 100dvh; }
+  .sol-popup--fitnarrow .table-popup__csvwrap { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .sol-popup--fitnarrow .table-popup__csvwrap .table-popup__csv--over { flex: 0 1 auto; min-height: 0; }
   .table-popup__csvwrap { margin: 8px; }
   .table-popup__csv--over { margin: 0; width: 100%; }
   .table-popup__csvmirror-inner { font-size: 14px; }
-  .table-popup__form-scroll { margin: 8px; max-height: 60vh; max-height: 60dvh; }
+  .table-popup__form-scroll { margin: 8px; }
   .table-popup__form { max-width: none; }
   .table-popup__footer { padding: 0 8px 8px; }
   /* Clear of the resize grip in the card's corner. */
@@ -751,7 +808,7 @@
 
 @media (pointer: coarse) {
   .cube-popup__crumb { padding: 5px 8px; font-size: 13px; }
-  .table-popup__cell .solenoid-array-chip--sm { padding: 5px 10px; font-size: 13px; }
+  .table-popup__cell .solenoid-array-chip--sm { padding: 5px 10px; font-size: 12px; }
 }
 
 /* ── Form view ──────────────────────────────────────────────────────────────── */
@@ -761,16 +818,23 @@
   max-height: 56dvh;
   overflow: auto;
 }
+/* The form widens with its layout, about 220px a grid column, and never narrower than one comfortable field. */
 .table-popup__form {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: 380px;
+  width: 100%;
+  max-width: max(380px, calc(var(--form-cols, 1) * 220px));
 }
 .table-popup__form-nav {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+.table-popup__form-empty {
+  padding: 12px 2px;
+  font-size: 12px;
+  color: var(--text-dim);
 }
 .table-popup__form-count {
   font-family: var(--font-mono);
@@ -818,6 +882,13 @@
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.35;
+}
+.table-popup__form-box-input--wrap {
+  display: block;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .table-popup__form-box-input[readonly] {
   color: var(--text-dim);

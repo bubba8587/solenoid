@@ -2,17 +2,29 @@
 aliases: ["Format model"]
 tags: [spec, values]
 ---
-<!-- [[C118]] formatTravelsWithValue, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D47]] noMixCurrencies, [[C44]] dateSerials, [[C79]] packActivationIsPresentation -->
+<!-- [[C118]] formatTravelsWithValue, [[C25]] firstClassUnits, [[C44]] dateSerials, [[C79]] packActivationIsPresentation -->
 
 # Spec: Format model
 
-Serves [[C118]] formatTravelsWithValue, with the unit rules of [[C25]] firstClassUnits and the downstream carry of [[D41]] formatFlowsDownstream. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C118]] formatTravelsWithValue, with the unit rules of [[C25]] firstClassUnits. It covers what the system does and blocks, and the decision each behavior serves.
 
-A **Format Controller** (FC) is the small card that docks on a socket and decides how the value there is displayed: its style, precision, negatives, scale, text attributes and unit. This file is the model it follows. `formatModel.ts` says which controls exist for which value; `formatAnnotationStore.ts` renders a number under a format and stores what each FC has set; `nodes/formatController.ts` is the FC card itself. The FC popup shows and hides its controls from the same model, so what renders and what the popup offers can't disagree. How a format travels along the cables is [[unit-flow]].
+A **Format Controller** (FC) is the small card that docks on a socket and decides how the value there is displayed: its style, precision, negatives, scale, text attributes and unit. This file is the model it follows:
+
+- `formatModel.ts` says which controls exist for which value;
+- `formatAnnotationStore.ts` stores what each FC has set and renders a number under a format through the core's formatter (`card_helpers.rs`);
+- `nodes/formatController.ts` is the FC card itself.
+
+The FC popup shows and hides its controls from the same model, so what renders and what the popup offers can't disagree. How a format travels along the cables is [[unit-flow]].
 
 ## The controls follow the value
 
-A Format Controller shows only the controls that fit the kind of value it formats. A control that doesn't fit is hidden, never shown greyed out, and never applied behind the user's back: a control that can't apply tells the user nothing. The one greyed-out control is the unit dropdown under a lock state (below), because there the value does have a unit and the control shows where it comes from ([[C25]] firstClassUnits). Decimal places follow one rule in every number style ("The precision rule"), never one per style, so what the popup offers and what the value looks like can't drift apart each time a style is added. Any number style can carry a unit; a date, text or logical value never does. A Frame gets no controls here, since each of its columns carries its own unit and format ([[D43]] unitByGranularity). A saved style pick survives a change in the kind of value arriving and has no effect until a fitting value returns ("The FC card").
+A Format Controller shows only the controls that fit the kind of value it formats:
+
+- **Hidden, not greyed.** A control that doesn't fit is hidden, never shown greyed out, and never applied behind the user's back: a control that can't apply tells the user nothing. The one greyed-out control is the unit dropdown under a lock state (below), because there the value does have a unit and the control shows where it comes from ([[C25]] firstClassUnits).
+- **One precision rule.** Decimal places follow one rule in every number style ([[#The precision rule]]), never one per style, so what the popup offers and what the value looks like can't drift apart each time a style is added.
+- **Units.** Any number style can carry a unit; a date, text or logical value never does.
+- **Frames.** A Frame gets no controls here, since each of its columns carries its own unit and format ([[C25]] firstClassUnits).
+- **Picks survive.** A saved style pick survives a change in the kind of value arriving and has no effect until a fitting value returns ([[#The FC card]]).
 
 This would reopen if a control needed to be shown greyed out for a reason other than a unit lock, or one kind of value needed two rules for decimal places.
 
@@ -20,8 +32,13 @@ This would reopen if a control needed to be shown greyed out for a reason other 
 
 A displayed value goes through these stages, in order, each driven by one part of the `FormatAnnotation`:
 
-```
-value ──▶ 1 type gate ──▶ 2 style (scale-divide, then precision + grouping) ──▶ 3 unit affix ──▶ 3b negative wrap ──▶ 4 text attributes
+```mermaid
+flowchart LR
+    v["value"] --> g["1 type gate:<br>the family picks<br>the controls"]
+    g --> st["2 style: scale-divide,<br>then precision<br>and grouping"]
+    st --> u["3 unit affix"]
+    u --> neg["3b negative wrap"]
+    neg --> tx["4 text attributes"]
 ```
 
 1. **Type gate.** The FC's adopted socket type maps to a **format family** (`familyOf`), and the family decides which controls exist at all (the truth table below). A control outside the family is hidden in the popup and inert when the format resolves: never disabled but visible, and never silently applied. The one sanctioned disabled-but-visible control is inside a family: the unit dropdown under a lock state (below). Locked is a fact worth showing; absent is not.
@@ -34,7 +51,7 @@ Three cases short-circuit before stage 2 and outrank any annotation: a `SolError
 
 ### The unit is value-level; the format is display-level
 
-For the unit, the FC changes the value: `FormatControllerNode.data()` tags the value's `UnitCell` through `applyFcUnit` ([[C25]] firstClassUnits). As a user-facing tool, though, the FC can set a unit only on a value that has none; re-displaying a value that already has a dimension is Convert's job. Because the unit rides the value, it carries through passthroughs and selectors and drops at a transform on its own. The branches of `applyFcUnit` and the three lock states are in [[unit-flow]]:
+For the unit, the FC changes the value: it tags the value's `UnitCell` (`tag_fc_unit`, the rule `applyFcUnit` reaches) ([[C25]] firstClassUnits). As a user-facing tool, though, the FC can set a unit only on a value that has none; re-displaying a value that already has a dimension is Convert's job. Because the unit rides the value, it carries through passthroughs and selectors and drops at a transform on its own. The branches of `applyFcUnit` and the three lock states are in [[unit-flow]]:
 
 | Lock state | Marker | Meaning |
 |---|---|---|
@@ -44,7 +61,7 @@ For the unit, the FC changes the value: `FormatControllerNode.data()` tags the v
 
 `unitLocked = lockedByConvert || forwarding`. Under a lock the popup shows the unit dropdown present but disabled (`disabled={node.unitLocked}`): the value has a unit, so the control shows it, but it isn't this FC's to change.
 
-Everything else in the pipeline (style, precision, negatives, K / M / B) stays a display annotation. It flows downstream through the transforms a node declares meaning-preserving (add and subtract, a mean, a rounding; not multiply, count or a rate), minus the unit, until a nearer FC overrides it ([[D41]] formatFlowsDownstream). So the unit computes and clashes honestly, while the number format is pure presentation, inherited and overridable.
+Everything else in the pipeline (style, precision, negatives, K / M / B) stays a display annotation. It flows downstream through the transforms a node declares meaning-preserving (add and subtract, a mean, a rounding; not multiply, count or a rate), minus the unit, until a nearer FC overrides it ([[C118]] formatTravelsWithValue). So the unit computes and clashes honestly, while the number format is pure presentation, inherited and overridable.
 
 ## Format families
 
@@ -68,18 +85,18 @@ Everything else in the pipeline (style, precision, negatives, K / M / B) stays a
 
 **Frames** are `none` in this model. A Frame's per-column unit and format are a separate representation, not a scalar annotation stretched over a table:
 
-- The unit is a `ColumnUnit` on `FrameColumn.unit` (`unitColumn.ts`), authored by a header spec or the table popup's per-column format and unit row. A computed column keeps its source column's unit the same way (`nodes/frame.ts`), but only when the derived cells infer as `number`; a computed column whose cells come out non-numeric drops the unit silently.
-- The format rides `FrameColumn.format` downstream exactly like the unit ([[D41]] formatFlowsDownstream). The coercion wrapper's output step (`coerceInputs.ts`) stamps every emitted Frame with that node's own `frameFormatStore` picks, and the nearer node's pick overrides what arrived. `frameFormatStore` is the one saved home, keyed by the node that picked; `format` is worked out on every compute and never saved.
+- The unit is a `ColumnUnit` on `FrameColumn.unit` (`unitValue.ts`), authored by a header spec or the table popup's per-column format and unit row. A computed column keeps its source column's unit the same way (the core's `nodes/columns.rs`), but only when the derived cells infer as `number`; a computed column whose cells come out non-numeric drops the unit silently.
+- The format rides `FrameColumn.format` downstream exactly like the unit ([[C118]] formatTravelsWithValue). The input boundary's output step (`nodeBoundary.ts` `stamp`, [[compute-pass]] § Arrival coercion) stamps every emitted Frame with that node's own `frameFormatStore` picks, and the nearer node's pick overrides what arrived. A lazy node emits a plan rather than a Frame, so there the stamp is one more step of the plan, a `formats` op (frame-verbs.md § formats). `frameFormatStore` is the one saved home, keyed by the node that picked; `format` is worked out on every compute and never saved.
 - A column a verb builds carries a source column's format only where that verb already carries its unit (nest, the Allocator's Allocation); every other derived column starts blank.
 - In the popup, a column with no entry of its own reads `—` (inherit), with the arriving format as a muted hint beside it. Every concrete style, `auto` included, is a real local override that deletes back to `—` (`columnFormatRow`, `frameFormatStore.ts`).
 - A **Cube** column carries the same optional `format` (`CubeColumn.format`), which the cube renderers read like the Frame path (`formatFrameCell`'s `format` argument, threaded through `cubeCell.tsx` from `CubeDisplay` and `CubePopup`). A producing verb may author one: the Schedule verb stamps the app's datetime pattern (`DD-MMM-YYYY HH:mm`) on its Start, Finish, Early and Late date columns in Minutes mode, so a `13:00` start shows its clock time; Days mode leaves them blank. Like the nest and Allocator carry, this is a verb authoring a fresh format.
 
 ## Inheriting the format (`—`)
 
-Every family's primary style dropdown has the same `—` pick (`inheritFormat`): the number, complex and date format dropdown, the text case dropdown and the logical show-as dropdown. With it, the FC carries the display format arriving at `in` through unchanged (style, precision and the advanced tier, or case, or show-as) and authors only its unit. So a second FC docked only to set a unit doesn't reset the style to `auto` ([[D41]] formatFlowsDownstream).
+Every family's primary style dropdown has the same `—` pick (`inheritFormat`): the number, complex and date format dropdown, the text case dropdown and the logical show-as dropdown. With it, the FC carries the display format arriving at `in` through unchanged (style, precision and the advanced tier, or case, or show-as) and authors only its unit. So a second FC docked only to set a unit doesn't reset the style to `auto` ([[C118]] formatTravelsWithValue).
 
 - While inheriting, the FC's own dependent rows collapse to the column row's muted hint: `← Decimal · 3 places` for a number, `← UPPER` or `← Yes / No` for text or logical (`describeInheritedStyle`, per family, in the column row's words). The hint text comes from one function, `describeAnnotation(ann, type)` in `frameFormatStore.ts`, which both the frame column-format row and the FC's inherit hint call (`FormatControllerNode.describeInheritedStyle` delegates to it), so the two never drift. It reads the logical show-as label for a logical column, `Chip` or the text-case label for a string column, and for a number the style label plus `· <n> place(s)` or `· <n> sig fig(s)` when precision applies (default 2), or `Custom · <pattern>` for a Custom number or date style.
-- `FormatControllerNode.resolveAnnotation(inherited)` does the merge: the FC's own `unit` and `customUnit`, every display axis from upstream. `makeAnnotationResolver.compute` calls it in place of `annotation()`, so the carried-downstream and box-behind paths agree.
+- `FormatControllerNode.resolveAnnotation(inherited)` does the merge: the FC's own `unit` and `customUnit`, every display axis from upstream. The core's annotation walk (`resolve`, `annotate.rs`) makes the same merge for a node whose facts say it resolves, so the carried-downstream and box-behind paths agree.
 - The node's `format` field stays a concrete `FormatStyleId`; `inheritFormat` is a separate flag, and `""` is the dropdown's inherit value. The inherited annotation (`inheritedAnnotation`) is recomputed on every `refreshAnnotation` and never saved.
 
 ## The control truth table
@@ -104,7 +121,7 @@ Which controls exist per family, both as popup rows and as resolution axes (`con
 | · render as markdown | — | — | ✔ (inline markdown, sanitized) | — | — |
 | · monospace | — | — | ✔ (text is sans by default) | — | — |
 
-The text case dropdown's **Chip** value colors each distinct string by category, with the shared chart palette and one `CategoryChip`, keyed by first appearance in source row order. A chip wears its color the way a card's header band does (author 2026-10-05): opaque, the hue at `--header-tint` toward `--surface`, its text at `--mix-ink` toward `--text`, and no border, which stays the mark of a chip that is a button. It shares the text style dropdown, so it excludes a case pick. The on-canvas grid, read-only popups and an editable popup cell all render the pill; an editable cell shows the pill while unfocused and swaps to the raw text on focus, and Source mode keeps raw text throughout.
+The text case dropdown's **Chip** value colors each distinct string by category, with the shared chart palette and one `CategoryChip`, keyed by first appearance in source row order. A chip wears its color the way a card's header band does: opaque, the hue at `--header-tint` toward `--surface`, its text at `--mix-ink` toward `--text`, and no border, which stays the mark of a chip that is a button. It shares the text style dropdown, so it excludes a case pick. The on-canvas grid, read-only popups and an editable popup cell all render the pill; an editable cell shows the pill while unfocused and swaps to the raw text on focus, and Source mode keeps raw text throughout.
 
 The two object families each carry exactly one control:
 
@@ -115,13 +132,18 @@ The two object families each carry exactly one control:
 
 Both are display-only and ride the annotation like `logicalStyle`. The lambda's source node keeps its compact signature box regardless: view-as applies downstream (Display boxes, Report embeds), not on the authoring card, and a Report embed's default stays KaTeX. The flowing `LambdaValue` already carries `expr`, `params` and `descriptions`, so every view derives from the value and nothing extra travels the cable.
 
+Tests:
+
+- `fcTextStylePick.test.ts`: picking Chip clears a letter case, and a letter case clears Chip and the `—` pick.
+- `fcLambdaChart.test.ts`: the view-as and text-scale picks reach a downstream Display through the Display's own resolution chain, with real node classes.
+
 ## Styles
 
 `FormatStyle` is the built-in set; `FormatStyleId` also accepts a pack format's id.
 
 | Style | Renders | Notes |
 |---|---|---|
-| `auto` | canonical trim | `formatScalar` (`format.ts`), the one display of every unformatted number ([[D94]] oneNumberDisplay): an integer prints as is; anything else to the "Decimal places" setting (2, 3, 4 or 6; default 4) with trailing zeros dropped; `extremeSci` forces scientific at the "Scientific from" setting and above (10⁶, 10⁹ or 10¹², or never; default 10⁹, author 2026-10-05) and below the smallest shown decimal, so a small value never reads as 0 |
+| `auto` | canonical trim | `formatScalar` (`format.ts`), the one display of every unformatted number ([[C118]] formatTravelsWithValue): an integer prints as is; anything else to the "Decimal places" setting (a slider from 0 to 10; default 4) with trailing zeros dropped; `sci_from` (`card_helpers.rs`) forces scientific at the "Scientific from" setting and above (10³, 10⁶, 10⁹ or 10¹², or never; default 10⁹) and below the smallest shown decimal, so a small value never reads as 0 |
 | `decimal` | `d` places or `d` significant figures, grouped | |
 | `integer` | `1,235` | rounded, grouped |
 | `percent` | ×100, then `d` places or significant figures, then `%` | |
@@ -140,15 +162,15 @@ Both are display-only and ride the annotation like `logicalStyle`. The lambda's 
 | `datetime` | `2026-06-03 14:30` | `YYYY-MM-DD HH:mm` |
 | `date_custom` | the FC's `customPattern` | `DD-MMM-YYYY` when blank |
 
-**One display for every unformatted number** ([[D94]] oneNumberDisplay). Every surface that shows a number without a format the user picked shows it through `formatScalar`, the same function as the `auto` style: value boxes, Frame and Table cards, the Table and Cube popups, complex numbers, unit suffixes, Alert messages and formula steps. The decimals are a setting rather than a constant because how many suit depends on the person and the data; dropping trailing zeros keeps 1.5 from reading as 1.5000. `settingsStore`'s `numberDecimals` and `sciAbove` are read on every call, and `formatAnnotationStore` and `frameFormatStore` notify when either changes, so what is on screen redraws ([[stores]]); a popup already open keeps its text until it is opened again. Three kinds of output keep their own rule: a number turned into text as data (Cast to text, a complex in a text formula) is not a display; the Constant and Physics Constant cards exist to show a constant's precision; and chart axis ticks are laid out by the figure. A surface that needs a different default from the rest takes a Format Controller, never a constant of its own.
+**One display for every unformatted number** ([[C118]] formatTravelsWithValue). Every surface that shows a number without a format the user picked shows it through `formatScalar`, the same function as the `auto` style: value boxes, Frame and Table cards, the Table and Cube popups, complex numbers, unit suffixes, Alert messages and formula steps. The decimals are a setting rather than a constant because how many suit depends on the person and the data; dropping trailing zeros keeps 1.5 from reading as 1.5000. `settingsStore`'s `numberDecimals` and `sciAbove` are pushed to the core's formatter on load and on each change (`format.ts`), and `formatAnnotationStore` and `frameFormatStore` notify when either changes, so what is on screen redraws ([[stores]]); a popup already open keeps its text until it is opened again. Three kinds of output keep their own rule: a number turned into text as data (Cast to text, a complex in a text formula) is not a display; the Constant and Physics Constant cards exist to show a constant's precision; and chart axis ticks are laid out by the figure. A surface that needs a different default from the rest takes a Format Controller, never a constant of its own.
 
-The number dropdown groups the styles as General (`auto`), Number (`decimal`, `integer`, `fraction`, `fraction_adv`, `scientific`), Percent and Custom. Currency is a unit, not a style ([[D47]] noMixCurrencies). A date style renders the value as a date serial through `formatDateSerial`, with no unit; `dateAnnotationPattern` gives the pattern, and the Frame and Cube cell renderers read it so a column's `format` changes its date cells.
+The number dropdown groups the styles as General (`auto`), Number (`decimal`, `integer`, `fraction`, `fraction_adv`, `scientific`), Percent and Custom. Currency is a unit, not a style ([[C25]] firstClassUnits). A date style renders the value as a date serial, with no unit; the core's `date_annotation_pattern` (`card_helpers.rs`) gives the pattern, and the Frame and Cube cell renderers format through it (`formatFrameCell`) so a column's `format` changes its date cells.
 
 A style id that is not built in is looked up among the **pack formats**, whose `apply` owns the whole rendering; an unknown id falls back to `auto`. Pack units and formats register for every known pack, active or not ([[C79]] packActivationIsPresentation); `fcExtensions.ts` filters the dropdowns to active packs. `registerPackFormats` takes an id, a label, an optional dropdown group (default "Pack") and `apply`.
 
 ### Rendering order
 
-`formatNumberWithAnnotation(n, ann)` is the one entry for a number:
+`formatNumberWithAnnotation(n, ann)` is the one entry for a number. It, `formatScalar` and `applyFormatStyle` are the TypeScript names of the core's one formatter (`card_helpers.rs`, called straight through the module's `fmt_annotated` / `fmt_scalar`, which hold the two display settings the app pushes on load and on each change):
 
 1. A non-finite number is `String(n)`; a date style renders as a date and stops.
 2. Scale divides the magnitude (only where `scaleApplies`), and a parenthesized negative style (only where `negativeApplies`) takes the absolute value.
@@ -156,7 +178,22 @@ A style id that is not built in is looked up among the **pack formats**, whose `
 4. The unit wraps that: a prefix unit before (`$1.2M`), any other after, and a custom unit's text after.
 5. A parenthesized negative wraps outside the unit, Excel accounting style (`($1.2M)`).
 
+For example, −1,234,567 in a parenthesized-negative style with the M scale and a `$` unit:
+
+```mermaid
+flowchart LR
+    n["−1234567"] -->|"2: scale ÷ 1M,<br>take the absolute value"| a["1.234567"]
+    a -->|"3: the style, 1 place,<br>then the suffix"| b["1.2M"]
+    b -->|"4: a prefix unit"| c["$1.2M"]
+    c -->|"5: the negative wrap"| d["($1.2M)"]
+```
+
 The red negative styles keep the minus or parentheses in the string: red is a color the render layer adds (`annotationRendersNegativeRed`) where a surface is annotation-aware, such as the value box. Plain-text surfaces (the clipboard, the text form) carry just the string. Percent takes a unit like any other style, in the fixed order prefix unit, number with its `%`, suffix unit; `$12.3%` is expressible if the user chooses it, and the model doesn't special-case it.
+
+Tests:
+
+- `coreCardHelpers.test.ts`: the app's entry points answer every frozen case of the core's formatter (`card_helpers.rs` (solenoid-core) holds the core to them); a date style past JavaScript's date range names no day.
+- `formatAnnotationStore.test.ts` ("formatNumberWithAnnotation"): the styles, the advanced tier spot-checked, and a fraction that falls back to the General display when no low-denominator fraction fits.
 
 ### Logical and text
 
@@ -167,15 +204,17 @@ The red negative styles keep the minus or parentheses in the string: red is a co
 
 `formatCxWithAnnotation` is the render half, and `controlsFor` with `COMPLEX_FORMAT_STYLES` gates the popup. Three rules follow from a complex number having two components and one sign structure:
 
-- **Precision applies to both components**: `3.14 + 2.72i` at 2 places, never one formatted and the other trimmed. Under `auto` each component reads as any unformatted number does ([[D94]] oneNumberDisplay); the FC annotates rather than overrides.
+- **Precision applies to both components**: `3.14 + 2.72i` at 2 places, never one formatted and the other trimmed. Under `auto` each component reads as any unformatted number does ([[C118]] formatTravelsWithValue); the FC annotates rather than overrides.
 - **The style list is reduced.** Percent, fraction, integer, custom and the date styles mean nothing on a complex, so they aren't offered, and an annotation that still carries one (it can survive a socket retype) falls back to `auto`.
 - **The unit wraps the whole value**: `(3 + 2i) V`, never `3 V + 2i V`, and `3 + 2i V` would read as the unit on the imaginary term alone. A prefix unit still leads, as on the number path.
 
-The advanced tier is not consulted: a complex has no single sign to parenthesize and no magnitude to scale. A `Cx` reaches the value box raw and the display layer formats it, which is what lets the annotation act. `assembleCx` (`cxValue.ts`) owns the written form, and its `bothParts` flag splits two forms. The **display form** always shows both components (`0 + 4i`, `23 + 0i`), through `formatCxDisplay` and `formatCxWithAnnotation`, in the value box, chips, readouts and the clipboard, so a unit always wraps a two-term value. The **Excel and coercion form** (`formatCx`, the `&` operator, cast to text, the `IM*` functions) drops a zero component (`23`, `4i`) for Excel parity and round-trips with `parseCx`.
+The advanced tier is not consulted: a complex has no single sign to parenthesize and no magnitude to scale. A `Cx` reaches the value box raw and the display layer formats it, which is what lets the annotation act. `assembleCx` (`cxValue.ts`) owns the written form, and its `bothParts` flag splits two forms. The **display form** always shows both components (`0 + 4i`, `23 + 0i`), through `formatCxDisplay` and `formatCxWithAnnotation`, in the value box, chips, readouts and the clipboard, so a unit always wraps a two-term value. The **Excel and coercion form** (`format_cx`, the `&` operator, cast to text, the `IM*` functions) drops a zero component (`23`, `4i`) for Excel parity and round-trips with `parseCx`.
+
+Tests: `formatAnnotationStore.test.ts` ("formatCxWithAnnotation"): both components at the precision, a zero or whole component still shown, a style a complex isn't offered falling back to `auto`, and the unit wrapping the parenthesized two-term value.
 
 ## The precision rule
 
-One rule and one implementation, the private `formatPrecise` in `formatAnnotationStore.ts`, used by every style that takes precision. The exception is `scientific`, which works out its own mantissa digits inline with the same meaning. The inputs are `decimalDigits` (`d`) and `decimalMode` (`places` or `sigfigs`):
+One rule and one implementation, the private `format_precise` in the core's `card_helpers.rs`, used by every style that takes precision. The exception is `scientific`, which works out its own mantissa digits inline with the same meaning. The inputs are `decimalDigits` (`d`) and `decimalMode` (`places` or `sigfigs`):
 
 | Style | `places` | `sigfigs` | Precision row shown? |
 |---|---|---|---|
@@ -188,7 +227,7 @@ One rule and one implementation, the private `formatPrecise` in `formatAnnotatio
 | `custom` | the pattern owns precision | — | no |
 | pack formats | the pack's `apply` owns everything | — | no |
 
-The resolver clamps `places` to 0–20 and `sigfigs` to 1–21, but the FC popup caps the digits box at 20 in both modes, so 21 significant figures is unreachable from the control; switching to `sigfigs` bumps 0 to 1. The default is `d = 2` places, so `scientific` shows `1.23e+4`.
+The resolver clamps `places` to 0–20 and `sigfigs` to 1–21, but the FC popup caps the digits box at 20 in both modes, so 21 significant figures can't be reached from the control. Switching to `sigfigs` raises a 0 to 1. The default is `d = 2` places, so `scientific` shows `1.23e+4`.
 
 ## Units on the FC
 
@@ -197,33 +236,50 @@ The resolver clamps `places` to 0–20 and `sigfigs` to 1–21, but the FC popup
 - `unitById` falls back to `none` for an unknown id; `isFcUnit` says whether an id is an FC unit, which is how Convert's units map onto FC units.
 - `unitsCompatible(a, b)` is true when either side is `none` or custom, or both share a group. `formatMismatchStore` holds the FCs in a "unit mismatch" state (cabled to a socket annotated with an incompatible unit group); the canvas connection pipe writes it.
 
+Tests: `formatAnnotationStore.test.ts`: `unitsCompatible`, `unitById` and `formatMismatchStore`.
+
 ## The annotation store
 
 `formatAnnotationStore` holds each FC's annotation, keyed `nodeId::socketKey`, with a per-node index because every value box calls `getForNode` on every render. A node carries at most one FC, so `getForNode` answers the annotation on any of its sockets. `clearNodes` resets node state but leaves the pack unit and format registrations, which are extensions, not node state. The store registers its forgetters with the node-store registry ([[stores#The rules]]).
 
-## The FC card (`nodes/formatController.ts`)
+Tests: `formatAnnotationStore.test.ts` ("formatAnnotationStore"): the keys, and a node id that is a prefix of another's never matching it.
 
-- **Type.** `adaptTypeFromConnections` adopts the concrete type the FC is attached to: for a docked FC, the host's output type resolved upstream through wildcard passthroughs (`concreteTypeOfOutput`, cycle-guarded) or the host input's own type; for a free FC, the first concrete type on the cable into `in` or the socket its `out` feeds; otherwise `trueany`. It mirrors the type onto both of its own sockets, which it owns ([[socket-lattice#Each port owns its socket instance]]), and returns `false` without re-rendering when nothing changed.
-- **The pick survives a retype.** Changing the type never touches `format`. `effectiveFormat()` is the style that applies: on a wildcard the pick stands; a date socket under a non-date style shows `date_dmy` (otherwise a raw serial); a non-date socket under a date style shows `auto`. A saved pick outside the family is inert, not reset ([[C118]] formatTravelsWithValue). A value typed only at run time, such as a Script output, passes through a wildcard and then its construction-time family before its real type arrives, and re-defaulting on each hop destroyed a saved date style. `formatModel.test.ts` checks the whole `SocketDataType` union against the family table.
+## The FC card
+
+Code: `nodes/formatController.ts`
+
+- **Type.** The FC reconcile (`fc.rs`, `reconcileFcs`) gives each FC the concrete type it is attached to: for a docked FC, the host's output type resolved upstream through wildcard passthroughs (cycle-guarded) or the host input's own type; for a free FC, the first concrete type on the cable into `in` or the socket its `out` feeds; otherwise `trueany`. `settle` mirrors the type onto both of the FC's own sockets, which it owns ([[socket-lattice#Each port owns its socket instance]]), and answers `false` when nothing changed.
+- **The pick survives a retype.** Changing the type never touches `format`. `effectiveFormat()` is the style that applies: on a wildcard the pick stands; a date socket under a non-date style shows `date_dmy` (otherwise a raw serial); a non-date socket under a date style shows `auto`. A saved pick outside the family is inert, not reset ([[C118]] formatTravelsWithValue). A value typed only at run time, such as a Script output, passes through a wildcard and then its construction-time family before its real type arrives, and re-defaulting on each hop destroyed a saved date style.
 - **Where the annotation lands.** `refreshAnnotation` writes the annotation onto the box feeding the FC's `in`, and only there. It exists only while `in` is connected, so breaking the cable reverts the upstream display; docking is positional only, and the wiring decides everything. The FC tracks the sockets it wrote and deletes any it no longer annotates. `annotatedSocket()` is the first of them, for the mismatch check.
-- **Convert ahead.** `refreshAnnotation` also walks forward from the FC, up to 32 hops through pure passthroughs, to a node with string `fromUnit` and `toUnit` (a Convert), and records its from-unit as `dictatedFromUnit`; this is the one graph fact `data()` can't see.
-- **`data()`** reads the first `UnitCell` in the value (a scalar, or a 1-D list's cells). The inherited unit is that cell's `display`, or the FC id matching its base unit. A dictated unit fills the dropdown only when it is `none`, so an authored unit stands and a real clash surfaces as the Convert's error ([[C25]] firstClassUnits). Then `lockedByConvert` is a dictated unit equal to the FC's, `forwarding` is a unit-bearing value without that, and while forwarding the FC's unit mirrors the inherited one unconditionally, since a stale pick under a locked dropdown would read as a re-author in `applyFcUnit`. The output is `applyFcUnit(value, unit, customUnit)`. The FC is `unitAware`, because it re-displays and clash-checks the incoming tags.
-- **Docking.** `dockSelf` runs once after `editor.addNode`, since it needs the id Rete assigns, then adapts and refreshes. `undock` deletes the FC's annotations and its dock. `releaseDock` forgets the dock's identity but keeps the annotation, and must clear `hostNodeId`, or a load-time `dockSelf` would resurrect the dock from the saved stale id. `width` and `height` start as estimates (116 × 64) that the card's resize observer corrects after first paint.
-- **The card** (`FormatControllerNode.tsx`). The FC card has no header and paints its own single-stroke accent ring instead of the shared card frame (`frameless`); a unit mismatch shows as a `!` corner badge. When docked, the FC socket that meets the host's sits exactly on it, so only the host's dot shows. Every style row keeps the fixed back and forward arrows (the format applies behind and travels forward), and the `—` pick adds the muted upstream-style hint below the dropdown. The advanced tier sits with the format cluster, above the unit row, because formats re-format freely downstream while units lock, and the two must not interleave; the expander row closes the format cluster. An empty or invalid digits box falls back to 1, and switching to sig figs bumps 0 to 1. Any pick that changes the card's height (the style's row count, chip or inherit, the advanced tier, a view that resizes the host box) re-centers a docked FC on its host after layout.
+- **Convert ahead.** The reconcile also walks forward from the FC, up to 32 hops through pure passthroughs, to a Convert, and `settle` records its from-unit as `dictatedFromUnit`; this is the one graph fact `data()` can't see.
+- **`data()`** runs the core's `format_controller` (`nodes/docs.rs`), which reads the first `UnitCell` in the value (a scalar, or a 1-D list's cells), else a matrix's table unit. The inherited unit is that cell's `display`, or the FC id matching its base unit. A dictated unit fills the dropdown only when it is `none`, so an authored unit stands and a real clash surfaces as the Convert's error ([[C25]] firstClassUnits). Then `lockedByConvert` is a dictated unit equal to the FC's, `forwarding` is a unit-bearing value without that, and while forwarding the FC's unit mirrors the inherited one unconditionally, since a stale pick under a locked dropdown would read as a re-author in `applyFcUnit`. The output is the value tagged with that unit (`tag_fc_unit`). The FC is `unitAware`, because it re-displays and clash-checks the incoming tags.
+- **Docking.** `dockSelf` runs once after `editor.addNode`, since it reads the editor (the saved host must be in it), and only registers the dock; the caller runs the reconcile after it, once for a whole load. `undock` deletes the FC's annotations and its dock. `releaseDock` forgets the dock's identity but keeps the annotation, and must clear `hostNodeId`, or a load-time `dockSelf` would resurrect the dock from the saved stale id. `width` and `height` start as estimates (116 × 64) that the card's resize observer corrects after first paint.
+- **The card**, `FormatControllerNode.tsx`. The FC card has no header and paints its own single-stroke accent ring instead of the shared card frame (`frameless`); a unit mismatch shows as a `!` corner badge. When docked, the FC socket that meets the host's sits exactly on it, so only the host's dot shows. Every style row keeps the fixed back and forward arrows (the format applies behind and travels forward), and the `—` pick adds the muted upstream-style hint below the dropdown. The advanced tier sits with the format cluster, above the unit row, because formats re-format freely downstream while units lock, and the two must not interleave; the expander row closes the format cluster. An empty or invalid digits box falls back to 1, and switching to sig figs bumps 0 to 1. Any pick that changes the card's height (the style's row count, chip or inherit, the advanced tier, a view that resizes the host box) re-centers a docked FC on its host after layout.
+
+Tests:
+
+- `fcDockReload.test.ts` ("a docked FC keeps its saved date style through load-time type hops"): a pick resolved through `trueany` stands, and a date pick on a number socket is inert, its `effectiveFormat()` `auto`, until the family returns.
+- `fcSeedFormat.test.ts`: the personal-finance seed's load order replayed (every node, then each cable in file order with the FC reconcile after each, then docking): each money FC's pick and the annotation it writes both end in dollars.
+- `coreFcReconcile.test.ts`: the reconcile's frozen answers over every seed graph three ways and 300 seeded graphs of FCs, Displays and Converts: each FC's type, the from-unit a Convert ahead dictates, and each Convert's arrows.
 
 ## Where the model is enforced
 
-- `formatModel.ts`: `familyOf`, `controlsFor(family, style)` and `precisionApplies(style)` are the single source for both the popup and resolution. `formatModel.test.ts` sweeps `familyOf` and `precisionApplies` exhaustively. The advanced-tier predicates (`groupingApplies`, `scaleApplies`, `negativeApplies`) are only spot-checked in `formatAnnotationStore.test.ts`, so their per-style rows above are not enforced as a table.
+- `formatModel.ts`: `familyOf`, `controlsFor(family, style)` and `precisionApplies(style)` are the single source for both the popup and resolution. The advanced-tier predicates (`groupingApplies`, `scaleApplies`, `negativeApplies`) are only spot-checked, so their per-style rows above are not enforced as a table.
 - `applyFormatStyle`: each style case hands precision to the shared resolver, with `scientific`'s inline digit clamp the one exception.
-- `FormatControllerNode.tsx` renders rows strictly from `controlsFor`, the custom pattern field (`customPattern`) included, with no inline `isDate`, `isText` or `format === "decimal"` gates. The unit dropdown's `disabled` under a lock is the one sanctioned modifier outside `controlsFor`: presence is still the family's call, and only editability is the lock's.
-- Every render surface asks one question, `resolveDisplayAnnotation(nodeId, socketKey?)` (`valueDisplayFormat.ts`: the direct FC, else the carried `outAnnotation`, else the trailing FC's `downstreamAnnotation`, on the owning editor). The surfaces are `ValueDisplay` (any card, scalars and list cells), `InlineOutputRows` (per socket), `DisplayNode` and `TableDisplay` (matrix cells), `inlineRefDisplay` (Note and Report refs), `CableInspector`, `PinLayer` and the collapsed-group readouts. Booleans go through `applyLogicalStyle`, text through `applyTextCase` and numbers through `formatNumberWithAnnotation`. A `UnitCell` under an annotation whose `unit` is `none` keeps the cell's own display unit (`annotationForValue`): the annotation supplies the style and the value owns the unit. Frames, Cubes and the table popup grid stay per column. Pinned by `valueDisplayAnnotation.test.ts`.
+- `FormatControllerNode.tsx` renders rows strictly from `controlsFor`, the custom pattern field (`customPattern`) included, with no inline `isDate`, text-type or `format === "decimal"` gates. The unit dropdown's `disabled` under a lock is the one sanctioned modifier outside `controlsFor`: presence is still the family's call, and only editability is the lock's.
+- Every render surface asks one question, `resolveDisplayAnnotation(nodeId, socketKey?)` (`valueDisplayFormat.ts`: the direct FC, else the carried `outAnnotation`, else the trailing FC's `downstreamAnnotation`, on the owning editor). The surfaces are `ValueDisplay` (any card, scalars and list cells), `InlineOutputRows` (per socket), `DisplayNode` and `TableDisplay` (matrix cells), `inlineRefDisplay` (Note and Report refs), `CableInspector`, `PinLayer` and the collapsed-group readouts. Booleans go through `applyLogicalStyle`, text through `applyTextCase` and numbers through `formatNumberWithAnnotation`. A `UnitCell` under an annotation whose `unit` is `none` keeps the cell's own display unit (`annotationForValue`): the annotation supplies the style and the value owns the unit. Frames, Cubes and the table popup grid stay per column.
 - `resolveDisplayAnnotation`'s optional `socketKey` names which output of a multi-box card to ask about; without it, each output is asked in declaration order. A value renders as a date only when its node's output socket declares a date type (`nodeOutputElemFamily`), never from the shape of its cells.
-- Without an FC, `dateFormatDisplay` turns a date output's serials into text: date only, or date and time when the serial carries a time fraction (`NOW()`). It works cell by cell: an error cell keeps its `#CODE!`, a blank stays blank, a non-finite serial shows `NaN` as a Frame's date column does ([[D93]] oneTextReading), and text or logical cells pass through. With an FC docked it does nothing, because the FC formats dates itself.
+- Without an FC, `dateFormatDisplay` turns a date output's serials into text. A serial with a time fraction, like `46000.5` or the one `NOW()` returns, becomes the date and time: `09-Dec-2025 12:00`. Any other serial becomes just the date. `dateFormatDisplay` works on a list one cell at a time. An error cell keeps its `#CODE!`, and a blank cell stays blank. A non-finite serial shows `NaN`, the same as in a Frame's date column ([[C58]] tableInputRawText). Text and logical cells pass through unchanged. With an FC docked, `dateFormatDisplay` does nothing, because the FC formats dates itself.
 - In a list shown as text, a missing cell prints `null` and an error cell its code. An inline output row shows at most three cells and then `…`, and a missing value shows `—`.
 - Without an FC, a `UnitCell` renders as "magnitude unit" in its authored display unit; with one, as the magnitude in the FC's unit when the two are commensurable.
+
+Tests:
+
+- `formatModel.test.ts`: the truth table, with every member of the `SocketDataType` union listed (a `Record` over the union, so the compiler flags a new socket type) so none falls into the "none" family without a decision; `familyOf` and `precisionApplies` swept exhaustively.
+- `valueDisplayAnnotation.test.ts`: `resolveDisplayAnnotation`'s three steps (the walk itself is [[unit-flow#The format annotation]]), a card with no socket named asking each output in turn, and `annotationForValue` (a dimensioned cell in its display unit at the annotation's precision, a carried format's `none` unit leaving the value's unit, an authored unit kept).
 
 ## Out of scope
 
 - **The FC's visual design.** The FC card renders this matrix; the matrix doesn't dictate pixels.
 - **Number styles for logical or text values**, such as formatting the `1/0` a TRUE coerces to. The type gate is strict; Cast first to get number formatting.
-- **Locale switching.** Everything uses the host locale through `toLocaleString`.
+- **Locale switching.** Everything formats in one fixed locale, `APP_LOCALE` (`locale.ts`, `en-US`), never the browser's; the core's formatter reads as `toLocaleString("en-US")` does.

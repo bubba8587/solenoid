@@ -1,5 +1,5 @@
-import { ARG_MIN_MAX_OP_META } from "../rete-nodes";
-import type { ArgMinMaxNode as ArgMinMaxNodeType, ArgMinMaxOp } from "../rete-nodes";
+import { ARG_MIN_MAX_OP_META } from "../nodeClasses";
+import type { ArgMinMaxNode as ArgMinMaxNodeType, ArgMinMaxOp } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";

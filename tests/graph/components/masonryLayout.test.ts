@@ -19,11 +19,24 @@ describe("planColumns", () => {
     }
   });
 
-  it("caps a track at max so few cards never stretch to a stacked list", () => {
-    expect(planColumns(900, GAP, { ...TRACK, items: 1 }).colWidth).toBe(TRACK.max);
+  it("keeps few cards at their ideal width, so the tile size shows instead of stretching", () => {
+    expect(planColumns(900, GAP, { ...TRACK, items: 1 }).colWidth).toBe(TRACK.ideal);
     const two = planColumns(900, GAP, { ...TRACK, items: 2 });
     expect(two.count).toBe(2);
-    expect(two.colWidth).toBe(TRACK.max);
+    expect(two.colWidth).toBe(TRACK.ideal);
+  });
+
+  it("caps a full row's tracks at max, and a row narrowed to fewer columns fills them", () => {
+    expect(planColumns(260, GAP, { ideal: 170, min: 140, max: 200, items: 9 }).colWidth).toBe(200);
+    expect(planColumns(260, GAP, { ...TRACK, items: 9 })).toEqual({ count: 1, colWidth: 260 });
+  });
+
+  it("small, medium and large tracks give different widths on a narrow host and a wide one", () => {
+    const sizes = [{ ideal: 120, min: 100, max: 150 }, { ideal: 170, min: 145, max: 210 }, { ideal: 250, min: 215, max: 310 }];
+    for (const width of [280, 1000]) {
+      const widths = sizes.map((t) => planColumns(width, GAP, { ...t, items: 6 }).colWidth);
+      expect(new Set(widths).size, `${width}: ${widths.join(", ")}`).toBe(3);
+    }
   });
 
   it("never plans more tracks than items", () => {

@@ -1,0 +1,227 @@
+{
+  "v": 2,
+  "order": 5100,
+  "label": "Sets: two lists compared",
+  "group": "Packs",
+  "nodes": [
+    {
+      "id": "head",
+      "x": 0,
+      "y": 0,
+      "type": "NoteNode",
+      "init": {
+        "label": "Sets & Comparisons",
+        "color": "amber",
+        "collapsed": false,
+        "width": 760,
+        "height": 150,
+        "body": "Two shopping lists. **Sets** gives what's on either list (union) and what's on both (intersection); **Is In** marks each item of the first list that the second has. **Tally** counts how often each word appears, and **Between** tests which values fall in a range, ends included.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "la",
+      "x": 0,
+      "y": 220,
+      "type": "ListInputNode",
+      "init": {
+        "label": "List A",
+        "dataType": "string",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "apple, banana, cherry, date"
+      }
+    },
+    {
+      "id": "lb",
+      "x": 0,
+      "y": 420,
+      "type": "ListInputNode",
+      "init": {
+        "label": "List B",
+        "dataType": "string",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "banana, date, fig"
+      }
+    },
+    {
+      "id": "union",
+      "x": 440,
+      "y": 220,
+      "type": "SetsNode",
+      "init": {
+        "label": "",
+        "op": "union",
+        "width": 180,
+        "height": 200
+      }
+    },
+    {
+      "id": "inter",
+      "x": 880,
+      "y": 220,
+      "type": "SetsNode",
+      "init": {
+        "label": "",
+        "op": "intersect",
+        "width": 180,
+        "height": 200
+      }
+    },
+    {
+      "id": "isin",
+      "x": 1320,
+      "y": 220,
+      "type": "IsInNode",
+      "init": {
+        "label": "Is In",
+        "width": 180,
+        "height": 170
+      }
+    },
+    {
+      "id": "words",
+      "x": 0,
+      "y": 680,
+      "type": "ListInputNode",
+      "init": {
+        "label": "Votes",
+        "dataType": "string",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "red, blue, red, green, blue, red"
+      }
+    },
+    {
+      "id": "tally",
+      "x": 440,
+      "y": 680,
+      "type": "TallyNode",
+      "init": {
+        "label": "Tally",
+        "width": 200,
+        "height": 200
+      }
+    },
+    {
+      "id": "vals",
+      "x": 880,
+      "y": 680,
+      "type": "ListInputNode",
+      "init": {
+        "label": "Values",
+        "dataType": "number",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "3, 7, 12, 18"
+      }
+    },
+    {
+      "id": "btw",
+      "x": 1320,
+      "y": 680,
+      "type": "BetweenNode",
+      "init": {
+        "label": "Between",
+        "width": 180,
+        "height": 235
+      },
+      "stringLiterals": {
+        "lo": "5",
+        "hi": "15"
+      }
+    },
+    {
+      "id": "tallyChart",
+      "x": 440,
+      "y": 980,
+      "type": "ChartNode",
+      "init": {
+        "label": "Votes counted",
+        "op": "column",
+        "width": 300,
+        "height": 240
+      },
+      "stringLiterals": {
+        "options": "title=Red wins"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "tally",
+      "sourceOutput": "frame",
+      "target": "tallyChart",
+      "targetInput": "values"
+    },
+    {
+      "source": "la",
+      "sourceOutput": "list",
+      "target": "union",
+      "targetInput": "a"
+    },
+    {
+      "source": "lb",
+      "sourceOutput": "list",
+      "target": "union",
+      "targetInput": "b"
+    },
+    {
+      "source": "la",
+      "sourceOutput": "list",
+      "target": "inter",
+      "targetInput": "a"
+    },
+    {
+      "source": "lb",
+      "sourceOutput": "list",
+      "target": "inter",
+      "targetInput": "b"
+    },
+    {
+      "source": "la",
+      "sourceOutput": "list",
+      "target": "isin",
+      "targetInput": "a"
+    },
+    {
+      "source": "lb",
+      "sourceOutput": "list",
+      "target": "isin",
+      "targetInput": "b"
+    },
+    {
+      "source": "words",
+      "sourceOutput": "list",
+      "target": "tally",
+      "targetInput": "list"
+    },
+    {
+      "source": "vals",
+      "sourceOutput": "list",
+      "target": "btw",
+      "targetInput": "value"
+    }
+  ]
+}

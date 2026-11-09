@@ -1,4 +1,4 @@
-// [[C114]] cardsView
+// [[C114]] cardsView, [[table-popup#The Cards view]]
 import { describe, it, expect } from "vitest";
 import { freeSpotRightOf } from "../../src/graph/recordCardsFromPopup";
 

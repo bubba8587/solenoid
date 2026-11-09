@@ -1,7 +1,8 @@
-// [[D82]] sparklineCell
+// [[D82]] sparklineCell, [[formula-language#Lists]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { sparklineSeries, sparklineImage, repaintSparkline, SPARKLINE_MAX_POINTS } from "../../src/graph/nodes/visualOps";
+import { repaintSparkline } from "../../src/graph/nodes/visualOps";
+import { coreFunction } from "./coreFunction";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { parse } from "yaml";
 import { csvField } from "../../src/graph/csvSafety";
@@ -9,6 +10,7 @@ import { parseCsvRows } from "../../src/graph/csv";
 import { patchFrontmatter } from "../../src/graph/frontmatterPatch";
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
+const sparklineImage = (series: unknown[], type: string) => coreFunction("SPARKLINE")!(series, type) as string | null;
 const svgOf = (url: unknown) => decodeURIComponent(String(url).replace(/^data:image\/svg\+xml,/, ""));
 
 describe("SPARKLINE", () => {
@@ -50,7 +52,7 @@ describe("SPARKLINE", () => {
 
   it("is blank with no numbers, and skips text and blanks", () => {
     expect(ev("SPARKLINE(x)", { x: ["a", null] })).toBeNull();
-    expect(sparklineSeries([1, "a", null, 2, true])).toEqual([1, 2]);
+    expect(ev("SPARKLINE(x)", { x: [1, "a", null, 2, true] })).toBe(sparklineImage([1, 2], "line"));
   });
 
   it("reads a matrix row by row", () => {
@@ -59,8 +61,6 @@ describe("SPARKLINE", () => {
 
   it("caps a long range, so the picture's size doesn't grow with the data", () => {
     const long = Array.from({ length: 10_000 }, (_, i) => Math.sin(i / 50));
-    const series = sparklineSeries(long);
-    expect(series).toHaveLength(SPARKLINE_MAX_POINTS);
     const a = sparklineImage(long, "column")!;
     const b = sparklineImage(long.slice(0, 400), "column")!;
     expect(a.length).toBeLessThan(3000);

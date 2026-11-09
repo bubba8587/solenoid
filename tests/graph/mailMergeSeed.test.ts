@@ -1,26 +1,20 @@
-// [[C25]]
+// [[C25]], [[reports-and-notes#Mail merge]]
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
-import * as Nodes from "../../src/graph/rete-nodes";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
+import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { isDocumentValue, type DocumentValue } from "../../src/graph/documentValue";
 import type { ReportNode } from "../../src/graph/nodes/report";
 import seed from "../fixtures/mail-merge.json"; // the retired seed, kept as the Report mail-merge fixture (2026-09-16)
 
-// The Mail Merge seed is the worked example of the Report's two fixed inputs: a
-// template NOTE wired into Template (its tags the inputs, its frontmatter the
-// defaults) and a ledger wired into Rows (one page per row, named by the page
-// name), the whole batch feeding Write to Obsidian.
+
 
 type SavedNode = { id: string; type: string; init?: Record<string, unknown>; literals?: Record<string, number>; stringLiterals?: Record<string, string> };
 
 function build() {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   return { editor, engine };
@@ -29,9 +23,9 @@ function build() {
 describe("Mail Merge seed", () => {
   it("merges one page per traveler from the template note, defaults from its frontmatter", async () => {
     const { editor, engine } = build();
-    const byId = new Map<string, ClassicPreset.Node>();
+    const byId = new Map<string, GraphNode>();
     for (const sn of (seed.nodes as SavedNode[])) {
-      const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => ClassicPreset.Node>)[sn.type];
+      const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => GraphNode>)[sn.type];
       const node = new Ctor({ ...sn.init });
       const anyN = node as unknown as Record<string, unknown>;
       if (sn.literals) anyN.literals = { ...sn.literals };
@@ -40,7 +34,7 @@ describe("Mail Merge seed", () => {
       await editor.addNode(node as Schemes["Node"]);
     }
     for (const c of seed.connections) {
-      await editor.addConnection(new ClassicPreset.Connection(byId.get(c.source)!, c.sourceOutput, byId.get(c.target)!, c.targetInput) as Schemes["Connection"]);
+      await editor.addConnection(new GraphConnection(byId.get(c.source)!, c.sourceOutput, byId.get(c.target)!, c.targetInput) as Schemes["Connection"]);
     }
     const report = byId.get("report") as unknown as ReportNode;
     const out = await engine.fetch(report.id) as { document: DocumentValue };

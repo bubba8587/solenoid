@@ -1,13 +1,9 @@
-// [[C24]]
+// [[C24]] arraySemantics, [[table-popup#The example hint and the value peek]]
 import { describe, it, expect } from "vitest";
 import { PEEK_KINDS, peekKindFor, isChipSummaryPeek, type PeekKind } from "../../src/graph/valuePeekKind";
 import { solError } from "../../src/graph/errorValue";
 
-// The socket hover-peek renders a value through the Display's own value views; a value
-// kind the peek can't classify would hover blank. peekKindFor is the shared choke point
-// (SocketValuePeek switches on it), so pin that every Display value kind maps to a
-// branch. The `sampleFor` switch is exhaustive over PeekKind — a newly declared kind
-// fails to compile until it joins this sweep. Mirrors displayPopupCoverage.test.ts.
+
 
 function sampleFor(kind: PeekKind): unknown {
   switch (kind) {

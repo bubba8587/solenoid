@@ -7,15 +7,19 @@ import { boundaryCrossings, type BoundaryCrossing } from "../isolateBoundary";
 import { unselectAllNodes } from "../canvasCommands";
 import { connectionVersionStore } from "../graphSignals";
 import { cableSelectionStore } from "../cableState";
-import { standoffStore, standoffLayoutTick } from "../standoffs";
+import { standoffStore } from "../standoffs";
 import { drawnCableStore } from "../drawnCables";
 import { nodeDisplayName } from "../catalogUtils";
 import { getCablePath, Position } from "../cablePaths";
 import { cableShapeStore } from "../cableShape";
 import "./isolateEndpoints.css";
-import { getActiveView, getActiveEditor, getOwningEditor } from "../activeGraph";
+import { getOwningEditor } from "../activeGraph";
+import { useStore, type ReactFlowState } from "@xyflow/react";
+import type { GraphEditor } from "../graphEditor";
+import type { Schemes } from "../schemes";
+import type { View } from "../view";
 
-// Rendered in the transformed plane (canvas coords), so the terminals pan and zoom with the graph.
+// Rendered in the surface's transformed plane (canvas coords), so the terminals pan and zoom with the graph.
 
 type Pt = { x: number; y: number };
 
@@ -25,14 +29,15 @@ const HEAD_H = 26;    // fixed header height so the lane/dot/cable maths line up
 const LANE_H = 22;    // matches .solenoid-node__io-row
 
 // Canvas coords (transform-invariant), measured from the DOM dot relative to the holder.
-function socketCanvasPos(holder: HTMLElement, nodeId: string, key: string, side: "input" | "output"): Pt | null {
+function socketCanvasPos(view: View, nodeId: string, key: string, side: "input" | "output"): Pt | null {
+  const holder = view.viewport;
   const el = holder.querySelector<HTMLElement>(
     `[data-node-id="${CSS.escape(nodeId)}"][data-socket-key="${CSS.escape(key)}"][data-socket-side="${side}"]`,
   );
   if (!el) return null;
   const r = el.getBoundingClientRect();
   const hr = holder.getBoundingClientRect();
-  const k = getActiveView()?.transform.k || 1;
+  const k = view.transform.k || 1;
   return { x: (r.left + r.width / 2 - hr.left) / k, y: (r.top + r.height / 2 - hr.top) / k };
 }
 
@@ -42,17 +47,26 @@ function externalName(nodeId: string): string {
   return nodeDisplayName(n);
 }
 
-export function IsolateEndpoints() {
+// The focus cards' boxes as one compared string, so a move or a resize redraws the terminals.
+function focusBoxesKey(st: ReactFlowState, focus: ReadonlySet<string> | null): string {
+  if (!focus) return "";
+  let key = "";
+  for (const id of focus) {
+    const n = st.nodeLookup.get(id);
+    if (n) key += `${id}:${n.internals.positionAbsolute.x},${n.internals.positionAbsolute.y},${n.measured.width},${n.measured.height};`;
+  }
+  return key;
+}
+
+export function IsolateEndpoints({ editor, view }: { editor: GraphEditor<Schemes>; view: View }) {
   useSyncExternalStore(isolateStore.subscribe, isolateStore.version);
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
-  useSyncExternalStore(standoffLayoutTick.subscribe, standoffLayoutTick.version);
   useSyncExternalStore(isoEndpointSelect.subscribe, isoEndpointSelect.version);
   const shape = useSyncExternalStore(cableShapeStore.subscribe, cableShapeStore.get);
   const selected = isoEndpointSelect.get();
 
   const focus = isolateStore.get();
-  const editor = getActiveEditor();
-  const view = getActiveView();
+  useStore((st) => focusBoxesKey(st, focus));
 
   // Drag offsets are ephemeral and in canvas coords, applied over the auto-centered position.
   const [override, setOverride] = useState<{ entry: Pt; exit: Pt }>({ entry: { x: 0, y: 0 }, exit: { x: 0, y: 0 } });
@@ -63,8 +77,7 @@ export function IsolateEndpoints() {
     isoEndpointSelect.set(null);
   }, [focusKey]);
 
-  if (!focus || !editor || !view) return null;
-  const holder = view.viewport;
+  if (!focus) return null;
 
   const startDrag = (which: "entry" | "exit") => (e: React.PointerEvent) => {
     e.stopPropagation();
@@ -106,11 +119,11 @@ export function IsolateEndpoints() {
 
   // Resolve focused socket positions; order lanes by socket-y so cables don't cross.
   const entryLanes = entry
-    .map((cr) => ({ cr, pos: socketCanvasPos(holder, cr.focusNodeId, cr.focusSocket, "input") }))
+    .map((cr) => ({ cr, pos: socketCanvasPos(view, cr.focusNodeId, cr.focusSocket, "input") }))
     .filter((l): l is { cr: BoundaryCrossing; pos: Pt } => l.pos !== null)
     .sort((a, b) => a.pos.y - b.pos.y);
   const exitLanes = exit
-    .map((cr) => ({ cr, pos: socketCanvasPos(holder, cr.focusNodeId, cr.focusSocket, "output") }))
+    .map((cr) => ({ cr, pos: socketCanvasPos(view, cr.focusNodeId, cr.focusSocket, "output") }))
     .filter((l): l is { cr: BoundaryCrossing; pos: Pt } => l.pos !== null)
     .sort((a, b) => a.pos.y - b.pos.y);
 

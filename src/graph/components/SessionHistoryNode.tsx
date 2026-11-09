@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { copyText } from "../clipboard";
-import type { SessionHistoryNode as SessionHistoryNodeType } from "../rete-nodes";
+import type { SessionHistoryNode as SessionHistoryNodeType } from "../nodeClasses";
 import { digestLabeled } from "../historyDigest";
 import { flowHistory } from "../flow/flowHistory";
 import type { NodeProps } from "./nodeKit";

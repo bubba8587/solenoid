@@ -1,0 +1,7 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"RANGE(0, 5, 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RANGE(0, 5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"RANGE(0, 10, 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

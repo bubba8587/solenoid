@@ -11,6 +11,7 @@ import { StatusBar } from "./graph/StatusBar";
 import { MobileControls } from "./graph/MobileControls";
 import { FunctionReference } from "./graph/components/FunctionReference";
 import { ReportOverlay } from "./graph/components/ReportOverlay";
+import { DashboardOverlay } from "./graph/components/DashboardOverlay";
 import { InspectorPanel } from "./graph/components/InspectorPanel";
 import { PresentationOverlay } from "./graph/components/PresentationOverlay";
 import { ConnectionDialog } from "./graph/components/ConnectionDialog";
@@ -20,6 +21,7 @@ import { TablePopup } from "./graph/components/TablePopup";
 import { CubePopup } from "./graph/components/CubePopup";
 import { ChartPopup } from "./graph/components/ChartPopup";
 import { ElementPicker } from "./graph/components/ElementPicker";
+import { FilePicker } from "./graph/components/FilePicker";
 import { PivotEditorPopup } from "./graph/components/PivotEditorPopup";
 import { ShortcutsOverlay } from "./graph/ShortcutsOverlay";
 import { Settings } from "./graph/Settings";
@@ -31,6 +33,8 @@ import { SelectionActionsBar } from "./graph/components/SelectionActionsBar";
 import { WebDemoBanner } from "./graph/WebDemoBanner";
 import { installExternalLinkGuard } from "./graph/externalLinks";
 import { installRecordCardsAction } from "./graph/recordCardsFromPopup";
+import { installPivotHostAction } from "./graph/pivotFromPopup";
+import { installDescribeDashboard } from "./graph/components/DescribeDashboard";
 import { armMidnightRollover, armMinuteTick } from "./graph/volatileDates";
 import { getEditor, requestRecalc, processGraph } from "./graph/process";
 import "./App.css";
@@ -109,6 +113,8 @@ function MainApp() {
   }, []);
   useEffect(installExternalLinkGuard, []);
   useEffect(installRecordCardsAction, []);
+  useEffect(installPivotHostAction, []);
+  useEffect(installDescribeDashboard, []);
   // TODAY / NOW / relative Date Inputs recompute once at each local midnight (R5).
   useEffect(() => armMidnightRollover(() => getEditor()?.getNodes() ?? [], () => { void requestRecalc(); }), []);
   useEffect(() => armMinuteTick(() => getEditor()?.getNodes() ?? [], (id) => { void processGraph(id); }), []);
@@ -122,6 +128,7 @@ function MainApp() {
       <StatusBar />
       <FunctionReference />
       <ReportOverlay />
+      <DashboardOverlay />
       <InspectorPanel />
       <FlowCompositeOverlay />
       <PresentationOverlay />
@@ -132,6 +139,7 @@ function MainApp() {
       <TablePopup />
       <ChartPopup />
       <ElementPicker />
+      <FilePicker />
       <PivotEditorPopup />
       <ShortcutsOverlay />
       <HelpDialogs />

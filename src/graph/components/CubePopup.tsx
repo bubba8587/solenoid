@@ -12,11 +12,10 @@ import { cubeLevelColumns, statValues, isContainer } from "../cubeLevelTable";
 import { cardMatches } from "../cardLayout";
 import { TableCards } from "./TableCards";
 import { ChevronDownIcon } from "./Icons";
-import { SearchField } from "./SearchField";
 import { settingsStore } from "../settingsStore";
-import { type FooterStat, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, summarizeColumn } from "./tableFooterStats";
+import { type FooterStat, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, summarizeColumns } from "./tableFooterStats";
+import { PopupSkeleton, useAfterPaint } from "./PopupSkeleton";
 import { PopupShell, popupCardVars } from "./PopupShell";
-import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton, type SortKey } from "./columnSort";
 import { HeaderHelpButton } from "./columnHeadControls";
 import { copyText } from "../clipboard";
@@ -47,7 +46,7 @@ function describe(view: DrillView, listVertical: boolean, source: boolean): {
       cols: cube.columns.length,
       depth: cubeDepth(cube),
       cell: (r, c) => <CubeCellChip cell={cube.columns[c].cells[r] ?? null} crumb={cube.columns[c].name} size="sm" type={cube.columns[c].type} format={cube.columns[c].format} at={{ r, c }} />,
-      sortKey: (r, c) => sortKeyOf(cube.columns[c].cells[r] ?? null),
+      sortKey: (r, c) => sortKeyOf(cube.columns[c].cells[r] ?? null, cube.columns[c].type),
     };
   }
   if (view.kind === "frame") {
@@ -58,7 +57,7 @@ function describe(view: DrillView, listVertical: boolean, source: boolean): {
       cols: f.columns.length,
       depth: null,
       cell: (r, c) => frameCellNode(f.columns[c].type, f.columns[c].values[r] ?? null),
-      sortKey: (r, c) => sortKeyOf(f.columns[c].values[r] ?? null),
+      sortKey: (r, c) => sortKeyOf(f.columns[c].values[r] ?? null, f.columns[c].type),
     };
   }
   if (view.kind === "list") {
@@ -73,7 +72,7 @@ function describe(view: DrillView, listVertical: boolean, source: boolean): {
         cols: items.length,
         depth: null,
         cell: (_r, c) => item(c),
-        sortKey: (_r, c) => sortKeyOf(items[c] ?? null),
+        sortKey: (_r, c) => sortKeyOf(items[c] ?? null, view.type),
       };
     }
     return {
@@ -82,7 +81,7 @@ function describe(view: DrillView, listVertical: boolean, source: boolean): {
       cols: 1,
       depth: null,
       cell: (r) => item(r),
-      sortKey: (r) => sortKeyOf(items[r] ?? null),
+      sortKey: (r) => sortKeyOf(items[r] ?? null, view.type),
     };
   }
   const g = view.cells;
@@ -105,7 +104,7 @@ function tokenAt(view: DrillView, r: number, c: number, listVertical: boolean): 
     const col = view.frame.columns[c];
     return cubeCellToken(col.values[r] ?? null, col.type);
   }
-  if (view.kind === "list") return cubeCellToken((view.items[listVertical ? r : c] ?? null) as CubeCell);
+  if (view.kind === "list") return cubeCellToken((view.items[listVertical ? r : c] ?? null) as CubeCell, view.type);
   return cubeCellToken(view.cells[r]?.[c] ?? null);
 }
 
@@ -126,8 +125,10 @@ function levelText(view: DrillView, headers: string[] | null, order: readonly nu
   return md.map((cells) => `| ${cells.join(" | ")} |`).join("\n");
 }
 
-export function CubePopup() {
+/** `footer: false` drops the summary footer, which the core computes (the Obsidian plugin runs without it). */
+export function CubePopup({ footer = true }: { footer?: boolean } = {}) {
   const state = useSyncExternalStore(cubePopup.subscribe, cubePopup.get);
+  const painted = useAfterPaint(state ? `${state.pinNodeId ?? ""}|${state.stack[0]?.label ?? ""}` : null);
   const last = state?.stack[state.stack.length - 1];
   const editView = state?.edit && last && last.path ? last : null;
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -141,11 +142,12 @@ export function CubePopup() {
   const [layout, setLayout] = useState<"grid" | "cards">("grid");
   const [query, setQuery] = useState("");
   const [colStat, setColStat] = useState<Record<number, FooterStat>>({});
-  const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary"));
+  const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary")) && footer;
+  const showCellUnits = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupCellUnits"));
   // A cube or frame level reads as a table: filter, Cards and the summary footer.
   const table = useMemo(() => (last ? cubeLevelColumns(last) : null), [last]);
   const summaries = useMemo(
-    () => (table && showSummary ? table.columns.map((col) => summarizeColumn(statValues(col), col.type)) : null),
+    () => (table && showSummary ? summarizeColumns(table.columns.map((col) => ({ values: statValues(col), type: col.type }))) : null),
     [table, showSummary],
   );
   // A new level starts with nothing selected.
@@ -170,6 +172,14 @@ export function CubePopup() {
   }, [focus]);
 
   if (!state) return null;
+  // Open at once: the shell and a skeleton paint first, and the table renders the frame after.
+  if (!painted) {
+    return (
+      <PopupShell title={state.stack[state.stack.length - 1]?.label ?? ""} onClose={() => cubePopup.close()} cardClassName="table-popup" cardStyle={popupCardVars(state)}>
+        <PopupSkeleton />
+      </PopupShell>
+    );
+  }
   const view = state.stack[state.stack.length - 1];
   const { headers, rows, cols, depth, cell, sortKey } = describe(view, listVertical, sourceMode);
   const sortable = !(view.kind === "list" && !listVertical);
@@ -221,14 +231,13 @@ export function CubePopup() {
         else cubePopup.close();
       }}
       cardClassName="table-popup"
+      fitNarrow
       grouped={grouped}
       cardStyle={cardStyle}
       resizable={{ min: { w: 320, h: 220 } }}
+      filter={table ? { value: query, onChange: setQuery, count: filtering ? `${matchedOrder.length} of ${rows}` : undefined } : undefined}
       headerExtra={
         <>
-          {table && (cards || rows > 1) && (
-            <SearchField value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering ? `${matchedOrder.length} of ${rows}` : undefined} />
-          )}
           <span className="table-popup__dims">{view.kind === "list" ? `${view.items.length} items` : `${rows}×${cols}`}{rowsTruncated || colsTruncated ? ` · first ${MAX_VISIBLE.toLocaleString(APP_LOCALE)}` : ""}</span>
           {depth !== null && (
             <span
@@ -243,10 +252,9 @@ export function CubePopup() {
         </>
       }
       pinNodeId={state.stack.length === 1 ? state.pinNodeId : undefined}
-      headerActions={
-        <PopupOverflowMenu
-          items={[
-            ...(table ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
+      menuItems={[
+            ...(table && footer ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
+            { label: showCellUnits ? "Hide units in cells" : "Show units in cells", onClick: () => settingsStore.set("tablePopupCellUnits", !showCellUnits) },
             { label: "Copy CSV", onClick: () => void copyText(levelText(view, headers, sortOrder, cols, "csv", listVertical)) },
             { label: "Copy as Markdown", onClick: () => void copyText(levelText(view, headers, sortOrder, cols, "md", listVertical)) },
             {
@@ -256,9 +264,7 @@ export function CubePopup() {
                 void saveCsvFileDialog(`${base}.csv`, levelText(view, headers, sortOrder, cols, "csv", listVertical));
               },
             },
-          ]}
-        />
-      }
+      ]}
     >
       {state.stack.length > 1 && (
         <div className="cube-popup__crumbs">
@@ -410,6 +416,7 @@ export function CubePopup() {
 
       {ctxMenu && editAxes && <TableContextMenu at={ctxMenu} row={menuRow} col={menuCol} onClose={() => setCtxMenu(null)} />}
       <div className="table-popup__footer">
+        <div className="table-popup__tools">
         {table && (
           <div className="table-popup__view" role="group" aria-label="View">
             <button type="button" aria-pressed={!cards} onClick={() => setLayout("grid")}>Grid</button>
@@ -432,7 +439,7 @@ export function CubePopup() {
           </label>
         )}
         {editAxes && !cards && <TableEditMenus row={menuRow} col={menuCol} />}
-        <div className="table-popup__spacer" />
+        </div>
         <div className="table-popup__actions">
           <button className="table-popup__btn table-popup__btn--primary" onClick={() => cubePopup.close()}>Done</button>
         </div>

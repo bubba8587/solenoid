@@ -1,86 +1,108 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
 // SI units throughout: volts, amps, ohms, farads, henries, hertz, seconds.
 
-import { ParallelCombineNode, ESeriesNode, AwgNode, ResistorCodeNode } from "../rete-nodes";
+import { ParallelCombineNode, ESeriesNode, AwgNode, ResistorCodeNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { ELECTRICITY_PACK_FORMULAS } from "./electricityFormulas";
 
-export const ELECTRICITY_BASE: FormulaPackEntry[] = [
+const ELECTRICITY_BASE: FormulaPackEntry[] = [
   { type: "elec-ohms-law", label: "Ohm's Law", expr: "v = i * r", equation: true,
     description: "V = I·R, solved for whichever of the three you leave unwired. Wire all three and Check answers TRUE or FALSE",
     keywords: "ohm ohms law volts amps resistance triangle",
     varDescriptions: { v: "Voltage (V)", i: "Current (A)", r: "Resistance (Ω)" }, units: { v: "W/A", i: "A", r: "W/A^2" } },
   { type: "elec-power-vi", label: "Power (V·I)", expr: "v*i",
     description: "Electrical power P = V·I from voltage and current.",
-    keywords: "watts", units: { v: "W/A", i: "A" } },
+    keywords: "watts",
+    varDescriptions: { v: "Voltage (V)", i: "Current (A)" }, units: { v: "W/A", i: "A" } },
   { type: "elec-power-i2r", label: "Power (I²R)", expr: "i^2*r",
     description: "Power dissipated in a resistance, P = I²·R, from current.",
-    keywords: "watts dissipation joule heating", units: { i: "A", r: "W/A^2" } },
+    keywords: "watts dissipation joule heating",
+    varDescriptions: { i: "Current (A)", r: "Resistance (Ω)" }, units: { i: "A", r: "W/A^2" } },
   { type: "elec-power-v2r", label: "Power (V²/R)", expr: "v^2/r",
     description: "Power dissipated in a resistance, P = V²/R, from voltage.",
-    keywords: "watts dissipation", units: { v: "W/A", r: "W/A^2" } },
+    keywords: "watts dissipation",
+    varDescriptions: { v: "Voltage (V)", r: "Resistance (Ω)" }, units: { v: "W/A", r: "W/A^2" } },
   { type: "elec-energy", label: "Electrical Energy", expr: "p*t",
     description: "Energy E = P·t: watts × seconds give joules, kW × hours give kWh.",
-    keywords: "joules kwh" },
+    keywords: "joules kwh",
+    varDescriptions: { p: "Power", t: "Time" } },
   { type: "elec-voltage-divider", label: "Voltage Divider", expr: "vin*r2/(r1+r2)",
-    description: "Output of a two-resistor divider: vin across r1+r2, tapped over r2   (Vout = Vin·R2/(R1+R2))", units: { vin: "W/A", r1: "W/A^2", r2: "W/A^2" } },
+    description: "Output of a two-resistor divider: vin across r1+r2, tapped over r2   (Vout = Vin·R2/(R1+R2))",
+    varDescriptions: { vin: "Input voltage (V)", r1: "Top resistance (Ω)", r2: "Bottom resistance (Ω)" }, units: { vin: "W/A", r1: "W/A^2", r2: "W/A^2" } },
   { type: "elec-led-resistor", label: "LED Series Resistor", expr: "(vs-vf)/i",
     description: "Series resistor for an LED: supply vs, forward voltage vf, target current i   (R = (Vs−Vf)/I)",
-    keywords: "diode current limiting", units: { vs: "W/A", vf: "W/A", i: "A" } },
+    keywords: "diode current limiting",
+    varDescriptions: { vs: "Supply voltage (V)", vf: "LED forward voltage (V)", i: "Target LED current (A)" }, units: { vs: "W/A", vf: "W/A", i: "A" } },
   { type: "elec-wire-resistance", label: "Conductor Resistance", expr: "rho*len/a",
     description: "Resistance R = ρL/A: resistivity rho (Ω·m, copper 1.724e-8), length len in m, cross-section a in m².",
-    keywords: "resistivity wire", units: { rho: "W·m/A^2", len: "m", a: "m2" } },
+    keywords: "resistivity wire",
+    varDescriptions: { rho: "Resistivity (Ω·m)", len: "Conductor length (m)", a: "Cross-section area (m²)" }, units: { rho: "W·m/A^2", len: "m", a: "m2" } },
   { type: "elec-battery-life", label: "Battery Life", expr: "mah/ma",
     description: "Runtime in hours: battery capacity mah (mAh) ÷ load current ma in mA",
-    keywords: "capacity runtime", units: { ma: "mA" } },
+    keywords: "capacity runtime",
+    varDescriptions: { mah: "Battery capacity (mAh)", ma: "Load current (mA)" }, units: { ma: "mA" } },
   { type: "elec-cap-energy", label: "Capacitor Energy", expr: "c*v^2/2",
     description: "Energy E = ½CV² stored in a capacitor: capacitance c (F), voltage v.",
-    keywords: "joules stored", units: { v: "W/A" } },
+    keywords: "joules stored",
+    varDescriptions: { c: "Capacitance (F)", v: "Voltage (V)" }, units: { v: "W/A" } },
   { type: "elec-ind-energy", label: "Inductor Energy", expr: "l*i^2/2",
     description: "Energy E = ½LI² stored in an inductor: inductance l (H), current i.",
-    keywords: "joules stored", units: { i: "A" } },
+    keywords: "joules stored",
+    varDescriptions: { l: "Inductance (H)", i: "Current (A)" }, units: { i: "A" } },
 ];
 
-export const ELECTRICITY_AC: FormulaPackEntry[] = [
+const ELECTRICITY_AC: FormulaPackEntry[] = [
   { type: "elec-cap-reactance", label: "Capacitive Reactance", expr: "1/(2*PI()*f*c)",
     description: "Reactance of a capacitor at frequency f   (Xc = 1/(2πfC))",
-    keywords: "impedance ac", units: { f: "Hz" } },
+    keywords: "impedance ac",
+    varDescriptions: { f: "Frequency (Hz)", c: "Capacitance (F)" }, units: { f: "Hz" } },
   { type: "elec-ind-reactance", label: "Inductive Reactance", expr: "2*PI()*f*l",
     description: "Reactance Xl = 2πfL of an inductor at frequency f.",
-    keywords: "impedance ac", units: { f: "Hz" } },
+    keywords: "impedance ac",
+    varDescriptions: { f: "Frequency (Hz)", l: "Inductance (H)" }, units: { f: "Hz" } },
   { type: "elec-rlc-impedance", label: "Series RLC Impedance", expr: "SQRT(r^2+(xl-xc)^2)",
-    description: "Impedance magnitude of a series R-L-C: resistance r, reactances xl and xc   (|Z| = √(R²+(Xl−Xc)²))", units: { r: "W/A^2", xl: "W/A^2", xc: "W/A^2" } },
+    description: "Impedance magnitude of a series R-L-C: resistance r, reactances xl and xc   (|Z| = √(R²+(Xl−Xc)²))",
+    varDescriptions: { r: "Resistance (Ω)", xl: "Inductive reactance (Ω)", xc: "Capacitive reactance (Ω)" }, units: { r: "W/A^2", xl: "W/A^2", xc: "W/A^2" } },
   { type: "elec-resonance", label: "Resonant Frequency", expr: "1/(2*PI()*SQRT(l*c))",
     description: "Resonant frequency of an LC pair: inductance l (H), capacitance c (F)   (f = 1/(2π√(LC)))",
-    keywords: "tank tuned lc" },
+    keywords: "tank tuned lc",
+    varDescriptions: { l: "Inductance (H)", c: "Capacitance (F)" } },
 ];
 
-export const ELECTRICITY_TRANSIENTS: FormulaPackEntry[] = [
+const ELECTRICITY_TRANSIENTS: FormulaPackEntry[] = [
   { type: "elec-rc-tau", label: "RC Time Constant", expr: "r*c",
-    description: "First-order RC time constant τ = R·C: 63% of a step in one τ, about settled in 5τ.", units: { r: "W/A^2" } },
+    description: "First-order RC time constant τ = R·C: 63% of a step in one τ, about settled in 5τ.",
+    varDescriptions: { r: "Resistance (Ω)", c: "Capacitance (F)" }, units: { r: "W/A^2" } },
   { type: "elec-rl-tau", label: "RL Time Constant", expr: "l/r",
-    description: "First-order RL time constant τ = L/R.", units: { r: "W/A^2" } },
+    description: "First-order RL time constant τ = L/R.",
+    varDescriptions: { l: "Inductance (H)", r: "Resistance (Ω)" }, units: { r: "W/A^2" } },
   { type: "elec-cap-charge", label: "Capacitor Charging", expr: "v0*(1-EXP(-t/(r*c)))",
     description: "Voltage on a charging capacitor at time t: source v0, through r into c   (V = V₀(1−e^(−t/RC)))",
-    keywords: "step response exponential", units: { v0: "W/A", t: "s", r: "W/A^2" } },
+    keywords: "step response exponential",
+    varDescriptions: { v0: "Source voltage (V)", t: "Time (s)", r: "Series resistance (Ω)", c: "Capacitance (F)" }, units: { v0: "W/A", t: "s", r: "W/A^2" } },
   { type: "elec-cap-discharge", label: "Capacitor Discharging", expr: "v0*EXP(-t/(r*c))",
     description: "Voltage on a discharging capacitor at time t, from v0 through r   (V = V₀·e^(−t/RC))",
-    keywords: "decay exponential", units: { v0: "W/A", t: "s", r: "W/A^2" } },
+    keywords: "decay exponential",
+    varDescriptions: { v0: "Initial voltage (V)", t: "Time (s)", r: "Discharge resistance (Ω)", c: "Capacitance (F)" }, units: { v0: "W/A", t: "s", r: "W/A^2" } },
   { type: "elec-555-astable", label: "555 Timer (Astable)", expr: "1.44/((r1+2*r2)*c)",
     description: "Output frequency of the classic 555 astable: timing resistors r1, r2 and capacitor c   (f ≈ 1.44/((R1+2R2)C))",
-    keywords: "oscillator ne555", units: { r1: "W/A^2", r2: "W/A^2" } },
+    keywords: "oscillator ne555",
+    varDescriptions: { r1: "Timing resistor R1 (Ω)", r2: "Timing resistor R2 (Ω)", c: "Timing capacitor (F)" }, units: { r1: "W/A^2", r2: "W/A^2" } },
 ];
 
-export const ELECTRICITY_DB: FormulaPackEntry[] = [
+const ELECTRICITY_DB: FormulaPackEntry[] = [
   { type: "elec-db-power", label: "Decibels (Power Ratio)", expr: "10*LOG10(p2/p1)",
     description: "Power ratio in dB   (10·log₁₀(P₂/P₁))",
-    keywords: "gain attenuation", units: { p1: "W", p2: "W" } },
+    keywords: "gain attenuation",
+    varDescriptions: { p2: "Measured power (W)", p1: "Reference power (W)" }, units: { p1: "W", p2: "W" } },
   { type: "elec-db-voltage", label: "Decibels (Voltage Ratio)", expr: "20*LOG10(v2/v1)",
     description: "Voltage (amplitude) ratio in dB   (20·log₁₀(V₂/V₁))",
-    keywords: "gain attenuation", units: { v1: "W/A", v2: "W/A" } },
+    keywords: "gain attenuation",
+    varDescriptions: { v2: "Measured voltage (V)", v1: "Reference voltage (V)" }, units: { v1: "W/A", v2: "W/A" } },
   { type: "elec-dbm-w", label: "dBm ↔ Watts", expr: "dbm = 10*LOG10(w)+30", equation: true,
     description: "Absolute power both ways: wire dbm to get watts, or w to get dBm. 0 dBm = 1 mW",
-    keywords: "dbm watts milliwatt level convert", units: { w: "W" } },
+    keywords: "dbm watts milliwatt level convert",
+    varDescriptions: { dbm: "Power level (dBm)", w: "Power (W)" }, units: { w: "W" } },
 ];
 
 export const ELECTRICITY_FORMULAS: FormulaPackEntry[] = [
@@ -109,6 +131,7 @@ function toSiPrefix(n: number): string {
 export const ELECTRICITY_PACK: Pack = {
   formulas: ELECTRICITY_PACK_FORMULAS,
   id: "electricity",
+  seed: "pack-electricity",
   group: "Science & Engineering",
   name: "Electricity & Circuits",
   description: "Ohm's law and power, dividers, reactance and resonance, RC and RL transients, decibels, resistor color codes, E-series values, AWG wire properties. SI units.",

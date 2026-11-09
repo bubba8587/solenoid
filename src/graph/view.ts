@@ -10,7 +10,6 @@ export type View = {
   readonly container: HTMLElement;
   readonly viewport: HTMLElement;
   readonly transform: { x: number; y: number; k: number };
-  readonly pointer: { x: number; y: number };
   /** Sets the scale, then adds (ox, oy) to the pan: the anchored-zoom step. */
   zoom(k: number, ox?: number, oy?: number): Promise<void>;
   pan(x: number, y: number): Promise<void>;

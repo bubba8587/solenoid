@@ -1,5 +1,5 @@
-import type { TextAfterBeforeNode as TextAfterBeforeNodeType, TextAfterBeforeOp } from "../rete-nodes";
-import { TEXT_AFTER_BEFORE_OP_META } from "../rete-nodes";
+import type { TextAfterBeforeNode as TextAfterBeforeNodeType, TextAfterBeforeOp } from "../nodeClasses";
+import { TEXT_AFTER_BEFORE_OP_META } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { MatchCaseButton } from "./FrameNodes";

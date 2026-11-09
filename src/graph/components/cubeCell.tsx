@@ -1,4 +1,4 @@
-// [[C24]] arraySemantics, [[D41]] formatFlowsDownstream, [[D43]] unitByGranularity
+// [[C24]] arraySemantics, [[C118]] formatTravelsWithValue, [[C25]] firstClassUnits
 import { useSyncExternalStore, type ReactNode } from "react";
 import {
   isFrameValue, isCubeValue, cubeRowCount, cubeDepth, frameRowCount, formatFrameCell,
@@ -7,6 +7,8 @@ import {
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { isSolError } from "../errorValue";
 import { isUnitCell } from "../unitValue";
+import { displayMagnitudeOf } from "../unitBridge";
+import { settingsStore } from "../settingsStore";
 import { cubePopup, type CellRef } from "../cubePopupStore";
 import { formatScalar } from "./format";
 import { formatListCell } from "./valueDisplayFormat";
@@ -17,10 +19,14 @@ import { appThemeStore } from "../appTheme";
 import { resolveColor } from "../palette";
 import { repaintSparkline, SPARK_SLOTS } from "../nodes/visualOps";
 import "./ArrayChip.css";
+import { WebImage } from "./WebImage";
+import { isWebUrl } from "../webUrl";
 
-/** A text cell holding a data:image picture ([[C103]] untrustedContentSeams); a sparkline paints in the active palette ([[D82]] sparklineCell). */
+/** A text cell holding a picture ([[C103]] untrustedContentSeams): a web one waits for the network grant ([[B18]]
+ *  safeToShare); a sparkline paints in the active palette ([[D82]] sparklineCell). */
 export function CellImage({ src, className = "sol-cell-img", alt = "" }: { src: string; className?: string; alt?: string }): ReactNode {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  if (isWebUrl(src)) return <WebImage className={className} src={src} alt={alt} />;
   const shown = repaintSparkline(src, {
     line: resolveColor(SPARK_SLOTS.line), pos: resolveColor(SPARK_SLOTS.pos), neg: resolveColor(SPARK_SLOTS.neg),
   });
@@ -52,7 +58,7 @@ export function cubeCellToken(cell: CubeCell, type?: FrameColType, format?: Form
   return String(cell);
 }
 
-/** A cell as a card shows it: a typed number in the General style ([[D94]] oneNumberDisplay), anything else as its token, which copies keep. */
+/** A cell as a card shows it: a typed number in the General style ([[C118]] formatTravelsWithValue), anything else as its token, which copies keep. */
 export function cubeCellShown(cell: CubeCell, type?: FrameColType, format?: FormatAnnotation): string {
   if (type && cell !== null && typeof cell !== "object") {
     const f = formatFrameCell(type, cell, format);
@@ -82,6 +88,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
   type?: FrameColType;
   format?: FormatAnnotation;
 }): ReactNode {
+  const showUnits = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupCellUnits"));
   if (cell === null || cell === undefined) {
     return <span className="solenoid-node__text-empty" style={{ color: "var(--text-muted)" }}>—</span>;
   }
@@ -138,7 +145,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
   if (isSolError(cell)) {
     return <span title={errorTip(cell)} style={{ color: "var(--sol-error)" }}>{cell.code}</span>;
   }
-  if (isUnitCell(cell)) return <>{formatListCell(cell, formatScalar)}</>;
+  if (isUnitCell(cell)) return <>{showUnits ? formatListCell(cell, formatScalar) : formatScalar(displayMagnitudeOf(cell))}</>;
   if (type) return frameCellNode(type, cell, format);
   if (typeof cell === "boolean") return <>{cell ? "TRUE" : "FALSE"}</>;
   if (typeof cell === "number") return <>{formatScalar(cell)}</>;

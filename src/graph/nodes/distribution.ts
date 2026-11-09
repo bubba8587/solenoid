@@ -1,10 +1,8 @@
-// [[B11]], [[D46]] freezeVolatilePerCalc
-import { ClassicPreset } from "rete";
-import { numIn, numListIn, numListOut, readInput, broadcastErr, type BroadcastResult } from "./shared";
-import { DIST_SPECS, isInverseForm, formAfterSwitch, sampleQuantiles, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
-import { mulberry32 } from "../monteCarlo";
-import { getRecalcGen } from "../process";
-import { solError } from "../errorValue";
+// [[B11]], [[C23]] calcModes
+import { GraphNode } from "../graphModel";
+import { nodeOnCore } from "../nodeOnCore";
+import { numIn, numListIn, numListOut, type BroadcastResult } from "./shared";
+import { DIST_SPECS, isInverseForm, formAfterSwitch, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
 export { DIST_SPECS, DIST_FORM_META, isInverseForm, formAfterSwitch, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
 
 function firstKeyFor(op: DistKey, form: DistForm): string {
@@ -15,7 +13,7 @@ function inputKeysFor(op: DistKey, form: DistForm): string[] {
   return [firstKeyFor(op, form), ...spec.params.map((p) => p.key)];
 }
 
-export class DistributionsNode extends ClassicPreset.Node {
+export class DistributionsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     k: "The count rounds down to a whole number.",
     result: "A value or parameter outside the distribution's domain gives a blank, not an error.",
@@ -100,39 +98,7 @@ export class DistributionsNode extends ClassicPreset.Node {
     this.seedLiterals();
   }
 
-  private lastSampleGen = -1;
-  private sampleSeed = 0;
-
-  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
-    const spec = this.spec;
-    const form = this.form;
-    if (form === "sample") {
-      const countRaw = readInput(inputs.count, this.literals.count ?? 100);
-      const params = spec.params.map((p) => readInput(inputs[p.key], this.literals[p.key]));
-      if (countRaw === null || params.some((v) => v === null)) { this.cachedResult = null; return { result: null }; }
-      const n = Math.min(100_000, Math.max(0, Math.round(Array.isArray(countRaw) ? (countRaw[0] ?? 0) : countRaw)));
-      const ps = params.map((v) => (Array.isArray(v) ? (v[0] ?? 0) : (v as number)));
-      const gen = getRecalcGen();
-      if (this.lastSampleGen !== gen) {
-        this.lastSampleGen = gen;
-        let h = 2166136261 ^ gen;
-        for (const ch of this.id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-        this.sampleSeed = h >>> 0;
-      }
-      const rng = mulberry32(this.sampleSeed);
-      const out = sampleQuantiles(this.op, Array.from({ length: n }, () => rng()), ps);
-      this.cachedResult = out;
-      return { result: out };
-    }
-    const firstKey = firstKeyFor(this.op, form);
-    const first = readInput(inputs[firstKey], this.literals[firstKey]);
-    const params = spec.params.map((p) => readInput(inputs[p.key], this.literals[p.key]));
-    const result = broadcastErr((v, ...ps) => {
-      const r = spec.compute(form, v, ps);
-      // [[D70]] nullNotEnoughData: a parameter outside the domain is a wrong input.
-      return r !== null && Number.isFinite(r) ? r : solError("#DOMAIN!", "A parameter is outside the distribution's domain");
-    }, first, ...params);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }

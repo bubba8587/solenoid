@@ -1,8 +1,8 @@
 // [[B1]] obsidianBet, [[C1]] demoVault
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import DOMPurify from "dompurify";
-import type { ImportObsidianNode as ImportObsidianNodeType } from "../rete-nodes";
+import { sanitizeNoteHtml, useNetworkGrant } from "../noteHtml";
+import type { ImportObsidianNode as ImportObsidianNodeType } from "../nodeClasses";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
 import { settingsStore } from "../settingsStore";
@@ -12,7 +12,7 @@ import { FieldRow } from "./NoteNode";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useKnapRender } from "./useKnapRender";
 import { parseNoteFrontmatter } from "../noteFrontmatter";
-import { hasFs, isDesktop, listVaultMarkdownFiles, readVaultFile, openExternal } from "../fileBridge";
+import { hasFs, isDesktop, listVaultMarkdownFiles, readVaultFile, readVaultFileHead, statVaultFile, openExternal } from "../fileBridge";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { getOwningView, getOwningEditor } from "../activeGraph";
@@ -27,8 +27,11 @@ import type { NodeProps } from "./nodeKit";
 import type { FrontmatterFieldType } from "../noteFrontmatter";
 import "./NoteNode.css";
 import "./ImportObsidianNode.css";
+import { PickField } from "./PickField";
+import { chooseFile } from "../chooseFile";
 import { renderNoteMarkdown } from "../noteMarkdown";
 import { useKatexReady } from "./katexLoader";
+import { measureThenWrite } from "./layoutBatch";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
@@ -49,14 +52,14 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const [body, setBody] = useState(data.body);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [files, setFiles] = useState<string[]>([]);
   const [minutes, setMinutes] = useState(data.refreshMinutes);
   const [, setFieldsVersion] = useState(0);
   const swatchRef = useRef<HTMLButtonElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(colorOpen, () => setColorOpen(false), [swatchRef, paletteRef]);
 
+  useSyncExternalStore(connectionStore.subscribe, connectionStore.version);
+  const gone = data.goneText();
   const desktop = isDesktop();
   const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot());
   const canRead = hasFs() || isDemoVaultPath(vault);
@@ -65,20 +68,10 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
   useEffect(() => { setBody(data.body); }, [data.body]);
 
-  useEffect(() => {
-    if (!pickerOpen) return;
-    let live = true;
-    void listVaultMarkdownFiles(vault).then((f) => { if (live) setFiles(f); });
-    return () => { live = false; };
-  }, [pickerOpen, vault]);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return q ? files.filter((f) => f.toLowerCase().includes(q)) : files;
-  }, [files, search]);
 
   // The Note's on-blur reconcile: re-derive the frontmatter sockets, then drop the cables a removed or retyped key stranded.
   async function applyBody(content: string, sourcePath: string) {
+    data.setGone(null);
     data.body = content;
     data.adoptFile(sourcePath);
     await data.loadColumnPicks(vault);
@@ -91,7 +84,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     await view?.rerenderNode(data.id);
     if (editor && view && retyped.length) reconcileFcTypes(editor, view);
     bumpConnectionVersion();
-    await processGraph();
+    data.edited(); await processGraph();
     scheduleAutosave();
   }
 
@@ -99,14 +92,13 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     try {
       const content = await readVaultFile(vault, rel);
       await applyBody(content, rel);
-      setPickerOpen(false);
-    } catch { /* unreadable (moved/renamed) — leave the current body */ }
+    } catch { /* unreadable: the picker only offers notes that exist, so the current body stays */ }
   }
 
   async function reload() {
     if (!data.fileName) return;
     try { await applyBody(await readVaultFile(vault, data.fileName), data.fileName); }
-    catch { /* file gone — keep what's loaded */ }
+    catch { await data.checkGone(); }
   }
 
   function pick(c: string) { setColor(c); data.color = c; void getOwningView(data.id)?.rerenderNode(data.id); scheduleAutosave(); }
@@ -123,9 +115,15 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   useLayoutEffect(() => {
     const bodyEl = bodyRef.current, rootEl = rootRef.current;
     if (!bodyEl || !rootEl) { setDocDotTop(undefined); return; }
-    let y = 0;
-    for (let el: HTMLElement | null = bodyEl; el && el !== rootEl; el = el.offsetParent as HTMLElement | null) y += el.offsetTop;
-    setDocDotTop(y + bodyEl.offsetHeight / 2 - 6);
+    measureThenWrite(
+      bodyRef,
+      () => {
+        let y = 0;
+        for (let el: HTMLElement | null = bodyEl; el && el !== rootEl; el = el.offsetParent as HTMLElement | null) y += el.offsetTop;
+        return y + bodyEl.offsetHeight / 2 - 6;
+      },
+      setDocDotTop,
+    );
   }, [collapsed, fieldKeys.length, pickerOpen, data.height, data.width, body]);
 
   const templateVars = useMemo(() => data.templateVariables(), [data, body]);
@@ -133,10 +131,10 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   const tex = useKatexReady(); // math re-renders once KaTeX lands
+  const net = useNetworkGrant(data.id);
   const bodyHtml = useMemo(
-    () => DOMPurify.sanitize(renderNoteMarkdown(renderBody || "")),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [renderBody, tex],
+    () => sanitizeNoteHtml(renderNoteMarkdown(renderBody || ""), data.id),
+    [renderBody, tex, net],
   );
 
   const mode = appThemeStore.getMode();
@@ -173,7 +171,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
         <button
           type="button"
           className="solenoid-note__swatch"
-          title={pickerOpen ? "Hide files" : "Choose a vault file"}
+          title={pickerOpen ? "Hide the note's source" : "The note's source: which vault note, and how often it reloads"}
           onClick={(e) => { e.stopPropagation(); setPickerOpen((o) => !o); }}
           onPointerDown={stopDragStart}
           onMouseDown={stopDragStart}
@@ -227,34 +225,26 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
             <div className="sol-import__empty">Set the Obsidian vault folder in Settings.</div>
           ) : (
             <>
-              <input
-                className="sol-import__search"
-                type="text"
-                value={search}
-                placeholder="Search notes…"
-                spellCheck={false}
-                autoFocus
-                onChange={(e) => setSearch(e.target.value)}
+              <PickField
+                value={data.fileName}
+                placeholder="Choose a note…"
+                example
+                title={data.fileName ? `${data.fileName}: choose another note` : "Choose a note in the vault"}
+                onPick={(from) => void chooseFile({
+                from,
+                  title: "Choose a note",
+                  root: vault,
+                  extensions: ["md"],
+                  current: data.fileName || undefined,
+                  list: () => listVaultMarkdownFiles(vault),
+                  readHead: (rel, chars) => readVaultFileHead(vault, rel, chars),
+                  stat: (rel) => statVaultFile(vault, rel),
+                  rootLabel: "Vault",
+                  recentKey: "vault-note",
+                  empty: "No notes in the vault",
+                }).then((rel) => { if (rel) void pickFile(rel); })}
               />
-              <div className="sol-import__list nowheel">
-                {filtered.length === 0 ? (
-                  <div className="sol-import__empty">No .md files</div>
-                ) : (
-                  filtered.map((f) => (
-                    <button
-                      key={f}
-                      type="button"
-                      className={`sol-import__row${f === data.fileName ? " sol-import__row--on" : ""}`}
-                      title={f}
-                      onClick={() => void pickFile(f)}
-                    >
-                      {f}
-                    </button>
-                  ))
-                )}
-              </div>
               <div className="sol-import__foot">
-                <span className="sol-import__file" title={data.fileName || undefined}>{data.fileName || "no file"}</span>
                 <label className="sol-import__every" title="Reload from the vault on this cadence. 0 turns it off.">
                   every
                   <input
@@ -308,6 +298,13 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
 
       {data.outputs.document && (
         <NodeSocket side="output" socketKey="document" nodeId={data.id} emit={emit} payload={data.outputs.document.socket} top={docDotTop} />
+      )}
+
+      {gone && !collapsed && (
+        <div className="sol-import__gone" role="status" title={data.fileName || undefined}>
+          <span className="sol-import__gone-dot" aria-hidden="true" />
+          <span className="sol-import__gone-text">{gone}</span>
+        </div>
       )}
 
       {!collapsed && !pickerOpen && (

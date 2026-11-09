@@ -5,7 +5,7 @@ import { CableShapeSelector } from "./CableShapeSelector";
 import { AppToolbar } from "./AppToolbar";
 import { TabletActions } from "./TabletActions";
 import { autoArrange, cleanup } from "./canvasCommands";
-import { saveToDisk, openFromDisk } from "./fileSession";
+import { saveToDisk, saveNow, openFromDisk } from "./fileSession";
 import { mobileMenuStore } from "./mobileMenuStore";
 import { toggleChrome } from "./chromeToggle";
 import { DocumentTitle } from "./components/DocumentTitle";
@@ -27,7 +27,7 @@ function useClickaway(open: boolean, ref: React.RefObject<HTMLElement | null>, c
 }
 
 const TidyIcon = () => (
-  <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
     <rect x="1.2" y="5.5" width="3.6" height="5" rx="0.8" />
     <rect x="11.2" y="2" width="3.6" height="3.6" rx="0.8" />
     <rect x="11.2" y="9.8" width="3.6" height="3.6" rx="0.8" />
@@ -37,9 +37,9 @@ const TidyIcon = () => (
   </svg>
 );
 
-/** Lucide "brush" (ISC). */
+/** Lucide "brush" (ISC), its stroke scaled from Tidy's 1.1 on a 16 grid to its own 24. */
 const CleanupIcon = () => (
-  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
     <path d="m11 10 3 3" />
     <path d="M6.5 21A3.5 3.5 0 1 0 3 17.5a2.62 2.62 0 0 1-.708 1.792A1 1 0 0 0 3 21z" />
     <path d="M9.969 17.031 21.378 5.624a1 1 0 0 0-3.002-3.002L6.967 14.031" />
@@ -112,7 +112,7 @@ export function TopBar() {
       <span className="solenoid-topbar__divider" />
 
       <div className="solenoid-topbar__group solenoid-topbar__group--file">
-        <button className="solenoid-nav__btn" title="Save (Ctrl+S)" aria-label="Save" onClick={() => void saveToDisk()}>
+        <button className="solenoid-nav__btn" title="Save (Ctrl+S)" aria-label="Save" onClick={() => void saveNow()}>
           <SaveIcon />
         </button>
         <button className="solenoid-nav__btn" title="Save As: save to a new file (Ctrl+Shift+S)" aria-label="Save As" onClick={() => void saveToDisk({ forceDialog: true })}>
@@ -224,11 +224,10 @@ export function TopBar() {
 
       <CableShapeSelector />
 
-      {/* Tablet only (no bottom bar there); BEFORE the art slot so a wrap keeps them
-          with the other tool pills. */}
+      {/* Tablet only (no bottom bar there); before the spacer so a wrap keeps them with the other tool pills. */}
       <TabletActions />
 
-      {/* Decorative art slot — fills the middle gap; empty for now. */}
+      {/* The spacer that pushes the app toolbar to the right edge. */}
       <div className="solenoid-topbar__art" />
 
       <AppToolbar />

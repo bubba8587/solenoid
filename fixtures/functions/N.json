@@ -1,0 +1,22 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"N(c_A2)","env":["c_A2=num:12"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(c_A3)","env":["c_A3=num:0"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(c_A4)","env":["c_A4=num:-12"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(c_A6)","env":["c_A6=num:10000000000"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(c_A7)","env":["c_A7=num:-10000000000"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(c_A8)","env":["c_A8=num:3.141592653589793"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(c_A9)","env":["c_A9=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(c_A10)","env":["c_A10=text:\"abc\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(c_A11)","env":["c_A11=text:\"one\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(c_A12)","env":["c_A12=text:\"10\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(c_A13)","env":["c_A13=date:2020-12-21"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(c_A14)","env":["c_A14=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(c_A15)","env":["c_A15=bool:FALSE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(TRUE+TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(c_A18)","env":["c_A18=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(c_A19)","env":["c_A19=err:#N/A"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"N(SINGLE(r_D18_D22))","env":["r_D18_D22=table:num:[[1], [2], [3], [4], [5]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

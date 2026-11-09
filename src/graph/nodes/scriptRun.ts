@@ -39,7 +39,7 @@ export function scriptIsVolatile(src: string): boolean {
   return VOLATILE_RE.test(src);
 }
 
-export type SolDateTag = { __solDate: unknown };
+type SolDateTag = { __solDate: unknown };
 export function isSolDateTag(v: unknown): v is SolDateTag {
   return typeof v === "object" && v !== null && "__solDate" in v;
 }
@@ -55,7 +55,19 @@ const SolenoidGlobal = Object.freeze({
 type Fn = (...args: unknown[]) => unknown;
 const compiled = new Map<string, Fn>();
 
-export function compileScript(src: string): { fn: Fn } | { error: string } {
+/** The source's syntax, parsed and never run: the main thread's check, since only the sandbox worker runs a script. */
+export function checkScript(src: string): { error: string } | null {
+  const head = scriptParams(src);
+  if ("error" in head) return head;
+  try {
+    new Function("Solenoid", `"use strict"; return (\n${src}\n);`);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  return null;
+}
+
+function compileScript(src: string): { fn: Fn } | { error: string } {
   const hit = compiled.get(src);
   if (hit) return { fn: hit };
   const head = scriptParams(src);

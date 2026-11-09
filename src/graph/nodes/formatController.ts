@@ -1,52 +1,20 @@
-// [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[C118]] formatTravelsWithValue
-import { ClassicPreset, type NodeEditor } from "rete";
-import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
+// [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue
+import type { GraphEditor } from "../graphEditor";
+import { GraphConnection, GraphInput, GraphNode, GraphOutput } from "../graphModel";
+import { formatAnnotationStore, isDateStyle, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { sharedAnnotationResolver } from "../unitFlow";
-import { applyFcUnit, fcUnitIdForUnit } from "../unitBridge";
-import { isPurePassthroughNode } from "./passthrough";
-import { isUnitCell, matrixUnitOf, type UnitCell } from "../unitValue";
 import { dockedNodeStore } from "../dockedNodeStore";
-import { SolenoidSocket, isDateType, isWildcardRung, type SocketDataType } from "../sockets";
+import { nodeOnCore } from "../nodeOnCore";
+import { staysOffCore } from "./display";
+import { MutableSocket, isDateType, isWildcardRung, type SocketDataType } from "../sockets";
 
-/** The unit a value already carries: a scalar or list's first dimensioned cell, or a matrix's grid unit. */
-function heldUnit(v: unknown): Pick<UnitCell, "dim" | "display"> | null {
-  if (isUnitCell(v)) return v;
-  if (Array.isArray(v) && !Array.isArray(v[0])) {
-    for (const c of v) if (isUnitCell(c)) return c;
-  }
-  return matrixUnitOf(v) ?? null;
-}
-
-class MutableSocket extends SolenoidSocket {
-  constructor(type: SocketDataType) { super(type); }
-  setType(type: SocketDataType) {
-    // Readonly in the type only; this instance belongs to one port.
-    (this as unknown as { dataType: SocketDataType }).dataType = type;
-  }
-}
-
-type FcEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
-
-function concreteTypeOfOutput(editor: FcEditor, nodeId: string, outKey: string, seen = new Set<string>()): SocketDataType {
-  const key = `${nodeId}::${outKey}`;
-  if (seen.has(key)) return "trueany";
-  seen.add(key);
-  const sock = editor.getNode(nodeId)?.outputs[outKey]?.socket;
-  if (sock instanceof SolenoidSocket && !isWildcardRung(sock.dataType)) return sock.dataType;
-  for (const c of editor.getConnections()) {
-    if (c.target === nodeId) {
-      const t = concreteTypeOfOutput(editor, c.source, c.sourceOutput, seen);
-      if (!isWildcardRung(t)) return t;
-    }
-  }
-  return "trueany";
-}
-
-export class FormatControllerNode extends ClassicPreset.Node {
+export class FormatControllerNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     in: "The format applies to the box feeding this input, and clears when it's disconnected.",
     out: "The unit rides the value out, and the display format follows it across downstream passthrough boxes.",
   };
+  /** The Convert this FC feeds names its from-unit at run time, which no save keeps. */
+  static coreFields = ["dictatedFromUnit"] as const;
 
   label: string;
   hostNodeId: string;
@@ -150,12 +118,12 @@ export class FormatControllerNode extends ClassicPreset.Node {
       this._outSock.setType(init.socketDataType);
     }
 
-    this.addInput("in",  new ClassicPreset.Input(this._inSock, "In"));
-    this.addOutput("out", new ClassicPreset.Output(this._outSock, "Out"));
+    this.addInput("in",  new GraphInput(this._inSock, "In"));
+    this.addOutput("out", new GraphOutput(this._outSock, "Out"));
   }
 
-  /** Call once after editor.addNode: registration needs the id Rete assigns there. */
-  dockSelf(editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>): void {
+  /** Call once after editor.addNode (registration needs the node in the editor), then `reconcileFcs`. */
+  dockSelf(editor: GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>): void {
     // [[B12]] losslessSaves: a saved host that no longer exists leaves a free FC, not a dock onto nothing.
     if (this.hostNodeId && !editor.getNode(this.hostNodeId)) this.releaseDock();
     if (!this.hostNodeId) return;
@@ -164,8 +132,6 @@ export class FormatControllerNode extends ClassicPreset.Node {
       socketKey:  this.socketKey,
       side:       this.side,
     });
-    this.adaptTypeFromConnections(editor);
-    this.refreshAnnotation(editor);
   }
 
   /** Never re-default `format` here: an off-family pick stays saved and is inert through effectiveFormat(). */
@@ -183,59 +149,20 @@ export class FormatControllerNode extends ClassicPreset.Node {
     return this.format;
   }
 
-  adaptTypeFromConnections(
-    editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>,
-  ): boolean {
-    let resolved: SocketDataType = "trueany";
-    if (this.hostNodeId) {
-      if (this.side === "output") {
-        resolved = concreteTypeOfOutput(editor, this.hostNodeId, this.socketKey);
-      } else {
-        const sock = editor.getNode(this.hostNodeId)?.inputs[this.socketKey]?.socket;
-        if (sock instanceof SolenoidSocket && !isWildcardRung(sock.dataType)) resolved = sock.dataType;
-      }
-    } else {
-      for (const c of editor.getConnections()) {
-        if (c.target === this.id && c.targetInput === "in") {
-          const t = concreteTypeOfOutput(editor, c.source, c.sourceOutput);
-          if (!isWildcardRung(t)) { resolved = t; break; }
-        } else if (c.source === this.id && c.sourceOutput === "out") {
-          const sock = editor.getNode(c.target)?.inputs[c.targetInput]?.socket;
-          if (sock instanceof SolenoidSocket && !isWildcardRung(sock.dataType)) { resolved = sock.dataType; break; }
-        }
-      }
-    }
-    if (resolved === this.socketDataType) return false;
-    this._applyType(resolved);
-    this.refreshAnnotation(editor);
+  /** Takes the reconcile's answer (`fc.rs`): its type, and the from-unit a Convert ahead dictates; `true` when retyped. */
+  settle(type: SocketDataType, dictatedFromUnit: string): boolean {
+    this.dictatedFromUnit = dictatedFromUnit;
+    if (type === this.socketDataType) return false;
+    this._applyType(type);
     return true;
   }
 
   refreshAnnotation(
-    editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>,
+    editor: GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>,
   ): void {
     let inSrcId = "", inSrcSock = "";
     for (const c of editor.getConnections()) {
       if (c.target === this.id && c.targetInput === "in") { inSrcId = c.source; inSrcSock = c.sourceOutput; break; }
-    }
-
-    this.dictatedFromUnit = "";
-    {
-      let nid = this.id, depth = 0;
-      walk: while (nid && depth++ < 32) {
-        let next = "";
-        for (const c of editor.getConnections()) {
-          if (c.source !== nid) continue;
-          const consumer = editor.getNode(c.target) as unknown as Record<string, unknown> | undefined;
-          if (!consumer) continue;
-          if (typeof consumer.fromUnit === "string" && typeof consumer.toUnit === "string") {
-            this.dictatedFromUnit = consumer.fromUnit as string;
-            break walk;
-          }
-          if (isPurePassthroughNode(consumer)) { next = c.target; break; }
-        }
-        nid = next;
-      }
     }
 
     const targets: Array<{ nodeId: string; socketKey: string }> = [];
@@ -313,16 +240,12 @@ export class FormatControllerNode extends ClassicPreset.Node {
     this.socketKey = "";
   }
 
-  data(inputs: { in?: unknown[] }): { out: unknown } {
-    const val = inputs.in?.[0] ?? null;
-    const cell = heldUnit(val);
-    const inherited = cell ? cell.display ?? fcUnitIdForUnit({ dim: cell.dim, scale: 1 }) : undefined;
-    const dictated = this.dictatedFromUnit && isFcUnit(this.dictatedFromUnit) ? this.dictatedFromUnit : "";
-    if (dictated && this.unit === "none") this.unit = dictated;
-    this.lockedByConvert = dictated !== "" && this.unit === dictated;
-    this.forwarding = !!cell && !this.lockedByConvert;
-    if (this.forwarding && inherited && isFcUnit(inherited) && this.unit !== inherited) this.unit = inherited;
-    this.unitLocked = this.lockedByConvert || this.forwarding;
-    return { out: applyFcUnit(val, this.unit, this.customUnit) };
+  data(inputs: Record<string, unknown[] | undefined>): { out: unknown } {
+    const raw = inputs.in?.[0];
+    // A value the core can't take back holds no unit: the card reads it as a blank and hands it on.
+    return staysOffCore(raw) ? (nodeOnCore(this, { ...inputs, in: [null] }), { out: raw }) : (nodeOnCore(this, inputs) as { out: unknown });
   }
+
+  /** The unit the card shows: the Convert's from-unit, else the one the value carries in. The card keeps it. */
+  adoptedUnit = "none";
 }

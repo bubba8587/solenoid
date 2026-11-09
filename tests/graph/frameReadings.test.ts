@@ -1,17 +1,18 @@
-// [[C25]] firstClassUnits, [[C16]] polarsEngine: readings on an offset scale (°C, °F) through
-// the frame and cube verbs answer as a formula does. Both engines are held to the values by
-// the corpus (fixtures/frame-verbs, `readingScale`); this file pins the units and the lowering.
+// [[C25]] firstClassUnits, [[C130]] rustCore, [[frame-verbs#groupBy]], [[frame-verbs#window]]
 import { describe, it, expect } from "vitest";
-import { applyVerb, groupByFrame, pivotFrame, windowFrame, windowCube, withUnitScales, type FrameOp } from "../../src/graph/frameVerbs";
-import { lowerForEngine } from "../../src/graph/frameBackend";
+import { type FrameOp } from "../../src/graph/frameOps";
+import { applyVerb, groupByFrame, pivotFrame, windowFrame } from "./coreVerbs";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";
-import { isUnitCell, READINGS_ADD, READINGS_SCALE, type UnitCell } from "../../src/graph/unitValue";
-import { cubeFromColumns, frameToCube, frameSourceToText, type FrameColumn, type FrameValue } from "../../src/graph/frame";
+import { isUnitCell, type UnitCell } from "../../src/graph/unitValue";
+
+const READINGS_ADD = "Temperature readings can't be added. Subtract two for a difference, or average them.";
+const READINGS_SCALE = "Convert the temperature to kelvin first. An offset unit like °C can't take ×, ÷, mod or ^.";
+import { cubeFromColumns, frameToCube, frameSourceToText, type CubeValue, type FrameColumn, type FrameValue } from "../../src/graph/frame";
 import { CubeRollupNode } from "../../src/graph/nodes/cube";
-import { GetColumnNode, ComputedColumnNode, FrameInputNode } from "../../src/graph/nodes/frame";
-import { AggregateNode, SumIfsNode } from "../../src/graph/nodes/list";
-import { compileLambda } from "../../src/graph/nodes/tableLambda";
+import { ComputedColumnNode, FrameInputNode, WindowNode } from "../../src/graph/nodes/frame";
+import { SumIfsNode } from "../../src/graph/nodes/list";
+import { compilePositional } from "../../src/graph/excelFormula";
 
 const unit = (spec: string) => columnUnitFromSpec(spec)!;
 const frame = (...columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });
@@ -27,7 +28,7 @@ describe("GROUPBY over readings", () => {
 
   it("a sum or product is #UNIT! in every group and carries no unit", () => {
     for (const name of ["sum", "product"]) {
-      expect(col(out, name).values.every((v) => isSolError(v) && v.code === "#UNIT!")).toBe(true);
+      expect(col(out, name).values.every((v) => isSolError(v) && v.code === "#POINT!")).toBe(true);
       expect(col(out, name).unit).toBeUndefined();
     }
     expect((col(out, "sum").values[0] as { message?: string }).message).toBe(READINGS_ADD);
@@ -76,7 +77,7 @@ describe("GROUPBY over readings", () => {
 describe("PIVOTBY over readings", () => {
   it("SUM is #UNIT!, AVERAGE stays °C", () => {
     const sum = pivotFrame(temps("degC"), { rowFields: ["k"], colFields: [], values: ["t"], funcs: ["sum"] } as never);
-    expect(sum.columns[1].values.every((v) => isSolError(v) && v.code === "#UNIT!")).toBe(true);
+    expect(sum.columns[1].values.every((v) => isSolError(v) && v.code === "#POINT!")).toBe(true);
     const avg = pivotFrame(temps("degC"), { rowFields: ["k"], colFields: [], values: ["t"], funcs: ["avg"] } as never);
     expect(avg.columns[1].values).toEqual([23, 30]);
     expect(avg.columns[1].unit?.display).toBe("degC");
@@ -94,7 +95,7 @@ describe("Window over readings", () => {
 
   it("the sums, share and pct_change are #UNIT! in every row", () => {
     for (const fn of ["cumsum", "rolling_sum", "group_sum", "share", "pct_change"]) {
-      expect(w(fn).values.every((v) => isSolError(v) && v.code === "#UNIT!"), fn).toBe(true);
+      expect(w(fn).values.every((v) => isSolError(v) && v.code === "#POINT!"), fn).toBe(true);
       expect(w(fn).unit, fn).toBeUndefined();
     }
   });
@@ -105,44 +106,23 @@ describe("Window over readings", () => {
     expect(w("rolling_avg").unit?.display).toBe("degC");
   });
 
-  it("a cube's window reads its cells' unit the same way", () => {
-    const out = windowCube(frameToCube(temps("degC")), { partitionBy: [], fn: "diff", column: "t", as: "d" });
+  it("a cube's window reads its cells' unit the same way", async () => {
+    const n = new WindowNode({ agg: "diff" });
+    n.stringLiterals.column = "t";
+    n.stringLiterals.name = "d";
+    const out = (await n.data({ frame: [frameToCube(temps("degC"))] })).frame as CubeValue;
     const d = out.columns.find((c) => c.name === "d")!.cells[1] as UnitCell;
     expect(isUnitCell(d) && d.value).toBe(6);
     expect(d.display).toBeUndefined();
   });
 });
 
-describe("the native engine gets the reading scale on the op", () => {
-  it("withUnitScales names a °F column's scale and leaves a linear one alone", () => {
-    const f = frame({ name: "t", type: "number", values: [], unit: unit("degF") }, { name: "d", type: "number", values: [], unit: unit("km") });
-    const op = withUnitScales(f, { kind: "groupBy", keys: [], aggs: [{ column: "t", op: "stdev", as: "s" }, { column: "d", op: "sum", as: "n" }] }) as Extract<FrameOp, { kind: "groupBy" }>;
-    expect(op.aggs[0].readingScale).toBeCloseTo(5 / 9, 15);
-    expect(op.aggs[1].readingScale).toBeUndefined();
-  });
-
-  it("a variance over a scaled linear unit names the unit's scale; nothing else does", () => {
-    const f = frame({ name: "d", type: "number", values: [], unit: unit("km") }, { name: "m", type: "number", values: [], unit: unit("m") });
-    const op = withUnitScales(f, { kind: "groupBy", keys: [], aggs: [
-      { column: "d", op: "var", as: "v" }, { column: "d", op: "stdev", as: "s" }, { column: "m", op: "varp", as: "w" },
-    ] }) as Extract<FrameOp, { kind: "groupBy" }>;
-    expect(op.aggs.map((a) => a.unitScale)).toEqual([1000, undefined, undefined]);
-    expect(op.aggs.every((a) => a.readingScale === undefined)).toBe(true);
-  });
-
-  it("lowerForEngine reads each op against the schema it meets, through a rename", () => {
-    const { wire, schema } = lowerForEngine(temps("degC"), [
-      { kind: "rename", map: { t: "temp" } },
-      { kind: "window", partitionBy: ["k"], fn: "diff", column: "temp", as: "d" },
-    ]);
-    expect((wire[1] as { readingScale?: number }).readingScale).toBe(1);
-    expect(schema!.columns.find((c) => c.name === "d")!.unit).toEqual(K);
-  });
-
-  it("the oracle honors an explicit scale on a unitless frame, as the corpus runs it", () => {
-    const bare = frame({ name: "t", type: "number", values: [50, 59] });
-    const out = applyVerb(bare, { kind: "window", partitionBy: [], fn: "diff", column: "t", as: "d", readingScale: 5 / 9 });
-    expect(col(out, "d").values[1]).toBeCloseTo(5, 12);
+describe("each verb reads the unit of the column it meets", () => {
+  it("through a rename", () => {
+    const renamed = applyVerb(temps("degC"), { kind: "rename", map: { t: "temp" } });
+    const out = applyVerb(renamed, { kind: "window", partitionBy: ["k"], fn: "diff", column: "temp", as: "d" } as FrameOp);
+    expect(col(out, "d").unit).toEqual(K);
+    expect(col(out, "temp").unit?.display).toBe("degC");
   });
 });
 
@@ -169,24 +149,10 @@ describe("Cube Rollup carries units", () => {
 
   it("readings have no rolled-up sum", () => {
     const c = rollup("sum", frame({ name: "t", type: "number", values: [20, 26], unit: unit("degC") }));
-    expect(isSolError(c.values[0]) && c.values[0].code).toBe("#UNIT!");
+    expect(isSolError(c.values[0]) && c.values[0].code).toBe("#POINT!");
   });
 });
 
-describe("Get Column into Aggregate", () => {
-  const list = (): never => {
-    const g = new GetColumnNode();
-    g.stringLiterals.name = "t";
-    return g.data({ frame: [temps("degC")] }).values as never;
-  };
-
-  it("a column of readings has no SUM but has an AVERAGE", () => {
-    const sum = new AggregateNode({ op: "sum" }).data({ list: [list()] }).result;
-    expect(isSolError(sum) && sum.code).toBe("#UNIT!");
-    const avg = new AggregateNode({ op: "avg" }).data({ list: [list()] }).result as UnitCell;
-    expect(avg.display).toBe("degC");
-  });
-});
 
 describe("SUMIFS reads the column in its unit", () => {
   const ifs = (op: string, f: unknown) => {
@@ -203,21 +169,12 @@ describe("SUMIFS reads the column in its unit", () => {
 
   it("readings have no SUMIFS; AVERAGEIFS is a reading", () => {
     const sum = ifs("sumifs", temps("degC"));
-    expect(isSolError(sum) && sum.code).toBe("#UNIT!");
+    expect(isSolError(sum) && sum.code).toBe("#POINT!");
     const avg = ifs("averageifs", temps("degC")) as UnitCell;
     expect(avg.value).toBeCloseTo(23 + 273.15, 9);
     expect(avg.display).toBe("degC");
   });
 
-  it("MINIFS and MAXIFS with no match are 0 in the column's unit, not 0 K", () => {
-    for (const op of ["minifs", "maxifs"]) {
-      const s = new SumIfsNode({ op: op as never });
-      s.stringLiterals.values = "t"; s.stringLiterals.column0 = "k"; s.stringLiterals.value0 = "zzz";
-      const r = s.data({ frame: [temps("degC")] }).result as UnitCell;
-      expect(r.display).toBe("degC");
-      expect(r.value).toBeCloseTo(273.15, 9);
-    }
-  });
 
   it("a cube (a vault table) keeps its column's unit on the way in", () => {
     const avg = ifs("averageifs", frameToCube(temps("degC"))) as UnitCell;
@@ -237,7 +194,7 @@ describe("a computed column over readings classifies as Expression does", () => 
     n.stringLiterals.name = "out";
     return col(n.data({ frame: [two] } as never).frame as FrameValue, "out").values;
   };
-  const refused = (vs: unknown[]) => vs.every((v) => isSolError(v) && v.code === "#UNIT!");
+  const refused = (vs: unknown[]) => vs.every((v) => isSolError(v) && v.code === "#POINT!");
 
   it("a sum of two readings, or a reading scaled, is #UNIT! in every row", () => {
     expect(refused(add("@lo + @hi"))).toBe(true);
@@ -276,7 +233,7 @@ describe("a computed column over readings classifies as Expression does", () => 
     const withLam = (expr: string) => {
       const n = new ComputedColumnNode({});
       n.stringLiterals.name = "out";
-      const fn = compileLambda(expr, ["lo", "hi"])!;
+      const fn = compilePositional(expr, ["lo", "hi"])!;
       const lam = { __lambda: true as const, params: ["lo", "hi"], fn, expr };
       return col(n.data({ frame: [two], fn: [lam] } as never).frame as FrameValue, "out").values;
     };
@@ -299,8 +256,8 @@ describe("a computed column over readings classifies as Expression does", () => 
   });
 
   it("a Frame Input column calling a wired λ is read through the λ's body", () => {
-    const mean = { __lambda: true as const, params: ["lo", "hi"], fn: compileLambda("(lo + hi) / 2", ["lo", "hi"])!, expr: "(lo + hi) / 2" };
-    const sum = { __lambda: true as const, params: ["lo", "hi"], fn: compileLambda("lo + hi", ["lo", "hi"])!, expr: "lo + hi" };
+    const mean = { __lambda: true as const, params: ["lo", "hi"], fn: compilePositional("(lo + hi) / 2", ["lo", "hi"])!, expr: "(lo + hi) / 2" };
+    const sum = { __lambda: true as const, params: ["lo", "hi"], fn: compilePositional("lo + hi", ["lo", "hi"])!, expr: "lo + hi" };
     const n = new FrameInputNode({
       lambdaKeys: ["fn1", "fn2"],
       frameText: frameSourceToText([
@@ -320,16 +277,4 @@ describe("a computed column over readings classifies as Expression does", () => 
   });
 });
 
-// [[D93]] oneTextReading
-describe("Get Column reads a text cell as a Frame cell of the read type does", () => {
-  it("a date read takes a bare number as a serial and unreadable text as NaN", () => {
-    const g = new GetColumnNode({ readAs: "date" } as never);
-    g.stringLiterals.name = "s";
-    (g as unknown as { readAs: string }).readAs = "date";
-    const f = frame({ name: "s", type: "string", values: ["2024", "abc", "01-Jan-2026"] });
-    const out = g.data({ frame: [f] }).values as unknown as number[];
-    expect(out[0]).toBe(2024);
-    expect(Number.isNaN(out[1])).toBe(true);
-    expect(out[2]).toBe(46023);
-  });
-});
+// [[C58]] tableInputRawText

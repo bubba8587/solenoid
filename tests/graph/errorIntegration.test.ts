@@ -1,10 +1,9 @@
-// [[D35]]
+// [[C24]] arraySemantics, [[error-values#The guard]], [[error-values#Shape errors are part of this system]], [[error-values#`#CIRC!` is engine-level, not a producer]]
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 import { loopMembers } from "../../src/graph/graphCompute";
 import { solError } from "../../src/graph/errorValue";
@@ -20,25 +19,17 @@ import { IsTestNode } from "../../src/graph/nodes/logic";
 // invariant SolenoidConnection (Connection<Node, Node>) won't accept directly —
 // erase the endpoint types the way the real graph does.
 function connect(
-  editor: NodeEditor<Schemes>,
-  src: ClassicPreset.Node, srcOut: string, tgt: ClassicPreset.Node, tgtIn: string,
+  editor: GraphEditor<Schemes>,
+  src: GraphNode, srcOut: string, tgt: GraphNode, tgtIn: string,
 ) {
   return editor.addConnection(
-    new ClassicPreset.Connection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
+    new GraphConnection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
   );
 }
 
-// End-to-end checks that wire nodes through a real editor + DataflowEngine with
-// the SAME two wrappers Canvas installs — central input coercion (inner) and the
-// error-value guard (outer). These cover the seed's cases that a bare node.data()
-// can't: the coercion #SHAPE! path and an error riding a cable into a consumer.
+
 function makeEditor() {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);                 // wraps data() first (inner)
-  editor.addPipe((ctx) => {                      // wraps data() second (outer)
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   return { editor, engine };
@@ -109,7 +100,8 @@ describe("error propagation through the engine", () => {
 
 describe("dependency loops (#CIRC!)", () => {
   it("loopMembers flags only the true loop, not its neighbors", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
+    editor.use(new DataflowEngine<Schemes>());
     const a = new ArithmeticNode({ op: "add" });
     const b = new ArithmeticNode({ op: "add" });
     const c = new ArithmeticNode({ op: "add" });
@@ -144,7 +136,7 @@ describe("dependency loops (#CIRC!)", () => {
       const node = editor.getNode(id)!;
       const outs: Record<string, unknown> = {};
       for (const k of Object.keys(node.outputs)) outs[k] = circ;
-      engine.cache.add(id, Object.assign(Promise.resolve(outs), { cancel() {} }));
+      engine.seed(id, outs);
     }
     // Downstream nodes now compute against the cached error instead of deadlocking.
     const dispOut = await engine.fetch(disp.id) as { out: unknown };
@@ -166,10 +158,7 @@ describe("dependency loops (#CIRC!)", () => {
     await editor.addNode(free);
     await connect(editor, a, "result", b, "a");
     await connect(editor, b, "result", a, "a");
-    // NOTE: `engine.fetch(a.id)` would HANG forever — the pull engine resolves
-    // inputs before data() and deadlocks on the loop. That is precisely why
-    // processGraph never fetches a cyclic node; it marks them #CIRC! directly.
-    // A node outside the loop has no path into it, so it computes normally.
+    // Fetching a or b would deadlock; free has no path into the loop.
     const out = await engine.fetch(free.id) as { result: unknown };
     expect(out.result).toBe(5);
   });

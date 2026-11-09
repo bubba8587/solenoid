@@ -1,0 +1,9 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"HASH(\"abc\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"HASH(\"abc\", \"SHA-1\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"HASH(\"abc\", \"fnv1a64\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"HASH(\"abc\", \"blake\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"HASH(\"abc\", \"Constructor\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

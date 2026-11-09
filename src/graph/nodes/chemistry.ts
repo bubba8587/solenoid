@@ -1,9 +1,12 @@
-// [[C76]] formulaPackDefault, [[C25]] firstClassUnits
+// [[C76]] formulaPackDefault, [[C25]] firstClassUnits, [[C24]] arraySemantics
 
-import { ClassicPreset } from "rete";
-import { numOut, strIn, readInput } from "./shared";
-import type { SolError } from "../errorValue";
-import { ELEMENTS, ELEMENT_BY_SYMBOL, molarMass, type ElementMeta } from "./chemistryOps";
+import { GraphNode } from "../graphModel";
+import { nodeOnCore } from "../nodeOnCore";
+import { numOut, strIn, anyComboIn, numListOut, frameOut } from "./shared";
+import type { FrameValue } from "../frame";
+import { cardShapeOnCore, type Shape } from "../frameShape";
+import { type SolError } from "../errorValue";
+import { ELEMENTS, ELEMENT_BY_SYMBOL, type ElementMeta } from "./chemistryOps";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 
 /** Rows 1–7 are the main body, row 8 the visual gap, rows 9–10 the detached f-block. */
@@ -42,23 +45,34 @@ export function searchElements(query: string): ElementMeta[] {
   return scored.sort((x, y) => x[0] - y[0] || x[1].n - y[1].n).map(([, e]) => e);
 }
 
-export class ElementNode extends ClassicPreset.Node {
+/** One element, or one per wired symbol, name or atomic number: its weight, its atomic number, and every property
+ *  as a row of the Elements frame ([[C24]] arraySemantics). */
+export class ElementNode extends GraphNode {
   label: string;
+  /** The card's own pick, read while nothing is wired. */
   symbol: string;
-  width = 220;
-  height = 170;
+  /** The row the tile shows, 0-based; view state. */
+  row = 0;
+  cachedResult: FrameValue | SolError | null = null;
+  width = 300;
+  height = 330;
 
   constructor(init?: { label?: string; symbol?: string }) {
     super("Element");
     this.symbol = init?.symbol && ELEMENT_BY_SYMBOL.has(init.symbol) ? init.symbol : "H";
     this.label = init?.label ?? "Element";
-    this.addOutput("mass", numOut("g/mol"));
-    this.addOutput("number", numOut("Z"));
+    this.addInput("symbol", anyComboIn("Element"));
+    this.addOutput("mass", numListOut("g/mol"));
+    this.addOutput("number", numListOut("Z"));
+    this.addOutput("elements", frameOut("Elements"));
   }
 
-  data() {
-    const el = ELEMENT_BY_SYMBOL.get(this.symbol)!;
-    return { mass: el.mass, number: el.n };
+  frameShape(): Shape | null {
+    return cardShapeOnCore(this, "elements", {});
+  }
+
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as Record<string, unknown>;
   }
 
   annotationFor(outKey: string): FormatAnnotation | undefined {
@@ -66,9 +80,9 @@ export class ElementNode extends ClassicPreset.Node {
   }
 }
 
-export class MolarMassNode extends ClassicPreset.Node {
+export class MolarMassNode extends GraphNode {
   label: string;
-  stringLiterals: Record<string, string> = { formula: "H2O" };
+  stringLiterals: Record<string, string> = {};
   cachedResult: number | SolError | null = null;
   width = 210;
   height = 140;
@@ -80,10 +94,7 @@ export class MolarMassNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("g/mol"));
   }
 
-  data(inputs: { formula?: string[] }) {
-    const f = readInput(inputs.formula, this.stringLiterals.formula ?? "");
-    const result = f?.trim() ? molarMass(f) : null;
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }

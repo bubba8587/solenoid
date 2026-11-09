@@ -1,4 +1,4 @@
-// [[C17]] shareImpl
+// [[C17]] shareImpl, [[formula-language#The registry]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { MakeArrayNode } from "../../src/graph/nodes/tableLambda";
@@ -14,7 +14,7 @@ describe("a generator's cap and shape are the same on the card and in a formula"
     expect((ev("MAKEARRAY(1001,1000,LAMBDA(r,c,r*c))") as { code?: string }).code).toBe("#OVERFLOW!");
   });
   it("a fractional count is capped after rounding, as the builder rounds it", () => {
-    expect((ev("LINSPACE(0,1,1000000.4)") as unknown[]).length).toBe(1_000_000);
+    expect(ev("COUNT(LINSPACE(0,1,1000000.4))")).toBe(1_000_000);
     expect((ev("LINSPACE(0,1,1000000.6)") as { code?: string }).code).toBe("#OVERFLOW!");
   });
 });

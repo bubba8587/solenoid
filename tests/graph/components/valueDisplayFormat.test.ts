@@ -1,14 +1,17 @@
 // [[B11]], [[C48]]
+import { datesAsSerials } from "../../../src/graph/dateValue";
 import { describe, it, expect, afterEach } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { dateFormatDisplay, shouldRenderListInline, formatListCell, nodeOutputIsDate, nodeOutputElemFamily, formatRowValue } from "../../../src/graph/components/valueDisplayFormat";
+import { GraphEditor } from "../../../src/graph/graphEditor";
+import { GraphConnection, GraphNode, GraphOutput } from "../../../src/graph/graphModel";
+import { dateFormatDisplay, shouldRenderListInline, formatListCell, nodeOutputElemFamily, formatRowValue } from "../../../src/graph/components/valueDisplayFormat";
 import { ListInputNode, type ListElemType } from "../../../src/graph/nodes/list";
 import { IfNode, NaNode, IFErrorNode } from "../../../src/graph/nodes/logic";
 import { ExpectNode } from "../../../src/graph/nodes/quality";
 import { dateSocket, numberSocket, SolenoidSocket, canConnect } from "../../../src/graph/sockets";
-import { wrapNodeData } from "../../../src/graph/coerceInputs";
+import { throughBoundary } from "../boundaryKit";
 import { jsDateToSerial } from "../../../src/graph/nodes/date";
 import { solError, isSolError } from "../../../src/graph/errorValue";
+import { solDate } from "../../../src/graph/dateValue";
 import { setEditorRefs, getEditor } from "../../../src/graph/process";
 import type { Schemes } from "../../../src/graph/schemes";
 import { ConduitNode, conduitInKey, conduitOutKey } from "../../../src/graph/nodes/conduit";
@@ -75,7 +78,8 @@ describe("dateFormatDisplay", () => {
     const list = n.data({}).list;
     expect(list.filter((v) => isSolError(v)).map((v) => (v as { code: string }).code))
       .toEqual(["#AMBIGUOUS!"]);
-    const shown = dateFormatDisplay(list as never, true, false) as unknown[];
+    const { value, dated } = datesAsSerials(list);
+    const shown = dateFormatDisplay(value as never, dated, false) as unknown[];
     expect(shown).toEqual(["13-Apr-2026", "#AMBIGUOUS!"]);
   });
 
@@ -123,41 +127,41 @@ describe("formatListCell", () => {
 // Layer 1 — the type-default display: a date reads as a date wherever it flows,
 // resolved through pass-throughs (Display) and Conduit lanes, not just at the
 // node that produced it.
-describe("nodeOutputIsDate — type resolves through pass-throughs / conduits", () => {
+describe("nodeOutputElemFamily — type resolves through pass-throughs / conduits", () => {
   afterEach(() => setEditorRefs(null as never, null as never, null as never));
 
   async function wire() {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     setEditorRefs(editor, null as never, null as never);
-    const dateSrc = new ClassicPreset.Node("Date") as unknown as Schemes["Node"];
+    const dateSrc = new GraphNode("Date") as unknown as Schemes["Node"];
     dateSrc.addOutput("result", dateOut("Date"));
     const cond = new ConduitNode({}) as unknown as Schemes["Node"];
     const dispThroughConduit = new DisplayNode() as unknown as Schemes["Node"];
     const dispDirect = new DisplayNode() as unknown as Schemes["Node"];
     for (const n of [dateSrc, cond, dispThroughConduit, dispDirect]) await editor.addNode(n);
-    await editor.addConnection(new ClassicPreset.Connection(dateSrc, "result", cond, conduitInKey(0)) as Schemes["Connection"]);
-    await editor.addConnection(new ClassicPreset.Connection(cond, conduitOutKey(0), dispThroughConduit, "in") as Schemes["Connection"]);
-    await editor.addConnection(new ClassicPreset.Connection(dateSrc, "result", dispDirect, "in") as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(dateSrc, "result", cond, conduitInKey(0)) as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(cond, conduitOutKey(0), dispThroughConduit, "in") as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(dateSrc, "result", dispDirect, "in") as Schemes["Connection"]);
     settleWildcardTypes(getEditor()!); // lanes + adoptive sockets take `date`
     return { dateSrc, cond, dispThroughConduit, dispDirect };
   }
 
   it("a date reads as a date at the producer, through a Conduit, and at a direct Display", async () => {
     const { dateSrc, dispThroughConduit, dispDirect } = await wire();
-    expect(nodeOutputIsDate(dateSrc.id)).toBe(true);          // the producer
-    expect(nodeOutputIsDate(dispDirect.id)).toBe(true);        // a pass-through Display fed directly
-    expect(nodeOutputIsDate(dispThroughConduit.id)).toBe(true); // a Display fed through a Conduit lane
+    expect(nodeOutputElemFamily(dateSrc.id)).toBe("date");          // the producer
+    expect(nodeOutputElemFamily(dispDirect.id)).toBe("date");        // a pass-through Display fed directly
+    expect(nodeOutputElemFamily(dispThroughConduit.id)).toBe("date"); // a Display fed through a Conduit lane
   });
 
   it("a plain number does NOT read as a date", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     setEditorRefs(editor, null as never, null as never);
-    const numSrc = new ClassicPreset.Node("Num") as unknown as Schemes["Node"];
-    numSrc.addOutput("result", new ClassicPreset.Output(new (await import("../../../src/graph/sockets")).SolenoidSocket("number")));
+    const numSrc = new GraphNode("Num") as unknown as Schemes["Node"];
+    numSrc.addOutput("result", new GraphOutput(new (await import("../../../src/graph/sockets")).SolenoidSocket("number")));
     const disp = new DisplayNode() as unknown as Schemes["Node"];
     for (const n of [numSrc, disp]) await editor.addNode(n);
-    await editor.addConnection(new ClassicPreset.Connection(numSrc, "result", disp, "in") as Schemes["Connection"]);
-    expect(nodeOutputIsDate(disp.id)).toBe(false);
+    await editor.addConnection(new GraphConnection(numSrc, "result", disp, "in") as Schemes["Connection"]);
+    expect(nodeOutputElemFamily(disp.id)).not.toBe("date");
   });
 });
 
@@ -165,13 +169,13 @@ describe("nodeOutputIsDate — type resolves through pass-throughs / conduits", 
 // A List Input's SegToggle forces the list's type; the value box must agree no
 // matter what the entries are. Scanning cells can't deliver that: every entry
 // unparseable leaves a list of nulls with nothing to vote, so a Bool list tinted
-// and opened as NUMERIC. `nodeOutputElemFamily` reads the declared socket instead
-// (the same walk `nodeOutputIsDate` uses — that is now just this === "date").
+// and opened as NUMERIC. `nodeOutputElemFamily` reads the declared socket instead.
+
 describe("nodeOutputElemFamily — the declared family, whatever the cells say", () => {
   afterEach(() => setEditorRefs(null as never, null as never, null as never));
 
   async function listInputOf(dt: ListElemType) {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     setEditorRefs(editor, null as never, null as never);
     const n = new ListInputNode({ dataType: dt }) as unknown as Schemes["Node"];
     await editor.addNode(n);
@@ -190,15 +194,15 @@ describe("nodeOutputElemFamily — the declared family, whatever the cells say",
     // Every entry is NaN, so nothing here could vote for a family.
     const node = n as unknown as ListInputNode;
     node.stringLiterals.v0 = "xyz, pqr";
-    wrapNodeData(node as never);
+    throughBoundary(node as never);
     expect((node.data({}) as { list: unknown[] }).list).toEqual([NaN, NaN]);
     // The socket is unmoved, so the box stays a Bool list.
     expect(nodeOutputElemFamily(n.id)).toBe("logical");
   });
 
-  it("nodeOutputIsDate stays consistent with it", async () => {
-    expect(nodeOutputIsDate((await listInputOf("date")).id)).toBe(true);
-    expect(nodeOutputIsDate((await listInputOf("logical")).id)).toBe(false);
+  it("a date list reads as the date family, a logical one does not", async () => {
+    expect(nodeOutputElemFamily((await listInputOf("date")).id)).toBe("date");
+    expect(nodeOutputElemFamily((await listInputOf("logical")).id)).not.toBe("date");
   });
 
   it("is undefined for an unknown node, so the chip's cell scan stays the fallback", () => {
@@ -212,27 +216,27 @@ describe("nodeOutputElemFamily — the declared family, whatever the cells say",
 // connection returning the FIRST non-wildcard type it met. That ignored `combine`
 // and didn't tell a VALUE branch from a side input, so it could answer where the
 // adoption pass had deliberately declined to. Both now run
-// resolvePassthroughType + agreeTypes, so display can never contradict the socket.
+// the core's Type Settle (`settle.rs`), so display can never contradict the socket.
 describe("displayedType — one rule with socket adoption (no first-branch guessing)", () => {
   afterEach(() => setEditorRefs(null as never, null as never, null as never));
 
   async function ifOver(thenSock: SolenoidSocket, elseSock: SolenoidSocket) {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     setEditorRefs(editor, null as never, null as never);
-    const a = new ClassicPreset.Node("A") as unknown as Schemes["Node"];
-    a.addOutput("v", new ClassicPreset.Output(thenSock));
-    const b = new ClassicPreset.Node("B") as unknown as Schemes["Node"];
-    b.addOutput("v", new ClassicPreset.Output(elseSock));
+    const a = new GraphNode("A") as unknown as Schemes["Node"];
+    a.addOutput("v", new GraphOutput(thenSock));
+    const b = new GraphNode("B") as unknown as Schemes["Node"];
+    b.addOutput("v", new GraphOutput(elseSock));
     const iff = new IfNode() as unknown as Schemes["Node"];
     const disp = new DisplayNode() as unknown as Schemes["Node"];
     for (const n of [a, b, iff, disp]) await editor.addNode(n);
-    await editor.addConnection(new ClassicPreset.Connection(a, "v", iff, "then") as Schemes["Connection"]);
-    await editor.addConnection(new ClassicPreset.Connection(b, "v", iff, "else") as Schemes["Connection"]);
-    await editor.addConnection(new ClassicPreset.Connection(iff, "result", disp, "in") as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(a, "v", iff, "then") as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(b, "v", iff, "else") as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(iff, "result", disp, "in") as Schemes["Connection"]);
     // Production runs this on every connection change (reconcileFcTypes → here), and
     // it is what WRITES the resolved type onto each adoptive socket. A display test
     // that skips it isn't testing what ships — the same smell as a node test that
-    // skips wrapNodeData (List Input audit, 2026-07-25c).
+    // skips throughBoundary (List Input audit, 2026-07-25c).
     settleWildcardTypes(editor);
     return { iff, disp };
   }
@@ -242,40 +246,40 @@ describe("displayedType — one rule with socket adoption (no first-branch guess
     // the old first-connection walk answered "date" and dateFormatDisplay turned the
     // else-branch's 46000 into "20-Mar-2026".
     const { iff, disp } = await ifOver(dateSocket, numberSocket);
-    expect(nodeOutputIsDate(iff.id)).toBe(false);
-    expect(nodeOutputIsDate(disp.id)).toBe(false); // and it doesn't leak downstream
+    expect(nodeOutputElemFamily(iff.id)).not.toBe("date");
+    expect(nodeOutputElemFamily(disp.id)).not.toBe("date"); // and it doesn't leak downstream
   });
 
   it("AGREEING branches still resolve, through the selector and past it", async () => {
     const { iff, disp } = await ifOver(dateSocket, dateSocket);
-    expect(nodeOutputIsDate(iff.id)).toBe(true);
-    expect(nodeOutputIsDate(disp.id)).toBe(true);
+    expect(nodeOutputElemFamily(iff.id)).toBe("date");
+    expect(nodeOutputElemFamily(disp.id)).toBe("date");
   });
 
   it("an UNWIRED branch doesn't vote against the wired one", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     setEditorRefs(editor, null as never, null as never);
-    const a = new ClassicPreset.Node("A") as unknown as Schemes["Node"];
-    a.addOutput("v", new ClassicPreset.Output(dateSocket));
+    const a = new GraphNode("A") as unknown as Schemes["Node"];
+    a.addOutput("v", new GraphOutput(dateSocket));
     const iff = new IfNode() as unknown as Schemes["Node"];
     for (const n of [a, iff]) await editor.addNode(n);
-    await editor.addConnection(new ClassicPreset.Connection(a, "v", iff, "then") as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(a, "v", iff, "then") as Schemes["Connection"]);
     settleWildcardTypes(editor);
-    expect(nodeOutputIsDate(iff.id)).toBe(true);
+    expect(nodeOutputElemFamily(iff.id)).toBe("date");
   });
 
   it("a SIDE input can't supply the display type (only the spec's value branches)", async () => {
     // Expect forwards `in` only; its min/max/pattern are checks. The old loop scanned
     // every incoming connection, so a wired `min` could decide the display type.
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     setEditorRefs(editor, null as never, null as never);
-    const dsrc = new ClassicPreset.Node("D") as unknown as Schemes["Node"];
-    dsrc.addOutput("v", new ClassicPreset.Output(dateSocket));
+    const dsrc = new GraphNode("D") as unknown as Schemes["Node"];
+    dsrc.addOutput("v", new GraphOutput(dateSocket));
     const exp = new ExpectNode() as unknown as Schemes["Node"];
     for (const n of [dsrc, exp]) await editor.addNode(n);
-    await editor.addConnection(new ClassicPreset.Connection(dsrc, "v", exp, "min") as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(dsrc, "v", exp, "min") as Schemes["Connection"]);
     settleWildcardTypes(editor);
-    expect(nodeOutputIsDate(exp.id)).toBe(false); // `in` is unwired — nothing to display
+    expect(nodeOutputElemFamily(exp.id)).not.toBe("date"); // `in` is unwired — nothing to display
   });
 });
 
@@ -284,22 +288,22 @@ describe("displayedType — one rule with socket adoption (no first-branch guess
 // not to be about selectors at all. `IFERROR(aDate, NA())` lost its date formatting
 // because NA() declared a `number` OUTPUT while emitting a tagged #N/A SolError — so
 // the branches were date + number, they disagreed, and the result resolved to unknown.
-// NA is type-neutral (`trueany`), which `agreeTypes` correctly ignores as non-voting.
+// NA is type-neutral (`trueany`), which the settle's agreement vote correctly ignores as non-voting.
 describe("NA() is type-neutral, so it doesn't out-vote a typed branch", () => {
   afterEach(() => setEditorRefs(null as never, null as never, null as never));
 
   it("IFERROR(date, NA()) still reads as a date", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     setEditorRefs(editor, null as never, null as never);
-    const dsrc = new ClassicPreset.Node("D") as unknown as Schemes["Node"];
-    dsrc.addOutput("v", new ClassicPreset.Output(dateSocket));
+    const dsrc = new GraphNode("D") as unknown as Schemes["Node"];
+    dsrc.addOutput("v", new GraphOutput(dateSocket));
     const na = new NaNode() as unknown as Schemes["Node"];
     const ife = new IFErrorNode() as unknown as Schemes["Node"];
     for (const n of [dsrc, na, ife]) await editor.addNode(n);
-    await editor.addConnection(new ClassicPreset.Connection(dsrc, "v", ife, "value") as Schemes["Connection"]);
-    await editor.addConnection(new ClassicPreset.Connection(na, "result", ife, "fallback") as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(dsrc, "v", ife, "value") as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(na, "result", ife, "fallback") as Schemes["Connection"]);
     settleWildcardTypes(editor);
-    expect(nodeOutputIsDate(ife.id)).toBe(true);
+    expect(nodeOutputElemFamily(ife.id)).toBe("date");
   });
 
   it("and #N/A connects anywhere, because an error is legal in any cell", () => {
@@ -322,6 +326,11 @@ describe("formatRowValue — annotated inline-output rows", () => {
     expect(formatRowValue(null)).toBe("—");
     expect(formatRowValue(true)).toBe("TRUE");
     expect(formatRowValue("abc")).toBe("abc");
+  });
+
+  it("a date shows as a date, never as its serial or an object", () => {
+    expect(formatRowValue(solDate(46027))).toBe("05-Jan-2026");
+    expect(formatRowValue(solDate(46027), ann2dp)).toBe("05-Jan-2026");
   });
 
   it("a numeric annotation reaches every cell, including list heads", () => {

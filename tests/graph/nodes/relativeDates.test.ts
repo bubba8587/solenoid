@@ -1,13 +1,12 @@
-// [[D54]]
+// [[C44]] dateSerials, [[formula-language#Date kernels]]
+import { solDate, type SolDate } from "../../../src/graph/dateValue";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { parseDate, parseDateToSerial, isRelativeDateText } from "../../../src/graph/nodes/dateSerial";
 import { ValueInputNode } from "../../../src/graph/nodes/control";
 import { settingsStore } from "../../../src/graph/settingsStore";
 import { alertStore } from "../../../src/graph/alertStore";
+import { isSolError } from "../../../src/graph/errorValue";
 
-// Relative dates are an OPT-IN (Settings ▸ Data ▸ Relative dates, author-requested 2026-08-21):
-// off, every phrase stays unparseable (a stored date is a fixed calendar day); on, a date
-// Value Input resolves it against now on every pass and Alerts when the resolved day moves.
 const d = (s: string) => parseDateToSerial(s);
 const wed = new Date(2026, 2, 18, 15, 0, 0); // Wed 18 Mar 2026, local
 
@@ -46,12 +45,18 @@ describe("Value Input's Date mode under the same opt-in", () => {
     settingsStore.set("relativeDates", false);
     expect(new ValueInputNode({ op: "date", value: "tomorrow" }).data().value).toBeNull();
   });
+  it("on: a phrase it can't work out is #VALUE!, as other unreadable date text is", () => {
+    settingsStore.set("relativeDates", true);
+    const v = new ValueInputNode({ op: "date", value: "next blursday" }).data().value;
+    expect(isSolError(v) && v.code).toBe("#VALUE!");
+  });
   it("on: it resolves, and alerts when the resolved day moves", () => {
     settingsStore.set("relativeDates", true);
     const n = new ValueInputNode({ op: "date", value: "today" });
-    const first = n.data().value as number;
+    const first = (n.data().value as SolDate).__date;
     expect(first).toBe(Math.floor(parseDate("today", { relative: true }) as number));
-    (n as unknown as { lastRelative: { text: string; serial: number } }).lastRelative = { text: "today", serial: first - 1 };
+    expect([n.lastRelativeText, n.lastRelativeSerial]).toEqual(["today", first]);
+    n.lastRelativeSerial = first - 1;
     n.data();
     expect(alertStore.list().filter((e) => e.nodeId === n.id)).toHaveLength(1);
   });
@@ -63,9 +68,9 @@ describe("Value Input's Date mode under the same opt-in", () => {
     n.data();
     expect(alertStore.list().filter((e) => e.nodeId === n.id)).toHaveLength(0);
   });
-  it("an absolute date keeps its fixed serial regardless of the setting", () => {
+  it("an absolute date keeps its fixed day regardless of the setting", () => {
     settingsStore.set("relativeDates", true);
-    expect(new ValueInputNode({ op: "date", value: "15-Mar-2026" }).data().value).toBe(d("2026-03-15"));
+    expect(new ValueInputNode({ op: "date", value: "15-Mar-2026" }).data().value).toEqual(solDate(d("2026-03-15")));
   });
   it("a switch into Date keeps a relative phrase only while the opt-in is on", () => {
     const n = new ValueInputNode({ op: "string", value: "next friday" });

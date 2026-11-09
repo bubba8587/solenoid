@@ -10,13 +10,13 @@ import { initSettings } from "./graph/settingsStore";
 import { initPacks } from "./graph/packs";
 import { initPackFcExtensions } from "./graph/fcExtensions";
 import { initPackFormulas } from "./graph/formulaExtensions";
-import { initFrameBackend, watchEngineSetting } from "./graph/frameBackend";
-import { documentStore } from "./graph/documentStore";
+import { startCore } from "./graph/coreReady";
 import { shouldReloadForChunkError, type ReloadStore } from "./graph/chunkReloadGuard";
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
 import { initFullscreenHotkey } from "./graph/fullscreen";
+import { initAndroidBack } from "./graph/androidBack";
 import { pushNotice } from "./graph/noticeStore";
-import { isDesktop } from "./graph/fileBridge";
+import { isDesktop, isAndroidApp } from "./graph/fileBridge";
 import { OWN_WINDOW_CONTROLS } from "./graph/WindowControls";
 import { IS_PHONE, deviceModeStore, isMobile, isTablet } from "./graph/coarse";
 import { installChromeZoom, landscapeFit } from "./graph/chromeZoom";
@@ -29,7 +29,7 @@ import "@fontsource-variable/atkinson-hyperlegible-mono/index.css";
 import "@fontsource-variable/atkinson-hyperlegible-mono/wght-italic.css";
 import "./desktopFrame.css";
 
-if (isDesktop()) document.documentElement.dataset.shell = "desktop";
+if (isDesktop()) document.documentElement.dataset.shell = isAndroidApp() ? "android" : "desktop";
 // linux shim for crisp canvas zoom (tree/specs/canvas/layout-chrome.md)
 if (OWN_WINDOW_CONTROLS) document.documentElement.dataset.webview = "webkitgtk";
 
@@ -115,19 +115,22 @@ initPacks();
 initPackFcExtensions();
 initPackFormulas();
 
-void initFrameBackend();
-watchEngineSetting(() => void documentStore.reloadCurrent());
+// Nothing computes without the wasm module the graph, the cards' bodies and the table verbs run on ([[C130]] rustCore);
+// the chrome renders while it loads, and the surfaces that build a graph wait for it (`useCoreReady`).
+void startCore();
 
 initDevtoolsHotkey();
 
 initFullscreenHotkey();
+
+void initAndroidBack();
 
 if (import.meta.env.DEV) {
   import("./graph/catalogValidator").then(m => m.validateCatalog());
   import("./graph/devHarness");
 }
 
-// Not wrapped in <React.StrictMode>: its double-invoked mount races rete's async editor init, leaving two elements per socket.
+// Not wrapped in <React.StrictMode>: its double-invoked mount races the async editor init, leaving two elements per socket.
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <ErrorBoundary scope="app">
     <App />

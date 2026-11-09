@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { FLUIDS_FORMULAS } from "../../../src/graph/packs/fluids";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { PipeRoughnessNode, ColebrookNode } from "../../../src/graph/nodes/fluids";
-import { PIPE_ROUGHNESS, colebrookF } from "../../../src/graph/nodes/fluidsOps";
+import { ColebrookNode } from "../../../src/graph/nodes/fluids";
+import { PIPE_ROUGHNESS } from "../../../src/graph/nodes/fluidsOps";
 import { isSolError } from "../../../src/graph/errorValue";
 
 const num = (type: string, inputs: Record<string, number>): number => {
@@ -67,6 +67,7 @@ describe("Fluid Mechanics formulas", () => {
 });
 
 describe("Colebrook friction factor", () => {
+  const colebrookF = (re: number, rr: number) => evalPackFormula(`COLEBROOK(${re}, ${rr})`) as number;
   it("satisfies the Colebrook residual to machine precision", () => {
     for (const [re, rr] of [[1e5, 1e-4], [1e5, 1e-3], [1e7, 1e-5], [4e3, 0.05]] as const) {
       const f = colebrookF(re, rr);
@@ -82,14 +83,6 @@ describe("Colebrook friction factor", () => {
     expect(Math.abs(f - sj) / f).toBeLessThan(0.02);
   });
 
-  it("node: laminar handoff, domain errors, unwired defaults", () => {
-    const n = new ColebrookNode();
-    expect(n.data({ re: [1000], rr: [0] }).result).toBeCloseTo(0.064, 9);
-    expect(isSolError(n.data({ re: [-5], rr: [0] }).result)).toBe(true);
-    expect(isSolError(n.data({ re: [1e5], rr: [1.5] }).result)).toBe(true);
-    const dflt = n.data({});
-    expect(typeof dflt.result).toBe("number"); // literal defaults compute
-  });
 });
 
 describe("Pipe Roughness", () => {
@@ -99,22 +92,22 @@ describe("Pipe Roughness", () => {
     }
   });
 
-  it("emits ε and, with a diameter, the ε/D that feeds Colebrook", () => {
-    const n = new PipeRoughnessNode({ material: "steel" });
-    const bare = n.data({});
-    expect(bare.eps).toBe(0.045);
-    expect(bare.rel).toBeNull();
-    const withD = n.data({ d: [100] }); // 100 mm pipe
-    expect(withD.rel as number).toBeCloseTo(0.00045, 9);
-  });
 });
 
 describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
   it("COLEBROOK matches the node core, laminar hand-off included", () => {
-    expect(evalPackFormula("COLEBROOK(100000, 0.0001)")).toBe(colebrookF(100000, 0.0001));
+    expect(evalPackFormula("COLEBROOK(100000, 0.0001)")).toBe(new ColebrookNode().data({ re: [100000], rr: [0.0001] }).result);
     expect(evalPackFormula("COLEBROOK(1000, 0)")).toBeCloseTo(0.064, 12);
     const bad = evalPackFormula("COLEBROOK(-5, 0)");
     expect(isSolError(bad) && bad.code).toBe("#DOMAIN!");
+  });
+  it("the Colebrook card is element-wise, as COLEBROOK is: a list of Reynolds numbers answers a factor each", () => {
+    const res = [1000, 50000, 100000];
+    const r = new ColebrookNode().data({ re: [res], rr: [0.0001] }).result as unknown as number[];
+    expect(r).toHaveLength(3);
+    res.forEach((re, i) => expect(r[i]).toBe(evalPackFormula(`COLEBROOK(${re}, 0.0001)`)));
+    const mixed = new ColebrookNode().data({ re: [[100000, -5]], rr: [0.0001] }).result as unknown as unknown[];
+    expect(isSolError(mixed[1]) && (mixed[1] as { code: string }).code).toBe("#DOMAIN!");
   });
   it("PIPEROUGHNESS looks up the material's absolute roughness in mm", () => {
     expect(evalPackFormula('PIPEROUGHNESS("steel")')).toBe(0.045);

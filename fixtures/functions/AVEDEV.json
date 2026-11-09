@@ -1,0 +1,6 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"AVEDEV(4, 5, 6, 7, 5, 4, 3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"AVEDEV(r_A1_A4,r_A5_A6,c_A7)","env":["c_A7=num:1.4","r_A1_A4=table:num:[[1], [2], [3], [4]]","r_A5_A6=table:num:[[2], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

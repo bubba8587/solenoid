@@ -6,27 +6,63 @@ tags: [spec, canvas]
 
 # Spec: Group collapse
 
-Serves [[C88]] collapsedGroupCard. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C88]] collapsedGroupCard. It covers what the system does and blocks, and the decision each behavior serves.
 
 Collapsing a group shrinks it to a small card that shows the group's results as readout rows. Collapse is visual only: members stay wired and keep computing. This spec covers what is hidden, which readouts the card shows, and how the camera finds a node inside a collapsed group.
 
 ## What collapse hides
 
-`recomputeGroupCollapse(editor)` (`groupCollapse.ts`) rebuilds the collapse state for every collapsed group of one editor at once. `syncGroupCollapse` calls it. The store is shared, but each editor's entries are kept apart, so a drill-in's recompute never clears the main canvas's hidden members or pills, and the drill-in computes its own groups once it has hydrated.
+Code: `recomputeGroupCollapse` and `settleCollapse` in `groupCollapse.ts`; `flowModel.nodeClassName`, `flow.css`.
 
-- **Hidden nodes.** Every member is hidden, along with any FC docked to a member (the group's "extended members"). A docked FC collapses with its host, and everything downstream treats it exactly like a member.
+`recomputeGroupCollapse(editor)` rebuilds the collapse state for every collapsed group of one editor at once. `syncGroupCollapse` calls it. The store is shared, but each editor's entries are kept apart, so a drill-in's recompute never clears the main canvas's hidden members or pills, and the drill-in computes its own groups once it has hydrated.
+
+- **Hidden nodes.** Every member is hidden, along with any FC docked to a member (the group's "extended members"), even an FC that was never absorbed as a member itself. A docked FC collapses with its host, and everything downstream treats it exactly like a member. An FC docked to a host outside the group is untouched.
 - **Hidden cables.** A cable is hidden only when both ends are hidden in the same collapsed group. A cable that crosses the group's edge stays visible and is redirected to a pill on the card: outbound cables to a pill on the right, next to that value's readout row, and inbound cables to a pill on the left, one per member input. A cable between two different collapsed groups stays visible and runs between both groups' pills.
 - **Conduit bundles.** Outputs of a hidden Conduit that land on one external destination share one combined row and pill, so their cables draw as a single ribbon; a combined row shows the lane count instead of one lane's value. Inbound cables from one external Conduit likewise share one left pill, since their ribbon trunk ends whole and needs one anchor. The bundling destination is derived from membership, not from the order pills are computed in, so a first pass maps every hidden member to its group, for every collapsed group, before any group is processed: bundling needs to know whether a target is hidden in a different collapsed group.
 
-**Pills.** A pill is keyed by the socket it stands in for (`nodeId::socketKey`), not by a connection, so a cable being dragged out of an output pill redirects to the pill instead of anchoring at the hidden member's origin. A pill's index is its row, which sets its vertical offset; the row gap must match the `.solenoid-group__summary` flex `gap` in GroupNode.css, or cable ends drift a gap further off with every row down.
+```mermaid
+flowchart TD
+    c["a cable touching a collapsed group"] --> both{"both ends hidden<br>in the same group?"}
+    both -->|yes| hid["hidden"]
+    both -->|no| dir{"which way does it cross?"}
+    dir -->|"out of the group"| right["drawn to a pill on the right,<br>beside that value's readout row"]
+    dir -->|"into the group"| left["drawn to a pill on the left,<br>one per member input"]
+    dir -->|"between two<br>collapsed groups"| two["runs between<br>both groups' pills"]
+```
 
-**Settling cable ends** (`settleCollapse`). Pills reuse the members' socket keys, so an expand re-renders the members a frame before re-measuring, and a collapse must not re-render them, which would clobber the pills' positions. A docked FC gets the same treatment even when it was never absorbed as a member, since a retained Display-to-FC hop registers a pill on the FC's `out` socket.
+**Pills.**
 
-**How hiding is applied.** `flowModel.nodeClassName` adds `sol-member-hidden` to each hidden member, and flow.css turns that into `visibility: hidden !important` (with pointer events off). `FlowSurface` re-stamps the classes when the collapse store notifies. React Flow owns the wrapper's inline `visibility` and writes `visible` after measuring, so writing visibility on the element directly does not stick; a class rule does. Hiding uses `visibility`, never `display`, because a hidden member must stay laid out, or its measured size and socket positions drop to zero.
+A pill is keyed by the socket it stands in for (`nodeId::socketKey`), not by a connection, so a cable being dragged out of an output pill redirects to the pill instead of anchoring at the hidden member's origin. A pill's index is its row, which sets its vertical offset; the row gap must match the `.solenoid-group__summary` flex `gap` in GroupNode.css, or cable ends drift a gap further off with every row down.
+
+**Settling cable ends** (`settleCollapse`).
+
+Pills reuse the members' socket keys, so an expand re-renders the members a frame before re-measuring, and a collapse must not re-render them, which would clobber the pills' positions. A docked FC gets the same treatment even when it was never absorbed as a member, since a retained Display-to-FC hop registers a pill on the FC's `out` socket.
+
+**How hiding is applied.**
+
+- `flowModel.nodeClassName` adds `sol-member-hidden` to each hidden member, and flow.css turns that into `visibility: hidden !important` (with pointer events off). `FlowSurface` re-stamps the classes when the collapse store notifies.
+- React Flow owns the wrapper's inline `visibility` and writes `visible` after measuring, so writing visibility on the element directly does not stick; a class rule does.
+- Hiding uses `visibility`, never `display`, because a hidden member must stay laid out, or its measured size and socket positions drop to zero.
+
+Tests: `groupCollapse.test.ts`: an FC docked to a member hides with its host though never absorbed, an FC docked to a non-member is untouched, and a drill-in's recompute leaves the main canvas's hidden members alone.
 
 ## Which readouts the card shows
 
+Code: `recomputeGroupCollapse`, `groupReadouts` in `groupCollapse.ts`.
+
 A readout row shows one of the group's terminals: a value that leaves the group or goes nowhere. Rows are built in three passes.
+
+```mermaid
+flowchart TD
+    m["a member"] --> disp{"a Display whose effective<br>output leaves the group<br>or goes nowhere?"}
+    disp -->|yes| r1["pass 1: a Display row"]
+    disp -->|no| cross{"an output with a cable<br>leaving the group?"}
+    cross -->|yes| r2["pass 2: a generic row<br>(or a pill on the Display<br>row that already shows it)"]
+    cross -->|no| leaf{"an output with<br>no cable at all?"}
+    leaf -->|yes| r3["pass 3: a row for its<br>first shown output"]
+    leaf -->|"no: feeds members only"| none["hidden, no row"]
+```
+
 
 1. **Display members.** A Display is the special visible readout. Its "effective output" is its own `out`, unless the Display feeds a Format Controller (FC) that is also a member; then the FC's `out` is the effective output (the Display stays the visible readout and the FC is hidden). The Display gets a row when its effective output has no connection, or has any connection that leaves the group.
    - Display → nothing: shown.
@@ -42,7 +78,11 @@ A member whose outputs all feed members only is hidden with no row. Members alre
 
 `groupReadouts()` computes the same rows for a pinned group without collapsing it (used by `PinLayer`). It runs the same three passes but skips Conduit bundling and the two pass-2 refinements above. Keep the passes in the two functions matched.
 
+Tests: `groupCollapse.test.ts`: the Display-to-FC hop is followed through an unabsorbed docked FC (the row shows the Display, its value the FC's `out`), a Display read through a member FC shares its row's pill with its own cable leaving the group, and an unwired member's row uses its first shown output, not its first declared one.
+
 ## Camera targets across collapsed groups
+
+Code: `flyToNode.ts`, `zoomAt.ts` (`frameSize`), `collapsedAwareNodesRect` in `Minimap.tsx`.
 
 `flyToNode.ts` serves every "go to this node" caller: the pins and alerts HUD, the cable inspector and Presentation. It is drill-in aware: a node inside an open composite moves the drill-in's camera.
 
@@ -51,3 +91,8 @@ A member whose outputs all feed members only is hidden with no row. Members alre
 - `flashNode` flashes the same resolved target, so a node inside a collapsed group lights up its group card.
 
 The minimap draws from React Flow's own node set, with colors from `minimapFillForNode`. The fit-all math in `NavMenu` uses `collapsedAwareNodesRect`, which sizes collapsed groups the same way.
+
+Tests:
+
+- `groupCollapse.test.ts`: flying to a hidden docked FC resolves to its group card.
+- `surfaceReviewPins.test.ts`: `frameSize` takes React Flow's measure before the declared size.

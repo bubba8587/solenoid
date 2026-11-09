@@ -70,22 +70,23 @@ export function CableShapeSelector() {
         }
         onClick={toggleFlow}
       >
-        <svg viewBox="0 0 40 16" aria-hidden="true" className="solenoid-toolbar__flow-icon">
-          {/* Same dash technique as the cables: a faint base line, then a
-              round-capped dash overlay whose 0.01 dash = a circular bead, driven
-              left → right by an animated dashoffset. The two terminal circles are
-              drawn last (on top) so a bead's spawn at the left end and despawn at
-              the right end happen hidden beneath them — no visible pop-in. */}
-          <line x1="5" y1="8" x2="35" y2="8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.5" />
-          <line
-            className="solenoid-toolbar__flow-beads"
-            x1="5" y1="8" x2="35" y2="8"
-            stroke="currentColor" strokeWidth="4.2" strokeLinecap="round"
-            strokeDasharray="0.01 10"
-          />
-          <circle cx="5" cy="8" r="3.2" fill="currentColor" />
-          <circle cx="35" cy="8" r="3.2" fill="currentColor" />
-        </svg>
+        {/* A faint base line, a strip of beads (the cables' round-capped 0.01 dash) sliding one period left → right
+            inside a window between the ends, and the two end circles drawn last, so a bead enters and leaves hidden
+            beneath them. The strip moves by transform, so the toggle animates on the compositor and never repaints the bar. */}
+        <span className="solenoid-toolbar__flow-icon" aria-hidden="true">
+          <svg viewBox="0 0 40 16" className="solenoid-toolbar__flow-art">
+            <line x1="5" y1="8" x2="35" y2="8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.5" />
+          </svg>
+          <span className="solenoid-toolbar__flow-window">
+            <svg viewBox="-10.01 0 60.02 16" className="solenoid-toolbar__flow-beads">
+              <line x1="-5.01" y1="8" x2="45.01" y2="8" stroke="currentColor" strokeWidth="4.2" strokeLinecap="round" strokeDasharray="0.01 10" />
+            </svg>
+          </span>
+          <svg viewBox="0 0 40 16" className="solenoid-toolbar__flow-art">
+            <circle cx="5" cy="8" r="3.2" fill="currentColor" />
+            <circle cx="35" cy="8" r="3.2" fill="currentColor" />
+          </svg>
+        </span>
       </button>
     </div>
   );

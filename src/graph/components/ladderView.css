@@ -1,0 +1,53 @@
+.sol-ladder { display: flex; flex-direction: column; font-family: var(--font-sans); color: var(--text); user-select: none; }
+.sol-ladder__scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.sol-ladder__stage { position: relative; margin: 0 auto; }
+.sol-ladder__svg { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.sol-ladder__slot { position: absolute; display: flex; }
+.sol-ladder__slot > * { flex: 1 1 auto; }
+
+.sol-ladder__flow { fill: var(--text-muted); stroke: var(--text-muted); stroke-linejoin: round; opacity: 0.28; }
+.sol-ladder__flow.is-main { opacity: 0.62; }
+.sol-ladder__link { fill: none; }
+.sol-ladder__need { fill: none; stroke: var(--text-muted); stroke-width: 1.25; stroke-dasharray: 3 3; }
+
+.sol-ladder__card {
+  display: grid; align-content: start; gap: 2px;
+  box-sizing: border-box; width: 100%;
+  padding: 5px 8px 6px;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 5px;
+  text-align: left; font: inherit; color: inherit;
+  font-size: calc(11px * var(--chart-fscale, 1)); line-height: 1.3;
+}
+button.sol-ladder__card { cursor: pointer; }
+button.sol-ladder__card:hover { border-color: var(--text-dim); }
+button.sol-ladder__card:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sol-ladder__card.is-chosen { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.sol-ladder__card.is-must { border-left: 3px solid var(--accent); }
+.sol-ladder__card.is-required, .sol-ladder__card.is-quota { border-style: dashed; }
+.sol-ladder__card.is-passed { border-style: dashed; background: transparent; opacity: 0.55; }
+button.sol-ladder__card.is-passed:hover { opacity: 1; }
+
+.sol-ladder__pick { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.sol-ladder__name { font-size: calc(12.5px * var(--chart-fscale, 1)); font-weight: 600; line-height: 1.25; }
+.sol-ladder__mono { font-family: var(--font-mono); color: var(--text-dim); font-variant-numeric: tabular-nums; font-size: calc(10.5px * var(--chart-fscale, 1)); }
+.sol-ladder__struck { display: flex; flex-wrap: wrap; gap: 0 8px; color: var(--text-muted); font-size: calc(10.5px * var(--chart-fscale, 1)); }
+.sol-ladder__struck s { text-decoration-color: var(--sol-error); }
+.sol-ladder__struck span { color: var(--text-dim); }
+.sol-ladder__bar { display: flex; height: 4px; margin-top: 2px; border-radius: 1px; overflow: hidden; background: var(--surface-sunken); }
+.sol-ladder__bar i { display: block; height: 100%; }
+.sol-ladder__key { display: flex; flex-wrap: wrap; gap: 2px 10px; color: var(--text-dim); }
+.sol-ladder__key span { display: inline-flex; align-items: center; gap: 4px; }
+.sol-ladder__key i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
+
+/* The Choice Ladder card's saved picks. */
+.solenoid-ladder-picks { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.solenoid-ladder-pick {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 1px 2px 1px 7px; border-radius: 10px;
+  border: 1px solid var(--accent); color: var(--text); font-size: 11px;
+}
+.solenoid-ladder-pick.is-dropped { border-style: dashed; color: var(--text-muted); }
+.solenoid-ladder-pick button, .solenoid-ladder-reset {
+  font: inherit; font-size: 11px; color: var(--text-dim); background: none; border: 0; cursor: pointer; padding: 0 4px;
+}
+.solenoid-ladder-pick button:hover, .solenoid-ladder-reset:hover { color: var(--text); }

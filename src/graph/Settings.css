@@ -112,6 +112,21 @@
   color: var(--text-muted);
 }
 
+.solenoid-settings__row--pack { cursor: default; }
+.solenoid-settings__pack-link {
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.solenoid-settings__pack-arrow { color: var(--text-dim); }
+.solenoid-settings__pack-link:hover .solenoid-settings__row-label,
+.solenoid-settings__pack-link:focus-visible .solenoid-settings__row-label { color: var(--accent); }
+.solenoid-settings__pack-link:hover .solenoid-settings__pack-arrow { color: var(--accent); }
+
 .solenoid-settings__acc { border-bottom: 1px solid var(--border-subtle); }
 .solenoid-settings__acc:last-of-type { border-bottom: none; }
 .solenoid-settings__acc-head {
@@ -238,6 +253,58 @@
 .solenoid-settings__segbtn--on {
   background: var(--accent);
   color: var(--accent-ink);
+}
+
+.solenoid-settings__slider {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+/* The Slider card's range look: a thin track and an accent thumb. */
+.solenoid-settings__slider input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 140px;
+  height: 4px;
+  margin: 0;
+  border-radius: 2px;
+  background: var(--border-strong);
+  outline: none;
+  cursor: pointer;
+}
+.solenoid-settings__slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.solenoid-settings__slider input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.solenoid-settings__slider input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.solenoid-settings__slider-value {
+  min-width: 13ch;
+  text-align: right;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+}
+/* A phone has no room beside the label: the slider takes its own line, full width. */
+@media (max-width: 520px) {
+  .solenoid-settings__row--slider { flex-wrap: wrap; }
+  .solenoid-settings__row--slider .solenoid-settings__slider { flex: 1 1 100%; }
+  .solenoid-settings__row--slider input[type="range"] { flex: 1; width: auto; height: 6px; }
+  .solenoid-settings__row--slider .solenoid-settings__slider-value { min-width: 0; }
 }
 
 /* A setting with no mobile counterpart: grayed and inert but kept in place, using the :disabled look (opacity 0.5, default cursor). */

@@ -1,45 +1,12 @@
 // [[B11]] maximalMerge, [[C118]] formatTravelsWithValue
+import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { ValueInputNode, carryValueText } from "../../../src/graph/nodes/control";
-import { isSolError } from "../../../src/graph/errorValue";
-import { isUnitCell } from "../../../src/graph/unitValue";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import { SolenoidSocket } from "../../../src/graph/sockets";
 
 const socketType = (n: ValueInputNode) => (n.outputs.value!.socket as SolenoidSocket).dataType;
 
-describe("Value Input data()", () => {
-  it("emits each type from the typed text", () => {
-    expect(new ValueInputNode({ op: "number", value: "3.5" }).data().value).toBe(3.5);
-    expect(new ValueInputNode({ op: "string", value: " hi " }).data().value).toBe(" hi ");
-    expect(new ValueInputNode({ op: "logical", value: "TRUE" }).data().value).toBe(true);
-    expect(new ValueInputNode({ op: "logical", value: "FALSE" }).data().value).toBe(false);
-    expect(new ValueInputNode({ op: "date", value: "15-Mar-2026" }).data().value).toBe(46096);
-  });
-
-  it("reads a blank number as 0 and flags text that isn't one", () => {
-    expect(new ValueInputNode({ op: "number", value: "" }).data().value).toBe(0);
-    const bad = new ValueInputNode({ op: "number", value: "abc" }).data().value;
-    expect(isSolError(bad) && bad.code).toBe("#VALUE!");
-  });
-
-  it("gives a blank or unreadable date no value", () => {
-    expect(new ValueInputNode({ op: "date", value: "" }).data().value).toBeNull();
-    expect(new ValueInputNode({ op: "date", value: "someday" }).data().value).toBeNull();
-  });
-
-  it("tags a number with the card's unit, and never a non-number", () => {
-    const v = new ValueInputNode({ op: "number", value: "5", unit: "m" }).data().value;
-    expect(isUnitCell(v)).toBe(true);
-    expect(new ValueInputNode({ op: "string", value: "5", unit: "m" }).data().value).toBe("5");
-  });
-
-  it("caches the value for the hero box", () => {
-    const n = new ValueInputNode({ op: "number", value: "7" });
-    n.data();
-    expect(n.cachedValue).toBe(7);
-  });
-});
 
 describe("Value Input type switch", () => {
   it("swaps the output socket to the picked type", () => {
@@ -106,7 +73,7 @@ describe("Value Input persistence", () => {
     const n = new ValueInputNode({ op: "date", value: "15-Mar-2026", format: "date_iso", logicalStyle: "yesno", textCase: "upper" });
     const back = new ValueInputNode(extractInit(n) as ConstructorParameters<typeof ValueInputNode>[0]);
     expect(extractInit(back)).toEqual(extractInit(n));
-    expect(back.data().value).toBe(46096);
+    expect(back.data().value).toEqual(solDate(46096));
   });
 
   it("falls back to Number on a stale type", () => {

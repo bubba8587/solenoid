@@ -1,5 +1,5 @@
-import type { FillNode as FillNodeType, FillOp } from "../rete-nodes";
-import { FILL_OP_META } from "../rete-nodes";
+import type { FillNode as FillNodeType, FillOp } from "../nodeClasses";
+import { FILL_OP_META } from "../nodeClasses";
 import { InlineInputs, useConnectedInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";

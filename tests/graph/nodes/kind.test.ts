@@ -1,4 +1,4 @@
-// [[C42]], [[B11]]
+// [[C42]], [[B11]], [[palette-and-theme#Card colors]], [[html-in-canvas#When it runs]]
 import { describe, it, expect } from "vitest";
 import { nodeDomWeight, nodeAccent, nodeAccentSlot, nodeKindOf, explicitKindOf } from "../../../src/graph/nodes/kind";
 import { majorityColor } from "../../../src/graph/groupLogic";
@@ -18,12 +18,7 @@ import { NODE_KIND_ACCENTS } from "../../../src/graph/nodes/shared";
 import { SOCKET_COLORS } from "../../../src/graph/sockets";
 import { themeAccent, socketVarHex, resolveColor } from "../../../src/graph/palette";
 
-// nodeDomWeight feeds the HTML-in-Canvas engage gate: a chart / inlined-SVG /
-// frame-grid card weighs more than a scalar card because it is far more DOM. The
-// exact numbers are coarse-by-design, so we pin the ORDERING (the tiers) rather
-// than assert brittle magic values — a scalar is the unit, and each heavier kind
-// is strictly heavier than the tier below it.
-
+// The weights are coarse by design, so these hold the tiers' order, not their values.
 describe("nodeDomWeight", () => {
   it("weighs a scalar / logic card as the baseline 1", () => {
     expect(nodeDomWeight(new ValueInputNode())).toBe(1);
@@ -48,7 +43,6 @@ describe("nodeDomWeight", () => {
     for (const n of [new ChartNode(), new HistogramNode(), new ProportionNode(), new SankeyNode(), new MermaidNode(), new HeatmapNode()]) {
       expect(nodeDomWeight(n)).toBeGreaterThan(nodeDomWeight(new SparklineNode()));
     }
-    // Inline-bar figures sit between the small figures and full charts.
     for (const n of [new TornadoNode()]) {
       expect(nodeDomWeight(n)).toBeGreaterThan(nodeDomWeight(new SparklineNode()));
       expect(nodeDomWeight(n)).toBeLessThan(nodeDomWeight(new ChartNode()));
@@ -56,10 +50,6 @@ describe("nodeDomWeight", () => {
   });
 
   it("weighs an SVG Picker as a light idle figure (rasterized <img>, not the old inlined SVG)", () => {
-    // Since the rasterize-for-display change the well shows an <img> at rest and
-    // only mounts the heavy inline SVG on hover — which never overlaps a pan/zoom
-    // gesture, the only time the gate reads this. So its steady-state weight sits
-    // down with the frame-grid tier, well below a full chart, NOT heaviest of all.
     const svg = nodeDomWeight(new SvgPickerNode());
     expect(svg).toBeGreaterThan(nodeDomWeight(new ValueInputNode()));
     expect(svg).toBeLessThan(nodeDomWeight(new ChartNode()));
@@ -70,11 +60,6 @@ describe("nodeDomWeight", () => {
   });
 });
 
-// The card, the minimap and the html-canvas snapshot ALL read nodeAccent — a divergence
-// here is a minimap that stays one color while the card recolors. It returns a CONCRETE
-// theme-resolved hex (never a CSS var, which a <canvas> can't paint), the type-switchable
-// literals track their SOCKET color (so a retype recolors), and a plain node keeps its
-// fixed KIND color.
 describe("nodeAccent", () => {
   it("gives a plain node its theme-resolved kind color", () => {
     const n = new ComparisonNode();

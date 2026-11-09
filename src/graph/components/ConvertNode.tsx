@@ -1,7 +1,8 @@
 // [[C25]] firstClassUnits (Convert primacy)
 import { useState, useRef, useLayoutEffect, useSyncExternalStore, type ChangeEvent } from "react";
-import type { ConvertNode as ConvertNodeType, ConvertCategory, ConvertUnitDef } from "../rete-nodes";
-import { CONVERT_UNIT_DEFS, CONVERT_CATEGORY_LABELS, FormatControllerNode } from "../rete-nodes";
+import type { ConvertNode as ConvertNodeType, ConvertCategory, ConvertUnitDef } from "../nodeClasses";
+import { CONVERT_UNIT_DEFS, CONVERT_CATEGORY_LABELS } from "../nodeClasses";
+import { reconcileFcs } from "../fcReconcile";
 import {
   applyFormatStyle, type FormatStyle,
 } from "../formatAnnotationStore";
@@ -80,9 +81,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
   function refreshFcs() {
     const editor = getOwningEditor(node.id);
     if (!editor) return;
-    for (const n of editor.getNodes()) {
-      if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);
-    }
+    reconcileFcs(editor, null);
   }
 
   async function onFromChange(e: ChangeEvent<HTMLSelectElement>) {
@@ -99,7 +98,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
       }
     }
     refreshFcs();
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   async function onToChange(e: ChangeEvent<HTMLSelectElement>) {
@@ -107,7 +106,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
     node.toUnit = next;
     setToUnit(next);
     refreshFcs();
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   // Display-only: these formats affect Convert's own boxes, so no recompute.
@@ -115,12 +114,14 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
     const next = e.target.value as FormatStyle;
     node.inFormat = next;
     setInFormat(next);
+    node.edited();
     notifyGraphChanged();
   }
   function onOutFormatChange(e: ChangeEvent<HTMLSelectElement>) {
     const next = e.target.value as FormatStyle;
     node.outFormat = next;
     setOutFormat(next);
+    node.edited();
     notifyGraphChanged();
   }
 
@@ -165,6 +166,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
         <div style={{ flex: "1 1 auto", minWidth: 0 }}>
           <ValueDisplay
             value={node.cachedInput}
+            cardStyle={inFormat}
             render={(v) => withUnit(v, fromCode, inFormat)}
             toClipboard={(v) => withUnit(v, fromCode, inFormat)}
           />
@@ -209,6 +211,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
         <div style={{ flex: "1 1 auto", minWidth: 0 }}>
           <ValueDisplay
             value={node.cachedResult}
+            cardStyle={outFormat}
             render={(v) => withUnit(v, toCode, outFormat)}
             toClipboard={(v) => withUnit(v, toCode, outFormat)}
           />

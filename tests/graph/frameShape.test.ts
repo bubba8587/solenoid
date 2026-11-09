@@ -1,24 +1,13 @@
-// [[C45]], [[C16]], [[C24]]
+// [[C45]] excelComparisons, [[C130]] rustCore, [[C24]] arraySemantics, [[frame-verbs#Static shape]]
 import { describe, it, expect } from "vitest";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
   type Shape,
 } from "../../src/graph/frameShape";
-import {
-  selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows,
-  groupByFrame, unpivotFrame, pivotFrame, joinFrames, appendFrames, addIndexColumn, splitColumn,
-  type FrameOp,
-} from "../../src/graph/frameVerbs";
+import { type FrameOp } from "../../src/graph/frameOps";
+import { selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows, groupByFrame, unpivotFrame, pivotFrame, joinFrames, appendFrames, addIndexColumn, splitColumn } from "./coreVerbs";
 import type { FrameValue, FrameColumn } from "../../src/graph/frame";
 import { isSolError } from "../../src/graph/errorValue";
-
-// Every assertion here checks shapeOf's DECLARED shape against the JS oracle's
-// ACTUAL output columns for the same op + fixture — a mismatch is exactly the
-// "caught seam error" the shape-checking design calls for. frameVerbs.ts is
-// also the reference oracle the Rust/Polars backend is parity-tested against
-// (frameVerbs.ts:1-7), so agreement here is a real cross-engine guarantee for the
-// verbs `engine.rs` implements (select/drop/rename/sort/distinct/head/filter/
-// groupBy/unpivot/join/append — see src-tauri/src/engine/tests.rs).
 
 function col(name: string, type: FrameColumn["type"], values: FrameColumn["values"]): FrameColumn {
   return { name, type, values };
@@ -157,7 +146,6 @@ describe("shapeOf — pivot", () => {
     const declared = shapeOf(op, actualShape(long));
     expect(declared.dynamic).toBe(true);
     expect(declared.columns).toEqual([{ name: "Region", type: "string" }]);
-    // The real verb's row-key columns match what we declared (the part that IS static).
     const real = pivotFrame(long, op);
     expect(real.columns[0].name).toBe(declared.columns[0].name);
     expect(real.columns[0].type).toBe(declared.columns[0].type);
@@ -229,7 +217,6 @@ describe("shapeOfSplitColumn", () => {
     const declared = shapeOfSplitColumn(actualShape(f), "Name", ",");
     expect(declared.dynamic).toBe(true);
     expect(declared.columns.map((c) => c.name)).toEqual(["Age"]);
-    // The real verb's untouched column matches what we declared.
     const real = splitColumn(f, "Name", ",");
     expect(real.columns.find((c) => c.name === "Age")?.type).toBe("number");
   });

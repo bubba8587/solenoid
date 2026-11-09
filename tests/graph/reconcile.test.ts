@@ -1,13 +1,8 @@
-// [[C45]], [[C16]], [[C24]]
+// [[C45]] excelComparisons, [[C130]] rustCore, [[C24]] arraySemantics, [[frame-verbs#Reconcile]]
 import { describe, it, expect } from "vitest";
-import { reconcileFrames } from "../../src/graph/frameVerbs";
+import { reconcileFrames } from "./coreVerbs";
 import { solError } from "../../src/graph/errorValue";
 import type { FrameValue } from "../../src/graph/frame";
-
-// Regression tests for two audit findings in reconcileFrames (2026-07-05):
-//   (a) rows with a blank/errored KEY were silently dropped from output AND counts;
-//   (b) the price/volume/mix breakdown read an errored/missing price/qty cell as 0,
-//       fabricating a bogus swing.
 
 describe("reconcileFrames — (a) blank/invalid key rows are surfaced, not dropped", () => {
   it("emits a null-key row as 'skipped' and counts it (row total stays honest)", () => {
@@ -78,8 +73,6 @@ describe("reconcileFrames — (c) one-sided columns are surfaced, not silently i
     const { frame, summary } = reconcileFrames(before, after, { leftKey: "id", rightKey: "id" });
     expect(summary.removedColumns).toEqual(["region"]);
     expect(summary.addedColumns).toEqual([]);
-    // A one-sided column does NOT change row status — 'a' is still unchanged (only the
-    // shared 'qty' drives it), 'b' changed on qty.
     expect(summary).toMatchObject({ unchanged: 1, changed: 1 });
     const removedCol = frame.columns.find((c) => c.name === "region (removed)")!;
     expect(removedCol.values).toEqual(["N", "S"]);
@@ -113,8 +106,6 @@ describe("reconcileFrames — (c) one-sided columns are surfaced, not silently i
     const { summary } = reconcileFrames(before, after, { leftKey: "id", rightKey: "id" });
     expect(summary.removedColumns).toEqual(["qty"]);
     expect(summary.addedColumns).toEqual(["quantity"]);
-    // No SHARED non-key column, so every matched row reads unchanged — but the rename is
-    // no longer hidden: it's in added/removed columns.
     expect(summary).toMatchObject({ unchanged: 2, changed: 0 });
   });
 
@@ -169,7 +160,7 @@ describe("reconcileFrames — (b) PVM excludes errored/missing price or qty (nev
     expect(p.excluded).toBe(1);        // the 'a' row can't be decomposed
     expect(p.delta).toBeCloseTo(5, 9); // only 'b': 5·5 − 5·4
     expect(p.price + p.volume + p.mix).toBeCloseTo(p.delta, 9);
-    // the OLD bug read the errored price as 0 → a −20 price swing on 'a'. Gone now:
+    // Read as 0, the errored price would swing 'a' by −20.
     expect(p.price).toBeCloseTo(0, 9);
   });
 
@@ -195,3 +186,4 @@ describe("reconcileFrames — (b) PVM excludes errored/missing price or qty (nev
     expect(p.price + p.volume + p.mix).toBeCloseTo(p.delta, 9);
   });
 });
+

@@ -1,4 +1,4 @@
-// [[C66]]
+// [[C66]] scriptNode, [[script-sandbox#The time limit]]
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // A stand-in worker that runs one call at a time: src "wait:N" answers N ms after it starts, "throw" raises an uncaught error.

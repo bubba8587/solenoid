@@ -89,7 +89,7 @@
       "id": "dp-extra",
       "type": "ValueInputNode",
       "x": 84,
-      "y": 2657,
+      "y": 2663,
       "init": {
         "label": "Extra per month",
         "op": "number",

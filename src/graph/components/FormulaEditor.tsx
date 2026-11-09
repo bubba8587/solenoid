@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { highlightFormula, tokenAtCaret, suggestFor, enclosingCall, type Suggestion } from "../formulaSyntax";
 import { signatureFor, signatureParams } from "../formulaSignatures";
+import { FORMULA_INDENT, indentAt, indentFormula } from "../formulaLayout";
+import { FieldResizeGrip } from "./FieldResizeGrip";
 import "./FormulaEditor.css";
 
 interface FormulaEditorProps {
@@ -175,8 +177,42 @@ export function FormulaEditor({
       else if (e.key === "Escape") { setMenu(null); /* popup's own Esc still closes it */ }
       return;
     }
-    // The browser's own line break is a <div> or a <br>; the text's is a newline.
-    if (e.key === "Enter") { e.preventDefault(); replaceSelection("\n"); }
+    if (readOnly) return;
+    // Shift+Alt+F lays the whole formula out by its parentheses.
+    if (e.shiftKey && e.altKey && e.code === "KeyF") {
+      e.preventDefault();
+      const text = drawn.current ?? value;
+      const next = indentFormula(text);
+      if (next !== text) commit(next, next.length);
+      return;
+    }
+    // The browser's own line break is a <div> or a <br>; the text's is a newline. A new line takes the indent of the
+    // brackets open before it, and Enter between brackets puts the closer on a line of its own.
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const box = boxRef.current;
+      const text = drawn.current ?? value;
+      const sel = (box && caretOffset(box)) ?? { start: text.length, end: text.length };
+      const depth = indentAt(text, sel.start);
+      const ind = FORMULA_INDENT.repeat(depth);
+      const closer = /^[ \t]*[)}]/.test(text.slice(sel.end));
+      const rest = closer ? text.slice(sel.end).replace(/^[ \t]*/, "") : text.slice(sel.end);
+      const insert = "\n" + ind + (closer ? "\n" + FORMULA_INDENT.repeat(Math.max(0, depth - 1)) : "");
+      commit(text.slice(0, sel.start) + insert + rest, sel.start + 1 + ind.length);
+      return;
+    }
+    // A closer typed on a blank line steps back to its opener's indent.
+    if ((e.key === ")" || e.key === "}") && !mod) {
+      const box = boxRef.current;
+      const text = drawn.current ?? value;
+      const sel = box && caretOffset(box);
+      if (!sel || sel.start !== sel.end) return;
+      const lineStart = text.lastIndexOf("\n", sel.start - 1) + 1;
+      if (lineStart === 0 || !/^[ \t]+$/.test(text.slice(lineStart, sel.start))) return;
+      e.preventDefault();
+      const ind = FORMULA_INDENT.repeat(Math.max(0, indentAt(text, sel.start) - 1));
+      commit(text.slice(0, lineStart) + ind + e.key + text.slice(sel.start), lineStart + ind.length + 1);
+    }
   }
 
   function refreshAtCaret() {
@@ -221,6 +257,7 @@ export function FormulaEditor({
         onPointerDown={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
       />
+      <FieldResizeGrip targetRef={boxRef} zoomed={false} minHeight={40} />
       {menu && !readOnly && (
         <ul className="fx-editor__menu nowheel">
           {menu.items.map((it, i) => (

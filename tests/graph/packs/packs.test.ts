@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { BUILTIN_PACKS, NODE_PACK_TAGS, PACK_GROUP_ORDER } from "../../../src/graph/packs";
 import { auditPackNodes } from "../../../src/graph/packs/formulaTestKit";
-import { fcUnitToUnit } from "../../../src/graph/unitBridge";
+import { fcUnitToUnit } from "../../../src/graph/dimension";
 
 // Structural health of every built-in pack: entries construct, type ids are
 // unique pack-wide AND across packs (multi-pack claims must share the SAME
@@ -22,6 +22,48 @@ describe("built-in packs", () => {
       }
     }
     expect(bad).toEqual([]);
+  });
+
+  it("every input of a formula preset says what it is ([[C76]] formulaPackDefault)", () => {
+    const bare: string[] = [];
+    for (const p of BUILTIN_PACKS) {
+      for (const { entry } of p.nodes ?? []) {
+        const n = entry.create() as unknown as { locked?: boolean; varNames?: string[]; varDescriptions?: Record<string, string> };
+        if (!n.locked || !n.varNames) continue;
+        for (const v of n.varNames) if (!n.varDescriptions?.[v]?.trim()) bare.push(`${entry.type}: ${v}`);
+      }
+    }
+    expect(bare).toEqual([]);
+  });
+
+  it("a preset's physical constants arrive on a Physics Constant cabled into the variable", () => {
+    const bad: string[] = [];
+    for (const p of BUILTIN_PACKS) {
+      for (const { entry } of p.nodes ?? []) {
+        const host = entry.create() as unknown as { inputs: Record<string, unknown> };
+        for (const c of entry.companions?.() ?? []) {
+          const node = c.node as { constructor: { name: string }; outputs: Record<string, unknown> };
+          if (node.constructor.name !== "PhysicsConstantNode") bad.push(`${entry.type}: companion ${node.constructor.name}`);
+          if (!(c.output in node.outputs)) bad.push(`${entry.type}: no output ${c.output}`);
+          if (!(c.input in host.inputs)) bad.push(`${entry.type}: no input ${c.input}`);
+        }
+      }
+      // The card a pack's presets spawn shows in the Add menu whenever that pack is on.
+      if (p.nodes?.some(({ entry }) => entry.companions) && !p.tags?.includes("physics-constant")) bad.push(`${p.id}: does not tag physics-constant`);
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it("a preset's constant has no default: cut its cable and the card names it, never computing with a hidden copy", () => {
+    const entry = BUILTIN_PACKS.flatMap((p) => p.nodes ?? []).find(({ entry: e }) => e.type === "em-coulomb-force")!.entry;
+    const node = entry.create() as unknown as { varRequired: string[]; literals: Record<string, number>; data: (i: Record<string, unknown[]>) => { result: unknown } };
+    expect(node.varRequired).toEqual(["ke"]);
+    expect(node.literals.ke).toBeUndefined();
+    const inputs = { q1: [1e-6], q2: [1e-6], r: [1] };
+    expect(node.data(inputs).result).toMatchObject({ code: "#SYNTAX!", message: "ke is blank, and it has no default" });
+    expect(node.data({ ...inputs, ke: [8.9875517923e9] }).result).toBeCloseTo(0.0089875517923, 12);
+    node.literals.ke = 9e9;
+    expect(node.data(inputs).result).toBeCloseTo(0.009, 12);
   });
 
   it("every pack sits in a listed group, so Settings and the Packs page both show it", () => {
@@ -84,7 +126,10 @@ describe("[[C25]] firstClassUnits — physical presets read wired units in their
     const { formulaNode } = await import("../../../src/graph/packs/packShared");
     const entry = all.find((e) => e.type === type)!;
     const n = formulaNode(entry as never).create() as unknown as Runner;
+    const { PHYS_CONSTANTS } = await import("../../../src/graph/nodes/physicsConstantsOps");
     const ins: Record<string, unknown[]> = {};
+    // Its Physics Constants, cabled in as the Add menu does.
+    for (const [k, op] of Object.entries((entry as { constants?: Record<string, keyof typeof PHYS_CONSTANTS> }).constants ?? {})) ins[k] = [PHYS_CONSTANTS[op].value];
     for (const [k, v] of Object.entries(inputs)) ins[k] = [v];
     return n.data(ins).result;
   };

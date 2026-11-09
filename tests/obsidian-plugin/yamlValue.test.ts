@@ -1,6 +1,6 @@
-// [[C17]] shareImpl, [[C107]] obsidianPlugin
+// [[C17]] shareImpl, [[C107]] obsidianPlugin, [[obsidian-plugin#Requirements]]
 import { describe, it, expect } from "vitest";
-import { cellToYaml, frameSourceFromYaml, listToYaml } from "../../obsidian-plugin/src/yamlValue";
+import { cellToYaml, frameSourceFromYaml, listToYaml, coerceYaml, validateYaml, PROPERTY_KINDS } from "../../obsidian-plugin/src/yamlValue";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
 
 describe("the plugin reads and writes note dates as the app does", () => {
@@ -44,5 +44,27 @@ describe("the plugin writes a real Complex value as a number", () => {
     expect(list).toEqual(["3+4i", 5]);
     const yaml = `---\nk:\n${list.map((v) => `  - ${v}`).join("\n")}\n---\n`;
     expect(parseNoteFrontmatter(yaml).fields[0].guessed).toBe("complexlist");
+  });
+});
+
+describe("a type switched in Obsidian's Update dialog keeps every value ([[obsidian-plugin#Requirements]])", () => {
+  const kind = (id: string) => PROPERTY_KINDS.find((k) => k.id === id)!;
+  const cube = [{ name: "a", tags: ["x", "y"], sub: [{ q: 1 }] }, { name: "b", tags: [], sub: null }];
+
+  it("a cube read as a list or a frame keeps its nested values as their text", () => {
+    const list = coerceYaml(kind("solenoid-strlist"), cube);
+    expect(list).toEqual(["a", '["x","y"]', '[{"q":1}]', "b", "[]", null]);
+    const frame = coerceYaml(kind("solenoid-frame"), cube);
+    expect(frame).toEqual([{ name: "a", tags: '["x","y"]', sub: '[{"q":1}]' }, { name: "b", tags: "[]", sub: null }]);
+    expect(validateYaml(kind("solenoid-frame"), frame)).toBe(true);
+  });
+
+  it("a matrix row holding a list keeps it as text", () => {
+    expect(coerceYaml(kind("solenoid-list"), [[1, [2, 3]], [4]])).toEqual([1, "[2,3]", 4]);
+    expect(coerceYaml(kind("solenoid-frame"), [[1, { a: 2 }]])).toEqual([{ Col1: 1, Col2: '{"a":2}' }]);
+  });
+
+  it("a value that already fits is untouched", () => {
+    expect(coerceYaml(kind("solenoid-cube"), cube)).toBe(cube);
   });
 });

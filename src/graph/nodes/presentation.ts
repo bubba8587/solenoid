@@ -1,12 +1,12 @@
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { clamp } from "./mathUtils";
 
-export interface PresentationStep {
+interface PresentationStep {
   title: string;
   nodeIds: string[];
 }
 
-export class PresentationNode extends ClassicPreset.Node {
+export class PresentationNode extends GraphNode {
   steps: PresentationStep[];
   activeIndex: number;
   color: string;

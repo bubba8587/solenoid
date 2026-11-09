@@ -5,6 +5,7 @@ import { readChipPopupStyle } from "./chipStyle";
 import { openArrayPopup, isArrayValue, is2D, elemFamilyOfCells, elemChipClass, type ElemFamily } from "../valuePopup";
 import "./ArrayChip.css";
 import { stopDragStart } from "../coarse";
+import { listLength, tableWidth, fullList } from "../listPreview";
 
 export { isArrayValue, type ElemFamily };
 
@@ -41,8 +42,9 @@ export function ArrayChip({ value, label, size = "md", accent, pinNodeId, elem, 
   const ctxHostId = useHostNodeId();
   const hostId = pinNodeId ?? ctxHostId;
   const table = twoD ?? is2D(value);
-  const rows = value.length;
-  const cols = table ? ((value[0] as number[] | undefined)?.length ?? 0) : 1;
+  // A big list a card's box shows is its first rows; the chip counts the whole and the popup opens on it.
+  const rows = listLength(value);
+  const cols = table ? tableWidth(value) : 1;
   const family = elem ?? elemFamilyOfCells(value);
   const famClass = elemChipClass(value, table, family);
 
@@ -58,7 +60,7 @@ export function ArrayChip({ value, label, size = "md", accent, pinNodeId, elem, 
       onClick={(e) => {
         e.stopPropagation();
         const st = readChipPopupStyle(e.currentTarget, "--sock-list");
-        openArrayPopup(value, {
+        openArrayPopup(fullList(value), {
           label, hostId, elem: family, popupOverrides,
           accent: accent || st.accent, groupColor: st.groupColor, groupColorDark: st.groupColorDark,
         });

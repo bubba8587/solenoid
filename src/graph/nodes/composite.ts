@@ -1,23 +1,25 @@
-// [[D52]], [[C77]]
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+// [[C23]] calcModes, [[C77]]
+import { GraphEditor } from "../graphEditor";
+import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
+import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } from "../sockets";
 import { resolveTrigModes } from "../trigMode";
-import { settleWildcardTypes } from "../trueAnyAdopt";
-import { reconcileFcTypes } from "../fcReconcile";
+import { resolveSwitchNames } from "../sourceNames";
+import { reconcileFcTypes, reconcileTypesAfterEdit } from "../fcReconcile";
+import { readTypeKeys } from "../settleFacts";
+import { getOwningView } from "../activeGraph";
 import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SideTables } from "../savedNodeBody";
 import { forgetNodeDeep } from "../nodeStoreRegistry";
-import { installErrorGuards, isSolError, solError, type SolError } from "../errorValue";
+import { isSolError, solError, type SolError } from "../errorValue";
 import { coerceNumber as toNumber } from "../valueKinds";
 import {
   mulberry32, sampleUncertain, summarizeSamples, parseCorrelations, correlationCholesky, sampleCorrelated,
   DEFAULT_MC_SAMPLES, DEFAULT_MC_SEED, type DistributionKind,
 } from "../monteCarlo";
-import { installInputCoercion } from "../coerceInputs";
 import { isFrameValue, frameRowCount, frameFromRows, isCubeValue, cubeRowCount, cubeFromColumns } from "../frame";
 import { isGraphRebuilding } from "../process";
-import { loopMembers, seedLoopErrors } from "../graphCompute";
+import { session } from "../passSession";
 import { fireAlert } from "../alertStore";
 import { compositeStaleStore } from "../compositeStaleStore";
 import { connectionStore, whenConnectionsSettled } from "../connectionStore";
@@ -26,11 +28,12 @@ import type { NodeCtor } from "../nodeCtorRegistry";
 import { PlaceholderNode, placeholderFor } from "./placeholder";
 import { FormatControllerNode } from "./formatController";
 import { deriveMissingNodeSockets, remapNodeRefs, mapNodeRefs, type NodeRefs } from "../persistenceCore";
+import { restoreLiterals } from "../literalFields";
 
-export type PortTier = "basic" | "advanced";
-export type PortExposure = "hidden" | "exposed";
+type PortTier = "basic" | "advanced";
+type PortExposure = "hidden" | "exposed";
 
-export interface CompositeInputPort {
+interface CompositeInputPort {
   id: string;
   label: string;
   exposure: PortExposure;
@@ -39,7 +42,7 @@ export interface CompositeInputPort {
   default?: unknown;
 }
 
-export interface CompositeOutputPort {
+interface CompositeOutputPort {
   id: string;
   label: string;
   tier: PortTier;
@@ -53,7 +56,7 @@ export interface CompositeSavedNode extends SavedNodeBody {
   y?: number;
 }
 
-export interface CompositeSavedConnection {
+interface CompositeSavedConnection {
   source: string;
   sourceOutput: string;
   target: string;
@@ -65,9 +68,9 @@ export interface CompositeInternalSnapshot extends SideTables {
   connections: CompositeSavedConnection[];
 }
 
-export type CompositeRunMode = "single" | "manual" | "scenarios" | "data-table" | "simulation" | "goal-seek" | "montecarlo" | "by-row";
+export type CompositeRunMode = "single" | "manual" | "pipeline" | "scenarios" | "data-table" | "simulation" | "goal-seek" | "montecarlo" | "by-row";
 
-export interface CompositeGoalSeek {
+interface CompositeGoalSeek {
   inputPortId: string;
   outputPortId: string;
   target: number;
@@ -77,13 +80,16 @@ export interface CompositeGoalSeek {
   boundsHi?: number;
 }
 
-export interface CompositeMonteCarlo {
+interface CompositeMonteCarlo {
   samples: number;
   seed: number;
   correlations?: string;
 }
 
 export type CompositeStopOp = "gt" | "ge" | "lt" | "le" | "eq" | "ne";
+
+/** Where a Pipeline's chain breaks ([[C53]] pipelineIsCompositePreset). */
+export type PipelineFault = { kind: "unwired" | "dead-end" | "branch" | "cycle" | "off-chain"; node: GraphNode };
 
 export function byRowValues(v: unknown): unknown[] {
   if (v === null || v === undefined) return [];
@@ -107,7 +113,7 @@ export function byRowValues(v: unknown): unknown[] {
 export const BY_ROW_MAX_ROWS = 500;
 
 /** A wired exposed port wins even when it carries a blank; only an unwired or hidden one takes the default ([[D86]] blankRoles). */
-export function portSource(
+function portSource(
   port: CompositeInputPort,
   marker: { defaultValue: number | null } | undefined,
   inputs: Record<string, unknown[] | undefined>,
@@ -131,15 +137,15 @@ export function stopConditionMet(raw: unknown, op: CompositeStopOp, value: numbe
   }
 }
 
-export interface CompositeScenario {
+interface CompositeScenario {
   id: string;
   name: string;
   overrides: Record<string, unknown>;
 }
 
-export type CompositeDataTableValues = Record<string, unknown[]>;
+type CompositeDataTableValues = Record<string, unknown[]>;
 
-export class CompositeInputNode extends ClassicPreset.Node {
+export class CompositeInputNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     value: "When the composite's outer input is connected, the outside value is used and the seed value here is ignored.",
   };
@@ -162,14 +168,14 @@ export class CompositeInputNode extends ClassicPreset.Node {
     this.uncertainty = init?.uncertainty ?? null;
     this.distribution = init?.distribution === "uniform" ? "uniform" : "normal";
     // Per-instance, not the shared trueAnySocket, so the container can retype it outside the adoption fixpoint.
-    this.addOutput("value", new ClassicPreset.Output(new MutableSocket("trueany"), this.label));
+    this.addOutput("value", new GraphOutput(new MutableSocket("trueany"), this.label));
   }
   data(): { value: unknown } {
     return { value: this.value };
   }
 }
 
-export class CompositeOutputNode extends ClassicPreset.Node {
+export class CompositeOutputNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     value: "Whatever arrives here becomes the composite's matching outer output. A multi-run mode collects one entry per run.",
   };
@@ -183,7 +189,7 @@ export class CompositeOutputNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Composite Output");
     this.label = init?.label ?? "Output";
-    this.addInput("value", new ClassicPreset.Input(new MutableSocket("trueany"), this.label));
+    this.addInput("value", new GraphInput(new MutableSocket("trueany"), this.label));
   }
   data(inputs: Record<string, unknown[]>): { value: unknown } {
     const v = inputs.value?.[0] ?? null;
@@ -194,22 +200,23 @@ export class CompositeOutputNode extends ClassicPreset.Node {
 
 const SOLVE_FETCH_ROUNDS = 4;
 
-function nestedNodeIds(editor: NodeEditor<Schemes>, out: string[] = []): string[] {
+
+function nestedNodeIds(editor: GraphEditor<Schemes>, out: string[] = []): string[] {
   for (const n of editor.getNodes()) {
     out.push(n.id);
-    const inner = (n as unknown as { internalEditor?: NodeEditor<Schemes> }).internalEditor;
+    const inner = (n as unknown as { internalEditor?: GraphEditor<Schemes> }).internalEditor;
     if (inner) nestedNodeIds(inner, out);
   }
   return out;
 }
 
-export class CompositeNode extends ClassicPreset.Node {
+export class CompositeNode extends GraphNode {
   label: string;
   width: number;
   height: number;
   inputPorts: CompositeInputPort[];
   outputPorts: CompositeOutputPort[];
-  internalEditor: NodeEditor<Schemes>;
+  internalEditor: GraphEditor<Schemes>;
   internalEngine: DataflowEngine<Schemes>;
   private _hydrating = false;
   cachedOutputs: Record<string, unknown> = {};
@@ -228,6 +235,11 @@ export class CompositeNode extends ClassicPreset.Node {
   simLastSteps: number | null = null;
 
   solveRequested = false;
+  /** Set by the composite directly around this one, for this one only: a sibling elsewhere, fetched concurrently by the
+   *  engine, never sees it. `aroundSolving`: it is solving, so this one solves too, held or not. `aroundMultiRun`: it is
+   *  running a multi-run's many passes, so this one skips `computeTheRest` (a loose card would run once per pass). */
+  private aroundSolving = 0;
+  private aroundMultiRun = 0;
   solveInsideOnly = false;
   lastSolveKey: string | null = null;
   stale = false;
@@ -235,6 +247,9 @@ export class CompositeNode extends ClassicPreset.Node {
   internalEditSeq = 0;
   runSeq = 0;
   private _lastRunMode: CompositeRunMode | null = null;
+  private _lastHeavy = false;
+  /** The pass key of the one plain pass `cachedOutputs` holds, or null when they hold anything else (blanks, a multi-run). */
+  private lastPassKey: string | null = null;
   private _refIds = new WeakMap<object, number>();
   private _refSeq = 0;
   internalPositions: Record<string, { x: number; y: number }> = {};
@@ -278,9 +293,7 @@ export class CompositeNode extends ClassicPreset.Node {
     this.byRowPortId = init?.byRowPortId ?? "";
     this.goalSeek = init?.goalSeek ? { ...init.goalSeek } : null;
     this.monteCarlo = init?.monteCarlo ? { ...init.monteCarlo } : null;
-    this.internalEditor = new NodeEditor<Schemes>();
-    // Coercion installs first, so it is the inner wrapper, as on the main canvas.
-    installInputCoercion(this.internalEditor);
+    this.internalEditor = new GraphEditor<Schemes>();
     this.internalEditor.addPipe((ctx) => {
       const t = (ctx as { type?: string }).type;
       if (t === "nodecreated" || t === "noderemoved" || t === "connectioncreated" || t === "connectionremoved") {
@@ -296,10 +309,10 @@ export class CompositeNode extends ClassicPreset.Node {
     this._pending = init?.internal ? { ...init.internal, nodes: [...init.internal.nodes], connections: [...init.internal.connections] } : null;
 
     for (const p of this.inputPorts) {
-      if (p.exposure === "exposed") this.addInput(p.id, new ClassicPreset.Input(new AdoptiveSocket(), p.label));
+      if (p.exposure === "exposed") this.addInput(p.id, new GraphInput(new AdoptiveSocket(), p.label));
     }
     for (const p of this.outputPorts) {
-      this.addOutput(p.id, new ClassicPreset.Output(new AdoptiveSocket(), p.label));
+      this.addOutput(p.id, new GraphOutput(new AdoptiveSocket(), p.label));
     }
   }
 
@@ -313,29 +326,24 @@ export class CompositeNode extends ClassicPreset.Node {
     if (!pending) return;
     this._pending = null;
     this._hydrating = true;
-    const built = new Map<string, ClassicPreset.Node>();
+    const built = new Map<string, GraphNode>();
     const unknownIds = new Set(pending.nodes.filter((sn) => !reg.has(sn.type)).map((sn) => sn.id));
     const phSockets = deriveMissingNodeSockets(unknownIds, pending.connections);
     for (const sn of pending.nodes) {
       const Ctor = reg.get(sn.type);
-      let node: ClassicPreset.Node;
+      let node: GraphNode;
       if (!Ctor) {
         node = placeholderFor(sn, phSockets.get(sn.id));
       } else {
         node = new Ctor({ ...sn.init });
-        const anyNode = node as unknown as Record<string, unknown>;
-        // [[C28]] literalsIffEditable: restore only onto classes that declare the map.
-        if (sn.literals && typeof anyNode.literals === "object") anyNode.literals = { ...sn.literals };
-        if (sn.stringLiterals && typeof anyNode.stringLiterals === "object") anyNode.stringLiterals = { ...sn.stringLiterals };
+        restoreLiterals(node, sn);
         // A nested composite computes inside this one's pass, so it cannot wait for a drill-in to build.
         if (node instanceof CompositeNode) await node.hydrate(reg);
       }
       built.set(sn.id, node);
       this._savedIds.set(node.id, sn.id);
       restoreNodeState(node.id, sn);
-      // Guard after addNode, outside the coercion wrapper, so a ShapeError thrown while narrowing lands in the guard as #SHAPE!.
       await this.internalEditor.addNode(node as SolenoidNode);
-      installErrorGuards(node);
       if (typeof sn.x === "number" && typeof sn.y === "number") {
         this.internalPositions[node.id] = { x: sn.x, y: sn.y };
       }
@@ -346,7 +354,7 @@ export class CompositeNode extends ClassicPreset.Node {
       if (!s || !t) continue;
       try {
         await this.internalEditor.addConnection(
-          new ClassicPreset.Connection(s, sc.sourceOutput, t, sc.targetInput) as SolenoidConnection,
+          new GraphConnection(s, sc.sourceOutput, t, sc.targetInput) as SolenoidConnection,
         );
       } catch {
         // Skip incompatible/duplicate connections.
@@ -368,8 +376,6 @@ export class CompositeNode extends ClassicPreset.Node {
       if (mapped) p.internalNodeId = mapped.id;
     }
     this._hydrating = false;
-    // Wildcard types first, or a docked FC adapts to the wildcard (the main load's order).
-    settleWildcardTypes(this.internalEditor);
     for (const n of this.internalEditor.getNodes()) if (n instanceof FormatControllerNode) n.dockSelf(this.internalEditor);
     this.settleInternalTypes();
   }
@@ -410,6 +416,39 @@ export class CompositeNode extends ClassicPreset.Node {
     return { nodes, connections, ...savedSideTables((id) => !!this.internalEditor.getNode(id), sid) };
   }
 
+  /** The steps from the first input port's marker to the first output port's, in order, and the first card that
+   *  breaks the one chain ([[C53]] pipelineIsCompositePreset). Other input markers may feed any step. */
+  pipelineChain(): { steps: GraphNode[]; fault: PipelineFault | null } {
+    const steps: GraphNode[] = [];
+    const start = this.inputPorts[0] && this.internalEditor.getNode(this.inputPorts[0].internalNodeId);
+    const endId = this.outputPorts[0]?.internalNodeId;
+    if (!start || !endId) return { steps, fault: null };
+    const consumers = new Map<string, Set<string>>();
+    for (const c of this.internalEditor.getConnections()) {
+      let set = consumers.get(c.source);
+      if (!set) consumers.set(c.source, (set = new Set()));
+      set.add(c.target);
+    }
+    const seen = new Set<string>([start.id]);
+    let cur: GraphNode = start;
+    for (;;) {
+      const next = [...(consumers.get(cur.id) ?? [])];
+      if (next.length === 0) return { steps, fault: { kind: cur === start ? "unwired" : "dead-end", node: cur } };
+      if (next.length > 1) return { steps, fault: { kind: "branch", node: cur } };
+      if (next[0] === endId) break;
+      const n = this.internalEditor.getNode(next[0]);
+      if (!n) return { steps, fault: { kind: "dead-end", node: cur } };
+      if (seen.has(n.id)) return { steps, fault: { kind: "cycle", node: n } };
+      seen.add(n.id);
+      steps.push(n);
+      cur = n;
+    }
+    const off = this.internalEditor.getNodes().find(
+      (n) => !seen.has(n.id) && n.id !== endId && !(n instanceof CompositeInputNode) && !(n instanceof FormatControllerNode),
+    );
+    return { steps, fault: off ? { kind: "off-chain", node: off } : null };
+  }
+
   savedInternalId(liveId: string): string {
     return this._savedIds.get(liveId) ?? liveId;
   }
@@ -417,7 +456,7 @@ export class CompositeNode extends ClassicPreset.Node {
   addInputPort(spec: Omit<CompositeInputPort, "id"> & { id?: string }): string {
     const id = spec.id ?? `in_${this.inputPorts.length}_${Math.random().toString(36).slice(2, 7)}`;
     this.inputPorts.push({ ...spec, id });
-    if (spec.exposure === "exposed") this.addInput(id, new ClassicPreset.Input(new AdoptiveSocket(), spec.label));
+    if (spec.exposure === "exposed") this.addInput(id, new GraphInput(new AdoptiveSocket(), spec.label));
     return id;
   }
 
@@ -440,7 +479,7 @@ export class CompositeNode extends ClassicPreset.Node {
   }
 
   private syncMarkerSocketTypes(): void {
-    const typeOf = (s: ClassicPreset.Socket | undefined): SocketDataType =>
+    const typeOf = (s: GraphSocket | undefined): SocketDataType =>
       (s as { dataType?: SocketDataType } | undefined)?.dataType ?? "trueany";
     for (const port of this.inputPorts) {
       const sock = this.internalEditor.getNode(port.internalNodeId)?.outputs?.value?.socket;
@@ -476,7 +515,7 @@ export class CompositeNode extends ClassicPreset.Node {
   addOutputPort(spec: Omit<CompositeOutputPort, "id"> & { id?: string }): string {
     const id = spec.id ?? `out_${this.outputPorts.length}_${Math.random().toString(36).slice(2, 7)}`;
     this.outputPorts.push({ ...spec, id });
-    this.addOutput(id, new ClassicPreset.Output(new AdoptiveSocket(), spec.label));
+    this.addOutput(id, new GraphOutput(new AdoptiveSocket(), spec.label));
     return id;
   }
 
@@ -549,10 +588,7 @@ export class CompositeNode extends ClassicPreset.Node {
   // ─── Compute ─────────────────────────────────────────────────────────────
 
   private seedInternalLoopErrors(): void {
-    seedLoopErrors(
-      this.internalEditor,
-      this.internalEngine,
-      loopMembers(this.internalEditor),
+    this.internalEngine.seedLoops(
       "Part of a circular dependency: the calculation feeds itself. Switch the container to Simulation mode to run it as a feedback loop.",
     );
   }
@@ -585,6 +621,29 @@ export class CompositeNode extends ClassicPreset.Node {
     return row;
   }
 
+  /** After a run, whatever its mode, every card no output pulled computes too, as the main canvas computes every card:
+   *  a loose card, and a nested composite with nothing wired out (and so all of its own insides). It reads the last pass's
+   *  engine, whose cache already holds what the outputs pulled, so a multi-run pays for this once, not per run. */
+  private async computeTheRest(): Promise<void> {
+    for (const n of this.internalEditor.getNodes()) {
+      if (n instanceof CompositeInputNode || n instanceof CompositeOutputNode) continue;
+      try { await this.internalEngine.fetch(n.id); } catch { /* an error card shows its own error */ }
+    }
+    this.readInnerTypes();
+  }
+
+  /** Every card inside computed: an output the wiring leaves a wildcard takes the type of the value it carried, as on
+   *  the main canvas ([[C136]] typesKnownAfterCalc, [[D117]] emptyKeepsLastType), drawn again in an open drill-in. */
+  private readInnerTypes(): void {
+    const nodes = this.internalEditor.getNodes();
+    const keys = readTypeKeys(nodes);
+    if (!keys.length || !this.internalEditor.core().readTypes(JSON.stringify(keys))) return;
+    queueMicrotask(() => {
+      reconcileTypesAfterEdit(this.internalEditor, nodes[0] ? getOwningView(nodes[0].id) : null);
+      this.adoptBoundaryTypes();
+    });
+  }
+
   private async collectMultiple(
     inputs: Record<string, unknown[]>,
     overridesList: Array<Record<string, unknown>>,
@@ -610,7 +669,7 @@ export class CompositeNode extends ClassicPreset.Node {
     this.internalEngine.reset();
     this.simLastSteps = null;
 
-    const loop = loopMembers(this.internalEditor);
+    const loop = this.internalEngine.loopMembers();
     if (loop.size === 0) return this.runPass(inputs);
 
     const conns = this.internalEditor.getConnections();
@@ -639,7 +698,6 @@ export class CompositeNode extends ClassicPreset.Node {
     const state = new Map<string, Record<string, unknown>>();
     for (let step = 0; step < steps; step++) {
       for (const id of loopOrder) {
-        const node = this.internalEditor.getNode(id) as unknown as { data: (i: Record<string, unknown[]>) => unknown };
         const nodeInputs: Record<string, unknown[]> = { ...staticInputs.get(id) };
         for (const c of incomingByTarget.get(id) ?? []) {
           if (!loop.has(c.source)) continue;
@@ -647,7 +705,7 @@ export class CompositeNode extends ClassicPreset.Node {
           if (srcOut === undefined) continue;
           (nodeInputs[c.targetInput] ??= []).push(srcOut[c.sourceOutput] ?? null);
         }
-        state.set(id, await Promise.resolve(node.data(nodeInputs)) as Record<string, unknown>);
+        state.set(id, await this.internalEngine.compute(id, nodeInputs));
       }
       const snapshot: Record<string, Record<string, unknown>> = {};
       for (const id of loopOrder) snapshot[id] = state.get(id)!;
@@ -658,8 +716,7 @@ export class CompositeNode extends ClassicPreset.Node {
 
     for (const id of loop) {
       const finalOut = state.get(id) ?? {};
-      const seeded = Object.assign(Promise.resolve(finalOut), { cancel() {} });
-      try { this.internalEngine.cache.add(id, seeded); } catch { this.internalEngine.cache.patch(id, seeded); }
+      this.internalEngine.seed(id, finalOut);
     }
 
     const outputs: Record<string, unknown> = {};
@@ -683,7 +740,7 @@ export class CompositeNode extends ClassicPreset.Node {
     return outputs;
   }
 
-  private resolveStopFeed(conns: ReturnType<NodeEditor<Schemes>["getConnections"]>) {
+  private resolveStopFeed(conns: ReturnType<GraphEditor<Schemes>["getConnections"]>) {
     if (!this.stopWhenPortId) return null;
     const port = this.outputPorts.find((p) => p.id === this.stopWhenPortId);
     if (!port) return null;
@@ -704,8 +761,7 @@ export class CompositeNode extends ClassicPreset.Node {
     } else {
       this.internalEngine.reset();
       for (const id of loop) {
-        const seeded = Object.assign(Promise.resolve(state.get(id) ?? {}), { cancel() {} });
-        try { this.internalEngine.cache.add(id, seeded); } catch { this.internalEngine.cache.patch(id, seeded); }
+        this.internalEngine.seed(id, state.get(id) ?? {});
       }
       try {
         const res = await this.internalEngine.fetch(feed.source) as Record<string, unknown>;
@@ -736,17 +792,24 @@ export class CompositeNode extends ClassicPreset.Node {
       if (m) m.goalTarget = port.id === gsTargetId ? (this.goalSeek?.target ?? null) : null;
     }
     resolveTrigModes(this.internalEditor);
+    resolveSwitchNames(this.internalEditor);
     const heavy = this.isHeavyMode();
+    const fromHeavy = this._lastHeavy;
+    this._lastHeavy = heavy;
     if (heavy && this.runMode !== this._lastRunMode) this.lastSolveKey = null;
     this._lastRunMode = this.runMode;
     if (heavy) {
       const key = this.solveKey(inputs);
-      if (this.solveRequested) {
-        const solveInputs = this.solveInsideOnly ? {} : inputs;
-        const { outputs, settled } = await this.solveSettled(solveInputs);
+      if (this.solveRequested || this.aroundSolving > 0) {
+        const solveInputs = this.solveRequested && this.solveInsideOnly ? {} : inputs;
+        const started = performance.now();
+        const { outputs, settled } = await this.withInner("aroundSolving", () => this.solveSettled(solveInputs));
+        // Inside a multi-run this solves once per pass; only a solve of its own times itself, so the store doesn't churn.
+        if (this.aroundMultiRun === 0) compositeStaleStore.ran(this.id, performance.now() - started);
         this.cachedOutputs = outputs;
         // Key on the real inputs, not solveInputs, to match the hold branch.
         this.lastSolveKey = this.solveKey(inputs);
+        this.lastPassKey = this.refreshes() && solveInputs === inputs ? this.passKey(inputs) : null;
         this.solveRequested = false;
         this.solveInsideOnly = false;
         this.unsettled = !settled || this.gatedInside();
@@ -754,10 +817,18 @@ export class CompositeNode extends ClassicPreset.Node {
         compositeStaleStore.set(this.id, this.stale);
         return outputs;
       }
+      // A Refresh asked of a composite inside reaches it through one pass of this one, whose own outputs stay held.
+      if (this.innerSolvePending()) {
+        await this.runPass(inputs);
+        await this.computeTheRest();
+        // Each waiting card has had its pass; one that never ran (on a loop, unwired) must not hold this one live forever.
+        this.clearInnerSolveRequests();
+      }
       if (this.lastSolveKey === null) {
         // Every output key, blank: the engine refuses a result missing a key.
         const blank: Record<string, unknown> = Object.fromEntries(Object.keys(this.outputs).map((k) => [k, null]));
         this.cachedOutputs = blank;
+        this.lastPassKey = null;
         this.goalSeekResult = null;
         for (const port of this.inputPorts) {
           const m = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
@@ -771,8 +842,19 @@ export class CompositeNode extends ClassicPreset.Node {
       compositeStaleStore.set(this.id, this.stale);
       return this.cachedOutputs;
     }
+    // Live: nothing to hold, so a Solve asked of it (before a switch out of a heavy mode, say) has nothing left to do.
+    this.solveRequested = false;
+    this.solveInsideOnly = false;
+    // A switch out of a held mode asks for the pass a Refresh just ran: the held outputs answer it.
+    const key = this.passKey(inputs);
+    if (fromHeavy && !this.unsettled && key === this.lastPassKey) {
+      this.stale = false;
+      compositeStaleStore.set(this.id, false);
+      return this.cachedOutputs;
+    }
     const outputs = await this.runActiveMode(inputs);
     this.cachedOutputs = outputs;
+    this.lastPassKey = key;
     this.stale = false;
     compositeStaleStore.set(this.id, false);
     return outputs;
@@ -799,8 +881,13 @@ export class CompositeNode extends ClassicPreset.Node {
     return nestedNodeIds(this.internalEditor).some((id) => connectionStore.getState(id).status === "gated");
   }
 
+  /** Manual refresh, and Pipeline, which runs as it does ([[C53]] pipelineIsCompositePreset): one pass on Refresh. */
+  refreshes(): boolean {
+    return this.runMode === "manual" || this.runMode === "pipeline";
+  }
+
   isHeavyMode(): boolean {
-    if (this.runMode === "manual") return true;
+    if (this.refreshes()) return true;
     if (this.runMode === "simulation") return true;
     if (this.runMode === "scenarios") return this.scenarios.length > 0;
     if (this.runMode === "goal-seek") return !!this.goalSeek;
@@ -814,9 +901,33 @@ export class CompositeNode extends ClassicPreset.Node {
     return false;
   }
 
+  /** Whether a composite inside this one, at any depth, has a Solve or Refresh waiting. */
+  innerSolvePending(): boolean {
+    return this.innerComposites().some((c) => c.solveRequested || c.innerSolvePending());
+  }
+
+  private clearInnerSolveRequests(): void {
+    for (const c of this.innerComposites()) {
+      c.solveRequested = false;
+      c.solveInsideOnly = false;
+      c.clearInnerSolveRequests();
+    }
+  }
+
+  private innerComposites(): CompositeNode[] {
+    return this.internalEditor.getNodes().filter((n): n is CompositeNode & Schemes["Node"] => n instanceof CompositeNode) as CompositeNode[];
+  }
+
+  /** Runs `fn` with `key` raised on each composite directly inside this one; theirs raise it on theirs in turn. */
+  private async withInner<T>(key: "aroundSolving" | "aroundMultiRun", fn: () => Promise<T>): Promise<T> {
+    const inner = this.innerComposites();
+    for (const c of inner) c[key]++;
+    try { return await fn(); } finally { for (const c of inner) c[key]--; }
+  }
+
   requestSolve(insideOnly = false): void {
     this.solveRequested = true;
-    this.solveInsideOnly = insideOnly && this.runMode !== "manual";
+    this.solveInsideOnly = insideOnly && !this.refreshes();
   }
 
   markInternalEdit(): void { this.internalEditSeq++; }
@@ -846,7 +957,9 @@ export class CompositeNode extends ClassicPreset.Node {
     return changed;
   }
 
-  private solveKey(inputs: Record<string, unknown[]>): string {
+  /** What one plain pass reads: the inputs (a primitive by value, an object by a per-composite reference token), the
+   *  input markers' seeds and spreads, the edits inside and the live data inside. */
+  private passParts(inputs: Record<string, unknown[]>): Record<string, unknown> {
     const token = (v: unknown): unknown => {
       if (v === null || typeof v !== "object") return v;
       let id = this._refIds.get(v as object);
@@ -857,7 +970,7 @@ export class CompositeNode extends ClassicPreset.Node {
     for (const [k, arr] of Object.entries(inputs)) {
       inputTokens[k] = Array.isArray(arr) ? arr.map(token) : token(arr);
     }
-    return JSON.stringify({
+    return {
       inputs: inputTokens,
       seeds: this.inputPorts.map((p) => (this.internalEditor.getNode(p.internalNodeId) as CompositeInputNode | undefined)?.defaultValue ?? null),
       uncertainty: this.inputPorts.map((p) => {
@@ -866,6 +979,19 @@ export class CompositeNode extends ClassicPreset.Node {
       }),
       edits: this.internalEditSeq,
       live: connectionStore.liveStamp(nestedNodeIds(this.internalEditor)),
+    };
+  }
+
+  /** One plain pass's key: its parts, the recalc generation and whether the pass samples (Sketch), so F9 or an exact
+   *  pass never reuses an older answer. */
+  private passKey(inputs: Record<string, unknown[]>): string {
+    const { gen, mode, forceExact } = session();
+    return JSON.stringify({ ...this.passParts(inputs), gen, sketch: mode === "sketch" && forceExact === 0 });
+  }
+
+  private solveKey(inputs: Record<string, unknown[]>): string {
+    return JSON.stringify({
+      ...this.passParts(inputs),
       mode: this.runMode,
       goalSeek: this.goalSeek,
       monteCarlo: this.monteCarlo,
@@ -880,6 +1006,27 @@ export class CompositeNode extends ClassicPreset.Node {
   }
 
   private async runActiveMode(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
+    // A configured multi-run (every heavy mode but Manual refresh, which is one pass) runs its inside many times.
+    const multi = this.isHeavyMode() && !this.refreshes();
+    const outputs = multi
+      ? await this.withInner("aroundMultiRun", () => this.runModePasses(inputs))
+      : await this.runModePasses(inputs);
+    if (this.aroundMultiRun === 0) {
+      await this.computeTheRest();
+      if (multi) for (const c of this.innerComposites()) await c.computeTheRestAfterMultiRun();
+    }
+    return outputs;
+  }
+
+  /** A composite inside a multi-run ran in every pass but skipped its loose cards there; the run over, they compute once,
+   *  from its last pass, at every depth. One that holds and never ran has nothing to read, so it stays as it is. */
+  async computeTheRestAfterMultiRun(): Promise<void> {
+    if (this.isHeavyMode() && this.lastSolveKey === null) return;
+    await this.computeTheRest();
+    for (const c of this.innerComposites()) await c.computeTheRestAfterMultiRun();
+  }
+
+  private async runModePasses(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     if (this.runMode === "simulation") {
       return this.runSimulation(inputs);
     } else if (this.runMode === "scenarios" && this.scenarios.length > 0) {
@@ -953,6 +1100,8 @@ export class CompositeNode extends ClassicPreset.Node {
     };
     const means = uncertainPorts.map((port) => meanOf(port, this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode));
     if (means.some((m) => typeof m !== "number")) {
+      // One plain pass, so the cards inside read this run's inputs rather than whatever the engine kept from the last.
+      await this.runPass(inputs);
       const fill = means.find(isSolError) ?? null;
       const outputs: Record<string, unknown> = {};
       for (const port of this.outputPorts) {

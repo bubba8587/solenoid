@@ -1,8 +1,9 @@
-// [[C16]], [[C24]]
+// [[C130]] rustCore, [[C24]] arraySemantics, [[frame-verbs#Readers]]
 import { describe, it, expect } from "vitest";
-import { frameBackend, framePreview, materialize, type FrameHandle } from "../../src/graph/frameBackend";
-import { isSolError, solError } from "../../src/graph/errorValue";
+import { readFrame, collectPreview, refWithFormats, isFrameRef } from "../../src/graph/frameBackend";
+import { isSolError } from "../../src/graph/errorValue";
 import type { FrameValue } from "../../src/graph/frame";
+import { planned, planOf, frameStats } from "./frameRefKit";
 
 const sample: FrameValue = {
   __frame: true,
@@ -11,119 +12,52 @@ const sample: FrameValue = {
     { name: "s", type: "string", values: ["a", "b", "c", "d", "e"] },
   ],
 };
+const long: FrameValue = { __frame: true, columns: [{ name: "i", type: "number", values: Array.from({ length: 250 }, (_, i) => i) }] };
 
-describe("framePreview — head-N shaping", () => {
-  it("returns schema, head rows, true row count, and the truncated flag", () => {
-    const p = framePreview(sample, 2);
-    expect(p.schema).toEqual([
-      { name: "n", type: "number" },
-      { name: "s", type: "string" },
-    ]);
-    expect(p.rows).toEqual([
-      [1, "a"],
-      [2, "b"],
-    ]);
-    expect(p.rowCount).toBe(5);
-    expect(p.truncated).toBe(true);
+describe("reading a lazy frame", () => {
+  it("reads the whole frame, its plan run once however often it is read", async () => {
+    frameStats();
+    const ref = planned(sample, { kind: "sort", by: "n", dir: "desc" });
+    const a = await readFrame(ref);
+    const b = await readFrame(ref);
+    expect(a).toBe(b);
+    expect((a as FrameValue).columns[0].values).toEqual([5, 4, 3, 2, 1]);
+    expect(frameStats()).toMatchObject({ runs: 1, collects: 1 });
   });
 
-  it("is not truncated when n covers every row", () => {
-    const p = framePreview(sample, 100);
-    expect(p.rows).toHaveLength(5);
-    expect(p.truncated).toBe(false);
+  it("previews its first 5 rows, what a box draws, with the row count and the ref beside them", async () => {
+    const ref = planned(long, { kind: "sort", by: "i", dir: "desc" });
+    const p = (await collectPreview(ref)) as FrameValue;
+    expect(p.columns[0].values).toHaveLength(5);
+    expect(p.columns[0].values[0]).toBe(249);
+    expect(p.__totalRows).toBe(250);
+    expect(isFrameRef(p.__ref)).toBe(true);
+    expect(((await readFrame(p.__ref as never)) as FrameValue).columns[0].values).toHaveLength(250);
   });
 
-  it("pads a short column with null", () => {
-    const ragged: FrameValue = {
-      __frame: true,
-      columns: [
-        { name: "a", type: "number", values: [1, 2, 3] },
-        { name: "b", type: "number", values: [9] }, // shorter
-      ],
-    };
-    const p = framePreview(ragged, 3);
-    expect(p.rowCount).toBe(3);
-    expect(p.rows).toEqual([[1, 9], [2, null], [3, null]]);
+  it("a frame with no more rows than the preview previews as the whole frame", async () => {
+    const ref = planned(sample, { kind: "head", n: 3 });
+    expect(await collectPreview(ref)).toBe(await readFrame(ref));
+    expect(((await collectPreview(ref, 0)) as FrameValue).__totalRows).toBe(3);
+  });
+
+  it("a plan that fails reads as its error and throws from a preview", async () => {
+    const bad = planned(sample, { kind: "select", columns: ["nope"] });
+    const out = await readFrame(bad);
+    expect(isSolError(out) && out.code).toBe("#REF!");
+    await expect(collectPreview(bad)).rejects.toMatchObject({ code: "#REF!" });
+  });
+
+  it("a value, null or an error reads as itself", async () => {
+    expect(await readFrame(sample)).toBe(sample);
+    expect(await readFrame(null)).toBeNull();
+    expect(await collectPreview(sample)).toBe(sample);
+  });
+
+  it("format picks ride as one more op of the plan", async () => {
+    const ref = planned(sample, { kind: "distinct" });
+    const out = refWithFormats(ref, { n: { kind: "number", decimals: 2 } as never });
+    expect(planOf(out)).toEqual(["distinct", "formats"]);
+    expect(((await readFrame(out)) as FrameValue).columns[0].format).toEqual({ kind: "number", decimals: 2 });
   });
 });
-
-describe("JsFrameBackend — handle lifecycle + materialization", () => {
-  it("collect materializes the WHOLE frame back (every row)", async () => {
-    const be = frameBackend();
-    const h = await be.source(sample);
-    const got = await be.collect(h);
-    expect(got.__frame).toBe(true);
-    expect(got.columns).toEqual(sample.columns);
-  });
-
-  it("column materializes one column back as an eager typed list", async () => {
-    const be = frameBackend();
-    const h = await be.source(sample);
-    const col = await be.column(h, "s");
-    expect(col?.type).toBe("string");
-    expect(col?.values).toEqual(["a", "b", "c", "d", "e"]);
-    expect(await be.column(h, "missing")).toBeNull();
-  });
-
-  it("drop frees the handle — a later materialize is a #REF!", async () => {
-    const be = frameBackend();
-    const h = await be.source(sample);
-    be.drop(h);
-    const err = await be.preview(h, 1).catch((e) => e);
-    if (!isSolError(err)) throw new Error("expected a SolError after drop");
-    expect(err.code).toBe("#REF!");
-  });
-
-  it("an unknown handle materializes to #REF!", async () => {
-    const be = frameBackend();
-    const err = await be.column("jsf:does-not-exist" as FrameHandle, "n").catch((e) => e);
-    if (!isSolError(err)) throw new Error("expected a SolError for an unknown handle");
-    expect(err.code).toBe("#REF!");
-  });
-
-  it("drop is a safe no-op on an unknown handle", () => {
-    expect(() => frameBackend().drop("jsf:nope" as FrameHandle)).not.toThrow();
-  });
-
-  it("apply composes a verb into a NEW handle, leaving the source intact", async () => {
-    const be = frameBackend();
-    const h = await be.source(sample);
-    const h2 = await be.apply(h, { kind: "select", columns: ["n"] });
-    expect((await be.preview(h2, 1)).schema).toEqual([{ name: "n", type: "number" }]);
-    // source handle still has both columns
-    expect((await be.preview(h, 1)).schema).toHaveLength(2);
-  });
-
-  it("join combines two handles into a new one", async () => {
-    const be = frameBackend();
-    const left = await be.source({
-      __frame: true, columns: [{ name: "id", type: "number", values: [1, 2] }],
-    });
-    const right = await be.source({
-      __frame: true, columns: [
-        { name: "fk", type: "number", values: [1, 1] },
-        { name: "v", type: "string", values: ["x", "y"] },
-      ],
-    });
-    const joined = await be.join(left, right, { leftKey: "id", rightKey: "fk", how: "inner" });
-    const p = await be.preview(joined, 10);
-    expect(p.schema.map((c) => c.name)).toEqual(["id", "v"]);
-    expect(p.rows).toEqual([[1, "x"], [1, "y"]]);
-  });
-});
-
-describe("materialize — error-as-value bridge for the node boundary", () => {
-  it("passes a resolved value through", async () => {
-    expect(await materialize(Promise.resolve(42))).toBe(42);
-  });
-  it("returns a rejected SolError as a value (preserving its code), not a throw", async () => {
-    const out = await materialize(Promise.reject(solError("#REF!", "dropped")));
-    if (!isSolError(out)) throw new Error("expected the SolError returned as a value");
-    expect(out.code).toBe("#REF!");
-  });
-  it("wraps a non-SolError rejection as #ERROR! keeping the message", async () => {
-    const out = await materialize(Promise.reject(new Error("boom")));
-    if (!isSolError(out)) throw new Error("expected a SolError");
-    expect(out.code).toBe("#ERROR!");
-    expect(out.message).toBe("boom");
-  });});

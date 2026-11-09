@@ -3,7 +3,7 @@ import type { Pack, PackPlacement } from "./packShared";
 import {
   KMeansNode, PcaNode, LogisticNode,
   HypothesisTestNode, HYPOTHESIS_TEST_OP_META, type HypothesisTestOp,
-} from "../rete-nodes";
+} from "../nodeClasses";
 
 // Catalog type strings must not change: saves and formula names key on them.
 const PATH = ["Packs", "Data Science"];
@@ -22,6 +22,7 @@ const testEntry = (op: HypothesisTestOp, type: string, keywords: string): PackPl
 
 export const DATA_SCIENCE_PACK: Pack = {
   id: "datascience",
+  seed: "pack-datascience",
   name: "Data Science",
   description: "K-Means, PCA and logistic regression; Kruskal-Wallis, Mann-Whitney, Wilcoxon, Fisher exact and Kolmogorov-Smirnov tests.",
   builtin: true,

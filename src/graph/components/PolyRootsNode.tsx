@@ -1,4 +1,4 @@
-import type { PolyRootsNode as PolyRootsNodeType } from "../rete-nodes";
+import type { PolyRootsNode as PolyRootsNodeType } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 

@@ -49,6 +49,13 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
             libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
+      # The runner has no git identity; without one the port check's own commits fail ("Author identity unknown") and a
+      # finding reads as not porting. The same name the script commits under.
+      - name: Git identity
+        run: |
+          git config --global user.name solenoid-bleeding-edge
+          git config --global user.email bleeding-edge@users.noreply.github.com
+
       # Run from a copy: the script checks out the base branch, which may carry an older copy or none. port.mjs rides
       # beside it, since the port check runs it.
       - name: Upgrade, check, report and push

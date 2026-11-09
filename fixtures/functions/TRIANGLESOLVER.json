@@ -1,0 +1,8 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"TRIANGLESOLVER(2, 2, \"2\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIANGLESOLVER(3, 4, , , , 90)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIANGLESOLVER(3, 4)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"TRIANGLESOLVER(3, 4, , , , , , 12)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -1,17 +1,12 @@
-// [[B17]]
+// [[B17]] typedValueModel, [[frame-verbs#Decision Matrix and Decision Sensitivity]]
 import { describe, it, expect } from "vitest";
 import seed from "../../src/graph/seedGraphs/decision-matrix.json";
-import { decisionMatrix, decisionCriteria, decisionSensitivity, resolveDecisionWeights } from "../../src/graph/frameVerbs";
+import { decisionMatrix, decisionCriteria, decisionSensitivity, resolveDecisionWeights } from "./coreVerbs";
 import { isCubeValue, type FrameValue, type FrameColumn } from "../../src/graph/frame";
-import type { DecisionNormalize } from "../../src/graph/frameVerbs";
+import type { DecisionNormalize } from "../../src/graph/frameOps";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { extractKnapVariables } from "../../src/graph/knapTemplate";
-import { joinFrames } from "../../src/graph/frameVerbs";
-
-// Runtime check for the Decision Matrix seed: the notes state concrete outcomes
-// (who wins, where the winner flips, the dead tie), so run the seed's own data
-// through the verbs and hold the prose to them. Fails when data, weights, or
-// engine semantics drift apart.
+import { joinFrames } from "./coreVerbs";
 
 type SeedNode = {
   id: string;
@@ -29,9 +24,7 @@ const frameOf = (id: string): FrameValue => ({
   columns: JSON.parse(byId(id).init!.frameText as string) as FrameColumn[],
 });
 
-// The graph assembles the Scores frame the keyed way: the Note's frontmatter emits a
-// (Laptop, Screen) FRAME directly (rows-of-objects frontmatter), left-joined onto the
-// score table by laptop name — row order in either table cannot misalign a score.
+// The seed's Scores frame: the Note's (Laptop, Screen) frame left-joined onto the score table by laptop name.
 const screenNote = new NoteNode({ body: byId("noteScreen").init!.body as string });
 const screenFrame = screenNote.fieldValues().screen as FrameValue;
 const joinLits = byId("join").stringLiterals!;
@@ -82,7 +75,7 @@ describe("decision-matrix seed", () => {
 
   it("main matrix: UltraSlim wins, and the breakdown contributions sum to the Score", () => {
     const out = decisionMatrix(scores, weights, dmInit.normalize, true, normOverrides);
-    expect(out.columns[0].values).toEqual(["UltraSlim", "ProBook", "Budget", "PowerLifter"]);
+    expect(out.columns[0].values).toEqual(["UltraSlim", "ProBook", "ValueBook", "PowerLifter"]);
     const score = out.columns.find((c) => c.name === "Score")!.values as number[];
     const crit = decisionCriteria(scores).map((n) => out.columns.find((c) => c.name === n)!.values as number[]);
     score.forEach((s, i) => {
@@ -99,18 +92,17 @@ describe("decision-matrix seed", () => {
     expect(keep[0]).toBe(out.columns[0].name); // labels first, values second
   });
 
-  it("sensitivity: the winner flips across scenarios and Budget lands the tie the note claims", () => {
+  it("sensitivity: the winner flips across scenarios and the Budget scenario lands the tie the note claims", () => {
     const sensInit = byId("sens").init as { normalize: DecisionNormalize };
     const cube = decisionSensitivity(scores, scenarios, sensInit.normalize);
     if (!isCubeValue(cube)) throw new Error("expected a cube");
-    expect(cube.columns[1].cells).toEqual(["UltraSlim", "PowerLifter", "UltraSlim = Budget"]);
+    expect(cube.columns[1].cells).toEqual(["UltraSlim", "PowerLifter", "Tie: UltraSlim, ValueBook"]);
     const margins = cube.columns[2].cells as number[];
     expect(margins[0]).toBeGreaterThan(0);
     expect(margins[1]).toBeGreaterThan(0);
     expect(margins[2]).toBe(0);
-    // the prose states exactly these outcomes — keep the note and the engine agreeing
     const body = byId("noteSens").init!.body as string;
-    expect(body).toContain("UltraSlim = Budget");
+    expect(body).toContain("Tie: UltraSlim, ValueBook");
     expect(body).toContain("PowerLifter");
   });
 });

@@ -1,0 +1,14 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"2 + NA()","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NA()","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"r_A1_C1+NA()","env":["r_A1_C1=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"r_A1_C1/NA()","env":["r_A1_C1=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NA()^k1","env":["k1=list:num:[1, 2]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"r_A1_A2*NA()","env":["r_A1_A2=table:num:[[1], [4]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"1/0+NA()","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"NA()&c_A1","env":["c_A1=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"c_A1=NA()","env":["c_A1=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"--NA()","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -1,10 +1,11 @@
 // [[B11]]
 import { describe, it, expect } from "vitest";
-import { DIST_SPECS } from "../../../src/graph/nodes/distribution";
+import { DistributionsNode } from "../../../src/graph/nodes/distribution";
 
 // The distribution family is internal (hand-rolled). These invariants hold by the math of
 // each distribution, so they need no oracle. (Full sweep found only the HYPGEOM cdf hole.)
-const cdf = (x: number, p: number[]) => DIST_SPECS.hypgeom.compute("cdf", x, p);
+const cdf = (k: number, [n, M, N]: number[]) =>
+  new DistributionsNode({ op: "hypgeom", form: "cdf" }).data({ k: [k], n: [n], M: [M], N: [N] }).result;
 
 describe("HYPGEOM cdf is 1 above the support ceiling, not blank", () => {
   const p = [10, 3, 20]; // [n, M, N]; support is [0, min(n,M)] = [0, 3]
@@ -22,7 +23,7 @@ describe("HYPGEOM cdf is 1 above the support ceiling, not blank", () => {
     expect(c2).toBeGreaterThanOrEqual(c1);
     expect(c2).toBeLessThan(1);
   });
-  it("invalid parameters are still a blank, not a fake 1", () => {
-    expect(cdf(2, [10, 25, 20])).toBeNull(); // M > N
+  it("invalid parameters are a #DOMAIN!, not a fake 1", () => {
+    expect((cdf(2, [10, 25, 20]) as { code?: string }).code).toBe("#DOMAIN!"); // M > N
   });
 });

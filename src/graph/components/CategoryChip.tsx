@@ -4,9 +4,9 @@ import "./CategoryChip.css";
 
 /** The shared chart palette slot at `index` (first-appearance order, categoryColor.ts), so a value is the same color in a column and a chart.
  *  Tinted like a card's header band (`--header-tint` toward `--surface`, ink at `--mix-ink`), opaque and borderless. */
-export function CategoryChip({ value, index }: { value: string; index: number }) {
+export function CategoryChip({ value, index, hue: given }: { value: string; index: number; hue?: string }) {
   const palette = useSeriesColors();
-  const hue = palette[index % palette.length] ?? palette[0];
+  const hue = given ?? palette[index % palette.length] ?? palette[0];
   return (
     <span
       className="solenoid-category-chip"

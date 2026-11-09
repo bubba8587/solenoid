@@ -2,7 +2,8 @@ import type { ReactElement } from "react";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";
 import { isDocumentValue } from "../documentValue";
-import { FrameChip } from "./FrameChip";
+import { FrameChip, FrameRefChip } from "./FrameChip";
+import { isFrameRef } from "../frameBackend";
 import { CubeChip } from "./CubeChip";
 import { ChartChip } from "./ChartChip";
 import { DocumentChip } from "./DocumentChip";
@@ -16,6 +17,7 @@ export function valueChipFor(
 ): ReactElement | null {
   const { label, pinNodeId, size } = opts;
   if (isFrameValue(value)) return <FrameChip value={value} label={label} pinNodeId={pinNodeId} size={size} />;
+  if (isFrameRef(value)) return <FrameRefChip frameRef={value} label={label} size={size} />;
   if (isCubeValue(value)) return <CubeChip value={value} label={label} pinNodeId={pinNodeId} size={size} />;
   if (isChartValue(value)) return <ChartChip value={value} label={label} pinNodeId={pinNodeId} size={size} />;
   if (isDocumentValue(value)) return <DocumentChip value={value} size={size} />;

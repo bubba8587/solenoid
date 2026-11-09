@@ -1,0 +1,92 @@
+/* The Element card: a periodic-table tile tinted by the element's category (a palette series slot, as a category
+   chip is), its border the same hue all the way round so its inside is tinted too (DESIGN.md § Tinted-Box Rule). */
+
+.el-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 2px 0 6px;
+}
+
+.el-card__tile {
+  --el-hue: var(--border-strong);
+  position: relative;
+  width: 92px;
+  height: 92px;
+  padding: 0;
+  font: inherit;
+  color: var(--text-bright);
+  background: color-mix(in srgb, var(--el-hue) var(--header-tint), var(--surface));
+  border: 1.5px solid var(--el-hue);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.el-card__tile:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--el-hue) calc(var(--header-tint) + 12%), var(--surface));
+}
+.el-card__tile:disabled { cursor: default; }
+.el-card__tile:focus-visible { outline: 2px solid var(--node-accent, var(--accent)); outline-offset: 2px; }
+
+.el-card__z,
+.el-card__mass {
+  position: absolute;
+  top: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  /* Accent ink on a tinted fill (DESIGN.md § Accent-Mix Ladder), never a gray. */
+  color: color-mix(in srgb, var(--el-hue) var(--mix-ink, 55%), var(--text));
+}
+.el-card__z { left: 6px; }
+.el-card__mass { right: 6px; }
+
+.el-card__symbol {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 24px;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+.el-card__symbol--none { color: var(--text-muted); }
+
+.el-card__name {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 7px;
+  font-size: 10.5px;
+  color: var(--text);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.el-card__facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+  row-gap: 1px;
+  margin: 0;
+  font-size: 10px;
+  line-height: 13px;
+  min-width: 0;
+}
+.el-card__facts dt { color: var(--text-muted); white-space: nowrap; }
+.el-card__facts dd {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The pager sits under the facts, in flow, so it never covers one. */
+.el-card__pager { display: flex; justify-content: flex-end; margin: -2px 0 4px; }
+.el-card__pager .solenoid-geo__pager { position: static; }

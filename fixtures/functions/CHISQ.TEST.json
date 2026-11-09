@@ -1,0 +1,5 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"CHISQ.TEST(r_A1_A4,r_B1_B4)","env":["r_A1_A4=table:num:[[1], [2], [3], [4]]","r_B1_B4=table:num:[[3], [4], [2], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

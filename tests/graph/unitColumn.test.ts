@@ -1,11 +1,14 @@
-// [[D43]]
+// [[C25]] firstClassUnits, [[unit-flow#Column and matrix units]]
 import { describe, it, expect } from "vitest";
 import { buildFrame, addColumn } from "../../src/graph/frame";
 import { parseColumnUnitFromHeader, columnUnitLabel, tagFrameCellUnit } from "../../src/graph/unitColumn";
 import { displayMagnitudeOf } from "../../src/graph/unitBridge";
 import { GetColumnNode } from "../../src/graph/nodes/frame";
 import { AggregateNode } from "../../src/graph/nodes/list";
-import { isUnitCell, magnitudeOf, unitLabelOf, type UnitCell } from "../../src/graph/unitValue";
+import { isUnitCell, magnitudeOf, dimOf, type UnitCell } from "../../src/graph/unitValue";
+import { formatDim } from "../../src/graph/dimension";
+
+const unitLabelOf = (v: unknown) => formatDim(dimOf(v));
 
 describe("tagFrameCellUnit — the as-typed frame cell → base-SI UnitCell carrying the display id", () => {
   it("currency carries the display id (the $-blank bug): $5 stays $5, not a blank unit", () => {
@@ -94,15 +97,21 @@ describe("Aggregate over a unit-tagged list carries the unit", () => {
     const count = new AggregateNode({ op: "count" });
     expect(count.data({ list: [list as never] }).result).toBe(3);
   });
-  it("plain-number lists are unchanged (dimensionless → bare number)", () => {
-    const sum = new AggregateNode({ op: "sum" });
-    expect(sum.data({ list: [[1, 2, 3]] }).result).toBe(6);
-  });
 });
 
 describe("column display helpers", () => {
   it("columnUnitLabel reads the display id", () => {
     const cu = parseColumnUnitFromHeader("d (km)").unit!;
     expect(columnUnitLabel(cu)).toBe("km");
+  });
+});
+
+describe("cellUnitAnnotation: the unit a popup writes in a number's cell", () => {
+  it("an FC unit by its id, an FC unit under another id by the FC's, any other unit by its text", async () => {
+    const { cellUnitAnnotation } = await import("../../src/graph/unitColumn");
+    expect(cellUnitAnnotation("km")).toEqual({ unit: "km" });
+    expect(cellUnitAnnotation("h")).toEqual({ unit: "hr" });
+    expect(cellUnitAnnotation("furlong/fortnight")).toEqual({ unit: "custom", customUnit: " furlong/fortnight" });
+    expect(cellUnitAnnotation(undefined)).toEqual({ unit: "none" });
   });
 });

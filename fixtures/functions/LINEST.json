@@ -1,0 +1,8 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"LINEST(r_A2_A6,r_B2_B6)","env":["r_A2_A6=table:num:[[0.2], [0.41], [0.62], [0.8], [1.1]]","r_B2_B6=table:num:[[1.1], [1.9], [3.1], [4.05], [5]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LINEST(r_A2_A6)","env":["r_A2_A6=table:num:[[0.2], [0.41], [0.62], [0.8], [1.1]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LINEST(r_A2_A6,r_B2_B6,FALSE)","env":["r_A2_A6=table:num:[[0.2], [0.41], [0.62], [0.8], [1.1]]","r_B2_B6=table:num:[[1.1], [1.9], [3.1], [4.05], [5]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LINEST(r_A2_A6,r_B2_B6,,TRUE)","env":["r_A2_A6=table:num:[[0.2], [0.41], [0.62], [0.8], [1.1]]","r_B2_B6=table:num:[[1.1], [1.9], [3.1], [4.05], [5]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

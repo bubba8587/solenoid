@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { DATE_TRUNC_UNIT_META } from "../rete-nodes";
-import type { DateTruncNode as DateTruncNodeType, DateTruncUnit } from "../rete-nodes";
+import { DATE_TRUNC_UNIT_META } from "../nodeClasses";
+import type { DateTruncNode as DateTruncNodeType, DateTruncUnit } from "../nodeClasses";
 import { processGraph } from "../process";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";

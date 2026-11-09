@@ -1,17 +1,19 @@
 // Ports bleeding-edge findings onto the checked-out work branch, one commit each:
 //
-//   node .github/bleeding-edge/port.mjs <commit>... [--check] [--no-checks]
+//   node .github/bleeding-edge/port.mjs <commit>... [--check] [--no-checks] [--desktop]
 //
 // A finding is a commit on bleeding-edge whose subject starts `Edge:` or `Fix:`. Each is cherry-picked, and a `Fix:`
 // commit's `Upgrades: <package>@<version> ...` line moves those packages here (on bleeding-edge they're already moved, so
 // the commit's diff can't carry them), keeping each manifest's range style. Then what is
 // generated rather than written is regenerated for this branch: the lockfiles, the engine module (plain build:wasm, never
 // the optimized one) and the site's prerender snapshots. A conflict in those alone resolves to this branch's copy, since
-// they're rebuilt anyway; a conflict anywhere else stops that finding. The typecheck and the unit tests then run, and a
+// they're rebuilt anyway; a conflict anywhere else stops that finding. The typecheck and the unit tests then run, and each Rust crate the finding touches gets fmt, clippy and its tests, and a
 // finding that fails them is taken back off, so the branch ends either with the port or as it began.
 //
 // --check ports onto a throwaway state and resets to where it started, printing a JSON line per finding (the
-// generator's port check). --no-checks skips the typecheck and tests.
+// generator's port check). --no-checks skips the typecheck, the tests and the Rust checks. --desktop also checks the
+// desktop shell (src-tauri) when a finding touches it; it is off by default, since that build is gigabytes and the web
+// app doesn't need it.
 //
 // Self-contained (no repo imports), so the generator can run it from a copy.
 import { spawnSync } from "node:child_process";
@@ -20,10 +22,11 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 const args = process.argv.slice(2);
 const CHECK = args.includes("--check");
 const NO_CHECKS = args.includes("--no-checks");
+const DESKTOP = args.includes("--desktop");
 const commits = args.filter((a) => !a.startsWith("--"));
 const FINDING = /^(Edge|Fix): /;
 const GENERATED = /(^|\/)(package-lock\.json|Cargo\.lock)$|^src\/graph\/engineWasm\/|^prerender\//;
-const ENGINE = /^crates\/solenoid-(core|graph)\//;
+const ENGINE = /^crates\/(solenoid-(core|graph|schedule)|vendor)\//;
 const SITE = /^src\/graph\/(landing\/|seeds|packs)/;
 
 function sh(cmd, { quiet = CHECK } = {}) {
@@ -36,7 +39,7 @@ const must = (cmd) => { const r = sh(cmd, { quiet: true }); if (!r.ok) throw new
 const tail = (s) => s.trimEnd().split("\n").slice(-60).join("\n");
 const lines = (s) => s.split("\n").filter(Boolean);
 
-if (!commits.length) { console.error("usage: node .github/bleeding-edge/port.mjs <commit>... [--check] [--no-checks]"); process.exit(2); }
+if (!commits.length) { console.error("usage: node .github/bleeding-edge/port.mjs <commit>... [--check] [--no-checks] [--desktop]"); process.exit(2); }
 if (must("git status --porcelain --untracked-files=no")) { console.error("port: the working tree has changes; commit or stash them first"); process.exit(2); }
 const start = must("git rev-parse HEAD");
 
@@ -100,14 +103,38 @@ function regenerate(changed) {
   return null;
 }
 
-function checks() {
+// Each Rust crate a finding touches gets the checks CI runs on it: fmt, clippy (on the wasm target too for the engine's
+// crates) and its tests. The desktop shell needs WebKitGTK's development libraries, so it is checked only where they are.
+const WASM_CRATES = new Set(["crates/solenoid-core", "crates/solenoid-graph", "crates/solenoid-schedule"]);
+function rustChecks(changed) {
+  const dirs = [...new Set(changed.map((f) => f.match(/^(crates\/solenoid-[a-z]+|src-tauri)\//)?.[1]).filter(Boolean))];
+  for (const d of dirs) {
+    if (!existsSync(`${d}/Cargo.toml`)) continue;
+    if (d === "src-tauri" && (!DESKTOP || !sh("pkg-config --exists webkit2gtk-4.1", { quiet: true }).ok)) continue;
+    // One shared build directory with no debug info, as scripts/check-rust.sh builds: the disk is a fixed allowance.
+    const m = `--manifest-path ${d}/Cargo.toml --target-dir ${process.env.HOME}/.cache/solenoid-check`;
+    process.env.CARGO_INCREMENTAL = "0";
+    process.env.CARGO_PROFILE_DEV_DEBUG = "0";
+    process.env.CARGO_PROFILE_TEST_DEBUG = "0";
+    const steps = [["fmt", `cargo fmt ${m} --check`], ["clippy", `cargo clippy ${m} --all-targets -- -D warnings`]];
+    if (WASM_CRATES.has(d)) steps.push(["wasm clippy", `cargo clippy ${m} --target wasm32-unknown-unknown -- -D warnings`]);
+    steps.push(["tests", `cargo test ${m}`]);
+    for (const [name, cmd] of steps) {
+      const r = sh(cmd);
+      if (!r.ok) return `${d}'s ${name} failed:\n${tail(r.out)}`;
+    }
+  }
+  return null;
+}
+
+function checks(changed) {
   if (NO_CHECKS) return null;
   for (const [name, cmd] of [["typecheck", "npx tsrs --noEmit"], ["unit tests", "npx vitest run"]]) {
     rmSync("node_modules/.vitest-cache", { recursive: true, force: true });
     const r = sh(cmd);
     if (!r.ok) return `the ${name} failed:\n${tail(r.out)}`;
   }
-  return null;
+  return rustChecks(changed);
 }
 
 const results = [];
@@ -146,7 +173,7 @@ for (const c of commits) {
   must("git add -A");
   if (sh("git diff --cached --quiet", { quiet: true }).ok) { back(); result.ok = true; result.why = "already on this branch"; continue; }
   must(`git commit --quiet --no-verify -F - <<'PORT_MSG'\n${message}\n\nPorted from bleeding-edge ${sha.slice(0, 9)}.\nPORT_MSG`);
-  const bad = checks();
+  const bad = checks(changed);
   if (bad) { must(`git reset --quiet --hard ${before}`); restoreModules(); result.why = bad; failed = true; continue; }
   result.ok = true;
   result.ported = must("git rev-parse --short HEAD");

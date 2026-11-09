@@ -1,21 +1,13 @@
-// [[C17]], [[C14]] currentExcelParity
+// [[C17]] shareImpl, [[B16]] oneFormulaSurface, [[formula-language#Blocked and wrong-surface names]], [[formula-language#Shared kernels]]
+import { solDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
-import { resolveExcelFunction, LEGACY_ALIASES, POSITION_NAMES, ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
-import { compileEvaluator, formulaFunctionNames, RANGE_FUNCTIONS } from "../../src/graph/excelFormula";
+import { isFunctionName, formulaFunctionNames, LEGACY_ALIASES, POSITION_NAMES, NODE_SURFACE_NAMES, ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
+import { compileEvaluator } from "../../src/graph/excelFormula";
+import { isRange, callTraits, callTraitNames } from "./callTraits";
 import { isSolError } from "../../src/graph/errorValue";
 import { TextSplitNode, TextAfterBeforeNode, UrlEncodeNode, RegexNode } from "../../src/graph/nodes/text";
 import { CouponNode, BondPricingNode, DurationNode, DepreciationNode } from "../../src/graph/nodes/finance";
 import { ForecastNode } from "../../src/graph/nodes/stats";
-
-// ─── Tier 1 registrations ([[C51]] formulaNaming) ───────────────────────────────────────────────
-// The gap these close: a node carried an Excel name, and typing that same name in
-// an Expression returned #NAME?. Two things have to hold for each one, and the
-// second is the one that rots silently:
-//   1. the name DISPATCHES;
-//   2. it computes what the NODE computes — same input, same answer.
-// The registrations import the node's own helper precisely so (2) is structural,
-// but a future "small tweak" to one surface is exactly how they drifted the first
-// time, so it gets asserted rather than assumed.
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => {
   const f = compileEvaluator(expr);
@@ -24,10 +16,8 @@ const ev = (expr: string, env: Record<string, unknown> = {}) => {
 };
 
 describe("blocked spellings redirect to a LIVE replacement", () => {
-  // The redirect hint is the whole value of blocking: pointing a user at a name
-  // that also fails would be worse than leaving the legacy one callable.
   it("every LEGACY_ALIASES target actually dispatches", () => {
-    const dead = [...new Set(Object.values(LEGACY_ALIASES))].filter((t) => !resolveExcelFunction(t));
+    const dead = [...new Set(Object.values(LEGACY_ALIASES))].filter((t) => !isFunctionName(t));
     expect(dead, `blocked names redirect to targets that do not dispatch: ${dead.join(", ")}`).toEqual([]);
   });
 
@@ -43,8 +33,6 @@ describe("blocked spellings redirect to a LIVE replacement", () => {
   });
 
   it("blocks the superseded statistics spellings", () => {
-    // TDIST redirects to T.DIST.RT (Microsoft's own compat mapping — TDIST was
-    // right-tailed/2T, never the density-capable T.DIST).
     for (const [name, use] of [["NORMDIST", "NORM.DIST"], ["TDIST", "T.DIST.RT"], ["CRITBINOM", "BINOM.INV"]]) {
       const r = ev(`${name}(1, 2, 3, TRUE)`);
       expect(isSolError(r) && r.code, name).toBe("#NAME?");
@@ -70,7 +58,7 @@ describe("current-Excel names the fxLookup walk used to advertise but not dispat
   // of CEILING.MATH); the old object-only walk couldn't reach them.
   it.each(["GAMMALN.PRECISE", "SKEW.P", "NETWORKDAYS.INTL", "WORKDAY.INTL",
            "BINOM.DIST.RANGE"])("%s dispatches", (name) => {
-    expect(resolveExcelFunction(name)).not.toBeNull();
+    expect(isFunctionName(name)).toBe(true);
   });
 
   it("computes, not just resolves", () => {
@@ -104,7 +92,7 @@ describe("text functions: formula matches node", () => {
   it("REGEXTEST / REGEXEXTRACT / REGEXREPLACE", () => {
     const test = new RegexNode({ op: "test" });
     expect(ev('REGEXTEST("abc123", "\\d+")')).toBe(test.data({ text: ["abc123"], pattern: ["\\d+"] }).result);
-    expect(ev('REGEXTEST("abc123", "\\d+")')).toBe(1);
+    expect(ev('REGEXTEST("abc123", "\\d+")')).toBe(true);
     expect(ev('REGEXEXTRACT("abc123def", "\\d+")')).toBe("123");
     expect(ev('REGEXEXTRACT("a1b2", "\\d", 1)')).toEqual(["1", "2"]);
     expect(ev('REGEXREPLACE("a1b2", "\\d", "#")')).toBe("a#b#");
@@ -144,11 +132,10 @@ describe("REGEXREPLACE occurrence", () => {
     expect(ev('REGEXREPLACE("cat cat", "^cat", "dog", 2)')).toBe("cat cat");
   });
 
-  it("expands $n, $<name>, $&, $$ and the context tokens from the nth match", () => {
+  it("expands $n, ${n}, ${name}, $0 and $$ from the nth match, as PCRE2 substitutes", () => {
     expect(ev('REGEXREPLACE("a1 b2", "(\\w)(\\d)", "$2$1", 2)')).toBe("a1 2b");
-    expect(ev('REGEXREPLACE("a1 b2", "(?<l>\\w)(?<d>\\d)", "$<d>$<l>", 2)')).toBe("a1 2b");
-    expect(ev('REGEXREPLACE("a1 b2", "\\d", "[$&$$]", 2)')).toBe("a1 b[2$]");
-    expect(ev('REGEXREPLACE("ab", "b", "<$`|$\'>", 1)')).toBe("a<a|>");
+    expect(ev('REGEXREPLACE("a1 b2", "(?<l>\\w)(?<d>\\d)", "${d}${l}", 2)')).toBe("a1 2b");
+    expect(ev('REGEXREPLACE("a1 b2", "\\d", "[$0$$]", 2)')).toBe("a1 b[2$]");
   });
 
   it("truncates a fractional occurrence and counts a negative one from the end, node and formula alike", () => {
@@ -163,42 +150,43 @@ describe("REGEXREPLACE occurrence", () => {
 });
 
 describe("finance functions: formula matches node", () => {
-  // 15-Mar-2026 settlement, 15-Nov-2030 maturity as date serials.
-  const settle = 46096, maturity = 47787;
+  // 15-Mar-2026 settlement, 31-Oct-2030 maturity.
+  const settle = solDate(46096), maturity = solDate(47787);
+  const S = "DATE(2026,3,15)", M = "DATE(2030,10,31)";
 
   it("COUPNUM / COUPDAYBS", () => {
     const num = new CouponNode({ op: "coupnum" });
-    expect(ev(`COUPNUM(${settle}, ${maturity}, 2)`))
+    expect(ev(`COUPNUM(${S}, ${M}, 2)`))
       .toBe(num.data({ settle: [settle], maturity: [maturity], frequency: [2], basis: [0] }).result);
     const bs = new CouponNode({ op: "coupdaybs" });
-    expect(ev(`COUPDAYBS(${settle}, ${maturity}, 2)`))
+    expect(ev(`COUPDAYBS(${S}, ${M}, 2)`))
       .toBe(bs.data({ settle: [settle], maturity: [maturity], frequency: [2], basis: [0] }).result);
   });
 
   it("COUPDAYBS on 30/360 counts a coupon on the last day of February as the 30th", () => {
     // previous coupon 28-Feb-2026, settlement 15-Mar-2026, maturity 28-Aug-2030
-    expect(ev(`COUPDAYBS(${settle}, DATE(2030,8,28), 2, 0)`)).toBe(15);
-    expect(ev(`COUPDAYSNC(${settle}, DATE(2030,8,28), 2, 0)`)).toBe(165);
+    expect(ev("COUPDAYBS(DATE(2026,3,15), DATE(2030,8,28), 2, 0)")).toBe(15);
+    expect(ev("COUPDAYSNC(DATE(2026,3,15), DATE(2030,8,28), 2, 0)")).toBe(165);
   });
 
   it("PRICE / YIELD round-trip through each other", () => {
     const priceNode = new BondPricingNode({ op: "price" });
-    const price = ev(`PRICE(${settle}, ${maturity}, 0.065, 0.07, 100, 2)`);
+    const price = ev(`PRICE(${S}, ${M}, 0.065, 0.07, 100, 2)`);
     expect(price).toBe(priceNode.data({
       settle: [settle], maturity: [maturity], rate: [0.065], yld: [0.07], redemption: [100], frequency: [2],
     }).result);
     // The yield that reproduces that price is the yield we priced at.
-    expect(ev(`YIELD(${settle}, ${maturity}, 0.065, ${price}, 100, 2)`)).toBeCloseTo(0.07, 8);
+    expect(ev(`YIELD(${S}, ${M}, 0.065, ${price}, 100, 2)`)).toBeCloseTo(0.07, 8);
   });
 
   it("DURATION / MDURATION", () => {
     const node = new DurationNode({ op: "duration" });
-    expect(ev(`DURATION(${settle}, ${maturity}, 0.08, 0.09, 2)`)).toBe(node.data({
+    expect(ev(`DURATION(${S}, ${M}, 0.08, 0.09, 2)`)).toBe(node.data({
       settle: [settle], maturity: [maturity], coupon: [0.08], yld: [0.09], frequency: [2], basis: [0],
     }).result);
     // Modified duration is Macaulay discounted by one period's yield.
-    const mac = ev(`DURATION(${settle}, ${maturity}, 0.08, 0.09, 2)`) as number;
-    expect(ev(`MDURATION(${settle}, ${maturity}, 0.08, 0.09, 2)`)).toBeCloseTo(mac / (1 + 0.09 / 2), 10);
+    const mac = ev(`DURATION(${S}, ${M}, 0.08, 0.09, 2)`) as number;
+    expect(ev(`MDURATION(${S}, ${M}, 0.08, 0.09, 2)`)).toBeCloseTo(mac / (1 + 0.09 / 2), 10);
   });
 
   it("VDB", () => {
@@ -208,8 +196,8 @@ describe("finance functions: formula matches node", () => {
     }).result);
   });
 
-  it("answers #DOMAIN!, not a number, when an argument is out of range ([[D70]] nullNotEnoughData)", () => {
-    expect(ev(`COUPNUM(${settle}, ${maturity}, 3)`)).toMatchObject({ code: "#DOMAIN!", message: "COUPNUM needs a frequency of 1, 2 or 4" });
+  it("answers #DOMAIN!, not a number, when an argument is out of range ([[C24]] arraySemantics)", () => {
+    expect(ev(`COUPNUM(${S}, ${M}, 3)`)).toMatchObject({ code: "#DOMAIN!", message: "COUPNUM needs a frequency of 1, 2 or 4" });
     expect(ev("VDB(10000, 1000, 10, 5, 2)")).toMatchObject({ code: "#DOMAIN!", message: "VDB needs 0 ≤ start ≤ end ≤ life" });
   });
 });
@@ -233,7 +221,7 @@ describe("FORECAST.LINEAR", () => {
   });
 });
 
-describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on every surface", () => {
+describe("the [[B16]] oneFormulaSurface gate covers the WHOLE blocklist, on every surface", () => {
   it("every blocked spelling answers #NAME? naming its replacement", () => {
     for (const [name, use] of Object.entries(LEGACY_ALIASES)) {
       const r = ev(`${name}(1)`);
@@ -242,13 +230,18 @@ describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on eve
     }
   });
 
+  it("the core refuses no #NAME? spelling the TS tables do not name", () => {
+    const named = new Set([...Object.keys(LEGACY_ALIASES), ...Object.keys(POSITION_NAMES), ...Object.keys(NODE_SURFACE_NAMES)]);
+    const extra = callTraitNames().filter((n) => callTraits(n)?.refusal?.code === "#NAME?" && !named.has(n));
+    expect(extra).toEqual([]);
+  });
+
   it("COLUMN says columns go by name", () => {
     for (const [name, message] of Object.entries(POSITION_NAMES)) {
       for (const expr of [`${name}()`, `${name}(x)`]) {
         const r = ev(expr, { x: [1, 2, 3] });
         expect(isSolError(r) && r.code, expr).toBe("#NAME?");
         expect(isSolError(r) && r.message, expr).toBe(message);
-        expect(isSolError(resolveExcelFunction(name)!()), name).toBe(true);
       }
     }
   });
@@ -260,7 +253,7 @@ describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on eve
   });
 
   it("no blocked spelling gets range routing", () => {
-    const leaked = [...ELIMINATED_FUNCTIONS].filter((n) => RANGE_FUNCTIONS.has(n));
+    const leaked = [...ELIMINATED_FUNCTIONS].filter((n) => isRange(n));
     expect(leaked, `blocked names still range-routed: ${leaked.join(", ")}`).toEqual([]);
   });
 });
@@ -287,7 +280,7 @@ describe("one-function Excel parity, each checked against Excel", () => {
     expect(ev("YEARFRAC(DATE(2012,12,15),DATE(2013,3,1),1)")).toBeCloseTo(76 / 365, 12);
     expect(ev("YEARFRAC(DATE(2011,2,28),DATE(2012,2,29),1)")).toBeCloseTo(366 / 365.5, 12);
   });
-  it("VALUE takes a comma before the decimal point and none after it ([[C117]] usNumberText)", () => {
+  it("VALUE takes a comma before the decimal point and none after it ([[C58]] tableInputRawText)", () => {
     expect(ev('VALUE("1,5")')).toBe(15);
     expect(ev('VALUE("-$1,234.50")')).toBe(-1234.5);
     expect(ev('VALUE("(5)")')).toBe(-5);

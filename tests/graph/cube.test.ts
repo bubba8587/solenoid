@@ -1,4 +1,4 @@
-// [[C24]] arraySemantics, [[C44]] dateSerials, [[C25]]
+// [[C24]] arraySemantics, [[C44]] dateSerials, [[C25]] firstClassUnits, [[frame-verbs#The Cube value]], [[frame-verbs#Units and formats]]
 import { describe, it, expect } from "vitest";
 import {
   isCubeValue,
@@ -14,12 +14,6 @@ import {
   type CubeValue,
 } from "../../src/graph/frame";
 import { isUnitCell, magnitudeOf, type UnitCell } from "../../src/graph/unitValue";
-
-// The Cube is the lattice supremum — a frame whose cells hold ANY value (a scalar,
-// a list, a matrix, a nested frame, or another cube). This locks the value model +
-// the runtime widening (toCube), the mirror of the socket-level rule that every
-// value flows UP into a cube (see socketConnect.test.ts "cube" block). No node emits
-// a cube yet — this is the inert foundation, like the logical family's 5a slice.
 
 describe("CubeValue model", () => {
   it("brands + detects a cube (distinct from a frame)", () => {
@@ -129,9 +123,6 @@ describe("toCube — every value widens UP into the supremum", () => {
 
 describe("cube units — per-cell, like a list (unitGranularity)", () => {
   it("a unit-locked frame column flattens to per-cell UnitCells", () => {
-    // "d (km)" locks the column to km; cells are as-typed (5, 10). frameToCube tags
-    // each cell as a base-SI UnitCell carrying the display id — the unit rides the
-    // value per-cell, exactly like a list.
     const f = buildFrame([[5], [10]], ["d (km)"]);
     const c = frameToCube(f);
     const cells = c.columns[0].cells;
@@ -160,8 +151,6 @@ describe("cube units — per-cell, like a list (unitGranularity)", () => {
 });
 
 describe("typed cube columns — frame→cube keeps the element type (lossless)", () => {
-  // A frame whose columns carry real types (a date column stores serials — numbers —
-  // that a bare cube would render as raw numbers). frameToCube now carries `type`.
   const dateFrame = { __frame: true as const, columns: [
     { name: "when", type: "date" as const, values: [46000, 46001] },
     { name: "ok", type: "logical" as const, values: [true, false] },

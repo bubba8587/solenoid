@@ -1,0 +1,6 @@
+{ "nodes": [
+  { "id": "r1", "type": "RandArrayNode", "x": 0, "y": 0, "init": { "label": "Noise", "mode": "grid" }, "literals": { "rows": 30, "cols": 30 } },
+  { "id": "s1", "type": "SmoothNode", "x": 420, "y": 0, "init": { "label": "Smooth", "op": "gaussian", "mode": "grid" }, "literals": { "sigma": 2 } },
+  { "id": "p1", "type": "SurfaceNode", "x": 420, "y": 560, "init": { "label": "Raw noise" } },
+  { "id": "p2", "type": "SurfaceNode", "x": 840, "y": 0, "init": { "label": "Gaussian σ = 2" } } ],
+  "cables": [ "r1.table -> p1.z", "r1.table -> s1.grid", "s1.result -> p2.z" ] }

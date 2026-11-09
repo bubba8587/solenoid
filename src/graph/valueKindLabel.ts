@@ -5,12 +5,13 @@ import { isImageValue } from "./imageValue";
 import { isSvgValue } from "./svgValue";
 import { isDocumentValue } from "./documentValue";
 import { isFrameValue, isCubeValue } from "./frame";
+import { isFrameRef } from "./frameBackend";
 import { isLambdaValue, formatLambda } from "./nodes/lambda";
 import { isUncertain, type UncertainNumber } from "./valueKinds";
 import { formatScalar } from "./components/format";
 
 /** Each part through the standard scalar formatter, so the wrapper never stringifies to "[object Object]". */
-export function formatUncertain(v: UncertainNumber): string {
+function formatUncertain(v: UncertainNumber): string {
   return `${formatScalar(v.value)} ± ${formatScalar(v.error)}`;
 }
 
@@ -28,6 +29,7 @@ export function describeValueKind(v: unknown): string | null {
     const rows = v.__totalRows ?? v.columns[0]?.values.length ?? 0;
     return `${rows}×${cols}`;
   }
+  if (isFrameRef(v)) return "Frame";
   if (isCubeValue(v)) return "Cube";
   return null;
 }

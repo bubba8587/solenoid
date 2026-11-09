@@ -1,5 +1,5 @@
 // [[C68]]
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { trueAnyIn, documentOut, documentIn, cubeIn } from "./shared";
 import { NoteNode } from "./annotation";
 import { isDocumentValue, makeDocument, PAGE_SEPARATOR, type DocumentValue, type DocumentPage } from "../documentValue";
@@ -9,16 +9,15 @@ import {
 import { toTemplateValue } from "../templateValue";
 import { isFrameRef, readFrame } from "../frameBackend";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { getOwningEditor, getOwningView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { dropInputCables } from "../components/cablePrune";
-import { SolenoidSocket, type SocketDataType } from "../sockets";
 
 const FIXED = new Set(["template", "records"]);
 const BATCH_LOCALS = new Set(["record", "index"]);
 
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((k, i) => k === b[i]);
 
-export class ReportNode extends ClassicPreset.Node {
+export class ReportNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     document: "The rendered report as markdown, every embedded value resolved. In a mail merge, one page per record.",
     template: "A Note used as the template: its tags become the inputs and its frontmatter fills the ones left blank. The report's own text waits while it is in use.",
@@ -121,24 +120,11 @@ export class ReportNode extends ClassicPreset.Node {
     return embedBareVariables(body, wired);
   }
 
-  private sourceTypes(): Map<string, SocketDataType> {
-    const out = new Map<string, SocketDataType>();
-    const ed = getOwningEditor(this.id);
-    if (!ed) return out;
-    for (const c of ed.getConnections()) {
-      if (c.target !== this.id) continue;
-      const s = ed.getNode(c.source)?.outputs[c.sourceOutput]?.socket;
-      if (s instanceof SolenoidSocket) out.set(c.targetInput, s.dataType);
-    }
-    return out;
-  }
-
-  private async templateVariables(refs: Record<string, unknown>, present: ReadonlySet<string>, fallbackTypes: Map<string, SocketDataType | undefined>): Promise<Record<string, unknown>> {
-    const types = this.sourceTypes();
+  private async templateVariables(refs: Record<string, unknown>, present: ReadonlySet<string>): Promise<Record<string, unknown>> {
     const vars: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(refs)) {
       if (!present.has(k)) continue;
-      vars[k] = toTemplateValue(isFrameRef(v) ? await readFrame(v) : v, types.get(k) ?? fallbackTypes.get(k));
+      vars[k] = toTemplateValue(isFrameRef(v) ? await readFrame(v) : v);
     }
     return vars;
   }
@@ -171,7 +157,6 @@ export class ReportNode extends ClassicPreset.Node {
 
     const tplNote = this._templateDoc ? new NoteNode({ body: source }) : null;
     const defaults = tplNote?.fieldValues() ?? {};
-    const fallbackTypes = new Map<string, SocketDataType | undefined>(Object.keys(defaults).map((k) => [k, tplNote!.fieldType(k)]));
     this._refValues = new Map(desired.map((k) => [k, inputs?.[k] !== undefined ? (inputs[k][0] ?? null) : (defaults[k] ?? null)]));
     const refs: Record<string, unknown> = Object.fromEntries(this._refValues);
     const present = new Set(desired.filter((k) => inputs?.[k] !== undefined || k in defaults));
@@ -190,7 +175,7 @@ export class ReportNode extends ClassicPreset.Node {
         const fresh = tplNote.fieldValues();
         for (const k of desired) if (inputs?.[k] === undefined && k in fresh) { refs[k] = fresh[k]; this._refValues.set(k, fresh[k] as never); }
       }
-      this.templateVars = await this.templateVariables(refs, present, fallbackTypes);
+      this.templateVars = await this.templateVariables(refs, present);
       if (this._templateDoc) this.templateVars.template = source;
       if (recordsIn != null) {
         const raw = isFrameRef(recordsIn) ? await readFrame(recordsIn) : recordsIn;

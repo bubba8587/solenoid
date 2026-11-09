@@ -1,47 +1,80 @@
-// [[C79]], [[B11]], [[C48]]
+// [[C79]] packActivationIsPresentation, [[B11]] maximalMerge, [[C48]] appendLadder, [[formula-language#List kernels]], [[formula-language#Statistics kernels]], [[formula-language#Finance kernels]]
+import { solDate, type SolDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
+import { AT_ONCE_MS } from "../timing";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
+import { coreFunction } from "../coreFunction";
 import { nodeDisplayName } from "../../../src/graph/catalogUtils";
 import { BinNode, OutliersNode } from "../../../src/graph/nodes/list";
 import { EpochNode, DateTruncNode } from "../../../src/graph/nodes/date";
-import { ntileList, outlierFlags } from "../../../src/graph/nodes/listOps";
-import { epochToSerial, serialToEpoch, dateTrunc } from "../../../src/graph/nodes/dateOps";
+import { dateTrunc } from "../../../src/graph/nodes/dateOps";
 import { parseDateToSerial } from "../../../src/graph/nodes/dateSerial";
 import { isSolError, solError } from "../../../src/graph/errorValue";
-import { describeFrame, describeColumn, correlationMatrix, windowFrame } from "../../../src/graph/frameVerbs";
+import { describeFrame, summarizeColumn, correlationMatrix, windowFrame } from "../coreVerbs";
 import { WindowNode } from "../../../src/graph/nodes/frame";
 import { readFrame } from "../../../src/graph/frameBackend";
-import { amortizationSchedule } from "../../../src/graph/nodes/financeOps";
-import { anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP } from "../../../src/graph/nodes/statsOps";
 import { HypothesisTestNode } from "../../../src/graph/nodes/stats";
-import { matTrace, matRank, matNorm, matSolve, matEigh } from "../../../src/graph/nodes/matrixOps";
-import { fftReal, spectrum, type SpectrumRow } from "../../../src/graph/nodes/listOps";
 import { MatDetNode, MatSolveNode, MatEigenNode } from "../../../src/graph/nodes/matrix";
 import { SpectrumNode } from "../../../src/graph/nodes/list";
-import { levenshtein, damerauLevenshtein, jaroWinkler, textSimilarity, fuzzyBest } from "../../../src/graph/nodes/textOps";
 import { TextSimilarityNode, FuzzyMatchNode, TextTransformNode, PadTextNode, TruncateTextNode, HashNode, UuidNode, UrlEncodeNode, TemplateNode } from "../../../src/graph/nodes/text";
-import { templatePlaceholders, renderTemplate } from "../../../src/graph/nodes/textOps";
-import { requestRecalc } from "../../../src/graph/process";
-import { unaccent, slugify, padText, truncateText } from "../../../src/graph/nodes/textOps";
-import { argsortList, whichPositions } from "../../../src/graph/nodes/listOps";
-import { ArgMinMaxNode, SmoothNode, FindPeaksNode } from "../../../src/graph/nodes/list";
+import { inEditor } from "../cardPasses";
+import { ArgMinMaxNode, SmoothNode } from "../../../src/graph/nodes/list";
 import { numListOut, numOut, listIn, logicalListIn } from "../../../src/graph/nodes/shared";
-import { fitEts, etsForecast, etsInterval, detectSeason } from "../../../src/graph/nodes/forecastOps";
 import { EtsForecastNode, FitDistributionNode, DecomposeNode } from "../../../src/graph/nodes/stats";
-import { seasonalDecompose } from "../../../src/graph/nodes/forecastOps";
-import { polyRoots } from "../../../src/graph/nodes/mathUtils";
+import type { FitFamily } from "../../../src/graph/nodes/fitOps";
 import { PolyRootsNode } from "../../../src/graph/nodes/complex";
-import { fitDistribution, fitAll } from "../../../src/graph/nodes/fitOps";
-import { DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode } from "../../../src/graph/nodes/frame";
+import { DescribeNode, CorrMatrixNode, KMeansNode } from "../../../src/graph/nodes/frame";
 import { AmortizationNode, ReturnsNode } from "../../../src/graph/nodes/finance";
-import { periodReturns, cumulativeReturns, drawdowns, maxDrawdown, cagr, volatility, sharpeRatio, sortinoRatio } from "../../../src/graph/nodes/financeOps";
 import type { FrameValue } from "../../../src/graph/frame";
 import { isFrameValue } from "../../../src/graph/frame";
 
-// python-r-gap.md Tier 1: quantile bins, outliers, epoch, date truncation. Each formula
+// The Python and R survey's Tier 1: quantile bins, outliers, epoch, date truncation. Each formula
 // runs its node's kernel; values pinned against pandas / R / scipy conventions.
+const FIT_FAMILY_LABEL: Record<FitFamily, string> = {
+  normal: "Normal", lognorm: "Lognormal", expon: "Exponential", gamma: "Gamma", weibull: "Weibull",
+  uniform: "Uniform", beta: "Beta", poisson: "Poisson",
+};
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const d = (s: string) => parseDateToSerial(s);
+const core = (name: string) => coreFunction(name)!;
+const ntileList = core("NTILE");
+const outlierFlags = (x: unknown[], method: string, threshold: number) => core("ISOUTLIER")(x, method, threshold) as unknown[];
+const epochToSerial = (epoch: number, unit: string) => (core("FROMEPOCH")(epoch, unit) as SolDate).__date;
+const serialToEpoch = (serial: number, unit: string) => core("TOEPOCH")(solDate(serial), unit) as number;
+const anovaP = (groups: number[][]) => core("ANOVA")(...groups);
+const kruskalP = (groups: number[][]) => core("KRUSKAL")(...groups);
+const mannWhitneyP = core("MANNWHITNEY");
+const wilcoxonSignedRankP = core("WILCOXON");
+const ksTwoSampleP = core("KSTEST");
+const fisherExactP = core("FISHEREXACT");
+const twoProportionP = core("PROPTEST");
+const binomTestP = core("BINOMTEST");
+const matTrace = core("TRACE");
+const matRank = core("MATRIXRANK");
+const matNorm = core("NORM");
+const textSimilarity = core("SIMILARITY");
+const levenshtein = core("LEVENSHTEIN");
+const jaroWinkler = (a: string, b: string) => textSimilarity(a, b, "jaro_winkler");
+/** The edit distance behind SIMILARITY's damerau ratio, 1 − d / the longer length. */
+const damerauLevenshtein = (a: string, b: string) => Math.round((1 - (textSimilarity(a, b, "damerau") as number)) * Math.max(a.length, b.length));
+const unaccent = core("UNACCENT");
+const slugify = core("SLUGIFY");
+const padText = (...a: unknown[]) => core("PADTEXT")(...a);
+const truncateText = (...a: unknown[]) => core("TRUNCATETEXT")(...a);
+const argsortList = (...a: unknown[]) => core("ARGSORT")(...a);
+const whichPositions = core("WHICH");
+/** DECOMPOSE's three components, or null where it answers blank. */
+function seasonalDecompose(y: (number | null)[], period: number, model = "additive") {
+  const part = (c: string) => core("DECOMPOSE")(y, period, c, model) as (number | null)[];
+  const trend = part("trend");
+  return Array.isArray(trend) ? { trend, seasonal: part("seasonal"), residual: part("residual") } : null;
+}
+/** POLYROOTS as [re, im] pairs, or null where it refuses. */
+function polyRoots(coefficients: number[]): [number, number][] | null {
+  const r = core("POLYROOTS")(coefficients);
+  if (isSolError(r)) return null;
+  return (r as unknown[]).map((z) => (typeof z === "number" ? [z, 0] : [(z as { re: number }).re, (z as { im: number }).im]));
+}
 
 describe("NTILE / Bin quantiles mode (dplyr ntile, pandas qcut)", () => {
   it("splits into equal-count buckets 1..n, blanks stay blank, errors ride", () => {
@@ -82,6 +115,9 @@ describe("ISOUTLIER / Outliers node", () => {
     // A wired blank list → null frame (propagate).
     expect(new OutliersNode().data({ list: [null as unknown as number[]] }).result).toBeNull();
     expect(isSolError(ev("ISOUTLIER(x, \"huh\")", { x }))).toBe(true);
+    for (const m of ["constructor", "__proto__", "toString"]) {
+      expect(ev(`ISOUTLIER(x, "${m}")`, { x })).toMatchObject({ code: "#DOMAIN!", message: "ISOUTLIER method must be z, iqr or mad" });
+    }
   });
 });
 
@@ -91,11 +127,11 @@ describe("FROMEPOCH / TOEPOCH", () => {
     expect(epochToSerial(86400, "s")).toBe(25570);
     expect(epochToSerial(1_700_000_000, "s")).toBeCloseTo(d("2023-11-14") + 22.2222 / 24, 3); // 2023-11-14T22:13:20Z
     expect(serialToEpoch(epochToSerial(1_700_000_000_000, "ms"), "ms")).toBeCloseTo(1_700_000_000_000, 3);
-    expect(ev("FROMEPOCH(0)")).toBe(25569);
-    expect(ev("TOEPOCH(25570, \"ms\")")).toBe(86400000);
-    expect(isSolError(ev("TOEPOCH(25570, \"h\")"))).toBe(true);
-    expect(new EpochNode({ op: "from" }).data({ value: [86400] }).result).toBe(25570);
-    expect(new EpochNode({ op: "to", unit: "ms" }).data({ value: [25570] }).result).toBe(86400000);
+    expect(ev("FROMEPOCH(0)")).toEqual(solDate(25569));
+    expect(ev("TOEPOCH(DATE(1970, 1, 2), \"ms\")")).toBe(86400000);
+    expect(isSolError(ev("TOEPOCH(DATE(1970, 1, 2), \"h\")"))).toBe(true);
+    expect(new EpochNode({ op: "from" }).data({ value: [86400] }).result).toEqual(solDate(25570));
+    expect(new EpochNode({ op: "to", unit: "ms" }).data({ value: [solDate(25570)] }).result).toBe(86400000);
   });
 });
 
@@ -118,12 +154,12 @@ describe("DATETRUNC / Truncate Date (floor_date / ceiling_date)", () => {
     expect(dateTrunc(d("2026-12-15"), "month", true)).toBe(d("2027-01-01"));
   });
   it("formula == node, unit spellings from Excel/pandas/lubridate accepted", () => {
-    expect(ev("DATETRUNC(x, \"month\")", { x })).toBe(d("2026-03-01"));
-    expect(ev("DATETRUNC(x, \"M\")", { x })).toBe(d("2026-03-01"));
-    expect(ev("DATETRUNC(x, \"quarter\", TRUE)", { x })).toBe(d("2026-04-01"));
-    expect(isSolError(ev("DATETRUNC(x, \"fortnight\")", { x }))).toBe(true);
-    expect(new DateTruncNode({ unit: "week" }).data({ date: [x] }).result).toBe(d("2026-03-16"));
-    expect(new DateTruncNode({ unit: "year", ceiling: true }).data({ date: [x] }).result).toBe(d("2027-01-01"));
+    expect(ev("DATETRUNC(x, \"month\")", { x: solDate(x) })).toEqual(solDate(d("2026-03-01")));
+    expect(ev("DATETRUNC(x, \"M\")", { x: solDate(x) })).toEqual(solDate(d("2026-03-01")));
+    expect(ev("DATETRUNC(x, \"quarter\", TRUE)", { x: solDate(x) })).toEqual(solDate(d("2026-04-01")));
+    expect(isSolError(ev("DATETRUNC(x, \"fortnight\")", { x: solDate(x) }))).toBe(true);
+    expect(new DateTruncNode({ unit: "week" }).data({ date: [solDate(x)] }).result).toEqual(solDate(d("2026-03-16")));
+    expect(new DateTruncNode({ unit: "year", ceiling: true }).data({ date: [solDate(x)] }).result).toEqual(solDate(d("2027-01-01")));
   });
 });
 
@@ -152,12 +188,15 @@ describe("Describe (pandas describe / R summary)", () => {
     expect(col("std")![0]).toBeCloseTo(1.2909944487358056, 12); // pandas ddof=1
     expect(col("25%")).toEqual([1.75, null, null]);
     expect(col("50%")).toEqual([2.5, null, null]);
-    expect(col("max")).toEqual([4, null, 45004]);
+    // A date column beside them makes min and max read as each column shows its own: never a date as a serial ([[C137]]).
+    expect(col("max")).toEqual(["4", null, "19-Mar-2023"]);
+    expect(out.columns.find((c) => c.name === "max")!.type).toBe("string");
     expect(new DescribeNode().data({ frame: [f] }).frame).toEqual(out);
   });
 });
 
-describe("describeColumn (the shared kernel behind describeFrame + the popup footer)", () => {
+describe("columnProfiles (Describe's kernel behind the popup footer)", () => {
+  const describeColumn = (values: unknown[], type: "number" | "string" | "date") => summarizeColumn(values, type).profile;
   it("counts errors as their own share of present (present = valid + error)", () => {
     const p = describeColumn([1, solError("#DIV/0!", "x"), 3, null], "number");
     expect(p.count).toBe(3); // present includes the error cell
@@ -220,6 +259,16 @@ describe("Correlation Matrix (df.corr / cor)", () => {
 });
 
 describe("Amortization schedule", () => {
+  /** The card's schedule as rows; none where it answers no frame. */
+  const amortizationSchedule = (rate: number, nper: number, pv: number, fv = 0, timing: "end" | "beg" = "end") => {
+    const node = new AmortizationNode({ paymentTiming: timing }); node.literals = { rate, nper, pv, fv };
+    const f = node.data({}).frame as FrameValue | null;
+    if (!f) return [];
+    const col = (name: string) => f.columns.find((c) => c.name === name)!.values as number[];
+    return col("Period").map((period, i) => ({
+      period, payment: col("Payment")[i], interest: col("Interest")[i], principal: col("Principal")[i], balance: col("Balance")[i],
+    }));
+  };
   it("balance amortizes to 0; interest + principal = payment each period; totals match CUMIPMT", () => {
     const rows = amortizationSchedule(0.005, 12, 10000);
     expect(rows).toHaveLength(12);
@@ -232,14 +281,14 @@ describe("Amortization schedule", () => {
     expect(amortizationSchedule(0, 4, 1000)[0].payment).toBe(-250);
     expect(amortizationSchedule(0.01, 0, 1000)).toEqual([]);
   });
-  it("payment at the start of the period bears no first-period interest", () => {
-    const rows = amortizationSchedule(0.005, 12, 10000, 0, 1);
-    expect(rows[0].interest).toBe(0);
-    expect(rows[11].balance).toBeCloseTo(0, 6);
-    const node = new AmortizationNode(); node.literals = { rate: 0.005, nper: 12, pv: 10000, fv: 0 };
-    const f = node.data({}).frame!;
-    expect(f.columns.map((c) => c.name)).toEqual(["Period", "Payment", "Interest", "Principal", "Balance"]);
-    expect(f.columns[4].values[11] as number).toBeCloseTo(0, 6);
+  // The cap is the shared generator cap (`MAX_GENERATED`), whose boundary generatorCaps.test.ts pins.
+  it("a row per period, so a count past a million (or an infinite one) is refused at once", () => {
+    for (const nper of [1_000_001, 1e9, Infinity]) {
+      const node = new AmortizationNode(); node.literals = { rate: 0.005, nper, pv: 10000, fv: 0 };
+      expect((node.data({}).frame as { code?: string }).code).toBe("#DOMAIN!");
+    }
+    const node = new AmortizationNode(); node.literals = { rate: 0.005, nper: 360, pv: 10000, fv: 0 };
+    expect((node.data({}).frame as FrameValue).columns[0].values.length).toBe(360);
   });
 });
 
@@ -279,6 +328,7 @@ describe("Hypothesis tests beyond Excel's four (values from scipy / R)", () => {
     const big2 = [-0.627, -0.083, 0.528, -0.345, 0.502, 0.695, 0.636, 0.094, 1.194, 1.491, 0.921, -0.218, 1.332, 0.099, 1.479, -0.472, 1.514, 0.58, -0.649, 0.286, 0.654, 0.873, -0.382, -0.507, 0.8, 0.133, 0.836, 1.36, -1.049, 0.854, 1.825, 0.302, -0.211, 1.352, 0.853];
     expect(ksTwoSampleP(big1, big2)).toBeCloseTo(0.059495912884303954, 9);
     expect(ksTwoSampleP(a, a)).toBe(1);
+    expect(ksTwoSampleP([1, NaN], [2, 3])).toBeNull(); // a NaN never compares, so the merge would never end
   });
   it("two-proportion z (pooled, no correction): z = 0.15/sqrt(0.375·0.625·0.02) = 2.1909 → p = 0.0284597", () => {
     expect(twoProportionP(45, 100, 30, 100)).toBeCloseTo(0.02845973691631065, 10);
@@ -312,15 +362,13 @@ describe("linear algebra set (numpy.linalg reference values)", () => {
     expect(new MatDetNode({ op: "rank" }).data({ matrix: [[[1, 2], [2, 4]]] }).result).toBe(1);
   });
   it("SOLVE: numpy.linalg.solve; singular is #DIV/0!", () => {
-    const x = matSolve(A, [7, 5, 9])!;
+    const x = ev("SOLVE(m, b)", { m: A, b: [7, 5, 9] }) as number[];
     [0.6046511627906977, 1.4651162790697674, 1.5581395348837208].forEach((v, i) => expect(x[i]).toBeCloseTo(v, 12));
-    expect(matSolve([[1, 2], [2, 4]], [1, 2])).toBeNull();
-    const viaFormula = ev("SOLVE(m, b)", { m: A, b: [7, 5, 9] }) as number[];
-    viaFormula.forEach((v, i) => expect(v).toBeCloseTo(x[i], 12));
+    expect(isSolError(ev("SOLVE(m, b)", { m: [[1, 2], [2, 4]], b: [1, 2] }))).toBe(true);
     expect(isSolError(new MatSolveNode().data({ matrix: [[[1, 2], [2, 4]]], b: [[1, 2]] }).result)).toBe(true);
   });
   it("EIGEN (symmetric): numpy.linalg.eigh values descending, unit eigenvectors as columns, A·v = λ·v", () => {
-    const e = matEigh(A)!;
+    const e = new MatEigenNode().data({ matrix: [A] }) as { values: number[]; vectors: number[][] };
     [6.669079088282288, 3.476023602918134, 1.854897308799577].forEach((v, i) => expect(e.values[i]).toBeCloseTo(v, 10));
     for (let c = 0; c < 3; c++) {
       const v = e.vectors.map((r) => r[c]);
@@ -328,32 +376,30 @@ describe("linear algebra set (numpy.linalg reference values)", () => {
       Av.forEach((val, k) => expect(val).toBeCloseTo(e.values[c] * v[k], 9));
       expect(Math.hypot(...v)).toBeCloseTo(1, 12);
     }
-    expect(matEigh([[1, 2], [3, 4]])).toBeNull(); // not symmetric
-    const node = new MatEigenNode().data({ matrix: [A] });
-    expect(node.values).toEqual(e.values);
+    expect(isSolError(new MatEigenNode().data({ matrix: [[[1, 2], [3, 4]]] }).values)).toBe(true); // not symmetric
     expect(ev("EIGENVALUES(m)", { m: A })).toEqual(e.values);
   });
 });
 
 describe("Spectrum (FFT) — numpy.fft reference", () => {
-  it("fftReal matches numpy.fft.fft on a non-power-of-two length (Bluestein)", () => {
-    const { re, im } = fftReal([1, 2, 3, 4, 5, 6, 7]);
-    const wantRe = [28, -3.5, -3.5, -3.5, -3.5, -3.5, -3.5];
-    const wantIm = [0, 7.267824888003178, 2.7911568610884143, 0.7988521603655251, -0.7988521603655251, -2.7911568610884143, -7.267824888003178];
-    re.forEach((v, i) => expect(v).toBeCloseTo(wantRe[i], 10));
-    im.forEach((v, i) => expect(v).toBeCloseTo(wantIm[i], 10));
+  it("matches numpy.fft.fft on a non-power-of-two length (Bluestein): one-sided amplitude and phase", () => {
+    const wantRe = [28, -3.5, -3.5, -3.5];
+    const wantIm = [0, 7.267824888003178, 2.7911568610884143, 0.7988521603655251];
+    const rows = ev("SPECTRUM(s, 1)", { s: [1, 2, 3, 4, 5, 6, 7] }) as number[][];
+    expect(rows).toHaveLength(4);
+    rows.forEach(([, magnitude, phase], k) => {
+      expect(magnitude).toBeCloseTo(((k === 0 ? 1 : 2) * Math.hypot(wantRe[k], wantIm[k])) / 7, 10);
+      if (k > 0) expect(phase).toBeCloseTo(Math.atan2(wantIm[k], wantRe[k]), 10);
+    });
   });
   it("a 5 Hz sine of amplitude 3 on a 1 V offset, sampled 64/s: bin 5 reads 3 at 5 Hz, DC reads 1", () => {
     const sig = Array.from({ length: 64 }, (_, i) => 3 * Math.sin((2 * Math.PI * 5 * i) / 64) + 1);
-    const rows = spectrum(sig, 64) as SpectrumRow[];
-    expect(rows).toHaveLength(33);
-    expect(rows[5].frequency).toBe(5);
-    expect(rows[5].magnitude).toBeCloseTo(3, 10);
-    expect(rows[0].magnitude).toBeCloseTo(1, 10);
-    expect(rows[7].magnitude).toBeCloseTo(0, 10);
     const node = new SpectrumNode(); node.literals.rate = 64;
     const out = node.data({ list: [sig] }).result as number[][];
+    expect(out).toHaveLength(33);
     expect(out[5][0]).toBe(5); expect(out[5][1] as number).toBeCloseTo(3, 10);
+    expect(out[0][1]).toBeCloseTo(1, 10);
+    expect(out[7][1]).toBeCloseTo(0, 10);
     const viaFormula = ev("SPECTRUM(s, 64)", { s: sig }) as number[][];
     expect(viaFormula[5][1]).toBeCloseTo(3, 10);
   });
@@ -376,8 +422,7 @@ describe("string distance / fuzzy match (textbook values; rapidfuzz / stringdist
   });
   it("Fuzzy Match picks the closest candidate above the threshold, #N/A below it; a list of needles spills", () => {
     const cands = ["New York", "Los Angeles", "Chicago", "Houston"];
-    expect(fuzzyBest("Chicgo", cands, "ratio", 0.6)).toMatchObject({ text: "Chicago", index: 2 });
-    expect(fuzzyBest("Zurich", cands, "ratio", 0.6)).toBeNull();
+    expect(ev("FUZZYMATCH(\"Chicgo\", c, 0.6, \"ratio\")", { c: cands })).toBe("Chicago");
     expect(ev("FUZZYMATCH(\"New Yrok\", c)", { c: cands })).toBe("New York");
     expect(isSolError(ev("FUZZYMATCH(\"Zurich\", c)", { c: cands }))).toBe(true);
     const n = new FuzzyMatchNode(); n.literals.threshold = 0.6;
@@ -392,23 +437,8 @@ describe("string distance / fuzzy match (textbook values; rapidfuzz / stringdist
 describe("Forecast (ETS) — Holt–Winters", () => {
   // A clean series: level 100, slope 2 per step, additive season of length 12 and amplitude 10.
   const y = Array.from({ length: 36 }, (_, t) => 100 + 2 * t + 10 * Math.sin((2 * Math.PI * t) / 12));
-  it("detects the 12-step season and forecasts the continuation of trend + season", () => {
-    expect(detectSeason(y)).toBe(12);
-    const fit = fitEts(y, 12)!;
-    expect(fit.season).toBe(12);
-    const fc = etsForecast(fit, 12);
-    for (let k = 1; k <= 12; k++) {
-      const t = 35 + k;
-      expect(fc[k - 1]).toBeCloseTo(100 + 2 * t + 10 * Math.sin((2 * Math.PI * t) / 12), 0); // within ±0.5 on a noiseless series
-    }
-    expect(etsInterval(fit, 4)).toBeGreaterThan(etsInterval(fit, 1)); // the band grows with √h
-  });
-  it("trend-only (Holt) on a straight line extrapolates it; too short is blank", () => {
-    const line = [3, 5, 7, 9, 11, 13, 15, 17];
-    const fit = fitEts(line, 1)!;
-    expect(etsForecast(fit, 3).map((v) => Math.round(v * 1000) / 1000)).toEqual([19, 21, 23]);
-    expect(fitEts([1, 2], 1)).toBeNull();
-    expect(fitEts(line, 12)).toBeNull(); // fewer than two seasons
+  it("detects the 12-step season", () => {
+    expect(ev("FORECAST.ETS.SEASONALITY(y)", { y })).toBe(12);
   });
   it("node and FORECAST.ETS family agree; the formula reads Excel's timeline / target convention", () => {
     const node = new EtsForecastNode(); node.literals = { horizon: 3, season: 1 };
@@ -424,6 +454,18 @@ describe("Forecast (ETS) — Holt–Winters", () => {
     expect(ev("FORECAST.ETS.CONFINT(t, v, tl)", { t: 45000 + 36, v: y, tl: timeline })).toBeCloseTo((fc.columns[1].values as number[])[0], 10);
     expect(ev("FORECAST.ETS.SEASONALITY(v)", { v: [3, 5, 7, 9, 11, 13, 15, 17] })).toBe(0);
     expect(isSolError(ev("FORECAST.ETS(t, v, tl)", { t: 45000, v: y, tl: timeline }))).toBe(true); // target not past the end
+  });
+  it("a target too far past the timeline is refused at once, and a NaN horizon is an error, not undefined ([[C120]] linearWork)", () => {
+    const timeline = y.map((_, i) => 45000 + i);
+    const t0 = performance.now();
+    for (const t of [1e308, Infinity]) {
+      expect(ev("FORECAST.ETS(t, v, tl)", { t, v: y, tl: timeline })).toMatchObject({ code: "#DOMAIN!", message: "FORECAST.ETS takes a target at most 1,000,000 steps past the timeline's end" });
+      expect(ev("FORECAST.ETS.CONFINT(t, v, tl)", { t, v: y, tl: timeline })).toMatchObject({ code: "#DOMAIN!", message: "FORECAST.ETS.CONFINT takes a target at most 1,000,000 steps past the timeline's end" });
+    }
+    expect(performance.now() - t0).toBeLessThan(AT_ONCE_MS);
+    const infLine = timeline.map((v, i) => (i === timeline.length - 1 ? Infinity : v));
+    expect(isSolError(ev("FORECAST.ETS(t, v, tl)", { t: Infinity, v: y, tl: infLine }))).toBe(true);
+    expect(isSolError(ev("FORECAST.ETS.CONFINT(t, v, tl)", { t: Infinity, v: y, tl: infLine }))).toBe(true);
   });
 });
 
@@ -478,6 +520,13 @@ describe("Fit Distribution (scipy.stats.<dist>.fit with loc fixed at 0; referenc
   const normal = [50.01, 52.39, 47.807, 42.875, 46.363, 42.067, 50.481, 60.722, 46.062, 45.036, 53.919, 52.855, 50.843, 42.556, 49.766, 55.562, 39.246, 46.339, 34.79, 39.684, 35.266, 48.119, 39.86, 52.17, 51.254, 48.505, 29.866, 45.69, 49.612, 50.906, 37.759, 46.178, 42.172, 43.529, 58.487, 43.54, 49.74, 57.075, 45.331, 49.106, 50.884, 50.51, 40.2, 50.609, 60.871, 37.623, 56.875, 50.955, 44.868, 66.003, 56.098, 40.406, 50.596, 54.614, 48.49, 55.463, 49.468, 55.338, 61.508, 44.595];
   const gamma = [7.4389, 7.0784, 4.2628, 11.3314, 2.2322, 9.7956, 4.6617, 13.7808, 5.1595, 5.4566, 4.7872, 8.1846, 5.6672, 6.4493, 13.129, 6.394, 5.1117, 6.4762, 2.3036, 5.246, 7.2517, 3.4755, 7.4499, 5.7517, 10.1216, 2.9205, 6.6571, 7.7163, 11.8068, 6.9024, 5.9902, 2.6746, 0.9033, 3.4356, 7.0956, 13.7236, 6.2137, 5.8193, 12.6582, 6.2766, 4.1088, 13.7812, 11.7664, 3.8905, 4.3267, 15.2916, 5.2635, 3.5484, 3.9636, 8.1063, 1.9613, 4.0894, 10.3154, 6.8206, 8.7222, 5.8892, 2.473, 4.508, 6.3519, 4.505];
   const weibull = [1.7331, 1.3532, 1.971, 6.3685, 2.1115, 12.7547, 1.4775, 6.7843, 4.2176, 9.082, 1.3785, 7.1777, 18.0275, 10.6528, 5.7628, 12.9813, 8.2315, 3.754, 13.5897, 2.3645, 13.0238, 14.6899, 9.9682, 5.5984, 14.6648, 3.0534, 6.4013, 11.9235, 9.891, 9.058, 24.6557, 8.6749, 4.4808, 7.7891, 12.5102, 3.5004, 12.5551, 17.767, 9.1013, 2.5291, 4.9693, 6.296, 8.3783, 6.9626, 14.2832, 9.7913, 4.7693, 1.4389, 4.8358, 4.8651, 12.4886, 5.8338, 16.4789, 9.6223, 10.9156, 13.0275, 1.1126, 9.6578, 3.3529, 9.447];
+  /** The card's ranking: each supported family with its parameters and KS distance, best AIC first. */
+  const ranking = (x: number[]) => {
+    const f = new FitDistributionNode().data({ list: [x] }).ranking as FrameValue;
+    const col = (name: string) => f.columns.find((c) => c.name === name)!.values;
+    return col("family").map((family, i) => ({ family, params: [col("value 1")[i], col("value 2")[i]] as number[], ks: col("KS")[i] as number }));
+  };
+  const fitDistribution = (x: number[], family: FitFamily) => ranking(x).find((r) => r.family === FIT_FAMILY_LABEL[family]) ?? null;
   it("normal MLE == scipy norm.fit; KS matches kstest", () => {
     const f = fitDistribution(normal, "normal")!;
     expect(f.params[0]).toBeCloseTo(48.3252, 10);
@@ -495,8 +544,8 @@ describe("Fit Distribution (scipy.stats.<dist>.fit with loc fixed at 0; referenc
     expect(f.params[1]).toBeCloseTo(9.18942, 4);
   });
   it("the ranking picks the generating family by AIC; unsupported families are skipped, not errors", () => {
-    expect(fitAll(normal)[0].family).toBe("normal");
-    expect(fitAll(gamma)[0].family).toBe("gamma");
+    expect(ranking(normal)[0].family).toBe("Normal");
+    expect(ranking(gamma)[0].family).toBe("Gamma");
     expect(fitDistribution([-1, 2, 3, 4], "lognorm")).toBeNull();
     expect(fitDistribution([1.5, 2, 3], "poisson")).toBeNull();
     const node = new FitDistributionNode().data({ list: [normal] });
@@ -547,10 +596,15 @@ describe("text tier 2: UNACCENT / SLUGIFY / Pad Text / Truncate Text", () => {
     tr.literals.width = 5;
     expect(tr.data({ text: ["abcdefgh"] }).result).toBe("abcd…");
     expect(ev('UNACCENT("über")')).toBe("uber");
+    // The letters UNACCENT spells out itself, since decomposing leaves them whole.
+    expect(ev('UNACCENT("ß æ Æ ø Ø œ Œ đ Đ ł Ł ð Ð þ Þ ı ŋ Ŋ")')).toBe("ss ae AE o O oe OE d D l L d D th TH i ng NG");
     expect(ev('SLUGIFY("Hello World", "_")')).toBe("hello_world");
     expect(ev('PADTEXT("7", 3, "left", "0")')).toBe("007");
     expect(ev('PADTEXT("ab", 4)')).toBe("ab  ");
     expect((ev('PADTEXT("ab", 4, "middle")') as { code?: string }).code).toBe("#DOMAIN!");
+    // [[C120]] linearWork: a huge width answers at once, at Excel's text limit like REPT.
+    expect((ev('PADTEXT("ab", 1e12)') as { code?: string }).code).toBe("#VALUE!");
+    expect((ev('PADTEXT("ab", 32767)') as string).length).toBe(32767);
     expect(ev('TRUNCATETEXT("abcdefgh", 5, "..")')).toBe("abc..");
   });
 });
@@ -597,26 +651,23 @@ describe("Returns card — pandas pct_change / cumprod, PerformanceAnalytics (re
     expect(a.length).toBe(ys.length);
     a.forEach((v, i) => (ys[i] === null ? expect(v).toBeNull() : expect(v).toBeCloseTo(ys[i] as number, 8)));
   };
-  it("log / simple returns lead with a blank; a blank price blanks both neighbours", () => {
-    close(periodReturns(P, true), [null, 0.0198026273, -0.0098522964, 0.0388398333, -0.0192313619, 0.0474022389, 0.0183491387, -0.0276515313]);
-    close(periodReturns(P, false), [null, ...R]);
-    close(periodReturns([100, null, 110, 121], false), [null, null, null, 0.1]);
-  });
   it("cumulative return compounds; drawdown is ≤ 0 from the running peak; max drawdown is its minimum", () => {
-    close(cumulativeReturns(R), [0.02, 0.01, 0.05, 0.03, 0.08, 0.1, 0.07]);
-    close(drawdowns(P), [0, 0, -0.0098039216, 0, -0.019047619, 0, 0, -0.0272727273]);
-    expect(maxDrawdown(P)).toBeCloseTo(-0.0272727273, 8);
-    expect(maxDrawdown([])).toBeNull();
+    const ev = (e: string, x: unknown[]) => compileEvaluator(e)!({ x });
+    close(ev("CUMRETURNS(x)", R), [0.02, 0.01, 0.05, 0.03, 0.08, 0.1, 0.07]);
+    close(ev("DRAWDOWN(x)", P), [0, 0, -0.0098039216, 0, -0.019047619, 0, 0, -0.0272727273]);
+    expect(ev("MAXDRAWDOWN(x)", P)).toBeCloseTo(-0.0272727273, 8);
+    expect(ev("MAXDRAWDOWN(x)", [])).toBeNull();
   });
   it("CAGR / volatility / Sharpe / Sortino annualise by periods per year; rf is per period", () => {
-    expect(cagr(P, 252)).toBeCloseTo(10.423942188538536, 6);
-    expect(cagr(P, 1)).toBeCloseTo(Math.pow(1.07, 1 / 7) - 1, 10);
-    expect(volatility(R, 252)).toBeCloseTo(0.46552064666834575, 8);
-    expect(sharpeRatio(R, 0, 252)).toBeCloseTo(5.455200388274644, 6);
-    expect(sharpeRatio(R, 0.001, 252)).toBeCloseTo(4.913871014801045, 6);
-    expect(sortinoRatio(R, 0.001, 252)).toBeCloseTo(10.501642446871466, 6);
-    expect((sharpeRatio([0.01, 0.01, 0.01]) as { code?: string }).code).toBe("#DIV/0!");
-    expect((cagr([0, 5]) as { code?: string }).code).toBe("#DOMAIN!");
+    const ev = (e: string, x: unknown[]) => compileEvaluator(e)!({ x });
+    expect(ev("CAGR(x, 252)", P)).toBeCloseTo(10.423942188538536, 6);
+    expect(ev("CAGR(x, 1)", P)).toBeCloseTo(Math.pow(1.07, 1 / 7) - 1, 10);
+    expect(ev("VOLATILITY(x, 252)", R)).toBeCloseTo(0.46552064666834575, 8);
+    expect(ev("SHARPE(x, 0, 252)", R)).toBeCloseTo(5.455200388274644, 6);
+    expect(ev("SHARPE(x, 0.001, 252)", R)).toBeCloseTo(4.913871014801045, 6);
+    expect(ev("SORTINO(x, 0.001, 252)", R)).toBeCloseTo(10.501642446871466, 6);
+    expect((ev("SHARPE(x)", [0.01, 0.01, 0.01]) as { code?: string }).code).toBe("#DIV/0!");
+    expect((ev("CAGR(x)", [0, 5]) as { code?: string }).code).toBe("#DOMAIN!");
   });
   it("the card swaps its rf / periods sockets and output rank with the op; formulas agree", () => {
     const n = new ReturnsNode({ op: "log" });
@@ -652,18 +703,21 @@ describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in has
     expect(ev('HASH("abc", "SHA-1")')).toBe("a9993e364706816aba3e25717850c26c9cd0d89d");
     expect(ev('HASH("abc", "fnv1a64")')).toBe("e71fa2190541574b");
     expect((ev('HASH("abc", "blake")') as { code?: string }).code).toBe("#DOMAIN!");
+    // An inherited key such as "constructor" is not an algorithm.
+    expect((ev('HASH("abc", "Constructor")') as { code?: string }).code).toBe("#DOMAIN!");
   });
   it("UUID is stable within a recalculation and fresh after one; the formula is volatile", async () => {
-    const n = new UuidNode();
-    const a = n.data().result;
+    const g = await inEditor(new UuidNode());
+    const a = await g.pass("result");
     expect(a).toMatch(/^[0-9a-f-]{36}$/);
-    expect(n.data().result).toBe(a);
-    await requestRecalc();
-    expect(n.data().result).not.toBe(a);
+    expect(await g.pass("result")).toBe(a);
+    g.recalc();
+    expect(await g.pass("result")).not.toBe(a);
+    g.dispose();
     expect(ev("UUID()")).not.toBe(ev("UUID()"));
   });
   it("UUID's save holds no UUID, so a recompute is never an edit for undo", async () => {
-    const { extractInit } = await import("../../../src/graph/copyPaste");
+    const { extractInit } = await import("../../../src/graph/nodeInit");
     const n = new UuidNode();
     n.data();
     expect(JSON.stringify(extractInit(n))).not.toMatch(/[0-9a-f]{8}-/);
@@ -680,11 +734,6 @@ describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in has
 
 describe("Template — str_glue / f-string placeholders", () => {
   const ev = (e: string, env: Record<string, unknown> = {}) => compileEvaluator(e)!(env);
-  it("the kernel finds distinct names in order, honours {{ }} and a :spec", () => {
-    expect(templatePlaceholders("Hi {name}, {total:0.00} for {name} — {{literal}} {0}")).toEqual(["name", "total", "0"]);
-    const out = renderTemplate("{a}+{b:x}={{}}", (n) => ({ a: 1, b: 2 } as Record<string, number>)[n], (v, _n, spec) => `${v}${spec ? "[" + spec + "]" : ""}`);
-    expect(out).toBe("1+2[x]={}");
-  });
   it("the node grows a socket per name, formats numbers through TEXT, broadcasts a list", async () => {
     const n = new TemplateNode();
     n.stringLiterals.template = "Hello {name}, total {total:0.00}";
@@ -709,7 +758,7 @@ describe("Template — str_glue / f-string placeholders", () => {
   });
 });
 
-describe("Smooth / Find Peaks cards (kernels pinned against scipy in signalOps.test.ts)", () => {
+describe("Smooth / Find Peaks cards (kernels pinned against scipy in signalFormulas.test.ts)", () => {
   const X = [1, 3, 2, 5, 4, 6, 8, 7, 9, 12, 10, 11];
   const Y = [0, 1, 0, 2, 0, 3, 2, 3, 0, 5, 4, 0, 1, 1, 1, 0];
   it("Smooth swaps its parameter sockets with the op; the formulas agree", () => {
@@ -723,23 +772,14 @@ describe("Smooth / Find Peaks cards (kernels pinned against scipy in signalOps.t
     expect(Object.keys(n.inputs)).toEqual(["list", "frac"]);
     const ev = (e: string) => compileEvaluator(e)!({ x: X, y: Y });
     expect((ev("SAVGOL(x, 5, 2)") as number[])[11]).toBeCloseTo(10.6, 5);
+    const five = (e: string) => compileEvaluator(e)!({ v: [1, 2, 3, 4, 5] });
+    expect(five("SAVGOL(v, 3, 0.5)")).toMatchObject({ code: "#DOMAIN!", message: "Order must be a whole number" });
+    expect(five("SAVGOL(v, 3.5, 1)")).toMatchObject({ code: "#DOMAIN!", message: "Window must be a whole number" });
     expect((ev("GAUSSIANSMOOTH(x, 2)") as number[])[0]).toBeCloseTo(2.331121, 5);
     expect((ev("LOWESS(x, 0.5)") as number[]).length).toBe(12);
     expect(ev("FINDPEAKS(y)")).toEqual([2, 4, 6, 8, 10, 14]);
     expect(ev("FINDPEAKS(y, 2.5)")).toEqual([6, 8, 10]);
     expect(ev("FINDPEAKS(y, 0, 1, 2)")).toEqual([4, 6, 8, 10]);
-  });
-  it("Find Peaks: unwired filters mean none; a Position/Height frame", () => {
-    const n = new FindPeaksNode();
-    const c0 = n.data({ list: [Y] }).result!.columns;
-    expect(c0.map((c) => c.name)).toEqual(["Position", "Height"]);
-    expect(c0[0].values).toEqual([2, 4, 6, 8, 10, 14]);
-    expect(c0[1].values).toEqual([1, 2, 3, 3, 5, 1]);
-    n.literals.prominence = 2;
-    expect(n.data({ list: [Y] }).result!.columns[0].values).toEqual([4, 6, 8, 10]);
-    expect(n.data({ list: [Y], distance: [3] }).result!.columns[0].values).toEqual([6, 10]);
-    // A wired blank list → null frame (propagate).
-    expect(new FindPeaksNode().data({ list: [null as unknown as number[]] }).result).toBeNull();
   });
 });
 
@@ -808,7 +848,7 @@ describe("Polynomial Roots — numpy.roots references", () => {
   });
 });
 
-describe("K-Means / PCA cards (kernels pinned in mlOps.test.ts)", () => {
+describe("K-Means / PCA cards (k-means++ seeded restarts; numpy eigh of the covariance, sklearn / prcomp signs)", () => {
   const frame = (cols: [string, (number | null)[]][]): FrameValue => ({ __frame: true, columns: cols.map(([name, values]) => ({ name, type: "number", values })) });
   it("K-Means: a cluster per row (blank rows skipped), a centers frame with counts", () => {
     const f = frame([["x", [1, 1.2, 0.8, 5, 5.2, 4.8, 1.1, null]], ["y", [1, 0.8, 1.1, 5, 4.9, 5.1, 1.2, 2]]]);
@@ -820,43 +860,9 @@ describe("K-Means / PCA cards (kernels pinned in mlOps.test.ts)", () => {
     expect(c.columns.map((col) => col.name)).toEqual(["Cluster", "x", "y", "Count"]);
     expect(c.columns[3].values).toEqual([4, 3]);
     expect(c.columns[1].values[1]).toBe(5);
-  });
-  it("PCA: scores per row (blank rows blank), loadings per feature, explained ratios", () => {
-    const f = frame([["a", [2.5, 0.5, 2.2, 1.9, 3.1, 2.3, 2, 1, 1.5, 1.1]], ["b", [2.4, 0.7, 2.9, 2.2, 3.0, 2.7, 1.6, 1.1, 1.6, 0.9]]]);
-    const n = new PcaNode();
-    const out = n.data({ frame: [f] });
-    const sc = out.scores as FrameValue;
-    expect(sc.columns.map((c) => c.name)).toEqual(["PC1", "PC2"]);
-    expect(sc.columns[0].values[0]).toBeCloseTo(0.82797, 5);
-    expect(out.explained![0]).toBeCloseTo(0.963181, 5);
-    const ld = out.loadings as FrameValue;
-    expect(ld.columns[0].values).toEqual(["a", "b"]);
-    expect(ld.columns[1].values[0]).toBeCloseTo(0.677873, 5);
-    n.standardize = true;
-    expect(n.data({ frame: [f] }).explained![0]).toBeCloseTo(0.962965, 5);
+    expect(c.columns[1].values[0]).toBeCloseTo(1.025, 9);
+    expect(c.columns[2].values[0]).toBeCloseTo(1.025, 9);
+    expect(n.data({ frame: [f] })).toEqual(out); // seeded: the same answer every recalculation
   });
 });
 
-describe("Logistic Regression card (IRLS kernel pinned in mlOps.test.ts)", () => {
-  it("coefficient frame + per-row probabilities; a logical target works; blank rows skipped", () => {
-    const hours = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4, 4.25, 4.5, 4.75, 5, 5.5];
-    const pass = [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1];
-    const f: FrameValue = { __frame: true, columns: [
-      { name: "hours", type: "number", values: [...hours, null] },
-      { name: "pass", type: "logical", values: [...pass.map((v) => v === 1), true] },
-    ] };
-    const n = new LogisticNode();
-    n.stringLiterals.target = "pass";
-    const out = n.data({ frame: [f] });
-    const c = out.coefficients as FrameValue;
-    expect(c.columns[0].values).toEqual(["(Intercept)", "hours"]);
-    expect(c.columns[1].values[0]).toBeCloseTo(-4.0777, 3);
-    expect(c.columns[1].values[1]).toBeCloseTo(1.5046, 3);
-    expect(c.columns[4].values[1]).toBeCloseTo(0.0167, 3);
-    expect(out.probabilities!.length).toBe(21);
-    expect(out.probabilities![0]).toBeCloseTo(0.03471, 4);
-    expect(out.probabilities![20]).toBeNull();
-    n.stringLiterals.target = "nope";
-    expect((n.data({ frame: [f] }).coefficients as { code?: string }).code).toBe("#REF!");
-  });
-});

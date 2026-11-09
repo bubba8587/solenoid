@@ -1,12 +1,12 @@
 // [[A1]] visualGraphCalculator
 
 import type { Emit } from "./components/nodeKit";
-import { ClassicPreset } from "rete";
+import { GraphNode } from "./graphModel";
 import type { JSXElementConstructor } from "react";
 import {
-  AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode, QrCodeNode,
-  SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ValueInputNode, DateRangeNode, XYPadNode,
-  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, GanttNode,
+  AngleDialNode, SlicerNode, CableSwitchNode, DelayedPassNode, NoteNode, ReportNode, DashboardNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode, QrCodeNode,
+  SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ValueInputNode, DateRangeNode, XYPadNode,
+  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, CardsNode, GanttNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode,
   ArithmeticNode, DisplayNode, ComparisonNode, MathFXNode,
@@ -22,11 +22,11 @@ import {
   SumProductNode, ChooseNode, SliderInputNode, IsTestNode,
   NaNode, AlertNode, NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, BetweenNode, IsCloseNode,
   ShuffleNode, NthElementNode, InterleaveNode, PadNode,
-  StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
+  StandardizeNode, FisherNode, BitwiseNode,
   DepreciationNode,
   TvmNode, PaymentBreakdownNode, NPVNode, IRRNode, MirrNode, AmortizationNode, ReturnsNode,
   DistributionsNode,
-  RegressionNode, ForecastNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
+  ForecastNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
   SeriesSumNode, MultinomialNode, SwitchNode, IfsNode,
   HypothesisTestNode,
   EtsForecastNode, DecomposeNode, OdeIntegrateNode, FitDistributionNode, InterpolateNode, LinestNode, BinomDistRangeNode,
@@ -46,13 +46,13 @@ import {
   DiscountSecurityNode, CouponNode, AccruedInterestNode, DurationNode,
   BondPricingNode,
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode,
-  TableInputNode, MatDetNode, MatSolveNode, MatEigenNode, SpectrumNode, TableMultNode, TableUnitNode, TableDiagNode, TableOuterNode, TableTransposeNode,
+  TableInputNode, MatDetNode, MatSolveNode, MatEigenNode, SpectrumNode, ConnectedRegionsNode, TableMultNode, TableUnitNode, TableDiagNode, TableOuterNode, TableTransposeNode,
   StackNode, TableReshapeNode, TableSelectNode, TakeDropNode, ExpandNode, SetCellNode, TableInfoNode,
   MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode, LambdaNode,
   FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode,
   HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
   ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode,
-  SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, AllocatorNode, SettleNode, PayoffPlannerNode, ScheduleNode, EarnedValueNode,
+  SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, ChoiceLadderNode, AllocatorNode, SettleNode, PayoffPlannerNode, ScheduleNode, EarnedValueNode,
   ReconcileNode,
   BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode, CubeInputNode,
   WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode, DataFeedNode, GeocodeNode, WeatherNode, HolidaysNode, FxNode, VaultFolderNode, TaskNotesNode,
@@ -73,16 +73,16 @@ import {
   IsInNode, TallyNode,
   ReverseTextNode, SpellNumberNode,
   SolarPositionNode, SunriseSunsetNode, MoonPhaseNode,
-  ElementNode, MolarMassNode, ResistorCodeNode, EmSpectrumNode, HrZonesNode, PipeRoughnessNode, TriangleSolverNode,
+  ElementNode, MolarMassNode, ResistorCodeNode, EmSpectrumNode, HrZonesNode, PipeRoughnessNode, TriangleSolverNode, UnitCircleNode, CircleSolverNode, RegularPolygonNode, TwoPointsNode, PolygonPointsNode, SolidNode,
   PromoNode,
   PlaceholderNode,
   ExpectNode,
   TornadoNode,
-} from "./rete-nodes";
+} from "./nodeClasses";
 import {
-  AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, FileLinkComponent, SvgPickerComponent, QrCodeComponent,
-  SparklineComponent, ChartComponent, MergePlotsComponent, HistogramComponent, KpiComponent, ProportionComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapComponent, ChartBuilderComponent, ValueInputComponent, DateRangeComponent, XYPadComponent,
-  WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, QuiverComponent, RecordComponent, GanttComponent,
+  AngleDialComponent, SlicerComponent, CableSwitchComponent, DelayedPassComponent, NoteComponent, ReportComponent, DashboardComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, FileLinkComponent, SvgPickerComponent, QrCodeComponent,
+  SparklineComponent, ChartComponent, MergePlotsComponent, ConditionalRegionsComponent, HistogramComponent, KpiComponent, ProportionComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapComponent, ChartBuilderComponent, ValueInputComponent, DateRangeComponent, XYPadComponent,
+  WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, QuiverComponent, RecordComponent, CardsComponent, GanttComponent,
   PointPlotterComponent, CurveComponent, GridPainterComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
   ArithmeticComponent, DisplayComponent, ComparisonComponent,
@@ -98,12 +98,12 @@ import {
   SliderInputComponent, ColorPickerComponent, ColorBlendComponent, IsTestComponent, NaComponent, AlertComponent,
   NormalizeComponent, BinComponent, OutliersComponent, SmoothComponent, FindPeaksComponent, EpochComponent, DateTruncComponent, ShiftComponent, CombinationsComponent, EwmaComponent, ConvolveComponent, CrossComponent, PolyfitComponent, TrapzComponent, RleComponent, BetweenComponent, IsCloseComponent, ShuffleComponent,
   NthElementComponent, InterleaveComponent, PadComponent,
-  StandardizeComponent, CovarianceComponent, FisherComponent,
+  StandardizeComponent, FisherComponent,
   BesselComponent, BitwiseComponent, DepreciationComponent,
   TvmComponent, PaymentBreakdownComponent, NpvComponent, IrrComponent,
   MirrComponent, AmortizationComponent, ReturnsComponent, DescribeComponent, CorrMatrixComponent, KMeansComponent, PcaComponent, LogisticComponent, WindowComponent,
   DistributionsComponent,
-  RegressionComponent, ForecastComponent, ModeComponent, TrimMeanComponent,
+  ForecastComponent, ModeComponent, TrimMeanComponent,
   FrequencyComponent, ConfidenceComponent, SeriesSumComponent, MultinomialComponent,
   SwitchComponent, IfsComponent,
   HypothesisTestComponent,
@@ -125,14 +125,14 @@ import {
   DiscountSecurityComponent, CouponComponent, AccruedInterestComponent, DurationComponent,
   BondPricingComponent,
   ComplexFromComponent, ComplexUnpackComponent, ComplexUnaryComponent, ComplexBinaryComponent, ComplexPowerComponent,
-  TableInputComponent, MatDetComponent, MatSolveComponent, MatEigenComponent, SpectrumComponent, TableMultComponent, TableUnitComponent, TableDiagComponent, TableOuterComponent, TableTransposeComponent,
+  TableInputComponent, MatDetComponent, MatSolveComponent, MatEigenComponent, SpectrumComponent, ConnectedRegionsComponent, TableMultComponent, TableUnitComponent, TableDiagComponent, TableOuterComponent, TableTransposeComponent,
   StackComponent, TableReshapeComponent, TableSelectComponent, TakeDropComponent, ExpandTableComponent, SetCellComponent, TableInfoComponent,
   MapTableComponent, ByAxisComponent, MakeArrayComponent, ReduceLambdaComponent, ScanLambdaComponent, LambdaComponent,
   FrameInputComponent, BuildFrameComponent, SplitFrameComponent, GetColumnComponent, AddColumnComponent, ComputedColumnComponent, GetRowComponent,
   DistinctComponent, HeadComponent, SortFrameComponent, FilterFrameComponent, JoinComponent,
   ColumnsComponent, GroupByFrameComponent, PivotComponent, UnpivotComponent,
   NestComponent, UnnestComponent, AppendComponent, BindColumnsComponent, RenameComponent,
-  SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent, AllocatorComponent, SettleComponent, PayoffPlannerComponent, ScheduleComponent, EarnedValueComponent,
+  SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent, ChoiceLadderComponent, AllocatorComponent, SettleComponent, PayoffPlannerComponent, ScheduleComponent, EarnedValueComponent,
   ReconcileComponent,
   BuildCubeComponent, NestJoinComponent, CubeColumnsComponent, CubeRollupComponent, CubeInputComponent,
   WebSourceComponent, LocalFileComponent, ImportHtmlComponent, ImportXmlComponent, DataFeedComponent, GeocodeComponent, WeatherComponent, HolidaysComponent, FxComponent, VaultFolderComponent, TaskNotesComponent,
@@ -159,14 +159,14 @@ import {
   ExpectComponent,
   TornadoComponent,
 } from "./components";
-import { EmSpectrumComponent, HrZonesComponent, PipeRoughnessComponent, TriangleSolverComponent } from "./components/PackToolNodes";
+import { EmSpectrumComponent, HrZonesComponent, PipeRoughnessComponent, TriangleSolverComponent, UnitCircleComponent, CircleSolverComponent, RegularPolygonComponent, TwoPointsComponent, PolygonPointsComponent, SolidComponent } from "./components/PackToolNodes";
 
-export type AnyNodeComponent = JSXElementConstructor<{
-  data: ClassicPreset.Node & { width?: number; height?: number };
+type AnyNodeComponent = JSXElementConstructor<{
+  data: GraphNode & { width?: number; height?: number };
   emit: Emit;
 }>;
 
-type NodeCtor = abstract new (...args: never[]) => ClassicPreset.Node;
+type NodeCtor = abstract new (...args: never[]) => GraphNode;
 
 const comp = (c: unknown) => c as unknown as AnyNodeComponent;
 
@@ -174,9 +174,11 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [AngleDialNode,   comp(AngleDialComponent)],
   [SlicerNode,      comp(SlicerComponent)],
   [CableSwitchNode, comp(CableSwitchComponent)],
+  [DelayedPassNode, comp(DelayedPassComponent)],
   [ImportObsidianNode, comp(ImportObsidianComponent)],
   [NoteNode,        comp(NoteComponent)],
   [ReportNode,      comp(ReportComponent)],
+  [DashboardNode,   comp(DashboardComponent)],
   [SessionHistoryNode, comp(SessionHistoryComponent)],
   [PresentationNode, comp(PresentationComponent)],
   [ImageNode,       comp(ImageComponent)],
@@ -186,6 +188,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [SparklineNode,   comp(SparklineComponent)],
   [ChartNode,       comp(ChartComponent)],
   [MergePlotsNode,  comp(MergePlotsComponent)],
+  [ConditionalRegionsNode, comp(ConditionalRegionsComponent)],
   [HistogramNode,   comp(HistogramComponent)],
   [KpiNode,         comp(KpiComponent)],
   [ProportionNode,  comp(ProportionComponent)],
@@ -197,6 +200,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [CalendarHeatmapNode, comp(CalendarHeatmapComponent)],
   [QuiverNode,      comp(QuiverComponent)],
   [RecordNode,      comp(RecordComponent)],
+  [CardsNode,       comp(CardsComponent)],
   [GanttNode,       comp(GanttComponent)],
   [PointPlotterNode, comp(PointPlotterComponent)],
   [CurveNode,       comp(CurveComponent)],
@@ -293,7 +297,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [InterleaveNode,  comp(InterleaveComponent)],
   [PadNode,         comp(PadComponent)],
   [StandardizeNode, comp(StandardizeComponent)],
-  [CovarianceNode,  comp(CovarianceComponent)],
   [FisherNode,      comp(FisherComponent)],
   [BitwiseNode,     comp(BitwiseComponent)],
   [DepreciationNode, comp(DepreciationComponent)],
@@ -306,7 +309,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [AmortizationNode, comp(AmortizationComponent)],
   [ReturnsNode,      comp(ReturnsComponent)],
   [DistributionsNode, comp(DistributionsComponent)],
-  [RegressionNode,   comp(RegressionComponent)],
   [ForecastNode,     comp(ForecastComponent)],
   [ModeNode,         comp(ModeComponent)],
   [TrimMeanNode,     comp(TrimMeanComponent)],
@@ -379,6 +381,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [MatSolveNode,     comp(MatSolveComponent)],
   [MatEigenNode,     comp(MatEigenComponent)],
   [SpectrumNode,     comp(SpectrumComponent)],
+  [ConnectedRegionsNode,      comp(ConnectedRegionsComponent)],
   [MatDetNode,            comp(MatDetComponent)],
   [TableMultNode,         comp(TableMultComponent)],
   [TableUnitNode,         comp(TableUnitComponent)],
@@ -437,6 +440,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [AddIndexNode,          comp(AddIndexComponent)],
   [DecisionMatrixNode,    comp(DecisionMatrixComponent)],
   [DecisionSensitivityNode, comp(DecisionSensitivityComponent)],
+  [ChoiceLadderNode, comp(ChoiceLadderComponent)],
   [SettleNode, comp(SettleComponent)],
   [PayoffPlannerNode, comp(PayoffPlannerComponent)],
   [ScheduleNode, comp(ScheduleComponent)],
@@ -484,6 +488,12 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [HrZonesNode,           comp(HrZonesComponent)],
   [PipeRoughnessNode,     comp(PipeRoughnessComponent)],
   [TriangleSolverNode,    comp(TriangleSolverComponent)],
+  [UnitCircleNode,        comp(UnitCircleComponent)],
+  [CircleSolverNode,      comp(CircleSolverComponent)],
+  [RegularPolygonNode,    comp(RegularPolygonComponent)],
+  [TwoPointsNode,         comp(TwoPointsComponent)],
+  [PolygonPointsNode,     comp(PolygonPointsComponent)],
+  [SolidNode,             comp(SolidComponent)],
   [MolarMassNode,         comp(MolarMassComponent)],
   [PromoNode,             comp(PromoComponent)],
   [PlaceholderNode,       comp(PlaceholderComponent)],

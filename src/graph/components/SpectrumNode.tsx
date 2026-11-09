@@ -1,4 +1,4 @@
-import type { SpectrumNode } from "../rete-nodes";
+import type { SpectrumNode } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { TableDisplay } from "./TableDisplay";

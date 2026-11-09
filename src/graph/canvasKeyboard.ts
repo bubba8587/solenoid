@@ -1,7 +1,7 @@
 // [[B3]] sameNodeEverywhere (installed by the surface, once), [[C52]] visibleSelection
 import type { View } from "./view";
 import type { MutableRefObject } from "react";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import { processGraph, requestRecalc, notifyGraphChanged } from "./process";
 import { repositionDockedNodes, unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess, cleanup as cleanupGraph, autoArrange as tidyGraph, deleteSelected } from "./canvasCommands";
@@ -15,26 +15,26 @@ import { frStore } from "./frStore";
 import { settingsPanel } from "./settingsStore";
 import { keyUnderModal } from "./modalGuard";
 import { cableSelectionStore } from "./cableState";
-import { ConduitNode, AngleDialNode, GroupNode } from "./rete-nodes";
+import { ConduitNode, AngleDialNode, GroupNode } from "./nodeClasses";
 import { toggleAllChrome, toggleChrome } from "./chromeToggle";
 import { createGroupFromSelection, autofitGroupWithHistory } from "./groupLogic";
 import { setGroupsCollapsed } from "./groupPush";
 import { groupCollapseStore } from "./groupCollapse";
 import { standoffStore, settleStandoffs, anchorFromVector, ANCHOR_DIR } from "./standoffs";
 import { drawModeStore, drawnCableStore, finishDrawing } from "./drawnCables";
-import { isolateStore } from "./isolateStore";
+import { isolateStore, ISOLATE_ON } from "./isolateStore";
 import { isolateSelection } from "./isolate";
 import { addMenuRequest } from "./addMenuStore";
 import { expandMoveSet, stackSelection } from "./selectionOps";
 import { scheduleAutosave } from "./persistence";
-import { saveToDisk, openFromDisk } from "./fileSession";
+import { saveToDisk, saveNow, openFromDisk } from "./fileSession";
 import { DOT_SPACING } from "./gridSnapStore";
 import { canvasLockStore } from "./canvasLock";
 import { computeOverlayStore } from "./computeOverlayStore";
 import { documentStore } from "./documentStore";
 
-export interface CanvasKeyboardDeps {
-  editorRef: MutableRefObject<NodeEditor<Schemes> | null>;
+interface CanvasKeyboardDeps {
+  editorRef: MutableRefObject<GraphEditor<Schemes> | null>;
   viewRef: MutableRefObject<View | null>;
   historyRef: MutableRefObject<{ undo(): Promise<unknown>; redo(): Promise<unknown> } | null>;
   containerRef: MutableRefObject<HTMLDivElement | null>;
@@ -98,6 +98,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       else if (n instanceof AngleDialNode) {
         const next = Math.round(n.value + dir * n.step);
         n.value = ((next % 360) + 360) % 360;
+        n.edited();
         dials++;
       }
     }
@@ -186,6 +187,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         }
         switch (e.code) {
           case "KeyI":
+            if (!ISOLATE_ON) break;
             if (isolateStore.isActive()) isolateStore.exit(); else isolateSelection();
             e.preventDefault(); return;
           case "KeyA":
@@ -224,7 +226,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       // e.key for the slash, because punctuation moves on non-US layouts; the letters below stay at fixed physical keys.
       if (e.key === "/") { frStore.toggle(); e.preventDefault(); return; }
       if (e.code === "Comma") { settingsPanel.toggle(); e.preventDefault(); return; }
-      if (e.code === "KeyS") { void saveToDisk({ forceDialog: e.shiftKey }); e.preventDefault(); return; }
+      if (e.code === "KeyS") { void (e.shiftKey ? saveToDisk({ forceDialog: true }) : saveNow()); e.preventDefault(); return; }
       if (e.code === "KeyO") { void openFromDisk(); e.preventDefault(); return; }
       if (e.code === "KeyL" && e.shiftKey) { void documentStore.reloadCurrent(); e.preventDefault(); return; }
       if (editable) return;

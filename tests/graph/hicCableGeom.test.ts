@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer
+// [[C42]] htmlInCanvasRenderer, [[html-in-canvas#Cables on the canvas]]
 import { describe, it, expect } from "vitest";
 import { cablePolyline } from "../../src/graph/hicCableGeom";
 

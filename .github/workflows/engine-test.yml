@@ -1,18 +1,20 @@
-# The native half of the frame-verb parity corpus: every fixture in fixtures/frame-verbs runs through
-# Polars too (`corpus_cases`), so an engine change is held to the same cases the JS oracle is. It runs
-# only when the engine or the corpus changes, so an ordinary push asks for one runner, not two.
+# The Rust crates' own tests: the core ([[C130]] rustCore, the frame-verb corpus natively), the scheduler, the
+# desktop's Parquet reader and the graph core. It runs only when a crate, the corpus or the frozen answers the crates replay change, so an ordinary push asks for one
+# runner, not several.
 name: Engine test
 
 on:
   push:
     paths:
-      - "src-tauri/**"
+      - "crates/**"
       - "fixtures/frame-verbs/**"
+      - "fixtures/core/**"
       - ".github/workflows/engine-test.yml"
   pull_request:
     paths:
-      - "src-tauri/**"
+      - "crates/**"
       - "fixtures/frame-verbs/**"
+      - "fixtures/core/**"
       - ".github/workflows/engine-test.yml"
   workflow_dispatch:
 
@@ -21,22 +23,91 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  rust:
+  parquet:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "src-tauri -> target"
+          workspaces: "crates/solenoid-parquet -> target"
 
-      - name: Install Tauri's Linux prerequisites
+      - name: Parquet reader lints and tests
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
-            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+          cargo fmt --manifest-path crates/solenoid-parquet/Cargo.toml --check
+          cargo clippy --manifest-path crates/solenoid-parquet/Cargo.toml --all-targets -- -D warnings
+          cargo test --manifest-path crates/solenoid-parquet/Cargo.toml
 
-      - name: Engine tests
-        run: cargo test --manifest-path src-tauri/Cargo.toml
+  schedule:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "crates/solenoid-schedule -> target"
+
+      - name: Scheduler lints, docs and tests
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+        run: |
+          cargo fmt --manifest-path crates/solenoid-schedule/Cargo.toml --check
+          cargo clippy --manifest-path crates/solenoid-schedule/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --manifest-path crates/solenoid-schedule/Cargo.toml --target wasm32-unknown-unknown -- -D warnings
+          cargo doc --manifest-path crates/solenoid-schedule/Cargo.toml --no-deps
+          cargo test --manifest-path crates/solenoid-schedule/Cargo.toml
+
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "crates/solenoid-core -> target"
+
+      - name: Core lints
+        run: |
+          cargo fmt --manifest-path crates/solenoid-core/Cargo.toml --check
+          cargo clippy --manifest-path crates/solenoid-core/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --manifest-path crates/solenoid-core/Cargo.toml --target wasm32-unknown-unknown -- -D warnings
+
+      - name: Core tests
+        run: cargo test --manifest-path crates/solenoid-core/Cargo.toml
+
+  graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "crates/solenoid-graph -> target"
+
+      - name: Graph core lints
+        run: |
+          cargo fmt --manifest-path crates/solenoid-graph/Cargo.toml --check
+          cargo clippy --manifest-path crates/solenoid-graph/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --manifest-path crates/solenoid-graph/Cargo.toml --target wasm32-unknown-unknown -- -D warnings
+
+      - name: Graph core tests ([[C130]] rustCore)
+        run: cargo test --manifest-path crates/solenoid-graph/Cargo.toml

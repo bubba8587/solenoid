@@ -57,6 +57,7 @@ export function CellKindMenu({ kind, onPick }: { kind: CellKind; onPick: (kind: 
           ref={menuRef}
           className="table-popup__suggest nowheel"
           role="menu"
+          focusgroup="menu block"
           style={style}
           onMouseDown={keepFocus}
           onPointerDown={(e) => e.stopPropagation()}

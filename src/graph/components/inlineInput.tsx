@@ -1,26 +1,30 @@
-// [[C95]] commitOnEnter (useDraftCommit, useEditableLabel), [[C28]] literalsIffEditable, [[B11]] maximalMerge. Mechanics: tree/specs/documents/literal-input-editors.md.
+// [[B19]] spreadsheetHabits (useDraftCommit, useEditableLabel), [[C28]] literalsIffEditable, [[B11]] maximalMerge. Mechanics: tree/specs/documents/literal-input-editors.md.
 import { FieldResizeGrip } from "./FieldResizeGrip";
 import type { Emit } from "./nodeKit";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent, type ReactNode } from "react";
 import { useKatexRender } from "./katexLoader";
-import type { ClassicPreset } from "rete";
-import { SolenoidSocket } from "../sockets";
+import type { GraphSocket } from "../graphModel";
 import { processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { connectionVersionStore } from "../graphSignals";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
-import { nodeName } from "../catalogUtils";
 import { collapseStore } from "../collapseStore";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
-import { ColumnPickerField } from "./ColumnPickerField";
+import { ColumnPickerField, ColumnListField } from "./ColumnPickerField";
 import { columnPickersOf } from "../nodes/columnPickerHook";
 import { stopDragStart } from "../coarse";
 import { usePendingDraft } from "../draftFlush";
-import { decimalFromText } from "../valueKinds";
-import { fieldPlaceholder } from "../emptySlots";
+import { emptyFieldShown } from "../emptySlots";
+import { cardName } from "../sourceNames";
 import { rolesOf } from "../nodes/shared";
+import { DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
+import { COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
+import { drawnFieldOf, keyedKindOf, type KeyedKind, type DrawnField } from "../literalFields";
+export type { KeyedKind } from "../literalFields";
+import { TypeIcon } from "./TypeIcon";
+import "./colType.css";
 
 // Body-height estimate only; socket placement is measured per row.
 export const INPUT_ROW_PITCH = 28;
@@ -37,7 +41,7 @@ export function useConnectedInputs(nodeId: string): Set<string> {
   return set;
 }
 
-export type IncomingSource = { sourceId: string; sourceOutput: string; label: string };
+type IncomingSource = { sourceId: string; sourceOutput: string; label: string };
 
 /** Derived at render time because a source's label changes on rename, not only on connection changes. */
 export function useIncomingSources(nodeId: string): Map<string, IncomingSource> {
@@ -47,13 +51,7 @@ export function useIncomingSources(nodeId: string): Map<string, IncomingSource> 
   for (const c of editor?.getConnections() ?? []) {
     if (c.target !== nodeId || typeof c.targetInput !== "string") continue;
     const src = editor?.getNode(c.source);
-    // An unlabeled source shows its catalog name ([[D22]] oneNamePerCard).
-    const srcLabel = (src as { label?: string } | undefined)?.label?.trim();
-    map.set(c.targetInput, {
-      sourceId: c.source,
-      sourceOutput: c.sourceOutput as string,
-      label: srcLabel || (src ? (nodeName(src) ?? "") : ""),
-    });
+    map.set(c.targetInput, { sourceId: c.source, sourceOutput: c.sourceOutput as string, label: cardName(src) });
   }
   return map;
 }
@@ -61,7 +59,7 @@ export function useIncomingSources(nodeId: string): Map<string, IncomingSource> 
 /** `parse` result for a draft that can't become a value (commit reverts). */
 export const INVALID_DRAFT = Symbol("invalid-draft");
 
-/** [[C95]] commitOnEnter. `apply` owns the mirror + processGraph, never onChange. */
+/** [[B19]] spreadsheetHabits. `apply` owns the mirror + processGraph, never onChange. */
 export function useDraftCommit<T>(
   committed: T,
   toText: (v: T) => string,
@@ -70,7 +68,6 @@ export function useDraftCommit<T>(
 ) {
   const [draft, setDraft] = useState(() => toText(committed));
   const canceled = useRef(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setDraft(toText(committed)); }, [committed]);
   const commit = () => {
     const next = parse(draft);
@@ -96,7 +93,7 @@ export function useDraftCommit<T>(
 const stopTitle = (e: { stopPropagation: () => void }) => e.stopPropagation();
 
 /** Spread `inputProps` onto the editing <input> and `displayProps` onto the display; Group drives `begin()` itself. */
-export function useEditableLabel(node: { label: string }, onCommit?: () => void) {
+export function useEditableLabel(node: { label: string; edited?: () => void }, onCommit?: () => void) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(node.label);
   const canceled = useRef(false);
@@ -106,7 +103,7 @@ export function useEditableLabel(node: { label: string }, onCommit?: () => void)
   const commit = () => {
     setEditing(false);
     if (canceled.current) { canceled.current = false; return; }
-    if (draft !== node.label) { node.label = draft; scheduleAutosave(); onCommit?.(); }
+    if (draft !== node.label) { node.label = draft; node.edited?.(); scheduleAutosave(); onCommit?.(); }
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
@@ -231,7 +228,7 @@ export function useNumberScrub(
 export function InlineNumberField({
   value,
   onChange,
-  placeholder = "0",
+  placeholder,
 }: {
   value: number | undefined;
   onChange: (v: number | undefined) => void;
@@ -364,78 +361,90 @@ export function InlineTextField({
   return <QuotedTextInput value={value ?? ""} onChange={onChange} placeholder={placeholder} listId={listId} />;
 }
 
-export type AutoLiteral = number | string | undefined;
-const autoToText = (v: AutoLiteral) => (v == null ? "" : String(v));
-const parseAuto = (t: string): AutoLiteral => {
-  const trimmed = t.trim();
-  if (trimmed === "") return undefined;
-  const n = decimalFromText(trimmed);
-  return Number.isFinite(n) ? n : t;
-};
-
-export function InlineAutoField({
-  num,
-  text,
-  onChange,
-  placeholder,
-}: {
-  num: number | undefined;
-  text: string | undefined;
-  /** Writes exactly one of the two maps; the caller clears the other. */
-  onChange: (v: AutoLiteral) => void;
-  placeholder?: string;
-}) {
-  const committed: AutoLiteral = text !== undefined ? text : num;
-  const field = useDraftCommit<AutoLiteral>(committed, autoToText, parseAuto, onChange);
-  const quoted = typeof committed === "string";
-  const scrub = useNumberScrub(
-    num,
-    (v) => field.setDraft(autoToText(v)),
-    (next) => {
-      onChange(next);
-    },
+/** A wildcard slot's keyed literal: the text as keyed, and the type button beside it that says which kind the core reads
+ *  it as ([[C10]] socketLattice: a kind shows before it is read, never guessed from the text; [[C58]] tableInputRawText).
+ *  A kind picked or text keyed recolors the unwired socket (`keyedRestType`). */
+export function KeyedField({ node, slot, placeholder }: { node: AutoLiteralHost & { id: string; edited?: () => void }; slot: string; placeholder?: string }) {
+  const kind = keyedKindOf(node, slot);
+  const text = node.stringLiterals?.[slot] ?? "";
+  async function commit(next: { text?: string; kind?: KeyedKind }) {
+    const strs = (node.stringLiterals ??= {});
+    if (next.text !== undefined) {
+      if (next.text === "") delete strs[slot];
+      else strs[slot] = next.text;
+    }
+    if (next.kind !== undefined) (node.literalKinds ??= {})[slot] = next.kind;
+    node.edited?.();
+    const ed = getOwningEditor(node.id);
+    const ar = getOwningView(node.id);
+    if (ed && ar) reconcileTypesAfterEdit(ed, ar);
+    await processGraph(node.id);
+  }
+  const cycle = () => void commit({ kind: COLTYPE_ORDER[(COLTYPE_ORDER.indexOf(kind) + 1) % COLTYPE_ORDER.length] });
+  return (
+    <span className="solenoid-node__keyed">
+      {kind === "string" ? (
+        <QuotedInlineInput value={text} onChange={(t) => void commit({ text: t })} placeholder={placeholder} />
+      ) : (
+        <KeyedInput value={text} onChange={(t) => void commit({ text: t })} placeholder={kind === "date" ? DEFAULT_DATE_FORMAT : placeholder} />
+      )}
+      <button
+        type="button"
+        className="sol-coltype"
+        title={`Read as ${COLTYPE_NAME[kind]}. Cycle Number / Text / Date / Boolean.`}
+        onPointerDown={stopDragStart}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); cycle(); }}
+      >
+        <TypeIcon type={kind} size={12} />
+      </button>
+    </span>
   );
-  // type="text": a number input refuses a non-numeric draft outright.
-  const input = (
+}
+
+function KeyedInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const field = useDraftCommit(value, (v) => v, (t) => t.trim(), onChange);
+  return (
     <input
       type="text"
-      className={quoted ? "solenoid-node__quoted-input" : "solenoid-node__inline-input"}
+      className="solenoid-node__inline-input"
       value={field.draft}
       placeholder={placeholder}
       onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
       onBlur={field.onBlur}
       onKeyDown={field.onKeyDown}
-      {...(quoted ? { onPointerDown: stopDragStart } : scrub)}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
       spellCheck={false}
     />
   );
-  // The chrome flips only on commit, when the field is already blurred, so this remount costs no focus.
-  if (!quoted) return input;
-  return (
-    <span className="solenoid-node__quoted solenoid-node__quoted--inline">
-      <span className="solenoid-node__quote" aria-hidden="true">"</span>
-      <span className="solenoid-node__quoted-field">{input}</span>
-      <span className="solenoid-node__quote" aria-hidden="true">"</span>
-    </span>
-  );
 }
 
-export interface AutoLiteralHost {
-  autoLiterals?: boolean;
-  /** Wildcard rows take text exactly as typed, for a node whose op reads the value as text. */
-  textLiterals?: boolean;
+interface AutoLiteralHost {
+  /** Each keyed wildcard slot's kind, where it isn't Number ([[C10]] socketLattice). */
+  literalKinds?: Record<string, KeyedKind>;
   stringLiterals?: Record<string, string>;
 }
 
-const isWildcard = (dt: string | undefined) => dt === "any" || dt === "anydata" || dt === "trueany";
-
-export function takesAutoLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
-  return !!node.autoLiterals && isWildcard(dt);
-}
-
-export function takesTextLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
-  return !!node.textLiterals && isWildcard(dt);
+/** The TRUE/FALSE checkbox: a logical Value Input, and every unwired logical input's field. */
+export function LogicalCheck({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
+  return (
+    <label
+      style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "2px 0" }}
+      onPointerDown={stopDragStart}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onToggle}
+        style={{ width: 14, height: 14 }}
+      />
+      <span style={{ fontSize: 13, color: checked ? "color-mix(in srgb, var(--sol-ok) 70%, var(--text))" : "var(--text-dim)" }}>
+        {checked ? "TRUE" : "FALSE"}
+      </span>
+    </label>
+  );
 }
 
 export function InlineCsvField({
@@ -466,14 +475,14 @@ export function InlineCsvField({
 }
 
 
-type InputPort = { socket: ClassicPreset.Socket; label?: string };
+type InputPort = { socket: GraphSocket; label?: string };
 export type InlineNode = {
   id: string;
   inputs: Record<string, InputPort | undefined>;
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
-  autoLiterals?: boolean;
-  textLiterals?: boolean;
+  literalKinds?: Record<string, KeyedKind>;
+  edited?: () => void;
 };
 
 type Props = {
@@ -487,6 +496,8 @@ type Props = {
   mathLabelKeys?: ReadonlySet<string>;
   /** Rendered as a native `<datalist>`, so typing offers matches but any value still commits. */
   suggest?: Record<string, readonly string[]>;
+  /** A control at the end of a key's row, such as Find's Aa. */
+  trailing?: Record<string, ReactNode>;
 };
 
 function MathLabel({ text }: { text: string }) {
@@ -504,13 +515,12 @@ function MathLabel({ text }: { text: string }) {
     : <span className="solenoid-node__io-label" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKeys, mathLabelKeys, suggest }: Props) {
+export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKeys, mathLabelKeys, suggest, trailing }: Props) {
   const connected = useConnectedInputs(node.id);
   const incoming = useIncomingSources(node.id);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
   const literals = (node.literals ??= {});
   const roles = rolesOf(node as unknown as Parameters<typeof rolesOf>[0]);
-  const ownPlaceholders = (node.constructor as { fieldPlaceholders?: Record<string, string> }).fieldPlaceholders;
   const suggestId = suggest ? `sol-suggest-${node.id}` : undefined;
   const suggestOptions = suggest ? Array.from(new Set(Object.values(suggest).flat())) : [];
 
@@ -547,17 +557,6 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
     await processGraph(node.id);
   }
 
-  async function setAuto(key: string, v: AutoLiteral) {
-    // Exactly one map holds a wildcard slot, so the reader never has to break a tie.
-    delete literals[key];
-    delete strLiterals[key];
-    if (typeof v === "number") literals[key] = v;
-    else if (typeof v === "string") strLiterals[key] = v;
-    noteEdit(key, v === undefined);
-    settleTypes();
-    await processGraph(node.id);
-  }
-
   if (collapsed) {
     if (entries.length >= 2) {
       return <CollapsedInputPill node={node} emit={emit} keys={entries.map(([k]) => k)} />;
@@ -582,17 +581,14 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
     <>
       {entries.map(([key, input], i) => {
         const socket = input.socket;
-        const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
-        const numlistCsv = dt === "numlist" && key in strLiterals;
-        // A combo edits in place; it becomes a list only when a cable brings one.
-        const isNumber = dt === "number" || (dt === "numlist" && !numlistCsv);
-        const isStr    = dt === "string" || dt === "strcombo";
-        const isCsvList = dt === "strlist" || dt === "datelist" || dt === "logicallist" || numlistCsv;
+        // One field per input, the one the core reads ([[C28]] literalsIffEditable).
+        const field: DrawnField = cableOnlyKeys?.has(key) ? "none" : drawnFieldOf(node, key);
         const label = labelFor ? labelFor(key, i) : (input.label || key);
-        const placeholder = ownPlaceholders?.[key] ?? fieldPlaceholder(roles?.[key], key);
+        const empty = emptyFieldShown(node.constructor.name, key, roles?.[key], (node as { op?: string }).op);
+        const placeholder = empty?.shown;
         const isConn = connected.has(key);
         return (
-          <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={socket}>
+          <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={socket} example={empty?.kind === "example"}>
             {mathLabelKeys?.has(key)
               ? <MathLabel text={label} />
               : <span className="solenoid-node__io-label" title={titleFor?.(key)}>{label}</span>}
@@ -601,22 +597,28 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
                 className="solenoid-node__io-wired"
                 title="Driven by the incoming cable named here"
               >↩ {incoming.get(key)?.label || "wired"}</span>
-            ) : cableOnlyKeys?.has(key) ? null
-              : takesAutoLiteral(node, dt) ? (
-              <InlineAutoField num={literals[key]} text={strLiterals[key]} onChange={(v) => void setAuto(key, v)} placeholder={placeholder} />
-            ) : takesTextLiteral(node, dt) ? (
-              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
-            ) : isNumber ? (
+            ) : field === "keyed" ? (
+              <KeyedField node={node} slot={key} placeholder={placeholder} />
+            ) : field === "number" ? (
               <InlineNumberField value={literals[key]} onChange={(v) => set(key, v)} placeholder={placeholder} />
-            ) : isStr ? (
+            ) : field === "logical" ? (
+              <LogicalCheck checked={!!literals[key]} onToggle={() => void set(key, literals[key] ? 0 : 1)} />
+            ) : field === "date" ? (
+              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={DEFAULT_DATE_FORMAT} />
+            ) : field === "text" ? (
               pickerKeys.has(key) ? (
                 <ColumnPickerField nodeId={node.id} frameInput={pickerKeys.get(key)!} value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
               ) : (
                 <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} listId={suggest && key in suggest ? suggestId : undefined} />
               )
-            ) : isCsvList ? (
-              <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} listId={suggest && key in suggest ? suggestId : undefined} />
+            ) : field === "csv" ? (
+              pickerKeys.has(key) ? (
+                <ColumnListField nodeId={node.id} frameInput={pickerKeys.get(key)!} value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
+              ) : (
+                <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} listId={suggest && key in suggest ? suggestId : undefined} />
+              )
             ) : null}
+            {trailing?.[key]}
           </MeasuredSocketRow>
         );
       })}

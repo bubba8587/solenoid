@@ -6,9 +6,9 @@ tags: [spec, documents]
 
 # Spec: Save format and load path
 
-Serves [[B12]] losslessSaves, with its save-path rules [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder and [[C58]] tableInputRawText. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B12]] losslessSaves, with its save-path rules [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder and [[C58]] tableInputRawText. It covers what the system does and blocks, and the decision each behavior serves.
 
-A document has three representations: the live graph (rete editor plus side stores), the `SavedGraph` JSON object, and the text form (one node per line plus a JSON sidecar). The JSON is always produced by passing the live capture through the text form, so the text form is the one canonical projection. This spec defines both serialized shapes, the capture, the load algorithm, the strict validator, and how documents are stored. Names and their rules belong to [[addressable-model]]; the autosave slot mechanics to [[per-doc-autosave-persistence]]; the literal-map convention to [[inline-literal-maps]].
+A document has three representations: the live graph (the editor plus side stores), the `SavedGraph` JSON object, and the text form (one node per line plus a JSON sidecar). The JSON is always produced by passing the live capture through the text form, so the text form is the one canonical projection. This spec defines both serialized shapes, the capture, the load algorithm, the strict validator, and how documents are stored. Names and their rules belong to [[addressable-model]]; the autosave slot mechanics to [[per-doc-autosave-persistence]]; the literal-map convention to [[inline-literal-maps]].
 
 ## Where the code lives
 
@@ -16,8 +16,8 @@ A document has three representations: the live graph (rete editor plus side stor
 |---|---|
 | `src/graph/persistence.ts` | `SavedGraph` types, `serializeGraph`, `loadGraph`, `rebuildGraph`, the autosave debounce |
 | `src/graph/persistenceCore.ts` | Pure helpers: `CURRENT_SAVE_VERSION`, `validateSavedGraph`, `deriveMissingNodeSockets`, slot choice |
-| `src/graph/textForm.ts` | `writeTextForm`, `readTextForm`, `parseNodeLine` |
-| `src/graph/copyPaste.ts` | `extractInit`, `INIT_FIELD_ORDER`, `INIT_EXTRA_FIELD_ORDER` (shared by paste and save) |
+| `src/graph/textForm.ts`, `crates/solenoid-graph/src/text_form.rs` | `writeTextForm`, `readTextForm`, `parseNodeLine`: the core writes and reads the text (`text_form.rs`); the app names the nodes and passes the init field order. JSON is valid JSON as serde writes it, objects keeping the order their keys were written in, not JavaScript's spelling of it: a number keeps its digits and sign. Every seed written to text reads back to its nodes and cables and writes the same text again; the hand-written texts (escapes, number spellings, key order, malformed lines) are frozen in `fixtures/core/text-form.json.gz` (`coreTextForm.test.ts`, `tests/text_form.rs`) |
+| `src/graph/nodeInit.ts` | `extractInit`, `INIT_FIELD_ORDER`, `INIT_EXTRA_FIELD_ORDER` (shared by paste, save and `nodeOnCore`) |
 | `src/graph/graphValidate.ts` | The strict validator (`validateGraph`, `validateText`) |
 | `src/graph/documentStore.ts`, `documentStoreCore.ts` | The document library and its localStorage persistence |
 | `src/graph/fileSession.ts`, `fileBridge.ts` | Disk save and open (desktop dialogs, browser download and upload) |
@@ -56,13 +56,38 @@ The top-level object. Optional fields are omitted when empty, never written as e
 | `savedAt` | number? | Epoch ms of the disk write that produced this file. Stamped only by the file-write path, never by `serializeGraph`, so autosaves, undo snapshots and seeds stay stable. |
 | `packs` | string[]? | Ids of the packs active at save time, a provenance record. Nothing reads it on load. |
 
+```mermaid
+mindmap
+  root(("a SavedGraph"))
+    ["v: the format version, 2"]
+    the graph
+      ["nodes: SavedNode"]
+        ["id, type, name, x, y"]
+        ["init: the node's saved fields"]
+        ["literals, stringLiterals"]
+        ["size, collapsed, flipped, sections, foreign"]
+      ["connections"]
+    ["side tables: keyed to nodes"]
+      standoffs
+      pins
+      comments
+      frameFormats
+    ["document state"]
+      palette
+      reportPalette
+      ["meta: author, tags, network permission"]
+    ["drawnCables: free-drawn curves"]
+    ["savedAt: when the file was written to disk"]
+    ["packs: the packs on at save time, never read on load"]
+```
+
 Seed files in `src/graph/seedGraphs/*.json` are `SavedGraph` objects plus menu-only fields (`label`, `order`, `group`, `hidden`) that the loader ignores.
 
 ### `SavedNode`
 
 | Field | Type | Meaning |
 |---|---|---|
-| `id` | string | The node's id within this save. After a text-form round trip it equals `name`. It is never a live rete id across loads. |
+| `id` | string | The node's id within this save. After a text-form round trip it equals `name`. It is never a live id across loads. |
 | `type` | string | The class name. |
 | `name` | string? | The addressable name, an identifier matching `^[A-Za-z_][A-Za-z0-9_]*$`, unique per document. Always written; optional only in the type. |
 | `x`, `y` | number | Canvas position of the node's top-left corner, rounded to integers on capture. Missing means `0`. |
@@ -73,6 +98,7 @@ Seed files in `src/graph/seedGraphs/*.json` are `SavedGraph` objects plus menu-o
 | `collapsed` | `true`? | The card body is collapsed (`collapseStore`). Distinct from `init.collapsed`, which is a Group's own field. |
 | `flipped` | `true`? | Sockets mirrored left and right (`socketFlipStore`). |
 | `sections` | `{ [label]: boolean }`? | The card's `CardSection`s the user folded (`false`) or opened (`true`) by hand, keyed by section label (`sectionFoldStore`). A section with no entry follows its own default. |
+| `foreign` | `{ scripts?: true, network?: true, elsewhere?: true }`? | A card copied out of a document someone else wrote: still waiting for the user to allow its scripts or its fetches, and (`elsewhere`, never cleared) written by someone else (`foreignCardStore`, [[B18]] safeToShare). It travels through the text form like `sections`, so undo, autosave and a reopen keep it asking. |
 
 ### `SavedConnection`
 
@@ -92,14 +118,16 @@ A Composite's subgraph is not a side table either. It rides inside the Composite
 
 `extractInit(node)` builds `init` from the live instance ([[#The capture is a fixed point, and plain JSON]]). Copy takes each card through the same `savedNodeBody` a save uses, so a paste and a save see the same configuration, size, collapse and flip. A Placeholder pastes as another Placeholder for the same missing type (`placeholderFor`, which the loader and composite hydration also build with), with its sockets and a name taken from that type, and the node references in its saved `init` follow the paste as a live card's do. Of the side tables a paste carries only `frameFormats`, the card's own look (`pastedSideTables`, `copyPaste.ts`); whether it carries pins, comments and standoffs waits on the inbox item `paste-carries-card-state`.
 
-1. Every key in `INIT_FIELD_ORDER` that exists on the node with a value other than `undefined` is copied as is. This list is the whitelist of scalar and simple settings (`label`, `op`, `value`, `expr`, `tableText`, `members`, `hostNodeId`, `width`, `height`, and so on).
+1. Every key in `INIT_FIELD_ORDER` that the node carries, own or inherited, with a value that is neither `undefined` nor a method, is copied as is. This list is the whitelist of scalar and simple settings (`label`, `op`, `value`, `expr`, `tableText`, `members`, `hostNodeId`, `width`, `height`, and so on).
 2. Object-valued extras are deep-copied, several filtered to live keys so an orphan left behind for undo does not reach the save:
    - `funcs`, `fieldTypes`: shallow copies.
    - `filterExclude`: each array copied.
+   - `pivotView` (Pivot): only the options that differ from the defaults (`savedPivotView`, `pivotLayout.ts`); omitted when none do, and read back with every missing or unknown option at its default (`readPivotView`).
+   - `detailFields` (Pivot): the Details columns ([[C127]] pivotView), a copied array; omitted when empty.
    - `condConfig`: only rows `k` whose `value<k>` or `column<k>` input still exists.
    - `keyOrder` (List Sort): only key rows `k` whose `key<k>` input still exists; omitted when none remain.
    - `titles`, `selectedKeys`: only keys that are live inputs; omitted when none remain.
-   - `varDescriptions`: only live variables (`varNames`) with non-blank text.
+   - `varDescriptions`: only live variables (`varNames`) with non-blank text. `varUnits`: only live variables with a non-empty unit. `varRequired`: only live variables.
    - `bindings`: only live definition variables (`defVars`) with a non-empty value, sorted by key.
    - `inputPorts`, `outputPorts`: each port copied. `scenarios`: `{ id, name, overrides }` each. `dataTableValues`: each array copied. `goalSeek`, `monteCarlo`: copied when set (a `null` config is omitted).
    - `uncertainty` only when it is a positive number, with `distribution: "uniform"` only when not normal.
@@ -114,11 +142,17 @@ Literal values never enter `init`: they live only in `SavedNode.literals` and `s
 
 Why: a field that is captured but not re-applied drops on reload, and nothing catches it ([[B12]] losslessSaves). The JSON half closes a second blind spot: the text form stringifies each field, so a `Map`, `Set`, class instance, `NaN` or `Infinity` (which becomes `null`) silently empties in the saved file while the live-object round trip still passes.
 
+A constructor may normalize a field it is given (Group derives its `label` from `title`), so a field a blind perturbation can't round-trip is listed with its reason.
+
+Tests: `persistenceSweep.test.ts`: for every catalog node, `extractInit` is a fixed point through one construct cycle, flipped booleans and perturbed literals survive it, everything captured survives a JSON round trip, a grown row keeps the socket order a reload rebuilds, no literal-only key or literal value enters `init`, and `varDescriptions` keeps only live, non-blank variables.
+
 ### Every field is persisted or deliberately transient
 
-Every own field of a catalog node is classified ([[#Every field is persisted or deliberately transient]]): captured as above, transient by name (`cached*` derived display state, `_*` private machinery), or listed with a reason in the `DELIBERATELY_TRANSIENT` table of `tests/graph/persistenceSweep.test.ts`. Examples of deliberately transient fields: compiled `ast` and `evaluator` (rebuilt from `expr`), per-pass error and result state, frozen random rolls, fetch handles, the image `dataUrl` (its `assetPath` persists instead), and a sink's `enabled` arm flag, so every load starts disarmed ([[C38]] sinkRunButtonOnly). **MUST:** a field in none of the three is an unmade decision, and the sweep fails, naming it.
+Every own field of a catalog node is classified ([[#Every field is persisted or deliberately transient]]): captured as above, transient by name (`cached*` derived display state, `_*` private machinery), or listed with a reason in the `DELIBERATELY_TRANSIENT` table of `tests/graph/persistenceSweep.test.ts`. Examples of deliberately transient fields: compiled `ast` and `evaluator` (rebuilt from `expr`), per-pass error and result state, frozen random rolls, fetch handles, the image `dataUrl` (its `assetPath` persists instead), and a sink's `enabled` arm flag, so every load starts disarmed ([[B18]] safeToShare). **MUST:** a field in none of the three is an unmade decision, and the sweep fails, naming it.
 
 Why: the round-trip sweep above proves that captured fields survive, but it can't see a field the whitelist never captured: both sides omit it identically, so the test passes while the user's setting silently resets on every reload. The first triage found exactly that: `asofDirection`, the direction dropdown of an as-of Join, reset to "backward" on every save, reload and paste.
+
+Tests: `persistenceSweep.test.ts`: every own field of every catalog node is classified, no field is claimed by both sides, every transient entry still exists, and the as-of Join's direction round-trips.
 
 Table Input and the paint grid store the raw typed text (`tableText`) as the saved truth; the matrix is derived from it on compute, and blank lines survive in every position ([[C58]] tableInputRawText).
 
@@ -126,19 +160,31 @@ Table Input and the paint grid store the raw typed text (`tableText`) as the sav
 
 ### Saving binds the main graph
 
-**MUST:** the composite drill-in substitutes the editor, area and history through the `activeGraph.ts` seam for canvas operations only. `getEditor()`, serialization, autosave and load always resolve the main graph, so a save taken while drilled in serializes the document, not the open subgraph. Why: getting this wrong is total, silent data loss ([[B12]] losslessSaves). An autosave during a drill-in would write the composite's internal subgraph over the document, and the file would still be valid, so nothing would flag it.
+**MUST:** the composite drill-in substitutes the editor, area and history through the `activeGraph.ts` seam for canvas operations only (the keyboard, copy and paste, the right-click menu, a card's own socket and row edits). `getEditor()`, serialization, autosave and load always resolve the main graph, so a save taken while drilled in serializes the document, not the open subgraph. Why: getting this wrong is total, silent data loss ([[B12]] losslessSaves). An autosave during a drill-in would write the composite's internal subgraph over the document, and the file would still be valid, so nothing would flag it.
+
+Tests: `activeGraph.test.ts`: the action layer routes to the subgraph while drilled in and `getEditor()` stays on the main graph; `getOwningEditor` and `getOwningView` answer the graph that holds the node, a closed composite's included; a main-graph card retypes on its own surface while a drill-in is open.
 
 ### Every save passes through the text form
 
 `serializeGraph()` always reads the main graph through `getEditor()` and `getView()`, never the surface a Composite drill-in has made active ([[#Saving binds the main graph]]). It returns `null` when no editor exists. Otherwise it returns `readTextForm(writeTextForm(raw))` ([[#Every save passes through the text form]]), where `raw` is built by `buildRawSavedGraph`:
 
-- One `SavedNode` per editor node, in editor order. `name` comes from `nodeNameStore.ensure`, which assigns a default name if the node has none. `x` and `y` are the view position, rounded. `literals` and `stringLiterals` are copied when the node declares them (even when empty). `size`, `collapsed`, `flipped` and `sections` come from their stores.
+- One `SavedNode` per editor node, in editor order. `name` comes from `nodeNameStore.ensure`, which assigns a default name if the node has none. `x` and `y` are the view position, rounded. `literals` and `stringLiterals` are copied when the node declares them (even when empty). `size`, `collapsed`, `flipped`, `sections` and `foreign` come from their stores.
 - A `PlaceholderNode` is written as the node it stands for: `type` is its `missingType`, `init` is a copy of its `savedInit`, and its saved literal maps are copied back ([[C35]] unknownViaPlaceholder).
 - `connections` from the editor, then `standoffs`, `pins`, `comments`, `frameFormats` from their stores, keeping the entries whose nodes are all in the main editor (`savedSideTables`, which a composite's `snapshotInternal` also runs over its internal editor), `drawnCables` from its store, `palette`, `reportPalette`, `meta` from their stores, and `packs` from the active pack set. Empty lists are omitted.
+
+```mermaid
+flowchart LR
+    main["the main graph<br>(never a drill-in)"] --> raw["buildRawSavedGraph:<br>nodes, cables, side tables,<br>palettes, meta, packs"]
+    raw --> w["writeTextForm:<br>node lines + sidecar"]
+    w --> r["readTextForm"]
+    r --> sg["the SavedGraph that is stored:<br>ids renamed to names,<br>topological order"]
+```
 
 The round trip through the text form renames every `id` to the node's name, orders nodes topologically, and canonicalizes field order. **MUST:** every save passes through the text form, so every top-level `SavedGraph` field is written by `writeTextForm` and read back by `readTextForm`; a new field is added to both. Why: a field that either direction omits is deleted from every save, and autosave then writes the lossy result over the good copy ([[B12]] losslessSaves). That happened to `comments` and `reportPalette`: `buildRawSavedGraph` built them and the round trip dropped them, losing real data on every save until the gap was found.
 
 The line order is by dependency, never canvas position (the writing rules below), so a git diff shows only what an edit touched; canvas order would reshuffle the file on every drag.
+
+Tests: `textFormCatalog.test.ts`: every catalog node, every literal and a cable on every socket survive the text form a save passes through, and the node rebuilt from what comes back captures the same `init`; a literal map the user emptied stays empty.
 
 ## The text form
 
@@ -173,32 +219,40 @@ Reading rules (`parseNodeLine`):
 - The name is everything before the first `": "` (colon then space); a line without one is malformed. The type is the text up to the next space.
 - The rest is split into tokens at spaces that are outside a JSON string. Inside a string, a backslash escapes the next character. Runs of spaces are allowed; tabs are not separators.
 - Each token must start with a key followed by `=` or `<-`, or the line is malformed. A bare key may contain `:` only as part of the `lit:` and `str:` prefixes in practice; the regex allows it anywhere. A quoted key is taken as is: `"lit:x"=1` is an `init` field, never a literal, and a quoted key on a connection takes no prefix.
-- `key=value` parses `value` with `JSON.parse`. A `lit:` key goes to `literals`, a `str:` key to `stringLiterals`, anything else to `init`. Values must be valid JSON: `label=Months` is an error, `label="Months"` is correct.
+- `key=value` parses `value` as JSON. A `lit:` key goes to `literals`, a `str:` key to `stringLiterals`, anything else to `init`. Values must be valid JSON: `label=Months` is an error, `label="Months"` is correct.
 - `input<-Source.output` splits at the first `.` after `<-`. The source name therefore cannot contain a dot (names never do), while the output key can. An output that starts with `"` is decoded as a JSON string; otherwise it is taken verbatim. An input key off the bare pattern is JSON-quoted, like any other key.
 - Empty lines in the header are skipped. The header ends at the first line that is exactly `---`; a document without one is refused.
 - Two lines with the same name are refused.
+- Malformed input either throws a plain `Error` or reads as a graph the writer can write again; it never hangs and never hands back a half-read structure that fails a step later.
 
-Writing rules (`writeTextForm`), which make two writes of an unchanged graph byte-identical:
+Writing rules (`writeTextForm`, `text_form::write`), which make two writes of an unchanged graph byte-identical:
 
-- **Names.** Nodes are named in array order: a node's saved `name` is kept when it is a valid identifier not already taken; otherwise it gets the next free default `<Prefix>_<n>`, where the prefix is the type with a trailing `Node` removed (`Filter_1`, `Filter_2`) and `n` counts up per prefix from 1, skipping taken names. This is the same algorithm as the live `nodeNameStore` (`nodeNaming.ts`).
-- **Line order.** Topological: Kahn's algorithm over the connections, always emitting the ready node whose name sorts first (plain JavaScript string comparison, so uppercase sorts before lowercase). Nodes left in a cycle follow, sorted by name. Connections naming a node that is not in the save are ignored for ordering.
-- **Field order on a line.** Name, type, then `init` fields: first the keys of `INIT_FIELD_ORDER` in that order, then `INIT_EXTRA_FIELD_ORDER` (`funcs`, `filterExclude`, `condConfig`, `fieldTypes`, `titles`, `selectedKeys`, `varDescriptions`, `varUnits`, `bindings`, `keyOrder`), then every other key sorted. `undefined` values are dropped. Then `lit:` keys sorted, then `str:` keys sorted, then incoming connections sorted by target input key. A map the node declares but holds empty is written as `lit:{}` or `str:{}` in its place, so the load keeps it empty; without it the constructor's defaults would come back, turning a cleared slot on IF or SWITCH into a typed 0 ([[B12]] losslessSaves). An absent map (a hand-written seed) still takes the defaults.
-- **Values** are `JSON.stringify` output: compact, no spaces outside strings, numbers in shortest round-trip form, newlines in strings as `\n`.
+- **Names.** Nodes are named in array order: a node's saved `name` is kept when it is a valid identifier not already taken; otherwise it gets the next free default `<Prefix>_<n>`, where the prefix is the type with a trailing `Node` removed (`Filter_1`, `Filter_2`) and `n` counts up per prefix from 1, skipping taken names. This is the same algorithm as the live `nodeNameStore` (`nodeNaming.ts`), and it runs in the app (`assignNames`), which hands the names to the core.
+- **Line order.** Topological: Kahn's algorithm over the connections, always emitting the ready node whose name sorts first (by Unicode code point, so uppercase sorts before lowercase). Nodes left in a cycle follow, sorted by name. Connections naming a node that is not in the save are ignored for ordering.
+- **Field order on a line.** Name, type, then `init` fields: first the keys of `INIT_FIELD_ORDER` in that order, then `INIT_EXTRA_FIELD_ORDER` (`funcs`, `filterExclude`, `condConfig`, `fieldTypes`, `titles`, `selectedKeys`, `varDescriptions`, `varUnits`, `varRequired`, `bindings`, `keyOrder`, `pivotView`, `detailFields`), then every other key sorted by code point. `undefined` values are dropped. Then `lit:` keys sorted, then `str:` keys sorted, then incoming connections sorted by target input key. A map the node declares but holds empty is written as `lit:{}` or `str:{}` in its place, so the load keeps it empty; without it the constructor's defaults would come back, turning a cleared slot on IF or SWITCH into a typed 0 ([[B12]] losslessSaves). An absent map (a hand-written seed) still takes the defaults.
+- **Values** are compact JSON: no spaces outside strings, an integer as its digits, any other number in shortest round-trip form, newlines in strings as `\n`, an object's keys in the order they were written.
 - **References become names.** In `init`, `hostNodeId` (a Format Controller's host), every entry of `members` (a Group), and every entry of each `steps[].nodeIds` (a Presentation) is rewritten from id to name. A reference to an id not in the save is written unchanged.
-- **Keys.** An `init`, `lit:`, `str:` or input key is written bare when it matches `[A-Za-z_][A-Za-z0-9_]*` and JSON-quoted otherwise (`lit:"rate.annual"=2`, `"λ1"<-Rate.value`), since socket keys can be user text: a formula variable may hold `.` or `λ`, a Knap variable `-` ([[B12]] losslessSaves). `tests/graph/textFormCatalog.test.ts` carries every catalog node, with a cable on every socket, through the text form.
+- **Keys.** An `init`, `lit:`, `str:` or input key is written bare when it matches `[A-Za-z_][A-Za-z0-9_]*` and JSON-quoted otherwise (`lit:"rate.annual"=2`, `"λ1"<-Rate.value`), since socket keys can be user text: a formula variable may hold `.` or `λ`, a Knap variable `-` ([[B12]] losslessSaves).
 - **Output keys** are written bare when they contain no space, `"` or `\`, and JSON-quoted otherwise (a Note's frontmatter keys are user text).
 - An empty graph has no node lines, so the document starts with `---`.
 
 The text form carries no `id`: on read, each node's `id` is its name.
 
+Tests:
+
+- `textForm.test.ts`: every seed written, read and written again byte-identical, every node surviving with a unique name and its type, every connection by name, node lines in topological order (only edges inside a real cycle may point back); the unit cases: drawn cables, an empty graph, default names, a name that collides, a name like an `Object.prototype` member, keys with spaces, dots, quotes or backslashes, values with newlines, references rewritten to names, and a cycle broken deterministically.
+- `textFormFuzz.test.ts`: seeded mutants of real seeds, and pathological inputs, either throw a clean `Error` or read as a graph that writes again.
+- `coreTextForm.test.ts`: the text form's frozen answers, every seed written and read back and hand-written texts read, compared as text since a save's key order is part of it; `text_form.rs` (solenoid-graph) holds the Rust to the same answers.
+- `textFormCatalog.test.ts`: user-typed socket keys (dotted and λ formula variables, Knap variables) and a user-keyed input's literal keeping its own map.
+
 ### The sidecar
 
-`JSON.stringify(sidecar, null, 2)` followed by a newline. Keys appear in this order, each only when present or non-empty:
+Pretty JSON with a two-space indent (serde's `to_string_pretty`), followed by a newline. Keys appear in this order, each only when present or non-empty:
 
 | Key | Content |
 |---|---|
 | `v` | The version. Read back as `CURRENT_SAVE_VERSION` when absent. |
-| `positions` | Object keyed by name, in stacking order (the `SavedGraph`'s node order, bottom to top), since the lines run in wiring order: `{ x, y, size?, collapsed?, flipped?, sections? }`. Read back, the nodes take this key order; when a node is missing here it reads at `(0, 0)` and the nodes keep the line order. |
+| `positions` | Object keyed by name, in stacking order (the `SavedGraph`'s node order, bottom to top), since the lines run in wiring order: `{ x, y, size?, collapsed?, flipped?, sections?, foreign? }`. Read back, the nodes take this key order; when a node is missing here it reads at `(0, 0)` and the nodes keep the line order. |
 | `standoffs` | As saved, with both `nodeId`s as names. |
 | `drawnCables` | As saved (no node references). |
 | `pins` | `{ nodeId, outputKey }` with `nodeId` as a name. |
@@ -207,7 +261,9 @@ The text form carries no `id`: on read, each node's `id` is its name.
 | `palette`, `reportPalette`, `meta`, `savedAt` | As saved. `savedAt` is read back only when it is a number. |
 | `packs` | As saved. |
 
-An empty or whitespace-only sidecar reads as `{}`. Invalid sidecar JSON throws.
+An empty or whitespace-only sidecar reads as `{}`. Invalid sidecar JSON, or a sidecar of `null`, throws.
+
+Tests: `textForm.test.ts`: standoffs and pins, frame formats by name, the `savedAt` stamp (an unstamped graph stays unstamped), flipped and folded sections (absent rather than false when untouched), and the stacking order, with the line order as the fallback.
 
 ## Example
 
@@ -268,9 +324,25 @@ shown: DisplayNode label="Annual budget" unitSuffix="none" width=180 height=88 i
 
 A newer file is refused rather than opened with the parts this build doesn't understand dropped, because the next autosave would write that loss over the good copy ([[B12]] losslessSaves). There is no migration in either direction ([[B7]] preAlphaBreakFreely), so an older file is refused too. A change to the format bumps `CURRENT_SAVE_VERSION` and updates the seeds and tests.
 
+Tests: `persistenceCore.test.ts` ("validateSavedGraph"): the structural gate; `documentStorePersist.test.ts`: a refused file leaves no library entry.
+
 ## The load path: `loadGraph(g, { curtain? })`
 
 `loadGraph` returns `true` on success and `false` when it refused or rolled back; in both failure cases the previous graph is on screen.
+
+```mermaid
+flowchart TD
+    g["a SavedGraph"] --> sg{"structurally valid?"}
+    sg -->|no| r1["refused: the current<br>work is unchanged"]
+    sg -->|yes| vg{"v = 2?"}
+    vg -->|no| r2["refused: newer or<br>older format"]
+    vg -->|yes| snap["snapshot the live graph;<br>autosave off, rebuild scope open"]
+    snap --> rb["rebuildGraph"]
+    rb -->|throws| back["rebuild the snapshot:<br>previous work restored"]
+    rb -->|ok| fin
+    back --> fin["always: close the scope,<br>autosave back on,<br>undo history cleared"]
+```
+
 
 1. **Structural gate.** `validateSavedGraph(g)` runs first, before anything is torn down, so a malformed file cannot fail partway through a rebuild after the user's graph is gone. It requires an object with a numeric `v`, a `nodes` array whose entries are objects with string `id` and `type` and numeric-or-absent `x` and `y`, a `connections` array (when present) of objects with four string fields, and `standoffs` (when present) an array. Failure: sticky notice "Couldn't open this graph: *reason*. Your current work is unchanged." Unknown types and bad cables are not structural failures.
 2. **Version gate**, as above.
@@ -284,6 +356,23 @@ A newer file is refused rather than opened with the parts this build doesn't und
 
 `rebuildGraph` assumes the graph passed the structural gate and that its caller holds the autosave suspension and the rebuild scope, because the rollback in step 6 calls it a second time inside the same scope.
 
+```mermaid
+flowchart TD
+    t["tear down the old graph<br>(curtain over 300 items)"] --> doc["document state first:<br>palettes, meta"]
+    doc --> build["construct every node, fresh ids;<br>an unknown type is a Placeholder"]
+    build --> add["add and position them"]
+    add --> remap["remap saved ids in<br>references to fresh ones"]
+    remap --> wire["reconnect: a cable that<br>doesn't resolve is skipped"]
+    wire --> side["side tables, then each<br>Composite's inside"]
+    side --> dock["dock Format Controllers"]
+    dock --> settle["settle wildcard types"]
+    settle --> fc["then the FC reconcile:<br>types, annotations, Convert arrows"]
+    fc --> rest["drawn cables, group membership"]
+    rest --> pass["processGraph(): compute"]
+    pass --> cam["fit the camera,<br>re-hide collapsed groups"]
+```
+
+
 1. **Curtain.** When `curtain` is allowed (the default) and the old plus new node and connection count exceeds 300, the "Loading graph" overlay shows before teardown, and teardown and build yield to a paint every 24 items to advance its progress bar ([[graph-load-teardown-performance]]). Undo and redo pass `curtain: false`: a restore is a reload underneath, but it must feel like an edit, not a document open.
 2. **Teardown.** Remove every connection, then every node; each `noderemoved` undocks any Format Controller, so no extra cleanup is needed. Then `forgetAllNodes()` clears every per-node store in one pass. Close the report overlay and stop any presentation, so no overlay keyed to an outgoing node id keeps its chrome (the docked report's canvas squeeze) across a switch. Close any Composite drill-in, which would otherwise keep rendering a Composite from a graph that no longer exists; closing also unmounts its internal views and stops their timers.
 3. **Document-level state first**: set the document palette, report palette and `meta` (each `null` when absent), so node colors resolve through the right palette as nodes are built.
@@ -291,22 +380,23 @@ A newer file is refused rather than opened with the parts this build doesn't und
 5. **Construct** every node synchronously, in save order:
    - Known type: `new Ctor({ ...init })`. Then, only if the new instance declares a `literals` object, replace it with a copy of the saved `literals`; likewise `stringLiterals` ([[C28]] literalsIffEditable). A saved map on a class that does not declare it is dropped.
    - Unknown type: `new PlaceholderNode({ missingType, savedInit, savedLiterals, savedStringLiterals, inputKeys, outputKeys, label })`, where `label` is `init.label` when it is a string, else the type.
-   - Record `savedId → freshId`. rete mints a fresh random id for every node, so saved ids never survive a load.
+   - Record `savedId → freshId`. Every node is built with a fresh random id, so saved ids never survive a load.
    - `nodeNameStore.claim(freshId, name, type)`: a valid, unclaimed saved name is kept (and bumps that prefix's counter past it); otherwise a default name is assigned.
-   - Restore `size`, `collapsed`, `flipped` and `sections` into their stores.
+   - Restore `size`, `collapsed`, `flipped`, `sections` and `foreign` into their stores.
 6. **Add and position** the nodes to the editor in concurrent batches of 24.
 7. **Remap references** (`remapNodeRefs`) on every constructed node through the id map: `hostNodeId`; `members`, dropping any id that does not resolve to a live node; each Presentation step's `nodeIds`, likewise filtered. A Placeholder's `savedInit` (a copy of the saved `init`) is remapped the same way, so its references follow a rename of the node they name to the next save. The remap never writes into the `SavedGraph` it loads from, which may be a library document or a seed that loads again.
 8. **Reconnect**, in save order. A connection whose source or target does not resolve is skipped. A connection the editor refuses (incompatible sockets, duplicate) is skipped silently. Each successful connection fires `connectioncreated`.
-9. **Side tables, then Composites**: `restoreSideTables` adds the standoffs (skipped when either end is missing or both ends are the same node), pins, comments and frame formats to their stores, remapped through the id map and filtered to live nodes; a comment whose id is already taken gets a fresh one. Then each `CompositeNode` builds its internal editor from `init.internal` with the same registry, applying the same literal-map gate, remaps its internal nodes' references (as in step 7) and its ports' `internalNodeId`s to the fresh internal ids, restores its own side tables the same way, and settles its own wildcard and Format Controller types and docks, in the order of steps 10 and 11 ([[composite-nodes]]). `snapshotInternal` maps both back to saved ids, so a Group or Format Controller inside a Composite finds its members and host after every load. An unknown internal type loads as a Placeholder, as on the main canvas, and re-saves as the original type.
-10. **Settle wildcard types**: `settleWildcardTypes(editor)` alternates Conduit lane typing and trueany adoption to a joint fixpoint ([[socket-lattice]], [[type-propagation-on-in-place-socket-retype]]). This must precede step 11, and any new step that reads a settled socket type once and keeps the answer goes after it too: before the settle, a projected wildcard output (INDEX over a Frame) still reads as its upstream's raw type. A Format Controller that docked before the settle once adopted `frame`, showed no controls and kept that type after every reload, with no error anywhere. `fcDockReload.test.ts` pins the order.
-11. **Format Controllers and Convert**: every constructed Format Controller docks to its host; every Convert node syncs its unit arrows; every Format Controller refreshes its annotation. A Format Controller whose saved `hostNodeId` names no node in its graph (a stale id, or a host lost from a hand-edited save) loads as a free Format Controller: `dockSelf` clears its host and socket, and its cables and settings load as saved ([[B12]] losslessSaves).
-12. **Drawn cables**, loaded as is.
-13. `rebuildGroupMembership(editor)` from the Groups' `members`.
-14. `processGraph()` computes every node.
-15. Fit the camera to the nodes (skipped for an empty graph, where `zoomAt` would produce a NaN transform), then `syncGroupCollapse` re-hides collapsed Groups' members.
-16. Two animation frames later, reposition every docked Format Controller against its host, once heights have settled (a Decimal chip lays out a frame late).
+9. **Side tables, then Composites**: `restoreSideTables` adds the standoffs (skipped when either end is missing or both ends are the same node), pins, comments and frame formats to their stores, remapped through the id map and filtered to live nodes; a comment whose id is already taken gets a fresh one. Then each `CompositeNode` builds its internal editor from `init.internal` with the same registry, applying the same literal-map gate, remaps its internal nodes' references (as in step 7) and its ports' `internalNodeId`s to the fresh internal ids, restores its own side tables the same way, and docks and settles its own Format Controllers and wildcard types as in step 10 ([[composite-nodes]]). `snapshotInternal` maps both back to saved ids, so a Group or Format Controller inside a Composite finds its members and host after every load. An unknown internal type loads as a Placeholder, as on the main canvas, and re-saves as the original type.
+10. **Format Controllers, types and Convert**: every constructed Format Controller docks to its host, which only records the dock. A Format Controller whose saved `hostNodeId` names no node in its graph (a stale id, or a host lost from a hand-edited save) loads as a free Format Controller: `dockSelf` clears its host and socket, and its cables and settings load as saved ([[B12]] losslessSaves). Then `reconcileFcTypes` runs the Type Settle (`settleWildcardTypes`, which has the core's `settle.rs` take Conduit lanes and trueany adoption to a joint fixpoint, [[socket-lattice]], [[type-propagation-on-in-place-socket-retype]]) and only after it the FC reconcile (`reconcileFcs`, the core's `fc.rs`: every FC's type and annotation, every Convert's arrows). Anything that reads a settled socket type once and keeps the answer goes after the settle: before it, a projected wildcard output (INDEX over a Frame) still reads as its upstream's raw type, and a Format Controller typed then would adopt `frame`, show no controls and keep that type after every reload, with no error anywhere.
+11. **Drawn cables**, loaded as is.
+12. `rebuildGroupMembership(editor)` from the Groups' `members`.
+13. `processGraph()` computes every node.
+14. Fit the camera to the nodes (skipped for an empty graph, where `zoomAt` would produce a NaN transform), then `syncGroupCollapse` re-hides collapsed Groups' members.
+15. Two animation frames later, reposition every docked Format Controller against its host, once heights have settled (a Decimal chip lays out a frame late).
 
 The saved-id to live-id map from the last load stays readable through `getLastLoadIdMap()`. `seedTune.ts` reads seed geometry back by saved id through it, and `aiReveal.ts` uses it to find the nodes an AI apply added.
+
+Tests: `fcDockReload.test.ts`: the order of step 10; `fcSeedFormat.test.ts`: a seed's load order leaves each FC's pick as saved; `compositeInnerSideTables.test.ts`: a Composite's inside and its side tables.
 
 ### Unknown types: the Placeholder
 
@@ -314,10 +404,10 @@ A `PlaceholderNode` ([[C35]] unknownViaPlaceholder) keeps the original type (`mi
 
 ## What a save deliberately omits
 
-- Live rete ids. Every load mints new ones; only names are stable.
+- Live node ids. Every load mints new ones; only names are stable.
 - Adopted socket types. A wildcard socket's settled type is derived from the wiring by step 10 on every load, never stored.
 - Derived display and runtime state, per the field classification above: `cached*` and `_*` fields and the `DELIBERATELY_TRANSIENT` list.
-- A node's measured size for most classes. `width` and `height` are captured in every node's `init`, but only size-owning classes (annotation frames, the Composite card, Groups, overlay hosts) read them back ([[react-flow-surface-contract#Node width and height]]); for other classes the saved values are inert and a fresh measure wins.
+- A node's measured size for most classes. `width` and `height` are captured in every node's `init`, but only size-owning classes (annotation frames, the Composite card, Groups, overlay hosts) read them back ([[react-flow-surface-contract#Node width and height]]); for other classes the saved values are inert and a fresh measure wins. A card's resize observer writes measured pixels into both fields at run time, so a class whose size the user drags either re-reads them in its constructor or keeps its size in `nodeSizeStore`, as Display's grip does (saved as the node's `size`). The size-owning classes are a declared list, so a class that starts or stops owning its size is a conscious change.
 - Image bytes. On desktop, `bundleLocalImages` runs before `serializeGraph`, so the JSON carries the fresh paths. It writes each unsaved image into an `images/` folder beside the file (reusing a same-content file, else `name (2).ext` up to `(9)`, else a content-hash suffix) and records a document-relative `assetPath`; the Image card re-reads it on mount, which covers a document load, a paste and a Placeholder restore with no hook per load path. A path that climbs out of the document's folder is never read, and a missing file is not an error, since the folder is the user's and files move. The card shows a "not saved" hint until its image is bundled. On the web an attached image stays session-only.
 - Selection, camera, undo history, open overlays, drill-in state, and the sink arm flag.
 - The document's own name, file path and clocks: these live on the library entry (`SolDoc`), not in the graph.
@@ -347,6 +437,10 @@ A `PlaceholderNode` ([[C35]] unknownViaPlaceholder) keeps the original type (`mi
 
 Suggestions use Levenshtein distance within a budget of `max(2, ceil(len / 4))`, showing the two closest. `hardIssues` drops warnings; `formatIssues` renders `line N [name]: message`, or `graph: message` when there is no line.
 
+Nothing a real save contains may be flagged, which is what makes the checks safe to enforce: every catalog leaf, saved as its factory builds it, and every shipped seed, as JSON and through the text form, validate free of hard issues (the Errors, Null & Logic seed's `#CIRC!` loop is a warning).
+
+Tests: `graphValidate.test.ts`: the grammar checks (every malformed line, not only the first), each semantic check of the table, a Composite's inside, unknown sidecar references, `formatIssues`, and the catalog and seed sweeps.
+
 ## Where documents are stored
 
 The document library is the working store; files are exports and imports of one document.
@@ -355,15 +449,23 @@ The document library is the working store; files are exports and imports of one 
 
 **localStorage.** Each document has its own two-slot pair `solenoid.docs.doc.<id>.a` / `.b` holding `{ seq, doc }`, and the library has one index pair `solenoid.docs.index.a` / `.b` holding `{ seq, currentId, docs: [{ id, name, updatedAt, filePath? }] }`. Every write goes to the older slot; every read takes the newer structurally valid one; `seq` is a strictly rising in-session counter and must be the first key of the payload ([[per-doc-autosave-persistence#Two slots per pair]]). A failed write raises a sticky notice until a write fully succeeds. Restore reads the index, then each document's slots through `validateDoc` (which applies `validateSavedGraph`), skipping a missing or corrupt document. The mechanics are in [[per-doc-autosave-persistence]].
 
-**Autosave.** Any settled edit calls `scheduleAutosave()`, which debounces 700 ms and then calls `documentStore.captureCurrent()`: serialize the main graph, write it into the current document with a fresh `updatedAt`, float that document to the top, persist. A capture is skipped while autosave is suspended or while a rebuild is in progress. A capture whose serialize throws writes nothing, raises one sticky error notice (dismissed by the next capture that succeeds) and returns false ([[B12]] losslessSaves). A pending autosave is flushed synchronously on `pagehide` and on the desktop window's close request ([[per-doc-autosave-persistence]]). In the dev server each capture is also mirrored to `.dev/current-graph.json`.
+**Autosave.** Any settled edit calls `scheduleAutosave()`, which debounces 700 ms and then calls `documentStore.captureCurrent()`: serialize the main graph and, when it differs from the stored one, write it into the current document with a fresh `updatedAt`, float that document to the top and persist ([[per-doc-autosave-persistence#Change detection is object identity]]). A capture is skipped while autosave is suspended or while a rebuild is in progress. A capture whose serialize throws writes nothing, raises one sticky error notice (dismissed by the next capture that succeeds) and returns false ([[B12]] losslessSaves). A pending autosave is flushed synchronously on `pagehide` and on the desktop window's close request ([[per-doc-autosave-persistence]]). In the dev server each capture is also mirrored to `.dev/current-graph.json`.
 
 **Switching documents.** Every `documentStore` verb that changes which document is on screen (`newBlank`, `newFromTemplate`, `open`, `saveAs`, `duplicate`, `importAsDocument`) first returns early if a rebuild is running, then captures the outgoing document, and stays on it when that capture fails ([[per-doc-autosave-persistence#Swapping documents]]). The sanctioned exceptions are `restore` (nothing live at startup), `remove` (capturing would resurrect the deleted edits) and `reloadCurrent` (gated on the load reveal instead). When the incoming document's load is refused, the library reverts `currentId` to the document still on screen, or, with nothing to revert to, adds and shows a blank "Untitled", so an autosave never writes one document's graph into another. Deleting the last document replaces it with a blank one. A fresh profile starts from the default seed.
 
 **Save clocks.** `saveTimeStore` is the leaf module node classes read the clocks through (`autosavedAt`, the current document's `updatedAt`, and `fileSavedAt`), since a node class cannot import `documentStore`. `documentStore` registers itself as its provider at load and bumps it on every library change; in a headless run nothing registers, so both read null.
 
-**Undo.** The undo history records `JSON.stringify(serializeGraph())` after each settled mutation; undo and redo restore with `loadGraph(snapshot, { curtain: false })`, put the camera back, and schedule an autosave.
+**Undo.** The undo history records `serializeGraph()` after each settled mutation ([[react-flow-surface-contract#Undo history]] has how it is stored); undo and redo restore with `loadGraph(snapshot, { curtain: false })`, put the camera back, and schedule an autosave.
+
+Tests: `documentStoreCore.test.ts` and `documentStorePersist.test.ts` ([[per-doc-autosave-persistence]]).
 
 **Files on disk.** A file is the `SavedGraph` JSON (not the text form), written with `JSON.stringify(g, null, 2)` and a `.json` extension.
 
-- *Save* (`saveToDisk`) captures the current document, then on desktop resolves the destination (the bound `filePath`, or a save dialog for a new document or Save As), bundles images into it, serializes, stamps `savedAt` with the write instant, and writes through a `<path>.tmp` sibling renamed over the target (a direct write when the temp file is outside the granted scope). A new destination binds the document to the path and renames it to the file name. It then captures again (so the library copy carries the new `assetPath`s) and sets `fileSavedAt` to the same instant as `savedAt`. The save belongs to the document current when it began: binding and stamping go to that document's id, and a switch to another document while the dialog is open or images bundle abandons the save with a warning, so one document's graph is never written to another's file. In the browser the file is offered as a download, with no image bundling.
+- *Save* (Ctrl+S, `saveNow`; author 2026-11-06) is autosave done now: it flushes drafts, captures the current document and says "Saved", with no dialog. On an example not yet kept it asks "Save to your documents?" and keeps it in the file tree, its name ready to edit there (`requestTreeRename`); that is the only way to keep an example besides the leave prompt's Keep, and there is no Keep button. On desktop, a document bound to a file also writes through to it (`saveToDisk`). Autosave itself never writes a file.
+- *Save As* (Ctrl+Shift+S, `saveToDisk({ forceDialog })`) is the export: it captures the current document, then on desktop resolves the destination (a save dialog, or the bound `filePath` when Save writes through), bundles images into it, serializes, stamps `savedAt` with the write instant, and writes through a `<path>.tmp` sibling renamed over the target (a direct write when the temp file is outside the granted scope). A new destination binds the document to the path and renames it to the file name. It then captures again (so the library copy carries the new `assetPath`s) and sets `fileSavedAt` to the same instant as `savedAt`. The save belongs to the document current when it began: binding and stamping go to that document's id, and a switch to another document while the dialog is open or images bundle abandons the save with a warning, so one document's graph is never written to another's file. In the browser the file is offered as a download, with no image bundling.
 - *Open* (`openFromDisk`) parses the JSON (error notice when it is not JSON), applies `validateSavedGraph` (error notice when it fails), and adopts it with `importAsDocument(graph, fileName, path)`: the graph's `meta` is marked `foreign: true` with `networkAllowed` cleared, so a shared file cannot pre-grant network access; the new document takes the file name, binds to the path on desktop, and seeds both `updatedAt` and `fileSavedAt` from the file's `savedAt` when present. `saveToDisk` captures right before it writes, so at that instant the last autosave and the write coincide, and a document opened on another machine shows when its content was really saved rather than when it was imported. `importAsDocument` runs the load gates (`loadRefusal`: structural, then version) before it adds anything, so a refused file shows the gate's notice and never becomes a library entry; a load that throws later rolls back to the previous document and leaves the new entry in the library.
+
+Tests:
+
+- `fileSession.test.ts`: a switch while the Save dialog is open, or while images bundle, writes and binds nothing, and an uninterrupted save binds and stamps the document it began on.
+- `imageAssets.test.ts`: image bytes round-trip across the chunked encoder, a malformed data URL is refused rather than thrown on, and a file name is cleaned of path parts and characters Windows refuses.

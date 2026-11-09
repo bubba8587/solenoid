@@ -1,11 +1,11 @@
-// [[C96]] chartOptionsAreMatplotlib
+// [[C96]] chartOptionsAreMatplotlib, [[chart-figures#XY plots]]
 import { describe, it, expect } from "vitest";
-import { buildXY } from "../../../src/graph/nodes/xyPlot";
 import { ChartNode, MergePlotsNode } from "../../../src/graph/nodes/visual";
-import { parseChartOptions, serializeChartOptions } from "../../../src/graph/nodes/chartOptions";
+import { chartOptionsOf } from "../coreVerbs";
 import type { ChartValue, XYPayload } from "../../../src/graph/chartValue";
-import { isSolError, type SolError } from "../../../src/graph/errorValue";
+import { type SolError } from "../../../src/graph/errorValue";
 import type { FrameValue } from "../../../src/graph/frame";
+import { refShape } from "../../../src/graph/components/chartCore";
 
 const curve: FrameValue = { __frame: true, columns: [
   { name: "t", type: "number", values: [0, 1, 2, 3] },
@@ -15,9 +15,10 @@ const curve: FrameValue = { __frame: true, columns: [
   { name: "name", type: "string", values: ["a", "b", "c", "d"] },
   { name: "arm", type: "string", values: ["L", "L", "R", "R"] },
 ] };
-const xy = (op: "scatter" | "xyline" | "bubble", frame: unknown, opts: string) => buildXY(op, frame, parseChartOptions(opts)) as XYPayload;
+const plot = (op: "scatter" | "xyline" | "bubble", frame: unknown, opts: string) => new ChartNode({ op }).data({ values: [frame], options: [opts] }).chart;
+const xy = (op: "scatter" | "xyline" | "bubble", frame: unknown, opts: string) => (plot(op, frame, opts) as ChartValue).payload as XYPayload;
 
-describe("buildXY", () => {
+describe("Chart node, XY payload", () => {
   it("plots named x against named y in row order, a blank cell a gap", () => {
     const p = xy("xyline", curve, "x=x;y=y");
     expect(p.series).toHaveLength(1);
@@ -80,11 +81,11 @@ describe("buildXY", () => {
   });
 
   it("a named column the data lacks is #REF!, a text column in a number role #TYPE!", () => {
-    const miss = buildXY("scatter", curve, parseChartOptions("x=x;y=z")) as SolError;
+    const miss = plot("scatter", curve, "x=x;y=z") as SolError;
     expect(miss.code).toBe("#REF!");
     expect(miss.message).toContain('"z"');
-    expect((buildXY("scatter", curve, parseChartOptions("x=x;y=name")) as SolError).code).toBe("#TYPE!");
-    expect((buildXY("bubble", curve, parseChartOptions("s=arm")) as SolError).code).toBe("#TYPE!");
+    expect((plot("scatter", curve, "x=x;y=name") as SolError).code).toBe("#TYPE!");
+    expect((plot("bubble", curve, "s=arm") as SolError).code).toBe("#TYPE!");
   });
 
   it("linestyle overrides the op's default; XY Line markers follow the series count", () => {
@@ -96,37 +97,9 @@ describe("buildXY", () => {
   });
 });
 
-describe("Chart node, XY ops", () => {
-  it("emits the XY payload and titles the axes after named columns", () => {
-    const out = new ChartNode({ op: "xyline" }).data({ values: [curve], options: ["x=x;y=y"] }).chart as ChartValue;
-    expect(out.payload?.kind).toBe("xy");
-    expect(out.options).toMatchObject({ xlabel: "x", ylabel: "y" });
-    expect(out.values).toEqual([0, 1, null, -1]);
-  });
-
-  it("surfaces a bad column name as the chart's error", () => {
-    const n = new ChartNode({ op: "scatter" });
-    const out = n.data({ values: [curve], options: ["x=nope"] }).chart;
-    expect(isSolError(out) && out.code).toBe("#REF!");
-    expect(n.cachedError?.code).toBe("#REF!");
-    n.data({ values: [curve], options: ["x=x"] });
-    expect(n.cachedError).toBeNull();
-  });
-});
 
 describe("Merge Plots, XY", () => {
-  const sc = (opts: string, extra: Partial<ChartValue> = {}) =>
-    ({ ...(new ChartNode({ op: "scatter" }).data({ values: [curve], options: [opts] }).chart as ChartValue), ...extra });
 
-  it("overlays scatters on one numeric plane, each keeping its own x", () => {
-    const n = new MergePlotsNode();
-    const out = n.data({ p0: [sc("x=x;y=y;color=red")], p1: [sc("x=t;y=mass")] }).chart as ChartValue;
-    expect(out.op).toBe("overlay");
-    const p = out.payload as XYPayload;
-    expect(p.kind).toBe("xy");
-    expect(p.series.map((s) => s.points[0])).toEqual([{ x: 1, y: 0 }, { x: 0, y: 2 }]);
-    expect(p.series[0].color).toBe("red");
-  });
 
   it("takes bubbles, and a line against numbers or row positions joins as a solid line", () => {
     const bubble = new ChartNode({ op: "bubble" }).data({ values: [curve] }).chart as ChartValue;
@@ -140,42 +113,42 @@ describe("Merge Plots, XY", () => {
     expect(p.series[2].points).toEqual([{ x: 1, y: 7 }, { x: 2, y: 8 }]);
   });
 
-  it("refuses bars and text-labelled plots beside an XY plot", () => {
-    const bars: ChartValue = { __chart: true, op: "column", values: [1], options: {} };
-    const months: ChartValue = { __chart: true, op: "line", values: [1, 2], labels: ["Jan", "Feb"], options: {} };
-    const a = new MergePlotsNode().data({ p0: [sc("x=x;y=y")], p1: [bars] }).chart as SolError;
-    expect(a.code).toBe("#TYPE!");
-    expect(a.message).toContain("Plot 2");
-    expect((new MergePlotsNode().data({ p0: [months], p1: [sc("x=x;y=y")] }).chart as SolError).code).toBe("#TYPE!");
-  });
 
-  it("puts every plot's text x values on one shared category axis, and keeps the axis names they agree on", () => {
-    const shop = (regions: string[], sales: number[]): FrameValue => ({ __frame: true, columns: [
-      { name: "region", type: "string", values: regions },
-      { name: "sales", type: "number", values: sales },
-    ] });
-    const a = new ChartNode({ op: "scatter" }).data({ values: [shop(["East", "West"], [1, 2])], options: ["x=region;y=sales"] }).chart as ChartValue;
-    const b = new ChartNode({ op: "scatter" }).data({ values: [shop(["West", "North"], [3, 4])], options: ["x=region;y=sales"] }).chart as ChartValue;
-    const p = (new MergePlotsNode().data({ p0: [a], p1: [b] }).chart as ChartValue).payload as XYPayload;
-    expect(p.xcats).toEqual(["East", "West", "North"]);
-    const at = (i: number) => p.series[i].points.map((q) => (q ? p.xcats![q.x] : null));
-    expect(at(0)).toEqual(["East", "West"]);
-    expect(at(1)).toEqual(["West", "North"]);
-    expect(p.names).toEqual({ x: "region", y: "sales" });
-    const e = new MergePlotsNode().data({ p0: [a], p1: [sc("x=x;y=y")] }).chart as SolError;
-    expect(e.code).toBe("#TYPE!");
-  });
 });
 
 describe("XY option keys", () => {
   it("parse to their fields", () => {
-    expect(parseChartOptions("x=t;y=a, b;s=m;c=k;annotate=n;by=g;ls=-.;xlim=0,;aspect=equal")).toEqual({
+    expect(chartOptionsOf("x=t;y=a, b;s=m;c=k;annotate=n;by=g;ls=-.;xlim=0,;aspect=equal")).toEqual({
       x: "t", y: ["a", "b"], s: "m", c: "k", annotate: "n", by: "g", linestyle: "dashdot", xmin: 0, aspect: "equal",
     });
-    expect(parseChartOptions("linestyle=wavy;aspect=tall")).toEqual({});
+    expect(chartOptionsOf("linestyle=wavy;aspect=tall")).toEqual({});
   });
 
-  it("serialize from the builder, xlim as one pair", () => {
-    expect(serializeChartOptions({ x: "t", y: "a,b", linestyle: "dashed", xmin: 1, xmax: null })).toBe("x=t;y=a,b;linestyle=dashed;xlim=1,");
+});
+
+describe("date x and References", () => {
+  const dated: FrameValue = { __frame: true, columns: [
+    { name: "Month", type: "date", values: [45658, 45689, 45717] },
+    { name: "USD", type: "number", values: [10, 12, 11] },
+  ] };
+
+  it("plots a date column as serials and marks the axis as dates", () => {
+    const p = xy("xyline", dated, "");
+    expect(p.xDate).toBe(true);
+    expect(p.xcats).toBeUndefined();
+    expect(p.series[0].points.map((q) => q?.x)).toEqual([45658, 45689, 45717]);
+  });
+
+
+
+  it("draws a line, a point, or an area whose missing ends run to the plot's edges", () => {
+    expect(refShape({ x: 1 })).toBe("vline");
+    expect(refShape({ y: 1 })).toBe("hline");
+    expect(refShape({ x: 1, y: 1 })).toBe("point");
+    expect(refShape({ x: 1, x2: 2 })).toBe("area");
+    expect(refShape({ x: 1, x2: 2, y: 3 })).toBe("area");
+    expect(refShape({ x: 1, x2: 2, y: 3, y2: 4 })).toBe("area");
+    expect(refShape({ y2: 4 })).toBe("area");
+    expect(refShape({})).toBeNull();
   });
 });

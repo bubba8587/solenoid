@@ -2,12 +2,15 @@
 // Generated from catalog metadata: never add a hand-kept row. EXCEL_GAP (functions with no node) is the one standalone
 // list, and it self-heals.
 
+import { isCategory, isPair } from "./catalogSearch";
 import { buildCatalog } from "./catalogUtils";
 import { EXCEL_GAP } from "./nodeExcel";
-import { allPacks } from "./packs";
 import type {
-  CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry, ExcelEquiv,
+  CatalogEntry, NodeCatalogEntry, ExcelEquiv,
 } from "./AddNodeMenu";
+import { formulasOfCard, CARD_OPERATORS } from "./formulaCards";
+import { signatureFor } from "./formulaSignatures";
+import { NODE_OPS, type OpEntryDecl } from "./nodeOps";
 
 export interface FnRefRow {
   excel: string | null;        // null = a Solenoid-native node (no Excel function)
@@ -18,41 +21,40 @@ export interface FnRefRow {
   catalogType: string | null;
   location: string[];          // Add-menu path; [] for Excel-only gap rows
   packs: string[];
-  dependency: boolean;         // a pack of this node is depended-on by another pack
   implemented: boolean;
   parity: boolean;
   oos: boolean;                // the concept has no place here
   superseded: boolean;         // a modern replacement covers it (the name is blocked)
   note?: string;
-  groupKey: string;
-  groupLabel: string;
 }
 
 interface LeafInfo {
   label: string;
   description?: string;
+  warning?: string;
   keywords?: string;
   path: string[];
   packs: string[];
   parity: boolean;
   excel?: ExcelEquiv[];
+  create: () => unknown;
 }
 
-function isCategory(e: CatalogEntry): e is CatalogCategory { return e.type === "category"; }
-function isPair(e: CatalogEntry): e is CatalogPair { return e.type === "pair"; }
 
 function indexCatalog(): Map<string, LeafInfo> {
   const idx = new Map<string, LeafInfo>();
   const add = (leaf: NodeCatalogEntry, path: string[]) => {
-    if (leaf.hidden) return; // deprecated — load-only, not referenced
+    if (leaf.hidden) return; // an internal card (a composite's port markers), never listed
     idx.set(leaf.type, {
       label: leaf.label,
       description: leaf.description,
+      warning: leaf.warning,
       keywords: leaf.keywords,
       path,
       packs: leaf.packs ?? [],
       parity: leaf.parity ?? true,
       excel: leaf.excel,
+      create: leaf.create,
     });
   };
   const walk = (entries: CatalogEntry[], path: string[]) => {
@@ -66,30 +68,18 @@ function indexCatalog(): Map<string, LeafInfo> {
   return idx;
 }
 
-function dependedOnPacks(): Set<string> {
-  const s = new Set<string>();
-  for (const p of allPacks()) for (const d of p.dependsOn ?? []) s.add(d);
-  return s;
-}
-
 export function buildFunctionReference(): FnRefRow[] {
   const idx = indexCatalog();
-  const dependedOn = dependedOnPacks();
   const rows: FnRefRow[] = [];
   const emitted = new Set<string>();
-
-  const isDep = (packs: string[]) => packs.some((p) => dependedOn.has(p));
-  const topGroup = (path: string[]) => (path.length ? path[0] : "Docs & Files");
 
   const nodeRow = (
     excel: string | null, syntax: string, type: string, info: LeafInfo,
     parity: boolean, note?: string,
   ): FnRefRow => ({
     excel, syntax, nodeLabel: info.label, description: info.description, keywords: info.keywords, catalogType: type,
-    location: info.path, packs: info.packs, dependency: isDep(info.packs),
+    location: info.path, packs: info.packs,
     implemented: true, parity, oos: false, superseded: false, note,
-    groupKey: `cat:${topGroup(info.path)}`,
-    groupLabel: topGroup(info.path),
   });
 
   // 1. Node-backed rows straight from catalog metadata (`leaf.excel`).
@@ -105,9 +95,8 @@ export function buildFunctionReference(): FnRefRow[] {
     if (info.excel?.length) continue; // already emitted as Excel rows above
     rows.push({
       excel: null, syntax: "", nodeLabel: info.label, description: info.description, keywords: info.keywords, catalogType: type,
-      location: info.path, packs: info.packs, dependency: isDep(info.packs),
+      location: info.path, packs: info.packs,
       implemented: true, parity: true, oos: false, superseded: false,
-      groupKey: `cat:${topGroup(info.path)}`, groupLabel: topGroup(info.path),
     });
   }
 
@@ -118,29 +107,17 @@ export function buildFunctionReference(): FnRefRow[] {
     const superseded = g.superseded ?? false;
     rows.push({
       excel: g.excel, syntax: g.syntax, nodeLabel: null, catalogType: null,
-      location: [], packs: [], dependency: false, implemented: false,
+      location: [], packs: [], implemented: false,
       parity: false, oos: g.oos ?? false, superseded, note: g.note,
-      groupKey: superseded ? "superseded" : "gap",
-      groupLabel: superseded ? "Superseded" : "Out of scope",
     });
   }
 
   return rows;
 }
 
-export function fnRefGroups(rows: FnRefRow[]): { key: string; label: string }[] {
-  const seen = new Map<string, string>();
-  for (const r of rows) if (!seen.has(r.groupKey)) seen.set(r.groupKey, r.groupLabel);
-  const keys = [...seen.keys()];
-  // Catalog groups first (first-seen order), then superseded, then out of scope.
-  const rank = (k: string) => (k === "gap" ? 2 : k === "superseded" ? 1 : 0);
-  keys.sort((a, b) => rank(a) - rank(b));
-  return keys.map((k) => ({ key: k, label: seen.get(k)! }));
-}
-
 // Library tags derive from the catalog prose and keywords: a description citing `numpy.gradient` or `SQL OVER` tags the row.
 export const LIBRARY_TAGS = ["numpy", "pandas", "scipy", "R", "SQL", "Excel"] as const;
-export type LibraryTag = (typeof LIBRARY_TAGS)[number];
+type LibraryTag = (typeof LIBRARY_TAGS)[number];
 
 const LIB_PATTERNS: ReadonlyArray<[LibraryTag, RegExp]> = [
   ["numpy",  /\bnumpy\b|\bnp\.[a-z]/i],
@@ -159,4 +136,46 @@ export function libraryTags(row: Pick<FnRefRow, "excel" | "description" | "keywo
   for (const [tag, re] of LIB_PATTERNS) if (re.test(text)) tags.push(tag);
   if (row.excel !== null || /\bExcel\b/.test(text)) tags.push("Excel");
   return tags;
+}
+
+/** One card as the Reference shows it: what it is, every formula that reaches it, and its ops. */
+export interface CardRef {
+  type: string;
+  label: string;
+  description?: string;
+  warning?: string;
+  keywords?: string;
+  /** Add-menu path, top level first. */
+  path: string[];
+  packs: string[];
+  excel: { name: string; syntax: string; parity: boolean; note?: string }[];
+  formulas: { name: string; signature: string; via?: string }[];
+  ops: OpEntryDecl[];
+  /** Operators a formula reaches it by (`a + b`), each with the operation it is. */
+  operators: { text: string; op?: string }[];
+  libs: LibraryTag[];
+  create: () => unknown;
+  /** The card set to one of its ops, for a card with ops. */
+  createOp?: (op: string) => unknown;
+}
+
+/** Every card in the catalog, packs included whether on or off, in Add-menu order. */
+export function buildCardReference(): CardRef[] {
+  const cards: CardRef[] = [];
+  for (const [type, info] of indexCatalog()) {
+    const excel = (info.excel ?? []).map((e) => ({ name: e.excel, syntax: e.syntax, parity: e.parity ?? info.parity, note: e.note }));
+    const excelNames = new Set(excel.map((e) => e.name.toUpperCase()));
+    const formulas = formulasOfCard(type)
+      .filter((f) => !excelNames.has(f.name))
+      .map((f) => ({ ...f, signature: signatureFor(f.name) ?? "" }));
+    const decl = NODE_OPS.find((d) => d.type === type);
+    const ops = decl?.ops ?? [];
+    const libs = libraryTags({ excel: excel.length ? excel[0].name : null, description: info.description, keywords: info.keywords });
+    cards.push({
+      type, label: info.label, description: info.description, warning: info.warning, keywords: info.keywords, path: info.path, packs: info.packs,
+      excel, formulas, ops, operators: CARD_OPERATORS[type] ?? [], libs, create: info.create,
+      ...(decl?.create ? { createOp: decl.create } : {}),
+    });
+  }
+  return cards;
 }

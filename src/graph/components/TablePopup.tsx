@@ -1,21 +1,20 @@
-// [[C58]] tableInputRawText, [[D41]] formatFlowsDownstream
+// [[C58]] tableInputRawText, [[C118]] formatTravelsWithValue
 import { iterMin } from "../nodes/mathUtils";
 import { neutralizeFormulaCell, csvField as csvText } from "../csvSafety";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type * as React from "react";
 import { copyText } from "../clipboard";
-import { tablePopup, getRecordCardsAction, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
+import { tablePopup, getRecordCardsAction, getPivotHostAction, getDashboardView, type PivotHost, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
 import { appThemeStore } from "../appTheme";
 import { formatScalar } from "./format";
 import { parseCsvRows, joinCsvRows } from "../csv";
 import { isSolError, ERROR_EXPLANATIONS } from "../errorValue";
-import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
+import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT, FIRST_SERIAL, END_SERIAL } from "../nodes/dateSerial";
 import { coerceFrameCell, formatFrameCell, columnTypesAfterCsvEdit, makeHeaders, type FrameSourceColumn } from "../frame";
-import { distinctColumnValues } from "../frameVerbs";
-import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
+import { isDateStyle, type FormatAnnotation } from "../formatAnnotationStore";
 import { isUnitCell } from "../unitValue";
 import { decimalFromText } from "../valueKinds";
-import { columnUnitLabel } from "../unitColumn";
+import { columnUnitLabel, cellUnitAnnotation } from "../unitColumn";
 import { frameFormatStore, MATRIX_FORMAT_KEY, columnFormatRow, type ColumnFormatRow } from "../frameFormatStore";
 import { scheduleAutosave } from "../persistence";
 import { processGraph } from "../process";
@@ -23,35 +22,41 @@ import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect, CustomPatternField } from "./fcControls";
 import { CategoryChip } from "./CategoryChip";
 import { categoryColorIndex } from "../categoryColor";
-import { applyTextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
+import { PopupSkeleton, useAfterPaint } from "./PopupSkeleton";
 import { useFocusTrap } from "./useFocusTrap";
 import "./confirmDialog.css";
 import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton } from "./columnSort";
-import { ColumnFormatButton, ColumnExprField, HeaderHelpButton, COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
+import { ColumnFormatButton, ColumnExprField, HeaderHelpButton, HeaderNameField, AutoGrowField, COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
 import { TypeIcon } from "./TypeIcon";
 import { CellEditAffix } from "./CellEditAffix";
 import { CsvEditor } from "./CsvEditor";
 import { TableCards } from "./TableCards";
-import { cardMatches } from "../cardLayout";
-import { SearchField } from "./SearchField";
+import { cardMatches, suggestRecordLayout, PROFILE_ROWS } from "../cardLayout";
 import { CellSuggest, type CellSuggestHandle } from "./CellSuggest";
 import { parseRecordLayout, recordImageSrc, cellImageSrc } from "../recordLayout";
 import { CellImage } from "./cubeCell";
+import { controlledCellText } from "./controlledCell";
 import "./chartCards.css"; // .sol-record__img, for the Form's image cells
-import { PopupOverflowMenu } from "./PopupOverflowMenu";
-import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, statReadsAsCell, summarizeColumn } from "./tableFooterStats";
+import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, statReadsAsCell, summarizeColumns } from "./tableFooterStats";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
 import "./errorChip.css";
 import "./TablePopup.css";
+import "./colType.css";
 import { ChevronDownIcon } from "./Icons";
+import { PivotTableView, PivotRibbon, PivotSheetButton, type PivotRibbonProps } from "./PivotTableView";
+import { FittingChoice } from "./PopupChoice";
+import { DEFAULT_PIVOT_VIEW, livePivotFolds, withGrand, withSubtotals, type PivotViewOptions } from "../pivotLayout";
+import { framePopupData } from "../valuePopup";
+import type { FrameValue } from "../frame";
 import { TableEditMenus, TableContextMenu, useEditShortcuts, type EditAxis } from "./TableEditMenu";
 import { insertAt, removeAt, shiftForInsert, shiftForRemove, remapKeys, insertGridCols, removeGridCols, pickIndex, type AxisSelection } from "../tableEdit";
 
 type CellType = "number" | "string" | "date" | "logical";
+type PopupView = "dashboard" | "pivot" | "grid" | "cards" | "form" | "csv";
 
 function isTextType(t: CellType): boolean { return t === "string" || t === "logical"; }
 
@@ -107,7 +112,7 @@ function dateCellToISO(raw: string): string {
   if (t === "") return "";
   const n = decimalFromText(t);
   const serial = Number.isFinite(n) ? n : parseDateToSerial(t);
-  return Number.isFinite(serial) && serial > 0 ? serialToJsDate(serial).toISOString().slice(0, 10) : "";
+  return serial >= FIRST_SERIAL && serial < END_SERIAL ? serialToJsDate(serial).toISOString().slice(0, 10) : "";
 }
 
 /** A list's items in the view's order: a vertical list sorts, a horizontal one keeps its order. */
@@ -116,6 +121,13 @@ export function listInViewOrder(line: string[], vertical: boolean, order: number
 }
 
 /** The cells a text edit suggests from: a list's items (its grid is one row), else column c. */
+/** A column's suggestions: each distinct non-empty text once, first seen first. */
+export function distinctColumnValues(cells: readonly (string | null | undefined)[], isExcluded?: (v: string) => boolean): string[] {
+  const seen = new Set<string>();
+  for (const c of cells) if (c != null && c !== "" && !isExcluded?.(c)) seen.add(c);
+  return [...seen];
+}
+
 export function suggestionCells(grid: string[][], c: number, list: boolean): string[] {
   return list ? (grid[0] ?? []) : grid.map((r) => r[c]);
 }
@@ -131,7 +143,8 @@ function typeDefaultAnn(st: TablePopupState, j: number): FormatAnnotation {
   return { format: st.formatControls !== "matrix" && st.columnTypes?.[j] === "date" ? "date_dmy" : "auto", unit };
 }
 
-export function TablePopup() {
+/** `footer: false` drops the summary footer, which the core computes (the Obsidian plugin runs without it). */
+export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   const state = useSyncExternalStore(tablePopup.subscribe, tablePopup.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
 
@@ -146,20 +159,25 @@ export function TablePopup() {
   const [headerNames, setHeaderNames] = useState<string[]>([]);
   const [columnTypes, setColumnTypes] = useState<CellType[]>([]);
   // CSV keeps its own text buffer, so typing mid-edit isn't reshaped by cell coercion.
-  const [view, setView] = useState<"grid" | "csv" | "form" | "cards">("grid");
+  const [view, setView] = useState<PopupView>("grid");
   const [csvText, setCsvText] = useState("");
   const [csvError, setCsvError] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<"formatted" | "source">("formatted");
   // The draft is a ref, so Escape can reset it and blur synchronously without a stale closure.
   const [editCell, setEditCell] = useState<{ r: number; c: number } | null>(null);
+  const painted = useAfterPaint(state ? `${state.pinNodeId ?? ""}|${state.title}` : null);
   const distinctMemo = useRef<{ grid: unknown; c: number; values: string[] } | null>(null);
+  const suggestMemo = useRef<{ key: string; grid: unknown; text: string } | null>(null);
   const [formRow, setFormRow] = useState(0);
 
   const editDraft = useRef("");
+  // Excel's Edit mode: a click into a cell, or F2, gives the arrows to the caret until the cell is left.
+  const caretCell = useRef<{ r: number; c: number } | null>(null);
   const [, bumpDraft] = useState(0);
   const gridRef = useRef<HTMLTableElement | null>(null);
   const [colStat, setColStat] = useState<Record<number, FooterStat>>({});
-  const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary"));
+  const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary")) && footer;
+  const showCellUnits = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupCellUnits"));
   const frozen = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupFrozen"));
   const [listVertical, setListVertical] = useState(false);
   const [colFmt, setColFmt] = useState<FormatAnnotation[]>([]);
@@ -189,6 +207,9 @@ export function TablePopup() {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; form?: boolean } | null>(null);
   const [askClose, setAskClose] = useState(false);
   const [roFocus, setRoFocus] = useState<{ vi: number; c: number } | null>(null);
+  const [pivotOpts, setPivotOpts] = useState<PivotViewOptions>(DEFAULT_PIVOT_VIEW);
+  const pivotHost = useRef<PivotHost | null>(null);
+  // The view switch is segments while the footer has room for them, else a dropdown.
 
   useEffect(() => {
     if (!state) { initedFor.current = null; return; }
@@ -239,13 +260,26 @@ export function TablePopup() {
       setColLocal([]);
       setColInherited([]);
     }
-    setView("grid");
+    pivotHost.current = state.pivot && state.pinNodeId ? getPivotHostAction()?.find(state.pinNodeId) ?? null : null;
+    const seeded = pivotHost.current?.view ?? DEFAULT_PIVOT_VIEW;
+    const live = state.pivot ? livePivotFolds(state.pivot, seeded.collapsed) : seeded.collapsed;
+    if (live.length !== seeded.collapsed.length) pivotHost.current?.setView({ ...seeded, collapsed: live });
+    setPivotOpts(live.length !== seeded.collapsed.length ? { ...seeded, collapsed: live } : seeded);
+    setView(state.pivot ? "pivot" : state.describe && getDashboardView() ? "dashboard" : "grid");
     setDisplayMode("formatted");
     setEditCell(null);
     setFormRow(0);
   }, [state]);
 
   if (!state) return null;
+  // Open at once: the shell and a skeleton paint first, and the grid renders the frame after (or once the data lands).
+  if (!painted || state.loading) {
+    return (
+      <PopupShell title={state.title} onClose={() => tablePopup.close()} cardClassName="table-popup" cardStyle={popupCardVars(state)} fitNarrow>
+        <PopupSkeleton />
+      </PopupShell>
+    );
+  }
   const cellType: CellType = state.cellType ?? "number";
   const editable = !!state.onSaveSource || !!state.onSaveRaw;
   const literalSource = !!state.onSaveSource || !!state.onSaveRaw;
@@ -348,7 +382,7 @@ export function TablePopup() {
     unsavedPicks.current.clear();
     liveNames.current = next;
   }
-  function persistColFmt(c: number, patch: Partial<FormatAnnotation>) {
+  function persistColFmt(c: number, patch: Partial<FormatAnnotation>, recompute = true) {
     const idx = state?.formatControls === "matrix" ? 0 : c;
     setColFmtAt(idx, patch);
     setColLocalAt(idx, true);
@@ -358,12 +392,12 @@ export function TablePopup() {
     if (state?.formatControls === "columns" && !liveNames.current.includes(col)) unsavedPicks.current.add(col);
     frameFormatStore.set(nodeId, col, { ...annFor(c), ...patch, unit: "none" });
     scheduleAutosave();
-    void processGraph(nodeId);
+    if (recompute) void processGraph(nodeId);
   }
   function setColLocalAt(i: number, on: boolean) {
     setColLocal((l) => { const next = l.slice(); while (next.length <= i) next.push(false); next[i] = on; return next; });
   }
-  function clearColFmt(c: number) {
+  function clearColFmt(c: number, recompute = true) {
     const idx = state?.formatControls === "matrix" ? 0 : c;
     const fallback = colInherited[idx] ?? typeDefaultAnn(state!, idx);
     setColFmt((f) => {
@@ -378,7 +412,7 @@ export function TablePopup() {
     if (!nodeId || !col) return;
     frameFormatStore.delete(nodeId, col);
     scheduleAutosave();
-    void processGraph(nodeId);
+    if (recompute) void processGraph(nodeId);
   }
   function fmtRow(c: number): ColumnFormatRow {
     const idx = state?.formatControls === "matrix" ? 0 : c;
@@ -432,29 +466,15 @@ export function TablePopup() {
       </ColumnFormatButton>
     );
   };
+  /** The unit a number cell is written with: the column's own pick, else the unit it inherits, unless cell units are off. */
+  function cellUnit(c: number, ann: FormatAnnotation): Pick<FormatAnnotation, "unit" | "customUnit"> {
+    if (!showCellUnits) return { unit: "none" };
+    if (ann.unit === "custom") return { unit: ann.unit, customUnit: ann.customUnit };
+    return cellUnitAnnotation(ann.unit !== "none" ? ann.unit : state?.columnUnits?.[state.formatControls === "matrix" ? 0 : c]?.display);
+  }
   function controlledCell(raw: CellValue, c: number): string {
-    if (raw === null || raw === undefined || raw === "") return "";
-    if (isSolError(raw)) return raw.code;
-    const type = colTypeAt(c);
     const ann = annFor(c);
-    if (type === "logical" || typeof raw === "boolean") {
-      const b = typeof raw === "boolean" ? raw : coerceFrameCell("logical", String(raw));
-      return typeof b === "boolean" ? applyLogicalStyle(b, ann.logicalStyle) : b === null ? "" : "NaN";
-    }
-    const v: CellValue = typeof raw === "string" && (type === "number" || type === "date")
-      ? coerceFrameCell(type, raw)
-      : raw;
-    if (v === null) return "";
-    if (typeof v === "number" && type === "date") {
-      const fmt: FormatStyleId = isDateStyle(ann.format) ? ann.format : "date_dmy";
-      return formatNumberWithAnnotation(v, { ...ann, format: fmt, unit: "none" });
-    }
-    if (typeof v === "number" && type === "number") {
-      const fmt: FormatStyleId = isDateStyle(ann.format) ? "auto" : ann.format;
-      return formatNumberWithAnnotation(v, { ...ann, format: fmt, unit: "none" });
-    }
-    if (type === "string") return applyTextCase(String(v), ann.textCase);
-    return String(v);
+    return controlledCellText(raw, colTypeAt(c), ann, () => cellUnit(c, ann));
   }
 
   const vertical = !!state.list && listVertical;
@@ -484,7 +504,7 @@ export function TablePopup() {
 
   const sortable = !(state.list && !vertical);
   const sortOrder = sortedOrder(viewRows, sort, (r, c) =>
-    sortKeyOf(vertical ? grid[0]?.[r] : rawAt(r, c)));
+    sortKeyOf(vertical ? grid[0]?.[r] : rawAt(r, c), vertical ? cellType : colTypeAt(c)));
   const filtering = query.trim() !== "" && sortable;
   const matchedOrder = filtering
     ? sortOrder.filter((r) => cardMatches(displayRowAt(r, displayMode === "source" ? "source" : "shown"), query))
@@ -493,8 +513,8 @@ export function TablePopup() {
   const viewRowCache = new Map<number, string[]>();
   const viewRow = (r: number): string[] => { let v = viewRowCache.get(r); if (!v) { v = viewRowAt(r); viewRowCache.set(r, v); } return v; };
 
-  // An input has no intrinsic width, so measure: the mono advance is 27/42 em (the shipped .fnt metrics), plus 16px padding.
-  const MONO_CH_PX = 13 * (27 / 42);
+  // An input has no intrinsic width, so measure: Atkinson Mono's advance is 27/42 em, plus 16px padding.
+  const MONO_CH_PX = 12 * (27 / 42);
   const colMinWidths: Array<number | undefined> = [];
   for (let c = 0; c < viewCols; c++) {
     const colType = vertical ? cellType : typeAt(c, cellType, state.columnTypes);
@@ -640,9 +660,30 @@ export function TablePopup() {
   const colTarget = inRange(sel?.axis === "col" ? sel.indices : focusCell ? [focusCell.c] : [], cols);
   // ── Form view ────────────────────────────────────────────────────────────
   const formCapable = !!state.onSaveSource;
-  const fRow = Math.min(formRow, Math.max(0, rows - 1));
-  const formLayout = state.formLayout ?? "";
+  // While the header's filter holds text, the form pages through the matching records, in the Grid's order.
+  const formOrder = filtering ? matchedOrder : null;
+  const fBase = Math.min(formRow, Math.max(0, rows - 1));
+  const fRow = formOrder ? (formOrder.includes(fBase) ? fBase : formOrder[0] ?? -1) : fBase;
+  const fPos = formOrder ? formOrder.indexOf(fRow) : fRow;
+  const fCount = formOrder ? formOrder.length : rows;
+  const stepForm = (dir: 1 | -1) => setFormRow(formOrder ? formOrder[fPos + dir] : fRow + dir);
+  // With no authored layout the form is laid out from its data ([[D111]] cardLayouts), recomputed only when a cell, name or type changes.
+  const suggestedForm = (): string => {
+    const names = Array.from({ length: cols }, (_, c) => (headerNames[c] ?? "").trim() || colLabel(c));
+    const types = Array.from({ length: cols }, (_, c) => colTypeAt(c));
+    const key = JSON.stringify([names, types]);
+    const memo = suggestMemo.current;
+    if (memo && memo.grid === grid && memo.key === key) return memo.text;
+    const n = Math.min(rows, PROFILE_ROWS);
+    const text = suggestRecordLayout(names.map((name, c) => ({
+      name, type: types[c], cells: Array.from({ length: n }, (_r, r) => grid[r]?.[c] ?? ""),
+    })), 4);
+    suggestMemo.current = { key, grid, text };
+    return text;
+  };
+  const formLayout = state.formLayout?.trim() ? state.formLayout : view === "form" && cols > 0 ? suggestedForm() : "";
   const formPlaced = formLayout.trim() !== "" ? parseRecordLayout(formLayout) : [];
+  const cardPlaced = state.cardLayout?.trim() ? parseRecordLayout(state.cardLayout) : undefined;
   const formCols = formPlaced.length > 0 ? Math.max(...formPlaced.map((pl) => pl.col + pl.colSpan - 1)) : 1;
   const formColIndex = (name: string): number =>
     headerNames.findIndex((h) => (h ?? "").trim().toLowerCase() === name.trim().toLowerCase());
@@ -674,9 +715,7 @@ export function TablePopup() {
         if (frameCols) return frameCols[c]?.values ?? [];
         return state.data.map((row) => row?.[c] ?? null);
       };
-      return Array.from({ length: cols }, (_c, c) => {
-        return summarizeColumn(valuesFor(c), colTypeAt(c));
-      });
+      return summarizeColumns(Array.from({ length: cols }, (_c, c) => ({ values: valuesFor(c), type: colTypeAt(c) })));
     })() : null;
     summaryCache.current = { deps: summaryDeps, value };
   }
@@ -711,7 +750,7 @@ export function TablePopup() {
     setView("csv");
   }
   const settledColumnTypes = (): CellType[] => typesShown;
-  function leaveCsv(next: "grid" | "form" | "cards") {
+  function leaveCsv(next: Exclude<PopupView, "csv">) {
     if (view === "csv") setColumnTypes(settledColumnTypes());
     setView(next);
   }
@@ -817,7 +856,7 @@ export function TablePopup() {
     noun: view === "form" ? "Record" : "Row",
     sides: view === "form" ? ["before", "after"] : ["above", "below"],
     ends: view === "form" ? ["start", "end"] : ["top", "bottom"],
-    target: view === "form" ? (rows > 0 ? [fRow] : []) : rowTarget,
+    target: view === "form" ? (fRow >= 0 ? [fRow] : []) : rowTarget,
     total: rows,
     insert: insertRows,
     remove: deleteRows,
@@ -862,6 +901,7 @@ export function TablePopup() {
   const focusGridCell = (target: { vi: number; c: number } | null) => {
     if (!target) return;
     const el = gridRef.current?.querySelector<HTMLElement>(`[data-vi="${target.vi}"][data-c="${target.c}"]`);
+    caretCell.current = null;
     if (el) { el.focus(); if (el.matches("input")) el.select(); }
   };
   const chipCols = new Map<number, Map<string, number>>();
@@ -921,6 +961,69 @@ export function TablePopup() {
     }
   };
 
+  const Dashboard = getDashboardView();
+  const viewOptions: { value: PopupView; label: string }[] = [
+    ...(state.describe && Dashboard ? [{ value: "dashboard" as const, label: "Dashboard" }] : []),
+    ...(state.pivot ? [{ value: "pivot" as const, label: "Pivot" }] : []),
+    { value: "grid", label: "Grid" },
+    ...(cardsCapable ? [{ value: "cards" as const, label: "Cards" }] : []),
+    ...(formCapable ? [{ value: "form" as const, label: "Form" }] : []),
+    { value: "csv", label: "CSV" },
+  ];
+  const pickView = (v: PopupView) => (v === "csv" ? showCSV() : leaveCsv(v));
+
+  // ── Pivot view ([[C127]] pivotView) ───────────────────────────────────────
+  // Only while this popup is still the one open: closing it before the recompute lands keeps it closed.
+  const reopenWith = (f: FrameValue | null) => { if (f && tablePopup.get() === state) tablePopup.open({ ...state, ...framePopupData(f) }); };
+  function setPivotView(next: PivotViewOptions) {
+    setPivotOpts(next);
+    pivotHost.current?.setView(next);
+  }
+  const host = pivotHost.current;
+  const pivotTotals = host && state.pivot ? {
+    totals: host.totals,
+    setSubtotals: (mode: Parameters<typeof withSubtotals>[1]) =>
+      void host.setTotals(withSubtotals(host.totals, mode, state.pivot!.rowFields.length, state.pivot!.colFields.length)).then(reopenWith),
+    setGrand: (mode: Parameters<typeof withGrand>[1]) => void host.setTotals(withGrand(host.totals, mode)).then(reopenWith),
+  } : undefined;
+  function editPivotFields() {
+    const opened = state!;
+    tablePopup.close();
+    pivotHost.current?.editFields((f) => { if (f) tablePopup.open({ ...opened, ...framePopupData(f) }); }, opened.accent);
+  }
+  const pivotCellText = (r: number, c: number): string => {
+    const raw = state.data[r]?.[c] ?? null;
+    if (displayMode === "source") return raw === null ? "" : isSolError(raw) ? raw.code : String(raw);
+    return controlledCell(raw, c);
+  };
+  /** One Number format per value field, written to each of its columns. */
+  const pivotValueFormat = state.pivot && state.formatControls === "columns" ? (v: number) => {
+    const keyCols = state.pivot!.rowFields.length;
+    const colsOf = state.pivot!.cols.flatMap((it, j) => (it.value === v ? [keyCols + j] : []));
+    if (!colsOf.length || colTypeAt(colsOf[0]) !== "number") return null;
+    return (
+      <FormatStyleSelect
+        className="table-popup__fmtselect"
+        inherit
+        value={fmtRow(colsOf[0]).value}
+        onChange={(f) => {
+          for (const c of colsOf) { if (f) persistColFmt(c, { format: f }, false); else clearColFmt(c, false); }
+          if (state.pinNodeId) void processGraph(state.pinNodeId);
+        }}
+      />
+    );
+  } : undefined;
+
+  const pivotRibbonProps: PivotRibbonProps | null = state.pivot ? {
+    layout: state.pivot,
+    options: pivotOpts,
+    onOptions: setPivotView,
+    totals: pivotTotals,
+    valueFormat: pivotValueFormat,
+    formatPicked: state.pivot.cols.some((_, j) => !!colLocal[state.pivot!.rowFields.length + j]),
+    onFields: pivotHost.current ? editPivotFields : undefined,
+  } : null;
+
   return (
     <PopupShell
       title={state.title}
@@ -930,25 +1033,23 @@ export function TablePopup() {
       grouped={grouped}
       cardStyle={cardStyle}
       resizable={{ min: { w: 320, h: 220 } }}
+      fitNarrow
+      filter={view !== "csv" && (view !== "grid" || sortable)
+        ? { value: query, onChange: setQuery, count: filtering && view !== "pivot" && view !== "dashboard" ? `${matchedOrder.length} of ${viewRows}` : undefined }
+        : undefined}
       headerExtra={<>
-        {((view === "grid" && sortable && viewRows > 1) || view === "cards") && (
-          <SearchField value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering ? `${matchedOrder.length} of ${viewRows}` : undefined} />
-        )}
         <span className="table-popup__dims">{state.list ? `${listLen} items` : `${rows}×${cols}`}{rowsTruncated || listTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
       </>}
       pinNodeId={state.pinNodeId}
-      headerActions={
-        <PopupOverflowMenu
-          items={[
+      menuItems={[
             { label: state.list ? "Copy" : "Copy CSV", onClick: copy },
             { label: "Copy as Markdown", onClick: copyMarkdown },
             { label: "Export CSV…", onClick: exportCsv },
-            ...(isFramePopup ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
+            ...(isFramePopup && footer ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
+            ...(showFmtControls ? [{ label: showCellUnits ? "Hide units in cells" : "Show units in cells", onClick: () => settingsStore.set("tablePopupCellUnits", !showCellUnits) }] : []),
             ...(view === "grid" ? [{ label: frozen ? "Unfreeze header" : "Freeze header", onClick: () => settingsStore.set("tablePopupFrozen", !frozen) }] : []),
-            ...(cardsCapable && state.pinNodeId && recordCards?.canAdd(state.pinNodeId) ? [{ label: "Add Record: Cards", onClick: () => addCardsChart(state.pinNodeId!) }] : []),
-          ]}
-        />
-      }
+            ...(cardsCapable && state.pinNodeId && recordCards?.canAdd(state.pinNodeId) ? [{ label: "Add Cards", onClick: () => addCardsChart(state.pinNodeId!) }] : []),
+      ]}
     >
       {view === "grid" && showFmtControls && state.formatControls === "matrix" && (
         <div className="table-popup__matrix-fmt">
@@ -980,7 +1081,19 @@ export function TablePopup() {
           ) : null}
         </div>
       )}
-      {view === "grid" ? (
+      {view === "dashboard" && state.describe && Dashboard ? (
+        <Dashboard tiles={state.describe} query={query} />
+      ) : view === "pivot" && state.pivot ? (
+        <PivotTableView
+          layout={state.pivot}
+          options={pivotOpts}
+          onOptions={setPivotView}
+          cellText={pivotCellText}
+          isErrorAt={(r, c) => isSolError(state.data[r]?.[c])}
+          query={query}
+          ribbon={pivotRibbonProps && <PivotRibbon {...pivotRibbonProps} />}
+        />
+      ) : view === "grid" ? (
         <div className="table-popup__grid-scroll sol-popup__scroll">
           <table className={`table-popup__grid${frozen ? "" : " table-popup__grid--unfrozen"}`} ref={gridRef}>
             <thead>
@@ -1003,7 +1116,7 @@ export function TablePopup() {
                       <div className="table-popup__colhead-edit">
                         <button
                           type="button"
-                          className={`table-popup__coltype${colExprs[c] !== undefined ? " table-popup__coltype--fx" : ""}`}
+                          className={`sol-coltype${colExprs[c] !== undefined ? " sol-coltype--fx" : ""}`}
                           title={`Column type: ${colExprs[c] !== undefined ? "Formula" : COLTYPE_NAME[colTypeAt(c)]}. Cycle Number / Text / Date / Boolean${fxColumns ? " / Formula" : ""}.`}
                           onClick={(e) => { e.stopPropagation(); cycleColumnKind(c); }}
                         >
@@ -1013,12 +1126,9 @@ export function TablePopup() {
                           const nameOptions = headerNameOptions(c);
                           return (
                             <span className={`table-popup__colhead-field${nameOptions.length ? " table-popup__colhead-field--affix" : ""}`}>
-                              <input
-                                className="table-popup__input table-popup__input--text table-popup__colhead-input"
+                              <HeaderNameField
                                 value={headerNames[c] ?? ""}
-                                size={Math.min(24, Math.max(3, (headerNames[c] ?? "").length + 1))}
                                 placeholder={colLabel(c)}
-                                spellCheck={false}
                                 onFocus={() => {
                                   setSel(null);
                                   setFocusCell((f) => ({ r: f?.r ?? -1, c }));
@@ -1027,7 +1137,7 @@ export function TablePopup() {
                                 onBlur={state.columnNameOptions ? () => setEditHead(null) : undefined}
                                 onKeyDown={(e) => { if (!e.nativeEvent.isComposing) headSuggestRef.current?.onKey(e); }}
                                 onMouseDown={(e) => { if (e.shiftKey && colAxis) e.preventDefault(); }}
-                                onChange={(e) => setHeaderName(c, e.target.value)}
+                                onChange={(v) => setHeaderName(c, v)}
                               />
                               {nameOptions.length > 0 && (
                                 <CellSuggest
@@ -1058,7 +1168,7 @@ export function TablePopup() {
                         {fmtButton(c)}
                       </div>
                     ) : (
-                      colHeaderLabel(c)
+                      <span className="table-popup__colhead-label">{colHeaderLabel(c)}</span>
                     )}
                     {editableHeaders && !vertical && colExprs[c] !== undefined && (
                       <ColumnExprField
@@ -1177,16 +1287,22 @@ export function TablePopup() {
                           if (editingHere) bumpDraft((x) => x + 1);
                           else setEditCell({ r, c });
                         }}
-                        onBlur={canEdit ? () => { if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); } } : undefined}
+                        onBlur={canEdit ? () => {
+                          if (caretCell.current?.r === r && caretCell.current.c === c) caretCell.current = null;
+                          if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); }
+                        } : undefined}
+                        onPointerDown={canEdit ? () => { caretCell.current = { r, c }; } : undefined}
                         data-vi={vi}
                         data-c={c}
                         onKeyDown={canEdit ? (e) => {
                           if (e.nativeEvent.isComposing) return;
                           if (suggestRef.current?.onKey(e)) return;
+                          if (e.key === "F2") { e.preventDefault(); caretCell.current = { r, c }; const el = e.currentTarget; el.setSelectionRange(el.value.length, el.value.length); return; }
                           const k = gridKeyOf(e);
                           if (!k) return; // Escape belongs to the shell's capture-phase onEscape
                           const midEdit = editingHere && editDraft.current !== (grid[r]?.[c] ?? "");
-                          if (midEdit && k !== "Enter" && k !== "ShiftEnter" && k !== "Tab" && k !== "ShiftTab") return;
+                          const caretMode = midEdit || (caretCell.current?.r === r && caretCell.current.c === c);
+                          if (caretMode && k !== "Enter" && k !== "ShiftEnter" && k !== "Tab" && k !== "ShiftTab") return;
                           const target = nextCell(k, { vi, c }, { rows: visibleOrder.length, cols: viewCols }, (_vi, cc) => isComputedCol(cc));
                           if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); }
                           if (!target) return;
@@ -1256,17 +1372,18 @@ export function TablePopup() {
         </div>
       ) : view === "form" ? (
         <div className="table-popup__form-scroll sol-popup__scroll">
-          <div className="table-popup__form">
+          <div className="table-popup__form" style={{ "--form-cols": formPlaced.length > 0 ? formCols : 1 } as React.CSSProperties}>
             <div className="table-popup__form-nav">
-              <button type="button" className="table-popup__btn" onClick={() => setFormRow(Math.max(0, fRow - 1))} disabled={fRow <= 0} title="Previous record">
+              <button type="button" className="table-popup__btn" onClick={() => stepForm(-1)} disabled={fPos <= 0} title="Previous record">
                 <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M6.5 1l-4 4 4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
-              <span className="table-popup__form-count">{rows === 0 ? "0 / 0" : `${fRow + 1} / ${rows}`}</span>
-              <button type="button" className="table-popup__btn" onClick={() => setFormRow(Math.min(rows - 1, fRow + 1))} disabled={fRow >= rows - 1} title="Next record">
+              <span className="table-popup__form-count">{fCount === 0 ? "0 / 0" : `${fPos + 1} / ${fCount}`}{formOrder ? " matches" : ""}</span>
+              <button type="button" className="table-popup__btn" onClick={() => stepForm(1)} disabled={fPos >= fCount - 1} title="Next record">
                 <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M3.5 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
             </div>
-            {rows > 0 && (() => {
+            {formOrder && fRow < 0 && <div className="table-popup__form-empty">No matches</div>}
+            {rows > 0 && fRow >= 0 && (() => {
               const box = (c: number, name: string, key: number | string, at?: React.CSSProperties, hint?: string) => {
                 const type = c === -1 ? "string" : colTypeAt(c);
                 const computedHere = c !== -1 && colExprs[c] !== undefined;
@@ -1313,6 +1430,21 @@ export function TablePopup() {
                       })()
                     ) : (
                       <span className={type === "date" || suggestHere ? "table-popup__form-box-date" : undefined} style={type === "date" || suggestHere ? undefined : { display: "contents" }}>
+                      {type === "string" ? (
+                        <AutoGrowField
+                          className="table-popup__form-box-input table-popup__form-box-input--wrap"
+                          value={editingHere ? editDraft.current : shown}
+                          placeholder={hint}
+                          onFocus={() => { editDraft.current = grid[fRow]?.[c] ?? ""; setEditCell({ r: fRow, c }); }}
+                          onChange={(v) => {
+                            editDraft.current = v;
+                            if (editingHere) bumpDraft((x) => x + 1);
+                            else setEditCell({ r: fRow, c });
+                          }}
+                          onBlur={() => { if (editingHere) { setCell(fRow, c, editDraft.current); setEditCell(null); } }}
+                          onKeyDown={(e) => { if (!e.nativeEvent.isComposing) suggestRef.current?.onKey(e); }}
+                        />
+                      ) : (
                       <input
                         className="table-popup__form-box-input"
                         value={editingHere ? editDraft.current : shown}
@@ -1332,6 +1464,7 @@ export function TablePopup() {
                           if (e.key === "Enter") e.currentTarget.blur();
                         }}
                       />
+                      )}
                       {suggestHere && (
                         <CellSuggest
                           handle={suggestRef}
@@ -1382,6 +1515,7 @@ export function TablePopup() {
           onSort={setSort}
           query={query}
           onEdit={formCapable ? (r) => { setFormRow(r); setView("form"); } : undefined}
+          layout={cardPlaced}
         />
       ) : (
         <CsvEditor
@@ -1398,32 +1532,15 @@ export function TablePopup() {
 
       {ctxMenu && editsRows && <TableContextMenu at={ctxMenu} row={menuRow} col={menuCol} onClose={() => setCtxMenu(null)} />}
       <div className="table-popup__footer">
-        <div className="table-popup__view" role="group" aria-label="View">
-          <button
-            type="button"
-            aria-pressed={view === "grid"}
-            onClick={() => leaveCsv("grid")}
-          >Grid</button>
-          {cardsCapable && (
-            <button
-              type="button"
-              aria-pressed={view === "cards"}
-              onClick={() => leaveCsv("cards")}
-            >Cards</button>
-          )}
-          {formCapable && (
-            <button
-              type="button"
-              aria-pressed={view === "form"}
-              onClick={() => leaveCsv("form")}
-            >Form</button>
-          )}
-          <button
-            type="button"
-            aria-pressed={view === "csv"}
-            onClick={showCSV}
-          >CSV</button>
-        </div>
+        <div className="table-popup__tools">
+        <FittingChoice
+          className="table-popup__viewswitch"
+          label="View"
+          value={view}
+          options={viewOptions}
+          onChange={pickView}
+        />
+        {view === "pivot" && pivotRibbonProps && <PivotSheetButton><PivotRibbon {...pivotRibbonProps} sheet /></PivotSheetButton>}
         {state.list && view === "grid" && (
           <div className="table-popup__view" role="group" aria-label="List layout">
             <button
@@ -1460,15 +1577,17 @@ export function TablePopup() {
           </label>
         )}
         {editsRows && <TableEditMenus row={menuRow} col={menuCol} />}
-        <div className="table-popup__spacer" />
-        {editable ? (
-          <div className="table-popup__actions">
-            <button className="table-popup__btn" onClick={discard}>Cancel</button>
-            <button className="table-popup__btn table-popup__btn--primary" onClick={save} disabled={csvBlocksSave}>Save</button>
-          </div>
-        ) : (
-          <button className="table-popup__btn table-popup__btn--primary" onClick={() => tablePopup.close()}>Done</button>
-        )}
+        </div>
+        <div className="table-popup__actions">
+          {editable ? (
+            <>
+              <button className="table-popup__btn" onClick={discard}>Cancel</button>
+              <button className="table-popup__btn table-popup__btn--primary" onClick={save} disabled={csvBlocksSave}>Save</button>
+            </>
+          ) : (
+            <button className="table-popup__btn table-popup__btn--primary" onClick={() => tablePopup.close()}>Done</button>
+          )}
+        </div>
       </div>
       {askClose && <UnsavedChangesPrompt onSave={save} onDiscard={discard} onKeepEditing={() => setAskClose(false)} />}
     </PopupShell>

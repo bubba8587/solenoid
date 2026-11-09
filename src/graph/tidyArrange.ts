@@ -1,12 +1,12 @@
 // [[A1]] visualGraphCalculator, [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast.
 import type { View } from "./view";
 import { zoomAt } from "./zoomAt";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import { requestConfirm } from "./confirmStore";
 import { settingsStore } from "./settingsStore";
 import { cableSelectionStore } from "./cableState";
-import { ConduitNode, FormatControllerNode, GroupNode } from "./rete-nodes";
+import { ConduitNode, FormatControllerNode, GroupNode } from "./nodeClasses";
 import { autofitGroupBox, GROUP_PAD, GROUP_HEADER } from "./groupLogic";
 import { measuredBox } from "./nodeSize";
 import { nodeSizeStore } from "./nodeSizeStore";
@@ -24,17 +24,17 @@ import { scheduleAutosave } from "./persistence";
 import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
 const TIDY_CONFIRM_THRESHOLD = 12;
 
-export interface TidyDeps {
-  editor: NodeEditor<Schemes>;
+interface TidyDeps {
+  editor: GraphEditor<Schemes>;
   view: View;
   ensureElk: () => Promise<Elk | null>;
   repositionDockedTo: (hostId: string) => void;
   isDestroyed: () => boolean;
 }
 
-export type ArrangeFn = (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => Promise<void>;
+type ArrangeFn = (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => Promise<void>;
 
-export function symmetricPortPreset(direction: TidyDirection, layerSplit = 0) {
+function symmetricPortPreset(direction: TidyDirection, layerSplit = 0) {
   const down = direction === "down";
   return {
     port(data: { side: "input" | "output"; index: number; ports: number; width: number; height: number }) {
@@ -144,7 +144,7 @@ export function tidyLayerSplitFor(nodeCount: number, widthCap: TidyWidthCap): nu
   return widthCap > 0 ? Math.max(1, Math.ceil(nodeCount / widthCap)) : 0;
 }
 
-export type Elk = { layout(graph: unknown): Promise<ElkResult> };
+type Elk = { layout(graph: unknown): Promise<ElkResult> };
 type ElkResult = { children?: Array<{ id?: string; x?: number; y?: number }> };
 
 export function makeEnsureElk(isDestroyed: () => boolean): () => Promise<Elk | null> {
@@ -513,7 +513,7 @@ function wiredLanes(n: ConduitNode, conns: readonly Schemes["Connection"][]): { 
 }
 
 export function makeCleanupFn(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View,
   arrangeFn: ArrangeFn,
 ): () => Promise<void> {

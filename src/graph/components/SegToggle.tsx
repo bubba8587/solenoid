@@ -1,6 +1,7 @@
 // [[C26]] opArgDistinct
 import type { ReactNode } from "react";
 import "./SegToggle.css";
+import "./colType.css";
 import { stopDragStart } from "../coarse";
 
 type SegProps<T extends string> = {
@@ -41,4 +42,25 @@ export function SegToggle<T extends string>(props: SegProps<T>) {
 /** Binds `op`, and hoists and takes the accent like OpSelect (DESIGN.md § Op pickers). */
 export function OpToggle<T extends string>(props: SegProps<T>) {
   return <Seg {...props} className={`solenoid-seg--op${props.className ? ` ${props.className}` : ""}`} />;
+}
+
+/** An op picker drawn as the column type button (`sol-coltype`) in the op accent: one button showing the current op,
+ *  a click cycling to the next. It rides the field it types instead of hoisting (Value Input, DESIGN.md § Op pickers). */
+export function OpCycle<T extends string>({ value, onChange, options, className }: SegProps<T>) {
+  const at = Math.max(0, options.findIndex((o) => o.value === value));
+  const cur = options[at];
+  const next = options[(at + 1) % options.length];
+  return (
+    <button
+      type="button"
+      className={`sol-coltype sol-coltype--op${className ? ` ${className}` : ""}`}
+      title={`${cur?.title ?? cur?.value}. Cycles ${options.map((o) => o.title ?? o.value).join(" / ")}.`}
+      aria-label={cur?.title ?? cur?.value}
+      onClick={(e) => { e.stopPropagation(); if (next) onChange(next.value); }}
+      onPointerDown={stopDragStart}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      {cur?.label}
+    </button>
+  );
 }

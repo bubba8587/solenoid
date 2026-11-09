@@ -1,0 +1,7 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"F.INV.RT(0.05, 5, 10)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"F.INV.RT(c_H2,c_B2,c_C2)","env":["c_B2=num:2.4","c_C2=num:3","c_H2=num:0.5266779476655967"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"F.INV.RT(c_H3,c_B3,c_C3)","env":["c_B3=num:4","c_C3=num:2.4","c_H3=num:0.6597222222222223"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

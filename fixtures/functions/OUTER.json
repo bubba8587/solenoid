@@ -1,0 +1,5 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"OUTER(SEQUENCE(2000), SEQUENCE(2000))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -8,7 +8,7 @@ import type { Emit } from "../components/nodeKit";
 import { SolFlowNode } from "./SolFlowNode";
 import type { SolenoidNode } from "../schemes";
 
-export type FlowNodeData = {
+type FlowNodeData = {
   node: SolenoidNode;
   /** Bumped by `view.rerenderNode(id)`. */
   version: number;

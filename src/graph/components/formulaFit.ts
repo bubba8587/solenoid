@@ -38,6 +38,5 @@ export function useFormulaFit(
     });
     ro.observe(box);
     return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 }

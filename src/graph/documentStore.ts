@@ -6,6 +6,7 @@ import { isGraphRebuilding } from "./process";
 import { loadRevealStore } from "./loadReveal";
 import { chooseWriteSlot, chooseReadSlot, CURRENT_SAVE_VERSION } from "./persistenceCore";
 import { pushNotice, dismissNotice } from "./noticeStore";
+import { requestChoice } from "./confirmStore";
 import { saveTimeStore } from "./saveTimeStore";
 import { SEEDS, DEFAULT_SEED_ID, type SeedId } from "./seeds";
 import {
@@ -23,6 +24,17 @@ import {
   duplicateDocument,
   validateLibrary,
   validateDoc,
+  addFolder,
+  allFolders,
+  documentsIn,
+  moveDocument,
+  moveFolder,
+  removeFolder,
+  renameFolder,
+  normalizeFolder,
+  keepDocument,
+  seedEdited,
+  graphFingerprint,
   type DocLibrary,
   type SolDoc,
 } from "./documentStoreCore";
@@ -36,8 +48,8 @@ const docSlotKey = (id: string, slot: "a" | "b") => `solenoid.docs.doc.${id}.${s
 
 const EMPTY_GRAPH: SavedGraph = { v: CURRENT_SAVE_VERSION, nodes: [], connections: [] };
 
-interface IndexMeta { id: string; name: string; updatedAt: number; filePath?: string }
-interface IndexSlot { seq: number; currentId: string | null; docs: IndexMeta[] }
+interface IndexMeta { id: string; name: string; updatedAt: number; filePath?: string; folder?: string }
+interface IndexSlot { seq: number; currentId: string | null; docs: IndexMeta[]; folders?: string[] }
 interface DocSlot { seq: number; doc: SolDoc }
 
 const { notify, subscribe, version } = createNotifier();
@@ -138,7 +150,9 @@ function persist(): void {
       name: d.name,
       updatedAt: d.updatedAt,
       ...(d.filePath ? { filePath: d.filePath } : {}),
+      ...(d.folder ? { folder: d.folder } : {}),
     })),
+    ...(_lib.folders?.length ? { folders: _lib.folders } : {}),
   };
   if (!writeToOlderSlot(INDEX_SLOT_A, INDEX_SLOT_B, index)) ok = false;
 
@@ -174,7 +188,12 @@ function persist(): void {
 function readLibraryFromStorage(): DocLibrary | null {
   const index = readNewestSlot<IndexSlot, IndexSlot>(INDEX_SLOT_A, INDEX_SLOT_B, (o) => {
     if (!Array.isArray(o.docs)) return null;
-    return { seq: typeof o.seq === "number" ? o.seq : 0, currentId: typeof o.currentId === "string" ? o.currentId : null, docs: o.docs as IndexMeta[] };
+    return {
+      seq: typeof o.seq === "number" ? o.seq : 0,
+      currentId: typeof o.currentId === "string" ? o.currentId : null,
+      docs: o.docs as IndexMeta[],
+      folders: Array.isArray(o.folders) ? (o.folders as string[]) : [],
+    };
   });
   if (!index) return null;
 
@@ -182,11 +201,18 @@ function readLibraryFromStorage(): DocLibrary | null {
   for (const meta of index.docs) {
     if (typeof meta?.id !== "string") continue;
     const doc = readNewestSlot<DocSlot, SolDoc>(docSlotKey(meta.id, "a"), docSlotKey(meta.id, "b"), (o) => (o.doc ? validateDoc(o.doc) : null));
-    if (doc) documents.push(doc);
+    if (!doc) continue;
+    // The folder comes from the index, which one write keeps whole, so a folder move cut off partway reads back on one side.
+    const folder = normalizeFolder(typeof meta.folder === "string" ? meta.folder : "");
+    if ((doc.folder ?? "") === folder) documents.push(doc);
+    else {
+      const { folder: _slot, ...rest } = doc;
+      documents.push(folder ? { ...rest, folder } : rest);
+    }
   }
   if (documents.length === 0) return null;
   const currentId = documents.some((d) => d.id === index.currentId) ? index.currentId : documents[0].id;
-  const lib = validateLibrary({ documents, currentId });
+  const lib = validateLibrary({ documents, currentId, folders: index.folders });
   if (lib) {
     _lastPersisted.clear();
     for (const d of lib.documents) _lastPersisted.set(d.id, d);
@@ -195,8 +221,38 @@ function readLibraryFromStorage(): DocLibrary | null {
 }
 
 
-function makeDoc(name: string, graph: SavedGraph): SolDoc {
-  return { id: newId(), name: uniqueName(_lib, name), graph, updatedAt: Date.now() };
+function makeDoc(name: string, graph: SavedGraph, folder?: string): SolDoc {
+  return { id: newId(), name: uniqueName(_lib, name), graph, updatedAt: Date.now(), ...(folder ? { folder } : {}) };
+}
+
+/** Before a verb puts another document on screen: an example left as it opened goes (`drop`, once the switch is
+ *  made); one the user changed asks first, Keep making it a document, Discard dropping it, Cancel staying. */
+async function leaveExample(): Promise<{ go: boolean; drop?: string }> {
+  const cur = getCurrent(_lib);
+  if (!cur?.seed) return { go: true };
+  if (!seedEdited(cur)) return { go: true, drop: cur.id };
+  const choice = await requestChoice({
+    message: `Discard changes to “${cur.name}”? It's an example, so your changes aren't saved unless you keep it as a document.`,
+    confirmLabel: "Keep",
+    altLabel: "Discard",
+    cancelLabel: "Cancel",
+  });
+  if (choice === "cancel") return { go: false };
+  if (choice === "confirm") {
+    _lib = keepDocument(_lib, cur.id);
+    persist();
+    notify();
+    return { go: true };
+  }
+  return { go: true, drop: cur.id };
+}
+
+/** The example left behind, gone once another document is current. */
+function dropExample(id: string | undefined): void {
+  if (!id || id === _lib.currentId || !_lib.documents.some((d) => d.id === id)) return;
+  _lib = removeDocument(_lib, id);
+  persist();
+  notify();
 }
 
 /** Loads the current document and adopts the loaded form, so a load's normalizing never reads as an edit. */
@@ -228,27 +284,115 @@ async function showCurrentSafe(revertTo?: string | null): Promise<void> {
   await loadGraph({ ...EMPTY_GRAPH });
 }
 
-export interface DocMeta { id: string; name: string; updatedAt: number; current: boolean }
+/** `unsaved`: bound to a file and edited since its last file save. */
+export interface DocMeta { id: string; name: string; updatedAt: number; current: boolean; folder: string; unsaved: boolean }
+
+/** One file whichever way its path is spelled: Windows paths compare without case or slash kind. */
+function samePath(a: string, b: string): boolean {
+  const norm = (p: string) => (/^[a-z]:[\\/]/i.test(p) || p.includes("\\") ? p.replace(/\\/g, "/").toLowerCase() : p);
+  return norm(a) === norm(b);
+}
 
 export const documentStore = {
   subscribe,
   version,
 
+  /** The file tree's documents: every one but an example not yet kept. */
   list(): DocMeta[] {
-    return _lib.documents.map((d) => ({
+    return _lib.documents.filter((d) => !d.seed).map((d) => ({
       id: d.id,
       name: d.name,
       updatedAt: d.updatedAt,
       current: d.id === _lib.currentId,
+      folder: d.folder ?? "",
+      unsaved: !!d.filePath && d.updatedAt > (d.fileSavedAt ?? 0),
     }));
+  },
+
+  /** Each document's name, folder and last captured graph, for the Navigator's Everywhere search; read, never kept. */
+  searchable: () => _lib.documents.filter((d) => !d.seed).map((d) => ({ id: d.id, name: d.name, folder: d.folder ?? "", graph: d.graph })),
+
+  /** Each kept document's file state, for the desktop's one-file-per-document rule (`desktopDocs.ts`). */
+  fileWork: () => _lib.documents.filter((d) => !d.seed).map((d) => ({
+    id: d.id, name: d.name, folder: d.folder ?? "", graph: d.graph,
+    filePath: d.filePath, updatedAt: d.updatedAt, fileSavedAt: d.fileSavedAt,
+  })),
+
+  /** Every folder path, sorted; a document's folder and its ancestors included. */
+  folders: (): string[] => allFolders(_lib),
+  documentsIn: (path: string): number => documentsIn(_lib, path).length,
+
+  newFolder(parent: string, name = "New folder"): string {
+    const r = addFolder(_lib, parent, name);
+    _lib = r.lib;
+    persist();
+    notify();
+    return r.path;
+  },
+
+  renameFolder(path: string, name: string): string {
+    const r = renameFolder(_lib, path, name);
+    if (r.lib === _lib) return r.path;
+    _lib = r.lib;
+    persist();
+    notify();
+    return r.path;
+  },
+
+  moveFolder(path: string, parent: string): string {
+    const r = moveFolder(_lib, path, parent);
+    if (r.lib === _lib) return r.path;
+    _lib = r.lib;
+    persist();
+    notify();
+    return r.path;
+  },
+
+  moveToFolder(id: string, folder: string): void {
+    const next = moveDocument(_lib, id, folder);
+    if (next === _lib) return;
+    _lib = next;
+    persist();
+    notify();
+  },
+
+  /** Deletes the folder and every document under it; the open one among them hands the screen to another document. */
+  async removeFolder(path: string): Promise<void> {
+    if (isGraphRebuilding()) return;
+    const wasCurrent = documentsIn(_lib, path).some((d) => d.id === _lib.currentId);
+    _lib = removeFolder(_lib, path);
+    if (_lib.documents.length === 0) {
+      _lib = addDocument(_lib, makeDoc("Untitled", { ...EMPTY_GRAPH }));
+      persist();
+      notify();
+      await loadGraph({ ...EMPTY_GRAPH });
+      return;
+    }
+    persist();
+    notify();
+    if (wasCurrent) await showCurrentSafe();
   },
 
   currentId: (): string | null => _lib.currentId,
   currentName: (): string => getCurrent(_lib)?.name ?? "Untitled",
   currentFilePath: (): string | null => getCurrent(_lib)?.filePath ?? null,
 
+  /** Is the open document an example not yet kept? */
+  currentIsExample: (): boolean => !!getCurrent(_lib)?.seed,
+  /** Has the open example been changed since it opened? */
+  currentExampleEdited: (): boolean => { const cur = getCurrent(_lib); return !!cur && seedEdited(cur); },
+
+  /** Keeps the open example as a document. */
+  keepCurrent(): void {
+    if (!_lib.currentId) return;
+    _lib = keepDocument(_lib, _lib.currentId);
+    persist();
+    notify();
+  },
+
   bindToPath(id: string, filePath: string, name?: string): void {
-    _lib = setDocPath(_lib, id, filePath, name);
+    // A file save is a keep: the example becomes a document.
+    _lib = setDocPath(keepDocument(_lib, id), id, filePath, name);
     persist();
     notify();
   },
@@ -267,6 +411,11 @@ export const documentStore = {
     const lib = readLibraryFromStorage();
     if (!lib || lib.documents.length === 0) return false;
     _lib = lib;
+    // An example left open elsewhere stays only if it was changed, then as a document: work is never lost.
+    for (const d of lib.documents) {
+      if (!d.seed || d.id === _lib.currentId) continue;
+      _lib = seedEdited(d) ? keepDocument(_lib, d.id) : removeDocument(_lib, d.id);
+    }
     persist();
     notify();
     await showCurrentSafe();
@@ -303,32 +452,53 @@ export const documentStore = {
     await showCurrent();
   },
 
-  async newBlank(): Promise<void> {
+  async newBlank(folder?: string): Promise<void> {
     if (isGraphRebuilding()) return;
     if (!this.captureCurrent()) return;
-    _lib = addDocument(_lib, makeDoc("Untitled", { ...EMPTY_GRAPH }));
+    const leave = await leaveExample();
+    if (!leave.go) return;
+    _lib = addDocument(_lib, makeDoc("Untitled", { ...EMPTY_GRAPH }, folder));
+    dropExample(leave.drop);
     persist();
     notify();
     await loadGraph({ ...EMPTY_GRAPH });
   },
 
-  async newFromTemplate(seedId: SeedId): Promise<void> {
+  /** Opens a seed. From the file tree (`asDocument`, into a folder) it is a document at once; from the seed menus, an
+   *  example link or first run it is an example: kept out of the file tree, dropped when left unchanged, and asked
+   *  about when left changed. */
+  async newFromTemplate(seedId: SeedId, folder?: string, opts?: { asDocument?: boolean }): Promise<void> {
     const seed = SEEDS[seedId];
     if (!seed) return;
     if (isGraphRebuilding()) return;
     if (!this.captureCurrent()) return;
-    _lib = addDocument(_lib, makeDoc(seed.label, seed.graph));
+    const leave = await leaveExample();
+    if (!leave.go) return;
+    const doc = makeDoc(seed.label, seed.graph, folder);
+    if (!opts?.asDocument) doc.seed = { id: seedId, fingerprint: graphFingerprint(seed.graph) };
+    _lib = addDocument(_lib, doc);
+    dropExample(leave.drop);
     persist();
     notify();
-    await loadGraph(seed.graph);
+    // The load's normalized form is adopted, not an edit; the fingerprint is taken from it.
+    if (await loadCurrent(seed.graph)) {
+      const cur = getCurrent(_lib);
+      if (cur?.seed) {
+        _lib = { ..._lib, documents: _lib.documents.map((d) => (d.id === cur.id ? { ...d, seed: { id: seedId, fingerprint: graphFingerprint(d.graph) } } : d)) };
+        persist();
+      }
+    }
   },
 
   async open(id: string): Promise<void> {
     if (id === _lib.currentId) return;
     if (isGraphRebuilding()) return;
     if (!this.captureCurrent()) return;
+    const leave = await leaveExample();
+    if (!leave.go) return;
     const prevId = _lib.currentId;
     _lib = setCurrent(_lib, id);
+    dropExample(leave.drop);
     persist();
     notify();
     await showCurrentSafe(prevId);
@@ -338,7 +508,10 @@ export const documentStore = {
     if (isGraphRebuilding()) return;
     if (!this.captureCurrent()) return;
     const g = serializeGraph() ?? { ...EMPTY_GRAPH };
+    // Saving an example under a name keeps the copy; the example itself is done with.
+    const example = getCurrent(_lib)?.seed ? _lib.currentId ?? undefined : undefined;
     _lib = addDocument(_lib, makeDoc(name.trim() || "Untitled", g));
+    dropExample(example);
     persist();
     notify();
   },
@@ -360,6 +533,8 @@ export const documentStore = {
     if (!this.captureCurrent()) return;
     const prevId = _lib.currentId;
     _lib = duplicateDocument(_lib, id, newId(), uniqueName(_lib, `${src.name} copy`));
+    // A duplicated example lives on as the copy, a document.
+    if (src.seed) dropExample(src.id);
     persist();
     notify();
     await showCurrentSafe(prevId);
@@ -390,15 +565,25 @@ export const documentStore = {
       return;
     }
     if (!this.captureCurrent()) return;
+    // A file a document already keeps opens that document: a second copy bound to it would overwrite the first.
+    const bound = filePath ? _lib.documents.find((d) => d.filePath && samePath(d.filePath, filePath)) : undefined;
+    if (bound) { await this.open(bound.id); return; }
+    const leave = await leaveExample();
+    if (!leave.go) return;
     const prevId = _lib.currentId;
-    graph.meta = { ...graph.meta, foreign: true, networkAllowed: undefined };
+    graph.meta = { ...graph.meta, foreign: true, networkAllowed: undefined, scriptsAllowed: undefined };
     const doc = makeDoc(name, graph);
     if (filePath) doc.filePath = filePath;
     if (typeof graph.savedAt === "number") {
-      doc.fileSavedAt = graph.savedAt;
-      doc.updatedAt = graph.savedAt;
+      // Another machine's clock, or a file's claim: never later than now, or edits until then would read as saved.
+      const at = Math.min(graph.savedAt, Date.now());
+      doc.fileSavedAt = at;
+      doc.updatedAt = at;
+    } else if (filePath) {
+      doc.fileSavedAt = doc.updatedAt;
     }
     _lib = addDocument(_lib, doc);
+    dropExample(leave.drop);
     persist();
     notify();
     if (!(await loadCurrent(graph)) && prevId) {

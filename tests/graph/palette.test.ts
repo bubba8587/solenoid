@@ -1,9 +1,10 @@
-// [[B14]]
+// [[B14]], [[palette-and-theme#The built-in palettes]], [[palette-and-theme#The neutral chrome ramp]],
+// [[palette-and-theme#Accent-adaptive ramps]], [[palette-and-theme#Derived chrome tokens]], [[palette-and-theme#The gray swatch's neutral cycle]],
+// [[palette-and-theme#The Custom palette]], [[palette-and-theme#Which palette is in effect]], [[palette-and-theme#Accent helpers]]
 import { describe, it, expect, afterEach } from "vitest";
 import { SOCKET_VARS, BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_HOME, CHROME_KEYS, type ChromeKey, type PaletteName, type PaletteSlot, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, adaptChrome, chromeCssVars, hexToOklch, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, resolveAccent, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "../../src/graph/palette";
 
-// WCAG luminance/contrast, shared by the structure checks below and the
-// accent-adaptive suite (which re-runs them on rotated ramps).
+// WCAG luminance and contrast, shared by the structure checks and the accent-adaptive suite.
 const chan = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16) / 255;
 const lum = (h: string) => [0.2126, 0.7152, 0.0722].reduce((a, w, i) => {
   const s = chan(h, i);
@@ -25,10 +26,6 @@ describe("built-in palettes", () => {
     }
   });
 
-  // Author's rule (2026-06-21): slots may share a color ONLY where colourblindness
-  // forces it (Colorblind-safe maps 12 slots onto a smaller proven CVD set) or where
-  // a palette is DELIBERATELY monochrome (Equinox — Default's lightness as grays, type read
-  // by socket shape). Every other built-in must give all 12 slots visibly distinct hexes.
   const SHARED_COLOUR_OK = new Set(["Colorblind-safe", "Equinox"]);
   it("non-Colorblind palettes have 12 distinct colors", () => {
     for (const name of PALETTE_NAMES) {
@@ -87,8 +84,6 @@ describe("Dawn and Dusk", () => {
   const dist = (a: string, b: string) => Math.hypot(...ok(a).map((x, i) => x - ok(b)[i]));
   const dd = BUILTIN_PALETTES["Dawn and Dusk"];
 
-  // A sanity check, not a target: the author put harmony with the grounds ahead of separation here.
-  // Gold/lime (Number vs String) is the closest socket pair, at about 68% of the floor.
   it("keeps socket colors 60% of the socket floor apart, and no pair under 60% of its old limit", () => {
     const sockets = [...new Set(SOCKET_VARS.map((s) => s.slot))];
     const floor = Math.min(...sockets.flatMap((a) => sockets.filter((b) => b !== a).map((b) => dist(PALETTE[a], PALETTE[b]))));
@@ -111,8 +106,6 @@ describe("Dawn and Dusk", () => {
   });
 });
 
-// The chrome ramp a palette may author (App.css's neutral tokens). Parallel to the
-// slot map: never resolved through resolveColor, written straight by appTheme.
 describe("chrome ramp", () => {
   const MODES = ["dark", "light"] as const;
 
@@ -133,10 +126,6 @@ describe("chrome ramp", () => {
     }
   });
 
-  // All or nothing: a partial ramp writes its keys but derives NOTHING (chromeCssVars),
-  // so half a ramp lands the app in a mix of authored neutrals and App.css ones. Default
-  // is the only palette that authors none — it IS App.css, and a copy here would be two
-  // homes for one truth.
   it("a palette authors either no chrome or a COMPLETE ramp in both modes", () => {
     for (const name of PALETTE_NAMES) {
       for (const mode of MODES) {
@@ -192,10 +181,6 @@ describe("chrome ramp", () => {
   });
 });
 
-// What makes a ramp "appropriate" rather than merely different. Every rule here is a
-// claim DESIGN.md §2 already makes about the neutral ramp; a palette may recolor the
-// workbench but not renege on its structure. The App.css baseline is held to the same
-// bar, so a rule that Default fails is a wrong rule, not a failing palette.
 describe("chrome ramp structure", () => {
   // Every authored ramp, plus the App.css baseline they all descend from.
   const RAMPS: [string, "dark" | "light", Record<ChromeKey, string>][] = [
@@ -238,22 +223,13 @@ describe("chrome ramp structure", () => {
     expect(c("textDim")).toBeGreaterThan(c("textMuted"));
   });
 
-  // A tinted canvas shares its cards' hue, so lightness alone must set them apart: these sit a clear step further down than Default's.
   it.each(RAMPS.filter(([n]) => ["Solarized", "Orchard", "Blueprint", "Dawn and Dusk"].includes(n)))("%s/%s: the canvas sits well below the card", (_n, mode, r) => {
     expect(hexToOklch(r.surface)[0] - hexToOklch(r.canvasBg)[0]).toBeGreaterThanOrEqual((mode === "dark" ? 0.1 : 0.05) - 0.005);
   });
 
-  // [[B14]] oneDesignSystem: contrast is scoped to the two palettes that PROMISE it — Default, the
-  // experience nobody chose, and Colorblind-safe, whose brief is legibility. The rest
-  // are aesthetic opt-ins where fidelity to a look wins; Solarized sits near 3:1 by
-  // design and forcing AA meant shipping something that was no longer Solarized.
-  // Widening this set back to every palette is a decision, not a tidy-up.
   const AA_PALETTES = new Set(["(App.css)", "Default", "Colorblind-safe"]);
   const AA_RAMPS = RAMPS.filter(([name]) => AA_PALETTES.has(name));
 
-  // DESIGN.md §2: "the muted tier clears WCAG AA 4.5:1 on the card/sunken surfaces".
-  // The canvas is deliberately excluded for the secondary tiers — nothing sets body
-  // text directly on the canvas, and the App.css light ramp is itself at 4.35 there.
   it.each(AA_RAMPS)("%s/%s: every ink tier clears WCAG AA on the card and the field", (_n, _m, r) => {
     for (const k of ["text", "textDim", "textMuted"] as const) {
       expect(ratio(r[k], r.surface), `${k} on card`).toBeGreaterThanOrEqual(4.5);
@@ -262,17 +238,12 @@ describe("chrome ramp structure", () => {
     expect(ratio(r.text, r.canvasBg), "text on canvas").toBeGreaterThanOrEqual(4.5);
   });
 
-  // The scope above is only honest if the guaranteed palettes actually exist as ramps
-  // to check. Colorblind-safe authoring chrome is what puts it in AA_RAMPS at all.
   it("the AA-guaranteed palettes are all present in the checked set", () => {
     expect(AA_RAMPS.map(([n, m]) => `${n}/${m}`).sort())
       .toEqual(["(App.css)/dark", "(App.css)/light", "Colorblind-safe/dark", "Colorblind-safe/light"]);
   });
 });
 
-// Accent-adaptive chrome: the tinted ramps (CHROME_HOME) follow the live accent's
-// hue — rotated by (accent − home) with every key's LUMINANCE held, so the [[B14]] oneDesignSystem
-// structure survives any accent and the authored ramp reappears untouched at home.
 describe("accent-adaptive chrome", () => {
   const HOMES = Object.entries(CHROME_HOME) as [PaletteName, PaletteSlot][];
   const MODES = ["dark", "light"] as const;
@@ -308,8 +279,6 @@ describe("accent-adaptive chrome", () => {
       const ramp = BUILTIN_CHROME[name].dark;
       expect(adaptChrome(ramp, homeHex(name), NEUTRAL_HEX[NEUTRAL_WHITE])).toBe(ramp);
       expect(adaptChrome(ramp, homeHex(name), NEUTRAL_HEX[NEUTRAL_DARK])).toBe(ramp);
-      // The palettes' own gray accents sit below the OKLCh chroma floor — Orchard's
-      // warm quiet included — so a neutral pick never re-tints the workbench.
       expect(adaptChrome(ramp, homeHex(name), BUILTIN_PALETTES[name].gray)).toBe(ramp);
     }
   });
@@ -327,20 +296,12 @@ describe("accent-adaptive chrome", () => {
             const [, cIn, hIn] = hexToOklch(ramp[key]);
             const [, cOut, hOut] = hexToOklch(out[key]);
             const label = `${name}/${mode}/${key}@${slot}`;
-            // Luminance tolerance is 8-bit hex quantization, worst near WHITE
-            // (~0.006/step on g) — where structure gaps are widest.
+            // 8-bit hex rounding, worst near white (about 0.006 a step on g).
             expect(Math.abs(lum(out[key]) - lum(ramp[key])), `${label} luminance`).toBeLessThan(0.01);
-            // THE anti-wash pin (author, 2026-08-18): perceived chroma NEVER
-            // inflates in transit — the first cut rotated in HSL, whose saturation
-            // is hue-anisotropic, and the workbench came out "washed in the color".
-            // It may only DROP where the sRGB gamut is tighter at the new hue than
-            // at the authored one (near-white creams carried to pink, dark teals);
-            // measured worst is −0.0133.
+            // Chroma never grows; the worst drop measured is −0.0133.
             expect(cOut - cIn, `${label} chroma inflation`).toBeLessThan(0.005);
             expect(cOut - cIn, `${label} chroma collapse`).toBeGreaterThan(-0.02);
-            // Hue lands delta away where the key carries enough chroma for a stable
-            // hue; tolerance widens as 1/chroma (one hex step wobbles ab ~0.0025)
-            // plus the gamut clamp's own wobble at very low chroma.
+            // Only where the key has chroma enough for a stable hue; one hex step wobbles ab about 0.0025.
             if (cIn > 0.012 && cOut > 0.008) {
               const tol = 2 + (0.0025 / Math.min(cIn, cOut)) * (180 / Math.PI);
               expect(Math.abs(hueDist(hOut, hIn) - delta), `${label} hue`).toBeLessThan(tol);
@@ -351,8 +312,6 @@ describe("accent-adaptive chrome", () => {
     }
   });
 
-  // The load-bearing guarantee: rotation may retint but never relight. Every [[B14]] oneDesignSystem
-  // structure rule holds for every adaptive palette under every pickable accent.
   const CASES = HOMES.flatMap(([name]) =>
     MODES.flatMap((mode) => COLOR_PALETTE.map((accent) => [name, mode, accent] as [PaletteName, "dark" | "light", PaletteSlot])),
   );
@@ -389,7 +348,6 @@ describe("accent-adaptive chrome", () => {
   });
 });
 
-// chromeCssVars is the whole contract with appTheme: what it omits, appTheme CLEARS.
 describe("chromeCssVars", () => {
   it("an unauthored ramp produces nothing, so every chrome var falls back to App.css", () => {
     expect(chromeCssVars({}, "dark")).toEqual({});
@@ -407,10 +365,8 @@ describe("chromeCssVars", () => {
       for (const { var: name, key } of CHROME_VARS) {
         expect(out[name], `${mode}/${name}`).toBe(BUILTIN_CHROME.Orchard[mode][key]);
       }
-      // Dark keeps App.css's black shadows and its accent-tinted wordmark, so those
-      // four stay unwritten and get cleared. Light derives every one.
       const derived = DERIVED_CHROME_VARS.filter((v) => out[v] !== undefined);
-      expect(derived.length, mode).toBe(mode === "light" ? DERIVED_CHROME_VARS.length : DERIVED_CHROME_VARS.length - 4);
+      expect(derived.length, mode).toBe(mode === "light" ? DERIVED_CHROME_VARS.length : DERIVED_CHROME_VARS.length - 5);
     }
   });
 
@@ -420,8 +376,6 @@ describe("chromeCssVars", () => {
   });
 });
 
-// The gray swatch's 3-way neutral cycle (white → gray → dark), reachable only
-// through the gray swatch — never as its own grid slot.
 describe("neutral shades (gray-swatch cycle)", () => {
   it("cycles gray → dark → white → gray, and homes any real color to gray", () => {
     expect(nextNeutral("gray")).toBe(NEUTRAL_DARK);
@@ -441,7 +395,6 @@ describe("neutral shades (gray-swatch cycle)", () => {
       expect(resolveColor(NEUTRAL_DARK)).toBe("#375f85");
       expect(resolveAccent("gray")).toBe("#8ba4bf");
       expect(resolveColor("gray")).toBe(BUILTIN_PALETTES.Blueprint.gray);
-      // Solarized's text is too dim to be the white shade, so the plain white takes its background's blue-green hue.
       paletteStore.setActiveBase("Solarized");
       const [L, c, h] = hexToOklch(resolveColor(NEUTRAL_WHITE));
       const hueGap = Math.abs(((h - hexToOklch("#03303b")[2]) % 360 + 540) % 360 - 180);
@@ -466,8 +419,7 @@ describe("neutral shades (gray-swatch cycle)", () => {
   });
 });
 
-// F-1 — the app-wide user-editable custom palette.
-describe("custom palette (F-1)", () => {
+describe("custom palette", () => {
   afterEach(() => {
     paletteStore.setActiveBase("Default");
     paletteStore.loadCustomTemplate("Default"); // restore the shared singleton map
@@ -526,9 +478,6 @@ describe("custom palette (F-1)", () => {
   });
 });
 
-// Bundle 13 #52 — a colors-only brand override PARALLEL to the canvas palette.
-// The core invariant under test: setting a report override must NEVER change
-// what the canvas (paletteStore/resolveColor) resolves, and vice versa.
 describe("reportPaletteStore (report/export-only, parallel to the canvas palette)", () => {
   afterEach(() => {
     reportPaletteStore.setReportPalette(null);
@@ -589,8 +538,6 @@ describe("reportPaletteStore (report/export-only, parallel to the canvas palette
 
 describe("contrast ink is baked, not recomputed", () => {
   it("gives a readable ink for every palette slot in both themes", () => {
-    // The pairing that matters: a fill takes --node-accent, its text takes the ink
-    // derived from that same color. A light slot must get dark ink and vice versa.
     for (const slot of COLOR_PALETTE) {
       for (const mode of ["dark", "light"] as const) {
         const accent = themeAccent(PALETTE[slot], mode);

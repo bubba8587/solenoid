@@ -7,7 +7,7 @@ description: Add a new computation node to Solenoid (the node-graph app). Use wh
 
 A node is a class + a component + three registration lines + a catalog entry.
 The component is usually boilerplate (the node kit carries it), so the real
-work is the `data()` method, the tests, and the catalog copy.
+work is the Rust body, the field declarations, the tests, and the catalog copy.
 
 **Worked example:** the Color Blend node (2026-07-20, commit history) touches
 every step compactly — class in `input.ts`, hand-written component, kind
@@ -58,7 +58,7 @@ script when the component needs hand-writing anyway (op select, custom render).
    `logic.ts` `text.ts` `date.ts` `finance.ts` `frame.ts` `matrix.ts`
    `cube.ts` `input.ts` (sources) `display.ts` (sinks) `control.ts` (widgets)
    `visual.ts` (chart-socket content) `connection.ts`/`dataFeed.ts` (fetchers)
-   `convert.ts` `complex.ts`. `rete-nodes.ts` is the barrel — existing domain
+   `convert.ts` `complex.ts`. `nodeClasses.ts` is the barrel — existing domain
    files are already `export *`'d, so adding to one needs no barrel edit.
    - **Ports**: use the factories in `nodes/shared.ts` — every socket family
      has typed in/out helpers (`numIn`, `strIn`, `dateIn`, `logicalIn`,
@@ -75,30 +75,26 @@ script when the component needs hand-writing anyway (op select, custom render).
      `adoptiveListIn`/`adoptiveTableIn` (1-D/2-D), `trueAnyIn/Out` (the
      hollow-ring supremum). A new socket TYPE is a bigger, derived edit —
      follow the `anylist` worked example in CLAUDE.md.
-   - **`data()` is the only non-boilerplate.** Element-wise ops broadcast, and
-     WHICH broadcaster depends on the element type: `broadcast(fn, …)` /
-     `broadcastErr` for numbers and dates (a date serial is a number);
-     `broadcastCells(fn, …)` (`shared.ts`) when operands or results are text /
-     booleans / mixed families (LEN is string→number); `broadcastComplex`
-     (`complex.ts`) for complex, whose values are themselves `[re, im]` arrays
-     and so need an exact shape test plus per-operand tags. All three share the
-     ragged-zip + per-cell error/missing contract. Cache the result on the
-     instance — `cachedResult: BroadcastResult` (= `CellResult<number>`) or
-     `CellResult<T>` for another element type, or `cachedList` / `cachedString`
-     — whatever the component reads. `ValueDisplay` renders a scalar and a
-     broadcast list from the same field, so this needs no component branch.
-   - **Errors**: `installErrorGuards` wraps every `data()` at `nodecreated` —
-     an incoming `SolError` short-circuits to the outputs automatically, so
-     your `data()` sees clean inputs (unless the class opts into
-     `SEES_ERRORS`). For the node's OWN failures return
-     `solError(code, message)` from `errorValue.ts` (`#VALUE!`, `#DOMAIN!`,
-     `#SHAPE!`…) — never throw strings, never emit `NaN` as an error.
-     Container values can carry per-cell `null` (missing) + `SolError`s —
-     see `valueKinds.ts` before hand-rolling skip/propagate logic.
-   - **Units**: an algebra node (one that computes on numbers that may carry
-     units) sets `unitAware = true` and funnels through `broadcastUnit`
-     (`shared.ts`); everything else gets unit-cells unwrapped centrally by
-     `coerceInputs` — do NOT hand-unwrap. See CLAUDE.md "unit-blind boundary".
+   - **The body is Rust.** The class's `data()` is `return nodeOnCore(this, inputs)`;
+     the body lives in `crates/solenoid-core/src/nodes/<family>.rs`, reached by
+     `nodes::run` by class name, and a class whose `data()` is only that goes in
+     `nodes::DIRECT` (kept sorted) so the engine calls it in Rust
+     (`tree/specs/computation/node-bodies.md`). Element-wise bodies use the
+     family broadcasters in `nodes/kit.rs` (`broadcast_err` and kin), which share
+     the ragged-zip and per-cell error/blank contract. A body that answers the
+     same as a formula calls the formula's kernel or the function by name.
+   - **Errors**: the input boundary (`crates/solenoid-graph`) runs the error guard
+     around every call: an incoming error short-circuits to the outputs unless the
+     class is in `SEES_ERRORS`, and a throw becomes `#ERROR!`. For the node's OWN
+     failures the body answers an error value (`#VALUE!`, `#DOMAIN!`, `#SHAPE!`…);
+     never NaN as an error.
+   - **Units**: an algebra node sets `unitAware = true` and its body does the unit
+     math; everything else gets bare magnitudes from the boundary. Do NOT
+     hand-unwrap.
+   - **The formula twin**, when there is one, is its own set of declarations
+     (`call_traits.json`, `FUNCTION_ARITY`, `ARG_ROLES`, a unit class): the map of
+     everything a new function touches, and the spec governing each piece, is
+     `tree/specs/floors/node-classes.md` § A new function across the app.
 2. **Kind** → `src/graph/nodes/kind.ts`: an `instanceof` branch in
    `nodeKindOf()` assigns the accent/category (`"input"`, `"string"`,
    `"list"`, `"util"`…). The fallback is `"math"`, so math nodes skip this.
@@ -116,7 +112,7 @@ script when the component needs hand-writing anyway (op select, custom render).
 6. **Catalog** → one entry in `src/graph/nodeCatalog.ts`, in the right
    category. The `description` IS the node's Function Reference entry AND its
    hover tooltip — carry the Excel equivalent where one exists, per the
-   zero-learning-curve rule. A `keywords` string boosts Add-menu search.
+   zero-learning-curve rule. A `keywords` string boosts Add-menu search; the everyday words people mean the card by ("mean", "running total") go in `CARD_TAGS` (`src/graph/catalogTags.ts`), which rank first. A tag is never the card's label or a formula/Excel name.
    No Captain-Obvious phrasing (CLAUDE.md).
 7. **Excel metadata** (only for Excel-function nodes) → `src/graph/nodeExcel.ts`:
    `"foo": [{ excel: "FOO", syntax: "=FOO(x)" }]` (+ `parity: false` + `note`
@@ -131,21 +127,44 @@ script when the component needs hand-writing anyway (op select, custom render).
 
 ## Persistence — how node state survives save/copy/undo
 
-- `extractInit` (`copyPaste.ts`) snapshots constructor-arg fields listed in
+- `extractInit` (`nodeInit.ts`) snapshots constructor-arg fields listed in
   **`INIT_FIELD_ORDER`** — `label`, `op`, `mode`, `format`, `value`, `width`…
   **Reuse an existing field name when one fits** (e.g. call your dropdown
   `mode` or `op`); a genuinely new field must be APPENDED to that list, which
   is shared with `textForm.ts`'s byte-identical writer — extend, don't reorder.
   The constructor must accept the same fields back (guard stale enum values
   from old saves — fall back, don't crash).
-- **Reading an input**: use `readInput(inputs.x, this.literals.x ?? default)`,
-  NEVER `inputs.x?.[0] ?? this.literals.x`. `??` can't tell "no cable" from "a
-  cable carrying blank", so it substitutes the card's value for the graph's
-  answer. Then decide what a wired blank DOES from the input's role —
-  propagate / skip / skip-the-check / fall back — per the table in
-  `tree/specs/values/value-semantics.md` "Reading an input". Pin both halves in a test
-  (wired blank AND unwired default); `nodes/readInputSweep.test.ts` fails on a
-  new `?? literal` read.
+- **Reading an input** happens in the Rust body: `slot` / `read_role` /
+  `Call::unwired` (`nodes/list.rs`, `nodes/scalar.rs`), never a cable's value
+  with the card's literal patched in. What a wired blank DOES follows the
+  input's role (propagate / skip / fall back), per
+  `tree/specs/values/value-semantics.md` § Reading an input.
+- **Every field declares what it is when empty** ([[D96]] emptySlotShowsItsValue,
+  `tree/specs/documents/inline-literal-maps.md` § What an empty field is): a
+  **Fallback** (a value, shown muted upright, that the card computes with), a
+  **Behavior** (`[word]` in brackets, upright), an **Example** (a muted italic
+  hint; the card computes nothing from it) or **Required** (nothing shown; a
+  named error). No hidden defaults: a value the body computes from when the
+  field is empty is that field's Fallback, shown. Fallback over Example by
+  default, 0 / FALSE / "" usually, another value where it reads better. Where it
+  goes:
+  - a **setting** declares it through its role: `static inputRoles` with
+    `rolesFrom("FN", { key: argIndex })` when the card has a formula twin (the
+    role then lives once in `ARG_ROLES`, `inputRoles.ts`, and the call table),
+    else `setting(value)` or `setting(LEFT_OUT, "word")` (the word a value-like
+    one shows, e.g. `"5"`);
+  - any other field is a row in `EMPTY` (or `EMPTY_BY_OP` when it differs per
+    op) in `crates/solenoid-core/src/nodes/fields.rs`, and the body reads it only
+    through `Call::unwired`.
+  `emptyFieldKinds.test.ts` fails a card leaf with an undeclared field, and a
+  Fallback that disagrees with the formula twin's empty slot. A field that only
+  appears after a mode switch isn't swept: declare it all the same.
+- **A mode that swaps the input shape** (a list vs a table) follows INTERPOLATE:
+  a `mode: ShapeMode` field, `_rebuildSockets()` building each mode's full set
+  (the existing mode's sockets unchanged), and the component calling
+  `applyShapeMode` (`components/shapeMode.ts`), which drops every cable first.
+  A grid that reaches a body takes `matrixArgs` in the call table, and a
+  dynamic matrix socket goes in `matrixUnitPolicy.test.ts` by hand.
 - **`literals` / `stringLiterals`**: declare the map on the class IFF the card
   edits those values inline — that declaration is the LOAD GATE (persistence
   restores the maps only onto declaring classes, so a save can't hardcode a
@@ -191,9 +210,16 @@ script when the component needs hand-writing anyway (op select, custom render).
 
 ## Verify
 
-`npx tsc --noEmit` clean + `npx vitest run` green — the FULL suite, because
-the machine-checked sweeps (`socketConnect.test.ts`, `coerceInputs.test.ts`,
-`seeds.test.ts`) are what catch a wiring/declaration mistake. The node then
+`npx tsrs --noEmit` clean; the Rust checks and binaries per `CLAUDE.md` §
+Testing (`bash scripts/check-rust.sh core`, `cargo test --release --lib`,
+`--test nodes`, `--test conformance`; a moved answer is refrozen and each moved
+case checked against the change); `npm run build:wasm` once; then the `nodes`
+bucket (`node scripts/test-bucket.mjs nodes`) plus the buckets of whatever else
+the change touched. A new card or function crosses tiers (catalog, formulas,
+saves), so run the full `npx vitest run` once before pushing: the sweeps
+(`socketConnect`, `coerceInputs`, `seeds`, `emptyFieldKinds`,
+`formulaNodeCoverage`, `settingsAudit`) are what catch a declaration gap. A
+pack description edit also needs `node scripts/prerender-site.mjs`. The node then
 appears in the Add menu and the Function Reference (both generated from the
 catalog). The author eyeballs UI on their own dev environment — do NOT build
 render/screenshot tests (vitest env is `node`, no jsdom).

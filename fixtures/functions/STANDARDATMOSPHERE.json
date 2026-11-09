@@ -1,0 +1,8 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"STANDARDATMOSPHERE(\"1000\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"STANDARDATMOSPHERE(0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"STANDARDATMOSPHERE(0, \"temp\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"STANDARDATMOSPHERE(100000)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

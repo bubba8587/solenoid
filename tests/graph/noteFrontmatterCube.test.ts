@@ -1,11 +1,8 @@
-// [[B1]] obsidianBet, [[C68]], [[C24]] arraySemantics
+// [[B1]] obsidianBet, [[C68]], [[C24]] arraySemantics, [[reports-and-notes#Frontmatter becomes output sockets]], [[C68]] knapIsTheDocumentSyntax, [[frame-verbs#The Cube value]]
 import { describe, it, expect } from "vitest";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { isCubeValue, isFrameValue, recordsToCube, type CubeValue } from "../../src/graph/frame";
-
-// A frontmatter row list whose values include a LIST is a cube (a frame cell is scalar; the
-// cube exists so a list is never an in-cell string) — author, 2026-09-07.
 
 const NOTE = [
   "---",

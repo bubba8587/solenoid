@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[stores#Node-keyed stores in brief]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { commentStore } from "../../src/graph/commentStore";
 

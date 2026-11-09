@@ -1,4 +1,4 @@
-// [[B11]] maximalMerge. Spec: tree/specs/canvas/react-flow-surface-contract.md § Ghost cables.
+// [[B11]] maximalMerge. Spec: [[react-flow-surface-contract#Ghost cables]].
 // No connection exists behind a ghost, so it can't be an RF edge; its endpoints come from RF's measured handle bounds.
 import { memo, useSyncExternalStore } from "react";
 import { useStore, type ReactFlowState } from "@xyflow/react";

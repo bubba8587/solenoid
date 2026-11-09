@@ -2,6 +2,7 @@
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
+import { RecalcButton } from "./RecalcButton";
 import { getOwningView } from "../activeGraph";
 import {
   DIST_SPECS, DIST_FORM_META,
@@ -46,6 +47,7 @@ export function DistributionsComponent({ data, emit }: NodeProps<DistributionNod
         emit={emit}
         keys={data.inputKeys}
       />
+      {form === "sample" && <RecalcButton title="Draw new samples" />}
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );

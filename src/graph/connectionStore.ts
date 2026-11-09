@@ -2,14 +2,15 @@
 import { createNotifier } from "./storeKit";
 import { processGraph } from "./process";
 import { allTopEditors } from "./activeGraph";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { docMetaStore } from "./docMetaStore";
 import { settingsStore } from "./settingsStore";
 import { pushNotice, dismissNotice } from "./noticeStore";
+import { foreignCardStore } from "./foreignCardStore";
 
-export type ConnectionStatus = "idle" | "loading" | "ok" | "error" | "gated";
+type ConnectionStatus = "idle" | "loading" | "ok" | "error" | "gated";
 
 export interface ConnectionState {
   status: ConnectionStatus;
@@ -91,10 +92,10 @@ function clearTimer(id: string): void {
   _timers.delete(id);
 }
 
-function hasDeep(editor: NodeEditor<Schemes>, id: string): boolean {
+function hasDeep(editor: GraphEditor<Schemes>, id: string): boolean {
   if (editor.getNode(id)) return true;
   return editor.getNodes().some((n) => {
-    const inner = (n as unknown as { internalEditor?: NodeEditor<Schemes> }).internalEditor;
+    const inner = (n as unknown as { internalEditor?: GraphEditor<Schemes> }).internalEditor;
     return !!inner && hasDeep(inner, id);
   });
 }
@@ -105,27 +106,45 @@ function nodeExists(id: string): boolean {
 }
 
 
-export function networkAllowed(): boolean {
-  if (!docMetaStore.isForeign()) return true;
+/** With `id`, for that card: a card someone else wrote, pasted into the user's own document, asks too. */
+export function networkAllowed(id?: string): boolean {
   if (settingsStore.get("alwaysAllowNetwork")) return true;
+  if (id && foreignCardStore.holds(id, "network")) return false;
+  if (!docMetaStore.isForeign()) return true;
   return docMetaStore.networkAllowed() === true;
 }
 
+/** Whether anything here waits on the network grant: the foreign document, or a pasted card someone else wrote. */
+export function networkWaits(): boolean {
+  if (settingsStore.get("alwaysAllowNetwork")) return false;
+  return (docMetaStore.isForeign() && docMetaStore.networkAllowed() !== true) || foreignCardStore.any("network");
+}
+
 const _gated = new Set<string>();
+/** Gated cards whose value does not change with the connection counter, marked edited once allowed. */
+const _gatedCards = new Map<string, { edited(): void }>();
 let _prompted = false;
 let _promptQueued = false;
 let _promptNotice: number | undefined;
 let _docGeneration = 0;
 
-export function requestNetwork(id: string): boolean {
-  if (networkAllowed()) { _gated.delete(id); return true; }
-  _gated.add(id);
+export function requestNetwork(id: string, card?: { edited(): void }): boolean {
+  if (networkAllowed(id)) { _gated.delete(id); _gatedCards.delete(id); return true; }
+  if (card) _gatedCards.set(id, card);
+  askNetwork(id);
   connectionStore.setState(id, { status: "gated" });
+  return false;
+}
+
+/** Holds `key` (a card, or the markdown images a render withheld) for the one prompt. It notifies nothing, so a
+ *  render may ask: the prompt waits a tick, until every gated card has asked. */
+export function askNetwork(key: string): void {
+  _gated.add(key);
   if (!_prompted && !_promptQueued) {
     _promptQueued = true;
     setTimeout(() => {
       _promptQueued = false;
-      if (_prompted || networkAllowed() || _gated.size === 0) return;
+      if (_prompted || !networkWaits() || _gated.size === 0) return;
       _prompted = true;
       const n = _gated.size;
       const generation = _docGeneration;
@@ -137,16 +156,18 @@ export function requestNetwork(id: string): boolean {
       );
     }, 0);
   }
-  return false;
 }
 
 export function allowNetwork(): void {
-  docMetaStore.setNetworkAllowed(true);
+  if (docMetaStore.isForeign()) docMetaStore.setNetworkAllowed(true);
+  foreignCardStore.allow("network");
   _gated.clear();
+  for (const card of _gatedCards.values()) card.edited();
+  _gatedCards.clear();
   void refreshAllConnections();
 }
 
-registerNodeForget((id) => { _gated.delete(id); connectionStore.forget(id); });
+registerNodeForget((id) => { _gated.delete(id); _gatedCards.delete(id); connectionStore.forget(id); });
 registerNodeForgetAll(() => {
   const had = _states.size > 0 || _tokens.size > 0;
   _states.clear();
@@ -155,6 +176,7 @@ registerNodeForgetAll(() => {
   _landed.clear();
   for (const id of [..._timers.keys()]) clearTimer(id);
   _gated.clear();
+  _gatedCards.clear();
   _prompted = false;
   _docGeneration++;
   if (_promptNotice !== undefined) { dismissNotice(_promptNotice); _promptNotice = undefined; }
@@ -191,8 +213,9 @@ export async function whenConnectionsSettled(ids?: Iterable<string>): Promise<vo
   }
 }
 
-export function hasInflightConnections(): boolean {
-  return _inflight.size > 0;
+/** With `ids`, only the loads of those cards. */
+export function hasInflightConnections(ids?: Iterable<string>): boolean {
+  return ids ? pendingFor(ids).length > 0 : _inflight.size > 0;
 }
 
 /** `id` names the card whose fetch landed, so a heavy composite holding it turns stale. */

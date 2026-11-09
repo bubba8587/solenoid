@@ -1,9 +1,20 @@
 import { describe, it, expect } from "vitest";
+import { isSolDate, solDate } from "../../../src/graph/dateValue";
 import { EARTHSKY_FORMULAS } from "../../../src/graph/packs/earthsky";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { SunriseSunsetNode } from "../../../src/graph/nodes/astro";
-import { solarBasis, solarPosition, sunTimes, moonPhase, serialToJulianDay } from "../../../src/graph/nodes/astroOps";
+import { SunriseSunsetNode, SolarPositionNode } from "../../../src/graph/nodes/astro";
+import { coreFunction } from "../coreFunction";
 import { isSolError } from "../../../src/graph/errorValue";
+
+const call = (name: string, ...a: unknown[]) => coreFunction(name)!(...a) as number;
+const solarPosition = (w: number, lat: number, lon: number) =>
+  ({ elevation: call("SUNPOSITION", w, lat, lon, "elevation"), azimuth: call("SUNPOSITION", w, lat, lon, "azimuth") });
+/** A sunrise or sunset is a date; the tests read its day number. */
+const dayOf = (v: unknown): number | null => (isSolDate(v) ? v.__date : (v as number | null));
+const sunTimes = (w: number, lat: number, lon: number) =>
+  ({ sunrise: dayOf(call("SUNRISE", w, lat, lon)), sunset: dayOf(call("SUNSET", w, lat, lon)), dayLength: call("DAYLENGTH", w, lat, lon) });
+const moonPhase = (w: number) =>
+  ({ phase: call("MOONPHASE", w, "phase"), age: call("MOONPHASE", w, "age"), illumination: call("MOONPHASE", w, "illumination") });
 
 const num = (type: string, inputs: Record<string, number>): number => {
   const r = evalFormula(entryByType(EARTHSKY_FORMULAS, type), inputs);
@@ -56,15 +67,20 @@ describe("Earth & Sky formulas", () => {
 });
 
 describe("NOAA solar formulation", () => {
-  it("declination hits the solstice/equinox anchors", () => {
-    expect(solarBasis(serialToJulianDay(serial(2026, 6, 21, 12))).declination).toBeCloseTo(23.43, 1);
-    expect(solarBasis(serialToJulianDay(serial(2026, 12, 21, 12))).declination).toBeCloseTo(-23.43, 1);
-    expect(Math.abs(solarBasis(serialToJulianDay(serial(2026, 3, 20, 12))).declination)).toBeLessThan(0.5);
+  it("declination hits the solstice/equinox anchors (noon elevation on the equator is 90° − |δ|)", () => {
+    expect(solarPosition(serial(2026, 6, 21, 12, 2), 0, 0).elevation).toBeCloseTo(90 - 23.43, 1);
+    expect(solarPosition(serial(2026, 12, 21, 11, 58), 0, 0).elevation).toBeCloseTo(90 - 23.43, 1);
+    expect(solarPosition(serial(2026, 3, 20, 12, 8), 0, 0).elevation).toBeGreaterThan(89.5);
   });
 
-  it("equation of time hits the February/November extremes", () => {
-    expect(solarBasis(serialToJulianDay(serial(2026, 2, 11, 12))).eqOfTime).toBeCloseTo(-14.2, 0);
-    expect(solarBasis(serialToJulianDay(serial(2026, 11, 3, 12))).eqOfTime).toBeCloseTo(16.4, 0);
+  it("equation of time hits the February/November extremes (solar noon is 12:00 − EoT)", () => {
+    const eqOfTimeMin = (w: number) => {
+      const t = sunTimes(w, 0, 0);
+      const noonHours = (((t.sunrise! + t.sunset!) / 2) % 1) * 24;
+      return (12 - noonHours) * 60;
+    };
+    expect(eqOfTimeMin(serial(2026, 2, 11))).toBeCloseTo(-14.2, 0);
+    expect(eqOfTimeMin(serial(2026, 11, 3))).toBeCloseTo(16.4, 0);
   });
 
   it("sun overhead at the equator at equinox solar noon", () => {
@@ -95,13 +111,6 @@ describe("NOAA solar formulation", () => {
     expect(sunriseUtcHours).toBeCloseTo(3.72, 1);
   });
 
-  it("node: polar night yields blank rise/set, bad latitude errors", () => {
-    const n = new SunriseSunsetNode();
-    const polar = n.data({ when: [serial(2026, 12, 21)], lat: [80], lon: [0] });
-    expect(polar.sunrise).toBe(null);
-    expect(polar.daylength).toBe(0);
-    expect(isSolError(n.data({ when: [serial(2026, 1, 1)], lat: [95], lon: [0] }).sunrise)).toBe(true);
-  });
 });
 
 describe("moon phase", () => {
@@ -122,11 +131,13 @@ describe("moon phase", () => {
 });
 
 describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
-  it("SUNRISE / SUNSET / DAYLENGTH agree with the node core at the equator", () => {
-    const t = sunTimes(46000, 0, 0);
-    expect(evalPackFormula("SUNRISE(46000, 0, 0)")).toBe(t.sunrise);
-    expect(evalPackFormula("SUNSET(46000, 0, 0)")).toBe(t.sunset);
-    expect(evalPackFormula("DAYLENGTH(46000, 0, 0)")).toBe(t.dayLength);
+  it("SUNRISE / SUNSET / DAYLENGTH agree with the card at the equator", () => {
+    const c = new SunriseSunsetNode().data({ when: [solDate(46000)], lat: [0], lon: [0] });
+    const when = { w: solDate(46000) };
+    expect(isSolDate(c.sunrise)).toBe(true);
+    expect(evalPackFormula("SUNRISE(w, 0, 0)", when)).toEqual(c.sunrise);
+    expect(evalPackFormula("SUNSET(w, 0, 0)", when)).toEqual(c.sunset);
+    expect(evalPackFormula("DAYLENGTH(w, 0, 0)", when)).toBe(c.daylength);
   });
   it("SUNPOSITION reads a part (elevation default); lat/lon are range-checked", () => {
     const p = solarPosition(46000.5, 40, -74);
@@ -141,5 +152,18 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
     expect(evalPackFormula('MOONPHASE(46000, "age")')).toBe(m.age);
     expect(m.age).toBeGreaterThanOrEqual(0);
     expect(m.age).toBeLessThan(29.6);
+  });
+});
+
+describe("Sun Position card", () => {
+  it("is element-wise over its times: a list of times answers the sun's path, each the single answer", () => {
+    const day = solDate(46193); // 21-Jun-2026
+    const times = [0, 6, 12, 18].map((h) => solDate(46193 + h / 24));
+    const one = (w: unknown) => new SolarPositionNode().data({ when: [w], lat: [51.5], lon: [-0.13] }) as { elevation: number };
+    const path = new SolarPositionNode().data({ when: [times], lat: [51.5], lon: [-0.13] }) as { elevation: number[]; azimuth: number[] };
+    expect(path.elevation).toHaveLength(4);
+    times.forEach((t, i) => expect(path.elevation[i]).toBe(one(t).elevation));
+    expect(Math.max(...path.elevation)).toBe(path.elevation[2]); // highest at noon UTC, near London's meridian
+    expect(typeof one(day).elevation).toBe("number");
   });
 });

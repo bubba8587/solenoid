@@ -5,7 +5,7 @@
 import type { FrameColType } from "./frame";
 import { createValueStore } from "./storeKit";
 
-export type FrameHintColumn = {
+type FrameHintColumn = {
   name: string;
   type: FrameColType;
   /** 3 to 5 sample cells; a date column holds day serials, formatted by the layer. */
@@ -18,11 +18,11 @@ export function frameHintFor(node: object, socketKey: string): FrameHint | undef
   return ctor.frameHints?.[socketKey];
 }
 
-export type HintAnchor = { left: number; right: number; centerY: number };
+type HintAnchor = { left: number; right: number; centerY: number };
 
 /** One payload at a time: the example mini-table for an unwired frame input, or a live value peek. */
-export type FrameHintState =
+type FrameHintState =
   | { kind: "example"; hint: FrameHint; anchor: HintAnchor }
-  | { kind: "value"; value: unknown; nodeId: string; anchor: HintAnchor };
+  | { kind: "value"; value: unknown; nodeId: string; outKey: string; anchor: HintAnchor };
 
 export const frameHintStore = createValueStore<FrameHintState>();

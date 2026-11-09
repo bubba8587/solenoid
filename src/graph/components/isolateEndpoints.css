@@ -22,6 +22,7 @@
 .solenoid-iso-ep {
   position: absolute;
   box-sizing: border-box;
+  pointer-events: auto; /* RF's viewport passes no pointers to its children */
 }
 /* Its own positioning context (canvas cards anchor to an exactly card-sized holder), so the frame reaches back over the transparent 1px border. */
 .solenoid-iso-ep {
@@ -55,3 +56,11 @@
 
 /* Exit terminals carry the socket on the left, so their labels move right to clear the dot. */
 .solenoid-iso-ep--exit .solenoid-node__io-label { padding-left: 10px; }
+
+/* Above every card: the terminals' cables run onto the focus cards' sockets. */
+.solenoid-iso-ep-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+}

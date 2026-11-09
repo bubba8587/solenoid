@@ -1,0 +1,18 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"T(c_A2)","env":["c_A2=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"T(c_A3)","env":["c_A3=text:\"123\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"T(c_A4)","env":["c_A4=num:123"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"T(c_A5)","env":["c_A5=text:\"qwerty\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"T(c_A6)","env":["c_A6=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"T(c_A7)","env":["c_A7=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"T(c_A8)","env":["c_A8=text:\"1e-5\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"T(c_A9)","env":["c_A9=text:\"12€\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"T(c_A10)","env":["c_A10=num:1.2345"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"T(c_A11)","env":["c_A11=num:7.123456e-9"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"T(c_A12)","env":["c_A12=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"T(c_A13)","env":["c_A13=num:4200"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"T(c_A14)","env":["c_A14=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"T(c_A15)","env":["c_A15=text:\"2/3/2023\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -24,6 +24,13 @@ const Svg = ({ size = 14, strokeWidth = 1.6, style, children }: IconProps & { ch
 
 export const ChevronRightIcon = (p: IconProps) => <Svg {...p}><path d="m9 18 6-6-6-6" /></Svg>;
 export const ChevronLeftIcon = (p: IconProps) => <Svg {...p}><path d="m15 18-6-6 6-6" /></Svg>;
+/** Lucide "book-open" (ISC): the Reference. */
+export const BookIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </Svg>
+);
 export const ChevronDownIcon = (p: IconProps) => <Svg {...p}><path d="m6 9 6 6 6-6" /></Svg>;
 export const PlayIcon = (p: IconProps) => <Svg {...p}><path d="M6 3 20 12 6 21z" /></Svg>;
 /** "link": a chain, for anything that follows cables. */
@@ -59,7 +66,7 @@ export const TriangleAlertIcon = (p: IconProps) => (
   </Svg>
 );
 
-export type ArrowDir = "up" | "down" | "left" | "right" | "up-left" | "up-right" | "down-left" | "down-right";
+type ArrowDir = "up" | "down" | "left" | "right" | "up-left" | "up-right" | "down-left" | "down-right";
 const ARROW: Record<ArrowDir, string> = {
   up: "m5 12 7-7 7 7M12 19V5",
   down: "M12 5v14m7-7-7 7-7-7",
@@ -78,5 +85,26 @@ export const PencilIcon = (p: IconProps) => (
   </Svg>
 );
 export const CheckIcon = (p: IconProps) => <Svg {...p}><path d="M20 6 9 17l-5-5" /></Svg>;
+/** Lucide "equal" (ISC): Excel Coverage's same-as-Excel mark. */
+export const EqualIcon = (p: IconProps) => <Svg {...p}><path d="M5 9h14" /><path d="M5 15h14" /></Svg>;
 export const SearchIcon = (p: IconProps) => <Svg {...p}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></Svg>;
 export const InfoIcon = (p: IconProps) => <Svg {...p}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></Svg>;
+export const PlusSquareIcon = (p: IconProps) => <Svg {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M8 12h8" /><path d="M12 8v8" /></Svg>;
+export const SlidersIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4" />
+  </Svg>
+);
+export const MinusSquareIcon = (p: IconProps) => <Svg {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M8 12h8" /></Svg>;
+export const Maximize2Icon = (p: IconProps) => (
+  <Svg {...p}><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="m21 3-7 7" /><path d="m3 21 7-7" /></Svg>
+);
+export const Minimize2Icon = (p: IconProps) => (
+  <Svg {...p}><path d="M4 14h6v6" /><path d="M20 10h-6V4" /><path d="m14 10 7-7" /><path d="m3 21 7-7" /></Svg>
+);
+export const TableIcon = (p: IconProps) => (
+  <Svg {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M3 15h18" /><path d="M12 3v18" /></Svg>
+);
+export const GripIcon = (p: IconProps) => (
+  <Svg {...p}><circle cx="9" cy="5" r="1" /><circle cx="9" cy="12" r="1" /><circle cx="9" cy="19" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="19" r="1" /></Svg>
+);

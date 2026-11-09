@@ -1,14 +1,11 @@
-// [[D93]] oneTextReading
+// [[C58]] tableInputRawText, [[literal-input-editors#List Input is not one of them]]
+import { solDate } from "../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { ListInputNode } from "../../src/graph/nodes/list";
-import { wrapNodeData } from "../../src/graph/coerceInputs";
+import { throughBoundary } from "./boundaryKit";
 
-// The List Input's value box draws the list through ValueDisplay, whose chip opens the
-// ordinary list value popup (one element per cell, Row / Column switcher). The card never
-// hosts a chip of its own and never makes the popup an editor: 758a2d70 added a dummy 1x1
-// table chip and a raw-row editor, and every "fix" since broke the popup a new way. The one
-// thing it hands the popup is the typed text, for the Source view.
+
 describe("List Input: the plain value box", () => {
   it("emits a rank-1 list: every typed row's values, in row order, as ONE flat list (the author's rule)", () => {
     const n = new ListInputNode();
@@ -31,17 +28,17 @@ describe("List Input: the plain value box", () => {
     const k0 = Object.keys(n.inputs)[0];
     n.stringLiterals[k0] = "2024, 2025, 01-Jan-2026";
     const k1 = n.addValueInput();
-    const out = (n as unknown as { data: (i: Record<string, unknown[]>) => { list: unknown } }).data({ [k1]: [[46024]] });
-    expect(out.list).toEqual([2024, 2025, 46023, 46024]);
+    const out = (n as unknown as { data: (i: Record<string, unknown[]>) => { list: unknown } }).data({ [k1]: [[solDate(46024)]] });
+    expect(out.list).toEqual([2024, 2025, 46023, 46024].map(solDate));
     expect(n.cachedSource).toEqual(["2024", "2025", "01-Jan-2026", null]);
   });
 
   it("reads its typed text itself inside the engine, where the input wrapper would parse it first", () => {
     const n = new ListInputNode({ dataType: "date" });
     n.stringLiterals[Object.keys(n.inputs)[0]] = "2024, abc";
-    wrapNodeData(n as unknown as Parameters<typeof wrapNodeData>[0]);
+    throughBoundary(n as unknown as Parameters<typeof throughBoundary>[0]);
     const out = (n as unknown as { data: (i: Record<string, unknown[]>) => { list: unknown } }).data({});
-    expect(out.list).toEqual([2024, NaN]);
+    expect(out.list).toEqual([solDate(2024), NaN]);
     expect(n.cachedSource).toEqual(["2024", "abc"]);
   });
 });

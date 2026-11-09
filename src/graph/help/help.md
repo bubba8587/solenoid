@@ -22,7 +22,6 @@ Deleting a simple pass-through node leaves a dashed **ghost cable** that offers 
 
 ## Reading a graph
 
-- **Isolate** dims everything but the selection (or its whole wired chain, if you ask), to follow one calculation through a busy canvas.
 - **Pin** parks a node's live result in a strip along the top. The pin flies you back to its node.
 - A failed calculation turns the value box red with an Excel code like `#DIV/0!`, `#N/A`, or `#SHAPE!`, and the error flows downstream, so a trail of red leads back to where it started. IFERROR and the IS-checks catch it the way Excel does.
 
@@ -96,7 +95,7 @@ Every document autosaves and comes back when you reopen. **Save / Open** read an
 
 ## Cards
 
-A frame's popup has a **Cards** view, and **Record: Cards** draws the same cards as a chart. Each column goes to one part of the card by its name, type and contents.
+A frame's popup has a **Cards** view, and the **Cards** node draws the same cards on the canvas. Each column goes to one part of the card by its name, type and contents.
 
 | Part | Takes |
 |---|---|
@@ -115,6 +114,8 @@ A frame's popup has a **Cards** view, and **Record: Cards** draws the same cards
 
 A blank cell is left off its card.
 
+To lay the cards out yourself, open **Card Layout** under a Frame Input's Advanced section (or type a Layout on the **Cards** node). It uses the Form layout's lines: `#Name | Rating` puts the name in the heading with the rating beside it, and each later line is a row of fields. The parts above still decide how each field looks. **Suggest**, inside an empty layout field, writes a starting layout from your data, and a Form with no layout of its own uses that suggestion.
+
 ## Keyboard
 
 Single keys work when you're not typing in a field.
@@ -124,13 +125,12 @@ Single keys work when you're not typing in a field.
 | **A** | Add a node at the cursor |
 | **N** | Show or hide the Navigator |
 | **Enter** | Open the command palette |
-| **G** / **I** | Group / isolate the selection |
+| **G** | Group the selection |
 | **T** / **C** | Tidy (auto-arrange) / cleanup (tidy, collapse, fit) |
 | **E** / **F** | Expand or collapse groups / fit a group to its members |
 | **[** **]** | Rotate the selected Conduit, Angle Dial, or Standoff |
 | **arrows** | Nudge selection (Shift = larger step) |
 | **Tab** | Show or hide the side panels |
-| **Esc** | Leave isolate mode |
 | **Ctrl+Z / Ctrl+Shift+Z** | Undo / redo |
 | **Ctrl+C / Ctrl+V** | Copy / paste, wiring intact |
 | **Ctrl+Shift+G** | Make a Composite from the selection |

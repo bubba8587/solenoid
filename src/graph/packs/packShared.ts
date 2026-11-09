@@ -1,21 +1,17 @@
 // [[B15]] leanCore, [[C76]] formulaPackDefault, [[C79]] packActivationIsPresentation
-// A pack file may import only this module, its <id>Formulas.ts, ../rete-nodes and type-only app seams, never core internals;
-// <id>Formulas.ts imports only rete-free kernels ([[C17]] shareImpl).
+// A pack file may import only this module, its <id>Formulas.ts, ../nodeClasses and type-only app seams, never core internals;
+// <id>Formulas.ts imports only graph-free kernels ([[C17]] shareImpl).
 
 import type { NodeCatalogEntry, ExcelEquiv } from "../AddNodeMenu";
+import { PHYS_CONSTANTS, type PhysConstOp } from "../nodes/physicsConstantsOps";
 import type { PackUnit, PackFormat } from "../formatAnnotationStore";
-import type { ResultType } from "../nodes/shared";
-import type { ExcelReturn, ExcelRank, VectorOrient } from "../excelFunctions";
-import { ExpressionNode, EquationNode } from "../rete-nodes";
+import { ExpressionNode, EquationNode, PhysicsConstantNode } from "../nodeClasses";
+import { indentFormula } from "../formulaLayout";
 
-interface PackFormulaBase {
+/** A pack's formula function: the core carries its body (`fns_packs.rs`); the pack declares how the editor shows it. */
+export interface PackFormula {
   /** Dispatch name, UPPERCASE. */
   name: string;
-  /** Returns a value or a `SolError`, never throws, like a core `registerInternal` impl. */
-  impl: (...args: unknown[]) => unknown;
-  returns: ExcelReturn;
-  /** Default "scalar". */
-  rank?: ExcelRank;
   arity: [number, number];
   signature?: string;
   /** An empty slot marks the unknown to solve for, so it reads as the argument left out ([[C80]] blankArgIsExcelBlank). */
@@ -24,20 +20,13 @@ interface PackFormulaBase {
   emptySlotShown?: string;
 }
 
-/** A formula that takes whole lists declares whether a vector's direction matters to it ([[D85]] columnsStayColumns). */
-export type PackFormula = PackFormulaBase & (
-  | { listArgs?: false; orient?: undefined }
-  | { listArgs: true; orient: VectorOrient }
-);
-
 export interface FormulaPackEntry {
   type: string;          // prefixed by pack: "geo-circle-area"
   label: string;
   description: string;
   expr: string;
-  /** A locked Equation instead of an Expression; numeric only, so `resultAs` does not apply. */
+  /** A locked Equation instead of an Expression. */
   equation?: boolean;
-  resultAs?: ResultType;
   excel?: ExcelEquiv[];
   /** Space-separated search synonyms, never displayed. */
   keywords?: string;
@@ -46,9 +35,18 @@ export interface FormulaPackEntry {
   units?: Record<string, string>;
   /** Seeded literals; an unseeded variable defaults to 0. */
   literals?: Record<string, number>;
+  /** Variables that are physical constants: placing the card places a Physics Constant cabled into each. An
+   *  Expression marks them required, so a cut cable answers #SYNTAX! naming the constant, never a hidden copy. */
+  constants?: Record<string, PhysConstOp>;
 }
 
 export function formulaNode(e: FormulaPackEntry): NodeCatalogEntry {
+  const consts = Object.entries(e.constants ?? {});
+  // Laid out by its parentheses, as Shift+Alt+F would in the editor.
+  const expr = indentFormula(e.expr);
+  const descriptions = consts.length
+    ? { ...Object.fromEntries(consts.map(([v, op]) => [v, `${PHYS_CONSTANTS[op].label} (${PHYS_CONSTANTS[op].unit})`])), ...e.varDescriptions }
+    : e.varDescriptions;
   return {
     type: e.type,
     label: e.label,
@@ -57,8 +55,11 @@ export function formulaNode(e: FormulaPackEntry): NodeCatalogEntry {
     keywords: e.keywords,
     // No `accent`: the Add-menu highlight is reserved for key nodes.
     create: () => e.equation
-      ? new EquationNode({ label: e.label, expr: e.expr, locked: true, varDescriptions: e.varDescriptions, varUnits: e.units })
-      : new ExpressionNode({ label: e.label, expr: e.expr, locked: true, resultAs: e.resultAs, varDescriptions: e.varDescriptions, varUnits: e.units, literals: e.literals }),
+      ? new EquationNode({ label: e.label, expr, locked: true, varDescriptions: descriptions, varUnits: e.units })
+      : new ExpressionNode({ label: e.label, expr, locked: true, varDescriptions: descriptions, varUnits: e.units, literals: e.literals, varRequired: consts.map(([v]) => v) }),
+    companions: consts.length
+      ? () => consts.map(([input, op]) => ({ node: new PhysicsConstantNode({ op }), output: "value", input }))
+      : undefined,
   };
 }
 
@@ -88,4 +89,6 @@ export interface Pack {
   formulas?: PackFormula[];
   units?: PackUnit[];
   formats?: PackFormat[];
+  /** The pack's example seed graph (`seedGraphs/packs/<seed>.json`), offered in the seed menus while the pack is on. */
+  seed: string;
 }

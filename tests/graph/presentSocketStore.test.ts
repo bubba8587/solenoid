@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[stores#Node-keyed stores in brief]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { presentSocketStore, presentSocketKeys } from "../../src/graph/presentSocketStore";
 import { forgetAllNodes, forgetNode } from "../../src/graph/nodeStoreRegistry";

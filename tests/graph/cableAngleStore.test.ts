@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[cable-rendering-knobs#Exit angles]]
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cableAngleStore } from "../../src/graph/cableAngleStore";
 import { forgetAllNodes } from "../../src/graph/nodeStoreRegistry";

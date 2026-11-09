@@ -25,7 +25,7 @@ export function gridKeyOf(e: {
   }
 }
 
-export type CellPos = { vi: number; c: number };
+type CellPos = { vi: number; c: number };
 
 /** Null falls through to the browser's Tab (off the last cell, Shift+Tab off the first); Enter, arrows, Home and End clamp at the edges, and Tab wraps rows and skips `skip()` cells. */
 export function nextCell(

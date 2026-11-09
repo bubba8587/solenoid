@@ -6,27 +6,48 @@ tags: [spec, documents]
 
 # Spec: Per-doc autosave persistence
 
-Serves [[B12]] losslessSaves. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B12]] losslessSaves. It covers what the system does and blocks, and the decision each behavior serves.
 
-Autosave keeps the user's whole document library in the browser's `localStorage`. Every document has its own pair of slots, and one small index pair lists the documents. The code is `documentStore.ts` (storage and the public store), `documentStoreCore.ts` (pure library transforms) and `persistenceCore.ts` (slot choice); `documentStorePersist.test.ts` guards it.
+Autosave keeps the user's whole document library in the browser's `localStorage`. Every document has its own pair of slots, and one small index pair lists the documents.
+
+Code: `documentStore.ts` (storage and the public store), `documentStoreCore.ts` (pure library transforms), `persistenceCore.ts` (slot choice)
 
 ## Storage layout
 
 | Key | Holds |
 |---|---|
-| `solenoid.docs.index.a` / `.b` | `{ seq, currentId, docs: [{ id, name, updatedAt, filePath? }] }`, metadata only, no graphs |
-| `solenoid.docs.doc.<id>.a` / `.b` | `{ seq, doc }`, one full document (`id`, `name`, `graph`, `updatedAt`, `filePath?`, `fileSavedAt?`) |
+| `solenoid.docs.index.a` / `.b` | `{ seq, currentId, docs: [{ id, name, updatedAt, filePath?, folder? }], folders? }`, metadata only, no graphs |
+| `solenoid.docs.doc.<id>.a` / `.b` | `{ seq, doc }`, one full document (`id`, `name`, `graph`, `updatedAt`, `filePath?`, `fileSavedAt?`, `folder?`) |
+
+`folder` is the document's folder path and `folders` the folders the user made, so an empty one survives ([[workspace-tree#Where the tree comes from]]).
 
 `seq` is always the first key of a payload ([[#Two slots per pair]]).
+
+Tests: `documentStorePersist.test.ts` ("per-doc autosave keys"), through the real store over an in-memory `localStorage` with no editor: one index pair and one slot per document, a rename rewriting only that document and the index.
 
 ## Two slots per pair
 
 Each pair rotates so a crash in the middle of a write never destroys the only good copy ([[B12]] losslessSaves). **MUST:** a pair always writes the older slot and reads the newer one; a slot's `seq` is a strictly increasing counter kept for the session, never a raw clock reading; `seq` is the first key of every slot payload. The last two each close a way the rotation could silently bring back an older write, as the bullets below say.
 
+```mermaid
+flowchart LR
+    subgraph pair["one key pair"]
+        a["slot a: seq 41"]
+        b["slot b: seq 42"]
+    end
+    w["a write, seq 43"] -->|"goes to the older slot"| a
+    r["a read"] -->|"takes the newer slot;<br>falls back to the other<br>if it is bad"| b
+```
+
 - **Write** goes to the older slot (`chooseWriteSlot`): an empty slot first (`a` before `b`), otherwise the one with the lower `seq`, with a tie going to `a`.
 - **Read** takes the newer slot (`chooseReadSlot`), the higher `seq`, with a tie going to `a`. If that slot is missing, unparsable or fails validation, the read falls through to the other slot.
 - `seq` comes from a counter kept for the session. It starts at `Date.now()` when the module loads, and every write takes the next value. A raw `Date.now()` would let two writes in the same millisecond tie and make the newer slot ambiguous, so a read could bring back the older write.
-- A slot's `seq` is read with the prefix regex `^\{"seq":(\d+)`, so choosing the write slot never parses a large graph. A payload with any other key first reads as having no `seq`, that is as an empty slot, and the older write wins.
+- A slot's `seq` is read with the prefix regex `^\{"seq":(\d+)`, so choosing the write slot never parses a large graph. A payload with any other key first reads as having no `seq`, that is as an empty slot, and the older write wins. Each slot's `seq` is remembered as this tab last read or wrote it (`slotSeqs`), so a save reads no slot back; another tab's write to a key (the `storage` event) drops that key's entry.
+
+Tests:
+
+- `documentStorePersist.test.ts`: every slot payload the store wrote starts `{"seq":N`, and successive writes to one pair carry a strictly increasing `seq`.
+- `persistenceCore.test.ts`: the slot choice and the save's validation.
 
 ## What a persist writes
 
@@ -36,25 +57,77 @@ Each pair rotates so a crash in the middle of a write never destroys the only go
 2. writes each document whose object is not the one it last wrote for that id (`_lastPersisted`), and records it on success;
 3. removes the slots of every id in `_lastPersisted` that is no longer in the library (`removeDocSlots`), which frees the quota a deleted document held.
 
+```mermaid
+flowchart LR
+    p["persist()"] --> idx["write the index<br>(always, it is tiny)"]
+    p --> docs["write each document whose<br>object isn't the last one written"]
+    p --> gone["remove the slots of<br>deleted documents"]
+    docs -.->|"a write refused"| note["one sticky notice:<br>save to a file"]
+```
+
 When any write is refused (storage full or disabled), one sticky error notice says "Couldn't autosave: local storage may be full or disabled. Save your graph to a file (Ctrl+S) to be safe." It stays until a later persist fully succeeds, which dismisses it.
+
+Tests: `documentStorePersist.test.ts`: deleting a document removes its keys.
 
 ## Swapping documents
 
-**MUST:** every `documentStore` verb that changes which document is on screen calls `captureCurrent()` before switching and guards on `isGraphRebuilding()`. A capture that cannot serialize returns false and the verb stays on the document, since switching would drop its unsaved canvas. Without the capture, edits made within the autosave delay are discarded; without the guard, the verb can race a load and serialize a half-built canvas into the current document. Both failures happened, and both are pinned in `sourceInvariants.test.ts` ([[B12]] losslessSaves). Three exceptions carry their reason:
+**MUST:** every `documentStore` verb that changes which document is on screen calls `captureCurrent()` before switching and guards on `isGraphRebuilding()`. A capture that cannot serialize returns false, raises one sticky notice, and the verb stays on the document, since switching would drop its unsaved canvas. Without the capture, edits made within the autosave delay are discarded; without the guard, the verb can race a load and serialize a half-built canvas into the current document ([[B12]] losslessSaves). The exceptions carry their reason:
 
 - `restore` runs at startup, when nothing is live yet;
-- `remove` skips the capture because the document is going away, and capturing would resurrect its dying edits;
+- `remove` skips the capture because the document is going away, and capturing would resurrect its dying edits; `removeFolder` skips it for the same reason, since every document under the folder goes;
 - `reloadCurrent` needs no guard of its own, because the guard lives inside `captureCurrent`; its own gate is the reveal lock.
+
+Tests:
+
+- `sourceInvariants.test.ts`: every `documentStore` method whose body loads a graph references `captureCurrent` and `isGraphRebuilding` or is sanctioned with its reason, and every sanctioned entry is still a real method that loads.
+- `documentStorePersist.test.ts`: a capture that throws returns false, raises one notice, and a swap verb stays put; a file the version gate refuses leaves no library entry and keeps the previous document current.
+
+## Examples
+
+A seed opened from the seed menus, an example link (`?seed=`), a card's Reference page or first run is an **example**
+(the author 2026-11-06): a document tagged `seed: { id, fingerprint }`, live and autosaved like any other, so a reload
+brings it back, but left out of the file tree and the Navigator's search (`list`, `searchable`). The file tree's own
+New from template makes a document at once (`asDocument`), since that is an explicit create in a folder.
+
+- **Changed** means the graph's fingerprint differs from the one taken when the load settled (`graphFingerprint`: the
+  graph without its save time and each card's auto-fitted `width` and `height`, which a card measures after it renders;
+  a size the user drags is `size`, and counts). The time alone can't tell: several seeds' cards re-measure on load.
+- **Leaving** it, every verb that puts another document on screen (open, new, new from template, import) first asks
+  `leaveExample`: an example as it opened is dropped once the switch is made; a changed one raises the dialog, Discard
+  changes, with Keep (it becomes a document), Discard (dropped) and Cancel (the verb stays put). Duplicate and Save As
+  keep the copy and drop the example; a file save keeps it.
+- **Save** (Ctrl+S) on an example asks "Save to your documents?", and a yes keeps it, its name ready to edit in the
+  file tree ([[save-format#Where documents are stored]]). There is no Keep button (author 2026-11-06): Save is how.
+- **Restore** keeps an example left behind only if it was changed, then as a document, and drops it otherwise; the
+  current one stays an example.
+
+Tests: `documentExamples.test.ts`: outside the tree, left as opened without asking, Keep, Discard, Cancel, a file save
+keeping it, the tree's New from template, Save asking on an example and keeping it named in place (Cancel leaving it)
+and asking nothing on a document, and what the fingerprint sees.
 
 ## Open drafts
 
-A text field's draft stays local until blur ([[C95]] commitOnEnter), so a capture could miss what the user typed. Every draft field registers with `draftFlush.ts` while its draft differs from the node (`usePendingDraft`: every `useDraftCommit` field, the Note body, the Report overlay's source, the Record layout field). `flushDrafts()` commits each one as if it had blurred. `captureCurrent()` flushes first, so every swap verb (open, new, duplicate, import, reload) commits the draft into the outgoing document; a file save flushes before it serializes; `pagehide` flushes and captures when a draft or a pending autosave exists, and so does the desktop window's close request (`onCloseRequested`), because closing a Tauri window tears the webview down without a guaranteed `pagehide`. The close handler never throws, since a failed handler would leave the window unable to close; the window's `core:window:allow-destroy` permission lets the handler's close go through. The idle autosave timer alone captures with `keepDrafts`, because committing a field the user is still typing in would reconcile a half-typed Note frontmatter or Report template and prune its cables. `draftFlush.test.ts` pins the call sites.
+A text field's draft stays local until blur ([[B19]] spreadsheetHabits), so a capture could miss what the user typed. Every draft field registers with `draftFlush.ts` while its draft differs from the node (`usePendingDraft`: every `useDraftCommit` field, a Format Controller's custom pattern, the Note body, the Report overlay's source, the Record layout field). `flushDrafts()` commits each one as if it had blurred. `captureCurrent()` flushes first, so every swap verb (open, new, duplicate, import, reload) commits the draft into the outgoing document; a file save flushes before it serializes; `pagehide` flushes and captures when a draft or a pending autosave exists, and so does the desktop window's close request (`onCloseRequested`), because closing a Tauri window tears the webview down without a guaranteed `pagehide`. The close handler never throws, since a failed handler would leave the window unable to close; the window's `core:window:allow-destroy` permission lets the handler's close go through. The idle autosave timer alone captures with `keepDrafts`, because committing a field the user is still typing in would reconcile a half-typed Note frontmatter or Report template and prune its cables.
+
+Tests: `draftFlush.test.ts`: every registered draft commits once and a failing one never blocks the rest, an unregistered draft doesn't flush, the call sites (a switch, a file save, the page closing, the desktop window closing, the idle autosave keeping the draft), and the window still closing after.
 
 ## Change detection is object identity
 
 `persist()` decides a document changed by comparing object references (`_lastPersisted.get(id) === doc` skips the write). **MUST:** every `documentStoreCore` transform returns a new `SolDoc` for each document it changes (`{ ...d, … }`), and never mutates a document in place. An in-place mutation still updates the screen, but `persist()` sees the same reference and never writes it, so the edit vanishes on the next reload ([[B12]] losslessSaves). Mutating a document you just created, before its first persist, is fine; `importAsDocument` does this. A future transform that needs to touch a document copies it first.
 
-A capture whose graph equals the stored one leaves the library as it was (`updateCurrentGraph`), so the document keeps its `updatedAt` and is not rewritten. Equal means equal as JSON would write it: key order, keys holding `undefined` and the file's `savedAt` stamp don't count. `updatedAt` is the autosave time the Save Times card reads, so it marks the last real edit, and an imported file keeps its own stamp until it is edited: a load adopts the graph as it loaded (`adoptLoadedGraph`, which keeps the time), so a load that normalizes a file's graph is not an edit; the swap verbs and a file save capture without moving it.
+A capture whose graph equals the stored one leaves the library as it was (`updateCurrentGraph`), so the document keeps its `updatedAt` and is not rewritten. Equal means equal as JSON would write it: key order, keys holding `undefined` and the file's `savedAt` stamp don't count.
+
+`updatedAt` is the autosave time the Save Times card reads, so it marks the last real edit:
+
+- an imported file seeds both clocks from its own `savedAt` stamp and keeps it until it is edited, and a file with no stamp leaves the file clock blank;
+- a load adopts the graph as it loaded (`adoptLoadedGraph`, which keeps the time), so a load that normalizes a file's graph is not an edit;
+- the swap verbs and a file save capture without moving it;
+- a file save stamps only that document's file clock (`fileSavedAt`), saved in its slot; a duplicate inherits neither the path nor the stamp, since it has never been written.
+
+Tests:
+
+- `documentStoreCore.test.ts`: each transform, and every exported transform walked over a deep-frozen library, so one that writes in place throws by name with no hand-kept list.
+- `documentStorePersist.test.ts` ("the save clock"): the file stamp on the named document only, an import's two clocks, an unchanged capture keeping the file's time and an edit moving it.
 
 ## Restore
 
@@ -67,7 +140,20 @@ A capture whose graph equals the stored one leaves the library as it was (`updat
 5. The current document is the index's `currentId` if that document loaded, and otherwise the first document.
 6. It seeds `_lastPersisted` with the loaded objects, persists once to settle the library into the current write slots, and shows the current document.
 
-The index is metadata only. A document's own slot is the truth wherever the two disagree.
+```mermaid
+flowchart TD
+    start["startup"] --> idx["read the newest valid index"]
+    idx --> each["read each document's<br>newest valid slot;<br>skip a missing or corrupt one"]
+    each --> any{"any documents?"}
+    any -->|no| first["create a first document"]
+    any -->|yes| cur["show the index's current one,<br>else the first"]
+    cur --> settle["persist once into<br>the current write slots"]
+```
+
+
+The index is metadata only. A document's own slot is the truth wherever the two disagree, except for its folder: a folder rename or move rewrites every document under it, and the index takes all of them in one write, so restore reads the folder from the index and a move cut off partway (storage full) reads back on one side, never split ([[workspace-tree#Where the tree comes from]]).
+
+Tests: `documentStorePersist.test.ts`: restore reads the index and the slots back, folders (empty ones included) survive, a folder move cut off partway reads back whole from the index, the whole-library keys are deleted, and a corrupt slot is skipped.
 
 ## Dev mirror
 

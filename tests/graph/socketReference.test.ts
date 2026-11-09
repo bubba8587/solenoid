@@ -1,24 +1,15 @@
-// [[C10]] socketLattice
+// [[C10]] socketLattice, [[socket-lattice#Enforcement]]
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { ClassicPreset } from "rete";
+import { GraphInput } from "../../src/graph/graphModel";
 import { canConnect, SOCKET_TYPE_LABELS, SOCKET_COLORS, SolenoidSocket, AdoptiveSocket, type SocketDataType } from "../../src/graph/sockets";
 import * as shared from "../../src/graph/nodes/shared";
 import { familyOf } from "../../src/graph/formatModel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 import { elementFamilyOf, latticeRank, comboOfType } from "../../src/graph/sockets";
 
-// `docs/socket-reference.md` documents all 31 socket variants in prose: what each
-// accepts, what is BLOCKED at it, what it reaches, what it is blocked from
-// reaching. That is 124 hand-written lists mirroring the lattice — exactly the
-// shape of doc that rots silently the first time someone adds a socket type or
-// widens an accept rule.
-//
-// So don't trust the prose: PARSE it and diff every list against canConnect. The
-// same for the glyph table (parsed out of SocketComponent) and the socket → FC
-// family table (parsed out of formatModel). A lattice change now fails here with
-// the exact line to fix, instead of leaving the doc quietly wrong.
+
 
 const DOC = readFileSync(resolve(__dirname, "../../docs/socket-reference.md"), "utf8");
 const ALL = Object.keys(SOCKET_TYPE_LABELS) as SocketDataType[];
@@ -87,8 +78,7 @@ describe("docs/socket-reference.md — every variant is documented", () => {
 });
 
 describe("docs/socket-reference.md — the connection lists match canConnect", () => {
-  // Written as one case per (variant, direction) so a failure names the exact
-  // bullet, and `toEqual` on sorted arrays prints the precise diff.
+
   for (const t of ALL) {
     const body = () => SECTIONS.get(t)!;
     const sorted = (s: Iterable<string>) => [...s].sort();
@@ -156,9 +146,7 @@ describe("docs/socket-reference.md — the at-a-glance tables match the code", (
   });
 
   it("the port-factory table names the real factories in nodes/shared.ts", () => {
-    // The table tells an author which helper to call for a given socket type. A
-    // renamed or deleted factory would leave it pointing at nothing, so resolve
-    // every name against the module and check it really builds that type/side.
+
     const rows = [...DOC.matchAll(/^\| `([a-z]+)` \| (.+?) \| (.+?) \|$/gm)]
       .filter(([, t]) => IS_TYPE.has(t));
     expect(rows.length, "factory table row count").toBe(ALL.length);
@@ -180,7 +168,7 @@ describe("docs/socket-reference.md — the at-a-glance tables match the code", (
           // The asterisk in the table means "adoptive" — hold it to that.
           const starred = new RegExp(`\`${name}\`\\\\?\\*`).test(cell);
           expect(s instanceof AdoptiveSocket, `${name} adoptive marking`).toBe(starred);
-          expect(port instanceof ClassicPreset.Input ? "in" : "out").toBe(side);
+          expect(port instanceof GraphInput ? "in" : "out").toBe(side);
         }
       }
     }
@@ -194,16 +182,7 @@ describe("docs/socket-reference.md — the at-a-glance tables match the code", (
 });
 
 describe("the catalog obeys the reference's own rule for choosing a rung", () => {
-  // docs/socket-reference.md section 8: "if the rank follows the input at runtime
-  // — one value in gives one value out, a list in gives a list out — use the COMBO
-  // rung." A node whose every family-bearing INPUT is a combo is exactly that
-  // shape, so its family-bearing OUTPUTS must be combos too. Declaring a strict
-  // list there is the bug the date/text/complex sweeps kept finding: the node
-  // emits a bare scalar on its scalar path, but the socket claims it never can,
-  // which blocks the scalar rungs (an IFS condition, a numeric input) for no
-  // reason. Auditing the whole catalog found exactly one — Triangle Solver's
-  // `valid` — so pin it at zero. A future node that genuinely needs the strict
-  // rung should have to justify itself by editing this test.
+
   it("a node with all-combo inputs never declares a strict-list or scalar output", () => {
     const COMBOS = new Set<string>(["numlist", "strcombo", "datecombo", "complexcombo", "logicalcombo"]);
     const STRICT = new Set<string>(["list", "strlist", "datelist", "complexlist", "logicallist"]);
@@ -234,8 +213,7 @@ describe("the catalog obeys the reference's own rule for choosing a rung", () =>
         }
       }
     }
-    // A did-the-sweep-run floor, not a census: node-combining merges shrink the
-    // class count legitimately.
+    // A floor that proves the sweep ran, not a census.
     expect(seen.size, "catalog classes scanned").toBeGreaterThan(260);
     expect(offenders).toEqual([]);
   });

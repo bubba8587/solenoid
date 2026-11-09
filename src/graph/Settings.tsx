@@ -1,28 +1,29 @@
 // [[C98]] paletteMirrorsMenubar
 import { SearchField } from "./components/SearchField";
-import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useFocusTrap } from "./components/useFocusTrap";
 import { useEscapeToClose } from "./components/useEscapeToClose";
 import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from "./settingsStore";
 import { apiKeyStore } from "./apiKeyStore";
 import { AI_PROVIDER, AI_ENABLED } from "./aiKey";
 import { isMobile } from "./coarse";
-import { packsStore, allPacks, loadCustomPacks, customPacksFolder, PACK_GROUP_ORDER } from "./packs";
-import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
+import { frStore } from "./frStore";
+import { packsStore, allPacks, type Pack, loadCustomPacks, customPacksFolder, PACK_GROUP_ORDER } from "./packs";
+import { isDesktop, isAndroidApp, pickFolderDialog, openInFileManager, folderLabel } from "./fileBridge";
 import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette";
 import { appThemeStore } from "./appTheme";
 import { useRenderMode, renderModeStore } from "./renderMode";
 import { supportsHtmlInCanvas } from "./htmlCanvasSupport";
 import { docMetaStore } from "./docMetaStore";
-import { networkAllowed, allowNetwork } from "./connectionStore";
+import { networkWaits, allowNetwork } from "./connectionStore";
+import { foreignCardStore } from "./foreignCardStore";
+import { scriptsWait, allowScripts } from "./scriptGate";
 import { SwatchGrid } from "./components/SwatchGrid";
 import "./Settings.css";
 
 
 const MOBILE_NA = "Not available in mobile mode.";
-const DESKTOP_ONLY = "Available in the desktop app only.";
-const naOnThisDevice = (field: SettingField): boolean => (isMobile() && !!field.disabledOnMobile) || (!isDesktop() && !!field.desktopOnly);
-const naNote = (field: SettingField): string => (!isDesktop() && field.desktopOnly ? DESKTOP_ONLY : MOBILE_NA);
+const naOnThisDevice = (field: SettingField): boolean => isMobile() && !!field.disabledOnMobile;
 
 function Switch({ on, onClick, label, disabled }: { on: boolean; onClick: () => void; label: string; disabled?: boolean }) {
   return (
@@ -57,6 +58,36 @@ function Row({ label, help, on, onToggle, disabled, disabledNote }: {
   );
 }
 
+/** A pack: its name and blurb open its entries in the Function Reference; only the switch turns it on or off. */
+// The pack a link elsewhere (the Reference) opened Settings on: its group unfolds and its row scrolls into view.
+let _focusPack: string | null = null;
+
+/** Opens Settings on one pack's row. */
+export function openPackSettings(packId: string): void {
+  _focusPack = packId;
+  settingsPanel.open();
+}
+
+function PackRow({ pack }: { pack: Pack }) {
+  const show = () => { settingsPanel.close(); frStore.openPack(pack.id); };
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (_focusPack !== pack.id) return;
+    _focusPack = null;
+    ref.current?.scrollIntoView({ block: "center" });
+  }, [pack.id]);
+  return (
+    <div ref={ref} className="solenoid-settings__row solenoid-settings__row--pack">
+      <button type="button" className="solenoid-settings__row-text solenoid-settings__pack-link" onClick={show}
+        title={`Show what ${pack.name} adds, in the Function Reference`}>
+        <span className="solenoid-settings__row-label">{pack.name}<span className="solenoid-settings__pack-arrow" aria-hidden="true"> ›</span></span>
+        <span className="solenoid-settings__row-help">{pack.description}</span>
+      </button>
+      <Switch on={packsStore.isActive(pack.id)} onClick={() => packsStore.toggle(pack.id)} label={pack.name} />
+    </div>
+  );
+}
+
 function Toggle({ field }: { field: SettingField }) {
   const off = naOnThisDevice(field);
   return (
@@ -64,7 +95,7 @@ function Toggle({ field }: { field: SettingField }) {
       label={field.label}
       help={field.help}
       disabled={off}
-      disabledNote={naNote(field)}
+      disabledNote={MOBILE_NA}
       on={settingsStore.get(field.key) as boolean}
       onToggle={() => settingsStore.toggle(field.key as Parameters<typeof settingsStore.toggle>[0])}
     />
@@ -79,9 +110,9 @@ function SegmentRow({ field }: { field: SettingField }) {
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">{field.label}</span>
         {field.help && <span className="solenoid-settings__row-help">{field.help}</span>}
-        {off && <span className="solenoid-settings__muted">{naNote(field)}</span>}
+        {off && <span className="solenoid-settings__muted">{MOBILE_NA}</span>}
       </span>
-      <span className="solenoid-settings__segment" role="radiogroup">
+      <span className="solenoid-settings__segment" role="radiogroup" focusgroup="radiogroup inline">
         {(field.options ?? []).map((o) => (
           <button
             key={o.value}
@@ -100,6 +131,30 @@ function SegmentRow({ field }: { field: SettingField }) {
   );
 }
 
+function SliderRow({ field }: { field: SettingField }) {
+  const value = Number(settingsStore.get(field.key));
+  const { min, max, step } = field.range ?? { min: 0, max: 10, step: 1 };
+  return (
+    <label className="solenoid-settings__row solenoid-settings__row--slider">
+      <span className="solenoid-settings__row-text">
+        <span className="solenoid-settings__row-label">{field.label}</span>
+        {field.help && <span className="solenoid-settings__row-help">{field.help}</span>}
+      </span>
+      <span className="solenoid-settings__slider">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => settingsStore.set(field.key, Number(e.target.value) as never)}
+        />
+        <span className="solenoid-settings__slider-value">{field.show ? field.show(value) : value}</span>
+      </span>
+    </label>
+  );
+}
+
 function FolderRow({ field }: { field: SettingField }) {
   const value = settingsStore.get(field.key) as string;
   const desktop = isDesktop();
@@ -112,7 +167,7 @@ function FolderRow({ field }: { field: SettingField }) {
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">{field.label}</span>
         {field.help && <span className="solenoid-settings__row-help">{field.help}</span>}
-        <span className="solenoid-settings__path" title={value || undefined}>{value || "Not set"}</span>
+        <span className="solenoid-settings__path" title={value ? folderLabel(value) : undefined}>{value ? folderLabel(value) : "Not set"}</span>
         {!desktop && <span className="solenoid-settings__muted">Available in the desktop app only.</span>}
       </span>
       <span className="solenoid-settings__folder-actions">
@@ -127,7 +182,8 @@ function FolderRow({ field }: { field: SettingField }) {
 function NetworkDocRow() {
   useSyncExternalStore(docMetaStore.subscribe, docMetaStore.version);
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
-  if (!docMetaStore.isForeign() || networkAllowed()) return null;
+  useSyncExternalStore(foreignCardStore.subscribe, foreignCardStore.version);
+  if (!networkWaits()) return null;
   return (
     <div className="solenoid-settings__row solenoid-settings__row--folder">
       <span className="solenoid-settings__row-text">
@@ -136,6 +192,36 @@ function NetworkDocRow() {
       </span>
       <span className="solenoid-settings__folder-actions">
         <button type="button" className="solenoid-settings__store-btn" onClick={() => allowNetwork()}>Allow</button>
+      </span>
+    </div>
+  );
+}
+
+/** Android gives an app only the folders the user picks for it (`docs/android.md` § Folders on Android). */
+function AndroidFilesRow() {
+  if (!isAndroidApp()) return null;
+  return (
+    <div className="solenoid-settings__row solenoid-settings__row--folder">
+      <span className="solenoid-settings__row-text">
+        <span className="solenoid-settings__row-label">Files on this phone</span>
+        <span className="solenoid-settings__row-help">Solenoid sees only the folders you choose below. Android asks once for each and remembers it.</span>
+      </span>
+    </div>
+  );
+}
+
+function ScriptsDocRow() {
+  useSyncExternalStore(docMetaStore.subscribe, docMetaStore.version);
+  useSyncExternalStore(foreignCardStore.subscribe, foreignCardStore.version);
+  if (!scriptsWait()) return null;
+  return (
+    <div className="solenoid-settings__row solenoid-settings__row--folder">
+      <span className="solenoid-settings__row-text">
+        <span className="solenoid-settings__row-label">Scripts in this document</span>
+        <span className="solenoid-settings__row-help">Someone else wrote these scripts, so they wait until you let them run.</span>
+      </span>
+      <span className="solenoid-settings__folder-actions">
+        <button type="button" className="solenoid-settings__store-btn" onClick={() => void allowScripts()}>Run</button>
       </span>
     </div>
   );
@@ -253,7 +339,7 @@ function PacksSection() {
       {grouped.map((g) => {
         const onCount = g.packs.filter((p) => packsStore.isActive(p.id)).length;
         return (
-          <details key={g.name} className="solenoid-settings__acc">
+          <details key={g.name} className="solenoid-settings__acc" open={g.packs.some((p) => p.id === _focusPack) || undefined}>
             <summary className="solenoid-settings__acc-head">
               <span className="solenoid-settings__acc-chevron" aria-hidden="true">
                 <svg width="10" height="10" viewBox="0 0 10 10"><path d="M3 1.5 L7 5 L3 8.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -263,13 +349,7 @@ function PacksSection() {
             </summary>
             <div className="solenoid-settings__acc-body">
               {g.packs.map((p) => (
-                <Row
-                  key={p.id}
-                  label={p.name}
-                  help={p.description}
-                  on={packsStore.isActive(p.id)}
-                  onToggle={() => packsStore.toggle(p.id)}
-                />
+                <PackRow key={p.id} pack={p} />
               ))}
             </div>
           </details>
@@ -284,7 +364,7 @@ function PacksSection() {
         </div>
       ) : (
         custom.map((p) => (
-          <Row key={p.id} label={p.name} help={p.description} on={packsStore.isActive(p.id)} onToggle={() => packsStore.toggle(p.id)} />
+          <PackRow key={p.id} pack={p} />
         ))
       )}
 
@@ -365,6 +445,7 @@ function AiSection() {
 function renderField(f: SettingField): ReactNode {
   return f.type === "folder" ? <FolderRow key={f.key} field={f} />
     : f.type === "segment" ? <SegmentRow key={f.key} field={f} />
+    : f.type === "slider" ? <SliderRow key={f.key} field={f} />
     : f.type === "text" ? <TextRow key={f.key} field={f} />
     : <Toggle key={f.key} field={f} />;
 }
@@ -423,7 +504,7 @@ function SearchResults({ query }: { query: string }) {
       {packs.length > 0 && (
         <div className="solenoid-settings__section">
           <div className="solenoid-settings__section-title">Node Packs</div>
-          {packs.map((p) => <Row key={p.id} label={p.name} help={p.description} on={packsStore.isActive(p.id)} onToggle={() => packsStore.toggle(p.id)} />)}
+          {packs.map((p) => <PackRow key={p.id} pack={p} />)}
         </div>
       )}
       {fixed}
@@ -463,7 +544,9 @@ export function Settings() {
                 <div key={section.title} className="solenoid-settings__section">
                   <div className="solenoid-settings__section-title">{section.title}</div>
                   <SectionFields fields={section.fields} />
+                  {section.title === "Data" && <AndroidFilesRow />}
                   {section.title === "Data" && <NetworkDocRow />}
+                  {section.title === "Data" && <ScriptsDocRow />}
                 </div>
               ))}
               <RendererSection />

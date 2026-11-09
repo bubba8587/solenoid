@@ -1,10 +1,11 @@
-import { useCallback, useState, useRef, type ReactNode, useLayoutEffect, useContext, useSyncExternalStore } from "react";
+import { useCallback, useState, useRef, type ReactNode, type HTMLAttributes, useLayoutEffect, useContext, useSyncExternalStore } from "react";
+import { datesAsSerials, type SolDate } from "../dateValue";
 import { marked } from "marked";
-import DOMPurify from "dompurify";
+import { sanitizeNoteHtml, useNetworkGrant } from "../noteHtml";
 import { copyText } from "../clipboard";
 import { commentStore, commentsPanelUi } from "../commentStore";
 import { settingsStore } from "../settingsStore";
-import type { ClassicPreset } from "rete";
+import type { GraphNode, GraphSocket } from "../graphModel";
 import { processGraph } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
@@ -26,14 +27,15 @@ import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 import { ResizeHandle } from "./ResizeHandle";
 import { nodeSizeStore } from "../nodeSizeStore";
-import { nodeResizable } from "../rete-nodes";
+import { nodeResizable } from "../nodeClasses";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
 import type { TablePopupState } from "../tablePopupStore";
 import { CategoryChip } from "./CategoryChip";
 import { categoryColorIndex } from "../categoryColor";
-import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed, formatCxWithAnnotation } from "../formatAnnotationStore";
-import { nodeOutputElemFamily, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, formatRowValue, resolveDisplayAnnotation, annotationForValue, type DisplayValue } from "./valueDisplayFormat";
+import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed, formatCxWithAnnotation, type FormatStyle } from "../formatAnnotationStore";
+import { nodeOutputElemFamily, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, formatRowValue, resolveDisplayAnnotation, annotationForValue, cardStyleAnnotation, type DisplayValue } from "./valueDisplayFormat";
+import { fullList } from "../listPreview";
 import { IS_COARSE, stopDragStart } from "../coarse";
 import { NodeFormatContext } from "./nodeContext";
 import { describeValueKind } from "../valueKindLabel";
@@ -55,12 +57,19 @@ function renderTextValue(s: string): ReactNode {
   );
 }
 
-// The string is untrusted (it arrives in shared .solenoid files), so it is sanitized before injection.
-export function renderTextMarkdownHtml(s: string): string {
-  return DOMPurify.sanitize(marked.parse(s, { async: false, gfm: true, breaks: true }) as string);
+// The string is untrusted (it arrives in shared .solenoid files): note markdown's sanitizer, which also holds its web
+// images until the document may fetch ([[B18]] safeToShare).
+export function renderTextMarkdownHtml(s: string, nodeId?: string): string {
+  return sanitizeNoteHtml(marked.parse(s, { async: false, gfm: true, breaks: true }) as string, nodeId);
 }
 
-type Port = { socket: ClassicPreset.Socket; label?: string };
+/** A markdown value's box, drawn again when the network grant arrives. */
+export function MarkdownDiv({ markdown, nodeId, ...rest }: { markdown: string; nodeId?: string } & Omit<HTMLAttributes<HTMLDivElement>, "dangerouslySetInnerHTML" | "children">) {
+  useNetworkGrant(nodeId);
+  return <div {...rest} dangerouslySetInnerHTML={{ __html: renderTextMarkdownHtml(markdown, nodeId) }} />;
+}
+
+type Port = { socket: GraphSocket; label?: string };
 
 export type ShellNode = {
   id: string;
@@ -70,6 +79,7 @@ export type ShellNode = {
   height: number;
   inputs: Record<string, Port | undefined>;
   outputs: Record<string, Port | undefined>;
+  edited(): void;
 };
 
 export type NodeProps<N> = {
@@ -79,7 +89,7 @@ export type NodeProps<N> = {
 
 export type Emit = (ctx: unknown) => void;
 
-export function useNodeField<N extends object, K extends keyof N>(
+export function useNodeField<N extends { id: string; edited(): void }, K extends keyof N>(
   node: N,
   key: K,
 ): [N[K], (next: N[K]) => void] {
@@ -89,11 +99,10 @@ export function useNodeField<N extends object, K extends keyof N>(
       node[key] = next;
       setVal(next);
       // Config can feed a derived socket type (a GROUPBY aggregate's column type), and no connection event fires here.
-      const id = (node as { id?: string }).id;
-      const ed = id ? getOwningEditor(id) : null;
-      const ar = id ? getOwningView(id) : null;
+      const ed = getOwningEditor(node.id);
+      const ar = getOwningView(node.id);
       if (ed && ar) reconcileTypesAfterEdit(ed, ar);
-      void processGraph();
+      node.edited(); void processGraph();
     },
     [node, key],
   );
@@ -124,9 +133,9 @@ export function PortSockets({
 // ─── Multi-output rows ────────────────────────────────────────────────────────
 
 // A Cx rides raw so a docked FC's style, precision and unit reach it in the display layer.
-export type OutputRowValue = number | boolean | string | Cx | (number | boolean | string | Cx | SolError | null)[] | SolError | null;
+export type OutputRowValue = number | boolean | string | Cx | SolDate | (number | boolean | string | Cx | SolError | null)[] | SolError | null;
 
-export type OutputRowDef = {
+type OutputRowDef = {
   key: string;
   label: string;
   value: OutputRowValue;
@@ -158,7 +167,9 @@ function MeasuredOutputRow({
         >{value.code}</span>
       ) : (
         <span className="solenoid-node__output-value">
-          {formatRowValue(value, ann)}
+          {nodeOutputElemFamily(node.id, rowKey) === "date" && !ann
+            ? formatRowValue(dateFormatDisplay(value as DisplayValue, true, false) as OutputRowValue)
+            : formatRowValue(value, ann)}
         </span>
       )}
     </MeasuredSocketRow>
@@ -254,9 +265,11 @@ export function NodeShell({
   hideOutputSockets = false,
   collapsible = true,
   squareCollapse = false,
+  cellCollapse = false,
   className,
   accentOverride,
   nonScrollingBody = false,
+  cappedBody = false,
 }: {
   node: ShellNode;
   emit: Emit;
@@ -267,16 +280,22 @@ export function NodeShell({
   hideOutputSockets?: boolean;
   collapsible?: boolean;
   squareCollapse?: boolean;
+  /** Collapsed, the card is its value cell alone (`CollapsedCell`, which the card renders while collapsed): a square
+   *  collapse whose mini is the cell. */
+  cellCollapse?: boolean;
   className?: string;
   accentOverride?: string;
   /** A figure body scales rather than scrolls, so a sized card must not trap the wheel (`nowheel`). */
   nonScrollingBody?: boolean;
+  /** A card sized by its content stops at the content cap until resized by hand; past it the body scrolls, and takes
+   *  the wheel only while it has something to scroll. */
+  cappedBody?: boolean;
 }) {
   const labelField = useDraftCommit<string>(
     node.label ?? "",
     (v) => v,
     (t) => t,
-    (v) => { node.label = v; void processGraph(); },
+    (v) => { node.label = v; node.edited(); void processGraph(); },
   );
   const [editing, setEditing] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -290,6 +309,23 @@ export function NodeShell({
   // The setting, not the zoom state: the zoom crossing is pure CSS on the root class, so nodes never subscribe to zoom.
   const semanticZoomSetting = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("semanticZoom"));
   const sized = useSyncExternalStore(nodeSizeStore.subscribe, () => nodeSizeStore.get(node.id) !== undefined);
+  const capped = cappedBody && !sized;
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+  // The content box is what scrolls past the cap. Read after every render too, since new content can overflow a box
+  // whose own size stays put.
+  const checkOverflow = useCallback(() => {
+    const box = bodyRef.current?.lastElementChild;
+    setOverflowing(!!box && (box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1));
+  }, []);
+  useLayoutEffect(() => { if (capped) checkOverflow(); });
+  useLayoutEffect(() => {
+    const el = bodyRef.current;
+    if (!capped || !el) { setOverflowing(false); return; }
+    const ro = new ResizeObserver(checkOverflow);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [capped, checkOverflow]);
 
   // useLayoutEffect: the height must settle before paint, in the frame NodeCard measures --out-socket-top.
   useLayoutEffect(() => {
@@ -312,7 +348,7 @@ export function NodeShell({
 
   return (
     <NodeFormatContext.Provider value={node.id}>
-      <NodeCard selected={node.selected} node={node} collapsible={collapsible} squareCollapse={squareCollapse} className={className} accentOverride={accentOverride}>
+      <NodeCard selected={node.selected} node={node} collapsible={collapsible} squareCollapse={squareCollapse || cellCollapse} className={cellCollapse ? `sol-cell-collapse${className ? ` ${className}` : ""}` : className} accentOverride={accentOverride}>
         <div className="solenoid-node__header" ref={headerRef} title={headerTooltip(node)}>
           {editing ? (
             <textarea
@@ -356,8 +392,15 @@ export function NodeShell({
         <div className="solenoid-node__content">
           {leading}
           {!hideOutputSockets && <PortSockets node={node} emit={emit} side="output" />}
-          <div className={sized && !nonScrollingBody ? "solenoid-node__body nowheel" : "solenoid-node__body"}>{children}</div>
-          {nodeResizable(node as unknown as ClassicPreset.Node) && <ResizeHandle nodeId={node.id} />}
+          <div
+            ref={bodyRef}
+            className={[
+              "solenoid-node__body",
+              capped && "solenoid-node__body--capped",
+              ((sized && !nonScrollingBody) || (capped && overflowing)) && "nowheel",
+            ].filter(Boolean).join(" ")}
+          >{children}</div>
+          {nodeResizable(node as unknown as GraphNode) && <ResizeHandle nodeId={node.id} />}
         </div>
         {semanticZoomSetting && (
           <div className="solenoid-node__semantic" aria-hidden="true">
@@ -435,7 +478,7 @@ function ChipList({ items, cased }: { items: (string | null | SolError)[]; cased
 }
 
 export function ValueDisplay({
-  value: rawValue,
+  value: givenValue,
   empty = "—",
   render,
   toClipboard,
@@ -443,12 +486,18 @@ export function ValueDisplay({
   socketKey,
   popupOverrides,
   renderWins,
+  cardStyle,
+  copy = true,
 }: {
   value: DisplayValue;
+  /** The copy button; off where the box is itself an editor (a collapsed Value Input's cell). */
+  copy?: boolean;
   empty?: ReactNode;
   render?: (v: number) => ReactNode;
   /** The card's own `render` and `toClipboard` win over any annotation: the constant cards, which show their precision. */
   renderWins?: boolean;
+  /** The card's own style pick, which wins over an annotation's for a value with a unit (Convert's format dropdowns). */
+  cardStyle?: FormatStyle;
   toClipboard?: (v: number) => string;
   /** Show a list in full (values joined) instead of a chip: the Display node. */
   full?: boolean;
@@ -463,6 +512,8 @@ export function ValueDisplay({
 
   // Hooks before the object-kind early return: the value can flip kind across renders, and a changed hook count unmounts the node.
   const ctxNodeId = useContext(NodeFormatContext);
+  // A date value shows as a date whatever the socket says ([[D114]] dateIsAKind).
+  const { value: rawValue, dated } = datesAsSerials(givenValue);
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
 
   // An object value that slipped in through `any` must not reach the number and string path below.
@@ -479,19 +530,25 @@ export function ValueDisplay({
     return <div className="solenoid-node__display-value">{kindLabel}</div>;
   }
 
-  const ann = renderWins ? undefined : annotationForValue(rawValue, resolveDisplayAnnotation(ctxNodeId, socketKey));
+  const ann = renderWins ? undefined
+    : cardStyleAnnotation(rawValue, cardStyle) ?? annotationForValue(rawValue, resolveDisplayAnnotation(ctxNodeId, socketKey));
 
   // The declared element family, never a cell scan: a date serial looks numeric and an all-null list has no cells.
-  const elemFam = nodeOutputElemFamily(ctxNodeId);
-  const isDate = elemFam === "date";
+  const elemFam = nodeOutputElemFamily(ctxNodeId, socketKey);
+  const isDate = dated || elemFam === "date";
   // Resolve a complex to a string here, after `ann`, so box, chip and clipboard all honor the FC.
   const cxFmt = (c: Cx): string => (ann ? formatCxWithAnnotation(c, ann) : formatCxDisplay(c));
-  const cxResolved: Exclude<typeof rawValue, Cx> = isCx(rawValue)
-    ? cxFmt(rawValue)
-    : Array.isArray(rawValue) && rawValue.some(isCx)
-      ? (rawValue as unknown[]).map((c) => (isCx(c) ? cxFmt(c) : c)) as Exclude<typeof rawValue, Cx>
-      : rawValue as Exclude<typeof rawValue, Cx>;
-  const value = dateFormatDisplay(unwrapUnitCells(cxResolved, ann), isDate, !!ann);
+  const shown = (raw: DisplayValue) => {
+    const cxResolved: Exclude<typeof raw, Cx> = isCx(raw)
+      ? cxFmt(raw)
+      : Array.isArray(raw) && raw.some(isCx)
+        ? (raw as unknown[]).map((c) => (isCx(c) ? cxFmt(c) : c)) as Exclude<typeof raw, Cx>
+        : raw as Exclude<typeof raw, Cx>;
+    return dateFormatDisplay(unwrapUnitCells(cxResolved, ann), isDate, !!ann);
+  };
+  // A big list a standard box reads is its first rows (`listPreview.ts`): a list drawn inline takes the whole.
+  const listInline = shouldRenderListInline(full, !!ann);
+  const value = shown(listInline ? fullList(rawValue) : rawValue);
 
   // An empty string has no line box and collapses the card below its min height, so an empty array shows the placeholder.
   const isEmpty = value === null || (Array.isArray(value) && value.length === 0);
@@ -500,7 +557,6 @@ export function ValueDisplay({
   const isList = Array.isArray(value);
   const listIsString = isList && typeof (value as unknown[])[0] === "string";
 
-  const listInline = shouldRenderListInline(full, !!ann);
 
   const fmtScalar = (v: number): string =>
     ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v);
@@ -529,6 +585,14 @@ export function ValueDisplay({
   }
 
   function getClipboardText(): string {
+    if (fullList(rawValue) !== rawValue) return clipboardText(shown(fullList(rawValue)));
+    return clipboardText(value);
+  }
+
+  function clipboardText(value: ReturnType<typeof shown>): string {
+    const isEmpty = value === null || (Array.isArray(value) && value.length === 0);
+    const isString = typeof value === "string", isLogical = typeof value === "boolean", isList = Array.isArray(value);
+    const listIsString = isList && typeof (value as unknown[])[0] === "string";
     if (isEmpty) return "";
     if (isString) return cased(value as string);
     if (isLogical) return applyLogicalStyle(value as boolean, ann?.logicalStyle);
@@ -567,7 +631,7 @@ export function ValueDisplay({
         ...(isString && ann?.textAlign ? { textAlign: ann.textAlign } : {}),
         userSelect: IS_COARSE ? "none" : "text",
         cursor: isEmpty ? undefined : "text",
-        paddingLeft: isEmpty ? undefined : 26,
+        paddingLeft: isEmpty || !copy ? undefined : 26,
       }}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
@@ -580,7 +644,7 @@ export function ValueDisplay({
               <CategoryChip value={cased(value as string)} index={0} />
             ) : ann?.textMarkdown ? (
               // A <div> can't live inside the text <span>.
-              <div
+              <MarkdownDiv
                 className="solenoid-node__md"
                 style={{
                   width: "100%",
@@ -589,7 +653,8 @@ export function ValueDisplay({
                   fontStyle: ann.italic ? "italic" : undefined,
                   fontSize: ann.textScale ? `${ann.textScale}px` : undefined,
                 }}
-                dangerouslySetInnerHTML={{ __html: renderTextMarkdownHtml(cased(value as string)) }}
+                markdown={cased(value as string)}
+                nodeId={ctxNodeId ?? undefined}
               />
             ) : (
               <span style={{ fontFamily: "var(--font-sans)", ...(textStyle ?? {}) }}>
@@ -612,7 +677,7 @@ export function ValueDisplay({
           )
         : render && !ann ? render(value as number)
         : fmtScalar(value as number)}
-      {!isEmpty && (
+      {!isEmpty && copy && (
         <button
           className="sol-copy-icon"
           onClick={handleCopy}

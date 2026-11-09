@@ -7,3 +7,25 @@
 /* Inside the editor box's corner; the field's padding would leave them straddling the border. */
 .solenoid-script__field .solenoid-field-resize { right: 6px; bottom: 4px; }
 .solenoid-script__field .solenoid-expr__expand { top: 7px; right: 7px; }
+
+/* A foreign document's script, held until the user lets it run ([[B18]] safeToShare). */
+.solenoid-script__waiting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.solenoid-script__waiting span { flex: 1 1 auto; min-width: 0; }
+.solenoid-script__allow {
+  flex: none;
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 9px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  cursor: pointer;
+}
+.solenoid-script__allow:hover { color: var(--text-bright); border-color: var(--node-accent, var(--accent)); }

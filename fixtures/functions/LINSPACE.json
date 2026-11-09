@@ -1,0 +1,7 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"LINSPACE(0, 1, 5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LINSPACE(0, 1, 2000000)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"LINSPACE(0,1,1000000.6)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

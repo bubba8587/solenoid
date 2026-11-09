@@ -1,11 +1,11 @@
 // [[C103]] untrustedContentSeams
 // Pure and side-effect free, so the presets unit-test without the network.
 import { frameFromColumnar, type FrameValue } from "./frame";
-import { csvToFrame } from "./nodes/connection";
+import { csvToFrame } from "./frameBackend";
 
 export type ProviderId = "fred" | "alphavantage";
 
-export type DataFeedOpts = { start?: string; end?: string; freq?: string };
+type DataFeedOpts = { start?: string; end?: string; freq?: string };
 
 export interface ProviderPreset {
   id: ProviderId;
@@ -42,7 +42,7 @@ export function parseFredCsv(text: string): FrameValue {
   return frameFromColumnar({ [dateCol]: date, [valCol]: value });
 }
 
-export const FRED_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
+const FRED_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "UNRATE", label: "Unemployment rate" },
   { id: "CPIAUCSL", label: "CPI (inflation)" },
   { id: "GDPC1", label: "Real GDP" },
@@ -53,7 +53,7 @@ export const FRED_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "SP500", label: "S&P 500" },
 ];
 
-export const AV_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
+const AV_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "AAPL", label: "Apple" },
   { id: "MSFT", label: "Microsoft" },
   { id: "GOOGL", label: "Alphabet" },

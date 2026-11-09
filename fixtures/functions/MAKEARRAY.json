@@ -1,0 +1,19 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"MAKEARRAY(2, 2, LAMBDA(r, c, MAKEARRAY(1, 1, LAMBDA(x, y, 1))))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MAKEARRAY(1E9, SEQUENCE(2), LAMBDA(r, c, 1))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MAKEARRAY(2, 2, LAMBDA(r, c, r * c))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MAKEARRAY(2, 2, LAMBDA(r, c, COMPLEX(r, c)))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MAKEARRAY(2, 3, LAMBDA(row, col, row * 10 + col))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MAKEARRAY(3, 1, LAMBDA(r, c, r))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MAKEARRAY(2000, 2000, LAMBDA(r, c, r))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MAKEARRAY(1, 1, LAMBDA(i, j, SEQUENCE(2)))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MAKEARRAY(1e9, 0, LAMBDA(i, j, 1))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MAKEARRAY(0, 1e9, LAMBDA(i, j, 1))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MAKEARRAY(2, 0, LAMBDA(i, j, 1))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MAKEARRAY(300,300,LAMBDA(r,c,r*c))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MAKEARRAY(2.5,2.5,LAMBDA(r,c,r*c))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MAKEARRAY(1001,1000,LAMBDA(r,c,r*c))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"MAKEARRAY(3,3, LAMBDA(x,y,x*y))","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

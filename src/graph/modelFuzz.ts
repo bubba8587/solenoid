@@ -1,5 +1,5 @@
 // Model fuzzing: valid-shaped samples per leaf source; findings go to the Problems panel (origin "fuzz").
-import { ClassicPreset } from "rete";
+import { GraphConnection } from "./graphModel";
 import { getEditor, getView, graphSettled, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { downstreamClosure } from "./graphCompute";
 import { beginCompute, endCompute } from "./computeOverlayStore";
@@ -10,21 +10,12 @@ import { ExpectNode } from "./nodes/quality";
 import { isSolError, isFrameLike, sampledCellIndices, type SolErrorCode } from "./errorValue";
 import { problemsStore } from "./problemsStore";
 import { SolenoidSocket } from "./sockets";
+import { mulberry32 } from "./monteCarlo";
 import type { SolenoidConnection } from "./schemes";
 
 type AnyEditor = NonNullable<ReturnType<typeof getEditor>>;
 
 const SAMPLES_PER_LEAF = 120;
-
-function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0; a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 function sampleNumbers(rng: () => number, n: number): number[] {
   const out = [0, 1, -1, 0.0001, -0.0001, 100, -100, 1e6, -1e6, 1e-8];
@@ -129,7 +120,7 @@ function firstNumericInput(node: unknown): { socketKey: string; label: string } 
 
 interface SafeRange { min: number; max: number }
 
-export interface ClampSuggestion { socketKey: string; label: string; min?: number; max?: number }
+interface ClampSuggestion { socketKey: string; label: string; min?: number; max?: number }
 
 export function collectFinite(v: unknown): number[] {
   if (typeof v === "number") return Number.isFinite(v) ? [v] : [];
@@ -171,7 +162,7 @@ export function boundsFromSafeRange(range: SafeRange | undefined): { min: number
   return { min: range.min, max: range.max };
 }
 
-export interface FuzzRunSummary {
+interface FuzzRunSummary {
   leaves: number;
   samples: number;
   findings: number;
@@ -265,8 +256,8 @@ export async function insertClampBefore(
   await view.moveNode(clamp.id, { x: (srcPos.x + tgtPos.x) / 2, y: (srcPos.y + tgtPos.y) / 2 - 60 });
 
   await editor.removeConnection(conn.id);
-  await editor.addConnection(new ClassicPreset.Connection(source, conn.sourceOutput, clamp, "value") as SolenoidConnection);
-  await editor.addConnection(new ClassicPreset.Connection(clamp, "result", target, socketKey) as SolenoidConnection);
+  await editor.addConnection(new GraphConnection(source, conn.sourceOutput, clamp, "value") as SolenoidConnection);
+  await editor.addConnection(new GraphConnection(clamp, "result", target, socketKey) as SolenoidConnection);
   await processGraph();
   return true;
 }

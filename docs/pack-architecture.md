@@ -5,7 +5,7 @@
 > example, and the **Composite** subgraph container (`nodes/composite.ts`). The settled calls
 > live in the decision tree: [[B15]] leanCore and its children [[C76]] formulaPackDefault, [[C77]] compositeIsSubgraph,
 > [[C78]] packLegibility and [[C79]] packActivationIsPresentation
-> (`python tools/dte.py tree --under B15`). This doc is the guide for authoring packs; the open
+> (`python3 tools/dte.py tree --under B15`). This doc is the guide for authoring packs; the open
 > pack work (more packs, distribution/deps, variant-switch reconcile, port aliasing) lives in
 > `backlog.md`.
 
@@ -24,20 +24,43 @@ metadata (name, description, socket names and units, Excel mapping if any) as pa
 reach for real node code only when the node needs a native library, root-finding or
 iteration, an embedded dataset to interpolate, or a custom widget. State, per node, which of
 the two it is; the custom-logic nodes are the short list that gets the scrutiny (see
-[reference-packs.md](archive/reference-packs.md) and
-[archive/compute-architecture.md](archive/compute-architecture.md) for the library-bound
+[reference-packs.md](archive/reference-packs.md) for the library-bound
 cases). A simple node that grows into several internal nodes becomes a composite
 ([[C77]] compositeIsSubgraph), never a Group.
 
-A formula pack node saves as a plain locked Expression, so a document that uses one still
-opens and computes with its pack switched off ([[C76]] formulaPackDefault). Formula nodes get
+A formula pack node saves as a plain locked Expression (or Equation), so a document that uses
+one still opens and computes with its pack switched off ([[C76]] formulaPackDefault). A
+custom-logic node is a node class whose body runs on the core
+(`crates/solenoid-core/src/nodes/packs.rs`, `../tree/specs/computation/node-bodies.md`); a pack's
+formula functions run there too (`fns_packs.rs`), and its `packs/<id>Formulas.ts` declares only
+their names, arities and hints. Formula nodes get
 units right because the formula engine already understands them; custom code is harder to
 trust from a third party and often runs only on desktop, which is why it is the short list.
+
+A pack can also own a family of ordinary cards and their formulas. The Sets pack
+(`packs/sets.ts`, on by default) holds Between, Sets, Is In and Tally with IS,
+ISNOT, ABOVE, BELOW, ATLEAST, ATMOST, BETWEEN, the SET functions, ISIN and TALLY
+([[D124]] comparisonFunctions; the Comparison card itself is core): the cards keep their own node classes, the functions run in
+`fns_packs.rs`, and `setsFormulas.ts` declares them. A pack entry's NODE_EXCEL rows are merged
+as a core leaf's are (`buildCatalog`).
+
+### Physical constants are cards, not digits
+A preset never bakes a physical constant into its formula text. The constant is a named variable (`ke*q1*q2/r^2`), and
+the entry's `constants` maps it to a Physics Constant op (`constants: { ke: "ke" }`). Placing the card from the Add menu
+or the card reference also places that Physics Constant to its left, cabled into the variable (`companions` on the
+catalog entry, `src/graph/companions.ts`), so the constant shows on the canvas with its symbol, value and unit. No
+copy of the value hides in the card: an Expression preset marks the variable required (`varRequired`), so with the
+cable cut and nothing typed it answers `#SYNTAX!` naming it; an Equation preset solves for an unwired variable, so a
+cut cable there turns the constant into the unknown. An empirical fit coefficient (Heat Index, Magnus,
+Hazen–Williams) is part of its formula and stays a number. Physics Constant is a core card (Inputs, beside Constant)
+that each pack with such presets tags, so it shows whenever one of them is on. Every input of a preset carries a
+`varDescriptions` entry (a constant's is written for it); `packs.test.ts` fails on a bare one. A description is the
+quantity's name and its unit, `Density (kg/m³)`, never an explanation, a range or an example (author 2026-11-06).
 
 ### Input coercion — the default widens, opting out is one line
 A custom-logic node's `data()` receives every input already coerced to its socket's
 declared rank: a scalar widens into a `[scalar]` list, a list into a matrix, and so on
-(the socket lattice guarantees lower-rank values *can* flow in; `coerceInputs.ts` does
+(the socket lattice guarantees lower-rank values *can* flow in; the engine's input boundary does
 the widening so 95% of nodes can assume their shape). Two painless opt-outs exist for the
 node that handles shape itself — the socket is UNCHANGED either way (same glyph, same
 accepted types), only the value handed to `data()` differs:
@@ -49,7 +72,7 @@ accepted types), only the value handed to `data()` differs:
   branches on the raw runtime shape (frame-vs-cube, etc.).
 
 Both are captured once, so a node with dynamic keys keeps the same Set and mutates it in
-place. See the per-input coercion policy note in `coerceInputs.ts`.
+place. The policy is `../tree/specs/computation/compute-pass.md` § Arrival coercion.
 
 ## Locked to the user, open to the author
 
@@ -127,3 +150,12 @@ pack still ships with the app; leaving it out of the build is deliberately not d
 pack self-contained, enforced by structure) is a later tidy-up the pack/core wall is drawn for;
 level 3 (third-party packs loaded at runtime) is a safety project of its own ([[C79]]
 packActivationIsPresentation).
+
+## A pack's example seed
+
+Every pack names one example graph in `seed` (`src/graph/seedGraphs/packs/<seed>.json`, group `Packs`). The seed menus
+offer it while the pack is on (`seedGroups`, `useSeedGroups` in `seeds.ts`); any seed loads by id regardless, and a
+pack card's Reference page lists its pack's example. A pack's seed shows at least three of its own cards or functions
+and nothing from another pack (one it `dependsOn` aside), since that pack may be off. `packSeeds.test.ts` holds it
+through `tests/graph/packContent.ts`, which reads a pack's marks: the classes only it places, its formula presets, its
+formula functions and the core cards it claims. A default seed may use pack cards (the author 2026-11-06).

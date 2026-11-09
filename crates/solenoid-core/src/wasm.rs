@@ -1,0 +1,291 @@
+// [[C130]] rustCore
+//! The WebAssembly entry: one string-in, string-out call per engine command, plus the columnar
+//! hand-off (`binary.rs`) for frames crossing in bulk.
+
+use std::cell::RefCell;
+
+use wasm_bindgen::prelude::*;
+
+use crate::binary::{decode_frame, Columnar};
+use crate::error_value::{ErrorCode, SolError};
+use crate::frame::get_column;
+use crate::frame_backend::{get, invoke, register};
+use crate::wire::error_to_wire;
+
+fn reply(r: Result<serde_json::Value, SolError>) -> String {
+    match r {
+        Ok(v) => serde_json::json!({ "ok": v }).to_string(),
+        Err(e) => serde_json::json!({ "err": error_to_wire(&e) }).to_string(),
+    }
+}
+
+/// `{"ok": result}` or `{"err": {"__solError", code, message}}`, as JSON text.
+#[wasm_bindgen]
+pub fn engine_invoke(command: &str, args: &str) -> String {
+    match serde_json::from_str(args) {
+        Ok(parsed)
+            if matches!(
+                command,
+                "engine_call" | "engine_call_each" | "engine_eval" | "engine_expression_units" | "engine_fold_units"
+            ) =>
+        {
+            match crate::frame_backend::call_reply(command, &parsed) {
+                Ok(r) => format!("{{\"ok\":{}}}", serde_json::to_string(&r).expect("a call's reply serializes")),
+                Err(e) => reply(Err(e)),
+            }
+        }
+        Ok(parsed) if command == "engine_node" => format!(
+            "{{\"ok\":{}}}",
+            crate::nodes::columnar::staging(|| serde_json::to_string(&crate::nodes::reply(&parsed)))
+                .expect("a card's reply serializes")
+        ),
+        Ok(parsed) => reply(invoke(command, &parsed)),
+        Err(e) => reply(Err(crate::error_value::sol_error(ErrorCode::Error, e.to_string()))),
+    }
+}
+
+#[wasm_bindgen]
+pub fn engine_source_bin(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &[u32]) -> String {
+    reply(decode_frame(schema, tags, nums, strs, lens).map(|f| serde_json::json!(register(f))))
+}
+
+thread_local! {
+    static STAGED: RefCell<Columnar> = RefCell::new(Columnar::default());
+}
+
+/// Stages a frame's cells for the `take_*` calls and answers its schema: every column, or the one
+/// `column` names (`get_column`; `null` when none), each cut to `limit` cells when it's set.
+#[wasm_bindgen]
+pub fn engine_read_bin(handle: &str, column: Option<String>, limit: Option<u32>) -> String {
+    reply(get(handle).map(|f| {
+        let cols: Vec<_> = match &column {
+            Some(name) => match get_column(&f, name) {
+                Some(c) => vec![c],
+                None => return serde_json::Value::Null,
+            },
+            None => f.columns.iter().collect(),
+        };
+        let out = Columnar::encode(&cols, limit.map(|l| l as usize));
+        let schema = serde_json::json!({ "columns": out.schema, "rowCount": crate::frame::frame_row_count(&f) });
+        STAGED.with(|s| *s.borrow_mut() = out);
+        schema
+    }))
+}
+
+/// Stages `csvToFrame`'s typed columns for the `take_*` calls and answers their schema (`csv::frame_columnar`).
+#[wasm_bindgen]
+pub fn engine_csv_frame(text: &str) -> String {
+    let (out, rows) = crate::csv::frame_columnar(text);
+    let schema = serde_json::json!({ "columns": out.schema, "rowCount": rows });
+    STAGED.with(|s| *s.borrow_mut() = out);
+    reply(Ok(schema))
+}
+
+/// Stages `inferColumn`'s reading of each column of a frame's cells for the `take_*` calls and answers its schema
+/// (`nodes::infer_cells`). A text column comes back empty: its cells are the trimmed text the caller sent. The schema
+/// is written as text, since a table of thousands of short columns spends more on building JSON values than on
+/// reading its cells.
+#[wasm_bindgen]
+pub fn engine_infer_bin(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &[u32]) -> String {
+    use crate::frame::FrameColType;
+    use std::fmt::Write;
+    let f = match decode_frame(schema, tags, nums, strs, lens) {
+        Ok(f) => f,
+        Err(e) => return reply(Err(e)),
+    };
+    let mut out = Columnar::default();
+    let mut schema = String::from("{\"ok\":[");
+    for (j, c) in f.columns.iter().enumerate() {
+        let cells: Vec<_> = c.values.iter().map(crate::excel_formula::cell_to_v).collect();
+        let (typed, _) = crate::nodes::infer_cells(&c.name, &cells);
+        if j > 0 {
+            schema.push(',');
+        }
+        let n = if typed.ty == FrameColType::String { 0 } else { cells.len() };
+        let _ = write!(schema, "{{\"type\":\"{}\",\"len\":{n}}}", typed.ty.as_str());
+        if n > 0 {
+            out.push_cells(&typed.values.iter().map(crate::nodes::core_cell).collect::<Vec<_>>());
+        }
+    }
+    schema.push_str("]}");
+    STAGED.with(|s| *s.borrow_mut() = out);
+    schema
+}
+
+/// Stages `parseCsvRows`'s fields for the `take_*` calls (`csv::rows_columnar`) and answers how many rows they make.
+#[wasm_bindgen]
+pub fn engine_csv_rows(text: &str, detect: bool, keep_blank: bool) -> String {
+    let (out, rows) = crate::csv::rows_columnar(
+        text,
+        crate::csv::CsvOptions { detect_delimiter: detect, keep_blank_lines: keep_blank },
+    );
+    STAGED.with(|s| *s.borrow_mut() = out);
+    reply(Ok(serde_json::json!(rows)))
+}
+
+/// Stages the answer `engine_node`'s reply named `{"staged": id}` for the `take_*` calls; its kind and schema as JSON
+/// with the id it is kept under (`{"kind", "schema", "held"}`, `nodes::columnar::keep`), or null where it was taken
+/// already.
+#[wasm_bindgen]
+pub fn card_unstage(id: u32) -> Option<String> {
+    let ((kind, schema, out), v) = crate::nodes::columnar::take_out(id)?;
+    STAGED.with(|s| *s.borrow_mut() = out);
+    let held = crate::nodes::columnar::keep(v);
+    Some(serde_json::json!({ "kind": kind, "schema": schema, "held": held }).to_string())
+}
+
+/// Keeps a big frame or list that crossed as buffers; the id a card call names it by,
+/// `{"__held": id}` (`nodes::columnar::keep`).
+#[wasm_bindgen]
+pub fn card_keep(
+    kind: &str,
+    schema: Option<String>,
+    tags: &[u8],
+    nums: &[f64],
+    strs: &str,
+    lens: &[u32],
+) -> Result<u32, JsValue> {
+    use crate::nodes::columnar;
+    let v = match kind {
+        "frame" => columnar::frame_in(schema.as_deref().unwrap_or("{}"), tags, nums, strs, lens),
+        _ => columnar::list_in(tags, nums, strs, lens),
+    };
+    v.map(columnar::keep).map_err(|e| JsValue::from_str(&e.message))
+}
+
+/// Drops the kept values whose JavaScript objects were collected.
+#[wasm_bindgen]
+pub fn card_forget(ids: &[u32]) {
+    crate::nodes::columnar::forget(ids);
+}
+
+/// How many values the core keeps for JavaScript objects (`card_keep`), for the tests.
+#[wasm_bindgen]
+pub fn card_kept_count() -> usize {
+    crate::nodes::columnar::kept_count()
+}
+
+#[wasm_bindgen]
+pub fn take_tags() -> Vec<u8> {
+    STAGED.with(|s| std::mem::take(&mut s.borrow_mut().tags))
+}
+
+#[wasm_bindgen]
+pub fn take_nums() -> Vec<f64> {
+    STAGED.with(|s| std::mem::take(&mut s.borrow_mut().nums))
+}
+
+#[wasm_bindgen]
+pub fn take_strs() -> String {
+    STAGED.with(|s| std::mem::take(&mut s.borrow_mut().strs))
+}
+
+#[wasm_bindgen]
+pub fn take_lens() -> Vec<u32> {
+    STAGED.with(|s| std::mem::take(&mut s.borrow_mut().lens))
+}
+
+// ─── Display formatting ([[C118]] formatTravelsWithValue): the one copy the app's value boxes, popups and chips call ─────
+
+/// The "Decimal places" and "Scientific from" settings every unformatted number shows by; the app sets them on load
+/// and on each change.
+#[wasm_bindgen]
+pub fn display_settings(number_decimals: Option<f64>, sci_above: Option<String>) {
+    crate::card_helpers::set_number_display(crate::card_helpers::NumberDisplay::from_settings(
+        number_decimals,
+        sci_above.as_deref(),
+    ));
+}
+
+/// A number nobody formatted, as the Format Controller's General style shows it.
+#[wasm_bindgen]
+pub fn fmt_scalar(n: f64) -> String {
+    crate::card_helpers::format_shown(n)
+}
+
+/// A number as a format annotation (its JSON) shows it.
+#[wasm_bindgen]
+pub fn fmt_annotated(n: f64, annotation: &str) -> String {
+    let j: serde_json::Value = serde_json::from_str(annotation).unwrap_or(serde_json::Value::Null);
+    let ann = crate::card_helpers::Annotation::from_json(&j);
+    crate::card_helpers::format_number_with_annotation(n, &ann, crate::card_helpers::number_display())
+}
+
+/// A date serial in a `YYYY-MM-DD`-style pattern.
+#[wasm_bindgen]
+pub fn fmt_date(serial: f64, pattern: &str) -> String {
+    crate::date_serial::format_date_serial(serial, pattern)
+}
+
+/// Whether a card cell's text is a hex colour, as the Cards view draws it.
+#[wasm_bindgen]
+pub fn card_is_hex_color(text: &str) -> bool {
+    crate::card_helpers::is_hex_color(text)
+}
+
+/// The address a card cell's text links to, if any.
+#[wasm_bindgen]
+pub fn card_link_href(text: &str) -> Option<String> {
+    crate::card_helpers::link_href(text)
+}
+
+/// The image a Record cell's text shows, if any ([[C103]] untrustedContentSeams).
+#[wasm_bindgen]
+pub fn card_image_src(text: &str) -> Option<String> {
+    crate::card_helpers::record_image_src(text)
+}
+
+// ─── Typed text reading ([[C58]] tableInputRawText): the one reader the input surfaces call ─────
+
+/// Text as a number: plain decimal or scientific, or thousands grouped by commas; NaN otherwise.
+#[wasm_bindgen]
+pub fn read_decimal(text: &str) -> f64 {
+    crate::value_kinds::decimal_from_text(text)
+}
+
+/// The field a card's unwired input `key` on `rung` shows (`nodes::fields`): number, logical, text, csv, keyed, bound
+/// or none.
+#[wasm_bindgen]
+pub fn literal_field(class: &str, key: &str, rung: &str, kept_as_text: bool) -> String {
+    crate::nodes::fields::field_of(class, key, rung, kept_as_text).name().to_string()
+}
+
+/// A card's declared kind for its empty field `key` under its `op` and what it shows, as `kind` and `shown` JSON; empty text where it
+/// declares none (`nodes::fields::Empty`).
+#[wasm_bindgen]
+pub fn empty_field(class: &str, op: &str, key: &str) -> String {
+    match crate::nodes::fields::empty_of(class, op, key) {
+        Some(e) => {
+            let (kind, shown) = e.shown();
+            serde_json::json!({ "kind": kind, "shown": shown }).to_string()
+        }
+        None => String::new(),
+    }
+}
+
+/// Text as a date's day, as a Frame Input Date cell reads it: NaN when it doesn't read as one, `undefined` for blank.
+#[wasm_bindgen]
+pub fn read_date(text: &str) -> Option<f64> {
+    match crate::nodes::keyed_value("date", text) {
+        crate::excel_functions::V::Date(d) => Some(d),
+        crate::excel_functions::V::Undef => None,
+        _ => Some(f64::NAN),
+    }
+}
+
+/// Each point's Conditional Regions key, by the cuts its card shows, one per line.
+#[wasm_bindgen]
+pub fn region_keys(cuts: &str, xs: &[f64], ys: &[f64]) -> String {
+    crate::nodes::region_keys(cuts, xs, ys)
+}
+
+/// Text as a logical: 1 for TRUE, 0 for FALSE, NaN when it doesn't read as one, and `undefined` for blank.
+#[wasm_bindgen]
+pub fn read_logical(text: &str) -> Option<f64> {
+    use crate::value_kinds::{coerce_logical, Logical};
+    match coerce_logical(&crate::frame::FrameCell::Str(std::rc::Rc::from(text))) {
+        Logical::Bool(b) => Some(if b { 1.0 } else { 0.0 }),
+        Logical::Blank => None,
+        Logical::Unreadable => Some(f64::NAN),
+    }
+}

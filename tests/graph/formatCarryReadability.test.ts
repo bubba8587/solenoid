@@ -1,5 +1,5 @@
-// [[D41]]
-// [[D41]] formatFlowsDownstream readability table: a styled source wired into a real transform,
+// [[C118]]
+// [[C118]] formatTravelsWithValue readability table: a styled source wired into a real transform,
 // the output formatted exactly as a Display would. `want` is what a reader should see —
 // "auto" = no carried style (a value of a new kind); a string = the style survives.
 //
@@ -12,7 +12,8 @@
 // "inputs → op → shows" to .dev/format-carry-report.txt.
 import { describe, it, afterAll, expect } from "vitest";
 import { writeFileSync, mkdirSync } from "node:fs";
-import { NodeEditor, ClassicPreset } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import { makeAnnotationResolver } from "../../src/graph/unitFlow";
 import { formatNumberWithAnnotation, type FormatAnnotation } from "../../src/graph/formatAnnotationStore";
 import { ArithmeticNode, MathFXNode, RoundNNode, MRoundNode, ClampNode, TwoInputMathNode, SumProductNode } from "../../src/graph/nodes/scalar";
@@ -23,8 +24,8 @@ import { DateAddNode, WorkdaysNode, DateDiffNode } from "../../src/graph/nodes/d
 import { MatDetNode, TableTransposeNode } from "../../src/graph/nodes/matrix";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
 
-type AnyEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
-const sock = new (class extends ClassicPreset.Socket {})("any");
+type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
+const sock = new (class extends GraphSocket {})("any");
 const base: FormatAnnotation = {
   format: "decimal", customPattern: "0.00", decimalDigits: 2, decimalMode: "places",
   unit: "none", customUnit: "", textCase: "none", bold: false, italic: false, textScale: 14,
@@ -39,20 +40,20 @@ const STYLES: Record<string, FormatAnnotation> = {
   k: { ...base, format: "decimal", scaleMode: "k" },
 };
 function src(ann: FormatAnnotation) {
-  const n = new ClassicPreset.Node("FC") as ClassicPreset.Node & Record<string, unknown>;
-  n.addOutput("out", new ClassicPreset.Output(sock, "Out"));
+  const n = new GraphNode("FC") as GraphNode & Record<string, unknown>;
+  n.addOutput("out", new GraphOutput(sock, "Out"));
   n.annotation = () => ann;
   return n;
 }
 function bare() {
-  const n = new ClassicPreset.Node("Num");
-  n.addOutput("out", new ClassicPreset.Output(sock, "Out"));
+  const n = new GraphNode("Num");
+  n.addOutput("out", new GraphOutput(sock, "Out"));
   return n;
 }
 
 type Row = {
   name: string;
-  make: () => ClassicPreset.Node;
+  make: () => GraphNode;
   /** input key → a STYLES key or "bare"; wired in this order (order matters today). */
   wire: Record<string, string>;
   out?: string;
@@ -152,20 +153,20 @@ const rows: Row[] = [
 ];
 
 async function shown(row: Row): Promise<string> {
-  const editor = new NodeEditor() as unknown as AnyEditor;
+  const editor = new GraphEditor() as unknown as AnyEditor;
   const n = row.make();
   await editor.addNode(n as never);
   for (const [k, s] of Object.entries(row.wire)) {
     if (!n.inputs[k]) throw new Error(`${row.name}: no input ${k}`);
     const s0 = s === "bare" ? bare() : src(STYLES[s]);
     await editor.addNode(s0 as never);
-    await editor.addConnection(new ClassicPreset.Connection(s0 as never, "out", n as never, k) as never);
+    await editor.addConnection(new GraphConnection(s0 as never, "out", n as never, k) as never);
   }
   const ann = makeAnnotationResolver(editor).outAnnotation(n.id, row.out ?? "result");
   return ann ? formatNumberWithAnnotation(row.value, ann) : "auto";
 }
 
-describe("[[D41]] formatFlowsDownstream — what a reader sees after a transform", () => {
+describe("[[C118]] formatTravelsWithValue — what a reader sees after a transform", () => {
   for (const row of rows) {
     it(`${row.name} → ${row.want}`, async () => {
       expect(await shown(row)).toBe(row.want);

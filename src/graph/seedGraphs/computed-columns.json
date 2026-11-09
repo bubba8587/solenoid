@@ -21,7 +21,7 @@
       "id": "rule",
       "type": "LambdaNode",
       "x": -182,
-      "y": 2559,
+      "y": 2560,
       "init": {
         "label": "Margin rule: its param names the column",
         "expr": "revenue * 0.25",
@@ -196,6 +196,20 @@
         "width": 633,
         "height": 777
       }
+    },
+    {
+      "id": "lh-heat",
+      "x": 330,
+      "y": 1170,
+      "type": "HeatmapNode",
+      "init": {
+        "label": "The week at a glance",
+        "width": 300,
+        "height": 260
+      },
+      "stringLiterals": {
+        "options": "title=°F by week and day;cmap=inferno;annot=true"
+      }
     }
   ],
   "connections": [
@@ -234,6 +248,12 @@
       "sourceOutput": "table",
       "target": "lh-tocelsius",
       "targetInput": "table"
+    },
+    {
+      "source": "lh-temps",
+      "sourceOutput": "table",
+      "target": "lh-heat",
+      "targetInput": "values"
     }
   ],
   "standoffs": [

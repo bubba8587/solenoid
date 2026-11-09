@@ -1,4 +1,4 @@
-// [[C68]]
+// [[C68]], [[reports-and-notes#Rendering]]
 import { describe, it, expect } from "vitest";
 import { renderKnap, embedBareVariables, renderKnapPages } from "../../src/graph/knapTemplate";
 
@@ -22,16 +22,3 @@ describe("Knap template locals are the template's own", () => {
   });
 });
 
-describe("SEQUENCE rank reconcile", () => {
-  it("a wired blank or an empty result keeps the 2-D socket rank", async () => {
-    const { SeriesNode } = await import("../../src/graph/nodes/list");
-    const n = new SeriesNode({ op: "sequence" }) as unknown as { data: (i: Record<string, unknown[]>) => unknown; lastRank: number; literals: Record<string, number> };
-    n.literals.count = 2; n.literals.cols = 2;
-    n.data({});
-    expect(n.lastRank).toBe(2);
-    n.data({ count: [null] });
-    expect(n.lastRank).toBe(2);
-    n.data({ count: [0] });
-    expect(n.lastRank).toBe(2);
-  });
-});

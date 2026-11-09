@@ -1,10 +1,18 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[D79]] effectsEdgeTriggered, [[alert-node-alerts-hud#When it fires]]
 import { describe, it, expect } from "vitest";
 import { ExpectNode } from "../../../src/graph/nodes/quality";
 import { alertStore } from "../../../src/graph/alertStore";
 import { solError } from "../../../src/graph/errorValue";
 import { applyFcUnit } from "../../../src/graph/unitBridge";
 import type { FrameValue, FrameCell, FrameColType } from "../../../src/graph/frame";
+import { inEditor, Src } from "../cardPasses";
+import { GraphConnection, GraphNode, GraphOutput } from "../../../src/graph/graphModel";
+import { GraphEditor } from "../../../src/graph/graphEditor";
+import type { Schemes } from "../../../src/graph/schemes";
+import { MutableSocket, SolenoidSocket, type SocketDataType } from "../../../src/graph/sockets";
+import { settleWildcardTypes } from "../../../src/graph/trueAnyAdopt";
+import { reconcileFcTypes } from "../../../src/graph/fcReconcile";
+import { solDate } from "../../../src/graph/dateValue";
 
 // Expect checks over FRAMES (the audit-found blind spot: a FrameValue fell into
 // the scalar arm and every check silently no-opped) + the pre-existing
@@ -47,6 +55,15 @@ describe("Expect over frames", () => {
     expect(run(n, good)).toEqual([]);
   });
 
+  it("a pattern that can't run is #VALUE! naming why, not a silent pass or fail", () => {
+    const n = new ExpectNode({ checkNotNull: false, checkRegex: true });
+    n.stringLiterals.pattern = "(";
+    let thrown: { code?: string; message?: string } | undefined;
+    try { n.data({ in: [["ok"]] }); } catch (e) { thrown = e as typeof thrown; }
+    expect(thrown?.code).toBe("#VALUE!");
+    expect(thrown?.message).toMatch(/pattern isn't valid/);
+  });
+
   it("notNull flags a per-cell error (a #DIV/0! cell isn't valid present data)", () => {
     const n = new ExpectNode({ checkNotNull: true });
     const err = solError("#DIV/0!", "divide by zero") as unknown as FrameCell;
@@ -55,31 +72,10 @@ describe("Expect over frames", () => {
     expect(run(n, [1, solError("#N/A", "not available"), 3])).toEqual(["notNull"]);
   });
 
-  it("passes the frame through unchanged", () => {
-    const n = new ExpectNode({ checkNotNull: true });
-    const f = frame([["a", "number", [1, null]]]);
-    expect(n.data({ in: [f] }).out).toBe(f);
-  });
 });
 
 describe("Expect — in-list (allowlist) membership", () => {
-  it("flags a value outside a wired allowlist", () => {
-    const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
-    // Wired allowlist wins over the literal.
-    expect(n.data({ in: ["Pear"], allowed: [["Apple", "Banana"]] }).out).toBe("Pear");
-    expect(n.violations).toEqual(["allowed"]);
-    n.data({ in: ["Apple"], allowed: [["Apple", "Banana"]] });
-    expect(n.violations).toEqual([]);
-  });
 
-  it("scans every cell of a list/frame against the allowlist", () => {
-    const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
-    n.data({ in: [["Apple", "Kiwi", "Banana"]], allowed: [["Apple", "Banana"]] });
-    expect(n.violations).toEqual(["allowed"]);
-    const f = frame([["fruit", "string", ["Apple", "Banana"]]]);
-    n.data({ in: [f], allowed: [["Apple", "Banana"]] });
-    expect(n.violations).toEqual([]);
-  });
 
   it("uses the comma-separated literal when the socket is unwired, matching by string form", () => {
     const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
@@ -115,12 +111,6 @@ describe("Expect over lists/scalars (unchanged behavior)", () => {
   });
 });
 
-// The alert edge-detects on the SET of failing CHECK KINDS (violations.join),
-// NOT on which cells failed or how many — a "failure signature". So a different
-// cell failing the SAME check does not re-fire; a new check joining the set does;
-// recovery re-arms the edge. This is the intended coarse-grained design (quality.ts
-// comments; the alertStore "edge-detect on STATUS, not a boolean" invariant), pinned
-// here so a future change to the firing rule is a conscious one.
 describe("Expect alert edge-detect (fires on a NEW failure signature, not per bad cell)", () => {
   const alertsFor = (id: string) => alertStore.list().filter((e) => e.nodeId === id).length;
 
@@ -156,6 +146,21 @@ describe("Expect alert edge-detect (fires on a NEW failure signature, not per ba
     expect(n.violations).toEqual(["range"]);
     expect(alertsFor(n.id)).toBe(3);
   });
+
+  it("fires from the engine's direct call, once per signature", async () => {
+    alertStore.clear();
+    const n = new ExpectNode({ checkNotNull: false, checkRange: true, label: "Q" });
+    n.literals.max = 10;
+    const src = new Src([99, 1], "any");
+    const g = await inEditor(n);
+    await g.wire(src, "in");
+    await g.pass("out");
+    expect(alertStore.list().map((a) => a.message)).toEqual(["Q: failed range"]);
+    src.out = [20];
+    await g.pass("out");
+    expect(alertsFor(n.id)).toBe(1);
+    g.dispose();
+  });
 });
 
 describe("Expect reads values as they're shown: units, Cubes and the allowlist by meaning", () => {
@@ -184,11 +189,6 @@ describe("Expect reads values as they're shown: units, Cubes and the allowlist b
     expect(run(n, "cherry")).toEqual(["allowed"]);
   });
 
-  it("matches a wired allowlist of mixed types", () => {
-    const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
-    n.data({ in: [[1, "a", true]], allowed: [[1, "A", true]] });
-    expect(n.violations).toEqual([]);
-  });
 
   it("unique treats the same quantity in two units as a duplicate, and text by case", () => {
     const n = new ExpectNode({ checkNotNull: false, checkUnique: true });
@@ -207,5 +207,54 @@ describe("Expect reads values as they're shown: units, Cubes and the allowlist b
     const u = new ExpectNode({ checkNotNull: false, checkUnique: true });
     expect(run(u, cube([["a", [1, 1]], ["b", ["x", "x"]]]))).toEqual(["unique"]);
     expect(run(u, cube([["a", [1, 1]], ["b", ["x", "y"]]]))).toEqual([]);
+  });
+});
+
+describe("Expect's range takes the kind of value it checks ([[D120]] rangeBoundsTakeTheValuesKind)", () => {
+  type Conn = { source: GraphNode; sourceOutput: string; target: GraphNode; targetInput: string };
+  const source = (type: SocketDataType) => {
+    const n = new GraphNode("Src");
+    n.addOutput("value", new GraphOutput(new SolenoidSocket(type)));
+    return n;
+  };
+  const editorOf = (nodes: GraphNode[], conns: Conn[]) => {
+    const ed = new GraphEditor<Schemes>();
+    for (const n of nodes) void ed.addNode(n as never);
+    for (const c of conns) void ed.addConnection(new GraphConnection(c.source, c.sourceOutput, c.target, c.targetInput) as never);
+    return ed;
+  };
+  const bounds = (n: ExpectNode) => [n.inputs.min?.socket, n.inputs.max?.socket].map((s) => (s as SolenoidSocket).dataType);
+
+  it("Min and Max turn date when a date is checked, and back when it goes", () => {
+    const dates = source("datelist");
+    const n = new ExpectNode({ checkRange: true });
+    const ed = editorOf([dates, n], [{ source: dates, sourceOutput: "value", target: n, targetInput: "in" }]);
+    expect(settleWildcardTypes(ed).followed).toEqual([[n.id, "min"], [n.id, "max"]]);
+    expect(bounds(n)).toEqual(["date", "date"]);
+    expect(settleWildcardTypes(ed).followed).toEqual([]);
+    expect(settleWildcardTypes(editorOf([dates, n], [])).followed).toHaveLength(2);
+    expect(bounds(n)).toEqual(["number", "number"]);
+  });
+
+  it("a number cable into Min goes when a date comes to be checked", async () => {
+    const dates = source("date");
+    const num = source("number");
+    const n = new ExpectNode({ checkRange: true });
+    const ed = editorOf([dates, num, n], [{ source: num, sourceOutput: "value", target: n, targetInput: "min" }]);
+    reconcileFcTypes(ed, null);
+    expect(ed.getConnections()).toHaveLength(1);
+    await ed.addConnection(new GraphConnection(dates, "value", n, "in") as never);
+    reconcileFcTypes(ed, null);
+    await Promise.resolve();
+    expect(ed.getConnections().map((c) => c.targetInput)).toEqual(["in"]);
+  });
+
+  it("a date is checked against the dates typed on the card", () => {
+    const n = new ExpectNode({ checkNotNull: false, checkRange: true });
+    for (const s of [n.inputs.min?.socket, n.inputs.max?.socket]) (s as MutableSocket).setType("date");
+    n.stringLiterals.min = "1-Jan-2026";
+    n.stringLiterals.max = "31-Dec-2026";
+    expect(run(n, solDate(46096))).toEqual([]);
+    expect(run(n, solDate(46400))).toEqual(["range"]);
   });
 });

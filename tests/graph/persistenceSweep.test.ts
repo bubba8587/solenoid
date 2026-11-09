@@ -1,23 +1,15 @@
-// [[B12]] losslessSaves
+// [[B12]] losslessSaves, [[save-format#The capture is a fixed point, and plain JSON]], [[save-format#Every field is persisted or deliberately transient]]
 import { describe, it, expect } from "vitest";
-import type { ClassicPreset } from "rete";
+import type { GraphNode } from "../../src/graph/graphModel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
-import { extractInit, INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "../../src/graph/copyPaste";
+import { extractInit, INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "../../src/graph/nodeInit";
 
-// Catalog-wide persistence fixed-point sweep (v1.0 audit finding 38): node
-// state survives save/load ONLY if extractInit captures it AND the constructor
-// re-applies it. A field missed on either side silently drops on reload with
-// nothing to catch it — this sweep is the net. For every catalog entry:
-//   init₁ = extractInit(node)         (what a save captures)
-//   node₂ = new Ctor(init₁) + literal-map restore (what a load rebuilds)
-//   init₂ = extractInit(node₂)        (what the NEXT save would capture)
-// and init₂ must equal init₁ — a fixed point. Then flip every boolean and
-// perturb every literal to prove non-default values survive too.
+
 
 type AnyNode = Record<string, unknown>;
 
-function rebuild(n1: ClassicPreset.Node): ClassicPreset.Node {
-  const Ctor = n1.constructor as new (init?: Record<string, unknown>) => ClassicPreset.Node;
+function rebuild(n1: GraphNode): GraphNode {
+  const Ctor = n1.constructor as new (init?: Record<string, unknown>) => GraphNode;
   const n2 = new Ctor(extractInit(n1));
   // The load and paste paths restore the literal maps after construction; mirror that.
   const a = n1 as unknown as AnyNode, b = n2 as unknown as AnyNode;
@@ -39,8 +31,8 @@ describe("persistence fixed-point sweep (every catalog node)", () => {
   it("extractInit is a fixed point through one construct cycle", () => {
     const broken: string[] = [];
     for (const [type, entry] of entries) {
-      let n1: ClassicPreset.Node;
-      try { n1 = entry.create() as ClassicPreset.Node; } catch { continue; } // constructability is catalogRegistry.test's job
+      let n1: GraphNode;
+      try { n1 = entry.create() as GraphNode; } catch { continue; } // constructability is catalogRegistry.test's job
       try {
         const init1 = extractInit(n1);
         const init2 = extractInit(rebuild(n1));
@@ -55,8 +47,8 @@ describe("persistence fixed-point sweep (every catalog node)", () => {
   it("perturbed booleans and literals survive the cycle", () => {
     const broken: string[] = [];
     for (const [type, entry] of entries) {
-      let n1: ClassicPreset.Node;
-      try { n1 = entry.create() as ClassicPreset.Node; } catch { continue; }
+      let n1: GraphNode;
+      try { n1 = entry.create() as GraphNode; } catch { continue; }
       const a = n1 as unknown as AnyNode;
       // Flip every captured boolean own-field.
       for (const key of Object.keys(a)) {
@@ -97,19 +89,13 @@ describe("varDescriptions — captured, but only for LIVE variables", () => {
   });
 });
 
-// ─── [[B12]] losslessSaves's file half: everything extractInit captures is JSON-plain ─────
-// The fixed-point sweep above compares LIVE objects, so a Map/Set/class-instance
-// config field passes it perfectly ({} equals {} on both sides) while the FILE
-// silently empties it: the save path stringifies each init field
-// (textForm.ts) and {...aMap} is {}, JSON.stringify(Infinity) is null. One line
-// per node closes the seam between "the object round-trips" and "the file
-// round-trips".
+
 describe("everything extractInit captures survives a JSON round trip", () => {
   it("JSON.parse(JSON.stringify(init)) equals init for every catalog node", () => {
     const broken: string[] = [];
     for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
-      let n1: ClassicPreset.Node;
-      try { n1 = entry.create() as ClassicPreset.Node; } catch { continue; }
+      let n1: GraphNode;
+      try { n1 = entry.create() as GraphNode; } catch { continue; }
       try {
         const init = extractInit(n1);
         expect(JSON.parse(JSON.stringify(init)), `catalog type "${type}"`).toEqual(init);
@@ -125,8 +111,8 @@ describe("[[B12]] losslessSaves: a grown row keeps the socket order a reload reb
   it("every row-growing catalog node reloads with its live input order", () => {
     const moved: string[] = [];
     for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
-      let n: ClassicPreset.Node;
-      try { n = entry.create() as ClassicPreset.Node; } catch { continue; }
+      let n: GraphNode;
+      try { n = entry.create() as GraphNode; } catch { continue; }
       const a = n as unknown as { addValueInput?: () => void; addValuePair?: () => void };
       const grow = a.addValuePair ?? a.addValueInput;
       if (typeof grow !== "function") continue;
@@ -145,8 +131,8 @@ describe("literal values never enter init", () => {
   it("no catalog node's init carries a literal-only key or a literal's value over a field", () => {
     const leaked: string[] = [];
     for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
-      let n: ClassicPreset.Node;
-      try { n = entry.create() as ClassicPreset.Node; } catch { continue; }
+      let n: GraphNode;
+      try { n = entry.create() as GraphNode; } catch { continue; }
       const a = n as unknown as AnyNode;
       const lits = { ...((a.literals as object) ?? {}), ...((a.stringLiterals as object) ?? {}) } as Record<string, unknown>;
       for (const k of Object.keys(lits)) {
@@ -160,19 +146,7 @@ describe("literal values never enter init", () => {
   });
 });
 
-// ─── [[B12]] losslessSaves: the catalog-wide transient-field triage ───────────────────────
-// The fixed-point sweep above proves WHITELISTED fields round-trip; it is blind
-// to a field the whitelist never captured (both sides omit it identically). This
-// triage closes that blindness: every OWN field of every catalog node is either
-// PERSISTED (the whitelist, the literal maps, or one of extractInit's bespoke
-// extras blocks) or listed in DELIBERATELY_TRANSIENT with the reason it must NOT
-// persist. A new field that is neither fails by name — the author decision the
-// field's writer skipped.
-//
-// The triage's first run (2026-07-28) found ONE real bug in ~169 fields:
-// `asofDirection` — a user-facing as-of join dropdown the whitelist never
-// captured, silently resetting to "backward" on every reload. Now whitelisted,
-// pinned below.
+
 
 describe("[[B12]] losslessSaves — every own field is persisted or deliberately transient", () => {
   // extractInit's BESPOKE extras: object-valued fields captured by dedicated
@@ -186,6 +160,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
 
   /** name → why this field must NOT persist. Grouped by mechanism. */
   const DELIBERATELY_TRANSIENT: Record<string, string> = {
+    pairPlaceholders: "class-constant muted text for an empty pair field; never a value",
     cleanSource: "The SVG Picker's memo of the last scrubbed markup; stringLiterals.source holds the persisted text ([[C103]])",
     columnPicks: "A Note's frame column picks from the Solenoid Properties plugin's data; the vault is the source, Import Obsidian Note re-reads them with the note ([[C107]])",
     nestedPicks: "A Note's nested cube-table picks from the Solenoid Properties plugin's data, this note's own; the vault is the source, Import Obsidian Note re-reads them with the note ([[D90]])",
@@ -196,59 +171,59 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     planRows: "Write Tasks' plan, derived from the cached rows on every compute",
     plannedKeys: "Write to Obsidian's Keys text as of its last plan, so a Keys edit re-plans; re-read from the literal on every compute",
     planNotes: "Local File's list of what an MSPDI read could not carry over, for the status line; re-read with the file",
-    generated: "UUID's value for this recalculation; a load is a new one, and a saved value would make every compute an edit to undo",
+    held: "Delayed Pass's value from the last recalculation; a reopened document starts from Start ([[D118]])",
+    stepCount: "Delayed Pass's count of recalculations since it was added, opened or reset, for the card",
     droppedLoops: "Sankey's count of flows dropped for closing a loop, for the card; re-derived from the input on every compute",
     // ── derived from persisted fields at construction / _rebuild ──
-    ast: "compiled from expr", evaluator: "compiled from expr", varNames: "extracted from expr",
-    captured: "derived from expr − params", compiled: "compiled from expr/params",
+    varNames: "extracted from expr",
+    captured: "derived from expr − params",
     lambdaSig: "derived from the host's lambda config",
-    equation: "parsed from expr", lhsEval: "compiled from expr", rhsEval: "compiled from expr",
-    solvers: "derived solver table from expr", nextCondId: "counter re-derived from live row keys",
+    nextCondId: "counter re-derived from live row keys",
     nextInputId: "counter re-derived from live row keys", nextPairId: "counter re-derived from live row keys", nextKeyId: "counter re-derived from live row keys",
     effectiveMin: "derived from literals", effectiveMax: "derived from literals", effectiveStep: "derived from literals",
     // ── recomputed from inputs every engine pass ──
     chartOptions: "parsed per data() from the persisted options input/literal",
     sourceColumns: "detected from the input frame per compute",
+    describeTiles: "the Dashboard tiles Describe's body shows per compute, kept beside its summary frame",
     defVars: "the definition's variables/params, re-stashed per compute for the binding pickers",
     rawInputs: "the pass's raw wired values (chart/lookup diagnostics)",
     noWidenInputs: "coercion rank-widening opt-out set (XLOOKUP source); constructed, not persisted",
-    shapeError: "per-pass validation state", seenError: "per-pass error latch",
+    seenError: "per-pass error latch",
     violations: "per-pass check results", results: "per-pass sweep results",
     cachedHolds: "per-pass hold state", solvedFor: "per-pass solve marker",
-    solvedKeys: "per-pass solve marker", lastResultRank: "anydataWildcard runtime rank tracker",
+    solvedByRow: "Triangle Solver's per-row solve marker, for the figure",
+    row: "Triangle Solver's shown row; view state, as a scroll position is",
     lastRank: "Series: SEQUENCE list↔matrix runtime rank tracker",
-    lastResultFamily: "Script: value-typed result socket, runtime family tracker",
+    columnMove: "FILTER: which way the body says the Column socket goes, re-derived each compute",
+    axesMove: "INDEX: the axes the body says the sockets go to, re-derived each compute",
+    varsMove: "Template: the placeholder inputs the body found, re-derived each compute",
     syntaxError: "Script: re-derived from expr by _rebuild",
     // ── FC / unit adoption state, re-derived by the reconcile passes ──
     forwarding: "re-derived by fcReconcile each pass", lockedByConvert: "re-derived by fcReconcile each pass",
     unitLocked: "re-derived by fcReconcile each pass", dictatedFromUnit: "re-derived by fcReconcile each pass",
+    adoptedUnit: "The unit the Format Controller's last compute settled on, which it writes to `unit`; re-derived on every compute",
     inheritedAnnotation: "the upstream format the `—` pick carries; re-resolved in refreshAnnotation each pass",
     matches: "Geocode's last-fetch matches for the card's pick list; re-fetched, never saved",
     imposesUp: "re-derived from the unit config", imposesDown: "re-derived from the unit config",
-    // ── [[D46]] freezeVolatilePerCalc volatile roll state (freezes per recalc generation, never saved) ──
-    rolls: "freezeVolatilePerCalc frozen rolls", rawRoll: "freezeVolatilePerCalc frozen roll", keys: "freezeVolatilePerCalc frozen shuffle keys",
-    lastGen: "freezeVolatilePerCalc generation marker", lastRollGen: "freezeVolatilePerCalc generation marker",
-    idx: "promo rotation index (session flavor)",
-    // ── [[C38]] sinkRunButtonOnly: sinks always load disarmed ──
-    enabled: "sinkRunButtonOnly arm flag — every load starts disarmed by design",
+    // ── [[B18]] safeToShare: sinks always load disarmed ──
+    enabled: "safeToShare arm flag — every load starts disarmed by design",
     status: "sink run feedback (session)", statusMessage: "sink run feedback (session)",
     // ── async fetch/session state ──
     inflight: "in-flight fetch handle", inflightKey: "fetch dedupe key", lastKey: "fetch dedupe key",
-    ref: "native FrameRef handle (desktop engine)",
     dataUrl: "image bytes stay OUT of the save (base64 bloat); assetPath persists and re-hydrates",
     // ── drill-in markers re-stamped by the host composite from ITS persisted config ──
     externallyWired: "re-stamped by the host composite", goalDriver: "re-stamped by the host composite",
     modeNote: "re-stamped by the host composite", solvedValue: "re-stamped by the host composite",
     goalTarget: "re-stamped from the host's persisted goalSeek",
     // ── composite runtime (the CONFIG persists via extras; these are run state) ──
-    goalSeekResult: "run result", simLastSteps: "run telemetry", lastSolveKey: "solve dedupe key",
-    solveRequested: "run trigger", solveInsideOnly: "drill-in run scope (session)", unsettled: "last Solve outran its fetches (session)",
+    goalSeekResult: "run result", simLastSteps: "run telemetry", lastSolveKey: "solve dedupe key", lastPassKey: "the held plain pass's key (session)",
+    solveRequested: "run trigger", solveInsideOnly: "drill-in run scope (session)",
+    aroundSolving: "solve context from the composite around (during a pass)", aroundMultiRun: "multi-run context from the composite around (during a pass)", unsettled: "last Solve outran its fetches (session)",
     lastByRowCapTotal: "By-Row cap-warning edge-detect state (session)",
-    lastRelative: "relative Date Input shift-alert edge-detect state: phrase and day (session)",
-    lastSampleGen: "Distribution sample form's per-recalc re-roll marker (session)",
-    sampleSeed: "Distribution sample form's per-recalc seed (derived from id + gen)",
-    stale: "recomputed staleness", internalEditor: "the live internal rete stack",
-    internalEngine: "the live internal rete stack", internalPositions: "runtime mirror; positions persist via snapshotInternal",
+    lastRelativeText: "the relative phrase a date Value Input's body last read, read back for its shift alert (session)",
+    lastRelativeSerial: "the day that phrase last landed on (session)",
+    stale: "recomputed staleness", internalEditor: "the live internal editor and engine",
+    internalEngine: "the live internal editor and engine", internalPositions: "runtime mirror; positions persist via snapshotInternal",
     internalEditSeq: "edit counter (session)",
     runSeq: "data() invocation counter the open drill-in re-renders off (session)",
     // ── live socket instances / class declarations ──
@@ -256,13 +231,12 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     passthrough: "the passthrough() declaration (a class-field function)",
     pairLabels: "readonly row-label declaration", errorOnlyOutput: "class-constant declaration",
     unitAware: "class-constant declaration (perInputUnitBlind)",
-    ownsListLiterals: "class-constant declaration: List Input reads its own typed rows ([[D93]] oneTextReading)",
+    ownsListLiterals: "class-constant declaration: List Input reads its own typed rows ([[C58]] tableInputRawText)",
     entryByOp: "Value Input's typed text per op this session, restored on switching back; only the shown op's text is saved ([[C28]] literalsIffEditable)",
     cachedSource: "List Input's typed text per item, for the popup's Source view; re-split from stringLiterals on every compute",
-    autoLiterals: "class-constant declaration — the VALUES land in literals/stringLiterals, which persist",
-    textLiterals: "class-constant declaration — the VALUES land in stringLiterals, which persist",
     // ── runtime edge-detection ([[D79]] effectsEdgeTriggered) ──
-    lastStatusKey: "effectsEdgeTriggered edge state", lastEvalOp: "effectsEdgeTriggered edge state",
+    alertKey: "effectsEdgeTriggered: the status the body last read, which raises an alert on a change",
+    alertMessage: "effectsEdgeTriggered: what that status fires, shown by the body",
     // ── constructor-only tuning knobs: no UI edits them today; whitelist the day one does ──
     step: "AngleDial snap increment — constructor-only, no UI control",
   };
@@ -314,27 +288,12 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
   });
 });
 
-// ─── [[B12]] losslessSaves: width/height dual-use ownership ──────────────────────────────
-// `width`/`height` serve two masters: NodeCard's ResizeObserver OWNS them at
-// runtime (it overwrites both with measured pixels every layout — the minimap
-// silhouette and cable geometry read them), and the persistence whitelist
-// captures them for every node. Only the SIZE-OWNER classes — nodes whose box
-// is a user-dragged surface, not content-driven — re-consume the persisted
-// values in their constructors; for every other class the persisted numbers are
-// inert (the class default wins on load, the observer re-measures). Display's
-// grip is the third channel: it routes through nodeSizeStore, which persists
-// per node id (persistence.ts sn.size) — NOT through these fields.
-//
-// The MUST: a class with a user size gesture either re-consumes
-// init.width/height or routes through nodeSizeStore. This pin keeps the owner
-// set conscious — a NEW class that starts adopting (or an owner that stops)
-// fails here and must update the list, which is where the "does the user's
-// drag survive reload?" question gets asked.
+// ─── [[save-format#What a save deliberately omits]]: the size-owner set ──────────────────
 
 describe("[[B12]] losslessSaves — the size-owner set is exactly the declared list", () => {
   const SIZE_OWNERS = new Set([
     "note", "image", "svg", "import-obsidian",   // annotation surfaces — user-dragged frames
-    "composite", "query",                        // the composite card (query = its preset)
+    "composite", "pipeline",                     // the composite card (pipeline = its preset)
     "group",                                     // the group rectangle IS its size
     "report", "presentation", "session-history", // overlay/host cards with dragged bodies
   ]);
@@ -343,8 +302,8 @@ describe("[[B12]] losslessSaves — the size-owner set is exactly the declared l
     const adopts: string[] = [];
     const shouldButDoesnt: string[] = [];
     for (const [type, entry] of FLAT_CATALOG.entries()) {
-      let inst: ClassicPreset.Node;
-      try { inst = entry.create() as ClassicPreset.Node; } catch { continue; }
+      let inst: GraphNode;
+      try { inst = entry.create() as GraphNode; } catch { continue; }
       const Ctor = inst.constructor as new (init?: Record<string, unknown>) => AnyNode;
       let probe: AnyNode;
       try { probe = new Ctor({ width: 777, height: 555 }); } catch { continue; }

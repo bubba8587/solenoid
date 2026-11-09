@@ -16,50 +16,66 @@ index.html
 .mcp.json
 .dteignore
 .github
-.impeccable
 src/vite-env.d.ts
 tests/setup
 src-tauri/Cargo.toml
+crates/solenoid-core/Cargo.toml
+crates/solenoid-graph/Cargo.toml
+crates/solenoid-parquet/Cargo.toml
+crates/solenoid-schedule/Cargo.toml
+crates/solenoid-core/rustfmt.toml
+crates/solenoid-schedule/rustfmt.toml
+crates/solenoid-graph/rustfmt.toml
+crates/solenoid-parquet/rustfmt.toml
+src-tauri/rustfmt.toml
+deny.toml
+rust-toolchain.toml
+crates/solenoid-core/clippy.toml
+crates/solenoid-graph/clippy.toml
+scripts/rust-licenses/*
 src-tauri/build.rs
 src-tauri/tauri.conf.json
 src-tauri/tauri.live.conf.json
 src-tauri/.gitignore
-src-tauri/.cargo
 src-tauri/capabilities
 packages/*/package.json
 obsidian-plugin/manifest.json
 public/manifest.webmanifest
 
+why: the house rules for writing spec prose govern how a spec reads, not what the system does
+tree/specs/floors/spec-prose.md
+
 why: licences and the product pitch are reader on-ramps, not system descriptions (author's rule 2026-09-18)
 LICENSE
 THIRD-PARTY-NOTICES.md
+public/third-party-licenses-rust.txt
 README.md
 PRODUCT.md
 
 why: queues, proposals and history keep their homes; an index points, it does not govern
 docs/deferrals.md
-docs/grid-system.md
 docs/pack-composite-plans.md
-docs/python-r-gap.md
 docs/release-notes-features.md
-docs/release-notes-1.5.md
-docs/upstream-formulajs.md
+docs/release-notes-1.6.md
 docs/subsystem-invariants.md
 docs/archive
 docs/v2.0
-docs/review
 docs/google-style
 docs/assets
 
 why: fixtures and sample data are inputs to tests and demos, not artifacts that serve a decision
 fixtures
+crates/solenoid-schedule/tests/corpus
 assets
-public/fonts
 tests/fixtures
 
 why: dev tooling serves the workflow; the decision, if any, is cited by the file it generates or drives
 scripts
+tests/buckets.mjs
+tests/graph/testBuckets.test.ts
+tests/graph/fuzzDepth.ts
 tools/string-editor
+tools/renumber_tree.py
 src/devCopyEdit.ts
 src/graph/census.ts
 src/graph/devHarness.ts
@@ -74,3 +90,11 @@ src/graph/seedGraphs
 
 why: generated text snapshots of the site pages and their source fingerprint; scripts/prerender-site.mjs writes them and prerender.test.ts pins them current
 prerender
+
+why: wasm-bindgen output for the one module, the graph engine linking the Rust core; `npm run build:wasm` writes it from crates/solenoid-graph and crates/solenoid-core, which cite
+src/graph/engineWasm
+
+why: JSON can't carry a citation; the core's call table is frozen from the TypeScript by tests/graph/coreCallTable.test.ts, which cites [[D99]] rustIsSpec
+crates/solenoid-core/data
+scripts/check-rust.sh
+scripts/fix-unused.mjs

@@ -1,4 +1,4 @@
-// [[C24]] arraySemantics, [[C44]] dateSerials, [[B11]]
+// [[C24]] arraySemantics, [[C44]] dateSerials, [[B11]] maximalMerge, [[frame-verbs#Type inference]], [[frame-verbs#Building a Frame]]
 import { describe, it, expect } from "vitest";
 import { frameFromCells, frameFromRecords, frameFromColumnar, frameFromRows, inferColumn, formatFrameCell } from "../../src/graph/frame";
 import { jsDateToSerial } from "../../src/graph/nodes/date";
@@ -21,11 +21,6 @@ describe("date column inference (conservative, ISO-only)", () => {
     expect(formatFrameCell("number", 46025)).toBe(46025); // non-date passes through
   });
 });
-
-// The type-inferring import builders: a column is numeric only when every
-// non-blank cell is a finite number (commas stripped); otherwise it's text with
-// the original strings kept. This is what lets real-world tables (names,
-// categories) survive a CSV/JSON import instead of collapsing to NaN.
 
 describe("type-inferring frame builders", () => {
   it("stays numeric through thousands commas, goes text otherwise", () => {

@@ -1,55 +1,28 @@
-// [[C16]] polarsEngine, [[D49]]
+// [[C130]] rustCore, [[C10]] socketLattice, [[frame-verbs#The corpus]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { applyVerb, joinFrames, appendFrames, bindColumns, FRAME_OP_KINDS, type FrameOp, type JoinOpts } from "../../src/graph/frameVerbs";
+import { FRAME_OP_KINDS, type FrameOp, type JoinOpts } from "../../src/graph/frameOps";
+import { applyVerb, joinFrames, appendFrames, bindColumns } from "./coreVerbs";
 import type { FrameValue, FrameColumn, FrameCell } from "../../src/graph/frame";
-import { isSolError, solError, ERROR_EXPLANATIONS, type SolErrorCode } from "../../src/graph/errorValue";
-
-// ─── The backend parity corpus, JS side ───────────────────────────────────────
-// One fixture set, both engines: every case here also runs through the Polars
-// engine (src-tauri/src/engine/tests.rs `corpus_cases`), reading the SAME files
-// with the PRODUCTION wire deserializers — the corpus format IS the wire format,
-// so there is no third representation to drift. A case that passes here and
-// fails in cargo (or vice versa) is a parity break by definition.
+import { isSolError, solError, type SolErrorCode } from "../../src/graph/errorValue";
 
 const CORPUS_DIR = path.resolve(__dirname, "../../fixtures/frame-verbs");
 
-interface WireColumn { name: string; type: FrameColumn["type"]; values: FrameCell[] }
+interface WireColumn { name: string; type: FrameColumn["type"]; values: FrameCell[]; unit?: FrameColumn["unit"]; format?: FrameColumn["format"] }
 interface CorpusCase {
   name: string;
   frames: Record<string, { columns: WireColumn[] }>;
-  // Unary verbs carry a FrameOp; the binary verbs' ops are corpus shapes over
-  // the same wire vocabulary: join = `{ kind: "join" } & JoinOpts` (frames
-  // "left"/"right"), append = `{ kind: "append", frames: [names…] }` (order —
-  // the frames map can't carry it).
   op: { kind: string } & Record<string, unknown>;
   expect?: { columns: WireColumn[] };
   expectError?: string;
 }
 interface CorpusFile { verb: string; cases: CorpusCase[] }
 
-/** The verbs that take MORE than one frame. Not derivable from `FrameOp` (they
- *  are separate backend commands, not ops), so hand-listed — the cargo runner
- *  dispatches on the same two names, and the completeness guard below requires
- *  a fixture file for each. (XLOOKUP's lookupFrameCell is oracle-only on every
- *  platform — no engine command — so it has no corpus entry, like pivot's
- *  richer half.) */
 const BINARY_VERBS = ["join", "append", "bindColumns"] as const;
 
-/** The fusion corpus verb: `op: { kind: "pipeline", ops: [FrameOp…] }` over the
- *  "in" frame. The oracle applies the ops SEQUENTIALLY (each materialized); the
- *  cargo runner hands the whole list to `apply_ops`, which fuses them into ONE
- *  lazy Polars plan — so these cases pin the fusion seam itself (predicate
- *  pushdown, projection reordering, a group-by mid-chain), which no single-op
- *  case can see. Sequential-vs-fused is the parity claim. */
 const PIPELINE_VERB = "pipeline";
 
-/** Non-finite cells ride the wire's OWN tagged form — `{"__nf": "inf"|"-inf"|
- *  "nan"}`, the convention frameBackend/engine.rs already speak — because the
- *  corpus format IS the wire format. Decoded here exactly as frameBackend's
- *  decodeWireCell does; the Rust runner gets it for free (wire_to_solframe
- *  decodes `__nf` in its normal parse). */
 const decodeCell = (v: unknown): FrameCell => {
   const nf = (v as { __nf?: string } | null)?.__nf;
   if (nf === "inf") return Infinity;
@@ -58,7 +31,6 @@ const decodeCell = (v: unknown): FrameCell => {
   return v as FrameCell;
 };
 
-/** An input's `{"__err": code}` is a SolError cell, as the engine's upload reads it. */
 const decodeInputCell = (v: unknown): FrameCell => {
   const code = (v as { __err?: string } | null)?.__err;
   return typeof code === "string" ? solError(code as SolErrorCode, "corpus") : decodeCell(v);
@@ -67,22 +39,10 @@ const decodeInputCell = (v: unknown): FrameCell => {
 function brand(wire: { columns: WireColumn[] }): FrameValue {
   return {
     __frame: true,
-    columns: wire.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(decodeInputCell) })),
+    columns: wire.columns.map((c) => ({ ...c, values: c.values.map(decodeInputCell) })),
   };
 }
 
-/** Structural view for comparison: name/type/values only (unit/raw are
- *  node-side extras the corpus doesn't exercise). Negative zero normalizes to
- *  0: JSON cannot write -0 (JSON.stringify(-0) is "0"), so the wire — and
- *  therefore the corpus format — loses the sign of zero at the same boundary
- *  production frames do; the Rust runner's frames_equal compares f64 `==`
- *  (sign-blind) and no user surface distinguishes them. Without this, an
- *  oracle-computed -0 (e.g. a product crossing zero) fails against its own
- *  round-tripped expectation under toEqual's Object.is semantics.
- *  A per-cell SolError normalizes to the wire's download form {"__err": code}
- *  — the form expect frames carry and the Rust runner's num_to_json emits for
- *  the aggregate guard's verdicts — so both engines compare error cells by
- *  CODE, message-blind, in the one shared representation. */
 function dump(f: FrameValue): WireColumn[] {
   return f.columns.map((c) => ({
     name: c.name, type: c.type,
@@ -91,12 +51,10 @@ function dump(f: FrameValue): WireColumn[] {
       if (isSolError(v)) return { __err: v.code } as unknown as FrameCell;
       return v;
     }),
+    ...(c.unit ? { unit: c.unit } : {}), ...(c.format ? { format: c.format } : {}),
   }));
 }
 
-/** `expect` frames decode the `__nf` sentinel exactly like inputs do (the
- *  corpus format is the wire format in BOTH directions) — toEqual treats NaN
- *  as equal to NaN, so a decoded expectation compares cleanly. */
 function decodeColumns(wire: { columns: WireColumn[] }): WireColumn[] {
   return wire.columns.map((c) => ({ ...c, values: c.values.map(decodeCell) }));
 }
@@ -119,8 +77,6 @@ describe.each(corpus.map((c) => [c.verb, c] as const))("corpus: %s", (_verb, fil
       } else if (kase.op.kind === "bindColumns") {
         out = bindColumns((kase.op.frames as string[]).map((n) => inputs[n]));
       } else if (kase.op.kind === "pipeline") {
-        // Sequential application IS the oracle semantics — each op fully
-        // materializes before the next; the cargo side fuses the same list.
         out = (kase.op.ops as FrameOp[]).reduce((f, o) => applyVerb(f, o), inputs.in);
       } else {
         out = applyVerb(inputs.in, kase.op as unknown as FrameOp);
@@ -133,8 +89,6 @@ describe.each(corpus.map((c) => [c.verb, c] as const))("corpus: %s", (_verb, fil
       expect(err, `oracle threw: ${(err as Error)?.message ?? err}`).toBeUndefined();
       expect(dump(out!)).toEqual(decodeColumns(kase.expect!));
     }
-    // Every verb leaves its input frames untouched — checked corpus-wide, so no
-    // per-verb "does not mutate" test needs to exist.
     for (const [k, f] of Object.entries(inputs)) {
       expect(dump(f), `the verb mutated input frame "${k}"`).toEqual(before[k]);
     }
@@ -142,11 +96,6 @@ describe.each(corpus.map((c) => [c.verb, c] as const))("corpus: %s", (_verb, fil
 });
 
 describe("corpus completeness — every verb has a fixture file", () => {
-  // The closed ratchet (bundle 18 step 3, promoted as [[C16]] polarsEngine): the migration
-  // whitelist emptied and died — every verb both engines speak computes from
-  // this ONE fixture corpus. Adding a NEW FrameOp kind fails compile
-  // (FRAME_OP_KINDS) and then fails here until it ships with corpus cases; a
-  // new binary verb joins BINARY_VERBS and needs a fixture file the same way.
   const INVENTORY: readonly string[] = [...FRAME_OP_KINDS, ...BINARY_VERBS, PIPELINE_VERB];
 
   it("fixture files cover the verb inventory exactly", () => {
@@ -163,14 +112,5 @@ describe("corpus completeness — every verb has a fixture file", () => {
       const names = file.cases.map((c) => c.name);
       expect(new Set(names).size, `${file.verb}.json has duplicate case names`).toBe(names.length);
     }
-  });
-});
-
-describe("error codes on the wire", () => {
-  it("the engine's ERR_CODES lists every SolError code, so an uploaded error keeps its code", () => {
-    const src = fs.readFileSync(path.resolve(__dirname, "../../src-tauri/src/engine.rs"), "utf8");
-    const list = /const ERR_CODES: &\[&str\] = &\[([^\]]*)\]/.exec(src)?.[1] ?? "";
-    const engineCodes = [...list.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
-    expect(engineCodes.sort()).toEqual(Object.keys(ERROR_EXPLANATIONS).sort());
   });
 });

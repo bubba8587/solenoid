@@ -1,0 +1,566 @@
+//! [[C24]] arraySemantics. Comparisons, IF and its kin, the Boolean
+//! reducers and the parity tests.
+
+use super::kit::core_call;
+use super::scalar::{read_role, Role};
+use super::Cv;
+use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
+use crate::error_value::ErrorCode;
+use crate::excel_functions::{kleene_and, kleene_or, V};
+use crate::frame::FrameColType;
+use std::rc::Rc;
+
+pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
+    Some(match kind {
+        "ComparisonNode" => comparison(c),
+        "NaNode" => Ok(vec![("result".into(), Cv::from(err(ErrorCode::NotAvailable, "Not available")))]),
+        "BetweenNode" => between(c),
+        "IsCloseNode" => is_close(c),
+        "IfNode" => if_node(c),
+        "BooleanOpNode" => boolean_op(c),
+        "NotNode" => not(c),
+        "ChooseNode" => choose(c),
+        "SwitchNode" => switch(c),
+        "IfsNode" => ifs(c),
+        "IsEvenOddNode" => is_even_odd(c),
+        "IFErrorNode" => if_error(c),
+        "IsTestNode" => is_test(c),
+        _ => return None,
+    })
+}
+
+/// The body over the arguments, item by item where any is a list, a ragged position null; a cell
+/// holding an error answers it, a missing one flows into the body.
+fn broadcast_el(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
+    let cell = |ops: &[&V]| match ops.iter().find(|a| a.is_sol_error()) {
+        Some(e) => (*e).clone(),
+        None => f(ops),
+    };
+    let len = args.iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).max();
+    let Some(len) = len else {
+        let ops: Vec<&V> = args.iter().collect();
+        return cell(&ops);
+    };
+    let null = V::Null;
+    list(
+        (0..len)
+            .map(|i| {
+                let ops: Vec<&V> =
+                    args.iter().map(|a| if let V::List(l) = a { l.get(i).unwrap_or(&null) } else { a }).collect();
+                cell(&ops)
+            })
+            .collect(),
+    )
+}
+
+/// A wired logical or a typed 0/1, blank unknown.
+fn tri_bool(x: &V) -> Option<bool> {
+    match x {
+        V::Null => None,
+        V::Bool(b) => Some(*b),
+        V::Num(n) => Some(*n != 0.0),
+        _ => Some(false),
+    }
+}
+
+fn tri(t: Option<bool>) -> V {
+    t.map_or(V::Null, V::Bool)
+}
+
+/// A value read as a condition; blank and an error pass through.
+fn if_test(v: &V) -> V {
+    match v {
+        V::Null | V::Err(_) | V::Bool(_) => v.clone(),
+        V::Num(n) if n.is_nan() => err(ErrorCode::Value, "A condition is not a number"),
+        V::Num(n) => V::Bool(*n != 0.0),
+        // Text is text, even "TRUE", as a formula's condition reads it ([[C10]] socketLattice).
+        V::Str(_) => err(ErrorCode::Value, "A condition needs a logical. Compare text with = to get one"),
+        _ => err(ErrorCode::Value, "A condition needs a logical"),
+    }
+}
+
+/// `inputs[key]?.length ? inputs[key][0] : literal`.
+fn wired_or(c: &Call, key: &str, literal: V) -> V {
+    match c.wired(key) {
+        Some([first, ..]) => first.clone(),
+        _ => literal,
+    }
+}
+
+/// `v ?? null`.
+fn or_null(v: V) -> V {
+    if matches!(v, V::Undef) {
+        V::Null
+    } else {
+        v
+    }
+}
+
+/// A connected cable wins even carrying null.
+pub(crate) fn pick_slot(c: &Call, key: &str) -> V {
+    match c.wired(key) {
+        Some([first, ..]) => first.clone(),
+        _ => match c.unwired(key) {
+            V::Undef => V::Null,
+            v => v,
+        },
+    }
+}
+
+/// A cable or a typed literal.
+fn is_set(c: &Call, key: &str) -> bool {
+    c.wired(key).is_some() || !matches!(c.unwired(key), V::Undef)
+}
+
+/// The keys of the card's inputs that start with `prefix`, in the card's order.
+fn keys_from(c: &Call, prefix: &str) -> Vec<String> {
+    c.sockets.iter().filter(|s| s.key.starts_with(prefix)).map(|s| s.key.clone()).collect()
+}
+
+fn answer(c: &mut Call, out: &str, result: V) -> Answer {
+    c.show("cachedResult", result.clone());
+    Ok(vec![(out.into(), Cv::from(result))])
+}
+
+fn select(c: &mut Call, key: Option<&str>) {
+    c.show("_selectedUnitKey", key.map_or(V::Null, V::str));
+}
+
+fn comparison(c: &mut Call) -> Answer {
+    let op = c.field_str("op", "gt").to_string();
+    let a = or_null(wired_or(c, "a", c.unwired("a")));
+    let b = or_null(wired_or(c, "b", c.unwired("b")));
+    let result = if matches!(a, V::Null) && matches!(b, V::Null) {
+        V::Null
+    } else {
+        // The card is its function ([[D124]] comparisonFunctions), item by item.
+        let name = crate::compare::card_function(&op);
+        broadcast_el(&[a, b], |o| core_call(name, &[o[0].clone(), o[1].clone()]))
+    };
+    answer(c, "result", result)
+}
+
+fn between(c: &mut Call) -> Answer {
+    let value = or_null(wired_or(c, "value", c.unwired("value")));
+    let lo = or_null(c.read_input("lo", c.unwired("lo")));
+    let hi = or_null(c.read_input("hi", c.unwired("hi")));
+    let result = if matches!(lo, V::Null) || matches!(hi, V::Null) {
+        V::Null
+    } else {
+        broadcast_el(&[value], |o| core_call("BETWEEN", &[o[0].clone(), lo.clone(), hi.clone()]))
+    };
+    answer(c, "result", result)
+}
+
+fn is_close(c: &mut Call) -> Answer {
+    let a = or_null(wired_or(c, "a", c.unwired("a")));
+    let b = or_null(wired_or(c, "b", c.unwired("b")));
+    let tol = match read_role(c, "tol", &Role::Setting(V::Undef)) {
+        V::Undef | V::Null => V::Num(1e-9),
+        v => v,
+    };
+    let result = broadcast_el(&[a, b], |o| match (o[0], o[1]) {
+        (V::Num(_), V::Num(_)) => core_call("ISCLOSE", &[o[0].clone(), o[1].clone(), tol.clone()]),
+        _ => V::Null,
+    });
+    answer(c, "result", result)
+}
+
+fn if_node(c: &mut Call) -> Answer {
+    let cond = wired_or(c, "cond", c.unwired("cond"));
+    let then = pick_slot(c, "then");
+    let els = pick_slot(c, "else");
+    let selected = match &cond {
+        V::List(_) => None,
+        v => match if_test(v) {
+            V::Bool(true) => Some("then"),
+            V::Bool(false) => Some("else"),
+            _ => None,
+        },
+    };
+    select(c, selected);
+    let list = matches!(cond, V::List(_));
+    let result = if_cells(&cond, &then, &els);
+    // A list of conditions takes each cell from either branch: the cells it took may not mix dates with another kind.
+    answer(c, "result", if list { crate::date_values::refuse_mixed(result) } else { result })
+}
+
+/// IF item by item where any input is a list, a ragged position null: each cell answers its test's error or the
+/// branch it takes, never an error in the branch not taken ([[D122]] branchCardsSeeTheirTest).
+fn if_cells(cond: &V, then: &V, els: &V) -> V {
+    let pick = |t: &V, a: &V, b: &V| match if_test(t) {
+        V::Bool(true) => a.clone(),
+        V::Bool(false) => b.clone(),
+        t => t,
+    };
+    let at = |v: &V, i: usize| match v {
+        V::List(l) => l.get(i).cloned().unwrap_or(V::Null),
+        v => v.clone(),
+    };
+    let len = [cond, then, els].iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).max();
+    match len {
+        None => pick(cond, then, els),
+        Some(len) => list((0..len).map(|i| pick(&at(cond, i), &at(then, i), &at(els, i))).collect()),
+    }
+}
+
+fn boolean_op(c: &mut Call) -> Answer {
+    #[derive(Clone, Copy, PartialEq)]
+    enum Op {
+        And,
+        Or,
+        Nand,
+        Nor,
+        Xor,
+        Xnor,
+    }
+    let op = match c.field_str("op", "and") {
+        "and" => Op::And,
+        "or" => Op::Or,
+        "nand" => Op::Nand,
+        "nor" => Op::Nor,
+        "xor" => Op::Xor,
+        _ => Op::Xnor,
+    };
+    let name = match op {
+        Op::And => "AND",
+        Op::Or => "OR",
+        Op::Nand => "NAND",
+        Op::Nor => "NOR",
+        Op::Xor => "XOR",
+        Op::Xnor => "XNOR",
+    };
+    let operands: Vec<V> = keys_from(c, "a").iter().map(|k| c.read(k)).collect();
+    let result = broadcast_el(&operands, |xs| {
+        // An item holding text answers as the op's formula answers it ([[C17]] shareImpl, [[D110]] logicRefusesText).
+        if xs.iter().any(|x| super::list::is_text(x)) {
+            return core_call(name, &xs.iter().map(|x| (*x).clone()).collect::<Vec<_>>());
+        }
+        let tris: Vec<Option<bool>> = xs.iter().map(|x| tri_bool(x)).collect();
+        let reduce = |start: bool, f: fn(Option<bool>, Option<bool>) -> Option<bool>| {
+            let mut acc = Some(start);
+            for &t in &tris {
+                acc = f(acc, t);
+            }
+            acc
+        };
+        let all = || reduce(true, kleene_and);
+        let any = || reduce(false, kleene_or);
+        tri(match op {
+            Op::And => all(),
+            Op::Or => any(),
+            Op::Nand => all().map(|b| !b),
+            Op::Nor => any().map(|b| !b),
+            Op::Xor | Op::Xnor => {
+                if tris.iter().any(Option::is_none) {
+                    None
+                } else {
+                    let odd = tris.iter().filter(|t| **t == Some(true)).count() % 2 == 1;
+                    Some(if op == Op::Xor { odd } else { !odd })
+                }
+            }
+        })
+    });
+    answer(c, "result", result)
+}
+
+fn not(c: &mut Call) -> Answer {
+    let v = c.read("in");
+    let result = broadcast_el(&[v], |o| tri(tri_bool(o[0]).map(|b| !b)));
+    answer(c, "result", result)
+}
+
+fn choose(c: &mut Call) -> Answer {
+    let raw = read_role(c, "index", &Role::Required);
+    if raw.is_sol_error() {
+        return answer(c, "result", raw);
+    }
+    let idx = super::kit::num(&raw).trunc();
+    let keys = keys_from(c, "v");
+    let key = (idx >= 1.0 && idx <= keys.len() as f64).then(|| keys[idx as usize - 1].clone());
+    select(c, key.as_deref());
+    let Some(key) = key else {
+        let e = err(
+            ErrorCode::Value,
+            format!("CHOOSE index {} is outside the range 1–{}", crate::jsnum::number_to_string(idx), keys.len()),
+        );
+        return answer(c, "result", e);
+    };
+    let result = pick_slot(c, &key);
+    answer(c, "result", result)
+}
+
+fn switch(c: &mut Call) -> Answer {
+    let expr = pick_slot(c, "expr");
+    if expr.is_sol_error() || matches!(expr, V::Null) {
+        select(c, None);
+        return answer(c, "result", expr);
+    }
+    for when in keys_from(c, "when") {
+        let case = pick_slot(c, &when);
+        if case.is_sol_error() {
+            select(c, None);
+            return answer(c, "result", case);
+        }
+        if crate::excel_functions::strict_equals(&expr, &case) {
+            let then = format!("then{}", &when[4..]);
+            select(c, Some(&then));
+            let v = pick_slot(c, &then);
+            return answer(c, "result", v);
+        }
+    }
+    select(c, Some("default"));
+    if !is_set(c, "default") {
+        return answer(c, "result", err(ErrorCode::NotAvailable, "No SWITCH case matched and no Default was set"));
+    }
+    let v = pick_slot(c, "default");
+    answer(c, "result", v)
+}
+
+fn ifs(c: &mut Call) -> Answer {
+    let conds = keys_from(c, "cond");
+    // The tests are read in order and the first TRUE wins: a test's error is the answer only when it comes first.
+    for cond_key in conds {
+        let cond = pick_slot(c, &cond_key);
+        let missing = matches!(cond, V::Null);
+        if missing && c.wired(&cond_key).is_some_and(|w| !w.is_empty()) {
+            select(c, None);
+            return answer(c, "result", V::Null);
+        }
+        let test = if missing { V::Bool(false) } else { if_test(&cond) };
+        if test.is_sol_error() {
+            select(c, None);
+            return answer(c, "result", test);
+        }
+        if matches!(test, V::Bool(true)) {
+            let val = format!("val{}", &cond_key[4..]);
+            select(c, Some(&val));
+            let v = pick_slot(c, &val);
+            return answer(c, "result", v);
+        }
+    }
+    select(c, Some("otherwise"));
+    if !is_set(c, "otherwise") {
+        return answer(c, "result", err(ErrorCode::NotAvailable, "No IFS condition matched and no Otherwise was set"));
+    }
+    let v = pick_slot(c, "otherwise");
+    answer(c, "result", v)
+}
+
+fn is_even_odd(c: &mut Call) -> Answer {
+    let name = if c.field_str("op", "iseven") == "iseven" { "ISEVEN" } else { "ISODD" };
+    let input = c.read_input("in", or_null(c.unwired("in")));
+    let result = if matches!(input, V::Null) {
+        V::Null
+    } else {
+        broadcast_el(&[input], |o| if matches!(o[0], V::Null) { V::Null } else { core_call(name, &[o[0].clone()]) })
+    };
+    answer(c, "result", result)
+}
+
+// ─── IFERROR, IS.TEST ([[B17]] typedValueModel) ──────────────────────────────────────────────────────────────────────
+
+fn is_na(v: &V) -> bool {
+    matches!(v, V::Err(e) if e.code == ErrorCode::NotAvailable)
+}
+
+fn if_error(c: &mut Call) -> Answer {
+    let lit = |c: &Call, k: &str, dflt: V| match c.unwired(k) {
+        V::Undef => dflt,
+        v => v,
+    };
+    let wired = |c: &Call, k: &str, literal: V| match c.wired_card(k) {
+        Some([first, ..]) => first.clone(),
+        _ => Cv::V(literal),
+    };
+    let value = wired(c, "value", lit(c, "value", V::Null));
+    let fallback = wired(c, "fallback", lit(c, "fallback", V::Num(0.0)));
+    let na_only = c.field_str("op", "iferror") == "ifna";
+    let caught = |v: &V| if na_only { is_na(v) } else { v.is_sol_error() };
+    // A single value took one branch; a list mixes them per cell, so it names none.
+    let taken = match &value {
+        Cv::V(V::List(_)) => None,
+        Cv::V(v) => Some(if caught(v) { "fallback" } else { "value" }),
+        _ => None,
+    };
+    select(c, taken);
+    if taken.is_none()
+        && let Some(other) = c.mixes_dates(&["value", "fallback"])
+    {
+        let e = Cv::V(crate::date_values::mixed(other));
+        c.show("cachedResult", e.clone());
+        return Ok(vec![("result".into(), e)]);
+    }
+    let r = replace_caught(&value, &fallback, &caught, None);
+    c.show("cachedResult", r.clone());
+    Ok(vec![("result".into(), r)])
+}
+
+/// Whether a fallback can sit in a column of this type without blending families.
+fn fits_column(fallback: &V, ty: Option<FrameColType>) -> bool {
+    let Some(ty) = ty else { return true };
+    match fallback {
+        V::Null | V::Undef => true,
+        f if f.is_sol_error() => true,
+        V::Num(_) | V::Unit(_) => matches!(ty, FrameColType::Number | FrameColType::Date),
+        V::Str(_) => ty == FrameColType::String,
+        V::Bool(_) => ty == FrameColType::Logical,
+        _ => false,
+    }
+}
+
+/// Each caught cell becomes the fallback, item by item in a list, cell by cell in a Frame or Cube,
+/// where a fallback that doesn't suit its column is that cell's `#TYPE!`.
+fn replace_caught(value: &Cv, fallback: &Cv, caught: &dyn Fn(&V) -> bool, ty: Option<FrameColType>) -> Cv {
+    let item = |i: usize| match fallback {
+        Cv::V(V::List(fs)) => Cv::V(fs.get(i).cloned().unwrap_or(V::Undef)),
+        Cv::Cells(fs) => fs.get(i).cloned().unwrap_or(Cv::UNDEF),
+        f => f.clone(),
+    };
+    let misfit = |what: String| {
+        Cv::V(err(
+            ErrorCode::Type,
+            format!(
+                "The fallback doesn't fit {what}, which holds {} values",
+                ty.map_or("undefined", FrameColType::as_str)
+            ),
+        ))
+    };
+    match value {
+        Cv::V(V::List(items)) => Cv::list(
+            items.iter().enumerate().map(|(i, v)| replace_caught(&Cv::V(v.clone()), &item(i), caught, ty)).collect(),
+        ),
+        Cv::Cells(items) => {
+            Cv::list(items.iter().enumerate().map(|(i, v)| replace_caught(v, &item(i), caught, ty)).collect())
+        }
+        Cv::Frame(_) | Cv::Cube(_) => {
+            let Some(one) = fallback.v().filter(|f| !matches!(f, V::List(_))) else {
+                return Cv::V(err(
+                    ErrorCode::Value,
+                    "Over a Frame or Cube the fallback is one value, used for every caught cell",
+                ));
+            };
+            let cell_for = |cell: &Cv, name: &str, ty: Option<FrameColType>| match cell {
+                Cv::V(V::List(_)) | Cv::Frame(_) | Cv::Cube(_) | Cv::Cells(_) => {
+                    replace_caught(cell, fallback, caught, ty)
+                }
+                Cv::V(x) if caught(x) => {
+                    if fits_column(one, ty) {
+                        Cv::V(one.clone())
+                    } else {
+                        Cv::V(err(
+                            ErrorCode::Type,
+                            format!(
+                                "The fallback doesn't fit column \"{name}\", which holds {} values",
+                                ty.map_or("undefined", FrameColType::as_str)
+                            ),
+                        ))
+                    }
+                }
+                other => other.clone(),
+            };
+            match value {
+                Cv::Frame(f) => Cv::Frame(Rc::new(Frame {
+                    columns: f
+                        .columns
+                        .iter()
+                        .map(|col| Column {
+                            raw: None,
+                            values: col
+                                .values
+                                .iter()
+                                .map(|v| {
+                                    cell_for(&Cv::V(v.clone()), &col.name, Some(col.ty)).v().cloned().unwrap_or(V::Null)
+                                })
+                                .collect(),
+                            ..col.clone()
+                        })
+                        .collect(),
+                    total_rows: None,
+                    approx: None,
+                    source: None,
+                    layout: None,
+                })),
+                Cv::Cube(q) => Cv::Cube(Rc::new(Cube {
+                    columns: q
+                        .columns
+                        .iter()
+                        .map(|col| CubeColumn {
+                            cells: col.cells.iter().map(|v| cell_for(v, &col.name, col.ty)).collect(),
+                            ..col.clone()
+                        })
+                        .collect(),
+                })),
+                _ => unreachable!(),
+            }
+        }
+        Cv::V(v) if !caught(v) => value.clone(),
+        Cv::V(_) if fallback.v().is_none_or(|f| fits_column(f, ty)) => fallback.clone(),
+        Cv::V(_) => misfit("this column".into()),
+        Cv::Json(_) | Cv::Ref(_) => value.clone(),
+    }
+}
+
+fn is_test(c: &mut Call) -> Answer {
+    let op = c.field_str("op", "isnumber").to_string();
+    let done = |c: &mut Call, seen: V, r: V| {
+        c.show("seenError", seen);
+        c.show("cachedResult", r.clone());
+        Ok(vec![("result".into(), Cv::from(r))])
+    };
+    let input = match c.wired_card("value") {
+        Some([first, ..]) if !matches!(first, Cv::V(V::Undef)) => first.clone(),
+        _ => return done(c, V::Null, V::Null),
+    };
+    let input = match input {
+        Cv::Frame(f) => {
+            // A Frame is read row by row, each row its cells across the columns.
+            let rows = f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0);
+            list(
+                (0..rows)
+                    .map(|i| {
+                        list(
+                            f.columns
+                                .iter()
+                                .map(|col| or_null(col.values.get(i).cloned().unwrap_or(V::Undef)))
+                                .collect(),
+                        )
+                    })
+                    .collect(),
+            )
+        }
+        Cv::V(v) => v,
+        // A Cube or plain data is one value no test but non-text holds for.
+        _ => return done(c, V::Null, V::Bool(op == "isnontext")),
+    };
+    if input.is_sol_error() {
+        let hit = match op.as_str() {
+            "iserror" => true,
+            "iserr" => !is_na(&input),
+            "isna" => is_na(&input),
+            _ => false,
+        };
+        return done(c, input, V::Bool(hit));
+    }
+    let value = input.clone();
+    // Every check, ISBLANK included, tests per cell, as the formula does over a list.
+    let test: fn(&V) -> bool = match op.as_str() {
+        "isnull" | "isblank" => |x| matches!(x, V::Null),
+        "istext" => |x| matches!(x, V::Str(_)),
+        "isnontext" => |x| !matches!(x, V::Str(_)),
+        "isnumber" => |x| matches!(x, V::Num(n) if n.is_finite()),
+        "islogical" => |x| matches!(x, V::Bool(_)),
+        "iserror" => |x| x.is_sol_error(),
+        "iserr" => |x| x.is_sol_error() && !is_na(x),
+        "isna" => is_na,
+        _ => |_| false,
+    };
+    fn deep(v: &V, test: &dyn Fn(&V) -> bool) -> V {
+        match v {
+            V::List(items) => list(items.iter().map(|x| deep(x, test)).collect()),
+            x => V::Bool(test(x)),
+        }
+    }
+    let r = deep(&value, &test);
+    done(c, V::Null, r)
+}

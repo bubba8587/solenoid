@@ -1,10 +1,9 @@
-import type { RegexNode as RegexNodeType } from "../rete-nodes";
-import { REGEX_OP_META } from "../rete-nodes";
-import { InlineInputs, useDraftCommit } from "./inlineInput";
+import type { RegexNode as RegexNodeType } from "../nodeClasses";
+import { REGEX_OP_META } from "../nodeClasses";
+import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps, type OpOption } from "./nodeKit";
-import { processGraph } from "../process";
-import type { RegexOp } from "../rete-nodes";
-import { stopDragStart } from "../coarse";
+import type { RegexOp } from "../nodeClasses";
+import { MatchCaseButton } from "./FrameNodes";
 
 // Derived from REGEX_OP_META — the table the search rows read too.
 const REGEX_OPTIONS: ReadonlyArray<OpOption<RegexOp>> = (Object.keys(REGEX_OP_META) as RegexOp[])
@@ -12,10 +11,7 @@ const REGEX_OPTIONS: ReadonlyArray<OpOption<RegexOp>> = (Object.keys(REGEX_OP_ME
 
 export function RegexComponent({ data: node, emit }: NodeProps<RegexNodeType>) {
   const [op, setOp]     = useNodeField(node, "op");
-  const flags = useDraftCommit(node.stringLiterals.flags ?? "", (v) => v, (t) => t, (v) => {
-    node.stringLiterals.flags = v;
-    void processGraph(node.id);
-  });
+  const [matchCase, setMatchCase] = useNodeField(node, "matchCase");
 
   return (
     <NodeShell node={node} emit={emit}>
@@ -25,21 +21,8 @@ export function RegexComponent({ data: node, emit }: NodeProps<RegexNodeType>) {
         emit={emit}
         keys={op === "replace" ? ["text", "pattern", "replacement"] : ["text", "pattern"]}
       />
-      <div className="solenoid-node__io-row" style={{ paddingLeft: 8 }}>
-        <span className="solenoid-node__io-label" style={{ color: "var(--text-muted)", fontSize: 10 }}>flags</span>
-        <input
-          type="text"
-          className="solenoid-node__inline-input"
-          value={flags.draft}
-          placeholder="i, g, …"
-          onChange={(e) => flags.setDraft(e.target.value)}
-          onBlur={flags.onBlur}
-          onKeyDown={flags.onKeyDown}
-          onPointerDown={stopDragStart}
-          onMouseDown={(e) => e.stopPropagation()}
-          spellCheck={false}
-          style={{ width: 52 }}
-        />
+      <div className="solenoid-node__io-row" style={{ paddingLeft: 8, justifyContent: "flex-end" }}>
+        <MatchCaseButton on={matchCase} onToggle={() => setMatchCase(!matchCase)} title="Match case. Off ignores case, Excel's case_sensitivity 1." />
       </div>
       <ValueDisplay value={node.cachedResult} />
     </NodeShell>

@@ -1,0 +1,7 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"HSTACK(r_B12_D12,r_B16_C16,r_B19_E19)","env":["r_B12_D12=list:text:[\"a\", \"b\", \"c\"]","r_B16_C16=list:text:[\"d\", \"e\"]","r_B19_E19=list:text:[\"f\", \"g\", \"h\", \"j\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"HSTACK(r_B23_B26,r_D23_D24)","env":["r_B23_B26=table:num:[[1], [2], [3], [blank]]","r_D23_D24=table:num:[[5], [6]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"HSTACK(k1,r_C32_C34)","env":["k1=table:text:[[\"one\"], [\"two\"], [\"three\"]]","r_C32_C34=table:num:[[1], [2], [3]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -1,9 +1,9 @@
-// [[C66]] scriptNode, [[C95]] commitOnEnter
+// [[C66]] scriptNode, [[B19]] spreadsheetHabits
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { scriptPopup } from "../scriptPopupStore";
 import { getOwningEditor } from "../activeGraph";
-import { nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
-import type { ScriptNode } from "../rete-nodes";
+import { nodeKindOf, NODE_KIND_ACCENTS } from "../nodeClasses";
+import type { ScriptNode } from "../nodeClasses";
 import { appThemeStore } from "../appTheme";
 import { groupMembershipStore } from "../groupMembership";
 import { themeAccent, contrastInk, darkenAccent } from "../palette";
@@ -54,7 +54,6 @@ export function ScriptPopup() {
     setText(seed);
     textRef.current = seed;
     committedRef.current = seed;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId]);
 
   const node = scriptNodeOf(nodeId);

@@ -8,7 +8,7 @@ export interface BoundaryCrossing {
   externalSocket: string;
 }
 
-export interface IsolateBoundary {
+interface IsolateBoundary {
   entry: BoundaryCrossing[];
   exit: BoundaryCrossing[];
 }

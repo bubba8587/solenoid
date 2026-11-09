@@ -1,0 +1,5 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"SUMIFS(r_Data_E2_E21,r_Data_A2_A21,\"West\",r_Data_B2_B21,\"B\")","env":["r_Data_A2_A21=table:text:[[\"North\"], [\"South\"], [\"East\"], [\"West\"], [\"North\"], [\"South\"], [\"East\"], [\"West\"], [\"North\"], [\"South\"], [\"East\"], [\"West\"], [\"North\"], [\"South\"], [\"East\"], [\"West\"], [\"North\"], [\"South\"], [\"East\"], [\"West\"]]","r_Data_B2_B21=table:text:[[\"A\"], [\"B\"], [\"C\"], [\"A\"], [\"B\"], [\"C\"], [\"A\"], [\"B\"], [\"C\"], [\"A\"], [\"B\"], [\"C\"], [\"A\"], [\"B\"], [\"C\"], [\"A\"], [\"B\"], [\"C\"], [\"A\"], [\"B\"]]","r_Data_E2_E21=table:num:[[120], [675], [1340], [276], [1602], [850], [448], [2340], [330], [1288], [656], [693], [756], [630], [722], [1320], [1053], [399], [816], [1560]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

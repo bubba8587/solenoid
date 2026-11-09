@@ -1,7 +1,7 @@
 /* Mirrors the Note's chrome (bar, chevron, selection ring), neutral-accented, with an image well for a body. */
 .solenoid-image {
   position: relative;
-  --node-accent: #6b8299; /* neutral slate — selection ring + shadow */
+  --node-accent: var(--sock-any); /* neutral: selection ring + shadow */
   /* The header bar is the dot's positioning context (ImageComponent), so it straddles the 1px right edge. */
   --node-socket-x: -6.5px;
   box-sizing: border-box;

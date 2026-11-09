@@ -1,23 +1,19 @@
 // [[B11]]
-import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput, readRole, BASIS_DOC, readAsRole } from "./shared";
-import { setting, argRole } from "../inputRoles";
+import { GraphInput, GraphNode, GraphSocket } from "../graphModel";
+import { numIn, numOut, listIn, listOut, dateIn, dateOut, dateListIn, frameOut, BASIS_DOC } from "./shared";
+import { setting } from "../inputRoles";
 import type { FrameValue } from "../frame";
-import type { Shape } from "../frameShape";
-import { solError, type SolError } from "../errorValue";
-import { guardFinite } from "../valueKinds";
-import { resolveExcelFunction, normalizeFxResult } from "../excelFunctions";
+import { sampleShapeOnCore, type Shape } from "../frameShape";
+import { type SolError } from "../errorValue";
+import { nodeOnCore } from "../nodeOnCore";
 import { EquationNode } from "./equation";
-import {
-  couponValue, accrint, accrintM, tbill, securityDisc, priceDisc, priceMat, durationValue,
-  bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, xnpv, xirr, mirr, amortizationSchedule, fvSchedule,
-  returnsOp, RETURNS_OP_META, type ReturnsOp, cumulativePayment,
-} from "./financeOps";
+import { RETURNS_OP_META, type ReturnsOp } from "./financeOps";
 export { RETURNS_OP_META } from "./financeOps";
 export type { ReturnsOp } from "./financeOps";
 import type {
   CouponOp, TBillOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
 } from "./financeOps";
+
 export type {
   CouponOp, TBillOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
 } from "./financeOps";
@@ -27,8 +23,6 @@ export const PAYMENT_TIMING_META: Record<PaymentTiming, string> = {
   end: "End of period (0)",
   beg: "Beginning of period (1)",
 };
-
-// ─── Coupon / accrual date helpers ────────────────────────────────────────────
 
 // ─── Bitwise ──────────────────────────────────────────────────────────────────
 export type BitwiseOp = "bitand" | "bitor" | "bitxor" | "bitlshift" | "bitrshift";
@@ -41,7 +35,7 @@ export const BITWISE_OP_META = {
   bitrshift: { label: "BITRSHIFT", description: "Shifts `A`'s bits right by `B` places. Each place halves it, dropping low bits (`⌊A ÷ 2ᴮ⌋`). Excel: `BITRSHIFT`." },
 } satisfies Record<BitwiseOp, { label: string; description: string }>;
 
-export class BitwiseNode extends ClassicPreset.Node {
+export class BitwiseNode extends GraphNode {
   label: string;
   op: BitwiseOp;
   cachedResult: number | null = null;
@@ -57,22 +51,8 @@ export class BitwiseNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { a?: number[]; b?: number[] }) {
-    const aRaw = readInput(inputs.a, this.literals.a ?? 0);
-    const bRaw = readInput(inputs.b, this.literals.b ?? 0);
-    if (aRaw === null || bRaw === null) { this.cachedResult = null; return { result: null }; }
-    const a = Math.trunc(aRaw);
-    const b = Math.trunc(bRaw);
-    let result: number | null = null;
-    switch (this.op) {
-      case "bitand":    result = a & b; break;
-      case "bitor":     result = a | b; break;
-      case "bitxor":    result = a ^ b; break;
-      case "bitlshift": result = b >= 0 && b < 32 ? a << b : null; break;
-      case "bitrshift": result = b >= 0 && b < 32 ? a >>> b : null; break;
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: number | null } {
+    return nodeOnCore(this, inputs) as { result: number | null };
   }
 }
 
@@ -105,7 +85,8 @@ const DEPRECIATION_INPUTS: Record<DepreciationOp, ReadonlyArray<{ key: string; l
   };
 })();
 
-export class DepreciationNode extends ClassicPreset.Node {
+export class DepreciationNode extends GraphNode {
+  unitAware = true;
   label: string;
   op: DepreciationOp;
   cachedResult: number | SolError | null = null;
@@ -143,59 +124,22 @@ export class DepreciationNode extends ClassicPreset.Node {
     for (const i of before) if (!after.some((j) => j.key === i.key)) this.removeInput(i.key);
     for (const i of after) if (!this.inputs[i.key]) this.addInput(i.key, numIn(i.label));
     // Re-insert every key in table order, because Factor sits at a different row in each op.
-    const inputs = this.inputs as Record<string, unknown>;
-    for (const i of after) {
-      const v = inputs[i.key];
-      delete inputs[i.key];
-      inputs[i.key] = v;
-    }
+    for (const i of after) this.moveInputLast(i.key);
     this.seedLiterals();
     this.height = this.heightFor();
   }
 
-  data(inputs: { cost?: number[]; salvage?: number[]; life?: number[]; per?: number[]; factor?: number[]; month?: number[]; start?: number[]; end?: number[] }) {
-    const cost    = readInput(inputs.cost, this.literals.cost ?? null);
-    const salvage = readInput(inputs.salvage, this.literals.salvage ?? null);
-    const life    = readInput(inputs.life, this.literals.life ?? null);
-    let result: number | SolError | null = null;
-    if (this.op === "vdb") {
-      const start  = readInput(inputs.start, this.literals.start ?? 0);
-      const end    = readInput(inputs.end, this.literals.end ?? 0);
-      const factor = readAsRole<number | undefined>(this, "factor", inputs.factor, argRole("VDB", 5)!) ?? 2;
-      result = (cost === null || salvage === null || life === null || start === null || end === null || factor === null)
-        ? null
-        : vdb(cost, salvage, life, start, end, factor);
-    } else {
-      const per    = readInput(inputs.per, this.literals.per ?? null);
-      const factor = readAsRole<number | undefined>(this, "factor", inputs.factor, argRole("DDB", 4)!) ?? 2;
-      // Every input present, the formula answers, its domain errors included ([[D70]] nullNotEnoughData: a wrong input is an error).
-      type Answer = number | SolError;
-      if (cost !== null && salvage !== null && life !== null) {
-        if (this.op === "sln") result = normalizeFxResult(resolveExcelFunction("SLN")!(cost, salvage, life)) as Answer;
-        else if (per !== null) {
-          if (this.op === "syd") result = normalizeFxResult(resolveExcelFunction("SYD")!(cost, salvage, life, per)) as Answer;
-          else if (this.op === "ddb") result = factor === null ? null : normalizeFxResult(resolveExcelFunction("DDB")!(cost, salvage, life, per, factor)) as Answer;
-          else if (this.op === "db") {
-            const month = readInput(inputs.month, this.literals.month ?? 12);
-            if (month !== null) result = normalizeFxResult(resolveExcelFunction("DB")!(cost, salvage, life, per, month)) as Answer;
-          }
-        }
-      }
-    }
-    if (typeof result === "number" && !Number.isFinite(result)) result = null;
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
 
 // ─── TVM (Time Value of Money) ────────────────────────────────────────────────
 
-export const TVM_TIMING_EXPRS: Record<PaymentTiming, string> = {
+const TVM_TIMING_EXPRS: Record<PaymentTiming, string> = {
   end: "pv*(1+rate)^nper + pmt*((1+rate)^nper - 1)/rate + fv = 0",
   beg: "pv*(1+rate)^nper + pmt*(1+rate)*((1+rate)^nper - 1)/rate + fv = 0",
 };
-
-const TVM_ZERO_RATE_EXPR = "pv + pmt*nper + fv = 0";
 
 export class TvmNode extends EquationNode {
   static socketDocs: Record<string, string> = {
@@ -205,7 +149,6 @@ export class TvmNode extends EquationNode {
   };
 
   paymentTiming: PaymentTiming;
-  private _zeroRate: EquationNode | null = null;
 
   constructor(init?: { label?: string; paymentTiming?: PaymentTiming; locked?: boolean }) {
     const timing = init?.paymentTiming ?? "end";
@@ -224,27 +167,7 @@ export class TvmNode extends EquationNode {
     this.expr = TVM_TIMING_EXPRS[t];
     this._rebuild();
   }
-
-  data(inputs: Record<string, unknown[]>): Record<string, unknown> {
-    if (inputs.rate?.[0] === 0) {
-      const zr = (this._zeroRate ??= new EquationNode({ expr: TVM_ZERO_RATE_EXPR }));
-      const out = zr.data(inputs);
-      this.cachedError = zr.cachedError;
-      this.cachedHolds = zr.cachedHolds;
-      this.solvedFor = zr.solvedFor;
-      this.cachedValues = { ...zr.cachedValues, rate: 0 };
-      out.rate = 0;
-      return out;
-    }
-    return super.data(inputs);
-  }
 }
-
-// ─── NPV ──────────────────────────────────────────────────────────────────────
-export const NPV_META = {
-  label: "NPV",
-  description: "Net present value of cash flows at a given discount rate (first value = period `1`). Excel: `NPV`.",
-};
 
 // ─── Cash-flow schedule mode (NPV/IRR × periodic/dated) ───────────────────────
 
@@ -257,7 +180,8 @@ export const CASHFLOW_OP_OPTIONS: { value: CashflowOp; label: string }[] = [
   { value: "dates", label: "Dated" },
 ];
 
-export class NPVNode extends ClassicPreset.Node {
+export class NPVNode extends GraphNode {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     list: "A blank cell counts as zero. Dropping it would shift every later flow.",
     dates: "Values discount back to the first date. A blank date makes the whole result blank.",
@@ -290,33 +214,15 @@ export class NPVNode extends ClassicPreset.Node {
     this.height = next === "dates" ? 231 : 203;
   }
 
-  data(inputs: { rate?: number[]; list?: (number | null | SolError)[][]; dates?: number[][] }) {
-    const rate = readInput(inputs.rate, this.literals.rate ?? 0.1);
-    if (this.op === "dates") {
-      if (rate === null) { this.cachedResult = null; return { result: null }; }
-      const prep = datedPrep(inputs.list?.[0] ?? null, (inputs.dates?.[0] ?? []) as (number | null | SolError)[]);
-      if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
-      if (prep.blank || prep.values.length === 0 || prep.dates.length === 0) { this.cachedResult = null; return { result: null }; }
-      const result = xnpv(rate, prep.values, prep.dates);
-      this.cachedResult = result;
-      return { result };
-    }
-    const { error, nums: cashflows } = cashPrep(inputs.list?.[0] ?? null);
-    if (error) { this.cachedResult = error; return { result: error }; }
-    if (rate === null) { this.cachedResult = null; return { result: null }; }
-    let result: number | null = null;
-    if (cashflows.length > 0) {
-      const npv = resolveExcelFunction("NPV")!(rate, ...cashflows) as number;
-      result = Number.isFinite(npv) ? npv : null;
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
 
 // ─── IRR ──────────────────────────────────────────────────────────────────────
 
-export class IRRNode extends ClassicPreset.Node {
+export class IRRNode extends GraphNode {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     list: "A blank cell counts as zero. Dropping it would shift every later flow.",
   };
@@ -346,42 +252,15 @@ export class IRRNode extends ClassicPreset.Node {
     this.height = next === "dates" ? 191 : 163;
   }
 
-  data(inputs: { list?: (number | null | SolError)[][]; dates?: number[][] }): { result: number | SolError | null } {
-    if (this.op === "dates") return this.dataDated(inputs);
-    const { error, nums: cashflows } = cashPrep(inputs.list?.[0] ?? null);
-    if (error) { this.cachedResult = error; return { result: error }; }
-    if (cashflows.length <= 1) {
-      this.cachedResult = null;
-      return { result: null };
-    }
-    const rate = solveDiscountRate(cashflows, cashflows.map((_, t) => t));
-    if (rate === null) {
-      const err = solError("#CONV!", "IRR couldn't converge. The cash flows may have no internal rate of return, for example they never change sign.");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    this.cachedResult = rate;
-    return { result: rate };
-  }
-
-  private dataDated(inputs: { list?: (number | null | SolError)[][]; dates?: number[][] }): { result: number | SolError | null } {
-    // Scan both lists for errors before any arithmetic, or an upstream error surfaces as a #CONV! stall.
-    const prep = datedPrep(inputs.list?.[0] ?? null, (inputs.dates?.[0] ?? []) as (number | null | SolError)[]);
-    if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
-    if (prep.blank) { this.cachedResult = null; return { result: null }; }
-    const r = xirr(prep.values, prep.dates);
-    this.cachedResult = r;
-    return { result: r };
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
 
 // ─── MIRR ─────────────────────────────────────────────────────────────────────
-export const MIRR_META = {
-  label: "MIRR",
-  description: "Modified `IRR`: accounts for cost of capital and reinvestment rate. Excel: `MIRR`.",
-};
 
-export class MirrNode extends ClassicPreset.Node {
+export class MirrNode extends GraphNode {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     list: "A blank cell counts as zero. Dropping it would shift every later flow.",
   };
@@ -400,29 +279,15 @@ export class MirrNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { list?: (number | null | SolError)[][]; finrate?: number[]; reinrate?: number[] }): { result: number | SolError | null } {
-    const { error, nums: cashflows } = cashPrep(inputs.list?.[0] ?? null);
-    const finrate    = readInput(inputs.finrate, this.literals.finrate ?? 0.1);
-    const reinrate   = readInput(inputs.reinrate, this.literals.reinrate ?? 0.12);
-    if (error) { this.cachedResult = error; return { result: error }; }
-    if (finrate === null || reinrate === null) { this.cachedResult = null; return { result: null }; }
-    if (cashflows.length <= 1) {
-      this.cachedResult = null;
-      return { result: null };
-    }
-    const result = mirr(cashflows, finrate, reinrate);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
 
 // ─── FVSCHEDULE ───────────────────────────────────────────────────────────────
-export const FVSCHEDULE_META = {
-  label: "FVSCHEDULE",
-  description: "Future value of principal after a schedule of compound interest rates. Excel: `FVSCHEDULE`.",
-};
 
-export class FvScheduleNode extends ClassicPreset.Node {
+export class FvScheduleNode extends GraphNode {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     schedule: "Each rate compounds in order. A blank cell counts as zero interest for that period.",
   };
@@ -440,30 +305,21 @@ export class FvScheduleNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { pv?: number[]; schedule?: (number | null | SolError)[][] }) {
-    const pv    = readInput(inputs.pv, this.literals.pv ?? 1000);
-    const { error, nums: rates } = cashPrep(inputs.schedule?.[0] ?? null);
-    if (error) { this.cachedResult = error; return { result: error }; }
-    if (pv === null) { this.cachedResult = null; return { result: null }; }
-    const result = guardFinite(fvSchedule(pv, rates), [pv, ...rates]);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
 
 // ─── ISPMT ────────────────────────────────────────────────────────────────────
-export const ISPMT_META = {
-  label: "ISPMT",
-  description: "Interest paid in a given period of a straight-line-principal loan. Excel: `ISPMT`.",
-};
 
-export class IspmtNode extends ClassicPreset.Node {
+export class IspmtNode extends GraphNode {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
   };
 
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { rate: 0.05, per: 1, nper: 12, pv: 10000 };
   width = 180; height = 270;
 
@@ -477,19 +333,8 @@ export class IspmtNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { rate?: number[]; per?: number[]; nper?: number[]; pv?: number[] }) {
-    const rate = readInput(inputs.rate, this.literals.rate ?? 0);
-    const per  = readInput(inputs.per, this.literals.per ?? 1);
-    const nper = readInput(inputs.nper, this.literals.nper ?? 0);
-    const pv   = readInput(inputs.pv, this.literals.pv ?? 0);
-    if (rate === null || per === null || nper === null || pv === null) { this.cachedResult = null; return { result: null }; }
-    let result: number | null = null;
-    if (nper > 0) {
-      result = pv * rate * (per / nper - 1);
-      if (!Number.isFinite(result)) result = null;
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
 
@@ -501,7 +346,7 @@ export const DOLLAR_OP_META = {
   dollarfr: { label: "DOLLARFR", description: "Decimal dollar to fractional notation (for example, `1.0625` → `1.02` in 32nds). Excel: `DOLLARFR`." },
 } satisfies Record<DollarOp, { label: string; description: string }>;
 
-export class DollarNode extends ClassicPreset.Node {
+export class DollarNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     fraction: "The denominator of the fraction, such as 32 for prices in 32nds.",
   };
@@ -509,7 +354,7 @@ export class DollarNode extends ClassicPreset.Node {
   label: string;
   op: DollarOp;
   cachedResult: number | null = null;
-  literals: Record<string, number> = { dollar: 1.02, fraction: 32 };
+  literals: Record<string, number> = { fraction: 32 };
   width = 180; height = 200;
 
   constructor(init?: { label?: string; op?: DollarOp }) {
@@ -521,29 +366,10 @@ export class DollarNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { dollar?: number[]; fraction?: number[] }) {
-    const dollar      = readInput(inputs.dollar, this.literals.dollar ?? 0);
-    const fractionRaw = readInput(inputs.fraction, this.literals.fraction ?? 32);
-    if (dollar === null || fractionRaw === null) { this.cachedResult = null; return { result: null }; }
-    const fraction = Math.floor(fractionRaw);
-    let result: number | null = null;
-    if (fraction > 0) {
-      const intPart = Math.trunc(dollar);
-      const decPart = dollar - intPart;
-      const digits  = fraction === 1 ? 0 : Math.ceil(Math.log10(fraction));
-      const mult    = Math.pow(10, digits);
-      result = this.op === "dollarde"
-        ? intPart + (decPart * mult) / fraction
-        : intPart + (decPart * fraction) / mult;
-      if (!Number.isFinite(result)) result = null;
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: number | null } {
+    return nodeOnCore(this, inputs) as { result: number | null };
   }
 }
-
-
-
 
 // ─── Spec-table op cards ──────────────────────────────────────────────────────
 
@@ -552,11 +378,12 @@ function keysDroppedBy(before: string[], after: string[]): string[] {
   return before.filter((k) => !keep.has(k));
 }
 
-function reshapeInputs(node: ClassicPreset.Node, after: string[], make: (key: string) => ClassicPreset.Input<ClassicPreset.Socket>): void {
+function reshapeInputs(node: GraphNode, after: string[], make: (key: string) => GraphInput<GraphSocket>): void {
   for (const k of Object.keys(node.inputs)) if (!after.includes(k)) node.removeInput(k);
-  const ordered: typeof node.inputs = {};
-  for (const k of after) ordered[k] = node.inputs[k] ?? make(k);
-  node.inputs = ordered;
+  for (const k of after) {
+    if (node.hasInput(k)) node.moveInputLast(k);
+    else node.addInput(k, make(k));
+  }
 }
 
 // ─── Discount securities: ONE card ───────────────────────────────────────────
@@ -576,7 +403,7 @@ export const DISCOUNT_SECURITY_META: Record<DiscountSecurityOp, { label: string;
   yieldmat:   { group: "Interest at maturity", label: "YIELDMAT", keys: ["issue", "rate", "pr", "basis"], description: "Annual yield of a security that pays interest at maturity. Excel: `YIELDMAT`." },
 };
 
-const DISCOUNT_SECURITY_INPUTS: Record<string, () => ClassicPreset.Input<ClassicPreset.Socket>> = {
+const DISCOUNT_SECURITY_INPUTS: Record<string, () => GraphInput<GraphSocket>> = {
   settle:     () => dateIn("Settlement date"),
   maturity:   () => dateIn("Maturity date"),
   issue:      () => dateIn("Issue date"),
@@ -593,7 +420,8 @@ function discountSecurityKeys(op: DiscountSecurityOp): string[] {
   return ["settle", "maturity", ...DISCOUNT_SECURITY_META[op].keys];
 }
 
-export class DiscountSecurityNode extends ClassicPreset.Node {
+export class DiscountSecurityNode extends GraphNode {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     pr: "Per $100 of face value.",
     discount: "As a decimal, e.g. 0.05 for 5%.",
@@ -627,52 +455,10 @@ export class DiscountSecurityNode extends ClassicPreset.Node {
     this.height = 149 + 27 * after.length;
   }
 
-  data(inputs: Record<string, number[] | undefined>): { result: number | SolError | null } {
-    const s = inputs.settle?.[0];
-    const m = inputs.maturity?.[0];
-    const fail = () => { this.cachedResult = null; return { result: null }; };
-    if (s == null || m == null) return fail();
-    const read = (k: string) => readInput(inputs[k], this.literals[k] ?? 0);
-    let result: number | SolError | null;
-    switch (this.op) {
-      case "tbilleq": case "tbillprice": case "tbillyield": {
-        const x = read(this.op === "tbillyield" ? "pr" : "discount");
-        if (x === null) return fail();
-        result = tbill(this.op, s, m, x);
-        break;
-      }
-      case "disc": case "intrate": case "received": {
-        const a = read(this.op === "disc" ? "pr" : "investment");
-        const b = read(this.op === "received" ? "discount" : "redemption");
-        const basis = read("basis");
-        if (a === null || b === null || basis === null) return fail();
-        result = securityDisc(this.op, s, m, a, b, basis);
-        break;
-      }
-      case "pricedisc": case "yielddisc": {
-        const rateOrPrice = read(this.op === "pricedisc" ? "discount" : "pr");
-        const redemption = read("redemption");
-        const basis = read("basis");
-        if (rateOrPrice === null || redemption === null || basis === null) return fail();
-        result = priceDisc(this.op, s, m, rateOrPrice, redemption, basis);
-        break;
-      }
-      case "pricemat": case "yieldmat": {
-        const is = inputs.issue?.[0];
-        if (is == null) return fail();
-        const rate = read("rate");
-        const yldOrPrice = read(this.op === "pricemat" ? "yld" : "pr");
-        const basis = read("basis");
-        if (rate === null || yldOrPrice === null || basis === null) return fail();
-        result = priceMat(this.op, s, m, is, rate, yldOrPrice, basis);
-        break;
-      }
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
-
 
 // ─── COUPON functions (COUPDAYBS / COUPDAYS / COUPDAYSNC / COUPNCD / COUPPCD / COUPNUM) ─
 
@@ -680,12 +466,12 @@ export const COUPON_OP_META = {
   coupdaybs:  { label: "COUPDAYBS",  description: "Days from beginning of coupon period to settlement. Excel: `COUPDAYBS`." },
   coupdays:   { label: "COUPDAYS",   description: "Days in the coupon period containing settlement. Excel: `COUPDAYS`." },
   coupdaysnc: { label: "COUPDAYSNC", description: "Days from settlement to next coupon date. Excel: `COUPDAYSNC`." },
-  coupncd:    { label: "COUPNCD",    description: "Next coupon date after settlement (as a date serial). Excel: `COUPNCD`." },
-  couppcd:    { label: "COUPPCD",    description: "Previous coupon date before settlement (as a date serial). Excel: `COUPPCD`." },
+  coupncd:    { label: "COUPNCD",    description: "Next coupon date after settlement. Excel: `COUPNCD`." },
+  couppcd:    { label: "COUPPCD",    description: "Previous coupon date before settlement. Excel: `COUPPCD`." },
   coupnum:    { label: "COUPNUM",    description: "Number of coupon periods between settlement and maturity. Excel: `COUPNUM`." },
 } satisfies Record<CouponOp, { label: string; description: string }>;
 
-export class CouponNode extends ClassicPreset.Node {
+export class CouponNode extends GraphNode {
   static inputRoles = { frequency: setting(2), basis: setting(0) };
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
@@ -705,18 +491,25 @@ export class CouponNode extends ClassicPreset.Node {
     this.addInput("maturity",  dateIn("Maturity date"));
     this.addInput("frequency", numIn("Frequency"));
     this.addInput("basis",     numIn("Basis"));
-    this.addOutput("result", numOut("Result"));
+    this.addOutput("result", CouponNode.outputFor(this.op));
   }
 
-  data(inputs: { settle?: number[]; maturity?: number[]; frequency?: number[]; basis?: number[] }): { result: number | SolError | null } {
-    const s = inputs.settle?.[0];
-    const m = inputs.maturity?.[0];
-    if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
-    const freq  = readRole<number>(this, "frequency", inputs.frequency);
-    const basis = readRole<number>(this, "basis", inputs.basis);
-    const result = couponValue(this.op, s, m, freq, basis);
-    this.cachedResult = result;
-    return { result };
+  /** COUPNCD and COUPPCD answer a date ([[C137]] datesNeverSerials); the rest count days or periods. */
+  static outputFor(op: CouponOp) { return op === "coupncd" || op === "couppcd" ? dateOut("Date") : numOut("Result"); }
+
+  /** True when the output's family changed. */
+  setOp(next: CouponOp): boolean {
+    const dated = (op: CouponOp) => op === "coupncd" || op === "couppcd";
+    const changed = dated(next) !== dated(this.op);
+    this.op = next;
+    const spec = CouponNode.outputFor(next);
+    this.outputs.result!.socket = spec.socket;
+    this.outputs.result!.label = spec.label;
+    return changed;
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { result: number | SolError | null } {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 
@@ -739,7 +532,8 @@ function accruedInterestKeys(op: AccruedInterestOp): string[] {
   return ACCRUED_INTEREST_KEYS.filter((k) => k !== "frequency" || op === "periodic");
 }
 
-export class AccruedInterestNode extends ClassicPreset.Node {
+export class AccruedInterestNode extends GraphNode {
+  unitAware = true;
   static inputRoles = { basis: setting(0), frequency: setting(2) };
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
@@ -783,23 +577,8 @@ export class AccruedInterestNode extends ClassicPreset.Node {
     this.height = next === "periodic" ? 280 : 245;
   }
 
-  data(inputs: { issue?: number[]; settle?: number[]; rate?: number[]; par?: number[]; frequency?: number[]; basis?: number[] }): { result: number | SolError | null } {
-    const is = inputs.issue?.[0], ss = inputs.settle?.[0];
-    const fail = () => { this.cachedResult = null; return { result: null }; };
-    if (is == null || ss == null) return fail();
-    const rate  = readInput(inputs.rate, this.literals.rate ?? 0.06);
-    const par   = readInput(inputs.par, this.literals.par ?? 1000);
-    const basis = readRole<number>(this, "basis", inputs.basis);
-    if (rate === null || par === null) return fail();
-    let result: number | SolError | null;
-    if (this.op === "periodic") {
-      const freq = readRole<number>(this, "frequency", inputs.frequency);
-      result = accrint(is, ss, rate, par, freq, basis);
-    } else {
-      result = accrintM(is, ss, rate, par, basis);
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
 
@@ -819,7 +598,7 @@ const PAYMENT_BREAKDOWN_RANGE_KEYS  = ["rate", "nper", "pv", "start", "end"];
 function paymentBreakdownKeys(op: PaymentBreakdownOp): string[] {
   return op === "ipmt" || op === "ppmt" ? [...PAYMENT_BREAKDOWN_SINGLE_KEYS] : [...PAYMENT_BREAKDOWN_RANGE_KEYS];
 }
-const PAYMENT_BREAKDOWN_INPUTS: Record<string, () => ClassicPreset.Input<ClassicPreset.Socket>> = {
+const PAYMENT_BREAKDOWN_INPUTS: Record<string, () => GraphInput<GraphSocket>> = {
   rate:  () => numIn("Rate"),
   per:   () => numIn("Period"),
   nper:  () => numIn("Nper"),
@@ -829,7 +608,8 @@ const PAYMENT_BREAKDOWN_INPUTS: Record<string, () => ClassicPreset.Input<Classic
   end:   () => numIn("End period"),
 };
 
-export class PaymentBreakdownNode extends ClassicPreset.Node {
+export class PaymentBreakdownNode extends GraphNode {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
     per: "The single period to report, counted from 1.",
@@ -862,57 +642,10 @@ export class PaymentBreakdownNode extends ClassicPreset.Node {
     this.op = next;
   }
 
-  data(inputs: { rate?: number[]; per?: number[]; nper?: number[]; pv?: number[]; fv?: number[]; start?: number[]; end?: number[] }) {
-    if (this.op === "ipmt" || this.op === "ppmt") {
-      const rate = readInput(inputs.rate, this.literals.rate ?? 0);
-      const per  = readInput(inputs.per, this.literals.per ?? 1);
-      const nper = readInput(inputs.nper, this.literals.nper ?? 0);
-      const pv   = readInput(inputs.pv, this.literals.pv ?? 0);
-      const fv   = readInput(inputs.fv, this.literals.fv ?? 0);
-      if (rate === null || per === null || nper === null || pv === null || fv === null) { this.cachedResult = null; return { result: null }; }
-      const type = this.paymentTiming === "beg" ? 1 : 0;
-
-      let result: number | null = null;
-
-      let pmt: number;
-      if (Math.abs(rate) < 1e-12) {
-        pmt = nper !== 0 ? -(pv + fv) / nper : 0;
-      } else {
-        const rN = Math.pow(1 + rate, nper);
-        pmt = -(pv * rN + fv) * rate / ((1 + rate * type) * (rN - 1));
-      }
-
-      if (Number.isFinite(pmt)) {
-        let ipmt: number;
-        if (Math.abs(rate) < 1e-12) {
-          ipmt = 0;
-        } else {
-          ipmt = resolveExcelFunction("IPMT")!(rate, per, nper, pv, fv, type) as number;
-        }
-        if (Number.isFinite(ipmt)) {
-          result = this.op === "ipmt" ? ipmt : pmt - ipmt;
-        }
-      }
-
-      if (result !== null && !Number.isFinite(result)) result = null;
-      this.cachedResult = result;
-      return { result };
-    }
-
-    const rate  = readInput(inputs.rate, this.literals.rate ?? 0);
-    const nper  = readInput(inputs.nper, this.literals.nper ?? 0);
-    const pv    = readInput(inputs.pv, this.literals.pv ?? 0);
-    const startRaw = readInput(inputs.start, this.literals.start ?? 1);
-    const endRaw   = readInput(inputs.end, this.literals.end ?? 1);
-    if (rate === null || nper === null || pv === null || startRaw === null || endRaw === null) {
-      this.cachedResult = null; return { result: null };
-    }
-    const result = cumulativePayment(this.op === "cumipmt" ? "cumipmt" : "cumprinc", rate, nper, pv, startRaw, endRaw, this.paymentTiming === "beg" ? 1 : 0);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
-
 
 // ─── DURATION / MDURATION ─────────────────────────────────────────────────────
 
@@ -921,7 +654,7 @@ export const DURATION_OP_META = {
   mduration: { label: "MDURATION", description: "Modified duration: price sensitivity to yield changes. Excel: `MDURATION`." },
 } satisfies Record<DurationOp, { label: string; description: string }>;
 
-export class DurationNode extends ClassicPreset.Node {
+export class DurationNode extends GraphNode {
   static inputRoles = { frequency: setting(2), basis: setting(0) };
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
@@ -946,17 +679,8 @@ export class DurationNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Years"));
   }
 
-  data(inputs: { settle?: number[]; maturity?: number[]; coupon?: number[]; yld?: number[]; frequency?: number[]; basis?: number[] }): { result: number | SolError | null } {
-    const s = inputs.settle?.[0], m = inputs.maturity?.[0];
-    if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
-    const coupon = readInput(inputs.coupon, this.literals.coupon ?? 0.08);
-    const yld    = readInput(inputs.yld, this.literals.yld ?? 0.09);
-    const freq   = readRole<number>(this, "frequency", inputs.frequency);
-    const basis  = readRole<number>(this, "basis", inputs.basis);
-    if (coupon === null || yld === null) { this.cachedResult = null; return { result: null }; }
-    const result = durationValue(this.op, s, m, coupon, yld, freq, basis);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: number | SolError | null } {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 
@@ -973,7 +697,7 @@ export const BOND_PRICING_META: Record<BondPricingOp, { label: string; descripti
   oddlyield: { group: "Odd last coupon",  label: "ODDLYIELD", keys: ["lastinterest", "rate", "pr", "redemption", "frequency"], description: "Yield of a bond with an irregular last coupon period. Excel: `ODDLYIELD`." },
 };
 
-const BOND_PRICING_INPUTS: Record<string, () => ClassicPreset.Input<ClassicPreset.Socket>> = {
+const BOND_PRICING_INPUTS: Record<string, () => GraphInput<GraphSocket>> = {
   settle:       () => dateIn("Settlement date"),
   maturity:     () => dateIn("Maturity date"),
   issue:        () => dateIn("Issue date"),
@@ -989,10 +713,8 @@ const BOND_PRICING_INPUTS: Record<string, () => ClassicPreset.Input<ClassicPrese
 function bondPricingKeys(op: BondPricingOp): string[] {
   return ["settle", "maturity", ...BOND_PRICING_META[op].keys];
 }
-const isOddFirst = (op: BondPricingOp) => op === "oddfprice" || op === "oddfyield";
-const isOddLast  = (op: BondPricingOp) => op === "oddlprice" || op === "oddlyield";
 
-export class BondPricingNode extends ClassicPreset.Node {
+export class BondPricingNode extends GraphNode {
   static inputRoles = { frequency: setting(2) };
   static socketDocs: Record<string, string> = {
     issue: "Left unwired, the issue date falls back to the settlement date.",
@@ -1026,37 +748,14 @@ export class BondPricingNode extends ClassicPreset.Node {
     this.height = 149 + 27 * after.length;
   }
 
-  data(inputs: Record<string, number[] | undefined>): { result: number | SolError | null } {
-    const s = inputs.settle?.[0], m = inputs.maturity?.[0];
-    const fail = () => { this.cachedResult = null; return { result: null }; };
-    if (s == null || m == null) return fail();
-    const rate       = readInput(inputs.rate, this.literals.rate ?? 0.065);
-    const redemption = readInput(inputs.redemption, this.literals.redemption ?? 100);
-    const freq       = readRole<number>(this, "frequency", inputs.frequency);
-    if (rate === null || redemption === null) return fail();
-    const isPrice = this.op === "price" || this.op === "oddfprice" || this.op === "oddlprice";
-    const yldOrPrice = isPrice
-      ? readInput(inputs.yld, this.literals.yld ?? 0.07)
-      : readInput(inputs.pr, this.literals.pr ?? 97.5);
-    if (yldOrPrice === null) return fail();
-    let result: number | SolError | null;
-    if (isOddFirst(this.op) || isOddLast(this.op)) {
-      const fl = isOddFirst(this.op) ? inputs.firstcoupon?.[0] : inputs.lastinterest?.[0];
-      if (fl == null) return fail();
-      const issue = isOddFirst(this.op) ? readInput(inputs.issue, s) : s;
-      if (issue === null) return fail();
-      result = oddCoupon(this.op as OddCouponOp, s, m, issue, fl, rate, yldOrPrice, redemption, freq);
-    } else {
-      result = bondPriceYield(this.op as BondPriceOp, s, m, rate, yldOrPrice, redemption, freq);
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: number | SolError | null } {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 
-
 // ─── AMORTIZATION SCHEDULE ───────────────────────────────────────────────────
-export class AmortizationNode extends ClassicPreset.Node {
+export class AmortizationNode extends GraphNode {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     rate: "The rate PER PERIOD: a 6% annual loan paid monthly is 0.005 here, with nper in months.",
     frame: "Period · Payment · Interest · Principal · Balance. Payment, interest and principal carry Excel's sign, negative for a loan received.",
@@ -1078,34 +777,18 @@ export class AmortizationNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Schedule"));
   }
 
-  frameShape(): Shape {
-    return { columns: [
-      { name: "Period", type: "number" }, { name: "Payment", type: "number" }, { name: "Interest", type: "number" },
-      { name: "Principal", type: "number" }, { name: "Balance", type: "number" },
-    ] };
+  frameShape(): Shape | null {
+    return sampleShapeOnCore("amortizationSchedule", [], [0.05, 12, 1000, 0, 0]);
   }
 
-  data(inputs: { rate?: number[]; nper?: number[]; pv?: number[]; fv?: number[] }): { frame: FrameValue | null } {
-    const rate = readInput(inputs.rate, this.literals.rate ?? 0);
-    const nper = readInput(inputs.nper, this.literals.nper ?? 0);
-    const pv   = readInput(inputs.pv, this.literals.pv ?? 0);
-    const fv   = readInput(inputs.fv, this.literals.fv ?? 0);
-    if (rate === null || nper === null || pv === null || fv === null) { this.cachedResult = null; return { frame: null }; }
-    const rows = amortizationSchedule(rate, nper, pv, fv, this.paymentTiming === "beg" ? 1 : 0);
-    const frame: FrameValue | null = rows.length === 0 ? null : { __frame: true, columns: [
-      { name: "Period",    type: "number", values: rows.map((r) => r.period) },
-      { name: "Payment",   type: "number", values: rows.map((r) => r.payment) },
-      { name: "Interest",  type: "number", values: rows.map((r) => r.interest) },
-      { name: "Principal", type: "number", values: rows.map((r) => r.principal) },
-      { name: "Balance",   type: "number", values: rows.map((r) => r.balance) },
-    ] };
-    this.cachedResult = frame;
-    return { frame };
+
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
   }
 }
 
 // ─── RETURNS (return-series quant one-liners) ────────────────────────────────
-export class ReturnsNode extends ClassicPreset.Node {
+export class ReturnsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     list: "Prices for the price-based ops (log / simple returns, drawdown, CAGR); per-period returns for the rest.",
     rf: "Risk-free rate PER PERIOD (an annual 4% on daily data is 0.04 / 252); 0 when unwired.",
@@ -1144,13 +827,7 @@ export class ReturnsNode extends ClassicPreset.Node {
     return { removed, outputChanged };
   }
 
-  data(inputs: { list?: (number | null | SolError)[][]; rf?: number[]; periods?: number[] }) {
-    const arr = inputs.list?.[0] ?? null;
-    const rf = readInput(inputs.rf, this.literals.rf ?? 0);
-    const periods = readInput(inputs.periods, this.literals.periods ?? 1);
-    if (arr === null || rf === null || periods === null) { this.cachedResult = null; return { result: null }; }
-    const result = returnsOp(this.op, arr, rf, periods);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: (number | null | SolError)[] | number | SolError | null } {
+    return nodeOnCore(this, inputs) as { result: (number | null | SolError)[] | number | SolError | null };
   }
 }

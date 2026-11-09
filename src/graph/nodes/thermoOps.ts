@@ -1,74 +1,13 @@
 // [[C17]] shareImpl
 // Compute from the formulation, never a transcribed table.
 
-import { solError, type SolError } from "../errorValue";
-
-// US Standard Atmosphere 1976, 0–86 km; base pressures derive from the layer table.
-// ISA's own constants: g₀ = 9.80665, M = 0.0289644 kg/mol, R* = 8.31432 J/(mol·K).
-
-const ISA_R_SPEC = 287.0531; // R*/M, J/(kg·K)
-const GM_OVER_R = 0.034163195; // g₀·M/R*, K/m
-const EARTH_R = 6356766; // m, for geometric → geopotential
-
-// [base geopotential altitude m, lapse rate K/m]; base temps chain from 288.15 K.
-const ISA_LAYERS: Array<[number, number]> = [
-  [0, -0.0065], [11000, 0], [20000, 0.001], [32000, 0.0028],
-  [47000, 0], [51000, -0.0028], [71000, -0.002],
-];
-const ISA_TOP = 84852; // m geopotential (86 km geometric)
-
-const ISA_BASES: Array<{ h: number; L: number; T: number; p: number }> = (() => {
-  const out = [{ h: 0, L: ISA_LAYERS[0][1], T: 288.15, p: 101325 }];
-  for (let i = 1; i < ISA_LAYERS.length; i++) {
-    const prev = out[i - 1];
-    const [h] = ISA_LAYERS[i];
-    const dh = h - prev.h;
-    const T = prev.T + prev.L * dh;
-    const p = prev.L === 0
-      ? prev.p * Math.exp((-GM_OVER_R * dh) / prev.T)
-      : prev.p * (prev.T / T) ** (GM_OVER_R / prev.L);
-    out.push({ h, L: ISA_LAYERS[i][1], T, p });
-  }
-  return out;
-})();
-
-export interface IsaPoint { T: number; p: number; rho: number; a: number }
-
-/** Standard atmosphere at a GEOPOTENTIAL altitude (m). */
-export function isaAtGeopotential(h: number): IsaPoint {
-  let layer = ISA_BASES[0];
-  for (const b of ISA_BASES) { if (h >= b.h) layer = b; else break; }
-  const dh = h - layer.h;
-  const T = layer.T + layer.L * dh;
-  const p = layer.L === 0
-    ? layer.p * Math.exp((-GM_OVER_R * dh) / layer.T)
-    : layer.p * (layer.T / T) ** (GM_OVER_R / layer.L);
-  const rho = p / (ISA_R_SPEC * T);
-  const a = Math.sqrt(1.4 * ISA_R_SPEC * T);
-  return { T, p, rho, a };
-}
-
-/** Standard atmosphere at a GEOMETRIC altitude (m) — what an altimeter/GPS reads. */
-export function isaAtGeometric(z: number): IsaPoint {
-  return isaAtGeopotential((EARTH_R * z) / (EARTH_R + z));
-}
-
-/** The −5…86 km domain (the 1976 tables start at −5 km) is checked on the geopotential altitude. */
-export function standardAtmosphere(z: number): IsaPoint | SolError {
-  const h = (EARTH_R * z) / (EARTH_R + z);
-  if (h < -5000 || h > ISA_TOP) {
-    return solError("#DOMAIN!", "The 1976 standard atmosphere is defined from −5 to 86 km");
-  }
-  return isaAtGeopotential(h);
-}
-
 // log₁₀(p/mmHg) = A − B/(C + T°C), Lange's-handbook coefficient form; `bp` is the normal boiling point each triple must reproduce.
 
 export type AntoineOp =
   | "water" | "ethanol" | "methanol" | "isopropanol"
   | "acetone" | "benzene" | "toluene" | "hexane" | "ammonia";
 
-export interface AntoineMeta { label: string; A: number; B: number; C: number; bp: number }
+interface AntoineMeta { label: string; A: number; B: number; C: number; bp: number }
 
 export const ANTOINE: Record<AntoineOp, AntoineMeta> = {
   water:       { label: "Water",       A: 8.07131, B: 1730.63,  C: 233.426, bp: 100.0 },
@@ -82,10 +21,3 @@ export const ANTOINE: Record<AntoineOp, AntoineMeta> = {
   ammonia:     { label: "Ammonia",     A: 7.3605,  B: 926.132,  C: 240.17,  bp: -33.34 },
 };
 
-const MMHG_TO_PA = 133.322387415;
-
-/** Vapor pressure in Pa at t °C. */
-export function antoinePressure(op: AntoineOp, t: number): number {
-  const { A, B, C } = ANTOINE[op];
-  return MMHG_TO_PA * 10 ** (A - B / (C + t));
-}

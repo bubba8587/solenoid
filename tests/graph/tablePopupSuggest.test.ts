@@ -1,7 +1,7 @@
-// [[C58]] tableInputRawText
+// [[C58]] tableInputRawText, [[table-popup#Editing a cell]], [[table-popup#Lists]]
 import { describe, it, expect } from "vitest";
 import { listInViewOrder, suggestionCells } from "../../src/graph/components/TablePopup";
-import { distinctColumnValues } from "../../src/graph/frameVerbs";
+import { distinctColumnValues } from "./coreVerbs";
 
 describe("suggestionCells", () => {
   it("a list suggests from all its items, whichever one is being edited", () => {

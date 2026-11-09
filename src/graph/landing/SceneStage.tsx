@@ -1,31 +1,25 @@
 // [[B3]] sameNodeEverywhere
 import { useEffect, useId, useMemo, useState } from "react";
-import { NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../graphEditor";
+import { DataflowEngine } from "../dataflowEngine";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import type { Schemes } from "../schemes";
 import { FlowSurfaceContext, FlowRevealContext } from "../flowSurface";
 import { FlowSurface, idleHandlers, type SurfaceStack, type SurfaceHooks } from "../flow/FlowSurface";
 import { makeFlowView } from "../flow/flowView";
-import { installInputCoercion } from "../coerceInputs";
-import { installErrorGuards } from "../errorValue";
 import { reconcileFcTypes } from "../fcReconcile";
 import { makeEnsureElk, elkTidyLayout, tidyOptionsFromSettings } from "../tidyArrange";
 import { measuredBox } from "../nodeSize";
 import { registerOwnedGraph } from "../activeGraph";
 import { whenConnectionsSettled, hasInflightConnections } from "../connectionStore";
 import { computeStack } from "./landingCompute";
+import { useCoreReady } from "../coreReady";
 
 const ensureElk = makeEnsureElk(() => false);
 
 
 function makeSceneStack(): SurfaceStack {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const handlers = idleHandlers();
@@ -77,20 +71,24 @@ function waitForMeasured(stack: SurfaceStack, budget = 30): Promise<void> {
   });
 }
 
-export function SceneStage({
-  build,
-  className,
-  manualLayout,
-  awaitConnections,
-}: {
+type SceneStageProps = {
   build: (s: SurfaceStack) => Promise<void>;
   className?: string;
   /** The build fn positions the nodes itself, so the ELK/Tidy pass is skipped. */
   manualLayout?: boolean;
   /** The scene reads a connection: wait for every in-flight read and recompute before measuring. */
   awaitConnections?: boolean;
-}) {
+};
+
+/** Holds the scene's box empty until the core loads; the scene builds a graph on it. */
+export function SceneStage(props: SceneStageProps) {
+  if (!useCoreReady()) return <div className={props.className} />;
+  return <LoadedSceneStage {...props} />;
+}
+
+function LoadedSceneStage({ build, className, manualLayout, awaitConnections }: SceneStageProps) {
   const stack = useMemo(makeSceneStack, []);
+  useEffect(() => () => stack.editor.dispose(), [stack]);
   const rfId = useId();
   // Held until the headless layout settles, or the entrance plays at the origin-stacked positions.
   const [ready, setReady] = useState(false);
@@ -201,7 +199,6 @@ function SceneInner({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stack]);
   return <FlowSurface stack={stack} hooks={hooks} />;
 }

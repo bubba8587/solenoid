@@ -1,4 +1,4 @@
-import { IsInNode as IsInNodeType, TallyNode as TallyNodeType } from "../rete-nodes";
+import { IsInNode as IsInNodeType, TallyNode as TallyNodeType } from "../nodeClasses";
 import { makeNodeComponent } from "./standardNode";
 
 export const IsInComponent = makeNodeComponent<IsInNodeType>((n) => n.cachedList);

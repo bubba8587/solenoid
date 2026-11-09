@@ -1,8 +1,7 @@
-// [[B3]] sameNodeEverywhere
+// [[B3]] sameNodeEverywhere, [[pointer-gestures#Zoom steps]], [[pointer-gestures#Wheel zoom]]
 import { describe, it, expect } from "vitest";
 import { boundZoom, clampZoom, floorZoom, MIN_ZOOM, MAX_ZOOM, ZOOM_SNAP } from "../../src/graph/viewPresets";
 
-// The camera rests only on multiples of ZOOM_SNAP; fits snap down so content still fits.
 describe("zoom snap", () => {
   it("clampZoom snaps to the nearest step and stays in range", () => {
     expect(clampZoom(0.74)).toBeCloseTo(0.7, 10);

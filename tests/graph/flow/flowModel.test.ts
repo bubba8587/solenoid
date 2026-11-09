@@ -1,14 +1,12 @@
-// [[A1]], [[B3]]
+// [[A1]], [[B3]], [[react-flow-surface-contract#The flow model]], [[react-flow-surface-contract#Groups are sub-flows]], [[react-flow-surface-contract#Isolate]]
 import { describe, it, expect } from "vitest";
 import { buildModel, toFlowNodes, toFlowEdges, toFlowPosition, fromFlowPosition, nodeClassName } from "../../../src/graph/flow/flowModel";
 import { isolateStore } from "../../../src/graph/isolateStore";
-import { DisplayNode } from "../../../src/graph/rete-nodes";
+import { DisplayNode } from "../../../src/graph/nodeClasses";
 import { computeAll } from "../../../src/graph/graphCompute";
 import { SEEDS as FLOW_SEEDS, DEFAULT_SEED_ID } from "../../../src/graph/seeds";
 import { isSolError } from "../../../src/graph/errorValue";
 
-// C0 pin: a saved graph builds the headless model, computes, and projects into
-// React-Flow-shaped nodes/edges with per-port handles intact.
 
 describe("flow model (React Flow port C0)", () => {
   it("builds and computes the default seed", async () => {
@@ -61,8 +59,6 @@ describe("flow model (React Flow port C0)", () => {
   });
 });
 
-// Groups are RF sub-flows: a member carries parentId and a position RELATIVE to its
-// group's box (RF tows it with the group); the model itself stays absolute.
 describe("group members as RF children", () => {
   // Live nodes mint their own ids; the loader remaps a group's saved member ids the
   // same way (persistence.ts idMap).

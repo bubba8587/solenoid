@@ -1,39 +1,33 @@
 // [[C25]]
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { TableInputNode, TableReshapeNode } from "../../src/graph/nodes/matrix";
 import { MapTableNode } from "../../src/graph/nodes/tableLambda";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
 import { TextSplitNode } from "../../src/graph/nodes/text";
 import { DisplayNode } from "../../src/graph/nodes/display";
 
-// End-to-end polyform checks through a real editor + DataflowEngine with the
-// same two wrappers Canvas installs (central input coercion + error guard).
+// End-to-end polyform checks through a real editor + DataflowEngine and its
+// input boundary (central input coercion + error guard), as on the canvas.
 // These cover what a bare node.data() can't: that a value flows across a
 // connection into a polyform node's `any` input UN-coerced (coerceInputs only
 // normalizes the numeric lattice), and that a text/date result flows back out
 // on its swapped socket into a real consumer.
 
 function connect(
-  editor: NodeEditor<Schemes>,
-  src: ClassicPreset.Node, srcOut: string, tgt: ClassicPreset.Node, tgtIn: string,
+  editor: GraphEditor<Schemes>,
+  src: GraphNode, srcOut: string, tgt: GraphNode, tgtIn: string,
 ) {
   return editor.addConnection(
-    new ClassicPreset.Connection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
+    new GraphConnection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
   );
 }
 
 function makeEditor() {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   return { editor, engine };
@@ -43,7 +37,7 @@ describe("polyform through the engine", () => {
   it("MAP turns a numeric matrix source into a text matrix", async () => {
     const { editor, engine } = makeEditor();
     const table = new TableInputNode({ tableText: "1, 2\n3, 4" });
-    const map = new MapTableNode({ expr: '"r" & row & "c" & col', resultAs: "text" });
+    const map = new MapTableNode({ expr: '"r" & row & "c" & col' });
     await editor.addNode(table);
     await editor.addNode(map);
     // table (a `table` output) → MAP's `any` value input: the matrix passes
@@ -60,7 +54,7 @@ describe("polyform through the engine", () => {
     const { editor, engine } = makeEditor();
     const split = new TextSplitNode();
     split.stringLiterals = { text: "alice,bob,cara", delimiter: "," };
-    const expr = new ExpressionNode({ expr: "UPPER(name)", resultAs: "text" });
+    const expr = new ExpressionNode({ expr: "UPPER(name)" });
     await editor.addNode(split);
     await editor.addNode(expr);
     // strlist → Expression's `any` input `name`: arrives as the raw string[]
@@ -72,7 +66,7 @@ describe("polyform through the engine", () => {
 
   it("a text Expression result flows out its swapped socket into a consumer", async () => {
     const { editor, engine } = makeEditor();
-    const expr = new ExpressionNode({ expr: 'UPPER("hi")', resultAs: "text" });
+    const expr = new ExpressionNode({ expr: 'UPPER("hi")' });
     const disp = new DisplayNode();
     await editor.addNode(expr);
     await editor.addNode(disp);
@@ -87,7 +81,7 @@ describe("polyform through the engine", () => {
   it("a text matrix flows MAP → TOROW → list (the reshaper completes the chain)", async () => {
     const { editor, engine } = makeEditor();
     const table = new TableInputNode({ tableText: "1, 2\n3, 4" });
-    const map = new MapTableNode({ expr: '"#" & value', resultAs: "text" });
+    const map = new MapTableNode({ expr: '"#" & value' });
     const torow = new TableReshapeNode({ op: "torow" });
     await editor.addNode(table);
     await editor.addNode(map);

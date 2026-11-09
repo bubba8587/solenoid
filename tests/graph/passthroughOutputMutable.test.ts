@@ -5,7 +5,7 @@ import { getPassthrough } from "../../src/graph/nodes/passthrough";
 import { MutableSocket, SolenoidSocket, isWildcardType } from "../../src/graph/sockets";
 
 // ─── The precondition for "adoption is the only type resolver" ────────────────
-// `reconcileTrueAnyTypes` writes a passthrough's resolved type onto its output
+// The Type Settle (`settle.rs`) writes a passthrough's resolved type onto its output
 // socket, but ONLY when that socket is a MutableSocket:
 //
 //     const outSock = node.outputs?.[spec.output]?.socket;

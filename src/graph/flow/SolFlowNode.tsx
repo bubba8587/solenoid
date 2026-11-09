@@ -2,13 +2,13 @@
 import { memo, useSyncExternalStore } from "react";
 import { Handle, Position } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
-import { ClassicPreset } from "rete";
+import { GraphSocket } from "../graphModel";
 import { SolenoidSocket, SOCKET_COLORS, SOCKET_TYPE_LABELS } from "../sockets";
 import { cableValueStore } from "../cableValueStore";
 import { previewValue } from "./preview";
 import type { SolFlowNode as SolFlowNodeType } from "./SolNodeAdapter";
 
-type Port = { socket?: ClassicPreset.Socket; label?: string; index?: number };
+type Port = { socket?: GraphSocket; label?: string; index?: number };
 
 function portRows(ports: Record<string, Port | undefined>): [string, Port][] {
   return (Object.entries(ports).filter(([, p]) => p) as [string, Port][]).sort(

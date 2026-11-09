@@ -1,22 +1,23 @@
-// [[B11]] maximalMerge, [[C118]] formatTravelsWithValue, [[C95]] commitOnEnter
+// [[B11]] maximalMerge, [[C118]] formatTravelsWithValue, [[B19]] spreadsheetHabits
 import { useEffect, useState, useSyncExternalStore, type ChangeEvent } from "react";
-import { FormatControllerNode, VALUE_INPUT_OP_META, type ValueInputNode as ValueInputNodeType, type ValueInputOp } from "../rete-nodes";
+import { VALUE_INPUT_OP_META, type ValueInputNode as ValueInputNodeType, type ValueInputOp } from "../nodeClasses";
 import { NEGATIVE_STYLE_LABELS, SCALE_MODE_LABELS, type FormatStyleId, type TextCase, type TextAlign, type LogicalStyle, type DecimalMode, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { familyOf, controlsFor, groupingApplies, negativeApplies, scaleApplies } from "../formatModel";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
-import { retypeOutputCables } from "../fcReconcile";
+import { reconcileFcs, retypeOutputCables } from "../fcReconcile";
 import { clamp } from "../nodes/mathUtils";
 import { stopDragStart } from "../coarse";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { collapseStore } from "../collapseStore";
-import { SegToggle, OpToggle } from "./SegToggle";
+import { SegToggle, OpCycle } from "./SegToggle";
 import { LazySelect } from "./LazySelect";
 import { CardSection } from "./CardSection";
 import { TypeIcon } from "./TypeIcon";
 import { FormatStyleSelect, DateStyleSelect, TextCaseSelect, LogicalStyleSelect, UnitSelect, CustomPatternField } from "./fcControls";
-import { useDraftCommit, useNumberScrub, QuotedTextInput, INVALID_DRAFT } from "./inlineInput";
+import { useDraftCommit, useNumberScrub, QuotedTextInput, INVALID_DRAFT, LogicalCheck } from "./inlineInput";
 import { DateEntry } from "./DateEntry";
+import { CollapsedCell } from "./CollapsedCell";
 import type { DisplayValue } from "./valueDisplayFormat";
 import "./ValueInputNode.css";
 // The Format Controller's toggle and checkbox styles, so the same picks look the same on both cards.
@@ -42,14 +43,14 @@ async function applyValueOp(node: ValueInputNodeType, t: ValueInputOp): Promise<
   card?.style.removeProperty("width");
   if (editor && view) await retypeOutputCables(editor, view, node.id, "value");
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 /** A display pick changes no value, so it re-resolves every FC (one inheriting from this card) and redraws the whole graph, as the FC's own picks do. */
 function applyDisplayPick(node: ValueInputNodeType): void {
   const editor = getOwningEditor(node.id);
-  if (editor) for (const n of editor.getNodes()) if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);
-  void processGraph();
+  if (editor) reconcileFcs(editor, null);
+  node.edited(); void processGraph();
 }
 
 export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType>) {
@@ -63,26 +64,43 @@ export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType
   const entry = !collapsed;
 
   return (
-    <NodeShell node={data} emit={emit}>
-      <OpToggle
-        className="solenoid-valin__type"
-        value={dt}
-        options={OP_OPTIONS}
-        onChange={(next) => { setDt(next); void applyValueOp(data, next); }}
-      />
-      {entry && dt === "number" && <NumberEntry text={data.value} onCommit={commitValue} />}
-      {entry && dt === "string" && <QuotedTextInput variant="value" resizable value={data.value} onChange={commitValue} />}
-      {entry && dt === "date" && <DateEntry raw={data.value} onCommit={commitValue} />}
-      {entry && dt === "logical" && (
-        <LogicalCheck
-          checked={/^true$/i.test(data.value.trim())}
-          onToggle={() => commitValue(/^true$/i.test(data.value.trim()) ? "FALSE" : "TRUE")}
-        />
+    <NodeShell node={data} emit={emit} cellCollapse className="solenoid-valin">
+      {entry && (
+        <div className="solenoid-valin__entry">
+          {dt === "number" && <NumberEntry text={data.value} onCommit={commitValue} />}
+          {dt === "string" && <QuotedTextInput variant="value" resizable value={data.value} onChange={commitValue} />}
+          {dt === "date" && <DateEntry raw={data.value} onCommit={commitValue} />}
+          {dt === "logical" && (
+            <LogicalCheck
+              checked={/^true$/i.test(data.value.trim())}
+              onToggle={() => commitValue(/^true$/i.test(data.value.trim()) ? "FALSE" : "TRUE")}
+            />
+          )}
+          <OpCycle
+            className="solenoid-valin__type"
+            value={dt}
+            options={OP_OPTIONS}
+            onChange={(next) => { setDt(next); void applyValueOp(data, next); }}
+          />
+        </div>
       )}
       <CardSection label="Format" className="solenoid-valin__format" collapsible defaultOpen={formatIsSet(data)}>
         <FormatRows node={data} dt={dt} pick={pick} />
       </CardSection>
-      <ValueDisplay value={data.cachedValue as DisplayValue} socketKey="value" />
+      {collapsed ? (
+        <CollapsedCell
+          value={data.cachedValue as DisplayValue}
+          socketKey="value"
+          edit={{
+            text: data.value,
+            onCommit: commitValue,
+            // A logical has two values, so a press flips it, as its checkbox does.
+            flip: dt === "logical" ? () => commitValue(/^true$/i.test(data.value.trim()) ? "FALSE" : "TRUE") : undefined,
+          }}
+        />
+      ) : (
+        <ValueDisplay value={data.cachedValue as DisplayValue} socketKey="value" />
+      )}
     </NodeShell>
   );
 }
@@ -291,7 +309,7 @@ function CustomUnitRow({ node, pick }: { node: ValueInputNodeType; pick: (set: (
     <div className="solenoid-node__field-row">
       <input
         type="text"
-        className="solenoid-node__inline-input"
+        className="solenoid-node__inline-input sol-placeholder-example"
         value={field.draft}
         placeholder="unit, for example psi"
         onChange={(e) => field.setDraft(e.target.value)}
@@ -336,23 +354,3 @@ function NumberEntry({ text, onCommit }: { text: string; onCommit: (text: string
   );
 }
 
-/** A logical Value Input's TRUE/FALSE checkbox. */
-export function LogicalCheck({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
-  return (
-    <label
-      style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "2px 0" }}
-      onPointerDown={stopDragStart}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onToggle}
-        style={{ width: 14, height: 14 }}
-      />
-      <span style={{ fontSize: 13, color: checked ? "color-mix(in srgb, var(--sol-ok) 70%, var(--text))" : "var(--text-dim)" }}>
-        {checked ? "TRUE" : "FALSE"}
-      </span>
-    </label>
-  );
-}

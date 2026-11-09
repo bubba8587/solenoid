@@ -1,9 +1,9 @@
-// [[C51]] formulaNaming, [[C14]] currentExcelParity
+// [[C51]] formulaNaming, [[B16]] oneFormulaSurface
 // Derived from NODE_EXCEL, never hand-edited: declare an equivalence there and both maps follow.
 
 import { NODE_EXCEL } from "./nodeExcel";
 
-export const EXCEL_TO_CATALOG: Record<string, string> = {};
+const EXCEL_TO_CATALOG: Record<string, string> = {};
 
 export const CATALOG_TO_EXCEL: Map<string, string[]> = new Map();
 

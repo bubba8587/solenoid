@@ -4,7 +4,7 @@ import { getOwningEditor, getOwningView } from "../activeGraph";
 import { useFlowResizeGrip } from "../flowSurface";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { scheduleAutosave } from "../persistence";
-import { nodeResizable } from "../rete-nodes";
+import { nodeResizable } from "../nodeClasses";
 
 // The width floor sits below the CSS default (180) on purpose; the height floor bounds only the value box.
 const MIN_CARD_W = 140;

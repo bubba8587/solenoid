@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator
+// [[A1]] visualGraphCalculator, [[stores#Shared slots]]
 import { describe, it, expect } from "vitest";
 import { inspectorStore } from "../../src/graph/inspectorStore";
 

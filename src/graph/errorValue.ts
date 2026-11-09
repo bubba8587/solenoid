@@ -1,6 +1,4 @@
-// [[C24]], [[E9]] errorsKeepOrigin, [[C24]] arraySemantics
-import { perfEnabled, recordNode } from "./perfProbe";
-import { displayNameOf } from "./nodeNamer";
+// [[C24]], [[E9]] errorsKeepOrigin, [[C24]] arraySemantics, [[E20]] pointError
 
 export type SolErrorCode =
   | "#DIV/0!" | "#N/A"
@@ -9,6 +7,7 @@ export type SolErrorCode =
   | "#NAME?" | "#REF!" | "#CIRC!"
   | "#SOLVE!"
   | "#AMBIGUOUS!"
+  | "#POINT!"
   | "#ERROR!";
 
 const TAG = "__solError";
@@ -42,6 +41,7 @@ export const ERROR_EXPLANATIONS: Record<SolErrorCode, string> = {
   "#CIRC!":  "A circular dependency: the calculation feeds back into itself. Remove one cable in the cycle to break it.",
   "#SOLVE!": "The Equation node found no value that satisfies the equation. Check the known values, or rearrange the equation.",
   "#AMBIGUOUS!": "A date like 3/4/2026 could mean April 3 or March 4. Write the month as a name (3-Apr-2026) or use the ISO form (2026-04-03).",
+  "#POINT!": "A position, like a date or a °C reading, was used as an amount: added to another, scaled, or summed. Shift it by an amount, subtract two for the gap between them, or average them.",
   "#ERROR!": "The node failed unexpectedly. If it persists, it's likely a Solenoid bug worth reporting.",
 };
 
@@ -53,43 +53,6 @@ export function isSolError(v: unknown): v is SolError {
   return typeof v === "object" && v !== null && (v as Record<string, unknown>)[TAG] === true;
 }
 
-export function isNaError(v: unknown): v is SolError {
-  return isSolError(v) && v.code === "#N/A";
-}
-
-function fromThrown(e: unknown): SolError {
-  if (isSolError(e)) return e;
-  // Matched by name, not instanceof, so this module never imports the coercion layer.
-  if (e instanceof Error && e.name === "ShapeError") {
-    return solError("#SHAPE!", e.message);
-  }
-  const msg = e instanceof Error ? e.message : String(e);
-  return solError("#ERROR!", `This node failed to compute: ${msg}`);
-}
-
-export function firstInputError(
-  inputs: Record<string, unknown[] | undefined>,
-): SolError | null {
-  for (const arr of Object.values(inputs)) {
-    if (!arr) continue;
-    for (const v of arr) if (isSolError(v)) return v;
-  }
-  return null;
-}
-
-export const SEES_ERRORS: ReadonlySet<string> = new Set([
-  "IFErrorNode", "IsTestNode",
-  "ConduitNode", "CableSwitchNode",
-  "DisplayNode", "NoteNode", "ReportNode",
-  "ChartNode",
-  "CompositeNode", "CompositeOutputNode",
-]);
-
-const WRAPPED = Symbol("solErrorGuard");
-
-type DataFn = (inputs: Record<string, unknown[] | undefined>) =>
-  Record<string, unknown> | Promise<Record<string, unknown>>;
-
 // Duck-typed: importing from frame.ts would cycle, since frame.ts imports this module.
 interface FrameLikeColumn { values: unknown[] }
 interface FrameLike { __frame: true; columns: FrameLikeColumn[] }
@@ -99,6 +62,7 @@ export function isFrameLike(v: unknown): v is FrameLike {
     Array.isArray((v as { columns?: unknown }).columns);
 }
 
+// The bounded scan's shape, as the graph core's guard samples a container (`boundary.rs`, error-values.md).
 export const CELL_SCAN_HEAD = 64;
 export const CELL_SCAN_STRIDE_SAMPLES = 32;
 
@@ -111,72 +75,8 @@ export function sampledCellIndices(len: number): number[] {
   return idx;
 }
 
-export function findCellError(v: unknown): SolError | null {
-  if (isSolError(v)) return v;
-  if (Array.isArray(v)) {
-    for (const i of sampledCellIndices(v.length)) {
-      const cell: unknown = v[i];
-      if (isSolError(cell)) return cell;
-      if (Array.isArray(cell)) { const e = findCellError(cell); if (e) return e; }
-    }
-    return null;
-  }
-  if (isFrameLike(v)) {
-    for (const col of v.columns) {
-      for (const i of sampledCellIndices(col.values.length)) {
-        if (isSolError(col.values[i])) return col.values[i];
-      }
-    }
-    return null;
-  }
-  return null;
-}
-
-// Goes through nodeNamer.ts because importing catalogUtils directly would cycle.
-const nodeDisplayName = (n: object): string => displayNameOf(n);
-
-function withOrigin(v: unknown, nodeId: string, nodeName: string): unknown {
-  if (isSolError(v)) return v.origin ? v : { ...v, origin: { nodeId, nodeName } };
-  let origin: SolErrorOrigin | null = null;
-  const tagged = new Map<SolError, SolError>();
-  const tag = (cell: SolError): SolError => {
-    let t = tagged.get(cell);
-    if (!t) { t = { ...cell, origin: (origin ??= { nodeId, nodeName }) }; tagged.set(cell, t); }
-    return t;
-  };
-  const tagCells = (values: readonly unknown[]): unknown[] | null => {
-    let out: unknown[] | null = null;
-    for (let i = 0; i < values.length; i++) {
-      const cell: unknown = values[i];
-      if (isSolError(cell) && !cell.origin) {
-        if (!out) out = values.slice();
-        out[i] = tag(cell);
-      }
-    }
-    return out;
-  };
-  if (Array.isArray(v)) return tagCells(v) ?? v;
-  if (isFrameLike(v)) {
-    let out: FrameLike | null = null;
-    v.columns.forEach((col, ci) => {
-      const values = tagCells(col.values);
-      if (values) {
-        if (!out) out = { ...v, columns: v.columns.slice() };
-        out.columns[ci] = { ...col, values };
-      }
-    });
-    return out ?? v;
-  }
-  return v;
-}
-
-function findInputSlot(inputs: Record<string, unknown[] | undefined>, err: SolError): string | undefined {
-  for (const [key, arr] of Object.entries(inputs)) {
-    if (arr?.includes(err)) return key;
-  }
-  return undefined;
-}
-
+/** What the graph core's guard reports after each node's call: the first error on its outputs, or `null` when they
+ *  are clean, which re-arms a sink's edge detection. At most one report per node per call. */
 type ErrorSink = (nodeId: string, err: SolError | null) => void;
 const _errorSinks: ErrorSink[] = [];
 export function registerErrorSink(fn: ErrorSink): () => void {
@@ -186,84 +86,31 @@ export function registerErrorSink(fn: ErrorSink): () => void {
     if (i >= 0) _errorSinks.splice(i, 1);
   };
 }
-function reportError(nodeId: string, err: SolError | null): void {
+export function hasErrorSinks(): boolean {
+  return _errorSinks.length > 0;
+}
+export function reportToErrorSinks(nodeId: string, err: SolError | null): void {
   for (const sink of _errorSinks) sink(nodeId, err);
 }
-function reportOut(nodeId: string, out: Record<string, unknown> | undefined): void {
-  if (!out || _errorSinks.length === 0) return;
-  for (const v of Object.values(out)) {
-    const err = findCellError(v);
-    if (err) { reportError(nodeId, err); return; }
-  }
-  reportError(nodeId, null);
+
+// The real code set, so a foreign or malformed code from the boundary becomes #ERROR! rather than being trusted.
+const CANONICAL_CODES: ReadonlySet<string> = new Set(Object.keys(ERROR_EXPLANATIONS));
+
+function isCanonicalCode(c: unknown): c is SolErrorCode {
+  return typeof c === "string" && CANONICAL_CODES.has(c);
 }
 
-export function installErrorGuards(node: object): void {
-  const n = node as {
-    [WRAPPED]?: boolean;
-    id?: string;
-    label?: string;
-    data?: DataFn;
-    outputs?: Record<string, unknown>;
-    cachedResult?: unknown;
-    constructor: { name: string };
-  };
-  if (typeof n.data !== "function" || n[WRAPPED]) return;
-  n[WRAPPED] = true;
-
-  const orig = n.data.bind(n);
-  const passRaw = SEES_ERRORS.has(n.constructor.name);
-  const typeName = n.constructor.name;
-  const nodeId = n.id ?? "?";
-
-  const errorOut = (err: SolError, inputs?: Record<string, unknown[] | undefined>): Record<string, unknown> => {
-    const tagged: SolError = err.origin ? err : {
-      ...err,
-      origin: { nodeId, nodeName: nodeDisplayName(n), inputSlot: inputs && findInputSlot(inputs, err) },
-    };
-    const out: Record<string, unknown> = {};
-    for (const key of Object.keys(n.outputs ?? {})) out[key] = tagged;
-    if ("cachedResult" in n) n.cachedResult = tagged;
-    const f = n as { cachedChart?: unknown; cachedPayload?: unknown };
-    if ("cachedChart" in f) f.cachedChart = tagged;
-    if ("cachedPayload" in f) f.cachedPayload = null;
-    reportError(nodeId, tagged);
-    return out;
-  };
-
-  const tagOutputs = (out: Record<string, unknown>): Record<string, unknown> => {
-    let changed = false;
-    const tagged: Record<string, unknown> = {};
-    const nodeName = nodeDisplayName(n);
-    for (const [k, v] of Object.entries(out)) {
-      const t = withOrigin(v, nodeId, nodeName);
-      tagged[k] = t;
-      if (t !== v) changed = true;
-    }
-    const result = changed ? tagged : out;
-    reportOut(nodeId, result);
-    return result;
-  };
-
-  n.data = (inputs) => {
-    if (!passRaw) {
-      const err = firstInputError(inputs);
-      if (err) return errorOut(err, inputs);
-    }
-    const probe = perfEnabled();
-    const t0 = probe ? performance.now() : 0;
-    try {
-      const out = orig(inputs);
-      if (out instanceof Promise) {
-        const guarded = out.then(tagOutputs, (e) => errorOut(fromThrown(e)));
-        return probe ? guarded.finally(() => recordNode(nodeId, typeName, performance.now() - t0)) : guarded;
-      }
-      const tagged = tagOutputs(out);
-      if (probe) recordNode(nodeId, typeName, performance.now() - t0);
-      return tagged;
-    } catch (e) {
-      if (probe) recordNode(nodeId, typeName, performance.now() - t0);
-      return errorOut(fromThrown(e));
-    }
-  };
+/** Rust sets `__solError` itself, so its code must be re-validated. */
+export function toSolError(thrown: unknown): SolError {
+  if (isSolError(thrown)) {
+    return isCanonicalCode(thrown.code) ? thrown : solError("#ERROR!", thrown.message);
+  }
+  if (thrown && typeof thrown === "object") {
+    const o = thrown as Record<string, unknown>;
+    const message = typeof o.message === "string" ? o.message : "IPC call failed";
+    if (isCanonicalCode(o.code)) return solError(o.code, message);
+    return solError("#ERROR!", message);
+  }
+  if (typeof thrown === "string") return solError("#ERROR!", thrown);
+  return solError("#ERROR!", "IPC call failed");
 }

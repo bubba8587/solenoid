@@ -1,4 +1,4 @@
-import type { SetCellNode as SetCellNodeType } from "../rete-nodes";
+import type { SetCellNode as SetCellNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { PairedExtensibleInputs } from "./PairedExtensibleInputs";
 import { TableDisplay } from "./TableDisplay";

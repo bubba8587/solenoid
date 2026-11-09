@@ -6,10 +6,15 @@ about what "Standoff" or "FrameRef" means sends an agent down the wrong path. Th
 single place to learn the words. One line each, plus where it lives in code, grouped by
 area. When you coin a new load-bearing term, add it here.
 
+A precise, named process is a Proper Noun (Vault Read, the No-Overlap Pass), and a family of
+processes is an **Fx** (LayoutFx, VaultBridgeFx), kept apart from graph items such as nodes and
+cables (the author, 2026-10-25).
+
 ## Graph & canvas
 
 - **Node**: one computation unit; a card on the canvas. Its `data()` method is a pure
-  function of its inputs. (`nodes/*.ts`, `components/nodeKit.tsx`)
+  function of its inputs, its body on the core. (`nodes/*.ts`, the core's `nodes/`,
+  `components/nodeKit.tsx`)
 - **Cable / connection**: a wire carrying a value from one node's output socket to
   another's input. The dependency edges of the graph. (`flow/FlowCableEdge.tsx`,
   `cablePaths.ts`)
@@ -29,6 +34,10 @@ area. When you coin a new load-bearing term, add it here.
   socket. (`drawnCables.ts`)
 - **Group** (Add menu: Node Group): a container box around member nodes; expand/collapse pushes surrounding
   nodes out of the way. (`groupPushCore.ts`, `GroupNode.tsx`)
+- **LayoutFx**: a process that moves cards the user didn't move: Tidy, Cleanup, the group
+  Expand Push, the Collapse Restore, Autofit. Each ends with a `forceLock` Standoff Solve and
+  the No-Overlap Pass; the user's own moves (drag, Align, paste) aren't LayoutFx. "Fx" names a
+  process, kept apart from graph items. (`../tree/specs/canvas/group-expand-push.md` § LayoutFx)
 - **Tidy / auto-arrange**: ELK-based layout with a custom symmetric port preset.
   (elkjs via `elkTidyLayout`, `arrangeFn`, in `tidyArrange.ts`)
 - **Isolate**: a focus mode showing only a scoped sub-region of the graph.
@@ -38,40 +47,73 @@ area. When you coin a new load-bearing term, add it here.
 - **Collapse**: shrinking a node's body to just its result box (per-node chevron).
   (`collapseStore.ts`)
 - **Snap to grid**: dropped nodes round to the 24px background-dot grid.
-  (`gridSnapStore.ts`, `GRID_SNAP_STEP`)
+  (`gridSnapStore.ts`, `DOT_SPACING`)
 - **Load curtain**: the progress overlay shown while a document loads.
   (`loadReveal.ts`, `LoadOverlay.tsx`)
 
 ## Values, types, errors
 
-- **SolError**: a tagged error value (`#DIV/0!`, `#SHAPE!`, `#TYPE!`, `#DOMAIN!`,
+- **Keyed vs typed** (the author, 2026-11-04): *keyed* (keyed in, a keyed literal) is what a person enters at
+  the keyboard; *typed* means a value has a type (a typed value, a typed socket). Write "keyed" for keyboard
+  entry, so "typed" keeps one meaning. Older docs still say "typed literal" for a keyed one; fix it where you
+  edit.
+- **SolError**: a tagged error value (`#DIV/0!`, `#SHAPE!`, `#TYPE!`, `#POINT!`, `#DOMAIN!`,
   `#OVERFLOW!`, `#CIRC!`, `#N/A`…) that propagates through the graph. One notion of
   error; `ISERROR` ⟺ `IFERROR`. (`errorValue.ts`)
 - **Missing / null**: a first-class "hole" in a list/frame: rendered `null`, *skipped* by
   aggregators, propagated by element-wise math, dropped by Filter. Distinct from an error.
-  (`valueKinds.ts` `isMissing`)
-- **`forAggregate`**: the canonical prep an aggregator must run: propagate the first
+  (`Missing` in `valueKinds.ts`)
+- **`for_aggregate`**: the canonical prep an aggregator runs: propagate the first
   SolError, drop nulls, keep the rest. The correct-handling primitive for the value model.
-  (`valueKinds.ts`)
-- **Kleene logic**: 3-valued AND/OR/NOT (true/false/null) matching SQL/Polars.
-  (`valueKinds.ts` `kleeneAnd/Or/Not`)
-- **Logical type**: the first-class Boolean (the purple socket family), rendering TRUE/FALSE
+  (the core's `value_kinds.rs`; its unit-aware twin is `for_aggregate_units`, `unit_lists.rs`)
+- **Kleene logic**: 3-valued AND/OR/NOT (true/false/null) matching SQL.
+  (the core's `kleene_and`/`kleene_or`, `excel_functions.rs`; [[C24]] arraySemantics)
+- **Logical type**: the first-class Boolean (the blue socket family), rendering TRUE/FALSE
   and converting to and from 1/0. Logical ↔ number is the one cross-family socket bridge.
   (`sockets.ts`, `nodes/logic.ts`)
+- **V / Cv**: the core's two value types. **V** is a formula value: a scalar, a list, a matrix,
+  a complex number, a LAMBDA, never a table. **Cv** is a card value, what a cable holds: a `V`,
+  or a Frame, a Cube (whose cells are `Cv`, so tables nest), a list holding tables (`Cells`) or
+  a chart, document or image as JSON. A table reaching a value socket is `#VALUE!`.
+  (`../tree/specs/computation/node-bodies.md` § The call)
+- **Card wire**: how a card's values cross between TypeScript and the core: the formula value
+  wire plus what only cards hand each other (`nodeWire.ts`, the core's `nodes/values.rs`).
 - **Socket lattice**: the rules for what can connect to what. Type families never cross on
   their own (that takes a Cast), and values flow freely up in rank. (`sockets.ts`,
   `socketConnect.test.ts`; [[C10]] socketLattice, `../tree/specs/values/socket-lattice.md`)
+- **the Type Settle**: the one process that decides every adoptive socket's current type. It
+  runs after a cable change or a load, from the wiring alone, and again after a calculation
+  whose run-time facts moved (the branch a card took, the family an extraction produced), so a
+  wildcard left by the wiring takes the type of what it carried ([[C136]] typesKnownAfterCalc).
+  Not the readouts: they only show what it decided. (the core's `settle.rs`, `trueAnyAdopt.ts`
+  `settleWildcardTypes`, `settleFacts.ts`; `../tree/specs/values/socket-lattice.md` req. 9)
+- **Widening / narrowing**: the two kinds of socket edge. Widening (up in rank, and the logical ↔ number bridge)
+  composes through any chain of cables; narrowing (a combo into its scalar) is a checked step that collapses a
+  singleton or refuses, and never composes. (`../tree/specs/values/socket-lattice.md` § The shape of what connects)
+- **Point kind / difference kind**: a value that is a position, not an amount (a date, a °C or °F reading), and the
+  amount between two of them (days, a kelvin delta). Point − point is a difference, point ± difference is a point,
+  nothing else. (`../tree/specs/values/value-semantics.md` § Points and differences; [[D115]] datesArePoints)
+- **Point weight**: the sum of an expression's coefficients on its points: 1 is a point (`(a + b) / 2`), 0 a
+  difference (`b - a`), anything else refused with `#POINT!`. (`affine_weight`, the core's `unit_dims.rs`)
+- **Aggregate kind**: what a total can be built from: removable (SUM, COUNT), a pick (MIN, MAX), a summary (AVERAGE,
+  VAR) or whole-list (MEDIAN). Decides which subtotals add up honestly.
+  (`../tree/specs/computation/formula-language.md` § Scalar operators, "What a total can be built from")
 - **Cast**: the explicit node to change a value's type family (the required bridge the
   lattice won't do automatically). (`nodes/cast.ts`)
 - **Fill**: the opt-in node to treat `null` as a real value.
   (`nodes/list.ts` `FillNode`)
+
+- **Empty kind** ([[D96]] emptySlotShowsItsValue): what a card field or formula slot is when nothing is in it.
+  A **Fallback** is a value the card computes with, muted and upright; a **Behavior** is something it does, a word in
+  brackets (`[all]`); an **Example** is an italic hint the card computes nothing from; **Required** shows nothing and
+  errors. A **default** is the value a fresh card ships in the field, which a person can clear.
 
 ## Format & units
 
 - **Format Controller (FC)**: a node that locks a value's number format and sets a unit, but
   only on a value that has none. Both ride the value through passthroughs and selectors. The
   format also carries through a transform whose op keeps the value's meaning, and drops at
-  one that doesn't ([[D41]] formatFlowsDownstream). The unit's dimension is worked out again
+  one that doesn't ([[C118]] formatTravelsWithValue). The unit's dimension is worked out again
   through the algebra, keeping its display when the dimension survives ([[C25]]
   unitOnValue). (`nodes/formatController.ts`, `fcReconcile.ts`)
 - **FC lock states**: who owns the FC's unit dropdown. *Authored*: the FC set it.
@@ -81,7 +123,8 @@ area. When you coin a new load-bearing term, add it here.
   (`nodes/formatController.ts`)
 - **Unit flow**: the machinery that carries an FC's unit and format along the value,
   downstream and upstream through passthroughs, derived on read. $ is a unit, not a format.
-  (`unitFlow.ts`, `unitFormat.ts`; `../tree/specs/values/unit-flow.md`)
+  (`unitFlow.ts` over the core's walk, `annotate.rs`; `unitFormat.ts`; `../tree/specs/values/unit-flow.md`)
+- **Reference** (chart): a reference line, point, band or box on a chart with axes, one row of the Chart's References table (`x`, `x2`, `y`, `y2`, `label`, `color`). Not an Annotation.
 - **Annotation**: the resolved unit/format metadata attached to a value for display;
   computed by walking the graph, mostly not stored. (`formatAnnotationStore.ts`)
 - **Convert**: the node that changes a value's unit (m→ft), forwarding its target into a
@@ -89,33 +132,33 @@ area. When you coin a new load-bearing term, add it here.
 
 ## Tables (frames) & the engine
 
-- **Frame**: Solenoid's table: typed columns, may carry nulls and per-cell errors.
+- **Frame**: Solenoid's version of an Excel table, in plain terms a table with headers: named, typed columns that may carry nulls and per-cell errors. Specs say "Frame" for it, so that a bare "table" always means a matrix.
+- **Matrix** (also **table**): rows of plain values, a list of lists one level deep (rows may differ in length), with no column names or types; a formula's dynamic array. Formulas take matrices but not Frames or Cubes ([[C15]] matricesInFormulas).
   (`frame.ts`)
 - **FrameValue**: a fully-materialized frame held in JS memory. (`frame.ts`)
 - **FrameRef**: a *lazy handle* on a cable pointing at a frame living in the engine
   (a query plan), not the data itself. (`frameBackend.ts` `isFrameRef`)
 - **Verb node**: a relational operation node: Filter, Sort, Join, GROUPBY, Append,
   Distinct, PIVOTBY, Unpivot, Nest, Unnest, Computed Column, Split Column and the rest of
-  the catalog's Table group. (`nodes/frame.ts`, `frameVerbs.ts`; inventory in
+  the catalog's Table group. (`nodes/frame.ts`, the core's `frame_verbs.rs`; inventory in
   `nodeCatalog.ts`)
-- **FrameBackend**: the seam with two implementations: `JsFrameBackend` (web/dev, eager)
-  and `PolarsBackend` (desktop, native Rust). One interface, chosen at startup.
-  (`frameBackend.ts`; see [[C16]] polarsEngine)
-- **Frame verbs (`frameVerbs.ts`)**: the pure JS reference implementation ("the oracle")
-  of every verb; the correctness standard the Rust engine is tested against.
-- **Materialization boundary**: the point where a lazy `FrameRef` is collected into a
-  real `FrameValue` (e.g. Get Column, a chart, an export). (`coerceInputs.ts`)
-- **Preview / collectPreview**: a verb card shows head-N rows, not the whole frame;
-  `FrameValue.__totalRows` carries the true count. (`frameBackend.ts`)
-- **Source-handle cache**: a WeakMap keyed by frame identity so a given frame uploads to
-  Rust only once. (`frameBackend.ts` `_sourceCache`)
+- **Frame store**: the core's eager frames by handle (`rs:<n>`), for the eager Frame tools
+  and the verb corpus. (`engine_source` and kin; see [[C130]] rustCore)
+- **Frame verbs**: the core's implementation of every verb (`frame_verbs.rs`); their
+  vocabulary is `frameOps.ts`.
+- **Lazy frame / FrameRef**: a frame on a cable as a base frame and a plan of ops not yet
+  run, held in the core and planned on by each verb card. (`frame_ref.rs`)
+- **Materialization boundary**: the point where a lazy frame is read whole (a non-lazy card's
+  input, a chart, an export). (`value::collected`, `boundary.rs`)
+- **Preview / collectPreview**: a verb card shows its first 5 rows, what its box draws, not the whole frame;
+  `FrameValue.__totalRows` carries the true count and `__ref` the ref. (`refs::preview`)
 - **Cube**: the recursive nested-table container, a Frame whose cells can be Frames, for
   nested data without flattening it to one wide sheet. It has a cached depth and a drill-in popup. (`CubeValue` in
   `frame.ts`; nodes in `nodes/cube.ts`, `cubePopupStore.ts`)
 - **Plan (tasks cube)**: the Schedule node's input shape: one row per task, Predecessors a
   list cell or a nested Task · Type · Lag table, nesting as the work breakdown, the optional
   Start / Finish / Deadline / Manual / Complete columns; a Local File's Project XML or
-  grammar CSV arrives in this shape. (`scheduleCpm.ts`, `planImport.ts`; `../tree/specs/computation/schedule-and-gantt.md`)
+  grammar CSV arrives in this shape. (`crates/solenoid-core/src/nodes/sched.rs`, `planImport.ts`; `../tree/specs/computation/schedule-and-gantt.md`)
 - **Gantt figure**: the read-only `chart`-socket figure of a scheduled plan: bars, milestone
   diamonds, summary brackets, dependency arrows, the critical path, today / status lines,
   shaded non-working days. Data-only payload (`packages/gantt-layout/src/payload.ts`), laid
@@ -126,11 +169,11 @@ area. When you coin a new load-bearing term, add it here.
   noPerCellFormulas). It has two surfaces on one core: an **Fx** column in the Frame Input
   popup (the last stop on the column-type button; a formula row sits under the header, and a
   wired λ is called by its socket name, `λ1` or `λ1(@a, @b)`), and the Computed Column node.
-  (`computedColumnCore.ts`, `nodes/frame.ts`, `tablePopupStore.ts`; [[C22]] rowFormulaRefs)
+  (the core's `nodes/columns.rs`, `nodes/frame.ts`, `tablePopupStore.ts`; [[C22]] rowFormulaRefs)
 - **Side value**: a value that isn't a column, wired into a computed column's formula: a
   single value or a List with one item per row. Each free name in the formula grows a side
   socket, and the socket goes when the name does (`sideVars`). `@list` reads this row's item
-  of a side List after checking its length. (`computedColumnCore.ts`, `nodes/frame.ts`)
+  of a side List after checking its length. (the core's `eval::column`, `nodes/frame.ts`)
 
 ## Formula layer
 
@@ -143,15 +186,34 @@ area. When you coin a new load-bearing term, add it here.
   card. (`nodes/lambda.ts` `captured`, `nodes/tableLambda.ts`)
 - **`@` / this-row reference**: inside a computed column, `@name` reads this row's cell of a
   column, or this row's item of a side List. A bare name is the whole column as a List, the
-  same as Excel's table references ([[C22]] rowFormulaRefs). (`computedColumnCore.ts`
-  `readRowCell`/`readWholeColumn`, `excelFormula.ts` `atcol`/`wholecol`)
+  same as Excel's table references ([[C22]] rowFormulaRefs). (the core's `eval::column`,
+  the tree's `atcol`/`wholecol`)
 - **Structured (bracket) reference**: how to write a column name that isn't a valid
   identifier. `[Unit Price]` is the whole column; `@[Unit Price]` or `[@Unit Price]` is this
-  row. (`excelFormula.ts` tokenizer `colref`/`rowref`)
-- **Formula evaluator**: the tree-walking `evalAst` in `excelFormula.ts` is THE
-  evaluation core (the old `compileFormula` codegen path was retired outright).
-- **RANGE_FUNCTIONS**: formula functions that take a whole list at once (SUM, MEDIAN…)
-  vs. element-wise broadcast ones. (`excelFormula.ts`)
+  row. (the core's `excel_formula.rs` tokens `ColRef`/`RowRef`)
+- **Formula evaluator**: the tree-walking `Eval` in the core's `eval.rs`, the one place a
+  formula is evaluated; `excel_formula.rs` parses it.
+- **Call table**: one row per formula function (`crates/solenoid-core/data/call_traits.json`):
+  how a call routes (`kind`), how a range call readies its lists (`prep`), whether it reads a
+  one-column table as a list (`free`), each argument's role and empty-slot reading, and a
+  blocked name's message. The formula half of a function's declarations.
+  (`../tree/specs/computation/formula-language.md` § The registry)
+- **Listing**: everything that makes a function findable, kept apart from what it computes:
+  its catalog leaf (name, description, search keywords, accent, formula name), its op entry in
+  a family's `OP_META`, its Excel names (`NODE_EXCEL`) and the Inspector's socket notes
+  (`socketDocs`, `frameHints`). A function that is both a formula and a card is declared three
+  times, its call-table row, its card and its listing, and one function can be listed several
+  ways (a leaf, an op of a family, an alias row) without touching the other two.
+  (`../tree/specs/canvas/add-menu.md`; `../tree/specs/floors/node-classes.md` § A new function across the app)
+- **Range function**: a function whose call-table `kind` is `range` (SUM, MEDIAN…): a list
+  argument arrives as one list, never called per element. vs. **broadcast** (called per cell)
+  and **whole-list native** (`whole`: every argument exactly as it is).
+- **Dispatch ladder**: the fixed order every formula call is checked in, lambda binding first
+  and routing last; the first matching step answers.
+  (`../tree/specs/computation/formula-language.md` § The dispatch ladder)
+- **Per-cell contract**: the one rule every element-wise op runs before it computes: an error
+  operand is the answer, else a blank operand is blank, else compute.
+  (`../tree/specs/values/error-values.md` § The per-cell contract and the non-finite guard)
 
 ## Persistence & structure
 
@@ -176,6 +238,11 @@ area. When you coin a new load-bearing term, add it here.
 - **Mail merge / Records**: a Report's Records input: one rendering (a **page**) per
   row, `record` and `index` in scope, named by the page name; the pages write as one
   note each. (`nodes/report.ts`, `documentValue.ts`)
+- **VaultBridge**: everything between a document and an Obsidian vault. The **VaultBridge
+  Nodes** are its cards (Vault Folder, Import Obsidian Note, TaskNotes, Write to Obsidian, Write
+  Tasks); the **VaultBridgeFx** are the processes behind them (the Vault Read, the Note Read,
+  the Type Read-Back, the Note Write, the Property Patch, the TaskNotes API).
+  (`../tree/specs/integrations/vault-bridge.md`)
 - **Document / library**: the multi-doc model; each doc persists to its OWN
   two-slot localStorage pair plus a light index. (`documentStore.ts`, `persistence.ts`)
 
@@ -183,8 +250,13 @@ area. When you coin a new load-bearing term, add it here.
 
 - **processGraph**: the recompute-and-rerender entry point; never call it from a text
   field's `onChange` (edits commit on Enter/blur). (`process.ts`)
-- **DataflowEngine**: rete's PULL-based execution engine (inputs resolve recursively
-  before `data()` runs; async ones awaited). (`rete-engine`, `process.ts`)
+- **DataflowEngine**: the PULL-based execution engine (inputs resolve recursively
+  before `data()` runs; async ones awaited), rete-engine's, ported to Rust in netcore-rs.
+  (`dataflowEngine.ts`, `crates/solenoid-graph`)
+- **GraphEditor**: the model's TypeScript handle over the graph core's netcore-rs editor: add and
+  remove nodes and cables, read them, and `addPipe` to hear their signals. (`graphEditor.ts`)
+- **GraphNode / GraphSocket / GraphInput / GraphOutput / GraphConnection**: what node classes
+  are built from, Solenoid's own in place of rete's classic preset. (`graphModel.ts`)
 - **Calc mode**: manual vs. automatic recompute; F9 forces a recompute in manual mode.
   (`calcModeStore.ts`; see [[C23]] calcModes)
 - **Compute overlay**: the deferred "Computing…" curtain that blocks interaction during a
@@ -197,7 +269,7 @@ area. When you coin a new load-bearing term, add it here.
   logging per-pass node `data()` + engine IPC. (`perfProbe.ts`)
 - **Alert / HUD**: the Alert node fires on status *change* (edge-detect) → a toast + the
   HUD log. (`alertStore.ts`, `HudStack.tsx`)
-- **View**: the canvas-view seam (`view.ts`, renamed from rete's "Area" 2026-08-30):
+- **View**: the canvas-view seam (`view.ts`):
   `position(id)`/`nodeElement(id)`/`connectionElement(id)`/`hasNode(id)`, the camera
   (`transform`/`zoom`/`pan`), `moveNode`, `rerenderNode`/`rerenderCables`, `measured`;
   `flow/flowView.ts` is the one implementation and `view` is its variable name
@@ -210,10 +282,13 @@ area. When you coin a new load-bearing term, add it here.
 Geometry (offsets, z-index, reflow) is `tree/specs/canvas/layout-chrome.md`; this is term → handle.
 
 - **File / menu bar**: top strip (File/Edit/… + doc name). `MenuBar.tsx` · `.solenoid-menubar`.
+  - **Documents menu**: the caret beside the doc name: recents, New Blank, the examples. `DocumentTitle.tsx` · `.solenoid-doctitle__menu`.
 - **Top bar**: toolbar row under it. `TopBar.tsx` / `AppToolbar.tsx` · `.solenoid-topbar`.
   On a TABLET it also carries the touch actions (`TabletActions.tsx`, `html.is-tablet`).
-- **Navigator**: left outline panel. `OutlinePanel.tsx` · `.solenoid-outline` (open sets
-  `body.solenoid-nav-open`).
+- **Navigator**: left panel. `OutlinePanel.tsx` · `.solenoid-outline` (open sets
+  `body.solenoid-nav-open`; its width is `--nav-w` on `body`). Two sections:
+  - **Files**: the **workspace tree** of folders, documents and (planned) pages. `WorkspaceTree.tsx` · `.solenoid-files`.
+  - **Outline**: the open level's groups and cards (the drilled-into composite's while drilled in). `.solenoid-outline__list`.
 - **Bottom bar** (mobile) — touch action bar. `MobileControls.tsx` · `.solenoid-mobile-bar`.
   A TABLET never gets it (it runs the desktop chrome) — same actions live in the top bar;
   both bars source handlers/glyphs from `touchActions.tsx` (drift-pinned).
@@ -229,10 +304,10 @@ Geometry (offsets, z-index, reflow) is `tree/specs/canvas/layout-chrome.md`; thi
 - **Popups**: the floating full-size viewers/editors, opened from a value **chip** or the
   **Display** node (never from the source node's own component — don't start a popup search
   there). Each is a `*PopupStore` (the open/close + payload state) rendered by a `*Popup.tsx`
-  built on the shared **`PopupShell.tsx`** (drag, resize grip, pin, overflow menu). To find one,
+  built on the shared **`PopupShell.tsx`** (resize grip, and the overflow menu holding Go to Source and Pin). To find one,
   grep `PopupShell` (the roster) or the relevant `*popupStore`. The set: **ChartPopup** (charts,
   Sparkline, **Record** cards — figure drawn by `ChartFigure` in `chartView.tsx`, record pager via
-  `recordNav.ts`), **TablePopup** (list/frame), **CubePopup**, **FormulaPopup**, **ScriptPopup**,
+  `recordNav.ts`), **TablePopup** (list/frame; a PIVOTBY output adds the **Pivot view**, `PivotTableView.tsx`), **CubePopup**, **FormulaPopup**, **ScriptPopup**,
   **PivotEditorPopup**. (`chartPopupStore.ts` / `tablePopupStore.ts` / `cubePopupStore.ts` / …)
 - **Problems / Alerts / Pins / Comments**: the right-side HUD stack. `HudStack.tsx` +
   `alertStore` / `pinStore` / `problemsStore` / `commentStore`.
@@ -262,11 +337,15 @@ Geometry (offsets, z-index, reflow) is `tree/specs/canvas/layout-chrome.md`; thi
   `--chip`, the one flex row that centers it (`heroChipRow` in sourceInvariants; never inline).
 - **Pills**: (1) button-group pills (radius-999 clusters, segmented toggles); (2) merged-socket
   pills on a collapsed group (`.solenoid-node__output-pill` etc.).
-- **App menu** (mobile) — the round ⋯ overflow button opening the File sheet.
-  `.solenoid-topbar__icon` → `.solenoid-menubar__sheet`. (The brand lives in Row A's
+- **App menu** (mobile) — the round ⋮ overflow button opening the menu sheet.
+  `.solenoid-topbar__icon` → `MobileMenuSheet.tsx` (`.sol-msheet`). (The brand lives in Row A's
   wordmark, `.solenoid-menubar__wordmark`.)
 - **FC**: the **Format Controller** node. `FormatControllerNode.tsx` · `formatController.ts`;
   model `formatModel.ts`, flow `unitFlow.ts`.
-- **Reference**: the tabbed overlay (Ctrl+/). `FunctionReference.tsx` · `.fr-panel`.
+- **Reference**: the tabbed overlay (Ctrl+/). `FunctionReference.tsx` · `.fr-panel`. Its first tab is the card browser (`CardReference.tsx`: the Add menu's tree and search beside a card's page); Excel Coverage lists Excel's functions by Excel's sections, each pointing at its card (`ExcelCoverage.tsx`).
 - **Inspector**: the right-dock node detail panel ((i) in the top bar). `InspectorPanel.tsx` ·
   `inspectorStore.ts` · `html.sol-inspector-docked`.
+- **Kind button**: the small type button beside a card's wildcard field (`#`, `Aa`, the calendar, the checkbox); a
+  click cycles the kind its keyed text is read as. Neutral, never the card's accent. `KeyedField` in `inlineInput.tsx`
+  · `.solenoid-node__keyed > .sol-coltype`. Value Input's type button looks the same but is the card's op (`OpCycle`,
+  in the accent).

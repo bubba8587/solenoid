@@ -1,35 +1,32 @@
-// [[C23]]
+// [[C23]] calcModes, [[compute-pass#The targeted pass equals the full pass]]
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { downstreamClosure } from "../../src/graph/graphCompute";
 
-// Guards the correctness pillar of the TARGETED processGraph path (A1/A2): the
-// downstream closure must equal the set rete-engine's reset(nodeId) invalidates, so
-// re-rendering only that cone never leaves a downstream node stale. Pure topology —
-// no compute/area needed (so it runs in the node test env).
 function connect(
-  editor: NodeEditor<Schemes>,
-  src: ClassicPreset.Node, srcOut: string, tgt: ClassicPreset.Node, tgtIn: string,
+  editor: GraphEditor<Schemes>,
+  src: GraphNode, srcOut: string, tgt: GraphNode, tgtIn: string,
 ) {
   return editor.addConnection(
-    new ClassicPreset.Connection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
+    new GraphConnection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
   );
 }
 
 // A minimal passthrough node with one input + one output, enough to wire a graph.
-class Wire extends ClassicPreset.Node {
+class Wire extends GraphNode {
   constructor(label: string) {
     super(label);
-    this.addInput("in", new ClassicPreset.Input(new ClassicPreset.Socket("s")));
-    this.addOutput("out", new ClassicPreset.Output(new ClassicPreset.Socket("s")));
+    this.addInput("in", new GraphInput(new GraphSocket("s")));
+    this.addOutput("out", new GraphOutput(new GraphSocket("s")));
   }
 }
 
 describe("downstreamClosure (targeted recompute cone)", () => {
   it("includes the start node and every transitive dependent, across branches/joins", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     editor.use(new DataflowEngine<Schemes>());
     // A → B → D,  A → C → D  (diamond),  plus isolated E.
     const A = new Wire("A"), B = new Wire("B"), C = new Wire("C"), D = new Wire("D"), E = new Wire("E");
@@ -49,14 +46,14 @@ describe("downstreamClosure (targeted recompute cone)", () => {
   });
 
   it("terminates on a cycle instead of looping forever", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     editor.use(new DataflowEngine<Schemes>());
     const X = new Wire("X"), Y = new Wire("Y");
     for (const n of [X, Y]) await editor.addNode(n as Schemes["Node"]);
     await connect(editor, X, "out", Y, "in");
     // Close the loop Y → X via a second port so it's a distinct connection.
-    Y.addOutput("out2", new ClassicPreset.Output(new ClassicPreset.Socket("s")));
-    X.addInput("in2", new ClassicPreset.Input(new ClassicPreset.Socket("s")));
+    Y.addOutput("out2", new GraphOutput(new GraphSocket("s")));
+    X.addInput("in2", new GraphInput(new GraphSocket("s")));
     await connect(editor, Y, "out2", X, "in2");
 
     const cone = downstreamClosure(editor, X.id);

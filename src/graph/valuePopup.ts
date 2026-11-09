@@ -3,9 +3,12 @@ import { tablePopup, type Cell, type TablePopupState } from "./tablePopupStore";
 import { cubePopup, type CubeEditBinding } from "./cubePopupStore";
 import { frameToGrid, frameRowCount, isFrameValue, isCubeValue, type FrameValue, type CubeValue } from "./frame";
 import { readFrame, type FrameRef } from "./frameBackend";
+import { afterNextPaint } from "./components/PopupSkeleton";
 import { matrixUnitOf, isUnitCell } from "./unitValue";
 import { isSolError } from "./errorValue";
 import { isCx } from "./cxValue";
+import { pivotLayoutOf } from "./pivotLayout";
+import { describeTilesOf } from "./describeProfile";
 
 export type ElemFamily = "number" | "string" | "date" | "logical" | "complex";
 
@@ -79,7 +82,7 @@ export function accentFallbackVar(value: unknown): string | undefined {
   }
 }
 
-export interface PopupStyle {
+interface PopupStyle {
   label?: string;
   hostId?: string | null;
   accent?: string;
@@ -93,26 +96,41 @@ export async function openFramePopup(
 ): Promise<void> {
   let resolved = value;
   if (value.__totalRows != null && value.__ref) {
+    // Opens at once on its skeleton while the whole frame is read, unless something else opened meanwhile.
+    const loading = { title: label || "Frame", data: [], loading: true, accent, groupColor, groupColorDark, pinNodeId: hostId ?? undefined };
+    tablePopup.open(loading);
+    await afterNextPaint();
+    if (tablePopup.get() !== loading) return;
     const collected = await readFrame(value.__ref as FrameRef);
+    if (tablePopup.get() !== loading) return;
     if (isFrameValue(collected)) resolved = collected;
   }
   tablePopup.open({
     title: label || "Frame",
-    data: frameToGrid(resolved),
-    headers: resolved.columns.map((c) => c.name),
-    columnTypes: resolved.columns.map((c) => c.type),
-    sourceCells: !resolved.columns.some((c) => c.raw)
-      ? undefined
-      : Array.from({ length: frameRowCount(resolved) }, (_, r) => resolved.columns.map((c) => c.raw?.[r] ?? null)),
+    ...framePopupData(resolved),
     cellType: "number",
     formatControls: "columns",
-    columnUnits: resolved.columns.map((c) => c.unit),
-    columnFormats: resolved.columns.map((c) => c.format),
     accent,
     groupColor,
     groupColorDark,
     pinNodeId: hostId ?? undefined,
   });
+}
+
+/** What a frame popup shows of a whole frame: its cells, names, types, units, formats, typed text and pivot layout. */
+export function framePopupData(f: FrameValue): Pick<TablePopupState, "data" | "headers" | "columnTypes" | "sourceCells" | "columnUnits" | "columnFormats" | "pivot" | "describe"> {
+  return {
+    data: frameToGrid(f),
+    headers: f.columns.map((c) => c.name),
+    columnTypes: f.columns.map((c) => c.type),
+    sourceCells: !f.columns.some((c) => c.raw)
+      ? undefined
+      : Array.from({ length: frameRowCount(f) }, (_, r) => f.columns.map((c) => c.raw?.[r] ?? null)),
+    columnUnits: f.columns.map((c) => c.unit),
+    columnFormats: f.columns.map((c) => c.format),
+    pivot: pivotLayoutOf(f) ?? undefined,
+    describe: describeTilesOf(f) ?? undefined,
+  };
 }
 
 export function openArrayPopup(

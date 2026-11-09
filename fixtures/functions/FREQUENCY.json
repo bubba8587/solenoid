@@ -1,0 +1,8 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"FREQUENCY(r_M2_M11,r_N2_N5)","env":["r_M2_M11=table:num:[[1], [7], [23], [12], [13], [#DIV/0!], [8], [78], [24], [16]]","r_N2_N5=table:num:[[5], [10], [15], [20]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FREQUENCY(r_A2_A11,r_B2_B5)","env":["r_A2_A11=table:num:[[1], [7], [23], [12], [13], [90], [8], [78], [24], [16]]","r_B2_B5=table:num:[[5], [10], [15], [20]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FREQUENCY(r_A17_A33,r_B17_B20)","env":["r_A17_A33=table:num:[[1], [7], [23], [12], [13], [90], [8], [78], [24], [16], [3], [4], [9], [7.7], [8.5], [blank], [blank]]","r_B17_B20=table:num:[[10], [20], [15], [5]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FREQUENCY(r_A17_A33,r_C17_C20)","env":["r_A17_A33=table:num:[[1], [7], [23], [12], [13], [90], [8], [78], [24], [16], [3], [4], [9], [7.7], [8.5], [blank], [blank]]","r_C17_C20=table:num:[[5], [10], [15], [20]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

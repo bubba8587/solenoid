@@ -1,13 +1,16 @@
-// [[B11]] maximalMerge, [[C95]] commitOnEnter
+// [[B11]] maximalMerge, [[B19]] spreadsheetHabits, [[D111]] cardLayouts
 import { useLayoutEffect, useRef, useState } from "react";
 import { usePendingDraft } from "../draftFlush";
 import { FieldResizeGrip } from "./FieldResizeGrip";
 
 /** Commits on blur, not Enter, because Enter must insert a newline; Escape reverts. Commit semantics stay with the caller. */
-export function RecordLayoutField({ value, wired, onCommit }: {
+export function RecordLayoutField({ value, wired, onCommit, onSuggest, placeholder = "Layout" }: {
   value: string;
   wired?: boolean;
   onCommit: (next: string) => void;
+  /** The layout read from the data ([[D111]] cardLayouts): Suggest, shown inside the field while it is empty, commits it. */
+  onSuggest?: () => string | Promise<string>;
+  placeholder?: string;
 }) {
   const [draft, setDraft] = useState(value);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -21,7 +24,7 @@ export function RecordLayoutField({ value, wired, onCommit }: {
         ref={ref}
         className="solenoid-record-layout"
         value={draft}
-        placeholder="Layout"
+        placeholder={placeholder}
         spellCheck={false}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); } }}
@@ -33,6 +36,24 @@ export function RecordLayoutField({ value, wired, onCommit }: {
         onMouseDown={(e) => e.stopPropagation()}
       />
       <FieldResizeGrip targetRef={ref} />
+      {onSuggest && draft.trim() === "" && (
+        <button
+          type="button"
+          className="solenoid-record-layout__suggest"
+          title="Write a layout laid out from the data"
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={async (e) => {
+            e.stopPropagation();
+            const next = await onSuggest();
+            if (next === "") return;
+            setDraft(next);
+            onCommit(next);
+          }}
+        >
+          Suggest
+        </button>
+      )}
     </div>
   );
 }

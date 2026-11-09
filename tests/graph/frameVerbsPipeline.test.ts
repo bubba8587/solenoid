@@ -1,10 +1,6 @@
-// [[C16]], [[C24]], [[C44]] dateSerials
-// End-to-end: compose several verbs through the backend exactly as the future verb
-// NODES will (source → join → apply(groupBy) → apply(sort) → preview). Guards that
-// the verbs chain correctly through handles, not just in isolation — the realistic
-// "orders ⋈ customers → group → rank" pipeline from the v1.0 plan, as a unit test.
+// [[C130]] rustCore, [[C24]] arraySemantics, [[C44]] dateSerials, [[frame-verbs#Readers]]
 import { describe, it, expect } from "vitest";
-import { frameBackend } from "../../src/graph/frameBackend";
+import { coreStore } from "./coreStore";
 import type { FrameValue } from "../../src/graph/frame";
 
 const customers: FrameValue = {
@@ -24,7 +20,7 @@ const orders: FrameValue = {
 
 describe("verb pipeline through the backend", () => {
   it("join → groupBy → sort → head ranks customers by total spend", async () => {
-    const be = frameBackend();
+    const be = coreStore();
     const hc = await be.source(customers);
     const ho = await be.source(orders);
 

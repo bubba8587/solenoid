@@ -1,21 +1,21 @@
 ---
-title: An anylist output may or may not feed a concrete matrix input
+title: "A list output whose kind isn't known yet can be wired into a table input of a set kind"
 proposed_ring: C
 ask: human
-date: 2026-09-24
+date: 2026-10-29
 parents:
   - "[[C10]]"
 ---
 ## Decision
 
-Decide whether an `anylist` output can connect to a `table` (matrix) input. Today it cannot, while the wider `anycombo` output can; `socketConnect.test.ts` pins the asymmetry as intended.
+Checked against the code on 2026-10-29. A list output of no set kind (a node's list output before anything wired into the node has given it one) can be wired into a Frame input or a table input that takes any kind, but not into a table input of a set kind, such as a number table. Every other output of unknown kind can: a single value of any kind, and "a value or a list", both wire into a number table and are checked when the value arrives. A number list wires into a number table too. Ratifying lets the unknown-kind list wire in the same way. Once its node is wired up, the list takes a kind and wires normally either way.
 
 ## Why
 
-Found by the value-model review. **Owner's call:** is the asymmetry intended (then this becomes a Consequence on [[C10]] with its reason), or should anylist → table connect like anycombo?
+It's the one unknown-kind output refused, and nothing written says why.
 
 ## What ratifying means
 
-- **Ratify connecting:** a list-of-anything output wires into a matrix input and is read as a one-column table, the same way the wider anycombo output already is. The pinning test in `socketConnect.test.ts` flips.
-- **Ratify the asymmetry:** nothing changes on screen; [[C10]] gets a line giving the reason.
-- **Lean:** none yet. The test calls the asymmetry intended but no node or spec says why, so connecting looks like the consistent choice unless you remember a reason.
+- **Lean:** Ratify; it matches the other unknown-kind outputs.
+- **Ratify:** The cable connects, and a wrong kind shows as an error when a value arrives.
+- **Reject:** It stays refused, and the connection rules gain the reason.

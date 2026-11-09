@@ -1,0 +1,9 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"PADTEXT(\"7\", 3, \"left\", \"0\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PADTEXT(\"ab\", 4)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PADTEXT(\"ab\", 4, \"middle\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PADTEXT(\"ab\", 1e12)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"PADTEXT(\"ab\", 32767)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

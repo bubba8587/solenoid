@@ -1,15 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode, type CSSProperties } from "react";
-import type { ClassicPreset } from "rete";
+import type { GraphNode } from "../graphModel";
 import { repositionDockedNodes } from "../canvasCommands";
 import { toggleNodeCollapsed } from "../selectionOps";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { connectionVersionStore } from "../graphSignals";
-import { nodeAccent, nodeResizable, nodeWide, nodeMedium } from "../rete-nodes";
+import { nodeAccent, nodeResizable, nodeWide, nodeXWide, nodeMedium } from "../nodeClasses";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { collapseStore } from "../collapseStore";
 import { groupMembershipStore } from "../groupMembership";
 import { appThemeStore } from "../appTheme";
 import { themeAccent, darkenAccent, contrastInk } from "../palette";
+import { measureThenWrite, observeResize } from "./layoutBatch";
 
 // Under this many px a header pointer is a tap, not a drag; shared with the title label.
 export const HEADER_TAP_SLOP = 4;
@@ -83,23 +84,32 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
     };
   }, []);
 
-  function syncOutputSocketTop() {
+  /** The output socket's top: the first visible value box's middle, or null for none. */
+  function readOutputSocketTop(): number | null | undefined {
     const el = ref.current;
-    if (!el) return;
+    if (!el) return undefined;
     // First visible box: a collapsed node hides its figure (offsetParent null). A result box outranks an input field above it (Value Input).
     const firstVisible = (sel: string) => {
       for (const b of el.querySelectorAll<HTMLElement>(sel)) if (b.offsetParent !== null) return b;
       return null;
     };
     const box = firstVisible(".solenoid-node__figure, .solenoid-node__display-value") ?? firstVisible(".solenoid-node__value-input");
-    if (!box) { el.style.removeProperty("--out-socket-top"); return; }
+    if (!box) return null;
     // Sum offsetTop up to the content wrapper: a box inside an intermediate positioned element (Date Input's picker row) would otherwise measure about 0.
     const content = el.querySelector<HTMLElement>(".solenoid-node__content");
     let top = box.offsetHeight / 2;
     // Walk only when content is a real ancestor, so a missing wrapper can't over-sum up to the card root.
     if (content) for (let n: HTMLElement | null = box; n && n !== content; n = n.offsetParent as HTMLElement | null) top += n.offsetTop;
     else top += box.offsetTop;
-    el.style.setProperty("--out-socket-top", `${top}px`);
+    return top;
+  }
+  function syncOutputSocketTop() {
+    measureThenWrite(ref, readOutputSocketTop, (top) => {
+      const el = ref.current;
+      if (!el || top === undefined) return;
+      if (top === null) el.style.removeProperty("--out-socket-top");
+      else el.style.setProperty("--out-socket-top", `${top}px`);
+    });
   }
   // After every commit, which also covers the collapse toggle's re-layout.
   useLayoutEffect(syncOutputSocketTop);
@@ -112,9 +122,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   useEffect(() => {
     const el = ref.current;
     if (!el || !node) return;
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
+    return observeResize(el, (entry) => {
       syncOutputSocketTop();
       const w = Math.round(entry.contentRect.width);
       const h = Math.round(entry.contentRect.height);
@@ -128,8 +136,6 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
       const hostId = (node as { hostNodeId?: string }).hostNodeId;
       if (hostId) repositionDockedNodes(hostId);
     });
-    observer.observe(el);
-    return () => observer.disconnect();
   }, [node]);
 
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -137,16 +143,17 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   // An override (the FC's mismatch red, its socket color) still needs theme adjusting; nodeAccent is already resolved.
   const accent = accentOverride
     ? themeAccent(accentOverride, mode)
-    : node ? nodeAccent(node as unknown as ClassicPreset.Node, mode) : undefined;
+    : node ? nodeAccent(node as unknown as GraphNode, mode) : undefined;
   const groupColor = useSyncExternalStore(groupMembershipStore.subscribe, () => (node ? groupMembershipStore.color(node.id) : undefined));
 
   useSyncExternalStore(
     nodeSizeStore.subscribe,
     () => (node ? nodeSizeStore.get(node.id) : undefined),
   );
-  const resizable = !!node && nodeResizable(node as unknown as ClassicPreset.Node);
-  const wide = !collapsed && !!node && nodeWide(node as unknown as ClassicPreset.Node);
-  const medium = !collapsed && !wide && !!node && nodeMedium(node as unknown as ClassicPreset.Node);
+  const resizable = !!node && nodeResizable(node as unknown as GraphNode);
+  const xwide = !collapsed && !!node && nodeXWide(node as unknown as GraphNode);
+  const wide = !collapsed && !xwide && !!node && nodeWide(node as unknown as GraphNode);
+  const medium = !collapsed && !xwide && !wide && !!node && nodeMedium(node as unknown as GraphNode);
   // Clamped to the current content's minimum: the grip clamps only live drags, and a Display sized for a scalar may now show a chart.
   const stored = collapsed || !node ? undefined : nodeSizeStore.get(node.id);
   const min = stored && node ? nodeSizeStore.getMin(node.id) : undefined;
@@ -194,7 +201,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
         `solenoid-node${selected ? " solenoid-node--selected" : ""}` +
         `${collapsed ? " solenoid-node--collapsed" : ""}${groupColor ? " solenoid-node--grouped" : ""}` +
         `${resizable ? " solenoid-node--resizable" : ""}${size ? " solenoid-node--sized" : ""}` +
-        `${wide ? " solenoid-node--wide" : ""}${medium ? " solenoid-node--medium" : ""}${squareCollapse ? " solenoid-node--square-collapse" : ""}` +
+        `${xwide ? " solenoid-node--xwide" : ""}${wide ? " solenoid-node--wide" : ""}${medium ? " solenoid-node--medium" : ""}${squareCollapse ? " solenoid-node--square-collapse" : ""}` +
         `${squareCollapse && !outputWired ? " solenoid-node--output-unwired" : ""}` +
         `${!collapsible ? " solenoid-node--no-chevron" : ""}${className ? " " + className : ""}`
       }

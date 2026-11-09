@@ -1,6 +1,6 @@
 .solenoid-svgpick {
   position: relative;
-  --node-accent: #6b8299;
+  --node-accent: var(--sock-any); /* neutral: selection ring + shadow */
   --node-socket-x: -6.5px;
   box-sizing: border-box;
   display: flex;

@@ -1,30 +1,19 @@
 // [[C10]] socketLattice (the Cube is the lattice supremum), [[C28]] literalsIffEditable
-import { ClassicPreset } from "rete";
-import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut, readInput } from "./shared";
-import { parseCubeSource, recordKeys, sourcePicks, DEFAULT_CUBE_TEXT, type CubeSource } from "../literalEditors";
-import { compileEvaluator, extractVariables, rowRefNames } from "../excelFormula";
-import { computeCubeColumnCells } from "../computedColumnCore";
-import { cubeRowTable, cubeCellsType } from "../cubeRows";
-import { computedColumnType, readingsRefusal } from "./frame";
-import { cubeFromColumns, recordsToCube, relateFramesToCube, relateCubeToFrame, cubeColumnFromValue, cubeRowCount, inferColumn, typedColumn, makeHeaders, frameFromRows, isCubeValue, isFrameValue, type CubeValue, type CubeCell, type CubeColumn, type FrameValue, type FrameColumn, type FrameCell, type FrameColType } from "../frame";
-import { aggregateGroup, aggUnitPlan, type AggOp } from "../frameVerbs";
-import { matrixCellsFromList, tagFrameCellUnit } from "../unitColumn";
-import type { ColumnUnit } from "../unitValue";
-import { solError, isSolError, type SolError } from "../errorValue";
-import { volatileStamp } from "../volatileDates";
+import { GraphNode } from "../graphModel";
+import { forgetKeyed, type KeyedKind } from "../literalFields";
+import { nodeOnCore } from "../nodeOnCore";
+import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut } from "./shared";
+import { DEFAULT_CUBE_TEXT } from "../literalEditors";
+import type { CubeValue, FrameValue } from "../frame";
+import type { AggOp } from "../frameOps";
+import type { SolError } from "../errorValue";
 
-function literalCell(node: { literals: Record<string, number>; stringLiterals: Record<string, string> }, key: string): CubeCell {
-  if (key in node.literals) return node.literals[key] as CubeCell;
-  if (key in node.stringLiterals) return node.stringLiterals[key] as CubeCell;
-  return null as CubeCell;
-}
-
-export class BuildCubeNode extends ClassicPreset.Node {
+export class BuildCubeNode extends GraphNode {
   label: string;
   cachedResult: CubeValue | null = null;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = { name: "" };
-  autoLiterals = true;
+  literalKinds: Record<string, KeyedKind> = {};
   nextInputId = 0;
   width = 200;
   height = 250;
@@ -57,34 +46,15 @@ export class BuildCubeNode extends ClassicPreset.Node {
 
   removeValueInput(key: string): void {
     this.removeInput(key);
-    delete this.literals[key];
-    delete this.stringLiterals[key];
+    forgetKeyed(this, key);
   }
 
-  data(inputs: Record<string, unknown[] | undefined>) {
-    const cells: CubeCell[] = this.valueInputKeys().map((k) => {
-      const wired = inputs[k];
-      if (wired && wired.length) return wired[0] as CubeCell;
-      return literalCell(this, k);
-    });
-    const nameRaw = readInput(inputs.name as string[] | undefined, this.stringLiterals.name ?? "");
-    if (nameRaw === null) { this.cachedResult = null; return { cube: null }; }
-    const name = nameRaw.trim() || "Items";
-    this.cachedResult = cubeFromColumns([{ name, cells }]);
-    return { cube: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>): { cube: CubeValue | null } {
+    return nodeOnCore(this, inputs) as { cube: CubeValue | null };
   }
 }
 
-// trueany, not frame or cube: a Cube cannot narrow into a frame socket, and a cube socket would widen a Frame child into a Cube.
-function asNestChild(v: unknown): FrameValue | CubeValue | null {
-  if (v == null) return null;
-  if (isCubeValue(v)) return v;
-  if (isFrameValue(v)) return v;
-  if (Array.isArray(v)) return Array.isArray(v[0]) ? frameFromRows(v as unknown[][]) : frameFromRows([v as unknown[]]);
-  return frameFromRows([[v]]);
-}
-
-export class NestJoinNode extends ClassicPreset.Node {
+export class NestJoinNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     key: "A blank key cell never matches. A parent row without matches keeps an empty nested table, and a child row matching no parent is dropped.",
   };
@@ -105,32 +75,17 @@ export class NestJoinNode extends ClassicPreset.Node {
     this.addOutput("cube", cubeOut("Cube"));
   }
 
-  data(inputs: { parent?: unknown[]; child?: unknown[]; key?: string[]; name?: string[] }) {
-    const parent = inputs.parent?.[0] ?? null;
-    const child = asNestChild(inputs.child?.[0] ?? null);
-    const keyRaw = readInput(inputs.key, this.stringLiterals.key ?? "");
-    const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
-    if (keyRaw === null || nameRaw === null) { this.cachedResult = null; return { cube: null }; }
-    const key = keyRaw.trim();
-    const name = nameRaw.trim();
-    if (!child || key === "") { this.cachedResult = null; return { cube: null }; }
-    this.cachedResult = isCubeValue(parent)
-      ? relateCubeToFrame(parent, child, key, name)
-      : isFrameValue(parent)
-        ? relateFramesToCube(parent, child, key, name)
-        : parent != null
-          ? solError("#TYPE!", "Nest Join parent must be a Frame or a Cube")
-          : null;
-    return { cube: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>): { cube: CubeValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { cube: CubeValue | SolError | null };
   }
 }
 
-export class CubeColumnsNode extends ClassicPreset.Node {
+export class CubeColumnsNode extends GraphNode {
   label: string;
   cachedResult: CubeValue | null = null;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = { names: "" };
-  autoLiterals = true;
+  literalKinds: Record<string, KeyedKind> = {};
   nextInputId = 0;
   width = 210;
   height = 250;
@@ -163,33 +118,15 @@ export class CubeColumnsNode extends ClassicPreset.Node {
 
   removeValueInput(key: string): void {
     this.removeInput(key);
-    delete this.literals[key];
-    delete this.stringLiterals[key];
+    forgetKeyed(this, key);
   }
 
-  data(inputs: Record<string, unknown[] | undefined>) {
-    const names = (inputs.names?.[0] as string[] | undefined) ?? [];
-    const cols = this.valueInputKeys().map((k, i) => {
-      const wired = inputs[k];
-      const value = wired && wired.length ? wired[0] : literalCell(this, k);
-      return { name: (names[i] ?? "").trim() || `Col${i + 1}`, cells: cubeColumnFromValue(value) };
-    });
-    const maxLen = cols.reduce((m, c) => Math.max(m, c.cells.length), 0);
-    const padded = cols.map((c) => ({ name: c.name, cells: Array.from({ length: maxLen }, (_, r) => (c.cells[r] ?? null) as CubeCell) }));
-    this.cachedResult = cubeFromColumns(padded);
-    return { cube: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>): { cube: CubeValue | null } {
+    return nodeOnCore(this, inputs) as { cube: CubeValue | null };
   }
 }
 
-// Reuses aggregateGroup and aggUnitPlan so a roll-up and a GROUPBY agree on every op's edge cases and units.
-
-/** The rows agree on one unit, or the column carries none ([[D43]] unitByGranularity). */
-function rolledNumberColumn(name: string, rolled: readonly unknown[]): FrameColumn {
-  const { mags, unit } = matrixCellsFromList(rolled);
-  return { name, type: "number", values: mags as FrameCell[], ...(unit ? { unit } : {}) };
-}
-
-export class CubeRollupNode extends ClassicPreset.Node {
+export class CubeRollupNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "A row without a nested table rolls up to blank, and a nested table missing the column yields a #REF! cell.",
   };
@@ -212,127 +149,12 @@ export class CubeRollupNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  data(inputs: { cube?: (CubeValue | null)[]; nested?: string[]; column?: string[]; as?: string[] }) {
-    const cube = inputs.cube?.[0] ?? null;
-    if (!cube) { this.cachedResult = null; return { frame: null }; }
-    const nestedRaw = readInput(inputs.nested, this.stringLiterals.nested ?? "");
-    const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
-    const asRaw = readInput(inputs.as, this.stringLiterals.as ?? "Total");
-    if (nestedRaw === null || colRaw === null || asRaw === null) { this.cachedResult = null; return { frame: null }; }
-    const nestedName = nestedRaw.trim();
-    const col = colRaw.trim();
-    const outName = asRaw.trim() || "Total";
-    const nestedIdx = cube.columns.findIndex((c) => c.name === nestedName);
-    if (nestedName === "" || col === "") { this.cachedResult = null; return { frame: null }; }
-    if (nestedIdx < 0) {
-      this.cachedResult = solError("#REF!", `nested column "${nestedName}" not found`);
-      return { frame: this.cachedResult };
-    }
-
-    const flatCols = cube.columns.filter((_, j) => j !== nestedIdx);
-    const nested = cube.columns[nestedIdx];
-    const rows = cubeRowCount(cube);
-    const flatVals: FrameCell[][] = flatCols.map(() => []);
-    const rolled: unknown[] = [];
-    let textRolled = false;
-    for (let i = 0; i < rows; i++) {
-      flatCols.forEach((fc, k) => flatVals[k].push((fc.cells[i] ?? null) as FrameCell));
-      const cell = nested.cells[i];
-      let type: FrameColType | undefined;
-      let unit: ColumnUnit | undefined;
-      const values: FrameCell[] | SolError | null = isFrameValue(cell)
-        ? (() => {
-            const fc = cell.columns.find((c) => c.name === col);
-            if (!fc) return solError("#REF!", `column "${col}" not found in nested frame`);
-            type = fc.type;
-            unit = fc.unit;
-            return fc.values;
-          })()
-        : isCubeValue(cell)
-          ? (() => {
-              const cc = cell.columns.find((c) => c.name === col);
-              if (!cc) return solError("#REF!", `column "${col}" not found in nested cube`);
-              if (cc.cells.some((v) => isCubeValue(v) || isFrameValue(v) || Array.isArray(v))) return solError("#SHAPE!", `column "${col}" holds nested cells; roll up a flat column`);
-              // A cube cell carries its own base-SI unit; read the column in one unit, as a Frame does.
-              const { mags, unit: u } = matrixCellsFromList(cc.cells);
-              unit = u;
-              if (cc.type) { type = cc.type; return mags as FrameCell[]; }
-              const read = inferColumn(col, mags);
-              type = read.type;
-              return read.values;
-            })()
-          : null;
-      if (values === null) { rolled.push(null); continue; }
-      const plan = aggUnitPlan(this.agg, unit);
-      const r = isSolError(values) ? values : plan.cell(aggregateGroup(values, this.agg, type));
-      if (typeof r === "string") textRolled = true;
-      rolled.push(plan.unit ? tagFrameCellUnit(r, plan.unit) : r);
-    }
-    const names = makeHeaders([...flatCols.map((c) => c.name), outName], flatCols.length + 1);
-    const result: FrameValue = {
-      __frame: true,
-      columns: [
-        ...flatCols.map((_, k) => ({ ...inferColumn(names[k], flatVals[k]), name: names[k] })),
-        textRolled
-          ? typedColumn(names[flatCols.length], rolled, rolled.length, "string")
-          : rolledNumberColumn(names[flatCols.length], rolled),
-      ],
-    };
-    this.cachedResult = result;
-    return { frame: result };
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
   }
 }
 
-/** The typed Cube a Cube Input's source derives: typed columns read their cells as the type ([[D90]] cubeTypesAtDepth), then formula columns fill in dependency order ([[C22]] rowFormulaRefs). */
-export function cubeFromSource(source: CubeSource): CubeValue {
-  const data = recordsToCube(source.rows, sourcePicks(source), source.nested);
-  const keys = recordKeys(source.rows);
-  const rows = source.rows.length;
-  const empty = (): CubeCell[] => Array.from({ length: rows }, () => null);
-  const cols: CubeColumn[] = source.columns.map((c) => {
-    const k = c.expr === undefined ? keys.indexOf(c.name) : -1;
-    return k >= 0 ? { ...data.columns[k], name: c.name } : { name: c.name, cells: empty() };
-  });
-  const pending = new Map<number, string>();
-  source.columns.forEach((c, i) => { if (c.expr !== undefined) pending.set(i, c.expr); });
-  if (pending.size === 0) return cubeFromColumns(cols);
-
-  const fill = (i: number, cell: CubeCell) => { cols[i] = { name: cols[i].name, cells: Array.from({ length: rows }, () => cell) }; };
-  const index = new Map(source.columns.map((c, i) => [c.name, i] as const));
-  const compiled = new Map([...pending].map(([i, expr]) => {
-    const ev = expr.trim() ? compileEvaluator(expr) : null;
-    return [i, { ev, vars: ev ? extractVariables(expr) : [], refs: ev ? rowRefNames(expr) : [] }] as const;
-  }));
-  let progress = true;
-  while (progress && pending.size > 0) {
-    progress = false;
-    for (const [i, expr] of [...pending]) {
-      const { ev, vars, refs } = compiled.get(i)!;
-      if ([...vars, ...refs].some((n) => { const d = index.get(n); return d !== undefined && pending.has(d); })) continue;
-      pending.delete(i);
-      progress = true;
-      if (!expr.trim()) { fill(i, null); continue; }
-      if (!ev) { fill(i, solError("#VALUE!", "The formula does not parse")); continue; }
-      const table = cubeRowTable(cubeFromColumns(cols));
-      const refused = readingsRefusal(expr, table);
-      if (refused) { fill(i, refused); continue; }
-      const r = computeCubeColumnCells(table, { kind: "expr", evaluator: ev, vars }, {
-        rowRefs: refs,
-        sideValue: (p) => solError("#REF!", `No column "${p}"`),
-      });
-      if (isSolError(r)) { fill(i, r); continue; }
-      const type = cubeCellsType(r.cells) ?? computedColumnType(cols[i].name, r.cells as FrameCell[], table, expr);
-      cols[i] = { name: cols[i].name, cells: r.cells, type };
-    }
-  }
-  if (pending.size > 0) {
-    const err = solError("#REF!", `Circular computed columns: ${[...pending.keys()].map((i) => cols[i].name).join(" → ")}`);
-    for (const i of pending.keys()) fill(i, err);
-  }
-  return cubeFromColumns(cols);
-}
-
-export class CubeInputNode extends ClassicPreset.Node {
+export class CubeInputNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     cube: "One row per record. A list value is a list cell; a list of records nests a table or a cube.",
   };
@@ -340,8 +162,6 @@ export class CubeInputNode extends ClassicPreset.Node {
   cubeText: string;
   cachedResult: CubeValue | SolError | null = null;
   width = 240; height = 200;
-  private _builtFrom: string | undefined;
-  private _builtStamp = -1;
 
   constructor(init?: { label?: string; cubeText?: string }) {
     super("CubeInput");
@@ -350,13 +170,7 @@ export class CubeInputNode extends ClassicPreset.Node {
     this.addOutput("cube", cubeOut("Cube"));
   }
 
-  data(): { cube: CubeValue | SolError | null } {
-    const stamp = volatileStamp(this.cubeText);
-    if (this.cachedResult && this._builtFrom === this.cubeText && this._builtStamp === stamp) return { cube: this.cachedResult };
-    const parsed = parseCubeSource(this.cubeText);
-    this.cachedResult = "error" in parsed ? solError("#VALUE!", parsed.error) : cubeFromSource(parsed.source);
-    this._builtFrom = this.cubeText;
-    this._builtStamp = stamp;
-    return { cube: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { cube: CubeValue | SolError | null };
   }
 }

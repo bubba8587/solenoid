@@ -12,9 +12,11 @@ The recurring bug here is a floating overlay covering a bar. Every overlay's off
 
 ## The two envelopes
 
-Both are measured CSS variables on `:root` ([[#The two envelopes]]).
+Code: `Header.tsx`, `chromeBottom.ts`.
 
-- **`--chrome-top`** is published by `Header.tsx`, which observes its own height. Every top-anchored overlay offsets from it. On desktop it measures 66px (the 22px menu bar plus the 44px top bar), with a 2px accent underline making about 68px to the canvas. A tablet in portrait wraps the top bar onto two rows (see Tablets), so the envelope is conditional and no longer a number anyone could write down; `touchActions.test.ts` pins the wrap.
+Both are measured CSS variables on `:root`, because the overlays are siblings elsewhere in the tree: a variable set on a bar itself would never reach them.
+
+- **`--chrome-top`** is published by `Header.tsx`, which observes its own height (a `ResizeObserver`). Every top-anchored overlay offsets from it. On desktop it measures 66px (the 22px menu bar plus the 44px top bar), with a 2px accent underline making about 68px to the canvas. A tablet in portrait wraps the top bar onto two rows (see Tablets), and where it wraps depends on the viewport, so the envelope is conditional and no longer a number anyone could write down.
 - **`--chrome-bottom`** is published by `chromeBottom.ts`. Each bottom bar (the status bar, the mobile action bar) registers its root element while mounted, and the variable is the tallest registered height. A `display: none` bar measures 0, so whichever bar owns the bottom edge wins. The mobile bar's height includes its safe-area padding, so the variable carries the inset and consumers drop their own `env()` term.
 
 **MUST:** every floating overlay derives its anchor from the two envelopes with `calc(var(--chrome-*) + gap)`, and no overlay hard-codes a bar height. The offsets used to be magic numbers scattered across many CSS files, so moving one bar meant finding every dependent by hand; measured once, a bar that appears, hides or grows carries every overlay with it. **Reopen if:** the header and footer become part of the layout rather than floating, so the canvas is simply the remaining flex box.
@@ -25,9 +27,23 @@ Both envelopes publish rounded down (`Math.floor`). A `top:` or `bottom: var(...
 
 **Still hand-keyed:** the bars' own row heights (22, 44 and 52, in each bar's CSS), the 12 and 16px gutters, each overlay's gap, and mobile's top overrides (the safe-area inset plus literal `82px`-based values). Treat the tables below as the source of truth for what each number means, and grep for a number before changing a bar height.
 
+Tests: `touchActions.test.ts`: the top-anchored overlays (`NavMenu.css`, `OutlinePanel.css`, `WebDemoBanner.css`, `selectionActions.css`, `hudStack.css`, `ReportOverlay.css`) each reference `--chrome-top` with a static fallback, and `Header.tsx` publishes its measured height on the document root.
+
 ## Desktop
 
 This is the layout with a mouse and a desktop user agent (no `html.is-mobile`). The header is one absolutely positioned, full-width column pinned to the top; the footer is pinned to the bottom; everything else floats over the canvas.
+
+Where each piece sits on desktop (everything between the header and the status bar floats over the canvas):
+
+```mermaid
+block-beta
+    columns 3
+    h["header: menu bar (22) + top bar (44), publishes --chrome-top"]:3
+    a["navigator pill<br>(upper left)"] b["align pill (top center,<br>two or more selected)"] c["nav and zoom pill,<br>the HUD stack under it<br>(upper right)"]
+    d["Conduit toolbar,<br>cable inspector<br>(left)"] e["the canvas"] f["socket legend<br>over the minimap<br>(bottom right)"]
+    space g["command palette<br>(bottom center)"] space
+    s["status bar (19), publishes --chrome-bottom"]:3
+```
 
 | Element | Class | Anchor | z-index | File |
 | --- | --- | --- | --- | --- |
@@ -65,9 +81,18 @@ This is the layout with a mouse and a desktop user agent (no `html.is-mobile`). 
 
 ### Tablets
 
-A tablet (`html.is-tablet`: a coarse pointer that isn't an upright phone, `isTablet()` in `coarse.ts`) runs this desktop layout, because `isMobile()` requires a mobile user agent and tablet Chrome reports non-mobile (`userAgentData.mobile === false`). iPadOS sends a desktop user agent on purpose. So a tablet gets no bottom action bar; the top bar carries the touch actions instead (palette, undo and redo, select, group, delete; `TabletActions.tsx`) as ordinary 28px pill buttons in the existing row. A button dimmed because it needs a selection is still tappable, because the selection is polled every 200ms and a disabled button would swallow the first tap after a fresh select. The touch target grows to 44px (the 28px button plus 8px above and below), the platform minimum, through a pseudo-element rather than padding, so the laid-out pill stays 30px.
+A tablet (`html.is-tablet`: a coarse pointer that isn't an upright phone, `isTablet()` in `coarse.ts`) runs this desktop layout, because `isMobile()` requires a mobile user agent and tablet Chrome reports non-mobile (`userAgentData.mobile === false`). iPadOS sends a desktop user agent on purpose.
 
-Two things are deliberately not carried over from the mobile bottom bar, so don't complete the parity: **Add node** (Insert ▸ Add node… in the menu bar covers it, and a ➕ up top would be a second), and the **raised FAB treatment** (a thumb-reach accommodation for a phone's bottom edge; up top it would only be a loud button, and the Quiet Accent Rule reserves accent for type and state, not emphasis). The touch add gesture is a long-press on empty canvas, the browser's native long-press turned into `contextmenu` and routed by `canvasContextMenu.ts`. The full set of add paths is long-press or right-click on the canvas, the mobile bar's ➕, the `A` key, and Insert ▸ Add node…. The gesture inventory is [[touch-gestures]].
+- **No bottom bar.** The top bar carries the touch actions instead (palette, undo and redo, select, group, delete; `TabletActions.tsx`) as ordinary 28px pill buttons in the existing row.
+- **Dimmed, not disabled.** A button dimmed because it needs a selection is still tappable, because the selection is polled every 200ms and a disabled button would swallow the first tap after a fresh select.
+- **Touch targets.** The touch target grows to 44px (the 28px button plus 8px above and below), the platform minimum, through a pseudo-element rather than padding, so the laid-out pill stays 30px.
+
+Two things are deliberately not carried over from the mobile bottom bar, so don't complete the parity:
+
+- **Add node.** Insert ▸ Add node… in the menu bar covers it, and a ➕ up top would be a second.
+- **The raised FAB treatment.** It is a thumb-reach accommodation for a phone's bottom edge; up top it would only be a loud button, and the Quiet Accent Rule reserves accent for type and state, not emphasis.
+
+The touch add gesture is a long-press on empty canvas, the browser's native long-press turned into `contextmenu` and routed by `canvasContextMenu.ts`. The full set of add paths is long-press or right-click on the canvas, the mobile bar's ➕, the `A` key, and Insert ▸ Add node…. The gesture inventory is [[touch-gestures]].
 
 **The portrait wrap.** The desktop bar doesn't fit a tablet in portrait, so below 1100px it wraps: it fills a line and pushes the overflow to the next one. Nothing is reordered, and nothing is forced onto a chosen row.
 
@@ -116,15 +141,16 @@ The top chrome becomes two rows.
 | --- | --- | --- | --- |
 | Row A, the accent menu bar | `.solenoid-menubar` | `padding-top: safe-area`, about 30px of content, z-index **8** | The document name and caret only, beside the wordmark; carries the notch inset. |
 | Row B, the neutral tools bar | `.solenoid-topbar` | **52px** | Menu, navigator, layout tools, then accent, Reference and Settings. |
-| Bottom action bar | `.solenoid-mobile-bar` | `bottom: 0`, full width, about 57px plus `safe-area-inset-bottom`, z-index 100 | Undo, Redo, the ➕ FAB, Select, Delete. `display: flex` only on mobile (`MobileControls.css`, shown by `mobile.css`). |
+| Bottom action bar | `.solenoid-mobile-bar` | `bottom: 0`, full width, about 57px plus `safe-area-inset-bottom`, z-index 100 | Undo, Redo, the ➕ FAB, Select, Delete. `display: flex` only on mobile (`MobileControls.css`, shown by `mobile.css`). Drilled into a composite, a tab rises 12px out of the bar's top edge around the ➕, sloped at its shoulders, with I (add an input port) and O (add an output port) up on the shoulders either side of the ➕: 20px discs of the ➕'s accent, faded, 4px under the tab's top edge, each letter the app face's own outline (`PortGlyph`, `touchActions.tsx`). The cluster takes only the ➕'s width in the bar, so no other button moves. |
 
 **The mobile top-chrome edge is `safe-area-inset-top + 82px`** (30 for Row A plus 52 for Row B). Every top-anchored mobile overlay clears this number, and it is written literally in several places, so keep them in sync:
 
 | Overlay | Mobile `top` | File |
 | --- | --- | --- |
-| Menu hamburger sheet | `82px + safe-area` (right at the edge) | `mobile.css` |
+| Menu hamburger sheet | `82px + safe-area` (right at the edge) | `MobileMenuSheet.css` |
+| Tidy dropdown menu | flush under the edge (`100% + 9px` below its pill) | `TopBar.css` |
 | Nav pill | `92px + safe-area` (the edge plus a 10 gap) | `mobile.css` |
-| Navigator panel | `88px + safe-area` (its bottom derives: `chrome-bottom + 27px`) | `mobile.css` |
+| Navigator panel | `92px + safe-area`, level with the nav pill (its bottom derives: `chrome-bottom + 27px`) | `mobile.css` |
 | Align pill (`.solenoid-selbar`) | `92px + safe-area`, level with the nav pill | `selectionActions.css` |
 | Command palette (top-anchored on mobile) | `92px + safe-area`, level with the nav pill | `CommandPalette.css` |
 | Web-demo notice | `48px + safe-area` | `mobile.css` |
@@ -135,73 +161,108 @@ The minimap and the socket legend are `display: none` on mobile (`mobile.css`), 
 
 ### Row A and Row B
 
-- **Row B** is 52px, a touch taller than the desktop's 44px, so the accent underline reads as a real separator and the buttons sit visibly centered. It keeps the desktop separator (the hairline plus the 2px accent underline) from the base rule. It hides the file group (Save and Open live in the hamburger sheet), the dividers, the art slot, the cable-shape toolbar, the mark and its own copy of the document name, and surfaces the layout tools just left of the apptools: a Tidy dropdown pill (the Tidy icon and a down chevron, opening Tidy and Cleanup as action rows above the Tidy options; `TidyOptionsPopover` with `actions`), then the layout pill reduced to collapse all and snap. Every Row B control is 34px (the nav-style buttons with 17px glyphs, the apptools buttons, the round navigator toggle beside the ⋯ app-menu button at the left edge), so the layout pill equals the apptools pill at 36px.
-- **The apptools** (accent, Reference, Settings) sit at the right of Row B. The light and dark toggle moves into the accent palette pop-over (40px below), and the lone accent button rounds to a circle. Their 14px glyphs use stroke width 2, so they don't read as hairlines next to the heavier bottom-bar icons.
+- **Row B** is 52px, a touch taller than the desktop's 44px, so the accent underline reads as a real separator and the buttons sit visibly centered. It keeps the desktop separator (the hairline plus the 2px accent underline) from the base rule. It hides the file group (Save and Open live in the hamburger sheet), the dividers, the art slot, the cable-shape toolbar, the mark and its own copy of the document name, and surfaces the layout tools just left of the apptools: a Tidy dropdown pill (the Tidy icon and a down chevron; `TidyOptionsPopover` with `actions`), whose menu is built like the hamburger sheet: a Layout heading carrying Tidy and Cleanup as pill buttons, then Direction, Density and Width cap as rows with the segmented switch, then the layout pill reduced to collapse all and snap. Every Row B control is 32px with a 16px glyph, half the button as on desktop (14 in 28) and both even, per DESIGN.md's even-icon rule: the nav-style buttons, the apptools buttons, and the round navigator toggle beside the ⋮ app-menu button at the left edge, so the layout pill equals the apptools pill at 34px.
+- **The apptools** (accent, Reference, Settings) sit at the right of Row B. The light and dark toggle moves into the accent palette pop-over (40px below), and the lone accent button rounds to a circle. Like every top-bar icon on desktop and the phone, their glyphs draw at the chrome's icon line weight (§ Icon line weight).
 - **Row A** is the menu bar turned into a thin accent strip: accent background, accent ink, the safe-area inset as top padding, its desktop menu items hidden (they live in the hamburger sheet). Its center block is in flow on mobile, at 30px and left-aligned, because it is what gives the row its height; out of flow the menu bar collapses to 0. The wordmark beside the name is masked in the bar's own ink and is 24px tall; it must stay under the row's 30px, or Row A grows and the literal 82px envelope is wrong everywhere it is spelled.
 - **The documents menu** is portaled to `body` and pinned 10px from both screen edges, so a long name truncates within the row instead of pushing controls off; its `top` comes inline from the trigger's measured rect.
 
 ### Mobile overlays
 
-- **The hamburger sheet** sits below both rows (`82px + safe-area`), sized to its widest content up to `min(280px, 86vw)`. Its height is cropped (`100dvh − 150px` minus both insets) so it never runs under the bottom-left undo and redo pill, whose top sits about 86px plus the inset above the bottom. Keyboard-shortcut hints are hidden, since a phone has no keyboard and they stretch every row. Its cables section re-renders the top bar's `CableShapeSelector` (hidden up there on touch) with finger-sized segments on one centered row.
-- **The nav pill** keeps only the canvas controls, Fit and Lock: zoom in and out are dropped (the pinch does it), and the cable-flourish button is desktop-only. Its buttons are 30px, scoped to the pill so Row B's layout buttons keep their own size.
-- **The navigator** loses its collapsed open-pill, because Search lives in the bottom bar and opens the navigator focused on its search field. The panel is `min(248px, 84vw)` wide.
+- **The top-bar menus share one look** (`phonePanel.css`, `.sol-mpanel`): the surface, a 1px panel border and the pop shadow, 13px text, 33px headings whose pills are 24px, 30px rows, every control in a row 28px, the chrome's icon line weight (§ Icon line weight) with 16px icons and 14px in a heading's pills, the Navigator's segmented switch, and its light-theme accent ink. Each menu places itself. The hamburger sheet and the Tidy dropdown use it; a new top-bar menu on the phone does too.
+- **The hamburger sheet** (`MobileMenuSheet.tsx`) sits below both rows (`82px + safe-area`), `min(252px, 86vw)` wide (sized to its widest control row, so the nav pill and the comments badge stay clear to its right), at the Settings sheet's scale: 13px rows 30px tall under each menu's small-caps heading. Its height is cropped (`100dvh − 150px` minus both insets) so it never runs under the bottom-left undo and redo pill, whose top sits about 86px plus the inset above the bottom. It renders the shared menu model, not a copy, and takes each command's form from the items:
+  - a section's one-tap actions (`inHeading`: Reload, Draw Arrow, Refresh, Recalculate) are pill buttons with their icons at the right of its heading, as the Navigator's + rides beside its switch;
+  - icon-and-short-name items are one strip of tiles (New, Open, Save, Save As);
+  - a captioned icon group is one row with a pill of icon buttons at its right (Clipboard, Arrange);
+  - a captioned choice between checked items is one row with the Navigator's segmented switch (Calculate's Mode, Automatic shortened to Auto);
+  - the rest are plain rows, a row whose command has an icon elsewhere in the app wearing it muted at the right (Find, Inspector, Run model check, Function reference, the website).
+
+  Drawing an arrow (a drawn cable, [[drawn-cables]]) is an annotation, not a setting, so it is a button that closes the sheet to draw, never a switch. Items the phone's own chrome already shows on screen carry `hideOnPhone` and are left out: Undo, Redo, Delete and Group (the bottom bar), Add node (the ➕), Tidy, Cleanup and Snap (Row B), Lock (the nav pill), the theme (the accent pop-over), Settings and the Function reference under View (Row B's apptools), and Keyboard shortcuts (no keyboard). The mode switch keeps the sheet open; any other command closes it. View carries the cable controls as a Cables row, the top bar's `CableShapeSelector` (hidden up there on touch) at a smaller size.
+- **The nav pill** keeps only the canvas controls, Fit and Lock: zoom in and out are dropped (the pinch does it), and the cable-flourish button is desktop-only. Its buttons are 30px, scoped to the pill so Row B's layout buttons keep their own size. A swipe right tucks it: the pill slides off the right edge and only its handle stays in view, a 22px half-pill hung off the pill's left side (`.solenoid-nav__handle`), as tall as the pill, rounded on the left and flat against the edge, with a chevron pointing back in. The handle is part of the pill, so pulling it drags the real pill back out ([[touch-gestures]]).
+- **The navigator** loses its collapsed open-pill, because Search lives in the bottom bar and opens the navigator focused on its search field. The panel is `min(248px, 84vw)` wide. It runs at the Settings sheet's scale, a step under the top bar's 34px buttons, and spends as little height as it can on chrome: the header is the Files and Outline switch ([[workspace-tree#The pane]]), filter and sort hide behind a button in the search field ([[outline-panel]]), so the list starts about 90px below the panel's top. 13px text and rows about 29px tall, 28px header buttons, a 30px search field, 26px connection targets that hang into the row's padding rather than growing it, and the Add menu's press-only tint in place of a sticky hover. Larger read as a separate app laid over this one: 14px rows and 32px pills showed eight rows under nearly 300px of controls.
 - **The web-demo notice** is narrow and centered between the corner controls (`max-width: calc(100vw − 120px)`), wraps its text, and drops the desktop download button.
 - **The command palette** anchors to the top with the input first and the results below, because the on-screen keyboard owns the bottom half; desktop keeps the input at the bottom. Rows get touch-sized padding, and shortcut hints are hidden.
 - **The Add menu** is compact enough that a standard 12-item menu renders without scrolling (rows of about 30px), capped at `92vw` and `min(86dvh, 448px)` so an open from the ➕ never runs off the screen.
 - **The docked Conduit toolbar** pins 12px from the left, lifted `39px` over the bottom bar.
 - **The table editor pop-up** caps its scroll area at `48dvh`, so the on-screen keyboard leaves the active row visible.
-- **The Function Reference** panel is `92vw` by `88dvh`, leaving a tappable backdrop margin on every side. Its tabs scroll sideways with a 52px reserve on the right for the pinned 40px close chip; its first header row wraps so search keeps a full line; the stats legend is hidden; the table pans sideways with a 240px Notes column; and each row's + is always visible, since touch has no hover.
+- **The Function Reference** panel is `92vw` by `88dvh`, leaving a tappable backdrop margin on every side. Its tabs scroll sideways with a 52px reserve on the right for the pinned 40px close chip; the Reference shows its navigator and a card's or folder's page in turn, the page with a ‹ Cards link back, and its landing (top-level folders and packs as boxes, masonry in columns of at least 230px) only beside the navigator on a wide screen; Excel Coverage shares the Reference's navigator (search over Excel's sections, lit as the list scrolls); on a phone only its search shows, and the rows narrow their Excel column to 120px.
 - **Settings** rows carrying a wide control (a text input, the palette stack) stack the control full width under the text, with the palette's swatches left-aligned; below 540px the shortcuts grid is one column.
 - Node chrome, the Connection dialog and the Settings and Shortcuts overlays get finger-sized versions of their small buttons and switches.
 
+
+### Icon line weight
+
+- **The rule:** an icon's line scales with its drawn size, at Tidy's ratio, 0.96px at 14px (the baseline): about 1.1px at 16px. One constant carries it, `--icon-stroke-per-px` in `App.css`; a context sets `--icon-size`, and its icons draw `--icon-size × --icon-stroke-per-px` through a non-scaling stroke, so the glyph's own grid (16 or 24) and its `strokeWidth` don't matter. It covers the top bar on desktop and the phone, and the phone's top-bar menus (`TopBar.css`, `phonePanel.css`). The cable shape picker is cable art, not an icon, and keeps its own weights.
+- **Why scaled, not one absolute weight:** a single 0.96px everywhere was tried and read too thin on the phone's 16px bar icons. Icon systems scale the line with the icon (Material and Lucide draw 2px at 24px, about 1/12, and Lucide's fixed-width option, absoluteStrokeWidth, is the opt-in exception), and Material's optical-size axis goes further, giving small icons a slightly heavier line than plain scaling so they read as the same weight. IBM Carbon fills its 16px icons for the same reason.
+- **Reopen if:** icons still read thin. The likely cause is that Tidy's ratio (about 1/14.6) is lighter than Material's and Lucide's 1/12, which would draw 1.33px at 16px and 1.17px at 14px; an optical correction (a touch heavier below 16px) is the step after that. The bottom bar and the zoom pill still draw their own heavier strokes and are outside the rule.
 
 ### Phones in landscape
 
 Serves [[C119]] landscapePhoneIsTablet. A phone (`IS_PHONE`: coarse and a mobile user agent) turned sideways runs the tablet layout, scaled down to fit:
 
 - The orientation is the screen's (`screen.orientation`, else `orientationchange`), never the viewport's shape, since the on-screen keyboard makes a portrait viewport wider than it is tall. `isMobile()` flips on rotation and `deviceModeStore` notifies; `main.tsx` toggles `html.is-mobile` / `html.is-tablet` and rewrites the viewport meta, and render-time readers subscribe through `useIsMobile()` (`useDeviceMode.ts`). Nothing reloads.
-- The scale is the viewport meta's `initial-scale`, pinned with equal `minimum-scale` and `maximum-scale`, so the browser lays the page out wider and draws it smaller, exactly as its own zoom would, and pointer coordinates stay true. `landscapePhoneScale(long side, short side − 80)` is the smaller of `width / 1100` (the desktop top bar fits one row from 1100 px) and `height / 380` (room for the canvas between the bars), clamped to `[0.6, 1]`; the 80 px is the browser toolbar and system bars. A Galaxy S25+ (832 × 384) runs at 0.756, a 1100 px layout. Back in portrait the meta returns to its original content. A phone's browser can leave the old scale in place around a rotation or a fullscreen exit (seen on a Galaxy S25+, never in emulation), so on every visual-viewport resize and fullscreen change a sideways, non-fullscreen phone checks `visualViewport.scale` against the fit and, when it is off, rewrites the meta nudged by 0.001 and then exact, so the browser reads it as changed; at most three tries per rotation, so a browser that refuses can't loop it.
+- The scale is the viewport meta's `initial-scale`, pinned with equal `minimum-scale` and `maximum-scale`, so the browser lays the page out wider and draws it smaller, exactly as its own zoom would, and pointer coordinates stay true.
+  - `landscapePhoneScale(long side, short side − 80)` is the smaller of `width / 1100` (the desktop top bar fits one row from 1100 px) and `height / 380` (room for the canvas between the bars), clamped to `[0.6, 1]`; the 80 px is the browser toolbar and system bars.
+  - A Galaxy S25+ (832 × 384) runs at 0.756, a 1100 px layout, about the 75 to 80% zoom a person would set by hand.
+  - Back in portrait the meta returns to its original content.
+  - A phone's browser can leave the old scale in place around a rotation or a fullscreen exit (seen on a Galaxy S25+, never in emulation), so on every visual-viewport resize and fullscreen change a sideways, non-fullscreen phone checks `visualViewport.scale` against the fit and, when it is off, rewrites the meta nudged by 0.001 and then exact, so the browser reads it as changed; at most three tries per rotation, so a browser that refuses can't loop it.
 - **Fullscreen drops the scale; installing keeps it.** Chrome pins the page scale to 1 for as long as the Fullscreen API holds the page (the zoom pill's fullscreen button), whatever the viewport meta says, and no rewrite of the meta moves it, so a sideways phone in fullscreen lays out at its real width. So a sideways phone in fullscreen shrinks the app chrome instead (`chromeZoom.ts`, `chromeZoom.css`): `html.chrome-zoomed` gives the bars, the floating pills and panels, the socket legend, the selection bar, the command palette, the notices and the document menu `zoom: var(--chrome-zoom)`, the same landscape fit the viewport meta would have applied, and the minimap takes the factor as its pixel size (`useChromeZoom` in `FlowSurface.tsx`), since React Flow sizes it from props. Never the canvas: React Flow reads pointer positions in zoomed pixels against an unzoomed transform, so a zoomed canvas drags a card short of the finger by the zoom factor. The bars publish their heights twice, `--chrome-top` / `--chrome-bottom` for everything outside the zoom and `--chrome-top-px` / `--chrome-bottom-px`, which a zoomed element divides by its zoom into its own `--chrome-top` / `--chrome-bottom`, since its own zoom scales its offsets too; both publishers re-measure on a zoom change, which resizes nothing in the bars' own pixels. A menu positioned from a screen rectangle and zoomed with the chrome divides its offsets by the zoom (the document menu). React Flow's attribution badge zooms with the chrome too: it tucks under the status bar, and an unzoomed one stood a sliver taller than the zoomed bar.
 - **Rounded corners.** Any touch screen in fullscreen draws to its rounded corners, so `html.fullscreen-touch` (`chromeZoom.ts`) sets `--corner-inset` to 18px, or the safe-area inset where larger, and the menu bar, the top bar (its pinned trio included) and the status bar add it to their side padding; their backgrounds still run edge to edge. The floating pills, legend and minimap sit far enough from the corners to need none. The screen doesn't report its corner shape, so this is a margin, not a fit. Zoomed chrome divides it by its zoom, like the bar heights.
 
+Tests: `landscapePhoneScale.test.ts`: a Galaxy S25+ at 0.756, a short screen's height deciding when it is the tighter fit, and the clamp to `[0.6, 1]`.
+
 #### Installed
 
-`public/manifest.webmanifest` makes the app installable (Chrome's "Add to Home screen"): it opens at `/` with `display: standalone`, which hides the browser bars and keeps the landscape scale. Not `fullscreen`: an app installed that way also lays out at scale 1, like the Fullscreen API (seen on a Galaxy S25+, 2026-10-04), so it trades the status bar for the scale. Its icons (`public/icons/`) are the six-rung gold mark on the dark canvas color, a rounded tile for `any` and a full-bleed one with the glyph inside the safe circle for `maskable`; `node scripts/pwa-icons.mjs` regenerates them from `src/logo/solenoidicon.svg`, the six-rung mark. There is no service worker: Chrome installs without one, and the app has no offline mode to offer. The manifest link carries `crossorigin="use-credentials"`: a Vercel preview deployment sits behind Vercel's login, and Chrome fetches a manifest without cookies by default, so without it the fetch lands on the sign-in redirect and Chrome silently treats the app as not installable.
+`public/manifest.webmanifest` makes the app installable (Chrome's "Add to Home screen"): it opens at `/` with `display: standalone`, which hides the browser bars and keeps the landscape scale. Not `fullscreen`: an app installed that way also lays out at scale 1, like the Fullscreen API (seen on a Galaxy S25+), so it trades the status bar for the scale. Its icons (`public/icons/`) are the six-rung gold mark on the dark canvas color, a rounded tile for `any` and a full-bleed one with the glyph inside the safe circle for `maskable`; `node scripts/pwa-icons.mjs` regenerates them from `src/logo/solenoidicon.svg`, the six-rung mark. There is no service worker: Chrome installs without one, and the app has no offline mode to offer. The manifest link carries `crossorigin="use-credentials"`: a Vercel preview deployment sits behind Vercel's login, and Chrome fetches a manifest without cookies by default, so without it the fetch lands on the sign-in redirect and Chrome silently treats the app as not installable.
 
 ## Push or overlay: how the pieces interact
 
-- **Navigator open** sets `body.solenoid-nav-open` (toggled in `OutlinePanel.tsx`). The navigator overlays the canvas; it does not push the canvas or the right-side chrome. Its only effect is to shove the two left-anchored floating toolbars right so they clear the panel (12px + 248px): the docked Conduit toolbar (`conduit.css`) and the cable inspector (`cableInspector.css`). Desktop only (`html:not(.is-mobile)`). The nav pill, HUD, legend and minimap (all right- or bottom-anchored) don't move.
+- **Navigator open** sets `body.solenoid-nav-open` (toggled in `OutlinePanel.tsx`). The navigator overlays the canvas; it does not push the canvas or the right-side chrome. Its only effect is to shove the two left-anchored floating toolbars right so they clear the panel (12px plus the panel's width, `--nav-w` on `body`, 248px unless dragged): the docked Conduit toolbar (`conduit.css`) and the cable inspector (`cableInspector.css`). Desktop only (`html:not(.is-mobile)`). The nav pill, HUD, legend and minimap (all right- or bottom-anchored) don't move.
 - **Minimap hidden or moved to the top.** The `minimapPosition` setting (`"bottom"`, `"top"` or `"hide"`, `settingsStore.ts`) stamps `html.minimap-top` or `html.minimap-hidden`. The only thing that reflows is the socket legend, which drops from `bottom: chrome-bottom + 129px` (stacked above the minimap) to `bottom: chrome-bottom + 11px` (into the freed corner; `SocketLegend.css`). At the top, the minimap sits below the zoom pill. Nothing else keys off the minimap. On mobile the minimap is always hidden, so the legend already sits low.
+- **Dashboard open**: `.dashboard-overlay` (`DashboardOverlay.css`) covers the canvas from `--chrome-top` to `--chrome-bottom` at the Report window's z-index (9000), so the bars stay usable; on mobile it is full-screen. It pushes nothing.
 - **Report undocked** (desktop): the modal backdrop starts at `--chrome-top`, so the menu and top bar stay visible and usable above it (`ReportOverlay.css`); on mobile it is full-screen.
 - **Report docked** (desktop): `html.sol-report-docked` (`reportStore.ts`). This is a real push. It defines `--report-dock-w: 440px`, with `--report-dock-top` and `--report-dock-bottom` derived from `--chrome-top` and `--chrome-bottom`, and then (`ReportOverlay.css`):
   - shrinks the main canvas (`.sol-rf-appcanvas`) by `--report-dock-w`, which carries the minimap and the Add menu, since they live inside it;
   - shifts `.solenoid-nav`, `.solenoid-hud-stack` and `.solenoid-legend` (fixed to the app, not inside the canvas wrapper) right by their gutter plus `--report-dock-w`;
   - re-centers `.solenoid-cmdpalette` on the canvas, at a width of `clamp(340px, 42% of the canvas, 480px)`.
   The header, the status bar and the left navigator are full-width or left-anchored and untouched.
-- **Inspector docked** (desktop and tablet): `html.sol-inspector-docked` (`inspectorStore.ts`), the same push scaled to `--inspector-w: 340px` (`InspectorPanel.css`). The canvas wrapper shrinks; the nav pill, HUD stack and socket legend shift; the command palette re-centers on the canvas. It is the report dock's full set, kept in step. The two right docks are mutually exclusive: the one opened last takes the slot and the other closes, because the author ruled side by side too big. So their squeeze rules never stack.
-- **What the Inspector shows** ([[C73]] inspectorIsStatic): static reference for the selected node as it is set up, its Function Reference entry and a plain-English list of its inputs and outputs and the type each takes, with any per-socket `socketDocs` sentence. It never shows live values or live connections; live values show on the node and its popups, and live connections on the canvas and the Cable inspector.
+- **Inspector docked** (desktop and tablet): `html.sol-inspector-docked` (`inspectorStore.ts`), the same push scaled to `--inspector-w: 340px` (`InspectorPanel.css`). The canvas wrapper shrinks; the nav pill, HUD stack and socket legend shift; the command palette re-centers on the canvas. It is the report dock's full set, kept in step. The two right docks are mutually exclusive: the one opened last takes the slot and the other closes, because side by side they would take too much of the screen. So their squeeze rules never stack.
+- **What the Inspector shows** ([[C73]] inspectorIsStatic): static reference for the selected node as it is set up, its Function Reference entry (with Open in Reference for the card's full page) and a plain-English list of its inputs and outputs and the type each takes, with any per-socket `socketDocs` sentence. It never shows live values or live connections; live values show on the node and its popups, and live connections on the canvas and the Cable inspector.
 - **Presenting**: `html.solenoid-presenting` (`PresentationOverlay.tsx`) hides nearly all chrome: the header, nav pill, status bar, navigator and its open-pill, legend, minimap, mobile bar and HUD (`PresentationOverlay.css`). The canvas is the slide.
-- **Drilled into a composite**: `html.sol-drilled-in` (`flow/FlowCompositeOverlay.tsx`). The app frame stays. It hides the main minimap (the drill-in host renders its own) and the navigator and its open-pill (`compositeEditor.css`). The drill-in adds a top-left breadcrumb strip (`.solenoid-composite-editor__strip`, `top: 74px` on desktop and `88px + safe-area` on mobile) with a run-controls panel tucked under it (`top: 120px`). Its backdrop is z-index 4, above the canvas and below the chrome, so the app frame stays usable. The covered main canvas stops painting ([[html-in-canvas#The GPU texture budget]]).
+- **Drilled into a composite**: `html.sol-drilled-in` (`flow/FlowCompositeOverlay.tsx`). The app frame stays. It hides the main minimap (the drill-in host renders its own); the Navigator stays and lists the open level ([[outline-panel#Composites]]), the strip stepping right of it on desktop, open panel or collapsed pill, and hiding under its sheet on a phone (`compositeEditor.css`). The drill-in adds a top-left breadcrumb strip (`.solenoid-composite-editor__strip`, `top: 74px` on desktop; on mobile flush at `--chrome-top` and the left edge, with only a bottom and right border) with a run-controls panel tucked under it (`top: 120px`; on mobile the panel is the strip's second row). Its backdrop is z-index 4, above the canvas and below the chrome, so the app frame stays usable. The covered main canvas stops painting ([[html-in-canvas#The GPU texture budget]]).
+
+```mermaid
+flowchart LR
+    rep["the Report docked<br>(440 px)"] --> slot{"the right dock:<br>one at a time"}
+    ins["the Inspector docked<br>(340 px)"] --> slot
+    slot --> c1["the canvas shrinks by the dock,<br>carrying the minimap and Add menu"]
+    slot --> c2["the nav pill, HUD stack and<br>socket legend move in<br>to clear the dock"]
+    slot --> c3["the command palette<br>re-centers on the canvas"]
+    nav["the navigator open (left)"] -.->|"overlays; shoves only"| left["the Conduit toolbar and<br>cable inspector, right"]
+```
 
 ## The z-index ladder
 
 Chrome only; nodes are 0, and cables and overlay planes are negative.
 
-```
-1    .solenoid-topbar (local, inside the header)
-2    .solenoid-menubar (local; 8 on mobile)
-4    composite drill-in backdrop
-5    nav pill / navigator / web-demo banner / docked report and inspector panels (under the header on purpose: the docks tuck beneath the bars)
-6    header / status bar / apptools palette
-7    align pill / isolate endpoints
-20   menu-bar dropdown (local to the header) / Tidy options pop-over (local to the top bar, top: 100% + 6px under the layout group; it overflows onto the canvas)
-60   docked Conduit toolbar / node-budget modal
-100  minimap / socket legend / mobile bottom bar
-110  HUD stack / cable inspector
-150  persistent command palette
-200  Add menu (201 submenu) / Settings / Shortcuts / document-title menu
-300  command palette scrim
-9999 socket context menu
+```mermaid
+block-beta
+    columns 4
+    z0["9999"] d0["socket context menu"]:3
+    z1["300"] d1["command palette scrim"]:3
+    z2["200"] d2["Add menu (201 submenu) / Settings / Shortcuts / document-title menu"]:3
+    z3["150"] d3["persistent command palette"]:3
+    z4["110"] d4["HUD stack / cable inspector"]:3
+    z5["100"] d5["minimap / socket legend / mobile bottom bar"]:3
+    z6["60"] d6["docked Conduit toolbar / node-budget modal"]:3
+    z7["20"] d7["menu-bar dropdown (local to the header) / Tidy options pop-over (local to the top bar, top: 100% + 6px under the layout group; it overflows onto the canvas)"]:3
+    z8["7"] d8["align pill"]:3
+    z9["6"] d9["header / status bar / apptools palette"]:3
+    z10["5"] d10["nav pill / navigator / web-demo banner / docked report and inspector panels (under the header on purpose: the docks tuck beneath the bars)"]:3
+    z11["4"] d11["composite drill-in backdrop"]:3
+    z12["2"] d12[".solenoid-menubar (local; 8 on mobile)"]:3
+    z13["1"] d13[".solenoid-topbar (local, inside the header)"]:3
+    classDef num font-weight:bold
+    class z0,z1,z2,z3,z4,z5,z6,z7,z8,z9,z10,z11,z12,z13 num
 ```
 
 The menu bar's 2 and the top bar's 1 are local values inside `.solenoid-header`, which is 6 at the app level. The canvas gets its own stacking context through `isolation: isolate` (`canvas.css`), which is why the minimap needs 100 to paint over node cards.

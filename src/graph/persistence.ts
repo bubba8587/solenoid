@@ -1,14 +1,14 @@
 // [[B12]] losslessSaves
 import { flushDrafts } from "./draftFlush";
-import { isDesktop } from "./fileBridge";
-import { ClassicPreset } from "rete";
+import { isDesktop, isAndroidApp } from "./fileBridge";
+import { GraphConnection, GraphNode } from "./graphModel";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { repositionDockedNodes, clearHistory } from "./canvasCommands";
 import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SavedStandoff, type SideTables } from "./savedNodeBody";
 import { ctorRegistry } from "./nodeCtorRegistry";
-import { FormatControllerNode, ConvertNode, PlaceholderNode, CompositeNode, placeholderFor } from "./rete-nodes";
-import { settleWildcardTypes } from "./trueAnyAdopt";
+import { FormatControllerNode, PlaceholderNode, CompositeNode, placeholderFor } from "./nodeClasses";
+import { reconcileFcTypes } from "./fcReconcile";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse } from "./groupCollapse";
 import { forgetAllNodes } from "./nodeStoreRegistry";
@@ -26,6 +26,7 @@ import { paletteStore, reportPaletteStore } from "./palette";
 import { docMetaStore } from "./docMetaStore";
 import { loadRevealStore } from "./loadReveal";
 import { zoomAt } from "./zoomAt";
+import { restoreLiterals } from "./literalFields";
 
 
 const SWITCH_CURTAIN_MIN_WORK = 300;
@@ -54,7 +55,7 @@ export interface SavedGraph extends SideTables {
   drawnCables?: SavedDrawnCable[];
   palette?: { base?: string; overrides?: Record<string, string> };
   reportPalette?: { base?: string; overrides?: Record<string, string> };
-  meta?: { author?: string; tags?: string[]; foreign?: boolean; networkAllowed?: boolean };
+  meta?: { author?: string; tags?: string[]; foreign?: boolean; networkAllowed?: boolean; scriptsAllowed?: boolean };
   savedAt?: number;
   packs?: string[];
 }
@@ -212,24 +213,22 @@ async function rebuildGraph(
   const reg = ctorRegistry();
   const idMap = new Map<string, string>();
   _lastLoadIdMap = idMap;
-  const created: ClassicPreset.Node[] = [];
+  const created: GraphNode[] = [];
   const placeholdered: string[] = [];
 
   const unknownIds = new Set(g.nodes.filter((sn) => !reg.has(sn.type)).map((sn) => sn.id));
   const phSockets = deriveMissingNodeSockets(unknownIds, g.connections ?? []);
 
-  const toBuild: Array<{ node: ClassicPreset.Node; x: number; y: number }> = [];
+  const toBuild: Array<{ node: GraphNode; x: number; y: number }> = [];
   for (const sn of g.nodes) {
     const Ctor = reg.get(sn.type);
-    let node: ClassicPreset.Node;
+    let node: GraphNode;
     if (!Ctor) {
       node = placeholderFor(sn, phSockets.get(sn.id));
       placeholdered.push(sn.type);
     } else {
       node = new Ctor({ ...sn.init });
-      const anyNode = node as unknown as Record<string, unknown>;
-      if (sn.literals && typeof anyNode.literals === "object") anyNode.literals = { ...sn.literals };
-      if (sn.stringLiterals && typeof anyNode.stringLiterals === "object") anyNode.stringLiterals = { ...sn.stringLiterals };
+      restoreLiterals(node, sn);
     }
     idMap.set(sn.id, node.id);
     nodeNameStore.claim(node.id, sn.name, sn.type);
@@ -261,7 +260,7 @@ async function rebuildGraph(
     if (!src || !tgt) continue;
     try {
       await editor.addConnection(
-        new ClassicPreset.Connection(src, sc.sourceOutput, tgt, sc.targetInput) as SolenoidConnection,
+        new GraphConnection(src, sc.sourceOutput, tgt, sc.targetInput) as SolenoidConnection,
       );
     } catch {
     }
@@ -276,17 +275,10 @@ async function rebuildGraph(
   for (const node of created) {
     if (node instanceof CompositeNode) await node.hydrate(reg);
   }
-  // Wildcard types must settle before dockSelf and refreshAnnotation, or an FC resolves against the wildcard.
-  settleWildcardTypes(editor);
   for (const node of created) {
     if (node instanceof FormatControllerNode) node.dockSelf(editor);
   }
-  for (const node of editor.getNodes()) {
-    if (node instanceof ConvertNode) node.syncUnitArrows(editor);
-  }
-  for (const node of editor.getNodes()) {
-    if (node instanceof FormatControllerNode) node.refreshAnnotation(editor);
-  }
+  reconcileFcTypes(editor, null);
 
   drawnCableStore.load(g.drawnCables ?? []);
 
@@ -316,8 +308,8 @@ const AUTOSAVE_DELAY = 700;
 let _suspend = 0;
 let _timer: ReturnType<typeof setTimeout> | null = null;
 
-export function suspendAutosave() { _suspend++; }
-export function resumeAutosave() { _suspend = Math.max(0, _suspend - 1); }
+function suspendAutosave() { _suspend++; }
+function resumeAutosave() { _suspend = Math.max(0, _suspend - 1); }
 
 export function scheduleAutosave(): void {
   if (_suspend > 0) return;
@@ -327,6 +319,11 @@ export function scheduleAutosave(): void {
     if (_suspend > 0) return;
     documentStore.captureCurrent({ keepDrafts: true });
   }, AUTOSAVE_DELAY);
+}
+
+/** Saves a pending edit now: leaving the app (Android's back gesture, `androidBack.ts`) doesn't wait for the timer. */
+export function flushSaveNow(): void {
+  flushOnExit();
 }
 
 function flushOnExit(): void {
@@ -340,8 +337,10 @@ function flushOnExit(): void {
 
 if (typeof window !== "undefined") {
   window.addEventListener("pagehide", flushOnExit);
+  // Android can end an app in the background without a pagehide, so leaving it saves too.
+  if (isAndroidApp()) document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushOnExit(); });
   // Closing the desktop window has no guaranteed pagehide; a throwing handler would keep the window open.
-  if (isDesktop()) {
+  else if (isDesktop()) {
     void import("@tauri-apps/api/window").then((m) =>
       m.getCurrentWindow().onCloseRequested(() => { try { flushOnExit(); } catch (e) { console.error("[solenoid] close flush failed", e); } }));
   }

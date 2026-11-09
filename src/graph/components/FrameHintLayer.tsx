@@ -72,7 +72,7 @@ export function FrameHintLayer() {
   if (state.kind === "value") {
     return (
       <div className="solenoid-socket-peek" ref={ref} aria-hidden="true">
-        <SocketValuePeek value={state.value} nodeId={state.nodeId} />
+        <SocketValuePeek value={state.value} nodeId={state.nodeId} outKey={state.outKey} />
       </div>
     );
   }

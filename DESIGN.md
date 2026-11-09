@@ -100,6 +100,8 @@ This system explicitly rejects three looks. It is not a generic SaaS or AI-start
 - Flat at rest; elevation and glow appear only as a response to state.
 - Fast, short, functional motion. The two choreographed moments (load reveal, AI-apply
   reveal) are deliberate showpieces, not a license.
+- A popup opens the instant it is asked for: until its body is drawn it shows one neutral
+  shimmering block, never a spinner or an empty box.
 
 ## 2. Colors
 
@@ -118,7 +120,7 @@ A neutral workbench carrying a typed, saturated socket palette and a single swap
 
 **A palette replaces this whole neutral ramp** — canvas, window, the three surfaces, the three borders, the four inks, per theme mode (`BUILTIN_CHROME` in `palette.ts`). The rest of the neutral chrome (panels, overlays, button hover, the gauge track, the selected cable, light-theme shadows) DERIVES from those thirteen by fixed mixes, so a palette moves one ramp rather than forty tokens; the mix steps are calibrated against App.css's own literals, not eyeballed per palette. The hexes above are the **Default** palette, which authors no ramp of its own because it IS this section. The others each carry chrome their identity earns: Muted lifts off near-black onto a soft charcoal, Colorblind-safe goes fully achromatic and a step crisper so the Okabe–Ito hues carry the whole type signal, Solarized adopts its own canonical base03…base3 ladder, Equinox drops the last of the blue cast, Orchard trades the near-black workbench for Pear's warm cream, Blueprint puts the whole instrument on a cyanotype ground where the canvas dot grid reads as drafting paper, Dawn and Dusk takes the plasma colormap's two ends (a purplish-burgundy dusk under cream ink, a pale-yellow dawn under plum ink), and Neon pushes Default's ramp to near-black grounds and near-white inks (the reverse in light) so its hot slots glow off a stark workbench.
 
-**The two tinted ramps follow the live accent** (`CHROME_HOME` / `adaptChrome` in `palette.ts`). A tinted ramp has a hue, and the accent is user-swappable, so Orchard and Blueprint declare the accent slot they were authored against (green and blue respectively) and the ramp rotates by the hue delta to the selected accent — a vermilion accent turns Blueprint into a red-line print, a pink accent turns Orchard's cream to blossom. The rotation runs in OKLCh and holds every key's chroma and relative luminance, so it may retint but never relight and never strengthen: the tint carries exactly the authored intensity, and the structure and contrast relationships below are exactly the authored ones under any accent; at the home accent the authored hexes pass through byte-identical. **OKLCh here is deliberate and is not the socket-sibling HSV rule's territory** (§Tertiary): that rule governs fixed shade steps NEAR a slot's own hue, where HSV's per-hue unevenness never shows; a chrome rotation always crosses hue regions, and HSV/HSL saturation held across that trip reads as paper in Orchard's yellow band but as a heavy color wash in pink or blue — the failure the first cut shipped. The other palettes hold still on purpose — Solarized's ladder is a lifted identity, Colorblind-safe and Equinox are achromatic by brief, Muted is about glare rather than hue, Custom is exactly what its author picked — and an achromatic accent (the neutral cycle, the gray slot) leaves an adaptive ramp authored.
+**The two tinted ramps follow the live accent** (`CHROME_HOME` / `adaptChrome` in `palette.ts`). A tinted ramp has a hue, and the accent is user-swappable, so Orchard and Blueprint declare the accent slot they were authored against (green and blue respectively) and the ramp rotates by the hue delta to the selected accent — a vermilion accent turns Blueprint into a red-line print, a pink accent turns Orchard's cream to blossom. The rotation runs in OKLCh and holds every key's chroma and relative luminance, so it may retint but never relight and never strengthen: the tint carries exactly the authored intensity, and the structure and contrast relationships below are exactly the authored ones under any accent; at the home accent the authored hexes pass through byte-identical. **OKLCh here is the allowed override** (§Tertiary): a chrome rotation crosses hue regions, and HSV/HSL saturation held across that trip reads as paper in Orchard's yellow band but as a heavy color wash in pink or blue — the failure the first cut shipped. The other palettes hold still on purpose — Solarized's ladder is a lifted identity, Colorblind-safe and Equinox are achromatic by brief, Muted is about glare rather than hue, Custom is exactly what its author picked — and an achromatic accent (the neutral cycle, the gray slot) leaves an adaptive ramp authored.
 
 It is all or nothing per palette (paletteAllOrNone) — a partial ramp derives nothing — and it is **not** a license to renege on the STRUCTURE above. Machine-checked over every ramp, the Default baseline included: canvas darker than card, dots legible without shouting, the field brightest in light and a recess in dark, hover fill stepping toward the ink, three border tiers stepping outward, four ink tiers stepping down in contrast.
 
@@ -127,13 +129,13 @@ It is all or nothing per palette (paletteAllOrNone) — a partial ramp derives n
 ### Tertiary (Typed Socket Palette)
 The socket colors are the system's real palette: each data type owns a hue so a cable's color tells you what flows through it. They are tuned to stay distinguishable across common color-vision deficiencies, and array and matrix variants are systematic siblings of their scalar (a darker, desaturated shade for lists; a punchier, deeper, hue-shifted shade for tables/matrices).
 
-**The sibling derivation runs in HSV** (`palette.ts`) — the same space as `themeAccent` / `darkenAccent` / `socketRingShade`, so the whole family is tuned on one set of axes and each knob does exactly one thing: array = HSV value ×0.85; matrix = hue −11°, S ×1.18, V ×0.92. Do NOT reintroduce an RGB multiply or HSL step - use HSV. This rule's scope is these fixed near-hue steps; the one derivation that crosses hue regions — the adaptive-chrome rotation — runs in OKLCh for the same underlying reason (see §Secondary), not as an exception to it. The socket RING is a fixed HSV value drop rather than one translucent black.
+**Color steps run in HSV by default** (`palette.ts`): the same space as `themeAccent` / `darkenAccent` / `socketRingShade`, so the family is tuned on one set of axes and each knob does exactly one thing. Do NOT reintroduce an RGB multiply or an HSL step. **OKLCh is the override where a step makes a large perceptual move** (author 2026-11-03), such as turning a hue or crossing hue regions, because HSV's hue angle and value aren't how eyes see color: the same HSV step reads strong in one family and faint in another. So the list sibling is an HSV step (value ×0.85: it only darkens, alike in every family), and the matrix sibling runs in OKLCh (`oklchShade`: lightness ×0.91, hue −12°), where HSV's −11° had turned gold's matrix 25° into orange and barely moved sky's. The socket RING is a fixed HSV value drop rather than one translucent black.
 
-- **Number Amber** (`#f5b914`): scalar numbers. List sibling `#d09d11`; its table sibling `#e17c00` is `--sock-table`, the number table.
+- **Number Amber** (`#f5b914`): scalar numbers. List sibling `#d09d11`; its table sibling `#e99900` is `--sock-table`, the number table.
 - **String Lime** (`#c8e040`): scalar text. List sibling `#aabe36`.
 - **Date Orchid** (`#de7cb0`): scalar dates. List sibling `#bd6996`.
-- **Complex Sky** (`#56b4e9`): complex/scalar-or-list. Matrix sibling `#37bad6`.
-- **Logical Purple** (`#c05dd1`): booleans (TRUE/FALSE), with list/matrix siblings.
+- **Complex Sky** (`#56b4e9`): complex/scalar-or-list. Matrix sibling `#24a3ca`.
+- **Logical Blue** (`#3173e0`): booleans (TRUE/FALSE), with list/matrix siblings `#2a62be` and `#006db5`. Purple until 2026-11-03.
 - **Frame Violet** (`#7b64ed`): named-column frames and cubes.
 - **Lambda Green** (`#00b862`): lambda values and charts.
 - **Any Gray** (`#8a8f98`): untyped sockets (`trueany` is the same gray as a hollow,
@@ -154,7 +156,9 @@ accent or socket hues there for visual interest. But the app is not colorless by
 decoration is real and deliberate, in named homes: **brand marks** (the wordmark, the desktop
 accent window border, the top-bar art slot), **user-authored color** (note and group tints,
 theme palettes, report palettes, chart colors), and **opt-in flourishes** (cable flow beads,
-the load reveal, the AI-apply reveal). The rule's actual content for an agent: NEW decorative
+the load reveal, the AI-apply reveal), and **card illustrations** (author 2026-10-26: Sunrise / Sunset's day arc,
+as wide as the day is long, and Weather's sky icon for the current condition; `CardArt.tsx`, drawn
+in `--art-sun` and `--art-rain`, which follow the palette's gold and sky slots). The rule's actual content for an agent: NEW decorative
 color is an author call, never a default you reach for — when unsure whether a color is meaning
 or mood, keep the chrome neutral and ask.
 
@@ -169,11 +173,20 @@ its members), and glows, shadows and rings.
 
 **The Sibling Rule.** Array and matrix socket colors are never free choices. A list is a darker, desaturated shade of its scalar; a table/matrix is a punchier, deeper, slightly hue-shifted shade. Introduce a new typed color only as a systematic sibling, never an arbitrary new hue.
 
+**The Tinted-Box Rule (author 2026-11-05).** A strong colored border is never drawn around an untinted inside. A box with
+a full-strength border all the way round tints its whole inside to match, as a Note (`--note-bg`), a group body or a
+colored dashboard box does. A block with a header and a body is drawn the way a node card is (`CardFrame`): the header
+tinted at `--header-tint` and capped in the color on its top three sides, the body in a neutral 1px border
+(`--border`, stepping to `--border-strong` on hover) with a neutral divider under the header (the color's dark shade in
+light theme). A colored border around a neutral body, or a colored box of rows nested inside another surface, reads as
+an alarm; one colored rule under a title is the light touch when a page only needs to say whose it is.
+
 **The Accent-Mix Ladder.** Every accent-derived shade is a `color-mix` of the surface's accent at a NAMED rung — never an ad-hoc percentage. The rungs live as CSS vars in `App.css`; the mix target is chosen by role at the use site:
 - `--mix-hairline` (30%) toward a border color — tinted hairlines (markdown table edges, strip separators).
 - `--mix-edge` (45%) toward `--border` — a structural edge on a field or bar.
 - `--mix-emphasis` (60%) toward `--border` — the quiet-emphasis edge: an operation selector at rest, an active step.
 - `--mix-ink` (55%) toward `--text` — accent-tinted glyphs and labels (header titles, chevrons, swatches).
+- No rung: accent TEXT that reads at full strength (a Constant's symbol, a unit beside a value, an active sort arrow) is `var(--node-accent, var(--accent))` itself. `--node-accent` is already themed (`themeAccent`: full on the dark canvas, dimmed in light), so a mix toward `--text` on top of it only washes it out.
 - `--mix-glow` (28%) toward `transparent` — the selection glow alpha.
 - `--mix-ring` toward `--ring-into` — the selection ring: 70% toward `#fff` in dark, 80% toward `#000` in light (the light nerf; a ~70% mix toward black reads as a harsh near-black frame over a pale card).
 Tint FILLS stay separate: the header band uses `--header-tint` (22% dark / 52% light) toward `--surface`; translucent washes (active rows, count pills, chips) run loose at 12–22% toward `transparent` and are not yet rungs. A new accent shade picks the rung whose role matches; needing a new percentage means proposing a new rung here, not inlining a number.
@@ -212,9 +225,9 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 
 ### Shadow Vocabulary
 - **Card seam** (`--shadow-card`, `0 1px 0 rgba(0,0,0,0.4)`; light `0 1px 2px rgba(20,30,50,0.08)`): NOT a card shadow any more. Survives only under small in-card popovers (the note's field picker, the formula editor).
-- **Popover lift** (`--shadow-pop`, `0 4px 14px rgba(0,0,0,0.2)`): Menus and small popovers. Light theme softens to `rgba(20,30,50,0.06)`.
+- **Popover lift** (`--shadow-pop`, `0 4px 14px rgba(0,0,0,0.2)`): Menus, popovers and every popup window, the big ones (the table popup, the Report, the Function Reference) included; a popup is not lifted harder for being larger. Light theme softens to `rgba(20,30,50,0.06)`.
 - **Overlay lift** (`--overlay-shadow`, `0 4px 14px rgba(0,0,0,0.3), 0 1px 4px rgba(0,0,0,0.2)`): Floating chrome that sits above the graph (socket legend, minimap, pins, alerts). Layered so it reads over busy content without pooling under the element. Light theme softens to `rgba(20,30,50,0.09)` / `rgba(20,30,50,0.05)`.
-- **Dock edge** (`--dock-shadow`, `-4px 0 12px rgba(0,0,0,0.25)`; light `rgba(20,30,50,0.1)`): The right docks' (Inspector, docked Report) leftward lift. Deliberately minimal — the dock pushes the canvas, but cards scroll off the page under its edge and a bare border reads flat there. Docks sit below the header's z, so this can never spill over the bars.
+- **Dock edge** (`--dock-shadow`, `-4px 0 14px rgba(0,0,0,0.2)`; light `rgba(20,30,50,0.06)`): The right docks' (Inspector, docked Report) leftward lift, the top bar's popover lift turned sideways, since the docks and the bars are one layer of chrome; a palette derives both from its ink in light mode. Deliberately minimal — the dock pushes the canvas, but cards scroll off the page under its edge and a bare border reads flat there. Docks sit below the header's z, so this can never spill over the bars.
 - **Selection glow** (`box-shadow: 0 4px 14px <node-accent>/28%`): An accent-tinted glow drawn from the selected node's own type color, not a neutral shadow.
 
 ### Named Rules
@@ -234,7 +247,7 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 ### Inputs / Fields
 - **Style:** Sunken background (`--surface-sunken`), 1px border (`--border`), 4px radius. Value text in the mono face. Reads as a familiar input box, especially in light theme where the field is the brightest (white) layer.
 - **Focus:** Border shifts to the accent (`--accent`). No glow, no ring; a single colored border edge.
-- **Edits commit on Enter / clickaway, never per keystroke** ([[C95]] commitOnEnter; like an Excel cell). Drafts stay local while typing; Escape reverts. `useDraftCommit` (`inlineInput.tsx`) is the mechanism; never call `processGraph()` from a text field's `onChange`. Discrete picks (dropdowns, checkboxes, sliders) apply immediately.
+- **Edits commit on Enter / clickaway, never per keystroke** ([[B19]] spreadsheetHabits; like an Excel cell). Drafts stay local while typing; Escape reverts. `useDraftCommit` (`inlineInput.tsx`) is the mechanism; never call `processGraph()` from a text field's `onChange`. Discrete picks (dropdowns, checkboxes, sliders) apply immediately.
 
 ### Op pickers (the accent's one home on a card body)
 A card body holds two kinds of pick, and they are different things all the way down ([[C26]] opArgDistinct):
@@ -243,13 +256,13 @@ A card body holds two kinds of pick, and they are different things all the way d
 |---|---|---|
 | What it is | Which operation the card performs. Its values are ops: each a top-level formula function and an Add-menu name. | A parameter of the card's one function: a sort order, an aggregator, a pad side, a view. |
 | Field | `op` | its own name (`order`, `agg`, `side`, `view`, `condition`) |
-| Component | `OpSelect` (dropdown) / `OpToggle` (segmented) | `ArgSelect` (dropdown) / `SegToggle` (segmented) |
+| Component | `OpSelect` (dropdown) / `OpToggle` (segmented) / `OpCycle` (the type button) | `ArgSelect` (dropdown) / `SegToggle` (segmented) |
 | On the card | Hoisted to the top of the body, 2px accent edge at `--mix-emphasis`: the op reads before the inputs it shapes. | Neutral, sits in its row. |
 | Add menu | Searchable per op ("Chart: Column"). | Not a row; its words ride the host leaf's `keywords`. |
 | Formula surface | A function per op (`ISEVEN`, `NORM.DIST`). | A parameter of the host's function: `SORT(list, index, order)`, `RUNNING(op, list, [window])`, `PADTEXT(text, width, [side])`. |
 | Declared in | `NODE_OPS` (`nodeOps.ts`) | nowhere |
 
-A family has at most one OP; the op picker is the only body control that spends the accent (the input card's edit button, § Buttons, is the named exception), and it is the only control that hoists. Everything else in the body stays neutral. There is no flag, `kind` or attribute that moves a control from one column to the other: the field name and the component are the whole classification, and the tests hold both directions (a string `op` field ⇔ a `NODE_OPS` family; `OpSelect`/`OpToggle` ⇔ bound to `op`; `ArgSelect`/`SegToggle` never bound to `op`).
+A family has at most one OP; the op picker is the only body control that spends the accent (the input card's edit button, § Buttons, is the named exception), and it is the only control that hoists. `OpCycle` is the column type button in the accent, one press cycling the op; it rides the field it types instead of hoisting (Value Input's type, beside its entry). Everything else in the body stays neutral. There is no flag, `kind` or attribute that moves a control from one column to the other: the field name and the component are the whole classification, and the tests hold both directions (a string `op` field ⇔ a `NODE_OPS` family; `OpSelect`/`OpToggle` ⇔ bound to `op`; `ArgSelect`/`SegToggle` never bound to `op`).
 
 **Type icons (author 2026-09-29).** A value type is drawn by one icon wherever a control picks or shows it: `#` Number, `Aa` Text, the date picker's calendar (`CalendarIcon`) for Date, a checkbox for Boolean, a double-struck C for Complex (`TypeIcon.tsx`). That covers the type segments (List Input, Table Input, Cast, Split Frame, Get Column, Add Column, a formula card's result type), the column type button, the (i) legend and the Pivot chips. A Cube column with no type stays `–`, Fx stays `Fx`, and a word option in the same row (`All`, `Auto`) stays a word. The tooltip names the type, and an icon segment takes its tooltip as its accessible name. A dropdown keeps the words.
 
@@ -258,14 +271,14 @@ The sorting question for a new pick: *would the user search the Add menu for thi
 ### Card sections (author 2026-09-29)
 A run of related rows on a card body can sit under a small uppercase caption (`CardSection`). Two uses, and only these:
 
-- **A folding section** holds rows secondary to the card's job: Value Input's Format, Cast's Separators, Frame Input's Advanced (λ inputs, Form Layout), XLOOKUP's Options (If not found, match and search modes), and the Calendar of Schedule, Gantt and Earned Value (Holidays, Weekend, hours and day-counting), plus Schedule's Rules (critical paths, progress), and Chart Builder's secondary rows when its chart offers more than ten (Columns, Style, Axes, Color scale, and the Gantt's Timeline, Shown and Calendar; the title, axis labels and font size stay above). The caption wears a chevron, hung in the body's left margin so the caption text stays aligned with the rows. A section starts open when anything inside is set away from its default or wired, and folded otherwise. Folding a section with a wired socket tucks its sockets onto the caption row, several behind a pill and one as its own dot, exactly as a collapsed card does, so no cable ever loses its end. While a pill stands there it replaces the chevron, and the pill and the caption are both the button that reopens the section. The fold is liquid: the wired dots stretch as they run up into the caption and fuse into a swelling blob that wobbles and settles into the pill, and unfolding buds droplets off the pill that neck, snap and spring into their rows (skipped under reduced motion). The liquid keeps each socket's ring, its own darker shade, around every drop and neck, and each wired cable rides its drop. A hand fold or open is saved with the document (a node's `sections`); a section never touched keeps following that rule.
+- **A folding section** holds rows secondary to the card's job: Value Input's Format, Cast's Separators, Frame Input's Advanced (λ inputs, Form Layout, Card Layout), XLOOKUP's Options (If not found, match and search modes), and the Calendar of Schedule, Gantt and Earned Value (Holidays, Weekend, hours and day-counting), plus Schedule's Rules (critical paths, progress), and Chart Builder's secondary rows when its chart offers more than ten (Columns, Style, Axes, Color scale, and the Gantt's Timeline, Shown and Calendar; the title, axis labels and font size stay above). The caption wears a chevron, hung in the body's left margin so the caption text stays aligned with the rows. A section starts open when anything inside is set away from its default or wired, and folded otherwise. Folding a section with a wired socket tucks its sockets onto the caption row, several behind a pill and one as its own dot, exactly as a collapsed card does, so no cable ever loses its end. While a pill stands there it replaces the chevron, and the pill and the caption are both the button that reopens the section. The fold is liquid: the wired dots stretch as they run up into the caption and fuse into a swelling blob that wobbles and settles into the pill, and unfolding buds droplets off the pill that neck, snap and spring into their rows (skipped under reduced motion). The liquid keeps each socket's ring, its own darker shade, around every drop and neck, and each wired cable rides its drop. A hand fold or open is saved with the document (a node's `sections`); a section never touched keeps following that rule.
 - **A plain caption** names a run of rows of a different kind from the rows above it: Join's Keys and Reconcile's Columns (column names under the frames they read), Decision Matrix's Normalize and Output, and Chart Builder's "Not used by …" over the options the picked chart ignores.
 
 Not every card gets one. A small card (INDEX, a two-input verb) stays uncaptioned even when its inputs differ in kind, since a caption there is noise; a card's main inputs and its op never sit in a folding section.
 
 ### Cards / Containers (the Node Card, signature component)
 - **Corner Style:** 8px radius.
-- **Width:** Three fixed tiers so every node reads as a uniform unit: 180px default; 210px medium for nodes whose output is a date (a formatted `15-Mar-2026` reads wider than a number; `nodeMedium` in `nodes/kind.ts`); 240px wide for nodes carrying 2D table/frame data or an inline plot, and for Chart Builder, whose option rows need the room (`nodeWide`). Wide wins when both apply; a manual resize overrides either. Heights stay content-driven.
+- **Width:** Four fixed tiers so every node reads as a uniform unit: 180px default; 210px medium for the date cards and a Value Input keying a date, whose day-name and relative formats need the room (`nodeMedium` in `nodes/kind.ts`); 240px wide for nodes carrying 2D table/frame data or an inline plot, and for Chart Builder, whose option rows need the room (`nodeWide`); 300px extra wide for the cards that draw a chart or a deck of records in the card (Chart, Merge Plots, Conditional Regions, Histogram, Sankey, Proportion, Waterfall, Candlestick, Box Plot, Heatmap, Calendar Heatmap, Vector Field, Record, Cards, and the geometry pack's figure cards (Triangle Solver, Unit Circle, Circle Solver, Regular Polygon, Two Points, Polygon from Points, Solid): `nodeXWide`), whose figure fills the card. The widest tier that applies wins; a manual resize overrides any of them. Heights stay content-driven.
 - **Background:** `--surface` body with a per-node accent-tinted header band. Each node type owns an accent; the header carries a tint of it (`--header-tint`, 22% dark / 52% light), so type is legible at a glance without coloring the whole card. The accent comes from the node's kind (`NODE_KIND_SLOTS` in `nodes/shared.ts`), its family of work rather than its socket type, and a kind names a palette slot, never a raw hex, so retuning a slot moves every card that uses it.
 - **Shadow Strategy:** None at rest; the selection glow is the only shadow a card ever casts.
 - **Border:** 1px neutral, stepping to `--border-strong` on hover. In light theme the border becomes a darker shade of the node's own accent rather than gray. **The frame paints as ONE SVG overlay** (`CardFrame` in `NodeCard.tsx`: body border + header accent cap + divider) so the strokes can't subpixel-crack under zoom. Never reintroduce painted CSS borders on the card or header (transparent borders there are layout-only); a new card-like surface reuses `CardFrame`.
@@ -311,6 +324,14 @@ the node catalog: teased counts, the slogan phrases, conventional-affordance nar
 asides, and the em-dash ban over every shipped string, seeds included. The rest stays a human
 call. No-trailing-parenthetical is enforced over catalog descriptions, socket docs and Excel notes
 only; help and seed prose need a sweep before it can cover them.
+**Marketing copy is looser than UI copy** (author 2026-11-06). The What's New slides
+(`src/graph/whatsNewSlides.ts`), release posts and the selling list in `docs/release-notes-features.md` may be
+casual and funny: asides, second-person banter, a wink at the competition. The rules below are for the app's own
+UI. What still holds for marketing: no em dashes, American spelling, and every claim true and checkable. The
+UI-copy sweep skips `whatsNewSlides.ts`.
+
+A card **label's** parenthetical is deliberate and stays (author 2026-11-05): "Chart (Recharts)", "DATE (Build)",
+"Spectrum (FFT)", "Growth Rate (CAGR)" name the variant or the familiar term, so a review doesn't count them as jargon.
 
 - **A control's own action is a verb, and that is not "imperative tone."** "Cycle Number / Text /
   Date / Boolean", "Open the Problems panel", "Drill in", "Rename" are correct on a button, chip

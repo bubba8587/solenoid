@@ -1,4 +1,4 @@
-// [[C10]]
+// [[C10]] socketLattice, [[socket-lattice#Enforcement]]
 import { describe, it, expect } from "vitest";
 import { canConnect, areCompatible, adoptTypeForBase, projectTypeToBase, type SocketDataType } from "../../src/graph/sockets";
 
@@ -9,16 +9,7 @@ describe("cube — universal recursive container (lattice supremum)", () => {
   });
 });
 
-// ─── The two projection helpers agree wherever both apply ────────────────────
-// `adoptTypeForBase` (INPUT side — what a port becomes when a cable lands) and
-// `projectTypeToBase` (OUTPUT side — what a resolved type becomes on an adoptive
-// output) are near-duplicates with different tie-breaks, and nothing forced them to
-// stay consistent. They disagreed on a CONNECTABLE pair until 2026-07-25: a
-// family-less wire (another wildcard) made `adoptTypeForBase` return the wire
-// verbatim, so a `trueany` cable into a Concat-Lists row turned that row INTO a
-// `trueany` port — which then accepted a frame or a lambda, breaking the restriction
-// AdoptiveSocket's own contract promises ("a narrower base keeps the port RESTRICTED
-// to that rung's acceptance").
+
 describe("adoptTypeForBase / projectTypeToBase — one answer per connectable pair", () => {
   const RANK_BASES = ["anylist", "anytable"] as const;
   const EVERY: SocketDataType[] = [
@@ -56,16 +47,14 @@ describe("adoptTypeForBase / projectTypeToBase — one answer per connectable pa
     expect(adoptTypeForBase("trueany", "lambda")).toBe("lambda");
   });
 
-  // The one place they still differ is OUTSIDE that domain, and deliberately: an
-  // adoptive OUTPUT projects a rank-CROSSING reshape down as well as up (TOCOL:
-  // strtable in → strlist out), which no legal INPUT connection can ask for.
+
   it("only the OUTPUT side projects DOWN a rank, and that pair never connects", () => {
     expect(projectTypeToBase("anylist", "strtable")).toBe("strlist");
     expect(adoptTypeForBase("anylist", "strtable")).toBe("strtable");
   });
 });
 
-// socketReference.test.ts pins every pair against docs/socket-reference.md; this derives the answers from the rule itself, so editing the doc can't make a broken lattice pass.
+
 describe("the lattice rule: families stay apart, values widen", () => {
   const FAM = {
     number:  { scalar: "number",  list: "list",        combo: "numlist",      matrix: "table" },

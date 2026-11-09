@@ -1,0 +1,32 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"IF(0.1 + 0.2 = 0.3, \"same\", \"differ\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(TRUE, , 5)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(1/0, 1, 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(FALSE, 1, 1/0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(\"TRUE\", 1, 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(TRUE, 1, 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(r_A1_A4>2,SIN(r_A1_A4),COS(r_A1_A4))","env":["r_A1_A4=table:num:[[1], [2], [3], [4]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(r_A1_A4>2,r_B1_B4,ANCHORARRAY(c_C1))","env":["c_C1=num:0.5403023058681398","r_A1_A4=table:num:[[1], [2], [3], [4]]","r_B1_B4=table:num:[[-2], [-3], [-4], [-5]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(r_A1_A4>2,r_H1_H2,r_E1_E2)","env":["r_A1_A4=table:num:[[1], [2], [3], [4]]","r_E1_E2=table:num:[[0.8414709848078965], [0.9092974268256817]]","r_H1_H2=table:num:[[0.5403023058681398], [-0.4161468365471424]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(TRUE, r_A1_A4,r_B1_B4)","env":["r_A1_A4=table:num:[[1], [2], [3], [4]]","r_B1_B4=table:num:[[-2], [-3], [-4], [-5]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(FALSE,r_A1_A4,r_B1_C4)","env":["r_A1_A4=table:num:[[1], [2], [3], [4]]","r_B1_C4=table:num:[[-2, 0.5403023058681398], [-3, -0.4161468365471424], [-4, 0.1411200080598672], [-5, -0.7568024953079283]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(k1, k2, k3)","env":["k1=list:bool:[TRUE, FALSE]","k2=list:num:[1, 2, 3, 4]","k3=list:num:[10, 11, 12, 13]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(k1, k2, k3)","env":["k1=list:bool:[TRUE, FALSE]","k2=list:num:[1, 2, 3]","k3=list:num:[10, 11, 12]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(k1, k2, k3)","env":["k1=list:bool:[TRUE, FALSE]","k2=list:num:[1, 2, 3]","k3=list:num:[1, 2, 3, 4]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(k1, 1,2)","env":["k1=list:bool:[TRUE, TRUE, FALSE]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(k1, k2)","env":["k1=list:bool:[TRUE, FALSE, TRUE]","k2=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(k1,1,0)","env":["k1=list:bool:[TRUE, #N/A, FALSE]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(k1, k2, k3)","env":["k1=list:bool:[TRUE, FALSE, TRUE]","k2=list:num:[1, 2, 3]","k3=list:text:[\"A\"]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(k1, k2, k3)","env":["k1=table:bool:[[TRUE], [FALSE], [TRUE]]","k2=list:num:[1, 2]","k3=list:num:[7, 8]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(NOT(c_A4>100),\"VALID\",\"INVALID\")","env":["c_A4=num:50"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(ISBLANK(c_H1),\"(empty)\",c_H1)","env":["c_H1=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(ISBLANK(c_E3),\"(empty)\",c_E3)","env":["c_E3=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"2 * IF(TRUE, OFFSET(c_B1, 2, 0), 0)","env":["c_B1=num:10"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(c_O4=\"\", \"Empty\", \"not empty\")","env":["c_O4=blank:"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(c_A27=\"YES\", \"si\", \"no\")","env":["c_A27=text:\"Yes\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(c_A28=\"YES\", \"si\", \"no\")","env":["c_A28=text:\"No\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(c_A29=\"YES\", \"si\", \"no\")","env":["c_A29=text:\"Yes\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IF(c_A30=\"YES\", \"si\", \"no\")","env":["c_A30=text:\"Yes\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

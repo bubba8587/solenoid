@@ -1,7 +1,6 @@
 // [[C10]] socketLattice, [[C17]] shareImpl
 // Keep this import type-only, so no runtime cycle with errorValue can form.
 import type { SolError } from "../errorValue";
-import { matRows, matCols } from "./matrixOps";
 
 export type Mat = number[][];
 
@@ -13,56 +12,4 @@ export class ShapeError extends Error {
   }
 }
 
-// A non-array is a scalar whatever its type, never a list of characters.
-type Numeric = number | number[] | Mat;
-
-function is2D(v: number[] | Mat): v is Mat {
-  return v.length > 0 && Array.isArray(v[0]);
-}
-
-export function toMatrix(v: Numeric | null | undefined): Mat | null {
-  if (v == null) return null;
-  if (!Array.isArray(v)) return [[v]];
-  if (v.length === 0) return [];
-  return is2D(v) ? v : [v as number[]];
-}
-
-export function toList(v: Numeric | null | undefined): number[] | null {
-  if (v == null) return null;
-  if (!Array.isArray(v)) return [v];
-  if (v.length === 0) return [];
-  if (!is2D(v)) return v as number[];
-  const m = v as Mat;
-  if (m.length === 1) return [...m[0]];
-  if (m.every((r) => r.length === 1)) return m.map((r) => r[0]);
-  throw new ShapeError(`Expected a list, got a ${m.length}×${m[0]?.length ?? 0} table`);
-}
-
-export function toScalar(v: Numeric | null | undefined): number | null {
-  if (v == null) return null;
-  if (!Array.isArray(v)) return v;
-  if (!is2D(v)) {
-    if (v.length === 1) return (v as number[])[0];
-    throw new ShapeError(`Expected a single value, got ${v.length}`);
-  }
-  let count = 0, only: number | null = null;
-  for (const row of v as Mat) { if (count === 0 && row.length) only = row[0]; count += row.length; }
-  if (count === 1) return only;
-  throw new ShapeError(`Expected a single value, got ${count}`);
-}
-
 export type Cell = number | string | boolean | SolError | null;
-
-export function toAnyMatrix(v: unknown): Cell[][] | null {
-  if (v == null) return null;
-  if (Array.isArray(v)) {
-    if (v.length === 0) return [];
-    return (Array.isArray(v[0]) ? v : [v]) as Cell[][];
-  }
-  return [[v as Cell]];
-}
-
-export function matrixShape(v: unknown): { rows: number | null; cols: number | null } {
-  const m = toAnyMatrix(v);
-  return { rows: m ? matRows(m) : null, cols: m ? matCols(m) : null };
-}

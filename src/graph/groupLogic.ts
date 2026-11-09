@@ -1,9 +1,9 @@
 // [[C86]] membershipByGesture, [[C112]] noOverlapsEver, [[A1]] visualGraphCalculator, [[C52]] visibleSelection
 import type { View } from "./view";
-import type { NodeEditor } from "rete";
-import type { ClassicPreset } from "rete";
+import type { GraphEditor } from "./graphEditor";
+import type { GraphNode } from "./graphModel";
 import type { Schemes } from "./schemes";
-import { GroupNode, nodeAccentSlot } from "./rete-nodes";
+import { GroupNode, nodeAccentSlot } from "./nodeClasses";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { cableSelectionStore } from "./cableState";
 import { rebuildGroupMembership } from "./groupMembership";
@@ -15,9 +15,9 @@ import { measuredBox } from "./nodeSize";
 import { getOwningEditor } from "./activeGraph";
 import { settleOverlaps } from "./groupPush";
 
-export const GROUP_DEFAULT_COLOR = "gray";
+const GROUP_DEFAULT_COLOR = "gray";
 
-export function majorityColor(nodes: ClassicPreset.Node[]): string {
+export function majorityColor(nodes: GraphNode[]): string {
   const tally = new Map<string, number>();
   for (const n of nodes) {
     const c = nodeAccentSlot(n);
@@ -31,7 +31,7 @@ export function majorityColor(nodes: ClassicPreset.Node[]): string {
   return bestN > 0 && !tie ? best : GROUP_DEFAULT_COLOR;
 }
 
-type Editor = NodeEditor<Schemes>;
+type Editor = GraphEditor<Schemes>;
 
 // Creation, within-group Tidy and autofit must share these, or Cleanup's tidy-then-autofit cycle drifts the box each run.
 export const GROUP_PAD = 24;
@@ -61,7 +61,7 @@ function nodeBox(view: View, id: string): { x: number; y: number; w: number; h: 
   return measuredBox(view, id, getOwningEditor(id) ?? undefined);
 }
 
-export function sendGroupToBack(view: View, groupId: string): void {
+function sendGroupToBack(view: View, groupId: string): void {
   const el = view.nodeElement(groupId);
   if (el) el.style.zIndex = "-2";
 }
@@ -105,7 +105,7 @@ export async function createGroupFromSelection(editor: Editor, view: View): Prom
   return group.id;
 }
 
-export type GroupGeom = { x: number; y: number; width: number; height: number };
+type GroupGeom = { x: number; y: number; width: number; height: number };
 
 export async function autofitGroupBox(
   editor: Editor, view: View, group: GroupNode,
@@ -254,12 +254,4 @@ export function absorbIntoContainingGroup(editor: Editor, view: View, nodeId: st
     }
   }
   return false;
-}
-
-export function dropFromGroups(editor: Editor, removedId: string): void {
-  for (const g of editor.getNodes()) {
-    if (g instanceof GroupNode && g.members.includes(removedId)) {
-      g.members = g.members.filter((m) => m !== removedId);
-    }
-  }
 }

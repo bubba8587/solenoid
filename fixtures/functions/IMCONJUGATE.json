@@ -1,0 +1,28 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"IMCONJUGATE(c_D2)","env":["c_D2=text:\"12+6i\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D3)","env":["c_D3=text:\"1-2j\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D4)","env":["c_D4=text:\"1+i\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D5)","env":["c_D5=text:\"5i\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D6)","env":["c_D6=text:\"5\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D7)","env":["c_D7=text:\"1.23+9.5121i\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D8)","env":["c_D8=text:\"0.00012+1.23456789i\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D10)","env":["c_D10=text:\"1+2i\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D11)","env":["c_D11=text:\"3.4i\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D12)","env":["c_D12=text:\"-12\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D13)","env":["c_D13=text:\"1.2E-45-3i\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D14)","env":["c_D14=text:\"-5+6i\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D15)","env":["c_D15=text:\"7-12.6i\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D16)","env":["c_D16=text:\"0.0000000000000001\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D17)","env":["c_D17=text:\"0.00000000000000001\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D18)","env":["c_D18=text:\"0.000000000000000001\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D19)","env":["c_D19=text:\"1E-20\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D21)","env":["c_D21=text:\"12-3i\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D22)","env":["c_D22=text:\"0\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D23)","env":["c_D23=text:\"-23.1234-45.899i\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D24)","env":["c_D24=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D25)","env":["c_D25=text:\"4+3i\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D26)","env":["c_D26=text:\"-1\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"IMCONJUGATE(c_D27)","env":["c_D27=text:\"j\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

@@ -1,20 +1,18 @@
-// [[A1]], [[B3]]
+// [[A1]], [[B3]], [[react-flow-surface-contract#The flow model]]
 import { describe, it, expect } from "vitest";
 import {
   buildModel,
   canConnect,
   connect,
-  disconnect,
-  removeNodes,
-  addNode,
   moveNode,
+  type FlowModel,
+  type SavedGraphLite,
 } from "../../../src/graph/flow/flowModel";
-import type { SavedGraphLite } from "../../../src/graph/flow/flowModel";
+import { FLAT_CATALOG } from "../../../src/graph/catalogUtils";
+import type { SolenoidNode } from "../../../src/graph/schemes";
 import { computeAll } from "../../../src/graph/graphCompute";
 import { isSolError } from "../../../src/graph/errorValue";
 
-// The model's edit verbs write through the editor under the socket lattice, and
-// the shared pass recomputes targeted.
 
 const FIXTURE: SavedGraphLite = {
   v: 2,
@@ -29,6 +27,13 @@ const FIXTURE: SavedGraphLite = {
     { source: "b", sourceOutput: "value", target: "sum", targetInput: "b" },
   ],
 };
+
+async function addNode(m: FlowModel, catalogType: string, position: { x: number; y: number }): Promise<SolenoidNode> {
+  const node = FLAT_CATALOG.get(catalogType)!.create() as SolenoidNode;
+  node.position = position;
+  await m.editor.addNode(node);
+  return node;
+}
 
 /** Live ids in fixture order (editor preserves insertion order). */
 async function build() {
@@ -69,18 +74,15 @@ describe("flow controller (React Flow port C1)", () => {
     expect(values.get(sum)).toMatchObject({ result: 4 }); // 2 + 2
   });
 
-  it("disconnect falls back to the input literal; delete removes cables too", async () => {
+  it("an unwired input falls back to its literal", async () => {
     const { m, a, sum } = await build();
     const cable = m.editor.getConnections().find((c) => c.source === a)!;
-    await disconnect(m, cable.id);
+    await m.editor.removeConnection(cable.id);
     expect(m.editor.getConnection(cable.id)).toBeUndefined();
     // WIRED-blank rule: the unwired input reads its literal (0), so 0 + 3.
     const values = await computeAll(m.editor, m.engine, sum);
     expect(values.get(sum)).toMatchObject({ result: 3 });
 
-    await removeNodes(m, [sum]);
-    expect(m.editor.getNode(sum)).toBeUndefined();
-    expect(m.editor.getConnections().every((c) => c.source !== sum && c.target !== sum)).toBe(true);
   });
 
   it("addNode places a catalog entry and it computes", async () => {

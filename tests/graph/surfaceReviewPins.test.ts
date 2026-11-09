@@ -1,4 +1,4 @@
-// [[C92]] pinchUnvetoable
+// [[C92]] pinchUnvetoable, [[group-collapse#Camera targets across collapsed groups]], [[pointer-gestures#Opt-out classes]]
 import { describe, it, expect } from "vitest";
 import { scrollsInDirection } from "../../src/graph/flow/flowWheel";
 import { frameSize } from "../../src/graph/zoomAt";

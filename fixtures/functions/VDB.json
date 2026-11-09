@@ -1,0 +1,15 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"VDB(1000, 0, 5, 4, 5, 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"VDB(1000, 0, 5, 4, 5, 2, TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"VDB(1000, 0, 5, 0, 1, 2, TRUE)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"VDB(10000, 1000, 10, 0, 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"VDB(10000, 1000, 10, 5, 2)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"VDB(10000,1000,5,3,5,1.5,TRUE())","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"VDB(10000,1000,5,3,5,1.5,FALSE())","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"VDB(10000, 1000, 0, 0, 1)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"VDB(10000, 1000, 10, 0, 11)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"VDB(1, 0, 1e300, 0, 1e300)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"VDB(1000, 0, 2e6, 0, 1e6)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

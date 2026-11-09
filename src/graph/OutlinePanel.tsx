@@ -1,9 +1,9 @@
 // [[C88]] collapsedGroupCard, [[C85]] groupPushDeterministic
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
-import { getActiveEditor as getEditor, getActiveView as getView } from "./activeGraph";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { getActiveEditor as getEditor, getActiveView as getView, subscribeActiveGraph } from "./activeGraph";
 import { selectNode, unselectAllNodes } from "./canvasCommands";
 import { connectionVersionStore } from "./graphSignals";
-import { outlineSearch } from "./outlineStore";
+import { outlineSearch, navigatorFiles } from "./outlineStore";
 import { keyUnderModal } from "./modalGuard";
 import { registerChrome } from "./chromeToggle";
 import { touchSelectStore } from "./touchSelectStore";
@@ -11,9 +11,14 @@ import { IS_COARSE, isMobile } from "./coarse";
 import { connectionDialog } from "./connectionDialogStore";
 import { nodeConnections } from "./nodeNames";
 import {
-  GroupNode, FormatControllerNode, DisplayNode,
+  GroupNode, FormatControllerNode, DisplayNode, CompositeNode,
   nodeAccent,
-} from "./rete-nodes";
+} from "./nodeClasses";
+import { compositeEditorStore } from "./compositeEditorStore";
+import { compositeStaleStore } from "./compositeStaleStore";
+import type { GraphEditor } from "./graphEditor";
+import type { Schemes } from "./schemes";
+import { ctorRegistry } from "./nodeCtorRegistry";
 import { setGroupsCollapsed } from "./groupPush";
 import { measuredBox } from "./nodeSize";
 import { appThemeStore } from "./appTheme";
@@ -21,6 +26,13 @@ import { themeAccent, resolveColor, hexToRgba } from "./palette";
 import "./OutlinePanel.css";
 import { CloseIcon } from "./components/CloseIcon";
 import { nodeDisplayName, nodeName } from "./catalogUtils";
+import { documentStore } from "./documentStore";
+import { WorkspaceTree, RowMenu, Glyph, filesAddMenu, type MenuItem } from "./WorkspaceTree";
+import { isNavPreview } from "./workspacePreview";
+import { useIsMobile } from "./useDeviceMode";
+import { searchLibrary, type SearchHit } from "./workspaceSearch";
+import { treeKeyStep, typeAhead, type KeyRow, type TreeKey } from "./workspaceRows";
+import { nodeNameStore } from "./nodeNameStore";
 
 
 type Cat = "group" | "input" | "display" | "other";
@@ -34,8 +46,17 @@ type Row = {
   isGroup: boolean;
   collapsed: boolean;
   cat: Cat;
+  /** A composite folds open to the cards inside it; `collapsed` is its fold. */
+  composite: boolean;
+  /** The composites between the open level and this row's card, outermost first; empty on the open level. */
+  path: CompositeNode[];
+  /** Where a search hit inside a composite lives, as its composites' names. */
+  where: string;
+  /** 1: this held composite waits on a Refresh; 2: one inside it does. */
+  stale: 0 | 1 | 2;
 };
 type State = { tree: Row[]; flat: Row[] };
+type AnyNode = ReturnType<GraphEditor<Schemes>["getNodes"]>[number];
 
 function colorOf(n: unknown, mode: "dark" | "light"): string {
   if (n instanceof GroupNode) return themeAccent(resolveColor((n as GroupNode).color), mode);
@@ -57,68 +78,133 @@ function catOf(n: unknown, wiredIn: Set<string>, wiredOut: Set<string>): Cat {
   return "other";
 }
 
-type SortMode = "position" | "alpha";
+/** A held composite's Refresh state as its Navigator row shows it: its own, else whether one anywhere inside it waits. */
+function staleOf(c: CompositeNode, depth = 0): 0 | 1 | 2 {
+  if (compositeStaleStore.isStale(c.id)) return 1;
+  if (depth > 16 || !c.isHydrated) return 0;
+  for (const n of c.internalEditor.getNodes()) if (n instanceof CompositeNode && staleOf(n, depth + 1) > 0) return 2;
+  return 0;
+}
 
-function buildState(mode: "dark" | "light", sortMode: SortMode): State {
+type SortMode = "position" | "alpha";
+type Sections = { files: boolean; outline: boolean };
+type LayoutMode = "stacked" | "tree";
+
+const SECTIONS_KEY = "solenoid.navSections";
+const SPLIT_KEY = "solenoid.navSplit";
+const LAYOUT_KEY = "solenoid.navLayout";
+const WIDTH_KEY = "solenoid.navWidth";
+const clampWidth = (w: number) => Math.round(Math.min(Math.max(w, 200), 480));
+
+function readJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch { return fallback; }
+}
+function writeJson(key: string, value: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* private mode */ }
+}
+
+const compName = (c: CompositeNode) => c.label?.trim() || "Composite";
+
+/** The open level's rows, and inside each composite in `openComps` its own cards, at any depth; the flat list for a search holds every card at every depth. */
+function buildState(mode: "dark" | "light", sortMode: SortMode, openComps: ReadonlySet<string>): State {
   const editor = getEditor();
   if (!editor) return { tree: [], flat: [] };
   const view = getView();
-  const nodes = editor.getNodes();
-  const byId = new Map(nodes.map((n) => [n.id, n]));
-
-  const conns = editor.getConnections();
-  const wiredIn = new Set(conns.map((c) => c.target));
-  const wiredOut = new Set(conns.map((c) => c.source));
-
-  const labelOf = (n: (typeof nodes)[number]) => nodeDisplayName(n);
-  const posOf = (n: (typeof nodes)[number]) => view?.position(n.id) ?? { x: 0, y: 0 };
-  const ROW_BAND = 120;
-  const cmp = sortMode === "alpha"
-    ? (a: (typeof nodes)[number], b: (typeof nodes)[number]) =>
-        labelOf(a).localeCompare(labelOf(b), undefined, { numeric: true, sensitivity: "base" })
-    : (a: (typeof nodes)[number], b: (typeof nodes)[number]) => {
-        const pa = posOf(a), pb = posOf(b);
-        return (Math.round(pa.y / ROW_BAND) - Math.round(pb.y / ROW_BAND)) || (pa.x - pb.x);
-      };
-  const sorted = (arr: (typeof nodes)[number][]) => [...arr].sort(cmp);
-
-  const memberOf = new Map<string, string>();
-  for (const n of nodes) {
-    if (n instanceof GroupNode) for (const m of n.members) memberOf.set(m, n.id);
-  }
-
-  const rowOf = (n: (typeof nodes)[number], depth: number): Row => {
-    const isGroup = n instanceof GroupNode;
-    const color = colorOf(n, mode);
-    return {
-      id: n.id,
-      label: nodeDisplayName(n),
-      type: typeOf(n),
-      color,
-      selected: !!(n as { selected?: boolean }).selected,
-      depth,
-      isGroup,
-      collapsed: isGroup ? (n as GroupNode).collapsed : false,
-      cat: catOf(n, wiredIn, wiredOut),
-    };
-  };
-
-  const flat = sorted(nodes.filter((n) => !(n instanceof FormatControllerNode))).map((n) => rowOf(n, 0));
-
   const tree: Row[] = [];
-  const seen = new Set<string>();
-  const push = (n: (typeof nodes)[number], depth: number) => {
-    if (seen.has(n.id) || n instanceof FormatControllerNode) return;
-    seen.add(n.id);
-    tree.push(rowOf(n, depth));
-    if (n instanceof GroupNode && !n.collapsed) {
-      const members = n.members.map((mid) => byId.get(mid)).filter((m): m is (typeof nodes)[number] => !!m);
-      for (const m of sorted(members)) push(m, depth + 1);
+  const flat: Row[] = [];
+  const ROW_BAND = 120;
+
+  const level = (ed: GraphEditor<Schemes>, posOf: (n: AnyNode) => { x: number; y: number }, path: CompositeNode[]) => {
+    const nodes = ed.getNodes();
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    const conns = ed.getConnections();
+    const wiredIn = new Set(conns.map((c) => c.target));
+    const wiredOut = new Set(conns.map((c) => c.source));
+    const labelOf = (n: AnyNode) => nodeDisplayName(n);
+    const cmp = sortMode === "alpha"
+      ? (a: AnyNode, b: AnyNode) => labelOf(a).localeCompare(labelOf(b), undefined, { numeric: true, sensitivity: "base" })
+      : (a: AnyNode, b: AnyNode) => {
+          const pa = posOf(a), pb = posOf(b);
+          return (Math.round(pa.y / ROW_BAND) - Math.round(pb.y / ROW_BAND)) || (pa.x - pb.x);
+        };
+    const sorted = (arr: AnyNode[]) => [...arr].sort(cmp);
+    const memberOf = new Set<string>();
+    for (const n of nodes) if (n instanceof GroupNode) for (const m of n.members) memberOf.add(m);
+    const where = path.map(compName).join(" › ");
+    const rowOf = (n: AnyNode, depth: number): Row => {
+      const isGroup = n instanceof GroupNode;
+      const composite = n instanceof CompositeNode;
+      return {
+        id: n.id,
+        label: nodeDisplayName(n),
+        type: typeOf(n),
+        color: colorOf(n, mode),
+        selected: path.length === 0 && !!(n as { selected?: boolean }).selected,
+        depth,
+        // A group inside a closed composite can't fold from here, so it lists its cards like a heading.
+        isGroup: isGroup && path.length === 0,
+        collapsed: isGroup ? (n as GroupNode).collapsed : composite ? !openComps.has(n.id) : false,
+        cat: catOf(n, wiredIn, wiredOut),
+        composite,
+        path,
+        where,
+        stale: composite ? staleOf(n) : 0,
+      };
+    };
+    return { nodes, byId, memberOf, sorted, rowOf };
+  };
+  const innerPos = (c: CompositeNode) => (n: AnyNode) => c.internalPositions[n.id] ?? n.position ?? { x: 0, y: 0 };
+
+  const walkTree = (ed: GraphEditor<Schemes>, posOf: (n: AnyNode) => { x: number; y: number }, path: CompositeNode[], depth0: number) => {
+    const { nodes, byId, memberOf, sorted, rowOf } = level(ed, posOf, path);
+    const seen = new Set<string>();
+    const push = (n: AnyNode, depth: number) => {
+      if (seen.has(n.id) || n instanceof FormatControllerNode) return;
+      seen.add(n.id);
+      tree.push(rowOf(n, depth));
+      if (n instanceof GroupNode && (path.length > 0 || !n.collapsed)) {
+        const members = n.members.map((mid) => byId.get(mid)).filter((m): m is AnyNode => !!m);
+        for (const m of sorted(members)) push(m, depth + 1);
+      }
+      if (n instanceof CompositeNode && openComps.has(n.id) && n.isHydrated && depth < 24) walkTree(n.internalEditor, innerPos(n), [...path, n], depth + 1);
+    };
+    for (const n of sorted(nodes.filter((n) => !memberOf.has(n.id)))) push(n, depth0);
+  };
+  const walkFlat = (ed: GraphEditor<Schemes>, posOf: (n: AnyNode) => { x: number; y: number }, path: CompositeNode[]) => {
+    const { nodes, sorted, rowOf } = level(ed, posOf, path);
+    for (const n of sorted(nodes.filter((n) => !(n instanceof FormatControllerNode)))) {
+      flat.push(rowOf(n, 0));
+      if (n instanceof CompositeNode && n.isHydrated && path.length < 16) walkFlat(n.internalEditor, innerPos(n), [...path, n]);
     }
   };
-  for (const n of sorted(nodes.filter((n) => !memberOf.has(n.id)))) push(n, 0);
-
+  const topPos = (n: AnyNode) => view?.position(n.id) ?? { x: 0, y: 0 };
+  walkTree(editor, topPos, [], 0);
+  walkFlat(editor, topPos, []);
   return { tree, flat };
+}
+
+/** Resolves once the drill-in has mounted `ed` as the active graph, false if it doesn't within a few seconds. */
+function whenActive(ed: GraphEditor<Schemes>): Promise<boolean> {
+  if (getEditor() === ed) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const done = (ok: boolean) => { off(); window.clearTimeout(t); resolve(ok); };
+    const off = subscribeActiveGraph(() => { if (getEditor() === ed) done(true); });
+    const t = window.setTimeout(() => done(false), 4000);
+  });
+}
+
+/** Drills level by level down `path` from the open level, then selects and centers the card. */
+async function jumpInto(path: CompositeNode[], id: string) {
+  for (const c of path) {
+    if (compositeEditorStore.isOpen()) compositeEditorStore.drillInto(c); else compositeEditorStore.open(c);
+    if (!(await whenActive(c.internalEditor))) return;
+  }
+  // The drill-in fits its view once its cards measure, which would undo a pan made sooner.
+  await new Promise((r) => window.setTimeout(r, 160));
+  await focusNode(id);
 }
 
 /** Shared with the palette's jump-to-node. */
@@ -173,8 +259,69 @@ const FILTERS: { key: "input" | "display"; label: string }[] = [
 
 export function OutlinePanel() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  useSyncExternalStore(compositeEditorStore.subscribe, compositeEditorStore.version);
   const mode = appThemeStore.getMode();
   const [open, setOpen] = useState(false);
+  const preview = isNavPreview();
+  const [layout, setLayout] = useState<LayoutMode>(() => (preview && readJson<LayoutMode>(LAYOUT_KEY, "stacked") === "tree" ? "tree" : "stacked"));
+  const setLayoutMode = (m: LayoutMode) => { setLayout(m); writeJson(LAYOUT_KEY, m); };
+  // A phone shows one section at a time and opens on the Outline, where Search lands.
+  const [sections, setSections] = useState<Sections>(() =>
+    isMobile() ? { files: false, outline: true } : readJson<Sections>(SECTIONS_KEY, { files: true, outline: true }));
+  const toggleSection = (k: keyof Sections) =>
+    setSections((prev) => {
+      const opening = !prev[k];
+      const next = isMobile() ? { files: false, outline: false, [k]: opening } : { ...prev, [k]: opening };
+      if (!isMobile()) writeJson(SECTIONS_KEY, next);
+      return next;
+    });
+  // A phone shows exactly one section; rotating a tablet into the phone layout can bring both open (or none), and the switch
+  // only opens, so settle it to the Outline.
+  const phoneMode = useIsMobile();
+  useEffect(() => {
+    if (phoneMode) setSections((prev) => (prev.files !== prev.outline ? prev : { files: false, outline: true }));
+  }, [phoneMode]);
+  const [filesH, setFilesH] = useState<number>(() => readJson<number>(SPLIT_KEY, 180));
+  const [viewMenu, setViewMenu] = useState<{ x: number; y: number } | null>(null);
+  const [addMenu, setAddMenu] = useState<{ x: number; y: number; sub?: MenuItem[] } | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [navW, setNavW] = useState<number>(() => clampWidth(readJson<number>(WIDTH_KEY, 248)));
+  useEffect(() => {
+    if (!open || isMobile()) return;
+    document.body.style.setProperty("--nav-w", `${navW}px`);
+    return () => { document.body.style.removeProperty("--nav-w"); };
+  }, [open, navW]);
+  const startWidthDrag = (e: ReactPointerEvent) => {
+    e.preventDefault();
+    const x0 = e.clientX, w0 = navW;
+    let w = w0;
+    const move = (ev: PointerEvent) => { w = clampWidth(w0 + ev.clientX - x0); setNavW(w); };
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); writeJson(WIDTH_KEY, w); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+  const focusOpenDocRow = () => {
+    const id = documentStore.currentId();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = panelRef.current?.querySelector<HTMLElement>(`[data-key="d:${CSS.escape(id ?? "")}"]`);
+      el?.scrollIntoView({ block: "nearest" });
+      el?.focus();
+    }));
+  };
+  const revealOpenDoc = () => {
+    if (!sections.files) toggleSection("files");
+    focusOpenDocRow();
+  };
+  const startSplitDrag = (e: ReactPointerEvent) => {
+    e.preventDefault();
+    const y0 = e.clientY, h0 = filesH;
+    const max = (panelRef.current?.clientHeight ?? 600) - 200;
+    let h = h0;
+    const move = (ev: PointerEvent) => { h = Math.round(Math.min(Math.max(h0 + ev.clientY - y0, 56), Math.max(56, max))); setFilesH(h); };
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); writeJson(SPLIT_KEY, h); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<Set<"input" | "display">>(new Set());
   const [sortMode, setSortMode] = useState<SortMode>(
@@ -185,6 +332,8 @@ export function OutlinePanel() {
     try { localStorage.setItem("solenoid.navSort", m); } catch { /* private mode */ }
   };
   const [state, setState] = useState<State>({ tree: [], flat: [] });
+  // Which composites' rows are folded open; per session, since a composite has no fold of its own on the canvas.
+  const [openComps, setOpenComps] = useState<ReadonlySet<string>>(new Set());
   const [searchSignal, setSearchSignal] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingFocus = useRef(false);
@@ -202,7 +351,6 @@ export function OutlinePanel() {
       }
     }
     return m;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connVersion, state]);
   const toggleConns = (id: string) =>
     setExpandedConns((prev) => {
@@ -218,10 +366,16 @@ export function OutlinePanel() {
   const requestSearch = useCallback(() => {
     pendingFocus.current = true;
     setOpen(true);
+    setSections((prev) => (prev.outline ? prev : isMobile() ? { files: false, outline: true } : { ...prev, outline: true }));
     setSearchSignal((s) => s + 1);
   }, []);
 
   useEffect(() => outlineSearch.register(requestSearch), [requestSearch]);
+  useEffect(() => navigatorFiles.register(() => {
+    setOpen(true);
+    setSections((prev) => (prev.files ? prev : isMobile() ? { files: true, outline: false } : { ...prev, files: true }));
+    focusOpenDocRow();
+  }), []);
   // Re-registers on `open` change so the isOpen getter stays current.
   useEffect(() => registerChrome("navigator", { isOpen: () => open, setOpen }), [open]);
   useEffect(() => {
@@ -244,45 +398,140 @@ export function OutlinePanel() {
     }
   }, [searchSignal, open]);
 
+  // The rows rebuild on a 300 ms poll; a keyboard fold rebuilds them at once, so the next key reads the fold it just made.
+  const tickRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (!open) return;
     let prev = "";
     const tick = () => {
-      const next = buildState(appThemeStore.getMode(), sortMode);
+      const next = buildState(appThemeStore.getMode(), sortMode, openComps);
       // Order-sensitive, so a Position-mode re-sort from a moved node changes it without hashing positions.
-      const sig = next.tree.map((r) => `${r.id}:${r.depth}:${r.collapsed ? 1 : 0}:${r.selected ? 1 : 0}:${r.label}:${r.color}:${r.cat}`).join("|")
+      const sig = next.tree.map((r) => `${r.id}:${r.depth}:${r.collapsed ? 1 : 0}:${r.selected ? 1 : 0}:${r.label}:${r.color}:${r.cat}:${r.stale}`).join("|")
         + "#" + next.flat.map((r) => r.id).join(",");
       if (sig !== prev) { prev = sig; setState(next); }
     };
     tick();
+    tickRef.current = tick;
     const id = window.setInterval(tick, 300);
-    return () => window.clearInterval(id);
-  }, [mode, open, sortMode]);
+    return () => { window.clearInterval(id); tickRef.current = null; };
+  }, [mode, open, sortMode, openComps]);
 
+  const filtering = query.trim() !== "" || filters.size > 0;
   const view = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtering = q !== "" || filters.size > 0;
     if (!filtering) return state.tree;
     return state.flat.filter(
       (r) =>
         (filters.size === 0 || filters.has(r.cat as "input" | "display")) &&
         (q === "" || r.label.toLowerCase().includes(q) || r.type.toLowerCase().includes(q)),
     );
-  }, [state, query, filters]);
+  }, [state, query, filters, filtering]);
+
+  // Everywhere also searches the other documents in the library; workspace-tree.md § The pane.
+  const [everywhere, setEverywhere] = useState(false);
+  // While the search stays in this document, only the header's name and count re-render the panel; every autosave would rebuild the whole list.
+  const libVersion = useSyncExternalStore(
+    documentStore.subscribe,
+    () => (everywhere ? `v${documentStore.version()}` : `${documentStore.currentName()}|${documentStore.list().length}`),
+  );
+  const hits = useMemo(
+    () => (everywhere && filters.size === 0 ? searchLibrary(documentStore.searchable(), documentStore.currentId(), query) : []),
+    [everywhere, filters, query, libVersion],
+  );
+  const openHit = async (h: SearchHit) => {
+    await documentStore.open(h.docId);
+    // The open can stay put (a load in progress, a failed capture or load); names repeat across documents, so never look one up in the wrong one.
+    if (h.kind !== "node" || documentStore.currentId() !== h.docId) return;
+    const editor = getEditor();
+    if (!editor) return;
+    const byName = h.nodeName ? nodeNameStore.byName(h.nodeName) : undefined;
+    const id = byName ?? editor.getNodes().find((n) => n.constructor.name === h.nodeType && nodeDisplayName(n) === h.nodeLabel)?.id;
+    if (id) requestAnimationFrame(() => void focusNode(id));
+  };
+
+  const rowById = useMemo(() => new Map([...state.tree, ...state.flat].map((r) => [r.id, r])), [state]);
+  const toggleComp = (id: string) => {
+    const c = rowById.get(id);
+    const node = c?.path.length ? c.path[c.path.length - 1].internalEditor.getNode(id) : getEditor()?.getNode(id);
+    if (node instanceof CompositeNode && !node.isHydrated) void node.hydrate(ctorRegistry()).then(() => tickRef.current?.());
+    setOpenComps((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const toggleRow = (id: string) => (rowById.get(id)?.composite ? toggleComp(id) : toggleGroup(id));
+  /** A card inside a composite opens its drill-in first; one on the open level just centers. */
+  const goTo = (id: string) => {
+    const r = rowById.get(id);
+    if (r?.path.length) void jumpInto(r.path, id);
+    else void focusNode(id);
+  };
 
   const lastClicked = useRef<string | null>(null);
+  // The Outline is an ARIA tree too, with the Files tree's keys; workspace-tree.md § The pane.
+  const [rowFocus, setRowFocus] = useState<string | null>(null);
+  const rowEls = useRef(new Map<string, HTMLDivElement>());
+  const typedRef = useRef({ text: "", at: 0 });
+  const keyRows: KeyRow[] = view.map((r) => ({ key: r.id, depth: r.depth, expandable: (r.isGroup || r.composite) && !query.trim() && filters.size === 0, expanded: !r.collapsed, label: r.label }));
+  const focusable = keyRows.some((r) => r.key === rowFocus) ? rowFocus : view.find((r) => r.selected)?.id ?? view[0]?.id;
+  const moveRowFocus = (id: string | undefined) => {
+    if (!id) return;
+    setRowFocus(id);
+    requestAnimationFrame(() => rowEls.current.get(id)?.focus());
+  };
+  const onListKey = (e: KeyboardEvent) => {
+    const el = (e.target as HTMLElement).closest(".solenoid-outline__row[data-node]") as HTMLElement | null;
+    if (!el) return;
+    // On a row's own button (chevron, connections) the arrows still walk the list; Enter, Space and letters stay the button's.
+    const onChild = e.target !== el;
+    const id = el.dataset.node!;
+    // Keys the tree takes stop here, or the canvas would nudge the selected cards on the same arrow.
+    const take = () => { e.preventDefault(); e.stopPropagation(); };
+    const steps: Record<string, TreeKey> = { ArrowUp: "up", ArrowDown: "down", Home: "home", End: "end", ArrowLeft: "left", ArrowRight: "right" };
+    if (steps[e.key]) {
+      take();
+      const out = treeKeyStep(keyRows, id, steps[e.key]);
+      if (out.toggle) { toggleRow(out.toggle.key); tickRef.current?.(); }
+      moveRowFocus(out.focus);
+      return;
+    }
+    if (onChild) return;
+    if (e.key === "Enter") { take(); handleRowDoubleClick(id); return; }
+    if (e.key === " ") {
+      take();
+      if (rowById.get(id)?.path.length) return;
+      const editor = getEditor();
+      if (!editor) return;
+      const sel = new Set(editor.getNodes().filter((n) => (n as { selected?: boolean }).selected).map((n) => n.id));
+      sel.has(id) ? sel.delete(id) : sel.add(id);
+      lastClicked.current = id;
+      unselectAllNodes();
+      for (const s of sel) selectNode(s, true);
+      return;
+    }
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      take();
+      const now = performance.now();
+      typedRef.current = { text: (now - typedRef.current.at < 700 ? typedRef.current.text : "") + e.key, at: now };
+      const i = keyRows.findIndex((r) => r.key === id);
+      moveRowFocus(typeAhead(keyRows, typedRef.current.text.length > 1 ? keyRows[i - 1]?.key ?? id : id, typedRef.current.text));
+    }
+  };
+
   const handleRowDoubleClick = (id: string) => {
     lastClicked.current = id;
-    void focusNode(id);
+    goTo(id);
   };
   const handleRowClick = (e: MouseEvent, id: string) => {
     // IS_COARSE, not isMobile(): a tablet reaches select mode from the top bar while isMobile() is false.
     const accumulate = e.ctrlKey || e.metaKey || (IS_COARSE && touchSelectStore.get());
     const range = e.shiftKey;
     if (!accumulate && !range) {
-      if (isMobile()) { void focusNode(id); lastClicked.current = id; }
+      if (isMobile()) { goTo(id); lastClicked.current = id; }
       return;
     }
+    if (rowById.get(id)?.path.length) return;
     const editor = getEditor();
     if (!editor) return;
     const sel = new Set(editor.getNodes().filter((n) => (n as { selected?: boolean }).selected).map((n) => n.id));
@@ -341,106 +590,123 @@ export function OutlinePanel() {
   const groupRows = state.flat.filter((r) => r.isGroup);
   const allGroupsCollapsed = groupRows.length > 0 && groupRows.every((r) => r.collapsed);
 
-  return (
-    <div className="solenoid-outline" onPointerDown={(e) => e.stopPropagation()}>
-      <div className="solenoid-outline__header">
-        <span className="solenoid-outline__title">Outline</span>
-        <span className="solenoid-outline__count">{state.flat.length}</span>
-        {groupRows.length > 0 && (
-          <button
-            className="solenoid-outline__collapse-all"
-            title={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
-            aria-label={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
-            onClick={toggleAllGroups}
-          >
-            {/* The glyph shows the action: converging to collapse, diverging to expand. */}
-            <svg
-              viewBox="0 0 16 16" width="14" height="14" fill="none"
-              stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
-            >
-              <path d="M2 4 H8" />
-              <path d="M2 8 H8" />
-              <path d="M2 12 H8" />
-              {allGroupsCollapsed ? (
-                <>
-                  <path d="M10 6 L12 4 L14 6" />
-                  <path d="M10 10 L12 12 L14 10" />
-                </>
-              ) : (
-                <>
-                  <path d="M10 4 L12 6 L14 4" />
-                  <path d="M10 12 L12 10 L14 12" />
-                </>
-              )}
-            </svg>
-          </button>
-        )}
-        <button className="solenoid-outline__collapse" title="Hide outline" onClick={() => setOpen(false)}><CloseIcon size={14} /></button>
-      </div>
-      <input
-        ref={inputRef}
-        className="solenoid-outline__search"
-        placeholder="Search name or type…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
-      <div className="solenoid-outline__filters">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            className={`solenoid-outline__chip${filters.has(f.key) ? " solenoid-outline__chip--on" : ""}`}
-            onClick={() => toggleFilter(f.key)}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-      <div className="solenoid-outline__sortrow">
-        <span className="solenoid-outline__sortlabel">Sort</span>
+  const docName = documentStore.currentName();
+  const isPhone = isMobile();
+  const cardCount = state.flat.filter((r) => r.path.length === 0).length;
+  // While drilled in, the outline is the open composite's; the level row says which, and backs out like the strip's crumbs.
+  const stack = compositeEditorStore.stack();
+  const levelRow = stack.length > 0 && (
+    <nav className="solenoid-outline__level" aria-label="Composite level">
+      <button className="solenoid-outline__levelbtn" title="Back to the canvas" onClick={() => void compositeEditorStore.drillTo(-1)}>Canvas</button>
+      {stack.map((c, i) => (
+        <Fragment key={c.id}>
+          <span className="solenoid-outline__levelsep" aria-hidden="true">›</span>
+          {i === stack.length - 1
+            ? <span className="solenoid-outline__levelbtn solenoid-outline__levelbtn--current">{compName(c)}</span>
+            : <button className="solenoid-outline__levelbtn" title={`Drill up to ${compName(c)}`} onClick={() => void compositeEditorStore.drillTo(i)}>{compName(c)}</button>}
+        </Fragment>
+      ))}
+    </nav>
+  );
+  const controls = (
+    <>
+      <div className="solenoid-outline__searchwrap">
+        <input
+          ref={inputRef}
+          className="solenoid-outline__search"
+          placeholder={everywhere ? "Search every document…" : filters.size === 1 ? `Search ${filters.has("input") ? "inputs" : "displays"}…` : filters.size === 2 ? "Search inputs and displays…" : "Search name or type…"}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <span className="solenoid-outline__fieldtools">
         <button
-          className={`solenoid-outline__sortbtn${sortMode === "position" ? " solenoid-outline__sortbtn--on" : ""}`}
-          title="Sort by canvas position: top→bottom, then left→right"
-          onClick={() => setSort("position")}
+          className={`solenoid-outline__scope${filters.size > 0 ? " solenoid-outline__scope--on" : ""}`}
+          title="Filter and sort"
+          aria-label="Filter and sort"
+          aria-haspopup="menu"
+          onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setViewMenu({ x: r.left, y: r.bottom + 4 }); }}
         >
-          Position
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M2.5 3.5 H13.5 L9.5 8.5 V12.5 L6.5 11 V8.5 Z" />
+          </svg>
         </button>
         <button
-          className={`solenoid-outline__sortbtn${sortMode === "alpha" ? " solenoid-outline__sortbtn--on" : ""}`}
-          title="Sort alphabetically"
-          onClick={() => setSort("alpha")}
+          className={`solenoid-outline__scope${everywhere ? " solenoid-outline__scope--on" : ""}`}
+          title={everywhere ? "Search this document" : "Search every document"}
+          aria-label="Search every document"
+          aria-pressed={everywhere}
+          onClick={() => { setEverywhere((v) => !v); inputRef.current?.focus(); }}
         >
-          A–Z
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden="true">
+            <circle cx="8" cy="8" r="6" />
+            <path d="M2 8 H14 M8 2 C5.6 4.6 5.6 11.4 8 14 M8 2 C10.4 4.6 10.4 11.4 8 14" />
+          </svg>
         </button>
+        </span>
       </div>
-      <div className="solenoid-outline__list">
+      {viewMenu && (
+        <RowMenu
+          at={viewMenu}
+          onClose={() => setViewMenu(null)}
+          items={[
+            ...FILTERS.map((f) => ({ label: f.label, checked: filters.has(f.key), onClick: () => toggleFilter(f.key) })),
+            { label: "Sort by Position", checked: sortMode === "position", divider: true, onClick: () => setSort("position") },
+            { label: "Sort A–Z", checked: sortMode === "alpha", onClick: () => setSort("alpha") },
+          ]}
+        />
+      )}
+    </>
+  );
+  const listBody = (
+    <div className="solenoid-outline__tree" role="tree" aria-label="Outline" onKeyDown={(e) => onListKey(e.nativeEvent)}>
+        {hits.length > 0 && view.length > 0 && <div className="solenoid-outline__heading">This document</div>}
         {view.length === 0 ? (
-          <div className="solenoid-outline__empty">{state.flat.length === 0 ? "No nodes" : "No matches"}</div>
+          hits.length === 0 && <div className="solenoid-outline__empty">{state.flat.length === 0 ? "No nodes" : "No matches"}</div>
         ) : (
           view.map((r) => {
-            const connCount = r.isGroup ? 0 : connCounts.get(r.id) ?? 0;
+            const connCount = r.isGroup || r.path.length > 0 ? 0 : connCounts.get(r.id) ?? 0;
             const showConns = !r.isGroup && expandedConns.has(r.id);
             return (
             <Fragment key={r.id}>
             <div
               className={`solenoid-outline__row${r.selected ? " solenoid-outline__row--sel" : ""}${r.isGroup ? " solenoid-outline__row--group" : ""}`}
               style={{
-                paddingLeft: 8 + r.depth * 14,
+                "--depth": r.depth,
                 ...(r.isGroup
                   ? {
                       background: hexToRgba(r.color, 0.24),
-                      border: `1px solid ${hexToRgba(r.color, 0.55)}`,
-                      boxShadow: r.selected ? "inset 0 0 0 2px var(--accent)" : undefined,
+                      "--group-edge": hexToRgba(r.color, 0.55),
+                      "--group-ink": r.color,
                     }
                   : null),
+              } as CSSProperties}
+              role="treeitem"
+              aria-level={r.depth + 1}
+              aria-expanded={r.isGroup || r.composite ? !r.collapsed : undefined}
+              aria-selected={r.selected}
+              data-node={r.id}
+              tabIndex={r.id === focusable ? 0 : -1}
+              ref={(el) => {
+                if (el) { rowEls.current.set(r.id, el); return; }
+                const had = rowEls.current.get(r.id) === document.activeElement || document.activeElement === document.body;
+                rowEls.current.delete(r.id);
+                // A fold can unmount the focused row; focus falls back inside the list rather than to the page, where arrows would nudge cards.
+                if (had && rowFocus === r.id) requestAnimationFrame(() => {
+                  if (document.activeElement && document.activeElement !== document.body) return;
+                  const back = [...rowEls.current.values()].find((x) => x.isConnected);
+                  back?.focus();
+                });
               }}
+              onFocus={(e) => { if (e.target === e.currentTarget) setRowFocus(r.id); }}
               onClick={(e) => handleRowClick(e, r.id)}
               onDoubleClick={() => handleRowDoubleClick(r.id)}
             >
-              {r.isGroup ? (
+              {r.isGroup || (r.composite && !filtering) ? (
                 <button
                   className="solenoid-outline__chevron"
-                  title={r.collapsed ? "Expand group" : "Collapse group"}
-                  onClick={(e) => { e.stopPropagation(); toggleGroup(r.id); }}
+                  title={r.composite ? (r.collapsed ? "Show what's inside" : "Hide what's inside") : r.collapsed ? "Expand group" : "Collapse group"}
+                  style={r.composite ? { color: r.color } : undefined}
+                  onClick={(e) => { e.stopPropagation(); toggleRow(r.id); }}
                 >
                   <svg
                     viewBox="0 0 16 16" width="16" height="16" fill="none"
@@ -454,6 +720,15 @@ export function OutlinePanel() {
                 <span className="solenoid-outline__dot" style={{ background: r.color }} />
               )}
               <span className="solenoid-outline__label">{r.label}</span>
+              {filtering && r.where && <span className="solenoid-outline__hitwhere">{r.where}</span>}
+              {r.stale > 0 && (
+                <span
+                  className="solenoid-outline__stale"
+                  title={r.stale === 1 ? "Needs Refresh" : "A composite inside needs Refresh"}
+                  aria-label={r.stale === 1 ? "Needs Refresh" : "A composite inside needs Refresh"}
+                  data-inside={r.stale === 2 || undefined}
+                />
+              )}
               {connCount > 0 && (
                 <button
                   className={`solenoid-outline__plug${showConns ? " solenoid-outline__plug--on" : ""}`}
@@ -471,7 +746,7 @@ export function OutlinePanel() {
               )}
             </div>
             {showConns && (
-              <div className="solenoid-outline__conns" style={{ paddingLeft: 8 + r.depth * 14 + 18 }}>
+              <div className="solenoid-outline__conns" style={{ "--depth": r.depth } as CSSProperties}>
                 {nodeConnections(r.id).map((row) => (
                   <div className="solenoid-outline__conn" key={row.id}>
                     <span className="solenoid-outline__conn-text" title={
@@ -511,7 +786,192 @@ export function OutlinePanel() {
             );
           })
         )}
-      </div>
+        {hits.length > 0 && (
+          <>
+            <div className="solenoid-outline__heading">Other documents</div>
+            {hits.map((h, i) => (
+              <div
+                key={`${h.kind}:${h.docId}:${i}`}
+                className={`solenoid-outline__row solenoid-outline__hit solenoid-outline__hit--${h.kind}`}
+                title={h.detail}
+                onClick={() => void openHit(h)}
+              >
+                {h.kind === "doc"
+                  ? <span className="solenoid-outline__hitglyph"><Glyph kind="doc" /></span>
+                  : <span className="solenoid-outline__dot solenoid-outline__dot--hit" />}
+                <span className="solenoid-outline__label">{h.label}</span>
+                {h.detail && <span className="solenoid-outline__hitwhere">{h.detail}</span>}
+              </div>
+            ))}
+          </>
+        )}
     </div>
+  );
+  const phoneSwitch = isPhone && layout === "stacked";
+  const closeButton = (
+    <button className="solenoid-outline__collapse" title="Hide navigator" aria-label="Hide navigator" onClick={() => setOpen(false)}><CloseIcon size={14} /></button>
+  );
+  const addButton = (
+    <button
+      className="solenoid-nav-sec__btn"
+      title="New"
+      aria-label="New"
+      onClick={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        if (!sections.files) toggleSection("files");
+        setAddMenu({ x: r.left, y: r.bottom + 4 });
+      }}
+    >
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M8 3 V13 M3 8 H13" /></svg>
+    </button>
+  );
+  const collapseAll = (
+    <>
+        {groupRows.length > 0 && (
+          <button
+            className="solenoid-outline__collapse-all"
+            title={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
+            aria-label={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
+            onClick={toggleAllGroups}
+          >
+            {/* The glyph shows the action: converging to collapse, diverging to expand. */}
+            <svg
+              viewBox="0 0 16 16" width="14" height="14" fill="none"
+              stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <path d="M2 4 H8" />
+              <path d="M2 8 H8" />
+              <path d="M2 12 H8" />
+              {allGroupsCollapsed ? (
+                <>
+                  <path d="M10 6 L12 4 L14 6" />
+                  <path d="M10 10 L12 12 L14 10" />
+                </>
+              ) : (
+                <>
+                  <path d="M10 4 L12 6 L14 4" />
+                  <path d="M10 12 L12 10 L14 12" />
+                </>
+              )}
+            </svg>
+          </button>
+        )}
+    </>
+  );
+
+  return (
+    <div
+      className={`solenoid-outline solenoid-outline--${layout}`}
+      ref={panelRef}
+      style={isPhone ? undefined : { width: navW }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      {!isPhone && <div className="solenoid-outline__resize" role="separator" aria-orientation="vertical" aria-label="Resize navigator" onPointerDown={startWidthDrag} />}
+      {/* On desktop the stacked sections' own heads carry the panel, so the title row goes (the preview keeps it for its toggle). */}
+      {!(layout === "stacked" && !isPhone && !preview) && <div className="solenoid-outline__header">
+        {phoneSwitch ? (
+          // A phone shows one section at a time, so the header is the switch between them and the section heads go.
+          <div className="solenoid-outline__switch" role="tablist" focusgroup="tablist inline" aria-label="Navigator">
+            {(["files", "outline"] as const).map((k) => (
+              <button
+                key={k}
+                role="tab"
+                aria-selected={sections[k]}
+                className={`solenoid-outline__switchbtn${sections[k] ? " solenoid-outline__switchbtn--on" : ""}`}
+                onClick={() => { if (!sections[k]) toggleSection(k); }}
+              >
+                {k === "files" ? "Files" : "Outline"}
+                <span className="solenoid-outline__switchcount">{k === "files" ? documentStore.list().length : cardCount}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="solenoid-outline__title">Navigator</span>
+        )}
+        <span className="solenoid-outline__spacer" />
+        {phoneSwitch && sections.files && addButton}
+        {phoneSwitch && sections.outline && collapseAll}
+        {preview && (
+          <button
+            className="solenoid-outline__layout"
+            title={layout === "stacked" ? "Show as one tree" : "Show Files and Outline apart"}
+            onClick={() => setLayoutMode(layout === "stacked" ? "tree" : "stacked")}
+          >
+            {layout === "stacked" ? "One tree" : "Stacked"}
+          </button>
+        )}
+        {layout === "tree" && addButton}
+        {layout === "tree" && collapseAll}
+        {closeButton}
+      </div>}
+      {layout === "tree" ? (
+        <>
+          {levelRow}
+          {controls}
+          <div className="solenoid-outline__list solenoid-outline__list--tree">
+            <WorkspaceTree outline={listBody} />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className={`solenoid-nav-sec solenoid-nav-sec--files${sections.files ? " solenoid-nav-sec--open" : ""}`}>
+            {!phoneSwitch && <div className="solenoid-nav-sec__head">
+              <button className="solenoid-nav-sec__toggle" aria-expanded={sections.files} onClick={() => toggleSection("files")}>
+                <SectionChevron open={sections.files} />
+                <span className="solenoid-nav-sec__title">Files</span>
+                <span className="solenoid-nav-sec__count">{documentStore.list().length}</span>
+              </button>
+              {addButton}
+              {!preview && closeButton}
+            </div>}
+            {sections.files && (
+              <div
+                className="solenoid-nav-sec__body"
+                style={sections.outline && !isPhone ? { maxHeight: filesH } : undefined}
+              >
+                <WorkspaceTree />
+              </div>
+            )}
+          </div>
+          {sections.files && sections.outline && !isPhone && (
+            <div className="solenoid-nav-split" role="separator" aria-orientation="horizontal" onPointerDown={startSplitDrag} />
+          )}
+          <div className={`solenoid-nav-sec solenoid-nav-sec--outline${sections.outline ? " solenoid-nav-sec--open" : ""}`}>
+            {!phoneSwitch && <div className="solenoid-nav-sec__head">
+              <button className="solenoid-nav-sec__toggle solenoid-nav-sec__toggle--short" aria-expanded={sections.outline} onClick={() => toggleSection("outline")}>
+                <SectionChevron open={sections.outline} />
+                <span className="solenoid-nav-sec__title">Outline</span>
+                <span className="solenoid-nav-sec__count">{cardCount}</span>
+              </button>
+              <button className="solenoid-nav-sec__crumb" title="Show in Files" onClick={revealOpenDoc}>{docName}</button>
+              {collapseAll}
+            </div>}
+            {sections.outline && (
+              <>
+                {levelRow}
+                {controls}
+                <div className="solenoid-outline__list">{listBody}</div>
+              </>
+            )}
+          </div>
+        </>
+      )}
+      {addMenu && (
+        <RowMenu
+          key={addMenu.sub ? "sub" : "root"}
+          at={addMenu}
+          items={addMenu.sub ?? filesAddMenu((sub) => setAddMenu({ ...addMenu, sub }))}
+          onClose={() => setAddMenu(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function SectionChevron({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? "rotate(90deg)" : "none" }} aria-hidden="true">
+      <path d="M6 4 L10 8 L6 12" />
+    </svg>
   );
 }

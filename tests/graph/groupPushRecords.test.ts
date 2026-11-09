@@ -1,7 +1,7 @@
-// [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver
+// [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver, [[group-expand-push#Records and restore]], [[group-expand-push#Entry points]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
 import type { Schemes } from "../../src/graph/schemes";
 import { GroupNode } from "../../src/graph/nodes/group";
 import { DisplayNode } from "../../src/graph/nodes/display";
@@ -9,24 +9,6 @@ import { setGroupsCollapsed } from "../../src/graph/groupPush";
 import { standoffStore } from "../../src/graph/standoffs";
 import { swapSelectionSlots } from "../../src/graph/canvasCommands";
 import { autofitGroupWithHistory, createGroupFromSelection, GROUP_PAD, GROUP_HEADER } from "../../src/graph/groupLogic";
-
-// ─── Expand-push record staleness across a Tidy ─────────────────────────────────
-// The reported "Tidy/Cleanup around expanded groups misplaces nodes" sequence:
-//
-//   1. Expand group A → its push moves neighbor N aside; a restore record is
-//      written (preX = where N stood BEFORE the push, expX = where the push
-//      left it).
-//   2. A layout pass (Tidy / Cleanup / align) moves N somewhere new. The record
-//      survives, silently pointing at a PRE-TIDY coordinate.
-//   3. Expand group B → its push shoves N again. The merge path used to keep
-//      the ancient preX/preY while refreshing expX/expY — re-arming the record.
-//   4. Collapse A and B → the restore slides N back to the STEP-1 coordinate,
-//      a spot that only made sense in the pre-Tidy arrangement. Misplaced.
-//
-// The restore path already guards against this ("only if the node is still
-// where our push left it"); the MERGE path must apply the same staleness test:
-// a record whose node moved since our last push is void — start fresh from the
-// node's CURRENT position.
 
 type Pos = { x: number; y: number };
 
@@ -92,9 +74,48 @@ function groupView(g: GroupNode) {
   return () => (g.collapsed ? COLLAPSED_CARD : { w: g.width, h: g.height });
 }
 
+describe("a nudge within EPS after a push is kept by the restore", () => {
+  async function setup() {
+    const editor = new GraphEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const gA = new GroupNode({ collapsed: true, width: 600, height: 300 });
+    const gB = new GroupNode({ collapsed: true, width: 600, height: 300 });
+    const n = new DisplayNode();
+    for (const node of [gA, gB, n]) await editor.addNode(node as never);
+    addView(gA.id, 100, 100, groupView(gA));
+    addView(gB.id, 100, 800, groupView(gB));
+    const nView = addView(n.id, 420, 140, () => ({ w: 180, h: 80 }));
+    return { editor, view, gA, gB, id: n.id, nView };
+  }
+
+  it("a pixel a Tidy moved the box after the push survives the collapse", async () => {
+    const { editor, view, gA, id, nView } = await setup();
+    await setGroupsCollapsed(editor, view, [gA], false);
+    await flushRafs();
+    await view.moveNode(id, { x: nView.position.x, y: nView.position.y - 1 });
+    await setGroupsCollapsed(editor, view, [gA], true);
+    await flushRafs();
+    expect(nView.position).toEqual({ x: 420, y: 139 });
+  });
+
+  it("a nudge between two merged pushes carries into where the box returns", async () => {
+    const { editor, view, gA, gB, id, nView } = await setup();
+    await setGroupsCollapsed(editor, view, [gA], false);
+    await flushRafs();
+    // B's expanded box reaches up over where A's push left the box, so B pushes it too and the records merge.
+    await view.moveNode(id, { x: nView.position.x, y: nView.position.y + 1 });
+    await view.moveNode(gB.id, { x: nView.position.x - 100, y: nView.position.y + 40 });
+    await setGroupsCollapsed(editor, view, [gB], false);
+    await flushRafs();
+    await setGroupsCollapsed(editor, view, [gA, gB], true);
+    await flushRafs();
+    expect(nView.position).toEqual({ x: 420, y: 141 });
+  });
+});
+
 describe("expand-push records survive a Tidy only with a fresh restore target", () => {
   it("a second push after a programmatic move does NOT re-arm the pre-move restore", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
 
     // Two collapsed groups and a loose, unwired neighbor.
@@ -116,25 +137,22 @@ describe("expand-push records survive a Tidy only with a fresh restore target", 
     const pushedX = nView.position.x;
     expect(pushedX).toBeGreaterThan(420); // the push actually happened
 
-    // 2. A Tidy-style programmatic move relocates N (the applier does exactly
-    //    this: view.translate with no drag events, so no record invalidation).
+    // 2. A Tidy-style move relocates N: view.translate, no drag events.
     await view.moveNode(n.id, { x: 1200, y: 140 });
 
-    // 3. Expand B — its footprint (1000..1600 × 80..380) covers N's new spot,
-    //    so N is pushed again. This merge must treat the old record as stale.
+    // 3. Expand B: its footprint (1000..1600 × 80..380) covers N's new spot, so N is pushed again.
     await setGroupsCollapsed(editor, view, [gB], false);
     await flushRafs();
     expect(nView.position.x).toBeGreaterThan(1200); // pushed again
 
-    // 4. Collapse both. The restore must return N to where it stood BEFORE
-    //    B's push (its post-Tidy spot, x=1200) — NOT to the pre-Tidy x=420.
+    // 4. Collapse both: N returns to its post-Tidy spot, x=1200, not the pre-Tidy x=420.
     await setGroupsCollapsed(editor, view, [gA, gB], true);
     await flushRafs();
     expect(nView.position.x).toBe(1200);
   });
 
   it("the classic single-group cycle still restores exactly", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const g = new GroupNode({ collapsed: true, width: 600, height: 300 });
     const n = new DisplayNode();
@@ -172,7 +190,7 @@ function expectNoOverlaps(views: Record<string, { position: Pos; element: { offs
 
 describe("no layout op leaves an overlap", () => {
   it("expand separates an overlap the user made, even far from the group", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const g = new GroupNode({ collapsed: true, width: 600, height: 300 });
     const a = new DisplayNode();
@@ -189,7 +207,7 @@ describe("no layout op leaves an overlap", () => {
   });
 
   it("expand never moves a position-locked group; the neighbor yields", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const g = new GroupNode({ collapsed: true, width: 600, height: 300 });
     const locked = new GroupNode({ width: 300, height: 200 });
@@ -205,7 +223,7 @@ describe("no layout op leaves an overlap", () => {
   });
 
   it("collapse separates a restore that lands on a card placed while expanded", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const g = new GroupNode({ collapsed: true, width: 600, height: 300 });
     const n = new DisplayNode();
@@ -228,7 +246,7 @@ describe("no layout op leaves an overlap", () => {
 
 describe("autofit and group creation", () => {
   it("autofit keeps a locked group's corner and brings the members to it", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const a = new DisplayNode();
     for (const node of [a]) await editor.addNode(node as never);
@@ -244,7 +262,7 @@ describe("autofit and group creation", () => {
   });
 
   it("autofit that grows the box pushes a neighbor off it", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const a = new DisplayNode();
     const n = new DisplayNode();
@@ -260,7 +278,7 @@ describe("autofit and group creation", () => {
   });
 
   it("grouping takes a node out of its old group and pushes a bystander off the new box", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView((id) => groupView(editor.getNode(id) as GroupNode)());
     const a = new DisplayNode();
     const b = new DisplayNode();
@@ -288,7 +306,7 @@ describe("autofit and group creation", () => {
 
 describe("collapse and the selection ([[C52]] visibleSelection)", () => {
   it("a member hidden by the collapse leaves the selection; a visible card stays", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const m = new DisplayNode();
     const loose = new DisplayNode();
@@ -315,11 +333,10 @@ describe("collapse and the selection ([[C52]] visibleSelection)", () => {
   });
 });
 
-// [[C89]] standoffsSolveLast: a collapse re-solves only the clusters it touches, records the moves, and never lands a box
-// on another; expanding slides the partner back.
+// [[C89]] standoffsSolveLast, [[standoffs#The solver runs last]]
 describe("standoffs across a collapse round trip", () => {
   async function setup() {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const g = new GroupNode({ width: 600, height: 300 });
     const n = new DisplayNode();

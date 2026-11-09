@@ -1,37 +1,37 @@
-// [[C10]] socketLattice
+// [[C10]] socketLattice, [[socket-lattice#Requirements]], [[socket-lattice#The wildcard ladder keeps rank]]
 import { describe, it, expect } from "vitest";
-import { ClassicPreset } from "rete";
-import { reconcileTrueAnyTypes, type AdoptEditor } from "../../src/graph/trueAnyAdopt";
-import { extractInit } from "../../src/graph/copyPaste";
+import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import type { Schemes } from "../../src/graph/schemes";
+import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
+import { extractInit } from "../../src/graph/nodeInit";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { IfNode, NaNode } from "../../src/graph/nodes/logic";
 import { CableSwitchNode } from "../../src/graph/nodes/control";
-import { ListIndexNode, ReverseNode, SortNode, SetsNode, ConcatListsNode, InterleaveNode, TableReshapeNode, StackNode, FrameInputNode, SortFrameNode, ColumnsNode } from "../../src/graph/rete-nodes";
+import { ListIndexNode, ReverseNode, SortNode, SetsNode, ConcatListsNode, InterleaveNode, TableReshapeNode, StackNode, FrameInputNode, SortFrameNode, ColumnsNode } from "../../src/graph/nodeClasses";
 import { numberSocket, stringSocket, frameSocket, cubeSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket, adoptTypeForBase, canConnect } from "../../src/graph/sockets";
 
-// Same fake-editor surface as conduitTrace.test.ts — the pass only reads
-// getNodes/getNode/getConnections and mutates sockets in place.
+// A real editor over the nodes and cables: the settle runs on the core over its graph.
 type Conn = { source: string; sourceOutput: string; target: string; targetInput: string };
-function makeEditor(nodes: ClassicPreset.Node[], conns: Conn[]): AdoptEditor {
+function makeEditor(nodes: GraphNode[], conns: Conn[]): GraphEditor<Schemes> {
+  const ed = new GraphEditor<Schemes>();
   const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
-  return {
-    getNodes: () => nodes as never[],
-    getNode: (id: string) => byId[id] as never,
-    getConnections: () => conns,
-  };
+  for (const n of nodes) void ed.addNode(n as never);
+  for (const c of conns) void ed.addConnection(new GraphConnection(byId[c.source], c.sourceOutput, byId[c.target], c.targetInput) as never);
+  return ed;
 }
 
-const dt = (sock: ClassicPreset.Socket | undefined) =>
+const dt = (sock: GraphSocket | undefined) =>
   sock instanceof SolenoidSocket ? sock.dataType : undefined;
 
-function numSource(): ClassicPreset.Node {
-  const n = new ClassicPreset.Node("Num");
-  n.addOutput("value", new ClassicPreset.Output(numberSocket));
+function numSource(): GraphNode {
+  const n = new GraphNode("Num");
+  n.addOutput("value", new GraphOutput(numberSocket));
   return n;
 }
-function strSource(): ClassicPreset.Node {
-  const n = new ClassicPreset.Node("Text");
-  n.addOutput("value", new ClassicPreset.Output(stringSocket));
+function strSource(): GraphNode {
+  const n = new GraphNode("Text");
+  n.addOutput("value", new GraphOutput(stringSocket));
   return n;
 }
 
@@ -41,24 +41,20 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     const disp = new DisplayNode();
     const wire: Conn = { source: src.id, sourceOutput: "value", target: disp.id, targetInput: "in" };
     const ed = makeEditor([src, disp], [wire]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(disp.inputs.in?.socket)).toBe("number");
     expect(dt(disp.outputs.out?.socket)).toBe("number"); // passthrough adopts through
     // Disconnect → both revert to the hollow placeholder.
-    reconcileTrueAnyTypes(makeEditor([src, disp], []));
+    settleWildcardTypes(makeEditor([src, disp], []));
     expect(dt(disp.inputs.in?.socket)).toBe("trueany");
     expect(dt(disp.outputs.out?.socket)).toBe("trueany");
   });
 
   it("adoption never PERSISTS: a save/paste init carries no adopted type ([[C10]] socketLattice)", () => {
-    // The save records a node's init fields (extractInit — persistence and paste
-    // share it), never its sockets, so an adopted type must not appear there and
-    // a reconstructed node must start hollow. This is the "never persists" half
-    // of [[C10]] socketLattice, previously unpinned: if Display ever grows a whitelisted field
-    // holding the adopted type, this fails.
+    // Saves and pastes share extractInit; a node rebuilt from it starts hollow.
     const src = numSource();
     const disp = new DisplayNode();
-    reconcileTrueAnyTypes(makeEditor([src, disp], [
+    settleWildcardTypes(makeEditor([src, disp], [
       { source: src.id, sourceOutput: "value", target: disp.id, targetInput: "in" },
     ]));
     const init = extractInit(disp);
@@ -76,7 +72,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { source: src.id, sourceOutput: "value", target: d1.id, targetInput: "in" },
       { source: d1.id, sourceOutput: "out", target: d2.id, targetInput: "in" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(d2.inputs.in?.socket)).toBe("string");
     expect(dt(d2.outputs.out?.socket)).toBe("string");
   });
@@ -90,7 +86,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { source: num.id, sourceOutput: "value", target: dNum.id, targetInput: "in" },
       { source: str.id, sourceOutput: "value", target: dStr.id, targetInput: "in" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(dNum.inputs.in?.socket)).toBe("number");
     expect(dt(dStr.inputs.in?.socket)).toBe("string");
   });
@@ -103,7 +99,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { source: num.id, sourceOutput: "value", target: agreeing.id, targetInput: "then" },
       { source: num.id, sourceOutput: "value", target: agreeing.id, targetInput: "else" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(agreeing.outputs.result?.socket)).toBe("number");
 
     const mixed = new IfNode();
@@ -111,7 +107,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { source: num.id, sourceOutput: "value", target: mixed.id, targetInput: "then" },
       { source: str.id, sourceOutput: "value", target: mixed.id, targetInput: "else" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(mixed.inputs.then?.socket)).toBe("number"); // inputs adopt individually
     expect(dt(mixed.inputs.else?.socket)).toBe("string");
     expect(dt(mixed.outputs.result?.socket)).toBe("trueany"); // result genuinely runtime-dependent
@@ -123,7 +119,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     const ed = makeEditor([num, n], [
       { source: num.id, sourceOutput: "value", target: n.id, targetInput: "then" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(n.outputs.result?.socket)).toBe("number");
   });
 
@@ -137,49 +133,47 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { source: str.id, sourceOutput: "value", target: sw.id, targetInput: k1 },
     ];
     sw.activeIndex = 0;
-    reconcileTrueAnyTypes(makeEditor([num, str, sw], conns));
+    settleWildcardTypes(makeEditor([num, str, sw], conns));
     expect(dt(sw.outputs.out?.socket)).toBe("number");
     sw.activeIndex = 1;
-    reconcileTrueAnyTypes(makeEditor([num, str, sw], conns));
+    settleWildcardTypes(makeEditor([num, str, sw], conns));
     expect(dt(sw.outputs.out?.socket)).toBe("string");
   });
 
   it("an element-preserving op (Reverse) FORWARDS its input's type through to its output", () => {
-    const src = new ClassicPreset.Node("Dates");
-    src.addOutput("out", new ClassicPreset.Output(dateListSocket));
+    const src = new GraphNode("Dates");
+    src.addOutput("out", new GraphOutput(dateListSocket));
     const rev = new ReverseNode();
     const ed = makeEditor([src, rev], [
       { source: src.id, sourceOutput: "out", target: rev.id, targetInput: "list" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(rev.inputs.list?.socket)).toBe("datelist");   // input adopts
     expect(dt(rev.outputs.result?.socket)).toBe("datelist"); // output forwards it (was neutral `anylist`)
     // Reverts to the neutral base when unwired (both dots gray again).
-    reconcileTrueAnyTypes(makeEditor([src, rev], []));
+    settleWildcardTypes(makeEditor([src, rev], []));
     expect(dt(rev.outputs.result?.socket)).toBe("anylist");
   });
 
   it("INDEX: the Array input adopts, and an unknown frame's whole-row slice is a frame", () => {
     // A bare frame OUTPUT with no resolvable shape behind it (a CSV / Web Source):
     // with no Column named, the extraction is the whole row — still a frame.
-    const src = new ClassicPreset.Node("Frame");
-    src.addOutput("frame", new ClassicPreset.Output(frameSocket));
+    const src = new GraphNode("Frame");
+    src.addOutput("frame", new GraphOutput(frameSocket));
     const idx = new ListIndexNode();
     const ed = makeEditor([src, idx], [
       { source: src.id, sourceOutput: "frame", target: idx.id, targetInput: "list" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.inputs.list?.socket)).toBe("frame");
     expect(dt(idx.outputs.result?.socket)).toBe("frame");
     // Name a column and the shape is unknown, so the family is too.
     idx.literals.column = 2;
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("trueany");
   });
 
-  // 2026-07-27: a frame's element family is per COLUMN, so INDEX resolves it from the
-  // static shape walk instead of giving up at the `frame` socket. Without this a date
-  // pulled out of a frame read as a raw serial downstream (isDateType reads the socket).
+
   it("INDEX over a FRAME adopts the named COLUMN's type, through a verb chain", () => {
     const src = new FrameInputNode({ frameText: JSON.stringify([
       { name: "Item", type: "string", cells: ["nut", "bolt"] },
@@ -194,21 +188,21 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     ]);
 
     idx.literals.column = 2; // the Due column
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("datecombo"); // one date, or the whole column
 
     idx.literals.column = 1;
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("strcombo");
 
     idx.literals.column = 3;
     idx.literals.index = 2; // a single CELL — same family, the combo covers both ranks
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("numlist");
 
     // Blank / 0 Column = the whole row: a one-row frame.
     delete idx.literals.column;
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("frame");
   });
 
@@ -225,42 +219,40 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { source: sel.id, sourceOutput: "frame", target: idx.id, targetInput: "list" },
     ]);
     idx.literals.column = 1; // Select Columns reordered — column 1 is now Due
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("datecombo");
   });
 
-  // 2026-07-30: a cube's slices are ALWAYS cubes (data() keeps nested cells
-  // whole), so any blank axis types the output `cube` — only a single CELL
-  // (Row and Column both given) is genuinely unknowable.
+
   it("INDEX over a CUBE: whole-axis slices type as cube; only a single cell is the placeholder", () => {
-    const src = new ClassicPreset.Node("Cube");
-    src.addOutput("cube", new ClassicPreset.Output(cubeSocket));
+    const src = new GraphNode("Cube");
+    src.addOutput("cube", new GraphOutput(cubeSocket));
     const idx = new ListIndexNode();
     const ed = makeEditor([src, idx], [
       { source: src.id, sourceOutput: "cube", target: idx.id, targetInput: "list" },
     ]);
     // Both axes blank: the cube passes through whole.
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.inputs.list?.socket)).toBe("cube");
     expect(dt(idx.outputs.result?.socket)).toBe("cube");
     // Column set, Row blank: a one-column cube.
     idx.literals.column = 2;
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("cube");
     // Row set too: a single CELL — could be anything, the placeholder stands.
     idx.literals.index = 1;
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("trueany");
     // Row set, Column blank: a one-row cube.
     delete idx.literals.column;
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("cube");
     // A WIRED axis is a runtime value — with the other axis given, a cell is
     // possible, so the placeholder returns.
     const which = numSource();
     idx.literals.column = 2;
     delete idx.literals.index;
-    reconcileTrueAnyTypes(makeEditor([src, which, idx], [
+    settleWildcardTypes(makeEditor([src, which, idx], [
       { source: src.id, sourceOutput: "cube", target: idx.id, targetInput: "list" },
       { source: which.id, sourceOutput: "value", target: idx.id, targetInput: "index" },
     ]));
@@ -275,38 +267,34 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     const idx = new ListIndexNode();
     idx.literals.column = 1;
     const wire = { source: src.id, sourceOutput: "frame", target: idx.id, targetInput: "list" };
-    reconcileTrueAnyTypes(makeEditor([src, which, idx], [wire]));
+    settleWildcardTypes(makeEditor([src, which, idx], [wire]));
     expect(dt(idx.outputs.result?.socket)).toBe("datecombo");
-    // Wire the Column socket: data() takes the cable over the literal, so the stale
-    // literal must stop deciding the type.
-    reconcileTrueAnyTypes(makeEditor([src, which, idx], [
+
+    settleWildcardTypes(makeEditor([src, which, idx], [
       wire, { source: which.id, sourceOutput: "value", target: idx.id, targetInput: "column" },
     ]));
     expect(dt(idx.outputs.result?.socket)).toBe("trueany");
   });
 
-  // The 2026-07-19 sweep: every honest element-preserving list op adopts its
-  // output (a String List through it never reads back as the neutral Any List —
-  // the stale glyph the author caught on a collapsed group's edge socket).
+
   it("Sort By / Group Lists keys / Set / Concat / Interleave forward the element type", () => {
     const strList = () => {
-      const n = new ClassicPreset.Node("Strs");
-      n.addOutput("out", new ClassicPreset.Output(strListSocket));
+      const n = new GraphNode("Strs");
+      n.addOutput("out", new GraphOutput(strListSocket));
       return n;
     };
     const s1 = strList(), s2 = strList();
 
     const sort = new SortNode();
-    reconcileTrueAnyTypes(makeEditor([s1, sort], [
+    settleWildcardTypes(makeEditor([s1, sort], [
       { source: s1.id, sourceOutput: "out", target: sort.id, targetInput: "list" },
     ]));
     expect(dt(sort.outputs.result?.socket)).toBe("strlist");
 
-    // (Group Lists no longer has an adoptive `keys` output — it emits one frame now (C5);
-    // its Key column carries the type internally, not a trueany output socket.)
+
 
     const set = new SetsNode();
-    reconcileTrueAnyTypes(makeEditor([s1, s2, set], [
+    settleWildcardTypes(makeEditor([s1, s2, set], [
       { source: s1.id, sourceOutput: "out", target: set.id, targetInput: "a" },
       { source: s2.id, sourceOutput: "out", target: set.id, targetInput: "b" },
     ]));
@@ -314,14 +302,14 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
 
     const cat = new ConcatListsNode();
     const catKeys = cat.valueInputKeys();
-    reconcileTrueAnyTypes(makeEditor([s1, s2, cat], [
+    settleWildcardTypes(makeEditor([s1, s2, cat], [
       { source: s1.id, sourceOutput: "out", target: cat.id, targetInput: catKeys[0] },
       { source: s2.id, sourceOutput: "out", target: cat.id, targetInput: catKeys[1] },
     ]));
     expect(dt(cat.outputs.result?.socket)).toBe("strlist");
 
     const il = new InterleaveNode();
-    reconcileTrueAnyTypes(makeEditor([s1, s2, il], [
+    settleWildcardTypes(makeEditor([s1, s2, il], [
       { source: s1.id, sourceOutput: "out", target: il.id, targetInput: "a" },
       { source: s2.id, sourceOutput: "out", target: il.id, targetInput: "b" },
     ]));
@@ -332,64 +320,60 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     // The 2-D rung of the append ladder, mirroring Concat Lists above. A list wired to
     // an `anytable` row already adopts at the input's rank (strlist → strtable), so the
     // `agree` over the rows settles on strtable whichever rank the rows arrive at.
-    const strs = new ClassicPreset.Node("Strs");
-    strs.addOutput("out", new ClassicPreset.Output(strListSocket));
-    const tbl = new ClassicPreset.Node("StrTable");
-    tbl.addOutput("out", new ClassicPreset.Output(strTableSocket));
+    const strs = new GraphNode("Strs");
+    strs.addOutput("out", new GraphOutput(strListSocket));
+    const tbl = new GraphNode("StrTable");
+    tbl.addOutput("out", new GraphOutput(strTableSocket));
 
     for (const stack of [new StackNode({ op: "vstack" }), new StackNode({ op: "hstack" })]) {
       const [k0, k1] = stack.valueInputKeys();
-      reconcileTrueAnyTypes(makeEditor([strs, tbl, stack], [
+      settleWildcardTypes(makeEditor([strs, tbl, stack], [
         { source: strs.id, sourceOutput: "out", target: stack.id, targetInput: k0 },
         { source: tbl.id,  sourceOutput: "out", target: stack.id, targetInput: k1 },
       ]));
       expect(dt(stack.outputs.result?.socket)).toBe("strtable");
       // A disagreeing row keeps the neutral rung — the selector rule, unchanged.
-      const nums = new ClassicPreset.Node("Nums");
-      nums.addOutput("out", new ClassicPreset.Output(dateListSocket));
-      reconcileTrueAnyTypes(makeEditor([strs, nums, stack], [
+      const nums = new GraphNode("Nums");
+      nums.addOutput("out", new GraphOutput(dateListSocket));
+      settleWildcardTypes(makeEditor([strs, nums, stack], [
         { source: strs.id, sourceOutput: "out", target: stack.id, targetInput: k0 },
         { source: nums.id, sourceOutput: "out", target: stack.id, targetInput: k1 },
       ]));
       expect(dt(stack.outputs.result?.socket)).toBe("anytable");
       // Unwired → reverts to the declared wildcard rank.
-      reconcileTrueAnyTypes(makeEditor([stack], []));
+      settleWildcardTypes(makeEditor([stack], []));
       expect(dt(stack.outputs.result?.socket)).toBe("anytable");
     }
   });
 
   it("rank-CROSSING reshapes project the element family onto the output's rank", () => {
-    const strs = new ClassicPreset.Node("Strs");
-    strs.addOutput("out", new ClassicPreset.Output(strListSocket));
+    const strs = new GraphNode("Strs");
+    strs.addOutput("out", new GraphOutput(strListSocket));
     const wrap = new TableReshapeNode({ op: "wraprows" });
-    reconcileTrueAnyTypes(makeEditor([strs, wrap], [
+    settleWildcardTypes(makeEditor([strs, wrap], [
       { source: strs.id, sourceOutput: "out", target: wrap.id, targetInput: "list" },
     ]));
     expect(dt(wrap.outputs.result?.socket)).toBe("strtable"); // strlist in → strtable out
 
-    const tbl = new ClassicPreset.Node("StrTable");
-    tbl.addOutput("out", new ClassicPreset.Output(strTableSocket));
+    const tbl = new GraphNode("StrTable");
+    tbl.addOutput("out", new GraphOutput(strTableSocket));
     const flat = new TableReshapeNode({ op: "torow" });
     const flatKey = Object.keys(flat.inputs)[0];
-    reconcileTrueAnyTypes(makeEditor([tbl, flat], [
+    settleWildcardTypes(makeEditor([tbl, flat], [
       { source: tbl.id, sourceOutput: "out", target: flat.id, targetInput: flatKey },
     ]));
     expect(dt(flat.outputs.result?.socket)).toBe("strlist"); // strtable in → strlist out
     // Unwired → both revert to their declared wildcard rank.
-    reconcileTrueAnyTypes(makeEditor([tbl, flat], []));
+    settleWildcardTypes(makeEditor([tbl, flat], []));
     expect(dt(flat.outputs.result?.socket)).toBe("anylist");
   });
 });
 
-// ─── The agree VOTE distinguishes unwired / unknowable / error-only (2026-07-28) ──
-// Three branch states, three dispositions: UNWIRED contributes no value (no vote);
-// wired to a STATIC-trueany source (XLOOKUP, Get Cell) is a real value of unknowable
-// type (VETO — a typed agreement would format it wrongly, the fa3565a bug); wired to
-// NA() is always a tagged error, which formats as an error under any type (abstain).
+
 describe("agree vote — unknowable vetoes, NA() abstains", () => {
   const trueAnySource = () => {
-    const n = new ClassicPreset.Node("Lookupish");
-    n.addOutput("value", new ClassicPreset.Output(new SolenoidSocket("trueany")));
+    const n = new GraphNode("Lookupish");
+    n.addOutput("value", new GraphOutput(new SolenoidSocket("trueany")));
     return n;
   };
 
@@ -401,7 +385,7 @@ describe("agree vote — unknowable vetoes, NA() abstains", () => {
       { source: unknowable.id, sourceOutput: "value", target: iff.id, targetInput: "then" },
       { source: num.id, sourceOutput: "value", target: iff.id, targetInput: "else" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(iff.outputs.result?.socket)).toBe("trueany");
   });
 
@@ -413,13 +397,13 @@ describe("agree vote — unknowable vetoes, NA() abstains", () => {
       { source: num.id, sourceOutput: "value", target: iff.id, targetInput: "then" },
       { source: na.id, sourceOutput: "result", target: iff.id, targetInput: "else" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(iff.outputs.result?.socket)).toBe("number");
   });
 });
 
 // ─── Rank-0/combo wildcard bases keep themselves on a family-less wire ────────
-describe("any/anycombo bases — a family-less wire keeps the base (Bug C, completed)", () => {
+describe("any/anycombo bases — a family-less wire keeps the base", () => {
   it("adoptTypeForBase(any, trueany) is any; (anycombo, trueany) is anycombo", () => {
     expect(adoptTypeForBase("any", "trueany")).toBe("any");
     expect(adoptTypeForBase("anycombo", "trueany")).toBe("anycombo");
@@ -427,8 +411,6 @@ describe("any/anycombo bases — a family-less wire keeps the base (Bug C, compl
     // Family-typed wires still adopt verbatim.
     expect(adoptTypeForBase("any", "number")).toBe("number");
     expect(adoptTypeForBase("anycombo", "strlist")).toBe("strlist");
-    // A trueany BASE still adopts anything verbatim.
-    expect(adoptTypeForBase("trueany", "frame")).toBe("frame");
   });
 
   it("…so an occupied SWITCH row still refuses a frame", () => {

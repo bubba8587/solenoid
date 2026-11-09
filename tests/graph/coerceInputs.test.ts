@@ -1,17 +1,12 @@
 // [[C28]]
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { parseListLiteral, wrapNodeData, TYPEABLE_LIST } from "../../src/graph/coerceInputs";
+import { solDate } from "../../src/graph/dateValue";
+import { describe, it, expect, beforeEach } from "vitest";
+import { parseListLiteral } from "../../src/graph/listLiterals";
+import { throughBoundary } from "./boundaryKit";
+import { isSolError } from "../../src/graph/errorValue";
 
-// The FrameRef bridge in wrapNodeData reads readFrame from frameBackend. Stub it to a
-// sentinel so the tests observe the collect-vs-forward DISPATCH, not the backend; every
-// other export (isFrameRef, the runners) stays real. vi.hoisted supplies the sentinel to
-// the hoisted factory.
-const { COLLECTED } = vi.hoisted(() => ({ COLLECTED: { __frame: true, __collected: true } }));
-vi.mock("../../src/graph/frameBackend", async (orig) => {
-  const actual = await orig<typeof import("../../src/graph/frameBackend")>();
-  return { ...actual, readFrame: vi.fn(async () => COLLECTED) };
-});
 import { readFrame } from "../../src/graph/frameBackend";
+import { planned, frameStats } from "./frameRefKit";
 import { SolenoidSocket, AdoptiveSocket } from "../../src/graph/sockets";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -23,15 +18,12 @@ import { ArithmeticNode } from "../../src/graph/nodes/scalar";
 import { applyFcUnit } from "../../src/graph/unitBridge";
 import { ListLengthNode, ListInputNode, ListIndexNode } from "../../src/graph/nodes/list";
 
-const MAR_2026 = parseDateToSerial("2026-03-20");
-const APR_2027 = parseDateToSerial("2027-04-21");
+const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist"]);
 
-// Persistence restores `literals` / `stringLiterals` only onto classes that
-// DECLARE the map (the inline-editability convention — a wire-driven card like
-// the Equation family declares neither, so a save can't hardcode an invisible
-// known). The typeable-list CSV editor stores its text in `stringLiterals`, so
-// any node with a strlist/datelist/logicallist input MUST declare the map or
-// the user's typed CSV silently drops on reload.
+const MAR_2026 = solDate(parseDateToSerial("2026-03-20"));
+const APR_2027 = solDate(parseDateToSerial("2027-04-21"));
+
+// [[inline-literal-maps#A typeable list implies the declaration]]
 describe("typeable-list inputs imply a declared stringLiterals map", () => {
   it("every catalog node with a typeable list input declares stringLiterals", () => {
     const broken: string[] = [];
@@ -57,7 +49,7 @@ describe("a numlist input is typeable only where the node opts in", () => {
       inputs: { xs: { socket: new SolenoidSocket("numlist") } },
       stringLiterals, literals,
     };
-    wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
+    throughBoundary(node as Parameters<typeof throughBoundary>[0]);
     return { run: (inputs: Record<string, unknown[]>) => { node.data(inputs); return received ?? {}; } };
   }
   it("declared key → the CSV parses to a number list (an unparseable part is NaN, as in a Frame cell)", () => {
@@ -76,8 +68,8 @@ describe("parseListLiteral — typed 1-D list literals", () => {
     expect(parseListLiteral('"First, Last", qty', "strlist")).toEqual(["First, Last", "qty"]);
     expect(parseListLiteral('"He said ""hi""", x', "strlist")).toEqual(['He said "hi"', "x"]);
   });
-  it("datelist: each part → a date serial", () => {
-    expect(parseListLiteral("2026-03-15", "datelist")).toEqual([46096]);
+  it("datelist: each part → a date", () => {
+    expect(parseListLiteral("2026-03-15", "datelist")).toEqual([solDate(46096)]);
   });
   it("logicallist: each part → a boolean (TRUE/FALSE, 0/1)", () => {
     expect(parseListLiteral("true, 0, FALSE, 1", "logicallist")).toEqual([true, false, false, true]);
@@ -92,7 +84,7 @@ describe("coerceInputs — typed-list literal injection", () => {
       inputs: { cols: { socket: new SolenoidSocket("strlist") } },
       stringLiterals: literal === undefined ? {} : { cols: literal },
     };
-    wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
+    throughBoundary(node as Parameters<typeof throughBoundary>[0]);
     return { run: (inputs: Record<string, unknown[]>) => { node.data(inputs); return received ?? {}; } };
   }
 
@@ -122,7 +114,7 @@ describe("coerceInputs — an adoptive CONTAINER input coerces on its BASE rung,
       data: (inputs: Record<string, unknown[]>) => { received = inputs; return {}; },
       inputs: { list: { socket: sock } },
     };
-    wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
+    throughBoundary(node as Parameters<typeof throughBoundary>[0]);
     node.data({ list: [wired] });
     return received!.list?.[0];
   }
@@ -152,7 +144,7 @@ describe("coerceInputs — noWidenInputs: opt out of rank widening, keep element
       inputs: { [key]: { socket: new SolenoidSocket(base as never) } },
       noWidenInputs: noWiden ? new Set([key]) : undefined,
     };
-    wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
+    throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
     node.data({ [key]: [wired] });
     return received![key]?.[0];
   }
@@ -178,7 +170,7 @@ describe("coerceInputs — Expression is a broadcaster: its variables are `anyda
   // coercion follows from the type.
   function runExpr(expr: string, inputs: Record<string, unknown[]>) {
     const node = new ExpressionNode({ expr });
-    wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
+    throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
     return (node.data(inputs) as { result: unknown }).result;
   }
 
@@ -224,7 +216,7 @@ describe("text reaching a number-family rung through a wildcard is one #TYPE! va
       data: (inputs: Record<string, unknown[]>) => { got = inputs.x[0]; return {}; },
       inputs: { x: { socket: new SolenoidSocket(rung) } },
     };
-    wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
+    throughBoundary(node as Parameters<typeof throughBoundary>[0]);
     try { node.data({ x: [v] }); } catch (e) { return e; }
     return got;
   };
@@ -241,7 +233,7 @@ describe("text reaching a number-family rung through a wildcard is one #TYPE! va
 
 describe("coerceInputs — a one-element list collapses at a combo / scalar socket", () => {
   const run = <T>(node: T, inputs: Record<string, unknown[]>) => {
-    wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
+    throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
     return (node as { data(i: Record<string, unknown[]>): { result: unknown } }).data(inputs).result;
   };
 
@@ -278,7 +270,7 @@ describe("coerceInputs — a one-element list collapses at a combo / scalar sock
     expect(len([7, 8])).toBe(2);
     expect(len(7)).toBe(1);        // and a bare scalar widens into one
     const empty = new ListInputNode({ dataType: "date" });
-    wrapNodeData(empty as never);
+    throughBoundary(empty as never);
     empty.stringLiterals.v0 = "2026-03-20";
     expect((empty.data({}) as { list: unknown[] }).list).toEqual([MAR_2026]); // the SOURCE still emits a list
   });
@@ -299,12 +291,12 @@ describe("coerceInputs — an adoptive port coerces on its BASE, never its adopt
     // back a LIST OF ONE where a scalar went in.
     const n = new ListIndexNode();
     (n.inputs.list!.socket as AdoptiveSocket).setType("datelist");
-    wrapNodeData(n as never);
+    throughBoundary(n as never);
     expect(n.data({ list: [46000] } as never).result).toBe(46000);
     // A real list still behaves as a list.
     const m = new ListIndexNode();
     (m.inputs.list!.socket as AdoptiveSocket).setType("datelist");
-    wrapNodeData(m as never);
+    throughBoundary(m as never);
     expect(m.data({ list: [[46000, 46400]] } as never).result).toEqual([46000, 46400]);
   });
 
@@ -312,67 +304,67 @@ describe("coerceInputs — an adoptive port coerces on its BASE, never its adopt
     // `anylist` (LENGTH) keeps its base coercion: a scalar widens to a singleton, or
     // a string would iterate per character in the node's for…of.
     const len = new ListLengthNode();
-    wrapNodeData(len as never);
+    throughBoundary(len as never);
     expect((len.data({ list: ["abc"] } as never) as { result: unknown }).result).toBe(1);
   });
 });
 
-// The lazy-handle bridge in wrapNodeData: the relational verbs (LAZY_FRAME_NODES) must
+// The lazy-handle bridge in the input boundary: the relational verbs (LAZY_FRAME_NODES) must
 // receive their frame input as the raw FrameRef — collecting it mid-chain re-sources and
 // defeats the fusion — while every OTHER node's frame inputs are materialized first, so a
 // plain consumer's data() never has to know a handle exists. lazyChain.test.ts proves the
 // forward side end-to-end (output stays a ref, no engine_collect); this pins the collect
 // side of the same fork at the unit boundary.
-describe("wrapNodeData's FrameRef bridge (lazy forwards the ref, everyone else collects)", () => {
+describe("throughBoundary's FrameRef bridge (lazy forwards the ref, everyone else collects)", () => {
   // A minimal node with no sockets: coerceAll passes the inputs through untouched, so the
   // test observes exactly what the bridge handed data(). The class name drives the fork.
   function bridgeProbe(className: string) {
     let received: Record<string, unknown[]> | undefined;
     const node = {
-      __coerced: false,
       constructor: { name: className },
-      data(inputs: Record<string, unknown[]>) { received = inputs; return inputs; },
+      outputs: { out: {} },
+      data(inputs: Record<string, unknown[]>) { received = inputs; return { out: inputs }; },
     };
-    wrapNodeData(node as never);
+    throughBoundary(node as never);
     return {
       data: (i: Record<string, unknown[]>) => (node.data as (i: unknown) => unknown)(i),
       received: () => received,
     };
   }
-  const fakeRef = { __frameRef: "h1", __plan: [] as never[] };
+  const sample = { __frame: true as const, columns: [{ name: "a", type: "number" as const, values: [3, 1, 2] }] };
+  const ref = planned(sample, { kind: "sort", by: "a", dir: "asc" });
 
-  beforeEach(() => (readFrame as unknown as { mockClear: () => void }).mockClear());
+  beforeEach(() => { frameStats(); });
 
   it("a LAZY class receives the raw FrameRef, uncollected (a)", () => {
     const p = bridgeProbe("DistinctNode");
-    const out = p.data({ frame: [fakeRef] });
-    expect(p.received()!.frame[0]).toBe(fakeRef);      // the same object, not a value
-    expect(readFrame).not.toHaveBeenCalled();
-    expect(out).toBe(p.received());                    // synchronous passthrough, no Promise
+    const out = p.data({ frame: [ref] });
+    expect(p.received()!.frame[0]).toBe(ref);      // the same object, not a value
+    expect(frameStats().collects).toBe(0);
+    expect((out as { out: unknown }).out).toBe(p.received()); // synchronous passthrough, no Promise
   });
 
-  it("a NON-lazy class receives a collected value, never the ref (b)", async () => {
+  it("a NON-lazy class receives the collected value, never the ref (b)", async () => {
     const p = bridgeProbe("DisplayNode");
-    await p.data({ frame: [fakeRef] });                // a ref present -> async collect path
-    expect(readFrame).toHaveBeenCalledTimes(1);
-    expect(p.received()!.frame[0]).toBe(COLLECTED);
+    await p.data({ frame: [ref] });
+    expect(p.received()!.frame[0]).toBe(await readFrame(ref));
+    expect((p.received()!.frame[0] as typeof sample).columns[0].values).toEqual([1, 2, 3]);
   });
 
   it("collects only the ref sitting among plain values in an input array (c)", async () => {
     const p = bridgeProbe("DisplayNode");
-    await p.data({ frame: ["scalar", fakeRef] });
-    expect(readFrame).toHaveBeenCalledTimes(1);        // the plain value is not read
-    expect(p.received()!.frame).toEqual(["scalar", COLLECTED]);
+    await p.data({ frame: ["scalar", ref] });
+    expect(p.received()!.frame).toEqual(["scalar", await readFrame(ref)]);
   });
 
-  it("a frame that fails to collect throws for the error guard; a node that sees errors gets it as a value ([[D35]] errorInErrorOut)", async () => {
-    const failed = { __solError: true, code: "#REF!", message: "gone" };
-    const rf = readFrame as unknown as { mockResolvedValueOnce: (v: unknown) => void };
-    rf.mockResolvedValueOnce(failed);
-    await expect(bridgeProbe("ListLengthNode").data({ frame: [fakeRef] })).rejects.toBe(failed);
-    rf.mockResolvedValueOnce(failed);
+  it("a frame that fails to collect is the guard's answer; a node that sees errors gets it as a value ([[C24]] arraySemantics)", async () => {
+    const bad = planned(sample, { kind: "select", columns: ["nope"] });
+    const failed = await readFrame(bad) as { code: string; message: string };
+    expect(failed.code).toBe("#REF!");
+    const answered = await bridgeProbe("ListLengthNode").data({ frame: [bad] }) as { out: { code: string; message: string } };
+    expect([answered.out.code, answered.out.message]).toEqual([failed.code, failed.message]);
     const d = bridgeProbe("DisplayNode");
-    await d.data({ frame: [fakeRef] });
+    await d.data({ frame: [bad] });
     expect(d.received()!.frame[0]).toBe(failed);
   });
 
@@ -380,7 +372,7 @@ describe("wrapNodeData's FrameRef bridge (lazy forwards the ref, everyone else c
     const p = bridgeProbe("DisplayNode");
     const out = p.data({ frame: [42] });
     expect(out).not.toBeInstanceOf(Promise);
-    expect(readFrame).not.toHaveBeenCalled();
+    expect(frameStats().collects).toBe(0);
     expect(p.received()!.frame).toEqual([42]);
   });
 });
@@ -394,10 +386,12 @@ describe("coerceInputs — text on a number port is #TYPE!, never a parsed numbe
     const node = {
       data: (inputs: Record<string, unknown[]>) => { received = inputs; return {}; },
       inputs: { a: { socket: new SolenoidSocket(dt as never) } },
+      outputs: { out: {} },
     };
-    wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
-    try { node.data({ a: [wired] }); } catch (e) { return e; }
-    return received!.a?.[0];
+    throughBoundary(node as Parameters<typeof throughBoundary>[0]);
+    // A value the rung can't hold fails the node: the guard sends the error out every output.
+    const out = node.data({ a: [wired] }) as { out?: unknown };
+    return isSolError(out.out) ? out.out : received!.a?.[0];
   }
   const code = (v: unknown) => (v as { code?: string }).code;
 
@@ -446,7 +440,7 @@ describe("coerceInputs — text on a number port is #TYPE!, never a parsed numbe
 
 describe("coerceInputs — the rank rule ignores units (socket-lattice spec req. 4)", () => {
   it("a united singleton collapses on a combo port exactly as a plain one does", () => {
-    const add = () => { const n = new ArithmeticNode({ op: "add" } as never); wrapNodeData(n as never); return n; };
+    const add = () => { const n = new ArithmeticNode({ op: "add" } as never); throughBoundary(n as never); return n; };
     const km = applyFcUnit(5, "km");
     expect(Array.isArray(add().data({ a: [[km]], b: [[km]] } as never).result)).toBe(false);
   });

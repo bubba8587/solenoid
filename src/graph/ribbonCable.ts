@@ -1,5 +1,5 @@
 // [[C10]] socketLattice
-import { ConduitNode, conduitLaneOf } from "./rete-nodes";
+import { ConduitNode, conduitLaneOf } from "./nodeClasses";
 import { groupCollapseStore } from "./groupCollapse";
 import { cableGhostStore, cableSelectionStore } from "./cableState";
 
@@ -13,7 +13,7 @@ export const CONDUIT_COL_GAP = 1.5;
 export const CONDUIT_ROW_GAP = 1.5;
 
 
-export type ConduitLayout = { angle: number; scale: number; selected: boolean; lanes: number };
+type ConduitLayout = { angle: number; scale: number; selected: boolean; lanes: number };
 
 const _layouts = new Map<string, ConduitLayout>();
 let _layoutVersion = 0;
@@ -110,7 +110,7 @@ type EditorLike = {
   getConnections(): Conn[];
 };
 
-export type RibbonCable = {
+type RibbonCable = {
   key: string;
   kind: "conduit" | "group" | "groupSource";
   sourceId: string;

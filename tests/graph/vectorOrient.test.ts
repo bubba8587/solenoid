@@ -1,7 +1,8 @@
-// [[D85]] columnsStayColumns
+// [[D85]] columnsStayColumns, [[formula-language#Whole-list natives]], [[formula-language#Lists, columns and tables]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
+import { FUNCTION_ARITY } from "../../src/graph/excelFunctions";
+import { callTraits } from "./callTraits";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
 import { isSolError } from "../../src/graph/errorValue";
 import { ComputedColumnNode } from "../../src/graph/nodes/frame";
@@ -14,18 +15,14 @@ const VOLATILE = /^(RAND|SHUFFLE|UUID|SAMPLE|NOW|TODAY)/;
 initPackFormulas();
 
 describe("every list-taking function declares whether a vector's direction matters", () => {
-  it("each listArgs entry has an orient", () => {
-    const missing = Object.entries(EXCEL_IMPL_META).filter(([, m]) => m.listArgs && !m.orient).map(([n]) => n);
-    expect(missing, "declare orient: \"free\" or \"axis\" on these").toEqual([]);
-  });
 
   it("a free function answers a one-column table as it answers the list, and a column for a column", () => {
     const list = [3, 1, 4, 1, 5];
     const col = list.map((x) => [x]);
     const bad: string[] = [];
-    for (const [name, m] of Object.entries(EXCEL_IMPL_META)) {
-      if (m.orient !== "free" || VOLATILE.test(name)) continue;
-      const [min, max] = m.arity;
+    for (const [name, arity] of Object.entries(FUNCTION_ARITY)) {
+      if (!callTraits(name)?.free || VOLATILE.test(name)) continue;
+      const [min, max] = arity;
       for (let n = Math.max(1, min); n <= Math.min(max, 3); n++) {
         const expr = `${name}(${["x", "2", "1"].slice(0, n).join(", ")})`;
         const fromList = compileEvaluator(expr)!({ x: list });
@@ -56,7 +53,6 @@ describe("in a computed column, a whole column is a column", () => {
   };
 
   it("a direction-free answer keeps the column's direction, so it combines element by element", () => {
-    // Element by element: 10·30 + 20·20 + 30·10. Spread into a grid it would be (10 + 20 + 30)² = 3600.
     expect(run("SUM(price * REVERSE(price))")).toEqual([1000, 1000, 1000]);
     expect(run("INDEX(REVERSE(price), ROW(), 1)")).toEqual([30, 20, 10]);
   });

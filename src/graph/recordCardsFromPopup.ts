@@ -1,5 +1,5 @@
 // [[C114]] cardsView, [[B11]] maximalMerge
-import { ClassicPreset } from "rete";
+import { GraphConnection } from "./graphModel";
 import { getOwningEditor, getOwningView } from "./activeGraph";
 import { cableValueStore } from "./cableValueStore";
 import { isFrameValue } from "./frame";
@@ -8,7 +8,7 @@ import { nodeNameStore } from "./nodeNameStore";
 import { processGraph } from "./process";
 import { scheduleAutosave } from "./persistence";
 import { flyToNodeAndFlash } from "./flyToNode";
-import { RecordNode } from "./rete-nodes";
+import { CardsNode } from "./nodeClasses";
 import type { SolenoidConnection } from "./schemes";
 import { setRecordCardsAction } from "./tablePopupStore";
 
@@ -33,7 +33,7 @@ export function freeSpotRightOf(from: Box, taken: readonly Box[]): { x: number; 
 }
 
 /** The host's output carrying the frame the popup shows: `frame` when several do, else the first; null when none does. */
-export function frameOutputOf(hostId: string): string | null {
+function frameOutputOf(hostId: string): string | null {
   const node = getOwningEditor(hostId)?.getNode(hostId);
   if (!node) return null;
   const keys = Object.keys(node.outputs).filter((k) => {
@@ -43,14 +43,14 @@ export function frameOutputOf(hostId: string): string | null {
   return keys.includes("frame") ? "frame" : keys[0] ?? null;
 }
 
-/** Places a Record node in the Cards view right of the host, wired to its frame output, and flies to it. */
-export async function addRecordCards(hostId: string): Promise<string | null> {
+/** Places a Cards node right of the host, wired to its frame output, and flies to it. */
+async function addRecordCards(hostId: string): Promise<string | null> {
   const editor = getOwningEditor(hostId);
   const view = getOwningView(hostId);
   const host = editor?.getNode(hostId);
   const out = frameOutputOf(hostId);
   if (!editor || !view || !host || !out) return null;
-  const rec = new RecordNode({ op: "cards", label: "Cards" });
+  const rec = new CardsNode();
   await editor.addNode(rec as never);
   nodeNameStore.ensure(rec.id, rec.constructor.name);
   const boxOf = (id: string): Box | null => {
@@ -61,7 +61,7 @@ export async function addRecordCards(hostId: string): Promise<string | null> {
   const from = boxOf(hostId) ?? { x: 0, y: 0, w: 240, h: 160 };
   const taken = editor.getNodes().flatMap((n) => (n.id === rec.id ? [] : [boxOf(n.id)].filter((b): b is Box => b !== null)));
   await view.moveNode(rec.id, freeSpotRightOf(from, taken));
-  await editor.addConnection(new ClassicPreset.Connection(host, out, rec, "frame") as unknown as SolenoidConnection);
+  await editor.addConnection(new GraphConnection(host, out, rec, "frame") as unknown as SolenoidConnection);
   scheduleAutosave();
   await processGraph(rec.id);
   flyToNodeAndFlash(rec.id);

@@ -1,0 +1,192 @@
+/* [[C127]] pivotView */
+
+.pivot-view__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 14px 0;
+}
+.pivot-view__tail { display: contents; }
+.pivot-view__actions { display: inline-flex; gap: 4px; }
+.pivot-view__checks { display: inline-flex; align-items: center; gap: 12px; padding: 0 4px; }
+.pivot-view__fields { margin-left: auto; }
+.pivot-view__format { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text-dim); }
+.pivot-view__format + .pivot-view__format { margin-top: 8px; }
+
+/* A phone: the bar gives way to the footer's sheet. */
+.pivot-sheet { display: none; }
+.pivot-sheet__panel {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% + 4px);
+  z-index: 20;
+  padding: 8px;
+  background: var(--surface-raised, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+}
+.pivot-sheet__body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.pivot-sheet__body > .sol-pill-select { width: 100%; min-width: 0; }
+.pivot-sheet__body > .table-popup__view { width: 100%; grid-column: 1 / -1; }
+.pivot-sheet__body > .table-popup__view button { flex: 1 1 0; min-width: 0; }
+.pivot-sheet__body .pivot-view__tail { display: flex; gap: 6px; grid-column: 1 / -1; }
+.pivot-sheet__body .pivot-view__actions { display: inline-flex; gap: 4px; }
+.pivot-view__checks { grid-column: 1 / -1; justify-content: space-between; padding: 4px 4px; }
+
+/* In a Dashboard box or a Report the box is the frame, and it scrolls. */
+.pivot-figure .pivot-view__scroll { margin: 0; max-height: none; border: 0; border-radius: 0; }
+
+.pivot-view__scroll {
+  margin: 10px 14px 12px;
+  max-height: 56vh;
+  max-height: 56dvh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transform: translateZ(0);
+  contain: paint;
+}
+
+/* `separate`, as the grid: a collapsed sticky cell's border scrolls away. */
+.pivot-view__table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+  min-width: 100%;
+}
+.pivot-view__table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.pivot-view__head {
+  padding: 4px 8px;
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 14%, var(--surface-sunken));
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: left;
+  color: color-mix(in srgb, var(--node-accent, var(--text)) 70%, var(--text));
+}
+.pivot-view__head--corner { vertical-align: bottom; font-weight: 600; }
+.pivot-view__head--item,
+.pivot-view__head--value,
+.pivot-view__head--total { text-align: right; }
+/* A label over a run of columns starts where the run does, as Excel's do. */
+.pivot-view__head--span { text-align: left; }
+.pivot-view__head--caption,
+.pivot-view__head--field { color: var(--text-dim); font-weight: 500; }
+
+.pivot-view__label,
+.pivot-view__value,
+.pivot-view__blank {
+  padding: 3px 8px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  background: var(--surface);
+}
+.pivot-view__label {
+  text-align: left;
+  font-weight: 400;
+  white-space: nowrap;
+  color: var(--text);
+}
+.pivot-view__labelin { display: inline-flex; align-items: center; gap: 4px; }
+.pivot-view__label--sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+thead .pivot-view__label--sticky { z-index: 3; }
+.pivot-view__value {
+  text-align: right;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  color: var(--text);
+}
+.pivot-view__note {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface);
+}
+.pivot-view__blank { height: 12px; padding: 0; border-bottom-color: transparent; }
+
+/* A group's source rows: a small table that stays at the left edge while the pivot scrolls sideways. */
+.pivot-view__detail {
+  padding: 0;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.pivot-view__detailin {
+  position: sticky;
+  left: 0;
+  width: max-content;
+  padding: 4px 8px 6px 6px;
+}
+.pivot-view__subtable { border-collapse: collapse; font-size: 11px; }
+.pivot-view__subtable th,
+.pivot-view__subtable td {
+  padding: 1px 10px 1px 0;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--text);
+}
+.pivot-view__subtable th { font-weight: 600; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+.pivot-view__subtable .pivot-view__subnum { text-align: right; font-family: var(--font-mono); }
+.pivot-view__subtable th.pivot-view__subnum { font-family: inherit; }
+.pivot-view__subnote { padding-top: 3px; font-size: 11px; color: var(--text-muted); }
+
+.pivot-view__row--header > .pivot-view__label,
+.pivot-view__row--header > .pivot-view__value,
+.pivot-view__row--sub > *,
+.pivot-view__row--grand > * { font-weight: 600; }
+.pivot-view__row--sub > * {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 6%, var(--surface));
+}
+.pivot-view__row--grand > * {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 14%, var(--surface));
+  border-top: 1px solid var(--border-strong);
+}
+.pivot-view__value--total { font-weight: 600; }
+.pivot-view__row--band > * { background: color-mix(in srgb, var(--text) 5%, var(--surface)); }
+.pivot-view__value--band { background: color-mix(in srgb, var(--text) 5%, var(--surface)); }
+.pivot-view__row--band > .pivot-view__value--band { background: color-mix(in srgb, var(--text) 9%, var(--surface)); }
+
+.pivot-view__fold {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  margin-right: 2px;
+  background: none;
+  border: none;
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
+  cursor: pointer;
+}
+.pivot-view__fold:hover { color: var(--node-accent, var(--accent)); }
+.pivot-view__fold--detail { color: var(--text-dim); }
+
+@media (pointer: coarse) {
+  .pivot-view__fold { width: 22px; height: 22px; }
+}
+/* A narrow popup, a phone's or one resized down: the bar gives way to the footer's sheet. */
+@container table-popup (max-width: 640px) {
+  .pivot-view__bar { display: none; }
+  .pivot-sheet { display: contents; }
+  .pivot-view__scroll { margin: 6px 6px 8px; }
+  .pivot-view__table { font-size: 11px; }
+  .pivot-view__head,
+  .pivot-view__label,
+  .pivot-view__value { padding: 2px 6px; }
+}

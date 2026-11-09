@@ -1,12 +1,11 @@
 import { useSyncExternalStore } from "react";
-import type { ScheduleNode as ScheduleNodeType } from "../rete-nodes";
+import type { ScheduleNode as ScheduleNodeType } from "../nodeClasses";
 import { SCHEDULE_DEFAULT_LITERALS, SCHEDULE_MODE_OPTIONS, SCHEDULE_PRECISION_OPTIONS, SCHEDULE_CRITICAL_OPTIONS, SCHEDULE_PROGRESS_OPTIONS } from "../nodes/schedule";
 import { NodeShell, InlineOutputRows, useNodeField, type NodeProps, type OutputRowValue } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { SegToggle } from "./SegToggle";
 import { CubeDisplay } from "./CubeDisplay";
 import { MeasuredSocketRow } from "./NodeSocket";
-import { dateFormatDisplay } from "./valueDisplayFormat";
 import { nodeDisplayName } from "../catalogUtils";
 import { isCubeValue, isFrameValue } from "../frame";
 import { CardSection, useRowsInUse } from "./CardSection";
@@ -67,7 +66,7 @@ export function ScheduleComponent({ data, emit }: NodeProps<ScheduleNodeType>) {
         node={data}
         emit={emit}
         rows={[
-          { key: "finish", label: "Project finish", value: dateFormatDisplay(data.cachedFinish, true, false) as OutputRowValue },
+          { key: "finish", label: "Project finish", value: data.cachedFinish },
           { key: "diagnostics", label: "Diagnostics", value: diagnosticsSummary(data) },
           // The socket carries the full Mermaid source; the row says what it holds.
           { key: "gantt", label: "Gantt", value: ganttSummary(data) },

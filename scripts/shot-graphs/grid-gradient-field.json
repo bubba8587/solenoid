@@ -1,0 +1,90 @@
+{
+ "nodes": [
+  {
+   "id": "x",
+   "type": "SeriesNode",
+   "x": 0,
+   "y": 0,
+   "init": {
+    "label": "Angles",
+    "op": "linspace"
+   },
+   "literals": {
+    "start": 0,
+    "end": 6.28,
+    "count": 16
+   }
+  },
+  {
+   "id": "s",
+   "type": "MathFXNode",
+   "x": 380,
+   "y": 0,
+   "init": {
+    "label": "SIN",
+    "op": "sin"
+   }
+  },
+  {
+   "id": "o",
+   "type": "TableOuterNode",
+   "x": 760,
+   "y": 0,
+   "init": {
+    "label": "Egg crate"
+   }
+  },
+  {
+   "id": "p",
+   "type": "SurfaceNode",
+   "x": 1140,
+   "y": -460,
+   "init": {
+    "label": "Surface",
+    "op": "contour"
+   }
+  },
+  {
+   "id": "dx",
+   "type": "DiffNode",
+   "x": 1140,
+   "y": 140,
+   "init": {
+    "label": "Slope across",
+    "op": "gradient",
+    "mode": "grid",
+    "byCol": true
+   }
+  },
+  {
+   "id": "dy",
+   "type": "DiffNode",
+   "x": 1140,
+   "y": 560,
+   "init": {
+    "label": "Slope down",
+    "op": "gradient",
+    "mode": "grid"
+   }
+  },
+  {
+   "id": "q",
+   "type": "QuiverNode",
+   "x": 1540,
+   "y": 140,
+   "init": {
+    "label": "Gradient field"
+   }
+  }
+ ],
+ "cables": [
+  "x.list -> s.in",
+  "s.result -> o.a",
+  "s.result -> o.b",
+  "o.result -> p.z",
+  "o.result -> dx.grid",
+  "o.result -> dy.grid",
+  "dx.result -> q.u",
+  "dy.result -> q.v"
+ ]
+}

@@ -126,8 +126,7 @@
       "collapsed": true,
       "init": {
         "label": "First hire",
-        "expr": "MIN(starts)",
-        "resultAs": "date"
+        "expr": "MIN(starts)"
       },
       "x": 580,
       "y": 105

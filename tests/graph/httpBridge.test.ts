@@ -1,10 +1,7 @@
-// [[C23]] calcModes, [[C38]] sinkRunButtonOnly
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { fetchText, CorsLikelyError, MAX_FETCH_BYTES } from "../../src/graph/httpBridge";
-
-// First direct coverage for the CORS-bypass seam (v1.0 audit, quality). These
-// run in the BROWSER-shaped branch (no __TAURI_INTERNALS__ in the vitest env),
-// which is the half with the subtle behavior: CORS classification.
+// [[C23]] calcModes, [[B18]] safeToShare, [[live-connections#HTTP]]
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import { fetchText, fetchJson, CorsLikelyError, MAX_FETCH_BYTES } from "../../src/graph/httpBridge";
+import { docMetaStore } from "../../src/graph/docMetaStore";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -74,5 +71,48 @@ describe("httpBridge (browser branch)", () => {
     globalThis.fetch = spy;
     await fetchText("/data/foo.csv");
     expect(spy).toHaveBeenCalledWith("/data/foo.csv");
+  });
+});
+
+const invoke = vi.hoisted(() => vi.fn());
+vi.mock("@tauri-apps/api/core", () => ({ invoke }));
+
+describe("httpBridge (desktop branch)", () => {
+  const w = globalThis as unknown as { window?: Record<string, unknown> };
+  let hadWindow = false;
+  beforeEach(() => {
+    hadWindow = w.window !== undefined;
+    w.window = { ...(w.window ?? {}), __TAURI_INTERNALS__: {} };
+    docMetaStore.setDocMeta(null);
+    invoke.mockReset();
+  });
+  afterEach(() => {
+    if (hadWindow) delete w.window!.__TAURI_INTERNALS__; else delete w.window;
+    docMetaStore.setDocMeta(null);
+  });
+
+  it("the user's own document may reach the local network; a foreign one may not", async () => {
+    invoke.mockResolvedValue({ status: 200, status_text: "OK", headers: [["content-type", "text/csv"]], body: "a\n1" });
+    const r = await fetchText("http://localhost:8080/api/tasks", { headers: { Authorization: "Bearer x" } });
+    expect(r).toEqual({ text: "a\n1", contentType: "text/csv" });
+    expect(invoke.mock.calls[0][1].req).toMatchObject({ url: "http://localhost:8080/api/tasks", local: true });
+    expect(invoke.mock.calls[0][1].req.headers).toContainEqual(["Authorization", "Bearer x"]);
+    docMetaStore.markForeign();
+    await fetchText("https://example.com/data.csv");
+    expect(invoke.mock.calls[1][1].req.local).toBe(false);
+  });
+
+  it("the shell's refusal reads as what it is", async () => {
+    docMetaStore.markForeign();
+    invoke.mockRejectedValue("local-network-refused: 127.0.0.1");
+    await expect(fetchText("http://127.0.0.1/")).rejects.toThrow(/someone else wrote doesn't fetch from this computer/);
+  });
+
+  it("a non-OK reply keeps its status, and a 204 reads as empty", async () => {
+    invoke.mockResolvedValue({ status: 404, status_text: "Not Found", headers: [], body: "" });
+    await expect(fetchText("https://example.com/missing")).rejects.toThrow("HTTP 404 Not Found");
+    invoke.mockResolvedValue({ status: 204, status_text: "No Content", headers: [], body: "" });
+    await expect(fetchJson("https://example.com/x", { method: "PUT", body: { a: 1 } })).resolves.toEqual({ text: "", contentType: "" });
+    expect(invoke.mock.calls[1][1].req).toMatchObject({ method: "PUT", body: '{"a":1}' });
   });
 });

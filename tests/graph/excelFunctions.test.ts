@@ -1,84 +1,29 @@
-// [[B16]] oneFormulaSurface, [[C17]] shareImpl
-import { describe, it, expect, afterEach } from "vitest";
-import * as FX from "@formulajs/formulajs";
-import {
-  FAMILY_BACKING,
-  excelFunctionInfo,
-  resolveExcelFunction,
-  registerInternal,
-  internalFunctionNames,
-  ELIMINATED_FUNCTIONS,
-  EXCEL_IMPL_META,
-  numberToText,
-  unregisterInternal,
-} from "../../src/graph/excelFunctions";
-import { compileEvaluator, formulaFunctionNames } from "../../src/graph/excelFormula";
+// [[B16]] oneFormulaSurface, [[C17]] shareImpl, [[formula-language#Lexical grammar]], [[formula-language#The registry]], [[formula-language#Broadcast]], [[formula-language#Scalar operators]], [[formula-language#Logic and choice]], [[formula-language#Math]], [[formula-language#Dates and times]], [[formula-language#Statistics]], [[formula-language#Finance]], [[formula-language#Lookup and reference]]
+import { solDate, isSolDate, type SolDate } from "../../src/graph/dateValue";
+import { describe, it, expect } from "vitest";
+import { formulaFunctionNames } from "../../src/graph/excelFunctions";
+import { compileEvaluator } from "../../src/graph/excelFormula";
+import { coreFunction } from "./coreFunction";
+import { EXCEL_NAMES } from "./fixtures/excelNames";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 import { jsDateToSerial, serialToJsDate } from "../../src/graph/nodes/date";
 
-describe("numberToText — 15 significant digits, trailing zeros stripped", () => {
+describe("a number as text — 15 significant digits, trailing zeros stripped", () => {
+  const text = (x: number) => compileEvaluator('x & ""')!({ x });
   it("strips IEEE representation noise", () => {
-    expect(numberToText(0.1 + 0.2)).toBe("0.3");
-    expect(numberToText(1 / 3)).toBe("0.333333333333333"); // 15 sig digits
+    expect(text(0.1 + 0.2)).toBe("0.3");
+    expect(text(1 / 3)).toBe("0.333333333333333"); // 15 sig digits
   });
   it("leaves clean values alone", () => {
-    expect(numberToText(42)).toBe("42");
-    expect(numberToText(-0)).toBe("0");
-    expect(numberToText(1234567.5)).toBe("1234567.5");
-    expect(numberToText(0)).toBe("0");
-  });
-  it("falls back to String for non-finite (guardFinite normally tags these first)", () => {
-    expect(numberToText(Infinity)).toBe("Infinity");
-    expect(numberToText(NaN)).toBe("NaN");
-  });
-});
-
-describe("FAMILY_BACKING (the audit's per-family verdict)", () => {
-  it("gives every family a non-empty reason", () => {
-    for (const v of Object.values(FAMILY_BACKING)) expect(v.why.length).toBeGreaterThan(0);
-  });
-});
-
-describe("excelFunctionInfo", () => {
-  it("routes representative functions to the right family + backing", () => {
-    expect(excelFunctionInfo("abs")).toMatchObject({ family: "scalar-math", backing: "formulajs" }); // case-insensitive
-  });
-
-  it("returns null for a Formula.js-only name (not part of the overlap surface)", () => {
-    expect(excelFunctionInfo("NONEXISTENTFN")).toBeNull();
-  });
-});
-
-describe("resolveExcelFunction (the resolution seam)", () => {
-  afterEach(() => {
-    // registerInternal mutates module state — WITHDRAW what tests added. (The old
-    // cleanup registered `undefined` as the impl, which the duplicate-registration
-    // guard now correctly refuses — registering a hole is not unregistering.)
-    unregisterInternal("ABS");
-  });
-
-  it("falls through to the Formula.js impl today (no internals registered)", () => {
-    const abs = resolveExcelFunction("ABS");
-    expect(abs?.(-3)).toBe(FX.ABS(-3));
-  });
-
-  it("is case-insensitive on the name (a non-registered fn still falls through)", () => {
-    expect(resolveExcelFunction("cos")?.(0)).toBe(FX.COS(0)); // COS isn't in the first wave
-  });
-
-  it("returns null when neither an internal nor a Formula.js impl exists", () => {
-    expect(resolveExcelFunction("DEFINITELYNOTAFUNCTION")).toBeNull();
-  });
-
-  it("prefers a registered internal impl over Formula.js", () => {
-    const sentinel = (...a: unknown[]) => `internal:${String(a[0])}`;
-    registerInternal("ABS", sentinel);
-    expect(resolveExcelFunction("ABS")?.(-3)).toBe("internal:-3");
+    expect(text(42)).toBe("42");
+    expect(text(-0)).toBe("0");
+    expect(text(1234567.5)).toBe("1234567.5");
+    expect(text(0)).toBe("0");
   });
 });
 
 describe("first wave of native impls (registered through the seam)", () => {
-  const fn = (name: string) => resolveExcelFunction(name)!;
+  const fn = (name: string) => coreFunction(name)!;
 
   it("ROUND rounds half AWAY from zero (Excel), unlike JS Math.round", () => {
     expect(fn("ROUND")(2.5, 0)).toBe(3);
@@ -97,8 +42,8 @@ describe("first wave of native impls (registered through the seam)", () => {
   });
   it("YEAR + EOMONTH operate on the Solenoid date serial", () => {
     const serial = jsDateToSerial(new Date(Date.UTC(2026, 2, 15))); // 2026-03-15
-    expect(fn("YEAR")(serial)).toBe(2026);
-    const d = serialToJsDate(fn("EOMONTH")(serial, 0) as number);
+    expect(fn("YEAR")(solDate(serial))).toBe(2026);
+    const d = serialToJsDate((fn("EOMONTH")(solDate(serial), 0) as SolDate).__date);
     expect([d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()]).toEqual([2026, 2, 31]); // 2026-03-31
   });
   it("LEN is string → number", () => {
@@ -107,22 +52,22 @@ describe("first wave of native impls (registered through the seam)", () => {
   it("the datetime extractors read OUR serial, matching DatePartNode (getUTC*)", () => {
     // 2026-03-15 14:25:36 UTC
     const serial = jsDateToSerial(new Date(Date.UTC(2026, 2, 15, 14, 25, 36)));
-    expect(fn("MONTH")(serial)).toBe(3);
-    expect(fn("DAY")(serial)).toBe(15);
-    expect(fn("HOUR")(serial)).toBe(14);
-    expect(fn("MINUTE")(serial)).toBe(25);
-    expect(fn("SECOND")(serial)).toBe(36);
+    expect(fn("MONTH")(solDate(serial))).toBe(3);
+    expect(fn("DAY")(solDate(serial))).toBe(15);
+    expect(fn("HOUR")(solDate(serial))).toBe(14);
+    expect(fn("MINUTE")(solDate(serial))).toBe(25);
+    expect(fn("SECOND")(solDate(serial))).toBe(36);
     // non-number arg → tagged #VALUE!
     expect(isSolError(fn("MONTH")("nope"))).toBe(true);
   });
 });
 
 describe("Solenoid-only functions — the registry ADDS what Formula.js lacks", () => {
-  const fn = (name: string) => resolveExcelFunction(name)!;
+  const fn = (name: string) => coreFunction(name)!;
 
   it("CLAMP / ORDINAL / BETWEEN don't exist in Formula.js but ARE in the autocomplete list", () => {
     for (const name of ["CLAMP", "ORDINAL", "BETWEEN"]) {
-      expect((FX as Record<string, unknown>)[name]).toBeUndefined();   // not from Formula.js
+      expect(EXCEL_NAMES.has(name)).toBe(false);                       // not an Excel name
       expect(formulaFunctionNames()).toContain(name);                  // but offered + highlighted
     }
   });
@@ -138,15 +83,6 @@ describe("Solenoid-only functions — the registry ADDS what Formula.js lacks", 
   it("BETWEEN is a real boolean (covers the logical output type)", () => {
     expect(fn("BETWEEN")(5, 0, 10)).toBe(true);
     expect(fn("BETWEEN")(11, 0, 10)).toBe(false);
-  });
-  it("every registered internal declares its meta ([[C17]] shareImpl, the registered→declared direction)", () => {
-    // The reverse direction (declared→dispatches) lives in formulaTier3; without
-    // THIS one, 28 registrations had no entry and the rule was fiction.
-    const meta = new Set(Object.keys(EXCEL_IMPL_META));
-    // The [[C14]] currentExcelParity redirect stubs are the GATE, not implementations — their whole
-    // contract is answering #NAME? — so the blocklist is out of scope here.
-    const undeclared = internalFunctionNames().filter((n) => !meta.has(n) && !ELIMINATED_FUNCTIONS.has(n));
-    expect(undeclared, `registerInternal names with no EXCEL_IMPL_META entry: ${undeclared.join(", ")}`).toEqual([]);
   });
 });
 
@@ -169,15 +105,12 @@ describe("the typed-formula path now resolves the registry, not Formula.js", () 
   });
 });
 
-// The flat stat names Formula.js hides behind namespaced objects (STDEV.S, …) used to
-// THROW "Unknown function" in a formula (the tokenizer can't read a dotted name). The
-// registry exposes the flat Excel name, so they now compute.
 describe("statistics flat names — registered so a formula can call them at all", () => {
   const ev = (expr: string, env: Record<string, unknown>) => compileEvaluator(expr)!(env);
   const X = { x: [2, 4, 4, 4, 5, 5, 7, 9] };
 
-  it("STDEV / VAR / MODE / PERCENTILE / QUARTILE / COVAR resolve (were Unknown function)", () => {
-    expect(resolveExcelFunction("COVAR")).toBeTypeOf("function");
+  it("STDEV / VAR / MODE / PERCENTILE / QUARTILE / COVAR resolve", () => {
+    expect(coreFunction("COVAR")).toBeTypeOf("function");
   });
 
   it("STDEV defaults to sample, VAR to sample, MODE to single", () => {
@@ -204,8 +137,6 @@ describe("statistics flat names — registered so a formula can call them at all
   });
 });
 
-// The full scalar-math sweep (node vs Formula.js) caught value bugs in Formula.js that
-// the registry now overrides so the formula path matches Excel + the visual node.
 describe("scalar-math — formula path overrides Formula.js where it's wrong", () => {
   const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
   it("MOD takes the divisor's sign (Excel); Formula.js gets it wrong", () => {
@@ -231,6 +162,22 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
     expect(ev('CONVERT(100, "C", "F")', {})).toBeCloseTo(212, 6);
     expect(ev('CONVERT(1, "m", "ft")', {})).toBeCloseTo(3.280839895, 6);
     expect(isSolError(ev('CONVERT(1, "m", "kg")', {}))).toBe(true); // cross-category → #N/A
+  });
+
+  it("a loop a step per period or outcome stops at a million instead of stalling the calc", () => {
+    for (const src of ["DDB(1000, 10, 1e300, 1e300)", "DB(1000, 10, 1e300, 1e300)", "BINOM.DIST.RANGE(10, 0.5, 0, 1e9)"]) {
+      expect((ev(src, {}) as SolError).code).toBe("#DOMAIN!");
+    }
+    expect(ev("DDB(1000, 10, 5, 2)", {})).toBe(240);
+    for (const src of ["BINOMTEST(5, 1e9, 0.5)", "FISHEREXACT(1e7, 1e7, 1e7, 1e7)"]) {
+      expect((ev(src, {}) as SolError).code).toBe("#DOMAIN!");
+    }
+  });
+
+  it("CONVERT reads only the table's own units, not Object.prototype's members", () => {
+    for (const [from, to] of [["toString", "m"], ["m", "constructor"], ["valueOf", "__proto__"]]) {
+      expect((ev(`CONVERT(1, "${from}", "${to}")`, {}) as SolError).code).toBe("#N/A");
+    }
   });
 
   it("cashflow functions pass the list whole (range functions), matching the nodes", () => {
@@ -268,9 +215,6 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
   });
 
   it("an ARRAY lookup value SPILLS — one result per element (Excel parity)", () => {
-    // The scoped lookup-family spill: a rank-1 needle list gives a rank-1 result list.
-    // Regression guard against the old quiet #N/A, which treated the whole array as one
-    // un-findable needle.
     const env = { qs: [30, 10, 99], ks: [10, 20, 30], vs: [100, 200, 300] };
     const m = ev("XMATCH(qs, ks)", env) as unknown[];
     expect(m.slice(0, 2)).toEqual([3, 1]);                              // hits keep their positions
@@ -279,29 +223,15 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
   });
 
   it("DOTTED function names parse + resolve (the tokenizer + namespace walk)", () => {
-    // Previously these THREW: the tokenizer split on '.', and Formula.js hides them
-    // behind namespaced objects. Now both the parser and resolveExcelFunction handle dots.
     expect(ev("STDEV.S(x)", { x: [2, 4, 4, 4, 5, 5, 7, 9] })).toBeCloseTo(2.13809, 4);
     expect(ev("PERCENTILE.INC(x, 0.5)", { x: [1, 2, 3, 4, 5] })).toBe(3);
     expect(ev("RANK.EQ(4, x)", { x: [1, 2, 3, 4, 5] })).toBe(2);
     expect(ev("NORM.DIST(0, 0, 1, 1)", {})).toBe(0.5);
   });
 
-  it("date-returning functions emit our SERIAL (a number), not a Formula.js Date object", () => {
-    const serial = ev("DATE(2026, 3, 15)");           // 2026-03-15
-    expect(serial).toBe(46096);
-    expect(ev("EDATE(DATE(2026, 3, 15), 2)")).toBe(46157);    // 2026-05-15, still a number
-    expect(typeof ev("DATEVALUE(\"2026-03-15\")")).toBe("number");
-  });
-});
-
-describe("the duplicate-registration guard ([[B16]] oneFormulaSurface's registry half)", () => {
-  it("a second claim on a live name throws instead of silently overwriting", () => {
-    registerInternal("GUARDTESTNAME", () => 1);
-    expect(() => registerInternal("GUARDTESTNAME", () => 2)).toThrow(/Duplicate formula registration/);
-    unregisterInternal("GUARDTESTNAME");
-    // A REVOCABLE name may return after withdrawal — the pack-rebuild path.
-    expect(() => registerInternal("GUARDTESTNAME", () => 3)).not.toThrow();
-    unregisterInternal("GUARDTESTNAME");
+  it("date-returning functions answer a date value, not a bare serial ([[D114]] dateIsAKind)", () => {
+    expect(ev("DATE(2026, 3, 15)")).toEqual(solDate(46096));           // 2026-03-15
+    expect(ev("EDATE(DATE(2026, 3, 15), 2)")).toEqual(solDate(46157)); // 2026-05-15
+    expect(isSolDate(ev("DATEVALUE(\"2026-03-15\")"))).toBe(true);
   });
 });

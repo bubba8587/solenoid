@@ -1,9 +1,9 @@
 // [[C85]] groupPushDeterministic, [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver
 import { measuredSize } from "./nodeSize";
 import type { View } from "./view";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
-import { GroupNode } from "./rete-nodes";
+import { GroupNode } from "./nodeClasses";
 import { moveGroupMembers, withLockedGroupsPinned } from "./groupLogic";
 import { COLLAPSE_LAYOUT, groupCollapseStore, syncGroupCollapse, settleCollapse } from "./groupCollapse";
 import { computeExpandPush, separateAll, PushBox, Satellite, Disp, Pt } from "./groupPushCore";
@@ -16,7 +16,7 @@ import { unselectAllNodes, selectNode } from "./canvasCommands";
 import { measuredBox } from "./nodeSize";
 
 
-type Editor = NodeEditor<Schemes>;
+type Editor = GraphEditor<Schemes>;
 
 interface PushRecord {
   pushed: string;
@@ -368,6 +368,9 @@ function runExpandPushes(
         (Math.abs(p.x - existing.expX) > EPS || Math.abs(p.y - existing.expY) > EPS);
       if (existing && !stale) {
         for (const gid of attribution.get(id)!) existing.dueTo.add(gid);
+        // A nudge since the last push (a Tidy's pixel) is the box's own, so it carries into where the box returns to.
+        existing.preX += p.x - existing.expX;
+        existing.preY += p.y - existing.expY;
         existing.expX = p.x + t.dx;
         existing.expY = p.y + t.dy;
       } else {
@@ -410,8 +413,9 @@ export function restoreSettledPushes(editor: Editor, view: View): Set<string> {
     _records.delete(id);
     const p = position(view, id);
     if (!p) continue;
+    // Back by what the pushes moved it, so a nudge within EPS since (a Tidy's pixel) stays rather than snapping away.
     if (Math.abs(p.x - r.expX) <= EPS && Math.abs(p.y - r.expY) <= EPS) {
-      translatePushed(editor, view, id, r.preX - p.x, r.preY - p.y);
+      translatePushed(editor, view, id, r.preX - r.expX, r.preY - r.expY);
       moved.add(id);
     }
   }
@@ -429,7 +433,7 @@ function restoreCollapseSettles(editor: Editor, view: View): void {
     _collapseSettles.delete(id);
     const p = position(view, id);
     if (p && Math.abs(p.x - r.setX) <= EPS && Math.abs(p.y - r.setY) <= EPS) {
-      translatePushed(editor, view, id, r.preX - p.x, r.preY - p.y);
+      translatePushed(editor, view, id, r.preX - r.setX, r.preY - r.setY);
     }
   }
 }
@@ -505,8 +509,8 @@ function settleStandoffsOverWorld(editor: Editor, view: View, pinned: Set<string
     const onPrior = prior && Math.abs(p.x - prior.setX) <= EPS && Math.abs(p.y - prior.setY) <= EPS;
     _collapseSettles.set(id, {
       dueTo: onPrior ? new Set([...prior.dueTo, ...pinned]) : new Set(pinned),
-      preX: onPrior ? prior.preX : p.x,
-      preY: onPrior ? prior.preY : p.y,
+      preX: onPrior ? prior.preX + p.x - prior.setX : p.x,
+      preY: onPrior ? prior.preY + p.y - prior.setY : p.y,
       setX: p.x + d.dx,
       setY: p.y + d.dy,
     });
@@ -527,6 +531,6 @@ export function settleOverlaps(editor: Editor, view: View, prefer: ReadonlySet<s
 }
 
 /** Two frames later, so React Flow has measured whatever the op just resized. */
-export function settleOverlapsAfterPaint(editor: Editor, view: View, prefer: ReadonlySet<string> = new Set()): void {
+function settleOverlapsAfterPaint(editor: Editor, view: View, prefer: ReadonlySet<string> = new Set()): void {
   requestAnimationFrame(() => requestAnimationFrame(() => settleOverlaps(editor, view, prefer)));
 }

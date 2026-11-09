@@ -202,6 +202,97 @@
      }
     ]
    }
+  },
+  {
+   "name": "every column keeps its unit and format",
+   "frames": {
+    "x": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 1,
+        "decimalMode": "places"
+       }
+      }
+     ]
+    },
+    "y": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        3
+       ],
+       "unit": {
+        "dim": {
+         "mass": 1
+        },
+        "display": "kg"
+       }
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "bindColumns",
+    "frames": [
+     "x",
+     "y"
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      },
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 1,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "d2",
+      "type": "number",
+      "values": [
+       3,
+       null
+      ],
+      "unit": {
+       "dim": {
+        "mass": 1
+       },
+       "display": "kg"
+      }
+     }
+    ]
+   }
   }
  ]
 }

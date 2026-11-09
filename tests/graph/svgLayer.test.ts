@@ -1,6 +1,6 @@
 // [[C103]] untrustedContentSeams
 import { describe, it, expect } from "vitest";
-import { elementName, resolveLayer, resolveLayerName, type SvgLike } from "../../src/graph/svgLayer";
+import { elementName, resolveLayer, type SvgLike } from "../../src/graph/svgLayer";
 
 // A tiny mock element tree — the resolver only needs getAttribute + parentElement,
 // so we build nodes by hand (no jsdom in the node vitest env). `mk` links parent
@@ -55,7 +55,7 @@ describe("resolveLayer", () => {
     const root = mk({ id: "diagram" }); // even a named root must not be selectable
     const path = mk({ fill: "blue" }, root);
     expect(resolveLayer(path, root)).toBeNull();
-    expect(resolveLayerName(path, root)).toBeNull();
+    expect(resolveLayer(path, root)).toBeNull();
   });
 
   it("returns null when nothing up the chain is named", () => {

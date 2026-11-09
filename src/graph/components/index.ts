@@ -79,10 +79,8 @@ export { AggregateComponent } from "./AggregateNode";
 export { SumProductComponent } from "./SumProductNode";
 export { RankPercentileComponent } from "./RankPercentileNode";
 export { CorrelComponent } from "./CorrelNode";
-export { CovarianceComponent } from "./CovarianceNode";
 export { FisherComponent } from "./FisherNode";
 export { StandardizeComponent } from "./StandardizeNode";
-export { RegressionComponent } from "./RegressionNode";
 export { ForecastComponent } from "./ForecastNode";
 export { ModeComponent } from "./ModeNode";
 export { TrimMeanComponent } from "./TrimMeanNode";
@@ -122,7 +120,7 @@ export {
   DistinctComponent, HeadComponent, SortFrameComponent, FilterFrameComponent, JoinComponent, XLookupComponent,
   ColumnsComponent, GroupByFrameComponent, PivotComponent, UnpivotComponent,
   NestComponent, UnnestComponent, AppendComponent, BindColumnsComponent, RenameComponent,
-  SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent, SettleComponent, PayoffPlannerComponent, AllocatorComponent,
+  SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent, ChoiceLadderComponent, SettleComponent, PayoffPlannerComponent, AllocatorComponent,
   ReconcileComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
   DescribeComponent, CorrMatrixComponent, KMeansComponent, PcaComponent, LogisticComponent, WindowComponent,
@@ -141,10 +139,12 @@ export { WriteFileComponent, WriteObsidianComponent, WriteTasksComponent } from 
 export { ImportObsidianComponent } from "./ImportObsidianNode";
 
 export { CableSwitchComponent } from "./CableSwitchNode";
+export { DelayedPassComponent } from "./DelayedPassNode";
 
 export { NoteComponent } from "./NoteNode";
 
 export { ReportComponent } from "./ReportNode";
+export { DashboardComponent } from "./DashboardNode";
 
 export { SessionHistoryComponent } from "./SessionHistoryNode";
 
@@ -217,6 +217,7 @@ export { AlertComponent } from "./AlertNode";
 export { SparklineComponent } from "./SparklineNode";
 export { ChartComponent } from "./ChartNode";
 export { MergePlotsComponent } from "./MergePlotsNode";
+export { ConditionalRegionsComponent } from "./ConditionalRegionsNode";
 export { HistogramComponent } from "./HistogramNode";
 export { KpiComponent } from "./KpiNode";
 export { SankeyComponent } from "./SankeyNode";
@@ -225,7 +226,7 @@ export {
   WaterfallComponent, CandlestickComponent, BoxplotComponent,
   CalendarHeatmapComponent, HeatmapComponent, ProportionComponent, QuiverComponent,
 } from "./FigureNodes";
-export { RecordComponent } from "./RecordNode";
+export { RecordComponent, CardsComponent } from "./RecordNode";
 export { GanttComponent } from "./GanttNode";
 export { PointPlotterComponent } from "./PointPlotterNode";
 export { CurveComponent } from "./CurveNode";
@@ -251,8 +252,6 @@ export { SocketContextMenu } from "./SocketContextMenu";
 export type { SocketContextTarget } from "./SocketContextMenu";
 export { CableContextMenu } from "./CableContextMenu";
 export type { CableContextTarget } from "./CableContextMenu";
-export { StandoffLinkMenu } from "./StandoffLinkMenu";
-export type { StandoffLinkTarget } from "./StandoffLinkMenu";
 export { NodeContextMenu } from "./NodeContextMenu";
 export type { NodeContextTarget } from "./NodeContextMenu";
 export { StandoffLayer } from "./StandoffLayer";
@@ -289,6 +288,7 @@ export { DateTruncComponent } from "./DateTruncNode";
 export { AmortizationComponent } from "./AmortizationNode";
 export { ReturnsComponent } from "./ReturnsNode";
 export { SpectrumComponent } from "./SpectrumNode";
+export { ConnectedRegionsComponent } from "./ConnectedRegionsNode";
 export { TextSimilarityComponent, FuzzyMatchComponent } from "./TextSimilarityNode";
 export { EtsForecastComponent } from "./EtsForecastNode";
 export { DecomposeComponent } from "./DecomposeNode";

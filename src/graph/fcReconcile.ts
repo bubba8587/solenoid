@@ -1,13 +1,14 @@
 // [[B11]] maximalMerge
 import type { View } from "./view";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
-import { FormatControllerNode, ConvertNode, ConduitNode } from "./rete-nodes";
-import { SolenoidSocket, canConnect, declaredTypeOf } from "./sockets";
+import { FormatControllerNode, ConvertNode, ConduitNode } from "./nodeClasses";
+import { SolenoidSocket, canConnect, declaredTypeOf, type SocketDataType } from "./sockets";
 import { settleWildcardTypes } from "./trueAnyAdopt";
+import { fcFacts } from "./fcFacts";
 
 export async function retypeOutputCables(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View | null,
   nodeId: string,
   outKey: string,
@@ -26,7 +27,7 @@ export async function retypeOutputCables(
 
 /** The input-side twin of `retypeOutputCables`: after an in-place input retype, drop only the cables the new type refuses. */
 export async function retypeInputCables(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View | null,
   nodeId: string,
   inKey: string,
@@ -42,11 +43,20 @@ export async function retypeInputCables(
 
 /** `view` is null for a graph nobody is looking at (a closed composite): the model still settles, nothing re-renders. */
 export function reconcileFcTypes(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View | null,
+  settled: ReturnType<typeof settleWildcardTypes> = settleWildcardTypes(editor),
 ): void {
-  const settled = settleWildcardTypes(editor);
   let cablesStale = false;
+  // A follower retyped in place keeps only the cables its new type still takes.
+  for (const [id, key] of settled.followed) {
+    const inType = declaredTypeOf(editor.getNode(id)?.inputs[key]?.socket);
+    for (const c of [...editor.getConnections()]) {
+      if (c.target !== id || c.targetInput !== key) continue;
+      const outSock = editor.getNode(c.source)?.outputs?.[c.sourceOutput]?.socket;
+      if (!inType || !(outSock instanceof SolenoidSocket) || !canConnect(outSock.dataType, inType)) void editor.removeConnection(c.id);
+    }
+  }
   if (settled.conduitChanged) {
     for (const n of editor.getNodes()) {
       if (!(n instanceof ConduitNode)) continue;
@@ -59,29 +69,43 @@ export function reconcileFcTypes(
     cablesStale = true;
   }
   if (cablesStale) void view?.rerenderCables();
-  for (const n of editor.getNodes()) {
-    if (n instanceof ConvertNode) {
-      n.syncUnitArrows(editor);
-      void view?.rerenderNode(n.id);
-    }
-  }
+  reconcileFcs(editor, view);
+}
+
+/** The Format Controller reconcile (`fc.rs`): every FC takes its type and its dictated from-unit, every Convert its
+ *  arrows, and then every FC writes its annotation. */
+export function reconcileFcs(editor: GraphEditor<Schemes>, view: View | null): void {
+  const answer = JSON.parse(editor.core().reconcileFcs(JSON.stringify(fcFacts(editor as never)))) as {
+    fcs: [string, SocketDataType, string][];
+    converts: [string, boolean, boolean][];
+  };
   let anyRetyped = false;
+  for (const [id, type, dictated] of answer.fcs) {
+    const n = editor.getNode(id);
+    if (n instanceof FormatControllerNode) anyRetyped = n.settle(type, dictated) || anyRetyped;
+  }
+  for (const [id, up, down] of answer.converts) {
+    const n = editor.getNode(id);
+    if (!(n instanceof ConvertNode)) continue;
+    n.imposesUp = up;
+    n.imposesDown = down;
+    void view?.rerenderNode(id);
+  }
   for (const n of editor.getNodes()) {
     if (!(n instanceof FormatControllerNode)) continue;
-    const retyped = n.adaptTypeFromConnections(editor);
-    n.refreshAnnotation(editor);
+    n.refreshAnnotation(editor as never);
     void view?.rerenderNode(n.id);
-    anyRetyped ||= retyped;
   }
   // A retyped socket's cables stay detached until their paths recompute next frame.
   if (anyRetyped && view) requestAnimationFrame(() => { void view.rerenderCables(); });
 }
 
 export function reconcileTypesAfterEdit(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View | null,
 ): void {
   const settled = settleWildcardTypes(editor);
   if (!settled.conduitChanged && settled.adopted.size === 0) return;
-  reconcileFcTypes(editor, view);
+  // The cards this settle retyped redraw: settling again would find nothing moved and redraw none of them.
+  reconcileFcTypes(editor, view, settled);
 }

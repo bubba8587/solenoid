@@ -1,4 +1,4 @@
-// [[C28]] literalsIffEditable, [[C95]] commitOnEnter, [[D90]] cubeTypesAtDepth
+// [[C28]] literalsIffEditable, [[B19]] spreadsheetHabits, [[D90]] cubeTypesAtDepth
 import { useEffect, useState, type ReactNode } from "react";
 import type * as React from "react";
 import { cubePopup, type CubeEditBinding, type DrillView, type CellRef } from "../cubePopupStore";
@@ -17,29 +17,33 @@ import { cubeCellToken, CubeCellChip } from "./cubeCell";
 import { CellKindMenu } from "./CellKindMenu";
 import { ColumnExprField, COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
 import { TypeIcon } from "./TypeIcon";
+import "./colType.css";
 
 
 const rowsAt = (records: CubeRecord[], path: CubePath): CubeRecord[] => {
   const sub = path.length ? getAtPath(records, path) : records;
+  if (sub !== null && typeof sub === "object" && !Array.isArray(sub)) return [sub as CubeRecord];
   return Array.isArray(sub) ? (sub as CubeRecord[]) : [];
 };
 
 /** A nested table as a cube, its columns read by the types declared for that one table. */
-export function cubeViewAt(records: CubeRecord[], path: CubePath, label: string, nested: NestedTables = {}): DrillView {
+function cubeViewAt(records: CubeRecord[], path: CubePath, label: string, nested: NestedTables = {}): DrillView {
   return { kind: "cube", cube: recordsToCube(rowsAt(records, path), typesAt(nested, path), nested, path), label, path };
 }
 
 /** A nested Frame, its columns read by its own picks. */
-export function frameViewAt(records: CubeRecord[], path: CubePath, label: string, nested: NestedTables = {}): DrillView {
+function frameViewAt(records: CubeRecord[], path: CubePath, label: string, nested: NestedTables = {}): DrillView {
   return { kind: "frame", frame: frameCellFromRecords(rowsAt(records, path), typesAt(nested, path)), label, path };
 }
 
-export function listViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
+/** `type` is the column the list sits in, so a date list drills in as dates ([[C137]] datesNeverSerials). */
+function listViewAt(records: CubeRecord[], path: CubePath, label: string, type?: ColType): DrillView {
   const sub = getAtPath(records, path);
-  return { kind: "list", items: Array.isArray(sub) ? (sub as unknown[]) : [], label, path };
+  const items = Array.isArray(sub) ? (sub as unknown[]) : [];
+  return { kind: "list", items, label, path, ...(type ? { type } : {}) };
 }
 
-export function gridViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
+function gridViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
   const sub = getAtPath(records, path);
   const cells = Array.isArray(sub) ? sub.map((row) => (Array.isArray(row) ? (row as CubeCell[]) : [])) : [];
   return { kind: "grid", cells, label, path };
@@ -101,7 +105,7 @@ function columnTypeIn(edit: CubeEditBinding, tablePath: CubePath, column: string
 }
 
 /** The type declared for a cell: its own column's on a Frame or Cube level; on a list or table level, the column the list or table sits in. */
-export function declaredTypeAt(edit: CubeEditBinding, path: CubePath, column?: string): ColType | undefined {
+function declaredTypeAt(edit: CubeEditBinding, path: CubePath, column?: string): ColType | undefined {
   if (column !== undefined) return columnTypeIn(edit, path, column);
   let k = path.length - 1;
   while (k >= 0 && typeof path[k] !== "string") k--;
@@ -128,8 +132,8 @@ function NestedChip({ edit, cellPath, value, kind, crumb, from, type }: {
     const list = (value ?? []) as unknown[];
     const famClass = elemChipClass(list as Parameters<typeof elemChipClass>[0], false, type);
     return (
-      <button type="button" className={chipClass("array") + famClass} title={`${list.length}-item list ${cubeCellToken(list as CubeCell)}. Drill in and edit.`}
-        onPointerDown={stop} onMouseDown={stop} onClick={drill(listViewAt(records, cellPath, crumb))}>
+      <button type="button" className={chipClass("array") + famClass} title={`${list.length}-item list ${cubeCellToken(list as CubeCell, type)}. Drill in and edit.`}
+        onPointerDown={stop} onMouseDown={stop} onClick={drill(listViewAt(records, cellPath, crumb, type))}>
         [{list.length}× List]
       </button>
     );
@@ -315,7 +319,7 @@ export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; 
       <div className="table-popup__colhead-edit">
         <button
           type="button"
-          className={`table-popup__coltype${kind === "fx" ? " table-popup__coltype--fx" : ""}`}
+          className={`sol-coltype${kind === "fx" ? " sol-coltype--fx" : ""}`}
           title={`Column type: ${KIND_NAME(kind)}. Cycle None / Number / Text / Date / Boolean${formulas ? " / Formula" : ""}.`}
           onClick={(e) => { e.stopPropagation(); cycle(); }}
         >

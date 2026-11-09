@@ -1,0 +1,64 @@
+name: Build (Android, debug)
+
+# docs/android.md: a debug APK for arm64 phones, built from a freshly generated Android project, so the shell's
+# Android compile is checked without a local toolchain. Runs on a push to develop that touches the shell or this
+# build, and by hand from the Actions tab ("Build (Android, debug)", Run).
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "src-tauri/**"
+      - "scripts/android-prep.mjs"
+      - ".github/workflows/android-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      # The runner ships the Android SDK; its newest NDK is the one Tauri builds with.
+      - name: Point Tauri at the NDK
+        run: echo "NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
+
+      # The project isn't committed until the first local build (docs/android.md, Phase 2), so it is generated here.
+      - name: Generate the Android project
+        run: |
+          if [ ! -d src-tauri/gen/android ]; then npx tauri android init --ci; fi
+          node scripts/android-prep.mjs
+
+      - name: Build the debug APK
+        run: npx tauri android build --apk --debug --target aarch64 --ci
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: solenoid-android-debug-${{ github.sha }}
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 14

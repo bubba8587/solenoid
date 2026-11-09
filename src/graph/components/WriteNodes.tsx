@@ -1,7 +1,7 @@
-// [[C38]] sinkRunButtonOnly, [[B11]] maximalMerge, [[C26]] opArgDistinct
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WriteFormat } from "../rete-nodes";
-import { hasFs, isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal } from "../fileBridge";
+// [[B18]] safeToShare, [[B11]] maximalMerge, [[C26]] opArgDistinct
+import { useEffect, useState, useSyncExternalStore } from "react";
+import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WriteFormat } from "../nodeClasses";
+import { hasFs, isDesktop, listVaultFolders, listVaultMarkdownFiles, readVaultFileHead, statVaultFile, openExternal } from "../fileBridge";
 import { getVaultRoot } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { settingsStore } from "../settingsStore";
@@ -15,7 +15,8 @@ import { DocumentChip } from "./DocumentChip";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { dropInputCables } from "./cablePrune";
-import { RefreshIcon } from "./RefreshIcon";
+import { PickField } from "./PickField";
+import { chooseFile } from "../chooseFile";
 import { SegToggle } from "./SegToggle";
 import { OBSIDIAN_WRITE_MODE_OPTIONS, OBSIDIAN_TARGET_OPTIONS, type WriteObsidianTarget } from "../nodes/obsidian";
 import type { ObsidianWriteMode } from "../obsidianWrite";
@@ -25,6 +26,7 @@ import "./ConnectionNodes.css";
 import "./WriteNodes.css";
 import "./ImportObsidianNode.css";
 import { stopDragStart } from "../coarse";
+import { previewed } from "../listPreview";
 
 type WriteNodeData = WriteFileNodeType & {
   path: string; format: WriteFormat; enabled: boolean; status: string; statusMessage: string;
@@ -59,7 +61,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
     setFormat(next);
     const view = getOwningView(d.id);
     if (view) await view.rerenderNode(d.id);
-    await processGraph();
+    d.edited(); await processGraph();
   }
 
   function commitPath() {
@@ -98,7 +100,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
         {!desktop && <div className="sol-conn__note">Writing files is available in the desktop app only.</div>}
         <div className="sol-conn__line">
           <input
-            className="sol-conn__url"
+            className="sol-conn__url sol-placeholder-example"
             type="text"
             value={path}
             placeholder={`…/output.${ext}`}
@@ -151,7 +153,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
             {message}
           </div>
         )}
-        <FrameDisplay frame={d.cachedFrame} label={d.label} />
+        <FrameDisplay frame={previewed(() => d.cachedFrame)} label={d.label} />
       </div>
     </NodeShell>
   );
@@ -176,51 +178,24 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   const [subfolder, setSubfolder] = useState(d.subfolder);
   const [mode, setMode] = useState<ObsidianWriteMode>(d.mode);
   const [stamp, setStamp] = useState(d.stamp);
-  const [keys, setKeys] = useState(d.stringLiterals.keys ?? "");
   const [addMissing, setAddMissing] = useState(d.addMissing);
   const [writeBase, setWriteBase] = useState(d.writeBase);
   const [armed, setArmed] = useState(d.enabled);
   const [status, setStatus] = useState(d.status);
   const [message, setMessage] = useState(d.statusMessage);
-  const [folders, setFolders] = useState<string[]>([]);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [files, setFiles] = useState<string[]>([]);
-  const [search, setSearch] = useState("");
   const vaultFs = hasFs();
   const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot());
 
   const activeMode = d.resolveMode(); // "note" | "properties"
-  const inputKeys = activeMode === "properties" ? ["in", "rows"] : ["in", "path", "rows"];
+  const inputKeys = activeMode === "properties" ? ["in", "rows", "keys"] : ["in", "path", "rows"];
 
-  useEffect(() => {
-    let live = true;
-    void listVaultFolders(vault).then((f) => { if (live) setFolders(f); });
-    return () => { live = false; };
-  }, [vault]);
-  useEffect(() => {
-    if (!pickerOpen) return;
-    let live = true;
-    void listVaultMarkdownFiles(vault).then((f) => { if (live) setFiles(f); });
-    return () => { live = false; };
-  }, [pickerOpen, vault]);
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return q ? files.filter((f) => f.toLowerCase().includes(q)) : files;
-  }, [files, search]);
-
-  function refreshFolders() { void listVaultFolders(vault).then(setFolders); }
-  function pickTarget(v: WriteObsidianTarget) { d.target = v; setTarget(v); void getOwningView(d.id)?.rerenderNode(d.id); void processGraph(); }
+  function pickTarget(v: WriteObsidianTarget) { d.target = v; setTarget(v); void getOwningView(d.id)?.rerenderNode(d.id); d.edited(); void processGraph(); }
   function pickSubfolder(v: string) { d.subfolder = v; setSubfolder(v); notifyGraphChanged(); }
   function pickMode(v: ObsidianWriteMode) { d.mode = v; setMode(v); notifyGraphChanged(); }
   function toggleArmed() { d.enabled = !d.enabled; setArmed(d.enabled); }
   function toggleStamp() { d.stamp = !d.stamp; setStamp(d.stamp); notifyGraphChanged(); }
-  function toggleAddMissing() { d.addMissing = !d.addMissing; setAddMissing(d.addMissing); void processGraph(); }
+  function toggleAddMissing() { d.addMissing = !d.addMissing; setAddMissing(d.addMissing); d.edited(); void processGraph(); }
   function toggleWriteBase() { d.writeBase = !d.writeBase; setWriteBase(d.writeBase); notifyGraphChanged(); }
-  function commitKeys() {
-    const next = keys.split(",").map((k) => k.trim()).filter(Boolean).join(", ");
-    setKeys(next);
-    if (next !== (d.stringLiterals.keys ?? "")) { d.stringLiterals.keys = next; void processGraph(); }
-  }
 
   // Picking a note fills the folder select + the `path` literal (its bare name), so the
   // two controls stay in sync; a wired `path` overrides both.
@@ -231,16 +206,15 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
     const base = slash >= 0 ? noMd.slice(slash + 1) : noMd;
     d.subfolder = folder; setSubfolder(folder);
     (d.stringLiterals ??= {}).path = base;
-    setPickerOpen(false);
     void getOwningView(d.id)?.rerenderNode(d.id);
-    void processGraph();
+    d.edited(); void processGraph();
   }
 
   async function preview() {
     setStatus("previewing");
     await d.preview();
     setStatus(d.status); setMessage(d.statusMessage);
-    void processGraph();
+    d.edited(); void processGraph();
   }
   async function run() {
     setStatus("writing");
@@ -268,57 +242,27 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
 
         {activeMode === "note" ? (
           <>
-            <button
-              type="button"
-              className="sol-write__browse"
-              title={pickerOpen ? "Hide vault notes" : "Browse the vault for a note to write to"}
-              onClick={(e) => { e.stopPropagation(); setPickerOpen((o) => !o); }}
-              {...stopPtr}
-            >
-              {/* Lucide "folder-open" (ISC), the Import chooser's glyph. */}
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" />
-              </svg>
-              Browse…
-            </button>
-            {pickerOpen && (
-              <div className="sol-import__picker" {...stopPtr}>
-                {!vaultFs ? (
-                  <div className="sol-import__empty">Reading a vault is available in the desktop app only.</div>
-                ) : vault.trim() === "" ? (
-                  <div className="sol-import__empty">Set the Obsidian vault folder in Settings.</div>
-                ) : (
-                  <>
-                    <input
-                      className="sol-import__search"
-                      type="text"
-                      value={search}
-                      placeholder="Search notes…"
-                      spellCheck={false}
-                      autoFocus
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
-                    <div className="sol-import__list nowheel">
-                      {filtered.length === 0 ? (
-                        <div className="sol-import__empty">No .md files</div>
-                      ) : (
-                        filtered.map((f) => (
-                          <button
-                            key={f}
-                            type="button"
-                            className={`sol-import__row${f.replace(/\.md$/i, "") === [d.subfolder, d.stringLiterals?.path].filter(Boolean).join("/") ? " sol-import__row--on" : ""}`}
-                            title={f}
-                            onClick={() => pickFile(f)}
-                          >
-                            {f}
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+            <PickField
+              value={[d.subfolder, d.stringLiterals?.path].filter(Boolean).join("/")}
+              placeholder="Browse the vault for a note…"
+              example
+              title="Choose a vault note to write to"
+              disabled={!vaultFs}
+              onPick={(from) => void chooseFile({
+                from,
+                title: "Choose a note to write to",
+                root: vault,
+                extensions: ["md"],
+                current: d.stringLiterals?.path ? `${[d.subfolder, d.stringLiterals.path].filter(Boolean).join("/")}.md` : undefined,
+                list: () => listVaultMarkdownFiles(vault),
+                readHead: (rel, chars) => readVaultFileHead(vault, rel, chars),
+                stat: (rel) => statVaultFile(vault, rel),
+                rootLabel: "Vault",
+                recentKey: "vault-note",
+                empty: "No notes in the vault",
+                blocked: vault.trim() === "" ? "Set the Obsidian vault folder in Settings." : undefined,
+              }).then((rel) => { if (rel) pickFile(rel); })}
+            />
             {rtarget.name && <div className="sol-conn__note" title="Where Run writes">{[rtarget.subfolder, renderedName].filter(Boolean).join("/")}.md</div>}
             <SegToggle value={mode} options={OBSIDIAN_WRITE_MODE_OPTIONS} onChange={pickMode} />
             <label className="sol-write__armed" title="Add a solenoid: link on the note + a Solenoid/<graph> stub note" {...stopPtr}>
@@ -326,23 +270,27 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
               Link to graph
             </label>
             {stamp && <div className="sol-conn__note" title="Stub note this write adds a solenoid: link to">+ {stubRelPath(documentStore.currentName())}</div>}
-            <div className="sol-conn__line">
-              <select className="sol-conn__select" style={{ flex: 1 }} value={subfolder} onChange={(e) => pickSubfolder(e.target.value)} {...stopPtr}>
-                <option value="">Vault root</option>
-                {subfolder && !folders.includes(subfolder) && <option value={subfolder}>{subfolder}</option>}
-                {folders.map((f) => <option key={f} value={f}>{f}</option>)}
-              </select>
-              <button type="button" className="sol-conn__refresh" title="Rescan vault folders" onClick={(e) => { e.stopPropagation(); refreshFolders(); }} {...stopPtr}><RefreshIcon /></button>
-            </div>
+            <PickField
+              value={subfolder}
+              placeholder="[vault root]"
+              title="The folder the note is written in"
+              disabled={!vaultFs}
+              onPick={(from) => void chooseFile({
+                from,
+                title: "Choose a folder to write in",
+                root: vault,
+                kind: "folder",
+                current: subfolder || undefined,
+                rootLabel: "Vault root",
+                list: () => listVaultFolders(vault),
+                files: () => listVaultMarkdownFiles(vault),
+                recentKey: "vault-folder",
+                blocked: vault.trim() === "" ? "Set the Obsidian vault folder in Settings." : undefined,
+              }).then((rel) => { if (rel !== null) pickSubfolder(rel); })}
+            />
           </>
         ) : (
           <>
-            <input
-              className="sol-conn__url" type="text" value={keys} placeholder="Properties to write (blank = all)" spellCheck={false}
-              onChange={(e) => setKeys(e.target.value)} onBlur={commitKeys}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-              {...stopPtr}
-            />
             <label className="sol-write__armed" title="Add + register a property the note doesn't have yet" {...stopPtr}>
               <input type="checkbox" checked={addMissing} onChange={toggleAddMissing} />
               Add missing
@@ -407,23 +355,15 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
 // ─── WRITE TASKS ────────────────────────────────────────────────────────────────
 // Preview reads, Run writes through the TaskNotes API.
 export function WriteTasksComponent({ data, emit }: NodeProps<WriteTasksNodeType>) {
-  const [keys, setKeys] = useState(data.stringLiterals.keys ?? "");
   const [armed, setArmed] = useState(data.enabled);
   const [status, setStatus] = useState<string>(data.status);
   const [message, setMessage] = useState(data.statusMessage);
-  useEffect(() => { setKeys(data.stringLiterals.keys ?? ""); }, [data.stringLiterals.keys]);
-
-  function commitKeys() {
-    const next = keys.split(",").map((k) => k.trim()).filter(Boolean).join(", ");
-    setKeys(next);
-    if (next !== (data.stringLiterals.keys ?? "")) { data.stringLiterals.keys = next; void processGraph(); }
-  }
   function toggleArmed() { data.enabled = !data.enabled; setArmed(data.enabled); }
   async function preview() {
     setStatus("previewing");
     await data.preview();
     setStatus(data.status); setMessage(data.statusMessage);
-    void processGraph();
+    data.edited(); void processGraph();
   }
   async function run() {
     setStatus("writing");
@@ -437,17 +377,6 @@ export function WriteTasksComponent({ data, emit }: NodeProps<WriteTasksNodeType
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <div className="sol-conn">
-        <input
-          className="sol-conn__url"
-          type="text"
-          value={keys}
-          placeholder="Fields to send (blank = all)"
-          spellCheck={false}
-          onChange={(e) => setKeys(e.target.value)}
-          onBlur={commitKeys}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-          {...stopPtr}
-        />
         <div className="sol-write__row">
           <button
             type="button"
@@ -479,7 +408,7 @@ export function WriteTasksComponent({ data, emit }: NodeProps<WriteTasksNodeType
             {message}
           </div>
         )}
-        <FrameDisplay frame={data.cachedPlan} label={data.label || "Write Tasks"} />
+        <FrameDisplay frame={previewed(() => data.cachedPlan)} label={data.label || "Write Tasks"} />
       </div>
     </NodeShell>
   );

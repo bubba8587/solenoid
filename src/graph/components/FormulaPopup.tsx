@@ -1,14 +1,14 @@
 // [[C15]] matricesInFormulas, [[C51]] formulaNaming
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useKatexRender, getKatexRenderer } from "./katexLoader";
-import type { ClassicPreset } from "rete";
+import type { GraphNode } from "../graphModel";
 import { formulaPopup } from "../formulaPopupStore";
 import { processGraph } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { formulaToLatex, evaluateSteps, extractVariables } from "../excelFormula";
 import { closeParens } from "../closeParens";
-import { nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
-import type { ExpressionNode, EquationNode, MapTableNode, LambdaNode } from "../rete-nodes";
+import { nodeKindOf, NODE_KIND_ACCENTS } from "../nodeClasses";
+import type { ExpressionNode, EquationNode, MapTableNode, LambdaNode } from "../nodeClasses";
 import { appThemeStore } from "../appTheme";
 import { groupMembershipStore } from "../groupMembership";
 import { cableValueStore } from "../cableValueStore";
@@ -47,7 +47,7 @@ function setVarDesc(node: { id: string; varDescriptions: Record<string, string> 
   void getOwningView(node.id)?.rerenderNode(node.id);
 }
 
-function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null {
+function formulaHostOf(node: GraphNode | undefined): FormulaHost | null {
   if (!node) return null;
   const label = nodeDisplayName(node);
   const typeName = node.constructor.name;
@@ -77,13 +77,13 @@ function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null
       label,
       text: n.stringLiterals.formula ?? "",
       locked: false,
-      setText: async (s) => { n.stringLiterals.formula = s; await processGraph(); },
+      setText: async (s) => { n.stringLiterals.formula = s; n.edited(); await processGraph(); },
     };
   }
   return null;
 }
 
-// Notes, not formula: kept out of the formula string and editable while it is locked, so they commit per keystroke ([[C95]] commitOnEnter).
+// Notes, not formula: kept out of the formula string and editable while it is locked, so they commit per keystroke ([[B19]] spreadsheetHabits).
 function VariableDescriptions({ vars, host }: { vars: string[]; host: FormulaHost }) {
   const [local, setLocal] = useState<Record<string, string>>(() => ({ ...host.varDescriptions }));
   const set = (v: string, desc: string) => {
@@ -144,7 +144,7 @@ export function FormulaPopup() {
   const [text, setText] = useState("");
   const initedFor = useRef<string | null>(null);
   const renderRef = useRef<HTMLDivElement>(null);
-  // Written once on exit, never per keystroke ([[C95]] commitOnEnter); `textRef` because the Escape listener closes over a stale `text`.
+  // Written once on exit, never per keystroke ([[B19]] spreadsheetHabits); `textRef` because the Escape listener closes over a stale `text`.
   const textRef = useRef("");
   const committedRef = useRef("");
 
@@ -174,7 +174,6 @@ export function FormulaPopup() {
     setText(seed);
     textRef.current = seed;
     committedRef.current = seed;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId]);
 
   const varSuggestions = useMemo(() => extractVariables(text), [text]);

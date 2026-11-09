@@ -3,11 +3,13 @@ import { documentStore } from "./documentStore";
 import { loadRevealStore } from "./loadReveal";
 import { getEditor, getView, processGraph } from "./process";
 import { attachFormatController } from "./canvasActions";
+import { reconcileFcs } from "./fcReconcile";
 import { frameFormatStore } from "./frameFormatStore";
 import type { FormatAnnotation } from "./formatAnnotationStore";
 if (import.meta.env.DEV) {
   (window as unknown as { __spike: unknown }).__spike = {
     seed: (id: string) => documentStore.newFromTemplate(id),
+    example: () => ({ example: documentStore.currentIsExample(), edited: documentStore.currentExampleEdited(), tree: documentStore.list().length }),
     // "idle" once the reveal has played; the screenshot harness waits on it.
     revealPhase: () => loadRevealStore.phase(),
     zoomNode: async (label: string, k = 1.7, sx = 260, sy = 200) => {
@@ -27,10 +29,10 @@ if (import.meta.env.DEV) {
       const n = getEditor()?.getNode(id);
       if (!n) return false;
       Object.assign(n, fields);
+      n.edited();
       // An FC's popup re-registers its annotation on every pick; mirror that.
       const ed = getEditor();
-      const fc = n as unknown as { refreshAnnotation?: (e: unknown) => void };
-      if (ed && typeof fc.refreshAnnotation === "function") fc.refreshAnnotation(ed);
+      if (ed) reconcileFcs(ed, null);
       await processGraph();
       return true;
     },

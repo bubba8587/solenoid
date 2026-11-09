@@ -1,0 +1,17 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"FILTER(r_L1_L2, r_M1_M2, \"\")","env":["r_L1_L2=table:num:[[10], [20]]","r_M1_M2=table:bool:[[FALSE], [FALSE]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FILTER(r_L1_L2, r_M1_M2, 7)","env":["r_L1_L2=table:num:[[10], [20]]","r_M1_M2=table:bool:[[FALSE], [FALSE]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FILTER(r_L1_L2, r_M1_M2, 7)+1","env":["r_L1_L2=table:num:[[10], [20]]","r_M1_M2=table:bool:[[FALSE], [FALSE]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FILTER(r_L1_L2, r_M1_M2, 1/0)","env":["r_L1_L2=table:num:[[10], [20]]","r_M1_M2=table:bool:[[FALSE], [FALSE]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FILTER(r_L1_L2, r_M1_M2)","env":["r_L1_L2=table:num:[[10], [20]]","r_M1_M2=table:bool:[[FALSE], [FALSE]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FILTER(r_L1_L2, r_M1_M2, k1)","env":["k1=list:num:[1, 2, 3]","r_L1_L2=table:num:[[10], [20]]","r_M1_M2=table:bool:[[FALSE], [FALSE]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FILTER(r_L1_L2, r_M1_M2, r_L1_L2)","env":["r_L1_L2=table:num:[[10], [20]]","r_M1_M2=table:bool:[[FALSE], [FALSE]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FILTER(r_L1_L2, r_M1_M2, c_L1)+1","env":["c_L1=num:10","r_L1_L2=table:num:[[10], [20]]","r_M1_M2=table:bool:[[FALSE], [FALSE]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FILTER(r_A1_A4,  r_A1_A4>3)","env":["r_A1_A4=table:num:[[1], [2], [3], [4]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FILTER(r_A1_A4,r_A1_A4>10)","env":["r_A1_A4=table:num:[[1], [2], [3], [4]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FILTER(r_A9_A12,(r_B9_B12=\"Finance\")+(r_C9_C12=\"HR\"))","env":["r_A9_A12=table:text:[[\"a\"], [\"b\"], [\"c\"], [\"d\"]]","r_B9_B12=table:text:[[\"Finance\"], [\"Calc\"], [\"Finance\"], [\"Calc\"]]","r_C9_C12=table:text:[[\"HR\"], [\"HR\"], [\"Calc\"], [\"Calc\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FILTER(r_A9_A12,(r_B9_B12=\"Finance\")*(r_C9_C12=\"HR\"))","env":["r_A9_A12=table:text:[[\"a\"], [\"b\"], [\"c\"], [\"d\"]]","r_B9_B12=table:text:[[\"Finance\"], [\"Calc\"], [\"Finance\"], [\"Calc\"]]","r_C9_C12=table:text:[[\"HR\"], [\"HR\"], [\"Calc\"], [\"Calc\"]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"FILTER(r_A2_A12, r_A2_A12>10)","env":["r_A2_A12=table:num:[[23], [24], [12], [8], [9], [12], [blank], [blank], [blank], [blank], [blank]]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

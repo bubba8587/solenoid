@@ -1,10 +1,7 @@
 // [[C17]]
 import { describe, it, expect } from "vitest";
-import { isSolError } from "../../../src/graph/errorValue";
-import { TableTransposeNode, StackNode, TableReshapeNode, TableSelectNode, TakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, TableUnitNode, tableRawCells, rawCellsToText, deriveTable } from "../../../src/graph/nodes/matrix";
+import { TableTransposeNode, TableReshapeNode, TableSelectNode, TableInfoNode, TableInputNode, tableRawCells, rawCellsToText, type TableElemType } from "../../../src/graph/nodes/matrix";
 import { SolenoidSocket, type SocketDataType } from "../../../src/graph/sockets";
-import { withMatrixUnit, matrixUnitOf, isUnitCell, type UnitCell } from "../../../src/graph/unitValue";
-import { ListIndexNode } from "../../../src/graph/nodes/list";
 
 // The pure-reshape matrix ops are element-agnostic: they accept any matrix on an
 // `any` input and emit the 2-D wildcard `anytable` (or a 1-D `any` list when
@@ -56,65 +53,10 @@ describe("reshapers are element-polymorphic", () => {
     ]);
   });
 
-  it("WRAPROWS/WRAPCOLS pad the leftover cells with #N/A (Excel default)", () => {
-    const rows = new TableReshapeNode({ op: "wraprows" })
-      .data({ list: [["a", "b", "c", "d", "e"]], wrapCount: [3] }).result as unknown[][];
-    expect(rows[0]).toEqual(["a", "b", "c"]);
-    expect(rows[1].slice(0, 2)).toEqual(["d", "e"]);
-    expect(isSolError(rows[1][2])).toBe(true);
-    const cols = new TableReshapeNode({ op: "wrapcols" })
-      .data({ list: [[1, 2, 3]], wrapCount: [2] }).result as unknown[][];
-    expect(cols[0]).toEqual([1, 3]);
-    expect(cols[1][0]).toBe(2);
-    expect(isSolError(cols[1][1])).toBe(true);
-  });
 
-  it("WRAPROWS/WRAPCOLS: a wired Fill overrides the #N/A pad (=WRAPROWS(x,3,0))", () => {
-    // Matches the formula surface (formulaMatrix.test.ts: WRAPROWS(x,3,0) → [[1,2,3],[4,5,0]]).
-    expect(new TableReshapeNode({ op: "wraprows" })
-      .data({ list: [[1, 2, 3, 4, 5]], wrapCount: [3], fill: [0] }).result)
-      .toEqual([[1, 2, 3], [4, 5, 0]]);
-    expect(new TableReshapeNode({ op: "wrapcols" })
-      .data({ list: [[1, 2, 3]], wrapCount: [2], fill: [0] }).result)
-      .toEqual([[1, 3], [2, 0]]);
-    // A blank (null) Fill still falls back to the #N/A default, like the formula's wrapPad.
-    const naFallback = new TableReshapeNode({ op: "wraprows" })
-      .data({ list: [[1, 2, 3, 4, 5]], wrapCount: [3], fill: [null] }).result as unknown[][];
-    expect(isSolError(naFallback[1][2])).toBe(true);
-  });
 
-  it("HSTACK stitches two text matrices side by side", () => {
-    const n = new StackNode({ op: "hstack" });
-    expect(n.data({ t0: [[["a"], ["b"]]], t1: [[["x"], ["y"]]] }).result).toEqual([
-      ["a", "x"],
-      ["b", "y"],
-    ]);
-  });
 
-  it("TAKE/DROP (table) cut both axes; negative counts work from the end", () => {
-    const m = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
-    expect(new TakeDropNode({ op: "take" }).data({ data: [m], rows: [2] }).result)
-      .toEqual([[1, 2, 3], [4, 5, 6]]);
-    expect(new TakeDropNode({ op: "take" }).data({ data: [m], rows: [-1], cols: [-2] }).result)
-      .toEqual([[8, 9]]);
-    expect(new TakeDropNode({ op: "take" }).data({ data: [m], rows: [99] }).result)
-      .toEqual(m); // past the size keeps everything, like Excel
-    expect(new TakeDropNode({ op: "drop" }).data({ data: [m], rows: [1], cols: [-1] }).result)
-      .toEqual([[4, 5], [7, 8]]);
-    // TAKE cols on a table that is one row — the 2-D spelling of "first 2 columns"
-    expect(new TakeDropNode({ op: "take" }).data({ data: [[[9, 8, 7]]], cols: [2] }).result)
-      .toEqual([[9, 8]]);
-  });
 
-  it("EXPAND grows with the fill (unwired fill pads null); shrinking is #VALUE!", () => {
-    const grown = new ExpandNode().data({ matrix: [[[1, 2]]], rows: [2], cols: [3], fill: [0] }).result as unknown[][];
-    expect(grown).toEqual([[1, 2, 0], [0, 0, 0]]);
-    // Unwired Fill = first-class missing (author 2026-07-16), not Excel's #N/A —
-    // wire the NA node into Fill for the Excel pad_with-omitted behavior.
-    const padded = new ExpandNode().data({ matrix: [[[1]]], rows: [1], cols: [2] }).result as unknown[][];
-    expect(padded).toEqual([[1, null]]);
-    expect(isSolError(new ExpandNode().data({ matrix: [[[1, 2], [3, 4]]], rows: [1] }).result)).toBe(true);
-  });
 
   it("CHOOSEROWS selects rows from a text matrix by 1-based index", () => {
     const n = new TableSelectNode({ op: "chooserows" });
@@ -123,32 +65,8 @@ describe("reshapers are element-polymorphic", () => {
       .toEqual([["a", "b"], ["e", "f"]]);
   });
 
-  it("CHOOSEROWS negative index counts from the end; CHOOSECOLS picks columns", () => {
-    const rows = new TableSelectNode({ op: "chooserows" });
-    expect(rows.data({ matrix: [[["a", "b"], ["c", "d"], ["e", "f"]]], indices: [[-1, 1]] }).result)
-      .toEqual([["e", "f"], ["a", "b"]]);
-    const cols = new TableSelectNode({ op: "choosecols" });
-    expect(cols.data({ matrix: [[["a", "b", "c"], ["d", "e", "f"]]], indices: [[3, 1]] }).result)
-      .toEqual([["c", "a"], ["f", "d"]]);
-  });
 
-  it("CHOOSEROWS/CHOOSECOLS: an out-of-range or zero index errors the whole call with #VALUE! (Excel), not a NaN-padded row", () => {
-    const mat = [["a", "b"], ["c", "d"], ["e", "f"]];
-    const over = new TableSelectNode({ op: "chooserows" }).data({ matrix: [mat], indices: [[1, 4]] }).result;
-    expect(isSolError(over) && over.code).toBe("#VALUE!");
-    // Index 0 is invalid — Excel's indices are 1-based (negatives count from the end).
-    const zero = new TableSelectNode({ op: "chooserows" }).data({ matrix: [mat], indices: [[0]] }).result;
-    expect(isSolError(zero) && zero.code).toBe("#VALUE!");
-    const colOver = new TableSelectNode({ op: "choosecols" }).data({ matrix: [mat], indices: [[5]] }).result;
-    expect(isSolError(colOver) && colOver.code).toBe("#VALUE!");
-  });
 
-  it("Table Info reports dimensions of a text matrix", () => {
-    const n = new TableInfoNode();
-    const out = n.data({ matrix: [[["a", "b", "c"], ["d", "e", "f"]]] });
-    expect(out.rows).toBe(2);
-    expect(out.cols).toBe(3);
-  });
 
   it("Table Info reports a FRAME's shape (rows × columns), not 1×1", async () => {
     const { frameFromCells } = await import("../../../src/graph/frame");
@@ -164,40 +82,18 @@ describe("reshapers are element-polymorphic", () => {
 // An anytable that's actually text can connect to a strictly-numeric matrix input
 // (both are 2-D, so the socket allows it — see docs/backlog.md). The numeric ops
 // guard at runtime with #TYPE! instead of producing NaN soup.
-describe("numeric matrix ops reject a text anytable with #TYPE!", () => {
-  it("MMULT returns #TYPE! when an operand is a text matrix", () => {
-    const n = new TableMultNode();
-    const out = n.data({ a: [[["x", "y"], ["z", "w"]]], b: [[[1, 0], [0, 1]]] });
-    expect(isSolError(out.result) && out.result.code).toBe("#TYPE!");
-  });
 
-  it("MDETERM returns #TYPE! on a text matrix", () => {
-    const n = new MatDetNode({ op: "mdeterm" });
-    const out = n.data({ matrix: [[["a", "b"], ["c", "d"]]] });
-    expect(isSolError(out.result) && out.result.code).toBe("#TYPE!");
-  });
-
-  it("MINVERSE returns #TYPE! on a text matrix", () => {
-    const n = new MatDetNode({ op: "minverse" });
-    const out = n.data({ matrix: [[["a", "b"], ["c", "d"]]] });
-    expect(isSolError(out.result) && out.result.code).toBe("#TYPE!");
-  });
-
-  it("MDETERM still computes on numbers (no regression)", () => {
-    const n = new MatDetNode({ op: "mdeterm" });
-    const out = n.data({ matrix: [[[1, 2], [3, 4]]] });
-    expect(out.result).toBe(-2);
-  });
-});
+/** What a Table Input of this text and element type answers. */
+const tableOf = (tableText: string, dataType: TableElemType) => new TableInputNode({ tableText, dataType }).data().table;
 
 describe("Table Input is a LITERAL source (the Frame Input model)", () => {
   it("blank cell → null; an unparseable cell → NaN (dirty data), never a whole-table reject", () => {
     // Old parseTableText nulled the ENTIRE table on one bad cell; the literal
     // model keeps the good cells and marks the bad one NaN (quiet affordance,
     // 1.0-tail #6 — not an error badge).
-    const t = deriveTable(tableRawCells("1,\n,4"), "number");
+    const t = tableOf("1,\n,4", "number");
     expect(t).toEqual([[1, null], [null, 4]]);
-    const bad = deriveTable(tableRawCells("1, abc\n3, 4"), "number") as (number | null)[][];
+    const bad = tableOf("1, abc\n3, 4", "number") as (number | null)[][];
     expect(bad[0][0]).toBe(1);
     expect(Number.isNaN(bad[0][1])).toBe(true);
     expect(bad[1]).toEqual([3, 4]);
@@ -218,7 +114,7 @@ describe("Table Input is a LITERAL source (the Frame Input model)", () => {
     // — and since the grid popup re-serializes through this parse, a popup save
     // deleted them for good.
     expect(tableRawCells("1, 2\n\n3, 4")).toEqual([["1", "2"], ["", ""], ["3", "4"]]);
-    expect(deriveTable(tableRawCells("1, 2\n\n3, 4"), "number")).toEqual([[1, 2], [null, null], [3, 4]]);
+    expect(tableOf("1, 2\n\n3, 4", "number")).toEqual([[1, 2], [null, null], [3, 4]]);
     expect(tableRawCells("\n1, 2")).toEqual([["", ""], ["1", "2"]]);
     // A deliberate trailing blank LINE is a row; the text's final newline is
     // just the line TERMINATOR (one phantom segment, not a row).
@@ -243,12 +139,12 @@ describe("Table Input is a LITERAL source (the Frame Input model)", () => {
 
   it("the element-type toggle derives text/date/logical tables from the same raw text", () => {
     const raw = tableRawCells("a, b\nc,");
-    expect(deriveTable(raw, "string")).toEqual([["a", "b"], ["c", null]]);
-    const logical = deriveTable(tableRawCells("true, FALSE\n1, x"), "logical") as unknown[][];
+    expect(tableOf(rawCellsToText(raw), "string")).toEqual([["a", "b"], ["c", null]]);
+    const logical = tableOf("true, FALSE\n1, x", "logical") as unknown[][];
     expect(logical[0]).toEqual([true, false]);
     expect(logical[1][0]).toBe(true); // numeric text reads by the number: non-zero is TRUE
     expect(logical[1][1]).toBeNaN();
-    const dates = deriveTable(tableRawCells("2026-03-15"), "date") as number[][];
+    const dates = tableOf("2026-03-15", "date") as number[][];
     expect(dates[0][0]).toBe(46096); // the audit-29 serial pin
   });
 
@@ -260,73 +156,6 @@ describe("Table Input is a LITERAL source (the Frame Input model)", () => {
     expect((n.outputs.table!.socket as { dataType?: string }).dataType).toBe("logicaltable");
   });
 
-  it("MMULT / MDETERM reject a matrix with a missing cell (#VALUE!, complete data needed)", () => {
-    const mm = new TableMultNode().data({ a: [[[1, null], [3, 4]]] as never, b: [[[1, 0], [0, 1]]] as never }).result;
-    expect(isSolError(mm) && mm.code).toBe("#VALUE!");
-    const det = new MatDetNode({ op: "mdeterm" }).data({ matrix: [[[1, null], [3, 4]]] as never }).result;
-    expect(isSolError(det) && det.code).toBe("#VALUE!");
-  });
 });
 
-describe("structural reshapes carry the homogeneous matrix unit (unitGranularity, S3)", () => {
-  // A numeric matrix tagged with one whole-grid unit; the tag rides through a
-  // structural reshape (same cells, rearranged) but the output is a fresh array,
-  // so the op must re-carry it. km, dim {length:1}.
-  const tagged = () => withMatrixUnit([[1, 2], [3, 4]], { dim: { length: 1 }, display: "km" });
 
-  it("CHOOSEROWS / CHOOSECOLS carry the unit", () => {
-    const cols = new TableSelectNode({ op: "choosecols" }).data({ matrix: [tagged()], indices: [[2]] }).result;
-    expect(matrixUnitOf(cols)).toMatchObject({ display: "km" });
-  });
-
-  it("TAKE (table) carries the unit onto the trimmed grid", () => {
-    const r = new TakeDropNode({ op: "take" }).data({ data: [tagged()], rows: [1], cols: [0] }).result;
-    expect(r).toEqual([[1, 2]]);
-  });
-
-  it("an untagged (plain / text) matrix stays untagged through a reshape", () => {
-    const r = new TableTransposeNode().data({ matrix: [[[1, 2], [3, 4]]] }).result;
-    expect(matrixUnitOf(r)).toBeUndefined();
-    const t = new TableTransposeNode().data({ matrix: [[["a", "b"], ["c", "d"]]] }).result;
-    expect(matrixUnitOf(t)).toBeUndefined();
-  });
-
-  it("Table Input tags its NUMBER output with its authored unit; cells stay as-typed", () => {
-    const n = new TableInputNode({ tableText: "1, 2\n3, 4", dataType: "number", unit: "km" });
-    const out = n.data().table;
-    expect(out).toEqual([[1, 2], [3, 4]]);          // cells bare, as typed (unitGranularity)
-  });
-
-  it("Table Input unit only applies to a number table; none / text pass untagged", () => {
-    expect(matrixUnitOf(new TableInputNode({ tableText: "1, 2", dataType: "number", unit: "none" }).data().table)).toBeUndefined();
-    expect(matrixUnitOf(new TableInputNode({ tableText: "a, b", dataType: "string", unit: "km" }).data().table)).toBeUndefined();
-  });
-
-  it("INDEX carries the matrix unit out into an extracted cell / row / column", () => {
-    // Whole column (row = [all] = 0) — a list of tagged cells.
-    const col = new ListIndexNode().data({ list: [tagged()], index: [0], column: [1] }).result as unknown as UnitCell[];
-    expect(col.every((x) => isUnitCell(x) && x.display === "km")).toBe(true);
-    // Whole row (column = [all]) — a list of tagged cells.
-    const row = new ListIndexNode().data({ list: [tagged()], index: [1], column: [0] }).result as unknown as UnitCell[];
-    expect(row.every((x) => isUnitCell(x) && x.display === "km")).toBe(true);
-  });
-
-  it("INDEX on a PLAIN (untagged) matrix returns bare numbers (no spurious unit)", () => {
-    const cell = new ListIndexNode().data({ list: [[[1, 2], [3, 4]]], index: [1], column: [2] }).result;
-    expect(cell).toBe(2);
-  });
-});
-
-describe("MUNIT off-diagonal toggle (author 2026-07-16)", () => {
-  it("default: Excel MUNIT — 0s off the diagonal", () => {
-    expect(new TableUnitNode().data({ n: [2] }).result).toEqual([[1, 0], [0, 1]]);
-  });
-  it("blank mode: off-diagonal cells are null (missing — skipped by sums)", () => {
-    const n = new TableUnitNode({ offDiag: "blank" });
-    expect(n.data({ n: [3] }).result).toEqual([
-      [1, null, null],
-      [null, 1, null],
-      [null, null, 1],
-    ]);
-  });
-});

@@ -1,8 +1,8 @@
 import { useState, useSyncExternalStore } from "react";
 import { collapseStore } from "../collapseStore";
 import { CollapsedInputPill } from "./CollapsedInputPill";
-import type { FilterNode as FilterNodeType } from "../rete-nodes";
-import type { FilterCondConfig } from "../frameVerbs";
+import type { FilterNode as FilterNodeType } from "../nodeClasses";
+import type { FilterCondConfig } from "../frameOps";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView } from "../activeGraph";
@@ -16,6 +16,7 @@ import { FILTER_OP_OPTIONS_WITH_ERROR, TEXT_MATCH_OPS, VALUELESS_OPS, FILTER_COM
 import type { DisplayValue } from "./valueDisplayFormat";
 import { dropInputCables } from "./cablePrune";
 import { nodeDisplayName } from "../catalogUtils";
+import { PairHead } from "./PairedExtensibleInputs";
 
 // The frame Filter's rows minus the column picker, since a list has no lanes; Kept rides the hero box and Dropped is the complement.
 export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
@@ -31,17 +32,17 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
     const next = { ...rowCfg(id), ...patch };
     setCfg((c) => ({ ...c, [id]: next }));
     data.condConfig[id] = next;
-    void processGraph();
+    data.edited(); void processGraph();
   };
   const setStr = (key: string, v: string) => {
     strLiterals[key] = v;
-    void processGraph();
+    data.edited(); void processGraph();
   };
 
   async function addRow() {
     data.addValueInput();
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   async function removeRow(key: string) {
@@ -49,7 +50,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
     data.removeValueInput(key);
     await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   return (
@@ -66,7 +67,8 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
         const id = key.slice(5);
         const c = rowCfg(id);
         return (
-          <div key={key} className="solenoid-node__pair-group">
+          <div key={key} className="solenoid-node__pair-group solenoid-node__pair-group--headed">
+            {keys.length > 1 && <PairHead title="Remove this condition" onRemove={() => void removeRow(key)} />}
             <ArgSelect value={c.op} options={FILTER_OP_OPTIONS_WITH_ERROR} onChange={(op) => updateCfg(id, { op })} />
             <MeasuredSocketRow side="input" socketKey={key} nodeId={data.id} emit={emit} payload={data.inputs[key]!.socket}>
               <span className="solenoid-node__io-label">Value{keys.length > 1 ? ` ${i + 1}` : ""}</span>
@@ -77,16 +79,6 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
               ) : null}
               {TEXT_MATCH_OPS.has(c.op) && (
                 <MatchCaseButton on={c.matchCase ?? false} onToggle={() => updateCfg(id, { matchCase: !c.matchCase })} />
-              )}
-              {keys.length > 1 && (
-                <button
-                  type="button"
-                  className="solenoid-node__row-remove"
-                  title="Remove this condition"
-                  onClick={(e) => { e.stopPropagation(); void removeRow(key); }}
-                >
-                  ×
-                </button>
               )}
             </MeasuredSocketRow>
           </div>

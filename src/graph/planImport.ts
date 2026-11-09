@@ -1,11 +1,12 @@
 // [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing
-// A plan file into the tasks cube the Schedule node reads; predecessor grammar (`3FS+2d`) resolves to task names
-// here, at the border, and never lives in a cell (tree/specs/computation/schedule-and-gantt.md). Pure: no I/O, no rete.
+// A plan file into the tasks cube the Schedule node reads (tree/specs/computation/schedule-and-gantt.md), through the
+// core's readers; predecessor grammar resolves to task names here and never lives in a cell. Pure: no I/O, no model.
 
 import { cubeFromColumns, type CubeValue, type CubeCell, type FrameValue } from "./frame";
-import { readMspdi, readGan, isGanText, readXer, isXerText, parsePredecessorText, type PlanTask, type PlanDependency, type CalendarSpec } from "@solenoid/schedule-engine";
+import { readPlanFile, parsePredecessors } from "./engineWasm/solenoid_graph.js";
+import type { PlanTask, PlanDependency, CalendarSpec } from "./planTypes";
 
-export interface ImportedPlan {
+interface ImportedPlan {
   cube: CubeValue;
   start: number | null;
   calendar: CalendarSpec | null;
@@ -20,7 +21,7 @@ const GRAMMAR_TOKEN = /^\s*\d+\s*(FS|SS|FF|SF)?\s*([+-]\s*\d+(\.\d+)?\s*(e?d|w|w
 /** Plain FS/0 dependencies are a list of names; anything typed or lagged is a nested Task · Type · Lag table. */
 const plainLink = (d: PlanDependency) => d.type === "FS" && d.lag === 0 && !d.elapsed;
 
-export function predecessorCell(deps: PlanDependency[], typed = !deps.every(plainLink)): CubeCell {
+function predecessorCell(deps: PlanDependency[], typed = !deps.every(plainLink)): CubeCell {
   if (!typed) return deps.map((d) => d.task);
   return cubeFromColumns([
     { name: "Predecessor", cells: deps.map((d) => d.task), type: "string" },
@@ -32,7 +33,7 @@ export function predecessorCell(deps: PlanDependency[], typed = !deps.every(plai
 
 /** A Predecessors column is one kind: name lists while every link is a plain FS, else a table in every row, so Unnest
  *  reads it whole. A null row (an inactive task) stays null. */
-export function predecessorColumn(rows: ReadonlyArray<PlanDependency[] | null>): CubeCell[] {
+function predecessorColumn(rows: ReadonlyArray<PlanDependency[] | null>): CubeCell[] {
   const typed = rows.some((deps) => deps != null && !deps.every(plainLink));
   return rows.map((deps) => (deps == null ? null : predecessorCell(deps, typed)));
 }
@@ -61,22 +62,12 @@ export function planToCube(tasks: PlanTask[]): CubeValue {
   return cubeFromColumns(cols);
 }
 
-export function isMspdiText(text: string): boolean {
-  return /^\s*(<\?xml[^>]*>\s*)?(<!--[\s\S]*?-->\s*)*<Project[\s>]/.test(text);
-}
-
-export function mspdiToPlan(text: string): ImportedPlan {
-  const plan = readMspdi(text);
-  return { cube: planToCube(plan.tasks), start: plan.start || null, calendar: plan.calendar, title: plan.title, unsupported: plan.unsupported };
-}
-
+/** A Project XML, GanttProject or Primavera XER file, told by its content; null for any other text. */
 export function planFileToPlan(text: string): ImportedPlan | null {
-  if (isMspdiText(text)) return mspdiToPlan(text);
-  if (isGanText(text) || isXerText(text)) {
-    const plan = isXerText(text) ? readXer(text) : readGan(text);
-    return { cube: planToCube(plan.tasks), start: plan.start, calendar: plan.calendar, title: plan.title, unsupported: plan.unsupported };
-  }
-  return null;
+  const plan = JSON.parse(readPlanFile(text, "")) as null | { error: string } | { title: string; start: number | null; calendar: CalendarSpec; tasks: PlanTask[]; unsupported: string[] };
+  if (!plan) return null;
+  if ("error" in plan) throw new Error(plan.error);
+  return { cube: planToCube(plan.tasks), start: plan.start || null, calendar: plan.calendar, title: plan.title, unsupported: plan.unsupported };
 }
 
 /** A CSV plan: Task / Duration / Predecessors columns where Predecessors uses the row-number
@@ -95,7 +86,7 @@ export function csvPlanToCube(f: FrameValue): CubeValue | null {
   const names = taskCol.values.map((v) => (v == null ? "" : String(v)));
   const rows = f.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
   const cols: Array<{ name: string; cells: CubeCell[]; type?: "string" | "number" | "date" | "logical" }> = f.columns.map((c) => {
-    if (c === pred) return { name: "Predecessors", cells: predecessorColumn(cells.map((s) => parsePredecessorText(s, names).deps)) };
+    if (c === pred) return { name: "Predecessors", cells: predecessorColumn(cells.map((s) => (JSON.parse(parsePredecessors(s, names)) as { deps: PlanDependency[] }).deps)) };
     return { name: c.name, cells: [...c.values], type: c.type };
   });
   for (const c of cols) while (c.cells.length < rows) c.cells.push(null);

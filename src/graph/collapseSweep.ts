@@ -5,7 +5,7 @@ import { FLAT_CATALOG } from "./catalogUtils";
 import { getEditor, getView, processGraph } from "./process";
 import { collapseStore } from "./collapseStore";
 import { devRfStores } from "./flow/devRfStores";
-import { ClassicPreset } from "rete";
+import { GraphConnection } from "./graphModel";
 import { SolenoidSocket, canConnect } from "./sockets";
 
 const frames = (n: number) =>
@@ -20,7 +20,7 @@ const cx = (b: Box) => b.x + b.w / 2;
 const cy = (b: Box) => b.y + b.h / 2;
 const inside = (x: number, y: number, b: Box, slop: number) => x >= b.x - slop && x <= b.x + b.w + slop && y >= b.y - slop && y <= b.y + b.h + slop;
 
-export interface SweepRow {
+interface SweepRow {
   type: string;
   inputs: number;
   outputs: number;
@@ -189,7 +189,7 @@ async function measureWired(node: { id: string; inputs: Record<string, unknown> 
         await editor.addNode(src as never);
         added.push(src.id);
         try {
-          await editor.addConnection(new ClassicPreset.Connection(src as never, outKey as never, node as never, key as never) as never);
+          await editor.addConnection(new GraphConnection(src as never, outKey as never, node as never, key as never) as never);
           wiredCount++;
         } catch { /* refused */ }
         break;

@@ -1,6 +1,8 @@
 // [[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue
 import { argRole, LEFT_OUT, type InputRole } from "./inputRoles";
 import { FORMULA_SIGNATURES } from "./formulaSignatureTable";
+import { FUNCTION_ARITY } from "./excelFunctions";
+import { coreEmptyField } from "./engineWasm";
 
 interface PackSlotMeta { signature?: string; emptySlotsLeftOut?: boolean; emptySlotShown?: string }
 // Pack functions, handed in by formulaSignatures.ts: importing the packs here would close a cycle.
@@ -10,7 +12,7 @@ export function setPackLookup(lookup: (name: string) => PackSlotMeta | undefined
 }
 
 /** What an empty argument slot reads as, and the placeholder it shows (null when its reading is ""). */
-export interface EmptySlotReading {
+interface EmptySlotReading {
   value: unknown;
   shown: string | null;
 }
@@ -27,15 +29,40 @@ const LOGICAL_PARAMS = new Set([
   "no_commas", "no_switch", "const",
 ]);
 
-/** Where Excel reads an empty slot apart from its parameter's type and its role (checked in Excel, 2026-10-05). */
+/** Where Excel reads an empty slot apart from its parameter's type and its role. */
 const EXCEL_EMPTY_SLOT: Record<string, Record<number, unknown>> = {
   TEXTJOIN: { 1: true },
   XLOOKUP: { 3: LEFT_OUT },
+  // A test of a value reads an empty slot as an empty cell: nothing, so ISNUMBER() is FALSE and ISBLANK() TRUE.
+  ISNUMBER: { 0: null },
+  ISTEXT: { 0: null },
+  ISNONTEXT: { 0: null },
+  ISLOGICAL: { 0: null },
+  ISBLANK: { 0: null },
+  ISERROR: { 0: null },
+  ISERR: { 0: null },
+  ISNA: { 0: null },
 };
 
-/** Excel's reading for this empty slot when it isn't the parameter's usual one. */
-export function emptySlotOverride(name: string, i: number): { value: unknown } | null {
-  const fn = EXCEL_EMPTY_SLOT[name.toUpperCase()];
+/** Where the function's card falls back to a value other than Excel's empty one, so the formula reads the card's
+ *  ([[D96]] emptySlotShowsItsValue): a value Excel's 0 would make an error. The core's call table (`blanks` in
+ *  `data/call_traits.json`) holds the same. */
+const CARD_FALLBACK_SLOT: Record<string, Record<number, unknown>> = {
+  "CONFIDENCE.NORM": { 0: 0.05, 1: 1, 2: 30 }, "CONFIDENCE.T": { 0: 0.05, 1: 1, 2: 30 }, SLN: { 2: 1 }, SYD: { 2: 1, 3: 1 },
+  DURATION: { 4: 2 }, MDURATION: { 4: 2 }, STANDARDIZE: { 2: 1 }, "CHISQ.DIST.RT": { 1: 10 }, "T.DIST.2T": { 1: 10 },
+  "T.DIST.RT": { 1: 10 }, "F.DIST.RT": { 1: 5, 2: 10 },
+  "BETA.INV": { 1: 2, 2: 5 }, "CHISQ.INV": { 1: 10 }, "CHISQ.INV.RT": { 1: 10 }, "F.INV": { 1: 5, 2: 10 }, "F.INV.RT": { 1: 5, 2: 10 },
+  "GAMMA.INV": { 1: 2, 2: 5 }, "NORM.INV": { 2: 1 }, "T.INV": { 1: 10 }, "T.INV.2T": { 1: 10 }, BESSELK: { 0: 1 }, BESSELY: { 0: 1 },
+  ACCRINTM: { 2: 0.06, 3: 1000 }, TBILLYIELD: { 2: 97.5 }, YIELDMAT: { 4: 97.5 }, COUPDAYBS: { 2: 2 }, COUPDAYS: { 2: 2 },
+  COUPDAYSNC: { 2: 2 }, COUPNUM: { 2: 2 }, COUPNCD: { 2: 2 }, COUPPCD: { 2: 2 }, "Z.TEST": { 2: LEFT_OUT },
+};
+
+/** Excel's reading for this empty slot when it isn't the parameter's usual one, or the function's card's Fallback. */
+function emptySlotOverride(name: string, i: number): { value: unknown } | null {
+  const up = name.toUpperCase();
+  const card = CARD_FALLBACK_SLOT[up];
+  if (card && i in card) return { value: card[i] };
+  const fn = EXCEL_EMPTY_SLOT[up];
   return fn && i in fn ? { value: fn[i] } : null;
 }
 
@@ -53,7 +80,7 @@ const LEFT_OUT_BY_PARAM: Record<string, string> = {
 const LEFT_OUT_BY_FN: Record<string, Record<number, string>> = {
   TAKE: { 1: "all", 2: "all" }, DROP: { 1: "none", 2: "none" }, EXPAND: { 1: "same", 2: "same" },
   RANK: { 2: "0" }, "RANK.EQ": { 2: "0" }, "RANK.AVG": { 2: "0" }, TRUNC: { 1: "0" }, DOLLAR: { 1: "2" },
-  RANDARRAY: { 2: "0", 3: "1" }, TEXTSPLIT: { 1: "none", 2: "none" }, INTERPOLATE: { 1: "1, 2, 3…", 2: "1, 2, 3…" }, LEFT: { 1: "1" }, RIGHT: { 1: "1" }, WEEKDAY: { 1: "1" }, WEEKNUM: { 1: "1" },
+  RANDARRAY: { 2: "0", 3: "1" }, "Z.TEST": { 2: "from sample" }, "CEILING.MATH": { 1: "1", 2: "0" }, "FLOOR.MATH": { 1: "1", 2: "0" }, GESTEP: { 1: "0" }, TEXTSPLIT: { 1: "none", 2: "none" }, INTERPOLATE: { 1: "1, 2, 3…", 2: "1, 2, 3…" }, LEFT: { 1: "1" }, RIGHT: { 1: "1" }, WEEKDAY: { 1: "1" }, WEEKNUM: { 1: "1" },
 };
 
 function baseName(param: string): string {
@@ -82,8 +109,35 @@ function paramType(name: string, i: number): "number" | "text" | "logical" {
   return "number";
 }
 
+/** A left-out default's word as it shows: a value as itself (a Fallback), anything else in brackets (a Behavior), since
+ *  it names what happens rather than a value. */
+const VALUE_WORD = /^(-?\d[\d.]*(e-?\d+)?|TRUE|FALSE|#N\/A)$/;
+const behavior = (word: string): string => (VALUE_WORD.test(word) ? word : `[${word}]`);
+
 const show = (v: unknown): string | null =>
   v === "" || v === null ? null : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v);
+
+/** The function takes at least one argument, so empty parentheses read as an empty first argument (the core's
+ *  `needsArg`, generated from the same arity and signatures). */
+export function needsArgument(name: string): boolean {
+  const up = name.toUpperCase();
+  const arity = FUNCTION_ARITY[up];
+  if (arity) return arity[0] >= 1;
+  const sig = (FORMULA_SIGNATURES[up] ?? packMeta(up)?.signature)?.trim();
+  return !!sig && !sig.startsWith("[");
+}
+
+/** The most arguments the function takes (the core's `maxArgs`, from the same arity and signatures); Infinity where
+ *  it repeats its last ones or isn't known. */
+export function maxArguments(name: string): number {
+  const up = name.toUpperCase();
+  const arity = FUNCTION_ARITY[up];
+  if (arity) return arity[1] >= 255 ? Infinity : arity[1];
+  const sig = (FORMULA_SIGNATURES[up] ?? packMeta(up)?.signature)?.trim();
+  if (sig === undefined) return Infinity;
+  if (sig === "") return 0;
+  return sig.includes("…") || sig.includes("...") ? Infinity : sig.split(", ").length;
+}
 
 /** An empty slot at argument `i` of `name` reads as Excel's blank for that parameter ([[C80]] blankArgIsExcelBlank). */
 export function emptySlotReading(name: string, i: number): EmptySlotReading {
@@ -92,27 +146,40 @@ export function emptySlotReading(name: string, i: number): EmptySlotReading {
   if (override) {
     if (override.value !== LEFT_OUT) return { value: override.value, shown: show(override.value) };
     const param = paramName(up, i);
-    return { value: LEFT_OUT, shown: LEFT_OUT_BY_FN[up]?.[i] ?? (param ? LEFT_OUT_BY_PARAM[param] : undefined) ?? "default" };
+    return { value: LEFT_OUT, shown: behavior(LEFT_OUT_BY_FN[up]?.[i] ?? (param ? LEFT_OUT_BY_PARAM[param] : undefined) ?? "default") };
   }
   const role = argRole(up, i);
   if (role?.kind === "setting") {
     if (role.blank !== LEFT_OUT) return { value: role.blank, shown: show(role.blank) };
     const param = paramName(up, i);
-    return { value: LEFT_OUT, shown: LEFT_OUT_BY_FN[up]?.[i] ?? (param ? LEFT_OUT_BY_PARAM[param] : undefined) ?? "default" };
+    return { value: LEFT_OUT, shown: behavior(LEFT_OUT_BY_FN[up]?.[i] ?? (param ? LEFT_OUT_BY_PARAM[param] : undefined) ?? "default") };
   }
-  if (role?.kind === "picks") return { value: LEFT_OUT, shown: role.required ? null : "all" };
+  if (role?.kind === "picks") return { value: LEFT_OUT, shown: role.required ? null : behavior("all") };
   if (role?.kind === "required") return { value: null, shown: null };
   const pack = packMeta(up);
-  if (pack?.emptySlotsLeftOut) return { value: LEFT_OUT, shown: pack.emptySlotShown ?? "solve" };
+  if (pack?.emptySlotsLeftOut) return { value: LEFT_OUT, shown: behavior(pack.emptySlotShown ?? "solve") };
   const type = paramType(up, i);
   const value = type === "text" ? "" : type === "logical" ? false : 0;
   return { value, shown: show(value) };
 }
 
-/** A card's empty setting field shows what it reads as; data and required fields show nothing ([[D96]] emptySlotShowsItsValue). */
-export function fieldPlaceholder(role: InputRole | undefined, key: string): string | undefined {
+/** What a card's empty field shows, and which kind it is ([[D96]] emptySlotShowsItsValue): the core's declaration,
+ *  else a setting's role (its blank a Fallback, left out a Behavior). `undefined` where the field declares nothing. */
+export interface EmptyFieldShown {
+  kind: "fallback" | "behavior" | "example" | "required";
+  shown: string | undefined;
+}
+
+export function emptyFieldShown(cardClass: string, key: string, role: InputRole | undefined, op = ""): EmptyFieldShown | undefined {
+  const declared = coreEmptyField(cardClass, op, key);
+  if (declared) return { kind: declared.kind, shown: declared.shown ?? undefined };
+  if (role?.kind === "required") return { kind: "required", shown: undefined };
   if (role?.kind !== "setting") return undefined;
-  if (role.from) return emptySlotReading(role.from[0], role.from[1]).shown ?? "";
-  if (role.blank !== LEFT_OUT) return show(role.blank) ?? "";
-  return role.word ?? LEFT_OUT_BY_PARAM[key] ?? "default";
+  if (role.from) {
+    const r = emptySlotReading(role.from[0], role.from[1]);
+    return { kind: r.value === LEFT_OUT && !VALUE_WORD.test(r.shown ?? "") ? "behavior" : "fallback", shown: r.shown ?? undefined };
+  }
+  if (role.blank !== LEFT_OUT) return { kind: "fallback", shown: show(role.blank) ?? undefined };
+  const word = behavior(role.word ?? LEFT_OUT_BY_PARAM[key] ?? "default");
+  return { kind: VALUE_WORD.test(word) ? "fallback" : "behavior", shown: word };
 }

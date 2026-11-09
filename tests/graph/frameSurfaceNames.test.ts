@@ -1,33 +1,22 @@
-// [[B16]]
+// [[B16]], [[add-menu#Naming a placed node]], [[B16]] oneFormulaSurface, [[C15]] matricesInFormulas, [[formula-language#Blocked and wrong-surface names]], [[formula-language#Excel names on nodes]]
 import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";
 import { despace } from "../../src/graph/formulaNodeParity";
 import { FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, LEGACY_ALIASES } from "../../src/graph/excelFunctions";
-import { compileEvaluator, formulaFunctionNames } from "../../src/graph/excelFormula";
+import { compileEvaluator } from "../../src/graph/excelFormula";
+import { formulaFunctionNames } from "../../src/graph/excelFunctions";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
 import { highlightFormula } from "../../src/graph/formulaSyntax";
 import { signatureFor } from "../../src/graph/formulaSignatures";
 import { isSolError } from "../../src/graph/errorValue";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
 
-// ─── FRAME_SURFACE_NAMES — recognized-but-refused frame verbs ─────────────────
-// [[C15]] matricesInFormulas keeps frames/cubes out of formulas, but the Add menu TEACHES their names
-// (JOIN, PIVOTBY, GETCOLUMN…), so a typed one must read as "real name, wrong
-// surface", never as a typo: #TYPE! naming the node, the frame violet in the
-// editor, the redirect in the hint bar. This suite is the SSOT gate: the map is
-// hand-written next to LEGACY_ALIASES, and DERIVED here from the catalog both
-// ways, so a new frame verb can't ship without joining it and a registered name
-// can't be shadowed by it.
-
-/** A name a user could actually TYPE in a formula — despaced labels with
- *  punctuation left over ("BYROW/BYCOL", "DROP(TABLE)") aren't identifiers and
- *  can't be dispatched, so they're outside the map by construction. */
 const typeable = (n: string) => /^[A-Z][A-Z0-9.]*$/.test(n);
 
 const isCategory = (e: CatalogEntry): e is CatalogCategory => e.type === "category";
 const isPair = (e: CatalogEntry): e is CatalogPair => e.type === "pair";
 
-/** Every visible Tables & Frames leaf: its typeable candidate names + label. */
+/** Every visible Frames or Tables leaf: its typeable candidate names + label. */
 function frameLeaves(): Array<{ names: string[]; label: string }> {
   const out: Array<{ names: string[]; label: string }> = [];
   const walk = (entries: CatalogEntry[], path: string[]): void => {
@@ -35,7 +24,7 @@ function frameLeaves(): Array<{ names: string[]; label: string }> {
       if (isCategory(e)) { walk(e.children, [...path, e.label]); continue; }
       if (isPair(e)) { walk(e.children, path); continue; }
       const leaf: NodeCatalogEntry = e;
-      if (leaf.hidden || path[0] !== "Tables & Frames") continue;
+      if (leaf.hidden || (path[0] !== "Frames" && path[0] !== "Tables")) continue;
       const names = [...new Set([despace(leaf.label), ...(leaf.excel ?? []).map((x) => x.excel.toUpperCase())])];
       out.push({ names: names.filter(typeable), label: leaf.label });
     }
@@ -49,7 +38,7 @@ describe("FRAME_SURFACE_NAMES ← catalog derivation (both ways)", () => {
   const dispatchable = new Set(formulaFunctionNames().map((n) => n.toUpperCase()));
   const leaves = frameLeaves();
 
-  it("every Tables & Frames leaf whose typeable name doesn't dispatch is in the map", () => {
+  it("every Frames or Tables leaf whose typeable name doesn't dispatch is in the map", () => {
     const missing: string[] = [];
     for (const leaf of leaves) {
       for (const n of leaf.names) {
@@ -60,9 +49,6 @@ describe("FRAME_SURFACE_NAMES ← catalog derivation (both ways)", () => {
   });
 
   it("no map entry shadows a dispatchable name, a legacy alias, or a ghost leaf", () => {
-    // Redirect targets may live anywhere in the tree — K-Means/PCA/Logistic moved
-    // under Packs › Data Science but remain frame verbs — so ghosts check the WHOLE
-    // catalog, not just the Tables & Frames walk the teaching check above scopes to.
     const labels = new Set<string>();
     const collect = (entries: CatalogEntry[]): void => {
       for (const e of entries) {
@@ -80,14 +66,8 @@ describe("FRAME_SURFACE_NAMES ← catalog derivation (both ways)", () => {
     expect(ghosts.map(([n, l]) => `${n} → "${l}"`), "redirects must point at real catalog leaves").toEqual([]);
   });
 
-  // [[B16]] oneFormulaSurface: a node NAME must never coincide with a core Excel function name —
-  // a bare "Columns" reads as COLUMNS() (the count), so the relational leaves are named for the
-  // op: "Keep Columns" / "Drop Columns". A general "dispatches?" check can't run here — some node
-  // labels ARE the node-form of the like-named function (Sort ↔ SORT) and legitimately
-  // dispatch. The misread hazard is a leaf whose label is a bare STRUCTURAL/count function doing
-  // something else, so those are denylisted by name (ROWS/COLUMNS the origin, author 2026-08-25).
   const COUNT_FNS = new Set(["ROWS", "COLUMNS", "ROW", "COLUMN"]);
-  it("no Tables & Frames leaf is named for a bare count/structural function", () => {
+  it("no Frames or Tables leaf is named for a bare count/structural function", () => {
     const collisions = leaves
       .filter((l) => COUNT_FNS.has(despace(l.label)))
       .map((l) => l.label);
@@ -114,10 +94,6 @@ describe("a typed frame verb is recognized and refused, not a typo", () => {
   });
 });
 
-// ─── NODE_SURFACE_NAMES — a formula name whose capability became a NODE ────────
-// Not a frame verb (its type flows fine) but a list/scalar node: Text Filter merged
-// into List Filter (2026-08-25). Typing the old TEXTFILTER redirects to the node,
-// reading as recognized (not a typo), the same as a frame verb.
 describe("a node-only verb (TEXTFILTER → List Filter) is recognized and redirected", () => {
   initPackFormulas();
 

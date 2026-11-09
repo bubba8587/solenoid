@@ -55,6 +55,34 @@ function shims(): Plugin {
   };
 }
 
+/** The wasm module, inlined once as a data URL. A `cjs` build turns `import.meta` into `{}`, so
+ *  `new URL(…, import.meta.url)` would be read against the base "undefined" and throw as `main.js`
+ *  loads: `engineWasm.ts` takes the module as a `?url` import instead, which a library build inlines.
+ *  wasm-bindgen's glue falls back to its own such URL when init is given no module, which would
+ *  ship the module a second time; `engineWasm.ts` always passes one, so the fallback goes. */
+function oneWasm(): Plugin {
+  const swaps: Record<string, [string, string]> = {
+    [path.join(REPO, "src/graph/engineWasm.ts")]: [
+      `export const wasmUrl = new URL("./engineWasm/solenoid_graph_bg.wasm", import.meta.url);`,
+      `import __wasmDataUrl from "./engineWasm/solenoid_graph_bg.wasm?url";\nexport const wasmUrl = new URL(__wasmDataUrl);`,
+    ],
+    [path.join(REPO, "src/graph/engineWasm/solenoid_graph.js")]: [
+      "module_or_path = new URL('solenoid_graph_bg.wasm', import.meta.url);",
+      `throw new Error("loadWasmEngine passes the module");`,
+    ],
+  };
+  return {
+    name: "solenoid-plugin-one-wasm",
+    enforce: "pre",
+    transform(code, id) {
+      const swap = swaps[id.split("?")[0]];
+      if (!swap) return null;
+      if (!code.includes(swap[0])) this.error(`${path.relative(REPO, id)} has no ${JSON.stringify(swap[0])}`);
+      return code.replace(swap[0], swap[1]);
+    },
+  };
+}
+
 /** Globals the app's code reaches for, pointed at the plugin's own. In `src/graph/components/`
  *  a free `document` / `window` becomes the popup layer's (`shadow.ts`): in a popped-out note the
  *  globals are still the MAIN window's, and Escape, an outside press, the resize grip and
@@ -77,7 +105,7 @@ function pluginGlobals(): Plugin {
       const used = new Set<string>();
       walk(this.parse(code) as never, {
         enter(node: any, parent: any) {
-          if (node.type !== "Identifier" || !(node.name in names) || !parent) return;
+          if (node.type !== "Identifier" || !Object.hasOwn(names, node.name) || !parent) return;
           if (parent.type === "MemberExpression" && parent.property === node && !parent.computed) return;
           if (/^(Property|PropertyDefinition|MethodDefinition)$/.test(parent.type) && parent.key === node && !parent.computed) return;
           if (parent.type === "UnaryExpression" && parent.operator === "typeof") return;
@@ -189,6 +217,7 @@ export default defineConfig({
   publicDir: false,
   plugins: [
     shims(),
+    oneWasm(),
     react(),
     pluginGlobals(),
     shadowCss(),

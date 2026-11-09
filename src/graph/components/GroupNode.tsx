@@ -1,6 +1,6 @@
 import { useFlowResizeGrip } from "../flowSurface";
 import { Fragment, useState, useRef, useLayoutEffect, useSyncExternalStore, type CSSProperties } from "react";
-import type { GroupNode as GroupNodeType } from "../rete-nodes";
+import type { GroupNode as GroupNodeType } from "../nodeClasses";
 import { hexToRgba, contrastInk, themeAccent, darkenAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
 import { SwatchGrid } from "./SwatchGrid";

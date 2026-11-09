@@ -1,14 +1,8 @@
-// [[B16]], [[D22]]
+// [[B16]] oneFormulaSurface, [[D22]], [[add-menu#Naming a placed node]]
 import { describe, expect, it } from "vitest";
 import { FLAT_CATALOG, nodeDisplayName } from "../../src/graph/catalogUtils";
 
-// [[D22]] oneNamePerCard: the Add-menu row and the card it creates share one name, and an op family's
-// card is named by its op — a placed ABS never reads "Math", a placed XIRR never "IRR".
-// A user-typed label still wins (nodeDisplayName prefers it). The op-agnostic FAMILY name
-// (nodeTypeName) is shown only on the card's hover type-hint, not tested here.
 describe("card title", () => {
-  // A Conduit is serial-numbered; the composite boundary cards read "Input"/"Output"
-  // inside the composite they belong to.
   const DERIVED = new Set(["conduit", "composite-input", "composite-output"]);
   const leaves = [...FLAT_CATALOG.values()].filter((e) => !e.type.includes("__op-") && !e.type.includes("__excel-") && !DERIVED.has(e.type));
   it("every catalog leaf creates a card named like its row", () => {

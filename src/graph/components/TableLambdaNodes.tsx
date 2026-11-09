@@ -6,7 +6,7 @@ import type {
   MakeArrayNode as MakeArrayNodeType,
   ReduceLambdaNode as ReduceLambdaNodeType,
   ScanLambdaNode as ScanLambdaNodeType,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import { isLambdaValue, formatLambda, formatLambdaSig, undeclaredConsumerVars, type LambdaSig } from "../nodes/lambda";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
@@ -16,7 +16,7 @@ import { InlineInputs, useIncomingSources } from "./inlineInput";
 import { FormulaField } from "./FormulaField";
 import { TableDisplay } from "./TableDisplay";
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
-import { ResultTypeToggle } from "./ResultTypeToggle";
+import { InlineCast } from "./InlineCast";
 import { NodeShell, ValueDisplay, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
 import type { SolError } from "../errorValue";
 import "./ExpressionNode.css";
@@ -41,7 +41,6 @@ export function FormulaBox({ node }: { node: FormulaNode }) {
 
   useEffect(() => {
     if (node.stringLiterals.formula !== val) setVal(node.stringLiterals.formula ?? "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.stringLiterals.formula]);
 
   if (lambdaSrc) {
@@ -83,9 +82,9 @@ export function MapTableComponent({ data, emit }: NodeProps<MapTableNodeType>) {
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
-      <ResultTypeToggle node={data} dim="matrix" />
-      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} kind={data.resultAs} elem={nodeOutputElemFamily(data.id)} />
       <FormulaError msg={data.cachedError} />
+      <InlineCast node={data} dim="matrix" />
+      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} elem={nodeOutputElemFamily(data.id)} />
     </NodeShell>
   );
 }
@@ -111,11 +110,11 @@ export function ByAxisComponent({ data, emit }: NodeProps<ByAxisNodeType>) {
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <OpSelect value={op} onChange={(o) => void pickOp(o)} options={AXIS_OPTS} />
       <FormulaBox node={data} />
-      <ResultTypeToggle node={data} dim={data.resultDim} />
-      {op === "row"
-        ? <TableDisplay table={data.cachedResult as (number | string | null)[][] | null} label={nodeDisplayName(data)} kind={data.resultAs} elem={nodeOutputElemFamily(data.id)} />
-        : <ValueDisplay value={data.cachedResult as ListVal} />}
       <FormulaError msg={data.cachedError} />
+      <InlineCast node={data} dim={data.resultDim} />
+      {op === "row"
+        ? <TableDisplay table={data.cachedResult as (number | string | null)[][] | null} label={nodeDisplayName(data)} elem={nodeOutputElemFamily(data.id)} />
+        : <ValueDisplay value={data.cachedResult as ListVal} />}
     </NodeShell>
   );
 }
@@ -125,9 +124,9 @@ export function ReduceLambdaComponent({ data, emit }: NodeProps<ReduceLambdaNode
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
-      <ResultTypeToggle node={data} dim="scalar" />
-      <ValueDisplay value={data.cachedResult as ScalarVal} />
       <FormulaError msg={data.cachedError} />
+      <InlineCast node={data} dim="scalar" />
+      <ValueDisplay value={data.cachedResult as ScalarVal} />
     </NodeShell>
   );
 }
@@ -137,9 +136,9 @@ export function ScanLambdaComponent({ data, emit }: NodeProps<ScanLambdaNodeType
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
-      <ResultTypeToggle node={data} dim="matrix" />
-      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} kind={data.resultAs} elem={nodeOutputElemFamily(data.id)} />
       <FormulaError msg={data.cachedError} />
+      <InlineCast node={data} dim="matrix" />
+      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} elem={nodeOutputElemFamily(data.id)} />
     </NodeShell>
   );
 }
@@ -149,9 +148,9 @@ export function MakeArrayComponent({ data, emit }: NodeProps<MakeArrayNodeType>)
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
-      <ResultTypeToggle node={data} dim="matrix" />
-      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} kind={data.resultAs} elem={nodeOutputElemFamily(data.id)} />
       <FormulaError msg={data.cachedError} />
+      <InlineCast node={data} dim="matrix" />
+      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} elem={nodeOutputElemFamily(data.id)} />
     </NodeShell>
   );
 }

@@ -1,9 +1,9 @@
 // [[B14]] oneDesignSystem
+import { clamp } from "./nodes/mathUtils";
 
 export interface RGBA { r: number; g: number; b: number; a: number }
 
 const clamp255 = (n: number) => (n < 0 ? 0 : n > 255 ? 255 : n);
-const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
 
 export function parseColor(input: string): RGBA | null {
   const s = input.trim();
@@ -16,7 +16,7 @@ export function parseColor(input: string): RGBA | null {
     const g = clamp255(parseFloat(parts[1]));
     const b = clamp255(parseFloat(parts[2]));
     let a = 1;
-    if (parts[3] != null) a = parts[3].endsWith("%") ? clamp01(parseFloat(parts[3]) / 100) : clamp01(parseFloat(parts[3]));
+    if (parts[3] != null) a = parts[3].endsWith("%") ? clamp(parseFloat(parts[3]) / 100, 0, 1) : clamp(parseFloat(parts[3]), 0, 1);
     if (![r, g, b, a].every(Number.isFinite)) return null;
     return { r, g, b, a };
   }
@@ -30,7 +30,7 @@ export function parseColor(input: string): RGBA | null {
     const g = clamp255(Math.round(ch(parts[1]) * 255));
     const b = clamp255(Math.round(ch(parts[2]) * 255));
     let a = 1;
-    if (parts[3] != null) a = parts[3].endsWith("%") ? clamp01(parseFloat(parts[3]) / 100) : clamp01(parseFloat(parts[3]));
+    if (parts[3] != null) a = parts[3].endsWith("%") ? clamp(parseFloat(parts[3]) / 100, 0, 1) : clamp(parseFloat(parts[3]), 0, 1);
     if (![r, g, b, a].every(Number.isFinite)) return null;
     return { r, g, b, a };
   }

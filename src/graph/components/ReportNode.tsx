@@ -1,6 +1,6 @@
 // [[C68]] knapIsTheDocumentSyntax
 import { useSyncExternalStore } from "react";
-import type { ReportNode as ReportNodeType } from "../rete-nodes";
+import type { ReportNode as ReportNodeType, DashboardNode as DashboardNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps, type Emit } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
@@ -14,8 +14,8 @@ import { collapseStore } from "../collapseStore";
 import { cableValueStore } from "../cableValueStore";
 import "./ReportNode.css";
 
-function ReportRefRow({ data, emit, refKey, label, value }: {
-  data: ReportNodeType;
+export function ReportRefRow({ data, emit, refKey, label, value }: {
+  data: ReportNodeType | DashboardNodeType;
   emit: Emit;
   refKey: string;
   label: string;
@@ -24,7 +24,9 @@ function ReportRefRow({ data, emit, refKey, label, value }: {
   const input = data.inputs[refKey];
   const ann = useRefAnnotation(data.id, refKey);
   if (!input) return null;
-  const preview = refPreview(value, ann);
+  let preview = refPreview(value, ann);
+  // A figure titled like its row would print the name twice; its kind says more.
+  if (preview === label && value && typeof value === "object") preview = refPreview({ ...value, title: undefined }, ann);
   return (
     <MeasuredSocketRow side="input" socketKey={refKey} nodeId={data.id} emit={emit} payload={input.socket}>
       <span className="solenoid-node__io-label">{label}</span>

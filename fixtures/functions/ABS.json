@@ -1,0 +1,30 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"ABS(0.1+0.2-0.3)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(\"5\")","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(PPMT(c_A5,c_B5,c_C5,c_D5,c_E5,c_F5)--0.001975232536 )<c_L2","env":["c_A5=num:0.7","c_B5=num:10","c_C5=num:36","c_D5=num:8000","c_E5=num:0","c_F5=num:1","c_L2=num:0.000001"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(PPMT(c_A5,c_B5,c_C5,c_D5)--0.0033578953107)<c_L2","env":["c_A5=num:0.7","c_B5=num:10","c_C5=num:36","c_D5=num:8000","c_L2=num:0.000001"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(PPMT(c_A7,c_B7,c_C7,c_D7,c_E7,c_F7)+0.00102502002392 )<c_L2","env":["c_A7=num:0.8","c_B7=num:10","c_C7=num:36","c_D7=num:18000","c_E7=num:0","c_F7=num:1","c_L2=num:0.000001"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(PPMT(c_A7,c_B7,c_C7,c_D7)+0.00184503604306 )<c_L2","env":["c_A7=num:0.8","c_B7=num:10","c_C7=num:36","c_D7=num:18000","c_L2=num:0.000001"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(NPER(c_A6,c_F6,c_C6,c_D6,c_E6)-10)<0.001","env":["c_A6=num:5","c_C6=num:100","c_D6=num:0","c_E6=num:1","c_F6=num:-83.33333471151433"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(NPER(c_A6,c_G6,c_C6)-10)<0.0001","env":["c_A6=num:5","c_C6=num:100","c_G6=num:-500.000008269086"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(FV(c_A7,c_I7,c_F7,c_C7,c_E7)) < 0.0000000001","env":["c_A7=num:0.5","c_C7=num:100","c_E7=num:1","c_F7=num:-33.59224037394874","c_I7=num:11.999999999999979"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(FV(c_A12,c_I12,c_F12,c_C12,c_E12)) < 0.0000000001","env":["c_A12=num:0.4","c_C12=num:100","c_E12=bool:FALSE","c_F12=num:-41.43238435912332","c_I12=num:9.999999999999993"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(FV(c_A13,c_I13,c_F13,c_C13,c_E13))< 0.0000000001","env":["c_A13=num:0.5","c_C13=num:100","c_E13=num:1","c_F13=num:-33.54442916980625","c_I13=num:12.499999999999993"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(FV(c_A14,c_I14,c_F14,c_C14,c_E14))< 0.0000000001","env":["c_A14=num:-0.4","c_C14=num:100","c_E14=blank:","c_F14=num:-0.05794616296156474","c_I14=num:12.8"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(FV(c_A25,c_I25,c_F25,c_C25,c_E25))< 0.0000000001","env":["c_A25=num:-0.5","c_C25=num:-200","c_E25=num:1","c_F25=num:0.19550342130987292","c_I25=num:10"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(FV(c_A27,c_I27,c_F27,c_C27,c_E27))< 0.0000000001","env":["c_A27=num:0.2","c_C27=num:-300","c_E27=num:1","c_F27=num:50.2115271162167","c_I27=num:30.000000000000064"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(FV(c_A36,c_I36,c_F36,c_C36,c_E36))< 0.0000000001","env":["c_A36=num:0.2","c_C36=num:-200","c_E36=num:0","c_F36=num:66.87594065792302","c_I36=num:5.000000000000002"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(c_A2)","env":["c_A2=num:1"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(c_A3)","env":["c_A3=num:12"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(c_A4)","env":["c_A4=num:12.5"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(c_A5)","env":["c_A5=bool:TRUE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(c_A6)","env":["c_A6=bool:FALSE"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(c_A7)","env":["c_A7=num:-12.4"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(c_A8)","env":["c_A8=num:-9"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(c_A9)","env":["c_A9=err:#DIV/0!"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(c_A10)","env":["c_A10=err:#N/A"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(c_A11)","env":["c_A11=text:\"Hello\""],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"ABS(c_A12)","env":["c_A12=num:-1e-8"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

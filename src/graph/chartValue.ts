@@ -1,5 +1,6 @@
 // [[C100]] chartIsAValue
 import type { CardColType, CardPlan } from "./cardLayout";
+import type { RecordPlacement } from "./recordLayout";
 import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation } from "./formatAnnotationStore";
 import { type ChartOp, CHART_OP_META } from "./nodes/visual";
 import type { ChartOptions, LineStyle } from "./nodes/chartOptions";
@@ -76,7 +77,7 @@ export interface HeatmapPayload {
   z: (number | null)[][];
   rows: string[];
   cols: string[];
-  /** Set only when the table was cut to `HEATMAP_MAX` rows or columns. */
+  /** Set only when the table was cut to the 400 rows or columns a Heatmap draws. */
   totalRows?: number;
   totalCols?: number;
 }
@@ -85,7 +86,7 @@ export interface QuiverPayload {
   u: (number | null)[][];
   v: (number | null)[][];
 }
-export interface RecordField {
+interface RecordField {
   label: string;
   value: number | string | null;
   /** A number's column format, read by `recordNumberText` when drawn. */
@@ -120,17 +121,21 @@ export function recordLaneText(lane: { label: string; value?: number; format?: F
   return lane.value === undefined ? lane.label : recordNumberText(lane.value, lane.format);
 }
 
-export interface RecordDeck {
+interface RecordDeck {
   names: string[];
   types: CardColType[];
   formats: (FormatAnnotation | null)[];
   chipCols: number[];
   plan: CardPlan;
+  /** The authored card layout's placements ([[D111]] cardLayouts); none draws the inferred cards. */
+  layout?: RecordPlacement[];
   rows: (number | string | null)[][];
   /** Each drawn row's 1-based number in the frame. */
   rowNumbers: number[];
 }
 export interface RecordPayload {
+  /** No layout was written, so the boxes flow into as many columns as fit rather than one stacked column. */
+  flow?: boolean;
   kind: "record";
   view: "detail" | "cards" | "gallery" | "board" | "list";
   deck?: RecordDeck;
@@ -143,8 +148,10 @@ export interface RecordPayload {
   clamp?: boolean;
   index: number;
   total: number;
+  /** Detail only: a filter holds, so `total` counts the matching records. */
+  filtered?: boolean;
 }
-export interface OverlaySeries {
+interface OverlaySeries {
   name: string;
   kind: "line" | "area" | "column" | "bar";
   values: (number | null)[];
@@ -166,7 +173,7 @@ export interface XYPoint {
   c?: number | string;
   text?: string;
 }
-export interface XYSeries {
+interface XYSeries {
   name: string;
   /** In row order; null is a gap, where a connecting line breaks. */
   points: (XYPoint | null)[];
@@ -185,17 +192,40 @@ export interface XYPayload {
   series: XYSeries[];
   /** Set when x is a text column: each x is an index into these. */
   xcats?: string[];
+  /** Set when x is a date column: each x is a date serial, and the axis reads as dates. */
+  xDate?: boolean;
   names: { x?: string; y?: string; s?: string; c?: string; text?: string };
+}
+/** A point in the ladder: the set taken so far (option indexes) and the share of the flow that reaches it. */
+interface LadderState { id: number; depth: number; share: number; taken: number[]; end: boolean }
+/** A rung: taking `pick` from one state to the next with `share` of the flow. `close` is one side of a fork, `chosen` a
+ *  fork the user settled, `required` an option taken first because the next one needs it. `struck` options are ruled out here. */
+export interface LadderEdge { from: number; to: number; pick: number; share: number; kind: "clear" | "close" | "chosen" | "passed" | "must" | "required" | "quota"; struck: number[]; conflicts: number[] }
+export interface LadderPayload {
+  kind: "ladder";
+  /** In rank order; `value` is what each serves per criterion, never negative. */
+  options: { name: string; score: number; costs: number[]; value: number[] }[];
+  criteria: string[];
+  /** A null limit is a rough cost with no total. */
+  resources: { name: string; limit: number | null; floor: number | null; logical?: boolean; format?: FormatAnnotation | null }[];
+  states: LadderState[];
+  edges: LadderEdge[];
+  /** The edges of the main line, top first. */
+  main: number[];
+  /** The forks the user settled, by the name of the option taken. */
+  choices: string[];
+  /** Options left out before the ladder: failing a deal-breaker, marked Never, or needing one of those. */
+  ruledOut: string[];
 }
 export type ChartPayload =
   | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
   | CalHeatPayload | HeatmapPayload | QuiverPayload | RecordPayload | OverlayPayload
-  | XYPayload | GanttPayload;
+  | XYPayload | GanttPayload | LadderPayload;
 
-export const CHART_SPECIAL_OPS = [
+const CHART_SPECIAL_OPS = [
   "kpi", "scale", "proportion", "sankey", "surface", "contour", "waterfall",
-  "candle", "boxplot", "calheat", "heatmap", "quiver", "record", "overlay", "gantt",
+  "candle", "boxplot", "calheat", "heatmap", "quiver", "record", "overlay", "gantt", "ladder",
 ] as const;
 
 export type ChartValueOp = ChartOp | (typeof CHART_SPECIAL_OPS)[number];
@@ -203,6 +233,17 @@ export type ChartValueOp = ChartOp | (typeof CHART_SPECIAL_OPS)[number];
 /** Lazy: `CHART_OP_META`'s module imports this one back, so reading it at load time sees it half-initialized. */
 export function chartValueOps(): readonly ChartValueOp[] {
   return [...(Object.keys(CHART_OP_META) as ChartOp[]), ...CHART_SPECIAL_OPS];
+}
+
+/** A reference mark on an axed figure, one row of a References table (`refShape` says which mark). On a category axis
+ *  `x` names a category by its label. */
+export interface ChartRef {
+  x?: number | string;
+  x2?: number | string;
+  y?: number;
+  y2?: number;
+  label?: string;
+  color?: string;
 }
 
 export interface ChartValue {
@@ -214,6 +255,7 @@ export interface ChartValue {
   payload?: ChartPayload;
   options: ChartOptions;
   title?: string;
+  refs?: ChartRef[];
 }
 
 export function isChartValue(v: unknown): v is ChartValue {

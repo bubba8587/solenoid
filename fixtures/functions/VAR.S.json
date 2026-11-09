@@ -1,0 +1,5 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"VAR.S(1, k1,c_A5)","env":["c_A5=num:5","k1=list:num:[1, 2, 3]"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

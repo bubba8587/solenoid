@@ -7,8 +7,7 @@ import tableVerbs from "../src/graph/seedGraphs/table-verbs.json";
 // scripts/run-graph.ts is the headless CLI (bundle 07, "in → through → out →
 // unattended"): a saved graph runs outside the browser through a real editor +
 // DataflowEngine, exactly like framesSeed.test.ts's pattern. This covers the
-// exit criterion that it "runs a saved graph headlessly and prints outputs,
-// confirmed to route Polars-backed nodes through the JS oracle correctly" —
+// exit criterion that it "runs a saved graph headlessly and prints outputs" —
 // vitest's `node` environment has no `window`, so a pass here is proof there's
 // no hidden Tauri/browser dependency.
 
@@ -21,7 +20,7 @@ describe("run-graph (headless CLI)", () => {
     expect(out["SUM"]).toEqual({ result: 1200 + 1550 + 1340 + 1810 });
   });
 
-  it("routes Join and GROUPBY (Polars-backed on desktop) through the JS oracle correctly, with lazy handles resolved before printing", async () => {
+  it("runs Join and GROUPBY on the core, with lazy handles resolved before printing", async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const out = await runGraph(tableVerbs as any);
 

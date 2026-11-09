@@ -1,6 +1,6 @@
-// [[C95]] commitOnEnter, [[C28]] literalsIffEditable, [[C103]] untrustedContentSeams, [[C100]] chartIsAValue
+// [[B19]] spreadsheetHabits, [[C28]] literalsIffEditable, [[C103]] untrustedContentSeams, [[C100]] chartIsAValue
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { SvgPickerNode as SvgPickerNodeType } from "../rete-nodes";
+import type { SvgPickerNode as SvgPickerNodeType } from "../nodeClasses";
 import { scheduleAutosave } from "../persistence";
 import { processGraph } from "../process";
 import { resolveLayer, elementName, sourceHasLayer } from "../svgLayer";
@@ -118,7 +118,6 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     paintedRef.current = [];
     hoverElRef.current = null;
     paint(selectedLayer, null, hoverColor);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, hovering]);
 
   // Debounced, so a color drag doesn't re-parse a big SVG per tick; the old url is revoked only once the new one exists.
@@ -141,7 +140,6 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
 
   useLayoutEffect(() => {
     paint(selectedLayer, hoverElRef.current, hoverColor);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLayer, hoverColor]);
 
   // Only inside the SVG: otherwise resolveLayer walks up into the node-card DOM and mis-picks.
@@ -304,7 +302,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
 
         <div className="solenoid-svgpick__controls" onPointerDown={stopDragStart} onMouseDown={stopDragStart}>
           <input
-            className="solenoid-svgpick__url"
+            className="solenoid-svgpick__url sol-placeholder-example"
             value={urlField.draft}
             placeholder="https://…svg"
             spellCheck={false}

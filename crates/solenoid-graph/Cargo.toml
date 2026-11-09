@@ -1,0 +1,45 @@
+[package]
+name = "solenoid-graph"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+rust-version = "1.99"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+solenoid-core = { path = "../solenoid-core" }
+serde_json = { version = "1", features = ["float_roundtrip", "preserve_order"] }
+netcore = { git = "https://github.com/bubba8587/netcore-rs", rev = "68e667f650dda9a3e2534b633af7da076ba4e2a1" }
+netcore-engine = { git = "https://github.com/bubba8587/netcore-rs", rev = "68e667f650dda9a3e2534b633af7da076ba4e2a1" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "=0.2.130"
+wasm-bindgen-futures = "=0.4.80"
+js-sys = "=0.3.107"
+
+# `npm run build:wasm` and the native tests: incremental and parallel, so an edit rebuilds in seconds.
+[profile.release]
+opt-level = 2
+lto = false
+codegen-units = 16
+incremental = true
+panic = "abort"
+strip = true
+
+# The module that ships (`npm run build:wasm:opt`): whole-program, smaller and faster, minutes to build.
+[profile.ship]
+inherits = "release"
+lto = true
+codegen-units = 1
+incremental = false
+
+[dev-dependencies]
+flate2 = "1"
+
+# The tests run in the dev profile, where overflow checks catch our own arithmetic; the crates we depend on (JSON,
+# gzip, regex) are optimized, since every test spends most of its time decoding frozen fixtures through them.
+[profile.dev.package."*"]
+opt-level = 2

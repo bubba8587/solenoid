@@ -1,0 +1,9 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"F.DIST.RT(15.2068649, 6, 4)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"F.DIST.RT(3, 5, 10)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"F.DIST.RT(-1, 2, 7)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"F.DIST.RT(c_A2,c_B2,c_C2)","env":["c_A2=num:0.8","c_B2=num:2.4","c_C2=num:3"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"F.DIST.RT(c_A3,c_B3,c_C3)","env":["c_A3=num:0.7","c_B3=num:4","c_C3=num:2.4"],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

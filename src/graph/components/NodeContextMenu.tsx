@@ -4,6 +4,7 @@ import { useMenuClamp } from "./menuClamp";
 import { inspectorStore } from "../inspectorStore";
 import "./SocketContextMenu.css";
 import { FocusIcon, LinkIcon, TetherIcon } from "./Icons";
+import { ISOLATE_ON } from "../isolateStore";
 
 // A node's right-click has one home, so new items land here rather than in a second menu.
 
@@ -178,10 +179,10 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
         item(<EditSvg />, "Edit contents", () => onEditComposite!(target.nodeId))}
       {target.isComposite && !target.viewOnly && onUnpackComposite &&
         item(<UnpackSvg />, "Unpack composite", () => onUnpackComposite!(target.nodeId))}
-      {item(<FocusIcon size={13} />, "Isolate", () => onIsolate(target.seedIds))}
-      {item(<LinkIcon size={13} />, "Isolate chain", () => onIsolateChain(target.seedIds),
+      {ISOLATE_ON && item(<FocusIcon size={13} />, "Isolate", () => onIsolate(target.seedIds))}
+      {ISOLATE_ON && item(<LinkIcon size={13} />, "Isolate chain", () => onIsolateChain(target.seedIds),
         "Isolate everything connected to this, upstream and downstream")}
-      {onWhereUsed && item(<WhereUsedSvg />, "Where used", () => onWhereUsed!(target.nodeId),
+      {ISOLATE_ON && onWhereUsed && item(<WhereUsedSvg />, "Where used", () => onWhereUsed!(target.nodeId),
         "Isolate this node and everything downstream of it")}
       {onPin && target.canPin && item(<PinSvg />, "Pin value", () => onPin!(target.nodeId))}
       {onAddComment && item(<CommentSvg />, "Add comment", () => onAddComment!(target.nodeId))}

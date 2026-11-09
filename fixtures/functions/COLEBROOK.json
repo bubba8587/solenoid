@@ -1,0 +1,8 @@
+[
+{"group":"Examples","axis":"examples","cite":[], "cases": [
+  {"formula":"COLEBROOK(\"1e5\", 0.001)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"COLEBROOK(100000, 0.0001)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"COLEBROOK(1000, 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""},
+  {"formula":"COLEBROOK(-5, 0)","env":[],"excel":"","ours":"","expect":"","truth":"","verdict":"","cite":""}
+]}
+]

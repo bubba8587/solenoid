@@ -1,6 +1,6 @@
 // [[C42]] htmlInCanvasRenderer
 
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import type { View } from "./view";
 import { parseColor } from "./cssColor";
@@ -56,7 +56,7 @@ function resolveSockColor(dataType: string | undefined): number {
   return n;
 }
 
-export function snapshotCables(editor: NodeEditor<Schemes> | null, view: View | null): SnapCable[] | null {
+export function snapshotCables(editor: GraphEditor<Schemes> | null, view: View | null): SnapCable[] | null {
   if (!view || !editor) return null;
   const t = view.transform ?? { k: 1, x: 0, y: 0 };
   const k = t.k > 0 ? t.k : 1;

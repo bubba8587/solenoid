@@ -1,13 +1,8 @@
-// [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType
+// [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType, [[pointer-gestures#What counts as a finger: the census]]
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   installPointerCensus, resetPointerCensus, isPinching, touchCount,
 } from "../../src/graph/pointerGesture";
-
-// The pointer census + the pinch-priority rule it feeds. The vitest env is `node`,
-// so there's no DOM — these drive the census through a fake event target and the
-// zoom handler through a fake container, which is enough to pin the two things that
-// actually broke: WHICH PHASE the finger count listens in, and WHICH CONTACTS count.
 
 /** A minimal EventTarget the census can install onto, so a test can fire pointer
  *  events without a DOM. Mirrors addEventListener/removeEventListener only. */
@@ -61,8 +56,6 @@ describe("pointer census — what gesture is in flight", () => {
   });
 
   it("never counts a precise pointer as a finger — not a mouse, not a stylus", () => {
-    // Neither can pinch, and counting them would let a stylus resting on the glass
-    // become the second contact of a zoom.
     down(1, "mouse");
     down(2, "pen");
     expect(touchCount()).toBe(0);

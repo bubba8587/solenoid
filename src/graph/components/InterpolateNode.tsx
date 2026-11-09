@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import type { InterpolateNode as InterpolateNodeType, InterpolateMode } from "../rete-nodes";
-import { INTERPOLATE_MODE_META } from "../rete-nodes";
+import type { InterpolateNode as InterpolateNodeType, InterpolateMode } from "../nodeClasses";
+import { INTERPOLATE_METHOD_META, INTERPOLATE_MODE_META, type InterpolateMethod } from "../nodeClasses";
 import { processGraph } from "../process";
-import { getOwningView, getOwningEditor } from "../activeGraph";
+import { applyShapeMode } from "./shapeMode";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { ResultDisplay } from "./ResultDisplay";
@@ -18,28 +18,15 @@ const MODE_OPTIONS = (Object.keys(INTERPOLATE_MODE_META) as InterpolateMode[]).m
   title: INTERPOLATE_MODE_META[m].title,
 }));
 
-/** LIST and GRID carry different socket sets, so every cable goes first: removing a socket a cable still references is unsafe. */
-export async function applyInterpolateMode(node: InterpolateNodeType, mode: InterpolateMode): Promise<void> {
-  if (node.mode === mode) return;
-  node.mode = mode;
-
-  const editor = getOwningEditor(node.id);
-  const view = getOwningView(node.id);
-  if (editor) {
-    const conns = editor.getConnections().filter((c) => c.target === node.id || c.source === node.id);
-    for (const c of conns) await editor.removeConnection(c.id);
-  }
-  node._rebuildSockets();
-
-  if (view) await view.rerenderNode(node.id);
-  await processGraph();
-}
+const METHODS = (Object.keys(INTERPOLATE_METHOD_META) as InterpolateMethod[]).map((m) => ({ value: m, ...INTERPOLATE_METHOD_META[m] }));
 
 export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeType>) {
   // A local mirror, so the toggle re-renders before the socket swap completes.
   const [mode, setMode] = useState<InterpolateMode>(data.mode);
   useEffect(() => { setMode(data.mode); }, [data.mode]);
   const [forecast, setForecast] = useState(data.forecast);
+  const [method, setMethod] = useState<InterpolateMethod>(data.method);
+  useEffect(() => { setMethod(data.method); }, [data.method]);
   useEffect(() => { setForecast(data.forecast); }, [data.forecast]);
 
   return (
@@ -47,7 +34,7 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
       <SegToggle
         value={mode}
         options={MODE_OPTIONS}
-        onChange={(next) => { setMode(next); void applyInterpolateMode(data, next); }}
+        onChange={(next) => { setMode(next); void applyShapeMode(data, next); }}
       />
       {mode === "grid" && (
         <div style={{ marginTop: 2 }}>
@@ -67,8 +54,15 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
           </label>
         </div>
       )}
+      {mode === "points" && (
+        <SegToggle
+          value={method}
+          options={METHODS}
+          onChange={(next) => { setMethod(next); data.method = next; void processGraph(data.id); }}
+        />
+      )}
       <InlineInputs node={data} emit={emit} />
-      {data.mode === "grid"
+      {data.mode !== "list"
         ? <TableDisplay table={isSolError(data.cachedResult) ? (data.cachedResult as SolError) : (data.cachedResult as (number | null)[][] | null)} label={nodeDisplayName(data)} elem="number" />
         : <ResultDisplay value={data.cachedResult} label={nodeDisplayName(data)} />}
     </NodeShell>

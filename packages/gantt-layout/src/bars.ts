@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[D66]] daysMinutesModes
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule
 
 import type { GanttPayload, GanttTask } from "./payload";
 import type { FrameRow, FrameBar, FrameScale } from "./frame";

@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
-import * as Nodes from "../../src/graph/rete-nodes";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
+import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { CompositeNode } from "../../src/graph/nodes/composite";
 import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";
 import seed from "../../src/graph/seedGraphs/sudoku-solver.json";
@@ -37,32 +36,30 @@ const SOLUTION = [
 ];
 
 function buildEditor() {
-  const editor = new NodeEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   return { editor, engine };
 }
 
-async function loadSeed(editor: NodeEditor<Schemes>) {
-  const byId = new Map<string, ClassicPreset.Node>();
+async function loadSeed(editor: GraphEditor<Schemes>) {
+  const byId = new Map<string, GraphNode>();
   for (const sn of (seed.nodes as SavedNode[])) {
-    const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => ClassicPreset.Node>)[sn.type];
+    const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => GraphNode>)[sn.type];
     const node = new Ctor({ ...sn.init });
     const anyNode = node as unknown as Record<string, unknown>;
     if (sn.literals) anyNode.literals = { ...sn.literals };
     if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
     if (node instanceof CompositeNode) {
       await node.hydrate(ctorRegistry());
-      node.requestSolve(); // heavy composites load unsolved ([[D52]] compositesHoldUntilSolve)
+      node.requestSolve(); // heavy composites load unsolved ([[C23]] calcModes)
     }
     byId.set(sn.id, node);
     await editor.addNode(node as unknown as Schemes["Node"]);
   }
   for (const c of seed.connections) {
     await editor.addConnection(
-      new ClassicPreset.Connection(byId.get(c.source)!, c.sourceOutput, byId.get(c.target)!, c.targetInput) as Schemes["Connection"],
+      new GraphConnection(byId.get(c.source)!, c.sourceOutput, byId.get(c.target)!, c.targetInput) as Schemes["Connection"],
     );
   }
   return byId;

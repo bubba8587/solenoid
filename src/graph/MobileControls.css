@@ -62,3 +62,56 @@
   background: var(--accent);
   filter: brightness(0.92);
 }
+
+/* Drilled into a composite: a tab rising out of the bar's top edge, hugging the ➕, with I and O up on its shoulders.
+   The cluster takes only the ➕'s own width in the bar, so no other button moves; the tab and the letters hang outside it.
+   The tab is an SVG over the bar's border, its fill hiding the border where the two meet. */
+.solenoid-mobile-bar__ports {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.solenoid-mobile-bar__ports > .solenoid-mobile-bar__add { position: relative; z-index: 1; }
+.solenoid-mobile-bar__ports > .solenoid-mobile-bar__port { z-index: 1; }
+.solenoid-mobile-bar__ports-tab {
+  position: absolute;
+  /* The bar's top edge is 6px above the row (5px padding, 1px border); the tab rises 12px past it, 4px clear of the ➕'s top. */
+  top: -18px;
+  left: -40px;
+  width: 126px;
+  height: 13px;
+  overflow: visible;
+  pointer-events: none;
+}
+.solenoid-mobile-bar__ports-fill { fill: var(--panel-bg); }
+.solenoid-mobile-bar__ports-edge {
+  fill: none;
+  stroke: var(--panel-border);
+  stroke-width: 1px;
+}
+/* In the tab's shoulders either side of the ➕, 4px under the tab's top edge (-18px) and just over the bar's (-6px). */
+.solenoid-mobile-bar__port {
+  position: absolute;
+  top: -14px;
+  display: block;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.solenoid-mobile-bar__port svg { display: block; }
+/* A faded echo of the ➕: its accent as a soft disc and ring, the letter mostly the text color warmed by the accent, so it
+   reads near white on the dark disc and near black on the light one. */
+.solenoid-mobile-bar__port-disc {
+  fill: color-mix(in srgb, var(--accent) 18%, var(--panel-bg));
+  stroke: color-mix(in srgb, var(--accent) 50%, transparent);
+  stroke-width: 1px;
+}
+.solenoid-mobile-bar__port-glyph { fill: color-mix(in srgb, var(--accent) 35%, var(--text)); }
+.solenoid-mobile-bar__port:active .solenoid-mobile-bar__port-disc { fill: color-mix(in srgb, var(--accent) 38%, var(--panel-bg)); }
+.solenoid-mobile-bar__port--in { right: calc(100% + 3px); }
+.solenoid-mobile-bar__port--out { left: calc(100% + 3px); }

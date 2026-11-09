@@ -1,30 +1,22 @@
-// [[C25]]
-// The unit-blind boundary (FC A4 regression, 2026-07-13): a `UnitCell` must never
-// leak raw into a node that doesn't run the dimension algebra — it unwraps to its
-// DISPLAY magnitude (the number the user typed) at the central coercion seam, so a
-// comparison / threshold / chart downstream of an FC computes on `5`, not on a
-// NaN-coercing object or the base-SI `5000`. Unit-aware nodes and pure
-// passthroughs keep the tags (the algebra + display propagation live there).
+// [[C25]] firstClassUnits, [[unit-flow#The display bridge]], [[unit-flow#Who writes and who derives]]
 import { describe, it, expect, beforeAll } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
-import { FormatControllerNode, ComparisonNode, RoundNNode, DisplayNode, ArithmeticNode, ConvertNode, AggregateNode, ListInputNode, ValueInputNode } from "../../src/graph/rete-nodes";
+import { FormatControllerNode, ComparisonNode, RoundNNode, DisplayNode, ArithmeticNode, ConvertNode, AggregateNode, ListInputNode, ValueInputNode } from "../../src/graph/nodeClasses";
 import { isUnitCell, type UnitCell } from "../../src/graph/unitValue";
 import { stripUnitCells, displayMagnitudeOf } from "../../src/graph/unitBridge";
+import { reconcileFcs } from "../../src/graph/fcReconcile";
 
-type AnyNode = ClassicPreset.Node;
+type AnyNode = GraphNode;
 
 function makeGraph() {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
-  installInputCoercion(editor as never);
-  installErrorGuards(editor as never);
   const conn = (a: AnyNode, ao: string, b: AnyNode, bi: string) =>
-    editor.addConnection(new ClassicPreset.Connection(a as never, ao, b as never, bi) as never);
+    editor.addConnection(new GraphConnection(a as never, ao, b as never, bi) as never);
   const fetch = async (n: AnyNode) => engine.fetch(n.id) as Promise<Record<string, unknown>>;
   return { editor, engine, conn, fetch };
 }
@@ -182,7 +174,7 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
     for (const n of [num, fc1, fc2]) await g.editor.addNode(n as never);
     await g.conn(num, "value", fc1, "in");
     await g.conn(fc1, "out", fc2, "in");
-    for (const n of g.editor.getNodes()) if (n instanceof FormatControllerNode) n.refreshAnnotation(g.editor as never);
+    reconcileFcs(g.editor as never, null);
     await g.fetch(fc2);
 
     // Number → Convert(m→km) → FC: the FC INHERITS the converted value's unit
@@ -194,7 +186,7 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
     for (const n of [src, cv, fcAfterConvert]) await h.editor.addNode(n as never);
     await h.conn(src, "value", cv, "in");
     await h.conn(cv, "out", fcAfterConvert, "in");
-    for (const n of h.editor.getNodes()) if (n instanceof FormatControllerNode) n.refreshAnnotation(h.editor as never);
+    reconcileFcs(h.editor as never, null);
     await h.fetch(fcAfterConvert);
 
     // Number → FC → Convert(m→km): the FC FEEDS a Convert, so the Convert's
@@ -207,13 +199,12 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
     for (const n of [src2, fcBeforeConvert, cv2]) await k.editor.addNode(n as never);
     await k.conn(src2, "value", fcBeforeConvert, "in");
     await k.conn(fcBeforeConvert, "out", cv2, "in");
-    for (const n of k.editor.getNodes()) if (n instanceof FormatControllerNode) n.refreshAnnotation(k.editor as never);
+    reconcileFcs(k.editor as never, null);
     await k.fetch(cv2);
   });
 
   it("an FC fed by another FC forwards: → → arrows, dropdown mirrors km and LOCKS", () => {
-    // An inherited unit is the value's, set elsewhere in the chain (author
-    // ruling 2026-07-31) — the downstream FC never re-authors over it.
+    // The downstream FC never re-authors an inherited unit.
     expect(fc2.forwarding).toBe(true);
     expect(fc2.lockedByConvert).toBe(false);
     expect(fc2.unitLocked).toBe(true);
