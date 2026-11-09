@@ -59,6 +59,15 @@ specific item.
 - **A cloud container can start hundreds of commits behind `develop`** (this one was 352 behind, a shallow clone): `git
   fetch origin develop` and compare before the first edit, or the first push is refused and the fixtures and wasm are
   redone on the new base.
+- **A drill-in undo or redo never leaves a marker without a port** (`adoptMarkerPorts`, on the step and on leaving
+  the level; `compositeLeaveLevels.test.ts`).
+- **`run-graph --formula --set` takes a list or a grid** (`--set 'm=[[1,2],[3,4]]'`) and refuses a name the formula
+  never reads.
+- **INDEX's whole column was changed to a column and put back the same day**: the author was holding it. The backlog
+  line has what the try showed (right in a formula, splits the card). `CLAUDE.md` § Reflexes now says a change that
+  moves a saved graph's answer is the author's call.
+- **Vault Read and TaskNotes have specs** (`tree/specs/integrations/vault-read.md`, `tasknotes.md`). Writing them
+  found that a note's own `date` or `created` property never reaches Vault Folder's Cube (backlog § VaultBridge).
 
 ### SESSION DIGEST (2026-11-09b: two pre-1.6 safety fixes; cloud session)
 - **The desktop's fetch is `net_fetch`** (`src-tauri/src/net.rs`), the http plugin gone: what someone else wrote stays
