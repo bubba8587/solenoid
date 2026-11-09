@@ -40,5 +40,7 @@ title first) and saves a PNG cropped to the nodes. One run takes about 6 seconds
 - **Only need the values?** `npm run -s run-graph -- <graph.json> --out <card name>` runs the same short graph with no
   browser and prints that card's outputs as plain JSON, whole lists and tables included (`--raw` for the engine's own values) (`--set <input card>=<value>` types
   into an input first; `-- --formula '<formula>' --set x=3` answers one formula).
+- `scripts/shot-graphs/folder-each.json` (with `--setting useDemoVault=true`) is a folder of files, each through a live
+  By-Row Composite, then stacked: the model for a Composite written by hand.
 - Save a graph worth reusing into `scripts/shot-graphs/`; keep scratch graphs and PNGs in the
   scratchpad.

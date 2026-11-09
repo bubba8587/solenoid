@@ -1,0 +1,130 @@
+{
+ "nodes": [
+  {
+   "id": "files",
+   "type": "LocalFileNode",
+   "init": {
+    "label": "Monthly files",
+    "fileName": "monthly/*.csv"
+   }
+  },
+  {
+   "id": "each",
+   "type": "CompositeNode",
+   "init": {
+    "label": "Top sale of each file",
+    "width": 240,
+    "height": 140,
+    "runMode": "by-row",
+    "simulationSteps": 10,
+    "stopWhenPortId": "",
+    "stopWhenOp": "eq",
+    "stopWhenValue": 1,
+    "byRowPortId": "in_0_9pqp5",
+    "byRowLive": true,
+    "inputPorts": [
+     {
+      "label": "File",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "144bd610d876f4d8",
+      "id": "in_0_9pqp5"
+     }
+    ],
+    "outputPorts": [
+     {
+      "label": "Trimmed",
+      "tier": "basic",
+      "internalNodeId": "cccc9c82b7fcab7d",
+      "id": "out_0_lab6x"
+     }
+    ],
+    "scenarios": [],
+    "dataTableValues": {},
+    "internal": {
+     "nodes": [
+      {
+       "id": "144bd610d876f4d8",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "File",
+        "width": 140,
+        "height": 70,
+        "defaultValue": null
+       }
+      },
+      {
+       "id": "d66cc5f281118411",
+       "type": "UnnestNode",
+       "init": {
+        "label": "This file's rows",
+        "width": 190,
+        "height": 150
+       },
+       "stringLiterals": {
+        "column": "Table"
+       }
+      },
+      {
+       "id": "ab9d881b89aed558",
+       "type": "HeadNode",
+       "init": {
+        "label": "First row",
+        "op": "first",
+        "width": 180,
+        "height": 175
+       },
+       "literals": {
+        "rows": 1,
+        "to": 20
+       }
+      },
+      {
+       "id": "cccc9c82b7fcab7d",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Trimmed",
+        "width": 140,
+        "height": 70
+       }
+      }
+     ],
+     "connections": [
+      {
+       "source": "144bd610d876f4d8",
+       "sourceOutput": "value",
+       "target": "d66cc5f281118411",
+       "targetInput": "cube"
+      },
+      {
+       "source": "d66cc5f281118411",
+       "sourceOutput": "frame",
+       "target": "ab9d881b89aed558",
+       "targetInput": "frame"
+      },
+      {
+       "source": "ab9d881b89aed558",
+       "sourceOutput": "frame",
+       "target": "cccc9c82b7fcab7d",
+       "targetInput": "value"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "stack",
+   "type": "UnnestNode",
+   "init": {
+    "label": "Stacked"
+   },
+   "stringLiterals": {
+    "column": "Trimmed"
+   }
+  }
+ ],
+ "cables": [
+  "files.files -> each.in_0_9pqp5",
+  "each.out_0_lab6x -> stack.cube"
+ ]
+}
