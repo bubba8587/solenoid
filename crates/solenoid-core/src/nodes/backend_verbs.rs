@@ -8,10 +8,10 @@ use super::refs;
 use super::stats::first_raw;
 use super::verbs::{column_list, drop_nothing, flat_column, nullish, pass, plan, shown};
 use super::Cv;
-use super::{kit, list, Answer, Call, Column, Cube, Frame};
+use super::{kit, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{value_text, V};
-use crate::frame::{FrameCell, FrameValue};
+use crate::frame::{FrameCell, FrameColType, FrameValue};
 use crate::frame_ref::FrameRef;
 use crate::frame_verbs::{
     append_frames, bind_columns, compile_filter, join_frames, pivot_frame, FilterOp, JoinOpts, PivotSpec,
@@ -46,36 +46,79 @@ fn row_count(f: &Frame) -> usize {
     f.columns.iter().map(|c| c.values.len()).max().unwrap_or(0)
 }
 
-/// An input's frame as a verb reads it whole: a ref's plan run, a value taken once. A Cube of plain columns (a vault
-/// folder's notes once its list columns are dropped) is its rows; one that still holds lists or tables names them.
+/// An input's frame as a verb reads it whole: a ref's plan run, a value taken once.
 fn whole(v: &Cv) -> Result<Rc<FrameValue>, V> {
     match v {
         Cv::Ref(r) => r.flush().map(|f| f.frame.clone()).map_err(V::err),
-        Cv::Cube(k) => {
-            let flat = flat_cube(k);
-            if flat.columns.len() < k.columns.len() {
-                let nested: Vec<String> = k
-                    .columns
-                    .iter()
-                    .filter(|col| !flat.columns.iter().any(|f| f.name == col.name))
-                    .take(4)
-                    .map(|col| format!("\"{}\"", col.name))
-                    .collect();
-                return Err(super::err(
-                    ErrorCode::Shape,
-                    format!(
-                        "This joins flat rows, and {} hold lists or tables. Keep the columns to join with a Columns card first",
-                        nested.join(", ")
-                    ),
-                ));
-            }
-            whole(&Cv::Frame(Rc::new(flat)))
-        }
         v => match refs::planned(v) {
             Some(r) => Ok(r.base().clone()),
             None => Err(super::frames::thrown("the input isn't a frame")),
         },
     }
+}
+
+/// The columns a join adds to carry each side's row number, so a Cube's lists and tables find their rows again.
+const ROW_LEFT: &str = "\u{1}left row";
+const ROW_RIGHT: &str = "\u{1}right row";
+
+/// A join's input as the verb reads it: its flat rows, and, for a Cube (a vault folder's notes, say), the columns
+/// holding lists or tables, which ride along by a row-number column added under `tag`.
+fn join_side(v: &Cv, tag: &str) -> Result<(Rc<FrameValue>, Vec<CubeColumn>), V> {
+    let Cv::Cube(k) = v else { return Ok((whole(v)?, Vec::new())) };
+    let mut flat = flat_cube(k);
+    let nested: Vec<CubeColumn> =
+        k.columns.iter().filter(|col| !flat.columns.iter().any(|f| f.name == col.name)).cloned().collect();
+    if !nested.is_empty() {
+        let rows = k.columns.iter().map(|col| col.cells.len()).max().unwrap_or(0);
+        flat.columns.push(Column {
+            name: tag.to_string(),
+            ty: FrameColType::Number,
+            values: (0..rows).map(|i| V::Num(i as f64)).collect(),
+            unit: None,
+            format: None,
+            raw: None,
+        });
+    }
+    Ok((Rc::new(to_core(&flat)), nested))
+}
+
+/// The joined rows as a Cube with each side's lists and tables beside them, read back by the row-number columns; a
+/// row the join gave no partner is blank there.
+fn with_nested(joined: &Frame, left: &[CubeColumn], right: &[CubeColumn]) -> Cv {
+    let carried = |name: &str| name == ROW_LEFT || name == ROW_RIGHT;
+    let mut cols: Vec<CubeColumn> = joined
+        .columns
+        .iter()
+        .filter(|col| !carried(&col.name))
+        .map(|col| CubeColumn {
+            name: col.name.clone(),
+            cells: col
+                .values
+                .iter()
+                .map(|v| match &col.unit {
+                    Some(u) => Cv::V(super::frames::tag_cell_unit(v, u)),
+                    None => Cv::V(v.clone()),
+                })
+                .collect(),
+            ty: Some(col.ty),
+            format: col.format.clone(),
+        })
+        .collect();
+    for (tag, nested) in [(ROW_LEFT, left), (ROW_RIGHT, right)] {
+        let Some(at) = joined.columns.iter().find(|col| col.name == tag) else { continue };
+        for n in nested {
+            let cells = at
+                .values
+                .iter()
+                .map(|v| match v {
+                    V::Num(i) => n.cells.get(*i as usize).cloned().unwrap_or(Cv::NULL),
+                    _ => Cv::NULL,
+                })
+                .collect();
+            cols.push(CubeColumn { cells, ..n.clone() });
+        }
+    }
+    super::frames::cube_from_columns(cols)
 }
 
 /// A verb's frame as a ref planning nothing yet; its error as the answer.
@@ -113,10 +156,14 @@ fn join(c: &mut Call) -> Answer {
         v => opts["asofTolerance"] = super::frames::to_json(v),
     }
     let out = (|| {
-        let (l, r) = (whole(&left)?, whole(&right)?);
+        let ((l, l_nested), (r, r_nested)) = (join_side(&left, ROW_LEFT)?, join_side(&right, ROW_RIGHT)?);
         let opts: JoinOpts = serde_json::from_value(opts)
             .map_err(|e| V::err(sol_error(ErrorCode::Error, format!("bad argument \"opts\": {e}"))))?;
-        Ok(answered(join_frames(&l, &r, &opts)))
+        if l_nested.is_empty() && r_nested.is_empty() {
+            return Ok(answered(join_frames(&l, &r, &opts)));
+        }
+        let joined = join_frames(&l, &r, &opts).map_err(V::err)?;
+        Ok(with_nested(&from_core(&joined), &l_nested, &r_nested))
     })();
     one("frame", out.unwrap_or_else(Cv::V))
 }

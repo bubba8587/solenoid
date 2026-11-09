@@ -319,12 +319,12 @@ export class JoinNode extends GraphNode {
     this.label = init?.label ?? "Join";
     this.how = init?.how ?? "inner";
     this.asofDirection = init?.asofDirection ?? "backward";
-    this.addInput("left", frameIn("Left"));
-    this.addInput("right", frameIn("Right"));
+    this.addInput("left", cubeAdoptIn("Left"));
+    this.addInput("right", cubeAdoptIn("Right"));
     this.addInput("leftKey", strIn("Left key"));
     this.addInput("rightKey", strIn("Right key"));
     this.addInput("tolerance", numIn("Tolerance"));
-    this.addOutput("frame", frameOut("Joined"));
+    this.addOutput("frame", tableAdoptOut("Joined"));
   }
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {

@@ -903,6 +903,8 @@ Tests: `frameBackend.test.ts`: format picks ride as one more op of the plan.
 
 `join_frames(left, right, { leftKey, rightKey, how, asofDirection?, asofTolerance?, rightKeyScale?, rightKeyOffset? })`.
 
+**A Cube on either side** (a vault folder's notes): the join runs on the Cube's plain columns, and its columns holding lists or tables ride along. Each such side gets a row-number column before the join (`join_side`, `nodes/backend_verbs.rs`), and after it the answer is a Cube whose carried columns are read back by those numbers (`with_nested`), blank on a row the join gave no partner; the row-number columns are dropped. Two Frames, or Cubes with nothing nested, join as Frames and answer one. The card's Left and Right take a Frame or a Cube, and its output adopts what it carries. Tests: `linkTarget.test.ts`.
+
 **Keys.**
 
 - The key columns must exist (`#REF!`) and share a type (`#TYPE!`, `Join keys must share a type ("<l>" vs "<r>")`); a Cross join needs neither. Keys of two types could never match, since element families never cross on their own ([[C10]] socketLattice), so the join refuses instead of returning a silent empty result.

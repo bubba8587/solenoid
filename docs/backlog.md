@@ -161,7 +161,6 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 
 ## Obsidian + TaskNotes (author 2026-09-07: THE adoption bet — correct, great, useful)
 - [ ] **Solenoid Properties plugin: the app's type icons** (author 2026-11-03): its property type pickers use more of the family icons the app draws (`TypeIcon.tsx`: `#`, `Aa`, the calendar, the checkbox, the double-struck C, the Frame outline), as its Frame type already does.
-- [ ] **Join carries a Cube's list columns** (2026-11-09): Join reads a Cube of plain columns as its rows, and one that still holds lists or tables is `#SHAPE!` naming them, so a vault folder (always `tags`, `links`, `embeds`) needs a Columns card before every join. Carrying the nested cells through, as the Cube's row verbs do, would drop that step.
 - [ ] **A daily-note source card**: outputs today's daily-note path from the user's Obsidian daily-notes settings, to wire into a vault-writing card. It replaces the removed `{{daily}}` shortcut, asked back as something wirable; its exact shape is open.
 - [ ] **A Note card shows a list property as a chip** ([[D87]] knapNotes): a bare `{{ items }}` holding a list or table prints raw text such as `[1,2,3]` on the card, where Obsidian with the plugin draws the chip.
 - [ ] **Import Obsidian Note: every property as one Cube** (author 2026-11-09, for 1.7): an option that answers the note's properties as a single Cube, a column per property, in place of a socket each, to simplify the card.

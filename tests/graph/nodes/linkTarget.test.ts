@@ -4,7 +4,6 @@ import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { TextTransformNode } from "../../../src/graph/nodes/text";
 import { JoinNode } from "../../../src/graph/nodes/frame";
 import { frameFromCells, type CubeValue, type FrameValue } from "../../../src/graph/frame";
-import { isSolError } from "../../../src/graph/errorValue";
 import { isFrameRef, readFrame } from "../../../src/graph/frameBackend";
 
 const ev = (src: string, vars: Record<string, unknown> = {}) => compileEvaluator(src)!(vars);
@@ -33,7 +32,7 @@ describe("LINKNAME and LINKPATH read the note a link names", () => {
   });
 });
 
-describe("Join reads a Cube of plain columns", () => {
+describe("Join reads a Cube", () => {
   const left = frameFromCells(["project", "minutes"], [["A", "30"], ["B", "5"]]);
   const cube = (extra: CubeValue["columns"] = []): CubeValue => ({
     __cube: true, depth: 1,
@@ -41,15 +40,21 @@ describe("Join reads a Cube of plain columns", () => {
   });
   const join = (right: unknown) => new JoinNode({ how: "left" }).data({ left: [left], right: [right], leftKey: ["project"], rightKey: ["name"] }).frame;
 
-  it("as its rows", async () => {
+  it("of plain columns as its rows", async () => {
     const answer = join(cube());
     const out = (isFrameRef(answer) ? await readFrame(answer) : answer) as FrameValue;
     expect(out.columns.map((c) => c.name)).toEqual(["project", "minutes", "budget"]);
     expect(out.columns[2].values).toEqual([9000, 1200]);
   });
-  it("and names the columns that still hold lists, in place of an input that isn't a frame", () => {
-    const out = join(cube([{ name: "tags", cells: [["home"], ["work", "q4"]] }]));
-    expect(isSolError(out) && out.code).toBe("#SHAPE!");
-    expect(isSolError(out) && out.message).toBe('This joins flat rows, and "tags" hold lists or tables. Keep the columns to join with a Columns card first');
+  it("and carries its lists and tables along, each beside the row it came from", () => {
+    const out = join(cube([{ name: "tags", cells: [["home"], ["work", "q4"]] }])) as CubeValue;
+    expect(out.columns.map((c) => c.name)).toEqual(["project", "minutes", "budget", "tags"]);
+    expect(out.columns[3].cells).toEqual([["home"], ["work", "q4"]]);
+  });
+  it("a row the join gave no partner is blank in the carried columns", () => {
+    const right: CubeValue = { __cube: true, depth: 1, columns: [{ name: "name", cells: ["A"], type: "string" }, { name: "tags", cells: [["home"]] }] };
+    const out = join(right) as CubeValue;
+    expect(out.columns.map((c) => c.name)).toEqual(["project", "minutes", "tags"]);
+    expect(out.columns[2].cells).toEqual([["home"], null]);
   });
 });
