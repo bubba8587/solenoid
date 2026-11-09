@@ -270,8 +270,8 @@ export function AutoGrowField({ value, className, cols, placeholder, inputMode, 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    el.style.removeProperty("height");
+    el.style.setProperty("height", `${el.scrollHeight}px`);
   }, [value]);
   return (
     <textarea

@@ -11,8 +11,8 @@ export function themeColor(name: string, fallback: string, within: Element = doc
   if (!/light-dark\(|var\(|color-mix\(/.test(raw)) return raw;
   const host = within instanceof HTMLCanvasElement ? (within.parentElement ?? document.body) : within;
   const probe = document.createElement("span");
-  probe.style.color = `var(${name})`;
-  probe.style.display = "none";
+  probe.style.setProperty("color", `var(${name})`);
+  probe.hidden = true;
   host.appendChild(probe);
   const resolved = getComputedStyle(probe).color;
   probe.remove();
