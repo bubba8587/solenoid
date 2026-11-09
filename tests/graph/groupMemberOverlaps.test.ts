@@ -12,8 +12,8 @@ async function scene(a: { x: number; y: number }, b: { x: number; y: number }, b
   const editor = new GraphEditor<Schemes>();
   const first: SolenoidNode = new DisplayNode();
   const second: SolenoidNode = new DisplayNode();
-  const group = new GroupNode({ members: [first.id, second.id], ...box });
-  for (const n of [group as SolenoidNode, first, second]) await editor.addNode(n);
+  const group = new GroupNode({ members: [first.id, second.id], ...box }) as GroupNode & SolenoidNode;
+  for (const n of [group, first, second]) await editor.addNode(n);
   group.position = { x: 0, y: 0 };
   first.position = a;
   second.position = b;
