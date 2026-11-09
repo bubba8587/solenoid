@@ -12,7 +12,7 @@ export interface PluginNotes {
 
 export const PLUGIN_NOTES: PluginNotes[] = [
   {
-    version: "0.1.7",
+    version: "0.1.8",
     notes: [
       {
         title: "General improvements to the editor pop-ups",
