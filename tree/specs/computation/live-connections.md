@@ -126,13 +126,14 @@ Tests:
 
 `fetchText` and `fetchJson` in `httpBridge.ts` do the requests.
 
-- On desktop, an absolute `http(s)` URL goes through the Tauri HTTP plugin, which has no same-origin policy. A relative URL (a bundled asset) uses the browser fetch even on desktop.
+- On desktop, an absolute `http(s)` URL goes through the shell's `net_fetch` (`src-tauri/src/net.rs`), which has no same-origin policy. A relative URL (a bundled asset) uses the browser fetch even on desktop.
+- What someone else wrote never reaches this computer or the local network ([[B18]] safeToShare): a foreign document's cards, and a card pasted out of one (`writtenElsewhere`, [[script-sandbox#A document someone else wrote]]), even once the network is allowed. The shell judges the address, not its spelling: the URL's host on the request and on every redirect, an address carrying an IPv4 one (mapped, NAT64, 6to4) by that address, and a name by every address it resolves to, at the moment it connects, with no proxy in between. Loopback, private, link-local, carrier-grade NAT, unique-local and the other non-public ranges are refused, and the refusal reads as such. The user's own cards may reach them (TaskNotes serves on localhost).
 - The desktop request's User-Agent is `DATA_FETCH_UA`, `"curl/8.4.0"`. It must be a recognized tool identifier: FRED's `fredgraph.csv` sits behind a firewall that allows known clients (`curl`, `python-requests`, `wget`) and drops the connection for a browser string, an unknown custom string, or reqwest's default.
 - In the browser build, a cross-origin block surfaces as `CorsLikelyError`, whose message points the user at the desktop app.
 - A non-OK response throws `HTTP <status> <text>`.
 - A body is capped at `MAX_FETCH_BYTES`, 64 MB. An oversized `Content-Length` is refused before reading, and a streamed body aborts the moment it crosses the cap.
 
-Tests: `httpBridge.test.ts`, on the browser branch: text and content type on success, a network-level `TypeError` read as `CorsLikelyError`, an HTTP error keeping its status, another failure passing through, an oversized `Content-Length` refused before the body is read, a body under the cap returned, and a relative URL taking the plain fetch.
+Tests: `net.rs`'s own tests (`cargo test --manifest-path src-tauri/Cargo.toml net`): every spelling of an inward address refused, public ones passing, a name resolving to loopback refused, a server on loopback reached by the user's own fetch and refused to a foreign one. `httpBridge.test.ts`: on the desktop branch, the user's own fetch asks for the local network and a foreign one doesn't, the refusal reads as such, a status and an empty 204 come through; on the browser branch: text and content type on success, a network-level `TypeError` read as `CorsLikelyError`, an HTTP error keeping its status, another failure passing through, an oversized `Content-Length` refused before the body is read, a body under the cap returned, and a relative URL taking the plain fetch.
 
 ## Service providers
 

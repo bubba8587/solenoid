@@ -1,6 +1,7 @@
 // [[C23]] calcModes, [[B18]] safeToShare
 // Desktop fetches go through the Tauri http plugin (no same-origin policy); the browser build stays CORS-limited.
 import { isDesktop } from "./fileBridge";
+import { writtenElsewhere } from "./foreignCardStore";
 
 /** Must stay a recognized tool UA: FRED's fredgraph.csv sits behind a WAF that drops browser, unknown and reqwest UAs. */
 const DATA_FETCH_UA = "curl/8.4.0";
@@ -59,27 +60,32 @@ export class CorsLikelyError extends Error {
   }
 }
 
-/** The desktop's fetch (Tauri's HTTP plugin). Its scope refuses this computer and the local network
- *  (`src-tauri/capabilities/default.json`), redirects included, so a shared document can't reach them; that refusal
- *  reads as what it is. */
-async function desktopFetch(url: string, init: Parameters<typeof import("@tauri-apps/plugin-http").fetch>[1]): Promise<Response> {
-  const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
+interface NetReply { status: number; status_text: string; headers: [string, string][]; body: string }
+
+/** The desktop's fetch, the shell's `net_fetch` (`src-tauri/src/net.rs`). What someone else wrote (`from`, the asking
+ *  card) never reaches this computer or the local network, by any spelling, name or redirect; the user's own may. */
+async function desktopFetch(url: string, init: { method?: string; headers: Record<string, string>; body?: string; from?: string }): Promise<Response> {
+  const { invoke } = await import("@tauri-apps/api/core");
+  const req = { url, method: init.method, headers: Object.entries(init.headers), body: init.body, local: !writtenElsewhere(init.from) };
+  let reply: NetReply;
   try {
-    return await tauriFetch(url, init);
+    reply = await invoke<NetReply>("net_fetch", { req });
   } catch (e) {
-    if (/not allowed on the configured scope|UrlNotAllowed/i.test(String(e))) {
-      throw new Error("The desktop app doesn't fetch from this computer or the local network (localhost, 192.168.x and the like).");
+    if (String(e).startsWith("local-network-refused")) {
+      throw new Error("A document someone else wrote doesn't fetch from this computer or the local network (localhost, 192.168.x and the like).");
     }
-    throw e;
+    throw new Error(String(e));
   }
+  const noBody = reply.status === 204 || reply.status === 205 || reply.status === 304;
+  return new Response(noBody ? null : reply.body, { status: reply.status, statusText: reply.status_text, headers: reply.headers });
 }
 
-export async function fetchText(url: string, init?: { headers?: Record<string, string> }): Promise<FetchedText> {
+export async function fetchText(url: string, init?: { headers?: Record<string, string>; from?: string }): Promise<FetchedText> {
   const extra = init?.headers ?? {};
   // Only absolute URLs take the Tauri path: its Rust client has no base origin, so a relative bundled asset fails there.
   const absolute = /^https?:\/\//i.test(url.trim());
   if (isDesktop() && absolute) {
-    const res = await desktopFetch(url, { headers: { "User-Agent": DATA_FETCH_UA, ...extra } });
+    const res = await desktopFetch(url, { headers: { "User-Agent": DATA_FETCH_UA, ...extra }, from: init?.from });
     if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
     return { text: await readCappedText(res), contentType: res.headers.get("content-type") ?? "" };
   }
@@ -95,13 +101,13 @@ export async function fetchText(url: string, init?: { headers?: Record<string, s
   return { text: await readCappedText(res), contentType: res.headers.get("content-type") ?? "" };
 }
 
-export async function fetchJson(url: string, init: { method: "POST" | "PUT" | "DELETE"; headers?: Record<string, string>; body?: unknown }): Promise<FetchedText> {
+export async function fetchJson(url: string, init: { method: "POST" | "PUT" | "DELETE"; headers?: Record<string, string>; body?: unknown; from?: string }): Promise<FetchedText> {
   const headers: Record<string, string> = { "Content-Type": "application/json", ...(init.headers ?? {}) };
   const body = init.body === undefined ? undefined : JSON.stringify(init.body);
   const absolute = /^https?:\/\//i.test(url.trim());
   let res: Response;
   if (isDesktop() && absolute) {
-    res = await desktopFetch(url, { method: init.method, headers: { "User-Agent": DATA_FETCH_UA, ...headers }, body });
+    res = await desktopFetch(url, { method: init.method, headers: { "User-Agent": DATA_FETCH_UA, ...headers }, body, from: init.from });
   } else {
     res = await fetch(url, { method: init.method, headers, body });
   }

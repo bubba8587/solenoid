@@ -76,7 +76,7 @@ export class DataFeedNode extends GraphNode {
   private async fetchFrame(url: string, cacheKey: string): Promise<void> {
     connectionStore.setState(this.id, { status: "loading" });
     try {
-      const { text } = await fetchText(url);
+      const { text } = await fetchText(url, { from: this.id });
       if (this.inflightKey !== cacheKey) return;
       const frame = this.preset().parse(text);
       this.cachedResult = frame;

@@ -28,8 +28,10 @@ tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-opener = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
-# Native HTTP so Web Source can fetch arbitrary URLs (no browser CORS wall).
-tauri-plugin-http = "2"
+# The webview's fetches (`net.rs`): no browser CORS wall, and the resolved address checked before it connects.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "charset"] }
+tokio = { version = "1", features = ["net"] }
+url = "2"
 serde = { version = "1", features = ["derive"] }
 # float_roundtrip: serde_json's default float parse can land one ulp off; a cell crossing IPC must arrive exact.
 # preserve_order: an object keeps its keys in the order they were written, as a save does.
@@ -37,6 +39,9 @@ serde_json = { version = "1", features = ["float_roundtrip", "preserve_order"] }
 # Local File's Parquet reader, on the core's frame ([[C130]] rustCore).
 solenoid-core = { path = "../crates/solenoid-core" }
 solenoid-parquet = { path = "../crates/solenoid-parquet" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-util", "net"] }
 
 # Custom window frame: a transparent overlay titlebar with native Snap support, so
 # the frame is HTML/CSS we control (themed to the accent) instead of the OS caption.

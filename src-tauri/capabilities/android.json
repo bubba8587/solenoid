@@ -19,13 +19,6 @@
         { "url": "obsidian://**" }
       ]
     },
-    "dialog:default",
-    {
-      "identifier": "http:default",
-      "allow": [
-        { "url": "http://*:*" },
-        { "url": "https://*:*" }
-      ]
-    }
+    "dialog:default"
   ]
 }

@@ -38,3 +38,10 @@ pub async fn read_parquet(folder: String, name: String) -> Result<tauri::ipc::Re
     })?
     .map(tauri::ipc::Response::new)
 }
+
+/// Every web fetch the webview makes ([[B18]] safeToShare): `net.rs` keeps a document someone else wrote off this
+/// computer and the local network.
+#[tauri::command]
+pub async fn net_fetch(req: crate::net::NetRequest) -> Result<crate::net::NetReply, String> {
+    crate::net::fetch(req).await
+}

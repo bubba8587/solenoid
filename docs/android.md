@@ -54,7 +54,7 @@ Android the folder is the grant's tree address and a path under it is that addre
 2026-11-04): the app runs at `http://tauri.localhost` and IPC at `http://ipc.localhost`, which the CSP already allows;
 the fs plugin reads and writes a single `content://` file (`readTextFile`, `writeTextFile`, `stat`) but can't
 list, test, make or rename inside a granted folder, hence the folder plugin; the dialog plugin has no folder picker and answers
-`open` and `save` with `content://` addresses; the http plugin fetches in Rust over rustls, so no OpenSSL and no
+`open` and `save` with `content://` addresses; `net_fetch` fetches in Rust over rustls, so no OpenSSL and no
 cleartext block; the opener's `openUrl` fires an Android VIEW intent (so `obsidian://` opens Obsidian), while
 `openPath` and `revealItemInDir` don't work; the Tauri CLI points cargo at the NDK's clang, so `ring` and `zstd-sys`
 build there (a plain `cargo build --target aarch64-linux-android` does not get that). The generated `MainActivity`

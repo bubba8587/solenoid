@@ -3,7 +3,7 @@ import { readTextFile, readDir, writeTextFile, rename, readFile, writeFile, mkdi
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { join, dirname, documentDir, homeDir } from "@tauri-apps/api/path";
 import { requestConfirm } from "./confirmStore";
-import { docMetaStore } from "./docMetaStore";
+import { writtenElsewhere } from "./foreignCardStore";
 import { demoVaultFs, isDemoVaultPath } from "./demoVault";
 import { isTreePath, treeFs, treeLabel, pickTreeFolder } from "./androidFolders";
 
@@ -502,7 +502,8 @@ export function isExecutablePath(path: string): boolean {
 }
 
 /** Needs `opener:allow-open-path`; reveal-in-dir alone would not launch the file. */
-export async function openFilePath(path: string): Promise<void> {
+/** `from` is the File Link: one pasted out of a shared document asks, as the shared document's own do. */
+export async function openFilePath(path: string, from?: string): Promise<void> {
   if (!isDesktop() || !path) return;
   // The opener hands Android a file:// address, which Android refuses to share with another app (docs/android.md).
   if (isAndroidApp()) {
@@ -511,7 +512,7 @@ export async function openFilePath(path: string): Promise<void> {
     return;
   }
   const runs = isExecutablePath(path), remote = isNetworkPath(path);
-  if (runs || remote || docMetaStore.isForeign()) {
+  if (runs || remote || writtenElsewhere(from)) {
     const why = runs ? "This link runs a program" : remote ? "This link opens a file on another computer" : "This link came with a shared document";
     const ok = await requestConfirm({ message: `${why}: ${remote ? path : baseNameOf(path)}. Open it?`, confirmLabel: "Open" });
     if (!ok) return;

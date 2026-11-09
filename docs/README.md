@@ -130,7 +130,7 @@ results get retried and settled rulings relapse.
 | `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `view.ts`, `canvasCommands.ts` | [[B3]] sameNodeEverywhere; `../tree/specs/canvas/react-flow-surface-contract.md`; [[A1]] visualGraphCalculator |
 | `graphCompute.ts`, `process.ts`, `passSession.ts`, `calcModeStore.ts`, `nodeBoundary.ts`, `listLiterals.ts`, `nodeRegistry.ts`, `crates/solenoid-graph/src/boundary.rs`, `session.rs`, `pass.rs` (the pass and the input boundary) | `../tree/specs/computation/compute-pass.md`; [[C23]] calcModes; `../tree/specs/values/error-values.md` |
 | `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`, `NodeSocket.tsx`, `NodeCard.tsx` | [[B3]] sameNodeEverywhere; `../tree/specs/canvas/react-flow-surface-contract.md`; [[A1]] visualGraphCalculator; `../DESIGN.md` § Cards |
-| `connectionStore.ts`, `httpBridge.ts`, `dataProviders.ts`, `crates/solenoid-core/src/providers.rs`, live-source fetch | [[C23]] calcModes; `../tree/specs/computation/live-connections.md` |
+| `connectionStore.ts`, `httpBridge.ts`, `src-tauri/src/net.rs`, `dataProviders.ts`, `crates/solenoid-core/src/providers.rs`, live-source fetch | [[C23]] calcModes; `../tree/specs/computation/live-connections.md` |
 | `flyToNode.ts`, any camera `zoomAt` caller | [[C88]] collapsedGroupCard; `../tree/specs/canvas/group-collapse.md` (camera targets) |
 | `activeGraph.ts` | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` (canvas-substitution seam) |
 | `fns_lists.rs` `fill_grid` | [[C102]] gridFillThenForecast; `../tree/specs/computation/bordered-grid-fill.md` |

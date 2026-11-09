@@ -6,6 +6,7 @@ use tauri_plugin_decorum::WebviewWindowExt;
 mod ipc;
 #[cfg(target_os = "linux")]
 mod linux_webview;
+mod net;
 mod saf;
 
 /// Needs the `tauri` crate's `devtools` feature (always on in debug, explicit for release).
@@ -62,7 +63,6 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_http::init())
         .plugin(saf::init());
     // The window frame is a desktop thing; a phone shows the app edge to edge (docs/android.md).
     #[cfg(desktop)]
@@ -80,6 +80,7 @@ pub fn run() {
             set_window_border,
             toggle_fullscreen,
             ipc::read_parquet,
+            ipc::net_fetch,
             saf::saf,
         ])
         .run(tauri::generate_context!())

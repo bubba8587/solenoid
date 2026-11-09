@@ -97,7 +97,7 @@ export class WebSourceNode extends GraphNode {
     }
     connectionStore.setState(this.id, { status: "loading" });
     try {
-      const { text: body, contentType } = await fetchText(ref);
+      const { text: body, contentType } = await fetchText(ref, { from: this.id });
       if (this.inflightKey !== key) return { frame: this.cachedResult };
       const frame = remoteTextToFrame(body, contentType, ref);
       this.cachedResult = frame;
@@ -131,7 +131,7 @@ async function fetchParsed<T>(
   if (!requestNetwork(nodeId)) return null;
   connectionStore.setState(nodeId, { status: "loading" });
   try {
-    const { text, contentType } = await fetchText(url);
+    const { text, contentType } = await fetchText(url, { from: nodeId });
     const v = parse(text, contentType);
     const { rows, cols } = size(v);
     connectionStore.setState(nodeId, { status: "ok", rows, cols, fetchedAt: Date.now() });

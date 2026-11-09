@@ -52,6 +52,7 @@ function joinMarks(a: CardMark | undefined, b: CardMark | undefined): CardMark {
   return {
     ...(a?.scripts === true || b?.scripts === true ? { scripts: true as const } : {}),
     ...(a?.network === true || b?.network === true ? { network: true as const } : {}),
+    ...(a?.elsewhere === true || b?.elsewhere === true ? { elsewhere: true as const } : {}),
   };
 }
 
@@ -65,7 +66,7 @@ export function keepCardTrust(current: SavedGraph, next: SavedGraph): SavedGraph
   const own = new Set<string>();
   for (const n of current.nodes) {
     const name = idToName.get(n.id) ?? n.id;
-    if (n.foreign && (n.foreign.scripts || n.foreign.network)) {
+    if (n.foreign && (n.foreign.scripts || n.foreign.network || n.foreign.elsewhere)) {
       marks.set(name, n.foreign);
       byType.set(n.type, joinMarks(byType.get(n.type), n.foreign));
     } else own.add(name);

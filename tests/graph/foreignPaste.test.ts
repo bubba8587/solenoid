@@ -8,9 +8,9 @@ import { setEditorRefs } from "../../src/graph/process";
 import { setSelectNode, setUnselectAllNodes } from "../../src/graph/canvasCommands";
 import { copySelected, pasteClipboard } from "../../src/graph/copyPaste";
 import { ScriptNode } from "../../src/graph/nodes/script";
-import { ImageNode } from "../../src/graph/nodes/annotation";
+import { ImageNode, FileLinkNode } from "../../src/graph/nodes/annotation";
 import { docMetaStore } from "../../src/graph/docMetaStore";
-import { foreignCardStore } from "../../src/graph/foreignCardStore";
+import { foreignCardStore, writtenElsewhere } from "../../src/graph/foreignCardStore";
 import { scriptGate, allowScripts } from "../../src/graph/scriptGate";
 import { allowNetwork, networkAllowed } from "../../src/graph/connectionStore";
 import { savedNodeBody, restoreNodeState } from "../../src/graph/savedNodeBody";
@@ -74,10 +74,19 @@ describe("a card copied out of a foreign document", () => {
     expect(pasted.data().image?.held).toBeUndefined();
   });
 
+  it("who wrote it outlasts every Allow: its File Link asks and its fetches stay off the local network", async () => {
+    const link = await carry(new FileLinkNode({ path: "/home/me/notes.md" }) as unknown as SolenoidNode);
+    const own = new FileLinkNode({ path: "/home/me/mine.md" });
+    await allowScripts();
+    allowNetwork();
+    expect(writtenElsewhere(link.id)).toBe(true);
+    expect(writtenElsewhere(own.id)).toBe(false);
+  });
+
   it("the mark saves with the card and comes back on load", async () => {
     const pasted = await carry(new ScriptNode({ expr: "() => 7" }) as unknown as SolenoidNode);
     const body = savedNodeBody(pasted as unknown as Parameters<typeof savedNodeBody>[0]);
-    expect(body.foreign).toEqual({ scripts: true, network: true });
+    expect(body.foreign).toEqual({ elsewhere: true, scripts: true, network: true });
     restoreNodeState("reloaded", body);
     expect(foreignCardStore.holds("reloaded", "scripts")).toBe(true);
   });

@@ -18,14 +18,14 @@ import { scriptsAllowed } from "./scriptGate";
 import { restoreLiterals } from "./literalFields";
 
 /** What a card copied here still has to ask for wherever it is pasted: whatever this foreign document's user has
- *  not allowed, beside what the card itself still asks. */
+ *  not allowed, beside what the card itself still asks, and that someone else wrote it. */
 function copiedMark(id: string): ForeignMark | undefined {
   const own = foreignCardStore.get(id);
   const doc: ForeignMark = docMetaStore.isForeign()
-    ? { ...(scriptsAllowed() ? {} : { scripts: true as const }), ...(networkAllowed() ? {} : { network: true as const }) }
+    ? { elsewhere: true, ...(scriptsAllowed() ? {} : { scripts: true as const }), ...(networkAllowed() ? {} : { network: true as const }) }
     : {};
   const mark: ForeignMark = { ...doc, ...own };
-  return mark.scripts || mark.network ? mark : undefined;
+  return mark.scripts || mark.network || mark.elsewhere ? mark : undefined;
 }
 
 /** A pasted composite's inner cards carry its mark, since the foreign document marked none of them. */

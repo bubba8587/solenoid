@@ -155,7 +155,7 @@ export class TaskNotesNode extends GraphNode {
         const all: TaskRecord[] = [];
         let offset = 0;
         for (;;) {
-          const { text } = await fetchText(tasksUrl(this.apiUrl(), offset, TASKS_PAGE), { headers: this.headers() });
+          const { text } = await fetchText(tasksUrl(this.apiUrl(), offset, TASKS_PAGE), { headers: this.headers(), from: this.id });
           const page = parseTasksPage(text, offset);
           all.push(...page.tasks);
           if (!page.hasMore || page.nextOffset === offset) break;
@@ -165,12 +165,12 @@ export class TaskNotesNode extends GraphNode {
         this.cachedTasks = all;
         this.reportOk(all.length, tasksToCube(all).columns.length);
       } else if (provider === "calendar") {
-        const { text } = await fetchText(eventsUrl(this.apiUrl(), from, to), { headers: this.headers() });
+        const { text } = await fetchText(eventsUrl(this.apiUrl(), from, to), { headers: this.headers(), from: this.id });
         if (stale()) return;
         this.cachedEvents = parseEvents(text);
         this.reportOk(this.cachedEvents.columns[0].values.length, this.cachedEvents.columns.length);
       } else {
-        const { text } = await fetchText(statsUrl(this.apiUrl()), { headers: this.headers() });
+        const { text } = await fetchText(statsUrl(this.apiUrl()), { headers: this.headers(), from: this.id });
         if (stale()) return;
         this.cachedStats = parseStats(text);
         this.reportOk(this.cachedStats ? statsToFrame(this.cachedStats).columns[0].values.length : 0, EMPTY_STATS.columns.length);
@@ -250,7 +250,7 @@ export class WriteTasksNode extends GraphNode {
         const r = this.planRows[i];
         if (r.action !== "update") continue;
         try {
-          const { text } = await fetchText(taskUrl(this.apiUrl(), r.path), { headers: this.headers() });
+          const { text } = await fetchText(taskUrl(this.apiUrl(), r.path), { headers: this.headers(), from: this.id });
           const current = taskRecord((unwrap(text) ?? {}) as Record<string, unknown>);
           const same = Object.entries(r.payload).every(([k, v]) => JSON.stringify(v) === JSON.stringify(currentField(current, k)));
           if (same) { resolved.set(i, "unchanged"); unchanged++; }
@@ -290,10 +290,10 @@ export class WriteTasksNode extends GraphNode {
         if (r.action === "skip" || state === "unchanged" || state === "unreadable") continue;
         try {
           if (r.action === "create") {
-            await fetchJson(createTaskUrl(this.apiUrl()), { method: "POST", headers: this.headers(), body: r.payload });
+            await fetchJson(createTaskUrl(this.apiUrl()), { method: "POST", headers: this.headers(), body: r.payload, from: this.id });
             created++;
           } else {
-            await fetchJson(taskUrl(this.apiUrl(), r.path), { method: "PUT", headers: this.headers(), body: r.payload });
+            await fetchJson(taskUrl(this.apiUrl(), r.path), { method: "PUT", headers: this.headers(), body: r.payload, from: this.id });
             updated++;
           }
         } catch (e) {

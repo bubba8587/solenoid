@@ -98,7 +98,7 @@ Seed files in `src/graph/seedGraphs/*.json` are `SavedGraph` objects plus menu-o
 | `collapsed` | `true`? | The card body is collapsed (`collapseStore`). Distinct from `init.collapsed`, which is a Group's own field. |
 | `flipped` | `true`? | Sockets mirrored left and right (`socketFlipStore`). |
 | `sections` | `{ [label]: boolean }`? | The card's `CardSection`s the user folded (`false`) or opened (`true`) by hand, keyed by section label (`sectionFoldStore`). A section with no entry follows its own default. |
-| `foreign` | `{ scripts?: true, network?: true }`? | A card copied out of a document someone else wrote, still waiting for the user to allow its scripts or its fetches (`foreignCardStore`, [[B18]] safeToShare). It travels through the text form like `sections`, so undo, autosave and a reopen keep it asking. |
+| `foreign` | `{ scripts?: true, network?: true, elsewhere?: true }`? | A card copied out of a document someone else wrote: still waiting for the user to allow its scripts or its fetches, and (`elsewhere`, never cleared) written by someone else (`foreignCardStore`, [[B18]] safeToShare). It travels through the text form like `sections`, so undo, autosave and a reopen keep it asking. |
 
 ### `SavedConnection`
 

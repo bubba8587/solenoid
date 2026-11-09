@@ -62,7 +62,7 @@ export function FileLinkComponent({ data }: NodeProps<FileLinkNodeType>) {
   }
 
   function open() {
-    if (desktop) { if (path) void openFilePath(path); return; }
+    if (desktop) { if (path) void openFilePath(path, data.id); return; }
     if (webFile) window.open((webUrl.current ??= URL.createObjectURL(webFile)), "_blank", "noopener,noreferrer");
   }
 
