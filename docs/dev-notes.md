@@ -6,6 +6,26 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-09: the Obsidian plugin's export caught up; cloud session)
+- The plugin snapshot builds from source again, Rust included: `plugin:export` carries the wasm engine as the files
+  `wasm-stamp.mjs`'s `sourceFiles()` hashes plus `rust-toolchain.toml` and `build-wasm.mjs`, never the compiled module;
+  the snapshot's `npm run build` runs `build:wasm`, `tsrs --noEmit`, then Vite, and its release workflow installs the
+  pinned Rust and `wasm-bindgen-cli`. Exported to `Solenoid-Properties` `develop`; a clean `npm ci && npm run build`
+  there passes (about a minute of cargo). The version stays 0.1.6 until the author says release.
+- Two plugin-build bugs fixed (`oneWasm` in `obsidian-plugin/vite.config.ts`): the `cjs` build turned
+  `new URL(wasm, import.meta.url)` into a base of "undefined", which throws as `main.js` loads (the plugin could not
+  load at all); and the glue's own fallback URL inlined the 9 MB module a second time (main.js 25 MB to 12.9 MB).
+- The `frameBackend` and `activeGraph` stand-ins had drifted from the modules they replace (new exports, `FrameRef`,
+  `getActiveView`); they keep the real signatures again. `src/*.d.ts` (`focusgroup`) and the `@solenoid/gantt-layout`
+  workspace package now travel with the snapshot; `dompurify` is pinned (Note HTML is bundled).
+- Checked in headless Chromium with a stub `obsidian` (not the rig: no Obsidian here): onload in ~300 ms, all 13 types
+  register, chips and the Frame editor render, a date column reads through the core. Real Obsidian is still unchecked.
+- Open: `eslint-plugin-obsidianmd` 0.5.1 on the snapshot finds 100 errors (0.1.6's snapshot: 113 under the same
+  version), so its rule set is stricter than what passed review; new kinds since 0.1.6 are `prefer-window-timers`
+  (`PopupSkeleton`, `connectionStore`, `noticeStore`), `no-unsafe-*` (`graphEditor`, `dataflowEngine`, `engineWasm`,
+  `nodeInit`, `nodeBoundary`), `no-static-styles-assignment` (`themeColor`, `columnHeadControls`). The bundle's Rust
+  crates' licenses are not in the snapshot's third-party file yet (`scripts/rust-licenses.mjs` covers the app's).
+
 ### SESSION DIGEST (2026-11-08: per-frame camera work trimmed; cloud session)
 - A source read (no measuring) of what runs on every pan and zoom frame; four pieces of dead work went, each with its
   rule in its spec: the selection mirror scans only on a new `nodes`/`edges` array (`flow/selectionMirror.ts`, not RF's

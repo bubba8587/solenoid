@@ -11,12 +11,16 @@ import { join } from "node:path";
 export const MODULE = { crate: "solenoid-graph", out: "src/graph/engineWasm", roots: ["crates/solenoid-graph", "crates/solenoid-core", "crates/solenoid-schedule", "crates/vendor"] };
 const SKIP = /(^|\/)(tests\/|[^/]*\.md$)/;
 
-export function sourceStamp(root = ".") {
+/** The tracked files the module is built from, sorted. */
+export function sourceFiles(root = ".") {
   // Mid-merge, ls-files lists an unmerged file once per stage.
   const listed = execFileSync("git", ["ls-files", "-z", ...MODULE.roots], { cwd: root }).toString().split("\0");
-  const files = [...new Set(listed)].filter((f) => f && !SKIP.test(f.slice(f.indexOf("/", "crates/".length) + 1))).sort();
+  return [...new Set(listed)].filter((f) => f && !SKIP.test(f.slice(f.indexOf("/", "crates/".length) + 1))).sort();
+}
+
+export function sourceStamp(root = ".") {
   const h = createHash("sha256");
-  for (const f of files) {
+  for (const f of sourceFiles(root)) {
     h.update(f);
     h.update("\0");
     h.update(readFileSync(join(root, f)));

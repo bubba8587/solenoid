@@ -2,12 +2,14 @@
 // Exports the Solenoid Properties plugin's source into its own repository (the community directory needs
 // the source it is built from): a snapshot of every file the build reads or imports for types, at the same
 // paths, plus a pinned package.json and lock file, so `npm ci && npm run build` there makes the same bundle.
+// The wasm engine goes as its Rust source and the script that builds it, never as the compiled module.
 //   npm run plugin:export -- "<path to the Solenoid-Properties clone>"
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { MODULE, sourceFiles } from "./wasm-stamp.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const target = process.argv[2] && path.resolve(process.argv[2]);
@@ -30,12 +32,14 @@ run(process.execPath, [path.join(ROOT, "node_modules/vite/bin/vite.js"), "build"
 });
 const modules = JSON.parse(fs.readFileSync(modulesFile, "utf8"));
 
-for (const dir of ["src", "obsidian-plugin"]) fs.rmSync(path.join(target, dir), { recursive: true, force: true });
+for (const dir of ["src", "obsidian-plugin", "crates", "scripts", "packages"]) fs.rmSync(path.join(target, dir), { recursive: true, force: true });
 const copy = (rel) => {
   fs.mkdirSync(path.dirname(path.join(target, rel)), { recursive: true });
   fs.copyFileSync(path.join(ROOT, rel), path.join(target, rel));
 };
-const appFiles = new Set(modules.filter((rel) => rel.startsWith("src/")));
+// The module's glue is built in the snapshot (`npm run build:wasm`), beside the module.
+const built = `${MODULE.out}/`;
+const appFiles = new Set(modules.filter((rel) => rel.startsWith("src/") && !rel.startsWith(built)));
 const pluginFiles = run("git", ["ls-files", "obsidian-plugin"]).split("\n").filter(Boolean);
 // Also take type-only imports: the directory's review lints with types, and an unresolved module types as `any`.
 // readdirSync answers with the platform's separator; the paths compared against it are posix.
@@ -53,32 +57,43 @@ for (const queue = [...appFiles, ...pluginFiles].filter((f) => /\.tsx?$/.test(f)
     queue.push(hit);
   }
 }
-appFiles.add("src/vite-env.d.ts");
+// The app's ambient declarations (Vite's client types, attributes React's types lack) reach no import.
+for (const f of fs.readdirSync(path.join(ROOT, "src"))) if (f.endsWith(".d.ts")) appFiles.add(`src/${f}`);
 appFiles.forEach(copy);
 pluginFiles.forEach(copy);
+const wasmFiles = [...sourceFiles(ROOT), "rust-toolchain.toml", "scripts/build-wasm.mjs", "scripts/wasm-stamp.mjs"];
+wasmFiles.forEach(copy);
 
 const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "obsidian-plugin/manifest.json"), "utf8"));
 const pin = (names) => Object.fromEntries(names.map((n) => [n, installed(n)]));
 const dependencies = pin([
   "@fontsource-variable/atkinson-hyperlegible-mono", "@fontsource-variable/atkinson-hyperlegible-next",
-  "knap", "react", "react-dom", "yaml",
+  "dompurify", "knap", "react", "react-dom", "yaml",
 ]);
 const devDependencies = pin([
   "@codemirror/language", "@codemirror/state", "@codemirror/view", "@types/react", "@types/react-dom", "@vitejs/plugin-react", "estree-walker", "magic-string",
-  "obsidian", "postcss", "rollup-plugin-license", "typescript", "vite",
+  "obsidian", "postcss", "rollup-plugin-license", "tsrs", "vite",
 ]);
-// A package a copied file imports but the lists above leave out fails the snapshot's `tsc` in its release workflow.
+const jsonc = (text) => JSON.parse(text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/,(\s*[}\]])/g, "$1"));
+const ts = jsonc(fs.readFileSync(path.join(ROOT, "tsconfig.json"), "utf8"));
+// One of the app's own workspace packages (a tsconfig `paths` entry) goes as its source, tests left out.
+const workspace = {};
+// A package a copied file imports but the lists above leave out fails the snapshot's `tsrs` in its release workflow.
 const unpinned = new Set();
 for (const rel of [...appFiles, ...pluginFiles].filter((f) => /\.tsx?$/.test(f))) {
   for (const [, spec] of fs.readFileSync(path.join(ROOT, rel), "utf8").matchAll(/(?:\bfrom\s+|\bimport\s*\(?\s*)["']([@\w][^"'\s]*)["']/g)) {
     const name = spec.match(/^(@[^/]+\/[^/]+|[^/]+)/)[1];
-    if (!name.startsWith("node:") && !(name in dependencies) && !(name in devDependencies)) unpinned.add(`${name} (${rel})`);
+    if (name in (ts.compilerOptions.paths ?? {})) workspace[name] = ts.compilerOptions.paths[name];
+    else if (!name.startsWith("node:") && !(name in dependencies) && !(name in devDependencies)) unpinned.add(`${name} (${rel})`);
   }
 }
 if (unpinned.size) {
   console.error(`export: not pinned in the snapshot's package.json:\n  ${[...unpinned].join("\n  ")}`);
   process.exit(1);
 }
+const packageFiles = Object.values(workspace).flatMap(([entry]) => run("git", ["ls-files", path.posix.dirname(path.posix.dirname(path.posix.normalize(entry)))]).split("\n"))
+  .filter((f) => f && !/\.test\.tsx?$/.test(f));
+packageFiles.forEach(copy);
 fs.writeFileSync(path.join(target, "package.json"), JSON.stringify({
   name: manifest.id,
   version: manifest.version,
@@ -86,22 +101,23 @@ fs.writeFileSync(path.join(target, "package.json"), JSON.stringify({
   type: "module",
   description: manifest.description,
   license: "MIT",
-  scripts: { build: "tsc --noEmit && PLUGIN_OUT=dist VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build --config obsidian-plugin/vite.config.ts" },
+  scripts: {
+    "build:wasm": "node scripts/build-wasm.mjs",
+    build: "npm run build:wasm && tsrs --noEmit && PLUGIN_OUT=dist VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build --config obsidian-plugin/vite.config.ts",
+  },
   dependencies,
   devDependencies,
   // Pin the exact installed version: a patch bump minifies React differently.
   overrides: pin(["rolldown"]),
 }, null, 2) + "\n");
 
-const jsonc = (text) => JSON.parse(text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/,(\s*[}\]])/g, "$1"));
-const ts = jsonc(fs.readFileSync(path.join(ROOT, "tsconfig.json"), "utf8"));
 fs.writeFileSync(path.join(target, "tsconfig.json"), JSON.stringify({
   // `rootDirs` lays the shims over the modules they replace, so types resolve as the build's swap does.
-  compilerOptions: { ...ts.compilerOptions, paths: undefined, noEmit: true, rootDirs: ["src/graph", "obsidian-plugin/src/shims"] },
+  compilerOptions: { ...ts.compilerOptions, paths: Object.keys(workspace).length ? workspace : undefined, noEmit: true, rootDirs: ["src/graph", "obsidian-plugin/src/shims"] },
   include: ["obsidian-plugin/src", "src"],
 }, null, 2) + "\n");
 
-fs.writeFileSync(path.join(target, ".gitignore"), "node_modules/\ndist/\n");
+fs.writeFileSync(path.join(target, ".gitignore"), `node_modules/\ndist/\ntarget/\n${built}\n`);
 fs.copyFileSync(path.join(ROOT, "obsidian-plugin/manifest.json"), path.join(target, "manifest.json"));
 fs.copyFileSync(path.join(scratch, "dist", "third-party-licenses.txt"), path.join(target, "THIRD-PARTY-LICENSES.txt"));
 
@@ -110,7 +126,7 @@ const versions = fs.existsSync(versionsFile) ? JSON.parse(fs.readFileSync(versio
 versions[manifest.version] = manifest.minAppVersion;
 fs.writeFileSync(versionsFile, JSON.stringify(versions, null, 2) + "\n");
 
-const dirty = run("git", ["status", "--porcelain", "--", "src", "obsidian-plugin", "package.json", "package-lock.json"]);
+const dirty = run("git", ["status", "--porcelain", "--", "src", "obsidian-plugin", ...MODULE.roots, "package.json", "package-lock.json"]);
 fs.writeFileSync(path.join(target, "source.json"), JSON.stringify({
   repo: "bubba8587/solenoid",
   ref: run("git", ["rev-parse", "HEAD"]),
@@ -122,5 +138,5 @@ console.log("export: resolving a package-lock.json in the target (npm install --
 run("npm", ["install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: target, shell: process.platform === "win32" });
 
 fs.rmSync(scratch, { recursive: true, force: true });
-console.log(`export: ${appFiles.size} app files + ${pluginFiles.length} plugin files -> ${target}`);
+console.log(`export: ${appFiles.size} app files + ${pluginFiles.length} plugin files + ${wasmFiles.length} wasm source files + ${packageFiles.length} package files -> ${target}`);
 if (dirty) console.log("export: WARNING, this working tree has uncommitted source changes; source.json names HEAD, which may not match.");
