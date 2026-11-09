@@ -59,6 +59,11 @@ specific item.
 - The phone drawer's button pill (author: broken borders): Obsidian runs it the drawer's full width, so the look's
   pill lost its ends; its floating nav cleared the fill and drew the list's fade inside it, over the outline. It insets
   to the view picker, keeps its fill, and the fade moves above it.
+- Gray on tints (author): an in-page scan for neutral text or icons on a tinted background found five, each fixed to
+  its tint's ink: the Properties chevron (through Obsidian's collapse-icon variables), a base header's sort chevron and
+  its column separators (the header row sits in `.bases-view`, outside the table container the earlier fix targeted),
+  a picked menu item's icon, a picked file's badge, the phone drawer picker's chevron. Re-scanned clean on desktop,
+  settings (six tabs) and phone, both modes.
 
 ### SESSION DIGEST (2026-11-08: per-frame camera work trimmed; cloud session)
 - A source read (no measuring) of what runs on every pan and zoom frame; four pieces of dead work went, each with its

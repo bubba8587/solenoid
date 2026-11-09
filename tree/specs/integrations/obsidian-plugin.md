@@ -68,6 +68,8 @@ The look's rules have one source, `obsidian-plugin/src/look.css`, and it authors
 
 **On and off.** The toggle adds the look class, the palette's class and the accent's class to the body of every Obsidian window (the main one, a popped-out note, settings), one class per call, since Obsidian's `toggleClass` tests `instanceof Array` and an array from another window fails it. A palette or accent change swaps its class and triggers a CSS change, because the graph view is a canvas that re-reads its colors only then. `onunload` takes all three away. The plugin writes nothing into the user's `.obsidian/` and no style or variable onto the body.
 
+**Nothing stays gray on a tint.** Text and glyphs on an accent wash or a tinted header take that color's ink: a picked menu item's icon, a picked file's type badge, the Properties header's fold chevron, a base header's sort chevron (the Frame's), a phone drawer picker's chevron. A scan over the main window, settings, menus, bases, canvas and the phone drawers (neutral text, OKLCH chroma under 0.025, on a background over 0.035) finds none in either mode.
+
 **Color means type.** The accent (`--sol-accent`, and `--sol-ink-accent` as text) belongs to the UI: tabs, the top line, links, the active item, the h1 and rules. A type's hue (`--sol-number` and the rest) means that type and nothing else: a property's icon wears its type's color, a string in code is lime and a number gold. Obsidian's named colors are remapped to the palette, so callouts, canvas cards and graph groups pull from it.
 
 - **Dark.** A hue used as text or as a line icon is itself, on the dark workbench.

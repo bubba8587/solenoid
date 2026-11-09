@@ -422,9 +422,17 @@ select.dropdown:focus {
 }
 
 /* A base's grid draws with the note table's border variable, and its cells are fields that must not box. */
-.bases-table-container {
+.bases-view {
+  --sol-bases-head-ink: color-mix(in srgb, var(--sol-ink-frame) var(--sol-mix-ink), var(--sol-text-bright));
   --table-border-color: var(--bases-table-border-color);
   --table-header-border-color: var(--bases-table-border-color);
+}
+/* The header row's sort chevron is the Frame's ink, as a header's glyphs are (the header row sits in the view, outside
+   the table container). */
+.bases-view .bases-table-header-sort {
+  --icon-color: var(--sol-bases-head-ink);
+  --icon-color-hover: var(--sol-bases-head-ink);
+  color: var(--sol-bases-head-ink);
 }
 .bases-table-container input,
 .bases-table-container textarea {
@@ -469,6 +477,12 @@ button.mod-warning {
 .menu-item.selected:not(.is-disabled) {
   background-color: color-mix(in srgb, var(--sol-accent) 16%, transparent);
   color: var(--sol-text-bright);
+}
+/* On an accent wash, nothing stays gray: the picked item's icon, and the picked file's type badge, take the accent. */
+.menu-item.selected:not(.is-disabled) .menu-item-icon,
+.suggestion-item.is-selected .suggestion-icon,
+.nav-file-title.is-active .nav-file-tag {
+  color: var(--sol-ink-accent);
 }
 
 /* ── Instrument chrome, after the app's own bars and floating windows ───────── */
@@ -628,9 +642,13 @@ body:not(.is-phone) .workspace-leaf.mod-active .tree-item-self.has-focus {
 }
 .workspace-drawer-tab-select .workspace-tab-header-inner-title,
 .workspace-drawer-tab-select .workspace-tab-header-inner-icon,
+.workspace-drawer-tab-select .workspace-tab-header-inner-chevron,
 .workspace-drawer-tab-options-list .workspace-tab-header.is-active .workspace-tab-header-inner-title,
 .workspace-drawer-tab-options-list .workspace-tab-header.is-active .workspace-tab-header-inner-icon {
   color: var(--sol-ink-accent);
+}
+.workspace-drawer-tab-select .workspace-tab-header-inner-chevron {
+  --icon-color: var(--sol-ink-accent);
 }
 .workspace-drawer-tab-options-list .workspace-tab-header:not(.is-active) .workspace-tab-header-inner-title {
   color: var(--sol-text-dim);
@@ -910,9 +928,17 @@ kbd {
   margin-bottom: 0;
   border-radius: 8px;
 }
-/* The header title in its accent's ink (DESIGN.md's Accent-Mix Ladder: --mix-ink, header titles). */
+/* The header title and its fold chevron in its accent's ink (DESIGN.md's Accent-Mix Ladder: --mix-ink, header titles
+   and chevrons). Obsidian colors the chevron through its collapse-icon variables. */
+.metadata-container .metadata-properties-heading {
+  --sol-head-ink: color-mix(in srgb, var(--sol-ink-accent) var(--sol-mix-ink), var(--sol-text-bright));
+  --collapse-icon-color: var(--sol-head-ink);
+  --collapse-icon-color-collapsed: var(--sol-head-ink);
+  --nav-collapse-icon-color: var(--sol-head-ink);
+  --nav-collapse-icon-color-collapsed: var(--sol-head-ink);
+}
 .metadata-container .metadata-properties-title {
-  color: color-mix(in srgb, var(--sol-ink-accent) var(--sol-mix-ink), var(--sol-text-bright));
+  color: var(--sol-head-ink);
   font-weight: 600;
 }
 .metadata-container .metadata-content {
