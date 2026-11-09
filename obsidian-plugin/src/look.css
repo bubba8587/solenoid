@@ -435,7 +435,7 @@ select.dropdown:focus {
 
 /* A base's grid draws with the note table's border variable, and its cells are fields that must not box. */
 .bases-view {
-  --sol-bases-head-ink: color-mix(in srgb, var(--sol-ink-frame) var(--sol-mix-ink), var(--sol-text-bright));
+  --sol-bases-head-ink: color-mix(in srgb, var(--sol-frame) var(--sol-mix-ink), var(--sol-text));
   --table-border-color: var(--bases-table-border-color);
   --table-header-border-color: var(--bases-table-border-color);
 }
@@ -970,7 +970,8 @@ kbd {
 /* The header title and its fold chevron in its accent's ink (DESIGN.md's Accent-Mix Ladder: --mix-ink, header titles
    and chevrons). Obsidian colors the chevron through its collapse-icon variables. */
 .metadata-container .metadata-properties-heading {
-  --sol-head-ink: color-mix(in srgb, var(--sol-ink-accent) var(--sol-mix-ink), var(--sol-text-bright));
+  /* The node header title's own formula (nodeCard.css): the accent 55% toward the text, in both modes. */
+  --sol-head-ink: color-mix(in srgb, var(--sol-accent) var(--sol-mix-ink), var(--sol-text));
   --collapse-icon-color: var(--sol-head-ink);
   --collapse-icon-color-collapsed: var(--sol-head-ink);
   --nav-collapse-icon-color: var(--sol-head-ink);
