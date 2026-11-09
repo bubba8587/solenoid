@@ -1,0 +1,1798 @@
+{
+ "AccruedInterestNode": {
+  "op": [
+   "maturity",
+   "periodic"
+  ]
+ },
+ "AddColumnNode": {
+  "addAs": [
+   "date",
+   "logical",
+   "number",
+   "text"
+  ]
+ },
+ "AggregateNode": {
+  "op": [
+   "avedev",
+   "avg",
+   "count",
+   "countblank",
+   "countdistinct",
+   "cv",
+   "devsq",
+   "geomean",
+   "harmean",
+   "iqr",
+   "kurt",
+   "mad",
+   "max",
+   "median",
+   "min",
+   "product",
+   "ptp",
+   "rms",
+   "sem",
+   "skew",
+   "skew_p",
+   "stdev",
+   "stdev_p",
+   "sum",
+   "sumsq",
+   "var_p",
+   "var_s"
+  ]
+ },
+ "AlertNode": {
+  "condition": [
+   "boolean",
+   "equals",
+   "range",
+   "text"
+  ]
+ },
+ "AllocatorNode": {
+  "mode": [
+   "budget",
+   "minProportional",
+   "minTarget"
+  ]
+ },
+ "AmortizationNode": {
+  "paymentTiming": [
+   "beg",
+   "end"
+  ]
+ },
+ "AntoineNode": {
+  "substance": [
+   "acetone",
+   "ammonia",
+   "benzene",
+   "ethanol",
+   "hexane",
+   "isopropanol",
+   "methanol",
+   "toluene",
+   "water"
+  ]
+ },
+ "ArgMinMaxNode": {
+  "op": [
+   "argmax",
+   "argmin",
+   "argsort",
+   "argsort_desc",
+   "which"
+  ]
+ },
+ "ArithmeticNode": {
+  "op": [
+   "add",
+   "div",
+   "mod",
+   "mul",
+   "pow",
+   "quotient",
+   "sub"
+  ]
+ },
+ "BesselNode": {
+  "op": [
+   "besseli",
+   "besselj",
+   "besselk",
+   "bessely"
+  ]
+ },
+ "BinNode": {
+  "mode": [
+   "breaks",
+   "quantiles"
+  ]
+ },
+ "BitwiseNode": {
+  "op": [
+   "bitand",
+   "bitlshift",
+   "bitor",
+   "bitrshift",
+   "bitxor"
+  ]
+ },
+ "BondPricingNode": {
+  "op": [
+   "oddfprice",
+   "oddfyield",
+   "oddlprice",
+   "oddlyield",
+   "price",
+   "yield"
+  ]
+ },
+ "BooleanOpNode": {
+  "op": [
+   "and",
+   "nand",
+   "nor",
+   "or",
+   "xnor",
+   "xor"
+  ]
+ },
+ "ByAxisNode": {
+  "castTo": [
+   "date",
+   "logical",
+   "none",
+   "number",
+   "text"
+  ],
+  "op": [
+   "col",
+   "row"
+  ]
+ },
+ "CastNode": {
+  "op": [
+   "complex",
+   "date",
+   "logical",
+   "number",
+   "text"
+  ]
+ },
+ "CharCodeNode": {
+  "op": [
+   "char",
+   "code"
+  ]
+ },
+ "ChartBuilderNode": {
+  "target": [
+   "area",
+   "bar",
+   "boxplot",
+   "bubble",
+   "calheat",
+   "candle",
+   "column",
+   "contour",
+   "funnel",
+   "gantt",
+   "heatmap",
+   "histogram",
+   "histogram2d",
+   "kpi",
+   "line",
+   "overlay",
+   "pie",
+   "proportion",
+   "quiver",
+   "radar",
+   "radialbar",
+   "record",
+   "sankey",
+   "scale",
+   "scatter",
+   "surface",
+   "waterfall",
+   "xyline"
+  ]
+ },
+ "ChartNode": {
+  "op": [
+   "area",
+   "bar",
+   "bubble",
+   "column",
+   "funnel",
+   "line",
+   "pie",
+   "radar",
+   "radialbar",
+   "scatter",
+   "xyline"
+  ]
+ },
+ "ChoiceLadderNode": {
+  "normalize": [
+   "max",
+   "none",
+   "range",
+   "rank"
+  ]
+ },
+ "ColorBlendNode": {
+  "mode": [
+   "burn",
+   "darken",
+   "difference",
+   "dodge",
+   "exclusion",
+   "hard-light",
+   "lighten",
+   "mix",
+   "multiply",
+   "overlay",
+   "screen",
+   "soft-light"
+  ]
+ },
+ "ColorPickerNode": {
+  "format": [
+   "hex",
+   "rgb"
+  ],
+  "mode": [
+   "hex",
+   "hsv",
+   "rgb"
+  ]
+ },
+ "ColumnsNode": {
+  "op": [
+   "drop",
+   "keep"
+  ]
+ },
+ "CombinationsNode": {
+  "mode": [
+   "combinations",
+   "permutations"
+  ]
+ },
+ "CombinatoricsNode": {
+  "op": [
+   "combin",
+   "combina",
+   "fact",
+   "factdouble",
+   "permut",
+   "permutationa"
+  ]
+ },
+ "ComparisonNode": {
+  "op": [
+   "eq",
+   "gt",
+   "gte",
+   "lt",
+   "lte",
+   "neq"
+  ]
+ },
+ "ComplexBinaryNode": {
+  "op": [
+   "div",
+   "product",
+   "sub",
+   "sum"
+  ]
+ },
+ "ComplexUnaryNode": {
+  "op": [
+   "conj",
+   "cos",
+   "cosh",
+   "cot",
+   "csc",
+   "csch",
+   "exp",
+   "ln",
+   "log10",
+   "log2",
+   "sec",
+   "sech",
+   "sin",
+   "sinh",
+   "sqrt",
+   "tan"
+  ]
+ },
+ "CompositeInputNode": {
+  "distribution": [
+   "normal",
+   "uniform"
+  ]
+ },
+ "CompositeNode": {
+  "runMode": [
+   "by-row",
+   "data-table",
+   "goal-seek",
+   "manual",
+   "montecarlo",
+   "pipeline",
+   "scenarios",
+   "simulation",
+   "single"
+  ],
+  "stopWhenOp": [
+   "eq",
+   "ge",
+   "gt",
+   "le",
+   "lt",
+   "ne"
+  ]
+ },
+ "ComputedColumnNode": {
+  "addAs": [
+   "auto",
+   "date",
+   "logical",
+   "number",
+   "text"
+  ]
+ },
+ "ConditionalRegionsNode": {
+  "mode": [
+   "inclusive",
+   "strict"
+  ],
+  "op": [
+   "bool",
+   "num",
+   "text"
+  ]
+ },
+ "ConfidenceNode": {
+  "op": [
+   "norm",
+   "t"
+  ]
+ },
+ "ConstantNode": {
+  "op": [
+   "e",
+   "false",
+   "inf",
+   "neg-inf",
+   "neg-one",
+   "one",
+   "phi",
+   "pi",
+   "tau",
+   "true",
+   "zero"
+  ]
+ },
+ "ConvertNode": {
+  "inFormat": [
+   "auto",
+   "custom",
+   "date_custom",
+   "date_dmy",
+   "date_dow",
+   "date_iso",
+   "date_long",
+   "date_med",
+   "date_us",
+   "datetime",
+   "decimal",
+   "fraction",
+   "fraction_adv",
+   "integer",
+   "percent",
+   "scientific",
+   "time_12",
+   "time_24"
+  ],
+  "outFormat": [
+   "auto",
+   "custom",
+   "date_custom",
+   "date_dmy",
+   "date_dow",
+   "date_iso",
+   "date_long",
+   "date_med",
+   "date_us",
+   "datetime",
+   "decimal",
+   "fraction",
+   "fraction_adv",
+   "integer",
+   "percent",
+   "scientific",
+   "time_12",
+   "time_24"
+  ]
+ },
+ "ConvolveNode": {
+  "form": [
+   "full",
+   "same",
+   "valid"
+  ],
+  "mode": [
+   "grid",
+   "list"
+  ]
+ },
+ "CorrelNode": {
+  "op": [
+   "correl",
+   "covariance-p",
+   "covariance-s",
+   "intercept",
+   "kendall",
+   "rsq",
+   "slope",
+   "spearman",
+   "steyx"
+  ]
+ },
+ "CorrMatrixNode": {
+  "method": [
+   "covariance",
+   "kendall",
+   "pearson",
+   "spearman"
+  ]
+ },
+ "CouponNode": {
+  "op": [
+   "coupdaybs",
+   "coupdays",
+   "coupdaysnc",
+   "coupncd",
+   "coupnum",
+   "couppcd"
+  ]
+ },
+ "CubeRollupNode": {
+  "agg": [
+   "avg",
+   "count",
+   "max",
+   "median",
+   "min",
+   "mode",
+   "percentof",
+   "product",
+   "stdev",
+   "stdevp",
+   "sum",
+   "var",
+   "varp"
+  ]
+ },
+ "DataFeedNode": {
+  "provider": [
+   "alphavantage",
+   "fred"
+  ]
+ },
+ "DateAddNode": {
+  "op": [
+   "edate",
+   "eomonth"
+  ]
+ },
+ "DateDiffNode": {
+  "op": [
+   "days",
+   "days360",
+   "md",
+   "months",
+   "yd",
+   "yearfrac",
+   "years",
+   "ym"
+  ]
+ },
+ "DatePartNode": {
+  "op": [
+   "day",
+   "hour",
+   "minute",
+   "month",
+   "second",
+   "year"
+  ]
+ },
+ "DateTimeValueNode": {
+  "op": [
+   "date",
+   "time"
+  ]
+ },
+ "DateTruncNode": {
+  "unit": [
+   "day",
+   "month",
+   "quarter",
+   "week",
+   "week_sun",
+   "year"
+  ]
+ },
+ "DecisionMatrixNode": {
+  "detail": [
+   "breakdown",
+   "summary"
+  ],
+  "normalize": [
+   "max",
+   "none",
+   "range",
+   "rank"
+  ]
+ },
+ "DecisionSensitivityNode": {
+  "mode": [
+   "flips",
+   "scenarios"
+  ],
+  "normalize": [
+   "max",
+   "none",
+   "range",
+   "rank"
+  ]
+ },
+ "DecomposeNode": {
+  "model": [
+   "additive",
+   "multiplicative",
+   "stl"
+  ]
+ },
+ "DepreciationNode": {
+  "op": [
+   "db",
+   "ddb",
+   "sln",
+   "syd",
+   "vdb"
+  ]
+ },
+ "DiffNode": {
+  "mode": [
+   "grid",
+   "list"
+  ],
+  "op": [
+   "delta",
+   "gradient",
+   "laplacian",
+   "percent"
+  ]
+ },
+ "DiscountSecurityNode": {
+  "op": [
+   "disc",
+   "intrate",
+   "pricedisc",
+   "pricemat",
+   "received",
+   "tbilleq",
+   "tbillprice",
+   "tbillyield",
+   "yielddisc",
+   "yieldmat"
+  ]
+ },
+ "DisplayNode": {
+  "unitSuffix": [
+   "deg",
+   "none",
+   "percent",
+   "rad"
+  ]
+ },
+ "DistributionsNode": {
+  "form": [
+   "2t",
+   "cdf",
+   "half",
+   "inv",
+   "inv2t",
+   "invrt",
+   "pdf",
+   "pmf",
+   "rt",
+   "sample"
+  ],
+  "op": [
+   "beta",
+   "binom",
+   "chisq",
+   "expon",
+   "f",
+   "gamma",
+   "gauss",
+   "hypgeom",
+   "lognorm",
+   "negbinom",
+   "normal",
+   "normal-s",
+   "phi",
+   "poisson",
+   "t",
+   "weibull"
+  ]
+ },
+ "DollarNode": {
+  "op": [
+   "dollarde",
+   "dollarfr"
+  ]
+ },
+ "DropBlankRowsNode": {
+  "mode": [
+   "all",
+   "any"
+  ]
+ },
+ "DurationNode": {
+  "op": [
+   "duration",
+   "mduration"
+  ]
+ },
+ "EpochNode": {
+  "op": [
+   "from",
+   "to"
+  ],
+  "unit": [
+   "ms",
+   "s"
+  ]
+ },
+ "ESeriesNode": {
+  "op": [
+   "E12",
+   "E24",
+   "E3",
+   "E48",
+   "E6",
+   "E96"
+  ]
+ },
+ "ExpressionNode": {
+  "castTo": [
+   "date",
+   "logical",
+   "none",
+   "number",
+   "text"
+  ]
+ },
+ "FillBlanksNode": {
+  "dir": [
+   "down",
+   "up"
+  ]
+ },
+ "FillNode": {
+  "op": [
+   "bfill",
+   "coalesce",
+   "constant",
+   "drop",
+   "ffill",
+   "interpolate",
+   "mean",
+   "median",
+   "mode"
+  ]
+ },
+ "FilterFrameNode": {
+  "combine": [
+   "and",
+   "or"
+  ]
+ },
+ "FilterNode": {
+  "combine": [
+   "and",
+   "or"
+  ]
+ },
+ "FindPeaksNode": {
+  "mode": [
+   "grid",
+   "list"
+  ]
+ },
+ "FisherNode": {
+  "op": [
+   "fisher",
+   "fisherinv"
+  ]
+ },
+ "FixedNode": {
+  "noCommas": [
+   "commas",
+   "no_commas"
+  ]
+ },
+ "ForecastNode": {
+  "op": [
+   "exponential",
+   "linear"
+  ]
+ },
+ "FormatControllerNode": {
+  "decimalMode": [
+   "places",
+   "sigfigs"
+  ],
+  "lambdaView": [
+   "katex",
+   "mono",
+   "signature",
+   "syntax"
+  ],
+  "logicalStyle": [
+   "binary",
+   "check",
+   "truefalse",
+   "yesno"
+  ],
+  "negativeStyle": [
+   "minus",
+   "paren",
+   "red",
+   "redparen"
+  ],
+  "scaleMode": [
+   "b",
+   "k",
+   "m",
+   "none"
+  ],
+  "side": [
+   "input",
+   "output"
+  ],
+  "socketDataType": [
+   "any",
+   "anycombo",
+   "anydata",
+   "anylist",
+   "anytable",
+   "chart",
+   "complex",
+   "complexcombo",
+   "complexlist",
+   "complextable",
+   "cube",
+   "date",
+   "datecombo",
+   "datelist",
+   "datetable",
+   "document",
+   "frame",
+   "lambda",
+   "list",
+   "logical",
+   "logicalcombo",
+   "logicallist",
+   "logicaltable",
+   "number",
+   "numlist",
+   "strcombo",
+   "string",
+   "strlist",
+   "strtable",
+   "table",
+   "trueany"
+  ],
+  "textAlign": [
+   "center",
+   "left",
+   "right"
+  ],
+  "textCase": [
+   "lower",
+   "none",
+   "proper",
+   "upper"
+  ]
+ },
+ "FuzzyMatchNode": {
+  "method": [
+   "damerau",
+   "jaro_winkler",
+   "levenshtein",
+   "ratio"
+  ]
+ },
+ "FxNode": {
+  "mode": [
+   "history",
+   "spot"
+  ]
+ },
+ "GaugeNode": {
+  "mode": [
+   "bar",
+   "dial"
+  ]
+ },
+ "GCDNode": {
+  "op": [
+   "gcd",
+   "lcm"
+  ]
+ },
+ "GetColumnNode": {
+  "readAs": [
+   "auto",
+   "date",
+   "logical",
+   "number",
+   "text"
+  ]
+ },
+ "GroupByFrameNode": {
+  "agg": [
+   "avg",
+   "count",
+   "max",
+   "median",
+   "min",
+   "mode",
+   "percentof",
+   "product",
+   "stdev",
+   "stdevp",
+   "sum",
+   "var",
+   "varp"
+  ]
+ },
+ "GroupListsNode": {
+  "agg": [
+   "avg",
+   "count",
+   "max",
+   "min",
+   "sum"
+  ]
+ },
+ "HashNode": {
+  "algorithm": [
+   "crc32",
+   "fnv1a32",
+   "fnv1a64",
+   "md5",
+   "sha1",
+   "sha256"
+  ]
+ },
+ "HeadersNode": {
+  "action": [
+   "demote",
+   "promote"
+  ]
+ },
+ "HeadNode": {
+  "op": [
+   "first",
+   "last",
+   "range",
+   "skip"
+  ]
+ },
+ "HistogramNode": {
+  "mode": [
+   "1d",
+   "2d"
+  ]
+ },
+ "HypothesisTestNode": {
+  "op": [
+   "anova",
+   "binomtest",
+   "chisq",
+   "f",
+   "fisher",
+   "kruskal",
+   "ks",
+   "mannwhitney",
+   "proptest",
+   "t-equal",
+   "t-paired",
+   "t-welch",
+   "wilcoxon",
+   "z"
+  ]
+ },
+ "IFErrorNode": {
+  "op": [
+   "iferror",
+   "ifna"
+  ]
+ },
+ "InterpolateNode": {
+  "method": [
+   "idw",
+   "nearest"
+  ],
+  "mode": [
+   "grid",
+   "list",
+   "points"
+  ]
+ },
+ "IRRNode": {
+  "op": [
+   "dates",
+   "periods"
+  ]
+ },
+ "IsEvenOddNode": {
+  "op": [
+   "iseven",
+   "isodd"
+  ]
+ },
+ "IsTestNode": {
+  "op": [
+   "isblank",
+   "iserr",
+   "iserror",
+   "islogical",
+   "isna",
+   "isnontext",
+   "isnull",
+   "isnumber",
+   "istext"
+  ]
+ },
+ "JoinNode": {
+  "asofDirection": [
+   "backward",
+   "forward",
+   "nearest"
+  ],
+  "how": [
+   "anti",
+   "asof",
+   "cross",
+   "inner",
+   "left",
+   "outer",
+   "right",
+   "semi"
+  ]
+ },
+ "LinestNode": {
+  "op": [
+   "exponential",
+   "linear"
+  ]
+ },
+ "ListIndexNode": {
+  "indexAxes": [
+   "position",
+   "rowcol"
+  ]
+ },
+ "ListInputNode": {
+  "dataType": [
+   "date",
+   "logical",
+   "number",
+   "string"
+  ]
+ },
+ "MakeArrayNode": {
+  "castTo": [
+   "date",
+   "logical",
+   "none",
+   "number",
+   "text"
+  ]
+ },
+ "MapTableNode": {
+  "castTo": [
+   "date",
+   "logical",
+   "none",
+   "number",
+   "text"
+  ]
+ },
+ "MatDetNode": {
+  "op": [
+   "mdeterm",
+   "minverse",
+   "norm",
+   "pinv",
+   "rank",
+   "trace"
+  ]
+ },
+ "MatEigenNode": {
+  "op": [
+   "eigen",
+   "svd"
+  ]
+ },
+ "MathFXNode": {
+  "_resolvedAngleMode": [
+   "deg",
+   "rad"
+  ],
+  "angleMode": [
+   "auto",
+   "deg",
+   "rad"
+  ],
+  "op": [
+   "abs",
+   "acos",
+   "acosh",
+   "acot",
+   "acoth",
+   "asin",
+   "asinh",
+   "atan",
+   "atanh",
+   "cos",
+   "cosh",
+   "cot",
+   "coth",
+   "csc",
+   "csch",
+   "erf",
+   "erfc",
+   "even",
+   "exp",
+   "gamma",
+   "gammaln",
+   "int",
+   "log",
+   "log10",
+   "log2",
+   "odd",
+   "sec",
+   "sech",
+   "sign",
+   "sin",
+   "sinh",
+   "sqrt",
+   "sqrtpi",
+   "tan",
+   "tanh",
+   "trunc"
+  ]
+ },
+ "MRoundNode": {
+  "op": [
+   "down",
+   "nearest",
+   "up"
+  ]
+ },
+ "NormalizeNode": {
+  "mode": [
+   "minmax",
+   "zscore"
+  ]
+ },
+ "NPVNode": {
+  "op": [
+   "dates",
+   "periods"
+  ]
+ },
+ "OutliersNode": {
+  "method": [
+   "iqr",
+   "mad",
+   "z"
+  ]
+ },
+ "PadNode": {
+  "op": [
+   "left",
+   "right"
+  ]
+ },
+ "PadTextNode": {
+  "side": [
+   "center",
+   "left",
+   "right"
+  ]
+ },
+ "PaymentBreakdownNode": {
+  "op": [
+   "cumipmt",
+   "cumprinc",
+   "ipmt",
+   "ppmt"
+  ],
+  "paymentTiming": [
+   "beg",
+   "end"
+  ]
+ },
+ "PayoffPlannerNode": {
+  "mode": [
+   "schedule",
+   "summary"
+  ],
+  "order": [
+   "avalanche",
+   "snowball"
+  ]
+ },
+ "PhysicsConstantNode": {
+  "op": [
+   "G",
+   "a0",
+   "atm",
+   "c",
+   "e",
+   "eps0",
+   "faraday",
+   "g0",
+   "h",
+   "hbar",
+   "kb",
+   "ke",
+   "me",
+   "mn",
+   "mp",
+   "mu0",
+   "na",
+   "rgas",
+   "rydberg",
+   "sigma",
+   "wien",
+   "z0"
+  ]
+ },
+ "PivotNode": {
+  "agg": [
+   "avg",
+   "count",
+   "max",
+   "median",
+   "min",
+   "mode",
+   "percentof",
+   "product",
+   "stdev",
+   "stdevp",
+   "sum",
+   "var",
+   "varp"
+  ]
+ },
+ "ProportionNode": {
+  "op": [
+   "treemap",
+   "waffle"
+  ]
+ },
+ "QrCodeNode": {
+  "qrTemplate": [
+   "text",
+   "vcard",
+   "wifi"
+  ]
+ },
+ "RandArrayNode": {
+  "mode": [
+   "grid",
+   "list"
+  ]
+ },
+ "RankPercentileNode": {
+  "op": [
+   "large",
+   "percentile-exc",
+   "percentile-inc",
+   "percentrank-exc",
+   "percentrank-inc",
+   "quartile-exc",
+   "quartile-inc",
+   "rank-avg",
+   "rank-eq",
+   "small"
+  ]
+ },
+ "RecordNode": {
+  "op": [
+   "board",
+   "detail",
+   "gallery",
+   "list"
+  ]
+ },
+ "ReduceLambdaNode": {
+  "castTo": [
+   "date",
+   "logical",
+   "none",
+   "number",
+   "text"
+  ]
+ },
+ "RegexNode": {
+  "op": [
+   "extract",
+   "extract_all",
+   "extract_groups",
+   "replace",
+   "test"
+  ]
+ },
+ "ReplaceValuesNode": {
+  "mode": [
+   "cell",
+   "substring"
+  ]
+ },
+ "ResistorCodeNode": {
+  "bands": [
+   "4",
+   "5"
+  ]
+ },
+ "ReturnsNode": {
+  "op": [
+   "cagr",
+   "cumulative",
+   "drawdown",
+   "log",
+   "maxdrawdown",
+   "sharpe",
+   "simple",
+   "sortino",
+   "volatility"
+  ]
+ },
+ "ReverseNode": {
+  "mode": [
+   "grid",
+   "list"
+  ]
+ },
+ "RomanArabicNode": {
+  "op": [
+   "arabic",
+   "roman"
+  ]
+ },
+ "RoundNNode": {
+  "op": [
+   "round",
+   "rounddown",
+   "roundup"
+  ]
+ },
+ "RunningNode": {
+  "agg": [
+   "avg",
+   "max",
+   "median",
+   "min",
+   "product",
+   "stdev",
+   "sum"
+  ]
+ },
+ "ScanLambdaNode": {
+  "castTo": [
+   "date",
+   "logical",
+   "none",
+   "number",
+   "text"
+  ]
+ },
+ "ScheduleNode": {
+  "criticalPaths": [
+   "longest",
+   "many",
+   "one"
+  ],
+  "mode": [
+   "calendar",
+   "working"
+  ],
+  "precision": [
+   "days",
+   "minutes"
+  ],
+  "progress": [
+   "move",
+   "split"
+  ]
+ },
+ "SeriesNode": {
+  "op": [
+   "fibonacci",
+   "geometric",
+   "linspace",
+   "range",
+   "repeat",
+   "sequence"
+  ]
+ },
+ "SetsNode": {
+  "op": [
+   "difference",
+   "disjoint",
+   "equal",
+   "intersect",
+   "subset",
+   "superset",
+   "symdiff",
+   "union"
+  ]
+ },
+ "SettleNode": {
+  "mode": [
+   "totals",
+   "transactions"
+  ],
+  "split": [
+   "equal",
+   "weighted"
+  ]
+ },
+ "ShiftNode": {
+  "wrap": [
+   "blank",
+   "wrap"
+  ]
+ },
+ "ShuffleNode": {
+  "op": [
+   "sample",
+   "shuffle"
+  ]
+ },
+ "SlicerNode": {
+  "cachedColumnType": [
+   "date",
+   "logical",
+   "number",
+   "string"
+  ]
+ },
+ "SmoothNode": {
+  "mode": [
+   "grid",
+   "list"
+  ],
+  "op": [
+   "gaussian",
+   "lowess",
+   "mean",
+   "median",
+   "savgol"
+  ]
+ },
+ "SolidNode": {
+  "op": [
+   "box",
+   "cone",
+   "cube",
+   "cylinder",
+   "pyramid",
+   "sphere"
+  ]
+ },
+ "SortFrameNode": {
+  "dir": [
+   "asc",
+   "desc"
+  ]
+ },
+ "SortNode": {
+  "order": [
+   "asc",
+   "desc"
+  ]
+ },
+ "SparklineNode": {
+  "op": [
+   "column",
+   "line",
+   "winloss"
+  ]
+ },
+ "SpellNumberNode": {
+  "mode": [
+   "ordinal",
+   "words"
+  ]
+ },
+ "SplitFrameNode": {
+  "colType": [
+   "all",
+   "date",
+   "logical",
+   "number",
+   "string"
+  ]
+ },
+ "StackNode": {
+  "op": [
+   "hstack",
+   "vstack"
+  ]
+ },
+ "SumIfsNode": {
+  "match": [
+   "all",
+   "any"
+  ],
+  "op": [
+   "averageifs",
+   "countifs",
+   "maxifs",
+   "minifs",
+   "sumifs"
+  ]
+ },
+ "SumProductNode": {
+  "op": [
+   "sumproduct",
+   "sumx2my2",
+   "sumx2py2",
+   "sumxmy2"
+  ]
+ },
+ "SurfaceNode": {
+  "op": [
+   "contour",
+   "surface"
+  ]
+ },
+ "TableDiagNode": {
+  "offDiag": [
+   "blank",
+   "zero"
+  ]
+ },
+ "TableInputNode": {
+  "dataType": [
+   "date",
+   "logical",
+   "number",
+   "string"
+  ]
+ },
+ "TableMultNode": {
+  "op": [
+   "kron",
+   "mmult"
+  ]
+ },
+ "TableReshapeNode": {
+  "op": [
+   "tocol",
+   "torow",
+   "wrapcols",
+   "wraprows"
+  ],
+  "scanBy": [
+   "col",
+   "row"
+  ],
+  "skipCells": [
+   "blanks",
+   "both",
+   "errors",
+   "none"
+  ]
+ },
+ "TableSelectNode": {
+  "op": [
+   "choosecols",
+   "chooserows"
+  ]
+ },
+ "TableTransposeNode": {
+  "op": [
+   "rot90",
+   "transpose"
+  ]
+ },
+ "TableUnitNode": {
+  "offDiag": [
+   "blank",
+   "zero"
+  ]
+ },
+ "TakeDropNode": {
+  "op": [
+   "drop",
+   "take"
+  ]
+ },
+ "TaskNotesNode": {
+  "provider": [
+   "calendar",
+   "stats",
+   "tasks"
+  ]
+ },
+ "TextAfterBeforeNode": {
+  "op": [
+   "after",
+   "before"
+  ]
+ },
+ "TextFindNode": {
+  "op": [
+   "find",
+   "search"
+  ]
+ },
+ "TextJoinNode": {
+  "ignoreEmpty": [
+   "ignore",
+   "include"
+  ]
+ },
+ "TextSimilarityNode": {
+  "method": [
+   "damerau",
+   "jaro_winkler",
+   "levenshtein",
+   "ratio"
+  ]
+ },
+ "TextSliceNode": {
+  "op": [
+   "left",
+   "mid",
+   "right"
+  ]
+ },
+ "TextTransformNode": {
+  "op": [
+   "clean",
+   "lower",
+   "proper",
+   "slugify",
+   "trim",
+   "unaccent",
+   "upper"
+  ]
+ },
+ "TodayNowNode": {
+  "op": [
+   "now",
+   "today"
+  ]
+ },
+ "TrapzNode": {
+  "mode": [
+   "grid",
+   "list"
+  ]
+ },
+ "TvmNode": {
+  "paymentTiming": [
+   "beg",
+   "end"
+  ]
+ },
+ "TwoInputMathNode": {
+  "op": [
+   "atan2",
+   "delta",
+   "gestep",
+   "hypot",
+   "log"
+  ]
+ },
+ "UrlEncodeNode": {
+  "op": [
+   "base64",
+   "decode",
+   "encode",
+   "unbase64"
+  ]
+ },
+ "ValueInputNode": {
+  "decimalMode": [
+   "places",
+   "sigfigs"
+  ],
+  "logicalStyle": [
+   "binary",
+   "check",
+   "truefalse",
+   "yesno"
+  ],
+  "negativeStyle": [
+   "minus",
+   "paren",
+   "red",
+   "redparen"
+  ],
+  "op": [
+   "date",
+   "logical",
+   "number",
+   "string"
+  ],
+  "scaleMode": [
+   "b",
+   "k",
+   "m",
+   "none"
+  ],
+  "textAlign": [
+   "center",
+   "left",
+   "right"
+  ],
+  "textCase": [
+   "lower",
+   "none",
+   "proper",
+   "upper"
+  ]
+ },
+ "WeatherNode": {
+  "unit": [
+   "C",
+   "F"
+  ]
+ },
+ "WeekInfoNode": {
+  "op": [
+   "isoweeknum",
+   "weekday",
+   "weeknum"
+  ]
+ },
+ "WeightedNode": {
+  "op": [
+   "wavg",
+   "wstdev",
+   "wvar"
+  ]
+ },
+ "WindowNode": {
+  "agg": [
+   "cumavg",
+   "cumcount",
+   "cummax",
+   "cummin",
+   "cumsum",
+   "dense_rank",
+   "diff",
+   "first",
+   "group_avg",
+   "group_count",
+   "group_max",
+   "group_min",
+   "group_sum",
+   "lag",
+   "last",
+   "lead",
+   "ntile",
+   "pct_change",
+   "percent_rank",
+   "rank",
+   "rolling_avg",
+   "rolling_max",
+   "rolling_min",
+   "rolling_sum",
+   "row_number",
+   "share"
+  ]
+ },
+ "WorkdaysNode": {
+  "op": [
+   "networkdays",
+   "workday"
+  ]
+ },
+ "WriteFileNode": {
+  "format": [
+   "csv",
+   "json",
+   "text"
+  ],
+  "status": [
+   "error",
+   "idle",
+   "ok",
+   "writing"
+  ]
+ },
+ "WriteObsidianNode": {
+  "mode": [
+   "append",
+   "block",
+   "overwrite"
+  ],
+  "status": [
+   "error",
+   "idle",
+   "ok",
+   "previewing",
+   "writing"
+  ],
+  "target": [
+   "auto",
+   "note",
+   "properties"
+  ]
+ },
+ "WriteTasksNode": {
+  "status": [
+   "error",
+   "idle",
+   "ok",
+   "previewing",
+   "writing"
+  ]
+ },
+ "XLookupNode": {
+  "direction": [
+   "columns",
+   "rows"
+  ],
+  "matchMode": [
+   "contains",
+   "endsWith",
+   "eq",
+   "gt",
+   "gte",
+   "isblank",
+   "lt",
+   "lte",
+   "neq",
+   "notblank",
+   "startsWith"
+  ],
+  "searchMode": [
+   "first",
+   "last"
+  ]
+ },
+ "XMatchNode": {
+  "matchMode": [
+   "exact",
+   "next_larger",
+   "next_smaller"
+  ],
+  "searchMode": [
+   "first",
+   "last"
+  ]
+ }
+}

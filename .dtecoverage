@@ -98,3 +98,6 @@ why: JSON can't carry a citation; the core's call table is frozen from the TypeS
 crates/solenoid-core/data
 scripts/check-rust.sh
 scripts/fix-unused.mjs
+
+why: JSON can't carry a citation; scripts/setting-choices.mjs generates it from the card classes' types and cites [[C26]] opArgDistinct
+src/graph/settingChoices.json

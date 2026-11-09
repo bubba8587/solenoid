@@ -4,6 +4,7 @@ import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
 import { readTextForm, parseNodeLine } from "./textForm";
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { opVocabByCtor, vocabFieldOf } from "./opVocab";
+import settingChoices from "./settingChoices.json";
 import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "./nodeInit";
 import { NAME_RE } from "./nodeNaming";
 import { literalFieldOf, restoreLiterals, type LiteralFieldHost } from "./literalFields";
@@ -153,6 +154,14 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     if (typeof opValue === "string" && vocab && vocab.size >= 2 && !vocab.has(opValue)) {
       const what = vocabField === "op" ? "Ops" : "Values";
       issues.push({ line: at(name), node: name, message: `unknown ${vocabField} "${opValue}" for ${sn.type}${nearest(opValue, vocab.keys())}. ${what}: ${keyList([...vocab.keys()])}.` });
+    }
+
+    // A setting typed as a fixed set of words takes only those (`scripts/setting-choices.mjs` reads them off the types).
+    const choices = (settingChoices as Record<string, Record<string, string[]>>)[sn.type] ?? {};
+    for (const [k, allowed] of Object.entries(choices)) {
+      const v = sn.init?.[k];
+      if (k === vocabField || typeof v !== "string" || allowed.includes(v)) continue;
+      issues.push({ line: at(name), node: name, message: `unknown ${k} "${v}" for ${sn.type}${nearest(v, allowed)}. Values: ${keyList(allowed)}.` });
     }
 
     const internal = sn.init?.internal as { nodes?: unknown; connections?: unknown } | undefined;

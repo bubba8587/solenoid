@@ -7,6 +7,7 @@ import { SolenoidSocket, SOCKET_TYPE_LABELS, elementFamilyOf, latticeRank, type 
 import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER, extractInit } from "./nodeInit";
 import { NODE_OPS } from "./nodeOps";
 import { opVocabByCtor } from "./opVocab";
+import settingChoices from "./settingChoices.json";
 import type { FilterOp } from "./frameOps";
 import type { FrameColType } from "./frame";
 
@@ -221,6 +222,11 @@ export function buildGroundingSpec(): string {
       w(`- out: ${first.outputs || "—"}`);
     }
     if (info.initKeys.length > 0) w(`- init: ${info.initKeys.join(", ")}`);
+    // The settings that take one of a fixed set of words; `op` and an aggregator are listed with their labels below.
+    const choices = (settingChoices as Record<string, Record<string, string[]>>)[ctorName] ?? {};
+    for (const k of info.initKeys) {
+      if (choices[k] && k !== "op" && !(k === "agg" && opVocabByCtor().has(ctorName))) w(`- ${k}: ${choices[k].map((v) => `\`${v}\``).join(" | ")}`);
+    }
     const inline: string[] = [];
     if (info.litKeys.length > 0) inline.push(`lit: ${info.litKeys.join(", ")}`);
     else if (info.litOpen) inline.push(`lit: (input-row keys)`);
