@@ -6,6 +6,21 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-09c: open-latitude fixes after 1.6, the headless runner for agents; cloud session)
+- **Align, Distribute and a card opening end with the No-Overlap Pass** ([[C112]] noOverlapsEver; `selectionOps.ts`
+  `settle`, `cardsExpanded`), the cards just placed or opened holding still. Left: members of one group (backlog).
+- **A Chart plots a table** (an HSTACK, a matrix) as the frame of its columns, one row as a list; it drew an empty plot
+  (`nodes/visual.rs` `chart`, `chartTable.test.ts`). **List Input keeps a typed gap** (`1,,3`) as a blank item
+  (`list_row_items`). **`+3 days` reads as a relative date** (`is_relative`'s signed count).
+- **SUMX2MY2, SUMX2PY2, SUMXMY2 count a logical in a pair** ([[D108]] aggregatesCountLogicals, which now names them);
+  a pair holding text is still skipped, the author's call (backlog).
+- **`run-graph` for agents and scripts**: it takes shot-graph's short form, `--set name=value` types into an input
+  card, `--out name` prints only that card, `--formula` answers one formula; a card answers to its document name (the
+  text form's `Name:`) or id before its label, and an unlabeled card's output is keyed by that name.
+- **A cloud container can start hundreds of commits behind `develop`** (this one was 352 behind, a shallow clone): `git
+  fetch origin develop` and compare before the first edit, or the first push is refused and the fixtures and wasm are
+  redone on the new base.
+
 ### SESSION DIGEST (2026-11-09b: two pre-1.6 safety fixes; cloud session)
 - **The desktop's fetch is `net_fetch`** (`src-tauri/src/net.rs`), the http plugin gone: what someone else wrote stays
   off this computer and the local network by the address a name resolves to, on every redirect, with no proxy between;

@@ -1,12 +1,13 @@
 // Runs a saved graph (JSON or the text form) headlessly through a real editor and engine and prints
-// every node's outputs as JSON, keyed by label (else type, with a #n suffix on repeats). The strict
+// every node's outputs as JSON, keyed by label (else its document name, else type; a #n suffix on repeats). The strict
 // validator gates the run (--force skips it). Never calls initFrameBackend, so every frame verb runs
 // on the JS oracle with no Tauri dependency.
 //   npm run run-graph -- <graph.json|graph.txt> [--set name=value]… [--out name]…
 //   npm run run-graph -- --formula 'PMT(rate / 12, 60, 10000)' --set rate=0.05
 // The JSON may be the short form shot-graph takes (`scripts/shot-graph-expand.mjs`: cables as "a.out -> b.in" strings,
 // a Frame Input's `frame`). `--set` types a value into the input card of that name before the run, `--out` prints only
-// the named cards, and `--formula` runs one formula, its variables set by `--set`, and prints its answer alone.
+// the named cards, and `--formula` runs one formula, its variables set by `--set`, and prints its answer alone. A card
+// is named by its document name (the text form's `Name:`) or its id, else by its label.
 // `npm run build:cli` bundles it into dist-cli/ (run-graph.mjs + the engine's wasm), which needs only Node.
 
 import { readFileSync, realpathSync } from "node:fs";
@@ -31,6 +32,8 @@ import { expand } from "./shot-graph-expand.mjs";
 type SavedNode = {
   id: string;
   type: string;
+  /** The card's name in the document, which the text form addresses it by. */
+  name?: string;
   init?: Record<string, unknown>;
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
@@ -130,11 +133,19 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
     );
   }
 
+  // A card by its document name or id, else by its label, which several cards may share.
+  const named = (flag: string, want: string): SavedNode[] => {
+    const own = g.nodes.filter((sn) => sameName(sn.name ?? "", want) || sameName(sn.id, want));
+    const hits = own.length ? own : g.nodes.filter((sn) => sameName(nameOf(byId.get(sn.id)!, sn.type), want));
+    if (hits.length === 0) throw new Error(`${flag} ${want}: no card has that name.`);
+    return hits;
+  };
   for (const [name, text] of Object.entries(opts.set ?? {})) {
-    const hits = g.nodes.filter((sn) => sameName(nameOf(byId.get(sn.id)!, sn.type), name));
-    if (hits.length !== 1) throw new Error(`--set ${name}: ${hits.length === 0 ? "no card has that name" : `${hits.length} cards share that name`}.`);
+    const hits = named("--set", name);
+    if (hits.length !== 1) throw new Error(`--set ${name}: ${hits.length} cards share that name.`);
     setInput(byId.get(hits[0].id)!, name, text);
   }
+  const printed = opts.out?.length ? new Set(opts.out.flatMap((want) => named("--out", want)).map((sn) => sn.id)) : null;
 
   let values = await computeAll(editor, engine);
   if (opts.vault || opts.tasknotes) {
@@ -156,15 +167,12 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
   for (const sn of g.nodes) {
     const node = byId.get(sn.id);
     if (!node) continue;
-    const label = nameOf(node, sn.type);
+    const label = ((node as unknown as { label?: string }).label ?? "").trim() || sn.name || sn.type;
     const n = (seen.get(label) ?? 0) + 1;
     seen.set(label, n);
     const key = n === 1 ? label : `${label} #${n}`;
-    if (opts.out?.length && !opts.out.some((want) => sameName(want, label) || sameName(want, key))) continue;
+    if (printed && !printed.has(sn.id)) continue;
     out[key] = await resolveFrameRefs(values.get(node.id) ?? {});
-  }
-  for (const want of opts.out ?? []) {
-    if (!Object.keys(out).some((key) => sameName(want, key) || sameName(want, key.replace(/ #\d+$/, "")))) throw new Error(`--out ${want}: no card has that name.`);
   }
   return out;
 }

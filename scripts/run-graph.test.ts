@@ -81,6 +81,14 @@ describe("run-graph (headless CLI)", () => {
     await expect(runGraph(loan(), { out: ["Nope"] })).rejects.toThrow(/no card has that name/);
   });
 
+  it("a card answers to its document name or id before its label", async () => {
+    const g = loan();
+    g.nodes[2].name = "Monthly";
+    const out = await runGraph(g, { set: { r: "0.08" }, out: ["monthly"] });
+    expect(Object.keys(out)).toEqual(["Payment"]);
+    expect((out["Payment"] as { result: number }).result).toBeCloseTo(-202.7639429, 6);
+  });
+
   it("--formula runs one formula over the numbers --set gives its variables, errors as the app's own", async () => {
     const run = async (expr: string, set?: Record<string, string>) => (await runGraph(formulaGraph(expr, set)))["formula"] as { result: unknown };
     expect((await run("PMT(rate / 12, 60, 10000)", { rate: "0.05" })).result).toBeCloseTo(-188.7123364, 6);
