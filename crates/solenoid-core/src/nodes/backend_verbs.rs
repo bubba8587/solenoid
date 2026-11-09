@@ -46,10 +46,31 @@ fn row_count(f: &Frame) -> usize {
     f.columns.iter().map(|c| c.values.len()).max().unwrap_or(0)
 }
 
-/// An input's frame as a verb reads it whole: a ref's plan run, a value taken once.
+/// An input's frame as a verb reads it whole: a ref's plan run, a value taken once. A Cube of plain columns (a vault
+/// folder's notes once its list columns are dropped) is its rows; one that still holds lists or tables names them.
 fn whole(v: &Cv) -> Result<Rc<FrameValue>, V> {
     match v {
         Cv::Ref(r) => r.flush().map(|f| f.frame.clone()).map_err(V::err),
+        Cv::Cube(k) => {
+            let flat = flat_cube(k);
+            if flat.columns.len() < k.columns.len() {
+                let nested: Vec<String> = k
+                    .columns
+                    .iter()
+                    .filter(|col| !flat.columns.iter().any(|f| f.name == col.name))
+                    .take(4)
+                    .map(|col| format!("\"{}\"", col.name))
+                    .collect();
+                return Err(super::err(
+                    ErrorCode::Shape,
+                    format!(
+                        "This joins flat rows, and {} hold lists or tables. Keep the columns to join with a Columns card first",
+                        nested.join(", ")
+                    ),
+                ));
+            }
+            whole(&Cv::Frame(Rc::new(flat)))
+        }
         v => match refs::planned(v) {
             Some(r) => Ok(r.base().clone()),
             None => Err(super::frames::thrown("the input isn't a frame")),

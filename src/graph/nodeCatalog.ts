@@ -771,6 +771,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [textXformLeaf("trim", "spaces"),  textXformLeaf("proper", "title case capitalize")] },
           { type: "pair", children: [textXformLeaf("clean"), textXformLeaf("unaccent")] },
           textXformLeaf("slugify"),
+          { type: "pair", children: [textXformLeaf("linkname", "obsidian wikilink note link target join"), textXformLeaf("linkpath", "obsidian wikilink note link target path join")] },
           { type: "pair", children: [
             { type: "text-pad", label: "Pad Text", description: "Pads text to a width with a fill character, on the left, right, or both sides. Python `ljust` / `rjust` / `center`, R `str_pad`.", create: () => new PadTextNode(), parity: false, keywords: "pad padding ljust rjust center justify align width fill zero-pad str_pad fixed width column" },
             { type: "text-truncate", label: "Truncate Text", description: "Cuts text to a maximum width, ending in an ellipsis when anything was cut. R `str_trunc`, `textwrap.shorten`.", create: () => new TruncateTextNode(), parity: false, keywords: "truncate shorten ellipsis clip cut width max length abbreviate str_trunc" },

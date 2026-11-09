@@ -92,6 +92,8 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
                 "clean" => "CLEAN",
                 "unaccent" => "UNACCENT",
                 "slugify" => "SLUGIFY",
+                "linkname" => "LINKNAME",
+                "linkpath" => "LINKPATH",
                 _ => "UPPER",
             };
             each_text(c, "cachedText", name)

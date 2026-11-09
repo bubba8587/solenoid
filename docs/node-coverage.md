@@ -127,7 +127,7 @@ The governing principle: keep types separate (a Cast crosses element families, a
   - A separator or pattern that selects a mode (Cast's separators and format, Text Filter's pattern) stays a scalar, like the date family's basis and weekend code. A wired blank there is a setting left out ([[D86]] blankRoles): TEXTSPLIT's delimiter has no default, so it is `#SYNTAX!`.
   - Value Input and Promo are literal sources, one value each.
   - Regex stays on the wildcard ladder because its element type depends on the op. It emits `anycombo` rather than `any`, so its dot doesn't draw a scalar circle on a port that can spill a list.
-- **Text Transform**: UPPER, LOWER, TRIM, PROPER, CLEAN, UNACCENT and SLUGIFY. PROPER capitalizes after any non-letter, as Excel does.
+- **Text Transform**: UPPER, LOWER, TRIM, PROPER, CLEAN, UNACCENT, SLUGIFY, and LINKNAME and LINKPATH, which read the note an Obsidian link names. PROPER capitalizes after any non-letter, as Excel does.
 - **CONCAT** skips a blank row rather than propagating it; **TEXTJOIN** ignores empties by default, matching the formula's fallback ([[C24]] arraySemantics).
 - **LEFT / RIGHT / MID**: MID with a length of 0 is `""`, as in Excel.
 - **FIND / SEARCH**: an absent substring is `#VALUE!` "Find text not found within the text", per cell.

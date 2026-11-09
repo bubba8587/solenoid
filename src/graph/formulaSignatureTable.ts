@@ -222,6 +222,8 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   VALUETOTEXT: "value, [format]",
   REVERSETEXT: "text",
   UNACCENT: "text",
+  LINKNAME: "link",
+  LINKPATH: "link",
   SLUGIFY: "text, [separator]",
   PADTEXT: "text, width, [side], [fill]",
   TRUNCATETEXT: "text, width, [ellipsis]",

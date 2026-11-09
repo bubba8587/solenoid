@@ -3239,6 +3239,8 @@ arms! {
     ENCODEBASE64,
     DECODEBASE64,
     UNACCENT,
+    LINKNAME,
+    LINKPATH,
     SPELLNUMBER,
     HASH,
     SLUGIFY,
@@ -5324,6 +5326,8 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
         | F::ENCODEBASE64
         | F::DECODEBASE64
         | F::UNACCENT
+        | F::LINKNAME
+        | F::LINKPATH
         | F::SPELLNUMBER
         | F::HASH
         | F::SLUGIFY
@@ -5358,6 +5362,8 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             }
         }
         F::UNACCENT => V::str(&crate::text_ops::unaccent(&to_str(arg(a, 0)))),
+        F::LINKNAME => V::str(&crate::text_ops::link_name(&to_str(arg(a, 0)))),
+        F::LINKPATH => V::str(&crate::text_ops::link_path(&to_str(arg(a, 0)))),
         F::SLUGIFY => {
             let sep = match arg(a, 1) {
                 V::Null | V::Undef => "-".to_string(),

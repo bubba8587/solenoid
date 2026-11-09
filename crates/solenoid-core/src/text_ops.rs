@@ -207,6 +207,34 @@ pub fn unaccent(t: &str) -> String {
     out
 }
 
+/// The note a link names, as Obsidian reads one: `[[Folder/Note#Heading|Alias]]`, an embed `![[…]]` and a markdown
+/// link `[alias](Folder/Note.md)` all name `Folder/Note`. Text that is no link names itself, so a column that mixes
+/// links and plain names reads through.
+pub fn link_path(t: &str) -> String {
+    let s = crate::jsnum::trim_space(t);
+    let s = s.strip_prefix('!').unwrap_or(s);
+    let target = if let Some(inner) = s.strip_prefix("[[").and_then(|r| r.strip_suffix("]]")) {
+        inner.split('|').next().unwrap_or(inner)
+    } else if let Some(inner) = s.strip_prefix('[').and_then(|r| r.strip_suffix(')')).and_then(|r| r.split_once("](")) {
+        inner.1.trim_start_matches('<').trim_end_matches('>')
+    } else {
+        return t.to_string();
+    };
+    let target = target.split('#').next().unwrap_or(target);
+    let target = crate::jsnum::trim_space(target);
+    let target = target.strip_suffix(".md").unwrap_or(target);
+    target.replace("%20", " ")
+}
+
+/// The name of the note a link names: its path's last part.
+pub fn link_name(t: &str) -> String {
+    let path = link_path(t);
+    match path.rsplit_once('/') {
+        Some((_, name)) if path != t => name.to_string(),
+        _ => path,
+    }
+}
+
 /// `slugify`.
 pub fn slugify(t: &str, sep: &str) -> String {
     let lower = utf16(&lower_text(&unaccent(t)));

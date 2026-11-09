@@ -38,7 +38,7 @@ export class PromoNode extends GraphNode {
 
 // ─── Text Transform (UPPER / LOWER / TRIM / PROPER / CLEAN) ──────────────────
 
-export type TextTransformOp = "upper" | "lower" | "trim" | "proper" | "clean" | "unaccent" | "slugify";
+export type TextTransformOp = "upper" | "lower" | "trim" | "proper" | "clean" | "unaccent" | "slugify" | "linkname" | "linkpath";
 
 export const TEXT_TRANSFORM_OP_META = {
   upper:  { label: "UPPER",  description: "Converts all characters to uppercase. Excel: `UPPER`." },
@@ -48,6 +48,8 @@ export const TEXT_TRANSFORM_OP_META = {
   clean:  { label: "CLEAN",  description: "Removes non-printable control characters (ASCII 0–31). Excel: `CLEAN`." },
   unaccent: { label: "UNACCENT", description: "Strips accents and diacritics: `Crème Brûlée` → `Creme Brulee`. `unidecode`, R `stri_trans_general` `Latin-ASCII`." },
   slugify:  { label: "SLUGIFY",  description: "URL / filename slug: accents stripped, lowercase, every non-alphanumeric run a hyphen. `python-slugify`, R `make_clean_names`." },
+  linkname: { label: "LINKNAME", description: "The name of the note a link names: `[[Projects/Website launch|Launch]]` → `Website launch`. Reads Obsidian wikilinks, embeds and markdown links; other text stays as it is." },
+  linkpath: { label: "LINKPATH", description: "The path of the note a link names, without its heading or alias: `[[Projects/Website launch#Plan|Launch]]` → `Projects/Website launch`. Other text stays as it is." },
 } satisfies Record<TextTransformOp, { label: string; description: string }>;
 
 export class TextTransformNode extends GraphNode {
