@@ -32,6 +32,13 @@ specific item.
 - Checked in real Obsidian 1.14.5 through the rig (dark, light, the phone emulation): the What's New tab opens on a
   fresh install, every chip and editor renders as on the site's `/obsidian` page, settings show the new toggle, no
   errors. The rig now falls back to Xvfb where there is no Xephyr, so it runs in a cloud session.
+- The Solenoid look, reviewed in real Obsidian (1.14.5 updating itself to 1.15.0), two passes, desktop and the phone
+  emulation, dark and light: notes, callouts, tables, code, the explorer, tabs, sidebars, command palette, quick
+  switcher, menus, modals, search, settings, graph, canvas, bases, hover previews, notices. Six fixes in `look.css`, each
+  in the spec: the active sidebar tab lost its box (1.14 fills the tab itself), the top line crosses the sidebar resize
+  handles, a focused explorer row takes the hairline over Obsidian's 2 px ring, a base's grid is the Frame hue and its
+  number cells don't box (1.14 reads the note table's border variables there), and a folded Properties card is its header.
+  Still open: the phone code block's copy button sits over the first line's end (Obsidian's own placement).
 
 ### SESSION DIGEST (2026-11-08: per-frame camera work trimmed; cloud session)
 - A source read (no measuring) of what runs on every pan and zoom frame; four pieces of dead work went, each with its

@@ -354,6 +354,13 @@ body {
   color: var(--sol-tab-ink);
 }
 
+.mod-left-split .workspace-tab-header,
+.mod-right-split .workspace-tab-header {
+  --tab-text-color-focused-active: var(--sol-ink-accent);
+  --tab-text-color-focused-active-current: var(--sol-ink-accent);
+}
+.mod-left-split .workspace-tab-header.is-active,
+.mod-right-split .workspace-tab-header.is-active,
 .mod-left-split .workspace-tab-header.is-active .workspace-tab-header-inner,
 .mod-right-split .workspace-tab-header.is-active .workspace-tab-header-inner {
   background: none;
@@ -408,6 +415,18 @@ select.dropdown:focus {
   box-shadow: none;
 }
 
+/* A base's grid draws with the note table's border variable, and its cells are fields that must not box. */
+.bases-table-container {
+  --table-border-color: var(--bases-table-border-color);
+  --table-header-border-color: var(--bases-table-border-color);
+}
+.bases-table-container input,
+.bases-table-container textarea {
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+}
+
 button:not(.clickable-icon):not(.mod-cta):not(.mod-warning) {
   background-color: var(--sol-sunken);
   border: 1px solid var(--sol-border);
@@ -455,6 +474,15 @@ button.mod-cta {
 }
 .mod-root .workspace-tabs > .workspace-tab-header-container:has(.workspace-tab-header.is-active:is([data-type="image"], [data-type="pdf"], [data-type="audio"], [data-type="video"])) {
   --sol-line: var(--sol-complex);
+}
+
+/* A sidebar's resize handle draws the divider over the top line; its border carries the line across. */
+.mod-left-split > .workspace-leaf-resize-handle,
+.mod-right-split > .workspace-leaf-resize-handle {
+  border-image: linear-gradient(to bottom,
+    var(--divider-color) var(--header-height),
+    var(--sol-accent) var(--header-height) calc(var(--header-height) + 2px),
+    var(--divider-color) calc(var(--header-height) + 2px)) 1;
 }
 
 .nav-header {
@@ -520,7 +548,8 @@ button.mod-cta {
   font-weight: 600;
 }
 .tree-item-self.has-active-menu,
-.tree-item-self.has-focus {
+.tree-item-self.has-focus,
+body:not(.is-phone) .workspace-leaf.mod-active .tree-item-self.has-focus {
   box-shadow: inset 0 0 0 1px var(--sol-accent);
 }
 
@@ -761,6 +790,14 @@ button.mod-cta {
   padding: var(--size-4-2) var(--size-4-3);
   background-color: var(--sol-header-band);
   border-bottom: 1px solid var(--sol-edge);
+}
+/* Folded (by hand, or in a hover preview) the card is its header alone. */
+.metadata-container.is-collapsed {
+  padding-bottom: 0;
+}
+.metadata-container.is-collapsed .metadata-properties-heading {
+  margin-bottom: 0;
+  border-bottom: none;
 }
 .metadata-container .metadata-properties-title {
   color: var(--sol-text-bright);
