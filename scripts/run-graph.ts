@@ -11,12 +11,12 @@
 // `--data <folder>` is the data folder Local File reads from, a file or every file a pattern names (`monthly/*.csv`).
 // What prints is plain JSON for another program to read (`plainValue`): a date as ISO text, a table as its rows, a
 // value with a unit as `{value, unit}`, an error as `{error, message}`. `--raw` prints the engine's own values.
-// `npm run build:cli` bundles it into dist-cli/ (run-graph.mjs + the engine's wasm), which needs only Node.
+// `npm run build:cli` bundles it into dist-cli/ as `solenoid run` (`cli.ts`), which needs only Node.
 
-import { readFileSync, realpathSync } from "node:fs";
+import { readFileSync } from "node:fs";
+import { isEntry } from "./entry";
 import { promises as nodeFs } from "node:fs";
 import nodePath from "node:path";
-import { pathToFileURL } from "node:url";
 import { GraphConnection, GraphNode } from "../src/graph/graphModel";
 import { DataflowEngine } from "../src/graph/dataflowEngine";
 import { GraphEditor } from "../src/graph/graphEditor";
@@ -215,10 +215,9 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
   return out;
 }
 
-async function main() {
+export async function main(args: string[]): Promise<void> {
   // Before validating: the validator builds every node to learn its type, and a node needs the engine.
   loadWasmEngineSync(readFileSync(wasmUrl));
-  const args = process.argv.slice(2);
   const force = args.includes("--force");
   // A flag takes the word after it; `--set` and `--out` may repeat.
   const flags: Record<string, string[]> = {};
@@ -274,10 +273,8 @@ async function main() {
   print(out);
 }
 
-// pathToFileURL, not a `file://` template, so this matches a backslashed Windows argv[1]; realpath, so it matches
-// when launched through a symlink, as npm's bin links do.
-if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
-  await main().catch((e) => {
+if (isEntry("run-graph")) {
+  await main(process.argv.slice(2)).catch((e) => {
     console.error(e instanceof Error ? e.message : String(e));
     process.exit(1);
   });

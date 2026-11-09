@@ -6,6 +6,7 @@
 // (shot-graph asks for it); a card the sidecar gives no position is laid out by its depth in the cables.
 
 import { readFileSync } from "node:fs";
+import { isEntry } from "./entry";
 import { validateText, validateGraph, formatIssues, hardIssues } from "../src/graph/graphValidate";
 import type { GraphIssue } from "../src/graph/graphValidate";
 import type { SavedGraph } from "../src/graph/persistence";
@@ -13,41 +14,46 @@ import { validateSavedGraph } from "../src/graph/persistenceCore";
 // @ts-expect-error a plain .mjs script, untyped
 import { expand } from "./shot-graph-expand.mjs";
 
-const path = process.argv[2];
-if (!path) {
-  console.error("usage: npm run validate-graph <graph.txt|graph.json>");
-  process.exit(2);
-}
+/** Exits 1 on a hard issue, 2 on a missing file argument. */
+export function main(args: string[]): void {
+  const path = args[0];
+  if (!path) {
+    console.error("usage: npm run validate-graph <graph.txt|graph.json>");
+    process.exit(2);
+  }
 
-const raw = readFileSync(path, "utf8");
-const looksJson = raw.trimStart().startsWith("{");
+  const raw = readFileSync(path, "utf8");
+  const looksJson = raw.trimStart().startsWith("{");
 
-let issues: GraphIssue[];
-let saved: unknown = null;
-if (looksJson) {
-  const data = JSON.parse(raw) as unknown;
-  const structural = validateSavedGraph(data);
-  if (!structural.ok) {
-    console.error(`${path}: ${structural.reason}`);
+  let issues: GraphIssue[];
+  let saved: unknown = null;
+  if (looksJson) {
+    const data = JSON.parse(raw) as unknown;
+    const structural = validateSavedGraph(data);
+    if (!structural.ok) {
+      console.error(`${path}: ${structural.reason}`);
+      process.exit(1);
+    }
+    issues = validateGraph(data as SavedGraph);
+    saved = data;
+  } else {
+    const read = validateText(raw);
+    issues = read.issues;
+    if (read.graph) {
+      const sidecar = JSON.parse(raw.slice(raw.indexOf("\n---") + 4).trim() || "{}") as { positions?: Record<string, unknown> };
+      const placed = new Set(Object.keys(sidecar.positions ?? {}));
+      saved = expand({ ...read.graph, nodes: read.graph.nodes.map((n) => (placed.has(n.name ?? n.id) ? n : { ...n, x: undefined, y: undefined })) });
+    }
+  }
+
+  if (issues.length > 0) console.error(formatIssues(issues));
+  const hard = hardIssues(issues);
+  if (hard.length > 0) {
+    console.error(`\n${path}: ${hard.length} issue${hard.length === 1 ? "" : "s"}.`);
     process.exit(1);
   }
-  issues = validateGraph(data as SavedGraph);
-  saved = data;
-} else {
-  const read = validateText(raw);
-  issues = read.issues;
-  if (read.graph) {
-    const sidecar = JSON.parse(raw.slice(raw.indexOf("\n---") + 4).trim() || "{}") as { positions?: Record<string, unknown> };
-    const placed = new Set(Object.keys(sidecar.positions ?? {}));
-    saved = expand({ ...read.graph, nodes: read.graph.nodes.map((n) => (placed.has(n.name ?? n.id) ? n : { ...n, x: undefined, y: undefined })) });
-  }
+  if (args.includes("--json")) console.log(JSON.stringify(saved, null, 1));
+  else console.log(`${path}: OK${issues.length > 0 ? ` (${issues.length} warning${issues.length === 1 ? "" : "s"})` : ""}`);
 }
 
-if (issues.length > 0) console.error(formatIssues(issues));
-const hard = hardIssues(issues);
-if (hard.length > 0) {
-  console.error(`\n${path}: ${hard.length} issue${hard.length === 1 ? "" : "s"}.`);
-  process.exit(1);
-}
-if (process.argv.includes("--json")) console.log(JSON.stringify(saved, null, 1));
-else console.log(`${path}: OK${issues.length > 0 ? ` (${issues.length} warning${issues.length === 1 ? "" : "s"})` : ""}`);
+if (isEntry("validate-graph")) main(process.argv.slice(2));

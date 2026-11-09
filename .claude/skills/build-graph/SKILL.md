@@ -54,4 +54,7 @@ needs the app open, and a whole round is a few seconds.
 - **An error is an answer.** A card that can't compute prints `{"error": "#REF!", "message": …}` with the reason, and
   everything downstream of it prints the same error: read the first one.
 
+Outside this repository the same loop is one file: `npm run build:cli` makes `dist-cli/solenoid.mjs` (plus the engine's
+wasm beside it), and `node solenoid.mjs guide | cards | validate | run` needs only Node.
+
 To hand the result to the author, save the JSON the app opens: `npm run -s validate-graph -- model.txt --json > model.json`.
