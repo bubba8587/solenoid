@@ -16,6 +16,10 @@ export const SLIDES: Slide[] = [
     body: "The PIVOTBY card now has familiar options for your reporting layouts.",
   },
   {
+    title: "Pipeline",
+    body: "A manual-refresh Composite card mode which lists its steps on the outer card. Useful for building Power Query-esque data transformations.",
+  },
+  {
     title: "Revamped Function Reference",
     body: "The Function Reference (that book icon in the top-right of your screen) was bad before and now it's good. Check it out!",
   },
