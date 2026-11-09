@@ -33,7 +33,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **PRICE, YIELD, ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD don't implement Excel's `basis`**: passing one is `#SYNTAX!` (too many arguments) since 2026-11-05, where it was silently ignored.
 - [ ] **Array literals** (`{1, 2, 3}`, Excel's) don't parse in a formula, so a list argument's empty slot can't fall back to a typed list (`p7-walk.md` § Open).
 - [ ] **Text leftovers after [[D109]] aggregatesRefuseText / [[D110]] logicRefusesText:** a Frame's `min`/`max` over a text column answer first/last text where the formula is `#TYPE!` (keep the feature?); Pivot `percentof` skips text; Frame `count` counts text (COUNTA's meaning); Group Lists skips error cells; Mode, Trim Mean, Rank, Percent Rank and Correl may skip text in formulas but error on cards (unchecked; PTP, IQR, MAD, SEM, CV and RMS joined D109 on 2026-11-06); MODE.SNGL undecided (equality, not arithmetic).
-- [ ] **SUMX2MY2, SUMX2PY2, SUMXMY2** still skip logical pairs ([[D108]] aggregatesCountLogicals) and text pairs (D109).
+- [ ] **SUMX2MY2, SUMX2PY2, SUMXMY2** still skip a pair holding text, which [[D109]] aggregatesRefuseText leaves undecided for them (WAVG, WVAR and WSTDEV skip it on purpose). The author's call: `#VALUE!` as SUMPRODUCT, or skip as the weighted family.
 - [ ] **A hint for a formula shaped like a date** (found 2026-11-04): `IF(TRUE, 01-Feb-1992)` is `01 − Feb − 1992`, `Feb` a variable socket read as 0, so -1991. Never guessed as a date ([[C10]] socketLattice), and no date literal syntax (no spreadsheet has one; the author 2026-11-05): when a formula has a number-month-number shape, the card says "for a date, write DATE(1992, 2, 1)".
 
 ## Formula library
