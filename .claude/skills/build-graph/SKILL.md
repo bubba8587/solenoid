@@ -46,6 +46,9 @@ needs the app open, and a whole round is a few seconds.
   `condConfig={"0":{"op":"gt"}}`.
 - **Cards are named three ways.** The text form's `Name:` is what cables, `--set` and `--out` use; `label` is the
   title on the card; the class name is the type.
+- **A name a formula doesn't know is an input.** `expr="@Amt * @Price"` on a table with no Price column makes `Price`
+  an input socket that reads 0 until something is wired or typed into it (`lit:Price=3`): a column name spelled wrong
+  computes quietly, so check the answer.
 - **An error is an answer.** A card that can't compute prints `{"error": "#REF!", "message": …}` with the reason, and
   everything downstream of it prints the same error: read the first one.
 

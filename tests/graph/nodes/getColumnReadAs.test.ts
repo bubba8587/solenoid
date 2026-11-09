@@ -90,3 +90,16 @@ describe("GetColumn preserves null (a blank cell stays missing, not NaN)", () =>
     expect(out).toEqual([1, null, 3, 4]);
   });
 });
+
+describe("Get Column on a name the table lacks", () => {
+  const f = frameFromCells(["Region", "Amt"], [["N", "1"], ["S", "2"]]);
+  it("answers #REF! naming the columns the table has, never a blank a total would read as 0", () => {
+    const out = new GetColumnNode().data({ frame: [f], name: ["Amount"] }).values as { code?: string; message?: string };
+    expect(out.code).toBe("#REF!");
+    expect(out.message).toBe('column "Amount" not found; the table has Region, Amt');
+  });
+  it("a blank name is still a blank, and a number still picks by position", () => {
+    expect(new GetColumnNode().data({ frame: [f], name: [""] }).values).toBeNull();
+    expect(col(new GetColumnNode(), f, "2")).toEqual([1, 2]);
+  });
+});

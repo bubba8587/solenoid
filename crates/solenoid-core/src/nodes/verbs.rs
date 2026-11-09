@@ -646,6 +646,13 @@ pub(crate) fn column_named<'a>(columns: &'a [Column], name: &str) -> Option<&'a 
     (1..=columns.len()).contains(&idx).then(|| &columns[idx - 1])
 }
 
+/// A name the table has no column for: `#REF!`, as the verbs answer, with the columns it does have.
+fn no_such_column<'a>(c: &mut Call, name: &str, has: impl Iterator<Item = &'a str>) -> Answer {
+    let has: Vec<&str> = has.take(12).collect();
+    let e = err(ErrorCode::Ref, format!("column \"{name}\" not found; the table has {}", has.join(", ")));
+    values_answer(c, V::Null, e)
+}
+
 /// Get Column's answer, beside what the card shows.
 fn values_answer(c: &mut Call, shown: V, values: V) -> Answer {
     c.show("cachedResult", shown);
@@ -733,7 +740,7 @@ fn get_column(c: &mut Call) -> Answer {
     match &f {
         Cv::Cube(k) => {
             let Some(cc) = k.columns.iter().find(|col| *col.name == *name) else {
-                return values_answer(c, V::Null, V::Null);
+                return no_such_column(c, &name, k.columns.iter().map(|col| &*col.name));
             };
             if cc.cells.iter().any(|v| matches!(v, Cv::V(V::List(_)) | Cv::Frame(_) | Cv::Cube(_) | Cv::Cells(_))) {
                 let e = err(
@@ -751,20 +758,23 @@ fn get_column(c: &mut Call) -> Answer {
         }
         Cv::Ref(r) => match refs::column(r, &name) {
             Ok(Some(col)) => read_column(c, &col),
-            Ok(None) => values_answer(c, V::Null, V::Null),
+            Ok(None) => match refs::schema(r) {
+                Ok(has) => no_such_column(c, &name, has.columns.iter().map(|col| &*col.name)),
+                Err(e) => values_answer(c, V::Null, e),
+            },
             Err(e) => values_answer(c, V::Null, e),
         },
         Cv::Json(_) => values_answer(c, V::Null, V::Null),
         Cv::Frame(fr) => match column_named(&fr.columns, &name) {
             Some(col) => read_column(c, &col.clone()),
-            None => values_answer(c, V::Null, V::Null),
+            None => no_such_column(c, &name, fr.columns.iter().map(|col| &*col.name)),
         },
         Cv::Cells(_) => values_answer(c, V::Null, V::Null),
         Cv::V(other) => {
             let fr = widen_to_frame(other);
             match column_named(&fr.columns, &name) {
                 Some(col) => read_column(c, &col.clone()),
-                None => values_answer(c, V::Null, V::Null),
+                None => no_such_column(c, &name, fr.columns.iter().map(|col| &*col.name)),
             }
         }
     }
