@@ -1,13 +1,17 @@
 // The strict validating reader (src/graph/graphValidate.ts) as a CLI, for a text-form or JSON graph.
 // Prints every issue with its line anchor and exits 1 if any; silence and exit 0 mean the loader would
 // apply the file with no silent repairs and the editor would accept every cable.
-//   npm run validate-graph <graph.txt|graph.json>
+//   npm run validate-graph <graph.txt|graph.json> [--json]
+// `--json` prints a clean graph as the JSON save in place of "OK", so a text-form file can go where a save goes
+// (shot-graph asks for it); a card the sidecar gives no position is laid out by its depth in the cables.
 
 import { readFileSync } from "node:fs";
 import { validateText, validateGraph, formatIssues, hardIssues } from "../src/graph/graphValidate";
 import type { GraphIssue } from "../src/graph/graphValidate";
 import type { SavedGraph } from "../src/graph/persistence";
 import { validateSavedGraph } from "../src/graph/persistenceCore";
+// @ts-expect-error a plain .mjs script, untyped
+import { expand } from "./shot-graph-expand.mjs";
 
 const path = process.argv[2];
 if (!path) {
@@ -19,6 +23,7 @@ const raw = readFileSync(path, "utf8");
 const looksJson = raw.trimStart().startsWith("{");
 
 let issues: GraphIssue[];
+let saved: unknown = null;
 if (looksJson) {
   const data = JSON.parse(raw) as unknown;
   const structural = validateSavedGraph(data);
@@ -27,8 +32,15 @@ if (looksJson) {
     process.exit(1);
   }
   issues = validateGraph(data as SavedGraph);
+  saved = data;
 } else {
-  issues = validateText(raw).issues;
+  const read = validateText(raw);
+  issues = read.issues;
+  if (read.graph) {
+    const sidecar = JSON.parse(raw.slice(raw.indexOf("\n---") + 4).trim() || "{}") as { positions?: Record<string, unknown> };
+    const placed = new Set(Object.keys(sidecar.positions ?? {}));
+    saved = expand({ ...read.graph, nodes: read.graph.nodes.map((n) => (placed.has(n.name ?? n.id) ? n : { ...n, x: undefined, y: undefined })) });
+  }
 }
 
 if (issues.length > 0) console.error(formatIssues(issues));
@@ -37,4 +49,5 @@ if (hard.length > 0) {
   console.error(`\n${path}: ${hard.length} issue${hard.length === 1 ? "" : "s"}.`);
   process.exit(1);
 }
-console.log(`${path}: OK${issues.length > 0 ? ` (${issues.length} warning${issues.length === 1 ? "" : "s"})` : ""}`);
+if (process.argv.includes("--json")) console.log(JSON.stringify(saved, null, 1));
+else console.log(`${path}: OK${issues.length > 0 ? ` (${issues.length} warning${issues.length === 1 ? "" : "s"})` : ""}`);

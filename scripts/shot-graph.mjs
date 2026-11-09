@@ -54,7 +54,11 @@ for (let i = 0; i < argv.length; i++) {
 }
 if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy] [--drag-hold css dx dy]… [--wait ms] [--palette name] [--light] [--setting key=value] [--full] [--size WxH] [--insets top,bottom] [--scale N]"); process.exit(2); }
 
-const graph = expand(JSON.parse(readFileSync(opt.file, "utf8")));
+// A text-form file (the AI grounding's format) is validated and read by the app's own reader first.
+const source = readFileSync(opt.file, "utf8");
+const asJson = source.trimStart().startsWith("{") ? source
+  : execFileSync(process.execPath, ["scripts/vite-run.mjs", "scripts/validate-graph.ts", opt.file, "--json"], { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+const graph = expand(JSON.parse(asJson));
 execFileSync(process.execPath, [fileURLToPath(new URL("./dev-up.mjs", import.meta.url))], { stdio: "inherit" });
 
 const browser = await puppeteer.launch({ executablePath: browserPath(), headless: true, args: ["--no-sandbox", "--window-size=1600,1000"] });
