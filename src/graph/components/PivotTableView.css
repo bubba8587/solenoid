@@ -40,6 +40,9 @@
 .pivot-sheet__body .pivot-view__actions { display: inline-flex; gap: 4px; }
 .pivot-view__checks { grid-column: 1 / -1; justify-content: space-between; padding: 4px 4px; }
 
+/* In a Dashboard box or a Report the box is the frame, and it scrolls. */
+.pivot-figure .pivot-view__scroll { margin: 0; max-height: none; border: 0; border-radius: 0; }
+
 .pivot-view__scroll {
   margin: 10px 14px 12px;
   max-height: 56vh;
