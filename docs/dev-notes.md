@@ -32,6 +32,14 @@ specific item.
   SUM showed as 0.
 - **`CLAUDE.md` opens with what the project is for**, in the author's words of 2026-11-09 and a model's account of
   what holds.
+- **Local File reads a whole folder** ([[D126]] folderAsOneTable, new; `../tree/specs/computation/live-connections.md`
+  § A folder as one table): a name with `*` loads every matching CSV and Parquet file as one table with a File column,
+  a file that doesn't read named under the status line. `run-graph --data <folder>` runs Local File headlessly. Untested
+  in a desktop build.
+- **One standalone `solenoid` command** (`npm run build:cli` → `dist-cli/solenoid.mjs`, Node only): `guide`, `cards`,
+  `validate`, `run`. From inside a vault it reads a folder of notes, filters and groups it in half a second.
+- **A text-form line builds the rows it names** (`withImpliedRows`, `textFormRows.ts`): a filter's `condConfig` alone
+  ran as the default `gt`, since a card read per-row settings only for the rows `valueKeys` named.
 - **A cloud container can start hundreds of commits behind `develop`** (this one was 352 behind, a shallow clone): `git
   fetch origin develop` and compare before the first edit, or the first push is refused and the fixtures and wasm are
   redone on the new base.
