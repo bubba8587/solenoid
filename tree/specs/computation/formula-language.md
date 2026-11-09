@@ -604,7 +604,7 @@ Tests:
 - `broadcastContract.test.ts`: `2^5000` and `EXP(1000)` are `#OVERFLOW!`, and `0^0` is 1.
 - `formulaComplex.test.ts`: the complex operands' table.
 - `excel_examples.rs` (solenoid-core): the last addition snaps where Excel's does and nowhere else, on the unit-aware path too, and near-equal numbers compare and write as Excel's do.
-- `exact_sum.rs` inline tests (solenoid-core): a total rounds once, any order and any split of the numbers agree, and a sliding sum snaps as a fresh one does.
+- `exact_sum.rs` inline tests (solenoid-core): a total rounds once, any order and any split of the numbers agree, and a sliding sum snaps as a fresh one does. A total past the largest double is that infinity, and it comes back: numbers of 2^400 and over are kept in a tier scaled down by 2^600, so a sliding or sorted-run sum that passes the limit is exact again once the numbers that drove it there leave (it stayed ∞, then NaN).
 - `properties.rs` (solenoid-core) `order_free_aggregates_survive_a_shuffle`: 21 aggregates, the spreads included, answer bit for bit the same over a shuffled list (`List.Perm.sum_eq`, `List.Perm.prod_eq`), PRODUCT included.
 - `properties.rs` (solenoid-core): SUM keeps its laws over random lists.
 

@@ -5,6 +5,9 @@
 #[derive(Clone, Debug, Default)]
 pub struct ExactSum {
     partials: Vec<f64>,
+    /// The numbers of 2^400 and over, held scaled down by 2^600 so that a total past the largest double stays exact
+    /// here: taking the numbers that drove it there back out leaves the true total of the rest.
+    big: Vec<f64>,
     up: usize,
     down: usize,
     nan: usize,
@@ -43,35 +46,22 @@ impl ExactSum {
         *c = if on { *c + 1 } else { c.saturating_sub(1) };
     }
 
-    fn exact(&mut self, mut x: f64) {
-        let mut i = 0;
-        for k in 0..self.partials.len() {
-            let mut y = self.partials[k];
-            if x.abs() < y.abs() {
-                std::mem::swap(&mut x, &mut y);
-            }
-            let hi = x + y;
-            if !hi.is_finite() {
-                // Past the largest double: the total is that infinity, as plain adding gives.
-                self.count(hi, true);
-                self.partials.truncate(i);
-                return;
-            }
-            let lo = y - (hi - x);
-            if lo != 0.0 {
-                self.partials[i] = lo;
-                i += 1;
-            }
-            x = hi;
+    fn exact(&mut self, x: f64) {
+        if x.abs() >= BIG_FROM {
+            // Scaling by a power of two is exact, and no count of these reaches the largest double again.
+            grow(&mut self.big, x * BIG_DOWN);
+        } else {
+            grow(&mut self.partials, x);
         }
-        self.partials.truncate(i);
-        self.partials.push(x);
     }
 
     /// Adds another sum's numbers, or with `minus` takes them away; still exact.
     pub fn merge(&mut self, other: &ExactSum, minus: bool) {
         for &p in &other.partials {
-            self.exact(if minus { -p } else { p });
+            grow(&mut self.partials, if minus { -p } else { p });
+        }
+        for &p in &other.big {
+            grow(&mut self.big, if minus { -p } else { p });
         }
         for (mine, theirs) in [(&mut self.up, other.up), (&mut self.down, other.down), (&mut self.nan, other.nan)] {
             *mine = if minus { mine.saturating_sub(theirs) } else { *mine + theirs };
@@ -90,7 +80,61 @@ impl ExactSum {
         if self.down > 0 {
             return f64::NEG_INFINITY;
         }
-        let p = &self.partials;
+        if self.big.is_empty() {
+            return rounded(&self.partials);
+        }
+        // The big numbers back at their size beside the rest: past the largest double the total is that infinity,
+        // as plain adding gives.
+        let mut all: Vec<f64> = Vec::with_capacity(self.big.len() + self.partials.len());
+        for &b in self.big.iter().rev() {
+            let back = b * BIG_UP;
+            if !back.is_finite() || !grow(&mut all, back) {
+                return if self.big.last().is_some_and(|top| *top < 0.0) { f64::NEG_INFINITY } else { f64::INFINITY };
+            }
+        }
+        for &p in &self.partials {
+            if !grow(&mut all, p) {
+                return if all.last().is_some_and(|top| *top < 0.0) { f64::NEG_INFINITY } else { f64::INFINITY };
+            }
+        }
+        rounded(&all)
+    }
+}
+
+/// 2^400, 2^-600 and 2^600.
+const BIG_FROM: f64 = f64::from_bits((1023 + 400) << 52);
+const BIG_DOWN: f64 = f64::from_bits((1023 - 600) << 52);
+const BIG_UP: f64 = f64::from_bits((1023 + 600) << 52);
+
+/// Adds `x` into non-overlapping partials (Shewchuk); false where the sum passed the largest double, which leaves the
+/// partials unusable. The two tiers never get there (each holds numbers 2^600 short of it); a total put back
+/// together in `value` can, and answers the infinity.
+fn grow(partials: &mut Vec<f64>, mut x: f64) -> bool {
+    let mut i = 0;
+    for k in 0..partials.len() {
+        let mut y = partials[k];
+        if x.abs() < y.abs() {
+            std::mem::swap(&mut x, &mut y);
+        }
+        let hi = x + y;
+        if !hi.is_finite() {
+            return false;
+        }
+        let lo = y - (hi - x);
+        if lo != 0.0 {
+            partials[i] = lo;
+            i += 1;
+        }
+        x = hi;
+    }
+    partials.truncate(i);
+    partials.push(x);
+    true
+}
+
+/// Partials as one double, rounded once.
+fn rounded(p: &[f64]) -> f64 {
+    {
         let Some(&last) = p.last() else { return 0.0 };
         let (mut hi, mut lo, mut n) = (last, 0.0, p.len() - 1);
         while n > 0 {
@@ -113,7 +157,9 @@ impl ExactSum {
         }
         hi + 0.0
     }
+}
 
+impl ExactSum {
     /// The total, snapped where the numbers added, `terms`, cancel as written.
     pub fn total<I: IntoIterator<Item = f64>>(&self, terms: impl FnOnce() -> I) -> f64 {
         self.total_by(|| written_cancel(terms()))
@@ -284,5 +330,46 @@ mod tests {
         assert_eq!(a.total(|| xs.iter().copied()), want);
         whole.merge(&b, true);
         assert_eq!(whole.total(|| xs[..200].iter().copied()), exact_sum(&xs[..200]));
+    }
+}
+
+#[cfg(test)]
+mod overflow_tests {
+    use super::ExactSum;
+
+    fn of(xs: &[f64]) -> ExactSum {
+        let mut s = ExactSum::default();
+        xs.iter().for_each(|&x| s.add(x));
+        s
+    }
+
+    #[test]
+    fn a_total_past_the_largest_double_is_that_infinity() {
+        assert_eq!(of(&[1e308, 1e308]).value(), f64::INFINITY);
+        assert_eq!(of(&[-1e308, -1e308, 5.0]).value(), f64::NEG_INFINITY);
+        assert_eq!(of(&[1e308, 1.0]).value(), 1e308);
+        assert_eq!(of(&[f64::MAX, -f64::MAX, 3.5]).value(), 3.5);
+    }
+
+    #[test]
+    fn taking_the_big_numbers_back_out_leaves_the_rest_exact() {
+        // A window of two sliding over 1e308, 1e308, 1, 1: the total passes the largest double and comes back.
+        let mut s = of(&[1e308, 1e308]);
+        assert_eq!(s.value(), f64::INFINITY);
+        s.remove(1e308);
+        s.add(1.0);
+        assert_eq!(s.value(), 1e308);
+        s.remove(1e308);
+        s.add(1.0);
+        assert_eq!(s.value(), 2.0);
+    }
+
+    #[test]
+    fn big_and_small_numbers_still_round_once() {
+        assert_eq!(of(&[1e300, 1.0, -1e300]).value(), 1.0);
+        assert_eq!(of(&[2e307, 0.1, 0.2, -2e307]).value(), 0.1 + 0.2);
+        let mut both = of(&[1e305, 0.5]);
+        both.merge(&of(&[1e305, 0.25]), true);
+        assert_eq!(both.value(), 0.25);
     }
 }
