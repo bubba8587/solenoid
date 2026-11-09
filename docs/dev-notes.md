@@ -6,6 +6,16 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-09b: two pre-1.6 safety fixes; cloud session)
+- **The desktop's fetch is `net_fetch`** (`src-tauri/src/net.rs`), the http plugin gone: what someone else wrote stays
+  off this computer and the local network by the address a name resolves to, on every redirect, with no proxy between;
+  the user's own documents reach it again (TaskNotes on localhost was refused on desktop since F1). A card pasted out
+  of a foreign document carries `elsewhere`, which no Allow clears: its File Link asks and its fetches stay off the LAN.
+- **A type switch in Obsidian's Update dialog keeps every value**: a nested list or table becomes its JSON text where
+  the new kind holds only scalars (`keptCell`, `yamlValue.ts`); only column names go, on a switch to a list or matrix.
+- `src-tauri` compiles and tests here after `apt-get install libwebkit2gtk-4.1-dev libxdo-dev
+  libayatana-appindicator3-dev librsvg2-dev` (clippy, `cargo test --lib`, shared check target); no AppImage was run.
+
 ### SESSION DIGEST (2026-11-09: the Obsidian plugin's export caught up; cloud session)
 - The plugin snapshot builds from source again, Rust included: `plugin:export` carries the wasm engine as the files
   `wasm-stamp.mjs`'s `sourceFiles()` hashes plus `rust-toolchain.toml` and `build-wasm.mjs`, never the compiled module;
