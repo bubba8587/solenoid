@@ -28,7 +28,10 @@ specific item.
 - The plugin's What's New tab, the funnel to the app ([[obsidian-plugin#What's new]]): opens on install, each plugin
   update and each new app deck (`WHATS_NEW_VERSION`), with a settings toggle and a command. Plugin notes for 0.1.7 are
   drafted in `pluginNotes.ts` (one entry; the author's to extend), shown once the manifest says 0.1.7; the app section
-  imports the 1.6 slides. Seen in the Chromium stub only; real Obsidian, a light theme and a phone are unchecked.
+  imports the 1.6 slides.
+- Checked in real Obsidian 1.14.5 through the rig (dark, light, the phone emulation): the What's New tab opens on a
+  fresh install, every chip and editor renders as on the site's `/obsidian` page, settings show the new toggle, no
+  errors. The rig now falls back to Xvfb where there is no Xephyr, so it runs in a cloud session.
 
 ### SESSION DIGEST (2026-11-08: per-frame camera work trimmed; cloud session)
 - A source read (no measuring) of what runs on every pan and zoom frame; four pieces of dead work went, each with its

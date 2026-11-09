@@ -29,6 +29,12 @@ const bracket = (s) => `[${s[0]}]${s.slice(1)}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const detach = (cmd, args, env = {}) => spawn(cmd, args, { detached: true, stdio: "ignore", env: { ...process.env, ...env } }).unref();
 const alive = (pattern) => spawnSync("pgrep", ["-f", bracket(pattern)]).status === 0;
+const has = (cmd) => spawnSync("which", [cmd]).status === 0;
+// A desktop gets a window it can watch (Xephyr) under a window manager; a headless container (a cloud
+// session) has neither and takes an invisible Xvfb display, which screenshots the same.
+const X = has("Xephyr")
+  ? { name: "Xephyr", args: [DISPLAY, "-screen", "1500x950", "-ac", "-nolisten", "tcp"] }
+  : { name: "Xvfb", args: [DISPLAY, "-screen", "0", "1500x950x24", "-ac", "-nolisten", "tcp"] };
 
 async function answers() {
   try { return (await fetch(`http://127.0.0.1:${PORT}/json/version`)).ok; } catch { return false; }
@@ -51,10 +57,10 @@ async function up() {
   fs.mkdirSync(PROFILE, { recursive: true });
   copyVault();
   fs.writeFileSync(path.join(PROFILE, "obsidian.json"), JSON.stringify({ vaults: { a1b2c3d4e5f60718: { path: VAULT, ts: Date.now(), open: true } } }));
-  if (!alive(`Xephyr ${DISPLAY}`)) {
-    detach("Xephyr", [DISPLAY, "-screen", "1500x950", "-ac", "-nolisten", "tcp"]);
+  if (!alive(`${X.name} ${DISPLAY}`)) {
+    detach(X.name, X.args);
     await sleep(1200);
-    detach("metacity", [], { DISPLAY });
+    if (has("metacity")) detach("metacity", [], { DISPLAY });
   }
   detach(OBSIDIAN, ["--no-sandbox", `--user-data-dir=${PROFILE}`, `--remote-debugging-port=${PORT}`], { DISPLAY });
   for (let i = 0; i < 60 && !(await answers()); i++) await sleep(500);
@@ -156,7 +162,7 @@ async function evaluate(js) {
 
 function down() {
   spawnSync("pkill", ["-f", bracket(`user-data-dir=${PROFILE}`)]);
-  spawnSync("pkill", ["-f", bracket(`Xephyr ${DISPLAY}`)]);
+  spawnSync("pkill", ["-f", bracket(`${X.name} ${DISPLAY}`)]);
   console.log("rig: down");
 }
 
