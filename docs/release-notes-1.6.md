@@ -1,8 +1,5 @@
 Solenoid 1.6
 
-[DRAFT for the author's edit, 2026-11-06, built from every commit since v1.5.0. The What's New copy is
-`release-notes-features.md`. Bracketed notes come out before publishing.]
-
 Everything a document computes now runs on Solenoid's own Rust engine, on the web and on desktop. Runs free in your browser at solenoid-ngc.com; the Windows exe, the Linux AppImage and the .deb are below.
 
 Highlights
@@ -14,10 +11,12 @@ Highlights
 - Dashboard card: wire in figures, numbers, tables and notes and open it as a full-canvas board.
   - Drag and resize boxes in Edit Layout; tint, rename, expand or remove a box from its menu.
   - Show a Frame as cards, refresh live data, follow an error to its cause.
+  - A PIVOTBY output shows as a pivot table in a Dashboard box and in a Report.
   - Works by touch; on a phone boxes stack and pair up.
   - Describe opens on a dashboard with a chart per column. See the Dashboard showcase example.
 - Function Reference, rebuilt.
   - Every card has a page: the formulas that reach it, its ops and modes, its inputs and what an empty field means, its outputs, and the examples that use it.
+  - Each card's page says which release added it and which last reworked it.
   - The navigator uses the Add menu's tree and search, so a formula name finds its card.
   - Each top-level folder has a page explaining its kind of value.
   - The Add menu's book button and the Inspector's Open in Reference open the card you're on.
@@ -178,6 +177,8 @@ Safety
 - A Script's code doesn't run while its syntax is checked.
 - Dropping a file on the desktop window no longer widens what the app can read.
 - An AI rewrite can't strip a foreign document's trust flags.
+- On desktop, a document from someone else can't reach this computer or your local network, by any address or redirect; your own documents can (TaskNotes on localhost works again).
+- A File Link copied out of someone else's document asks before it opens.
 
 Heads up
 
@@ -207,7 +208,6 @@ Heads up
 Under the hood
 
 - The TypeScript engine, Formula.js, rete and Polars are gone. The graph runs on netcore-rs, a Rust port of rete; card bodies, formulas and table verbs run on Solenoid's own core, in WebAssembly on web and desktop.
-- The Linux package is 18 MB (was 24). [Re-measure against v1.5.0 at release, and add the engine download size only if it measured smaller.]
 - Excel's documented examples are pinned in the tests function by function, every card is checked against its formula, and a formula fuzzer covers dates and operators.
 - Memory is released when a document, composite or landing scene closes.
 - Time zones use one bundled database (tzdb 2026e) in the browser and on desktop.
