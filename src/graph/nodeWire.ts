@@ -13,6 +13,7 @@ import { isFrameValue, isCubeValue, makeCube, type FrameValue, type CubeValue, t
 import { compilePositional } from "./excelFormula";
 import type { LambdaValue } from "./lambdaValue";
 import { attachPivotLayout, type FrameRef } from "./frameBackend";
+import { textOf } from "./textOf";
 
 /** A lazy frame the core keeps under `id`, as JavaScript holds it while this object lives (`frame_ref.rs`). */
 function frameRefOf(id: number): FrameRef {
@@ -294,7 +295,7 @@ export function nodeUnwire(w: unknown): unknown {
   if ("__munit" in o) return withMatrixUnit(nodeUnwire(o.m), jsonDec(o.__munit) as ColumnUnit);
   if ("__undef" in o) return undefined;
   if (typeof o.__nf === "string") return { nan: NaN, inf: Infinity, "-inf": -Infinity, "-0": -0 }[o.__nf];
-  if (typeof o.__err === "string") return solError(o.__err as SolErrorCode, String(o.msg ?? ""));
+  if (typeof o.__err === "string") return solError(o.__err as SolErrorCode, textOf(o.msg ?? ""));
   if (Array.isArray(o.__cx)) return cx(nodeUnwire(o.__cx[0]) as number, nodeUnwire(o.__cx[1]) as number);
   if ("__date" in o) return solDate(nodeUnwire(o.__date) as number);
   if (o.__unit) {

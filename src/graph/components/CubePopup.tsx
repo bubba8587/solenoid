@@ -23,11 +23,12 @@ import { saveCsvFileDialog } from "../fileBridge";
 import { csvField } from "../csvSafety";
 import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
+import { textOf } from "../textOf";
 
 /** What was typed, for the Source switch: a value as its text, a nested container still a chip. */
 function sourceItem(v: unknown, crumb: string, at: CellRef): ReactNode {
   if (v !== null && typeof v === "object") return <CubeCellChip cell={v as CubeCell} crumb={crumb} size="sm" at={at} />;
-  return v == null ? "" : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v);
+  return v == null ? "" : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : textOf(v);
 }
 
 function describe(view: DrillView, listVertical: boolean, source: boolean): {

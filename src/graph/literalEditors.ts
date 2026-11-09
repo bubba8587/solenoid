@@ -2,6 +2,7 @@
 // Shared editing helpers for the literal inputs (Table, Frame, List and Cube Input all edit through the table popup).
 // Pure: text to records and back.
 import { isColumnType, readNestedTables, type NestedTables } from "./cubeTypes";
+import { textOf } from "./textOf";
 
 /** A cell is a scalar, a list of scalars, or a list of records (a nested table, or a nested cube). */
 export type CubeRecord = Record<string, unknown>;
@@ -177,5 +178,5 @@ export function convertCellKind(v: unknown, from: CellKind, to: CellKind): unkno
 export function cellTextOf(v: unknown): string {
   if (v == null) return "";
   if (typeof v === "object") return JSON.stringify(v);
-  return String(v);
+  return textOf(v);
 }

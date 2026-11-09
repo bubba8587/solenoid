@@ -43,7 +43,7 @@ const refMemo = new WeakMap<FrameRef, Stamped<FrameRef>>();
 
 function memoOf<K extends object, T>(memos: WeakMap<K, Stamped<T>>, v: K): Stamped<T> {
   let m = memos.get(v);
-  if (!m) memos.set(v, (m = new Map()));
+  if (!m) memos.set(v, (m = new Map<string, { ver: number; out: T }>()));
   return m;
 }
 

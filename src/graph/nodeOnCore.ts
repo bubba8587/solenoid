@@ -11,13 +11,13 @@ import { nodeWire, nodeCallWire, readNodeReply, jsonDec, jsonEnc, jsonText } fro
 import { withMatrixUnit, type ColumnUnit } from "./unitValue";
 import { wasmInvokeSync, CoreTrap } from "./engineWasm";
 import { forgetCollected } from "./heldValues";
-import { solError } from "./errorValue";
+import { solError, throwSol } from "./errorValue";
 
 type Reply = { out?: Record<string, unknown>; thrown?: unknown; none?: true; display: Record<string, unknown>; matrixUnits?: Record<string, unknown> };
 
 function read(r: unknown): unknown {
   const v = readNodeReply(r);
-  if (!v) throw solError("#VALUE!", "The card's answer can't be read back");
+  if (!v) throwSol(solError("#VALUE!", "The card's answer can't be read back"));
   return v.value;
 }
 
@@ -116,7 +116,7 @@ function invoke(node: GraphNode, inputs: Record<string, unknown[] | undefined>):
   for (const [k, arr] of Object.entries(inputs)) {
     if (!Array.isArray(arr)) continue;
     const w = arr.map(nodeCallWire);
-    if (w.includes(undefined)) throw solError("#VALUE!", `${node.label || node.constructor.name}: an input holds a value the card can't read`);
+    if (w.includes(undefined)) throwSol(solError("#VALUE!", `${node.label || node.constructor.name}: an input holds a value the card can't read`));
     wired.push([k, w]);
   }
   let reply: Reply;
@@ -131,7 +131,7 @@ function invoke(node: GraphNode, inputs: Record<string, unknown[] | undefined>):
       clock: engineClock(),
     });
   } catch (e) {
-    if (e instanceof CoreTrap) throw solError("#ERROR!", "The engine stopped while computing this card; it restarted, so recalculate to try again");
+    if (e instanceof CoreTrap) throwSol(solError("#ERROR!", "The engine stopped while computing this card; it restarted, so recalculate to try again"));
     throw e;
   }
   if (reply.none) throw new Error(`${node.constructor.name} has no body on the core`);

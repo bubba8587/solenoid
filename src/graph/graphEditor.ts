@@ -48,7 +48,7 @@ export type GraphSignal<S extends GraphSchemes> =
 type GraphPipe<S extends GraphSchemes> = (signal: GraphSignal<S>) => GraphSignal<S> | undefined | void;
 
 /** A pipe in the chain, or the engine's place in it; `handle` is the core's. */
-type Piped = { run?(signal: GraphSignal<GraphSchemes>): unknown; engine?: true; handle?: number; removed?: boolean };
+type Piped = { run?: (signal: GraphSignal<GraphSchemes>) => unknown; engine?: true; handle?: number; removed?: boolean };
 
 /** A composite's own editor. */
 function innerEditor(node: unknown): GraphEditor<GraphSchemes> | undefined {
@@ -76,8 +76,8 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
   engine?: DataflowEngine<S>;
 
   constructor() {
-    _live.add(new WeakRef(this as unknown as GraphEditor<GraphSchemes>));
-    this.piped.push({ run: (signal) => { this.track(signal as GraphSignal<S>); return signal; } });
+    _live.add(new WeakRef(this));
+    this.piped.push({ run: (signal) => { this.track(signal); return signal; } });
   }
 
   /** The core, built on first use (and again after a trap) from what the handle holds; the nodes' port changes
@@ -125,20 +125,19 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
   /** A field the core holds for a direct card (graph-core.md § Direct calls): the object reads it from the core,
    *  converted when read, and writing it stores it there; once the core holds none for it, it is a plain field again. */
   private adopt(node: S["Node"], field: string): void {
-    const editor = this;
     const plain = (value: unknown) => Object.defineProperty(node, field, { value, writable: true, enumerable: true, configurable: true });
     Object.defineProperty(node, field, {
       configurable: true,
       enumerable: true,
       // A standard box's read takes a big list's first rows (`listPreview.ts`); any other read takes it whole.
       get: () => onCore(() => guarded(() => {
-        if (!isPreviewing()) return editor.core().shown(node.id, field);
-        const [v, total, width] = editor.core().shownPreview(node.id, field) as [unknown, number?, number?] | undefined ?? [undefined];
-        if (total !== undefined && v && typeof v === "object") markPreview(v, total, width, () => editor.core().shown(node.id, field));
+        if (!isPreviewing()) return this.core().shown(node.id, field);
+        const [v, total, width] = this.core().shownPreview(node.id, field) as [unknown, number?, number?] | undefined ?? [undefined];
+        if (total !== undefined && v && typeof v === "object") markPreview(v, total, width, () => this.core().shown(node.id, field));
         return v;
       }), undefined),
       set: (value: unknown) => {
-        if (!onCore(() => guarded(() => editor.core().setShown(node.id, field, value)), false)) plain(value);
+        if (!onCore(() => guarded(() => this.core().setShown(node.id, field, value)), false)) plain(value);
       },
     });
   }
@@ -265,7 +264,7 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
 
   /** Adds `pipe` after every pipe already here; returns the handle `removePipe` takes. */
   addPipe(pipe: GraphPipe<S>): number {
-    const p: Piped = { run: pipe as Piped["run"] };
+    const p: Piped = { run: pipe };
     this.piped.push(p);
     if (this._core) guarded(() => this.install(this._core!, p));
     return this.piped.length - 1;
@@ -304,8 +303,8 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
   // it (or a node's `data()` returning, `flushPortEdits`). With no core yet, or a dead one, the core built next reads
   // the node's ports as they stand.
   portsMoved(node: GraphNode): void {
-    this.movedPorts.add(node as S["Node"]);
-    _portsMoved.add(this as unknown as GraphEditor<GraphSchemes>);
+    this.movedPorts.add(node);
+    _portsMoved.add(this);
   }
 
   edited(node: GraphNode): void {
@@ -321,7 +320,7 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
 
   /** Sends each changed node's ports, as they stand, in one call per node. */
   flushPorts(core: GraphCore | null = this._core): void {
-    _portsMoved.delete(this as unknown as GraphEditor<GraphSchemes>);
+    _portsMoved.delete(this);
     if (!core || !wasmEngineLoaded() || this.movedPorts.size === 0) return;
     const moved = [...this.movedPorts];
     this.movedPorts.clear();

@@ -60,7 +60,7 @@ function inheritedInitKeys(proto: object | null): number[] {
   let keys = inherited.get(proto);
   if (!keys) {
     const found = new Set<number>();
-    for (let p: object | null = proto; p; p = Object.getPrototypeOf(p)) {
+    for (let p: object | null = proto; p; p = Object.getPrototypeOf(p) as object | null) {
       for (const k of Object.getOwnPropertyNames(p)) {
         const i = INIT_INDEX.get(k);
         if (i !== undefined) found.add(i);
@@ -76,7 +76,7 @@ export function extractInit(src: GraphNode): Record<string, unknown> {
   const n = src as unknown as Record<string, unknown>;
   const init: Record<string, unknown> = {};
   // The saved names the card has, own or inherited, in their order ([[C120]] linearWork: a call reads it every pass).
-  const at = [...inheritedInitKeys(Object.getPrototypeOf(n))];
+  const at = [...inheritedInitKeys(Object.getPrototypeOf(n) as object | null)];
   for (const k of Object.getOwnPropertyNames(n)) {
     const i = INIT_INDEX.get(k);
     if (i !== undefined) at.push(i);
@@ -92,7 +92,7 @@ export function extractInit(src: GraphNode): Record<string, unknown> {
     if (v !== undefined && typeof v !== "function") init[key] = v;
   }
   if (n.funcs && typeof n.funcs === "object") {
-    init.funcs = { ...(n.funcs as object) };
+    init.funcs = { ...(n.funcs) };
   }
   if (n.filterExclude && typeof n.filterExclude === "object") {
     init.filterExclude = Object.fromEntries(
@@ -105,7 +105,7 @@ export function extractInit(src: GraphNode): Record<string, unknown> {
   }
   if (Array.isArray(n.detailFields) && n.detailFields.length) init.detailFields = [...(n.detailFields as string[])];
   for (const k of ["boxColors", "boxViews", "regionMarks", "regionLabels", "regionValues", "literalKinds"] as const) {
-    if (n[k] && typeof n[k] === "object" && Object.keys(n[k] as object).length) init[k] = { ...(n[k] as object) };
+    if (n[k] && typeof n[k] === "object" && Object.keys(n[k]).length) init[k] = { ...(n[k]) };
   }
   if (n.condConfig && typeof n.condConfig === "object") {
     const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
@@ -121,7 +121,7 @@ export function extractInit(src: GraphNode): Record<string, unknown> {
     if (entries.length) init.keyOrder = Object.fromEntries(entries);
   }
   if (n.fieldTypes && typeof n.fieldTypes === "object") {
-    init.fieldTypes = { ...(n.fieldTypes as object) };
+    init.fieldTypes = { ...(n.fieldTypes) };
   }
   if (Array.isArray(n.selectedKeys)) {
     const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
@@ -174,10 +174,10 @@ export function extractInit(src: GraphNode): Record<string, unknown> {
     );
   }
   if (n.goalSeek && typeof n.goalSeek === "object") {
-    init.goalSeek = { ...(n.goalSeek as object) };
+    init.goalSeek = { ...(n.goalSeek) };
   }
   if (n.monteCarlo && typeof n.monteCarlo === "object") {
-    init.monteCarlo = { ...(n.monteCarlo as object) };
+    init.monteCarlo = { ...(n.monteCarlo) };
   }
   if (typeof n.uncertainty === "number" && n.uncertainty > 0) {
     init.uncertainty = n.uncertainty;
@@ -187,7 +187,7 @@ export function extractInit(src: GraphNode): Record<string, unknown> {
     init.internal = (n.snapshotInternal as () => unknown)();
   }
   if ((typeof n.addValueInput === "function" || typeof n.addValuePair === "function") && n.inputs) {
-    init.valueKeys = Object.keys(n.inputs as object);
+    init.valueKeys = Object.keys(n.inputs);
   }
   return init;
 }

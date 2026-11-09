@@ -4,6 +4,7 @@ import type { FrameCell } from "../frame";
 import { frameFnOnCore } from "../frameBackend";
 import { formatScalar } from "./format";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
+import { textOf } from "../textOf";
 
 export type FooterColType = "number" | "string" | "date" | "logical";
 export type FooterStat =
@@ -27,7 +28,7 @@ interface ColumnProfile {
 
 /** A cell as the core reads it; anything else in a column (a nested list, a record) counts as filled text. */
 const asCell = (v: unknown): FrameCell =>
-  v == null ? null : typeof v === "number" || typeof v === "string" || typeof v === "boolean" || isSolError(v) ? v : String(v);
+  v == null ? null : typeof v === "number" || typeof v === "string" || typeof v === "boolean" || isSolError(v) ? v : textOf(v);
 
 type ProfileRow = [number, number, number, number, ...(number | null)[]];
 

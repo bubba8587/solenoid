@@ -37,7 +37,7 @@ const SHIMMED: Record<string, string> = {
   [path.join(REPO, "src/graph/mobileUa.ts")]: path.join(SHIMS, "mobileUa.ts"),
   [path.join(REPO, "src/graph/components/Markdown.tsx")]: path.join(SHIMS, "components/Markdown.tsx"),
   // The plugin's own engine module, a twelfth of the app's (`build-wasm.mjs --plugin`).
-  [path.join(REPO, "src/graph/engineWasm/solenoid_graph.js")]: path.join(SHIMS, "engineGlue.js"),
+  [path.join(REPO, "src/graph/engineWasm/solenoid_graph.js")]: path.join(SHIMS, "engineGlue.ts"),
 };
 const REACT_DOM_SHIM = path.join(SHIMS, "reactDom.ts");
 

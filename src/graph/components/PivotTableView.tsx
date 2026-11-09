@@ -131,7 +131,7 @@ export function PivotSheetButton({ children }: { children: ReactNode }) {
     const onDown = (e: PointerEvent) => {
       const t = (e.composedPath()[0] ?? e.target) as Element | null;
       // The paintbrush's panel portals to the body, and still belongs to the sheet.
-      if (wrapRef.current?.contains(t as Node) || t?.closest?.(".table-popup__fmtpanel")) return;
+      if (wrapRef.current?.contains(t) || t?.closest?.(".table-popup__fmtpanel")) return;
       setOpen(false);
     };
     document.addEventListener("pointerdown", onDown, true);

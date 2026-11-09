@@ -49,6 +49,12 @@ export function solError(code: SolErrorCode, message: string): SolError {
   return { [TAG]: true, code, message };
 }
 
+/** Throws `e` as itself: an error crosses the app as a value, and every catch reads it with `isSolError`. Typed as an
+ *  `Error` only for the throw. */
+export function throwSol(e: SolError): never {
+  throw e as unknown as Error;
+}
+
 export function isSolError(v: unknown): v is SolError {
   return typeof v === "object" && v !== null && (v as Record<string, unknown>)[TAG] === true;
 }

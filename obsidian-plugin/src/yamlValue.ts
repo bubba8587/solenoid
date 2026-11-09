@@ -3,6 +3,7 @@ import { parseDateToSerial, noteDateSerial, noteDateText } from "../../src/graph
 import { parseCellText } from "../../src/graph/literalEditors";
 import { parseCx } from "../../src/graph/cxValue";
 import { guessNoteColumnType, type FrameColType, type FrameSourceColumn } from "../../src/graph/frame";
+import { textOf } from "../../src/graph/textOf";
 
 export type Family = "number" | "string" | "date" | "logical" | "complex";
 export type Shape = "scalar" | "list" | "matrix" | "frame" | "cube";
@@ -98,10 +99,10 @@ export function scalarText(kind: PropertyKind, value: unknown): string {
 function cellFromYaml(v: unknown, family: Family): Scalar {
   if (v === null || v === undefined) return null;
   if (family === "date") {
-    const serial = parseDateToSerial(String(v));
+    const serial = parseDateToSerial(textOf(v));
     return Number.isFinite(serial) ? serial : null;
   }
-  if (family === "complex") return String(v);
+  if (family === "complex") return textOf(v);
   return v as Scalar;
 }
 
@@ -161,7 +162,7 @@ export function listToYaml(cells: string[][], original: unknown = [], family?: F
 
 export function rawCell(v: unknown): string {
   if (v === null || v === undefined) return "";
-  return typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v);
+  return typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : textOf(v);
 }
 
 export type ColumnTypes = Record<string, FrameColType>;

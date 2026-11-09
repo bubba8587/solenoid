@@ -53,6 +53,17 @@ export function __wbg_reset() {
 `;
 }
 
+/** wasm-bindgen's declarations, made lint-clean for the Obsidian plugin's review, which reads them: no blanket
+ *  `eslint-disable` header, `unknown` for `any`, and the callable types for `Function`. Doc comments are left as written. */
+function patchTypes(src) {
+  return src
+    .replace("/* tslint:disable */\n/* eslint-disable */\n", "")
+    .split("\n")
+    .map((line) => (/^\s*(\/\*|\*|\/\/)/.test(line) ? line
+      : line.replace(/(?<=[:(<|, ])any\b/g, "unknown").replace(/\bFunction\b/g, "(CallableFunction | NewableFunction)")))
+    .join("\n");
+}
+
 function build() {
   const { crate } = MODULE;
   const out = PLUGIN ? "src/graph/engineWasmPlugin" : MODULE.out;
@@ -72,7 +83,9 @@ function build() {
   const glue = `${out}/${lib}.js`;
   writeFileSync(glue, patchGlue(readFileSync(glue, "utf8")));
   const types = `${out}/${lib}.d.ts`;
-  writeFileSync(types, readFileSync(types, "utf8") + "export function __wbg_reset(): WebAssembly.Module;\n");
+  writeFileSync(types, patchTypes(readFileSync(types, "utf8")) + "export function __wbg_reset(): WebAssembly.Module;\n");
+  const bgTypes = `${out}/${lib}_bg.wasm.d.ts`;
+  writeFileSync(bgTypes, patchTypes(readFileSync(bgTypes, "utf8")));
   if (!PLUGIN) writeFileSync(`${out}/source-stamp.txt`, sourceStamp(".") + "\n");
   console.log(`${wasm}: ${statSync(wasm).size} bytes`);
 }

@@ -2,7 +2,7 @@
 import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
 import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, trueAnySocket, AdoptiveSocket, ValueTypedSocket, type SocketDataType } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
-import { solError, isSolError, type SolError } from "../errorValue";
+import { solError, isSolError, type SolError, throwSol } from "../errorValue";
 import { listLiteralText } from "../listLiterals";
 import { applyRole, type InputRole } from "../inputRoles";
 import { dimOf, magnitudeOf } from "../unitValue";
@@ -119,7 +119,7 @@ export function readInput<T>(wired: readonly T[] | undefined, literal: T): T | n
 export function readTextInput(wired: readonly unknown[] | undefined, literal: string, label: string): string {
   const v = readInput(wired, literal);
   if (v === null || v === undefined) return "";
-  if (typeof v !== "string") throw solError("#TYPE!", `${label} takes text`);
+  if (typeof v !== "string") throwSol(solError("#TYPE!", `${label} takes text`));
   return v.trim();
 }
 

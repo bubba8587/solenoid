@@ -64,7 +64,7 @@ const EMPTIES: readonly PivotEmpty[] = ["blank", "zero", "dash"];
 /** A saved view read back whole: anything missing or unknown takes its default. */
 export function readPivotView(raw: unknown): PivotViewOptions {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const bool = (k: keyof PivotViewOptions) => (typeof r[k] === "boolean" ? (r[k] as boolean) : (DEFAULT_PIVOT_VIEW[k] as boolean));
+  const bool = (k: keyof PivotViewOptions) => (typeof r[k] === "boolean" ? (r[k]) : (DEFAULT_PIVOT_VIEW[k] as boolean));
   return {
     form: FORMS.includes(r.form as PivotForm) ? (r.form as PivotForm) : DEFAULT_PIVOT_VIEW.form,
     repeatLabels: bool("repeatLabels"),
@@ -84,7 +84,7 @@ export function savedPivotView(v: PivotViewOptions): Partial<PivotViewOptions> |
     if (k === "collapsed") { if (v.collapsed.length) out.collapsed = [...v.collapsed]; continue; }
     if (v[k] !== DEFAULT_PIVOT_VIEW[k]) out[k] = v[k];
   }
-  return Object.keys(out).length ? (out as Partial<PivotViewOptions>) : undefined;
+  return Object.keys(out).length ? (out) : undefined;
 }
 
 const FUNC_CAPTION: Record<AggOp, string> = {

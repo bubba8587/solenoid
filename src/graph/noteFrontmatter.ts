@@ -3,6 +3,7 @@ import { parseDocument, isMap, isSeq, isScalar, isPair, Scalar, type Node, type 
 import { noteDateSerial } from "./nodes/dateSerial";
 import { typeAtRank } from "./sockets";
 import { isComplexText, type ScalarKind } from "./scalarText";
+import { textOf } from "./textOf";
 
 
 export type FrontmatterFieldType =
@@ -56,14 +57,14 @@ function readScalar(node: Node | null | undefined): { value: FrontmatterScalar; 
   // .inf and -.inf are YAML's infinity and stay ∞ ([[C24]] arraySemantics); .nan reads blank.
   if (typeof v === "number") return { value: Number.isNaN(v) ? null : v, kind: "number" };
   if (typeof v === "bigint") return { value: Number(v), kind: "number" };
-  const s = String(v);
+  const s = textOf(v);
   const serial = quoted ? null : noteDateSerial(s);
   if (serial !== null) return { value: serial, kind: "date", text: s };
   if (!quoted && isComplexText(s.trim())) return { value: s.trim(), kind: "complex" };
   return { value: s, kind: "string" };
 }
 
-const keyOf = (p: Pair): string => (isScalar(p.key) ? String(p.key.value ?? "") : String(p.key ?? "")).trim();
+const keyOf = (p: Pair): string => (isScalar(p.key) ? textOf(p.key.value ?? "") : textOf(p.key ?? "")).trim();
 
 function readRow(node: Node | null | undefined): FrontmatterRow | null {
   if (!isMap(node)) return null;
@@ -79,7 +80,7 @@ function readRow(node: Node | null | undefined): FrontmatterRow | null {
       } else {
         const nested = val.items.map((x) => readRow(x as Node | null));
         if (!nested.every((r) => r !== null)) return null;
-        row[k] = nested as FrontmatterRow[];
+        row[k] = nested;
       }
     } else if (val == null || isScalar(val)) {
       const { value, kind } = readScalar(val);
@@ -144,7 +145,7 @@ function fieldFromMatrix(key: string, items: (Node | null)[]): FrontmatterField 
 
 function fieldFromSeq(key: string, items: (Node | null)[]): FrontmatterField {
   const rows = items.map(readRow);
-  if (rows.length > 0 && rows.every((r) => r !== null)) return fieldFromRows(key, rows as FrontmatterRow[], items);
+  if (rows.length > 0 && rows.every((r) => r !== null)) return fieldFromRows(key, rows, items);
   const matrix = fieldFromMatrix(key, items);
   if (matrix) return matrix;
   const read: Read[] = items.map((x) => (x == null || isScalar(x) ? readScalar(x) : { value: String(x).trim(), kind: "string" as const }));
@@ -190,7 +191,7 @@ export function parseNoteFrontmatter(text: string): ParsedFrontmatter {
       const key = keyOf(item);
       if (key === "" || seen.has(key)) continue;
       seen.add(key);
-      fields.push(fieldOf(key, item.value as Node | null, src));
+      fields.push(fieldOf(key, item.value, src));
     }
   }
   return { fields, body, hasBlock: true };

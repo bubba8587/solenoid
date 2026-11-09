@@ -43,18 +43,18 @@ export class DataflowEngine<S extends GraphSchemes = Schemes> {
 
   /** The node's outputs, computing whatever upstream isn't cached. */
   fetch(nodeId: string): Promise<NodeOutputs> {
-    return tracked(() => this.core().fetch(nodeId));
+    return tracked(() => this.core().fetch(nodeId) as Promise<NodeOutputs>);
   }
 
   /** The node computed on `inputs` as a fetch computes it, boundary included, without reading or filling its cache:
    *  a composite's simulation steps, and a test driving one node. */
   compute(nodeId: string, inputs: Record<string, unknown[]>): Promise<NodeOutputs> {
-    return tracked(() => this.core().compute(nodeId, inputs));
+    return tracked(() => this.core().compute(nodeId, inputs) as Promise<NodeOutputs>);
   }
 
   /** The node's inputs, one list per input key, fetching every predecessor. */
   fetchInputs(nodeId: string): Promise<Record<string, unknown[]>> {
-    return tracked(() => this.core().fetchInputs(nodeId));
+    return tracked(() => this.core().fetchInputs(nodeId) as Promise<Record<string, unknown[]>>);
   }
 
   /** Clears the node's cache and everything downstream through the outputs it computes; without a node, every cache.
@@ -109,7 +109,7 @@ export class DataflowEngine<S extends GraphSchemes = Schemes> {
 
   /** The model pass: `nodeId`'s reach cleared (every cache without it), the loops seeded, every node fetched. */
   computeAll(nodeId?: string): Promise<Map<string, NodeOutputs | null> | null> {
-    return tracked(() => this.core().computeAll(nodeId));
+    return tracked(() => this.core().computeAll(nodeId) as Promise<Map<string, NodeOutputs | null> | null>);
   }
 
   /** The app's pass body ([[compute-pass#The pass body]]): `changed` retargeted into the composite holding it, its
@@ -122,7 +122,7 @@ export class DataflowEngine<S extends GraphSchemes = Schemes> {
     topology: boolean,
   ): Promise<string[] | null> {
     forgetCollected();
-    return tracked(() => this.core().pass(changed, renderOnly ? [...renderOnly] : undefined, topology));
+    return tracked(() => this.core().pass(changed, renderOnly ? [...renderOnly] : undefined, topology) as Promise<string[] | null>);
   }
 
   /** A node's output as the last pass landed it, converted when asked; `undefined` before a pass landed it. */
@@ -136,6 +136,6 @@ export class DataflowEngine<S extends GraphSchemes = Schemes> {
     onNode?: (id: string, outputs: NodeOutputs) => void,
     stopOnCancel = false,
   ): Promise<Map<string, NodeOutputs | null> | null> {
-    return tracked(() => this.core().fetchAll(onNode, stopOnCancel));
+    return tracked(() => this.core().fetchAll(onNode, stopOnCancel) as Promise<Map<string, NodeOutputs | null> | null>);
   }
 }
