@@ -268,6 +268,13 @@ function ByRowEditor({ node }: { node: CompositeNodeType }) {
         onChange={(v) => { node.byRowLive = v === "live"; node.edited(); void processGraph(node.id); }}
         options={BY_ROW_RUN_OPTIONS}
       />
+      {node.byRowLastRuns && (
+        <div className="solenoid-composite__note">
+          {node.byRowLastRuns.ran < node.byRowLastRuns.of
+            ? `ran the first ${node.byRowLastRuns.ran} of ${node.byRowLastRuns.of}`
+            : `${node.byRowLastRuns.ran} run${node.byRowLastRuns.ran === 1 ? "" : "s"}`}
+        </div>
+      )}
     </div>
   );
 }

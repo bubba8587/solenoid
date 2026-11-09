@@ -250,6 +250,8 @@ export class CompositeNode extends GraphNode {
   /** Whether the output types were last adopted for one value per pass. */
   private adoptedSeries: boolean | undefined;
   private lastByRowCapTotal: number | null = null;
+  /** How many passes the last By-Row run made, and of how many items where the cap cut it short. */
+  byRowLastRuns: { ran: number; of: number } | null = null;
   goalSeek: CompositeGoalSeek | null;
   monteCarlo: CompositeMonteCarlo | null;
   goalSeekResult: number | SolError | null = null;
@@ -1116,6 +1118,7 @@ export class CompositeNode extends GraphNode {
     const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
     const source = portSource(port, marker, inputs);
     let rows = byRowValues(source);
+    this.byRowLastRuns = rows.length === 0 ? null : { ran: Math.min(rows.length, BY_ROW_MAX_ROWS), of: rows.length };
     if (rows.length === 0) return this.runPass(inputs);
     if (rows.length > BY_ROW_MAX_ROWS) {
       const total = rows.length;

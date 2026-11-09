@@ -264,6 +264,7 @@ Config: `byRowPortId` (`""` = unset), `byRowLive` (false).
 
 - No rows, or an unknown port, runs one plain pass. Otherwise one pass per row with that row as the port's override; each output is an array, one entry per row.
 - Cap: `BY_ROW_MAX_ROWS = 500`. By-Row is the one heavy mode whose pass count comes from the data rather than a typed number, and every pass recomputes the whole inside, so a huge wired Frame would freeze the Solve; the cut-short series still looks plausible, so the cap warns loudly rather than dropping rows silently. Rows past it are dropped from the tail. When the total exceeds the cap, the composite fires a warning alert (Alerts HUD and toast) "`<name>`: By-Row ran the first 500 of `<total>` rows (the rest were skipped)", where name is the trimmed label or `Composite`. It fires only when the total differs from the last capped total (`lastByRowCapTotal`, transient) and never while a graph rebuild is open ([[D79]] effectsEdgeTriggered, [[alert-node-alerts-hud]]). A run under the cap resets the edge.
+- Under the toggle the card says what the last run made: `3 runs`, or `ran the first 500 of 812` where the cap cut it short (`byRowLastRuns`).
 - The editor is a "For each" picker over the exposed inputs, with `— none`; with none exposed it reads `— expose an input to iterate`.
 
 ### Goal Seek

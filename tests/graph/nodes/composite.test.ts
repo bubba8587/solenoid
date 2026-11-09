@@ -867,6 +867,7 @@ describe("CompositeNode By-Row run mode", () => {
     c.byRowLive = true;
     expect(c.isHeavyMode()).toBe(false);
     expect((await c.data({ [aId]: [[1, 2, 3]] }))[outId]).toEqual([2, 4, 6]);
+    expect(c.byRowLastRuns).toEqual({ ran: 3, of: 3 });
     expect((await c.data({ [aId]: [[5]] }))[outId]).toEqual([10]);
     expect(extractInit(c).byRowLive).toBe(true);
     expect(new CompositeNode({ runMode: "by-row", byRowLive: true }).byRowLive).toBe(true);
