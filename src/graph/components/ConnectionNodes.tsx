@@ -308,6 +308,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
 
   const frameOut = data.outputs.frame;
   const planRows = data.cachedPlan ? cubeRowCount(data.cachedPlan) : 0;
+  const fileRows = data.cachedFiles ? cubeRowCount(data.cachedFiles) : 0;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div className="sol-conn">
@@ -364,7 +365,10 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
       <InlineOutputRows
         node={data}
         emit={emit}
-        rows={[{ key: "plan", label: "Plan", value: planRows > 0 ? `${planRows} task${planRows === 1 ? "" : "s"}` : null }]}
+        rows={[
+          { key: "plan", label: "Plan", value: planRows > 0 ? `${planRows} task${planRows === 1 ? "" : "s"}` : null },
+          { key: "files", label: "Files", value: fileRows > 0 ? `${fileRows} file${fileRows === 1 ? "" : "s"}` : null },
+        ]}
       />
     </NodeShell>
   );

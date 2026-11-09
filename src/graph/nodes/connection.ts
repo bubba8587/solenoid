@@ -22,7 +22,7 @@ import { connectionStore, requestNetwork, fetchInBackground } from "../connectio
 import { isDesktop, hasFs, readFileText, listLocalFilesMatching, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { fetchText } from "../httpBridge";
-import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, type FrameValue, type CubeValue } from "../frame";
+import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, cubeFromColumns, type FrameValue, type CubeValue } from "../frame";
 import { readParquetFrame, csvToFrame, isFrameRef, readFrame } from "../frameBackend";
 import { isFilePattern } from "../fileGlob";
 import { AppendNode } from "./frame";
@@ -261,8 +261,9 @@ export class ImportXmlNode extends GraphNode {
 /** Every file read and stacked into one table, a first column naming each row's file ([[B11]] maximalMerge):
  *  columns meet by name as Append's do, and a file that doesn't read is named in `failed` while the rest load.
  *  Null once `stale` says a newer read took over. */
-async function readFilesAsOne(folder: string, files: string[], stale: () => boolean): Promise<{ frame: FrameValue | SolError; failed: string[] } | null> {
+async function readFilesAsOne(folder: string, files: string[], stale: () => boolean): Promise<{ frame: FrameValue | SolError; perFile: CubeValue | null; failed: string[] } | null> {
   const frames: FrameValue[] = [];
+  const read: Array<{ file: string; table: FrameValue }> = [];
   const failed: string[] = [];
   for (const rel of files) {
     try {
@@ -270,6 +271,7 @@ async function readFilesAsOne(folder: string, files: string[], stale: () => bool
       if (isSolError(f)) failed.push(`${rel} (${f.message})`);
       else {
         const name = f.columns.some((c) => c.name === "File") ? "Source file" : "File";
+        read.push({ file: rel, table: f });
         frames.push({ ...f, columns: [{ name, type: "string", values: Array<string>(frameRowCount(f)).fill(rel) }, ...f.columns] });
       }
     } catch (e) {
@@ -277,12 +279,17 @@ async function readFilesAsOne(folder: string, files: string[], stale: () => bool
     }
     if (stale()) return null;
   }
-  if (frames.length === 0) return { frame: solError("#REF!", `None of the ${files.length} files read: ${failed[0]}`), failed };
-  if (frames.length === 1) return { frame: frames[0], failed };
+  if (frames.length === 0) return { frame: solError("#REF!", `None of the ${files.length} files read: ${failed[0]}`), perFile: null, failed };
+  // The same files unstacked, a row each: its name and its table, for a transform that runs once per file.
+  const perFile = cubeFromColumns([
+    { name: "File", cells: read.map((r) => r.file), type: "string" },
+    { name: "Table", cells: read.map((r) => r.table) },
+  ]);
+  if (frames.length === 1) return { frame: frames[0], perFile, failed };
   const stack = new AppendNode({ valueKeys: frames.map((_, i) => `f${i}`) });
   const out = (await (stack as unknown as { data(inputs: Record<string, unknown[]>): unknown }).data(Object.fromEntries(frames.map((f, i) => [`f${i}`, [f]])))) as { frame: unknown };
   const frame = isFrameRef(out.frame) ? await readFrame(out.frame) : out.frame;
-  return stale() ? null : { frame: frame as FrameValue | SolError, failed };
+  return stale() ? null : { frame: frame as FrameValue | SolError, perFile, failed };
 }
 
 // ─── LOCAL FILE (a file in the Settings target folder) ──────────────────────────
@@ -290,10 +297,13 @@ export class LocalFileNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file. Empty for a Project XML, GanttProject or Primavera file, which reads as a Plan.",
     plan: "A project plan: Project XML, GanttProject, Primavera XER, or a CSV with Predecessors like 3FS+2d. Tasks nest as the outline. Empty otherwise.",
+    files: "With a pattern, the files one by one: a row per file, its name and its table. A Composite set to By row runs once per file; Unnest stacks them. Empty for a single file.",
   };
   label: string;
   fileName: string;
   cachedPlan: CubeValue | null = null;
+  /** A pattern's files unstacked: a row per file, its name and its table. */
+  cachedFiles: CubeValue | null = null;
   planNotes: string[] = [];
   refreshMinutes: number;
   cachedResult: FrameValue | SolError | null = null;
@@ -310,6 +320,7 @@ export class LocalFileNode extends GraphNode {
     this.refreshMinutes = init?.refreshMinutes ?? 0;
     this.addOutput("frame", frameOut("Frame"));
     this.addOutput("plan", cubeOut("Plan"));
+    this.addOutput("files", cubeOut("Files"));
   }
 
   private static isParquet(name: string): boolean {
@@ -320,17 +331,18 @@ export class LocalFileNode extends GraphNode {
     return /\.(xml|gan|xer)$/i.test(name);
   }
 
-  async data(): Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> {
+  async data(): Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null; files: CubeValue | null }> {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const folder = getCsvFolder();
     const name = this.fileName.trim();
     const key = connectionStore.key(this.id, `${folder}\u0000${name}`);
-    if (key === this.lastKey) return { frame: this.cachedResult, plan: this.cachedPlan };
+    if (key === this.lastKey) return { frame: this.cachedResult, plan: this.cachedPlan, files: this.cachedFiles };
     if (this.inflightKey !== key || !this.inflight) {
       this.inflightKey = key;
       this.inflight = this.load(folder, name, key);
     }
-    return this.inflight;
+    const out = await this.inflight;
+    return { ...out, files: this.cachedFiles };
   }
 
   private async load(folder: string, name: string, key: string): Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> {
@@ -338,6 +350,7 @@ export class LocalFileNode extends GraphNode {
     const stale = () => this.inflightKey !== key;
     const superseded = { frame: null, plan: null };
     this.cachedPlan = null;
+    this.cachedFiles = null;
     this.planNotes = [];
     const fail = (message: string, status: "idle" | "error" = "error", err?: SolError) => {
       if (stale()) return superseded;
@@ -366,6 +379,7 @@ export class LocalFileNode extends GraphNode {
         if (isSolError(read.frame)) return fail(read.frame.message, "error", read.frame);
         this.lastKey = key;
         this.cachedResult = read.frame;
+        this.cachedFiles = read.perFile;
         connectionStore.setState(this.id, {
           status: "ok", rows: frameRowCount(read.frame), cols: read.frame.columns.length, fetchedAt: Date.now(),
           files: files.length - read.failed.length,

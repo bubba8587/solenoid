@@ -121,13 +121,17 @@ fn join(c: &mut Call) -> Answer {
     one("frame", out.unwrap_or_else(Cv::V))
 }
 
-/// Append and Bind Columns: the wired frames in socket order; one passes on, more combine.
+/// Append and Bind Columns: the wired frames in socket order; one passes on, more combine. A socket that carries a
+/// list of frames (a By-Row Composite's answer, one per pass) gives each of them in turn.
 fn stack(c: &mut Call, append: bool) -> Answer {
     let frames: Vec<Cv> = c
         .sockets
         .iter()
         .filter(|s| s.key.starts_with('f'))
-        .map(|s| first(c, &s.key))
+        .flat_map(|s| match first(c, &s.key) {
+            Cv::Cells(items) => items.to_vec(),
+            f => vec![f],
+        })
         .filter(|f| !f.is_nullish())
         .collect();
     match frames.as_slice() {

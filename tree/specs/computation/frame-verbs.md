@@ -955,7 +955,7 @@ Tests:
 
 ### append
 
-- **Function:** `append_frames(frames)`. Stacks frames in order, matching columns by name.
+- **Function:** `append_frames(frames)`. Stacks frames in order, matching columns by name. A socket carrying a list of frames (a By-Row Composite's answer, one per pass) gives each of them in turn (`stack`, `nodes/backend_verbs.rs`), so one cable stacks them all.
 - **Columns:** the union of names in first-seen order; a frame lacking a column contributes blanks for its rows.
 - **Types:** a name with different types in two frames is `#TYPE!` (`append: column "<n>" is <t1> in one frame and <t2> in another`); nothing is coerced.
 - **Units and formats:** a column keeps its unit and its format when every frame holding it agrees on them (the same unit, display included, and the same format), and loses whichever they disagree on; a frame holding the column with no unit disagrees with one that has a unit, and a frame lacking the column has no say.
@@ -1014,8 +1014,8 @@ Tests: `cubeRowVerbs.test.ts`: sort, distinct, head and filter on a Cube against
 | Path | Result |
 |---|---|
 | List | A Frame. Each parent row repeats once per item, and the item sits under the same column name (so a Predecessors list round-trips into the Schedule Links input). An empty or missing list keeps its row once with a blank, so a task with no predecessors survives. Every column is re-inferred; parent columns keep their format. |
-| Table | A Frame. Each parent row repeats once per child row, with the child's columns appended (their schema from the first Frame cell; a child lacking one is blank there). A row with no child rows, an empty list beside the tables included, is dropped. Parent columns are re-inferred and keep their format, child columns keep their type, unit and format, and names go through `makeHeaders`. |
-| Cube | A Cube one level shallower. As the table path, with the schema from the first Cube cell, carried types and formats kept, and each child's own nested columns left nested. So a depth-2 Cube unnests to depth 1, and a second Unnest recovers the flat rows. |
+| Table | A Frame. Each parent row repeats once per child row, with the children's columns appended: every column any child has, in the order first met, each typed as the first child holding it types it, and blank in the rows of a child without it. A column only a later child holds is kept (the first child's columns alone once dropped it without a word, a file with one more column than the first among a folder's). A row with no child rows, an empty list beside the tables included, is dropped. Parent columns are re-inferred and keep their format, child columns keep their type, unit and format, and names go through `makeHeaders`. |
+| Cube | A Cube one level shallower. As the table path, the columns gathered the same way over every Cube cell, carried types and formats kept, and each child's own nested columns left nested. So a depth-2 Cube unnests to depth 1, and a second Unnest recovers the flat rows. |
 
 Tests: `frameVerbs.test.ts`: nest and unnest as inverses, the key's type, units and formats kept, a missing column, peeling a depth-2 Cube, the list path, the mixed-kind `#TYPE!`, and an empty list beside tables.
 

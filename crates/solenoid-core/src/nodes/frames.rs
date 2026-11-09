@@ -2230,11 +2230,16 @@ fn unnest_cube(c: &Cube, nested_name: &str) -> Result<Cv, V> {
         return Ok(frame_v(columns));
     }
     if saw_cube {
-        let schema: Vec<CubeColumn> = nested
-            .cells
-            .iter()
-            .find_map(|v| if let Cv::Cube(k) = v { Some(k.columns.clone()) } else { None })
-            .unwrap_or_default();
+        let mut schema: Vec<CubeColumn> = Vec::new();
+        for cell in &nested.cells {
+            if let Cv::Cube(k) = cell {
+                for col in &k.columns {
+                    if !schema.iter().any(|x| x.name == col.name) {
+                        schema.push(col.clone());
+                    }
+                }
+            }
+        }
         let mut flat_vals: Vec<Vec<Cv>> = vec![Vec::new(); flat.len()];
         let mut child_vals: Vec<Vec<Cv>> = vec![Vec::new(); schema.len()];
         for i in 0..rows {
@@ -2268,11 +2273,18 @@ fn unnest_cube(c: &Cube, nested_name: &str) -> Result<Cv, V> {
         }));
         return Ok(cube_from_columns(cols));
     }
-    let schema: Vec<Column> = nested
-        .cells
-        .iter()
-        .find_map(|v| if let Cv::Frame(f) = v { Some(f.columns.clone()) } else { None })
-        .unwrap_or_default();
+    // Every nested table's columns, each as the first table that has it gives it: a column only a later table holds
+    // is kept, blank in the rows of the tables without it.
+    let mut schema: Vec<Column> = Vec::new();
+    for cell in &nested.cells {
+        if let Cv::Frame(f) = cell {
+            for col in &f.columns {
+                if !schema.iter().any(|x| x.name == col.name) {
+                    schema.push(col.clone());
+                }
+            }
+        }
+    }
     let mut flat_vals: Vec<Vec<V>> = vec![Vec::new(); flat.len()];
     let mut child_vals: Vec<Vec<V>> = vec![Vec::new(); schema.len()];
     for i in 0..rows {
