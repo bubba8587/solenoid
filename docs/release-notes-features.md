@@ -14,29 +14,12 @@ off), the Android build (not in 1.6) and the headless CLI (unpublished).
 
 ## The deck
 
-- **[slide] We rewrote it in Rust.** Yes, us too. The difference is we have numbers: a million rows through
-  a filter, a computed column, a group, a join and a sort in 160 ms. A RANK or SUMIFS column over 20,000
-  rows used to take long enough to make coffee. Now it's milliseconds, so you'll have to find another
-  excuse.
-- **[slide] Dashboards.** Wire your charts, numbers and tables into a Dashboard card and open it as a
-  full-screen board. Drag things around, color-code them, refresh live data, and check it on your phone
-  like it's a stock ticker. The Dashboard showcase example has one ready to poke at.
-- **[slide] Pivot tables, the real kind.** PIVOTBY opens on an honest-to-god pivot table: Compact, Outline
-  or Tabular, subtotals that fold, a number format per field, and the rows behind any number one click
-  away. Your finance team will feel right at home.
-- **[slide] Coming from Excel?** The Excel Coverage tab lists Excel's functions under Excel's own headings,
-  each with the card that does it. 326 give Excel's exact answers, down to `0.1 + 0.2 = 0.3`, and the ones
-  that don't just tell you how instead of making you find out the hard way.
-- **[slide] A date is a date.** Dates stay dates through every formula, lookup, sort and pivot. A date
-  plus 7 is next week, two dates subtracted are the days between, and you'll never squint at 45000 again
-  wondering what it used to be.
-- **[slide] All your files, one search.** Folders for your documents, drag and drop, and a globe search that
-  looks through everything at once and drops you on the exact card. "Where did I put that" is now a
-  two-second problem.
-- **[slide] Units that do the math.** Divide a km column by an hr column and you get km/h, no conversion
-  factor scribbled on a sticky note. A payment on a dollar loan comes back in dollars.
-- **[slide] 32 kinds of diagram.** The Mermaid card has a starter for every diagram it draws: Sankey, Venn,
-  Kanban, Treemap, even Wardley maps for the strategy people. All in your theme, no Visio required.
+- **[slide] Rust port (yes, us too).** The app's core now runs Rust via WebAssembly for much faster row operations. Try the Rust engine speed test example with a high row count.
+- **[slide] Dashboards.** Wire any number of charts, tables, numbers or documents to the new Dashboard card.
+- **[slide] Pivot view.** The PIVOTBY card now has familiar options for your reporting layouts.
+- **[slide] Revamped Function Reference.** The Function Reference (that book icon in the top-right of your screen) was bad before and now it's good. Check it out!
+- **[slide] Revamped Navigator.** The Navigator sidebar (open with N) now holds a traditional file tree.
+- **[slide] Mermaid → Pele.** Solenoid now uses Obsidian's Pele renderer for improved Mermaid diagrams.
 
 ## Also worth shouting about
 

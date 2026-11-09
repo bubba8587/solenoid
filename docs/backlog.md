@@ -128,6 +128,9 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
   work adds rules: walk `python3 tools/dte.py tree` and ratify node by
   node (`docs/dte.md` § Solenoid practice; `archive/1.4-plan.md` D3).
 
+## Before 1.6 (the author, 2026-11-09)
+- [ ] **Pivot view doesn't show in a Dashboard** (probably not in a Report either): a PIVOTBY output in a Dashboard box should draw its pivot table.
+
 ## From the 2026-11-06 audit (each needs the author's call)
 - [ ] **Dates through the function classes** (`date_values.rs` `class_of`): PADLEFT/PADRIGHT and CONTAINS are classed Text, so a date list pads as text and CONTAINS matches a date against its display text; SETEQUAL/SETSUBSET/SETSUPERSET/SETDISJOINT have no class and refuse dates; Builds/Reads take a date where they read a number (`EDATE(d, DATE(1900,1,1))` adds 2 months, XNPV's values); XLOOKUP's numeric not-found re-stamps as a date (30-Dec-1899); DIFF and RUNNING have no class; Group Lists keys by `value_text` (times in one minute meet). Left for the formula test set.
 - [ ] **A date matches its serial in Counts/Returns** (XMATCH, ISIN, COUNTIF, XLOOKUP unwrap every argument): `tree/specs/values/value-semantics.md` says a date never keys as its serial, the Counts bullet says dates read as their days. Pick one.
