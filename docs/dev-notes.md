@@ -46,6 +46,16 @@ specific item.
 - **A new leaf is checked against the author's test by a hook** (`.claude/settings.json`: an agent reads `dte.md`
   § What is a leaf and what is a spec and refuses a description or a restatement of the parent). D126, which only
   described the folder read and applied [[B11]] maximalMerge, is retired.
+- **A folder's files go through one transform each** (`../tree/specs/computation/live-connections.md` § A folder as one
+  table): Local File's `files` output is a Cube, a row per file with its table; a live By-Row Composite runs once per
+  row; its answer is a Cube with a table per row, which Unnest stacks. `scripts/shot-graphs/folder-each.json` is the
+  whole chain.
+- **One value per pass is typed as what it is** (`seriesTypeOf`, `../tree/specs/computation/composite-nodes.md` § Run
+  modes): By-Row, Scenarios and Data Table outputs are a value's list, a list's table, or a Cube for tables, where the
+  socket kept the inner type.
+- **Unnest keeps every nested table's columns** (it took the first table's and dropped the rest's without a word).
+- **Join takes a Cube and carries its lists and tables** by row number (`join_side`, `with_nested`), and
+  **LINKNAME / LINKPATH** read the note a link names: a vault's tasks join to the project notes they link in one step.
 - **A cloud container can start hundreds of commits behind `develop`** (this one was 352 behind, a shallow clone): `git
   fetch origin develop` and compare before the first edit, or the first push is refused and the fixtures and wasm are
   redone on the new base.
