@@ -979,6 +979,11 @@ kbd {
 .metadata-container .metadata-properties-title {
   color: var(--sol-head-ink);
   font-weight: 600;
+  /* A card header's title, as the Reference's box titles set theirs (FunctionReference.css, .fr-land__head > span):
+     small, uppercase and tracked. Obsidian has no header-case setting, so it is always uppercase. */
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 .metadata-container .metadata-content {
   padding: 0 var(--size-4-2);
