@@ -35,6 +35,7 @@ import { validateGraph, validateText, formatIssues, hardIssues } from "../src/gr
 import { setFsProvider, type FsProvider } from "../src/graph/fileBridge";
 import { settingsStore } from "../src/graph/settingsStore";
 import { whenConnectionsSettled } from "../src/graph/connectionStore";
+import { withImpliedRows } from "../src/graph/textFormRows";
 // @ts-expect-error a plain .mjs script, untyped
 import { expand } from "./shot-graph-expand.mjs";
 
@@ -143,6 +144,8 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
   if (opts.vault) { setFsProvider(nodeFsProvider); settingsStore.set("obsidianVault", opts.vault); }
   if (opts.data) { setFsProvider(nodeFsProvider); settingsStore.set("csvFolder", nodePath.resolve(opts.data)); }
   if (opts.tasknotes) settingsStore.set("taskNotesUrl", opts.tasknotes);
+  // A hand-written graph names its rows without `valueKeys`, in JSON as in the text form.
+  g = withImpliedRows(g as unknown as Parameters<typeof withImpliedRows>[0]) as unknown as SavedGraph;
   const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);

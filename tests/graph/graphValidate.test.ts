@@ -154,6 +154,21 @@ describe("validateGraph — semantics", () => {
     expect(validateText(`G: GroupByFrameNode agg="avg"\n---\n{}`).issues).toEqual([]);
   });
 
+  it("builds the rows a line names without valueKeys, and reads their per-row settings", () => {
+    const { issues, graph } = validateText([
+      `F: FilterFrameNode condConfig={"0":{"op":"neq"},"1":{"op":"lt"}} str:column0="s" str:value0="done" str:column1="n" str:value1="4"`,
+      `L: ListInputNode str:v0="1,2" str:v2="4,5"`,
+      `S: SwitchNode`,
+      `---`, `{}`,
+    ].join("\n"));
+    expect(issues).toEqual([]);
+    const init = (name: string) => graph!.nodes.find((n) => n.name === name)!.init as { valueKeys?: string[] };
+    expect(init("F").valueKeys).toEqual(["frame", "column0", "value0", "column1", "value1"]);
+    expect(init("L").valueKeys).toEqual(["v0", "v2"]);
+    // A card that names nothing past its starting rows is left as written.
+    expect(init("S").valueKeys).toBeUndefined();
+  });
+
   it("says how to wire a table into a formula", () => {
     const { issues } = validateText(`T: FrameInputNode\nE: ExpressionNode expr="x + 1" x<-T.frame\n---\n{}`);
     expect(issues.find((i) => i.message.includes("can't feed"))?.message).toContain("GetColumnNode");

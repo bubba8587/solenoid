@@ -397,7 +397,11 @@
           "0": {
             "op": "gt"
           }
-        }
+        },
+        "valueKeys": [
+          "list",
+          "value0"
+        ]
       },
       "stringLiterals": {
         "value0": "1"

@@ -195,6 +195,9 @@ export function buildGroundingSpec(): string {
   w(`  \`{"0": "desc"}\`; row 0 is the \`key0\` socket. \`byCol\` (List Sort, UNIQUE) sorts or dedupes columns.`);
   w(`- Row inputs like \`v0\`, \`value1\` on list-building nodes take comma-separated`);
   w(`  values per row (\`str:v0="1, 2, 3"\`); every row concatenates into one list.`);
+  w(`- A card with addable rows (\`v0\`, \`v1\`…; \`column0\`/\`value0\`, \`column1\`/\`value1\`…) has a row`);
+  w(`  as soon as the line names it, in a cable, an inline value or a per-row setting; \`valueKeys\` is the`);
+  w(`  saved list of those rows and can be left out.`);
   w();
   w(`## Node classes`);
   w();
