@@ -119,7 +119,7 @@ describe("[[D86]] blankRoles — data stays blank, a setting left blank is its d
   it("INDEX: an empty list of positions is the positions left out, on the card and in a formula", () => {
     expect(ev("INDEX(m, 0, c)", { m, c: [] })).toEqual(m);
     expect(new ListIndexNode().data({ list: [m], index: [0], column: [[]] }).result).toEqual(m);
-    expect(ev("INDEX(m, r, 2)", { m, r: [] })).toEqual([[2], [5], [8]]);
+    expect(ev("INDEX(m, r, 2)", { m, r: [] })).toEqual([2, 5, 8]);
   });
 
   it("CHOOSEROWS: the indices have no default, so blank is #SYNTAX!; a blank index is skipped", () => {

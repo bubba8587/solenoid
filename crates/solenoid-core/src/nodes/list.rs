@@ -1980,11 +1980,10 @@ fn index_into(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
             if outside(ci, w) {
                 return index_ref_error(ci + 1.0, w, "Column");
             }
-            // A whole column stays a column, a one-column table ([[D85]] columnsStayColumns).
             return list(
                 grid.iter()
                     .map(|row| {
-                        list(vec![tag(match row {
+                        tag(match row {
                             V::List(cells) => or_null(at_pos(cells, ci)),
                             other => {
                                 if ci == 0.0 {
@@ -1993,7 +1992,7 @@ fn index_into(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
                                     V::Null
                                 }
                             }
-                        })])
+                        })
                     })
                     .collect(),
             );
@@ -2080,14 +2079,11 @@ fn index_many(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
             if row_many {
                 return list(slices);
             }
-            // Each picked column arrives as a one-column table.
             let lists: Vec<&[V]> =
                 slices.iter().map(|s| if let V::List(l) = s { l.as_slice() } else { &[][..] }).collect();
-            let cell = |c: &[V], i: usize| match c.get(i) {
-                Some(V::List(one)) => or_null(one.first()),
-                other => or_null(other),
-            };
-            return list((0..lists[0].len()).map(|i| list(lists.iter().map(|c| cell(c, i)).collect())).collect());
+            return list(
+                (0..lists[0].len()).map(|i| list(lists.iter().map(|c| or_null(c.get(i))).collect())).collect(),
+            );
         }
     }
     let as_grid = |x: &V| -> Vec<V> {

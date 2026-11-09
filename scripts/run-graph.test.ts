@@ -117,7 +117,7 @@ describe("run-graph (headless CLI)", () => {
   it("--set gives a formula a list or a grid as well, and refuses a name the formula never reads", async () => {
     const run = async (expr: string, set?: Record<string, string>) => (await runGraph(formulaGraph(expr, set)))["formula"] as { result: unknown };
     expect((await run("SUM(v) * k", { v: "[1,2,3]", k: "2" })).result).toBe(12);
-    expect(plainValue((await run("m / INDEX(m, 0, 1)", { m: "[[2,4],[5,10]]" })).result)).toEqual([[1, 2], [1, 2]]);
+    expect(plainValue((await run("m * 2", { m: "[[2,4],[5,10]]" })).result)).toEqual([[4, 8], [10, 20]]);
     expect((await run("TEXTJOIN(\"-\", TRUE, w)", { w: '["a","b"]' })).result).toBe("a-b");
     expect(() => formulaGraph("x + 1", { x: "1", y: "2" })).toThrow(/no variable "y"/);
     expect(() => formulaGraph("x + 1", { x: "[[1],[{}]]" })).toThrow(/numbers or text/);
