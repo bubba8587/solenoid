@@ -56,6 +56,9 @@ specific item.
   the app's dialog (panel hairline, divider under the header, 14px title) while menus and the palette keep the overlay
   border; a phone dialog stays Obsidian's bottom sheet; Delete takes the callout ink rule (5.3:1); the phone drawer's
   view picker marks the active view as the app's Navigator does, and its vault name is the brand mark.
+- The phone drawer's button pill (author: broken borders): Obsidian runs it the drawer's full width, so the look's
+  pill lost its ends; its floating nav cleared the fill and drew the list's fade inside it, over the outline. It insets
+  to the view picker, keeps its fill, and the fade moves above it.
 
 ### SESSION DIGEST (2026-11-08: per-frame camera work trimmed; cloud session)
 - A source read (no measuring) of what runs on every pan and zoom frame; four pieces of dead work went, each with its

@@ -526,6 +526,28 @@ button.mod-warning {
 .view-actions .clickable-icon {
   border-radius: 50%;
 }
+/* A phone runs the explorer's buttons the drawer's full width, which cuts the pill's rounded ends off at its edges:
+   it insets to the view picker's width below it, with a gap between. It floats over the end of the file list, and
+   Obsidian's floating nav clears its fill, so the list showed through: it keeps the pill's fill. */
+.is-mobile .workspace-drawer .nav-buttons-container {
+  box-sizing: border-box;
+  width: auto;
+  margin: 0 12px 6px;
+}
+.is-mobile.is-floating-nav .workspace-drawer .nav-buttons-container {
+  background-color: var(--sol-sunken);
+}
+/* Obsidian fades the list out with a gradient drawn inside the buttons, which painted over the pill's edge: the fade
+   sits above the pill instead, across the drawer. */
+.is-mobile.is-floating-nav .workspace-drawer .nav-buttons-container::after {
+  top: auto;
+  bottom: calc(100% + 1px);
+  left: -12px;
+  right: -12px;
+  width: auto;
+  height: 48px;
+  margin: 0;
+}
 /* The accent line paints over the bar's top 2px, so the bar takes them back as padding. */
 .view-header {
   flex: 0 0 44px;
